@@ -15,6 +15,11 @@ Describe `
   -Tag 'Integration' `
   -Skip:(-not $script:integrationEnabled) {
   BeforeAll {
+    . (Join-Path `
+      $PSScriptRoot `
+      '../AzureDev.Workstation.Transfer.TestHelper.ps1')
+    $script:mockAzureDevNativeCommandEmulator =
+      (Get-Command Invoke-TestAzureDevNativeCommand).ScriptBlock
     $script:moduleName = 'AzureDev.Workstation'
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
       (Join-Path $PSScriptRoot '../../../..')
@@ -47,13 +52,19 @@ Describe `
       )
 
       & $script:workstationModule {
-        param($MockDestinationHome)
+        param($MockDestinationHome, $MockNativeCommandEmulator)
 
         Set-Variable `
           -Name HOME `
           -Value $MockDestinationHome `
           -Scope Script
-        $script:mockCapturedPackage = $null
+        $script:mockAzureDevWorkstationState = [PSCustomObject]@{
+          CapturedPackage = $null
+          EncryptedPackages = @{}
+          IdentityRecipients = @{}
+        }
+        $script:mockAzureDevNativeCommandEmulator =
+          $MockNativeCommandEmulator
 
         function script:Get-AzureDevAgePath {
           return 'age-test'
@@ -133,58 +144,14 @@ Describe `
             [object[]]$Arguments
           )
 
-          if (
-            $FilePath -eq 'ssh-keygen' -and
-            $Arguments.Count -gt 1 -and
-            $Arguments[0] -eq '-Y' -and
-            $Arguments[1] -eq 'sign'
-          ) {
-            Set-Content `
-              -LiteralPath "$([string]$Arguments[-1]).sig" `
-              -Value 'test signature'
-            return [PSCustomObject]@{ ExitCode = 0; Text = '' }
-          }
-          if ($FilePath -eq 'ssh-keyscan') {
-            return [PSCustomObject]@{
-              ExitCode = 0
-              Text = '203.0.113.10 ssh-ed25519 AAAAexpected'
-            }
-          }
-          if ($FilePath -eq 'ssh-keygen') {
-            return [PSCustomObject]@{
-              ExitCode = 0
-              Text = '256 SHA256:host-key 203.0.113.10 (ED25519)'
-            }
-          }
-          if ($FilePath -eq 'chmod') {
-            return [PSCustomObject]@{ ExitCode = 0; Text = '' }
-          }
-          if ($FilePath -ne 'age-test') {
-            throw "Unexpected native command in transfer test: $FilePath"
-          }
-
-          $zipPath = [string]$Arguments[-1]
-          $mockCaptured = @{}
-          $archive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
-          foreach ($entry in $archive.Entries) {
-            $reader = [System.IO.StreamReader]::new($entry.Open())
-            $mockCaptured[$entry.FullName] = $reader.ReadToEnd()
-            $reader.Dispose()
-          }
-          $archive.Dispose()
-          $script:mockCapturedPackage = $mockCaptured
-
-          $outputOptionIndex = [System.Array]::IndexOf($Arguments, '-o')
-          if ($outputOptionIndex -lt 0) {
-            throw 'age-test invocation did not include the -o option.'
-          }
-          [System.IO.File]::WriteAllText(
-            [string]$Arguments[$outputOptionIndex + 1],
-            'encrypted'
-          )
-          return [PSCustomObject]@{ ExitCode = 0; Text = '' }
+          & $script:mockAzureDevNativeCommandEmulator `
+            -FilePath $FilePath `
+            -Arguments $Arguments `
+            -State $script:mockAzureDevWorkstationState `
+            -SupportSigning `
+            -SupportChmod
         }
-      } $DestinationHome
+      } $DestinationHome $script:mockAzureDevNativeCommandEmulator
     }
 
     function New-TestTransferContext {
@@ -351,7 +318,7 @@ Describe `
           -Confirm:$false
       }
       $mockCaptured = & $script:workstationModule {
-        return $script:mockCapturedPackage
+        return $script:mockAzureDevWorkstationState.CapturedPackage
       }
       $localContent = [string]$mockCaptured[
         'files/.env.azure.development.local'

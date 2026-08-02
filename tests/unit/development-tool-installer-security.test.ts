@@ -10,6 +10,7 @@ import {
 } from 'node:fs'
 import { devNull, tmpdir } from 'node:os'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 
 const temporaryDirectories: string[] = []
@@ -19,7 +20,9 @@ const templatesDirectory = path.join(
 )
 const gitEnvironment: NodeJS.ProcessEnv = {
   ...Object.fromEntries(
-    Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')),
+    Object.entries(process.env).filter(
+      ([name]) => !name.toUpperCase().startsWith('GIT_'),
+    ),
   ),
   GIT_CONFIG_GLOBAL: devNull,
   GIT_CONFIG_NOSYSTEM: '1',
@@ -173,6 +176,7 @@ function gitRepositoryFixture() {
   execFileSync('git', ['clone', '--bare', source, remote], {
     env: gitEnvironment,
   })
+  const remoteUrl = pathToFileURL(remote).href
 
   return {
     addCommit(value: string) {
@@ -185,12 +189,12 @@ function gitRepositoryFixture() {
         cwd: source,
         env: gitEnvironment,
       })
-      execFileSync('git', ['push', `file://${remote}`, 'master'], {
+      execFileSync('git', ['push', remoteUrl, 'master'], {
         cwd: source,
         env: gitEnvironment,
       })
     },
-    remoteUrl: `file://${remote}`,
+    remoteUrl,
     root,
   }
 }

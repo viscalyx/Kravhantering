@@ -196,7 +196,10 @@ function Set-AzureDevPrivatePermissions {
       $aclError =
         "Could not apply and validate a user-only Windows ACL for ${Path}: " +
         $_.Exception.Message
-      throw $aclError
+      throw [System.InvalidOperationException]::new(
+        $aclError,
+        $_.Exception
+      )
     }
     return
   }
