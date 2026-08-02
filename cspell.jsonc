@@ -6,6 +6,7 @@
     "acceptenv",
     "anonymization",
     "anchore",
+    "rubygems",
     "skopeo",
     "Syft",
     "Trixie",

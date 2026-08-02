@@ -28,6 +28,7 @@ const PERSIST_CREDENTIALS_FALSE_LINE =
 type WorkflowDocument = {
   jobs?: Record<string, WorkflowJob>
   on?: Record<string, unknown>
+  permissions?: Record<string, unknown>
 }
 
 type WorkflowJob = {
@@ -704,6 +705,58 @@ describe('GitHub Actions workflow security', () => {
     expect(uploadEvidence?.with?.path).toContain(
       'tmp/container-release-artifacts/sbom/',
     )
+  })
+
+  it('rescans verified SBOMs for supported releases and safely synchronizes findings', () => {
+    const workflow = readWorkflowYaml('container-vulnerability-monitor.yml')
+    const job = workflow.jobs?.['container-vulnerability-monitor']
+    const steps = job?.steps ?? []
+    const step = (name: string) =>
+      steps.find(candidate => candidate.name === name)
+
+    expect(workflow.on).toHaveProperty('schedule')
+    expect(workflow.on).toHaveProperty('workflow_dispatch')
+    expect(workflow.permissions).toEqual({
+      attestations: 'read',
+      contents: 'read',
+      issues: 'write',
+      packages: 'read',
+    })
+    expect(job?.if).toBe("github.ref == 'refs/heads/main'")
+
+    expect(step('Select supported published releases')).toBeDefined()
+    expect(step('Verify published SBOM attestations')).toBeDefined()
+    expect(step('Scan every supported release SBOM')).toBeDefined()
+    const installGrype = step('Install pinned Grype')
+    expect(installGrype).toMatchObject({
+      id: 'grype',
+      with: { 'cache-db': true },
+    })
+    expect(installGrype?.uses).toMatch(
+      /^anchore\/scan-action\/download-grype@[a-f\d]{40}$/u,
+    )
+
+    const evaluate = step('Evaluate shared vulnerability policy')
+    expect(evaluate?.id).toBe('evaluate')
+    expect(evaluate?.['continue-on-error']).toBe(true)
+
+    const synchronize = step('Synchronize vulnerability tracking')
+    expect(synchronize?.id).toBe('synchronize')
+    expect(synchronize?.if).toBe('always()')
+    expect(synchronize?.['continue-on-error']).toBe(true)
+    expect(synchronize?.env).toMatchObject({
+      CONTAINER_VULNERABILITY_ADVISORY_TOKEN: [
+        '${{',
+        'secrets.CONTAINER_VULNERABILITY_ADVISORY_TOKEN',
+        '}}',
+      ].join(' '),
+    })
+    expect(synchronize?.env).not.toHaveProperty('GITHUB_TOKEN')
+
+    const upload = step('Retain complete vulnerability evidence')
+    expect(upload?.if).toBe('always()')
+    expect(upload?.with?.path).toContain('tmp/container-vulnerability-monitor/')
+    expect(step('Fail after retaining evidence')?.if).toBe('always()')
   })
 
   it('keeps stable operator notes archives behind protected-main checks', () => {
