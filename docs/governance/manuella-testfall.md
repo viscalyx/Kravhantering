@@ -1406,14 +1406,19 @@ kravområdet utan att listan först behöver låsas.
 **Steg:** I kravunderlagets `RFI-frågelista`, välj bort en fråga med frågans
 scope-reglage och kontrollera att reglagets tooltip växlar mellan
 `Ingår i RFI` och `Ingår inte i RFI`. Kontrollera att frågan inte längre ingår
-och att kravområdet visar `Delvis`. Slå på kravområdets scope-reglage och
-kontrollera att alla frågor i området ingår igen. Välj bort en fråga på nytt,
-aktivera filterknappen med tooltip `Visa endast de som ingår i RFI` och
-kontrollera CSV- och PDF-exportlänkarna.
+och att reglaget fortfarande är aktiverat och kan slås på igen. Kontrollera att
+frågereglaget visar check när frågan ingår och kryss när den inte ingår. Välj
+bort frågan igen och kontrollera att kravområdet visar `Delvis`, med tummen
+till höger men utan ikon, och att hjälpmedel får beskrivningen `Delvis: några
+RFI-frågor ingår i RFI`. Slå på kravområdets scope-reglage och kontrollera att
+alla frågor i området ingår igen. Välj bort en fråga på nytt, aktivera
+filterknappen med tooltip `Visa endast de som ingår i RFI` och kontrollera CSV-
+och PDF-exportlänkarna.
 
-**Förväntat resultat:** Scope-reglage och reglage för kravområde uppdaterar
-visning och tooltip korrekt. Filtret döljer frågor som inte ingår på sidan men
-exportlänkarna finns kvar för listan.
+**Förväntat resultat:** Scope-reglage och reglage för kravområde är tydligt
+klickbara när de är redigerbara och uppdaterar ikon, visning och tooltip
+korrekt. Filtret döljer frågor som inte ingår på sidan men exportlänkarna finns
+kvar för listan.
 
 ### SPEC-15: lås upp RFI-lista och hantera ändrad frågeversion
 

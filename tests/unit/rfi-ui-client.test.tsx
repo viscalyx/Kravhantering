@@ -1074,6 +1074,16 @@ describe('RFI client UI states', () => {
       'title',
       'specificationRfiList.partiallyIncluded',
     )
+    expect(areaScopeSwitch).toHaveAccessibleDescription(
+      'specificationRfiList.partiallyIncluded',
+    )
+    expect(areaScopeSwitch).toBeEnabled()
+    expect(areaScopeSwitch).toHaveClass('cursor-pointer')
+    const partialTrack = areaScopeSwitch.lastElementChild
+    expect(partialTrack).toHaveClass('bg-amber-500')
+    const partialThumb = partialTrack?.firstElementChild
+    expect(partialThumb).toHaveClass('translate-x-4')
+    expect(partialThumb?.querySelector('svg')).toBeNull()
     expect(
       within(securitySection).getAllByRole('switch', {
         name: 'specificationRfiList.questionIncludedToggleAria',
@@ -1093,6 +1103,15 @@ describe('RFI client UI states', () => {
       'title',
       'specificationRfiList.notIncluded',
     )
+    const includedTrack = questionScopeSwitches[0].lastElementChild
+    expect(includedTrack).toHaveClass('bg-primary-700')
+    expect(includedTrack?.firstElementChild).toHaveClass('translate-x-4')
+    expect(includedTrack?.querySelector('svg')).toHaveClass('lucide-check')
+    const excludedTrack = questionScopeSwitches[1].lastElementChild
+    expect(excludedTrack).toHaveClass('bg-secondary-300')
+    expect(excludedTrack?.firstElementChild).toHaveClass('translate-x-0.5')
+    expect(excludedTrack?.querySelector('svg')).toHaveClass('lucide-x')
+    expect(questionScopeSwitches[1]).toBeEnabled()
     expect(questionScopeSwitches[0]).not.toHaveTextContent(
       'specificationRfiList.included',
     )
@@ -1127,6 +1146,7 @@ describe('RFI client UI states', () => {
           name: 'specificationRfiList.areaIncludedToggleAria',
         }),
       ).toHaveAttribute('aria-checked', 'true')
+      expect(areaScopeSwitch).not.toHaveAttribute('aria-describedby')
     })
 
     await userEvent.click(
@@ -1143,6 +1163,77 @@ describe('RFI client UI states', () => {
       screen.queryByText('Do you offer support hours?'),
     ).not.toBeInTheDocument()
     expect(screen.queryByText(/hidden/iu)).not.toBeInTheDocument()
+  })
+
+  it('keeps RFI-list scope switches visibly disabled while the list is locked', async () => {
+    const lockedList = {
+      isLocked: true,
+      items: [
+        {
+          areaId: 1,
+          areaName: 'Security',
+          expectedAnswerFormat: 'Free text',
+          helpText: null,
+          isIncluded: true,
+          isVersionStale: false,
+          questionCode: 'SEC-RFI001',
+          questionId: 11,
+          questionText: 'How do you handle logs?',
+          relevance: 'relevant',
+          versionNumber: 1,
+        },
+        {
+          areaId: 1,
+          areaName: 'Security',
+          expectedAnswerFormat: 'Yes/no',
+          helpText: null,
+          isIncluded: false,
+          isVersionStale: false,
+          questionCode: 'SEC-RFI002',
+          questionId: 12,
+          questionText: 'How do you handle access reviews?',
+          relevance: null,
+          versionNumber: 1,
+        },
+      ],
+      lockedAt: '2026-06-21T10:00:00.000Z',
+      lockedByDisplayName: 'Ada Admin',
+      specificationId: 1,
+    }
+
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const href = String(url)
+      if (href === '/api/requirements-specifications/1/rfi-list') {
+        return Promise.resolve(okJson({ list: lockedList }))
+      }
+      if (href === '/api/rfi-question-suggestions?areaId=1&specificationId=1') {
+        return Promise.resolve(okJson({ suggestions: [] }))
+      }
+      throw new Error(`Unmocked fetch: ${href}`)
+    })
+    const { default: SpecificationRfiListPanel } = await import(
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel canEdit specificationId={1} />
+      </ConfirmModalProvider>,
+    )
+
+    const securitySection = await screen.findByRole('region', {
+      name: 'Security',
+    })
+    const scopeSwitches = within(securitySection).getAllByRole('switch')
+    expect(scopeSwitches).toHaveLength(3)
+    for (const scopeSwitch of scopeSwitches) {
+      expect(scopeSwitch).toBeDisabled()
+      expect(scopeSwitch).toHaveClass('disabled:opacity-40')
+      expect(scopeSwitch).toHaveAttribute(
+        'title',
+        'specificationRfiList.scopeLockedTitle',
+      )
+    }
   })
 
   it('shows the RFI-list lock toggle as an unlocked or locked state', async () => {
