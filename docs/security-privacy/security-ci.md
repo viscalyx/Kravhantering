@@ -129,6 +129,30 @@ through API, role-matrix, and isolated full active scan workflows. The existing
 OpenAPI/Schemathesis contract remains authoritative; the ZAP API scan consumes
 a filtered read-only contract derived from that static source.
 
+## Container vulnerability workflows
+
+Pull-request and trusted-release container builds use
+`.github/actions/container-vulnerability-gate`. The shared action generates an
+SPDX SBOM from each exact candidate image or OCI archive, scans it with a
+current Grype database, and evaluates
+`.github/container-vulnerability-exceptions.json` through the same policy
+implementation. Fixable unexcepted High or Critical findings and malformed,
+expired, stale or no-longer-matching exceptions fail the gate. Complete scan
+reports remain unfiltered in workflow artifacts.
+
+The scheduled and manually dispatched
+`.github/workflows/container-vulnerability-monitor.yml` rescans the supported
+published stable and preview releases selected by
+`.github/container-release-support.json`. It verifies release-asset digests and
+the trusted release workflow's digest-bound SPDX attestations before scanning;
+it never rebuilds the published images. Public dependency findings create or
+update deduplicated `security` issues. Findings without authoritative public
+advisory links use draft private repository security advisories only when
+private reporting and the narrow advisory token are available, with no public
+fallback. See
+[Trusted Container Publishing](../development/trusted-container-publishing.md#continuous-published-release-scanning)
+for the support, tracking, permission and evidence-retention contracts.
+
 ## Pull-request DAST workflow
 
 Workflow file:
