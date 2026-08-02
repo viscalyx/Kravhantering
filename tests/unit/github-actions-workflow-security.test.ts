@@ -668,7 +668,17 @@ describe('GitHub Actions workflow security', () => {
     expect(verifyAttestationIndex).toBeLessThan(releaseIndex)
 
     expect(steps[loginIndex]?.id).toBe('ghcr-login')
+    expect(steps[loginIndex]?.uses).toBe(
+      './.github/actions/ghcr-credential-helper',
+    )
+    expect(steps[loginIndex]?.with).toEqual({
+      token: ['${{', 'github.token', '}}'].join(' '),
+      username: ['${{', 'github.actor', '}}'].join(' '),
+    })
     expect(steps[promotionIndex]?.if).toBe('success()')
+    expect(steps[promotionIndex]?.env?.GHCR_TOKEN).toBe(
+      ['${{', 'github.token', '}}'].join(' '),
+    )
     expect(steps[promotionIndex]?.env?.REGISTRY_AUTH_FILE).toBe(
       ['${{', 'steps.ghcr-login.outputs.authfile', '}}'].join(' '),
     )
@@ -725,6 +735,13 @@ describe('GitHub Actions workflow security', () => {
     expect(job?.if).toBe("github.ref == 'refs/heads/main'")
 
     expect(step('Select supported published releases')).toBeDefined()
+    expect(step('Log in to GHCR for digest verification')).toMatchObject({
+      uses: './.github/actions/ghcr-credential-helper',
+      with: {
+        token: ['${{', 'github.token', '}}'].join(' '),
+        username: ['${{', 'github.actor', '}}'].join(' '),
+      },
+    })
     expect(step('Verify published SBOM attestations')).toBeDefined()
     expect(step('Scan every supported release SBOM')).toBeDefined()
     const installGrype = step('Install pinned Grype')

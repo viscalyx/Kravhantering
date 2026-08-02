@@ -1,0 +1,53 @@
+name: Configure ephemeral GHCR credentials
+description: Use the GitHub Actions token through a Docker credential helper.
+
+inputs:
+  token:
+    description: Short-lived token used to authenticate to GHCR.
+    required: true
+  username:
+    description: GitHub username associated with the token.
+    required: true
+
+outputs:
+  authfile:
+    description: Docker-compatible auth file configured with the helper.
+    value: ${{ steps.configure.outputs.authfile }}
+
+runs:
+  using: composite
+  steps:
+    - name: Configure credential helper and log in
+      id: configure
+      shell: bash
+      env:
+        GHCR_TOKEN: ${{ inputs.token }}
+        GHCR_USERNAME: ${{ inputs.username }}
+      run: |
+        set -euo pipefail
+        umask 077
+        docker_config="${RUNNER_TEMP}/docker-ghcr"
+        helper_dir="${RUNNER_TEMP}/docker-credential-helpers"
+        helper_name="docker-credential-ghcr-env"
+
+        install -d -m 700 "${docker_config}" "${helper_dir}"
+        install -m 700 \
+          "${GITHUB_ACTION_PATH}/${helper_name}" \
+          "${helper_dir}/${helper_name}"
+        jq -n \
+          '{auths: {}, credHelpers: {"ghcr.io": "ghcr-env"}}' \
+          > "${docker_config}/config.json"
+
+        export DOCKER_CONFIG="${docker_config}"
+        export PATH="${helper_dir}:${PATH}"
+        printf '%s' "${GHCR_TOKEN}" |
+          docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
+        if jq -e 'any(.auths[]?; has("auth"))' \
+          "${docker_config}/config.json" > /dev/null; then
+          echo 'Docker persisted GHCR credentials instead of using the helper.' >&2
+          exit 1
+        fi
+
+        echo "${helper_dir}" >> "${GITHUB_PATH}"
+        echo "DOCKER_CONFIG=${docker_config}" >> "${GITHUB_ENV}"
+        echo "authfile=${docker_config}/config.json" >> "${GITHUB_OUTPUT}"

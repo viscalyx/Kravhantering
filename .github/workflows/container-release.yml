@@ -333,18 +333,15 @@ jobs:
       - name: Log in to GHCR after validation gates
         id: ghcr-login
         if: success()
-        env:
-          GHCR_TOKEN: ${{ github.token }}
-        run: |
-          echo "${GHCR_TOKEN}" |
-            docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
-          authfile="${HOME}/.docker/config.json"
-          test -s "${authfile}"
-          echo "authfile=${authfile}" >> "${GITHUB_OUTPUT}"
+        uses: ./.github/actions/ghcr-credential-helper
+        with:
+          token: ${{ github.token }}
+          username: ${{ github.actor }}
 
       - name: Promote unchanged candidate OCI artifacts and verify digests
         if: success()
         env:
+          GHCR_TOKEN: ${{ github.token }}
           REGISTRY_AUTH_FILE: ${{ steps.ghcr-login.outputs.authfile }}
         run: |
           node scripts/release/promote-container-candidates.mjs \
