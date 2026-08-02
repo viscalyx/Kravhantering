@@ -755,8 +755,7 @@ describe('GitHub Actions workflow security', () => {
 
     const upload = step('Retain complete vulnerability evidence')
     expect(upload?.if).toBe('always()')
-    expect(upload?.with?.path).toContain('reports/')
-    expect(upload?.with?.path).toContain('.spdx.json')
+    expect(upload?.with?.path).toContain('tmp/container-vulnerability-monitor/')
     expect(step('Fail after retaining evidence')?.if).toBe('always()')
   })
 
