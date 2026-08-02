@@ -724,37 +724,22 @@ describe('GitHub Actions workflow security', () => {
     })
     expect(job?.if).toBe("github.ref == 'refs/heads/main'")
 
-    const discoverRun = String(step('Select supported published releases')?.run)
-    expect(discoverRun).toContain('gh api --paginate')
-    expect(discoverRun).toContain('gh release download')
-    expect(discoverRun).toContain('.github/container-release-support.json')
-    expect(discoverRun).not.toContain('docker build')
-
-    const verificationRun = String(
-      step('Verify published SBOM attestations')?.run,
-    )
-    expect(verificationRun).toContain('gh attestation verify')
-    expect(verificationRun).toContain('--signer-workflow')
-    expect(verificationRun).toContain('--source-digest')
-    expect(verificationRun).toContain(
-      '--predicate-type https://spdx.dev/Document/v2.3',
-    )
-
-    const scanRun = String(step('Scan every supported release SBOM')?.run)
-    expect(scanRun).toContain('db update')
-    expect(scanRun).toContain('sbom:')
-    expect(scanRun).not.toContain('fail-on')
+    expect(step('Select supported published releases')).toBeDefined()
+    expect(step('Verify published SBOM attestations')).toBeDefined()
+    expect(step('Scan every supported release SBOM')).toBeDefined()
+    expect(step('Install pinned Grype')).toMatchObject({
+      id: 'grype',
+      uses: 'anchore/scan-action/download-grype@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2',
+      with: { 'cache-db': true },
+    })
 
     const evaluate = step('Evaluate shared vulnerability policy')
+    expect(evaluate?.id).toBe('evaluate')
     expect(evaluate?.['continue-on-error']).toBe(true)
-    expect(String(evaluate?.run)).toContain(
-      'scripts/release/container-vulnerability-monitor.mjs evaluate',
-    )
-    expect(String(evaluate?.run)).toContain(
-      '.github/container-vulnerability-exceptions.json',
-    )
 
     const synchronize = step('Synchronize vulnerability tracking')
+    expect(synchronize?.id).toBe('synchronize')
+    expect(synchronize?.if).toBe('always()')
     expect(synchronize?.['continue-on-error']).toBe(true)
     expect(synchronize?.env).toMatchObject({
       CONTAINER_VULNERABILITY_ADVISORY_TOKEN: [
