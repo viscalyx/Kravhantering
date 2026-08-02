@@ -1494,7 +1494,10 @@
       "actions": {
         "addConnection": "Add AI connection",
         "addModel": "Add model",
+        "cancel": "Cancel",
         "configureRoute": "Configure selected run profile",
+        "createDraft": "Create connection draft",
+        "createModelDraft": "Create model draft",
         "edit": "Edit",
         "healthCheck": "Run health check",
         "runTest": "Run connection test"
@@ -1517,6 +1520,42 @@
       "connection": {
         "openRouterDescription": "Public name: Organization AI service · processing party outside Kravhantering's trust boundary"
       },
+      "connections": {
+        "description": "The same three AI connections as in the other variants. Select one to continue its guided activation.",
+        "poolDescription": "Run profiles can only bind to models under an activated AI connection.",
+        "poolTitle": "Available AI connections for routing",
+        "title": "Three AI connections"
+      },
+      "create": {
+        "adapterHelp": "The adapter determines protocol translation and which technical settings appear in the next step.",
+        "adapters": {
+          "dify": {
+            "description": "Connect to a Dify Workflow API.",
+            "title": "Dify Workflow"
+          },
+          "langGraph": {
+            "description": "Connect to a LangGraph Agent Server.",
+            "title": "LangGraph"
+          },
+          "openResponses": {
+            "description": "Standard profile for Open Responses-based services.",
+            "title": "Open Responses"
+          },
+          "openRouter": {
+            "description": "Keep OpenRouter through the first adapter.",
+            "title": "OpenRouter"
+          }
+        },
+        "chooseAdapter": "Choose an adapter for the draft",
+        "createdMessage": "A new AI connection was added as a draft.",
+        "description": "Choose an adapter first. The draft can then be completed with a name, endpoint, authentication, egress rule, and governance attestation without activating anything.",
+        "draftOnly": "Creates a draft only",
+        "eyebrow": "New AI connection",
+        "resultHelp": "No external calls occur when the draft is created.",
+        "resultLabel": "Draft to create",
+        "resultName": "New AI connection",
+        "title": "Add an AI connection"
+      },
       "description": "Configure the technical processing party, verify exact model revisions, and connect them to the three fixed call types.",
       "fields": {
         "adapter": "Adapter",
@@ -1537,20 +1576,65 @@
         "profilesOutageDetail": "Selected revisions remain but are blocked."
       },
       "matrix": {
+        "activeRevision": "Active run profile revision",
         "allReady": "3 of 3 runnable",
         "blockerTitle": "Action required before egress",
+        "capabilityPolicy": "Capability policy",
         "callType": "Call type",
+        "collapse": "Hide run profile details for",
         "description": "Start from the user flow that must work and inspect its exact route.",
+        "draftCreated": "New connection draft",
+        "expand": "Show run profile details for",
+        "fiveMinutes": "5 minutes",
+        "generationPolicyHelp": "AI analysis and strict schema steering are allowed but not required.",
         "gapDescription": "Generation with images lacks a verified image capability and JSON repair lacks an active revision. Other generation continues to work.",
+        "imageBlocker": "Select and verify a connection model revision that supports image input before activating the profile.",
         "minimum": "Locked minimum requirements",
         "needsAttention": "Configuration required",
+        "noActiveRevision": "No active revision",
         "open": "Open run profile",
+        "operationLimits": "Operational limits",
         "outageDescription": "All profiles are blocked by the connection's operational state. No other AI connection is selected automatically.",
         "readyDescription": "Every profile points to an active AI connection and a verified model revision that satisfies its minimum requirements.",
         "readyTitle": "All call types are runnable",
+        "repairBlocker": "Create a run profile revision and bind it to a verified connection model before JSON repair can be used.",
+        "repairPolicyHelp": "Streaming, image input, and AI analysis are disabled for this call type.",
+        "revisionMissingHelp": "The profile slot remains but has no runnable configuration.",
+        "revisionValue": "Revision 7 · active",
         "route": "Active route",
         "status": "Runnable state",
+        "queueCapacity": "Queue capacity",
+        "tenRuns": "10 runs",
+        "totalBudget": "Total time budget",
+        "twentyMinutes": "20 minutes",
         "title": "Routing by call type"
+      },
+      "modelCreate": {
+        "chooseSource": "How should the model be registered?",
+        "connectionLabel": "AI connection",
+        "description": "An AI connection can have several connection models. Each model is verified separately before a run profile can use it.",
+        "draftOnly": "Creates a draft only",
+        "eyebrow": "New connection model",
+        "pendingConfiguration": "External model ID, version, and capabilities remain to be configured.",
+        "resultLabel": "Model draft to create",
+        "resultName": "New connection model",
+        "sources": {
+          "discover": {
+            "description": "Read available models from the adapter without changing active configuration.",
+            "title": "Discover through adapter"
+          },
+          "manual": {
+            "description": "Register the external model ID and version manually.",
+            "title": "Register manually"
+          }
+        },
+        "title": "Add a model to OpenRouter Production"
+      },
+      "models": {
+        "availableDescription": "The routing matrix selects among verified revisions; the same model may be reused by several profiles.",
+        "availableTitle": "Available models on OpenRouter Production",
+        "description": "Several run profiles can reuse the same verified model revision.",
+        "title": "Models on the AI connection"
       },
       "noPersistence": "Prototype · saves nothing",
       "outage": {

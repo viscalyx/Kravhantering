@@ -1494,7 +1494,10 @@
       "actions": {
         "addConnection": "Lägg till AI-anslutning",
         "addModel": "Lägg till modell",
+        "cancel": "Avbryt",
         "configureRoute": "Konfigurera vald körprofil",
+        "createDraft": "Skapa anslutningsutkast",
+        "createModelDraft": "Skapa modellutkast",
         "edit": "Redigera",
         "healthCheck": "Kör hälsoprov",
         "runTest": "Kör anslutningsprov"
@@ -1517,6 +1520,42 @@
       "connection": {
         "openRouterDescription": "Publikt namn: Organisationens AI-tjänst · behandlingspart utanför Kravhanterings tillitsgräns"
       },
+      "connections": {
+        "description": "Samma tre AI-anslutningar som i övriga varianter. Välj en för att fortsätta dess guidade aktivering.",
+        "poolDescription": "Körprofiler kan bara bindas till modeller under en aktiverad AI-anslutning.",
+        "poolTitle": "Tillgängliga AI-anslutningar för routing",
+        "title": "Tre AI-anslutningar"
+      },
+      "create": {
+        "adapterHelp": "Adaptervalet avgör protokollöversättning och vilka tekniska inställningar som visas i nästa steg.",
+        "adapters": {
+          "dify": {
+            "description": "Anslut till ett Dify Workflow API.",
+            "title": "Dify Workflow"
+          },
+          "langGraph": {
+            "description": "Anslut till en LangGraph Agent Server.",
+            "title": "LangGraph"
+          },
+          "openResponses": {
+            "description": "Standardprofil för Open Responses-baserade tjänster.",
+            "title": "Open Responses"
+          },
+          "openRouter": {
+            "description": "Behåll OpenRouter genom den första adaptern.",
+            "title": "OpenRouter"
+          }
+        },
+        "chooseAdapter": "Välj adapter för utkastet",
+        "createdMessage": "Ny AI-anslutning har lagts till som utkast.",
+        "description": "Välj först adapter. Utkastet kan sedan kompletteras med namn, endpoint, autentisering, egressregel och förvaltningsattest utan att något aktiveras.",
+        "draftOnly": "Skapar bara utkast",
+        "eyebrow": "Ny AI-anslutning",
+        "resultHelp": "Inga externa anrop görs när utkastet skapas.",
+        "resultLabel": "Utkast som skapas",
+        "resultName": "Ny AI-anslutning",
+        "title": "Lägg till en AI-anslutning"
+      },
       "description": "Konfigurera den tekniska behandlingsparten, verifiera exakta modellrevisioner och koppla dem till de tre fasta anropstyperna.",
       "fields": {
         "adapter": "Adapter",
@@ -1537,20 +1576,65 @@
         "profilesOutageDetail": "Valda revisioner bevaras men är blockerade."
       },
       "matrix": {
+        "activeRevision": "Aktiv körprofilrevision",
         "allReady": "3 av 3 körbara",
         "blockerTitle": "Åtgärd krävs före egress",
+        "capabilityPolicy": "Förmågepolicy",
         "callType": "Anropstyp",
+        "collapse": "Dölj körprofildetaljer för",
         "description": "Utgå från det användarflöde som ska fungera och kontrollera dess exakta route.",
+        "draftCreated": "Nytt anslutningsutkast",
+        "expand": "Visa körprofildetaljer för",
+        "fiveMinutes": "5 minuter",
+        "generationPolicyHelp": "AI-analys och strikt schemastyrning är tillåtna men inte obligatoriska.",
         "gapDescription": "Generering med bilder saknar verifierad bildförmåga och JSON-reparation saknar en aktiv revision. Övrig generering fortsätter fungera.",
+        "imageBlocker": "Välj och verifiera en anslutningsmodellrevision som stöder bildindata innan profilen kan aktiveras.",
         "minimum": "Låsta minimikrav",
         "needsAttention": "Konfiguration krävs",
+        "noActiveRevision": "Ingen aktiv revision",
         "open": "Öppna körprofil",
+        "operationLimits": "Driftgränser",
         "outageDescription": "Samtliga profiler är blockerade av anslutningens operativa tillstånd. Ingen annan AI-anslutning väljs automatiskt.",
         "readyDescription": "Varje profil pekar på en aktiv AI-anslutning och en verifierad modellrevision som uppfyller minimikraven.",
         "readyTitle": "Alla anropstyper är körbara",
+        "repairBlocker": "Skapa en körprofilrevision och bind den till en verifierad anslutningsmodell innan JSON-reparation kan användas.",
+        "repairPolicyHelp": "Strömning, bildindata och AI-analys är avstängda för denna anropstyp.",
+        "revisionMissingHelp": "Profilplatsen bevaras men saknar en körbar konfiguration.",
+        "revisionValue": "Revision 7 · aktiv",
         "route": "Aktiv route",
         "status": "Körbarhet",
+        "queueCapacity": "Kökapacitet",
+        "tenRuns": "10 körningar",
+        "totalBudget": "Total tidsbudget",
+        "twentyMinutes": "20 minuter",
         "title": "Routing per anropstyp"
+      },
+      "modelCreate": {
+        "chooseSource": "Hur ska modellen registreras?",
+        "connectionLabel": "AI-anslutning",
+        "description": "En AI-anslutning kan ha flera anslutningsmodeller. Modellen verifieras separat innan en körprofil kan använda den.",
+        "draftOnly": "Skapar bara utkast",
+        "eyebrow": "Ny anslutningsmodell",
+        "pendingConfiguration": "Externt modell-ID, version och förmågor återstår att konfigurera.",
+        "resultLabel": "Modellutkast som skapas",
+        "resultName": "Ny anslutningsmodell",
+        "sources": {
+          "discover": {
+            "description": "Läs tillgängliga modeller från adaptern utan att ändra aktiv konfiguration.",
+            "title": "Upptäck via adapter"
+          },
+          "manual": {
+            "description": "Registrera externt modell-ID och version manuellt.",
+            "title": "Registrera manuellt"
+          }
+        },
+        "title": "Lägg till modell på OpenRouter Production"
+      },
+      "models": {
+        "availableDescription": "Routingmatrisen väljer bland verifierade revisioner; samma modell får återanvändas av flera profiler.",
+        "availableTitle": "Tillgängliga modeller på OpenRouter Production",
+        "description": "Flera körprofiler kan återanvända samma verifierade modellrevision.",
+        "title": "Modeller på AI-anslutningen"
       },
       "noPersistence": "Prototyp · sparar inget",
       "outage": {

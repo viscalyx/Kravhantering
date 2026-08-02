@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Bot,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   CircleOff,
@@ -28,7 +29,7 @@ import {
 import type { Route as NextRoute } from 'next'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { type ReactNode, useEffect, useState } from 'react'
+import { Fragment, type ReactNode, useEffect, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 // Three variants of AI connection administration, switchable via ?variant=,
@@ -49,6 +50,16 @@ interface StatusBadgeProps {
 }
 
 interface VariantProps {
+  addModelOpen: boolean
+  addOpen: boolean
+  draftCreated: boolean
+  modelDraftCreated: boolean
+  onAddConnection: () => void
+  onAddModel: () => void
+  onCancelAdd: () => void
+  onCancelAddModel: () => void
+  onCreateDraft: () => void
+  onCreateModelDraft: () => void
   scenario: Scenario
   setScenario: (scenario: Scenario) => void
 }
@@ -120,7 +131,10 @@ function ScenarioPicker({
   )
 }
 
-function PrototypeHeader({ scenario, setScenario }: VariantProps) {
+function PrototypeHeader({
+  scenario,
+  setScenario,
+}: Pick<VariantProps, 'scenario' | 'setScenario'>) {
   const t = useTranslations('admin.aiConnectionsPrototype')
 
   return (
@@ -201,7 +215,221 @@ function CapabilityChips({
   )
 }
 
-function VariantA({ scenario, setScenario }: VariantProps) {
+function AddConnectionPanel({
+  isOpen,
+  onCancel,
+  onCreateDraft,
+}: {
+  isOpen: boolean
+  onCancel: () => void
+  onCreateDraft: () => void
+}) {
+  const t = useTranslations('admin.aiConnectionsPrototype')
+  const [adapter, setAdapter] = useState('openResponses')
+
+  if (!isOpen) return null
+
+  return (
+    <section className="rounded-3xl border border-primary-300 bg-white p-5 shadow-lg dark:border-primary-700 dark:bg-secondary-900">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-700 dark:text-primary-300">
+            {t('create.eyebrow')}
+          </p>
+          <h4 className="mt-2 text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+            {t('create.title')}
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-secondary-600 dark:text-secondary-300">
+            {t('create.description')}
+          </p>
+        </div>
+        <StatusBadge icon="clock" tone="neutral">
+          {t('create.draftOnly')}
+        </StatusBadge>
+      </div>
+
+      <fieldset className="mt-5">
+        <legend className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+          {t('create.chooseAdapter')}
+        </legend>
+        <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+          {t('create.adapterHelp')}
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {(['openResponses', 'openRouter', 'dify', 'langGraph'] as const).map(
+            value => (
+              <button
+                aria-pressed={adapter === value}
+                className={`min-h-20 rounded-2xl border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 ${
+                  adapter === value
+                    ? 'border-primary-500 bg-primary-50 text-primary-950 dark:border-primary-500 dark:bg-primary-950/40 dark:text-primary-50'
+                    : 'border-secondary-200 bg-secondary-50 text-secondary-800 hover:border-secondary-400 dark:border-secondary-700 dark:bg-secondary-950/40 dark:text-secondary-200 dark:hover:border-secondary-500'
+                }`}
+                key={value}
+                onClick={() => setAdapter(value)}
+                type="button"
+              >
+                <span className="flex items-center gap-2 font-semibold">
+                  <Bot aria-hidden="true" className="h-4 w-4" />
+                  {t(`create.adapters.${value}.title`)}
+                </span>
+                <span className="mt-1 block text-xs leading-5 opacity-80">
+                  {t(`create.adapters.${value}.description`)}
+                </span>
+              </button>
+            ),
+          )}
+        </div>
+      </fieldset>
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-secondary-50 p-4 dark:bg-secondary-950/50">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+            {t('create.resultLabel')}
+          </p>
+          <p className="mt-1 font-semibold text-secondary-900 dark:text-secondary-100">
+            {t('create.resultName')}
+          </p>
+          <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+            {t('create.resultHelp')}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="min-h-10 rounded-full border border-secondary-300 px-4 text-sm font-semibold text-secondary-800 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-100 dark:hover:bg-secondary-800"
+            onClick={onCancel}
+            type="button"
+          >
+            {t('actions.cancel')}
+          </button>
+          <button
+            className="inline-flex min-h-10 items-center gap-2 rounded-full bg-primary-700 px-4 text-sm font-semibold text-white hover:bg-primary-800 dark:bg-primary-300 dark:text-secondary-950 dark:hover:bg-primary-200"
+            onClick={onCreateDraft}
+            type="button"
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            {t('actions.createDraft')}
+          </button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function AddModelPanel({
+  isOpen,
+  onCancel,
+  onCreateDraft,
+}: {
+  isOpen: boolean
+  onCancel: () => void
+  onCreateDraft: () => void
+}) {
+  const t = useTranslations('admin.aiConnectionsPrototype')
+  const [source, setSource] = useState('discover')
+
+  if (!isOpen) return null
+
+  return (
+    <section className="rounded-3xl border border-primary-300 bg-white p-5 shadow-lg dark:border-primary-700 dark:bg-secondary-900">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-700 dark:text-primary-300">
+            {t('modelCreate.eyebrow')}
+          </p>
+          <h4 className="mt-2 text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+            {t('modelCreate.title')}
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-secondary-600 dark:text-secondary-300">
+            {t('modelCreate.description')}
+          </p>
+        </div>
+        <StatusBadge icon="clock" tone="neutral">
+          {t('modelCreate.draftOnly')}
+        </StatusBadge>
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
+        <fieldset>
+          <legend className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+            {t('modelCreate.chooseSource')}
+          </legend>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {(['discover', 'manual'] as const).map(value => (
+              <button
+                aria-pressed={source === value}
+                className={`min-h-20 rounded-2xl border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 ${
+                  source === value
+                    ? 'border-primary-500 bg-primary-50 text-primary-950 dark:border-primary-500 dark:bg-primary-950/40 dark:text-primary-50'
+                    : 'border-secondary-200 bg-secondary-50 text-secondary-800 hover:border-secondary-400 dark:border-secondary-700 dark:bg-secondary-950/40 dark:text-secondary-200 dark:hover:border-secondary-500'
+                }`}
+                key={value}
+                onClick={() => setSource(value)}
+                type="button"
+              >
+                <span className="flex items-center gap-2 font-semibold">
+                  <Bot aria-hidden="true" className="h-4 w-4" />
+                  {t(`modelCreate.sources.${value}.title`)}
+                </span>
+                <span className="mt-1 block text-xs leading-5 opacity-80">
+                  {t(`modelCreate.sources.${value}.description`)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="rounded-2xl bg-secondary-50 p-4 dark:bg-secondary-950/50">
+          <p className="text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+            {t('modelCreate.connectionLabel')}
+          </p>
+          <p className="mt-1 font-semibold text-secondary-900 dark:text-secondary-100">
+            OpenRouter Production
+          </p>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+            {t('modelCreate.resultLabel')}
+          </p>
+          <p className="mt-1 font-semibold text-secondary-900 dark:text-secondary-100">
+            {t('modelCreate.resultName')}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <button
+          className="min-h-10 rounded-full border border-secondary-300 px-4 text-sm font-semibold text-secondary-800 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-100 dark:hover:bg-secondary-800"
+          onClick={onCancel}
+          type="button"
+        >
+          {t('actions.cancel')}
+        </button>
+        <button
+          className="inline-flex min-h-10 items-center gap-2 rounded-full bg-primary-700 px-4 text-sm font-semibold text-white hover:bg-primary-800 dark:bg-primary-300 dark:text-secondary-950 dark:hover:bg-primary-200"
+          onClick={onCreateDraft}
+          type="button"
+        >
+          <Plus aria-hidden="true" className="h-4 w-4" />
+          {t('actions.createModelDraft')}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function VariantA({
+  addOpen,
+  addModelOpen,
+  draftCreated,
+  modelDraftCreated,
+  onAddConnection,
+  onAddModel,
+  onCancelAdd,
+  onCancelAddModel,
+  onCreateDraft,
+  onCreateModelDraft,
+  scenario,
+  setScenario,
+}: VariantProps) {
   const t = useTranslations('admin.aiConnectionsPrototype')
   const hasGaps = scenario === 'gaps'
   const unavailable = scenario === 'outage'
@@ -209,6 +437,16 @@ function VariantA({ scenario, setScenario }: VariantProps) {
   return (
     <div className="space-y-6">
       <PrototypeHeader scenario={scenario} setScenario={setScenario} />
+      <AddConnectionPanel
+        isOpen={addOpen}
+        onCancel={onCancelAdd}
+        onCreateDraft={onCreateDraft}
+      />
+      <AddModelPanel
+        isOpen={addModelOpen}
+        onCancel={onCancelAddModel}
+        onCreateDraft={onCreateModelDraft}
+      />
       <div className="grid gap-4 md:grid-cols-3">
         {[
           {
@@ -274,9 +512,104 @@ function VariantA({ scenario, setScenario }: VariantProps) {
                 {step.status}
               </StatusBadge>
             </div>
+            {index === 0 ? (
+              <button
+                className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full border border-primary-300 px-4 text-sm font-semibold text-primary-800 hover:bg-primary-50 dark:border-primary-700 dark:text-primary-200 dark:hover:bg-primary-950/40"
+                onClick={onAddConnection}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {t('actions.addConnection')}
+              </button>
+            ) : null}
+            {index === 1 ? (
+              <button
+                className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full border border-primary-300 px-4 text-sm font-semibold text-primary-800 hover:bg-primary-50 dark:border-primary-700 dark:text-primary-200 dark:hover:bg-primary-950/40"
+                onClick={onAddModel}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {t('actions.addModel')}
+              </button>
+            ) : null}
           </article>
         ))}
       </div>
+
+      <section className="rounded-3xl border border-secondary-200 bg-white p-5 dark:border-secondary-700 dark:bg-secondary-900">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="font-semibold text-secondary-950 dark:text-secondary-50">
+              {t('connections.title')}
+            </h4>
+            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+              {t('connections.description')}
+            </p>
+          </div>
+          <button
+            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-primary-300 px-4 text-sm font-semibold text-primary-800 hover:bg-primary-50 dark:border-primary-700 dark:text-primary-200 dark:hover:bg-primary-950/40"
+            onClick={onAddConnection}
+            type="button"
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            {t('actions.addConnection')}
+          </button>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <button
+            className="rounded-2xl border border-primary-300 bg-primary-50/50 p-4 text-left dark:border-primary-700 dark:bg-primary-950/30"
+            type="button"
+          >
+            <span className="font-semibold text-secondary-950 dark:text-secondary-50">
+              OpenRouter Production
+            </span>
+            <span className="mt-2 block">
+              <StatusBadge tone="success">{t('status.active')}</StatusBadge>
+            </span>
+          </button>
+          <button
+            className="rounded-2xl border border-secondary-200 p-4 text-left dark:border-secondary-700"
+            type="button"
+          >
+            <span className="font-semibold text-secondary-950 dark:text-secondary-50">
+              Dify EU
+            </span>
+            <span className="mt-2 block">
+              <StatusBadge icon="warning" tone="warning">
+                {t('status.verificationRequired')}
+              </StatusBadge>
+            </span>
+          </button>
+          <button
+            className="rounded-2xl border border-secondary-200 p-4 text-left dark:border-secondary-700"
+            type="button"
+          >
+            <span className="font-semibold text-secondary-950 dark:text-secondary-50">
+              LangGraph Sidecar
+            </span>
+            <span className="mt-2 block">
+              <StatusBadge icon="clock" tone="neutral">
+                {t('status.draft')}
+              </StatusBadge>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      {draftCreated ? (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100"
+          role="status"
+        >
+          <span className="flex items-center gap-2 font-semibold">
+            <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+            {t('create.createdMessage')}
+          </span>
+          <StatusBadge icon="clock" tone="neutral">
+            {t('status.draft')}
+          </StatusBadge>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(19rem,0.8fr)]">
         <section className="rounded-3xl border border-secondary-200 bg-white p-5 dark:border-secondary-700 dark:bg-secondary-900">
@@ -318,6 +651,45 @@ function VariantA({ scenario, setScenario }: VariantProps) {
               </div>
             ))}
           </dl>
+          <div className="mt-5 border-t border-secondary-200 pt-5 dark:border-secondary-700">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                  {t('models.title')}
+                </h5>
+                <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                  {t('models.description')}
+                </p>
+              </div>
+              <button
+                className="inline-flex min-h-9 items-center gap-2 rounded-full border border-secondary-300 px-3 text-sm font-semibold dark:border-secondary-700"
+                onClick={onAddModel}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {t('actions.addModel')}
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                'Claude Sonnet · 2026-07',
+                'Gemini Pro · 2026-06',
+                'GPT-5 mini · 2026-07',
+              ].map(name => (
+                <span
+                  className="rounded-full border border-secondary-200 bg-secondary-50 px-3 py-1.5 text-xs font-semibold text-secondary-700 dark:border-secondary-700 dark:bg-secondary-950/50 dark:text-secondary-200"
+                  key={name}
+                >
+                  {name}
+                </span>
+              ))}
+              {modelDraftCreated ? (
+                <StatusBadge icon="clock" tone="neutral">
+                  {t('modelCreate.resultName')} · {t('status.draft')}
+                </StatusBadge>
+              ) : null}
+            </div>
+          </div>
           {unavailable ? (
             <div
               className="mt-4 flex gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-100"
@@ -364,8 +736,24 @@ function RouteStatus({
   return <StatusBadge tone="success">{t('status.ready')}</StatusBadge>
 }
 
-function VariantB({ scenario, setScenario }: VariantProps) {
+function VariantB({
+  addOpen,
+  addModelOpen,
+  draftCreated,
+  modelDraftCreated,
+  onAddConnection,
+  onAddModel,
+  onCancelAdd,
+  onCancelAddModel,
+  onCreateDraft,
+  onCreateModelDraft,
+  scenario,
+  setScenario,
+}: VariantProps) {
   const t = useTranslations('admin.aiConnectionsPrototype')
+  const [expandedRoute, setExpandedRoute] = useState<
+    'image' | 'repair' | 'text' | null
+  >(null)
   const rows = [
     {
       icon: Sparkles,
@@ -390,6 +778,16 @@ function VariantB({ scenario, setScenario }: VariantProps) {
   return (
     <div className="space-y-6">
       <PrototypeHeader scenario={scenario} setScenario={setScenario} />
+      <AddConnectionPanel
+        isOpen={addOpen}
+        onCancel={onCancelAdd}
+        onCreateDraft={onCreateDraft}
+      />
+      <AddModelPanel
+        isOpen={addModelOpen}
+        onCancel={onCancelAddModel}
+        onCreateDraft={onCreateModelDraft}
+      />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
         <section className="overflow-hidden rounded-3xl border border-secondary-200 bg-white dark:border-secondary-700 dark:bg-secondary-900">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-secondary-200 p-5 dark:border-secondary-700">
@@ -401,14 +799,116 @@ function VariantB({ scenario, setScenario }: VariantProps) {
                 {t('matrix.description')}
               </p>
             </div>
-            <StatusBadge
-              icon={scenario === 'ready' ? 'check' : 'warning'}
-              tone={scenario === 'ready' ? 'success' : 'warning'}
-            >
-              {scenario === 'ready'
-                ? t('matrix.allReady')
-                : t('matrix.needsAttention')}
-            </StatusBadge>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge
+                icon={
+                  draftCreated
+                    ? 'clock'
+                    : scenario === 'ready'
+                      ? 'check'
+                      : 'warning'
+                }
+                tone={
+                  draftCreated
+                    ? 'neutral'
+                    : scenario === 'ready'
+                      ? 'success'
+                      : 'warning'
+                }
+              >
+                {draftCreated
+                  ? t('matrix.draftCreated')
+                  : scenario === 'ready'
+                    ? t('matrix.allReady')
+                    : t('matrix.needsAttention')}
+              </StatusBadge>
+              <button
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-primary-300 px-4 text-sm font-semibold text-primary-800 hover:bg-primary-50 dark:border-primary-700 dark:text-primary-200 dark:hover:bg-primary-950/40"
+                onClick={onAddConnection}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {t('actions.addConnection')}
+              </button>
+            </div>
+          </div>
+          <div className="border-b border-secondary-200 p-5 dark:border-secondary-700">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                  {t('connections.poolTitle')}
+                </h5>
+                <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                  {t('connections.poolDescription')}
+                </p>
+              </div>
+              <button
+                className="inline-flex min-h-9 items-center gap-2 rounded-full border border-secondary-300 px-3 text-sm font-semibold dark:border-secondary-700"
+                onClick={onAddConnection}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {t('actions.addConnection')}
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+                OpenRouter Production · {t('status.active')}
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                <TriangleAlert aria-hidden="true" className="h-3.5 w-3.5" />
+                Dify EU · {t('status.verificationRequired')}
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-secondary-200 bg-secondary-100 px-3 py-1.5 text-xs font-semibold text-secondary-700 dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-200">
+                <Clock3 aria-hidden="true" className="h-3.5 w-3.5" />
+                LangGraph Sidecar · {t('status.draft')}
+              </span>
+              {draftCreated ? (
+                <StatusBadge icon="clock" tone="neutral">
+                  {t('create.resultName')} · {t('status.draft')}
+                </StatusBadge>
+              ) : null}
+            </div>
+          </div>
+          <div className="border-b border-secondary-200 bg-secondary-50/70 p-5 dark:border-secondary-700 dark:bg-secondary-950/30">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h5 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                  {t('models.availableTitle')}
+                </h5>
+                <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                  {t('models.availableDescription')}
+                </p>
+              </div>
+              <button
+                className="inline-flex min-h-9 items-center gap-2 rounded-full border border-secondary-300 bg-white px-3 text-sm font-semibold dark:border-secondary-700 dark:bg-secondary-900"
+                onClick={onAddModel}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {t('actions.addModel')}
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                'Claude Sonnet · 2026-07',
+                'Gemini Pro · 2026-06',
+                'GPT-5 mini · 2026-07',
+              ].map(name => (
+                <span
+                  className="rounded-full border border-secondary-200 bg-white px-3 py-1.5 text-xs font-semibold text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200"
+                  key={name}
+                >
+                  {name}
+                </span>
+              ))}
+              {modelDraftCreated ? (
+                <StatusBadge icon="clock" tone="neutral">
+                  {t('modelCreate.resultName')} · {t('status.draft')}
+                </StatusBadge>
+              ) : null}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-184 text-left text-sm">
@@ -433,44 +933,149 @@ function VariantB({ scenario, setScenario }: VariantProps) {
               </thead>
               <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
                 {rows.map(row => (
-                  <tr
-                    className="align-top hover:bg-secondary-50/70 dark:hover:bg-secondary-800/40"
-                    key={row.type}
-                  >
-                    <th
-                      className="px-5 py-4 font-semibold text-secondary-950 dark:text-secondary-50"
-                      scope="row"
-                    >
-                      <span className="flex items-center gap-2">
-                        <row.icon
-                          aria-hidden="true"
-                          className="h-4 w-4 text-primary-700 dark:text-primary-300"
-                        />
-                        {row.profile}
-                      </span>
-                    </th>
-                    <td className="px-5 py-4 text-secondary-700 dark:text-secondary-200">
-                      <p className="font-medium">{row.model}</p>
-                      <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                        OpenRouter Production
-                      </p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <CapabilityChips imageRequired={row.type === 'image'} />
-                    </td>
-                    <td className="px-5 py-4">
-                      <RouteStatus scenario={scenario} type={row.type} />
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <button
-                        aria-label={`${t('matrix.open')} ${row.profile}`}
-                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-full text-secondary-600 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-700"
-                        type="button"
+                  <Fragment key={row.type}>
+                    <tr className="align-top hover:bg-secondary-50/70 dark:hover:bg-secondary-800/40">
+                      <th
+                        className="px-5 py-4 font-semibold text-secondary-950 dark:text-secondary-50"
+                        scope="row"
                       >
-                        <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
+                        <span className="flex items-center gap-2">
+                          <row.icon
+                            aria-hidden="true"
+                            className="h-4 w-4 text-primary-700 dark:text-primary-300"
+                          />
+                          {row.profile}
+                        </span>
+                      </th>
+                      <td className="px-5 py-4 text-secondary-700 dark:text-secondary-200">
+                        <p className="font-medium">{row.model}</p>
+                        <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                          OpenRouter Production
+                        </p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <CapabilityChips imageRequired={row.type === 'image'} />
+                      </td>
+                      <td className="px-5 py-4">
+                        <RouteStatus scenario={scenario} type={row.type} />
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <button
+                          aria-controls={`route-details-${row.type}`}
+                          aria-expanded={expandedRoute === row.type}
+                          aria-label={`${
+                            expandedRoute === row.type
+                              ? t('matrix.collapse')
+                              : t('matrix.expand')
+                          } ${row.profile}`}
+                          className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-full text-secondary-600 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-700"
+                          onClick={() =>
+                            setExpandedRoute(current =>
+                              current === row.type ? null : row.type,
+                            )
+                          }
+                          type="button"
+                        >
+                          {expandedRoute === row.type ? (
+                            <ChevronDown
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
+                          ) : (
+                            <ChevronRight
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedRoute === row.type ? (
+                      <tr id={`route-details-${row.type}`}>
+                        <td
+                          className="bg-secondary-50/80 px-5 py-5 dark:bg-secondary-950/40"
+                          colSpan={5}
+                        >
+                          <div className="grid gap-4 lg:grid-cols-3">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+                                {t('matrix.activeRevision')}
+                              </p>
+                              <p className="mt-2 font-semibold text-secondary-900 dark:text-secondary-100">
+                                {scenario === 'gaps' && row.type !== 'text'
+                                  ? t('matrix.noActiveRevision')
+                                  : t('matrix.revisionValue')}
+                              </p>
+                              <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                                {scenario === 'gaps' && row.type !== 'text'
+                                  ? t('matrix.revisionMissingHelp')
+                                  : row.model}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+                                {t('matrix.capabilityPolicy')}
+                              </p>
+                              <div className="mt-2">
+                                <CapabilityChips
+                                  imageRequired={row.type === 'image'}
+                                />
+                              </div>
+                              <p className="mt-2 text-xs text-secondary-500 dark:text-secondary-400">
+                                {row.type === 'repair'
+                                  ? t('matrix.repairPolicyHelp')
+                                  : t('matrix.generationPolicyHelp')}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+                                {t('matrix.operationLimits')}
+                              </p>
+                              <dl className="mt-2 space-y-2 text-sm text-secondary-700 dark:text-secondary-200">
+                                <div className="flex justify-between gap-3">
+                                  <dt>{t('matrix.totalBudget')}</dt>
+                                  <dd className="font-semibold">
+                                    {row.type === 'repair'
+                                      ? t('matrix.fiveMinutes')
+                                      : t('matrix.twentyMinutes')}
+                                  </dd>
+                                </div>
+                                <div className="flex justify-between gap-3">
+                                  <dt>{t('matrix.queueCapacity')}</dt>
+                                  <dd className="font-semibold">
+                                    {t('matrix.tenRuns')}
+                                  </dd>
+                                </div>
+                              </dl>
+                            </div>
+                          </div>
+                          {scenario === 'gaps' && row.type !== 'text' ? (
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                              <span className="flex items-start gap-2 text-sm">
+                                <CircleAlert
+                                  aria-hidden="true"
+                                  className="mt-0.5 h-4 w-4 shrink-0"
+                                />
+                                {row.type === 'image'
+                                  ? t('matrix.imageBlocker')
+                                  : t('matrix.repairBlocker')}
+                              </span>
+                              <button
+                                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-amber-900 px-4 text-sm font-semibold text-white hover:bg-amber-950 dark:bg-amber-200 dark:text-amber-950 dark:hover:bg-amber-100"
+                                type="button"
+                              >
+                                <Wrench
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                                {t('actions.configureRoute')}
+                              </button>
+                            </div>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -523,13 +1128,36 @@ function VariantB({ scenario, setScenario }: VariantProps) {
   )
 }
 
-function VariantC({ scenario, setScenario }: VariantProps) {
+function VariantC({
+  addOpen,
+  addModelOpen,
+  draftCreated,
+  modelDraftCreated,
+  onAddConnection,
+  onAddModel,
+  onCancelAdd,
+  onCancelAddModel,
+  onCreateDraft,
+  onCreateModelDraft,
+  scenario,
+  setScenario,
+}: VariantProps) {
   const t = useTranslations('admin.aiConnectionsPrototype')
   const unavailable = scenario === 'outage'
 
   return (
     <div className="space-y-6">
       <PrototypeHeader scenario={scenario} setScenario={setScenario} />
+      <AddConnectionPanel
+        isOpen={addOpen}
+        onCancel={onCancelAdd}
+        onCreateDraft={onCreateDraft}
+      />
+      <AddModelPanel
+        isOpen={addModelOpen}
+        onCancel={onCancelAddModel}
+        onCreateDraft={onCreateModelDraft}
+      />
       <div className="grid min-h-152 gap-4 xl:grid-cols-[17rem_minmax(0,1fr)_19rem]">
         <nav
           aria-label={t('cockpit.connections')}
@@ -542,6 +1170,7 @@ function VariantC({ scenario, setScenario }: VariantProps) {
             <button
               aria-label={t('actions.addConnection')}
               className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-full bg-primary-700 text-white dark:bg-primary-300 dark:text-secondary-950"
+              onClick={onAddConnection}
               type="button"
             >
               <Plus aria-hidden="true" className="h-4 w-4" />
@@ -570,6 +1199,21 @@ function VariantC({ scenario, setScenario }: VariantProps) {
                 </StatusBadge>
               </span>
             </button>
+            {draftCreated ? (
+              <button
+                className="w-full rounded-2xl border border-dashed border-primary-300 bg-primary-50/60 p-3 text-left dark:border-primary-700 dark:bg-primary-950/30"
+                type="button"
+              >
+                <span className="font-semibold text-secondary-900 dark:text-secondary-100">
+                  {t('create.resultName')}
+                </span>
+                <span className="mt-2 block">
+                  <StatusBadge icon="clock" tone="neutral">
+                    {t('status.draft')}
+                  </StatusBadge>
+                </span>
+              </button>
+            ) : null}
             <button
               className="w-full rounded-2xl border border-transparent p-3 text-left hover:border-secondary-200 hover:bg-white dark:hover:border-secondary-700 dark:hover:bg-secondary-900"
               type="button"
@@ -686,6 +1330,7 @@ function VariantC({ scenario, setScenario }: VariantProps) {
               </h5>
               <button
                 className="inline-flex min-h-9 items-center gap-2 rounded-full border border-secondary-300 px-3 text-sm font-semibold dark:border-secondary-700"
+                onClick={onAddModel}
                 type="button"
               >
                 <Plus aria-hidden="true" className="h-4 w-4" />
@@ -724,6 +1369,21 @@ function VariantC({ scenario, setScenario }: VariantProps) {
                   </StatusBadge>
                 </div>
               ))}
+              {modelDraftCreated ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-primary-300 bg-primary-50/60 p-4 dark:border-primary-700 dark:bg-primary-950/30">
+                  <div>
+                    <p className="font-semibold text-secondary-900 dark:text-secondary-100">
+                      {t('modelCreate.resultName')}
+                    </p>
+                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                      {t('modelCreate.pendingConfiguration')}
+                    </p>
+                  </div>
+                  <StatusBadge icon="clock" tone="neutral">
+                    {t('status.draft')}
+                  </StatusBadge>
+                </div>
+              ) : null}
             </div>
           </section>
         </main>
@@ -838,6 +1498,20 @@ export default function AiConnectionsPrototype({
     ? (requestedVariant as Variant)
     : 'A'
   const [scenario, setScenario] = useState<Scenario>('gaps')
+  const [addOpen, setAddOpen] = useState(false)
+  const [addModelOpen, setAddModelOpen] = useState(false)
+  const [draftCreated, setDraftCreated] = useState(false)
+  const [modelDraftCreated, setModelDraftCreated] = useState(false)
+
+  function createDraft() {
+    setDraftCreated(true)
+    setAddOpen(false)
+  }
+
+  function createModelDraft() {
+    setModelDraftCreated(true)
+    setAddModelOpen(false)
+  }
 
   useEffect(() => onSettingsSettled?.(), [onSettingsSettled])
 
@@ -852,13 +1526,52 @@ export default function AiConnectionsPrototype({
       })}
     >
       {variant === 'A' ? (
-        <VariantA scenario={scenario} setScenario={setScenario} />
+        <VariantA
+          addModelOpen={addModelOpen}
+          addOpen={addOpen}
+          draftCreated={draftCreated}
+          modelDraftCreated={modelDraftCreated}
+          onAddConnection={() => setAddOpen(true)}
+          onAddModel={() => setAddModelOpen(true)}
+          onCancelAdd={() => setAddOpen(false)}
+          onCancelAddModel={() => setAddModelOpen(false)}
+          onCreateDraft={createDraft}
+          onCreateModelDraft={createModelDraft}
+          scenario={scenario}
+          setScenario={setScenario}
+        />
       ) : null}
       {variant === 'B' ? (
-        <VariantB scenario={scenario} setScenario={setScenario} />
+        <VariantB
+          addModelOpen={addModelOpen}
+          addOpen={addOpen}
+          draftCreated={draftCreated}
+          modelDraftCreated={modelDraftCreated}
+          onAddConnection={() => setAddOpen(true)}
+          onAddModel={() => setAddModelOpen(true)}
+          onCancelAdd={() => setAddOpen(false)}
+          onCancelAddModel={() => setAddModelOpen(false)}
+          onCreateDraft={createDraft}
+          onCreateModelDraft={createModelDraft}
+          scenario={scenario}
+          setScenario={setScenario}
+        />
       ) : null}
       {variant === 'C' ? (
-        <VariantC scenario={scenario} setScenario={setScenario} />
+        <VariantC
+          addModelOpen={addModelOpen}
+          addOpen={addOpen}
+          draftCreated={draftCreated}
+          modelDraftCreated={modelDraftCreated}
+          onAddConnection={() => setAddOpen(true)}
+          onAddModel={() => setAddModelOpen(true)}
+          onCancelAdd={() => setAddOpen(false)}
+          onCancelAddModel={() => setAddModelOpen(false)}
+          onCreateDraft={createDraft}
+          onCreateModelDraft={createModelDraft}
+          scenario={scenario}
+          setScenario={setScenario}
+        />
       ) : null}
       <PrototypeSwitcher current={variant} />
     </section>
