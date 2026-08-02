@@ -633,6 +633,11 @@ describe('GitHub Actions workflow security', () => {
         step.name ===
         'Scan complete candidate SBOMs with current Grype database',
     )
+    expect(
+      gateSteps.find(step => step.name === 'Install pinned Grype')?.with?.[
+        'cache-db'
+      ],
+    ).toBe(false)
     const scanRun = String(scanStep?.run)
     expect(scanRun).toContain('for attempt in 1 2 3; do')
     expect(scanRun).toContain(
@@ -747,7 +752,7 @@ describe('GitHub Actions workflow security', () => {
     const installGrype = step('Install pinned Grype')
     expect(installGrype).toMatchObject({
       id: 'grype',
-      with: { 'cache-db': true },
+      with: { 'cache-db': false },
     })
     expect(installGrype?.uses).toMatch(
       /^anchore\/scan-action\/download-grype@[a-f\d]{40}$/u,
