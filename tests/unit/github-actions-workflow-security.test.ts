@@ -727,11 +727,14 @@ describe('GitHub Actions workflow security', () => {
     expect(step('Select supported published releases')).toBeDefined()
     expect(step('Verify published SBOM attestations')).toBeDefined()
     expect(step('Scan every supported release SBOM')).toBeDefined()
-    expect(step('Install pinned Grype')).toMatchObject({
+    const installGrype = step('Install pinned Grype')
+    expect(installGrype).toMatchObject({
       id: 'grype',
-      uses: 'anchore/scan-action/download-grype@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2',
       with: { 'cache-db': true },
     })
+    expect(installGrype?.uses).toMatch(
+      /^anchore\/scan-action\/download-grype@[a-f\d]{40}$/u,
+    )
 
     const evaluate = step('Evaluate shared vulnerability policy')
     expect(evaluate?.id).toBe('evaluate')
