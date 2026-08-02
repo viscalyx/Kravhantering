@@ -1557,6 +1557,19 @@
         "title": "Lägg till en AI-anslutning"
       },
       "description": "Konfigurera den tekniska behandlingsparten, verifiera exakta modellrevisioner och koppla dem till de tre fasta anropstyperna.",
+      "edit": {
+        "connectionDescription": "Ändra anslutningens identitet och tekniska konfiguration utan att lämna registret.",
+        "connectionEyebrow": "Redigera AI-anslutning",
+        "connectionTitle": "Redigera {name}",
+        "endpointLabel": "Endpoint",
+        "modelDescription": "Ändra modellens externa identitet och exakta revision på den valda anslutningen.",
+        "modelEyebrow": "Redigera anslutningsmodell",
+        "modelNameLabel": "Modellnamn",
+        "modelTitle": "Redigera {name}",
+        "nameLabel": "Anslutningsnamn",
+        "revisionLabel": "Revision",
+        "savePrototype": "Spara i prototypen"
+      },
       "fields": {
         "adapter": "Adapter",
         "attestation": "Attest",
@@ -1647,6 +1660,23 @@
         "text": "Generering utan bilder"
       },
       "prototypeLabel": "Administrationsprototyp",
+      "register": {
+        "configuration": "Teknisk konfiguration och attest",
+        "connectionModels": "Anslutningsmodeller",
+        "description": "Registret börjar kollapsat. Klicka på en AI-anslutning för att expandera dess konfiguration direkt under raden; endast en kan vara öppen åt gången.",
+        "difyDescription": "Dify Workflow-miljö för EU-behandling · ännu inte verifierad för produktion",
+        "expandedLabel": "Vald AI-anslutning · allt nedan tillhör denna anslutning",
+        "langGraphDescription": "Deployment-konfigurerad sidecar · anslutningsutkastet är ännu inte komplett",
+        "missing": "Saknas",
+        "models": "modeller",
+        "modelsDescription": "Modellrevisioner verifieras separat från anslutningens tekniska prov.",
+        "noModels": "Inga anslutningsmodeller har registrerats ännu.",
+        "noProfiles": "Ingen körprofil använder modeller från denna AI-anslutning.",
+        "pending": "Återstår",
+        "profileImpact": "Körprofiler som påverkas",
+        "profiles": "körprofiler",
+        "title": "Expanderbart anslutningsregister"
+      },
       "scenario": {
         "gaps": "Konfigurationsluckor",
         "label": "Visa scenario",
@@ -1690,7 +1720,8 @@
       "variants": {
         "A": "Guidad aktivering",
         "B": "Routingmatris",
-        "C": "Anslutningsvy"
+        "C": "Anslutningsvy",
+        "D": "Expanderat register"
       }
     },
     "ai": {

@@ -1557,6 +1557,19 @@
         "title": "Add an AI connection"
       },
       "description": "Configure the technical processing party, verify exact model revisions, and connect them to the three fixed call types.",
+      "edit": {
+        "connectionDescription": "Change the connection identity and technical configuration without leaving the register.",
+        "connectionEyebrow": "Edit AI connection",
+        "connectionTitle": "Edit {name}",
+        "endpointLabel": "Endpoint",
+        "modelDescription": "Change the model's external identity and exact revision on the selected connection.",
+        "modelEyebrow": "Edit connection model",
+        "modelNameLabel": "Model name",
+        "modelTitle": "Edit {name}",
+        "nameLabel": "Connection name",
+        "revisionLabel": "Revision",
+        "savePrototype": "Save in prototype"
+      },
       "fields": {
         "adapter": "Adapter",
         "attestation": "Attestation",
@@ -1647,6 +1660,23 @@
         "text": "Generation without images"
       },
       "prototypeLabel": "Administration prototype",
+      "register": {
+        "configuration": "Technical configuration and attestation",
+        "connectionModels": "Connection models",
+        "description": "The register starts collapsed. Click an AI connection to expand its configuration directly below the row; only one can be open at a time.",
+        "difyDescription": "Dify Workflow environment for EU processing · not yet verified for production",
+        "expandedLabel": "Selected AI connection · everything below belongs to this connection",
+        "langGraphDescription": "Deployment-configured sidecar · the connection draft is not yet complete",
+        "missing": "Missing",
+        "models": "models",
+        "modelsDescription": "Model revisions are verified separately from the connection's technical test.",
+        "noModels": "No connection models have been registered yet.",
+        "noProfiles": "No run profile uses models from this AI connection.",
+        "pending": "Pending",
+        "profileImpact": "Affected run profiles",
+        "profiles": "run profiles",
+        "title": "Expandable connection register"
+      },
       "scenario": {
         "gaps": "Configuration gaps",
         "label": "Show scenario",
@@ -1690,7 +1720,8 @@
       "variants": {
         "A": "Guided activation",
         "B": "Routing matrix",
-        "C": "Connection view"
+        "C": "Connection view",
+        "D": "Expanded register"
       }
     },
     "ai": {

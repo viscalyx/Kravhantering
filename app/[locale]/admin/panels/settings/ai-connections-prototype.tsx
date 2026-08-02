@@ -36,7 +36,7 @@ import { devMarker } from '@/lib/developer-mode-markers'
 // inside the existing Admin Center settings surface. PROTOTYPE — throw away.
 
 type Scenario = 'gaps' | 'outage' | 'ready'
-type Variant = 'A' | 'B' | 'C'
+type Variant = 'A' | 'B' | 'C' | 'D'
 type Tone = 'danger' | 'neutral' | 'success' | 'warning'
 
 interface PrototypeProps {
@@ -64,7 +64,12 @@ interface VariantProps {
   setScenario: (scenario: Scenario) => void
 }
 
-const VARIANTS: readonly Variant[] = ['A', 'B', 'C']
+interface EditTarget {
+  kind: 'connection' | 'model'
+  name: string
+}
+
+const VARIANTS: readonly Variant[] = ['A', 'B', 'C', 'D']
 
 const toneClasses: Record<Tone, string> = {
   danger:
@@ -410,6 +415,117 @@ function AddModelPanel({
         >
           <Plus aria-hidden="true" className="h-4 w-4" />
           {t('actions.createModelDraft')}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function PrototypeModal({
+  children,
+  label,
+  onClose,
+}: {
+  children: ReactNode
+  label: string
+  onClose: () => void
+}) {
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [onClose])
+
+  return (
+    <div
+      aria-label={label}
+      aria-modal="true"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-secondary-950/60 p-3 backdrop-blur-sm sm:p-6"
+      role="dialog"
+    >
+      <div className="max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl overflow-y-auto rounded-3xl sm:max-h-[calc(100dvh-3rem)]">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function EditPanel({
+  onCancel,
+  target,
+}: {
+  onCancel: () => void
+  target: EditTarget
+}) {
+  const t = useTranslations('admin.aiConnectionsPrototype')
+  const isConnection = target.kind === 'connection'
+
+  return (
+    <section className="rounded-3xl border border-primary-300 bg-white p-5 shadow-xl dark:border-primary-700 dark:bg-secondary-900 sm:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-700 dark:text-primary-300">
+            {t(isConnection ? 'edit.connectionEyebrow' : 'edit.modelEyebrow')}
+          </p>
+          <h4 className="mt-2 text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+            {t(isConnection ? 'edit.connectionTitle' : 'edit.modelTitle', {
+              name: target.name,
+            })}
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-secondary-600 dark:text-secondary-300">
+            {t(
+              isConnection
+                ? 'edit.connectionDescription'
+                : 'edit.modelDescription',
+            )}
+          </p>
+        </div>
+        <button
+          aria-label={t('actions.cancel')}
+          className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-full text-secondary-600 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
+          onClick={onCancel}
+          type="button"
+        >
+          <XCircle aria-hidden="true" className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+          {t(isConnection ? 'edit.nameLabel' : 'edit.modelNameLabel')}
+          <input
+            className="mt-2 min-h-11 w-full rounded-xl border border-secondary-300 bg-white px-3 font-normal dark:border-secondary-700 dark:bg-secondary-950"
+            defaultValue={target.name}
+          />
+        </label>
+        <label className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+          {t(isConnection ? 'edit.endpointLabel' : 'edit.revisionLabel')}
+          <input
+            className="mt-2 min-h-11 w-full rounded-xl border border-secondary-300 bg-white px-3 font-normal dark:border-secondary-700 dark:bg-secondary-950"
+            defaultValue={
+              isConnection ? 'api.openrouter.ai' : target.name.split(' · ')[1]
+            }
+          />
+        </label>
+      </div>
+
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <button
+          className="min-h-10 rounded-full border border-secondary-300 px-4 text-sm font-semibold text-secondary-800 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-100 dark:hover:bg-secondary-800"
+          onClick={onCancel}
+          type="button"
+        >
+          {t('actions.cancel')}
+        </button>
+        <button
+          className="min-h-10 rounded-full bg-primary-700 px-4 text-sm font-semibold text-white hover:bg-primary-800 dark:bg-primary-300 dark:text-secondary-950 dark:hover:bg-primary-200"
+          onClick={onCancel}
+          type="button"
+        >
+          {t('edit.savePrototype')}
         </button>
       </div>
     </section>
@@ -1419,6 +1535,413 @@ function VariantC({
   )
 }
 
+function VariantD({
+  addOpen,
+  addModelOpen,
+  draftCreated,
+  modelDraftCreated,
+  onAddConnection,
+  onAddModel,
+  onCancelAdd,
+  onCancelAddModel,
+  onCreateDraft,
+  onCreateModelDraft,
+  scenario,
+  setScenario,
+}: VariantProps) {
+  const t = useTranslations('admin.aiConnectionsPrototype')
+  const [selectedConnection, setSelectedConnection] = useState<
+    'dify' | 'langGraph' | 'openRouter' | null
+  >(null)
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
+  const unavailable = scenario === 'outage'
+  const connections = [
+    {
+      id: 'openRouter' as const,
+      models: 3 + (modelDraftCreated ? 1 : 0),
+      name: 'OpenRouter Production',
+      profiles: 3,
+      status: unavailable ? t('status.unavailable') : t('status.active'),
+      tone: unavailable ? ('danger' as const) : ('success' as const),
+    },
+    {
+      id: 'dify' as const,
+      models: 1,
+      name: 'Dify EU',
+      profiles: 0,
+      status: t('status.verificationRequired'),
+      tone: 'warning' as const,
+    },
+    {
+      id: 'langGraph' as const,
+      models: 0,
+      name: 'LangGraph Sidecar',
+      profiles: 0,
+      status: t('status.draft'),
+      tone: 'neutral' as const,
+    },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <PrototypeHeader scenario={scenario} setScenario={setScenario} />
+      {addOpen ? (
+        <PrototypeModal label={t('create.title')} onClose={onCancelAdd}>
+          <AddConnectionPanel
+            isOpen={addOpen}
+            onCancel={onCancelAdd}
+            onCreateDraft={onCreateDraft}
+          />
+        </PrototypeModal>
+      ) : null}
+      {addModelOpen ? (
+        <PrototypeModal
+          label={t('modelCreate.title')}
+          onClose={onCancelAddModel}
+        >
+          <AddModelPanel
+            isOpen={addModelOpen}
+            onCancel={onCancelAddModel}
+            onCreateDraft={onCreateModelDraft}
+          />
+        </PrototypeModal>
+      ) : null}
+      {editTarget ? (
+        <PrototypeModal
+          label={t(
+            editTarget.kind === 'connection'
+              ? 'edit.connectionEyebrow'
+              : 'edit.modelEyebrow',
+          )}
+          onClose={() => setEditTarget(null)}
+        >
+          <EditPanel onCancel={() => setEditTarget(null)} target={editTarget} />
+        </PrototypeModal>
+      ) : null}
+
+      <section className="overflow-hidden rounded-3xl border border-secondary-200 bg-white dark:border-secondary-700 dark:bg-secondary-900">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-secondary-200 p-5 dark:border-secondary-700">
+          <div>
+            <h4 className="text-lg font-semibold text-secondary-950 dark:text-secondary-50">
+              {t('register.title')}
+            </h4>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-secondary-600 dark:text-secondary-300">
+              {t('register.description')}
+            </p>
+          </div>
+          <button
+            className="inline-flex min-h-10 items-center gap-2 rounded-full bg-primary-700 px-4 text-sm font-semibold text-white hover:bg-primary-800 dark:bg-primary-300 dark:text-secondary-950 dark:hover:bg-primary-200"
+            onClick={onAddConnection}
+            type="button"
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            {t('actions.addConnection')}
+          </button>
+        </div>
+
+        <div className="divide-y divide-secondary-200 dark:divide-secondary-700">
+          {connections.map(connection => {
+            const isSelected = selectedConnection === connection.id
+            return (
+              <article key={connection.id}>
+                <button
+                  aria-controls={`connection-register-${connection.id}`}
+                  aria-expanded={isSelected}
+                  className={`grid w-full gap-3 p-5 text-left transition-colors sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center ${
+                    isSelected
+                      ? 'bg-primary-50/70 dark:bg-primary-950/30'
+                      : 'hover:bg-secondary-50 dark:hover:bg-secondary-800/40'
+                  }`}
+                  onClick={() =>
+                    setSelectedConnection(current =>
+                      current === connection.id ? null : connection.id,
+                    )
+                  }
+                  type="button"
+                >
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 font-semibold text-secondary-950 dark:text-secondary-50">
+                      <Link2
+                        aria-hidden="true"
+                        className="h-4 w-4 shrink-0 text-primary-700 dark:text-primary-300"
+                      />
+                      {connection.name}
+                    </span>
+                    <span className="mt-2 block">
+                      <StatusBadge
+                        icon={
+                          connection.tone === 'danger'
+                            ? 'blocked'
+                            : connection.tone === 'warning'
+                              ? 'warning'
+                              : connection.tone === 'neutral'
+                                ? 'clock'
+                                : 'check'
+                        }
+                        tone={connection.tone}
+                      >
+                        {connection.status}
+                      </StatusBadge>
+                    </span>
+                  </span>
+                  <span className="text-sm text-secondary-600 dark:text-secondary-300">
+                    <strong className="text-secondary-950 dark:text-secondary-50">
+                      {connection.models}
+                    </strong>{' '}
+                    {t('register.models')}
+                  </span>
+                  <span className="text-sm text-secondary-600 dark:text-secondary-300">
+                    <strong className="text-secondary-950 dark:text-secondary-50">
+                      {connection.profiles}
+                    </strong>{' '}
+                    {t('register.profiles')}
+                  </span>
+                  <span className="inline-flex min-h-9 min-w-9 items-center justify-center justify-self-end rounded-full text-secondary-600 dark:text-secondary-300">
+                    {isSelected ? (
+                      <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                    )}
+                  </span>
+                </button>
+
+                {isSelected ? (
+                  <div
+                    className="border-t border-primary-200 bg-white p-5 dark:border-primary-900 dark:bg-secondary-900"
+                    id={`connection-register-${connection.id}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700 dark:text-primary-300">
+                          {t('register.expandedLabel')}
+                        </p>
+                        <h5 className="mt-1 text-xl font-semibold text-secondary-950 dark:text-secondary-50">
+                          {connection.name}
+                        </h5>
+                        <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+                          {connection.id === 'openRouter'
+                            ? t('connection.openRouterDescription')
+                            : connection.id === 'dify'
+                              ? t('register.difyDescription')
+                              : t('register.langGraphDescription')}
+                        </p>
+                      </div>
+                      <button
+                        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-secondary-300 px-4 text-sm font-semibold text-secondary-800 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-100 dark:hover:bg-secondary-800"
+                        onClick={() =>
+                          setEditTarget({
+                            kind: 'connection',
+                            name: connection.name,
+                          })
+                        }
+                        type="button"
+                      >
+                        <Wrench aria-hidden="true" className="h-4 w-4" />
+                        {t('actions.edit')}
+                      </button>
+                    </div>
+
+                    <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                      <section className="rounded-2xl bg-secondary-50 p-4 dark:bg-secondary-950/50">
+                        <h6 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                          {t('register.configuration')}
+                        </h6>
+                        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                          {[
+                            [
+                              t('fields.adapter'),
+                              connection.id === 'openRouter'
+                                ? 'OpenRouter adapter 1.0'
+                                : connection.id === 'dify'
+                                  ? 'Dify Workflow adapter 1.0'
+                                  : 'Open Responses adapter 1.0',
+                            ],
+                            [
+                              t('fields.endpoint'),
+                              connection.id === 'openRouter'
+                                ? 'api.openrouter.ai'
+                                : connection.id === 'dify'
+                                  ? 'workflow.eu.example'
+                                  : 'langgraph-sidecar:8443',
+                            ],
+                            [
+                              t('fields.authentication'),
+                              connection.id === 'langGraph'
+                                ? t('register.missing')
+                                : t('values.secretAssigned'),
+                            ],
+                            [
+                              t('fields.attestation'),
+                              connection.id === 'openRouter'
+                                ? t('values.validUntil')
+                                : t('register.pending'),
+                            ],
+                          ].map(([label, value]) => (
+                            <div key={label}>
+                              <dt className="text-xs font-semibold uppercase tracking-wide text-secondary-500 dark:text-secondary-400">
+                                {label}
+                              </dt>
+                              <dd className="mt-1 font-medium text-secondary-900 dark:text-secondary-100">
+                                {value}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </section>
+
+                      <section className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h6 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                              {t('register.connectionModels')}
+                            </h6>
+                            <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                              {t('register.modelsDescription')}
+                            </p>
+                          </div>
+                          {connection.id === 'openRouter' ? (
+                            <button
+                              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-secondary-300 px-3 text-sm font-semibold dark:border-secondary-700"
+                              onClick={onAddModel}
+                              type="button"
+                            >
+                              <Plus aria-hidden="true" className="h-4 w-4" />
+                              {t('actions.addModel')}
+                            </button>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-4 space-y-2">
+                          {connection.id === 'openRouter' ? (
+                            <>
+                              {[
+                                [
+                                  'Claude Sonnet · 2026-07',
+                                  t('status.verified'),
+                                ],
+                                [
+                                  'Gemini Pro · 2026-06',
+                                  t('status.verificationRequired'),
+                                ],
+                                ['GPT-5 mini · 2026-07', t('status.verified')],
+                              ].map(([name, status], index) => (
+                                <div
+                                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-secondary-50 px-3 py-2.5 dark:bg-secondary-950/50"
+                                  key={name}
+                                >
+                                  <span className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                                    {name}
+                                  </span>
+                                  <span className="flex flex-wrap items-center gap-2">
+                                    <StatusBadge
+                                      icon={index === 1 ? 'warning' : 'check'}
+                                      tone={index === 1 ? 'warning' : 'success'}
+                                    >
+                                      {status}
+                                    </StatusBadge>
+                                    <button
+                                      className="min-h-9 rounded-full border border-secondary-300 px-3 text-xs font-semibold hover:bg-white dark:border-secondary-700 dark:hover:bg-secondary-800"
+                                      onClick={() =>
+                                        setEditTarget({ kind: 'model', name })
+                                      }
+                                      type="button"
+                                    >
+                                      {t('actions.edit')}
+                                    </button>
+                                  </span>
+                                </div>
+                              ))}
+                              {modelDraftCreated ? (
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-primary-300 bg-primary-50/60 px-3 py-2.5 dark:border-primary-700 dark:bg-primary-950/30">
+                                  <span className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                                    {t('modelCreate.resultName')}
+                                  </span>
+                                  <StatusBadge icon="clock" tone="neutral">
+                                    {t('status.draft')}
+                                  </StatusBadge>
+                                </div>
+                              ) : null}
+                            </>
+                          ) : connection.id === 'dify' ? (
+                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-secondary-50 px-3 py-2.5 dark:bg-secondary-950/50">
+                              <span className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                                Krav Workflow · 2.4
+                              </span>
+                              <span className="flex flex-wrap items-center gap-2">
+                                <StatusBadge icon="warning" tone="warning">
+                                  {t('status.verificationRequired')}
+                                </StatusBadge>
+                                <button
+                                  className="min-h-9 rounded-full border border-secondary-300 px-3 text-xs font-semibold hover:bg-white dark:border-secondary-700 dark:hover:bg-secondary-800"
+                                  onClick={() =>
+                                    setEditTarget({
+                                      kind: 'model',
+                                      name: 'Krav Workflow · 2.4',
+                                    })
+                                  }
+                                  type="button"
+                                >
+                                  {t('actions.edit')}
+                                </button>
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="rounded-xl border border-dashed border-secondary-300 p-4 text-sm text-secondary-600 dark:border-secondary-700 dark:text-secondary-300">
+                              {t('register.noModels')}
+                            </p>
+                          )}
+                        </div>
+                      </section>
+                    </div>
+
+                    <section className="mt-5 rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700">
+                      <h6 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                        {t('register.profileImpact')}
+                      </h6>
+                      {connection.id === 'openRouter' ? (
+                        <div className="mt-3 grid gap-3 md:grid-cols-3">
+                          {(['text', 'image', 'repair'] as const).map(type => (
+                            <div
+                              className="flex items-center justify-between gap-3 rounded-xl bg-secondary-50 p-3 dark:bg-secondary-950/50"
+                              key={type}
+                            >
+                              <span className="text-sm text-secondary-700 dark:text-secondary-200">
+                                {t(`profiles.${type}`)}
+                              </span>
+                              <RouteStatus scenario={scenario} type={type} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300">
+                          {t('register.noProfiles')}
+                        </p>
+                      )}
+                    </section>
+                  </div>
+                ) : null}
+              </article>
+            )
+          })}
+
+          {draftCreated ? (
+            <article className="bg-primary-50/40 p-5 dark:bg-primary-950/20">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="font-semibold text-secondary-950 dark:text-secondary-50">
+                  {t('create.resultName')}
+                </span>
+                <StatusBadge icon="clock" tone="neutral">
+                  {t('status.draft')}
+                </StatusBadge>
+              </div>
+            </article>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function PrototypeSwitcher({ current }: { current: Variant }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -1559,6 +2082,22 @@ export default function AiConnectionsPrototype({
       ) : null}
       {variant === 'C' ? (
         <VariantC
+          addModelOpen={addModelOpen}
+          addOpen={addOpen}
+          draftCreated={draftCreated}
+          modelDraftCreated={modelDraftCreated}
+          onAddConnection={() => setAddOpen(true)}
+          onAddModel={() => setAddModelOpen(true)}
+          onCancelAdd={() => setAddOpen(false)}
+          onCancelAddModel={() => setAddModelOpen(false)}
+          onCreateDraft={createDraft}
+          onCreateModelDraft={createModelDraft}
+          scenario={scenario}
+          setScenario={setScenario}
+        />
+      ) : null}
+      {variant === 'D' ? (
+        <VariantD
           addModelOpen={addModelOpen}
           addOpen={addOpen}
           draftCreated={draftCreated}
