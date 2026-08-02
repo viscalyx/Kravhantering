@@ -812,13 +812,20 @@ starts Quadlet services, and runs smoke validation.
 Setup installs the current stable Codex CLI and GitHub Copilot CLI releases
 system-wide and verifies that the `codex` and `copilot` commands start. The
 Codex installer requires and verifies the upstream SHA-256 release-asset digest
-before execution; missing or mismatched evidence stops setup. Rerun `setup` to
-install updates on an existing VM.
+before execution; missing or mismatched evidence stops setup. The rolling
+`@github/copilot` channel relies on npm registry SRI metadata and npm's package-
+integrity verification under ADR 0045. Rerun `setup` to install updates on an
+existing VM.
 
-Setup also resolves rolling Oh My Zsh, plugin, and theme branches at install
-time without repository pins. It replaces network-to-shell setup paths with
-verified release assets or signed APT repositories whose trust roots match the
-reviewed fingerprints in the bootstrap.
+Setup also resolves Oh My Zsh, `zsh-autosuggestions`,
+`zsh-syntax-highlighting`, and Powerlevel10k as four rolling Git channels at
+install time without repository pins. Each branch resolves to an exact object
+and its checkout is verified. Because these upstream branches do not provide a
+consistently signed rolling head, ADR 0045 explicitly accepts the publisher-
+authenticity exception for each channel; the shared rolling-source tests cover
+the fail-closed resolution and checkout behavior. Other network installation
+paths use verified release assets or signed APT repositories whose trust roots
+match the reviewed fingerprints in the bootstrap.
 
 Codex service authentication is separate from GitHub authentication. Run
 `codex login` and complete its browser flow before first use. The Codex GitHub
@@ -1207,10 +1214,10 @@ selected destination. It does not automatically apply those files to the
 repository, configure the environment, update SSH configuration, edit shell
 profiles, install tokens, or launch VS Code.
 
-On Windows, extraction keeps the destination's inherited ACLs. Choose a
-directory whose inherited access permissions provide a reasonable level of
-protection for the packaged token values. The script does not assess or harden
-those Windows permissions.
+On Windows, extraction removes inherited access rules from the new destination,
+grants only the current user full control, and validates the protected ACL
+before writing package contents. If that ACL cannot be applied and confirmed,
+extraction fails and removes the destination.
 
 Open the generated `README.md`. It prominently states the mode and uses
 PowerShell 7 commands with known absolute paths. Extraction never applies

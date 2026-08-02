@@ -8,7 +8,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { devNull, tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -17,6 +17,15 @@ const templatesDirectory = path.join(
   process.cwd(),
   'scripts/azure-dev/templates',
 )
+const gitEnvironment: NodeJS.ProcessEnv = {
+  ...Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')),
+  ),
+  GIT_CONFIG_GLOBAL: devNull,
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_CONFIG_SYSTEM: devNull,
+  NODE_ENV: process.env.NODE_ENV,
+}
 
 function temporaryDirectory(prefix: string) {
   const directory = mkdtempSync(path.join(tmpdir(), prefix))
@@ -136,26 +145,49 @@ function gitRepositoryFixture() {
   const source = path.join(root, 'source')
   const remote = path.join(root, 'remote.git')
   mkdirSync(source)
-  execFileSync('git', ['init', '--initial-branch=master'], { cwd: source })
+  execFileSync('git', ['init', '--initial-branch=master'], {
+    cwd: source,
+    env: gitEnvironment,
+  })
   execFileSync('git', ['config', 'user.name', 'Installer Test'], {
     cwd: source,
+    env: gitEnvironment,
   })
   execFileSync('git', ['config', 'user.email', 'installer@example.test'], {
     cwd: source,
+    env: gitEnvironment,
   })
-  execFileSync('git', ['config', 'commit.gpgsign', 'false'], { cwd: source })
+  execFileSync('git', ['config', 'commit.gpgsign', 'false'], {
+    cwd: source,
+    env: gitEnvironment,
+  })
   writeFileSync(path.join(source, 'version.txt'), 'first\n')
-  execFileSync('git', ['add', 'version.txt'], { cwd: source })
-  execFileSync('git', ['commit', '-m', 'first'], { cwd: source })
-  execFileSync('git', ['clone', '--bare', source, remote])
+  execFileSync('git', ['add', 'version.txt'], {
+    cwd: source,
+    env: gitEnvironment,
+  })
+  execFileSync('git', ['commit', '-m', 'first'], {
+    cwd: source,
+    env: gitEnvironment,
+  })
+  execFileSync('git', ['clone', '--bare', source, remote], {
+    env: gitEnvironment,
+  })
 
   return {
     addCommit(value: string) {
       writeFileSync(path.join(source, 'version.txt'), `${value}\n`)
-      execFileSync('git', ['add', 'version.txt'], { cwd: source })
-      execFileSync('git', ['commit', '-m', value], { cwd: source })
+      execFileSync('git', ['add', 'version.txt'], {
+        cwd: source,
+        env: gitEnvironment,
+      })
+      execFileSync('git', ['commit', '-m', value], {
+        cwd: source,
+        env: gitEnvironment,
+      })
       execFileSync('git', ['push', `file://${remote}`, 'master'], {
         cwd: source,
+        env: gitEnvironment,
       })
     },
     remoteUrl: `file://${remote}`,

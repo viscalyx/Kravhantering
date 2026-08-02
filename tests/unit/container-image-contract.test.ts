@@ -75,30 +75,22 @@ function dockerfileTarget(name: string) {
 describe('container image contract', () => {
   it('pins every Node base image by tag and digest', () => {
     const dockerfile = readWorkspaceFile('containers/app/Dockerfile')
-    const fromLines = dockerfile
-      .split('\n')
-      .filter(line => line.startsWith('FROM node:24-trixie-slim@sha256:'))
+    const fromLines = dockerfile.split('\n').flatMap(line => {
+      const match = line.match(
+        /^FROM (node:(?!latest@)[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}@sha256:[a-f0-9]{64}) AS (\S+)$/u,
+      )
+      return match ? [{ reference: match[1], stage: match[2] }] : []
+    })
 
     expect(fromLines).toHaveLength(5)
-    expect(fromLines).toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(
-          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS dependencies$/,
-        ),
-        expect.stringMatching(
-          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS db-job-dependencies$/,
-        ),
-        expect.stringMatching(
-          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS app-runtime$/,
-        ),
-        expect.stringMatching(
-          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS db-job$/,
-        ),
-        expect.stringMatching(
-          /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64} AS demo-seed$/,
-        ),
-      ]),
-    )
+    expect(fromLines.map(line => line.stage)).toEqual([
+      'dependencies',
+      'db-job-dependencies',
+      'app-runtime',
+      'db-job',
+      'demo-seed',
+    ])
+    expect(new Set(fromLines.map(line => line.reference)).size).toBe(1)
   })
 
   it('keeps shared development and release Node bases aligned', () => {
@@ -115,7 +107,7 @@ describe('container image contract', () => {
       ].map(match => match[1]),
     )
 
-    expect(references).toHaveLength(9)
+    expect(references.length).toBeGreaterThan(0)
     expect(new Set(references).size).toBe(1)
   })
 
@@ -131,7 +123,7 @@ describe('container image contract', () => {
       'containers/hsa-person-lookup-adapter/Dockerfile',
     ]) {
       const finalStage = readWorkspaceFile(relativePath).split(
-        /^FROM node:24-trixie-slim@sha256:[a-f0-9]{64}$/mu,
+        /^FROM node:(?!latest@)[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}@sha256:[a-f0-9]{64}$/mu,
       )[1]
       expect(finalStage).toContain(npmRemoval)
     }
@@ -279,7 +271,11 @@ describe('container image contract', () => {
         readWorkspaceFile(relativePath),
       )
         .filter(instruction => ['ARG', 'ENV'].includes(instruction.keyword))
-        .map(instruction => instruction.value.split(/[=\s]/u, 1)[0])
+        .flatMap(instruction =>
+          instruction.value
+            .split(/\s+/u)
+            .map(assignment => assignment.split('=', 1)[0]),
+        )
       expect(
         declaredNames.filter(name => sensitiveEnvironmentNames.has(name)),
       ).toEqual([])

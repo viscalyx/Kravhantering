@@ -264,6 +264,11 @@ Describe `
       'HOME',
       'Process'
     )
+    Import-Module (
+      Join-Path $script:repositoryRoot `
+        'scripts/azure-dev/AzureDev.Workstation.psm1'
+    ) -Force -ErrorAction Stop
+    $script:workstationModule = Get-Module $script:moduleName
   }
 
   AfterEach {
@@ -410,6 +415,50 @@ Describe `
       $readme.Contains(
         "AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH=$destinationKeyPath"
       ) | Should-BeTrue
+    }
+  }
+
+  Context `
+    'When a private extraction directory is created on Windows' `
+    -Skip:(-not $IsWindows) {
+    It 'Should grant access only to the current user' {
+      $privateDirectory = Join-Path $TestDrive 'private-extraction'
+
+      InModuleScope -Parameters @{
+        TestPrivateDirectory = $privateDirectory
+      } -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        New-AzureDevPrivateDirectory -Path $TestPrivateDirectory
+      }
+      $acl = Get-Acl -LiteralPath $privateDirectory
+      $currentSid =
+        [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+      $owner = $acl.GetOwner(
+        [System.Security.Principal.SecurityIdentifier]
+      )
+      $rules = @(
+        $acl.GetAccessRules(
+          $true,
+          $true,
+          [System.Security.Principal.SecurityIdentifier]
+        )
+      )
+
+      $acl.AreAccessRulesProtected | Should-BeTrue
+      $rules | Should-HaveCount -Expected 1
+      $owner.Value |
+        Should-BeString -Expected $currentSid.Value -CaseSensitive
+      $rules[0].IdentityReference.Value |
+        Should-BeString -Expected $currentSid.Value -CaseSensitive
+      $rules[0].AccessControlType |
+        Should-Be -Expected (
+          [System.Security.AccessControl.AccessControlType]::Allow
+        )
+      $rules[0].InheritanceFlags |
+        Should-Be -Expected (
+          [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
+          [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+        )
     }
   }
 
@@ -573,15 +622,46 @@ Describe `
       $entryScript = Join-Path $script:repositoryRoot 'scripts/azure-dev.ps1'
       $powerShellPath = [System.Environment]::ProcessPath
 
-      $entryOutput = & $powerShellPath `
-        -NoLogo `
-        -NoProfile `
-        -File $entryScript `
-        -Command 'prepare-workstation-access' `
-        -RepositoryRoot $partialRepo `
-        -DestinationPath $packageRoot 2>&1 |
-        Out-String
-      $entryExitCode = $LASTEXITCODE
+      $entryStartInfo = [System.Diagnostics.ProcessStartInfo]::new()
+      $entryStartInfo.FileName = $powerShellPath
+      $entryStartInfo.UseShellExecute = $false
+      $entryStartInfo.RedirectStandardOutput = $true
+      $entryStartInfo.RedirectStandardError = $true
+      foreach ($argument in @(
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-File',
+          $entryScript,
+          '-Command',
+          'prepare-workstation-access',
+          '-RepositoryRoot',
+          $partialRepo,
+          '-DestinationPath',
+          $packageRoot
+        )) {
+        $entryStartInfo.ArgumentList.Add($argument)
+      }
+      $entryProcess = [System.Diagnostics.Process]::new()
+      $entryProcess.StartInfo = $entryStartInfo
+      $null = $entryProcess.Start()
+      $entryStandardOutput = $entryProcess.StandardOutput.ReadToEndAsync()
+      $entryStandardError = $entryProcess.StandardError.ReadToEndAsync()
+      if (-not $entryProcess.WaitForExit(30000)) {
+        $entryProcess.Kill($true)
+        $entryProcess.WaitForExit()
+        $entryProcess.Dispose()
+        throw (
+          'prepare-workstation-access child PowerShell timed out after ' +
+          '30000 ms.'
+        )
+      }
+      $entryExitCode = $entryProcess.ExitCode
+      $entryOutput = @(
+        $entryStandardOutput.GetAwaiter().GetResult(),
+        $entryStandardError.GetAwaiter().GetResult()
+      ) -join [System.Environment]::NewLine
+      $entryProcess.Dispose()
 
       $entryExitCode | Should-NotBe -Expected 0
       foreach ($expectedOutput in @(

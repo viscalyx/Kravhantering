@@ -31,10 +31,12 @@ disable-model-invocation: true
      reviewed npm version across every dynamically discovered install path.
      Preserve pinned script approvals, explicit denials, fail-closed lifecycle
      policy, and even-LTS Node compatibility.
-   - **Container image:** Resolve the requested upstream tag and Linux AMD64
-     platform manifest. Record the platform manifest digest and image config
-     digest where required, then update every dynamically discovered
-     synchronized surface without changing release-lane policy.
+   - **Container image:** Resolve the requested upstream tag, multi-platform
+     index when published, and Linux AMD64 platform manifest. For
+     `devcontainer-base`, record the index digest as `manifestDigest` and the
+     AMD64 image config digest as `imageId`. For other image lanes, preserve
+     their existing platform-manifest identity policy. Update every dynamically
+     discovered synchronized surface without changing release-lane policy.
    - **Lychee toolchain:** Update both installer version constants, the CI
      `lycheeVersion`, and both AMD64 and ARM64 asset checksums together. Keep
      the action compatible and pinned to a full commit SHA with its release-tag
@@ -74,7 +76,9 @@ disable-model-invocation: true
   tag-only references; do not append digests to those runtime references.
 - For an ADR 0045 development image update, record the required manifest digest
   and image ID in the canonical image lock and update every synchronized
-  development tag reference from that lock.
+  development tag reference from that lock. Keep the devcontainer base lock's
+  `manifestDigest` bound to the multi-platform index, not one platform
+  manifest.
 - Never approve all lifecycle scripts or update an image lock tag without its
   required immutable identities.
 - Do not leave research artifacts in the repository.

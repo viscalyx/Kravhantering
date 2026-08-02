@@ -4,7 +4,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { validateDependencyMaintenance } from '../../scripts/dependency-maintenance.mjs'
+import {
+  DEVCONTAINER_BASE_TAG_PATTERN,
+  validateDependencyMaintenance,
+} from '../../scripts/dependency-maintenance.mjs'
 import { packageManagerVersion } from '../../scripts/install-repository-npm.mjs'
 
 const AUTOMATION_LABEL = 'automation:dependency-drift'
@@ -25,10 +28,31 @@ const LYCHEE_ARCHITECTURES = [
   { architecture: 'amd64', target: 'x86_64-unknown-linux-gnu' },
   { architecture: 'arm64', target: 'aarch64-unknown-linux-gnu' },
 ]
+const LYCHEE_INSPECTED_SURFACES = [
+  {
+    checksums: true,
+    path: '.devcontainer/Dockerfile',
+    versionPattern: /^ARG LYCHEE_VERSION=(?<version>v\d+\.\d+\.\d+)$/gmu,
+  },
+  {
+    checksums: true,
+    path: 'scripts/azure-dev/templates/bootstrap-host.sh',
+    versionPattern: /^LYCHEE_VERSION="(?<version>v\d+\.\d+\.\d+)"$/gmu,
+  },
+  {
+    checksums: false,
+    path: '.github/workflows/quality-checks.yml',
+    versionPattern: /^\s*lycheeVersion:\s*(?<version>v\d+\.\d+\.\d+)$/gmu,
+  },
+]
+const LYCHEE_AUXILIARY_SURFACES = new Set([
+  'tests/unit/github-actions-workflow-security.test.ts',
+])
 
 export const IMAGE_CONFIGS = {
   'devcontainer-base': {
     image: 'mcr.microsoft.com/devcontainers/base',
+    indexDigest: true,
     listTags: () =>
       fetchRegistryTags('mcr.microsoft.com', 'devcontainers/base'),
     lockPath: 'containers/devcontainer-base/image.lock.json',
@@ -162,9 +186,7 @@ export function parseNodeTag(tag) {
 }
 
 export function parseDevcontainerBaseTag(tag) {
-  const match = tag.match(
-    /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)-ubuntu-24\.04$/u,
-  )
+  const match = tag.match(DEVCONTAINER_BASE_TAG_PATTERN)
   if (!match?.groups) return null
   return {
     major: Number(match.groups.major),
@@ -433,7 +455,7 @@ export async function resolveImageIdentity(config, tag) {
         `${config.name}:${tag} image ID`,
       ),
       manifestDigest: normalizeDigest(
-        second.digest ?? platformDigest,
+        config.indexDigest ? first.digest : (second.digest ?? platformDigest),
         `${config.name}:${tag} manifest digest`,
       ),
     }
@@ -613,9 +635,15 @@ function lycheeChecksums(source, context) {
   const caseMarkers = [
     ...source.matchAll(/^\s*(?<architecture>amd64|arm64)\)/gmu),
   ]
-  const checksums = {}
+  const checksumsByArchitecture = Object.fromEntries(
+    LYCHEE_ARCHITECTURES.map(({ architecture }) => [architecture, []]),
+  )
+  const sectionCounts = Object.fromEntries(
+    LYCHEE_ARCHITECTURES.map(({ architecture }) => [architecture, 0]),
+  )
   for (const [index, marker] of caseMarkers.entries()) {
     const architecture = marker.groups.architecture
+    sectionCounts[architecture] += 1
     const segment = source.slice(
       marker.index,
       caseMarkers[index + 1]?.index ?? source.length,
@@ -623,62 +651,78 @@ function lycheeChecksums(source, context) {
     const matches = [
       ...segment.matchAll(/lychee_sha256='(?<checksum>[a-f0-9]{64})'/gu),
     ]
-    if (matches.length === 1)
-      checksums[architecture] = matches[0].groups.checksum
+    checksumsByArchitecture[architecture].push(
+      ...matches.map(match => match.groups.checksum),
+    )
   }
   if (
-    LYCHEE_ARCHITECTURES.some(({ architecture }) => !checksums[architecture])
+    LYCHEE_ARCHITECTURES.some(
+      ({ architecture }) =>
+        sectionCounts[architecture] !== 1 ||
+        checksumsByArchitecture[architecture].length !== 1,
+    )
   ) {
     throw new Error(
       `${context} must declare both Lychee architecture checksums.`,
     )
   }
-  return checksums
+  return Object.fromEntries(
+    LYCHEE_ARCHITECTURES.map(({ architecture }) => [
+      architecture,
+      checksumsByArchitecture[architecture][0],
+    ]),
+  )
 }
 
-export function readLycheeCurrent(root = process.cwd()) {
-  const dockerfile = fs.readFileSync(
-    path.join(root, '.devcontainer/Dockerfile'),
-    'utf8',
+export function readLycheeCurrent(unit, root = process.cwd()) {
+  if (!Array.isArray(unit?.paths)) {
+    throw new Error('Lychee registry unit must declare synchronized paths.')
+  }
+  const registeredPaths = new Set(unit.paths)
+  if (registeredPaths.size !== unit.paths.length) {
+    throw new Error('Lychee registry unit paths must be unique.')
+  }
+  const inspectedPaths = new Set(
+    LYCHEE_INSPECTED_SURFACES.map(surface => surface.path),
   )
-  const bootstrap = fs.readFileSync(
-    path.join(root, 'scripts/azure-dev/templates/bootstrap-host.sh'),
-    'utf8',
+  const unsupportedPaths = unit.paths.filter(
+    relativePath =>
+      !inspectedPaths.has(relativePath) &&
+      !LYCHEE_AUXILIARY_SURFACES.has(relativePath),
   )
-  const workflow = fs.readFileSync(
-    path.join(root, '.github/workflows/quality-checks.yml'),
-    'utf8',
+  if (
+    unsupportedPaths.length > 0 ||
+    [...inspectedPaths].some(relativePath => !registeredPaths.has(relativePath))
+  ) {
+    throw new Error(
+      'Lychee registry paths do not match the detector-supported surfaces.',
+    )
+  }
+
+  const sources = new Map(
+    LYCHEE_INSPECTED_SURFACES.map(surface => [
+      surface.path,
+      fs.readFileSync(path.join(root, surface.path), 'utf8'),
+    ]),
   )
-  const versions = [
+  const versions = LYCHEE_INSPECTED_SURFACES.map(surface =>
     singleLycheeVersion(
-      dockerfile,
-      /^ARG LYCHEE_VERSION=(?<version>v\d+\.\d+\.\d+)$/gmu,
-      '.devcontainer/Dockerfile',
+      sources.get(surface.path),
+      surface.versionPattern,
+      surface.path,
     ),
-    singleLycheeVersion(
-      bootstrap,
-      /^LYCHEE_VERSION="(?<version>v\d+\.\d+\.\d+)"$/gmu,
-      'scripts/azure-dev/templates/bootstrap-host.sh',
-    ),
-    singleLycheeVersion(
-      workflow,
-      /^\s*lycheeVersion:\s*(?<version>v\d+\.\d+\.\d+)$/gmu,
-      '.github/workflows/quality-checks.yml',
-    ),
-  ]
+  )
   if (new Set(versions).size !== 1) {
     throw new Error(
       'Lychee versions are not aligned across synchronized surfaces.',
     )
   }
 
-  const dockerfileChecksums = lycheeChecksums(
-    dockerfile,
-    '.devcontainer/Dockerfile',
+  const checksumSurfaces = LYCHEE_INSPECTED_SURFACES.filter(
+    surface => surface.checksums,
   )
-  const bootstrapChecksums = lycheeChecksums(
-    bootstrap,
-    'scripts/azure-dev/templates/bootstrap-host.sh',
+  const [dockerfileChecksums, bootstrapChecksums] = checksumSurfaces.map(
+    surface => lycheeChecksums(sources.get(surface.path), surface.path),
   )
   if (
     LYCHEE_ARCHITECTURES.some(
@@ -730,7 +774,7 @@ export async function detectLycheeDrift(
 ) {
   const fetchLatestRelease =
     dependencies?.fetchLatestLycheeRelease ?? fetchLatestLycheeRelease
-  const current = readLycheeCurrent(root)
+  const current = readLycheeCurrent(unit, root)
   const available = lycheeReleaseState(
     await fetchLatestRelease(unit.repository),
   )
@@ -787,7 +831,7 @@ export function renderIssueBody(detection, detectedAt) {
     `- Maintenance unit: \`${detection.unit}\``,
     `- Current state: \`${formatState(detection.current)}\``,
     `- Available state: \`${formatState(detection.available)}\``,
-    `- Skill: \`$${detection.skill}\``,
+    `- Skill: \`${detection.skill}\``,
     `- Detected: \`${detectedAt.toISOString()}\``,
   ]
   if (detection.paths?.length) {

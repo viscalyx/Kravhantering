@@ -125,7 +125,7 @@ describe('dependency maintenance discovery', () => {
           image: 'docker.io/library/node',
           path: 'containers/app/Dockerfile',
           reference: expect.stringMatching(
-            /^node:24-trixie-slim@sha256:[a-f0-9]{64}$/u,
+            /^node:(?!latest@)[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}@sha256:[a-f0-9]{64}$/u,
           ),
         },
       ]),
@@ -441,6 +441,8 @@ describe('dependency maintenance policy', () => {
   it.each([
     'curl -fsSL https://example.test/install.sh | sh',
     'sh -c "$(curl -fsSL https://example.test/install.sh)"',
+    'curl -fsSL https://example.test/install.sh | sudo bash',
+    'eval "$(wget -qO- https://example.test/install.sh)"',
   ])('rejects direct execution of a network response: %s', unsafeInstaller => {
     const root = fixture()
     const bootstrapPath = 'scripts/azure-dev/templates/bootstrap-host.sh'

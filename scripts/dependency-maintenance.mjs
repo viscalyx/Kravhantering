@@ -18,6 +18,8 @@ const PINNABLE_PACKAGE_VERSION_PATTERN =
 const PACKAGE_MANAGER_PATTERN = /^npm@(\d+\.\d+\.\d+)$/u
 const DOCKER_NPM_BOOTSTRAP_PATTERN =
   /\bnpm\s+install\s+--global\s+"?npm@\$\(\s*node\s+-p\s+(?:'require\(\s*"\.\/package\.json"\s*\)\s*\.packageManager\s*\.slice\(\s*4\s*\)'|"require\(\s*'\.\/package\.json'\s*\)\s*\.packageManager\s*\.slice\(\s*4\s*\)")\s*\)"?/u
+export const DEVCONTAINER_BASE_TAG_PATTERN =
+  /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)-ubuntu-24\.04$/u
 const DEPENDENCY_DRIFT_SKILL = 'resolve-dependency-drift'
 const DEPENDABOT_KIND_ECOSYSTEMS = {
   'devcontainer-features': 'devcontainers',
@@ -208,9 +210,7 @@ function isValidNamedImageTag(tag) {
 }
 
 function isNarrowDevcontainerBaseTag(tag) {
-  return /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-ubuntu-24\.04$/u.test(
-    tag,
-  )
+  return DEVCONTAINER_BASE_TAG_PATTERN.test(tag)
 }
 
 export function discoverImageLocks(root) {
@@ -1057,10 +1057,14 @@ function validateInstallSurfaces(root, expectedVersion) {
     'scripts/azure-dev/templates/bootstrap-host.sh',
   ]) {
     const source = readText(root, relativePath).replace(/\\\r?\n\s*/gu, ' ')
-    if (
-      /\b(?:curl|wget)\b[^|\n]*\|\s*(?:ba)?sh\b/iu.test(source) ||
-      /\b(?:ba)?sh\s+-c\s+["']?\$\(\s*(?:curl|wget)\b/iu.test(source)
-    ) {
+    const executesNetworkResponse = [
+      /\b(?:curl|wget)\b[^|\n]*\|\s*(?:(?:sudo|env)(?:\s+(?:--?\S+|[A-Za-z_][A-Za-z0-9_]*=\S+))*\s+|[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*(?:(?:ba|da|k|z)?sh)\b/iu,
+      /\b(?:(?:ba|da|k|z)?sh)\s+-c\s+["']?(?:\$\(|`)\s*(?:curl|wget)\b/iu,
+      /\b(?:eval|source)\b[^\n]*(?:\$\(|`|<\()\s*(?:curl|wget)\b/iu,
+      /(?:^|[;&|]\s*)\.\s+(?:\$\(|`|<\()\s*(?:curl|wget)\b/imu,
+      /(?:^|[;&]\s*)`\s*(?:curl|wget)\b[^`\n]*`/imu,
+    ].some(pattern => pattern.test(source))
+    if (executesNetworkResponse) {
       errors.push(
         `${relativePath} must not execute network responses directly as shell code.`,
       )

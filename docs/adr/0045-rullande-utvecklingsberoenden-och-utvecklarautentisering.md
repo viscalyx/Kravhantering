@@ -123,10 +123,10 @@ som standard och kräva separata aktiva val. Paketet ska krypteras till
 destinationsarbetsstationens SSH-nyckel. Efter extraktion får tokenvärdena
 endast finnas tillfälligt som klartext i den privata extraktionskatalogen för
 att läsas in processlokalt eller flyttas till ett befintligt säkert credential
-store. På Windows ansvarar användaren för att välja en extraktionskatalog vars
-ärvda åtkomstbehörigheter ger en rimlig skyddsnivå för de aktuella
-tokenvärdena. Användaren avgör när överföringen är färdig och ansvarar då för
-att ta bort extraktionskatalogen och tokenfilerna med det tillhandahållna
+store. På Windows ska extraktionsflödet ta bort ärvda åtkomstregler, ge endast
+den aktuella användaren fullständig behörighet och avbryta om den skyddade ACL:n
+inte kan verifieras. Användaren avgör när överföringen är färdig och ansvarar då
+för att ta bort extraktionskatalogen och tokenfilerna med det tillhandahållna
 städflödet. Undantaget gäller endast överföring mellan betrodda arbetsstationer;
 det tillåter inte beständig tokenlagring i kodbasen, utvecklingsmiljön, SSH-
 konfigurationen eller skalprofiler och tillåter inte att tokenvärden kopieras

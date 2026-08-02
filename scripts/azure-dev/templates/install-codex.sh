@@ -17,8 +17,24 @@ trap cleanup EXIT
 
 codex_installer="${codex_temp_dir}/install.sh"
 codex_release_json="${codex_temp_dir}/release.json"
+codex_curl_options=(
+  --fail
+  --silent
+  --show-error
+  --location
+  --connect-timeout 10
+  --max-time 120
+  --retry 3
+  --retry-delay 2
+  --retry-all-errors
+)
+codex_auth_options=()
+if [ -n "${GH_TOKEN:-}" ]; then
+  codex_auth_options=(--header "Authorization: Bearer ${GH_TOKEN}")
+fi
 
-curl -fsSLo "${codex_release_json}" \
+curl "${codex_curl_options[@]}" "${codex_auth_options[@]}" \
+  --output "${codex_release_json}" \
   https://api.github.com/repos/openai/codex/releases/latest
 
 if ! codex_release_tag="$(
@@ -39,7 +55,8 @@ if ! codex_release_tag="$(
 fi
 codex_version="${codex_release_tag#rust-v}"
 
-curl -fsSLo "${codex_installer}" \
+curl "${codex_curl_options[@]}" "${codex_auth_options[@]}" \
+  --output "${codex_installer}" \
   "https://github.com/openai/codex/releases/download/${codex_release_tag}/install.sh"
 
 if ! printf '%s  %s\n' "${codex_installer_sha256}" "${codex_installer}" |

@@ -1,4 +1,4 @@
-import { type ParseError, parse } from 'jsonc-parser'
+import { type ParseError, parse, printParseErrorCode } from 'jsonc-parser'
 
 export function parseJsonc(content: string): unknown {
   const errors: ParseError[] = []
@@ -8,7 +8,12 @@ export function parseJsonc(content: string): unknown {
   })
   if (errors.length > 0) {
     throw new Error(
-      `Invalid JSONC: ${errors.map(error => error.error).join(', ')}`,
+      `Invalid JSONC: ${errors
+        .map(
+          error =>
+            `${printParseErrorCode(error.error)} at offset ${error.offset}`,
+        )
+        .join(', ')}`,
     )
   }
   return parsed

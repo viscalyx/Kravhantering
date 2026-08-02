@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createPesterInstallArgs,
   createPesterTestArgs,
+  DOCKER_PHASE_TIMEOUT_MS,
   PESTER_VERSION,
   POWERSHELL_IMAGE,
+  runDocker,
 } from '../test-powershell-integration.mjs'
 
 describe('isolated PowerShell integration-test runner', () => {
@@ -43,5 +45,22 @@ describe('isolated PowerShell integration-test runner', () => {
     expect(command).not.toContain('/var/run/docker.sock')
     expect(command).not.toMatch(/(?:GH_TOKEN|COPILOT_GITHUB_TOKEN)=/u)
     expect(command).not.toMatch(/AZURE_(?:CLIENT|TENANT|SUBSCRIPTION)_/u)
+  })
+
+  it('bounds Docker phases and reports timeout context', () => {
+    const spawn = vi.fn(() => ({
+      error: Object.assign(new Error('spawnSync docker ETIMEDOUT'), {
+        code: 'ETIMEDOUT',
+      }),
+      status: null,
+    }))
+
+    expect(() => runDocker(['run'], 'Pester test phase', spawn)).toThrow(
+      `Pester test phase timed out after ${DOCKER_PHASE_TIMEOUT_MS} ms.`,
+    )
+    expect(spawn).toHaveBeenCalledWith('docker', ['run'], {
+      stdio: 'inherit',
+      timeout: DOCKER_PHASE_TIMEOUT_MS,
+    })
   })
 })

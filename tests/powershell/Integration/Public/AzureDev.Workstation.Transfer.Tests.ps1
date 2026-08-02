@@ -223,6 +223,9 @@ Describe `
           }
 
           $outputOptionIndex = [System.Array]::IndexOf($Arguments, '-o')
+          if ($outputOptionIndex -lt 0) {
+            throw 'age-test invocation did not include the -o option.'
+          }
           [System.IO.File]::WriteAllBytes(
             [string]$Arguments[$outputOptionIndex + 1],
             [System.Byte[]]$encryptedPackage.ZipBytes
@@ -242,8 +245,14 @@ Describe `
         $global:mockAzureDevWorkstationState.CapturedPackage = $captured
 
         $recipientOptionIndex = [System.Array]::IndexOf($Arguments, '-R')
-        $recipientPath = [string]$Arguments[$recipientOptionIndex + 1]
         $outputOptionIndex = [System.Array]::IndexOf($Arguments, '-o')
+        if ($recipientOptionIndex -lt 0) {
+          throw 'age-test invocation did not include the -R option.'
+        }
+        if ($outputOptionIndex -lt 0) {
+          throw 'age-test invocation did not include the -o option.'
+        }
+        $recipientPath = [string]$Arguments[$recipientOptionIndex + 1]
         $outputPath = [string]$Arguments[$outputOptionIndex + 1]
         $global:mockAzureDevWorkstationState.EncryptedPackages[
           $outputPath

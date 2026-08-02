@@ -400,8 +400,9 @@ Extraction rejects rooted paths, backslashes, `..`, duplicates, undeclared
 entries, missing declared entries, oversized entries, unsupported schemas, and
 expired packages. It extracts only into a new user-selected directory. On
 Unix-like systems the workflow applies user-only permissions. On Windows it
-retains inherited ACLs, and the user must select a directory with a reasonable
-protection level for the packaged token values.
+removes inherited access rules, grants only the current user full control, and
+validates the protected ACL before writing package contents. Extraction stops
+and removes the destination if that protection cannot be confirmed.
 
 A connect-only payload omits `.env.azure.development`. Its minimal local file
 contains only `AZURE_DEV_VM_CONNECTIVITY_MODE`,
@@ -436,8 +437,8 @@ paths and PowerShell 7 commands. Existing primary files use `code --diff`;
 existing local files receive exact manual assignments and are never
 overwritten. Management instructions include tenant login and subscription
 selection. Secret values remain in separate files and never enter the README,
-logs, or terminal output. On Windows their effective restriction depends on the
-ACLs of the user-selected extraction directory.
+logs, or terminal output. On Windows they inherit the validated user-only ACL
+from the extraction directory.
 
 Host-key comparison remains mandatory. The generated installation block
 creates `.ssh` and `known_hosts`, appends only missing source lines, preserves
@@ -503,11 +504,15 @@ Linux guest.
 The ignored `scripts/azure-dev/templates/zshrc.template` is the local override.
 When it is absent, setup uploads the tracked
 `scripts/azure-dev/templates/zshrc.template.example`. Bootstrap installs the
-selected file as `/home/vscode/.zshrc` and installs the Oh My Zsh plugins and
-theme required by the default profile. Every new installation resolves each
-current main branch to an exact Git object, verifies the checkout, and records
-the resolved object in bootstrap output. The object is not pinned in the
-repository; a later new installation resolves the then-current branch again.
+selected file as `/home/vscode/.zshrc`. Oh My Zsh, `zsh-autosuggestions`,
+`zsh-syntax-highlighting`, and Powerlevel10k are four separate rolling Git
+channels. Every new installation resolves each current main branch to an exact
+Git object, verifies the checkout, and records the resolved object in bootstrap
+output. These upstream branches do not provide a consistently signed rolling
+head, so ADR 0045 explicitly accepts the publisher-authenticity exception for
+each channel. The object is not pinned in the repository; a later new
+installation resolves the then-current branch again. The rolling-source tests
+exercise the shared fail-closed resolution and checkout control.
 
 Bootstrap installs Bubblewrap and the Ubuntu 24.04
 `bwrap-userns-restrict` AppArmor profile, then proves that the `vscode` user
@@ -524,9 +529,10 @@ asset digest contract. Bootstrap configures NodeSource and Tailscale directly
 as signed APT repositories instead of executing their setup scripts. It
 verifies the NodeSource, Docker, GitHub CLI, and Tailscale trust roots against
 reviewed primary fingerprints before APT uses them. Bootstrap installs GitHub
-Copilot CLI globally from the
-`@github/copilot` npm package. Both installers converge to their current stable
-releases on every setup run.
+Copilot CLI globally from the `@github/copilot` npm package. This rolling
+channel relies on the npm registry's SRI metadata and npm's package-integrity
+verification, as approved by ADR 0045. Both installers converge to their
+current stable releases on every setup run.
 
 The tracked Azure Codex template is separate from the devcontainer template.
 `merge-codex-config.py` atomically updates the existing user configuration. It

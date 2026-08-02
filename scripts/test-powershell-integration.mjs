@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 export const PESTER_VERSION = '6.0.1'
 export const POWERSHELL_IMAGE = 'mcr.microsoft.com/powershell:7.4-ubuntu-22.04'
+export const DOCKER_PHASE_TIMEOUT_MS = 30 * 60 * 1000
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url)
 const REPOSITORY_ROOT = path.resolve(path.dirname(SCRIPT_PATH), '..')
@@ -112,8 +113,14 @@ export function createPesterTestArgs({
   ]
 }
 
-function runDocker(args, phase) {
-  const result = spawnSync('docker', args, { stdio: 'inherit' })
+export function runDocker(args, phase, spawn = spawnSync) {
+  const result = spawn('docker', args, {
+    stdio: 'inherit',
+    timeout: DOCKER_PHASE_TIMEOUT_MS,
+  })
+  if (result.error?.code === 'ETIMEDOUT') {
+    throw new Error(`${phase} timed out after ${DOCKER_PHASE_TIMEOUT_MS} ms.`)
+  }
   if (result.error) {
     throw new Error(`${phase} could not start Docker: ${result.error.message}`)
   }
