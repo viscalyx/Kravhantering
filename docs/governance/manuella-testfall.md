@@ -1409,7 +1409,8 @@ scope-reglage och kontrollera att reglagets tooltip växlar mellan
 och att reglaget fortfarande är aktiverat och kan slås på igen. Kontrollera att
 frågereglaget visar check när frågan ingår och kryss när den inte ingår. Välj
 bort frågan igen och kontrollera att kravområdet visar `Delvis`, med tummen
-till höger men utan ikon. Slå på kravområdets scope-reglage och kontrollera att
+till höger men utan ikon, och att hjälpmedel får beskrivningen `Delvis: några
+RFI-frågor ingår i RFI`. Slå på kravområdets scope-reglage och kontrollera att
 alla frågor i området ingår igen. Välj bort en fråga på nytt, aktivera
 filterknappen med tooltip `Visa endast de som ingår i RFI` och kontrollera CSV-
 och PDF-exportlänkarna.

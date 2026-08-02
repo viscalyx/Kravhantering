@@ -1074,6 +1074,9 @@ describe('RFI client UI states', () => {
       'title',
       'specificationRfiList.partiallyIncluded',
     )
+    expect(areaScopeSwitch).toHaveAccessibleDescription(
+      'specificationRfiList.partiallyIncluded',
+    )
     expect(areaScopeSwitch).toBeEnabled()
     expect(areaScopeSwitch).toHaveClass('cursor-pointer')
     const partialTrack = areaScopeSwitch.lastElementChild
@@ -1143,6 +1146,7 @@ describe('RFI client UI states', () => {
           name: 'specificationRfiList.areaIncludedToggleAria',
         }),
       ).toHaveAttribute('aria-checked', 'true')
+      expect(areaScopeSwitch).not.toHaveAttribute('aria-describedby')
     })
 
     await userEvent.click(

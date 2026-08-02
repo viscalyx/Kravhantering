@@ -733,6 +733,7 @@ export default function SpecificationRfiListPanel({
             const areaSuggestionCount = suggestionsForTarget(areaTarget).length
             const scopeState = areaScopeState(group.items)
             const areaHeadingId = `rfi-area-${group.areaId}`
+            const areaScopeDescriptionId = `${areaHeadingId}-scope-description`
             const scopeSwitchDisabled = !canEdit || list.isLocked || saving
             const areaScopeTitle = scopeState.partiallyIncluded
               ? t('partiallyIncluded')
@@ -754,6 +755,11 @@ export default function SpecificationRfiListPanel({
                   <div className="ml-auto flex flex-wrap items-center gap-4">
                     <button
                       aria-checked={scopeState.allIncluded}
+                      aria-describedby={
+                        scopeState.partiallyIncluded
+                          ? areaScopeDescriptionId
+                          : undefined
+                      }
                       aria-label={t('areaIncludedToggleAria', {
                         area: group.areaName,
                       })}
@@ -774,6 +780,11 @@ export default function SpecificationRfiListPanel({
                         value: group.areaName,
                       })}
                     >
+                      {scopeState.partiallyIncluded ? (
+                        <span className="sr-only" id={areaScopeDescriptionId}>
+                          {t('partiallyIncluded')}
+                        </span>
+                      ) : null}
                       {scopeState.partiallyIncluded ? (
                         <span className={partialScopeClassName}>
                           {t('partial')}

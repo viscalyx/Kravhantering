@@ -1178,8 +1178,13 @@ for (const viewport of viewports) {
             name: /Ändra om kravområdet .+ ingår i RFI/u,
           })
           await expect(areaScopeSwitch).toHaveAttribute('title', /Delvis/u)
+          await expect(areaScopeSwitch).toHaveAccessibleDescription(
+            'Delvis: några RFI-frågor ingår i RFI',
+          )
           await expect(areaScopeSwitch.locator('svg')).toHaveCount(0)
-          await expect(areaSection.getByText('Delvis')).toBeVisible()
+          await expect(
+            areaSection.getByText('Delvis', { exact: true }),
+          ).toBeVisible()
 
           await primaryScopeSwitch.click()
           await expect(primaryScopeSwitch).toHaveAttribute(
