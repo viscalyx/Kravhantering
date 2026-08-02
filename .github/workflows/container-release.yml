@@ -353,7 +353,7 @@ jobs:
 
       - name: Attest app-runtime provenance
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
           subject-digest: ${{ env.APP_RUNTIME_MANIFEST_DIGEST }}
@@ -361,7 +361,7 @@ jobs:
 
       - name: Attest db-job provenance
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
           subject-digest: ${{ env.DB_JOB_MANIFEST_DIGEST }}
@@ -369,7 +369,7 @@ jobs:
 
       - name: Attest demo seed provenance
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.DEMO_SEED_IMAGE }}
           subject-digest: ${{ env.DEMO_SEED_MANIFEST_DIGEST }}
@@ -377,7 +377,7 @@ jobs:
 
       - name: Attest HSA directory mock provenance
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.HSA_DIRECTORY_MOCK_IMAGE }}
           subject-digest: ${{ env.HSA_DIRECTORY_MOCK_MANIFEST_DIGEST }}
@@ -385,7 +385,7 @@ jobs:
 
       - name: Attest HSA person lookup adapter provenance
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_IMAGE }}
           subject-digest: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST }}
@@ -393,7 +393,7 @@ jobs:
 
       - name: Attest app-runtime SBOM
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.APP_RUNTIME_IMAGE }}
           subject-digest: ${{ env.APP_RUNTIME_MANIFEST_DIGEST }}
@@ -402,7 +402,7 @@ jobs:
 
       - name: Attest db-job SBOM
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.DB_JOB_IMAGE }}
           subject-digest: ${{ env.DB_JOB_MANIFEST_DIGEST }}
@@ -411,7 +411,7 @@ jobs:
 
       - name: Attest demo seed SBOM
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.DEMO_SEED_IMAGE }}
           subject-digest: ${{ env.DEMO_SEED_MANIFEST_DIGEST }}
@@ -420,7 +420,7 @@ jobs:
 
       - name: Attest HSA directory mock SBOM
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.HSA_DIRECTORY_MOCK_IMAGE }}
           subject-digest: ${{ env.HSA_DIRECTORY_MOCK_MANIFEST_DIGEST }}
@@ -429,7 +429,7 @@ jobs:
 
       - name: Attest HSA person lookup adapter SBOM
         if: success()
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_IMAGE }}
           subject-digest: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST }}
@@ -531,7 +531,7 @@ jobs:
       - name: Attest production deployment archive
         id: deployment-archive-attestation
         if: success() && env.RELEASE_CREATE_GITHUB_RELEASE == 'true'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: tmp/container-release-artifacts/kravhantering-production-deploy-${{ env.RELEASE_VERSION }}.tar.gz
           predicate-type: https://github.com/viscalyx/Kravhantering/attestations/deployment-release/v1
