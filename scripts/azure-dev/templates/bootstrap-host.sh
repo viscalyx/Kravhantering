@@ -20,6 +20,10 @@ ZSHRC_SOURCE="${AZURE_DEV_ZSHRC_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templ
 SERVICE_ENV_SOURCE_DIR="${AZURE_DEV_SERVICE_ENV_SOURCE:-}"
 CODEX_CONFIG_SOURCE="${AZURE_DEV_CODEX_CONFIG_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/codex-config.toml}"
 CODEX_CONFIG_MERGER="${AZURE_DEV_CODEX_CONFIG_MERGER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/merge-codex-config.py}"
+CODEX_INSTALLER="${AZURE_DEV_CODEX_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-codex.sh}"
+DOTENV_LINTER_INSTALLER="${AZURE_DEV_DOTENV_LINTER_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-dotenv-linter.sh}"
+APT_KEY_VERIFIER="${AZURE_DEV_APT_KEY_VERIFIER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/verify-apt-key.sh}"
+ROLLING_GIT_INSTALLER="${AZURE_DEV_ROLLING_GIT_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-rolling-git-source.sh}"
 GIT_USER_NAME="${AZURE_DEV_GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${AZURE_DEV_GIT_USER_EMAIL:-}"
 GIT_SSH_SIGNING_PUBLIC_KEY="${AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY:-}"
@@ -150,29 +154,46 @@ configure_repositories() {
   install -d -m 0755 /etc/apt/keyrings
   rm -f /tmp/packages-microsoft-prod.deb
 
-  if [ ! -f /etc/apt/sources.list.d/nodesource.list ]; then
-    curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+  if [ ! -f "${APT_KEY_VERIFIER}" ]; then
+    log "APT signing-key verifier is missing: ${APT_KEY_VERIFIER}"
+    return 1
   fi
 
-  if [ ! -f /etc/apt/sources.list.d/docker.list ]; then
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-      | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    chmod a+r /etc/apt/keyrings/docker.gpg
-    printf \
-      'deb [arch=%s signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu noble stable\n' \
-      "$(dpkg --print-architecture)" \
-      > /etc/apt/sources.list.d/docker.list
-  fi
+  bash "${APT_KEY_VERIFIER}" \
+    'NodeSource' \
+    'https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key' \
+    '/etc/apt/keyrings/nodesource.gpg' \
+    '6F71F525282841EEDAF851B42F59B5F99B1BE0B4'
+  rm -f /etc/apt/sources.list.d/nodesource.list
+  cat > /etc/apt/sources.list.d/nodesource.sources <<EOF
+Types: deb
+URIs: https://deb.nodesource.com/node_24.x
+Suites: nodistro
+Components: main
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/nodesource.gpg
+EOF
 
-  if [ ! -f /etc/apt/sources.list.d/github-cli.list ]; then
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-      -o /usr/share/keyrings/githubcli-archive-keyring.gpg
-    chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-    printf \
-      'deb [arch=%s signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\n' \
-      "$(dpkg --print-architecture)" \
-      > /etc/apt/sources.list.d/github-cli.list
-  fi
+  bash "${APT_KEY_VERIFIER}" \
+    'Docker' \
+    'https://download.docker.com/linux/ubuntu/gpg' \
+    '/etc/apt/keyrings/docker.gpg' \
+    '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
+  printf \
+    'deb [arch=%s signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu noble stable\n' \
+    "$(dpkg --print-architecture)" \
+    > /etc/apt/sources.list.d/docker.list
+
+  bash "${APT_KEY_VERIFIER}" \
+    'GitHub CLI' \
+    'https://cli.github.com/packages/githubcli-archive-keyring.gpg' \
+    '/usr/share/keyrings/githubcli-archive-keyring.gpg' \
+    '2C6106201985B60E6C7AC87323F3D4EA75716059' \
+    '7F38BBB59D064DBCB3D84D725612B36462313325'
+  printf \
+    'deb [arch=%s signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\n' \
+    "$(dpkg --print-architecture)" \
+    > /etc/apt/sources.list.d/github-cli.list
 }
 
 install_host_packages() {
@@ -225,65 +246,25 @@ install_host_packages() {
     wget \
     zsh
 
-  if ! command -v dotenv-linter >/dev/null 2>&1; then
-    curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh \
-      | sh -s -- -b /usr/local/bin
+  if [ ! -f "${DOTENV_LINTER_INSTALLER}" ]; then
+    log "dotenv-linter installer helper is missing: ${DOTENV_LINTER_INSTALLER}"
+    return 1
   fi
+  DOTENV_LINTER_INSTALL_DIR=/usr/local/bin \
+    bash "${DOTENV_LINTER_INSTALLER}"
 }
 
 install_ai_tools() {
-  local codex_installer codex_installer_sha256 codex_release_json
-  local codex_release_tag codex_temp_dir codex_version
-  codex_temp_dir="$(mktemp -d /tmp/krav-codex-installer.XXXXXX)"
-  codex_installer="${codex_temp_dir}/install.sh"
-  codex_release_json="${codex_temp_dir}/release.json"
-
-  if ! curl -fsSLo "${codex_release_json}" \
-    https://api.github.com/repos/openai/codex/releases/latest; then
-    rm -rf "${codex_temp_dir}"
+  if [ ! -f "${CODEX_INSTALLER}" ]; then
+    log "Codex installer helper is missing: ${CODEX_INSTALLER}"
     return 1
   fi
-  if ! codex_release_tag="$(
-    jq -er \
-      '.tag_name | select(test("^rust-v[0-9]+\\.[0-9]+\\.[0-9]+$"))' \
-      "${codex_release_json}"
-  )" ||
-    ! codex_installer_sha256="$(
-      jq -er \
-        '[.assets[] | select(.name == "install.sh") | .digest |
-          select(startswith("sha256:"))] |
-          if length == 1 then .[0] | sub("^sha256:"; "")
-          else error("missing unique install.sh SHA-256 digest") end' \
-        "${codex_release_json}"
-    )"; then
-    log 'Could not resolve the latest Codex installer and digest'
-    rm -rf "${codex_temp_dir}"
-    return 1
-  fi
-  codex_version="${codex_release_tag#rust-v}"
-
-  if ! curl -fsSLo "${codex_installer}" \
-    "https://github.com/openai/codex/releases/download/${codex_release_tag}/install.sh"; then
-    rm -rf "${codex_temp_dir}"
-    return 1
-  fi
-  if ! printf '%s  %s\n' "${codex_installer_sha256}" "${codex_installer}" |
-    sha256sum --check --status; then
-    log "Codex ${codex_version} installer checksum validation failed"
-    rm -rf "${codex_temp_dir}"
-    return 1
-  fi
-
-  install -d -m 0755 "${CODEX_INSTALL_HOME}"
   if ! CODEX_HOME="${CODEX_INSTALL_HOME}" \
     CODEX_INSTALL_DIR=/usr/local/bin \
     CODEX_NON_INTERACTIVE=1 \
-    CODEX_RELEASE="${codex_version}" \
-    sh "${codex_installer}"; then
-    rm -rf "${codex_temp_dir}"
+    bash "${CODEX_INSTALLER}"; then
     return 1
   fi
-  rm -rf "${codex_temp_dir}"
 
   npm_config_ignore_scripts=false \
     npm install --global @github/copilot@latest
@@ -653,25 +634,29 @@ PY
 }
 
 install_zsh_profile() {
+  if [ ! -f "${ROLLING_GIT_INSTALLER}" ]; then
+    log "Rolling Git installer helper is missing: ${ROLLING_GIT_INSTALLER}"
+    return 1
+  fi
   if [ ! -d "${VSCODE_HOME}/.oh-my-zsh" ]; then
     run_as_vscode \
-      "RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\""
+      "bash '${ROLLING_GIT_INSTALLER}' 'https://github.com/ohmyzsh/ohmyzsh.git' 'master' '${VSCODE_HOME}/.oh-my-zsh'"
   fi
 
   run_as_vscode \
     "mkdir -p '${VSCODE_HOME}/.oh-my-zsh/custom/plugins' '${VSCODE_HOME}/.oh-my-zsh/custom/themes'"
   if [ ! -d "${VSCODE_HOME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
     run_as_vscode \
-      "git clone https://github.com/zsh-users/zsh-autosuggestions.git '${VSCODE_HOME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions'"
+      "bash '${ROLLING_GIT_INSTALLER}' 'https://github.com/zsh-users/zsh-autosuggestions.git' 'master' '${VSCODE_HOME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions'"
   fi
   if [ ! -d "${VSCODE_HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
     run_as_vscode \
-      "git clone https://github.com/zsh-users/zsh-syntax-highlighting.git '${VSCODE_HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting'"
+      "bash '${ROLLING_GIT_INSTALLER}' 'https://github.com/zsh-users/zsh-syntax-highlighting.git' 'master' '${VSCODE_HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting'"
   fi
 
   if [ ! -d "${VSCODE_HOME}/.oh-my-zsh/custom/themes/powerlevel10k" ]; then
     run_as_vscode \
-      "git clone --depth=1 https://github.com/romkatv/powerlevel10k.git '${VSCODE_HOME}/.oh-my-zsh/custom/themes/powerlevel10k'"
+      "bash '${ROLLING_GIT_INSTALLER}' 'https://github.com/romkatv/powerlevel10k.git' 'master' '${VSCODE_HOME}/.oh-my-zsh/custom/themes/powerlevel10k'"
   fi
 
   if [ ! -f "${ZSHRC_SOURCE}" ]; then
@@ -1070,7 +1055,17 @@ install_optional_tailscale() {
   if command -v tailscale >/dev/null 2>&1; then
     return
   fi
-  curl -fsSL https://tailscale.com/install.sh | sh
+  bash "${APT_KEY_VERIFIER}" \
+    'Tailscale' \
+    'https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg' \
+    '/usr/share/keyrings/tailscale-archive-keyring.gpg' \
+    '2596A99EAAB33821893C0A79458CA832957F5868'
+  printf \
+    'deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu noble main\n' \
+    > /etc/apt/sources.list.d/tailscale.list
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    tailscale
   if [ -f /etc/krav-dev/tailscale.env ]; then
     set -a
     # shellcheck disable=SC1091

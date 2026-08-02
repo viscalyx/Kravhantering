@@ -89,8 +89,70 @@ npm run dependency-maintenance:check
 ```
 
 Native npm Dependabot lanes update one dependency per pull request. Coordinated
-npm toolchain and production image drift creates issues labeled
-`automation:dependency-drift`, `dependencies`, and `ready-for-agent`.
+npm toolchain, Lychee toolchain, devcontainer base image, and production image
+drift creates issues labeled `automation:dependency-drift`, `dependencies`,
+and `ready-for-agent`.
+
+The scheduled Lychee detector reads the aligned version and AMD64 and ARM64
+asset checksums from the devcontainer, Azure bootstrap, and quality workflow.
+It compares that state with the latest supported stable GitHub release and its
+published asset digests. A generated issue lists every synchronized surface
+and requires both installer versions, the workflow `lycheeVersion`, and both
+architecture checksums to be updated together. The Lychee action remains
+commit-SHA pinned and continues through the GitHub Actions Dependabot lane.
+
+## Development Service Image References
+
+The image locks under `containers/` are canonical for both the reviewed tag and
+the recorded manifest and image identities. Supported devcontainer compose
+files and Azure development Quadlets repeat only the canonical tag for SQL
+Server, Keycloak, and Kong. They do not append a manifest digest to the runtime
+reference. Production, release-smoke, and operator-controlled references keep
+their separate immutable identity policy.
+
+The dependency-maintenance check derives the expected development tag from the
+matching lock instead of storing a version in the test. A coordinated image
+update changes the lock and every supported development reference in one
+change. Same-tag digest drift remains reportable; review the upstream change
+before updating the evidence recorded in the lock.
+
+The non-`latest`, tag-only rule applies only to locks that feed supported
+devcontainer or personal Azure development references. Production-only locks
+and runtime references retain their separate release and operator policies.
+The devcontainer base image follows the same development rule. Its Dockerfile
+uses the exact semantic version tag recorded in
+`containers/devcontainer-base/image.lock.json` without appending a digest. The
+scheduled detector compares that lock with upstream so a newer exact tag or a
+new digest under the current tag creates a coordinated drift issue. Tests derive
+the expected Dockerfile reference from the lock rather than storing its version.
+
+The HSA support Dockerfiles are shared by development and release builds. Their
+Node base references retain the production tag-and-digest identity in both
+contexts so local HSA support uses the same build inputs as release artifacts.
+The Node drift detector requires the app and both HSA Dockerfiles to use one
+coordinated identity.
+
+## Rolling Development Tool Integrity
+
+Development tools remain rolling. A rebuild resolves current upstream state;
+routine tool versions and Git commit IDs are not committed to the repository.
+The installation channel determines the integrity check:
+
+- Codex and dotenv-linter require the SHA-256 digest published for the selected
+  GitHub release asset before any downloaded code runs.
+- NodeSource, Docker, GitHub CLI, and Tailscale repository keys must match the
+  reviewed primary fingerprints in the Azure bootstrap. APT then verifies
+  signed repository metadata and package hashes while package versions roll.
+- npm registry SRI and OCI manifest digests provide content integrity for the
+  rolling Copilot CLI and Dev Container Features.
+- Azure resolves each rolling Oh My Zsh, plugin, and theme branch to an exact
+  Git object during setup and verifies the checkout. ADR 0045 records the
+  explicit publisher-authenticity exception for these sources and for matching
+  feature-managed devcontainer clones.
+
+Do not execute a network response directly as shell code. When a signing key
+rotates, review the new primary fingerprint and update the bootstrap and its
+tests deliberately. A normal tool release must not require a test-value update.
 
 Run the relevant checks after dependency changes. At minimum, run:
 

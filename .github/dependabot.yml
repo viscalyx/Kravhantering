@@ -22,12 +22,6 @@ updates:
     schedule:
       interval: 'weekly'
 
-  # Enable version updates for Docker images
-  - package-ecosystem: 'docker'
-    directory: '/.devcontainer'
-    schedule:
-      interval: 'weekly'
-
   # Enable version updates for Dev containers Features
   - package-ecosystem: 'devcontainers'
     directory: '/'

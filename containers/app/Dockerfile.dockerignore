@@ -8,6 +8,7 @@
 .npm/
 .nyc_output/
 .out/
+.ssh/
 .parcel-cache/
 .storybook-out/
 coverage/

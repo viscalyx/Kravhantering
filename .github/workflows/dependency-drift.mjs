@@ -21,8 +21,23 @@ const ACCEPT_MANIFESTS = [
   'application/vnd.docker.distribution.manifest.v2+json',
 ].join(', ')
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/iu
+const LYCHEE_ARCHITECTURES = [
+  { architecture: 'amd64', target: 'x86_64-unknown-linux-gnu' },
+  { architecture: 'arm64', target: 'aarch64-unknown-linux-gnu' },
+]
 
 export const IMAGE_CONFIGS = {
+  'devcontainer-base': {
+    image: 'mcr.microsoft.com/devcontainers/base',
+    listTags: () =>
+      fetchRegistryTags('mcr.microsoft.com', 'devcontainers/base'),
+    lockPath: 'containers/devcontainer-base/image.lock.json',
+    name: 'devcontainer-base',
+    parseTag: parseDevcontainerBaseTag,
+    registryHost: 'mcr.microsoft.com',
+    registryRepository: 'devcontainers/base',
+    versionSortValue: version => [version.major, version.minor, version.patch],
+  },
   node: {
     image: 'docker.io/library/node',
     listTags: listNodeLtsTags,
@@ -146,6 +161,19 @@ export function parseNodeTag(tag) {
   return { major, tag }
 }
 
+export function parseDevcontainerBaseTag(tag) {
+  const match = tag.match(
+    /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)-ubuntu-24\.04$/u,
+  )
+  if (!match?.groups) return null
+  return {
+    major: Number(match.groups.major),
+    minor: Number(match.groups.minor),
+    patch: Number(match.groups.patch),
+    tag,
+  }
+}
+
 export function parseKeycloakTag(tag) {
   const match = tag.match(
     /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<revision>0|[1-9]\d*))?$/u,
@@ -201,6 +229,19 @@ export function parseKongTag(tag) {
   }
 }
 
+export function parseLycheeVersion(version) {
+  const match = String(version).match(
+    /^v(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)$/u,
+  )
+  if (!match?.groups) return null
+  return {
+    major: Number(match.groups.major),
+    minor: Number(match.groups.minor),
+    patch: Number(match.groups.patch),
+    version,
+  }
+}
+
 async function fetchOk(url, options = {}) {
   const headers = options.headers ?? {}
   let response = await fetch(url, { ...options, headers })
@@ -253,6 +294,19 @@ async function tokenFromChallenge(challenge) {
 async function fetchJson(url, options) {
   const response = await fetchOk(url, options)
   return response.json()
+}
+
+async function fetchLatestLycheeRelease(repository) {
+  const token = readNonEmpty(process.env.GH_TOKEN)
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
+  return fetchJson(
+    `https://api.github.com/repos/${repository}/releases/latest`,
+    { headers },
+  )
 }
 
 function dockerHubHeaders() {
@@ -544,11 +598,182 @@ export async function detectNpmDrift(unit, root = process.cwd(), dependencies) {
   }
 }
 
+function singleLycheeVersion(source, pattern, context) {
+  const versions = [...source.matchAll(pattern)].map(
+    match => match.groups.version,
+  )
+  const unique = [...new Set(versions)]
+  if (unique.length !== 1 || !parseLycheeVersion(unique[0])) {
+    throw new Error(`${context} must declare one supported Lychee version.`)
+  }
+  return unique[0]
+}
+
+function lycheeChecksums(source, context) {
+  const caseMarkers = [
+    ...source.matchAll(/^\s*(?<architecture>amd64|arm64)\)/gmu),
+  ]
+  const checksums = {}
+  for (const [index, marker] of caseMarkers.entries()) {
+    const architecture = marker.groups.architecture
+    const segment = source.slice(
+      marker.index,
+      caseMarkers[index + 1]?.index ?? source.length,
+    )
+    const matches = [
+      ...segment.matchAll(/lychee_sha256='(?<checksum>[a-f0-9]{64})'/gu),
+    ]
+    if (matches.length === 1)
+      checksums[architecture] = matches[0].groups.checksum
+  }
+  if (
+    LYCHEE_ARCHITECTURES.some(({ architecture }) => !checksums[architecture])
+  ) {
+    throw new Error(
+      `${context} must declare both Lychee architecture checksums.`,
+    )
+  }
+  return checksums
+}
+
+export function readLycheeCurrent(root = process.cwd()) {
+  const dockerfile = fs.readFileSync(
+    path.join(root, '.devcontainer/Dockerfile'),
+    'utf8',
+  )
+  const bootstrap = fs.readFileSync(
+    path.join(root, 'scripts/azure-dev/templates/bootstrap-host.sh'),
+    'utf8',
+  )
+  const workflow = fs.readFileSync(
+    path.join(root, '.github/workflows/quality-checks.yml'),
+    'utf8',
+  )
+  const versions = [
+    singleLycheeVersion(
+      dockerfile,
+      /^ARG LYCHEE_VERSION=(?<version>v\d+\.\d+\.\d+)$/gmu,
+      '.devcontainer/Dockerfile',
+    ),
+    singleLycheeVersion(
+      bootstrap,
+      /^LYCHEE_VERSION="(?<version>v\d+\.\d+\.\d+)"$/gmu,
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    ),
+    singleLycheeVersion(
+      workflow,
+      /^\s*lycheeVersion:\s*(?<version>v\d+\.\d+\.\d+)$/gmu,
+      '.github/workflows/quality-checks.yml',
+    ),
+  ]
+  if (new Set(versions).size !== 1) {
+    throw new Error(
+      'Lychee versions are not aligned across synchronized surfaces.',
+    )
+  }
+
+  const dockerfileChecksums = lycheeChecksums(
+    dockerfile,
+    '.devcontainer/Dockerfile',
+  )
+  const bootstrapChecksums = lycheeChecksums(
+    bootstrap,
+    'scripts/azure-dev/templates/bootstrap-host.sh',
+  )
+  if (
+    LYCHEE_ARCHITECTURES.some(
+      ({ architecture }) =>
+        dockerfileChecksums[architecture] !== bootstrapChecksums[architecture],
+    )
+  ) {
+    throw new Error(
+      'Lychee architecture checksums are not aligned across synchronized installers.',
+    )
+  }
+  return {
+    checksums: dockerfileChecksums,
+    tool: 'lychee',
+    version: versions[0],
+  }
+}
+
+function lycheeReleaseState(release) {
+  const version = String(release?.tag_name ?? '').replace(/^lychee-/u, '')
+  if (
+    release?.draft === true ||
+    release?.prerelease === true ||
+    !parseLycheeVersion(version)
+  ) {
+    throw new Error('GitHub returned an unsupported latest Lychee release.')
+  }
+
+  const assets = Array.isArray(release.assets) ? release.assets : []
+  const checksums = {}
+  for (const { architecture, target } of LYCHEE_ARCHITECTURES) {
+    const assetName = `lychee-${target}.tar.gz`
+    const matches = assets.filter(asset => asset?.name === assetName)
+    if (matches.length !== 1) {
+      throw new Error(`Lychee release must contain one ${assetName} asset.`)
+    }
+    checksums[architecture] = normalizeDigest(
+      matches[0].digest,
+      `Lychee ${version} ${architecture} asset`,
+    ).slice('sha256:'.length)
+  }
+  return { checksums, tool: 'lychee', version }
+}
+
+export async function detectLycheeDrift(
+  unit,
+  root = process.cwd(),
+  dependencies,
+) {
+  const fetchLatestRelease =
+    dependencies?.fetchLatestLycheeRelease ?? fetchLatestLycheeRelease
+  const current = readLycheeCurrent(root)
+  const available = lycheeReleaseState(
+    await fetchLatestRelease(unit.repository),
+  )
+  const availableVersion = parseLycheeVersion(available.version)
+  const currentVersion = parseLycheeVersion(current.version)
+  if (
+    compareArrays(
+      [availableVersion.major, availableVersion.minor, availableVersion.patch],
+      [currentVersion.major, currentVersion.minor, currentVersion.patch],
+    ) < 0
+  ) {
+    throw new Error(
+      'Latest supported Lychee release is older than current state.',
+    )
+  }
+  const checksumDrift = LYCHEE_ARCHITECTURES.some(
+    ({ architecture }) =>
+      current.checksums[architecture] !== available.checksums[architecture],
+  )
+  return {
+    available,
+    current,
+    drift: current.version !== available.version || checksumDrift,
+    paths: unit.paths,
+    skill: unit.skill,
+    unit: unit.id,
+  }
+}
+
 function issueMarker(unit) {
   return `<!-- dependency-drift:${unit} -->`
 }
 
 export function formatState(state) {
+  if (state.tool === 'lychee') {
+    return [
+      `Lychee ${state.version}`,
+      ...LYCHEE_ARCHITECTURES.map(
+        ({ architecture }) =>
+          `${architecture} sha256:${state.checksums[architecture]}`,
+      ),
+    ].join('; ')
+  }
   if (state.version) return `npm ${state.version}`
   const parts = [`tag ${state.tag}`, `manifest ${state.manifestDigest}`]
   if (state.imageId) parts.push(`image ${state.imageId}`)
@@ -556,7 +781,7 @@ export function formatState(state) {
 }
 
 export function renderIssueBody(detection, detectedAt) {
-  return [
+  const lines = [
     issueMarker(detection.unit),
     '',
     `- Maintenance unit: \`${detection.unit}\``,
@@ -564,15 +789,31 @@ export function renderIssueBody(detection, detectedAt) {
     `- Available state: \`${formatState(detection.available)}\``,
     `- Skill: \`$${detection.skill}\``,
     `- Detected: \`${detectedAt.toISOString()}\``,
-    '',
-    '## Completion checklist',
-    '',
-    '- [ ] Bring the maintenance unit to the available state.',
-    '- [ ] Preserve compatibility and immutable identity policy.',
+  ]
+  if (detection.paths?.length) {
+    lines.push('', '## Synchronized surfaces', '')
+    lines.push(...detection.paths.map(relativePath => `- \`${relativePath}\``))
+  }
+  lines.push('', '## Completion checklist', '')
+  if (detection.current.tool === 'lychee') {
+    lines.push(
+      '- [ ] Update both installer versions and the workflow `lycheeVersion` together.',
+      '- [ ] Update AMD64 and ARM64 asset checksums in both installers.',
+      '- [ ] Keep the Lychee action on a compatible full commit SHA and release-tag comment.',
+      '- [ ] Keep the version and checksum alignment test relational.',
+    )
+  } else {
+    lines.push(
+      '- [ ] Bring the maintenance unit to the available state.',
+      '- [ ] Preserve compatibility and immutable identity policy.',
+    )
+  }
+  lines.push(
     '- [ ] Run all dynamically relevant verification.',
     '- [ ] Confirm a successful detector scan reports no drift.',
     '',
-  ].join('\n')
+  )
+  return lines.join('\n')
 }
 
 function issueTitle(unit) {
@@ -794,19 +1035,31 @@ function selectedUnits(registry, selection) {
 export async function detectUnits(units, root, dependencies = {}) {
   const detections = []
   for (const unit of units) {
-    detections.push(
-      unit.kind === 'npm-toolchain'
-        ? await (dependencies.detectNpmDrift ?? detectNpmDrift)(
-            unit,
-            root,
-            dependencies,
-          )
-        : await (dependencies.detectImageDrift ?? detectImageDrift)(
-            unit,
-            root,
-            dependencies,
-          ),
-    )
+    if (unit.kind === 'npm-toolchain') {
+      detections.push(
+        await (dependencies.detectNpmDrift ?? detectNpmDrift)(
+          unit,
+          root,
+          dependencies,
+        ),
+      )
+    } else if (unit.kind === 'release-toolchain') {
+      detections.push(
+        await (dependencies.detectLycheeDrift ?? detectLycheeDrift)(
+          unit,
+          root,
+          dependencies,
+        ),
+      )
+    } else {
+      detections.push(
+        await (dependencies.detectImageDrift ?? detectImageDrift)(
+          unit,
+          root,
+          dependencies,
+        ),
+      )
+    }
   }
   return detections
 }

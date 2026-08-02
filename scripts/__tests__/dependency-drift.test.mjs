@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   detectImageDrift,
+  detectLycheeDrift,
   detectNpmDrift,
   detectUnits,
   executeIssueActions,
@@ -12,12 +13,15 @@ import {
   listDetectorIssues,
   main,
   parseArgs,
+  parseDevcontainerBaseTag,
   parseKeycloakTag,
   parseKongTag,
+  parseLycheeVersion,
   parseNginxTag,
   parseNodeTag,
   parseSqlServerTag,
   planIssueActions,
+  readLycheeCurrent,
   readNodeCurrent,
   renderIssueBody,
   selectAvailableVersion,
@@ -38,6 +42,50 @@ function write(root, relativePath, contents) {
   const absolutePath = path.join(root, relativePath)
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
   fs.writeFileSync(absolutePath, contents)
+}
+
+function writeLycheeState(
+  root,
+  version,
+  checksums = { amd64: 'a'.repeat(64), arm64: 'b'.repeat(64) },
+) {
+  const installerChecksums = `
+    amd64) lychee_sha256='${checksums.amd64}' ;;
+    arm64) lychee_sha256='${checksums.arm64}' ;;
+  `
+  write(
+    root,
+    '.devcontainer/Dockerfile',
+    `ARG LYCHEE_VERSION=${version}\n${installerChecksums}`,
+  )
+  write(
+    root,
+    'scripts/azure-dev/templates/bootstrap-host.sh',
+    `LYCHEE_VERSION="${version}"\n${installerChecksums}`,
+  )
+  write(
+    root,
+    '.github/workflows/quality-checks.yml',
+    `with:\n  lycheeVersion: ${version}\n`,
+  )
+}
+
+function lycheeRelease(version, checksums = { amd64: 'c', arm64: 'd' }) {
+  return {
+    assets: [
+      {
+        digest: digest(checksums.amd64),
+        name: 'lychee-x86_64-unknown-linux-gnu.tar.gz',
+      },
+      {
+        digest: digest(checksums.arm64),
+        name: 'lychee-aarch64-unknown-linux-gnu.tar.gz',
+      },
+    ],
+    draft: false,
+    prerelease: false,
+    tag_name: `lychee-${version}`,
+  }
 }
 
 function drift(unit = 'keycloak') {
@@ -72,11 +120,19 @@ describe('dependency drift selection', () => {
       unit: 'npm',
     })
     expect(parseArgs(['--unit', 'node'], {})).toEqual({ unit: 'node' })
+    expect(parseArgs(['--unit', 'lychee'], {})).toEqual({ unit: 'lychee' })
     expect(() => parseArgs(['--unit'], {})).toThrow('Missing value')
     expect(() => parseArgs(['--unknown'], {})).toThrow('Unexpected argument')
   })
 
   it('parses supported image lanes', () => {
+    expect(parseDevcontainerBaseTag('2.0.5-ubuntu-24.04')).toMatchObject({
+      major: 2,
+      minor: 0,
+      patch: 5,
+    })
+    expect(parseDevcontainerBaseTag('ubuntu-24.04')).toBeNull()
+    expect(parseDevcontainerBaseTag('2-ubuntu-24.04')).toBeNull()
     expect(parseNodeTag('24-trixie-slim')).toMatchObject({ major: 24 })
     expect(parseNodeTag('25-trixie-slim')).toBeNull()
     expect(parseNginxTag('1.29.4-alpine')).toMatchObject({ minor: 29 })
@@ -86,6 +142,12 @@ describe('dependency drift selection', () => {
       buildDate: 20260708,
       revision: 1,
     })
+    expect(parseLycheeVersion('v1.2.3')).toMatchObject({
+      major: 1,
+      minor: 2,
+      patch: 3,
+    })
+    expect(parseLycheeVersion('latest')).toBeNull()
   })
 
   it('selects the newest supported current-or-newer version', () => {
@@ -117,6 +179,47 @@ describe('dependency drift selection', () => {
 })
 
 describe('drift detection', () => {
+  it('detects same-tag manifest drift for the devcontainer base image', async () => {
+    const root = temporaryDirectory()
+    const config = IMAGE_CONFIGS['devcontainer-base']
+    write(
+      root,
+      config.lockPath,
+      JSON.stringify({
+        image: config.image,
+        imageId: digest('a'),
+        manifestDigest: digest('b'),
+        tag: '2.0.5-ubuntu-24.04',
+      }),
+    )
+
+    const result = await detectImageDrift(
+      {
+        detector: 'devcontainer-base',
+        id: 'devcontainer-base',
+        skill: 'resolve-dependency-drift',
+      },
+      root,
+      {
+        listTags: async () => ['2.0.5-ubuntu-24.04'],
+        resolveImageIdentity: async () => ({
+          imageId: digest('c'),
+          manifestDigest: digest('d'),
+        }),
+      },
+    )
+
+    expect(result).toMatchObject({
+      available: {
+        imageId: digest('c'),
+        manifestDigest: digest('d'),
+        tag: '2.0.5-ubuntu-24.04',
+      },
+      drift: true,
+      unit: 'devcontainer-base',
+    })
+  })
+
   it('requires every production Node Dockerfile to use one identity', () => {
     const root = temporaryDirectory()
     for (const dockerfilePath of IMAGE_CONFIGS.node.paths) {
@@ -300,8 +403,108 @@ describe('drift detection', () => {
     })
   })
 
+  it('detects a supported Lychee release with both published asset digests', async () => {
+    const root = temporaryDirectory()
+    writeLycheeState(root, 'v1.2.3')
+    const paths = [
+      '.devcontainer/Dockerfile',
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+      '.github/workflows/quality-checks.yml',
+    ]
+
+    await expect(
+      detectLycheeDrift(
+        {
+          id: 'lychee-toolchain',
+          paths,
+          repository: 'lycheeverse/lychee',
+          skill: 'resolve-dependency-drift',
+        },
+        root,
+        { fetchLatestLycheeRelease: async () => lycheeRelease('v1.2.4') },
+      ),
+    ).resolves.toMatchObject({
+      available: {
+        checksums: { amd64: 'c'.repeat(64), arm64: 'd'.repeat(64) },
+        version: 'v1.2.4',
+      },
+      current: { version: 'v1.2.3' },
+      drift: true,
+      paths,
+    })
+  })
+
+  it('detects same-version Lychee asset digest drift', async () => {
+    const root = temporaryDirectory()
+    writeLycheeState(root, 'v1.2.3')
+
+    await expect(
+      detectLycheeDrift(
+        {
+          id: 'lychee-toolchain',
+          repository: 'lycheeverse/lychee',
+          skill: 'resolve-dependency-drift',
+        },
+        root,
+        { fetchLatestLycheeRelease: async () => lycheeRelease('v1.2.3') },
+      ),
+    ).resolves.toMatchObject({ drift: true })
+  })
+
+  it('reports no Lychee drift when version and both digests match', async () => {
+    const root = temporaryDirectory()
+    writeLycheeState(root, 'v1.2.3')
+
+    await expect(
+      detectLycheeDrift(
+        {
+          id: 'lychee-toolchain',
+          repository: 'lycheeverse/lychee',
+          skill: 'resolve-dependency-drift',
+        },
+        root,
+        {
+          fetchLatestLycheeRelease: async () =>
+            lycheeRelease('v1.2.3', { amd64: 'a', arm64: 'b' }),
+        },
+      ),
+    ).resolves.toMatchObject({ drift: false })
+  })
+
+  it('fails closed when a Lychee asset has no published digest', async () => {
+    const root = temporaryDirectory()
+    writeLycheeState(root, 'v1.2.3')
+    const release = lycheeRelease('v1.2.4')
+    delete release.assets[1].digest
+
+    await expect(
+      detectLycheeDrift(
+        {
+          id: 'lychee-toolchain',
+          repository: 'lycheeverse/lychee',
+          skill: 'resolve-dependency-drift',
+        },
+        root,
+        { fetchLatestLycheeRelease: async () => release },
+      ),
+    ).rejects.toThrow('did not resolve to a sha256 digest')
+  })
+
+  it('requires synchronized Lychee versions and checksums', () => {
+    const root = temporaryDirectory()
+    writeLycheeState(root, 'v1.2.3')
+    const workflowPath = path.join(root, '.github/workflows/quality-checks.yml')
+    fs.writeFileSync(
+      workflowPath,
+      fs.readFileSync(workflowPath, 'utf8').replace('v1.2.3', 'v1.2.4'),
+    )
+
+    expect(() => readLycheeCurrent(root)).toThrow('versions are not aligned')
+  })
+
   it('stops detection before later units after a failure', async () => {
     const detectImage = vi.fn()
+    const detectLychee = vi.fn()
     const detectNpm = vi.fn(async () => {
       throw new Error('registry unavailable')
     })
@@ -311,11 +514,13 @@ describe('drift detection', () => {
         '/workspace',
         {
           detectImageDrift: detectImage,
+          detectLycheeDrift: detectLychee,
           detectNpmDrift: detectNpm,
         },
       ),
     ).rejects.toThrow('registry unavailable')
     expect(detectImage).not.toHaveBeenCalled()
+    expect(detectLychee).not.toHaveBeenCalled()
   })
 })
 
@@ -341,6 +546,40 @@ describe('issue contract', () => {
         tag: '1.2.3',
       }),
     ).toContain(`image ${digest('a')}`)
+    expect(
+      formatState({
+        checksums: { amd64: 'a'.repeat(64), arm64: 'b'.repeat(64) },
+        tool: 'lychee',
+        version: 'v1.2.3',
+      }),
+    ).toContain(`arm64 sha256:${'b'.repeat(64)}`)
+  })
+
+  it('renders an actionable Lychee synchronization checklist', () => {
+    const body = renderIssueBody(
+      {
+        available: {
+          checksums: { amd64: 'c'.repeat(64), arm64: 'd'.repeat(64) },
+          tool: 'lychee',
+          version: 'v1.2.4',
+        },
+        current: {
+          checksums: { amd64: 'a'.repeat(64), arm64: 'b'.repeat(64) },
+          tool: 'lychee',
+          version: 'v1.2.3',
+        },
+        paths: ['.devcontainer/Dockerfile'],
+        skill: 'resolve-dependency-drift',
+        unit: 'lychee-toolchain',
+      },
+      now,
+    )
+
+    expect(body).toContain('## Synchronized surfaces')
+    expect(body).toContain('`.devcontainer/Dockerfile`')
+    expect(body).toContain('both installer versions')
+    expect(body).toContain('AMD64 and ARM64 asset checksums')
+    expect(body).toContain('full commit SHA')
   })
 
   it('creates one issue when no marker exists', () => {

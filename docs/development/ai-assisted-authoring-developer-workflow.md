@@ -26,6 +26,10 @@ credentials are present.
 4. Restart the dev server. The AI modal shows available models after the app can
    read the configured key.
 
+Devcontainer profiles do not forward OpenRouter keys from the workstation.
+Keep them in `.env.development.local` so they are available to the application
+without becoming part of the general VS Code remote environment.
+
 AI-assisted requirement generation is enabled by default after migrations. An
 administrator can turn generation off in Admin Center under `AI`. That setting
 disables the requirements-library action, the generator modal, the REST

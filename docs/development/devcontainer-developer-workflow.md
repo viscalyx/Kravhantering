@@ -43,11 +43,29 @@ After adding or rotating either variable, rebuild or reopen the devcontainer so
 the VS Code remote extension host and its child processes receive the current
 values.
 
+OpenRouter keys are not forwarded through `remoteEnv`. Put
+`OPENROUTER_API_KEY` and optional `OPENROUTER_MGMT_API_KEY` in the ignored
+workspace file `.env.development.local`; the Next.js process reads them through
+the normal local application environment workflow.
+
 ## Codex CLI
 
+The devcontainer base image uses the exact semantic version tag recorded in
+`containers/devcontainer-base/image.lock.json`. Its digest remains verification
+evidence in the lock and is intentionally not appended to the Dockerfile
+reference. The scheduled dependency-drift flow reports both newer supported
+tags and digest changes under the current tag.
+
+The locally built HSA support images share their Dockerfiles with release
+builds. Their Node base references therefore retain the same tag and digest in
+development and release builds.
+
 Both devcontainer profiles install the Codex CLI system-wide from OpenAI's
-standalone installer. Rebuild the devcontainer after changing branches or
-pulling this setup, then verify the installation inside the container:
+current standalone release. The build resolves the release metadata, requires
+the upstream SHA-256 digest for `install.sh`, and verifies the downloaded file
+before execution. A missing or mismatched digest fails the devcontainer build.
+Rebuild the devcontainer after changing branches or pulling this setup, then
+verify the installation inside the container:
 
 ```bash
 codex --version
@@ -60,6 +78,12 @@ configuration, authentication, sessions, skills, and plugins under
 permission settings required inside the devcontainer. Shared project defaults,
 including the model, MCP servers, status line, and terminal title, live in
 `.codex/config.toml` and apply in every trusted development environment.
+
+The image also resolves the current dotenv-linter release and verifies the
+matching GitHub release-asset digest before installing it. Neither installer
+stores a routine tool version in the repository. CI builds the complete
+observable `development` image stage and runs both `codex --version` and
+`dotenv-linter --version` whenever the Dockerfile or either installer changes.
 
 ## Local HTTPS Development
 

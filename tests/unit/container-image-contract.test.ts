@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { parse as parseYaml } from 'yaml'
+import { parseJsonc } from './test-helpers'
 
 function readWorkspaceFile(relativePath: string) {
   return readFileSync(path.join(process.cwd(), relativePath), 'utf8')
@@ -31,12 +33,31 @@ function listPublicPngFiles() {
   return walk(publicRoot).sort()
 }
 
-function parseJsoncWithLineComments(content: string) {
-  return JSON.parse(
+function dockerignorePatterns(content: string) {
+  return new Set(
     content
-      .split('\n')
-      .filter(line => !line.trimStart().startsWith('//'))
-      .join('\n'),
+      .split(/\r?\n/u)
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && !line.startsWith('#')),
+  )
+}
+
+function dockerfileInstructions(content: string) {
+  return content
+    .replace(/\\\r?\n\s*/gu, ' ')
+    .split(/\r?\n/u)
+    .flatMap(line => {
+      const match = line.match(/^([A-Z]+)\s+(.+)$/u)
+      return match ? [{ keyword: match[1], value: match[2] }] : []
+    })
+}
+
+function workflowRunCommands(relativePath: string) {
+  const workflow = parseYaml(readWorkspaceFile(relativePath)) as {
+    jobs?: Record<string, { steps?: Array<{ run?: string }> }>
+  }
+  return Object.values(workflow.jobs ?? {}).flatMap(job =>
+    (job.steps ?? []).flatMap(step => (step.run ? [step.run] : [])),
   )
 }
 
@@ -78,6 +99,24 @@ describe('container image contract', () => {
         ),
       ]),
     )
+  })
+
+  it('keeps shared development and release Node bases aligned', () => {
+    const dockerfiles = [
+      'containers/app/Dockerfile',
+      'containers/hsa-directory-mock/Dockerfile',
+      'containers/hsa-person-lookup-adapter/Dockerfile',
+    ]
+    const references = dockerfiles.flatMap(relativePath =>
+      [
+        ...readWorkspaceFile(relativePath).matchAll(
+          /^FROM (?<reference>node:[^@\s]+@sha256:[a-f0-9]{64})(?:\s+AS\s+\S+)?$/gmu,
+        ),
+      ].map(match => match.groups?.reference),
+    )
+
+    expect(references).toHaveLength(9)
+    expect(new Set(references).size).toBe(1)
   })
 
   it('removes npm from every final runtime image', () => {
@@ -206,18 +245,76 @@ describe('container image contract', () => {
     expect(dockerignore).not.toContain('typeorm/ai-safety-seed-data.mjs')
   })
 
+  it('excludes developer credentials and SSH state from production build contexts', () => {
+    for (const relativePath of [
+      'containers/app/Dockerfile.dockerignore',
+      'containers/hsa-directory-mock/.dockerignore',
+      'containers/hsa-person-lookup-adapter/.dockerignore',
+    ]) {
+      const patterns = dockerignorePatterns(readWorkspaceFile(relativePath))
+
+      expect([...patterns]).toEqual(
+        expect.arrayContaining([
+          '.auth/',
+          '.codex/',
+          '.ssh/',
+          '.env',
+          '.env.*',
+        ]),
+      )
+    }
+
+    const sensitiveEnvironmentNames = new Set([
+      'CODEX_HOME',
+      'COPILOT_GITHUB_TOKEN',
+      'GH_TOKEN',
+      'SSH_AUTH_SOCK',
+    ])
+    for (const relativePath of [
+      'containers/app/Dockerfile',
+      'containers/hsa-directory-mock/Dockerfile',
+      'containers/hsa-person-lookup-adapter/Dockerfile',
+    ]) {
+      const declaredNames = dockerfileInstructions(
+        readWorkspaceFile(relativePath),
+      )
+        .filter(instruction => ['ARG', 'ENV'].includes(instruction.keyword))
+        .map(instruction => instruction.value.split(/[=\s]/u, 1)[0])
+      expect(
+        declaredNames.filter(name => sensitiveEnvironmentNames.has(name)),
+      ).toEqual([])
+    }
+
+    const packageJson = JSON.parse(readWorkspaceFile('package.json')) as {
+      scripts: Record<string, string>
+    }
+    const productionBuildCommands = [
+      ...Object.values(packageJson.scripts),
+      ...workflowRunCommands('.github/workflows/container-pr-smoke.yml'),
+      ...workflowRunCommands('.github/workflows/container-release.yml'),
+    ].filter(command => command.includes('docker buildx build'))
+    expect(productionBuildCommands.length).toBeGreaterThan(0)
+    for (const command of productionBuildCommands) {
+      expect(command).not.toMatch(/--(?:secret|ssh)(?:[=\s]|$)/u)
+    }
+  })
+
   it('declares Docker outside-of-Docker with Buildx in both devcontainers', () => {
     for (const relativePath of [
       '.devcontainer/devcontainer.json',
       '.devcontainer/elevated/devcontainer.json',
     ]) {
-      const devcontainer = parseJsoncWithLineComments(
-        readWorkspaceFile(relativePath),
+      const devcontainer = parseJsonc(readWorkspaceFile(relativePath)) as {
+        features: Record<string, Record<string, unknown>>
+      }
+      const dockerFeatureKeys = Object.keys(devcontainer.features).filter(key =>
+        key.startsWith(
+          'ghcr.io/devcontainers/features/docker-outside-of-docker:',
+        ),
       )
-      const dockerFeature =
-        devcontainer.features[
-          'ghcr.io/devcontainers/features/docker-outside-of-docker:1'
-        ]
+
+      expect(dockerFeatureKeys).toHaveLength(1)
+      const dockerFeature = devcontainer.features[dockerFeatureKeys[0]]
 
       expect(dockerFeature).toMatchObject({
         dockerDashComposeVersion: 'v2',
@@ -227,25 +324,6 @@ describe('container image contract', () => {
         mobyBuildxVersion: 'latest',
         version: 'latest',
       })
-    }
-  })
-
-  it('installs Codex CLI system-wide in both devcontainer profiles', () => {
-    const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
-
-    expect(dockerfile).toContain('https://chatgpt.com/codex/install.sh')
-    expect(dockerfile).toContain('CODEX_HOME=/usr/local/lib/codex')
-    expect(dockerfile).toContain('CODEX_INSTALL_DIR=/usr/local/bin')
-    expect(dockerfile).toContain('CODEX_NON_INTERACTIVE=1')
-    expect(dockerfile).toContain('codex --version')
-
-    for (const relativePath of [
-      '.devcontainer/docker-compose.yml',
-      '.devcontainer/elevated/docker-compose.yml',
-    ]) {
-      expect(readWorkspaceFile(relativePath)).toContain(
-        'dockerfile: .devcontainer/Dockerfile',
-      )
     }
   })
 

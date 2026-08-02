@@ -35,6 +35,20 @@
       "skill": "resolve-dependency-drift"
     },
     {
+      "id": "lychee-toolchain",
+      "kind": "release-toolchain",
+      "lane": "issue",
+      "detector": "lychee",
+      "skill": "resolve-dependency-drift",
+      "repository": "lycheeverse/lychee",
+      "paths": [
+        ".devcontainer/Dockerfile",
+        "scripts/azure-dev/templates/bootstrap-host.sh",
+        ".github/workflows/quality-checks.yml",
+        "tests/unit/github-actions-workflow-security.test.ts"
+      ]
+    },
+    {
       "id": "github-actions",
       "kind": "github-actions",
       "lane": "dependabot",
@@ -50,11 +64,12 @@
     },
     {
       "id": "devcontainer-base",
-      "kind": "dockerfile-image",
-      "lane": "dependabot",
-      "ecosystem": "docker",
-      "directory": "/.devcontainer",
+      "kind": "image-lock",
+      "lane": "issue",
+      "detector": "devcontainer-base",
+      "skill": "resolve-dependency-drift",
       "image": "mcr.microsoft.com/devcontainers/base",
+      "lockPath": "containers/devcontainer-base/image.lock.json",
       "paths": [".devcontainer/Dockerfile"]
     },
     {
@@ -104,8 +119,7 @@
       "detector": "kong",
       "skill": "resolve-dependency-drift",
       "image": "docker.io/kong/kong-gateway",
-      "lockPath": "containers/kong/image.lock.json",
-      "runtimeReferencePolicy": "lock-tag-and-manifest"
+      "lockPath": "containers/kong/image.lock.json"
     }
   ]
 }

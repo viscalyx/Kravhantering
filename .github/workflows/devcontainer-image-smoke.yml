@@ -1,0 +1,49 @@
+name: Devcontainer Image Smoke
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.devcontainer/Dockerfile'
+      - 'scripts/azure-dev/templates/install-codex.sh'
+      - 'scripts/azure-dev/templates/install-dotenv-linter.sh'
+      - '.github/workflows/devcontainer-image-smoke.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.devcontainer/Dockerfile'
+      - 'scripts/azure-dev/templates/install-codex.sh'
+      - 'scripts/azure-dev/templates/install-dotenv-linter.sh'
+      - '.github/workflows/devcontainer-image-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  development-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+
+      - name: Build observable development stage
+        run: >-
+          docker buildx build
+          --file .devcontainer/Dockerfile
+          --target development
+          --tag localhost/kravhantering/devcontainer-tools:smoke
+          --load
+          .
+
+      - name: Observe installed development tools
+        run: |
+          docker run --rm \
+            localhost/kravhantering/devcontainer-tools:smoke \
+            codex --version
+          docker run --rm \
+            localhost/kravhantering/devcontainer-tools:smoke \
+            dotenv-linter --version

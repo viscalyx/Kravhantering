@@ -1,0 +1,9 @@
+{
+  "name": "devcontainer-base",
+  "role": "development-base",
+  "image": "mcr.microsoft.com/devcontainers/base",
+  "tag": "2.0.5-ubuntu-24.04",
+  "manifestDigest": "sha256:3612b800eaae8513e7dca54f21d2e4eda48eda57426f3746a78677f342ac7ee9",
+  "imageId": "sha256:52225fb6c367b6637a2fb76646b57c2e2c5df6416b7338803bb7ee96f14e516c",
+  "source": "https://mcr.microsoft.com/en-us/artifact/mar/devcontainers/base/about"
+}

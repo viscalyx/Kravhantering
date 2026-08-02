@@ -11,6 +11,8 @@ on:
         options:
           - all
           - npm
+          - lychee
+          - devcontainer-base
           - node
           - nginx
           - sqlserver
