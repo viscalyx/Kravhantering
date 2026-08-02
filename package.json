@@ -88,6 +88,7 @@
     "test:hsa-mock": "cross-env-shell NODE_ENV=test \"npm --prefix containers/hsa-directory-mock ci && npm --prefix containers/hsa-directory-mock test\"",
     "test:hsa-adapter": "cross-env-shell NODE_ENV=test \"npm --prefix containers/hsa-person-lookup-adapter ci && npm --prefix containers/hsa-person-lookup-adapter test\"",
     "test:hsa-support": "npm run test:hsa-mock && npm run test:hsa-adapter",
+    "test:powershell:integration": "node scripts/test-powershell-integration.mjs",
     "test:watch": "cross-env NODE_ENV=test vitest",
     "test:coverage": "cross-env NODE_ENV=test vitest run --coverage",
     "test:ui": "cross-env NODE_ENV=test vitest --ui --api.host=0.0.0.0 --api.port=51204",
@@ -201,6 +202,7 @@
     "dotenv-cli": "^11.0.0",
     "fast-check": "^4.9.0",
     "jsdom": "^30.0.0",
+    "jsonc-parser": "^3.3.1",
     "markdownlint-cli2": "^0.23.2",
     "oidc-provider": "^9.11.0",
     "pyright": "^1.1.411",
@@ -209,7 +211,8 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "unpdf": "^1.8.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "yaml": "^2.9.0"
   },
   "//purge:install": [
     "Two-phase install: first install rebuilds node_modules with a (possibly corrupt) lockfile,",

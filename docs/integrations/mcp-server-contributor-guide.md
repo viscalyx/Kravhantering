@@ -36,7 +36,7 @@ For admin-managed default column settings, see
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.
 - `lib/mcp/server.ts`
-  Registers the sixteen tools, the JSON resource, and the HTML UI resource.
+  Registers the seventeen tools, the JSON resource, and the HTML UI resource.
 - `lib/dal/ui-settings.ts`
   Loads default column settings.
 - `messages/en.json` and `messages/sv.json`
@@ -621,7 +621,7 @@ Useful commands:
 Manual verification should still include:
 
 - connecting an MCP client to `/api/mcp` with a non-production Bearer token
-- checking that all fourteen tools appear
+- checking that all seventeen tools appear
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
   support

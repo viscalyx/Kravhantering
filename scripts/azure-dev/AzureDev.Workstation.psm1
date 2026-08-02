@@ -139,8 +139,68 @@ function Set-AzureDevPrivatePermissions {
   )
 
   if ($IsWindows) {
-    # Windows retains the current user's inherited ACL. Explicit ACL hardening
-    # is intentionally not implemented in this cross-platform workflow.
+    if (-not $Directory) {
+      return
+    }
+    if (-not $PSCmdlet.ShouldProcess($Path, 'Apply user-only Windows ACL')) {
+      return
+    }
+    try {
+      $currentSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+      if ($null -eq $currentSid) {
+        throw 'The current Windows identity has no security identifier.'
+      }
+      $acl = [System.Security.AccessControl.DirectorySecurity]::new()
+      $acl.SetAccessRuleProtection($true, $false)
+      $inheritance =
+        [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
+        [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+      $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
+        $currentSid,
+        [System.Security.AccessControl.FileSystemRights]::FullControl,
+        $inheritance,
+        [System.Security.AccessControl.PropagationFlags]::None,
+        [System.Security.AccessControl.AccessControlType]::Allow
+      )
+      $null = $acl.AddAccessRule($rule)
+      Set-Acl -LiteralPath $Path -AclObject $acl -ErrorAction Stop
+
+      $verifiedAcl = Get-Acl -LiteralPath $Path -ErrorAction Stop
+      $verifiedRules = @(
+        $verifiedAcl.GetAccessRules(
+          $true,
+          $true,
+          [System.Security.Principal.SecurityIdentifier]
+        )
+      )
+      $fullControl = [System.Security.AccessControl.FileSystemRights]::FullControl
+      $verifiedOwner = $verifiedAcl.GetOwner(
+        [System.Security.Principal.SecurityIdentifier]
+      )
+      if (
+        -not $verifiedAcl.AreAccessRulesProtected -or
+        $verifiedRules.Count -ne 1 -or
+        $verifiedOwner.Value -cne $currentSid.Value -or
+        $verifiedRules[0].IsInherited -or
+        $verifiedRules[0].IdentityReference.Value -cne $currentSid.Value -or
+        $verifiedRules[0].AccessControlType -ne
+          [System.Security.AccessControl.AccessControlType]::Allow -or
+        ($verifiedRules[0].FileSystemRights -band $fullControl) -ne
+          $fullControl -or
+        ($verifiedRules[0].InheritanceFlags -band $inheritance) -ne
+          $inheritance
+      ) {
+        throw 'The resulting ACL is not restricted to the current user.'
+      }
+    } catch {
+      $aclError =
+        "Could not apply and validate a user-only Windows ACL for ${Path}: " +
+        $_.Exception.Message
+      throw [System.InvalidOperationException]::new(
+        $aclError,
+        $_.Exception
+      )
+    }
     return
   }
   $mode = if ($Directory) { '700' } else { '600' }

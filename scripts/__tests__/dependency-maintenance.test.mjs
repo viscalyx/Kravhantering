@@ -7,7 +7,7 @@ import {
   discoverImageLocks,
   discoverPackageProjects,
   discoverRuntimeImageInputs,
-  floatingNpmInstallPaths,
+  floatingNpmToolchainInstallPaths,
   normalizeImageRepository,
   parseDependabotEntries,
   unreviewedInstallScripts,
@@ -49,6 +49,9 @@ function expectedNpmVersion(root) {
 
 function fixture() {
   const root = temporaryDirectory()
+  const registry = JSON.parse(
+    fs.readFileSync('.github/dependency-maintenance.json', 'utf8'),
+  )
   const packageProjects = discoverPackageProjects(process.cwd())
   const dockerInputs = discoverDockerfileInputs(process.cwd())
   const locks = discoverImageLocks(process.cwd())
@@ -59,6 +62,7 @@ function fixture() {
     '.devcontainer/devcontainer.json',
     '.devcontainer/elevated/devcontainer.json',
     'scripts/azure-dev/templates/bootstrap-host.sh',
+    ...registry.units.flatMap(unit => unit.paths ?? []),
     ...packageProjects.flatMap(project =>
       project === '.'
         ? ['package.json', 'package-lock.json', '.npmrc']
@@ -113,14 +117,20 @@ describe('dependency maintenance discovery', () => {
         {
           image: 'mcr.microsoft.com/devcontainers/base',
           path: '.devcontainer/Dockerfile',
+          reference: expect.stringMatching(
+            /^mcr\.microsoft\.com\/devcontainers\/base:[^@\s]+$/u,
+          ),
         },
         {
           image: 'docker.io/library/node',
           path: 'containers/app/Dockerfile',
+          reference: expect.stringMatching(
+            /^node:(?!latest@)[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}@sha256:[a-f0-9]{64}$/u,
+          ),
         },
       ]),
     )
-    expect(discoverImageLocks(process.cwd())).toHaveLength(4)
+    expect(discoverImageLocks(process.cwd())).toHaveLength(5)
     expect(discoverRuntimeImageInputs(process.cwd())).toEqual(
       expect.arrayContaining([
         {
@@ -162,6 +172,7 @@ describe('dependency maintenance discovery', () => {
       {
         image: 'docker.io/library/node',
         path: 'containers/example/Dockerfile',
+        reference: 'node:24',
       },
     ])
     expect(discoverRuntimeImageInputs(root)).toEqual([])
@@ -187,6 +198,7 @@ describe('dependency maintenance discovery', () => {
       {
         image: 'docker.io/library/node',
         path: 'containers/example/Dockerfile',
+        reference: 'node:24',
       },
       {
         image: null,
@@ -239,14 +251,14 @@ describe('dependency maintenance policy', () => {
     expect(validateDependencyMaintenance(fixture())).toEqual([])
   })
 
-  it('requires synchronized runtime references to match the image lock', () => {
+  it('requires development runtime tags to match the image lock without a digest', () => {
     const root = fixture()
     const quadletPath =
       'scripts/azure-dev/templates/quadlet/krav-kong.container'
     const lock = JSON.parse(
       fs.readFileSync(path.join(root, 'containers/kong/image.lock.json')),
     )
-    const expectedReference = `${lock.image}:${lock.tag}@${lock.manifestDigest}`
+    const expectedReference = `${lock.image}:${lock.tag}`
     write(
       root,
       quadletPath,
@@ -256,7 +268,192 @@ describe('dependency maintenance policy', () => {
     )
 
     expect(validateDependencyMaintenance(root)).toContain(
-      `Runtime image "${quadletPath}" must pin "${expectedReference}".`,
+      `Development runtime image "${quadletPath}" must use tag-only reference "${expectedReference}".`,
+    )
+  })
+
+  it('requires the development base image to match its lock and use an exact version tag', () => {
+    const root = fixture()
+    const dockerfilePath = '.devcontainer/Dockerfile'
+    const lockPath = 'containers/devcontainer-base/image.lock.json'
+    const lock = JSON.parse(fs.readFileSync(path.join(root, lockPath)))
+    const expectedReference = `${lock.image}:${lock.tag}`
+
+    write(
+      root,
+      dockerfilePath,
+      fs
+        .readFileSync(path.join(root, dockerfilePath), 'utf8')
+        .replace(expectedReference, `${lock.image}:2-ubuntu-24.04`),
+    )
+    lock.tag = '2-ubuntu-24.04'
+    write(root, lockPath, `${JSON.stringify(lock, null, 2)}\n`)
+
+    const errors = validateDependencyMaintenance(root)
+    expect(errors).toContain(
+      `Development base image lock "${lockPath}" must use an exact semantic version tag for Ubuntu 24.04.`,
+    )
+  })
+
+  it('requires the development base Dockerfile reference to match its lock', () => {
+    const root = fixture()
+    const dockerfilePath = '.devcontainer/Dockerfile'
+    const lock = JSON.parse(
+      fs.readFileSync(
+        path.join(root, 'containers/devcontainer-base/image.lock.json'),
+      ),
+    )
+    const expectedReference = `${lock.image}:${lock.tag}`
+
+    write(
+      root,
+      dockerfilePath,
+      fs
+        .readFileSync(path.join(root, dockerfilePath), 'utf8')
+        .replace(expectedReference, `${lock.image}:9.9.9-ubuntu-24.04`),
+    )
+
+    expect(validateDependencyMaintenance(root)).toContain(
+      `Development base image "${dockerfilePath}" must use tag-only reference "${expectedReference}".`,
+    )
+  })
+
+  it('rejects latest as a canonical service image tag', () => {
+    const root = fixture()
+    const lockPath = 'containers/kong/image.lock.json'
+    const lock = JSON.parse(fs.readFileSync(path.join(root, lockPath)))
+    const previousReference = `${lock.image}:${lock.tag}`
+    lock.tag = 'latest'
+    write(root, lockPath, `${JSON.stringify(lock, null, 2)}\n`)
+    for (const relativePath of [
+      '.devcontainer/docker-compose.yml',
+      '.devcontainer/elevated/docker-compose.yml',
+      'scripts/azure-dev/templates/quadlet/krav-kong.container',
+    ]) {
+      write(
+        root,
+        relativePath,
+        fs
+          .readFileSync(path.join(root, relativePath), 'utf8')
+          .replace(previousReference, `${lock.image}:latest`),
+      )
+    }
+
+    expect(validateDependencyMaintenance(root)).toContain(
+      `Development image lock "${lockPath}" must use a valid explicit non-latest tag.`,
+    )
+  })
+
+  it('rejects digest syntax disguised as a development image-lock tag', () => {
+    const root = fixture()
+    const lockPath = 'containers/kong/image.lock.json'
+    const lock = JSON.parse(fs.readFileSync(path.join(root, lockPath)))
+    const previousReference = `${lock.image}:${lock.tag}`
+    lock.tag = `named@${digest('a')}`
+    write(root, lockPath, `${JSON.stringify(lock, null, 2)}\n`)
+    for (const relativePath of [
+      '.devcontainer/docker-compose.yml',
+      '.devcontainer/elevated/docker-compose.yml',
+      'scripts/azure-dev/templates/quadlet/krav-kong.container',
+    ]) {
+      write(
+        root,
+        relativePath,
+        fs
+          .readFileSync(path.join(root, relativePath), 'utf8')
+          .replace(previousReference, `${lock.image}:${lock.tag}`),
+      )
+    }
+
+    expect(validateDependencyMaintenance(root)).toContain(
+      `Development image lock "${lockPath}" must use a valid explicit non-latest tag.`,
+    )
+  })
+
+  it.each([
+    ['latest', () => 'mcr.microsoft.com/devcontainers/base:latest'],
+    ['an implicit latest tag', () => 'mcr.microsoft.com/devcontainers/base'],
+    ['a digest', currentReference => `${currentReference}@${digest('a')}`],
+  ])(
+    'rejects %s for the development base image',
+    (_description, invalidReference) => {
+      const root = fixture()
+      const dockerfilePath = '.devcontainer/Dockerfile'
+      const currentReference = discoverDockerfileInputs(root).find(
+        input =>
+          input.path === dockerfilePath &&
+          input.image === 'mcr.microsoft.com/devcontainers/base',
+      )?.reference
+
+      expect(currentReference).toBeTruthy()
+      write(
+        root,
+        dockerfilePath,
+        fs
+          .readFileSync(path.join(root, dockerfilePath), 'utf8')
+          .replace(currentReference, invalidReference(currentReference)),
+      )
+
+      expect(validateDependencyMaintenance(root)).toContain(
+        `Development base image "${dockerfilePath}" must use an explicit non-latest tag without a digest.`,
+      )
+    },
+  )
+
+  it('accepts the exact development base tag recorded by its image lock', () => {
+    const root = fixture()
+    const dockerfilePath = '.devcontainer/Dockerfile'
+    const currentReference = discoverDockerfileInputs(root).find(
+      input =>
+        input.path === dockerfilePath &&
+        input.image === 'mcr.microsoft.com/devcontainers/base',
+    )?.reference
+
+    expect(currentReference).toBeTruthy()
+    expect(validateDependencyMaintenance(root)).toEqual([])
+  })
+
+  it('does not apply the development lock policy to production-only locks', () => {
+    const root = fixture()
+    const lockPath = 'containers/nginx/image.lock.json'
+    const lock = JSON.parse(fs.readFileSync(path.join(root, lockPath)))
+    lock.tag = 'latest'
+    write(root, lockPath, `${JSON.stringify(lock, null, 2)}\n`)
+
+    expect(validateDependencyMaintenance(root)).toEqual([])
+  })
+
+  it('does not apply development tag policy to production runtime references', () => {
+    const root = fixture()
+    const productionPath = 'containers/production/compose.yml'
+    const lock = JSON.parse(
+      fs.readFileSync(path.join(root, 'containers/kong/image.lock.json')),
+    )
+    write(
+      root,
+      productionPath,
+      `services:\n  kong:\n    image: ${lock.image}:${lock.tag}@${lock.manifestDigest}\n`,
+    )
+
+    expect(validateDependencyMaintenance(root)).toEqual([])
+  })
+
+  it.each([
+    'curl -fsSL https://example.test/install.sh | sh',
+    'sh -c "$(curl -fsSL https://example.test/install.sh)"',
+    'curl -fsSL https://example.test/install.sh | sudo bash',
+    'eval "$(wget -qO- https://example.test/install.sh)"',
+  ])('rejects direct execution of a network response: %s', unsafeInstaller => {
+    const root = fixture()
+    const bootstrapPath = 'scripts/azure-dev/templates/bootstrap-host.sh'
+    write(
+      root,
+      bootstrapPath,
+      `${fs.readFileSync(path.join(root, bootstrapPath), 'utf8')}\n${unsafeInstaller}\n`,
+    )
+
+    expect(validateDependencyMaintenance(root)).toContain(
+      `${bootstrapPath} must not execute network responses directly as shell code.`,
     )
   })
 
@@ -347,6 +544,11 @@ FROM \${BASE_IMAGE}
     nodeUnit.detector = 'future-node'
     nodeUnit.runtimeReferencePolicy = 'floating'
     nodeUnit.skill = 'future-skill'
+    const lycheeUnit = registry.units.find(
+      unit => unit.id === 'lychee-toolchain',
+    )
+    delete lycheeUnit.repository
+    lycheeUnit.paths = []
     registry.units.push(
       { ...registry.units[0] },
       {
@@ -381,7 +583,8 @@ FROM \${BASE_IMAGE}
         'Maintenance unit "missing-docker" has unsupported lane.',
         'Issue unit "missing-lock" must name a remediation skill.',
         'Issue unit "production-node" has unsupported detector "future-node".',
-        'Maintenance unit "production-node" has unsupported runtime reference policy.',
+        'Release toolchain unit "lychee-toolchain" must declare its repository and synchronized paths.',
+        'Maintenance unit "production-node" uses the retired runtime reference policy.',
         'Issue unit "missing-lock" has unsupported detector "undefined".',
         'Registered npm project "containers/missing" is not active.',
         'Registered Dockerfile "containers/missing/Dockerfile" is not active.',
@@ -442,7 +645,7 @@ FROM \${BASE_IMAGE}
         `.devcontainer/devcontainer.json must install npm ${npmVersion}.`,
         'containers/hsa-directory-mock/Dockerfile must derive npm from its copied package.json.',
         'Azure bootstrap must install the canonical repository npm as root.',
-        'docs/development/floating.md contains a floating npm install.',
+        'docs/development/floating.md contains a floating npm toolchain install.',
       ]),
     )
   })
@@ -584,7 +787,7 @@ FROM \${BASE_IMAGE}
     ])
   })
 
-  it('catches floating npm installs and workflows without npm bootstrap', () => {
+  it('catches floating npm toolchain installs and workflows without npm bootstrap', () => {
     const root = temporaryDirectory()
     write(
       root,
@@ -599,7 +802,9 @@ FROM \${BASE_IMAGE}
     expect(workflowsMissingNpmBootstrap(root)).toEqual([
       '.github/workflows/check.yml job 1',
     ])
-    expect(floatingNpmInstallPaths(root)).toEqual(['docs/development/setup.md'])
+    expect(floatingNpmToolchainInstallPaths(root)).toEqual([
+      'docs/development/setup.md',
+    ])
   })
 
   it('requires setup-node cache discovery to run after the npm bootstrap', () => {

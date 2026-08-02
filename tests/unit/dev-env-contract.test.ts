@@ -1,6 +1,7 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: Contract tests assert literal shell interpolation syntax.
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { parseJsonc } from './test-helpers'
 
 function readWorkspaceFile(path: string) {
   return readFileSync(path, 'utf8')
@@ -8,6 +9,15 @@ function readWorkspaceFile(path: string) {
 
 function collapseAdjacentPowerShellStringLiterals(content: string) {
   return content.replace(/(['"])\s*\+\r?\n\s*\1/gu, '')
+}
+
+function runtimeImageReferences(content: string) {
+  return content.split(/\r?\n/u).flatMap(line => {
+    const match =
+      line.match(/^\s*image:\s*(\S+)\s*(?:#.*)?$/iu) ??
+      line.match(/^Image=(\S+)\s*$/u)
+    return match?.[1] ? [match[1]] : []
+  })
 }
 
 const hsaPersonLookupEnvVars = [
@@ -63,21 +73,82 @@ describe('development environment contract', () => {
     expect(configModule).not.toContain('$repoRoot = (Get-Location).Path')
   })
 
-  it('keeps the Azure Keycloak Quadlet aligned with the canonical image lock', () => {
-    const keycloakLock = JSON.parse(
-      readWorkspaceFile('containers/keycloak/image.lock.json'),
-    ) as {
-      image: string
-      manifestDigest: string
-      tag: string
-    }
-    const keycloakQuadlet = readWorkspaceFile(
-      'scripts/azure-dev/templates/quadlet/krav-idp.container',
-    )
+  it('keeps development service tags aligned with canonical image locks', () => {
+    const services = [
+      {
+        lockPath: 'containers/sqlserver/image.lock.json',
+        referencePaths: [
+          '.devcontainer/docker-compose.yml',
+          '.devcontainer/elevated/docker-compose.yml',
+          'scripts/azure-dev/templates/quadlet/krav-db.container',
+        ],
+      },
+      {
+        lockPath: 'containers/keycloak/image.lock.json',
+        referencePaths: [
+          '.devcontainer/docker-compose.yml',
+          '.devcontainer/elevated/docker-compose.yml',
+          'scripts/azure-dev/templates/quadlet/krav-idp.container',
+        ],
+      },
+      {
+        lockPath: 'containers/kong/image.lock.json',
+        referencePaths: [
+          '.devcontainer/docker-compose.yml',
+          '.devcontainer/elevated/docker-compose.yml',
+          'scripts/azure-dev/templates/quadlet/krav-kong.container',
+        ],
+      },
+    ] as const
 
-    expect(keycloakQuadlet).toContain(
-      `Image=${keycloakLock.image}:${keycloakLock.tag}@${keycloakLock.manifestDigest}`,
+    for (const service of services) {
+      const lock = JSON.parse(readWorkspaceFile(service.lockPath)) as {
+        image: string
+        tag: string
+      }
+      const expectedReference = `${lock.image}:${lock.tag}`
+      expect(lock.tag).toMatch(
+        /^(?!latest$)[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/iu,
+      )
+
+      for (const referencePath of service.referencePaths) {
+        const matchingReferences = runtimeImageReferences(
+          readWorkspaceFile(referencePath),
+        ).filter(reference => reference.startsWith(`${lock.image}:`))
+        expect(matchingReferences).toEqual([expectedReference])
+      }
+    }
+  })
+
+  it('keeps the exact devcontainer base tag aligned with its image lock', () => {
+    const lock = JSON.parse(
+      readWorkspaceFile('containers/devcontainer-base/image.lock.json'),
+    ) as { image: string; tag: string }
+    const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
+    const references = [...dockerfile.matchAll(/^FROM\s+(\S+)/gimu)]
+      .map(match => match[1])
+      .filter(reference => reference?.startsWith(`${lock.image}:`))
+
+    expect(lock.tag).toMatch(
+      /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-ubuntu-24\.04$/u,
     )
+    expect(references).toEqual([`${lock.image}:${lock.tag}`])
+  })
+
+  it('forwards only approved GitHub tokens through devcontainer remote environments', () => {
+    for (const relativePath of [
+      '.devcontainer/devcontainer.json',
+      '.devcontainer/elevated/devcontainer.json',
+    ]) {
+      const devcontainer = parseJsonc(readWorkspaceFile(relativePath)) as {
+        remoteEnv: Record<string, string>
+      }
+
+      expect(devcontainer.remoteEnv).toEqual({
+        COPILOT_GITHUB_TOKEN: '${localEnv:COPILOT_GITHUB_TOKEN}',
+        GH_TOKEN: '${localEnv:GH_TOKEN}',
+      })
+    }
   })
 
   it('preserves the immutable image reference of an existing Azure VM', () => {

@@ -15,9 +15,3 @@ redan har en faktisk riskyta: promptinjektion, utdatafiltrering,
 säkerhetsloggning och MCP-transport. Nivå 3 och kontroller för modellträning,
 finjustering, RAG, vektorindex och autonoma agentkedjor är inte tillämpliga
 så länge Kravhantering inte har dessa funktioner.
-
-Den praktiska källan för bevis och gap är
-[AISVS AI and MCP Control Mapping](../security-privacy/aisvs-ai-mcp-control-mapping.md).
-Mappningen ska uppdateras när AI- eller MCP-ytan ändras. Tillämpliga men
-saknade kontroller ska hanteras som separata GitHub-issues i stället för att
-bredda den aktuella ändringen.

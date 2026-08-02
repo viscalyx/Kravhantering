@@ -210,9 +210,6 @@ as concrete controls when needed.
 
 ### AI Safety Controls
 
-AISVS evidence for AI-assisted authoring is tracked in
-[AISVS AI and MCP Control Mapping](../security-privacy/aisvs-ai-mcp-control-mapping.md).
-
 Generation and repair use the local deterministic safety screen in
 `lib/ai/safety.ts`. The rule patterns are code-owned, while rule terms are
 required seed data stored in `ai_safety_rules` and `ai_safety_rule_terms` and

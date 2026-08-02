@@ -788,8 +788,8 @@ Use `-Yes` for non-interactive confirmation. The command creates a dedicated
 SSH key if missing, provisions Azure resources, installs the managed SSH config
 block with SSH agent forwarding enabled when approved, waits for SSH, uploads
 the local bootstrap and Quadlet templates, the selected Zsh profile, and the
-Azure Codex configuration, configures the remote Git identity and SSH commit
-signing, reruns the VM bootstrap, and runs smoke validation.
+Azure development-tooling files, configures the remote Git identity and SSH
+commit signing, reruns the VM bootstrap, and runs smoke validation.
 If the VM already exists but was deallocated by `stop` or auto-shutdown, `setup`
 starts it before waiting for SSH.
 
@@ -801,16 +801,31 @@ bind-mounts the data-disk-backed Podman storage directory to
 `/home/vscode/.local/share/containers/storage`. It clones the repo to
 `/workspace`, configures rootless Podman to use its normal home storage path,
 runs `npm install`, restores .NET tools, installs Codex CLI, GitHub Copilot CLI,
-the pinned Lychee link checker, and Playwright browsers, verifies the checked-out
-Kong config, builds HSA support images with Podman, recreates the managed support
-containers from the current Quadlet templates and checked-out Kong config while
-preserving named volumes, starts Quadlet services, and runs smoke validation.
+the rolling verified dotenv-linter, the pinned Lychee link checker, and
+Playwright browsers, verifies the checked-out Kong config, builds HSA support
+images with Podman, recreates the managed support containers from the current
+Quadlet templates and checked-out Kong config while preserving named volumes,
+starts Quadlet services, and runs smoke validation.
 
 ### Codex and GitHub Copilot CLIs in Remote SSH
 
 Setup installs the current stable Codex CLI and GitHub Copilot CLI releases
-system-wide and verifies that the `codex` and `copilot` commands start. Rerun
-`setup` to install updates on an existing VM.
+system-wide and verifies that the `codex` and `copilot` commands start. The
+Codex installer requires and verifies the upstream SHA-256 release-asset digest
+before execution; missing or mismatched evidence stops setup. The rolling
+`@github/copilot` channel relies on npm registry SRI metadata and npm's package-
+integrity verification under ADR 0045. Rerun `setup` to install updates on an
+existing VM.
+
+Setup also resolves Oh My Zsh, `zsh-autosuggestions`,
+`zsh-syntax-highlighting`, and Powerlevel10k as four rolling Git channels at
+install time without repository pins. Each branch resolves to an exact object
+and its checkout is verified. Because these upstream branches do not provide a
+consistently signed rolling head, ADR 0045 explicitly accepts the publisher-
+authenticity exception for each channel; the shared rolling-source tests cover
+the fail-closed resolution and checkout behavior. Other network installation
+paths use verified release assets or signed APT repositories whose trust roots
+match the reviewed fingerprints in the bootstrap.
 
 Codex service authentication is separate from GitHub authentication. Run
 `codex login` and complete its browser flow before first use. The Codex GitHub
@@ -1199,6 +1214,11 @@ selected destination. It does not automatically apply those files to the
 repository, configure the environment, update SSH configuration, edit shell
 profiles, install tokens, or launch VS Code.
 
+On Windows, extraction removes inherited access rules from the new destination,
+grants only the current user full control, and validates the protected ACL
+before writing package contents. If that ACL cannot be applied and confirmed,
+extraction fails and removes the destination.
+
 Open the generated `README.md`. It prominently states the mode and uses
 PowerShell 7 commands with known absolute paths. Extraction never applies
 configuration, edits SSH files, loads secrets, or launches VS Code.
@@ -1251,7 +1271,8 @@ destination-ready local configuration guarantees the required subscription
 and private-key path. Missing GitHub tokens remain warnings because another
 launching shell may provide them.
 
-Remove the plaintext extraction directory after finishing:
+You decide when the transfer and manual configuration are finished. Then remove
+the plaintext extraction directory:
 
 ```powershell
 ./scripts/azure-dev.ps1 -Command cleanup-workstation-package `
@@ -1333,6 +1354,27 @@ Optional heavier checks after the environment is accepted:
 npm run check
 npm run test:integration
 ```
+
+### Isolated PowerShell integration tests
+
+Run the PowerShell integration tests only through the explicit isolated
+command:
+
+```sh
+npm run test:powershell:integration
+```
+
+The command downloads the pinned Pester version in a temporary container. It
+then runs the tests in a separate container without network access, without
+host credentials, and with the repository mounted read-only. Only the ignored
+`test-results/pester` directory is writable for the NUnit result.
+
+The command runs every Pester integration test under
+`tests/powershell/Integration`. The isolated runner does not provide access to
+real Azure or other networked services and must not receive external-service
+credentials. Keep the suites compatible with that offline boundary. Use
+separately documented environment validation when behavior against a real
+service must be verified.
 
 ## Step 11: Tear Down
 

@@ -181,6 +181,47 @@ describe('GitHub Actions workflow security', () => {
     expect(lycheeStep?.with?.lycheeVersion).toBe(dockerfileVersion)
   })
 
+  it('exposes coordinated tool and base-image lanes in the dependency-drift selector', () => {
+    const workflow = readWorkflowYaml('dependency-drift.yml')
+    const workflowDispatch = workflow.on?.workflow_dispatch as
+      | {
+          inputs?: { unit?: { options?: unknown[] } }
+        }
+      | undefined
+
+    expect(workflowDispatch?.inputs?.unit?.options).toContain('lychee')
+    expect(workflowDispatch?.inputs?.unit?.options).toContain(
+      'devcontainer-base',
+    )
+  })
+
+  it('observes rolling tools in the complete devcontainer image', () => {
+    const workflow = readWorkflowYaml('devcontainer-image-smoke.yml')
+    const triggers = workflow.on as
+      | Record<string, { paths?: unknown[] }>
+      | undefined
+
+    for (const eventName of ['pull_request', 'push']) {
+      expect(triggers?.[eventName]?.paths).toContain(
+        'scripts/azure-dev/templates/install-codex.sh',
+      )
+      expect(triggers?.[eventName]?.paths).toContain(
+        'scripts/azure-dev/templates/install-dotenv-linter.sh',
+      )
+    }
+
+    const job = workflow.jobs?.['development-tools']
+    const buildCommand = stepRunText(job, 'Build observable development stage')
+    expect(buildCommand).toContain('--target development')
+
+    const observeCommand = stepRunText(
+      job,
+      'Observe installed development tools',
+    )
+    expect(observeCommand).toContain('codex --version')
+    expect(observeCommand).toContain('dotenv-linter --version')
+  })
+
   it('keeps Playwright integration CI consolidated on the pruned prodlike gate', () => {
     const workflow = readWorkflowYaml('integration-tests.yml')
     const jobs = workflow.jobs ?? {}

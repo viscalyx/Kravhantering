@@ -79,9 +79,11 @@ The normal detection path is `.github/workflows/dependency-drift.yml`. It runs
 weekly from `main` and can also be started manually with `workflow_dispatch`.
 The detector opens or refreshes a dependency-drift issue for the Kong Gateway
 major-version lane. Resolve that issue with the named maintenance skill, update
-`tag`, `manifestDigest` and `imageId` together, keep runtime references
-digest-pinned, and keep the public release test-support example tag-only. Let
-the normal pull request workflows, including Container PR Smoke, validate the
+`tag`, `manifestDigest` and `imageId` together when the version changes, and
+update digest evidence when content drifts under the same tag. Keep supported
+devcontainer and Azure development references aligned to `image:tag` without a
+manifest digest. Release locks retain the reviewed digest and image ID. Let the
+normal pull request workflows, including Container PR Smoke, validate the
 change before merging.
 
 Use the manual path when selecting an exceptional LTS tag, recovering a failed
@@ -89,18 +91,20 @@ automation run, or changing devcontainer or release test-support pinning
 policy:
 
 1. Choose the new official Kong Gateway tag. Prefer a version-specific LTS tag
-   and avoid moving tags for devcontainer locks.
+   and do not use `latest`.
 2. Resolve the manifest digest with
    `docker buildx imagetools inspect kong/kong-gateway:<tag>`.
 3. Resolve the platform image config digest with
    `docker manifest inspect --verbose kong/kong-gateway:<tag>`.
-4. Update `tag`, `manifestDigest` and `imageId` together, including the
-   devcontainer Compose files and Azure VM Quadlet.
+4. Update `tag`, `manifestDigest` and `imageId` together in the lock. Repeat the
+   new tag without a digest in both devcontainer Compose files and the Azure VM
+   Quadlet.
 5. Run `npm run devcontainer:kong:pull`, `npm run devcontainer:kong:up` and
    `npm run devcontainer:kong:status`.
 6. Run `npm run dependency-maintenance:check` and verify that
    `.github/workflows/dependency-drift.yml` reports no Kong drift. The check
-   keeps all active Kong runtime references aligned with the canonical lock.
+   keeps supported Kong development references aligned with the canonical lock
+   tag while release evidence retains its immutable identities.
 
 ## Update Rules
 

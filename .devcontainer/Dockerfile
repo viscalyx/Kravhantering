@@ -1,7 +1,7 @@
 # Cross-platform devcontainer base image
 # Supports both AMD64 (Intel/AMD) and ARM64 (Apple Silicon)
 # Includes: git, curl, wget, sudo, zsh, and the vscode user
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
+FROM mcr.microsoft.com/devcontainers/base:2.0.5-ubuntu-24.04 AS codex-ready
 
 ARG LYCHEE_VERSION=v0.24.2
 
@@ -24,6 +24,7 @@ RUN apt-get update && \
         aardvark-dns \
         fuse-overlayfs \
         iptables \
+        jq \
         libnss3-tools \
         netavark \
         podman \
@@ -44,19 +45,23 @@ RUN mkdir -p /home/vscode/.config/containers && \
     printf '[network]\nnetwork_backend = "netavark"\n' > /home/vscode/.config/containers/containers.conf && \
     chown -R vscode:vscode /home/vscode/.config/containers
 
-# Install the Codex CLI system-wide for both devcontainer profiles. Keep the
-# standalone package outside root's home so the vscode user can execute it.
-RUN mkdir -p /usr/local/lib/codex && \
-    curl -fsSL https://chatgpt.com/codex/install.sh | \
-    CODEX_HOME=/usr/local/lib/codex \
+# Install the rolling Codex CLI only after verifying the SHA-256 evidence from
+# the matching upstream GitHub release. The same installer contract is used by
+# the personal Azure development environment.
+COPY scripts/azure-dev/templates/install-codex.sh /usr/local/share/kravhantering/install-codex.sh
+RUN CODEX_HOME=/usr/local/lib/codex \
     CODEX_INSTALL_DIR=/usr/local/bin \
     CODEX_NON_INTERACTIVE=1 \
-    sh && \
+    bash /usr/local/share/kravhantering/install-codex.sh && \
     codex --version
 
-# Install dotenv-linter for env file checks.
-RUN curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh | \
-    sh -s -- -b /usr/local/bin
+FROM codex-ready AS development
+
+# Install the latest dotenv-linter release only after verifying the matching
+# GitHub release-asset digest.
+COPY scripts/azure-dev/templates/install-dotenv-linter.sh /usr/local/share/kravhantering/install-dotenv-linter.sh
+RUN DOTENV_LINTER_INSTALL_DIR=/usr/local/bin \
+    bash /usr/local/share/kravhantering/install-dotenv-linter.sh
 
 # Install pinned Lychee for local Markdown link checks; verify the release
 # archive before extracting it.

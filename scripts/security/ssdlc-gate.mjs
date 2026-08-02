@@ -64,7 +64,6 @@ export const SECURITY_SENSITIVE_PATH_RULES = [
     patterns: [
       'lib/ai/**',
       'lib/mcp/**',
-      'docs/security-privacy/mcp-security-test-plan.md',
       'docs/security-privacy/mcp-seeded-dast.md',
       'docs/integrations/mcp-server-contributor-guide.md',
       'docs/integrations/mcp-server-user-guide.md',

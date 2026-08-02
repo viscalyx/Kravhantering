@@ -1856,6 +1856,17 @@ describe('trusted container release helpers', () => {
       })
 
       expect(result.archiveName).toBe(deploymentBundleArchiveName('1.2.3'))
+      expect(
+        result.files.some(file =>
+          /(?:^|\/)(?:\.auth|\.codex|\.ssh)(?:\/|$)|auth\.json$/u.test(file),
+        ),
+      ).toBe(false)
+      for (const file of result.files) {
+        const content = fs.readFileSync(path.join(result.bundleRoot, file))
+        expect(content.toString()).not.toMatch(
+          /\b(?:CODEX_HOME|COPILOT_GITHUB_TOKEN|GH_TOKEN|SSH_AUTH_SOCK)\b/u,
+        )
+      }
       expect(result.files).toContain('compose/app-node-tls.compose.yml')
       expect(result.files).toContain('compose/single-node.compose.yml')
       expect(result.files).toContain('compose/single-node-demo.compose.yml')

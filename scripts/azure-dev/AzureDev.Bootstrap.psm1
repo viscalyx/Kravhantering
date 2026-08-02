@@ -174,7 +174,7 @@ function Copy-AzureDevZshTemplate {
   }
 }
 
-function Copy-AzureDevCodexConfigFiles {
+function Copy-AzureDevDevelopmentToolFiles {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
@@ -185,26 +185,30 @@ function Copy-AzureDevCodexConfigFiles {
   )
 
   if ($RemotePath.Length -le 1 -or -not $RemotePath.StartsWith('/')) {
-    throw "Codex configuration remote path must be absolute: $RemotePath"
+    throw "Development-tooling remote path must be absolute: $RemotePath"
   }
 
   $templatesPath = Split-Path -Parent $Context.BootstrapPath
   $sourcePaths = @(
     (Join-Path $templatesPath 'codex-config.toml'),
-    (Join-Path $templatesPath 'merge-codex-config.py')
+    (Join-Path $templatesPath 'merge-codex-config.py'),
+    (Join-Path $templatesPath 'install-codex.sh'),
+    (Join-Path $templatesPath 'install-dotenv-linter.sh'),
+    (Join-Path $templatesPath 'install-rolling-git-source.sh'),
+    (Join-Path $templatesPath 'verify-apt-key.sh')
   )
   foreach ($sourcePath in $sourcePaths) {
     if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
-      throw "Codex configuration file is missing: $sourcePath"
+      throw "Development-tooling file is missing: $sourcePath"
     }
   }
 
-  if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Upload Codex configuration files')) {
+  if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Upload development-tooling files')) {
     $remotePathLiteral = ConvertTo-AzureDevShellLiteral -Value $RemotePath
     Invoke-AzureDevRemoteCommand `
       -Context $Context `
       -Command "rm -rf -- $remotePathLiteral && mkdir -p -- $remotePathLiteral" `
-      -Description 'Prepare Codex configuration upload directory'
+      -Description 'Prepare development-tooling upload directory'
 
     $arguments = @(
       '-o',
@@ -220,7 +224,7 @@ function Copy-AzureDevCodexConfigFiles {
       -FilePath 'scp' `
       -Arguments $arguments
     if ($result.ExitCode -ne 0) {
-      throw "Codex configuration upload failed.`n$($result.Text.Trim())"
+      throw "Development-tooling upload failed.`n$($result.Text.Trim())"
     }
   }
 }
@@ -427,7 +431,7 @@ function Invoke-AzureDevBootstrap {
   $remoteBootstrapPath = '/tmp/krav-bootstrap-host.sh'
   $remoteQuadletPath = '/tmp/krav-azure-dev/quadlet'
   $remoteZshrcPath = '/tmp/krav-azure-dev/zshrc'
-  $remoteCodexConfigPath = '/tmp/krav-azure-dev/codex'
+  $remoteToolingPath = '/tmp/krav-azure-dev/tooling'
   $remoteServiceEnvironmentPath = '/tmp/krav-azure-dev/service-env'
   Test-AzureDevGitIdentity -Config $Context.Config
   Copy-AzureDevBootstrapFile `
@@ -439,9 +443,9 @@ function Invoke-AzureDevBootstrap {
   Copy-AzureDevZshTemplate `
     -Context $Context `
     -RemotePath $remoteZshrcPath
-  Copy-AzureDevCodexConfigFiles `
+  Copy-AzureDevDevelopmentToolFiles `
     -Context $Context `
-    -RemotePath $remoteCodexConfigPath
+    -RemotePath $remoteToolingPath
   Copy-AzureDevServiceEnvironmentFiles `
     -Context $Context `
     -RemotePath $remoteServiceEnvironmentPath
@@ -465,8 +469,12 @@ function Invoke-AzureDevBootstrap {
     (
       "sudo env AZURE_DEV_QUADLET_SOURCE=$remoteQuadletPath " +
       "AZURE_DEV_ZSHRC_SOURCE=$remoteZshrcPath " +
-      "AZURE_DEV_CODEX_CONFIG_SOURCE=$remoteCodexConfigPath/codex-config.toml " +
-      "AZURE_DEV_CODEX_CONFIG_MERGER=$remoteCodexConfigPath/merge-codex-config.py " +
+      "AZURE_DEV_CODEX_CONFIG_SOURCE=$remoteToolingPath/codex-config.toml " +
+      "AZURE_DEV_CODEX_CONFIG_MERGER=$remoteToolingPath/merge-codex-config.py " +
+      "AZURE_DEV_CODEX_INSTALLER=$remoteToolingPath/install-codex.sh " +
+      "AZURE_DEV_DOTENV_LINTER_INSTALLER=$remoteToolingPath/install-dotenv-linter.sh " +
+      "AZURE_DEV_ROLLING_GIT_INSTALLER=$remoteToolingPath/install-rolling-git-source.sh " +
+      "AZURE_DEV_APT_KEY_VERIFIER=$remoteToolingPath/verify-apt-key.sh " +
       "AZURE_DEV_SERVICE_ENV_SOURCE=$remoteServiceEnvironmentPath " +
       "AZURE_DEV_GIT_USER_NAME=$gitUserNameLiteral " +
       "AZURE_DEV_GIT_USER_EMAIL=$gitUserEmailLiteral " +
@@ -487,7 +495,7 @@ Export-ModuleMember -Function `
   Copy-AzureDevBootstrapFile, `
   Copy-AzureDevQuadletFiles, `
   Copy-AzureDevZshTemplate, `
-  Copy-AzureDevCodexConfigFiles, `
+  Copy-AzureDevDevelopmentToolFiles, `
   Copy-AzureDevServiceEnvironmentFiles, `
   Invoke-AzureDevBootstrap, `
   Invoke-AzureDevRemoteCommand, `

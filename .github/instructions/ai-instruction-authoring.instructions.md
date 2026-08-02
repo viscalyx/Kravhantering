@@ -1,5 +1,5 @@
 ---
-applyTo: "{.github/instructions/*.md,.github/prompts/*.md,.github/skills/*.md,**/AGENTS.md,.github/copilot-instructions.md}"
+applyTo: "{.github/instructions/*.md,.github/prompts/*.md,.github/copilot-instructions.md}"
 ---
 
 # AI Instruction Authoring

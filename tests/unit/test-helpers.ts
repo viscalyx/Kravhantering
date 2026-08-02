@@ -1,3 +1,24 @@
+import { type ParseError, parse, printParseErrorCode } from 'jsonc-parser'
+
+export function parseJsonc(content: string): unknown {
+  const errors: ParseError[] = []
+  const parsed = parse(content, errors, {
+    allowTrailingComma: true,
+    disallowComments: false,
+  })
+  if (errors.length > 0) {
+    throw new Error(
+      `Invalid JSONC: ${errors
+        .map(
+          error =>
+            `${printParseErrorCode(error.error)} at offset ${error.offset}`,
+        )
+        .join(', ')}`,
+    )
+  }
+  return parsed
+}
+
 export function okResponse(body: unknown): Response {
   const text = typeof body === 'string' ? body : JSON.stringify(body)
 

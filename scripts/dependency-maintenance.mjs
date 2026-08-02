@@ -18,6 +18,8 @@ const PINNABLE_PACKAGE_VERSION_PATTERN =
 const PACKAGE_MANAGER_PATTERN = /^npm@(\d+\.\d+\.\d+)$/u
 const DOCKER_NPM_BOOTSTRAP_PATTERN =
   /\bnpm\s+install\s+--global\s+"?npm@\$\(\s*node\s+-p\s+(?:'require\(\s*"\.\/package\.json"\s*\)\s*\.packageManager\s*\.slice\(\s*4\s*\)'|"require\(\s*'\.\/package\.json'\s*\)\s*\.packageManager\s*\.slice\(\s*4\s*\)")\s*\)"?/u
+export const DEVCONTAINER_BASE_TAG_PATTERN =
+  /^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)-ubuntu-24\.04$/u
 const DEPENDENCY_DRIFT_SKILL = 'resolve-dependency-drift'
 const DEPENDABOT_KIND_ECOSYSTEMS = {
   'devcontainer-features': 'devcontainers',
@@ -26,8 +28,16 @@ const DEPENDABOT_KIND_ECOSYSTEMS = {
   'npm-package': 'npm',
 }
 const ISSUE_DETECTOR_CONTRACTS = {
+  'devcontainer-base': {
+    kind: 'image-lock',
+    skill: DEPENDENCY_DRIFT_SKILL,
+  },
   keycloak: {
     kind: 'image-lock',
+    skill: DEPENDENCY_DRIFT_SKILL,
+  },
+  lychee: {
+    kind: 'release-toolchain',
     skill: DEPENDENCY_DRIFT_SKILL,
   },
   kong: {
@@ -166,7 +176,7 @@ export function discoverDockerfileInputs(root) {
       if (!stages.has(reference)) {
         const image = normalizeImageRepository(reference)
         if (image) {
-          inputs.push({ image, path: relativePath })
+          inputs.push({ image, path: relativePath, reference })
         } else if (originalReference.includes('$') && reference.includes('$')) {
           inputs.push({
             image: null,
@@ -184,6 +194,25 @@ export function discoverDockerfileInputs(root) {
   )
 }
 
+function isNamedTagOnlyImageReference(reference) {
+  if (!reference || reference.includes('@')) return false
+  const lastSlash = reference.lastIndexOf('/')
+  const lastColon = reference.lastIndexOf(':')
+  if (lastColon <= lastSlash) return false
+  const tag = reference.slice(lastColon + 1)
+  return tag.length > 0 && !/^latest$/iu.test(tag)
+}
+
+function isValidNamedImageTag(tag) {
+  return (
+    /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/u.test(tag) && !/^latest$/iu.test(tag)
+  )
+}
+
+function isNarrowDevcontainerBaseTag(tag) {
+  return DEVCONTAINER_BASE_TAG_PATTERN.test(tag)
+}
+
 export function discoverImageLocks(root) {
   return walkFiles(root, name => name === 'image.lock.json')
     .filter(relativePath => relativePath.startsWith('containers/'))
@@ -197,8 +226,14 @@ export function discoverImageLocks(root) {
 function isRuntimeImageFile(relativePath) {
   return (
     /^(?:docker-compose(?:\.[^/]+)?\.ya?ml)$/u.test(relativePath) ||
+    isDevelopmentRuntimeImageFile(relativePath) ||
+    /^containers\/production\/.*\.ya?ml$/u.test(relativePath)
+  )
+}
+
+function isDevelopmentRuntimeImageFile(relativePath) {
+  return (
     /^\.devcontainer\/.*\.ya?ml$/u.test(relativePath) ||
-    /^containers\/production\/.*\.ya?ml$/u.test(relativePath) ||
     /^scripts\/azure-dev\/templates\/quadlet\/.*\.container$/u.test(
       relativePath,
     )
@@ -440,7 +475,7 @@ function activePolicyFiles(root) {
   })
 }
 
-export function floatingNpmInstallPaths(root) {
+export function floatingNpmToolchainInstallPaths(root) {
   return activePolicyFiles(root).filter(relativePath => {
     if (
       relativePath.includes('/__tests__/') ||
@@ -452,7 +487,7 @@ export function floatingNpmInstallPaths(root) {
   })
 }
 
-function validateRegistryShape(registry) {
+function validateRegistryShape(root, registry) {
   const errors = []
   if (registry.schemaVersion !== 1) {
     errors.push('dependency-maintenance.json schemaVersion must be 1.')
@@ -488,14 +523,32 @@ function validateRegistryShape(registry) {
           `Issue unit "${unit.id}" does not match the "${unit.detector}" detector contract.`,
         )
       }
+      if (unit.kind === 'release-toolchain') {
+        if (
+          !unit.repository ||
+          !Array.isArray(unit.paths) ||
+          !unit.paths.length
+        ) {
+          errors.push(
+            `Release toolchain unit "${unit.id}" must declare its repository and synchronized paths.`,
+          )
+        } else {
+          for (const relativePath of unit.paths) {
+            if (
+              typeof relativePath !== 'string' ||
+              !fs.existsSync(path.join(root, relativePath))
+            ) {
+              errors.push(
+                `Registered release toolchain path "${relativePath}" is not active.`,
+              )
+            }
+          }
+        }
+      }
     }
-    if (
-      unit.runtimeReferencePolicy !== undefined &&
-      (unit.kind !== 'image-lock' ||
-        unit.runtimeReferencePolicy !== 'lock-tag-and-manifest')
-    ) {
+    if (unit.runtimeReferencePolicy !== undefined) {
       errors.push(
-        `Maintenance unit "${unit.id}" has unsupported runtime reference policy.`,
+        `Maintenance unit "${unit.id}" uses the retired runtime reference policy.`,
       )
     }
   }
@@ -618,9 +671,12 @@ function validateNpmProjects(root, registry, expectedVersion) {
 function validateImageCoverage(root, registry) {
   const errors = []
   const dockerUnits = registry.units.filter(
-    unit => unit.kind === 'dockerfile-image',
+    unit =>
+      unit.kind === 'dockerfile-image' ||
+      (unit.kind === 'image-lock' && Array.isArray(unit.paths)),
   )
   const lockUnits = registry.units.filter(unit => unit.kind === 'image-lock')
+  const developmentLockPaths = new Set()
 
   for (const input of discoverDockerfileInputs(root)) {
     if (!input.image) {
@@ -636,6 +692,29 @@ function validateImageCoverage(root, registry) {
       errors.push(
         `Docker input "${input.path}" (${input.image}) routes to ${matches.length} maintenance lanes.`,
       )
+      continue
+    }
+    if (
+      input.path.startsWith('.devcontainer/') &&
+      !isNamedTagOnlyImageReference(input.reference)
+    ) {
+      errors.push(
+        `Development base image "${input.path}" must use an explicit non-latest tag without a digest.`,
+      )
+    }
+    const [unit] = matches
+    if (
+      unit?.kind === 'image-lock' &&
+      input.path.startsWith('.devcontainer/')
+    ) {
+      developmentLockPaths.add(unit.lockPath)
+      const lock = readJson(root, unit.lockPath)
+      const expectedReference = `${unit.image}:${lock.tag}`
+      if (input.reference !== expectedReference) {
+        errors.push(
+          `Development base image "${input.path}" must use tag-only reference "${expectedReference}".`,
+        )
+      }
     }
   }
 
@@ -650,7 +729,7 @@ function validateImageCoverage(root, registry) {
     }
   }
 
-  const imageUnits = [...dockerUnits, ...lockUnits]
+  const imageUnits = [...new Set([...dockerUnits, ...lockUnits])]
   for (const input of discoverRuntimeImageReferences(root)) {
     const matches = imageUnits.filter(unit => unit.image === input.image)
     if (matches.length !== 1) {
@@ -662,13 +741,14 @@ function validateImageCoverage(root, registry) {
     const [unit] = matches
     if (
       unit.kind === 'image-lock' &&
-      unit.runtimeReferencePolicy === 'lock-tag-and-manifest'
+      isDevelopmentRuntimeImageFile(input.path)
     ) {
+      developmentLockPaths.add(unit.lockPath)
       const lock = readJson(root, unit.lockPath)
-      const expectedReference = `${unit.image}:${lock.tag}@${lock.manifestDigest}`
+      const expectedReference = `${unit.image}:${lock.tag}`
       if (input.reference !== expectedReference) {
         errors.push(
-          `Runtime image "${input.path}" must pin "${expectedReference}".`,
+          `Development runtime image "${input.path}" must use tag-only reference "${expectedReference}".`,
         )
       }
     }
@@ -684,6 +764,25 @@ function validateImageCoverage(root, registry) {
   for (const unit of lockUnits) {
     if (!fs.existsSync(path.join(root, unit.lockPath))) {
       errors.push(`Registered image lock "${unit.lockPath}" is not active.`)
+      continue
+    }
+    const lock = readJson(root, unit.lockPath)
+    const lockTag = String(lock.tag ?? '').trim()
+    if (
+      developmentLockPaths.has(unit.lockPath) &&
+      !isValidNamedImageTag(lockTag)
+    ) {
+      errors.push(
+        `Development image lock "${unit.lockPath}" must use a valid explicit non-latest tag.`,
+      )
+    }
+    if (
+      unit.detector === 'devcontainer-base' &&
+      !isNarrowDevcontainerBaseTag(lockTag)
+    ) {
+      errors.push(
+        `Development base image lock "${unit.lockPath}" must use an exact semantic version tag for Ubuntu 24.04.`,
+      )
     }
   }
   return errors
@@ -910,8 +1009,8 @@ function validateInstallSurfaces(root, expectedVersion) {
       `${workflow} must disable setup-node npm caching before the canonical npm bootstrap.`,
     )
   }
-  for (const relativePath of floatingNpmInstallPaths(root)) {
-    errors.push(`${relativePath} contains a floating npm install.`)
+  for (const relativePath of floatingNpmToolchainInstallPaths(root)) {
+    errors.push(`${relativePath} contains a floating npm toolchain install.`)
   }
 
   if (expectedVersion) {
@@ -952,6 +1051,25 @@ function validateInstallSurfaces(root, expectedVersion) {
       'Azure bootstrap must install the canonical repository npm as root.',
     )
   }
+
+  for (const relativePath of [
+    '.devcontainer/Dockerfile',
+    'scripts/azure-dev/templates/bootstrap-host.sh',
+  ]) {
+    const source = readText(root, relativePath).replace(/\\\r?\n\s*/gu, ' ')
+    const executesNetworkResponse = [
+      /\b(?:curl|wget)\b[^|\n]*\|\s*(?:(?:sudo|env)(?:\s+(?:--?\S+|[A-Za-z_][A-Za-z0-9_]*=\S+))*\s+|[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*(?:(?:ba|da|k|z)?sh)\b/iu,
+      /\b(?:(?:ba|da|k|z)?sh)\s+-c\s+["']?(?:\$\(|`)\s*(?:curl|wget)\b/iu,
+      /\b(?:eval|source)\b[^\n]*(?:\$\(|`|<\()\s*(?:curl|wget)\b/iu,
+      /(?:^|[;&|]\s*)\.\s+(?:\$\(|`|<\()\s*(?:curl|wget)\b/imu,
+      /(?:^|[;&]\s*)`\s*(?:curl|wget)\b[^`\n]*`/imu,
+    ].some(pattern => pattern.test(source))
+    if (executesNetworkResponse) {
+      errors.push(
+        `${relativePath} must not execute network responses directly as shell code.`,
+      )
+    }
+  }
   return errors
 }
 
@@ -967,7 +1085,7 @@ export function validateDependencyMaintenance(
   }
   const expectedNpmVersion = canonicalNpmVersion(root)
   return [
-    ...validateRegistryShape(normalizedRegistry),
+    ...validateRegistryShape(root, normalizedRegistry),
     ...validateDeferrals(normalizedRegistry, now, {
       allowExpired: options.allowExpiredDeferrals,
     }),

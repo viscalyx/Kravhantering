@@ -398,8 +398,11 @@ environment, fixed public host, destination private-key path, destination
 public-key fingerprint, and 24-hour expiry. Entry names are an allowlist.
 Extraction rejects rooted paths, backslashes, `..`, duplicates, undeclared
 entries, missing declared entries, oversized entries, unsupported schemas, and
-expired packages. It extracts only into a new user-selected directory with
-user-only permissions.
+expired packages. It extracts only into a new user-selected directory. On
+Unix-like systems the workflow applies user-only permissions. On Windows it
+removes inherited access rules, grants only the current user full control, and
+validates the protected ACL before writing package contents. Extraction stops
+and removes the destination if that protection cannot be confirmed.
 
 A connect-only payload omits `.env.azure.development`. Its minimal local file
 contains only `AZURE_DEV_VM_CONNECTIVITY_MODE`,
@@ -433,8 +436,9 @@ destination-specific `README.md` with exact absolute source and destination
 paths and PowerShell 7 commands. Existing primary files use `code --diff`;
 existing local files receive exact manual assignments and are never
 overwritten. Management instructions include tenant login and subscription
-selection. Secret values remain in separate restricted files and never enter
-the README, logs, or terminal output.
+selection. Secret values remain in separate files and never enter the README,
+logs, or terminal output. On Windows they inherit the validated user-only ACL
+from the extraction directory.
 
 Host-key comparison remains mandatory. The generated installation block
 creates `.ssh` and `known_hosts`, appends only missing source lines, preserves
@@ -478,13 +482,13 @@ that resets or rewrites guest SSH configuration.
 ## Guest Bootstrap
 
 `AzureDev.Bootstrap.psm1` uploads the current local bootstrap script, Quadlet
-templates, Zsh profile, and Azure Codex configuration files to `/tmp` on the
-VM, waits for cloud-init when available, and runs:
+templates, Zsh profile, and development-tooling files to `/tmp` on the VM,
+waits for cloud-init when available, and runs:
 
 <!-- markdownlint-disable MD013 -->
 
 ```text
-sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/codex/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/codex/merge-codex-config.py AZURE_DEV_GIT_USER_NAME='<full-name>' AZURE_DEV_GIT_USER_EMAIL='<email-address>' AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY='<public-key>' bash /tmp/krav-bootstrap-host.sh
+sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/tooling/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/tooling/merge-codex-config.py AZURE_DEV_CODEX_INSTALLER=/tmp/krav-azure-dev/tooling/install-codex.sh AZURE_DEV_DOTENV_LINTER_INSTALLER=/tmp/krav-azure-dev/tooling/install-dotenv-linter.sh AZURE_DEV_ROLLING_GIT_INSTALLER=/tmp/krav-azure-dev/tooling/install-rolling-git-source.sh AZURE_DEV_APT_KEY_VERIFIER=/tmp/krav-azure-dev/tooling/verify-apt-key.sh AZURE_DEV_GIT_USER_NAME='<full-name>' AZURE_DEV_GIT_USER_EMAIL='<email-address>' AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY='<public-key>' bash /tmp/krav-bootstrap-host.sh
 ```
 
 <!-- markdownlint-enable MD013 -->
@@ -500,8 +504,15 @@ Linux guest.
 The ignored `scripts/azure-dev/templates/zshrc.template` is the local override.
 When it is absent, setup uploads the tracked
 `scripts/azure-dev/templates/zshrc.template.example`. Bootstrap installs the
-selected file as `/home/vscode/.zshrc` and installs the Oh My Zsh plugins and
-theme required by the default profile.
+selected file as `/home/vscode/.zshrc`. Oh My Zsh, `zsh-autosuggestions`,
+`zsh-syntax-highlighting`, and Powerlevel10k are four separate rolling Git
+channels. Every new installation resolves each current main branch to an exact
+Git object, verifies the checkout, and records the resolved object in bootstrap
+output. These upstream branches do not provide a consistently signed rolling
+head, so ADR 0045 explicitly accepts the publisher-authenticity exception for
+each channel. The object is not pinned in the repository; a later new
+installation resolves the then-current branch again. The rolling-source tests
+exercise the shared fail-closed resolution and checkout control.
 
 Bootstrap installs Bubblewrap and the Ubuntu 24.04
 `bwrap-userns-restrict` AppArmor profile, then proves that the `vscode` user
@@ -510,8 +521,18 @@ disable `kernel.apparmor_restrict_unprivileged_userns` globally.
 
 Bootstrap installs Codex CLI with OpenAI's non-interactive standalone installer
 under `/usr/local/lib/codex` and exposes `codex` through `/usr/local/bin`. It
-installs GitHub Copilot CLI globally from the `@github/copilot` npm package.
-Both installers converge to their current stable releases on every setup run.
+resolves the current release metadata and verifies the upstream SHA-256 digest
+for `install.sh` before execution. Missing or mismatched integrity evidence
+stops bootstrap. The devcontainer build uses the same verified installer
+helper. The shared dotenv-linter helper applies the same fail-closed release-
+asset digest contract. Bootstrap configures NodeSource and Tailscale directly
+as signed APT repositories instead of executing their setup scripts. It
+verifies the NodeSource, Docker, GitHub CLI, and Tailscale trust roots against
+reviewed primary fingerprints before APT uses them. Bootstrap installs GitHub
+Copilot CLI globally from the `@github/copilot` npm package. This rolling
+channel relies on the npm registry's SRI metadata and npm's package-integrity
+verification, as approved by ADR 0045. Both installers converge to their
+current stable releases on every setup run.
 
 The tracked Azure Codex template is separate from the devcontainer template.
 `merge-codex-config.py` atomically updates the existing user configuration. It
@@ -579,6 +600,10 @@ Bootstrap prunes external layer remnants and unused containers, images,
 networks, and build cache before rebuilding both HSA images with `--no-cache`.
 The recovery never passes `--volumes`; named support-service data remains
 intact.
+
+The shared HSA Dockerfiles retain the same Node base tag and digest in Azure
+development and release builds. This keeps the support stack aligned with the
+released HSA artifacts.
 
 When changing storage behavior, update bootstrap and smoke validation together.
 Validation must prove that the data mount source is the Azure data disk and
