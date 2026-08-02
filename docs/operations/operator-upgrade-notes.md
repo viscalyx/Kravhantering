@@ -7,6 +7,8 @@ target version.
 
 ## Unreleased
 
+## v0.4.0 - 2026-08-02
+
 ### Invalid priority colors are reset during upgrade
 
 Before running `db-job migrate`, identify P1-P5 priority rows whose color is
@@ -67,6 +69,7 @@ apply to Requirements Library, procurement, and full specification CSV.
 Before upgrade, verify that existing RFI question suggestions have consistent lifecycle history. In particular, handled or dismissed suggestions must have a recorded review request, motivation, and chronologically valid lifecycle timestamps. The database migration stops and identifies affected records rather than altering historical evidence; correct them before retrying.
 Update integrations and support runbooks to follow the forward-only lifecycle: draft → review requested → handled or dismissed.
 <!-- operator-upgrade:source pr-625 end -->
+
 ## v0.3.0 - 2026-07-09
 
 ### Requirements specifications need lifecycle status before upgrade
