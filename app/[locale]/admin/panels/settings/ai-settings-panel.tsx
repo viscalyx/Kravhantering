@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Sparkles,
 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   type MouseEvent,
@@ -53,6 +54,7 @@ import type {
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import AiConnectionsPrototype from './ai-connections-prototype'
 
 type SaveState = 'error' | 'idle' | 'saved' | 'saving'
 
@@ -237,13 +239,15 @@ function restoreSafetyRuleDefaultsInRules(
   )
 }
 
-export default function AiSettingsPanel({
-  embedded = false,
-  onSettingsSettled,
-}: {
+interface AiSettingsPanelProps {
   embedded?: boolean
   onSettingsSettled?: () => void
-}) {
+}
+
+function ProductionAiSettingsPanel({
+  embedded = false,
+  onSettingsSettled,
+}: AiSettingsPanelProps) {
   const locale = useLocale()
   const ta = useTranslations('admin')
   const tc = useTranslations('common')
@@ -1782,4 +1786,14 @@ export default function AiSettingsPanel({
       </div>
     </section>
   )
+}
+
+export default function AiSettingsPanel(props: AiSettingsPanelProps) {
+  const searchParams = useSearchParams()
+
+  if (searchParams.get('prototype') === 'ai-connections') {
+    return <AiConnectionsPrototype {...props} />
+  }
+
+  return <ProductionAiSettingsPanel {...props} />
 }

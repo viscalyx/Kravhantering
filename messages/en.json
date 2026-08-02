@@ -1490,6 +1490,125 @@
       "visible": "Visible",
       "visibleRequired": "At least one HSA-id prefix must be visible."
     },
+    "aiConnectionsPrototype": {
+      "actions": {
+        "addConnection": "Add AI connection",
+        "addModel": "Add model",
+        "configureRoute": "Configure selected run profile",
+        "edit": "Edit",
+        "healthCheck": "Run health check",
+        "runTest": "Run connection test"
+      },
+      "capabilities": {
+        "images": "Image input required",
+        "json": "Validatable JSON required",
+        "streaming": "Streaming required"
+      },
+      "cockpit": {
+        "attestation": "Governance attestation",
+        "connections": "AI connections",
+        "health": "Operational health",
+        "models": "Verified connection models",
+        "noFallback": "No automatic fallback occurs. Calls stop until this exact route becomes runnable again or an administrator activates another revision.",
+        "profileImpact": "Affected run profiles",
+        "selected": "Selected AI connection",
+        "verification": "Technical test"
+      },
+      "connection": {
+        "openRouterDescription": "Public name: Organization AI service · processing party outside Kravhantering's trust boundary"
+      },
+      "description": "Configure the technical processing party, verify exact model revisions, and connect them to the three fixed call types.",
+      "fields": {
+        "adapter": "Adapter",
+        "attestation": "Attestation",
+        "authentication": "Authentication",
+        "endpoint": "Endpoint"
+      },
+      "guided": {
+        "activeConnection": "Active AI connection",
+        "connections": "Approve connections",
+        "connectionsDetail": "Endpoint, authentication, egress, and attestation.",
+        "models": "Verify models",
+        "modelsDetail": "Three model revisions have valid capability tests.",
+        "modelsGapDetail": "The image model must be verified again.",
+        "profiles": "Activate run profiles",
+        "profilesDetail": "Three fixed profile slots are runnable.",
+        "profilesGapDetail": "Two profile slots lack a valid route.",
+        "profilesOutageDetail": "Selected revisions remain but are blocked."
+      },
+      "matrix": {
+        "allReady": "3 of 3 runnable",
+        "blockerTitle": "Action required before egress",
+        "callType": "Call type",
+        "description": "Start from the user flow that must work and inspect its exact route.",
+        "gapDescription": "Generation with images lacks a verified image capability and JSON repair lacks an active revision. Other generation continues to work.",
+        "minimum": "Locked minimum requirements",
+        "needsAttention": "Configuration required",
+        "open": "Open run profile",
+        "outageDescription": "All profiles are blocked by the connection's operational state. No other AI connection is selected automatically.",
+        "readyDescription": "Every profile points to an active AI connection and a verified model revision that satisfies its minimum requirements.",
+        "readyTitle": "All call types are runnable",
+        "route": "Active route",
+        "status": "Runnable state",
+        "title": "Routing by call type"
+      },
+      "noPersistence": "Prototype · saves nothing",
+      "outage": {
+        "description": "The circuit breaker is open after repeated operational failures. New calls stop; no model or connection is switched automatically.",
+        "title": "The AI connection is unavailable"
+      },
+      "profiles": {
+        "image": "Generation with images",
+        "repair": "Invalid import JSON repair",
+        "text": "Generation without images"
+      },
+      "prototypeLabel": "Administration prototype",
+      "scenario": {
+        "gaps": "Configuration gaps",
+        "label": "Show scenario",
+        "outage": "Outage",
+        "ready": "All ready"
+      },
+      "status": {
+        "actionRequired": "Action required",
+        "active": "Active",
+        "blocked": "Blocked",
+        "capabilityMissing": "Image capability missing",
+        "draft": "Draft",
+        "healthy": "Available",
+        "notConfigured": "Not configured",
+        "passed": "Passed",
+        "ready": "Runnable",
+        "unavailable": "Unavailable",
+        "valid": "Valid",
+        "verificationRequired": "New test required",
+        "verified": "Verified"
+      },
+      "switcher": {
+        "label": "Select prototype variant",
+        "next": "Next variant",
+        "previous": "Previous variant"
+      },
+      "title": "AI connections and run profiles",
+      "trust": {
+        "description": "The AI provider and agent runtime are always treated as external, even for a sidecar on the same network.",
+        "egress": "Allowlisted HTTPS or WSS only; redirects are forbidden.",
+        "secret": "Secret values never leave the secret manager or appear in Admin Center.",
+        "title": "Trust boundary"
+      },
+      "values": {
+        "secretAssigned": "Secret reference assigned · value hidden",
+        "textImageJsonStreaming": "Text · image · JSON · streaming",
+        "textJson": "Text · JSON",
+        "textJsonStreaming": "Text · JSON · streaming",
+        "validUntil": "Valid · no review date"
+      },
+      "variants": {
+        "A": "Guided activation",
+        "B": "Routing matrix",
+        "C": "Connection view"
+      }
+    },
     "ai": {
       "title": "AI",
       "description": "Control system-wide AI settings.",

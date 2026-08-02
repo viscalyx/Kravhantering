@@ -1490,6 +1490,125 @@
       "visible": "Synligt",
       "visibleRequired": "Minst ett HSA-id-prefix måste vara synligt."
     },
+    "aiConnectionsPrototype": {
+      "actions": {
+        "addConnection": "Lägg till AI-anslutning",
+        "addModel": "Lägg till modell",
+        "configureRoute": "Konfigurera vald körprofil",
+        "edit": "Redigera",
+        "healthCheck": "Kör hälsoprov",
+        "runTest": "Kör anslutningsprov"
+      },
+      "capabilities": {
+        "images": "Bildindata krävs",
+        "json": "Validerbar JSON krävs",
+        "streaming": "Strömning krävs"
+      },
+      "cockpit": {
+        "attestation": "Förvaltningsattest",
+        "connections": "AI-anslutningar",
+        "health": "Operativ hälsa",
+        "models": "Verifierade anslutningsmodeller",
+        "noFallback": "Ingen automatisk fallback görs. Anrop stoppas tills exakt denna route åter är körbar eller en administratör aktiverar en annan revision.",
+        "profileImpact": "Påverkade körprofiler",
+        "selected": "Vald AI-anslutning",
+        "verification": "Tekniskt prov"
+      },
+      "connection": {
+        "openRouterDescription": "Publikt namn: Organisationens AI-tjänst · behandlingspart utanför Kravhanterings tillitsgräns"
+      },
+      "description": "Konfigurera den tekniska behandlingsparten, verifiera exakta modellrevisioner och koppla dem till de tre fasta anropstyperna.",
+      "fields": {
+        "adapter": "Adapter",
+        "attestation": "Attest",
+        "authentication": "Autentisering",
+        "endpoint": "Endpoint"
+      },
+      "guided": {
+        "activeConnection": "Aktiv AI-anslutning",
+        "connections": "Godkänn anslutningar",
+        "connectionsDetail": "Endpoint, autentisering, egress och attest.",
+        "models": "Verifiera modeller",
+        "modelsDetail": "Tre modellrevisioner har giltiga förmågeprov.",
+        "modelsGapDetail": "Bildmodellens verifiering måste göras om.",
+        "profiles": "Aktivera körprofiler",
+        "profilesDetail": "Tre fasta profilplatser är körbara.",
+        "profilesGapDetail": "Två profilplatser saknar giltig route.",
+        "profilesOutageDetail": "Valda revisioner bevaras men är blockerade."
+      },
+      "matrix": {
+        "allReady": "3 av 3 körbara",
+        "blockerTitle": "Åtgärd krävs före egress",
+        "callType": "Anropstyp",
+        "description": "Utgå från det användarflöde som ska fungera och kontrollera dess exakta route.",
+        "gapDescription": "Generering med bilder saknar verifierad bildförmåga och JSON-reparation saknar en aktiv revision. Övrig generering fortsätter fungera.",
+        "minimum": "Låsta minimikrav",
+        "needsAttention": "Konfiguration krävs",
+        "open": "Öppna körprofil",
+        "outageDescription": "Samtliga profiler är blockerade av anslutningens operativa tillstånd. Ingen annan AI-anslutning väljs automatiskt.",
+        "readyDescription": "Varje profil pekar på en aktiv AI-anslutning och en verifierad modellrevision som uppfyller minimikraven.",
+        "readyTitle": "Alla anropstyper är körbara",
+        "route": "Aktiv route",
+        "status": "Körbarhet",
+        "title": "Routing per anropstyp"
+      },
+      "noPersistence": "Prototyp · sparar inget",
+      "outage": {
+        "description": "Circuit breakern är öppen efter upprepade driftfel. Nya anrop stoppas; inget automatiskt modell- eller anslutningsbyte görs.",
+        "title": "AI-anslutningen är inte tillgänglig"
+      },
+      "profiles": {
+        "image": "Generering med bilder",
+        "repair": "Reparation av ogiltig import-JSON",
+        "text": "Generering utan bilder"
+      },
+      "prototypeLabel": "Administrationsprototyp",
+      "scenario": {
+        "gaps": "Konfigurationsluckor",
+        "label": "Visa scenario",
+        "outage": "Driftstopp",
+        "ready": "Allt klart"
+      },
+      "status": {
+        "actionRequired": "Åtgärd krävs",
+        "active": "Aktiv",
+        "blocked": "Blockerad",
+        "capabilityMissing": "Bildförmåga saknas",
+        "draft": "Utkast",
+        "healthy": "Tillgänglig",
+        "notConfigured": "Inte konfigurerad",
+        "passed": "Godkänt",
+        "ready": "Körbar",
+        "unavailable": "Inte tillgänglig",
+        "valid": "Giltig",
+        "verificationRequired": "Nytt prov krävs",
+        "verified": "Verifierad"
+      },
+      "switcher": {
+        "label": "Välj prototypvariant",
+        "next": "Nästa variant",
+        "previous": "Föregående variant"
+      },
+      "title": "AI-anslutningar och körprofiler",
+      "trust": {
+        "description": "AI-leverantören och agentmiljön behandlas alltid som externa, även för en sidecar i samma nätverk.",
+        "egress": "Endast allowlistad HTTPS eller WSS; omdirigeringar är förbjudna.",
+        "secret": "Hemlighetsvärden lämnar aldrig hemlighetshanteraren eller visas i Admin Center.",
+        "title": "Tillitsgräns"
+      },
+      "values": {
+        "secretAssigned": "Hemlighetsreferens tilldelad · värde dolt",
+        "textImageJsonStreaming": "Text · bild · JSON · strömning",
+        "textJson": "Text · JSON",
+        "textJsonStreaming": "Text · JSON · strömning",
+        "validUntil": "Giltig · inget granskningsdatum"
+      },
+      "variants": {
+        "A": "Guidad aktivering",
+        "B": "Routingmatris",
+        "C": "Anslutningsvy"
+      }
+    },
     "ai": {
       "title": "AI",
       "description": "Styr övergripande AI-inställningar för hela systemet.",
