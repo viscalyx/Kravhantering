@@ -1162,17 +1162,44 @@ for (const viewport of viewports) {
           const primaryScopeSwitch = primaryQuestion.getByRole('switch', {
             name: /Ändra om PWM-RFI001 ingår i RFI/u,
           })
+          await expect(primaryScopeSwitch.locator('svg')).toHaveClass(
+            /lucide-check/u,
+          )
+          await primaryScopeSwitch.click()
+          await expect(primaryScopeSwitch).toBeEnabled()
+          await expect(primaryScopeSwitch).toHaveAttribute(
+            'title',
+            'Ingår inte i RFI',
+          )
+          await expect(primaryScopeSwitch.locator('svg')).toHaveClass(
+            /lucide-x/u,
+          )
+          const areaScopeSwitch = areaSection.getByRole('switch', {
+            name: /Ändra om kravområdet .+ ingår i RFI/u,
+          })
+          await expect(areaScopeSwitch).toHaveAttribute('title', /Delvis/u)
+          await expect(areaScopeSwitch).toHaveAccessibleDescription(
+            'Delvis: några RFI-frågor ingår i RFI',
+          )
+          await expect(areaScopeSwitch.locator('svg')).toHaveCount(0)
+          await expect(
+            areaSection.getByText('Delvis', { exact: true }),
+          ).toBeVisible()
+
+          await primaryScopeSwitch.click()
+          await expect(primaryScopeSwitch).toHaveAttribute(
+            'title',
+            'Ingår i RFI',
+          )
+          await expect(primaryScopeSwitch.locator('svg')).toHaveClass(
+            /lucide-check/u,
+          )
+
           await primaryScopeSwitch.click()
           await expect(primaryScopeSwitch).toHaveAttribute(
             'title',
             'Ingår inte i RFI',
           )
-          await expect(
-            areaSection.getByRole('switch', {
-              name: /Ändra om kravområdet .+ ingår i RFI/u,
-            }),
-          ).toHaveAttribute('title', /Delvis/u)
-          await expect(areaSection.getByText('Delvis')).toBeVisible()
 
           const filterButton = page.getByRole('button', {
             name: 'Visa endast de som ingår i RFI',

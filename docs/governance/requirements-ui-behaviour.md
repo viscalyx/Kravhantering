@@ -965,10 +965,15 @@ down.
 - RFI-list scope is shown with compact switches whose tooltips say
   `Ingår i RFI` or `Ingår inte i RFI`. Question-level switches update one RFI
   question, while the requirement-area switch updates all visible active RFI
-  questions in that requirement area as one server-side change.
-- A requirement-area switch is on only when every RFI question in the area is
-  included. If some, but not all, questions are included, the switch remains off
-  and shows the text `Delvis`; activating it includes all questions in the area.
+  questions in that requirement area as one server-side change. Editable scope
+  switches use a pointer cursor plus hover and focus feedback.
+- Included scope switches use the blue track and a check icon. Excluded scope
+  switches retain the neutral gray track and use an `X` icon, so the off state
+  remains visibly actionable without being mistaken for disabled.
+- A requirement-area switch is fully included only when every RFI question in
+  the area is included. If some, but not all, questions are included, its thumb
+  stays in the on position on an amber track, shows no thumb icon and is paired
+  with the text `Delvis`; activating it includes all questions in the area.
 - RFI questions that are not included stay visible by default, but their question
   code, version, question text, help text and expected answer format are dimmed.
   The scope switch and RFI question suggestion actions remain fully legible.
@@ -978,8 +983,9 @@ down.
   requirement-area sections that have no included questions, but it is not
   persisted across a fresh visit and does not change CSV/PDF exports.
 - Scope switches are disabled when the RFI list is locked or the actor cannot
-  edit the specification RFI list. Relevance remains separate and is edited only
-  after the list is locked.
+  edit the specification RFI list, and while a scope change is being saved.
+  Disabled switches retain the distinct dimmed treatment. Relevance remains
+  separate and is edited only after the list is locked.
 - RFI question suggestions move only from `Utkast` to `Granskning begärd` and
   then to `Hanterad` or `Avfärdad`. Resolution controls are available only
   after review has been requested, and only draft suggestions can be deleted.

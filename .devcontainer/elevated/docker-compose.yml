@@ -181,7 +181,7 @@ services:
     build:
       context: ${WORKSPACE_BUILD_ROOT:-../..}/containers/hsa-person-lookup-adapter
       dockerfile: Dockerfile
-    command: npm run generate-certs
+    command: ["node", "src/generate-certs.mjs"]
     user: "0:0"
     volumes:
       - hsa-mtls-certs:/run/hsa-mtls

@@ -1,12 +1,14 @@
 'use client'
 
 import {
+  Check,
   Download,
   ListFilter,
   MessageCircleReply,
   Printer,
   Send,
   Trash2,
+  X,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
@@ -467,16 +469,24 @@ export default function SpecificationRfiListPanel({
       : 'border-secondary-300 text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800'
   }`
   const scopeSwitchButtonClassName =
-    'inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg px-1 py-1 text-sm font-medium text-secondary-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 dark:text-secondary-200 dark:focus-visible:ring-offset-secondary-950'
-  const scopeSwitchTrackClassName = (checked: boolean) =>
+    'inline-flex min-h-11 min-w-11 cursor-pointer items-center gap-2 rounded-lg px-1 py-1 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
+  const scopeSwitchTrackClassName = (
+    checked: boolean,
+    partiallyIncluded = false,
+  ) =>
     `relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
       checked
         ? 'bg-primary-700 dark:bg-primary-500'
-        : 'bg-secondary-300 dark:bg-secondary-700'
+        : partiallyIncluded
+          ? 'bg-amber-500 dark:bg-amber-400'
+          : 'bg-secondary-300 dark:bg-secondary-700'
     }`
-  const scopeSwitchThumbClassName = (checked: boolean) =>
-    `absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform dark:bg-secondary-50 ${
-      checked ? 'translate-x-4' : 'translate-x-0.5'
+  const scopeSwitchThumbClassName = (
+    checked: boolean,
+    partiallyIncluded = false,
+  ) =>
+    `absolute top-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-white shadow transition-transform dark:bg-secondary-50 ${
+      checked || partiallyIncluded ? 'translate-x-4' : 'translate-x-0.5'
     }`
   const partialScopeClassName =
     'rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
@@ -723,6 +733,7 @@ export default function SpecificationRfiListPanel({
             const areaSuggestionCount = suggestionsForTarget(areaTarget).length
             const scopeState = areaScopeState(group.items)
             const areaHeadingId = `rfi-area-${group.areaId}`
+            const areaScopeDescriptionId = `${areaHeadingId}-scope-description`
             const scopeSwitchDisabled = !canEdit || list.isLocked || saving
             const areaScopeTitle = scopeState.partiallyIncluded
               ? t('partiallyIncluded')
@@ -744,6 +755,11 @@ export default function SpecificationRfiListPanel({
                   <div className="ml-auto flex flex-wrap items-center gap-4">
                     <button
                       aria-checked={scopeState.allIncluded}
+                      aria-describedby={
+                        scopeState.partiallyIncluded
+                          ? areaScopeDescriptionId
+                          : undefined
+                      }
                       aria-label={t('areaIncludedToggleAria', {
                         area: group.areaName,
                       })}
@@ -765,6 +781,11 @@ export default function SpecificationRfiListPanel({
                       })}
                     >
                       {scopeState.partiallyIncluded ? (
+                        <span className="sr-only" id={areaScopeDescriptionId}>
+                          {t('partiallyIncluded')}
+                        </span>
+                      ) : null}
+                      {scopeState.partiallyIncluded ? (
                         <span className={partialScopeClassName}>
                           {t('partial')}
                         </span>
@@ -772,13 +793,27 @@ export default function SpecificationRfiListPanel({
                       <span
                         className={scopeSwitchTrackClassName(
                           scopeState.allIncluded,
+                          scopeState.partiallyIncluded,
                         )}
                       >
                         <span
                           className={scopeSwitchThumbClassName(
                             scopeState.allIncluded,
+                            scopeState.partiallyIncluded,
                           )}
-                        />
+                        >
+                          {scopeState.allIncluded ? (
+                            <Check
+                              aria-hidden="true"
+                              className="h-2.5 w-2.5 text-primary-700"
+                            />
+                          ) : scopeState.partiallyIncluded ? null : (
+                            <X
+                              aria-hidden="true"
+                              className="h-2.5 w-2.5 text-secondary-600"
+                            />
+                          )}
+                        </span>
                       </span>
                     </button>
                     {canEdit ? (
@@ -889,7 +924,19 @@ export default function SpecificationRfiListPanel({
                                   className={scopeSwitchThumbClassName(
                                     item.isIncluded,
                                   )}
-                                />
+                                >
+                                  {item.isIncluded ? (
+                                    <Check
+                                      aria-hidden="true"
+                                      className="h-2.5 w-2.5 text-primary-700"
+                                    />
+                                  ) : (
+                                    <X
+                                      aria-hidden="true"
+                                      className="h-2.5 w-2.5 text-secondary-600"
+                                    />
+                                  )}
+                                </span>
                               </span>
                             </button>
                             {canEdit ? (

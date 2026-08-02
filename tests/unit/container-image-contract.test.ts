@@ -129,6 +129,29 @@ describe('container image contract', () => {
     }
   })
 
+  it('runs the HSA certificate generator without runtime npm', () => {
+    for (const relativePath of [
+      '.devcontainer/docker-compose.yml',
+      '.devcontainer/elevated/docker-compose.yml',
+      'containers/production/compose/single-node-demo.compose.yml',
+    ]) {
+      const compose = parseYaml(readWorkspaceFile(relativePath)) as {
+        services?: Record<string, { command?: string[] }>
+      }
+
+      expect(compose.services?.['hsa-mtls-cert-generator']?.command).toEqual([
+        'node',
+        'src/generate-certs.mjs',
+      ])
+    }
+
+    const azureQuadlet = readWorkspaceFile(
+      'scripts/azure-dev/templates/quadlet/krav-hsa-mtls-cert-generator.container',
+    )
+    expect(azureQuadlet).toContain('Exec=node src/generate-certs.mjs')
+    expect(azureQuadlet).not.toContain('Exec=npm')
+  })
+
   it('keeps app-runtime to standalone output and public assets', () => {
     const target = dockerfileTarget('app-runtime')
 

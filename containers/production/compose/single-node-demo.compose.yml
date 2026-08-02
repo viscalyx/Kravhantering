@@ -4,7 +4,7 @@
 services:
   hsa-mtls-cert-generator:
     image: ${HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF:?set HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF}
-    command: npm run generate-certs
+    command: ["node", "src/generate-certs.mjs"]
     user: "0:0"
     volumes:
       - hsa-mtls-certs:/run/hsa-mtls

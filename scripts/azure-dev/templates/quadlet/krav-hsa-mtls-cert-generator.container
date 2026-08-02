@@ -8,7 +8,7 @@ ContainerName=hsa-mtls-cert-generator
 Image=localhost/kravhantering/hsa-person-lookup-adapter:local
 User=0:0
 Volume=krav-hsa-mtls-certs.volume:/run/hsa-mtls:Z
-Exec=npm run generate-certs
+Exec=node src/generate-certs.mjs
 
 [Service]
 Environment=HOME=%h

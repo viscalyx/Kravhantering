@@ -38,8 +38,8 @@
   If the change is internal-only and no manual case update is needed, state that
   in the final response.
 - Follow `docs/development/sql-server-developer-workflow.md` for database setup, migrations, seeding, and developer browse workflow expectations.
-- For visible UI element, label, role, or layout surface changes, see `.github/instructions/developer-mode.instructions.md`.
 - Developer Mode is a desktop-only developer tool. Its overlay, chips, badge, and toast do **not** need to follow WCAG touch-target sizes, mobile responsiveness, or accessibility guidelines. Keep chips compact so they don't obscure the underlying UI.
+
 ## Database Schema Changes
 
 - See `.github/instructions/database-schema.instructions.md` for all schema, migration, seed, naming, versioning, and lifecycle rules.
@@ -56,14 +56,3 @@
 - `ConfirmModalProvider` is already mounted in `app/[locale]/layout.tsx`.
 
 <!-- markdownlint-enable MD013 -->
-
-## Spelling
-
-- If cSpell reports a misspelling in a Markdown file, add the word to the
-  project dictionary if
-  - the word is a correctly spelled technical term
-  - the word or term is linguistically correct for the language the text is written in
-  - the word is a proper noun (e.g. product name, company name, person's name)
-  - the word is a common abbreviation or acronym that is widely recognized in the
-    context of the project
-- If the word is a misspelling, correct the spelling in the text.
