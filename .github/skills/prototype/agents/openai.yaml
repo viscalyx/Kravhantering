@@ -2,5 +2,3 @@ interface:
   display_name: "Prototype"
   short_description: "Prototype UI or logic design questions"
   default_prompt: "Use $prototype to build a throwaway logic or UI prototype for this design question."
-policy:
-  allow_implicit_invocation: false
