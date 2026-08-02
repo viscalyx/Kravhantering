@@ -110,9 +110,9 @@ describe('container image contract', () => {
     const references = dockerfiles.flatMap(relativePath =>
       [
         ...readWorkspaceFile(relativePath).matchAll(
-          /^FROM (?<reference>node:[^@\s]+@sha256:[a-f0-9]{64})(?:\s+AS\s+\S+)?$/gmu,
+          /^FROM (node:[^@\s]+@sha256:[a-f0-9]{64})(?:\s+AS\s+\S+)?$/gmu,
         ),
-      ].map(match => match.groups?.reference),
+      ].map(match => match[1]),
     )
 
     expect(references).toHaveLength(9)
