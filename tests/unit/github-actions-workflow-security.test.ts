@@ -28,6 +28,7 @@ const PERSIST_CREDENTIALS_FALSE_LINE =
 type WorkflowDocument = {
   jobs?: Record<string, WorkflowJob>
   on?: Record<string, unknown>
+  permissions?: Record<string, unknown>
 }
 
 type WorkflowJob = {
@@ -704,6 +705,71 @@ describe('GitHub Actions workflow security', () => {
     expect(uploadEvidence?.with?.path).toContain(
       'tmp/container-release-artifacts/sbom/',
     )
+  })
+
+  it('rescans verified SBOMs for supported releases and safely synchronizes findings', () => {
+    const workflow = readWorkflowYaml('container-vulnerability-monitor.yml')
+    const job = workflow.jobs?.['container-vulnerability-monitor']
+    const steps = job?.steps ?? []
+    const step = (name: string) =>
+      steps.find(candidate => candidate.name === name)
+
+    expect(workflow.on).toHaveProperty('schedule')
+    expect(workflow.on).toHaveProperty('workflow_dispatch')
+    expect(workflow.permissions).toEqual({
+      attestations: 'read',
+      contents: 'read',
+      issues: 'write',
+      packages: 'read',
+    })
+    expect(job?.if).toBe("github.ref == 'refs/heads/main'")
+
+    const discoverRun = String(step('Select supported published releases')?.run)
+    expect(discoverRun).toContain('gh api --paginate')
+    expect(discoverRun).toContain('gh release download')
+    expect(discoverRun).toContain('.github/container-release-support.json')
+    expect(discoverRun).not.toContain('docker build')
+
+    const verificationRun = String(
+      step('Verify published SBOM attestations')?.run,
+    )
+    expect(verificationRun).toContain('gh attestation verify')
+    expect(verificationRun).toContain('--signer-workflow')
+    expect(verificationRun).toContain('--source-digest')
+    expect(verificationRun).toContain(
+      '--predicate-type https://spdx.dev/Document/v2.3',
+    )
+
+    const scanRun = String(step('Scan every supported release SBOM')?.run)
+    expect(scanRun).toContain('db update')
+    expect(scanRun).toContain('sbom:')
+    expect(scanRun).not.toContain('fail-on')
+
+    const evaluate = step('Evaluate shared vulnerability policy')
+    expect(evaluate?.['continue-on-error']).toBe(true)
+    expect(String(evaluate?.run)).toContain(
+      'scripts/release/container-vulnerability-monitor.mjs evaluate',
+    )
+    expect(String(evaluate?.run)).toContain(
+      '.github/container-vulnerability-exceptions.json',
+    )
+
+    const synchronize = step('Synchronize vulnerability tracking')
+    expect(synchronize?.['continue-on-error']).toBe(true)
+    expect(synchronize?.env).toMatchObject({
+      CONTAINER_VULNERABILITY_ADVISORY_TOKEN: [
+        '${{',
+        'secrets.CONTAINER_VULNERABILITY_ADVISORY_TOKEN',
+        '}}',
+      ].join(' '),
+    })
+    expect(synchronize?.env).not.toHaveProperty('GITHUB_TOKEN')
+
+    const upload = step('Retain complete vulnerability evidence')
+    expect(upload?.if).toBe('always()')
+    expect(upload?.with?.path).toContain('reports/')
+    expect(upload?.with?.path).toContain('.spdx.json')
+    expect(step('Fail after retaining evidence')?.if).toBe('always()')
   })
 
   it('keeps stable operator notes archives behind protected-main checks', () => {

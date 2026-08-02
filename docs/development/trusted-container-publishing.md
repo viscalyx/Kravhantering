@@ -108,6 +108,51 @@ database status, the policy decision and smoke diagnostics as workflow
 artifacts. It does not authenticate to GHCR, apply an OCI release tag, create a
 final image or SBOM attestation, or publish a GitHub Release.
 
+## Continuous Published-Release Scanning
+
+`.github/workflows/container-vulnerability-monitor.yml` runs daily from
+`main` and supports manual dispatch. The committed
+`.github/container-release-support.json` selector defines the supported
+release channels. The current policy scans the newest stable release and the
+newest preview release. Change those bounded counts through normal review when
+the product support policy changes.
+
+For each supported release, the monitor downloads `release-metadata.json` and
+all five project-owned SPDX assets. It verifies every GitHub Release asset
+against the SHA-256 digest returned by the GitHub Releases API, requires the
+metadata to name the expected `ghcr.io/viscalyx` image and immutable manifest
+digest, and verifies the SBOM attestation against the trusted container release
+workflow and source commit. The scan uses the release asset only when its JSON
+content exactly matches a verified SPDX attestation predicate.
+
+The monitor updates the Grype database once and scans every verified SBOM
+without pulling or rebuilding an image. It evaluates all supported releases
+together through `container-vulnerability-policy.mjs` and the same committed
+exception file used by pull-request and release gates. The scheduled monitor
+records both excepted and unexcepted fixable High or Critical findings.
+
+Public dependency findings use one ordinary issue per stable fingerprint of
+vulnerability ID, release-image role and package. The issue carries `security`
+and `automation:container-vulnerability`, lists all affected supported release
+digests and installed and fixed versions, and closes only when no supported
+release remains affected. A later scan reopens and updates the same issue.
+
+A finding without an authoritative public advisory URL is confidential. The
+monitor never creates a public fallback issue or prints its identifying
+details. When private vulnerability reporting is enabled, configure
+`CONTAINER_VULNERABILITY_ADVISORY_TOKEN` as a narrowly scoped GitHub App or
+fine-grained token with only Repository security advisories write access. The
+monitor creates or updates a draft private repository security advisory.
+Published or otherwise human-resolved advisories remain under human control.
+Without that configuration, the workflow reports only the count of skipped
+confidential findings.
+
+The normal workflow token has only `contents: read`, `packages: read`,
+`attestations: read` and `issues: write`. Complete selection metadata, verified
+attestation output, SBOMs, current database status, unfiltered Grype reports and
+the policy result are retained for 30 days with `if: always()`. Policy or issue
+synchronization failures are reported only after evidence upload.
+
 ## Dependency Drift Detection
 
 `.github/workflows/dependency-drift.yml` checks the npm toolchain,
