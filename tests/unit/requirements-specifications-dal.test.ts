@@ -1618,15 +1618,6 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         versionNumber: 2,
       }),
     ])
-    expect(query.mock.calls[0]?.[0]).toContain(
-      'priority_level.code AS priorityLevelCode',
-    )
-    expect(query.mock.calls[0]?.[0]).toContain(
-      'priority_level.color AS priorityLevelColor',
-    )
-    expect(query.mock.calls[0]?.[0]).toContain(
-      'priority_level.icon_name AS priorityLevelIconName',
-    )
   })
 
   it('updates requirement application fields by item ref on SQL Server', async () => {

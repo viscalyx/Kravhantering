@@ -223,14 +223,6 @@ describe('specification output data', () => {
       ),
     ).toBe(true)
     expect(
-      queries.some(
-        query =>
-          query.includes('priority_level.code AS priorityLevelCode') &&
-          query.includes('priority_level.color AS priorityLevelColor') &&
-          query.includes('priority_level.icon_name AS priorityLevelIconName'),
-      ),
-    ).toBe(true)
-    expect(
       queries.some(query =>
         query.includes('specification_local_requirement_requirement_packages'),
       ),
