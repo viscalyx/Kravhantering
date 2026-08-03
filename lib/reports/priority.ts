@@ -20,6 +20,14 @@ interface PriorityIdentityInput {
   nameSv?: string | null
 }
 
+interface PriorityIdentityItemInput {
+  priorityLevelCode: string | null
+  priorityLevelColor: string | null
+  priorityLevelIconName: string | null
+  priorityLevelNameEn: string | null
+  priorityLevelNameSv: string | null
+}
+
 export interface PdfPriorityColors {
   background: string
   foreground: string
@@ -36,6 +44,19 @@ export function createReportPriorityIdentity(
     nameEn: input.nameEn?.trim() ?? '',
     nameSv: input.nameSv?.trim() ?? '',
   }
+}
+
+export function createReportPriorityIdentityFromItem(
+  item: PriorityIdentityItemInput,
+): ReportPriorityIdentity | null {
+  if (!item.priorityLevelCode) return null
+  return createReportPriorityIdentity({
+    code: item.priorityLevelCode,
+    color: item.priorityLevelColor,
+    iconName: item.priorityLevelIconName,
+    nameEn: item.priorityLevelNameEn,
+    nameSv: item.priorityLevelNameSv,
+  })
 }
 
 export function formatReportPriorityLabel(

@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { renderToBuffer } from '@react-pdf/renderer'
-import { extractText } from 'unpdf'
+import { extractTextItems } from 'unpdf'
 import { describe, expect, it } from 'vitest'
 import PdfReportRenderer from '@/components/reports/pdf/PdfReportRenderer'
 import { preloadStatusIconNodes } from '@/lib/icons/status-icon-allowlist'
@@ -46,10 +46,33 @@ describe('PDF priority layout', () => {
     const buffer = await renderToBuffer(
       <PdfReportRenderer locale="sv" model={model} />,
     )
-    const { text } = await extractText(new Uint8Array(buffer), {
-      mergePages: true,
-    })
+    const { items } = await extractTextItems(new Uint8Array(buffer))
+    const priorityTokens = ['P2', '–', 'Låg']
+    const priorityPage = items.find(pageItems =>
+      pageItems.some(item =>
+        priorityTokens.some(token => item.str.includes(token)),
+      ),
+    )
+    expect(priorityPage).toBeDefined()
+    const priorityItemIndexes = (priorityPage ?? []).flatMap((item, index) =>
+      priorityTokens.some(token => item.str.includes(token)) ? [index] : [],
+    )
+    const priorityItems = priorityItemIndexes.map(
+      index => (priorityPage ?? [])[index],
+    )
 
-    expect(text).toContain('P2 – Låg')
+    expect(
+      priorityItems.flatMap(item => item?.str.split(/\s+/u).filter(Boolean)),
+    ).toEqual(priorityTokens)
+    expect(new Set(priorityItems.map(item => item?.y)).size).toBe(1)
+    const firstPriorityIndex = priorityItemIndexes.at(0)
+    const lastPriorityIndex = priorityItemIndexes.at(-1)
+    expect(firstPriorityIndex).toBeDefined()
+    expect(lastPriorityIndex).toBeDefined()
+    expect(
+      (priorityPage ?? [])
+        .slice(firstPriorityIndex, lastPriorityIndex)
+        .some(item => item.hasEOL),
+    ).toBe(false)
   })
 })

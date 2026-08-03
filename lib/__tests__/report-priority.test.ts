@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { contrastRatio } from '@/lib/color-contrast'
 import {
   createReportPriorityIdentity,
+  createReportPriorityIdentityFromItem,
   formatReportPriorityLabel,
   getPdfPriorityColors,
 } from '@/lib/reports/priority'
@@ -39,6 +40,33 @@ describe('report priority identity', () => {
       nameEn: 'High',
       nameSv: 'Hög',
     })
+  })
+
+  it('creates an identity from report item fields when a code exists', () => {
+    expect(
+      createReportPriorityIdentityFromItem({
+        priorityLevelCode: 'P1',
+        priorityLevelColor: '#FDE047',
+        priorityLevelIconName: 'CircleAlert',
+        priorityLevelNameEn: 'Critical',
+        priorityLevelNameSv: 'Kritisk',
+      }),
+    ).toEqual({
+      code: 'P1',
+      color: '#fde047',
+      iconName: 'CircleAlert',
+      nameEn: 'Critical',
+      nameSv: 'Kritisk',
+    })
+    expect(
+      createReportPriorityIdentityFromItem({
+        priorityLevelCode: null,
+        priorityLevelColor: null,
+        priorityLevelIconName: null,
+        priorityLevelNameEn: null,
+        priorityLevelNameSv: null,
+      }),
+    ).toBeNull()
   })
 
   it('formats code and localized name without a dangling separator', () => {

@@ -15,12 +15,8 @@ import {
   type ReportLabels,
 } from '../report-labels'
 import { diffText } from '../text-diff'
-import type {
-  MetadataChange,
-  ReportModel,
-  ReportSection,
-  VersionSummaryData,
-} from '../types'
+import type { MetadataChange, ReportModel, ReportSection } from '../types'
+import { createReportVersionSummary } from '../version-summary'
 
 type LocalizedNameItem = {
   nameSv: string | null
@@ -70,61 +66,6 @@ function collectPackageIds(
     .filter((id): id is number => Number.isInteger(id))
     .sort((a, b) => a - b)
     .join(',')
-}
-
-function toVersionSummary(
-  version: RequirementReportData['versions'][number],
-  locale: string,
-  labels: ReportLabels,
-): VersionSummaryData {
-  return {
-    versionNumber: version.versionNumber,
-    description: version.description,
-    acceptanceCriteria: version.acceptanceCriteria,
-    verifiable: version.verifiable,
-    verificationMethod: version.verificationMethod,
-    category: version.category
-      ? {
-          nameSv: version.category.nameSv,
-          nameEn: version.category.nameEn,
-        }
-      : null,
-    type: version.type
-      ? { nameSv: version.type.nameSv, nameEn: version.type.nameEn }
-      : null,
-    qualityCharacteristic: version.qualityCharacteristic
-      ? {
-          nameSv: version.qualityCharacteristic.nameSv,
-          nameEn: version.qualityCharacteristic.nameEn,
-        }
-      : null,
-    priorityLevel: version.priorityLevel
-      ? createReportPriorityIdentity(version.priorityLevel)
-      : null,
-    status: {
-      label: getStatusLabel(version, locale, labels),
-      color: version.statusColor,
-      iconName: version.statusIconName,
-    },
-    createdBy: version.createdBy,
-    createdAt: version.createdAt,
-    editedAt: version.editedAt,
-    publishedAt: version.publishedAt,
-    archivedAt: version.archivedAt,
-    normReferences: version.versionNormReferences
-      .filter(vnr => vnr.normReference)
-      .map(vnr => ({
-        name: vnr.normReference.name,
-        reference: vnr.normReference.reference,
-        uri: vnr.normReference.uri,
-      })),
-    requirementPackages: version.versionRequirementPackages.flatMap(
-      ({ requirementPackage }) => {
-        const name = requirementPackageName(requirementPackage).trim()
-        return name ? [{ name }] : []
-      },
-    ),
-  }
 }
 
 function computeMetadataChanges(
@@ -296,7 +237,10 @@ export function buildReviewReport(
     }
     sections.push({
       type: 'version-summary',
-      version: toVersionSummary(reviewVersion, locale, labels),
+      version: createReportVersionSummary(
+        reviewVersion,
+        getStatusLabel(reviewVersion, locale, labels),
+      ),
       label: formatReportTemplate(labels.common.reviewVersion, {
         version: reviewVersion.versionNumber,
       }),

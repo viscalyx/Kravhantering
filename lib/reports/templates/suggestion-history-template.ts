@@ -7,20 +7,14 @@ import type {
   RequirementReportData,
   SuggestionReportRow,
 } from '../data/fetch-requirement'
-import { requirementPackageName } from '../package-name'
-import { createReportPriorityIdentity } from '../priority'
 import {
   formatReportTemplate,
   getReportLabels,
   localizeReportValue,
   type ReportLabels,
 } from '../report-labels'
-import type {
-  ReportModel,
-  ReportSection,
-  SuggestionReportItem,
-  VersionSummaryData,
-} from '../types'
+import type { ReportModel, ReportSection, SuggestionReportItem } from '../types'
+import { createReportVersionSummary } from '../version-summary'
 
 const SUGGESTION_RESOLVED = 1
 const SUGGESTION_DISMISSED = 2
@@ -34,56 +28,6 @@ function getStatusLabel(
     localizeReportValue(locale, version.statusNameSv, version.statusNameEn) ||
     labels.common.unknown
   )
-}
-
-function toVersionSummary(
-  version: RequirementReportData['versions'][number],
-  locale: string,
-  labels: ReportLabels,
-): VersionSummaryData {
-  return {
-    versionNumber: version.versionNumber,
-    description: version.description,
-    acceptanceCriteria: version.acceptanceCriteria,
-    verifiable: version.verifiable,
-    verificationMethod: version.verificationMethod,
-    category: version.category
-      ? { nameSv: version.category.nameSv, nameEn: version.category.nameEn }
-      : null,
-    type: version.type
-      ? { nameSv: version.type.nameSv, nameEn: version.type.nameEn }
-      : null,
-    qualityCharacteristic: version.qualityCharacteristic
-      ? {
-          nameSv: version.qualityCharacteristic.nameSv,
-          nameEn: version.qualityCharacteristic.nameEn,
-        }
-      : null,
-    priorityLevel: version.priorityLevel
-      ? createReportPriorityIdentity(version.priorityLevel)
-      : null,
-    status: {
-      label: getStatusLabel(version, locale, labels),
-      color: version.statusColor,
-      iconName: version.statusIconName,
-    },
-    createdBy: version.createdBy,
-    createdAt: version.createdAt,
-    editedAt: version.editedAt,
-    publishedAt: version.publishedAt,
-    archivedAt: version.archivedAt,
-    normReferences: version.versionNormReferences
-      .filter(vnr => vnr.normReference)
-      .map(vnr => ({
-        name: vnr.normReference.name,
-        reference: vnr.normReference.reference,
-        uri: vnr.normReference.uri,
-      })),
-    requirementPackages: version.versionRequirementPackages.flatMap(vs => {
-      const name = requirementPackageName(vs.requirementPackage).trim()
-      return name ? [{ name }] : []
-    }),
-  }
 }
 
 function getSuggestionStatus(
@@ -175,7 +119,10 @@ export function buildSuggestionHistoryReport(
 
     sections.push({
       type: 'version-summary',
-      version: toVersionSummary(version, locale, labels),
+      version: createReportVersionSummary(
+        version,
+        getStatusLabel(version, locale, labels),
+      ),
       label: formatReportTemplate(labels.common.version, {
         version: version.versionNumber,
       }),
