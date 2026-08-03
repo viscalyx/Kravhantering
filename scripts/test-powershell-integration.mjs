@@ -63,6 +63,7 @@ export function createPesterInstallArgs({ moduleCache }) {
 
 export function createPesterTestArgs({
   moduleCache,
+  passwdFile,
   repositoryRoot,
   resultDir,
 }) {
@@ -70,7 +71,7 @@ export function createPesterTestArgs({
     "$ErrorActionPreference = 'Stop'",
     `Import-Module Pester -RequiredVersion ${PESTER_VERSION} -Force`,
     '$configuration = New-PesterConfiguration',
-    "$configuration.Run.Path = 'tests/powershell/Integration'",
+    "$configuration.Run.Path = @('tests/powershell/Unit', 'tests/powershell/Integration')",
     '$configuration.Run.Exit = $true',
     "$configuration.Output.Verbosity = 'Detailed'",
     "$configuration.Output.StackTraceVerbosity = 'Full'",
@@ -94,6 +95,7 @@ export function createPesterTestArgs({
     ...bindMount(repositoryRoot, '/workspace', true),
     ...bindMount(moduleCache, '/pester-modules', true),
     ...bindMount(resultDir, '/workspace/test-results/pester'),
+    ...(passwdFile ? bindMount(passwdFile, '/etc/passwd', true) : []),
     '--workdir',
     '/workspace',
     '--env',
@@ -139,6 +141,7 @@ export function runPowerShellIntegrationTests({
   try {
     const resolvedRepositoryRoot = fs.realpathSync(repositoryRoot)
     const moduleCache = path.join(temporaryRoot, 'modules')
+    const passwdFile = path.join(temporaryRoot, 'passwd')
     const resultDir = path.join(
       resolvedRepositoryRoot,
       'test-results',
@@ -146,6 +149,16 @@ export function runPowerShellIntegrationTests({
     )
     fs.mkdirSync(moduleCache, { recursive: true })
     fs.mkdirSync(resultDir, { recursive: true })
+    if (
+      typeof process.getuid === 'function' &&
+      typeof process.getgid === 'function'
+    ) {
+      fs.writeFileSync(
+        passwdFile,
+        `pester:x:${process.getuid()}:${process.getgid()}:Pester:/tmp/pester-home:/bin/sh\n`,
+        { mode: 0o600 },
+      )
+    }
     const resolvedResultDir = fs.realpathSync(resultDir)
     const relativeResultDir = path.relative(
       resolvedRepositoryRoot,
@@ -166,6 +179,7 @@ export function runPowerShellIntegrationTests({
     runDocker(
       createPesterTestArgs({
         moduleCache,
+        passwdFile: fs.existsSync(passwdFile) ? passwdFile : undefined,
         repositoryRoot: resolvedRepositoryRoot,
         resultDir: resolvedResultDir,
       }),

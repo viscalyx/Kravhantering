@@ -817,6 +817,7 @@ function Test-AzureDevWorkstationPackageSignature {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
+    [AllowEmptyCollection()]
     [byte[]]$Payload,
 
     [Parameter(Mandatory = $true)]
@@ -825,6 +826,10 @@ function Test-AzureDevWorkstationPackageSignature {
     [Parameter(Mandatory = $true)]
     [string]$PublicKey
   )
+
+  if ($Payload.Length -eq 0) {
+    return $false
+  }
 
   $temporaryDirectory = Join-Path `
     ([IO.Path]::GetTempPath()) `

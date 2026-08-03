@@ -105,7 +105,42 @@ function Test-AzureDevSshPublicKey {
 
   try {
     $decoded = [Convert]::FromBase64String($parts[1])
-    return $decoded.Length -gt 0
+    if ($decoded.Length -lt 8) {
+      return $false
+    }
+
+    $algorithmLength =
+      ([uint32]$decoded[0] -shl 24) -bor
+      ([uint32]$decoded[1] -shl 16) -bor
+      ([uint32]$decoded[2] -shl 8) -bor
+      [uint32]$decoded[3]
+    if (
+      $algorithmLength -eq 0 -or
+      $algorithmLength -gt ($decoded.Length - 8)
+    ) {
+      return $false
+    }
+
+    $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+    $embeddedAlgorithm = $strictUtf8.GetString(
+      $decoded,
+      4,
+      [int]$algorithmLength
+    )
+    if ($embeddedAlgorithm -cne $parts[0]) {
+      return $false
+    }
+
+    $fieldOffset = 4 + [int]$algorithmLength
+    $fieldLength =
+      ([uint32]$decoded[$fieldOffset] -shl 24) -bor
+      ([uint32]$decoded[$fieldOffset + 1] -shl 16) -bor
+      ([uint32]$decoded[$fieldOffset + 2] -shl 8) -bor
+      [uint32]$decoded[$fieldOffset + 3]
+    return (
+      $fieldLength -gt 0 -and
+      $fieldLength -le ($decoded.Length - $fieldOffset - 4)
+    )
   } catch {
     return $false
   }

@@ -27,6 +27,7 @@ describe('isolated PowerShell integration-test runner', () => {
   it('runs tests offline with a read-only repository and explicit opt-in', () => {
     const args = createPesterTestArgs({
       moduleCache: '/tmp/pester-modules',
+      passwdFile: '/tmp/pester-passwd',
       repositoryRoot: '/repo',
       resultDir: '/repo/test-results/pester',
     })
@@ -39,8 +40,13 @@ describe('isolated PowerShell integration-test runner', () => {
     expect(command).toContain(
       'source=/tmp/pester-modules,target=/pester-modules,readonly',
     )
+    expect(command).toContain(
+      'source=/tmp/pester-passwd,target=/etc/passwd,readonly',
+    )
     expect(command).toContain('KRAVHANTERING_PESTER_INTEGRATION=1')
     expect(command).toContain('PSModulePath=/pester-modules')
+    expect(command).toContain("'tests/powershell/Unit'")
+    expect(command).toContain("'tests/powershell/Integration'")
     expect(command).toContain('$configuration.Should.DisableV5 = $true')
     expect(command).not.toContain('/var/run/docker.sock')
     expect(command).not.toMatch(/(?:GH_TOKEN|COPILOT_GITHUB_TOKEN)=/u)

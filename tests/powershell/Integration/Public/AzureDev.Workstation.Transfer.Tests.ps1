@@ -43,19 +43,42 @@ Describe `
       Join-Path $script:repositoryRoot `
         'scripts/azure-dev/AzureDev.Workstation.psm1'
     ) -Force -ErrorAction Stop
+    $script:approverPublicKey = (
+      'ssh-ed25519 ' +
+      'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
+    )
+    $script:destinationPublicKey = (
+      'ssh-ed25519 ' +
+      'AAAAC3NzaC1lZDI1NTE5AAAAIElRFe/K9qM55tJk2DRl7IsDK+cTTRpJ5nNiN2g358Z4'
+    )
+    $script:wrongPublicKey = (
+      'ssh-ed25519 ' +
+      'AAAAC3NzaC1lZDI1NTE5AAAAINkMOfviqHtQivWNECpHCBn472BbZ/TaFf75Zcxnabsy'
+    )
+    $script:signatureFixture = @'
+-----BEGIN SSH SIGNATURE-----
+U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgrgZqTfFKgIMEFMP9QOw9rOTWw3
+dN8aJm225ldtOBB1oAAAAha3JhdmhhbnRlcmluZy13b3Jrc3RhdGlvbi1wYWNrYWdlAAAA
+AAAAAAZzaGE1MTIAAABTAAAAC3NzaC1lZDI1NTE5AAAAQKkNHeuk3RSlM/B/0PyBTeOYr3
+61eD3vvH1aJEXPI9KxaOJSf7X0Euiv34mtAidW4vXkAeqj7djkBIcZyGAxwwY=
+-----END SSH SIGNATURE-----
+'@
+    $script:packageSignatureVerifier = InModuleScope -ScriptBlock {
+      (Get-Command Test-AzureDevWorkstationPackageSignature).ScriptBlock
+    }
 
     function New-TestWorkstationPackage {
       param(
         [Parameter(Mandatory = $true)]
-        [PSCustomObject]$Context,
+        [System.Management.Automation.PSObject]$Context,
 
         [Parameter(Mandatory = $true)]
-        [PSCustomObject]$Request,
+        [System.Management.Automation.PSObject]$Request,
 
         [Parameter(Mandatory = $true)]
-        [string]$OutputPath,
+        [System.String]$OutputPath,
 
-        [string[]]$ApprovedPrompts = @()
+        [System.String[]]$ApprovedPrompts = @()
       )
 
       $global:mockAzureDevWorkstationState.ApprovedPrompts =
@@ -73,7 +96,7 @@ Describe `
           -OutputPath $OutputPath `
           -Confirm:$false
       }
-      return [PSCustomObject]@{
+      return [System.Management.Automation.PSObject]@{
         Entries = $global:mockAzureDevWorkstationState.CapturedPackage
         Recipient = $global:mockAzureDevWorkstationState.LastRecipient
       }
@@ -82,13 +105,13 @@ Describe `
     function Get-TestWorkstationPackageEnvelope {
       param(
         [Parameter(Mandatory = $true)]
-        [string]$Path
+        [System.String]$Path
       )
 
       $encoded = @(
         Get-Content -LiteralPath $Path |
           Where-Object {
-            -not [string]::IsNullOrWhiteSpace($_) -and
+            -not [System.String]::IsNullOrWhiteSpace($_) -and
             $_ -notmatch '^-----' -and
             $_ -notmatch '^Version:'
           }
@@ -102,10 +125,10 @@ Describe `
     function Set-TestWorkstationPackageEnvelope {
       param(
         [Parameter(Mandatory = $true)]
-        [string]$Path,
+        [System.String]$Path,
 
         [Parameter(Mandatory = $true)]
-        [PSCustomObject]$Envelope
+        [System.Management.Automation.PSObject]$Envelope
       )
 
       $json = $Envelope | ConvertTo-Json -Compress
@@ -182,10 +205,10 @@ Describe `
       -Value 'managed approval private key'
     Set-Content `
       -LiteralPath "$script:approvalKeyPath.pub" `
-      -Value 'ssh-ed25519 AAAAapprover'
-    $script:context = [PSCustomObject]@{
+      -Value $script:approverPublicKey
+    $script:context = [System.Management.Automation.PSObject]@{
       Yes = $false
-      Config = [PSCustomObject]@{
+      Config = [System.Management.Automation.PSObject]@{
         RepoRoot = $script:repoRoot
         EnvironmentFilePath = $script:primaryPath
         LocalEnvironmentFilePath = $script:localPath
@@ -201,23 +224,25 @@ Describe `
         PackageIdentityPath = $script:destinationKeyPath
       }
     }
-    $script:request = [PSCustomObject]@{
+    $script:request = [System.Management.Automation.PSObject]@{
       requestId = [System.Guid]::NewGuid().ToString()
       workstation = 'destination'
       intendedUse = 'connect-only'
       destinationPrivateKeyPath = $script:destinationKeyPath
-      publicKey = 'ssh-ed25519 AAAAdestination'
+      publicKey = $script:destinationPublicKey
       publicKeyFingerprint = 'SHA256:destination'
-      approverPublicKeyFingerprint = InModuleScope -ScriptBlock {
+      approverPublicKeyFingerprint = InModuleScope -Parameters @{
+        PublicKey = $script:approverPublicKey
+      } -ScriptBlock {
         Set-StrictMode -Version 1.0
         Get-AzureDevPublicKeyFingerprint `
-          -PublicKey 'ssh-ed25519 AAAAapprover'
+          -PublicKey $PublicKey
       }
       platform = 'linux'
       architecture = 'x64'
     }
 
-    $global:mockAzureDevWorkstationState = [PSCustomObject]@{
+    $global:mockAzureDevWorkstationState = [System.Management.Automation.PSObject]@{
       ApprovedPrompts = @()
       CapturedPackage = $null
       DecryptCalls = 0
@@ -281,6 +306,48 @@ Describe `
       $script:originalCopilotToken,
       'Process'
     )
+  }
+
+  Context 'When verifying an OpenSSH package signature' {
+    It 'Should accept the exact signed binary payload and namespace' {
+      $payload = [System.Convert]::FromBase64String(
+        'YWdlLWVuY3J5cHRlZC1wYXlsb2FkLWZpeHR1cmUK'
+      )
+
+      $verified = & $script:packageSignatureVerifier `
+        -Payload $payload `
+        -Signature $script:signatureFixture `
+        -PublicKey $script:approverPublicKey
+
+      $verified | Should-BeTrue
+    }
+
+    It 'Should reject a modified binary payload' {
+      $payload = [System.Convert]::FromBase64String(
+        'YWdlLWVuY3J5cHRlZC1wYXlsb2FkLWZpeHR1cmUK'
+      )
+      $payload[0] = $payload[0] -bxor 1
+
+      $verified = & $script:packageSignatureVerifier `
+        -Payload $payload `
+        -Signature $script:signatureFixture `
+        -PublicKey $script:approverPublicKey
+
+      $verified | Should-BeFalse
+    }
+
+    It 'Should reject a signature from a different trusted key' {
+      $payload = [System.Convert]::FromBase64String(
+        'YWdlLWVuY3J5cHRlZC1wYXlsb2FkLWZpeHR1cmUK'
+      )
+
+      $verified = & $script:packageSignatureVerifier `
+        -Payload $payload `
+        -Signature $script:signatureFixture `
+        -PublicKey $script:wrongPublicKey
+
+      $verified | Should-BeFalse
+    }
   }
 
   Context 'When process tokens have not been approved for transfer' {
@@ -354,14 +421,14 @@ Describe `
       $wrongKeyPath = Join-Path `
         $TestDrive `
         'kravhantering_azure_dev_wrong_ed25519'
-      $wrongContext = [PSCustomObject]@{
-        Config = [PSCustomObject]@{
+      $wrongContext = [System.Management.Automation.PSObject]@{
+        Config = [System.Management.Automation.PSObject]@{
           PackageIdentityPath = $wrongKeyPath
           WorkstationApproverPublicKeyPath = "$script:approvalKeyPath.pub"
         }
       }
       $global:mockAzureDevWorkstationState.IdentityRecipients[$wrongKeyPath] =
-        'ssh-ed25519 AAAAwrong'
+        $script:wrongPublicKey
       $wrongDestination = Join-Path $TestDrive 'wrong-key-extraction'
 
       {
@@ -513,7 +580,7 @@ Describe `
         -OutputPath $packagePath
       Set-Content `
         -LiteralPath "$script:approvalKeyPath.pub" `
-        -Value 'ssh-ed25519 AAAArotated1'
+        -Value $script:wrongPublicKey
       $destination = Join-Path $TestDrive 'rotated-key-extraction'
 
       {

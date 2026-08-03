@@ -50,7 +50,7 @@ Describe `
     function Initialize-TestWorkstationModule {
       param(
         [Parameter(Mandatory = $true)]
-        [string]$DestinationHome
+        [System.String]$DestinationHome
       )
 
       & $script:workstationModule {
@@ -64,7 +64,7 @@ Describe `
           -Name HOME `
           -Value $MockDestinationHome `
           -Scope Script
-        $script:mockAzureDevWorkstationState = [PSCustomObject]@{
+        $script:mockAzureDevWorkstationState = [System.Management.Automation.PSObject]@{
           CapturedPackage = $null
           DecryptCalls = 0
           EncryptedPackages = @{}
@@ -83,9 +83,9 @@ Describe `
         function script:ConvertTo-AzureDevAccessName {
           param(
             [Parameter(Mandatory = $true)]
-            [string]$Value,
+            [System.String]$Value,
 
-            [string]$Label
+            [System.String]$Label
           )
 
           return $Value
@@ -94,7 +94,7 @@ Describe `
         function script:Get-AzureDevWorkstationCidr {
           param(
             [Parameter(Mandatory = $true)]
-            [string]$Cidr
+            [System.String]$Cidr
           )
 
           return $Cidr
@@ -103,7 +103,7 @@ Describe `
         function script:New-AzureDevSshKey {
           param(
             [Parameter(Mandatory = $true)]
-            [PSCustomObject]$Config
+            [System.Management.Automation.PSObject]$Config
           )
 
           $null = New-Item `
@@ -117,19 +117,19 @@ Describe `
         function script:Get-AzureDevSshPublicKey {
           param(
             [Parameter(Mandatory = $true)]
-            [PSCustomObject]$Config
+            [System.Management.Automation.PSObject]$Config
           )
 
-          return 'ssh-ed25519 AAAAdestination'
+          return 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIElRFe/K9qM55tJk2DRl7IsDK+cTTRpJ5nNiN2g358Z4'
         }
 
         function script:Get-AzureDevPublicKeyFingerprint {
           param(
             [Parameter(Mandatory = $true)]
-            [string]$PublicKey
+            [System.String]$PublicKey
           )
 
-          if ($PublicKey -eq 'ssh-ed25519 AAAAapprover') {
+          if ($PublicKey -eq 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda') {
             return 'SHA256:' + ('A' * 43)
           }
           return 'SHA256:destination'
@@ -138,7 +138,7 @@ Describe `
         function script:Get-AzureDevPublicIpAddress {
           param(
             [Parameter(Mandatory = $true)]
-            [PSCustomObject]$Config
+            [System.Management.Automation.PSObject]$Config
           )
 
           return '203.0.113.10'
@@ -151,10 +151,10 @@ Describe `
         function script:Invoke-AzureDevNativeCommand {
           param(
             [Parameter(Mandatory = $true)]
-            [string]$FilePath,
+            [System.String]$FilePath,
 
             [Parameter(Mandatory = $true)]
-            [object[]]$Arguments
+            [System.Object[]]$Arguments
           )
 
           & $script:mockAzureDevNativeCommandEmulator `
@@ -168,13 +168,13 @@ Describe `
         function script:Test-AzureDevWorkstationPackageSignature {
           param(
             [Parameter(Mandatory = $true)]
-            [byte[]]$Payload,
+            [System.Byte[]]$Payload,
 
             [Parameter(Mandatory = $true)]
-            [string]$Signature,
+            [System.String]$Signature,
 
             [Parameter(Mandatory = $true)]
-            [string]$PublicKey
+            [System.String]$PublicKey
           )
 
           return & $script:mockAzureDevPackageSignatureVerifier `
@@ -190,10 +190,10 @@ Describe `
     function New-TestTransferContext {
       param(
         [Parameter(Mandatory = $true)]
-        [string]$RepositoryRoot,
+        [System.String]$RepositoryRoot,
 
         [Parameter(Mandatory = $true)]
-        [string]$DestinationKeyPath
+        [System.String]$DestinationKeyPath
       )
 
       $primaryPath = Join-Path `
@@ -214,7 +214,7 @@ Describe `
         'approver_ed25519.pub'
       Set-Content `
         -LiteralPath $approverPublicKeyPath `
-        -Value 'ssh-ed25519 AAAAapprover'
+        -Value 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
       $managedApprovalKeyPath = Join-Path `
         $RepositoryRoot `
         'managed_approval_ed25519'
@@ -223,12 +223,12 @@ Describe `
         -Value 'managed approval private key'
       Set-Content `
         -LiteralPath "$managedApprovalKeyPath.pub" `
-        -Value 'ssh-ed25519 AAAAapprover'
+        -Value 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
 
-      return [PSCustomObject]@{
+      return [System.Management.Automation.PSObject]@{
         Yes = $true
         StateDirectory = Join-Path $RepositoryRoot 'state'
-        Config = [PSCustomObject]@{
+        Config = [System.Management.Automation.PSObject]@{
           RepoRoot = $RepositoryRoot
           EnvironmentFilePath = $primaryPath
           LocalEnvironmentFilePath = $localPath
@@ -249,13 +249,13 @@ Describe `
     function Read-TestArmoredRequest {
       param(
         [Parameter(Mandatory = $true)]
-        [string]$Path
+        [System.String]$Path
       )
 
       $armorLines = @(
         Get-Content -LiteralPath $Path |
           Where-Object {
-            -not [string]::IsNullOrWhiteSpace($_) -and
+            -not [System.String]::IsNullOrWhiteSpace($_) -and
             $_ -notmatch '^-----' -and
             $_ -notmatch '^Version:'
           }
@@ -398,7 +398,7 @@ Describe `
         -DestinationKeyPath $destinationKeyPath
       Set-Content `
         -LiteralPath $context.Config.WorkstationApproverPublicKeyPath `
-        -Value 'not an SSH public key'
+        -Value 'ssh-ed25519 QQ=='
 
       {
         New-AzureDevWorkstationRequest `
@@ -446,12 +446,12 @@ Describe `
       $context = New-TestTransferContext `
         -RepositoryRoot (Join-Path $TestDrive 'package-repo') `
         -DestinationKeyPath $destinationKeyPath
-      $request = [PSCustomObject]@{
+      $request = [System.Management.Automation.PSObject]@{
         requestId = [System.Guid]::NewGuid().ToString('N')
         workstation = 'destination'
         intendedUse = $IntendedUse
         destinationPrivateKeyPath = $destinationKeyPath
-        publicKey = 'ssh-ed25519 AAAAdestination'
+        publicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIElRFe/K9qM55tJk2DRl7IsDK+cTTRpJ5nNiN2g358Z4'
         publicKeyFingerprint = 'SHA256:destination'
         approverPublicKeyFingerprint = 'SHA256:' + ('A' * 43)
         platform = 'linux'
@@ -474,7 +474,7 @@ Describe `
       $mockCaptured = & $script:workstationModule {
         return $script:mockAzureDevWorkstationState.CapturedPackage
       }
-      $localContent = [string]$mockCaptured[
+      $localContent = [System.String]$mockCaptured[
         'files/.env.azure.development.local'
       ]
       $manifest = $mockCaptured['manifest.json'] | ConvertFrom-Json
@@ -506,12 +506,12 @@ Describe `
   Context 'When an approver identity does not match the signed request' {
     BeforeEach {
       Mock -CommandName Read-AzureDevWorkstationRequest -MockWith {
-        return [PSCustomObject]@{
+        return [System.Management.Automation.PSObject]@{
           workstation = 'destination'
           intendedUse = 'connect-only'
           cidr = '198.51.100.4/32'
           destinationPrivateKeyPath = '/tmp/destination-key'
-          publicKey = 'ssh-ed25519 AAAAdestination'
+          publicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIElRFe/K9qM55tJk2DRl7IsDK+cTTRpJ5nNiN2g358Z4'
           publicKeyFingerprint = 'SHA256:destination'
           approverPublicKeyFingerprint = 'SHA256:different-approver'
         }
@@ -553,7 +553,7 @@ Describe `
         -Value '# existing local configuration'
       $readmeRoot = Join-Path $TestDrive 'readme'
       $null = New-Item -ItemType Directory -Path $readmeRoot -Force
-      $manifest = [PSCustomObject]@{
+      $manifest = [System.Management.Automation.PSObject]@{
         intendedUse = 'connect-only'
         destinationPrivateKeyPath = $destinationKeyPath
         workstation = 'destination'
@@ -635,12 +635,12 @@ Describe `
       $installedPath = Join-Path $TestDrive 'known_hosts'
       Set-Content `
         -LiteralPath $expectedPath `
-        -Value '203.0.113.10 ssh-ed25519 AAAAexpected'
+        -Value '203.0.113.10 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
       Set-Content `
         -LiteralPath $installedPath `
         -Value @(
-          '203.0.113.10 ssh-ed25519 AAAAdifferent',
-          'unrelated.example ssh-rsa AAAAunrelated'
+          '203.0.113.10 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINkMOfviqHtQivWNECpHCBn472BbZ/TaFf75Zcxnabsy',
+          'unrelated.example ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIElRFe/K9qM55tJk2DRl7IsDK+cTTRpJ5nNiN2g358Z4'
         )
 
       $mismatchAccepted = InModuleScope -Parameters @{
@@ -655,7 +655,11 @@ Describe `
       }
       Add-Content `
         -LiteralPath $installedPath `
-        -Value '203.0.113.10   ssh-ed25519   AAAAexpected comment'
+        -Value (
+          '203.0.113.10   ssh-ed25519   ' +
+          'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda ' +
+          'comment'
+        )
       $exactAccepted = InModuleScope -Parameters @{
         TestExpectedPath = $expectedPath
         TestInstalledPath = $installedPath
@@ -699,7 +703,7 @@ Describe `
         -Force
       Set-Content `
         -LiteralPath (Join-Path $packageReference 'vm-known-hosts') `
-        -Value '203.0.113.10 ssh-ed25519 AAAAexpected'
+        -Value '203.0.113.10 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
       $manifest = [ordered]@{
         schema = 3
         kind = 'kravhantering-azure-dev-workstation-package'
@@ -716,7 +720,7 @@ Describe `
       Set-Content `
         -LiteralPath (Join-Path $packageRoot 'manifest.json') `
         -Value ($manifest | ConvertTo-Json)
-      $context = [PSCustomObject]@{ Config = $partialConfig }
+      $context = [System.Management.Automation.PSObject]@{ Config = $partialConfig }
       $script:readinessInformation = @()
 
       {
@@ -727,7 +731,7 @@ Describe `
       } | Should-Throw -ExceptionMessage 'Workstation access is not ready.'
       $readinessOutput = @(
         $script:readinessInformation |
-          ForEach-Object { [string]$_.MessageData }
+          ForEach-Object { [System.String]$_.MessageData }
       ) -join [System.Environment]::NewLine
 
       foreach ($expectedOutput in @(
@@ -761,10 +765,10 @@ Describe `
         -Value 'AZURE_DEV_VM_CONNECTIVITY_MODE=public-ssh'
       Set-Content `
         -LiteralPath (Join-Path $packageReference 'vm-known-hosts') `
-        -Value '203.0.113.10 ssh-ed25519 AAAAexpected'
+        -Value '203.0.113.10 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
       Set-Content `
         -LiteralPath (Join-Path $readinessSsh 'known_hosts') `
-        -Value '203.0.113.10 ssh-ed25519 AAAAdifferent'
+        -Value '203.0.113.10 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINkMOfviqHtQivWNECpHCBn472BbZ/TaFf75Zcxnabsy'
       $manifest = [ordered]@{
         schema = 3
         kind = 'kravhantering-azure-dev-workstation-package'
