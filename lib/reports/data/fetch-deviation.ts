@@ -17,6 +17,7 @@ export interface DeviationReportVersion {
   description: string | null
   normReferences: { name: string; reference: string; uri: string | null }[]
   priorityLevel: {
+    code: string
     color: string | null
     iconName: string | null
     nameEn: string
@@ -79,6 +80,7 @@ export async function fetchDeviationForReport(
       } | null
       verifiable: boolean
       priorityLevel: {
+        code: string
         color: string | null
         iconName: string | null
         id: number
@@ -173,6 +175,7 @@ export async function fetchDeviationForReport(
         : null,
       priorityLevel: version.priorityLevel
         ? {
+            code: version.priorityLevel.code,
             color: version.priorityLevel.color,
             iconName: version.priorityLevel.iconName,
             nameEn: version.priorityLevel.nameEn,

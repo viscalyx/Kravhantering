@@ -16,6 +16,10 @@ import {
 import { getStatusIconNodes } from '@/lib/icons/status-icon-allowlist'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import {
+  formatReportPriorityLabel,
+  getPdfPriorityColors,
+} from '@/lib/reports/priority'
+import {
   formatReportBoolean,
   getReportLabels,
   getReportMessages,
@@ -26,6 +30,7 @@ import type {
   DiffSegment,
   MetadataChange,
   ReportModel,
+  ReportPriorityIdentity,
   ReportSection,
   SuggestionReportItem,
   TimelineEntryData,
@@ -310,11 +315,11 @@ function PdfSectionRenderer({
     case 'timeline-entry':
       return <PdfTimelineEntry locale={locale} section={section} />
     case 'requirement-table':
-      return <PdfRequirementTable section={section} />
+      return <PdfRequirementTable locale={locale} section={section} />
     case 'traceability-summary':
       return <PdfTraceabilitySummary section={section} />
     case 'traceability-table':
-      return <PdfTraceabilityTable section={section} />
+      return <PdfTraceabilityTable locale={locale} section={section} />
     case 'requirement-selection-context':
       return (
         <PdfRequirementSelectionContext locale={locale} section={section} />
@@ -570,11 +575,11 @@ function PdfVersionSummary({
             value={getName(version.qualityCharacteristic)}
           />
         )}
-        {getName(version.priorityLevel) && (
-          <PdfMetadataItem
-            iconName={version.priorityLevel?.iconName}
+        {version.priorityLevel && (
+          <PdfPriorityMetadataItem
             label={labels.columns.priorityLevel}
-            value={getName(version.priorityLevel)}
+            locale={locale}
+            priority={version.priorityLevel}
           />
         )}
         <PdfMetadataItem
@@ -605,6 +610,23 @@ function PdfVersionSummary({
           </Text>
         </View>
       )}
+    </View>
+  )
+}
+
+function PdfPriorityMetadataItem({
+  label,
+  locale,
+  priority,
+}: {
+  label: string
+  locale: string
+  priority: ReportPriorityIdentity
+}) {
+  return (
+    <View style={styles.metadataItem}>
+      <Text style={styles.metadataItemLabel}>{label}: </Text>
+      <PdfPriorityBadge locale={locale} priority={priority} />
     </View>
   )
 }
@@ -683,26 +705,46 @@ function PdfMetadataChanges({
       </View>
       {section.changes.map((change, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: static metadata rows
-        <PdfMetadataChangeRow change={change} key={i} />
+        <PdfMetadataChangeRow change={change} key={i} locale={locale} />
       ))}
     </View>
   )
 }
 
-function PdfMetadataChangeRow({ change }: { change: MetadataChange }) {
+function PdfMetadataChangeRow({
+  change,
+  locale,
+}: {
+  change: MetadataChange
+  locale: string
+}) {
   return (
     <View style={styles.tableRow}>
       <Text style={[styles.tableCell, styles.tableCellField]}>
         {change.field}
       </Text>
-      <Text style={[styles.tableCell, styles.tableCellOld]}>
-        {change.oldValue ?? '\u2014'}
-      </Text>
-      <Text style={[styles.tableCell, styles.tableCellNew]}>
-        {change.newValue ?? '\u2014'}
-      </Text>
+      <View style={styles.tableCellOld}>
+        <PdfMetadataChangeValue locale={locale} value={change.oldValue} />
+      </View>
+      <View style={styles.tableCellNew}>
+        <PdfMetadataChangeValue locale={locale} value={change.newValue} />
+      </View>
     </View>
   )
+}
+
+function PdfMetadataChangeValue({
+  locale,
+  value,
+}: {
+  locale: string
+  value: MetadataChange['oldValue']
+}) {
+  if (value == null) return <Text style={styles.tableCell}>\u2014</Text>
+  if (typeof value === 'string') {
+    return <Text style={styles.tableCell}>{value}</Text>
+  }
+  return <PdfPriorityBadge locale={locale} priority={value} />
 }
 
 function PdfTimelineEntry({
@@ -764,8 +806,10 @@ export function formatTimelineDate(
 }
 
 function PdfRequirementTable({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'requirement-table' }>
 }) {
   const colWidths: Record<string, string> = {
@@ -800,7 +844,12 @@ function PdfRequirementTable({
               key={col.key}
               style={{ width: columnWidth(col.key, col.width) }}
             >
-              {col.key === 'status' && row.statusColor ? (
+              {col.key === 'priorityLevel' && row.priorityLevel ? (
+                <PdfPriorityInline
+                  locale={locale}
+                  priority={row.priorityLevel}
+                />
+              ) : col.key === 'status' && row.statusColor ? (
                 <PdfBadge
                   color={row.statusColor}
                   iconName={row.statusIconName}
@@ -889,8 +938,10 @@ function PdfTraceabilitySummary({
 }
 
 function PdfTraceabilityTable({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'traceability-table' }>
 }) {
   return (
@@ -944,10 +995,26 @@ function PdfTraceabilityTable({
               label={section.labels.deviation}
               value={row.deviation}
             />
-            <PdfTraceabilityField
-              label={section.labels.priorityLevel}
-              value={row.priorityLevel}
-            />
+            <View style={{ width: '48%' }}>
+              <Text
+                style={{
+                  color: '#64748b',
+                  fontFamily: 'Helvetica-Bold',
+                  fontSize: 7,
+                  marginBottom: 1,
+                }}
+              >
+                {section.labels.priorityLevel}
+              </Text>
+              {row.priorityLevel ? (
+                <PdfPriorityInline
+                  locale={locale}
+                  priority={row.priorityLevel}
+                />
+              ) : (
+                <Text style={{ color: '#94a3b8', fontSize: 8 }}>\u2014</Text>
+              )}
+            </View>
             <PdfTraceabilityField
               label={section.labels.verification}
               value={row.verification}
@@ -1116,6 +1183,77 @@ function PdfStatusIcon({
   )
 }
 
+function PdfPriorityBadge({
+  backdrop = '#ffffff',
+  locale,
+  priority,
+}: {
+  backdrop?: string
+  locale: string
+  priority: ReportPriorityIdentity
+}) {
+  const label = formatReportPriorityLabel(priority, locale)
+  if (!label) return null
+  const colors = getPdfPriorityColors(priority.color, backdrop, 'badge')
+
+  return (
+    <View
+      style={[
+        styles.badge,
+        {
+          alignItems: 'center',
+          alignSelf: 'flex-start',
+          backgroundColor: colors.background,
+          flexDirection: 'row',
+          gap: 2,
+          maxWidth: '100%',
+        },
+      ]}
+    >
+      <PdfStatusIcon color={colors.foreground} name={priority.iconName} />
+      <Text style={{ color: colors.foreground, flex: 1 }}>{label}</Text>
+    </View>
+  )
+}
+
+function PdfPriorityInline({
+  backdrop = '#ffffff',
+  locale,
+  priority,
+}: {
+  backdrop?: string
+  locale: string
+  priority: ReportPriorityIdentity
+}) {
+  const label = formatReportPriorityLabel(priority, locale)
+  if (!label) return null
+  const colors = getPdfPriorityColors(priority.color, backdrop, 'inline')
+
+  return (
+    <View
+      style={{
+        alignItems: 'flex-start',
+        backgroundColor: colors.background,
+        flexDirection: 'row',
+        gap: 2,
+        maxWidth: '100%',
+      }}
+    >
+      <PdfStatusIcon color={colors.foreground} name={priority.iconName} />
+      <Text
+        style={{
+          color: colors.foreground,
+          flex: 1,
+          fontSize: 8,
+          lineHeight: 1.25,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  )
+}
+
 function PdfBadge({
   label,
   color,
@@ -1152,13 +1290,6 @@ function PdfDeviationSummary({
 }) {
   const locale = section.locale
   const labels = getReportLabels(locale)
-  const priorityName = section.priorityLevel
-    ? localizeReportValue(
-        locale,
-        section.priorityLevel.nameSv,
-        section.priorityLevel.nameEn,
-      )
-    : null
   const createdBy = formatActorDisplayNameForLocale(section.createdBy, locale)
   return (
     <View
@@ -1180,7 +1311,7 @@ function PdfDeviationSummary({
       >
         {labels.deviations.title}
       </Text>
-      {priorityName && (
+      {section.priorityLevel && (
         <View
           style={{
             alignItems: 'center',
@@ -1192,11 +1323,11 @@ function PdfDeviationSummary({
           <Text style={{ fontSize: 9, color: '#6b7280' }}>
             {labels.deviations.priorityLevel}
           </Text>
-          <PdfStatusIcon
-            color={section.priorityLevel?.color ?? '#6b7280'}
-            name={section.priorityLevel?.iconName}
+          <PdfPriorityInline
+            backdrop="#fffbeb"
+            locale={locale}
+            priority={section.priorityLevel}
           />
-          <Text style={{ fontSize: 9, color: '#6b7280' }}>{priorityName}</Text>
         </View>
       )}
       <Text

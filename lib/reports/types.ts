@@ -3,6 +3,14 @@ export interface DiffSegment {
   type: 'added' | 'removed' | 'unchanged'
 }
 
+export interface ReportPriorityIdentity {
+  code: string
+  color: string | null
+  iconName: string | null
+  nameEn: string
+  nameSv: string
+}
+
 export interface VersionSummaryData {
   acceptanceCriteria: string | null
   archivedAt: string | null
@@ -12,12 +20,7 @@ export interface VersionSummaryData {
   description: string | null
   editedAt: string | null
   normReferences: { name: string; reference: string; uri: string | null }[]
-  priorityLevel: {
-    color?: string | null
-    iconName?: string | null
-    nameSv: string
-    nameEn: string
-  } | null
+  priorityLevel: ReportPriorityIdentity | null
   publishedAt: string | null
   qualityCharacteristic: { nameSv: string; nameEn: string } | null
   requirementPackages: { name: string }[]
@@ -30,8 +33,8 @@ export interface VersionSummaryData {
 
 export interface MetadataChange {
   field: string
-  newValue: string | null
-  oldValue: string | null
+  newValue: ReportPriorityIdentity | string | null
+  oldValue: ReportPriorityIdentity | string | null
 }
 
 export interface SuggestionReportItem {
@@ -55,7 +58,7 @@ export interface TraceabilityReportRow {
   needsReference: string
   note: string
   origin: string
-  priorityLevel: string
+  priorityLevel: ReportPriorityIdentity | null
   requirementId: string
   statusChangedAt: string
   usageStatus: string
@@ -111,6 +114,7 @@ export type ReportSection =
       columns: { key: string; label: string; width?: string }[]
       rows: {
         cells: Record<string, string>
+        priorityLevel?: ReportPriorityIdentity | null
         statusColor?: string | null
         statusIconName?: string | null
       }[]
@@ -165,12 +169,7 @@ export type ReportSection =
       createdAt: string
       specificationName: string | null
       specificationCode: string | null
-      priorityLevel: {
-        color?: string | null
-        iconName?: string | null
-        nameSv: string
-        nameEn: string
-      } | null
+      priorityLevel: ReportPriorityIdentity | null
       locale: string
     }
   | {

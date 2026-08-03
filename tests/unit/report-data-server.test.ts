@@ -135,6 +135,56 @@ describe('report data server helpers', () => {
     } satisfies Partial<ReportDataError>)
   })
 
+  it('keeps the complete priority identity in deviation report data', async () => {
+    dalState.getRequirementById.mockResolvedValue({
+      area: null,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      id: 42,
+      isArchived: false,
+      uniqueId: 'KRAV-42',
+      versions: [
+        {
+          ...reportVersion(10),
+          priorityLevel: {
+            code: 'P2',
+            color: '#fde047',
+            iconName: 'CircleAlert',
+            id: 2,
+            nameEn: 'High',
+            nameSv: 'Hög',
+          },
+        },
+      ],
+    })
+    dalState.listDeviationsForSpecificationItem.mockResolvedValue([
+      {
+        createdAt: '2026-05-02T00:00:00.000Z',
+        createdBy: 'reviewer',
+        decision: null,
+        id: 7,
+        isReviewRequested: 1,
+        motivation: 'Needs review',
+        requirementVersionId: 10,
+        specificationCode: 'SPEC',
+        specificationName: 'Spec',
+      },
+    ])
+
+    await expect(
+      collectDeviationForReport(createReportDb(), 42, '55', 'sv'),
+    ).resolves.toMatchObject({
+      version: {
+        priorityLevel: {
+          code: 'P2',
+          color: '#fde047',
+          iconName: 'CircleAlert',
+          nameEn: 'High',
+          nameSv: 'Hög',
+        },
+      },
+    })
+  })
+
   it('parses library and numeric item refs for deviation reports', () => {
     dalState.parseSpecificationItemRef.mockImplementation((value: string) =>
       value === 'lib:55' ? { id: 55, kind: 'library' } : null,

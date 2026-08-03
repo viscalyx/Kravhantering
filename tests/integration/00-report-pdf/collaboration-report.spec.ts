@@ -10,6 +10,7 @@ import {
   type TestInfo,
   test,
 } from '@playwright/test'
+import { extractText } from 'unpdf'
 import { expectApiResponseOk } from '../api-response-assertions'
 import {
   getRequirementRowButton,
@@ -271,6 +272,11 @@ test('COL-06: opens the suggestion-history report for a requirement with suggest
     for await (const chunk of pdfStream) {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
     }
-    expect(Buffer.concat(chunks).subarray(0, 4).toString('utf8')).toBe('%PDF')
+    const pdfBuffer = Buffer.concat(chunks)
+    expect(pdfBuffer.subarray(0, 4).toString('utf8')).toBe('%PDF')
+    const { text } = await extractText(new Uint8Array(pdfBuffer), {
+      mergePages: true,
+    })
+    expect(text.replace(/\s+/gu, ' ')).toContain('P2 – Låg')
   })
 })

@@ -1077,11 +1077,13 @@ inte längre i paketets praktiska lista.
 
 **Steg:** Välj svenska och skapa PDF för granskningsrapport, kombinerad
 granskningsrapport och historikrapport. Använd kravversioner som visar
-metadataändringar samt publicerat, arkiverat, redigerat och skapat datum.
+metadataändringar, en ändrad prioritet samt publicerat, arkiverat, redigerat
+och skapat datum.
 
 **Förväntat resultat:** Metadataändringarnas rubrik och kolumner samt
 tidslinjens datumetiketter visas på svenska. Skapat datum visas endast när
 inget publicerat, arkiverat eller redigerat datum finns för tidslinjeposten.
+Tidigare och ny prioritet visas separat som P-kod, tankstreck och svenskt namn.
 
 ### LIFE-15: engelska gransknings- och historikrapporter förblir engelska
 
@@ -1091,7 +1093,8 @@ LIFE-14.
 
 **Förväntat resultat:** Metadataändringarnas rubrik och kolumner samt
 tidslinjens datumetiketter visas på engelska. Datumurvalet är oförändrat från
-det svenska testfallet och inga svenska strukturetiketter visas.
+det svenska testfallet och inga svenska strukturetiketter visas. Prioriteten
+visas med samma P-kod och sitt engelska namn.
 
 ## Samarbete i kravdetalj
 
@@ -1137,8 +1140,10 @@ förslaget kan inte lösas eller avvisas en gång till.
 **Steg:** Öppna rapport för förslagshistorik på ett krav med förslag.
 
 **Förväntat resultat:** Rapporten för förslagshistorik kan hämtas som PDF för
-krav med förslag och servern returnerar PDF-svar. Automatiserad täckning får
-verifiera serverns PDF-svar och rapportens datakälla via befintlig
+krav med förslag och servern returnerar PDF-svar. En prioritet visas med P-kod,
+lokaliserat namn, kontrastsäker färg och enbart en giltig konfigurerad ikon.
+Automatiserad täckning får verifiera serverns PDF-svar och rapportens datakälla
+via befintlig
 rapportmodell eller rapportslutpunkt.
 
 ### COL-07: metadata visar kravområdesägare och taxonomi
@@ -1335,8 +1340,9 @@ exportmenyn.
 
 **Förväntat resultat:** Rapporten genereras för hela kravunderlaget och
 innehåller intern uppföljningsmetadata, kravversion, kravområde, kategori, typ,
-kvalitetsegenskap, risknivå, kravversionsstatus, verifierbarhet,
-behovsreferens, användningsstatus och normreferenser. `Anbuds-CSV` visas inte.
+kvalitetsegenskap, prioritet som P-kod och lokaliserat namn,
+kravversionsstatus, verifierbarhet, behovsreferens, användningsstatus och
+normreferenser. `Anbuds-CSV` visas inte.
 `Full CSV-export` visas. Automatiserad täckning får verifiera fälten via
 befintlig strukturerad rapportslutpunkt.
 
@@ -1348,7 +1354,8 @@ rapportmenyn och välj `Förvaltningsrapport`.
 **Förväntat resultat:** Rapporten återanvänder genomföranderapportens fält och
 visar dessutom avstegssignal och rest från införande. Avvikna krav flaggas via
 avstegssignalen, inte genom att räknas som implementerad rest. Automatiserad
-täckning får verifiera fälten via befintlig strukturerad rapportslutpunkt.
+täckning får verifiera fälten och den strukturerade prioritetsidentiteten via
+befintlig strukturerad rapportslutpunkt.
 
 ### SPEC-10d: kravunderlagsrapporter kräver läsbehörighet
 
@@ -1370,8 +1377,9 @@ Sammanfattningen visar totalt antal kravtillämpningar, bibliotekskrav,
 kravunderlagslokala krav, användningsstatusfördelning, saknade
 behovsreferenser och avsteg per beslutsläge. Detaljraderna visar Krav-ID,
 ursprung, version, kravområde, behovsreferens, användningsstatus,
-statusändringsdatum, avsteg, risk, verifierbarhet/verifieringsmetod och
-anteckning. Rapporten omfattar hela det serverfiltrerade resultatet i samma
+statusändringsdatum, avsteg, prioritet som P-kod och lokaliserat namn,
+verifierbarhet/verifieringsmetod och anteckning. Rapporten omfattar hela det
+serverfiltrerade resultatet i samma
 databasstyrda ordning även när resultatet kräver flera serversidor. Webbläsaren
 skickar filter- och sorteringsläget, inte en lista med kravtillämpningsreferenser.
 Automatiserad täckning får verifiera filtrerat innehåll och resultat över 100

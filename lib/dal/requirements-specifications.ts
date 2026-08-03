@@ -53,6 +53,9 @@ export interface TraceabilityReportItem {
   kind: SpecificationItemKind
   needsReference: string | null
   note: string | null
+  priorityLevelCode: string | null
+  priorityLevelColor: string | null
+  priorityLevelIconName: string | null
   priorityLevelNameEn: string | null
   priorityLevelNameSv: string | null
   specificationItemStatusId: number | null
@@ -310,6 +313,9 @@ function mapTraceabilityReportRow(
     needsReference: toStr(row.needsReference),
     note: toStr(row.note),
     verifiable: toBool(row.verifiable),
+    priorityLevelCode: toStr(row.priorityLevelCode),
+    priorityLevelColor: toStr(row.priorityLevelColor),
+    priorityLevelIconName: toStr(row.priorityLevelIconName),
     priorityLevelNameEn: toStr(row.priorityLevelNameEn),
     priorityLevelNameSv: toStr(row.priorityLevelNameSv),
     specificationItemStatusId: toNum(row.specificationItemStatusId),
@@ -355,6 +361,9 @@ export async function listSpecificationTraceabilityItems(
           requirement_version.version_number AS versionNumber,
           requirement_version.is_verifiable AS verifiable,
           requirement_version.verification_method AS verificationMethod,
+          priority_level.code AS priorityLevelCode,
+          priority_level.color AS priorityLevelColor,
+          priority_level.icon_name AS priorityLevelIconName,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
           needs_reference.text AS needsReference,
@@ -418,6 +427,9 @@ export async function listSpecificationTraceabilityItems(
           CAST(NULL AS nvarchar(450)) AS areaName,
           local_requirement.is_verifiable AS verifiable,
           local_requirement.verification_method AS verificationMethod,
+          priority_level.code AS priorityLevelCode,
+          priority_level.color AS priorityLevelColor,
+          priority_level.icon_name AS priorityLevelIconName,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
           needs_reference.text AS needsReference,

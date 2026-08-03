@@ -73,4 +73,72 @@ describe('fetchDeviationForReport', () => {
 
     expect(result.version.requirementPackages).toEqual([{ name: 'Mobile use' }])
   })
+
+  it('keeps the complete priority identity from the requirement API', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string | URL | Request) => {
+        if (String(input).includes('/api/requirements/42')) {
+          return okJson({
+            uniqueId: 'REQ-42',
+            versions: [
+              {
+                acceptanceCriteria: null,
+                category: null,
+                createdBy: null,
+                description: 'Deviation target',
+                id: 9,
+                priorityLevel: {
+                  code: 'P2',
+                  color: '#fde047',
+                  iconName: 'CircleAlert',
+                  id: 2,
+                  nameEn: 'High',
+                  nameSv: 'Hög',
+                },
+                qualityCharacteristic: null,
+                status: 3,
+                statusColor: null,
+                statusIconName: null,
+                statusNameEn: 'Published',
+                statusNameSv: 'Publicerad',
+                type: null,
+                verifiable: false,
+                verificationMethod: null,
+                versionNormReferences: [],
+                versionNumber: 1,
+                versionRequirementPackages: [],
+              },
+            ],
+          })
+        }
+
+        return okJson({
+          deviations: [
+            {
+              createdAt: '2026-05-02T00:00:00.000Z',
+              createdBy: 'reviewer',
+              decision: null,
+              id: 7,
+              isReviewRequested: 1,
+              motivation: 'Needs review',
+              requirementVersionId: 9,
+              specificationCode: 'SPEC',
+              specificationName: 'Spec',
+            },
+          ],
+        })
+      }),
+    )
+
+    const result = await fetchDeviationForReport(42, 77, 'en')
+
+    expect(result.version.priorityLevel).toEqual({
+      code: 'P2',
+      color: '#fde047',
+      iconName: 'CircleAlert',
+      nameEn: 'High',
+      nameSv: 'Hög',
+    })
+  })
 })

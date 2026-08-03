@@ -97,6 +97,9 @@ function createDb() {
             qualityCharacteristicNameEn: 'Security',
             qualityCharacteristicNameSv: 'Informationssäkerhet',
             verifiable: 1,
+            priorityLevelCode: 'P1',
+            priorityLevelColor: '#1e3a8a',
+            priorityLevelIconName: 'CircleAlert',
             priorityLevelNameEn: 'High',
             priorityLevelNameSv: 'Hög',
             specificationItemStatusId: 2,
@@ -125,6 +128,9 @@ function createDb() {
             qualityCharacteristicNameEn: null,
             qualityCharacteristicNameSv: null,
             verifiable: 0,
+            priorityLevelCode: null,
+            priorityLevelColor: null,
+            priorityLevelIconName: null,
             priorityLevelNameEn: null,
             priorityLevelNameSv: null,
             specificationItemStatusId: 1,
@@ -196,6 +202,9 @@ describe('specification output data', () => {
     })
     expect(result.items[1]).toMatchObject({
       deviationCounts: { approved: 1 },
+      priorityLevelCode: 'P1',
+      priorityLevelColor: '#1e3a8a',
+      priorityLevelIconName: 'CircleAlert',
       requirementPackageNames: ['Base package'],
       suggestionCount: 3,
       versionNumber: 4,
@@ -211,6 +220,14 @@ describe('specification output data', () => {
         query.includes(
           'requirement_version.id = specification_item.requirement_version_id',
         ),
+      ),
+    ).toBe(true)
+    expect(
+      queries.some(
+        query =>
+          query.includes('priority_level.code AS priorityLevelCode') &&
+          query.includes('priority_level.color AS priorityLevelColor') &&
+          query.includes('priority_level.icon_name AS priorityLevelIconName'),
       ),
     ).toBe(true)
     expect(

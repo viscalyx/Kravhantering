@@ -1528,6 +1528,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           needsReference: 'IAM-42',
           note: 'Library note',
           verifiable: 1,
+          priorityLevelCode: 'P1',
+          priorityLevelColor: '#1e3a8a',
+          priorityLevelIconName: 'CircleAlert',
           priorityLevelNameEn: 'High',
           priorityLevelNameSv: 'Hög',
           specificationItemStatusId: 2,
@@ -1550,6 +1553,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           needsReference: null,
           note: 'Local note',
           verifiable: 0,
+          priorityLevelCode: null,
+          priorityLevelColor: null,
+          priorityLevelIconName: null,
           priorityLevelNameEn: null,
           priorityLevelNameSv: null,
           specificationItemStatusId: 1,
@@ -1602,6 +1608,9 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         itemRef: 'lib:31',
         kind: 'library',
         needsReference: 'IAM-42',
+        priorityLevelCode: 'P1',
+        priorityLevelColor: '#1e3a8a',
+        priorityLevelIconName: 'CircleAlert',
         verifiable: true,
         statusUpdatedAt: '2026-06-03T10:00:00.000Z',
         uniqueId: 'REQ-001',
@@ -1609,6 +1618,15 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         versionNumber: 2,
       }),
     ])
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'priority_level.code AS priorityLevelCode',
+    )
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'priority_level.color AS priorityLevelColor',
+    )
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'priority_level.icon_name AS priorityLevelIconName',
+    )
   })
 
   it('updates requirement application fields by item ref on SQL Server', async () => {

@@ -11,6 +11,34 @@ Version summaries include requirement package names when present. Blank or
 whitespace-only package names are ignored so report output does not show empty
 package entries.
 
+## Priority Identity in PDF Reports
+
+PDF reports represent a resolved priority as structured data containing its
+code, Swedish and English names, validated color, and optional allowlisted icon
+name. History, review, combined review, improvement suggestion history,
+deviation review, progress, management, and application traceability reports
+render the identity as `code – localized name`. If the localized name is empty,
+only the code is shown. A missing priority produces no badge or replacement
+label.
+
+Version summaries and old/new change values use the PDF badge variant. Dense
+progress, management, and traceability rows use the compact inline variant;
+both retain the complete code and name and allow text to wrap without a fixed
+height. Deviation review uses the inline variant against its amber card
+background.
+
+Only strict `#RRGGBB` configured colors enter the report model. Badge fills are
+opaque tints composited for the white PDF page, and their foreground is clamped
+to at least 4.5:1 contrast against that exact fill. Inline foregrounds use the
+same minimum against their exact white or amber background. Missing or invalid
+colors use the neutral PDF palette and never reach React-PDF as raw color
+values.
+
+Allowlisted static vector icons are preloaded before direct or isolated-worker
+rendering and use the same readable foreground as the priority text. Missing,
+empty, or unknown icon names produce no icon, fallback glyph, bullet, or
+external resource request.
+
 ## Report Types
 
 ### 1. History Report
@@ -31,6 +59,7 @@ latest archived version.
 - Only available when the requirement has Review status
 - Shows word-level diffs for requirement text and acceptance criteria
 - Shows metadata changes (category, type, quality characteristic, etc.)
+- Shows previous and new priorities as separate complete priority identities
 - If no published or archived version exists, displays a notice
 - **Archiving reviews** (Published → Review → Archive) are visually
   distinct: titled "Arkiveringsförfrågan" / "Archive Request" with a
@@ -142,6 +171,7 @@ version, sorted in descending version order.
   specification-item detail views
 - Each version section shows a version summary followed by
   its suggestions (or an empty-state label)
+- Version priorities use the localized PDF priority badge when present
 - Suggestion cards display status badge, content, author,
   date, and resolution details when applicable
 - Status colors: Draft (blue), Review Requested (yellow),

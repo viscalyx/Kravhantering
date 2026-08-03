@@ -524,7 +524,16 @@ function reportTable(model: StructuredReportModel) {
   expect(table).toBeDefined()
   return table as {
     columns: Array<{ key: string }>
-    rows: Array<{ cells: Record<string, string> }>
+    rows: Array<{
+      cells: Record<string, string>
+      priorityLevel?: {
+        code: string
+        color: string | null
+        iconName: string | null
+        nameEn: string
+        nameSv: string
+      } | null
+    }>
     type: 'requirement-table'
   }
 }
@@ -2995,6 +3004,16 @@ test.describe('Requirements specification deterministic manual cases', () => {
         'usageStatus',
         'normReferences',
       ])
+      expect(progressTable.rows[0]).toMatchObject({
+        priorityLevel: {
+          code: 'P2',
+          color: '#22c55e',
+          iconName: 'ArrowDownLeft',
+          nameEn: 'Low',
+          nameSv: 'Låg',
+        },
+      })
+      expect(progressTable.rows[0]?.cells.priorityLevel).toBeUndefined()
 
       const exportMenu = await openActionMenu(page, 'Exportera')
       await expect(
@@ -3055,6 +3074,13 @@ test.describe('Requirements specification deterministic manual cases', () => {
       'residualFromImplementation',
     )
     expect(managementTable.rows.length).toBeGreaterThan(0)
+    expect(managementTable.rows[0]).toMatchObject({
+      priorityLevel: {
+        code: 'P2',
+        nameEn: 'Low',
+        nameSv: 'Låg',
+      },
+    })
   })
 
   test('SPEC-10e: generates complete server-filtered traceability beyond 100 items', async ({
@@ -3091,6 +3117,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
       items?: Array<{
         itemRef: string
         needsReference: string | null
+        priorityLevelCode: string | null
+        priorityLevelColor: string | null
+        priorityLevelIconName: string | null
+        priorityLevelNameSv: string | null
         uniqueId: string
         verificationMethod: string | null
       }>
@@ -3111,6 +3141,12 @@ test.describe('Requirements specification deterministic manual cases', () => {
     })
     expect(traceabilityData.items?.[0]).toHaveProperty('needsReference')
     expect(traceabilityData.items?.[0]).toHaveProperty('verificationMethod')
+    expect(traceabilityData.items?.[0]).toMatchObject({
+      priorityLevelCode: 'P2',
+      priorityLevelColor: '#22c55e',
+      priorityLevelIconName: 'ArrowDownLeft',
+      priorityLevelNameSv: 'Låg',
+    })
 
     await gotoSpecificationDetail(page, 920006)
     const reportsMenu = await openActionMenu(page, 'Rapporter')

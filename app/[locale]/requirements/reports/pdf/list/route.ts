@@ -149,6 +149,7 @@ function listQueryRequirementToReportData(
           version.priorityLevelId == null
             ? null
             : {
+                code: version.priorityLevelCode ?? '',
                 color: version.priorityLevelColor,
                 iconName: version.priorityLevelIconName,
                 id: version.priorityLevelId,

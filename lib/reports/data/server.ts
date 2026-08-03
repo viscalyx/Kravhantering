@@ -192,6 +192,7 @@ function mapDeviationVersion(
     verifiable: version.verifiable,
     priorityLevel: version.priorityLevel
       ? {
+          code: version.priorityLevel.code,
           color: version.priorityLevel.color ?? null,
           iconName: version.priorityLevel.iconName ?? null,
           nameEn: version.priorityLevel.nameEn,

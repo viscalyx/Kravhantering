@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import PdfReportRenderer, {
   formatTimelineDate,
 } from '@/components/reports/pdf/PdfReportRenderer'
+import { loadStatusIconNodes } from '@/lib/icons/status-icon-allowlist'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 import { buildCombinedReviewReport } from '@/lib/reports/templates/combined-review-template'
 import { buildHistoryReport } from '@/lib/reports/templates/history-template'
@@ -121,6 +122,111 @@ function timelineEntry(
 }
 
 describe('PDF report renderer localization', () => {
+  it('renders complete structured priority identities in badge and dense inline variants', async () => {
+    await loadStatusIconNodes('CircleAlert')
+    const oldPriority = {
+      code: 'P2',
+      color: '#fde047',
+      iconName: 'CircleAlert',
+      nameEn: 'High',
+      nameSv: 'Hög',
+    }
+    const newPriority = {
+      code: 'P1',
+      color: '#1e3a8a',
+      iconName: null,
+      nameEn: 'Critical priority with a representative long name',
+      nameSv: 'Kritisk prioritet med ett representativt långt namn',
+    }
+    const model = {
+      sections: [
+        {
+          type: 'metadata-changes',
+          changes: [
+            {
+              field: 'Prioritet',
+              oldValue: oldPriority,
+              newValue: newPriority,
+            },
+          ],
+        },
+        {
+          type: 'requirement-table',
+          columns: [{ key: 'priorityLevel', label: 'Prioritet', width: '20%' }],
+          rows: [{ cells: {}, priorityLevel: newPriority }],
+        },
+        {
+          type: 'traceability-table',
+          labels: {
+            area: 'Område',
+            deviation: 'Avsteg',
+            needsReference: 'Behov',
+            note: 'Notering',
+            origin: 'Ursprung',
+            priorityLevel: 'Prioritet',
+            statusChangedAt: 'Ändrad',
+            usageStatus: 'Status',
+            verification: 'Verifiering',
+            version: 'Version',
+          },
+          rows: [
+            {
+              area: '',
+              deviation: '',
+              needsReference: '',
+              note: '',
+              origin: 'Bibliotekskrav',
+              priorityLevel: newPriority,
+              requirementId: 'BEH0001',
+              statusChangedAt: '',
+              usageStatus: '',
+              verification: '',
+              version: '1',
+            },
+          ],
+        },
+      ],
+    } as unknown as ReportModel
+
+    const output = renderReport(model, 'sv')
+
+    expect(output).toContain('P2 – Hög')
+    expect(output).toContain(
+      'P1 – Kritisk prioritet med ett representativt långt namn',
+    )
+    expect(output.match(/<svg/g)).toHaveLength(1)
+    expect(output).not.toContain('UnknownIcon')
+  })
+
+  it('renders deviation priority identity against its amber PDF background', async () => {
+    await loadStatusIconNodes('CircleAlert')
+    const model = {
+      sections: [
+        {
+          type: 'deviation-summary',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          createdBy: null,
+          locale: 'en',
+          motivation: 'Needed for the implementation',
+          priorityLevel: {
+            code: 'P2',
+            color: '#fde047',
+            iconName: 'CircleAlert',
+            nameEn: 'High',
+            nameSv: 'Hög',
+          },
+          specificationCode: 'SPEC-1',
+          specificationName: 'Specification',
+        },
+      ],
+    } as ReportModel
+
+    const output = renderReport(model, 'en')
+
+    expect(output).toContain('P2 – High')
+    expect(output.match(/<svg/g)).toHaveLength(1)
+  })
+
   it('renders Swedish review, combined-review, and history structure', () => {
     const requirement = makeRequirement()
     const reports = [

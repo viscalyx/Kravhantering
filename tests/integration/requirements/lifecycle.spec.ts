@@ -288,11 +288,12 @@ async function verifyPdfDownload(
   const { text: pdfText } = await extractText(Uint8Array.from(pdfBuffer), {
     mergePages: true,
   })
+  const normalizedPdfText = pdfText.replace(/\s+/gu, ' ')
   for (const text of expectedText) {
-    expect(pdfText).toContain(text)
+    expect(normalizedPdfText).toContain(text.replace(/\s+/gu, ' '))
   }
   for (const text of unexpectedText) {
-    expect(pdfText).not.toContain(text)
+    expect(normalizedPdfText).not.toContain(text.replace(/\s+/gu, ' '))
   }
 }
 
@@ -713,6 +714,9 @@ test.describe('Requirement lifecycle manual cases', () => {
           await page
             .getByRole('combobox', { name: 'Kategori' })
             .selectOption({ label: 'IT-krav' })
+          await page
+            .getByRole('combobox', { name: 'Prioritet' })
+            .selectOption('4')
 
           const saveButton = page.getByRole('button', { name: 'Spara' })
           await expect(saveButton).toBeEnabled()
@@ -852,6 +856,7 @@ test.describe('Requirement lifecycle manual cases', () => {
               requirement.uniqueId,
               'Metadata Changes',
               'Category',
+              'P4 – High',
               'Review',
             ],
             history: [
@@ -861,6 +866,7 @@ test.describe('Requirement lifecycle manual cases', () => {
               `Unpublished Version (v${reviewVersionNumber})`,
               'Category',
               'IT requirement',
+              'P4 – High',
               'Published',
               'Review',
             ],
@@ -870,6 +876,7 @@ test.describe('Requirement lifecycle manual cases', () => {
               'Metadata Changes',
               'Category',
               'IT requirement',
+              'P4 – High',
               'Review',
             ],
             unexpected: [],
@@ -898,6 +905,7 @@ test.describe('Requirement lifecycle manual cases', () => {
               requirement.uniqueId,
               'Metadataändringar',
               'Kategori',
+              'P4 – Hög',
               'Granskning',
             ],
             history: [
@@ -907,6 +915,7 @@ test.describe('Requirement lifecycle manual cases', () => {
               `Opublicerad version (v${reviewVersionNumber})`,
               'Kategori',
               'IT-krav',
+              'P4 – Hög',
               'Publicerad',
               'Granskning',
             ],
@@ -916,6 +925,7 @@ test.describe('Requirement lifecycle manual cases', () => {
               'Metadataändringar',
               'Kategori',
               'IT-krav',
+              'P4 – Hög',
               'Granskning',
             ],
             unexpected: [

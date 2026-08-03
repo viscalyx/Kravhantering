@@ -6,6 +6,7 @@ import {
 } from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
 import { requirementPackageName } from '../package-name'
+import { createReportPriorityIdentity } from '../priority'
 import {
   formatReportBoolean,
   formatReportTemplate,
@@ -98,12 +99,7 @@ function toVersionSummary(
         }
       : null,
     priorityLevel: version.priorityLevel
-      ? {
-          nameSv: version.priorityLevel.nameSv,
-          nameEn: version.priorityLevel.nameEn,
-          color: version.priorityLevel.color,
-          iconName: version.priorityLevel.iconName,
-        }
+      ? createReportPriorityIdentity(version.priorityLevel)
       : null,
     status: {
       label: getStatusLabel(version, locale, labels),
@@ -169,13 +165,17 @@ function computeMetadataChanges(
     })
   }
 
-  const oldRl = getName(baseVersion.priorityLevel, locale)
-  const newRl = getName(reviewVersion.priorityLevel, locale)
-  if (oldRl !== newRl) {
+  const oldPriorityId = baseVersion.priorityLevel?.id ?? null
+  const newPriorityId = reviewVersion.priorityLevel?.id ?? null
+  if (oldPriorityId !== newPriorityId) {
     changes.push({
       field: labels.columns.priorityLevel,
-      oldValue: oldRl,
-      newValue: newRl,
+      oldValue: baseVersion.priorityLevel
+        ? createReportPriorityIdentity(baseVersion.priorityLevel)
+        : null,
+      newValue: reviewVersion.priorityLevel
+        ? createReportPriorityIdentity(reviewVersion.priorityLevel)
+        : null,
     })
   }
 

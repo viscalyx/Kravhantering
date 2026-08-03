@@ -4,6 +4,7 @@ import {
 } from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
 import { requirementPackageName } from '../package-name'
+import { createReportPriorityIdentity } from '../priority'
 import {
   formatReportTemplate,
   getReportLabels,
@@ -55,12 +56,7 @@ function toVersionSummary(
         }
       : null,
     priorityLevel: version.priorityLevel
-      ? {
-          nameSv: version.priorityLevel.nameSv,
-          nameEn: version.priorityLevel.nameEn,
-          color: version.priorityLevel.color,
-          iconName: version.priorityLevel.iconName,
-        }
+      ? createReportPriorityIdentity(version.priorityLevel)
       : null,
     status: {
       label: getStatusLabel(version, locale, labels),

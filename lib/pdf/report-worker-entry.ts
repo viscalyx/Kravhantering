@@ -5,6 +5,10 @@ import { parentPort, workerData } from 'node:worker_threads'
 import { renderToStream } from '@react-pdf/renderer'
 import { createElement, type ReactElement } from 'react'
 import PdfReportRenderer from '@/components/reports/pdf/PdfReportRenderer'
+import {
+  collectStatusIconNames,
+  preloadStatusIconNodes,
+} from '@/lib/icons/status-icon-allowlist'
 import type { ReportModel } from '@/lib/reports/types'
 
 interface PdfReportWorkerData {
@@ -22,6 +26,7 @@ class PdfByteLimitError extends Error {}
 
 async function renderReport(): Promise<void> {
   const data = workerData as PdfReportWorkerData
+  await preloadStatusIconNodes(collectStatusIconNames(data.model))
   const document = createElement(PdfReportRenderer, {
     locale: data.locale,
     model: data.model,

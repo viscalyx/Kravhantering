@@ -13,6 +13,7 @@ consumes the shared report model.
 ```text
 Shared Layer (engine-agnostic)
   lib/reports/types.ts              Report model types
+  lib/reports/priority.ts           Priority normalization and PDF colors
   lib/reports/text-diff.ts          Word-level diff utility
   lib/reports/data/                 Data fetching helpers
   lib/reports/templates/            Template functions (data -> ReportModel)
@@ -37,11 +38,15 @@ authorized report data and do not call the authorization service themselves.
 1. Route/page authorizes the requested report scope.
 2. Route/page collects report data server-side.
 3. Template function converts raw data into a `ReportModel`, an array of typed
-   sections like header, diff, version-summary, and timeline-entry.
-4. Engine-specific renderer consumes the `ReportModel` and produces output.
+   sections like header, diff, version-summary, and timeline-entry. Priority
+   values become a normalized `ReportPriorityIdentity`; invalid colors and icon
+   names become `null` before reaching React-PDF.
+4. The rendering entrypoint collects allowlisted icon names from the complete
+   model and preloads their static vector nodes.
+5. Engine-specific renderer consumes the `ReportModel` and produces output.
    The large requirements-list route uses the isolated worker; smaller existing
    report routes keep the direct Node renderer.
-5. PDF routes return binary `application/pdf` responses with attachment headers
+6. PDF routes return binary `application/pdf` responses with attachment headers
    and `Cache-Control: no-store`.
 
 ## Route URL Patterns
@@ -85,6 +90,20 @@ the shared report model to binary PDF. It is the path for report delivery,
 sharing, and archival output. The browser never imports React-PDF, which keeps
 production CSP compatible with strict `script-src` values and avoids
 `unsafe-eval`/WebAssembly eval exceptions.
+
+Priority rendering has two PDF-specific variants. `PdfPriorityBadge` is used
+for version summaries and old/new metadata values. `PdfPriorityInline` is used
+for dense report rows and the deviation card. Both consume
+`ReportPriorityIdentity`, format `code – localized name`, share the strict
+`#RRGGBB`/neutral policy, and derive foreground colors with at least 4.5:1
+contrast against their exact opaque PDF background. Keep these calculations in
+`lib/reports/priority.ts`; do not pass raw configured colors to React-PDF or add
+fallback icons.
+
+`renderReportModelPdfResponse()` preloads allowlisted icon vector nodes for the
+direct renderer. `report-worker-entry.ts` performs the same preload inside the
+worker because icon caches are process-local. Icon resolution must remain a
+static allowlist operation without network or file loading.
 
 The shared client helper opens immediately, shows separate indeterminate
 generation and Blob-download phases, supports cancellation, and maps only

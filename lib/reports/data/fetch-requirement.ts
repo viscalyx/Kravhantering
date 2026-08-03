@@ -11,6 +11,7 @@ export interface RequirementReportVersion {
   editedAt: string | null
   id: number
   priorityLevel: {
+    code: string
     color?: string | null
     iconName?: string | null
     id: number

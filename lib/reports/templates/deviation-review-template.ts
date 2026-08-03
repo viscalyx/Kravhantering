@@ -1,4 +1,5 @@
 import type { DeviationReportData } from '../data/fetch-deviation'
+import { createReportPriorityIdentity } from '../priority'
 import { formatReportTemplate, getReportLabels } from '../report-labels'
 import type { ReportModel, ReportSection, VersionSummaryData } from '../types'
 
@@ -31,6 +32,9 @@ export function buildDeviationReviewReport(
 
   // Requirement version connected to the specification — blue border
   const v = data.version
+  const priorityLevel = v.priorityLevel
+    ? createReportPriorityIdentity(v.priorityLevel)
+    : null
   const versionSummary: VersionSummaryData = {
     versionNumber: v.versionNumber,
     description: v.description,
@@ -40,7 +44,7 @@ export function buildDeviationReviewReport(
     category: v.category,
     type: v.type,
     qualityCharacteristic: v.qualityCharacteristic,
-    priorityLevel: v.priorityLevel,
+    priorityLevel,
     status: v.status,
     createdBy: v.createdBy,
     createdAt: '',
@@ -70,7 +74,7 @@ export function buildDeviationReviewReport(
     createdAt: data.deviation.createdAt,
     specificationName: data.specificationName,
     specificationCode: data.specificationCode,
-    priorityLevel: v.priorityLevel,
+    priorityLevel,
     locale,
   })
 

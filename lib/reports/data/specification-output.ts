@@ -34,6 +34,9 @@ export interface SpecificationOutputItem {
   kind: 'library' | 'specificationLocal'
   needsReference: string | null
   normReferences: SpecificationOutputNormReference[]
+  priorityLevelCode: string | null
+  priorityLevelColor: string | null
+  priorityLevelIconName: string | null
   priorityLevelNameEn: string | null
   priorityLevelNameSv: string | null
   qualityCharacteristicChapterId: string | null
@@ -269,6 +272,9 @@ function mapLibraryItem(row: Row): SpecificationOutputItem {
     qualityCharacteristicNameSv: toStr(row.qualityCharacteristicNameSv),
     requirementPackageNames: [],
     verifiable: toBool(row.verifiable),
+    priorityLevelCode: toStr(row.priorityLevelCode),
+    priorityLevelColor: toStr(row.priorityLevelColor),
+    priorityLevelIconName: toStr(row.priorityLevelIconName),
     priorityLevelNameEn: toStr(row.priorityLevelNameEn),
     priorityLevelNameSv: toStr(row.priorityLevelNameSv),
     specificationItemStatusId: toNum(row.specificationItemStatusId),
@@ -301,6 +307,9 @@ function mapLocalItem(row: Row): SpecificationOutputItem {
     qualityCharacteristicNameSv: toStr(row.qualityCharacteristicNameSv),
     requirementPackageNames: [],
     verifiable: toBool(row.verifiable),
+    priorityLevelCode: toStr(row.priorityLevelCode),
+    priorityLevelColor: toStr(row.priorityLevelColor),
+    priorityLevelIconName: toStr(row.priorityLevelIconName),
     priorityLevelNameEn: toStr(row.priorityLevelNameEn),
     priorityLevelNameSv: toStr(row.priorityLevelNameSv),
     specificationItemStatusId: toNum(row.specificationItemStatusId),
@@ -350,6 +359,9 @@ async function collectSpecificationOutputPage(
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           quality_characteristic.chapter_id AS qualityCharacteristicChapterId,
+          priority_level.code AS priorityLevelCode,
+          priority_level.color AS priorityLevelColor,
+          priority_level.icon_name AS priorityLevelIconName,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
           needs_reference.text AS needsReference,
@@ -398,6 +410,9 @@ async function collectSpecificationOutputPage(
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           quality_characteristic.chapter_id AS qualityCharacteristicChapterId,
+          priority_level.code AS priorityLevelCode,
+          priority_level.color AS priorityLevelColor,
+          priority_level.icon_name AS priorityLevelIconName,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
           needs_reference.text AS needsReference,

@@ -50,6 +50,9 @@ function outputData(): SpecificationOutputData {
         qualityCharacteristicNameSv: 'Informationssäkerhet',
         requirementPackageNames: ['Base package'],
         verifiable: true,
+        priorityLevelCode: 'P1',
+        priorityLevelColor: '#1e3a8a',
+        priorityLevelIconName: 'CircleAlert',
         priorityLevelNameEn: 'High',
         priorityLevelNameSv: 'Hög',
         specificationItemStatusId: 2,
@@ -89,6 +92,9 @@ function traceabilityData(): SpecificationTraceabilityData {
         needsReference: 'IAM-need',
         note: 'Follow up at gate 2',
         verifiable: true,
+        priorityLevelCode: 'P1',
+        priorityLevelColor: '#1e3a8a',
+        priorityLevelIconName: 'CircleAlert',
         priorityLevelNameEn: 'High',
         priorityLevelNameSv: 'Hög',
         specificationItemStatusId: 2,
@@ -107,6 +113,9 @@ function traceabilityData(): SpecificationTraceabilityData {
         needsReference: null,
         note: null,
         verifiable: false,
+        priorityLevelCode: null,
+        priorityLevelColor: null,
+        priorityLevelIconName: null,
         priorityLevelNameEn: null,
         priorityLevelNameSv: null,
         specificationItemStatusId: 1,
@@ -122,6 +131,55 @@ function traceabilityData(): SpecificationTraceabilityData {
 }
 
 describe('specification report profiles', () => {
+  it('keeps structured priority identities in dense report rows', () => {
+    const profileData = outputData()
+    Object.assign(profileData.items[0] ?? {}, {
+      priorityLevelCode: 'P1',
+      priorityLevelColor: '#1E3A8A',
+      priorityLevelIconName: 'CircleAlert',
+    })
+    const progressTable = requirementTable(
+      buildSpecificationProfileReport(profileData, 'progress', 'sv'),
+    )
+    const managementTable = requirementTable(
+      buildSpecificationProfileReport(profileData, 'management', 'en'),
+    )
+
+    for (const table of [progressTable, managementTable]) {
+      expect(table?.rows[0]?.priorityLevel).toEqual({
+        code: 'P1',
+        color: '#1e3a8a',
+        iconName: 'CircleAlert',
+        nameEn: 'High',
+        nameSv: 'Hög',
+      })
+      expect(table?.rows[0]?.cells.priorityLevel).toBeUndefined()
+    }
+
+    const traceData = traceabilityData()
+    Object.assign(traceData.items[0] ?? {}, {
+      priorityLevelCode: 'P1',
+      priorityLevelColor: '#FDE047',
+      priorityLevelIconName: null,
+    })
+    const traceability = buildSpecificationTraceabilityReport(
+      traceData,
+      'sv',
+    ).sections.find(section => section.type === 'traceability-table')
+
+    expect(
+      traceability?.type === 'traceability-table'
+        ? traceability.rows[0]?.priorityLevel
+        : null,
+    ).toEqual({
+      code: 'P1',
+      color: '#fde047',
+      iconName: null,
+      nameEn: 'High',
+      nameSv: 'Hög',
+    })
+  })
+
   it('maps lifecycle statuses to the available report and export profiles', () => {
     expect(getSpecificationReportProfileForLifecycleStatus(1)).toBe(
       'procurement',
@@ -300,7 +358,13 @@ describe('specification report profiles', () => {
         note: 'Follow up at gate 2',
         origin: 'Bibliotekskrav',
         requirementId: 'BEH0001',
-        priorityLevel: 'Hög',
+        priorityLevel: {
+          code: 'P1',
+          color: '#1e3a8a',
+          iconName: 'CircleAlert',
+          nameEn: 'High',
+          nameSv: 'Hög',
+        },
         usageStatus: 'Pågår',
         verification: 'Ja: Review test evidence',
         version: '4',
