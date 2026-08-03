@@ -7,6 +7,9 @@ target version.
 
 ## Unreleased
 
+<!-- operator-upgrade:source pr-870 start -->
+Provision AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH on destination workstations through a trusted channel before generating requests. Request and package schema 3 intentionally has no compatibility path with schema 2; regenerate pending requests and responses after upgrade. Existing approval key rotation requires provisioning the replacement public key before creating a new request.
+<!-- operator-upgrade:source pr-870 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
