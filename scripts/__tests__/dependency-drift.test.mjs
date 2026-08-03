@@ -399,7 +399,7 @@ describe('drift detection', () => {
     write(
       root,
       'package.json',
-      JSON.stringify({ packageManager: 'npm@12.0.1' }),
+      JSON.stringify({ packageManager: 'npm@12.0.2' }),
     )
 
     await expect(
@@ -413,7 +413,7 @@ describe('drift detection', () => {
       ),
     ).resolves.toMatchObject({
       available: { version: '12.1.0' },
-      current: { version: '12.0.1' },
+      current: { version: '12.0.2' },
       drift: true,
     })
   })
@@ -631,7 +631,7 @@ describe('issue contract', () => {
   })
 
   it('formats npm and immutable image state', () => {
-    expect(formatState({ version: '12.0.1' })).toBe('npm 12.0.1')
+    expect(formatState({ version: '12.0.2' })).toBe('npm 12.0.2')
     expect(
       formatState({
         imageId: digest('a'),

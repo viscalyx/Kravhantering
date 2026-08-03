@@ -18,8 +18,8 @@ afterEach(() => {
 
 describe('repository npm bootstrap', () => {
   it('accepts only an exact npm packageManager declaration', () => {
-    expect(packageManagerVersion({ packageManager: 'npm@12.0.1' })).toBe(
-      '12.0.1',
+    expect(packageManagerVersion({ packageManager: 'npm@12.0.2' })).toBe(
+      '12.0.2',
     )
     expect(() =>
       packageManagerVersion({ packageManager: 'npm@latest' }),
@@ -36,19 +36,19 @@ describe('repository npm bootstrap', () => {
     temporaryDirectories.push(root)
     fs.writeFileSync(
       path.join(root, 'package.json'),
-      '{"packageManager":"npm@12.0.1"}\n',
+      '{"packageManager":"npm@12.0.2"}\n',
     )
     const execFileSync = vi
       .fn()
       .mockReturnValueOnce('')
-      .mockReturnValueOnce('12.0.1\n')
+      .mockReturnValueOnce('12.0.2\n')
     vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    expect(installRepositoryNpm(root, execFileSync)).toBe('12.0.1')
+    expect(installRepositoryNpm(root, execFileSync)).toBe('12.0.2')
     expect(execFileSync).toHaveBeenNthCalledWith(
       1,
       'npm',
-      ['install', '--global', 'npm@12.0.1'],
+      ['install', '--global', 'npm@12.0.2'],
       {
         cwd: expect.stringContaining('repository-npm-bootstrap-'),
         stdio: 'inherit',
@@ -70,7 +70,7 @@ describe('repository npm bootstrap', () => {
     temporaryDirectories.push(root)
     fs.writeFileSync(
       path.join(root, 'package.json'),
-      '{"packageManager":"npm@12.0.1"}\n',
+      '{"packageManager":"npm@12.0.2"}\n',
     )
     const execFileSync = vi
       .fn()
@@ -78,7 +78,7 @@ describe('repository npm bootstrap', () => {
       .mockReturnValueOnce('11.0.0\n')
 
     expect(() => installRepositoryNpm(root, execFileSync)).toThrow(
-      'Expected npm 12.0.1',
+      'Expected npm 12.0.2',
     )
   })
 })
