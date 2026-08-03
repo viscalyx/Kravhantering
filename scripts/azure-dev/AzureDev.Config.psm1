@@ -131,15 +131,118 @@ function Test-AzureDevSshPublicKey {
       return $false
     }
 
-    $fieldOffset = 4 + [int]$algorithmLength
-    $fieldLength =
-      ([uint32]$decoded[$fieldOffset] -shl 24) -bor
-      ([uint32]$decoded[$fieldOffset + 1] -shl 16) -bor
-      ([uint32]$decoded[$fieldOffset + 2] -shl 8) -bor
-      [uint32]$decoded[$fieldOffset + 3]
+    $fieldOffsets = @()
+    $fieldLengths = @()
+    $offset = 4 + [int]$algorithmLength
+    while ($offset -lt $decoded.Length) {
+      if (($decoded.Length - $offset) -lt 4) {
+        return $false
+      }
+      $fieldLength =
+        ([uint32]$decoded[$offset] -shl 24) -bor
+        ([uint32]$decoded[$offset + 1] -shl 16) -bor
+        ([uint32]$decoded[$offset + 2] -shl 8) -bor
+        [uint32]$decoded[$offset + 3]
+      $offset += 4
+      if (
+        $fieldLength -eq 0 -or
+        $fieldLength -gt ($decoded.Length - $offset)
+      ) {
+        return $false
+      }
+      $fieldOffsets += $offset
+      $fieldLengths += [int]$fieldLength
+      $offset += [int]$fieldLength
+    }
+    if ($offset -ne $decoded.Length) {
+      return $false
+    }
+
+    $expectedFieldCount = $null
+    $expectedCurve = $null
+    $expectedPointLength = $null
+    switch ($embeddedAlgorithm) {
+      'ssh-ed25519' {
+        return $fieldLengths.Count -eq 1 -and $fieldLengths[0] -eq 32
+      }
+      'sk-ssh-ed25519@openssh.com' {
+        return (
+          $fieldLengths.Count -eq 2 -and
+          $fieldLengths[0] -eq 32 -and
+          $fieldLengths[1] -gt 0
+        )
+      }
+      'ssh-rsa' {
+        $expectedFieldCount = 2
+      }
+      'ssh-dss' {
+        $expectedFieldCount = 4
+      }
+      'ecdsa-sha2-nistp256' {
+        $expectedCurve = 'nistp256'
+        $expectedPointLength = 65
+      }
+      'ecdsa-sha2-nistp384' {
+        $expectedCurve = 'nistp384'
+        $expectedPointLength = 97
+      }
+      'ecdsa-sha2-nistp521' {
+        $expectedCurve = 'nistp521'
+        $expectedPointLength = 133
+      }
+      'sk-ecdsa-sha2-nistp256@openssh.com' {
+        if ($fieldLengths.Count -ne 3) {
+          return $false
+        }
+        $curve = $strictUtf8.GetString(
+          $decoded,
+          $fieldOffsets[0],
+          $fieldLengths[0]
+        )
+        return (
+          $curve -ceq 'nistp256' -and
+          $fieldLengths[1] -eq 65 -and
+          $decoded[$fieldOffsets[1]] -eq 4 -and
+          $fieldLengths[2] -gt 0
+        )
+      }
+      default {
+        return $false
+      }
+    }
+
+    if ($null -ne $expectedFieldCount) {
+      if ($fieldLengths.Count -ne $expectedFieldCount) {
+        return $false
+      }
+      for ($index = 0; $index -lt $fieldLengths.Count; $index += 1) {
+        $firstByte = $decoded[$fieldOffsets[$index]]
+        if (($firstByte -band 0x80) -ne 0) {
+          return $false
+        }
+        if (
+          $fieldLengths[$index] -gt 1 -and
+          $firstByte -eq 0 -and
+          ($decoded[$fieldOffsets[$index] + 1] -band 0x80) -eq 0
+        ) {
+          return $false
+        }
+      }
+      return $true
+    }
+
+    if ($fieldLengths.Count -ne 2) {
+      return $false
+    }
+    $curve = $strictUtf8.GetString(
+      $decoded,
+      $fieldOffsets[0],
+      $fieldLengths[0]
+    )
     return (
-      $fieldLength -gt 0 -and
-      $fieldLength -le ($decoded.Length - $fieldOffset - 4)
+      $curve -ceq $expectedCurve -and
+      $fieldLengths[1] -eq $expectedPointLength -and
+      $decoded[$fieldOffsets[1]] -eq 4
     )
   } catch {
     return $false

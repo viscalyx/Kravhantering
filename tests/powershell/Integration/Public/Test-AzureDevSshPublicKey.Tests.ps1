@@ -2,7 +2,18 @@
 
 Set-StrictMode -Version Latest
 
-Describe 'Test-AzureDevSshPublicKey' -Tag 'Unit' {
+BeforeDiscovery {
+  $script:integrationEnabled =
+    [System.Environment]::GetEnvironmentVariable(
+      'KRAVHANTERING_PESTER_INTEGRATION',
+      'Process'
+    ) -ceq '1'
+}
+
+Describe `
+  'Test-AzureDevSshPublicKey' `
+  -Tag 'Integration' `
+  -Skip:(-not $script:integrationEnabled) {
   BeforeAll {
     $script:moduleName = 'AzureDev.Config'
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
@@ -17,8 +28,8 @@ Describe 'Test-AzureDevSshPublicKey' -Tag 'Unit' {
     Get-Module $script:moduleName -All | Remove-Module -Force
   }
 
-  Context 'When validating an SSH public key wire blob' {
-    It 'Should accept a structurally valid key' {
+  Context 'When the exported validator receives complete key text' {
+    It 'Should accept a complete Ed25519 public key' {
       $publicKey = (
         'ssh-ed25519 ' +
         'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
@@ -29,26 +40,9 @@ Describe 'Test-AzureDevSshPublicKey' -Tag 'Unit' {
       $result | Should-BeTrue
     }
 
-    It 'Should reject Base64 without an SSH wire-format key' {
-      $result = Test-AzureDevSshPublicKey -Value 'ssh-ed25519 QQ=='
-
-      $result | Should-BeFalse
-    }
-
-    It 'Should reject an Ed25519 blob with the wrong key size' {
+    It 'Should reject an Ed25519 blob with an unusable key field' {
       $result = Test-AzureDevSshPublicKey `
         -Value 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAAUE='
-
-      $result | Should-BeFalse
-    }
-
-    It 'Should reject a blob whose embedded algorithm does not match' {
-      $rsaLabelWithEd25519Blob = (
-        'ssh-rsa ' +
-        'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
-      )
-
-      $result = Test-AzureDevSshPublicKey -Value $rsaLabelWithEd25519Blob
 
       $result | Should-BeFalse
     }

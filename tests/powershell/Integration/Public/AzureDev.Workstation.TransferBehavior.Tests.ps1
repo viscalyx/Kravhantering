@@ -398,7 +398,7 @@ Describe `
         -DestinationKeyPath $destinationKeyPath
       Set-Content `
         -LiteralPath $context.Config.WorkstationApproverPublicKeyPath `
-        -Value 'ssh-ed25519 QQ=='
+        -Value 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAAUE='
 
       {
         New-AzureDevWorkstationRequest `
