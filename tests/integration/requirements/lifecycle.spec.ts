@@ -288,12 +288,11 @@ async function verifyPdfDownload(
   const { text: pdfText } = await extractText(Uint8Array.from(pdfBuffer), {
     mergePages: true,
   })
-  const normalizedPdfText = pdfText.replace(/\s+/gu, ' ')
   for (const text of expectedText) {
-    expect(normalizedPdfText).toContain(text.replace(/\s+/gu, ' '))
+    expect(pdfText).toContain(text)
   }
   for (const text of unexpectedText) {
-    expect(normalizedPdfText).not.toContain(text.replace(/\s+/gu, ' '))
+    expect(pdfText).not.toContain(text)
   }
 }
 

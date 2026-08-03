@@ -1211,7 +1211,7 @@ function PdfPriorityBadge({
       ]}
     >
       <PdfStatusIcon color={colors.foreground} name={priority.iconName} />
-      <Text style={{ color: colors.foreground, flex: 1 }}>{label}</Text>
+      <Text style={{ color: colors.foreground }}>{label}</Text>
     </View>
   )
 }
@@ -1243,7 +1243,6 @@ function PdfPriorityInline({
       <Text
         style={{
           color: colors.foreground,
-          flex: 1,
           fontSize: 8,
           lineHeight: 1.25,
         }}

@@ -277,6 +277,6 @@ test('COL-06: opens the suggestion-history report for a requirement with suggest
     const { text } = await extractText(new Uint8Array(pdfBuffer), {
       mergePages: true,
     })
-    expect(text.replace(/\s+/gu, ' ')).toContain('P2 – Låg')
+    expect(text).toContain('P2 – Låg')
   })
 })
