@@ -173,9 +173,10 @@ runs if the configured target is not local.
    - SQL Server via `npm run db:up && npm run db:setup`.
    - A local Keycloak realm via `npm run idp:up`, which waits for OIDC
      discovery and JWKS before returning.
-3. Builds the production bundle with `npm run build:local-prod` and
-   starts it with `next start --hostname 127.0.0.1 --port 3001` loaded
-   from [.env.prodlike](../../.env.prodlike).
+3. Builds the production bundle with `npm run build:local-prod`, stages its
+   public and generated static assets, and starts the generated standalone
+   server on `127.0.0.1:3001` with
+   [.env.prodlike](../../.env.prodlike) loaded.
 4. Polls the new [`GET /api/health`](../../app/api/health/route.ts)
    endpoint until the app is ready. The DAST gate treats the endpoint as
    healthy only when it returns HTTP `200` with JSON `{ "status": "ok" }`;
@@ -421,8 +422,8 @@ seeded-corpus and workflow details do not drift between files.
 The DAST, REST API Schemathesis, MCP seeded, ZAP API, role-matrix, and full
 active scan workflows use
 [scripts/security/prodlike-app.sh](../../scripts/security/prodlike-app.sh) to
-start the prodlike Next.js server under `setsid` so the wrapper, `npx` shims,
-and `next start` Node process share a dedicated process group. Each
+start the prodlike Next.js server under `setsid` so the npm wrapper and
+standalone Node process share a dedicated process group. Each
 shared cleanup action reads the workflow-local `app.pgid`, sends `TERM` to the
 process group, waits up to 10 seconds, then sends `KILL` if any process
 remains. The same cleanup action also tears down the local IdP and SQL Server

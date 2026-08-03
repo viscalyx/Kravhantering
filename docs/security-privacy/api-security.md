@@ -334,10 +334,11 @@ JWKS endpoints before returning.
 Start the app in another shell:
 
 ```bash
-NODE_ENV=production BUILD_TARGET=local-prod \
-  npx dotenv -e .env.prodlike -- \
-  npx next start --hostname 127.0.0.1 --port 3001
+npm run start:prodlike-pruned
 ```
+
+This starts the previously built standalone server on `127.0.0.1:3001` and
+stages its public and generated static assets.
 
 Then install and run Schemathesis:
 

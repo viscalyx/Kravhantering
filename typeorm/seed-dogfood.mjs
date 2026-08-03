@@ -926,7 +926,7 @@ const DOGFOOD_KRAV = [
     area: ID.area.DRF,
     desc: 'Applikationen ska kunna self-hostas på en Next.js 16 standalone-runtime utan beroende på Vercel-specifika tjänster.',
     ac: 'next.config.ts producerar en standalone-build; ingen kod refererar till Vercel-specifika API:er som @vercel/* utöver byggverktyg.',
-    vm: 'Enhetstester i tests/unit/build-target.test.ts samt manuell körning av next start mot byggd output.',
+    vm: 'Enhetstester i tests/unit/build-target.test.ts samt manuell körning av npm run start:prodlike mot genererad standalone-runtime.',
     cat: ID.cat.it,
     type: ID.type.ickefunk,
     qc: ID.qc.installerbarhet,

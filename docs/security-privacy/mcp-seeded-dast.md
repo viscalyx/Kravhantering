@@ -63,10 +63,11 @@ npm run db:setup
 npm run idp:up
 npm run build:local-prod
 OPENROUTER_API_KEY= OPENROUTER_MGMT_API_KEY= \
-  NODE_ENV=production BUILD_TARGET=local-prod \
-  npx dotenv -e .env.prodlike -- \
-  npx next start --hostname 127.0.0.1 --port 3001
+  npm run start:prodlike-pruned
 ```
+
+The launcher stages the standalone runtime assets and binds the server to
+`127.0.0.1:3001`.
 
 In another shell, run:
 

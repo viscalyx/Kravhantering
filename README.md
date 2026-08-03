@@ -228,7 +228,7 @@ for setup, migrations, seeding, and the developer browse workflow.
 - **Styling:** Tailwind CSS 4
 - **Database:** Microsoft SQL Server via TypeORM
 - **Internationalization:** next-intl (Swedish & English)
-- **App runtime:** Native Next.js self-hosting (`next dev`, `next start`)
+- **App runtime:** Native Next.js self-hosting (`next dev`, standalone server)
 - **Production target:** OpenShift-compatible Node container deployment
 - **Testing:** Vitest (unit) · Playwright (integration)
 - **Linting:** Biome · Pyright · markdownlint · cspell
@@ -275,8 +275,10 @@ npm run start:prodlike
 ```
 
 `npm run start:prodlike` rebuilds with `NODE_ENV=production` and then starts
-the built app on port `3001`. Its build preparation also generates the static
-HSA person lookup Swagger UI under `/api-docs/hsa-person-lookup/`.
+the generated standalone server on port `3001`. The launcher stages `public`
+and `.next/static` in the standalone runtime before startup. Build preparation
+also generates the static HSA person lookup Swagger UI under
+`/api-docs/hsa-person-lookup/`.
 
 ## Security CI
 

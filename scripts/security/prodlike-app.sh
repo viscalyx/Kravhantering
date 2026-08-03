@@ -38,11 +38,9 @@ start_app() {
     exit 1
   fi
 
-  # Mirror the `start:prodlike` npm script after the workflow has already
-  # built the bundle with `npm run build:local-prod`.
-  NODE_ENV=production BUILD_TARGET=local-prod \
-    setsid nohup npx dotenv -e .env.prodlike -- \
-    npx next start --hostname 127.0.0.1 --port 3001 \
+  # Start the already-built standalone bundle through the shared prodlike
+  # launcher so security workflows use the same asset staging and environment.
+  setsid nohup npm run start:prodlike-pruned \
     > "${log_file}" 2>&1 < /dev/null &
 
   local pgid="$!"
