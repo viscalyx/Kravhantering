@@ -48,8 +48,10 @@ Describe 'Get-AzureDevManagedWorkstationApprovalIdentity' -Tag 'Unit' {
 
       $result.PublicKey |
         Should-BeString -Expected $script:publicKey -CaseSensitive
-      ($result.Fingerprint -match '^SHA256:[A-Za-z0-9+/]{43}$') |
-        Should-BeTrue
+      $result.Fingerprint |
+        Should-BeString `
+          -Expected 'SHA256:H8XbXBwELOKEATfqIAkkv78p9jn9xCtjmv6WPECWYw0' `
+          -CaseSensitive
     }
   }
 }

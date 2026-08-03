@@ -161,7 +161,7 @@ function Test-AzureDevSshPublicKey {
     $expectedFieldCount = $null
     $expectedCurve = $null
     $expectedPointLength = $null
-    switch ($embeddedAlgorithm) {
+    switch -CaseSensitive ($embeddedAlgorithm) {
       'ssh-ed25519' {
         return $fieldLengths.Count -eq 1 -and $fieldLengths[0] -eq 32
       }

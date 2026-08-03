@@ -1660,6 +1660,7 @@ function Approve-AzureDevWorkstation {
   $rule = $null
   $ruleExisted = $false
   $keyAdded = $false
+  $packageCreated = $false
   try {
     if ($restoreStoppedState) {
       Start-AzureDevAzureVm -Context $Context
@@ -1672,6 +1673,7 @@ function Approve-AzureDevWorkstation {
       -Context $Context `
       -Request $request `
       -OutputPath $OutputPath
+    $packageCreated = $true
     $candidate = New-AzureDevSshAccessRuleSpec `
       -WorkstationName $request.workstation `
       -AccessName $request.access `
@@ -1710,7 +1712,7 @@ function Approve-AzureDevWorkstation {
         -RuleName $rule.name `
         -Confirm:$false
     }
-    if (Test-Path -LiteralPath $OutputPath) {
+    if ($packageCreated -and (Test-Path -LiteralPath $OutputPath)) {
       Remove-Item -LiteralPath $OutputPath -Force
     }
     throw

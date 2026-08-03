@@ -85,6 +85,18 @@ Describe 'Test-AzureDevSshPublicKey' -Tag 'Unit' {
       $result | Should-BeFalse
     }
 
+    It 'Should reject a noncanonical algorithm name casing' {
+      $publicKey = New-TestSshPublicKey `
+        -Algorithm 'SSH-ED25519' `
+        -EncodedFields @(
+          [System.Convert]::ToBase64String([System.Byte[]]::new(32))
+        )
+
+      $result = Test-AzureDevSshPublicKey -Value $publicKey
+
+      $result | Should-BeFalse
+    }
+
     It 'Should accept supported RSA and DSS MPINT structures' {
       $rsa = New-TestSshPublicKey `
         -Algorithm 'ssh-rsa' `

@@ -144,6 +144,10 @@ Describe `
           return '203.0.113.10'
         }
 
+        function script:Wait-AzureDevSsh {
+          return $true
+        }
+
         function script:Get-AzureDevAccount {
           return $null
         }
@@ -537,6 +541,55 @@ Describe `
       )
       Should-NotInvoke -CommandName Get-AzureDevVmPowerState -Scope It
       Should-NotInvoke -CommandName New-AzureDevWorkstationPackage -Scope It
+    }
+  }
+
+  Context 'When workstation package creation fails' {
+    BeforeEach {
+      Mock -CommandName Read-AzureDevWorkstationRequest -MockWith {
+        return [System.Management.Automation.PSObject]@{
+          workstation = 'destination'
+          intendedUse = 'connect-only'
+          cidr = '198.51.100.4/32'
+          destinationPrivateKeyPath = '/tmp/destination-key'
+          publicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIElRFe/K9qM55tJk2DRl7IsDK+cTTRpJ5nNiN2g358Z4'
+          publicKeyFingerprint = 'SHA256:destination'
+          approverPublicKeyFingerprint = 'SHA256:' + ('A' * 43)
+        }
+      }
+      Mock -CommandName Test-AzureDevPrerequisites
+      Mock -CommandName Get-AzureDevVmPowerState -MockWith { 'running' }
+      Mock -CommandName New-AzureDevWorkstationPackage -MockWith {
+        throw 'Package generation failed.'
+      }
+    }
+
+    It 'Should preserve an existing output package' {
+      $context = New-TestTransferContext `
+        -RepositoryRoot (Join-Path $TestDrive 'generation-failure-repo') `
+        -DestinationKeyPath (Join-Path $TestDrive 'destination-key')
+      Initialize-TestWorkstationModule `
+        -DestinationHome (Join-Path $TestDrive 'generation-failure-home')
+      $outputPath = Join-Path $TestDrive 'existing.kravpkg'
+      Set-Content `
+        -LiteralPath $outputPath `
+        -Value 'existing package' `
+        -NoNewline
+
+      {
+        Approve-AzureDevWorkstation `
+          -Context $context `
+          -RequestPath (Join-Path $TestDrive 'request.kravreq') `
+          -OutputPath $outputPath `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage 'Package generation failed.'
+      Get-Content -LiteralPath $outputPath -Raw |
+        Should-BeString -Expected 'existing package' -CaseSensitive
+      Should-Invoke `
+        -CommandName New-AzureDevWorkstationPackage `
+        -Exactly `
+        -Times 1 `
+        -Scope It
     }
   }
 
