@@ -21,9 +21,23 @@ function Invoke-TestAzureDevNativeCommand {
     $Arguments[0] -eq '-Y' -and
     $Arguments[1] -eq 'sign'
   ) {
+    $payloadBytes = [System.IO.File]::ReadAllBytes(
+      [string]$Arguments[-1]
+    )
+    $hasher = [System.Security.Cryptography.SHA256]::Create()
+    try {
+      $digest = $hasher.ComputeHash($payloadBytes)
+    } finally {
+      $hasher.Dispose()
+    }
+    $signatureBody = [System.Convert]::ToBase64String($digest)
     Set-Content `
       -LiteralPath "$([string]$Arguments[-1]).sig" `
-      -Value 'test signature'
+      -Value @(
+        '-----BEGIN SSH SIGNATURE-----'
+        $signatureBody
+        '-----END SSH SIGNATURE-----'
+      )
     return [PSCustomObject]@{ ExitCode = 0; Text = '' }
   }
   if ($FilePath -eq 'ssh-keyscan') {
@@ -46,8 +60,10 @@ function Invoke-TestAzureDevNativeCommand {
   }
 
   if ($Arguments[0] -eq '-d') {
+    $State.DecryptCalls += 1
     $packagePath = [string]$Arguments[-1]
-    $encryptedPackage = $State.EncryptedPackages[$packagePath]
+    $encryptedPackageId = Get-Content -LiteralPath $packagePath -Raw
+    $encryptedPackage = $State.EncryptedPackages[$encryptedPackageId]
     if ($null -eq $encryptedPackage) {
       return [PSCustomObject]@{
         ExitCode = 1
@@ -109,10 +125,35 @@ function Invoke-TestAzureDevNativeCommand {
   }
   $recipientPath = [string]$Arguments[$recipientOptionIndex + 1]
   $outputPath = [string]$Arguments[$outputOptionIndex + 1]
-  $State.EncryptedPackages[$outputPath] = [PSCustomObject]@{
+  $encryptedPackageId = "encrypted-$($State.EncryptedPackages.Count)"
+  $State.EncryptedPackages[$encryptedPackageId] = [PSCustomObject]@{
     Recipient = (Get-Content -LiteralPath $recipientPath -Raw).Trim()
     ZipBytes = [System.IO.File]::ReadAllBytes($zipPath)
   }
-  [System.IO.File]::WriteAllText($outputPath, 'encrypted')
+  $State.LastRecipient = (Get-Content -LiteralPath $recipientPath -Raw).Trim()
+  [System.IO.File]::WriteAllText($outputPath, $encryptedPackageId)
   return [PSCustomObject]@{ ExitCode = 0; Text = '' }
+}
+
+function Test-TestAzureDevWorkstationPackageSignature {
+  param(
+    [Parameter(Mandatory = $true)]
+    [byte[]]$Payload,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Signature
+  )
+
+  $hasher = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    $digest = $hasher.ComputeHash($Payload)
+  } finally {
+    $hasher.Dispose()
+  }
+  $expectedBody = [System.Convert]::ToBase64String($digest)
+  return $Signature -match (
+    '(?s)^-----BEGIN SSH SIGNATURE-----\r?\n' +
+    [regex]::Escape($expectedBody) +
+    '\r?\n-----END SSH SIGNATURE-----\r?\n?$'
+  )
 }

@@ -20,6 +20,8 @@ Describe `
       '../AzureDev.Workstation.Transfer.TestHelper.ps1')
     $script:mockAzureDevNativeCommandEmulator =
       (Get-Command Invoke-TestAzureDevNativeCommand).ScriptBlock
+    $script:mockAzureDevPackageSignatureVerifier =
+      (Get-Command Test-TestAzureDevWorkstationPackageSignature).ScriptBlock
     $script:moduleName = 'AzureDev.Workstation'
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
       (Join-Path $PSScriptRoot '../../../..')
@@ -52,7 +54,11 @@ Describe `
       )
 
       & $script:workstationModule {
-        param($MockDestinationHome, $MockNativeCommandEmulator)
+        param(
+          $MockDestinationHome,
+          $MockNativeCommandEmulator,
+          $MockPackageSignatureVerifier
+        )
 
         Set-Variable `
           -Name HOME `
@@ -60,11 +66,15 @@ Describe `
           -Scope Script
         $script:mockAzureDevWorkstationState = [PSCustomObject]@{
           CapturedPackage = $null
+          DecryptCalls = 0
           EncryptedPackages = @{}
           IdentityRecipients = @{}
+          LastRecipient = ''
         }
         $script:mockAzureDevNativeCommandEmulator =
           $MockNativeCommandEmulator
+        $script:mockAzureDevPackageSignatureVerifier =
+          $MockPackageSignatureVerifier
 
         function script:Get-AzureDevAgePath {
           return 'age-test'
@@ -119,6 +129,9 @@ Describe `
             [string]$PublicKey
           )
 
+          if ($PublicKey -eq 'ssh-ed25519 AAAAapprover') {
+            return 'SHA256:' + ('A' * 43)
+          }
           return 'SHA256:destination'
         }
 
@@ -151,7 +164,27 @@ Describe `
             -SupportSigning `
             -SupportChmod
         }
-      } $DestinationHome $script:mockAzureDevNativeCommandEmulator
+
+        function script:Test-AzureDevWorkstationPackageSignature {
+          param(
+            [Parameter(Mandatory = $true)]
+            [byte[]]$Payload,
+
+            [Parameter(Mandatory = $true)]
+            [string]$Signature,
+
+            [Parameter(Mandatory = $true)]
+            [string]$PublicKey
+          )
+
+          return & $script:mockAzureDevPackageSignatureVerifier `
+            -Payload $Payload `
+            -Signature $Signature
+        }
+      } `
+        $DestinationHome `
+        $script:mockAzureDevNativeCommandEmulator `
+        $script:mockAzureDevPackageSignatureVerifier
     }
 
     function New-TestTransferContext {
@@ -176,6 +209,21 @@ Describe `
       Set-Content `
         -LiteralPath $primaryPath `
         -Value 'AZURE_DEV_VM_RESOURCE_GROUP=approver-rg'
+      $approverPublicKeyPath = Join-Path `
+        $RepositoryRoot `
+        'approver_ed25519.pub'
+      Set-Content `
+        -LiteralPath $approverPublicKeyPath `
+        -Value 'ssh-ed25519 AAAAapprover'
+      $managedApprovalKeyPath = Join-Path `
+        $RepositoryRoot `
+        'managed_approval_ed25519'
+      Set-Content `
+        -LiteralPath $managedApprovalKeyPath `
+        -Value 'managed approval private key'
+      Set-Content `
+        -LiteralPath "$managedApprovalKeyPath.pub" `
+        -Value 'ssh-ed25519 AAAAapprover'
 
       return [PSCustomObject]@{
         Yes = $true
@@ -190,7 +238,10 @@ Describe `
           TenantId = '00000000-0000-0000-0000-000000000002'
           ResourceGroup = 'approver-rg'
           VmName = 'krav-dev-vm'
-          SshPrivateKeyPath = $DestinationKeyPath
+          SshPrivateKeyPath = $managedApprovalKeyPath
+          SshPublicKeyPath = "$managedApprovalKeyPath.pub"
+          WorkstationApproverPublicKeyPath = $approverPublicKeyPath
+          ConnectivityMode = 'public-ssh'
         }
       }
     }
@@ -278,6 +329,108 @@ Describe `
 
       $signedRequest.destinationPrivateKeyPath |
         Should-BeString -Expected $destinationKeyPath -CaseSensitive
+      $signedRequest.approverPublicKeyFingerprint |
+        Should-BeString `
+          -Expected ('SHA256:' + ('A' * 43)) `
+          -CaseSensitive
+    }
+
+    It 'Should reject a missing approver trust anchor before creating a key' {
+      $destinationHome = Join-Path $TestDrive 'missing-destination-home'
+      Initialize-TestWorkstationModule -DestinationHome $destinationHome
+      $destinationKeyPath = Join-Path `
+        (Join-Path $destinationHome '.ssh') `
+        'kravhantering_azure_dev_destination_ed25519'
+      $context = New-TestTransferContext `
+        -RepositoryRoot (Join-Path $TestDrive 'missing-approver-repo') `
+        -DestinationKeyPath $destinationKeyPath
+      $context.Config.WorkstationApproverPublicKeyPath = ''
+
+      {
+        New-AzureDevWorkstationRequest `
+          -Context $context `
+          -WorkstationName 'destination' `
+          -IntendedUse 'connect-only' `
+          -Cidr '198.51.100.4/32' `
+          -OutputPath (Join-Path $TestDrive 'missing-approver.kravreq') `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage (
+        'AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH is required.*'
+      )
+      Test-Path -LiteralPath $destinationKeyPath | Should-BeFalse
+    }
+
+    It 'Should reject an unavailable approver key before creating a key' {
+      $destinationHome = Join-Path $TestDrive 'unavailable-approver-home'
+      Initialize-TestWorkstationModule -DestinationHome $destinationHome
+      $destinationKeyPath = Join-Path `
+        (Join-Path $destinationHome '.ssh') `
+        'kravhantering_azure_dev_destination_ed25519'
+      $context = New-TestTransferContext `
+        -RepositoryRoot (Join-Path $TestDrive 'unavailable-approver-repo') `
+        -DestinationKeyPath $destinationKeyPath
+      $context.Config.WorkstationApproverPublicKeyPath = Join-Path `
+        $TestDrive `
+        'unavailable-approver.pub'
+
+      {
+        New-AzureDevWorkstationRequest `
+          -Context $context `
+          -WorkstationName 'destination' `
+          -IntendedUse 'connect-only' `
+          -Cidr '198.51.100.4/32' `
+          -OutputPath (Join-Path $TestDrive 'unavailable.kravreq') `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage (
+        'The configured workstation approver public-key file was not found:*'
+      )
+      Test-Path -LiteralPath $destinationKeyPath | Should-BeFalse
+    }
+
+    It 'Should reject an invalid approver key before creating a key' {
+      $destinationHome = Join-Path $TestDrive 'invalid-approver-home'
+      Initialize-TestWorkstationModule -DestinationHome $destinationHome
+      $destinationKeyPath = Join-Path `
+        (Join-Path $destinationHome '.ssh') `
+        'kravhantering_azure_dev_destination_ed25519'
+      $context = New-TestTransferContext `
+        -RepositoryRoot (Join-Path $TestDrive 'invalid-approver-repo') `
+        -DestinationKeyPath $destinationKeyPath
+      Set-Content `
+        -LiteralPath $context.Config.WorkstationApproverPublicKeyPath `
+        -Value 'not an SSH public key'
+
+      {
+        New-AzureDevWorkstationRequest `
+          -Context $context `
+          -WorkstationName 'destination' `
+          -IntendedUse 'connect-only' `
+          -Cidr '198.51.100.4/32' `
+          -OutputPath (Join-Path $TestDrive 'invalid.kravreq') `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage (
+        'The configured workstation approver public-key file is invalid:*'
+      )
+      Test-Path -LiteralPath $destinationKeyPath | Should-BeFalse
+    }
+  }
+
+  Context 'When an unsigned legacy request is read' {
+    It 'Should require request and response regeneration' {
+      $requestPath = Join-Path $TestDrive 'legacy-schema-2.kravreq'
+      Set-Content -LiteralPath $requestPath -Value @(
+        '-----BEGIN KRAVHANTERING WORKSTATION REQUEST-----'
+        'Version: 2'
+        ''
+        'e30='
+        '-----END KRAVHANTERING WORKSTATION REQUEST-----'
+      )
+
+      {
+        Read-AzureDevWorkstationRequest -Path $requestPath
+      } | Should-Throw -ExceptionMessage (
+        'The workstation request schema is unsupported. Regenerate the request*'
+      )
     }
   }
 
@@ -300,10 +453,11 @@ Describe `
         destinationPrivateKeyPath = $destinationKeyPath
         publicKey = 'ssh-ed25519 AAAAdestination'
         publicKeyFingerprint = 'SHA256:destination'
+        approverPublicKeyFingerprint = 'SHA256:' + ('A' * 43)
         platform = 'linux'
         architecture = 'x64'
       }
-      $outputPath = Join-Path $TestDrive "$IntendedUse.age"
+      $outputPath = Join-Path $TestDrive "$IntendedUse.kravpkg"
 
       $null = InModuleScope -Parameters @{
         TestContext = $context
@@ -324,12 +478,21 @@ Describe `
         'files/.env.azure.development.local'
       ]
       $manifest = $mockCaptured['manifest.json'] | ConvertFrom-Json
+      $armoredPackage = Get-Content -LiteralPath $outputPath -Raw
 
       $localContent.Contains(
         "AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH=$destinationKeyPath"
       ) | Should-BeTrue
       $manifest.destinationPrivateKeyPath |
         Should-BeString -Expected $destinationKeyPath -CaseSensitive
+      $manifest.approverPublicKeyFingerprint |
+        Should-BeString `
+          -Expected ('SHA256:' + ('A' * 43)) `
+          -CaseSensitive
+      $armoredPackage.StartsWith(
+        '-----BEGIN KRAVHANTERING WORKSTATION PACKAGE-----'
+      ) | Should-BeTrue
+      Test-Path -LiteralPath "$outputPath.sig" | Should-BeFalse
       if ($IntendedUse -eq 'connect-only') {
         @($mockCaptured.Keys) | Should-NotContainCollection `
           'files/.env.azure.development'
@@ -337,6 +500,43 @@ Describe `
         @($mockCaptured.Keys) | Should-ContainCollection `
           'files/.env.azure.development'
       }
+    }
+  }
+
+  Context 'When an approver identity does not match the signed request' {
+    BeforeEach {
+      Mock -CommandName Read-AzureDevWorkstationRequest -MockWith {
+        return [PSCustomObject]@{
+          workstation = 'destination'
+          intendedUse = 'connect-only'
+          cidr = '198.51.100.4/32'
+          destinationPrivateKeyPath = '/tmp/destination-key'
+          publicKey = 'ssh-ed25519 AAAAdestination'
+          publicKeyFingerprint = 'SHA256:destination'
+          approverPublicKeyFingerprint = 'SHA256:different-approver'
+        }
+      }
+      Mock -CommandName Test-AzureDevPrerequisites
+      Mock -CommandName Get-AzureDevVmPowerState -MockWith { 'running' }
+      Mock -CommandName New-AzureDevWorkstationPackage
+    }
+
+    It 'Should reject the request before package creation or access mutation' {
+      $context = New-TestTransferContext `
+        -RepositoryRoot (Join-Path $TestDrive 'mismatch-repo') `
+        -DestinationKeyPath (Join-Path $TestDrive 'destination-key')
+
+      {
+        Approve-AzureDevWorkstation `
+          -Context $context `
+          -RequestPath (Join-Path $TestDrive 'mismatch.kravreq') `
+          -OutputPath (Join-Path $TestDrive 'mismatch.kravpkg') `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage (
+        'The managed approval identity does not match the approver identity*'
+      )
+      Should-NotInvoke -CommandName Get-AzureDevVmPowerState -Scope It
+      Should-NotInvoke -CommandName New-AzureDevWorkstationPackage -Scope It
     }
   }
 
@@ -501,7 +701,7 @@ Describe `
         -LiteralPath (Join-Path $packageReference 'vm-known-hosts') `
         -Value '203.0.113.10 ssh-ed25519 AAAAexpected'
       $manifest = [ordered]@{
-        schema = 2
+        schema = 3
         kind = 'kravhantering-azure-dev-workstation-package'
         workstation = 'destination'
         intendedUse = 'connect-only'
@@ -566,7 +766,7 @@ Describe `
         -LiteralPath (Join-Path $readinessSsh 'known_hosts') `
         -Value '203.0.113.10 ssh-ed25519 AAAAdifferent'
       $manifest = [ordered]@{
-        schema = 2
+        schema = 3
         kind = 'kravhantering-azure-dev-workstation-package'
         workstation = 'destination'
         intendedUse = 'connect-only'

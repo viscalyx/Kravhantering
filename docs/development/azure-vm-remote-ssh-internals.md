@@ -363,14 +363,15 @@ Workstation-scoped commands derive their default name from
 accept `-WorkstationName` as an optional override. The workstation name is not
 stored in an environment file.
 
-Request and package schemas roll forward together. Schema 2 rejects every
+Request and package schemas roll forward together. Schema 3 rejects every
 older request or package with regeneration instructions; there is no
 compatibility parser or legacy default. The request is canonical JSON wrapped
 in an ASCII-armored Base64 envelope. It contains no secret or private key and
 binds `intendedUse` to `connect-only` or `manage-environment`. It also binds the
-absolute destination-generated private-key path, which approval copies into the
-manifest and packaged local configuration without resolving the approver's
-home directory.
+absolute destination-generated private-key path and the configured approver
+public-key fingerprint. Approval copies the destination path into the manifest
+and packaged local configuration without resolving the approver's home
+directory.
 `ssh-keygen -Y sign` signs the payload with namespace
 `kravhantering-workstation-request`; approval verifies that signature against
 the embedded public key. This proves possession and detects corruption. It
@@ -385,17 +386,40 @@ the returned package. No receipt or summary artifact is created.
 
 Approval displays and honors the signed intended use. It rejects Tailscale
 before package or environment mutation because transfer supports public SSH
-only. A requested mode change requires a new signed request.
+only. Before prerequisites, VM state changes, package creation, or access
+mutation, it requires the public half of the managed VM SSH identity to match
+the approver fingerprint bound into the request. A requested mode change or
+approver-key rotation requires a new signed request.
 
 The response package is a ZIP payload encrypted with `age` to the destination
-workstation's SSH public key and emitted in the native ASCII-armored format.
+workstation's SSH public key. Approval signs the exact encrypted bytes with
+`ssh-keygen -Y sign` under namespace `kravhantering-workstation-package`, then
+emits the payload and detached SSH signature in one ASCII-armored `.kravpkg`
+envelope. The approval key is the managed `AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH`
+identity; Git commit-signing identities are unrelated.
+
+The destination provisions the expected approval public-key file through a
+trusted channel and records its ignored local path in
+`AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH`. This configured key is the
+sole trust anchor. Extraction parses the schema-3 envelope, verifies its
+fingerprint and signature over the exact encrypted bytes, and only then invokes
+`age` or opens archive content. Envelope key material cannot replace the
+configured key. Missing configuration, legacy native `.age` input, malformed
+armor or signatures, signature or payload changes, and key mismatch fail
+before decryption and destination creation. Temporary encrypted and decrypted
+files are removed on every failure. Rotation invalidates pending requests and
+responses; provisioning the new public key and regenerating both artifacts is
+the recovery path.
+
 A compatible `age` 1.2.1 or later must be installed manually and available on
 `PATH`. The module validates the installed version but never downloads,
 installs, or manages the tool. Decryption auto-detects the armored input.
 
 The manifest binds the package to the request ID, workstation, intended use,
 environment, fixed public host, destination private-key path, destination
-public-key fingerprint, and 24-hour expiry. Entry names are an allowlist.
+public-key fingerprint, verified approver fingerprint, and 24-hour expiry. The
+manifest approver fingerprint must equal the identity that verified the outer
+envelope. Entry names are an allowlist.
 Extraction rejects rooted paths, backslashes, `..`, duplicates, undeclared
 entries, missing declared entries, oversized entries, unsupported schemas, and
 expired packages. It extracts only into a new user-selected directory. On

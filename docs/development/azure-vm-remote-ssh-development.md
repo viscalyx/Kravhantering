@@ -1028,8 +1028,10 @@ sequenceDiagram
     User->>Source: Confirm verification code
     Source->>Azure: Add named CIDR rule
     Source->>VM: Add destination public key
-    Source-->>User: ASCII-armored destination-key-encrypted age package
+    Source->>Source: Sign encrypted payload with managed SSH identity
+    Source-->>User: Signed and encrypted .kravpkg response
     User->>Destination: Transfer attachment or armored text
+    Destination->>Destination: Verify expected approver signature
     Destination->>Destination: extract-workstation-package
     Destination-->>User: Private README and selected files
     User->>Destination: Copy and configure files manually
@@ -1037,22 +1039,37 @@ sequenceDiagram
     Destination-->>User: Readiness report and code command
 ```
 
-The request is Base64-encoded text, not encrypted. Schema 2 records the selected
-mode with the public onboarding data:
+The request is Base64-encoded text, not encrypted. Schema 3 records the selected
+mode, expected approver fingerprint, and public onboarding data:
 
 ```text
 -----BEGIN KRAVHANTERING WORKSTATION REQUEST-----
-Version: 2
+Version: 3
 
 <Base64 payload>
 -----END KRAVHANTERING WORKSTATION REQUEST-----
 ```
 
 The request is signed by the destination key. Its schema binds the absolute
-destination private-key path alongside the intended use and public onboarding
-data. The approving user must still compare the displayed fingerprint or
-verification code because an attacker could replace the entire request with a
-separately signed request.
+destination private-key path and expected approver public-key fingerprint
+alongside the intended use and public onboarding data. The approving user must
+still compare the displayed fingerprint or verification code because an
+attacker could replace the entire request with a separately signed request.
+
+Before creating the request, provision the approving workstation's managed SSH
+public key on the destination through a trusted channel. Store it outside the
+repository and set its ignored local path in
+`.env.azure.development.local`:
+
+```dotenv
+AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH=~/.ssh/kravhantering_azure_dev_approver_ed25519.pub
+```
+
+The command rejects a missing, unreadable, or invalid key file before creating
+the destination key. The configured key is the sole response trust anchor;
+keys or fingerprints carried by a response cannot replace it. Rotating the
+approver key invalidates every pending request, so provision the new public key
+and create a new request after rotation.
 
 ### Create the destination request
 
@@ -1145,14 +1162,17 @@ Approve a request file:
 ```powershell
 ./scripts/azure-dev.ps1 -Command approve-workstation `
   -RequestPath "<request-file>" `
-  -OutputPath "<response-package>.age"
+  -OutputPath "<response-package>.kravpkg"
 ```
 
 Omit `-RequestPath` to paste the text request interactively. Approval displays
 and honors the signed mode, workstation, CIDR, destination private-key path,
 public-key fingerprint, and verification code. A change requires a new request.
 Approval refuses Tailscale environments before changing the package or
-environment because transfer supports public SSH only.
+environment because transfer supports public SSH only. It also refuses the
+request before package creation or access mutation unless the public half of
+the managed `AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH` identity matches the approver
+fingerprint bound into the request.
 
 For either mode, the approver may independently include `GH_TOKEN` and
 `COPILOT_GITHUB_TOKEN` from the current process. Both are excluded by default.
@@ -1168,8 +1188,10 @@ never contains a private Git signing key.
 Approval temporarily starts a stopped VM when the user confirms, restores its
 original power state, adds and verifies the named CIDR and public key, and
 creates an ASCII-armored response package encrypted to the destination
-workstation's SSH public key. The package can only be decrypted with the
-private key that remains on that workstation.
+workstation's SSH public key and signed with the managed approval identity. The
+package can only be decrypted with the private key that remains on the
+destination, and the destination accepts it only when the configured approver
+public key verifies the signature.
 
 The package contents depend on the signed mode:
 
@@ -1183,20 +1205,21 @@ The package contents depend on the signed mode:
   those destination values without changing the source. Otherwise packaging
   creates a minimal two-value local file.
 
-The `.age` response is plain ASCII text in the native `age` armor format:
+The `.kravpkg` response is one plain ASCII schema-3 envelope. It carries the
+exact native `age` armored payload and an SSH signature over those exact bytes:
 
 ```text
------BEGIN AGE ENCRYPTED FILE-----
-<armored encrypted payload>
------END AGE ENCRYPTED FILE-----
+-----BEGIN KRAVHANTERING WORKSTATION PACKAGE-----
+Version: 3
+
+<Base64 response envelope>
+-----END KRAVHANTERING WORKSTATION PACKAGE-----
 ```
 
 Transfer it as a normal attachment or copy the complete block through a
 text-only channel. When copying text, save the complete block as a plain-text
-`.age` file on the destination workstation without changing the markers. The
-encrypted contents can be copied safely, but the armored representation is
-about one-third larger than the binary form. `age` detects and decrypts the
-armored file automatically.
+`.kravpkg` file on the destination workstation without changing the markers.
+Do not split the signature into a sidecar file.
 
 ### Extract and configure manually
 
@@ -1204,15 +1227,22 @@ On the destination workstation:
 
 ```powershell
 ./scripts/azure-dev.ps1 -Command extract-workstation-package `
-  -PackagePath "<response-package>.age" `
+  -PackagePath "<response-package>.kravpkg" `
   -DestinationPath "<private-extraction-directory>"
 ```
 
-Extraction validates the package, rejects unsafe archive paths, and writes every
-validated manifest entry, including permitted environment files, only under the
-selected destination. It does not automatically apply those files to the
-repository, configure the environment, update SSH configuration, edit shell
-profiles, install tokens, or launch VS Code.
+Extraction first parses the schema-3 envelope and verifies the signature over
+the encrypted payload with `AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH`.
+Only then does it invoke `age`, open the archive, or create the destination.
+Missing or malformed armor, missing or invalid signatures, modified payloads,
+and a changed approver key fail without retaining plaintext. Provision the
+expected key and regenerate both request and response; unsigned schema-2
+`.age` responses are intentionally incompatible. After authentication,
+extraction validates the package, rejects unsafe archive paths, and writes
+every validated manifest entry, including permitted environment files, only
+under the selected destination. It does not automatically apply those files
+to the repository, configure the environment, update SSH configuration, edit
+shell profiles, install tokens, or launch VS Code.
 
 On Windows, extraction removes inherited access rules from the new destination,
 grants only the current user full control, and validates the protected ACL
@@ -1257,7 +1287,7 @@ After manual configuration, validate readiness:
   -DestinationPath "<private-extraction-directory>"
 ```
 
-For connect-only, readiness determines the mode from the extracted schema 2
+For connect-only, readiness determines the mode from the extracted schema 3
 manifest before loading configuration. A partially applied local file can
 therefore report the missing fixed host, alias, destination private key,
 verified `known_hosts` entries, exact managed SSH block, and any required

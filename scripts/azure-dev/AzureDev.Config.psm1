@@ -20,6 +20,7 @@ function Get-AzureDevDefaultConfig {
     AZURE_DEV_TAILSCALE_AUTH_KEY = ''
     AZURE_DEV_TAILSCALE_TAILNET = ''
     AZURE_DEV_UBUNTU_PRO_TOKEN = ''
+    AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH = ''
     AZURE_DEV_VM_ENVIRONMENT_ID = 'personal'
     AZURE_DEV_VM_NAME_PREFIX = 'krav-dev'
     AZURE_DEV_VM_NAME = 'krav-dev-vm'
@@ -391,6 +392,16 @@ function Get-AzureDevConfig {
   $privateKeyPath = Resolve-AzureDevPath `
     -Path $values.AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH
   $publicKeyPath = "$privateKeyPath.pub"
+  $workstationApproverPublicKeyPath = if (
+    [string]::IsNullOrWhiteSpace(
+      $values.AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH
+    )
+  ) {
+    ''
+  } else {
+    Resolve-AzureDevPath `
+      -Path $values.AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH
+  }
   $environmentId = $values.AZURE_DEV_VM_ENVIRONMENT_ID
 
   $config = [pscustomobject]@{
@@ -414,6 +425,7 @@ function Get-AzureDevConfig {
     SshHostName = $values.AZURE_DEV_VM_SSH_HOST_NAME
     SshPrivateKeyPath = $privateKeyPath
     SshPublicKeyPath = $publicKeyPath
+    WorkstationApproverPublicKeyPath = $workstationApproverPublicKeyPath
     AutoStopEnabled = ConvertTo-AzureDevBoolean `
       -Value $values.AZURE_DEV_VM_AUTO_STOP_ENABLED `
       -DefaultValue $true

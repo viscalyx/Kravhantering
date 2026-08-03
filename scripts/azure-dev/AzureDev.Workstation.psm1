@@ -5,10 +5,13 @@ Set-StrictMode -Version Latest
 $script:RequestBegin = '-----BEGIN KRAVHANTERING WORKSTATION REQUEST-----'
 $script:RequestEnd = '-----END KRAVHANTERING WORKSTATION REQUEST-----'
 $script:RequestNamespace = 'kravhantering-workstation-request'
-$script:RequestSchema = 2
-$script:PackageSchema = 2
+$script:PackageBegin = '-----BEGIN KRAVHANTERING WORKSTATION PACKAGE-----'
+$script:PackageEnd = '-----END KRAVHANTERING WORKSTATION PACKAGE-----'
+$script:PackageNamespace = 'kravhantering-workstation-package'
+$script:RequestSchema = 3
+$script:PackageSchema = 3
 $script:MaximumPackageBytes = 50MB
-$script:MaximumArmoredPackageBytes = 70MB
+$script:MaximumArmoredPackageBytes = 95MB
 $script:MaximumEntryBytes = 5MB
 
 function Confirm-AzureDevWorkstationAction {
@@ -315,6 +318,26 @@ function Get-AzureDevPublicKeyFingerprint {
   return "SHA256:$encoded"
 }
 
+function Test-AzureDevPublicKeyFingerprint {
+  [CmdletBinding()]
+  param(
+    [AllowNull()]
+    [string]$Fingerprint
+  )
+
+  if ($Fingerprint -notmatch '^SHA256:[A-Za-z0-9+/]{43}$') {
+    return $false
+  }
+  try {
+    $digest = [Convert]::FromBase64String(
+      $Fingerprint.Substring(7) + '='
+    )
+    return $digest.Length -eq 32
+  } catch {
+    return $false
+  }
+}
+
 function Get-AzureDevVerificationCode {
   [CmdletBinding()]
   param(
@@ -332,6 +355,65 @@ function Get-AzureDevVerificationCode {
   }
   $hex = ([BitConverter]::ToString($digest) -replace '-', '').ToLowerInvariant()
   return "$($hex.Substring(0, 4))-$($hex.Substring(4, 4))-$($hex.Substring(8, 4))-$($hex.Substring(12, 4))"
+}
+
+function Get-AzureDevWorkstationApproverPublicKey {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context
+  )
+
+  $path = [string]$Context.Config.WorkstationApproverPublicKeyPath
+  if ([string]::IsNullOrWhiteSpace($path)) {
+    throw (
+      'AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH is required. ' +
+      'Provision the expected approver public key through a trusted channel.'
+    )
+  }
+  if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+    throw "The configured workstation approver public-key file was not found: $path"
+  }
+  try {
+    $publicKey = (Get-Content -LiteralPath $path -Raw -ErrorAction Stop).Trim()
+  } catch {
+    throw "The configured workstation approver public-key file could not be read: $path"
+  }
+  if (-not (Test-AzureDevSshPublicKey -Value $publicKey)) {
+    throw "The configured workstation approver public-key file is invalid: $path"
+  }
+  return $publicKey
+}
+
+function Get-AzureDevManagedWorkstationApprovalIdentity {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context
+  )
+
+  $privateKeyPath = [string]$Context.Config.SshPrivateKeyPath
+  $publicKeyPath = [string]$Context.Config.SshPublicKeyPath
+  if (
+    [string]::IsNullOrWhiteSpace($privateKeyPath) -or
+    -not (Test-Path -LiteralPath $privateKeyPath -PathType Leaf) -or
+    [string]::IsNullOrWhiteSpace($publicKeyPath) -or
+    -not (Test-Path -LiteralPath $publicKeyPath -PathType Leaf)
+  ) {
+    throw (
+      'The managed approval SSH identity is unavailable. Ensure the ' +
+      'configured VM SSH private key and matching public-key file exist.'
+    )
+  }
+  $publicKey = (Get-Content -LiteralPath $publicKeyPath -Raw).Trim()
+  if (-not (Test-AzureDevSshPublicKey -Value $publicKey)) {
+    throw "The managed approval SSH public-key file is invalid: $publicKeyPath"
+  }
+  return [PSCustomObject]@{
+    PrivateKeyPath = $privateKeyPath
+    PublicKey = $publicKey
+    Fingerprint = Get-AzureDevPublicKeyFingerprint -PublicKey $publicKey
+  }
 }
 
 function ConvertTo-AzureDevArmoredRequest {
@@ -367,6 +449,122 @@ function ConvertTo-AzureDevArmoredRequest {
     $lines
     $script:RequestEnd
   ) -join [Environment]::NewLine
+}
+
+function ConvertTo-AzureDevArmoredPackage {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [byte[]]$Payload,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Signature,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ApproverPublicKeyFingerprint
+  )
+
+  $envelope = [ordered]@{
+    schema = $script:PackageSchema
+    approverPublicKeyFingerprint = $ApproverPublicKeyFingerprint
+    payload = [Convert]::ToBase64String($Payload)
+    signature = [Convert]::ToBase64String(
+      [Text.Encoding]::ASCII.GetBytes($Signature)
+    )
+  } | ConvertTo-Json -Compress
+  $encoded = [Convert]::ToBase64String(
+    [Text.Encoding]::UTF8.GetBytes($envelope)
+  )
+  $lines = for ($offset = 0; $offset -lt $encoded.Length; $offset += 64) {
+    $length = [Math]::Min(64, $encoded.Length - $offset)
+    $encoded.Substring($offset, $length)
+  }
+  return @(
+    $script:PackageBegin
+    "Version: $script:PackageSchema"
+    ''
+    $lines
+    $script:PackageEnd
+  ) -join [Environment]::NewLine
+}
+
+function Read-AzureDevArmoredPackage {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  $malformedMessage = (
+    'The workstation package envelope or signature is malformed. Create and ' +
+    'approve a new request, then extract the regenerated .kravpkg response.'
+  )
+  try {
+    $armored = Get-Content -LiteralPath $Path -Raw
+    $pattern = (
+      '(?s)^' + [regex]::Escape($script:PackageBegin) +
+      '\s+Version:\s*(?<armorVersion>\d+)\s+' +
+      '(?<armorPayload>.+?)\s+' +
+      [regex]::Escape($script:PackageEnd) + '\s*$'
+    )
+    $armorMatch = [regex]::Match($armored, $pattern)
+    if (-not $armorMatch.Success) {
+      throw $malformedMessage
+    }
+    if (
+      [int]$armorMatch.Groups['armorVersion'].Value -ne
+      $script:PackageSchema
+    ) {
+      throw (
+        'The workstation package envelope schema is unsupported. Create and ' +
+        'approve a new request, then extract the regenerated .kravpkg response.'
+      )
+    }
+    $encoded = $armorMatch.Groups['armorPayload'].Value -replace '\s', ''
+    $envelopeJson = [Text.Encoding]::UTF8.GetString(
+      [Convert]::FromBase64String($encoded)
+    )
+    $envelope = $envelopeJson | ConvertFrom-Json
+    if ($envelope.schema -ne $script:PackageSchema) {
+      throw (
+        'The workstation package envelope schema is unsupported. Create and ' +
+        'approve a new request, then extract the regenerated .kravpkg response.'
+      )
+    }
+    $payload = [Convert]::FromBase64String([string]$envelope.payload)
+    $signature = [Text.Encoding]::ASCII.GetString(
+      [Convert]::FromBase64String([string]$envelope.signature)
+    )
+    if (
+      $payload.Length -eq 0 -or
+      -not (
+        Test-AzureDevPublicKeyFingerprint `
+          -Fingerprint ([string]$envelope.approverPublicKeyFingerprint)
+      ) -or
+      $signature -notmatch (
+        '(?s)^-----BEGIN SSH SIGNATURE-----\r?\n' +
+        '[A-Za-z0-9+/=\r\n]+\r?\n' +
+        '-----END SSH SIGNATURE-----\r?\n?$'
+      )
+    ) {
+      throw $malformedMessage
+    }
+    return [PSCustomObject]@{
+      Payload = $payload
+      Signature = $signature
+      ApproverPublicKeyFingerprint = [string](
+        $envelope.approverPublicKeyFingerprint
+      )
+    }
+  } catch {
+    if (
+      $_.Exception.Message -like
+      'The workstation package envelope schema is unsupported.*'
+    ) {
+      throw
+    }
+    throw $malformedMessage
+  }
 }
 
 function New-AzureDevWorkstationRequest {
@@ -406,6 +604,10 @@ function New-AzureDevWorkstationRequest {
     SshPrivateKeyPath = $keyPath
     SshPublicKeyPath = "$keyPath.pub"
   }
+  $approverPublicKey = Get-AzureDevWorkstationApproverPublicKey `
+    -Context $Context
+  $approverPublicKeyFingerprint = Get-AzureDevPublicKeyFingerprint `
+    -PublicKey $approverPublicKey
   New-AzureDevSshKey -Config $keyConfig
   $publicKey = Get-AzureDevSshPublicKey -Config $keyConfig
   $fingerprint = Get-AzureDevPublicKeyFingerprint -PublicKey $publicKey
@@ -431,6 +633,7 @@ function New-AzureDevWorkstationRequest {
     destinationPrivateKeyPath = $keyPath
     publicKey = $publicKey
     publicKeyFingerprint = $fingerprint
+    approverPublicKeyFingerprint = $approverPublicKeyFingerprint
   }
   $payload = $request | ConvertTo-Json -Compress
   $temporaryDirectory = Join-Path `
@@ -499,6 +702,7 @@ function New-AzureDevWorkstationRequest {
   Write-Host "Requested CIDR: $resolvedCidr"
   Write-Host "SSH private key: $keyPath"
   Write-Host "Public-key fingerprint: $fingerprint"
+  Write-Host "Expected approver fingerprint: $approverPublicKeyFingerprint"
   Write-Host "Verification code: $verificationCode"
   Write-Host (
     'Keep this shell open or temporarily save these details until approval ' +
@@ -609,6 +813,78 @@ function Test-AzureDevWorkstationRequestSignature {
   }
 }
 
+function Test-AzureDevWorkstationPackageSignature {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [byte[]]$Payload,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Signature,
+
+    [Parameter(Mandatory = $true)]
+    [string]$PublicKey
+  )
+
+  $temporaryDirectory = Join-Path `
+    ([IO.Path]::GetTempPath()) `
+    "krav-package-verify-$([guid]::NewGuid().ToString('N'))"
+  try {
+    New-AzureDevPrivateDirectory -Path $temporaryDirectory
+    $allowedSignersPath = Join-Path $temporaryDirectory 'allowed_signers'
+    $signaturePath = Join-Path $temporaryDirectory 'package.sig'
+    Set-AzureDevPrivateContent `
+      -Path $allowedSignersPath `
+      -Value "approver $PublicKey" `
+      -Encoding ASCII
+    Set-AzureDevPrivateContent `
+      -Path $signaturePath `
+      -Value $Signature `
+      -Encoding ASCII
+
+    $start = [Diagnostics.ProcessStartInfo]::new()
+    $start.FileName = 'ssh-keygen'
+    foreach ($argument in @(
+        '-Y',
+        'verify',
+        '-f',
+        $allowedSignersPath,
+        '-I',
+        'approver',
+        '-n',
+        $script:PackageNamespace,
+        '-s',
+        $signaturePath
+      )) {
+      $start.ArgumentList.Add($argument)
+    }
+    $start.RedirectStandardInput = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $start.UseShellExecute = $false
+    $process = $null
+    try {
+      $process = [Diagnostics.Process]::Start($start)
+      $standardOutput = $process.StandardOutput.ReadToEndAsync()
+      $standardError = $process.StandardError.ReadToEndAsync()
+      $process.StandardInput.BaseStream.Write($Payload, 0, $Payload.Length)
+      $process.StandardInput.Close()
+      $process.WaitForExit()
+      $standardOutput.GetAwaiter().GetResult() | Out-Null
+      $standardError.GetAwaiter().GetResult() | Out-Null
+      return $process.ExitCode -eq 0
+    } finally {
+      if ($null -ne $process) {
+        $process.Dispose()
+      }
+    }
+  } finally {
+    if (Test-Path -LiteralPath $temporaryDirectory) {
+      Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force
+    }
+  }
+}
+
 function Read-AzureDevWorkstationRequest {
   [CmdletBinding()]
   param(
@@ -666,6 +942,14 @@ function Read-AzureDevWorkstationRequest {
   }
   if ($request.intendedUse -notin @('connect-only', 'manage-environment')) {
     throw 'The workstation request intended use is invalid.'
+  }
+  if (
+    -not (
+      Test-AzureDevPublicKeyFingerprint `
+        -Fingerprint ([string]$request.approverPublicKeyFingerprint)
+    )
+  ) {
+    throw 'The workstation request approver public-key fingerprint is invalid.'
   }
   Assert-AzureDevDestinationPrivateKeyPath `
     -Path $request.destinationPrivateKeyPath `
@@ -981,6 +1265,20 @@ function New-AzureDevWorkstationPackage {
   if (-not $PSCmdlet.ShouldProcess($OutputPath, 'Create encrypted workstation package')) {
     return
   }
+  if (Test-Path -LiteralPath $OutputPath) {
+    throw "Package output already exists: $OutputPath"
+  }
+  $approvalIdentity = Get-AzureDevManagedWorkstationApprovalIdentity `
+    -Context $Context
+  if (
+    $approvalIdentity.Fingerprint -cne
+    $Request.approverPublicKeyFingerprint
+  ) {
+    throw (
+      'The managed approval identity does not match the approver identity ' +
+      'bound to the signed request.'
+    )
+  }
   $age = Get-AzureDevAgePath
   $temporaryDirectory = Join-Path `
     ([IO.Path]::GetTempPath()) `
@@ -1191,6 +1489,7 @@ function New-AzureDevWorkstationPackage {
       sshHostName = $hostName
       destinationPrivateKeyPath = $destinationPrivateKey
       publicKeyFingerprint = $Request.publicKeyFingerprint
+      approverPublicKeyFingerprint = $approvalIdentity.Fingerprint
       signingRequired = $signingRequired
       signingPublicKeyFingerprint = $signingPublicKeyFingerprint
       platform = $Request.platform
@@ -1205,16 +1504,61 @@ function New-AzureDevWorkstationPackage {
       -Encoding UTF8
     $zipPath = Join-Path $temporaryDirectory 'payload.zip'
     [IO.Compression.ZipFile]::CreateFromDirectory($payloadPath, $zipPath)
-    if (Test-Path -LiteralPath $OutputPath) {
-      throw "Package output already exists: $OutputPath"
-    }
+    $encryptedPayloadPath = Join-Path $temporaryDirectory 'payload.age'
     $encryptResult = Invoke-AzureDevNativeCommand `
       -FilePath $age `
-      -Arguments @('-a', '-R', $recipientPath, '-o', $OutputPath, $zipPath)
+      -Arguments @(
+        '-a',
+        '-R',
+        $recipientPath,
+        '-o',
+        $encryptedPayloadPath,
+        $zipPath
+      )
     if ($encryptResult.ExitCode -ne 0) {
       throw "Could not encrypt the workstation package: $($encryptResult.Text.Trim())"
     }
-    Set-AzureDevPrivatePermissions -Path $OutputPath
+    $signResult = Invoke-AzureDevNativeCommand `
+      -FilePath 'ssh-keygen' `
+      -Arguments @(
+        '-Y',
+        'sign',
+        '-f',
+        $approvalIdentity.PrivateKeyPath,
+        '-n',
+        $script:PackageNamespace,
+        $encryptedPayloadPath
+      )
+    if ($signResult.ExitCode -ne 0) {
+      throw "Could not sign the workstation package: $($signResult.Text.Trim())"
+    }
+    $signaturePath = "$encryptedPayloadPath.sig"
+    if (-not (Test-Path -LiteralPath $signaturePath -PathType Leaf)) {
+      throw 'Could not sign the workstation package: signature output is missing.'
+    }
+    $signature = Get-Content -LiteralPath $signaturePath -Raw
+    $encryptedPayload = [IO.File]::ReadAllBytes($encryptedPayloadPath)
+    if (
+      -not (
+        Test-AzureDevWorkstationPackageSignature `
+          -Payload $encryptedPayload `
+          -Signature $signature `
+          -PublicKey $approvalIdentity.PublicKey
+      )
+    ) {
+      throw (
+        'Could not verify the workstation package signature against the ' +
+        'managed approval identity.'
+      )
+    }
+    $armored = ConvertTo-AzureDevArmoredPackage `
+      -Payload $encryptedPayload `
+      -Signature $signature `
+      -ApproverPublicKeyFingerprint $approvalIdentity.Fingerprint
+    Set-AzureDevPrivateContent `
+      -Path $OutputPath `
+      -Value $armored `
+      -Encoding ASCII
   } finally {
     if (Test-Path -LiteralPath $temporaryDirectory) {
       Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force
@@ -1240,12 +1584,28 @@ function Approve-AzureDevWorkstation {
       'Tailscale; no package or environment changes were made.'
     )
   }
+  $approvalIdentity = Get-AzureDevManagedWorkstationApprovalIdentity `
+    -Context $Context
+  if (
+    $approvalIdentity.Fingerprint -cne
+    $request.approverPublicKeyFingerprint
+  ) {
+    throw (
+      'The managed approval identity does not match the approver identity ' +
+      'bound to the signed request. Regenerate the request after provisioning ' +
+      'the expected approver public key.'
+    )
+  }
   Test-AzureDevPrerequisites -Context $Context
   Write-Host "Workstation: $($request.workstation)"
   Write-Host "Intended use: $($request.intendedUse)"
   Write-Host "Requested CIDR: $($request.cidr)"
   Write-Host "SSH private key: $($request.destinationPrivateKeyPath)"
   Write-Host "Public-key fingerprint: $($request.publicKeyFingerprint)"
+  Write-Host (
+    'Expected approver fingerprint: ' +
+    $request.approverPublicKeyFingerprint
+  )
   Write-Host (
     'Verification code: ' +
     (Get-AzureDevVerificationCode $request.publicKeyFingerprint)
@@ -1274,7 +1634,7 @@ function Approve-AzureDevWorkstation {
     New-AzureDevPrivateDirectory -Path $packageDirectory
     $OutputPath = Join-Path `
       $packageDirectory `
-      "$($request.workstation)-workstation-package.age"
+      "$($request.workstation)-workstation-package.kravpkg"
   }
 
   $initialPowerState = Get-AzureDevVmPowerState -Config $Context.Config
@@ -1357,7 +1717,8 @@ function Approve-AzureDevWorkstation {
   Write-Host "ASCII-armored encrypted response package: $OutputPath"
   Write-Host (
     'Transfer the file as an attachment or copy its complete ' +
-    'BEGIN/END AGE ENCRYPTED FILE block through a text-only channel.'
+    'BEGIN/END KRAVHANTERING WORKSTATION PACKAGE block through a text-only ' +
+    'channel.'
   )
   Write-Host (
     'After transfer, remove the encrypted source package: ' +
@@ -1800,12 +2161,35 @@ function Expand-AzureDevWorkstationPackage {
   ) {
     return
   }
+  $envelope = Read-AzureDevArmoredPackage -Path $PackagePath
+  $approverPublicKey = Get-AzureDevWorkstationApproverPublicKey `
+    -Context $Context
+  $approverPublicKeyFingerprint = Get-AzureDevPublicKeyFingerprint `
+    -PublicKey $approverPublicKey
+  if (
+    $envelope.ApproverPublicKeyFingerprint -cne
+    $approverPublicKeyFingerprint -or
+    -not (
+      Test-AzureDevWorkstationPackageSignature `
+        -Payload $envelope.Payload `
+        -Signature $envelope.Signature `
+        -PublicKey $approverPublicKey
+    )
+  ) {
+    throw (
+      'The workstation package approval signature is invalid for the ' +
+      'configured approver identity.'
+    )
+  }
   $age = Get-AzureDevAgePath
   $temporaryDirectory = Join-Path `
     ([IO.Path]::GetTempPath()) `
     "krav-extract-$([guid]::NewGuid().ToString('N'))"
   try {
     New-AzureDevPrivateDirectory -Path $temporaryDirectory
+    $encryptedPayloadPath = Join-Path $temporaryDirectory 'payload.age'
+    [IO.File]::WriteAllBytes($encryptedPayloadPath, $envelope.Payload)
+    Set-AzureDevPrivatePermissions -Path $encryptedPayloadPath
     $zipPath = Join-Path $temporaryDirectory 'payload.zip'
     $decryptArguments = New-Object System.Collections.Generic.List[string]
     $decryptArguments.Add('-d')
@@ -1818,7 +2202,7 @@ function Expand-AzureDevWorkstationPackage {
     }
     $decryptArguments.Add('-o')
     $decryptArguments.Add($zipPath)
-    $decryptArguments.Add($PackagePath)
+    $decryptArguments.Add($encryptedPayloadPath)
     $decryptResult = Invoke-AzureDevNativeCommand `
       -FilePath $age `
       -Arguments @($decryptArguments)
@@ -1856,6 +2240,15 @@ function Expand-AzureDevWorkstationPackage {
         $reader.Dispose()
       }
       Assert-AzureDevWorkstationPackageManifest -Manifest $manifest
+      if (
+        $manifest.approverPublicKeyFingerprint -cne
+        $approverPublicKeyFingerprint
+      ) {
+        throw (
+          'The workstation package manifest approver identity does not match ' +
+          'the verified package signature.'
+        )
+      }
       if (
         [datetimeoffset]$manifest.expiresAt -lt
         [datetimeoffset]::UtcNow

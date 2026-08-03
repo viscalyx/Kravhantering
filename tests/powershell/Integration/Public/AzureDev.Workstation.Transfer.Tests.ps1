@@ -26,6 +26,10 @@ Describe `
     )
     Import-Module (
       Join-Path $script:repositoryRoot `
+        'scripts/azure-dev/AzureDev.Config.psm1'
+    ) -Force -ErrorAction Stop
+    Import-Module (
+      Join-Path $script:repositoryRoot `
         'scripts/azure-dev/AzureDev.Azure.psm1'
     ) -Force -ErrorAction Stop
 
@@ -71,16 +75,65 @@ Describe `
       }
       return [PSCustomObject]@{
         Entries = $global:mockAzureDevWorkstationState.CapturedPackage
-        Recipient = $global:mockAzureDevWorkstationState.EncryptedPackages[
-          $OutputPath
-        ].Recipient
+        Recipient = $global:mockAzureDevWorkstationState.LastRecipient
       }
+    }
+
+    function Get-TestWorkstationPackageEnvelope {
+      param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+      )
+
+      $encoded = @(
+        Get-Content -LiteralPath $Path |
+          Where-Object {
+            -not [string]::IsNullOrWhiteSpace($_) -and
+            $_ -notmatch '^-----' -and
+            $_ -notmatch '^Version:'
+          }
+      ) -join ''
+      $json = [System.Text.Encoding]::UTF8.GetString(
+        [System.Convert]::FromBase64String($encoded)
+      )
+      return $json | ConvertFrom-Json
+    }
+
+    function Set-TestWorkstationPackageEnvelope {
+      param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Envelope
+      )
+
+      $json = $Envelope | ConvertTo-Json -Compress
+      $encoded = [System.Convert]::ToBase64String(
+        [System.Text.Encoding]::UTF8.GetBytes($json)
+      )
+      $lines = for (
+        $offset = 0
+        $offset -lt $encoded.Length
+        $offset += 64
+      ) {
+        $length = [System.Math]::Min(64, $encoded.Length - $offset)
+        $encoded.Substring($offset, $length)
+      }
+      Set-Content -LiteralPath $Path -Value @(
+        '-----BEGIN KRAVHANTERING WORKSTATION PACKAGE-----'
+        'Version: 3'
+        ''
+        $lines
+        '-----END KRAVHANTERING WORKSTATION PACKAGE-----'
+      )
     }
   }
 
   AfterAll {
     Get-Module $script:moduleName -All | Remove-Module -Force
     Get-Module 'AzureDev.Azure' -All | Remove-Module -Force
+    Get-Module 'AzureDev.Config' -All | Remove-Module -Force
     Remove-Variable `
       -Name mockAzureDevNativeCommandEmulator `
       -Scope Global `
@@ -121,6 +174,15 @@ Describe `
     $script:destinationKeyPath = Join-Path `
       $TestDrive `
       'kravhantering_azure_dev_destination_ed25519'
+    $script:approvalKeyPath = Join-Path `
+      $TestDrive `
+      'kravhantering_azure_dev_approval_ed25519'
+    Set-Content `
+      -LiteralPath $script:approvalKeyPath `
+      -Value 'managed approval private key'
+    Set-Content `
+      -LiteralPath "$script:approvalKeyPath.pub" `
+      -Value 'ssh-ed25519 AAAAapprover'
     $script:context = [PSCustomObject]@{
       Yes = $false
       Config = [PSCustomObject]@{
@@ -133,7 +195,10 @@ Describe `
         TenantId = '00000000-0000-0000-0000-000000000002'
         ResourceGroup = 'approver-rg'
         VmName = 'krav-dev-vm'
-        SshPrivateKeyPath = $script:destinationKeyPath
+        SshPrivateKeyPath = $script:approvalKeyPath
+        SshPublicKeyPath = "$script:approvalKeyPath.pub"
+        WorkstationApproverPublicKeyPath = "$script:approvalKeyPath.pub"
+        PackageIdentityPath = $script:destinationKeyPath
       }
     }
     $script:request = [PSCustomObject]@{
@@ -143,6 +208,11 @@ Describe `
       destinationPrivateKeyPath = $script:destinationKeyPath
       publicKey = 'ssh-ed25519 AAAAdestination'
       publicKeyFingerprint = 'SHA256:destination'
+      approverPublicKeyFingerprint = InModuleScope -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        Get-AzureDevPublicKeyFingerprint `
+          -PublicKey 'ssh-ed25519 AAAAapprover'
+      }
       platform = 'linux'
       architecture = 'x64'
     }
@@ -150,8 +220,10 @@ Describe `
     $global:mockAzureDevWorkstationState = [PSCustomObject]@{
       ApprovedPrompts = @()
       CapturedPackage = $null
+      DecryptCalls = 0
       EncryptedPackages = @{}
       IdentityRecipients = @{}
+      LastRecipient = ''
     }
 
     Mock `
@@ -164,8 +236,17 @@ Describe `
     Mock -CommandName Get-AzureDevAccount
     Mock `
       -CommandName Get-AzureDevWorkstationPackageIdentityPaths `
-      -MockWith { @($Context.Config.SshPrivateKeyPath) }
+      -MockWith {
+        @($Context.Config.PackageIdentityPath)
+      }
     Mock -CommandName Write-AzureDevExtractedReadme
+    Mock `
+      -CommandName Test-AzureDevWorkstationPackageSignature `
+      -MockWith {
+        return Test-TestAzureDevWorkstationPackageSignature `
+          -Payload $Payload `
+          -Signature $Signature
+      }
     Mock `
       -CommandName Confirm-AzureDevWorkstationAction `
       -MockWith {
@@ -180,7 +261,8 @@ Describe `
         & $global:mockAzureDevNativeCommandEmulator `
           -FilePath $FilePath `
           -Arguments $Arguments `
-          -State $global:mockAzureDevWorkstationState
+          -State $global:mockAzureDevWorkstationState `
+          -SupportSigning
       }
   }
 
@@ -203,7 +285,7 @@ Describe `
 
   Context 'When process tokens have not been approved for transfer' {
     It 'Should exclude both process tokens' {
-      $packagePath = Join-Path $TestDrive 'default.age'
+      $packagePath = Join-Path $TestDrive 'default.kravpkg'
       $package = New-TestWorkstationPackage `
         -Context $script:context `
         -Request $script:request `
@@ -238,7 +320,7 @@ Describe `
 
   Context 'When one process token has been approved for transfer' {
     It 'Should include only <IncludedToken>' -ForEach $tokenCases {
-      $packagePath = Join-Path $TestDrive "$IncludedToken.age"
+      $packagePath = Join-Path $TestDrive "$IncludedToken.kravpkg"
       $package = New-TestWorkstationPackage `
         -Context $script:context `
         -Request $script:request `
@@ -258,7 +340,7 @@ Describe `
         'Include GH_TOKEN from the current process?',
         'Include COPILOT_GITHUB_TOKEN from the current process?'
       )
-      $packagePath = Join-Path $TestDrive 'both-tokens.age'
+      $packagePath = Join-Path $TestDrive 'both-tokens.kravpkg'
       $package = New-TestWorkstationPackage `
         -Context $script:context `
         -Request $script:request `
@@ -273,7 +355,10 @@ Describe `
         $TestDrive `
         'kravhantering_azure_dev_wrong_ed25519'
       $wrongContext = [PSCustomObject]@{
-        Config = [PSCustomObject]@{ SshPrivateKeyPath = $wrongKeyPath }
+        Config = [PSCustomObject]@{
+          PackageIdentityPath = $wrongKeyPath
+          WorkstationApproverPublicKeyPath = "$script:approvalKeyPath.pub"
+        }
       }
       $global:mockAzureDevWorkstationState.IdentityRecipients[$wrongKeyPath] =
         'ssh-ed25519 AAAAwrong'
@@ -313,5 +398,196 @@ Describe `
       (Test-Path -LiteralPath $destination) | Should-BeFalse
     }
 
+  }
+
+  Context 'When a response package is unsigned' {
+    It 'Should reject the legacy payload before decryption' {
+      $packagePath = Join-Path $TestDrive 'unsigned.age'
+      Set-Content `
+        -LiteralPath $packagePath `
+        -Value @(
+          '-----BEGIN AGE ENCRYPTED FILE-----'
+          'dW5zaWduZWQ='
+          '-----END AGE ENCRYPTED FILE-----'
+        )
+      $destination = Join-Path $TestDrive 'unsigned-extraction'
+
+      {
+        Expand-AzureDevWorkstationPackage `
+          -Context $script:context `
+          -PackagePath $packagePath `
+          -DestinationPath $destination `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage (
+        'The workstation package envelope or signature is malformed.*'
+      )
+      $global:mockAzureDevWorkstationState.DecryptCalls |
+        Should-Be -Expected 0
+      Test-Path -LiteralPath $destination | Should-BeFalse
+    }
+
+    It 'Should reject an envelope with a missing signature before decryption' {
+      $packagePath = Join-Path $TestDrive 'missing-signature.kravpkg'
+      $null = New-TestWorkstationPackage `
+        -Context $script:context `
+        -Request $script:request `
+        -OutputPath $packagePath
+      $envelope = Get-TestWorkstationPackageEnvelope -Path $packagePath
+      $envelope.signature = ''
+      Set-TestWorkstationPackageEnvelope `
+        -Path $packagePath `
+        -Envelope $envelope
+      $destination = Join-Path $TestDrive 'missing-signature-extraction'
+
+      {
+        Expand-AzureDevWorkstationPackage `
+          -Context $script:context `
+          -PackagePath $packagePath `
+          -DestinationPath $destination `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage (
+        'The workstation package envelope or signature is malformed.*'
+      )
+      $global:mockAzureDevWorkstationState.DecryptCalls |
+        Should-Be -Expected 0
+      Test-Path -LiteralPath $destination | Should-BeFalse
+    }
+  }
+
+  BeforeDiscovery {
+    $tamperCases = @(
+      @{ TamperTarget = 'payload' },
+      @{ TamperTarget = 'signature' }
+    )
+  }
+
+  Context 'When a signed response package is modified' {
+    It `
+      'Should reject the modified <TamperTarget> before decryption' `
+      -ForEach $tamperCases {
+      $packagePath = Join-Path $TestDrive "tampered-$TamperTarget.kravpkg"
+      $null = New-TestWorkstationPackage `
+        -Context $script:context `
+        -Request $script:request `
+        -OutputPath $packagePath
+      $envelope = Get-TestWorkstationPackageEnvelope -Path $packagePath
+      if ($TamperTarget -eq 'payload') {
+        $payload = [System.Convert]::FromBase64String($envelope.payload)
+        $payload[0] = $payload[0] -bxor 1
+        $envelope.payload = [System.Convert]::ToBase64String($payload)
+      } else {
+        $signature = [System.Text.Encoding]::ASCII.GetString(
+          [System.Convert]::FromBase64String($envelope.signature)
+        )
+        $signature = $signature -replace '(?m)^([A-Za-z0-9+/])', 'A'
+        $envelope.signature = [System.Convert]::ToBase64String(
+          [System.Text.Encoding]::ASCII.GetBytes($signature)
+        )
+      }
+      Set-TestWorkstationPackageEnvelope `
+        -Path $packagePath `
+        -Envelope $envelope
+      $destination = Join-Path $TestDrive "$TamperTarget-extraction"
+
+      {
+        Expand-AzureDevWorkstationPackage `
+          -Context $script:context `
+          -PackagePath $packagePath `
+          -DestinationPath $destination `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage (
+        'The workstation package approval signature is invalid*'
+      )
+      $global:mockAzureDevWorkstationState.DecryptCalls |
+        Should-Be -Expected 0
+      Test-Path -LiteralPath $destination | Should-BeFalse
+    }
+  }
+
+  Context 'When the configured approver key has changed' {
+    It 'Should reject the pending package before decryption' {
+      $packagePath = Join-Path $TestDrive 'rotated-key.kravpkg'
+      $null = New-TestWorkstationPackage `
+        -Context $script:context `
+        -Request $script:request `
+        -OutputPath $packagePath
+      Set-Content `
+        -LiteralPath "$script:approvalKeyPath.pub" `
+        -Value 'ssh-ed25519 AAAArotated1'
+      $destination = Join-Path $TestDrive 'rotated-key-extraction'
+
+      {
+        Expand-AzureDevWorkstationPackage `
+          -Context $script:context `
+          -PackagePath $packagePath `
+          -DestinationPath $destination `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage (
+        'The workstation package approval signature is invalid*'
+      )
+      $global:mockAzureDevWorkstationState.DecryptCalls |
+        Should-Be -Expected 0
+      Test-Path -LiteralPath $destination | Should-BeFalse
+    }
+  }
+
+  Context 'When the decrypted manifest names another approver' {
+    It 'Should reject the package and remove decrypted output' {
+      $packagePath = Join-Path $TestDrive 'manifest-mismatch.kravpkg'
+      $null = New-TestWorkstationPackage `
+        -Context $script:context `
+        -Request $script:request `
+        -OutputPath $packagePath
+      $envelope = Get-TestWorkstationPackageEnvelope -Path $packagePath
+      $encryptedPackageId = [System.Text.Encoding]::UTF8.GetString(
+        [System.Convert]::FromBase64String($envelope.payload)
+      )
+      $encryptedPackage =
+        $global:mockAzureDevWorkstationState.EncryptedPackages[
+          $encryptedPackageId
+        ]
+      $sourceZipPath = Join-Path $TestDrive 'manifest-source.zip'
+      $payloadDirectory = Join-Path $TestDrive 'manifest-payload'
+      $modifiedZipPath = Join-Path $TestDrive 'manifest-modified.zip'
+      [System.IO.File]::WriteAllBytes(
+        $sourceZipPath,
+        $encryptedPackage.ZipBytes
+      )
+      [System.IO.Compression.ZipFile]::ExtractToDirectory(
+        $sourceZipPath,
+        $payloadDirectory
+      )
+      $manifestPath = Join-Path $payloadDirectory 'manifest.json'
+      $manifest = Get-Content -LiteralPath $manifestPath -Raw |
+        ConvertFrom-Json
+      $manifest.approverPublicKeyFingerprint = 'SHA256:' + ('A' * 43)
+      Set-Content `
+        -LiteralPath $manifestPath `
+        -Value ($manifest | ConvertTo-Json -Depth 8)
+      [System.IO.Compression.ZipFile]::CreateFromDirectory(
+        $payloadDirectory,
+        $modifiedZipPath
+      )
+      $encryptedPackage.ZipBytes = [System.IO.File]::ReadAllBytes(
+        $modifiedZipPath
+      )
+      $global:mockAzureDevWorkstationState.IdentityRecipients[
+        $script:destinationKeyPath
+      ] = $script:request.publicKey
+      $destination = Join-Path $TestDrive 'manifest-mismatch-extraction'
+
+      {
+        Expand-AzureDevWorkstationPackage `
+          -Context $script:context `
+          -PackagePath $packagePath `
+          -DestinationPath $destination `
+          -Confirm:$false
+      } | Should-Throw -ExceptionMessage (
+        'The workstation package manifest approver identity does not match*'
+      )
+      $global:mockAzureDevWorkstationState.DecryptCalls |
+        Should-Be -Expected 1
+      Test-Path -LiteralPath $destination | Should-BeFalse
+    }
   }
 }
