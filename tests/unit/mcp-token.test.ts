@@ -353,45 +353,6 @@ describe('verifyMcpBearerToken', () => {
     expect(jwtVerifyMock).toHaveBeenCalledTimes(2)
   })
 
-  it('uses azp client identity while representing a missing subject as unauthenticated', async () => {
-    getAuthConfigMock.mockReturnValue({
-      issuerUrl: 'https://issuer.example.com',
-      apiAudience: 'kravhantering-app',
-    })
-    jwtVerifyMock.mockResolvedValue({
-      payload: {
-        azp: 'mcp-client',
-        employeeHsaId: 'SE5560000001-mcp1',
-        roles: [],
-        scope: '  mcp:read   ',
-      },
-    })
-    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
-    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
-    try {
-      const result = await verifyMcpBearerToken(
-        new Request('http://x/', {
-          headers: { authorization: 'Bearer abc.def.ghi' },
-        }),
-      )
-
-      expect(result.actor).toMatchObject({
-        id: null,
-        displayName: '',
-        isAuthenticated: false,
-      })
-      const acceptedEvent = infoSpy.mock.calls
-        .map(call => JSON.parse(String(call[0])) as Record<string, unknown>)
-        .find(event => event.event === 'auth.mcp.token.accepted')
-      expect(acceptedEvent?.actor).toMatchObject({
-        clientId: 'mcp-client',
-        source: 'mcp',
-      })
-    } finally {
-      infoSpy.mockRestore()
-    }
-  })
-
   it('normalizes non-Error JWT verification failures', async () => {
     getAuthConfigMock.mockReturnValue({
       issuerUrl: 'https://issuer.example.com',
@@ -506,6 +467,39 @@ describe('verifyMcpBearerToken security audit events', () => {
           ev !== null && ev.channel === 'security-audit',
       )
   }
+
+  it('uses azp client identity while representing a missing subject as unauthenticated', async () => {
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        azp: 'mcp-client',
+        employeeHsaId: 'SE5560000001-mcp1',
+        roles: [],
+        scope: '  mcp:read   ',
+      },
+    })
+    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+
+    const result = await verifyMcpBearerToken(
+      new Request('http://x/', {
+        headers: { authorization: 'Bearer abc.def.ghi' },
+      }),
+    )
+
+    expect(result.actor).toMatchObject({
+      id: null,
+      displayName: '',
+      isAuthenticated: false,
+    })
+    expect(emittedSecurityEvents()).toContainEqual(
+      expect.objectContaining({
+        actor: expect.objectContaining({
+          clientId: 'mcp-client',
+          source: 'mcp',
+        }),
+        event: 'auth.mcp.token.accepted',
+      }),
+    )
+  })
 
   it('emits auth.token.rejected with reason=bearer_missing', async () => {
     const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
