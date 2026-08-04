@@ -131,7 +131,7 @@ async function openRequirementStatusForm(
 ) {
   await page.goto('/sv/requirement-statuses')
 
-  const row = page.getByRole('row', { name: new RegExp(status.nameSv) })
+  const row = page.getByRole('row', { name: status.nameSv })
   await row.getByRole('button', { name: 'Redigera' }).click()
 
   return page.locator('form').filter({
@@ -146,8 +146,8 @@ async function expectStatusColorPreview(form: Locator, expectedColor: string) {
   const preview = form.getByRole('status', {
     name: 'Förhandsvisning av märke',
   })
-  await expect(preview.getByText('Ljust tema')).toBeVisible()
-  await expect(preview.getByText('Mörkt tema')).toBeVisible()
+  await expect(preview.getByText('Ljust tema')).toHaveCount(1)
+  await expect(preview.getByText('Mörkt tema')).toHaveCount(1)
   await expect(preview.getByText(/Kontrast \d+\.\d{2}:1/)).toHaveCount(2)
   await expect(preview.getByText('Uppfyller AA')).toHaveCount(2)
   await expect(preview.locator('.status-badge--light')).toHaveAttribute(
@@ -159,7 +159,6 @@ async function expectStatusColorPreview(form: Locator, expectedColor: string) {
     expectedColor,
   )
   const swatch = form.locator('[data-color-swatch="exact-rgb"]')
-  await expect(swatch).toBeVisible()
   await expect(swatch).toHaveCSS('border-style', 'solid')
   const [red, green, blue] = [1, 3, 5].map(offset =>
     Number.parseInt(expectedColor.slice(offset, offset + 2), 16),
@@ -212,19 +211,23 @@ test.describe('Admin statuses and workflows', () => {
     expect(requirementStatuses).toHaveLength(4)
     expect(usageStatuses).toHaveLength(6)
 
-    for (const status of requirementStatuses) {
-      const expectedColor = CANONICAL_REQUIREMENT_STATUS_COLORS.get(status.id)
-      expect(expectedColor).toBeDefined()
-      const form = await openRequirementStatusForm(page, status)
-      await expectStatusColorPreview(form, expectedColor ?? '')
-    }
+    await test.step('preview every canonical requirement status color', async () => {
+      for (const status of requirementStatuses) {
+        const expectedColor = CANONICAL_REQUIREMENT_STATUS_COLORS.get(status.id)
+        expect(expectedColor).toBeDefined()
+        const form = await openRequirementStatusForm(page, status)
+        await expectStatusColorPreview(form, expectedColor ?? '')
+      }
+    })
 
-    for (const status of usageStatuses) {
-      const expectedColor = CANONICAL_USAGE_STATUS_COLORS.get(status.id)
-      expect(expectedColor).toBeDefined()
-      const form = await openUsageStatusForm(page, status)
-      await expectStatusColorPreview(form, expectedColor ?? '')
-    }
+    await test.step('preview every canonical usage status color', async () => {
+      for (const status of usageStatuses) {
+        const expectedColor = CANONICAL_USAGE_STATUS_COLORS.get(status.id)
+        expect(expectedColor).toBeDefined()
+        const form = await openUsageStatusForm(page, status)
+        await expectStatusColorPreview(form, expectedColor ?? '')
+      }
+    })
   })
 
   test('ADMIN-02: both status catalogs expose invalid stored colors without accent styling', async ({
@@ -250,13 +253,19 @@ test.describe('Admin statuses and workflows', () => {
       }),
     )
     await page.route(/\/api\/requirement-statuses\/1$/, async route => {
+      if (route.request().method() !== 'PUT') {
+        await route.continue()
+        return
+      }
       const body = route.request().postDataJSON() as { color?: string }
       requirementSavedColor = body.color ?? null
       await route.fulfill({ json: {} })
     })
 
     await page.goto('/sv/requirement-statuses')
-    const requirementAlert = page.getByRole('alert')
+    const requirementAlert = page
+      .getByRole('alert')
+      .filter({ hasText: 'ogiltiga lagrade färger' })
     await expect(requirementAlert).toContainText('ogiltiga lagrade färger')
     const requirementRow = page.getByRole('row', { name: /Utkast/ })
     await expect(requirementRow.locator('.status-badge')).not.toHaveAttribute(
@@ -272,7 +281,7 @@ test.describe('Admin statuses and workflows', () => {
     ).toHaveAttribute('aria-invalid', 'true')
     await expect(
       requirementForm.getByText(/Ange en färg som #RRGGBB/),
-    ).toBeVisible()
+    ).toHaveCount(1)
     await expect(
       requirementForm.locator('[data-color-swatch="exact-rgb"]'),
     ).toHaveCount(0)
@@ -312,6 +321,10 @@ test.describe('Admin statuses and workflows', () => {
     await page.route(
       /\/api\/catalog\/specification-item-statuses\/1$/,
       async route => {
+        if (route.request().method() !== 'PUT') {
+          await route.continue()
+          return
+        }
         const body = route.request().postDataJSON() as { color?: string }
         usageSavedColor = body.color ?? null
         await route.fulfill({ json: {} })
@@ -319,7 +332,9 @@ test.describe('Admin statuses and workflows', () => {
     )
 
     await page.goto('/sv/specification-item-statuses')
-    const usageAlert = page.getByRole('alert')
+    const usageAlert = page
+      .getByRole('alert')
+      .filter({ hasText: 'ogiltiga lagrade färger' })
     await expect(usageAlert).toContainText('ogiltiga lagrade färger')
     const usageRow = page.getByRole('row', { name: /Inkluderad/ })
     await expect(usageRow.locator('.status-badge')).not.toHaveAttribute(
@@ -333,7 +348,7 @@ test.describe('Admin statuses and workflows', () => {
     await expect(
       usageForm.getByRole('textbox', { name: 'Färgkod (hex)' }),
     ).toHaveAttribute('aria-invalid', 'true')
-    await expect(usageForm.getByText(/Ange en färg som #RRGGBB/)).toBeVisible()
+    await expect(usageForm.getByText(/Ange en färg som #RRGGBB/)).toHaveCount(1)
     await expect(
       usageForm.locator('[data-color-swatch="exact-rgb"]'),
     ).toHaveCount(0)

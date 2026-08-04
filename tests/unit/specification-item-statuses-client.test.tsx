@@ -279,6 +279,9 @@ describe('SpecificationItemStatusesClient', () => {
       document.querySelector('[data-color-swatch="exact-rgb"]'),
     ).toHaveStyle({ backgroundColor: '#94a3b8' })
     expect(
+      screen.getByLabelText('specificationItemStatusAdmin.colorHex'),
+    ).toBeRequired()
+    expect(
       document.querySelector(
         '[data-developer-mode-name="theme contrast preview"]',
       ),

@@ -142,7 +142,12 @@ describe('RequirementStatusesClient', () => {
     expect(
       preview.querySelector('[data-badge-theme="dark"]'),
     ).toHaveTextContent('Draft')
-    expect(screen.getByLabelText('statusMgmt.colorHex')).toHaveValue('#3b82f6')
+    const colorInput = screen.getByLabelText('statusMgmt.colorHex')
+    expect(colorInput).toHaveValue('#3b82f6')
+    expect(colorInput).toBeRequired()
+    expect(
+      document.querySelector('label[for="status-color-hex"]'),
+    ).toHaveTextContent('*')
     expect(
       document.querySelector('[data-color-swatch="exact-rgb"]'),
     ).toHaveStyle({ backgroundColor: '#3b82f6' })

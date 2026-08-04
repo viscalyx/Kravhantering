@@ -381,6 +381,7 @@ export default function SpecificationItemStatusesClient() {
                         }
                         pattern="^#[0-9a-fA-F]{6}$"
                         placeholder="#3b82f6"
+                        required
                         value={controller.form.color}
                       />
                     </div>

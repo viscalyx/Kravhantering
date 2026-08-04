@@ -260,6 +260,7 @@ export default function RequirementStatusesClient() {
               help={t('colorHelp')}
               htmlFor="status-color-hex"
               label={t('color')}
+              required
             />
             <div className="flex items-center gap-3">
               {isStrictHexColor(form.color) && (
