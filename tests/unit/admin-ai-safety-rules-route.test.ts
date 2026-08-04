@@ -40,9 +40,12 @@ const routeState = vi.hoisted(() => ({
     source: 'rest',
   })),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
+  deleteCustomAiSafetyRuleTerm: vi.fn(),
   listAiSafetyRulesForAdmin: vi.fn(),
   recordAdminPrivilegedActionSucceeded: vi.fn(),
   removeAiSafetyRuleTerms: vi.fn(),
+  restoreAiSafetyRuleDefaults: vi.fn(),
+  updateAiSafetyRuleTerm: vi.fn(),
 }))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
@@ -68,8 +71,20 @@ vi.mock('@/lib/dal/ai-safety-rules', () => ({
   AI_SAFETY_TERM_DIRECTIONS: ['input', 'output', 'input_output'],
   AI_SAFETY_TERM_TYPES: ['action', 'coding', 'direct_marker', 'target'],
   createAiSafetyRuleTerm: routeState.createAiSafetyRuleTerm,
+  deleteCustomAiSafetyRuleTerm: routeState.deleteCustomAiSafetyRuleTerm,
+  isAiSafetyRuleId: (value: string) =>
+    [
+      'encoded_smuggling',
+      'harmful_generation_request',
+      'instruction_override',
+      'secret_extraction_request',
+      'sensitive_backend_leak',
+      'system_prompt_extraction',
+    ].includes(value),
   listAiSafetyRulesForAdmin: routeState.listAiSafetyRulesForAdmin,
   removeAiSafetyRuleTerms: routeState.removeAiSafetyRuleTerms,
+  restoreAiSafetyRuleDefaults: routeState.restoreAiSafetyRuleDefaults,
+  updateAiSafetyRuleTerm: routeState.updateAiSafetyRuleTerm,
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
@@ -79,10 +94,15 @@ vi.mock('@/lib/requirements/auth', () => ({
   createRequestContext: routeState.createRequestContext,
 }))
 
+import { POST as RESTORE_DEFAULTS_POST } from '@/app/api/admin/ai-safety-rules/[ruleId]/restore-defaults/route'
 import {
   POST as CREATE_TERM_POST,
   GET,
 } from '@/app/api/admin/ai-safety-rules/route'
+import {
+  DELETE as DELETE_TERM,
+  PATCH as PATCH_TERM,
+} from '@/app/api/admin/ai-safety-rules/terms/[id]/route'
 import { POST as REMOVE_TERMS_POST } from '@/app/api/admin/ai-safety-rules/terms/remove/route'
 
 const createdTerm = {
@@ -109,10 +129,13 @@ describe('admin AI safety rules routes', () => {
     vi.clearAllMocks()
     routeState.createAiSafetyRuleTerm.mockResolvedValue(createdTerm)
     routeState.listAiSafetyRulesForAdmin.mockResolvedValue([])
+    routeState.deleteCustomAiSafetyRuleTerm.mockResolvedValue(createdTerm)
     routeState.removeAiSafetyRuleTerms.mockResolvedValue({
       deactivatedStandardCount: 1,
       deletedCustomCount: 1,
     })
+    routeState.restoreAiSafetyRuleDefaults.mockResolvedValue(4)
+    routeState.updateAiSafetyRuleTerm.mockResolvedValue(createdTerm)
   })
 
   it('returns AI safety rules with no-store for Admin users', async () => {
@@ -126,6 +149,51 @@ describe('admin AI safety rules routes', () => {
     expect(routeState.listAiSafetyRulesForAdmin).toHaveBeenCalledWith({
       db: true,
     })
+  })
+
+  it('rejects non-Admin reads before loading database rules', async () => {
+    routeState.createRequestContext.mockResolvedValueOnce({
+      actor: {
+        displayName: 'Rita Reviewer',
+        hsaId: 'SE5560000001-reviewer1',
+        id: 'reviewer-sub',
+        isAuthenticated: true,
+        roles: ['Reviewer'],
+        source: 'oidc',
+      },
+      correlationId: 'correlation-ai-safety',
+      request: {
+        method: 'GET',
+        path: '/api/admin/ai-safety-rules',
+        requestId: 'request-ai-safety',
+      },
+      requestId: 'request-ai-safety',
+      source: 'rest',
+    })
+
+    const response = await GET(
+      new NextRequest('https://example.test/api/admin/ai-safety-rules'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+
+  it('returns a bounded failure when loading rules fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    routeState.listAiSafetyRulesForAdmin.mockRejectedValueOnce(
+      new Error('database unavailable'),
+    )
+
+    const response = await GET(
+      new NextRequest('https://example.test/api/admin/ai-safety-rules'),
+    )
+
+    await expect(response.json()).resolves.toEqual({
+      error: 'Failed to load AI safety rules.',
+    })
+    expect(response.status).toBe(500)
   })
 
   it('creates a term and records the persisted inputs in privileged audit', async () => {
@@ -205,5 +273,101 @@ describe('admin AI safety rules routes', () => {
         resourceType: 'ai_safety_rule_term',
       },
     )
+  })
+
+  it('updates a term and audits only supplied fields', async () => {
+    const response = await PATCH_TERM(
+      jsonPost('https://example.test/api/admin/ai-safety-rules/terms/77', {
+        isActive: false,
+      }),
+      { params: Promise.resolve({ id: '77' }) },
+    )
+
+    await expect(response.json()).resolves.toEqual({ term: createdTerm })
+    expect(routeState.updateAiSafetyRuleTerm).toHaveBeenCalledWith(
+      { db: true },
+      77,
+      { isActive: false },
+    )
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(expect.anything(), {
+      changedFields: ['isActive'],
+      operation: 'update',
+      resourceId: 77,
+      resourceType: 'ai_safety_rule_term',
+    })
+  })
+
+  it('rejects empty and invalid term updates before DAL work', async () => {
+    const empty = await PATCH_TERM(
+      jsonPost('https://example.test/api/admin/ai-safety-rules/terms/77', {}),
+      { params: Promise.resolve({ id: '77' }) },
+    )
+    const invalidId = await PATCH_TERM(
+      jsonPost(
+        'https://example.test/api/admin/ai-safety-rules/terms/not-an-id',
+        { isActive: false },
+      ),
+      { params: Promise.resolve({ id: 'not-an-id' }) },
+    )
+
+    expect(empty.status).toBe(400)
+    expect(invalidId.status).toBe(400)
+    expect(routeState.updateAiSafetyRuleTerm).not.toHaveBeenCalled()
+  })
+
+  it('deletes custom terms and records the affected term', async () => {
+    const response = await DELETE_TERM(
+      new NextRequest(
+        'https://example.test/api/admin/ai-safety-rules/terms/77',
+        { method: 'DELETE' },
+      ),
+      { params: Promise.resolve({ id: '77' }) },
+    )
+
+    await expect(response.json()).resolves.toEqual({ term: createdTerm })
+    expect(routeState.deleteCustomAiSafetyRuleTerm).toHaveBeenCalledWith(
+      { db: true },
+      77,
+    )
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(expect.anything(), {
+      operation: 'delete',
+      resourceId: 77,
+      resourceType: 'ai_safety_rule_term',
+    })
+  })
+
+  it('restores a known rule and rejects an unknown rule id', async () => {
+    const restored = await RESTORE_DEFAULTS_POST(
+      jsonPost(
+        'https://example.test/api/admin/ai-safety-rules/instruction_override/restore-defaults',
+        {},
+      ),
+      { params: Promise.resolve({ ruleId: 'instruction_override' }) },
+    )
+    const invalid = await RESTORE_DEFAULTS_POST(
+      jsonPost(
+        'https://example.test/api/admin/ai-safety-rules/unknown/restore-defaults',
+        {},
+      ),
+      { params: Promise.resolve({ ruleId: 'unknown' }) },
+    )
+
+    await expect(restored.json()).resolves.toEqual({ restoredCount: 4 })
+    expect(restored.status).toBe(200)
+    expect(invalid.status).toBe(400)
+    expect(routeState.restoreAiSafetyRuleDefaults).toHaveBeenCalledTimes(1)
+    expect(
+      routeState.recordAdminPrivilegedActionSucceeded,
+    ).toHaveBeenCalledWith(expect.anything(), {
+      changedFields: ['direction', 'isActive'],
+      itemCount: 4,
+      operation: 'update',
+      resourceId: 'instruction_override',
+      resourceType: 'ai_safety_rule',
+    })
   })
 })

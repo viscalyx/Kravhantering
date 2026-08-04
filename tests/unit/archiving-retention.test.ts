@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createArchivingRetentionException,
+  deleteArchivingRetentionException,
   executeArchivingRetention,
   exportArchivingRetentionArchive,
+  listArchivingRetentionPolicies,
   previewArchivingRetention,
 } from '@/lib/archiving/retention'
 
@@ -224,6 +226,82 @@ describe('archiving retention service', () => {
       }),
     ])
     expect(query.mock.calls[1]?.[1]).toEqual(['2024-05-14T00:00:00.000Z', 3])
+  })
+
+  it('maps supported policy row variants and filters unsupported policies', async () => {
+    const query = vi.fn(async () => [
+      {
+        ...POLICY_ROW,
+        action: null,
+        ageDays: null,
+        createdAt: 'not-a-date',
+        decisionReference: '',
+        isEnabled: true,
+        lastRunAt: '',
+        latestArchivedCount: '2',
+        latestCandidateCount: '4',
+        latestCompletedAt: '2026-05-01T10:00:00.000Z',
+        latestDeletedCount: '1',
+        latestExceptionCount: '3',
+        latestRunId: '9',
+        latestSkippedCount: '1',
+        updatedAt: '2026-05-02T10:00:00.000Z',
+      },
+      {
+        ...POLICY_ROW,
+        id: 4,
+        isEnabled: 'true',
+        policyKey: 'old_requirement_versions_delete',
+      },
+      {
+        ...POLICY_ROW,
+        id: 99,
+        isEnabled: { truthy: true },
+        policyKey: 'unsupported_policy',
+      },
+    ])
+
+    const policies = await listArchivingRetentionPolicies({ query } as never)
+
+    expect(policies).toHaveLength(2)
+    expect(policies[0]).toMatchObject({
+      action: '',
+      ageDays: 0,
+      createdAt: 'not-a-date',
+      decisionReference: null,
+      isEnabled: true,
+      lastRunAt: '1970-01-01T00:00:00.000Z',
+      latestRun: {
+        archivedCount: 2,
+        candidateCount: 4,
+        completedAt: '2026-05-01T10:00:00.000Z',
+        deletedCount: 1,
+        exceptionCount: 3,
+        id: 9,
+        skippedCount: 1,
+      },
+      updatedAt: '2026-05-02T10:00:00.000Z',
+    })
+    expect(policies[1]).toMatchObject({ id: 4, isEnabled: true })
+  })
+
+  it('returns deletion outcomes for missing, zero, and affected driver results', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ affected: 0 })
+      .mockResolvedValueOnce({ affected: 1 })
+    const db = { query }
+
+    await expect(
+      deleteArchivingRetentionException(db as never, 1),
+    ).resolves.toBe(true)
+    await expect(
+      deleteArchivingRetentionException(db as never, 2),
+    ).resolves.toBe(false)
+    await expect(
+      deleteArchivingRetentionException(db as never, 3),
+    ).resolves.toBe(true)
   })
 
   it('rejects inactive policies before collecting candidates', async () => {
@@ -1001,6 +1079,27 @@ describe('archiving retention service', () => {
     })
   })
 
+  it('rejects a stale archive-export preview token before building output', async () => {
+    const { db } = createRetentionDb({
+      policy: {
+        action: 'delete',
+        ageDays: 365,
+        id: 5,
+        policyKey: 'obsolete_specifications_delete',
+      },
+    })
+
+    await expect(
+      exportArchivingRetentionArchive(db as never, {
+        policyId: 5,
+        previewToken: 'stale',
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'stale_archiving_retention_preview' },
+      status: 409,
+    })
+  })
+
   it('refreshes expired retention exceptions in place', async () => {
     const query = vi.fn(async (sql: string, parameters?: unknown[]) => {
       if (sql.includes('FROM archiving_retention_policies policy')) {
@@ -1066,5 +1165,47 @@ describe('archiving retention service', () => {
         String(sql).includes('INSERT INTO archiving_retention_exceptions'),
       ),
     ).toBe(false)
+  })
+
+  it('reuses an active retention exception without updating or inserting', async () => {
+    const activeException = {
+      createdAt: new Date('2026-05-01T00:00:00.000Z'),
+      createdByDisplayName: 'Disa PrivacyOfficer',
+      expiresAt: null,
+      id: 7,
+      policyId: 3,
+      reason: 'Existing legal hold',
+      sourceKey: 'requirement_areas.unused',
+      subjectId: '12',
+      subjectTable: 'requirement_areas',
+    }
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM archiving_retention_policies policy')) {
+        return [POLICY_ROW]
+      }
+      if (sql.includes('FROM archiving_retention_exceptions')) {
+        return [activeException]
+      }
+      return []
+    })
+
+    await expect(
+      createArchivingRetentionException(
+        { query } as never,
+        {
+          expiresAt: null,
+          policyId: 3,
+          reason: 'Replacement text',
+          sourceKey: 'requirement_areas.unused',
+          subjectId: '12',
+          subjectTable: 'requirement_areas',
+        },
+        { displayName: 'Ada Admin', hsaId: 'SE5560000001-admin1' },
+      ),
+    ).resolves.toMatchObject({
+      id: 7,
+      reason: 'Existing legal hold',
+    })
+    expect(query).toHaveBeenCalledTimes(2)
   })
 })

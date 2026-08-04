@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AdminLazyPanel from '@/app/[locale]/admin/admin-lazy-panel'
 
@@ -21,6 +21,7 @@ function BrokenPanel(): never {
 describe('AdminLazyPanel', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('renders an accessible, panel-local loading state', () => {
@@ -41,6 +42,8 @@ describe('AdminLazyPanel', () => {
 
   it('contains a panel failure and offers an accessible reload action', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const reload = vi.fn()
+    vi.stubGlobal('location', { reload })
 
     render(
       <AdminLazyPanel tabId="identity" tabLabel="admin.identity.title">
@@ -51,9 +54,12 @@ describe('AdminLazyPanel', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'admin.panelLoadError.title admin.identity.title',
     )
-    expect(
-      screen.getByRole('button', { name: 'admin.panelLoadError.retry' }),
-    ).toBeVisible()
+    const retry = screen.getByRole('button', {
+      name: 'admin.panelLoadError.retry',
+    })
+    expect(retry).toBeVisible()
+    fireEvent.click(retry)
+    expect(reload).toHaveBeenCalledOnce()
     expect(screen.getByRole('tabpanel')).toHaveAttribute(
       'data-developer-mode-name',
       'panel load error',
