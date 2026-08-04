@@ -153,6 +153,21 @@ describe('RequirementStatusesClient', () => {
     ).toBeTruthy()
   })
 
+  it('keeps Save disabled until the edited color has an exact hex format', async () => {
+    render(<RequirementStatusesClient />)
+    await screen.findByText('Draft')
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+
+    const colorInput = screen.getByLabelText('statusMgmt.colorHex')
+    const saveButton = screen.getByRole('button', { name: /common\.save/i })
+
+    fireEvent.change(colorInput, { target: { value: '#abc' } })
+    expect(saveButton).toBeDisabled()
+
+    fireEvent.change(colorInput, { target: { value: '#A1B2C3' } })
+    expect(saveButton).toBeEnabled()
+  })
+
   it('surfaces an invalid stored color without fallback accent styling', async () => {
     fetchMock.mockResolvedValue(
       okJson({

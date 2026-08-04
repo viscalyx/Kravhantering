@@ -451,7 +451,10 @@ export default function SpecificationItemStatusesClient() {
                     <DirtyStateButton
                       className="btn-primary"
                       dirty={controller.formDirty}
-                      disabled={controller.submitting}
+                      disabled={
+                        controller.submitting ||
+                        !isStrictHexColor(controller.form.color)
+                      }
                       type="submit"
                     >
                       {controller.submitting ? tc('saving') : tc('save')}

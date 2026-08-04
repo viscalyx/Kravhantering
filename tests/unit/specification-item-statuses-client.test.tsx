@@ -285,6 +285,24 @@ describe('SpecificationItemStatusesClient', () => {
     ).toBeTruthy()
   })
 
+  it('keeps Save disabled until the edited color has an exact hex format', async () => {
+    render(<SpecificationItemStatusesClient />)
+    await screen.findAllByText('Included')
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[1])
+    await screen.findByText('common.noneAvailable')
+
+    const colorInput = screen.getByLabelText(
+      'specificationItemStatusAdmin.colorHex',
+    )
+    const saveButton = screen.getByRole('button', { name: /common\.save/i })
+
+    fireEvent.change(colorInput, { target: { value: '#abc' } })
+    expect(saveButton).toBeDisabled()
+
+    fireEvent.change(colorInput, { target: { value: '#A1B2C3' } })
+    expect(saveButton).toBeEnabled()
+  })
+
   it('surfaces an invalid stored color without fallback accent styling', async () => {
     fetchMock.mockResolvedValue(
       okResponse({

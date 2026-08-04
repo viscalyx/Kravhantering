@@ -276,10 +276,15 @@ test.describe('Admin statuses and workflows', () => {
     await expect(
       requirementForm.locator('[data-color-swatch="exact-rgb"]'),
     ).toHaveCount(0)
+    const requirementSave = requirementForm.getByRole('button', {
+      name: 'Spara',
+    })
+    await expect(requirementSave).toBeDisabled()
     await requirementForm
       .getByRole('textbox', { name: 'Färgkod (hex)' })
       .fill('#3b82f6')
-    await requirementForm.getByRole('button', { name: 'Spara' }).click()
+    await expect(requirementSave).toBeEnabled()
+    await requirementSave.click()
     await expect(requirementForm).toHaveCount(0)
     expect(requirementSavedColor).toBe('#3b82f6')
 
@@ -332,10 +337,13 @@ test.describe('Admin statuses and workflows', () => {
     await expect(
       usageForm.locator('[data-color-swatch="exact-rgb"]'),
     ).toHaveCount(0)
+    const usageSave = usageForm.getByRole('button', { name: 'Spara' })
+    await expect(usageSave).toBeDisabled()
     await usageForm
       .getByRole('textbox', { name: 'Färgkod (hex)' })
       .fill('#94a3b8')
-    await usageForm.getByRole('button', { name: 'Spara' }).click()
+    await expect(usageSave).toBeEnabled()
+    await usageSave.click()
     await expect(usageForm).toHaveCount(0)
     expect(usageSavedColor).toBe('#94a3b8')
   })

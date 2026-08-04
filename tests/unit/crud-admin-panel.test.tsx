@@ -40,6 +40,7 @@ function PanelHarness({
   empty = false,
   formDirty = true,
   formPresentation,
+  formSubmitDisabled = false,
   loading = false,
   submitting = false,
 }: {
@@ -49,6 +50,7 @@ function PanelHarness({
   empty?: boolean
   formDirty?: boolean
   formPresentation?: 'inline' | 'modal'
+  formSubmitDisabled?: boolean
   loading?: boolean
   submitting?: boolean
 }) {
@@ -103,6 +105,7 @@ function PanelHarness({
       controller={controller}
       devContext="test admin"
       formPresentation={formPresentation}
+      formSubmitDisabled={formSubmitDisabled}
       renderFormFields={({ form: currentForm, inputClassName, setForm }) => (
         <label className="block text-sm font-medium mb-1" htmlFor="test-name">
           Name
@@ -255,6 +258,17 @@ describe('CrudAdminPanel', () => {
     expect(saveButton).toBeDisabled()
     expect(saveButton).toHaveAttribute('title', 'common.noChangesToSave')
 
+    fireEvent.click(saveButton)
+    expect(submitMock).not.toHaveBeenCalled()
+  })
+
+  it('disables save when the caller reports a form validation error', () => {
+    render(<PanelHarness formSubmitDisabled />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.create' }))
+
+    const saveButton = screen.getByRole('button', { name: 'common.save' })
+    expect(saveButton).toBeDisabled()
     fireEvent.click(saveButton)
     expect(submitMock).not.toHaveBeenCalled()
   })

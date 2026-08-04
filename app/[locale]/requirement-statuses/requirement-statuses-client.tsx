@@ -167,6 +167,7 @@ export default function RequirementStatusesClient() {
       controller={systemStatusController}
       devContext="requirement version statuses"
       emptyStateMessage={t('emptyState')}
+      formSubmitDisabled={!isStrictHexColor(controller.form.color)}
       notice={
         invalidStoredStatuses.length > 0 ? (
           <p

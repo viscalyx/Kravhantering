@@ -10,41 +10,6 @@ target version.
 <!-- operator-upgrade:source pr-870 start -->
 Provision AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH on destination workstations through a trusted channel before generating requests. Request and package schema 3 intentionally has no compatibility path with schema 2; regenerate pending requests and responses after upgrade. Existing approval key rotation requires provisioning the replacement public key before creating a new request.
 <!-- operator-upgrade:source pr-870 end -->
-
-### Invalid requirement and usage status colors are reset during upgrade
-
-Before running `db-job migrate`, identify seeded requirement version statuses
-and usage statuses whose color is not an exact case-insensitive `#RRGGBB`
-value. Migration 0053 resets only these invalid rows to their canonical colors;
-valid custom colors, including their letter case, remain unchanged.
-
-```sql
-SELECT N'requirement_statuses' AS catalog, id, color
-FROM requirement_statuses
-WHERE id IN (1, 2, 3, 4)
-  AND (
-    color IS NULL
-    OR DATALENGTH(color) <> 14
-    OR color COLLATE Latin1_General_100_BIN2 NOT LIKE
-      N'#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'
-  )
-UNION ALL
-SELECT N'specification_item_statuses' AS catalog, id, color
-FROM specification_item_statuses
-WHERE id IN (1, 2, 3, 4, 5, 6)
-  AND (
-    color IS NULL
-    OR DATALENGTH(color) <> 14
-    OR color COLLATE Latin1_General_100_BIN2 NOT LIKE
-      N'#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'
-  );
-```
-
-After upgrade, review `/sv/requirement-statuses` and
-`/sv/specification-item-statuses`. Open every row and confirm the labeled
-light- and dark-theme previews report `Uppfyller AA` before accepting the
-upgraded configuration.
-
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade

@@ -1650,7 +1650,8 @@ omladdning. Varje hjälpknapp visar rätt fältspecifik och lokaliserad
 vägledning. Varje kanonisk statusfärg visar det lokaliserade namnet i det
 gemensamma märket och minst kontrast 4,5:1 med resultatet `Uppfyller AA` i
 båda temana. För en ogiltig lagrad färg visas en varning och inga accentstilar
-används innan värdet har korrigerats.
+används innan värdet har korrigerats. `Spara` är inaktiverad så länge
+färgformatet är ogiltigt och aktiveras när värdet har korrigerats.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 
