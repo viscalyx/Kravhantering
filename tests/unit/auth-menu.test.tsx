@@ -14,6 +14,20 @@ const pathnameState = vi.hoisted(() => ({
   value: '/requirements',
 }))
 
+function authenticatedMe(overrides: Record<string, unknown> = {}) {
+  return {
+    authenticated: true,
+    sub: 'user-1',
+    hsaId: 'SE5560000001-admin1',
+    givenName: 'Ada',
+    familyName: 'Admin',
+    name: 'Ada Admin',
+    roles: ['Admin'],
+    expiresAt: 123,
+    ...overrides,
+  }
+}
+
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string, values?: Record<string, string>) =>
     key === 'signedInAs' && values?.name ? `signedInAs ${values.name}` : key,
@@ -307,42 +321,36 @@ describe('AuthMenu', () => {
     ['blank redirect', async () => ({ redirectTo: '   ' })],
     ['non-string redirect', async () => ({ redirectTo: 42 })],
   ])('uses the local logout fallback for %s', async (_label, json) => {
+    const realWindow = window
+    const assign = vi.fn()
+    const testWindow = Object.create(realWindow) as Window
+    Object.defineProperty(testWindow, 'location', {
+      configurable: true,
+      value: { assign },
+    })
+    vi.stubGlobal('window', testWindow)
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          authenticated: true,
-          sub: 'user-1',
-          hsaId: 'SE5560000001-admin1',
-          givenName: 'Ada',
-          familyName: 'Admin',
-          name: 'Ada Admin',
-          roles: ['Admin'],
-          expiresAt: 123,
-        }),
+        json: async () => authenticatedMe(),
       })
       .mockResolvedValueOnce({ ok: true, json })
 
-    render(<AuthMenu variant="mobile" />)
-    fireEvent.click(await screen.findByRole('button', { name: 'signOut' }))
+    try {
+      render(<AuthMenu variant="mobile" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'signOut' }))
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
+    } finally {
+      vi.stubGlobal('window', realWindow)
+    }
   })
 
   it('ignores a duplicate logout submission while one is pending', async () => {
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          authenticated: true,
-          sub: 'user-1',
-          hsaId: 'SE5560000001-admin1',
-          givenName: 'Ada',
-          familyName: 'Admin',
-          name: 'Ada Admin',
-          roles: ['Admin'],
-          expiresAt: 123,
-        }),
+        json: async () => authenticatedMe(),
       })
       .mockReturnValueOnce(new Promise(() => {}))
 
@@ -662,16 +670,7 @@ describe('AuthMenu', () => {
   it('opens the popup for focus-visible keyboard focus', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        authenticated: true,
-        sub: 'user-1',
-        hsaId: 'SE5560000001-admin1',
-        givenName: 'Ada',
-        familyName: 'Admin',
-        name: 'Ada Admin',
-        roles: ['Admin'],
-        expiresAt: 123,
-      }),
+      json: async () => authenticatedMe(),
     })
     render(<AuthMenu variant="desktop" />)
     const trigger = await screen.findByRole('button', {
@@ -689,16 +688,7 @@ describe('AuthMenu', () => {
   it('keeps the popup closed when focus-visible detection is unsupported', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        authenticated: true,
-        sub: 'user-1',
-        hsaId: 'SE5560000001-admin1',
-        givenName: 'Ada',
-        familyName: 'Admin',
-        name: 'Ada Admin',
-        roles: ['Admin'],
-        expiresAt: 123,
-      }),
+      json: async () => authenticatedMe(),
     })
     render(<AuthMenu variant="desktop" />)
     const trigger = await screen.findByRole('button', {

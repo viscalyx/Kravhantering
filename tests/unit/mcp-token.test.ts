@@ -353,7 +353,7 @@ describe('verifyMcpBearerToken', () => {
     expect(jwtVerifyMock).toHaveBeenCalledTimes(2)
   })
 
-  it('accepts an authenticated service identity from azp without a subject', async () => {
+  it('uses azp client identity while representing a missing subject as unauthenticated', async () => {
     getAuthConfigMock.mockReturnValue({
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
