@@ -367,18 +367,29 @@ describe('verifyMcpBearerToken', () => {
       },
     })
     const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      const result = await verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer abc.def.ghi' },
+        }),
+      )
 
-    const result = await verifyMcpBearerToken(
-      new Request('http://x/', {
-        headers: { authorization: 'Bearer abc.def.ghi' },
-      }),
-    )
-
-    expect(result.actor).toMatchObject({
-      id: null,
-      displayName: '',
-      isAuthenticated: false,
-    })
+      expect(result.actor).toMatchObject({
+        id: null,
+        displayName: '',
+        isAuthenticated: false,
+      })
+      const acceptedEvent = infoSpy.mock.calls
+        .map(call => JSON.parse(String(call[0])) as Record<string, unknown>)
+        .find(event => event.event === 'auth.mcp.token.accepted')
+      expect(acceptedEvent?.actor).toMatchObject({
+        clientId: 'mcp-client',
+        source: 'mcp',
+      })
+    } finally {
+      infoSpy.mockRestore()
+    }
   })
 
   it('normalizes non-Error JWT verification failures', async () => {
