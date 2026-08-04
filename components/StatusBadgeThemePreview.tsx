@@ -12,7 +12,6 @@ interface StatusBadgeThemePreviewCopy {
   guidance: string
   invalidColorWarning: string
   lightThemeLabel: string
-  missingIconWarning: string
   title: string
 }
 
@@ -34,7 +33,6 @@ export default function StatusBadgeThemePreview({
   warningId,
 }: StatusBadgeThemePreviewProps) {
   const previewColors = getBadgeContrastColors(color)
-  const canShowAccentedPreview = previewColors && iconName
 
   return (
     <section
@@ -54,7 +52,7 @@ export default function StatusBadgeThemePreview({
           {copy.guidance}
         </p>
       </div>
-      {canShowAccentedPreview ? (
+      {previewColors ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {(['light', 'dark'] as const).map(theme => {
             const themeColors = previewColors[theme]
@@ -93,7 +91,7 @@ export default function StatusBadgeThemePreview({
           id={warningId}
         >
           <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
-          {previewColors ? copy.missingIconWarning : copy.invalidColorWarning}
+          {copy.invalidColorWarning}
         </p>
       )}
     </section>

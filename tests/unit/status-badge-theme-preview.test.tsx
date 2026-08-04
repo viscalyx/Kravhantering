@@ -9,7 +9,6 @@ const copy = {
   guidance: 'Check both themes.',
   invalidColorWarning: 'Enter an exact hex color.',
   lightThemeLabel: 'Light theme',
-  missingIconWarning: 'Choose an icon.',
   title: 'Badge preview',
 }
 
@@ -55,7 +54,7 @@ describe('StatusBadgeThemePreview', () => {
     expect(container.querySelector('[data-accent-color]')).toBeNull()
   })
 
-  it('requires an icon before using color as a status cue', () => {
+  it('previews accent styling without inventing an icon', () => {
     const { container } = render(
       <StatusBadgeThemePreview
         color="#3b82f6"
@@ -66,7 +65,10 @@ describe('StatusBadgeThemePreview', () => {
       />,
     )
 
-    expect(screen.getByRole('status')).toHaveTextContent('Choose an icon.')
-    expect(container.querySelector('[data-accent-color]')).toBeNull()
+    expect(screen.getByRole('status')).toHaveTextContent('Passes AA')
+    expect(
+      container.querySelectorAll('[data-accent-color="#3b82f6"]'),
+    ).toHaveLength(2)
+    expect(container.querySelector('.status-badge svg')).toBeNull()
   })
 })

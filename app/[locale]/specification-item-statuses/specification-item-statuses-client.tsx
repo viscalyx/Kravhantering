@@ -414,7 +414,6 @@ export default function SpecificationItemStatusesClient() {
                       guidance: t('themePreviewGuidance'),
                       invalidColorWarning: t('invalidColorWarning'),
                       lightThemeLabel: t('lightTheme'),
-                      missingIconWarning: t('missingIconWarning'),
                       title: t('themePreview'),
                     }}
                     developerModeContext="specification-item-statuses"

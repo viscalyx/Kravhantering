@@ -28,10 +28,7 @@ export default function StatusBadge({
   size = 'md',
   theme = 'auto',
 }: StatusBadgeProps) {
-  // A status may use an accent only when the same presentation also includes
-  // its configured icon and explicit label. Missing icons therefore degrade to
-  // the neutral badge instead of turning color into the only state cue.
-  const colors = color && iconName ? getBadgeContrastColors(color) : null
+  const colors = color ? getBadgeContrastColors(color) : null
   const sizeClass =
     size === 'sm' ? 'text-[10px] leading-4 px-1.5 py-0' : 'text-xs px-2 py-0.5'
   const themeClass = theme === 'auto' ? '' : `status-badge--${theme}`

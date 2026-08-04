@@ -331,7 +331,6 @@ export default function RequirementStatusesClient() {
               guidance: t('themePreviewGuidance'),
               invalidColorWarning: t('invalidColorWarning'),
               lightThemeLabel: t('lightTheme'),
-              missingIconWarning: t('missingIconWarning'),
               title: t('themePreview'),
             }}
             developerModeContext="requirement version statuses"

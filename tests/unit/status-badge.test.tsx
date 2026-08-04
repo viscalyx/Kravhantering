@@ -108,14 +108,13 @@ describe('StatusBadge', () => {
     expect(span.getAttribute('style')).toBeNull()
   })
 
-  it('uses neutral styling when an icon is not configured', () => {
+  it('keeps accent styling without inventing an icon when none is configured', () => {
     const { container } = render(
       <StatusBadge color="#3b82f6" label="Text only" />,
     )
     const span = container.querySelector('span.status-badge') as HTMLElement
 
-    expect(span).not.toHaveAttribute('data-accent-color')
-    expect(span).toHaveClass('bg-secondary-100')
+    expect(span).toHaveAttribute('data-accent-color', '#3b82f6')
     expect(container.querySelector('svg')).toBeNull()
   })
 

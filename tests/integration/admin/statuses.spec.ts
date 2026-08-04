@@ -230,6 +230,8 @@ test.describe('Admin statuses and workflows', () => {
   test('ADMIN-02: both status catalogs expose invalid stored colors without accent styling', async ({
     page,
   }) => {
+    let requirementSavedColor: string | null = null
+    let usageSavedColor: string | null = null
     await page.route(/\/api\/requirement-statuses(?:\?.*)?$/, route =>
       route.fulfill({
         json: {
@@ -247,6 +249,11 @@ test.describe('Admin statuses and workflows', () => {
         },
       }),
     )
+    await page.route(/\/api\/requirement-statuses\/1$/, async route => {
+      const body = route.request().postDataJSON() as { color?: string }
+      requirementSavedColor = body.color ?? null
+      await route.fulfill({ json: {} })
+    })
 
     await page.goto('/sv/requirement-statuses')
     const requirementAlert = page.getByRole('alert')
@@ -269,6 +276,12 @@ test.describe('Admin statuses and workflows', () => {
     await expect(
       requirementForm.locator('[data-color-swatch="exact-rgb"]'),
     ).toHaveCount(0)
+    await requirementForm
+      .getByRole('textbox', { name: 'Färgkod (hex)' })
+      .fill('#3b82f6')
+    await requirementForm.getByRole('button', { name: 'Spara' }).click()
+    await expect(requirementForm).toHaveCount(0)
+    expect(requirementSavedColor).toBe('#3b82f6')
 
     await page.route(
       /\/api\/catalog\/specification-item-statuses(?:\?.*)?$/,
@@ -291,6 +304,14 @@ test.describe('Admin statuses and workflows', () => {
           },
         }),
     )
+    await page.route(
+      /\/api\/catalog\/specification-item-statuses\/1$/,
+      async route => {
+        const body = route.request().postDataJSON() as { color?: string }
+        usageSavedColor = body.color ?? null
+        await route.fulfill({ json: {} })
+      },
+    )
 
     await page.goto('/sv/specification-item-statuses')
     const usageAlert = page.getByRole('alert')
@@ -311,6 +332,12 @@ test.describe('Admin statuses and workflows', () => {
     await expect(
       usageForm.locator('[data-color-swatch="exact-rgb"]'),
     ).toHaveCount(0)
+    await usageForm
+      .getByRole('textbox', { name: 'Färgkod (hex)' })
+      .fill('#94a3b8')
+    await usageForm.getByRole('button', { name: 'Spara' }).click()
+    await expect(usageForm).toHaveCount(0)
+    expect(usageSavedColor).toBe('#94a3b8')
   })
 
   test('ADMIN-02: usage status form saves changes after cancelled discard', async ({

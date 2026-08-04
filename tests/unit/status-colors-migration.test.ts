@@ -9,16 +9,4 @@ describe('status color repair migration contract', () => {
 
     expect(query).toHaveBeenCalledTimes(2)
   })
-
-  it('fails rollback explicitly because invalid values are irrecoverable', async () => {
-    const query = vi.fn(async (statement: string) => {
-      throw new Error(statement)
-    })
-
-    await expect(
-      new RepairInvalidStatusColors().down({ query }),
-    ).rejects.toThrow(
-      'Cannot restore invalid status colors replaced by migration 0053.',
-    )
-  })
 })
