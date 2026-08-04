@@ -139,6 +139,32 @@ describe('privacy erasure routes', () => {
     expect(JSON.stringify(auditArg.detail)).not.toContain('SE5560000001-kalle1')
   })
 
+  it('maps expected and unexpected preview failures without leaking identity', async () => {
+    const { POST } = await import('@/app/api/privacy/erasure-preview/route')
+    routeState.previewPrivacyErasure.mockRejectedValueOnce(
+      validationError('Invalid replacement', { reason: 'invalid_replacement' }),
+    )
+    const expected = await POST(
+      jsonPost('http://localhost/api/privacy/erasure-preview', {
+        target: { hsaId: 'SE5560000001-kalle1' },
+      }) as never,
+    )
+    routeState.previewPrivacyErasure.mockRejectedValueOnce(
+      new Error('database failure for SE5560000001-kalle1'),
+    )
+    const unexpected = await POST(
+      jsonPost('http://localhost/api/privacy/erasure-preview', {
+        target: { hsaId: 'SE5560000001-kalle1' },
+      }) as never,
+    )
+
+    expect(expected.status).toBe(400)
+    expect(unexpected.status).toBe(500)
+    await expect(unexpected.json()).resolves.toEqual({
+      error: 'Failed to preview privacy erasure',
+    })
+  })
+
   it('rejects erasure preview when CSRF validation fails before previewing', async () => {
     routeState.createRequestContext.mockRejectedValueOnce(
       new CsrfError('Missing X-Requested-With header.'),
@@ -433,6 +459,23 @@ describe('privacy erasure routes', () => {
   })
 
   it('executes erasure and audits counts without raw target HSA-id', async () => {
+    const requestlessContext = privacyContext()
+    delete (requestlessContext as { request?: Request }).request
+    routeState.createRequestContext.mockResolvedValueOnce(requestlessContext)
+    routeState.executePrivacyErasure.mockImplementationOnce(async (...args) => {
+      const input = args[1] as {
+        audit?: (executor: unknown, result: unknown) => Promise<void>
+      }
+      const result = {
+        actions: { anonymize: 1, delete: 0, skip: 0, switch: 0 },
+        groups: [],
+        requestId: 'erasure-request-1',
+        targetFingerprint: 'fingerprint',
+        totalCount: 1,
+      }
+      await input.audit?.({ query: vi.fn() }, result)
+      return result
+    })
     const { POST } = await import('@/app/api/privacy/erasure-requests/route')
     const response = await POST(
       jsonPost('http://localhost/api/privacy/erasure-requests', {
@@ -462,6 +505,9 @@ describe('privacy erasure routes', () => {
       }),
     )
     expect(JSON.stringify(auditArg.detail)).not.toContain('SE5560000001-kalle1')
+    expect(
+      routeState.recordAllowedActionAuditEventWithExecutor,
+    ).toHaveBeenCalled()
   })
 
   it('executes erasure with explicit replacement owner names', async () => {

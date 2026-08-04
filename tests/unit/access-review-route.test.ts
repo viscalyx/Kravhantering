@@ -708,4 +708,206 @@ describe('access review routes', () => {
     expect(routeState.buildAccessReviewExport).not.toHaveBeenCalled()
     expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
   })
+
+  it('lists and loads assigned access reviews through the read routes', async () => {
+    const { GET: list } = await import('@/app/api/admin/access-reviews/route')
+    const listResponse = await list(
+      new Request('http://localhost/api/admin/access-reviews') as never,
+    )
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toEqual({ runs: [reviewDetail().run] })
+
+    const { GET: detail } = await import(
+      '@/app/api/admin/access-reviews/[id]/route'
+    )
+    const detailResponse = await detail(
+      new Request('http://localhost/api/admin/access-reviews/42') as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+    expect(detailResponse.status).toBe(200)
+    expect(routeState.getAccessReviewRun).toHaveBeenCalledWith(
+      { db: true },
+      42,
+      expect.anything(),
+    )
+  })
+
+  it('validates access-review detail params before authentication', async () => {
+    const { GET } = await import('@/app/api/admin/access-reviews/[id]/route')
+    const response = await GET(
+      new Request('http://localhost/api/admin/access-reviews/nope') as never,
+      { params: Promise.resolve({ id: 'nope' }) },
+    )
+    expect(response.status).toBe(400)
+    expect(routeState.createRequestContext).not.toHaveBeenCalled()
+  })
+
+  it('sanitizes read-route dependency failures', async () => {
+    const secret = 'token=read-route-secret'
+    routeState.listAccessReviewRuns.mockRejectedValueOnce(new Error(secret))
+    const { GET: list } = await import('@/app/api/admin/access-reviews/route')
+    const listResponse = await list(
+      new Request('http://localhost/api/admin/access-reviews') as never,
+    )
+    expect(listResponse.status).toBe(500)
+    const listBody = await listResponse.json()
+    expect(listBody).toEqual({ error: 'Failed to list access reviews' })
+    expect(JSON.stringify(listBody)).not.toContain(secret)
+
+    routeState.getAccessReviewRun.mockRejectedValueOnce(new Error(secret))
+    const { GET: detail } = await import(
+      '@/app/api/admin/access-reviews/[id]/route'
+    )
+    const detailResponse = await detail(
+      new Request('http://localhost/api/admin/access-reviews/42') as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+    expect(detailResponse.status).toBe(500)
+    const detailBody = await detailResponse.json()
+    expect(detailBody).toEqual({ error: 'Failed to load access review' })
+    expect(JSON.stringify(detailBody)).not.toContain(secret)
+  })
+
+  it('uses the incoming request for success audits when context omits it', async () => {
+    const requestless = context()
+    delete (requestless as { request?: Request }).request
+    routeState.createRequestContext.mockResolvedValue(requestless)
+    const cancel = (
+      await import('@/app/api/admin/access-reviews/[id]/cancel/route')
+    ).POST
+    const complete = (
+      await import('@/app/api/admin/access-reviews/[id]/complete/route')
+    ).POST
+    const exportReview = (
+      await import('@/app/api/admin/access-reviews/[id]/export/route')
+    ).POST
+    const decide = (
+      await import('@/app/api/admin/access-reviews/[id]/items/[itemId]/route')
+    ).PATCH
+
+    const requests = {
+      cancel: jsonRequest(
+        'http://localhost/api/admin/access-reviews/42/cancel',
+        {},
+      ),
+      complete: jsonRequest(
+        'http://localhost/api/admin/access-reviews/42/complete',
+        {},
+      ),
+      decide: jsonRequest(
+        'http://localhost/api/admin/access-reviews/42/items/7',
+        { decision: 'approved' },
+        'PATCH',
+      ),
+      export: jsonRequest(
+        'http://localhost/api/admin/access-reviews/42/export',
+        {
+          delivery: 'json',
+        },
+      ),
+    }
+    const responses = await Promise.all([
+      cancel(requests.cancel, { params: Promise.resolve({ id: '42' }) }),
+      complete(requests.complete, { params: Promise.resolve({ id: '42' }) }),
+      exportReview(requests.export, {
+        params: Promise.resolve({ id: '42' }),
+      }),
+      decide(requests.decide, {
+        params: Promise.resolve({ id: '42', itemId: '7' }),
+      }),
+    ])
+
+    expect(responses.map(response => response.status)).toEqual([
+      200, 200, 200, 200,
+    ])
+    expect(routeState.recordSecurityEvent).toHaveBeenCalledTimes(4)
+    expect(
+      routeState.recordSecurityEvent.mock.calls.map(([event]) => event.request),
+    ).toEqual(expect.arrayContaining(Object.values(requests)))
+  })
+
+  it.each([
+    [
+      'cancel',
+      'Failed to cancel access review',
+      () =>
+        routeState.cancelAccessReviewRun.mockRejectedValueOnce(
+          new Error('token=mutation-secret'),
+        ),
+    ],
+    [
+      'complete',
+      'Failed to complete access review',
+      () =>
+        routeState.completeAccessReviewRun.mockRejectedValueOnce(
+          new Error('token=mutation-secret'),
+        ),
+    ],
+    [
+      'export',
+      'Failed to export access review',
+      () =>
+        routeState.buildAccessReviewExport.mockRejectedValueOnce(
+          new Error('token=mutation-secret'),
+        ),
+    ],
+    [
+      'item',
+      'Failed to decide access review item',
+      () =>
+        routeState.decideAccessReviewItem.mockRejectedValueOnce(
+          new Error('token=mutation-secret'),
+        ),
+    ],
+  ] as const)(
+    'sanitizes unexpected %s failures',
+    async (operation, expectedError, fail) => {
+      fail()
+      let response: Response
+      if (operation === 'cancel' || operation === 'complete') {
+        const POST =
+          operation === 'cancel'
+            ? (await import('@/app/api/admin/access-reviews/[id]/cancel/route'))
+                .POST
+            : (
+                await import(
+                  '@/app/api/admin/access-reviews/[id]/complete/route'
+                )
+              ).POST
+        response = await POST(
+          jsonRequest(
+            `http://localhost/api/admin/access-reviews/42/${operation}`,
+            {},
+          ),
+          { params: Promise.resolve({ id: '42' }) },
+        )
+      } else if (operation === 'export') {
+        const { POST } = await import(
+          '@/app/api/admin/access-reviews/[id]/export/route'
+        )
+        response = await POST(
+          jsonRequest('http://localhost/api/admin/access-reviews/42/export', {
+            delivery: 'json',
+          }),
+          { params: Promise.resolve({ id: '42' }) },
+        )
+      } else {
+        const { PATCH } = await import(
+          '@/app/api/admin/access-reviews/[id]/items/[itemId]/route'
+        )
+        response = await PATCH(
+          jsonRequest(
+            'http://localhost/api/admin/access-reviews/42/items/7',
+            { decision: 'approved' },
+            'PATCH',
+          ),
+          { params: Promise.resolve({ id: '42', itemId: '7' }) },
+        )
+      }
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body).toEqual({ error: expectedError })
+      expect(JSON.stringify(body)).not.toContain('token=mutation-secret')
+    },
+  )
 })

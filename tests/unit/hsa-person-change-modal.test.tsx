@@ -172,4 +172,42 @@ describe('HsaPersonChangeModal', () => {
       )
     })
   })
+
+  it('resets on reopen, reports submit errors, and closes on cancel', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => okJson(prefixPayload())))
+    const onSubmit = vi.fn(async () => ({
+      error: 'Assignment failed',
+      ok: false as const,
+    }))
+    const onClose = vi.fn()
+    const { rerender } = render(
+      <HsaPersonChangeModal
+        {...baseProps}
+        onClose={onClose}
+        onSubmit={onSubmit}
+        open={false}
+      />,
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    rerender(
+      <HsaPersonChangeModal
+        {...baseProps}
+        onClose={onClose}
+        onSubmit={onSubmit}
+        open
+      />,
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Change person' })
+    const input = within(dialog).getByRole('textbox', { name: /New HSA-id/ })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'new1' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Change' }))
+    await waitFor(() =>
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(
+        'Assignment failed',
+      ),
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(onClose).toHaveBeenCalled()
+  })
 })

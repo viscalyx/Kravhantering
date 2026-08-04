@@ -286,7 +286,7 @@ describe('admin audit events route', () => {
     const { GET } = await import('@/app/api/admin/audit-events/route')
     const response = await GET(
       new Request(
-        'http://localhost/api/admin/audit-events?action=&actor_hsa_id=&client_ip=&decision=&target_kind=&target_id=',
+        'http://localhost/api/admin/audit-events?action=&actor_hsa_id=&client_ip=&decision=&target_kind=&target_id=&from=&to=&page=&pageSize=',
       ) as never,
     )
 
@@ -302,5 +302,47 @@ describe('admin audit events route', () => {
         targetKind: undefined,
       }),
     )
+  })
+
+  it('parses valid date filters and rejects invalid dates', async () => {
+    const { GET } = await import('@/app/api/admin/audit-events/route')
+    const response = await GET(
+      new Request(
+        'http://localhost/api/admin/audit-events?from=2026-05-01T10%3A00%3A00Z&to=2026-05-02T10%3A00%3A00Z',
+      ) as never,
+    )
+
+    expect(response.status).toBe(200)
+    expect(routeState.listActionAuditEvents).toHaveBeenCalledWith(
+      routeState.db,
+      expect.objectContaining({
+        from: new Date('2026-05-01T10:00:00Z'),
+        to: new Date('2026-05-02T10:00:00Z'),
+      }),
+    )
+
+    routeState.listActionAuditEvents.mockClear()
+    const invalid = await GET(
+      new Request(
+        'http://localhost/api/admin/audit-events?from=not-a-date',
+      ) as never,
+    )
+    expect(invalid.status).toBe(400)
+    expect(routeState.listActionAuditEvents).not.toHaveBeenCalled()
+  })
+
+  it('sanitizes unexpected action-log failures', async () => {
+    routeState.listActionAuditEvents.mockRejectedValueOnce(
+      new Error('token=action-log-secret'),
+    )
+    const { GET } = await import('@/app/api/admin/audit-events/route')
+    const response = await GET(
+      new Request('http://localhost/api/admin/audit-events') as never,
+    )
+
+    expect(response.status).toBe(500)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'Failed to list action log events' })
+    expect(JSON.stringify(body)).not.toContain('token=action-log-secret')
   })
 })

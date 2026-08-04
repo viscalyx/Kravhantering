@@ -142,6 +142,54 @@ describe('data-subject export service', () => {
     )
   })
 
+  it('preserves malformed source timestamps and null identity fields defensively', async () => {
+    const { db } = createExportDb({
+      'requirement_responsibility_people.identity': [
+        {
+          hasProtectedPersonalData: false,
+          hsaId: null,
+          lastFetchedAt: '',
+          updatedAt: 'not-a-timestamp',
+        },
+        {
+          hsaId: TARGET_HSA_ID,
+          lastFetchedAt: '2026-05-01T10:00:00Z',
+          updatedAt: '2026-05-02T10:00:00Z',
+        },
+      ],
+    })
+
+    const result = await collectDataSubjectExport(db, {
+      generatedBy: generatedBy(),
+      selfSession: {
+        expiresAt: 1_777_777_777,
+        familyName: 'Svensson',
+        givenName: 'Kalle',
+        hsaId: TARGET_HSA_ID,
+        name: 'Kalle Svensson',
+        roles: [],
+        sub: 'subject-1',
+      },
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    const identity = result.sources.find(
+      source => source.key === 'requirement_responsibility_people.identity',
+    )
+    expect(identity?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ timestamp: 'not-a-timestamp' }),
+        expect.objectContaining({ timestamp: '2026-05-02T10:00:00.000Z' }),
+        expect.objectContaining({ fieldName: 'last_fetched_at', value: null }),
+      ]),
+    )
+    expect(
+      result.sources
+        .find(source => source.key === 'auth.session')
+        ?.items.find(entry => entry.fieldName === 'email')?.value,
+    ).toBeNull()
+  })
+
   it('matches by exact HSA-id and does not export duplicate display-name rows', async () => {
     const { db, query } = createExportDb({
       'improvement_suggestions.resolved_by': [
@@ -290,5 +338,127 @@ describe('data-subject export service', () => {
     expect(JSON.stringify(result)).not.toContain('access_review:')
     expect(sql).not.toContain('runLabel')
     expect(sql).not.toContain('itemLabel')
+  })
+
+  it('collects every assignment and historical actor source mapper', async () => {
+    const timestamp = new Date('2026-05-01T10:00:00Z')
+    const actorRow = {
+      actorTimestamp: timestamp,
+      deviationId: 1,
+      deviationLabel: 'Deviation 1',
+      displayName: 'Kalle Svensson',
+      hsaId: TARGET_HSA_ID,
+    }
+    const { db } = createExportDb({
+      'requirement_packages.owner': [
+        {
+          hsaId: TARGET_HSA_ID,
+          packageId: 1,
+          packageLabel: 'Package',
+          updatedAt: timestamp,
+        },
+      ],
+      'requirement_versions.created_by': [
+        {
+          createdAt: timestamp,
+          displayName: 'Kalle Svensson',
+          hsaId: TARGET_HSA_ID,
+          versionId: 1,
+          versionLabel: 'REQ-1 v1',
+        },
+      ],
+      'deviations.created_by': [actorRow],
+      'deviations.decided_by': [actorRow],
+      'specification_local_requirement_deviations.created_by': [actorRow],
+      'specification_local_requirement_deviations.decided_by': [actorRow],
+      'improvement_suggestions.created_by': [
+        {
+          actorTimestamp: timestamp,
+          displayName: 'Kalle Svensson',
+          hsaId: TARGET_HSA_ID,
+          suggestionId: 1,
+          suggestionLabel: 'Suggestion 1',
+        },
+      ],
+      'requirements_specifications.responsible': [
+        {
+          hsaId: TARGET_HSA_ID,
+          specificationId: 1,
+          specificationLabel: 'SPEC One',
+          updatedAt: timestamp,
+        },
+      ],
+      'requirement_area_co_authors.hsa_id': [
+        {
+          areaId: 1,
+          areaLabel: 'Area',
+          createdAt: timestamp,
+          hsaId: TARGET_HSA_ID,
+        },
+      ],
+      'requirement_area_co_authors.created_by': [
+        {
+          areaId: 1,
+          areaLabel: 'Area',
+          createdAt: timestamp,
+          displayName: 'Kalle Svensson',
+          hsaId: TARGET_HSA_ID,
+        },
+      ],
+      'requirement_package_co_authors.hsa_id': [
+        {
+          createdAt: timestamp,
+          hsaId: TARGET_HSA_ID,
+          packageId: 1,
+          packageLabel: 'Package',
+        },
+      ],
+      'requirement_package_co_authors.created_by': [
+        {
+          createdAt: timestamp,
+          displayName: 'Kalle Svensson',
+          hsaId: TARGET_HSA_ID,
+          packageId: 1,
+          packageLabel: 'Package',
+        },
+      ],
+      'specification_co_authors.hsa_id': [
+        {
+          createdAt: timestamp,
+          hsaId: TARGET_HSA_ID,
+          specificationId: 1,
+          specificationLabel: 'SPEC One',
+        },
+      ],
+      'specification_co_authors.created_by': [
+        {
+          createdAt: timestamp,
+          displayName: 'Kalle Svensson',
+          hsaId: TARGET_HSA_ID,
+          specificationId: 1,
+          specificationLabel: 'SPEC One',
+        },
+      ],
+    })
+
+    const result = await collectDataSubjectExport(db, {
+      generatedBy: generatedBy(),
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.sources.map(source => source.key)).toEqual(
+      expect.arrayContaining([
+        'requirement_packages.owner',
+        'requirement_versions.created_by',
+        'deviations.created_by',
+        'deviations.decided_by',
+        'specification_local_requirement_deviations.created_by',
+        'specification_local_requirement_deviations.decided_by',
+        'requirements_specifications.responsible',
+        'requirement_area_co_authors.hsa_id',
+        'requirement_package_co_authors.hsa_id',
+        'specification_co_authors.hsa_id',
+      ]),
+    )
   })
 })

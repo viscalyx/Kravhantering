@@ -319,4 +319,73 @@ describe('DataSubjectExportPdfRenderer', () => {
     expect(text).not.toContain('targetFingerprint')
     expect(text).not.toContain('subject-1')
   })
+
+  it('formats fallback sources and every supported field value shape safely', () => {
+    const payload = exportPayload()
+    payload.generatedAt = 'not-a-date'
+    payload.limitations.push({ description: 'Unknown', key: 'unknown' })
+    payload.sources.push(
+      {
+        fieldKey: 'fallback',
+        items: [
+          { fieldName: 'email', value: null },
+          { fieldName: 'roles', value: ['Admin', 'UnknownRole'] },
+          { fieldName: 'has_protected_personal_data', value: true },
+          { fieldName: 'active', value: false },
+          { fieldName: 'expiresAt', value: Number.NaN },
+          { fieldName: 'item_count', value: 3 },
+          { fieldName: 'display_name', value: 'no-user' },
+          { fieldName: 'due_at', value: 'invalid-date' },
+          { fieldName: 'action', value: 'unknown.action' },
+          { fieldName: 'decision', value: 'approved' },
+          { fieldName: 'permission_type', value: 'area_owner' },
+          { fieldName: 'scope_type', value: 'requirement_area' },
+          { fieldName: 'source_key', value: 'auth.session' },
+          { fieldName: 'status', value: 'completed' },
+          { fieldName: 'target_kind', value: 'Requirement' },
+          { fieldName: 'unknown_field', value: 'not exposed' },
+          { fieldName: 'email', value: '   ' },
+        ].map(item => ({
+          ...item,
+          relationToSubject: 'unknown_relation',
+          sourceKey: 'unknown.source',
+          table: 'unknown_table',
+        })),
+        key: 'unknown.source',
+        objectKey: 'unknownObjects',
+        relationToSubject: 'unknown_relation',
+        table: 'unknown_table',
+      },
+      {
+        fieldKey: 'session',
+        items: [
+          {
+            fieldName: 'sub',
+            relationToSubject: 'current_auth_session',
+            sourceKey: 'unknown.session',
+            table: 'auth_session',
+            timestamp: 'invalid-date',
+            value: 'hidden-subject',
+          },
+          {
+            fieldName: 'email',
+            relationToSubject: 'current_auth_session',
+            sourceKey: 'unknown.session',
+            table: 'auth_session',
+            value: 'user@example.test',
+          },
+        ],
+        key: 'unknown.session',
+        objectKey: 'authSession',
+        relationToSubject: 'current_auth_session',
+        table: 'auth_session',
+      },
+    )
+
+    const text = JSON.stringify(buildDataSubjectExportPdfModel(payload, 'en'))
+    expect(text).toContain('Other data')
+    expect(text).toContain('user@example.test')
+    expect(text).not.toContain('hidden-subject')
+    expect(text).not.toContain('not exposed')
+  })
 })

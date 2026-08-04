@@ -16,6 +16,13 @@ function deferredResponse() {
   return { promise, resolve }
 }
 
+function okJson(body: unknown) {
+  return new Response(JSON.stringify(body), {
+    headers: { 'Content-Type': 'application/json' },
+    status: 200,
+  })
+}
+
 function ControlledHsaPersonVerifyField() {
   const [hsaId, setHsaId] = useState('SE5560000001-old1')
   return (
@@ -94,6 +101,21 @@ describe('HsaPersonVerifyField', () => {
 
     expect(screen.queryByText('Could not verify')).not.toBeInTheDocument()
     expect(screen.queryByText('Old request failed')).not.toBeInTheDocument()
+  })
+
+  it('reports prefix loading and empty verification response failures', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('prefix service offline'))
+      .mockResolvedValueOnce(okJson({}))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<ControlledHsaPersonVerifyField />)
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/hsa-id-prefixes'),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch' }))
+    expect(await screen.findByText('Could not verify')).toBeVisible()
   })
 
   it('composes selected prefix and suffix before verification', async () => {

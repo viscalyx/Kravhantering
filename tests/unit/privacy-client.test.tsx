@@ -126,6 +126,20 @@ describe('PrivacyClient', () => {
     await expectLastCreatedBlobStartsWithUtf8Bom()
     expect(anchorClickMock).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:self-data-export')
+
+    fetchMock.mockResolvedValueOnce(
+      new Response('%PDF', {
+        headers: {
+          'Content-Disposition': 'attachment; filename="export.pdf"',
+          'Content-Type': 'application/pdf',
+        },
+        status: 200,
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'privacyDataExport.exportPdf' }),
+    )
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
   })
 
   it('registers contextual help for the personal data export page', () => {
@@ -168,5 +182,25 @@ describe('PrivacyClient', () => {
         name: 'privacyDataExport.signIn',
       }),
     ).toHaveAttribute('href', '/api/auth/login?returnTo=/sv/privacy')
+  })
+
+  it('omits optional email and surfaces export failures', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      text: async () => JSON.stringify({ error: 'Export denied' }),
+    } as Response)
+    render(
+      <PrivacyClient
+        currentUser={{
+          hsaId: 'SE5560000001-admin1',
+          name: 'Ada Admin',
+        }}
+      />,
+    )
+    expect(screen.queryByText('ada@example.test')).toBeNull()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'privacyDataExport.exportJson' }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('Export denied')
   })
 })

@@ -4,10 +4,17 @@ import type {
   RequirementsAction,
 } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
-import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
+import {
+  recordAuthorizationDenied,
+  recordAuthorizationDeniedAuditFailure,
+  recordSensitiveMutationActionAuditEvent,
+  recordSensitiveMutationSecurityEvent,
+  recordSensitiveMutationSucceeded,
+} from '@/lib/requirements/security-audit'
 
 const mocks = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(),
+  recordAllowedActionAuditEvent: vi.fn(),
   recordDeniedActionAuditEvent: vi.fn(),
 }))
 
@@ -16,7 +23,7 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/audit/action-audit', () => ({
-  recordAllowedActionAuditEvent: vi.fn(),
+  recordAllowedActionAuditEvent: mocks.recordAllowedActionAuditEvent,
   recordDeniedActionAuditEvent: mocks.recordDeniedActionAuditEvent,
 }))
 
@@ -126,5 +133,116 @@ describe('requirements security audit', () => {
     } finally {
       infoSpy.mockRestore()
     }
+  })
+
+  it.each<RequirementsAction>([
+    { catalog: 'requirements', kind: 'query_catalog' },
+    { kind: 'get_import_schema' },
+    { kind: 'get_import_instruction' },
+    { kind: 'manage_norm_reference', operation: 'create' },
+    { kind: 'list_specifications' },
+    { kind: 'get_specification_items', specificationId: 1 },
+    { kind: 'list_deviations', specificationId: 1 },
+    { kind: 'add_to_specification', requirementIds: [1, 2], specificationId: 1 },
+    { kind: 'remove_from_specification', requirementIds: [1], specificationId: 1 },
+    { kind: 'list_graduation_target_areas', localRequirementId: 2, specificationId: 1 },
+    {
+      kind: 'graduate_specification_local_requirement',
+      localRequirementId: 2,
+      requirementAreaId: 3,
+      specificationId: 1,
+    },
+    {
+      kind: 'manage_specification_local_requirement',
+      localRequirementId: 2,
+      operation: 'edit',
+      specificationId: 1,
+    },
+    {
+      kind: 'manage_specification_needs_reference',
+      needsReferenceId: 2,
+      operation: 'edit',
+      specificationId: 1,
+    },
+    { id: 1, kind: 'get_requirement', uniqueId: 'REQ1', view: 'detail' },
+    { id: 1, kind: 'manage_requirement', operation: 'edit', uniqueId: 'REQ1' },
+    { id: 1, kind: 'transition_requirement', toStatusId: 2, uniqueId: 'REQ1' },
+    { deviationId: 1, kind: 'manage_deviation', operation: 'edit' },
+    { kind: 'list_suggestions', requirementId: 1 },
+    { kind: 'manage_suggestion', operation: 'edit', suggestionId: 1 },
+    { areaId: 1, kind: 'manage_rfi_question', operation: 'edit', questionId: 2 },
+    { kind: 'manage_specification_rfi', operation: 'lock', specificationId: 1 },
+    {
+      areaId: 1,
+      kind: 'manage_rfi_question_suggestion',
+      operation: 'edit',
+      suggestionId: 2,
+      specificationId: 3,
+    },
+    { kind: 'generate_requirements', scopeId: 1, scopeType: 'requirement_area' },
+  ])('records bounded denial evidence for $kind', async action => {
+    await recordAuthorizationDenied(
+      context(),
+      action,
+      forbiddenError('Denied', { reason: 'assignment_required' }),
+    )
+
+    expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ denialReason: 'assignment_required' }),
+    )
+  })
+
+  it('ignores unrelated failures and sanitizes non-Error audit failures', async () => {
+    await recordAuthorizationDenied(
+      context(),
+      { kind: 'get_import_schema' },
+      new Error('boom'),
+    )
+    expect(mocks.recordDeniedActionAuditEvent).not.toHaveBeenCalled()
+
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+    expect(() =>
+      recordAuthorizationDeniedAuditFailure(context(), circular),
+    ).not.toThrow()
+    expect(() =>
+      recordAuthorizationDeniedAuditFailure(context(), 'token=secret'),
+    ).not.toThrow()
+  })
+
+  it.each([
+    { action: 'requirement.created', newRequirementId: 1, newRequirementUniqueId: 'REQ1' },
+    { action: 'requirement.edited', requirementId: 2, requirementUniqueId: 'REQ2' },
+    { action: 'deviation.decision.recorded', deviationId: 3 },
+    { action: 'suggestion.resolution.recorded', operation: 'dismiss', suggestionId: 4 },
+    { action: 'suggestion.resolution.recorded', operation: 'resolve', suggestionId: 4 },
+    { action: 'suggestion.created', suggestionId: 4 },
+    { action: 'local.edited', localRequirementId: 5 },
+    { action: 'specification.edited', specificationId: 6 },
+    { action: 'fallback' },
+  ])('maps sensitive mutation target evidence for $action', async detail => {
+    await recordSensitiveMutationActionAuditEvent(
+      { query: vi.fn() },
+      context(),
+      detail,
+    )
+    expect(mocks.recordAllowedActionAuditEvent).toHaveBeenCalled()
+    recordSensitiveMutationSecurityEvent(context(), detail)
+  })
+
+  it('uses the request data source for successful mutation evidence', async () => {
+    const db = { query: vi.fn() }
+    mocks.getRequestSqlServerDataSource.mockResolvedValueOnce(db)
+    await recordSensitiveMutationSucceeded(context(), {
+      action: 'requirement.created',
+      requirementId: 1,
+    })
+    expect(mocks.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      db,
+      expect.anything(),
+      expect.anything(),
+    )
   })
 })

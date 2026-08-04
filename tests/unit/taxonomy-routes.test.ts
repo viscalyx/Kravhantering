@@ -209,6 +209,11 @@ vi.mock('@/lib/dal/specification-governance-object-types', () => ({
 
 const mockUpdateReqArea = vi.fn()
 const mockDeleteReqArea = vi.fn()
+const mockListRequirementAreaCoAuthors = vi.fn(
+  async (..._args: unknown[]) =>
+    [] as Array<{ displayName: string; email: string | null; hsaId: string }>,
+)
+const mockReplaceRequirementAreaCoAuthors = vi.fn()
 vi.mock('@/lib/dal/requirement-areas', () => ({
   listAreas: async () => [{ id: 1, ownerHsaId: 'SE5560000001-route' }],
   listAreaIdsActorCanAuthor: async () => [1],
@@ -220,6 +225,10 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
     requirementAreaPermissionState.canManageAreaCoAuthors(...a),
   createArea: async () => ({ id: 2 }),
   getAreaById: async (_db: unknown, id: number) => (id === 404 ? null : { id }),
+  listRequirementAreaCoAuthors: (...a: unknown[]) =>
+    mockListRequirementAreaCoAuthors(...a),
+  replaceRequirementAreaCoAuthors: (...a: unknown[]) =>
+    mockReplaceRequirementAreaCoAuthors(...a),
   updateArea: (...a: unknown[]) => mockUpdateReqArea(...a),
   updateAreaWithOwnerCheck: (...a: unknown[]) => mockUpdateReqArea(...a),
   deleteArea: (...a: unknown[]) => mockDeleteReqArea(...a),
@@ -261,6 +270,13 @@ const mockCreatePkg = vi.fn(async (..._args: unknown[]) => ({ id: 2 }))
 const mockUpdatePkg = vi.fn()
 const mockUpdateSpecResponsible = vi.fn()
 const mockReplaceSpecificationCoAuthors = vi.fn()
+const mockListSpecificationCoAuthors = vi.fn(
+  async (..._args: unknown[]) =>
+    [] as Array<{ displayName: string; email: string | null; hsaId: string }>,
+)
+const mockGetSpecificationById = vi.fn(async (_db: unknown, id: number) =>
+  id === 404 ? null : { id },
+)
 const mockDeletePkg = vi.fn()
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   listSpecifications: async () => [{ id: 1 }],
@@ -274,8 +290,11 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mockUpdateSpecResponsible(...a),
   replaceSpecificationCoAuthors: (...a: unknown[]) =>
     mockReplaceSpecificationCoAuthors(...a),
+  listSpecificationCoAuthors: (...a: unknown[]) =>
+    mockListSpecificationCoAuthors(...a),
   deleteSpecification: (...a: unknown[]) => mockDeletePkg(...a),
-  getSpecificationById: async (_db: unknown, id: number) => ({ id }),
+  getSpecificationById: (...a: [unknown, number]) =>
+    mockGetSpecificationById(...a),
   isSpecificationCodeTaken: async () => false,
 }))
 
@@ -409,6 +428,10 @@ import {
   PUT as putReqArea,
 } from '@/app/api/requirement-areas/[id]/route'
 import {
+  GET as getRequirementAreaCoAuthors,
+  PUT as putRequirementAreaCoAuthors,
+} from '@/app/api/requirement-areas/[id]/co-authors/route'
+import {
   GET as getReqAreas,
   POST as postReqArea,
 } from '@/app/api/requirement-areas/route'
@@ -428,7 +451,10 @@ import {
 } from '@/app/api/requirement-packages/route'
 import { POST as postRequirementResponsibilityPersonVerify } from '@/app/api/requirement-responsibility-people/verify/route'
 import { GET as getTypes } from '@/app/api/requirement-types/route'
-import { PUT as putSpecCoAuthors } from '@/app/api/requirements-specifications/[id]/co-authors/route'
+import {
+  GET as getSpecCoAuthors,
+  PUT as putSpecCoAuthors,
+} from '@/app/api/requirements-specifications/[id]/co-authors/route'
 import { PUT as putSpecResponsible } from '@/app/api/requirements-specifications/[id]/responsible/route'
 import {
   DELETE as deletePkg,
@@ -1145,6 +1171,111 @@ describe('requirement-areas/[id] routes', () => {
     const r = await putReqArea(jsonReq('PUT', { name: 'X' }), makeParams('1'))
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
+  it('GET and PUT manage requirement area co-authors', async () => {
+    mockListRequirementAreaCoAuthors.mockResolvedValueOnce([
+      {
+        displayName: 'Co Author',
+        email: null,
+        hsaId: 'SE5560000001-coa1',
+      },
+    ])
+    mockReplaceRequirementAreaCoAuthors.mockResolvedValueOnce({
+      coAuthorHsaIds: ['SE5560000001-coa1'],
+      requirementAreaId: 1,
+    })
+    responsibilityPersonState.getRequirementResponsibilityPerson.mockResolvedValueOnce(
+      {
+        email: null,
+        givenName: 'Co',
+        hsaId: 'SE5560000001-coa1',
+        middleName: null,
+        surname: 'Author',
+      },
+    )
+
+    const getResponse = await getRequirementAreaCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('1'),
+    )
+    const putResponse = await putRequirementAreaCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: ['SE5560000001-coa1'] }),
+      makeParams('1'),
+    )
+
+    expect(getResponse.status).toBe(200)
+    await expect(getResponse.json()).resolves.toMatchObject({
+      coAuthors: [expect.objectContaining({ hsaId: 'SE5560000001-coa1' })],
+    })
+    expect(putResponse.status).toBe(200)
+    expect(mockReplaceRequirementAreaCoAuthors).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        changedBy: expect.objectContaining({
+          displayName: 'Ada Admin',
+          hsaId: 'SE5560000001-admin1',
+        }),
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+      }),
+    )
+  })
+  it('co-author routes reject invalid, missing, and unauthorized areas', async () => {
+    const invalid = await getRequirementAreaCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('bad'),
+    )
+    const missing = await getRequirementAreaCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('404'),
+    )
+    requirementAreaPermissionState.canManageAreaCoAuthors.mockResolvedValueOnce(
+      false,
+    )
+    const denied = await getRequirementAreaCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('1'),
+    )
+    const missingPut = await putRequirementAreaCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('404'),
+    )
+
+    expect(invalid.status).toBe(400)
+    expect(missing.status).toBe(404)
+    expect(denied.status).toBe(403)
+    expect(missingPut.status).toBe(404)
+  })
+  it('PUT area co-authors reports a concurrent disappearance', async () => {
+    mockReplaceRequirementAreaCoAuthors.mockResolvedValueOnce(null)
+    const response = await putRequirementAreaCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('1'),
+    )
+
+    expect(response.status).toBe(404)
+  })
+  it('falls back to stable actor identifiers for area co-author changes', async () => {
+    authState.context.actor.displayName = ' '
+    authState.context.actor.id = ''
+    mockReplaceRequirementAreaCoAuthors.mockResolvedValueOnce({
+      coAuthorHsaIds: [],
+      requirementAreaId: 1,
+    })
+    const response = await putRequirementAreaCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('1'),
+    )
+    expect(response.status).toBe(200)
+    expect(mockReplaceRequirementAreaCoAuthors).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        changedBy: expect.objectContaining({
+          displayName: 'SE5560000001-admin1',
+        }),
+      }),
+    )
+  })
   it('PUT allows the current requirement area owner without Admin', async () => {
     authState.context.actor = {
       displayName: 'Olle Owner',
@@ -1300,6 +1431,9 @@ describe('requirement-specifications routes', () => {
     specificationPermissionState.canAuthorSpecification.mockResolvedValue(true)
     specificationPermissionState.canManageSpecificationAssignments.mockResolvedValue(
       true,
+    )
+    mockGetSpecificationById.mockImplementation(async (_db, id) =>
+      id === 404 ? null : { id },
     )
   })
 
@@ -1789,6 +1923,105 @@ describe('requirement-specifications routes', () => {
       }),
     )
   })
+  it('GET lists specification co-authors and enforces assignment permission', async () => {
+    mockListSpecificationCoAuthors.mockResolvedValueOnce([
+      {
+        displayName: 'Co Author',
+        email: null,
+        hsaId: 'SE5560000001-coa1',
+      },
+    ])
+    const success = await getSpecCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('1'),
+    )
+    specificationPermissionState.canManageSpecificationAssignments.mockResolvedValueOnce(
+      false,
+    )
+    const denied = await getSpecCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('1'),
+    )
+    const invalid = await getSpecCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('bad'),
+    )
+
+    expect(success.status).toBe(200)
+    await expect(success.json()).resolves.toMatchObject({
+      coAuthors: [expect.objectContaining({ hsaId: 'SE5560000001-coa1' })],
+    })
+    expect(denied.status).toBe(403)
+    expect(invalid.status).toBe(400)
+  })
+  it('PUT specification co-authors reports missing and concurrent deletion', async () => {
+    mockReplaceSpecificationCoAuthors.mockResolvedValueOnce(null)
+    const disappeared = await putSpecCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('1'),
+    )
+
+    expect(disappeared.status).toBe(404)
+
+    const missing = await putSpecCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('404'),
+    )
+    const missingResponsible = await putSpecResponsible(
+      jsonReq('PUT', { responsibleHsaId: 'SE5560000001-rita1' }),
+      makeParams('404'),
+    )
+    expect(missing.status).toBe(404)
+    expect(missingResponsible.status).toBe(404)
+  })
+  it('falls back to the HSA-id for specification co-author audit names', async () => {
+    authState.context.actor.displayName = ' '
+    authState.context.actor.id = ''
+    mockReplaceSpecificationCoAuthors.mockResolvedValueOnce({
+      coAuthorHsaIds: [],
+      specificationId: 1,
+    })
+    const response = await putSpecCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('1'),
+    )
+    expect(response.status).toBe(200)
+    expect(mockReplaceSpecificationCoAuthors).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        changedBy: expect.objectContaining({
+          displayName: 'SE5560000001-route',
+        }),
+      }),
+    )
+  })
+  it('denies assignment updates and handles concurrent responsible deletion', async () => {
+    specificationPermissionState.canManageSpecificationAssignments.mockResolvedValueOnce(
+      false,
+    )
+    const denied = await putSpecResponsible(
+      jsonReq('PUT', { responsibleHsaId: 'SE5560000001-rita1' }),
+      makeParams('1'),
+    )
+    expect(denied.status).toBe(403)
+
+    mockUpdateSpecResponsible.mockResolvedValueOnce(null)
+    responsibilityPersonState.getRequirementResponsibilityPerson.mockResolvedValueOnce(
+      {
+        email: null,
+        givenName: 'Rita',
+        hsaId: 'SE5560000001-rita1',
+        middleName: null,
+        surname: 'Reviewer',
+      },
+    )
+    const disappeared = await putSpecResponsible(
+      jsonReq('PUT', { responsibleHsaId: 'SE5560000001-rita1' }),
+      makeParams('1'),
+    )
+    expect(disappeared.status).toBe(404)
+  })
   it('DELETE deletes', async () => {
     const r = await deletePkg(
       new NextRequest('http://l', { method: 'DELETE' }),
@@ -1807,10 +2040,14 @@ describe('requirement-specifications routes', () => {
 describe('requirement-packages routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.assign(authState.context.actor, {
+    authState.context.actor = {
+      displayName: 'Route Tester',
       hsaId: 'SE5560000001-route',
+      id: 'route-test',
+      isAuthenticated: true,
       roles: ['Admin'],
-    })
+      source: 'oidc',
+    }
     routeState.query.mockResolvedValue([{ id: 1 }])
     mockGetRequirementPackageById.mockResolvedValue({
       id: 1,
@@ -2113,6 +2350,54 @@ describe('requirement-packages routes', () => {
     expect(mockListRequirementPackageCoAuthors).toHaveBeenCalledWith(
       expect.anything(),
       1,
+    )
+  })
+  it('co-author routes validate ids and report missing packages', async () => {
+    const invalid = await getRequirementPackageCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('bad'),
+    )
+    mockGetRequirementPackageById.mockResolvedValueOnce(null)
+    const missingGet = await getRequirementPackageCoAuthors(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('404'),
+    )
+    mockGetRequirementPackageById.mockResolvedValueOnce(null)
+    const missingPut = await putRequirementPackageCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('404'),
+    )
+    expect(invalid.status).toBe(400)
+    expect(missingGet.status).toBe(404)
+    expect(missingPut.status).toBe(404)
+  })
+  it('handles package co-author concurrent deletion and actor-name fallback', async () => {
+    authState.context.actor.displayName = ' '
+    authState.context.actor.id = ''
+    mockReplaceRequirementPackageCoAuthors.mockResolvedValueOnce(null)
+    const disappeared = await putRequirementPackageCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('1'),
+    )
+    expect(disappeared.status).toBe(404)
+
+    mockReplaceRequirementPackageCoAuthors.mockResolvedValueOnce({
+      coAuthorHsaIds: [],
+      requirementPackageId: 1,
+    })
+    const success = await putRequirementPackageCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('1'),
+    )
+    expect(success.status).toBe(200)
+    expect(mockReplaceRequirementPackageCoAuthors).toHaveBeenLastCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        changedBy: expect.objectContaining({
+          displayName: 'SE5560000001-route',
+        }),
+      }),
     )
   })
   it('PUT co-authors replaces package co-author assignments', async () => {
