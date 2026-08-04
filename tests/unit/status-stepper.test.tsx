@@ -221,6 +221,22 @@ describe('StatusStepper', () => {
     expect(slider?.style.color).toBe('rgb(255, 255, 255)')
   })
 
+  it('uses neutral styling when neither approved text color passes 4.5:1', () => {
+    const midGray = [
+      { id: 1, color: '#777777', nameEn: 'Review', nameSv: 'Granskning' },
+    ]
+    const { container } = render(
+      <StatusStepper currentStatusId={1} statuses={midGray} />,
+    )
+
+    expect(findActiveSlider(container, 'rgb(119, 119, 119)')).toBeUndefined()
+    const activeLabel = screen.getAllByText('Granskning')[1]
+    const slider = activeLabel.closest('div')
+    expect(slider).toHaveClass('bg-secondary-700')
+    expect(slider?.style.backgroundColor).toBe('')
+    expect(slider?.style.color).toBe('')
+  })
+
   it('omits configured accent styling when the active color is invalid', () => {
     const invalid = [
       { id: 1, color: 'invalid-color', nameEn: 'Draft', nameSv: 'Utkast' },

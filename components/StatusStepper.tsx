@@ -3,7 +3,11 @@
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import StatusIcon from '@/components/StatusIcon'
-import { isStrictHexColor, pickReadableTextOn } from '@/lib/color-contrast'
+import {
+  contrastRatio,
+  isStrictHexColor,
+  pickReadableTextOn,
+} from '@/lib/color-contrast'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 interface StatusStep {
@@ -96,9 +100,18 @@ export default function StatusStepper({
   }, [statuses])
   const targetIndex = steps.findIndex(s => s.id === currentStatusId)
   const configuredActiveColor = steps[targetIndex]?.color
-  const activeColor =
+  const strictActiveColor =
     configuredActiveColor && isStrictHexColor(configuredActiveColor)
       ? configuredActiveColor
+      : null
+  const strictActiveTextColor = strictActiveColor
+    ? pickReadableTextOn(strictActiveColor)
+    : null
+  const activeColor =
+    strictActiveColor &&
+    strictActiveTextColor &&
+    contrastRatio(strictActiveTextColor, strictActiveColor) >= 4.5
+      ? strictActiveColor
       : null
   const containerRef = useRef<HTMLDivElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -134,7 +147,7 @@ export default function StatusStepper({
   const stepLabel = (step: StatusStep) =>
     isArchiving && step.id === 2 ? t('Arkiveringsgranskning') : t(step.nameSv)
 
-  const sliderTextColor = activeColor ? pickReadableTextOn(activeColor) : null
+  const sliderTextColor = activeColor ? strictActiveTextColor : null
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: <fieldset> is for form controls; this is a workflow progress indicator

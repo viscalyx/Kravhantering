@@ -346,7 +346,8 @@ export default function SpecificationItemStatusesClient() {
                       {isStrictHexColor(controller.form.color) && (
                         <input
                           aria-label={t('colorPicker')}
-                          className="h-10 w-14 shrink-0 rounded-lg border cursor-pointer"
+                          className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border-2 border-secondary-400 dark:border-secondary-500"
+                          data-color-swatch="exact-rgb"
                           disabled={controller.submitting}
                           id="pis-color-picker"
                           onChange={event =>
@@ -356,6 +357,7 @@ export default function SpecificationItemStatusesClient() {
                             }))
                           }
                           required
+                          style={{ backgroundColor: controller.form.color }}
                           type="color"
                           value={controller.form.color}
                         />
@@ -381,14 +383,6 @@ export default function SpecificationItemStatusesClient() {
                         placeholder="#3b82f6"
                         value={controller.form.color}
                       />
-                      {isStrictHexColor(controller.form.color) && (
-                        <span
-                          aria-hidden="true"
-                          className="h-8 w-10 shrink-0 rounded border-2 border-secondary-400 dark:border-secondary-500"
-                          data-color-swatch="exact-rgb"
-                          style={{ backgroundColor: controller.form.color }}
-                        />
-                      )}
                     </div>
                   </div>
                   <div>
@@ -412,18 +406,20 @@ export default function SpecificationItemStatusesClient() {
                   </div>
                   <StatusBadgeThemePreview
                     color={controller.form.color}
-                    contrastPassLabel={t('contrastPass')}
-                    contrastResultLabel={ratio =>
-                      t('contrastResult', { ratio })
-                    }
-                    darkThemeLabel={t('darkTheme')}
+                    copy={{
+                      contrastPassLabel: t('contrastPass'),
+                      contrastResultLabel: ratio =>
+                        t('contrastResult', { ratio }),
+                      darkThemeLabel: t('darkTheme'),
+                      guidance: t('themePreviewGuidance'),
+                      invalidColorWarning: t('invalidColorWarning'),
+                      lightThemeLabel: t('lightTheme'),
+                      missingIconWarning: t('missingIconWarning'),
+                      title: t('themePreview'),
+                    }}
                     developerModeContext="specification-item-statuses"
-                    guidance={t('themePreviewGuidance')}
                     iconName={controller.form.iconName}
-                    invalidColorWarning={t('invalidColorWarning')}
                     label={previewLabel}
-                    lightThemeLabel={t('lightTheme')}
-                    title={t('themePreview')}
                     warningId="pis-color-warning"
                   />
                   <div>

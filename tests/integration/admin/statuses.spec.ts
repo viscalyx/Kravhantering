@@ -161,6 +161,16 @@ async function expectStatusColorPreview(form: Locator, expectedColor: string) {
   const swatch = form.locator('[data-color-swatch="exact-rgb"]')
   await expect(swatch).toBeVisible()
   await expect(swatch).toHaveCSS('border-style', 'solid')
+  const [red, green, blue] = [1, 3, 5].map(offset =>
+    Number.parseInt(expectedColor.slice(offset, offset + 2), 16),
+  )
+  await expect(swatch).toHaveCSS(
+    'background-color',
+    `rgb(${red}, ${green}, ${blue})`,
+  )
+  const swatchBox = await swatch.boundingBox()
+  expect(swatchBox).not.toBeNull()
+  expect(swatchBox?.width ?? 0).toBeGreaterThan(swatchBox?.height ?? 0)
 }
 
 async function restoreUsageStatus(page: Page, status: SpecificationItemStatus) {
@@ -215,6 +225,92 @@ test.describe('Admin statuses and workflows', () => {
       const form = await openUsageStatusForm(page, status)
       await expectStatusColorPreview(form, expectedColor ?? '')
     }
+  })
+
+  test('ADMIN-02: both status catalogs expose invalid stored colors without accent styling', async ({
+    page,
+  }) => {
+    await page.route(/\/api\/requirement-statuses(?:\?.*)?$/, route =>
+      route.fulfill({
+        json: {
+          statuses: [
+            {
+              color: 'invalid-color',
+              iconName: 'PenLine',
+              id: 1,
+              isSystem: true,
+              nameEn: 'Draft',
+              nameSv: 'Utkast',
+              sortOrder: 1,
+            },
+          ],
+        },
+      }),
+    )
+
+    await page.goto('/sv/requirement-statuses')
+    const requirementAlert = page.getByRole('alert')
+    await expect(requirementAlert).toContainText('ogiltiga lagrade färger')
+    const requirementRow = page.getByRole('row', { name: /Utkast/ })
+    await expect(requirementRow.locator('.status-badge')).not.toHaveAttribute(
+      'data-accent-color',
+      /.+/,
+    )
+    await requirementRow.getByRole('button', { name: 'Redigera' }).click()
+    const requirementForm = page.locator('form').filter({
+      has: page.getByRole('heading', { name: 'Redigera' }),
+    })
+    await expect(
+      requirementForm.getByRole('textbox', { name: 'Färgkod (hex)' }),
+    ).toHaveAttribute('aria-invalid', 'true')
+    await expect(
+      requirementForm.getByText(/Ange en färg som #RRGGBB/),
+    ).toBeVisible()
+    await expect(
+      requirementForm.locator('[data-color-swatch="exact-rgb"]'),
+    ).toHaveCount(0)
+
+    await page.route(
+      /\/api\/catalog\/specification-item-statuses(?:\?.*)?$/,
+      route =>
+        route.fulfill({
+          json: {
+            statuses: [
+              {
+                color: '#12345G',
+                descriptionEn: 'Included in the specification',
+                descriptionSv: 'Ingår i kravunderlaget',
+                iconName: 'Circle',
+                id: 1,
+                linkedItemCount: 0,
+                nameEn: 'Included',
+                nameSv: 'Inkluderad',
+                sortOrder: 1,
+              },
+            ],
+          },
+        }),
+    )
+
+    await page.goto('/sv/specification-item-statuses')
+    const usageAlert = page.getByRole('alert')
+    await expect(usageAlert).toContainText('ogiltiga lagrade färger')
+    const usageRow = page.getByRole('row', { name: /Inkluderad/ })
+    await expect(usageRow.locator('.status-badge')).not.toHaveAttribute(
+      'data-accent-color',
+      /.+/,
+    )
+    await usageRow.getByRole('button', { name: 'Redigera' }).click()
+    const usageForm = page.locator('form').filter({
+      has: page.getByRole('heading', { name: 'Redigera användningsstatus' }),
+    })
+    await expect(
+      usageForm.getByRole('textbox', { name: 'Färgkod (hex)' }),
+    ).toHaveAttribute('aria-invalid', 'true')
+    await expect(usageForm.getByText(/Ange en färg som #RRGGBB/)).toBeVisible()
+    await expect(
+      usageForm.locator('[data-color-swatch="exact-rgb"]'),
+    ).toHaveCount(0)
   })
 
   test('ADMIN-02: usage status form saves changes after cancelled discard', async ({

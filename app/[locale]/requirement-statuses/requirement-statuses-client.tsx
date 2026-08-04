@@ -264,7 +264,8 @@ export default function RequirementStatusesClient() {
               {isStrictHexColor(form.color) && (
                 <input
                   aria-label={t('colorPicker')}
-                  className="h-10 w-14 shrink-0 rounded-lg border cursor-pointer"
+                  className="h-10 w-14 shrink-0 cursor-pointer rounded-lg border-2 border-secondary-400 dark:border-secondary-500"
+                  data-color-swatch="exact-rgb"
                   disabled={disabled}
                   id="status-color-picker"
                   onChange={event =>
@@ -273,6 +274,7 @@ export default function RequirementStatusesClient() {
                       color: event.target.value,
                     }))
                   }
+                  style={{ backgroundColor: form.color }}
                   type="color"
                   value={form.color}
                 />
@@ -299,14 +301,6 @@ export default function RequirementStatusesClient() {
                 required
                 value={form.color}
               />
-              {isStrictHexColor(form.color) && (
-                <span
-                  aria-hidden="true"
-                  className="h-8 w-10 shrink-0 rounded border-2 border-secondary-400 dark:border-secondary-500"
-                  data-color-swatch="exact-rgb"
-                  style={{ backgroundColor: form.color }}
-                />
-              )}
             </div>
           </div>
           <div>
@@ -330,16 +324,19 @@ export default function RequirementStatusesClient() {
           </div>
           <StatusBadgeThemePreview
             color={form.color}
-            contrastPassLabel={t('contrastPass')}
-            contrastResultLabel={ratio => t('contrastResult', { ratio })}
-            darkThemeLabel={t('darkTheme')}
+            copy={{
+              contrastPassLabel: t('contrastPass'),
+              contrastResultLabel: ratio => t('contrastResult', { ratio }),
+              darkThemeLabel: t('darkTheme'),
+              guidance: t('themePreviewGuidance'),
+              invalidColorWarning: t('invalidColorWarning'),
+              lightThemeLabel: t('lightTheme'),
+              missingIconWarning: t('missingIconWarning'),
+              title: t('themePreview'),
+            }}
             developerModeContext="requirement version statuses"
-            guidance={t('themePreviewGuidance')}
             iconName={form.iconName}
-            invalidColorWarning={t('invalidColorWarning')}
             label={locale === 'sv' ? form.nameSv : form.nameEn}
-            lightThemeLabel={t('lightTheme')}
-            title={t('themePreview')}
             warningId="status-color-warning"
           />
         </>

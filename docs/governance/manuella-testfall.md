@@ -1640,15 +1640,17 @@ Spara är inaktiverad innan ändring, gör en liten ändring, klicka Avbryt och
 avbryt förkastandet. Öppna en prioritet och öppna hjälpen för
 `Sorteringsordning`, `Färg` och `Ikon`. Öppna därefter varje systemstyrd
 kravversionsstatus och användningsstatus. Kontrollera den exakta färgkoden,
-den kantlinjeförsedda färgrutan samt de märkta förhandsvisningarna för ljust
-och mörkt tema. Spara därefter ändringen.
+de märkta förhandsvisningarna för ljust och mörkt tema samt kontrastresultaten.
+Upprepa flödet med en testpost som har en ogiltig lagrad färg. Korrigera värdet
+och spara därefter ändringen.
 
 **Förväntat resultat:** Spara aktiveras först efter ändringen. Formulär med
 osparade ändringar kräver bekräftelse innan det stängs. Ändringen visas efter
 omladdning. Varje hjälpknapp visar rätt fältspecifik och lokaliserad
 vägledning. Varje kanonisk statusfärg visar det lokaliserade namnet i det
 gemensamma märket och minst kontrast 4,5:1 med resultatet `Uppfyller AA` i
-båda temana. Färgprovet är rektangulärt och används inte som statusmarkör.
+båda temana. För en ogiltig lagrad färg visas en varning och inga accentstilar
+används innan värdet har korrigerats.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 

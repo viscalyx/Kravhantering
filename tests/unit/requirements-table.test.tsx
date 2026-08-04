@@ -3334,6 +3334,7 @@ describe('RequirementsTable', () => {
         ...makeRow(),
         hasPendingVersion: true,
         pendingVersionStatusColor: '#3b82f6',
+        pendingVersionStatusIconName: 'Eye',
         pendingVersionStatusId: 2,
         version: {
           ...makeRow().version,
@@ -3358,6 +3359,7 @@ describe('RequirementsTable', () => {
         isArchived: true,
         hasPendingVersion: true,
         pendingVersionStatusColor: '#3b82f6',
+        pendingVersionStatusIconName: 'PenLine',
         pendingVersionStatusId: 1,
         version: {
           description: 'Arkiverad',
@@ -3395,7 +3397,7 @@ describe('RequirementsTable', () => {
     )
     expect(
       screen.getByText('hasPendingVersionDraft').querySelector('svg'),
-    ).toBeNull()
+    ).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('shows a yellow pending review indicator for archived rows', () => {
@@ -3406,6 +3408,7 @@ describe('RequirementsTable', () => {
         isArchived: true,
         hasPendingVersion: true,
         pendingVersionStatusColor: '#eab308',
+        pendingVersionStatusIconName: 'Eye',
         pendingVersionStatusId: 2,
         version: {
           description: 'Arkiverad',
@@ -3443,7 +3446,7 @@ describe('RequirementsTable', () => {
     )
     expect(
       screen.getByText('hasPendingVersionReview').querySelector('svg'),
-    ).toBeNull()
+    ).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('applies opacity for archived rows', () => {
