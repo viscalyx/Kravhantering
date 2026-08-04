@@ -186,6 +186,22 @@ describe('auth callback security audit events', () => {
     expect(authorizationCodeGrantMock).not.toHaveBeenCalled()
   })
 
+  it('redirects malformed browser callbacks to the public auth error page', async () => {
+    const GET = await importGet()
+    const response = await GET(
+      buildCallbackRequest('http://localhost/api/auth/callback?state=state', {
+        accept: 'text/html',
+        secFetchDest: 'document',
+      }),
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/auth/error?code=invalid_callback_request&locale=sv',
+    )
+    expect(getLoginStateMock).not.toHaveBeenCalled()
+  })
+
   it('returns provider callback errors without token exchange', async () => {
     const loginState = freshLoginState()
     getLoginStateMock.mockResolvedValue(loginState)
@@ -292,6 +308,37 @@ describe('auth callback security audit events', () => {
     expect(loginState.destroy).toHaveBeenCalledOnce()
   })
 
+  it('diagnoses forwarded callback-host mismatches without logging cookie contents', async () => {
+    const loginState = freshLoginState({ codeVerifier: '' as never })
+    getLoginStateMock.mockResolvedValue(loginState)
+    getSessionMock.mockResolvedValue(freshPriorSession())
+
+    const GET = await importGet()
+    await GET(
+      buildCallbackRequest('http://localhost:3000/api/auth/callback?code=abc', {
+        accept: 'application/json',
+        cookie: 'kravhantering_session_login=sensitive-cookie',
+        forwardedHost: 'proxy.example.test',
+        forwardedProto: 'https',
+      }),
+    )
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Login callback failed',
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          forwardedHost: 'proxy.example.test',
+          forwardedProto: 'https',
+          likelyCause: 'callback_host_mismatch',
+          loginStateCookiePresent: true,
+        }),
+      }),
+    )
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(
+      'sensitive-cookie',
+    )
+  })
+
   it('emits auth.login.failed with reason=state_missing', async () => {
     const loginState = freshLoginState({ state: '' as never })
     getLoginStateMock.mockResolvedValue(loginState)
@@ -334,6 +381,20 @@ describe('auth callback security audit events', () => {
     expect(events[0].detail).toEqual({
       reason: 'token_exchange_failed',
       errorName: 'TokenExchangeError',
+    })
+  })
+
+  it('sanitizes non-Error token exchange failures', async () => {
+    getLoginStateMock.mockResolvedValue(freshLoginState())
+    getSessionMock.mockResolvedValue(freshPriorSession())
+    authorizationCodeGrantMock.mockRejectedValue('exchange rejected')
+    const GET = await importGet()
+
+    const response = await GET(buildCallbackRequest())
+
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'token_exchange_failed',
+      reason: 'Error',
     })
   })
 
@@ -590,6 +651,45 @@ describe('auth callback security audit events', () => {
     expect(response.headers.get('location')).toBe(
       'http://localhost:3000/sv/requirements?tab=open',
     )
+  })
+
+  it.each([
+    [undefined, '/sv'],
+    ['', '/sv'],
+    ['https://evil.example/path', '/sv'],
+    ['//evil.example/path', '/sv'],
+    ['/sv\\requirements', '/sv'],
+    [`/sv\0requirements`, '/sv'],
+    ['/requirements', '/sv'],
+    ['/', '/'],
+    ['/en', '/en'],
+  ])('sanitizes callback returnTo %p to %s', async (returnTo, expected) => {
+    const loginState = freshLoginState({ returnTo: returnTo as string })
+    const priorSession = freshPriorSession()
+    const currentSession = freshPriorSession({ idToken: 'old', email: 'old' })
+    getLoginStateMock.mockResolvedValue(loginState)
+    getSessionMock
+      .mockResolvedValueOnce(priorSession)
+      .mockResolvedValueOnce(currentSession)
+    authorizationCodeGrantMock.mockResolvedValue({
+      claims: () => ({
+        ...SUCCESS_CLAIMS,
+        email: 'alice@example.test',
+        email_verified: true,
+      }),
+      expiresIn: () => -1,
+      id_token: undefined,
+    })
+
+    const GET = await importGet()
+    const response = await GET(buildCallbackRequest())
+
+    expect(response.headers.get('location')).toBe(
+      `http://localhost:3000${expected}`,
+    )
+    expect(currentSession.email).toBe('alice@example.test')
+    expect(currentSession.idToken).toBeUndefined()
+    expect(loginState.destroy).toHaveBeenCalledOnce()
   })
 
   it('uses the conservative token-expiry fallback when expiresIn is missing', async () => {

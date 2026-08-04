@@ -278,6 +278,131 @@ describe('verifyMcpBearerToken', () => {
     expect(jwtVerifyMock).not.toHaveBeenCalled()
   })
 
+  it('rejects malformed OIDC discovery jwks_uri values', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    mockOidcConfiguration('not a URL')
+
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer abc.def.ghi' },
+        }),
+      ),
+    ).rejects.toSatisfy(
+      error =>
+        error instanceof McpAuthError &&
+        /invalid `jwks_uri`/.test(error.message),
+    )
+  })
+
+  it('allows the development HTTP JWKS endpoint explicitly', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'http://localhost:8080/realms/dev',
+      apiAudience: 'kravhantering-app',
+    })
+    mockOidcConfiguration('http://localhost:8080/realms/dev/certs')
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        sub: 'svc',
+        employeeHsaId: 'SE5560000001-mcp1',
+        roles: [],
+      },
+    })
+
+    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+    await verifyMcpBearerToken(
+      new Request('http://x/', {
+        headers: { authorization: 'Bearer abc.def.ghi' },
+      }),
+    )
+
+    expect(createRemoteJWKSetMock).toHaveBeenCalledWith(
+      new URL('http://localhost:8080/realms/dev/certs'),
+    )
+  })
+
+  it('reuses JWKS for the same issuer and discovery URI', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        sub: 'svc',
+        employeeHsaId: 'SE5560000001-mcp1',
+        roles: [],
+      },
+    })
+    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+    const request = () =>
+      new Request('http://x/', {
+        headers: { authorization: 'Bearer abc.def.ghi' },
+      })
+
+    await verifyMcpBearerToken(request())
+    await verifyMcpBearerToken(request())
+
+    expect(createRemoteJWKSetMock).toHaveBeenCalledOnce()
+    expect(jwtVerifyMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('accepts an authenticated service identity from azp without a subject', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        azp: 'mcp-client',
+        employeeHsaId: 'SE5560000001-mcp1',
+        roles: [],
+        scope: '  mcp:read   ',
+      },
+    })
+    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+
+    const result = await verifyMcpBearerToken(
+      new Request('http://x/', {
+        headers: { authorization: 'Bearer abc.def.ghi' },
+      }),
+    )
+
+    expect(result.actor).toMatchObject({
+      id: null,
+      displayName: '',
+      isAuthenticated: false,
+    })
+  })
+
+  it('normalizes non-Error JWT verification failures', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockRejectedValue('invalid token')
+    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer invalid' },
+        }),
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: 'Invalid Bearer token: Invalid token.',
+        status: 401,
+      }),
+    )
+  })
+
   it('wraps issuer-mismatch verify failures as McpAuthError(401)', async () => {
     getAuthConfigMock.mockReturnValue({
       issuerUrl: 'https://issuer.example.com',

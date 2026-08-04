@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   assertHsaId,
+  composeHsaId,
   HSA_ID_MAX_LENGTH,
   HsaIdFormatError,
   isHsaId,
+  isHsaIdPrefix,
+  isHsaIdSuffix,
+  splitHsaId,
 } from '@/lib/auth/hsa-id'
 
 describe('isHsaId / assertHsaId', () => {
@@ -61,5 +65,30 @@ describe('isHsaId / assertHsaId', () => {
 
   it('does not consider a service identifier to be an HSA-id', () => {
     expect(isHsaId('mcp-client:kravhantering-mcp')).toBe(false)
+  })
+
+  it('validates HSA-id prefix and suffix components', () => {
+    expect(isHsaIdPrefix('SE5560000001')).toBe(true)
+    expect(isHsaIdPrefix(123)).toBe(false)
+    expect(isHsaIdPrefix('se5560000001')).toBe(false)
+    expect(isHsaIdSuffix('Reviewer123')).toBe(true)
+    expect(isHsaIdSuffix(undefined)).toBe(false)
+    expect(isHsaIdSuffix('Reviewer-123')).toBe(false)
+  })
+
+  it('splits and composes HSA-id components', () => {
+    expect(splitHsaId('SE5560000001-reviewer1')).toEqual({
+      prefix: 'SE5560000001',
+      suffix: 'reviewer1',
+    })
+    expect(splitHsaId('reviewer1')).toEqual({
+      prefix: '',
+      suffix: 'reviewer1',
+    })
+    expect(composeHsaId('SE5560000001', 'reviewer1')).toBe(
+      'SE5560000001-reviewer1',
+    )
+    expect(composeHsaId('', 'reviewer1')).toBe('')
+    expect(composeHsaId('SE5560000001', '')).toBe('')
   })
 })
