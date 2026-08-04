@@ -18,8 +18,24 @@ vi.mock('@/components/ConfirmModal', () => ({
 }))
 
 vi.mock('@/components/StatusBadge', () => ({
-  default: ({ label }: { label: string }) => (
-    <span data-testid="status-badge">{label}</span>
+  default: ({
+    color,
+    iconName,
+    label,
+    theme = 'auto',
+  }: {
+    color: string | null
+    iconName?: string | null
+    label: string
+    theme?: string
+  }) => (
+    <span
+      data-badge-color={color}
+      data-badge-icon={iconName}
+      data-badge-theme={theme}
+    >
+      {label}
+    </span>
   ),
 }))
 
@@ -103,6 +119,62 @@ describe('RequirementStatusesClient', () => {
         }) as HTMLInputElement
       ).value,
     ).toBe('Draft')
+  })
+
+  it('shows shared light and dark badge previews with exact color metadata', async () => {
+    render(<RequirementStatusesClient />)
+    await screen.findByText('Draft')
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+
+    const preview = screen.getByRole('status', {
+      name: 'statusMgmt.themePreview',
+    })
+    expect(preview).toHaveTextContent('statusMgmt.lightTheme')
+    expect(preview).toHaveTextContent('statusMgmt.darkTheme')
+    expect(preview).toHaveTextContent('statusMgmt.contrastPass')
+    expect(preview.querySelector('[data-badge-theme="light"]')).toHaveAttribute(
+      'data-badge-color',
+      '#3b82f6',
+    )
+    expect(
+      preview.querySelector('[data-badge-theme="dark"]'),
+    ).toHaveTextContent('Draft')
+    expect(screen.getByLabelText('statusMgmt.colorHex')).toHaveValue('#3b82f6')
+    expect(
+      document.querySelector('[data-color-swatch="exact-rgb"]'),
+    ).toHaveStyle({ backgroundColor: '#3b82f6' })
+    expect(
+      document.querySelector(
+        '[data-developer-mode-name="theme contrast preview"]',
+      ),
+    ).toBeTruthy()
+  })
+
+  it('surfaces an invalid stored color without fallback accent styling', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({
+        statuses: [{ ...sampleStatuses[0], color: 'invalid-color' }],
+      }),
+    )
+    render(<RequirementStatusesClient />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'statusMgmt.invalidStoredColors',
+    )
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    expect(screen.getByLabelText('statusMgmt.colorHex')).toHaveValue(
+      'invalid-color',
+    )
+    expect(screen.getByLabelText('statusMgmt.colorHex')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'statusMgmt.invalidColorWarning',
+    )
+    expect(document.querySelector('[data-color-swatch="exact-rgb"]')).toBeNull()
+    expect(document.querySelector('[style*="invalid-color"]')).toBeNull()
   })
 
   it('closes edit form on cancel', async () => {

@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import StatusIcon from '@/components/StatusIcon'
-import { pickReadableTextOn } from '@/lib/color-contrast'
+import { isStrictHexColor, pickReadableTextOn } from '@/lib/color-contrast'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 interface StatusStep {
@@ -95,7 +95,11 @@ export default function StatusStepper({
     return statuses
   }, [statuses])
   const targetIndex = steps.findIndex(s => s.id === currentStatusId)
-  const activeColor = steps[targetIndex]?.color ?? '#6b7280'
+  const configuredActiveColor = steps[targetIndex]?.color
+  const activeColor =
+    configuredActiveColor && isStrictHexColor(configuredActiveColor)
+      ? configuredActiveColor
+      : null
   const containerRef = useRef<HTMLDivElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const [sliderPos, setSliderPos] = useState<{
@@ -130,7 +134,7 @@ export default function StatusStepper({
   const stepLabel = (step: StatusStep) =>
     isArchiving && step.id === 2 ? t('Arkiveringsgranskning') : t(step.nameSv)
 
-  const sliderTextColor = pickReadableTextOn(activeColor)
+  const sliderTextColor = activeColor ? pickReadableTextOn(activeColor) : null
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: <fieldset> is for form controls; this is a workflow progress indicator
@@ -195,10 +199,10 @@ export default function StatusStepper({
           }}
         >
           <div
-            className="h-10 flex items-center justify-center"
+            className={`h-10 flex items-center justify-center ${activeColor ? '' : 'bg-secondary-700 text-white dark:bg-secondary-200 dark:text-secondary-900'}`}
             style={{
-              backgroundColor: activeColor,
-              color: sliderTextColor,
+              backgroundColor: activeColor ?? undefined,
+              color: sliderTextColor ?? undefined,
               clipPath: sliderClipPath(targetIndex === 0),
               transition:
                 'clip-path 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out',

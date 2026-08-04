@@ -137,6 +137,47 @@ describe('requirement-statuses/[id] route', () => {
     ).not.toHaveBeenCalled()
   })
 
+  it.each(['#abc', '3b82f6', '#3b82f6ff', '#3b82fg', ' #3b82f6'])(
+    'PUT rejects invalid requirement version status color %s before opening the DB',
+    async color => {
+      const req = new NextRequest('http://localhost', {
+        method: 'PUT',
+        body: JSON.stringify({ color }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const res = await route.PUT(req, makeParams('1'))
+      const json = (await res.json()) as {
+        error: string
+        issues: Array<{ path: string }>
+      }
+
+      expect(res.status).toBe(400)
+      expect(json.error).toBe('Invalid request')
+      expect(json.issues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: 'color' })]),
+      )
+      expect(getRequestSqlServerDataSourceMock).not.toHaveBeenCalled()
+      expect(mockUpdateStatus).not.toHaveBeenCalled()
+    },
+  )
+
+  it('PUT preserves a valid uppercase requirement version status color', async () => {
+    mockUpdateStatus.mockResolvedValue({ color: '#A1B2C3', id: 1 })
+    const req = new NextRequest('http://localhost', {
+      method: 'PUT',
+      body: JSON.stringify({ color: '#A1B2C3' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const res = await route.PUT(req, makeParams('1'))
+
+    expect(res.status).toBe(200)
+    expect(mockUpdateStatus).toHaveBeenCalledWith(expect.anything(), 1, {
+      color: '#A1B2C3',
+    })
+  })
+
   it('PUT returns 400 for invalid ids before opening the DB', async () => {
     const req = new NextRequest('http://localhost', {
       method: 'PUT',

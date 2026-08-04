@@ -1,6 +1,7 @@
 import {
   type APIRequestContext,
   expect,
+  type Locator,
   type Page,
   test,
 } from '@playwright/test'
@@ -31,6 +32,32 @@ interface PriorityLevel {
   sortOrder: number
 }
 
+interface RequirementStatus {
+  color: string
+  iconName: string | null
+  id: number
+  isSystem: boolean
+  nameEn: string
+  nameSv: string
+  sortOrder: number
+}
+
+const CANONICAL_REQUIREMENT_STATUS_COLORS = new Map([
+  [1, '#3b82f6'],
+  [2, '#eab308'],
+  [3, '#22c55e'],
+  [4, '#6b7280'],
+])
+
+const CANONICAL_USAGE_STATUS_COLORS = new Map([
+  [1, '#94a3b8'],
+  [2, '#f59e0b'],
+  [3, '#3b82f6'],
+  [4, '#22c55e'],
+  [5, '#ef4444'],
+  [6, '#6b7280'],
+])
+
 async function getUsageStatuses(
   request: APIRequestContext,
 ): Promise<SpecificationItemStatus[]> {
@@ -53,6 +80,18 @@ async function getPriorityLevels(
     priorityLevels?: PriorityLevel[]
   }
   return body.priorityLevels ?? []
+}
+
+async function getRequirementStatuses(
+  request: APIRequestContext,
+): Promise<RequirementStatus[]> {
+  const response = await request.get('/api/requirement-statuses')
+  await expectApiResponseOk(response, 'GET requirement statuses')
+
+  const body = (await response.json()) as {
+    statuses?: RequirementStatus[]
+  }
+  return (body.statuses ?? []).filter(status => status.isSystem)
 }
 
 async function openUsageStatusForm(
@@ -86,6 +125,44 @@ async function openPriorityLevelForm(page: Page, priorityLevel: PriorityLevel) {
   })
 }
 
+async function openRequirementStatusForm(
+  page: Page,
+  status: RequirementStatus,
+) {
+  await page.goto('/sv/requirement-statuses')
+
+  const row = page.getByRole('row', { name: new RegExp(status.nameSv) })
+  await row.getByRole('button', { name: 'Redigera' }).click()
+
+  return page.locator('form').filter({
+    has: page.getByRole('heading', { name: 'Redigera' }),
+  })
+}
+
+async function expectStatusColorPreview(form: Locator, expectedColor: string) {
+  await expect(
+    form.getByRole('textbox', { name: 'Färgkod (hex)' }),
+  ).toHaveValue(expectedColor)
+  const preview = form.getByRole('status', {
+    name: 'Förhandsvisning av märke',
+  })
+  await expect(preview.getByText('Ljust tema')).toBeVisible()
+  await expect(preview.getByText('Mörkt tema')).toBeVisible()
+  await expect(preview.getByText(/Kontrast \d+\.\d{2}:1/)).toHaveCount(2)
+  await expect(preview.getByText('Uppfyller AA')).toHaveCount(2)
+  await expect(preview.locator('.status-badge--light')).toHaveAttribute(
+    'data-accent-color',
+    expectedColor,
+  )
+  await expect(preview.locator('.status-badge--dark')).toHaveAttribute(
+    'data-accent-color',
+    expectedColor,
+  )
+  const swatch = form.locator('[data-color-swatch="exact-rgb"]')
+  await expect(swatch).toBeVisible()
+  await expect(swatch).toHaveCSS('border-style', 'solid')
+}
+
 async function restoreUsageStatus(page: Page, status: SpecificationItemStatus) {
   const form = await openUsageStatusForm(page, status)
   const definitionInput = form.getByRole('textbox', {
@@ -115,6 +192,31 @@ async function restorePriorityLevel(page: Page, priorityLevel: PriorityLevel) {
 }
 
 test.describe('Admin statuses and workflows', () => {
+  test('ADMIN-02: both status catalogs preview every canonical color in both themes', async ({
+    page,
+    request,
+  }) => {
+    const requirementStatuses = await getRequirementStatuses(request)
+    const usageStatuses = await getUsageStatuses(request)
+
+    expect(requirementStatuses).toHaveLength(4)
+    expect(usageStatuses).toHaveLength(6)
+
+    for (const status of requirementStatuses) {
+      const expectedColor = CANONICAL_REQUIREMENT_STATUS_COLORS.get(status.id)
+      expect(expectedColor).toBeDefined()
+      const form = await openRequirementStatusForm(page, status)
+      await expectStatusColorPreview(form, expectedColor ?? '')
+    }
+
+    for (const status of usageStatuses) {
+      const expectedColor = CANONICAL_USAGE_STATUS_COLORS.get(status.id)
+      expect(expectedColor).toBeDefined()
+      const form = await openUsageStatusForm(page, status)
+      await expectStatusColorPreview(form, expectedColor ?? '')
+    }
+  })
+
   test('ADMIN-02: usage status form saves changes after cancelled discard', async ({
     page,
     request,

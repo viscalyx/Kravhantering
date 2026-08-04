@@ -22,7 +22,25 @@ vi.mock('@/components/ConfirmModal', () => ({
 }))
 
 vi.mock('@/components/StatusBadge', () => ({
-  default: ({ label }: { label: string }) => <span>{label}</span>,
+  default: ({
+    color,
+    iconName,
+    label,
+    theme = 'auto',
+  }: {
+    color: string | null
+    iconName?: string | null
+    label: string
+    theme?: string
+  }) => (
+    <span
+      data-badge-color={color}
+      data-badge-icon={iconName}
+      data-badge-theme={theme}
+    >
+      {label}
+    </span>
+  ),
 }))
 
 function notOk() {
@@ -234,6 +252,59 @@ describe('SpecificationItemStatusesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
+  })
+
+  it('shows shared light and dark badge previews with exact color metadata', async () => {
+    render(<SpecificationItemStatusesClient />)
+    await screen.findAllByText('Included')
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[1])
+    await screen.findByText('common.noneAvailable')
+
+    const preview = screen.getByRole('status', {
+      name: 'specificationItemStatusAdmin.themePreview',
+    })
+    expect(preview).toHaveTextContent('specificationItemStatusAdmin.lightTheme')
+    expect(preview).toHaveTextContent('specificationItemStatusAdmin.darkTheme')
+    expect(preview).toHaveTextContent(
+      'specificationItemStatusAdmin.contrastPass',
+    )
+    expect(preview.querySelector('[data-badge-theme="light"]')).toHaveAttribute(
+      'data-badge-color',
+      '#94a3b8',
+    )
+    expect(
+      document.querySelector('[data-color-swatch="exact-rgb"]'),
+    ).toHaveStyle({ backgroundColor: '#94a3b8' })
+    expect(
+      document.querySelector(
+        '[data-developer-mode-name="theme contrast preview"]',
+      ),
+    ).toBeTruthy()
+  })
+
+  it('surfaces an invalid stored color without fallback accent styling', async () => {
+    fetchMock.mockResolvedValue(
+      okResponse({
+        statuses: [{ ...sampleStatuses[1], color: 'invalid-color' }],
+      }),
+    )
+    render(<SpecificationItemStatusesClient />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specificationItemStatusAdmin.invalidStoredColors',
+    )
+    fireEvent.click(screen.getByRole('button', { name: /common\.edit/i }))
+    await screen.findByText('common.noneAvailable')
+    expect(
+      screen.getByLabelText('specificationItemStatusAdmin.colorHex'),
+    ).toHaveValue('invalid-color')
+    expect(
+      screen.getByRole('status', {
+        name: 'specificationItemStatusAdmin.themePreview',
+      }),
+    ).toHaveTextContent('specificationItemStatusAdmin.invalidColorWarning')
+    expect(document.querySelector('[data-color-swatch="exact-rgb"]')).toBeNull()
+    expect(document.querySelector('[style*="invalid-color"]')).toBeNull()
   })
 
   it('shows an error instead of an empty state when linked specifications fail to load', async () => {

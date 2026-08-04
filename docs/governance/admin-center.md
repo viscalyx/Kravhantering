@@ -595,6 +595,20 @@ An invalid stored value is shown without accent styling and produces an
 administration warning until it is corrected; valid custom colors are neither
 normalized nor replaced.
 
+Requirement version statuses and usage statuses follow the same color
+contract. Each row stores one exact, case-preserved `#RRGGBB` accent. Their
+editors show the real shared badge in labeled light- and dark-theme previews,
+including the calculated contrast ratio and AA result, beside a bordered
+rectangular exact-color sample. Invalid stored values remain visible in the
+hexadecimal field for correction, omit accent styling, and produce a catalog
+warning naming the affected statuses.
+
+Status identity in browser views always includes the localized name. The
+configured icon is decorative; a status without an icon stays text-only and
+does not receive a replacement symbol. Administration tables use the complete
+badge for identity and show the exact hexadecimal value only as textual
+metadata. Native status selects remain text-only.
+
 Read-only browser views present a resolved priority through the shared badge
 as its stable P-code, an en dash, and the localized name. The badge also uses
 the configured accent and optional decorative icon. This applies to lists,
@@ -631,7 +645,8 @@ If you change any of the following, update this document:
 - admin entrypoint navigation
 - taxonomy and status/workflow navigation structure
 - status, usage-status, or priority-level icon behavior
-- priority color validation, previews, or theme contrast behavior
+- status, usage-status, or priority color validation, previews, or theme
+  contrast behavior
 
 If you add a new requirement column or property, also update
 [.github/instructions/add-requirement-column.instructions.md](../../.github/instructions/add-requirement-column.instructions.md).

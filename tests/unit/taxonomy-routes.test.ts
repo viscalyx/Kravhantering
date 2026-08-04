@@ -1064,6 +1064,42 @@ describe('specification-item-statuses catalog routes', () => {
     expect(r.status).toBe(404)
     await expect(r.json()).resolves.toEqual({ error: 'Not found' })
   })
+
+  it.each(['#abc', '94a3b8', '#94a3b8ff', '#94a3bg', ' #94a3b8'])(
+    'PUT rejects invalid usage status color %s before opening the DB',
+    async color => {
+      const r = await putSpecItemStatus(
+        jsonReq('PUT', { color }),
+        makeParams('1'),
+      )
+
+      expect(r.status).toBe(400)
+      await expect(r.json()).resolves.toMatchObject({
+        error: 'Invalid request',
+        issues: expect.arrayContaining([
+          expect.objectContaining({ path: 'color' }),
+        ]),
+      })
+      expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+      expect(mockUpdateSpecItemStatus).not.toHaveBeenCalled()
+    },
+  )
+
+  it('PUT preserves a valid uppercase usage status color', async () => {
+    mockUpdateSpecItemStatus.mockResolvedValue({ color: '#A1B2C3', id: 1 })
+
+    const r = await putSpecItemStatus(
+      jsonReq('PUT', { color: '#A1B2C3' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    expect(mockUpdateSpecItemStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      { color: '#A1B2C3' },
+    )
+  })
 })
 
 describe('requirement-areas routes', () => {

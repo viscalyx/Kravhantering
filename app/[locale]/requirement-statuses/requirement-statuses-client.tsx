@@ -1,5 +1,6 @@
 'use client'
 
+import { AlertTriangle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
@@ -10,7 +11,10 @@ import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import IconPicker from '@/components/IconPicker'
 import StatusBadge from '@/components/StatusBadge'
+import StatusBadgeThemePreview from '@/components/StatusBadgeThemePreview'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
+import { isStrictHexColor } from '@/lib/color-contrast'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 const REQUIREMENT_STATUSES_HELP: HelpContent = {
   sections: [
@@ -55,7 +59,7 @@ const getInitialForm = (): StatusForm => ({
 })
 
 const toForm = (status: Status): StatusForm => ({
-  color: status.color ?? '#3b82f6',
+  color: status.color ?? '',
   iconName: status.iconName ?? null,
   nameEn: status.nameEn,
   nameSv: status.nameSv,
@@ -117,6 +121,9 @@ export default function RequirementStatusesClient() {
     ...controller,
     items: controller.items.filter(status => status.isSystem),
   }
+  const invalidStoredStatuses = systemStatusController.items.filter(
+    status => !status.color || !isStrictHexColor(status.color),
+  )
 
   const columns: CrudAdminColumn<Status>[] = [
     {
@@ -135,15 +142,8 @@ export default function RequirementStatusesClient() {
       header: t('color'),
       key: 'color',
       render: status => (
-        <span className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="inline-block h-4 w-4 rounded-full border"
-            style={{ backgroundColor: status.color ?? '#ccc' }}
-          />
-          <span className="font-mono text-xs text-secondary-500">
-            {status.color}
-          </span>
+        <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
+          {status.color}
         </span>
       ),
     },
@@ -167,6 +167,28 @@ export default function RequirementStatusesClient() {
       controller={systemStatusController}
       devContext="requirement version statuses"
       emptyStateMessage={t('emptyState')}
+      notice={
+        invalidStoredStatuses.length > 0 ? (
+          <p
+            className="mb-4 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+            {...devMarker({
+              context: 'requirement version statuses',
+              name: 'invalid color warning',
+              priority: 350,
+              value: invalidStoredStatuses.map(status => status.id).join(','),
+            })}
+            role="alert"
+          >
+            <AlertTriangle
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0"
+            />
+            {t('invalidStoredColors', {
+              statuses: invalidStoredStatuses.map(getName).join(', '),
+            })}
+          </p>
+        ) : null
+      }
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>
           <div>
@@ -235,31 +257,56 @@ export default function RequirementStatusesClient() {
           <div>
             <FieldLabelWithHelp
               help={t('colorHelp')}
-              htmlFor="status-color"
+              htmlFor="status-color-hex"
               label={t('color')}
             />
             <div className="flex items-center gap-3">
+              {isStrictHexColor(form.color) && (
+                <input
+                  aria-label={t('colorPicker')}
+                  className="h-10 w-14 shrink-0 rounded-lg border cursor-pointer"
+                  disabled={disabled}
+                  id="status-color-picker"
+                  onChange={event =>
+                    setForm(previousForm => ({
+                      ...previousForm,
+                      color: event.target.value,
+                    }))
+                  }
+                  type="color"
+                  value={form.color}
+                />
+              )}
               <input
-                className="h-10 w-10 rounded-lg border-0 cursor-pointer"
+                aria-describedby={
+                  isStrictHexColor(form.color)
+                    ? undefined
+                    : 'status-color-warning'
+                }
+                aria-invalid={!isStrictHexColor(form.color)}
+                aria-label={t('colorHex')}
+                className={`${inputClassName} min-w-0 max-w-36`}
                 disabled={disabled}
-                id="status-color"
+                id="status-color-hex"
                 onChange={event =>
                   setForm(previousForm => ({
                     ...previousForm,
                     color: event.target.value,
                   }))
                 }
-                type="color"
+                pattern="^#[0-9a-fA-F]{6}$"
+                placeholder="#3b82f6"
+                required
                 value={form.color}
               />
-              <span className="text-sm font-mono text-secondary-500">
-                {form.color}
-              </span>
-              <StatusBadge
-                color={form.color}
-                iconName={form.iconName}
-                label={form.nameSv || t('preview')}
-              />
+              {isStrictHexColor(form.color) && (
+                <span
+                  aria-hidden="true"
+                  className="h-8 w-10 shrink-0 rounded border-2 border-secondary-400 dark:border-secondary-500"
+                  data-color-swatch="exact-rgb"
+                  style={{ backgroundColor: form.color }}
+                />
+              )}
             </div>
           </div>
           <div>
@@ -281,6 +328,20 @@ export default function RequirementStatusesClient() {
               value={form.iconName}
             />
           </div>
+          <StatusBadgeThemePreview
+            color={form.color}
+            contrastPassLabel={t('contrastPass')}
+            contrastResultLabel={ratio => t('contrastResult', { ratio })}
+            darkThemeLabel={t('darkTheme')}
+            developerModeContext="requirement version statuses"
+            guidance={t('themePreviewGuidance')}
+            iconName={form.iconName}
+            invalidColorWarning={t('invalidColorWarning')}
+            label={locale === 'sv' ? form.nameSv : form.nameEn}
+            lightThemeLabel={t('lightTheme')}
+            title={t('themePreview')}
+            warningId="status-color-warning"
+          />
         </>
       )}
       title={tn('statuses')}

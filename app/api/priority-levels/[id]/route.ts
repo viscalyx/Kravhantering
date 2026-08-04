@@ -16,6 +16,7 @@ import {
   idParamSchema,
   nonNegativeIntegerSchema,
   parseRouteParams,
+  strictHexColorSchema,
 } from '@/lib/http/validation'
 import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
@@ -27,10 +28,7 @@ const updatePriorityLevelSchema = z
   .object({
     assessmentCriteriaEn: boundedDbStringSchema.optional(),
     assessmentCriteriaSv: boundedDbStringSchema.optional(),
-    color: z
-      .string()
-      .regex(/^#[0-9a-fA-F]{6}$/)
-      .optional(),
+    color: strictHexColorSchema.optional(),
     descriptionEn: boundedDbStringSchema.optional(),
     descriptionSv: boundedDbStringSchema.optional(),
     iconName: nullableOptionalStatusIconNameSchema,

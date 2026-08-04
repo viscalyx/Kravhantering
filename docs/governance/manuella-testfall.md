@@ -1638,12 +1638,17 @@ session.
 **Steg:** Öppna ett testbart taxonomi- eller statusformulär, kontrollera att
 Spara är inaktiverad innan ändring, gör en liten ändring, klicka Avbryt och
 avbryt förkastandet. Öppna en prioritet och öppna hjälpen för
-`Sorteringsordning`, `Färg` och `Ikon`. Spara därefter ändringen.
+`Sorteringsordning`, `Färg` och `Ikon`. Öppna därefter varje systemstyrd
+kravversionsstatus och användningsstatus. Kontrollera den exakta färgkoden,
+den kantlinjeförsedda färgrutan samt de märkta förhandsvisningarna för ljust
+och mörkt tema. Spara därefter ändringen.
 
 **Förväntat resultat:** Spara aktiveras först efter ändringen. Formulär med
 osparade ändringar kräver bekräftelse innan det stängs. Ändringen visas efter
 omladdning. Varje hjälpknapp visar rätt fältspecifik och lokaliserad
-vägledning.
+vägledning. Varje kanonisk statusfärg visar det lokaliserade namnet i det
+gemensamma märket och minst kontrast 4,5:1 med resultatet `Uppfyller AA` i
+båda temana. Färgprovet är rektangulärt och används inte som statusmarkör.
 
 ### ADMIN-03: webbläsarens bakåtknapp återställer taxonomiflik
 

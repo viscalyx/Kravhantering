@@ -827,7 +827,7 @@ Requirement version statuses governing the lifecycle of a requirement version.
 | `name_sv` | text, unique | Swedish display name |
 | `name_en` | text, unique | English display name |
 | `sort_order` | integer | Display ordering |
-| `color` | text | Hex color code for UI badges |
+| `color` | text | Admin-selected `#RRGGBB` accent; valid values stay exact |
 | `icon_name` | text | Allowed lucide icon name (nullable) |
 | `is_system` | boolean (integer) | `true` for built-in requirement version statuses that cannot be deleted |
 <!-- markdownlint-enable MD013 -->
@@ -840,6 +840,11 @@ Requirement version statuses governing the lifecycle of a requirement version.
 | 2 | Granskning | Review | `#eab308` (yellow) | `Eye` |
 | 3 | Publicerad | Published | `#22c55e` (green) | `CheckCircle2` |
 | 4 | Arkiverad | Archived | `#6b7280` (gray) | `Archive` |
+
+Migration 0053 repairs an invalid color only for seeded IDs 1-4 by restoring
+the canonical value above. It preserves every valid customized value exactly
+and intentionally rejects rollback because replaced invalid values cannot be
+recovered.
 
 ---
 
@@ -1448,7 +1453,7 @@ sort order, but usage statuses are not created or deleted.
 | `name_en` | text, unique | English display name |
 | `description_sv` | text | Swedish description (nullable) |
 | `description_en` | text | English description (nullable) |
-| `color` | text | Hex color code for UI badges |
+| `color` | text | Admin-selected `#RRGGBB` accent; valid values stay exact |
 | `icon_name` | text | Allowed lucide icon name (nullable) |
 | `sort_order` | integer | Display ordering |
 
@@ -1466,6 +1471,11 @@ sort order, but usage statuses are not created or deleted.
 | 6 | Ej tillämpbar | Not Applicable | `#6b7280` | `XCircle` |
 
 <!-- markdownlint-enable MD013 -->
+
+Migration 0053 applies the same invalid-color repair to seeded IDs 1-6. It
+uses the canonical values above, preserves every valid customized value
+exactly, and intentionally rejects rollback because replaced invalid values
+cannot be recovered.
 
 ---
 

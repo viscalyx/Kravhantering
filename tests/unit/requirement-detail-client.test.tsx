@@ -1501,7 +1501,7 @@ describe('RequirementDetailClient', () => {
 
     expect(bannerText).toBeInTheDocument()
     expect(screen.queryByText('Viewing older version v8')).toBeNull()
-    expect(bannerIcon).toHaveStyle({ color: '#22c55e' })
+    expect(bannerIcon).toBeNull()
   })
 
   it('falls back to the review availability banner when no newer published version exists', async () => {
@@ -1535,7 +1535,7 @@ describe('RequirementDetailClient', () => {
 
     expect(bannerText).toBeInTheDocument()
     expect(screen.queryByText('Viewing older version v8')).toBeNull()
-    expect(bannerIcon).toHaveStyle({ color: '#eab308' })
+    expect(bannerIcon).toBeNull()
   })
 
   it('falls back to the draft availability banner when no newer published or review version exists', async () => {
@@ -1569,7 +1569,7 @@ describe('RequirementDetailClient', () => {
 
     expect(bannerText).toBeInTheDocument()
     expect(screen.queryByText('Viewing older version v8')).toBeNull()
-    expect(bannerIcon).toHaveStyle({ color: '#3b82f6' })
+    expect(bannerIcon).toBeNull()
   })
 
   it('transitions a draft requirement to review and deletes the draft version after confirmation', async () => {

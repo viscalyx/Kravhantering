@@ -220,4 +220,19 @@ describe('StatusStepper', () => {
     const slider = findActiveSlider(container, 'rgb(30, 58, 138)')
     expect(slider?.style.color).toBe('rgb(255, 255, 255)')
   })
+
+  it('omits configured accent styling when the active color is invalid', () => {
+    const invalid = [
+      { id: 1, color: 'invalid-color', nameEn: 'Draft', nameSv: 'Utkast' },
+    ]
+    const { container } = render(
+      <StatusStepper currentStatusId={1} statuses={invalid} />,
+    )
+
+    const activeLabel = screen.getAllByText('Utkast')[1]
+    const slider = activeLabel?.closest('div')
+    expect(slider?.style.backgroundColor).toBe('')
+    expect(slider?.style.color).toBe('')
+    expect(container.innerHTML).not.toContain('invalid-color')
+  })
 })

@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  AlertCircle,
   AlignLeft,
   ArrowDown,
   ArrowUp,
@@ -45,7 +44,6 @@ import { useResizeHandles } from '@/components/_requirements-table/useResizeHand
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import RequirementsPackageFilter from '@/components/RequirementsPackageFilter'
 import StatusBadge from '@/components/StatusBadge'
-import StatusIcon from '@/components/StatusIcon'
 import { Link, useRouter } from '@/i18n/routing'
 import {
   devMarker,
@@ -2524,40 +2522,16 @@ export default function RequirementsTable({
                 '—'
               )}
               {row.hasPendingVersion && (
-                <span
-                  aria-label={t(
+                <StatusBadge
+                  color={row.pendingVersionStatusColor ?? null}
+                  iconName={row.pendingVersionStatusIconName ?? null}
+                  label={t(
                     row.pendingVersionStatusId === 1
                       ? 'hasPendingVersionDraft'
                       : 'hasPendingVersionReview',
                   )}
-                  role="img"
-                  style={{
-                    color: row.pendingVersionStatusColor ?? undefined,
-                  }}
-                  title={t(
-                    row.pendingVersionStatusId === 1
-                      ? 'hasPendingVersionDraft'
-                      : 'hasPendingVersionReview',
-                  )}
-                >
-                  {row.pendingVersionStatusIconName ? (
-                    <StatusIcon
-                      className="h-3.5 w-3.5"
-                      name={row.pendingVersionStatusIconName}
-                      style={{
-                        color: row.pendingVersionStatusColor ?? undefined,
-                      }}
-                    />
-                  ) : (
-                    <AlertCircle
-                      aria-hidden="true"
-                      className="h-3.5 w-3.5"
-                      style={{
-                        color: row.pendingVersionStatusColor ?? undefined,
-                      }}
-                    />
-                  )}
-                </span>
+                  size="sm"
+                />
               )}
             </span>
           </td>

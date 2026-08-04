@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { type ZodError, type ZodType, z } from 'zod'
+import { isStrictHexColor } from '@/lib/color-contrast'
 import {
   ARRAY_INPUT_MAX_ITEMS,
   BUSINESS_TEXT_MAX_LENGTH,
@@ -56,6 +57,10 @@ export const boundedDbStringSchema = z
   .trim()
   .min(1)
   .max(DB_STRING_MAX_LENGTH)
+
+export const strictHexColorSchema = z
+  .string()
+  .refine(isStrictHexColor, 'Expected an exact #RRGGBB color')
 
 export const routeSegmentSchema = boundedDbStringSchema
 

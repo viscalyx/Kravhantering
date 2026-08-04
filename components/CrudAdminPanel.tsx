@@ -37,6 +37,7 @@ interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
   formPresentation?: CrudAdminFormPresentation
   formTitle?: (mode: CrudAdminFormMode) => string
   formTitleId?: string
+  notice?: ReactNode
   renderFormFields: (props: {
     disabled: boolean
     editId: CrudId | null
@@ -76,6 +77,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   formPresentation = 'inline',
   formTitle,
   formTitleId,
+  notice,
   renderFormFields,
   renderRowActions,
   title,
@@ -194,6 +196,8 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
             {visibleError}
           </div>
         )}
+
+        {notice}
 
         {formPresentation === 'modal' ? (
           <FormModal

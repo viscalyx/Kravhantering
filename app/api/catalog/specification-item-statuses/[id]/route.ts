@@ -17,6 +17,7 @@ import {
   nonNegativeIntegerSchema,
   nullableBusinessTextSchema,
   parseRouteParams,
+  strictHexColorSchema,
 } from '@/lib/http/validation'
 import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
@@ -26,7 +27,7 @@ type Params = Promise<{ id: string }>
 
 const specificationItemStatusUpdateSchema = z
   .object({
-    color: boundedDbStringSchema.optional(),
+    color: strictHexColorSchema.optional(),
     descriptionEn: nullableBusinessTextSchema.optional(),
     descriptionSv: nullableBusinessTextSchema.optional(),
     iconName: nullableOptionalStatusIconNameSchema,

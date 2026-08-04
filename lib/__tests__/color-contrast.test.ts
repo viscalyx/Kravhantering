@@ -20,6 +20,16 @@ const CANONICAL_PRIORITY_COLORS = [
   '#ef4444',
 ]
 
+const CANONICAL_STATUS_COLORS = [
+  '#3b82f6',
+  '#eab308',
+  '#22c55e',
+  '#6b7280',
+  '#94a3b8',
+  '#f59e0b',
+  '#ef4444',
+]
+
 describe('strict hex parsing and compositing', () => {
   it('accepts only exact case-insensitive #RRGGBB values', () => {
     expect(parseStrictHexColor('#A1b2C3')).toEqual([161, 178, 195])
@@ -181,6 +191,16 @@ describe('getBadgeContrastColors', () => {
           colors?.dark.background ?? '',
         ),
       ).toBeGreaterThanOrEqual(4.5)
+    },
+  )
+
+  it.each(CANONICAL_STATUS_COLORS)(
+    'keeps canonical status color %s at normal-text AA in both themes',
+    accent => {
+      const colors = getBadgeContrastColors(accent)
+
+      expect(colors?.light.ratio).toBeGreaterThanOrEqual(4.5)
+      expect(colors?.dark.ratio).toBeGreaterThanOrEqual(4.5)
     },
   )
 

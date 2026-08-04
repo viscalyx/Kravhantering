@@ -11,6 +11,7 @@ import {
   boundedDbStringSchema,
   idParamSchema,
   nonNegativeIntegerSchema,
+  strictHexColorSchema,
 } from '@/lib/http/validation'
 import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
 
@@ -18,7 +19,7 @@ export const dynamic = 'force-dynamic'
 
 const updateStatusSchema = z
   .object({
-    color: boundedDbStringSchema.optional(),
+    color: strictHexColorSchema.optional(),
     iconName: nullableOptionalStatusIconNameSchema,
     nameEn: boundedDbStringSchema.optional(),
     nameSv: boundedDbStringSchema.optional(),

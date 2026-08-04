@@ -15,6 +15,7 @@ import StatusIcon from '@/components/StatusIcon'
 import StatusStepper from '@/components/StatusStepper'
 import VersionHistory from '@/components/VersionHistory'
 import { useRouter } from '@/i18n/routing'
+import { isStrictHexColor } from '@/lib/color-contrast'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
@@ -881,23 +882,19 @@ export default function RequirementDetailClient({
           archivedVersionPreferredVersion &&
           archivedVersionBannerKey ? (
             <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
-              {archivedVersionPreferredVersion.statusIconName ? (
+              {archivedVersionPreferredVersion.statusIconName && (
                 <StatusIcon
                   aria-hidden="true"
                   className="h-3.5 w-3.5 shrink-0"
                   name={archivedVersionPreferredVersion.statusIconName}
                   style={{
                     color:
-                      archivedVersionPreferredVersion.statusColor ?? undefined,
-                  }}
-                />
-              ) : (
-                <AlertCircle
-                  aria-hidden="true"
-                  className="h-3.5 w-3.5 shrink-0"
-                  style={{
-                    color:
-                      archivedVersionPreferredVersion.statusColor ?? undefined,
+                      archivedVersionPreferredVersion.statusColor &&
+                      isStrictHexColor(
+                        archivedVersionPreferredVersion.statusColor,
+                      )
+                        ? archivedVersionPreferredVersion.statusColor
+                        : undefined,
                   }}
                 />
               )}
@@ -914,11 +911,7 @@ export default function RequirementDetailClient({
             </div>
           ) : isViewingHistory ? (
             <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
-              <Clock
-                aria-hidden="true"
-                className="h-3.5 w-3.5 shrink-0"
-                style={{ color: currentStatusColor ?? undefined }}
-              />
+              <Clock aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <span>
                 {t('viewingOlderVersion', {
                   version: String(currentVersionNumber),
@@ -930,18 +923,18 @@ export default function RequirementDetailClient({
             isViewingDisplayVersion &&
             !showsArchivedVersionAvailabilityBanner && (
               <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
-                {latest?.statusIconName ? (
+                {latest?.statusIconName && (
                   <StatusIcon
                     aria-hidden="true"
                     className="h-3.5 w-3.5 shrink-0"
                     name={latest.statusIconName}
-                    style={{ color: latest.statusColor ?? undefined }}
-                  />
-                ) : (
-                  <AlertCircle
-                    aria-hidden="true"
-                    className="h-3.5 w-3.5 shrink-0"
-                    style={{ color: latest?.statusColor ?? undefined }}
+                    style={{
+                      color:
+                        latest.statusColor &&
+                        isStrictHexColor(latest.statusColor)
+                          ? latest.statusColor
+                          : undefined,
+                    }}
                   />
                 )}
                 <span>

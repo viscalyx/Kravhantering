@@ -285,14 +285,9 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
             }
             const v = item.version
             const isSelected = v.versionNumber === selectedVersionNumber
-            const color = v.statusColor ?? undefined
             return (
               <button
-                className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border font-medium transition-all duration-150 cursor-pointer ${
-                  color
-                    ? 'shadow-sm'
-                    : 'border-secondary-200 dark:border-secondary-700 hover:border-secondary-300 dark:hover:border-secondary-600'
-                } ${isSelected ? 'ring-1' : ''}`}
+                className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border border-secondary-200 font-medium transition-all duration-150 cursor-pointer hover:border-secondary-300 dark:border-secondary-700 dark:hover:border-secondary-600 ${isSelected ? 'ring-1 ring-secondary-400 dark:ring-secondary-500' : ''}`}
                 key={`version-pill-${v.versionNumber}`}
                 {...devMarker({
                   context: developerModeContext,
@@ -302,22 +297,6 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
                 })}
                 data-version-number={v.versionNumber}
                 onClick={() => onVersionSelect(v.versionNumber)}
-                style={
-                  color
-                    ? {
-                        borderColor: color,
-                        ...(isSelected
-                          ? ({
-                              '--tw-ring-color': color,
-                            } as React.CSSProperties)
-                          : {}),
-                      }
-                    : isSelected
-                      ? ({
-                          '--tw-ring-color': 'var(--color-secondary-400)',
-                        } as React.CSSProperties)
-                      : {}
-                }
                 type="button"
               >
                 <span>v{v.versionNumber}</span>
