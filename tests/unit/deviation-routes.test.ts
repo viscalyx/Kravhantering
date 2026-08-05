@@ -79,6 +79,88 @@ function params<T extends Record<string, string>>(value: T) {
   return { params: Promise.resolve(value) }
 }
 
+const deviationMutationFailureCases = [
+  {
+    expectedError: 'Failed to update deviation',
+    failureMock: routeState.updateDeviation,
+    invoke: async () => {
+      const { PUT } = await import('@/app/api/deviations/[id]/route')
+      return PUT(
+        jsonRequest('https://example.test/api/deviations/7', {
+          motivation: 'Updated motivation',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'editing',
+  },
+  {
+    expectedError: 'Failed to delete deviation',
+    failureMock: routeState.deleteDeviation,
+    invoke: async () => {
+      const { DELETE } = await import('@/app/api/deviations/[id]/route')
+      return DELETE(
+        new Request('https://example.test/api/deviations/7', {
+          method: 'DELETE',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'deleting',
+  },
+  {
+    expectedError: 'Failed to record decision',
+    failureMock: routeState.recordDecision,
+    invoke: async () => {
+      const { POST } = await import('@/app/api/deviations/[id]/decision/route')
+      return POST(
+        new Request('https://example.test/api/deviations/7/decision', {
+          body: JSON.stringify({
+            decision: 2,
+            decisionMotivation: 'Needs work',
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'deciding',
+  },
+  {
+    expectedError: 'Failed to request review',
+    failureMock: routeState.requestReview,
+    invoke: async () => {
+      const { POST } = await import(
+        '@/app/api/deviations/[id]/request-review/route'
+      )
+      return POST(
+        new Request('https://example.test/api/deviations/7/request-review', {
+          method: 'POST',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'requesting review for',
+  },
+  {
+    expectedError: 'Failed to revert to draft',
+    failureMock: routeState.revertToDraft,
+    invoke: async () => {
+      const { POST } = await import(
+        '@/app/api/deviations/[id]/revert-to-draft/route'
+      )
+      return POST(
+        new Request('https://example.test/api/deviations/7/revert-to-draft', {
+          method: 'POST',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'returning to draft',
+  },
+]
+
 describe('deviation mutation routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -639,84 +721,7 @@ describe('deviation mutation routes', () => {
     )
   })
 
-  it.each([
-    {
-      failureMock: routeState.updateDeviation,
-      invoke: async () => {
-        const { PUT } = await import('@/app/api/deviations/[id]/route')
-        return PUT(
-          jsonRequest('https://example.test/api/deviations/7', {
-            motivation: 'Updated motivation',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'editing',
-    },
-    {
-      failureMock: routeState.deleteDeviation,
-      invoke: async () => {
-        const { DELETE } = await import('@/app/api/deviations/[id]/route')
-        return DELETE(
-          new Request('https://example.test/api/deviations/7', {
-            method: 'DELETE',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'deleting',
-    },
-    {
-      failureMock: routeState.recordDecision,
-      invoke: async () => {
-        const { POST } = await import(
-          '@/app/api/deviations/[id]/decision/route'
-        )
-        return POST(
-          new Request('https://example.test/api/deviations/7/decision', {
-            body: JSON.stringify({
-              decision: 2,
-              decisionMotivation: 'Needs work',
-            }),
-            headers: { 'Content-Type': 'application/json' },
-            method: 'POST',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'deciding',
-    },
-    {
-      failureMock: routeState.requestReview,
-      invoke: async () => {
-        const { POST } = await import(
-          '@/app/api/deviations/[id]/request-review/route'
-        )
-        return POST(
-          new Request('https://example.test/api/deviations/7/request-review', {
-            method: 'POST',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'requesting review for',
-    },
-    {
-      failureMock: routeState.revertToDraft,
-      invoke: async () => {
-        const { POST } = await import(
-          '@/app/api/deviations/[id]/revert-to-draft/route'
-        )
-        return POST(
-          new Request('https://example.test/api/deviations/7/revert-to-draft', {
-            method: 'POST',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'returning to draft',
-    },
-  ])(
+  it.each(deviationMutationFailureCases)(
     'maps domain conflicts while $label a deviation',
     async ({ failureMock, invoke }) => {
       failureMock.mockRejectedValueOnce(conflictError('Conflict'))
@@ -731,89 +736,7 @@ describe('deviation mutation routes', () => {
     },
   )
 
-  it.each([
-    {
-      expectedError: 'Failed to update deviation',
-      failureMock: routeState.updateDeviation,
-      invoke: async () => {
-        const { PUT } = await import('@/app/api/deviations/[id]/route')
-        return PUT(
-          jsonRequest('https://example.test/api/deviations/7', {
-            motivation: 'Updated motivation',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'editing',
-    },
-    {
-      expectedError: 'Failed to delete deviation',
-      failureMock: routeState.deleteDeviation,
-      invoke: async () => {
-        const { DELETE } = await import('@/app/api/deviations/[id]/route')
-        return DELETE(
-          new Request('https://example.test/api/deviations/7', {
-            method: 'DELETE',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'deleting',
-    },
-    {
-      expectedError: 'Failed to record decision',
-      failureMock: routeState.recordDecision,
-      invoke: async () => {
-        const { POST } = await import(
-          '@/app/api/deviations/[id]/decision/route'
-        )
-        return POST(
-          new Request('https://example.test/api/deviations/7/decision', {
-            body: JSON.stringify({
-              decision: 2,
-              decisionMotivation: 'Needs work',
-            }),
-            headers: { 'Content-Type': 'application/json' },
-            method: 'POST',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'deciding',
-    },
-    {
-      expectedError: 'Failed to request review',
-      failureMock: routeState.requestReview,
-      invoke: async () => {
-        const { POST } = await import(
-          '@/app/api/deviations/[id]/request-review/route'
-        )
-        return POST(
-          new Request('https://example.test/api/deviations/7/request-review', {
-            method: 'POST',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'requesting review for',
-    },
-    {
-      expectedError: 'Failed to revert to draft',
-      failureMock: routeState.revertToDraft,
-      invoke: async () => {
-        const { POST } = await import(
-          '@/app/api/deviations/[id]/revert-to-draft/route'
-        )
-        return POST(
-          new Request('https://example.test/api/deviations/7/revert-to-draft', {
-            method: 'POST',
-          }) as never,
-          params({ id: '7' }),
-        )
-      },
-      label: 'returning to draft',
-    },
-  ])(
+  it.each(deviationMutationFailureCases)(
     'sanitizes unexpected errors while $label a deviation',
     async ({ expectedError, failureMock, invoke }) => {
       const consoleErrorSpy = vi

@@ -86,6 +86,65 @@ function jsonRequest(method: string, body: unknown) {
   })
 }
 
+const suggestionMutationFailureCases = [
+  {
+    expectedError: 'Failed to update improvement suggestion',
+    invoke: () =>
+      putSuggestion(
+        jsonRequest('PUT', { content: 'Updated suggestion' }),
+        makeParams('9'),
+      ),
+    label: 'editing',
+  },
+  {
+    expectedError: 'Failed to delete improvement suggestion',
+    invoke: () =>
+      deleteSuggestion(
+        new NextRequest('http://localhost/api/improvement-suggestions/9', {
+          method: 'DELETE',
+        }),
+        makeParams('9'),
+      ),
+    label: 'deleting',
+  },
+  {
+    expectedError: 'Failed to request review',
+    invoke: () =>
+      requestSuggestionReview(
+        new NextRequest(
+          'http://localhost/api/improvement-suggestions/9/request-review',
+          { method: 'POST' },
+        ),
+        makeParams('9'),
+      ),
+    label: 'requesting review for',
+  },
+  {
+    expectedError: 'Failed to revert to draft',
+    invoke: () =>
+      revertSuggestionToDraft(
+        new NextRequest(
+          'http://localhost/api/improvement-suggestions/9/revert-to-draft',
+          { method: 'POST' },
+        ),
+        makeParams('9'),
+      ),
+    label: 'returning to draft',
+  },
+  {
+    expectedError: 'Failed to record resolution',
+    invoke: () =>
+      recordSuggestionResolution(
+        jsonRequest('POST', {
+          resolution: 1,
+          resolutionMotivation: 'Applied',
+        }),
+        makeParams('9'),
+      ),
+    label: 'resolving',
+  },
+]
+
 describe('improvement suggestion REST service boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -440,130 +499,24 @@ describe('improvement suggestion REST service boundary', () => {
     )
   })
 
-  it.each([
-    {
-      invoke: () =>
-        putSuggestion(
-          jsonRequest('PUT', { content: 'Updated suggestion' }),
-          makeParams('9'),
-        ),
-      label: 'editing',
-    },
-    {
-      invoke: () =>
-        deleteSuggestion(
-          new NextRequest('http://localhost/api/improvement-suggestions/9', {
-            method: 'DELETE',
-          }),
-          makeParams('9'),
-        ),
-      label: 'deleting',
-    },
-    {
-      invoke: () =>
-        requestSuggestionReview(
-          new NextRequest(
-            'http://localhost/api/improvement-suggestions/9/request-review',
-            { method: 'POST' },
-          ),
-          makeParams('9'),
-        ),
-      label: 'requesting review for',
-    },
-    {
-      invoke: () =>
-        revertSuggestionToDraft(
-          new NextRequest(
-            'http://localhost/api/improvement-suggestions/9/revert-to-draft',
-            { method: 'POST' },
-          ),
-          makeParams('9'),
-        ),
-      label: 'returning to draft',
-    },
-    {
-      invoke: () =>
-        recordSuggestionResolution(
-          jsonRequest('POST', {
-            resolution: 1,
-            resolutionMotivation: 'Applied',
-          }),
-          makeParams('9'),
-        ),
-      label: 'resolving',
-    },
-  ])('maps domain errors while $label a suggestion', async ({ invoke }) => {
-    mocks.service.manageSuggestion.mockRejectedValueOnce(
-      conflictError('State changed'),
-    )
+  it.each(suggestionMutationFailureCases)(
+    'maps domain errors while $label a suggestion',
+    async ({ invoke }) => {
+      mocks.service.manageSuggestion.mockRejectedValueOnce(
+        conflictError('State changed'),
+      )
 
-    const response = await invoke()
+      const response = await invoke()
 
-    expect(response.status).toBe(409)
-    await expect(response.json()).resolves.toEqual({
-      code: 'conflict',
-      error: 'State changed',
-    })
-  })
+      expect(response.status).toBe(409)
+      await expect(response.json()).resolves.toEqual({
+        code: 'conflict',
+        error: 'State changed',
+      })
+    },
+  )
 
-  it.each([
-    {
-      expectedError: 'Failed to update improvement suggestion',
-      invoke: () =>
-        putSuggestion(
-          jsonRequest('PUT', { content: 'Updated suggestion' }),
-          makeParams('9'),
-        ),
-      label: 'editing',
-    },
-    {
-      expectedError: 'Failed to delete improvement suggestion',
-      invoke: () =>
-        deleteSuggestion(
-          new NextRequest('http://localhost/api/improvement-suggestions/9', {
-            method: 'DELETE',
-          }),
-          makeParams('9'),
-        ),
-      label: 'deleting',
-    },
-    {
-      expectedError: 'Failed to request review',
-      invoke: () =>
-        requestSuggestionReview(
-          new NextRequest(
-            'http://localhost/api/improvement-suggestions/9/request-review',
-            { method: 'POST' },
-          ),
-          makeParams('9'),
-        ),
-      label: 'requesting review for',
-    },
-    {
-      expectedError: 'Failed to revert to draft',
-      invoke: () =>
-        revertSuggestionToDraft(
-          new NextRequest(
-            'http://localhost/api/improvement-suggestions/9/revert-to-draft',
-            { method: 'POST' },
-          ),
-          makeParams('9'),
-        ),
-      label: 'returning to draft',
-    },
-    {
-      expectedError: 'Failed to record resolution',
-      invoke: () =>
-        recordSuggestionResolution(
-          jsonRequest('POST', {
-            resolution: 2,
-            resolutionMotivation: 'Not relevant',
-          }),
-          makeParams('9'),
-        ),
-      label: 'resolving',
-    },
-  ])(
+  it.each(suggestionMutationFailureCases)(
     'sanitizes unexpected errors while $label a suggestion',
     async ({ expectedError, invoke }) => {
       const consoleErrorSpy = vi
