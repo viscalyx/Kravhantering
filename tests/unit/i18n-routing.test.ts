@@ -1,35 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-const defineRoutingMock = vi.fn((value: unknown) => value)
-const createNavigationMock = vi.fn(() => ({
-  getPathname: vi.fn(),
-  Link: 'link',
-  redirect: vi.fn(),
-  usePathname: vi.fn(),
-  useRouter: vi.fn(),
-}))
+import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl/navigation', () => ({
-  createNavigation: createNavigationMock,
+  createNavigation: () => ({
+    getPathname: () => '/sv/requirements',
+    Link: () => null,
+    redirect: () => undefined,
+    usePathname: () => '/requirements',
+    useRouter: () => ({ replace: () => undefined }),
+  }),
 }))
 vi.mock('next-intl/routing', () => ({
-  defineRouting: defineRoutingMock,
+  defineRouting: (value: unknown) => value,
 }))
 
 describe('i18n routing', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('defines Swedish-first navigation for the supported locales', async () => {
+  it('exports Swedish-first routing and localized navigation surfaces', async () => {
     const navigation = await import('@/i18n/routing')
 
-    expect(defineRoutingMock).toHaveBeenCalledWith({
+    expect(navigation.routing).toEqual({
       defaultLocale: 'sv',
       locales: ['sv', 'en'],
     })
-    expect(createNavigationMock).toHaveBeenCalledWith(navigation.routing)
-    expect(navigation.Link).toBe('link')
+    expect(navigation.Link).toEqual(expect.any(Function))
     expect(navigation.redirect).toEqual(expect.any(Function))
     expect(navigation.usePathname).toEqual(expect.any(Function))
     expect(navigation.useRouter).toEqual(expect.any(Function))

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyResolvedThemeToRoot,
   getRequestNonce,
+  getThemeRootStyle,
   normalizeThemePreference,
   resolveThemePreference,
   THEME_DARK_BACKGROUND,
@@ -62,5 +63,16 @@ describe('theme utilities', () => {
     expect(document.documentElement.style.backgroundColor).toBe(
       toDomColor(THEME_DARK_BACKGROUND),
     )
+  })
+
+  it('provides matching light and dark root styles', () => {
+    expect(getThemeRootStyle('light')).toEqual({
+      backgroundColor: THEME_LIGHT_BACKGROUND,
+      colorScheme: 'light',
+    })
+    expect(getThemeRootStyle('dark')).toEqual({
+      backgroundColor: THEME_DARK_BACKGROUND,
+      colorScheme: 'dark',
+    })
   })
 })

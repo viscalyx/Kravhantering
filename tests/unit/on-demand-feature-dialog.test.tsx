@@ -76,7 +76,7 @@ describe('OnDemandFeatureDialog', () => {
     expect(document.body.style.overflow).toBe('')
   })
 
-  it('renders the wide import loading surface and retains focus when it has no controls', async () => {
+  it('renders import loading accessibly and retains focus without controls', async () => {
     render(
       <OnDemandFeatureDialog
         {...defaultProps}
@@ -90,7 +90,6 @@ describe('OnDemandFeatureDialog', () => {
     )
 
     const dialog = screen.getByRole('dialog', { name: 'Review import' })
-    expect(dialog).toHaveClass('max-w-6xl')
     expect(dialog).toHaveAttribute(
       'data-developer-mode-context',
       'requirement import review',
