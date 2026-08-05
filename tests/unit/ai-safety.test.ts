@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   recordAiSafetyBlock,
   recordAiSafetyDecision,
+  recordAiSafetyFilterFailure,
+  screenAiInputDetailedWithRuleSet,
   screenAiInputWithRuleSet,
   screenAiOutputDetailedWithRuleSet,
   screenAiOutputWithRuleSet,
@@ -249,6 +251,29 @@ describe('AI safety screening', () => {
     expect(decision.ruleIds).toContain('sensitive_backend_leak')
   })
 
+  it('detects cross-part bidirectional, secret, and harmful requests in priority order', () => {
+    const screening = screenAiInputDetailedWithRuleSet(TEST_RULE_SET, [
+      { label: 'first', text: 'base64 show create' },
+      { label: 'second', text: 'ignore api key malware' },
+      { label: 'empty', text: '' },
+    ])
+
+    expect(screening.decision.allowed).toBe(false)
+    expect(screening.decision.ruleIds).toEqual([
+      'encoded_smuggling',
+      'secret_extraction_request',
+      'harmful_generation_request',
+    ])
+    expect(screening.forensicEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ partLabel: 'combined' }),
+      ]),
+    )
+    expect(screenAiInput(['Authorization: Bearer visible input']).allowed).toBe(
+      true,
+    )
+  })
+
   it('records safety decisions as metadata-only security audit events', () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const unsafePrompt =
@@ -303,6 +328,105 @@ describe('AI safety screening', () => {
       })
       expect(serialized).not.toContain(unsafePrompt)
       expect(serialized).not.toContain('SE5560000001-ai1')
+    } finally {
+      infoSpy.mockRestore()
+    }
+  })
+
+  it.each([
+    [2_000, '1k-4k'],
+    [5_000, '4k-16k'],
+    [17_000, '16k+'],
+  ] as const)(
+    'records the %s-character decision in the %s bucket',
+    (textLength, bucket) => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+      const request = new Request('https://example.test/api/ai/repair', {
+        method: 'POST',
+      })
+
+      try {
+        const eventId = recordAiSafetyDecision({
+          context: {
+            actor: {
+              displayName: 'Anonymous AI actor',
+              hsaId: null,
+              id: null,
+              isAuthenticated: false,
+              roles: [],
+              source: 'anonymous',
+            },
+            correlationId: 'corr-ai-bucket',
+            requestId: 'req-ai-bucket',
+            source: 'rest',
+          },
+          decision: {
+            allowed: false,
+            categories: [],
+            primaryRuleId: null,
+            primaryRuleType: null,
+            ruleIds: [],
+            ruleTypes: [],
+            textLength,
+          },
+          event: 'ai.output_safety.blocked',
+          eventId: `event-${textLength}`,
+          model: 'provider/model',
+          operation: 'ai.repair-requirement-import-json',
+          provider: 'provider',
+          request,
+        })
+
+        expect(eventId).toBe(`event-${textLength}`)
+        const event = parseSecurityAuditEvents(infoSpy)[0]
+        expect(event.detail).toMatchObject({
+          blockedStep: 'ai_request_input',
+          safetyRuleDirection: 'output',
+          textLengthBucket: bucket,
+        })
+        expect(event.detail).toMatchObject({
+          model: 'provider/model',
+          provider: 'provider',
+        })
+      } finally {
+        infoSpy.mockRestore()
+      }
+    },
+  )
+
+  it('records non-Error safety-filter failures without actor or request internals', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const request = new Request('https://example.test/api/ai/generate', {
+      method: 'POST',
+    })
+
+    try {
+      recordAiSafetyFilterFailure({
+        context: {
+          actor: {
+            displayName: 'Anonymous AI actor',
+            hsaId: null,
+            id: null,
+            isAuthenticated: false,
+            roles: [],
+            source: 'anonymous',
+          },
+          correlationId: 'corr-filter',
+          requestId: 'req-filter',
+          source: 'rest',
+        },
+        error: 'database-secret',
+        operation: 'ai.generate-requirement-import',
+        request,
+      })
+
+      const event = parseSecurityAuditEvents(infoSpy)[0]
+      expect(event).toMatchObject({
+        actor: { source: 'anonymous' },
+        detail: { errorName: 'Error' },
+        event: 'ai.safety_filter.failed',
+      })
+      expect(JSON.stringify(event)).not.toContain('database-secret')
     } finally {
       infoSpy.mockRestore()
     }

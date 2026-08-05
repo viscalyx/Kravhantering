@@ -117,6 +117,46 @@ describe('GET /api/ai/credits', () => {
     expectNoAuthorizationSideEffects()
   })
 
+  it('uses HSA-id and correlation fallbacks for authenticated throttle identities', async () => {
+    const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(getKeyInfo).mockResolvedValue({
+      isFreeTier: true,
+      limit: null,
+      limitRemaining: null,
+      managementKeyMissing: true,
+      totalCredits: null,
+      usage: 0,
+      usageDaily: 0,
+    })
+    const hsaRequest = makeRequest()
+    requirementsAuth.attachVerifiedActor(hsaRequest, {
+      displayName: 'HSA AI User',
+      hsaId: 'SE5560000001-ai2',
+      id: null,
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    })
+    const correlationRequest = makeRequest(
+      ['Admin'],
+      true,
+      'http://localhost:3000/api/ai/credits?identity=correlation',
+    )
+    requirementsAuth.attachVerifiedActor(correlationRequest, {
+      displayName: 'Correlated AI User',
+      hsaId: null,
+      id: null,
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    })
+
+    await expect(GET(hsaRequest)).resolves.toMatchObject({ status: 200 })
+    await expect(GET(correlationRequest)).resolves.toMatchObject({
+      status: 200,
+    })
+  })
+
   it('denies anonymous credit lookup before calling OpenRouter', async () => {
     const { getKeyInfo } = await import('@/lib/ai/openrouter-client')
 

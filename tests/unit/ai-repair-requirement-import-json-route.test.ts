@@ -126,7 +126,16 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
     })
 
     try {
-      const response = await POST(makeRequest())
+      const response = await POST(
+        makeRequest({
+          areaId: 1,
+          errors: ['schemaVersion is missing'],
+          locale: 'en',
+          mode: 'library',
+          rawJson: '{"requirements":[]}',
+          reasoningEffort: 'medium',
+        }),
+      )
       const body = await response.json()
 
       expect(response.status).toBe(200)
@@ -360,6 +369,108 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
     } finally {
       safetySpy.mockRestore()
       consoleInfoSpy.mockRestore()
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('returns a sanitized unavailable response when generation is disabled', async () => {
+    vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', 'true')
+
+    const response = await POST(makeRequest())
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({
+      error: 'AI provider is unavailable',
+    })
+    expect(routeState.generateChat).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when generation availability cannot be loaded', async () => {
+    routeState.query.mockRejectedValue(new Error('settings unavailable'))
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    const consoleWarnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      expect(response.status).toBe(503)
+      await expect(response.json()).resolves.toEqual({
+        error: 'AI provider is unavailable',
+      })
+      expect(routeState.generateChat).not.toHaveBeenCalled()
+    } finally {
+      consoleErrorSpy.mockRestore()
+      consoleWarnSpy.mockRestore()
+    }
+  })
+
+  it('fails closed when output safety screening is unavailable', async () => {
+    routeState.generateChat.mockResolvedValue({
+      content: {
+        requirements: [
+          { description: 'The system shall keep repaired audit logs.' },
+        ],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+      stats: { cost: 0.02, totalTokens: 10 },
+      thinking: 'repair complete',
+    })
+    vi.mocked(aiSafety.screenAiOutputDetailed).mockRejectedValueOnce(
+      new Error('output safety unavailable'),
+    )
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      expect(response.status).toBe(503)
+      await expect(response.json()).resolves.toEqual({
+        error: 'AI provider is unavailable',
+      })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('sanitizes provider failures from the client-facing response', async () => {
+    routeState.generateChat.mockRejectedValue(new Error('provider secret'))
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      expect(response.status).toBe(503)
+      const body = JSON.stringify(await response.json())
+      expect(body).toContain('AI provider is unavailable')
+      expect(body).not.toContain('provider secret')
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('throttles repeated repairs before calling the provider', async () => {
+    routeState.generateChat.mockRejectedValue(new Error('provider unavailable'))
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      for (let index = 0; index < 5; index += 1) {
+        await POST(makeRequest())
+      }
+      routeState.generateChat.mockClear()
+
+      const response = await POST(makeRequest())
+
+      expect(response.status).toBe(429)
+      expect(response.headers.get('Retry-After')).toBe('60')
+      expect(routeState.generateChat).not.toHaveBeenCalled()
+    } finally {
       consoleErrorSpy.mockRestore()
     }
   })
