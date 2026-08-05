@@ -2191,36 +2191,13 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('returns every documented MCP import and reference response shape', async () => {
+  it('returns each documented MCP import response shape', async () => {
     const fakeService = createFakeService()
     const destination = { areaId: 2, kind: 'requirements_library' as const }
     const outputDestination = {
       ...destination,
       name: 'Security',
       prefix: 'SEC',
-    }
-    const needsReference = {
-      createdAt: '2026-08-05T00:00:00.000Z',
-      description: null,
-      id: 4,
-      libraryItemCount: 1,
-      linkedItemCount: 2,
-      specificationLocalRequirementCount: 1,
-      text: 'Protect health data',
-      updatedAt: '2026-08-05T00:00:00.000Z',
-    }
-    const normReference = {
-      createdAt: '2026-08-05T00:00:00.000Z',
-      id: 5,
-      isArchived: false,
-      issuer: 'ISO',
-      name: 'Information security',
-      normReferenceId: 'ISO-27001',
-      reference: '27001',
-      type: 'standard',
-      updatedAt: '2026-08-05T00:00:00.000Z',
-      uri: null,
-      version: null,
     }
     fakeService.manageImport
       .mockResolvedValueOnce({
@@ -2246,13 +2223,6 @@ describe('handleRequirementsMcpRequest', () => {
         notImportedRows: [],
         summary: { importedCount: 0, notImportedCount: 0, totalRowCount: 0 },
       })
-    fakeService.manageNeedsReference
-      .mockResolvedValueOnce({ result: [needsReference] })
-      .mockResolvedValueOnce({ needsReference })
-    fakeService.manageNormReference
-      .mockResolvedValueOnce({ result: [normReference] })
-      .mockResolvedValueOnce({ normReference })
-      .mockResolvedValueOnce({ requirements: [{ id: 1, uniqueId: 'INT0001' }] })
     serviceState.getService.mockReturnValue(fakeService)
 
     const { client, transport } = await createClient()
@@ -2312,45 +2282,96 @@ describe('handleRequirementsMcpRequest', () => {
         summary: { importedCount: 0, notImportedCount: 0, totalRowCount: 0 },
       },
     )
-    await callAndExpectShape(
-      {
-        arguments: { operation: 'list', specificationId: 7 },
-        name: 'requirements_manage_needs_reference',
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns each documented MCP needs-reference response shape', async () => {
+    const fakeService = createFakeService()
+    const needsReference = {
+      createdAt: '2026-08-05T00:00:00.000Z',
+      description: null,
+      id: 4,
+      libraryItemCount: 1,
+      linkedItemCount: 2,
+      specificationLocalRequirementCount: 1,
+      text: 'Protect health data',
+      updatedAt: '2026-08-05T00:00:00.000Z',
+    }
+    fakeService.manageNeedsReference
+      .mockResolvedValueOnce({ result: [needsReference] })
+      .mockResolvedValueOnce({ needsReference })
+    serviceState.getService.mockReturnValue(fakeService)
+    const { client, transport } = await createClient()
+
+    const listResponse = await client.callTool({
+      arguments: { operation: 'list', specificationId: 7 },
+      name: 'requirements_manage_needs_reference',
+    })
+    expect(listResponse.isError).not.toBe(true)
+    expect(listResponse.structuredContent).toEqual({
+      result: [needsReference],
+    })
+
+    const getResponse = await client.callTool({
+      arguments: {
+        needsReferenceId: 4,
+        operation: 'get',
+        specificationId: 7,
       },
-      { result: [needsReference] },
-    )
-    await callAndExpectShape(
-      {
-        arguments: {
-          needsReferenceId: 4,
-          operation: 'get',
-          specificationId: 7,
-        },
-        name: 'requirements_manage_needs_reference',
-      },
-      { needsReference },
-    )
-    await callAndExpectShape(
-      {
-        arguments: { operation: 'list' },
-        name: 'requirements_manage_norm_reference',
-      },
-      { result: [normReference] },
-    )
-    await callAndExpectShape(
-      {
-        arguments: { id: 5, operation: 'get' },
-        name: 'requirements_manage_norm_reference',
-      },
-      { normReference },
-    )
-    await callAndExpectShape(
-      {
-        arguments: { id: 5, operation: 'list_connected_requirement_ids' },
-        name: 'requirements_manage_norm_reference',
-      },
-      { requirements: [{ id: 1, uniqueId: 'INT0001' }] },
-    )
+      name: 'requirements_manage_needs_reference',
+    })
+    expect(getResponse.isError).not.toBe(true)
+    expect(getResponse.structuredContent).toEqual({ needsReference })
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns each documented MCP norm-reference response shape', async () => {
+    const fakeService = createFakeService()
+    const normReference = {
+      createdAt: '2026-08-05T00:00:00.000Z',
+      id: 5,
+      isArchived: false,
+      issuer: 'ISO',
+      name: 'Information security',
+      normReferenceId: 'ISO-27001',
+      reference: '27001',
+      type: 'standard',
+      updatedAt: '2026-08-05T00:00:00.000Z',
+      uri: null,
+      version: null,
+    }
+    fakeService.manageNormReference
+      .mockResolvedValueOnce({ result: [normReference] })
+      .mockResolvedValueOnce({ normReference })
+      .mockResolvedValueOnce({ requirements: [{ id: 1, uniqueId: 'INT0001' }] })
+    serviceState.getService.mockReturnValue(fakeService)
+    const { client, transport } = await createClient()
+
+    const listResponse = await client.callTool({
+      arguments: { operation: 'list' },
+      name: 'requirements_manage_norm_reference',
+    })
+    expect(listResponse.isError).not.toBe(true)
+    expect(listResponse.structuredContent).toEqual({ result: [normReference] })
+
+    const getResponse = await client.callTool({
+      arguments: { id: 5, operation: 'get' },
+      name: 'requirements_manage_norm_reference',
+    })
+    expect(getResponse.isError).not.toBe(true)
+    expect(getResponse.structuredContent).toEqual({ normReference })
+
+    const connectedResponse = await client.callTool({
+      arguments: { id: 5, operation: 'list_connected_requirement_ids' },
+      name: 'requirements_manage_norm_reference',
+    })
+    expect(connectedResponse.isError).not.toBe(true)
+    expect(connectedResponse.structuredContent).toEqual({
+      requirements: [{ id: 1, uniqueId: 'INT0001' }],
+    })
 
     await client.close()
     await transport.close()
