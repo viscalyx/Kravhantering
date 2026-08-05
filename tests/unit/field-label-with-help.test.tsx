@@ -44,4 +44,16 @@ describe('FieldLabelWithHelp', () => {
     const helpPanel = document.getElementById('display-name-help')
     expect(helpPanel).toHaveTextContent('Use the short public name.')
   })
+
+  it('keeps optional fields free of a required marker', () => {
+    render(
+      <FieldLabelWithHelp
+        help="Optional guidance"
+        htmlFor="optional-field"
+        label="Optional field"
+      />,
+    )
+
+    expect(screen.getByText('Optional field')).not.toHaveTextContent('*')
+  })
 })

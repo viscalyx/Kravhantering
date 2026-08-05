@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LocaleStorageSync from '@/components/LocaleStorageSync'
 import { LOCALE_STORAGE_KEY } from '@/lib/locale-preference'
 
-const localeRef = { current: 'sv' as 'sv' | 'en' }
+const localeRef = { current: 'sv' as string }
 vi.mock('next-intl', () => ({
   useLocale: () => localeRef.current,
 }))
@@ -76,5 +76,13 @@ describe('LocaleStorageSync', () => {
       )
     })
     expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('does not persist an unsupported active locale', () => {
+    localeRef.current = 'de'
+
+    render(<LocaleStorageSync />)
+
+    expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBeNull()
   })
 })

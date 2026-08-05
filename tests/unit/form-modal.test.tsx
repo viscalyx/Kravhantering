@@ -156,4 +156,47 @@ describe('FormModal', () => {
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Edit answer' })).toBeVisible()
   })
+
+  it('closes from the visible header control', () => {
+    const onClose = vi.fn()
+    render(
+      <FormModal
+        developerModeValue="answer form"
+        onClose={onClose}
+        open
+        title="Edit answer"
+        titleId="edit-answer-title"
+      >
+        Form content
+      </FormModal>,
+    )
+
+    expect(screen.getByRole('dialog')).toHaveAttribute(
+      'data-developer-mode-value',
+      'answer form',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'close' }))
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the close control disabled while a form action is pending', () => {
+    const onClose = vi.fn()
+    render(
+      <FormModal
+        closeDisabled
+        onClose={onClose}
+        open
+        title="Edit answer"
+        titleId="edit-answer-title"
+      >
+        Form content
+      </FormModal>,
+    )
+
+    const close = screen.getByRole('button', { name: 'close' })
+    expect(close).toBeDisabled()
+    fireEvent.click(close)
+    expect(onClose).not.toHaveBeenCalled()
+  })
 })

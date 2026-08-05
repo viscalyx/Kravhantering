@@ -153,6 +153,16 @@ describe('App Router error boundaries', () => {
     expect(unstableRetry).toHaveBeenCalledOnce()
   })
 
+  it('uses the stable reset callback when no retry override is available', async () => {
+    const reset = vi.fn()
+    const user = userEvent.setup()
+
+    render(<LocaleError error={makeError()} reset={reset} />)
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(reset).toHaveBeenCalledOnce()
+  })
+
   it('uses locale-prefixed safe links in the root boundary', () => {
     pathnameState.value = '/en/admin/error-boundary-test'
 

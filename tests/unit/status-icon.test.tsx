@@ -38,7 +38,9 @@ describe('status icon allowlist', () => {
 
   it('maps every allowed icon to an installed Lucide component', () => {
     for (const iconName of STATUS_ICON_NAMES) {
-      expect(getStatusIconComponent(iconName), iconName).toBeTruthy()
+      const Icon = getStatusIconComponent(iconName)
+      expect(Icon, iconName).toBeTruthy()
+      expect(typeof Icon, iconName).toBe('object')
     }
   })
 

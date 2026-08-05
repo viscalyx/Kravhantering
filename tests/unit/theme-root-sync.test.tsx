@@ -62,4 +62,14 @@ describe('ThemeRootSync', () => {
     )
     expect(document.cookie).toBe('')
   })
+
+  it('waits until the theme provider resolves a supported theme', () => {
+    themeState.resolvedTheme = undefined
+
+    render(<ThemeRootSync />)
+
+    expect(document.documentElement.className).toBe('')
+    expect(document.documentElement.style.colorScheme).toBe('')
+    expect(document.documentElement.style.backgroundColor).toBe('')
+  })
 })
