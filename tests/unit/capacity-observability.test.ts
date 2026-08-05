@@ -131,4 +131,105 @@ describe('capacity observability', () => {
     )
     expect(events[0]).toMatchObject({ duration_ms: 60, status_code: 204 })
   })
+
+  it('records failed operations and rethrows the original error', async () => {
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    vi.spyOn(Date, 'now').mockReturnValueOnce(1_000).mockReturnValueOnce(1_025)
+    const failure = new Error('operation failed')
+
+    await expect(
+      observeCapacity(
+        {
+          correlationId: 'workflow-1',
+          operation: 'requirements.save',
+          requestId: 'request-1',
+          slowThresholdMs: 50,
+          source: 'rest',
+        },
+        async () => {
+          throw failure
+        },
+      ),
+    ).rejects.toBe(failure)
+
+    expect(parseCapacityEvents(errorSpy)).toEqual([
+      expect.objectContaining({
+        duration_ms: 25,
+        event: 'capacity.operation.failed',
+        outcome: 'failure',
+        status_code: 500,
+      }),
+    ])
+  })
+
+  it('derives request IDs and records optional capacity fields', () => {
+    const infoSpy = vi
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined)
+
+    recordCapacityEvent({
+      cursorFailureCategory: 'invalid_cursor',
+      event: 'capacity.throttled',
+      level: 'warn',
+      metrics: {
+        continuation_available: true,
+        image_bytes: 2048,
+        image_count: 2,
+        page_limit: 50,
+        returned_count: 10,
+        throttled: true,
+      },
+      operation: 'reports.list',
+      outcome: 'throttled',
+      request: new Request('https://app.example/api/reports', {
+        headers: {
+          'X-Correlation-Id': 'workflow-1',
+          'X-Request-Id': 'request-1',
+        },
+      }),
+      retryAfterSeconds: 30,
+      source: 'rest',
+      toolName: 'report.list',
+    })
+
+    expect(parseCapacityEvents(infoSpy)).toEqual([
+      expect.objectContaining({
+        continuation_available: true,
+        correlation_id: 'workflow-1',
+        cursor_failure_category: 'invalid_cursor',
+        image_bytes: 2048,
+        image_count: 2,
+        page_limit: 50,
+        request_id: 'request-1',
+        retry_after_seconds: 30,
+        returned_count: 10,
+        throttled: true,
+        tool_name: 'report.list',
+      }),
+    ])
+  })
+
+  it('never lets telemetry serialization failures break callers', () => {
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    vi.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+      throw new Error('Bearer raw-token')
+    })
+
+    expect(() =>
+      recordCapacityEvent({
+        event: 'capacity.operation.completed',
+        operation: 'requirements.save',
+        outcome: 'success',
+        source: 'server',
+      }),
+    ).not.toThrow()
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[capacity-observability] failed to record event',
+      'Bearer [REDACTED]',
+    )
+  })
 })

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
   createRequestContext: vi.fn(),
@@ -57,6 +57,10 @@ describe('GET /api/database-schema-status', () => {
       observedDatabaseSchemaVersion: EXPECTED_SCHEMA_VERSION,
       status: 'matches',
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('requires an authenticated user before reading database schema status', async () => {
@@ -139,6 +143,36 @@ describe('GET /api/database-schema-status', () => {
       expectedDatabaseSchemaVersion: EXPECTED_SCHEMA_VERSION,
       reason: 'database_schema_version_check_failed',
       status: 'unknown',
+    })
+  })
+
+  it('returns a generic unavailable response when the status reader fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    routeState.readDatabaseSchemaStatus.mockRejectedValue(
+      new Error('database password leaked'),
+    )
+
+    const response = await GET(request())
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    await expect(readJson(response)).resolves.toEqual({
+      error: 'Database schema status could not be checked.',
+    })
+    expect(warn).toHaveBeenCalledWith('[database-schema-status] check failed', {
+      error: 'Error',
+    })
+  })
+
+  it('normalizes non-Error status-reader failures before logging', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    routeState.readDatabaseSchemaStatus.mockRejectedValue('offline')
+
+    const response = await GET(request())
+
+    expect(response.status).toBe(503)
+    expect(warn).toHaveBeenCalledWith('[database-schema-status] check failed', {
+      error: 'Error',
     })
   })
 })

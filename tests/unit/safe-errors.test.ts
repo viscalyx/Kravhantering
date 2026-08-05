@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  getErrorMessage,
+  isDuplicateKeyError,
+  isForeignKeyOrConstraintError,
   isForeignKeyViolation,
   logSanitizedError,
   redactSensitiveText,
@@ -28,6 +31,21 @@ describe('safe error helpers', () => {
     )
   })
 
+  it('redacts each supported SQL mutation fragment', () => {
+    const redacted = redactSensitiveText(
+      [
+        'INSERT INTO [users] value',
+        'UPDATE dbo.users value',
+        'DELETE FROM "users" value',
+        'MERGE INTO `users` value',
+      ].join('; '),
+    )
+
+    expect(redacted).toBe(
+      '[SQL_REDACTED] value; [SQL_REDACTED] value; [SQL_REDACTED] value; [SQL_REDACTED] value',
+    )
+  })
+
   it('redacts error message and stack for log payloads', () => {
     const error = new Error(
       'Failed with apiKey=secret and SELECT password FROM users',
@@ -41,6 +59,26 @@ describe('safe error helpers', () => {
     expect(safe.message).not.toContain('secret')
     expect(safe.message).not.toContain('SELECT')
     expect(safe.stack).not.toContain('raw-token')
+  })
+
+  it('normalizes unknown errors without leaking unserializable values', () => {
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+    const errorWithoutStack = new Error('safe message')
+    errorWithoutStack.stack = undefined
+
+    expect(getErrorMessage('plain failure')).toBe('plain failure')
+    expect(getErrorMessage(Symbol('offline'))).toBe('Symbol(offline)')
+    expect(getErrorMessage({ code: 'offline' })).toBe('{"code":"offline"}')
+    expect(getErrorMessage(circular)).toBe('Unknown error')
+    expect(getErrorMessage(undefined)).toBe('Unknown error')
+    expect(toSafeErrorLogValue(undefined)).toEqual({
+      message: 'Unknown error',
+    })
+    expect(toSafeErrorLogValue(errorWithoutStack)).toEqual({
+      message: 'safe message',
+      name: 'Error',
+    })
   })
 
   it('logs sanitized details without passing raw Error objects', () => {
@@ -66,6 +104,31 @@ describe('safe error helpers', () => {
     }
   })
 
+  it('sanitizes nested arrays and errors in log details', () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      logSanitizedError('failed', 'Bearer raw-token', {
+        attempts: [
+          'password=secret',
+          new Error('SE5560000001-user'),
+          { query: 'DELETE FROM sessions' },
+          3,
+        ],
+      })
+
+      const payload = consoleErrorSpy.mock.calls[0]?.[1]
+      expect(JSON.stringify(payload)).toContain('[REDACTED]')
+      expect(JSON.stringify(payload)).not.toMatch(
+        /raw-token|password=secret|SE5560000001-user|DELETE FROM/,
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
   it('detects SQL Server foreign-key violations by number or message', () => {
     expect(isForeignKeyViolation({ number: 547 })).toBe(true)
     expect(
@@ -76,5 +139,17 @@ describe('safe error helpers', () => {
       ),
     ).toBe(true)
     expect(isForeignKeyViolation(new Error('duplicate key value'))).toBe(false)
+  })
+
+  it('recognizes duplicate, string-number, and general constraint failures', () => {
+    expect(isDuplicateKeyError(new Error('Unique index conflict'))).toBe(true)
+    expect(isDuplicateKeyError(new Error('database offline'))).toBe(false)
+    expect(isForeignKeyViolation({ number: '547' })).toBe(true)
+    expect(isForeignKeyOrConstraintError(new Error('check constraint'))).toBe(
+      true,
+    )
+    expect(isForeignKeyOrConstraintError(new Error('database offline'))).toBe(
+      false,
+    )
   })
 })
