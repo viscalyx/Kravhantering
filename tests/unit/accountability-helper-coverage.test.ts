@@ -142,9 +142,9 @@ describe('accountability helper edge paths', () => {
     expect(() => assertPrivacyOfficer(context())).toThrow()
     expect(unexpectedErrorBody('Failed', 'secret')).toEqual({ error: 'Failed' })
     vi.stubEnv('NODE_ENV', 'development')
-    expect(unexpectedErrorBody('Failed', new Error('token=secret'))).toMatchObject(
-      { debugMessage: expect.any(String), error: 'Failed' },
-    )
+    expect(
+      unexpectedErrorBody('Failed', new Error('token=secret')),
+    ).toMatchObject({ debugMessage: expect.any(String), error: 'Failed' })
     vi.unstubAllEnvs()
   })
 
@@ -172,7 +172,9 @@ describe('accountability helper edge paths', () => {
     )
     expect(mocks.recordAllowedActionAuditEvent).toHaveBeenCalledTimes(2)
 
-    const request = new Request('https://example.test/api/admin/access-reviews/42')
+    const request = new Request(
+      'https://example.test/api/admin/access-reviews/42',
+    )
     await recordAccessReviewAuthorizationDenied(
       requestContext,
       request,
@@ -190,8 +192,18 @@ describe('accountability helper edge paths', () => {
     )
     expect(mocks.recordSecurityEvent).toHaveBeenCalled()
 
-    await recordAccessReviewAuthorizationDenied(null, request, {}, forbiddenError('Denied'))
-    await recordAccessReviewAuthorizationDenied(requestContext, request, {}, new Error('boom'))
+    await recordAccessReviewAuthorizationDenied(
+      null,
+      request,
+      {},
+      forbiddenError('Denied'),
+    )
+    await recordAccessReviewAuthorizationDenied(
+      requestContext,
+      request,
+      {},
+      new Error('boom'),
+    )
     expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledTimes(1)
 
     requestContext.actor.hsaId = null

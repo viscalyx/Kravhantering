@@ -721,7 +721,9 @@ describe('AssignmentBasedAuthorizationService', () => {
         { kind: 'manage_requirement', operation: 'create' },
         makeContext([]),
       ),
-    ).rejects.toMatchObject({ details: { reason: 'missing_requirement_area_id' } })
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_requirement_area_id' },
+    })
 
     await expect(
       makeService({ areaAuthor: true }).service.assertAuthorized(
@@ -747,7 +749,11 @@ describe('AssignmentBasedAuthorizationService', () => {
     ).resolves.toBeUndefined()
     await expect(
       makeService({ specAuthor: true }).service.assertAuthorized(
-        { kind: 'manage_specification_rfi', operation: 'lock', specificationId: 42 },
+        {
+          kind: 'manage_specification_rfi',
+          operation: 'lock',
+          specificationId: 42,
+        },
         makeContext([]),
       ),
     ).resolves.toBeUndefined()
@@ -956,18 +962,28 @@ describe('SqlAssignmentLookup', () => {
   })
 
   it('validates direct and local specification references', async () => {
-    const lookup = new SqlAssignmentLookup(makeDb([[{ specificationId: 42 }]]).db)
-    await expect(lookup.resolveSpecificationId({ specificationId: 7 })).resolves.toBe(7)
+    const lookup = new SqlAssignmentLookup(
+      makeDb([[{ specificationId: 42 }]]).db,
+    )
+    await expect(
+      lookup.resolveSpecificationId({ specificationId: 7 }),
+    ).resolves.toBe(7)
     await expect(lookup.resolveSpecificationId({})).rejects.toMatchObject({
       details: { reason: 'missing_specification_reference' },
     })
-    await expect(lookup.resolveSpecificationIdForLocalRequirement()).rejects.toMatchObject({
+    await expect(
+      lookup.resolveSpecificationIdForLocalRequirement(),
+    ).rejects.toMatchObject({
       details: { reason: 'missing_local_requirement_reference' },
     })
-    await expect(lookup.resolveSpecificationIdForLocalRequirement(3)).resolves.toBe(42)
+    await expect(
+      lookup.resolveSpecificationIdForLocalRequirement(3),
+    ).resolves.toBe(42)
 
     await expect(
-      new SqlAssignmentLookup(makeDb([[]]).db).resolveSpecificationIdForLocalRequirement(4),
+      new SqlAssignmentLookup(
+        makeDb([[]]).db,
+      ).resolveSpecificationIdForLocalRequirement(4),
     ).rejects.toMatchObject({ code: 'not_found' })
   })
 
@@ -976,24 +992,30 @@ describe('SqlAssignmentLookup', () => {
     await expect(lookup.resolveRequirementTarget({})).rejects.toMatchObject({
       details: { reason: 'missing_requirement_reference' },
     })
-    await expect(lookup.resolveRequirementTarget({ id: 99 })).rejects.toMatchObject({
+    await expect(
+      lookup.resolveRequirementTarget({ id: 99 }),
+    ).rejects.toMatchObject({
       code: 'not_found',
     })
   })
 
   it('maps nullable requirement status and false published flags', async () => {
     const lookup = new SqlAssignmentLookup(
-      makeDb([[
-        {
-          areaId: 7,
-          hasPublishedVersion: 0,
-          id: 11,
-          latestStatusId: null,
-          uniqueId: 'INT0011',
-        },
-      ]]).db,
+      makeDb([
+        [
+          {
+            areaId: 7,
+            hasPublishedVersion: 0,
+            id: 11,
+            latestStatusId: null,
+            uniqueId: 'INT0011',
+          },
+        ],
+      ]).db,
     )
-    await expect(lookup.resolveRequirementTarget({ id: 11 })).resolves.toMatchObject({
+    await expect(
+      lookup.resolveRequirementTarget({ id: 11 }),
+    ).resolves.toMatchObject({
       hasPublishedVersion: false,
       latestStatusId: null,
     })
@@ -1001,7 +1023,9 @@ describe('SqlAssignmentLookup', () => {
 
   it('resolves deviation creation targets and reports invalid targets', async () => {
     await expect(
-      new SqlAssignmentLookup(makeDb([[{ specificationId: 42 }]]).db).resolveDeviationTarget({
+      new SqlAssignmentLookup(
+        makeDb([[{ specificationId: 42 }]]).db,
+      ).resolveDeviationTarget({
         kind: 'manage_deviation',
         operation: 'create',
         specificationItemId: 3,
@@ -1034,16 +1058,22 @@ describe('SqlAssignmentLookup', () => {
 
   it('validates suggestion and RFI lookup targets and missing rows', async () => {
     await expect(
-      new SqlAssignmentLookup(makeDb([[]]).db).resolveSuggestionRequirementArea({
-        kind: 'manage_suggestion',
-        operation: 'edit',
-        suggestionId: 404,
-      }),
+      new SqlAssignmentLookup(makeDb([[]]).db).resolveSuggestionRequirementArea(
+        {
+          kind: 'manage_suggestion',
+          operation: 'edit',
+          suggestionId: 404,
+        },
+      ),
     ).rejects.toMatchObject({ code: 'not_found' })
 
     const direct = new SqlAssignmentLookup(makeDb().db)
     await expect(
-      direct.resolveRfiQuestionArea({ areaId: 7, kind: 'manage_rfi_question', operation: 'create' }),
+      direct.resolveRfiQuestionArea({
+        areaId: 7,
+        kind: 'manage_rfi_question',
+        operation: 'create',
+      }),
     ).resolves.toBe(7)
     await expect(
       direct.resolveRfiQuestionSuggestionArea({
@@ -1053,8 +1083,13 @@ describe('SqlAssignmentLookup', () => {
       }),
     ).resolves.toBe(8)
     await expect(
-      direct.resolveRfiQuestionArea({ kind: 'manage_rfi_question', operation: 'edit' }),
-    ).rejects.toMatchObject({ details: { reason: 'missing_rfi_question_target' } })
+      direct.resolveRfiQuestionArea({
+        kind: 'manage_rfi_question',
+        operation: 'edit',
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_rfi_question_target' },
+    })
     await expect(
       direct.resolveRfiQuestionSuggestionArea({
         kind: 'manage_rfi_question_suggestion',
@@ -1065,14 +1100,18 @@ describe('SqlAssignmentLookup', () => {
     })
 
     await expect(
-      new SqlAssignmentLookup(makeDb([[{ areaId: 7 }]]).db).resolveRfiQuestionArea({
+      new SqlAssignmentLookup(
+        makeDb([[{ areaId: 7 }]]).db,
+      ).resolveRfiQuestionArea({
         kind: 'manage_rfi_question',
         operation: 'edit',
         questionId: 1,
       }),
     ).resolves.toBe(7)
     await expect(
-      new SqlAssignmentLookup(makeDb([[{ areaId: 8 }]]).db).resolveRfiQuestionSuggestionArea({
+      new SqlAssignmentLookup(
+        makeDb([[{ areaId: 8 }]]).db,
+      ).resolveRfiQuestionSuggestionArea({
         kind: 'manage_rfi_question_suggestion',
         operation: 'edit',
         suggestionId: 1,
@@ -1086,11 +1125,13 @@ describe('SqlAssignmentLookup', () => {
       }),
     ).rejects.toMatchObject({ code: 'not_found' })
     await expect(
-      new SqlAssignmentLookup(makeDb([[]]).db).resolveRfiQuestionSuggestionArea({
-        kind: 'manage_rfi_question_suggestion',
-        operation: 'edit',
-        suggestionId: 404,
-      }),
+      new SqlAssignmentLookup(makeDb([[]]).db).resolveRfiQuestionSuggestionArea(
+        {
+          kind: 'manage_rfi_question_suggestion',
+          operation: 'edit',
+          suggestionId: 404,
+        },
+      ),
     ).rejects.toMatchObject({ code: 'not_found' })
   })
 })

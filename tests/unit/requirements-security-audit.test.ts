@@ -143,9 +143,21 @@ describe('requirements security audit', () => {
     { kind: 'list_specifications' },
     { kind: 'get_specification_items', specificationId: 1 },
     { kind: 'list_deviations', specificationId: 1 },
-    { kind: 'add_to_specification', requirementIds: [1, 2], specificationId: 1 },
-    { kind: 'remove_from_specification', requirementIds: [1], specificationId: 1 },
-    { kind: 'list_graduation_target_areas', localRequirementId: 2, specificationId: 1 },
+    {
+      kind: 'add_to_specification',
+      requirementIds: [1, 2],
+      specificationId: 1,
+    },
+    {
+      kind: 'remove_from_specification',
+      requirementIds: [1],
+      specificationId: 1,
+    },
+    {
+      kind: 'list_graduation_target_areas',
+      localRequirementId: 2,
+      specificationId: 1,
+    },
     {
       kind: 'graduate_specification_local_requirement',
       localRequirementId: 2,
@@ -170,7 +182,12 @@ describe('requirements security audit', () => {
     { deviationId: 1, kind: 'manage_deviation', operation: 'edit' },
     { kind: 'list_suggestions', requirementId: 1 },
     { kind: 'manage_suggestion', operation: 'edit', suggestionId: 1 },
-    { areaId: 1, kind: 'manage_rfi_question', operation: 'edit', questionId: 2 },
+    {
+      areaId: 1,
+      kind: 'manage_rfi_question',
+      operation: 'edit',
+      questionId: 2,
+    },
     { kind: 'manage_specification_rfi', operation: 'lock', specificationId: 1 },
     {
       areaId: 1,
@@ -179,7 +196,11 @@ describe('requirements security audit', () => {
       suggestionId: 2,
       specificationId: 3,
     },
-    { kind: 'generate_requirements', scopeId: 1, scopeType: 'requirement_area' },
+    {
+      kind: 'generate_requirements',
+      scopeId: 1,
+      scopeType: 'requirement_area',
+    },
   ])('records bounded denial evidence for $kind', async action => {
     await recordAuthorizationDenied(
       context(),
@@ -213,11 +234,27 @@ describe('requirements security audit', () => {
   })
 
   it.each([
-    { action: 'requirement.created', newRequirementId: 1, newRequirementUniqueId: 'REQ1' },
-    { action: 'requirement.edited', requirementId: 2, requirementUniqueId: 'REQ2' },
+    {
+      action: 'requirement.created',
+      newRequirementId: 1,
+      newRequirementUniqueId: 'REQ1',
+    },
+    {
+      action: 'requirement.edited',
+      requirementId: 2,
+      requirementUniqueId: 'REQ2',
+    },
     { action: 'deviation.decision.recorded', deviationId: 3 },
-    { action: 'suggestion.resolution.recorded', operation: 'dismiss', suggestionId: 4 },
-    { action: 'suggestion.resolution.recorded', operation: 'resolve', suggestionId: 4 },
+    {
+      action: 'suggestion.resolution.recorded',
+      operation: 'dismiss',
+      suggestionId: 4,
+    },
+    {
+      action: 'suggestion.resolution.recorded',
+      operation: 'resolve',
+      suggestionId: 4,
+    },
     { action: 'suggestion.created', suggestionId: 4 },
     { action: 'local.edited', localRequirementId: 5 },
     { action: 'specification.edited', specificationId: 6 },

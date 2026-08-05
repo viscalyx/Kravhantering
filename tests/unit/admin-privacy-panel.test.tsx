@@ -122,9 +122,12 @@ describe('PrivacyPanel', () => {
       screen.getByLabelText('admin.privacy.replacementFirstName'),
       { target: { value: 'New' } },
     )
-    fireEvent.change(screen.getByLabelText('admin.privacy.replacementLastName'), {
-      target: { value: 'Owner' },
-    })
+    fireEvent.change(
+      screen.getByLabelText('admin.privacy.replacementLastName'),
+      {
+        target: { value: 'Owner' },
+      },
+    )
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementEmail'), {
       target: { value: 'new.owner@example.test' },
     })
@@ -220,9 +223,7 @@ describe('PrivacyPanel', () => {
     await waitFor(() =>
       expect(
         screen.getByText('admin.privacy.executionStatus.failed'),
-      ).toHaveTextContent(
-        'admin.privacy.executionStatus.failed',
-      ),
+      ).toHaveTextContent('admin.privacy.executionStatus.failed'),
     )
   })
 })

@@ -174,7 +174,10 @@ describe('HsaPersonChangeModal', () => {
   })
 
   it('resets on reopen, reports submit errors, and closes on cancel', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => okJson(prefixPayload())))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okJson(prefixPayload())),
+    )
     const onSubmit = vi.fn(async () => ({
       error: 'Assignment failed',
       ok: false as const,
