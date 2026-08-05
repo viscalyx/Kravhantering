@@ -270,24 +270,32 @@ const mockCreatePkg = vi.fn(async (..._args: unknown[]) => ({ id: 2 }))
 const mockUpdatePkg = vi.fn()
 const mockUpdateSpecResponsible = vi.fn()
 const mockReplaceSpecificationCoAuthors = vi.fn()
-const mockGetSpecificationById = vi.fn(async (_db: unknown, id: number) =>
-  id === 404
-    ? null
-    : {
-        id,
-        responsibleHsaId: 'SE5560000001-route',
-      },
+const mockGetSpecificationById = vi.fn(
+  async (
+    _db: unknown,
+    id: number,
+  ): Promise<{ id: number; responsibleHsaId?: string } | null> =>
+    id === 404
+      ? null
+      : {
+          id,
+          responsibleHsaId: 'SE5560000001-route',
+        },
 )
 const mockListSpecificationCoAuthorHsaIds = vi.fn(async () => [
   'SE5560000001-coa1',
 ])
-const mockListSpecificationCoAuthors = vi.fn(async () => [
-  {
-    displayName: 'Co Author',
-    email: 'co.author@example.test',
-    hsaId: 'SE5560000001-coa1',
-  },
-])
+const mockListSpecificationCoAuthors = vi.fn(
+  async (): Promise<
+    Array<{ displayName: string; email: string | null; hsaId: string }>
+  > => [
+    {
+      displayName: 'Co Author',
+      email: 'co.author@example.test',
+      hsaId: 'SE5560000001-coa1',
+    },
+  ],
+)
 const mockDeletePkg = vi.fn()
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   listSpecifications: async () => [{ id: 1 }],
@@ -1471,7 +1479,7 @@ describe('requirement-specifications routes', () => {
       true,
     )
     mockGetSpecificationById.mockImplementation(async (_db, id) =>
-      id === 404 ? null : { id },
+      id === 404 ? null : { id, responsibleHsaId: 'SE5560000001-route' },
     )
   })
 
