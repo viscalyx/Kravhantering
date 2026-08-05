@@ -45,7 +45,7 @@ import QualityCharacteristicSelectOptions, {
   getQualityCharacteristicOptionName,
 } from '@/components/QualityCharacteristicSelectOptions'
 
-describe('issue 891 classification server pages', () => {
+describe('classification server pages', () => {
   it.each([
     ['priority', priorityMetadata, 'nav.priorityLevels'],
     ['quality', qualityMetadata, 'nav.qualityCharacteristics'],

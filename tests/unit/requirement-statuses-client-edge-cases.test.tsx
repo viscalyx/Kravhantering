@@ -6,7 +6,7 @@ import {
   iconPickerMock,
   okJsonResponse,
   statusBadgeMock,
-} from './helpers/issue-891-client-test-helpers'
+} from './helpers/admin-client-test-helpers'
 
 const state = vi.hoisted(() => ({
   confirm: vi.fn(),

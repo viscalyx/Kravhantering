@@ -22,20 +22,20 @@ function context(
 ): RequestContext {
   return {
     actor: {
-      displayName: 'Issue 891 actor',
+      displayName: 'Authorization test actor',
       hsaId: options.hsaId === undefined ? 'SE5560000001-actor' : options.hsaId,
-      id: 'issue-891',
+      id: 'route-test',
       isAuthenticated: options.authenticated ?? true,
       roles,
       source: 'oidc',
     },
-    correlationId: 'issue-891-correlation',
-    requestId: 'issue-891-request',
+    correlationId: 'route-test-correlation',
+    requestId: 'route-test-request',
     source: 'rest',
   }
 }
 
-describe('Issue 891 norm-reference permissions', () => {
+describe('norm-reference permissions', () => {
   it.each([
     'norm_reference.archive',
     'norm_reference.delete',
@@ -77,7 +77,7 @@ describe('Issue 891 norm-reference permissions', () => {
   })
 })
 
-describe('Issue 891 requirement-package permissions', () => {
+describe('requirement-package permissions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     permissionState.canAuthorAnyArea.mockResolvedValue(true)
@@ -200,7 +200,7 @@ describe('Issue 891 requirement-package permissions', () => {
   })
 })
 
-describe('Issue 891 browser-link URI policy', () => {
+describe('browser-link URI policy', () => {
   it('accepts trimmed HTTP(S) and rejects empty, malformed, and unsafe protocols', () => {
     expect(getBrowserLinkUri(' https://example.test/path ')).toBe(
       'https://example.test/path',

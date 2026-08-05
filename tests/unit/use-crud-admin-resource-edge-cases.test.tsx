@@ -47,7 +47,7 @@ function resource(
   )
 }
 
-describe('Issue 891 CRUD resource branches', () => {
+describe('CRUD resource branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     confirm.mockResolvedValue(true)

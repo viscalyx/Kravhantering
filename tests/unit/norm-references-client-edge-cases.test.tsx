@@ -6,7 +6,7 @@ import {
   okJsonResponse,
   routingLinkMock,
   statusBadgeMock,
-} from './helpers/issue-891-client-test-helpers'
+} from './helpers/admin-client-test-helpers'
 
 const confirm = vi.hoisted(() => vi.fn())
 vi.mock('next-intl', () => ({
@@ -39,7 +39,7 @@ const norm = {
   version: null,
 }
 
-describe('Issue 891 norm-reference client branches', () => {
+describe('norm-reference client branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fetchMock.mockResolvedValue(okJsonResponse({ normReferences: [norm] }))

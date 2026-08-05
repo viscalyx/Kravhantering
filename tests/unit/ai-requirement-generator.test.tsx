@@ -488,9 +488,9 @@ describe('AiRequirementGenerator', () => {
     expect(screen.queryByText('generateTitle')).not.toBeInTheDocument()
   })
 
-  it('renders embedded without the modal overlay or body scroll lock', async () => {
+  it('renders embedded in its host without locking page scrolling', async () => {
     const previousOverflow = document.body.style.overflow
-    render(
+    const { container } = render(
       <AiRequirementGenerator
         areas={testAreas}
         embedded
@@ -500,9 +500,31 @@ describe('AiRequirementGenerator', () => {
       />,
     )
 
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByRole('presentation')).toHaveClass('contents')
-    expect(screen.getByRole('presentation')).not.toHaveClass('fixed')
+    const generator = await screen.findByRole('dialog', {
+      name: 'generateTitle',
+    })
+    expect(container).toContainElement(generator)
+    expect(document.body.style.overflow).toBe(previousOverflow)
+  })
+
+  it('renders the modal in a portal and locks page scrolling', async () => {
+    const previousOverflow = document.body.style.overflow
+    const { container, unmount } = render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onImportPreview={vi.fn()}
+        open
+      />,
+    )
+
+    const generator = await screen.findByRole('dialog', {
+      name: 'generateTitle',
+    })
+    expect(container).not.toContainElement(generator)
+    expect(document.body.style.overflow).toBe('hidden')
+
+    unmount()
     expect(document.body.style.overflow).toBe(previousOverflow)
   })
 

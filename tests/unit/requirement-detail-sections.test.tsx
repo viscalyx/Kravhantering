@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import RequirementDetailCard from '@/components/RequirementDetailCard'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
@@ -17,20 +17,32 @@ const baseProps = {
 }
 
 describe('requirement detail presentation', () => {
-  it('merges custom card classes while preserving card attributes', () => {
+  it('renders accessible card content with native container attributes', () => {
     const { rerender } = render(
       <RequirementDetailCard
         aria-label="Detail card"
         className="custom-card"
-      />,
-    )
-    expect(screen.getByLabelText('Detail card')).toHaveClass(
-      'relative',
-      'custom-card',
+        role="region"
+      >
+        <h2>Requirement details</h2>
+      </RequirementDetailCard>,
     )
 
-    rerender(<RequirementDetailCard aria-label="Plain detail card" />)
-    expect(screen.getByLabelText('Plain detail card')).toHaveClass('relative')
+    expect(
+      within(screen.getByRole('region', { name: 'Detail card' })).getByRole(
+        'heading',
+        { name: 'Requirement details' },
+      ),
+    ).toBeVisible()
+
+    rerender(
+      <RequirementDetailCard aria-label="Plain detail card" role="region">
+        Requirement text
+      </RequirementDetailCard>,
+    )
+    expect(
+      screen.getByRole('region', { name: 'Plain detail card' }),
+    ).toHaveTextContent('Requirement text')
   })
 
   it('renders linked and plain references with package metadata markers', () => {

@@ -4,9 +4,9 @@ import type { RequestContext } from '@/lib/requirements/auth'
 
 export const authenticatedRouteContext: RequestContext = {
   actor: {
-    displayName: 'Issue 891 Actor',
+    displayName: 'Route Test Actor',
     hsaId: 'SE5560000001-actor',
-    id: 'issue-891',
+    id: 'route-test',
     isAuthenticated: true,
     roles: ['Admin'],
     source: 'oidc',
@@ -22,6 +22,17 @@ export const routeParams = (id: string) => ({
 
 export function routeRequest(path = '/api/resource'): NextRequest {
   return new NextRequest(`https://example.test${path}`)
+}
+
+export function jsonRequest(
+  path: string,
+  body: Record<string, unknown>,
+): NextRequest {
+  return new NextRequest(`http://localhost${path}`, {
+    body: JSON.stringify(body),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
 }
 
 type MutationMethod = 'DELETE' | 'POST' | 'PUT'
