@@ -51,6 +51,7 @@ const routeState = vi.hoisted(() => ({
   listSpecificationRequirementSelectionQuestions: vi.fn(),
   parseLibrarySpecificationItemId: vi.fn(),
   parseSpecificationItemRef: vi.fn(),
+  recordCapacityEvent: vi.fn(),
   traverseCompleteRequirementList: vi.fn(),
   renderReportModelPdfResponse: vi.fn(),
   renderReportInWorker: vi.fn(),
@@ -74,6 +75,10 @@ vi.mock('@/lib/generated-output/spool', () => ({
   createGeneratedOutputFileResponse:
     routeState.createGeneratedOutputFileResponse,
   generatedOutputCapacitySnapshot: routeState.generatedOutputCapacitySnapshot,
+}))
+
+vi.mock('@/lib/observability/capacity', () => ({
+  recordCapacityEvent: routeState.recordCapacityEvent,
 }))
 
 vi.mock('@/lib/reports/data/server', () => ({
@@ -763,10 +768,39 @@ describe('requirement PDF routes', () => {
     })
   })
 
-  it('records cancellation and stream failure callbacks from the PDF response', async () => {
+  it('records cancellation from the PDF response stream', async () => {
     routeState.createGeneratedOutputFileResponse.mockImplementationOnce(
       async (_spool, headers: HeadersInit, lifecycle) => {
         lifecycle.onCancel()
+        return new Response('%PDF', { headers, status: 200 })
+      },
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/list?ids=REQ-1',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('%PDF')
+    expect(routeState.recordCapacityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'capacity.operation.cancelled',
+        operation: 'requirements.list_pdf_report',
+        outcome: 'cancelled',
+        statusCode: 499,
+      }),
+    )
+  })
+
+  it('records failure from the PDF response stream', async () => {
+    routeState.createGeneratedOutputFileResponse.mockImplementationOnce(
+      async (_spool, headers: HeadersInit, lifecycle) => {
         lifecycle.onError()
         return new Response('%PDF', { headers, status: 200 })
       },
@@ -784,6 +818,14 @@ describe('requirement PDF routes', () => {
 
     expect(response.status).toBe(200)
     expect(await response.text()).toBe('%PDF')
+    expect(routeState.recordCapacityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'capacity.operation.failed',
+        operation: 'requirements.list_pdf_report',
+        outcome: 'failure',
+        statusCode: 500,
+      }),
+    )
   })
 
   it('accepts combined review PDFs with more than 50 requirement ids', async () => {
