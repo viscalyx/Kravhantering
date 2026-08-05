@@ -3204,13 +3204,36 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Something went wrong.',
     )
+  })
+
+  it('surfaces duplicate question network failures without removing the question', async () => {
+    const question = { ...sampleQuestion, answers: [sampleAnswer] }
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [question] })
+      }
+      if (url.endsWith('/duplicate') && init?.method === 'POST') {
+        throw new Error('duplicate network failure')
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(question.text)).toBeInTheDocument()
+
+    const card = expandQuestion(question.text)
     fireEvent.click(within(card).getByRole('button', { name: 'Duplicate' }))
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirement-selection-questions/11/duplicate',
-        expect.objectContaining({ method: 'POST' }),
-      ),
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Something went wrong.',
     )
+    expect(screen.getByText(question.text)).toBeInTheDocument()
   })
 
   it('renders sparse requirement details and reports detail fetch failures', async () => {

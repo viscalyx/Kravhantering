@@ -242,6 +242,7 @@ describe('requirement selection question routes', () => {
       questionParams(),
     )
     expect(updateResponse.status).toBe(200)
+    await expect(updateResponse.json()).resolves.toEqual(question)
     expect(mocks.updateRequirementSelectionQuestion).toHaveBeenCalledWith(
       mocks.db,
       11,
@@ -250,12 +251,40 @@ describe('requirement selection question routes', () => {
         text: 'Which controls apply?',
       },
     )
+    expect(mocks.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      mocks.db,
+      mocks.context,
+      expect.objectContaining({
+        action: 'requirement_selection_question.update',
+        targetId: 11,
+        targetUniqueId: 'INF-SQ001',
+      }),
+    )
 
     const duplicateResponse = await duplicateQuestion(
       request('/api/requirement-selection-questions/11/duplicate', 'POST'),
       questionParams(),
     )
     expect(duplicateResponse.status).toBe(201)
+    await expect(duplicateResponse.json()).resolves.toEqual({
+      ...question,
+      id: 12,
+      questionCode: 'INF-SQ002',
+    })
+    expect(mocks.duplicateRequirementSelectionQuestion).toHaveBeenCalledWith(
+      mocks.db,
+      11,
+    )
+    expect(mocks.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      mocks.db,
+      mocks.context,
+      expect.objectContaining({
+        action: 'requirement_selection_question.duplicate',
+        details: { sourceQuestionId: 11 },
+        targetId: 12,
+        targetUniqueId: 'INF-SQ002',
+      }),
+    )
 
     const deleteResponse = await deleteQuestion(
       request('/api/requirement-selection-questions/11', 'DELETE'),
@@ -381,6 +410,25 @@ describe('requirement selection question routes', () => {
       questionParams(),
     )
     expect(createResponse.status).toBe(201)
+    await expect(createResponse.json()).resolves.toEqual(question)
+    expect(mocks.createRequirementSelectionAnswer).toHaveBeenCalledWith(
+      mocks.db,
+      11,
+      {
+        packageIds: [4],
+        requirementIds: [8],
+        text: 'Encryption',
+      },
+    )
+    expect(mocks.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      mocks.db,
+      mocks.context,
+      expect.objectContaining({
+        action: 'requirement_selection_answer.create',
+        details: { questionId: 11 },
+        targetUniqueId: 'INF-SQ001',
+      }),
+    )
 
     const updateResponse = await updateAnswer(
       request('/api/requirement-selection-questions/11/answers/101', 'PUT', {
@@ -390,6 +438,29 @@ describe('requirement selection question routes', () => {
       answerParams(),
     )
     expect(updateResponse.status).toBe(200)
+    await expect(updateResponse.json()).resolves.toEqual(question)
+    expect(mocks.updateRequirementSelectionAnswer).toHaveBeenCalledWith(
+      mocks.db,
+      11,
+      101,
+      {
+        description: 'Encryption at rest and in transit',
+        text: 'Encryption controls',
+      },
+    )
+    expect(mocks.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      mocks.db,
+      mocks.context,
+      expect.objectContaining({
+        action: 'requirement_selection_answer.update',
+        details: {
+          answerId: 101,
+          changedFields: ['description', 'text'],
+          questionId: 11,
+        },
+        targetId: 101,
+      }),
+    )
 
     const deleteResponse = await deleteAnswer(
       request('/api/requirement-selection-questions/11/answers/101', 'DELETE'),

@@ -1896,24 +1896,45 @@ describe('RFI client UI states', () => {
     )
 
     const region = await screen.findByRole('region', { name: 'Security' })
-    await userEvent.click(
-      screen.getByRole('switch', {
-        name: 'specificationRfiList.lockedToggleAria',
-      }),
+    const lockSwitch = screen.getByRole('switch', {
+      name: 'specificationRfiList.lockedToggleAria',
+    })
+    await userEvent.click(lockSwitch)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specificationRfiList.saveError',
+    )
+    expect(lockSwitch).toHaveAttribute('aria-checked', 'false')
+
+    const areaSwitch = within(region).getByRole('switch', {
+      name: 'specificationRfiList.areaIncludedToggleAria',
+    })
+    await userEvent.click(areaSwitch)
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/1/rfi-list/areas/1',
+        expect.objectContaining({ method: 'PATCH' }),
+      ),
     )
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'specificationRfiList.saveError',
     )
-    await userEvent.click(
-      within(region).getByRole('switch', {
-        name: 'specificationRfiList.areaIncludedToggleAria',
-      }),
+    expect(areaSwitch).toHaveAttribute('aria-checked', 'true')
+
+    const questionSwitch = within(region).getByRole('switch', {
+      name: 'specificationRfiList.questionIncludedToggleAria',
+    })
+    await userEvent.click(questionSwitch)
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/1/rfi-list/items/11',
+        expect.objectContaining({ method: 'PATCH' }),
+      ),
     )
-    await userEvent.click(
-      within(region).getByRole('switch', {
-        name: 'specificationRfiList.questionIncludedToggleAria',
-      }),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specificationRfiList.saveError',
     )
+    expect(questionSwitch).toHaveAttribute('aria-checked', 'true')
+
     await userEvent.click(
       within(region).getByRole('button', {
         name: 'specificationRfiList.createSuggestionForArea',
@@ -1948,5 +1969,13 @@ describe('RFI client UI states', () => {
       rfiQuestionId: null,
       specificationId: 1,
     })
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specificationRfiList.saveError',
+    )
+    expect(
+      screen.getByRole('textbox', {
+        name: /specificationRfiList\.suggestionContent/,
+      }),
+    ).toHaveValue('Add an area question')
   })
 })

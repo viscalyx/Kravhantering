@@ -153,7 +153,13 @@ function workflowQuestions() {
 }
 
 describe('SpecificationRequirementSelectionPanel', () => {
+  let scrollIntoViewDescriptor: PropertyDescriptor | undefined
+
   beforeEach(() => {
+    scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      'scrollIntoView',
+    )
     vi.clearAllMocks()
     confirmMock.mockResolvedValue(true)
     vi.stubGlobal('fetch', fetchMock)
@@ -183,6 +189,16 @@ describe('SpecificationRequirementSelectionPanel', () => {
 
   afterEach(() => {
     cleanup()
+    vi.restoreAllMocks()
+    if (scrollIntoViewDescriptor) {
+      Object.defineProperty(
+        Element.prototype,
+        'scrollIntoView',
+        scrollIntoViewDescriptor,
+      )
+    } else {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    }
     vi.unstubAllGlobals()
   })
 
@@ -255,8 +271,16 @@ describe('SpecificationRequirementSelectionPanel', () => {
   })
 
   it('filters, groups, and links the complete visible question workflow', async () => {
-    const scrollIntoView = vi.fn()
-    Element.prototype.scrollIntoView = scrollIntoView
+    if (!scrollIntoViewDescriptor) {
+      Object.defineProperty(Element.prototype, 'scrollIntoView', {
+        configurable: true,
+        value: () => undefined,
+        writable: true,
+      })
+    }
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, 'scrollIntoView')
+      .mockImplementation(() => undefined)
     fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
       if (init?.method === 'PUT') {
         return Promise.resolve(okJson({ questions: workflowQuestions() }))
