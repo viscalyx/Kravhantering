@@ -1,6 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import type { SpecificationListItem } from '@/lib/specifications/preload-types'
 import type { SpecDetailWorkflowContext } from './requirements-specification-detail-client.suite'
 
 export function registerPaginationTests(context: SpecDetailWorkflowContext) {
@@ -45,11 +44,10 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       )
 
       await waitFor(() => {
-        expect(
-          context
-            .latestItemsTableProps()
-            .rows.map((item: SpecificationListItem) => item.itemRef),
-        ).toEqual(['lib:31', 'lib:32'])
+        expect(context.requirementRowNames('items')).toEqual([
+          'lib:31',
+          'lib:32',
+        ])
       })
       expect(
         screen.queryByRole('button', {
@@ -261,11 +259,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       expect(
         await screen.findByText('specification.paginationRestarted'),
       ).toHaveAttribute('role', 'status')
-      expect(
-        context
-          .latestItemsTableProps()
-          .rows.map((item: SpecificationListItem) => item.itemRef),
-      ).toEqual(['lib:32'])
+      expect(context.requirementRowNames('items')).toEqual(['lib:32'])
       expect(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
@@ -306,11 +300,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       expect(recoveryAlert).toHaveTextContent(
         'specification.paginationRecoveryFailed',
       )
-      expect(
-        context
-          .latestItemsTableProps()
-          .rows.map((item: SpecificationListItem) => item.itemRef),
-      ).toEqual(['lib:31'])
+      expect(context.requirementRowNames('items')).toEqual(['lib:31'])
 
       const retry = within(recoveryAlert).getByRole('button', {
         name: 'common.retry',
@@ -375,11 +365,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
         { target: { value: 'latest' } },
       )
       await waitFor(() => {
-        expect(
-          context
-            .latestItemsTableProps()
-            .rows.map((item: SpecificationListItem) => item.itemRef),
-        ).toEqual(['lib:33'])
+        expect(context.requirementRowNames('items')).toEqual(['lib:33'])
       })
 
       await act(async () => {
@@ -396,11 +382,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
         )
         await Promise.resolve()
       })
-      expect(
-        context
-          .latestItemsTableProps()
-          .rows.map((item: SpecificationListItem) => item.itemRef),
-      ).toEqual(['lib:33'])
+      expect(context.requirementRowNames('items')).toEqual(['lib:33'])
     })
   })
 }

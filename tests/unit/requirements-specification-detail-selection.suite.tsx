@@ -55,7 +55,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('requirements-table-items-status'),
+          screen.getByRole('status', { name: 'items requirements status' }),
         ).toHaveTextContent('specification.selectionStatus')
       })
       fireEvent.click(
@@ -203,7 +203,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         expect(screen.getByRole('button', { name })).toBeEnabled()
       }
       expect(
-        screen.getByTestId('requirements-table-items-status'),
+        screen.getByRole('status', { name: 'items requirements status' }),
       ).not.toHaveTextContent('specification.selectionActionLimitExceeded')
     })
 
@@ -254,7 +254,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('requirements-table-items-status'),
+          screen.getByRole('status', { name: 'items requirements status' }),
         ).toHaveTextContent('specification.selectionDisappeared')
       })
       expect(

@@ -1,5 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { RequirementPackageOption } from '@/lib/requirements/list-view'
 import type { SpecDetailWorkflowContext } from './requirements-specification-detail-client.suite'
@@ -14,44 +13,14 @@ export function registerGeneratedOutputTests(
 
       await waitFor(() => {
         expect(
-          context
-            .latestItemsTableProps()
-            .rows.map((row: { itemRef?: string }) => row.itemRef),
-        ).toEqual(['lib:31'])
+          screen.getByRole('table', { name: 'items requirements' }),
+        ).toHaveTextContent('lib:31')
       })
-      const itemsTable = context.latestItemsTableProps()
-      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-        hidden?: boolean
-        id: string
-        menuItems?: Array<{
-          href?: string
-          id: string
-          onClick?: (target?: HTMLButtonElement | null) => void
-        }>
-      }>
-      const moreActions = floatingActions.find(
-        action => action.id === 'more-actions',
-      )
-
-      expect(moreActions?.hidden).toBe(false)
-      expect(moreActions?.menuItems?.map(item => item.id)).toEqual([
-        'ai-assist-local',
-        'import-local',
-        'separator-report-actions',
-        'pdf-progress',
-        'pdf-traceability',
-        'separator-export-actions',
-        'export-full',
-      ])
-      expect(moreActions?.menuItems).toEqual([
-        expect.objectContaining({ id: 'ai-assist-local' }),
-        expect.objectContaining({ id: 'import-local' }),
-        expect.objectContaining({ id: 'separator-report-actions' }),
-        expect.objectContaining({ id: 'pdf-progress' }),
-        expect.objectContaining({ id: 'pdf-traceability' }),
-        expect.objectContaining({ id: 'separator-export-actions' }),
-        expect.objectContaining({ id: 'export-full' }),
-      ])
+      const moreActions = screen.getByRole('menu', {
+        name: 'more-actions menu',
+      })
+      expect(within(moreActions).getAllByRole('menuitem')).toHaveLength(5)
+      expect(within(moreActions).getAllByRole('separator')).toHaveLength(2)
 
       const progressReport = screen.getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
@@ -91,46 +60,25 @@ export function registerGeneratedOutputTests(
       expect(
         screen.getByRole('region', { name: 'Import review' }),
       ).toBeInTheDocument()
-      let importProps = context.lazyFeatureState.importRenderSpy.mock.calls.at(
-        -1,
-      )?.[0] as {
-        open: boolean
-        returnFocusTarget?: HTMLElement | null
-      }
-      expect(importProps.open).toBe(true)
-      expect(importProps.returnFocusTarget).toBe(importTrigger)
-
       fireEvent.click(
         screen.getByRole('button', { name: 'cancel import review' }),
       )
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('region', { name: 'Import review' }),
+        ).not.toBeInTheDocument()
+      })
+      expect(importTrigger).toHaveFocus()
       fireEvent.click(aiTrigger)
       expect(
         screen.getByRole('region', { name: 'AI authoring' }),
       ).toBeInTheDocument()
-      const aiProps = context.lazyFeatureState.aiRenderSpy.mock.calls.at(
-        -1,
-      )?.[0] as {
-        open: boolean
-        returnFocusTarget?: HTMLElement | null
-      }
-      expect(aiProps.open).toBe(true)
-      expect(aiProps.returnFocusTarget).toBe(aiTrigger)
-
       fireEvent.click(
         screen.getByRole('button', { name: 'review AI requirements' }),
       )
-      importProps = context.lazyFeatureState.importRenderSpy.mock.calls.at(
-        -1,
-      )?.[0] as {
-        open: boolean
-        returnFocusTarget?: HTMLElement | null
-      }
-      expect(importProps.open).toBe(true)
-      expect(importProps.returnFocusTarget).toBe(aiTrigger)
       expect(
         screen.getByRole('region', { name: 'Import review' }),
       ).toBeInTheDocument()
-
       fireEvent.click(
         screen.getByRole('button', { name: 'finish import review' }),
       )
@@ -139,64 +87,39 @@ export function registerGeneratedOutputTests(
           screen.queryByRole('region', { name: 'Import review' }),
         ).not.toBeInTheDocument()
       })
+      expect(aiTrigger).toHaveFocus()
     })
 
     it('places kravunderlag create before columns and secondary actions after columns', async () => {
       context.renderRequirementsSpecificationDetailClient()
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const itemsTable = context.latestItemsTableProps()
-      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-        id: string
-        menuItems?: Array<{
-          disabled?: boolean
-          icon?: ReactNode
-          id: string
-          kind?: string
-          label: string
-        }>
-        onClick?: () => void
-        position?: string
-        variant?: string
-      }>
-      const createLocalAction = floatingActions.find(
-        action => action.id === 'create-local',
-      )
-      const moreActions = floatingActions.find(
-        action => action.id === 'more-actions',
-      )
+      const itemsSurface = screen.getByRole('region', {
+        name: 'items requirements surface',
+      })
+      const createLocalAction = within(itemsSurface).getByRole('button', {
+        name: 'specification.newLocalRequirement',
+      })
+      const columnsAction = within(itemsSurface).getByRole('button', {
+        name: 'common.columns',
+      })
+      const moreActions = within(itemsSurface).getByRole('button', {
+        name: 'common.moreActions',
+      })
 
-      expect(itemsTable.columnPickerPlacement).toBe('betweenActions')
-      expect(floatingActions.map(action => action.id)).toEqual([
-        'create-local',
-        'more-actions',
-      ])
       expect(
-        floatingActions.map(action => action.position ?? 'afterColumns'),
-      ).toEqual(['beforeColumns', 'afterColumns'])
-      expect(createLocalAction?.variant).toBe('primary')
-      expect(createLocalAction?.menuItems).toBeUndefined()
-      expect(createLocalAction?.onClick).toEqual(expect.any(Function))
-      expect(moreActions?.menuItems).toEqual([
-        expect.objectContaining({ disabled: false, id: 'ai-assist-local' }),
-        expect.objectContaining({ id: 'import-local' }),
-        expect.objectContaining({
-          id: 'separator-report-actions',
-          kind: 'separator',
-        }),
-        expect.objectContaining({ id: 'pdf-progress' }),
-        expect.objectContaining({ id: 'pdf-traceability' }),
-        expect.objectContaining({
-          id: 'separator-export-actions',
-          kind: 'separator',
-        }),
-        expect.objectContaining({ id: 'export-full' }),
-      ])
+        createLocalAction.compareDocumentPosition(columnsAction) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
       expect(
-        moreActions?.menuItems
-          ?.filter(item => item.kind !== 'separator')
-          .every(item => item.icon != null),
-      ).toBe(true)
+        columnsAction.compareDocumentPosition(moreActions) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      const menu = within(itemsSurface).getByRole('menu', {
+        name: 'more-actions menu',
+      })
+      expect(within(menu).getAllByRole('menuitem')).toHaveLength(5)
+      expect(within(menu).getAllByRole('separator')).toHaveLength(2)
     })
 
     it('explains whether AI authoring is disabled by the environment or an administrator', async () => {
@@ -212,33 +135,12 @@ export function registerGeneratedOutputTests(
         const view =
           context.renderRequirementsSpecificationDetailClient(initialData)
         await context.waitForInitialAvailableRequirementsRefresh()
-        const moreActions = (
-          context.latestItemsTableProps().floatingActions as Array<{
-            id: string
-            menuItems?: Array<{
-              description?: string
-              disabled?: boolean
-              id: string
-              onClick?: () => void
-              tooltip?: string
-            }>
-          }>
-        ).find(action => action.id === 'more-actions')
-        const aiAction = moreActions?.menuItems?.find(
-          action => action.id === 'ai-assist-local',
-        )
-
-        expect(aiAction).toEqual(
-          expect.objectContaining({
-            description: expectedMessage,
-            disabled: true,
-            tooltip: expectedMessage,
-          }),
-        )
         const aiMenuItem = screen.getByRole('menuitem', {
           name: 'specification.aiGenerate',
         })
         expect(aiMenuItem).toBeDisabled()
+        expect(aiMenuItem).toHaveAttribute('aria-description', expectedMessage)
+        expect(aiMenuItem).toHaveAttribute('title', expectedMessage)
         fireEvent.click(aiMenuItem)
         expect(
           screen.queryByRole('region', { name: 'AI authoring' }),
@@ -253,27 +155,6 @@ export function registerGeneratedOutputTests(
         8,
       )
       await context.waitForInitialAvailableRequirementsRefresh()
-
-      const itemsTable = context.latestItemsTableProps()
-      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-        hidden?: boolean
-        id: string
-        menuItems?: Array<{
-          href?: string
-          id: string
-          onClick?: (target?: HTMLButtonElement | null) => void
-        }>
-      }>
-      const moreActions = floatingActions.find(
-        action => action.id === 'more-actions',
-      )
-
-      expect(moreActions?.menuItems?.map(item => item.id)).toContain(
-        'pdf-progress',
-      )
-      expect(moreActions?.menuItems?.map(item => item.id)).toContain(
-        'pdf-traceability',
-      )
 
       const progressReport = screen.getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
@@ -330,17 +211,11 @@ export function registerGeneratedOutputTests(
       )
 
       await waitFor(() => {
-        const floatingActions = (context.latestItemsTableProps()
-          .floatingActions ?? []) as Array<{
-          hidden?: boolean
-          id: string
-          menuItems?: Array<{ href?: string; id: string }>
-        }>
         expect(
-          floatingActions
-            .find(action => action.id === 'more-actions')
-            ?.menuItems?.map(item => item.id),
-        ).toContain('pdf-traceability')
+          screen.getByRole('menuitem', {
+            name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
+          }),
+        ).toBeInTheDocument()
       })
 
       fireEvent.click(
@@ -397,23 +272,16 @@ export function registerGeneratedOutputTests(
         screen.queryByRole('button', { name: 'load-more-items' }),
       ).not.toBeInTheDocument()
 
-      const itemsTable = context.latestItemsTableProps()
-      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-        hidden?: boolean
-        id: string
-        menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
-      }>
-      const moreActions = floatingActions.find(
-        action => action.id === 'more-actions',
-      )
-
-      expect(moreActions?.hidden).toBe(false)
-      expect(moreActions?.menuItems?.map(item => item.id)).toContain(
-        'pdf-progress',
-      )
-      expect(moreActions?.menuItems?.map(item => item.id)).toContain(
-        'pdf-traceability',
-      )
+      expect(
+        screen.getByRole('menuitem', {
+          name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', {
+          name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
+        }),
+      ).toBeInTheDocument()
     })
 
     it('routes full CSV through the generated-output controller with menu focus restoration', async () => {
@@ -447,22 +315,16 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const moreActions = (
-        context.latestItemsTableProps().floatingActions as Array<{
-          id: string
-          menuItems?: Array<{ disabled?: boolean; id: string }>
-        }>
-      ).find(action => action.id === 'more-actions')
-
-      expect(moreActions?.menuItems).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            disabled: true,
-            id: 'export-procurement',
-          }),
-          expect.objectContaining({ disabled: true, id: 'export-full' }),
-        ]),
-      )
+      expect(
+        screen.getByRole('menuitem', {
+          name: 'specification.exportProfiles.procurement',
+        }),
+      ).toBeDisabled()
+      expect(
+        screen.getByRole('menuitem', {
+          name: 'specification.exportProfiles.full',
+        }),
+      ).toBeDisabled()
     })
   })
 }
