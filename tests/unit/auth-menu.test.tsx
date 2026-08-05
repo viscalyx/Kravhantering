@@ -14,6 +14,20 @@ const pathnameState = vi.hoisted(() => ({
   value: '/requirements',
 }))
 
+function authenticatedMe(overrides: Record<string, unknown> = {}) {
+  return {
+    authenticated: true,
+    sub: 'user-1',
+    hsaId: 'SE5560000001-admin1',
+    givenName: 'Ada',
+    familyName: 'Admin',
+    name: 'Ada Admin',
+    roles: ['Admin'],
+    expiresAt: 123,
+    ...overrides,
+  }
+}
+
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string, values?: Record<string, string>) =>
     key === 'signedInAs' && values?.name ? `signedInAs ${values.name}` : key,
@@ -52,6 +66,46 @@ describe('AuthMenu', () => {
     expect(signInLink.className).toContain('min-h-11')
     expect(signInLink.className).toContain('min-w-11')
     expect(signInLink.className).toContain('focus-visible:ring-2')
+  })
+
+  it('renders sign-in after a non-abort auth status failure', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {})
+    fetchMock.mockRejectedValue(new Error('network unavailable'))
+
+    try {
+      render(<AuthMenu variant="desktop" />)
+      expect(
+        await screen.findByRole('link', { name: 'signIn' }),
+      ).toBeInTheDocument()
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it.each([new DOMException('aborted', 'AbortError'), { name: 'AbortError' }])(
+    'ignores abort-shaped auth status failure %p',
+    async failure => {
+      fetchMock.mockRejectedValue(failure)
+      const { container } = render(<AuthMenu variant="desktop" />)
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+      expect(container).toBeEmptyDOMElement()
+    },
+  )
+
+  it('does not duplicate the locale root in the sign-in return path', async () => {
+    pathnameState.value = '/'
+    window.history.replaceState({}, '', '/sv')
+    fetchMock.mockResolvedValue({ ok: false })
+
+    render(<AuthMenu variant="desktop" />)
+
+    expect(await screen.findByRole('link', { name: 'signIn' })).toHaveAttribute(
+      'href',
+      '/api/auth/login?returnTo=%2Fsv',
+    )
   })
 
   it('renders the mobile sign-in affordance with explicit focus and touch-target classes', async () => {
@@ -259,6 +313,57 @@ describe('AuthMenu', () => {
     } finally {
       consoleErrorSpy.mockRestore()
     }
+  })
+
+  it.each([
+    ['unreadable JSON', () => Promise.reject(new Error('invalid json'))],
+    ['missing redirect', async () => ({})],
+    ['blank redirect', async () => ({ redirectTo: '   ' })],
+    ['non-string redirect', async () => ({ redirectTo: 42 })],
+  ])('uses the local logout fallback for %s', async (_label, json) => {
+    const realWindow = window
+    const assign = vi.fn()
+    const testWindow = Object.create(realWindow) as Window
+    Object.defineProperty(testWindow, 'location', {
+      configurable: true,
+      value: { assign },
+    })
+    vi.stubGlobal('window', testWindow)
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => authenticatedMe(),
+      })
+      .mockResolvedValueOnce({ ok: true, json })
+
+    try {
+      render(<AuthMenu variant="mobile" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'signOut' }))
+
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
+    } finally {
+      vi.stubGlobal('window', realWindow)
+    }
+  })
+
+  it('ignores a duplicate logout submission while one is pending', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => authenticatedMe(),
+      })
+      .mockReturnValueOnce(new Promise(() => {}))
+
+    render(<AuthMenu variant="mobile" />)
+    const signOut = await screen.findByRole('button', { name: 'signOut' })
+    fireEvent.click(signOut)
+    const form = (
+      await screen.findByRole('button', { name: 'signingOut' })
+    ).closest('form')
+    expect(form).not.toBeNull()
+    fireEvent.submit(form as HTMLFormElement)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('keeps user info developer-mode values stable in English', async () => {
@@ -534,6 +639,70 @@ describe('AuthMenu', () => {
         '[data-developer-mode-value="user info session expires"]',
       ),
     ).toBeNull()
+  })
+
+  it('renders subject fallback and the explicit no-roles state', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        authenticated: true,
+        sub: 'user-1',
+        hsaId: '',
+        givenName: 'Ada',
+        familyName: 'Admin',
+        name: '',
+        email: '',
+        roles: [],
+        expiresAt: Number.NaN,
+      }),
+    })
+
+    render(<AuthMenu variant="desktop" />)
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs user-1',
+    })
+    fireEvent.click(trigger)
+
+    expect(await screen.findByText('userInfoNoRoles')).toBeInTheDocument()
+    expect(screen.getByText('user-1')).toBeInTheDocument()
+  })
+
+  it('opens the popup for focus-visible keyboard focus', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => authenticatedMe(),
+    })
+    render(<AuthMenu variant="desktop" />)
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs Ada Admin',
+    })
+    Object.defineProperty(trigger, 'matches', {
+      value: vi.fn().mockReturnValue(true),
+    })
+
+    fireEvent.focus(trigger)
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('keeps the popup closed when focus-visible detection is unsupported', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => authenticatedMe(),
+    })
+    render(<AuthMenu variant="desktop" />)
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs Ada Admin',
+    })
+    Object.defineProperty(trigger, 'matches', {
+      value: vi.fn(() => {
+        throw new Error('selector unsupported')
+      }),
+    })
+
+    fireEvent.focus(trigger)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('keeps the desktop popup open when focus moves into the popup subtree', async () => {

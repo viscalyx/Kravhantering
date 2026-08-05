@@ -163,4 +163,85 @@ describe('AuthExpiryGuard', () => {
       }),
     )
   })
+
+  it.each([
+    { ok: false },
+    { ok: true, json: async () => ({ authenticated: false }) },
+  ])(
+    'requires reauthentication for rejected auth status %p',
+    async response => {
+      fetchMock.mockResolvedValue(response)
+      authExpiryState.confirm.mockReturnValue(new Promise(() => {}))
+
+      render(<AuthExpiryGuard />)
+      await flushPromises()
+
+      expect(authExpiryState.confirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'sessionExpiredMessage',
+          showCancel: false,
+        }),
+      )
+    },
+  )
+
+  it('ignores abort failures while loading auth status', async () => {
+    fetchMock.mockRejectedValue(new DOMException('aborted', 'AbortError'))
+
+    render(<AuthExpiryGuard />)
+    await flushPromises()
+
+    expect(authExpiryState.confirm).not.toHaveBeenCalled()
+    expect(authExpiryState.redirectToReauthLogin).not.toHaveBeenCalled()
+  })
+
+  it('ignores non-DOM abort-shaped failures while loading auth status', async () => {
+    fetchMock.mockRejectedValue({ name: 'AbortError' })
+
+    render(<AuthExpiryGuard />)
+    await flushPromises()
+
+    expect(authExpiryState.confirm).not.toHaveBeenCalled()
+  })
+
+  it('ignores auth events without a reason and duplicate expired events', async () => {
+    const expiresAt = Math.floor(Date.now() / 1000) + 3_600
+    fetchMock.mockResolvedValue(authMeResponse(expiresAt))
+    authExpiryState.confirm.mockReturnValue(new Promise(() => {}))
+    render(<AuthExpiryGuard />)
+    await flushPromises()
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(AUTH_REAUTH_REQUIRED_EVENT, { detail: {} }),
+      )
+      window.dispatchEvent(
+        new CustomEvent(AUTH_REAUTH_REQUIRED_EVENT, {
+          detail: { reason: 'session_missing' },
+        }),
+      )
+      window.dispatchEvent(
+        new CustomEvent(AUTH_REAUTH_REQUIRED_EVENT, {
+          detail: { reason: 'session_expired' },
+        }),
+      )
+    })
+
+    expect(authExpiryState.confirm).toHaveBeenCalledOnce()
+  })
+
+  it('does not redirect when the user declines the expiry warning', async () => {
+    const expiresAt = Math.floor(Date.now() / 1000) + 180
+    fetchMock.mockResolvedValue(authMeResponse(expiresAt))
+    authExpiryState.confirm.mockResolvedValue(false)
+    render(<AuthExpiryGuard />)
+    await flushPromises()
+
+    await act(async () => {
+      vi.advanceTimersByTime(60_000)
+    })
+    await flushPromises()
+
+    expect(authExpiryState.redirectToReauthLogin).not.toHaveBeenCalled()
+  })
 })

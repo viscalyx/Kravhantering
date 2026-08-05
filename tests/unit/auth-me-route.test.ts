@@ -72,6 +72,39 @@ describe('auth me route', () => {
     })
   })
 
+  it('keeps optional verified email absent from the session projection', async () => {
+    getSessionMock.mockResolvedValue({
+      sub: 'user-1',
+      hsaId: 'SE5560000001-rev1',
+      givenName: 'Alice',
+      familyName: 'Reviewer',
+      name: 'Alice Reviewer',
+      roles: ['Reviewer'],
+      accessTokenExpiresAt: 123,
+    })
+    isSignedInMock.mockReturnValue(true)
+
+    const response = await GET(request())
+    const body = (await response.json()) as Record<string, unknown>
+    expect(body.authenticated).toBe(true)
+    expect(body).not.toHaveProperty('email')
+  })
+
+  it('normalizes a missing role list to an empty projection', async () => {
+    getSessionMock.mockResolvedValue({
+      sub: 'user-1',
+      hsaId: 'SE5560000001-rev1',
+      givenName: 'Alice',
+      familyName: 'Reviewer',
+      name: 'Alice Reviewer',
+      accessTokenExpiresAt: 123,
+    })
+    isSignedInMock.mockReturnValue(true)
+
+    const response = await GET(request())
+    await expect(response.json()).resolves.toMatchObject({ roles: [] })
+  })
+
   it('never returns raw tokens or login-state secrets from the session', async () => {
     getSessionMock.mockResolvedValue({
       sub: 'user-1',

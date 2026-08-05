@@ -380,4 +380,45 @@ describe('recordSecurityEvent', () => {
       userAgent: 'TestAgent/2.0',
     })
   })
+
+  it('falls back to a raw Request path when URL parsing fails', () => {
+    const request = new Request('https://app.example.test/original')
+    Object.defineProperty(request, 'url', {
+      value: '/api/auth/callback?code=sensitive#token',
+    })
+
+    recordSecurityEvent({
+      event: 'auth.login.failed',
+      outcome: 'failure',
+      actor: { source: 'oidc' },
+      request,
+    })
+
+    expect(emittedEvents()[0].request).toMatchObject({
+      path: '/api/auth/callback',
+    })
+  })
+
+  it('normalizes primitive event and actor values in logging failures', () => {
+    const stringify = vi.spyOn(JSON, 'stringify').mockImplementationOnce(() => {
+      throw 'serialization failed'
+    })
+
+    expect(() =>
+      recordSecurityEvent({
+        event: 42,
+        outcome: 'failure',
+        actor: { source: false },
+        request: { method: 'GET', path: '/' },
+      } as never),
+    ).not.toThrow()
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[security-audit] failed to record event',
+      '42',
+      'false',
+      'serialization failed',
+    )
+    stringify.mockRestore()
+  })
 })

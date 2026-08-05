@@ -15,6 +15,7 @@ const TRACKED_ENV_KEYS = [
   'AUTH_OIDC_POST_LOGOUT_REDIRECT_URI',
   'AUTH_OIDC_REDIRECT_URI',
   'AUTH_SESSION_COOKIE_PASSWORD',
+  'AUTH_SESSION_TTL_SECONDS',
 ] as const
 
 const env = process.env as Record<string, string | undefined>
@@ -86,6 +87,27 @@ describe('auth config', () => {
     resetAuthConfigForTests()
     expect(() => getAuthConfig()).toThrow(AuthConfigError)
   })
+
+  it.each([
+    'AUTH_OIDC_CLIENT_ID',
+    'AUTH_OIDC_CLIENT_SECRET',
+    'AUTH_OIDC_REDIRECT_URI',
+    'AUTH_OIDC_POST_LOGOUT_REDIRECT_URI',
+    'AUTH_SESSION_COOKIE_PASSWORD',
+  ] as const)('reports missing required variable %s', name => {
+    delete env[name]
+    resetAuthConfigForTests()
+    expect(() => getAuthConfig()).toThrow(name)
+  })
+
+  it.each(['not-a-number', '0', '-1', 'Infinity'])(
+    'rejects invalid session TTL %s',
+    value => {
+      env.AUTH_SESSION_TTL_SECONDS = value
+      resetAuthConfigForTests()
+      expect(() => getAuthConfig()).toThrow('expected a positive finite number')
+    },
+  )
 
   it('throws when cookie password is shorter than 32 chars', () => {
     env.AUTH_SESSION_COOKIE_PASSWORD = 'too-short'
