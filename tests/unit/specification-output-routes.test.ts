@@ -420,6 +420,145 @@ describe('specification output routes', () => {
     expect(routeState.visitSpecificationOutputPages).not.toHaveBeenCalled()
   })
 
+  it.each([
+    {
+      route: 'exports' as const,
+      url: 'http://localhost/api/requirements-specifications/not-an-id/exports?profile=full',
+    },
+    {
+      route: 'report-output' as const,
+      url: 'http://localhost/api/requirements-specifications/not-an-id/report-output?profile=procurement',
+    },
+  ])(
+    'rejects malformed $route route parameters before runtime creation',
+    async testCase => {
+      const { GET } =
+        testCase.route === 'exports'
+          ? await import(
+              '@/app/api/requirements-specifications/[id]/exports/route'
+            )
+          : await import(
+              '@/app/api/requirements-specifications/[id]/report-output/route'
+            )
+
+      const response = await GET(new NextRequest(testCase.url), {
+        params: Promise.resolve({ id: 'not-an-id' }),
+      })
+
+      expect(response.status).toBe(400)
+      expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    {
+      route: 'exports' as const,
+      url: 'http://localhost/api/requirements-specifications/42/exports?profile=full&unexpected=true',
+    },
+    {
+      route: 'report-output' as const,
+      url: 'http://localhost/api/requirements-specifications/42/report-output?profile=procurement&unexpected=true',
+    },
+  ])(
+    'rejects unknown $route query keys before runtime creation',
+    async testCase => {
+      const { GET } =
+        testCase.route === 'exports'
+          ? await import(
+              '@/app/api/requirements-specifications/[id]/exports/route'
+            )
+          : await import(
+              '@/app/api/requirements-specifications/[id]/report-output/route'
+            )
+
+      const response = await GET(new NextRequest(testCase.url), {
+        params: Promise.resolve({ id: '42' }),
+      })
+
+      expect(response.status).toBe(400)
+      expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['exports', 'report-output'] as const)(
+    'returns 404 from %s when the specification no longer exists',
+    async route => {
+      routeState.getSpecificationById.mockResolvedValueOnce(null)
+      const { GET } =
+        route === 'exports'
+          ? await import(
+              '@/app/api/requirements-specifications/[id]/exports/route'
+            )
+          : await import(
+              '@/app/api/requirements-specifications/[id]/report-output/route'
+            )
+      const profile = route === 'exports' ? 'full' : 'procurement'
+
+      const response = await GET(
+        new NextRequest(
+          `http://localhost/api/requirements-specifications/42/${route}?profile=${profile}`,
+        ),
+        { params: Promise.resolve({ id: '42' }) },
+      )
+
+      expect(response.status).toBe(404)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Specification not found: 42',
+      })
+      expect(routeState.authorize).not.toHaveBeenCalled()
+    },
+  )
+
+  it('rejects a report model profile that does not match lifecycle status', async () => {
+    const { GET } = await import(
+      '@/app/api/requirements-specifications/[id]/report-output/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/42/report-output?profile=management&locale=en',
+      ),
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      error:
+        'Report profile is not available for this specification lifecycle status',
+    })
+    expect(
+      routeState.collectCompleteSpecificationOutputData,
+    ).not.toHaveBeenCalled()
+  })
+
+  it.each(['exports', 'report-output'] as const)(
+    'returns the safe error envelope when %s authorization fails unexpectedly',
+    async route => {
+      routeState.authorize.mockRejectedValueOnce(new Error('database secret'))
+      const { GET } =
+        route === 'exports'
+          ? await import(
+              '@/app/api/requirements-specifications/[id]/exports/route'
+            )
+          : await import(
+              '@/app/api/requirements-specifications/[id]/report-output/route'
+            )
+      const profile = route === 'exports' ? 'full' : 'procurement'
+
+      const response = await GET(
+        new NextRequest(
+          `http://localhost/api/requirements-specifications/42/${route}?profile=${profile}`,
+        ),
+        { params: Promise.resolve({ id: '42' }) },
+      )
+
+      expect(response.status).toBe(500)
+      const body = (await response.json()) as { error: string }
+      expect(body.error).not.toContain('database secret')
+      expect(response.headers.get('X-Request-Id')).toBe('req')
+    },
+  )
+
   it('returns traceability items after specification authorization', async () => {
     const { GET } = await import(
       '@/app/api/requirements-specifications/[id]/traceability-items/route'

@@ -40,6 +40,14 @@ describe('report priority identity', () => {
       nameEn: 'High',
       nameSv: 'Hög',
     })
+
+    expect(createReportPriorityIdentity({ code: ' P3 ' })).toEqual({
+      code: 'P3',
+      color: null,
+      iconName: null,
+      nameEn: '',
+      nameSv: '',
+    })
   })
 
   it('creates an identity from report item fields when a code exists', () => {
@@ -93,6 +101,12 @@ describe('report priority identity', () => {
       ),
     ).toBe('P4')
     expect(formatReportPriorityLabel(null, 'sv')).toBeNull()
+    expect(
+      formatReportPriorityLabel(
+        createReportPriorityIdentity({ code: '', nameEn: '', nameSv: '' }),
+        'en',
+      ),
+    ).toBeNull()
   })
 
   it('derives opaque badge and inline colors with printable text contrast', () => {
@@ -109,5 +123,12 @@ describe('report priority identity', () => {
         contrastRatio(inline.foreground, inline.background),
       ).toBeGreaterThanOrEqual(4.5)
     }
+
+    expect(getPdfPriorityColors(null, '#fffbeb', 'badge').background).toBe(
+      '#fffbeb',
+    )
+    expect(getPdfPriorityColors(null, 'invalid', 'inline').background).toBe(
+      '#ffffff',
+    )
   })
 })

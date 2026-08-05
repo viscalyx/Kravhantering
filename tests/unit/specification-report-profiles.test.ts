@@ -311,6 +311,72 @@ describe('specification report profiles', () => {
     )
   })
 
+  it('serializes local and sparse rows with the documented empty fallbacks', () => {
+    const data = outputData()
+    const [firstItem] = data.items
+    if (!firstItem) throw new Error('Expected specification item fixture')
+    const item = {
+      ...firstItem,
+      areaName: null,
+      categoryNameEn: null,
+      categoryNameSv: null,
+      deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },
+      kind: 'specificationLocal' as const,
+      needsReference: null,
+      normReferences: [{ id: 8, name: '', normReferenceId: 'NIST', uri: null }],
+      priorityLevelNameEn: null,
+      priorityLevelNameSv: null,
+      qualityCharacteristicChapterId: null,
+      qualityCharacteristicNameEn: null,
+      qualityCharacteristicNameSv: null,
+      requirementPackageNames: [],
+      specificationItemStatusNameEn: null,
+      specificationItemStatusNameSv: null,
+      statusNameEn: null,
+      statusNameSv: null,
+      typeNameEn: null,
+      typeNameSv: null,
+      verifiable: false,
+    }
+
+    const csv = createSpecificationCsvFormatter('full', 'en').serializeRow(item)
+
+    expect(csv).toContain('Unique requirement')
+    expect(csv).toContain('NIST')
+    expect(csv).toContain(';No;')
+  })
+
+  it('uses empty cover and row fallbacks for sparse profile data', () => {
+    const data = outputData()
+    data.specification.businessNeedsReference = null
+    data.specification.governanceObjectType = null
+    data.specification.implementationType = null
+    data.specification.lifecycleStatus = null
+    const [firstItem] = data.items
+    if (!firstItem) throw new Error('Expected specification item fixture')
+    Object.assign(firstItem, {
+      areaName: null,
+      kind: 'specificationLocal',
+      needsReference: null,
+      priorityLevelCode: null,
+      priorityLevelColor: null,
+      priorityLevelIconName: null,
+      priorityLevelNameEn: null,
+      priorityLevelNameSv: null,
+      specificationItemStatusId: 4,
+      verifiable: false,
+    })
+
+    const cover = buildSpecificationProfileReport(data, 'progress', 'en')
+      .sections[0]
+    expect(cover).toMatchObject({
+      governanceObjectType: '',
+      implementationType: '',
+      lifecycleStatus: '',
+      type: 'specification-cover',
+    })
+  })
+
   it('builds a traceability report from selected requirement applications', () => {
     const model = buildSpecificationTraceabilityReport(traceabilityData(), 'sv')
     const header = model.sections.find(section => section.type === 'header')
@@ -425,5 +491,53 @@ describe('specification report profiles', () => {
       'Zulu',
       'Ä aktiv',
     ])
+  })
+
+  it('formats traceability rows with unknown status and no deviations', () => {
+    const data = traceabilityData()
+    data.specification.governanceObjectType = null
+    data.specification.implementationType = null
+    data.specification.lifecycleStatus = null
+    const [firstItem] = data.items
+    if (!firstItem) throw new Error('Expected traceability item fixture')
+    data.items = [
+      {
+        ...firstItem,
+        areaName: null,
+        deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },
+        needsReference: null,
+        specificationItemStatusNameEn: '',
+        specificationItemStatusNameSv: '',
+        statusUpdatedAt: null,
+        verificationMethod: null,
+      },
+      {
+        ...firstItem,
+        deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },
+        specificationItemStatusNameEn: '',
+        specificationItemStatusNameSv: '',
+        verificationMethod: null,
+      },
+    ]
+
+    const model = buildSpecificationTraceabilityReport(data, 'en')
+    const summary = model.sections.find(
+      section => section.type === 'traceability-summary',
+    )
+    const table = model.sections.find(
+      section => section.type === 'traceability-table',
+    )
+    if (summary?.type !== 'traceability-summary') {
+      throw new Error('Expected summary')
+    }
+    if (table?.type !== 'traceability-table') throw new Error('Expected table')
+
+    expect(summary.groups[0]?.items).toEqual([{ label: 'Unknown', value: '2' }])
+    expect(table.rows[0]).toMatchObject({
+      area: '',
+      deviation: 'No deviation',
+      statusChangedAt: '',
+      verification: 'Yes',
+    })
   })
 })

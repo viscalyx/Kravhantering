@@ -60,6 +60,19 @@ function requirement(id: number) {
   }
 }
 
+function sparseRequirement() {
+  return {
+    area: null,
+    id: 99,
+    isArchived: false,
+    normReferenceIds: null,
+    normReferenceUris: [null],
+    requirementPackages: [],
+    uniqueId: 'TST-099',
+    version: null,
+  }
+}
+
 async function responseTextWithBom(response: Response): Promise<string> {
   const bytes = new Uint8Array(await response.arrayBuffer())
   expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
@@ -114,7 +127,7 @@ describe('requirements export route', () => {
     expect(csv).toContain('TST-003;Requirement 3')
     expect(csv.indexOf('TST-001')).toBeLessThan(csv.indexOf('TST-003'))
     expect(mocks.traverseCompleteRequirementList).toHaveBeenCalledWith(
-      expect.anything(),
+      {},
       expect.not.objectContaining({ cursor: expect.anything() }),
       expect.anything(),
       expect.any(Function),
@@ -189,5 +202,70 @@ describe('requirements export route', () => {
       code: 'output_limit_exceeded',
       details: { limit: 8, limitKind: 'bytes', output: 'csv' },
     })
+  })
+
+  it('exports English values and empty optional fields with the full filter query', async () => {
+    mocks.traverseCompleteRequirementList.mockImplementationOnce(
+      async (_db, _input, _authorization, visitPage) => {
+        await visitPage([requirement(1), sparseRequirement()], 1)
+        return { itemCount: 2, pageCount: 1 }
+      },
+    )
+    const { GET } = await import('@/app/api/requirements/export/route')
+    const response = await GET(
+      new Request(
+        'http://localhost/api/requirements/export?locale=en&areaIds=1&categoryIds=2&descriptionSearch=access&normReferenceIds=3&priorityLevelIds=4&qualityCharacteristicIds=5&requirementPackageIds=6&statuses=2&typeIds=7&uniqueIdSearch=TST&verifiable=true&sortBy=status&sortDirection=desc',
+      ) as never,
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Disposition')).toContain(
+      'requirements-library.csv',
+    )
+    const csv = await responseTextWithBom(response)
+    expect(csv).toContain('TST-001;Requirement 1')
+    expect(csv).toContain('TST-099')
+    expect(mocks.traverseCompleteRequirementList).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        filters: {
+          areaIds: [1],
+          categoryIds: [2],
+          descriptionSearch: 'access',
+          normReferenceIds: [3],
+          priorityLevelIds: [4],
+          qualityCharacteristicIds: [5],
+          requirementPackageIds: [6],
+          statuses: [2],
+          typeIds: [7],
+          uniqueIdSearch: 'TST',
+          verifiable: ['true'],
+        },
+        locale: 'en',
+        sort: { by: 'status', direction: 'desc' },
+      },
+      expect.anything(),
+      expect.any(Function),
+      expect.anything(),
+    )
+  })
+
+  it('returns an error response when traversal fails before delivery', async () => {
+    mocks.traverseCompleteRequirementList.mockRejectedValueOnce(
+      new Error('traversal failed'),
+    )
+    const { GET } = await import('@/app/api/requirements/export/route')
+
+    const response = await GET(
+      new Request(
+        'http://localhost/api/requirements/export?locale=en',
+      ) as never,
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'traversal failed',
+    })
+    expect(response.headers.get('Content-Disposition')).toBeNull()
   })
 })
