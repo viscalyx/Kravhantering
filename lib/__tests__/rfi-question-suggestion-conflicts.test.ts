@@ -12,7 +12,7 @@ const messages = {
   reviewRequired: 'Review must be requested first.',
 }
 
-function jsonResponse(body: unknown, status: number) {
+function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     headers: { 'Content-Type': 'application/json' },
     status,
