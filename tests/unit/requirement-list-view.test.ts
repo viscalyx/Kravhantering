@@ -5,12 +5,18 @@ import {
   compareRequirementRows,
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   getDefaultVisibleRequirementColumns,
+  getRequirementColumnDefinition,
   getRequirementColumnOrder,
+  getRequirementColumnWidth,
   getRequirementColumnWidthsStorageKey,
   hasActiveFilters,
+  isRequirementColumnId,
   isRequirementSortDirection,
   isRequirementSortField,
+  normalizeRequirementColumnWidths,
   normalizeRequirementListColumnDefaults,
+  normalizeRequirementVisibleColumns,
+  orderRequirementVisibleColumns,
   parseRequirementColumnWidths,
   parseRequirementVisibleColumns,
   REQUIREMENT_LIST_COLUMNS,
@@ -70,6 +76,44 @@ describe('requirement list view helpers', () => {
     expect(params.get('uniqueIdSearch')).toBe('INT')
     expect(params.getAll('needsReferenceIds')).toEqual(['10', '11'])
     expect(params.getAll('statuses')).toEqual(['3'])
+  })
+
+  it('serializes every supported list filter', () => {
+    const params = buildRequirementListParams({
+      filters: {
+        areaIds: [1],
+        categoryIds: [2],
+        descriptionSearch: 'secure',
+        needsReferenceIds: [3],
+        normReferenceIds: [4],
+        priorityLevelIds: [5],
+        qualityCharacteristicIds: [6],
+        requirementPackageIds: [7],
+        specificationItemStatusIds: [8],
+        statuses: [3],
+        typeIds: [9],
+        uniqueIdSearch: 'REQ',
+        verifiable: ['true', 'false'],
+      },
+      locale: 'en',
+      sort: { by: 'uniqueId', direction: 'asc' },
+    })
+
+    expect(Object.fromEntries(params)).toMatchObject({
+      areaIds: '1',
+      categoryIds: '2',
+      descriptionSearch: 'secure',
+      needsReferenceIds: '3',
+      normReferenceIds: '4',
+      priorityLevelIds: '5',
+      qualityCharacteristicIds: '6',
+      requirementPackageIds: '7',
+      specificationItemStatusIds: '8',
+      statuses: '3',
+      typeIds: '9',
+      uniqueIdSearch: 'REQ',
+    })
+    expect(params.getAll('verifiable')).toEqual(['true', 'false'])
   })
 
   it('omits page-only parameters when they are not provided', () => {
@@ -188,6 +232,38 @@ describe('requirement list view helpers', () => {
       version: 72,
     })
     expect(parseRequirementColumnWidths('{invalid')).toEqual({})
+    expect(parseRequirementColumnWidths(null)).toEqual({})
+    expect(parseRequirementColumnWidths('[]')).toEqual({})
+  })
+
+  it('normalizes visible columns, definitions, and width fallbacks', () => {
+    expect(normalizeRequirementVisibleColumns(null)).toEqual(
+      DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+    )
+    expect(normalizeRequirementVisibleColumns(['status', 'unknown'])).toEqual([
+      'uniqueId',
+      'description',
+      'status',
+    ])
+    expect(orderRequirementVisibleColumns(undefined)).toEqual([
+      'uniqueId',
+      'description',
+    ])
+    expect(isRequirementColumnId('status')).toBe(true)
+    expect(isRequirementColumnId('unknown')).toBe(false)
+    expect(getRequirementColumnDefinition('status')).toMatchObject({
+      id: 'status',
+    })
+    expect(getRequirementColumnWidth('status', null)).toBe(
+      getRequirementColumnDefinition('status')?.defaultWidthPx,
+    )
+    expect(getRequirementColumnWidth('status', { status: Number.NaN })).toBe(
+      getRequirementColumnDefinition('status')?.defaultWidthPx,
+    )
+    expect(normalizeRequirementColumnWidths(null)).toEqual({})
+    expect(
+      normalizeRequirementColumnWidths({ status: 'wide', version: 100 }),
+    ).toEqual({ version: 100 })
   })
 
   it('serializes only non-default width overrides and scopes the storage key by locale', () => {

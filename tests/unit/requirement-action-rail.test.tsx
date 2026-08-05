@@ -330,4 +330,141 @@ describe('RequirementActionRail', () => {
       screen.getByRole('button', { name: 'requirement.backToLatest' }),
     ).toBeInTheDocument()
   })
+
+  it('runs specification and every visible lifecycle transition action', async () => {
+    const onOpenAddToSpecification = vi.fn(async () => {})
+    const onTransition = vi.fn<(statusId: number) => Promise<void>>(
+      async () => {},
+    )
+    renderRequirementActionRail({
+      allowedTransitionStatusIds: [1, 2, 3, 4, 5],
+      canAddToSpecification: true,
+      currentStatusId: 1,
+      latestStatusForActions: 1,
+      onOpenAddToSpecification,
+      onTransition,
+      transitions: [
+        { iconName: 'File', id: 1, nameEn: 'Draft', nameSv: 'Utkast' },
+        { iconName: 'Clock', id: 2, nameEn: 'Review', nameSv: 'Granskning' },
+        { iconName: 'Check', id: 3, nameEn: 'Published', nameSv: 'Publicerad' },
+        { iconName: 'Circle', id: 5, nameEn: 'Custom', nameSv: 'Anpassad' },
+      ],
+    })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'specification.addToSpecification' }),
+    )
+    for (const name of [
+      'requirement.transitionToUtkast',
+      'requirement.transitionToGranskning',
+      'requirement.transitionToPublicerad',
+      'requirement.transitionToAnpassad',
+    ]) {
+      await userEvent.click(screen.getByRole('button', { name }))
+    }
+
+    expect(onOpenAddToSpecification).toHaveBeenCalledOnce()
+    expect(onTransition.mock.calls.map(([statusId]) => statusId)).toEqual([
+      1, 2, 3, 5,
+    ])
+  })
+
+  it('runs archiving approval and cancellation controls', async () => {
+    const onApproveArchiving = vi.fn(async () => {})
+    const onCancelArchiving = vi.fn(async () => {})
+    renderRequirementActionRail({
+      isArchiving: true,
+      onApproveArchiving,
+      onCancelArchiving,
+    })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'requirement.approveArchiving' }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'requirement.cancelArchiving' }),
+    )
+
+    expect(onApproveArchiving).toHaveBeenCalledOnce()
+    expect(onCancelArchiving).toHaveBeenCalledOnce()
+  })
+
+  it('runs enabled history and archived restore controls', async () => {
+    const onRestore = vi.fn(async () => {})
+    const first = renderRequirementActionRail({
+      isViewingHistory: true,
+      isViewingLatest: false,
+      onRestore,
+    })
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'common.restoreVersion' }),
+    )
+    expect(onRestore).toHaveBeenLastCalledWith(2, expect.any(HTMLElement))
+    first.unmount()
+
+    renderRequirementActionRail({
+      isLatestVersionArchived: true,
+      onRestore,
+    })
+    await userEvent.click(
+      screen.getByRole('button', { name: 'common.restoreVersion' }),
+    )
+    expect(onRestore).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows pending-work blocks on historical published versions', () => {
+    renderRequirementActionRail({
+      currentStatusId: 3,
+      hasPendingWorkAbovePublished: true,
+      isViewingLatest: false,
+      latestStatusForActions: 1,
+    })
+
+    expect(screen.getByRole('button', { name: 'common.edit' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'common.archive' }),
+    ).toBeDisabled()
+  })
+
+  it('handles page-share clipboard rejection and clears copied feedback', async () => {
+    const originalClipboard = globalThis.navigator.clipboard
+    const writeText = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('permission denied'))
+      .mockResolvedValueOnce(undefined)
+    try {
+      Object.defineProperty(globalThis.navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText },
+      })
+      renderRequirementActionRail({ selectedVersionNumber: null })
+      const share = screen.getByRole('button', { name: 'common.share' })
+      await userEvent.click(share)
+      await userEvent.click(
+        screen.getByRole('menuitem', { name: 'requirement.shareLinkPage' }),
+      )
+      expect(share).toHaveTextContent('common.share')
+
+      await userEvent.click(share)
+      await userEvent.click(
+        screen.getByRole('menuitem', { name: 'requirement.shareLinkPage' }),
+      )
+      expect(writeText).toHaveBeenLastCalledWith(
+        expect.stringContaining('/sv/requirements/REQ-123'),
+      )
+      expect(
+        screen.getByRole('button', { name: 'common.copied' }),
+      ).toBeVisible()
+    } finally {
+      if (originalClipboard === undefined) {
+        Reflect.deleteProperty(globalThis.navigator, 'clipboard')
+      } else {
+        Object.defineProperty(globalThis.navigator, 'clipboard', {
+          configurable: true,
+          value: originalClipboard,
+        })
+      }
+    }
+  })
 })

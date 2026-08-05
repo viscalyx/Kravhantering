@@ -24,6 +24,7 @@ const helpPanelState = vi.hoisted(() => ({
 const navigationState = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
 }))
+const localeState = vi.hoisted(() => ({ value: 'sv' }))
 
 const tableState = vi.hoisted(() => ({
   detailChangeHandlers: new Map<
@@ -54,7 +55,7 @@ const storageGetItem = vi.fn()
 const storageSetItem = vi.fn()
 
 vi.mock('next-intl', () => ({
-  useLocale: () => 'sv',
+  useLocale: () => localeState.value,
   useTranslations: () => (key: string) => key,
 }))
 
@@ -84,7 +85,17 @@ vi.mock('@/components/LazyAiRequirementGenerator', () => ({
 vi.mock('@/components/LazyRequirementsImportDialog', () => ({
   default: (props: Record<string, unknown>) => {
     importDialogState.renderSpy(props)
-    return props.open ? <div data-testid="requirements-import-dialog" /> : null
+    const onClose = props.onClose as ((succeeded: boolean) => void) | undefined
+    return props.open ? (
+      <div data-testid="requirements-import-dialog">
+        <button onClick={() => onClose?.(false)} type="button">
+          close-import
+        </button>
+        <button onClick={() => onClose?.(true)} type="button">
+          complete-import
+        </button>
+      </div>
+    ) : null
   },
 }))
 
@@ -106,6 +117,8 @@ vi.mock('@/components/RequirementsTable', () => ({
       columnPickerPlacement,
       columnWidths,
       expandedId,
+      getName,
+      getStatusName,
       floatingActions,
       hasMore,
       loading,
@@ -175,6 +188,22 @@ vi.mock('@/components/RequirementsTable', () => ({
         <div data-testid="has-more">{String(hasMore ?? false)}</div>
         <div data-testid="loading">{String(loading ?? false)}</div>
         <div data-testid="loading-more">{String(loadingMore ?? false)}</div>
+        <div data-testid="localized-filter-name">
+          {getName?.({
+            id: 91,
+            nameEn: 'English option',
+            nameSv: 'Svenskt val',
+          })}
+        </div>
+        <div data-testid="localized-status-name">
+          {getStatusName?.({
+            color: '#000000',
+            id: 92,
+            nameEn: 'English status',
+            nameSv: 'Svensk status',
+            sortOrder: 1,
+          })}
+        </div>
         {(rows ?? []).map(row => (
           <div key={row.id}>
             <button onClick={() => onRowClick?.(row.id)} type="button">
@@ -351,6 +380,36 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
           type="button"
         >
           {`detail-apply-archive-${requirementId}`}
+        </button>
+        <button
+          onClick={() =>
+            void onChange?.({
+              ...makeRequirementDetail(requirementId ?? 1),
+              area: null,
+              versions: [
+                {
+                  ...makeRequirementDetail(requirementId ?? 1).versions[0],
+                  category: null,
+                  type: null,
+                },
+              ],
+            })
+          }
+          type="button"
+        >
+          {`detail-apply-sparse-${requirementId}`}
+        </button>
+        <button
+          onClick={() =>
+            void onChange?.({
+              ...makeRequirementDetail(requirementId ?? 1),
+              area: null,
+              versions: [],
+            })
+          }
+          type="button"
+        >
+          {`detail-apply-versionless-${requirementId}`}
         </button>
         <button onClick={onClose} type="button">
           {`detail-close-${requirementId}`}
@@ -567,6 +626,7 @@ function latestFloatingActions(): FloatingAction[] {
 
 describe('RequirementsClient', () => {
   beforeEach(() => {
+    localeState.value = 'sv'
     navigationState.searchParams = new URLSearchParams()
     fetchMock.mockReset()
     helpPanelState.useHelpContent.mockReset()
@@ -745,6 +805,132 @@ describe('RequirementsClient', () => {
       ],
       titleKey: 'requirements.title',
     })
+  })
+
+  it('localizes filter and status names in English', async () => {
+    localeState.value = 'en'
+    mockCommonFetches()
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    expect(await screen.findByTestId('requirements-table')).toBeInTheDocument()
+    expect(screen.getByTestId('localized-filter-name')).toHaveTextContent(
+      'English option',
+    )
+    expect(screen.getByTestId('localized-status-name')).toHaveTextContent(
+      'English status',
+    )
+  })
+
+  it('falls back to empty metadata collections when optional payloads are omitted', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({ pagination: {}, requirements: [] })
+      }
+      if (url.startsWith('/api/norm-references')) {
+        return okJson({})
+      }
+      if (
+        [
+          '/api/requirement-areas',
+          '/api/requirement-categories',
+          '/api/requirement-types',
+          '/api/quality-characteristics',
+          '/api/requirement-statuses',
+          '/api/requirement-packages',
+          '/api/priority-levels',
+        ].includes(url)
+      ) {
+        return okJson({})
+      }
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    expect(await screen.findByTestId('requirements-table')).toBeInTheDocument()
+    await waitFor(() => {
+      const latest = tableState.renderSpy.mock.calls.at(-1)?.[0]
+      expect(latest).toMatchObject({
+        areas: [],
+        categories: [],
+        qualityCharacteristics: [],
+        requirementPackages: [],
+        statusOptions: [],
+        types: [],
+      })
+    })
+  })
+
+  it('maps sparse and versionless changed requirement details', async () => {
+    mockCommonFetches()
+    vi.stubGlobal('fetch', fetchMock)
+    render(<RequirementsClient />)
+
+    await screen.findByTestId('requirements-table')
+    await screen.findByRole('button', { name: 'row-1' })
+    fireEvent.click(screen.getByRole('button', { name: 'row-1' }))
+
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'detail-apply-sparse-1' }),
+      )
+      await Promise.resolve()
+    })
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/requirements?'),
+        expect.anything(),
+      ),
+    )
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'detail-apply-versionless-1' }),
+      )
+      await Promise.resolve()
+    })
+    expect(screen.getByTestId('requirements-table')).toBeInTheDocument()
+  })
+
+  it('closes and completes imports through the list refresh callback', async () => {
+    mockCommonFetches()
+    vi.stubGlobal('fetch', fetchMock)
+    render(<RequirementsClient />)
+
+    await screen.findByTestId('requirements-table')
+    fireEvent.click(screen.getByRole('button', { name: 'importRequirements' }))
+    fireEvent.click(screen.getByRole('button', { name: 'close-import' }))
+    expect(
+      screen.queryByTestId('requirements-import-dialog'),
+    ).not.toBeInTheDocument()
+
+    const listCallsBefore = fetchMock.mock.calls.filter(([input]) =>
+      String(input).startsWith('/api/requirements?'),
+    ).length
+    fireEvent.click(screen.getByRole('button', { name: 'importRequirements' }))
+    fireEvent.click(screen.getByRole('button', { name: 'complete-import' }))
+    await waitFor(() => {
+      const listCallsAfter = fetchMock.mock.calls.filter(([input]) =>
+        String(input).startsWith('/api/requirements?'),
+      ).length
+      expect(listCallsAfter).toBeGreaterThan(listCallsBefore)
+    })
+  })
+
+  it('collapses a selected row when that row is clicked again', async () => {
+    mockCommonFetches()
+    vi.stubGlobal('fetch', fetchMock)
+    render(<RequirementsClient />)
+
+    const row = await screen.findByRole('button', { name: 'row-1' })
+    fireEvent.click(row)
+    expect(await screen.findByText('detail')).toBeInTheDocument()
+    fireEvent.click(row)
+    expect(screen.queryByText('detail')).not.toBeInTheDocument()
   })
 
   it('waits for hydrated preferences and the first row response before mounting the table', async () => {
@@ -2457,6 +2643,31 @@ describe('RequirementsClient', () => {
 
     expect(screen.getByText('detail-refresh-9')).toBeInTheDocument()
     expect(selectedDetailFetchCount).toBeGreaterThan(0)
+    await waitFor(() => expect(window.location.search).toBe(''))
+  })
+
+  it('hydrates a numeric selected requirement from the URL', async () => {
+    navigationState.searchParams = new URLSearchParams('selected=9')
+    window.history.replaceState({}, '', '/sv/requirements?selected=9')
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/requirements?')) {
+        return Promise.resolve(
+          okJson({ pagination: { hasMore: false }, requirements: [] }),
+        )
+      }
+      if (url === '/api/requirements/9') {
+        return Promise.resolve(okJson(makeRequirementDetail(9)))
+      }
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+
+    expect(await screen.findByText('detail-refresh-9')).toBeInTheDocument()
     await waitFor(() => expect(window.location.search).toBe(''))
   })
 

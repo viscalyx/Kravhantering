@@ -231,6 +231,21 @@ describe('lifecycle routes', () => {
   })
 
   describe('versions/[version]', () => {
+    it('GET rejects invalid version route parameters', async () => {
+      const { GET } = await import(
+        '@/app/api/requirements/[id]/versions/[version]/route'
+      )
+      const req = new Request(
+        'http://localhost/api/requirements/1/versions/latest',
+      )
+      const res = await GET(req as never, {
+        params: Promise.resolve({ id: '1', version: 'latest' }),
+      })
+
+      expect(res.status).toBe(400)
+      expect(mockGetRequirement).not.toHaveBeenCalled()
+    })
+
     it('GET returns version data on success', async () => {
       mockGetRequirement.mockResolvedValue({
         requirement: { uniqueId: 'TST-001' },

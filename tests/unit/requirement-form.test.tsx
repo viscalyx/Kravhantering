@@ -1352,4 +1352,170 @@ describe('RequirementForm', () => {
     fireEvent.change(ac, { target: { value: 'My criteria' } })
     expect(ac).toHaveValue('My criteria')
   })
+
+  it('persists the page destination and navigates to a created version', async () => {
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (url === '/api/requirements' && opts?.method === 'POST') {
+        return Promise.resolve(
+          okJson({
+            requirement: { id: 42, uniqueId: 'REQ-42' },
+            version: { versionNumber: 3 },
+          }),
+        )
+      }
+      if (url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url.includes('/api/requirement-categories'))
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url.includes('/api/priority-levels'))
+        return Promise.resolve(okJson({ priorityLevels: samplePriorityLevels }))
+      if (url.includes('/api/requirement-packages'))
+        return Promise.resolve(okJson({ requirementPackages: [] }))
+      if (url.includes('/api/norm-references'))
+        return Promise.resolve(okJson({ normReferences: [] }))
+      if (url.includes('/api/quality-characteristics'))
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
+      return Promise.resolve(okJson({}))
+    })
+    const { container } = render(<RequirementForm mode="create" />)
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Open after saving' } },
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'requirement.afterSavePage' }),
+    )
+    expect(localStorage.getItem('requirement-save-destination')).toBe('page')
+
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/requirements/REQ-42/3')
+    })
+  })
+
+  it('shows response and transport errors from requirement saves', async () => {
+    const baseFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/requirements' && options?.method === 'POST') {
+        return Promise.resolve({
+          ...errJson({}, 503, 'Unavailable'),
+          json: () => Promise.reject(new Error('not JSON')),
+        })
+      }
+      return baseFetch(url, options)
+    })
+    const first = render(<RequirementForm mode="create" />)
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Response failure' } },
+    )
+    fireEvent.submit(first.container.querySelector('form') as HTMLFormElement)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unavailable')
+    first.unmount()
+
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/requirements' && options?.method === 'POST') {
+        return Promise.reject('network unavailable')
+      }
+      return baseFetch(url, options)
+    })
+    const second = render(<RequirementForm mode="create" />)
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Transport failure' } },
+    )
+    fireEvent.submit(second.container.querySelector('form') as HTMLFormElement)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'network unavailable',
+    )
+  })
+
+  it('creates and selects a norm reference from the modal', async () => {
+    const baseFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/norm-references' && options?.method === 'POST') {
+        return Promise.resolve(
+          okJson({
+            id: 99,
+            issuer: 'Issuer',
+            name: 'Created norm',
+            normReferenceId: 'NR-99',
+            reference: 'Reference',
+            type: 'Standard',
+          }),
+        )
+      }
+      return baseFetch(url, options)
+    })
+    render(<RequirementForm mode="create" />)
+    fireEvent.click(
+      await screen.findByRole('button', { name: /common\.create/i }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText(/^normReference\.name/), {
+      target: { value: 'Created norm' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^normReference\.type/), {
+      target: { value: 'Standard' },
+    })
+    fireEvent.change(
+      within(dialog).getByLabelText(/^normReference\.reference/),
+      { target: { value: 'Reference' } },
+    )
+    fireEvent.change(within(dialog).getByLabelText(/^normReference\.issuer/), {
+      target: { value: 'Issuer' },
+    })
+    fireEvent.click(within(dialog).getByText('common.save'))
+
+    const created = await screen.findByRole('checkbox', {
+      name: 'NR-99 Created norm',
+    })
+    expect(created).toBeChecked()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('keeps the norm modal open when creation fails', async () => {
+    const baseFetch = fetchMock.getMockImplementation() as (
+      url: string,
+      options?: RequestInit,
+    ) => Promise<ReturnType<typeof okJson>>
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/norm-references' && options?.method === 'POST') {
+        return Promise.resolve(errJson({ error: 'Duplicate norm' }, 409))
+      }
+      return baseFetch(url, options)
+    })
+    render(<RequirementForm mode="create" />)
+    fireEvent.click(
+      await screen.findByRole('button', { name: /common\.create/i }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText(/^normReference\.name/), {
+      target: { value: 'Duplicate' },
+    })
+    fireEvent.change(within(dialog).getByLabelText(/^normReference\.type/), {
+      target: { value: 'Standard' },
+    })
+    fireEvent.change(
+      within(dialog).getByLabelText(/^normReference\.reference/),
+      { target: { value: 'Reference' } },
+    )
+    fireEvent.change(within(dialog).getByLabelText(/^normReference\.issuer/), {
+      target: { value: 'Issuer' },
+    })
+    fireEvent.click(within(dialog).getByText('common.save'))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Duplicate norm',
+    )
+  })
 })

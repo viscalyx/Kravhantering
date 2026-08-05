@@ -332,4 +332,71 @@ describe('EditRequirementClient', () => {
     ) as Record<string, string | boolean>
     expect(initialData.qualityCharacteristicId).toBe('42')
   })
+
+  it('normalizes optional fields and linked norm references for the form', async () => {
+    fetchMock.mockResolvedValue(
+      okJson(
+        makeRequirementDetailResponse(
+          { area: null },
+          {
+            acceptanceCriteria: null,
+            category: null,
+            description: null,
+            priorityLevel: null,
+            qualityCharacteristic: null,
+            type: null,
+            verifiable: false,
+            verificationMethod: null,
+            versionNormReferences: [
+              {
+                normReference: {
+                  id: 11,
+                  issuer: 'Authority',
+                  name: 'Norm eleven',
+                  normReferenceId: 'NR-11',
+                  reference: 'Reference',
+                  type: 'Standard',
+                  uri: null,
+                  version: null,
+                },
+              },
+            ],
+          },
+        ),
+      ),
+    )
+
+    render(<EditRequirementClient requirementId={1} />)
+
+    const form = await screen.findByTestId('req-form')
+    const initialData = JSON.parse(
+      form.getAttribute('data-initial-data') ?? '{}',
+    ) as Record<string, string | boolean>
+    expect(initialData).toMatchObject({
+      acceptanceCriteria: '',
+      areaId: '',
+      categoryId: '',
+      description: '',
+      priorityLevelId: '',
+      qualityCharacteristicId: '',
+      typeId: '',
+      verifiable: false,
+      verificationMethod: '',
+    })
+  })
+
+  it('shows no-results and transport failure errors', async () => {
+    fetchMock.mockResolvedValueOnce(
+      okJson({ ...makeRequirementDetailResponse(), versions: [] }),
+    )
+    const first = render(<EditRequirementClient requirementId={1} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'common.noResults',
+    )
+    first.unmount()
+
+    fetchMock.mockRejectedValueOnce(new Error('network down'))
+    render(<EditRequirementClient requirementId={2} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
+  })
 })

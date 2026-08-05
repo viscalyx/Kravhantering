@@ -60,6 +60,7 @@ vi.mock('@/lib/requirements/service', () => ({
 }))
 
 import { DELETE, GET, PUT } from '@/app/api/requirements/[id]/route'
+import { parseRequirementRef } from '@/app/api/requirements/parse-requirement-ref'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -90,6 +91,14 @@ describe('requirements/[id] route', () => {
   })
 
   describe('GET', () => {
+    it('rejects an invalid route reference before creating runtime state', async () => {
+      const req = new NextRequest('http://localhost/api/requirements/%20')
+      const res = await GET(req, makeParams(' '))
+
+      expect(res.status).toBe(400)
+      expect(mockGetRequirement).not.toHaveBeenCalled()
+    })
+
     it('returns requirement with owner HSA-id as owner name', async () => {
       mockGetRequirement.mockResolvedValue({
         requirement: {
@@ -187,6 +196,10 @@ describe('requirements/[id] route', () => {
       expect(res.status).toBe(500)
       expect(mockGetRequirement).not.toHaveBeenCalled()
     })
+  })
+
+  it('keeps zero-like references as unique identifiers', () => {
+    expect(parseRequirementRef('0')).toEqual({ uniqueId: '0' })
   })
 
   describe('PUT', () => {

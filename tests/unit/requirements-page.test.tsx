@@ -41,7 +41,9 @@ vi.mock('@/app/[locale]/requirements/requirements-client', () => ({
   default: vi.fn(() => null),
 }))
 
-import RequirementsPage from '@/app/[locale]/requirements/page'
+import RequirementsPage, {
+  generateMetadata,
+} from '@/app/[locale]/requirements/page'
 
 interface RequirementsPageElementProps {
   aiGenerationAvailability: AiRequirementGenerationAvailability
@@ -58,6 +60,33 @@ describe('requirements page', () => {
     pageState.getAiGenerationAvailability.mockResolvedValue({
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: true,
+    })
+  })
+
+  it('uses the catalog navigation label as metadata title', async () => {
+    await expect(generateMetadata()).resolves.toEqual({ title: 'catalog' })
+  })
+
+  it('loads database-backed list settings', async () => {
+    const columnDefaults = {
+      order: ['description', 'uniqueId'],
+      visible: ['description', 'uniqueId'],
+    }
+    const availability = {
+      disabledByEnvironment: false,
+      effectiveRequirementGenerationEnabled: false,
+    }
+    pageState.getRequirementListColumnDefaults.mockResolvedValueOnce(
+      columnDefaults,
+    )
+    pageState.getAiGenerationAvailability.mockResolvedValueOnce(availability)
+
+    const page =
+      (await RequirementsPage()) as ReactElement<RequirementsPageElementProps>
+
+    expect(page.props).toEqual({
+      aiGenerationAvailability: availability,
+      initialColumnDefaults: columnDefaults,
     })
   })
 
@@ -86,6 +115,73 @@ describe('requirements page', () => {
       expect(page.props.aiGenerationAvailability).toEqual(disabledAvailability)
       expect(pageState.getAiGenerationAvailability).toHaveBeenCalledWith(
         pageState.db,
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('keeps column defaults when AI availability fails to load', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    pageState.getAiGenerationAvailability.mockRejectedValueOnce(
+      new Error('AI settings unavailable'),
+    )
+
+    try {
+      const page =
+        (await RequirementsPage()) as ReactElement<RequirementsPageElementProps>
+
+      expect(page.props.initialColumnDefaults).toEqual(
+        DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
+      )
+      expect(page.props.aiGenerationAvailability).toEqual({
+        disabledByEnvironment: false,
+        effectiveRequirementGenerationEnabled: true,
+      })
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to load AI generation availability for requirements page',
+        { message: 'AI settings unavailable' },
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('uses environment availability when database configuration is absent', async () => {
+    pageState.resolveAiGenerationAvailability.mockReturnValueOnce({
+      disabledByEnvironment: true,
+      effectiveRequirementGenerationEnabled: false,
+    })
+    pageState.getRequestSqlServerDataSource.mockRejectedValueOnce(
+      new Error('No SQL Server connection string is configured'),
+    )
+
+    const page =
+      (await RequirementsPage()) as ReactElement<RequirementsPageElementProps>
+
+    expect(page.props.aiGenerationAvailability).toEqual({
+      disabledByEnvironment: true,
+      effectiveRequirementGenerationEnabled: false,
+    })
+    expect(pageState.getRequirementListColumnDefaults).not.toHaveBeenCalled()
+  })
+
+  it('reports unexpected database connection failures', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    pageState.getRequestSqlServerDataSource.mockRejectedValueOnce(
+      new Error('connection refused'),
+    )
+
+    try {
+      await RequirementsPage()
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to load requirement page database settings',
+        { message: 'connection refused' },
       )
     } finally {
       consoleErrorSpy.mockRestore()
