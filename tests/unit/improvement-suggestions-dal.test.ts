@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  countSuggestionsByRequirement,
   countSuggestionsForRequirements,
   createSuggestion,
   deleteSuggestion,
+  getSuggestion,
   listSuggestionsForRequirement,
   recordResolution,
   requestReview,
@@ -143,6 +145,33 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
     )
     expect(query.mock.calls[0]?.[0]).toContain('AND is_review_requested = 1')
     expect(query.mock.calls[0]?.[0]).toContain('OUTPUT\n        INSERTED.id')
+  })
+
+  it('records dismissal as the second supported reviewed outcome', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      { id: 6, requirementId: 2, requirementVersionId: null },
+    ])
+
+    await expect(
+      recordResolution(db, 6, {
+        resolution: 2,
+        resolutionMotivation: 'Not applicable',
+        resolvedBy: 'reviewer',
+        resolvedByHsaId: 'SE5560000001-reviewer1',
+      }),
+    ).resolves.toEqual({
+      id: 6,
+      requirementId: 2,
+      requirementVersionId: null,
+    })
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      6,
+      2,
+      'Not applicable',
+      'reviewer',
+      'SE5560000001-reviewer1',
+    ])
   })
 
   it('classifies a lost resolution race with a locked read and stable reason', async () => {
@@ -427,6 +456,203 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
         [1, { total: 3, pending: 2 }],
         [4, { total: 1, pending: 0 }],
       ]),
+    )
+  })
+
+  it('normalizes nullable, string, and malformed suggestion row values', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: '7',
+        requirementId: '3',
+        requirementVersionId: 'bad',
+        content: null,
+        isReviewRequested: 'bad',
+        resolution: 'bad',
+        resolutionMotivation: 123,
+        resolvedBy: 456,
+        resolvedByHsaId: 789,
+        resolvedAt: '2026-05-01T10:00:00.000Z',
+        createdBy: null,
+        createdByHsaId: null,
+        createdAt: null,
+        updatedAt: null,
+        reviewRequestedAt: null,
+        requirementUniqueId: null,
+        requirementDescription: null,
+      },
+    ])
+
+    await expect(listSuggestionsForRequirement(db, 3)).resolves.toEqual([
+      {
+        id: 7,
+        requirementId: 3,
+        requirementVersionId: null,
+        content: '',
+        isReviewRequested: 0,
+        resolution: null,
+        resolutionMotivation: '123',
+        resolvedBy: '456',
+        resolvedByHsaId: '789',
+        resolvedAt: '2026-05-01T10:00:00.000Z',
+        createdBy: null,
+        createdByHsaId: null,
+        createdAt: '1970-01-01T00:00:00.000Z',
+        updatedAt: null,
+        reviewRequestedAt: null,
+        requirementUniqueId: null,
+        requirementDescription: null,
+      },
+    ])
+  })
+
+  it('gets a suggestion and reports a missing suggestion', async () => {
+    const found = createSqlServerDb()
+    found.query.mockResolvedValueOnce([
+      {
+        id: 8,
+        requirementId: 3,
+        content: 'Suggestion',
+        createdAt: '2026-05-01T10:00:00.000Z',
+      },
+    ])
+    await expect(getSuggestion(found.db, 8)).resolves.toMatchObject({
+      id: 8,
+      content: 'Suggestion',
+    })
+
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([])
+    await expect(getSuggestion(missing.db, 404)).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'Improvement suggestion 404 not found',
+    })
+  })
+
+  it('validates suggestion content and version ownership before insert', async () => {
+    const blank = createSqlServerDb()
+    await expect(
+      createSuggestion(blank.db, { requirementId: 1, content: '   ' }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Content is required',
+    })
+    expect(blank.query).not.toHaveBeenCalled()
+
+    const wrongVersion = createSqlServerDb()
+    wrongVersion.query
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockResolvedValueOnce([])
+    await expect(
+      createSuggestion(wrongVersion.db, {
+        requirementId: 1,
+        requirementVersionId: 9,
+        content: 'Suggestion',
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'Requirement version 9 not found for requirement 1',
+    })
+  })
+
+  it('uses nullable creation defaults and propagates SQL insert failures', async () => {
+    const defaults = createSqlServerDb()
+    defaults.query
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockResolvedValueOnce([{ id: '42' }])
+    await expect(
+      createSuggestion(defaults.db, {
+        requirementId: 1,
+        content: ' Suggestion ',
+      }),
+    ).resolves.toEqual({ id: 42 })
+    expect(defaults.query.mock.calls[1][1]).toEqual([
+      1,
+      null,
+      'Suggestion',
+      null,
+      null,
+    ])
+
+    const failed = createSqlServerDb()
+    failed.query
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockRejectedValueOnce(new Error('SQL insert failed'))
+    await expect(
+      createSuggestion(failed.db, { requirementId: 1, content: 'Suggestion' }),
+    ).rejects.toThrow('SQL insert failed')
+  })
+
+  it('validates edits, supports touch-only updates, and reports missing targets', async () => {
+    const blank = createSqlServerDb()
+    await expect(
+      updateSuggestion(blank.db, 5, { content: '   ' }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Content is required',
+    })
+    expect(blank.query).not.toHaveBeenCalled()
+
+    const touch = createSqlServerDb()
+    touch.query.mockResolvedValueOnce([
+      { id: 5, requirementId: 2, requirementVersionId: 'bad' },
+    ])
+    await expect(updateSuggestion(touch.db, 5, {})).resolves.toEqual({
+      id: 5,
+      requirementId: 2,
+      requirementVersionId: null,
+    })
+    expect(touch.query.mock.calls[0][1]).toEqual([5, null])
+
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+    await expect(updateSuggestion(missing.db, 404, {})).rejects.toMatchObject({
+      code: 'not_found',
+      details: { suggestionId: 404 },
+    })
+  })
+
+  it('reports aggregate counts and normalizes absent or malformed database aggregates', async () => {
+    const populated = createSqlServerDb()
+    populated.query.mockResolvedValueOnce([
+      { total: '4', pending: 'bad', resolved: '2', dismissed: null },
+    ])
+    await expect(
+      countSuggestionsByRequirement(populated.db, 3),
+    ).resolves.toEqual({
+      total: 4,
+      pending: 0,
+      resolved: 2,
+      dismissed: 0,
+    })
+    expect(populated.query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE requirement_id = @0'),
+      [3, 1, 2],
+    )
+
+    const absent = createSqlServerDb()
+    absent.query.mockResolvedValueOnce([])
+    await expect(countSuggestionsByRequirement(absent.db, 3)).resolves.toEqual({
+      total: 0,
+      pending: 0,
+      resolved: 0,
+      dismissed: 0,
+    })
+  })
+
+  it('does not query when counting an empty requirement selection', async () => {
+    const { db, query } = createSqlServerDb()
+    await expect(countSuggestionsForRequirements(db, [])).resolves.toEqual(
+      new Map(),
+    )
+    expect(query).not.toHaveBeenCalled()
+  })
+
+  it('propagates SQL read failures without replacing their cause', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockRejectedValueOnce(new Error('SQL read failed'))
+    await expect(listSuggestionsForRequirement(db, 3)).rejects.toThrow(
+      'SQL read failed',
     )
   })
 })

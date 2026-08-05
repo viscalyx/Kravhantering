@@ -1,16 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  countDeviationsBySpecification,
+  countDeviationsPerItem,
   countDeviationsPerItemRef,
   createDeviation,
+  createDeviationForItemRef,
+  createSpecificationLocalDeviation,
   DEVIATION_APPROVED,
   DEVIATION_REJECTED,
   deleteDeviation,
   deleteSpecificationLocalDeviation,
+  getDeviation,
+  getSpecificationLocalDeviation,
   listDeviationsForSpecification,
   listDeviationsForSpecificationItem,
+  listDeviationsForSpecificationLocalRequirement,
   recordDecision,
   recordSpecificationLocalDecision,
   requestReview,
+  requestSpecificationLocalReview,
+  revertSpecificationLocalToDraft,
+  revertToDraft,
   updateDeviation,
   updateSpecificationLocalDeviation,
 } from '@/lib/dal/deviations'
@@ -414,4 +424,492 @@ describe('deviations DAL (SQL Server path)', () => {
     expect(query).toHaveBeenCalledTimes(3)
     expect(compactSql(query.mock.calls[1][0])).toContain('AND decision IS NULL')
   })
+
+  it('normalizes nullable, string, and malformed values returned by SQL Server', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValue([
+      {
+        id: '12',
+        specificationItemId: '4',
+        motivation: null,
+        isReviewRequested: 'not-a-number',
+        decision: 'not-a-number',
+        decisionMotivation: 123,
+        decidedBy: 456,
+        decidedByHsaId: 789,
+        decidedAt: '2026-05-01T10:00:00.000Z',
+        createdBy: null,
+        createdByHsaId: null,
+        createdAt: null,
+        updatedAt: '2026-05-01T11:00:00.000Z',
+        requirementUniqueId: null,
+        requirementDescription: null,
+        requirementVersionId: 'not-a-number',
+        specificationName: null,
+        specificationCode: null,
+        isLocal: false,
+      },
+    ])
+
+    await expect(listDeviationsForSpecificationItem(db, 4)).resolves.toEqual([
+      expect.objectContaining({
+        id: 12,
+        itemRef: 'lib:4',
+        motivation: '',
+        isReviewRequested: 0,
+        decision: null,
+        decisionMotivation: '123',
+        decidedBy: '456',
+        decidedByHsaId: '789',
+        decidedAt: '2026-05-01T10:00:00.000Z',
+        createdAt: '1970-01-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T11:00:00.000Z',
+        requirementVersionId: null,
+      }),
+    ])
+  })
+
+  it.each([
+    ['library', getDeviation, 'Deviation 44 not found'],
+    [
+      'specification-local',
+      getSpecificationLocalDeviation,
+      'Specification-local deviation 44 not found',
+    ],
+  ] as const)(
+    'gets and rejects missing %s deviations',
+    async (_, getter, message) => {
+      const found = createSqlServerDb()
+      found.query.mockResolvedValueOnce([
+        {
+          id: 44,
+          specificationItemId: getter === getDeviation ? 6 : null,
+          specificationLocalRequirementId:
+            getter === getSpecificationLocalDeviation ? 8 : null,
+          motivation: 'Observed',
+          isReviewRequested: 0,
+          createdAt: '2026-05-02T10:00:00.000Z',
+          isSpecificationLocal:
+            getter === getSpecificationLocalDeviation ? 1 : 0,
+        },
+      ])
+      await expect(getter(found.db, 44)).resolves.toMatchObject({
+        id: 44,
+        motivation: 'Observed',
+      })
+
+      const missing = createSqlServerDb()
+      missing.query.mockResolvedValueOnce([])
+      await expect(getter(missing.db, 44)).rejects.toMatchObject({
+        code: 'not_found',
+        message,
+      })
+    },
+  )
+
+  it('lists deviations for a specification-local requirement', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 5,
+        specificationLocalRequirementId: 9,
+        motivation: 'Local exception',
+        isReviewRequested: 0,
+        createdAt: '2026-05-02T10:00:00.000Z',
+        isSpecificationLocal: 1,
+      },
+    ])
+
+    await expect(
+      listDeviationsForSpecificationLocalRequirement(db, 9),
+    ).resolves.toEqual([expect.objectContaining({ id: 5, itemRef: 'local:9' })])
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'WHERE deviation.specification_local_requirement_id = @0',
+      ),
+      [9],
+    )
+  })
+
+  it.each([
+    [
+      'library',
+      (db: Parameters<typeof createDeviation>[0]) =>
+        createDeviation(db, { specificationItemId: 3, motivation: '   ' }),
+    ],
+    [
+      'specification-local',
+      (db: Parameters<typeof createDeviation>[0]) =>
+        createSpecificationLocalDeviation(db, {
+          specificationLocalRequirementId: 9,
+          motivation: '   ',
+        }),
+    ],
+  ] as const)(
+    'rejects blank motivation before creating a %s deviation',
+    async (_, create) => {
+      const { db, query } = createSqlServerDb()
+      await expect(create(db)).rejects.toMatchObject({
+        code: 'validation',
+        message: 'Motivation is required',
+      })
+      expect(query).not.toHaveBeenCalled()
+    },
+  )
+
+  it('creates specification-local deviations and reports missing targets', async () => {
+    const success = createSqlServerDb()
+    success.query
+      .mockResolvedValueOnce([{ id: 9 }])
+      .mockResolvedValueOnce([{ id: '51' }])
+    await expect(
+      createSpecificationLocalDeviation(success.db, {
+        specificationLocalRequirementId: 9,
+        motivation: '  Local reason  ',
+      }),
+    ).resolves.toEqual({ id: 51 })
+    expect(success.query.mock.calls[1][1]).toEqual([
+      9,
+      'Local reason',
+      null,
+      null,
+      expect.any(Date),
+    ])
+
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([])
+    await expect(
+      createSpecificationLocalDeviation(missing.db, {
+        specificationLocalRequirementId: 404,
+        motivation: 'Local reason',
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'Specification-local requirement 404 not found',
+    })
+  })
+
+  it('reports missing library targets and propagates insert failures', async () => {
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([])
+    await expect(
+      createDeviation(missing.db, {
+        specificationItemId: 404,
+        motivation: 'Reason',
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'Requirement application 404 not found',
+    })
+
+    const failed = createSqlServerDb()
+    failed.query
+      .mockResolvedValueOnce([{ id: 3 }])
+      .mockRejectedValueOnce(new Error('SQL insert failed'))
+    await expect(
+      createDeviation(failed.db, {
+        specificationItemId: 3,
+        motivation: 'Reason',
+      }),
+    ).rejects.toThrow('SQL insert failed')
+  })
+
+  it('routes valid item references and rejects malformed references', async () => {
+    const library = createSqlServerDb()
+    library.query
+      .mockResolvedValueOnce([{ id: 3 }])
+      .mockResolvedValueOnce([{ id: 31 }])
+    await expect(
+      createDeviationForItemRef(library.db, {
+        itemRef: 'lib:3',
+        motivation: 'Library reason',
+      }),
+    ).resolves.toEqual({ id: 31 })
+    expect(compactSql(library.query.mock.calls[0][0])).toContain(
+      'FROM requirements_specification_items specification_item',
+    )
+
+    const local = createSqlServerDb()
+    local.query
+      .mockResolvedValueOnce([{ id: 9 }])
+      .mockResolvedValueOnce([{ id: 32 }])
+    await expect(
+      createDeviationForItemRef(local.db, {
+        itemRef: 'local:9',
+        motivation: 'Local reason',
+      }),
+    ).resolves.toEqual({ id: 32 })
+    expect(compactSql(local.query.mock.calls[0][0])).toContain(
+      'FROM specification_local_requirements requirement',
+    )
+
+    const invalid = createSqlServerDb()
+    await expect(
+      createDeviationForItemRef(invalid.db, {
+        itemRef: 'bad:9',
+        motivation: 'Reason',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { itemRef: 'bad:9' },
+    })
+  })
+
+  it.each([
+    ['library', updateDeviation],
+    ['specification-local', updateSpecificationLocalDeviation],
+  ] as const)(
+    'rejects missing, decided, reviewed, and blank %s edits',
+    async (_, update) => {
+      for (const [state, expected] of [
+        [null, { code: 'not_found' }],
+        [
+          { decision: 1, id: 7, isReviewRequested: 1 },
+          {
+            code: 'conflict',
+            message:
+              'Cannot edit a deviation after a decision has been recorded',
+          },
+        ],
+        [
+          { decision: null, id: 7, isReviewRequested: 1 },
+          {
+            code: 'conflict',
+            message:
+              'Cannot edit a deviation that has been submitted for review',
+          },
+        ],
+      ] as const) {
+        const current = createSqlServerDb()
+        current.query.mockResolvedValueOnce(state ? [state] : [])
+        await expect(
+          update(current.db, 7, { motivation: 'Reason' }),
+        ).rejects.toMatchObject(expected)
+      }
+
+      const blank = createSqlServerDb()
+      blank.query.mockResolvedValueOnce([
+        { decision: null, id: 7, isReviewRequested: 0 },
+      ])
+      await expect(
+        update(blank.db, 7, { motivation: '   ' }),
+      ).rejects.toMatchObject({
+        code: 'validation',
+        message: 'Motivation is required',
+      })
+    },
+  )
+
+  it.each([
+    ['library', updateDeviation],
+    ['specification-local', updateSpecificationLocalDeviation],
+  ] as const)(
+    'supports creator-only and touch-only %s draft updates',
+    async (_, update) => {
+      const creator = createSqlServerDb()
+      creator.query
+        .mockResolvedValueOnce([
+          { decision: null, id: 7, isReviewRequested: 0 },
+        ])
+        .mockResolvedValueOnce([{ id: 7 }])
+      await update(creator.db, 7, { createdBy: null, createdByHsaId: null })
+      expect(creator.query.mock.calls[1][1]).toEqual([
+        null,
+        null,
+        expect.any(Date),
+        7,
+      ])
+
+      const touch = createSqlServerDb()
+      touch.query
+        .mockResolvedValueOnce([
+          { decision: null, id: 7, isReviewRequested: 0 },
+        ])
+        .mockResolvedValueOnce([{ id: 7 }])
+      await update(touch.db, 7, {})
+      expect(touch.query.mock.calls[1][1]).toEqual([expect.any(Date), 7])
+    },
+  )
+
+  it.each([recordDecision, recordSpecificationLocalDecision] as const)(
+    'validates decision evidence before SQL',
+    async record => {
+      for (const [data, message] of [
+        [
+          {
+            decision: 3,
+            decisionMotivation: 'Reason',
+            decidedBy: 'Reviewer',
+            decidedByHsaId: 'hsa',
+          },
+          'Decision must be 1 (approved) or 2 (rejected)',
+        ],
+        [
+          {
+            decision: 1,
+            decisionMotivation: '   ',
+            decidedBy: 'Reviewer',
+            decidedByHsaId: 'hsa',
+          },
+          'Decision motivation is required',
+        ],
+        [
+          {
+            decision: 1,
+            decisionMotivation: 'Reason',
+            decidedBy: '   ',
+            decidedByHsaId: 'hsa',
+          },
+          'Decided by is required',
+        ],
+      ] as const) {
+        const { db, query } = createSqlServerDb()
+        await expect(record(db, 7, data)).rejects.toMatchObject({
+          code: 'validation',
+          message,
+        })
+        expect(query).not.toHaveBeenCalled()
+      }
+    },
+  )
+
+  it.each([
+    ['library decision', recordDecision],
+    ['local decision', recordSpecificationLocalDecision],
+  ] as const)(
+    'classifies a lost %s race while still reviewed',
+    async (_, record) => {
+      const { db, query } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { decision: null, id: 7, isReviewRequested: 1 },
+        ])
+      await expect(
+        record(db, 7, {
+          decision: 1,
+          decisionMotivation: 'Reason',
+          decidedBy: 'Reviewer',
+          decidedByHsaId: 'hsa',
+        }),
+      ).rejects.toMatchObject({
+        code: 'conflict',
+        message:
+          'Cannot record a decision because the deviation changed before the update completed',
+      })
+    },
+  )
+
+  it('classifies draft decision attempts and decided deletes', async () => {
+    const draft = createSqlServerDb()
+    draft.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ decision: null, id: 7, isReviewRequested: 0 }])
+    await expect(
+      recordDecision(draft.db, 7, {
+        decision: 1,
+        decisionMotivation: 'Reason',
+        decidedBy: 'Reviewer',
+        decidedByHsaId: 'hsa',
+      }),
+    ).rejects.toMatchObject({
+      message:
+        'Can only approve or reject deviations that have been submitted for review',
+    })
+
+    const decided = createSqlServerDb()
+    decided.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ decision: 2, id: 7, isReviewRequested: 1 }])
+    await expect(
+      deleteSpecificationLocalDeviation(decided.db, 7),
+    ).rejects.toMatchObject({
+      message: 'Cannot delete a deviation after a decision has been recorded',
+    })
+  })
+
+  it('returns aggregate and per-library-item counts with SQL nulls normalized', async () => {
+    const aggregate = createSqlServerDb()
+    aggregate.query.mockResolvedValueOnce([
+      { total: '3', pending: '1', approved: '1', rejected: '1' },
+      { total: null, pending: 'bad', approved: 0, rejected: null },
+    ])
+    await expect(
+      countDeviationsBySpecification(aggregate.db, 2),
+    ).resolves.toEqual({
+      total: 3,
+      pending: 1,
+      approved: 1,
+      rejected: 1,
+    })
+
+    const perItem = createSqlServerDb()
+    perItem.query.mockResolvedValueOnce([
+      { specificationItemId: '8', total: '2', pending: null, approved: 'bad' },
+    ])
+    await expect(countDeviationsPerItem(perItem.db, 2)).resolves.toEqual(
+      new Map([[8, { total: 2, pending: 0, approved: 0 }]]),
+    )
+  })
+
+  it.each([
+    ['library', requestReview, revertToDraft],
+    [
+      'specification-local',
+      requestSpecificationLocalReview,
+      revertSpecificationLocalToDraft,
+    ],
+  ] as const)(
+    'covers review and return-to-draft outcomes for %s deviations',
+    async (_, request, revert) => {
+      const requested = createSqlServerDb()
+      requested.query.mockResolvedValueOnce([{ id: 7 }])
+      await expect(request(requested.db, 7)).resolves.toBeUndefined()
+
+      const reverted = createSqlServerDb()
+      reverted.query.mockResolvedValueOnce([{ id: 7 }])
+      await expect(revert(reverted.db, 7)).resolves.toBeUndefined()
+
+      for (const [operation, state, expected] of [
+        [request, null, { code: 'not_found' }],
+        [
+          request,
+          { decision: 1, id: 7, isReviewRequested: 1 },
+          {
+            code: 'conflict',
+            message:
+              'Cannot request review for a deviation that already has a decision',
+          },
+        ],
+        [
+          request,
+          { decision: null, id: 7, isReviewRequested: 1 },
+          {
+            code: 'conflict',
+            message: 'Review has already been requested for this deviation',
+          },
+        ],
+        [revert, null, { code: 'not_found' }],
+        [
+          revert,
+          { decision: 1, id: 7, isReviewRequested: 1 },
+          {
+            code: 'conflict',
+            message: 'Cannot revert a deviation that already has a decision',
+          },
+        ],
+        [
+          revert,
+          { decision: null, id: 7, isReviewRequested: 0 },
+          { code: 'conflict', message: 'Deviation is already in draft state' },
+        ],
+      ] as const) {
+        const current = createSqlServerDb()
+        current.query
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce(state ? [state] : [])
+        await expect(operation(current.db, 7)).rejects.toMatchObject(expected)
+      }
+    },
+  )
 })
