@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { validationError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   collectDataSubjectExport: vi.fn(),
@@ -261,5 +262,42 @@ describe('data-subject export route', () => {
 
     expect(response.status).toBe(500)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
+  })
+
+  it('exports with minimal session claims and the incoming request audit fallback', async () => {
+    const minimalContext = context()
+    delete (minimalContext as { request?: Request }).request
+    delete (minimalContext.actor as { id?: string }).id
+    routeState.createRequestContext.mockResolvedValueOnce(minimalContext)
+    routeState.getSessionFromRequest.mockResolvedValueOnce({
+      ...signedSession(),
+      email: undefined,
+    })
+    const { POST } = await import('@/app/api/privacy/data-subject-export/route')
+    const response = await POST(jsonPost({ delivery: 'json' }) as never)
+
+    expect(response.status).toBe(200)
+    expect(routeState.collectDataSubjectExport).toHaveBeenCalledWith(
+      { db: true },
+      expect.objectContaining({
+        generatedBy: expect.not.objectContaining({ sub: expect.anything() }),
+        selfSession: expect.not.objectContaining({ email: expect.anything() }),
+      }),
+    )
+  })
+
+  it('omits session claims when the session is not signed in and maps expected failures', async () => {
+    routeState.isSignedIn.mockReturnValueOnce(false)
+    routeState.collectDataSubjectExport.mockRejectedValueOnce(
+      validationError('Export unavailable', { reason: 'export_unavailable' }),
+    )
+    const { POST } = await import('@/app/api/privacy/data-subject-export/route')
+    const response = await POST(jsonPost({ delivery: 'json' }) as never)
+
+    expect(response.status).toBe(400)
+    expect(routeState.collectDataSubjectExport).toHaveBeenCalledWith(
+      { db: true },
+      expect.objectContaining({ selfSession: null }),
+    )
   })
 })

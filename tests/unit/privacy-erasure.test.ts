@@ -25,6 +25,9 @@ function keyForPrivacySql(sql: string): string | null {
   if (sql.includes('FROM requirement_areas WHERE owner_hsa_id')) {
     return 'requirement_areas.owner'
   }
+  if (sql.includes('FROM requirement_responsibility_people WHERE hsa_id')) {
+    return 'requirement_responsibility_people.identity'
+  }
   if (
     sql.includes('FROM requirement_areas area') &&
     sql.includes('area.owner_hsa_id = @0')
@@ -132,6 +135,33 @@ describe('privacy erasure service', () => {
     ).rejects.toMatchObject({
       details: { reason: 'invalid_target_hsa_id' },
       status: 400,
+    })
+  })
+
+  it('rejects incomplete replacement identities', async () => {
+    const { db } = createPrivacyDb({})
+    await expect(
+      previewPrivacyErasure(db, {
+        replacement: { displayName: '', hsaId: 'invalid' },
+        target: { hsaId: TARGET_HSA_ID },
+      }),
+    ).rejects.toMatchObject({ details: { reason: 'invalid_replacement' } })
+  })
+
+  it('previews identity retention without affected-reference SQL', async () => {
+    const { db } = createPrivacyDb({
+      'requirement_responsibility_people.identity': {
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+    const preview = await previewPrivacyErasure(db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    expect(preview.groups[0]).toMatchObject({
+      affectedReferences: [],
+      allowedActions: ['skip'],
+      key: 'requirement_responsibility_people.identity',
     })
   })
 
@@ -601,6 +631,160 @@ describe('privacy erasure service', () => {
         String(sql).includes('DELETE FROM action_audit_events'),
       ),
     ).toBe(false)
+  })
+
+  it('deletes co-author assignments and anonymizes specification responsibility', async () => {
+    const { db, query } = createPrivacyDb({
+      'requirement_area_co_authors.hsa_id': {
+        affectedValues: ['Area'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+      'requirements_specifications.responsible': {
+        affectedValues: ['SPEC One'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+    const preview = await previewPrivacyErasure(db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    const result = await executePrivacyErasure(createTransactionalDb(query), {
+      actions: {
+        'requirement_area_co_authors.hsa_id': 'delete',
+        'requirements_specifications.responsible': 'anonymize',
+      },
+      previewToken: preview.previewToken,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    expect(result.actions.delete).toBe(1)
+    expect(result.actions.anonymize).toBe(1)
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM requirement_area_co_authors'),
+      [TARGET_HSA_ID],
+    )
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'UPDATE requirements_specifications SET responsible_hsa_id = NULL',
+      ),
+      [TARGET_HSA_ID],
+    )
+  })
+
+  it('switches co-author and specification responsibility through public execution', async () => {
+    const { db, query } = createPrivacyDb({
+      'requirements_specifications.responsible': {
+        affectedValues: ['SPEC One'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+      'specification_co_authors.hsa_id': {
+        affectedValues: ['SPEC One'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+    const replacement = {
+      displayName: 'John Levi',
+      hsaId: 'SE5560000001-johlju',
+    }
+    const preview = await previewPrivacyErasure(db, {
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    query.mockClear()
+    const result = await executePrivacyErasure(createTransactionalDb(query), {
+      actions: {
+        'requirements_specifications.responsible': 'switch',
+        'specification_co_authors.hsa_id': 'switch',
+      },
+      previewToken: preview.previewToken,
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.actions.switch).toBe(2)
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'UPDATE requirements_specifications SET responsible_hsa_id = @1',
+      ),
+      [TARGET_HSA_ID, replacement.hsaId],
+    )
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'UPDATE specification_co_authors SET hsa_id = @1',
+      ),
+      [TARGET_HSA_ID, replacement.hsaId],
+    )
+    expect(
+      query.mock.calls.filter(([sql]) =>
+        String(sql).includes('MERGE INTO requirement_responsibility_people'),
+      ),
+    ).toHaveLength(2)
+  })
+
+  it('uses recommended and skip actions and anonymizes decision display columns', async () => {
+    const { db, query } = createPrivacyDb({
+      'deviations.decided_by': {
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+      'improvement_suggestions.resolved_by': {
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+      'requirement_versions.created_by': {
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+    const preview = await previewPrivacyErasure(db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    query.mockClear()
+    const result = await executePrivacyErasure(createTransactionalDb(query), {
+      actions: { 'requirement_versions.created_by': 'skip' },
+      previewToken: preview.previewToken,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.actions).toMatchObject({ anonymize: 2, skip: 1 })
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('SET decided_by_hsa_id = NULL'),
+      [TARGET_HSA_ID, DELETED_USER_INTERNAL_NAME],
+    )
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('SET resolved_by_hsa_id = NULL'),
+      [TARGET_HSA_ID, DELETED_USER_INTERNAL_NAME],
+    )
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('UPDATE requirement_versions'),
+      ),
+    ).toBe(false)
+  })
+
+  it('rejects an action that the preview policy does not allow', async () => {
+    const { db, query } = createPrivacyDb({
+      'requirement_versions.created_by': {
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+    const preview = await previewPrivacyErasure(db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    await expect(
+      executePrivacyErasure(createTransactionalDb(query), {
+        actions: { 'requirement_versions.created_by': 'delete' },
+        previewToken: preview.previewToken,
+        target: { hsaId: TARGET_HSA_ID },
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'unsupported_privacy_action' },
+    })
   })
 
   it('rejects stale previews before applying mutations', async () => {

@@ -85,6 +85,53 @@ describe('admin privileged action audit', () => {
     expect(context.source).toBe('rest')
   })
 
+  it('builds anonymous fallback metadata and default audit requests', async () => {
+    sessionState.getSessionFromRequest.mockResolvedValueOnce(null)
+    sessionState.isSignedIn.mockReturnValueOnce(false)
+    const request = new Request('https://example.test/fallback', {
+      headers: {
+        origin: 'http://localhost:3000',
+        'x-requested-with': 'XMLHttpRequest',
+      },
+      method: 'POST',
+    })
+    Object.defineProperty(request, 'url', {
+      configurable: true,
+      value: '/api/admin/fallback?secret=yes#fragment',
+    })
+    const anonymous = await createAdminPrivilegedAuditContext(request)
+    expect(anonymous.actor).toMatchObject({
+      isAuthenticated: false,
+      roles: [],
+      source: 'anonymous',
+    })
+    expect(anonymous.request?.path).toBe('/api/admin/fallback')
+
+    const context: RequestContext = {
+      actor: {
+        displayName: '',
+        hsaId: null,
+        id: null,
+        isAuthenticated: true,
+        roles: ['Admin'],
+        source: 'oidc',
+      },
+      correlationId: 'correlation-fallback',
+      requestId: 'request-fallback',
+      source: 'rest',
+    }
+    await recordAdminPrivilegedActionSucceeded(context, {
+      operation: 'update',
+      resourceType: 'requirement_area',
+    })
+    await recordDelegatedPrivilegedActionSucceeded(context, {
+      actorRole: 'delegated_area_manager',
+      operation: 'update',
+      resourceType: 'requirement_area',
+    })
+    expect(auditState.query).toHaveBeenCalledTimes(2)
+  })
+
   it('emits compact security-audit details for successful privileged actions', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     const context: RequestContext = {

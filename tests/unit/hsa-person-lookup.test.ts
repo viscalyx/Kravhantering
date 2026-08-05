@@ -1,4 +1,5 @@
 import { mkdtemp, rm, utimes, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -34,6 +35,20 @@ describe('HSA person lookup', () => {
       timeoutMs: 750,
       url: 'http://kong:8000/hsa/person-records/lookup',
     })
+
+    expect(
+      getHsaPersonLookupConfig({
+        HSA_PERSON_LOOKUP_TIMEOUT_MS: 'not-a-timeout',
+        HSA_PERSON_LOOKUP_URL: 'http://kong:8000/hsa/person-records/lookup',
+      } as unknown as NodeJS.ProcessEnv),
+    ).toMatchObject({ timeoutMs: 5000 })
+
+    expect(
+      getHsaPersonLookupConfig({
+        HSA_PERSON_LOOKUP_TIMEOUT_MS: '0',
+        HSA_PERSON_LOOKUP_URL: 'http://kong:8000/hsa/person-records/lookup',
+      } as unknown as NodeJS.ProcessEnv),
+    ).toMatchObject({ timeoutMs: 5000 })
   })
 
   it('reads optional mTLS and OAuth2 lookup auth from environment', () => {
@@ -67,6 +82,22 @@ describe('HSA person lookup', () => {
       },
       timeoutMs: 5000,
       url: 'https://kong.example.internal/hsa/person-records/lookup',
+    })
+
+    expect(
+      getHsaPersonLookupConfig({
+        HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'client-id',
+        HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'client-secret',
+        HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL: 'https://idp/token',
+        HSA_PERSON_LOOKUP_URL:
+          'https://kong.example.internal/hsa/person-records/lookup',
+      } as unknown as NodeJS.ProcessEnv),
+    ).toMatchObject({
+      oauth: {
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+        tokenUrl: 'https://idp/token',
+      },
     })
   })
 
@@ -142,6 +173,143 @@ describe('HSA person lookup', () => {
       hsaId: HSA_ID,
       middleName: 'Bertil',
       surname: 'Svensson',
+    })
+  })
+
+  it('uses the native HTTP transport for OAuth token and lookup requests', async () => {
+    const requests: Array<{ body: string; path: string }> = []
+    const server = createServer((request, response) => {
+      const chunks: Buffer[] = []
+      request.on('data', chunk => chunks.push(Buffer.from(chunk)))
+      request.on('end', () => {
+        requests.push({
+          body: Buffer.concat(chunks).toString('utf8'),
+          path: request.url ?? '',
+        })
+        response.setHeader('Content-Type', 'application/json')
+        if (request.url === '/token') {
+          response.end(JSON.stringify({ access_token: 'native-token' }))
+          return
+        }
+        response.end(
+          JSON.stringify({
+            email: 'kalle@example.test',
+            givenName: 'Kalle',
+            hsaId: HSA_ID,
+            middleName: null,
+            surname: 'Svensson',
+          }),
+        )
+      })
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    try {
+      const address = server.address()
+      if (!address || typeof address === 'string') throw new Error('No port')
+      const origin = `http://127.0.0.1:${address.port}`
+      const person = await lookupHsaPerson(HSA_ID, {
+        config: {
+          oauth: {
+            clientId: 'client-id',
+            clientSecret: 'client-secret',
+            tokenUrl: `${origin}/token`,
+          },
+          timeoutMs: 5000,
+          url: `${origin}/lookup?source=test`,
+        },
+      })
+
+      expect(person.hsaId).toBe(HSA_ID)
+      expect(requests).toEqual([
+        expect.objectContaining({
+          body: 'grant_type=client_credentials',
+          path: '/token',
+        }),
+        expect.objectContaining({
+          body: JSON.stringify({ hsaId: HSA_ID }),
+          path: '/lookup?source=test',
+        }),
+      ])
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close(error => (error ? reject(error) : resolve())),
+      )
+    }
+  })
+
+  it('maps unsupported native transports and insecure mTLS to unavailable', async () => {
+    await expect(
+      lookupHsaPerson(HSA_ID, {
+        config: {
+          oauth: {
+            clientId: 'client-id',
+            clientSecret: 'client-secret',
+            tokenUrl: 'ftp://issuer.example.test/token',
+          },
+          timeoutMs: 5000,
+          url: 'https://lookup.example.test/person',
+        },
+      }),
+    ).rejects.toSatisfy(error => {
+      expectRequirementsError(error, 'service_unavailable')
+      return true
+    })
+
+    await expect(
+      lookupHsaPerson(HSA_ID, {
+        config: {
+          mtls: { certPath: '/unused/cert', keyPath: '/unused/key' },
+          timeoutMs: 5000,
+          url: 'http://lookup.example.test/person',
+        },
+      }),
+    ).rejects.toSatisfy(error => {
+      expectRequirementsError(error, 'service_unavailable')
+      return true
+    })
+  })
+
+  it('aborts a pending lookup at the configured deadline', async () => {
+    vi.useFakeTimers()
+    try {
+      const fetchImpl = vi.fn(
+        async (_url: string, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            )
+          }),
+      ) as unknown as typeof fetch
+      const lookup = lookupHsaPerson(HSA_ID, {
+        config: { timeoutMs: 25, url: 'http://lookup.example.test/person' },
+        fetchImpl,
+      })
+      const rejection = expect(lookup).rejects.toSatisfy(error => {
+        expectRequirementsError(error, 'service_unavailable')
+        return true
+      })
+      await vi.advanceTimersByTimeAsync(25)
+      await rejection
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('fails closed when native HTTPS TLS material cannot be read', async () => {
+    await expect(
+      lookupHsaPerson(HSA_ID, {
+        config: {
+          mtls: {
+            certPath: '/missing/hsa-client.crt',
+            keyPath: '/missing/hsa-client.key',
+          },
+          timeoutMs: 5000,
+          url: 'https://lookup.example.test/person',
+        },
+      }),
+    ).rejects.toSatisfy(error => {
+      expectRequirementsError(error, 'service_unavailable')
+      return true
     })
   })
 
@@ -364,6 +532,9 @@ describe('HSA person lookup', () => {
       await expect(
         readHsaPersonLookupTlsFileForTests(filePath),
       ).resolves.toEqual(Buffer.from('first'))
+      await expect(
+        readHsaPersonLookupTlsFileForTests(filePath),
+      ).resolves.toEqual(Buffer.from('first'))
 
       await writeFile(filePath, 'second')
       await utimes(
@@ -517,6 +688,122 @@ describe('HSA person lookup', () => {
         headers: expect.objectContaining({ Authorization: 'Bearer token-2' }),
         mtls,
       }),
+    )
+  })
+
+  it.each([
+    { body: '', status: 200 },
+    { body: '{invalid', status: 200 },
+    { body: JSON.stringify({ givenName: 'Kalle', hsaId: '' }), status: 200 },
+    {
+      body: JSON.stringify({
+        givenName: 'Kalle',
+        hsaId: 'SE5560000001-other1',
+      }),
+      status: 200,
+    },
+    { body: JSON.stringify({ code: 'conflict' }), status: 422 },
+  ])('rejects invalid or conflicting lookup payload %#', async response => {
+    await expect(
+      lookupHsaPerson(HSA_ID, {
+        config: { timeoutMs: 5000, url: 'https://kong/lookup' },
+        httpRequestImpl: vi.fn(async () => ({
+          body: response.body,
+          headers: {},
+          status: response.status,
+        })),
+      }),
+    ).rejects.toSatisfy(error => {
+      expect(isRequirementsServiceError(error)).toBe(true)
+      return true
+    })
+  })
+
+  it.each([
+    {
+      responses: [{ body: '{}', headers: {}, status: 500 }],
+    },
+    {
+      responses: [{ body: '{}', headers: {}, status: 200 }],
+    },
+    {
+      responses: [
+        {
+          body: JSON.stringify({ token_endpoint: 'https://idp/token' }),
+          headers: {},
+          status: 200,
+        },
+        { body: '{}', headers: {}, status: 401 },
+      ],
+    },
+    {
+      responses: [
+        {
+          body: JSON.stringify({ token_endpoint: 'https://idp/token' }),
+          headers: {},
+          status: 200,
+        },
+        { body: '{}', headers: {}, status: 200 },
+      ],
+    },
+  ])(
+    'fails closed for OAuth discovery and token failures %#',
+    async ({ responses }) => {
+      const httpRequestImpl = vi.fn()
+      for (const response of responses) {
+        httpRequestImpl.mockResolvedValueOnce(response)
+      }
+      await expect(
+        lookupHsaPerson(HSA_ID, {
+          config: {
+            oauth: {
+              clientId: 'client-id',
+              clientSecret: 'client-secret',
+              issuerUrl: 'https://issuer.example.test',
+            },
+            timeoutMs: 5000,
+            url: 'https://kong/lookup',
+          },
+          httpRequestImpl,
+        }),
+      ).rejects.toSatisfy(error => {
+        expectRequirementsError(error, 'service_unavailable')
+        return true
+      })
+    },
+  )
+
+  it('uses default token expiry and omits optional OAuth form fields', async () => {
+    const httpRequestImpl = vi
+      .fn()
+      .mockResolvedValueOnce({
+        body: JSON.stringify({
+          access_token: 'token-default',
+          expires_in: 'invalid',
+        }),
+        headers: {},
+        status: 200,
+      })
+      .mockResolvedValueOnce({
+        body: JSON.stringify({ givenName: 'Kalle', hsaId: HSA_ID }),
+        headers: {},
+        status: 200,
+      })
+    await lookupHsaPerson(HSA_ID, {
+      config: {
+        oauth: {
+          clientId: 'client-id',
+          clientSecret: 'client-secret',
+          tokenUrl: 'https://idp/token',
+        },
+        timeoutMs: 5000,
+        url: 'https://kong/lookup',
+      },
+      httpRequestImpl,
+    })
+    expect(httpRequestImpl).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ body: 'grant_type=client_credentials' }),
     )
   })
 })

@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   type ActionAuditEventRow,
+  actionAuditActorFromContext,
   actionAuditCsvHeaders,
   actionAuditEventToCsvRow,
+  assertAdminForActionAudit,
   listActionAuditEvents,
   recordActionAuditEvent,
   recordAllowedActionAuditEventWithExecutor,
@@ -40,7 +42,7 @@ describe('action audit helper', () => {
     const query = vi.fn().mockResolvedValue([])
 
     await recordActionAuditEvent(
-      { query },
+      { query } as unknown as Parameters<typeof recordActionAuditEvent>[0],
       {
         action: 'requirement.create',
         actorDisplayName: 'Ada Admin',
@@ -447,5 +449,109 @@ describe('action audit helper', () => {
         },
       ),
     ).rejects.toThrow('did not make progress')
+  })
+
+  it('covers actor fallbacks, admin gates, and bounded empty values', async () => {
+    expect(
+      actionAuditActorFromContext(
+        context({
+          actor: {
+            displayName: '',
+            hsaId: '',
+            id: null,
+            isAuthenticated: false,
+            roles: [],
+            source: 'oidc',
+          },
+        }),
+      ),
+    ).toEqual({
+      actorClientId: null,
+      actorDisplayName: null,
+      actorHsaId: '',
+      actorKind: 'system',
+    })
+    expect(
+      actionAuditActorFromContext(
+        context({
+          actor: {
+            displayName: '',
+            hsaId: null,
+            id: null,
+            isAuthenticated: true,
+            roles: [],
+            source: 'mcp',
+          },
+          source: 'mcp',
+          toolName: 'tool-name',
+        }),
+      ),
+    ).toMatchObject({ actorClientId: 'tool-name', actorHsaId: null })
+
+    expect(() => assertAdminForActionAudit(context())).not.toThrow()
+    expect(() =>
+      assertAdminForActionAudit(
+        context({ actor: { ...context().actor, isAuthenticated: false } }),
+      ),
+    ).toThrow()
+    expect(() =>
+      assertAdminForActionAudit(
+        context({ actor: { ...context().actor, roles: [] } }),
+      ),
+    ).toThrow()
+
+    const query = vi.fn(async () => [])
+    await recordActionAuditEvent(
+      { query } as unknown as Parameters<typeof recordActionAuditEvent>[0],
+      {
+        action: ' edge.action ',
+        actorKind: 'system',
+        decision: 'allowed',
+        denialReason: ' ',
+        details: Object.fromEntries(
+          Array.from({ length: 35 }, (_, index) => [
+            `safe${index}`,
+            index === 0 ? ['ok', 1, true] : `value-${index}`,
+          ]),
+        ) as never,
+        targetId: ' ',
+        targetKind: ' edge ',
+      },
+    )
+    expect(query).toHaveBeenCalled()
+  })
+
+  it('applies every list filter, bounds pagination, and maps sparse rows', async () => {
+    const db = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: 1,
+            occurredAt: '2026-08-04T12:00:00.000Z',
+          },
+        ]),
+    }
+    const result = await listActionAuditEvents(db as never, {
+      action: 'requirement.create',
+      actorHsaId: 'SE5560000001-admin1',
+      clientIp: '203.0.113.1',
+      decision: 'denied',
+      from: new Date('2026-01-01T00:00:00.000Z'),
+      page: Number.NaN,
+      pageSize: 999,
+      targetId: '1',
+      targetKind: 'Requirement',
+      to: new Date('2026-12-31T00:00:00.000Z'),
+    })
+    expect(String(db.query.mock.calls[0]?.[0])).toContain('actor_hsa_id')
+    expect(result.pagination).toEqual({ page: 1, pageSize: 200, total: 0 })
+    expect(result.events[0]).toMatchObject({
+      action: '',
+      actorKind: 'system',
+      decision: 'allowed',
+      targetKind: '',
+    })
   })
 })

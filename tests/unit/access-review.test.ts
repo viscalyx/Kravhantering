@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   type AccessReviewPrincipalSnapshot,
+  buildAccessReviewExport,
   cancelAccessReviewRun,
   collectAccessReviewAssignments,
   completeAccessReviewRun,
@@ -111,6 +112,8 @@ function accessReviewMutationDb(
     decision?: string
     itemUpdateCount?: number
     pendingCount?: number
+    itemMissing?: boolean
+    runMissing?: boolean
     runUpdateCount?: number
     status?: string
   } = {},
@@ -122,6 +125,7 @@ function accessReviewMutationDb(
   const query = vi.fn(async (sql: string, parameters?: unknown[]) => {
     transactionQueries.push({ parameters, sql })
     if (sql.includes('FROM access_review_runs WITH (UPDLOCK, HOLDLOCK)')) {
+      if (options.runMissing) return []
       return [{ id: 42, status }]
     }
     if (sql.includes('FROM access_review_items WITH (UPDLOCK, HOLDLOCK)')) {
@@ -133,6 +137,7 @@ function accessReviewMutationDb(
           },
         ]
       }
+      if (options.itemMissing) return []
       return [{ comment, decision }]
     }
     if (sql.includes('UPDATE access_review_items')) {
@@ -191,6 +196,68 @@ function accessReviewMutationDb(
 }
 
 describe('access review service', () => {
+  it('covers missing actors, runs, items, and export attribution', async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM access_review_runs run')) return []
+      return []
+    })
+    await expect(
+      listAccessReviewRuns({ query } as never, {
+        displayName: '',
+        hsaId: '',
+        roles: ['Admin'],
+      }),
+    ).rejects.toMatchObject({ details: { reason: 'missing_actor_hsa_id' } })
+    await expect(
+      getAccessReviewRun({ query } as never, 404, adminActor),
+    ).rejects.toMatchObject({ details: { reason: 'access_review_not_found' } })
+
+    const missingRun = accessReviewMutationDb({ runMissing: true })
+    await expect(
+      cancelAccessReviewRun(missingRun.db as never, 42, adminActor),
+    ).rejects.toMatchObject({ details: { reason: 'access_review_not_found' } })
+    const missingItem = accessReviewMutationDb({ itemMissing: true })
+    await expect(
+      decideAccessReviewItem(
+        missingItem.db as never,
+        42,
+        404,
+        { decision: 'approved' },
+        adminActor,
+      ),
+    ).rejects.toMatchObject({
+      details: { reason: 'access_review_item_not_found' },
+    })
+
+    const exportDb = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce([accessReviewRunRow(0)])
+        .mockResolvedValueOnce([]),
+    }
+    const exported = await buildAccessReviewExport(
+      exportDb as never,
+      42,
+      { ...adminActor, displayName: ' ' },
+      new Date('2026-08-04T00:00:00.000Z'),
+    )
+    expect(exported.generatedBy.displayName).toBe(adminActor.hsaId)
+    expect(exported.items).toEqual([])
+  })
+
+  it('rejects invalid generated dates before opening a create transaction', async () => {
+    const db = { transaction: vi.fn() }
+    await expect(
+      createAccessReviewRun(
+        db as never,
+        { generatedAt: new Date('invalid'), reviewer: adminActor },
+        adminActor,
+      ),
+    ).rejects.toMatchObject({
+      details: { field: 'generatedAt', reason: 'invalid_access_review_date' },
+    })
+    expect(db.transaction).not.toHaveBeenCalled()
+  })
   it('collects app-managed assignments', async () => {
     const rows = [
       {
