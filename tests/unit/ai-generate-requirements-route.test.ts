@@ -109,6 +109,11 @@ describe('POST /api/ai/generate-requirement-import', () => {
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
+    let fakeNow = 0
+    const dateNowSpy = vi.spyOn(Date, 'now').mockImplementation(() => {
+      fakeNow += 60_000
+      return fakeNow
+    })
     routeState.generateChatStream.mockImplementation(async function* () {
       yield {
         phase: 'done',
@@ -152,7 +157,17 @@ describe('POST /api/ai/generate-requirement-import', () => {
         request_id: 'request-ai',
         token_count: 10,
       })
+      expect(
+        parseCapacityEvents(consoleInfoSpy).find(
+          event => event.event === 'capacity.threshold_exceeded',
+        ),
+      ).toMatchObject({
+        duration_ms: 60_000,
+        event: 'capacity.threshold_exceeded',
+        outcome: 'success',
+      })
     } finally {
+      dateNowSpy.mockRestore()
       consoleInfoSpy.mockRestore()
     }
   })
@@ -644,6 +659,172 @@ describe('POST /api/ai/generate-requirement-import', () => {
         path: 'mode',
       }),
     ])
+  })
+
+  it('returns a sanitized unavailable stream when generation is disabled', async () => {
+    vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', 'true')
+
+    const response = await POST(makeRequest())
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(body).toContain('event: error')
+    expect(body).toContain('AI provider is unavailable')
+    expect(routeState.buildImportInstruction).not.toHaveBeenCalled()
+    expect(routeState.generateChatStream).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when generation availability cannot be loaded', async () => {
+    routeState.query.mockRejectedValue(new Error('settings unavailable'))
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    const consoleWarnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      expect(response.status).toBe(503)
+      expect(await response.text()).toContain('AI provider is unavailable')
+      expect(routeState.generateChatStream).not.toHaveBeenCalled()
+    } finally {
+      consoleErrorSpy.mockRestore()
+      consoleWarnSpy.mockRestore()
+    }
+  })
+
+  it('sanitizes provider error events without returning their cause', async () => {
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        cause: new Error('provider account secret'),
+        message: 'provider account secret',
+        phase: 'error',
+      }
+    })
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      const body = await response.text()
+      expect(body).toContain('event: error')
+      expect(body).toContain('AI provider is unavailable')
+      expect(body).not.toContain('provider account secret')
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('sanitizes provider setup exceptions from the stream', async () => {
+    routeState.resolveOpenRouterModelCapabilities.mockRejectedValue(
+      new Error('model catalog secret'),
+    )
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      const body = await response.text()
+      expect(body).toContain('event: error')
+      expect(body).not.toContain('model catalog secret')
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('reports malformed provider JSON as a localized validation failure', async () => {
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        phase: 'done',
+        rawContent: '{not-json',
+        stats: {
+          completionTokens: 1,
+          cost: 0,
+          promptTokens: 1,
+          reasoningTokens: 0,
+          totalTokens: 2,
+        },
+        thinking: '',
+      }
+    })
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      const body = await response.text()
+      expect(body).toContain('event: validation_error')
+      expect(body).toContain('invalid_json')
+      expect(body).toContain('Model output was not valid JSON.')
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('streams chunk-only reasoning once, suppresses duplicate progress, and sanitizes an error without cause', async () => {
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield { chunk: 'Checking contract', phase: 'thinking' }
+      yield { chunk: '{', phase: 'generating' }
+      yield { chunk: '"requirements":[]}', phase: 'generating' }
+      yield { message: 'provider unavailable', phase: 'error' }
+    })
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(
+        makeRequest({
+          areaId: 1,
+          locale: 'en',
+          mode: 'library',
+          need: 'secure audit logging',
+          reasoningEffort: 'medium',
+        }),
+      )
+      const body = await response.text()
+
+      expect(body.match(/event: generating/g)).toHaveLength(1)
+      expect(body).toContain('event: thinking')
+      expect(body).toContain('AI provider is unavailable')
+      expect(body).not.toContain('provider unavailable')
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('throttles repeated generation before loading instructions or calling the provider', async () => {
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield { message: 'provider unavailable', phase: 'error' }
+    })
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      for (let index = 0; index < 5; index += 1) {
+        const response = await POST(makeRequest())
+        await response.text()
+      }
+      routeState.buildImportInstruction.mockClear()
+      routeState.generateChatStream.mockClear()
+
+      const throttled = await POST(makeRequest())
+
+      expect(throttled.status).toBe(429)
+      expect(throttled.headers.get('Retry-After')).toBe('60')
+      await expect(throttled.json()).resolves.toEqual({
+        error: 'Too many AI requests. Try again later.',
+      })
+      expect(routeState.buildImportInstruction).not.toHaveBeenCalled()
+      expect(routeState.generateChatStream).not.toHaveBeenCalled()
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('rejects malformed image base64 before provider use', async () => {

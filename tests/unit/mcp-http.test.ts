@@ -817,6 +817,43 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
+  it('returns unversioned resource links when requirement detail has no version', async () => {
+    const fakeService = createFakeService()
+    const payload = await fakeService.getRequirement()
+    fakeService.getRequirement.mockResolvedValue({
+      ...payload,
+      requirement: { ...payload.requirement, versions: [] },
+      requirementResourceUri: 'requirements://requirement/EMPTY001',
+      requirementViewUri: 'ui://requirements/requirement-detail/EMPTY001',
+      version: undefined,
+    } as never)
+    const server = createKravhanteringMcpServer(
+      fakeService as never,
+      new Request('https://example.test/api/mcp'),
+    )
+    const { client } = await createInMemoryClient(server)
+
+    const result = await client.callTool({
+      arguments: { uniqueId: 'EMPTY001', view: 'detail' },
+      name: 'requirements_get_requirement',
+    })
+
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'resource_link',
+          uri: 'requirements://requirement/INT0001',
+        }),
+        expect.objectContaining({
+          type: 'resource_link',
+          uri: 'ui://requirements/requirement-detail/INT0001',
+        }),
+      ]),
+    )
+
+    await Promise.allSettled([client.close(), server.close()])
+  })
+
   it('passes requirements filters and sorting through the MCP catalog schema', async () => {
     const { client, transport } = await createClient()
     const fakeService = serviceState.getService.mock.results[0]?.value
@@ -1593,6 +1630,55 @@ describe('handleRequirementsMcpRequest', () => {
     expect(serviceState.getService).not.toHaveBeenCalled()
   })
 
+  it('rejects unsupported HTTP methods before authentication', async () => {
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', { method: 'PATCH' }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(405)
+    expect(await response.json()).toEqual({
+      error: { code: -32000, message: 'Method not allowed.' },
+      id: null,
+      jsonrpc: '2.0',
+    })
+    expect(verifyMcpBearerToken).not.toHaveBeenCalled()
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('propagates unexpected authentication failures', async () => {
+    vi.mocked(verifyMcpBearerToken).mockRejectedValueOnce(
+      new Error('OIDC discovery unavailable'),
+    )
+
+    await expect(
+      handleRequirementsMcpRequest(
+        new Request('https://example.test/api/mcp'),
+        {} as never,
+      ),
+    ).rejects.toThrow('OIDC discovery unavailable')
+    expect(serviceState.getCachedMcpRuntimeSettings).not.toHaveBeenCalled()
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('ignores invalid content-length values and measures the request body', async () => {
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({ id: 1, jsonrpc: '2.0', method: 'tools/list' }),
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-length': 'not-a-number',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(200)
+    expect(serviceState.getService).toHaveBeenCalledOnce()
+  })
+
   it('returns 401 before payload size inspection when MCP auth fails', async () => {
     vi.mocked(verifyMcpBearerToken).mockRejectedValueOnce(
       new McpAuthError('Missing Bearer token.', 401),
@@ -1925,6 +2011,96 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
+  it('renders safe, malformed, and URI-less references with named packages', async () => {
+    const fakeService = createFakeService([
+      {
+        normReference: {
+          name: 'Linked & trusted',
+          uri: 'https://example.test/standard?x=1&y=2',
+        },
+      },
+      {
+        normReference: {
+          reference: 'Malformed URI reference',
+          uri: 'not a valid URL',
+        },
+      },
+      {
+        normReference: {
+          name: 'Reference without URI',
+          uri: null,
+        },
+      },
+    ])
+    const payload = await fakeService.getRequirement()
+    Object.assign(payload.version, {
+      verificationMethod: 'Automated verification',
+    })
+    payload.version.versionRequirementPackages.push(
+      { requirementPackage: { name: null } } as never,
+      { requirementPackage: { name: 'Package & One' } } as never,
+    )
+    fakeService.getRequirement.mockResolvedValue(payload)
+    const server = createKravhanteringMcpServer(
+      fakeService as never,
+      new Request('https://example.test/api/mcp'),
+    )
+    const { client } = await createInMemoryClient(server)
+
+    const result = await client.readResource({
+      uri: 'ui://requirements/requirement-detail/INT0001?version=2',
+    })
+    const content = result.contents[0]
+    const html = content && 'text' in content ? content.text : ''
+
+    expect(html).toContain(
+      '<a href="https://example.test/standard?x=1&amp;y=2">Linked &amp; trusted</a>',
+    )
+    expect(html).toContain('Malformed URI reference: not a valid URL')
+    expect(html).toContain('<li>Reference without URI</li>')
+    expect(html).toContain('<li>Package &amp; One</li>')
+
+    await Promise.allSettled([client.close(), server.close()])
+  })
+
+  it('renders stable HTML fallbacks when a requirement has no selected version', async () => {
+    const fakeService = createFakeService()
+    fakeService.getRequirement.mockResolvedValue({
+      message: 'Requirement detail',
+      requirement: {
+        area: null,
+        createdAt: '2026-03-08T00:00:00.000Z',
+        id: 1,
+        isArchived: false,
+        specificationCount: 0,
+        uniqueId: 'EMPTY001',
+        versions: [],
+      },
+      requirementResourceUri: 'requirements://requirement/EMPTY001',
+      requirementViewUri: 'ui://requirements/requirement-detail/EMPTY001',
+      version: undefined,
+    })
+    const server = createKravhanteringMcpServer(
+      fakeService as never,
+      new Request('https://example.test/api/mcp'),
+    )
+    const { client } = await createInMemoryClient(server)
+
+    const result = await client.readResource({
+      uri: 'ui://requirements/requirement-detail/EMPTY001?locale=en',
+    })
+    const content = result.contents[0]
+    expect(content && 'text' in content).toBe(true)
+    const html = content && 'text' in content ? content.text : ''
+
+    expect(html).toContain('<title>EMPTY001</title>')
+    expect(html).toContain('Unknown')
+    expect(html).toContain('No area')
+    expect(html).toContain('Not verifiable')
+
+    await Promise.allSettled([client.close(), server.close()])
+  })
+
   it('accepts normReferenceIds in manage_requirement', async () => {
     const { client, transport } = await createClient()
     const fakeService = serviceState.getService.mock.results[0]?.value
@@ -2010,6 +2186,375 @@ describe('handleRequirementsMcpRequest', () => {
         ],
       },
     })
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns each documented MCP import response shape', async () => {
+    const fakeService = createFakeService()
+    const destination = { areaId: 2, kind: 'requirements_library' as const }
+    const outputDestination = {
+      ...destination,
+      name: 'Security',
+      prefix: 'SEC',
+    }
+    fakeService.manageImport
+      .mockResolvedValueOnce({
+        expiresAt: '2026-08-05T01:00:00.000Z',
+        hasErrors: false,
+        hasWarnings: false,
+        issues: [],
+        validationToken: 'validation-token',
+      })
+      .mockResolvedValueOnce({
+        destination: outputDestination,
+        expiresAt: '2026-08-05T01:00:00.000Z',
+        needsReferenceProposals: [],
+        payloadHash: 'sha256:payload',
+        proposals: [],
+        referenceData: {},
+        rows: [],
+        submittedPayload: {},
+      })
+      .mockResolvedValueOnce({
+        destination: outputDestination,
+        importedRows: [],
+        notImportedRows: [],
+        summary: { importedCount: 0, notImportedCount: 0, totalRowCount: 0 },
+      })
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+    const callAndExpectShape = async (
+      request: Parameters<typeof client.callTool>[0],
+      expected: unknown,
+    ) => {
+      const response = await client.callTool(request)
+      expect(response.isError).not.toBe(true)
+      expect(response.structuredContent).toEqual(expected)
+    }
+
+    await callAndExpectShape(
+      {
+        arguments: { destination, operation: 'validate', payload: {} },
+        name: 'requirements_manage_import',
+      },
+      {
+        expiresAt: '2026-08-05T01:00:00.000Z',
+        hasErrors: false,
+        hasWarnings: false,
+        issues: [],
+        validationToken: 'validation-token',
+      },
+    )
+    await callAndExpectShape(
+      {
+        arguments: {
+          operation: 'inspect_validation',
+          validationToken: 'validation-token',
+        },
+        name: 'requirements_manage_import',
+      },
+      {
+        destination: outputDestination,
+        expiresAt: '2026-08-05T01:00:00.000Z',
+        needsReferenceProposals: [],
+        payloadHash: 'sha256:payload',
+        proposals: [],
+        referenceData: {},
+        rows: [],
+        submittedPayload: {},
+      },
+    )
+    await callAndExpectShape(
+      {
+        arguments: {
+          operation: 'execute',
+          validationToken: 'validation-token',
+        },
+        name: 'requirements_manage_import',
+      },
+      {
+        destination: outputDestination,
+        importedRows: [],
+        notImportedRows: [],
+        summary: { importedCount: 0, notImportedCount: 0, totalRowCount: 0 },
+      },
+    )
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns each documented MCP needs-reference response shape', async () => {
+    const fakeService = createFakeService()
+    const needsReference = {
+      createdAt: '2026-08-05T00:00:00.000Z',
+      description: null,
+      id: 4,
+      libraryItemCount: 1,
+      linkedItemCount: 2,
+      specificationLocalRequirementCount: 1,
+      text: 'Protect health data',
+      updatedAt: '2026-08-05T00:00:00.000Z',
+    }
+    fakeService.manageNeedsReference
+      .mockResolvedValueOnce({ result: [needsReference] })
+      .mockResolvedValueOnce({ needsReference })
+    serviceState.getService.mockReturnValue(fakeService)
+    const { client, transport } = await createClient()
+
+    const listResponse = await client.callTool({
+      arguments: { operation: 'list', specificationId: 7 },
+      name: 'requirements_manage_needs_reference',
+    })
+    expect(listResponse.isError).not.toBe(true)
+    expect(listResponse.structuredContent).toEqual({
+      result: [needsReference],
+    })
+
+    const getResponse = await client.callTool({
+      arguments: {
+        needsReferenceId: 4,
+        operation: 'get',
+        specificationId: 7,
+      },
+      name: 'requirements_manage_needs_reference',
+    })
+    expect(getResponse.isError).not.toBe(true)
+    expect(getResponse.structuredContent).toEqual({ needsReference })
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns each documented MCP norm-reference response shape', async () => {
+    const fakeService = createFakeService()
+    const normReference = {
+      createdAt: '2026-08-05T00:00:00.000Z',
+      id: 5,
+      isArchived: false,
+      issuer: 'ISO',
+      name: 'Information security',
+      normReferenceId: 'ISO-27001',
+      reference: '27001',
+      type: 'standard',
+      updatedAt: '2026-08-05T00:00:00.000Z',
+      uri: null,
+      version: null,
+    }
+    fakeService.manageNormReference
+      .mockResolvedValueOnce({ result: [normReference] })
+      .mockResolvedValueOnce({ normReference })
+      .mockResolvedValueOnce({ requirements: [{ id: 1, uniqueId: 'INT0001' }] })
+    serviceState.getService.mockReturnValue(fakeService)
+    const { client, transport } = await createClient()
+
+    const listResponse = await client.callTool({
+      arguments: { operation: 'list' },
+      name: 'requirements_manage_norm_reference',
+    })
+    expect(listResponse.isError).not.toBe(true)
+    expect(listResponse.structuredContent).toEqual({ result: [normReference] })
+
+    const getResponse = await client.callTool({
+      arguments: { id: 5, operation: 'get' },
+      name: 'requirements_manage_norm_reference',
+    })
+    expect(getResponse.isError).not.toBe(true)
+    expect(getResponse.structuredContent).toEqual({ normReference })
+
+    const connectedResponse = await client.callTool({
+      arguments: { id: 5, operation: 'list_connected_requirement_ids' },
+      name: 'requirements_manage_norm_reference',
+    })
+    expect(connectedResponse.isError).not.toBe(true)
+    expect(connectedResponse.structuredContent).toEqual({
+      requirements: [{ id: 1, uniqueId: 'INT0001' }],
+    })
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('maps localized mixed requirement applications into the public tool response', async () => {
+    const fakeService = createFakeService()
+    fakeService.getSpecificationItems.mockResolvedValue({
+      items: [
+        {
+          area: { name: 'Säkerhet' },
+          id: 11,
+          itemRef: 'library:11',
+          kind: 'library',
+          needsReference: 'Skydda uppgifter',
+          uniqueId: 'SEC0011',
+          version: {
+            categoryNameEn: 'Business',
+            categoryNameSv: 'Verksamhet',
+            description: 'Skydda patientuppgifter',
+            statusNameEn: 'Published',
+            statusNameSv: 'Publicerad',
+            typeNameEn: 'Functional',
+            typeNameSv: 'Funktionellt',
+          },
+        },
+      ],
+      message: 'Kravtillämpningar',
+      pagination: { count: 1, hasMore: false, limit: 50, nextCursor: null },
+      specificationId: 7,
+    })
+    serviceState.getService.mockReturnValue(fakeService)
+    const { client, transport } = await createClient()
+
+    const result = await client.callTool({
+      arguments: {
+        locale: 'sv',
+        specificationId: 7,
+        verifiable: [true, false],
+      },
+      name: 'requirements_get_specification_items',
+    })
+
+    expect(result.structuredContent).toMatchObject({
+      items: [
+        {
+          area: 'Säkerhet',
+          category: 'Verksamhet',
+          needsReference: 'Skydda uppgifter',
+          status: 'Publicerad',
+          type: 'Funktionellt',
+        },
+      ],
+    })
+    expect(fakeService.getSpecificationItems).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ verifiable: ['true', 'false'] }),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns observable validation errors for operation-specific tool contracts', async () => {
+    const fakeService = createFakeService()
+    serviceState.getService.mockReturnValue(fakeService)
+    const { client, transport } = await createClient()
+    const invalidCalls = [
+      {
+        arguments: { catalog: 'areas', operation: 'search' },
+        name: 'requirements_query_catalog',
+      },
+      {
+        arguments: { catalog: 'areas', operation: 'list', search: 'security' },
+        name: 'requirements_query_catalog',
+      },
+      {
+        arguments: { catalog: 'areas', limit: 2, operation: 'list' },
+        name: 'requirements_query_catalog',
+      },
+      {
+        arguments: { operation: 'search_destinations' },
+        name: 'requirements_manage_import',
+      },
+      {
+        arguments: { operation: 'validate' },
+        name: 'requirements_manage_import',
+      },
+      {
+        arguments: { operation: 'execute' },
+        name: 'requirements_manage_import',
+      },
+      {
+        arguments: { operation: 'search', specificationId: 7 },
+        name: 'requirements_manage_needs_reference',
+      },
+      {
+        arguments: { operation: 'get', specificationId: 7 },
+        name: 'requirements_manage_needs_reference',
+      },
+      {
+        arguments: { operation: 'create', specificationId: 7 },
+        name: 'requirements_manage_needs_reference',
+      },
+      {
+        arguments: { operation: 'search' },
+        name: 'requirements_manage_norm_reference',
+      },
+      {
+        arguments: { id: 1, normReferenceId: 'ISO-1', operation: 'get' },
+        name: 'requirements_manage_norm_reference',
+      },
+      {
+        arguments: { operation: 'create' },
+        name: 'requirements_manage_norm_reference',
+      },
+      {
+        arguments: { id: 1, uniqueId: 'INT0001' },
+        name: 'requirements_get_requirement',
+      },
+      {
+        arguments: { uniqueId: 'INT0001', view: 'version' },
+        name: 'requirements_get_requirement',
+      },
+      {
+        arguments: { operation: 'create', requirement: {} },
+        name: 'requirements_manage_requirement',
+      },
+      {
+        arguments: { operation: 'edit', uniqueId: 'INT0001', requirement: {} },
+        name: 'requirements_manage_requirement',
+      },
+      {
+        arguments: { operation: 'restore_version', uniqueId: 'INT0001' },
+        name: 'requirements_manage_requirement',
+      },
+      {
+        arguments: { id: 1, toStatusId: 2, uniqueId: 'INT0001' },
+        name: 'requirements_transition_requirement',
+      },
+      { arguments: {}, name: 'requirements_list_improvement_suggestions' },
+      {
+        arguments: { operation: 'create' },
+        name: 'requirements_manage_improvement_suggestion',
+      },
+      {
+        arguments: { operation: 'edit' },
+        name: 'requirements_manage_improvement_suggestion',
+      },
+      {
+        arguments: { operation: 'resolve' },
+        name: 'requirements_manage_improvement_suggestion',
+      },
+      {
+        arguments: { operation: 'dismiss' },
+        name: 'requirements_manage_improvement_suggestion',
+      },
+      {
+        arguments: { operation: 'delete' },
+        name: 'requirements_manage_improvement_suggestion',
+      },
+      {
+        arguments: { operation: 'request_review' },
+        name: 'requirements_manage_improvement_suggestion',
+      },
+      {
+        arguments: { operation: 'revert_to_draft' },
+        name: 'requirements_manage_improvement_suggestion',
+      },
+    ] as const
+
+    for (const invalidCall of invalidCalls) {
+      const response = await client.callTool(invalidCall)
+      expect(response.isError, invalidCall.name).toBe(true)
+      expect(response.content, invalidCall.name).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ text: expect.stringContaining('Invalid') }),
+        ]),
+      )
+    }
+    expect(
+      Object.values(fakeService).every(mock => mock.mock.calls.length === 0),
+    ).toBe(true)
 
     await client.close()
     await transport.close()

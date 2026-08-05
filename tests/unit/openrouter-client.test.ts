@@ -106,6 +106,112 @@ describe('generateChat (non-streaming)', () => {
     expect(result.thinking).toBe('Detailed reasoning.')
   })
 
+  it('ignores malformed reasoning details and joins text and summary details', async () => {
+    mockFetch.mockResolvedValueOnce({
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: '{"requirements":[]}',
+              reasoning_details: [
+                null,
+                { text: 'First. ' },
+                { summary: 'Second.' },
+                { unknown: true },
+              ],
+            },
+          },
+        ],
+      }),
+      ok: true,
+    })
+
+    const result = await generateChat<{ requirements: unknown[] }>({
+      messages: [{ content: 'Generate', role: 'user' }],
+    })
+
+    expect(result.thinking).toBe('First. Second.')
+    expect(result.stats).toEqual({
+      completionTokens: 0,
+      cost: 0,
+      promptTokens: 0,
+      reasoningTokens: 0,
+      totalTokens: 0,
+    })
+  })
+
+  it('aborts provider setup when the caller signal is already aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    mockFetch.mockImplementationOnce(
+      async (_url: string, init: RequestInit) => {
+        expect(init.signal?.aborted).toBe(true)
+        throw new DOMException('Aborted', 'AbortError')
+      },
+    )
+
+    await expect(
+      generateChat({
+        messages: [{ content: 'Generate', role: 'user' }],
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow('Aborted')
+  })
+
+  it('aborts a pending request after the provider timeout', async () => {
+    vi.useFakeTimers()
+    mockFetch.mockImplementationOnce(
+      async (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            reject(new DOMException('Timed out', 'AbortError'))
+          })
+        }),
+    )
+
+    const result = generateChat({
+      messages: [{ content: 'Generate', role: 'user' }],
+    })
+    const rejection = expect(result).rejects.toThrow('Timed out')
+    await vi.advanceTimersByTimeAsync(120_000)
+
+    await rejection
+  })
+
+  it('forwards a later caller abort to a pending provider request', async () => {
+    const controller = new AbortController()
+    mockFetch.mockImplementationOnce(
+      async (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            reject(new DOMException('Caller aborted', 'AbortError'))
+          })
+        }),
+    )
+
+    const result = generateChat({
+      messages: [{ content: 'Generate', role: 'user' }],
+      signal: controller.signal,
+    })
+    controller.abort()
+
+    await expect(result).rejects.toThrow('Caller aborted')
+  })
+
+  it('uses an empty provider error body when reading the body fails', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      text: vi.fn().mockRejectedValue(new Error('body unavailable')),
+    })
+
+    await expect(
+      generateChat({
+        messages: [{ content: 'Generate', role: 'user' }],
+      }),
+    ).rejects.toThrow('OpenRouter request failed (502): ')
+  })
+
   it('does not duplicate non-streaming reasoning when reasoning_details is also present', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => ({
@@ -651,6 +757,65 @@ describe('generateChatStream', () => {
       },
     ])
   })
+
+  it('returns quietly when a caller aborts before the stream request', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    mockFetch.mockImplementationOnce(
+      async (_url: string, init: RequestInit) => {
+        expect(init.signal?.aborted).toBe(true)
+        throw new DOMException('Aborted', 'AbortError')
+      },
+    )
+
+    const events = []
+    for await (const event of generateChatStream({
+      messages: [{ content: 'Generate', role: 'user' }],
+      signal: controller.signal,
+    })) {
+      events.push(event)
+    }
+
+    expect(events).toEqual([])
+  })
+
+  it('reports non-Error fetch failures without leaking their value', async () => {
+    mockFetch.mockRejectedValueOnce('provider-secret')
+
+    const events = []
+    for await (const event of generateChatStream({
+      messages: [{ content: 'Generate', role: 'user' }],
+    })) {
+      events.push(event)
+    }
+
+    expect(events).toEqual([
+      {
+        cause: 'OpenRouter fetch error: Fetch failed',
+        message: 'AI provider is unavailable',
+        phase: 'error',
+      },
+    ])
+  })
+
+  it('reports a successful provider response that has no body', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+
+    const events = []
+    for await (const event of generateChatStream({
+      messages: [{ content: 'Generate', role: 'user' }],
+    })) {
+      events.push(event)
+    }
+
+    expect(events).toEqual([
+      {
+        cause: 'No response body from OpenRouter',
+        message: 'AI provider is unavailable',
+        phase: 'error',
+      },
+    ])
+  })
 })
 
 describe('listModels', () => {
@@ -688,6 +853,32 @@ describe('listModels', () => {
     expect(models[0].pricing.prompt).toBe('0.000003')
     expect(models[1].id).toBe('google/gemini-2.5-flash')
     expect(models[1].provider).toBe('google')
+  })
+
+  it('maps provider model defaults when optional catalog fields are absent', async () => {
+    mockFetch.mockResolvedValueOnce({
+      json: async () => ({
+        data: [{ id: 'custom/model', name: 'Minimal model' }],
+      }),
+      ok: true,
+    })
+
+    await expect(listModels()).resolves.toEqual([
+      {
+        contextLength: 0,
+        id: 'custom/model',
+        modality: undefined,
+        name: 'Minimal model',
+        pricing: { completion: '0', prompt: '0', reasoning: '0' },
+        provider: 'custom',
+        supportedParameters: [],
+      },
+    ])
+  })
+
+  it('returns an empty catalog when the provider omits data', async () => {
+    mockFetch.mockResolvedValueOnce({ json: async () => ({}), ok: true })
+    await expect(listModels()).resolves.toEqual([])
   })
 
   it('passes supported_parameters filter', async () => {
@@ -776,6 +967,26 @@ describe('getKeyInfo', () => {
     expect(info.isFreeTier).toBe(true)
     expect(info.totalCredits).toBeNull()
     expect(info.managementKeyMissing).toBe(false)
+  })
+
+  it('uses safe key and credit defaults for partial provider payloads', async () => {
+    vi.stubEnv('OPENROUTER_MGMT_API_KEY', 'sk-or-mgmt-test-key')
+    mockFetch
+      .mockResolvedValueOnce({
+        json: async () => ({ data: { total_usage: 2 } }),
+        ok: true,
+      })
+      .mockResolvedValueOnce({ json: async () => ({}), ok: true })
+
+    await expect(getKeyInfo()).resolves.toEqual({
+      isFreeTier: false,
+      limit: null,
+      limitRemaining: null,
+      managementKeyMissing: false,
+      totalCredits: null,
+      usage: 0,
+      usageDaily: 0,
+    })
   })
 
   it('skips credits fetch and flags managementKeyMissing when mgmt key is not set', async () => {

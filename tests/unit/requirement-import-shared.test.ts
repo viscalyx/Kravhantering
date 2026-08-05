@@ -1,10 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 import {
+  checkAiRequirementImportThrottle,
+  countImageBytes,
+  createUnavailableAiStreamResponse,
+  formatAiSafetyBlockedMessage,
   guardAiInput,
+  isValidRequirementImportScope,
   requirementImportDestination,
+  requirementImportScopeAction,
+  validateRequirementImportImages,
+  validateRequirementImportScope,
+  withImages,
 } from '@/app/api/ai/requirement-import-shared'
 import type { AiSafetyDecision, AiSafetyScreeningResult } from '@/lib/ai/safety'
 import type { SqlServerDatabase } from '@/lib/db'
+import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import type { RequestContext } from '@/lib/requirements/auth'
 
 const safetyState = vi.hoisted(() => ({
@@ -256,5 +267,161 @@ describe('requirementImportDestination', () => {
       kind: 'requirements_specification',
       specificationId: 8,
     })
+  })
+
+  it('rejects an invalid destination state', () => {
+    expect(() => requirementImportDestination({ mode: 'library' })).toThrow(
+      'Invalid requirement import scope',
+    )
+  })
+})
+
+describe('AI requirement import shared contracts', () => {
+  beforeEach(() => {
+    clearInMemoryThrottleForTests()
+  })
+
+  it('validates localized image type, base64 shape, padding, and size', () => {
+    const schema = z
+      .object({
+        images: z.array(z.object({ dataUrl: z.string() })).optional(),
+        locale: z.enum(['en', 'sv']).optional(),
+      })
+      .superRefine(validateRequirementImportImages)
+
+    expect(
+      schema.safeParse({
+        images: [
+          { dataUrl: 'data:image/png;base64,YQ' },
+          { dataUrl: 'data:image/jpeg;base64,YWI' },
+          { dataUrl: 'data:image/gif;base64,YQ==' },
+          { dataUrl: 'data:image/webp;base64,YWI=' },
+        ],
+      }).success,
+    ).toBe(true)
+    const invalid = schema.safeParse({
+      images: [
+        { dataUrl: 'plain text' },
+        { dataUrl: 'data:image/svg+xml;base64,YQ==' },
+        { dataUrl: 'data:image/png;base64,' },
+        { dataUrl: 'data:image/png;base64,A' },
+        { dataUrl: 'data:image/png;base64,Y Q==' },
+      ],
+      locale: 'sv',
+    })
+
+    expect(invalid.success).toBe(false)
+    if (!invalid.success) {
+      expect(invalid.error.issues).toHaveLength(5)
+      expect(
+        invalid.error.issues.every(issue => issue.path[0] === 'images'),
+      ).toBe(true)
+    }
+  })
+
+  it('validates both destination scopes and returns their authorization actions', () => {
+    const scopeSchema = z
+      .object({
+        areaId: z.number().optional(),
+        locale: z.enum(['en', 'sv']).optional(),
+        mode: z.enum(['library', 'specification-local']),
+        specificationId: z.number().optional(),
+      })
+      .superRefine(validateRequirementImportScope)
+
+    expect(isValidRequirementImportScope({ areaId: 2, mode: 'library' })).toBe(
+      true,
+    )
+    expect(
+      isValidRequirementImportScope({
+        mode: 'specification-local',
+        specificationId: 7,
+      }),
+    ).toBe(true)
+    expect(
+      scopeSchema.safeParse({
+        areaId: 2,
+        locale: 'sv',
+        mode: 'specification-local',
+      }).success,
+    ).toBe(false)
+    expect(
+      requirementImportScopeAction({ areaId: 2, mode: 'library' }),
+    ).toEqual({
+      kind: 'generate_requirements',
+      scopeId: 2,
+      scopeType: 'requirement_area',
+    })
+    expect(
+      requirementImportScopeAction({
+        mode: 'specification-local',
+        specificationId: 7,
+      }),
+    ).toEqual({
+      kind: 'generate_requirements',
+      scopeId: 7,
+      scopeType: 'specification',
+    })
+  })
+
+  it('uses a generic localized safety-rule label when no rule id is available', () => {
+    const decision = makeDecision({ allowed: false })
+
+    expect(
+      formatAiSafetyBlockedMessage('en', 'inputSafetyBlocked', decision),
+    ).toContain('AI safety rule')
+    expect(
+      formatAiSafetyBlockedMessage('sv', 'outputSafetyBlocked', decision),
+    ).toContain('AI-säkerhetsregel')
+  })
+
+  it('builds image content and counts the submitted image bytes', () => {
+    const images = [
+      { dataUrl: 'data:image/png;base64,YQ==' },
+      { dataUrl: 'data:image/png;base64,YWJj' },
+    ]
+
+    expect(withImages('prompt', [])).toBe('prompt')
+    expect(withImages('prompt', images)).toEqual([
+      { text: 'prompt', type: 'text' },
+      { image_url: { url: images[0].dataUrl }, type: 'image_url' },
+      { image_url: { url: images[1].dataUrl }, type: 'image_url' },
+    ])
+    expect(countImageBytes(images)).toBe(6)
+  })
+
+  it('uses HSA and correlation identities for independent throttles', () => {
+    const hsaContext = makeContext()
+    hsaContext.actor.id = null
+    const correlationContext = makeContext()
+    correlationContext.actor.id = null
+    correlationContext.actor.hsaId = null
+
+    for (let requestCount = 0; requestCount < 5; requestCount += 1) {
+      expect(
+        checkAiRequirementImportThrottle(hsaContext, 'ai.generate').allowed,
+      ).toBe(true)
+    }
+    expect(
+      checkAiRequirementImportThrottle(hsaContext, 'ai.generate').allowed,
+    ).toBe(false)
+    expect(
+      checkAiRequirementImportThrottle(correlationContext, 'ai.generate')
+        .allowed,
+    ).toBe(true)
+  })
+
+  it('returns a correlated unavailable stream and records its terminal failure', async () => {
+    const recordFailure = vi.fn()
+
+    const response = createUnavailableAiStreamResponse(
+      makeContext(),
+      recordFailure,
+    )
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Content-Type')).toBe('text/event-stream')
+    expect(await response.text()).toContain('event: error')
+    expect(recordFailure).toHaveBeenCalledOnce()
   })
 })

@@ -90,6 +90,47 @@ describe('GET /api/ai/models', () => {
     expect(data.models[0].supportedParameters).toContain('structured_outputs')
   })
 
+  it('rejects malformed and duplicate supported-parameter queries', async () => {
+    const { listModels } = await import('@/lib/ai/openrouter-client')
+
+    const unknown = await GET(
+      makeRequest('http://localhost:3000/api/ai/models?unknown=1'),
+    )
+    const duplicate = await GET(
+      makeRequest(
+        'http://localhost:3000/api/ai/models?supported_parameters=tools,tools',
+      ),
+    )
+
+    expect(unknown.status).toBe(400)
+    expect(duplicate.status).toBe(400)
+    expect(listModels).not.toHaveBeenCalled()
+  })
+
+  it('serves a fresh model cache entry without another provider request', async () => {
+    const { listModels } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(listModels).mockResolvedValueOnce([]).mockResolvedValueOnce([])
+    const first = await GET(makeRequest())
+    const second = await GET(makeRequest())
+
+    expect(first.status).toBe(200)
+    expect(second.status).toBe(200)
+    expect(listModels).toHaveBeenCalledTimes(2)
+  })
+
+  it('refreshes an expired cache entry', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-05T00:00:00.000Z'))
+    const { listModels } = await import('@/lib/ai/openrouter-client')
+    vi.mocked(listModels).mockResolvedValue([])
+
+    await GET(makeRequest())
+    vi.advanceTimersByTime(24 * 60 * 60 * 1000)
+    await GET(makeRequest())
+
+    expect(listModels).toHaveBeenCalledTimes(4)
+  })
+
   it('allows model lookup for authenticated actors without an AI generation scope', async () => {
     const { listModels } = await import('@/lib/ai/openrouter-client')
     vi.mocked(listModels).mockResolvedValue([])

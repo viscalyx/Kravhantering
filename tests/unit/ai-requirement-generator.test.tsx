@@ -90,9 +90,11 @@ vi.mock('next-intl', () => ({
   useTranslations: () => translate,
 }))
 
+const confirmState = vi.hoisted(() => ({ confirm: vi.fn() }))
+
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({
-    confirm: vi.fn().mockResolvedValue(true),
+    confirm: confirmState.confirm,
   }),
 }))
 
@@ -256,7 +258,15 @@ function generatedImportPayload(description: string) {
 function previewResponse(
   description: string,
   overrides: Partial<{
+    acceptanceCriteria: string | null
     categoryId: number | null
+    errors: Array<{
+      code: string
+      field?: string
+      level: 'error' | 'info' | 'warning'
+      message: string
+      originalValue?: string
+    }>
     labels: {
       category: string | null
       priorityLevel: string | null
@@ -295,6 +305,7 @@ function previewResponse(
       resolvedNormReferenceDbId: number | null
       type: string
       uri: string | null
+      version?: string | null
       warnings: Array<{
         code: string
         field?: string
@@ -304,6 +315,7 @@ function previewResponse(
       }>
     }>
     proposedNeedsReferenceKey: string | null
+    proposedNormReferenceKeys: string[]
     reviewRowId: string
     typeId: number | null
     warnings: Array<{
@@ -322,7 +334,7 @@ function previewResponse(
       proposals: overrides.proposals ?? [],
       rows: [
         {
-          errors: [],
+          errors: overrides.errors ?? [],
           infos: [],
           labels: overrides.labels ?? {
             category: null,
@@ -332,13 +344,13 @@ function previewResponse(
           },
           proposedNeedsReferenceKey:
             overrides.proposedNeedsReferenceKey ?? null,
-          proposedNormReferenceKeys: [],
+          proposedNormReferenceKeys: overrides.proposedNormReferenceKeys ?? [],
           resolvedPriorityLevel: overrides.resolvedPriorityLevel,
           reviewRowId: overrides.reviewRowId ?? 'row-1',
           selected: true,
           sourceIndex: 0,
           values: {
-            acceptanceCriteria: null,
+            acceptanceCriteria: overrides.acceptanceCriteria ?? null,
             categoryId: overrides.categoryId ?? null,
             description,
             needsReferenceId: null,
@@ -420,6 +432,7 @@ async function renderOpenGenerator(overrides?: {
 describe('AiRequirementGenerator', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    confirmState.confirm.mockResolvedValue(true)
     window.localStorage.clear()
     // Default: models endpoint returns models, credits returns info
     mockFetch.mockImplementation(async (url: string) => {
@@ -473,6 +486,24 @@ describe('AiRequirementGenerator', () => {
     )
 
     expect(screen.queryByText('generateTitle')).not.toBeInTheDocument()
+  })
+
+  it('renders embedded without the modal overlay or body scroll lock', async () => {
+    const previousOverflow = document.body.style.overflow
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        embedded
+        onClose={vi.fn()}
+        onImportPreview={vi.fn()}
+        open
+      />,
+    )
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('presentation')).toHaveClass('contents')
+    expect(screen.getByRole('presentation')).not.toHaveClass('fixed')
+    expect(document.body.style.overflow).toBe(previousOverflow)
   })
 
   it('renders area options', async () => {
@@ -973,6 +1004,13 @@ describe('AiRequirementGenerator', () => {
     )
     expect(reopenedOptions[0]).toHaveTextContent('GPT-5 Mini')
     expect(reopenedOptions[1]).toHaveTextContent('Claude Sonnet 4')
+
+    await user.click(
+      within(reopenedOptions[0]).getByRole('button', {
+        name: 'removeFavorite',
+      }),
+    )
+    expect(window.localStorage.getItem('ai-favorite-models')).toBe('[]')
   })
 
   it('preselects the cheapest available favorite model', async () => {
@@ -1128,6 +1166,152 @@ describe('AiRequirementGenerator', () => {
 
     const option = within(screen.getByRole('listbox')).getByRole('option')
     expect(within(option).getByText('R $3.00/M')).toBeInTheDocument()
+  })
+
+  it('applies persisted filters and supports model, capability, and policy interactions across partial provider failures', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('ai-favorite-models', '{invalid json')
+    window.localStorage.setItem(
+      'ai-model-filters',
+      JSON.stringify(['vision', 'logprobs', 'response_format', '']),
+    )
+    window.localStorage.setItem('ai-data-policies', JSON.stringify([]))
+    const models = [
+      {
+        contextLength: 4096,
+        id: 'mystery/odd-model',
+        name: 'Odd Model',
+        pricing: {
+          completion: '0',
+          prompt: 'not-a-price',
+          reasoning: '0.000000001',
+        },
+        provider: 'mystery',
+        supportedParameters: [
+          'reasoning',
+          'stream',
+          'response_format',
+          'vision',
+        ],
+      },
+      {
+        contextLength: 8192,
+        id: 'openai/known-model',
+        name: 'Known Model',
+        pricing: {
+          completion: '0.000002',
+          prompt: '0.000001',
+          reasoning: '0.000002',
+        },
+        provider: 'openai',
+        supportedParameters: [
+          'reasoning',
+          'stream',
+          'response_format',
+          'vision',
+        ],
+      },
+    ]
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/ai/credits')) {
+        throw 'credits offline'
+      }
+      if (url.startsWith('/api/ai/models')) {
+        const parameters =
+          new URL(url, 'http://localhost').searchParams.get(
+            'supported_parameters',
+          ) ?? ''
+        if (parameters.includes('tools')) throw 'count unavailable'
+        if (parameters.includes('structured_outputs')) {
+          return { json: async () => ({}), ok: true }
+        }
+        return { json: async () => ({ models }), ok: true }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator({ expectedModelName: 'Odd Model' })
+
+    expect(await screen.findByTitle('creditsUnreachable')).toBeInTheDocument()
+    expect(screen.getByLabelText('capabilityVision')).toBeChecked()
+    expect(screen.getByLabelText('capabilityTools')).not.toBeChecked()
+    expect(
+      screen.getByLabelText('capabilityStructuredOutputs'),
+    ).not.toBeChecked()
+    expect(screen.queryByText('confidenceScoring')).not.toBeInTheDocument()
+    const modelButton = screen.getByLabelText('modelLabel')
+    await user.click(modelButton)
+    await user.type(screen.getByLabelText('modelSearchLabel'), 'known')
+    const option = screen.getByRole('option', { name: /Known Model/ })
+    await user.click(
+      within(option).getByRole('button', { name: /Known Model/ }),
+    )
+    expect(modelButton).toHaveTextContent('Known Model')
+
+    await user.click(screen.getByLabelText('refreshModels'))
+    await waitFor(() => expect(modelButton).toHaveTextContent('Known Model'))
+
+    await user.click(screen.getByLabelText('capabilityVision'))
+    await user.click(screen.getByLabelText('capabilityVision'))
+    await user.click(screen.getByLabelText('capabilityTools'))
+    await user.click(screen.getByLabelText('capabilityStructuredOutputs'))
+    expect(screen.getByLabelText('capabilityVision')).toBeChecked()
+    expect(screen.getByLabelText('capabilityTools')).toBeChecked()
+    expect(screen.getByLabelText('capabilityStructuredOutputs')).toBeChecked()
+    expect(
+      JSON.parse(localStorage.getItem('ai-model-filters') ?? 'null'),
+    ).toEqual(['vision', 'tools', 'structured_outputs'])
+
+    await user.click(screen.getByLabelText('dataPolicyDenyTraining'))
+    await user.click(screen.getByLabelText('dataPolicyDenyTraining'))
+    await user.click(screen.getByLabelText('dataPolicyZdr'))
+    await user.click(screen.getByLabelText('dataPolicyDistillable'))
+    expect(screen.getByLabelText('dataPolicyDenyTraining')).not.toBeChecked()
+    expect(screen.getByLabelText('dataPolicyZdr')).toBeChecked()
+    expect(screen.getByLabelText('dataPolicyDistillable')).toBeChecked()
+    expect(
+      JSON.parse(localStorage.getItem('ai-data-policies') ?? 'null'),
+    ).toEqual(['zdr', 'enforce_distillable_text'])
+
+    await user.click(screen.getByLabelText('help: reasoningEffortLabel'))
+    expect(document.getElementById('ai-reasoning-help')).toBeInTheDocument()
+    expect(
+      mockFetch.mock.calls.some(([url]) => {
+        const parameters = new URL(
+          String(url),
+          'http://localhost',
+        ).searchParams.get('supported_parameters')
+        return parameters?.includes('vision') && parameters.includes('tools')
+      }),
+    ).toBe(true)
+  })
+
+  it('keeps the model menu open for internal pointers and closes it for outside pointers', async () => {
+    const user = userEvent.setup()
+    await renderOpenGenerator()
+    const modelButton = screen.getByLabelText('modelLabel')
+    vi.spyOn(modelButton, 'getBoundingClientRect').mockReturnValue({
+      bottom: 740,
+      height: 40,
+      left: -20,
+      right: 80,
+      toJSON: () => ({}),
+      top: 700,
+      width: 100,
+      x: -20,
+      y: 700,
+    })
+
+    await user.click(modelButton)
+    const listbox = await screen.findByRole('listbox')
+    fireEvent.pointerDown(modelButton)
+    expect(listbox).toBeInTheDocument()
+    fireEvent.pointerDown(listbox)
+    expect(listbox).toBeInTheDocument()
+    fireEvent(window, new Event('resize'))
+    expect(listbox.parentElement).toHaveStyle({ top: '52px' })
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
   it('shows selected vision model count over the filtered model total', async () => {
@@ -1672,6 +1856,101 @@ describe('AiRequirementGenerator', () => {
     expect(creditUrls).toEqual(['/api/ai/credits'])
   })
 
+  it('renders model and credit service failures from error and response payloads', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/ai/models')) throw new Error('models offline')
+      if (url.startsWith('/api/ai/credits')) {
+        return {
+          json: async () => ({ error: 'credits denied' }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onImportPreview={vi.fn()}
+        open
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('modelLabel')).toHaveTextContent(
+        'models offline',
+      )
+    })
+    expect(screen.getByTitle('credits denied')).toBeInTheDocument()
+    expect(screen.getByLabelText('modelLabel')).toBeDisabled()
+  })
+
+  it('shows a provider error when a successful model response has no inventory', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/ai/models')) {
+        return {
+          json: async () => ({ error: 'No matching models' }),
+          ok: true,
+        }
+      }
+      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      return { json: async () => ({}), ok: true }
+    })
+
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onImportPreview={vi.fn()}
+        open
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('modelLabel')).toHaveTextContent(
+        'No matching models',
+      )
+    })
+    expect(screen.getByLabelText('refreshModels')).not.toBeDisabled()
+  })
+
+  it('keeps a draft open when close confirmation is rejected and closes it when accepted', async () => {
+    const onClose = vi.fn()
+    confirmState.confirm
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+    await renderOpenGenerator({ onClose })
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Draft topic')
+
+    await userEvent.click(screen.getByRole('button', { name: 'cancelButton' }))
+    expect(confirmState.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cancelText: 'cancel',
+        confirmText: 'close',
+        message: 'closeConfirm',
+      }),
+    )
+    expect(onClose).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'cancelButton' }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('disables specification-local generation without specification context', async () => {
+    await renderOpenGenerator({ mode: 'specification-local' })
+
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+
+    expect(
+      screen.getByRole('button', { name: /generateButton/i }),
+    ).toBeDisabled()
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      '/api/ai/generate-requirement-import',
+      expect.anything(),
+    )
+  })
+
   it('sends the selected reasoning level when generating candidates', async () => {
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
@@ -1684,7 +1963,37 @@ describe('AiRequirementGenerator', () => {
         typeof url === 'string' &&
         url === '/api/ai/generate-requirement-import'
       ) {
-        const payload = generatedImportPayload('Generated security requirement')
+        const payload = {
+          ...generatedImportPayload('Generated security requirement'),
+          proposedNeedsReferences: [
+            {
+              description: 'Access needs from the operational service.',
+              key: 'need-access',
+              text: 'Operational access need',
+            },
+          ],
+          proposedNormReferences: [
+            {
+              issuer: 'ISO',
+              key: 'iso-27001',
+              name: 'ISO 27001',
+              reference: 'ISO/IEC 27001:2022',
+              type: 'Standard',
+              version: '2022',
+            },
+          ],
+          requirements: [
+            {
+              acceptanceCriteria: 'Audit events are encrypted at rest.',
+              description: 'Generated security requirement',
+              needsReferenceKey: 'need-access',
+              priorityLevelId: 1,
+              proposedNormReferenceKeys: ['iso-27001'],
+              typeId: 1,
+              verifiable: true,
+            },
+          ],
+        }
         return generationStreamResponse({
           payload,
           rawContent: JSON.stringify(payload),
@@ -1909,6 +2218,31 @@ describe('AiRequirementGenerator', () => {
         url === '/api/requirements/import/preview'
       ) {
         return previewResponse('Generated security requirement', {
+          acceptanceCriteria: 'Audit events are encrypted at rest.',
+          labels: {
+            category: 'Security',
+            priorityLevel: 'Must',
+            qualityCharacteristic: 'Confidentiality',
+            type: 'Functional',
+          },
+          needsReferenceProposals: [
+            {
+              description: 'Access needs from the operational service.',
+              key: 'need-access',
+              referencedCount: 1,
+              resolvedNeedsReferenceId: 42,
+              text: 'Operational access need',
+              warnings: [
+                {
+                  code: 'existing_match',
+                  level: 'info',
+                  message: 'Matches an existing needs reference.',
+                },
+              ],
+            },
+          ],
+          proposedNeedsReferenceKey: 'need-access',
+          proposedNormReferenceKeys: ['iso-27001'],
           proposals: [
             {
               issuer: 'ISO',
@@ -1920,7 +2254,27 @@ describe('AiRequirementGenerator', () => {
               resolvedNormReferenceDbId: null,
               type: 'Standard',
               uri: null,
-              warnings: [],
+              version: '2022',
+              warnings: [
+                {
+                  code: 'review_reference',
+                  level: 'warning',
+                  message: 'Review the proposed reference.',
+                },
+              ],
+            },
+          ],
+          resolvedPriorityLevel: {
+            code: 'MUST',
+            color: '#dc2626',
+            iconName: null,
+            name: 'Must',
+          },
+          warnings: [
+            {
+              code: 'review_row',
+              level: 'warning',
+              message: 'Review this generated row.',
             },
           ],
         })
@@ -1943,12 +2297,39 @@ describe('AiRequirementGenerator', () => {
     expect(candidateCheckbox).toHaveClass('h-5', 'w-5')
     expect(candidateCheckbox).not.toHaveClass('min-h-6', 'min-w-6')
 
+    await userEvent.click(screen.getByRole('button', { name: 'deselectAll' }))
+    expect(candidateCheckbox).not.toBeChecked()
+    await userEvent.click(screen.getByRole('button', { name: 'selectAll' }))
+    expect(candidateCheckbox).toBeChecked()
+    await userEvent.click(candidateCheckbox)
+    await userEvent.click(candidateCheckbox)
+
     await userEvent.click(screen.getByRole('button', { name: 'proposals (1)' }))
     const proposalCheckbox = screen.getByRole('checkbox', {
       name: 'ISO 27001 proposals',
     })
     expect(proposalCheckbox).toHaveClass('h-5', 'w-5')
     expect(proposalCheckbox).not.toHaveClass('min-h-6', 'min-w-6')
+    await userEvent.click(proposalCheckbox)
+    await userEvent.click(proposalCheckbox)
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: /Proposed needs references \(1\)/,
+      }),
+    )
+    expect(screen.getByText('Operational access need')).toBeInTheDocument()
+    expect(screen.getByText('Existing needs reference #42')).toBeInTheDocument()
+    expect(
+      screen.getByText('Matches an existing needs reference.'),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'AI analysis' }))
+    expect(screen.getByText('noAnalysis')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Raw result' }))
+    expect(
+      screen.getByText(/Generated security requirement/),
+    ).toBeInTheDocument()
 
     await userEvent.click(
       screen.getByRole('button', {
@@ -2262,6 +2643,83 @@ describe('AiRequirementGenerator', () => {
     await waitFor(() => expect(errorSummary).toHaveFocus())
   })
 
+  it('ignores data-less and unknown SSE blocks before handling a minimal validation error', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/ai/models')) return modelResponse()
+      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/generate-requirement-import') {
+        return {
+          body: new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  'event: keepalive\n\ndata: {}\n\nevent: validation_error\ndata: {}\n\n',
+                ),
+              )
+              controller.close()
+            },
+          }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(await screen.findByText('validationErrors')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'repairButton' })).toBeNull()
+  })
+
+  it('shows empty preview states when generation returns no candidates or proposals', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/ai/models')) return modelResponse()
+      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/generate-requirement-import') {
+        return generationStreamResponse({
+          payload: { requirements: [], schemaVersion: 'requirement-import.v3' },
+        })
+      }
+      if (url === '/api/requirements/import/preview') {
+        return {
+          json: async () => ({
+            needsReferenceProposals: [],
+            previewToken: null,
+            proposals: [],
+            rows: [],
+            summary: { errorCount: 0, rowCount: 0, warningCount: 0 },
+          }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'No candidates')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(await screen.findByText('noProposals')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'candidates' }))
+    expect(screen.getByText('noCandidates')).toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('button', { name: /Proposed needs references \(0\)/ }),
+    )
+    expect(
+      screen.getByText('No proposed needs references are loaded.'),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'AI analysis' }))
+    expect(screen.getByText('noAnalysis')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Raw result' }))
+    expect(screen.getByText(/"requirements": \[\]/)).toBeInTheDocument()
+  })
+
   it('does not announce an error when an active generation is cancelled', async () => {
     const onClose = vi.fn()
     let generationSignal: AbortSignal | undefined
@@ -2508,6 +2966,13 @@ describe('AiRequirementGenerator', () => {
         url === '/api/requirements/import/preview'
       ) {
         return previewResponse('Generated security requirement', {
+          errors: [
+            {
+              code: 'review_required',
+              level: 'error',
+              message: 'Review is required.',
+            },
+          ],
           labels: {
             category: null,
             priorityLevel: null,
