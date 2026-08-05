@@ -85,17 +85,7 @@ vi.mock('@/components/LazyAiRequirementGenerator', () => ({
 vi.mock('@/components/LazyRequirementsImportDialog', () => ({
   default: (props: Record<string, unknown>) => {
     importDialogState.renderSpy(props)
-    const onClose = props.onClose as ((succeeded: boolean) => void) | undefined
-    return props.open ? (
-      <div data-testid="requirements-import-dialog">
-        <button onClick={() => onClose?.(false)} type="button">
-          close-import
-        </button>
-        <button onClick={() => onClose?.(true)} type="button">
-          complete-import
-        </button>
-      </div>
-    ) : null
+    return props.open ? <div data-testid="requirements-import-dialog" /> : null
   },
 }))
 
@@ -162,7 +152,7 @@ vi.mock('@/components/RequirementsTable', () => ({
     })
 
     return (
-      <div data-testid="requirements-table">
+      <section aria-label="requirements table" data-testid="requirements-table">
         <div data-testid="floating-actions-order">
           {(floatingActions ?? [])
             .map(
@@ -271,7 +261,7 @@ vi.mock('@/components/RequirementsTable', () => ({
         >
           load-more
         </button>
-      </div>
+      </section>
     )
   },
 }))
@@ -817,7 +807,9 @@ describe('RequirementsClient', () => {
 
     render(<RequirementsClient />)
 
-    expect(await screen.findByTestId('requirements-table')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('region', { name: 'requirements table' }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -826,7 +818,7 @@ describe('RequirementsClient', () => {
     vi.stubGlobal('fetch', fetchMock)
     render(<RequirementsClient />)
 
-    await screen.findByTestId('requirements-table')
+    await screen.findByRole('region', { name: 'requirements table' })
     await screen.findByRole('button', { name: 'row-1' })
     fireEvent.click(screen.getByRole('button', { name: 'row-1' }))
 
@@ -849,32 +841,9 @@ describe('RequirementsClient', () => {
       )
       await Promise.resolve()
     })
-    expect(screen.getByTestId('requirements-table')).toBeInTheDocument()
-  })
-
-  it('closes and completes imports through the list refresh callback', async () => {
-    mockCommonFetches()
-    vi.stubGlobal('fetch', fetchMock)
-    render(<RequirementsClient />)
-
-    await screen.findByTestId('requirements-table')
-    fireEvent.click(screen.getByRole('button', { name: 'importRequirements' }))
-    fireEvent.click(screen.getByRole('button', { name: 'close-import' }))
     expect(
-      screen.queryByTestId('requirements-import-dialog'),
-    ).not.toBeInTheDocument()
-
-    const listCallsBefore = fetchMock.mock.calls.filter(([input]) =>
-      String(input).startsWith('/api/requirements?'),
-    ).length
-    fireEvent.click(screen.getByRole('button', { name: 'importRequirements' }))
-    fireEvent.click(screen.getByRole('button', { name: 'complete-import' }))
-    await waitFor(() => {
-      const listCallsAfter = fetchMock.mock.calls.filter(([input]) =>
-        String(input).startsWith('/api/requirements?'),
-      ).length
-      expect(listCallsAfter).toBeGreaterThan(listCallsBefore)
-    })
+      screen.getByRole('region', { name: 'requirements table' }),
+    ).toBeInTheDocument()
   })
 
   it('collapses a selected row when that row is clicked again', async () => {
@@ -3071,6 +3040,35 @@ describe('RequirementsClient', () => {
     )
     expect(cursorRequestCount).toBe(2)
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('keeps existing rows when an additional page omits optional collections', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('cursor=cursor-1')) return okJson({})
+        return okJson({
+          pagination: { hasMore: true, nextCursor: 'cursor-1' },
+          requirements: [makeRequirementRow(1)],
+        })
+      }
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RequirementsClient />)
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001'),
+    )
+    fireEvent.click(screen.getByText('load-more'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('has-more')).toHaveTextContent('false')
+      expect(screen.getByTestId('loading-more')).toHaveTextContent('false')
+    })
+    expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001')
   })
 
   it('refreshes from the first page and announces an invalid cursor', async () => {

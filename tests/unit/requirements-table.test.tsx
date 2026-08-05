@@ -73,6 +73,24 @@ describe('RequirementsTable', () => {
     'specificationItemStatus',
   ] as const
 
+  function openAndToggleCoreFilter(
+    columnLabel: (typeof coreMultiValueFilterColumns)[number],
+  ) {
+    const trigger = getHeaderFilterButton(columnLabel)
+    expect(trigger, `${columnLabel} filter trigger`).toBeTruthy()
+    if (!trigger) throw new Error(`Missing ${columnLabel} filter trigger`)
+
+    setElementRect(trigger, { bottom: 40, left: 48, right: 92 })
+    fireEvent.click(trigger)
+    const popover = getOpenPopover()
+    const checkbox = popover?.querySelector('input[type="checkbox"]')
+    expect(checkbox, `${columnLabel} filter option`).toBeTruthy()
+    if (!checkbox) throw new Error(`Missing ${columnLabel} filter option`)
+
+    fireEvent.click(checkbox)
+    return popover
+  }
+
   beforeEach(() => {
     mockPush.mockReset()
     resizeObserverObserve.mockReset()
@@ -4504,18 +4522,9 @@ describe('RequirementsTable', () => {
     )
 
     for (const columnLabel of coreMultiValueFilterColumns) {
-      const trigger = getHeaderFilterButton(columnLabel)
-      expect(trigger, `${columnLabel} filter trigger`).toBeTruthy()
-      if (!trigger) continue
-
-      setElementRect(trigger, { bottom: 40, left: 48, right: 92 })
-      fireEvent.click(trigger)
-      const popover = getOpenPopover()
-      const checkbox = popover?.querySelector('input[type="checkbox"]')
+      const popover = openAndToggleCoreFilter(columnLabel)
       const clearButton = popover?.querySelector('button')
-      expect(checkbox, `${columnLabel} filter option`).toBeTruthy()
       expect(clearButton, `${columnLabel} clear action`).toBeTruthy()
-      if (checkbox) fireEvent.click(checkbox)
       if (clearButton) fireEvent.click(clearButton)
       fireEvent.keyDown(document, { key: 'Escape' })
       expect(getOpenPopover()).toBeNull()
@@ -4531,14 +4540,7 @@ describe('RequirementsTable', () => {
     )
 
     for (const columnLabel of coreMultiValueFilterColumns) {
-      const trigger = getHeaderFilterButton(columnLabel)
-      expect(trigger).toBeTruthy()
-      if (!trigger) continue
-
-      fireEvent.click(trigger)
-      const checkbox = getOpenPopover()?.querySelector('input[type="checkbox"]')
-      expect(checkbox).toBeTruthy()
-      if (checkbox) fireEvent.click(checkbox)
+      openAndToggleCoreFilter(columnLabel)
       fireEvent.keyDown(document, { key: 'Escape' })
     }
 
