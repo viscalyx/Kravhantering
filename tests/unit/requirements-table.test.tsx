@@ -170,6 +170,80 @@ describe('RequirementsTable', () => {
     }
   }
 
+  function CoreFilterTable({
+    filterValues,
+    onFilterChange,
+  }: {
+    filterValues: FilterValues
+    onFilterChange: (value: FilterValues) => void
+  }) {
+    return (
+      <RequirementsTable
+        areas={[{ id: 10, name: 'Payments' }]}
+        categories={[{ id: 20, nameEn: 'Business', nameSv: 'Verksamhet' }]}
+        filterValues={filterValues}
+        getName={option => option.nameSv}
+        getStatusName={option => option.nameSv}
+        locale="sv"
+        needsReferenceOptions={[{ id: 60, text: 'Needs source' }]}
+        onFilterChange={onFilterChange}
+        priorityLevels={[
+          {
+            code: 'M',
+            color: '#2563eb',
+            id: 50,
+            nameEn: 'Must',
+            nameSv: 'Maste',
+            sortOrder: 1,
+          },
+        ]}
+        qualityCharacteristics={[
+          { id: 40, nameEn: 'Quality', nameSv: 'Kvalitet', parentId: null },
+          {
+            id: 41,
+            nameEn: 'Reliability',
+            nameSv: 'Tillforlitlighet',
+            parentId: 40,
+          },
+        ]}
+        rows={[makeRow()]}
+        specificationItemStatuses={[
+          {
+            color: '#22c55e',
+            descriptionEn: null,
+            descriptionSv: null,
+            id: 70,
+            nameEn: 'Included',
+            nameSv: 'Inkluderad',
+            sortOrder: 1,
+          },
+        ]}
+        statusOptions={[
+          {
+            color: '#22c55e',
+            id: 3,
+            nameEn: 'Published',
+            nameSv: 'Publicerad',
+          },
+        ]}
+        types={[{ id: 30, nameEn: 'Functional', nameSv: 'Funktionellt' }]}
+        visibleColumns={[
+          'uniqueId',
+          'description',
+          'area',
+          'category',
+          'type',
+          'qualityCharacteristic',
+          'priorityLevel',
+          'status',
+          'verifiable',
+          'needsReference',
+          'specificationItemStatus',
+        ]}
+      />
+    )
+  }
+
   function ControlledCompactPackageFilter({
     catalogStatus = 'loaded',
     initialSelectedIds = [],
@@ -4396,6 +4470,333 @@ describe('RequirementsTable', () => {
     } finally {
       globalThis.IntersectionObserver = OriginalIntersectionObserver
     }
+  })
+
+  it('commits every core column filter through its popover controls', () => {
+    const onFilterChange = vi.fn()
+    render(
+      <CoreFilterTable
+        filterValues={{
+          areaIds: [10],
+          categoryIds: [20],
+          needsReferenceIds: [60],
+          priorityLevelIds: [50],
+          qualityCharacteristicIds: [41],
+          specificationItemStatusIds: [70],
+          statuses: [3],
+          typeIds: [30],
+          verifiable: ['true'],
+        }}
+        onFilterChange={onFilterChange}
+      />,
+    )
+
+    for (const columnLabel of [
+      'area',
+      'category',
+      'type',
+      'qualityCharacteristic',
+      'priorityLevel',
+      'status',
+      'verifiable',
+      'needsReference',
+      'specificationItemStatus',
+    ]) {
+      const trigger = getHeaderFilterButton(columnLabel)
+      expect(trigger, `${columnLabel} filter trigger`).toBeTruthy()
+      if (!trigger) continue
+
+      setElementRect(trigger, { bottom: 40, left: 48, right: 92 })
+      fireEvent.click(trigger)
+      const popover = getOpenPopover()
+      const checkbox = popover?.querySelector('input[type="checkbox"]')
+      const clearButton = popover?.querySelector('button')
+      expect(checkbox, `${columnLabel} filter option`).toBeTruthy()
+      expect(clearButton, `${columnLabel} clear action`).toBeTruthy()
+      if (checkbox) fireEvent.click(checkbox)
+      if (clearButton) fireEvent.click(clearButton)
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(getOpenPopover()).toBeNull()
+    }
+
+    expect(onFilterChange).toHaveBeenCalledTimes(18)
+  })
+
+  it('adds every core multi-value filter from an inactive state', () => {
+    const onFilterChange = vi.fn()
+    render(
+      <CoreFilterTable filterValues={{}} onFilterChange={onFilterChange} />,
+    )
+
+    for (const columnLabel of [
+      'area',
+      'category',
+      'type',
+      'qualityCharacteristic',
+      'priorityLevel',
+      'status',
+      'verifiable',
+      'needsReference',
+      'specificationItemStatus',
+    ]) {
+      const trigger = getHeaderFilterButton(columnLabel)
+      expect(trigger).toBeTruthy()
+      if (!trigger) continue
+
+      fireEvent.click(trigger)
+      const checkbox = getOpenPopover()?.querySelector('input[type="checkbox"]')
+      expect(checkbox).toBeTruthy()
+      if (checkbox) fireEvent.click(checkbox)
+      fireEvent.keyDown(document, { key: 'Escape' })
+    }
+
+    expect(onFilterChange).toHaveBeenCalledTimes(9)
+  })
+
+  it('commits and clears both text filters from the search popovers and chips', () => {
+    const onFilterChange = vi.fn()
+    const { container } = render(
+      <RequirementsTable
+        filterValues={{
+          descriptionSearch: 'original description',
+          uniqueIdSearch: 'INT',
+        }}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        rows={[makeRow()]}
+      />,
+    )
+
+    for (const [columnLabel, nextValue] of [
+      ['uniqueId', 'INT-2'],
+      ['description', 'updated description'],
+    ] as const) {
+      const trigger = getHeaderFilterButton(columnLabel)
+      expect(trigger).toBeTruthy()
+      if (!trigger) continue
+
+      fireEvent.click(trigger)
+      const textbox = screen.getByRole('textbox', { name: columnLabel })
+      fireEvent.change(textbox, { target: { value: nextValue } })
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      expect(getOpenPopover()).toBeNull()
+
+      fireEvent.click(trigger)
+      const clearButton = getOpenPopover()?.querySelector('button')
+      expect(clearButton).toBeTruthy()
+      if (clearButton) fireEvent.click(clearButton)
+      fireEvent.mouseDown(document.body)
+    }
+
+    const chipRemoveButtons = container.querySelectorAll(
+      '[data-developer-mode-name="header chip"] button',
+    )
+    expect(chipRemoveButtons).toHaveLength(2)
+    for (const button of chipRemoveButtons) {
+      fireEvent.click(button)
+    }
+
+    expect(onFilterChange).toHaveBeenCalledTimes(6)
+  })
+
+  it('removes every active multi-value filter chip through its labelled control', () => {
+    const onFilterChange = vi.fn()
+    const { container } = render(
+      <CoreFilterTable
+        filterValues={{
+          areaIds: [10],
+          categoryIds: [20],
+          needsReferenceIds: [60],
+          priorityLevelIds: [50],
+          qualityCharacteristicIds: [41],
+          specificationItemStatusIds: [70],
+          statuses: [3],
+          typeIds: [30],
+          verifiable: ['true'],
+        }}
+        onFilterChange={onFilterChange}
+      />,
+    )
+
+    const removeButtons = container.querySelectorAll(
+      '[data-developer-mode-name="header chip"] button',
+    )
+    expect(removeButtons).toHaveLength(9)
+    for (const button of removeButtons) {
+      fireEvent.click(button)
+    }
+    expect(onFilterChange).toHaveBeenCalledTimes(9)
+  })
+
+  it('renders sparse English row values and toggles selection in both directions', () => {
+    const onSelectionChange = vi.fn()
+    const sparseRow = makeRow({
+      area: null,
+      normReferenceIds: undefined,
+      requirementPackageIds: [99],
+      specificationItemStatusColor: null,
+      specificationItemStatusDescriptionEn: null,
+      specificationItemStatusId: null,
+      specificationItemStatusNameEn: null,
+      suggestionCount: 0,
+      version: null,
+    })
+    const visibleColumns = [
+      'uniqueId',
+      'description',
+      'area',
+      'category',
+      'type',
+      'qualityCharacteristic',
+      'priorityLevel',
+      'status',
+      'version',
+      'verifiable',
+      'needsReference',
+      'specificationItemStatus',
+      'requirementPackage',
+      'normReferences',
+      'suggestionCount',
+    ] as const
+    const { rerender } = render(
+      <RequirementsTable
+        locale="en"
+        onSelectionChange={onSelectionChange}
+        rows={[sparseRow]}
+        selectable
+        selectedIds={new Set()}
+        visibleColumns={[...visibleColumns]}
+      />,
+    )
+
+    const rowCheckbox = screen.getByRole('checkbox', { name: 'selectRow' })
+    fireEvent.click(rowCheckbox)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set([1]))
+    expect(screen.getAllByText('—').length).toBeGreaterThan(5)
+    expect(screen.getByText('99')).toBeTruthy()
+
+    rerender(
+      <RequirementsTable
+        locale="en"
+        onSelectionChange={onSelectionChange}
+        rows={[sparseRow]}
+        selectable
+        selectedIds={new Set([1])}
+        visibleColumns={[...visibleColumns]}
+      />,
+    )
+    fireEvent.click(screen.getByRole('checkbox', { name: 'selectRow' }))
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set())
+  })
+
+  it('activates inactive sorting and closes native floating menu links', async () => {
+    const onSortChange = vi.fn()
+    const onAction = vi.fn()
+    const { container } = render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'actions',
+            icon: <span>icon</span>,
+            id: 'actions',
+            menuItems: [
+              { href: '/requirements/new', id: 'new', label: 'new-link' },
+              { id: 'run', label: 'run-action', onClick: onAction },
+            ],
+          },
+        ]}
+        locale="sv"
+        onSortChange={onSortChange}
+        rows={[makeRow()]}
+        sortState={{ by: 'description', direction: 'desc' }}
+      />,
+    )
+
+    const uniqueIdHeader = container.querySelector(
+      '[data-requirement-header-control="uniqueId"]',
+    ) as HTMLElement
+    fireEvent.click(within(uniqueIdHeader).getByRole('button'))
+    expect(onSortChange).toHaveBeenCalledWith({
+      by: 'uniqueId',
+      direction: 'asc',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'actions' }))
+    const nativeLink = await screen.findByRole('menuitem', { name: 'new-link' })
+    nativeLink.addEventListener('click', event => event.preventDefault())
+    fireEvent.click(nativeLink)
+    expect(screen.queryByRole('menu')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'actions' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'run-action' }))
+    expect(onAction).toHaveBeenCalled()
+  })
+
+  it('renders hidden, disabled, badged, and described floating action variants', async () => {
+    const disabledAction = vi.fn()
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'hidden-action',
+            hidden: true,
+            icon: <span>hidden-icon</span>,
+            id: 'hidden',
+          },
+          {
+            ariaLabel: 'disabled-link',
+            badge: 2,
+            disabled: true,
+            href: '/requirements/new',
+            icon: <span>link-icon</span>,
+            id: 'disabled-link',
+          },
+          {
+            ariaLabel: 'disabled-action',
+            badge: 3,
+            disabled: true,
+            icon: <span>action-icon</span>,
+            id: 'disabled-action',
+            onClick: disabledAction,
+            tooltip: 'Unavailable',
+          },
+          {
+            ariaLabel: 'described-menu',
+            badge: 'new',
+            developerModeContext: 'coverage context',
+            developerModeValue: 'coverage menu',
+            icon: <span>menu-icon</span>,
+            id: 'described-menu',
+            menuItems: [
+              {
+                badge: 4,
+                description: 'Detailed menu action',
+                developerModeValue: 'detailed action',
+                icon: <span>item-icon</span>,
+                id: 'detail',
+                label: 'detail-action',
+                onClick: vi.fn(),
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(screen.queryByText('hidden-icon')).toBeNull()
+    expect(
+      screen.getByText('link-icon').closest('[aria-disabled="true"]'),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'disabled-action' }))
+    expect(disabledAction).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'described-menu' }))
+    const item = await screen.findByRole('menuitem', { name: /detail-action/ })
+    expect(within(item).getByText('Detailed menu action')).toBeTruthy()
+    expect(within(item).getByText('4')).toBeTruthy()
+    expect(within(item).getByText('item-icon')).toBeTruthy()
   })
 
   describe('norm references column', () => {
