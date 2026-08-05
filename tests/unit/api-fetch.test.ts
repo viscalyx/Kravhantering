@@ -42,6 +42,19 @@ describe('apiFetch', () => {
     expect(request.headers.get('x-requested-with')).toBeNull()
   })
 
+  it('preserves a safe Request when init does not override its headers', async () => {
+    const input = new Request('http://localhost/api/items', {
+      headers: { Accept: 'application/json' },
+    })
+
+    await apiFetch(input, { cache: 'no-store' })
+
+    const request = fetchMock.mock.calls[0]?.[0] as Request
+    expect(request).not.toBe(input)
+    expect(request.headers.get('accept')).toBe('application/json')
+    expect(request.cache).toBe('no-store')
+  })
+
   it('adds X-Requested-With for mutating Request inputs', async () => {
     const input = new Request('http://localhost/api/items', {
       method: 'POST',
@@ -103,6 +116,18 @@ describe('apiFetch', () => {
     expect(headers.get('x-requested-with')).toBe('XMLHttpRequest')
   })
 
+  it('preserves a case-insensitive valid X-Requested-With header', async () => {
+    await apiFetch('/api/items', {
+      headers: { 'X-Requested-With': 'xmlhttprequest' },
+      method: 'DELETE',
+    })
+
+    const headers = new Headers(
+      (fetchMock.mock.calls[0]?.[1] as RequestInit | undefined)?.headers,
+    )
+    expect(headers.get('x-requested-with')).toBe('xmlhttprequest')
+  })
+
   it('dispatches a reauth event for same-origin API 401 responses', async () => {
     const events: CustomEvent[] = []
     const listener = (event: Event) => events.push(event as CustomEvent)
@@ -133,6 +158,35 @@ describe('apiFetch', () => {
       expect(events).toHaveLength(0)
     } finally {
       window.removeEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
+    }
+  })
+
+  it('does not dispatch reauth for same-origin non-API or successful responses', async () => {
+    const listener = vi.fn()
+    window.addEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
+
+    try {
+      fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }))
+      await apiFetch('/account')
+      await apiFetch(new URL('/api/items', window.location.href))
+
+      expect(listener).not.toHaveBeenCalled()
+    } finally {
+      window.removeEventListener(AUTH_REAUTH_REQUIRED_EVENT, listener)
+    }
+  })
+
+  it('returns unauthorized responses without browser event dispatch on the server', async () => {
+    const browserWindow = window
+    vi.stubGlobal('window', undefined)
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }))
+
+    try {
+      await expect(apiFetch('/api/items')).resolves.toMatchObject({
+        status: 401,
+      })
+    } finally {
+      vi.stubGlobal('window', browserWindow)
     }
   })
 

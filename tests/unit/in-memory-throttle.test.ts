@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   checkInMemoryThrottle,
   clearInMemoryThrottleForTests,
@@ -8,6 +8,25 @@ import {
 describe('in-memory throttle', () => {
   afterEach(() => {
     clearInMemoryThrottleForTests()
+    vi.restoreAllMocks()
+  })
+
+  it('uses the current clock when a caller does not supply one', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(5_000)
+
+    expect(
+      checkInMemoryThrottle({
+        key: 'actor-a:operation',
+        limit: 1,
+        windowMs: 2_000,
+      }),
+    ).toEqual({
+      allowed: true,
+      limit: 1,
+      remaining: 0,
+      resetAt: 7_000,
+      retryAfterSeconds: 0,
+    })
   })
 
   it('allows requests until the limit is reached', () => {

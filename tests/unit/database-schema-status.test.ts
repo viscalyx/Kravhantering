@@ -71,6 +71,23 @@ describe('readDatabaseSchemaStatus', () => {
     expect(statusState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
+  it('treats blank and non-string expected schema metadata as missing', async () => {
+    setStatusDefaults()
+    statusState.readBuildMetadata
+      .mockReturnValueOnce({ expectedDatabaseSchemaVersion: '   ' })
+      .mockReturnValueOnce({ expectedDatabaseSchemaVersion: 42 })
+
+    await expect(readDatabaseSchemaStatus()).resolves.toMatchObject({
+      reason: 'expected_database_schema_version_missing',
+      status: 'unknown',
+    })
+    await expect(readDatabaseSchemaStatus()).resolves.toMatchObject({
+      reason: 'expected_database_schema_version_missing',
+      status: 'unknown',
+    })
+    expect(statusState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+
   it('returns mismatch when the database has no observed migration head', async () => {
     const { query } = setStatusDefaults()
     query.mockResolvedValue([{ name: null }])
@@ -80,6 +97,38 @@ describe('readDatabaseSchemaStatus', () => {
       observedDatabaseSchemaVersion: null,
       reason: 'database_schema_version_missing',
       status: 'mismatch',
+    })
+  })
+
+  it('treats non-array and blank database results as missing', async () => {
+    const { query } = setStatusDefaults()
+    query.mockResolvedValueOnce({ name: EXPECTED_SCHEMA_VERSION })
+
+    await expect(readDatabaseSchemaStatus()).resolves.toMatchObject({
+      observedDatabaseSchemaVersion: null,
+      reason: 'database_schema_version_missing',
+      status: 'mismatch',
+    })
+
+    query.mockResolvedValueOnce([{ name: '   ' }])
+    await expect(readDatabaseSchemaStatus()).resolves.toMatchObject({
+      observedDatabaseSchemaVersion: null,
+      reason: 'database_schema_version_missing',
+      status: 'mismatch',
+    })
+  })
+
+  it('compares trimmed build and database migration names', async () => {
+    const { query } = setStatusDefaults()
+    statusState.readBuildMetadata.mockReturnValue({
+      expectedDatabaseSchemaVersion: `  ${EXPECTED_SCHEMA_VERSION}  `,
+    })
+    query.mockResolvedValue([{ name: `  ${EXPECTED_SCHEMA_VERSION}  ` }])
+
+    await expect(readDatabaseSchemaStatus()).resolves.toEqual({
+      expectedDatabaseSchemaVersion: EXPECTED_SCHEMA_VERSION,
+      observedDatabaseSchemaVersion: EXPECTED_SCHEMA_VERSION,
+      status: 'matches',
     })
   })
 
