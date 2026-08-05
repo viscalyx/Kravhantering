@@ -397,9 +397,14 @@ describe('AI requirement import shared contracts', () => {
     correlationContext.actor.id = null
     correlationContext.actor.hsaId = null
 
+    for (let requestCount = 0; requestCount < 5; requestCount += 1) {
+      expect(
+        checkAiRequirementImportThrottle(hsaContext, 'ai.generate').allowed,
+      ).toBe(true)
+    }
     expect(
       checkAiRequirementImportThrottle(hsaContext, 'ai.generate').allowed,
-    ).toBe(true)
+    ).toBe(false)
     expect(
       checkAiRequirementImportThrottle(correlationContext, 'ai.generate')
         .allowed,

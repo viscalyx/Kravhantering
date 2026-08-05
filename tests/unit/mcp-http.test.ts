@@ -2256,66 +2256,100 @@ describe('handleRequirementsMcpRequest', () => {
     serviceState.getService.mockReturnValue(fakeService)
 
     const { client, transport } = await createClient()
-    const responses = [
-      await client.callTool({
+    const callAndExpectShape = async (
+      request: Parameters<typeof client.callTool>[0],
+      expected: unknown,
+    ) => {
+      const response = await client.callTool(request)
+      expect(response.isError).not.toBe(true)
+      expect(response.structuredContent).toEqual(expected)
+    }
+
+    await callAndExpectShape(
+      {
         arguments: { destination, operation: 'validate', payload: {} },
         name: 'requirements_manage_import',
-      }),
-      await client.callTool({
+      },
+      {
+        expiresAt: '2026-08-05T01:00:00.000Z',
+        hasErrors: false,
+        hasWarnings: false,
+        issues: [],
+        validationToken: 'validation-token',
+      },
+    )
+    await callAndExpectShape(
+      {
         arguments: {
           operation: 'inspect_validation',
           validationToken: 'validation-token',
         },
         name: 'requirements_manage_import',
-      }),
-      await client.callTool({
+      },
+      {
+        destination: outputDestination,
+        expiresAt: '2026-08-05T01:00:00.000Z',
+        needsReferenceProposals: [],
+        payloadHash: 'sha256:payload',
+        proposals: [],
+        referenceData: {},
+        rows: [],
+        submittedPayload: {},
+      },
+    )
+    await callAndExpectShape(
+      {
         arguments: {
           operation: 'execute',
           validationToken: 'validation-token',
         },
         name: 'requirements_manage_import',
-      }),
-      await client.callTool({
+      },
+      {
+        destination: outputDestination,
+        importedRows: [],
+        notImportedRows: [],
+        summary: { importedCount: 0, notImportedCount: 0, totalRowCount: 0 },
+      },
+    )
+    await callAndExpectShape(
+      {
         arguments: { operation: 'list', specificationId: 7 },
         name: 'requirements_manage_needs_reference',
-      }),
-      await client.callTool({
+      },
+      { result: [needsReference] },
+    )
+    await callAndExpectShape(
+      {
         arguments: {
           needsReferenceId: 4,
           operation: 'get',
           specificationId: 7,
         },
         name: 'requirements_manage_needs_reference',
-      }),
-      await client.callTool({
+      },
+      { needsReference },
+    )
+    await callAndExpectShape(
+      {
         arguments: { operation: 'list' },
         name: 'requirements_manage_norm_reference',
-      }),
-      await client.callTool({
+      },
+      { result: [normReference] },
+    )
+    await callAndExpectShape(
+      {
         arguments: { id: 5, operation: 'get' },
         name: 'requirements_manage_norm_reference',
-      }),
-      await client.callTool({
+      },
+      { normReference },
+    )
+    await callAndExpectShape(
+      {
         arguments: { id: 5, operation: 'list_connected_requirement_ids' },
         name: 'requirements_manage_norm_reference',
-      }),
-    ]
-
-    expect(
-      responses.every(response => response.isError !== true),
-      JSON.stringify(responses),
-    ).toBe(true)
-    expect(responses.map(response => response.structuredContent)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ validationToken: 'validation-token' }),
-        expect.objectContaining({ submittedPayload: {} }),
-        expect.objectContaining({ summary: expect.any(Object) }),
-        { result: [needsReference] },
-        { needsReference },
-        { result: [normReference] },
-        { normReference },
-        { requirements: [{ id: 1, uniqueId: 'INT0001' }] },
-      ]),
+      },
+      { requirements: [{ id: 1, uniqueId: 'INT0001' }] },
     )
 
     await client.close()

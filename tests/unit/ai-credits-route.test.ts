@@ -151,10 +151,17 @@ describe('GET /api/ai/credits', () => {
       source: 'oidc',
     })
 
-    await expect(GET(hsaRequest)).resolves.toMatchObject({ status: 200 })
-    await expect(GET(correlationRequest)).resolves.toMatchObject({
-      status: 200,
+    for (let requestCount = 0; requestCount < 20; requestCount += 1) {
+      await expect(GET(hsaRequest)).resolves.toMatchObject({ status: 200 })
+    }
+    await expect(GET(hsaRequest)).resolves.toMatchObject({ status: 429 })
+
+    const correlationResponse = await GET(correlationRequest)
+    expect(correlationResponse.status).toBe(200)
+    await expect(correlationResponse.json()).resolves.toMatchObject({
+      managementKeyMissing: true,
     })
+    expect(getKeyInfo).toHaveBeenCalledTimes(21)
   })
 
   it('denies anonymous credit lookup before calling OpenRouter', async () => {

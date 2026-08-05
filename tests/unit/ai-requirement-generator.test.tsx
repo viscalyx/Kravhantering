@@ -90,9 +90,11 @@ vi.mock('next-intl', () => ({
   useTranslations: () => translate,
 }))
 
+const confirmState = vi.hoisted(() => ({ confirm: vi.fn() }))
+
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({
-    confirm: vi.fn().mockResolvedValue(true),
+    confirm: confirmState.confirm,
   }),
 }))
 
@@ -430,6 +432,7 @@ async function renderOpenGenerator(overrides?: {
 describe('AiRequirementGenerator', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    confirmState.confirm.mockResolvedValue(true)
     window.localStorage.clear()
     // Default: models endpoint returns models, credits returns info
     mockFetch.mockImplementation(async (url: string) => {
@@ -1230,6 +1233,12 @@ describe('AiRequirementGenerator', () => {
     await renderOpenGenerator({ expectedModelName: 'Odd Model' })
 
     expect(await screen.findByTitle('creditsUnreachable')).toBeInTheDocument()
+    expect(screen.getByLabelText('capabilityVision')).toBeChecked()
+    expect(screen.getByLabelText('capabilityTools')).not.toBeChecked()
+    expect(
+      screen.getByLabelText('capabilityStructuredOutputs'),
+    ).not.toBeChecked()
+    expect(screen.queryByText('confidenceScoring')).not.toBeInTheDocument()
     const modelButton = screen.getByLabelText('modelLabel')
     await user.click(modelButton)
     await user.type(screen.getByLabelText('modelSearchLabel'), 'known')
@@ -1239,6 +1248,48 @@ describe('AiRequirementGenerator', () => {
     )
     expect(modelButton).toHaveTextContent('Known Model')
 
+    await user.click(screen.getByLabelText('refreshModels'))
+    await waitFor(() => expect(modelButton).toHaveTextContent('Known Model'))
+
+    await user.click(screen.getByLabelText('capabilityVision'))
+    await user.click(screen.getByLabelText('capabilityVision'))
+    await user.click(screen.getByLabelText('capabilityTools'))
+    await user.click(screen.getByLabelText('capabilityStructuredOutputs'))
+    expect(screen.getByLabelText('capabilityVision')).toBeChecked()
+    expect(screen.getByLabelText('capabilityTools')).toBeChecked()
+    expect(screen.getByLabelText('capabilityStructuredOutputs')).toBeChecked()
+    expect(
+      JSON.parse(localStorage.getItem('ai-model-filters') ?? 'null'),
+    ).toEqual(['vision', 'tools', 'structured_outputs'])
+
+    await user.click(screen.getByLabelText('dataPolicyDenyTraining'))
+    await user.click(screen.getByLabelText('dataPolicyDenyTraining'))
+    await user.click(screen.getByLabelText('dataPolicyZdr'))
+    await user.click(screen.getByLabelText('dataPolicyDistillable'))
+    expect(screen.getByLabelText('dataPolicyDenyTraining')).not.toBeChecked()
+    expect(screen.getByLabelText('dataPolicyZdr')).toBeChecked()
+    expect(screen.getByLabelText('dataPolicyDistillable')).toBeChecked()
+    expect(
+      JSON.parse(localStorage.getItem('ai-data-policies') ?? 'null'),
+    ).toEqual(['zdr', 'enforce_distillable_text'])
+
+    await user.click(screen.getByLabelText('help: reasoningEffortLabel'))
+    expect(document.getElementById('ai-reasoning-help')).toBeInTheDocument()
+    expect(
+      mockFetch.mock.calls.some(([url]) => {
+        const parameters = new URL(
+          String(url),
+          'http://localhost',
+        ).searchParams.get('supported_parameters')
+        return parameters?.includes('vision') && parameters.includes('tools')
+      }),
+    ).toBe(true)
+  })
+
+  it('keeps the model menu open for internal pointers and closes it for outside pointers', async () => {
+    const user = userEvent.setup()
+    await renderOpenGenerator()
+    const modelButton = screen.getByLabelText('modelLabel')
     vi.spyOn(modelButton, 'getBoundingClientRect').mockReturnValue({
       bottom: 740,
       height: 40,
@@ -1250,34 +1301,17 @@ describe('AiRequirementGenerator', () => {
       x: -20,
       y: 700,
     })
+
     await user.click(modelButton)
-    const reopenedListbox = await screen.findByRole('listbox')
+    const listbox = await screen.findByRole('listbox')
     fireEvent.pointerDown(modelButton)
-    expect(reopenedListbox).toBeInTheDocument()
-    fireEvent.pointerDown(reopenedListbox)
-    expect(reopenedListbox).toBeInTheDocument()
+    expect(listbox).toBeInTheDocument()
+    fireEvent.pointerDown(listbox)
+    expect(listbox).toBeInTheDocument()
     fireEvent(window, new Event('resize'))
+    expect(listbox.parentElement).toHaveStyle({ top: '52px' })
     fireEvent.pointerDown(document.body)
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-
-    await user.click(screen.getByLabelText('capabilityVision'))
-    await user.click(screen.getByLabelText('capabilityVision'))
-    await user.click(screen.getByLabelText('capabilityTools'))
-    await user.click(screen.getByLabelText('capabilityStructuredOutputs'))
-    await user.click(screen.getByLabelText('dataPolicyDenyTraining'))
-    await user.click(screen.getByLabelText('dataPolicyDenyTraining'))
-    await user.click(screen.getByLabelText('dataPolicyZdr'))
-    await user.click(screen.getByLabelText('dataPolicyDistillable'))
-    await user.click(screen.getByLabelText('help: reasoningEffortLabel'))
-    await user.click(screen.getByLabelText('refreshModels'))
-
-    await waitFor(() => {
-      expect(
-        mockFetch.mock.calls.filter(([url]) =>
-          String(url).startsWith('/api/ai/models'),
-        ).length,
-      ).toBeGreaterThan(3)
-    })
   })
 
   it('shows selected vision model count over the filtered model total', async () => {
@@ -1881,13 +1915,25 @@ describe('AiRequirementGenerator', () => {
     expect(screen.getByLabelText('refreshModels')).not.toBeDisabled()
   })
 
-  it('confirms before closing a draft that contains generated work', async () => {
+  it('keeps a draft open when close confirmation is rejected and closes it when accepted', async () => {
     const onClose = vi.fn()
+    confirmState.confirm
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
     await renderOpenGenerator({ onClose })
     await userEvent.type(screen.getByLabelText('topicLabel'), 'Draft topic')
 
     await userEvent.click(screen.getByRole('button', { name: 'cancelButton' }))
+    expect(confirmState.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cancelText: 'cancel',
+        confirmText: 'close',
+        message: 'closeConfirm',
+      }),
+    )
+    expect(onClose).not.toHaveBeenCalled()
 
+    await userEvent.click(screen.getByRole('button', { name: 'cancelButton' }))
     expect(onClose).toHaveBeenCalledOnce()
   })
 
