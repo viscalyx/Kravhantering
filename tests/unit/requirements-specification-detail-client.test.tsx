@@ -13,6 +13,7 @@ import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type {
+  FilterValues,
   RequirementPackageOption,
   RequirementSortState,
 } from '@/lib/requirements/list-view'
@@ -33,7 +34,13 @@ const intlState = vi.hoisted(() => ({
   selectionActionLimitExceeded: vi.fn(),
   selectionStatus: vi.fn(),
 }))
+const navigationState = vi.hoisted(() => ({
+  searchParams: new URLSearchParams(),
+}))
 const requirementDetailState = vi.hoisted(() => ({
+  renderSpy: vi.fn(),
+}))
+const localRequirementDetailState = vi.hoisted(() => ({
   renderSpy: vi.fn(),
 }))
 const pdfDownloadState = vi.hoisted(() => ({
@@ -61,9 +68,28 @@ vi.mock('next-intl', () => ({
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({
-    get: () => null,
+    get: (key: string) => navigationState.searchParams.get(key),
   }),
 }))
+
+vi.mock(
+  '@/app/[locale]/specifications/[specificationId]/specification-requirement-selection-panel',
+  () => ({
+    default: ({ onChanged }: { onChanged?: () => void }) => (
+      <div>
+        specificationRequirementSelection.noQuestions
+        <button onClick={onChanged} type="button">
+          notify selection questions changed
+        </button>
+      </div>
+    ),
+  }),
+)
+
+vi.mock(
+  '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel',
+  () => ({ default: () => <div>RFI list panel</div> }),
+)
 
 vi.mock('@/lib/reduced-motion', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/reduced-motion')>()
@@ -77,11 +103,33 @@ vi.mock('@/lib/reduced-motion', async importOriginal => {
 
 vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
   default: (props: {
+    onChange?: () => void | Promise<void>
+    onRemoveFromSpecification?: () => void | Promise<void>
     removeFromSpecificationDisabled?: boolean
     requirementId: number
   }) => {
     requirementDetailState.renderSpy(props)
-    return <div>{`Requirement detail ${props.requirementId}`}</div>
+    return (
+      <div>
+        {`Requirement detail ${props.requirementId}`}
+        {props.onChange ? (
+          <button onClick={() => void props.onChange?.()} type="button">
+            refresh requirement detail
+          </button>
+        ) : null}
+      </div>
+    )
+  },
+}))
+
+vi.mock('@/components/SpecificationLocalRequirementDetailClient', () => ({
+  default: (props: { localRequirementId: number; onChange?: () => void }) => {
+    localRequirementDetailState.renderSpy(props)
+    return (
+      <button onClick={() => void props.onChange?.()} type="button">
+        {`Local requirement detail ${props.localRequirementId}`}
+      </button>
+    )
   },
 }))
 
@@ -157,6 +205,7 @@ vi.mock('@/components/RequirementsTable', () => ({
   default: (props: {
     defaultVisibleColumns?: string[]
     columnPickerPlacement?: string
+    expandedId?: number | null
     excludeColumns?: string[]
     floatingActionRailPlacement?: string
     floatingActions?: {
@@ -177,17 +226,24 @@ vi.mock('@/components/RequirementsTable', () => ({
       onClick?: () => void
       position?: string
     }[]
-    filterValues?: { requirementPackageIds?: number[] }
+    filterValues?: FilterValues
     hasMore?: boolean
     loadingMore?: boolean
-    onFilterChange?: (values: { requirementPackageIds?: number[] }) => void
+    onFilterChange?: (values: FilterValues) => void
     onLoadMore?: () => void | Promise<void>
     onNeedsReferenceChange?: (
       itemRef: string,
       needsReferenceId: number | null,
     ) => void
     onSelectionChange?: (ids: Set<number>) => void
+    onRowClick?: (id: number) => void
     onSortChange?: (value: RequirementSortState) => void
+    onSpecificationItemStatusChange?: (
+      itemRef: string,
+      specificationItemStatusId: number,
+    ) => void
+    onVisibleColumnsChange?: (columns: string[]) => void
+    normReferences?: unknown[]
     requirementPackageCatalogStatus?: 'failed' | 'loaded' | 'loading'
     requirementPackageFilterPresentation?: 'chips' | 'compact-band'
     requirementPackages?: { id: number; name: string }[]
@@ -263,6 +319,22 @@ vi.mock('@/components/RequirementsTable', () => ({
             </button>
           )
         })}
+        {props.onFilterChange ? (
+          <button
+            aria-label={`toggle-status-filter-${tableKind}`}
+            onClick={() =>
+              props.onFilterChange?.({
+                ...props.filterValues,
+                statuses: props.filterValues?.statuses?.length
+                  ? undefined
+                  : [3],
+              })
+            }
+            type="button"
+          >
+            toggle status filter
+          </button>
+        ) : null}
         {props.hasMore ? (
           <button
             aria-label={`load-more-${tableKind}`}
@@ -299,6 +371,43 @@ vi.mock('@/components/RequirementsTable', () => ({
             type="button"
           >
             assign needs ref
+          </button>
+        ) : null}
+        {props.rows[0] && props.onRowClick ? (
+          <button
+            aria-label={`expand-row-${tableKind}-${props.rows[0].id}`}
+            onClick={() => props.onRowClick?.(props.rows[0].id)}
+            type="button"
+          >
+            expand row
+          </button>
+        ) : null}
+        {props.expandedId != null && props.renderExpanded ? (
+          <div data-testid={`expanded-${tableKind}`}>
+            {props.renderExpanded(props.expandedId)}
+          </div>
+        ) : null}
+        {props.onSpecificationItemStatusChange && props.rows[0]?.itemRef ? (
+          <button
+            aria-label={`set-status-${props.rows[0].itemRef}`}
+            onClick={() =>
+              props.onSpecificationItemStatusChange?.(
+                props.rows[0].itemRef ?? '',
+                2,
+              )
+            }
+            type="button"
+          >
+            set status
+          </button>
+        ) : null}
+        {props.onVisibleColumnsChange ? (
+          <button
+            aria-label={`set-columns-${tableKind}`}
+            onClick={() => props.onVisibleColumnsChange?.(['uniqueId'])}
+            type="button"
+          >
+            set columns
           </button>
         ) : null}
         {props.onSortChange ? (
@@ -364,6 +473,23 @@ let bulkNeedsReferencePatchError: Error | null
 let bulkNeedsReferencePatchResponse: { body: unknown; ok: boolean } | null
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
+let localRequirementPostOk = true
+let itemStatusPatchOk = true
+let specificationMetaName = 'Authorization and IAM'
+let needsReferenceMutationHandler:
+  | ((method: string) => Promise<unknown>)
+  | undefined
+let specificationItemResolutionHandler:
+  | ((itemRefs: string[]) => Promise<unknown>)
+  | undefined
+let needsReferencesGetBody: unknown
+let needsReferencesGetHandler: (() => Promise<unknown>) | undefined
+let normReferencesGetHandler: ((url: string) => Promise<unknown>) | undefined
+let specificationMetaReturnsNotFound = false
+let specificationMetaGetHandler: (() => Promise<unknown>) | undefined
+let specificationItemMutationHandler:
+  | ((url: string, init?: RequestInit) => Promise<unknown>)
+  | undefined
 let deviationPostHandler: ((itemRef: string) => Promise<unknown>) | undefined
 let deleteItemsHandler: ((itemRefs: string[]) => Promise<unknown>) | undefined
 let availableRequirementsGetHandler:
@@ -601,6 +727,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     intlState.selectionActionLimitExceeded.mockReset()
     intlState.selectionStatus.mockReset()
     requirementDetailState.renderSpy.mockReset()
+    localRequirementDetailState.renderSpy.mockReset()
     vi.mocked(useReducedMotion).mockReturnValue(false)
     requirementsTableMock.mockReset()
     pdfDownloadState.clearError.mockReset()
@@ -613,6 +740,17 @@ describe('RequirementsSpecificationDetailClient', () => {
     bulkNeedsReferencePatchResponse = null
     failNextAvailableRequirementsFetch = false
     failNextSpecificationItemsFetch = false
+    localRequirementPostOk = true
+    itemStatusPatchOk = true
+    specificationMetaName = initialSpec.name
+    needsReferenceMutationHandler = undefined
+    specificationItemResolutionHandler = undefined
+    needsReferencesGetBody = { needsReferences: [] }
+    needsReferencesGetHandler = undefined
+    normReferencesGetHandler = undefined
+    specificationMetaReturnsNotFound = false
+    specificationMetaGetHandler = undefined
+    specificationItemMutationHandler = undefined
     deviationPostHandler = undefined
     deleteItemsHandler = undefined
     availableRequirementsGetHandler = undefined
@@ -654,13 +792,27 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (url === specificationApiPath()) {
+          if (method === 'PUT') {
+            const body = JSON.parse(String(init?.body)) as { name?: string }
+            specificationMetaName = body.name ?? specificationMetaName
+          }
+          if (method === 'GET' && specificationMetaReturnsNotFound) {
+            return Promise.resolve({
+              json: async () => ({}),
+              ok: false,
+              status: 404,
+            })
+          }
+          if (method === 'GET' && specificationMetaGetHandler) {
+            return specificationMetaGetHandler()
+          }
           return Promise.resolve(
             okJson({
               businessNeedsReference: 'Shared IAM business case',
               id: 8,
               implementationType: { nameEn: 'Program', nameSv: 'Program' },
               lifecycleStatus: { nameEn: 'Development', nameSv: 'Utveckling' },
-              name: 'Authorization and IAM',
+              name: specificationMetaName,
               responsibleDisplayName: 'Ada Admin',
               responsibleHsaId: 'SE5560000001-ada1',
               specificationImplementationTypeId: 2,
@@ -677,6 +829,46 @@ describe('RequirementsSpecificationDetailClient', () => {
             json: async () => addRequirementsResponse.body,
             ok: addRequirementsResponse.ok,
           })
+        }
+
+        if (
+          url === specificationApiPath('/local-requirements') &&
+          method === 'POST'
+        ) {
+          if (localRequirementPostOk) {
+            specificationItemsGetItems = [
+              ...specificationItemsGetItems,
+              {
+                ...initialSpecificationItem,
+                id: -401,
+                isSpecificationLocal: true,
+                itemRef: 'local:401',
+                kind: 'specificationLocal',
+                specificationItemId: undefined,
+                specificationLocalRequirementId: 401,
+                uniqueId: 'KRAV0401',
+                version: {
+                  ...initialSpecificationItem.version,
+                  description: 'Local requirement',
+                },
+              },
+            ]
+          }
+          return Promise.resolve(
+            localRequirementPostOk
+              ? okJson({
+                  localRequirement: {
+                    description: 'Local requirement',
+                    id: 401,
+                    itemRef: 'local:401',
+                  },
+                  ok: true,
+                })
+              : {
+                  json: async () => ({ error: 'Local create failed' }),
+                  ok: false,
+                },
+          )
         }
 
         if (url === specificationApiPath('/items') && method === 'PATCH') {
@@ -722,6 +914,9 @@ describe('RequirementsSpecificationDetailClient', () => {
           const requestedRefs = new Set(
             new URLSearchParams(url.split('?')[1] ?? '').getAll('refs'),
           )
+          if (specificationItemResolutionHandler) {
+            return specificationItemResolutionHandler([...requestedRefs])
+          }
           return Promise.resolve(
             okJson({
               items: specificationItemsGetItems
@@ -891,16 +1086,31 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (
+          url.startsWith(`${specificationApiPath('/items')}/`) &&
+          method === 'PATCH' &&
+          specificationItemMutationHandler
+        ) {
+          return specificationItemMutationHandler(url, init)
+        }
+
+        if (
           url === `${specificationApiPath('/items')}/lib%3A31` &&
           method === 'PATCH'
         ) {
-          return Promise.resolve(okJson({ ok: true }))
+          return Promise.resolve(
+            itemStatusPatchOk
+              ? okJson({ ok: true })
+              : { json: async () => ({ error: 'Status failed' }), ok: false },
+          )
         }
 
         if (
           url === specificationApiPath('/needs-references') &&
           method === 'POST'
         ) {
+          if (needsReferenceMutationHandler) {
+            return needsReferenceMutationHandler(method)
+          }
           return Promise.resolve(
             okJson({
               needsReference: {
@@ -918,6 +1128,9 @@ describe('RequirementsSpecificationDetailClient', () => {
           url === specificationApiPath('/needs-references') &&
           method === 'PATCH'
         ) {
+          if (needsReferenceMutationHandler) {
+            return needsReferenceMutationHandler(method)
+          }
           return Promise.resolve(
             okJson({
               needsReference: {
@@ -935,6 +1148,9 @@ describe('RequirementsSpecificationDetailClient', () => {
           url === specificationApiPath('/needs-references') &&
           method === 'DELETE'
         ) {
+          if (needsReferenceMutationHandler) {
+            return needsReferenceMutationHandler(method)
+          }
           return Promise.resolve(okJson({ ok: true }))
         }
 
@@ -942,7 +1158,10 @@ describe('RequirementsSpecificationDetailClient', () => {
           url === specificationApiPath('/needs-references') &&
           method === 'GET'
         ) {
-          return Promise.resolve(okJson({ needsReferences: [] }))
+          if (needsReferencesGetHandler) {
+            return needsReferencesGetHandler()
+          }
+          return Promise.resolve(okJson(needsReferencesGetBody))
         }
 
         if (url === specificationApiPath('/requirement-selection-answers')) {
@@ -978,6 +1197,9 @@ describe('RequirementsSpecificationDetailClient', () => {
         }
 
         if (url.startsWith('/api/norm-references')) {
+          if (normReferencesGetHandler) {
+            return normReferencesGetHandler(url)
+          }
           return Promise.resolve(okJson({ normReferences: [] }))
         }
 
@@ -993,6 +1215,7 @@ describe('RequirementsSpecificationDetailClient', () => {
       },
     )
     window.localStorage.clear()
+    navigationState.searchParams = new URLSearchParams()
   })
 
   it('shows the partial preload warning banner when initial data contains errors', async () => {
@@ -1130,6 +1353,11 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(importProps.returnFocusTarget).toBe(aiTrigger)
     expect(screen.getByTestId('lazy-import-review')).toBeInTheDocument()
 
+    await act(async () => {
+      await importProps.onClose(true)
+    })
+    expect(screen.queryByTestId('lazy-import-review')).toBeNull()
+
     importTrigger.remove()
     aiTrigger.remove()
   })
@@ -1190,6 +1418,47 @@ describe('RequirementsSpecificationDetailClient', () => {
         ?.filter(item => item.kind !== 'separator')
         .every(item => item.icon != null),
     ).toBe(true)
+  })
+
+  it('explains whether AI authoring is disabled by the environment or an administrator', async () => {
+    for (const [disabledByEnvironment, expectedMessage] of [
+      [true, 'specification.aiGenerateDisabledByEnvironment'],
+      [false, 'specification.aiGenerateDisabledByAdmin'],
+    ] as const) {
+      const initialData = createInitialData()
+      initialData.aiGenerationAvailability = {
+        disabledByEnvironment,
+        effectiveRequirementGenerationEnabled: false,
+      }
+      const view = renderRequirementsSpecificationDetailClient(initialData)
+      await waitForInitialAvailableRequirementsRefresh()
+      const moreActions = (
+        latestItemsTableProps().floatingActions as Array<{
+          id: string
+          menuItems?: Array<{
+            description?: string
+            disabled?: boolean
+            id: string
+            onClick?: () => void
+            tooltip?: string
+          }>
+        }>
+      ).find(action => action.id === 'more-actions')
+      const aiAction = moreActions?.menuItems?.find(
+        action => action.id === 'ai-assist-local',
+      )
+
+      expect(aiAction).toEqual(
+        expect.objectContaining({
+          description: expectedMessage,
+          disabled: true,
+          tooltip: expectedMessage,
+        }),
+      )
+      act(() => aiAction?.onClick?.())
+      expect(screen.queryByTestId('lazy-ai-authoring')).toBeNull()
+      view.unmount()
+    }
   })
 
   it('keeps profile PDF report actions lifecycle-scoped', async () => {
@@ -1435,6 +1704,49 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(params.has('statuses')).toBe(false)
   })
 
+  it('treats omitted optional list payload fields as an empty page', async () => {
+    availableRequirementsGetHandler = async () => okJson({})
+    specificationItemsGetHandler = async () => okJson({})
+    needsReferencesGetBody = {}
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      errors: [
+        {
+          key: SPECIFICATION_PRELOAD_ERROR_KEYS.needsReferences,
+          message: 'Needs references missing from preload',
+        },
+      ],
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('requirements-table-available-rows'),
+      ).toHaveTextContent('')
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'sort-description-items' }),
+    )
+    await waitFor(() => {
+      expect(screen.getByText('specification.noItems')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.newLocalRequirement',
+      }),
+    )
+    await screen.findByRole('dialog')
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([input]) =>
+            (typeof input === 'string' ? input : input.url) ===
+            specificationApiPath('/needs-references'),
+        ),
+      ).toBe(true)
+    })
+  })
+
   it('keeps requirement-selection filtering opt-in for available requirements', async () => {
     availableRequirementsSelectionFilter = {
       applied: false,
@@ -1465,6 +1777,43 @@ describe('RequirementsSpecificationDetailClient', () => {
       ).toBe(true)
     })
     expect(toggle).toBeChecked()
+  })
+
+  it('turns off requirement-selection filtering when refreshed answers no longer select requirements', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [202],
+    }
+    availableRequirementsGetHandler = async url =>
+      okJson({
+        pagination: { hasMore: false },
+        requirements: [initialAvailableRequirement],
+        selectionFilter: url.includes('applyRequirementSelectionFilter=true')
+          ? {
+              applied: true,
+              hasCurrentAnswers: true,
+              hasRequirementSelection: false,
+              hasNoRequirementSelection: true,
+              requirementIds: [],
+            }
+          : availableRequirementsSelectionFilter,
+      })
+    renderRequirementsSpecificationDetailClient()
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+    fireEvent.click(toggle)
+
+    await waitFor(() => {
+      expect(toggle).not.toBeChecked()
+      expect(toggle).toBeDisabled()
+    })
+    expect(
+      screen.getByText('specification.requirementSelectionNoPublishedMatches'),
+    ).toBeInTheDocument()
   })
 
   it('disables the requirement-selection filter toggle when answers provide no requirement selection', async () => {
@@ -1808,6 +2157,86 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(editButton).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('saves specification metadata from the title edit action and refreshes it', async () => {
+    renderRequirementsSpecificationDetailClient()
+    const initialMetadataGetCount = fetchMock.mock.calls.filter(
+      ([url, init]) =>
+        url === specificationApiPath() &&
+        (init as RequestInit | undefined)?.method !== 'PUT',
+    ).length
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.editSpecification' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'specification.editSpecification',
+    })
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Updated specification name' } },
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    )
+
+    await waitFor(() => {
+      const putCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          url === specificationApiPath() &&
+          (init as RequestInit | undefined)?.method === 'PUT',
+      )
+      expect(
+        JSON.parse(String((putCall?.[1] as RequestInit | undefined)?.body)),
+      ).toEqual(expect.objectContaining({ name: 'Updated specification name' }))
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'specification.editSpecification',
+        }),
+      ).toBeNull(),
+    )
+    await waitFor(() => {
+      const metadataGetCount = fetchMock.mock.calls.filter(
+        ([url, init]) =>
+          url === specificationApiPath() &&
+          (init as RequestInit | undefined)?.method !== 'PUT',
+      ).length
+      expect(metadataGetCount).toBeGreaterThan(initialMetadataGetCount)
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Updated specification name',
+        }),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('moves to the not-found state when metadata disappears during an edit refresh', async () => {
+    specificationMetaReturnsNotFound = true
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.editSpecification' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'specification.editSpecification',
+    })
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Specification awaiting removal' } },
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    )
+
+    expect(
+      await screen.findByText('specification.specificationNotFound'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /specification\.backToSpecifications/ }),
+    ).toHaveAttribute('href', '/specifications')
+  })
+
   it('does not fail open when specification permissions are missing', async () => {
     const { permissions: omittedPermissions, ...specWithoutPermissions } =
       initialSpec
@@ -1832,6 +2261,76 @@ describe('RequirementsSpecificationDetailClient', () => {
         name: /specification\.editSpecification/i,
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it('renders a minimal Swedish read-only specification without optional metadata', async () => {
+    intlState.locale = 'sv'
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '',
+          description: 'Beskrivning',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: undefined,
+          specificationLocalRequirementCount: 0,
+          text: 'Behov',
+          updatedAt: '',
+        },
+      ],
+      spec: {
+        ...initialSpec,
+        businessNeedsReference: null,
+        governanceObjectType: null,
+        implementationType: null,
+        lifecycleStatus: null,
+        permissions: {
+          canEditContent: false,
+          canManageAssignments: false,
+          canReviewDecisions: false,
+          canUseAi: false,
+        },
+        responsibleDisplayName: 'Readonly Owner',
+        responsibleHsaId: '',
+      },
+    })
+
+    expect(
+      screen.queryByRole('button', { name: 'specification.editSpecification' }),
+    ).toBeNull()
+    expect(screen.queryByText('Shared IAM business case')).toBeNull()
+    expect(screen.getByText('Readonly Owner')).toBeInTheDocument()
+    expect(screen.queryByText('SE5560000001-ada1')).toBeNull()
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    expect(screen.getByText('Beskrivning')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'specification.newNeedsReference',
+      }),
+    ).toBeNull()
+    await waitForInitialAvailableRequirementsRefresh()
+  })
+
+  it('shows the not-found state with a partial-data warning when specification metadata is absent', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      errors: [{ key: 'specification', message: 'Metadata unavailable' }],
+      spec: null,
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'specification.partialDataLoadWarning',
+    )
+    expect(
+      screen.getByText('specification.specificationNotFound'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /specification\.backToSpecifications/ }),
+    ).toHaveAttribute('href', '/specifications')
+    await waitForInitialAvailableRequirementsRefresh()
   })
 
   it('does not show a read-only notice for assignment-only managers', async () => {
@@ -1945,6 +2444,33 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(screen.queryByRole('separator')).not.toBeInTheDocument()
   })
 
+  it('shows no empty-state actions to a read-only user', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      spec: {
+        ...initialSpec,
+        permissions: {
+          canEditContent: false,
+          canManageAssignments: false,
+          canReviewDecisions: false,
+          canUseAi: false,
+        },
+      },
+      specificationItems: createSpecificationItemsPage([]),
+    })
+
+    expect(screen.getByText('specification.noItems')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'specification.newLocalRequirement',
+      }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'common.moreActions' }),
+    ).toBeNull()
+    await waitForInitialAvailableRequirementsRefresh()
+  })
+
   it('ignores stale and invalid stored detail column ids', async () => {
     window.localStorage.setItem(
       'requirements-specifications.visibleColumns.left.v2',
@@ -1999,6 +2525,207 @@ describe('RequirementsSpecificationDetailClient', () => {
       'description',
       'area',
     ])
+  })
+
+  it('expands both tables, refreshes details, updates status, and persists columns', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItemStatuses: [
+        {
+          color: '#22c55e',
+          descriptionEn: null,
+          descriptionSv: null,
+          iconName: null,
+          id: 2,
+          nameEn: 'Included',
+          nameSv: 'Inkluderad',
+          sortOrder: 2,
+        },
+      ],
+    })
+    await waitForInitialAvailableRequirementsRefresh()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'expand-row-items-101' }),
+    )
+    expect(
+      await screen.findByText('Requirement detail 101'),
+    ).toBeInTheDocument()
+    const itemsFetchCountBeforeRefresh = fetchMock.mock.calls.filter(
+      ([input]) => String(input).startsWith(specificationApiPath('/items?')),
+    ).length
+    fireEvent.click(
+      screen.getByRole('button', { name: 'refresh requirement detail' }),
+    )
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(([input]) =>
+          String(input).startsWith(specificationApiPath('/items?')),
+        ).length,
+      ).toBeGreaterThan(itemsFetchCountBeforeRefresh)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'set-status-lib:31' }))
+    fireEvent.click(screen.getByRole('button', { name: 'set-columns-items' }))
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'expand-row-available-202' }),
+    )
+    expect(
+      await screen.findByText('Requirement detail 202'),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'set-columns-available' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'expand-row-available-202' }),
+    )
+    expect(screen.queryByText('Requirement detail 202')).not.toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/8/items/lib%3A31',
+        expect.objectContaining({ method: 'PATCH' }),
+      )
+    })
+    await waitFor(() => {
+      expect(
+        window.localStorage.getItem(
+          'requirement-specifications.visibleColumns.left.v1',
+        ),
+      ).toBe('["uniqueId"]')
+      expect(
+        window.localStorage.getItem(
+          'requirement-specifications.visibleColumns.right.v1',
+        ),
+      ).toBe('["uniqueId"]')
+    })
+  })
+
+  it('restores the original item when a usage-status update fails', async () => {
+    itemStatusPatchOk = false
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItemStatuses: [
+        {
+          color: '#22c55e',
+          descriptionEn: null,
+          descriptionSv: null,
+          iconName: null,
+          id: 2,
+          nameEn: 'Included',
+          nameSv: 'Inkluderad',
+          sortOrder: 2,
+        },
+      ],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'set-status-lib:31' }))
+
+    await waitFor(() => {
+      expect(latestItemsTableProps().rows[0]).toEqual(initialSpecificationItem)
+    })
+  })
+
+  it('ignores a usage-status choice that is not in the specification catalog', async () => {
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(screen.getByRole('button', { name: 'set-status-lib:31' }))
+
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url).includes('/items/lib%3A31') &&
+          (init as RequestInit | undefined)?.method === 'PATCH',
+      ),
+    ).toBe(false)
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('lib:31')
+    await waitForInitialAvailableRequirementsRefresh()
+  })
+
+  it('submits an explicit needs-reference clear even for an unknown item', async () => {
+    renderRequirementsSpecificationDetailClient()
+    act(() => {
+      latestItemsTableProps().onNeedsReferenceChange?.('lib:missing', null)
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/requirements-specifications/8/items/${encodeURIComponent('lib:missing')}`,
+        expect.objectContaining({
+          body: JSON.stringify({ needsReferenceId: null }),
+          method: 'PATCH',
+        }),
+      )
+    })
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('lib:31')
+  })
+
+  it('expands and refreshes a specification-local requirement detail', async () => {
+    const localItem = {
+      ...initialSpecificationItem,
+      id: 401,
+      isSpecificationLocal: true,
+      itemRef: 'local:401',
+      kind: 'specificationLocal' as const,
+      specificationItemId: undefined,
+      specificationLocalRequirementId: 401,
+      uniqueId: 'KRAV0001',
+    }
+    specificationItemsGetItems = [localItem]
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: createSpecificationItemsPage([localItem]),
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'expand-row-items-401' }),
+    )
+    const localDetail = await screen.findByRole('button', {
+      name: 'Local requirement detail 401',
+    })
+    const itemsFetchCountBeforeRefresh = fetchMock.mock.calls.filter(
+      ([input]) => String(input).startsWith(specificationApiPath('/items?')),
+    ).length
+    fireEvent.click(localDetail)
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(([input]) =>
+          String(input).startsWith(specificationApiPath('/items?')),
+        ).length,
+      ).toBeGreaterThan(itemsFetchCountBeforeRefresh)
+    })
+    expect(localRequirementDetailState.renderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ localRequirementId: 401 }),
+    )
+  })
+
+  it('shows generic requirement detail when an application has no persisted membership id', async () => {
+    const unresolvedItem = {
+      ...initialSpecificationItem,
+      itemRef: 'external:101',
+      specificationItemId: undefined,
+    }
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: createSpecificationItemsPage([unresolvedItem]),
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'expand-row-items-101' }),
+    )
+    expect(screen.getByText('Requirement detail 101')).toBeInTheDocument()
+    expect(requirementDetailState.renderSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requirementId: 101 }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'expand-row-items-101' }),
+    )
+    expect(screen.queryByText('Requirement detail 101')).not.toBeInTheDocument()
+    await waitForInitialAvailableRequirementsRefresh()
   })
 
   it('loads persisted detail columns after the hydration-safe default render', async () => {
@@ -2229,6 +2956,52 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).not.toHaveTextContent('lib:32')
   })
 
+  it('refreshes left norm-reference options when usage-status filters change', async () => {
+    const requestedStatuses: string[][] = []
+    normReferencesGetHandler = async url => {
+      requestedStatuses.push(searchParamsFromPath(url).getAll('statuses'))
+      return okJson({})
+    }
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'toggle-status-filter-items' }),
+    )
+
+    await waitFor(() => {
+      expect(latestItemsTableProps().normReferences).toEqual([])
+      expect(
+        fetchMock.mock.calls.some(([input]) =>
+          String(typeof input === 'string' ? input : input.url).includes(
+            'statuses=3',
+          ),
+        ),
+      ).toBe(true)
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'toggle-status-filter-items' }),
+    )
+    await waitFor(() => {
+      expect(requestedStatuses).toContainEqual([])
+    })
+  })
+
+  it('keeps the item list usable when filtered norm-reference options fail', async () => {
+    normReferencesGetHandler = async () => {
+      throw 'Norm options unavailable'
+    }
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'toggle-status-filter-items' }),
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'specification.loadNormReferencesFailed',
+    )
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('lib:31')
+  })
+
   it('uses independent compact package filters with distinct server catalogs', async () => {
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
@@ -2362,6 +3135,83 @@ describe('RequirementsSpecificationDetailClient', () => {
         requirementPackages: [],
       }),
     )
+  })
+
+  it('fails a malformed preloaded package continuation without issuing an ambiguous request', async () => {
+    const initialData = createInitialData()
+    initialData.leftRequirementPackageCatalog =
+      createRequirementPackageCatalogPage([], {
+        hasMore: true,
+        nextCursor: null,
+      })
+    renderRequirementsSpecificationDetailClient(initialData)
+
+    await waitFor(() => {
+      expect(latestItemsTableProps().requirementPackageCatalogStatus).toBe(
+        'failed',
+      )
+      expect(
+        screen.getByText('specification.loadRequirementPackagesFailed'),
+      ).toBeInTheDocument()
+    })
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        (typeof input === 'string' ? input : input.url).startsWith(
+          specificationApiPath('/requirement-packages'),
+        ),
+      ),
+    ).toBe(false)
+  })
+
+  it('fails a package catalog page whose continuation cursor is missing', async () => {
+    const initialData = createInitialData()
+    initialData.leftRequirementPackageCatalog =
+      createRequirementPackageCatalogPage([], {
+        hasMore: true,
+        nextCursor: 'catalog-page-2',
+      })
+    specificationRequirementPackagesGetHandler = async () =>
+      okJson({
+        pagination: { hasMore: true, nextCursor: null },
+        requirementPackages: [],
+        selectedRequirementPackages: [],
+      })
+    renderRequirementsSpecificationDetailClient(initialData)
+
+    await waitFor(() => {
+      expect(latestItemsTableProps().requirementPackageCatalogStatus).toBe(
+        'failed',
+      )
+    })
+    expect(
+      screen.getByText('specification.loadRequirementPackagesFailed'),
+    ).toBeInTheDocument()
+  })
+
+  it('fails a package catalog whose continuation cursor repeats', async () => {
+    const initialData = createInitialData()
+    initialData.leftRequirementPackageCatalog =
+      createRequirementPackageCatalogPage([], {
+        hasMore: true,
+        nextCursor: 'catalog-repeat',
+      })
+    let requestCount = 0
+    specificationRequirementPackagesGetHandler = async () => {
+      requestCount += 1
+      return okJson({
+        pagination: { hasMore: true, nextCursor: 'catalog-repeat' },
+        requirementPackages: [],
+        selectedRequirementPackages: [],
+      })
+    }
+    renderRequirementsSpecificationDetailClient(initialData)
+
+    await waitFor(() => {
+      expect(latestItemsTableProps().requirementPackageCatalogStatus).toBe(
+        'failed',
+      )
+    })
+    expect(requestCount).toBe(2)
   })
 
   it('prunes a resolved package while preserving a selection made during refresh', async () => {
@@ -2621,6 +3471,130 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(dialog).toBeInTheDocument()
   })
 
+  it('adds selected requirements with an existing needs reference', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '',
+          description: 'Existing context',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '',
+        },
+      ],
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.addSelectedToSpecification',
+      }),
+    )
+    fireEvent.change(screen.getByLabelText('specification.addNeedsRef'), {
+      target: { value: '81' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.confirmAdd' }),
+    )
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          url === specificationApiPath('/items') &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      expect(
+        JSON.parse(String((postCall?.[1] as RequestInit | undefined)?.body)),
+      ).toEqual({ needsReferenceId: 81, requirementIds: [202] })
+    })
+  })
+
+  it('adds selected requirements without a needs reference', async () => {
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.addSelectedToSpecification',
+      }),
+    )
+    const help = await screen.findByRole('button', {
+      name: 'common.help: specification.addNeedsRef',
+    })
+    fireEvent.click(help)
+    expect(
+      screen.getByText('specification.addNeedsRefHelp'),
+    ).toBeInTheDocument()
+    fireEvent.click(help)
+    expect(screen.queryByText('specification.addNeedsRefHelp')).toBeNull()
+    const needsReferenceSelect = screen.getByLabelText(
+      'specification.addNeedsRef',
+    )
+    fireEvent.change(needsReferenceSelect, { target: { value: 'new' } })
+    expect(
+      screen.getByLabelText('specification.addNeedsRefTextLabel'),
+    ).toBeInTheDocument()
+    fireEvent.change(needsReferenceSelect, { target: { value: 'none' } })
+    expect(
+      screen.queryByLabelText('specification.addNeedsRefTextLabel'),
+    ).toBeNull()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.confirmAdd' }),
+    )
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          url === specificationApiPath('/items') &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      expect(
+        JSON.parse(String((postCall?.[1] as RequestInit | undefined)?.body)),
+      ).toEqual({ requirementIds: [202] })
+    })
+  })
+
+  it('adds selected requirements with a newly described needs reference', async () => {
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.addSelectedToSpecification',
+      }),
+    )
+    fireEvent.change(screen.getByLabelText('specification.addNeedsRef'), {
+      target: { value: 'new' },
+    })
+    fireEvent.change(
+      screen.getByLabelText('specification.addNeedsRefTextLabel'),
+      { target: { value: '  IAM-99  ' } },
+    )
+    fireEvent.change(
+      screen.getByLabelText('specification.needsReferenceDescription'),
+      { target: { value: '  Procurement decision  ' } },
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.confirmAdd' }),
+    )
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          url === specificationApiPath('/items') &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      expect(
+        JSON.parse(String((postCall?.[1] as RequestInit | undefined)?.body)),
+      ).toEqual({
+        needsReferenceDescription: 'Procurement decision',
+        needsReferenceText: 'IAM-99',
+        requirementIds: [202],
+      })
+    })
+  })
+
   it('closes the add dialog when Escape is pressed inside the panel', async () => {
     renderRequirementsSpecificationDetailClient()
 
@@ -2710,6 +3684,8 @@ describe('RequirementsSpecificationDetailClient', () => {
       expect(needsRefHelpButton).toBeDisabled()
       expect(needsRefTextHelpButton).toBeDisabled()
     })
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     await act(async () => {
       resolvePost?.({
@@ -2986,6 +3962,98 @@ describe('RequirementsSpecificationDetailClient', () => {
     )
   })
 
+  it('creates a specification-local requirement and refreshes the application list', async () => {
+    renderRequirementsSpecificationDetailClient()
+    const initialItemsGetCount = fetchMock.mock.calls.filter(
+      ([url, init]) =>
+        String(url).startsWith(`${specificationApiPath('/items')}?`) &&
+        (init as RequestInit | undefined)?.method !== 'POST',
+    ).length
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.newLocalRequirement',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Local requirement' } },
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          url === specificationApiPath('/local-requirements') &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      expect(
+        JSON.parse(String((postCall?.[1] as RequestInit | undefined)?.body)),
+      ).toEqual(expect.objectContaining({ description: 'Local requirement' }))
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => {
+      const itemsGetCount = fetchMock.mock.calls.filter(
+        ([url, init]) =>
+          String(url).startsWith(`${specificationApiPath('/items')}?`) &&
+          (init as RequestInit | undefined)?.method !== 'POST',
+      ).length
+      expect(itemsGetCount).toBeGreaterThan(initialItemsGetCount)
+      expect(
+        screen.getByTestId('requirements-table-items-rows'),
+      ).toHaveTextContent('local:401')
+    })
+  })
+
+  it('keeps the local-requirement dialog open when creation fails', async () => {
+    localRequirementPostOk = false
+    renderRequirementsSpecificationDetailClient()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.newLocalRequirement',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Local requirement' } },
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.save' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Local create failed',
+    )
+  })
+
+  it('keeps dirty local-requirement edits when discard is cancelled', async () => {
+    renderRequirementsSpecificationDetailClient()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.newLocalRequirement',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Unsaved local requirement' } },
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'common.close' }),
+    )
+
+    const confirmation = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.cancel' }),
+    )
+    expect(dialog).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('textbox', { name: /requirement\.description/ }),
+    ).toHaveValue('Unsaved local requirement')
+  })
+
   it('opens the needs references tab, persists the URL parameter, and shows usage details', async () => {
     const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
     renderRequirementsSpecificationDetailClient({
@@ -3040,6 +4108,137 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     expect(await screen.findByText('BEH0001')).toBeInTheDocument()
     expect(screen.getByText('RBAC should be enforced.')).toBeInTheDocument()
+    await waitForInitialAvailableRequirementsRefresh()
+  })
+
+  it('navigates all split-panel tabs and closes the needs-reference form by button and Escape', async () => {
+    renderRequirementsSpecificationDetailClient()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'specification.rfiList' }))
+    expect(screen.getByText('RFI list panel')).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'specification.itemsInSpecification' }),
+    )
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('lib:31')
+    fireEvent.click(
+      screen.getByRole('tab', {
+        name: 'specification.requirementSelectionQuestions',
+      }),
+    )
+    expect(
+      screen.getByText('specificationRequirementSelection.noQuestions'),
+    ).toBeInTheDocument()
+    const availableFetchesBeforeQuestionChange = fetchMock.mock.calls.filter(
+      ([input]) =>
+        String(input).startsWith(
+          specificationApiPath('/available-requirements'),
+        ),
+    ).length
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'notify selection questions changed',
+      }),
+    )
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(([input]) =>
+          String(input).startsWith(
+            specificationApiPath('/available-requirements'),
+          ),
+        ).length,
+      ).toBeGreaterThan(availableFetchesBeforeQuestionChange)
+    })
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'specification.availableRequirements' }),
+    )
+    expect(
+      screen.getByTestId('requirements-table-available-rows'),
+    ).toHaveTextContent('202')
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    expect(
+      screen.getByText('specification.noNeedsReferences'),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    )
+    let dialog = screen.getByRole('dialog')
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'common.close' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    )
+    dialog = screen.getByRole('dialog')
+    fireEvent.keyDown(dialog, { key: 'Enter' })
+    expect(dialog).toBeInTheDocument()
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'specification.itemsInSpecification' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.newLocalRequirement',
+      }),
+    )
+    dialog = await screen.findByRole('dialog')
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'common.close' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.newLocalRequirement',
+      }),
+    )
+    dialog = await screen.findByRole('dialog')
+    fireEvent.keyDown(dialog, { key: 'Enter' })
+    expect(dialog).toBeInTheDocument()
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitForInitialAvailableRequirementsRefresh()
+  })
+
+  it('honors an area and left-panel tab selected in the page URL', async () => {
+    navigationState.searchParams = new URLSearchParams({
+      areaId: '17',
+      leftTab: 'rfi',
+    })
+    const { unmount } = renderRequirementsSpecificationDetailClient()
+
+    expect(screen.getByText('RFI list panel')).toBeInTheDocument()
+    await waitFor(() => {
+      const itemRequest = fetchMock.mock.calls.find(([url]) => {
+        if (!String(url).startsWith(`${specificationApiPath('/items')}?`)) {
+          return false
+        }
+        return searchParamsFromPath(String(url))
+          .getAll('areaIds')
+          .includes('17')
+      })
+      expect(itemRequest).toBeDefined()
+    })
+
+    unmount()
+    navigationState.searchParams = new URLSearchParams({
+      leftTab: 'needs-references',
+    })
+    renderRequirementsSpecificationDetailClient()
+
+    expect(
+      screen.getByText('specification.noNeedsReferences'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    ).toHaveAttribute('aria-selected', 'true')
     await waitForInitialAvailableRequirementsRefresh()
   })
 
@@ -3106,6 +4305,87 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toHaveLength(2)
   })
 
+  it('renders Swedish needs-reference usage fallbacks for incomplete application metadata', async () => {
+    intlState.locale = 'sv'
+    specificationItemsGetHandler = async () =>
+      okJson({
+        items: [
+          {
+            ...initialSpecificationItem,
+            itemRef: 'lib:fallback',
+            specificationItemStatusNameEn: undefined,
+            specificationItemStatusNameSv: undefined,
+            uniqueId: 'USAGE-FALLBACK',
+            version: undefined,
+          },
+        ],
+      })
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '',
+          description: 'Ofullständig användning',
+          id: 81,
+          libraryItemCount: 1,
+          linkedItemCount: undefined,
+          specificationLocalRequirementCount: 0,
+          text: 'BEHOV-81',
+          updatedAt: '',
+        },
+      ],
+    })
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    const toggle = screen.getByRole('button', {
+      name: /specification\.toggleNeedsReferenceUsage/,
+    })
+    fireEvent.click(toggle)
+
+    expect(await screen.findByText('USAGE-FALLBACK')).toBeInTheDocument()
+    expect(screen.getAllByText('—')).toHaveLength(3)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('USAGE-FALLBACK')).toBeNull()
+  })
+
+  it('shows a needs-reference usage error without collapsing the row', async () => {
+    specificationItemsGetHandler = async () => ({
+      json: async () => ({ error: 'Usage unavailable' }),
+      ok: false,
+    })
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '',
+          description: 'Usage error case',
+          id: 81,
+          libraryItemCount: 1,
+          linkedItemCount: 1,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '',
+        },
+      ],
+    })
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.toggleNeedsReferenceUsage/,
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specification.loadSpecificationItemsFailed',
+    )
+    expect(screen.getByText('IAM-42')).toBeInTheDocument()
+  })
+
   it('creates a needs reference with a description from the register tab', async () => {
     renderRequirementsSpecificationDetailClient()
 
@@ -3145,6 +4425,232 @@ describe('RequirementsSpecificationDetailClient', () => {
       description: 'Access management work',
       text: 'IAM-42',
     })
+  })
+
+  it('reports a translated error when the needs-reference register cannot refresh after save', async () => {
+    needsReferencesGetHandler = async () => {
+      throw 'Register refresh unavailable'
+    }
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    )
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(
+      within(dialog).getByLabelText('specification.needsReference'),
+      { target: { value: 'IAM-REFRESH' } },
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specification.failedToLoadNeedsReferences',
+    )
+    expect(
+      screen.getByText('specification.noNeedsReferences'),
+    ).toBeInTheDocument()
+  })
+
+  it('updates an existing needs reference from the register tab', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: 'Original context',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.editNeedsReference' }),
+    )
+    fireEvent.change(screen.getByLabelText('specification.needsReference'), {
+      target: { value: ' IAM-43 ' },
+    })
+    fireEvent.change(
+      screen.getByLabelText('specification.needsReferenceDescription'),
+      { target: { value: ' Updated context ' } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/8/needs-references',
+        expect.objectContaining({ method: 'PATCH' }),
+      )
+    })
+    const patchCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirements-specifications/8/needs-references' &&
+        (init as RequestInit | undefined)?.method === 'PATCH',
+    )
+    expect(
+      JSON.parse(String((patchCall?.[1] as RequestInit | undefined)?.body)),
+    ).toEqual({ description: 'Updated context', id: 81, text: 'IAM-43' })
+  })
+
+  it('keeps a needs reference draft open when the server rejects it', async () => {
+    needsReferenceMutationHandler = async method => {
+      expect(method).toBe('POST')
+      return {
+        json: async () => ({ error: 'Needs reference is not valid' }),
+        ok: false,
+      }
+    }
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.newNeedsReference' }),
+    )
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(
+      within(dialog).getByLabelText('specification.needsReference'),
+      { target: { value: 'IAM-INVALID' } },
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.save' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Needs reference is not valid',
+    )
+    expect(
+      within(dialog).getByLabelText('specification.needsReference'),
+    ).toHaveValue('IAM-INVALID')
+  })
+
+  it('keeps an edited needs reference open after a network failure', async () => {
+    needsReferenceMutationHandler = async method => {
+      expect(method).toBe('PATCH')
+      throw new Error('Needs reference network unavailable')
+    }
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '',
+          description: 'Original context',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '',
+        },
+      ],
+    })
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.editNeedsReference' }),
+    )
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(
+      within(dialog).getByLabelText('specification.needsReferenceDescription'),
+      { target: { value: 'Updated context' } },
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.save' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Needs reference network unavailable',
+    )
+    expect(
+      within(dialog).getByLabelText('specification.needsReferenceDescription'),
+    ).toHaveValue('Updated context')
+  })
+
+  it('deletes an unused needs reference after confirmation', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '2026-04-20T10:00:00.000Z',
+          description: null,
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '2026-04-20T10:00:00.000Z',
+        },
+      ],
+    })
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.deleteNeedsReference',
+      }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.delete' }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/8/needs-references',
+        expect.objectContaining({ method: 'DELETE' }),
+      )
+    })
+  })
+
+  it('keeps a needs reference visible when deletion is rejected', async () => {
+    needsReferenceMutationHandler = async method => {
+      expect(method).toBe('DELETE')
+      return {
+        json: async () => ({ error: 'Needs reference is protected' }),
+        ok: false,
+      }
+    }
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '',
+          description: 'Decision context',
+          id: 81,
+          libraryItemCount: 0,
+          linkedItemCount: 0,
+          specificationLocalRequirementCount: 0,
+          text: 'IAM-42',
+          updatedAt: '',
+        },
+      ],
+    })
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.deleteNeedsReference',
+      }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.delete' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Needs reference is protected',
+    )
+    expect(screen.getByText('IAM-42')).toBeInTheDocument()
   })
 
   it('passes reduced-motion preferences to the needs reference form modal', async () => {
@@ -3199,6 +4705,46 @@ describe('RequirementsSpecificationDetailClient', () => {
           method: 'PATCH',
         }),
       )
+    })
+  })
+
+  it('restores an inline needs reference after server and network failures', async () => {
+    const originalItem = {
+      ...initialSpecificationItem,
+      needsReference: 'ORIGINAL-REF',
+      needsReferenceId: 40,
+    }
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [{ description: null, id: 81, text: 'IAM-42' }],
+      specificationItems: createSpecificationItemsPage([originalItem]),
+    })
+    specificationItemMutationHandler = async () => ({
+      json: async () => ({ error: 'Assignment rejected' }),
+      ok: false,
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+    )
+    await waitFor(() => {
+      expect(latestItemsTableProps().rows[0]).toEqual(originalItem)
+    })
+
+    specificationItemMutationHandler = async () => {
+      throw new Error('Assignment network unavailable')
+    }
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+    )
+    await waitFor(() => {
+      expect(latestItemsTableProps().rows[0]).toEqual(originalItem)
+      expect(
+        fetchMock.mock.calls.filter(
+          ([url, init]) =>
+            String(url).endsWith('/items/lib%3A31') &&
+            (init as RequestInit | undefined)?.method === 'PATCH',
+        ),
+      ).toHaveLength(2)
     })
   })
 
@@ -3486,6 +5032,88 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps needs-reference links when clearing is cancelled', async () => {
+    const item = { ...initialSpecificationItem, needsReferenceId: 81 }
+    specificationItemsGetItems = [item]
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: createSpecificationItemsPage([item]),
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.clearNeedsReferenceAction',
+      }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.cancel' }),
+    )
+
+    expect(
+      screen.getByRole('button', {
+        name: 'specification.clearNeedsReferenceAction',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          url === specificationApiPath('/items') &&
+          (init as RequestInit | undefined)?.method === 'PATCH',
+      ),
+    ).toBe(false)
+    await waitForInitialAvailableRequirementsRefresh()
+  })
+
+  it('reports a selected-item resolution failure before bulk assignment', async () => {
+    specificationItemResolutionHandler = async () => {
+      throw new Error('Could not resolve selected applications')
+    }
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.assignNeedsReferenceAction',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not resolve selected applications',
+    )
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('closes bulk assignment if selected applications disappear before save', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [{ description: null, id: 81, text: 'IAM-42' }],
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.assignNeedsReferenceAction',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    specificationItemResolutionHandler = async () => okJson({ items: [] })
+    fireEvent.change(
+      within(dialog).getByLabelText('specification.needsReference'),
+      { target: { value: '81' } },
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'common.confirm' }),
+    )
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          url === specificationApiPath('/items') &&
+          (init as RequestInit | undefined)?.method === 'PATCH',
+      ),
+    ).toBe(false)
+  })
+
   it('distinguishes mixed removal and resolves all selected item refs before deletion', async () => {
     const libraryItems = Array.from({ length: 51 }, (_, index) => ({
       ...initialSpecificationItem,
@@ -3553,6 +5181,179 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
   })
 
+  it('cancels a library-only removal without sending a delete request', async () => {
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'specification.removeSelected',
+    })
+    expect(confirmation).toHaveTextContent('specification.removeConfirm')
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.cancel' }),
+    )
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          url === specificationApiPath('/items') &&
+          (init as RequestInit | undefined)?.method === 'DELETE',
+      ),
+    ).toBe(false)
+  })
+
+  it('removes a specification-local application after the local-only warning', async () => {
+    const localItem = {
+      ...initialSpecificationItem,
+      id: -41,
+      isSpecificationLocal: true,
+      itemRef: 'local:41',
+      kind: 'specificationLocal' as const,
+      specificationItemId: undefined,
+      specificationLocalRequirementId: 41,
+      uniqueId: 'KRAV0001',
+    }
+    specificationItemsGetItems = [localItem]
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: createSpecificationItemsPage([localItem]),
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'select-row--41' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'specification.removeSpecificationLocalConfirmTitle',
+    })
+    expect(confirmation).toHaveTextContent(
+      'specification.removeSpecificationLocalConfirm',
+    )
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.delete' }),
+    )
+
+    await waitFor(() => {
+      const deleteCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          url === specificationApiPath('/items') &&
+          (init as RequestInit | undefined)?.method === 'DELETE',
+      )
+      expect(
+        JSON.parse(String((deleteCall?.[1] as RequestInit | undefined)?.body)),
+      ).toEqual({ itemRefs: ['local:41'] })
+      expect(
+        screen.queryByRole('button', { name: 'specification.removeSelected' }),
+      ).toBeNull()
+      expect(
+        screen.getByRole('button', {
+          name: 'specification.newLocalRequirement',
+        }),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('reports a server rejection while keeping a library application selected', async () => {
+    deleteItemsHandler = async () => ({
+      json: async () => ({ error: 'Application cannot be removed' }),
+      ok: false,
+    })
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.delete' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Application cannot be removed',
+    )
+    expect(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    ).toBeInTheDocument()
+  })
+
+  it('reports a removal network failure without dropping the selection', async () => {
+    deleteItemsHandler = async () => {
+      throw new Error('Removal network unavailable')
+    }
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.delete' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Removal network unavailable',
+    )
+    expect(latestItemsTableProps().selectedIds).toEqual(new Set([101]))
+  })
+
+  it('reports partial mixed removal and keeps only the failed application selected', async () => {
+    const localItem = {
+      ...initialSpecificationItem,
+      id: -41,
+      isSpecificationLocal: true,
+      itemRef: 'local:41',
+      kind: 'specificationLocal' as const,
+      specificationItemId: undefined,
+      specificationLocalRequirementId: 41,
+      uniqueId: 'KRAV0001',
+    }
+    const items = [initialSpecificationItem, localItem]
+    specificationItemsGetItems = items
+    let resolutionCount = 0
+    specificationItemResolutionHandler = async () => {
+      resolutionCount += 1
+      return okJson({ items: resolutionCount === 1 ? items : [localItem] })
+    }
+    deleteItemsHandler = async () => okJson({ ok: true, removedCount: 1 })
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: createSpecificationItemsPage(items),
+    })
+    act(() => {
+      latestItemsTableProps().onSelectionChange?.(new Set([101, -41]))
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(confirmation).getByRole('button', { name: 'common.delete' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specification.removePartialFail',
+    )
+    expect(latestItemsTableProps().selectedIds).toEqual(new Set([-41]))
+  })
+
+  it('reports a removal resolution failure before asking for confirmation', async () => {
+    specificationItemResolutionHandler = async () => {
+      throw new Error('Application resolution unavailable')
+    }
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.removeSelected' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Application resolution unavailable',
+    )
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
   it('disables detail unlink while a confirmed removal request is pending', async () => {
     let completeDelete: ((response: unknown) => void) | undefined
     deleteItemsHandler = () =>
@@ -3560,6 +5361,12 @@ describe('RequirementsSpecificationDetailClient', () => {
         completeDelete = resolve
       })
     renderRequirementsSpecificationDetailClient()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'expand-row-items-101' }),
+    )
+    expect(
+      await screen.findByText('Requirement detail 101'),
+    ).toBeInTheDocument()
     act(() => {
       latestItemsTableProps().onSelectionChange?.(new Set([101]))
     })
@@ -3590,7 +5397,8 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
   })
 
-  it('shows unique bulk deviation priorities with localized name fallbacks in configured sort order', async () => {
+  it('shows Swedish bulk deviation priorities with localized fallbacks in configured sort order', async () => {
+    intlState.locale = 'sv'
     const highPriorityItem = {
       ...initialSpecificationItem,
       version: {
@@ -3616,9 +5424,38 @@ describe('RequirementsSpecificationDetailClient', () => {
         priorityLevelColor: '#22c55e',
         priorityLevelIconName: null,
         priorityLevelId: 2,
-        priorityLevelNameEn: null,
+        priorityLevelNameEn: 'Low fallback',
         priorityLevelNameSv: null,
-        priorityLevelSortOrder: 2,
+        priorityLevelSortOrder: null,
+      },
+    }
+    const sameOrderPriorityItem = {
+      ...initialSpecificationItem,
+      id: 104,
+      itemRef: 'lib:34',
+      specificationItemId: 34,
+      uniqueId: 'BEH0004',
+      version: {
+        ...initialSpecificationItem.version,
+        priorityLevelCode: 'P1',
+        priorityLevelColor: null,
+        priorityLevelIconName: null,
+        priorityLevelId: 1,
+        priorityLevelNameEn: 'Low',
+        priorityLevelNameSv: 'Låg',
+        priorityLevelSortOrder: 4,
+      },
+    }
+    const incompletePriorityItem = {
+      ...initialSpecificationItem,
+      id: 105,
+      itemRef: 'lib:35',
+      specificationItemId: 35,
+      uniqueId: 'BEH0005',
+      version: {
+        ...initialSpecificationItem.version,
+        priorityLevelCode: null,
+        priorityLevelId: 5,
       },
     }
     const duplicateHighPriorityItem = {
@@ -3628,14 +5465,22 @@ describe('RequirementsSpecificationDetailClient', () => {
       specificationItemId: 33,
       uniqueId: 'BEH0003',
     }
-    const items = [highPriorityItem, lowPriorityItem, duplicateHighPriorityItem]
+    const items = [
+      highPriorityItem,
+      lowPriorityItem,
+      sameOrderPriorityItem,
+      incompletePriorityItem,
+      duplicateHighPriorityItem,
+    ]
     specificationItemsGetItems = items
     renderRequirementsSpecificationDetailClient({
       ...createInitialData(),
       specificationItems: createSpecificationItemsPage(items),
     })
     act(() => {
-      latestItemsTableProps().onSelectionChange?.(new Set([101, 102, 103]))
+      latestItemsTableProps().onSelectionChange?.(
+        new Set([101, 102, 103, 104, 105]),
+      )
     })
     fireEvent.click(
       screen.getByRole('button', {
@@ -3651,8 +5496,9 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).toBeInTheDocument()
     const priorityBadges = dialog.querySelectorAll('.status-badge')
     expect([...priorityBadges].map(badge => badge.textContent)).toEqual([
-      'P2',
+      'P1 – Låg',
       'P4 – Hög',
+      'P2 – Low fallback',
     ])
     expect(priorityBadges[0]?.querySelector('svg')).toBeNull()
     expect(priorityBadges[1]?.querySelector('svg')).toBeTruthy()
@@ -4015,6 +5861,30 @@ describe('RequirementsSpecificationDetailClient', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('treats an omitted continuation payload as an empty final page', async () => {
+    specificationItemsGetHandler = async url => {
+      expect(searchParamsFromPath(url).get('cursor')).toBe('empty-page')
+      return okJson({})
+    }
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: createSpecificationItemsPage(
+        [initialSpecificationItem],
+        { hasMore: true, nextCursor: 'empty-page' },
+      ),
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'load-more-items' }))
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'load-more-items' }),
+      ).toBeNull()
+      expect(
+        screen.getByTestId('requirements-table-items-rows'),
+      ).toHaveTextContent('lib:31')
+    })
+  })
+
   it('does not flash the empty specification message while sorting', async () => {
     let resolveSortedRequest: ((response: unknown) => void) | undefined
     const sortedRequest = new Promise<unknown>(resolve => {
@@ -4322,5 +6192,343 @@ describe('RequirementsSpecificationDetailClient', () => {
         (item: SpecificationListItem) => item.itemRef,
       ),
     ).toEqual(['lib:33'])
+  })
+
+  it('clears an active available selection when selection answers change', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [202],
+    }
+    renderRequirementsSpecificationDetailClient()
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+    fireEvent.click(toggle)
+    await waitFor(() => expect(toggle).toBeChecked())
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+    expect(
+      screen.getByRole('button', {
+        name: 'specification.addSelectedToSpecification',
+      }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('tab', {
+        name: 'specification.requirementSelectionQuestions',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'notify selection questions changed',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'specification.availableRequirements' }),
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', {
+          name: 'specification.addSelectedToSpecification',
+        }),
+      ).toBeNull()
+    })
+  })
+
+  it('keeps list rows usable when refresh resources reject with Error values', async () => {
+    availableRequirementsGetHandler = async () => {
+      throw new Error('Available requirements offline')
+    }
+    normReferencesGetHandler = async () => {
+      throw new Error('Norm references offline')
+    }
+    specificationItemsGetHandler = async () => {
+      throw 'Items offline'
+    }
+    renderRequirementsSpecificationDetailClient()
+
+    expect(
+      await screen.findByText('Available requirements offline'),
+    ).toHaveAttribute('role', 'status')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'toggle-status-filter-items' }),
+    )
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([input]) =>
+          String(input).startsWith('/api/norm-references'),
+        ),
+      ).toBe(true)
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'sort-description-items' }),
+    )
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'specification.loadSpecificationItemsFailed',
+      )
+    })
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('lib:31')
+  })
+
+  it('shows the original specification after a non-Error metadata refresh failure', async () => {
+    specificationMetaGetHandler = async () => {
+      throw 'Metadata offline'
+    }
+    renderRequirementsSpecificationDetailClient()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specification.editSpecification' }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'specification.editSpecification',
+    })
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /specification\.name/ }),
+      { target: { value: 'Specification awaiting refresh' } },
+    )
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /common\.save/i }),
+    )
+
+    expect(
+      await screen.findByText('specification.loadSpecificationFailed'),
+    ).toHaveAttribute('role', 'status')
+    expect(
+      screen.getByRole('heading', { level: 1, name: initialSpec.name }),
+    ).toBeInTheDocument()
+  })
+
+  it('loads needs references after an Error-valued preload failure', async () => {
+    needsReferencesGetHandler = async () => {
+      throw new Error('Needs register offline')
+    }
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      errors: [
+        {
+          key: SPECIFICATION_PRELOAD_ERROR_KEYS.needsReferences,
+          message: 'Needs references missing from preload',
+        },
+      ],
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'specification.newLocalRequirement',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([input]) =>
+            String(input) === specificationApiPath('/needs-references'),
+        ),
+      ).toBe(true)
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'specification.partialDataLoadWarning',
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('keeps an item without a stable reference visible but unselected', async () => {
+    const itemWithoutRef = {
+      ...initialSpecificationItem,
+      itemRef: undefined,
+    }
+    specificationItemsGetItems = [itemWithoutRef]
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      specificationItems: createSpecificationItemsPage([itemWithoutRef]),
+    })
+
+    expect(
+      screen.getByTestId('requirements-table-items-rows'),
+    ).toHaveTextContent('101')
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+    expect(
+      screen.queryByRole('button', {
+        name: 'specification.removeSelectedFromSpecification',
+      }),
+    ).toBeNull()
+    await waitForInitialAvailableRequirementsRefresh()
+  })
+
+  it('renders English needs-reference fallbacks for sparse usage metadata', async () => {
+    specificationItemsGetHandler = async () =>
+      okJson({
+        items: [
+          {
+            ...initialSpecificationItem,
+            itemRef: 'lib:english-fallback',
+            specificationItemStatusNameEn: undefined,
+            uniqueId: 'USAGE-ENGLISH-FALLBACK',
+            version: {
+              ...initialSpecificationItem.version,
+              description: undefined,
+              typeNameEn: undefined,
+            },
+          },
+        ],
+      })
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableNeedsRefs: [
+        {
+          createdAt: '',
+          description: 'Sparse usage',
+          id: 82,
+          libraryItemCount: 1,
+          linkedItemCount: 1,
+          specificationLocalRequirementCount: 0,
+          text: 'NEED-82',
+          updatedAt: '',
+        },
+      ],
+    })
+    fireEvent.click(
+      screen.getByRole('tab', { name: /specification\.needsReferences/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /specification\.toggleNeedsReferenceUsage/,
+      }),
+    )
+
+    expect(
+      await screen.findByText('USAGE-ENGLISH-FALLBACK'),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('—')).toHaveLength(3)
+  })
+
+  it('offers the management report for a specification in management', async () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      spec: {
+        ...initialSpec,
+        lifecycleStatus: {
+          id: 4,
+          nameEn: 'Management',
+          nameSv: 'Förvaltning',
+        },
+        specificationLifecycleStatusId: 4,
+      },
+    })
+    await waitForInitialAvailableRequirementsRefresh()
+    const moreActions = (
+      latestItemsTableProps().floatingActions as Array<{
+        id: string
+        menuItems?: Array<{
+          id: string
+          onClick?: (target?: HTMLButtonElement | null) => void
+        }>
+      }>
+    ).find(action => action.id === 'more-actions')
+    const trigger = document.createElement('button')
+    moreActions?.menuItems
+      ?.find(item => item.id === 'pdf-management')
+      ?.onClick?.(trigger)
+
+    expect(moreActions?.menuItems?.map(item => item.id)).toContain(
+      'pdf-management',
+    )
+    expect(pdfDownloadState.download).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restoreFocusTo: trigger,
+        url: '/en/specifications/8/reports/pdf/management',
+      }),
+    )
+  })
+
+  it.each([
+    ['Error', new Error('Available continuation offline')],
+    ['non-Error', 'Available continuation offline'],
+  ])(
+    'keeps available rows after an %s load-more failure',
+    async (_kind, failure) => {
+      availableRequirementsGetHandler = async url => {
+        if (searchParamsFromPath(url).has('cursor')) throw failure
+        return okJson({
+          pagination: { hasMore: true, nextCursor: 'cursor-2' },
+          requirements: [initialAvailableRequirement],
+        })
+      }
+      renderRequirementsSpecificationDetailClient({
+        ...createInitialData(),
+        availableRequirements: {
+          hasMore: true,
+          nextCursor: 'cursor-2',
+          rows: [initialAvailableRequirement],
+        },
+      })
+      const loadMore = await screen.findByRole('button', {
+        name: 'load-more-available',
+      })
+      fireEvent.click(loadMore)
+
+      expect(
+        await screen.findByText(
+          failure instanceof Error
+            ? failure.message
+            : 'specification.loadAvailableRequirementsFailed',
+        ),
+      ).toHaveAttribute('role', 'status')
+      expect(
+        screen.getByTestId('requirements-table-available-rows'),
+      ).toHaveTextContent('202')
+    },
+  )
+
+  it('keeps selection filtering on while an empty continuation finishes the list', async () => {
+    availableRequirementsSelectionFilter = {
+      applied: false,
+      hasCurrentAnswers: true,
+      hasRequirementSelection: true,
+      hasNoRequirementSelection: false,
+      requirementIds: [202],
+    }
+    availableRequirementsGetHandler = async url => {
+      if (searchParamsFromPath(url).has('cursor')) return okJson({})
+      return okJson({
+        pagination: { hasMore: true, nextCursor: 'filtered-cursor' },
+        requirements: [initialAvailableRequirement],
+        selectionFilter: {
+          ...availableRequirementsSelectionFilter,
+          applied: url.includes('applyRequirementSelectionFilter=true'),
+        },
+      })
+    }
+    renderRequirementsSpecificationDetailClient()
+    const toggle = await screen.findByRole('switch', {
+      name: 'specification.filterWithRequirementSelectionQuestions',
+    })
+    fireEvent.click(toggle)
+    const loadMore = await screen.findByRole('button', {
+      name: 'load-more-available',
+    })
+    fireEvent.click(loadMore)
+
+    await waitFor(() => {
+      expect(
+        availableRequirementsFetchUrls().some(url => {
+          const params = searchParamsFromPath(url)
+          return (
+            params.get('cursor') === 'filtered-cursor' &&
+            params.get('applyRequirementSelectionFilter') === 'true'
+          )
+        }),
+      ).toBe(true)
+      expect(
+        screen.queryByRole('button', { name: 'load-more-available' }),
+      ).toBeNull()
+    })
+    expect(
+      screen.getByTestId('requirements-table-available-rows'),
+    ).toHaveTextContent('202')
   })
 })

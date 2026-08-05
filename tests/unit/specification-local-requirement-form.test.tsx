@@ -122,10 +122,14 @@ describe('SpecificationLocalRequirementForm', () => {
     confirmDiscardChangesMock.mockResolvedValue(true)
     fetchMock.mockImplementation((url: string) => {
       if (url.includes('/api/requirement-categories')) {
-        return okJson({ categories: [] })
+        return okJson({
+          categories: [{ id: 3, nameEn: 'Functional', nameSv: 'Funktionell' }],
+        })
       }
       if (url.includes('/api/requirement-types')) {
-        return okJson({ types: [] })
+        return okJson({
+          types: [{ id: 5, nameEn: 'Function', nameSv: 'Funktion' }],
+        })
       }
       if (url.includes('/api/requirement-packages')) {
         return okJson({ requirementPackages: [] })
@@ -149,6 +153,24 @@ describe('SpecificationLocalRequirementForm', () => {
               id: 2,
               nameEn: 'Low',
               nameSv: 'Låg',
+            },
+          ],
+        })
+      }
+      if (url.includes('/api/quality-characteristics')) {
+        return okJson({
+          qualityCharacteristics: [
+            {
+              id: 40,
+              nameEn: 'System quality',
+              nameSv: 'Systemkvalitet',
+              parentId: null,
+            },
+            {
+              id: 4,
+              nameEn: 'Reliability',
+              nameSv: 'Tillförlitlighet',
+              parentId: 40,
             },
           ],
         })
@@ -275,5 +297,192 @@ describe('SpecificationLocalRequirementForm', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled(),
     )
+  })
+
+  it('submits trimmed local requirement values and establishes a clean baseline', async () => {
+    const onDirtyChange = vi.fn()
+    const onSubmit = vi.fn(async () => undefined)
+    render(
+      <SpecificationLocalRequirementForm
+        initialValue={{
+          acceptanceCriteria: ' Acceptance ',
+          categoryId: '3',
+          description: 'Original',
+          needsReferenceId: '',
+          normReferenceIds: [11],
+          priorityLevelId: '2',
+          qualityCharacteristicId: '4',
+          typeId: '5',
+          verifiable: true,
+          verificationMethod: ' Review ',
+        }}
+        needsReferencesResource={needsReferencesResource([
+          { id: 7, text: 'Need A' },
+        ])}
+        onCancel={() => undefined}
+        onDirtyChange={onDirtyChange}
+        onSubmit={onSubmit}
+        submitLabel="Save"
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: '  Updated requirement  ' } },
+    )
+    fireEvent.change(
+      screen.getByRole('combobox', {
+        name: /specification\.needsReference/,
+      }),
+      { target: { value: '7' } },
+    )
+    const category = screen.getByRole('combobox', {
+      name: /requirement\.category/,
+    })
+    const requirementType = screen.getByRole('combobox', {
+      name: /requirement\.type/,
+    })
+    const qualityCharacteristic = screen.getByRole('combobox', {
+      name: /requirement\.qualityCharacteristic/,
+    })
+    await waitFor(() => {
+      expect(category).toHaveValue('3')
+      expect(requirementType).toHaveValue('5')
+    })
+    fireEvent.change(requirementType, { target: { value: '' } })
+    expect(requirementType).toHaveValue('')
+    fireEvent.change(requirementType, { target: { value: '5' } })
+    await screen.findByRole('option', { name: 'Reliability' })
+    fireEvent.change(qualityCharacteristic, { target: { value: '4' } })
+    await waitFor(() => {
+      expect(category).toHaveValue('3')
+      expect(requirementType).toHaveValue('5')
+      expect(qualityCharacteristic).toHaveValue('4')
+    })
+    const save = screen.getByRole('button', { name: 'Save' })
+    await waitFor(() => expect(save).toBeEnabled())
+    const form = save.closest('form')
+    expect(form).not.toBeNull()
+    if (!form) throw new Error('Expected the save button inside a form')
+    fireEvent.submit(form)
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        acceptanceCriteria: 'Acceptance',
+        description: 'Updated requirement',
+        needsReferenceId: 7,
+        normReferenceIds: [11],
+        priorityLevelId: 2,
+        qualityCharacteristicId: 4,
+        requirementCategoryId: 3,
+        requirementTypeId: 5,
+        verifiable: true,
+        verificationMethod: 'Review',
+      })
+    })
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled(),
+    )
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false)
+  })
+
+  it('shows submission failures and permits a successful retry', async () => {
+    const onSubmit = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error('Save failed'))
+      .mockResolvedValueOnce(undefined)
+    render(
+      <SpecificationLocalRequirementForm
+        needsReferencesResource={needsReferencesResource([])}
+        onCancel={() => undefined}
+        onSubmit={onSubmit}
+        submitLabel="Save"
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Retry me' } },
+    )
+    const save = screen.getByRole('button', { name: 'Save' })
+    await waitFor(() => expect(save).toBeEnabled())
+    fireEvent.click(save)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Save failed')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        acceptanceCriteria: null,
+        needsReferenceId: null,
+        verificationMethod: null,
+      }),
+    )
+  })
+
+  it('uses the generic error message for non-Error submission failures', async () => {
+    render(
+      <SpecificationLocalRequirementForm
+        needsReferencesResource={needsReferencesResource([])}
+        onCancel={() => undefined}
+        onSubmit={vi.fn().mockRejectedValue('offline')}
+        submitLabel="Save"
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Cannot save' } },
+    )
+    const save = screen.getByRole('button', { name: 'Save' })
+    await waitFor(() => expect(save).toBeEnabled())
+    fireEvent.click(save)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
+  })
+
+  it('confirms dirty cancellation and respects a rejected discard', async () => {
+    const onCancel = vi.fn()
+    confirmDiscardChangesMock
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+    render(
+      <SpecificationLocalRequirementForm
+        needsReferencesResource={needsReferencesResource([])}
+        onCancel={onCancel}
+        onSubmit={async () => undefined}
+        submitLabel="Save"
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /requirement\.description/ }),
+      { target: { value: 'Unsaved' } },
+    )
+    const cancel = screen.getByRole('button', { name: 'common.cancel' })
+    fireEvent.click(cancel)
+    await waitFor(() => expect(confirmDiscardChangesMock).toHaveBeenCalled())
+    expect(onCancel).not.toHaveBeenCalled()
+
+    fireEvent.click(cancel)
+    await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(1))
+    expect(confirmDiscardChangesMock).toHaveBeenLastCalledWith(cancel)
+  })
+
+  it('cancels immediately when the form is clean', async () => {
+    const onCancel = vi.fn()
+    render(
+      <SpecificationLocalRequirementForm
+        needsReferencesResource={needsReferencesResource([])}
+        onCancel={onCancel}
+        onSubmit={async () => undefined}
+        submitLabel="Save"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+    await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(1))
+    expect(confirmDiscardChangesMock).not.toHaveBeenCalled()
   })
 })

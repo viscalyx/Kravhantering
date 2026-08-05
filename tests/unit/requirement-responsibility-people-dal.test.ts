@@ -107,25 +107,29 @@ describe('requirement responsibility people DAL', () => {
     expect(parameters[6]).toBeInstanceOf(Date)
   })
 
-  it('returns responsibility people and null for unknown HSA identities', async () => {
+  it('returns a stored responsibility person or null by HSA-id', async () => {
     const person = {
-      email: null,
+      email: 'owner@example.test',
       givenName: 'Area',
       hsaId: 'SE5560000001-owner1',
       middleName: null,
       surname: 'Owner',
     }
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([person])
+      .mockResolvedValueOnce([])
+
     await expect(
-      getRequirementResponsibilityPerson(
-        { query: vi.fn(async () => [person]) },
-        person.hsaId,
-      ),
+      getRequirementResponsibilityPerson({ query }, person.hsaId),
     ).resolves.toBe(person)
     await expect(
-      getRequirementResponsibilityPerson(
-        { query: vi.fn(async () => []) },
-        'SE5560000001-missing1',
-      ),
+      getRequirementResponsibilityPerson({ query }, 'SE5560000001-missing1'),
     ).resolves.toBeNull()
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('WHERE hsa_id = @0'),
+      [person.hsaId],
+    )
   })
 })

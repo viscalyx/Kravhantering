@@ -229,6 +229,74 @@ describe('SpecificationFormModal', () => {
     ).toBeDisabled()
   })
 
+  it('edits every taxonomy field and closes the responsibility handover', async () => {
+    renderEditModal()
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: /specification\.businessNeedsReference/,
+      }),
+      { target: { value: 'Updated business need' } },
+    )
+    fireEvent.change(
+      screen.getByRole('combobox', {
+        name: /specification\.governanceObjectType/,
+      }),
+      { target: { value: '' } },
+    )
+    fireEvent.change(
+      screen.getByRole('combobox', {
+        name: /specification\.implementationType/,
+      }),
+      { target: { value: '' } },
+    )
+    fireEvent.change(
+      screen.getByRole('combobox', {
+        name: /specification\.lifecycleStatus/,
+      }),
+      { target: { value: '3' } },
+    )
+    expect(
+      screen.getByRole('textbox', {
+        name: /specification\.businessNeedsReference/,
+      }),
+    ).toHaveValue('Updated business need')
+    expect(
+      screen.getByRole('combobox', {
+        name: /specification\.governanceObjectType/,
+      }),
+    ).toHaveValue('')
+    expect(
+      screen.getByRole('combobox', {
+        name: /specification\.implementationType/,
+      }),
+    ).toHaveValue('')
+    expect(
+      screen.getByRole('combobox', {
+        name: /specification\.lifecycleStatus/,
+      }),
+    ).toHaveValue('3')
+    fireEvent.invalid(
+      screen.getByRole('textbox', {
+        name: /specification\.specificationCode/,
+      }),
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'specification.specificationCodeRequired',
+    )
+
+    fireEvent.click(await getEnabledChangeResponsibleButton())
+    const dialogs = screen.getAllByRole('dialog')
+    const handoverDialog = dialogs.at(-1)
+    expect(handoverDialog).toBeDefined()
+    fireEvent.click(
+      within(handoverDialog as HTMLElement).getByRole('button', {
+        name: /common\.cancel/i,
+      }),
+    )
+    await waitFor(() => expect(screen.getAllByRole('dialog')).toHaveLength(1))
+  })
+
   it('calls onClose when the unchanged modal cancel button is pressed', () => {
     const onClose = vi.fn()
 
@@ -440,6 +508,22 @@ describe('SpecificationFormModal', () => {
         name: /specification\.changeResponsible/,
       }),
     ).toBeDisabled()
+  })
+
+  it.each([
+    ['a non-object response', null],
+    ['an unauthenticated response', { authenticated: false }],
+    ['a blank HSA-id', { authenticated: true, hsaId: ' ' }],
+  ])('marks the current user unavailable for %s', async (_label, body) => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/auth/me') return Promise.resolve(okJson(body))
+      return Promise.resolve(okJson({ ok: true }))
+    })
+    renderCreateModal({ currentUser: undefined })
+
+    expect(
+      await screen.findByText('specification.currentUserUnavailable'),
+    ).toHaveAttribute('role', 'alert')
   })
 
   it('blocks create saves when the current user HSA-id is unavailable', () => {
@@ -711,6 +795,43 @@ describe('SpecificationFormModal', () => {
       JSON.parse((requestInit?.body as string) ?? '{}'),
     ).not.toHaveProperty('responsibleHsaId')
   })
+
+  it.each([
+    [
+      'an empty response',
+      { json: async () => ({}), ok: true, text: async () => '' },
+    ],
+    [
+      'a non-JSON response',
+      { json: async () => ({}), ok: true, text: async () => 'saved' },
+    ],
+    ['a JSON-only response', { json: async () => ({}), ok: true }],
+    ['a response without a body reader', { ok: true }],
+  ])(
+    'keeps the submitted code when save returns %s',
+    async (_label, response) => {
+      const onSaved = vi.fn()
+      fetchMock.mockImplementation((url: string) => {
+        if (url === '/api/requirements-specifications/1') {
+          return Promise.resolve(response)
+        }
+        return Promise.resolve(okJson({ ok: true }))
+      })
+      renderEditModal({ onSaved })
+
+      fireEvent.change(
+        screen.getByRole('textbox', { name: /specification\.name/ }),
+        { target: { value: 'Updated name' } },
+      )
+      fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+      await waitFor(() => {
+        expect(onSaved).toHaveBeenCalledWith({
+          newSpecificationCode: 'ETJANST-UPP-2026',
+        })
+      })
+    },
+  )
 
   it('confirms unsaved edits and closes after non-admin responsible changes', async () => {
     confirmMock.mockResolvedValue(true)

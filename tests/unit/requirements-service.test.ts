@@ -1463,6 +1463,61 @@ describe('createRequirementsService', () => {
     )
   })
 
+  it('filters specification catalogs and shapes REST-only fields on demand', async () => {
+    const specification = {
+      businessNeedsReference: 'Business need',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      governanceObjectType: { id: 3, nameEn: 'Service', nameSv: 'Tjänst' },
+      id: 7,
+      implementationType: { id: 4, nameEn: 'Contract', nameSv: 'Avtal' },
+      itemCount: 2,
+      lifecycleStatus: { id: 1, nameEn: 'Draft', nameSv: 'Utkast' },
+      name: 'IAM Specification',
+      requirementAreas: [{ id: 2, name: 'Security' }],
+      responsibleDisplayName: 'Alice Owner',
+      responsibleHsaId: 'SE5560000001-alice1',
+      specificationCode: 'IAM-SPECIFICATION',
+      specificationGovernanceObjectTypeId: 3,
+      specificationImplementationTypeId: 4,
+      specificationLifecycleStatusId: 1,
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    }
+    mocks.listSpecificationsForActorCatalog.mockResolvedValue({
+      coAuthorHsaIdsBySpecification: new Map(),
+      specifications: [specification],
+    })
+    const service = createTestRequirementsService()
+
+    const filtered = await service.listSpecifications(makeContext(), {
+      nameSearch: 'iam',
+    })
+    const rest = await service.listSpecifications(makeContext(), {
+      includeRestFields: true,
+      nameSearch: 'IAM',
+      responseFormat: 'json',
+    })
+    const empty = await service.listSpecifications(makeContext(), {
+      nameSearch: 'missing',
+    })
+
+    expect(filtered.specifications).toEqual([
+      expect.objectContaining({
+        governanceObjectType: { nameEn: 'Service', nameSv: 'Tjänst' },
+        implementationType: { nameEn: 'Contract', nameSv: 'Avtal' },
+      }),
+    ])
+    expect(rest.specifications).toEqual([
+      expect.objectContaining({
+        governanceObjectType: expect.objectContaining({ id: 3 }),
+        implementationType: expect.objectContaining({ id: 4 }),
+        lifecycleStatus: expect.objectContaining({ id: 1 }),
+        permissions: expect.objectContaining({ canEditContent: true }),
+      }),
+    ])
+    expect(empty.specifications).toEqual([])
+    expect(empty.message).toContain('No specifications found.')
+  })
+
   it('rejects specification workflows without a specification reference', async () => {
     const service = createTestRequirementsService()
 
@@ -1909,6 +1964,40 @@ describe('createRequirementsService', () => {
     ).not.toHaveBeenCalled()
   })
 
+  it('reports missing graduation target areas and missing graduated records', async () => {
+    const service = createTestRequirementsService()
+    mocks.getAreaById.mockResolvedValueOnce(null)
+
+    await expect(
+      service.graduateSpecificationLocalRequirement(makeContext(), {
+        localRequirementId: 12,
+        requirementAreaId: 404,
+        specificationId: 7,
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      details: { requirementAreaId: 404 },
+    })
+
+    mocks.getAreaById.mockResolvedValueOnce({
+      id: 2,
+      name: 'Security',
+      ownerHsaId: 'SE5560000001-alice1',
+      prefix: 'SEC',
+    })
+    mocks.getRequirementById.mockResolvedValueOnce(null)
+    await expect(
+      service.graduateSpecificationLocalRequirement(makeContext(), {
+        localRequirementId: 12,
+        requirementAreaId: 2,
+        specificationId: 7,
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      details: { requirementId: 2 },
+    })
+  })
+
   it('does not emit specification addition audit events when no links are added', async () => {
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(0)
     const service = createTestRequirementsService()
@@ -1919,6 +2008,36 @@ describe('createRequirementsService', () => {
     })
 
     expect(emittedSecurityEvents()).toEqual([])
+  })
+
+  it('reports unpublished requirements as skipped without attempting links', async () => {
+    mocks.getPublishedVersionIdForRequirement
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(202)
+    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValueOnce(1)
+    const service = createTestRequirementsService()
+
+    const result = await service.addToSpecification(makeContext(), {
+      locale: 'en',
+      requirementIds: [10, 11],
+      specificationId: 7,
+    })
+
+    expect(result).toMatchObject({
+      addedCount: 1,
+      skippedCount: 1,
+      skippedIds: [10],
+    })
+    expect(result.message).toContain(
+      'Skipped 1 requirement with no published version: 10.',
+    )
+    expect(
+      mocks.linkRequirementsToSpecificationAtomically,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      7,
+      expect.objectContaining({ requirementIds: [11] }),
+    )
   })
 
   it('emits security audit events for sensitive requirement mutations', async () => {

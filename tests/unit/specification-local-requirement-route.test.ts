@@ -26,6 +26,7 @@ const mocks = {
   createSpecificationLocalRequirement: vi.fn(),
   deleteSpecificationLocalRequirement: vi.fn(),
   getSpecificationById: vi.fn(),
+  getSpecificationLocalRequirementDetail: vi.fn(),
   updateSpecificationLocalRequirement: vi.fn(),
 }
 
@@ -61,13 +62,15 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.deleteSpecificationLocalRequirement(...args),
   getSpecificationById: (...args: unknown[]) =>
     mocks.getSpecificationById(...args),
-  getSpecificationLocalRequirementDetail: vi.fn(),
+  getSpecificationLocalRequirementDetail: (...args: unknown[]) =>
+    mocks.getSpecificationLocalRequirementDetail(...args),
   updateSpecificationLocalRequirement: (...args: unknown[]) =>
     mocks.updateSpecificationLocalRequirement(...args),
 }))
 
 import {
   DELETE,
+  GET,
   PUT,
 } from '@/app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/route'
 import { POST as postLocalRequirement } from '@/app/api/requirements-specifications/[id]/local-requirements/route'
@@ -104,6 +107,68 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     authState.createRequestContext.mockResolvedValue(mockContext)
     authState.getRequestSqlServerDataSource.mockResolvedValue(mockDb)
     mocks.getSpecificationById.mockResolvedValue({ id: 5 })
+    mocks.getSpecificationLocalRequirementDetail.mockResolvedValue({
+      description: 'Local requirement',
+      id: 41,
+      itemRef: 'local:41',
+    })
+    mocks.updateSpecificationLocalRequirement.mockResolvedValue({
+      description: 'Updated local requirement',
+      id: 41,
+      itemRef: 'local:41',
+    })
+  })
+
+  it('returns an existing specification-local requirement detail', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/local-requirements/41',
+      ),
+      makeParams('5', '41'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      description: 'Local requirement',
+      id: 41,
+    })
+    expect(mocks.getSpecificationLocalRequirementDetail).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      41,
+    )
+  })
+
+  it('returns not found when the detail or owning specification is missing', async () => {
+    mocks.getSpecificationLocalRequirementDetail.mockResolvedValueOnce(null)
+    const missingDetail = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/local-requirements/41',
+      ),
+      makeParams('5', '41'),
+    )
+    mocks.getSpecificationById.mockResolvedValueOnce(null)
+    const missingSpecification = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/404/local-requirements/41',
+      ),
+      makeParams('404', '41'),
+    )
+
+    expect(missingDetail.status).toBe(404)
+    expect(missingSpecification.status).toBe(404)
+  })
+
+  it('rejects invalid detail route parameters before querying', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/x/local-requirements/41',
+      ),
+      makeParams('x', '41'),
+    )
+
+    expect(response.status).toBe(400)
+    expect(mocks.getSpecificationById).not.toHaveBeenCalled()
   })
 
   it('returns a JSON 500 when deleting a specification-local requirement fails', async () => {
@@ -197,6 +262,98 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     expect(mocks.updateSpecificationLocalRequirement).not.toHaveBeenCalled()
   })
 
+  it('updates a specification-local requirement and applies nullable defaults', async () => {
+    const response = await PUT(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/local-requirements/41',
+        {
+          body: JSON.stringify({
+            description: 'Updated local requirement',
+            normReferenceIds: [3],
+            verifiable: false,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+        },
+      ),
+      makeParams('5', '41'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({ ok: true })
+    expect(mocks.updateSpecificationLocalRequirement).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      41,
+      expect.objectContaining({
+        acceptanceCriteria: null,
+        needsReferenceId: null,
+        normReferenceIds: [3],
+        priorityLevelId: null,
+        qualityCharacteristicId: null,
+        requirementCategoryId: null,
+        requirementTypeId: null,
+      }),
+    )
+  })
+
+  it.each([
+    new RequirementsServiceError('conflict', 'Update conflict'),
+    new Error('update failed'),
+  ])('maps update failure %s to a stable response', async error => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.updateSpecificationLocalRequirement.mockRejectedValueOnce(error)
+
+    try {
+      const response = await PUT(
+        new NextRequest(
+          'http://localhost/api/requirements-specifications/5/local-requirements/41',
+          {
+            body: JSON.stringify({
+              description: 'Updated local requirement',
+              normReferenceIds: [],
+              verifiable: true,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'PUT',
+          },
+        ),
+        makeParams('5', '41'),
+      )
+
+      expect(response.status).toBe(
+        error instanceof RequirementsServiceError ? 409 : 500,
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('returns not found when update ownership no longer exists', async () => {
+    mocks.getSpecificationById.mockResolvedValueOnce(null)
+
+    const response = await PUT(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/404/local-requirements/41',
+        {
+          body: JSON.stringify({
+            description: 'Updated local requirement',
+            normReferenceIds: [],
+            verifiable: true,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+        },
+      ),
+      makeParams('404', '41'),
+    )
+
+    expect(response.status).toBe(404)
+    expect(mocks.updateSpecificationLocalRequirement).not.toHaveBeenCalled()
+  })
+
   it('creates a specification-local requirement using the authorized route DB', async () => {
     const createdLocalRequirement = {
       description: 'New local requirement',
@@ -266,6 +423,63 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, '$')
+    expect(mocks.createSpecificationLocalRequirement).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    new RequirementsServiceError('conflict', 'Create conflict'),
+    new Error('create failed'),
+  ])('maps create failure %s to a stable response', async error => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.createSpecificationLocalRequirement.mockRejectedValueOnce(error)
+
+    try {
+      const response = await postLocalRequirement(
+        new NextRequest(
+          'http://localhost/api/requirements-specifications/5/local-requirements',
+          {
+            body: JSON.stringify({
+              description: 'New local requirement',
+              normReferenceIds: [],
+              verifiable: true,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+          },
+        ),
+        { params: Promise.resolve({ id: '5' }) },
+      )
+
+      expect(response.status).toBe(
+        error instanceof RequirementsServiceError ? 409 : 500,
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('returns not found when create ownership no longer exists', async () => {
+    mocks.getSpecificationById.mockResolvedValueOnce(null)
+
+    const response = await postLocalRequirement(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/404/local-requirements',
+        {
+          body: JSON.stringify({
+            description: 'New local requirement',
+            normReferenceIds: [],
+            verifiable: true,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      ),
+      { params: Promise.resolve({ id: '404' }) },
+    )
+
+    expect(response.status).toBe(404)
     expect(mocks.createSpecificationLocalRequirement).not.toHaveBeenCalled()
   })
 
