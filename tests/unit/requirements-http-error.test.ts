@@ -94,6 +94,31 @@ describe('toHttpErrorPayload', () => {
   })
 
   it.each([
+    [null, null],
+    [{ uniqueId: 42 }, null],
+    [
+      { uniqueId: 'REQ-001', versions: null },
+      { uniqueId: 'REQ-001', versionNumber: null },
+    ],
+    [
+      { uniqueId: 'REQ-001', versions: [{ versionNumber: '2' }] },
+      { uniqueId: 'REQ-001', versionNumber: null },
+    ],
+  ])(
+    'sanitizes malformed stale edit summaries %#',
+    (latest, expectedLatest) => {
+      expect(
+        toHttpErrorPayload(
+          conflictError('This requirement was updated', {
+            latest,
+            reason: 'stale_requirement_edit',
+          }),
+        ).body.details,
+      ).toEqual({ latest: expectedLatest, reason: 'stale_requirement_edit' })
+    },
+  )
+
+  it.each([
     'norm_reference_id_exists',
     'norm_reference_id_generation_exhausted',
   ])('allowlists the safe norm-reference conflict reason %s', reason => {
@@ -135,6 +160,50 @@ describe('toHttpErrorPayload', () => {
         error: 'RFI question suggestion conflict',
       },
       status: 409,
+    })
+  })
+
+  it('allowlists safe improvement and privacy conflict details', () => {
+    expect(
+      toHttpErrorPayload(
+        conflictError('Suggestion conflict', {
+          reason: 'improvement_suggestion_review_required',
+        }),
+      ).body.details,
+    ).toEqual({ reason: 'improvement_suggestion_review_required' })
+    expect(
+      toHttpErrorPayload(
+        validationError('Privacy conflict', {
+          groupKey: 'requirements.owner',
+          reason: 'replacement_required',
+        }),
+      ).body.details,
+    ).toEqual({
+      groupKey: 'requirements.owner',
+      reason: 'replacement_required',
+    })
+    expect(
+      toHttpErrorPayload(
+        validationError('Unsafe privacy details', {
+          groupKey: 'invalid',
+          reason: 'replacement_required',
+        }),
+      ).body.details,
+    ).toBeUndefined()
+  })
+
+  it('maps status-bearing unauthorized errors and ignores non-errors', () => {
+    expect(
+      toHttpErrorPayload(
+        Object.assign(new Error('Sign in required'), { status: 401 }),
+      ),
+    ).toEqual({
+      body: { code: 'unauthorized', error: 'Sign in required' },
+      status: 401,
+    })
+    expect(toHttpErrorPayload('not an error')).toEqual({
+      body: { code: 'internal', error: 'An internal error occurred' },
+      status: 500,
     })
   })
 

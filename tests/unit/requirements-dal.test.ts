@@ -3,14 +3,18 @@ import {
   approveArchiving,
   cancelArchiving,
   createRequirement,
+  createRequirementsBatch,
+  createRequirementsBatchWithExecutor,
   deleteDraftVersion,
   editRequirement,
   getRequirementById,
   getRequirementByUniqueId,
+  getVersionHistory,
   initiateArchiving,
   listRequirements,
   reactivateRequirement,
   restoreVersion,
+  type SqlServerTxExecutor,
   transitionStatus,
 } from '@/lib/dal/requirements'
 
@@ -172,6 +176,338 @@ describe('requirements DAL (SQL Server path)', () => {
         { id: 201, name: 'Back office' },
       ],
       uniqueId: 'SEC-0001',
+    })
+  })
+
+  it('normalizes sparse list rows, search matches, cursors, and malformed package payloads', async () => {
+    const { db, query } = createSqlServerDb()
+    const base = {
+      createdAt: null,
+      cursorNullRank: 1,
+      cursorSortValue: 9,
+      id: 7,
+      isArchived: 'not-a-number',
+      maxVersion: 1,
+      requirementAreaId: 3,
+      revisionToken: 'ABC',
+      status: 1,
+      suggestionCount: null,
+      uniqueId: null,
+      verifiable: false,
+      versionCreatedAt: null,
+      versionId: 21,
+      versionNumber: 1,
+    }
+    query.mockResolvedValueOnce([
+      {
+        ...base,
+        matchAcceptanceCriteria: 1,
+        matchDescription: 1,
+        matchId: true,
+        matchUniqueId: 1,
+        requirementPackagesJson: null,
+      },
+      { ...base, id: 8, requirementPackagesJson: '{broken' },
+      { ...base, id: 9, requirementPackagesJson: '{}' },
+      {
+        ...base,
+        id: 10,
+        requirementPackagesJson: JSON.stringify([
+          null,
+          'invalid',
+          { id: 0 },
+          { id: 12 },
+        ]),
+      },
+    ])
+
+    const rows = await listRequirements(db)
+
+    expect(rows[0]).toMatchObject({
+      acceptanceCriteria: null,
+      createdAt: '',
+      cursorBoundary: { nullRank: 1, sortValue: 9 },
+      isArchived: false,
+      matchedFields: [
+        'id',
+        'uniqueId',
+        'version.description',
+        'version.acceptanceCriteria',
+      ],
+      requirementPackages: [],
+      revisionToken: 'abc',
+      suggestionCount: 0,
+      uniqueId: '',
+      versionCreatedAt: '',
+    })
+    expect(rows.slice(1, 3).map(row => row.requirementPackages)).toEqual([
+      [],
+      [],
+    ])
+    expect(rows[3]?.requirementPackages).toEqual([
+      { id: 12, name: '', purposeAndScope: '' },
+    ])
+  })
+
+  it('maps every populated list projection and string cursor without coercion loss', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        acceptanceCriteria: 'Criterion',
+        archiveInitiatedAt: '2026-08-01T01:00:00.000Z',
+        areaName: 'Security',
+        categoryNameEn: 'Functional',
+        categoryNameSv: 'Funktionell',
+        createdAt: '2026-08-01T00:00:00.000Z',
+        cursorNullRank: 0,
+        cursorSortValue: 'SEC-0012',
+        description: 'Mapped requirement',
+        id: 12,
+        isArchived: 1,
+        maxVersion: 3,
+        normReferenceIds: '10,20',
+        normReferenceUris: 'https://one,https://two',
+        pendingVersionStatusColor: '#00f',
+        pendingVersionStatusIconName: 'clock',
+        pendingVersionStatusId: 2,
+        priorityLevelCode: 'P1',
+        priorityLevelColor: '#f00',
+        priorityLevelIconName: 'alert',
+        priorityLevelId: 1,
+        priorityLevelNameEn: 'Highest',
+        priorityLevelNameSv: 'Högst',
+        priorityLevelSortOrder: 'invalid',
+        qualityCharacteristicId: 6,
+        qualityCharacteristicNameEn: 'Security',
+        qualityCharacteristicNameSv: 'Säkerhet',
+        requirementAreaId: 3,
+        requirementCategoryId: 4,
+        requirementPackagesJson: JSON.stringify([
+          { id: 7, name: 'Core', purposeAndScope: 'Baseline' },
+        ]),
+        requirementTypeId: 5,
+        revisionToken: 'DDDDDDDD-DDDD-4DDD-8DDD-DDDDDDDDDDDD',
+        status: 3,
+        statusColor: '#0f0',
+        statusIconName: 'check',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        suggestionCount: 4,
+        typeNameEn: 'Quality',
+        typeNameSv: 'Kvalitet',
+        uniqueId: 'SEC-0012',
+        verifiable: 1,
+        versionCreatedAt: '2026-08-01T00:30:00.000Z',
+        versionId: 120,
+        versionNumber: 3,
+      },
+    ])
+
+    await expect(listRequirements(db)).resolves.toMatchObject([
+      expect.objectContaining({
+        acceptanceCriteria: 'Criterion',
+        areaName: 'Security',
+        cursorBoundary: {
+          nullRank: 0,
+          requirementId: 12,
+          sortValue: 'SEC-0012',
+        },
+        priorityLevelSortOrder: null,
+        requirementPackages: [
+          { id: 7, name: 'Core', purposeAndScope: 'Baseline' },
+        ],
+        statusIconName: 'check',
+      }),
+    ])
+  })
+
+  it('creates requirements atomically and maps generated values', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    const audit = vi.fn(async () => undefined)
+    query
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockResolvedValueOnce([{ prefix: 'SEC-', sequenceNumber: 7 }])
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-08-01T00:00:00.000Z'),
+          id: 8,
+          isArchived: 0,
+          requirementAreaId: 1,
+          sequenceNumber: 7,
+          uniqueId: 'SEC-0007',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-08-01T00:00:00.000Z'),
+          description: 'Auditable',
+          hasSpecificationItemHistory: 0,
+          id: 80,
+          requirementId: 8,
+          revisionToken: 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA',
+          statusId: 1,
+          verifiable: 0,
+          versionNumber: 1,
+        },
+      ])
+
+    const result = await createRequirement(
+      db,
+      { description: 'Auditable', requirementAreaId: 1 },
+      { audit },
+    )
+
+    expect(transaction).toHaveBeenCalledOnce()
+    expect(result).toMatchObject({
+      requirement: { id: 8, uniqueId: 'SEC-0007' },
+      version: {
+        id: 80,
+        revisionToken: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      },
+    })
+    expect(audit).toHaveBeenCalledWith(expect.anything(), result)
+  })
+
+  it('creates a validated batch with per-row and batch audits in one executor', async () => {
+    let sequence = 0
+    const query = vi.fn(async (sql: string, parameters?: unknown[]) => {
+      if (sql.includes('SELECT id') && sql.includes('WHERE id IN')) {
+        return (parameters ?? []).map(id => ({ id }))
+      }
+      if (sql.includes('UPDATE requirement_areas')) {
+        sequence += 1
+        return [
+          {
+            prefix: sequence === 2 ? null : 'BAT-',
+            sequenceNumber: sequence,
+          },
+        ]
+      }
+      if (sql.includes('INSERT INTO requirements (')) {
+        return [
+          {
+            createdAt: new Date('2026-08-01T00:00:00.000Z'),
+            id: sequence,
+            isArchived: 0,
+            requirementAreaId: 1,
+            sequenceNumber: sequence,
+            uniqueId: `BAT-${String(sequence).padStart(4, '0')}`,
+          },
+        ]
+      }
+      if (sql.includes('INSERT INTO requirement_versions (')) {
+        return [
+          {
+            createdAt: new Date('2026-08-01T00:00:00.000Z'),
+            description: `Batch ${sequence}`,
+            hasSpecificationItemHistory: 0,
+            id: 100 + sequence,
+            requirementId: sequence,
+            revisionToken: 'BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB',
+            statusId: 1,
+            verifiable: sequence === 1,
+            verificationMethod: sequence === 1 ? 'inspection' : null,
+            versionNumber: 1,
+          },
+        ]
+      }
+      return []
+    })
+    const audit = vi.fn(async () => undefined)
+    const batchAudit = vi.fn(async () => undefined)
+    const executor = { query } as unknown as SqlServerTxExecutor
+
+    await expect(
+      createRequirementsBatchWithExecutor(
+        executor,
+        [
+          {
+            description: 'Batch one',
+            normReferenceIds: [10],
+            requirementAreaId: 1,
+            requirementPackageIds: [20],
+            verifiable: true,
+            verificationMethod: 'inspection',
+          },
+          { description: 'Batch two', requirementAreaId: 1 },
+        ],
+        { audit, batchAudit },
+      ),
+    ).resolves.toHaveLength(2)
+    expect(audit).toHaveBeenCalledTimes(2)
+    expect(batchAudit).toHaveBeenCalledOnce()
+    expect(
+      query.mock.calls.some(([sql]) => sql.includes('norm_references')),
+    ).toBe(true)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        sql.includes('requirement_version_requirement_packages'),
+      ),
+    ).toBe(true)
+    await expect(
+      createRequirementsBatchWithExecutor(executor, []),
+    ).resolves.toEqual([])
+  })
+
+  it('wraps non-empty batches in one transaction and skips empty batches', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockImplementation(async (sql: string, parameters?: unknown[]) => {
+      if (sql.includes('SELECT id'))
+        return (parameters ?? []).map(id => ({ id }))
+      if (sql.includes('UPDATE requirement_areas')) {
+        return [{ prefix: 'ONE-', sequenceNumber: 1 }]
+      }
+      if (sql.includes('INSERT INTO requirements (')) {
+        return [{ id: 1, requirementAreaId: 1, sequenceNumber: 1 }]
+      }
+      if (sql.includes('INSERT INTO requirement_versions (')) {
+        return [{ id: 2, requirementId: 1, statusId: 1, versionNumber: 1 }]
+      }
+      return []
+    })
+
+    await expect(createRequirementsBatch(db, [])).resolves.toEqual([])
+    expect(transaction).not.toHaveBeenCalled()
+    await expect(
+      createRequirementsBatch(db, [
+        { description: 'One', requirementAreaId: 1 },
+      ]),
+    ).resolves.toHaveLength(1)
+    expect(transaction).toHaveBeenCalledOnce()
+  })
+
+  it('rejects missing areas in single and batch creation and missing sequence rows', async () => {
+    const missingArea = createSqlServerDb()
+    await expect(
+      createRequirement(missingArea.db, {
+        description: 'No area',
+        requirementAreaId: undefined as never,
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+    await expect(
+      createRequirementsBatchWithExecutor(
+        { query: missingArea.query } as unknown as SqlServerTxExecutor,
+        [
+          {
+            description: 'No batch area',
+            requirementAreaId: undefined as never,
+          },
+        ],
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    const missingSequence = createSqlServerDb()
+    missingSequence.query
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockResolvedValueOnce([])
+    await expect(
+      createRequirement(missingSequence.db, {
+        description: 'No sequence row',
+        requirementAreaId: 1,
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'Requirement area not found',
     })
   })
 
@@ -413,6 +749,258 @@ describe('requirements DAL (SQL Server path)', () => {
         },
       },
     ])
+  })
+
+  it('hydrates sparse requirement details without lookup or join rows', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          areaId: null,
+          createdAt: null,
+          id: 8,
+          isArchived: 1,
+          requirementAreaId: 3,
+          sequenceNumber: 2,
+          uniqueId: null,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          acceptanceCriteria: null,
+          archiveInitiatedAt: null,
+          archivedAt: null,
+          categoryId: null,
+          createdAt: null,
+          createdBy: null,
+          description: null,
+          editedAt: null,
+          id: 22,
+          priorityLevelId: null,
+          publishedAt: null,
+          qcId: null,
+          requirementId: 8,
+          revisionToken: null,
+          rlId: null,
+          statusId: 1,
+          statusRowId: null,
+          typeId: null,
+          verifiable: 'invalid',
+          verificationMethod: null,
+          versionNumber: 1,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          nrCreatedAt: null,
+          nrId: 50,
+          nrIssuer: null,
+          nrName: null,
+          nrNormReferenceId: null,
+          nrReference: null,
+          nrType: null,
+          nrUpdatedAt: null,
+          nrUri: null,
+          nrVersion: null,
+          normReferenceId: 50,
+          requirementVersionId: 22,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          packageCreatedAt: null,
+          packageId: 60,
+          packageName: null,
+          packageOwnerId: 'invalid',
+          packagePurposeAndScope: null,
+          packageUpdatedAt: null,
+          requirementPackageId: 60,
+          requirementVersionId: 22,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(getRequirementById(db, 8)).resolves.toMatchObject({
+      area: null,
+      createdAt: '',
+      isArchived: true,
+      specificationCount: 0,
+      uniqueId: '',
+      versions: [
+        {
+          acceptanceCriteria: null,
+          category: null,
+          createdAt: '',
+          qualityCharacteristic: null,
+          priorityLevel: null,
+          revisionToken: '',
+          statusColor: null,
+          statusIconName: null,
+          statusNameEn: null,
+          statusNameSv: null,
+          type: null,
+          verifiable: false,
+          verificationMethod: null,
+          versionNormReferences: [
+            {
+              normReference: {
+                createdAt: '',
+                issuer: null,
+                name: '',
+                normReferenceId: '',
+                reference: '',
+                type: '',
+                updatedAt: '',
+                uri: null,
+                version: null,
+              },
+            },
+          ],
+          versionRequirementPackages: [
+            {
+              requirementPackage: {
+                createdAt: '',
+                name: null,
+                ownerId: null,
+                purposeAndScope: null,
+                updatedAt: '',
+              },
+            },
+          ],
+        },
+      ],
+    })
+  })
+
+  it('skips join lookups when a requirement has no versions', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          areaId: null,
+          createdAt: null,
+          id: 9,
+          isArchived: 0,
+          requirementAreaId: 3,
+          sequenceNumber: 3,
+          uniqueId: 'SEC-0009',
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ specificationCount: 0 }])
+
+    await expect(getRequirementById(db, 9)).resolves.toMatchObject({
+      versions: [],
+    })
+    expect(query).toHaveBeenCalledTimes(3)
+  })
+
+  it('maps rich and sparse version history rows and groups package links', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          acceptanceCriteria: 'Criterion',
+          archiveInitiatedAt: new Date('2026-08-01T04:00:00.000Z'),
+          archivedAt: new Date('2026-08-01T05:00:00.000Z'),
+          categoryId: 4,
+          categoryNameEn: 'Functional',
+          categoryNameSv: 'Funktionell',
+          createdAt: new Date('2026-08-01T00:00:00.000Z'),
+          createdBy: 'Author',
+          description: 'Published requirement',
+          editedAt: new Date('2026-08-01T01:00:00.000Z'),
+          id: 31,
+          priorityLevelId: 2,
+          publishedAt: new Date('2026-08-01T02:00:00.000Z'),
+          qcId: 6,
+          qcNameEn: 'Security',
+          qcNameSv: 'Säkerhet',
+          requirementId: 7,
+          revisionToken: 'CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC',
+          statusColor: '#0f0',
+          statusIconName: 'check',
+          statusId: 3,
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+          statusRowId: 3,
+          typeId: 5,
+          typeNameEn: 'Quality',
+          typeNameSv: 'Kvalitet',
+          verifiable: 1,
+          verificationMethod: 'test',
+          versionNumber: 2,
+        },
+        {
+          acceptanceCriteria: null,
+          categoryId: null,
+          createdAt: null,
+          createdBy: null,
+          description: null,
+          id: 30,
+          qcId: null,
+          requirementId: 7,
+          revisionToken: null,
+          statusColor: null,
+          statusIconName: null,
+          statusId: 1,
+          statusNameEn: null,
+          statusNameSv: null,
+          statusRowId: null,
+          typeId: null,
+          verifiable: 0,
+          verificationMethod: null,
+          versionNumber: 1,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          packageId: 8,
+          packageName: 'Core',
+          requirementPackageId: 8,
+          requirementVersionId: 31,
+        },
+        {
+          packageId: 9,
+          packageName: null,
+          requirementPackageId: 9,
+          requirementVersionId: 31,
+        },
+      ])
+
+    const history = await getVersionHistory(db, 7)
+
+    expect(history).toHaveLength(2)
+    expect(history[0]).toMatchObject({
+      category: { id: 4, nameEn: 'Functional' },
+      qualityCharacteristic: { id: 6, nameEn: 'Security' },
+      revisionToken: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      type: { id: 5, nameEn: 'Quality' },
+      versionRequirementPackages: [
+        { requirementPackage: { id: 8, name: 'Core' } },
+        { requirementPackage: { id: 9, name: null } },
+      ],
+    })
+    expect(history[1]).toMatchObject({
+      acceptanceCriteria: null,
+      category: null,
+      createdAt: '',
+      createdBy: null,
+      description: '',
+      qualityCharacteristic: null,
+      revisionToken: '',
+      statusColor: null,
+      statusIconName: null,
+      statusNameEn: null,
+      statusNameSv: null,
+      type: null,
+      verificationMethod: null,
+      versionRequirementPackages: [],
+    })
+
+    query.mockReset().mockResolvedValueOnce([])
+    await expect(getVersionHistory(db, 7)).resolves.toEqual([])
+    expect(query).toHaveBeenCalledTimes(1)
   })
 
   it('resolves a requirement by unique id and delegates to getRequirementById', async () => {
@@ -660,6 +1248,161 @@ describe('requirements DAL (SQL Server path)', () => {
       'revision_token = CONVERT(uniqueidentifier, @10)',
     )
     expect(result.revisionToken).toBe('22222222-2222-4222-8222-222222222222')
+  })
+
+  it('validates optimistic edit preconditions before opening a transaction', async () => {
+    const { db, transaction } = createSqlServerDb()
+
+    await expect(
+      editRequirement(db, 7, {
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        description: 'Missing version',
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+    await expect(
+      editRequirement(db, 7, {
+        baseRevisionToken: '   ',
+        baseVersionId: 1,
+        description: 'Missing token',
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+    await expect(
+      editRequirement(db, 7, {
+        baseRevisionToken: 'not-a-guid',
+        baseVersionId: 1,
+        description: 'Invalid token',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'invalid_edit_precondition' },
+    })
+    expect(transaction).not.toHaveBeenCalled()
+  })
+
+  it('rejects missing, archived, and concurrently changed draft versions', async () => {
+    const token = '11111111-1111-4111-8111-111111111111'
+
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([])
+    await expect(
+      editRequirement(missing.db, 7, {
+        baseRevisionToken: token,
+        baseVersionId: 21,
+        description: 'Missing',
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+
+    const archived = createSqlServerDb()
+    archived.query.mockResolvedValueOnce([
+      { id: 21, revisionToken: token, statusId: 4 },
+    ])
+    await expect(
+      editRequirement(archived.db, 7, {
+        baseRevisionToken: token,
+        baseVersionId: 21,
+        description: 'Archived',
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Cannot edit an archived requirement — restore it first',
+    })
+
+    const changed = createSqlServerDb()
+    changed.query
+      .mockResolvedValueOnce([{ id: 21, revisionToken: token, statusId: 1 }])
+      .mockResolvedValueOnce([])
+    await expect(
+      editRequirement(changed.db, 7, {
+        baseRevisionToken: token,
+        baseVersionId: 21,
+        description: 'Changed concurrently',
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: { reason: 'stale_requirement_edit' },
+    })
+  })
+
+  it('creates a successor draft when editing a published requirement', async () => {
+    const { db, query } = createSqlServerDb()
+    const token = '11111111-1111-4111-8111-111111111111'
+    query
+      .mockResolvedValueOnce([
+        {
+          acceptanceCriteria: 'Old',
+          createdBy: 'Author',
+          createdByHsaId: 'SE5560000001-author1',
+          description: 'Published',
+          id: 21,
+          revisionToken: token,
+          statusId: 3,
+          verifiable: 1,
+          versionNumber: 2,
+        },
+      ])
+      .mockResolvedValueOnce([{ maxVersion: 2 }])
+      .mockResolvedValueOnce([
+        {
+          acceptanceCriteria: 'New criterion',
+          createdAt: new Date('2026-08-01T00:00:00.000Z'),
+          createdBy: 'Editor',
+          createdByHsaId: 'SE5560000001-editor1',
+          description: 'Successor draft',
+          hasSpecificationItemHistory: 0,
+          id: 22,
+          requirementId: 7,
+          revisionToken: 'EEEEEEEE-EEEE-4EEE-8EEE-EEEEEEEEEEEE',
+          statusId: 1,
+          verifiable: 1,
+          verificationMethod: 'review',
+          versionNumber: 3,
+        },
+      ])
+
+    await expect(
+      editRequirement(db, 7, {
+        acceptanceCriteria: 'New criterion',
+        baseRevisionToken: token,
+        baseVersionId: 21,
+        createdBy: 'Editor',
+        createdByHsaId: 'SE5560000001-editor1',
+        description: 'Successor draft',
+        verifiable: true,
+        verificationMethod: 'review',
+      }),
+    ).resolves.toMatchObject({ id: 22, versionNumber: 3 })
+    expect(query.mock.calls[1]?.[0]).toContain('MAX(version_number)')
+    expect(query.mock.calls[2]?.[0]).toContain(
+      'INSERT INTO requirement_versions',
+    )
+  })
+
+  it('rejects draft deletion when the latest version is absent or not a draft', async () => {
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([])
+    await expect(deleteDraftVersion(missing.db, 7)).rejects.toMatchObject({
+      code: 'conflict',
+    })
+
+    const published = createSqlServerDb()
+    published.query.mockResolvedValueOnce([{ id: 21, statusId: 3 }])
+    await expect(deleteDraftVersion(published.db, 7)).rejects.toMatchObject({
+      code: 'conflict',
+    })
+  })
+
+  it('rejects reactivation when no archived latest version exists', async () => {
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([])
+    await expect(reactivateRequirement(missing.db, 7)).rejects.toMatchObject({
+      code: 'not_found',
+    })
+
+    const active = createSqlServerDb()
+    active.query.mockResolvedValueOnce([{ id: 21, statusId: 3 }])
+    await expect(reactivateRequirement(active.db, 7)).rejects.toMatchObject({
+      code: 'conflict',
+    })
   })
 
   it('restores creator attribution as an atomic actor snapshot', async () => {

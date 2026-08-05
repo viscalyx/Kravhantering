@@ -33,6 +33,8 @@ const mocks = vi.hoisted(() => ({
   listCategories: vi.fn(),
   listRequirements: vi.fn(),
   listRequirementPackages: vi.fn(),
+  listPriorityLevels: vi.fn(),
+  listSpecificationItemStatuses: vi.fn(),
   listStatuses: vi.fn(),
   listTransitions: vi.fn(),
   listSpecifications: vi.fn(),
@@ -123,6 +125,14 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   listRequirementPackages: mocks.listRequirementPackages,
 }))
 
+vi.mock('@/lib/dal/priority-levels', () => ({
+  listPriorityLevels: mocks.listPriorityLevels,
+}))
+
+vi.mock('@/lib/dal/specification-item-statuses', () => ({
+  listSpecificationItemStatuses: mocks.listSpecificationItemStatuses,
+}))
+
 vi.mock('@/lib/requirements/specification-item-page', () => ({
   querySpecificationItemPage: mocks.querySpecificationItemPage,
 }))
@@ -155,6 +165,11 @@ vi.mock('@/lib/dal/requirements', () => ({
 }))
 
 import { createRequirementsService } from '@/lib/requirements/service'
+import {
+  buildRequirementViewUri,
+  formatRequirementDetail,
+  formatRequirementListItem,
+} from '@/lib/requirements/service-requirements'
 
 function makeRequirementRecord() {
   return {
@@ -309,6 +324,8 @@ describe('createRequirementsService', () => {
     mocks.canAuthorArea.mockResolvedValue(true)
     mocks.canAuthorSpecification.mockResolvedValue(true)
     mocks.listRequirements.mockResolvedValue([])
+    mocks.listPriorityLevels.mockResolvedValue([])
+    mocks.listSpecificationItemStatuses.mockResolvedValue([])
     mocks.countRequirements.mockResolvedValue(0)
     mocks.getRequirementById.mockResolvedValue(makeRequirementRecord())
     mocks.getRequirementByUniqueId.mockResolvedValue(makeRequirementRecord())
@@ -2136,5 +2153,324 @@ describe('createRequirementsService', () => {
       status: 400,
     })
     expect(mocks.deleteSuggestion).not.toHaveBeenCalled()
+  })
+
+  it('formats sparse and pending requirement list records without inventing lookup values', () => {
+    const base = {
+      acceptanceCriteria: null,
+      archiveInitiatedAt: null,
+      areaName: null,
+      categoryNameEn: null,
+      categoryNameSv: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      description: 'Sparse requirement',
+      id: 1,
+      isArchived: false,
+      maxVersion: 1,
+      normReferenceIds: null,
+      normReferenceUris: null,
+      pendingVersionStatusColor: '#fff',
+      pendingVersionStatusIconName: 'clock',
+      pendingVersionStatusId: 2,
+      priorityLevelCode: null,
+      priorityLevelColor: null,
+      priorityLevelIconName: null,
+      priorityLevelId: null,
+      priorityLevelNameEn: null,
+      priorityLevelNameSv: null,
+      priorityLevelSortOrder: undefined,
+      qualityCharacteristicId: null,
+      qualityCharacteristicNameEn: null,
+      qualityCharacteristicNameSv: null,
+      requirementAreaId: 1,
+      requirementCategoryId: null,
+      requirementPackages: [],
+      requirementTypeId: null,
+      revisionToken: 'token',
+      status: 1,
+      statusColor: null,
+      statusIconName: null,
+      statusNameEn: null,
+      statusNameSv: null,
+      suggestionCount: 0,
+      typeNameEn: null,
+      typeNameSv: null,
+      uniqueId: 'INT0001',
+      verifiable: false,
+      versionCreatedAt: '2026-01-01T00:00:00.000Z',
+      versionId: 10,
+      versionNumber: 1,
+    }
+
+    expect(formatRequirementListItem(base as never)).toMatchObject({
+      area: null,
+      hasPendingVersion: false,
+      normReferenceIds: [],
+      normReferenceUris: [],
+      pendingVersionStatusColor: null,
+      pendingVersionStatusId: null,
+      version: { priorityLevelSortOrder: null },
+    })
+    expect(
+      formatRequirementListItem({
+        ...base,
+        areaName: 'Integration',
+        maxVersion: 2,
+        normReferenceIds: '10,,20',
+        normReferenceUris: 'https://one,https://two',
+      } as never),
+    ).toMatchObject({
+      area: { id: 1, name: 'Integration' },
+      hasPendingVersion: true,
+      normReferenceIds: ['10', '20'],
+      normReferenceUris: ['https://one', 'https://two'],
+      pendingVersionStatusColor: '#fff',
+      pendingVersionStatusIconName: 'clock',
+      pendingVersionStatusId: 2,
+    })
+  })
+
+  it('executes mutation audit callbacks for archive, cancellation, reactivation, and transition', async () => {
+    const service = createTestRequirementsService()
+
+    await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'archive',
+    })
+    await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'cancel_archiving',
+    })
+    await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'reactivate',
+    })
+    await service.transitionRequirement(makeContext(), {
+      id: 1,
+      toStatusId: 2,
+    })
+
+    expect(mocks.auditQuery).toHaveBeenCalledWith(
+      expect.stringContaining('SELECT TOP (1) unique_id'),
+      [1],
+    )
+  })
+
+  it('reports a missing post-mutation reload for create, edit, and transition', async () => {
+    const service = createTestRequirementsService()
+    mocks.getRequirementById.mockResolvedValueOnce(null)
+    await expect(
+      service.manageRequirement(makeContext(), {
+        operation: 'create',
+        requirement: { areaId: 1, description: 'Created' },
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'Created requirement could not be reloaded',
+    })
+
+    mocks.getRequirementById
+      .mockResolvedValueOnce(makeRequirementRecord())
+      .mockResolvedValueOnce(null)
+    await expect(
+      service.manageRequirement(makeContext(), {
+        id: 1,
+        operation: 'edit',
+        requirement: {
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: 'Edited',
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'Edited requirement could not be reloaded',
+    })
+
+    mocks.getRequirementById
+      .mockResolvedValueOnce(makeRequirementRecord())
+      .mockResolvedValueOnce(null)
+    await expect(
+      service.transitionRequirement(makeContext(), {
+        id: 1,
+        toStatusId: 2,
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'Transitioned requirement could not be reloaded',
+    })
+  })
+
+  it('formats sparse detail joins with stable identifiers and null catalog records', () => {
+    const record = makeRequirementRecord()
+    const sparse = {
+      ...record,
+      area: null,
+      versions: [
+        {
+          ...record.versions[0],
+          category: null,
+          createdBy: null,
+          priorityLevel: null,
+          qualityCharacteristic: null,
+          type: null,
+          verificationMethod: null,
+          versionNormReferences: [{ normReference: null, normReferenceId: 45 }],
+          versionRequirementPackages: [
+            { requirementPackage: null, requirementPackageId: 67 },
+          ],
+        },
+      ],
+    }
+
+    expect(formatRequirementDetail(sparse as never)).toMatchObject({
+      area: null,
+      versions: [
+        {
+          category: null,
+          ownerName: null,
+          priorityLevel: null,
+          qualityCharacteristic: null,
+          type: null,
+          versionNormReferences: [
+            {
+              normReference: {
+                id: 45,
+                issuer: '',
+                name: '',
+                normReferenceId: '',
+                reference: '',
+                type: '',
+                uri: null,
+                version: null,
+              },
+            },
+          ],
+          versionRequirementPackages: [
+            {
+              requirementPackage: {
+                id: 67,
+                name: null,
+                ownerId: null,
+                purposeAndScope: null,
+              },
+            },
+          ],
+        },
+      ],
+    })
+    expect(buildRequirementViewUri({ id: 7 })).toBe(
+      'ui://requirements/requirement-detail/7',
+    )
+    expect(buildRequirementViewUri({ uniqueId: 'SEC / 7' }, 3)).toBe(
+      'ui://requirements/requirement-detail/SEC%20%2F%207?version=3',
+    )
+  })
+
+  it('searches every lookup catalog through its catalog-specific fields', async () => {
+    mocks.listAreas.mockResolvedValue([
+      {
+        description: 'Coordinates integrations',
+        id: 1,
+        name: 'Integration',
+        ownerHsaId: 'SE5560000001-owner1',
+        prefix: 'INT',
+      },
+    ])
+    mocks.listPriorityLevels.mockResolvedValue([
+      {
+        assessmentCriteriaEn: 'Immediate action',
+        assessmentCriteriaSv: 'Omedelbar åtgärd',
+        code: 'P1',
+        descriptionEn: 'Critical',
+        descriptionSv: 'Kritisk',
+        id: 1,
+        nameEn: 'Highest',
+        nameSv: 'Högst',
+      },
+    ])
+    mocks.listRequirementPackages.mockResolvedValue([
+      {
+        id: 2,
+        leadDisplayName: 'Package Lead',
+        name: 'Citizen portal',
+        purposeAndScope: 'Self service',
+      },
+    ])
+    mocks.listTypes.mockResolvedValue([
+      {
+        id: 3,
+        nameEn: 'Quality',
+        nameSv: 'Kvalitet',
+        qualityCharacteristics: [
+          { nameEn: 'Reliability', nameSv: 'Tillförlitlighet' },
+        ],
+      },
+    ])
+    mocks.listSpecificationItemStatuses.mockResolvedValue([
+      {
+        descriptionEn: 'Included in baseline',
+        descriptionSv: 'Ingår i baslinje',
+        id: 4,
+        nameEn: 'Included',
+        nameSv: 'Ingår',
+      },
+    ])
+    mocks.listStatuses.mockResolvedValue([
+      { id: 5, nameEn: 'Published', nameSv: 'Publicerad' },
+    ])
+    mocks.listTransitions.mockResolvedValue([
+      {
+        fromStatus: { nameEn: 'Draft', nameSv: 'Utkast' },
+        fromStatusId: 1,
+        id: 6,
+        toStatus: { nameEn: 'Review', nameSv: 'Granskning' },
+        toStatusId: 2,
+      },
+    ])
+    const service = createTestRequirementsService()
+    const cases = [
+      ['areas', 'owner1', 'ownerHsaId'],
+      ['priority_levels', 'Immediate', 'assessmentCriteriaEn'],
+      ['requirement_packages', 'Package Lead', 'leadDisplayName'],
+      ['types', 'Reliability', 'qualityCharacteristicNamesEn'],
+      ['specification_item_statuses', 'baseline', 'descriptionEn'],
+      ['statuses', 'Published', 'nameEn'],
+      ['transitions', 'Review', 'toStatusNameEn'],
+    ] as const
+
+    for (const [catalog, search, matchedField] of cases) {
+      const result = await service.queryCatalog(makeContext(), {
+        catalog,
+        operation: 'search',
+        search,
+      })
+      expect(result.result).toEqual([
+        expect.objectContaining({
+          match: expect.objectContaining({ matchedFields: [matchedField] }),
+        }),
+      ])
+    }
+  })
+
+  it('sorts lookup rows by localized fallback fields and stable ids', async () => {
+    mocks.listPriorityLevels.mockResolvedValue([
+      { id: 6 },
+      { code: 'C', id: 5 },
+      { id: 4, nameEn: 'B' },
+      { id: 3, nameSv: 'A' },
+      { id: 2, name: 'Same' },
+      { id: 1, name: 'Same' },
+    ])
+    const service = createTestRequirementsService()
+
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'priority_levels',
+      operation: 'list',
+    })
+
+    expect((result.result as Array<{ id: number }>).map(row => row.id)).toEqual(
+      [6, 3, 4, 5, 1, 2],
+    )
   })
 })

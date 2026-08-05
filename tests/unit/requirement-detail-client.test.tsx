@@ -23,6 +23,7 @@ const pdfDownloadState = vi.hoisted(() => ({
   clearError: vi.fn(),
   download: vi.fn(),
 }))
+const localeState = vi.hoisted(() => ({ value: 'sv' }))
 let resizeObserverCallback: ResizeObserverCallback | null = null
 let mutationObserverCallback: MutationCallback | null = null
 
@@ -31,7 +32,7 @@ vi.mock('next-intl', () => ({
     dateTime: (date: Date, opts?: Intl.DateTimeFormatOptions) =>
       date.toLocaleDateString('sv', opts),
   }),
-  useLocale: () => 'sv',
+  useLocale: () => localeState.value,
   useTranslations: (namespace: string) => {
     const translations: Record<
       string,
@@ -462,6 +463,7 @@ function setupFetch({
   suggestions = [],
   suggestionsHandler,
   transitionNextRequirement,
+  transitionHandler,
 }: {
   addToSpecificationHandler?: (
     specificationId: string,
@@ -493,6 +495,7 @@ function setupFetch({
   suggestions?: RequirementDetailTestSuggestion[]
   suggestionsHandler?: () => Promise<Response> | Response
   transitionNextRequirement?: ReturnType<typeof makeRequirement>
+  transitionHandler?: (init?: RequestInit) => Promise<Response> | Response
 }) {
   let currentRequirement = structuredClone(initialRequirement)
 
@@ -537,6 +540,9 @@ function setupFetch({
         url === `/api/requirement-transitions/${currentRequirement.id}` &&
         method === 'POST'
       ) {
+        if (transitionHandler) {
+          return transitionHandler(init)
+        }
         if (transitionNextRequirement) {
           currentRequirement = structuredClone(transitionNextRequirement)
         }
@@ -656,6 +662,7 @@ function renderSubject(
 
 describe('RequirementDetailClient', () => {
   beforeEach(() => {
+    localeState.value = 'sv'
     routerPush.mockReset()
     pdfDownloadState.clearError.mockReset()
     pdfDownloadState.download.mockReset()
@@ -710,6 +717,24 @@ describe('RequirementDetailClient', () => {
     renderSubject({ inline: true })
 
     expect(screen.getByText('Loading')).toBeInTheDocument()
+  })
+
+  it('keeps loading modal document events from closing the overlay', () => {
+    const onClose = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    )
+
+    renderSubject({ onClose })
+
+    const document = screen.getByRole('document')
+    fireEvent.click(document)
+    fireEvent.keyDown(document, { key: 'Enter' })
+    expect(onClose).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('exposes developer-mode metadata for inline detail sections, actions, and nested surfaces', async () => {
@@ -867,6 +892,66 @@ describe('RequirementDetailClient', () => {
     const priorityBadge = screen.getByText('P4').closest('.status-badge')
     expect(priorityBadge).toBeInTheDocument()
     expect(priorityBadge).not.toHaveTextContent('–')
+  })
+
+  it('renders English and nullable detail fallbacks while navigating versions', async () => {
+    localeState.value = 'en'
+    const current = makeVersion(2, {
+      acceptanceCriteria: null,
+      category: null,
+      description: null,
+      publishedAt: '2026-03-02',
+      qualityCharacteristic: null,
+      status: 3,
+      statusColor: null,
+      statusNameEn: 'Published',
+      statusNameSv: null,
+      type: null,
+      verificationMethod: null,
+    })
+    current.versionNormReferences = undefined as never
+    current.versionRequirementPackages = undefined as never
+    const older = makeVersion(1, {
+      description: 'Older English requirement',
+      publishedAt: '2026-03-01',
+      status: 3,
+      statusColor: '#22c55e',
+      statusNameEn: 'Published',
+      statusNameSv: null,
+      versionNormReferences: [
+        {
+          normReference: {
+            id: 9,
+            issuer: 'Issuer',
+            name: 'Norm name',
+            normReferenceId: 'NORM-9',
+            reference: 'Section 9',
+            type: 'law',
+            uri: null,
+            version: null,
+          },
+        },
+      ],
+      versionRequirementPackages: [
+        { requirementPackage: { id: 55, name: '   ' } },
+      ],
+    })
+    const requirement = makeRequirement([current, older], { area: null })
+    requirement.permissions = undefined as never
+    setupFetch({ initialRequirement: requirement })
+
+    renderSubject({ defaultVersion: 2 })
+
+    await screen.findByText('REQ-123')
+    expect(screen.queryByText('Core platform')).not.toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+
+    await userEvent.click(screen.getByRole('button', { name: 'v1' }))
+
+    expect(screen.getByText('Older English requirement')).toBeInTheDocument()
+    expect(screen.getByText('55')).toBeInTheDocument()
+    expect(screen.getByText('NORM-9')).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/en/requirements/123/1')
   })
 
   it('renders the specification count in the detail view', async () => {
@@ -1121,6 +1206,24 @@ describe('RequirementDetailClient', () => {
     consoleErrorSpy.mockRestore()
   })
 
+  it('keeps empty modal document events from closing the overlay', async () => {
+    const onClose = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response({}, false)),
+    )
+
+    renderSubject({ onClose })
+
+    const document = await screen.findByRole('document')
+    fireEvent.click(document)
+    fireEvent.keyDown(document, { key: 'Enter' })
+    expect(onClose).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it('closes the full-page detail modal when Escape is pressed inside it', async () => {
     const onClose = vi.fn()
     const requirement = makeRequirement([
@@ -1320,6 +1423,12 @@ describe('RequirementDetailClient', () => {
     expect(
       screen.getByText('Initiate archiving review for this requirement?'),
     ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/requirements/123',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }))
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() =>
@@ -1362,6 +1471,218 @@ describe('RequirementDetailClient', () => {
       expect(screen.getByText('Archive failed')).toBeInTheDocument()
     })
     expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('uses the translated fallback when archive failure has no response detail', async () => {
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        description: 'Archive fallback error',
+        publishedAt: '2026-03-02',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    setupFetch({
+      initialRequirement: requirement,
+      archiveHandler: () => response({}, false),
+    })
+
+    renderSubject()
+    await screen.findByText('Archive fallback error')
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    expect(
+      await screen.findByText('requirement.transitionFailed'),
+    ).toBeInTheDocument()
+  })
+
+  it('approves an archiving review and closes an open detail modal', async () => {
+    const onChange = vi.fn()
+    const onClose = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        archiveInitiatedAt: '2026-03-03',
+        description: 'Archiving requirement',
+        publishedAt: '2026-03-02',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const fetchMock = setupFetch({ initialRequirement: requirement })
+
+    renderSubject({ onChange, onClose })
+    await screen.findByText('Archiving requirement')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Approve Archiving' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onClose).not.toHaveBeenCalled()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Approve Archiving' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirement-transitions/123',
+      expect.objectContaining({
+        body: JSON.stringify({ statusId: 4 }),
+        method: 'POST',
+      }),
+    )
+  })
+
+  it('returns to requirements after approving archiving outside a modal', async () => {
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        archiveInitiatedAt: '2026-03-03',
+        description: 'Archiving page requirement',
+        publishedAt: '2026-03-02',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    setupFetch({ initialRequirement: requirement })
+
+    renderSubject()
+    await screen.findByText('Archiving page requirement')
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Approve Archiving' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() =>
+      expect(routerPush).toHaveBeenCalledWith('/requirements'),
+    )
+  })
+
+  it('reports a failed cancellation of an archiving review', async () => {
+    const onChange = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        archiveInitiatedAt: '2026-03-03',
+        description: 'Archiving requirement',
+        publishedAt: '2026-03-02',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    setupFetch({
+      initialRequirement: requirement,
+      transitionHandler: () =>
+        response({ error: 'Cancellation failed' }, false),
+    })
+
+    renderSubject({ onChange })
+    await screen.findByText('Archiving requirement')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Cancel Archiving' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onChange).not.toHaveBeenCalled()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Cancel Archiving' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    expect(await screen.findByText('Cancellation failed')).toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('reports a failed approval of an archiving review', async () => {
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        archiveInitiatedAt: '2026-03-03',
+        description: 'Archiving approval failure',
+        publishedAt: '2026-03-02',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    setupFetch({
+      initialRequirement: requirement,
+      transitionHandler: () => response({ error: 'Approval failed' }, false),
+    })
+
+    renderSubject()
+    await screen.findByText('Archiving approval failure')
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Approve Archiving' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    expect(await screen.findByText('Approval failed')).toBeInTheDocument()
+    expect(routerPush).not.toHaveBeenCalled()
+  })
+
+  it('cancels an archiving review and refreshes the requirement', async () => {
+    const onChange = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        archiveInitiatedAt: '2026-03-03',
+        description: 'Archiving cancellation success',
+        publishedAt: '2026-03-02',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    setupFetch({ initialRequirement: requirement })
+
+    renderSubject({ onChange })
+    await screen.findByText('Archiving cancellation success')
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Cancel Archiving' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledOnce())
+  })
+
+  it('refreshes after an archive response without a JSON body', async () => {
+    const onChange = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        description: 'Archive without JSON',
+        publishedAt: '2026-03-02',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    setupFetch({
+      initialRequirement: requirement,
+      archiveHandler: () =>
+        ({
+          json: async () => {
+            throw new SyntaxError('No JSON')
+          },
+          ok: true,
+        }) as unknown as Response,
+    })
+
+    renderSubject({ onChange })
+    await screen.findByText('Archive without JSON')
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith(undefined))
   })
 
   it('keeps archived requirements actionable while a newer draft replacement exists', async () => {
@@ -1628,6 +1949,12 @@ describe('RequirementDetailClient', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
     expect(screen.getByText('Delete this draft?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/requirements/123/delete-draft',
+      expect.objectContaining({ method: 'POST' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() =>
@@ -1703,6 +2030,34 @@ describe('RequirementDetailClient', () => {
         'Deleting this draft will also delete the requirement and 2 linked improvement suggestions.',
       ),
     ).toHaveClass('text-red-700')
+  })
+
+  it('treats a missing suggestions collection as empty before deleting a draft', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Only draft without suggestions payload',
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+    setupFetch({
+      initialRequirement: requirement,
+      suggestionsHandler: vi
+        .fn()
+        .mockReturnValueOnce(response({ suggestions: [] }))
+        .mockReturnValue(response({})),
+    })
+
+    renderSubject({ defaultVersion: 1 })
+    await screen.findByText('Only draft without suggestions payload')
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+    expect(screen.getByText('Delete this draft?')).toBeInTheDocument()
+    expect(
+      screen.queryByText(/linked improvement suggestions/),
+    ).not.toBeInTheDocument()
   })
 
   it('leaves the detail view when deleting the only draft also deletes the requirement', async () => {
@@ -1894,6 +2249,14 @@ describe('RequirementDetailClient', () => {
       await screen.findByRole('button', { name: 'Send back to draft' }),
     )
     expect(screen.getByText('Send back to draft?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/requirement-transitions/123',
+      expect.objectContaining({ body: JSON.stringify({ statusId: 1 }) }),
+    )
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Send back to draft' }),
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() =>
@@ -1910,6 +2273,10 @@ describe('RequirementDetailClient', () => {
       await screen.findByRole('button', { name: 'Publish' }),
     )
     expect(screen.getByText('Publish this requirement?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Publish' }),
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() =>
@@ -1922,6 +2289,32 @@ describe('RequirementDetailClient', () => {
       ),
     )
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('reports a failed lifecycle transition', async () => {
+    const onChange = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Draft transition failure',
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+    setupFetch({
+      initialRequirement: requirement,
+      transitionHandler: () => response({ error: 'Transition failed' }, false),
+    })
+
+    renderSubject({ defaultVersion: 1, onChange })
+    await screen.findByText('Draft transition failure')
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Send to review' }),
+    )
+
+    expect(await screen.findByText('Transition failed')).toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('keeps the workflow stepper visible after a status transition refresh', async () => {
@@ -3023,6 +3416,11 @@ describe('RequirementDetailClient', () => {
 
     expect(await screen.findByText('Archived description')).toBeInTheDocument()
 
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Restore version' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onChange).not.toHaveBeenCalled()
     await userEvent.click(
       screen.getByRole('button', { name: 'Restore version' }),
     )
