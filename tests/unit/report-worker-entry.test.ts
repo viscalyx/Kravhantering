@@ -1,9 +1,36 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const entryState = vi.hoisted(() => ({
   collectStatusIconNames: vi.fn(() => ['CircleAlert']),
   events: [] as string[],
-  pipeline: vi.fn(async () => undefined),
+  pipelineMode: 'success' as
+    | 'byte_limit'
+    | 'storage_efbig'
+    | 'storage_enospc'
+    | 'success'
+    | 'unexpected',
+  pipeline: vi.fn(
+    async (_source: unknown, bounded: import('node:stream').Transform) => {
+      if (entryState.pipelineMode === 'storage_enospc') {
+        throw Object.assign(new Error('disk full'), { code: 'ENOSPC' })
+      }
+      if (entryState.pipelineMode === 'storage_efbig') {
+        throw Object.assign(new Error('file too large'), { code: 'EFBIG' })
+      }
+      if (entryState.pipelineMode === 'unexpected') {
+        throw new Error('renderer failed')
+      }
+
+      const size = entryState.pipelineMode === 'byte_limit' ? 2049 : 1024
+      await new Promise<void>((resolve, reject) => {
+        bounded.once('error', () => undefined)
+        bounded.write(Buffer.alloc(size), error => {
+          if (error) reject(error)
+          else resolve()
+        })
+      })
+    },
+  ),
   postMessage: vi.fn(),
   preloadStatusIconNodes: vi.fn(async () => {
     entryState.events.push('preload')
@@ -61,6 +88,17 @@ vi.mock('@/lib/icons/status-icon-allowlist', () => ({
 }))
 
 describe('PDF report worker entry', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    entryState.events.length = 0
+    entryState.pipelineMode = 'success'
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('preloads allowlisted model icons before isolated rendering', async () => {
     await import('@/lib/pdf/report-worker-entry')
     await vi.waitFor(() => expect(entryState.postMessage).toHaveBeenCalled())
@@ -69,5 +107,51 @@ describe('PDF report worker entry', () => {
       'CircleAlert',
     ])
     expect(entryState.events).toEqual(['preload', 'render'])
+    expect(entryState.postMessage).toHaveBeenCalledWith({
+      byteCount: 1024,
+      ok: true,
+    })
+  })
+
+  it('reports output that exceeds the byte bound', async () => {
+    entryState.pipelineMode = 'byte_limit'
+
+    await import('@/lib/pdf/report-worker-entry')
+
+    await vi.waitFor(() =>
+      expect(entryState.postMessage).toHaveBeenCalledWith({
+        failure: 'byte_limit',
+        ok: false,
+      }),
+    )
+  })
+
+  it.each(['storage_enospc', 'storage_efbig'] as const)(
+    'reports the bounded storage failure %s',
+    async pipelineMode => {
+      entryState.pipelineMode = pipelineMode
+
+      await import('@/lib/pdf/report-worker-entry')
+
+      await vi.waitFor(() =>
+        expect(entryState.postMessage).toHaveBeenCalledWith({
+          failure: 'storage',
+          ok: false,
+        }),
+      )
+    },
+  )
+
+  it('rethrows unexpected rendering failures on the next event-loop turn', async () => {
+    entryState.pipelineMode = 'unexpected'
+    const setImmediate = vi.fn()
+    vi.stubGlobal('setImmediate', setImmediate)
+
+    await import('@/lib/pdf/report-worker-entry')
+    await vi.waitFor(() => expect(setImmediate).toHaveBeenCalled())
+
+    const rethrow = setImmediate.mock.calls[0]?.[0] as () => void
+    expect(rethrow).toThrow('renderer failed')
+    expect(entryState.postMessage).not.toHaveBeenCalled()
   })
 })

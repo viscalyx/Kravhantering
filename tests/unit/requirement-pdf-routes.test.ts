@@ -16,12 +16,14 @@ const routeState = vi.hoisted(() => ({
   buildDeviationReviewReport: vi.fn(),
   buildReviewReport: vi.fn(),
   buildSpecificationProfileReport: vi.fn(),
+  buildSpecificationTraceabilityReport: vi.fn(),
   collectDeviationForReport: vi.fn(),
   collectMultipleRequirementListItemsForReport: vi.fn(),
   collectMultipleRequirementsForReport: vi.fn(),
   collectRequirementForReport: vi.fn(),
   collectCompleteSpecificationOutputData: vi.fn(),
   collectSuggestionsForReport: vi.fn(),
+  collectSpecificationTraceabilityData: vi.fn(),
   context: {
     actor: {
       displayName: 'Report Tester',
@@ -29,13 +31,16 @@ const routeState = vi.hoisted(() => ({
       id: 'report-test',
       isAuthenticated: true,
       roles: [],
-      source: 'oidc',
+      source: 'oidc' as const,
     },
     correlationId: 'corr-report',
     requestId: 'req-report',
-    source: 'rest',
+    source: 'rest' as const,
   },
+  acquireGeneratedOutputSpool: vi.fn(),
+  createGeneratedOutputFileResponse: vi.fn(),
   createRequirementsRestRuntime: vi.fn(),
+  generatedOutputCapacitySnapshot: vi.fn(),
   getSpecificationById: vi.fn(),
   getSpecificationItemById: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
@@ -65,20 +70,10 @@ vi.mock('@/lib/pdf/report-worker', () => ({
 }))
 
 vi.mock('@/lib/generated-output/spool', () => ({
-  acquireGeneratedOutputSpool: vi.fn(async () => ({
-    filePath: '/tmp/generated-output-test.pdf',
-    releaseGeneration: vi.fn(),
-    releaseSpool: vi.fn(async () => {}),
-  })),
-  createGeneratedOutputFileResponse: vi.fn(
-    async (_spool, headers: HeadersInit) =>
-      new Response('%PDF', { headers, status: 200 }),
-  ),
-  generatedOutputCapacitySnapshot: vi.fn(() => ({
-    activeCsv: 0,
-    activePdf: 1,
-    reservedBytes: 50 * 1024 * 1024,
-  })),
+  acquireGeneratedOutputSpool: routeState.acquireGeneratedOutputSpool,
+  createGeneratedOutputFileResponse:
+    routeState.createGeneratedOutputFileResponse,
+  generatedOutputCapacitySnapshot: routeState.generatedOutputCapacitySnapshot,
 }))
 
 vi.mock('@/lib/reports/data/server', () => ({
@@ -96,6 +91,11 @@ vi.mock('@/lib/reports/data/server', () => ({
 vi.mock('@/lib/reports/data/specification-output', () => ({
   collectCompleteSpecificationOutputData:
     routeState.collectCompleteSpecificationOutputData,
+}))
+
+vi.mock('@/lib/reports/data/specification-traceability', () => ({
+  collectSpecificationTraceabilityData:
+    routeState.collectSpecificationTraceabilityData,
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
@@ -136,6 +136,11 @@ vi.mock('@/lib/reports/templates/review-template', () => ({
 
 vi.mock('@/lib/reports/templates/specification-profile-template', () => ({
   buildSpecificationProfileReport: routeState.buildSpecificationProfileReport,
+}))
+
+vi.mock('@/lib/reports/templates/specification-traceability-template', () => ({
+  buildSpecificationTraceabilityReport:
+    routeState.buildSpecificationTraceabilityReport,
 }))
 
 vi.mock('@/components/reports/pdf/report-response', () => ({
@@ -218,6 +223,26 @@ function reportIds(count: number): string[] {
 describe('requirement PDF routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routeState.acquireGeneratedOutputSpool.mockResolvedValue({
+      filePath: '/tmp/generated-output-test.pdf',
+      releaseGeneration: vi.fn(),
+      releaseSpool: vi.fn(async () => {}),
+    })
+    routeState.createGeneratedOutputFileResponse.mockImplementation(
+      async (
+        _spool: unknown,
+        headers: HeadersInit,
+        lifecycle: { onComplete: () => void },
+      ) => {
+        lifecycle.onComplete()
+        return new Response('%PDF', { headers, status: 200 })
+      },
+    )
+    routeState.generatedOutputCapacitySnapshot.mockReturnValue({
+      activeCsv: 0,
+      activePdf: 1,
+      reservedBytes: 50 * 1024 * 1024,
+    })
     routeState.authorization.assertAuthorized.mockResolvedValue(undefined)
     routeState.createRequirementsRestRuntime.mockResolvedValue({
       authorization: routeState.authorization,
@@ -260,6 +285,13 @@ describe('requirement PDF routes', () => {
       },
     )
     routeState.collectSuggestionsForReport.mockResolvedValue([])
+    routeState.collectSpecificationTraceabilityData.mockResolvedValue({
+      items: [{ itemRef: 'lib:55', uniqueId: 'REQ-1' }],
+      specification: {
+        name: 'Specification',
+        specificationCode: 'SPEC-1',
+      },
+    })
     routeState.buildCombinedReviewReport.mockReturnValue({
       kind: 'combined-review',
     })
@@ -270,6 +302,9 @@ describe('requirement PDF routes', () => {
     routeState.buildListReport.mockReturnValue({ kind: 'list' })
     routeState.buildSpecificationProfileReport.mockReturnValue({
       kind: 'specification-profile',
+    })
+    routeState.buildSpecificationTraceabilityReport.mockReturnValue({
+      kind: 'specification-traceability',
     })
     routeState.collectCompleteSpecificationOutputData.mockResolvedValue({
       items: [],
@@ -558,6 +593,199 @@ describe('requirement PDF routes', () => {
     )
   })
 
+  it('maps nullable list fields and priority details for an English filter report', async () => {
+    routeState.traverseCompleteRequirementList.mockImplementationOnce(
+      async (
+        _db: unknown,
+        _input: unknown,
+        _authorization: unknown,
+        visitPage: (rows: unknown[], page: number) => void | Promise<void>,
+      ) => {
+        const row = listRequirement(3, 'REQ-3')
+        await visitPage(
+          [
+            {
+              ...row,
+              area: null,
+              version: {
+                ...row.version,
+                priorityLevelCode: undefined,
+                priorityLevelId: 7,
+                priorityLevelNameEn: null,
+                priorityLevelNameSv: null,
+              },
+            },
+          ],
+          1,
+        )
+        return { itemCount: 1, pageCount: 1 }
+      },
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest('http://localhost/en/requirements/reports/pdf/list'),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(routeState.buildListReport).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          area: null,
+          versions: [
+            expect.objectContaining({
+              priorityLevel: expect.objectContaining({
+                code: '',
+                id: 7,
+                nameEn: '',
+                nameSv: '',
+              }),
+            }),
+          ],
+        }),
+      ],
+      'en',
+    )
+  })
+
+  it('rejects unsupported list filters before opening a runtime', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/list?unexpected=true',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(400)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
+  it('rejects an explicit list request containing only empty IDs', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/list?ids=%20,%20',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'No requirement IDs provided',
+    })
+    expect(
+      routeState.collectMultipleRequirementListItemsForReport,
+    ).not.toHaveBeenCalled()
+  })
+
+  it('maps a timed-out list PDF generation to the stable timeout envelope', async () => {
+    const { GeneratedOutputTimeoutError } = await import(
+      '@/lib/generated-output/operation'
+    )
+    routeState.renderReportInWorker.mockRejectedValueOnce(
+      new GeneratedOutputTimeoutError(180),
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/list?ids=REQ-1',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'generation_timeout',
+      details: { output: 'pdf', timeoutSeconds: 180 },
+    })
+  })
+
+  it('returns 499 when list PDF generation observes client cancellation', async () => {
+    const { ClientCancelledGeneratedOutputError } = await import(
+      '@/lib/generated-output/operation'
+    )
+    routeState.renderReportInWorker.mockRejectedValueOnce(
+      new ClientCancelledGeneratedOutputError(),
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/list?ids=REQ-1',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(499)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(await response.text()).toBe('')
+  })
+
+  it('returns the stable item limit for an oversized filtered list', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...(await routeState.getApplicationSettings()),
+      pdfReportMaxRequirements: 1,
+    })
+    routeState.traverseCompleteRequirementList.mockImplementationOnce(
+      async (_db, _input, _authorization, _visitPage, options) => {
+        throw options.createItemLimitError(options.maxItems)
+      },
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest('http://localhost/en/requirements/reports/pdf/list'),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'output_limit_exceeded',
+      details: { limit: 1, limitKind: 'items', output: 'pdf' },
+    })
+  })
+
+  it('records cancellation and stream failure callbacks from the PDF response', async () => {
+    routeState.createGeneratedOutputFileResponse.mockImplementationOnce(
+      async (_spool, headers: HeadersInit, lifecycle) => {
+        lifecycle.onCancel()
+        lifecycle.onError()
+        return new Response('%PDF', { headers, status: 200 })
+      },
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/list/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/list?ids=REQ-1',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('%PDF')
+  })
+
   it('accepts combined review PDFs with more than 50 requirement ids', async () => {
     const ids = reportIds(60)
     const { GET } = await import(
@@ -816,5 +1044,213 @@ describe('requirement PDF routes', () => {
     )
     expect(routeState.collectDeviationForReport).not.toHaveBeenCalled()
     expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
+  })
+
+  it('rejects a deviation PDF without an item reference before opening a runtime', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/deviation-review/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/deviation-review/REQ-1',
+      ),
+      { params: Promise.resolve({ id: 'REQ-1', locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Missing item ID in URL',
+    })
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 when a deviation PDF item no longer exists', async () => {
+    routeState.getSpecificationItemById.mockResolvedValueOnce(null)
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/deviation-review/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/deviation-review/REQ-1?item=lib:404',
+      ),
+      { params: Promise.resolve({ id: 'REQ-1', locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Item not found: lib:404',
+    })
+    expect(routeState.collectDeviationForReport).not.toHaveBeenCalled()
+  })
+
+  it('rejects a combined review without requirement IDs', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/review-combined/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/review-combined?ids=%20,%20',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'No requirement IDs provided',
+    })
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { lifecycleStatusId: 1, profile: 'management' },
+    { lifecycleStatusId: 3, profile: 'procurement' },
+  ])(
+    'rejects the unavailable $profile specification PDF profile',
+    async ({ lifecycleStatusId, profile }) => {
+      routeState.getSpecificationById.mockResolvedValueOnce({
+        id: 42,
+        specificationLifecycleStatusId: lifecycleStatusId,
+      })
+      const { GET } = await import(
+        '@/app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route'
+      )
+
+      const response = await GET(
+        new NextRequest(
+          `http://localhost/en/specifications/42/reports/pdf/${profile}`,
+        ),
+        {
+          params: Promise.resolve({
+            locale: 'en',
+            profile,
+            specificationId: '42',
+          }),
+        },
+      )
+
+      expect(response.status).toBe(409)
+      expect(
+        routeState.collectCompleteSpecificationOutputData,
+      ).not.toHaveBeenCalled()
+    },
+  )
+
+  it('rejects an unknown specification PDF profile before opening a runtime', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/specifications/42/reports/pdf/unknown',
+      ),
+      {
+        params: Promise.resolve({
+          locale: 'en',
+          profile: 'unknown',
+          specificationId: '42',
+        }),
+      },
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Invalid report profile',
+    })
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
+  it('returns a traceability PDF for the validated filter query', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/specifications/[specificationId]/reports/pdf/traceability/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/sv/specifications/42/reports/pdf/traceability?descriptionSearch=access&sortDirection=desc',
+      ),
+      {
+        params: Promise.resolve({ locale: 'sv', specificationId: '42' }),
+      },
+    )
+
+    expect(response.status).toBe(200)
+    expect(
+      routeState.collectSpecificationTraceabilityData,
+    ).toHaveBeenCalledWith(
+      { db: true },
+      expect.objectContaining({ id: 42 }),
+      expect.objectContaining({
+        descriptionSearch: 'access',
+        locale: 'sv',
+        sortDirection: 'desc',
+      }),
+    )
+    expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
+      { kind: 'specification-traceability' },
+      'sv',
+      'Tillämpningsspårbarhet Specification SPEC-1.pdf',
+    )
+  })
+
+  it('rejects unsupported traceability filters before opening a runtime', async () => {
+    const { GET } = await import(
+      '@/app/[locale]/specifications/[specificationId]/reports/pdf/traceability/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/specifications/42/reports/pdf/traceability?refs=lib:55',
+      ),
+      {
+        params: Promise.resolve({ locale: 'en', specificationId: '42' }),
+      },
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
+  it('keeps malformed encoded requirement references observable to authorization', async () => {
+    const { authorizeRequirementReportRead } = await import(
+      '@/app/[locale]/requirements/reports/pdf/route-helpers'
+    )
+
+    await authorizeRequirementReportRead(
+      routeState.authorization,
+      routeState.context,
+      '%E0%A4%A',
+      'detail',
+    )
+
+    expect(routeState.authorization.assertAuthorized).toHaveBeenCalledWith(
+      {
+        kind: 'get_requirement',
+        uniqueId: '%E0%A4%A',
+        view: 'detail',
+      },
+      routeState.context,
+    )
+  })
+
+  it('redacts unexpected report failures and server-side report details', async () => {
+    const { reportErrorResponse } = await import(
+      '@/app/[locale]/requirements/reports/pdf/route-helpers'
+    )
+
+    const unexpected = reportErrorResponse(new Error('database password'))
+    const serverReportError = reportErrorResponse(
+      new routeState.ReportDataError('worker internals', 500),
+    )
+
+    expect(unexpected.status).toBe(500)
+    expect(await unexpected.json()).not.toEqual({ error: 'database password' })
+    expect(serverReportError.status).toBe(500)
+    await expect(serverReportError.json()).resolves.toEqual({
+      error: 'Failed to generate PDF',
+    })
   })
 })

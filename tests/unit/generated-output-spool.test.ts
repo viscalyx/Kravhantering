@@ -18,6 +18,7 @@ import {
   generatedOutputCapacitySnapshot,
   probeGeneratedOutputTempDirectory,
   resolveGeneratedOutputTempDirectory,
+  writeBoundedFile,
 } from '@/lib/generated-output/spool'
 
 const roots: string[] = []
@@ -125,6 +126,22 @@ describe('generated output spool', () => {
     await expect(writer.close()).resolves.toBe(2)
   })
 
+  it('accepts byte chunks and makes close idempotent while rejecting late writes', async () => {
+    const root = await temporaryRoot()
+    const writer = await BoundedGeneratedOutputWriter.open(
+      join(root, 'bounded-bytes'),
+      4,
+      'pdf',
+    )
+
+    await writer.write(new Uint8Array([1, 2, 3]))
+    await expect(writer.close()).resolves.toBe(3)
+    await expect(writer.close()).resolves.toBe(3)
+    await expect(writer.write('x')).rejects.toThrow(
+      'Generated-output writer is closed',
+    )
+  })
+
   it('streams an exact-length no-store response and cleans up after transfer', async () => {
     const root = await temporaryRoot()
     const spool = await acquireGeneratedOutputSpool(
@@ -175,6 +192,42 @@ describe('generated output spool', () => {
     await expect(access(spool.directoryPath)).rejects.toThrow()
   })
 
+  it('propagates an Error cancellation reason and still cleans the spool', async () => {
+    const root = await temporaryRoot()
+    const spool = await acquireGeneratedOutputSpool(
+      {
+        concurrencyLimit: 1,
+        maxFileBytes: 1024,
+        output: 'pdf',
+      },
+      testEnv(root),
+    )
+    await writeFile(spool.filePath, '%PDF data')
+    const response = await createGeneratedOutputFileResponse(spool, {})
+
+    await response.body?.cancel(new Error('connection closed'))
+
+    await expect(access(spool.directoryPath)).rejects.toThrow()
+  })
+
+  it('rejects empty generated files before releasing delivery ownership', async () => {
+    const root = await temporaryRoot()
+    const spool = await acquireGeneratedOutputSpool(
+      {
+        concurrencyLimit: 1,
+        maxFileBytes: 1024,
+        output: 'csv',
+      },
+      testEnv(root),
+    )
+
+    await expect(createGeneratedOutputFileResponse(spool, {})).rejects.toThrow(
+      'Generated output file is empty or missing',
+    )
+    spool.releaseGeneration()
+    await spool.releaseSpool()
+  })
+
   it('removes only stale owned directories', async () => {
     const root = await temporaryRoot()
     const oldOwned = join(root, 'kravhantering-output-old')
@@ -208,5 +261,66 @@ describe('generated output spool', () => {
       activeCsv: 0,
       reservedBytes: 0,
     })
+  })
+
+  it('rejects a configured temporary path that is not a directory', async () => {
+    const root = await temporaryRoot()
+    const filePath = join(root, 'not-a-directory')
+    await writeFile(filePath, 'data')
+
+    await expect(
+      probeGeneratedOutputTempDirectory(testEnv(filePath)),
+    ).rejects.toThrow('temporary storage is not a directory')
+  })
+
+  it('maps spool creation under a non-directory path and releases reservation', async () => {
+    const root = await temporaryRoot()
+    const filePath = join(root, 'not-a-spool-root')
+    await writeFile(filePath, 'data')
+
+    await expect(
+      acquireGeneratedOutputSpool(
+        {
+          concurrencyLimit: 1,
+          maxFileBytes: 1024,
+          output: 'csv',
+        },
+        testEnv(filePath),
+      ),
+    ).rejects.toMatchObject({
+      code: 'temporary_storage_unavailable',
+      details: { output: 'csv' },
+    })
+    expect(generatedOutputCapacitySnapshot()).toMatchObject({
+      activeCsv: 0,
+      reservedBytes: 0,
+    })
+  })
+
+  it('writes mixed bounded chunks and closes files on success or failure', async () => {
+    const root = await temporaryRoot()
+    const filePath = join(root, 'mixed-output')
+
+    await expect(
+      writeBoundedFile(filePath, ['å', new Uint8Array([65, 66])], 4, 'csv'),
+    ).resolves.toBe(4)
+    await expect(
+      writeBoundedFile(join(root, 'oversized'), ['123', '45'], 4, 'pdf'),
+    ).rejects.toMatchObject({
+      code: 'output_limit_exceeded',
+      details: { limit: 4, limitKind: 'bytes', output: 'pdf' },
+    })
+
+    const controller = new AbortController()
+    controller.abort(new Error('request cancelled'))
+    await expect(
+      writeBoundedFile(
+        join(root, 'cancelled'),
+        ['never written'],
+        100,
+        'csv',
+        controller.signal,
+      ),
+    ).rejects.toThrow('request cancelled')
   })
 })

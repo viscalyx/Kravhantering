@@ -45,11 +45,15 @@ function specification() {
   }
 }
 
-function createDb() {
+function createDb(
+  queryResultOverride?: (sql: string) => unknown[] | undefined,
+) {
   const queries: string[] = []
   const db = {
     query: vi.fn(async (sql: string) => {
       queries.push(sql)
+      const overridden = queryResultOverride?.(sql)
+      if (overridden) return overridden
 
       if (sql.includes('requirement_version_norm_references')) {
         return [
@@ -282,5 +286,125 @@ describe('specification output data', () => {
         'A requirement application changed while the report was generated',
       status: 409,
     })
+  })
+
+  it('returns 404 before traversal when the specification is missing', async () => {
+    dalState.getSpecificationById.mockResolvedValueOnce(null)
+
+    await expect(
+      visitSpecificationOutputPages(createDb().db, 404, () => undefined),
+    ).rejects.toMatchObject({
+      message: 'Specification not found: 404',
+      status: 404,
+    })
+    expect(
+      dalState.traverseCompleteSpecificationItemResult,
+    ).not.toHaveBeenCalled()
+  })
+
+  it('supports empty pages and ignores rows without an application reference', async () => {
+    dalState.traverseCompleteSpecificationItemResult.mockImplementationOnce(
+      async (_db, _input, visitPage) => {
+        await visitPage([{ itemRef: null }], 1)
+        return { itemCount: 0, pageCount: 1 }
+      },
+    )
+    const { db } = createDb()
+    const pages: unknown[][] = []
+
+    await expect(
+      visitSpecificationOutputPages(db, 10, items => {
+        pages.push(items)
+      }),
+    ).resolves.toMatchObject({ itemCount: 0, pageCount: 1 })
+    expect(pages).toEqual([[]])
+    expect(db.query).not.toHaveBeenCalled()
+  })
+
+  it('honors an aborted generation before enriching a page', async () => {
+    const controller = new AbortController()
+    const reason = new Error('generation cancelled')
+    controller.abort(reason)
+
+    await expect(
+      visitSpecificationOutputPages(createDb().db, 10, () => undefined, {
+        signal: controller.signal,
+      }),
+    ).rejects.toBe(reason)
+  })
+
+  it('honors cancellation that arrives while a page is enriched', async () => {
+    const controller = new AbortController()
+    const reason = new Error('cancelled during query')
+    const { db } = createDb(() => {
+      controller.abort(reason)
+      return undefined
+    })
+
+    await expect(
+      visitSpecificationOutputPages(db, 10, () => undefined, {
+        signal: controller.signal,
+      }),
+    ).rejects.toBe(reason)
+  })
+
+  it('normalizes sparse and non-numeric database values to report defaults', async () => {
+    const { db } = createDb(sql => {
+      if (sql.includes('requirement_version_norm_references')) return []
+      if (sql.includes('specification_local_requirement_norm_references')) {
+        return []
+      }
+      if (sql.includes('requirement_version_requirement_packages')) return []
+      if (sql.includes('improvement_suggestions')) return []
+      if (
+        sql.includes('FROM requirements_specification_items specification_item')
+      ) {
+        return [
+          {
+            itemId: 31,
+            specificationItemStatusId: 'not-a-number',
+            verifiable: true,
+            versionNumber: 0,
+          },
+        ]
+      }
+      if (
+        sql.includes('FROM specification_local_requirements local_requirement')
+      ) {
+        return [
+          {
+            itemId: 41,
+            specificationItemStatusId: null,
+            verifiable: 'not-a-number',
+          },
+        ]
+      }
+      return undefined
+    })
+    dalState.listSpecificationTraceabilityItems.mockResolvedValue([])
+
+    const result = await collectCompleteSpecificationOutputData(db, 10)
+
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },
+        description: '',
+        kind: 'specificationLocal',
+        specificationItemStatusId: null,
+        uniqueId: '',
+        verifiable: false,
+      }),
+      expect.objectContaining({
+        deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },
+        description: '',
+        kind: 'library',
+        requirementPackageNames: [],
+        specificationItemStatusId: null,
+        suggestionCount: 0,
+        uniqueId: '',
+        verifiable: true,
+        versionNumber: 1,
+      }),
+    ])
   })
 })

@@ -156,4 +156,38 @@ describe('collectSpecificationTraceabilityData', () => {
       dalState.listSpecificationTraceabilityItems.mock.calls[0]?.[2],
     ).toHaveLength(100)
   })
+
+  it('returns 404 when the requested specification is missing', async () => {
+    dalState.getSpecificationById.mockResolvedValueOnce(null)
+
+    await expect(
+      collectSpecificationTraceabilityData(createDb(), 404, { locale: 'en' }),
+    ).rejects.toMatchObject({
+      message: 'Specification not found: 404',
+      status: 404,
+    })
+    expect(
+      dalState.traverseCompleteSpecificationItemResult,
+    ).not.toHaveBeenCalled()
+  })
+
+  it('ignores traversal rows without an application reference', async () => {
+    dalState.traverseCompleteSpecificationItemResult.mockImplementationOnce(
+      async (_db, _input, visitPage) => {
+        await visitPage([{ itemRef: null }, { itemRef: 'lib:31' }], 1)
+        return { itemCount: 2, pageCount: 1 }
+      },
+    )
+
+    const result = await collectSpecificationTraceabilityData(createDb(), 10, {
+      locale: 'en',
+    })
+
+    expect(result.items.map(item => item.itemRef)).toEqual(['lib:31'])
+    expect(dalState.listSpecificationTraceabilityItems).toHaveBeenCalledWith(
+      expect.anything(),
+      10,
+      ['lib:31'],
+    )
+  })
 })

@@ -103,6 +103,15 @@ describe('PDF report worker orchestration', () => {
       capacityReason: 'worker_failed',
       code: 'pdf_worker_failed',
     })
+
+    const errorResult = renderReportInWorker(options())
+    const workerError = new Error('worker emitted an error')
+    workerState.instances[2].emit('error', workerError)
+    await expect(errorResult).rejects.toMatchObject({
+      capacityReason: 'worker_failed',
+      code: 'pdf_worker_failed',
+      cause: workerError,
+    })
   })
 
   it('awaits worker termination and preserves the abort reason', async () => {
@@ -114,5 +123,48 @@ describe('PDF report worker orchestration', () => {
 
     await expect(result).rejects.toBe(reason)
     expect(worker.terminate).toHaveBeenCalledTimes(1)
+  })
+
+  it('maps a non-error abort reason and a termination failure', async () => {
+    const controller = new AbortController()
+    controller.abort('cancelled')
+    const result = renderReportInWorker(options(controller.signal))
+
+    await expect(result).rejects.toThrow('PDF report worker aborted')
+    expect(workerState.instances[0].terminate).toHaveBeenCalledTimes(1)
+
+    const secondController = new AbortController()
+    const terminationError = new Error('termination failed')
+    const secondResult = renderReportInWorker(options(secondController.signal))
+    workerState.instances[1].terminate.mockRejectedValueOnce(terminationError)
+    secondController.abort()
+
+    await expect(secondResult).rejects.toBe(terminationError)
+  })
+
+  it('keeps waiting after an unknown failure message and then maps worker exit', async () => {
+    const result = renderReportInWorker(options())
+    const worker = workerState.instances[0]
+
+    worker.emit('message', { failure: 'unknown', ok: false })
+    worker.emit('exit', 7)
+
+    await expect(result).rejects.toMatchObject({
+      capacityReason: 'worker_failed',
+      code: 'pdf_worker_failed',
+    })
+  })
+
+  it('ignores late failure events after successful settlement', async () => {
+    const controller = new AbortController()
+    const result = renderReportInWorker(options(controller.signal))
+    const worker = workerState.instances[0]
+
+    worker.emit('message', { byteCount: 512, ok: true })
+    worker.emit('error', new Error('late failure'))
+    controller.abort()
+
+    await expect(result).resolves.toBe(512)
+    expect(worker.terminate).not.toHaveBeenCalled()
   })
 })
