@@ -5,6 +5,28 @@ import { dataSubjectExportFilename } from '@/lib/privacy/data-subject-export-fil
 import type { DataSubjectExportV1 } from '@/lib/privacy/data-subject-export-types'
 
 describe('localized export filenames', () => {
+  it('creates deterministic fallback names for invalid timestamps', () => {
+    const access = {
+      generatedAt: 'not a date!',
+      run: { id: 7 },
+    } as AccessReviewExportV1
+    expect(accessReviewExportFilename(access, 'json')).toBe(
+      'access-review-0007-export.json',
+    )
+    access.generatedAt = '2026-05-xx trailing'
+    expect(accessReviewExportFilename(access, 'pdf', 'sv')).toBe(
+      'behorighetsoversyn-0007-2026-05-.pdf',
+    )
+
+    const privacy = {
+      generatedAt: '!',
+      subject: { targetFingerprint: '0123456789abcdef' },
+    } as DataSubjectExportV1
+    expect(dataSubjectExportFilename(privacy, 'json')).toBe(
+      'data-subject-access-export-0123456789abcdef-export.json',
+    )
+  })
+
   it('uses ASCII-safe locale stems for access-review exports', () => {
     const payload = {
       generatedAt: '2026-05-12T12:30:00.000Z',

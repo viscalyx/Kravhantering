@@ -1,9 +1,24 @@
-import { describe, expect, it } from 'vitest'
-import {
+import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { describe, expect, it, vi } from 'vitest'
+import DataSubjectExportPdfRenderer, {
   buildDataSubjectExportPdfModel,
   formatDataSubjectRelatedObjectLabel,
 } from '@/components/privacy/DataSubjectExportPdfRenderer'
 import type { DataSubjectExportV1 } from '@/lib/privacy/data-subject-export-types'
+import { dataSubjectExportFixture } from './helpers/data-subject-export-fixture'
+
+vi.mock('@react-pdf/renderer', () => ({
+  Document: ({ children }: { children: ReactNode }) => (
+    <article>{children}</article>
+  ),
+  Page: ({ children }: { children: ReactNode }) => (
+    <section>{children}</section>
+  ),
+  StyleSheet: { create: (styles: unknown) => styles },
+  Text: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+  View: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}))
 
 function exportPayload(): DataSubjectExportV1 {
   return {
@@ -236,6 +251,23 @@ function modelText(locale: string): string {
 }
 
 describe('DataSubjectExportPdfRenderer', () => {
+  it.each(['en', 'sv'])('renders personal-data evidence in %s', locale => {
+    render(
+      <DataSubjectExportPdfRenderer
+        exportData={dataSubjectExportFixture()}
+        locale={locale}
+      />,
+    )
+    expect(
+      screen.getByText(/Personal data export|Export av personuppgifter/),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        /Free-text fields are not scanned|Fritextfält söks inte igenom/,
+      ),
+    ).toBeVisible()
+  })
+
   it('formats access review related objects with localized labels', () => {
     expect(
       formatDataSubjectRelatedObjectLabel(
