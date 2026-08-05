@@ -245,7 +245,9 @@ const mockCountLinkedSpecificationItems = vi.fn(
 const mockCreateSpecItemStatus = vi.fn(async (..._args: unknown[]) => ({
   id: 6,
 }))
-const mockGetSpecItemStatus = vi.fn(async (..._args: unknown[]) => ({ id: 5 }))
+const mockGetSpecItemStatus = vi.fn(
+  async (..._args: unknown[]) => ({ id: 5 }) as { id: number } | null,
+)
 const mockGetLinkedSpecificationItems = vi.fn(async (..._args: unknown[]) => [])
 const mockUpdateSpecItemStatus = vi.fn()
 const mockDeleteSpecItemStatus = vi.fn()
@@ -897,6 +899,20 @@ describe('specification-implementation-types routes', () => {
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
   })
+  it('DELETE returns 404 without auditing a missing implementation type', async () => {
+    mockDeleteImpl.mockResolvedValue(0)
+
+    const r = await deleteImplType(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    expect(
+      auditState.recordAdminPrivilegedActionSucceeded,
+    ).not.toHaveBeenCalled()
+  })
 })
 
 describe('specification-lifecycle-statuses routes', () => {
@@ -1113,6 +1129,26 @@ describe('specification-item-statuses catalog routes', () => {
     })
   })
 
+  it('GET defaults the linked item count when a status has no count entry', async () => {
+    mockListSpecItemStatuses.mockResolvedValueOnce([
+      { id: 6, nameEn: 'Draft', nameSv: 'Utkast' },
+    ])
+
+    const r = await getSpecItemStatuses()
+
+    await expect(r.json()).resolves.toEqual({
+      statuses: [
+        {
+          id: 6,
+          isDeviationStatus: false,
+          linkedItemCount: 0,
+          nameEn: 'Draft',
+          nameSv: 'Utkast',
+        },
+      ],
+    })
+  })
+
   it('GET by id returns linked requirement applications', async () => {
     const r = await getSpecItemStatus(
       new NextRequest('http://l', { method: 'GET' }),
@@ -1124,6 +1160,29 @@ describe('specification-item-statuses catalog routes', () => {
       linkedItems: [],
       status: { id: 5 },
     })
+  })
+
+  it('GET by id rejects invalid identifiers before opening the database', async () => {
+    const r = await getSpecItemStatus(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('invalid'),
+    )
+
+    expect(r.status).toBe(400)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+
+  it('GET by id returns 404 when the catalog status is missing', async () => {
+    mockGetSpecItemStatus.mockResolvedValueOnce(null)
+
+    const r = await getSpecItemStatus(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    expect(mockGetLinkedSpecificationItems).not.toHaveBeenCalled()
   })
 
   it('PUT returns 404 when the catalog status is missing', async () => {

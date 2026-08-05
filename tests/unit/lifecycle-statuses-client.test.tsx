@@ -9,9 +9,10 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const confirmMock = vi.fn()
+const intlState = vi.hoisted(() => ({ locale: 'en' }))
 
 vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
+  useLocale: () => intlState.locale,
   useTranslations: (ns?: string) => (key: string) =>
     ns ? `${ns}.${key}` : key,
 }))
@@ -43,6 +44,7 @@ describe('LifecycleStatusesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    intlState.locale = 'en'
     fetchMock.mockResolvedValue(okJson({ statuses: sampleItems }))
   })
 
@@ -60,6 +62,14 @@ describe('LifecycleStatusesClient', () => {
   it('fetches and displays items', async () => {
     render(<LifecycleStatusesClient />)
     await waitForItemsLoaded()
+  })
+
+  it('renders Swedish lifecycle status names for the Swedish locale', async () => {
+    intlState.locale = 'sv'
+
+    render(<LifecycleStatusesClient />)
+
+    expect(await screen.findByText('Utveckling')).toBeInTheDocument()
   })
 
   it('shows loading text initially', () => {

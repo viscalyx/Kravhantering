@@ -47,4 +47,22 @@ describe('auth error page', () => {
       screen.getByText(/The sign-in callback could not be completed/),
     ).toBeInTheDocument()
   })
+
+  it('uses the first query value and falls back to the stable generic code', async () => {
+    render(
+      await AuthErrorPage({
+        searchParams: Promise.resolve({
+          code: ['unknown_provider_error', 'token_exchange_failed'],
+          locale: ['en', 'sv'],
+        }),
+      }),
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Sign-in could not be completed' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('authentication_callback_failed'),
+    ).toBeInTheDocument()
+  })
 })

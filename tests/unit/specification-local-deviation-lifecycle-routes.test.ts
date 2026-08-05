@@ -476,4 +476,64 @@ describe('specification-local deviation lifecycle routes', () => {
       error: 'Not in review',
     })
   })
+
+  it.each([
+    {
+      expectedError: 'Failed to request review',
+      failureMock: routeState.requestSpecificationLocalReview,
+      invoke: () =>
+        postRequestReview(
+          new Request(
+            'https://example.test/api/specification-local-deviations/1/request-review',
+            { method: 'POST' },
+          ),
+          makeParams('1'),
+        ),
+    },
+    {
+      expectedError: 'Failed to record decision',
+      failureMock: routeState.recordSpecificationLocalDecision,
+      invoke: () =>
+        postDecision(
+          new NextRequest(
+            'https://example.test/api/specification-local-deviations/1/decision',
+            {
+              body: JSON.stringify({
+                decision: 1,
+                decisionMotivation: 'Looks good',
+              }),
+              headers: { 'Content-Type': 'application/json' },
+              method: 'POST',
+            },
+          ),
+          makeParams('1'),
+        ),
+    },
+    {
+      expectedError: 'Failed to revert to draft',
+      failureMock: routeState.revertSpecificationLocalToDraft,
+      invoke: () =>
+        postRevertToDraft(
+          new Request(
+            'https://example.test/api/specification-local-deviations/1/revert-to-draft',
+            { method: 'POST' },
+          ),
+          makeParams('1'),
+        ),
+    },
+  ])(
+    'sanitizes unexpected lifecycle persistence failures',
+    async ({ expectedError, failureMock, invoke }) => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined)
+      failureMock.mockRejectedValueOnce(new Error('database secret'))
+
+      const response = await invoke()
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toEqual({ error: expectedError })
+      expect(consoleError).toHaveBeenCalled()
+    },
+  )
 })

@@ -260,6 +260,236 @@ describe('deviation mutation routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
+  it('lists deviations for a numeric requirement application identifier', async () => {
+    routeState.listDeviationsForSpecificationItem.mockResolvedValueOnce([
+      { id: 4, motivation: 'Numeric item deviation' },
+    ])
+    const { GET } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await GET(
+      new Request(
+        'https://example.test/api/specification-item-deviations/7',
+      ) as never,
+      params({ itemId: '7' }),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      deviations: [{ id: 4, motivation: 'Numeric item deviation' }],
+    })
+    expect(routeState.listDeviationsForSpecificationItem).toHaveBeenCalledWith(
+      mockDb,
+      7,
+    )
+  })
+
+  it('rejects an empty requirement application route segment before database work', async () => {
+    const { GET } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await GET(
+      new Request(
+        'https://example.test/api/specification-item-deviations/invalid',
+      ) as never,
+      params({ itemId: '' }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+
+  it('lists deviations for a stable specification-local requirement reference', async () => {
+    routeState.listDeviationsForSpecificationLocalRequirement.mockResolvedValueOnce(
+      [{ id: 5, motivation: 'Local item deviation' }],
+    )
+    const { GET } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await GET(
+      new Request(
+        'https://example.test/api/specification-item-deviations/local%3A8',
+      ) as never,
+      params({ itemId: 'local%3A8' }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(
+      routeState.listDeviationsForSpecificationLocalRequirement,
+    ).toHaveBeenCalledWith(mockDb, 8)
+  })
+
+  it.each(['%', '0', '999999999999999999999'])(
+    'rejects invalid requirement application identifier %s before database work',
+    async itemId => {
+      const { GET } = await import(
+        '@/app/api/specification-item-deviations/[itemId]/route'
+      )
+
+      const response = await GET(
+        new Request(
+          'https://example.test/api/specification-item-deviations/invalid',
+        ) as never,
+        params({ itemId }),
+      )
+
+      expect(response.status).toBe(400)
+      expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    },
+  )
+
+  it('sanitizes failures while listing requirement application deviations', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.listDeviationsForSpecificationItem.mockRejectedValueOnce(
+      new Error('database secret'),
+    )
+    const { GET } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await GET(
+      new Request(
+        'https://example.test/api/specification-item-deviations/7',
+      ) as never,
+      params({ itemId: '7' }),
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Internal server error',
+    })
+    expect(consoleError).toHaveBeenCalled()
+  })
+
+  it('creates a deviation for a numeric requirement application', async () => {
+    routeState.createDeviation.mockResolvedValueOnce({ id: 9 })
+    const { POST } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await POST(
+      new Request('https://example.test/api/specification-item-deviations/7', {
+        body: JSON.stringify({ motivation: 'A valid deviation motivation' }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }) as never,
+      params({ itemId: '7' }),
+    )
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toEqual({ id: 9, ok: true })
+    expect(routeState.createDeviation).toHaveBeenCalledWith(mockDb, {
+      createdBy: 'Reviewer',
+      createdByHsaId: 'SE5560000001-reviewer1',
+      motivation: 'A valid deviation motivation',
+      specificationItemId: 7,
+    })
+  })
+
+  it.each(['0', '999999999999999999999'])(
+    'rejects invalid item id %s in authorization before entering the mutation handler',
+    async itemId => {
+      const { POST } = await import(
+        '@/app/api/specification-item-deviations/[itemId]/route'
+      )
+
+      const response = await POST(
+        new Request(
+          `https://example.test/api/specification-item-deviations/${itemId}`,
+          {
+            body: JSON.stringify({
+              motivation: 'A valid deviation motivation',
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+          },
+        ) as never,
+        params({ itemId }),
+      )
+
+      expect(response.status).toBe(400)
+      expect(routeState.createDeviation).not.toHaveBeenCalled()
+      expect(routeState.createDeviationForItemRef).not.toHaveBeenCalled()
+      expect(routeState.requireHumanActorSnapshot).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['lib%3A7', 'lib:7'],
+    ['local%3A8', 'local:8'],
+  ])(
+    'creates a deviation for stable item reference %s',
+    async (itemId, itemRef) => {
+      routeState.createDeviationForItemRef.mockResolvedValueOnce({ id: 10 })
+      const { POST } = await import(
+        '@/app/api/specification-item-deviations/[itemId]/route'
+      )
+
+      const response = await POST(
+        new Request(
+          `https://example.test/api/specification-item-deviations/${itemId}`,
+          {
+            body: JSON.stringify({
+              motivation: 'A valid deviation motivation',
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+          },
+        ) as never,
+        params({ itemId }),
+      )
+
+      expect(response.status).toBe(201)
+      expect(routeState.createDeviationForItemRef).toHaveBeenCalledWith(
+        mockDb,
+        {
+          createdBy: 'Reviewer',
+          createdByHsaId: 'SE5560000001-reviewer1',
+          itemRef,
+          motivation: 'A valid deviation motivation',
+        },
+      )
+    },
+  )
+
+  it('maps domain and unexpected errors while creating item deviations', async () => {
+    const { POST } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+    const invoke = () =>
+      POST(
+        new Request(
+          'https://example.test/api/specification-item-deviations/7',
+          {
+            body: JSON.stringify({
+              motivation: 'A valid deviation motivation',
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+          },
+        ) as never,
+        params({ itemId: '7' }),
+      )
+
+    routeState.createDeviation.mockRejectedValueOnce(conflictError('Conflict'))
+    const conflict = await invoke()
+    expect(conflict.status).toBe(409)
+
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.createDeviation.mockRejectedValueOnce(
+      new Error('database secret'),
+    )
+    const unexpected = await invoke()
+    expect(unexpected.status).toBe(500)
+    expect(JSON.stringify(await unexpected.json())).not.toContain(
+      'database secret',
+    )
+    expect(consoleError).toHaveBeenCalled()
+  })
+
   it('rejects requirement application deviation creation before DAL writes when no human actor is present', async () => {
     routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
       throw validationError(
@@ -622,6 +852,68 @@ describe('deviation mutation routes', () => {
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
+  it('gets a specification-local deviation and maps read failures', async () => {
+    routeState.getSpecificationLocalDeviation.mockResolvedValueOnce({
+      id: 7,
+      motivation: 'Local motivation',
+    })
+    const { GET } = await import(
+      '@/app/api/specification-local-deviations/[id]/route'
+    )
+
+    const found = await GET(
+      new Request(
+        'https://example.test/api/specification-local-deviations/7',
+      ) as never,
+      params({ id: '7' }),
+    )
+    expect(found.status).toBe(200)
+    await expect(found.json()).resolves.toMatchObject({ id: 7 })
+
+    routeState.getSpecificationLocalDeviation.mockRejectedValueOnce(
+      notFoundError('Not found'),
+    )
+    const missing = await GET(
+      new Request(
+        'https://example.test/api/specification-local-deviations/404',
+      ) as never,
+      params({ id: '404' }),
+    )
+    expect(missing.status).toBe(404)
+
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.getSpecificationLocalDeviation.mockRejectedValueOnce(
+      new Error('database secret'),
+    )
+    const failed = await GET(
+      new Request(
+        'https://example.test/api/specification-local-deviations/7',
+      ) as never,
+      params({ id: '7' }),
+    )
+    expect(failed.status).toBe(500)
+    await expect(failed.json()).resolves.toEqual({
+      error: 'Failed to get specification-local deviation',
+    })
+    expect(consoleError).toHaveBeenCalled()
+  })
+
+  it('rejects invalid specification-local deviation identifiers before database work', async () => {
+    const { GET } = await import(
+      '@/app/api/specification-local-deviations/[id]/route'
+    )
+
+    const response = await GET(
+      new Request(
+        'https://example.test/api/specification-local-deviations/invalid',
+      ) as never,
+      params({ id: 'invalid' }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+
   it('updates specification-local deviations without mutating creator fields', async () => {
     routeState.updateSpecificationLocalDeviation.mockResolvedValue(undefined)
     const { PUT } = await import(
@@ -720,6 +1012,55 @@ describe('deviation mutation routes', () => {
       7,
     )
   })
+
+  it.each([
+    {
+      expectedError: 'Failed to update specification-local deviation',
+      failureMock: routeState.updateSpecificationLocalDeviation,
+      invoke: async () => {
+        const { PUT } = await import(
+          '@/app/api/specification-local-deviations/[id]/route'
+        )
+        return PUT(
+          jsonRequest(
+            'https://example.test/api/specification-local-deviations/7',
+            { motivation: 'Updated motivation' },
+          ) as never,
+          params({ id: '7' }),
+        )
+      },
+    },
+    {
+      expectedError: 'Failed to delete specification-local deviation',
+      failureMock: routeState.deleteSpecificationLocalDeviation,
+      invoke: async () => {
+        const { DELETE } = await import(
+          '@/app/api/specification-local-deviations/[id]/route'
+        )
+        return DELETE(
+          new Request(
+            'https://example.test/api/specification-local-deviations/7',
+            { method: 'DELETE' },
+          ) as never,
+          params({ id: '7' }),
+        )
+      },
+    },
+  ])(
+    'sanitizes unexpected specification-local mutation failures',
+    async ({ expectedError, failureMock, invoke }) => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined)
+      failureMock.mockRejectedValueOnce(new Error('database secret'))
+
+      const response = await invoke()
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toEqual({ error: expectedError })
+      expect(consoleError).toHaveBeenCalled()
+    },
+  )
 
   it.each(deviationMutationFailureCases)(
     'maps domain conflicts while $label a deviation',

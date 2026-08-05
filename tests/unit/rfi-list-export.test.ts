@@ -1,6 +1,18 @@
-import { describe, expect, it } from 'vitest'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { describe, expect, it, vi } from 'vitest'
 import type { SpecificationRfiListRow } from '@/lib/dal/rfi-questions'
-import { buildSpecificationRfiListCsv } from '@/lib/rfi/rfi-list-export'
+import SpecificationRfiListPdfRenderer, {
+  buildSpecificationRfiListCsv,
+} from '@/lib/rfi/rfi-list-export'
+
+vi.mock('@react-pdf/renderer', () => ({
+  Document: 'article',
+  Page: 'section',
+  StyleSheet: { create: <T>(styles: T): T => styles },
+  Text: 'span',
+  View: 'div',
+}))
 
 const list: SpecificationRfiListRow = {
   isLocked: true,
@@ -67,5 +79,69 @@ describe('RFI list export', () => {
     expect(csv).toContain(
       'SEC-RFI001;1;Säkerhet;Utesluten;Inte relevant;Hur hanteras loggning?;;',
     )
+  })
+
+  it('renders grouped English RFI questions with lock and optional metadata', () => {
+    const groupedList: SpecificationRfiListRow = {
+      ...list,
+      items: [
+        list.items[0],
+        {
+          ...list.items[1],
+          areaId: 1,
+          areaName: 'Integration',
+          relevance: null,
+        },
+      ],
+    }
+
+    const markup = renderToStaticMarkup(
+      createElement(SpecificationRfiListPdfRenderer, {
+        list: groupedList,
+        locale: 'en',
+        specification: {
+          name: 'Digital archive',
+          specificationCode: 'SPEC-004',
+        },
+      }),
+    )
+
+    expect(markup).toContain('RFI question list')
+    expect(markup).toContain('Digital archive (SPEC-004)')
+    expect(markup).toContain('Mode')
+    expect(markup).toContain('Locked')
+    expect(markup).toContain('2026-06-20T09:00:00.000Z')
+    expect(markup.match(/Integration/g)).toHaveLength(1)
+    expect(markup).toContain('INT-RFI001')
+    expect(markup).toContain('SEC-RFI001')
+    expect(markup).toContain('Included')
+    expect(markup).toContain('Excluded')
+    expect(markup).toContain('Relevant')
+    expect(markup).toContain('Not assessed')
+    expect(markup).toContain('Purpose/help text')
+    expect(markup).toContain('Expected answer format')
+  })
+
+  it('renders an unlocked empty RFI list without lock metadata', () => {
+    const markup = renderToStaticMarkup(
+      createElement(SpecificationRfiListPdfRenderer, {
+        list: {
+          ...list,
+          isLocked: false,
+          items: [],
+          lockedAt: null,
+          lockedByDisplayName: null,
+          lockedByHsaId: null,
+        },
+        locale: 'sv',
+        specification: {
+          name: 'E-arkiv',
+          specificationCode: 'SPEC-004',
+        },
+      }),
+    )
+
+    expect(markup).toContain('Förbered')
+    expect(markup).not.toContain('2026-06-20T09:00:00.000Z')
   })
 })

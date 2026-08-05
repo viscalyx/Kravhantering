@@ -10,9 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { okResponse } from './test-helpers'
 
 const confirmMock = vi.fn()
+const intlState = vi.hoisted(() => ({ locale: 'en' }))
 
 vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
+  useLocale: () => intlState.locale,
   useTranslations: (ns?: string) => (key: string) =>
     ns ? `${ns}.${key}` : key,
 }))
@@ -40,6 +41,26 @@ vi.mock('@/components/StatusBadge', () => ({
     >
       {label}
     </span>
+  ),
+}))
+
+vi.mock('@/components/IconPicker', () => ({
+  default: ({
+    disabled,
+    label,
+    onChange,
+  }: {
+    disabled?: boolean
+    label: string
+    onChange: (value: string | null) => void
+  }) => (
+    <button
+      disabled={disabled}
+      onClick={() => onChange('Shield')}
+      type="button"
+    >
+      {label}
+    </button>
   ),
 }))
 
@@ -110,6 +131,7 @@ describe('SpecificationItemStatusesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    intlState.locale = 'en'
     fetchMock.mockImplementation(() =>
       Promise.resolve(okResponse({ statuses: sampleStatuses })),
     )
@@ -136,6 +158,15 @@ describe('SpecificationItemStatusesClient', () => {
     expect(screen.getAllByText('In Progress').length).toBeGreaterThanOrEqual(1)
   })
 
+  it('renders Swedish status names and descriptions for the Swedish locale', async () => {
+    intlState.locale = 'sv'
+
+    render(<SpecificationItemStatusesClient />)
+
+    expect(await screen.findAllByText('Inkluderad')).not.toHaveLength(0)
+    expect(screen.getByText('Kravet finns i underlaget')).toBeInTheDocument()
+  })
+
   it('shows definition column with description text', async () => {
     render(<SpecificationItemStatusesClient />)
     await waitFor(() => {
@@ -153,6 +184,20 @@ describe('SpecificationItemStatusesClient', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
     render(<SpecificationItemStatusesClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
+  })
+
+  it('shows the catalog load error with the empty catalog', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockRejectedValue(new Error('catalog unavailable'))
+
+    render(<SpecificationItemStatusesClient />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'catalog unavailable',
+    )
+    expect(
+      screen.getByText('specificationItemStatusAdmin.emptyState'),
+    ).toBeInTheDocument()
   })
 
   it('renders a message-only empty state without create CTA', async () => {
@@ -450,5 +495,89 @@ describe('SpecificationItemStatusesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
+  })
+
+  it('edits every optional status field and renders linked specifications', async () => {
+    fetchMock.mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
+    fetchMock.mockResolvedValueOnce(
+      okResponse({
+        linkedItems: [
+          {
+            requirementCount: 3,
+            specificationId: 7,
+            specificationName: 'IAM specification',
+          },
+        ],
+      }),
+    )
+    render(<SpecificationItemStatusesClient />)
+    await screen.findAllByText('In Progress')
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[2])
+
+    expect(await screen.findByText('IAM specification')).toBeInTheDocument()
+    expect(
+      screen.getByText('specificationItemStatusAdmin.requirementCount'),
+    ).toBeInTheDocument()
+
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: /specificationItemStatusAdmin\.definition.+SV/,
+      }),
+      { target: { value: 'Svensk definition' } },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: /specificationItemStatusAdmin\.definition.+EN/,
+      }),
+      { target: { value: 'English definition' } },
+    )
+    fireEvent.change(
+      screen.getByLabelText('specificationItemStatusAdmin.colorPicker'),
+      { target: { value: '#123456' } },
+    )
+    fireEvent.change(statusSortOrderInput(), { target: { value: '8' } })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'specificationItemStatusAdmin.icon' }),
+    )
+
+    expect(
+      screen.getByRole('textbox', {
+        name: /specificationItemStatusAdmin\.definition.+SV/,
+      }),
+    ).toHaveValue('Svensk definition')
+    expect(
+      screen.getByRole('textbox', {
+        name: /specificationItemStatusAdmin\.definition.+EN/,
+      }),
+    ).toHaveValue('English definition')
+    expect(statusSortOrderInput()).toHaveValue(8)
+  })
+
+  it('keeps a dirty form open when cancellation is declined', async () => {
+    confirmMock.mockResolvedValue(false)
+    render(<SpecificationItemStatusesClient />)
+    await screen.findAllByText('Included')
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[1])
+    fireEvent.change(statusNameEnInput(), {
+      target: { value: 'Changed included status' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+
+    await waitFor(() => expect(confirmMock).toHaveBeenCalledOnce())
+    expect(statusNameEnInput()).toHaveValue('Changed included status')
+  })
+
+  it('shows the linked-item fallback after an unexpected lookup failure', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock
+      .mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
+      .mockRejectedValueOnce(new Error('network unavailable'))
+    render(<SpecificationItemStatusesClient />)
+    await screen.findAllByText('Included')
+
+    fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[1])
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
   })
 })

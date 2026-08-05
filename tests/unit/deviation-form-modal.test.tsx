@@ -174,4 +174,35 @@ describe('DeviationFormModal', () => {
     expect(confirmDiscardChangesMock).toHaveBeenCalledTimes(1)
     expect(onClose).not.toHaveBeenCalled()
   })
+
+  it('toggles field help and closes a clean form without confirmation', async () => {
+    const onClose = vi.fn()
+    render(<DeviationFormModal onClose={onClose} onSubmit={vi.fn()} open />)
+
+    const help = screen.getByRole('button', { name: 'Hjälp: Motivering' })
+    expect(help).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(help)
+    expect(help).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Beskriv varför avsteget behövs.')).toBeVisible()
+    await userEvent.click(help)
+    expect(help).toHaveAttribute('aria-expanded', 'false')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    expect(confirmDiscardChangesMock).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('closes a dirty form after discard confirmation', async () => {
+    const onClose = vi.fn()
+    render(<DeviationFormModal onClose={onClose} onSubmit={vi.fn()} open />)
+
+    await userEvent.type(
+      screen.getByLabelText(/Motivering/, { selector: 'textarea' }),
+      'Changed motivation',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+
+    expect(confirmDiscardChangesMock).toHaveBeenCalledOnce()
+    expect(onClose).toHaveBeenCalledOnce()
+  })
 })

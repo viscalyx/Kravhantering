@@ -64,12 +64,94 @@ describe('usage statuses DAL', () => {
     expect(repository.findOne).not.toHaveBeenCalled()
   })
 
+  it('returns mapped system usage statuses by id and reports missing rows', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.findOne
+      .mockResolvedValueOnce({ ...statusEntity(2), iconName: 'loader' })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(getSpecificationItemStatusById(db, 2)).resolves.toEqual({
+      ...statusEntity(2),
+      iconName: 'loader',
+    })
+    await expect(getSpecificationItemStatusById(db, 3)).resolves.toBeNull()
+  })
+
   it('rejects editing non-system usage statuses', async () => {
     const { db, repository } = createSqlServerDb()
 
     await expect(
       updateSpecificationItemStatus(db, 7, { nameEn: 'Custom' }),
     ).rejects.toThrow('Only system usage statuses can be edited')
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
+  it('updates every editable usage-status field while preserving a locked sort order', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.findOne.mockResolvedValueOnce({
+      color: '#0f172a',
+      descriptionEn: 'Included in delivery',
+      descriptionSv: 'Ingår i leverans',
+      iconName: 'circle-check',
+      id: 1,
+      nameEn: 'Included',
+      nameSv: 'Inkluderad',
+      sortOrder: 1,
+    })
+
+    await expect(
+      updateSpecificationItemStatus(db, 1, {
+        color: '#0f172a',
+        descriptionEn: 'Included in delivery',
+        descriptionSv: 'Ingår i leverans',
+        iconName: 'circle-check',
+        nameEn: 'Included',
+        nameSv: 'Inkluderad',
+        sortOrder: 99,
+      }),
+    ).resolves.toEqual({
+      color: '#0f172a',
+      descriptionEn: 'Included in delivery',
+      descriptionSv: 'Ingår i leverans',
+      iconName: 'circle-check',
+      id: 1,
+      nameEn: 'Included',
+      nameSv: 'Inkluderad',
+      sortOrder: 1,
+    })
+    expect(repository.update).toHaveBeenCalledWith(1, {
+      color: '#0f172a',
+      descriptionEn: 'Included in delivery',
+      descriptionSv: 'Ingår i leverans',
+      iconName: 'circle-check',
+      nameEn: 'Included',
+      nameSv: 'Inkluderad',
+    })
+  })
+
+  it('preserves both boundary sort orders and allows ordering other statuses', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.findOne
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(statusEntity(2))
+
+    await expect(
+      updateSpecificationItemStatus(db, 5, { sortOrder: 99 }),
+    ).resolves.toBeUndefined()
+    await expect(
+      updateSpecificationItemStatus(db, 2, { sortOrder: 9 }),
+    ).resolves.toEqual(statusEntity(2))
+    expect(repository.update).toHaveBeenCalledOnce()
+    expect(repository.update).toHaveBeenCalledWith(2, { sortOrder: 9 })
+  })
+
+  it('treats an empty usage-status patch as an observable no-op', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.findOne.mockResolvedValueOnce(statusEntity(3))
+
+    await expect(updateSpecificationItemStatus(db, 3, {})).resolves.toEqual(
+      statusEntity(3),
+    )
     expect(repository.update).not.toHaveBeenCalled()
   })
 
