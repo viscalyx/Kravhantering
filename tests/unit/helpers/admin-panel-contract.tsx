@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { expect } from 'vitest'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
@@ -30,4 +31,10 @@ export function renderAdminPanel(
 
 export function pendingFetch(): Promise<Response> {
   return new Promise(() => undefined)
+}
+
+export async function clickAdminConfirmationAction(name: string) {
+  const dialog = await screen.findByRole('alertdialog')
+  const user = userEvent.setup()
+  await user.click(within(dialog).getByRole('button', { name }))
 }

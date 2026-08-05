@@ -5,6 +5,7 @@ import {
   DEFAULT_APPLICATION_SETTINGS,
   MIB,
 } from '@/lib/application-settings'
+import { RequirementsServiceError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => {
   const adminContext = {
@@ -119,6 +120,27 @@ describe('admin application settings route', () => {
     expect(routeState.getAdminApplicationSettings).not.toHaveBeenCalled()
   })
 
+  it('returns a bounded response for unexpected read failures', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.getAdminApplicationSettings.mockRejectedValueOnce(
+      new Error('database unavailable'),
+    )
+
+    try {
+      const response = await GET(
+        new NextRequest('https://example.test/api/admin/application-settings'),
+      )
+
+      await expect(response.json()).resolves.toEqual({
+        error: 'Failed to load application settings.',
+      })
+      expect(response.status).toBe(500)
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
   it('returns matching unauthorized responses for anonymous reads and writes', async () => {
     const anonymousContext = {
       ...routeState.adminContext,
@@ -212,4 +234,43 @@ describe('admin application settings route', () => {
       expect.anything(),
     )
   })
+
+  it.each([
+    [
+      new RequirementsServiceError('validation', 'Invalid setting', {
+        httpStatus: 422,
+      }),
+      422,
+      { code: 'validation', error: 'Invalid setting' },
+    ],
+    [
+      new Error('database unavailable'),
+      500,
+      { error: 'Failed to save application settings.' },
+    ],
+  ])(
+    'maps update failures to bounded HTTP responses',
+    async (error, status, body) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      routeState.updateApplicationSetting.mockRejectedValueOnce(error)
+
+      try {
+        const response = await PATCH(
+          new NextRequest(
+            'https://example.test/api/admin/application-settings',
+            {
+              body: JSON.stringify({ csvExportConcurrencyPerNode: 8 }),
+              method: 'PATCH',
+            },
+          ),
+        )
+
+        await expect(response.json()).resolves.toEqual(body)
+        expect(response.status).toBe(status)
+        expect(response.headers.get('Cache-Control')).toBe('no-store')
+      } finally {
+        errorSpy.mockRestore()
+      }
+    },
+  )
 })

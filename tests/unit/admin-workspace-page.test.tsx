@@ -49,6 +49,18 @@ vi.mock('@/app/[locale]/admin/admin-client', () => ({
   ),
 }))
 
+function Panel({
+  initialState,
+}: {
+  initialState?: ActionAuditLogInitialState
+}) {
+  return (
+    <span data-testid="panel">
+      {initialState ? 'audit-loaded' : 'panel-loaded'}
+    </span>
+  )
+}
+
 async function renderWorkspace({
   roles,
   tab,
@@ -64,18 +76,6 @@ async function renderWorkspace({
     '@/app/[locale]/admin/admin-workspace-page'
   )
 
-  function Panel({
-    initialState,
-  }: {
-    initialState?: ActionAuditLogInitialState
-  }) {
-    return (
-      <span data-testid="panel">
-        {initialState ? 'audit-loaded' : 'panel-loaded'}
-      </span>
-    )
-  }
-
   const result = AdminWorkspacePage({
     children: <Panel />,
     params: Promise.resolve({ locale: 'sv' }),
@@ -84,6 +84,23 @@ async function renderWorkspace({
       tab: 'actionAuditLog',
     }),
     tab,
+  })
+  render(await result)
+}
+
+async function renderActionAuditWorkspaceWithoutSearchParams() {
+  workspaceMocks.getSession.mockResolvedValue({
+    roles: ['Admin'],
+    sub: 'signed-in-user',
+  })
+  const { default: AdminWorkspacePage } = await import(
+    '@/app/[locale]/admin/admin-workspace-page'
+  )
+
+  const result = AdminWorkspacePage({
+    children: <Panel />,
+    params: Promise.resolve({ locale: 'sv' }),
+    tab: 'actionAuditLog',
   })
   render(await result)
 }
@@ -115,6 +132,15 @@ describe('AdminWorkspacePage', () => {
     )
     expect(workspaceMocks.getDataSource).toHaveBeenCalledOnce()
     expect(workspaceMocks.listActionAuditEvents).toHaveBeenCalledOnce()
+  })
+
+  it('loads the unfiltered action log when search parameters are omitted', async () => {
+    await renderActionAuditWorkspaceWithoutSearchParams()
+
+    expect(workspaceMocks.listActionAuditEvents).toHaveBeenCalledWith(
+      workspaceMocks.dataSource,
+      expect.objectContaining({ page: undefined }),
+    )
   })
 
   it('redirects a PrivacyOfficer away from an unauthorized workspace', async () => {

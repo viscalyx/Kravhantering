@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { RequirementsServiceError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   createArchivingRetentionException: vi.fn(),
@@ -19,9 +20,11 @@ const routeState = vi.hoisted(() => ({
   exportArchivingRetentionArchive: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   listArchivingRetentionPolicies: vi.fn(),
+  logSanitizedError: vi.fn(),
   previewArchivingRetention: vi.fn(),
   recordAllowedActionAuditEvent: vi.fn(),
   recordAllowedActionAuditEventWithExecutor: vi.fn(),
+  recordRequirementSelectionCleanupAudit: vi.fn(),
   recordSecurityEvent: vi.fn(),
   requireHumanActorSnapshot: vi.fn(() => ({
     displayName: 'Disa PrivacyOfficer',
@@ -31,6 +34,10 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/http/safe-errors', () => ({
+  logSanitizedError: routeState.logSanitizedError,
 }))
 
 vi.mock('@/lib/auth/audit', () => ({
@@ -49,7 +56,8 @@ vi.mock('@/lib/audit/action-audit', async importOriginal => {
 })
 
 vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
-  recordRequirementSelectionCleanupAudit: vi.fn(),
+  recordRequirementSelectionCleanupAudit:
+    routeState.recordRequirementSelectionCleanupAudit,
 }))
 
 vi.mock('@/lib/archiving/retention', () => ({
@@ -114,6 +122,12 @@ const preview = {
   },
 }
 
+const archivingRouteLoaders = {
+  exports: () => import('@/app/api/admin/archiving/exports/route'),
+  preview: () => import('@/app/api/admin/archiving/preview/route'),
+  runs: () => import('@/app/api/admin/archiving/runs/route'),
+}
+
 describe('archiving retention routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -148,6 +162,26 @@ describe('archiving retention routes', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(await response.json()).toEqual({ policies: [{ id: 3 }] })
+  })
+
+  it('maps policy authorization and unexpected load failures', async () => {
+    const { GET } = await import('@/app/api/admin/archiving/policies/route')
+    routeState.createRequestContext.mockResolvedValueOnce(privacyContext([]))
+    const forbidden = await GET(
+      new Request('http://localhost/api/admin/archiving/policies') as never,
+    )
+    routeState.listArchivingRetentionPolicies.mockRejectedValueOnce(
+      new Error('database unavailable'),
+    )
+    const failed = await GET(
+      new Request('http://localhost/api/admin/archiving/policies') as never,
+    )
+
+    expect(forbidden.status).toBe(403)
+    expect(failed.status).toBe(500)
+    await expect(failed.json()).resolves.toMatchObject({
+      error: 'Failed to list archiving policies',
+    })
   })
 
   it('previews retention and audits counts without raw subject values', async () => {
@@ -192,6 +226,27 @@ describe('archiving retention routes', () => {
   })
 
   it('executes retention and records redacted audit detail', async () => {
+    routeState.executeArchivingRetention.mockImplementationOnce(
+      async (_db, options) => {
+        const result = {
+          ...preview,
+          runId: 9,
+          runRequestId: 'run-request',
+        }
+        await options.audit({ query: vi.fn() }, result)
+        await options.cleanupAudit(
+          { query: vi.fn() },
+          {
+            candidate: {
+              subjectId: '12',
+              subjectTable: 'requirement_selection_questions',
+            },
+            cleanup: { deletedAnswerCount: 2 },
+          },
+        )
+        return result
+      },
+    )
     const { POST } = await import('@/app/api/admin/archiving/runs/route')
     const response = await POST(
       jsonRequest('http://localhost/api/admin/archiving/runs', {
@@ -214,6 +269,26 @@ describe('archiving retention routes', () => {
     expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'admin.archiving.executed',
+      }),
+    )
+    expect(
+      routeState.recordAllowedActionAuditEventWithExecutor,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        action: 'admin.archiving.execute',
+        targetId: 9,
+      }),
+    )
+    expect(
+      routeState.recordRequirementSelectionCleanupAudit,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        originAction: 'admin.archiving.execute',
+        originTargetId: '12',
       }),
     )
   })
@@ -287,6 +362,77 @@ describe('archiving retention routes', () => {
     ).not.toContain('Legal hold for case 2026-05')
   })
 
+  it('accepts a valid exception expiry and records the write atomically', async () => {
+    const { POST } = await import('@/app/api/admin/archiving/exceptions/route')
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/archiving/exceptions', {
+        expiresAt: '2027-01-02T03:04:05.000Z',
+        policyId: 3,
+        reason: 'Legal hold',
+        sourceKey: 'requirement_areas.unused',
+        subjectId: '12',
+        subjectTable: 'requirement_areas',
+      }) as never,
+    )
+
+    expect(response.status).toBe(201)
+    expect(routeState.createArchivingRetentionException).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        expiresAt: new Date('2027-01-02T03:04:05.000Z'),
+      }),
+      expect.anything(),
+    )
+    expect(routeState.db.transaction).toHaveBeenCalled()
+  })
+
+  it('rejects an invalid exception expiry before database work', async () => {
+    const { POST } = await import('@/app/api/admin/archiving/exceptions/route')
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/archiving/exceptions', {
+        expiresAt: 'not-a-date',
+        policyId: 3,
+        reason: 'Legal hold',
+        sourceKey: 'requirement_areas.unused',
+        subjectId: '12',
+        subjectTable: 'requirement_areas',
+      }) as never,
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.createArchivingRetentionException).not.toHaveBeenCalled()
+  })
+
+  it('deletes retention exceptions atomically and audits the result', async () => {
+    const { DELETE } = await import(
+      '@/app/api/admin/archiving/exceptions/route'
+    )
+    const response = await DELETE(
+      new Request('http://localhost/api/admin/archiving/exceptions', {
+        body: JSON.stringify({ id: 3 }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'DELETE',
+      }) as never,
+    )
+
+    await expect(response.json()).resolves.toEqual({ deleted: true })
+    expect(response.status).toBe(200)
+    expect(routeState.deleteArchivingRetentionException).toHaveBeenCalledWith(
+      expect.objectContaining({ db: true }),
+      3,
+    )
+    expect(
+      routeState.recordAllowedActionAuditEventWithExecutor,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        action: 'admin.archiving_exception.delete',
+        details: { deleted: true, exceptionId: 3 },
+      }),
+    )
+  })
+
   it('rejects retention exceptions without PrivacyOfficer', async () => {
     routeState.createRequestContext.mockResolvedValueOnce(privacyContext([]))
     const { POST } = await import('@/app/api/admin/archiving/exceptions/route')
@@ -304,4 +450,136 @@ describe('archiving retention routes', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(routeState.createArchivingRetentionException).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ['preview', { policyId: 3 }, 'previewArchivingRetention'],
+    [
+      'exports',
+      { policyId: 3, previewToken: 'token' },
+      'exportArchivingRetentionArchive',
+    ],
+    [
+      'runs',
+      { exportToken: 'export-token', policyId: 3, previewToken: 'token' },
+      'executeArchivingRetention',
+    ],
+  ])(
+    'maps service and unexpected failures from archiving %s',
+    async (routeName, body, mockName) => {
+      const route =
+        await archivingRouteLoaders[
+          routeName as keyof typeof archivingRouteLoaders
+        ]()
+      const work =
+        routeState[
+          mockName as
+            | 'previewArchivingRetention'
+            | 'exportArchivingRetentionArchive'
+            | 'executeArchivingRetention'
+        ]
+      work.mockRejectedValueOnce(
+        new RequirementsServiceError('validation', 'Invalid retention input', {
+          httpStatus: 422,
+        }),
+      )
+      const serviceResponse = await route.POST(
+        jsonRequest(
+          `http://localhost/api/admin/archiving/${routeName}`,
+          body,
+        ) as never,
+      )
+      work.mockRejectedValueOnce(new Error('database unavailable'))
+      const failedResponse = await route.POST(
+        jsonRequest(
+          `http://localhost/api/admin/archiving/${routeName}`,
+          body,
+        ) as never,
+      )
+
+      expect(serviceResponse.status).toBe(422)
+      expect(failedResponse.status).toBe(500)
+    },
+  )
+
+  it.each([
+    ['preview', { policyId: 3 }],
+    ['exports', { policyId: 3, previewToken: 'token' }],
+    [
+      'runs',
+      {
+        exportToken: 'export-token',
+        policyId: 3,
+        previewToken: 'token',
+      },
+    ],
+  ])(
+    'uses the wrapper request for archiving %s audit when context has no request',
+    async (routeName, body) => {
+      routeState.createRequestContext.mockResolvedValueOnce({
+        ...privacyContext(),
+        request: undefined,
+      })
+      const route =
+        await archivingRouteLoaders[
+          routeName as keyof typeof archivingRouteLoaders
+        ]()
+
+      const response = await route.POST(
+        jsonRequest(
+          `http://localhost/api/admin/archiving/${routeName}`,
+          body,
+        ) as never,
+      )
+
+      expect(response.status).toBe(routeName === 'runs' ? 201 : 200)
+      expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ request: expect.any(Request) }),
+      )
+    },
+  )
+
+  it.each(['POST', 'DELETE'] as const)(
+    'maps service and unexpected failures from exception %s',
+    async method => {
+      const route = await import('@/app/api/admin/archiving/exceptions/route')
+      const work =
+        method === 'POST'
+          ? routeState.createArchivingRetentionException
+          : routeState.deleteArchivingRetentionException
+      const body =
+        method === 'POST'
+          ? {
+              policyId: 3,
+              reason: 'Legal hold',
+              sourceKey: 'requirement_areas.unused',
+              subjectId: '12',
+              subjectTable: 'requirement_areas',
+            }
+          : { id: 3 }
+
+      work.mockRejectedValueOnce(
+        new RequirementsServiceError('validation', 'Invalid exception', {
+          httpStatus: 422,
+        }),
+      )
+      const serviceResponse = await route[method](
+        new Request('http://localhost/api/admin/archiving/exceptions', {
+          body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' },
+          method,
+        }) as never,
+      )
+      work.mockRejectedValueOnce(new Error('database unavailable'))
+      const failedResponse = await route[method](
+        new Request('http://localhost/api/admin/archiving/exceptions', {
+          body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' },
+          method,
+        }) as never,
+      )
+
+      expect(serviceResponse.status).toBe(422)
+      expect(failedResponse.status).toBe(500)
+    },
+  )
 })

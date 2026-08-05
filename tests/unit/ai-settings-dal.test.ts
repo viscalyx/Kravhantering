@@ -11,11 +11,13 @@ import {
   clearAiSafetyRuntimeSettingsCacheForTests,
   clearMcpMaxRequestBytesCacheForTests,
   formatAiSettingsLoadError,
+  getAdminAiSettings,
   getAiGenerationAvailability,
   getAiGenerationSettings,
   getCachedAiSafetyRuntimeSettings,
   getCachedMcpMaxRequestBytes,
   getCachedMcpRuntimeSettings,
+  patchAiGenerationSettings,
   resolveAiGenerationAvailability,
   updateAiGenerationSettings,
 } from '@/lib/dal/ai-settings'
@@ -165,6 +167,126 @@ describe('AI settings DAL', () => {
     })
   })
 
+  it('maps a complete current row and defaults invalid migrated values', async () => {
+    query.mockResolvedValueOnce([
+      {
+        aiSafetyForensicLoggingEnabled: undefined,
+        aiSafetyRuleCacheTtlSeconds: -1,
+        mcpImportMaxRows: -1,
+        mcpImportValidationTtlMinutes: -1,
+        mcpMaxRequestBytes: -1,
+        requirementGenerationEnabled: 1,
+      },
+    ])
+
+    await expect(getAdminAiSettings(db, { NODE_ENV: 'test' })).resolves.toEqual(
+      {
+        aiSafetyForensicLoggingEnabled: true,
+        aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
+        disabledByEnvironment: false,
+        effectiveRequirementGenerationEnabled: true,
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        requirementGenerationEnabled: true,
+      },
+    )
+  })
+
+  it('uses the forensic-column compatibility projection when that migration is absent', async () => {
+    query
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error(
+            "Invalid column name 'ai_safety_forensic_logging_enabled'.",
+          ),
+          { number: 207 },
+        ),
+      )
+      .mockResolvedValueOnce([
+        {
+          aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+          mcpImportValidationTtlMinutes:
+            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+          mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+          requirementGenerationEnabled: 0,
+        },
+      ])
+
+    await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
+      aiSafetyForensicLoggingEnabled: true,
+      requirementGenerationEnabled: false,
+    })
+    expect(query.mock.calls[1]?.[0]).not.toContain(
+      'ai_safety_forensic_logging_enabled',
+    )
+  })
+
+  it('uses MCP defaults when a newer MCP migration is absent', async () => {
+    query
+      .mockRejectedValueOnce(
+        Object.assign(new Error("Invalid column name 'mcp_import_max_rows'."), {
+          number: 207,
+        }),
+      )
+      .mockResolvedValueOnce([
+        {
+          mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+          requirementGenerationEnabled: 1,
+        },
+      ])
+
+    await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
+      mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+      mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+      requirementGenerationEnabled: true,
+    })
+  })
+
+  it('falls through to the legacy projection when an intermediate fallback fails', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    query
+      .mockRejectedValueOnce(new Error('current projection failed'))
+      .mockRejectedValueOnce(new Error('MCP compatibility failed'))
+      .mockResolvedValueOnce([{ requirementGenerationEnabled: 0 }])
+
+    try {
+      await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
+        requirementGenerationEnabled: false,
+      })
+      expect(query).toHaveBeenCalledTimes(3)
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('retains all database errors when every compatibility projection fails', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    query
+      .mockRejectedValueOnce(new Error('current projection failed'))
+      .mockRejectedValueOnce(new Error('compatibility projection failed'))
+      .mockRejectedValueOnce(new Error('legacy projection failed'))
+
+    try {
+      await expect(getAiGenerationSettings(db)).rejects.toMatchObject({
+        cause: expect.objectContaining({
+          message: 'current projection failed',
+        }),
+        fallbackError: expect.objectContaining({
+          message: 'compatibility projection failed',
+        }),
+        legacyFallbackError: expect.objectContaining({
+          message: 'legacy projection failed',
+        }),
+      })
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
   it('gives the environment guard highest precedence', () => {
     expect(
       resolveAiGenerationAvailability(
@@ -249,6 +371,66 @@ describe('AI settings DAL', () => {
     expect(transaction).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['mcpImportMaxRows', -1, 'invalid_mcp_import_max_rows'],
+    [
+      'mcpImportValidationTtlMinutes',
+      -1,
+      'invalid_mcp_import_validation_ttl_minutes',
+    ],
+    [
+      'aiSafetyRuleCacheTtlSeconds',
+      -1,
+      'invalid_ai_safety_rule_cache_ttl_seconds',
+    ],
+  ])('rejects invalid %s before writing', async (field, value, reason) => {
+    await expect(
+      updateAiGenerationSettings(db, {
+        aiSafetyForensicLoggingEnabled: true,
+        aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        requirementGenerationEnabled: true,
+        [field]: value,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason },
+    })
+    expect(transaction).not.toHaveBeenCalled()
+  })
+
+  it('patches only supplied values through the atomic full-row update', async () => {
+    query.mockResolvedValueOnce([
+      {
+        aiSafetyForensicLoggingEnabled: 1,
+        aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        requirementGenerationEnabled: 1,
+      },
+    ])
+
+    await expect(
+      patchAiGenerationSettings(
+        db,
+        { aiSafetyForensicLoggingEnabled: false },
+        { env: { NODE_ENV: 'test' } },
+      ),
+    ).resolves.toMatchObject({
+      aiSafetyForensicLoggingEnabled: false,
+      requirementGenerationEnabled: true,
+    })
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE ai_settings'),
+      expect.arrayContaining([false]),
+    )
+  })
+
   it('caches AI safety runtime settings and defaults forensic logging on', async () => {
     query.mockResolvedValueOnce([{ aiSafetyForensicLoggingEnabled: 0 }])
 
@@ -284,6 +466,14 @@ describe('AI settings DAL', () => {
     await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
       aiSafetyForensicLoggingEnabled: true,
     })
+  })
+
+  it('rethrows unexpected AI safety runtime load failures', async () => {
+    query.mockRejectedValueOnce(new Error('connection unavailable'))
+
+    await expect(getCachedAiSafetyRuntimeSettings(db)).rejects.toThrow(
+      'connection unavailable',
+    )
   })
 
   it('caches the configured MCP request payload limit', async () => {
@@ -328,5 +518,47 @@ describe('AI settings DAL', () => {
     await expect(getCachedMcpRuntimeSettings(db)).rejects.toThrow(
       'settings unavailable',
     )
+  })
+
+  it.each([
+    [{ mcpImportMaxRows: -1 }, 'invalid_mcp_import_max_rows'],
+    [
+      { mcpImportValidationTtlMinutes: -1 },
+      'invalid_mcp_import_validation_ttl_minutes',
+    ],
+  ])(
+    'rejects invalid persisted MCP runtime settings',
+    async (override, reason) => {
+      query.mockResolvedValueOnce([
+        {
+          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+          mcpImportValidationTtlMinutes:
+            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+          mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+          ...override,
+        },
+      ])
+
+      await expect(getCachedMcpRuntimeSettings(db)).rejects.toMatchObject({
+        code: 'validation',
+        details: { reason },
+      })
+    },
+  )
+
+  it('formats non-Error and cyclic error details without recursion', () => {
+    const cyclic: { message: string; primaryError?: unknown } = {
+      message: 'outer failure',
+    }
+    cyclic.primaryError = cyclic
+
+    expect(formatAiSettingsLoadError(cyclic)).toEqual({
+      message: 'outer failure',
+      messages: ['outer failure'],
+    })
+    expect(formatAiSettingsLoadError(['first', { number: 207 }])).toEqual({
+      message: 'first',
+      messages: ['first', '207'],
+    })
   })
 })

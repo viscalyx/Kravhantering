@@ -171,6 +171,31 @@ describe('admin AI settings route', () => {
     expect(routeState.getAdminAiSettings).not.toHaveBeenCalled()
   })
 
+  it('returns a bounded no-store response for unexpected read failures', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.getAdminAiSettings.mockRejectedValueOnce(
+      new Error('database unavailable'),
+    )
+
+    try {
+      const response = await GET(
+        new NextRequest('https://example.test/api/admin/ai-settings'),
+      )
+
+      await expect(response.json()).resolves.toEqual({
+        error: 'Failed to load AI settings.',
+      })
+      expect(response.status).toBe(500)
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Failed to load admin AI settings',
+        { message: 'database unavailable' },
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
   it('validates PUT payloads before saving', async () => {
     const response = await PUT(
       new NextRequest('https://example.test/api/admin/ai-settings', {
@@ -298,6 +323,38 @@ describe('admin AI settings route', () => {
     })
   })
 
+  it('returns a bounded response for unexpected PUT failures', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.updateAiGenerationSettings.mockRejectedValueOnce(
+      new Error('database unavailable'),
+    )
+
+    try {
+      const response = await PUT(
+        new NextRequest('https://example.test/api/admin/ai-settings', {
+          body: JSON.stringify({
+            aiSafetyRuleCacheTtlSeconds:
+              AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+            aiSafetyForensicLoggingEnabled: true,
+            mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+            mcpImportValidationTtlMinutes:
+              MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+            mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+            requirementGenerationEnabled: true,
+          }),
+          method: 'PUT',
+        }),
+      )
+
+      await expect(response.json()).resolves.toEqual({
+        error: 'Failed to save AI settings.',
+      })
+      expect(response.status).toBe(500)
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
   it('patches one AI setting and records privileged audit', async () => {
     const response = await PATCH(
       new NextRequest('https://example.test/api/admin/ai-settings', {
@@ -328,4 +385,51 @@ describe('admin AI settings route', () => {
       expect.anything(),
     )
   })
+
+  it('rejects empty patches before DAL work', async () => {
+    const response = await PATCH(
+      new NextRequest('https://example.test/api/admin/ai-settings', {
+        body: JSON.stringify({}),
+        method: 'PATCH',
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.patchAiGenerationSettings).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      new RequirementsServiceError('validation', 'Invalid AI settings', {
+        httpStatus: 422,
+      }),
+      422,
+      { code: 'validation', error: 'Invalid AI settings' },
+    ],
+    [
+      new Error('database unavailable'),
+      500,
+      { error: 'Failed to save AI settings.' },
+    ],
+  ])(
+    'maps PATCH failures to bounded HTTP responses',
+    async (error, status, body) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      routeState.patchAiGenerationSettings.mockRejectedValueOnce(error)
+
+      try {
+        const response = await PATCH(
+          new NextRequest('https://example.test/api/admin/ai-settings', {
+            body: JSON.stringify({ aiSafetyRuleCacheTtlSeconds: 300 }),
+            method: 'PATCH',
+          }),
+        )
+
+        await expect(response.json()).resolves.toEqual(body)
+        expect(response.status).toBe(status)
+      } finally {
+        errorSpy.mockRestore()
+      }
+    },
+  )
 })

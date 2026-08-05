@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SettingsPanel from '@/app/[locale]/admin/panels/settings-panel'
@@ -36,6 +42,13 @@ function okJson(body: unknown): Response {
     json: async () => body,
     ok: true,
   } as Response
+}
+
+function errorJson(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    headers: { 'Content-Type': 'application/json' },
+    status: 500,
+  })
 }
 
 function deferred<T>() {
@@ -369,5 +382,126 @@ describe('SettingsPanel', () => {
         ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
       ),
     ).toHaveLength(0)
+  })
+
+  it('opens and closes field help and ignores non-Enter keys', async () => {
+    fetchMock.mockResolvedValueOnce(okJson(settingsResponse()))
+    render(<SettingsPanel />)
+
+    const input = await screen.findByLabelText(
+      'admin.applicationSettings.fields.csvExportMaxItems.label',
+    )
+    const helpButton = screen.getByRole('button', {
+      name: 'common.help: admin.applicationSettings.fields.csvExportMaxItems.label',
+    })
+
+    fireEvent.click(helpButton)
+    expect(input).toHaveAttribute(
+      'aria-describedby',
+      expect.stringContaining(
+        'admin-application-setting-csvExportMaxItems-help',
+      ),
+    )
+    fireEvent.keyDown(input, { key: 'Escape' })
+    fireEvent.click(helpButton)
+    expect(input).toHaveAttribute(
+      'aria-describedby',
+      'admin-application-setting-csvExportMaxItems-unit',
+    )
+  })
+
+  it('decrements a stepper and skips unchanged or absent drafts', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson(settingsResponse()))
+      .mockResolvedValueOnce(
+        okJson({
+          field: 'pdfWorkerMemoryMib',
+          updatedAt: '2026-07-18T12:01:00.000Z',
+          value: 384,
+        }),
+      )
+    render(<SettingsPanel />)
+
+    const input = await screen.findByLabelText(
+      'admin.applicationSettings.fields.pdfWorkerMemoryMib.label',
+    )
+    fireEvent.blur(input)
+    fireEvent.change(input, { target: { value: '512' } })
+    fireEvent.blur(input)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(
+      within(input.parentElement as HTMLElement).getByRole('button', {
+        name: 'admin.applicationSettings.decreaseValue',
+      }),
+    )
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        '/api/admin/application-settings',
+        expect.objectContaining({
+          body: JSON.stringify({ pdfWorkerMemoryMib: 384 }),
+          method: 'PATCH',
+        }),
+      ),
+    )
+  })
+
+  it('reports an application settings HTTP read failure', async () => {
+    const response = errorJson({
+      message: 'admin.applicationSettings.serverUnavailable',
+    })
+    fetchMock.mockResolvedValueOnce(response)
+    render(<SettingsPanel />)
+
+    expect(
+      await screen.findAllByText('admin.applicationSettings.loadError'),
+    ).toHaveLength(2)
+    expect(response.bodyUsed).toBe(true)
+    expect(
+      screen.getAllByRole('button', { name: 'common.retry' }),
+    ).toHaveLength(2)
+  })
+
+  it('rolls back an optimistic edit when saving is rejected', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson(settingsResponse()))
+      .mockResolvedValueOnce(
+        errorJson({ message: 'admin.applicationSettings.rejected' }),
+      )
+    render(<SettingsPanel />)
+
+    const input = await screen.findByLabelText(
+      'admin.applicationSettings.fields.csvExportMaxItems.label',
+    )
+    fireEvent.change(input, { target: { value: '4000' } })
+    fireEvent.blur(input)
+
+    expect(
+      await screen.findByText('admin.applicationSettings.rejected'),
+    ).toBeVisible()
+    expect(input).toHaveValue(DEFAULT_APPLICATION_SETTINGS.csvExportMaxItems)
+    expect(
+      screen.getByText('admin.applicationSettings.saveError'),
+    ).toBeVisible()
+  })
+
+  it('rolls back an optimistic edit after a save network failure', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson(settingsResponse()))
+      .mockRejectedValueOnce(new Error('topology must stay hidden'))
+    render(<SettingsPanel />)
+
+    const input = await screen.findByLabelText(
+      'admin.applicationSettings.fields.csvExportTimeoutSeconds.label',
+    )
+    fireEvent.change(input, { target: { value: '121' } })
+    fireEvent.blur(input)
+
+    expect(
+      await screen.findAllByText('admin.applicationSettings.saveError'),
+    ).toHaveLength(2)
+    expect(input).toHaveValue(
+      DEFAULT_APPLICATION_SETTINGS.csvExportTimeoutSeconds,
+    )
   })
 })
