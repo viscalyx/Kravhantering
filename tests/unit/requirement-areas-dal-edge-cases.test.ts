@@ -25,7 +25,7 @@ const areaRow = {
   updatedAt: new Date('2026-08-02T08:00:00.000Z'),
 }
 
-describe('Issue 891 requirement-area DAL coverage', () => {
+describe('requirement-area DAL coverage', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('lists and maps all areas, including admin delegation and anonymous denial', async () => {

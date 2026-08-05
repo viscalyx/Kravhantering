@@ -34,7 +34,7 @@ const basePackage = {
   updatedAt: new Date('2026-08-02T08:00:00.000Z'),
 }
 
-describe('Issue 891 requirement-package DAL coverage', () => {
+describe('requirement-package DAL coverage', () => {
   it('maps standalone co-authors with names and timestamps', async () => {
     const query = vi.fn().mockResolvedValue([
       {

@@ -71,7 +71,7 @@ import {
 import { GET as getCategories } from '@/app/api/requirement-categories/route'
 import { GET as getTypes } from '@/app/api/requirement-types/route'
 
-describe('issue 891 classification collection routes', () => {
+describe('classification collection routes', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns requirement categories', async () => {

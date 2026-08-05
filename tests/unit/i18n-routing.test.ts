@@ -1,30 +1,18 @@
-import { describe, expect, it, vi } from 'vitest'
-
-vi.mock('next-intl/navigation', () => ({
-  createNavigation: () => ({
-    getPathname: () => '/sv/requirements',
-    Link: () => null,
-    redirect: () => undefined,
-    usePathname: () => '/requirements',
-    useRouter: () => ({ replace: () => undefined }),
-  }),
-}))
-vi.mock('next-intl/routing', () => ({
-  defineRouting: (value: unknown) => value,
-}))
+import { describe, expect, it } from 'vitest'
 
 describe('i18n routing', () => {
-  it('exports Swedish-first routing and localized navigation surfaces', async () => {
+  it('builds localized paths from the Swedish-first routing contract', async () => {
     const navigation = await import('@/i18n/routing')
 
     expect(navigation.routing).toEqual({
       defaultLocale: 'sv',
       locales: ['sv', 'en'],
     })
-    expect(navigation.Link).toEqual(expect.any(Function))
-    expect(navigation.redirect).toEqual(expect.any(Function))
-    expect(navigation.usePathname).toEqual(expect.any(Function))
-    expect(navigation.useRouter).toEqual(expect.any(Function))
-    expect(navigation.getPathname).toEqual(expect.any(Function))
+    expect(
+      navigation.getPathname({ href: '/requirements', locale: 'sv' }),
+    ).toBe('/sv/requirements')
+    expect(
+      navigation.getPathname({ href: '/requirements', locale: 'en' }),
+    ).toBe('/en/requirements')
   })
 })

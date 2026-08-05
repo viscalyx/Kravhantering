@@ -56,7 +56,7 @@ const emptyForm: NormReferenceFormData = {
   version: '',
 }
 
-describe('Issue 891 server pages', () => {
+describe('server pages', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('builds translated metadata and renders the requirement-area client', async () => {
@@ -87,7 +87,7 @@ describe('Issue 891 server pages', () => {
   })
 })
 
-describe('Issue 891 norm-reference form fields', () => {
+describe('norm-reference form fields', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('renders both layouts, edits every field, toggles help, and exposes safe URI links', async () => {
@@ -106,7 +106,7 @@ describe('Issue 891 norm-reference form fields', () => {
     const { rerender } = render(
       <NormReferenceFormFields
         form={form}
-        idPrefix="issue891"
+        idPrefix="norm-reference"
         layout="create"
         normReferenceIdHelperText="Generated when blank"
         onSetField={onSetField}
@@ -114,13 +114,13 @@ describe('Issue 891 norm-reference form fields', () => {
     )
 
     const fields = [
-      ['issue891-name', 'name'],
-      ['issue891-type', 'type'],
-      ['issue891-reference', 'reference'],
-      ['issue891-version', 'version'],
-      ['issue891-issuer', 'issuer'],
-      ['issue891-uri', 'uri'],
-      ['issue891-id', 'normReferenceId'],
+      ['norm-reference-name', 'name'],
+      ['norm-reference-type', 'type'],
+      ['norm-reference-reference', 'reference'],
+      ['norm-reference-version', 'version'],
+      ['norm-reference-issuer', 'issuer'],
+      ['norm-reference-uri', 'uri'],
+      ['norm-reference-id', 'normReferenceId'],
     ] as const
     for (const [id, field] of fields) {
       const input = document.getElementById(id)
@@ -142,7 +142,7 @@ describe('Issue 891 norm-reference form fields', () => {
     rerender(
       <NormReferenceFormFields
         form={{ ...form, uri: 'javascript:alert(1)' }}
-        idPrefix="issue891-stacked"
+        idPrefix="norm-reference-stacked"
         onSetField={onSetField}
       />,
     )
@@ -152,7 +152,7 @@ describe('Issue 891 norm-reference form fields', () => {
   })
 })
 
-describe('Issue 891 norm-reference modal', () => {
+describe('norm-reference modal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     modalState.confirmDiscard.mockResolvedValue(true)
@@ -314,7 +314,7 @@ describe('Issue 891 norm-reference modal', () => {
   })
 })
 
-describe('Issue 891 package-purpose tooltip', () => {
+describe('package-purpose tooltip', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({

@@ -4,7 +4,7 @@ import {
   authenticatedRouteContext as context,
   routeParams,
   routeRequest,
-} from '@/tests/unit/route-handler-test-helpers'
+} from '@/tests/unit/helpers/route-handler-test-helpers'
 
 const state = vi.hoisted(() => ({
   archiveNormReferenceWithAudit: vi.fn(),
@@ -77,7 +77,7 @@ import {
 } from '@/app/api/norm-references/route'
 import { getRouteHandlerBrand } from '@/lib/http/response-policy'
 
-describe('Issue 891 norm-reference routes', () => {
+describe('norm-reference routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.createRequestContext.mockResolvedValue(context)

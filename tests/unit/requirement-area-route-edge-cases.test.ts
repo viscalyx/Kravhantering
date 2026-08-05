@@ -4,7 +4,7 @@ import {
   authenticatedRouteContext as context,
   routeParams,
   routeRequest,
-} from '@/tests/unit/route-handler-test-helpers'
+} from '@/tests/unit/helpers/route-handler-test-helpers'
 
 const state = vi.hoisted(() => ({
   adminAudit: vi.fn(),
@@ -77,7 +77,7 @@ import {
 } from '@/app/api/requirement-areas/[id]/route'
 import { getRouteHandlerBrand } from '@/lib/http/response-policy'
 
-describe('Issue 891 requirement-area routes', () => {
+describe('requirement-area routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.createAdminPrivilegedAuditContext.mockResolvedValue(context)
@@ -124,7 +124,7 @@ describe('Issue 891 requirement-area routes', () => {
       7,
       expect.objectContaining({
         changedBy: {
-          displayName: 'Issue 891 Actor',
+          displayName: 'Route Test Actor',
           hsaId: 'SE5560000001-actor',
         },
       }),

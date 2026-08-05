@@ -6,7 +6,7 @@ import {
   okJsonResponse,
   routingLinkMock,
   statusBadgeMock,
-} from './helpers/issue-891-client-test-helpers'
+} from './helpers/admin-client-test-helpers'
 
 const confirm = vi.hoisted(() => vi.fn())
 vi.mock('next-intl', () => ({
@@ -45,7 +45,7 @@ function urlOf(value: unknown) {
   return value instanceof Request ? value.url : String(value)
 }
 
-describe('Issue 891 requirement-package client branches', () => {
+describe('requirement-package client branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     confirm.mockResolvedValue(true)

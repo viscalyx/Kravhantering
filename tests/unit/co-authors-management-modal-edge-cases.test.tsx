@@ -104,7 +104,7 @@ const props = {
   verifiedDraftMessage: (name: string) => `Verified ${name}`,
 }
 
-describe('Issue 891 co-author modal branches', () => {
+describe('co-author modal branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.confirm.mockResolvedValue(false)

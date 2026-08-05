@@ -4,7 +4,7 @@ import {
   authenticatedRouteContext as context,
   routeParams,
   routeRequest,
-} from '@/tests/unit/route-handler-test-helpers'
+} from '@/tests/unit/helpers/route-handler-test-helpers'
 
 const state = vi.hoisted(() => ({
   archiveRequirementPackage: vi.fn(),
@@ -105,7 +105,7 @@ import {
 import { getRouteHandlerBrand } from '@/lib/http/response-policy'
 import { forbiddenError } from '@/lib/requirements/errors'
 
-describe('Issue 891 requirement-package routes', () => {
+describe('requirement-package routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.createRequestContext.mockResolvedValue(context)

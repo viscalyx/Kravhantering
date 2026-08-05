@@ -2,6 +2,9 @@ import path from 'node:path'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  ssr: {
+    noExternal: ['next-intl'],
+  },
   test: {
     // Serve Vitest UI at root so Codespaces port forwarding works (default is /__vitest__/)
     uiBase: '/',

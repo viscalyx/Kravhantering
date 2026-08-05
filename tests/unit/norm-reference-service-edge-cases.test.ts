@@ -61,7 +61,7 @@ function workflow() {
   })
 }
 
-describe('Issue 891 norm-reference service coverage', () => {
+describe('norm-reference service coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(console, 'info').mockImplementation(() => undefined)

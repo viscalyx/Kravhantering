@@ -211,6 +211,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
   useParams: () => ({}),
   redirect: vi.fn(),
+  permanentRedirect: vi.fn(),
   notFound: vi.fn(),
 }))
 

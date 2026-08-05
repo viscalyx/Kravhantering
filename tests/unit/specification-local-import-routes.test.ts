@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RequestContext } from '@/lib/requirements/auth'
+import { jsonRequest } from '@/tests/unit/helpers/route-handler-test-helpers'
 
 const routeState = vi.hoisted(() => ({
   assertAuthorized: vi.fn(),
@@ -62,14 +63,6 @@ const rows = [
     sourceIndex: 0,
   },
 ]
-
-function jsonRequest(path: string, body: Record<string, unknown>): Request {
-  return new Request(`http://localhost${path}`, {
-    body: JSON.stringify(body),
-    headers: { 'Content-Type': 'application/json' },
-    method: 'POST',
-  })
-}
 
 describe('specification-local import routes', () => {
   beforeEach(() => {

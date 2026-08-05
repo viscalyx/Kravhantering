@@ -63,7 +63,7 @@ function database() {
   }
 }
 
-describe('Issue 891 norm-reference mutation branches', () => {
+describe('norm-reference mutation branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.audit.mockResolvedValue(undefined)

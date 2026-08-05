@@ -44,7 +44,7 @@ function repositoryDb(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe('Issue 891 norm-reference DAL coverage', () => {
+describe('norm-reference DAL coverage', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('covers repository lookup presence and absence', async () => {
