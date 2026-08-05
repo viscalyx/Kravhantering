@@ -409,7 +409,7 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
           }
           type="button"
         >
-          {`detail-apply-versionless-${requirementId}`}
+          {`detail-apply-without-version-${requirementId}`}
         </button>
         <button onClick={onClose} type="button">
           {`detail-close-${requirementId}`}
@@ -865,7 +865,7 @@ describe('RequirementsClient', () => {
     })
   })
 
-  it('maps sparse and versionless changed requirement details', async () => {
+  it('maps sparse changed requirement details with and without versions', async () => {
     mockCommonFetches()
     vi.stubGlobal('fetch', fetchMock)
     render(<RequirementsClient />)
@@ -889,7 +889,7 @@ describe('RequirementsClient', () => {
 
     await act(async () => {
       fireEvent.click(
-        screen.getByRole('button', { name: 'detail-apply-versionless-1' }),
+        screen.getByRole('button', { name: 'detail-apply-without-version-1' }),
       )
       await Promise.resolve()
     })
