@@ -119,4 +119,45 @@ describe('ReferenceDataStatus', () => {
       'referenceData.refreshFailed',
     )
   })
+
+  it('reports missing required configuration before request failures', () => {
+    render(
+      <ReferenceDataStatus
+        id="reference-data-status"
+        readiness={readiness({
+          canSave: false,
+          emptyRequiredCatalogs: ['areas'],
+          failedCatalogs: ['types'],
+        })}
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'referenceData.configurationBlocked',
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'referenceData.catalogs.areas',
+    )
+  })
+
+  it('announces background refreshes and renders nothing when ready', () => {
+    const { rerender } = render(
+      <ReferenceDataStatus
+        id="reference-data-status"
+        readiness={readiness({ refreshingCatalogs: ['types'] })}
+      />,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'referenceData.refreshing',
+    )
+
+    rerender(
+      <ReferenceDataStatus
+        id="reference-data-status"
+        readiness={readiness()}
+      />,
+    )
+    expect(screen.queryByRole('status')).toBeNull()
+  })
 })

@@ -9,6 +9,10 @@ import {
   STATUS_ICON_NAMES,
 } from '@/lib/icons/status-icon-allowlist'
 import { getStatusIconComponent } from '@/lib/icons/status-icon-components'
+import {
+  nullableOptionalStatusIconNameSchema,
+  statusIconNameSchema,
+} from '@/lib/icons/status-icon-schema'
 
 describe('status icon allowlist', () => {
   it('recognizes the installed Lucide icon catalog and configured defaults', () => {
@@ -40,6 +44,27 @@ describe('status icon allowlist', () => {
     for (const iconName of STATUS_ICON_NAMES) {
       expect(getStatusIconComponent(iconName), iconName).toBeTruthy()
     }
+  })
+
+  it('validates installed icon names and optional empty values', () => {
+    expect(statusIconNameSchema.parse('Wifi')).toBe('Wifi')
+    expect(statusIconNameSchema.safeParse('MadeUpIcon').success).toBe(false)
+    expect(nullableOptionalStatusIconNameSchema.parse(null)).toBeNull()
+    expect(
+      nullableOptionalStatusIconNameSchema.parse(undefined),
+    ).toBeUndefined()
+  })
+
+  it('returns a component that renders the selected icon', () => {
+    const WifiIcon = getStatusIconComponent('Wifi')
+    if (!WifiIcon) throw new Error('Expected Wifi to resolve to an icon')
+
+    const { container } = render(<WifiIcon aria-label="Wireless network" />)
+
+    expect(container.querySelector('svg')).toHaveAttribute(
+      'aria-label',
+      'Wireless network',
+    )
   })
 
   it('loads report SVG data for allowed icons', async () => {

@@ -596,4 +596,119 @@ describe('useCrudAdminResource', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
+
+  it('handles malformed lists and a message-free list failure', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(null))
+      .mockResolvedValueOnce(
+        jsonResponse({}, { ok: false, status: 503, statusText: '' }),
+      )
+
+    const { result } = renderResource()
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.items).toEqual([])
+
+    await act(async () => {
+      await result.current.reload()
+    })
+
+    expect(result.current.loadError).toBe('Something failed')
+  })
+
+  it('uses the fallback for caught values without a useful error message', async () => {
+    fetchMock.mockRejectedValueOnce(new Error(''))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.loadError).toBe('Something failed')
+  })
+
+  it('delegates a caught submit failure with its submitter anchor', async () => {
+    const onSubmitError = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ items: [] }))
+      .mockRejectedValueOnce('offline')
+    const { result } = renderResource({ onSubmitError })
+    const submitter = document.createElement('button')
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+      result.current.setForm({ name: 'New item' })
+    })
+    await act(async () => {
+      await result.current.submit({
+        nativeEvent: { submitter },
+        preventDefault: vi.fn(),
+      } as unknown as React.FormEvent<HTMLFormElement>)
+    })
+
+    expect(onSubmitError).toHaveBeenCalledWith({
+      anchorEl: submitter,
+      error: 'offline',
+      message: 'Something failed',
+    })
+  })
+
+  it('keeps an item when deletion is cancelled', async () => {
+    confirmMock.mockResolvedValueOnce(false)
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ items: [{ id: 1, name: 'One' }] }),
+    )
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    let removed = true
+    await act(async () => {
+      removed = await result.current.remove(1)
+    })
+
+    expect(removed).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces a message-free delete rejection locally', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ items: [{ id: 1, name: 'One' }] }))
+      .mockResolvedValueOnce(
+        jsonResponse({}, { ok: false, status: 409, statusText: '' }),
+      )
+    const { result } = renderResource({
+      itemEndpoint: id => `/api/custom-items/${id}`,
+    })
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    await act(async () => {
+      await result.current.remove(1)
+    })
+
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/custom-items/1')
+    expect(result.current.deleteError).toBe('Something failed')
+  })
+
+  it('delegates caught delete failures and reloads when requested', async () => {
+    const onDeleteError = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ items: [{ id: 1, name: 'One' }] }))
+      .mockRejectedValueOnce(new Error('network unavailable'))
+      .mockResolvedValueOnce(jsonResponse({ items: [{ id: 1, name: 'One' }] }))
+    const { result } = renderResource({
+      onDeleteError,
+      reloadOnDeleteError: true,
+    })
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    await act(async () => {
+      await result.current.remove(1)
+    })
+
+    expect(onDeleteError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.any(Error),
+        message: 'network unavailable',
+      }),
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
 })

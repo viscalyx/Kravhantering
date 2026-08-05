@@ -36,7 +36,7 @@ const databaseSchemaStatusState = vi.hoisted(() => ({
   value: {
     expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
     status: 'matches' as 'matches' | 'mismatch' | 'unknown',
-  } as Record<string, unknown>,
+  } as unknown,
 }))
 
 const helpState = vi.hoisted(() => ({
@@ -255,6 +255,68 @@ describe('Navigation', () => {
     )
   })
 
+  it.each([
+    ['a non-object payload', null],
+    ['an unrecognized status', { status: 'stale' }],
+  ])(
+    'shows unavailable database schema status for %s',
+    async (_scenario, payload) => {
+      databaseSchemaStatusState.value = payload
+
+      render(
+        <Navigation
+          buildMetadata={{
+            builtAt: '2026-05-21T19:00:00.000Z',
+            commitSha: 'abc123',
+            expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+            imageTag: 'registry.example/app:1.2.3',
+            version: '1.2.3',
+          }}
+        />,
+      )
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole('link', { name: 'common.appName' }),
+        ).toHaveAttribute(
+          'title',
+          expect.stringContaining('common.databaseSchemaUnavailableTooltip'),
+        ),
+      )
+    },
+  )
+
+  it('shows a missing schema message using the build schema as fallback', async () => {
+    databaseSchemaStatusState.value = {
+      expectedDatabaseSchemaVersion: null,
+      observedDatabaseSchemaVersion: null,
+      status: 'mismatch',
+    }
+
+    render(
+      <Navigation
+        buildMetadata={{
+          builtAt: '2026-05-21T19:00:00.000Z',
+          commitSha: 'abc123',
+          expectedDatabaseSchemaVersion: 'InitialSchema1713720000000',
+          imageTag: 'registry.example/app:1.2.3',
+          version: '1.2.3',
+        }}
+      />,
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('link', { name: 'common.appName' }),
+      ).toHaveAttribute(
+        'title',
+        expect.stringContaining(
+          'common.databaseSchemaAdminMissingTooltip InitialSchema1713720000000',
+        ),
+      ),
+    )
+  })
+
   it('refreshes database schema status when the window regains focus', async () => {
     render(
       <Navigation
@@ -382,6 +444,20 @@ describe('Navigation', () => {
     )
     expect(screen.getByText('common.appName')).toBeInTheDocument()
     window.removeEventListener(GLOBAL_NAVIGATION_LAYOUT_EVENT, layoutListener)
+  })
+
+  it('restores the expanded rail state from browser storage', async () => {
+    localStorage.setItem('requirements.navigationRail.expanded.v1', 'expanded')
+
+    render(<Navigation />)
+
+    expect(
+      await screen.findByRole('button', { name: 'nav.collapseRail' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('navigation', { name: 'nav.mainNavigation' }),
+    ).toHaveStyle({ width: '264px' })
+    expect(screen.getByText('common.appName')).toBeInTheDocument()
   })
 
   it('does not render a duplicate collapsed divider below the rail header', () => {
@@ -603,6 +679,20 @@ describe('Navigation', () => {
 
     expect(await screen.findByRole('link', { name: 'nav.areas' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'admin.settings' })).toBeNull()
+  })
+
+  it('marks the Admin Center link active on admin routes', async () => {
+    authState.value = { authenticated: true, roles: ['Admin'] }
+    pathnameState.value = '/admin/security'
+
+    render(<Navigation />)
+
+    expect(
+      await screen.findByRole('link', { name: 'admin.settings' }),
+    ).toHaveAttribute('aria-current', 'page')
+    expect(
+      screen.getByRole('link', { name: 'nav.catalog' }),
+    ).not.toHaveAttribute('aria-current')
   })
 
   it('keeps Admin Center navigation hidden when role loading fails', async () => {

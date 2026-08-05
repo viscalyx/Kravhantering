@@ -1,6 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
+import {
+  mergeReferenceDataReadiness,
+  type ReferenceDataReadiness,
+  useTaxonomyOptions,
+} from '@/hooks/useTaxonomyOptions'
 
 function response(body: unknown, ok = true): Response {
   return {
@@ -103,6 +107,43 @@ function callsFor(path: string): number {
 describe('useTaxonomyOptions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('merges readiness across independently loaded reference-data groups', async () => {
+    const retryFirst = vi.fn(async () => undefined)
+    const retrySecond = vi.fn(async () => undefined)
+    const first: ReferenceDataReadiness = {
+      canSave: true,
+      emptyRequiredCatalogs: ['areas'],
+      failedCatalogs: [],
+      loadingCatalogs: ['categories'],
+      refreshingCatalogs: [],
+      refreshFailedCatalogs: ['priorityLevels'],
+      retryFailed: retryFirst,
+    }
+    const second: ReferenceDataReadiness = {
+      canSave: false,
+      emptyRequiredCatalogs: [],
+      failedCatalogs: ['types'],
+      loadingCatalogs: [],
+      refreshingCatalogs: ['normReferences'],
+      refreshFailedCatalogs: [],
+      retryFailed: retrySecond,
+    }
+
+    const merged = mergeReferenceDataReadiness(first, second)
+
+    expect(merged).toMatchObject({
+      canSave: false,
+      emptyRequiredCatalogs: ['areas'],
+      failedCatalogs: ['types'],
+      loadingCatalogs: ['categories'],
+      refreshingCatalogs: ['normReferences'],
+      refreshFailedCatalogs: ['priorityLevels'],
+    })
+    await merged.retryFailed()
+    expect(retryFirst).toHaveBeenCalledOnce()
+    expect(retrySecond).toHaveBeenCalledOnce()
   })
 
   it('loads all library catalogs and includes normalized selected IDs', async () => {

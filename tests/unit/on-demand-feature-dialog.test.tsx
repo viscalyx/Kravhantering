@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { lazy } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -74,6 +74,30 @@ describe('OnDemandFeatureDialog', () => {
 
     unmount()
     expect(document.body.style.overflow).toBe('')
+  })
+
+  it('renders import loading accessibly and retains focus without controls', async () => {
+    render(
+      <OnDemandFeatureDialog
+        {...defaultProps}
+        featureId="import-review"
+        title="Review import"
+        variant="import"
+        wide
+      >
+        <SuspendedFeature />
+      </OnDemandFeatureDialog>,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: 'Review import' })
+    expect(dialog).toHaveAttribute(
+      'data-developer-mode-context',
+      'requirement import review',
+    )
+    await waitFor(() => expect(dialog).toHaveFocus())
+
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(dialog).toHaveFocus()
   })
 
   it('restores a nonzero page position after the modal unmounts', () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useReducedMotion } from 'framer-motion'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -28,6 +28,23 @@ const TEST_VISUAL_HELP_CONTENT: HelpContent = {
   sections: [
     {
       bodyKey: 'requirements.lifecycleVisual.body',
+      headingKey: 'requirements.lifecycleVisual.heading',
+      kind: 'visual',
+      visualId: 'requirementLifecycle',
+    },
+  ],
+  titleKey: 'requirements.title',
+}
+
+const TEST_SECTION_VARIANTS_HELP_CONTENT: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'requirements.details.body',
+      headingKey: 'requirements.details.heading',
+      subheading: true,
+    },
+    {
       headingKey: 'requirements.lifecycleVisual.heading',
       kind: 'visual',
       visualId: 'requirementLifecycle',
@@ -92,6 +109,17 @@ function NestedHelpHarness({ showChild }: { showChild: boolean }) {
   )
 }
 
+function NoContentHelpHarness() {
+  const { toggle } = useHelp()
+  useHelpContent(null)
+
+  return (
+    <button onClick={toggle} type="button">
+      toggle help without content
+    </button>
+  )
+}
+
 describe('HelpPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -107,7 +135,26 @@ describe('HelpPanel', () => {
     document.body.style.overscrollBehavior = ''
     document.documentElement.style.overflow = ''
     document.documentElement.style.overscrollBehavior = ''
+    document
+      .querySelectorAll('[data-help-panel-test-sibling]')
+      .forEach(element => {
+        element.remove()
+      })
     vi.unstubAllGlobals()
+  })
+
+  it('does not open a drawer when the current view has no help content', () => {
+    render(
+      <HelpProvider>
+        <NoContentHelpHarness />
+      </HelpProvider>,
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'toggle help without content' }),
+    )
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('locks viewport scrolling while the help drawer is open and restores it when closed', () => {
@@ -200,7 +247,54 @@ describe('HelpPanel', () => {
     expect(dialog.querySelector('.help-panel-scroll-indicator')).toBeNull()
   })
 
-  it('traps focus in the drawer, hides background siblings, and restores focus on close', () => {
+  it('updates the scroll cue when the drawer content is resized', () => {
+    let notifyResize: ResizeObserverCallback | undefined
+
+    class TestResizeObserver implements ResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        notifyResize = callback
+      }
+
+      disconnect() {}
+      observe() {}
+      unobserve() {}
+    }
+
+    vi.stubGlobal('ResizeObserver', TestResizeObserver)
+
+    render(
+      <HelpProvider>
+        <HelpHarness />
+      </HelpProvider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'toggle help' }))
+
+    const dialog = screen.getByRole('dialog')
+    const scrollRegion = dialog.querySelector(
+      '.help-panel-scroll-region',
+    ) as HTMLDivElement | null
+
+    expect(scrollRegion).toBeTruthy()
+    if (!scrollRegion) {
+      throw new Error('Expected help panel scroll region to be present')
+    }
+
+    Object.defineProperty(scrollRegion, 'clientHeight', {
+      configurable: true,
+      value: 120,
+    })
+    Object.defineProperty(scrollRegion, 'scrollHeight', {
+      configurable: true,
+      value: 320,
+    })
+
+    act(() => notifyResize?.([], {} as ResizeObserver))
+
+    expect(dialog.querySelector('.help-panel-scroll-indicator')).toBeTruthy()
+  })
+
+  it('traps focus in the drawer, hides background siblings, and restores focus on Escape', () => {
     const { container } = render(
       <HelpProvider>
         <HelpHarness />
@@ -219,18 +313,72 @@ describe('HelpPanel', () => {
     expect(container).toHaveAttribute('aria-hidden', 'true')
     expect(container).toHaveAttribute('inert')
 
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    expect(dialog).toHaveFocus()
+
+    closeButton.setAttribute('hidden', '')
     fireEvent.keyDown(document, { key: 'Tab' })
+    expect(dialog).toHaveFocus()
+
+    closeButton.removeAttribute('hidden')
+    closeButton.setAttribute('aria-hidden', 'true')
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(dialog).toHaveFocus()
+
+    closeButton.removeAttribute('aria-hidden')
+    closeButton.tabIndex = -1
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(dialog).toHaveFocus()
+
+    closeButton.tabIndex = 0
+    toggleButton.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(closeButton).toHaveFocus()
+
+    toggleButton.focus()
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(closeButton).toHaveFocus()
+
+    dialog.focus()
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(closeButton).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
     expect(closeButton).toHaveFocus()
 
     fireEvent.keyDown(document, { key: 'Tab' })
     expect(closeButton).toHaveFocus()
 
-    fireEvent.click(closeButton)
+    fireEvent.keyDown(document, { key: 'Escape' })
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(toggleButton).toHaveFocus()
     expect(container).not.toHaveAttribute('aria-hidden')
     expect(container).not.toHaveAttribute('inert')
+  })
+
+  it('restores background accessibility attributes to their prior values', () => {
+    const existingSibling = document.createElement('aside')
+    existingSibling.dataset.helpPanelTestSibling = 'true'
+    existingSibling.setAttribute('aria-hidden', 'false')
+    existingSibling.setAttribute('inert', '')
+    document.body.append(existingSibling)
+
+    render(
+      <HelpProvider>
+        <HelpHarness />
+      </HelpProvider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'toggle help' }))
+
+    expect(existingSibling).toHaveAttribute('aria-hidden', 'true')
+    expect(existingSibling).toHaveAttribute('inert')
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.close' }))
+
+    expect(existingSibling).toHaveAttribute('aria-hidden', 'false')
+    expect(existingSibling).toHaveAttribute('inert')
   })
 
   it('restores the parent help content when a child registration unmounts', () => {
@@ -290,6 +438,33 @@ describe('HelpPanel', () => {
       screen.getByText(
         'help.requirements.lifecycleVisual.steps.archivingReview.title',
       ),
+    ).toBeInTheDocument()
+  })
+
+  it('renders indented text and a visual without optional introductory copy', () => {
+    render(
+      <HelpProvider>
+        <HelpHarness content={TEST_SECTION_VARIANTS_HELP_CONTENT} />
+      </HelpProvider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'toggle help' }))
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'help.requirements.details.heading',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('help.requirements.details.body'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        name: 'help.requirements.lifecycleVisual.heading',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('help.requirements.lifecycleVisual.steps.draft.title'),
     ).toBeInTheDocument()
   })
 })

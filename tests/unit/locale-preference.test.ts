@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   isAppLocale,
   LOCALE_STORAGE_KEY,
@@ -27,6 +27,7 @@ function makeStorage(): Storage {
 }
 
 describe('locale-preference', () => {
+  afterEach(() => vi.unstubAllGlobals())
   it('uses the constant key "locale"', () => {
     expect(LOCALE_STORAGE_KEY).toBe('locale')
   })
@@ -76,5 +77,13 @@ describe('locale-preference', () => {
     expect(() => {
       writeStoredLocale('sv', storage)
     }).not.toThrow()
+  })
+
+  it('does nothing when browser storage is unavailable', () => {
+    vi.stubGlobal('window', undefined)
+
+    expect(readStoredLocale()).toBeNull()
+    expect(() => writeStoredLocale('sv')).not.toThrow()
+    expect(() => writeStoredLocale('sv', null)).not.toThrow()
   })
 })
