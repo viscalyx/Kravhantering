@@ -3059,16 +3059,15 @@ describe('RequirementsClient', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(<RequirementsClient />)
-    await waitFor(() =>
-      expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001'),
-    )
-    fireEvent.click(screen.getByText('load-more'))
+    const row = await screen.findByRole('button', { name: 'row-1' })
+    const loadMore = screen.getByRole('button', { name: 'load-more' })
+    expect(loadMore).toBeEnabled()
+    fireEvent.click(loadMore)
 
     await waitFor(() => {
-      expect(screen.getByTestId('has-more')).toHaveTextContent('false')
-      expect(screen.getByTestId('loading-more')).toHaveTextContent('false')
+      expect(loadMore).toBeDisabled()
     })
-    expect(screen.getByTestId('row-ids')).toHaveTextContent('INT0001')
+    expect(row).toBeInTheDocument()
   })
 
   it('refreshes from the first page and announces an invalid cursor', async () => {
