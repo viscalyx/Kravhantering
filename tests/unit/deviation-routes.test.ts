@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { forbiddenError, validationError } from '@/lib/requirements/errors'
+import {
+  conflictError,
+  forbiddenError,
+  notFoundError,
+  validationError,
+} from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   assertAuthorized: vi.fn(),
@@ -74,6 +79,88 @@ function params<T extends Record<string, string>>(value: T) {
   return { params: Promise.resolve(value) }
 }
 
+const deviationMutationFailureCases = [
+  {
+    expectedError: 'Failed to update deviation',
+    failureMock: routeState.updateDeviation,
+    invoke: async () => {
+      const { PUT } = await import('@/app/api/deviations/[id]/route')
+      return PUT(
+        jsonRequest('https://example.test/api/deviations/7', {
+          motivation: 'Updated motivation',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'editing',
+  },
+  {
+    expectedError: 'Failed to delete deviation',
+    failureMock: routeState.deleteDeviation,
+    invoke: async () => {
+      const { DELETE } = await import('@/app/api/deviations/[id]/route')
+      return DELETE(
+        new Request('https://example.test/api/deviations/7', {
+          method: 'DELETE',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'deleting',
+  },
+  {
+    expectedError: 'Failed to record decision',
+    failureMock: routeState.recordDecision,
+    invoke: async () => {
+      const { POST } = await import('@/app/api/deviations/[id]/decision/route')
+      return POST(
+        new Request('https://example.test/api/deviations/7/decision', {
+          body: JSON.stringify({
+            decision: 2,
+            decisionMotivation: 'Needs work',
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'deciding',
+  },
+  {
+    expectedError: 'Failed to request review',
+    failureMock: routeState.requestReview,
+    invoke: async () => {
+      const { POST } = await import(
+        '@/app/api/deviations/[id]/request-review/route'
+      )
+      return POST(
+        new Request('https://example.test/api/deviations/7/request-review', {
+          method: 'POST',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'requesting review for',
+  },
+  {
+    expectedError: 'Failed to revert to draft',
+    failureMock: routeState.revertToDraft,
+    invoke: async () => {
+      const { POST } = await import(
+        '@/app/api/deviations/[id]/revert-to-draft/route'
+      )
+      return POST(
+        new Request('https://example.test/api/deviations/7/revert-to-draft', {
+          method: 'POST',
+        }) as never,
+        params({ id: '7' }),
+      )
+    },
+    label: 'returning to draft',
+  },
+]
+
 describe('deviation mutation routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -99,6 +186,54 @@ describe('deviation mutation routes', () => {
       displayName: 'Reviewer',
       hsaId: 'SE5560000001-reviewer1',
     })
+  })
+
+  it('gets a deviation and maps not-found while rethrowing infrastructure failures', async () => {
+    const { GET } = await import('@/app/api/deviations/[id]/route')
+    routeState.getDeviation.mockResolvedValueOnce({ id: 7, motivation: 'Why' })
+
+    const foundResponse = await GET(
+      new Request('https://example.test/api/deviations/7') as never,
+      params({ id: '7' }),
+    )
+
+    expect(foundResponse.status).toBe(200)
+    await expect(foundResponse.json()).resolves.toEqual({
+      id: 7,
+      motivation: 'Why',
+    })
+    expect(routeState.getDeviation).toHaveBeenCalledWith(mockDb, 7)
+
+    routeState.getDeviation.mockRejectedValueOnce(notFoundError('Not found'))
+    const missingResponse = await GET(
+      new Request('https://example.test/api/deviations/404') as never,
+      params({ id: '404' }),
+    )
+    expect(missingResponse.status).toBe(404)
+    await expect(missingResponse.json()).resolves.toEqual({
+      code: 'not_found',
+      error: 'Not found',
+    })
+
+    routeState.getDeviation.mockRejectedValueOnce(new Error('db offline'))
+    await expect(
+      GET(
+        new Request('https://example.test/api/deviations/7') as never,
+        params({ id: '7' }),
+      ),
+    ).rejects.toThrow('db offline')
+  })
+
+  it('rejects invalid deviation identifiers before database work', async () => {
+    const { GET } = await import('@/app/api/deviations/[id]/route')
+
+    const response = await GET(
+      new Request('https://example.test/api/deviations/nope') as never,
+      params({ id: 'nope' }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
   it('rejects client-supplied creators for requirement application deviations', async () => {
@@ -260,6 +395,31 @@ describe('deviation mutation routes', () => {
     expect(response.status).toBe(400)
     expect(routeState.recordDecision).not.toHaveBeenCalled()
     expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
+  })
+
+  it('records an approved deviation decision with verified actor evidence', async () => {
+    const { POST } = await import('@/app/api/deviations/[id]/decision/route')
+
+    const response = await POST(
+      new Request('https://example.test/api/deviations/7/decision', {
+        body: JSON.stringify({
+          decision: 1,
+          decisionMotivation: 'Looks good',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }) as never,
+      params({ id: '7' }),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ ok: true })
+    expect(routeState.recordDecision).toHaveBeenCalledWith(mockDb, 7, {
+      decidedBy: 'Reviewer',
+      decidedByHsaId: 'SE5560000001-reviewer1',
+      decision: 1,
+      decisionMotivation: 'Looks good',
+    })
   })
 
   it('returns the decision route error shape when DB acquisition fails', async () => {
@@ -560,4 +720,40 @@ describe('deviation mutation routes', () => {
       7,
     )
   })
+
+  it.each(deviationMutationFailureCases)(
+    'maps domain conflicts while $label a deviation',
+    async ({ failureMock, invoke }) => {
+      failureMock.mockRejectedValueOnce(conflictError('Conflict'))
+
+      const response = await invoke()
+
+      expect(response.status).toBe(409)
+      await expect(response.json()).resolves.toEqual({
+        code: 'conflict',
+        error: 'Conflict',
+      })
+    },
+  )
+
+  it.each(deviationMutationFailureCases)(
+    'sanitizes unexpected errors while $label a deviation',
+    async ({ expectedError, failureMock, invoke }) => {
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined)
+      const unexpectedError = new Error('secret db details')
+      failureMock.mockRejectedValueOnce(unexpectedError)
+
+      try {
+        const response = await invoke()
+
+        expect(response.status).toBe(500)
+        await expect(response.json()).resolves.toEqual({ error: expectedError })
+        expect(consoleErrorSpy).toHaveBeenCalled()
+      } finally {
+        consoleErrorSpy.mockRestore()
+      }
+    },
+  )
 })
