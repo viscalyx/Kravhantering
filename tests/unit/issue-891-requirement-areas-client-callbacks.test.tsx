@@ -1,227 +1,163 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const state = vi.hoisted(() => ({
-  apiFetch: vi.fn(),
-  closeForm: vi.fn(),
-  reload: vi.fn(),
-  setForm: vi.fn(),
-}))
-
 vi.mock('next-intl', () => ({
+  useLocale: () => 'en',
   useTranslations: (namespace: string) => (key: string) =>
     `${namespace}.${key}`,
 }))
-vi.mock('@/hooks/useHelpContent', () => ({ useHelpContent: vi.fn() }))
-vi.mock('@/lib/http/api-fetch', () => ({ apiFetch: state.apiFetch }))
-vi.mock('@/lib/http/response-message', () => ({
-  readResponseMessage: vi.fn(async () => null),
+
+vi.mock('@/components/ConfirmModal', () => ({
+  useConfirmModal: () => ({ confirm: vi.fn(async () => true) }),
 }))
-vi.mock('@/hooks/useCrudAdminResource', () => ({
-  useCrudAdminResource: (options: {
-    toForm: (area: Record<string, unknown>) => unknown
-  }) => {
-    options.toForm({
-      description: null,
-      name: 'Nullable area',
-      ownerHsaId: 'SE5560000001-owner',
-      prefix: 'NULL',
-    })
-    return {
-      closeForm: state.closeForm,
-      deleteError: null,
-      deletingIds: new Set(),
-      editId: null,
-      form: {
-        description: '',
-        name: '',
-        ownerHsaId: '',
-        ownerPersonVerification: null,
-        prefix: '',
-      },
-      formDirty: false,
-      formError: null,
-      items: [],
-      loading: false,
-      reload: state.reload,
-      setForm: state.setForm,
-      showForm: true,
-      submitting: false,
-    }
-  },
-}))
-vi.mock('@/components/FieldLabelWithHelp', () => ({
-  default: ({ label }: { label: string }) => <span>{label}</span>,
-}))
-vi.mock('@/components/HsaPersonVerifyField', () => ({
-  default: ({
-    onHsaIdChange,
-    onVerified,
-  }: Record<string, (value: unknown) => void>) => (
-    <div>
-      <button onClick={() => onHsaIdChange('SE5560000001-owner')} type="button">
-        Change owner input
-      </button>
-      <button
-        onClick={() => onVerified({ hsaId: 'SE5560000001-owner' })}
-        type="button"
-      >
-        Verify owner
-      </button>
-    </div>
-  ),
-}))
-vi.mock('@/components/HsaPersonChangeModal', () => ({
-  default: ({
-    onClose,
-    onSubmit,
-  }: {
-    onClose: () => void
-    onSubmit: (id: string) => Promise<unknown>
-  }) => (
-    <div>
-      <button onClick={onClose} type="button">
-        Close owner change
-      </button>
-      <button onClick={() => void onSubmit('SE5560000001-next')} type="button">
-        Submit owner change
-      </button>
-    </div>
-  ),
-}))
-vi.mock('@/components/CoAuthorsManagementModal', () => ({
-  default: ({
-    onChanged,
-    onClose,
-  }: {
-    onChanged: () => Promise<void>
-    onClose: () => void
-  }) => (
-    <div>
-      <button onClick={() => void onChanged()} type="button">
-        Reload co-authors
-      </button>
-      <button onClick={onClose} type="button">
-        Close co-authors
-      </button>
-    </div>
-  ),
-}))
-vi.mock('@/components/CrudAdminPanel', () => ({
-  default: (props: Record<string, unknown>) => {
-    const renderFields = props.renderFormFields as (
-      args: Record<string, unknown>,
-    ) => ReactNode
-    const renderActions = props.renderRowActions as (
-      args: Record<string, unknown>,
-    ) => ReactNode
-    const setForm = vi.fn()
-    return (
-      <div>
-        <span>
-          {(props.formDialogDeveloperModeValue as (mode: string) => string)(
-            'create',
-          )}
-        </span>
-        <span>
-          {(props.formDialogDeveloperModeValue as (mode: string) => string)(
-            'edit',
-          )}
-        </span>
-        <span>{(props.formTitle as (mode: string) => string)('create')}</span>
-        <span>{(props.formTitle as (mode: string) => string)('edit')}</span>
-        {renderFields({
-          disabled: false,
-          editId: null,
-          form: {
-            description: '',
-            name: '',
-            ownerHsaId: '',
-            ownerPersonVerification: null,
-            prefix: '',
-          },
-          inputClassName: 'input',
-          isEditing: false,
-          setForm,
-          textareaClassName: 'textarea',
-        })}
-        {renderFields({
-          disabled: false,
-          editId: 7,
-          form: {
-            description: 'Description',
-            name: 'Area',
-            ownerHsaId: 'SE5560000001-owner',
-            ownerPersonVerification: null,
-            prefix: 'AREA',
-          },
-          inputClassName: 'input',
-          isEditing: true,
-          setForm,
-          textareaClassName: 'textarea',
-        })}
-        {renderActions({
-          disabled: false,
-          item: {
-            id: 7,
-            ownerHsaId: 'SE5560000001-owner',
-            permissions: { canManageAssignments: true },
-          },
-          rowActionButtonClassName: 'row-action',
-        })}
-        {renderActions({
-          disabled: false,
-          item: { id: 8, permissions: { canManageAssignments: false } },
-          rowActionButtonClassName: 'row-action',
-        })}
-        {props.children as ReactNode}
-      </div>
-    )
-  },
-}))
+
+const fetchMock = vi.fn()
+vi.stubGlobal('fetch', fetchMock)
 
 import RequirementAreasClient from '@/app/[locale]/requirement-areas/requirement-areas-client'
 
-describe('Issue 891 requirement-area client callbacks', () => {
+const areas = [
+  {
+    description: 'System integration',
+    id: 1,
+    name: 'Integration',
+    ownerHsaId: 'SE5560000001-owner',
+    permissions: { canManageAssignments: true },
+    prefix: 'INT',
+  },
+  {
+    description: null,
+    id: 2,
+    name: 'Nullable area',
+    ownerHsaId: 'SE5560000001-other',
+    permissions: { canManageAssignments: false },
+    prefix: 'NULL',
+  },
+]
+
+function response(body: unknown) {
+  return new Response(JSON.stringify(body), {
+    headers: { 'content-type': 'application/json' },
+    status: 200,
+  })
+}
+
+describe('RequirementAreasClient observable callback behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    state.apiFetch.mockResolvedValue({ ok: true })
-    state.setForm.mockImplementation(
-      (updater: (form: Record<string, unknown>) => unknown) =>
-        updater({
-          description: '',
-          name: '',
-          ownerHsaId: 'SE5560000001-owner',
-          ownerPersonVerification: { hsaId: 'SE5560000001-owner' },
-          prefix: '',
-        }),
-    )
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/requirement-areas') {
+        return Promise.resolve(response({ areas }))
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(
+          response({
+            prefixes: [
+              {
+                id: 1,
+                isDefault: true,
+                label: null,
+                prefix: 'SE5560000001',
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(response({}))
+    })
   })
 
-  it('executes field, owner-change, assignment, and modal callback branches', async () => {
+  it('renders nullable descriptions and hides assignment actions without permission', async () => {
     render(<RequirementAreasClient />)
-    expect(screen.getByText('new requirement area')).toBeInTheDocument()
-    expect(screen.getByText('edit requirement area')).toBeInTheDocument()
+    await screen.findByText('Nullable area')
 
-    for (const input of document.querySelectorAll(
-      'input:not([disabled]), textarea',
-    )) {
-      fireEvent.change(input, { target: { value: 'changed' } })
-    }
-    fireEvent.click(screen.getByRole('button', { name: 'Change owner input' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Verify owner' }))
-    fireEvent.click(screen.getByRole('button', { name: 'area.changeOwner' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Close owner change' }))
-    fireEvent.click(screen.getByRole('button', { name: 'area.changeOwner' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Submit owner change' }))
-    await waitFor(() => expect(state.apiFetch).toHaveBeenCalled())
+    expect(screen.getByText('-')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', { name: 'area.manageCoAuthors' }),
+    ).toHaveLength(1)
+  })
+
+  it('maps a nullable area into the edit dialog and submits edited values', async () => {
+    render(<RequirementAreasClient />)
+    await screen.findByText('Nullable area')
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[1])
+
+    const dialog = await screen.findByRole('dialog', { name: 'area.editArea' })
+    const description = within(dialog).getByRole('textbox', {
+      name: /area\.description/,
+    })
+    expect(description).toHaveValue('')
+    const prefix = within(dialog).getByRole('textbox', { name: /area\.prefix/ })
+    const name = within(dialog).getByRole('textbox', { name: /area\.name/ })
+    fireEvent.change(prefix, { target: { value: 'next' } })
+    fireEvent.change(name, { target: { value: 'Updated area' } })
+    fireEvent.change(description, { target: { value: 'New description' } })
+    expect(prefix).toHaveValue('NEXT')
+
+    fetchMock.mockResolvedValueOnce(response({ id: 2 }))
+    fetchMock.mockResolvedValueOnce(response({ areas }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => {
+      const put = fetchMock.mock.calls.find(
+        ([url, options]) =>
+          url === '/api/requirement-areas/2' && options?.method === 'PUT',
+      )
+      expect(JSON.parse(String(put?.[1]?.body))).toEqual({
+        description: 'New description',
+        name: 'Updated area',
+        prefix: 'NEXT',
+      })
+    })
+  })
+
+  it('opens and closes the owner and co-author dialogs from visible actions', async () => {
+    render(<RequirementAreasClient />)
+    await screen.findByText('Integration')
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0])
+    const editDialog = await screen.findByRole('dialog', {
+      name: 'area.editArea',
+    })
+    fireEvent.click(
+      within(editDialog).getByRole('button', { name: 'area.changeOwner' }),
+    )
+    const ownerDialog = await screen.findByRole('dialog', {
+      name: 'area.changeOwnerTitle',
+    })
+    fireEvent.click(
+      within(ownerDialog).getByRole('button', { name: 'common.cancel' }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'area.changeOwnerTitle' }),
+      ).toBeNull(),
+    )
+    fireEvent.click(
+      within(editDialog).getByRole('button', { name: 'common.cancel' }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'area.editArea' }),
+      ).toBeNull(),
+    )
 
     fireEvent.click(
       screen.getByRole('button', { name: 'area.manageCoAuthors' }),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Reload co-authors' }))
-    await waitFor(() => expect(state.reload).toHaveBeenCalled())
-    fireEvent.click(screen.getByRole('button', { name: 'Close co-authors' }))
+    const coAuthors = await screen.findByRole('dialog', {
+      name: 'area.coAuthors',
+    })
+    fireEvent.click(within(coAuthors).getByText('common.close'))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'area.coAuthors' }),
+      ).toBeNull(),
+    )
   })
 })

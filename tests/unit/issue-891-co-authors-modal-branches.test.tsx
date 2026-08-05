@@ -171,7 +171,7 @@ describe('Issue 891 co-author modal branches', () => {
     expect(screen.queryByText('Verified New Author')).toBeNull()
   })
 
-  it('uses sequential client IDs and response-message fallback for failed loads', async () => {
+  it('shows a safe fallback when a failed load has no response message', async () => {
     vi.stubGlobal('crypto', {})
     state.apiFetch.mockResolvedValue({ ok: false })
     state.readResponseMessage.mockResolvedValueOnce(null)
@@ -181,24 +181,30 @@ describe('Issue 891 co-author modal branches', () => {
     vi.unstubAllGlobals()
   })
 
-  it('uses browser-generated client IDs when random UUID support is available', async () => {
-    vi.stubGlobal('crypto', { randomUUID: vi.fn(() => 'random-row-id') })
+  it('renders loaded co-authors in HSA-id order with an HSA-id name fallback', async () => {
     state.apiFetch.mockResolvedValue({
       json: async () => ({
         coAuthors: [
           {
-            displayName: 'Random Author',
+            displayName: 'Second Author',
             email: null,
-            hsaId: 'SE5560000001-random',
+            hsaId: 'SE5560000001-zeta',
+          },
+          {
+            displayName: null,
+            email: null,
+            hsaId: 'SE5560000001-alpha',
           },
         ],
       }),
       ok: true,
     })
     render(<CoAuthorsManagementModal {...props} />)
-    expect(await screen.findByText('Random Author')).toBeInTheDocument()
-    expect(globalThis.crypto.randomUUID).toHaveBeenCalled()
-    vi.unstubAllGlobals()
+    await screen.findByText('Second Author')
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(rows[0]).toHaveTextContent('SE5560000001-alpha')
+    expect(rows[1]).toHaveTextContent('SE5560000001-zeta')
+    expect(rows[1]).toHaveTextContent('Second Author')
   })
 
   it('ignores a rejected load after the request is aborted', async () => {

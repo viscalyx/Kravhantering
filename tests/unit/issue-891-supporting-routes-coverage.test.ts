@@ -12,11 +12,14 @@ const state = vi.hoisted(() => ({
   countLinkedNormReferences: vi.fn(),
   countLinkedPackages: vi.fn(),
   createNormReferenceWithAudit: vi.fn(),
+  createAdminPrivilegedAuditContext: vi.fn(),
   createRequirementPackage: vi.fn(),
   createRequestContext: vi.fn(),
   deleteNormReferenceWithAudit: vi.fn(),
   deleteArea: vi.fn(),
   deleteRequirementPackage: vi.fn(),
+  delegatedAudit: vi.fn(),
+  deniedAudit: vi.fn(),
   getAreaById: vi.fn(),
   getLinkedRequirements: vi.fn(),
   getLinkedRequirementsForPackage: vi.fn(),
@@ -28,6 +31,8 @@ const state = vi.hoisted(() => ({
   listRequirementPackageCoAuthors: vi.fn(),
   listRequirementPackages: vi.fn(),
   logSanitizedError: vi.fn(),
+  isForeignKeyViolation: vi.fn(),
+  normPolicyAuthorize: vi.fn(),
   reactivateNormReferenceWithAudit: vi.fn(),
   reactivateRequirementPackage: vi.fn(),
   replaceRequirementAreaCoAuthors: vi.fn(),
@@ -66,25 +71,6 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: vi.fn(async () => db),
 }))
 
-vi.mock('@/lib/http/secure-mutation-route', () => ({
-  adminMutationPolicy: () => ({ kind: 'admin' }),
-  authenticatedMutationPolicy: (name: string) => ({ kind: 'custom', name }),
-  customMutationPolicy: (name: string, authorize: unknown) => ({
-    authorize,
-    kind: 'custom',
-    name,
-  }),
-  secureMutationRoute: (options: {
-    bodySchema?: unknown
-    handler: object
-    policy: unknown
-  }) =>
-    Object.assign(options.handler, {
-      issue891BodySchema: options.bodySchema,
-      issue891Policy: options.policy,
-    }),
-}))
-
 vi.mock('@/lib/requirements/auth', async importOriginal => ({
   ...(await importOriginal<typeof import('@/lib/requirements/auth')>()),
   createRequestContext: state.createRequestContext,
@@ -101,8 +87,9 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
 }))
 
 vi.mock('@/lib/admin/privileged-audit', () => ({
+  createAdminPrivilegedAuditContext: state.createAdminPrivilegedAuditContext,
   recordAdminPrivilegedActionSucceeded: state.adminAudit,
-  recordDelegatedPrivilegedActionSucceeded: vi.fn(),
+  recordDelegatedPrivilegedActionSucceeded: state.delegatedAudit,
 }))
 
 vi.mock('@/lib/dal/requirement-packages', () => ({
@@ -136,7 +123,11 @@ vi.mock('@/lib/requirements/norm-reference-mutations', () => ({
 }))
 
 vi.mock('@/lib/requirements/norm-reference-permissions', () => ({
-  normReferenceMutationPolicy: (name: string) => ({ kind: 'custom', name }),
+  normReferenceMutationPolicy: (name: string) => ({
+    authorize: state.normPolicyAuthorize,
+    kind: 'custom',
+    name,
+  }),
 }))
 
 vi.mock('@/lib/requirements/requirement-package-permissions', () => ({
@@ -153,6 +144,7 @@ vi.mock('@/lib/requirements/responsibility-person-verification', () => ({
 
 vi.mock('@/lib/audit/action-audit', () => ({
   recordAllowedActionAuditEvent: state.audit,
+  recordDeniedActionAuditEvent: state.deniedAudit,
 }))
 
 vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
@@ -160,6 +152,7 @@ vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
 }))
 
 vi.mock('@/lib/http/safe-errors', () => ({
+  isForeignKeyViolation: state.isForeignKeyViolation,
   logSanitizedError: state.logSanitizedError,
 }))
 
@@ -178,7 +171,11 @@ import {
   GET as areaCoAuthorsGet,
   PUT as areaCoAuthorsPut,
 } from '@/app/api/requirement-areas/[id]/co-authors/route'
-import { PUT as areaPut } from '@/app/api/requirement-areas/[id]/route'
+import {
+  DELETE as areaDelete,
+  GET as areaGet,
+  PUT as areaPut,
+} from '@/app/api/requirement-areas/[id]/route'
 import { POST as packageArchivePost } from '@/app/api/requirement-packages/[id]/archive/route'
 import {
   GET as packageCoAuthorsGet,
@@ -194,30 +191,49 @@ import {
   POST as packageCreatePost,
   GET as packageListGet,
 } from '@/app/api/requirement-packages/route'
+import { getRouteHandlerBrand } from '@/lib/http/response-policy'
+import type { MutationRouteHandler } from '@/lib/http/secure-mutation-route'
+import { forbiddenError } from '@/lib/requirements/errors'
 
-type DirectHandler = (args: {
-  body?: Record<string, unknown>
-  context: typeof context
-  params: { id: number }
-}) => Promise<Response>
-
-const direct = (handler: unknown) => handler as DirectHandler
-const policyFor = (handler: unknown) =>
-  (handler as { issue891Policy: { authorize?: DirectHandler } }).issue891Policy
-const bodySchemaFor = (handler: unknown) =>
-  (
-    handler as {
-      issue891BodySchema?: { safeParse: (value: unknown) => unknown }
-    }
-  ).issue891BodySchema
 const request = new NextRequest('https://example.test/api/resource')
 const routeParams = (id: string) => ({ params: Promise.resolve({ id }) })
+
+type MutationMethod = 'DELETE' | 'POST' | 'PUT'
+function mutationRequest(
+  path: string,
+  method: MutationMethod,
+  body?: Record<string, unknown>,
+): NextRequest {
+  return new NextRequest(`https://example.test${path}`, {
+    ...(body
+      ? {
+          body: JSON.stringify(body),
+          headers: { 'content-type': 'application/json' },
+        }
+      : {}),
+    method,
+  })
+}
+
+function callMutation(
+  handler: MutationRouteHandler,
+  path: string,
+  method: MutationMethod,
+  options: { body?: Record<string, unknown>; id?: string } = {},
+): Promise<Response> {
+  return handler(
+    mutationRequest(path, method, options.body),
+    options.id === undefined ? undefined : routeParams(options.id),
+  )
+}
 
 describe('Issue 891 supporting workflow routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    state.createAdminPrivilegedAuditContext.mockResolvedValue(context)
     state.createRequestContext.mockResolvedValue(context)
     state.canManageAreaCoAuthors.mockResolvedValue(true)
+    state.deleteArea.mockResolvedValue(1)
     state.getAreaById.mockResolvedValue({ id: 7 })
     state.updateAreaWithOwnerCheck.mockResolvedValue({ id: 7 })
     state.listRequirementAreaCoAuthors.mockResolvedValue([{ hsaId: 'author' }])
@@ -267,6 +283,27 @@ describe('Issue 891 supporting workflow routes', () => {
     state.countLinkedNormReferences.mockResolvedValue({ 7: 2 })
   })
 
+  it('keeps every mutation behind the secure route wrapper', () => {
+    expect(
+      [
+        areaCoAuthorsPut,
+        areaPut,
+        areaDelete,
+        packageCoAuthorsPut,
+        normPut,
+        normDelete,
+        normArchivePost,
+        normReactivatePost,
+        normCreatePost,
+        packagePut,
+        packageDelete,
+        packageArchivePost,
+        packageReactivatePost,
+        packageCreatePost,
+      ].map(getRouteHandlerBrand),
+    ).toEqual(Array.from({ length: 14 }, () => 'mutation'))
+  })
+
   it('covers requirement-area co-author GET validation, missing, denial, and success', async () => {
     expect((await areaCoAuthorsGet(request, routeParams('bad'))).status).toBe(
       400,
@@ -280,13 +317,13 @@ describe('Issue 891 supporting workflow routes', () => {
     expect(await success.json()).toEqual({ coAuthors: [{ hsaId: 'author' }] })
   })
 
-  it('covers requirement-area co-author PUT success and both not-found outcomes', async () => {
-    const args = {
-      body: { coAuthorHsaIds: ['SE5560000001-author'] },
-      context,
-      params: { id: 7 },
-    }
-    expect((await direct(areaCoAuthorsPut)(args)).status).toBe(200)
+  it('covers requirement-area co-author PUT validation, authorization, and outcomes', async () => {
+    const path = '/api/requirement-areas/7/co-authors'
+    const body = { coAuthorHsaIds: ['SE5560000001-author'] }
+    expect(
+      (await callMutation(areaCoAuthorsPut, path, 'PUT', { body, id: '7' }))
+        .status,
+    ).toBe(200)
     expect(state.replaceRequirementAreaCoAuthors).toHaveBeenCalledWith(
       db,
       7,
@@ -297,30 +334,109 @@ describe('Issue 891 supporting workflow routes', () => {
         },
       }),
     )
-    state.getAreaById.mockResolvedValueOnce(null)
-    expect((await direct(areaCoAuthorsPut)(args)).status).toBe(404)
-    state.replaceRequirementAreaCoAuthors.mockResolvedValueOnce(undefined)
-    expect((await direct(areaCoAuthorsPut)(args)).status).toBe(404)
 
-    const policy = policyFor(areaCoAuthorsPut)
-    state.getAreaById.mockResolvedValueOnce(null)
-    await expect(policy.authorize?.(args)).resolves.toBeUndefined()
-    await expect(policy.authorize?.(args)).resolves.toBeUndefined()
-    state.canManageAreaCoAuthors.mockResolvedValueOnce(false)
-    await expect(policy.authorize?.(args)).rejects.toMatchObject({
-      code: 'forbidden',
-    })
-    expect(bodySchemaFor(areaCoAuthorsPut)?.safeParse(args.body)).toMatchObject(
-      {
-        success: true,
-      },
-    )
+    state.getAreaById
+      .mockResolvedValueOnce({ id: 7 })
+      .mockResolvedValueOnce(null)
     expect(
-      bodySchemaFor(areaCoAuthorsPut)?.safeParse({ coAuthorHsaIds: ['bad'] }),
-    ).toMatchObject({ success: false })
+      (await callMutation(areaCoAuthorsPut, path, 'PUT', { body, id: '7' }))
+        .status,
+    ).toBe(404)
+
+    state.replaceRequirementAreaCoAuthors.mockResolvedValueOnce(undefined)
+    expect(
+      (await callMutation(areaCoAuthorsPut, path, 'PUT', { body, id: '7' }))
+        .status,
+    ).toBe(404)
+
+    state.getAreaById.mockResolvedValueOnce(null)
+    expect(
+      (await callMutation(areaCoAuthorsPut, path, 'PUT', { body, id: '7' }))
+        .status,
+    ).toBe(200)
+
+    state.canManageAreaCoAuthors.mockResolvedValueOnce(false)
+    expect(
+      (await callMutation(areaCoAuthorsPut, path, 'PUT', { body, id: '7' }))
+        .status,
+    ).toBe(403)
+    expect(
+      (
+        await callMutation(areaCoAuthorsPut, path, 'PUT', {
+          body: { coAuthorHsaIds: ['bad'] },
+          id: '7',
+        })
+      ).status,
+    ).toBe(400)
   })
 
-  it('executes requirement-area owner resolvers and update policy branches', async () => {
+  it('covers requirement-area detail reads and wrapped deletion outcomes', async () => {
+    expect((await areaGet(request, routeParams('bad'))).status).toBe(400)
+
+    state.getAreaById.mockResolvedValueOnce(null)
+    expect((await areaGet(request, routeParams('7'))).status).toBe(404)
+
+    state.createRequestContext.mockResolvedValueOnce({
+      ...context,
+      actor: {
+        ...context.actor,
+        hsaId: 'SE5560000001-owner',
+        roles: ['Author'],
+      },
+    })
+    state.getAreaById.mockResolvedValueOnce({
+      id: 7,
+      ownerHsaId: 'SE5560000001-owner',
+    })
+    state.canAuthorArea.mockResolvedValueOnce(true)
+    const owned = await areaGet(request, routeParams('7'))
+    await expect(owned.json()).resolves.toMatchObject({
+      area: {
+        permissions: { canAuthor: true, canManageAssignments: true },
+      },
+    })
+
+    state.createRequestContext.mockResolvedValueOnce({
+      ...context,
+      actor: { ...context.actor, roles: ['Author'] },
+    })
+    state.getAreaById.mockResolvedValueOnce({
+      id: 7,
+      ownerHsaId: 'SE5560000001-other',
+    })
+    const unowned = await areaGet(request, routeParams('7'))
+    await expect(unowned.json()).resolves.toMatchObject({
+      area: { permissions: { canManageAssignments: false } },
+    })
+
+    const path = '/api/requirement-areas/7'
+    expect(
+      (await callMutation(areaDelete, path, 'DELETE', { id: '7' })).status,
+    ).toBe(200)
+    expect(state.adminAudit).toHaveBeenCalledWith(
+      context,
+      expect.objectContaining({ operation: 'delete', resourceId: 7 }),
+    )
+
+    state.deleteArea.mockResolvedValueOnce(0)
+    expect(
+      (await callMutation(areaDelete, path, 'DELETE', { id: '7' })).status,
+    ).toBe(404)
+
+    state.deleteArea.mockRejectedValueOnce(new Error('foreign key'))
+    state.isForeignKeyViolation.mockReturnValueOnce(true)
+    expect(
+      (await callMutation(areaDelete, path, 'DELETE', { id: '7' })).status,
+    ).toBe(409)
+
+    state.deleteArea.mockRejectedValueOnce(new Error('database failure'))
+    state.isForeignKeyViolation.mockReturnValueOnce(false)
+    expect(
+      (await callMutation(areaDelete, path, 'DELETE', { id: '7' })).status,
+    ).toBe(500)
+  })
+
+  it('executes requirement-area owner resolution and observes policy outcomes', async () => {
     state.updateAreaWithOwnerCheck.mockImplementationOnce(
       async (_db: unknown, _id: number, data: Record<string, unknown>) => {
         const resolveOwnerPerson = data.resolveOwnerPerson as (
@@ -331,23 +447,49 @@ describe('Issue 891 supporting workflow routes', () => {
         return { id: 7 }
       },
     )
-    const args = {
-      body: { ownerHsaId: 'SE5560000001-next' },
-      context,
-      params: { id: 7 },
-    }
-    expect((await direct(areaPut)(args)).status).toBe(200)
+    const path = '/api/requirement-areas/7'
+    const body = { ownerHsaId: 'SE5560000001-next' }
+    expect(
+      (await callMutation(areaPut, path, 'PUT', { body, id: '7' })).status,
+    ).toBe(200)
     expect(state.resolvePerson).toHaveBeenCalledWith(db, 'SE5560000001-next')
-    await expect(policyFor(areaPut).authorize?.(args)).resolves.toBeUndefined()
+
     state.getAreaById.mockResolvedValueOnce(null)
-    await expect(policyFor(areaPut).authorize?.(args)).resolves.toBeUndefined()
+    expect(
+      (await callMutation(areaPut, path, 'PUT', { body, id: '7' })).status,
+    ).toBe(200)
+
     state.canManageAreaCoAuthors.mockResolvedValueOnce(false)
-    await expect(policyFor(areaPut).authorize?.(args)).rejects.toMatchObject({
-      code: 'forbidden',
+    expect(
+      (await callMutation(areaPut, path, 'PUT', { body, id: '7' })).status,
+    ).toBe(403)
+
+    state.createRequestContext.mockResolvedValueOnce({
+      ...context,
+      actor: { ...context.actor, roles: ['Author'] },
     })
+    expect(
+      (
+        await callMutation(areaPut, path, 'PUT', {
+          body: { name: 'Delegated update' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(200)
+    expect(state.delegatedAudit).toHaveBeenCalled()
+
+    state.updateAreaWithOwnerCheck.mockResolvedValueOnce(undefined)
+    expect(
+      (
+        await callMutation(areaPut, path, 'PUT', {
+          body: { name: 'Missing area' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(404)
   })
 
-  it('covers package co-author GET/PUT success, missing rows, and permission failures', async () => {
+  it('covers package co-author GET and wrapped PUT outcomes', async () => {
     expect(
       (await packageCoAuthorsGet(request, routeParams('bad'))).status,
     ).toBe(400)
@@ -363,31 +505,70 @@ describe('Issue 891 supporting workflow routes', () => {
       200,
     )
 
-    const args = {
-      body: { coAuthorHsaIds: ['SE5560000001-author'] },
-      context,
-      params: { id: 7 },
-    }
-    expect((await direct(packageCoAuthorsPut)(args)).status).toBe(200)
+    const path = '/api/requirement-packages/7/co-authors'
+    const body = { coAuthorHsaIds: ['SE5560000001-author'] }
+    expect(
+      (
+        await callMutation(packageCoAuthorsPut, path, 'PUT', {
+          body,
+          id: '7',
+        })
+      ).status,
+    ).toBe(200)
     expect(state.audit).toHaveBeenCalled()
+
     state.getRequirementPackageById.mockResolvedValueOnce(null)
-    expect((await direct(packageCoAuthorsPut)(args)).status).toBe(404)
+    expect(
+      (
+        await callMutation(packageCoAuthorsPut, path, 'PUT', {
+          body,
+          id: '7',
+        })
+      ).status,
+    ).toBe(404)
+
     state.replaceRequirementPackageCoAuthors.mockResolvedValueOnce(undefined)
-    expect((await direct(packageCoAuthorsPut)(args)).status).toBe(404)
-    await expect(
-      policyFor(packageCoAuthorsPut).authorize?.(args),
-    ).resolves.toBeUndefined()
+    expect(
+      (
+        await callMutation(packageCoAuthorsPut, path, 'PUT', {
+          body,
+          id: '7',
+        })
+      ).status,
+    ).toBe(404)
+
+    state.requireLeadOrAdmin.mockRejectedValueOnce(
+      forbiddenError('denied', { reason: 'package_lead_required' }),
+    )
+    expect(
+      (
+        await callMutation(packageCoAuthorsPut, path, 'PUT', {
+          body,
+          id: '7',
+        })
+      ).status,
+    ).toBe(403)
+
     state.replaceRequirementPackageCoAuthors.mockResolvedValueOnce({
       coAuthorHsaIds: [],
       requirementPackageId: 7,
     })
-    await direct(packageCoAuthorsPut)({
-      ...args,
-      context: {
-        ...context,
-        actor: { ...context.actor, displayName: '', id: 'fallback-id' },
+    state.createRequestContext.mockResolvedValueOnce({
+      ...context,
+      actor: {
+        ...context.actor,
+        displayName: '',
+        id: 'fallback-id',
       },
     })
+    expect(
+      (
+        await callMutation(packageCoAuthorsPut, path, 'PUT', {
+          body,
+          id: '7',
+        })
+      ).status,
+    ).toBe(200)
     expect(state.replaceRequirementPackageCoAuthors).toHaveBeenLastCalledWith(
       db,
       7,
@@ -396,10 +577,15 @@ describe('Issue 891 supporting workflow routes', () => {
       }),
     )
     expect(
-      bodySchemaFor(packageCoAuthorsPut)?.safeParse({
-        coAuthorHsaIds: ['SE5560000001-author', 'SE5560000001-author'],
-      }),
-    ).toMatchObject({ success: false })
+      (
+        await callMutation(packageCoAuthorsPut, path, 'PUT', {
+          body: {
+            coAuthorHsaIds: ['SE5560000001-author', 'SE5560000001-author'],
+          },
+          id: '7',
+        })
+      ).status,
+    ).toBe(400)
   })
 
   it('covers norm detail GET and all mutation outcomes', async () => {
@@ -408,28 +594,72 @@ describe('Issue 891 supporting workflow routes', () => {
     state.getNormReferenceById.mockResolvedValueOnce(null)
     expect((await normGet(request, routeParams('7'))).status).toBe(404)
 
-    const args = { body: { name: 'Updated' }, context, params: { id: 7 } }
-    expect((await direct(normPut)(args)).status).toBe(200)
+    const detailPath = '/api/norm-references/7'
+    expect(
+      (
+        await callMutation(normPut, detailPath, 'PUT', {
+          body: { name: 'Updated' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(200)
     state.updateNormReferenceWithAudit.mockResolvedValueOnce(undefined)
-    expect((await direct(normPut)(args)).status).toBe(404)
+    expect(
+      (
+        await callMutation(normPut, detailPath, 'PUT', {
+          body: { name: 'Updated' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(404)
 
-    expect((await direct(normDelete)(args)).status).toBe(200)
+    expect(
+      (await callMutation(normDelete, detailPath, 'DELETE', { id: '7' }))
+        .status,
+    ).toBe(200)
     state.deleteNormReferenceWithAudit.mockResolvedValueOnce({
       status: 'not_found',
     })
-    expect((await direct(normDelete)(args)).status).toBe(404)
+    expect(
+      (await callMutation(normDelete, detailPath, 'DELETE', { id: '7' }))
+        .status,
+    ).toBe(404)
     state.deleteNormReferenceWithAudit.mockResolvedValueOnce({
       status: 'in_use',
       usage: { libraryRequirementCount: 1, localRequirementCount: 0 },
     })
-    expect((await direct(normDelete)(args)).status).toBe(409)
+    expect(
+      (await callMutation(normDelete, detailPath, 'DELETE', { id: '7' }))
+        .status,
+    ).toBe(409)
 
-    expect((await direct(normArchivePost)(args)).status).toBe(200)
+    const archivePath = '/api/norm-reference-actions/7/archive'
+    expect(
+      (await callMutation(normArchivePost, archivePath, 'POST', { id: '7' }))
+        .status,
+    ).toBe(200)
     state.archiveNormReferenceWithAudit.mockResolvedValueOnce(undefined)
-    expect((await direct(normArchivePost)(args)).status).toBe(404)
-    expect((await direct(normReactivatePost)(args)).status).toBe(200)
+    expect(
+      (await callMutation(normArchivePost, archivePath, 'POST', { id: '7' }))
+        .status,
+    ).toBe(404)
+
+    const reactivatePath = '/api/norm-references/7/reactivate'
+    expect(
+      (
+        await callMutation(normReactivatePost, reactivatePath, 'POST', {
+          id: '7',
+        })
+      ).status,
+    ).toBe(200)
     state.reactivateNormReferenceWithAudit.mockResolvedValueOnce(undefined)
-    expect((await direct(normReactivatePost)(args)).status).toBe(404)
+    expect(
+      (
+        await callMutation(normReactivatePost, reactivatePath, 'POST', {
+          id: '7',
+        })
+      ).status,
+    ).toBe(404)
   })
 
   it('covers norm-reference list validation/filtering and create shaping', async () => {
@@ -461,92 +691,142 @@ describe('Issue 891 supporting workflow routes', () => {
       statuses: [3],
     })
 
-    const args = {
-      body: {
-        issuer: 'ISO',
-        name: 'Security',
-        normReferenceId: 'ISO-1',
-        reference: 'ISO 1',
-        type: 'Standard',
-      },
-      context,
-      params: { id: 7 },
+    const body = {
+      issuer: 'ISO',
+      name: 'Security',
+      normReferenceId: 'ISO-1',
+      reference: 'ISO 1',
+      type: 'Standard',
+      uri: '',
+      version: '',
     }
-    expect((await direct(normCreatePost)(args)).status).toBe(201)
     expect(
-      bodySchemaFor(normCreatePost)?.safeParse({
-        ...args.body,
-        uri: '',
-        version: '',
-      }),
-    ).toMatchObject({ success: true })
+      (
+        await callMutation(normCreatePost, '/api/norm-references', 'POST', {
+          body,
+        })
+      ).status,
+    ).toBe(201)
+    expect(state.createNormReferenceWithAudit).toHaveBeenCalledWith(
+      db,
+      { ...body, uri: null, version: null },
+      context,
+    )
   })
 
-  it('covers package detail GET and update success/conflict/missing outcomes', async () => {
+  it('covers package detail GET and wrapped update outcomes', async () => {
     expect((await packageGet(request, routeParams('bad'))).status).toBe(400)
     expect((await packageGet(request, routeParams('7'))).status).toBe(200)
     state.getRequirementPackageById.mockResolvedValueOnce(null)
     expect((await packageGet(request, routeParams('7'))).status).toBe(404)
 
-    const args = { body: { name: 'Updated' }, context, params: { id: 7 } }
-    expect((await direct(packagePut)(args)).status).toBe(200)
+    const path = '/api/requirement-packages/7'
+    expect(
+      (
+        await callMutation(packagePut, path, 'PUT', {
+          body: { name: 'Updated' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(200)
     state.getRequirementPackageById.mockResolvedValueOnce(null)
-    expect((await direct(packagePut)(args)).status).toBe(404)
+    expect(
+      (
+        await callMutation(packagePut, path, 'PUT', {
+          body: { name: 'Updated' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(404)
     state.getRequirementPackageById.mockResolvedValueOnce({
       coAuthors: [{ hsaId: 'SE5560000001-next' }],
       id: 7,
       leadHsaId: 'SE5560000001-lead',
     })
-    await expect(
-      direct(packagePut)({ ...args, body: { leadHsaId: 'SE5560000001-next' } }),
-    ).rejects.toMatchObject({ code: 'validation' })
-    state.updateRequirementPackage.mockResolvedValueOnce(undefined)
-    expect((await direct(packagePut)(args)).status).toBe(404)
-    await expect(
-      policyFor(packagePut).authorize?.(args),
-    ).resolves.toBeUndefined()
-    expect(bodySchemaFor(packagePut)?.safeParse({})).toMatchObject({
-      success: false,
-    })
     expect(
-      bodySchemaFor(packagePut)?.safeParse({ name: 'Updated' }),
-    ).toMatchObject({
-      success: true,
-    })
+      (
+        await callMutation(packagePut, path, 'PUT', {
+          body: { leadHsaId: 'SE5560000001-next' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(400)
+    state.updateRequirementPackage.mockResolvedValueOnce(undefined)
+    expect(
+      (
+        await callMutation(packagePut, path, 'PUT', {
+          body: { name: 'Updated' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(404)
+    expect(
+      (
+        await callMutation(packagePut, path, 'PUT', {
+          body: {},
+          id: '7',
+        })
+      ).status,
+    ).toBe(400)
   })
 
   it('covers package delete conflict, missing, success, audit failure, and reactivation', async () => {
-    const args = { context, params: { id: 7 } }
+    const path = '/api/requirement-packages/7'
     state.deleteRequirementPackage.mockResolvedValueOnce({
       cleanup: { removedLinkCount: 0 },
       deletedCount: 0,
     })
-    expect((await direct(packageDelete)(args)).status).toBe(409)
+    expect(
+      (await callMutation(packageDelete, path, 'DELETE', { id: '7' })).status,
+    ).toBe(409)
     state.deleteRequirementPackage.mockResolvedValueOnce({
       cleanup: { removedLinkCount: 0 },
       deletedCount: 0,
     })
     state.getRequirementPackageById.mockResolvedValueOnce(null)
-    expect((await direct(packageDelete)(args)).status).toBe(404)
+    expect(
+      (await callMutation(packageDelete, path, 'DELETE', { id: '7' })).status,
+    ).toBe(404)
     state.cleanupAudit.mockRejectedValueOnce(new Error('audit failed'))
-    expect((await direct(packageDelete)(args)).status).toBe(200)
+    expect(
+      (await callMutation(packageDelete, path, 'DELETE', { id: '7' })).status,
+    ).toBe(200)
     expect(state.logSanitizedError).toHaveBeenCalled()
 
-    expect((await direct(packageReactivatePost)(args)).status).toBe(200)
+    const reactivatePath = '/api/requirement-packages/7/reactivate'
+    expect(
+      (
+        await callMutation(packageReactivatePost, reactivatePath, 'POST', {
+          id: '7',
+        })
+      ).status,
+    ).toBe(200)
     expect(state.audit).toHaveBeenCalledWith(
       db,
       context,
       expect.objectContaining({ action: 'requirement_package.reactivate' }),
     )
     state.reactivateRequirementPackage.mockResolvedValueOnce(undefined)
-    expect((await direct(packageReactivatePost)(args)).status).toBe(404)
-    expect(() =>
-      policyFor(packageReactivatePost).authorize?.(args),
-    ).not.toThrow()
-    expect(() => policyFor(packageDelete).authorize?.(args)).not.toThrow()
+    expect(
+      (
+        await callMutation(packageReactivatePost, reactivatePath, 'POST', {
+          id: '7',
+        })
+      ).status,
+    ).toBe(404)
   })
 
-  it('covers package list permissions, creation, archiving, and policies', async () => {
+  it('covers package list permissions and wrapped creation and archiving', async () => {
+    expect(
+      (
+        await packageListGet(
+          new Request(
+            'https://example.test/api/requirement-packages?includeArchived=bad',
+          ),
+        )
+      ).status,
+    ).toBe(400)
+
     const listResponse = await packageListGet(
       new Request(
         'https://example.test/api/requirement-packages?includeArchived=true',
@@ -575,19 +855,53 @@ describe('Issue 891 supporting workflow routes', () => {
       ],
     })
 
-    const args = {
-      body: { name: 'Package', purposeAndScope: 'Scope' },
-      context,
-      params: { id: 7 },
-    }
-    expect((await direct(packageCreatePost)(args)).status).toBe(201)
-    await expect(
-      policyFor(packageCreatePost).authorize?.(args),
-    ).resolves.toBeUndefined()
-    expect((await direct(packageArchivePost)(args)).status).toBe(200)
+    state.createRequestContext.mockResolvedValueOnce({
+      ...context,
+      actor: { ...context.actor, roles: ['Author'] },
+    })
+    state.listRequirementPackages.mockResolvedValueOnce([
+      { id: 8, leadHsaId: 'SE5560000001-actor' },
+    ])
+    state.countLinkedPackages.mockResolvedValueOnce({})
+    const matchingLead = await packageListGet(
+      new Request('https://example.test/api/requirement-packages'),
+    )
+    await expect(matchingLead.json()).resolves.toEqual({
+      requirementPackages: [
+        expect.objectContaining({
+          linkedRequirementCount: 0,
+          permissions: { canManageAssignments: true },
+        }),
+      ],
+    })
+
+    expect(
+      (
+        await callMutation(
+          packageCreatePost,
+          '/api/requirement-packages',
+          'POST',
+          { body: { name: 'Package', purposeAndScope: 'Scope' } },
+        )
+      ).status,
+    ).toBe(201)
+
+    const archivePath = '/api/requirement-packages/7/archive'
+    expect(
+      (
+        await callMutation(packageArchivePost, archivePath, 'POST', {
+          id: '7',
+        })
+      ).status,
+    ).toBe(200)
     expect(state.cleanupAudit).toHaveBeenCalled()
     state.archiveRequirementPackage.mockResolvedValueOnce(undefined)
-    expect((await direct(packageArchivePost)(args)).status).toBe(404)
-    expect(() => policyFor(packageArchivePost).authorize?.(args)).not.toThrow()
+    expect(
+      (
+        await callMutation(packageArchivePost, archivePath, 'POST', {
+          id: '7',
+        })
+      ).status,
+    ).toBe(404)
   })
 })
