@@ -218,4 +218,113 @@ describe('requirement selection question hierarchy', () => {
       expect.objectContaining({ text: 'Partly' }),
     ])
   })
+
+  it('ignores self-references, missing parents, and duplicate dependency edges', () => {
+    const parent = question(1, 'SEC-KUF001')
+    const child = question(2, 'SEC-KUF002', [
+      visibilityGroup(1, [
+        condition(parent, 101, 'Yes'),
+        condition(parent, 102, 'Partly'),
+        condition(question(2, 'SEC-KUF002'), 201, 'Self'),
+        condition(question(99, 'SEC-KUF099'), 901, 'Missing'),
+      ]),
+    ])
+
+    const layout = buildRequirementSelectionHierarchyLayout(
+      [parent, child],
+      child.id,
+    )
+
+    expect(layout?.edges.map(edge => edge.id)).toEqual(['1->2'])
+    expect(
+      getRequirementSelectionHierarchyBadgeCounts([parent, child]),
+    ).toEqual(
+      new Map([
+        [1, 2],
+        [2, 2],
+      ]),
+    )
+  })
+
+  it('sorts equal-area questions and condition groups deterministically', () => {
+    const first = { ...question(1, 'SEC-KUF002'), sortOrder: 10 }
+    const second = { ...question(2, 'SEC-KUF001'), sortOrder: 10 }
+    const child = question(3, 'SEC-KUF003', [
+      { ...visibilityGroup(20, [condition(first, 101, 'Yes')]), sortOrder: 1 },
+      { ...visibilityGroup(10, [condition(second, 201, 'No')]), sortOrder: 1 },
+    ])
+
+    const layout = buildRequirementSelectionHierarchyLayout(
+      [first, second, child],
+      child.id,
+    )
+
+    expect(
+      layout?.nodes.find(node => node.id === child.id)?.conditionGroups,
+    ).toEqual([
+      expect.objectContaining({ groupId: 10 }),
+      expect.objectContaining({ groupId: 20 }),
+    ])
+    expect(layout?.edges.map(edge => edge.id)).toEqual(['2->3', '1->3'])
+  })
+
+  it('orders sibling edges that share a source and rejects a zero-id focus', () => {
+    const parent = question(1, 'SEC-KUF001')
+    const firstChild = question(2, 'SEC-KUF002', [
+      visibilityGroup(1, [condition(parent, 101, 'Yes')]),
+    ])
+    const secondChild = question(3, 'SEC-KUF003', [
+      visibilityGroup(2, [condition(parent, 102, 'Partly')]),
+    ])
+    expect(
+      buildRequirementSelectionHierarchyLayout(
+        [parent, secondChild, firstChild],
+        parent.id,
+      )?.edges.map(edge => edge.id),
+    ).toEqual(['1->2', '1->3'])
+
+    const zeroParent = question(0, 'SEC-KUF000')
+    const zeroChild = question(4, 'SEC-KUF004', [
+      visibilityGroup(3, [condition(zeroParent, 1, 'Zero')]),
+    ])
+    expect(
+      buildRequirementSelectionHierarchyLayout([zeroParent, zeroChild], 0),
+    ).toBeNull()
+  })
+
+  it('uses condition snapshots when the parent is outside the rendered catalog', () => {
+    const staleParent = {
+      ...question(99, 'ARK-KUF099'),
+      areaName: 'Architecture',
+      isActive: false,
+      isArchived: true,
+      text: 'Historical parent',
+    }
+    const parent = question(1, 'SEC-KUF001')
+    const child = question(2, 'SEC-KUF002', [
+      visibilityGroup(1, [
+        condition(parent, 101, 'Yes'),
+        condition(staleParent, 901, 'Historical answer'),
+      ]),
+    ])
+
+    const layout = buildRequirementSelectionHierarchyLayout(
+      [parent, child],
+      child.id,
+    )
+    const rows = layout?.nodes.find(node => node.id === child.id)
+      ?.conditionGroups[0]?.conditions
+
+    expect(rows).toContainEqual({
+      answers: [expect.objectContaining({ answerId: 901 })],
+      parent: {
+        areaName: 'Architecture',
+        isActive: false,
+        isArchived: true,
+        questionCode: 'ARK-KUF099',
+        questionId: 99,
+        text: 'Historical parent',
+      },
+    })
+  })
 })

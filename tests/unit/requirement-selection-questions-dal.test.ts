@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   cleanupRequirementSelectionPackageLinks,
+  cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion,
   getExistingSpecificationRequirementIds,
   getRequirementSelectionFilterForSpecification,
   listRequirementSelectionMatchedRequirements,
@@ -812,6 +813,199 @@ describe('requirement selection questions DAL', () => {
     ).toBe(false)
   })
 
+  it.each([
+    ['empty_visibility_group', [{ conditions: [] }]],
+    [
+      'invalid_visibility_parent_question',
+      [{ conditions: [{ answerIds: [1], parentQuestionId: 0 }] }],
+    ],
+    [
+      'self_visibility_dependency',
+      [{ conditions: [{ answerIds: [1], parentQuestionId: 7 }] }],
+    ],
+    [
+      'empty_visibility_condition_answers',
+      [{ conditions: [{ answerIds: [], parentQuestionId: 2 }] }],
+    ],
+  ])('rejects invalid visibility input: %s', async (reason, groups) => {
+    const query = vi.fn(async (sql: string) =>
+      sql.includes('SELECT id') && sql.includes('WHERE id = @0')
+        ? [{ id: 7 }]
+        : [],
+    )
+    const db = createTransactionalDb(query) as unknown as Parameters<
+      typeof replaceRequirementSelectionQuestionVisibilityGroups
+    >[0]
+
+    await expect(
+      replaceRequirementSelectionQuestionVisibilityGroups(db, 7, groups),
+    ).rejects.toMatchObject({ details: expect.objectContaining({ reason }) })
+  })
+
+  it.each([
+    ['unknown_visibility_answer', []],
+    ['visibility_answer_parent_mismatch', [{ id: 10, questionId: 3 }]],
+  ])('validates visibility answers: %s', async (reason, answerRows) => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('SELECT id') && sql.includes('WHERE id = @0')) {
+        return [{ id: 7 }]
+      }
+      if (sql.includes('SELECT id, question_id AS questionId')) {
+        return answerRows
+      }
+      return []
+    })
+    const db = createTransactionalDb(query) as unknown as Parameters<
+      typeof replaceRequirementSelectionQuestionVisibilityGroups
+    >[0]
+
+    await expect(
+      replaceRequirementSelectionQuestionVisibilityGroups(db, 7, [
+        { conditions: [{ answerIds: [10], parentQuestionId: 2 }] },
+      ]),
+    ).rejects.toMatchObject({ details: expect.objectContaining({ reason }) })
+  })
+
+  it('rejects visibility cycles through an existing parent chain', async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('SELECT id') && sql.includes('WHERE id = @0')) {
+        return [{ id: 7 }]
+      }
+      if (sql.includes('SELECT id, question_id AS questionId')) {
+        return [{ id: 10, questionId: 2 }]
+      }
+      if (sql.includes('childQuestionId')) {
+        return [{ childQuestionId: 2, parentQuestionId: 7 }]
+      }
+      return []
+    })
+    const db = createTransactionalDb(query) as unknown as Parameters<
+      typeof replaceRequirementSelectionQuestionVisibilityGroups
+    >[0]
+
+    await expect(
+      replaceRequirementSelectionQuestionVisibilityGroups(db, 7, [
+        { conditions: [{ answerIds: [10], parentQuestionId: 2 }] },
+      ]),
+    ).rejects.toMatchObject({
+      details: expect.objectContaining({ reason: 'visibility_cycle' }),
+    })
+  })
+
+  it('returns null for missing visibility targets and accepts clearing visibility', async () => {
+    const missingDb = createTransactionalDb(
+      vi.fn(async () => []),
+    ) as unknown as Parameters<
+      typeof replaceRequirementSelectionQuestionVisibilityGroups
+    >[0]
+    await expect(
+      replaceRequirementSelectionQuestionVisibilityGroups(missingDb, 404, []),
+    ).resolves.toBeNull()
+
+    let targetLookup = true
+    const query = vi.fn(async (sql: string) => {
+      if (
+        targetLookup &&
+        sql.includes('SELECT id') &&
+        sql.includes('WHERE id = @0')
+      ) {
+        targetLookup = false
+        return [{ id: 7 }]
+      }
+      return []
+    })
+    const db = createTransactionalDb(query) as unknown as Parameters<
+      typeof replaceRequirementSelectionQuestionVisibilityGroups
+    >[0]
+    await expect(
+      replaceRequirementSelectionQuestionVisibilityGroups(db, 7, []),
+    ).resolves.toBeNull()
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes(
+          'DELETE FROM requirement_selection_question_visibility_groups',
+        ),
+      ),
+    ).toBe(true)
+  })
+
+  it.each([
+    ['inactive_question', [], [4]],
+    ['single_choice_multiple_answers', [{ selectionType: 'single' }], [4, 5]],
+  ])(
+    'rejects invalid specification selections: %s',
+    async (reason, questionRows, answerIds) => {
+      const query = vi.fn(async (sql: string) => {
+        if (sql.includes('SELECT selection_type AS selectionType')) {
+          return questionRows
+        }
+        return []
+      })
+      const db = createTransactionalDb(query) as unknown as Parameters<
+        typeof replaceSpecificationRequirementSelectionAnswers
+      >[0]
+
+      await expect(
+        replaceSpecificationRequirementSelectionAnswers(db, 9, 1, answerIds, {
+          displayName: 'Ada',
+          hsaId: null,
+        }),
+      ).rejects.toMatchObject({ details: expect.objectContaining({ reason }) })
+    },
+  )
+
+  it.each([
+    ['invalid_saved_answers', []],
+    [
+      'no_selection_exclusive',
+      [
+        { id: 4, isNoRequirementSelection: 1 },
+        { id: 5, isNoRequirementSelection: 0 },
+      ],
+    ],
+  ])('validates saved answer membership: %s', async (reason, answerRows) => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('SELECT selection_type AS selectionType')) {
+        return [{ selectionType: 'multiple' }]
+      }
+      if (sql.includes('SELECT id, is_no_requirement_selection')) {
+        return answerRows
+      }
+      return []
+    })
+    const db = createTransactionalDb(query) as unknown as Parameters<
+      typeof replaceSpecificationRequirementSelectionAnswers
+    >[0]
+
+    await expect(
+      replaceSpecificationRequirementSelectionAnswers(db, 9, 1, [4, 5], {
+        displayName: 'Ada',
+        hsaId: null,
+      }),
+    ).rejects.toMatchObject({ details: expect.objectContaining({ reason }) })
+  })
+
+  it('allows clearing an inactive specification question selection', async () => {
+    const query = vi.fn(async (_sql: string) => [])
+    const db = createTransactionalDb(query) as unknown as Parameters<
+      typeof replaceSpecificationRequirementSelectionAnswers
+    >[0]
+
+    await expect(
+      replaceSpecificationRequirementSelectionAnswers(db, 9, 1, [], {
+        displayName: 'Ada',
+        hsaId: null,
+      }),
+    ).resolves.toEqual([])
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes(
+          'DELETE FROM specification_requirement_selection_answers',
+        ),
+      ),
+    ).toBe(true)
+  })
+
   it('returns no matched requirements without package or requirement filters', async () => {
     const db = createDb([])
 
@@ -1005,6 +1199,42 @@ describe('requirement selection questions DAL', () => {
     })
 
     expect(String(query.mock.calls[0]?.[0])).toContain('DELETE answer_package')
+  })
+
+  it('cleans unpublished requirement links with optional requirement filtering', async () => {
+    const query = vi.fn(async (_sql: string, _params: unknown[]) => [
+      { answerId: 7, requirementId: 30 },
+      { answerId: 9, requirementId: 30 },
+    ])
+    const db = { query } as unknown as Parameters<
+      typeof cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion
+    >[0]
+
+    await expect(
+      cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+        db,
+        [30],
+      ),
+    ).resolves.toEqual({
+      affectedAnswerIds: [7, 9],
+      affectedRequirementIds: [30],
+      removedLinkCount: 2,
+    })
+    expect(query.mock.calls[0]?.[1]).toEqual([STATUS_PUBLISHED, 30])
+
+    await expect(
+      cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(
+        db,
+        [],
+      ),
+    ).resolves.toEqual({
+      affectedAnswerIds: [],
+      affectedRequirementIds: [],
+      removedLinkCount: 0,
+    })
+
+    await cleanupRequirementSelectionRequirementLinksWithoutPublishedVersion(db)
+    expect(query.mock.calls.at(-1)?.[1]).toEqual([STATUS_PUBLISHED])
   })
 
   it('resolves visible question codes to database ids', async () => {

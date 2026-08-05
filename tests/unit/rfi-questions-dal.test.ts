@@ -3,6 +3,8 @@ import {
   createRfiQuestion,
   createRfiQuestionSuggestion,
   deleteRfiQuestionSuggestion,
+  getRfiQuestion,
+  getSpecificationRfiList,
   listRfiQuestionSuggestions,
   listRfiQuestions,
   lockSpecificationRfiList,
@@ -10,6 +12,8 @@ import {
   requestRfiQuestionSuggestionReview,
   resolveRfiQuestionSuggestion,
   type SqlExecutor,
+  setRfiQuestionArchived,
+  unlockSpecificationRfiList,
   updateRfiQuestion,
   updateSpecificationRfiAreaScope,
   updateSpecificationRfiQuestionItem,
@@ -890,6 +894,693 @@ describe('RFI questions DAL', () => {
     ).rejects.toMatchObject({
       code: 'not_found',
       status: 404,
+    })
+  })
+
+  it('applies the active-only default and ignores links outside the selected rows', async () => {
+    const query = createQuery([
+      [
+        {
+          ...activeQuestionRow,
+          archivedAt: new Date('2026-06-21T08:00:00.000Z'),
+          isArchived: '1',
+        },
+      ],
+      [
+        { id: 19, relationKind: 'requirement', versionId: 999 },
+        { id: 7, relationKind: 'requirement', versionId: 34 },
+      ],
+    ])
+
+    const result = await listRfiQuestions({ query } as unknown as Parameters<
+      typeof listRfiQuestions
+    >[0])
+
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'question.is_archived = 0',
+    )
+    expect(result[0]).toMatchObject({
+      archivedAt: '2026-06-21T08:00:00.000Z',
+      isArchived: true,
+      requirementIds: [7],
+    })
+  })
+
+  it('returns null when an RFI question lookup has no row', async () => {
+    const query = createQuery([[]])
+
+    await expect(
+      getRfiQuestion(
+        { query } as unknown as Parameters<typeof getRfiQuestion>[0],
+        404,
+      ),
+    ).resolves.toBeNull()
+  })
+
+  it('validates question text and area before creating an RFI question', async () => {
+    await expect(
+      createRfiQuestion(
+        { transaction: vi.fn() } as unknown as Parameters<
+          typeof createRfiQuestion
+        >[0],
+        { areaId: 2, questionText: '   ' },
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    const { db } = createTransactionalDb({
+      managerResponses: [[]],
+      queryResponses: [],
+    })
+    await expect(
+      createRfiQuestion(
+        db as unknown as Parameters<typeof createRfiQuestion>[0],
+        { areaId: 404, questionText: 'Question?' },
+      ),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { areaId: 404, reason: 'area_not_found' },
+    })
+  })
+
+  it('rejects invalid advisory link ids during question creation', async () => {
+    const { db } = createTransactionalDb({
+      managerResponses: [
+        [{ id: 2, prefix: 'INF' }],
+        [],
+        [],
+        [],
+        [{ id: 12 }],
+        [{ id: 34 }],
+      ],
+      queryResponses: [],
+    })
+
+    await expect(
+      createRfiQuestion(
+        db as unknown as Parameters<typeof createRfiQuestion>[0],
+        {
+          areaId: 2,
+          questionText: 'Question?',
+          requirementIds: [0],
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'invalid_id' },
+    })
+  })
+
+  it('reports a created question that cannot be reloaded', async () => {
+    const { db } = createTransactionalDb({
+      managerResponses: [
+        [{ id: 2, prefix: 'INF' }],
+        [],
+        [{ nextSequence: 1 }],
+        [],
+        [{ id: 12 }],
+        [{ id: 34 }],
+        [],
+        [],
+        [],
+      ],
+      queryResponses: [[]],
+    })
+
+    await expect(
+      createRfiQuestion(
+        db as unknown as Parameters<typeof createRfiQuestion>[0],
+        { areaId: 2, questionText: 'Question?' },
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+  })
+
+  it('returns null for a missing update target and rejects invalid version changes', async () => {
+    const missing = createTransactionalDb({
+      managerResponses: [[]],
+      queryResponses: [],
+    })
+    await expect(
+      updateRfiQuestion(
+        missing.db as unknown as Parameters<typeof updateRfiQuestion>[0],
+        404,
+        { sortOrder: 1 },
+      ),
+    ).resolves.toBeNull()
+
+    const missingVersion = createTransactionalDb({
+      managerResponses: [[{ id: 12 }], []],
+      queryResponses: [],
+    })
+    await expect(
+      updateRfiQuestion(
+        missingVersion.db as unknown as Parameters<typeof updateRfiQuestion>[0],
+        12,
+        { helpText: 'New help' },
+      ),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_active_rfi_question_version' },
+    })
+
+    const blankText = createTransactionalDb({
+      managerResponses: [
+        [{ id: 12 }],
+        [
+          {
+            expectedAnswerFormat: null,
+            helpText: null,
+            id: 34,
+            questionText: 'Current',
+            versionNumber: 1,
+          },
+        ],
+      ],
+      queryResponses: [],
+    })
+    await expect(
+      updateRfiQuestion(
+        blankText.db as unknown as Parameters<typeof updateRfiQuestion>[0],
+        12,
+        { questionText: '   ' },
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+  })
+
+  it('archives, reactivates, and returns null for missing RFI questions', async () => {
+    const query = createQuery([
+      [{ id: 12 }],
+      [{ ...activeQuestionRow, isArchived: 1 }],
+      [],
+      [{ id: 12 }],
+      [{ ...activeQuestionRow, isArchived: 0 }],
+      [],
+      [],
+    ])
+    const db = { query } as unknown as Parameters<
+      typeof setRfiQuestionArchived
+    >[0]
+
+    await expect(setRfiQuestionArchived(db, 12, true)).resolves.toMatchObject({
+      isArchived: true,
+    })
+    await expect(setRfiQuestionArchived(db, 12, false)).resolves.toMatchObject({
+      isArchived: false,
+    })
+    await expect(setRfiQuestionArchived(db, 404, true)).resolves.toBeNull()
+  })
+
+  it('maps locked RFI list items and their advisory links', async () => {
+    const item = {
+      areaId: 2,
+      areaName: 'Informationssäkerhet',
+      areaPrefix: 'INF',
+      expectedAnswerFormat: 'Fritext',
+      helpText: null,
+      isIncluded: '1',
+      isVersionStale: 0,
+      questionCode: 'INF-RFI007',
+      questionId: 12,
+      questionText: 'Hur stödjer lösningen spårbarhet?',
+      relevance: 'relevant',
+      sortOrder: 30,
+      versionId: 34,
+      versionNumber: 1,
+    }
+    const query = createQuery([
+      [
+        {
+          isLocked: 1,
+          lockedAt: new Date('2026-06-21T08:00:00.000Z'),
+          lockedByDisplayName: actor.displayName,
+          lockedByHsaId: actor.hsaId,
+          specificationId: 4,
+        },
+      ],
+      [item],
+      [{ id: 5, relationKind: 'package', versionId: 34 }],
+    ])
+
+    const result = await getSpecificationRfiList(
+      { query } as unknown as Parameters<typeof getSpecificationRfiList>[0],
+      4,
+    )
+
+    expect(result).toMatchObject({
+      isLocked: true,
+      items: [
+        {
+          isIncluded: true,
+          isVersionStale: false,
+          requirementPackageIds: [5],
+        },
+      ],
+      lockedAt: '2026-06-21T08:00:00.000Z',
+    })
+  })
+
+  it('locks an empty catalog and unlocks an existing RFI list', async () => {
+    const emptyLock = createTransactionalDb({
+      managerResponses: [[], [], [], []],
+      queryResponses: [
+        [
+          {
+            isLocked: 1,
+            lockedAt: null,
+            lockedByDisplayName: actor.displayName,
+            lockedByHsaId: actor.hsaId,
+            specificationId: 4,
+          },
+        ],
+        [],
+      ],
+    })
+    await expect(
+      lockSpecificationRfiList(
+        emptyLock.db as unknown as Parameters<
+          typeof lockSpecificationRfiList
+        >[0],
+        4,
+        actor,
+      ),
+    ).resolves.toMatchObject({ isLocked: true, items: [] })
+    expect(String(emptyLock.managerQuery.mock.calls[2]?.[0])).toContain(
+      'DELETE FROM specification_rfi_question_items WHERE',
+    )
+
+    const unlocked = createTransactionalDb({
+      managerResponses: [[], []],
+      queryResponses: [[], []],
+    })
+    await expect(
+      unlockSpecificationRfiList(
+        unlocked.db as unknown as Parameters<
+          typeof unlockSpecificationRfiList
+        >[0],
+        4,
+      ),
+    ).resolves.toMatchObject({ isLocked: false, items: [] })
+  })
+
+  it('persists unlocked inclusion and locked relevance decisions', async () => {
+    const unlocked = createTransactionalDb({
+      managerResponses: [
+        [],
+        [
+          {
+            isLocked: 0,
+            lockedAt: null,
+            lockedByDisplayName: null,
+            lockedByHsaId: null,
+            specificationId: 4,
+          },
+        ],
+        [{ id: 34 }],
+        [],
+      ],
+      queryResponses: [[], []],
+    })
+    await updateSpecificationRfiQuestionItem(
+      unlocked.db as unknown as Parameters<
+        typeof updateSpecificationRfiQuestionItem
+      >[0],
+      4,
+      12,
+      { isIncluded: false },
+      actor,
+    )
+    expect(unlocked.managerQuery.mock.calls.at(-1)?.[1]).toEqual([
+      4,
+      12,
+      34,
+      1,
+      0,
+      0,
+      null,
+      actor.hsaId,
+      actor.displayName,
+    ])
+
+    const locked = createTransactionalDb({
+      managerResponses: [
+        [],
+        [
+          {
+            isLocked: 1,
+            lockedAt: new Date(),
+            lockedByDisplayName: actor.displayName,
+            lockedByHsaId: actor.hsaId,
+            specificationId: 4,
+          },
+        ],
+        [{ id: 34 }],
+        [{ isIncluded: 1, versionId: 34 }],
+        [],
+      ],
+      queryResponses: [[], []],
+    })
+    await updateSpecificationRfiQuestionItem(
+      locked.db as unknown as Parameters<
+        typeof updateSpecificationRfiQuestionItem
+      >[0],
+      4,
+      12,
+      { relevance: null },
+      actor,
+    )
+    expect(locked.managerQuery.mock.calls.at(-1)?.[1]).toEqual([
+      4,
+      12,
+      34,
+      0,
+      1,
+      1,
+      null,
+      actor.hsaId,
+      actor.displayName,
+    ])
+  })
+
+  it('rejects missing unlocked versions and unknown requirement areas', async () => {
+    const missingVersion = createTransactionalDb({
+      managerResponses: [
+        [],
+        [
+          {
+            isLocked: 0,
+            lockedAt: null,
+            lockedByDisplayName: null,
+            lockedByHsaId: null,
+            specificationId: 4,
+          },
+        ],
+        [],
+      ],
+      queryResponses: [],
+    })
+    await expect(
+      updateSpecificationRfiQuestionItem(
+        missingVersion.db as unknown as Parameters<
+          typeof updateSpecificationRfiQuestionItem
+        >[0],
+        4,
+        404,
+        { isIncluded: true },
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_active_rfi_question_version' },
+    })
+
+    const missingArea = createTransactionalDb({
+      managerResponses: [
+        [],
+        [
+          {
+            isLocked: 0,
+            lockedAt: null,
+            lockedByDisplayName: null,
+            lockedByHsaId: null,
+            specificationId: 4,
+          },
+        ],
+        [],
+      ],
+      queryResponses: [],
+    })
+    await expect(
+      updateSpecificationRfiAreaScope(
+        missingArea.db as unknown as Parameters<
+          typeof updateSpecificationRfiAreaScope
+        >[0],
+        4,
+        404,
+        true,
+        actor,
+      ),
+    ).rejects.toMatchObject({ details: { reason: 'area_not_found' } })
+  })
+
+  it('validates suggestion content, area, and question ownership', async () => {
+    await expect(
+      createRfiQuestionSuggestion(
+        { query: vi.fn() },
+        { areaId: 2, content: '   ' },
+        actor,
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    await expect(
+      createRfiQuestionSuggestion(
+        { query: createQuery([[]]) },
+        { areaId: 404, content: 'Suggestion' },
+        actor,
+      ),
+    ).rejects.toMatchObject({ details: { reason: 'area_not_found' } })
+
+    await expect(
+      createRfiQuestionSuggestion(
+        { query: createQuery([[{ id: 2 }], []]) },
+        { areaId: 2, content: 'Suggestion', rfiQuestionId: 404 },
+        actor,
+      ),
+    ).rejects.toMatchObject({ details: { reason: 'rfi_question_not_found' } })
+
+    await expect(
+      createRfiQuestionSuggestion(
+        { query: createQuery([[{ id: 2 }], [{ areaId: 3 }]]) },
+        { areaId: 2, content: 'Suggestion', rfiQuestionId: 12 },
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      details: { reason: 'rfi_question_area_mismatch' },
+    })
+  })
+
+  it('creates area-only suggestions and reports failed reloads', async () => {
+    const query = createQuery([
+      [{ id: 2 }],
+      [{ id: 77 }],
+      [
+        {
+          areaId: 2,
+          areaName: 'Informationssäkerhet',
+          content: 'Area suggestion',
+          createdAt: new Date('2026-06-20T09:00:00.000Z'),
+          createdByDisplayName: null,
+          createdByHsaId: null,
+          id: 77,
+          isReviewRequested: 0,
+          questionCode: null,
+          resolution: null,
+          resolutionMotivation: null,
+          resolvedAt: null,
+          resolvedByDisplayName: null,
+          resolvedByHsaId: null,
+          reviewRequestedAt: null,
+          rfiQuestionId: null,
+          sourceSpecificationCode: null,
+          sourceSpecificationName: null,
+          specificationId: null,
+          updatedAt: null,
+        },
+      ],
+    ])
+    await expect(
+      createRfiQuestionSuggestion(
+        { query },
+        { areaId: 2, content: ' Area suggestion ' },
+        actor,
+      ),
+    ).resolves.toMatchObject({
+      content: 'Area suggestion',
+      specificationId: null,
+    })
+
+    const failedReload = createQuery([[{ id: 2 }], [{ id: 88 }], []])
+    await expect(
+      createRfiQuestionSuggestion(
+        { query: failedReload },
+        { areaId: 2, content: 'Missing after insert' },
+        actor,
+      ),
+    ).rejects.toMatchObject({ code: 'internal' })
+  })
+
+  it('lists unscoped suggestions with resolved timestamp mappings', async () => {
+    const query = createQuery([
+      [
+        {
+          areaId: 2,
+          areaName: 'Informationssäkerhet',
+          content: 'Resolved suggestion',
+          createdAt: new Date('2026-06-20T09:00:00.000Z'),
+          createdByDisplayName: actor.displayName,
+          createdByHsaId: actor.hsaId,
+          id: 77,
+          isReviewRequested: 1,
+          questionCode: null,
+          resolution: 1,
+          resolutionMotivation: 'Done',
+          resolvedAt: new Date('2026-06-21T09:00:00.000Z'),
+          resolvedByDisplayName: actor.displayName,
+          resolvedByHsaId: actor.hsaId,
+          reviewRequestedAt: new Date('2026-06-20T10:00:00.000Z'),
+          rfiQuestionId: null,
+          sourceSpecificationCode: null,
+          sourceSpecificationName: null,
+          specificationId: null,
+          updatedAt: new Date('2026-06-21T09:00:00.000Z'),
+        },
+      ],
+    ])
+
+    const result = await listRfiQuestionSuggestions({ query })
+
+    expect(query.mock.calls[0]?.[1]).toEqual([])
+    expect(result[0]).toMatchObject({
+      resolvedAt: '2026-06-21T09:00:00.000Z',
+      reviewRequestedAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T09:00:00.000Z',
+    })
+  })
+
+  it('covers successful and terminal suggestion lifecycle outcomes', async () => {
+    const reviewedQuery = createQuery([
+      [{ id: 77 }],
+      [
+        {
+          areaId: 2,
+          areaName: 'Informationssäkerhet',
+          content: 'Review me',
+          createdAt: new Date(),
+          createdByDisplayName: actor.displayName,
+          createdByHsaId: actor.hsaId,
+          id: 77,
+          isReviewRequested: 1,
+          questionCode: null,
+          resolution: null,
+          resolutionMotivation: null,
+          resolvedAt: null,
+          resolvedByDisplayName: null,
+          resolvedByHsaId: null,
+          reviewRequestedAt: new Date(),
+          rfiQuestionId: null,
+          sourceSpecificationCode: null,
+          sourceSpecificationName: null,
+          specificationId: null,
+          updatedAt: new Date(),
+        },
+      ],
+    ])
+    await expect(
+      requestRfiQuestionSuggestionReview({ query: reviewedQuery }, 77),
+    ).resolves.toMatchObject({ id: 77, isReviewRequested: true })
+
+    const resolvedQuery = createQuery([
+      [{ id: 77 }],
+      [
+        {
+          areaId: 2,
+          areaName: 'Informationssäkerhet',
+          content: 'Resolved',
+          createdAt: new Date(),
+          createdByDisplayName: actor.displayName,
+          createdByHsaId: actor.hsaId,
+          id: 77,
+          isReviewRequested: 1,
+          questionCode: null,
+          resolution: 1,
+          resolutionMotivation: 'Done',
+          resolvedAt: new Date(),
+          resolvedByDisplayName: actor.displayName,
+          resolvedByHsaId: actor.hsaId,
+          reviewRequestedAt: new Date(),
+          rfiQuestionId: null,
+          sourceSpecificationCode: null,
+          sourceSpecificationName: null,
+          specificationId: null,
+          updatedAt: new Date(),
+        },
+      ],
+    ])
+    await expect(
+      resolveRfiQuestionSuggestion(
+        { query: resolvedQuery },
+        77,
+        { resolution: 1, resolutionMotivation: ' Done ' },
+        actor,
+      ),
+    ).resolves.toMatchObject({ id: 77, resolution: 1 })
+
+    await expect(
+      resolveRfiQuestionSuggestion(
+        { query: vi.fn() },
+        77,
+        { resolution: 1, resolutionMotivation: '   ' },
+        actor,
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    await expect(
+      requestRfiQuestionSuggestionReview({ query: createQuery([[], []]) }, 404),
+    ).rejects.toMatchObject({ code: 'not_found' })
+
+    await expect(
+      requestRfiQuestionSuggestionReview(
+        {
+          query: createQuery([
+            [],
+            [
+              {
+                areaId: 2,
+                id: 77,
+                isReviewRequested: 1,
+                resolution: 1,
+                reviewRequestedAt: new Date(),
+                rfiQuestionId: null,
+                specificationId: null,
+              },
+            ],
+          ]),
+        },
+        77,
+      ),
+    ).rejects.toMatchObject({
+      details: { reason: 'rfi_question_suggestion_already_resolved' },
+    })
+
+    await expect(
+      resolveRfiQuestionSuggestion(
+        { query: createQuery([[], []]) },
+        404,
+        { resolution: 1, resolutionMotivation: 'Done' },
+        actor,
+      ),
+    ).rejects.toMatchObject({ code: 'not_found' })
+
+    await expect(
+      resolveRfiQuestionSuggestion(
+        {
+          query: createQuery([
+            [],
+            [
+              {
+                areaId: 2,
+                id: 77,
+                isReviewRequested: 1,
+                resolution: 2,
+                reviewRequestedAt: new Date(),
+                rfiQuestionId: null,
+                specificationId: null,
+              },
+            ],
+          ]),
+        },
+        77,
+        { resolution: 1, resolutionMotivation: 'Done' },
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      details: { reason: 'rfi_question_suggestion_already_resolved' },
     })
   })
 })

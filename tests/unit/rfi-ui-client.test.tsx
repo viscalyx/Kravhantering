@@ -322,6 +322,14 @@ describe('RFI client UI states', () => {
       screen.queryByRole('option', { name: 'rfiQuestions.inactive' }),
     ).not.toBeInTheDocument()
 
+    const disclosure = screen.getByText('SEC-RFI001').closest('button')
+    expect(disclosure).not.toBeNull()
+    await userEvent.click(disclosure as HTMLButtonElement)
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Explain logging controls.')).toBeInTheDocument()
+    await userEvent.click(disclosure as HTMLButtonElement)
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+
     await userEvent.type(screen.getByLabelText('rfiQuestions.search'), 'logs')
     expect(screen.getByText('SEC-RFI001')).toBeInTheDocument()
     expect(screen.queryByText('OPS-RFI001')).not.toBeInTheDocument()
@@ -424,6 +432,12 @@ describe('RFI client UI states', () => {
       name: /^rfiQuestions\.resolutionMotivation\*$/,
     })
     expect(motivationInputs).toHaveLength(1)
+    await userEvent.click(
+      screen.getByRole('button', { name: 'rfiQuestions.dismiss' }),
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'rfiQuestions.resolutionRequired',
+    )
     expect(
       screen.getByRole('button', { name: 'rfiQuestions.requestReview' }),
     ).toHaveAttribute('data-developer-mode-value', 'draft to review requested')
@@ -1201,16 +1215,36 @@ describe('RFI client UI states', () => {
       specificationId: 1,
     }
 
-    fetchMock.mockImplementation((url: RequestInfo | URL) => {
-      const href = String(url)
-      if (href === '/api/requirements-specifications/1/rfi-list') {
-        return Promise.resolve(okJson({ list: lockedList }))
-      }
-      if (href === '/api/rfi-question-suggestions?areaId=1&specificationId=1') {
-        return Promise.resolve(okJson({ suggestions: [] }))
-      }
-      throw new Error(`Unmocked fetch: ${href}`)
-    })
+    fetchMock.mockImplementation(
+      (url: RequestInfo | URL, init?: RequestInit) => {
+        const href = String(url)
+        if (href === '/api/requirements-specifications/1/rfi-list') {
+          return Promise.resolve(okJson({ list: lockedList }))
+        }
+        if (
+          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
+        ) {
+          return Promise.resolve(okJson({ suggestions: [] }))
+        }
+        if (
+          href === '/api/requirements-specifications/1/rfi-list/items/11' &&
+          init?.method === 'PATCH'
+        ) {
+          return Promise.resolve(
+            okJson({
+              list: {
+                ...lockedList,
+                items: [
+                  { ...lockedList.items[0], relevance: 'not_relevant' },
+                  lockedList.items[1],
+                ],
+              },
+            }),
+          )
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      },
+    )
     const { default: SpecificationRfiListPanel } = await import(
       '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
     )
@@ -1234,6 +1268,17 @@ describe('RFI client UI states', () => {
         'specificationRfiList.scopeLockedTitle',
       )
     }
+    await userEvent.click(
+      within(securitySection).getByRole('radio', {
+        name: 'specificationRfiList.notRelevant',
+      }),
+    )
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/1/rfi-list/items/11',
+        expect.objectContaining({ method: 'PATCH' }),
+      )
+    })
   })
 
   it('shows the RFI-list lock toggle as an unlocked or locked state', async () => {
@@ -1280,6 +1325,12 @@ describe('RFI client UI states', () => {
           init?.method === 'POST'
         ) {
           return Promise.resolve(okJson({ list: lockedList }))
+        }
+        if (
+          href === '/api/requirements-specifications/1/rfi-list/unlock' &&
+          init?.method === 'POST'
+        ) {
+          return Promise.resolve(okJson({ list: unlockedList }))
         }
         throw new Error(`Unmocked fetch: ${href}`)
       },
@@ -1333,5 +1384,569 @@ describe('RFI client UI states', () => {
     expect(lockedButton.querySelector('svg')).toBeNull()
     const lockedTrack = lockedButton.querySelector('span:nth-child(2)')
     expect(lockedTrack).toHaveClass('h-5', 'w-9', 'bg-amber-700')
+
+    await userEvent.click(lockedButton)
+    await waitFor(() => {
+      expect(lockedButton).toHaveAttribute('aria-checked', 'false')
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements-specifications/1/rfi-list/unlock',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+  })
+
+  it.each([
+    ['/api/requirement-areas', 'Area catalog failed'],
+    ['/api/rfi-questions?includeArchived=true', 'Question catalog failed'],
+  ])(
+    'shows a load error when %s rejects the request',
+    async (failedUrl, message) => {
+      fetchMock.mockImplementation((url: RequestInfo | URL) => {
+        const href = String(url)
+        if (href === failedUrl) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ error: message }), {
+              headers: { 'Content-Type': 'application/json' },
+              status: 500,
+            }),
+          )
+        }
+        if (href === '/api/requirement-areas')
+          return Promise.resolve(okJson({}))
+        if (href === '/api/rfi-questions?includeArchived=true') {
+          return Promise.resolve(okJson({}))
+        }
+        if (href === '/api/rfi-question-suggestions') {
+          return Promise.resolve(okJson({}))
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      })
+
+      await renderRfiQuestionsClient()
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(message)
+      expect(
+        screen.getByText('rfiQuestions.emptyQuestions'),
+      ).toBeInTheDocument()
+    },
+  )
+
+  it('keeps questions usable when suggestion loading fails and infers an unknown area', async () => {
+    const question = {
+      ...rfiQuestions[0],
+      areaId: 9,
+      areaName: 'Architecture',
+      areaPrefix: 'ARC',
+      expectedAnswerFormat: null,
+      helpText: null,
+      questionCode: 'ARC-RFI001',
+      versionNumber: null,
+    }
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const href = String(url)
+      if (href === '/api/requirement-areas') {
+        return Promise.resolve(okJson({ areas: [] }))
+      }
+      if (href === '/api/rfi-questions?includeArchived=true') {
+        return Promise.resolve(okJson({ questions: [question] }))
+      }
+      if (href === '/api/rfi-question-suggestions') {
+        return Promise.resolve(new Response(null, { status: 503 }))
+      }
+      throw new Error(`Unmocked fetch: ${href}`)
+    })
+
+    await renderRfiQuestionsClient()
+
+    expect(await screen.findByText('ARC-RFI001')).toBeInTheDocument()
+    expect(screen.getAllByText('Architecture')).toHaveLength(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('archives after confirmation and reactivates without confirmation', async () => {
+    fetchMock.mockImplementation(
+      (url: RequestInfo | URL, init?: RequestInit) => {
+        const href = String(url)
+        if (href === '/api/requirement-areas') {
+          return Promise.resolve(okJson({ areas }))
+        }
+        if (href === '/api/rfi-questions?includeArchived=true') {
+          return Promise.resolve(okJson({ questions: rfiQuestions }))
+        }
+        if (href === '/api/rfi-question-suggestions') {
+          return Promise.resolve(okJson({ suggestions: [] }))
+        }
+        if (href === '/api/rfi-questions/11' && init?.method === 'DELETE') {
+          return Promise.resolve(okJson({ id: 11 }))
+        }
+        if (
+          href === '/api/rfi-questions/22/reactivate' &&
+          init?.method === 'POST'
+        ) {
+          return Promise.resolve(okJson({ id: 22 }))
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      },
+    )
+
+    await renderRfiQuestionsClient()
+    await screen.findByText('SEC-RFI001')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'rfiQuestions.archive: SEC-RFI001',
+      }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'rfiQuestions.archive' }),
+    )
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/rfi-questions/11',
+        expect.objectContaining({ method: 'DELETE' }),
+      )
+    })
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'rfiQuestions.reactivate: OPS-RFI001',
+      }),
+    )
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/rfi-questions/22/reactivate',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+  })
+
+  it('renders an RFI list as read-only without suggestion requests', async () => {
+    const readOnlyList = {
+      isLocked: false,
+      items: [
+        {
+          areaId: 1,
+          areaName: 'Security',
+          expectedAnswerFormat: null,
+          helpText: null,
+          isIncluded: false,
+          isVersionStale: true,
+          questionCode: 'SEC-RFI001',
+          questionId: 11,
+          questionText: 'How do you handle logs?',
+          relevance: null,
+          versionNumber: 1,
+        },
+      ],
+      lockedAt: null,
+      lockedByDisplayName: null,
+      specificationId: 1,
+    }
+    fetchMock.mockResolvedValue(okJson({ list: readOnlyList }))
+    const { default: SpecificationRfiListPanel } = await import(
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel canEdit={false} specificationId={1} />
+      </ConfirmModalProvider>,
+    )
+
+    const region = await screen.findByRole('region', { name: 'Security' })
+    expect(within(region).getAllByRole('switch')).toHaveLength(2)
+    for (const scopeSwitch of within(region).getAllByRole('switch')) {
+      expect(scopeSwitch).toBeDisabled()
+      expect(scopeSwitch).toHaveAttribute(
+        'title',
+        'specificationRfiList.scopeReadOnlyTitle',
+      )
+    }
+    expect(
+      screen.queryByRole('switch', {
+        name: 'specificationRfiList.lockedToggleAria',
+      }),
+    ).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders empty RFI lists without loading area suggestions', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({
+        list: {
+          isLocked: false,
+          items: [],
+          lockedAt: null,
+          lockedByDisplayName: null,
+          specificationId: 1,
+        },
+      }),
+    )
+    const { default: SpecificationRfiListPanel } = await import(
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel canEdit specificationId={1} />
+      </ConfirmModalProvider>,
+    )
+
+    expect(
+      await screen.findByText('specificationRfiList.empty'),
+    ).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces RFI-list and suggestion load failures through the public panel', async () => {
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const href = String(url)
+      if (href === '/api/requirements-specifications/1/rfi-list') {
+        return Promise.resolve(
+          okJson({
+            list: {
+              isLocked: false,
+              items: [
+                {
+                  areaId: 1,
+                  areaName: 'Security',
+                  expectedAnswerFormat: null,
+                  helpText: null,
+                  isIncluded: true,
+                  isVersionStale: false,
+                  questionCode: 'SEC-RFI001',
+                  questionId: 11,
+                  questionText: 'How do you handle logs?',
+                  relevance: null,
+                  versionNumber: 1,
+                },
+              ],
+              lockedAt: null,
+              lockedByDisplayName: null,
+              specificationId: 1,
+            },
+          }),
+        )
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: 'Suggestions unavailable' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 503,
+        }),
+      )
+    })
+    const { default: SpecificationRfiListPanel } = await import(
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel canEdit specificationId={1} />
+      </ConfirmModalProvider>,
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Suggestions unavailable',
+    )
+  })
+
+  it('renders sparse question and suggestion data through safe fallbacks', async () => {
+    const sparseQuestion = {
+      ...rfiQuestions[0],
+      areaId: 9,
+      areaName: 'Architecture',
+      areaPrefix: '',
+      expectedAnswerFormat: null,
+      helpText: null,
+      questionCode: 'RFI001',
+      questionText: null,
+    }
+    const sparseSuggestion = {
+      ...rfiSuggestions[0],
+      areaId: 9,
+      areaName: 'Architecture',
+      content: 'Cover deployment topology.',
+      createdAt: 'invalid date',
+      createdByDisplayName: null,
+      createdByHsaId: null,
+      sourceSpecificationCode: null,
+      sourceSpecificationName: null,
+    }
+    const sparseHandledSuggestion = {
+      ...sparseSuggestion,
+      id: 107,
+      resolution: 1,
+      resolutionMotivation: null,
+      resolvedAt: null,
+    }
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const href = String(url)
+      if (href === '/api/requirement-areas') {
+        return Promise.resolve(okJson({ areas: [] }))
+      }
+      if (href === '/api/rfi-questions?includeArchived=true') {
+        return Promise.resolve(okJson({ questions: [sparseQuestion] }))
+      }
+      if (href === '/api/rfi-question-suggestions') {
+        return Promise.resolve(
+          okJson({
+            suggestions: [sparseSuggestion, sparseHandledSuggestion],
+          }),
+        )
+      }
+      throw new Error(`Unmocked fetch: ${href}`)
+    })
+
+    await renderRfiQuestionsClient()
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: 'rfiQuestions.search' }),
+      'deployment topology',
+    )
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', {
+        name: 'rfiQuestions.suggestionFilter',
+      }),
+      'unresolved',
+    )
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'rfiQuestions.handleSuggestions: Architecture',
+      }),
+    )
+
+    expect(screen.getAllByText(/rfiQuestions\.noSource/)).not.toHaveLength(0)
+    expect(
+      screen.getAllByText(/rfiQuestions\.unknownCreator/),
+    ).not.toHaveLength(0)
+    expect(screen.getAllByText(/invalid date/)).not.toHaveLength(0)
+  })
+
+  it('defaults omitted RFI catalog collections to empty lists', async () => {
+    fetchMock.mockResolvedValue(okJson({}))
+
+    await renderRfiQuestionsClient()
+
+    expect(
+      await screen.findByText('rfiQuestions.emptyQuestions'),
+    ).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('orders questions within one area and applies the archived filter', async () => {
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const href = String(url)
+      if (href === '/api/requirement-areas') {
+        return Promise.resolve(okJson({ areas: [areas[0]] }))
+      }
+      if (href === '/api/rfi-questions?includeArchived=true') {
+        return Promise.resolve(
+          okJson({
+            questions: [
+              rfiQuestions[0],
+              {
+                ...rfiQuestions[0],
+                archivedAt: '2026-01-01T00:00:00.000Z',
+                id: 12,
+                isArchived: true,
+                questionCode: 'SEC-RFI002',
+              },
+            ],
+          }),
+        )
+      }
+      if (href === '/api/rfi-question-suggestions') {
+        return Promise.resolve(okJson({ suggestions: [] }))
+      }
+      throw new Error(`Unmocked fetch: ${href}`)
+    })
+
+    await renderRfiQuestionsClient()
+    await userEvent.selectOptions(
+      await screen.findByRole('combobox', {
+        name: 'rfiQuestions.allStatuses',
+      }),
+      'archived',
+    )
+
+    expect(screen.getByText('SEC-RFI002')).toBeInTheDocument()
+    expect(screen.queryByText('SEC-RFI001')).not.toBeInTheDocument()
+  })
+
+  it('keeps question authoring open when saving or archiving fails', async () => {
+    fetchMock.mockImplementation(
+      (url: RequestInfo | URL, init?: RequestInit) => {
+        const href = String(url)
+        if (href === '/api/requirement-areas') {
+          return Promise.resolve(okJson({ areas }))
+        }
+        if (href === '/api/rfi-questions?includeArchived=true') {
+          return Promise.resolve(okJson({ questions: rfiQuestions }))
+        }
+        if (href === '/api/rfi-question-suggestions') {
+          return Promise.resolve(okJson({ suggestions: [] }))
+        }
+        if (
+          (href === '/api/rfi-questions' && init?.method === 'POST') ||
+          (href === '/api/rfi-questions/11' && init?.method === 'DELETE')
+        ) {
+          return Promise.resolve(new Response(null, { status: 500 }))
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      },
+    )
+
+    await renderRfiQuestionsClient()
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'rfiQuestions.newQuestion' }),
+    )
+    await userEvent.type(
+      screen.getByRole('textbox', { name: /rfiQuestions\.questionText/ }),
+      'A question that cannot be saved',
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'rfiQuestions.saveQuestion' }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'rfiQuestions.saveError',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+
+    const archiveButton = screen.getByRole('button', {
+      name: 'rfiQuestions.archive: SEC-RFI001',
+    })
+    await userEvent.click(archiveButton)
+    await userEvent.click(screen.getByRole('button', { name: 'common.cancel' }))
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/rfi-questions/11',
+      expect.anything(),
+    )
+    await userEvent.click(archiveButton)
+    await userEvent.click(
+      screen.getByRole('button', { name: 'rfiQuestions.archive' }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'rfiQuestions.saveError',
+    )
+  })
+
+  it('uses list fallbacks when the endpoint omits its optional payload', async () => {
+    fetchMock.mockResolvedValue(okJson({}))
+    const { default: SpecificationRfiListPanel } = await import(
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel canEdit specificationId={1} />
+      </ConfirmModalProvider>,
+    )
+
+    expect(
+      await screen.findByText('specificationRfiList.empty'),
+    ).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces each RFI-list mutation failure, including area suggestions', async () => {
+    const list = {
+      isLocked: false,
+      items: [
+        {
+          areaId: 1,
+          areaName: 'Security',
+          expectedAnswerFormat: null,
+          helpText: null,
+          isIncluded: true,
+          isVersionStale: false,
+          questionCode: 'SEC-RFI001',
+          questionId: 11,
+          questionText: 'How do you handle logs?',
+          relevance: null,
+          versionNumber: 1,
+        },
+      ],
+      lockedAt: null,
+      lockedByDisplayName: null,
+      specificationId: 1,
+    }
+    fetchMock.mockImplementation(
+      (url: RequestInfo | URL, init?: RequestInit) => {
+        const href = String(url)
+        if (href === '/api/requirements-specifications/1/rfi-list') {
+          return Promise.resolve(okJson({ list }))
+        }
+        if (
+          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
+        ) {
+          return Promise.resolve(okJson({}))
+        }
+        if (init?.method === 'POST' || init?.method === 'PATCH') {
+          return Promise.resolve(new Response(null, { status: 500 }))
+        }
+        throw new Error(`Unmocked fetch: ${href}`)
+      },
+    )
+    const { default: SpecificationRfiListPanel } = await import(
+      '@/app/[locale]/specifications/[specificationId]/specification-rfi-list-panel'
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <SpecificationRfiListPanel canEdit specificationId={1} />
+      </ConfirmModalProvider>,
+    )
+
+    const region = await screen.findByRole('region', { name: 'Security' })
+    await userEvent.click(
+      screen.getByRole('switch', {
+        name: 'specificationRfiList.lockedToggleAria',
+      }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'specificationRfiList.saveError',
+    )
+    await userEvent.click(
+      within(region).getByRole('switch', {
+        name: 'specificationRfiList.areaIncludedToggleAria',
+      }),
+    )
+    await userEvent.click(
+      within(region).getByRole('switch', {
+        name: 'specificationRfiList.questionIncludedToggleAria',
+      }),
+    )
+    await userEvent.click(
+      within(region).getByRole('button', {
+        name: 'specificationRfiList.createSuggestionForArea',
+      }),
+    )
+    await userEvent.type(
+      screen.getByRole('textbox', {
+        name: /specificationRfiList\.suggestionContent/,
+      }),
+      'Add an area question',
+    )
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'specificationRfiList.createSuggestion',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/rfi-question-suggestions',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    const createCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url) === '/api/rfi-question-suggestions' &&
+        init?.method === 'POST',
+    )
+    expect(JSON.parse(String(createCall?.[1]?.body))).toEqual({
+      areaId: 1,
+      content: 'Add an area question',
+      rfiQuestionId: null,
+      specificationId: 1,
+    })
   })
 })
