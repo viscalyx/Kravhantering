@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { conflictError } from '@/lib/requirements/errors'
+import { conflictError, forbiddenError } from '@/lib/requirements/errors'
 
 const mocks = vi.hoisted(() => {
   const context = {
@@ -109,6 +109,7 @@ describe('RFI question suggestion routes', () => {
     )
     mocks.resolveRfiQuestionSuggestionWithAudit.mockResolvedValue(suggestion)
     mocks.authorize.mockResolvedValue(undefined)
+    mocks.context.actor.isAuthenticated = true
     mocks.context.actor.roles = ['RequirementsEditor']
   })
 
@@ -334,5 +335,132 @@ describe('RFI question suggestion routes', () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ suggestions })
     expect(mocks.authorize).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid suggestion filters before reading persistence', async () => {
+    const response = await listRfiQuestionSuggestionsRoute(
+      new NextRequest('http://localhost/api/rfi-question-suggestions?areaId=0'),
+    )
+
+    expect(response.status).toBe(400)
+    expect(mocks.listRfiQuestionSuggestions).not.toHaveBeenCalled()
+  })
+
+  it('requires authentication before listing suggestions across areas', async () => {
+    mocks.context.actor.isAuthenticated = false
+
+    const response = await listRfiQuestionSuggestionsRoute(
+      new NextRequest('http://localhost/api/rfi-question-suggestions'),
+    )
+
+    expect(response.status).toBe(401)
+    expect(mocks.listRfiQuestionSuggestions).not.toHaveBeenCalled()
+  })
+
+  it('returns an area authorization rejection without listing suggestions', async () => {
+    mocks.authorize.mockRejectedValueOnce(forbiddenError('No area access'))
+
+    const response = await listRfiQuestionSuggestionsRoute(
+      new NextRequest('http://localhost/api/rfi-question-suggestions?areaId=5'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.listRfiQuestionSuggestions).not.toHaveBeenCalled()
+  })
+
+  it('does not suppress non-authorization failures while filtering areas', async () => {
+    mocks.listRfiQuestionSuggestions.mockResolvedValueOnce([
+      { areaId: 5, content: 'Clarify retention.', id: 1 },
+    ])
+    mocks.authorize.mockRejectedValueOnce(
+      new Error('authorization unavailable'),
+    )
+
+    const response = await listRfiQuestionSuggestionsRoute(
+      new NextRequest('http://localhost/api/rfi-question-suggestions'),
+    )
+
+    expect(response.status).toBe(500)
+  })
+
+  it('checks each allowed or denied area only once while filtering suggestions', async () => {
+    mocks.listRfiQuestionSuggestions.mockResolvedValueOnce([
+      { areaId: 5, content: 'Allowed one.', id: 1 },
+      { areaId: 5, content: 'Allowed two.', id: 2 },
+      { areaId: 6, content: 'Denied one.', id: 3 },
+      { areaId: 6, content: 'Denied two.', id: 4 },
+    ])
+    mocks.authorize.mockImplementation(async (_authorization, action) => {
+      if ((action as { areaId?: number }).areaId === 5) return
+      throw forbiddenError('Forbidden')
+    })
+
+    const response = await listRfiQuestionSuggestionsRoute(
+      new NextRequest('http://localhost/api/rfi-question-suggestions'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      suggestions: [
+        { areaId: 5, content: 'Allowed one.', id: 1 },
+        { areaId: 5, content: 'Allowed two.', id: 2 },
+      ],
+    })
+    expect(mocks.authorize).toHaveBeenCalledTimes(2)
+  })
+
+  it('normalizes omitted suggestion associations to null', async () => {
+    const response = await createRfiQuestionSuggestionRoute(
+      new NextRequest('http://localhost/api/rfi-question-suggestions', {
+        body: JSON.stringify({
+          areaId: 5,
+          content: 'Clarify retention.',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }),
+    )
+
+    expect(response.status).toBe(201)
+    expect(mocks.createRfiQuestionSuggestionWithAudit).toHaveBeenCalledWith(
+      mocks.db,
+      {
+        areaId: 5,
+        content: 'Clarify retention.',
+        rfiQuestionId: null,
+        specificationId: null,
+      },
+      expect.anything(),
+      mocks.context,
+    )
+  })
+
+  it('maps a resolved decision to the resolved lifecycle value', async () => {
+    const response = await resolveRfiQuestionSuggestionRoute(
+      new NextRequest(
+        'http://localhost/api/rfi-question-suggestions/77/resolution',
+        {
+          body: JSON.stringify({
+            resolution: 'resolved',
+            resolutionMotivation: 'Implemented.',
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      ),
+      makeParams('77'),
+    )
+
+    expect(response.status).toBe(200)
+    expect(mocks.resolveRfiQuestionSuggestionWithAudit).toHaveBeenCalledWith(
+      mocks.db,
+      77,
+      {
+        resolution: 1,
+        resolutionMotivation: 'Implemented.',
+      },
+      expect.anything(),
+      mocks.context,
+    )
   })
 })

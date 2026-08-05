@@ -152,4 +152,27 @@ describe('RFI question suggestion audited mutations', () => {
       requestRfiQuestionSuggestionReviewWithAudit(db as never, 77, context),
     ).rejects.toThrow('audit insert failed')
   })
+
+  it('records a resolved decision as the resolved target state', async () => {
+    const { db } = transactionalDb()
+
+    await resolveRfiQuestionSuggestionWithAudit(
+      db as never,
+      77,
+      { resolution: 1, resolutionMotivation: 'Implemented.' },
+      actor,
+      context,
+    )
+
+    expect(mocks.recordAllowedActionAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      context,
+      expect.objectContaining({
+        details: expect.objectContaining({
+          resolution: 'resolved',
+          toState: 'resolved',
+        }),
+      }),
+    )
+  })
 })

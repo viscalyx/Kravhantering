@@ -580,6 +580,16 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(screen.queryByText('Architecture baseline')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add answer' })).toBeNull()
 
+    const areaFilter = screen.getByRole('combobox', {
+      name: 'All requirement areas',
+    })
+    fireEvent.change(areaFilter, { target: { value: String(sampleArea.id) } })
+    expect(
+      screen.queryByText(architectureQuestion.text),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(securityQuestion.text)).toBeInTheDocument()
+    fireEvent.change(areaFilter, { target: { value: '' } })
+
     expandQuestion(architectureQuestion.text)
 
     expect(getQuestionDisclosure(architectureQuestion.text)).toHaveAttribute(
@@ -2510,6 +2520,172 @@ describe('RequirementSelectionQuestionsClient', () => {
     ])
   })
 
+  it('restores catalog data after question and answer reorder failures', async () => {
+    const secondQuestion: TestQuestion = {
+      ...sampleQuestion,
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which assurance profile applies?',
+    }
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: [sampleArea] })
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [sampleQuestion, secondQuestion] })
+      }
+      if (init?.method === 'PUT') {
+        return {
+          ok: false,
+          status: 409,
+          statusText: 'Conflict',
+          json: async () => ({ error: 'Question order rejected' }),
+        }
+      }
+      return okJson({})
+    })
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(secondQuestion.text)).toBeInTheDocument()
+    fireEvent.keyDown(
+      within(getQuestionCard(secondQuestion.text)).getByRole('button', {
+        name: 'Reorder question',
+      }),
+      { key: 'ArrowUp' },
+    )
+    await waitFor(() => expect(countQuestionListFetches()).toBeGreaterThan(1))
+    cleanup()
+
+    const secondAnswer = {
+      ...sampleAnswer,
+      id: 102,
+      requirementIds: [302],
+      sortOrder: 1,
+      text: 'Enhanced profile',
+    }
+    const question = {
+      ...sampleQuestion,
+      answers: [sampleAnswer, secondAnswer],
+    }
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: [sampleArea] })
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [question] })
+      }
+      if (init?.method === 'PUT') throw new Error('answer reorder failed')
+      return okJson({})
+    })
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(question.text)).toBeInTheDocument()
+    expandQuestion(question.text)
+    const answerFetchesBefore = countQuestionListFetches()
+    fireEvent.keyDown(
+      within(getAnswerCard(secondAnswer.text)).getByRole('button', {
+        name: 'Reorder answer',
+      }),
+      { key: 'ArrowUp' },
+    )
+    await waitFor(() =>
+      expect(countQuestionListFetches()).toBeGreaterThan(answerFetchesBefore),
+    )
+  })
+
+  it('ignores non-primary, stationary, and no-op reorder gestures', async () => {
+    const secondAnswer = {
+      ...sampleAnswer,
+      id: 102,
+      sortOrder: 1,
+      text: 'Enhanced profile',
+    }
+    const firstQuestion = {
+      ...sampleQuestion,
+      answers: [sampleAnswer, secondAnswer],
+    }
+    const secondQuestion: TestQuestion = {
+      ...sampleQuestion,
+      id: 22,
+      questionCode: 'SEC-KUF002',
+      sortOrder: 1,
+      text: 'Which assurance profile applies?',
+    }
+    setupMutableQuestions([firstQuestion, secondQuestion])
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(secondQuestion.text)).toBeInTheDocument()
+
+    const firstCard = getQuestionCard(firstQuestion.text)
+    const questionHandle = within(firstCard).getByRole('button', {
+      name: 'Reorder question',
+    })
+    fireEvent.pointerDown(questionHandle, {
+      button: 1,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerDown(questionHandle, {
+      button: 0,
+      isPrimary: false,
+      pointerId: 2,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerDown(questionHandle, {
+      button: 0,
+      clientX: 10,
+      clientY: 10,
+      isPrimary: true,
+      pointerId: 3,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerMove(questionHandle, {
+      clientX: 11,
+      clientY: 11,
+      isPrimary: true,
+      pointerId: 3,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerMove(questionHandle, {
+      clientX: 20,
+      clientY: 20,
+      isPrimary: true,
+      pointerId: 99,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerUp(questionHandle, {
+      isPrimary: true,
+      pointerId: 3,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerCancel(questionHandle, {
+      isPrimary: true,
+      pointerId: 99,
+      pointerType: 'mouse',
+    })
+    fireEvent.keyDown(questionHandle, { key: 'PageDown' })
+    fireEvent.keyDown(questionHandle, { key: 'Home' })
+
+    expandQuestion(firstQuestion.text)
+    const answerCard = getAnswerCard(sampleAnswer.text)
+    const answerHandle = within(answerCard).getByRole('button', {
+      name: 'Reorder answer',
+    })
+    const answerRow = answerCard.closest('li')
+    if (!answerRow) throw new Error('Missing answer row')
+    fireEvent.keyDown(answerHandle, { key: 'PageDown' })
+    fireEvent.keyDown(answerHandle, { key: 'Home' })
+    fireEvent.dragOver(answerRow, { dataTransfer: createDragDataTransfer() })
+    fireEvent.drop(answerRow, { dataTransfer: createDragDataTransfer() })
+
+    expect(
+      fetchMock.mock.calls.some(([, init]) => init?.method === 'PUT'),
+    ).toBe(false)
+  })
+
   it('keeps answer action controls at their standard action size', async () => {
     const questions = [{ ...sampleQuestion, answers: [sampleAnswer] }]
 
@@ -2585,5 +2761,828 @@ describe('RequirementSelectionQuestionsClient', () => {
         name: 'Add answer',
       }),
     ).toHaveClass('min-h-11', 'min-w-11')
+  })
+
+  it('builds, edits, and saves visibility conditions through the stewardship panel', async () => {
+    let visibilitySaveMode: 'network' | 'rejected' | 'success' = 'network'
+    const parentQuestion = {
+      ...sampleQuestion,
+      answers: [
+        sampleAnswer,
+        {
+          ...sampleAnswer,
+          id: 102,
+          isActive: false,
+          isArchived: true,
+          text: 'Archived profile',
+        },
+      ],
+    }
+    const childQuestion = {
+      ...sampleQuestion,
+      areaId: 2,
+      areaName: 'Privacy',
+      areaPrefix: 'PRI',
+      id: 22,
+      questionCode: 'PRI-KUF001',
+      text: 'Which privacy profile applies?',
+    }
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({
+          areas: [sampleArea, { ...sampleArea, id: 2, name: 'Privacy' }],
+        })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [parentQuestion, childQuestion] })
+      }
+      if (
+        url === '/api/requirement-selection-questions/22/visibility' &&
+        init?.method === 'PUT'
+      ) {
+        if (visibilitySaveMode === 'network') {
+          throw new Error('visibility network failure')
+        }
+        if (visibilitySaveMode === 'rejected') {
+          return {
+            ok: false,
+            status: 400,
+            statusText: 'Bad Request',
+            json: async () => ({ error: 'Visibility rejected' }),
+          }
+        }
+        return okJson(childQuestion)
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+    expect(
+      await screen.findByText('Which privacy profile applies?'),
+    ).toBeInTheDocument()
+    expandQuestion('Which privacy profile applies?')
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Visibility conditions' }),
+    )
+
+    const aside = screen
+      .getByRole('heading', { level: 2, name: 'Visibility conditions' })
+      .closest('aside')
+    if (!(aside instanceof HTMLElement)) {
+      throw new Error('Missing visibility panel')
+    }
+    const panel = within(aside)
+    expect(panel.getByText(/no visibility conditions/i)).toBeInTheDocument()
+
+    fireEvent.click(panel.getByRole('button', { name: 'Add condition group' }))
+    fireEvent.change(panel.getByRole('combobox', { name: /Parent question/ }), {
+      target: { value: '11' },
+    })
+    const baseline = panel.getByRole('checkbox', { name: /Baseline profile/ })
+    fireEvent.click(baseline)
+    expect(panel.getByText('Archived')).toBeInTheDocument()
+
+    fireEvent.click(panel.getByRole('button', { name: 'Add condition' }))
+    const conditionDeleteButtons = panel.getAllByRole('button', {
+      name: 'Delete',
+    })
+    fireEvent.click(conditionDeleteButtons.at(-1) as HTMLButtonElement)
+
+    fireEvent.click(panel.getByRole('button', { name: 'Add condition group' }))
+    const groupDeleteButtons = panel.getAllByRole('button', { name: 'Delete' })
+    fireEvent.click(groupDeleteButtons.at(-1) as HTMLButtonElement)
+
+    fireEvent.click(baseline)
+    fireEvent.click(baseline)
+
+    confirmState.confirm.mockResolvedValueOnce(false)
+    const visibilityCancel = panel.getAllByRole('button', {
+      name: 'Cancel',
+    })[0]
+    if (!visibilityCancel) throw new Error('Missing visibility cancel action')
+    fireEvent.click(visibilityCancel)
+    await waitFor(() => expect(confirmState.confirm).toHaveBeenCalled())
+    expect(
+      panel.getByRole('button', { name: 'Save visibility' }),
+    ).toBeInTheDocument()
+    fireEvent.click(panel.getByRole('button', { name: 'Save visibility' }))
+
+    expect(await panel.findByRole('alert')).toHaveTextContent(
+      'Something went wrong.',
+    )
+    visibilitySaveMode = 'rejected'
+    fireEvent.click(panel.getByRole('button', { name: 'Save visibility' }))
+    expect(await panel.findByRole('alert')).toHaveTextContent(
+      'Visibility rejected',
+    )
+    visibilitySaveMode = 'success'
+    fireEvent.click(panel.getByRole('button', { name: 'Save visibility' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/22/visibility',
+        expect.objectContaining({
+          method: 'PUT',
+        }),
+      )
+    })
+    const saveCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-selection-questions/22/visibility' &&
+        init?.method === 'PUT',
+    )
+    expect(JSON.parse(String(saveCall?.[1]?.body))).toEqual({
+      groups: [
+        {
+          conditions: [{ answerIds: [101], parentQuestionId: 11 }],
+        },
+      ],
+    })
+  })
+
+  it('exposes lifecycle actions for active, inactive, and archived questions and answers', async () => {
+    const questions: TestQuestion[] = [
+      { ...sampleQuestion, answers: [sampleAnswer] },
+      {
+        ...sampleQuestion,
+        answers: [
+          {
+            ...sampleAnswer,
+            id: 201,
+            isActive: false,
+            questionId: 22,
+            text: 'Inactive answer',
+          },
+        ],
+        id: 22,
+        isActive: false,
+        questionCode: 'SEC-KUF002',
+        sortOrder: 1,
+        text: 'Inactive question',
+      },
+      {
+        ...sampleQuestion,
+        answers: [
+          {
+            ...sampleAnswer,
+            id: 301,
+            isActive: false,
+            isArchived: true,
+            questionId: 33,
+            text: 'Archived answer',
+          },
+        ],
+        id: 33,
+        isActive: false,
+        isArchived: true,
+        questionCode: 'SEC-KUF003',
+        sortOrder: 2,
+        text: 'Archived question',
+      },
+    ]
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText('Archived question')).toBeInTheDocument()
+    const statusFilter = screen.getByRole('combobox', { name: 'All statuses' })
+    fireEvent.change(statusFilter, { target: { value: 'active' } })
+    expect(screen.queryByText('Inactive question')).not.toBeInTheDocument()
+    fireEvent.change(statusFilter, { target: { value: 'inactive' } })
+    expect(screen.getByText('Inactive question')).toBeInTheDocument()
+    expect(screen.queryByText('Archived question')).not.toBeInTheDocument()
+    fireEvent.change(statusFilter, { target: { value: 'archived' } })
+    expect(screen.getByText('Archived question')).toBeInTheDocument()
+    fireEvent.change(statusFilter, { target: { value: '' } })
+    const activeCard = expandQuestion(sampleQuestion.text)
+    const inactiveCard = expandQuestion('Inactive question')
+    const archivedCard = expandQuestion('Archived question')
+
+    const clickMutation = async (
+      button: HTMLElement,
+      path: string,
+      method = 'POST',
+    ) => {
+      fireEvent.click(button)
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          path,
+          expect.objectContaining({ method }),
+        )
+      })
+    }
+
+    await clickMutation(
+      within(activeCard).getAllByRole('button', { name: 'Deactivate' })[0],
+      '/api/requirement-selection-questions/11/deactivate',
+    )
+    await clickMutation(
+      within(activeCard).getByRole('button', { name: 'Duplicate' }),
+      '/api/requirement-selection-questions/11/duplicate',
+    )
+    await clickMutation(
+      within(inactiveCard).getAllByRole('button', { name: 'Activate' })[0],
+      '/api/requirement-selection-questions/22/activate',
+    )
+    await clickMutation(
+      within(archivedCard).getAllByRole('button', { name: 'Reactivate' })[0],
+      '/api/requirement-selection-questions/33/reactivate',
+    )
+
+    await clickMutation(
+      within(getAnswerCard(sampleAnswer.text)).getByRole('button', {
+        name: 'Deactivate',
+      }),
+      '/api/requirement-selection-questions/11/answers/101/deactivate',
+    )
+    await clickMutation(
+      within(getAnswerCard('Inactive answer')).getByRole('button', {
+        name: 'Activate',
+      }),
+      '/api/requirement-selection-questions/22/answers/201/activate',
+    )
+    await clickMutation(
+      within(getAnswerCard('Archived answer')).getByRole('button', {
+        name: 'Reactivate',
+      }),
+      '/api/requirement-selection-questions/33/answers/301/reactivate',
+    )
+
+    fireEvent.click(
+      within(getAnswerCard('Inactive answer')).getByRole('button', {
+        name: 'Delete',
+      }),
+    )
+    await waitFor(() => expect(confirmState.confirm).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-selection-questions/22/answers/201',
+        expect.objectContaining({ method: 'DELETE' }),
+      )
+    })
+  })
+
+  it('handles incomplete and failed catalog responses without stale content', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') return okJson({})
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({})
+      }
+      return okJson({})
+    })
+    render(<RequirementSelectionQuestionsClient />)
+    expect(
+      await screen.findByText('No requirement selection questions yet.'),
+    ).toBeInTheDocument()
+    cleanup()
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-packages') {
+        return { ok: false, status: 503, statusText: 'Unavailable' }
+      }
+      return okJson({})
+    })
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Something went wrong.',
+    )
+    cleanup()
+
+    fetchMock.mockRejectedValue(new Error('network unavailable'))
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Something went wrong.',
+    )
+  })
+
+  it('surfaces question, answer, and lifecycle mutation failures', async () => {
+    const question = { ...sampleQuestion, answers: [sampleAnswer] }
+    let operation: 'answer' | 'lifecycle' | 'question' = 'question'
+    let answerFailureMode: 'network' | 'response' = 'network'
+    let questionThrows = false
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: [sampleArea] })
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [question] })
+      }
+      if (
+        url === '/api/requirement-selection-questions' &&
+        init?.method === 'POST'
+      ) {
+        if (operation === 'question') {
+          if (questionThrows) throw new Error('question network failure')
+          return {
+            ok: false,
+            status: 400,
+            statusText: 'Bad Request',
+            json: async () => ({ error: 'Question rejected' }),
+          }
+        }
+      }
+      if (url.endsWith('/answers') && init?.method === 'POST') {
+        if (operation === 'answer') {
+          if (answerFailureMode === 'network') {
+            throw new Error('answer network failure')
+          }
+          return {
+            ok: false,
+            status: 400,
+            statusText: 'Bad Request',
+            json: async () => ({ error: 'Answer rejected' }),
+          }
+        }
+      }
+      if (url.endsWith('/deactivate') && init?.method === 'POST') {
+        return {
+          ok: false,
+          status: 409,
+          statusText: 'Conflict',
+          json: async () => ({}),
+        }
+      }
+      if (url.endsWith('/duplicate') && init?.method === 'POST') {
+        throw new Error('duplicate network failure')
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(question.text)).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Create requirement selection question',
+      }),
+    )
+    const questionDialog = screen.getByRole('dialog', {
+      name: 'Create requirement selection question',
+    })
+    fireEvent.change(
+      within(questionDialog).getByRole('combobox', {
+        name: /Requirement area/,
+      }),
+      { target: { value: String(sampleArea.id) } },
+    )
+    fireEvent.change(
+      within(questionDialog).getByRole('textbox', { name: /^Text/ }),
+      { target: { value: 'Rejected question' } },
+    )
+    fireEvent.click(
+      within(questionDialog).getByRole('button', { name: 'Create' }),
+    )
+    expect(await within(questionDialog).findByRole('alert')).toHaveTextContent(
+      'Question rejected',
+    )
+    questionThrows = true
+    fireEvent.click(
+      within(questionDialog).getByRole('button', { name: 'Create' }),
+    )
+    expect(await within(questionDialog).findByRole('alert')).toHaveTextContent(
+      'Something went wrong.',
+    )
+    confirmState.confirm.mockResolvedValueOnce(false)
+    fireEvent.click(
+      within(questionDialog).getByRole('button', { name: 'Close' }),
+    )
+    await waitFor(() => expect(confirmState.confirm).toHaveBeenCalled())
+    expect(questionDialog).toBeInTheDocument()
+    confirmState.confirm.mockResolvedValueOnce(true)
+    fireEvent.click(
+      within(questionDialog).getByRole('button', { name: 'Close' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    operation = 'answer'
+    const card = expandQuestion(question.text)
+    fireEvent.click(within(card).getByRole('button', { name: 'Add answer' }))
+    const answerDialog = screen.getByRole('dialog', { name: 'Add answer' })
+    fireEvent.change(
+      within(answerDialog).getByRole('textbox', { name: /^Text/ }),
+      { target: { value: 'Rejected answer' } },
+    )
+    fireEvent.click(
+      within(answerDialog).getByRole('button', { name: 'Add answer' }),
+    )
+    expect(await within(answerDialog).findByRole('alert')).toHaveTextContent(
+      'Something went wrong.',
+    )
+    answerFailureMode = 'response'
+    fireEvent.click(
+      within(answerDialog).getByRole('button', { name: 'Add answer' }),
+    )
+    expect(await within(answerDialog).findByRole('alert')).toHaveTextContent(
+      'Answer rejected',
+    )
+    fireEvent.click(
+      within(answerDialog).getByRole('button', { name: 'Cancel' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    operation = 'lifecycle'
+    const questionDeactivate = within(card).getAllByRole('button', {
+      name: 'Deactivate',
+    })[0]
+    if (!questionDeactivate)
+      throw new Error('Missing question deactivate action')
+    fireEvent.click(questionDeactivate)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Something went wrong.',
+    )
+  })
+
+  it('surfaces duplicate question network failures without removing the question', async () => {
+    const question = { ...sampleQuestion, answers: [sampleAnswer] }
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [sampleArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [question] })
+      }
+      if (url.endsWith('/duplicate') && init?.method === 'POST') {
+        throw new Error('duplicate network failure')
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(question.text)).toBeInTheDocument()
+
+    const card = expandQuestion(question.text)
+    fireEvent.click(within(card).getByRole('button', { name: 'Duplicate' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Something went wrong.',
+    )
+    expect(screen.getByText(question.text)).toBeInTheDocument()
+  })
+
+  it('renders sparse requirement details and reports detail fetch failures', async () => {
+    const question = { ...sampleQuestion, answers: [sampleAnswer] }
+    let detailMode: 'empty' | 'failed' | 'sparse' = 'failed'
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: [sampleArea] })
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [question] })
+      }
+      if (
+        url.startsWith(
+          '/api/requirement-selection-questions/matched-requirements?',
+        )
+      ) {
+        return okJson({ requirements: sampleAnswer.matchingRequirements })
+      }
+      if (url === '/api/requirements/301') {
+        if (detailMode === 'failed') {
+          return { ok: false, status: 404, statusText: '' }
+        }
+        if (detailMode === 'empty') {
+          return okJson({
+            area: {
+              id: 1,
+              name: 'Legacy area',
+              ownerName: 'Legacy Owner',
+            },
+            id: 301,
+            specificationCount: 0,
+            uniqueId: 'SEC-001',
+            versions: [],
+          })
+        }
+        return okJson({
+          area: null,
+          id: 301,
+          specificationCount: 0,
+          uniqueId: 'SEC-001',
+          versions: [
+            {
+              acceptanceCriteria: null,
+              category: { id: 1, nameEn: null, nameSv: 'Svenska' },
+              description: null,
+              priorityLevel: null,
+              qualityCharacteristic: {
+                id: 2,
+                nameEn: 'Reliability',
+                nameSv: null,
+              },
+              status: 1,
+              type: { id: 3, nameEn: null, nameSv: 'Typ' },
+              verifiable: true,
+              verificationMethod: '',
+              versionNormReferences: null,
+              versionRequirementPackages: [
+                {
+                  requirementPackage: {
+                    id: 44,
+                    name: '   ',
+                    purposeAndScope: null,
+                  },
+                },
+              ],
+            },
+          ],
+        })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(question.text)).toBeInTheDocument()
+    expandQuestion(question.text)
+    fireEvent.click(
+      within(getAnswerCard(sampleAnswer.text)).getByRole('button', {
+        name: 'Edit',
+      }),
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'Edit requirement selection answer',
+    })
+    const openDetail = await within(dialog).findByRole('button', {
+      name: 'Open requirement details SEC-001',
+    })
+    fireEvent.click(openDetail)
+    expect(
+      await within(dialog).findByText('Something went wrong'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(openDetail)
+    detailMode = 'sparse'
+    fireEvent.click(openDetail)
+    expect(await within(dialog).findByText('Reliability')).toBeInTheDocument()
+    expect(within(dialog).getByText('44')).toBeInTheDocument()
+    expect(within(dialog).getAllByText('—').length).toBeGreaterThan(0)
+
+    fireEvent.click(openDetail)
+    detailMode = 'empty'
+    fireEvent.click(openDetail)
+    expect(await within(dialog).findByText('Legacy area')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Legacy Owner/)).toBeInTheDocument()
+  })
+
+  it('renders unresolved, empty, and multiple-choice answer source variants', async () => {
+    const packageOnlyRequirement = {
+      description: null,
+      direct: false,
+      id: 302,
+      sourcePackages: [secondPackage],
+      uniqueId: 'SEC-002',
+    }
+    const sourcedAnswer: TestAnswer = {
+      ...sampleAnswer,
+      matchingRequirementCount: 4,
+      matchingRequirements: [
+        ...sampleAnswer.matchingRequirements,
+        packageOnlyRequirement,
+      ],
+      packageIds: [samplePackage.id, secondPackage.id, 999],
+      requirementIds: [301, 999],
+    }
+    const noSelectionAnswer: TestAnswer = {
+      ...sampleAnswer,
+      description: 'Explicitly selects no requirements',
+      id: 102,
+      isNoRequirementSelection: true,
+      matchingRequirementCount: 0,
+      matchingRequirements: [],
+      packageIds: [],
+      requirementIds: [],
+      sortOrder: 1,
+      text: 'No requirements',
+    }
+    const missingAnswer: TestAnswer = {
+      ...noSelectionAnswer,
+      description: null,
+      healthState: 'missing_requirement_selection',
+      id: 103,
+      isNoRequirementSelection: false,
+      sortOrder: 2,
+      text: 'Incomplete mapping',
+    }
+    const question: TestQuestion = {
+      ...sampleQuestion,
+      answers: [sourcedAnswer, noSelectionAnswer, missingAnswer],
+      helpText: 'Choose every applicable source.',
+      selectionType: 'multiple',
+    }
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: [sampleArea] })
+      if (url === '/api/requirement-packages') {
+        return okJson({
+          requirementPackages: [samplePackage, secondPackage],
+        })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [question] })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(question.text)).toBeInTheDocument()
+    expect(getQuestionDisclosure(question.text)).toHaveTextContent(
+      'Multiple choice',
+    )
+    const card = expandQuestion(question.text)
+    expect(
+      within(card).getByText('Choose every applicable source.'),
+    ).toBeInTheDocument()
+    expect(
+      within(card).getByText('Missing requirement selection'),
+    ).toBeInTheDocument()
+    expect(getAnswerCard(noSelectionAnswer.text)).toHaveTextContent(
+      'No requirement selection',
+    )
+    const answerCard = getAnswerCard(sourcedAnswer.text)
+    expect(answerCard).toHaveTextContent(/Requirement packages:\s*1/)
+    expect(answerCard).toHaveTextContent(/Requirement IDs:\s*1/)
+    fireEvent.click(
+      within(answerCard).getByRole('button', {
+        name: 'Show requirements in selection for Baseline profile',
+      }),
+    )
+    expect(
+      within(answerCard).getByRole('list', {
+        name: 'Requirements in selection',
+      }),
+    ).toHaveTextContent('SEC-002')
+    fireEvent.click(
+      within(answerCard).getByRole('button', {
+        name: 'Filter requirements by requirement package Enhanced',
+      }),
+    )
+    expect(
+      within(answerCard).getByRole('list', {
+        name: 'Requirements in selection',
+      }),
+    ).not.toHaveTextContent('SEC-001')
+    fireEvent.click(
+      within(answerCard).getByRole('button', {
+        name: 'Filter requirements by Requirement ID SEC-001',
+      }),
+    )
+    expect(
+      within(answerCard).getByRole('list', {
+        name: 'Requirements in selection',
+      }),
+    ).toHaveTextContent('SEC-001')
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Search question ID or text' }),
+      { target: { value: 'incomplete' } },
+    )
+    expect(screen.getByText('Incomplete mapping')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('combobox', { name: 'All statuses' }), {
+      target: { value: 'inactive' },
+    })
+    expect(screen.queryByText(question.text)).not.toBeInTheDocument()
+  })
+
+  it('reports requirement search and matched-preview failures in the answer form', async () => {
+    const question = { ...sampleQuestion, answers: [sampleAnswer] }
+    let searchFails = true
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: [sampleArea] })
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [question] })
+      }
+      if (url.startsWith('/api/requirements?')) {
+        if (searchFails) {
+          return { ok: false, status: 503, statusText: 'Unavailable' }
+        }
+        return okJson({})
+      }
+      if (
+        url.startsWith(
+          '/api/requirement-selection-questions/matched-requirements?',
+        )
+      ) {
+        return { ok: false, status: 500, statusText: '' }
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(question.text)).toBeInTheDocument()
+    const card = expandQuestion(question.text)
+    fireEvent.click(within(card).getByRole('button', { name: 'Add answer' }))
+    const dialog = screen.getByRole('dialog', { name: 'Add answer' })
+
+    const packageSelector = within(dialog).getByRole('button', {
+      name: 'Requirement packages',
+    })
+    fireEvent.click(packageSelector)
+    fireEvent.change(
+      within(dialog).getByRole('textbox', {
+        name: 'Search question ID or text Requirement packages',
+      }),
+      { target: { value: 'unmatched' } },
+    )
+    expect(
+      within(dialog).getByText('No requirement packages found.'),
+    ).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(packageSelector).toHaveAttribute('aria-expanded', 'false')
+
+    const requirementSearch = within(dialog).getByRole('textbox', {
+      name: /Requirement IDs/,
+    })
+    fireEvent.change(requirementSearch, { target: { value: 'ZZ' } })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Could not load requirements in selection.',
+    )
+
+    searchFails = false
+    fireEvent.change(requirementSearch, { target: { value: 'empty' } })
+    expect(
+      await within(dialog).findByText('No published requirements found.'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(packageSelector)
+    fireEvent.change(
+      within(dialog).getByRole('textbox', {
+        name: 'Search question ID or text Requirement packages',
+      }),
+      { target: { value: '' } },
+    )
+    fireEvent.click(
+      await within(dialog).findByRole('checkbox', { name: samplePackage.name }),
+    )
+    expect(
+      await within(dialog).findByText(
+        'Could not load requirements in selection.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps and then discards an incomplete standalone visibility draft', async () => {
+    const question = { ...sampleQuestion, answers: [sampleAnswer] }
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas')
+        return okJson({ areas: [sampleArea] })
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [question] })
+      }
+      return okJson({})
+    })
+    render(<RequirementSelectionQuestionsClient />)
+    expect(await screen.findByText(question.text)).toBeInTheDocument()
+    const card = expandQuestion(question.text)
+    fireEvent.click(
+      within(card).getByRole('button', { name: 'Visibility conditions' }),
+    )
+    const panel = screen.getByRole('complementary', {
+      name: 'Visibility conditions',
+    })
+    expect(panel).toHaveTextContent(
+      'This question has no visibility conditions for when it should be shown.',
+    )
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Add condition group' }),
+    )
+    expect(
+      within(panel).getByRole('combobox', { name: /Parent question/ }),
+    ).toHaveDisplayValue('-')
+
+    const standaloneCancel = within(panel).getAllByRole('button', {
+      name: 'Cancel',
+    })[0]
+    if (!standaloneCancel) throw new Error('Missing standalone cancel action')
+    fireEvent.click(standaloneCancel)
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('complementary', { name: 'Visibility conditions' }),
+      ).not.toBeInTheDocument(),
+    )
   })
 })

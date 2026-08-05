@@ -114,6 +114,18 @@ describe('requirements-specifications/[id]/requirement-selection-answers route',
     ).not.toHaveBeenCalled()
   })
 
+  it('rejects an invalid specification id before reading the database', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/0/requirement-selection-answers',
+      ),
+      makeParams('0'),
+    )
+
+    expect(response.status).toBe(400)
+    expect(mocks.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+
   it('returns the authorization response when access is denied', async () => {
     mockAuthorization.assertAuthorized.mockRejectedValueOnce(
       Object.assign(new Error('Forbidden'), { status: 403 }),

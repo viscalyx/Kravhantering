@@ -1,7 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import RequirementsStewardshipPage, {
+  generateMetadata as generateStewardshipMetadata,
+} from '@/app/[locale]/requirements/stewardship/page'
 import InformationRequestsPage from '@/app/[locale]/requirements/stewardship/workspaces/information-requests/page'
+import StewardshipWorkspacesLayout, {
+  generateMetadata as generateWorkspacesMetadata,
+} from '@/app/[locale]/requirements/stewardship/workspaces/layout'
 import NormsPage from '@/app/[locale]/requirements/stewardship/workspaces/norms/page'
 import PackagesPage from '@/app/[locale]/requirements/stewardship/workspaces/packages/page'
 import QuestionsPage from '@/app/[locale]/requirements/stewardship/workspaces/questions/page'
@@ -46,6 +52,10 @@ vi.mock('@/app/[locale]/requirements/stewardship/rfi-questions-client', () => ({
   default: () => <p>RFI workspace</p>,
 }))
 
+vi.mock('@/app/[locale]/requirements/stewardship/stewardship-client', () => ({
+  default: () => <p>stewardship redirect</p>,
+}))
+
 vi.mock('@/app/[locale]/norm-references/norm-references-client', () => ({
   default: () => <p>norms workspace</p>,
 }))
@@ -79,5 +89,29 @@ describe.each([
       screen.getByRole('heading', { level: 1, name: heading }),
     ).toBeVisible()
     expect(screen.getByText(content)).toBeVisible()
+  })
+})
+
+describe('stewardship route shells', () => {
+  it('renders the redirect client and localized route metadata', async () => {
+    render(<RequirementsStewardshipPage />)
+
+    expect(screen.getByText('stewardship redirect')).toBeVisible()
+    await expect(generateStewardshipMetadata()).resolves.toEqual({
+      title: 'nav.stewardship',
+    })
+  })
+
+  it('preserves workspace children and localized layout metadata', async () => {
+    render(
+      <StewardshipWorkspacesLayout>
+        <p>layout child</p>
+      </StewardshipWorkspacesLayout>,
+    )
+
+    expect(screen.getByText('layout child')).toBeVisible()
+    await expect(generateWorkspacesMetadata()).resolves.toEqual({
+      title: 'nav.stewardship',
+    })
   })
 })
