@@ -74,8 +74,8 @@ export function registerNeedsReferenceTests(
         screen.getByRole('tab', { name: 'specification.itemsInSpecification' }),
       )
       expect(
-        screen.getByRole('table', { name: 'items requirements' }),
-      ).toHaveTextContent('lib:31')
+        context.requirementsTable('items'),
+      ).toHaveTextContent('BEH0001')
       fireEvent.click(
         screen.getByRole('tab', {
           name: 'specification.requirementSelectionQuestions',
@@ -110,8 +110,8 @@ export function registerNeedsReferenceTests(
         }),
       )
       expect(
-        screen.getByRole('table', { name: 'available requirements' }),
-      ).toHaveTextContent('202')
+        context.requirementsTable('available'),
+      ).toHaveTextContent('IAM0202')
       fireEvent.click(
         screen.getByRole('tab', { name: /specification\.needsReferences/ }),
       )
@@ -662,14 +662,9 @@ export function registerNeedsReferenceTests(
         ],
       })
 
-      await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
-        ).toBeInTheDocument()
-      })
-
-      fireEvent.click(
-        screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+      fireEvent.change(
+        context.requirementNeedsReferenceSelect('items', 'BEH0001'),
+        { target: { value: '81' } },
       )
 
       await waitFor(() => {
@@ -691,7 +686,10 @@ export function registerNeedsReferenceTests(
       }
       context.renderRequirementsSpecificationDetailClient({
         ...context.createInitialData(),
-        availableNeedsRefs: [{ description: null, id: 81, text: 'IAM-42' }],
+        availableNeedsRefs: [
+          { description: null, id: 40, text: 'ORIGINAL-REF' },
+          { description: null, id: 81, text: 'IAM-42' },
+        ],
         specificationItems: context.createSpecificationItemsPage([
           originalItem,
         ]),
@@ -700,23 +698,27 @@ export function registerNeedsReferenceTests(
         json: async () => ({ error: 'Assignment rejected' }),
         ok: false,
       })
-      fireEvent.click(
-        screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+      fireEvent.change(
+        context.requirementNeedsReferenceSelect('items', 'BEH0001'),
+        { target: { value: '81' } },
       )
-      expect(
-        await screen.findByRole('row', { name: 'lib:31 ORIGINAL-REF' }),
-      ).toBeVisible()
+      await waitFor(() => {
+        expect(
+          context.requirementNeedsReferenceSelect('items', 'BEH0001'),
+        ).toHaveValue('40')
+      })
 
       context.specificationItemMutationHandler = async () => {
         throw new Error('Assignment network unavailable')
       }
-      fireEvent.click(
-        screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+      fireEvent.change(
+        context.requirementNeedsReferenceSelect('items', 'BEH0001'),
+        { target: { value: '81' } },
       )
       await waitFor(() => {
         expect(
-          screen.getByRole('row', { name: 'lib:31 ORIGINAL-REF' }),
-        ).toBeVisible()
+          context.requirementNeedsReferenceSelect('items', 'BEH0001'),
+        ).toHaveValue('40')
         expect(
           context.fetchMock.mock.calls.filter(
             ([url, init]) =>

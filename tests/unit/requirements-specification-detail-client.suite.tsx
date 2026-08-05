@@ -1,21 +1,11 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[specificationId]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
-import type {
-  FilterValues,
-  RequirementPackageOption,
-  RequirementSortState,
-} from '@/lib/requirements/list-view'
+import type { RequirementPackageOption } from '@/lib/requirements/list-view'
 import type {
   RequirementsSpecificationDetailInitialData,
   SpecificationListItem,
@@ -188,423 +178,6 @@ vi.mock('@/components/LazyRequirementsImportDialog', () => ({
   },
 }))
 
-vi.mock('@/components/RequirementsTable', () => ({
-  FloatingActionPill: (props: {
-    action: {
-      ariaLabel: string
-      developerModeContext?: string
-      developerModeValue?: string
-      hidden?: boolean
-      icon: ReactNode
-      id: string
-      menuItems?: {
-        disabled?: boolean
-        id: string
-        kind?: 'separator'
-        label?: string
-        onClick?: (returnFocusTarget?: HTMLButtonElement | null) => void
-      }[]
-      onClick?: () => void
-    }
-  }) => {
-    const { action } = props
-    if (action.hidden) return null
-    return (
-      <div>
-        <button
-          aria-label={action.ariaLabel}
-          data-developer-mode-context={action.developerModeContext}
-          data-developer-mode-name="table action"
-          data-developer-mode-value={action.developerModeValue}
-          onClick={action.onClick}
-          type="button"
-        >
-          {action.icon}
-        </button>
-        {action.menuItems ? (
-          <div role="menu">
-            {action.menuItems.map(item =>
-              item.kind === 'separator' ? (
-                <hr key={item.id} />
-              ) : (
-                <button
-                  disabled={item.disabled}
-                  key={item.id}
-                  onClick={event => item.onClick?.(event.currentTarget)}
-                  role="menuitem"
-                  type="button"
-                >
-                  {item.label}
-                </button>
-              ),
-            )}
-          </div>
-        ) : null}
-      </div>
-    )
-  },
-  default: (props: {
-    defaultVisibleColumns?: string[]
-    columnPickerPlacement?: string
-    expandedId?: number | null
-    excludeColumns?: string[]
-    floatingActionRailPlacement?: string
-    floatingActions?: {
-      ariaLabel: string
-      developerModeContext?: string
-      developerModeValue?: string
-      hidden?: boolean
-      icon: ReactNode
-      id: string
-      menuItems?: {
-        disabled?: boolean
-        href?: string
-        icon?: ReactNode
-        id: string
-        label: string
-        onClick?: (returnFocusTarget?: HTMLButtonElement | null) => void
-      }[]
-      onClick?: () => void
-      position?: string
-    }[]
-    filterValues?: FilterValues
-    hasMore?: boolean
-    loadingMore?: boolean
-    onFilterChange?: (values: FilterValues) => void
-    onLoadMore?: () => void | Promise<void>
-    onNeedsReferenceChange?: (
-      itemRef: string,
-      needsReferenceId: number | null,
-    ) => void
-    onSelectionChange?: (ids: Set<number>) => void
-    onRowClick?: (id: number) => void
-    onSortChange?: (value: RequirementSortState) => void
-    onSpecificationItemStatusChange?: (
-      itemRef: string,
-      specificationItemStatusId: number,
-    ) => void
-    onVisibleColumnsChange?: (columns: string[]) => void
-    normReferences?: unknown[]
-    requirementPackageCatalogStatus?: 'failed' | 'loaded' | 'loading'
-    requirementPackageFilterPresentation?: 'chips' | 'compact-band'
-    requirementPackages?: { id: number; name: string }[]
-    rows: {
-      id: number
-      itemRef?: string
-      needsReference?: string | null
-      requirementPackageIds?: number[]
-      specificationItemStatusId?: number | null
-    }[]
-    renderExpanded?: (id: number) => ReactNode
-    selectable?: boolean
-    selectedIds?: Set<number>
-    showSelectAll?: boolean
-    sortState?: RequirementSortState
-    statusRow?: ReactNode
-    stickyTopOffsetClassName?: string
-    stickyTitle?: ReactNode
-    stickyTitleActions?: ReactNode
-    visibleColumns?: string[]
-  }) => {
-    const tableKind = props.excludeColumns?.includes('needsReference')
-      ? 'available'
-      : 'items'
-    const renderedRows = props.rows.filter(
-      (row, index) =>
-        props.rows.findIndex(candidate => candidate.id === row.id) === index,
-    )
-    const lastRenderedRow = renderedRows.at(-1)
-    const renderedRowsInMock =
-      renderedRows.length > 25 && lastRenderedRow
-        ? [...renderedRows.slice(0, 24), lastRenderedRow]
-        : renderedRows
-    const renderFloatingAction = (
-      action: NonNullable<typeof props.floatingActions>[number],
-    ) => (
-      <div key={action.id}>
-        <button
-          aria-label={action.ariaLabel}
-          data-developer-mode-context={action.developerModeContext}
-          data-developer-mode-name="table action"
-          data-developer-mode-value={action.developerModeValue}
-          onClick={action.onClick}
-          type="button"
-        >
-          {action.icon}
-        </button>
-        {action.menuItems ? (
-          <div aria-label={`${action.id} menu`} role="menu">
-            {action.menuItems.map(menuItem =>
-              menuItem.id.startsWith('separator-') ? (
-                <hr key={menuItem.id} />
-              ) : menuItem.href ? (
-                <a href={menuItem.href} key={menuItem.id} role="menuitem">
-                  {menuItem.label}
-                </a>
-              ) : (
-                <button
-                  aria-description={
-                    'description' in menuItem
-                      ? String(menuItem.description)
-                      : undefined
-                  }
-                  disabled={menuItem.disabled}
-                  key={menuItem.id}
-                  onClick={event => menuItem.onClick?.(event.currentTarget)}
-                  role="menuitem"
-                  title={
-                    'tooltip' in menuItem ? String(menuItem.tooltip) : undefined
-                  }
-                  type="button"
-                >
-                  {menuItem.label}
-                </button>
-              ),
-            )}
-          </div>
-        ) : null}
-      </div>
-    )
-    return (
-      <section aria-label={`${tableKind} requirements surface`}>
-        <table aria-label={`${tableKind} requirements`}>
-          <tbody>
-            {renderedRowsInMock.map(row => (
-              <tr key={row.itemRef ?? row.id}>
-                <td>{row.itemRef ?? row.id}</td>
-                {row.needsReference ? <td>{row.needsReference}</td> : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <fieldset aria-label={`${tableKind} requirements sticky title`}>
-          {props.stickyTitle}
-        </fieldset>
-        <fieldset aria-label={`${tableKind} requirements sticky title actions`}>
-          {props.stickyTitleActions}
-        </fieldset>
-        {props.statusRow ? (
-          <div aria-label={`${tableKind} requirements status`} role="status">
-            {props.statusRow}
-          </div>
-        ) : null}
-        {props.floatingActions
-          ?.filter(
-            action => !action.hidden && action.position === 'beforeColumns',
-          )
-          .map(renderFloatingAction)}
-        {props.columnPickerPlacement === 'betweenActions' ? (
-          <button aria-label="common.columns" type="button">
-            common.columns
-          </button>
-        ) : null}
-        {props.floatingActions
-          ?.filter(
-            action => !action.hidden && action.position !== 'beforeColumns',
-          )
-          .map(renderFloatingAction)}
-        {props.requirementPackages?.map(requirementPackage => {
-          const current = props.filterValues?.requirementPackageIds ?? []
-          const active = current.includes(requirementPackage.id)
-          return (
-            <button
-              aria-label={`filter-package-${tableKind}-${requirementPackage.id}`}
-              aria-pressed={active}
-              key={`${tableKind}-package-${requirementPackage.id}`}
-              onClick={() => {
-                const next = active
-                  ? current.filter(id => id !== requirementPackage.id)
-                  : [...current, requirementPackage.id]
-                props.onFilterChange?.({
-                  ...props.filterValues,
-                  requirementPackageIds: next.length > 0 ? next : undefined,
-                })
-              }}
-              type="button"
-            >
-              {requirementPackage.name}
-            </button>
-          )
-        })}
-        {props.onFilterChange ? (
-          <>
-            <label>
-              {`search ${tableKind} requirements`}
-              <input
-                aria-label={`search-${tableKind}-requirements`}
-                onChange={event =>
-                  props.onFilterChange?.({
-                    ...props.filterValues,
-                    uniqueIdSearch: event.currentTarget.value,
-                  })
-                }
-                value={props.filterValues?.uniqueIdSearch ?? ''}
-              />
-            </label>
-            <button
-              aria-label={`toggle-status-filter-${tableKind}`}
-              onClick={() =>
-                props.onFilterChange?.({
-                  ...props.filterValues,
-                  statuses: props.filterValues?.statuses?.length
-                    ? undefined
-                    : [3],
-                })
-              }
-              type="button"
-            >
-              toggle status filter
-            </button>
-            <button
-              aria-label={`search-first-${tableKind}`}
-              onClick={() =>
-                props.onFilterChange?.({ uniqueIdSearch: 'first' })
-              }
-              type="button"
-            >
-              search first
-            </button>
-            <button
-              aria-label={`search-latest-${tableKind}`}
-              onClick={() =>
-                props.onFilterChange?.({ uniqueIdSearch: 'latest' })
-              }
-              type="button"
-            >
-              search latest
-            </button>
-          </>
-        ) : null}
-        {props.hasMore ? (
-          <button
-            aria-label={`load-more-${tableKind}`}
-            disabled={props.loadingMore}
-            onClick={() => void props.onLoadMore?.()}
-            type="button"
-          >
-            load more
-          </button>
-        ) : null}
-        {props.selectable ? (
-          <>
-            <button
-              aria-label={`select-all-${tableKind}`}
-              onClick={() =>
-                props.onSelectionChange?.(
-                  new Set([
-                    ...(props.selectedIds ?? []),
-                    ...renderedRows.map(row => row.id),
-                  ]),
-                )
-              }
-              type="button"
-            >
-              select all
-            </button>
-            {renderedRowsInMock.map(row => (
-              <button
-                aria-label={`select-row-${row.id}`}
-                aria-pressed={props.selectedIds?.has(row.id) ?? false}
-                key={`select-${row.id}`}
-                onClick={() => {
-                  const next = new Set(props.selectedIds ?? [])
-                  if (next.has(row.id)) {
-                    next.delete(row.id)
-                  } else {
-                    next.add(row.id)
-                  }
-                  props.onSelectionChange?.(next)
-                }}
-                type="button"
-              >
-                select
-              </button>
-            ))}
-          </>
-        ) : null}
-        {props.onNeedsReferenceChange && props.rows[0]?.itemRef ? (
-          <>
-            <button
-              aria-label={`assign-needs-ref-${props.rows[0].itemRef}`}
-              onClick={() =>
-                props.onNeedsReferenceChange?.(props.rows[0].itemRef ?? '', 81)
-              }
-              type="button"
-            >
-              assign needs ref
-            </button>
-            <button
-              aria-label="clear-needs-ref-lib:missing"
-              onClick={() =>
-                props.onNeedsReferenceChange?.('lib:missing', null)
-              }
-              type="button"
-            >
-              clear unknown needs ref
-            </button>
-          </>
-        ) : null}
-        {props.rows[0] && props.onRowClick ? (
-          <button
-            aria-label={`expand-row-${tableKind}-${props.rows[0].id}`}
-            onClick={() => props.onRowClick?.(props.rows[0].id)}
-            type="button"
-          >
-            expand row
-          </button>
-        ) : null}
-        {props.expandedId != null && props.renderExpanded ? (
-          <div data-testid={`expanded-${tableKind}`}>
-            {props.renderExpanded(props.expandedId)}
-          </div>
-        ) : null}
-        {props.onSpecificationItemStatusChange && props.rows[0]?.itemRef ? (
-          <button
-            aria-label={`set-status-${props.rows[0].itemRef}`}
-            onClick={() =>
-              props.onSpecificationItemStatusChange?.(
-                props.rows[0].itemRef ?? '',
-                2,
-              )
-            }
-            type="button"
-          >
-            set status
-          </button>
-        ) : null}
-        {props.onVisibleColumnsChange ? (
-          <button
-            aria-label={`set-columns-${tableKind}`}
-            onClick={() => props.onVisibleColumnsChange?.(['uniqueId'])}
-            type="button"
-          >
-            set columns
-          </button>
-        ) : null}
-        {props.onSortChange ? (
-          <button
-            aria-label={`sort-description-${tableKind}`}
-            onClick={() =>
-              props.onSortChange?.({
-                by: 'description',
-                direction:
-                  props.sortState?.by === 'description' &&
-                  props.sortState.direction === 'asc'
-                    ? 'desc'
-                    : 'asc',
-              })
-            }
-            type="button"
-          >
-            sort description
-          </button>
-        ) : null}
-        {`rows:${props.rows.length}`}
-      </section>
-    )
-  },
-}))
-
 vi.mock('@/components/generated-output/useGeneratedOutputDownload', () => ({
   useGeneratedOutputDownload: () => ({
     clearError: pdfDownloadState.clearError,
@@ -637,6 +210,36 @@ function okJson(body: unknown) {
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
+const intersectionObserverCallbacks = new Map<
+  Element,
+  IntersectionObserverCallback
+>()
+const renderedRequirementUniqueIds = new Map<number, string>()
+const renderedAvailableRequirementIds = new Set<number>()
+vi.stubGlobal(
+  'IntersectionObserver',
+  class TestIntersectionObserver implements IntersectionObserver {
+    readonly root = null
+    readonly rootMargin = '0px'
+    readonly scrollMargin = '0px'
+    readonly thresholds = [0]
+
+    constructor(private readonly callback: IntersectionObserverCallback) {}
+
+    disconnect() {
+      for (const [target, callback] of intersectionObserverCallbacks) {
+        if (callback === this.callback) intersectionObserverCallbacks.delete(target)
+      }
+    }
+    observe(target: Element) {
+      intersectionObserverCallbacks.set(target, this.callback)
+    }
+    takeRecords(): IntersectionObserverEntry[] {
+      return []
+    }
+    unobserve() {}
+  },
+)
 const defaultSpecificationId = 8
 let addRequirementsResponse: { body: unknown; ok: boolean }
 let activeSpecificationId = defaultSpecificationId
@@ -833,6 +436,15 @@ function renderRequirementsSpecificationDetailClient(
   specificationId = defaultSpecificationId,
 ) {
   activeSpecificationId = specificationId
+  renderedRequirementUniqueIds.clear()
+  renderedAvailableRequirementIds.clear()
+  for (const item of initialData.specificationItems.items) {
+    renderedRequirementUniqueIds.set(item.id, item.uniqueId)
+  }
+  for (const item of initialData.availableRequirements.rows) {
+    renderedRequirementUniqueIds.set(item.id, item.uniqueId)
+    renderedAvailableRequirementIds.add(item.id)
+  }
   return render(
     <ConfirmModalProvider>
       <RequirementsSpecificationDetailClient
@@ -841,6 +453,229 @@ function renderRequirementsSpecificationDetailClient(
       />
     </ConfirmModalProvider>,
   )
+}
+
+type RequirementTableKind = 'available' | 'items'
+
+function requirementPanel(tableKind: RequirementTableKind): HTMLElement {
+  const panel = document.querySelector<HTMLElement>(
+    `[data-specification-detail-list-panel="${tableKind}"]`,
+  )
+  if (!panel) throw new Error(`Missing ${tableKind} requirements panel`)
+  return panel
+}
+
+function requirementsTable(tableKind: RequirementTableKind): HTMLElement {
+  const table = requirementPanel(tableKind).querySelector<HTMLElement>(
+    '[data-requirements-data-table="true"]',
+  )
+  if (!table) throw new Error(`Missing ${tableKind} requirements table`)
+  return table
+}
+
+function requirementRow(
+  tableKind: RequirementTableKind,
+  uniqueId: string,
+): HTMLElement {
+  const row = Array.from(
+    requirementsTable(tableKind).querySelectorAll<HTMLElement>('tbody tr'),
+  ).find(candidate => within(candidate).queryByText(uniqueId))
+  if (!row) throw new Error(`Missing ${tableKind} requirement row ${uniqueId}`)
+  return row
+}
+
+function requirementRowCheckbox(
+  tableKind: RequirementTableKind,
+  uniqueId: string,
+): HTMLInputElement {
+  return within(requirementRow(tableKind, uniqueId)).getByRole('checkbox', {
+    name: 'common.selectRow',
+  }) as HTMLInputElement
+}
+
+function requirementSelectAllCheckbox(
+  tableKind: RequirementTableKind,
+): HTMLInputElement {
+  return within(requirementPanel(tableKind)).getByRole('checkbox', {
+    name: 'common.selectAll',
+  }) as HTMLInputElement
+}
+
+function requirementHeaderControl(
+  tableKind: RequirementTableKind,
+  column: string,
+): HTMLElement {
+  const control = requirementPanel(tableKind).querySelector<HTMLElement>(
+    `[data-requirement-header-control="${column}"]`,
+  )
+  if (!control) throw new Error(`Missing ${tableKind} ${column} header control`)
+  return control
+}
+
+function requirementSortButton(
+  tableKind: RequirementTableKind,
+  column: string,
+): HTMLButtonElement {
+  return within(requirementHeaderControl(tableKind, column)).getByRole('button', {
+    name: 'common.sortBy',
+  }) as HTMLButtonElement
+}
+
+function requirementPackageButton(
+  tableKind: RequirementTableKind,
+  packageId: number,
+): HTMLButtonElement {
+  const panel = requirementPanel(tableKind)
+  let button = panel.querySelector<HTMLButtonElement>(
+    `[data-requirement-package="${packageId}"]`,
+  )
+  if (!button) {
+    const filterBand = panel.querySelector<HTMLElement>(
+      '[data-requirement-package-filter-layout="split"]',
+    )
+    const chooserTrigger = filterBand?.querySelector<HTMLButtonElement>(
+      'button[aria-expanded]',
+    )
+    if (chooserTrigger?.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(chooserTrigger)
+    }
+    button = document.querySelector<HTMLButtonElement>(
+      `[data-requirement-package="${packageId}"]`,
+    )
+  }
+  if (!button) {
+    throw new Error(
+      `Missing ${tableKind} requirement package ${packageId}; compact filter ${Boolean(
+        panel.querySelector('[data-requirement-package-filter-layout="split"]'),
+      )}`,
+    )
+  }
+  return button
+}
+
+function queryRequirementPackageButton(
+  tableKind: RequirementTableKind,
+  packageId?: number,
+): HTMLButtonElement | null {
+  return requirementPanel(tableKind).querySelector<HTMLButtonElement>(
+    packageId == null
+      ? '[data-requirement-package]'
+      : `[data-requirement-package="${packageId}"]`,
+  )
+}
+
+function requirementColumnButton(
+  tableKind: RequirementTableKind,
+): HTMLButtonElement {
+  return within(requirementPanel(tableKind)).getByRole('button', {
+    name: 'common.columns',
+  }) as HTMLButtonElement
+}
+
+function changeRequirementColumns(tableKind: RequirementTableKind) {
+  toggleRequirementColumn(tableKind, 'description')
+}
+
+function toggleRequirementColumn(
+  tableKind: RequirementTableKind,
+  column: string,
+) {
+  fireEvent.click(requirementColumnButton(tableKind))
+  const option = document.querySelector<HTMLInputElement>(
+    `[data-column-picker-option="${column}"] input[type="checkbox"]`,
+  )
+  if (!option) throw new Error(`Missing ${tableKind} ${column} column option`)
+  fireEvent.click(option)
+  fireEvent.keyDown(document, { key: 'Escape' })
+}
+
+function openTableActionMenu(actionLabel: string): HTMLElement {
+  fireEvent.click(screen.getByRole('button', { name: actionLabel }))
+  return screen.getByRole('menu')
+}
+
+function requirementSearchInput(
+  tableKind: RequirementTableKind,
+): HTMLInputElement {
+  const existing = screen.queryByRole('textbox', {
+    name: 'requirement.uniqueId',
+  }) as HTMLInputElement | null
+  if (existing) return existing
+  const header = requirementHeaderControl(tableKind, 'uniqueId')
+  fireEvent.click(
+    within(header).getByRole('button', { name: 'common.filterBy' }),
+  )
+  return screen.getByRole('textbox', {
+    name: 'requirement.uniqueId',
+  }) as HTMLInputElement
+}
+
+function toggleRequirementStatusFilter(tableKind: RequirementTableKind) {
+  if (
+    !requirementPanel(tableKind).querySelector(
+      '[data-requirement-header-control="status"]',
+    )
+  ) {
+    toggleRequirementColumn(tableKind, 'status')
+  }
+  let checkbox = screen
+    .getAllByRole('checkbox')
+    .find(candidate => !candidate.closest('[data-specification-detail-list-panel]'))
+  if (!checkbox) {
+    const header = requirementHeaderControl(tableKind, 'status')
+    fireEvent.click(
+      within(header).getByRole('button', { name: 'common.filterBy' }),
+    )
+    checkbox = screen
+      .getAllByRole('checkbox')
+      .find(
+        candidate =>
+          !candidate.closest('[data-specification-detail-list-panel]'),
+      )
+  }
+  if (!checkbox) throw new Error(`Missing ${tableKind} status filter option`)
+  fireEvent.click(checkbox)
+}
+
+function requirementNeedsReferenceSelect(
+  tableKind: RequirementTableKind,
+  uniqueId: string,
+): HTMLSelectElement {
+  return within(requirementRow(tableKind, uniqueId)).getByRole('combobox', {
+    name: 'requirement.needsReference',
+  }) as HTMLSelectElement
+}
+
+function requirementStatusSelect(uniqueId: string): HTMLSelectElement {
+  return within(requirementRow('items', uniqueId)).getByRole('combobox', {
+    name: 'requirement.specificationItemStatus',
+  }) as HTMLSelectElement
+}
+
+function triggerRequirementLoadMore(tableKind: RequirementTableKind) {
+  const panel = requirementPanel(tableKind)
+  const entry = Array.from(intersectionObserverCallbacks).find(([target]) =>
+    panel.contains(target),
+  )
+  if (!entry) throw new Error(`Missing ${tableKind} load-more sentinel`)
+  const [target, callback] = entry
+  act(() => {
+    callback(
+      [{ isIntersecting: true, target } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+  })
+}
+
+function itemsStatus(): HTMLElement {
+  const statuses = within(requirementPanel('items')).getAllByRole('status')
+  return (
+    statuses.find(status =>
+      /selectionStatus|selectionDisappeared|requirementsAdded|selectionActionLimitExceeded/.test(
+        status.textContent ?? '',
+      ),
+    ) ?? statuses[0]
+  ) as HTMLElement
 }
 
 function specificationApiPath(path = '') {
@@ -869,18 +704,30 @@ function searchParamsFromPath(path: string): URLSearchParams {
 
 function selectRequirementRows(ids: number[]) {
   for (const id of ids) {
-    fireEvent.click(screen.getByRole('button', { name: `select-row-${id}` }))
+    const uniqueId = renderedRequirementUniqueIds.get(id)
+    if (!uniqueId) throw new Error(`Missing known requirement row ${id}`)
+    fireEvent.click(
+      requirementRowCheckbox(
+        renderedAvailableRequirementIds.has(id) ? 'available' : 'items',
+        uniqueId,
+      ),
+    )
   }
 }
 
 function requirementRowNames(
   tableKind: 'available' | 'items',
 ): Array<string | null> {
-  return within(
-    screen.getByRole('table', { name: `${tableKind} requirements` }),
+  return Array.from(
+    requirementsTable(tableKind).querySelectorAll<HTMLElement>('tbody tr'),
   )
-    .getAllByRole('row')
-    .map(row => row.textContent)
+    .filter(row => !row.querySelector('[data-expanded-detail="true"]'))
+    .map(row =>
+      within(row)
+        .getAllByRole('cell')
+        .map(cell => cell.textContent?.trim())
+        .find(text => Boolean(text)) ?? null,
+    )
 }
 
 const workflowContext = {
@@ -994,6 +841,19 @@ const workflowContext = {
   pdfDownloadState,
   renderRequirementsSpecificationDetailClient,
   requirementRowNames,
+  requirementColumnButton,
+  changeRequirementColumns,
+  requirementHeaderControl,
+  requirementNeedsReferenceSelect,
+  requirementPackageButton,
+  requirementPanel,
+  requirementRow,
+  requirementRowCheckbox,
+  requirementSearchInput,
+  requirementSelectAllCheckbox,
+  requirementSortButton,
+  requirementStatusSelect,
+  requirementsTable,
   searchParamsFromPath,
   selectRequirementRows,
   specificationApiPath,
@@ -1040,6 +900,12 @@ const workflowContext = {
     specificationRequirementPackagesGetHandler = value
   },
   waitForInitialAvailableRequirementsRefresh,
+  itemsStatus,
+  openTableActionMenu,
+  queryRequirementPackageButton,
+  toggleRequirementColumn,
+  toggleRequirementStatusFilter,
+  triggerRequirementLoadMore,
   useReducedMotion,
 }
 
@@ -1048,6 +914,7 @@ export type SpecDetailWorkflowContext = typeof workflowContext
 
 describe('RequirementsSpecificationDetailClient', () => {
   beforeEach(() => {
+    intersectionObserverCallbacks.clear()
     vi.clearAllMocks()
     intlState.locale = 'en'
     intlState.selectionActionLimitExceeded.mockReset()

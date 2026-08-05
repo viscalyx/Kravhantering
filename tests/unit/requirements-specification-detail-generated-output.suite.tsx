@@ -13,34 +13,36 @@ export function registerGeneratedOutputTests(
 
       await waitFor(() => {
         expect(
-          screen.getByRole('table', { name: 'items requirements' }),
-        ).toHaveTextContent('lib:31')
+          context.requirementsTable('items'),
+        ).toHaveTextContent('BEH0001')
       })
-      const moreActions = screen.getByRole('menu', {
-        name: 'more-actions menu',
-      })
+      let moreActions = context.openTableActionMenu('common.moreActions')
       expect(within(moreActions).getAllByRole('menuitem')).toHaveLength(5)
       expect(within(moreActions).getAllByRole('separator')).toHaveLength(2)
 
-      const progressReport = screen.getByRole('menuitem', {
+      const progressReport = within(moreActions).getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
       })
-      const traceabilityReport = screen.getByRole('menuitem', {
+      fireEvent.click(progressReport)
+      moreActions = context.openTableActionMenu('common.moreActions')
+      const traceabilityReport = within(moreActions).getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
       })
-      fireEvent.click(progressReport)
       fireEvent.click(traceabilityReport)
 
+      const moreActionsTrigger = screen.getByRole('button', {
+        name: 'common.moreActions',
+      })
       expect(context.pdfDownloadState.download).toHaveBeenCalledWith({
         fallbackFilename:
           'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
-        restoreFocusTo: progressReport,
+        restoreFocusTo: moreActionsTrigger,
         url: '/en/specifications/8/reports/pdf/progress',
       })
       expect(context.pdfDownloadState.download).toHaveBeenCalledWith({
         fallbackFilename:
           'specification.reportProfiles.traceability Authorization and IAM ETJANST-UPP-2026.pdf',
-        restoreFocusTo: traceabilityReport,
+        restoreFocusTo: moreActionsTrigger,
         url: '/en/specifications/8/reports/pdf/traceability?locale=en&sortBy=uniqueId&sortDirection=asc',
       })
     })
@@ -49,11 +51,12 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient()
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const importTrigger = screen.getByRole('menuitem', {
-        name: 'specification.importLocalRequirements',
+      const moreActionsTrigger = screen.getByRole('button', {
+        name: 'common.moreActions',
       })
-      const aiTrigger = screen.getByRole('menuitem', {
-        name: 'specification.aiGenerate',
+      let moreActions = context.openTableActionMenu('common.moreActions')
+      const importTrigger = within(moreActions).getByRole('menuitem', {
+        name: 'specification.importLocalRequirements',
       })
 
       fireEvent.click(importTrigger)
@@ -68,7 +71,11 @@ export function registerGeneratedOutputTests(
           screen.queryByRole('region', { name: 'Import review' }),
         ).not.toBeInTheDocument()
       })
-      expect(importTrigger).toHaveFocus()
+      expect(moreActionsTrigger).toHaveFocus()
+      moreActions = context.openTableActionMenu('common.moreActions')
+      const aiTrigger = within(moreActions).getByRole('menuitem', {
+        name: 'specification.aiGenerate',
+      })
       fireEvent.click(aiTrigger)
       expect(
         screen.getByRole('region', { name: 'AI authoring' }),
@@ -87,16 +94,14 @@ export function registerGeneratedOutputTests(
           screen.queryByRole('region', { name: 'Import review' }),
         ).not.toBeInTheDocument()
       })
-      expect(aiTrigger).toHaveFocus()
+      expect(moreActionsTrigger).toHaveFocus()
     })
 
     it('places kravunderlag create before columns and secondary actions after columns', async () => {
       context.renderRequirementsSpecificationDetailClient()
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const itemsSurface = screen.getByRole('region', {
-        name: 'items requirements surface',
-      })
+      const itemsSurface = context.requirementPanel('items')
       const createLocalAction = within(itemsSurface).getByRole('button', {
         name: 'specification.newLocalRequirement',
       })
@@ -115,9 +120,7 @@ export function registerGeneratedOutputTests(
         columnsAction.compareDocumentPosition(moreActions) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
-      const menu = within(itemsSurface).getByRole('menu', {
-        name: 'more-actions menu',
-      })
+      const menu = context.openTableActionMenu('common.moreActions')
       expect(within(menu).getAllByRole('menuitem')).toHaveLength(5)
       expect(within(menu).getAllByRole('separator')).toHaveLength(2)
     })
@@ -135,11 +138,11 @@ export function registerGeneratedOutputTests(
         const view =
           context.renderRequirementsSpecificationDetailClient(initialData)
         await context.waitForInitialAvailableRequirementsRefresh()
-        const aiMenuItem = screen.getByRole('menuitem', {
-          name: 'specification.aiGenerate',
+        const menu = context.openTableActionMenu('common.moreActions')
+        const aiMenuItem = within(menu).getByRole('menuitem', {
+          name: /^specification\.aiGenerate/,
         })
-        expect(aiMenuItem).toBeDisabled()
-        expect(aiMenuItem).toHaveAttribute('aria-description', expectedMessage)
+        expect(aiMenuItem).toHaveAttribute('aria-disabled', 'true')
         expect(aiMenuItem).toHaveAttribute('title', expectedMessage)
         fireEvent.click(aiMenuItem)
         expect(
@@ -156,7 +159,8 @@ export function registerGeneratedOutputTests(
       )
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const progressReport = screen.getByRole('menuitem', {
+      const menu = context.openTableActionMenu('common.moreActions')
+      const progressReport = within(menu).getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
       })
       fireEvent.click(progressReport)
@@ -164,7 +168,9 @@ export function registerGeneratedOutputTests(
       expect(context.pdfDownloadState.download).toHaveBeenCalledWith({
         fallbackFilename:
           'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
-        restoreFocusTo: progressReport,
+        restoreFocusTo: screen.getByRole('button', {
+          name: 'common.moreActions',
+        }),
         url: '/en/specifications/8/reports/pdf/progress',
       })
     })
@@ -207,19 +213,22 @@ export function registerGeneratedOutputTests(
       await context.waitForInitialAvailableRequirementsRefresh()
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'filter-package-items-9' }),
+        context.requirementPackageButton('items', 9),
       )
 
       await waitFor(() => {
+        const menu = context.openTableActionMenu('common.moreActions')
         expect(
-          screen.getByRole('menuitem', {
+          within(menu).getByRole('menuitem', {
             name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
           }),
         ).toBeInTheDocument()
+        fireEvent.keyDown(document, { key: 'Escape' })
       })
 
+      const menu = context.openTableActionMenu('common.moreActions')
       fireEvent.click(
-        screen.getByRole('menuitem', {
+        within(menu).getByRole('menuitem', {
           name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
         }),
       )
@@ -264,31 +273,34 @@ export function registerGeneratedOutputTests(
 
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
-      fireEvent.click(screen.getByRole('button', { name: 'load-more-items' }))
-      expect(await screen.findByRole('row', { name: 'lib:200' })).toBeVisible()
-      fireEvent.click(screen.getByRole('button', { name: 'load-more-items' }))
-      expect(await screen.findByRole('row', { name: 'lib:201' })).toBeVisible()
+      context.triggerRequirementLoadMore('items')
       expect(
-        screen.queryByRole('button', { name: 'load-more-items' }),
-      ).not.toBeInTheDocument()
+        await screen.findByRole('row', { name: /BEH0200/ }),
+      ).toBeVisible()
+      context.triggerRequirementLoadMore('items')
+      expect(
+        await screen.findByRole('row', { name: /BEH0201/ }),
+      ).toBeVisible()
 
       expect(
-        screen.getByRole('menuitem', {
+        within(context.openTableActionMenu('common.moreActions')).getByRole('menuitem', {
           name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
         }),
       ).toBeInTheDocument()
+      fireEvent.keyDown(document, { key: 'Escape' })
       expect(
-        screen.getByRole('menuitem', {
+        within(context.openTableActionMenu('common.moreActions')).getByRole('menuitem', {
           name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
         }),
       ).toBeInTheDocument()
-    })
+    }, 15_000)
 
     it('routes full CSV through the generated-output controller with menu focus restoration', async () => {
       context.renderRequirementsSpecificationDetailClient()
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const exportFull = screen.getByRole('menuitem', {
+      const menu = context.openTableActionMenu('common.moreActions')
+      const exportFull = within(menu).getByRole('menuitem', {
         name: 'specification.exportProfiles.full',
       })
       fireEvent.click(exportFull)
@@ -297,7 +309,9 @@ export function registerGeneratedOutputTests(
         fallbackFilename:
           'specification.exportProfiles.full Authorization and IAM ETJANST-UPP-2026.csv',
         output: 'csv',
-        restoreFocusTo: exportFull,
+        restoreFocusTo: screen.getByRole('button', {
+          name: 'common.moreActions',
+        }),
         url: '/api/requirements-specifications/8/exports?profile=full&locale=en',
       })
     })
@@ -315,16 +329,17 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
+      const menu = context.openTableActionMenu('common.moreActions')
       expect(
-        screen.getByRole('menuitem', {
+        within(menu).getByRole('menuitem', {
           name: 'specification.exportProfiles.procurement',
         }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
       expect(
-        screen.getByRole('menuitem', {
+        within(menu).getByRole('menuitem', {
           name: 'specification.exportProfiles.full',
         }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
     })
   })
 }

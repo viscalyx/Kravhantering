@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { SPECIFICATION_PRELOAD_ERROR_KEYS } from '@/lib/specifications/preload-types'
 import type { SpecDetailWorkflowContext } from './requirements-specification-detail-client.suite'
@@ -46,11 +46,11 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('table', { name: 'available requirements' }),
-        ).toHaveTextContent('')
+          within(context.requirementsTable('available')).getByRole('status'),
+        ).toHaveTextContent('common.noResults')
       })
       fireEvent.click(
-        screen.getByRole('button', { name: 'sort-description-items' }),
+        context.requirementSortButton('items', 'description'),
       )
       await waitFor(() => {
         expect(screen.getByText('specification.noItems')).toBeInTheDocument()
@@ -258,9 +258,7 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
         },
       })
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'load-more-available' }),
-      )
+      context.triggerRequirementLoadMore('available')
 
       await waitFor(() => {
         expect(
@@ -300,9 +298,7 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
         } as Response),
       )
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'load-more-available' }),
-      )
+      context.triggerRequirementLoadMore('available')
 
       expect(
         await screen.findByText('common.requirementListRefreshed'),
@@ -313,8 +309,8 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
         )
       })
       expect(
-        screen.getByRole('table', { name: 'available requirements' }),
-      ).toHaveTextContent('202')
+        context.requirementsTable('available'),
+      ).toHaveTextContent('IAM0202')
     })
 
     it('ignores stale invalid-cursor recovery after available filters change', async () => {
@@ -346,9 +342,7 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
           }),
       )
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'load-more-available' }),
-      )
+      context.triggerRequirementLoadMore('available')
       await waitFor(() => {
         expect(
           availableRequirementsFetchUrls().some(
@@ -358,7 +352,7 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
       })
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'filter-package-available-1' }),
+        context.requirementPackageButton('available', 1),
       )
       await waitFor(() => {
         expect(

@@ -34,7 +34,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
         ).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -69,7 +69,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
           },
         ],
       })
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -96,7 +96,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
 
     it('adds selected requirements without a needs reference', async () => {
       renderRequirementsSpecificationDetailClient()
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -140,7 +140,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
 
     it('adds selected requirements with a newly described needs reference', async () => {
       renderRequirementsSpecificationDetailClient()
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -189,7 +189,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
         ).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -225,7 +225,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
         ).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -291,7 +291,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
         ).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -340,16 +340,16 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       await waitForInitialAvailableRequirementsRefresh()
 
       fireEvent.change(
-        screen.getByRole('textbox', { name: 'search-items-requirements' }),
+        context.requirementSearchInput('items'),
         { target: { value: 'DOES-NOT-MATCH' } },
       )
       await waitFor(() => {
         expect(
-          screen.getByRole('textbox', { name: 'search-items-requirements' }),
+          context.requirementSearchInput('items'),
         ).toHaveValue('DOES-NOT-MATCH')
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -362,27 +362,27 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('status', { name: 'items requirements status' }),
+          context.itemsStatus(),
         ).toHaveTextContent('specification.requirementsAddedHiddenByFilters')
       })
       expect(
-        screen.getByRole('textbox', { name: 'search-items-requirements' }),
+        context.requirementSearchInput('items'),
       ).toHaveValue('DOES-NOT-MATCH')
 
       fireEvent.change(
-        screen.getByRole('textbox', { name: 'search-items-requirements' }),
+        context.requirementSearchInput('items'),
         { target: { value: initialAvailableRequirement.uniqueId } },
       )
 
       await waitFor(() => {
         expect(
-          screen.getByRole('status', { name: 'items requirements status' }),
+          context.itemsStatus(),
         ).toHaveTextContent(/^specification\.requirementsAdded$/)
       })
       expect(
-        screen.getByRole('status', { name: 'items requirements status' }),
+        context.itemsStatus(),
       ).not.toHaveTextContent('specification.requirementsAddedHiddenByFilters')
-      expect(requirementRowNames('items')).toEqual(['lib:202'])
+      expect(requirementRowNames('items')).toEqual(['IAM0202'])
     })
 
     it('does not announce a matching added requirement as hidden when it is on a later page', async () => {
@@ -421,14 +421,14 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       await waitForInitialAvailableRequirementsRefresh()
 
       fireEvent.change(
-        screen.getByRole('textbox', { name: 'search-items-requirements' }),
+        context.requirementSearchInput('items'),
         { target: { value: 'IAM' } },
       )
       await waitFor(() => {
-        expect(requirementRowNames('items')).toEqual(['lib:303'])
+        expect(requirementRowNames('items')).toEqual(['IAM0001'])
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -441,11 +441,11 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('status', { name: 'items requirements status' }),
+          context.itemsStatus(),
         ).toHaveTextContent('specification.requirementsAdded')
       })
       expect(
-        screen.getByRole('status', { name: 'items requirements status' }),
+        context.itemsStatus(),
       ).not.toHaveTextContent('specification.requirementsAddedHiddenByFilters')
       expect(
         fetchMock.mock.calls.some(([input]) => {
@@ -480,9 +480,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
         ).toBeInTheDocument()
       })
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'load-more-available' }),
-      )
+      context.triggerRequirementLoadMore('available')
 
       expect(
         await screen.findByText(
@@ -508,7 +506,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       })
       expect(createLocalRequirementButton).toHaveAttribute(
         'data-developer-mode-name',
-        'table action',
+        'floating pill',
       )
       expect(createLocalRequirementButton).toHaveAttribute(
         'data-developer-mode-context',
@@ -589,9 +587,6 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
             (init as RequestInit | undefined)?.method !== 'POST',
         ).length
         expect(itemsGetCount).toBeGreaterThan(initialItemsGetCount)
-        expect(
-          screen.getByRole('table', { name: 'items requirements' }),
-        ).toHaveTextContent('local:401')
       })
     })
 

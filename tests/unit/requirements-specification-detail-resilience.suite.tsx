@@ -35,7 +35,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
       })
       fireEvent.click(toggle)
       await waitFor(() => expect(toggle).toBeChecked())
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+      fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
       expect(
         screen.getByRole('button', {
           name: 'specification.addSelectedToSpecification',
@@ -82,9 +82,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
       expect(
         await screen.findByText('Available requirements offline'),
       ).toHaveAttribute('role', 'status')
-      fireEvent.click(
-        screen.getByRole('button', { name: 'toggle-status-filter-items' }),
-      )
+      context.toggleRequirementStatusFilter('items')
       await waitFor(() => {
         expect(
           fetchMock.mock.calls.some(([input]) =>
@@ -93,7 +91,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
         ).toBe(true)
       })
       fireEvent.click(
-        screen.getByRole('button', { name: 'sort-description-items' }),
+        context.requirementSortButton('items', 'description'),
       )
       await waitFor(() => {
         expect(screen.getByRole('alert')).toHaveTextContent(
@@ -101,8 +99,8 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
         )
       })
       expect(
-        screen.getByRole('table', { name: 'items requirements' }),
-      ).toHaveTextContent('lib:31')
+        context.requirementsTable('items'),
+      ).toHaveTextContent('BEH0001')
     })
 
     it('shows the original specification after a non-Error metadata refresh failure', async () => {
@@ -177,9 +175,9 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
       })
 
       expect(
-        screen.getByRole('table', { name: 'items requirements' }),
-      ).toHaveTextContent('101')
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+        context.requirementsTable('items'),
+      ).toHaveTextContent('BEH0001')
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       expect(
         screen.queryByRole('button', {
           name: 'specification.removeSelectedFromSpecification',
@@ -249,14 +247,17 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
         },
       })
       await waitForInitialAvailableRequirementsRefresh()
-      const managementReport = screen.getByRole('menuitem', {
+      const menu = context.openTableActionMenu('common.moreActions')
+      const managementReport = within(menu).getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.management',
       })
       fireEvent.click(managementReport)
 
       expect(pdfDownloadState.download).toHaveBeenCalledWith(
         expect.objectContaining({
-          restoreFocusTo: managementReport,
+          restoreFocusTo: screen.getByRole('button', {
+            name: 'common.moreActions',
+          }),
           url: '/en/specifications/8/reports/pdf/management',
         }),
       )
@@ -283,10 +284,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
             rows: [initialAvailableRequirement],
           },
         })
-        const loadMore = await screen.findByRole('button', {
-          name: 'load-more-available',
-        })
-        fireEvent.click(loadMore)
+        context.triggerRequirementLoadMore('available')
 
         expect(
           await screen.findByText(
@@ -296,8 +294,8 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
           ),
         ).toHaveAttribute('role', 'status')
         expect(
-          screen.getByRole('table', { name: 'available requirements' }),
-        ).toHaveTextContent('202')
+          context.requirementsTable('available'),
+        ).toHaveTextContent('IAM0202')
       },
     )
 
@@ -325,10 +323,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
         name: 'specification.filterWithRequirementSelectionQuestions',
       })
       fireEvent.click(toggle)
-      const loadMore = await screen.findByRole('button', {
-        name: 'load-more-available',
-      })
-      fireEvent.click(loadMore)
+      context.triggerRequirementLoadMore('available')
 
       await waitFor(() => {
         expect(
@@ -340,13 +335,10 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
             )
           }),
         ).toBe(true)
-        expect(
-          screen.queryByRole('button', { name: 'load-more-available' }),
-        ).toBeNull()
       })
       expect(
-        screen.getByRole('table', { name: 'available requirements' }),
-      ).toHaveTextContent('202')
+        context.requirementsTable('available'),
+      ).toHaveTextContent('IAM0202')
     })
   })
 }

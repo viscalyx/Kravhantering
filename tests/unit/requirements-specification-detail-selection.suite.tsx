@@ -33,13 +33,24 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         ]),
       }
       context.specificationItemsGetItems = initialData.specificationItems.items
+      context.specificationRequirementPackagesGetHandler = async () =>
+        context.okJson({
+          pagination: {
+            count: 1,
+            hasMore: false,
+            limit: 50,
+            nextCursor: null,
+          },
+          requirementPackages: [{ id: 9, name: 'Security package' }],
+          selectedRequirementPackages: [],
+        })
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       await act(async () => {
         fireEvent.click(
-          screen.getByRole('button', { name: 'sort-description-items' }),
+          context.requirementSortButton('items', 'description'),
         )
       })
       expect(
@@ -49,13 +60,13 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       ).toBeInTheDocument()
       await act(async () => {
         fireEvent.click(
-          screen.getByRole('button', { name: 'filter-package-items-9' }),
+          context.requirementPackageButton('items', 9),
         )
       })
 
       await waitFor(() => {
         expect(
-          screen.getByRole('status', { name: 'items requirements status' }),
+          context.itemsStatus(),
         ).toHaveTextContent('specification.selectionStatus')
       })
       fireEvent.click(
@@ -71,7 +82,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
     it('renders selected-item actions as icon buttons with translated tooltips', async () => {
       context.renderRequirementsSpecificationDetailClient()
       await context.waitForInitialAvailableRequirementsRefresh()
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
 
       for (const name of [
         'specification.assignNeedsReferenceAction',
@@ -114,18 +125,29 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         specificationItems: context.createSpecificationItemsPage(items),
       }
       context.specificationItemsGetItems = items
+      context.specificationRequirementPackagesGetHandler = async () =>
+        context.okJson({
+          pagination: {
+            count: 2,
+            hasMore: false,
+            limit: 50,
+            nextCursor: null,
+          },
+          requirementPackages: initialData.requirementPackages,
+          selectedRequirementPackages: [],
+        })
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'filter-package-items-1' }),
+        context.requirementPackageButton('items', 1),
       )
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: 'filter-package-items-1' }),
+          context.requirementPackageButton('items', 1),
         ).toHaveAttribute('aria-pressed', 'true')
       })
-      fireEvent.click(screen.getByRole('button', { name: 'select-all-items' }))
+      context.selectRequirementRows(items.slice(0, 200).map(item => item.id))
 
       const sharedActionNames = [
         'specification.assignNeedsReferenceAction',
@@ -138,10 +160,10 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       }
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'filter-package-items-1' }),
+        context.requirementPackageButton('items', 1),
       )
-      await screen.findByRole('row', { name: 'lib:201' })
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-201' }))
+      await screen.findByRole('row', { name: /BEH0201/ })
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0201'))
 
       expect(
         context.intlState.selectionActionLimitExceeded,
@@ -161,11 +183,11 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         )
       }
       expect(
-        screen.getByRole('button', { name: 'select-row-201' }),
-      ).toHaveAttribute('aria-pressed', 'true')
+        context.requirementRowCheckbox('items', 'BEH0201'),
+      ).toBeChecked()
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'expand-row-items-1' }),
+        context.requirementRow('items', 'BEH0001'),
       )
       expect(
         await screen.findByRole('button', {
@@ -174,7 +196,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       ).toBeEnabled()
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'filter-package-items-1' }),
+        context.requirementPackageButton('items', 1),
       )
       await waitFor(() => {
         expect(
@@ -203,17 +225,20 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         expect(screen.getByRole('button', { name })).toBeEnabled()
       }
       expect(
-        screen.getByRole('status', { name: 'items requirements status' }),
+        context.itemsStatus(),
       ).not.toHaveTextContent('specification.selectionActionLimitExceeded')
-    })
+    }, 30_000)
 
     it('preserves selection across an authoritative item refresh and clears it on locale change', async () => {
       const initialData = context.createInitialData()
       const view =
         context.renderRequirementsSpecificationDetailClient(initialData)
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
+      fireEvent.click(context.requirementRow('items', 'BEH0001'))
       fireEvent.click(
-        screen.getByRole('button', { name: 'assign-needs-ref-lib:31' }),
+        screen.getByRole('button', {
+          name: 'refresh requirement detail',
+        }),
       )
 
       await waitFor(() => {
@@ -244,7 +269,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
 
     it('announces and deselects selected items that disappear during authoritative resolution', async () => {
       context.renderRequirementsSpecificationDetailClient()
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       context.specificationItemsGetItems = []
       fireEvent.click(
         screen.getByRole('button', {
@@ -254,7 +279,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('status', { name: 'items requirements status' }),
+          context.itemsStatus(),
         ).toHaveTextContent('specification.selectionDisappeared')
       })
       expect(
@@ -272,7 +297,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       }
       context.specificationItemsGetItems = [item]
       context.renderRequirementsSpecificationDetailClient(initialData)
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.clearNeedsReferenceAction',
@@ -314,7 +339,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         ...context.createInitialData(),
         specificationItems: context.createSpecificationItemsPage([item]),
       })
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.clearNeedsReferenceAction',
@@ -345,7 +370,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         throw new Error('Could not resolve selected applications')
       }
       context.renderRequirementsSpecificationDetailClient()
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
@@ -363,7 +388,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         ...context.createInitialData(),
         availableNeedsRefs: [{ description: null, id: 81, text: 'IAM-42' }],
       })
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
@@ -417,7 +442,10 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       }
       context.specificationItemsGetItems = initialData.specificationItems.items
       context.renderRequirementsSpecificationDetailClient(initialData)
-      fireEvent.click(screen.getByRole('button', { name: 'select-all-items' }))
+      await context.waitForInitialAvailableRequirementsRefresh()
+      context.selectRequirementRows(
+        initialData.specificationItems.items.map(item => item.id),
+      )
       fireEvent.click(
         screen.getByRole('button', { name: 'specification.removeSelected' }),
       )
@@ -455,7 +483,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
 
     it('cancels a library-only removal without sending a delete request', async () => {
       context.renderRequirementsSpecificationDetailClient()
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', { name: 'specification.removeSelected' }),
       )
@@ -493,7 +521,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         ...context.createInitialData(),
         specificationItems: context.createSpecificationItemsPage([localItem]),
       })
-      fireEvent.click(screen.getByRole('button', { name: 'select-row--41' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'KRAV0001'))
       fireEvent.click(
         screen.getByRole('button', { name: 'specification.removeSelected' }),
       )
@@ -537,7 +565,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         ok: false,
       })
       context.renderRequirementsSpecificationDetailClient()
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', { name: 'specification.removeSelected' }),
       )
@@ -559,7 +587,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         throw new Error('Removal network unavailable')
       }
       context.renderRequirementsSpecificationDetailClient()
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', { name: 'specification.removeSelected' }),
       )
@@ -572,8 +600,8 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         'Removal network unavailable',
       )
       expect(
-        screen.getByRole('button', { name: 'select-row-101' }),
-      ).toHaveAttribute('aria-pressed', 'true')
+        context.requirementRowCheckbox('items', 'BEH0001'),
+      ).toBeChecked()
     })
 
     it('reports partial mixed removal and keeps only the failed application selected', async () => {
@@ -615,11 +643,11 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         'specification.removePartialFail',
       )
       expect(
-        screen.getByRole('button', { name: 'select-row--41' }),
-      ).toHaveAttribute('aria-pressed', 'true')
+        context.requirementRowCheckbox('items', 'KRAV0001'),
+      ).toBeChecked()
       expect(
-        screen.getByRole('button', { name: 'select-row-101' }),
-      ).toHaveAttribute('aria-pressed', 'false')
+        context.requirementRowCheckbox('items', 'BEH0001'),
+      ).not.toBeChecked()
     })
 
     it('reports a removal resolution failure before asking for confirmation', async () => {
@@ -627,7 +655,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         throw new Error('Application resolution unavailable')
       }
       context.renderRequirementsSpecificationDetailClient()
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', { name: 'specification.removeSelected' }),
       )
@@ -646,7 +674,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         })
       context.renderRequirementsSpecificationDetailClient()
       fireEvent.click(
-        screen.getByRole('button', { name: 'expand-row-items-101' }),
+        context.requirementRow('items', 'BEH0001'),
       )
       expect(
         await screen.findByText('Requirement detail 101'),
@@ -831,11 +859,11 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         'deviation.bulkDeviationPartialFail',
       )
       expect(
-        screen.getByRole('button', { name: 'select-row--41' }),
-      ).toHaveAttribute('aria-pressed', 'true')
+        context.requirementRowCheckbox('items', 'KRAV0001'),
+      ).toBeChecked()
       expect(
-        screen.getByRole('button', { name: 'select-row-101' }),
-      ).toHaveAttribute('aria-pressed', 'false')
+        context.requirementRowCheckbox('items', 'BEH0001'),
+      ).not.toBeChecked()
       const deviationPosts = context.fetchMock.mock.calls.filter(
         ([url, init]) =>
           String(url).startsWith('/api/specification-item-deviations/') &&
@@ -911,8 +939,8 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       })
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: 'select-row-101' }),
-        ).toHaveAttribute('aria-pressed', 'false')
+          context.requirementRowCheckbox('items', 'BEH0001'),
+      ).not.toBeChecked()
       })
       expect(maxInFlight).toBe(4)
     })
@@ -934,7 +962,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         ],
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
@@ -983,7 +1011,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         ],
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
@@ -1023,7 +1051,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         ],
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
@@ -1067,7 +1095,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         ],
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
