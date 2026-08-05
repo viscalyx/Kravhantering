@@ -1106,22 +1106,27 @@ describe('requirements import service', () => {
     vi.mocked(
       getRequirementImportValidationSessionByTokenHash,
     ).mockResolvedValue(session)
-    vi.mocked(createRequirementsBatchWithExecutor).mockResolvedValue([
-      {
-        requirement: {
-          id: 101,
-          requirementAreaId: 7,
-          sequenceNumber: 1,
-          uniqueId: 'TEST0001',
-        },
-        version: {
-          id: 201,
-          requirementId: 101,
-          statusId: 1,
-          versionNumber: 1,
-        },
+    const createdResult = {
+      requirement: {
+        id: 101,
+        requirementAreaId: 7,
+        sequenceNumber: 1,
+        uniqueId: 'TEST0001',
       },
-    ] as never)
+      version: {
+        id: 201,
+        requirementId: 101,
+        statusId: 1,
+        versionNumber: 1,
+      },
+    }
+    vi.mocked(createRequirementsBatchWithExecutor).mockImplementationOnce(
+      async (executor, _rows, options) => {
+        await options?.audit?.(executor, createdResult as never, 0)
+        await options?.batchAudit?.(executor, [createdResult] as never)
+        return [createdResult] as never
+      },
+    )
 
     const result = await workflow.manageImport(context, {
       operation: 'execute',
@@ -1973,5 +1978,690 @@ describe('requirements import service', () => {
       iconName: 'AlertCircle',
       name: 'Hög',
     })
+  })
+
+  it('lists and searches authorized import destinations across both kinds', async () => {
+    vi.mocked(listSpecificationsForActor).mockResolvedValue([
+      {
+        id: 9,
+        name: 'Zulu procurement',
+        specificationCode: 'SPEC-009',
+      },
+      {
+        id: 3,
+        name: 'Alpha procurement',
+        specificationCode: 'SPEC-003',
+      },
+    ] as never)
+    vi.mocked(listAreasActorCanAuthor).mockResolvedValue([
+      {
+        id: 7,
+        name: 'Clinical systems',
+        prefix: 'Clinical',
+      },
+      {
+        id: 8,
+        name: 'Administrative systems',
+        prefix: 'ADMIN',
+      },
+    ] as never)
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    const all = await workflow.manageImport(context, {
+      operation: 'list_destinations',
+    })
+    expect(all).toMatchObject({
+      result: [
+        { name: 'Alpha procurement', specificationCode: 'SPEC-003' },
+        { name: 'Zulu procurement', specificationCode: 'SPEC-009' },
+        { name: 'Administrative systems', prefix: 'ADMIN' },
+        { name: 'Clinical systems', prefix: 'Clinical' },
+      ],
+    })
+
+    const libraries = await workflow.manageImport(context, {
+      kind: 'requirements_library',
+      operation: 'list_destinations',
+    })
+    expect(libraries).toMatchObject({
+      result: [
+        { areaId: 8, kind: 'requirements_library' },
+        { areaId: 7, kind: 'requirements_library' },
+      ],
+    })
+
+    const specificationSearch = await workflow.manageImport(context, {
+      kind: 'requirements_specification',
+      operation: 'search_destinations',
+      search: 'SPEC-009',
+    })
+    expect(specificationSearch).toMatchObject({
+      result: [
+        {
+          match: expect.any(Object),
+          specificationId: 9,
+        },
+      ],
+    })
+
+    const areaSearch = await workflow.manageImport(context, {
+      operation: 'search_destinations',
+      search: 'clinical',
+    })
+    expect(areaSearch).toMatchObject({
+      result: [{ areaId: 7, match: expect.any(Object) }],
+    })
+
+    await expect(
+      workflow.manageImport(context, {
+        operation: 'search_destinations',
+        search: '   ',
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+  })
+
+  it('lists destinations with admin-wide visibility', async () => {
+    vi.mocked(listSpecificationsForActor).mockResolvedValue([])
+    vi.mocked(listAreasActorCanAuthor).mockResolvedValue([])
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+    const context = makeContext('requirements_manage_import')
+    context.actor.roles = ['Admin']
+
+    await workflow.manageImport(context, { operation: 'list_destinations' })
+
+    expect(listSpecificationsForActor).toHaveBeenCalledWith(
+      {},
+      {
+        actorHsaId: context.actor.hsaId,
+        canReadAll: true,
+      },
+    )
+    expect(listAreasActorCanAuthor).toHaveBeenCalledWith(
+      {},
+      context.actor.hsaId,
+      true,
+    )
+  })
+
+  it('executes a successful library import and invokes row and batch audits', async () => {
+    vi.mocked(listCategories).mockResolvedValue([
+      { id: 1, nameEn: 'Security', nameSv: 'Säkerhet' },
+    ])
+    vi.mocked(listPriorityLevels).mockResolvedValue([
+      {
+        assessmentCriteriaEn: 'High',
+        assessmentCriteriaSv: 'Hög',
+        code: 'P4',
+        color: '#ef4444',
+        descriptionEn: 'High',
+        descriptionSv: 'Hög',
+        iconName: 'AlertCircle',
+        id: 4,
+        nameEn: 'High',
+        nameSv: 'Hög',
+        sortOrder: 1,
+      },
+    ])
+    vi.mocked(listTypes).mockResolvedValue([
+      {
+        id: 10,
+        nameEn: 'Functional',
+        nameSv: 'Funktionellt',
+        qualityCharacteristics: [
+          {
+            chapterId: '1',
+            id: 101,
+            nameEn: 'Completeness',
+            nameSv: 'Fullständighet',
+            parentId: null,
+            requirementTypeId: 10,
+          },
+        ],
+      },
+    ])
+    vi.mocked(listRequirementPackages).mockResolvedValue([
+      {
+        coAuthors: [],
+        createdAt: '2026-08-01T00:00:00.000Z',
+        id: 5,
+        isArchived: false,
+        leadDisplayName: 'Package lead',
+        leadEmail: null,
+        leadHsaId: 'SE5560000001-package',
+        name: 'Security package',
+        purposeAndScope: 'Security scope',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+      },
+    ])
+    vi.mocked(listNormReferences).mockResolvedValue([
+      {
+        createdAt: '2026-08-01T00:00:00.000Z',
+        id: 30,
+        isArchived: false,
+        issuer: 'ISO',
+        name: 'Active',
+        normReferenceId: 'ISO-ACTIVE',
+        reference: 'ISO A',
+        type: 'standard',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+        uri: null,
+        version: null,
+      },
+    ])
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+    const payload = requirementsImportPayloadSchema.parse({
+      requirements: [
+        {
+          acceptanceCriteria: '  Accepted after inspection  ',
+          categoryId: 1,
+          description: '  Systemet ska logga händelser.  ',
+          normReferenceIds: ['ISO-ACTIVE'],
+          priorityLevelId: 4,
+          qualityCharacteristicId: 101,
+          requirementPackageIds: [5],
+          typeId: 10,
+          verifiable: true,
+          verificationMethod: '  Inspection  ',
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+    const preview = await workflow.previewLibraryImport({} as never, {
+      areaId: 7,
+      locale: 'sv',
+      payload,
+    })
+    const row = preview.rows[0]
+    if (!row) throw new Error('Expected preview row')
+    const createdResult = {
+      requirement: {
+        id: 101,
+        requirementAreaId: 7,
+        sequenceNumber: 1,
+        uniqueId: 'TEST0001',
+      },
+      version: {
+        id: 201,
+        requirementId: 101,
+        statusId: 1,
+        versionNumber: 1,
+      },
+    }
+    vi.mocked(createRequirementsBatch).mockImplementationOnce(
+      async (_db, _rows, options) => {
+        const executor = { query: vi.fn().mockResolvedValue([]) }
+        await options?.audit?.(executor as never, createdResult as never, 0)
+        await options?.batchAudit?.(executor as never, [createdResult] as never)
+        return [createdResult] as never
+      },
+    )
+
+    const result = await workflow.executeLibraryImport(makeContext('rest'), {
+      areaId: 7,
+      locale: 'sv',
+      previewToken: preview.previewToken,
+      rows: [
+        {
+          ...row.values,
+          reviewRowId: row.reviewRowId,
+          sourceIndex: row.sourceIndex,
+        },
+      ],
+    })
+
+    expect(result).toMatchObject({
+      createdRows: [{ createdVisibleId: 'TEST0001' }],
+      mode: 'library',
+      summary: { createdCount: 1 },
+    })
+    expect(createRequirementsBatch).toHaveBeenCalledWith(
+      {},
+      [
+        expect.objectContaining({
+          acceptanceCriteria: 'Accepted after inspection',
+          description: 'Systemet ska logga händelser.',
+          normReferenceIds: [30],
+          requirementPackageIds: [5],
+          verificationMethod: 'Inspection',
+        }),
+      ],
+      expect.objectContaining({
+        audit: expect.any(Function),
+        batchAudit: expect.any(Function),
+      }),
+    )
+  })
+
+  it('invokes per-row and batch audit for specification-local import', async () => {
+    vi.mocked(getSpecificationById).mockResolvedValue({ id: 8 } as never)
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+    const payload = requirementsImportPayloadSchema.parse({
+      requirements: [{ description: 'Lokalt krav.' }],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+    const preview = await workflow.previewSpecificationLocalImport(
+      {} as never,
+      { locale: 'sv', payload, specificationId: 8 },
+    )
+    const row = preview.rows[0]
+    if (!row) throw new Error('Expected preview row')
+    vi.mocked(createSpecificationLocalRequirementsBatch).mockImplementationOnce(
+      async (_db, _specificationId, _rows, options) => {
+        await options?.batchAudit?.(
+          { query: vi.fn().mockResolvedValue([]) } as never,
+          [301, 302],
+        )
+        return [
+          { id: 301, uniqueId: 'LOCAL-301' },
+          { id: 302, uniqueId: 'LOCAL-302' },
+        ] as never
+      },
+    )
+
+    const result = await workflow.executeSpecificationLocalImport(
+      makeContext('rest'),
+      {
+        locale: 'sv',
+        previewToken: preview.previewToken,
+        rows: [
+          {
+            ...row.values,
+            reviewRowId: row.reviewRowId,
+            sourceIndex: row.sourceIndex,
+          },
+        ],
+        specificationId: 8,
+      },
+    )
+
+    expect(result.summary.createdCount).toBe(1)
+  })
+
+  it('reviews conflicting, ambiguous, missing, archived, and duplicate references', async () => {
+    vi.mocked(listCategories).mockResolvedValue([
+      { id: 1, nameEn: 'Security', nameSv: 'Säkerhet' },
+      { id: 2, nameEn: 'Duplicate', nameSv: 'Dubblett' },
+      { id: 3, nameEn: 'Duplicate', nameSv: 'Dubblett' },
+    ])
+    vi.mocked(listPriorityLevels).mockResolvedValue([
+      {
+        assessmentCriteriaEn: 'Low',
+        assessmentCriteriaSv: 'Låg',
+        code: 'P1',
+        color: '#22c55e',
+        descriptionEn: 'Low',
+        descriptionSv: 'Låg',
+        iconName: null,
+        id: 1,
+        nameEn: 'Low',
+        nameSv: 'Låg',
+        sortOrder: 1,
+      },
+      {
+        assessmentCriteriaEn: 'High',
+        assessmentCriteriaSv: 'Hög',
+        code: 'P4',
+        color: '#ef4444',
+        descriptionEn: 'High',
+        descriptionSv: 'Hög',
+        iconName: 'AlertCircle',
+        id: 4,
+        nameEn: 'High',
+        nameSv: 'Hög',
+        sortOrder: 2,
+      },
+    ])
+    vi.mocked(listTypes).mockResolvedValue([
+      {
+        id: 10,
+        nameEn: 'Functional',
+        nameSv: 'Funktionellt',
+        qualityCharacteristics: [
+          {
+            chapterId: '1',
+            id: 101,
+            nameEn: 'Completeness',
+            nameSv: 'Fullständighet',
+            parentId: null,
+            requirementTypeId: 10,
+          },
+        ],
+      },
+      {
+        id: 20,
+        nameEn: 'Non-functional',
+        nameSv: 'Icke-funktionellt',
+        qualityCharacteristics: [
+          {
+            chapterId: '2',
+            id: 201,
+            nameEn: 'Performance',
+            nameSv: 'Prestanda',
+            parentId: null,
+            requirementTypeId: 20,
+          },
+        ],
+      },
+    ])
+    vi.mocked(listRequirementPackages).mockResolvedValue([
+      {
+        coAuthors: [],
+        createdAt: '2026-08-01T00:00:00.000Z',
+        id: 5,
+        isArchived: false,
+        leadDisplayName: 'Package lead',
+        leadEmail: null,
+        leadHsaId: 'SE5560000001-package',
+        name: 'Common package',
+        purposeAndScope: 'Common scope',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+      },
+      {
+        coAuthors: [],
+        createdAt: '2026-08-01T00:00:00.000Z',
+        id: 6,
+        isArchived: false,
+        leadDisplayName: 'Package lead',
+        leadEmail: null,
+        leadHsaId: 'SE5560000001-package',
+        name: 'Ambiguous package',
+        purposeAndScope: 'Ambiguous scope',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+      },
+      {
+        coAuthors: [],
+        createdAt: '2026-08-01T00:00:00.000Z',
+        id: 7,
+        isArchived: false,
+        leadDisplayName: 'Package lead',
+        leadEmail: null,
+        leadHsaId: 'SE5560000001-package',
+        name: 'Ambiguous package',
+        purposeAndScope: 'Ambiguous scope',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+      },
+    ])
+    vi.mocked(listNormReferences).mockResolvedValue([
+      {
+        createdAt: '2026-08-01T00:00:00.000Z',
+        id: 30,
+        isArchived: false,
+        issuer: 'ISO',
+        name: 'Active',
+        normReferenceId: 'ISO-ACTIVE',
+        reference: 'ISO A',
+        type: 'standard',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+        uri: null,
+        version: null,
+      },
+      {
+        createdAt: '2026-08-01T00:00:00.000Z',
+        id: 31,
+        isArchived: true,
+        issuer: 'ISO',
+        name: 'Archived',
+        normReferenceId: 'ISO-ARCHIVED',
+        reference: 'ISO B',
+        type: 'standard',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+        uri: null,
+        version: null,
+      },
+    ])
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: {} as never,
+    })
+    const payload = requirementsImportPayloadSchema.parse({
+      proposedNormReferences: [
+        {
+          issuer: 'ISO',
+          key: 'ISO-ACTIVE',
+          name: 'Already active',
+          normReferenceId: 'ISO-ACTIVE',
+          reference: 'A',
+          type: 'standard',
+        },
+        {
+          issuer: 'ISO',
+          key: 'archived-key',
+          name: 'Archived',
+          normReferenceId: 'ISO-ARCHIVED',
+          reference: 'B',
+          type: 'standard',
+        },
+        {
+          issuer: 'ISO',
+          key: 'unused-key',
+          name: 'Missing',
+          normReferenceId: 'MISSING',
+          reference: 'C',
+          type: 'standard',
+        },
+      ],
+      requirements: [
+        {
+          categoryId: 1,
+          categoryName: 'Duplicate',
+          description: 'First',
+          normReferenceIds: [
+            'ISO-ACTIVE',
+            'ISO-ACTIVE',
+            'ISO-ARCHIVED',
+            'UNKNOWN',
+          ],
+          priorityLevelId: 999,
+          priorityLevelName: 'P4',
+          proposedNormReferenceKeys: [
+            'ISO-ACTIVE',
+            'archived-key',
+            'missing-key',
+          ],
+          requirementPackageIds: [5, 5, 999],
+          requirementPackageNames: [
+            'Common package',
+            'Ambiguous package',
+            'Missing package',
+          ],
+          typeId: 999,
+          typeName: 'Functional',
+          verifiable: false,
+          verificationMethod: 'ignored',
+        },
+        {
+          categoryId: 999,
+          categoryName: 'Unknown',
+          description: 'Second',
+          priorityLevelId: 1,
+          priorityLevelName: 'High',
+          qualityCharacteristicId: 201,
+          qualityCharacteristicName: 'Unknown',
+          typeName: 'Missing type',
+        },
+        {
+          categoryName: 'Duplicate',
+          description: 'Third',
+          qualityCharacteristicName: 'Performance',
+          typeId: 20,
+          verifiable: true,
+        },
+      ],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    })
+
+    const preview = await workflow.previewLibraryImport({} as never, {
+      areaId: 7,
+      locale: 'en',
+      payload,
+    })
+
+    const codes = [
+      ...preview.proposals.flatMap(proposal =>
+        proposal.warnings.map(message => message.code),
+      ),
+      ...preview.rows.flatMap(row => [
+        ...row.errors.map(message => message.code),
+        ...row.warnings.map(message => message.code),
+      ]),
+    ]
+    expect(codes).toEqual(
+      expect.arrayContaining([
+        'import_name_disagrees_with_id',
+        'import_invalid_id_name_used',
+        'import_invalid_id_omitted',
+        'import_name_ambiguous',
+        'import_name_unresolved',
+        'import_invalid_requirement_package_id',
+        'import_requirement_package_name_ambiguous',
+        'import_requirement_package_name_unresolved',
+        'import_duplicate_requirement_packages_collapsed',
+        'import_norm_reference_archived',
+        'import_norm_reference_unresolved',
+        'import_proposed_norm_reference_key_missing',
+        'import_proposed_norm_reference_archived',
+        'import_duplicate_norm_references_collapsed',
+        'import_proposed_norm_reference_unused',
+        'import_proposed_norm_reference_business_id_unresolved',
+        'import_verification_method_ignored_for_non_verifiable',
+        'import_verification_method_required',
+      ]),
+    )
+  })
+
+  it('inspects validation sessions and projects already imported rows', async () => {
+    const { db } = makeManageImportDb()
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [{ description: 'Systemet ska logga.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+    const createData = vi
+      .mocked(createRequirementImportValidationSession)
+      .mock.calls.at(-1)?.[1]
+    if (!createData) throw new Error('Expected validation session data')
+    const session = makeSessionRecord({
+      ...createData,
+      executionResultJson: JSON.stringify({
+        importedRows: [
+          {
+            importedAt: '2026-08-05T08:00:00.000Z',
+            kravId: 'TEST0001',
+            reviewRowId: 'row-0',
+            sourceIndex: 0,
+            uniqueId: 'TEST0001',
+          },
+        ],
+        schemaVersion: 'mcp-requirement-import-execution.v1',
+      }),
+    })
+    vi.mocked(
+      getRequirementImportValidationSessionByTokenHash,
+    ).mockResolvedValue(session)
+
+    const result = await workflow.manageImport(context, {
+      operation: 'inspect_validation',
+      validationToken: ' opaque-token ',
+    })
+
+    expect(result).toMatchObject({
+      destination: { areaId: 7, kind: 'requirements_library' },
+      referenceData: {
+        currentFingerprint: expect.any(String),
+        isStale: false,
+        storedFingerprint: session.referenceDataFingerprint,
+      },
+      rows: [
+        {
+          imported: true,
+          importedAt: '2026-08-05T08:00:00.000Z',
+          kravId: 'TEST0001',
+          uniqueId: 'TEST0001',
+        },
+      ],
+      submittedPayload: {
+        requirements: [{ description: 'Systemet ska logga.' }],
+      },
+    })
+  })
+
+  it('rejects blank, expired, and corrupt validation sessions', async () => {
+    const { db } = makeManageImportDb()
+    const authorization = { assertAuthorized: vi.fn() }
+    const workflow = createRequirementsImportWorkflow({
+      authorization,
+      db: db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    await expect(
+      workflow.manageImport(context, {
+        operation: 'inspect_validation',
+        validationToken: '   ',
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    vi.mocked(
+      getRequirementImportValidationSessionByTokenHash,
+    ).mockResolvedValueOnce(null)
+    await expect(
+      workflow.manageImport(context, {
+        operation: 'inspect_validation',
+        validationToken: 'expired',
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      details: { reason: 'validation_session_not_found_or_expired' },
+    })
+
+    vi.mocked(
+      getRequirementImportValidationSessionByTokenHash,
+    ).mockResolvedValueOnce(
+      makeSessionRecord({
+        destinationId: 7,
+        destinationKind: 'requirements_library',
+        destinationSnapshotJson: '{bad-json',
+        expiresAt: new Date('2026-08-05T09:00:00.000Z'),
+        payloadHash: 'payload',
+        referenceDataFingerprint: 'fingerprint',
+        submittedPayloadJson: '{}',
+        tokenHash: 'token',
+        validationResultJson: '{}',
+      }),
+    )
+    await expect(
+      workflow.manageImport(context, {
+        operation: 'inspect_validation',
+        validationToken: 'corrupt',
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
   })
 })

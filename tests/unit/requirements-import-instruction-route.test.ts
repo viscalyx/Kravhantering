@@ -122,6 +122,30 @@ describe('GET /api/requirements/import/instruction', () => {
     })
   })
 
+  it('rejects a specification destination without a positive integer id', async () => {
+    routeMocks.createRequirementsRestRuntime.mockResolvedValue({
+      context: makeContext(true),
+      service: {
+        getImportInstruction: routeMocks.getImportInstruction,
+      },
+    })
+
+    const missing = await GET(
+      new Request(
+        'http://localhost/api/requirements/import/instruction?kind=requirements_specification',
+      ),
+    )
+    const invalid = await GET(
+      new Request(
+        'http://localhost/api/requirements/import/instruction?kind=requirements_specification&specificationId=0',
+      ),
+    )
+
+    expect(missing.status).toBe(400)
+    expect(invalid.status).toBe(400)
+    expect(routeMocks.getImportInstruction).not.toHaveBeenCalled()
+  })
+
   it('passes a requirements library destination from query parameters', async () => {
     const context = makeContext(true)
     routeMocks.createRequirementsRestRuntime.mockResolvedValue({
