@@ -61,6 +61,18 @@ vi.mock('@/i18n/routing', () => ({
 }))
 
 describe('RequirementsTable', () => {
+  const coreMultiValueFilterColumns = [
+    'area',
+    'category',
+    'type',
+    'qualityCharacteristic',
+    'priorityLevel',
+    'status',
+    'verifiable',
+    'needsReference',
+    'specificationItemStatus',
+  ] as const
+
   beforeEach(() => {
     mockPush.mockReset()
     resizeObserverObserve.mockReset()
@@ -4491,17 +4503,7 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    for (const columnLabel of [
-      'area',
-      'category',
-      'type',
-      'qualityCharacteristic',
-      'priorityLevel',
-      'status',
-      'verifiable',
-      'needsReference',
-      'specificationItemStatus',
-    ]) {
+    for (const columnLabel of coreMultiValueFilterColumns) {
       const trigger = getHeaderFilterButton(columnLabel)
       expect(trigger, `${columnLabel} filter trigger`).toBeTruthy()
       if (!trigger) continue
@@ -4528,17 +4530,7 @@ describe('RequirementsTable', () => {
       <CoreFilterTable filterValues={{}} onFilterChange={onFilterChange} />,
     )
 
-    for (const columnLabel of [
-      'area',
-      'category',
-      'type',
-      'qualityCharacteristic',
-      'priorityLevel',
-      'status',
-      'verifiable',
-      'needsReference',
-      'specificationItemStatus',
-    ]) {
+    for (const columnLabel of coreMultiValueFilterColumns) {
       const trigger = getHeaderFilterButton(columnLabel)
       expect(trigger).toBeTruthy()
       if (!trigger) continue

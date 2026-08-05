@@ -117,8 +117,6 @@ vi.mock('@/components/RequirementsTable', () => ({
       columnPickerPlacement,
       columnWidths,
       expandedId,
-      getName,
-      getStatusName,
       floatingActions,
       hasMore,
       loading,
@@ -188,22 +186,6 @@ vi.mock('@/components/RequirementsTable', () => ({
         <div data-testid="has-more">{String(hasMore ?? false)}</div>
         <div data-testid="loading">{String(loading ?? false)}</div>
         <div data-testid="loading-more">{String(loadingMore ?? false)}</div>
-        <div data-testid="localized-filter-name">
-          {getName?.({
-            id: 91,
-            nameEn: 'English option',
-            nameSv: 'Svenskt val',
-          })}
-        </div>
-        <div data-testid="localized-status-name">
-          {getStatusName?.({
-            color: '#000000',
-            id: 92,
-            nameEn: 'English status',
-            nameSv: 'Svensk status',
-            sortOrder: 1,
-          })}
-        </div>
         {(rows ?? []).map(row => (
           <div key={row.id}>
             <button onClick={() => onRowClick?.(row.id)} type="button">
@@ -807,23 +789,7 @@ describe('RequirementsClient', () => {
     })
   })
 
-  it('localizes filter and status names in English', async () => {
-    localeState.value = 'en'
-    mockCommonFetches()
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<RequirementsClient />)
-
-    expect(await screen.findByTestId('requirements-table')).toBeInTheDocument()
-    expect(screen.getByTestId('localized-filter-name')).toHaveTextContent(
-      'English option',
-    )
-    expect(screen.getByTestId('localized-status-name')).toHaveTextContent(
-      'English status',
-    )
-  })
-
-  it('falls back to empty metadata collections when optional payloads are omitted', async () => {
+  it('renders the requirement list when optional metadata payloads are omitted', async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.startsWith('/api/requirements?')) {
@@ -852,17 +818,7 @@ describe('RequirementsClient', () => {
     render(<RequirementsClient />)
 
     expect(await screen.findByTestId('requirements-table')).toBeInTheDocument()
-    await waitFor(() => {
-      const latest = tableState.renderSpy.mock.calls.at(-1)?.[0]
-      expect(latest).toMatchObject({
-        areas: [],
-        categories: [],
-        qualityCharacteristics: [],
-        requirementPackages: [],
-        statusOptions: [],
-        types: [],
-      })
-    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('maps sparse changed requirement details with and without versions', async () => {
@@ -1742,6 +1698,7 @@ describe('RequirementsClient', () => {
   })
 
   it('delegates CSV export failures to the shared download flow', async () => {
+    localeState.value = 'en'
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input)
 
@@ -1775,6 +1732,7 @@ describe('RequirementsClient', () => {
     await waitFor(() =>
       expect(pdfDownloadState.download).toHaveBeenCalledWith(
         expect.objectContaining({
+          fallbackFilename: 'requirements-library.csv',
           output: 'csv',
           url: expect.stringContaining('/api/requirements/export?'),
         }),

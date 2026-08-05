@@ -37,7 +37,8 @@ vi.mock('@/components/RequirementForm', () => ({
     initialData?: Record<string, string | boolean>
     initialRequirementPackageIds?: number[] | null
   }) => (
-    <div
+    <form
+      aria-label="requirement form"
       data-base-revision-token={props.baseRevisionToken ?? ''}
       data-base-version-id={props.baseVersionId ?? ''}
       data-initial-data={JSON.stringify(props.initialData)}
@@ -46,7 +47,21 @@ vi.mock('@/components/RequirementForm', () => ({
       )}
       data-mode={props.mode}
       data-testid="req-form"
-    />
+    >
+      {Object.entries(props.initialData ?? {}).map(([name, value]) =>
+        typeof value === 'boolean' ? (
+          <input
+            aria-label={name}
+            checked={value}
+            key={name}
+            readOnly
+            type="checkbox"
+          />
+        ) : (
+          <input aria-label={name} key={name} readOnly value={value} />
+        ),
+      )}
+    </form>
   ),
 }))
 
@@ -368,21 +383,24 @@ describe('EditRequirementClient', () => {
 
     render(<EditRequirementClient requirementId={1} />)
 
-    const form = await screen.findByTestId('req-form')
-    const initialData = JSON.parse(
-      form.getAttribute('data-initial-data') ?? '{}',
-    ) as Record<string, string | boolean>
-    expect(initialData).toMatchObject({
-      acceptanceCriteria: '',
-      areaId: '',
-      categoryId: '',
-      description: '',
-      priorityLevelId: '',
-      qualityCharacteristicId: '',
-      typeId: '',
-      verifiable: false,
-      verificationMethod: '',
-    })
+    expect(
+      await screen.findByRole('form', { name: 'requirement form' }),
+    ).toBeInTheDocument()
+    for (const fieldName of [
+      'acceptanceCriteria',
+      'areaId',
+      'categoryId',
+      'description',
+      'priorityLevelId',
+      'qualityCharacteristicId',
+      'typeId',
+      'verificationMethod',
+    ]) {
+      expect(screen.getByRole('textbox', { name: fieldName })).toHaveValue('')
+    }
+    expect(
+      screen.getByRole('checkbox', { name: 'verifiable' }),
+    ).not.toBeChecked()
   })
 
   it('shows no-results and transport failure errors', async () => {
