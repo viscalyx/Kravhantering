@@ -902,13 +902,13 @@ describe('specification-implementation-types routes', () => {
   it('DELETE returns 404 without auditing a missing implementation type', async () => {
     mockDeleteImpl.mockResolvedValue(0)
 
-    const r = await deleteImplType(
+    const response = await deleteImplType(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('404'),
     )
 
-    expect(r.status).toBe(404)
-    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ error: 'Not found' })
     expect(
       auditState.recordAdminPrivilegedActionSucceeded,
     ).not.toHaveBeenCalled()
@@ -1134,9 +1134,9 @@ describe('specification-item-statuses catalog routes', () => {
       { id: 6, nameEn: 'Draft', nameSv: 'Utkast' },
     ])
 
-    const r = await getSpecItemStatuses()
+    const response = await getSpecItemStatuses()
 
-    await expect(r.json()).resolves.toEqual({
+    await expect(response.json()).resolves.toEqual({
       statuses: [
         {
           id: 6,
@@ -1163,25 +1163,25 @@ describe('specification-item-statuses catalog routes', () => {
   })
 
   it('GET by id rejects invalid identifiers before opening the database', async () => {
-    const r = await getSpecItemStatus(
+    const response = await getSpecItemStatus(
       new NextRequest('http://l', { method: 'GET' }),
       makeParams('invalid'),
     )
 
-    expect(r.status).toBe(400)
+    expect(response.status).toBe(400)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
   it('GET by id returns 404 when the catalog status is missing', async () => {
     mockGetSpecItemStatus.mockResolvedValueOnce(null)
 
-    const r = await getSpecItemStatus(
+    const response = await getSpecItemStatus(
       new NextRequest('http://l', { method: 'GET' }),
       makeParams('404'),
     )
 
-    expect(r.status).toBe(404)
-    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ error: 'Not found' })
     expect(mockGetLinkedSpecificationItems).not.toHaveBeenCalled()
   })
 

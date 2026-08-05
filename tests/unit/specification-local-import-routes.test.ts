@@ -123,25 +123,6 @@ describe('specification-local import routes', () => {
     )
   })
 
-  it('maps body-selected preview failures to a sanitized response', async () => {
-    routeState.previewSpecificationLocalImport.mockRejectedValueOnce(
-      new Error('preview database secret'),
-    )
-
-    const response = await previewPost(
-      jsonRequest('/api/specification-local-requirements/import/preview', {
-        payload,
-        specificationId: 7,
-      }),
-    )
-
-    expect(response.status).toBe(500)
-    expect(JSON.stringify(await response.json())).not.toContain(
-      'preview database secret',
-    )
-    expect(routeState.logSanitizedError).toHaveBeenCalled()
-  })
-
   it('executes an import whose specification is selected in the body', async () => {
     const response = await executePost(
       jsonRequest('/api/specification-local-requirements/import/execute', {
@@ -173,25 +154,6 @@ describe('specification-local import routes', () => {
     )
   })
 
-  it('maps body-selected execute failures to a sanitized response', async () => {
-    routeState.executeSpecificationLocalImport.mockRejectedValueOnce(
-      new Error('execute database secret'),
-    )
-
-    const response = await executePost(
-      jsonRequest('/api/specification-local-requirements/import/execute', {
-        previewToken: 'preview-token',
-        rows,
-        specificationId: 7,
-      }),
-    )
-
-    expect(response.status).toBe(500)
-    expect(JSON.stringify(await response.json())).not.toContain(
-      'execute database secret',
-    )
-  })
-
   it('previews an import whose specification is selected in the URL', async () => {
     const response = await legacyPreviewPost(
       jsonRequest(
@@ -205,25 +167,6 @@ describe('specification-local import routes', () => {
     expect(routeState.previewSpecificationLocalImport).toHaveBeenCalledWith(
       context,
       { locale: 'en', payload, specificationId: 7 },
-    )
-  })
-
-  it('maps URL-selected preview failures to a sanitized response', async () => {
-    routeState.previewSpecificationLocalImport.mockRejectedValueOnce(
-      new Error('legacy preview database secret'),
-    )
-
-    const response = await legacyPreviewPost(
-      jsonRequest(
-        '/api/requirements-specifications/7/local-requirements/import/preview',
-        { payload },
-      ),
-      { params: Promise.resolve({ id: '7' }) },
-    )
-
-    expect(response.status).toBe(500)
-    expect(JSON.stringify(await response.json())).not.toContain(
-      'legacy preview database secret',
     )
   })
 
@@ -243,22 +186,69 @@ describe('specification-local import routes', () => {
     )
   })
 
-  it('maps URL-selected execute failures to a sanitized response', async () => {
-    routeState.executeSpecificationLocalImport.mockRejectedValueOnce(
-      new Error('legacy execute database secret'),
-    )
+  it.each([
+    {
+      invoke: () =>
+        previewPost(
+          jsonRequest('/api/specification-local-requirements/import/preview', {
+            payload,
+            specificationId: 7,
+          }),
+        ),
+      reject: (error: Error) =>
+        routeState.previewSpecificationLocalImport.mockRejectedValueOnce(error),
+      secret: 'preview database secret',
+      variant: 'body-selected preview',
+    },
+    {
+      invoke: () =>
+        executePost(
+          jsonRequest('/api/specification-local-requirements/import/execute', {
+            previewToken: 'preview-token',
+            rows,
+            specificationId: 7,
+          }),
+        ),
+      reject: (error: Error) =>
+        routeState.executeSpecificationLocalImport.mockRejectedValueOnce(error),
+      secret: 'execute database secret',
+      variant: 'body-selected execute',
+    },
+    {
+      invoke: () =>
+        legacyPreviewPost(
+          jsonRequest(
+            '/api/requirements-specifications/7/local-requirements/import/preview',
+            { payload },
+          ),
+          { params: Promise.resolve({ id: '7' }) },
+        ),
+      reject: (error: Error) =>
+        routeState.previewSpecificationLocalImport.mockRejectedValueOnce(error),
+      secret: 'legacy preview database secret',
+      variant: 'URL-selected preview',
+    },
+    {
+      invoke: () =>
+        legacyExecutePost(
+          jsonRequest(
+            '/api/requirements-specifications/7/local-requirements/import/execute',
+            { previewToken: 'preview-token', rows },
+          ),
+          { params: Promise.resolve({ id: '7' }) },
+        ),
+      reject: (error: Error) =>
+        routeState.executeSpecificationLocalImport.mockRejectedValueOnce(error),
+      secret: 'legacy execute database secret',
+      variant: 'URL-selected execute',
+    },
+  ])('maps $variant failures to a sanitized response', async testCase => {
+    testCase.reject(new Error(testCase.secret))
 
-    const response = await legacyExecutePost(
-      jsonRequest(
-        '/api/requirements-specifications/7/local-requirements/import/execute',
-        { previewToken: 'preview-token', rows },
-      ),
-      { params: Promise.resolve({ id: '7' }) },
-    )
+    const response = await testCase.invoke()
 
     expect(response.status).toBe(500)
-    expect(JSON.stringify(await response.json())).not.toContain(
-      'legacy execute database secret',
-    )
+    expect(JSON.stringify(await response.json())).not.toContain(testCase.secret)
+    expect(routeState.logSanitizedError).toHaveBeenCalled()
   })
 })

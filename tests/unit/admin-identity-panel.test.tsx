@@ -102,7 +102,7 @@ describe('IdentityPanel', () => {
 
     renderAdminPanel(<IdentityPanel />)
 
-    const rows = await screen.findAllByTestId(/hsa-id-prefix-row-/)
+    const rows = await screen.findAllByRole('article')
     expect(rows).toHaveLength(3)
     expect(
       screen.getAllByRole('textbox', { name: 'admin.identity.prefix' })[0],
@@ -141,7 +141,7 @@ describe('IdentityPanel', () => {
   it('toggles inline and floating help and closes help from keyboard and outside pointer', async () => {
     fetchMock.mockResolvedValue(okJson({ prefixes: storedPrefixes }))
     renderAdminPanel(<IdentityPanel />)
-    await screen.findAllByTestId(/hsa-id-prefix-row-/)
+    await screen.findAllByRole('article')
 
     const prefixHelp = screen.getAllByRole('button', {
       name: 'common.help: admin.identity.prefix',
@@ -199,7 +199,7 @@ describe('IdentityPanel', () => {
   it('updates labels, visibility, and the selected default through row controls', async () => {
     fetchMock.mockResolvedValue(okJson({ prefixes: storedPrefixes }))
     renderAdminPanel(<IdentityPanel />)
-    const rows = await screen.findAllByTestId(/hsa-id-prefix-row-/)
+    const rows = await screen.findAllByRole('article')
 
     fireEvent.change(
       within(rows[1]).getByRole('textbox', { name: 'admin.identity.label' }),
@@ -234,7 +234,7 @@ describe('IdentityPanel', () => {
   it('hides a visible default prefix when another visible prefix remains', async () => {
     fetchMock.mockResolvedValue(okJson({ prefixes: storedPrefixes }))
     renderAdminPanel(<IdentityPanel />)
-    await screen.findAllByTestId(/hsa-id-prefix-row-/)
+    await screen.findAllByRole('article')
 
     await userEvent.click(
       screen.getByRole('button', {

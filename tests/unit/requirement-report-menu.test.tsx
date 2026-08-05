@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementReportMenu from '@/app/[locale]/requirements/[id]/_detail/RequirementReportMenu'
 import { STATUS_REVIEW } from '@/lib/requirements/status-constants.mjs'
 
@@ -35,6 +35,10 @@ vi.mock('@/components/generated-output/useGeneratedOutputDownload', () => ({
 }))
 
 describe('RequirementReportMenu', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('hides reports while a specification deviation is still a draft', () => {
     const { container } = render(
       <RequirementReportMenu
@@ -141,7 +145,6 @@ describe('RequirementReportMenu', () => {
   ])(
     'downloads the specification %s',
     async (reportName, url, fallbackFilename) => {
-      downloadState.download.mockClear()
       render(
         <RequirementReportMenu
           currentStatusId={0}
@@ -225,7 +228,6 @@ describe('RequirementReportMenu', () => {
   ])(
     'downloads the standalone %s',
     async (reportName, url, fallbackFilename) => {
-      downloadState.download.mockClear()
       render(
         <RequirementReportMenu
           currentStatusId={STATUS_REVIEW}
