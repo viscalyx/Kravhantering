@@ -63,7 +63,7 @@ import {
   GET,
   PATCH,
 } from '@/app/api/requirements-specifications/[id]/items/[itemId]/route'
-import { forbiddenError } from '@/lib/requirements/errors'
+import { forbiddenError, notFoundError } from '@/lib/requirements/errors'
 
 function makeParams(id: string, itemId: string) {
   return { params: Promise.resolve({ id, itemId }) }
@@ -147,6 +147,54 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
 
     expect(response.status).toBe(403)
     expect(mocks.getLibrarySpecificationItemMetadata).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid metadata ids and reports missing items', async () => {
+    const invalid = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items/not-a-number',
+      ),
+      makeParams('5', 'not-a-number'),
+    )
+    mocks.getLibrarySpecificationItemMetadata.mockResolvedValueOnce(null)
+    const missing = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items/999',
+      ),
+      makeParams('5', '999'),
+    )
+
+    expect(invalid.status).toBe(400)
+    expect(missing.status).toBe(404)
+    await expect(missing.json()).resolves.toEqual({
+      error: 'Item not found in specification',
+    })
+  })
+
+  it('normalizes absent optional item metadata to null', async () => {
+    mocks.getLibrarySpecificationItemMetadata.mockResolvedValueOnce({
+      specificationItemId: 31,
+      specificationItemStatusId: 1,
+    })
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items/31',
+      ),
+      makeParams('5', '31'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      needsReference: null,
+      needsReferenceId: null,
+      specificationItemId: 31,
+      specificationItemStatusColor: null,
+      specificationItemStatusIconName: null,
+      specificationItemStatusId: 1,
+      specificationItemStatusNameEn: null,
+      specificationItemStatusNameSv: null,
+    })
   })
 
   it('updates usage status by item ref within the specification', async () => {
@@ -258,5 +306,59 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       ]),
     )
     expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
+  })
+
+  it('rejects malformed encoded item references', async () => {
+    const response = await PATCH(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/7/items/%E0%A4%A',
+        {
+          body: JSON.stringify({ note: 'Follow-up' }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        },
+      ),
+      makeParams('7', '%E0%A4%A'),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({ error: 'Invalid itemId' })
+  })
+
+  it('returns not found before or during an item update', async () => {
+    mocks.getSpecificationItemByRef.mockResolvedValueOnce(null)
+    const missing = await PATCH(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/7/items/lib%3A999',
+        {
+          body: JSON.stringify({ note: 'Follow-up' }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        },
+      ),
+      makeParams('7', 'lib%3A999'),
+    )
+    mocks.getSpecificationItemByRef.mockResolvedValueOnce({
+      itemRef: 'lib:31',
+      specificationId: 7,
+      specificationItemId: 31,
+    })
+    mocks.updateSpecificationItemFieldsByItemRef.mockRejectedValueOnce(
+      notFoundError('Item disappeared'),
+    )
+    const disappeared = await PATCH(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/7/items/lib%3A31',
+        {
+          body: JSON.stringify({ note: 'Follow-up' }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        },
+      ),
+      makeParams('7', 'lib%3A31'),
+    )
+
+    expect(missing.status).toBe(404)
+    expect(disappeared.status).toBe(404)
   })
 })

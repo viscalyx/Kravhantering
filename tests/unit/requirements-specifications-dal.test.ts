@@ -1,30 +1,52 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  canAuthorSpecification,
+  canManageSpecificationAssignments,
+  createLibraryItemRef,
   createSpecification,
+  createSpecificationLocalItemRef,
   createSpecificationLocalRequirement,
+  createSpecificationLocalRequirementsBatch,
+  createSpecificationLocalRequirementsBatchWithExecutor,
   createSpecificationNeedsReference,
   deleteSpecification,
   deleteSpecificationItemsByRefs,
   deleteSpecificationLocalRequirement,
   deleteSpecificationNeedsReference,
+  findSpecificationNeedsReferenceIdentity,
   getLibrarySpecificationItemMetadata,
   getOrCreateSpecificationNeedsReference,
+  getPublishedVersionIdForRequirement,
+  getSpecificationByCode,
   getSpecificationById,
+  getSpecificationForbiddenSummaryByCode,
+  getSpecificationForbiddenSummaryById,
+  getSpecificationItemById,
+  getSpecificationItemByRef,
   getSpecificationLocalRequirementDetail,
+  getSpecificationNeedsReference,
   graduateSpecificationLocalRequirementToLibrary,
   isSpecificationCodeTaken,
   linkRequirementsToSpecificationAtomically,
+  listSpecificationCoAuthorHsaIds,
+  listSpecificationCoAuthors,
   listSpecificationNeedsReferences,
   listSpecifications,
+  listSpecificationsForActor,
   listSpecificationsForActorCatalog,
   listSpecificationTraceabilityItems,
+  parseSpecificationItemRef,
   replaceSpecificationCoAuthors,
   unlinkRequirementsFromSpecification,
   updateSpecification,
+  updateSpecificationItemFields,
   updateSpecificationItemFieldsByItemRef,
+  updateSpecificationItemFieldsByItemRefs,
   updateSpecificationLocalRequirement,
+  updateSpecificationLocalRequirementFields,
   updateSpecificationNeedsReference,
   updateSpecificationResponsible,
+  updateSpecificationWithExecutor,
 } from '@/lib/dal/requirements-specifications'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
@@ -250,6 +272,43 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
+  it('normalizes incomplete catalog metadata without inventing values', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        specificationCatalogRow({
+          createdAt: null,
+          governanceObjectTypeNameSv: 'Plattform',
+          id: 7,
+          implementationTypeNameSv: 'Införande',
+          itemCount: 'not-a-number',
+          lifecycleStatusNameSv: 'Planerad',
+          responsibleGivenName: null,
+          specificationGovernanceObjectTypeId: 4,
+          specificationImplementationTypeId: 2,
+          specificationLifecycleStatusId: 3,
+          updatedAt: null,
+        }),
+      ])
+      .mockResolvedValueOnce([
+        { areaId: 8, areaName: null, specificationId: 7 },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(listSpecifications(db)).resolves.toEqual([
+      expect.objectContaining({
+        createdAt: '',
+        governanceObjectType: { id: 4, nameEn: '', nameSv: 'Plattform' },
+        implementationType: { id: 2, nameEn: '', nameSv: 'Införande' },
+        itemCount: 0,
+        lifecycleStatus: { id: 3, nameEn: '', nameSv: 'Planerad' },
+        requirementAreas: [{ id: 8, name: '' }],
+        responsibleDisplayName: null,
+        updatedAt: '',
+      }),
+    ])
+  })
+
   it('reuses one actor parameter for specification areas and deduplicated co-authors', async () => {
     const { db, query } = createSqlServerDb()
     query
@@ -377,6 +436,8 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     await expect(isSpecificationCodeTaken(db, 'PKG-009', 9)).resolves.toBe(
       false,
     )
+    query.mockResolvedValueOnce([{ id: 10 }])
+    await expect(isSpecificationCodeTaken(db, 'PKG-009', 9)).resolves.toBe(true)
   })
 
   it('lists specification needs references on the SQL Server path', async () => {
@@ -590,6 +651,109 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(transaction).not.toHaveBeenCalled()
   })
 
+  it('reports failed specification inserts and updates', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+
+    await expect(
+      createSpecification(db, {
+        name: 'Missing insert',
+        responsibleHsaId: 'SE5560000001-ada1',
+        specificationCode: 'SPEC-404',
+        specificationLifecycleStatusId: 4,
+      }),
+    ).rejects.toThrow('Failed to create requirements specification')
+    await expect(
+      updateSpecification(db, 404, { name: 'Missing update' }),
+    ).resolves.toBeNull()
+  })
+
+  it('creates a specification without optional metadata or a person record', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        createdAt: null,
+        id: 12,
+        name: 'Minimal specification',
+        responsibleHsaId: 'SE5560000001-ada1',
+        specificationCode: 'SPEC-012',
+        specificationLifecycleStatusId: 4,
+        updatedAt: null,
+      },
+    ])
+
+    await expect(
+      createSpecification(db, {
+        name: 'Minimal specification',
+        responsibleHsaId: 'SE5560000001-ada1',
+        specificationCode: 'SPEC-012',
+        specificationLifecycleStatusId: 4,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        createdAt: '',
+        responsibleDisplayName: null,
+        updatedAt: '',
+      }),
+    )
+  })
+
+  it('updates every optional specification field without changing the lead', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          responsibleHsaId: 'SE5560000001-ada1',
+        },
+      ])
+      .mockResolvedValueOnce([
+        specificationCatalogRow({
+          businessNeedsReference: null,
+          id: 11,
+          name: 'Updated name',
+          specificationCode: 'SPEC-UPDATED',
+          specificationGovernanceObjectTypeId: null,
+          specificationImplementationTypeId: null,
+          specificationLifecycleStatusId: 5,
+        }),
+      ])
+
+    await expect(
+      updateSpecification(db, 11, {
+        businessNeedsReference: null,
+        name: 'Updated name',
+        specificationCode: 'SPEC-UPDATED',
+        specificationGovernanceObjectTypeId: null,
+        specificationImplementationTypeId: null,
+        specificationLifecycleStatusId: 5,
+      }),
+    ).resolves.toMatchObject({ name: 'Updated name' })
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'SPEC-UPDATED',
+      'Updated name',
+      null,
+      null,
+      5,
+      null,
+      expect.any(Date),
+      11,
+    ])
+  })
+
+  it('supports executor-based updates that leave responsibility unchanged', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ id: 11 }])
+      .mockResolvedValueOnce([
+        specificationCatalogRow({ id: 11, name: 'Executor update' }),
+      ])
+
+    await expect(
+      updateSpecificationWithExecutor(db, 11, { name: 'Executor update' }),
+    ).resolves.toMatchObject({ id: 11, name: 'Executor update' })
+  })
+
   it('normalizes responsible HSA-ids before updating assignment fields', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query
@@ -645,6 +809,29 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     })
   })
 
+  it('returns null or rejects when a lead assignment cannot be changed', async () => {
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([])
+    await expect(
+      updateSpecificationResponsible(missing.db, 404, {
+        responsibleHsaId: 'SE5560000001-rita1',
+      }),
+    ).resolves.toBeNull()
+
+    const conflicting = createSqlServerDb()
+    conflicting.query
+      .mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
+      .mockResolvedValueOnce([{ specificationId: 11 }])
+    await expect(
+      updateSpecificationResponsible(conflicting.db, 11, {
+        responsibleHsaId: 'SE5560000001-coa1',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'specification_lead_cannot_be_co_author' },
+    })
+  })
+
   it('rejects invalid specification co-author HSA-ids before syncing assignments', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
@@ -688,6 +875,39 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       null,
       null,
     ])
+  })
+
+  it('removes stale co-authors and handles a missing specification', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
+      .mockResolvedValueOnce([
+        { hsaId: 'SE5560000001-old1' },
+        { hsaId: 'SE5560000001-keep1' },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      replaceSpecificationCoAuthors(db, 11, {
+        changedBy: {
+          displayName: 'Ada Admin',
+          hsaId: 'SE5560000001-ada1',
+        },
+        coAuthorHsaIds: ['SE5560000001-keep1', 'SE5560000001-new1'],
+      }),
+    ).resolves.toEqual({
+      coAuthorHsaIds: ['SE5560000001-keep1', 'SE5560000001-new1'],
+      specificationId: 11,
+    })
+    expect(query.mock.calls[2]?.[1]).toEqual([11, 'SE5560000001-old1'])
+
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([])
+    await expect(
+      replaceSpecificationCoAuthors(missing.db, 404, { coAuthorHsaIds: [] }),
+    ).resolves.toBeUndefined()
   })
 
   it('rejects specification lead and co-author conflicts after normalization', async () => {
@@ -812,6 +1032,20 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       expect.stringContaining('INSERT INTO specification_needs_references'),
       [5, 'Shared specification need', null, expect.any(Date)],
     )
+  })
+
+  it('resolves concurrent needs-reference inserts and reports an unresolved race', async () => {
+    const existing = createSqlServerDb()
+    existing.query.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 33 }])
+    await expect(
+      getOrCreateSpecificationNeedsReference(existing.db, 5, ' Shared need '),
+    ).resolves.toBe(33)
+
+    const missing = createSqlServerDb()
+    missing.query.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+    await expect(
+      getOrCreateSpecificationNeedsReference(missing.db, 5, 'Missing need'),
+    ).rejects.toThrow('Failed to resolve specification needs reference')
   })
 
   it('creates specification needs references with descriptions on SQL Server', async () => {
@@ -959,6 +1193,47 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).toHaveBeenCalledTimes(1)
   })
 
+  it('validates missing and disappearing needs references', async () => {
+    const blank = createSqlServerDb()
+    await expect(
+      createSpecificationNeedsReference(blank.db, 5, { text: ' ' }),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    const failedInsert = createSqlServerDb()
+    failedInsert.query.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+    await expect(
+      createSpecificationNeedsReference(failedInsert.db, 5, {
+        text: 'Missing insert',
+      }),
+    ).rejects.toThrow('Failed to create specification needs reference')
+
+    const missingUpdate = createSqlServerDb()
+    missingUpdate.query.mockResolvedValueOnce([])
+    await expect(
+      updateSpecificationNeedsReference(missingUpdate.db, 5, 404, {
+        text: 'Missing update',
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+
+    const disappearedUpdate = createSqlServerDb()
+    disappearedUpdate.query
+      .mockResolvedValueOnce([{ id: 33, text: 'Before' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+    await expect(
+      updateSpecificationNeedsReference(disappearedUpdate.db, 5, 33, {
+        text: 'After',
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+
+    const missingDelete = createSqlServerDb()
+    missingDelete.query.mockResolvedValueOnce([])
+    await expect(
+      deleteSpecificationNeedsReference(missingDelete.db, 5, 404),
+    ).resolves.toBe(false)
+  })
+
   it('gets specification-local requirement detail on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
@@ -1007,6 +1282,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           normReferenceId: 'ISO-27001',
           uri: 'https://example.test/iso-27001',
         },
+        { id: 12, name: null, normReferenceId: null, uri: null },
       ])
 
     const result = await getSpecificationLocalRequirementDetail(db, 5, 21)
@@ -1022,6 +1298,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       needsReference: 'Shared need',
       needsReferenceId: 3,
       normReferences: [
+        {
+          id: 12,
+          name: '',
+          normReferenceId: '',
+          uri: null,
+        },
         {
           id: 11,
           name: 'ISO 27001',
@@ -1182,6 +1464,123 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
       expect.any(Date),
     ])
+  })
+
+  it('creates specification-local requirements in an audited batch', async () => {
+    const { db, query } = createSqlServerDb()
+    const batchAudit = vi.fn().mockResolvedValue(undefined)
+    query
+      .mockResolvedValueOnce([{ nextSequence: 2 }])
+      .mockResolvedValueOnce([{ id: 41 }])
+      .mockResolvedValueOnce([{ nextSequence: 3 }])
+      .mockResolvedValueOnce([{ id: 42 }])
+
+    await expect(
+      createSpecificationLocalRequirementsBatchWithExecutor(
+        db,
+        5,
+        [
+          { description: ' First local requirement ' },
+          {
+            acceptanceCriteria: ' Accepted ',
+            description: 'Second local requirement',
+            verifiable: true,
+            verificationMethod: ' Checklist ',
+          },
+        ],
+        { batchAudit },
+      ),
+    ).resolves.toEqual([
+      { id: 41, uniqueId: 'KRAV0001' },
+      { id: 42, uniqueId: 'KRAV0002' },
+    ])
+    expect(batchAudit).toHaveBeenCalledWith(db, [41, 42])
+    expect(
+      query.mock.calls.filter(([sql]) =>
+        String(sql).includes('INSERT INTO specification_local_requirements'),
+      ),
+    ).toHaveLength(2)
+
+    await expect(
+      createSpecificationLocalRequirementsBatchWithExecutor(db, 5, []),
+    ).resolves.toEqual([])
+  })
+
+  it('returns created specification-local batch details and skips empty batches', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ nextSequence: 2 }])
+      .mockResolvedValueOnce([{ id: 41 }])
+      .mockResolvedValueOnce([
+        {
+          createdAt: null,
+          description: 'Created local requirement',
+          id: 41,
+          specificationId: 5,
+          specificationItemStatusId: 1,
+          uniqueId: 'KRAV0001',
+          updatedAt: null,
+          verifiable: false,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      createSpecificationLocalRequirementsBatch(db, 5, [
+        { description: 'Created local requirement' },
+      ]),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        description: 'Created local requirement',
+        id: 41,
+        itemRef: 'local:41',
+      }),
+    ])
+    await expect(
+      createSpecificationLocalRequirementsBatch(db, 5, []),
+    ).resolves.toEqual([])
+    expect(transaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('validates specification-local batch input before writing', async () => {
+    const blank = createSqlServerDb()
+    await expect(
+      createSpecificationLocalRequirementsBatchWithExecutor(blank.db, 5, [
+        { description: ' ' },
+      ]),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    const missingVerification = createSqlServerDb()
+    await expect(
+      createSpecificationLocalRequirementsBatchWithExecutor(
+        missingVerification.db,
+        5,
+        [{ description: 'Verifiable', verifiable: true }],
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    const invalidForeignKey = createSqlServerDb()
+    await expect(
+      createSpecificationLocalRequirementsBatchWithExecutor(
+        invalidForeignKey.db,
+        5,
+        [{ description: 'Invalid link', needsReferenceId: 0 }],
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    const missingNeedsReference = createSqlServerDb()
+    missingNeedsReference.query.mockResolvedValueOnce([])
+    await expect(
+      createSpecificationLocalRequirementsBatchWithExecutor(
+        missingNeedsReference.db,
+        5,
+        [{ description: 'Missing link', needsReferenceId: 99 }],
+      ),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'needsReferenceId does not belong to this requirements specification',
+    })
   })
 
   it('rejects unknown specification-local create references before inserts', async () => {
@@ -1620,6 +2019,49 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ])
   })
 
+  it('ignores malformed and missing traceability refs while preserving boolean values', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          deviationApproved: 'not-a-number',
+          deviationPending: null,
+          deviationRejected: undefined,
+          deviationTotal: 0,
+          itemId: 31,
+          specificationItemStatusId: 'not-a-number',
+          uniqueId: null,
+          verifiable: true,
+          versionNumber: null,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      listSpecificationTraceabilityItems(db, 5, [
+        'bad-ref' as never,
+        'lib:31',
+        'local:999',
+      ]),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },
+        itemRef: 'lib:31',
+        specificationItemStatusId: null,
+        uniqueId: '',
+        verifiable: true,
+        versionNumber: null,
+      }),
+    ])
+    expect(query).toHaveBeenCalledTimes(2)
+
+    query.mockClear()
+    await expect(
+      listSpecificationTraceabilityItems(db, 5, []),
+    ).resolves.toEqual([])
+    expect(query).not.toHaveBeenCalled()
+  })
+
   it('updates requirement application fields by item ref on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
@@ -1829,5 +2271,286 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       expect.stringContaining('DELETE FROM specification_local_requirements'),
       [5, 4],
     )
+  })
+
+  it('round-trips canonical specification item references and rejects malformed refs', () => {
+    expect(createLibraryItemRef(31)).toBe('lib:31')
+    expect(createSpecificationLocalItemRef(41)).toBe('local:41')
+    expect(parseSpecificationItemRef('lib:31')).toEqual({
+      id: 31,
+      kind: 'library',
+    })
+    expect(parseSpecificationItemRef('local:41')).toEqual({
+      id: 41,
+      kind: 'specificationLocal',
+    })
+    expect(parseSpecificationItemRef('lib:0')).toBeNull()
+    expect(parseSpecificationItemRef('unknown:3')).toBeNull()
+  })
+
+  it('reads specifications by code and exposes bounded forbidden summaries', async () => {
+    const { db, query } = createSqlServerDb()
+    const row = specificationCatalogRow({
+      responsibleEmail: 'ada@example.test',
+    })
+    query
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([])
+
+    await expect(getSpecificationByCode(db, 'SPEC-001')).resolves.toMatchObject(
+      { id: 1, specificationCode: 'SPEC-001' },
+    )
+    await expect(getSpecificationByCode(db, 'MISSING')).resolves.toBeNull()
+    await expect(getSpecificationForbiddenSummaryById(db, 1)).resolves.toEqual(
+      expect.objectContaining({
+        id: 1,
+        responsible: expect.objectContaining({
+          displayName: 'Ada Admin',
+          email: 'ada@example.test',
+        }),
+      }),
+    )
+    await expect(
+      getSpecificationForbiddenSummaryById(db, 404),
+    ).resolves.toBeNull()
+    await expect(
+      getSpecificationForbiddenSummaryByCode(db, 'SPEC-001'),
+    ).resolves.toMatchObject({ id: 1 })
+    await expect(
+      getSpecificationForbiddenSummaryByCode(db, 'MISSING'),
+    ).resolves.toBeNull()
+  })
+
+  it('maps partial specification metadata returned by a code lookup', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      specificationCatalogRow({
+        createdAt: null,
+        governanceObjectTypeNameSv: 'Plattform',
+        implementationTypeNameSv: 'Införande',
+        lifecycleStatusNameSv: 'Planerad',
+        responsibleGivenName: null,
+        specificationGovernanceObjectTypeId: 4,
+        specificationImplementationTypeId: 2,
+        specificationLifecycleStatusId: 3,
+        updatedAt: null,
+      }),
+    ])
+
+    await expect(getSpecificationByCode(db, 'SPEC-001')).resolves.toEqual(
+      expect.objectContaining({
+        createdAt: '',
+        governanceObjectType: { id: 4, nameEn: '', nameSv: 'Plattform' },
+        implementationType: { id: 2, nameEn: '', nameSv: 'Införande' },
+        lifecycleStatus: { id: 3, nameEn: '', nameSv: 'Planerad' },
+        responsibleDisplayName: null,
+        updatedAt: '',
+      }),
+    )
+  })
+
+  it('lists responsibility assignments and evaluates author policies', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          hsaId: 'SE5560000001-coauthor1',
+          responsibleHsaId: 'SE5560000001-coauthor1',
+          responsibleEmail: 'coauthor@example.test',
+          responsibleGivenName: 'Co',
+          responsibleMiddleName: null,
+          responsibleSurname: 'Author',
+        },
+      ])
+      .mockResolvedValueOnce([{ hsaId: 'SE5560000001-coauthor1' }])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 5 }])
+      .mockResolvedValueOnce([])
+
+    await expect(listSpecificationCoAuthors(db, 5)).resolves.toEqual([
+      {
+        displayName: 'Co Author',
+        email: 'coauthor@example.test',
+        hsaId: 'SE5560000001-coauthor1',
+      },
+    ])
+    await expect(listSpecificationCoAuthorHsaIds(db, 5)).resolves.toEqual([
+      'SE5560000001-coauthor1',
+    ])
+    await expect(canAuthorSpecification(db, 5, null, true)).resolves.toBe(true)
+    await expect(canAuthorSpecification(db, 5, null, false)).resolves.toBe(
+      false,
+    )
+    await expect(
+      canAuthorSpecification(db, 5, 'SE5560000001-coauthor1', false),
+    ).resolves.toBe(true)
+    await expect(
+      canAuthorSpecification(db, 5, 'SE5560000001-other1', false),
+    ).resolves.toBe(false)
+    await expect(
+      canManageSpecificationAssignments(db, 5, null, true),
+    ).resolves.toBe(true)
+    await expect(
+      canManageSpecificationAssignments(db, 5, null, false),
+    ).resolves.toBe(false)
+    await expect(
+      canManageSpecificationAssignments(db, 5, 'SE5560000001-owner1', false),
+    ).resolves.toBe(true)
+    await expect(
+      canManageSpecificationAssignments(db, 5, 'SE5560000001-other1', false),
+    ).resolves.toBe(false)
+  })
+
+  it('returns the actor-filtered specification array convenience shape', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([specificationCatalogRow()])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      listSpecificationsForActor(db, {
+        actorHsaId: 'SE5560000001-ada1',
+        canReadAll: false,
+      }),
+    ).resolves.toEqual([expect.objectContaining({ id: 1 })])
+    await expect(
+      listSpecificationsForActor(db, { actorHsaId: ' ', canReadAll: false }),
+    ).resolves.toEqual([])
+  })
+
+  it('reads published versions and needs-reference identities with null fallbacks', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ id: 71 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 11, text: null }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          description: null,
+          id: 11,
+          libraryItemCount: 2,
+          specificationLocalRequirementCount: 1,
+          text: 'Business need',
+          updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(getPublishedVersionIdForRequirement(db, 7)).resolves.toBe(71)
+    await expect(getPublishedVersionIdForRequirement(db, 8)).resolves.toBeNull()
+    await expect(
+      findSpecificationNeedsReferenceIdentity(db, 5, 11),
+    ).resolves.toEqual({ id: 11, text: '' })
+    await expect(
+      findSpecificationNeedsReferenceIdentity(db, 5, 99),
+    ).resolves.toBeNull()
+    await expect(getSpecificationNeedsReference(db, 5, 11)).resolves.toEqual(
+      expect.objectContaining({ id: 11, linkedItemCount: 3 }),
+    )
+    await expect(getSpecificationNeedsReference(db, 5, 99)).resolves.toBeNull()
+  })
+
+  it('reads library and specification-local items by bounded references', async () => {
+    const { db, query } = createSqlServerDb()
+    const itemRow = {
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      id: 31,
+      needsReferenceId: null,
+      note: null,
+      requirementId: 7,
+      requirementVersionId: 71,
+      specificationId: 5,
+      specificationItemStatusId: 1,
+      statusUpdatedAt: null,
+    }
+    query
+      .mockResolvedValueOnce([itemRow])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([itemRow])
+      .mockResolvedValueOnce([itemRow])
+      .mockResolvedValueOnce([{ id: 41 }])
+      .mockResolvedValueOnce([])
+
+    await expect(getSpecificationItemById(db, 31)).resolves.toMatchObject({
+      id: 31,
+      requirementId: 7,
+      specificationId: 5,
+    })
+    await expect(getSpecificationItemById(db, 999)).resolves.toBeNull()
+    await expect(getSpecificationItemByRef(db, 5, 'bad')).resolves.toBeNull()
+    await expect(getSpecificationItemByRef(db, 5, 'lib:31')).resolves.toEqual({
+      id: 31,
+      itemRef: 'lib:31',
+      kind: 'library',
+    })
+    await expect(getSpecificationItemByRef(db, 6, 'lib:31')).resolves.toBeNull()
+    await expect(getSpecificationItemByRef(db, 5, 'local:41')).resolves.toEqual(
+      {
+        id: 41,
+        itemRef: 'local:41',
+        kind: 'specificationLocal',
+      },
+    )
+    await expect(
+      getSpecificationItemByRef(db, 5, 'local:99'),
+    ).resolves.toBeNull()
+  })
+
+  it('updates library and local item fields through validated SQL paths', async () => {
+    const { db, query } = createSqlServerDb()
+
+    await updateSpecificationItemFields(db, 31, {})
+    await updateSpecificationLocalRequirementFields(db, 41, {})
+    expect(query).not.toHaveBeenCalled()
+
+    await expect(
+      updateSpecificationItemFields(db, 31, {
+        specificationItemStatusId: null,
+      } as never),
+    ).rejects.toMatchObject({ code: 'validation' })
+    await expect(
+      updateSpecificationLocalRequirementFields(db, 41, {
+        specificationItemStatusId: 999,
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+
+    query.mockResolvedValueOnce([{ id: 2 }]).mockResolvedValueOnce([])
+    await updateSpecificationItemFields(db, 31, {
+      needsReferenceId: null,
+      note: null,
+      specificationItemStatusId: 2,
+    })
+    expect(query).toHaveBeenLastCalledWith(
+      expect.stringContaining('UPDATE requirements_specification_items'),
+      expect.arrayContaining([2, null, null, 31]),
+    )
+
+    query.mockResolvedValueOnce([{ id: 2 }]).mockResolvedValueOnce([])
+    await updateSpecificationLocalRequirementFields(db, 41, {
+      needsReferenceId: null,
+      note: 'Follow-up',
+      specificationItemStatusId: 2,
+    })
+    expect(query).toHaveBeenLastCalledWith(
+      expect.stringContaining('UPDATE specification_local_requirements'),
+      expect.arrayContaining([2, 'Follow-up', null, 41]),
+    )
+  })
+
+  it('returns zero without a transaction for an empty batch field update', async () => {
+    const { db, transaction } = createSqlServerDb()
+
+    await expect(
+      updateSpecificationItemFieldsByItemRefs(db, 5, [], { note: 'No-op' }),
+    ).resolves.toBe(0)
+    expect(transaction).not.toHaveBeenCalled()
   })
 })

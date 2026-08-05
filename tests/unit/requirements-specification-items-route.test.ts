@@ -728,4 +728,123 @@ describe('requirements-specifications/[id]/items route', () => {
     )
     expect(mocks.removeFromSpecification).not.toHaveBeenCalled()
   })
+
+  it('returns not found for missing specification item collection scopes', async () => {
+    mocks.getSpecificationById.mockResolvedValue(null)
+
+    const getResponse = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/404/items',
+      ),
+      makeParams('404'),
+    )
+    const postResponse = await POST(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/404/items',
+        {
+          body: JSON.stringify({ requirementIds: [1] }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      ),
+      makeParams('404'),
+    )
+    const patchResponse = await PATCH(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/404/items',
+        {
+          body: JSON.stringify({
+            itemRefs: ['lib:1'],
+            needsReferenceId: null,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        },
+      ),
+      makeParams('404'),
+    )
+    const deleteResponse = await DELETE(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/404/items',
+        {
+          body: JSON.stringify({ requirementIds: [1] }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'DELETE',
+        },
+      ),
+      makeParams('404'),
+    )
+
+    expect(getResponse.status).toBe(404)
+    expect(postResponse.status).toBe(404)
+    expect(patchResponse.status).toBe(404)
+    expect(deleteResponse.status).toBe(404)
+  })
+
+  it('maps item-ref deletion service and unexpected failures', async () => {
+    mocks.deleteSpecificationItemsByRefs.mockRejectedValueOnce(
+      validationError('Referenced item does not belong to specification'),
+    )
+    const serviceFailure = await DELETE(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items',
+        {
+          body: JSON.stringify({ itemRefs: ['lib:999'] }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'DELETE',
+        },
+      ),
+      makeParams('5'),
+    )
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.deleteSpecificationItemsByRefs.mockRejectedValueOnce(
+      new Error('delete failed'),
+    )
+    try {
+      const unexpectedFailure = await DELETE(
+        new NextRequest(
+          'http://localhost/api/requirements-specifications/5/items',
+          {
+            body: JSON.stringify({ itemRefs: ['local:999'] }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'DELETE',
+          },
+        ),
+        makeParams('5'),
+      )
+
+      expect(serviceFailure.status).toBe(400)
+      expect(unexpectedFailure.status).toBe(500)
+      await expect(unexpectedFailure.json()).resolves.toEqual({
+        error: 'Failed to remove items',
+      })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('maps requirement-id unlink service errors', async () => {
+    mocks.removeFromSpecification.mockRejectedValueOnce(
+      validationError('Requirement is not linked'),
+    )
+
+    const response = await DELETE(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items',
+        {
+          body: JSON.stringify({ requirementIds: [999] }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'DELETE',
+        },
+      ),
+      makeParams('5'),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Requirement is not linked',
+    })
+  })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   cleanupUnassignedRequirementResponsibilityPeople,
+  getRequirementResponsibilityPerson,
   upsertRequirementResponsibilityPerson,
 } from '@/lib/dal/requirement-responsibility-people'
 
@@ -86,5 +87,31 @@ describe('requirement responsibility people DAL', () => {
     ).resolves.toEqual([])
 
     expect(query).not.toHaveBeenCalled()
+  })
+
+  it('returns a stored responsibility person or null by HSA-id', async () => {
+    const person = {
+      email: 'owner@example.test',
+      givenName: 'Area',
+      hsaId: 'SE5560000001-owner1',
+      middleName: null,
+      surname: 'Owner',
+    }
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([person])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      getRequirementResponsibilityPerson({ query }, person.hsaId),
+    ).resolves.toEqual(person)
+    await expect(
+      getRequirementResponsibilityPerson({ query }, 'SE5560000001-missing1'),
+    ).resolves.toBeNull()
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('WHERE hsa_id = @0'),
+      [person.hsaId],
+    )
   })
 })

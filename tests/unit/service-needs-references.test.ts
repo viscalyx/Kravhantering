@@ -216,6 +216,27 @@ describe('needs reference service workflow', () => {
     })
   })
 
+  it('creates a needs reference with a null description when omitted', async () => {
+    const authorization = { assertAuthorized: vi.fn() }
+    const logger = { error: vi.fn(), info: vi.fn() }
+    const db = {} as never
+    const row = needsReferenceRow({ description: null, id: 15 })
+    vi.mocked(createSpecificationNeedsReference).mockResolvedValue(row)
+    const workflow = createNeedsReferenceWorkflow({ authorization, db, logger })
+
+    await expect(
+      workflow.manageNeedsReference(makeContext(), {
+        operation: 'create',
+        specificationId: 8,
+        text: 'Unspecified context',
+      }),
+    ).resolves.toEqual({ needsReference: row })
+    expect(createSpecificationNeedsReference).toHaveBeenCalledWith(db, 8, {
+      description: null,
+      text: 'Unspecified context',
+    })
+  })
+
   it('rejects empty search text before listing rows', async () => {
     const authorization = { assertAuthorized: vi.fn() }
     const logger = { error: vi.fn(), info: vi.fn() }

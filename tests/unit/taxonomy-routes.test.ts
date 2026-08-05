@@ -261,6 +261,24 @@ const mockCreatePkg = vi.fn(async (..._args: unknown[]) => ({ id: 2 }))
 const mockUpdatePkg = vi.fn()
 const mockUpdateSpecResponsible = vi.fn()
 const mockReplaceSpecificationCoAuthors = vi.fn()
+const mockGetSpecificationById = vi.fn(async (_db: unknown, id: number) =>
+  id === 404
+    ? null
+    : {
+        id,
+        responsibleHsaId: 'SE5560000001-route',
+      },
+)
+const mockListSpecificationCoAuthorHsaIds = vi.fn(async () => [
+  'SE5560000001-coa1',
+])
+const mockListSpecificationCoAuthors = vi.fn(async () => [
+  {
+    displayName: 'Co Author',
+    email: 'co.author@example.test',
+    hsaId: 'SE5560000001-coa1',
+  },
+])
 const mockDeletePkg = vi.fn()
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   listSpecifications: async () => [{ id: 1 }],
@@ -268,22 +286,35 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     specificationPermissionState.canAuthorSpecification(...a),
   canManageSpecificationAssignments: (...a: unknown[]) =>
     specificationPermissionState.canManageSpecificationAssignments(...a),
-  createSpecification: (...a: unknown[]) => mockCreatePkg(...a),
-  updateSpecification: (...a: unknown[]) => mockUpdatePkg(...a),
+  createSpecification: (...a: unknown[]) =>
+    (mockCreatePkg as (...args: unknown[]) => unknown)(...a),
+  updateSpecification: (...a: unknown[]) =>
+    (mockUpdatePkg as (...args: unknown[]) => unknown)(...a),
   updateSpecificationResponsible: (...a: unknown[]) =>
     mockUpdateSpecResponsible(...a),
   replaceSpecificationCoAuthors: (...a: unknown[]) =>
     mockReplaceSpecificationCoAuthors(...a),
-  deleteSpecification: (...a: unknown[]) => mockDeletePkg(...a),
-  getSpecificationById: async (_db: unknown, id: number) => ({ id }),
+  deleteSpecification: (...a: unknown[]) =>
+    (mockDeletePkg as (...args: unknown[]) => unknown)(...a),
+  getSpecificationById: (...a: unknown[]) =>
+    (mockGetSpecificationById as (...args: unknown[]) => unknown)(...a),
+  listSpecificationCoAuthorHsaIds: (...a: unknown[]) =>
+    (mockListSpecificationCoAuthorHsaIds as (...args: unknown[]) => unknown)(
+      ...a,
+    ),
+  listSpecificationCoAuthors: (...a: unknown[]) =>
+    (mockListSpecificationCoAuthors as (...args: unknown[]) => unknown)(...a),
   isSpecificationCodeTaken: async () => false,
 }))
 
 vi.mock('@/lib/requirements/specification-mutations', async importOriginal => ({
   ...(await importOriginal()),
-  createSpecificationWithAudit: (...a: unknown[]) => mockCreatePkg(...a),
-  deleteSpecificationWithAudit: (...a: unknown[]) => mockDeletePkg(...a),
-  updateSpecificationWithAudit: (...a: unknown[]) => mockUpdatePkg(...a),
+  createSpecificationWithAudit: (...a: unknown[]) =>
+    (mockCreatePkg as (...args: unknown[]) => unknown)(...a),
+  deleteSpecificationWithAudit: (...a: unknown[]) =>
+    (mockDeletePkg as (...args: unknown[]) => unknown)(...a),
+  updateSpecificationWithAudit: (...a: unknown[]) =>
+    (mockUpdatePkg as (...args: unknown[]) => unknown)(...a),
 }))
 
 const mockCreateRequirementPackage = vi.fn(async (..._args: unknown[]) => ({
@@ -428,10 +459,14 @@ import {
 } from '@/app/api/requirement-packages/route'
 import { POST as postRequirementResponsibilityPersonVerify } from '@/app/api/requirement-responsibility-people/verify/route'
 import { GET as getTypes } from '@/app/api/requirement-types/route'
-import { PUT as putSpecCoAuthors } from '@/app/api/requirements-specifications/[id]/co-authors/route'
+import {
+  GET as getSpecCoAuthors,
+  PUT as putSpecCoAuthors,
+} from '@/app/api/requirements-specifications/[id]/co-authors/route'
 import { PUT as putSpecResponsible } from '@/app/api/requirements-specifications/[id]/responsible/route'
 import {
   DELETE as deletePkg,
+  GET as getPkg,
   PUT as putPkg,
 } from '@/app/api/requirements-specifications/[id]/route'
 import {
@@ -541,6 +576,22 @@ describe('requirement responsibility person verify route', () => {
     specificationPermissionState.canManageSpecificationAssignments.mockResolvedValue(
       true,
     )
+    mockGetSpecificationById.mockImplementation(async (_db, id) =>
+      id === 404
+        ? null
+        : {
+            id,
+            responsibleHsaId: 'SE5560000001-route',
+          },
+    )
+    mockListSpecificationCoAuthorHsaIds.mockResolvedValue(['SE5560000001-coa1'])
+    mockListSpecificationCoAuthors.mockResolvedValue([
+      {
+        displayName: 'Co Author',
+        email: 'co.author@example.test',
+        hsaId: 'SE5560000001-coa1',
+      },
+    ])
   })
 
   it('allows Admin to refresh-verify a requirement area owner HSA-id', async () => {
@@ -1329,6 +1380,83 @@ describe('requirement-specifications routes', () => {
       error: 'Missing specification reference',
     })
   })
+  it('GET returns a specification with actor permissions', async () => {
+    const r = await getPkg(new NextRequest('http://l'), makeParams('1'))
+
+    expect(r.status).toBe(200)
+    await expect(r.json()).resolves.toMatchObject({
+      id: 1,
+      permissions: {
+        canEditContent: true,
+        canManageAssignments: true,
+      },
+    })
+    expect(authState.assertAuthorized).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'get_specification_items',
+        specificationId: 1,
+      }),
+      authState.context,
+    )
+    expect(mockListSpecificationCoAuthorHsaIds).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+    )
+  })
+  it('GET maps invalid, missing, and denied specifications to HTTP errors', async () => {
+    const invalid = await getPkg(new NextRequest('http://l'), makeParams('x'))
+    const missing = await getPkg(new NextRequest('http://l'), makeParams('404'))
+    authState.assertAuthorized.mockRejectedValueOnce(
+      validationError('Specification access rejected'),
+    )
+    const rejected = await getPkg(new NextRequest('http://l'), makeParams('1'))
+
+    expect(invalid.status).toBe(400)
+    expect(missing.status).toBe(404)
+    expect(rejected.status).toBe(400)
+    await expect(rejected.json()).resolves.toMatchObject({
+      error: 'Specification access rejected',
+    })
+  })
+  it('GET co-authors returns assignments for an assignment manager', async () => {
+    const r = await getSpecCoAuthors(
+      new NextRequest('http://l'),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(200)
+    await expect(r.json()).resolves.toEqual({
+      coAuthors: [
+        {
+          displayName: 'Co Author',
+          email: 'co.author@example.test',
+          hsaId: 'SE5560000001-coa1',
+        },
+      ],
+    })
+  })
+  it('GET co-authors rejects invalid, missing, and unauthorized scopes', async () => {
+    const invalid = await getSpecCoAuthors(
+      new NextRequest('http://l'),
+      makeParams('x'),
+    )
+    const missing = await getSpecCoAuthors(
+      new NextRequest('http://l'),
+      makeParams('404'),
+    )
+    specificationPermissionState.canManageSpecificationAssignments.mockResolvedValueOnce(
+      false,
+    )
+    const forbidden = await getSpecCoAuthors(
+      new NextRequest('http://l'),
+      makeParams('1'),
+    )
+
+    expect(invalid.status).toBe(400)
+    expect(missing.status).toBe(404)
+    expect(forbidden.status).toBe(403)
+    expect(mockListSpecificationCoAuthors).not.toHaveBeenCalled()
+  })
   it('POST creates with 201', async () => {
     const r = await postPkg(
       new NextRequest('http://l', {
@@ -1529,6 +1657,20 @@ describe('requirement-specifications routes', () => {
     })
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockCreatePkg).not.toHaveBeenCalled()
+  })
+  it('POST normalizes an empty optional lead HSA-id before ownership checks', async () => {
+    const r = await postPkg(
+      jsonReq('POST', specificationCreateBody({ responsibleHsaId: '   ' })),
+    )
+
+    expect(r.status).toBe(201)
+    expect(mockCreatePkg).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        responsibleHsaId: 'SE5560000001-route',
+      }),
+      authState.context,
+    )
   })
   it('POST rejects a client-selected specification lead display name', async () => {
     const r = await postPkg(
@@ -1788,6 +1930,109 @@ describe('requirement-specifications routes', () => {
         ],
       }),
     )
+  })
+  it('PUT co-authors returns not found when assignment scope disappears', async () => {
+    mockGetSpecificationById
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+
+    const r = await putSpecCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    expect(mockReplaceSpecificationCoAuthors).not.toHaveBeenCalled()
+  })
+  it('PUT co-authors denies actors without assignment manager access', async () => {
+    specificationPermissionState.canManageSpecificationAssignments.mockResolvedValueOnce(
+      false,
+    )
+
+    const r = await putSpecCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockReplaceSpecificationCoAuthors).not.toHaveBeenCalled()
+  })
+  it('PUT co-authors returns not found when persistence loses the scope', async () => {
+    mockReplaceSpecificationCoAuthors.mockResolvedValueOnce(null)
+
+    const r = await putSpecCoAuthors(
+      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(404)
+  })
+  it.each([
+    { displayName: '', id: 'actor-id' },
+    { displayName: '', id: '', hsaId: 'SE5560000001-route' },
+  ])(
+    'PUT co-authors records a stable assignment actor fallback: $id',
+    async actorIdentity => {
+      Object.assign(authState.context.actor, actorIdentity)
+      mockReplaceSpecificationCoAuthors.mockResolvedValueOnce({
+        coAuthorHsaIds: [],
+        specificationId: 1,
+      })
+
+      const r = await putSpecCoAuthors(
+        jsonReq('PUT', { coAuthorHsaIds: [] }),
+        makeParams('1'),
+      )
+
+      expect(r.status).toBe(200)
+      expect(mockReplaceSpecificationCoAuthors).toHaveBeenCalledWith(
+        expect.anything(),
+        1,
+        expect.objectContaining({
+          changedBy: expect.objectContaining({
+            displayName:
+              actorIdentity.id ||
+              ('hsaId' in actorIdentity ? actorIdentity.hsaId : undefined),
+          }),
+        }),
+      )
+    },
+  )
+  it('PUT responsible denies actors without assignment manager access', async () => {
+    specificationPermissionState.canManageSpecificationAssignments.mockResolvedValueOnce(
+      false,
+    )
+
+    const r = await putSpecResponsible(
+      jsonReq('PUT', { responsibleHsaId: 'SE5560000001-rita1' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(403)
+    expect(mockUpdateSpecResponsible).not.toHaveBeenCalled()
+  })
+  it('PUT responsible returns not found when assignment scope disappears', async () => {
+    mockGetSpecificationById
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+
+    const r = await putSpecResponsible(
+      jsonReq('PUT', { responsibleHsaId: 'SE5560000001-rita1' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    expect(mockUpdateSpecResponsible).not.toHaveBeenCalled()
+  })
+  it('PUT responsible returns not found when persistence loses the scope', async () => {
+    mockUpdateSpecResponsible.mockResolvedValueOnce(null)
+
+    const r = await putSpecResponsible(
+      jsonReq('PUT', { responsibleHsaId: 'SE5560000001-rita1' }),
+      makeParams('1'),
+    )
+
+    expect(r.status).toBe(404)
   })
   it('DELETE deletes', async () => {
     const r = await deletePkg(

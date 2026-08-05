@@ -474,4 +474,64 @@ describe('specification output routes', () => {
       routeState.collectSpecificationTraceabilityData,
     ).not.toHaveBeenCalled()
   })
+
+  it('rejects invalid traceability specification ids before creating runtime', async () => {
+    const { GET } = await import(
+      '@/app/api/requirements-specifications/[id]/traceability-items/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/not-an-id/traceability-items',
+      ),
+      { params: Promise.resolve({ id: 'not-an-id' }) },
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
+  it('returns a correlated not-found response for missing traceability scope', async () => {
+    routeState.getSpecificationById.mockResolvedValueOnce(null)
+    const { GET } = await import(
+      '@/app/api/requirements-specifications/[id]/traceability-items/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/404/traceability-items',
+      ),
+      { params: Promise.resolve({ id: '404' }) },
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Specification not found: 404',
+    })
+    expect(response.headers.get('X-Request-Id')).toBe('req')
+    expect(response.headers.get('X-Correlation-Id')).toBe('corr')
+  })
+
+  it('maps unexpected traceability collection failures without leaking details', async () => {
+    routeState.collectSpecificationTraceabilityData.mockRejectedValueOnce(
+      new Error('database secret'),
+    )
+    const { GET } = await import(
+      '@/app/api/requirements-specifications/[id]/traceability-items/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/42/traceability-items',
+      ),
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      code: 'internal',
+      error: 'An internal error occurred',
+    })
+    expect(response.headers.get('X-Request-Id')).toBe('req')
+  })
 })

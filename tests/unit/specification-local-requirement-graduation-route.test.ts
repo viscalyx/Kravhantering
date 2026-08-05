@@ -37,7 +37,10 @@ vi.mock('@/lib/requirements/server', () => ({
 
 import { POST } from '@/app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduate/route'
 import { GET } from '@/app/api/requirements-specifications/[id]/local-requirements/[localRequirementId]/graduation-target-areas/route'
-import { forbiddenError } from '@/lib/requirements/errors'
+import {
+  forbiddenError,
+  RequirementsServiceError,
+} from '@/lib/requirements/errors'
 
 function makeParams(id: string, localRequirementId: string) {
   return { params: Promise.resolve({ id, localRequirementId }) }
@@ -105,6 +108,56 @@ describe('specification-local requirement graduation routes', () => {
       responseFormat: 'json',
       specificationId: 5,
     })
+  })
+
+  it('rejects invalid graduation target route parameters before runtime', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/local-requirements/nope/graduation-target-areas',
+      ),
+      makeParams('5', 'nope'),
+    )
+
+    expect(response.status).toBe(400)
+    expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
+  it('maps service and unexpected graduation target failures', async () => {
+    mocks.listGraduationTargetAreas.mockRejectedValueOnce(
+      new RequirementsServiceError('not_found', 'Local requirement missing'),
+    )
+    const missing = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/local-requirements/41/graduation-target-areas',
+      ),
+      makeParams('5', '41'),
+    )
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.listGraduationTargetAreas.mockRejectedValueOnce(
+      new Error('database unavailable'),
+    )
+    try {
+      const failed = await GET(
+        new NextRequest(
+          'http://localhost/api/requirements-specifications/5/local-requirements/41/graduation-target-areas',
+        ),
+        makeParams('5', '41'),
+      )
+
+      expect(missing.status).toBe(404)
+      await expect(missing.json()).resolves.toEqual({
+        code: 'not_found',
+        error: 'Local requirement missing',
+      })
+      expect(failed.status).toBe(500)
+      await expect(failed.json()).resolves.toEqual({
+        error: 'Failed to list graduation target requirement areas',
+      })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('creates a draft library requirement through the shared service', async () => {

@@ -89,15 +89,17 @@ describe('specifications pages', () => {
   })
 
   it('RequirementsSpecificationDetailPage passes the numeric id to RequirementsSpecificationDetailClient', async () => {
-    const { default: RequirementsSpecificationDetailPage } = await import(
-      '@/app/[locale]/specifications/[specificationId]/page'
-    )
+    const { default: RequirementsSpecificationDetailPage, generateMetadata } =
+      await import('@/app/[locale]/specifications/[specificationId]/page')
     const { loadRequirementsSpecificationDetailInitialData } = await import(
       '@/lib/specifications/preload'
     )
 
+    await expect(generateMetadata()).resolves.toEqual({
+      title: 'specifications',
+    })
     const element = await RequirementsSpecificationDetailPage({
-      params: Promise.resolve({ locale: 'en', specificationId: '8' }),
+      params: Promise.resolve({ locale: 'unsupported', specificationId: '8' }),
     })
 
     render(element)
@@ -106,10 +108,22 @@ describe('specifications pages', () => {
     ).toBeInTheDocument()
     expect(loadRequirementsSpecificationDetailInitialData).toHaveBeenCalledWith(
       {
-        locale: 'en',
+        locale: 'sv',
         specificationId: 8,
       },
     )
+  })
+
+  it('RequirementsSpecificationDetailPage redirects non-canonical numeric ids', async () => {
+    const { default: RequirementsSpecificationDetailPage } = await import(
+      '@/app/[locale]/specifications/[specificationId]/page'
+    )
+
+    await expect(
+      RequirementsSpecificationDetailPage({
+        params: Promise.resolve({ locale: 'en', specificationId: '08' }),
+      }),
+    ).rejects.toThrow('NEXT_REDIRECT:/en/specifications/8')
   })
 
   it('RequirementsSpecificationDetailPage redirects specification-code aliases to the numeric URL', async () => {
@@ -179,6 +193,42 @@ describe('specifications pages', () => {
     ).toBeNull()
   })
 
+  it('RequirementsSpecificationDetailPage falls back to responsible HSA-id and missing-email text', async () => {
+    const { default: RequirementsSpecificationDetailPage } = await import(
+      '@/app/[locale]/specifications/[specificationId]/page'
+    )
+    const { loadRequirementsSpecificationDetailInitialData } = await import(
+      '@/lib/specifications/preload'
+    )
+    vi.mocked(
+      loadRequirementsSpecificationDetailInitialData,
+    ).mockResolvedValueOnce({
+      forbidden: {
+        responsible: {
+          displayName: null,
+          email: null,
+          hsaId: 'SE5560000001-specresp1',
+        },
+        specification: {
+          name: 'E-tjänstupphandling',
+          specificationCode: 'ETJANST-UPP-2026',
+        },
+      },
+      specificationItems: {
+        items: [],
+        pagination: { count: 0, hasMore: false, limit: 50, nextCursor: null },
+      },
+    } as never)
+
+    render(
+      await RequirementsSpecificationDetailPage({
+        params: Promise.resolve({ locale: 'en', specificationId: '8' }),
+      }),
+    )
+    expect(screen.getByText('SE5560000001-specresp1')).toBeInTheDocument()
+    expect(screen.getByText('responsibleEmailMissing')).toBeInTheDocument()
+  })
+
   it('RequirementsSpecificationDetailPage delegates missing specifications to notFound', async () => {
     const { default: RequirementsSpecificationDetailPage } = await import(
       '@/app/[locale]/specifications/[specificationId]/page'
@@ -189,5 +239,23 @@ describe('specifications pages', () => {
       }),
     ).rejects.toThrow('NEXT_NOT_FOUND')
     expect(navigationMocks.notFound).toHaveBeenCalled()
+  })
+
+  it('RequirementsSpecificationDetailPage delegates preload disappearance to notFound', async () => {
+    const { default: RequirementsSpecificationDetailPage } = await import(
+      '@/app/[locale]/specifications/[specificationId]/page'
+    )
+    const { loadRequirementsSpecificationDetailInitialData } = await import(
+      '@/lib/specifications/preload'
+    )
+    vi.mocked(
+      loadRequirementsSpecificationDetailInitialData,
+    ).mockResolvedValueOnce({ notFound: true } as never)
+
+    await expect(
+      RequirementsSpecificationDetailPage({
+        params: Promise.resolve({ locale: 'en', specificationId: '8' }),
+      }),
+    ).rejects.toThrow('NEXT_NOT_FOUND')
   })
 })

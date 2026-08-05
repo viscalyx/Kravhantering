@@ -300,6 +300,48 @@ describe('RequirementsSpecificationsClient', () => {
     }
   })
 
+  it('keeps rendering available taxonomy when another endpoint returns details', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications') {
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      }
+      if (url === '/api/specification-governance-object-types') {
+        return Promise.resolve({
+          ok: false,
+          text: async () => 'Governance taxonomy unavailable',
+        })
+      }
+      if (url === '/api/specification-implementation-types') {
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      }
+      if (url === '/api/specification-lifecycle-statuses') {
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    try {
+      render(<RequirementsSpecificationsClient />)
+
+      expect(await screen.findByText('Type')).toBeInTheDocument()
+      expect(screen.getByText('Development')).toBeInTheDocument()
+      expect(screen.getByText('Delivery area')).toBeInTheDocument()
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to load specification governance object types',
+        expect.objectContaining({
+          message:
+            'specification.partialDataLoadWarning: Governance taxonomy unavailable',
+        }),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
   it('reloads empty preload fallbacks when the matching preload captured errors', async () => {
     render(
       <RequirementsSpecificationsClient
@@ -349,6 +391,111 @@ describe('RequirementsSpecificationsClient', () => {
     expect(screen.getByText('Delivery area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
     expect(screen.getByText('Development')).toBeInTheDocument()
+  })
+
+  it('uses complete preloaded data and enforces explicit row permissions', async () => {
+    const specification = {
+      ...sampleSpecifications[0],
+      governanceObjectType: null,
+      implementationType: null,
+      itemCount: 3,
+      lifecycleStatus: null,
+      permissions: {
+        canEditContent: true,
+        canManageAssignments: false,
+        canReviewDecisions: false,
+        canUseAi: false,
+      },
+      responsibleDisplayName: null,
+      responsibleHsaId: '',
+    }
+
+    render(
+      <RequirementsSpecificationsClient
+        initialData={{
+          collectionPermissions: { canCreateSpecification: false },
+          errors: [],
+          governanceObjectTypes: sampleGovernanceObjectTypes,
+          implementationTypes: sampleTypes,
+          lifecycleStatuses: sampleStatuses,
+          specifications: [specification],
+        }}
+      />,
+    )
+
+    expect(await screen.findByText('Kravunderlag sv')).toBeInTheDocument()
+    expect(screen.getAllByText('—')).toHaveLength(4)
+    expect(screen.getByRole('link', { name: '3' })).toHaveAttribute(
+      'href',
+      '/specifications/1',
+    )
+    expect(
+      screen.queryByRole('button', { name: /specification\.manageCoAuthors/i }),
+    ).toBeNull()
+    expect(screen.getByRole('button', { name: /common\.edit/i })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: /common\.delete/i }),
+    ).toBeVisible()
+
+    const createButton = screen.getByRole('button', {
+      name: /specification\.newSpecification/i,
+    })
+    await waitFor(() => expect(createButton).toBeDisabled())
+    expect(createButton).toHaveAttribute(
+      'title',
+      'specification.readOnlyNotice',
+    )
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/requirements-specifications',
+      expect.anything(),
+    )
+  })
+
+  it('uses empty collection defaults when successful endpoints omit arrays', async () => {
+    mockApi(() => Promise.resolve(okJson({})))
+
+    render(<RequirementsSpecificationsClient />)
+
+    expect(await screen.findByText('specification.emptyState')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: /specification\.newSpecification/i }),
+    ).not.toBeDisabled()
+  })
+
+  it('uses the HSA-id when optional current-user profile fields are absent', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve(
+          okJson({ authenticated: true, hsaId: '  SE5560000001-minimal  ' }),
+        )
+      }
+      if (url === '/api/requirements-specifications') {
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
+      }
+      if (url === '/api/specification-governance-object-types') {
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      }
+      if (url === '/api/specification-implementation-types') {
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      }
+      if (url === '/api/specification-lifecycle-statuses') {
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+    await openCreateSpecificationForm()
+
+    expect(
+      screen.getByRole('textbox', { name: /specification\.responsibleHsaId/ }),
+    ).toHaveValue('SE5560000001-minimal')
+    expect(screen.getByText('SE5560000001-minimal')).toBeInTheDocument()
   })
 
   it('filters specifications by the name column and clears the search', async () => {

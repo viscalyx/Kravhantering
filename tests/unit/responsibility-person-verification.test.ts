@@ -18,7 +18,9 @@ vi.mock('@/lib/hsa/person-lookup', () => ({
 }))
 
 import {
+  resolveVerifiedRequirementResponsibilityPeople,
   resolveVerifiedRequirementResponsibilityPerson,
+  toRequirementResponsibilityPersonVerificationPayload,
   verifyRequirementResponsibilityPerson,
 } from '@/lib/requirements/responsibility-person-verification'
 
@@ -168,6 +170,62 @@ describe('responsibility person verification', () => {
     })
 
     expect(mocks.getRequirementResponsibilityPerson).toHaveBeenCalledTimes(2)
+    expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
+  })
+
+  it('normalizes names and protected-data flags in the verification payload', () => {
+    expect(
+      toRequirementResponsibilityPersonVerificationPayload({
+        ...LOCAL_PERSON,
+        givenName: '  Local ',
+        hasProtectedPersonalData: true,
+        middleName: ' Middle ',
+        surname: ' Owner ',
+      }),
+    ).toMatchObject({
+      displayName: 'Local Middle Owner',
+      hasProtectedPersonalData: true,
+    })
+    expect(
+      toRequirementResponsibilityPersonVerificationPayload({
+        ...LOCAL_PERSON,
+        givenName: ' ',
+        middleName: null,
+        surname: '',
+      }),
+    ).toMatchObject({
+      displayName: LOCAL_PERSON.hsaId,
+      hasProtectedPersonalData: false,
+    })
+  })
+
+  it('resolves multiple verified people after the configured retry delay', async () => {
+    let localReads = 0
+    mocks.getRequirementResponsibilityPerson.mockImplementation(
+      async (_db, hsaId) => {
+        if (hsaId === LOOKUP_PERSON.hsaId) return LOOKUP_PERSON
+        localReads += 1
+        return localReads === 1 ? null : LOCAL_PERSON
+      },
+    )
+
+    await expect(
+      resolveVerifiedRequirementResponsibilityPeople(
+        'mock-db' as never,
+        ['SE5560000001-local1', 'SE5560000001-sara1'],
+        { retryDelayMs: 1 },
+      ),
+    ).resolves.toEqual([LOCAL_PERSON, LOOKUP_PERSON])
+  })
+
+  it('rejects invalid HSA-id input in direct verification', async () => {
+    await expect(
+      verifyRequirementResponsibilityPerson(
+        'mock-db' as never,
+        ' invalid ',
+        'refresh',
+      ),
+    ).rejects.toSatisfy(error => isRequirementsServiceError(error))
     expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
   })
 })

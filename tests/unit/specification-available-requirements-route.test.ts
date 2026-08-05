@@ -18,6 +18,7 @@ const mockContext = {
 }
 
 const mocks = {
+  authorize: vi.fn(),
   createRequirementsRestRuntime: vi.fn(),
   getExistingSpecificationRequirementIds: vi.fn(),
   getSpecificationById: vi.fn(),
@@ -56,7 +57,12 @@ vi.mock('@/lib/requirements/server', () => ({
     mocks.createRequirementsRestRuntime(...args),
 }))
 
+vi.mock('@/lib/requirements/service-shared', () => ({
+  authorize: (...args: unknown[]) => mocks.authorize(...args),
+}))
+
 import { GET } from '@/app/api/requirements-specifications/[id]/available-requirements/route'
+import { forbiddenError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -82,6 +88,8 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
       pagination: { hasMore: false, total: 1 },
       requirements: [{ id: 201, uniqueId: 'IAM0201' }],
     })
+    mockAuthorization.assertAuthorized.mockResolvedValue(undefined)
+    mocks.authorize.mockResolvedValue(undefined)
   })
 
   it('rejects status query params because available requirements are always published-only', async () => {
@@ -174,6 +182,56 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
     )
   })
 
+  it('does not apply an explicitly requested filter when no selection exists', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/6/available-requirements?applyRequirementSelectionFilter=true',
+      ),
+      makeParams('6'),
+    )
+
+    expect(response.status).toBe(200)
+    expect(mocks.queryRequirementList.mock.calls[0]?.[1]).not.toHaveProperty(
+      'requirementIds',
+    )
+    await expect(response.json()).resolves.toMatchObject({
+      selectionFilter: { applied: false },
+    })
+  })
+
+  it('passes the complete supported filter and cursor state to the list query', async () => {
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/6/available-requirements?areaIds=1&categoryIds=2&descriptionSearch=access&limit=25&locale=sv&normReferenceIds=3&cursor=next&qualityCharacteristicIds=4&requirementPackageIds=5&verifiable=true&priorityLevelIds=6&sortBy=description&sortDirection=desc&typeIds=7&uniqueIdSearch=IAM',
+      ),
+      makeParams('6'),
+    )
+
+    expect(response.status).toBe(200)
+    expect(mocks.queryRequirementList).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({
+        cursor: 'next',
+        filters: expect.objectContaining({
+          areaIds: [1],
+          categoryIds: [2],
+          descriptionSearch: 'access',
+          normReferenceIds: [3],
+          priorityLevelIds: [6],
+          qualityCharacteristicIds: [4],
+          requirementPackageIds: [5],
+          typeIds: [7],
+          uniqueIdSearch: 'IAM',
+          verifiable: ['true'],
+        }),
+        limit: 25,
+        locale: 'sv',
+        sort: { by: 'description', direction: 'desc' },
+      }),
+      { authorization: mockAuthorization, context: mockContext },
+    )
+  })
+
   it('returns an empty list when an explicitly applied selection has no published matches', async () => {
     mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
       hasCurrentAnswers: true,
@@ -245,5 +303,42 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
       error,
       { specificationId: 6 },
     )
+  })
+
+  it('rejects invalid or missing specification scopes before listing', async () => {
+    const invalid = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/nope/available-requirements',
+      ),
+      makeParams('nope'),
+    )
+    mocks.getSpecificationById.mockResolvedValueOnce(null)
+    const missing = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/404/available-requirements',
+      ),
+      makeParams('404'),
+    )
+
+    expect(invalid.status).toBe(400)
+    expect(missing.status).toBe(404)
+    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
+  })
+
+  it('does not log expected authorization failures', async () => {
+    mocks.authorize.mockRejectedValueOnce(
+      forbiddenError('Specification read denied'),
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/6/available-requirements',
+      ),
+      makeParams('6'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.logSanitizedError).not.toHaveBeenCalled()
+    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
   })
 })
