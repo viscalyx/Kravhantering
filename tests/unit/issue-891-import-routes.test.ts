@@ -2,34 +2,35 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RequestContext } from '@/lib/requirements/auth'
 
 const routeMocks = vi.hoisted(() => ({
-  configs: [] as Array<Record<string, unknown>>,
+  assertAuthorized: vi.fn(),
+  createRequestContext: vi.fn(),
   createRequirementsRestRuntime: vi.fn(),
+  deniedAudit: vi.fn(),
   executeLibraryImport: vi.fn(),
+  logSanitizedError: vi.fn(),
   previewLibraryImport: vi.fn(),
 }))
 
-vi.mock('@/lib/http/secure-mutation-route', () => ({
-  requirementsMutationPolicy: (
-    resolve: (input: { body: Record<string, unknown> }) => unknown,
-  ) => resolve,
-  secureMutationRoute: (config: Record<string, unknown>) => {
-    routeMocks.configs.push(config)
-    return Object.assign(
-      async (request: Request) =>
-        (
-          config.handler as (input: {
-            body: Record<string, unknown>
-            context: RequestContext
-            request: Request
-          }) => Promise<Response>
-        )({
-          body: await request.json(),
-          context: makeContext(true),
-          request,
-        }),
-      { secureMutationRoute: true },
-    )
-  },
+const db = { query: vi.fn() }
+
+vi.mock('@/lib/db', () => ({
+  getRequestSqlServerDataSource: vi.fn(async () => db),
+}))
+
+vi.mock('@/lib/requirements/auth', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/lib/requirements/auth')>()),
+  createDefaultAuthorizationService: () => ({
+    assertAuthorized: routeMocks.assertAuthorized,
+  }),
+  createRequestContext: routeMocks.createRequestContext,
+}))
+
+vi.mock('@/lib/audit/action-audit', () => ({
+  recordDeniedActionAuditEvent: routeMocks.deniedAudit,
+}))
+
+vi.mock('@/lib/http/safe-errors', () => ({
+  logSanitizedError: routeMocks.logSanitizedError,
 }))
 
 vi.mock('@/lib/requirements/server', () => ({
@@ -39,6 +40,7 @@ vi.mock('@/lib/requirements/server', () => ({
 import { POST as executePost } from '@/app/api/requirements/import/execute/route'
 import { POST as previewPost } from '@/app/api/requirements/import/preview/route'
 import { GET as schemaGet } from '@/app/api/requirements/import/schema/route'
+import { getRouteHandlerBrand } from '@/lib/http/response-policy'
 import { forbiddenError } from '@/lib/requirements/errors'
 
 function makeContext(isAuthenticated: boolean): RequestContext {
@@ -68,6 +70,7 @@ function jsonRequest(path: string, body: Record<string, unknown>): Request {
 describe('requirements-library import routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routeMocks.createRequestContext.mockResolvedValue(makeContext(true))
     routeMocks.previewLibraryImport.mockResolvedValue({
       previewToken: 'preview-token',
       rows: [],
@@ -85,6 +88,11 @@ describe('requirements-library import routes', () => {
         previewLibraryImport: routeMocks.previewLibraryImport,
       },
     })
+  })
+
+  it('keeps import mutations behind the secure route wrapper', () => {
+    expect(getRouteHandlerBrand(previewPost)).toBe('mutation')
+    expect(getRouteHandlerBrand(executePost)).toBe('mutation')
   })
 
   it('previews a library import and derives area authorization from its body', async () => {
@@ -108,20 +116,20 @@ describe('requirements-library import routes', () => {
       makeContext(true),
       { areaId: 7, locale: 'sv', payload },
     )
-    const previewConfig = routeMocks.configs[0]
-    expect(
-      (previewConfig.policy as (input: unknown) => unknown)({
-        body: { areaId: 7 },
-      }),
-    ).toEqual({ areaId: 7, kind: 'manage_requirement', operation: 'create' })
+    expect(routeMocks.assertAuthorized).toHaveBeenCalledWith(
+      { areaId: 7, kind: 'manage_requirement', operation: 'create' },
+      makeContext(true),
+    )
   })
 
   it('rejects a preview without an area before runtime work', async () => {
     const response = await previewPost(
       jsonRequest('/api/requirements/import/preview', {
-        areaId: 0,
         locale: 'en',
-        payload: { requirements: [], schemaVersion: 'requirement-import.v3' },
+        payload: {
+          requirements: [{ description: 'Requirement' }],
+          schemaVersion: 'requirement-import.v3',
+        },
       }),
     )
 
@@ -137,7 +145,10 @@ describe('requirements-library import routes', () => {
       jsonRequest('/api/requirements/import/preview', {
         areaId: 3,
         locale: 'en',
-        payload: { requirements: [], schemaVersion: 'requirement-import.v3' },
+        payload: {
+          requirements: [{ description: 'Requirement' }],
+          schemaVersion: 'requirement-import.v3',
+        },
       }),
     )
 
@@ -145,8 +156,35 @@ describe('requirements-library import routes', () => {
     await expect(response.json()).resolves.toMatchObject({ code: 'forbidden' })
   })
 
+  it('rejects preview authorization before runtime work', async () => {
+    routeMocks.assertAuthorized.mockRejectedValueOnce(forbiddenError())
+
+    const response = await previewPost(
+      jsonRequest('/api/requirements/import/preview', {
+        areaId: 3,
+        locale: 'en',
+        payload: {
+          requirements: [{ description: 'Requirement' }],
+          schemaVersion: 'requirement-import.v3',
+        },
+      }),
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeMocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
   it('executes an approved library preview and returns a created response', async () => {
-    const rows = [{ sourceIndex: 0 }]
+    const rows = [
+      {
+        description: 'Requirement',
+        normReferenceIds: [],
+        requirementPackageIds: [],
+        reviewRowId: 'row-0',
+        sourceIndex: 0,
+        verifiable: false,
+      },
+    ]
     const response = await executePost(
       jsonRequest('/api/requirements/import/execute', {
         areaId: 7,
@@ -165,12 +203,10 @@ describe('requirements-library import routes', () => {
       makeContext(true),
       { areaId: 7, locale: 'en', previewToken: 'preview-token', rows },
     )
-    const executeConfig = routeMocks.configs[1]
-    expect(
-      (executeConfig.policy as (input: unknown) => unknown)({
-        body: { areaId: 7 },
-      }),
-    ).toEqual({ areaId: 7, kind: 'manage_requirement', operation: 'create' })
+    expect(routeMocks.assertAuthorized).toHaveBeenCalledWith(
+      { areaId: 7, kind: 'manage_requirement', operation: 'create' },
+      makeContext(true),
+    )
   })
 
   it('maps execute failures without leaking the internal exception', async () => {
@@ -183,7 +219,9 @@ describe('requirements-library import routes', () => {
         areaId: 7,
         locale: 'en',
         previewToken: 'preview-token',
-        rows: [],
+        rows: [
+          { description: 'Requirement', reviewRowId: 'row-0', sourceIndex: 0 },
+        ],
       }),
     )
 
