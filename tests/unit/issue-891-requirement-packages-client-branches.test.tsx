@@ -1,38 +1,25 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  confirmModalMock,
+  failedJsonResponse,
+  okJsonResponse,
+  routingLinkMock,
+  statusBadgeMock,
+} from './helpers/issue-891-client-test-helpers'
 
-const confirm = vi.fn()
+const confirm = vi.hoisted(() => vi.fn())
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
   useTranslations: (namespace?: string) => (key: string) =>
     `${namespace}.${key}`,
 }))
-vi.mock('@/i18n/routing', () => ({
-  Link: ({ children, href, ...props }: React.ComponentProps<'a'>) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}))
-vi.mock('@/components/ConfirmModal', () => ({
-  useConfirmModal: () => ({ confirm }),
-}))
-vi.mock('@/components/StatusBadge', () => ({
-  default: ({ label }: { label: string }) => <span>{label}</span>,
-}))
+vi.mock('@/i18n/routing', () => routingLinkMock())
+vi.mock('@/components/ConfirmModal', () => confirmModalMock(confirm))
+vi.mock('@/components/StatusBadge', () => statusBadgeMock())
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
-const ok = (body: unknown) => ({ ok: true, json: async () => body })
-const failed = (body: unknown) =>
-  ({
-    headers: new Headers({ 'content-type': 'application/json' }),
-    json: async () => body,
-    ok: false,
-    status: 500,
-    statusText: 'Error',
-    text: async () => JSON.stringify(body),
-  }) as Response
 
 import RequirementPackagesClient from '@/app/[locale]/requirement-packages/requirement-packages-client'
 
@@ -64,11 +51,11 @@ describe('Issue 891 requirement-package client branches', () => {
     confirm.mockResolvedValue(true)
     fetchMock.mockImplementation(async (input: unknown) => {
       const url = urlOf(input)
-      if (url === '/api/auth/me') return ok(actor)
+      if (url === '/api/auth/me') return okJsonResponse(actor)
       if (url.startsWith('/api/requirement-packages?')) {
-        return ok({ requirementPackages: [requirementPackage] })
+        return okJsonResponse({ requirementPackages: [requirementPackage] })
       }
-      return ok({})
+      return okJsonResponse({})
     })
   })
 
@@ -76,9 +63,11 @@ describe('Issue 891 requirement-package client branches', () => {
     render(<RequirementPackagesClient />)
     await screen.findByText('Package')
     fetchMock
-      .mockResolvedValueOnce(ok({ ...requirementPackage, isArchived: true }))
       .mockResolvedValueOnce(
-        ok({
+        okJsonResponse({ ...requirementPackage, isArchived: true }),
+      )
+      .mockResolvedValueOnce(
+        okJsonResponse({
           requirementPackages: [{ ...requirementPackage, isArchived: true }],
         }),
       )
@@ -95,8 +84,10 @@ describe('Issue 891 requirement-package client branches', () => {
       name: 'requirementPackage.reactivate',
     })
     fetchMock
-      .mockResolvedValueOnce(ok(requirementPackage))
-      .mockResolvedValueOnce(ok({ requirementPackages: [requirementPackage] }))
+      .mockResolvedValueOnce(okJsonResponse(requirementPackage))
+      .mockResolvedValueOnce(
+        okJsonResponse({ requirementPackages: [requirementPackage] }),
+      )
     fireEvent.click(reactivate)
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -112,7 +103,9 @@ describe('Issue 891 requirement-package client branches', () => {
     const archive = screen.getByRole('button', {
       name: 'requirementPackage.archive',
     })
-    fetchMock.mockResolvedValueOnce(failed({ error: 'Archive denied' }))
+    fetchMock.mockResolvedValueOnce(
+      failedJsonResponse({ error: 'Archive denied' }),
+    )
     fireEvent.click(archive)
     expect(await screen.findByRole('alert')).toHaveTextContent('Archive denied')
 
@@ -127,12 +120,12 @@ describe('Issue 891 requirement-package client branches', () => {
     const longDescription = 'L'.repeat(170)
     fetchMock.mockImplementation(async (input: unknown) => {
       const url = urlOf(input)
-      if (url === '/api/auth/me') return ok(actor)
+      if (url === '/api/auth/me') return okJsonResponse(actor)
       if (url.startsWith('/api/requirement-packages?')) {
-        return ok({ requirementPackages: [requirementPackage] })
+        return okJsonResponse({ requirementPackages: [requirementPackage] })
       }
       if (url === '/api/requirement-packages/1') {
-        return ok({
+        return okJsonResponse({
           linkedRequirements: [
             {
               archiveInitiatedAt: null,
@@ -172,7 +165,7 @@ describe('Issue 891 requirement-package client branches', () => {
           requirementPackage,
         })
       }
-      return ok({})
+      return okJsonResponse({})
     })
     render(<RequirementPackagesClient />)
     await screen.findByText('Package')
@@ -199,11 +192,11 @@ describe('Issue 891 requirement-package client branches', () => {
   it('falls back for malformed actor responses and rejected actor requests', async () => {
     fetchMock.mockImplementation(async (input: unknown) => {
       const url = urlOf(input)
-      if (url === '/api/auth/me') return failed({})
+      if (url === '/api/auth/me') return failedJsonResponse({})
       if (url.startsWith('/api/requirement-packages?')) {
-        return ok({ requirementPackages: [requirementPackage] })
+        return okJsonResponse({ requirementPackages: [requirementPackage] })
       }
-      return ok({})
+      return okJsonResponse({})
     })
     const first = render(<RequirementPackagesClient />)
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -213,7 +206,7 @@ describe('Issue 891 requirement-package client branches', () => {
 
     fetchMock.mockImplementation(async (input: unknown) => {
       if (urlOf(input) === '/api/auth/me') throw 'network failure'
-      return ok({ requirementPackages: [requirementPackage] })
+      return okJsonResponse({ requirementPackages: [requirementPackage] })
     })
     render(<RequirementPackagesClient />)
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -227,8 +220,8 @@ describe('Issue 891 requirement-package client branches', () => {
     { authenticated: true, hsaId: ' ' },
   ])('rejects malformed successful actor payload %#', async body => {
     fetchMock.mockImplementation(async (input: unknown) => {
-      if (urlOf(input) === '/api/auth/me') return ok(body)
-      return ok({ requirementPackages: [requirementPackage] })
+      if (urlOf(input) === '/api/auth/me') return okJsonResponse(body)
+      return okJsonResponse({ requirementPackages: [requirementPackage] })
     })
     render(<RequirementPackagesClient />)
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -239,7 +232,7 @@ describe('Issue 891 requirement-package client branches', () => {
   it('normalizes actor fallbacks and renders packages without assignment permission', async () => {
     fetchMock.mockImplementation(async (input: unknown) => {
       if (urlOf(input) === '/api/auth/me') {
-        return ok({
+        return okJsonResponse({
           authenticated: true,
           email: 7,
           hsaId: ' SE5560000001-fallback ',
@@ -247,7 +240,7 @@ describe('Issue 891 requirement-package client branches', () => {
           roles: ['Author', 7],
         })
       }
-      return ok({
+      return okJsonResponse({
         requirementPackages: [
           requirementPackage,
           {
@@ -274,9 +267,12 @@ describe('Issue 891 requirement-package client branches', () => {
   it('accepts an actor without a roles collection', async () => {
     fetchMock.mockImplementation(async (input: unknown) => {
       if (urlOf(input) === '/api/auth/me') {
-        return ok({ authenticated: true, hsaId: 'SE5560000001-author' })
+        return okJsonResponse({
+          authenticated: true,
+          hsaId: 'SE5560000001-author',
+        })
       }
-      return ok({ requirementPackages: [requirementPackage] })
+      return okJsonResponse({ requirementPackages: [requirementPackage] })
     })
     render(<RequirementPackagesClient />)
     expect(await screen.findByText('Package')).toBeInTheDocument()
@@ -301,7 +297,7 @@ describe('Issue 891 requirement-package client branches', () => {
       }),
     )
     expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
-    fetchMock.mockResolvedValueOnce(ok({}))
+    fetchMock.mockResolvedValueOnce(okJsonResponse({}))
     fireEvent.click(screen.getByRole('button', { name: 'common.retry' }))
     expect(await screen.findByText('common.noneAvailable')).toBeInTheDocument()
   })
@@ -310,16 +306,16 @@ describe('Issue 891 requirement-package client branches', () => {
     let resolveLinked!: (response: unknown) => void
     fetchMock.mockImplementation(async (input: unknown) => {
       const url = urlOf(input)
-      if (url === '/api/auth/me') return ok(actor)
+      if (url === '/api/auth/me') return okJsonResponse(actor)
       if (url.startsWith('/api/requirement-packages?')) {
-        return ok({ requirementPackages: [requirementPackage] })
+        return okJsonResponse({ requirementPackages: [requirementPackage] })
       }
       if (url === '/api/requirement-packages/1') {
         return new Promise(resolve => {
           resolveLinked = resolve
         })
       }
-      return ok({})
+      return okJsonResponse({})
     })
     render(<RequirementPackagesClient />)
     await screen.findByText('Package')
@@ -331,7 +327,7 @@ describe('Issue 891 requirement-package client branches', () => {
     await screen.findByRole('status')
     const closeButtons = screen.getAllByRole('button', { name: 'common.close' })
     fireEvent.click(closeButtons.at(-1) as HTMLElement)
-    resolveLinked(ok({ linkedRequirements: [] }))
+    resolveLinked(okJsonResponse({ linkedRequirements: [] }))
     await waitFor(() =>
       expect(screen.queryByRole('status')).not.toBeInTheDocument(),
     )
@@ -345,11 +341,11 @@ describe('Issue 891 requirement-package client branches', () => {
           resolveActor = resolve
         })
       }
-      return ok({ requirementPackages: [requirementPackage] })
+      return okJsonResponse({ requirementPackages: [requirementPackage] })
     })
     const view = render(<RequirementPackagesClient />)
     view.unmount()
-    resolveActor(ok(actor))
+    resolveActor(okJsonResponse(actor))
     await Promise.resolve()
   })
 })

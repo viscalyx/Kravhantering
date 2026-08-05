@@ -1,7 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  confirmModalMock,
+  failedJsonResponse,
+  okJsonResponse,
+  routingLinkMock,
+  statusBadgeMock,
+} from './helpers/issue-891-client-test-helpers'
 
-const confirm = vi.fn()
+const confirm = vi.hoisted(() => vi.fn())
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
   useTranslations: (namespace?: string) =>
@@ -9,32 +16,12 @@ vi.mock('next-intl', () => ({
       rich: (key: string) => `${namespace}.${key}`,
     }),
 }))
-vi.mock('@/i18n/routing', () => ({
-  Link: ({ children, href, ...props }: React.ComponentProps<'a'>) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}))
-vi.mock('@/components/ConfirmModal', () => ({
-  useConfirmModal: () => ({ confirm }),
-}))
-vi.mock('@/components/StatusBadge', () => ({
-  default: ({ label }: { label: string }) => <span>{label}</span>,
-}))
+vi.mock('@/i18n/routing', () => routingLinkMock())
+vi.mock('@/components/ConfirmModal', () => confirmModalMock(confirm))
+vi.mock('@/components/StatusBadge', () => statusBadgeMock())
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
-const ok = (body: unknown) => ({ ok: true, json: async () => body })
-const failed = (body: unknown) =>
-  ({
-    headers: new Headers({ 'content-type': 'application/json' }),
-    json: async () => body,
-    ok: false,
-    status: 500,
-    statusText: 'Error',
-    text: async () => JSON.stringify(body),
-  }) as Response
 
 import NormReferencesClient from '@/app/[locale]/norm-references/norm-references-client'
 
@@ -55,12 +42,12 @@ const norm = {
 describe('Issue 891 norm-reference client branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(ok({ normReferences: [norm] }))
+    fetchMock.mockResolvedValue(okJsonResponse({ normReferences: [norm] }))
   })
 
   it('filters across reference fields and clears an active search', async () => {
     fetchMock.mockResolvedValue(
-      ok({
+      okJsonResponse({
         normReferences: [
           norm,
           {
@@ -93,9 +80,9 @@ describe('Issue 891 norm-reference client branches', () => {
   it('renders null, short, and truncated linked descriptions with locale status fallbacks', async () => {
     const longDescription = 'A'.repeat(170)
     fetchMock
-      .mockResolvedValueOnce(ok({ normReferences: [norm] }))
+      .mockResolvedValueOnce(okJsonResponse({ normReferences: [norm] }))
       .mockResolvedValueOnce(
-        ok({
+        okJsonResponse({
           linkedRequirements: [
             {
               archiveInitiatedAt: null,
@@ -150,8 +137,8 @@ describe('Issue 891 norm-reference client branches', () => {
 
   it('shows linked-load response and network failures', async () => {
     fetchMock
-      .mockResolvedValueOnce(ok({ normReferences: [norm] }))
-      .mockResolvedValueOnce(failed({}))
+      .mockResolvedValueOnce(okJsonResponse({ normReferences: [norm] }))
+      .mockResolvedValueOnce(failedJsonResponse({}))
     const first = render(<NormReferencesClient />)
     await screen.findByText('Security Standard')
     fireEvent.click(screen.getByRole('button', { name: 'common.edit' }))
@@ -159,7 +146,7 @@ describe('Issue 891 norm-reference client branches', () => {
     first.unmount()
 
     fetchMock
-      .mockResolvedValueOnce(ok({ normReferences: [norm] }))
+      .mockResolvedValueOnce(okJsonResponse({ normReferences: [norm] }))
       .mockRejectedValueOnce(new Error('network failure'))
     render(<NormReferencesClient />)
     await screen.findByText('Security Standard')
@@ -173,7 +160,7 @@ describe('Issue 891 norm-reference client branches', () => {
       resolveLinked = resolve
     })
     fetchMock
-      .mockResolvedValueOnce(ok({ normReferences: [norm] }))
+      .mockResolvedValueOnce(okJsonResponse({ normReferences: [norm] }))
       .mockReturnValueOnce(pending)
     render(<NormReferencesClient />)
     await screen.findByText('Security Standard')
@@ -181,7 +168,7 @@ describe('Issue 891 norm-reference client branches', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'common.loading',
     )
-    resolveLinked(ok({}))
+    resolveLinked(okJsonResponse({}))
     expect(await screen.findByText('common.noneAvailable')).toBeInTheDocument()
   })
 
@@ -193,7 +180,7 @@ describe('Issue 891 norm-reference client branches', () => {
       name: 'normReference.archive',
     })
 
-    fetchMock.mockResolvedValueOnce(failed({}))
+    fetchMock.mockResolvedValueOnce(failedJsonResponse({}))
     fireEvent.click(archive)
     expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
 

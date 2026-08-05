@@ -1,5 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  confirmModalMock,
+  failedJsonResponse,
+  iconPickerMock,
+  okJsonResponse,
+  statusBadgeMock,
+} from './helpers/issue-891-client-test-helpers'
 
 const state = vi.hoisted(() => ({
   confirm: vi.fn(),
@@ -12,21 +19,10 @@ vi.mock('next-intl', () => ({
     `${namespace}.${key}`,
 }))
 
-vi.mock('@/components/ConfirmModal', () => ({
-  useConfirmModal: () => ({ confirm: state.confirm }),
-}))
+vi.mock('@/components/ConfirmModal', () => confirmModalMock(state.confirm))
 
-vi.mock('@/components/IconPicker', () => ({
-  default: ({ onChange }: { onChange: (name: string | null) => void }) => (
-    <button onClick={() => onChange('Circle')} type="button">
-      choose icon
-    </button>
-  ),
-}))
-
-vi.mock('@/components/StatusBadge', () => ({
-  default: ({ label }: { label: string }) => <span>{label}</span>,
-}))
+vi.mock('@/components/IconPicker', () => iconPickerMock())
+vi.mock('@/components/StatusBadge', () => statusBadgeMock())
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -63,18 +59,11 @@ const statuses = [
   },
 ]
 
-function response(body: unknown, ok = true) {
-  return new Response(JSON.stringify(body), {
-    headers: { 'content-type': 'application/json' },
-    status: ok ? 200 : 500,
-  })
-}
-
 describe('RequirementStatusesClient observable branch behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.locale = 'en'
-    fetchMock.mockResolvedValue(response({ statuses }))
+    fetchMock.mockResolvedValue(okJsonResponse({ statuses }))
   })
 
   it('shows only localized system statuses and flags invalid stored colors', async () => {
@@ -112,8 +101,8 @@ describe('RequirementStatusesClient observable branch behavior', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'choose icon' }))
 
-    fetchMock.mockResolvedValueOnce(response({ id: 1 }))
-    fetchMock.mockResolvedValueOnce(response({ statuses }))
+    fetchMock.mockResolvedValueOnce(okJsonResponse({ id: 1 }))
+    fetchMock.mockResolvedValueOnce(okJsonResponse({ statuses }))
     fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
 
     await waitFor(() => {
@@ -139,7 +128,7 @@ describe('RequirementStatusesClient observable branch behavior', () => {
       target: { value: 'Changed' },
     })
 
-    fetchMock.mockResolvedValueOnce(response({ error: '' }, false))
+    fetchMock.mockResolvedValueOnce(failedJsonResponse({ error: '' }))
     fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
     await waitFor(() =>
       expect(state.confirm).toHaveBeenCalledWith(

@@ -1,7 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  confirmModalMock,
+  failedJsonResponse,
+  iconPickerMock,
+  okJsonResponse,
+  routingLinkMock,
+  statusBadgeMock,
+} from './helpers/issue-891-client-test-helpers'
 
-const localeState = vi.hoisted(() => ({ locale: 'en' }))
+const localeState = vi.hoisted(() => ({
+  confirm: vi.fn(async () => true),
+  locale: 'en',
+}))
 
 vi.mock('next-intl', () => ({
   useLocale: () => localeState.locale,
@@ -9,27 +20,13 @@ vi.mock('next-intl', () => ({
     `${namespace}.${key}`,
 }))
 
-vi.mock('@/components/ConfirmModal', () => ({
-  useConfirmModal: () => ({ confirm: vi.fn(async () => true) }),
-}))
+vi.mock('@/components/ConfirmModal', () =>
+  confirmModalMock(localeState.confirm),
+)
 
-vi.mock('@/components/IconPicker', () => ({
-  default: ({ onChange }: { onChange: (name: string | null) => void }) => (
-    <button onClick={() => onChange('Circle')} type="button">
-      choose icon
-    </button>
-  ),
-}))
-
-vi.mock('@/components/StatusBadge', () => ({
-  default: ({ label }: { label: string }) => <span>{label}</span>,
-}))
-
-vi.mock('@/i18n/routing', () => ({
-  Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
-}))
+vi.mock('@/components/IconPicker', () => iconPickerMock())
+vi.mock('@/components/StatusBadge', () => statusBadgeMock())
+vi.mock('@/i18n/routing', () => routingLinkMock())
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -53,22 +50,15 @@ const priorities = [
   },
 ]
 
-function response(body: unknown, ok = true) {
-  return new Response(JSON.stringify(body), {
-    headers: { 'content-type': 'application/json' },
-    status: ok ? 200 : 500,
-  })
-}
-
 describe('PriorityLevelsClient observable branch behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localeState.locale = 'en'
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/priority-levels') {
-        return Promise.resolve(response({ priorityLevels: priorities }))
+        return Promise.resolve(okJsonResponse({ priorityLevels: priorities }))
       }
-      return Promise.resolve(response({ linkedRequirements: [] }))
+      return Promise.resolve(okJsonResponse({ linkedRequirements: [] }))
     })
   })
 
@@ -76,10 +66,10 @@ describe('PriorityLevelsClient observable branch behavior', () => {
     localeState.locale = 'sv'
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/priority-levels') {
-        return Promise.resolve(response({ priorityLevels: priorities }))
+        return Promise.resolve(okJsonResponse({ priorityLevels: priorities }))
       }
       return Promise.resolve(
-        response({
+        okJsonResponse({
           linkedRequirements: [
             {
               description: null,
@@ -163,8 +153,10 @@ describe('PriorityLevelsClient observable branch behavior', () => {
     fireEvent.click(help)
     expect(help).toHaveAttribute('aria-expanded', 'false')
 
-    fetchMock.mockResolvedValueOnce(response({ id: 1 }))
-    fetchMock.mockResolvedValueOnce(response({ priorityLevels: priorities }))
+    fetchMock.mockResolvedValueOnce(okJsonResponse({ id: 1 }))
+    fetchMock.mockResolvedValueOnce(
+      okJsonResponse({ priorityLevels: priorities }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
 
     await waitFor(() => {
@@ -187,7 +179,9 @@ describe('PriorityLevelsClient observable branch behavior', () => {
   })
 
   it('shows server and network load failures', async () => {
-    fetchMock.mockResolvedValueOnce(response({ error: 'Load failed' }, false))
+    fetchMock.mockResolvedValueOnce(
+      failedJsonResponse({ error: 'Load failed' }),
+    )
     const first = render(<PriorityLevelsClient />)
     expect(await screen.findByRole('alert')).toHaveTextContent('Load failed')
     first.unmount()
