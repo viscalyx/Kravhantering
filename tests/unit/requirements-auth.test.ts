@@ -4,6 +4,7 @@ import {
   attachVerifiedActor,
   createRequestContext,
   RoleBasedAuthorizationService,
+  requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 
 // cSpell:words traceparent
@@ -137,6 +138,22 @@ describe('requirements auth', () => {
       })
     })
 
+    it('strips query and fragment data when malformed request URLs reach audit metadata', async () => {
+      const req = buildAuthedRequest('http://localhost/api/test')
+      Object.defineProperty(req, 'url', {
+        configurable: true,
+        value: '/api/test?code=secret#private',
+      })
+
+      const ctx = await createRequestContext(req, 'rest')
+
+      expect(ctx.request).toEqual({
+        method: 'GET',
+        path: '/api/test',
+        requestId: ctx.requestId,
+      })
+    })
+
     it('generates request ID when not provided', async () => {
       const req = buildAuthedRequest('http://localhost/test')
       const ctx = await createRequestContext(req, 'mcp', 'list_requirements')
@@ -168,6 +185,29 @@ describe('requirements auth', () => {
   })
 
   describe('RoleBasedAuthorizationService', () => {
+    it('allows actions whose policy requires no role', async () => {
+      const svc = new RoleBasedAuthorizationService({ query_catalog: [] })
+
+      await expect(
+        svc.assertAuthorized(
+          { kind: 'query_catalog', catalog: 'requirements' },
+          {
+            actor: {
+              id: null,
+              displayName: '',
+              hsaId: null,
+              roles: [],
+              source: 'anonymous',
+              isAuthenticated: false,
+            },
+            correlationId: 'c1',
+            requestId: 'r1',
+            source: 'rest',
+          },
+        ),
+      ).resolves.toBeUndefined()
+    })
+
     it('allows when actor has required role', async () => {
       const svc = new RoleBasedAuthorizationService({
         manage_requirement: ['admin'],
@@ -237,5 +277,63 @@ describe('requirements auth', () => {
         ),
       ).rejects.toThrow('No policy defined for action query_catalog')
     })
+  })
+
+  describe('requireHumanActorSnapshot', () => {
+    it('falls back from a blank display name to actor ID and then HSA-id', () => {
+      const context = {
+        actor: {
+          id: 'user-1',
+          displayName: '   ',
+          hsaId: 'SE5560000001-user1',
+          roles: [],
+          source: 'oidc' as const,
+          isAuthenticated: true,
+        },
+        correlationId: 'c1',
+        requestId: 'r1',
+        source: 'rest' as const,
+      }
+
+      expect(requireHumanActorSnapshot(context)).toEqual({
+        displayName: 'user-1',
+        hsaId: 'SE5560000001-user1',
+      })
+      expect(
+        requireHumanActorSnapshot({
+          ...context,
+          actor: { ...context.actor, id: null },
+        }),
+      ).toEqual({
+        displayName: 'SE5560000001-user1',
+        hsaId: 'SE5560000001-user1',
+      })
+    })
+
+    it.each([
+      [null, 'oidc'],
+      ['mcp-service-account', 'mcp'],
+    ] as const)(
+      'rejects a write identity without a human HSA-id: %s',
+      (hsaId, source) => {
+        expect(() =>
+          requireHumanActorSnapshot({
+            actor: {
+              id: 'service-user',
+              displayName: 'Service user',
+              hsaId,
+              roles: [],
+              source,
+              isAuthenticated: true,
+            },
+            correlationId: 'c1',
+            requestId: 'r1',
+            source: source === 'mcp' ? 'mcp' : 'rest',
+          }),
+        ).toThrow(
+          'Authenticated actor with a verified HSA-id is required for this write',
+        )
+      },
+    )
   })
 })

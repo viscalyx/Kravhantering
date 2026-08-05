@@ -92,6 +92,60 @@ describe('specification item resolution route', () => {
     expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
   })
 
+  it('rejects an invalid specification identifier before runtime work', async () => {
+    const { GET } = await import(
+      '@/app/api/specification-item-resolutions/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/specification-item-resolutions/invalid?refs=lib%3A31',
+      ),
+      { params: Promise.resolve({ id: 'invalid' }) },
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
+  })
+
+  it('returns not found before authorization when the specification is missing', async () => {
+    routeState.getSpecificationById.mockResolvedValueOnce(null)
+    const { GET } = await import(
+      '@/app/api/specification-item-resolutions/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/specification-item-resolutions/404?refs=lib%3A31',
+      ),
+      { params: Promise.resolve({ id: '404' }) },
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ error: 'Not found' })
+    expect(routeState.authorize).not.toHaveBeenCalled()
+  })
+
+  it('maps authorization failures to the public error contract', async () => {
+    routeState.authorize.mockRejectedValueOnce(new Error('authorization down'))
+    const { GET } = await import(
+      '@/app/api/specification-item-resolutions/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/specification-item-resolutions/42?refs=lib%3A31',
+      ),
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(500)
+    expect(JSON.stringify(await response.json())).not.toContain(
+      'authorization down',
+    )
+    expect(routeState.listSpecificationTraceabilityItems).not.toHaveBeenCalled()
+  })
+
   it('rejects direct resolution requests above the selected-item action limit', async () => {
     const refs = Array.from(
       { length: SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT + 1 },

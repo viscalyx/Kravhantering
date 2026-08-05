@@ -123,6 +123,54 @@ describe('admin HSA-id prefixes route', () => {
     })
   })
 
+  it('rejects non-Admin readers before database work', async () => {
+    routeState.createRequestContext.mockResolvedValueOnce({
+      actor: {
+        displayName: 'Editor',
+        hsaId: 'SE5560000001-editor1',
+        id: 'editor-sub',
+        isAuthenticated: true,
+        roles: ['RequirementsEditor'],
+        source: 'oidc',
+      },
+      correlationId: 'correlation-1',
+      request: {
+        method: 'GET',
+        path: '/api/admin/hsa-id-prefixes',
+        requestId: 'request-1',
+      },
+      requestId: 'request-1',
+      source: 'rest',
+    })
+
+    const response = await GET(
+      new NextRequest('https://example.test/api/admin/hsa-id-prefixes'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+
+  it('returns a stable error when loading prefixes fails unexpectedly', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.listHsaIdPrefixesForAdmin.mockRejectedValueOnce(
+      new Error('database credential'),
+    )
+
+    const response = await GET(
+      new NextRequest('https://example.test/api/admin/hsa-id-prefixes'),
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Failed to load HSA-id prefixes.',
+    })
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to load admin HSA-id prefixes',
+      { message: 'database credential' },
+    )
+  })
+
   it('rejects malformed prefix values before saving', async () => {
     const response = await PUT(
       new NextRequest('https://example.test/api/admin/hsa-id-prefixes', {
@@ -203,6 +251,24 @@ describe('admin HSA-id prefixes route', () => {
     expect(body.code).toBe('used_prefix_cannot_delete')
   })
 
+  it('returns conflict when an already-used prefix value is changed', async () => {
+    routeState.updateHsaIdPrefixes.mockRejectedValueOnce(
+      new routeState.HsaIdPrefixSettingsError(
+        'used_prefix_cannot_change',
+        'A used HSA-id prefix cannot be changed.',
+      ),
+    )
+
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/hsa-id-prefixes', {
+        body: JSON.stringify({ prefixes: [] }),
+        method: 'PUT',
+      }),
+    )
+
+    expect(response.status).toBe(409)
+  })
+
   it('returns a bad request for default visibility rule failures', async () => {
     routeState.updateHsaIdPrefixes.mockRejectedValueOnce(
       new routeState.HsaIdPrefixSettingsError(
@@ -261,5 +327,28 @@ describe('admin HSA-id prefixes route', () => {
 
     expect(response.status).toBe(400)
     expect(body.code).toBe('visible_prefix_required')
+  })
+
+  it('returns a stable error when saving prefixes fails unexpectedly', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.updateHsaIdPrefixes.mockRejectedValueOnce(
+      new Error('database credential'),
+    )
+
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/hsa-id-prefixes', {
+        body: JSON.stringify({ prefixes: [] }),
+        method: 'PUT',
+      }),
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Failed to save HSA-id prefixes.',
+    })
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to save HSA-id prefixes',
+      { message: 'database credential' },
+    )
   })
 })

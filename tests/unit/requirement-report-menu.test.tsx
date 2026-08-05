@@ -1,8 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementReportMenu from '@/app/[locale]/requirements/[id]/_detail/RequirementReportMenu'
 import { STATUS_REVIEW } from '@/lib/requirements/status-constants.mjs'
+
+const downloadState = vi.hoisted(() => ({
+  clearError: vi.fn(),
+  download: vi.fn(),
+}))
 
 vi.mock('next-intl', () => ({
   useTranslations: (namespace: string) => (key: string) => {
@@ -21,15 +26,35 @@ vi.mock('next-intl', () => ({
 
 vi.mock('@/components/generated-output/useGeneratedOutputDownload', () => ({
   useGeneratedOutputDownload: () => ({
-    clearError: vi.fn(),
+    clearError: downloadState.clearError,
     dialog: null,
-    download: vi.fn(),
+    download: downloadState.download,
     downloading: false,
     error: null,
   }),
 }))
 
 describe('RequirementReportMenu', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('hides reports while a specification deviation is still a draft', () => {
+    const { container } = render(
+      <RequirementReportMenu
+        currentStatusId={0}
+        deviationStep="draft"
+        locale="en"
+        requirementId={123}
+        specificationId={1}
+        specificationItemId={31}
+        variant="specification"
+      />,
+    )
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
   it('marks specification report controls for Developer Mode', async () => {
     render(
       <RequirementReportMenu
@@ -95,7 +120,52 @@ describe('RequirementReportMenu', () => {
     expect(
       screen.getByRole('menuitem', { name: 'Deviation Review Report' }),
     ).toHaveAttribute('data-developer-mode-value', 'deviation review report')
+
+    await userEvent.click(
+      screen.getByRole('menuitem', { name: 'Deviation Review Report' }),
+    )
+    expect(downloadState.download).toHaveBeenCalledWith({
+      fallbackFilename: 'deviation-review-report-123.pdf',
+      url: '/sv/requirements/reports/pdf/deviation-review/123?spec=1&item=31',
+    })
+    expect(screen.queryByRole('menu')).toBeNull()
   })
+
+  it.each([
+    [
+      'History Report',
+      '/en/requirements/reports/pdf/history/123',
+      'history-report-123.pdf',
+    ],
+    [
+      'Improvement Suggestion History',
+      '/en/requirements/reports/pdf/suggestion-history/123',
+      'suggestion-history-report-123.pdf',
+    ],
+  ])(
+    'downloads the specification %s',
+    async (reportName, url, fallbackFilename) => {
+      render(
+        <RequirementReportMenu
+          currentStatusId={0}
+          deviationStep={null}
+          locale="en"
+          requirementId={123}
+          specificationId={1}
+          specificationItemId={31}
+          variant="specification"
+        />,
+      )
+
+      await userEvent.click(screen.getByRole('button', { name: 'Reports' }))
+      await userEvent.click(screen.getByRole('menuitem', { name: reportName }))
+
+      expect(downloadState.download).toHaveBeenCalledWith({
+        fallbackFilename,
+        url,
+      })
+    },
+  )
 
   it('supports standalone report menu keyboard navigation', async () => {
     render(
@@ -138,4 +208,42 @@ describe('RequirementReportMenu', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(trigger).toHaveFocus()
   })
+
+  it.each([
+    [
+      'History Report',
+      '/sv/requirements/reports/pdf/history/123',
+      'history-report-123.pdf',
+    ],
+    [
+      'Improvement Suggestion History',
+      '/sv/requirements/reports/pdf/suggestion-history/123',
+      'suggestion-history-report-123.pdf',
+    ],
+    [
+      'Review Report',
+      '/sv/requirements/reports/pdf/review/123',
+      'review-report-123.pdf',
+    ],
+  ])(
+    'downloads the standalone %s',
+    async (reportName, url, fallbackFilename) => {
+      render(
+        <RequirementReportMenu
+          currentStatusId={STATUS_REVIEW}
+          locale="sv"
+          requirementId={123}
+          variant="standalone"
+        />,
+      )
+
+      await userEvent.click(screen.getByRole('button', { name: 'Reports' }))
+      await userEvent.click(screen.getByRole('menuitem', { name: reportName }))
+
+      expect(downloadState.download).toHaveBeenCalledWith({
+        fallbackFilename,
+        url,
+      })
+    },
+  )
 })

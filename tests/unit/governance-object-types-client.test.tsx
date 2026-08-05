@@ -9,9 +9,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { okResponse } from './test-helpers'
 
 const confirmMock = vi.fn()
+const intlState = vi.hoisted(() => ({ locale: 'en' }))
 
 vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
+  useLocale: () => intlState.locale,
   useTranslations: (namespace?: string) => (key: string) =>
     namespace ? `${namespace}.${key}` : key,
 }))
@@ -30,6 +31,7 @@ describe('GovernanceObjectTypesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    intlState.locale = 'en'
     fetchMock.mockReset()
     confirmMock.mockResolvedValue(true)
     fetchMock.mockResolvedValue(
@@ -56,6 +58,15 @@ describe('GovernanceObjectTypesClient', () => {
       expect(screen.getByText('Architecture')).toBeInTheDocument()
     })
     expect(screen.getByText('Operations')).toBeInTheDocument()
+  })
+
+  it('renders Swedish governance object type names for the Swedish locale', async () => {
+    intlState.locale = 'sv'
+
+    render(<GovernanceObjectTypesClient />)
+
+    expect(await screen.findByText('Arkitektur')).toBeInTheDocument()
+    expect(screen.getByText('Drift')).toBeInTheDocument()
   })
 
   it('opens and submits the create form', async () => {

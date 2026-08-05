@@ -8,9 +8,10 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const confirmMock = vi.fn()
+const intlState = vi.hoisted(() => ({ locale: 'en' }))
 
 vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
+  useLocale: () => intlState.locale,
   useTranslations: (ns?: string) => (key: string) =>
     ns ? `${ns}.${key}` : key,
 }))
@@ -38,6 +39,7 @@ describe('ImplementationTypesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    intlState.locale = 'en'
     fetchMock.mockResolvedValue(okJson({ types: sampleItems }))
   })
 
@@ -59,6 +61,14 @@ describe('ImplementationTypesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Type en')).toBeInTheDocument()
     })
+  })
+
+  it('renders Swedish implementation type names for the Swedish locale', async () => {
+    intlState.locale = 'sv'
+
+    render(<ImplementationTypesClient />)
+
+    expect(await screen.findByText('Typ sv')).toBeInTheDocument()
   })
 
   it('shows loading text initially', () => {
