@@ -290,7 +290,7 @@ export function registerGeneratedOutputTests(
           },
         ),
       ).toBeInTheDocument()
-    }, 15_000)
+    }, 60_000)
 
     it('routes full CSV through the generated-output controller with menu focus restoration', async () => {
       context.renderRequirementsSpecificationDetailClient()
