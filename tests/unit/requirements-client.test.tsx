@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsClient from '@/app/[locale]/requirements/requirements-client'
 import type { RequirementsTableProps } from '@/components/RequirementsTable'
@@ -176,14 +184,27 @@ vi.mock('@/components/RequirementsTable', () => ({
         <div data-testid="has-more">{String(hasMore ?? false)}</div>
         <div data-testid="loading">{String(loading ?? false)}</div>
         <div data-testid="loading-more">{String(loadingMore ?? false)}</div>
-        {(rows ?? []).map(row => (
-          <div key={row.id}>
-            <button onClick={() => onRowClick?.(row.id)} type="button">
-              {`row-${row.id}`}
-            </button>
-            {expandedId === row.id ? renderExpanded?.(row.id) : null}
-          </div>
-        ))}
+        <table>
+          <tbody>
+            {(rows ?? []).map(row => (
+              <tr aria-label={`requirement ${row.uniqueId}`} key={row.id}>
+                <th scope="row">
+                  <button onClick={() => onRowClick?.(row.id)} type="button">
+                    {`row-${row.id}`}
+                  </button>
+                </th>
+                <td aria-label="area">{row.area?.name}</td>
+                <td aria-label="category">{row.version?.categoryNameSv}</td>
+                <td aria-label="type">{row.version?.typeNameSv}</td>
+                <td aria-label="version">{row.version?.versionNumber}</td>
+                <td aria-label="description">{row.version?.description}</td>
+                <td>
+                  {expandedId === row.id ? renderExpanded?.(row.id) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         {(floatingActions ?? []).map(action =>
           action.href ? (
             <a
@@ -814,36 +835,105 @@ describe('RequirementsClient', () => {
   })
 
   it('maps sparse changed requirement details with and without versions', async () => {
-    mockCommonFetches()
+    const sparseRefresh = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean; nextCursor?: string }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const versionlessRefresh = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const listResponses: Promise<Response>[] = [
+      Promise.resolve(
+        okJson({
+          pagination: { hasMore: false },
+          requirements: [makeRequirementRow(1)],
+        }),
+      ),
+      sparseRefresh.promise,
+      versionlessRefresh.promise,
+    ]
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/requirements?')) {
+        const response = listResponses.shift()
+        if (response) return response
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) return metadataResponse
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
     vi.stubGlobal('fetch', fetchMock)
     render(<RequirementsClient />)
 
-    await screen.findByRole('region', { name: 'requirements table' })
-    await screen.findByRole('button', { name: 'row-1' })
-    fireEvent.click(screen.getByRole('button', { name: 'row-1' }))
-
-    await act(async () => {
-      fireEvent.click(
-        await screen.findByRole('button', { name: 'detail-apply-sparse-1' }),
-      )
-      await Promise.resolve()
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'row-1' }))
+    const sparseDetailButton = await screen.findByRole('button', {
+      name: 'detail-apply-sparse-1',
     })
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/requirements?'),
-        expect.anything(),
-      ),
-    )
-
+    await user.click(sparseDetailButton)
     await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: 'detail-apply-without-version-1' }),
-      )
-      await Promise.resolve()
+      sparseRefresh.resolve({
+        pagination: { hasMore: true, nextCursor: 'sparse-cursor' },
+        requirements: [makeRequirementRow(1)],
+      })
     })
-    expect(
-      screen.getByRole('region', { name: 'requirements table' }),
-    ).toBeInTheDocument()
+
+    await waitFor(() => {
+      const sparseRow = screen.getByRole('row', {
+        name: 'requirement INT0001',
+      })
+      expect(
+        within(sparseRow).getByRole('cell', { name: 'area' }),
+      ).toBeEmptyDOMElement()
+      expect(
+        within(sparseRow).getByRole('cell', { name: 'category' }),
+      ).toBeEmptyDOMElement()
+      expect(
+        within(sparseRow).getByRole('cell', { name: 'type' }),
+      ).toBeEmptyDOMElement()
+      expect(
+        within(sparseRow).getByRole('cell', { name: 'version' }),
+      ).toHaveTextContent('1')
+      expect(
+        within(sparseRow).getByRole('cell', { name: 'description' }),
+      ).toHaveTextContent('Pinned krav 1')
+      expect(screen.getByRole('button', { name: 'load-more' })).toBeEnabled()
+    })
+
+    const withoutVersionButton = screen.getByRole('button', {
+      name: 'detail-apply-without-version-1',
+    })
+    await user.click(withoutVersionButton)
+    await act(async () => {
+      versionlessRefresh.resolve({
+        pagination: { hasMore: false },
+        requirements: [makeRequirementRow(1)],
+      })
+    })
+
+    await waitFor(() => {
+      const versionlessRow = screen.getByRole('row', {
+        name: 'requirement INT0001',
+      })
+      expect(
+        within(versionlessRow).getByRole('cell', { name: 'area' }),
+      ).toBeEmptyDOMElement()
+      expect(
+        within(versionlessRow).getByRole('cell', { name: 'category' }),
+      ).toBeEmptyDOMElement()
+      expect(
+        within(versionlessRow).getByRole('cell', { name: 'type' }),
+      ).toBeEmptyDOMElement()
+      expect(
+        within(versionlessRow).getByRole('cell', { name: 'version' }),
+      ).toBeEmptyDOMElement()
+      expect(
+        within(versionlessRow).getByRole('cell', { name: 'description' }),
+      ).toBeEmptyDOMElement()
+      expect(screen.getByRole('button', { name: 'load-more' })).toBeDisabled()
+    })
   })
 
   it('collapses a selected row when that row is clicked again', async () => {
