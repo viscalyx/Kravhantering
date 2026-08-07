@@ -78,7 +78,7 @@ function mouseEvent(button: HTMLButtonElement) {
 
 afterEach(() => vi.restoreAllMocks())
 
-describe('useDeviationWorkflow coverage', () => {
+describe('useDeviationWorkflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     confirmMock.mockResolvedValue(true)
@@ -270,7 +270,7 @@ describe('useDeviationWorkflow coverage', () => {
   })
 })
 
-describe('useSuggestionWorkflow coverage', () => {
+describe('useSuggestionWorkflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     confirmMock.mockResolvedValue(true)
