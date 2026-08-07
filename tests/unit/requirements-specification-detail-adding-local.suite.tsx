@@ -512,9 +512,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
         'new local requirement',
       )
 
-      await act(async () => {
-        fireEvent.click(createLocalRequirementButton)
-      })
+      fireEvent.click(createLocalRequirementButton)
 
       await waitFor(() => {
         expect(
