@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn(
@@ -11,6 +11,8 @@ vi.mock('next-intl/server', () => ({
 import AdminWorkspacesLayout, {
   generateMetadata,
 } from '@/app/[locale]/admin/workspaces/layout'
+
+beforeEach(() => vi.clearAllMocks())
 
 describe('AdminWorkspacesLayout', () => {
   it('generates its translated page title', async () => {
