@@ -47,12 +47,14 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reportsDirectory: './coverage', // Output coverage reports to ./coverage folder
-      reporter: ['text', 'json', 'html', 'clover', 'lcov'], // Multiple formats including Codecov-compatible ones
+      reporter: ['text', 'json', 'json-summary', 'html', 'clover', 'lcov'],
       include: [
-        'app/**/*.{ts,tsx}',
-        'components/**/*.{ts,tsx}',
-        'lib/**/*.{ts,tsx}',
-        // Include deterministic script logic in coverage.
+        'app/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+        'components/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+        'hooks/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+        'i18n/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+        'lib/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+        'proxy.{ts,tsx,js,jsx,mjs,cjs}',
         'scripts/**/*.{js,mjs}',
       ],
       exclude: [
@@ -61,14 +63,27 @@ export default defineConfig({
         '**/*.{test,spec}.{ts,tsx,js,jsx,mjs}',
         'test-utils/**',
         'vitest.setup.ts',
-        // Exclude orchestration-only scripts that mainly shell out / wire env.
+        // Audited sources that cannot execute in the deployed runtime.
+        'app/[[]locale[]]/admin/error-boundary-test/page.tsx',
+        'app/[[]locale[]]/error-boundary-test/ErrorBoundaryTestTrigger.tsx',
+        'app/[[]locale[]]/error-boundary-test/page.tsx',
+        'app/[[]locale[]]/error-boundary-test/test-route-helpers.ts',
+        'app/[[]locale[]]/requirements/[[]id[]]/_detail/types.ts',
+        'lib/reports/data/fetch-deviation.ts',
+        'lib/reports/data/fetch-requirement.ts',
+        'lib/reports/types.ts',
+        'lib/requirements/types.ts',
+        'lib/runtime/build-target.ts',
+        'lib/runtime/build-target.local-prod.ts',
+        'lib/runtime/expo-sqlite-unavailable.ts',
+        // Side-effect-only build orchestration with no importable logic seam.
         'scripts/prebuild.js',
       ],
       thresholds: {
-        branches: 45,
-        functions: 40,
-        lines: 50,
-        statements: 50,
+        branches: 85,
+        functions: 90,
+        lines: 90,
+        statements: 90,
       },
     },
 

@@ -2,7 +2,7 @@
 # https://docs.codecov.com/docs/codecov-yaml
 
 codecov:
-  require_ci_to_pass: no
+  require_ci_to_pass: false
   # main should be the baseline for reporting
   branch: main
 
@@ -18,22 +18,20 @@ coverage:
   status:
     project:
       default:
-        target: 20%
+        target: auto
         threshold: 1%
         if_ci_failed: error
+        informational: true
         flags:
-          - components
-          - app
-          - lib
+          - combined
     patch:
       default:
-        target: 20%
-        threshold: 2%
+        target: 85%
+        threshold: 0%
         if_ci_failed: error
+        informational: true
         flags:
-          - components
-          - app
-          - lib
+          - combined
 
 # PR comment configuration
 comment:
@@ -41,7 +39,7 @@ comment:
   layout: 'reach,diff,flags,tree'
   behavior: default
   require_changes: false
-  show_carryforward_flags: true
+  show_carryforward_flags: false
 
 # Ignore certain paths for coverage
 # ignore:
@@ -62,17 +60,15 @@ comment:
 github_checks:
   annotations: true
 
-# Flags for different parts of the codebase
+# The single upload flag matches Vitest's canonical combined coverage group.
 flags:
-  components:
-    paths:
-      - components/
-    carryforward: true
-  app:
+  combined:
     paths:
       - app/
-    carryforward: true
-  lib:
-    paths:
+      - components/
+      - hooks/
+      - i18n/
       - lib/
+      - proxy.ts
+      - scripts/
     carryforward: true
