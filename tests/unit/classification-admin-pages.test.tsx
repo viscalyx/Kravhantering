@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn(
@@ -44,6 +44,8 @@ import RequirementTypesPage, {
 import QualityCharacteristicSelectOptions, {
   getQualityCharacteristicOptionName,
 } from '@/components/QualityCharacteristicSelectOptions'
+
+beforeEach(() => vi.clearAllMocks())
 
 describe('classification server pages', () => {
   it.each([

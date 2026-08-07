@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn(
@@ -36,6 +36,8 @@ import ImplementationTypesPage, {
 import LifecycleStatusesPage, {
   generateMetadata as lifecycleStatusesMetadata,
 } from '@/app/[locale]/specifications/lifecycle-statuses/page'
+
+beforeEach(() => vi.clearAllMocks())
 
 describe('specification reference-data page shells', () => {
   it.each([
