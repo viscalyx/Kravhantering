@@ -1509,7 +1509,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(await screen.findByText('Local requirement')).toBeInTheDocument()
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
 
-    await act(async () => unmount())
+    unmount()
   })
 
   it('reports graduation network errors and accepts the nested identifier response', async () => {
