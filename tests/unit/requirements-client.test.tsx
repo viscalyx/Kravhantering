@@ -822,25 +822,29 @@ describe('RequirementsClient', () => {
     await screen.findByRole('button', { name: 'row-1' })
     fireEvent.click(screen.getByRole('button', { name: 'row-1' }))
 
-    await act(async () => {
-      fireEvent.click(
-        await screen.findByRole('button', { name: 'detail-apply-sparse-1' }),
-      )
-      await Promise.resolve()
+    const countListRequests = () =>
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).startsWith('/api/requirements?'),
+      ).length
+    const sparseDetailButton = await screen.findByRole('button', {
+      name: 'detail-apply-sparse-1',
     })
+    const requestsBeforeSparseChange = countListRequests()
+    fireEvent.click(sparseDetailButton)
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/requirements?'),
-        expect.anything(),
-      ),
+      expect(countListRequests()).toBeGreaterThan(requestsBeforeSparseChange),
     )
 
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: 'detail-apply-without-version-1' }),
-      )
-      await Promise.resolve()
+    const withoutVersionButton = screen.getByRole('button', {
+      name: 'detail-apply-without-version-1',
     })
+    const requestsBeforeVersionlessChange = countListRequests()
+    fireEvent.click(withoutVersionButton)
+    await waitFor(() =>
+      expect(countListRequests()).toBeGreaterThan(
+        requestsBeforeVersionlessChange,
+      ),
+    )
     expect(
       screen.getByRole('region', { name: 'requirements table' }),
     ).toBeInTheDocument()
