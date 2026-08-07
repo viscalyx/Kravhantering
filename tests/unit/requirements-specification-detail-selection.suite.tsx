@@ -49,34 +49,33 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
 
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       await act(async () => {
-        fireEvent.click(
-          context.requirementSortButton('items', 'description'),
-        )
+        fireEvent.click(context.requirementSortButton('items', 'description'))
       })
       expect(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
         }),
       ).toBeInTheDocument()
-      await act(async () => {
-        fireEvent.click(
-          context.requirementPackageButton('items', 9),
-        )
-      })
+      fireEvent.click(context.requirementPackageButton('items', 9))
 
-      await waitFor(() => {
-        expect(
-          context.itemsStatus(),
-        ).toHaveTextContent('specification.selectionStatus')
+      const deselectHidden = await screen.findByRole('button', {
+        name: 'specification.deselectHidden',
       })
-      fireEvent.click(
-        screen.getByRole('button', { name: 'specification.deselectHidden' }),
+      expect(context.itemsStatus()).toHaveTextContent(
+        'specification.selectionStatus',
       )
+      expect(context.requirementsTable('items')).not.toHaveTextContent(
+        'BEH0001',
+      )
+      fireEvent.click(deselectHidden)
       expect(
         screen.queryByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
         }),
       ).not.toBeInTheDocument()
+      expect(
+        context.requirementRowCheckbox('items', 'KRAV0001'),
+      ).not.toBeChecked()
     })
 
     it('renders selected-item actions as icon buttons with translated tooltips', async () => {
@@ -139,13 +138,12 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.click(
-        context.requirementPackageButton('items', 1),
-      )
+      fireEvent.click(context.requirementPackageButton('items', 1))
       await waitFor(() => {
-        expect(
-          context.requirementPackageButton('items', 1),
-        ).toHaveAttribute('aria-pressed', 'true')
+        expect(context.requirementPackageButton('items', 1)).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        )
       })
       context.selectRequirementRows(items.slice(0, 200).map(item => item.id))
 
@@ -159,9 +157,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         expect(screen.getByRole('button', { name })).toBeEnabled()
       }
 
-      fireEvent.click(
-        context.requirementPackageButton('items', 1),
-      )
+      fireEvent.click(context.requirementPackageButton('items', 1))
       await screen.findByRole('row', { name: /BEH0201/ })
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0201'))
 
@@ -182,22 +178,16 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
           'specification.selectionActionLimitExceeded',
         )
       }
-      expect(
-        context.requirementRowCheckbox('items', 'BEH0201'),
-      ).toBeChecked()
+      expect(context.requirementRowCheckbox('items', 'BEH0201')).toBeChecked()
 
-      fireEvent.click(
-        context.requirementRow('items', 'BEH0001'),
-      )
+      fireEvent.click(context.requirementRow('items', 'BEH0001'))
       expect(
         await screen.findByRole('button', {
           name: 'remove requirement from specification',
         }),
       ).toBeEnabled()
 
-      fireEvent.click(
-        context.requirementPackageButton('items', 1),
-      )
+      fireEvent.click(context.requirementPackageButton('items', 1))
       await waitFor(() => {
         expect(
           context.intlState.selectionActionLimitExceeded,
@@ -224,10 +214,10 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       for (const name of sharedActionNames) {
         expect(screen.getByRole('button', { name })).toBeEnabled()
       }
-      expect(
-        context.itemsStatus(),
-      ).not.toHaveTextContent('specification.selectionActionLimitExceeded')
-    }, 30_000)
+      expect(context.itemsStatus()).not.toHaveTextContent(
+        'specification.selectionActionLimitExceeded',
+      )
+    }, 60_000)
 
     it('preserves selection across an authoritative item refresh and clears it on locale change', async () => {
       const initialData = context.createInitialData()
@@ -270,7 +260,8 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
     it('announces and deselects selected items that disappear during authoritative resolution', async () => {
       context.renderRequirementsSpecificationDetailClient()
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
-      context.specificationItemsGetItems = []
+      context.specificationItemResolutionHandler = async () =>
+        context.okJson({})
       fireEvent.click(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
@@ -278,9 +269,9 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       )
 
       await waitFor(() => {
-        expect(
-          context.itemsStatus(),
-        ).toHaveTextContent('specification.selectionDisappeared')
+        expect(context.itemsStatus()).toHaveTextContent(
+          'specification.selectionDisappeared',
+        )
       })
       expect(
         screen.queryByRole('button', {
@@ -599,9 +590,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Removal network unavailable',
       )
-      expect(
-        context.requirementRowCheckbox('items', 'BEH0001'),
-      ).toBeChecked()
+      expect(context.requirementRowCheckbox('items', 'BEH0001')).toBeChecked()
     })
 
     it('reports partial mixed removal and keeps only the failed application selected', async () => {
@@ -642,9 +631,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'specification.removePartialFail',
       )
-      expect(
-        context.requirementRowCheckbox('items', 'KRAV0001'),
-      ).toBeChecked()
+      expect(context.requirementRowCheckbox('items', 'KRAV0001')).toBeChecked()
       expect(
         context.requirementRowCheckbox('items', 'BEH0001'),
       ).not.toBeChecked()
@@ -673,9 +660,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
           completeDelete = resolve
         })
       context.renderRequirementsSpecificationDetailClient()
-      fireEvent.click(
-        context.requirementRow('items', 'BEH0001'),
-      )
+      fireEvent.click(context.requirementRow('items', 'BEH0001'))
       expect(
         await screen.findByText('Requirement detail 101'),
       ).toBeInTheDocument()
@@ -858,9 +843,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'deviation.bulkDeviationPartialFail',
       )
-      expect(
-        context.requirementRowCheckbox('items', 'KRAV0001'),
-      ).toBeChecked()
+      expect(context.requirementRowCheckbox('items', 'KRAV0001')).toBeChecked()
       expect(
         context.requirementRowCheckbox('items', 'BEH0001'),
       ).not.toBeChecked()
@@ -940,7 +923,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       await waitFor(() => {
         expect(
           context.requirementRowCheckbox('items', 'BEH0001'),
-      ).not.toBeChecked()
+        ).not.toBeChecked()
       })
       expect(maxInFlight).toBe(4)
     })

@@ -19,7 +19,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
   describe('adding, importing, and creating requirement applications', () => {
     it('keeps the add dialog open and shows inline errors when adding requirements fails', async () => {
       context.addRequirementsResponse = {
-        body: { error: 'Could not add requirements' },
+        body: {},
         ok: false,
       }
 
@@ -47,9 +47,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
         screen.getByRole('button', { name: 'specification.confirmAdd' }),
       )
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'Could not add requirements',
-      )
+      expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
       expect(dialog).toBeInTheDocument()
     })
 
@@ -326,7 +324,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
           initialAvailableRequirement.uniqueId
         const items = matchesAddedRequirement ? [addedItem] : []
         return okJson({
-          items,
+          ...(items.length > 0 ? { items } : {}),
           pagination: {
             count: items.length,
             hasMore: false,
@@ -339,14 +337,13 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       renderRequirementsSpecificationDetailClient()
       await waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.change(
-        context.requirementSearchInput('items'),
-        { target: { value: 'DOES-NOT-MATCH' } },
-      )
+      fireEvent.change(context.requirementSearchInput('items'), {
+        target: { value: 'DOES-NOT-MATCH' },
+      })
       await waitFor(() => {
-        expect(
-          context.requirementSearchInput('items'),
-        ).toHaveValue('DOES-NOT-MATCH')
+        expect(context.requirementSearchInput('items')).toHaveValue(
+          'DOES-NOT-MATCH',
+        )
       })
 
       fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
@@ -361,28 +358,27 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       )
 
       await waitFor(() => {
-        expect(
-          context.itemsStatus(),
-        ).toHaveTextContent('specification.requirementsAddedHiddenByFilters')
+        expect(context.itemsStatus()).toHaveTextContent(
+          'specification.requirementsAddedHiddenByFilters',
+        )
       })
-      expect(
-        context.requirementSearchInput('items'),
-      ).toHaveValue('DOES-NOT-MATCH')
-
-      fireEvent.change(
-        context.requirementSearchInput('items'),
-        { target: { value: initialAvailableRequirement.uniqueId } },
+      expect(context.requirementSearchInput('items')).toHaveValue(
+        'DOES-NOT-MATCH',
       )
 
-      await waitFor(() => {
-        expect(
-          context.itemsStatus(),
-        ).toHaveTextContent(/^specification\.requirementsAdded$/)
+      fireEvent.change(context.requirementSearchInput('items'), {
+        target: { value: initialAvailableRequirement.uniqueId },
       })
-      expect(
-        context.itemsStatus(),
-      ).not.toHaveTextContent('specification.requirementsAddedHiddenByFilters')
-      expect(requirementRowNames('items')).toEqual(['IAM0202'])
+
+      await waitFor(() => {
+        expect(context.itemsStatus()).toHaveTextContent(
+          /^specification\.requirementsAdded$/,
+        )
+        expect(requirementRowNames('items')).toEqual(['IAM0202'])
+      })
+      expect(context.itemsStatus()).not.toHaveTextContent(
+        'specification.requirementsAddedHiddenByFilters',
+      )
     })
 
     it('does not announce a matching added requirement as hidden when it is on a later page', async () => {
@@ -420,10 +416,9 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       renderRequirementsSpecificationDetailClient()
       await waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.change(
-        context.requirementSearchInput('items'),
-        { target: { value: 'IAM' } },
-      )
+      fireEvent.change(context.requirementSearchInput('items'), {
+        target: { value: 'IAM' },
+      })
       await waitFor(() => {
         expect(requirementRowNames('items')).toEqual(['IAM0001'])
       })
@@ -440,13 +435,13 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       )
 
       await waitFor(() => {
-        expect(
-          context.itemsStatus(),
-        ).toHaveTextContent('specification.requirementsAdded')
+        expect(context.itemsStatus()).toHaveTextContent(
+          'specification.requirementsAdded',
+        )
       })
-      expect(
-        context.itemsStatus(),
-      ).not.toHaveTextContent('specification.requirementsAddedHiddenByFilters')
+      expect(context.itemsStatus()).not.toHaveTextContent(
+        'specification.requirementsAddedHiddenByFilters',
+      )
       expect(
         fetchMock.mock.calls.some(([input]) => {
           const url = typeof input === 'string' ? input : input.url
@@ -611,7 +606,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       )
 
       expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-        'Local create failed',
+        'common.error',
       )
     })
 

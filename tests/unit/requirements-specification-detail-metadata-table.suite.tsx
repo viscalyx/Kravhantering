@@ -19,6 +19,16 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
     specificationApiPath,
     waitForInitialAvailableRequirementsRefresh,
   } = context
+  const includedStatus = {
+    color: '#22c55e',
+    descriptionEn: null,
+    descriptionSv: null,
+    iconName: null,
+    id: 2,
+    nameEn: 'Included',
+    nameSv: 'Inkluderad',
+    sortOrder: 2,
+  }
 
   describe('metadata, layout, filters, and item status', () => {
     it('opens and closes the specification edit dialog from the title action', async () => {
@@ -467,9 +477,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         expect(stored).not.toBeNull()
         expect(stored).not.toContain('unknownSpecificationColumn')
       })
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
     })
 
     it('passes context-specific reset defaults to the detail tables', async () => {
@@ -510,9 +518,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       })
       await waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.click(
-        context.requirementRow('items', 'BEH0001'),
-      )
+      fireEvent.click(context.requirementRow('items', 'BEH0001'))
       expect(
         await screen.findByText('Requirement detail 101'),
       ).toBeInTheDocument()
@@ -535,16 +541,12 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       })
       context.changeRequirementColumns('items')
 
-      fireEvent.click(
-        context.requirementRow('available', 'IAM0202'),
-      )
+      fireEvent.click(context.requirementRow('available', 'IAM0202'))
       expect(
         await screen.findByText('Requirement detail 202'),
       ).toBeInTheDocument()
       context.changeRequirementColumns('available')
-      fireEvent.click(
-        context.requirementRow('available', 'IAM0202'),
-      )
+      fireEvent.click(context.requirementRow('available', 'IAM0202'))
       expect(
         screen.queryByText('Requirement detail 202'),
       ).not.toBeInTheDocument()
@@ -598,20 +600,20 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           expect.objectContaining({ method: 'PATCH' }),
         )
       })
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
     })
 
     it('ignores a usage-status choice that is not in the specification catalog', async () => {
       renderRequirementsSpecificationDetailClient()
+      await waitForInitialAvailableRequirementsRefresh()
       context.toggleRequirementColumn('items', 'specificationItemStatus')
-      expect(
-        within(context.requirementRow('items', 'BEH0001')).queryByRole(
-          'combobox',
-          { name: 'requirement.specificationItemStatus' },
-        ),
-      ).not.toBeInTheDocument()
+      const statusSelect = within(
+        context.requirementRow('items', 'BEH0001'),
+      ).getByRole('combobox', {
+        name: 'requirement.specificationItemStatus',
+      })
+      expect(statusSelect).toHaveProperty('selectedIndex', -1)
+      expect(within(statusSelect).queryAllByRole('option')).toHaveLength(0)
 
       expect(
         fetchMock.mock.calls.some(
@@ -620,10 +622,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
             (init as RequestInit | undefined)?.method === 'PATCH',
         ),
       ).toBe(false)
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
-      await waitForInitialAvailableRequirementsRefresh()
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
     })
 
     it('submits an explicit needs-reference clear even for an unknown item', async () => {
@@ -652,9 +651,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           }),
         )
       })
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('MISSING001')
+      expect(context.requirementsTable('items')).toHaveTextContent('MISSING001')
     })
 
     it('expands and refreshes a specification-local requirement detail', async () => {
@@ -674,9 +671,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         specificationItems: createSpecificationItemsPage([localItem]),
       })
 
-      fireEvent.click(
-        context.requirementRow('items', 'KRAV0001'),
-      )
+      fireEvent.click(context.requirementRow('items', 'KRAV0001'))
       const localDetail = await screen.findByRole('button', {
         name: 'Local requirement detail 401',
       })
@@ -705,13 +700,9 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         specificationItems: createSpecificationItemsPage([unresolvedItem]),
       })
 
-      fireEvent.click(
-        context.requirementRow('items', 'BEH0001'),
-      )
+      fireEvent.click(context.requirementRow('items', 'BEH0001'))
       expect(screen.getByText('Requirement detail 101')).toBeInTheDocument()
-      fireEvent.click(
-        context.requirementRow('items', 'BEH0001'),
-      )
+      fireEvent.click(context.requirementRow('items', 'BEH0001'))
       expect(
         screen.queryByText('Requirement detail 101'),
       ).not.toBeInTheDocument()
@@ -744,12 +735,10 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
 
       renderRequirementsSpecificationDetailClient()
       await waitForInitialAvailableRequirementsRefresh()
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
-      expect(
-        context.requirementsTable('available'),
-      ).toHaveTextContent('IAM0202')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
+      expect(context.requirementsTable('available')).toHaveTextContent(
+        'IAM0202',
+      )
       expect(
         window.localStorage.getItem(
           'requirement-specifications.visibleColumns.left.v1',
@@ -889,61 +878,68 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         expect(requirementRowNames('items')).toEqual(['BEH0001', 'BEH0002'])
       })
 
-      fireEvent.click(
-        context.requirementPackageButton('items', 1),
-      )
+      fireEvent.click(context.requirementPackageButton('items', 1))
 
       await waitFor(() => {
-        expect(
-          context.requirementPackageButton('items', 1),
-        ).toHaveAttribute('aria-pressed', 'true')
+        expect(context.requirementPackageButton('items', 1)).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        )
         expect(requirementRowNames('items')).toEqual(['BEH0001'])
       })
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
-      expect(
-        context.requirementsTable('items'),
-      ).not.toHaveTextContent('BEH0002')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
+      expect(context.requirementsTable('items')).not.toHaveTextContent(
+        'BEH0002',
+      )
     })
 
-    it('refreshes left norm-reference options when usage-status filters change', async () => {
+    it('refreshes requirement applications when usage-status filters change', async () => {
       const requestedStatuses: string[][] = []
-      context.normReferencesGetHandler = async url => {
-        requestedStatuses.push(searchParamsFromPath(url).getAll('statuses'))
-        return okJson({})
+      context.specificationItemsGetHandler = async url => {
+        requestedStatuses.push(
+          searchParamsFromPath(url).getAll('specificationItemStatusIds'),
+        )
+        return okJson({
+          items: context.specificationItemsGetItems,
+          pagination: {
+            count: context.specificationItemsGetItems.length,
+            hasMore: false,
+            limit: 50,
+            nextCursor: null,
+          },
+        })
       }
-      renderRequirementsSpecificationDetailClient()
-      context.toggleRequirementStatusFilter('items')
+      renderRequirementsSpecificationDetailClient({
+        ...createInitialData(),
+        specificationItemStatuses: [includedStatus],
+      })
+      await waitForInitialAvailableRequirementsRefresh()
+      context.toggleSpecificationItemStatusFilter('items', 'Included')
 
       await waitFor(() => {
-        expect(
-          fetchMock.mock.calls.some(([input]) =>
-            String(typeof input === 'string' ? input : input.url).includes(
-              'statuses=3',
-            ),
-          ),
-        ).toBe(true)
+        expect(requestedStatuses).toContainEqual(['2'])
       })
-      context.toggleRequirementStatusFilter('items')
+      context.toggleSpecificationItemStatusFilter('items', 'Included')
       await waitFor(() => {
         expect(requestedStatuses).toContainEqual([])
       })
     })
 
-    it('keeps the item list usable when filtered norm-reference options fail', async () => {
-      context.normReferencesGetHandler = async () => {
-        throw 'Norm options unavailable'
+    it('keeps the item list usable when a usage-status refresh fails', async () => {
+      context.specificationItemsGetHandler = async () => {
+        throw 'Items unavailable'
       }
-      renderRequirementsSpecificationDetailClient()
-      context.toggleRequirementStatusFilter('items')
+      renderRequirementsSpecificationDetailClient({
+        ...createInitialData(),
+        specificationItemStatuses: [includedStatus],
+      })
+      await waitForInitialAvailableRequirementsRefresh()
+      context.toggleSpecificationItemStatusFilter('items', 'Included')
 
-      expect(
-        await screen.findByText('specification.loadNormReferencesFailed'),
-      ).toHaveAttribute('role', 'status')
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'specification.loadSpecificationItemsFailed',
+      )
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
     })
 
     it('uses independent compact package filters with distinct server catalogs', async () => {
@@ -959,9 +955,9 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       })
       await waitForInitialAvailableRequirementsRefresh()
 
-      expect(
-        context.requirementPackageButton('items', 2),
-      ).toHaveTextContent('Specification package')
+      expect(context.requirementPackageButton('items', 2)).toHaveTextContent(
+        'Specification package',
+      )
       expect(
         context.queryRequirementPackageButton('items', 1),
       ).not.toBeInTheDocument()
@@ -972,17 +968,14 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         context.requirementPackageButton('available', 2),
       ).toHaveTextContent('Specification package')
 
-      fireEvent.click(
-        context.requirementPackageButton('items', 2),
-      )
-      fireEvent.click(
-        context.requirementPackageButton('available', 1),
-      )
+      fireEvent.click(context.requirementPackageButton('items', 2))
+      fireEvent.click(context.requirementPackageButton('available', 1))
 
       await waitFor(() => {
-        expect(
-          context.requirementPackageButton('items', 2),
-        ).toHaveAttribute('aria-pressed', 'true')
+        expect(context.requirementPackageButton('items', 2)).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        )
         expect(
           context.requirementPackageButton('available', 1),
         ).toHaveAttribute('aria-pressed', 'true')
@@ -1006,9 +999,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         ),
       })
 
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
 
       await act(async () => {
         resolveSecondPage?.(
@@ -1026,12 +1017,12 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       })
 
       await waitFor(() => {
-        expect(
-          context.requirementPackageButton('items', 1),
-        ).toHaveTextContent('First package')
-        expect(
-          context.requirementPackageButton('items', 51),
-        ).toHaveTextContent('Later package')
+        expect(context.requirementPackageButton('items', 1)).toHaveTextContent(
+          'First package',
+        )
+        expect(context.requirementPackageButton('items', 51)).toHaveTextContent(
+          'Later package',
+        )
       })
     })
 
@@ -1148,7 +1139,6 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         uniqueId: 'REQ-002',
       }
       context.specificationItemsGetItems = [item, remainingItem]
-      let catalogRequestCount = 0
       let resolveCatalogRefresh: (() => void) | undefined
       context.specificationItemsGetHandler = async url => {
         const packageIds = searchParamsFromPath(url)
@@ -1173,30 +1163,20 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         })
       }
       context.specificationRequirementPackagesGetHandler = async url => {
-        catalogRequestCount += 1
-        if (catalogRequestCount === 1) {
-          return okJson({
-            pagination: {
-              count: 2,
-              hasMore: false,
-              limit: 50,
-              nextCursor: null,
-            },
-            requirementPackages: [packageOption, replacementPackageOption],
-            selectedRequirementPackages: [],
-          })
-        }
         return new Promise(resolve => {
-          expect(searchParamsFromPath(url).getAll('includeIds')).toEqual(['9'])
+          expect(searchParamsFromPath(url).getAll('includeIds')).toEqual([
+            '9',
+            '10',
+          ])
           const response = okJson({
             pagination: {
-              count: 0,
+              count: 1,
               hasMore: false,
               limit: 50,
               nextCursor: null,
             },
-            requirementPackages: [],
-            selectedRequirementPackages: [],
+            requirementPackages: [replacementPackageOption],
+            selectedRequirementPackages: [replacementPackageOption],
           })
           resolveCatalogRefresh = () => resolve(response)
         })
@@ -1213,13 +1193,19 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       })
       await waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.click(
-        context.requirementPackageButton('items', 9),
-      )
+      fireEvent.click(context.requirementPackageButton('items', 9))
       await waitFor(() => {
-        expect(
-          context.requirementPackageButton('items', 9),
-        ).toHaveAttribute('aria-pressed', 'true')
+        expect(context.requirementPackageButton('items', 9)).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        )
+      })
+      fireEvent.click(context.requirementPackageButton('items', 10))
+      await waitFor(() => {
+        expect(context.requirementPackageButton('items', 10)).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        )
       })
 
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
@@ -1235,31 +1221,17 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           '/api/requirements-specifications/8/items',
           expect.objectContaining({ method: 'DELETE' }),
         )
-      })
-      await waitFor(() => {
-        expect(
-          context.requirementPackageButton('items', 9),
-        ).toHaveTextContent(packageOption.name)
-        expect(
-          context.requirementPackageButton('items', 10),
-        ).toHaveTextContent(replacementPackageOption.name)
-      })
-      fireEvent.click(
-        context.requirementPackageButton('items', 10),
-      )
-      await waitFor(() => {
-        expect(
-          context.requirementPackageButton('items', 9),
-        ).toHaveAttribute('aria-pressed', 'true')
-        expect(
-          context.requirementPackageButton('items', 10),
-        ).toHaveAttribute('aria-pressed', 'true')
+        expect(resolveCatalogRefresh).toBeTypeOf('function')
       })
       act(() => resolveCatalogRefresh?.())
       await waitFor(() => {
         expect(
           context.queryRequirementPackageButton('items', 9),
         ).not.toBeInTheDocument()
+        expect(context.requirementPackageButton('items', 10)).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        )
         expect(
           fetchMock.mock.calls.some(([input]) => {
             const url = typeof input === 'string' ? input : input.url
@@ -1369,16 +1341,12 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         expect(requirementRowNames('items')).toEqual(['BEH0001', 'BEH0002'])
       })
 
-      fireEvent.click(
-        context.requirementSortButton('items', 'description'),
-      )
+      fireEvent.click(context.requirementSortButton('items', 'description'))
       await waitFor(() => {
         expect(requirementRowNames('items')).toEqual(['BEH0002', 'BEH0001'])
       })
 
-      fireEvent.click(
-        context.requirementSortButton('items', 'description'),
-      )
+      fireEvent.click(context.requirementSortButton('items', 'description'))
       await waitFor(() => {
         expect(requirementRowNames('items')).toEqual(['BEH0001', 'BEH0002'])
       })

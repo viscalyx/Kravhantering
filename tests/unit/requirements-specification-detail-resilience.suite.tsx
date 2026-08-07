@@ -71,36 +71,58 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
       context.availableRequirementsGetHandler = async () => {
         throw new Error('Available requirements offline')
       }
-      context.normReferencesGetHandler = async () => {
-        throw new Error('Norm references offline')
-      }
       context.specificationItemsGetHandler = async () => {
-        throw 'Items offline'
+        throw new Error('Items offline')
       }
-      renderRequirementsSpecificationDetailClient()
+      renderRequirementsSpecificationDetailClient({
+        ...createInitialData(),
+        specificationItemStatuses: [
+          {
+            color: '#22c55e',
+            descriptionEn: null,
+            descriptionSv: null,
+            iconName: null,
+            id: 2,
+            nameEn: 'Included',
+            nameSv: 'Inkluderad',
+            sortOrder: 2,
+          },
+        ],
+      })
 
       expect(
         await screen.findByText('Available requirements offline'),
       ).toHaveAttribute('role', 'status')
-      context.toggleRequirementStatusFilter('items')
+      context.toggleSpecificationItemStatusFilter('items', 'Included')
       await waitFor(() => {
         expect(
           fetchMock.mock.calls.some(([input]) =>
-            String(input).startsWith('/api/norm-references'),
+            String(input).includes('specificationItemStatusIds=2'),
           ),
         ).toBe(true)
       })
-      fireEvent.click(
-        context.requirementSortButton('items', 'description'),
-      )
       await waitFor(() => {
         expect(screen.getByRole('alert')).toHaveTextContent(
           'specification.loadSpecificationItemsFailed',
         )
       })
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
+    })
+
+    it('translates a non-Error initial available-requirements failure', async () => {
+      context.availableRequirementsGetHandler = async () => {
+        throw 'Available requirements offline'
+      }
+      renderRequirementsSpecificationDetailClient()
+
       expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
+        await screen.findByText(
+          'specification.loadAvailableRequirementsFailed',
+        ),
+      ).toHaveAttribute('role', 'status')
+      expect(context.requirementsTable('available')).toHaveTextContent(
+        'IAM0202',
+      )
     })
 
     it('shows the original specification after a non-Error metadata refresh failure', async () => {
@@ -128,6 +150,38 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
       expect(
         screen.getByRole('heading', { level: 1, name: initialSpec.name }),
       ).toBeInTheDocument()
+    })
+
+    it('keeps sparse preload data visible after an Error metadata refresh', async () => {
+      context.specificationMetaGetHandler = async () => {
+        throw new Error('Metadata refresh offline')
+      }
+      renderRequirementsSpecificationDetailClient({
+        ...createInitialData(),
+        leftNormReferenceOptions: undefined as never,
+        rightNormReferenceOptions: undefined as never,
+      })
+      fireEvent.click(
+        screen.getByRole('button', { name: 'specification.editSpecification' }),
+      )
+      const dialog = await screen.findByRole('dialog', {
+        name: 'specification.editSpecification',
+      })
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: /specification\.name/ }),
+        { target: { value: 'Specification awaiting refresh' } },
+      )
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: /common\.save/i }),
+      )
+
+      expect(
+        await screen.findByText('Metadata refresh offline'),
+      ).toHaveAttribute('role', 'status')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
+      expect(context.requirementsTable('available')).toHaveTextContent(
+        'IAM0202',
+      )
     })
 
     it('loads needs references after an Error-valued preload failure', async () => {
@@ -174,9 +228,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
         specificationItems: createSpecificationItemsPage([itemWithoutRef]),
       })
 
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       expect(
         screen.queryByRole('button', {
@@ -293,9 +345,9 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
               : 'specification.loadAvailableRequirementsFailed',
           ),
         ).toHaveAttribute('role', 'status')
-        expect(
-          context.requirementsTable('available'),
-        ).toHaveTextContent('IAM0202')
+        expect(context.requirementsTable('available')).toHaveTextContent(
+          'IAM0202',
+        )
       },
     )
 
@@ -336,9 +388,9 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
           }),
         ).toBe(true)
       })
-      expect(
-        context.requirementsTable('available'),
-      ).toHaveTextContent('IAM0202')
+      expect(context.requirementsTable('available')).toHaveTextContent(
+        'IAM0202',
+      )
     })
   })
 }

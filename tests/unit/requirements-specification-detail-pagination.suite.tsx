@@ -58,9 +58,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       context.triggerRequirementLoadMore('items')
 
       await waitFor(() => {
-        expect(
-          context.requirementsTable('items'),
-        ).toHaveTextContent('BEH0001')
+        expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
       })
     })
 
@@ -76,9 +74,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
         screen.queryByText('specification.noItems'),
       ).not.toBeInTheDocument()
 
-      fireEvent.click(
-        context.requirementSortButton('items', 'description'),
-      )
+      fireEvent.click(context.requirementSortButton('items', 'description'))
 
       await waitFor(() => {
         expect(
@@ -90,9 +86,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       expect(
         screen.queryByText('specification.noItems'),
       ).not.toBeInTheDocument()
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
 
       await act(async () => {
         resolveSortedRequest?.(
@@ -145,13 +139,9 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       })
 
       context.selectRequirementRows([101, 102])
-      fireEvent.click(
-        context.requirementPackageButton('items', 1),
-      )
+      fireEvent.click(context.requirementPackageButton('items', 1))
       await waitFor(() => {
-        expect(
-          context.requirementsTable('items'),
-        ).toHaveTextContent('BEH0001')
+        expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
         expect(context.intlState.selectionStatus).toHaveBeenLastCalledWith({
           hidden: 1,
           total: 2,
@@ -163,9 +153,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
         resolveSortedRequest = resolve
       })
       context.specificationItemsGetHandler = async () => sortedRequest
-      fireEvent.click(
-        context.requirementSortButton('items', 'description'),
-      )
+      fireEvent.click(context.requirementSortButton('items', 'description'))
 
       await waitFor(() => {
         expect(
@@ -174,9 +162,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
           ),
         ).toBe(true)
       })
-      expect(
-        context.requirementsTable('items'),
-      ).toHaveTextContent('BEH0001')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
       expect(context.intlState.selectionStatus).toHaveBeenLastCalledWith({
         hidden: 1,
         total: 2,
@@ -323,10 +309,9 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       }
 
       context.renderRequirementsSpecificationDetailClient()
-      fireEvent.change(
-        context.requirementSearchInput('items'),
-        { target: { value: 'first' } },
-      )
+      fireEvent.change(context.requirementSearchInput('items'), {
+        target: { value: 'first' },
+      })
       await waitFor(() => {
         expect(
           context.fetchMock.mock.calls.some(([input]) =>
@@ -334,10 +319,9 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
           ),
         ).toBe(true)
       })
-      fireEvent.change(
-        context.requirementSearchInput('items'),
-        { target: { value: 'latest' } },
-      )
+      fireEvent.change(context.requirementSearchInput('items'), {
+        target: { value: 'latest' },
+      })
       await waitFor(() => {
         expect(context.requirementRowNames('items')).toEqual(['LATEST'])
       })

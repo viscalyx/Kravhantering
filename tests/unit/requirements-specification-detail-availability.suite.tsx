@@ -49,9 +49,7 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
           within(context.requirementsTable('available')).getByRole('status'),
         ).toHaveTextContent('common.noResults')
       })
-      fireEvent.click(
-        context.requirementSortButton('items', 'description'),
-      )
+      fireEvent.click(context.requirementSortButton('items', 'description'))
       await waitFor(() => {
         expect(screen.getByText('specification.noItems')).toBeInTheDocument()
       })
@@ -308,9 +306,9 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
           requestCountBeforeLoadMore + 2,
         )
       })
-      expect(
-        context.requirementsTable('available'),
-      ).toHaveTextContent('IAM0202')
+      expect(context.requirementsTable('available')).toHaveTextContent(
+        'IAM0202',
+      )
     })
 
     it('ignores stale invalid-cursor recovery after available filters change', async () => {
@@ -351,9 +349,7 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
         ).toBe(true)
       })
 
-      fireEvent.click(
-        context.requirementPackageButton('available', 1),
-      )
+      fireEvent.click(context.requirementPackageButton('available', 1))
       await waitFor(() => {
         expect(
           availableRequirementsFetchUrls().some(url =>

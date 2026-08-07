@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -228,7 +235,8 @@ vi.stubGlobal(
 
     disconnect() {
       for (const [target, callback] of intersectionObserverCallbacks) {
-        if (callback === this.callback) intersectionObserverCallbacks.delete(target)
+        if (callback === this.callback)
+          intersectionObserverCallbacks.delete(target)
       }
     }
     observe(target: Element) {
@@ -493,14 +501,6 @@ function requirementRowCheckbox(
   }) as HTMLInputElement
 }
 
-function requirementSelectAllCheckbox(
-  tableKind: RequirementTableKind,
-): HTMLInputElement {
-  return within(requirementPanel(tableKind)).getByRole('checkbox', {
-    name: 'common.selectAll',
-  }) as HTMLInputElement
-}
-
 function requirementHeaderControl(
   tableKind: RequirementTableKind,
   column: string,
@@ -516,9 +516,12 @@ function requirementSortButton(
   tableKind: RequirementTableKind,
   column: string,
 ): HTMLButtonElement {
-  return within(requirementHeaderControl(tableKind, column)).getByRole('button', {
-    name: 'common.sortBy',
-  }) as HTMLButtonElement
+  return within(requirementHeaderControl(tableKind, column)).getByRole(
+    'button',
+    {
+      name: 'common.sortBy',
+    },
+  ) as HTMLButtonElement
 }
 
 function requirementPackageButton(
@@ -610,31 +613,35 @@ function requirementSearchInput(
   }) as HTMLInputElement
 }
 
-function toggleRequirementStatusFilter(tableKind: RequirementTableKind) {
+function toggleSpecificationItemStatusFilter(
+  tableKind: RequirementTableKind,
+  statusName: string,
+) {
   if (
     !requirementPanel(tableKind).querySelector(
-      '[data-requirement-header-control="status"]',
+      '[data-requirement-header-control="specificationItemStatus"]',
     )
   ) {
-    toggleRequirementColumn(tableKind, 'status')
+    toggleRequirementColumn(tableKind, 'specificationItemStatus')
   }
-  let checkbox = screen
-    .getAllByRole('checkbox')
-    .find(candidate => !candidate.closest('[data-specification-detail-list-panel]'))
+  let checkbox = screen.queryByRole('checkbox', { name: statusName })
   if (!checkbox) {
-    const header = requirementHeaderControl(tableKind, 'status')
+    const header = requirementHeaderControl(
+      tableKind,
+      'specificationItemStatus',
+    )
     fireEvent.click(
       within(header).getByRole('button', { name: 'common.filterBy' }),
     )
-    checkbox = screen
-      .getAllByRole('checkbox')
-      .find(
-        candidate =>
-          !candidate.closest('[data-specification-detail-list-panel]'),
-      )
+    checkbox = screen.queryByRole('checkbox', { name: statusName })
   }
-  if (!checkbox) throw new Error(`Missing ${tableKind} status filter option`)
+  if (!checkbox) {
+    throw new Error(
+      `Missing ${tableKind} specification item status ${statusName}`,
+    )
+  }
   fireEvent.click(checkbox)
+  fireEvent.keyDown(document, { key: 'Escape' })
 }
 
 function requirementNeedsReferenceSelect(
@@ -669,13 +676,11 @@ function triggerRequirementLoadMore(tableKind: RequirementTableKind) {
 
 function itemsStatus(): HTMLElement {
   const statuses = within(requirementPanel('items')).getAllByRole('status')
-  return (
-    statuses.find(status =>
-      /selectionStatus|selectionDisappeared|requirementsAdded|selectionActionLimitExceeded/.test(
-        status.textContent ?? '',
-      ),
-    ) ?? statuses[0]
-  ) as HTMLElement
+  return (statuses.find(status =>
+    /selectionStatus|selectionDisappeared|requirementsAdded|selectionActionLimitExceeded/.test(
+      status.textContent ?? '',
+    ),
+  ) ?? statuses[0]) as HTMLElement
 }
 
 function specificationApiPath(path = '') {
@@ -722,11 +727,12 @@ function requirementRowNames(
     requirementsTable(tableKind).querySelectorAll<HTMLElement>('tbody tr'),
   )
     .filter(row => !row.querySelector('[data-expanded-detail="true"]'))
-    .map(row =>
-      within(row)
-        .getAllByRole('cell')
-        .map(cell => cell.textContent?.trim())
-        .find(text => Boolean(text)) ?? null,
+    .map(
+      row =>
+        within(row)
+          .getAllByRole('cell')
+          .map(cell => cell.textContent?.trim())
+          .find(text => Boolean(text)) ?? null,
     )
 }
 
@@ -850,7 +856,6 @@ const workflowContext = {
   requirementRow,
   requirementRowCheckbox,
   requirementSearchInput,
-  requirementSelectAllCheckbox,
   requirementSortButton,
   requirementStatusSelect,
   requirementsTable,
@@ -904,7 +909,7 @@ const workflowContext = {
   openTableActionMenu,
   queryRequirementPackageButton,
   toggleRequirementColumn,
-  toggleRequirementStatusFilter,
+  toggleSpecificationItemStatusFilter,
   triggerRequirementLoadMore,
   useReducedMotion,
 }
@@ -1055,7 +1060,7 @@ describe('RequirementsSpecificationDetailClient', () => {
                   ok: true,
                 })
               : {
-                  json: async () => ({ error: 'Local create failed' }),
+                  json: async () => ({}),
                   ok: false,
                 },
           )

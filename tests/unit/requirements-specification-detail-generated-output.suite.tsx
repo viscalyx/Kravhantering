@@ -12,9 +12,7 @@ export function registerGeneratedOutputTests(
       await context.waitForInitialAvailableRequirementsRefresh()
 
       await waitFor(() => {
-        expect(
-          context.requirementsTable('items'),
-        ).toHaveTextContent('BEH0001')
+        expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
       })
       let moreActions = context.openTableActionMenu('common.moreActions')
       expect(within(moreActions).getAllByRole('menuitem')).toHaveLength(5)
@@ -212,9 +210,7 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.click(
-        context.requirementPackageButton('items', 9),
-      )
+      fireEvent.click(context.requirementPackageButton('items', 9))
 
       await waitFor(() => {
         const menu = context.openTableActionMenu('common.moreActions')
@@ -274,24 +270,26 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
       context.triggerRequirementLoadMore('items')
-      expect(
-        await screen.findByRole('row', { name: /BEH0200/ }),
-      ).toBeVisible()
+      expect(await screen.findByRole('row', { name: /BEH0200/ })).toBeVisible()
       context.triggerRequirementLoadMore('items')
-      expect(
-        await screen.findByRole('row', { name: /BEH0201/ }),
-      ).toBeVisible()
+      expect(await screen.findByRole('row', { name: /BEH0201/ })).toBeVisible()
 
       expect(
-        within(context.openTableActionMenu('common.moreActions')).getByRole('menuitem', {
-          name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
-        }),
+        within(context.openTableActionMenu('common.moreActions')).getByRole(
+          'menuitem',
+          {
+            name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
+          },
+        ),
       ).toBeInTheDocument()
       fireEvent.keyDown(document, { key: 'Escape' })
       expect(
-        within(context.openTableActionMenu('common.moreActions')).getByRole('menuitem', {
-          name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
-        }),
+        within(context.openTableActionMenu('common.moreActions')).getByRole(
+          'menuitem',
+          {
+            name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
+          },
+        ),
       ).toBeInTheDocument()
     }, 15_000)
 
