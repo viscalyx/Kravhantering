@@ -349,7 +349,9 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
         ).toBe(true)
       })
 
-      fireEvent.click(context.requirementPackageButton('available', 1))
+      fireEvent.click(
+        context.requirementPackageButton('available', 'Mobile use'),
+      )
       await waitFor(() => {
         expect(
           availableRequirementsFetchUrls().some(url =>

@@ -409,9 +409,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         screen.getByRole('button', { name: 'common.moreActions' }),
       ).toBeInTheDocument()
       expect(
-        within(context.requirementPanel('items')).queryByRole('button', {
-          name: 'common.columns',
-        }),
+        context.queryRequirementColumnButton('items'),
       ).not.toBeInTheDocument()
 
       const menu = context.openTableActionMenu('common.moreActions')
@@ -752,55 +750,41 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
     })
 
     it('uses inline top rails and embeds the split panel tabs in sticky headers', async () => {
-      const { container } = renderRequirementsSpecificationDetailClient()
+      renderRequirementsSpecificationDetailClient()
 
       await waitForInitialAvailableRequirementsRefresh()
 
       expect(
-        screen.queryByText('specification.itemsInSpecification', {
-          selector: 'h2',
+        screen.queryByRole('heading', {
+          name: 'specification.itemsInSpecification',
         }),
       ).not.toBeInTheDocument()
       expect(
-        screen.queryByText('specification.availableRequirements', {
-          selector: 'h2',
+        screen.queryByRole('heading', {
+          name: 'specification.availableRequirements',
         }),
       ).not.toBeInTheDocument()
-      const leftStickyTitle = context
-        .requirementPanel('items')
-        .querySelector('[data-requirements-sticky-top-bar="true"]')
-      const rightStickyTitle = context
-        .requirementPanel('available')
-        .querySelector('[data-requirements-sticky-top-bar="true"]')
+      const leftTabs = screen.getByRole('tablist', {
+        name: 'specification.leftPanelTabs',
+      })
+      const rightTabs = screen.getByRole('tablist', {
+        name: 'specification.rightPanelTabs',
+      })
 
-      expect(leftStickyTitle).toBeTruthy()
-      expect(rightStickyTitle).toBeTruthy()
+      expect(leftTabs).toBeInTheDocument()
       expect(
-        within(leftStickyTitle as HTMLElement).getByRole('tablist', {
-          name: 'specification.leftPanelTabs',
-        }),
-      ).toBeInTheDocument()
-      expect(
-        within(leftStickyTitle as HTMLElement).getByRole('tab', {
+        within(leftTabs).getByRole('tab', {
           name: /specification\.needsReferences/,
         }),
       ).toBeInTheDocument()
       expect(
-        within(rightStickyTitle as HTMLElement).getByRole('tablist', {
-          name: 'specification.rightPanelTabs',
-        }),
-      ).toBeInTheDocument()
-      expect(
-        within(rightStickyTitle as HTMLElement).getByRole('tab', {
+        within(rightTabs).getByRole('tab', {
           name: /specification\.availableRequirements/,
         }),
       ).toHaveAttribute('aria-controls', 'right-panel-available')
-      const questionsTab = within(rightStickyTitle as HTMLElement).getByRole(
-        'tab',
-        {
-          name: /specification\.requirementSelectionQuestions/,
-        },
-      )
+      const questionsTab = within(rightTabs).getByRole('tab', {
+        name: /specification\.requirementSelectionQuestions/,
+      })
       expect(questionsTab).toHaveAttribute(
         'aria-controls',
         'right-panel-questions',
@@ -813,31 +797,21 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           screen.getByText('specificationRequirementSelection.noQuestions'),
         ).toBeInTheDocument()
       })
-      const questionsPanel = container.querySelector('#right-panel-questions')
+      const questionsPanel = screen.getByRole('tabpanel', {
+        name: /specification\.requirementSelectionQuestions/,
+      })
 
-      expect(questionsPanel).toBeTruthy()
       expect(
-        within(questionsPanel as HTMLElement).getByRole('tablist', {
+        within(questionsPanel).getByRole('tablist', {
           name: 'specification.rightPanelTabs',
         }),
       ).toBeInTheDocument()
       expect(
-        within(questionsPanel as HTMLElement).queryByText(
-          'specificationRequirementSelection.title',
-          { selector: 'h2' },
-        ),
+        within(questionsPanel).queryByRole('heading', {
+          name: 'specificationRequirementSelection.title',
+        }),
       ).not.toBeInTheDocument()
-
-      expect(
-        container.querySelector(
-          '[data-specification-detail-list-panel="items"]',
-        ),
-      ).toBeTruthy()
-      expect(
-        container.querySelector(
-          '[data-specification-detail-list-panel="available"]',
-        ),
-      ).toBeTruthy()
+      expect(context.requirementsTable('items')).toBeInTheDocument()
     })
 
     it('filters requirement applications when a requirement package chip is selected', async () => {
@@ -878,13 +852,12 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         expect(requirementRowNames('items')).toEqual(['BEH0001', 'BEH0002'])
       })
 
-      fireEvent.click(context.requirementPackageButton('items', 1))
+      fireEvent.click(context.requirementPackageButton('items', 'Mobile use'))
 
       await waitFor(() => {
-        expect(context.requirementPackageButton('items', 1)).toHaveAttribute(
-          'aria-pressed',
-          'true',
-        )
+        expect(
+          context.requirementPackageButton('items', 'Mobile use'),
+        ).toHaveAttribute('aria-pressed', 'true')
         expect(requirementRowNames('items')).toEqual(['BEH0001'])
       })
       expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
@@ -955,29 +928,32 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       })
       await waitForInitialAvailableRequirementsRefresh()
 
-      expect(context.requirementPackageButton('items', 2)).toHaveTextContent(
-        'Specification package',
-      )
       expect(
-        context.queryRequirementPackageButton('items', 1),
+        context.requirementPackageButton('items', 'Specification package'),
+      ).toHaveTextContent('Specification package')
+      expect(
+        context.queryRequirementPackageButton('items', 'Library package'),
       ).not.toBeInTheDocument()
       expect(
-        context.requirementPackageButton('available', 1),
+        context.requirementPackageButton('available', 'Library package'),
       ).toHaveTextContent('Library package')
       expect(
-        context.requirementPackageButton('available', 2),
+        context.requirementPackageButton('available', 'Specification package'),
       ).toHaveTextContent('Specification package')
 
-      fireEvent.click(context.requirementPackageButton('items', 2))
-      fireEvent.click(context.requirementPackageButton('available', 1))
+      fireEvent.click(
+        context.requirementPackageButton('items', 'Specification package'),
+      )
+      fireEvent.click(
+        context.requirementPackageButton('available', 'Library package'),
+      )
 
       await waitFor(() => {
-        expect(context.requirementPackageButton('items', 2)).toHaveAttribute(
-          'aria-pressed',
-          'true',
-        )
         expect(
-          context.requirementPackageButton('available', 1),
+          context.requirementPackageButton('items', 'Specification package'),
+        ).toHaveAttribute('aria-pressed', 'true')
+        expect(
+          context.requirementPackageButton('available', 'Library package'),
         ).toHaveAttribute('aria-pressed', 'true')
       })
     })
@@ -1017,12 +993,12 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       })
 
       await waitFor(() => {
-        expect(context.requirementPackageButton('items', 1)).toHaveTextContent(
-          'First package',
-        )
-        expect(context.requirementPackageButton('items', 51)).toHaveTextContent(
-          'Later package',
-        )
+        expect(
+          context.requirementPackageButton('items', 'First package'),
+        ).toHaveTextContent('First package')
+        expect(
+          context.requirementPackageButton('items', 'Later package'),
+        ).toHaveTextContent('Later package')
       })
     })
 
@@ -1193,19 +1169,27 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       })
       await waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.click(context.requirementPackageButton('items', 9))
+      fireEvent.click(
+        context.requirementPackageButton('items', packageOption.name),
+      )
       await waitFor(() => {
-        expect(context.requirementPackageButton('items', 9)).toHaveAttribute(
-          'aria-pressed',
-          'true',
-        )
+        expect(
+          context.requirementPackageButton('items', packageOption.name),
+        ).toHaveAttribute('aria-pressed', 'true')
       })
-      fireEvent.click(context.requirementPackageButton('items', 10))
+      fireEvent.click(
+        context.requirementPackageButton(
+          'items',
+          replacementPackageOption.name,
+        ),
+      )
       await waitFor(() => {
-        expect(context.requirementPackageButton('items', 10)).toHaveAttribute(
-          'aria-pressed',
-          'true',
-        )
+        expect(
+          context.requirementPackageButton(
+            'items',
+            replacementPackageOption.name,
+          ),
+        ).toHaveAttribute('aria-pressed', 'true')
       })
 
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
@@ -1226,12 +1210,14 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       act(() => resolveCatalogRefresh?.())
       await waitFor(() => {
         expect(
-          context.queryRequirementPackageButton('items', 9),
+          context.queryRequirementPackageButton('items', packageOption.name),
         ).not.toBeInTheDocument()
-        expect(context.requirementPackageButton('items', 10)).toHaveAttribute(
-          'aria-pressed',
-          'true',
-        )
+        expect(
+          context.requirementPackageButton(
+            'items',
+            replacementPackageOption.name,
+          ),
+        ).toHaveAttribute('aria-pressed', 'true')
         expect(
           fetchMock.mock.calls.some(([input]) => {
             const url = typeof input === 'string' ? input : input.url
@@ -1246,7 +1232,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         expect(requirementRowNames('items')).toEqual(['REQ-002'])
       })
       expect(
-        context.requirementPackageButton('available', 9),
+        context.requirementPackageButton('available', packageOption.name),
       ).toHaveTextContent(packageOption.name)
     })
 
@@ -1300,7 +1286,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
 
       await waitFor(() => {
         expect(
-          context.queryRequirementPackageButton('items', 9),
+          context.queryRequirementPackageButton('items', packageOption.name),
         ).not.toBeInTheDocument()
         expect(
           screen.getByText('specification.loadRequirementPackagesFailed'),

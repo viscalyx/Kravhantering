@@ -139,7 +139,9 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       })
 
       context.selectRequirementRows([101, 102])
-      fireEvent.click(context.requirementPackageButton('items', 1))
+      fireEvent.click(
+        context.requirementPackageButton('items', 'First package'),
+      )
       await waitFor(() => {
         expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
         expect(context.intlState.selectionStatus).toHaveBeenLastCalledWith({

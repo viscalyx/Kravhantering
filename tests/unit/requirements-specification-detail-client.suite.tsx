@@ -12,7 +12,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[specificationId]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
-import type { RequirementPackageOption } from '@/lib/requirements/list-view'
+import type {
+  RequirementColumnId,
+  RequirementPackageOption,
+} from '@/lib/requirements/list-view'
 import type {
   RequirementsSpecificationDetailInitialData,
   SpecificationListItem,
@@ -54,7 +57,20 @@ vi.mock('next-intl', () => ({
       if (ns === 'specification' && key === 'downloadProfileReportPdf') {
         return `${ns}.${key}.${String(values?.report)}`
       }
-      return ns ? `${ns}.${key}` : key
+      const translatedKey = ns ? `${ns}.${key}` : key
+      if (
+        (ns === 'common' &&
+          (key === 'filterBy' || key === 'selectRow' || key === 'sortBy')) ||
+        (ns === 'requirement' &&
+          (key === 'addRequirementPackageToFilter' ||
+            key === 'removeRequirementPackageFromFilter'))
+      ) {
+        const accessibleValue = values?.id ?? values?.label ?? values?.package
+        return accessibleValue
+          ? `${translatedKey} ${String(accessibleValue)}`
+          : translatedKey
+      }
+      return translatedKey
     }
     t.rich = (key: string) => (ns ? `${ns}.${key}` : key)
     return t
@@ -465,19 +481,24 @@ function renderRequirementsSpecificationDetailClient(
 
 type RequirementTableKind = 'available' | 'items'
 
-function requirementPanel(tableKind: RequirementTableKind): HTMLElement {
-  const panel = document.querySelector<HTMLElement>(
-    `[data-specification-detail-list-panel="${tableKind}"]`,
-  )
-  if (!panel) throw new Error(`Missing ${tableKind} requirements panel`)
-  return panel
+function availableRequirementsPanel(): HTMLElement {
+  return screen.getByRole('tabpanel', {
+    name: /specification\.(availableRequirements|requirementSelectionQuestions)/,
+  })
 }
 
 function requirementsTable(tableKind: RequirementTableKind): HTMLElement {
-  const table = requirementPanel(tableKind).querySelector<HTMLElement>(
-    '[data-requirements-data-table="true"]',
-  )
-  if (!table) throw new Error(`Missing ${tableKind} requirements table`)
+  if (tableKind === 'available') {
+    return within(availableRequirementsPanel()).getByRole('table', {
+      name: 'requirement.tableCaption',
+    })
+  }
+
+  const availablePanel = availableRequirementsPanel()
+  const table = screen
+    .getAllByRole('table', { name: 'requirement.tableCaption' })
+    .find(candidate => !availablePanel.contains(candidate))
+  if (!table) throw new Error('Missing items requirements table')
   return table
 }
 
@@ -485,94 +506,142 @@ function requirementRow(
   tableKind: RequirementTableKind,
   uniqueId: string,
 ): HTMLElement {
-  const row = Array.from(
-    requirementsTable(tableKind).querySelectorAll<HTMLElement>('tbody tr'),
-  ).find(candidate => within(candidate).queryByText(uniqueId))
-  if (!row) throw new Error(`Missing ${tableKind} requirement row ${uniqueId}`)
-  return row
+  return within(requirementsTable(tableKind)).getByRole('row', {
+    name: new RegExp(uniqueId),
+  })
 }
 
 function requirementRowCheckbox(
   tableKind: RequirementTableKind,
   uniqueId: string,
 ): HTMLInputElement {
-  return within(requirementRow(tableKind, uniqueId)).getByRole('checkbox', {
-    name: 'common.selectRow',
+  return within(requirementsTable(tableKind)).getByRole('checkbox', {
+    name: `common.selectRow ${uniqueId}`,
   }) as HTMLInputElement
 }
 
-function requirementHeaderControl(
+function tableScopedButton(
   tableKind: RequirementTableKind,
-  column: string,
-): HTMLElement {
-  const control = requirementPanel(tableKind).querySelector<HTMLElement>(
-    `[data-requirement-header-control="${column}"]`,
-  )
-  if (!control) throw new Error(`Missing ${tableKind} ${column} header control`)
-  return control
+  name: string | RegExp,
+): HTMLButtonElement {
+  const availablePanel = availableRequirementsPanel()
+  const button = screen
+    .getAllByRole('button', { name })
+    .find(candidate =>
+      tableKind === 'available'
+        ? availablePanel.contains(candidate)
+        : !availablePanel.contains(candidate),
+    )
+  if (!button) throw new Error(`Missing ${tableKind} button ${String(name)}`)
+  return button as HTMLButtonElement
+}
+
+function queryTableScopedButton(
+  tableKind: RequirementTableKind,
+  name: string | RegExp,
+): HTMLButtonElement | null {
+  const availablePanel = availableRequirementsPanel()
+  return (screen
+    .queryAllByRole('button', { name })
+    .find(candidate =>
+      tableKind === 'available'
+        ? availablePanel.contains(candidate)
+        : !availablePanel.contains(candidate),
+    ) ?? null) as HTMLButtonElement | null
+}
+
+function requirementColumnLabel(column: RequirementColumnId): string {
+  return column === 'version'
+    ? 'common.version'
+    : column === 'suggestionCount'
+      ? 'improvementSuggestion.title'
+      : `requirement.${column}`
 }
 
 function requirementSortButton(
   tableKind: RequirementTableKind,
-  column: string,
+  column: RequirementColumnId,
 ): HTMLButtonElement {
-  return within(requirementHeaderControl(tableKind, column)).getByRole(
-    'button',
-    {
-      name: 'common.sortBy',
-    },
+  return tableScopedButton(
+    tableKind,
+    `common.sortBy ${requirementColumnLabel(column)}`,
   ) as HTMLButtonElement
 }
 
 function requirementPackageButton(
   tableKind: RequirementTableKind,
-  packageId: number,
+  packageName: string,
 ): HTMLButtonElement {
-  const panel = requirementPanel(tableKind)
-  let button = panel.querySelector<HTMLButtonElement>(
-    `[data-requirement-package="${packageId}"]`,
+  let button = queryTableScopedButton(
+    tableKind,
+    `requirement.removeRequirementPackageFromFilter ${packageName}`,
   )
   if (!button) {
-    const filterBand = panel.querySelector<HTMLElement>(
-      '[data-requirement-package-filter-layout="split"]',
+    const chooserTrigger = tableScopedButton(
+      tableKind,
+      /^requirement\.requirementPackageFilterButton/,
     )
-    const chooserTrigger = filterBand?.querySelector<HTMLButtonElement>(
-      'button[aria-expanded]',
-    )
-    if (chooserTrigger?.getAttribute('aria-expanded') === 'false') {
+    if (chooserTrigger.getAttribute('aria-expanded') === 'false') {
       fireEvent.click(chooserTrigger)
     }
-    button = document.querySelector<HTMLButtonElement>(
-      `[data-requirement-package="${packageId}"]`,
-    )
+    const chooserId = chooserTrigger.getAttribute('aria-controls')
+    const chooser = screen
+      .queryAllByRole('group', {
+        name: 'requirement.requirementPackageChooser',
+      })
+      .find(candidate => candidate.id === chooserId)
+    button = chooser
+      ? (within(chooser).queryByRole('button', {
+          name: `requirement.addRequirementPackageToFilter ${packageName}`,
+        }) as HTMLButtonElement | null)
+      : null
   }
   if (!button) {
-    throw new Error(
-      `Missing ${tableKind} requirement package ${packageId}; compact filter ${Boolean(
-        panel.querySelector('[data-requirement-package-filter-layout="split"]'),
-      )}`,
-    )
+    throw new Error(`Missing ${tableKind} requirement package ${packageName}`)
   }
   return button
 }
 
 function queryRequirementPackageButton(
   tableKind: RequirementTableKind,
-  packageId?: number,
+  packageName?: string,
 ): HTMLButtonElement | null {
-  return requirementPanel(tableKind).querySelector<HTMLButtonElement>(
-    packageId == null
-      ? '[data-requirement-package]'
-      : `[data-requirement-package="${packageId}"]`,
+  const selectedButton = queryTableScopedButton(
+    tableKind,
+    packageName
+      ? `requirement.removeRequirementPackageFromFilter ${packageName}`
+      : /^requirement\.removeRequirementPackageFromFilter/,
   )
+  if (selectedButton || !packageName) return selectedButton
+
+  const chooserTrigger = queryTableScopedButton(
+    tableKind,
+    /^requirement\.requirementPackageFilterButton/,
+  )
+  if (chooserTrigger?.getAttribute('aria-expanded') !== 'true') return null
+  const chooserId = chooserTrigger.getAttribute('aria-controls')
+  const chooser = screen
+    .queryAllByRole('group', {
+      name: 'requirement.requirementPackageChooser',
+    })
+    .find(candidate => candidate.id === chooserId)
+  return chooser
+    ? (within(chooser).queryByRole('button', {
+        name: `requirement.addRequirementPackageToFilter ${packageName}`,
+      }) as HTMLButtonElement | null)
+    : null
 }
 
 function requirementColumnButton(
   tableKind: RequirementTableKind,
 ): HTMLButtonElement {
-  return within(requirementPanel(tableKind)).getByRole('button', {
-    name: 'common.columns',
-  }) as HTMLButtonElement
+  return tableScopedButton(tableKind, 'common.columns')
+}
+
+function queryRequirementColumnButton(
+  tableKind: RequirementTableKind,
+): HTMLButtonElement | null {
+  return queryTableScopedButton(tableKind, 'common.columns')
 }
 
 function changeRequirementColumns(tableKind: RequirementTableKind) {
@@ -581,13 +650,12 @@ function changeRequirementColumns(tableKind: RequirementTableKind) {
 
 function toggleRequirementColumn(
   tableKind: RequirementTableKind,
-  column: string,
+  column: RequirementColumnId,
 ) {
   fireEvent.click(requirementColumnButton(tableKind))
-  const option = document.querySelector<HTMLInputElement>(
-    `[data-column-picker-option="${column}"] input[type="checkbox"]`,
-  )
-  if (!option) throw new Error(`Missing ${tableKind} ${column} column option`)
+  const option = screen.getByRole('checkbox', {
+    name: requirementColumnLabel(column),
+  })
   fireEvent.click(option)
   fireEvent.keyDown(document, { key: 'Escape' })
 }
@@ -604,9 +672,8 @@ function requirementSearchInput(
     name: 'requirement.uniqueId',
   }) as HTMLInputElement | null
   if (existing) return existing
-  const header = requirementHeaderControl(tableKind, 'uniqueId')
   fireEvent.click(
-    within(header).getByRole('button', { name: 'common.filterBy' }),
+    tableScopedButton(tableKind, 'common.filterBy requirement.uniqueId'),
   )
   return screen.getByRole('textbox', {
     name: 'requirement.uniqueId',
@@ -618,20 +685,20 @@ function toggleSpecificationItemStatusFilter(
   statusName: string,
 ) {
   if (
-    !requirementPanel(tableKind).querySelector(
-      '[data-requirement-header-control="specificationItemStatus"]',
+    !queryTableScopedButton(
+      tableKind,
+      'common.filterBy requirement.specificationItemStatus',
     )
   ) {
     toggleRequirementColumn(tableKind, 'specificationItemStatus')
   }
   let checkbox = screen.queryByRole('checkbox', { name: statusName })
   if (!checkbox) {
-    const header = requirementHeaderControl(
-      tableKind,
-      'specificationItemStatus',
-    )
     fireEvent.click(
-      within(header).getByRole('button', { name: 'common.filterBy' }),
+      tableScopedButton(
+        tableKind,
+        'common.filterBy requirement.specificationItemStatus',
+      ),
     )
     checkbox = screen.queryByRole('checkbox', { name: statusName })
   }
@@ -660,9 +727,9 @@ function requirementStatusSelect(uniqueId: string): HTMLSelectElement {
 }
 
 function triggerRequirementLoadMore(tableKind: RequirementTableKind) {
-  const panel = requirementPanel(tableKind)
+  const table = requirementsTable(tableKind)
   const entry = Array.from(intersectionObserverCallbacks).find(([target]) =>
-    panel.contains(target),
+    target.parentElement?.contains(table),
   )
   if (!entry) throw new Error(`Missing ${tableKind} load-more sentinel`)
   const [target, callback] = entry
@@ -675,7 +742,10 @@ function triggerRequirementLoadMore(tableKind: RequirementTableKind) {
 }
 
 function itemsStatus(): HTMLElement {
-  const statuses = within(requirementPanel('items')).getAllByRole('status')
+  const availablePanel = availableRequirementsPanel()
+  const statuses = screen
+    .getAllByRole('status')
+    .filter(status => !availablePanel.contains(status))
   return (statuses.find(status =>
     /selectionStatus|selectionDisappeared|requirementsAdded|selectionActionLimitExceeded/.test(
       status.textContent ?? '',
@@ -708,25 +778,41 @@ function searchParamsFromPath(path: string): URLSearchParams {
 }
 
 function selectRequirementRows(ids: number[]) {
-  for (const id of ids) {
+  const rows = ids.map(id => {
     const uniqueId = renderedRequirementUniqueIds.get(id)
     if (!uniqueId) throw new Error(`Missing known requirement row ${id}`)
-    fireEvent.click(
-      requirementRowCheckbox(
-        renderedAvailableRequirementIds.has(id) ? 'available' : 'items',
-        uniqueId,
-      ),
+    return {
+      tableKind: renderedAvailableRequirementIds.has(id)
+        ? ('available' as const)
+        : ('items' as const),
+      uniqueId,
+    }
+  })
+
+  for (const tableKind of ['available', 'items'] as const) {
+    const requestedRows = rows.filter(row => row.tableKind === tableKind)
+    if (requestedRows.length === 0) continue
+    const checkboxesByName = new Map(
+      within(requirementsTable(tableKind))
+        .getAllByRole('checkbox', { name: /^common\.selectRow / })
+        .map(checkbox => [checkbox.getAttribute('aria-label'), checkbox]),
     )
+    for (const { uniqueId } of requestedRows) {
+      const checkbox = checkboxesByName.get(`common.selectRow ${uniqueId}`)
+      if (!checkbox) throw new Error(`Missing ${tableKind} row ${uniqueId}`)
+      fireEvent.click(checkbox)
+    }
   }
 }
 
 function requirementRowNames(
   tableKind: 'available' | 'items',
 ): Array<string | null> {
-  return Array.from(
-    requirementsTable(tableKind).querySelectorAll<HTMLElement>('tbody tr'),
-  )
-    .filter(row => !row.querySelector('[data-expanded-detail="true"]'))
+  return within(requirementsTable(tableKind))
+    .getAllByRole('row')
+    .filter(row =>
+      within(row).queryByRole('checkbox', { name: /^common\.selectRow / }),
+    )
     .map(
       row =>
         within(row)
@@ -848,11 +934,10 @@ const workflowContext = {
   renderRequirementsSpecificationDetailClient,
   requirementRowNames,
   requirementColumnButton,
+  queryRequirementColumnButton,
   changeRequirementColumns,
-  requirementHeaderControl,
   requirementNeedsReferenceSelect,
   requirementPackageButton,
-  requirementPanel,
   requirementRow,
   requirementRowCheckbox,
   requirementSearchInput,

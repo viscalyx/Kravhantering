@@ -48,15 +48,20 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       await context.waitForInitialAvailableRequirementsRefresh()
 
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
-      await act(async () => {
-        fireEvent.click(context.requirementSortButton('items', 'description'))
+      fireEvent.click(context.requirementSortButton('items', 'description'))
+      await waitFor(() => {
+        expect(
+          context.requirementSortButton('items', 'description'),
+        ).toHaveAttribute('title', 'common.sortDirectionTooltip')
       })
       expect(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
         }),
       ).toBeInTheDocument()
-      fireEvent.click(context.requirementPackageButton('items', 9))
+      fireEvent.click(
+        context.requirementPackageButton('items', 'Security package'),
+      )
 
       const deselectHidden = await screen.findByRole('button', {
         name: 'specification.deselectHidden',
@@ -138,12 +143,13 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.click(context.requirementPackageButton('items', 1))
+      fireEvent.click(
+        context.requirementPackageButton('items', 'Shown package'),
+      )
       await waitFor(() => {
-        expect(context.requirementPackageButton('items', 1)).toHaveAttribute(
-          'aria-pressed',
-          'true',
-        )
+        expect(
+          context.requirementPackageButton('items', 'Shown package'),
+        ).toHaveAttribute('aria-pressed', 'true')
       })
       context.selectRequirementRows(items.slice(0, 200).map(item => item.id))
 
@@ -157,7 +163,9 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         expect(screen.getByRole('button', { name })).toBeEnabled()
       }
 
-      fireEvent.click(context.requirementPackageButton('items', 1))
+      fireEvent.click(
+        context.requirementPackageButton('items', 'Shown package'),
+      )
       await screen.findByRole('row', { name: /BEH0201/ })
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0201'))
 
@@ -187,7 +195,9 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         }),
       ).toBeEnabled()
 
-      fireEvent.click(context.requirementPackageButton('items', 1))
+      fireEvent.click(
+        context.requirementPackageButton('items', 'Shown package'),
+      )
       await waitFor(() => {
         expect(
           context.intlState.selectionActionLimitExceeded,

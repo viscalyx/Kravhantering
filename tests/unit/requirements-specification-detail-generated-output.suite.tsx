@@ -99,14 +99,11 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient()
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const itemsSurface = context.requirementPanel('items')
-      const createLocalAction = within(itemsSurface).getByRole('button', {
+      const createLocalAction = screen.getByRole('button', {
         name: 'specification.newLocalRequirement',
       })
-      const columnsAction = within(itemsSurface).getByRole('button', {
-        name: 'common.columns',
-      })
-      const moreActions = within(itemsSurface).getByRole('button', {
+      const columnsAction = context.requirementColumnButton('items')
+      const moreActions = screen.getByRole('button', {
         name: 'common.moreActions',
       })
 
@@ -210,7 +207,9 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      fireEvent.click(context.requirementPackageButton('items', 9))
+      fireEvent.click(
+        context.requirementPackageButton('items', 'Security package'),
+      )
 
       await waitFor(() => {
         const menu = context.openTableActionMenu('common.moreActions')
