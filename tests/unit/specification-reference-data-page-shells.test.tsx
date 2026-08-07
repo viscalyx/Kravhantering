@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react'
-import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl/server', () => ({
@@ -25,9 +24,6 @@ vi.mock(
   () => ({ default: () => <div>lifecycle statuses client</div> }),
 )
 
-import AdminWorkspacesLayout, {
-  generateMetadata as adminWorkspacesMetadata,
-} from '@/app/[locale]/admin/workspaces/layout'
 import SpecificationItemStatusesPage, {
   generateMetadata as specificationItemStatusesMetadata,
 } from '@/app/[locale]/specification-item-statuses/page'
@@ -41,9 +37,8 @@ import LifecycleStatusesPage, {
   generateMetadata as lifecycleStatusesMetadata,
 } from '@/app/[locale]/specifications/lifecycle-statuses/page'
 
-describe('residual server pages', () => {
+describe('specification reference-data page shells', () => {
   it.each([
-    [adminWorkspacesMetadata, 'admin.title'],
     [specificationItemStatusesMetadata, 'nav.specificationItemStatuses'],
     [governanceObjectTypesMetadata, 'nav.governanceObjectTypes'],
     [implementationTypesMetadata, 'nav.implementationTypes'],
@@ -60,11 +55,5 @@ describe('residual server pages', () => {
   ])('renders its client island', (Page, content) => {
     render(<Page />)
     expect(screen.getByText(content)).toBeVisible()
-  })
-
-  it('renders the isolated Admin workspace child unchanged', () => {
-    const child: ReactNode = <main>workspace content</main>
-    render(<AdminWorkspacesLayout>{child}</AdminWorkspacesLayout>)
-    expect(screen.getByRole('main')).toHaveTextContent('workspace content')
   })
 })
