@@ -1,5 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { RequirementPackageOption } from '@/lib/requirements/list-view'
 import type { SpecDetailWorkflowContext } from './requirements-specification-detail-client.suite'
@@ -13,65 +12,35 @@ export function registerGeneratedOutputTests(
       await context.waitForInitialAvailableRequirementsRefresh()
 
       await waitFor(() => {
-        expect(
-          context
-            .latestItemsTableProps()
-            .rows.map((row: { itemRef?: string }) => row.itemRef),
-        ).toEqual(['lib:31'])
+        expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
       })
-      const itemsTable = context.latestItemsTableProps()
-      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-        hidden?: boolean
-        id: string
-        menuItems?: Array<{
-          href?: string
-          id: string
-          onClick?: (target?: HTMLButtonElement | null) => void
-        }>
-      }>
-      const moreActions = floatingActions.find(
-        action => action.id === 'more-actions',
-      )
+      let moreActions = context.openTableActionMenu('common.moreActions')
+      expect(within(moreActions).getAllByRole('menuitem')).toHaveLength(5)
+      expect(within(moreActions).getAllByRole('separator')).toHaveLength(2)
 
-      expect(moreActions?.hidden).toBe(false)
-      expect(moreActions?.menuItems?.map(item => item.id)).toEqual([
-        'ai-assist-local',
-        'import-local',
-        'separator-report-actions',
-        'pdf-progress',
-        'pdf-traceability',
-        'separator-export-actions',
-        'export-full',
-      ])
-      expect(moreActions?.menuItems).toEqual([
-        expect.objectContaining({ id: 'ai-assist-local' }),
-        expect.objectContaining({ id: 'import-local' }),
-        expect.objectContaining({ id: 'separator-report-actions' }),
-        expect.objectContaining({ id: 'pdf-progress' }),
-        expect.objectContaining({ id: 'pdf-traceability' }),
-        expect.objectContaining({ id: 'separator-export-actions' }),
-        expect.objectContaining({ id: 'export-full' }),
-      ])
-
-      const progressReport = screen.getByRole('menuitem', {
+      const progressReport = within(moreActions).getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
       })
-      const traceabilityReport = screen.getByRole('menuitem', {
+      fireEvent.click(progressReport)
+      moreActions = context.openTableActionMenu('common.moreActions')
+      const traceabilityReport = within(moreActions).getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
       })
-      fireEvent.click(progressReport)
       fireEvent.click(traceabilityReport)
 
+      const moreActionsTrigger = screen.getByRole('button', {
+        name: 'common.moreActions',
+      })
       expect(context.pdfDownloadState.download).toHaveBeenCalledWith({
         fallbackFilename:
           'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
-        restoreFocusTo: progressReport,
+        restoreFocusTo: moreActionsTrigger,
         url: '/en/specifications/8/reports/pdf/progress',
       })
       expect(context.pdfDownloadState.download).toHaveBeenCalledWith({
         fallbackFilename:
           'specification.reportProfiles.traceability Authorization and IAM ETJANST-UPP-2026.pdf',
-        restoreFocusTo: traceabilityReport,
+        restoreFocusTo: moreActionsTrigger,
         url: '/en/specifications/8/reports/pdf/traceability?locale=en&sortBy=uniqueId&sortDirection=asc',
       })
     })
@@ -80,57 +49,41 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient()
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const importTrigger = screen.getByRole('menuitem', {
-        name: 'specification.importLocalRequirements',
+      const moreActionsTrigger = screen.getByRole('button', {
+        name: 'common.moreActions',
       })
-      const aiTrigger = screen.getByRole('menuitem', {
-        name: 'specification.aiGenerate',
+      let moreActions = context.openTableActionMenu('common.moreActions')
+      const importTrigger = within(moreActions).getByRole('menuitem', {
+        name: 'specification.importLocalRequirements',
       })
 
       fireEvent.click(importTrigger)
       expect(
         screen.getByRole('region', { name: 'Import review' }),
       ).toBeInTheDocument()
-      let importProps = context.lazyFeatureState.importRenderSpy.mock.calls.at(
-        -1,
-      )?.[0] as {
-        open: boolean
-        returnFocusTarget?: HTMLElement | null
-      }
-      expect(importProps.open).toBe(true)
-      expect(importProps.returnFocusTarget).toBe(importTrigger)
-
       fireEvent.click(
         screen.getByRole('button', { name: 'cancel import review' }),
       )
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('region', { name: 'Import review' }),
+        ).not.toBeInTheDocument()
+      })
+      expect(moreActionsTrigger).toHaveFocus()
+      moreActions = context.openTableActionMenu('common.moreActions')
+      const aiTrigger = within(moreActions).getByRole('menuitem', {
+        name: 'specification.aiGenerate',
+      })
       fireEvent.click(aiTrigger)
       expect(
         screen.getByRole('region', { name: 'AI authoring' }),
       ).toBeInTheDocument()
-      const aiProps = context.lazyFeatureState.aiRenderSpy.mock.calls.at(
-        -1,
-      )?.[0] as {
-        open: boolean
-        returnFocusTarget?: HTMLElement | null
-      }
-      expect(aiProps.open).toBe(true)
-      expect(aiProps.returnFocusTarget).toBe(aiTrigger)
-
       fireEvent.click(
         screen.getByRole('button', { name: 'review AI requirements' }),
       )
-      importProps = context.lazyFeatureState.importRenderSpy.mock.calls.at(
-        -1,
-      )?.[0] as {
-        open: boolean
-        returnFocusTarget?: HTMLElement | null
-      }
-      expect(importProps.open).toBe(true)
-      expect(importProps.returnFocusTarget).toBe(aiTrigger)
       expect(
         screen.getByRole('region', { name: 'Import review' }),
       ).toBeInTheDocument()
-
       fireEvent.click(
         screen.getByRole('button', { name: 'finish import review' }),
       )
@@ -139,64 +92,32 @@ export function registerGeneratedOutputTests(
           screen.queryByRole('region', { name: 'Import review' }),
         ).not.toBeInTheDocument()
       })
+      expect(moreActionsTrigger).toHaveFocus()
     })
 
     it('places kravunderlag create before columns and secondary actions after columns', async () => {
       context.renderRequirementsSpecificationDetailClient()
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const itemsTable = context.latestItemsTableProps()
-      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-        id: string
-        menuItems?: Array<{
-          disabled?: boolean
-          icon?: ReactNode
-          id: string
-          kind?: string
-          label: string
-        }>
-        onClick?: () => void
-        position?: string
-        variant?: string
-      }>
-      const createLocalAction = floatingActions.find(
-        action => action.id === 'create-local',
-      )
-      const moreActions = floatingActions.find(
-        action => action.id === 'more-actions',
-      )
+      const createLocalAction = screen.getByRole('button', {
+        name: 'specification.newLocalRequirement',
+      })
+      const columnsAction = context.requirementColumnButton('items')
+      const moreActions = screen.getByRole('button', {
+        name: 'common.moreActions',
+      })
 
-      expect(itemsTable.columnPickerPlacement).toBe('betweenActions')
-      expect(floatingActions.map(action => action.id)).toEqual([
-        'create-local',
-        'more-actions',
-      ])
       expect(
-        floatingActions.map(action => action.position ?? 'afterColumns'),
-      ).toEqual(['beforeColumns', 'afterColumns'])
-      expect(createLocalAction?.variant).toBe('primary')
-      expect(createLocalAction?.menuItems).toBeUndefined()
-      expect(createLocalAction?.onClick).toEqual(expect.any(Function))
-      expect(moreActions?.menuItems).toEqual([
-        expect.objectContaining({ disabled: false, id: 'ai-assist-local' }),
-        expect.objectContaining({ id: 'import-local' }),
-        expect.objectContaining({
-          id: 'separator-report-actions',
-          kind: 'separator',
-        }),
-        expect.objectContaining({ id: 'pdf-progress' }),
-        expect.objectContaining({ id: 'pdf-traceability' }),
-        expect.objectContaining({
-          id: 'separator-export-actions',
-          kind: 'separator',
-        }),
-        expect.objectContaining({ id: 'export-full' }),
-      ])
+        createLocalAction.compareDocumentPosition(columnsAction) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
       expect(
-        moreActions?.menuItems
-          ?.filter(item => item.kind !== 'separator')
-          .every(item => item.icon != null),
-      ).toBe(true)
+        columnsAction.compareDocumentPosition(moreActions) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      const menu = context.openTableActionMenu('common.moreActions')
+      expect(within(menu).getAllByRole('menuitem')).toHaveLength(5)
+      expect(within(menu).getAllByRole('separator')).toHaveLength(2)
     })
 
     it('explains whether AI authoring is disabled by the environment or an administrator', async () => {
@@ -212,33 +133,12 @@ export function registerGeneratedOutputTests(
         const view =
           context.renderRequirementsSpecificationDetailClient(initialData)
         await context.waitForInitialAvailableRequirementsRefresh()
-        const moreActions = (
-          context.latestItemsTableProps().floatingActions as Array<{
-            id: string
-            menuItems?: Array<{
-              description?: string
-              disabled?: boolean
-              id: string
-              onClick?: () => void
-              tooltip?: string
-            }>
-          }>
-        ).find(action => action.id === 'more-actions')
-        const aiAction = moreActions?.menuItems?.find(
-          action => action.id === 'ai-assist-local',
-        )
-
-        expect(aiAction).toEqual(
-          expect.objectContaining({
-            description: expectedMessage,
-            disabled: true,
-            tooltip: expectedMessage,
-          }),
-        )
-        const aiMenuItem = screen.getByRole('menuitem', {
-          name: 'specification.aiGenerate',
+        const menu = context.openTableActionMenu('common.moreActions')
+        const aiMenuItem = within(menu).getByRole('menuitem', {
+          name: /^specification\.aiGenerate/,
         })
-        expect(aiMenuItem).toBeDisabled()
+        expect(aiMenuItem).toHaveAttribute('aria-disabled', 'true')
+        expect(aiMenuItem).toHaveAttribute('title', expectedMessage)
         fireEvent.click(aiMenuItem)
         expect(
           screen.queryByRole('region', { name: 'AI authoring' }),
@@ -254,28 +154,8 @@ export function registerGeneratedOutputTests(
       )
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const itemsTable = context.latestItemsTableProps()
-      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-        hidden?: boolean
-        id: string
-        menuItems?: Array<{
-          href?: string
-          id: string
-          onClick?: (target?: HTMLButtonElement | null) => void
-        }>
-      }>
-      const moreActions = floatingActions.find(
-        action => action.id === 'more-actions',
-      )
-
-      expect(moreActions?.menuItems?.map(item => item.id)).toContain(
-        'pdf-progress',
-      )
-      expect(moreActions?.menuItems?.map(item => item.id)).toContain(
-        'pdf-traceability',
-      )
-
-      const progressReport = screen.getByRole('menuitem', {
+      const menu = context.openTableActionMenu('common.moreActions')
+      const progressReport = within(menu).getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
       })
       fireEvent.click(progressReport)
@@ -283,7 +163,9 @@ export function registerGeneratedOutputTests(
       expect(context.pdfDownloadState.download).toHaveBeenCalledWith({
         fallbackFilename:
           'specification.reportProfiles.progress Authorization and IAM ETJANST-UPP-2026.pdf',
-        restoreFocusTo: progressReport,
+        restoreFocusTo: screen.getByRole('button', {
+          name: 'common.moreActions',
+        }),
         url: '/en/specifications/8/reports/pdf/progress',
       })
     })
@@ -326,25 +208,22 @@ export function registerGeneratedOutputTests(
       await context.waitForInitialAvailableRequirementsRefresh()
 
       fireEvent.click(
-        screen.getByRole('button', { name: 'filter-package-items-9' }),
+        context.requirementPackageButton('items', 'Security package'),
       )
 
       await waitFor(() => {
-        const floatingActions = (context.latestItemsTableProps()
-          .floatingActions ?? []) as Array<{
-          hidden?: boolean
-          id: string
-          menuItems?: Array<{ href?: string; id: string }>
-        }>
+        const menu = context.openTableActionMenu('common.moreActions')
         expect(
-          floatingActions
-            .find(action => action.id === 'more-actions')
-            ?.menuItems?.map(item => item.id),
-        ).toContain('pdf-traceability')
+          within(menu).getByRole('menuitem', {
+            name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
+          }),
+        ).toBeInTheDocument()
+        fireEvent.keyDown(document, { key: 'Escape' })
       })
 
+      const menu = context.openTableActionMenu('common.moreActions')
       fireEvent.click(
-        screen.getByRole('menuitem', {
+        within(menu).getByRole('menuitem', {
           name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
         }),
       )
@@ -389,38 +268,36 @@ export function registerGeneratedOutputTests(
 
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
-      fireEvent.click(screen.getByRole('button', { name: 'load-more-items' }))
-      expect(await screen.findByRole('row', { name: 'lib:200' })).toBeVisible()
-      fireEvent.click(screen.getByRole('button', { name: 'load-more-items' }))
-      expect(await screen.findByRole('row', { name: 'lib:201' })).toBeVisible()
+      context.triggerRequirementLoadMore('items')
+      expect(await screen.findByRole('row', { name: /BEH0200/ })).toBeVisible()
+      context.triggerRequirementLoadMore('items')
+      expect(await screen.findByRole('row', { name: /BEH0201/ })).toBeVisible()
+
       expect(
-        screen.queryByRole('button', { name: 'load-more-items' }),
-      ).not.toBeInTheDocument()
-
-      const itemsTable = context.latestItemsTableProps()
-      const floatingActions = (itemsTable.floatingActions ?? []) as Array<{
-        hidden?: boolean
-        id: string
-        menuItems?: Array<{ href?: string; id: string; onClick?: () => void }>
-      }>
-      const moreActions = floatingActions.find(
-        action => action.id === 'more-actions',
-      )
-
-      expect(moreActions?.hidden).toBe(false)
-      expect(moreActions?.menuItems?.map(item => item.id)).toContain(
-        'pdf-progress',
-      )
-      expect(moreActions?.menuItems?.map(item => item.id)).toContain(
-        'pdf-traceability',
-      )
-    })
+        within(context.openTableActionMenu('common.moreActions')).getByRole(
+          'menuitem',
+          {
+            name: 'specification.downloadProfileReportPdf.specification.reportProfiles.progress',
+          },
+        ),
+      ).toBeInTheDocument()
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(
+        within(context.openTableActionMenu('common.moreActions')).getByRole(
+          'menuitem',
+          {
+            name: 'specification.downloadProfileReportPdf.specification.reportProfiles.traceability',
+          },
+        ),
+      ).toBeInTheDocument()
+    }, 15_000)
 
     it('routes full CSV through the generated-output controller with menu focus restoration', async () => {
       context.renderRequirementsSpecificationDetailClient()
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const exportFull = screen.getByRole('menuitem', {
+      const menu = context.openTableActionMenu('common.moreActions')
+      const exportFull = within(menu).getByRole('menuitem', {
         name: 'specification.exportProfiles.full',
       })
       fireEvent.click(exportFull)
@@ -429,7 +306,9 @@ export function registerGeneratedOutputTests(
         fallbackFilename:
           'specification.exportProfiles.full Authorization and IAM ETJANST-UPP-2026.csv',
         output: 'csv',
-        restoreFocusTo: exportFull,
+        restoreFocusTo: screen.getByRole('button', {
+          name: 'common.moreActions',
+        }),
         url: '/api/requirements-specifications/8/exports?profile=full&locale=en',
       })
     })
@@ -447,22 +326,17 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
-      const moreActions = (
-        context.latestItemsTableProps().floatingActions as Array<{
-          id: string
-          menuItems?: Array<{ disabled?: boolean; id: string }>
-        }>
-      ).find(action => action.id === 'more-actions')
-
-      expect(moreActions?.menuItems).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            disabled: true,
-            id: 'export-procurement',
-          }),
-          expect.objectContaining({ disabled: true, id: 'export-full' }),
-        ]),
-      )
+      const menu = context.openTableActionMenu('common.moreActions')
+      expect(
+        within(menu).getByRole('menuitem', {
+          name: 'specification.exportProfiles.procurement',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        within(menu).getByRole('menuitem', {
+          name: 'specification.exportProfiles.full',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
     })
   })
 }

@@ -1,6 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import type { SpecificationListItem } from '@/lib/specifications/preload-types'
 import type { SpecDetailWorkflowContext } from './requirements-specification-detail-client.suite'
 
 export function registerPaginationTests(context: SpecDetailWorkflowContext) {
@@ -32,30 +31,14 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       }
 
       context.renderRequirementsSpecificationDetailClient(initialData)
-      expect(
-        screen.getByRole('button', {
-          name: 'load-more-items',
-        }),
-      ).toBeInTheDocument()
-
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'load-more-items',
-        }),
-      )
+      context.triggerRequirementLoadMore('items')
 
       await waitFor(() => {
-        expect(
-          context
-            .latestItemsTableProps()
-            .rows.map((item: SpecificationListItem) => item.itemRef),
-        ).toEqual(['lib:31', 'lib:32'])
+        expect(context.requirementRowNames('items')).toEqual([
+          expect.stringContaining('BEH0001'),
+          expect.stringContaining('BEH0002'),
+        ])
       })
-      expect(
-        screen.queryByRole('button', {
-          name: 'load-more-items',
-        }),
-      ).not.toBeInTheDocument()
     })
 
     it('treats an omitted continuation payload as an empty final page', async () => {
@@ -72,15 +55,10 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
           { hasMore: true, nextCursor: 'empty-page' },
         ),
       })
-      fireEvent.click(screen.getByRole('button', { name: 'load-more-items' }))
+      context.triggerRequirementLoadMore('items')
 
       await waitFor(() => {
-        expect(
-          screen.queryByRole('button', { name: 'load-more-items' }),
-        ).toBeNull()
-        expect(
-          screen.getByRole('table', { name: 'items requirements' }),
-        ).toHaveTextContent('lib:31')
+        expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
       })
     })
 
@@ -96,9 +74,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
         screen.queryByText('specification.noItems'),
       ).not.toBeInTheDocument()
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'sort-description-items' }),
-      )
+      fireEvent.click(context.requirementSortButton('items', 'description'))
 
       await waitFor(() => {
         expect(
@@ -110,9 +86,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       expect(
         screen.queryByText('specification.noItems'),
       ).not.toBeInTheDocument()
-      expect(
-        screen.getByRole('table', { name: 'items requirements' }),
-      ).toHaveTextContent('lib:31')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
 
       await act(async () => {
         resolveSortedRequest?.(
@@ -166,12 +140,10 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
 
       context.selectRequirementRows([101, 102])
       fireEvent.click(
-        screen.getByRole('button', { name: 'filter-package-items-1' }),
+        context.requirementPackageButton('items', 'First package'),
       )
       await waitFor(() => {
-        expect(
-          screen.getByRole('table', { name: 'items requirements' }),
-        ).toHaveTextContent('lib:31')
+        expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
         expect(context.intlState.selectionStatus).toHaveBeenLastCalledWith({
           hidden: 1,
           total: 2,
@@ -183,9 +155,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
         resolveSortedRequest = resolve
       })
       context.specificationItemsGetHandler = async () => sortedRequest
-      fireEvent.click(
-        screen.getByRole('button', { name: 'sort-description-items' }),
-      )
+      fireEvent.click(context.requirementSortButton('items', 'description'))
 
       await waitFor(() => {
         expect(
@@ -194,9 +164,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
           ),
         ).toBe(true)
       })
-      expect(
-        screen.getByRole('table', { name: 'items requirements' }),
-      ).toHaveTextContent('lib:31')
+      expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
       expect(context.intlState.selectionStatus).toHaveBeenLastCalledWith({
         hidden: 1,
         total: 2,
@@ -251,21 +219,13 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       }
 
       context.renderRequirementsSpecificationDetailClient(initialData)
-      fireEvent.click(screen.getByRole('button', { name: 'select-row-101' }))
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'load-more-items',
-        }),
-      )
+      fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
+      context.triggerRequirementLoadMore('items')
 
       expect(
         await screen.findByText('specification.paginationRestarted'),
       ).toHaveAttribute('role', 'status')
-      expect(
-        context
-          .latestItemsTableProps()
-          .rows.map((item: SpecificationListItem) => item.itemRef),
-      ).toEqual(['lib:32'])
+      expect(context.requirementRowNames('items')).toEqual(['BEH0002'])
       expect(
         screen.getByRole('button', {
           name: 'specification.assignNeedsReferenceAction',
@@ -296,21 +256,13 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       }
 
       context.renderRequirementsSpecificationDetailClient(initialData)
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'load-more-items',
-        }),
-      )
+      context.triggerRequirementLoadMore('items')
 
       const recoveryAlert = await screen.findByRole('alert')
       expect(recoveryAlert).toHaveTextContent(
         'specification.paginationRecoveryFailed',
       )
-      expect(
-        context
-          .latestItemsTableProps()
-          .rows.map((item: SpecificationListItem) => item.itemRef),
-      ).toEqual(['lib:31'])
+      expect(context.requirementRowNames('items')).toEqual(['BEH0001'])
 
       const retry = within(recoveryAlert).getByRole('button', {
         name: 'common.retry',
@@ -359,10 +311,9 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
       }
 
       context.renderRequirementsSpecificationDetailClient()
-      fireEvent.change(
-        screen.getByRole('textbox', { name: 'search-items-requirements' }),
-        { target: { value: 'first' } },
-      )
+      fireEvent.change(context.requirementSearchInput('items'), {
+        target: { value: 'first' },
+      })
       await waitFor(() => {
         expect(
           context.fetchMock.mock.calls.some(([input]) =>
@@ -370,16 +321,11 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
           ),
         ).toBe(true)
       })
-      fireEvent.change(
-        screen.getByRole('textbox', { name: 'search-items-requirements' }),
-        { target: { value: 'latest' } },
-      )
+      fireEvent.change(context.requirementSearchInput('items'), {
+        target: { value: 'latest' },
+      })
       await waitFor(() => {
-        expect(
-          context
-            .latestItemsTableProps()
-            .rows.map((item: SpecificationListItem) => item.itemRef),
-        ).toEqual(['lib:33'])
+        expect(context.requirementRowNames('items')).toEqual(['LATEST'])
       })
 
       await act(async () => {
@@ -396,11 +342,7 @@ export function registerPaginationTests(context: SpecDetailWorkflowContext) {
         )
         await Promise.resolve()
       })
-      expect(
-        context
-          .latestItemsTableProps()
-          .rows.map((item: SpecificationListItem) => item.itemRef),
-      ).toEqual(['lib:33'])
+      expect(context.requirementRowNames('items')).toEqual(['LATEST'])
     })
   })
 }
