@@ -840,16 +840,12 @@ codex --version
 
 The expected command path is `/usr/local/bin/codex`.
 
-Do not install or update Codex CLI with npm on the Azure development VM. A
-global npm installation creates a second `codex` command under `/usr/bin`, but
-`/usr/local/bin/codex` appears first on `PATH`, so the command continues to run
-the standalone version managed by Azure setup. It also leaves two independent
-installations to maintain. Remove an accidental npm installation, then use one
-of the update procedures above:
-
-```sh
-sudo npm uninstall --global @openai/codex
-```
+> [!WARNING]
+> Avoid using npm to install or update Codex CLI on the Azure development VM.
+> It may leave the active Codex CLI version unchanged or create a second,
+> independent installation. Multiple installations can cause version drift and
+> put the VM out of sync with the Azure provisioning workflow. Use one of the
+> update procedures above instead.
 
 Setup also resolves Oh My Zsh, `zsh-autosuggestions`,
 `zsh-syntax-highlighting`, and Powerlevel10k as four rolling Git channels at
