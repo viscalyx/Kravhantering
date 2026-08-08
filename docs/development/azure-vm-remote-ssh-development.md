@@ -108,9 +108,8 @@ OS disk
     |
     |-- home/
     |   `-- vscode/
-    |       |-- .cache/
-    |       |   `-- ms-playwright/
-    |       |-- .codex/
+    |       |-- .cache/               -> bind mount to data disk cache
+    |       |-- .codex/               -> bind mount to data disk Codex data
     |       |   |-- config.toml
     |       |   |-- sqlite/
     |       |   `-- tmp/
@@ -125,7 +124,7 @@ OS disk
     |       |   `-- share/
     |       |       `-- containers/
     |       |           `-- storage/  -> bind mount to data disk Podman storage
-    |       |-- .npm/
+    |       |-- .npmrc                -> data-disk-backed npm cache setting
     |       |-- .nuget/
     |       |-- .oh-my-zsh/
     |       |   `-- custom/
@@ -133,6 +132,7 @@ OS disk
     |       |       `-- themes/
     |       |           `-- powerlevel10k/
     |       |-- .zshrc                 -> selected repository template
+    |       |-- .vscode-server/        -> bind mount to data disk VS Code data
     |       `-- ...
     |
     |-- mnt/
@@ -152,18 +152,22 @@ OS disk
     |
     |-- usr/
     |   |-- local/
-    |   |   `-- bin/                  -> dotenv-linter
+    |   |   `-- bin/                  -> managed tools and storage-report
     |   `-- share/
     |       `-- keyrings/
     |
     |-- workspace/                    -> bind mount to data disk workspace/
     |
     `-- var/
-        `-- lib/
-            |-- krav-azure-dev/       -> bind mount to data disk host-state/
-            `-- systemd/
-                `-- linger/
-                    `-- vscode
+        |-- lib/
+        |   |-- containerd/           -> bind mount to data disk
+        |   |-- docker/               -> bind mount to data disk
+        |   |-- krav-azure-dev/       -> bind mount to data disk host-state/
+        |   `-- systemd/
+        |       `-- linger/
+        |           `-- vscode
+        `-- tmp/
+            `-- krav-vscode/          -> bind mount to data disk user temp
 
 Data disk
 `-- /mnt/krav-azure-dev-data/
@@ -177,26 +181,35 @@ Data disk
     |
     |-- home/
     |   `-- vscode/
-    |       `-- .local/
-    |           `-- share/
-    |               `-- containers/
-    |                   `-- storage/  -> rootless Podman graphroot/images and volumes
+    |       |-- .cache/               -> Playwright and tool caches
+    |       |-- .codex/               -> Codex state and credentials
+    |       |-- .local/
+    |       |   `-- share/
+    |       |       `-- containers/
+    |       |           `-- storage/  -> rootless Podman images and volumes
+    |       |-- .vscode-server/       -> Remote SSH server and extensions
+    |       `-- tmp/                  -> vscode user temporary files
     |
-    `-- host-state/                   -> managed host state
+    |-- cache/
+    |   `-- npm/
+    |       |-- root/
+    |       `-- vscode/
+    |-- host-state/                   -> managed host state
+    `-- var/
+        `-- lib/
+            |-- containerd/
+            `-- docker/
 ```
 
 Package installation also writes normal Ubuntu, Node.js, Docker, GitHub CLI,
 Codex CLI, GitHub Copilot CLI, and .NET package-manager files under standard
 system locations such as `/usr`, `/lib`, and `/var`.
 
-`/home/vscode` intentionally remains on the OS disk. Moving the full home
-directory to the data disk is possible, for example by bind-mounting a data
-disk directory to `/home/vscode`, but it couples SSH login, user systemd, shell
-startup, VS Code Remote SSH, and user secrets to the data disk being present and
-healthy. Keeping only `/workspace`, `/var/lib/krav-azure-dev`, and the
-rootless Podman storage directory on the data disk gives the large and
-rebuildable data a bigger disk while keeping the VM login path simpler to
-recover.
+`/home/vscode` itself remains on the OS disk so SSH login and shell startup do
+not depend on mounting the whole home directory. Selected large directories
+keep their normal tool-facing paths through bind mounts. Setup fails if the
+data disk or a required bind mount is unavailable instead of silently writing
+managed development data to the OS disk.
 
 ## Step 2: Prepare Azure
 
@@ -415,7 +428,7 @@ AZURE_DEV_VM_AUTO_STOP_ENABLED=true
 AZURE_DEV_VM_AUTO_STOP_TIME=2200
 AZURE_DEV_VM_AUTO_STOP_TIME_ZONE=UTC
 AZURE_DEV_VM_CONNECTIVITY_MODE=public-ssh
-AZURE_DEV_VM_DATA_DISK_GIB=256
+AZURE_DEV_VM_DATA_DISK_GIB=64
 AZURE_DEV_VM_ENVIRONMENT_ID=personal
 AZURE_DEV_VM_FALLBACK_SIZE=Standard_D8as_v5
 AZURE_DEV_VM_IMAGE_OFFER=ubuntu-24_04-lts
@@ -798,14 +811,34 @@ disk at `/mnt/krav-azure-dev-data`, bind-mounts
 `/mnt/krav-azure-dev-data/workspace` to `/workspace`, bind-mounts
 `/mnt/krav-azure-dev-data/host-state` to `/var/lib/krav-azure-dev`, and
 bind-mounts the data-disk-backed Podman storage directory to
-`/home/vscode/.local/share/containers/storage`. It clones the repo to
-`/workspace`, configures rootless Podman to use its normal home storage path,
-runs `npm install`, restores .NET tools, installs Codex CLI, GitHub Copilot CLI,
-the rolling verified dotenv-linter, the pinned Lychee link checker, and
-Playwright browsers, verifies the checked-out Kong config, builds HSA support
-images with Podman, recreates the managed support containers from the current
-Quadlet templates and checked-out Kong config while preserving named volumes,
-starts Quadlet services, and runs smoke validation.
+`/home/vscode/.local/share/containers/storage`. It also bind-mounts Docker,
+containerd, VS Code Server, Codex data, user caches, and the `vscode` temporary
+directory to the data disk. It clones the repo to `/workspace`, configures
+rootless Podman to use its normal home storage path, runs `npm install`,
+restores .NET tools, installs Codex CLI, GitHub Copilot CLI, the rolling
+verified dotenv-linter, the pinned Lychee link checker, and Playwright
+browsers, verifies the checked-out Kong config, builds HSA support images with
+Podman, recreates the managed support containers from the current Quadlet
+templates and checked-out Kong config while preserving named volumes, starts
+Quadlet services, and runs smoke validation.
+
+### Storage warnings and diagnostics
+
+An interactive shell performs a fast filesystem check. It stays silent while
+both root and the data disk are below 80% use, warns at 80%, and labels the
+warning urgent at 90%. The check never blocks commands or removes data.
+
+Run the read-only detailed report when a warning appears:
+
+```sh
+storage-report
+```
+
+The report shows filesystem, directory, Docker, Podman, and Git worktree use.
+It classifies worktrees with uncommitted or unverified detached work as needing
+review and prints candidate removal commands only for clean worktrees whose
+commits remain on a branch. Cleanup stays manual. Never prune container volumes;
+they may contain the active development database.
 
 ### Codex and GitHub Copilot CLIs in Remote SSH
 

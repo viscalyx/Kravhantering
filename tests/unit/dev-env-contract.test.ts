@@ -523,6 +523,55 @@ describe('development environment contract', () => {
     expect(hostBootstrap).toContain('resize2fs "${DATA_DEVICE}"')
   })
 
+  it('keeps growing development storage on the 64 GiB data disk', () => {
+    const configModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Config.psm1',
+    )
+    const bootstrapModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Bootstrap.psm1',
+    )
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const smokeValidation = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Validation.psm1',
+    )
+
+    expect(configModule).toContain("AZURE_DEV_VM_DATA_DISK_GIB = '64'")
+    expect(bootstrapModule).toContain("'storage-report.sh'")
+    expect(bootstrapModule).toContain(
+      'AZURE_DEV_STORAGE_REPORT_SOURCE=$remoteToolingPath/storage-report.sh',
+    )
+    for (const [mountDefinition, mountPoint] of [
+      [
+        'VSCODE_SERVER_DIR="${VSCODE_HOME}/.vscode-server"',
+        '/home/vscode/.vscode-server',
+      ],
+      ['CODEX_HOME_DIR="${VSCODE_HOME}/.codex"', '/home/vscode/.codex'],
+      ['VSCODE_CACHE_DIR="${VSCODE_HOME}/.cache"', '/home/vscode/.cache'],
+      ['VSCODE_TEMP_DIR="/var/tmp/krav-vscode"', '/var/tmp/krav-vscode'],
+      ['DOCKER_DIR="/var/lib/docker"', '/var/lib/docker'],
+      ['CONTAINERD_DIR="/var/lib/containerd"', '/var/lib/containerd'],
+    ]) {
+      expect(hostBootstrap).toContain(mountDefinition)
+      expect(smokeValidation).toContain(`findmnt ${mountPoint}`)
+    }
+    expect(hostBootstrap).toContain('configure_npm_caches()')
+    expect(hostBootstrap).toContain('storage-report --check')
+    expect(smokeValidation).toContain(
+      'test "$(npm config get cache)" = "/mnt/krav-azure-dev-data/cache/npm/vscode"',
+    )
+
+    const stopDockerIndex = hostBootstrap.indexOf(
+      'stop_docker_services_before_storage_change\n  mount_data_disk',
+    )
+    const startDockerIndex = hostBootstrap.indexOf(
+      'mount_data_disk\n  start_docker_services_after_storage_change',
+    )
+    expect(stopDockerIndex).toBeGreaterThanOrEqual(0)
+    expect(startDockerIndex).toBeGreaterThan(stopDockerIndex)
+  })
+
   it('repairs disposable Podman build state without pruning named volumes', () => {
     const hostBootstrap = readWorkspaceFile(
       'scripts/azure-dev/templates/bootstrap-host.sh',

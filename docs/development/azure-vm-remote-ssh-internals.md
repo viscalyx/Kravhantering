@@ -596,14 +596,21 @@ contract is:
   state owned by this feature.
 - `/home/vscode/.local/share/containers/storage` is a bind mount to the data
   disk and is the rootless Podman graphroot.
+- `/var/lib/docker` and `/var/lib/containerd` are bind mounts to the data disk.
+- `/home/vscode/.vscode-server`, `/home/vscode/.codex`, and
+  `/home/vscode/.cache` keep their expected paths through data-disk bind mounts.
+- `/var/tmp/krav-vscode` is the data-backed `TMPDIR`, `TMP`, and `TEMP` for the
+  `vscode` shell, bootstrap commands, and user systemd environment.
+- Root and `vscode` npm processes use separate caches on the data disk.
 - `/home/vscode` itself remains on the OS disk.
-- There is no OS-disk fallback for `/workspace`, host state, or Podman storage.
+- Managed development storage has no silent OS-disk fallback.
 
 `bootstrap-host.sh` formats `/dev/disk/azure/scsi1/lun0` as ext4 only when the
-device has no filesystem. It rewrites only the relevant `/etc/fstab` entries:
-the data mount, `/workspace`, `/var/lib/krav-azure-dev`, and the rootless
-Podman storage bind mount. It removes `lost+found` from the exposed bind-mount
-roots and fixes ownership for `vscode`.
+device has no filesystem. It rewrites only the managed data mount and bind-mount
+entries. Before adding a new bind mount, bootstrap stops the affected container
+services and moves existing target contents only when the data-disk source is
+empty. Conflicting non-empty source and target directories fail setup. It
+removes `lost+found` from the exposed roots and restores directory ownership.
 
 Rootless Podman is configured with:
 
@@ -631,8 +638,9 @@ released HSA artifacts.
 
 When changing storage behavior, update bootstrap and smoke validation together.
 Validation must prove that the data mount source is the Azure data disk and
-that `/workspace`, host state, and Podman storage are on the same device as the
-data-disk mount.
+that every managed bind mount and npm cache is on the same device as the
+data-disk mount. It also verifies the managed npm cache and storage-report
+commands through the `vscode` environment.
 
 ## Podman Support Stack
 

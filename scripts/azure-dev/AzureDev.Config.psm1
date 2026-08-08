@@ -26,7 +26,7 @@ function Get-AzureDevDefaultConfig {
     AZURE_DEV_VM_NAME = 'krav-dev-vm'
     AZURE_DEV_VM_SIZE = 'Standard_D8s_v5'
     AZURE_DEV_VM_FALLBACK_SIZE = 'Standard_D8as_v5'
-    AZURE_DEV_VM_DATA_DISK_GIB = '256'
+    AZURE_DEV_VM_DATA_DISK_GIB = '64'
     AZURE_DEV_VM_CONNECTIVITY_MODE = 'public-ssh'
     AZURE_DEV_VM_SSH_HOST_ALIAS = 'kravhantering-azure-dev'
     AZURE_DEV_VM_SSH_HOST_NAME = ''

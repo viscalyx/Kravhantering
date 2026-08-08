@@ -113,6 +113,10 @@ expected_git_ssh_signing_public_key="$3"
 export HOME=/home/vscode
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_DATA_HOME="${HOME}/.local/share"
+export TMPDIR=/var/tmp/krav-vscode
+export TMP=/var/tmp/krav-vscode
+export TEMP=/var/tmp/krav-vscode
+export npm_config_cache=/mnt/krav-azure-dev-data/cache/npm/vscode
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
 export CONTAINERS_CONF="${HOME}/.config/containers/containers.conf"
@@ -282,9 +286,13 @@ sudo -n test -f /etc/apparmor.d/bwrap-userns-restrict
 user_directories=(
   "${HOME}"
   "${HOME}/.cache"
+  "${HOME}/.codex"
+  "${HOME}/.vscode-server"
   "${XDG_CONFIG_HOME}"
   "${XDG_DATA_HOME}"
   "${HOME}/.local/state"
+  "${TMPDIR}"
+  "${npm_config_cache}"
 )
 for user_directory in "${user_directories[@]}"; do
   if ! write_probe="$(mktemp "${user_directory}/.krav-write-probe.XXXXXX")"; then
@@ -322,6 +330,12 @@ findmnt /mnt/krav-azure-dev-data >/dev/null
 findmnt /workspace >/dev/null
 findmnt /var/lib/krav-azure-dev >/dev/null
 findmnt /home/vscode/.local/share/containers/storage >/dev/null
+findmnt /home/vscode/.vscode-server >/dev/null
+findmnt /home/vscode/.codex >/dev/null
+findmnt /home/vscode/.cache >/dev/null
+findmnt /var/tmp/krav-vscode >/dev/null
+findmnt /var/lib/docker >/dev/null
+findmnt /var/lib/containerd >/dev/null
 data_device_real="$(readlink -f /dev/disk/azure/scsi1/lun0)"
 data_mount_source="$(findmnt -n -o SOURCE /mnt/krav-azure-dev-data)"
 data_mount_real="$(readlink -f "${data_mount_source}")"
@@ -330,12 +344,22 @@ data_device_number="$(stat -c '%d' /mnt/krav-azure-dev-data)"
 test "$(stat -c '%d' /workspace)" = "${data_device_number}"
 test "$(stat -c '%d' /var/lib/krav-azure-dev)" = "${data_device_number}"
 test "$(stat -c '%d' /home/vscode/.local/share/containers/storage)" = "${data_device_number}"
+test "$(stat -c '%d' /home/vscode/.vscode-server)" = "${data_device_number}"
+test "$(stat -c '%d' /home/vscode/.codex)" = "${data_device_number}"
+test "$(stat -c '%d' /home/vscode/.cache)" = "${data_device_number}"
+test "$(stat -c '%d' /var/tmp/krav-vscode)" = "${data_device_number}"
+test "$(stat -c '%d' /var/lib/docker)" = "${data_device_number}"
+test "$(stat -c '%d' /var/lib/containerd)" = "${data_device_number}"
+test "$(stat -c '%d' /mnt/krav-azure-dev-data/cache/npm/vscode)" = "${data_device_number}"
 grep -Fq 'graphroot = "/home/vscode/.local/share/containers/storage"' /home/vscode/.config/containers/storage.conf
 grep -Fq 'rootless_storage_path = "/home/vscode/.local/share/containers/storage"' /home/vscode/.config/containers/storage.conf
 test "$(podman info --format '{{.Store.GraphRoot}}')" = "/home/vscode/.local/share/containers/storage"
 podman network exists krav-support
 node --version 2>/dev/null | grep -Eq '^v24\.'
 npm --version >/dev/null 2>&1
+test "$(npm config get cache)" = "/mnt/krav-azure-dev-data/cache/npm/vscode"
+storage-report --help >/dev/null
+zsh -ic 'test "$TMPDIR" = /var/tmp/krav-vscode && test "$npm_config_cache" = /mnt/krav-azure-dev-data/cache/npm/vscode'
 dotnet --version 2>/dev/null | grep -Eq '^8\.'
 git --version >/dev/null 2>&1
 test "$(git config --global --get user.name)" = "${expected_git_user_name}"

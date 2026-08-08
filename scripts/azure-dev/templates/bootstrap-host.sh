@@ -12,8 +12,23 @@ VSCODE_USER="vscode"
 VSCODE_HOME="/home/${VSCODE_USER}"
 DATA_PODMAN_STORAGE_DIR="${DATA_MOUNT_DIR}/home/${VSCODE_USER}/.local/share/containers/storage"
 PODMAN_STORAGE_DIR="${VSCODE_HOME}/.local/share/containers/storage"
+DATA_VSCODE_SERVER_DIR="${DATA_MOUNT_DIR}/home/${VSCODE_USER}/.vscode-server"
+VSCODE_SERVER_DIR="${VSCODE_HOME}/.vscode-server"
+DATA_CODEX_HOME_DIR="${DATA_MOUNT_DIR}/home/${VSCODE_USER}/.codex"
+CODEX_HOME_DIR="${VSCODE_HOME}/.codex"
+DATA_VSCODE_CACHE_DIR="${DATA_MOUNT_DIR}/home/${VSCODE_USER}/.cache"
+VSCODE_CACHE_DIR="${VSCODE_HOME}/.cache"
+DATA_VSCODE_TEMP_DIR="${DATA_MOUNT_DIR}/home/${VSCODE_USER}/tmp"
+VSCODE_TEMP_DIR="/var/tmp/krav-vscode"
+DATA_VSCODE_NPM_CACHE_DIR="${DATA_MOUNT_DIR}/cache/npm/vscode"
+DATA_ROOT_NPM_CACHE_DIR="${DATA_MOUNT_DIR}/cache/npm/root"
+DATA_DOCKER_DIR="${DATA_MOUNT_DIR}/var/lib/docker"
+DOCKER_DIR="/var/lib/docker"
+DATA_CONTAINERD_DIR="${DATA_MOUNT_DIR}/var/lib/containerd"
+CONTAINERD_DIR="/var/lib/containerd"
 SYSTEMD_USER_DIR="${VSCODE_HOME}/.config/containers/systemd"
 KRAV_CONFIG_DIR="${VSCODE_HOME}/.config/krav-dev"
+STORAGE_SHELL_ENV="${KRAV_CONFIG_DIR}/storage-env.zsh"
 HOST_STATE_DIR="/var/lib/krav-azure-dev"
 QUADLET_SOURCE_DIR="${AZURE_DEV_QUADLET_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/quadlet}"
 ZSHRC_SOURCE="${AZURE_DEV_ZSHRC_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/zshrc.template.example}"
@@ -24,6 +39,7 @@ CODEX_INSTALLER="${AZURE_DEV_CODEX_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev
 DOTENV_LINTER_INSTALLER="${AZURE_DEV_DOTENV_LINTER_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-dotenv-linter.sh}"
 APT_KEY_VERIFIER="${AZURE_DEV_APT_KEY_VERIFIER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/verify-apt-key.sh}"
 ROLLING_GIT_INSTALLER="${AZURE_DEV_ROLLING_GIT_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-rolling-git-source.sh}"
+STORAGE_REPORT_SOURCE="${AZURE_DEV_STORAGE_REPORT_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/storage-report.sh}"
 GIT_USER_NAME="${AZURE_DEV_GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${AZURE_DEV_GIT_USER_EMAIL:-}"
 GIT_SSH_SIGNING_PUBLIC_KEY="${AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY:-}"
@@ -54,6 +70,10 @@ run_as_vscode() {
     HOME="${VSCODE_HOME}" \
     XDG_CONFIG_HOME="${VSCODE_HOME}/.config" \
     XDG_DATA_HOME="${VSCODE_HOME}/.local/share" \
+    TMPDIR="${VSCODE_TEMP_DIR}" \
+    TMP="${VSCODE_TEMP_DIR}" \
+    TEMP="${VSCODE_TEMP_DIR}" \
+    npm_config_cache="${DATA_VSCODE_NPM_CACHE_DIR}" \
     CONTAINERS_CONF="${VSCODE_HOME}/.config/containers/containers.conf" \
     CONTAINERS_STORAGE_CONF="${VSCODE_HOME}/.config/containers/storage.conf" \
     bash -lc "$*"
@@ -385,14 +405,62 @@ configure_codex_sandbox() {
   log "Codex Bubblewrap sandbox configured and validated"
 }
 
+directory_has_entries() {
+  find "$1" -mindepth 1 -maxdepth 1 -print -quit | grep -q .
+}
+
+prepare_data_bind_directory() {
+  local source="$1"
+  local target="$2"
+  local owner="$3"
+  local group="$4"
+  local mode="$5"
+
+  install -d -o "${owner}" -g "${group}" -m "${mode}" \
+    "${source}" \
+    "${target}"
+  if findmnt -M "${target}" >/dev/null 2>&1; then
+    return
+  fi
+
+  if directory_has_entries "${target}"; then
+    if directory_has_entries "${source}"; then
+      log "cannot merge existing storage at ${target} and ${source}; reprovision the temporary environment"
+      return 1
+    fi
+    cp -a "${target}/." "${source}/"
+    find "${target}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+  fi
+
+  chown "${owner}:${group}" "${source}" "${target}"
+  chmod "${mode}" "${source}" "${target}"
+}
+
+append_data_bind_mount() {
+  local source="$1"
+  local target="$2"
+
+  printf '%s %s none bind,nofail,x-systemd.requires-mounts-for=%s 0 0\n' \
+    "${source}" \
+    "${target}" \
+    "${DATA_MOUNT_DIR}" \
+    >> /etc/fstab
+}
+
 mount_data_disk() {
   install -d -m 0755 \
     "${DATA_MOUNT_DIR}" \
     "${WORKSPACE_DIR}" \
     "${HOST_STATE_DIR}" \
-    "${PODMAN_STORAGE_DIR}"
+    "${PODMAN_STORAGE_DIR}" \
+    "${VSCODE_SERVER_DIR}" \
+    "${CODEX_HOME_DIR}" \
+    "${VSCODE_CACHE_DIR}" \
+    "${VSCODE_TEMP_DIR}" \
+    "${DOCKER_DIR}" \
+    "${CONTAINERD_DIR}"
   if [ ! -e "${DATA_DEVICE}" ]; then
-    log "Azure data disk not found at ${DATA_DEVICE}; cannot place ${WORKSPACE_DIR} and Podman storage on the data disk"
+    log "Azure data disk not found at ${DATA_DEVICE}; managed development storage has no OS-disk fallback"
     return 1
   fi
 
@@ -431,11 +499,23 @@ mount_data_disk() {
     -v workspace="${WORKSPACE_DIR}" \
     -v host_state="${HOST_STATE_DIR}" \
     -v podman_storage="${PODMAN_STORAGE_DIR}" \
+    -v vscode_server="${VSCODE_SERVER_DIR}" \
+    -v codex_home="${CODEX_HOME_DIR}" \
+    -v vscode_cache="${VSCODE_CACHE_DIR}" \
+    -v vscode_temp="${VSCODE_TEMP_DIR}" \
+    -v docker_storage="${DOCKER_DIR}" \
+    -v containerd_storage="${CONTAINERD_DIR}" \
     '$1 == "UUID=" uuid { next }
      $2 == data_mount { next }
      $2 == workspace { next }
      $2 == host_state { next }
      $2 == podman_storage { next }
+     $2 == vscode_server { next }
+     $2 == codex_home { next }
+     $2 == vscode_cache { next }
+     $2 == vscode_temp { next }
+     $2 == docker_storage { next }
+     $2 == containerd_storage { next }
      { print }' \
     /etc/fstab > "${fstab_tmp}"
   cat "${fstab_tmp}" > /etc/fstab
@@ -445,56 +525,88 @@ mount_data_disk() {
     "${DATA_MOUNT_DIR}" \
     "${DATA_FSTYPE}" \
     >> /etc/fstab
-  printf '%s %s none bind,nofail,x-systemd.requires-mounts-for=%s 0 0\n' \
-    "${DATA_WORKSPACE_DIR}" \
-    "${WORKSPACE_DIR}" \
-    "${DATA_MOUNT_DIR}" \
-    >> /etc/fstab
-  printf '%s %s none bind,nofail,x-systemd.requires-mounts-for=%s 0 0\n' \
-    "${DATA_HOST_STATE_DIR}" \
-    "${HOST_STATE_DIR}" \
-    "${DATA_MOUNT_DIR}" \
-    >> /etc/fstab
-  printf '%s %s none bind,nofail,x-systemd.requires-mounts-for=%s 0 0\n' \
-    "${DATA_PODMAN_STORAGE_DIR}" \
-    "${PODMAN_STORAGE_DIR}" \
-    "${DATA_MOUNT_DIR}" \
-    >> /etc/fstab
+  append_data_bind_mount "${DATA_WORKSPACE_DIR}" "${WORKSPACE_DIR}"
+  append_data_bind_mount "${DATA_HOST_STATE_DIR}" "${HOST_STATE_DIR}"
+  append_data_bind_mount "${DATA_PODMAN_STORAGE_DIR}" "${PODMAN_STORAGE_DIR}"
+  append_data_bind_mount "${DATA_VSCODE_SERVER_DIR}" "${VSCODE_SERVER_DIR}"
+  append_data_bind_mount "${DATA_CODEX_HOME_DIR}" "${CODEX_HOME_DIR}"
+  append_data_bind_mount "${DATA_VSCODE_CACHE_DIR}" "${VSCODE_CACHE_DIR}"
+  append_data_bind_mount "${DATA_VSCODE_TEMP_DIR}" "${VSCODE_TEMP_DIR}"
+  append_data_bind_mount "${DATA_DOCKER_DIR}" "${DOCKER_DIR}"
+  append_data_bind_mount "${DATA_CONTAINERD_DIR}" "${CONTAINERD_DIR}"
 
   if ! findmnt "${DATA_MOUNT_DIR}" >/dev/null 2>&1; then
     mount "${DATA_MOUNT_DIR}"
   fi
 
-  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" \
-    "${DATA_WORKSPACE_DIR}" \
-    "${DATA_HOST_STATE_DIR}" \
-    "${DATA_PODMAN_STORAGE_DIR}" \
-    "${PODMAN_STORAGE_DIR}"
+  prepare_data_bind_directory \
+    "${DATA_WORKSPACE_DIR}" "${WORKSPACE_DIR}" \
+    "${VSCODE_USER}" "${VSCODE_USER}" 0755
+  prepare_data_bind_directory \
+    "${DATA_HOST_STATE_DIR}" "${HOST_STATE_DIR}" \
+    "${VSCODE_USER}" "${VSCODE_USER}" 0755
+  prepare_data_bind_directory \
+    "${DATA_PODMAN_STORAGE_DIR}" "${PODMAN_STORAGE_DIR}" \
+    "${VSCODE_USER}" "${VSCODE_USER}" 0750
+  prepare_data_bind_directory \
+    "${DATA_VSCODE_SERVER_DIR}" "${VSCODE_SERVER_DIR}" \
+    "${VSCODE_USER}" "${VSCODE_USER}" 0750
+  prepare_data_bind_directory \
+    "${DATA_CODEX_HOME_DIR}" "${CODEX_HOME_DIR}" \
+    "${VSCODE_USER}" "${VSCODE_USER}" 0700
+  prepare_data_bind_directory \
+    "${DATA_VSCODE_CACHE_DIR}" "${VSCODE_CACHE_DIR}" \
+    "${VSCODE_USER}" "${VSCODE_USER}" 0700
+  prepare_data_bind_directory \
+    "${DATA_VSCODE_TEMP_DIR}" "${VSCODE_TEMP_DIR}" \
+    "${VSCODE_USER}" "${VSCODE_USER}" 0700
+  prepare_data_bind_directory \
+    "${DATA_DOCKER_DIR}" "${DOCKER_DIR}" root root 0711
+  prepare_data_bind_directory \
+    "${DATA_CONTAINERD_DIR}" "${CONTAINERD_DIR}" root root 0711
 
-  if ! findmnt "${WORKSPACE_DIR}" >/dev/null 2>&1; then
-    mount "${WORKSPACE_DIR}"
-  fi
-
-  if ! findmnt "${HOST_STATE_DIR}" >/dev/null 2>&1; then
-    mount "${HOST_STATE_DIR}"
-  fi
-
-  if ! findmnt "${PODMAN_STORAGE_DIR}" >/dev/null 2>&1; then
-    mount "${PODMAN_STORAGE_DIR}"
-  fi
+  local bind_mount
+  for bind_mount in \
+    "${WORKSPACE_DIR}" \
+    "${HOST_STATE_DIR}" \
+    "${PODMAN_STORAGE_DIR}" \
+    "${VSCODE_SERVER_DIR}" \
+    "${CODEX_HOME_DIR}" \
+    "${VSCODE_CACHE_DIR}" \
+    "${VSCODE_TEMP_DIR}" \
+    "${DOCKER_DIR}" \
+    "${CONTAINERD_DIR}"; do
+    if ! findmnt -M "${bind_mount}" >/dev/null 2>&1; then
+      mount "${bind_mount}"
+    fi
+  done
 
   rm -rf \
     "${DATA_MOUNT_DIR}/lost+found" \
     "${HOST_STATE_DIR}/lost+found" \
     "${WORKSPACE_DIR}/lost+found" \
-    "${PODMAN_STORAGE_DIR}/lost+found"
+    "${PODMAN_STORAGE_DIR}/lost+found" \
+    "${VSCODE_SERVER_DIR}/lost+found" \
+    "${CODEX_HOME_DIR}/lost+found" \
+    "${VSCODE_CACHE_DIR}/lost+found" \
+    "${VSCODE_TEMP_DIR}/lost+found" \
+    "${DOCKER_DIR}/lost+found" \
+    "${CONTAINERD_DIR}/lost+found"
   chown "${VSCODE_USER}:${VSCODE_USER}" \
     "${DATA_WORKSPACE_DIR}" \
     "${DATA_HOST_STATE_DIR}" \
     "${DATA_PODMAN_STORAGE_DIR}" \
     "${WORKSPACE_DIR}" \
     "${HOST_STATE_DIR}" \
-    "${PODMAN_STORAGE_DIR}"
+    "${PODMAN_STORAGE_DIR}" \
+    "${DATA_VSCODE_SERVER_DIR}" \
+    "${VSCODE_SERVER_DIR}" \
+    "${DATA_CODEX_HOME_DIR}" \
+    "${CODEX_HOME_DIR}" \
+    "${DATA_VSCODE_CACHE_DIR}" \
+    "${VSCODE_CACHE_DIR}" \
+    "${DATA_VSCODE_TEMP_DIR}" \
+    "${VSCODE_TEMP_DIR}"
 }
 
 configure_podman_storage() {
@@ -562,6 +674,14 @@ stop_user_quadlet_services_before_storage_change() {
       krav-support-network.service || true
 }
 
+stop_docker_services_before_storage_change() {
+  systemctl stop docker.service docker.socket containerd.service || true
+}
+
+start_docker_services_after_storage_change() {
+  systemctl start docker.service
+}
+
 clone_or_update_repo() {
   if [ -d "${WORKSPACE_DIR}/.git" ]; then
     run_as_vscode "git -C '${WORKSPACE_DIR}' remote set-url origin '${REPO_URL}'"
@@ -578,7 +698,7 @@ clone_or_update_repo() {
     fi
 
     local clone_dir
-    clone_dir="$(mktemp -d /tmp/krav-bootstrap-repo.XXXXXX)"
+    clone_dir="$(mktemp -d "${VSCODE_TEMP_DIR}/krav-bootstrap-repo.XXXXXX")"
     chown "${VSCODE_USER}:${VSCODE_USER}" "${clone_dir}"
     run_as_vscode "git clone '${REPO_URL}' '${clone_dir}'"
     run_as_vscode "cd '${clone_dir}' && tar cf - . | tar -C '${WORKSPACE_DIR}' -xf -"
@@ -668,11 +788,55 @@ install_zsh_profile() {
     "${VSCODE_HOME}/.zshrc"
 }
 
+configure_npm_caches() {
+  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+    "${DATA_VSCODE_NPM_CACHE_DIR}"
+  install -d -o root -g root -m 0700 "${DATA_ROOT_NPM_CACHE_DIR}"
+
+  HOME=/root npm_config_cache="${DATA_ROOT_NPM_CACHE_DIR}" \
+    npm config set cache "${DATA_ROOT_NPM_CACHE_DIR}" --location=user
+  runuser -u "${VSCODE_USER}" -- env \
+    HOME="${VSCODE_HOME}" \
+    npm_config_cache="${DATA_VSCODE_NPM_CACHE_DIR}" \
+    npm config set cache "${DATA_VSCODE_NPM_CACHE_DIR}" --location=user
+}
+
+install_storage_tools() {
+  if [ ! -f "${STORAGE_REPORT_SOURCE}" ]; then
+    log "Storage report helper is missing: ${STORAGE_REPORT_SOURCE}"
+    return 1
+  fi
+
+  install -o root -g root -m 0755 \
+    "${STORAGE_REPORT_SOURCE}" \
+    /usr/local/bin/storage-report
+  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+    "${KRAV_CONFIG_DIR}"
+  cat > "${STORAGE_SHELL_ENV}" <<EOF
+export TMPDIR="${VSCODE_TEMP_DIR}"
+export TMP="${VSCODE_TEMP_DIR}"
+export TEMP="${VSCODE_TEMP_DIR}"
+export npm_config_cache="${DATA_VSCODE_NPM_CACHE_DIR}"
+
+if [[ -o interactive ]] && command -v storage-report >/dev/null 2>&1; then
+  storage-report --check
+fi
+EOF
+  chown "${VSCODE_USER}:${VSCODE_USER}" "${STORAGE_SHELL_ENV}"
+  chmod 0600 "${STORAGE_SHELL_ENV}"
+
+  cat >> "${VSCODE_HOME}/.zshrc" <<EOF
+
+# Managed Azure development storage environment.
+source "${STORAGE_SHELL_ENV}"
+EOF
+}
+
 configure_codex_home() {
-  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" \
-    "${VSCODE_HOME}/.codex" \
-    "${VSCODE_HOME}/.codex/sqlite" \
-    "${VSCODE_HOME}/.codex/tmp"
+  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+    "${CODEX_HOME_DIR}" \
+    "${CODEX_HOME_DIR}/sqlite" \
+    "${CODEX_HOME_DIR}/tmp"
 
   if [ ! -f "${CODEX_CONFIG_SOURCE}" ]; then
     log "Azure Codex configuration is missing: ${CODEX_CONFIG_SOURCE}"
@@ -686,10 +850,10 @@ configure_codex_home() {
   runuser -u "${VSCODE_USER}" -- \
     python3 "${CODEX_CONFIG_MERGER}" \
       "${CODEX_CONFIG_SOURCE}" \
-      "${VSCODE_HOME}/.codex/config.toml"
-  chown "${VSCODE_USER}:${VSCODE_USER}" "${VSCODE_HOME}/.codex/config.toml"
-  chmod 0600 "${VSCODE_HOME}/.codex/config.toml"
-  log "Azure Codex permission profile merged into ${VSCODE_HOME}/.codex/config.toml"
+      "${CODEX_HOME_DIR}/config.toml"
+  chown "${VSCODE_USER}:${VSCODE_USER}" "${CODEX_HOME_DIR}/config.toml"
+  chmod 0600 "${CODEX_HOME_DIR}/config.toml"
+  log "Azure Codex permission profile merged into ${CODEX_HOME_DIR}/config.toml"
 }
 
 link_playwright_chrome() {
@@ -805,7 +969,7 @@ build_hsa_images_once() {
 
 build_hsa_images() {
   local build_log
-  build_log="$(mktemp /tmp/krav-podman-build.XXXXXX)"
+  build_log="$(mktemp "${VSCODE_TEMP_DIR}/krav-podman-build.XXXXXX")"
 
   if build_hsa_images_once 2>&1 | tee "${build_log}"; then
     rm -f "${build_log}"
@@ -860,6 +1024,10 @@ configure_user_systemd_environment() {
     "XDG_CONFIG_HOME=${VSCODE_HOME}/.config" \
     "XDG_DATA_HOME=${VSCODE_HOME}/.local/share" \
     "XDG_RUNTIME_DIR=/run/user/${uid}" \
+    "TMPDIR=${VSCODE_TEMP_DIR}" \
+    "TMP=${VSCODE_TEMP_DIR}" \
+    "TEMP=${VSCODE_TEMP_DIR}" \
+    "npm_config_cache=${DATA_VSCODE_NPM_CACHE_DIR}" \
     "CONTAINERS_CONF=${VSCODE_HOME}/.config/containers/containers.conf" \
     "CONTAINERS_STORAGE_CONF=${VSCODE_HOME}/.config/containers/storage.conf"
 }
@@ -1154,20 +1322,24 @@ validate_loopback_ports() {
 main() {
   log "starting host bootstrap"
   install_host_packages
-  install_ai_tools
   install_lychee
   configure_optional_ubuntu_pro
   ensure_vscode_user
   configure_git_identity
-  configure_codex_sandbox
   configure_ssh_access
   install_service_environment_files
   stop_user_quadlet_services_before_storage_change
+  stop_docker_services_before_storage_change
   mount_data_disk
+  start_docker_services_after_storage_change
+  configure_npm_caches
+  install_ai_tools
+  configure_codex_sandbox
   configure_podman_storage
   clone_or_update_repo
   ensure_kong_route_protocols
   install_zsh_profile
+  install_storage_tools
   configure_codex_home
   run_repository_setup
   write_vm_env_override
