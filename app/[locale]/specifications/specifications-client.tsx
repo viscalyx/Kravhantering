@@ -54,6 +54,7 @@ const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
 }
 
 const REQUIREMENT_AREA_PILL_ROW_HEIGHT = 24
+const SPECIFICATIONS_LOADING_INDICATOR_DELAY_MS = 1000
 const EMPTY_INITIAL_DATA: RequirementsSpecificationsInitialData = {
   collectionPermissions: { canCreateSpecification: true },
   errors: [],
@@ -458,7 +459,7 @@ export default function RequirementsSpecificationsClient({
     }
     spinnerTimerRef.current = setTimeout(() => {
       setShowSpinner(true)
-    }, 200)
+    }, SPECIFICATIONS_LOADING_INDICATOR_DELAY_MS)
 
     return () => {
       if (spinnerTimerRef.current) {
@@ -560,6 +561,7 @@ export default function RequirementsSpecificationsClient({
       (!collectionPermissions.canCreateSpecification
         ? t('readOnlyNotice')
         : null)
+  const showSpecifications = !loading && !showSpinner
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
@@ -653,7 +655,7 @@ export default function RequirementsSpecificationsClient({
         ) : null}
 
         <div className="mb-4">
-          {!loading && specifications.length > 0 && (
+          {showSpecifications && specifications.length > 0 && (
             <div className="w-full max-w-lg">
               <label
                 className="mb-1.5 block text-sm font-medium text-secondary-700 dark:text-secondary-300"
@@ -704,6 +706,12 @@ export default function RequirementsSpecificationsClient({
             className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16"
             data-testid="requirement-specifications-loading"
             role="status"
+            {...devMarker({
+              context: 'specifications',
+              name: 'loading status',
+              priority: 330,
+              value: 'specifications list',
+            })}
           >
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
             <p className="text-secondary-600 dark:text-secondary-400">
@@ -711,7 +719,7 @@ export default function RequirementsSpecificationsClient({
             </p>
           </div>
         )}
-        {!loading && (
+        {showSpecifications && (
           <div
             className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden"
             {...devMarker({

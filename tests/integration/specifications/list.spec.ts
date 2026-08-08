@@ -425,10 +425,21 @@ test.describe('Requirements specifications destructive manual cases', () => {
   }) => {
     let deleted = false
     const deleteRequests: string[] = []
+    let releaseReloadRequest = () => {}
+    let markReloadRequestStarted = () => {}
+    const reloadRequestStarted = new Promise<void>(resolve => {
+      markReloadRequestStarted = resolve
+    })
     await page.route('**/api/requirements-specifications', async route => {
       if (route.request().method() !== 'GET') {
         await route.continue()
         return
+      }
+      if (deleted) {
+        markReloadRequestStarted()
+        await new Promise<void>(resolve => {
+          releaseReloadRequest = resolve
+        })
       }
       await route.fulfill({
         contentType: 'application/json',
@@ -512,6 +523,17 @@ test.describe('Requirements specifications destructive manual cases', () => {
       const dialog = page.getByRole('alertdialog')
       await dialog.getByRole('button', { name: 'Bekräfta' }).click()
       await expect.poll(() => deleteRequests.length).toBe(1)
+      await reloadRequestStarted
+
+      const loadingStatus = page
+        .getByRole('status')
+        .filter({ hasText: 'Laddar...' })
+      await expect(loadingStatus).toBeVisible()
+      await expect(page.getByRole('table')).toHaveCount(0)
+
+      releaseReloadRequest()
+      await expect(loadingStatus).toHaveCount(0)
+      await expect(page.getByRole('table')).toBeVisible()
       await expect(
         page.getByRole('row', { name: /PWT-MANUAL redigerbart kravunderlag/ }),
       ).toHaveCount(0)

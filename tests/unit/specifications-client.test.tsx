@@ -837,25 +837,71 @@ describe('RequirementsSpecificationsClient', () => {
     )
   })
 
-  it('does not show spinner immediately while loading', () => {
-    vi.useFakeTimers()
-    fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<RequirementsSpecificationsClient />)
-    expect(
-      screen.queryByTestId('requirement-specifications-loading'),
-    ).not.toBeInTheDocument()
-  })
-
-  it('shows spinner after 200ms when still loading', async () => {
+  it('waits one second before showing the loading status', async () => {
     vi.useFakeTimers()
     fetchMock.mockReturnValue(new Promise(() => {}))
     render(<RequirementsSpecificationsClient />)
     await act(async () => {
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(999)
     })
-    expect(
-      screen.getByTestId('requirement-specifications-loading'),
-    ).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    await act(async () => {
+      vi.advanceTimersByTime(1)
+    })
+
+    const loadingStatus = screen.getByRole('status')
+    expect(loadingStatus).toHaveTextContent('common.loading')
+    expect(loadingStatus).toHaveAttribute(
+      'data-developer-mode-name',
+      'loading status',
+    )
+    expect(loadingStatus).toHaveAttribute(
+      'data-developer-mode-value',
+      'specifications list',
+    )
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('removes the loading status before showing the loaded list', async () => {
+    vi.useFakeTimers()
+    const specificationsRequest = createDeferred<unknown>()
+    mockApi((url: string) => {
+      if (url === '/api/requirements-specifications') {
+        return specificationsRequest.promise
+      }
+      if (url === '/api/specification-governance-object-types') {
+        return Promise.resolve(
+          okJson({ governanceObjectTypes: sampleGovernanceObjectTypes }),
+        )
+      }
+      if (url === '/api/specification-implementation-types') {
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      }
+      if (url === '/api/specification-lifecycle-statuses') {
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementsSpecificationsClient />)
+    await act(async () => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+
+    await act(async () => {
+      specificationsRequest.resolve(
+        okJson({ specifications: sampleSpecifications }),
+      )
+      await specificationsRequest.promise
+    })
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('table')).toBeVisible()
+    expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
   })
 
   it('clears the spinner timer when the component unmounts', () => {
