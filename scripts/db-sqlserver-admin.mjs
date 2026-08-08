@@ -908,7 +908,7 @@ export async function bootstrapSqlServerDatabase(
   const migrationUsername = env.DB_MIGRATION_USER?.trim() || parsed.username
   const configuredRuntimeUsernames = [
     env.DB_BOOTSTRAP_APP_USER?.trim(),
-    ...getExpectedRuntimeUsers(env),
+    ...getExpectedRuntimeUsers(env, { required: true }),
   ].filter(Boolean)
   const matchingRuntimeUsername = configuredRuntimeUsernames.find(
     username => username.toLowerCase() === migrationUsername.toLowerCase(),
@@ -1089,6 +1089,8 @@ async function getProhibitedEffectiveRuntimePermissions(queryExecutor, user) {
              CAST(HAS_PERMS_BY_NAME(N''dbo.action_audit_events'', N''OBJECT'', N''DELETE'') AS bit) AS canDeleteAuditHistory;
          END TRY
          BEGIN CATCH
+           IF XACT_STATE() <> 0
+             ROLLBACK TRANSACTION;
            REVERT;
            THROW;
          END CATCH;

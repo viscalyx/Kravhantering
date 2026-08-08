@@ -469,6 +469,7 @@ describe('db-sqlserver-admin.mjs', () => {
       DB_MIGRATION_PASSWORD: 'JobPassword1!',
       DB_MIGRATION_USER: 'kravhantering_job',
       DB_PASSWORD: 'AppPassword1!',
+      DB_RUNTIME_USER: 'kravhantering_app',
       DB_USER: 'kravhantering_app',
     }
 
@@ -533,6 +534,27 @@ describe('db-sqlserver-admin.mjs', () => {
     })
   })
 
+  it('rejects bootstrap without a configured managed runtime user before connecting', async () => {
+    const connectImpl = vi.fn()
+
+    await expect(
+      bootstrapSqlServerDatabase(
+        'mssql://runtime:RuntimePassword1!@sqlserver:1433/kravhantering?encrypt=true',
+        {
+          connectImpl,
+          env: {
+            DB_BOOTSTRAP_ADMIN_PASSWORD: 'AdminPassword1!',
+            DB_BOOTSTRAP_APP_PASSWORD: 'AppPassword1!',
+            DB_BOOTSTRAP_APP_USER: 'kravhantering_app',
+            DB_MIGRATION_PASSWORD: 'JobPassword1!',
+            DB_MIGRATION_USER: 'kravhantering_job',
+          },
+        },
+      ),
+    ).rejects.toThrow(/DB_RUNTIME_USER is required/u)
+    expect(connectImpl).not.toHaveBeenCalled()
+  })
+
   it.each([
     {
       connectionString:
@@ -543,6 +565,7 @@ describe('db-sqlserver-admin.mjs', () => {
         DB_BOOTSTRAP_APP_USER: 'kravhantering_app',
         DB_MIGRATION_PASSWORD: 'JobPassword1!',
         DB_MIGRATION_USER: 'KRAVHANTERING_APP',
+        DB_RUNTIME_USER: 'kravhantering_app',
       },
       runtimeUser: 'kravhantering_app',
       source: 'configured migration user',
@@ -554,6 +577,7 @@ describe('db-sqlserver-admin.mjs', () => {
         DB_BOOTSTRAP_ADMIN_PASSWORD: 'AdminPassword1!',
         DB_BOOTSTRAP_APP_PASSWORD: 'AppPassword1!',
         DB_BOOTSTRAP_APP_USER: 'kravhantering_app',
+        DB_RUNTIME_USER: 'kravhantering_app',
       },
       runtimeUser: 'kravhantering_app',
       source: 'connection-string fallback',
@@ -749,6 +773,38 @@ describe('db-sqlserver-admin.mjs', () => {
         state: 'GRANT',
       },
     ])
+  })
+
+  it('rolls back a failed effective-permission probe before reverting and rethrowing', async () => {
+    const query = vi.fn(async sql => {
+      if (sql.includes('HAS_PERMS_BY_NAME')) {
+        expect(sql).toMatch(
+          /BEGIN CATCH\s+IF XACT_STATE\(\) <> 0\s+ROLLBACK TRANSACTION;\s+REVERT;\s+THROW;/u,
+        )
+        return [{}]
+      }
+      if (sql.includes('member_principal_id = principals.principal_id')) {
+        return [
+          {
+            defaultSchema: 'dbo',
+            isDataReader: false,
+            isDataWriter: false,
+            isMember: true,
+            name: 'kravhantering_app',
+          },
+        ]
+      }
+      if (sql.includes('SELECT [name], [type]')) {
+        return [{ name: 'kravhantering_runtime', type: 'R' }]
+      }
+      return []
+    })
+
+    await getSqlServerRuntimePermissionStatus(
+      { query },
+      { expectedRuntimeUsers: ['kravhantering_app'] },
+    )
+    expect(query).toHaveBeenCalled()
   })
 
   it('accepts the complete runtime permission manifest and membership', async () => {
