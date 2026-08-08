@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  AlertCircle,
   AlignLeft,
   ArrowDown,
   ArrowUp,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
+  type CSSProperties,
   Fragment,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -45,10 +47,12 @@ import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePur
 import RequirementsPackageFilter from '@/components/RequirementsPackageFilter'
 import StatusBadge from '@/components/StatusBadge'
 import { Link, useRouter } from '@/i18n/routing'
+import { getReadableTextColors, isStrictHexColor } from '@/lib/color-contrast'
 import {
   devMarker,
   getRequirementColumnDeveloperModeLabel,
 } from '@/lib/developer-mode-markers'
+import { getStatusIconComponent } from '@/lib/icons/status-icon-components'
 import {
   type AreaOption,
   clearRequirementFiltersForHiddenColumns,
@@ -2497,7 +2501,29 @@ export default function RequirementsTable({
           </td>
         )
       }
-      case 'status':
+      case 'status': {
+        const pendingVersionLabel = row.hasPendingVersion
+          ? t(
+              row.pendingVersionStatusId === 1
+                ? 'hasPendingVersionDraft'
+                : 'hasPendingVersionReview',
+            )
+          : null
+        const pendingVersionColors =
+          row.pendingVersionStatusColor &&
+          isStrictHexColor(row.pendingVersionStatusColor)
+            ? getReadableTextColors(row.pendingVersionStatusColor)
+            : null
+        const pendingVersionStyle = pendingVersionColors
+          ? ({
+              '--pending-version-fg-dark': pendingVersionColors.dark,
+              '--pending-version-fg-light': pendingVersionColors.light,
+            } as CSSProperties)
+          : undefined
+        const PendingVersionStatusIcon =
+          getStatusIconComponent(row.pendingVersionStatusIconName) ??
+          AlertCircle
+
         return (
           <td className={`py-2 px-2 ${dividerClass}`}>
             <span className="inline-flex items-center gap-1">
@@ -2521,21 +2547,39 @@ export default function RequirementsTable({
               ) : (
                 '—'
               )}
-              {row.hasPendingVersion && (
-                <StatusBadge
-                  color={row.pendingVersionStatusColor ?? null}
-                  iconName={row.pendingVersionStatusIconName ?? null}
-                  label={t(
-                    row.pendingVersionStatusId === 1
-                      ? 'hasPendingVersionDraft'
-                      : 'hasPendingVersionReview',
-                  )}
-                  size="sm"
-                />
+              {pendingVersionLabel && (
+                // This requirements-library column is intentionally icon-only:
+                // a second full badge makes dense list rows unnecessarily wide.
+                <span
+                  aria-label={pendingVersionLabel}
+                  className="pending-version-indicator inline-flex shrink-0 items-center justify-center"
+                  data-accent-color={
+                    pendingVersionColors
+                      ? row.pendingVersionStatusColor?.toLowerCase()
+                      : undefined
+                  }
+                  {...devMarker({
+                    context: 'requirements table',
+                    name: 'pending version indicator',
+                    priority: 310,
+                    value:
+                      row.pendingVersionStatusId === 1 ? 'draft' : 'review',
+                  })}
+                  role="img"
+                  style={pendingVersionStyle}
+                  title={pendingVersionLabel}
+                >
+                  <PendingVersionStatusIcon
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5"
+                    focusable="false"
+                  />
+                </span>
               )}
             </span>
           </td>
         )
+      }
       case 'verifiable':
         return (
           <td

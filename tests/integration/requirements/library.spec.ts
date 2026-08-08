@@ -90,13 +90,41 @@ test.describe('Requirements library', () => {
   test('REQ-01: requirements library loads seeded requirements and opens detail metadata', async ({
     page,
   }) => {
-    const detailPane = await openRequirementDetail(page, 'INT0001')
+    await page.goto('/sv/requirements')
+    await test.step('filter the requirements library by ID', async () => {
+      await filterRequirementId(page, 'INT0001')
+    })
 
-    await expect(
-      page.getByRole('table', { name: 'Lista över krav' }),
-    ).toBeVisible()
-    await expect(detailPane).toContainText('Kravtext')
-    await expect(detailPane).toContainText('Kravområde')
+    await test.step('verify the pending-version indicator', async () => {
+      const table = page.getByRole('table', { name: 'Lista över krav' })
+      const requirementRow = table
+        .getByRole('button', { name: /^INT0001\b/u })
+        .locator('xpath=ancestor::tr[1]')
+      const pendingVersionIndicator = requirementRow.getByRole('img', {
+        name: 'Det arbetas på en ny version',
+      })
+
+      await expect(table).toBeVisible()
+      await expect(pendingVersionIndicator).toBeVisible()
+      await expect(pendingVersionIndicator).toHaveAttribute(
+        'title',
+        'Det arbetas på en ny version',
+      )
+      await expect(pendingVersionIndicator.locator('svg')).toBeVisible()
+      await expect
+        .poll(() => pendingVersionIndicator.evaluate(node => node.textContent))
+        .toBe('')
+      await expect(pendingVersionIndicator).toHaveCSS(
+        'background-color',
+        'rgba(0, 0, 0, 0)',
+      )
+    })
+
+    await test.step('open the requirement detail pane', async () => {
+      const detailPane = await openRequirementDetail(page, 'INT0001')
+      await expect(detailPane).toContainText('Kravtext')
+      await expect(detailPane).toContainText('Kravområde')
+    })
   })
 
   test('REQ-01: an invalid continuation cursor refreshes and announces the list', async ({

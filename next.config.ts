@@ -128,6 +128,8 @@ const API_DOCS_CONTENT_SECURITY_POLICY = [
 ].join('; ')
 
 const nextConfig: NextConfig = {
+  // Avoids adding agent rules to AGENTS.md, this could be switched on in the future.
+  agentRules: false,
   reactStrictMode: true,
   typedRoutes: true,
   output: 'standalone',

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -19,9 +19,12 @@ const SPECIFICATION_CLIENT_MODULE =
   '[project]/app/[locale]/specifications/[specificationId]/requirements-specification-detail-client.tsx'
 const SPECIFICATION_ROUTE_MODULE =
   '[project]/app/[locale]/specifications/[specificationId]/page'
+const fixtureRoots = new Set()
 
 function fixtureRoot() {
-  return mkdtempSync(join(tmpdir(), 'requirement-workflow-bundle-'))
+  const root = mkdtempSync(join(tmpdir(), 'requirement-workflow-bundle-'))
+  fixtureRoots.add(root)
+  return root
 }
 
 function write(root, relativePath, content) {
@@ -113,6 +116,10 @@ function writeCompleteFixture() {
 }
 
 afterEach(() => {
+  for (const root of fixtureRoots) {
+    rmSync(root, { force: true, recursive: true })
+  }
+  fixtureRoots.clear()
   vi.restoreAllMocks()
 })
 
@@ -302,7 +309,7 @@ describe('requirement workflow bundle contract', () => {
     write(
       root,
       '.next/static/chunks/library-ai.js',
-      deterministicBytes(230_000),
+      deterministicBytes(260_000),
     )
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
     const errorSpy = vi

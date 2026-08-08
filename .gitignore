@@ -89,6 +89,7 @@ dist/
 .storybook-out
 
 # Temporary folders
+.worktrees/
 tmp/
 temp/
 

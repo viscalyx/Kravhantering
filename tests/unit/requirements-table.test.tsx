@@ -3449,10 +3449,36 @@ describe('RequirementsTable', () => {
       },
     ]
     render(<RequirementsTable locale="sv" rows={rows} />)
-    expect(screen.getByText('hasPendingVersionReview')).toHaveAttribute(
-      'data-accent-color',
-      '#3b82f6',
+    const indicator = screen.getByRole('img', {
+      name: 'hasPendingVersionReview',
+    })
+
+    expect(indicator).toHaveAttribute('title', 'hasPendingVersionReview')
+    expect(indicator).toHaveAttribute('data-accent-color', '#3b82f6')
+    expect(indicator).toHaveAttribute(
+      'data-developer-mode-name',
+      'pending version indicator',
     )
+    expect(indicator).toHaveAttribute('data-developer-mode-value', 'review')
+    expect(indicator).toHaveTextContent('')
+    expect(indicator).not.toHaveClass('status-badge')
+    expect(indicator.querySelector('svg')).toHaveClass('lucide-eye')
+  })
+
+  it('falls back to the alert icon for an unknown pending version icon', () => {
+    const row = {
+      ...makeRow(),
+      hasPendingVersion: true,
+      pendingVersionStatusIconName: 'MadeUpIcon',
+      pendingVersionStatusId: 2,
+    }
+
+    render(<RequirementsTable locale="sv" rows={[row]} />)
+
+    const indicator = screen.getByRole('img', {
+      name: 'hasPendingVersionReview',
+    })
+    expect(indicator.querySelector('svg')).toHaveClass('lucide-circle-alert')
   })
 
   it('shows a blue pending draft indicator for archived rows', () => {
@@ -3492,16 +3518,17 @@ describe('RequirementsTable', () => {
     render(<RequirementsTable locale="sv" rows={rows} />)
 
     expect(screen.getAllByText('Arkiverad')).toHaveLength(2)
-    expect(
-      screen.getByText('hasPendingVersionDraft').closest('tr')?.className,
-    ).not.toContain('opacity-50')
-    expect(screen.getByText('hasPendingVersionDraft')).toHaveAttribute(
-      'data-accent-color',
-      '#3b82f6',
+    const indicator = screen.getByRole('img', {
+      name: 'hasPendingVersionDraft',
+    })
+    expect(indicator.closest('tr')?.className).not.toContain('opacity-50')
+    expect(indicator).toHaveAttribute('data-accent-color', '#3b82f6')
+    expect(indicator).toHaveTextContent('')
+    expect(indicator.querySelector('svg')).toHaveAttribute(
+      'aria-hidden',
+      'true',
     )
-    expect(
-      screen.getByText('hasPendingVersionDraft').querySelector('svg'),
-    ).toHaveAttribute('aria-hidden', 'true')
+    expect(indicator.querySelector('svg')).toHaveClass('lucide-pen-line')
   })
 
   it('shows a yellow pending review indicator for archived rows', () => {
@@ -3541,16 +3568,17 @@ describe('RequirementsTable', () => {
     render(<RequirementsTable locale="sv" rows={rows} />)
 
     expect(screen.getAllByText('Arkiverad')).toHaveLength(2)
-    expect(
-      screen.getByText('hasPendingVersionReview').closest('tr')?.className,
-    ).not.toContain('opacity-50')
-    expect(screen.getByText('hasPendingVersionReview')).toHaveAttribute(
-      'data-accent-color',
-      '#eab308',
+    const indicator = screen.getByRole('img', {
+      name: 'hasPendingVersionReview',
+    })
+    expect(indicator.closest('tr')?.className).not.toContain('opacity-50')
+    expect(indicator).toHaveAttribute('data-accent-color', '#eab308')
+    expect(indicator).toHaveTextContent('')
+    expect(indicator.querySelector('svg')).toHaveAttribute(
+      'aria-hidden',
+      'true',
     )
-    expect(
-      screen.getByText('hasPendingVersionReview').querySelector('svg'),
-    ).toHaveAttribute('aria-hidden', 'true')
+    expect(indicator.querySelector('svg')).toHaveClass('lucide-eye')
   })
 
   it('applies opacity for archived rows', () => {

@@ -41,18 +41,18 @@ export const REQUIREMENT_WORKFLOW_GZIP_MAX_BYTES = {
   'requirements-library': {
     // 2026-07-14 production baseline: 280,092 gzip bytes plus 5% headroom.
     entry: 294_097,
-    // 2026-07-14 production baseline: 209,476 gzip bytes plus 5% headroom.
-    'ai-authoring': 219_950,
-    // 2026-07-14 production baseline: 97,619 gzip bytes plus 5% headroom.
-    'import-review': 102_500,
+    // 2026-08-08 Next.js 16.3 production baseline: 228,088 gzip bytes plus 5% headroom.
+    'ai-authoring': 239_493,
+    // 2026-08-08 Next.js 16.3 production baseline: 107,983 gzip bytes plus 5% headroom.
+    'import-review': 113_383,
   },
   'requirements-specification-detail': {
     // 2026-07-14 production baseline: 311,099 gzip bytes plus 5% headroom.
     entry: 326_654,
-    // 2026-07-14 production baseline: 210,140 gzip bytes plus 5% headroom.
-    'ai-authoring': 220_647,
-    // 2026-07-14 production baseline: 97,492 gzip bytes plus 5% headroom.
-    'import-review': 102_367,
+    // 2026-08-08 Next.js 16.3 production baseline: 228,720 gzip bytes plus 5% headroom.
+    'ai-authoring': 240_156,
+    // 2026-08-08 Next.js 16.3 production baseline: 107,792 gzip bytes plus 5% headroom.
+    'import-review': 113_182,
   },
 }
 
