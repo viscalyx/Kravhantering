@@ -43,6 +43,28 @@ N'#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'
 ```
 After upgrade, review `/sv/requirement-statuses` and `/sv/specification-item-statuses`. Open every row and confirm the labeled light- and dark-theme previews report `Uppfyller AA` before accepting the upgraded configuration.
 <!-- operator-upgrade:source pr-880 end -->
+
+<!-- operator-upgrade:source pr-924 start -->
+Before the first production rollout, configure a privileged database-job
+identity separately from the application runtime identity. Set
+`DB_RUNTIME_USER` to the application runtime database user, and provision that
+user with only the release-managed `kravhantering_runtime` role. Ensure all
+required application settings exist; privileged database maintenance owns any
+repair because the runtime identity cannot create missing settings.
+Permission reconciliation fails closed when the user is missing, managed
+grants drift, unexpected role nesting exists, or the user has effective
+schema-migration, protected-audit mutation, or database-user impersonation
+capabilities. If a development, test, or rollout database gives the runtime
+user broad read/write memberships, reconciliation removes those memberships
+only after the custom role contract verifies. Other site-managed roles and
+direct grants remain in place, but operators must remove or narrow any that
+cause verification to fail rather than broadening runtime access.
+Retain the permission verification output as deployment evidence and validate
+representative application read/write workflows. For rollback, use a complete
+database restore point so schema, data, permissions, and role memberships
+return as one database state; do not reverse only the role change against the
+restricted runtime identity.
+<!-- operator-upgrade:source pr-924 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
