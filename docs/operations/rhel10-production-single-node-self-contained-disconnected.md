@@ -5,7 +5,7 @@
 This guide describes how to prepare and import disconnected release artifacts
 for the self-contained single-node RHEL 10 production topology, where nginx,
 `app-runtime`, SQL Server, Keycloak and `db-job` run in one rootless Podman
-Compose network.
+Quadlet network.
 
 The default disconnected topology is `single-node`. The optional
 `single-node-demo` topology is test-only and adds Kong, the HSA person lookup
@@ -472,7 +472,8 @@ sudo tar -xzf "$OFFLINE_ROOT/release/$RELEASE_ARCHIVE" \
   -C "/opt/kravhantering/releases/${VERSION}" \
   --strip-components=1
 sudo chcon -R -t container_file_t \
-  "/opt/kravhantering/releases/${VERSION}/nginx"
+  "/opt/kravhantering/releases/${VERSION}/nginx" \
+  "/opt/kravhantering/releases/${VERSION}/api-docs"
 ```
 
 Review the imported release before handoff:
@@ -656,7 +657,8 @@ sudo tar -xzf "$OFFLINE_ROOT/release/$RELEASE_ARCHIVE" \
   -C "/opt/kravhantering/releases/${VERSION}" \
   --strip-components=1
 sudo chcon -R -t container_file_t \
-  "/opt/kravhantering/releases/${VERSION}/nginx"
+  "/opt/kravhantering/releases/${VERSION}/nginx" \
+  "/opt/kravhantering/releases/${VERSION}/api-docs"
 ```
 
 Review the imported release before handoff:

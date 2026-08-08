@@ -1,0 +1,20 @@
+[Unit]
+Description=Kravhantering Keycloak
+PartOf=kravhantering-single-node.target
+Requires=kravhantering-single-node-network.service kravhantering-keycloak-data-volume.service
+After=kravhantering-single-node-network.service kravhantering-keycloak-data-volume.service
+
+[Container]
+ContainerName=kravhantering-keycloak
+Image=@@KEYCLOAK_IMAGE_REF@@
+Exec=start --import-realm
+EnvironmentFile=/etc/kravhantering/keycloak.env
+Network=kravhantering-single-node.network
+NetworkAlias=keycloak
+Volume=/etc/kravhantering/keycloak/realm-kravhantering-production.json:/opt/keycloak/data/import/realm-kravhantering-production.json:ro
+Volume=kravhantering-keycloak-data.volume:/opt/keycloak/data
+
+[Service]
+Restart=always
+TimeoutStartSec=180
+TimeoutStopSec=90

@@ -133,7 +133,6 @@ describe('container image contract', () => {
     for (const relativePath of [
       '.devcontainer/docker-compose.yml',
       '.devcontainer/elevated/docker-compose.yml',
-      'containers/production/compose/single-node-demo.compose.yml',
     ]) {
       const compose = parseYaml(readWorkspaceFile(relativePath)) as {
         services?: Record<string, { command?: string[] }>
@@ -531,25 +530,7 @@ describe('container image contract', () => {
     expect(dbJobEnv).toContain('DB_BOOTSTRAP_APP_USER=kravhantering_app')
   })
 
-  it('uses the short internal network name for release and generated stacks', () => {
-    const productionComposeFiles = [
-      'containers/production/compose/app-node-http.compose.yml',
-      'containers/production/compose/app-node-tls.compose.yml',
-      'containers/production/compose/single-node.compose.yml',
-    ]
-
-    for (const relativePath of productionComposeFiles) {
-      const compose = readWorkspaceFile(relativePath)
-
-      expect(compose).toContain('name: kravhantering-internal')
-      expect(compose).not.toContain(
-        'kravhantering-app-node_kravhantering-internal',
-      )
-      expect(compose).not.toContain(
-        'kravhantering-single-node_kravhantering-internal',
-      )
-    }
-
+  it('keeps the generated test network parameterized', () => {
     const generatedTemplate = readWorkspaceFile(
       'containers/compose/container-stack.template.yml',
     )

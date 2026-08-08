@@ -12,8 +12,8 @@
 
 This guide describes how to install and operate Kravhantering on one clean
 Red Hat Enterprise Linux 10 host from released artifacts only, with nginx,
-`app-runtime`, SQL Server, Keycloak and `db-job` in one rootless Podman Compose
-network.
+`app-runtime`, SQL Server and Keycloak as rootless Podman Quadlet services.
+`db-job` runs explicitly on the same Quadlet network for release operations.
 
 Use this topology when the production site must run without external SQL Server
 or external IdP dependencies at runtime. For the enterprise topology with
@@ -99,12 +99,12 @@ verification.
 | `HSA_DIRECTORY_MOCK_IMAGE_REF` | `HSA_DIRECTORY_MOCK_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA mock image when using the demo overlay. |
 | `DEMO_SEED_IMAGE_REF` | One-shot shell variable, not `release.env` | No production default | Test and development only; choose the optional `kravhantering-demo-seed` release tag or internal mirror only when running destructive demo seed in a disposable database. |
 | `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env` | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
-| `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Compose network. It can change when the internal network is renamed, recreated or assigned another subnet. |
+| `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Quadlet network. It can change when the internal network is recreated or assigned another subnet. |
 | `MSSQL_SA_PASSWORD` | `MSSQL_SA_PASSWORD` in `sqlserver.env` and `DB_BOOTSTRAP_ADMIN_PASSWORD` in `db-job.env` | No default | Always generate a unique SQL Server `sa` password. Use the same value in both places and follow [Generate Unique Secrets](#generate-unique-secrets). |
 | `DB_JOB_PASSWORD` | `DB_PASSWORD` in `db-job.env` | No default | Always generate a unique SQL Server password for the `kravhantering_job` migration/seed login. Follow [Generate Unique Secrets](#generate-unique-secrets). |
 | `APP_DB_PASSWORD` | `DB_BOOTSTRAP_APP_PASSWORD` in `db-job.env` and `DB_PASSWORD` in `app.env` | No default | Always generate a unique SQL Server password for the `kravhantering_app` runtime login. Use the same value in both places and follow [Generate Unique Secrets](#generate-unique-secrets). |
 | `DB_PASSWORD` | `app.env` and `db-job.env` | Maps to `DB_JOB_PASSWORD` in `db-job.env` and `APP_DB_PASSWORD` in `app.env` | No separate value to plan; verify each file receives the correct password. |
-| `DB_PORT` | `DB_PORT` in `app.env` and `db-job.env` | `1433` | Plan only if the Compose network or SQL Server service changes. |
+| `DB_PORT` | `DB_PORT` in `app.env` and `db-job.env` | `1433` | Plan only if the Quadlet network or SQL Server service changes. |
 | `DB_ENCRYPT` | `DB_ENCRYPT` in `app.env` and `db-job.env` | `true` | Plan only if the SQL Server contract deliberately differs. |
 | `DB_TRUST_SERVER_CERTIFICATE` | `DB_TRUST_SERVER_CERTIFICATE` in `app.env` and `db-job.env` | `true` | Plan only if the internal SQL Server container is replaced with a certificate trusted by the container trust store. |
 | `DB_CONNECTION_TIMEOUT_MS` | `DB_CONNECTION_TIMEOUT_MS` in `db-job.env` | `15000` | Plan only if the host, storage or startup timing needs a different connection timeout. |
@@ -179,9 +179,9 @@ Install the host as a minimal RHEL 10 server. Recommended baseline:
 Install runtime packages as an administrator:
 
 ```bash
-sudo dnf install -y podman podman-compose tar gzip coreutils jq
+sudo dnf install -y podman tar gzip coreutils jq
 podman --version
-PODMAN_COMPOSE_PROVIDER=podman-compose podman compose version
+podman info --format '{{.Host.CgroupsVersion}}'
 ```
 
 Create a dedicated rootless service user:
@@ -206,7 +206,7 @@ Site-specific environment files, certificates and realm files live under
 
 ### Podman Volume Storage
 
-The single-node Compose file stores SQL Server database files in the named
+The single-node Quadlet units store SQL Server database files in the named
 Podman volume `kravhantering-sqlserver-data`, mounted inside the SQL Server
 container at `/var/opt/mssql`. Keycloak uses the separate
 `kravhantering-keycloak-data` volume for its runtime state.
@@ -235,7 +235,7 @@ volume-snapshot procedures.
 
 If `/home` is intentionally small, quota-limited or mounted with stronger
 hardening than the database workload can tolerate, move the rootless Podman
-storage root before creating the stack. This keeps the Compose volume name
+storage root before creating the stack. This keeps the named volume
 unchanged while placing images, container layers and named volumes on a larger
 site-approved filesystem.
 
@@ -252,7 +252,7 @@ sudo restorecon -Rv /var/lib/kravhantering/podman-storage
 ```
 
 Create a per-user Podman storage override for the `kravhantering` service
-user before running `podman compose up` for the first time:
+user before starting the Quadlet target for the first time:
 
 ```bash
 sudo -iu kravhantering
@@ -300,7 +300,7 @@ du -sh "$SQLSERVER_VOLUME_PATH"
 exit
 ```
 
-The bundled Compose files keep bind mounts read-only. Because the stack runs as
+The bundled Quadlet units keep bind mounts read-only. Because the stack runs as
 the rootless `kravhantering` user and the mounted files are root-owned under
 `/opt` and `/etc`, apply SELinux labels as an administrator instead of relying
 on Podman `:Z` relabeling at container start.
@@ -393,7 +393,8 @@ sudo tar -xzf "kravhantering-production-deploy-${VERSION}.tar.gz" \
   -C "/opt/kravhantering/releases/${VERSION}" \
   --strip-components=1
 sudo chcon -R -t container_file_t \
-  "/opt/kravhantering/releases/${VERSION}/nginx"
+  "/opt/kravhantering/releases/${VERSION}/nginx" \
+  "/opt/kravhantering/releases/${VERSION}/api-docs"
 ```
 
 ### Activate the Release
@@ -749,7 +750,7 @@ and the TLS certificate SAN:
 PUBLIC_HOSTNAME=kravhantering.example.internal
 ```
 
-`PUBLIC_HOSTNAME` is used by the single-node Compose file as an nginx network
+`PUBLIC_HOSTNAME` is used by the single-node Quadlet unit as an nginx network
 alias so containers can resolve the browser-facing issuer URL internally.
 
 Set `NGINX_RESOLVER` to the Podman DNS resolver that nginx should use for
@@ -766,14 +767,15 @@ NGINX_RESOLVER=10.89.0.1
 The shown value is the common rootless Podman resolver, not a fixed release
 requirement. nginx uses it to re-resolve upstream container names after
 `app-runtime` or Keycloak restarts, instead of keeping a stale container IP.
-The resolver can change when the internal Compose network is renamed,
-recreated or assigned another subnet. Before starting nginx, run the resolver
+The resolver can change when the internal Quadlet network is recreated or
+assigned another subnet. Before starting nginx, run the resolver
 check below and update `NGINX_RESOLVER` in
 `/etc/kravhantering/release.env` to the printed resolver IP if it differs.
 
-SQL Server is only available internally on the `kravhantering-internal`
-Podman network. Connect to it as `sqlserver:1433` from `app-runtime`,
-`db-job` or temporary administration containers attached to that network.
+SQL Server is only available internally on the
+`kravhantering-single-node_kravhantering-internal` Podman network. Connect to
+it as `sqlserver:1433` from `app-runtime`, `db-job` or temporary
+administration containers attached to that network.
 
 ### `/etc/kravhantering/sqlserver.env`
 
@@ -1206,8 +1208,8 @@ generated demo users, adopts same-username users into the demo set and preserves
 unrelated users:
 
 The `STACK_NETWORK` variable is for temporary `podman run` containers that
-need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
-compose` attaches the long-running services to the network automatically. The
+need internal service-name DNS such as `keycloak` or `sqlserver`. Quadlet
+attaches the long-running services to the network automatically. The
 `*_CONTAINER_FILE` paths below exist inside the temporary container, not on the
 host.
 
@@ -1218,14 +1220,29 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-internal
+STACK_NETWORK="$(
+  bin/kravhantering-quadlet.sh print-network --topology single-node
+)"
+NETWORK_UNIT=kravhantering-single-node-network.service
 DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
 DEMO_USERS_CONTAINER_FILE=/tmp/demo-users.not-for-production.json
 SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
 SCRIPT_CONTAINER_FILE=/tmp/keycloak-demo-users.mjs
 
-podman network exists "$STACK_NETWORK" || \
-  podman network create "$STACK_NETWORK"
+if ! systemctl --user cat "$NETWORK_UNIT" >/dev/null; then
+  echo "Required Quadlet network unit is missing: $NETWORK_UNIT" >&2
+  exit 1
+fi
+if ! systemctl --user is-active --quiet "$NETWORK_UNIT"; then
+  systemctl --user start "$NETWORK_UNIT" || {
+    echo "Could not start Quadlet network unit: $NETWORK_UNIT" >&2
+    exit 1
+  }
+fi
+if ! podman network exists "$STACK_NETWORK"; then
+  echo "Quadlet network is unavailable after starting $NETWORK_UNIT" >&2
+  exit 1
+fi
 
 podman run --rm --pull=never --network "$STACK_NETWORK" \
   --entrypoint node --user 0:0 \
@@ -1295,44 +1312,34 @@ sudo chmod 0644 /etc/kravhantering/tls/ca.crt
 sudo chcon -R -t container_file_t /etc/kravhantering/tls
 
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml restart app-runtime
+systemctl --user restart kravhantering-app-runtime.service
 
 exit
 ```
 
 ## Start the Single-Node Stack
 
-Start SQL Server and Keycloak first:
+Install the Quadlet files, reload the user systemd manager, and start SQL
+Server and Keycloak first:
 
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-set -a
-. /etc/kravhantering/release.env
-set +a
-STACK_NETWORK=kravhantering-internal
-
-podman network exists "$STACK_NETWORK" || \
-  podman network create "$STACK_NETWORK"
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml up -d sqlserver keycloak
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml logs --tail=100 sqlserver
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml logs --tail=100 keycloak
+bin/kravhantering-quadlet.sh install --topology single-node
+systemctl --user daemon-reload
+systemctl --user start kravhantering-sqlserver.service
+systemctl --user start kravhantering-keycloak.service
+journalctl --user-unit kravhantering-sqlserver.service -n 100 --no-pager
+journalctl --user-unit kravhantering-keycloak.service -n 100 --no-pager
 
 exit
 ```
 
 The `STACK_NETWORK` variable is for temporary `podman run` containers that
-need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
-compose` attaches the long-running services to the network automatically.
+need internal service-name DNS such as `keycloak` or `sqlserver`. Resolve the
+stable Quadlet network name through the helper.
 
-Confirm the nginx resolver from inside the same Compose network:
+Confirm the nginx resolver from inside the same Quadlet network:
 
 ```bash
 sudo -iu kravhantering
@@ -1341,7 +1348,9 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-internal
+STACK_NETWORK="$(
+  bin/kravhantering-quadlet.sh print-network --topology single-node
+)"
 
 RESOLVER_IP="$(
   podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
@@ -1367,7 +1376,7 @@ sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
 Validate that SQL Server accepts the bootstrap admin connection before
 creating the application database and logins. Because SQL Server is not
 published on a host port, run this check from a temporary `db-job` container on
-the `kravhantering-internal` network:
+the Quadlet network:
 
 ```bash
 sudo -iu kravhantering
@@ -1377,7 +1386,9 @@ set -a
 . /etc/kravhantering/db-job.env
 set +a
 
-STACK_NETWORK=kravhantering-internal
+STACK_NETWORK="$(
+  bin/kravhantering-quadlet.sh print-network --topology single-node
+)"
 
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
@@ -1399,7 +1410,9 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-internal
+STACK_NETWORK="$(
+  bin/kravhantering-quadlet.sh print-network --topology single-node
+)"
 EVIDENCE_DIR="/var/tmp/kravhantering-deploy-${VERSION}-evidence"
 mkdir -p "$EVIDENCE_DIR"
 
@@ -1444,7 +1457,9 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-internal
+STACK_NETWORK="$(
+  bin/kravhantering-quadlet.sh print-network --topology single-node
+)"
 DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
 
 podman pull "$DEMO_SEED_IMAGE_REF"
@@ -1460,61 +1475,22 @@ code. Demo seed files are not included in the production deployment bundle; use
 the separate optional image only for this explicit disposable-environment
 command.
 
-Optional, release test and demo only: switch the app runtime to the internal
-Kong route and start the test support overlay with the single-node stack. The
-overlay adds Kong, `hsa-person-lookup-adapter` and `hsa-directory-mock` on
-`kravhantering-internal` without publishing host ports. Use it only with
-`single-node-demo` and only after setting and verifying `KONG_IMAGE_REF`,
-`HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` from
-[Optional Test Support Image Refs](#optional-test-support-image-refs).
+The production deployment bundle does not include the release-smoke Compose
+overlay. Run test-support services only through the separate local or CI smoke
+workflow; they are not part of the RHEL production topology.
 
-```bash
-lookup_url="http://kong:8000/hsa/person-records/lookup"
-sudo sed -i \
-  "s#^HSA_PERSON_LOOKUP_URL=.*#HSA_PERSON_LOOKUP_URL=${lookup_url}#" \
-  /etc/kravhantering/app.env
-```
-
-Start the demo/test stack with both Compose files:
+Reinstall the Quadlet files after correcting `NGINX_RESOLVER`, then enable and
+start the long-running-service target:
 
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml \
-  -f compose/single-node-demo.compose.yml up -d
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml \
-  -f compose/single-node-demo.compose.yml logs --tail=100 kong
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml \
-  -f compose/single-node-demo.compose.yml logs --tail=100 hsa-person-lookup-adapter
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml \
-  -f compose/single-node-demo.compose.yml logs --tail=100 hsa-directory-mock
-
-exit
-```
-
-Use the normal single-node start command below for production.
-
-Start the long-running services:
-
-```bash
-sudo -iu kravhantering
-cd /opt/kravhantering/current
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml up -d
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml logs --tail=100 sqlserver
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml logs --tail=100 keycloak
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml logs --tail=100 app-runtime
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml logs --tail=100 nginx
+bin/kravhantering-quadlet.sh install --topology single-node
+systemctl --user daemon-reload
+systemctl --user enable --now kravhantering-single-node.target
+systemctl --user status kravhantering-single-node.target --no-pager
+journalctl --user-unit kravhantering-app-runtime.service -n 100 --no-pager
+journalctl --user-unit kravhantering-nginx.service -n 100 --no-pager
 
 exit
 ```
@@ -1527,10 +1503,7 @@ account, verifies read/write/search access, and creates and removes a file:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml exec -T app-runtime node <<'NODE'
+podman exec -i kravhantering-app-runtime node <<'NODE'
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -1576,17 +1549,14 @@ create/write/remove check, but capacity planning remains an operator check.
 The full start command reads the corrected value from
 `/etc/kravhantering/release.env`.
 
-The Compose file intentionally contains only long-running services. The
-database jobs are release operations run with `podman run --rm` against the
-Compose network in the order shown. This keeps normal operations simple:
+Quadlet manages only long-running services. Database jobs remain explicit
+release operations run with `podman run --rm` against the printed Quadlet
+network. Normal full-stack control uses the target:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml up -d
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml down
+systemctl --user start kravhantering-single-node.target
+systemctl --user stop kravhantering-single-node.target
 
 exit
 ```
@@ -1623,16 +1593,14 @@ curl --insecure --fail --silent --show-error \
 
 ## Operate Individual Services
 
-Run day-2 service control as the rootless service user from the active release
-directory:
+Run day-2 service control as the rootless service user. Use the target for the
+whole topology and generated services for focused maintenance:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/single-node.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" ps
+systemctl --user status kravhantering-single-node.target --no-pager
+systemctl --user status kravhantering-app-runtime.service --no-pager
+systemctl --user status kravhantering-nginx.service --no-pager
 
 exit
 ```
@@ -1642,31 +1610,24 @@ reload mounted files or reconnect to dependencies:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/single-node.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" restart app-runtime
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" restart nginx
+systemctl --user restart kravhantering-app-runtime.service
+systemctl --user restart kravhantering-nginx.service
 
 exit
 ```
 
 Use `restart` for cases such as replacing `ca.crt` for `app-runtime` or
-reloading nginx after replacing the mounted TLS certificate files. Use
-`up -d --force-recreate SERVICE` instead when an env file, image ref, bind
-mount, or Compose definition changed and the container must be recreated:
+reloading nginx after replacing the mounted TLS certificate files. When an
+env file, image ref, bind mount, or template value changes, reinstall the
+topology before restarting the affected service:
 
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-COMPOSE_FILE=compose/single-node.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d --force-recreate app-runtime
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d --force-recreate nginx
+bin/kravhantering-quadlet.sh install --topology single-node
+systemctl --user daemon-reload
+systemctl --user restart kravhantering-app-runtime.service
+systemctl --user restart kravhantering-nginx.service
 
 exit
 ```
@@ -1675,13 +1636,8 @@ Take down and bring up one service without stopping the whole stack:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/single-node.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" stop nginx
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d nginx
+systemctl --user stop kravhantering-nginx.service
+systemctl --user start kravhantering-nginx.service
 
 exit
 ```
@@ -1691,13 +1647,9 @@ recreate `app-runtime`:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/single-node.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" stop nginx app-runtime
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d app-runtime nginx
+systemctl --user stop kravhantering-nginx.service
+systemctl --user restart kravhantering-app-runtime.service
+systemctl --user start kravhantering-nginx.service
 
 exit
 ```
@@ -1709,13 +1661,8 @@ service is healthy again:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/single-node.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" restart keycloak
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" restart sqlserver
+systemctl --user restart kravhantering-keycloak.service
+systemctl --user restart kravhantering-sqlserver.service
 
 exit
 ```
@@ -1727,46 +1674,21 @@ restarting Keycloak is not a general realm update mechanism; use the Keycloak
 admin API or console for running realm changes unless release notes say
 otherwise.
 
-Stop and remove all long-running containers only for full-stack maintenance:
+Stop and start the target for full-stack maintenance:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/single-node.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" down
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d
+systemctl --user stop kravhantering-single-node.target
+systemctl --user start kravhantering-single-node.target
 
 exit
 ```
 
-Do not use `podman compose down -v` in production unless the approved procedure
-explicitly calls for deleting the named SQL Server and Keycloak data volumes.
+The helper's `remove` operation removes unit files but never named volumes.
+Delete `kravhantering-sqlserver-data` or `kravhantering-keycloak-data` only
+through an explicitly approved destructive uninstall or restore procedure.
 The `db-job` image is not a long-running service; run database jobs with the
 documented `podman run --rm` commands.
-
-## Optional User Systemd Wrapper
-
-Manual `podman compose` is the primary operational workflow. If the site wants
-user-systemd autostart, copy the template:
-
-```bash
-sudo -iu kravhantering
-mkdir -p ~/.config/systemd/user
-SERVICE_TEMPLATE=/opt/kravhantering/current/systemd
-SERVICE_TEMPLATE="${SERVICE_TEMPLATE}/kravhantering-single-node-compose.service"
-cp "$SERVICE_TEMPLATE" \
-  ~/.config/systemd/user/kravhantering-compose.service
-systemctl --user daemon-reload
-systemctl --user enable --now kravhantering-compose.service
-
-exit
-```
-
-The service runs `podman compose up -d` with `compose/single-node.compose.yml`
-from `/opt/kravhantering/current` and `podman compose down` on stop.
 
 ## Upgrade And Rollback
 
@@ -1793,19 +1715,17 @@ uninstall procedure.
 
   ```bash
   sudo -iu kravhantering
-  cd /opt/kravhantering/current
-  podman compose --env-file /etc/kravhantering/release.env \
-    -f compose/single-node.compose.yml restart app-runtime
+  systemctl --user restart kravhantering-app-runtime.service
 
   exit
   ```
 
   `app-runtime` and `nginx` are stateless in this topology and are normally the
-  safest services to restart. `sqlserver` and `keycloak` are stateful and should
-  be restarted only during a planned maintenance window. Do not run
-  `podman compose down -v`, `podman volume rm`, or `podman system prune --volumes`
-  unless an approved restore or uninstall procedure explicitly calls for
-  deleting the SQL Server and Keycloak named data volumes.
+  safest services to restart. `sqlserver` and `keycloak` are stateful and
+  should be restarted only during a planned maintenance window. Do not run
+  `podman volume rm` or `podman system prune --volumes` unless an approved
+  restore or uninstall procedure explicitly calls for deleting the SQL Server
+  and Keycloak named data volumes.
 - If `/api/ready` returns `503` and app logs show
   `NODE_EXTRA_CA_CERTS` permission denied, fix the CA trust mount:
 
@@ -1814,9 +1734,7 @@ uninstall procedure.
   sudo chcon -R -t container_file_t /etc/kravhantering/tls
 
   sudo -iu kravhantering
-  cd /opt/kravhantering/current
-  podman compose --env-file /etc/kravhantering/release.env \
-    -f compose/single-node.compose.yml restart app-runtime
+  systemctl --user restart kravhantering-app-runtime.service
 
   exit
   ```
@@ -1838,7 +1756,7 @@ uninstall procedure.
   )"
 
   running_secret="$(
-    podman inspect kravhantering-single-node_app-runtime_1 \
+    podman inspect kravhantering-app-runtime \
       --format '{{range .Config.Env}}{{println .}}{{end}}' |
       sed -n 's/^AUTH_OIDC_CLIENT_SECRET=//p' |
       head -n1
@@ -1855,25 +1773,16 @@ uninstall procedure.
   exit
   ```
 
-  If the values differ, recreate `app-runtime` so Podman reloads the changed
-  env file. `podman compose restart app-runtime` restarts the existing
-  container and does not reload changed `env_file` values. Because nginx
-  depends on `app-runtime`, stop and remove those two stateless containers,
-  then bring them back. Do not remove `sqlserver`, `keycloak`, or any named
-  volumes:
+  If the values differ, restart the Quadlet service so Podman recreates
+  `app-runtime` with the changed environment file. Stop nginx first, then
+  restart both stateless services. Do not remove `sqlserver`, `keycloak`, or
+  any named volumes:
 
   ```bash
   sudo -iu kravhantering
-  cd /opt/kravhantering/current
-
-  podman compose --env-file /etc/kravhantering/release.env \
-    -f compose/single-node.compose.yml stop nginx app-runtime
-
-  podman rm kravhantering-single-node_nginx_1
-  podman rm kravhantering-single-node_app-runtime_1
-
-  podman compose --env-file /etc/kravhantering/release.env \
-    -f compose/single-node.compose.yml up -d app-runtime nginx
+  systemctl --user stop kravhantering-nginx.service
+  systemctl --user restart kravhantering-app-runtime.service
+  systemctl --user start kravhantering-nginx.service
 
   podman ps --format '{{.Names}}\t{{.Status}}' |
     grep -E 'app-runtime|nginx|keycloak|sqlserver'
@@ -1933,7 +1842,7 @@ The local root CA private key can issue certificates for internal names. Keep
 it on the lab host only, restrict it to root, and delete it when the temporary
 environment is retired.
 
-The generated files match the single-node production Compose mounts:
+The generated files match the single-node production Quadlet mounts:
 
 - `/etc/kravhantering/tls/fullchain.pem`
 - `/etc/kravhantering/tls/privkey.pem`

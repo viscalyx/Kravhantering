@@ -2,8 +2,13 @@
 
 Produktionsdriftsättning ska kunna göras från en GitHub Release och ett internt
 artefaktregister utan att klona kodbasen på målhosten med RHEL. Vi publicerar
-ett versionssatt driftsättningspaket med Compose-filer,
-konfigurationsmallar, driftsättningsguide, release-metadata och checksummor.
+ett versionssatt driftsättningspaket med Podman Quadlet-mallar, en
+renderings- och installationshjälpare, konfigurationsmallar,
+driftsättningsguide, release-metadata och checksummor. Hjälparen läser
+`/etc/kravhantering/release.env` och installerar konkreta rootless-resurser i
+serviceanvändarens `~/.config/containers/systemd/` samt topologimålet i
+`~/.config/systemd/user/`. Compose används fortsatt för lokal utveckling och
+release-smoke, men ingår inte i nya produktionspaket.
 Varje publicerat driftsättningspaket har också en identitetsbunden attestering
 med ett projekthanterat predikat samt en nedladdningsbar Sigstore-bunt och
 aktuellt betrott rotmaterial. Attesteringsverifiering är ett obligatoriskt

@@ -82,19 +82,12 @@ place.
    browser traffic reaches the app nodes. Keep administrative access to the
    hosts available for the remaining steps.
 
-4. Stop `nginx` and `app-runtime` on every app node.
-   Run this as the rootless service user from the current release directory.
-   Use the TLS Compose file unless this node is behind a TLS-terminating load
-   balancer:
+4. Stop `nginx` and `app-runtime` on every app node by stopping the current
+   Quadlet target:
 
    ```bash
    sudo -iu kravhantering
-   cd /opt/kravhantering/current
-   COMPOSE_FILE=compose/app-node-tls.compose.yml
-   # COMPOSE_FILE=compose/app-node-http.compose.yml
-
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f "$COMPOSE_FILE" stop nginx app-runtime
+   systemctl --user stop kravhantering-app-node.target
    exit
    ```
 
@@ -115,7 +108,8 @@ place.
      -C "/opt/kravhantering/releases/${VERSION}" \
      --strip-components=1
    sudo chcon -R -t container_file_t \
-     "/opt/kravhantering/releases/${VERSION}/nginx"
+     "/opt/kravhantering/releases/${VERSION}/nginx" \
+     "/opt/kravhantering/releases/${VERSION}/api-docs"
    ```
 
    Review the release manifest and lock file before switching `current`:
@@ -328,25 +322,18 @@ place.
    exit
    ```
 
-9. Start each app node from the new release.
-   Start `app-runtime` first:
+9. Start each app node from the new release. Select the same TLS or HTTP
+   topology used on this host, install its concrete Quadlet files, and start
+   `app-runtime` first:
 
    ```bash
    sudo -iu kravhantering
    cd /opt/kravhantering/current
-   set -a
-   . /etc/kravhantering/release.env
-   set +a
-
-   COMPOSE_FILE=compose/app-node-tls.compose.yml
-   # COMPOSE_FILE=compose/app-node-http.compose.yml
-   APP_NODE_NETWORK=kravhantering-internal
-
-   podman network exists "$APP_NODE_NETWORK" || \
-     podman network create "$APP_NODE_NETWORK"
-
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f "$COMPOSE_FILE" up -d app-runtime
+   TOPOLOGY=app-node-tls
+   # TOPOLOGY=app-node-http
+   bin/kravhantering-quadlet.sh install --topology "$TOPOLOGY"
+   systemctl --user daemon-reload
+   systemctl --user start kravhantering-app-runtime.service
 
    exit
    ```
@@ -360,12 +347,7 @@ place.
 
    ```bash
    sudo -iu kravhantering
-   cd /opt/kravhantering/current
-   COMPOSE_FILE=compose/app-node-tls.compose.yml
-   # COMPOSE_FILE=compose/app-node-http.compose.yml
-
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f "$COMPOSE_FILE" exec -T app-runtime node <<'NODE'
+   podman exec -i kravhantering-app-runtime node <<'NODE'
    const fs = require('node:fs')
    const os = require('node:os')
    const path = require('node:path')
@@ -409,10 +391,8 @@ place.
    the create/write/remove check, but capacity planning remains an operator
    check.
 
-   Confirm the nginx resolver from inside the same Compose network. The
-   `APP_NODE_NETWORK` variable is for this temporary `podman run` container;
-   `podman compose` attaches long-running services to the network
-   automatically.
+   Confirm the nginx resolver from inside the same Quadlet network. Resolve
+   its stable Podman name through the helper.
 
    ```bash
    sudo -iu kravhantering
@@ -421,7 +401,11 @@ place.
    . /etc/kravhantering/release.env
    set +a
 
-   APP_NODE_NETWORK=kravhantering-internal
+   TOPOLOGY=app-node-tls
+   # TOPOLOGY=app-node-http
+   APP_NODE_NETWORK="$(
+     bin/kravhantering-quadlet.sh print-network --topology "$TOPOLOGY"
+   )"
 
    RESOLVER_IP="$(
      podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
@@ -444,23 +428,19 @@ place.
      /etc/kravhantering/release.env
    ```
 
-   The resolver can change when the internal Compose network is renamed,
-   recreated or assigned another subnet.
+   The resolver can change when the internal Quadlet network is recreated or
+   assigned another subnet.
 
    Start the full app node:
 
    ```bash
    sudo -iu kravhantering
    cd /opt/kravhantering/current
-   set -a
-   . /etc/kravhantering/release.env
-   set +a
-
-   COMPOSE_FILE=compose/app-node-tls.compose.yml
-   # COMPOSE_FILE=compose/app-node-http.compose.yml
-
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f "$COMPOSE_FILE" up -d
+   TOPOLOGY=app-node-tls
+   # TOPOLOGY=app-node-http
+   bin/kravhantering-quadlet.sh install --topology "$TOPOLOGY"
+   systemctl --user daemon-reload
+   systemctl --user enable --now kravhantering-app-node.target
 
    exit
    ```
@@ -492,26 +472,8 @@ place.
       https://kravhantering.example.internal/api/health
     ```
 
-    After the upgraded app node passes health checks, remove the obsolete
-    pre-rename network if it is still present and no containers use it:
-
-    ```bash
-    sudo -iu kravhantering
-    OBSOLETE_NETWORK=kravhantering-app-node_kravhantering-internal
-    if podman network exists "$OBSOLETE_NETWORK"; then
-      ATTACHED_CONTAINERS="$(
-        podman network inspect "$OBSOLETE_NETWORK" \
-          --format '{{len .Containers}}'
-      )"
-      if [ "${ATTACHED_CONTAINERS:-0}" -eq 0 ]; then
-        podman network rm "$OBSOLETE_NETWORK"
-      else
-        printf 'Skipping obsolete network %s; %s containers still use it.\n' \
-          "$OBSOLETE_NETWORK" "$ATTACHED_CONTAINERS"
-      fi
-    fi
-    exit
-    ```
+    The Quadlet network retains the established
+    `kravhantering-app-node_kravhantering-internal` name.
 
 11. Re-enable traffic.
     Put the app nodes back into the load balancer, reverse proxy or firewall
@@ -526,33 +488,32 @@ place.
 
 ## Rollback
 
-Rollback after a migration requires restoring the database backup or restore
-point taken before the upgrade. Use the captured migration evidence to confirm
-which database head was observed before and after the failed upgrade. The
-supported sequence is:
+Choose the rollback boundary that matches the failed step:
 
-Do not run an individual migration down path against the restricted runtime
-identity. Use the full database restore point so schema, data, permissions, and
-role memberships return as one database state.
+- Before the current Quadlet target is stopped, no runtime migration has
+  occurred. Leave the current release active and end the change window.
+- After the previous deployment is stopped but before database migration,
+  remove the new Quadlet units and start the previous release without a
+  database restore.
+- After any target-release database migration starts, restore the tested
+  pre-upgrade database restore point before starting the previous release.
+  Do not run individual migration down paths. Restore schema, data,
+  permissions, and role memberships as one database state.
 
-1. Disable traffic to all app nodes.
+For either rollback that follows a failed Quadlet start:
 
-2. Stop `nginx` and `app-runtime` on every app node.
+1. Disable traffic and stop the new target on every app node.
 
    ```bash
    sudo -iu kravhantering
-   cd /opt/kravhantering/current
-   COMPOSE_FILE=compose/app-node-tls.compose.yml
-   # COMPOSE_FILE=compose/app-node-http.compose.yml
-
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f "$COMPOSE_FILE" stop nginx app-runtime
+   systemctl --user disable --now kravhantering-app-node.target
    exit
    ```
 
-3. Restore SQL Server to the pre-upgrade restore point.
+2. If migration started, restore SQL Server to the recorded pre-upgrade
+   restore point. Use the captured migration evidence to confirm the boundary.
 
-4. Point `/opt/kravhantering/current` back to the previous release directory
+3. Point `/opt/kravhantering/current` back to the previous release directory
    on every app node.
 
    ```bash
@@ -563,25 +524,26 @@ role memberships return as one database state.
    readlink -f /opt/kravhantering/current
    ```
 
-5. Restore the previous `/etc/kravhantering/release.env` image refs on every
+4. Restore the previous `/etc/kravhantering/release.env` image refs on every
    app node.
    Use the release evidence record or rerun the image-reference update with
    the previous release's `container-stack.lock.json`.
 
-6. Start the previous app nodes.
+5. Install the previous release's Quadlet topology, reload systemd, and start
+   the previous app nodes:
 
    ```bash
    sudo -iu kravhantering
    cd /opt/kravhantering/current
-   COMPOSE_FILE=compose/app-node-tls.compose.yml
-   # COMPOSE_FILE=compose/app-node-http.compose.yml
-
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f "$COMPOSE_FILE" up -d
+   TOPOLOGY=app-node-tls
+   # TOPOLOGY=app-node-http
+   bin/kravhantering-quadlet.sh install --topology "$TOPOLOGY"
+   systemctl --user daemon-reload
+   systemctl --user enable --now kravhantering-app-node.target
    exit
    ```
 
-7. Verify `/api/health`, `/api/ready` and sign-in before enabling traffic.
+6. Verify `/api/health`, `/api/ready` and sign-in before enabling traffic.
 
 Do not rely on app-only image rollback after schema migration unless the
 specific release notes explicitly say it is supported.
@@ -644,20 +606,13 @@ must sign in again after the app runtime restarts.
    Avoid commands that place secrets in shell history. Keep file ownership and
    mode restricted to the deployment convention from the first-install guide.
 
-5. Recreate `app-runtime` on every app node.
-   Recreate nginx as well so older bundles do not keep a stale upstream
-   address after the app container changes:
+5. Restart `app-runtime` on every app node. Restart nginx as well so the edge
+   does not keep a stale upstream address after the app container changes:
 
    ```bash
    sudo -iu kravhantering
-   cd /opt/kravhantering/current
-   COMPOSE_FILE=compose/app-node-tls.compose.yml
-   # COMPOSE_FILE=compose/app-node-http.compose.yml
-
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f "$COMPOSE_FILE" up -d --force-recreate app-runtime
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f "$COMPOSE_FILE" up -d --force-recreate nginx
+   systemctl --user restart kravhantering-app-runtime.service
+   systemctl --user restart kravhantering-nginx.service
 
    exit
    ```

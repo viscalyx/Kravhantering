@@ -23,7 +23,7 @@ export const HSA_PERSON_LOOKUP_ADAPTER_PACKAGE =
 export const DEFAULT_RELEASE_OUTPUT_DIR = 'tmp/container-release-artifacts'
 export const DEFAULT_OPERATOR_UPGRADE_NOTES_PATH =
   'docs/operations/operator-upgrade-notes.md'
-export const DEPLOYMENT_BUNDLE_SCHEMA_VERSION = 2
+export const DEPLOYMENT_BUNDLE_SCHEMA_VERSION = 3
 export const APP_RUNTIME_DESCRIPTION =
   'Runnable Next.js application image for the production web runtime.'
 export const DB_JOB_DESCRIPTION =
@@ -132,13 +132,12 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
     target:
       'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
   },
-  { source: 'containers/production/compose', target: 'compose' },
   { source: 'containers/production/env', target: 'env' },
   { source: 'containers/production/keycloak', target: 'keycloak' },
   { source: 'containers/kong/kong.yml', target: 'kong/kong.yml' },
   { source: 'containers/production/nginx', target: 'nginx' },
   { source: 'containers/production/sqlserver', target: 'sqlserver' },
-  { source: 'containers/production/systemd', target: 'systemd' },
+  { source: 'containers/production/quadlet', target: 'quadlet' },
   { source: 'containers/production/bin', target: 'bin' },
   {
     source: 'openapi/hsa-person-lookup.yaml',
@@ -913,13 +912,7 @@ export function createDeploymentBundleManifest({
           },
         }
       : {}),
-    supportedTopologies: [
-      'app-node-external-sql-external-idp',
-      'single-node-internal-sql-internal-keycloak',
-      ...(testSupportServices || hsaIntegrationSupportServices
-        ? ['single-node-demo']
-        : []),
-    ],
+    supportedTopologies: ['app-node-tls', 'app-node-http', 'single-node'],
     files: [...files].sort(),
   }
 }
@@ -1626,6 +1619,8 @@ export function renderReleaseNotes(
     ...renderTestSupportContainerImagesSection(plan, metadata),
     '',
     '## Production Deployment Bundle',
+    '',
+    'Production deployment uses rootless Podman Quadlet; the release-smoke harness remains Compose-based.',
     '',
     `- ${codeLink(deploymentArchive, releaseAssetDownloadUrl(plan, deploymentArchive))}`,
     `- ${codeLink(deploymentChecksum, releaseAssetDownloadUrl(plan, deploymentChecksum))}`,

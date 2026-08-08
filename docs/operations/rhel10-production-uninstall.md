@@ -86,32 +86,23 @@ administration procedure.
 
 ## Stop The App Node
 
-Disable the optional user-systemd wrapper if it was installed:
-
-```bash
-sudo -iu kravhantering
-systemctl --user disable --now kravhantering-compose.service
-exit
-```
-
-Stop and remove the rootless app-node containers. Use the TLS Compose file
-unless this node is behind a TLS-terminating load balancer:
+Capture systemd and Podman status before stopping the target, then remove the
+managed Quadlet files. This does not delete named volumes:
 
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-# COMPOSE_FILE=compose/app-node-http.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" down
-
-for NETWORK in kravhantering-internal \
-  kravhantering-app-node_kravhantering-internal; do
-  if podman network exists "$NETWORK"; then
-    podman network rm "$NETWORK"
-  fi
-done
+TOPOLOGY=app-node-tls
+# TOPOLOGY=app-node-http
+systemctl --user status kravhantering-app-node.target --no-pager \
+  > /var/tmp/kravhantering-systemd-status.txt 2>&1 || true
+podman ps --all --format '{{.Names}}\t{{.Status}}\t{{.Image}}' \
+  > /var/tmp/kravhantering-podman-status.txt
+systemctl --user disable --now kravhantering-app-node.target
+bin/kravhantering-quadlet.sh remove --topology "$TOPOLOGY"
+systemctl --user daemon-reload
+NETWORK="$(bin/kravhantering-quadlet.sh print-network --topology "$TOPOLOGY")"
+podman network exists "$NETWORK" && podman network rm "$NETWORK"
 
 exit
 ```
@@ -141,19 +132,12 @@ printf '%s\n' "$CURRENT_RELEASE" \
   | sudo tee "$STAGING/raw/current-release.txt" >/dev/null
 ```
 
-Capture operational command output:
+Copy the status captured before shutdown:
 
 ```bash
-sudo -iu kravhantering bash -lc '
-  cd /opt/kravhantering/current
-  COMPOSE_FILE=compose/app-node-tls.compose.yml
-  podman compose --env-file /etc/kravhantering/release.env \
-    -f "$COMPOSE_FILE" ps
-' | sudo tee "$STAGING/raw/podman-compose-ps.txt" >/dev/null
+sudo cp /var/tmp/kravhantering-systemd-status.txt "$STAGING/raw/"
+sudo cp /var/tmp/kravhantering-podman-status.txt "$STAGING/raw/"
 ```
-
-If this node used the HTTP Compose file, rerun the capture with
-`COMPOSE_FILE=compose/app-node-http.compose.yml`.
 
 ## Cull Long-Term Evidence
 
@@ -175,7 +159,8 @@ grep -E '^(NEXT_PUBLIC_SITE_URL|AUTH_OIDC_ISSUER_URL|AUTH_OIDC_CLIENT_ID)=' \
   | sudo tee "$STAGING/evidence/sanitized-app-summary.env" >/dev/null
 
 sudo cp "$STAGING/raw/current-release.txt" "$STAGING/evidence/"
-sudo cp "$STAGING/raw/podman-compose-ps.txt" "$STAGING/evidence/"
+sudo cp "$STAGING/raw/kravhantering-systemd-status.txt" "$STAGING/evidence/"
+sudo cp "$STAGING/raw/kravhantering-podman-status.txt" "$STAGING/evidence/"
 ```
 
 Review the evidence directory before archiving. Do not include raw env files,
@@ -196,6 +181,8 @@ temporary staging area:
 
 ```bash
 sudo rm -rf "$STAGING"
+sudo rm -f /var/tmp/kravhantering-systemd-status.txt
+sudo rm -f /var/tmp/kravhantering-podman-status.txt
 ```
 
 ## Remove Host Install

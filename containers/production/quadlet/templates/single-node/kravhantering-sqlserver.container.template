@@ -1,0 +1,18 @@
+[Unit]
+Description=Kravhantering SQL Server
+PartOf=kravhantering-single-node.target
+Requires=kravhantering-single-node-network.service kravhantering-sqlserver-data-volume.service
+After=kravhantering-single-node-network.service kravhantering-sqlserver-data-volume.service
+
+[Container]
+ContainerName=kravhantering-sqlserver
+Image=@@SQLSERVER_IMAGE_REF@@
+EnvironmentFile=/etc/kravhantering/sqlserver.env
+Network=kravhantering-single-node.network
+NetworkAlias=sqlserver
+Volume=kravhantering-sqlserver-data.volume:/var/opt/mssql
+
+[Service]
+Restart=always
+TimeoutStartSec=180
+TimeoutStopSec=90

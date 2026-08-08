@@ -1,0 +1,5 @@
+[Unit]
+Description=Kravhantering Keycloak data volume
+
+[Volume]
+VolumeName=kravhantering-keycloak-data

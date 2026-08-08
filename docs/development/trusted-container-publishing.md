@@ -330,8 +330,9 @@ Each trusted run also writes runtime evidence:
   and outcome.
 - `promotion-result.json` records each verified non-promoted staging identity
   and final GHCR tag with its manifest digest after successful validation.
-- `container-stack.compose.yml` is the generated Compose file that the smoke
-  test started.
+- `container-stack.compose.yml` is the generated Compose file used by the local
+  release-smoke harness. It is smoke evidence, not a production
+  deployment asset.
 - `hashes.sha256` contains checksums for saved runtime evidence.
 - `public/build.json` contains the app version, commit SHA, build time, image
   tag and expected database schema migration `name` embedded in the tested app
@@ -342,8 +343,8 @@ Each trusted run also writes runtime evidence:
 
 The workflow uploads these artifact groups:
 
-- `container-release-runtime-*` for Compose, stack lock, status, build
-  metadata and hashes.
+- `container-release-runtime-*` for release-smoke Compose evidence, stack
+  lock, status, build metadata and hashes.
 - `container-release-metadata-*` for GitVersion, release metadata, release
   notes, Grype database status, complete vulnerability reports, the policy
   decision and SBOM files, including optional demonstration image SBOMs.
@@ -358,7 +359,14 @@ tag-style `release.env` image refs against locked image IDs, optionally verify
 tag-and-digest refs against locked manifest digests, export already present
 verified local images into a transport bundle, and load and tag that bundle on
 a disconnected host.
-The bundled nginx Compose files mount `api-docs/` and serve the HSA-person
+It also includes `bin/kravhantering-quadlet.sh` and topology-specific Quadlet
+templates for `app-node-tls`, `app-node-http`, and `single-node`. The helper
+renders release environment values into rootless `.container`, `.network`,
+`.volume`, and `.target` files. Production operators control topology targets
+and individual services with `systemctl --user`; database jobs remain explicit
+`podman run --rm` release operations.
+
+The bundled nginx Quadlet templates mount `api-docs/` and serve the HSA-person
 lookup Swagger UI at `/api-docs/hsa-person-lookup/` on the same public origin
 as the application. They also mount the shared
 `nginx/templates/api-docs-security-headers.conf` contract. Release smoke

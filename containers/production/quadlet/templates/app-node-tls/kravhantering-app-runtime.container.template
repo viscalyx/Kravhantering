@@ -1,0 +1,17 @@
+[Unit]
+Description=Kravhantering application runtime
+PartOf=kravhantering-app-node.target
+Requires=kravhantering-app-node-network.service
+After=kravhantering-app-node-network.service
+
+[Container]
+ContainerName=kravhantering-app-runtime
+Image=@@APP_RUNTIME_IMAGE_REF@@
+EnvironmentFile=/etc/kravhantering/app.env
+Network=kravhantering-app-node.network
+NetworkAlias=app-runtime
+
+[Service]
+Restart=always
+TimeoutStartSec=180
+TimeoutStopSec=90

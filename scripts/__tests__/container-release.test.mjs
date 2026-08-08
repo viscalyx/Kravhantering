@@ -852,6 +852,12 @@ describe('trusted container release helpers', () => {
       appRuntime: 'sha256:app-runtime-image',
       dbJob: 'sha256:db-job-image',
     })
+    expect(manifest.schemaVersion).toBe(3)
+    expect(manifest.supportedTopologies).toEqual([
+      'app-node-tls',
+      'app-node-http',
+      'single-node',
+    ])
     expect(manifest.supportedTopologies).not.toContain('single-node-demo')
     expect(manifest.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/u)
   })
@@ -1487,6 +1493,9 @@ describe('trusted container release helpers', () => {
     expect(notes.indexOf('## Test Support Container Images')).toBeLessThan(
       notes.indexOf('## Production Deployment Bundle'),
     )
+    expect(notes).toContain(
+      'Production deployment uses rootless Podman Quadlet; the release-smoke harness remains Compose-based.',
+    )
     expect(notes).not.toContain('## Checksums')
     expect(notes).not.toContain('abc123  container-stack.lock.json')
     expect(notes).not.toContain('## Verification')
@@ -1629,6 +1638,51 @@ describe('trusted container release helpers', () => {
       'sudo chmod 0644 /etc/kravhantering/tls/ca.crt',
     )
     expect(singleNodeGuide).not.toMatch(/-m 0640 ca\.crt/u)
+  })
+
+  it('labels every release-owned nginx bind mount for SELinux', () => {
+    const guides = [
+      'docs/operations/rhel10-production-deploy.md',
+      'docs/operations/rhel10-production-disconnected.md',
+      'docs/operations/rhel10-production-upgrade.md',
+      'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
+      'docs/operations/rhel10-production-single-node-self-contained-disconnected.md',
+      'docs/operations/rhel10-production-single-node-self-contained-upgrade.md',
+    ]
+
+    for (const guide of guides) {
+      const content = readWorkspaceFile(guide)
+      const labelingCommands = content.match(
+        /sudo chcon -R -t container_file_t \\\n(?:\s+"\/opt\/kravhantering\/releases\/\$\{VERSION\}\/[^\n]+"(?: \\\n)?)+/gu,
+      )
+      const nginxLabelingCommands = (labelingCommands ?? []).filter(command =>
+        command.includes('/nginx'),
+      )
+
+      expect(labelingCommands).not.toBeNull()
+      expect(nginxLabelingCommands.length).toBeGreaterThan(0)
+      for (const command of nginxLabelingCommands) {
+        expect(command).toContain(
+          ['"/opt/kravhantering/releases/', '$', '{VERSION}/api-docs"'].join(
+            '',
+          ),
+        )
+      }
+    }
+  })
+
+  it('requires the single-node Quadlet network for temporary containers', () => {
+    const singleNodeGuide = readWorkspaceFile(
+      'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
+    )
+
+    expect(singleNodeGuide).toContain(
+      'NETWORK_UNIT=kravhantering-single-node-network.service',
+    )
+    expect(singleNodeGuide).toContain('systemctl --user start "$NETWORK_UNIT"')
+    expect(singleNodeGuide).not.toContain(
+      'podman network create "$STACK_NETWORK"',
+    )
   })
 
   it('ships idempotent least-privilege SQL runtime-role provisioning without broad app roles', () => {
@@ -1894,9 +1948,16 @@ describe('trusted container release helpers', () => {
           /\b(?:CODEX_HOME|COPILOT_GITHUB_TOKEN|GH_TOKEN|SSH_AUTH_SOCK)\b/u,
         )
       }
-      expect(result.files).toContain('compose/app-node-tls.compose.yml')
-      expect(result.files).toContain('compose/single-node.compose.yml')
-      expect(result.files).toContain('compose/single-node-demo.compose.yml')
+      expect(result.files).toContain(
+        'quadlet/templates/app-node-tls/kravhantering-nginx.container.template',
+      )
+      expect(result.files).toContain(
+        'quadlet/templates/app-node-http/kravhantering-app-node.target.template',
+      )
+      expect(result.files).toContain(
+        'quadlet/templates/single-node/kravhantering-sqlserver-data.volume.template',
+      )
+      expect(result.files.some(file => file.startsWith('compose/'))).toBe(false)
       expect(result.files).toContain(
         'docs/operations/rhel10-production-deploy.md',
       )
@@ -1924,6 +1985,19 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain(
         'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
       )
+      for (const deploymentGuide of [
+        'docs/operations/rhel10-production-deploy.md',
+        'docs/operations/rhel10-production-single-node-self-contained-deploy.md',
+      ]) {
+        const guide = fs.readFileSync(
+          path.join(result.bundleRoot, deploymentGuide),
+          'utf8',
+        )
+        expect(guide).toContain('kravhantering-quadlet.sh install --topology')
+        expect(guide).toContain('systemctl --user enable --now')
+        expect(guide).not.toContain('podman-compose')
+        expect(guide).not.toContain('podman compose')
+      }
       expect(result.files).toContain(
         'docs/images/infographic-production-access-and-service-flow.png',
       )
@@ -1964,9 +2038,7 @@ describe('trusted container release helpers', () => {
       )
       expect(result.files).toContain('kong/kong.yml')
       expect(result.files).toContain('bin/kravhantering-images.sh')
-      expect(result.files).toContain(
-        'systemd/kravhantering-single-node-compose.service',
-      )
+      expect(result.files).toContain('bin/kravhantering-quadlet.sh')
       expect(result.files).toContain(
         'keycloak/realm-kravhantering-production.template.json',
       )
@@ -1986,34 +2058,24 @@ describe('trusted container release helpers', () => {
         'nginx/templates/single-node-tls.conf.template',
       )
       expect(result.files).not.toContain('nginx/conf.d/single-node-tls.conf')
-      for (const file of [
-        'compose/app-node-http.compose.yml',
-        'compose/app-node-tls.compose.yml',
-        'compose/single-node.compose.yml',
-      ]) {
-        const compose = fs.readFileSync(
-          path.join(result.bundleRoot, file),
-          'utf8',
+      const quadletTemplates = result.files
+        .filter(file => file.startsWith('quadlet/templates/'))
+        .map(file =>
+          fs.readFileSync(path.join(result.bundleRoot, file), 'utf8'),
         )
-        expect(compose).not.toContain(':ro,Z')
-        expect(compose).not.toMatch(/-\s+\.\/nginx\//)
-        expect(compose).toContain('NGINX_RESOLVER')
-        expect(compose).toContain('name: kravhantering-internal')
-        expect(compose).toContain(
-          '../api-docs:/usr/share/nginx/html/api-docs:ro',
-        )
-        expect(compose).toContain(
-          '../nginx/templates/api-docs-security-headers.conf:/etc/nginx/snippets/api-docs-security-headers.conf:ro',
-        )
-        expect(compose).not.toContain(
-          'kravhantering-app-node_kravhantering-internal',
-        )
-        expect(compose).not.toContain(
-          'kravhantering-single-node_kravhantering-internal',
-        )
-        expect(compose).toContain('/etc/nginx/templates/default.conf.template')
-        expect(compose).not.toContain('/etc/nginx/conf.d/default.conf')
-      }
+        .join('\n')
+      expect(quadletTemplates).toContain('NGINX_RESOLVER')
+      expect(quadletTemplates).toContain('NetworkName=kravhantering-app-node')
+      expect(quadletTemplates).toContain(
+        'NetworkName=kravhantering-single-node',
+      )
+      expect(quadletTemplates).toContain(
+        '/api-docs:/usr/share/nginx/html/api-docs:ro',
+      )
+      expect(quadletTemplates).not.toContain('DB_JOB_IMAGE_REF')
+      expect(quadletTemplates).not.toContain('db-bootstrap')
+      expect(quadletTemplates).not.toContain('db-migrate')
+      expect(quadletTemplates).not.toContain('db-seed-required')
       for (const file of [
         'nginx/templates/app-node-http.conf.template',
         'nginx/templates/app-node-tls.conf.template',
@@ -2026,35 +2088,6 @@ describe('trusted container release helpers', () => {
         expect(template).toContain('location /api-docs/')
         expect(template).toContain('/usr/share/nginx/html')
       }
-      const singleNodeDemoCompose = fs.readFileSync(
-        path.join(result.bundleRoot, 'compose/single-node-demo.compose.yml'),
-        'utf8',
-      )
-      expect(singleNodeDemoCompose).toContain('${KONG_IMAGE_REF:?set')
-      expect(singleNodeDemoCompose).toContain(
-        '${HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF:?set',
-      )
-      expect(singleNodeDemoCompose).toContain(
-        '${HSA_DIRECTORY_MOCK_IMAGE_REF:?set',
-      )
-      expect(singleNodeDemoCompose).not.toContain('\n    ports:')
-      const singleNodeCompose = fs.readFileSync(
-        path.join(result.bundleRoot, 'compose/single-node.compose.yml'),
-        'utf8',
-      )
-      expect(singleNodeCompose).not.toContain(
-        'condition: service_completed_successfully',
-      )
-      expect(singleNodeCompose).not.toContain('\n  db-bootstrap:')
-      expect(singleNodeCompose).not.toContain('\n  db-migrate:')
-      expect(singleNodeCompose).not.toContain('\n  db-seed-required:')
-      expect(singleNodeCompose).not.toContain('SQLSERVER_HOST_PORT')
-      const sqlServerBlock =
-        singleNodeCompose.match(
-          /\n {2}sqlserver:[\s\S]*?\n\n {2}keycloak:/,
-        )?.[0] ?? ''
-      expect(sqlServerBlock).not.toContain('\n    ports:')
-      expect(sqlServerBlock).toContain('kravhantering-internal')
       const releaseEnv = fs.readFileSync(
         path.join(result.bundleRoot, 'env/release.env.template'),
         'utf8',
@@ -2087,15 +2120,9 @@ describe('trusted container release helpers', () => {
       expect(demoUsers.users[0]?.attributes).toHaveProperty(
         'kravhanteringDemoUser',
       )
-      const appRuntimeBlock =
-        singleNodeCompose.match(
-          /\n {2}app-runtime:[\s\S]*?\n\n {2}nginx:/,
-        )?.[0] ?? ''
-      expect(appRuntimeBlock).toContain('sqlserver:')
-      expect(appRuntimeBlock).not.toContain('db-seed-required')
       expect(result.manifest).toMatchObject({
         commitSha: plan.commitSha,
-        schemaVersion: 2,
+        schemaVersion: 3,
         database: {
           expectedSchemaVersion: getExpectedDatabaseSchemaVersion(),
         },
@@ -2108,11 +2135,7 @@ describe('trusted container release helpers', () => {
           appRuntime: 'sha256:app-image',
           nginx: 'sha256:nginx-image',
         },
-        supportedTopologies: [
-          'app-node-external-sql-external-idp',
-          'single-node-internal-sql-internal-keycloak',
-          'single-node-demo',
-        ],
+        supportedTopologies: ['app-node-tls', 'app-node-http', 'single-node'],
         testSupportImages: {
           hsaDirectoryMock:
             'ghcr.io/viscalyx/kravhantering-hsa-directory-mock@sha256:hsa-manifest',

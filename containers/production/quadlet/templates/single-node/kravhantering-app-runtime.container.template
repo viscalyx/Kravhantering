@@ -1,0 +1,19 @@
+[Unit]
+Description=Kravhantering application runtime
+PartOf=kravhantering-single-node.target
+Requires=kravhantering-single-node-network.service kravhantering-sqlserver.service kravhantering-keycloak.service
+After=kravhantering-single-node-network.service kravhantering-sqlserver.service kravhantering-keycloak.service
+
+[Container]
+ContainerName=kravhantering-app-runtime
+Image=@@APP_RUNTIME_IMAGE_REF@@
+EnvironmentFile=/etc/kravhantering/app.env
+Environment=NODE_EXTRA_CA_CERTS=/run/kravhantering/tls/ca.crt
+Network=kravhantering-single-node.network
+NetworkAlias=app-runtime
+Volume=/etc/kravhantering/tls/ca.crt:/run/kravhantering/tls/ca.crt:ro
+
+[Service]
+Restart=always
+TimeoutStartSec=180
+TimeoutStopSec=90

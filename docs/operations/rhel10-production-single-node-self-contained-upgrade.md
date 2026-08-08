@@ -4,8 +4,8 @@
 
 This guide describes how to upgrade and roll back the self-contained
 single-node RHEL 10 production topology from released artifacts, with nginx,
-`app-runtime`, SQL Server, Keycloak and `db-job` in one rootless Podman Compose
-network.
+`app-runtime`, SQL Server and Keycloak as rootless Podman Quadlet services.
+`db-job` remains an explicit release operation on the same network.
 
 For a first install, use
 [rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md).
@@ -82,16 +82,16 @@ configuration change.
    browser traffic reaches `PUBLIC_HOSTNAME`. Keep administrative access to the
    host available for the remaining steps.
 
-4. Stop `nginx` and `app-runtime`; leave SQL Server and Keycloak running.
-   Run this as the rootless service user from the current release directory:
+4. Stop the current stack by stopping its Quadlet target:
 
    ```bash
    sudo -iu kravhantering
-   cd /opt/kravhantering/current
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f compose/single-node.compose.yml stop nginx app-runtime
+   systemctl --user stop kravhantering-single-node.target
    exit
    ```
+
+   Stopping the target preserves the named `kravhantering-sqlserver-data` and
+   `kravhantering-keycloak-data` volumes.
 
 5. Install the new release bundle under `/opt/kravhantering/releases`.
    Extract the verified bundle and label the release-owned nginx files:
@@ -109,7 +109,8 @@ configuration change.
      -C "/opt/kravhantering/releases/${VERSION}" \
      --strip-components=1
    sudo chcon -R -t container_file_t \
-     "/opt/kravhantering/releases/${VERSION}/nginx"
+     "/opt/kravhantering/releases/${VERSION}/nginx" \
+     "/opt/kravhantering/releases/${VERSION}/api-docs"
    ```
 
    Review the release manifest and lock file before switching `current`:
@@ -308,7 +309,7 @@ configuration change.
    ```
 
 8. Run the database jobs once from the new release.
-   First ensure SQL Server, Keycloak and the Compose network exist for the new
+   First ensure SQL Server, Keycloak and the Quadlet network exist for the new
    release, then run the job sequence with the new `DB_JOB_IMAGE_REF`. Use the
    DBA-pre-provisioned production sequence by default, matching
    [rhel10-production-upgrade.md](./rhel10-production-upgrade.md), and skip
@@ -330,21 +331,17 @@ configuration change.
    set -a
    . /etc/kravhantering/release.env
    set +a
-   STACK_NETWORK=kravhantering-internal
-
-   podman network exists "$STACK_NETWORK" || \
-     podman network create "$STACK_NETWORK"
-
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f compose/single-node.compose.yml up -d sqlserver keycloak
+   bin/kravhantering-quadlet.sh install --topology single-node
+   systemctl --user daemon-reload
+   systemctl --user start kravhantering-sqlserver.service
+   systemctl --user start kravhantering-keycloak.service
 
    exit
    ```
 
-   Confirm the nginx resolver from inside the same Compose network. The
+   Confirm the nginx resolver from inside the same Quadlet network. The
    `STACK_NETWORK` variable is for temporary `podman run` containers that need
-   internal service-name DNS such as `keycloak` or `sqlserver`. `podman
-   compose` attaches the long-running services to the network automatically.
+   internal service-name DNS such as `keycloak` or `sqlserver`.
 
    ```bash
    sudo -iu kravhantering
@@ -353,7 +350,9 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-internal
+   STACK_NETWORK="$(
+     bin/kravhantering-quadlet.sh print-network --topology single-node
+   )"
 
    RESOLVER_IP="$(
      podman run --rm --network "$STACK_NETWORK" --entrypoint /bin/sh \
@@ -376,8 +375,8 @@ configuration change.
      /etc/kravhantering/release.env
    ```
 
-   The resolver can change when the internal Compose network is renamed,
-   recreated or assigned another subnet.
+   The resolver can change when the internal Quadlet network is recreated or
+   assigned another subnet.
 
    Run the database jobs. Review the target release's Operator Upgrade Notes
    before running `db-job migrate`:
@@ -399,7 +398,9 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-internal
+   STACK_NETWORK="$(
+     bin/kravhantering-quadlet.sh print-network --topology single-node
+   )"
    RUN_BOOTSTRAP=false
    EVIDENCE_DIR="/var/tmp/kravhantering-upgrade-${VERSION}-evidence"
    mkdir -p "$EVIDENCE_DIR"
@@ -478,7 +479,9 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-internal
+   STACK_NETWORK="$(
+     bin/kravhantering-quadlet.sh print-network --topology single-node
+   )"
    DEMO_USERS_FILE=$PWD/keycloak/demo-users.not-for-production.json
    DEMO_USERS_CONTAINER_FILE=/tmp/demo-users.not-for-production.json
    SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
@@ -511,7 +514,9 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
-   STACK_NETWORK=kravhantering-internal
+   STACK_NETWORK="$(
+     bin/kravhantering-quadlet.sh print-network --topology single-node
+   )"
    DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
 
    podman pull "$DEMO_SEED_IMAGE_REF"
@@ -522,15 +527,15 @@ configuration change.
    exit
    ```
 
-9. Start the stack from the new release.
-   Start all long-running services with the same Compose command used after a
-   first install:
+9. Start the stack from the new release. Reinstall the units after correcting
+   `NGINX_RESOLVER`, then enable and start the target:
 
    ```bash
    sudo -iu kravhantering
    cd /opt/kravhantering/current
-   podman compose --env-file /etc/kravhantering/release.env \
-     -f compose/single-node.compose.yml up -d
+   bin/kravhantering-quadlet.sh install --topology single-node
+   systemctl --user daemon-reload
+   systemctl --user enable --now kravhantering-single-node.target
 
    exit
    ```
@@ -563,26 +568,9 @@ configuration change.
       https://kravhantering.example.internal/api/health
     ```
 
-    After the upgraded stack passes health checks, remove the obsolete
-    pre-rename network if it is still present and no containers use it:
-
-    ```bash
-    sudo -iu kravhantering
-    OBSOLETE_NETWORK=kravhantering-single-node_kravhantering-internal
-    if podman network exists "$OBSOLETE_NETWORK"; then
-      ATTACHED_CONTAINERS="$(
-        podman network inspect "$OBSOLETE_NETWORK" \
-          --format '{{len .Containers}}'
-      )"
-      if [ "${ATTACHED_CONTAINERS:-0}" -eq 0 ]; then
-        podman network rm "$OBSOLETE_NETWORK"
-      else
-        printf 'Skipping obsolete network %s; %s containers still use it.\n' \
-          "$OBSOLETE_NETWORK" "$ATTACHED_CONTAINERS"
-      fi
-    fi
-    exit
-    ```
+    The Quadlet network retains the established
+    `kravhantering-single-node_kravhantering-internal` name, and the SQL Server
+    and Keycloak volumes retain their established names.
 
 11. Re-enable traffic.
     Put the host back into the load balancer, reverse proxy or firewall
@@ -597,22 +585,31 @@ configuration change.
 
 ## Rollback
 
-Rollback after a migration requires restoring the SQL Server backup, volume
-snapshot or restore point taken before the upgrade. Use the captured migration
-evidence to confirm which database head was observed before and after the
-failed upgrade. The supported sequence is:
+Choose the rollback boundary that matches the failed step:
 
-Do not run an individual migration down path against the restricted runtime
-identity. Use the full database restore point so schema, data, permissions, and
-role memberships return as one database state.
+- Before the current Quadlet target is stopped, no runtime migration has
+  occurred. Leave the current release active and end the change window.
+- After the previous deployment is stopped but before database migration,
+  remove the new Quadlet units and start the previous release without a
+  database restore.
+- After any target-release database migration starts, restore the tested SQL
+  Server backup, volume snapshot, or restore point before starting the
+  previous release. Do not run individual migration down paths. Restore
+  schema, data, permissions, and role memberships as one database state.
 
-1. Disable traffic.
-2. Stop `nginx` and `app-runtime`.
-3. Restore SQL Server to the pre-upgrade restore point.
-4. Point `/opt/kravhantering/current` back to the previous release directory.
-5. Restore the previous `/etc/kravhantering/release.env` image refs.
-6. Start the stack with `podman compose up -d` from the previous release.
-7. Verify `/api/health`, `/api/ready` and sign-in before enabling traffic.
+For either rollback that follows a failed Quadlet start:
+
+1. Disable traffic and run
+   `systemctl --user disable --now kravhantering-single-node.target`.
+2. If migration started, stop SQL Server and restore the recorded pre-upgrade
+   database or named-volume snapshot. Use the migration evidence to confirm
+   the boundary.
+3. Point `/opt/kravhantering/current` back to the previous release directory
+   and restore its `/etc/kravhantering/release.env` image refs.
+4. Install the previous release's `single-node` topology, run
+   `systemctl --user daemon-reload`, and enable
+   `kravhantering-single-node.target`.
+5. Verify `/api/health`, `/api/ready` and sign-in before enabling traffic.
 
 Do not rely on app-only image rollback after schema migration unless the
 specific release notes explicitly say it is supported.

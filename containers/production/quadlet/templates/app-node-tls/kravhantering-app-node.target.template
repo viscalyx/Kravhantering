@@ -1,0 +1,7 @@
+[Unit]
+Description=Kravhantering app-node services
+Requires=kravhantering-app-runtime.service kravhantering-nginx.service
+After=kravhantering-app-runtime.service kravhantering-nginx.service
+
+[Install]
+WantedBy=default.target

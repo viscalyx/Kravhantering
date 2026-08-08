@@ -4,8 +4,8 @@
 
 This guide describes how to uninstall the self-contained single-node RHEL 10
 topology after a first install, with nginx, `app-runtime`, SQL Server,
-Keycloak and `db-job` in one rootless Podman Compose network. It is not an
-upgrade rollback guide. For release rollback after migration, use
+Keycloak and explicit `db-job` operations in one rootless Quadlet network. It
+is not an upgrade rollback guide. For release rollback after migration, use
 [rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).
 
 The default flow copies host-side material to an administrator-controlled
@@ -44,8 +44,8 @@ from the release notes or your internal mirror. This deletes all non-required
 application rows, preserving only required system and lookup seed data:
 
 The `STACK_NETWORK` variable is for temporary `podman run` containers that
-need internal service-name DNS such as `keycloak` or `sqlserver`. `podman
-compose` attaches the long-running services to the network automatically.
+need internal service-name DNS such as `keycloak` or `sqlserver`. Resolve the
+stable Quadlet network name through the helper.
 
 ```bash
 sudo -iu kravhantering
@@ -54,7 +54,9 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-internal
+STACK_NETWORK="$(
+  bin/kravhantering-quadlet.sh print-network --topology single-node
+)"
 DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
 
 podman pull "$DEMO_SEED_IMAGE_REF"
@@ -75,7 +77,9 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-STACK_NETWORK=kravhantering-internal
+STACK_NETWORK="$(
+  bin/kravhantering-quadlet.sh print-network --topology single-node
+)"
 SCRIPT_FILE=$PWD/scripts/keycloak-demo-users.mjs
 SCRIPT_TARGET=/workspace/scripts/keycloak-demo-users.mjs
 
@@ -94,35 +98,30 @@ exit
 
 ## Stop The Stack
 
-Disable the optional user-systemd wrapper if it was installed:
-
-```bash
-sudo -iu kravhantering
-systemctl --user disable --now kravhantering-compose.service
-exit
-```
-
-Stop and remove the rootless long-running containers without deleting volumes:
+Capture systemd and Podman status before shutdown, then stop the target and
+remove only the managed Quadlet files:
 
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f compose/single-node.compose.yml down
-
-for NETWORK in kravhantering-internal \
-  kravhantering-single-node_kravhantering-internal; do
-  if podman network exists "$NETWORK"; then
-    podman network rm "$NETWORK"
-  fi
-done
+systemctl --user status kravhantering-single-node.target --no-pager \
+  > /var/tmp/kravhantering-systemd-status.txt 2>&1 || true
+podman ps --all --format '{{.Names}}\t{{.Status}}\t{{.Image}}' \
+  > /var/tmp/kravhantering-podman-status.txt
+systemctl --user disable --now kravhantering-single-node.target
+bin/kravhantering-quadlet.sh remove --topology single-node
+systemctl --user daemon-reload
+NETWORK="$(
+  bin/kravhantering-quadlet.sh print-network --topology single-node
+)"
+podman network exists "$NETWORK" && podman network rm "$NETWORK"
 
 exit
 ```
 
-Do not run `podman compose down -v` here. The rootless volume files are copied
-from the service user's home in the staging step below.
+The helper never deletes `kravhantering-sqlserver-data` or
+`kravhantering-keycloak-data`. The rootless volume files are copied from the
+service user's home in the staging step below.
 
 ## Stage Raw Material
 
@@ -152,7 +151,8 @@ printf '%s\n' "$CURRENT_RELEASE" \
   | sudo tee "$STAGING/raw/current-release.txt" >/dev/null
 ```
 
-Capture the known rootless volume mount points and final service status:
+Capture the known rootless volume mount points and copy the pre-shutdown
+service status:
 
 ```bash
 sudo -iu kravhantering bash -lc '
@@ -162,11 +162,8 @@ sudo -iu kravhantering bash -lc '
     --format "{{ .Mountpoint }}"
 ' | sudo tee "$STAGING/raw/podman-volume-mountpoints.txt" >/dev/null
 
-sudo -iu kravhantering bash -lc '
-  cd /opt/kravhantering/current
-  podman compose --env-file /etc/kravhantering/release.env \
-    -f compose/single-node.compose.yml ps
-' | sudo tee "$STAGING/raw/podman-compose-ps.txt" >/dev/null
+sudo cp /var/tmp/kravhantering-systemd-status.txt "$STAGING/raw/"
+sudo cp /var/tmp/kravhantering-podman-status.txt "$STAGING/raw/"
 ```
 
 ## Cull Long-Term Evidence
@@ -193,7 +190,8 @@ grep -E '^(NEXT_PUBLIC_SITE_URL|AUTH_OIDC_ISSUER_URL|AUTH_OIDC_CLIENT_ID)=' \
 
 sudo cp "$STAGING/raw/current-release.txt" "$STAGING/evidence/"
 sudo cp "$STAGING/raw/podman-volume-mountpoints.txt" "$STAGING/evidence/"
-sudo cp "$STAGING/raw/podman-compose-ps.txt" "$STAGING/evidence/"
+sudo cp "$STAGING/raw/kravhantering-systemd-status.txt" "$STAGING/evidence/"
+sudo cp "$STAGING/raw/kravhantering-podman-status.txt" "$STAGING/evidence/"
 ```
 
 Review the evidence directory before archiving. Do not include raw env files,
@@ -214,6 +212,8 @@ temporary staging area:
 
 ```bash
 sudo rm -rf "$STAGING"
+sudo rm -f /var/tmp/kravhantering-systemd-status.txt
+sudo rm -f /var/tmp/kravhantering-podman-status.txt
 ```
 
 ## Remove Host Install

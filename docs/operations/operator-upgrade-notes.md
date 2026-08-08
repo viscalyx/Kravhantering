@@ -169,7 +169,7 @@ migration rollback will not restore them.
 ### Topology changes
 
 Production deployments must provide an approved HSA person lookup REST facade
-outside `app-runtime` and the standard production Compose files. That facade
+outside `app-runtime` and the standard production Quadlet topology. That facade
 must integrate with an approved person catalog, and can be an existing
 integration platform or a production-approved Kong route backed by
 `hsa-person-lookup-adapter`.

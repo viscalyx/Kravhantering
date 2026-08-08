@@ -42,10 +42,10 @@ devcontainer `app` service can reach the internal Admin API. Use
 or `npm run devcontainer:hsa-mock:verify` to post the REST person lookup
 through Kong at `http://kong:8000/hsa/person-records/lookup`.
 
-The release bundle also includes a test-only `single-node-demo` overlay that
-starts Kong, the adapter, and the HSA directory mock on the internal
-single-node network. That overlay supports release-smoke and disposable demo
-environments. It is not the required production HSA integration path.
+The local and release-smoke harnesses include a test-only `single-node-demo`
+overlay that starts Kong, the adapter, and the HSA directory mock on their
+internal Compose network. That overlay is not part of the production
+deployment bundle or the required production HSA integration path.
 
 ![HSA person lookup integration paths](../images/hsa-person-lookup_integration-paths.png)
 

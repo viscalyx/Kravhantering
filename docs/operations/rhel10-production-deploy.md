@@ -9,7 +9,7 @@ does not need a repository clone, development dependencies, GitHub Actions
 checkout, Playwright assets, or source-tree helper scripts.
 
 This enterprise production topology is an app node that runs nginx and
-`app-runtime` in a rootless Podman Compose network. SQL Server and the IdP are
+`app-runtime` as rootless Podman Quadlet services. SQL Server and the IdP are
 external services.
 
 For the self-contained single-node topology where SQL Server and Keycloak run
@@ -78,7 +78,7 @@ verification.
 | `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` | Optional mTLS client credential paths in `app.env` | Blank | Set both when the approved external integration platform requires app-to-platform mTLS. |
 | `HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_TLS_SERVER_NAME` | Optional mTLS trust and TLS server-name values in `app.env` | Blank | Set only when the approved mTLS route requires a custom CA bundle or TLS server name. |
 | `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL`, `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, `HSA_PERSON_LOOKUP_OAUTH_SCOPE`, `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` | Optional OAuth2 client credentials values in `app.env` | Blank | Set client id, client secret and either token URL or issuer URL when the approved external integration platform requires OAuth2. Add scope or audience only when the token endpoint requires them. |
-| `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Compose network. It can change when the internal network is renamed, recreated or assigned another subnet. |
+| `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Quadlet network. It can change when the internal network is recreated or assigned another subnet. |
 | `SQLSERVER_HOST` | `DB_HOST` in `app.env` and `db-job.env` | No default | Always obtain the external SQL Server host from the DBA. |
 | `DB_PORT` | `DB_PORT` in `app.env` and `db-job.env` | `1433` | Plan only if the DBA provides another SQL Server port. |
 | `DB_NAME` | `DB_NAME` in `app.env` and `db-job.env` | `kravhantering` | Plan only if the DBA provisions a different database name. |
@@ -153,9 +153,9 @@ Install the host as a minimal RHEL 10 server. Recommended baseline:
 Install runtime packages as an administrator:
 
 ```bash
-sudo dnf install -y podman podman-compose tar gzip coreutils jq
+sudo dnf install -y podman tar gzip coreutils jq
 podman --version
-PODMAN_COMPOSE_PROVIDER=podman-compose podman compose version
+podman info --format '{{.Host.CgroupsVersion}}'
 ```
 
 Create a dedicated rootless service user:
@@ -176,7 +176,7 @@ sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/tls
 Release files live under `/opt/kravhantering/releases/<version>`.
 Site-specific environment files and certificates live under `/etc/kravhantering`.
 
-The bundled Compose files keep bind mounts read-only. Because the stack runs as
+The bundled Quadlet units keep bind mounts read-only. Because the stack runs as
 the rootless `kravhantering` user and the mounted files are root-owned under
 `/opt` and `/etc`, apply SELinux labels as an administrator instead of relying
 on Podman `:Z` relabeling at container start.
@@ -269,7 +269,8 @@ sudo tar -xzf "kravhantering-production-deploy-${VERSION}.tar.gz" \
   -C "/opt/kravhantering/releases/${VERSION}" \
   --strip-components=1
 sudo chcon -R -t container_file_t \
-  "/opt/kravhantering/releases/${VERSION}/nginx"
+  "/opt/kravhantering/releases/${VERSION}/nginx" \
+  "/opt/kravhantering/releases/${VERSION}/api-docs"
 ```
 
 ### Activate the Release
@@ -474,7 +475,7 @@ NGINX_RESOLVER=10.89.0.1
 The shown value is the common rootless Podman resolver, not a fixed release
 requirement. nginx uses it to re-resolve the upstream app container after
 `app-runtime` restarts, instead of keeping a stale container IP. The resolver
-can change when the internal Compose network is renamed, recreated or assigned
+can change when the internal Quadlet network is recreated or assigned
 another subnet. Before starting nginx, run the resolver check below and update
 `NGINX_RESOLVER` in `/etc/kravhantering/release.env` to the printed resolver
 IP if it differs.
@@ -726,11 +727,10 @@ contains public test credentials.
 ## App Node Start Alternatives
 
 Choose exactly one app-node exposure alternative for the host. Use that
-alternative's Compose file in the shared `app-runtime` and resolver steps
-below, then continue with the matching nginx start instructions. Both app-node
-Compose files use the same `kravhantering-internal` network, so the resolver
-check is shared. Use only one active app-node Compose stack per host with this
-default network name.
+alternative's Quadlet topology in the shared `app-runtime` and resolver steps
+below. Both alternatives preserve the Podman network name
+`kravhantering-app-node_kravhantering-internal`. Do not install both
+alternatives on one host.
 
 Run the common database jobs:
 
@@ -763,25 +763,20 @@ podman run --rm --env-file /etc/kravhantering/db-job.env \
 exit
 ```
 
-Start `app-runtime` first. Pick the Compose file for the alternative this host
-will use:
+Install the Quadlet files and start `app-runtime` first. Select
+`app-node-tls` when this host terminates TLS or `app-node-http` when an
+external load balancer terminates TLS:
 
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-set -a
-. /etc/kravhantering/release.env
-set +a
+TOPOLOGY=app-node-tls
+# TOPOLOGY=app-node-http
 
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-# COMPOSE_FILE=compose/app-node-http.compose.yml
-APP_NODE_NETWORK=kravhantering-internal
-
-podman network exists "$APP_NODE_NETWORK" || \
-  podman network create "$APP_NODE_NETWORK"
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d app-runtime
+bin/kravhantering-quadlet.sh install --topology "$TOPOLOGY"
+systemctl --user daemon-reload
+systemctl --user start kravhantering-app-runtime.service
+systemctl --user status kravhantering-app-runtime.service --no-pager
 
 exit
 ```
@@ -795,12 +790,7 @@ and removes a file:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-# COMPOSE_FILE=compose/app-node-http.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" exec -T app-runtime node <<'NODE'
+podman exec -i kravhantering-app-runtime node <<'NODE'
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -843,9 +833,9 @@ Use the application settings planned for this environment. The built-in
 defaults require 650 MiB before filesystem headroom. `/api/ready` repeats the
 create/write/remove check, but capacity planning remains an operator check.
 
-Confirm the nginx resolver from inside the same Compose network. The
-`APP_NODE_NETWORK` variable is for this temporary `podman run` container;
-`podman compose` attaches long-running services to the network automatically.
+Confirm the nginx resolver from inside the same Quadlet network. Resolve its
+stable Podman name through the helper so explicit release operations use the
+same network as the long-running services.
 
 ```bash
 sudo -iu kravhantering
@@ -854,7 +844,11 @@ set -a
 . /etc/kravhantering/release.env
 set +a
 
-APP_NODE_NETWORK=kravhantering-internal
+TOPOLOGY=app-node-tls
+# TOPOLOGY=app-node-http
+APP_NODE_NETWORK="$(
+  bin/kravhantering-quadlet.sh print-network --topology "$TOPOLOGY"
+)"
 
 RESOLVER_IP="$(
   podman run --rm --network "$APP_NODE_NETWORK" --entrypoint /bin/sh \
@@ -891,15 +885,15 @@ sudo install -o root -g kravhantering -m 0640 privkey.pem \
 sudo chcon -R -t container_file_t /etc/kravhantering/tls
 ```
 
-Start the full TLS app node:
+Render the corrected environment and start the full TLS app node:
 
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d
+bin/kravhantering-quadlet.sh install --topology app-node-tls
+systemctl --user daemon-reload
+systemctl --user enable --now kravhantering-app-node.target
+systemctl --user status kravhantering-app-node.target --no-pager
 
 exit
 ```
@@ -919,15 +913,15 @@ NGINX_HTTP_BIND=127.0.0.1:8080
 Change the value when the load balancer connects over a dedicated private
 network interface, for example `10.10.20.15:8080`.
 
-Start the full HTTP app node:
+Render the corrected environment and start the full HTTP app node:
 
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-http.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d
+bin/kravhantering-quadlet.sh install --topology app-node-http
+systemctl --user daemon-reload
+systemctl --user enable --now kravhantering-app-node.target
+systemctl --user status kravhantering-app-node.target --no-pager
 
 exit
 ```
@@ -970,18 +964,14 @@ curl --insecure --fail --silent --show-error \
 
 ## Operate Individual App-Node Services
 
-Run day-2 service control as the rootless service user from the active release
-directory. Use the TLS Compose file unless this node is behind a
-TLS-terminating load balancer:
+Run day-2 service control as the rootless service user. The target is the
+normal operator surface; the generated services support focused maintenance:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-# COMPOSE_FILE=compose/app-node-http.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" ps
+systemctl --user status kravhantering-app-node.target --no-pager
+systemctl --user status kravhantering-app-runtime.service --no-pager
+systemctl --user status kravhantering-nginx.service --no-pager
 
 exit
 ```
@@ -991,33 +981,25 @@ reload mounted files or reconnect to dependencies:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-# COMPOSE_FILE=compose/app-node-http.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" restart app-runtime
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" restart nginx
+systemctl --user restart kravhantering-app-runtime.service
+systemctl --user restart kravhantering-nginx.service
 
 exit
 ```
 
 Use `restart` for cases such as reloading nginx after replacing mounted TLS
-certificate files. Use `up -d --force-recreate SERVICE` instead when an env
-file, image ref, bind mount, or Compose definition changed and the container
-must be recreated:
+certificate files. When an env file, image ref, bind mount, or template value
+changes, reinstall the topology before restarting the affected service:
 
 ```bash
 sudo -iu kravhantering
 cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-# COMPOSE_FILE=compose/app-node-http.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d --force-recreate app-runtime
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d --force-recreate nginx
+TOPOLOGY=app-node-tls
+# TOPOLOGY=app-node-http
+bin/kravhantering-quadlet.sh install --topology "$TOPOLOGY"
+systemctl --user daemon-reload
+systemctl --user restart kravhantering-app-runtime.service
+systemctl --user restart kravhantering-nginx.service
 
 exit
 ```
@@ -1026,14 +1008,8 @@ Take down and bring up one service without stopping the whole app node:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-# COMPOSE_FILE=compose/app-node-http.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" stop nginx
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d nginx
+systemctl --user stop kravhantering-nginx.service
+systemctl --user start kravhantering-nginx.service
 
 exit
 ```
@@ -1043,58 +1019,25 @@ recreate `app-runtime`:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-# COMPOSE_FILE=compose/app-node-http.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" stop nginx app-runtime
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d app-runtime nginx
+systemctl --user stop kravhantering-nginx.service
+systemctl --user restart kravhantering-app-runtime.service
+systemctl --user start kravhantering-nginx.service
 
 exit
 ```
 
-Stop and remove both app-node containers only for full-node maintenance:
+Stop and start the app-node target for full-node maintenance:
 
 ```bash
 sudo -iu kravhantering
-cd /opt/kravhantering/current
-COMPOSE_FILE=compose/app-node-tls.compose.yml
-# COMPOSE_FILE=compose/app-node-http.compose.yml
-
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" down
-podman compose --env-file /etc/kravhantering/release.env \
-  -f "$COMPOSE_FILE" up -d
+systemctl --user stop kravhantering-app-node.target
+systemctl --user start kravhantering-app-node.target
 
 exit
 ```
 
-Do not use `podman compose down -v` in production unless an approved procedure
-explicitly calls for deleting Compose-managed volumes. The `db-job` image is
-not a long-running service; run database jobs with the documented
-`podman run --rm` commands.
-
-## Optional User Systemd Wrapper
-
-Manual `podman compose` is the primary operational workflow. If the site wants
-user-systemd autostart, copy the template and adjust the Compose file name if
-the HTTP variant is used:
-
-```bash
-sudo -iu kravhantering
-mkdir -p ~/.config/systemd/user
-cp /opt/kravhantering/current/systemd/kravhantering-compose.service \
-  ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now kravhantering-compose.service
-
-exit
-```
-
-The service runs `podman compose up -d` from `/opt/kravhantering/current` and
-`podman compose down` on stop.
+The `db-job` image is not a Quadlet service. Keep migrations, bootstrap and
+required seed as explicit `podman run --rm` release operations.
 
 ## Upgrade And Rollback
 

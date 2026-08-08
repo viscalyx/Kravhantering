@@ -127,9 +127,10 @@ them during shutdown. To avoid colliding with the existing developer SQL
 Server on `1433`, local stack SQL Server binds to `127.0.0.1:15433` in test
 mode and `127.0.0.1:15435` in release-smoke mode by default.
 The generated stack uses the shared internal network name
-`kravhantering-internal`, matching the release/deploy Compose files. Run only
-one active local app-stack test or release-smoke stack at a time with this
-default network.
+`kravhantering-internal`. This Compose network is limited to local and
+release-smoke orchestration; production Quadlet topologies use their own
+stable network names. Run only one active local app-stack test or
+release-smoke stack at a time with this default network.
 
 The local orchestration does the same explicit ordering intended for CI:
 
