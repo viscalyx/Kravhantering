@@ -9,8 +9,9 @@ Vilken informationshierarki, komposition och visuell grammatik gör den fulla
 normala utvecklingsloopen begriplig för en bred mottagargrupp utan att tappa de
 komponentkontrakt som utvecklare samt plattforms- och drifttekniker behöver?
 
-Prototypen är avsiktligt enkel, skrivskyddad och tillfällig. Den provar
-innehållets struktur och läsordning; den är inte en publiceringsfärdig bild.
+Prototypen är skrivskyddad och tillfällig. Den provar en realistisk
+informationsdensitet, innehållets struktur, läsordning, panelindelning och
+visuella grammatik; den är inte en publiceringsfärdig bild.
 
 ## Körning
 
@@ -26,8 +27,11 @@ http://localhost:3000/sv/prototype/topology-independent-infographics?variant=A
 
 Växla mellan:
 
-- A — Orbit: en människa och en loop i centrum.
-- B — Transit: en numrerad linje som växer med berättelsen.
-- C — Fältguide: lager, kontraktskort och tydliga läsfält.
+- A — Numrerad översikt: informationsrika paneler med en redaktionell,
+  referensnära komposition.
+- B — Utvecklarresan: arbetsflödet är ryggrad och varje steg visar aktivitet,
+  komponenter, kontrakt och resultat.
+- C — Arkitekturatlas: komponenter och kontrakt prioriteras för en mer tekniskt
+  exakt läsning.
 
 Prototyprouten returnerar 404 i produktionsbyggen.

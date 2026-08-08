@@ -9,8 +9,10 @@ import {
   CircleDot,
   Code2,
   Database,
+  FileCheck2,
   GitPullRequest,
   KeyRound,
+  LayoutGrid,
   Monitor,
   Network,
   Play,
@@ -26,620 +28,1122 @@ import { usePathname, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 type VariantKey = 'A' | 'B' | 'C'
+type Accent = 'blue' | 'green' | 'amber' | 'violet' | 'slate'
 
 interface VariantDefinition {
   key: VariantKey
   name: string
+  description: string
 }
 
 const variants: VariantDefinition[] = [
-  { key: 'A', name: 'Orbit' },
-  { key: 'B', name: 'Transit' },
-  { key: 'C', name: 'Fältguide' },
+  {
+    key: 'A',
+    name: 'Numrerad översikt',
+    description:
+      'Informationsrika paneler med tydlig läsordning, nära referensbildens redaktionella uttryck.',
+  },
+  {
+    key: 'B',
+    name: 'Utvecklarresan',
+    description:
+      'Arbetsflödet är ryggrad; komponenter och kontrakt förklaras där de används.',
+  },
+  {
+    key: 'C',
+    name: 'Arkitekturatlas',
+    description:
+      'Komponenter och kontrakt står i centrum för en mer tekniskt exakt läsning.',
+  },
 ]
 
 const coreComponents = [
-  { icon: Code2, label: 'Utvecklingsarbetsyta' },
-  { icon: Bot, label: 'AI-agentverktyg' },
-  { icon: Monitor, label: 'Webbläsare' },
-  { icon: ServerCog, label: 'Kravhanteringsruntime' },
-  { icon: Database, label: 'Microsoft SQL Server' },
-  { icon: KeyRound, label: 'OIDC-identitetsleverantör' },
+  {
+    anchor: 'Projektinstruktioner, Node.js och npm',
+    icon: Code2,
+    interface: 'Källkod, filer och kommandon',
+    label: 'Utvecklingsarbetsyta',
+    promise: 'Redigera, starta och kvalitetssäkra',
+  },
+  {
+    anchor: 'Instruktioner, skills och behörigheter',
+    icon: Bot,
+    interface: 'Uppgift, ändringar och verifieringsevidens',
+    label: 'AI-agentverktyg',
+    promise: 'Genomföra uppgiften under mänsklig styrning',
+  },
+  {
+    anchor: 'Applikationens publika adress',
+    icon: Monitor,
+    interface: 'UI och REST via HTTP(S)',
+    label: 'Webbläsare',
+    promise: 'Använda och prova Kravhantering',
+  },
+  {
+    anchor: 'Miljövariabler eller monterade filer',
+    icon: ServerCog,
+    interface: 'UI, REST och MCP-slutpunkt',
+    label: 'Kravhanteringsruntime',
+    promise: 'Köra applikationens funktioner',
+  },
+  {
+    anchor: 'DATABASE_URL',
+    icon: Database,
+    interface: 'SQL Server-anslutning och kompatibelt schema',
+    label: 'Microsoft SQL Server',
+    promise: 'Lagra beständig data',
+  },
+  {
+    anchor: 'AUTH_OIDC_*',
+    icon: KeyRound,
+    interface: 'OIDC discovery, token och JWKS',
+    label: 'OIDC-identitetsleverantör',
+    promise: 'Autentisera användare och klienter',
+  },
 ]
 
-const workflow = ['Utveckla', 'Köra', 'Använda', 'Validera']
+const workflow = [
+  {
+    detail: 'Redigera kod och dokumentation med stöd av AI-agentverktyget.',
+    icon: Code2,
+    label: 'Utveckla',
+  },
+  {
+    detail:
+      'Starta runtime, SQL Server och OIDC-förmåga med rätt konfiguration.',
+    icon: Play,
+    label: 'Köra',
+  },
+  {
+    detail: 'Logga in i webbläsaren och prova funktionen med beständig data.',
+    icon: Monitor,
+    label: 'Använda',
+  },
+  {
+    detail:
+      'Kör kontroller och jämför kod, test och dokumentation mot uppgiften.',
+    icon: ShieldCheck,
+    label: 'Validera',
+  },
+]
+
+const accentClasses: Record<Accent, string> = {
+  amber:
+    'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/35',
+  blue: 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/35',
+  green:
+    'border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/35',
+  slate: 'border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900',
+  violet:
+    'border-violet-300 bg-violet-50 dark:border-violet-700 dark:bg-violet-950/35',
+}
 
 function SlideFrame({
   children,
-  eyebrow,
   index,
+  subtitle,
   title,
 }: {
   children: ReactNode
-  eyebrow: string
   index: number
+  subtitle: string
   title: string
 }) {
   return (
     <section
       aria-label={`Bild ${index}: ${title}`}
-      className="relative aspect-video w-full overflow-hidden rounded-3xl border border-slate-300 bg-slate-50 text-slate-950 shadow-xl dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
+      className="relative aspect-video w-full overflow-hidden rounded-3xl border border-slate-300 bg-slate-100 text-slate-950 shadow-xl dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50"
     >
-      <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-6 px-[4%] pt-[3%]">
-        <div>
-          <p className="text-[clamp(0.55rem,1vw,0.85rem)] font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">
-            {eyebrow}
+      <header className="absolute inset-x-0 top-0 flex h-[16%] items-center gap-[2.5%] bg-linear-to-r from-[#073d7a] to-[#0759a8] px-[3%] text-white">
+        <div className="flex size-[clamp(2.4rem,5vw,4.6rem)] shrink-0 items-center justify-center rounded-full bg-white text-[#07509a] shadow-md">
+          <LayoutGrid aria-hidden="true" className="size-[55%]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[clamp(0.48rem,0.82vw,0.72rem)] font-bold uppercase tracking-[0.18em] text-blue-100">
+            Topologioberoende utvecklingsmiljö · bild {index} av 3
           </p>
-          <h2 className="mt-1 max-w-[38ch] text-[clamp(1.05rem,2.4vw,2rem)] font-black leading-tight tracking-tight">
+          <h2 className="truncate text-[clamp(1.05rem,2.25vw,2rem)] font-black leading-tight tracking-tight">
             {title}
           </h2>
+          <p className="truncate text-[clamp(0.48rem,0.85vw,0.75rem)] font-semibold text-blue-100">
+            {subtitle}
+          </p>
         </div>
-        <span className="flex size-[clamp(2rem,4vw,3.5rem)] shrink-0 items-center justify-center rounded-full border-2 border-current text-[clamp(0.8rem,1.8vw,1.4rem)] font-black">
+        <span className="flex size-[clamp(2rem,4vw,3.6rem)] shrink-0 items-center justify-center rounded-full border-2 border-white/70 text-[clamp(0.8rem,1.6vw,1.35rem)] font-black">
           {index}
         </span>
+      </header>
+      <div className="absolute inset-x-[1.25%] bottom-[1.7%] top-[18%]">
+        {children}
       </div>
-      {children}
     </section>
   )
 }
 
-function CoreChip({
-  compact = false,
-  icon: Icon,
-  label,
-}: {
-  compact?: boolean
-  icon: typeof Code2
-  label: string
-}) {
-  return (
-    <div
-      className={`flex items-center gap-2 rounded-xl border border-slate-300 bg-white/90 font-semibold shadow-sm dark:border-slate-700 dark:bg-slate-900/90 ${
-        compact
-          ? 'px-2 py-1 text-[clamp(0.45rem,0.8vw,0.68rem)]'
-          : 'px-3 py-2 text-[clamp(0.55rem,1.05vw,0.82rem)]'
-      }`}
-    >
-      <Icon
-        aria-hidden="true"
-        className="size-[1.4em] shrink-0 text-cyan-700 dark:text-cyan-300"
-      />
-      <span>{label}</span>
-    </div>
-  )
-}
-
-export function VariantAOrbit() {
-  return (
-    <div className="space-y-8">
-      <SlideFrame
-        eyebrow="Översikt · en full normal loop"
-        index={1}
-        title="Från idé till verifierad ändring"
-      >
-        <div className="absolute inset-x-[6%] bottom-[7%] top-[27%] grid grid-cols-[0.7fr_2fr_0.7fr] items-center gap-[4%]">
-          <div className="flex flex-col items-center text-center">
-            <div className="flex size-[clamp(3rem,7vw,6rem)] items-center justify-center rounded-full bg-cyan-700 text-white shadow-lg">
-              <UserRound aria-hidden="true" className="size-1/2" />
-            </div>
-            <p className="mt-2 text-[clamp(0.55rem,1.2vw,1rem)] font-bold">
-              Utvecklaren
-            </p>
-            <p className="text-[clamp(0.45rem,0.8vw,0.72rem)] text-slate-600 dark:text-slate-300">
-              sätter mål och fattar beslut
-            </p>
-          </div>
-
-          <div className="relative mx-auto aspect-2/1 w-full rounded-[50%] border-[clamp(3px,0.5vw,7px)] border-cyan-700/25">
-            <div className="absolute inset-[18%] flex items-center justify-center rounded-[50%] bg-cyan-100 text-center dark:bg-cyan-950">
-              <div>
-                <ServerCog
-                  aria-hidden="true"
-                  className="mx-auto size-[clamp(1.5rem,3vw,2.8rem)] text-cyan-800 dark:text-cyan-200"
-                />
-                <p className="mt-1 text-[clamp(0.6rem,1.25vw,1rem)] font-black">
-                  Kravhantering fungerar
-                </p>
-                <p className="text-[clamp(0.42rem,0.75vw,0.68rem)]">
-                  inloggning · beständig data · kontroller
-                </p>
-              </div>
-            </div>
-            {workflow.map((item, index) => {
-              const positions = [
-                'left-[3%] top-[42%]',
-                'left-[34%] top-[-9%]',
-                'right-[3%] top-[42%]',
-                'bottom-[-9%] left-[34%]',
-              ]
-              return (
-                <div
-                  className={`absolute flex w-[31%] items-center justify-center gap-1 rounded-full bg-slate-950 px-2 py-2 text-[clamp(0.5rem,1vw,0.85rem)] font-bold text-white dark:bg-white dark:text-slate-950 ${positions[index]}`}
-                  key={item}
-                >
-                  <span>{index + 1}</span>
-                  <ChevronRight aria-hidden="true" className="size-[1em]" />
-                  <span>{item}</span>
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="space-y-2 text-center">
-            <CheckCircle2
-              aria-hidden="true"
-              className="mx-auto size-[clamp(2rem,5vw,4.5rem)] text-emerald-600 dark:text-emerald-400"
-            />
-            <p className="text-[clamp(0.55rem,1.15vw,0.95rem)] font-black">
-              Verifierad ändring
-            </p>
-            <p className="text-[clamp(0.43rem,0.78vw,0.68rem)] text-slate-600 dark:text-slate-300">
-              kod · test · dokumentation
-            </p>
-          </div>
-        </div>
-      </SlideFrame>
-
-      <SlideFrame
-        eyebrow="Fördjupning · obligatorisk kärna"
-        index={2}
-        title="Sex logiska komponenter bär loopen"
-      >
-        <div className="absolute inset-x-[5%] bottom-[8%] top-[27%]">
-          <div className="grid h-full grid-cols-[0.75fr_2.7fr] gap-[4%]">
-            <div className="flex flex-col justify-center rounded-3xl bg-slate-900 p-[8%] text-white dark:bg-cyan-950">
-              <UserRound
-                aria-hidden="true"
-                className="size-[clamp(1.8rem,4vw,3.5rem)]"
-              />
-              <p className="mt-2 text-[clamp(0.55rem,1.2vw,1rem)] font-black">
-                Utvecklaren leder
-              </p>
-              <p className="mt-1 text-[clamp(0.42rem,0.77vw,0.68rem)] text-slate-300">
-                Mål, beslut och godkännanden in. Frågor, ändringar och evidens
-                tillbaka.
-              </p>
-            </div>
-            <div className="relative rounded-[50%] border-[clamp(4px,0.65vw,9px)] border-dashed border-cyan-700/45 bg-cyan-50/70 dark:bg-cyan-950/35">
-              <div className="absolute inset-[28%] flex flex-col items-center justify-center rounded-full bg-cyan-700 text-center text-white shadow-xl">
-                <ShieldCheck
-                  aria-hidden="true"
-                  className="size-[clamp(1.2rem,2.4vw,2.2rem)]"
-                />
-                <p className="text-[clamp(0.5rem,1vw,0.85rem)] font-black">
-                  Kontrakten uppfylls
-                </p>
-              </div>
-              {coreComponents.map(({ icon, label }, index) => {
-                const positions = [
-                  'left-[4%] top-[14%]',
-                  'left-[37%] top-[2%]',
-                  'right-[3%] top-[16%]',
-                  'right-[3%] bottom-[14%]',
-                  'left-[37%] bottom-[2%]',
-                  'left-[4%] bottom-[14%]',
-                ]
-                return (
-                  <div
-                    className={`absolute w-[29%] ${positions[index]}`}
-                    key={label}
-                  >
-                    <CoreChip icon={icon} label={label} />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-          <p className="absolute inset-x-0 bottom-[-2%] text-center text-[clamp(0.44rem,0.8vw,0.7rem)] font-bold text-cyan-800 dark:text-cyan-200">
-            Logiska komponenter kan placeras tillsammans eller var för sig —
-            relationerna visar ansvar och kontrakt, inte topologi.
-          </p>
-        </div>
-      </SlideFrame>
-
-      <SlideFrame
-        eyebrow="Fördjupning · kontraktsstyrd nåbarhet"
-        index={3}
-        title="Bara beslutade relationer behöver vara nåbara"
-      >
-        <div className="absolute inset-x-[4%] bottom-[7%] top-[27%] grid grid-cols-[1.4fr_1fr_1fr] gap-[3%]">
-          <div className="grid grid-cols-2 content-center gap-2 rounded-3xl border-2 border-cyan-700/50 bg-cyan-50 p-[5%] dark:bg-cyan-950/30">
-            <p className="col-span-2 text-[clamp(0.55rem,1.15vw,1rem)] font-black">
-              Obligatorisk utvecklingskärna
-            </p>
-            {coreComponents.map(item => (
-              <CoreChip compact key={item.label} {...item} />
-            ))}
-          </div>
-          <div className="flex flex-col justify-center gap-2 rounded-3xl border-2 border-dashed border-violet-500/60 bg-violet-50 p-[7%] dark:bg-violet-950/25">
-            <p className="text-[clamp(0.52rem,1vw,0.88rem)] font-black">
-              Vid vald funktion
-            </p>
-            <p className="text-[clamp(0.44rem,0.82vw,0.72rem)]">
-              <Network
-                aria-hidden="true"
-                className="mr-1 inline size-[1.2em]"
-              />{' '}
-              HSA-personuppslag
-            </p>
-            <p className="text-[clamp(0.44rem,0.82vw,0.72rem)]">
-              <Sparkles
-                aria-hidden="true"
-                className="mr-1 inline size-[1.2em]"
-              />{' '}
-              AI-modelltjänst
-            </p>
-            <p className="text-[clamp(0.44rem,0.82vw,0.72rem)]">
-              <CircleDot
-                aria-hidden="true"
-                className="mr-1 inline size-[1.2em]"
-              />{' '}
-              Extern MCP-klient
-            </p>
-            <p className="mt-1 text-[clamp(0.4rem,0.68vw,0.6rem)]">
-              Villkorade kontrakt — inte normal startberedskap.
-            </p>
-          </div>
-          <div className="flex flex-col justify-center gap-2 rounded-3xl border-2 border-dotted border-amber-600/60 bg-amber-50 p-[7%] dark:bg-amber-950/25">
-            <p className="text-[clamp(0.52rem,1vw,0.88rem)] font-black">
-              Utökad validering
-            </p>
-            <p className="text-[clamp(0.44rem,0.82vw,0.72rem)]">
-              <GitPullRequest
-                aria-hidden="true"
-                className="mr-1 inline size-[1.2em]"
-              />{' '}
-              Källkod och granskning
-            </p>
-            <p className="text-[clamp(0.44rem,0.82vw,0.72rem)]">
-              <TestTube2
-                aria-hidden="true"
-                className="mr-1 inline size-[1.2em]"
-              />{' '}
-              CI/CD-validering
-            </p>
-            <p className="mt-1 text-[clamp(0.4rem,0.68vw,0.6rem)]">
-              Oberoende granskning kompletterar specifikationsvalideringen.
-            </p>
-          </div>
-        </div>
-      </SlideFrame>
-    </div>
-  )
-}
-
-function TransitStation({
-  detail,
-  index,
-  label,
-}: {
-  detail?: string
-  index: number
-  label: string
-}) {
-  return (
-    <div className="relative z-10 flex flex-col items-center text-center">
-      <span className="flex size-[clamp(1.7rem,3.4vw,3rem)] items-center justify-center rounded-full border-[clamp(3px,0.45vw,6px)] border-cyan-700 bg-white text-[clamp(0.55rem,1vw,0.85rem)] font-black text-cyan-900 dark:bg-slate-950 dark:text-cyan-100">
-        {index}
-      </span>
-      <strong className="mt-2 text-[clamp(0.48rem,0.95vw,0.8rem)]">
-        {label}
-      </strong>
-      {detail ? (
-        <span className="mt-1 max-w-[16ch] text-[clamp(0.38rem,0.65vw,0.58rem)] text-slate-600 dark:text-slate-300">
-          {detail}
-        </span>
-      ) : null}
-    </div>
-  )
-}
-
-export function VariantBTransit() {
-  return (
-    <div className="space-y-8">
-      <SlideFrame
-        eyebrow="Linje 1 · den normala utvecklingsloopen"
-        index={1}
-        title="Fyra stationer till fungerande Kravhantering"
-      >
-        <div className="absolute inset-x-[7%] bottom-[10%] top-[36%] flex items-center">
-          <div className="absolute inset-x-[7%] top-[28%] h-[clamp(5px,0.7vw,10px)] rounded-full bg-cyan-700" />
-          <div className="grid w-full grid-cols-4">
-            <TransitStation
-              detail="Källkod, uppgift och konfiguration"
-              index={1}
-              label="Utveckla"
-            />
-            <TransitStation
-              detail="Runtime och databas startar"
-              index={2}
-              label="Köra"
-            />
-            <TransitStation
-              detail="Logga in och arbeta i appen"
-              index={3}
-              label="Använda"
-            />
-            <TransitStation
-              detail="Kontroller och evidens"
-              index={4}
-              label="Validera"
-            />
-          </div>
-        </div>
-        <p className="absolute bottom-[6%] left-[7%] flex items-center gap-2 text-[clamp(0.42rem,0.75vw,0.68rem)] font-bold">
-          <UserRound aria-hidden="true" className="size-[1.4em]" /> Utvecklaren
-          ansvarar för resan
-        </p>
-      </SlideFrame>
-
-      <SlideFrame
-        eyebrow="Linje 2 · obligatorisk utvecklingskärna"
-        index={2}
-        title="Sex komponentstationer — en sammanhängande loop"
-      >
-        <div className="absolute inset-x-[6%] bottom-[8%] top-[29%]">
-          <div className="absolute left-[5%] right-[5%] top-[38%] h-[clamp(5px,0.7vw,10px)] rounded-full bg-cyan-700" />
-          <div className="grid h-full grid-cols-6 items-center gap-2">
-            {coreComponents.map(({ icon: Icon, label }, index) => (
-              <div
-                className="relative z-10 flex flex-col items-center text-center"
-                key={label}
-              >
-                <div className="flex size-[clamp(2.4rem,5vw,4.4rem)] items-center justify-center rounded-2xl border-[clamp(3px,0.45vw,6px)] border-cyan-700 bg-white shadow-md dark:bg-slate-950">
-                  <Icon
-                    aria-hidden="true"
-                    className="size-1/2 text-cyan-800 dark:text-cyan-200"
-                  />
-                </div>
-                <p className="mt-2 max-w-[15ch] text-[clamp(0.43rem,0.78vw,0.68rem)] font-black">
-                  {index + 1}. {label}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div className="absolute inset-x-[8%] bottom-[2%] flex justify-between text-[clamp(0.4rem,0.7vw,0.62rem)] font-bold text-slate-600 dark:text-slate-300">
-            <span>skapa och styra</span>
-            <span>använda och autentisera</span>
-            <span>köra och lagra</span>
-          </div>
-        </div>
-      </SlideFrame>
-
-      <SlideFrame
-        eyebrow="Linje 3 · kontrakt och tillägg"
-        index={3}
-        title="Kärnlinjen får grenar — aldrig topologizoner"
-      >
-        <div className="absolute inset-x-[5%] bottom-[7%] top-[28%]">
-          <div className="absolute left-[2%] right-[2%] top-[42%] h-[clamp(5px,0.7vw,10px)] rounded-full bg-cyan-700" />
-          <div className="absolute left-[35%] top-[12%] h-[30%] w-[clamp(4px,0.55vw,8px)] bg-violet-600" />
-          <div className="absolute right-[22%] top-[45%] h-[35%] w-[clamp(4px,0.55vw,8px)] bg-amber-600" />
-          <div className="absolute inset-x-0 top-[35%] grid grid-cols-6 gap-2">
-            {coreComponents.map(({ icon: Icon, label }, index) => (
-              <div
-                className="relative z-10 flex flex-col items-center text-center"
-                key={label}
-              >
-                <span className="flex size-[clamp(1.8rem,3.7vw,3.2rem)] items-center justify-center rounded-full border-[clamp(3px,0.45vw,6px)] border-cyan-700 bg-white dark:bg-slate-950">
-                  <Icon aria-hidden="true" className="size-1/2" />
-                </span>
-                <span className="mt-1 max-w-[14ch] text-[clamp(0.35rem,0.62vw,0.54rem)] font-bold">
-                  {index + 1}. {label}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="absolute left-[17%] top-0 flex items-center gap-2 rounded-2xl border-2 border-violet-600 bg-violet-50 px-[2%] py-[1.5%] dark:bg-violet-950">
-            <Network
-              aria-hidden="true"
-              className="size-[clamp(1rem,2vw,1.8rem)]"
-            />
-            <div>
-              <p className="text-[clamp(0.44rem,0.8vw,0.7rem)] font-black">
-                Villkorad gren
-              </p>
-              <p className="text-[clamp(0.35rem,0.6vw,0.52rem)]">
-                HSA · AI-modell · extern MCP
-              </p>
-            </div>
-          </div>
-          <div className="absolute right-[4%] bottom-0 flex items-center gap-2 rounded-2xl border-2 border-amber-600 bg-amber-50 px-[2%] py-[1.5%] dark:bg-amber-950">
-            <GitPullRequest
-              aria-hidden="true"
-              className="size-[clamp(1rem,2vw,1.8rem)]"
-            />
-            <div>
-              <p className="text-[clamp(0.44rem,0.8vw,0.7rem)] font-black">
-                Valideringsgren
-              </p>
-              <p className="text-[clamp(0.35rem,0.6vw,0.52rem)]">
-                granskning · CI/CD
-              </p>
-            </div>
-          </div>
-          <div className="absolute bottom-[1%] left-[1%] max-w-[45%] text-[clamp(0.36rem,0.63vw,0.56rem)]">
-            <p className="font-black">Linjetyper visar kontrakt</p>
-            <p>
-              Heldragen = kärna · streckad = funktionsvillkor · prickad = utökad
-              validering
-            </p>
-          </div>
-        </div>
-      </SlideFrame>
-    </div>
-  )
-}
-
-function NumberedPanel({
+function Panel({
+  accent = 'slate',
   children,
-  index,
+  className = '',
+  icon: Icon,
+  number,
   title,
 }: {
+  accent?: Accent
   children: ReactNode
-  index: number
+  className?: string
+  icon?: typeof Code2
+  number?: string
   title: string
 }) {
   return (
-    <div className="relative border-l-[clamp(4px,0.6vw,8px)] border-cyan-700 bg-white p-[5%] shadow-sm dark:bg-slate-900">
-      <span className="absolute right-[4%] top-[4%] text-[clamp(1.4rem,3vw,2.6rem)] font-black text-cyan-700/20">
-        {index}
-      </span>
-      <h3 className="relative text-[clamp(0.52rem,1.05vw,0.9rem)] font-black">
-        {title}
-      </h3>
-      <div className="relative mt-2 text-[clamp(0.4rem,0.7vw,0.62rem)] text-slate-600 dark:text-slate-300">
+    <div
+      className={`min-h-0 rounded-2xl border p-[clamp(0.5rem,1vw,0.9rem)] shadow-sm ${accentClasses[accent]} ${className}`}
+    >
+      <div className="flex items-center gap-2">
+        {number ? (
+          <span className="flex size-[clamp(1.2rem,2vw,1.8rem)] shrink-0 items-center justify-center rounded-full bg-[#07509a] text-[clamp(0.48rem,0.8vw,0.7rem)] font-black text-white">
+            {number}
+          </span>
+        ) : null}
+        {Icon ? (
+          <Icon
+            aria-hidden="true"
+            className="size-[clamp(0.9rem,1.5vw,1.3rem)] shrink-0 text-[#07509a] dark:text-blue-300"
+          />
+        ) : null}
+        <h3 className="text-[clamp(0.58rem,1.08vw,0.94rem)] font-black text-[#083d78] dark:text-blue-200">
+          {title}
+        </h3>
+      </div>
+      <div className="mt-[clamp(0.3rem,0.7vw,0.65rem)] text-[clamp(0.41rem,0.68vw,0.61rem)] leading-snug">
         {children}
       </div>
     </div>
   )
 }
 
-export function VariantCFieldGuide() {
+function ComponentChip({
+  index,
+  item,
+}: {
+  index?: number
+  item: (typeof coreComponents)[number]
+}) {
+  const Icon = item.icon
+  return (
+    <div className="flex min-w-0 items-center gap-2 rounded-xl border border-blue-200 bg-white px-[4%] py-[3%] shadow-sm dark:border-blue-800 dark:bg-slate-900">
+      <Icon
+        aria-hidden="true"
+        className="size-[clamp(0.85rem,1.5vw,1.3rem)] shrink-0 text-[#07509a] dark:text-blue-300"
+      />
+      <div className="min-w-0">
+        <p className="truncate font-black">
+          {index ? `${index}. ` : ''}
+          {item.label}
+        </p>
+        <p className="truncate text-[0.9em] text-slate-600 dark:text-slate-300">
+          {item.promise}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function WorkflowStrip({ detailed = false }: { detailed?: boolean }) {
+  return (
+    <div className="grid h-full grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-stretch gap-[0.7%]">
+      {workflow.map(({ detail, icon: Icon, label }, index) => (
+        <div className="contents" key={label}>
+          <div className="flex min-w-0 flex-col justify-center rounded-xl border border-blue-300 bg-linear-to-b from-blue-500 to-blue-700 px-[6%] py-[4%] text-center text-white shadow-sm">
+            <div className="flex items-center justify-center gap-2">
+              <span className="flex size-[clamp(1rem,1.8vw,1.6rem)] items-center justify-center rounded-full bg-white font-black text-[#07509a]">
+                {index + 1}
+              </span>
+              <Icon
+                aria-hidden="true"
+                className="size-[clamp(0.8rem,1.4vw,1.2rem)]"
+              />
+              <strong className="text-[clamp(0.48rem,0.82vw,0.72rem)]">
+                {label}
+              </strong>
+            </div>
+            {detailed ? (
+              <p className="mt-1 text-[clamp(0.34rem,0.54vw,0.5rem)] text-blue-50">
+                {detail}
+              </p>
+            ) : null}
+          </div>
+          {index < workflow.length - 1 ? (
+            <ChevronRight
+              aria-hidden="true"
+              className="my-auto size-[clamp(0.8rem,1.6vw,1.4rem)] text-[#07509a] dark:text-blue-300"
+            />
+          ) : null}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function CheckList({ items }: { items: string[] }) {
+  return (
+    <ul className="space-y-[0.35em]">
+      {items.map(item => (
+        <li className="flex items-start gap-1.5" key={item}>
+          <CheckCircle2
+            aria-hidden="true"
+            className="mt-[0.1em] size-[1.15em] shrink-0 text-green-700 dark:text-green-300"
+          />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function VariantANumberedOverview() {
   return (
     <div className="space-y-8">
       <SlideFrame
-        eyebrow="Fältguide · orientera först"
         index={1}
-        title="En utvecklingsloop, fyra ansvarsfält"
+        subtitle="Från uppgift till fungerande och verifierad ändring"
+        title="Den fulla normala utvecklingsloopen"
       >
-        <div className="absolute inset-x-[5%] bottom-[8%] top-[29%] grid grid-cols-4 gap-[2%]">
-          <NumberedPanel index={1} title="Utveckla">
-            <p>Källkod, konfiguration och lokala verktyg.</p>
-            <Code2
-              aria-hidden="true"
-              className="mt-3 size-[clamp(1.4rem,3vw,2.8rem)] text-cyan-700"
+        <div className="grid h-full grid-cols-12 grid-rows-[0.9fr_1.15fr_0.48fr] gap-[1.3%]">
+          <Panel
+            className="col-span-3"
+            icon={UserRound}
+            number="1"
+            title="Utvecklaren styr"
+          >
+            <CheckList
+              items={[
+                'Sätter mål och prioriterar',
+                'Fattar ansvariga beslut',
+                'Godkänner känsliga och externa åtgärder',
+              ]}
             />
-          </NumberedPanel>
-          <NumberedPanel index={2} title="Köra">
-            <p>Applikation, identitet och beständig data.</p>
-            <Play
-              aria-hidden="true"
-              className="mt-3 size-[clamp(1.4rem,3vw,2.8rem)] text-cyan-700"
+          </Panel>
+          <Panel
+            className="col-span-9"
+            number="2"
+            title="Fyra steg bildar en sammanhängande loop"
+          >
+            <WorkflowStrip />
+          </Panel>
+          <Panel
+            className="col-span-7"
+            icon={ServerCog}
+            number="3"
+            title="Sex komponenter är alltid med"
+          >
+            <div className="grid grid-cols-3 gap-[2%]">
+              {coreComponents.map((item, index) => (
+                <ComponentChip index={index + 1} item={item} key={item.label} />
+              ))}
+            </div>
+          </Panel>
+          <Panel
+            accent="green"
+            className="col-span-5"
+            icon={CheckCircle2}
+            number="4"
+            title="Loopen är klar när"
+          >
+            <CheckList
+              items={[
+                'Kravhantering kan startas',
+                'Utvecklaren kan logga in och använda funktionen',
+                'Data sparas i Microsoft SQL Server',
+                'Grundläggande automatiserade kontroller är körda',
+              ]}
             />
-          </NumberedPanel>
-          <NumberedPanel index={3} title="Använda">
-            <p>Webbläsare, inloggning och funktioner.</p>
-            <Monitor
-              aria-hidden="true"
-              className="mt-3 size-[clamp(1.4rem,3vw,2.8rem)] text-cyan-700"
-            />
-          </NumberedPanel>
-          <NumberedPanel index={4} title="Validera">
-            <p>Tester, specifikation och evidens.</p>
-            <ShieldCheck
-              aria-hidden="true"
-              className="mt-3 size-[clamp(1.4rem,3vw,2.8rem)] text-cyan-700"
-            />
-          </NumberedPanel>
+          </Panel>
+          <Panel
+            accent="blue"
+            className="col-span-12"
+            icon={Network}
+            number="5"
+            title="Fri placering — kontrakten styr"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <strong>
+                Komponenterna får placeras tillsammans eller var för sig.
+              </strong>
+              <span>
+                Relationer visar ansvar, beroenden och dataflöden — aldrig
+                maskin-, container- eller nätverksgränser.
+              </span>
+            </div>
+          </Panel>
         </div>
       </SlideFrame>
 
       <SlideFrame
-        eyebrow="Fältguide · komponentblad"
         index={2}
-        title="Kärnan ordnas efter ansvar — inte placering"
+        subtitle="Komponenterna ordnas efter ansvar i utvecklarens arbetsflöde"
+        title="Den obligatoriska utvecklingskärnan"
       >
-        <div className="absolute inset-x-[5%] bottom-[8%] top-[28%] grid grid-cols-[1.1fr_1fr_1fr] gap-[2%]">
-          <div className="grid grid-rows-2 gap-[4%] rounded-2xl bg-cyan-100 p-[5%] dark:bg-cyan-950/50">
-            <NumberedPanel index={1} title="Skapa">
-              <CoreChip compact {...coreComponents[0]} />
-              <div className="mt-2">
-                <CoreChip compact {...coreComponents[1]} />
-              </div>
-            </NumberedPanel>
-            <div className="flex items-center gap-2 px-[4%] text-[clamp(0.4rem,0.7vw,0.62rem)] font-bold">
-              <UserRound aria-hidden="true" className="size-[1.5em]" />{' '}
-              Utvecklaren styr mål och beslut
+        <div className="grid h-full grid-cols-12 grid-rows-[0.74fr_1.28fr_0.5fr] gap-[1.3%]">
+          <Panel
+            className="col-span-12"
+            number="1"
+            title="Arbetsflödet fördelar ansvar mellan komponenterna"
+          >
+            <WorkflowStrip detailed />
+          </Panel>
+          <Panel
+            className="col-span-8"
+            icon={LayoutGrid}
+            number="2"
+            title="Komponenternas funktionella löften"
+          >
+            <div className="grid grid-cols-2 gap-[1.5%]">
+              {coreComponents.map((item, index) => (
+                <ComponentChip index={index + 1} item={item} key={item.label} />
+              ))}
             </div>
-          </div>
-          <div className="grid grid-rows-2 gap-[4%] rounded-2xl bg-sky-100 p-[5%] dark:bg-sky-950/50">
-            <NumberedPanel index={2} title="Interagera">
-              <CoreChip compact {...coreComponents[2]} />
-              <div className="mt-2">
-                <CoreChip compact {...coreComponents[5]} />
-              </div>
-            </NumberedPanel>
-            <p className="px-[4%] text-[clamp(0.4rem,0.7vw,0.62rem)] font-bold">
-              HTTP(S) och OIDC är kontrakt — inte platsangivelser
-            </p>
-          </div>
-          <div className="grid grid-rows-2 gap-[4%] rounded-2xl bg-emerald-100 p-[5%] dark:bg-emerald-950/50">
-            <NumberedPanel index={3} title="Köra och lagra">
-              <CoreChip compact {...coreComponents[3]} />
-              <div className="mt-2">
-                <CoreChip compact {...coreComponents[4]} />
-              </div>
-            </NumberedPanel>
-            <p className="px-[4%] text-[clamp(0.4rem,0.7vw,0.62rem)] font-bold">
-              Runtime och schema binds av `DATABASE_URL`
-            </p>
-          </div>
+          </Panel>
+          <Panel
+            accent="green"
+            className="col-span-4"
+            icon={FileCheck2}
+            number="3"
+            title="Specifikationsvalidering före överlämning"
+          >
+            <CheckList
+              items={[
+                'Jämför implementationen mot uppgiften',
+                'Kontrollerar test och dokumentation',
+                'Kör relevanta kontroller',
+                'Redovisar avvikelser och osäkerheter',
+                'Ersätter inte oberoende kodgranskning',
+              ]}
+            />
+          </Panel>
+          <Panel
+            accent="violet"
+            className="col-span-6"
+            icon={Bot}
+            number="4"
+            title="AI-agentverktygets gräns"
+          >
+            Uppgift, kontext och godkännanden in. Frågor, ändringar och
+            verifieringsevidens tillbaka. Arkitektur, säkerhet, dataskydd och
+            release förblir mänskligt ansvar.
+          </Panel>
+          <Panel
+            accent="amber"
+            className="col-span-6"
+            icon={ShieldCheck}
+            number="5"
+            title="Ingen produktionsåtkomst krävs"
+          >
+            Kärnloopen behöver varken produktionshemligheter, produktionsdata
+            eller produktionsmiljöer. Den behöver endast sina beslutade
+            utvecklingskontrakt.
+          </Panel>
         </div>
       </SlideFrame>
 
       <SlideFrame
-        eyebrow="Fältguide · kontraktsmatris"
         index={3}
-        title="Läs relationen i tre delar"
+        subtitle="Kärnkontrakt, villkorade förmågor och utökad validering"
+        title="Kontraktsstyrd nåbarhet"
       >
-        <div className="absolute inset-x-[4%] bottom-[7%] top-[28%] grid grid-cols-[1.35fr_0.9fr] gap-[3%]">
-          <div className="overflow-hidden rounded-2xl border border-slate-300 dark:border-slate-700">
-            <div className="grid grid-cols-[1.2fr_1fr_1fr] bg-slate-900 px-[3%] py-[2%] text-[clamp(0.42rem,0.75vw,0.65rem)] font-black text-white">
-              <span>Relation</span>
-              <span>Tekniskt gränssnitt</span>
-              <span>Konfigurationsankare</span>
+        <div className="grid h-full grid-cols-12 grid-rows-[0.68fr_1.42fr_0.48fr] gap-[1.3%]">
+          <Panel
+            className="col-span-12"
+            icon={Network}
+            number="1"
+            title="Varje komponentkontrakt beskriver tre saker"
+          >
+            <div className="grid grid-cols-3 gap-[1.5%]">
+              {[
+                [
+                  'Funktionellt löfte',
+                  'Vad relationen gör för utvecklingsloopen.',
+                ],
+                ['Tekniskt gränssnitt', 'Hur komponenterna kommunicerar.'],
+                [
+                  'Konfigurationsankare',
+                  'Var relationen konfigureras och styrs.',
+                ],
+              ].map(([heading, text]) => (
+                <div
+                  className="rounded-xl border border-blue-200 bg-white px-[4%] py-[3%] dark:border-blue-800 dark:bg-slate-900"
+                  key={heading}
+                >
+                  <strong>{heading}</strong>
+                  <p className="mt-1 text-slate-600 dark:text-slate-300">
+                    {text}
+                  </p>
+                </div>
+              ))}
             </div>
-            {[
-              [
-                'Webbläsare ↔ runtime',
-                'UI och REST via HTTP(S)',
-                'Publik adress',
-              ],
-              [
-                'Runtime ↔ identitet',
-                'OIDC discovery, token, JWKS',
-                'AUTH_OIDC_*',
-              ],
-              [
-                'Runtime ↔ SQL Server',
-                'Beständig data och schema',
-                'DATABASE_URL',
-              ],
-              [
-                'Agent ↔ arbetsyta',
-                'Filer, kommandon och tester',
-                'Repoinstruktioner + skills',
-              ],
-            ].map((row, index) => (
-              <div
-                className={`grid grid-cols-[1.2fr_1fr_1fr] gap-[2%] px-[3%] py-[2.5%] text-[clamp(0.36rem,0.67vw,0.58rem)] ${index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-100 dark:bg-slate-800'}`}
-                key={row[0]}
-              >
-                <strong>{row[0]}</strong>
-                <span>{row[1]}</span>
-                <code>{row[2]}</code>
+          </Panel>
+          <Panel
+            className="col-span-6"
+            icon={ServerCog}
+            number="2"
+            title="Kärnans viktigaste relationer"
+          >
+            <div className="space-y-[0.35em]">
+              {[
+                ['Arbetsyta → runtime', 'start, bygge och miljökonfiguration'],
+                ['Webbläsare ↔ runtime', 'UI och REST via HTTP(S)'],
+                ['Webbläsare ↔ identitet', 'OIDC-inloggning och utloggning'],
+                [
+                  'Runtime ↔ identitet',
+                  'discovery, token och JWKS · AUTH_OIDC_*',
+                ],
+                [
+                  'Arbetsyta → SQL Server',
+                  'schema, seedning och integrationstest',
+                ],
+                ['Runtime ↔ SQL Server', 'beständig data · DATABASE_URL'],
+              ].map(([from, contract]) => (
+                <div
+                  className="grid grid-cols-[1fr_auto_1.35fr] items-center gap-2 rounded-lg bg-slate-100 px-[3%] py-[1.8%] dark:bg-slate-800"
+                  key={from}
+                >
+                  <strong>{from}</strong>
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="size-[1.1em] text-[#07509a]"
+                  />
+                  <span>{contract}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+          <Panel
+            accent="violet"
+            className="col-span-3"
+            icon={Sparkles}
+            number="3"
+            title="Vid vald funktion"
+          >
+            <CheckList
+              items={[
+                'HSA-personuppslag · server-side REST',
+                'AI-modelltjänst · hemlig leverantörsuppgift',
+                'Extern MCP-klient · Streamable HTTP och Bearer-JWT',
+              ]}
+            />
+            <p className="mt-2 font-bold">
+              Ingår inte i normal startberedskap.
+            </p>
+          </Panel>
+          <Panel
+            accent="amber"
+            className="col-span-3"
+            icon={TestTube2}
+            number="4"
+            title="Utökad validering"
+          >
+            <CheckList
+              items={[
+                'Källkods- och granskningsplattform',
+                'Pull request och mänsklig granskning',
+                'CI/CD-körningar, loggar och artefakter',
+                'Oberoende AI-assisterad kodgranskning',
+              ]}
+            />
+          </Panel>
+          <Panel
+            accent="blue"
+            className="col-span-12"
+            icon={CircleDot}
+            number="5"
+            title="Nåbarheten är minimal och uttrycklig"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <strong>Endast beslutade relationer måste vara nåbara.</strong>
+              <span>
+                Webbläsaren behöver exempelvis ingen direktåtkomst till
+                Microsoft SQL Server.
+              </span>
+              <span className="font-bold">
+                Heldragen = kärna · streckad = funktionsvillkor · prickad =
+                validering
+              </span>
+            </div>
+          </Panel>
+        </div>
+      </SlideFrame>
+    </div>
+  )
+}
+
+function JourneyStage({ index }: { index: number }) {
+  const stage = workflow[index]
+  const Icon = stage.icon
+  const componentSets = [
+    [coreComponents[0], coreComponents[1]],
+    [coreComponents[3], coreComponents[4], coreComponents[5]],
+    [coreComponents[2], coreComponents[3], coreComponents[5]],
+    [coreComponents[0], coreComponents[1]],
+  ]
+  const contractSets = [
+    'Instruktioner, skills och avgränsade behörigheter',
+    'Miljökonfiguration, DATABASE_URL och AUTH_OIDC_*',
+    'Publik adress, HTTP(S) och OIDC-omdirigeringar',
+    'Projektkontroller och beslutad specifikation',
+  ]
+  const resultSets = [
+    'Ändrade filer, uppdaterade test och dokumentation',
+    'Körande runtime, kompatibelt schema och tillgänglig identitet',
+    'Provat användarflöde och beständigt sparad data',
+    'Kontrollresultat, avvikelser och överlämningsevidens',
+  ]
+  return (
+    <div className="relative flex min-w-0 flex-col rounded-2xl border-2 border-blue-300 bg-white p-[5%] shadow-sm dark:border-blue-800 dark:bg-slate-900">
+      <div className="flex items-center gap-2">
+        <span className="flex size-[clamp(1.3rem,2.3vw,2rem)] items-center justify-center rounded-full bg-[#07509a] font-black text-white">
+          {index + 1}
+        </span>
+        <Icon
+          aria-hidden="true"
+          className="size-[clamp(1rem,1.8vw,1.6rem)] text-[#07509a] dark:text-blue-300"
+        />
+        <h3 className="text-[clamp(0.58rem,1vw,0.88rem)] font-black">
+          {stage.label}
+        </h3>
+      </div>
+      <p className="mt-2 text-[clamp(0.38rem,0.62vw,0.56rem)] text-slate-600 dark:text-slate-300">
+        {stage.detail}
+      </p>
+      <div className="mt-3 space-y-2 text-[clamp(0.34rem,0.56vw,0.5rem)]">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-2 dark:border-blue-800 dark:bg-blue-950">
+          <strong>Kontrakt</strong>
+          <p className="mt-1">{contractSets[index]}</p>
+        </div>
+        <div className="rounded-lg border border-green-200 bg-green-50 p-2 dark:border-green-800 dark:bg-green-950">
+          <strong>Resultat</strong>
+          <p className="mt-1">{resultSets[index]}</p>
+        </div>
+      </div>
+      <div className="mt-auto space-y-1 pt-2">
+        {componentSets[index].map(item => (
+          <div
+            className="rounded-lg bg-blue-50 px-2 py-1 font-bold text-[#083d78] dark:bg-blue-950 dark:text-blue-200"
+            key={item.label}
+          >
+            {item.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function VariantBDeveloperJourney() {
+  return (
+    <div className="space-y-8">
+      <SlideFrame
+        index={1}
+        subtitle="En berättelse där varje steg visar aktivitet, komponenter och resultat"
+        title="Utvecklarens resa genom loopen"
+      >
+        <div className="grid h-full grid-cols-[0.23fr_1fr] gap-[1.3%]">
+          <Panel accent="blue" icon={UserRound} number="1" title="Startpunkt">
+            <p className="font-black">En uppgift och en ansvarig utvecklare</p>
+            <CheckList
+              items={[
+                'Mål och kontext',
+                'Beslut och godkännanden',
+                'Ingen föreskriven placering',
+              ]}
+            />
+          </Panel>
+          <div className="grid min-h-0 grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] gap-[0.7%]">
+            {[0, 1, 2, 3].map((index, position) => (
+              <div className="contents" key={index}>
+                <JourneyStage index={index} />
+                {position < 3 ? (
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="my-auto size-[clamp(1rem,2vw,1.8rem)] text-[#07509a]"
+                  />
+                ) : null}
               </div>
             ))}
           </div>
-          <div className="grid grid-rows-2 gap-[4%]">
-            <div className="rounded-2xl border-2 border-dashed border-violet-600 bg-violet-50 p-[6%] dark:bg-violet-950/30">
-              <h3 className="text-[clamp(0.48rem,0.9vw,0.78rem)] font-black">
-                Funktionsspecifika beroenden
-              </h3>
-              <p className="mt-2 text-[clamp(0.36rem,0.67vw,0.58rem)]">
-                HSA-personuppslag · AI-modelltjänst · extern MCP-klient
-              </p>
+          <Panel
+            accent="green"
+            className="col-span-2"
+            icon={CheckCircle2}
+            number="2"
+            title="Målpunkt: en verifierad ändring i fungerande Kravhantering"
+          >
+            <div className="grid grid-cols-4 gap-4">
+              <span>✓ Runtime startar</span>
+              <span>✓ OIDC-inloggning fungerar</span>
+              <span>✓ Data är beständig i SQL Server</span>
+              <span>✓ Kod, test och dokumentation är kontrollerade</span>
             </div>
-            <div className="rounded-2xl border-2 border-dotted border-amber-600 bg-amber-50 p-[6%] dark:bg-amber-950/30">
-              <h3 className="text-[clamp(0.48rem,0.9vw,0.78rem)] font-black">
-                Valideringstillägg
-              </h3>
-              <p className="mt-2 text-[clamp(0.36rem,0.67vw,0.58rem)]">
-                Källkod och granskning · CI/CD-validering
-              </p>
-            </div>
+          </Panel>
+        </div>
+      </SlideFrame>
+
+      <SlideFrame
+        index={2}
+        subtitle="Fyra ansvarsspår visar samarbetet utan att antyda fysisk topologi"
+        title="Komponenterna samverkar längs resan"
+      >
+        <div className="grid h-full grid-rows-[repeat(4,1fr)_0.4fr] gap-[1.2%]">
+          {[
+            [
+              'Utvecklaren',
+              UserRound,
+              'Sätter mål → fattar beslut → provar funktionen → tar emot evidens',
+              'Mänskligt ansvar hela vägen',
+            ],
+            [
+              'AI-agentverktyg + arbetsyta',
+              Bot,
+              'Läser instruktioner → redigerar filer → kör kommandon → specifikationsvaliderar',
+              'Styrd åtkomst, inga produktionshemligheter',
+            ],
+            [
+              'Webbläsare + OIDC',
+              Monitor,
+              'Öppnar appen → omdirigeras för inloggning → använder UI och REST → loggar ut',
+              'HTTP(S), OIDC och AUTH_OIDC_*',
+            ],
+            [
+              'Runtime + SQL Server',
+              ServerCog,
+              'Startar med konfiguration → kör funktioner → läser och skriver data → provas i integrationstest',
+              'DATABASE_URL och kompatibelt schema',
+            ],
+          ].map(([label, icon, flow, contract], index) => {
+            const Icon = icon as typeof Code2
+            return (
+              <div
+                className="grid grid-cols-[0.24fr_1fr_0.31fr] items-center gap-[1.5%] rounded-2xl border border-blue-200 bg-white px-[2%] shadow-sm dark:border-blue-800 dark:bg-slate-900"
+                key={label as string}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex size-[clamp(1.2rem,2vw,1.8rem)] items-center justify-center rounded-full bg-[#07509a] font-black text-white">
+                    {index + 1}
+                  </span>
+                  <Icon
+                    aria-hidden="true"
+                    className="size-[clamp(0.9rem,1.5vw,1.3rem)] text-[#07509a]"
+                  />
+                  <strong className="text-[clamp(0.48rem,0.82vw,0.72rem)]">
+                    {label as string}
+                  </strong>
+                </div>
+                <p className="text-[clamp(0.39rem,0.66vw,0.58rem)] font-semibold">
+                  {flow as string}
+                </p>
+                <p className="rounded-lg bg-blue-50 px-[4%] py-[3%] text-[clamp(0.36rem,0.6vw,0.54rem)] text-[#083d78] dark:bg-blue-950 dark:text-blue-200">
+                  {contract as string}
+                </p>
+              </div>
+            )
+          })}
+          <Panel
+            accent="blue"
+            icon={Network}
+            title="Läs spåren som ansvar och kontrakt — inte som maskiner, processer, containrar eller nätverkszoner"
+          >
+            Varje spår får placeras tillsammans med eller skilt från de andra så
+            länge de riktade relationerna fungerar.
+          </Panel>
+        </div>
+      </SlideFrame>
+
+      <SlideFrame
+        index={3}
+        subtitle="Sidospår ansluter bara när funktionen eller valideringsnivån kräver dem"
+        title="Kärnresan med villkorade tillägg"
+      >
+        <div className="grid h-full grid-cols-[0.7fr_1.55fr_0.8fr] gap-[1.3%]">
+          <div className="grid grid-rows-3 gap-[2%]">
+            <Panel
+              accent="violet"
+              icon={Network}
+              number="1"
+              title="HSA-personuppslag"
+            >
+              Runtime anropar server-side REST via{' '}
+              <strong>HSA_PERSON_LOOKUP_URL</strong>, med mTLS eller OAuth2 när
+              miljön kräver det.
+            </Panel>
+            <Panel
+              accent="violet"
+              icon={Sparkles}
+              number="2"
+              title="AI-modelltjänst"
+            >
+              Runtime anropar ett modell-API med en hemlig leverantörsuppgift.
+              Leverantören är utbytbar.
+            </Panel>
+            <Panel
+              accent="violet"
+              icon={CircleDot}
+              number="3"
+              title="Extern MCP-klient"
+            >
+              Klienten anropar <strong>/api/mcp</strong> via Streamable HTTP och
+              OIDC-baserad Bearer-JWT.
+            </Panel>
           </div>
+          <Panel
+            className="h-full"
+            icon={ServerCog}
+            number="4"
+            title="Kärnresan återanvänds"
+          >
+            <div className="mt-2 grid h-[32%] grid-cols-4 gap-[2%]">
+              {workflow.map(({ icon: Icon, label }, index) => (
+                <div
+                  className="flex flex-col items-center justify-center rounded-xl bg-blue-50 text-center dark:bg-blue-950"
+                  key={label}
+                >
+                  <span className="flex size-[clamp(1.5rem,3vw,2.7rem)] items-center justify-center rounded-full bg-[#07509a] text-white">
+                    <Icon aria-hidden="true" className="size-1/2" />
+                  </span>
+                  <strong className="mt-2">
+                    {index + 1}. {label}
+                  </strong>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-center font-bold">
+              Funktionsberoenden ändrar inte kärnans normala startberedskap.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-[1.5%]">
+              {[
+                ['Arbetsyta → runtime', 'start, bygge och miljökonfiguration'],
+                ['Webbläsare ↔ runtime', 'UI och REST via HTTP(S)'],
+                ['Runtime ↔ identitet', 'discovery, token och JWKS'],
+                [
+                  'Runtime ↔ SQL Server',
+                  'beständig data och kompatibelt schema',
+                ],
+                ['Agent ↔ arbetsyta', 'filer, kommandon och tester'],
+                ['Agent ↔ webbläsare', 'UI-inspektion och Playwright'],
+              ].map(([heading, text]) => (
+                <div
+                  className="rounded-lg border border-blue-200 bg-blue-50 px-[3%] py-[2%] dark:border-blue-800 dark:bg-blue-950"
+                  key={heading}
+                >
+                  <strong>{heading}</strong>
+                  <p>{text}</p>
+                </div>
+              ))}
+            </div>
+          </Panel>
+          <div className="grid grid-rows-2 gap-[2%]">
+            <Panel
+              accent="amber"
+              icon={GitPullRequest}
+              number="5"
+              title="Källkod och granskning"
+            >
+              <CheckList
+                items={[
+                  'Revisioner och ärenden',
+                  'Pull requests',
+                  'Mänskliga granskningsbeslut',
+                  'Separat AI-granskningskontext',
+                ]}
+              />
+            </Panel>
+            <Panel
+              accent="amber"
+              icon={TestTube2}
+              number="6"
+              title="CI/CD-validering"
+            >
+              <CheckList
+                items={[
+                  'Bygge och kvalitet',
+                  'Integration och prestanda',
+                  'Säkerhet och release-smoke',
+                  'Status, loggar och artefakter',
+                ]}
+              />
+            </Panel>
+          </div>
+        </div>
+      </SlideFrame>
+    </div>
+  )
+}
+
+function ContractTable({
+  rows = coreComponents,
+}: {
+  rows?: typeof coreComponents
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-300 dark:border-slate-700">
+      <div className="grid grid-cols-[1fr_1.2fr_1.25fr_1.05fr] bg-[#0b2d59] px-[2%] py-[1.15%] font-black text-white">
+        <span>Komponent</span>
+        <span>Funktionellt löfte</span>
+        <span>Tekniskt gränssnitt</span>
+        <span>Konfigurationsankare</span>
+      </div>
+      {rows.map((item, index) => {
+        const Icon = item.icon
+        return (
+          <div
+            className={`grid grid-cols-[1fr_1.2fr_1.25fr_1.05fr] items-center px-[2%] py-[1.15%] ${index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-blue-50 dark:bg-blue-950/40'}`}
+            key={item.label}
+          >
+            <strong className="flex items-center gap-2">
+              <Icon
+                aria-hidden="true"
+                className="size-[1.2em] text-[#07509a]"
+              />
+              {item.label}
+            </strong>
+            <span>{item.promise}</span>
+            <span>{item.interface}</span>
+            <code>{item.anchor}</code>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export function VariantCArchitectureAtlas() {
+  return (
+    <div className="space-y-8">
+      <SlideFrame
+        index={1}
+        subtitle="En tät systembild med kärnan, aktören, resultatet och placeringsregeln"
+        title="Atlas över den fulla utvecklingsloopen"
+      >
+        <div className="grid h-full grid-cols-[0.7fr_2fr_0.75fr] grid-rows-[1fr_0.42fr] gap-[1.3%]">
+          <Panel accent="blue" icon={UserRound} number="1" title="Utvecklaren">
+            <CheckList
+              items={[
+                'Sätter mål',
+                'Fattar beslut',
+                'Godkänner åtgärder',
+                'Provar resultatet',
+              ]}
+            />
+          </Panel>
+          <Panel
+            icon={LayoutGrid}
+            number="2"
+            title="Obligatorisk utvecklingskärna"
+          >
+            <div className="grid grid-cols-3 gap-[2%]">
+              {coreComponents.map((item, index) => (
+                <ComponentChip index={index + 1} item={item} key={item.label} />
+              ))}
+            </div>
+            <div className="mt-[2%] h-[27%]">
+              <WorkflowStrip />
+            </div>
+            <div className="mt-[2%] grid grid-cols-3 gap-[2%] text-[clamp(0.34rem,0.56vw,0.5rem)]">
+              <div className="rounded-lg bg-blue-50 p-[3%] dark:bg-blue-950">
+                <strong>Skapa och styra</strong>
+                <p>Arbetsyta och AI-agentverktyg</p>
+              </div>
+              <div className="rounded-lg bg-blue-50 p-[3%] dark:bg-blue-950">
+                <strong>Interagera och autentisera</strong>
+                <p>Webbläsare, runtime och OIDC</p>
+              </div>
+              <div className="rounded-lg bg-blue-50 p-[3%] dark:bg-blue-950">
+                <strong>Köra och lagra</strong>
+                <p>Runtime och Microsoft SQL Server</p>
+              </div>
+            </div>
+          </Panel>
+          <Panel accent="green" icon={CheckCircle2} number="3" title="Resultat">
+            <CheckList
+              items={[
+                'Fungerande runtime',
+                'OIDC-inloggning',
+                'Beständig SQL-data',
+                'Verifieringsevidens',
+              ]}
+            />
+          </Panel>
+          <Panel
+            accent="blue"
+            className="col-span-3"
+            icon={Network}
+            number="4"
+            title="Den normativa regeln"
+          >
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+              <strong>Placera tillsammans eller var för sig</strong>
+              <ArrowRight
+                aria-hidden="true"
+                className="size-[1.5em] text-[#07509a]"
+              />
+              <span>
+                Behåll endast de riktade relationer som komponentkontrakten
+                kräver. Avstånd och gruppering är logiska, aldrig fysiska.
+              </span>
+            </div>
+          </Panel>
+        </div>
+      </SlideFrame>
+
+      <SlideFrame
+        index={2}
+        subtitle="Varje rad gör ansvar, gränssnitt och konfiguration spårbara"
+        title="Komponentatlas för utvecklingskärnan"
+      >
+        <div className="grid h-full grid-rows-[0.2fr_1fr_0.3fr] gap-[1.3%] text-[clamp(0.34rem,0.59vw,0.53rem)]">
+          <Panel
+            accent="blue"
+            icon={LayoutGrid}
+            number="1"
+            title="Sex logiska komponenter — sex självständiga ansvar"
+          >
+            En komponent får en egen rad när den har ett självständigt ansvar
+            och ett uttryckligt kontrakt. UI, REST och MCP är interna
+            kontraktsytor i runtime; TypeORM, DAL och autentiseringskod är
+            interna lager.
+          </Panel>
+          <ContractTable />
+          <div className="grid grid-cols-3 gap-[1.3%]">
+            <Panel
+              accent="green"
+              icon={FileCheck2}
+              number="2"
+              title="Kärnvalidering"
+            >
+              Typkontroll, lintning, enhetstest, Playwright,
+              SQL-integrationstest och AI-agentens specifikationsvalidering.
+            </Panel>
+            <Panel
+              accent="amber"
+              icon={GitPullRequest}
+              number="3"
+              title="Utanför kärnloopen"
+            >
+              Pull request, delad granskning och CI/CD höjer verifieringsgraden
+              men krävs inte för normal start och användning.
+            </Panel>
+            <Panel
+              accent="violet"
+              icon={Network}
+              number="4"
+              title="Ingen standardtopologi"
+            >
+              Inga namngivna värdar, virtuella maskiner, containrar,
+              devcontainers eller fjärrmiljöer visas.
+            </Panel>
+          </div>
+        </div>
+      </SlideFrame>
+
+      <SlideFrame
+        index={3}
+        subtitle="En kontraktskarta visar exakt vad som måste nå vad — och varför"
+        title="Kontraktsatlas med villkor och validering"
+      >
+        <div className="grid h-full grid-cols-[1.35fr_0.8fr_0.8fr] grid-rows-[1fr_0.34fr] gap-[1.3%]">
+          <Panel icon={Network} number="1" title="Kärnkontrakt">
+            <div className="grid grid-cols-2 gap-[1.5%]">
+              {[
+                ['Arbetsyta → runtime', 'Start, bygge och miljökonfiguration'],
+                ['Webbläsare ↔ runtime', 'UI och REST via HTTP(S)'],
+                ['Webbläsare ↔ identitet', 'OIDC-omdirigeringar'],
+                [
+                  'Runtime ↔ identitet',
+                  'Discovery, token, JWKS och utloggning',
+                ],
+                [
+                  'Arbetsyta → SQL Server',
+                  'Schema, seedning och integrationstest',
+                ],
+                [
+                  'Runtime ↔ SQL Server',
+                  'Beständig data och kompatibelt schema',
+                ],
+                ['Agent ↔ arbetsyta', 'Filer, kommandon, tester och resultat'],
+                ['Agent ↔ webbläsare', 'UI-inspektion och Playwright'],
+              ].map(([heading, text]) => (
+                <div
+                  className="rounded-xl border border-blue-200 bg-white p-[3%] dark:border-blue-800 dark:bg-slate-900"
+                  key={heading}
+                >
+                  <strong>{heading}</strong>
+                  <p className="mt-1 text-slate-600 dark:text-slate-300">
+                    {text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Panel>
+          <Panel
+            accent="violet"
+            icon={Sparkles}
+            number="2"
+            title="Funktionsspecifikt"
+          >
+            <CheckList
+              items={[
+                'HSA-personuppslag',
+                'AI-modelltjänst',
+                'Extern MCP-klient',
+              ]}
+            />
+            <p className="mt-3 font-bold">
+              Streckad relation. Aktiv endast när funktionen utvecklas eller
+              provas.
+            </p>
+          </Panel>
+          <Panel
+            accent="amber"
+            icon={TestTube2}
+            number="3"
+            title="Valideringstillägg"
+          >
+            <CheckList
+              items={[
+                'Källkodsplattform',
+                'Mänsklig granskning',
+                'CI/CD-motor',
+                'Loggar och artefakter',
+              ]}
+            />
+            <p className="mt-3 font-bold">
+              Prickad relation. Återanvänder kärnans kontrakt för vald
+              testomfattning.
+            </p>
+          </Panel>
+          <Panel
+            accent="blue"
+            className="col-span-2"
+            icon={ShieldCheck}
+            number="4"
+            title="Kontraktsstyrd nåbarhet"
+          >
+            <div className="flex justify-between gap-4">
+              <strong>Minsta nödvändiga åtkomst</strong>
+              <span>Ingen direkt webbläsare → SQL Server-relation</span>
+              <span>Ingen produktionsåtkomst för AI-agentverktyget</span>
+              <span>Inga implicita fullständiga nät</span>
+            </div>
+          </Panel>
+          <Panel icon={CircleDot} number="5" title="Legend">
+            <p>
+              <strong>Heldragen:</strong> obligatorisk kärna
+            </p>
+            <p>
+              <strong>Streckad:</strong> funktionsvillkor
+            </p>
+            <p>
+              <strong>Prickad:</strong> utökad validering
+            </p>
+          </Panel>
         </div>
       </SlideFrame>
     </div>
@@ -675,30 +1179,26 @@ function PrototypeSwitcher({
   }, [selectOffset])
 
   if (process.env.NODE_ENV === 'production') return null
-
   const definition = variants[currentIndex]
   return (
-    <div className="fixed inset-x-0 bottom-5 z-50 flex justify-center px-4">
-      <div className="flex items-center gap-3 rounded-full border border-white/20 bg-slate-950 px-3 py-2 text-white shadow-2xl">
+    <div className="fixed inset-x-0 bottom-3 z-50 flex justify-center px-4">
+      <div className="flex items-center gap-2 rounded-full border border-white/20 bg-slate-950 px-2 py-1.5 text-white shadow-2xl">
         <button
           aria-label="Föregående variant"
-          className="flex size-11 items-center justify-center rounded-full hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="flex size-9 items-center justify-center rounded-full hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           onClick={() => selectOffset(-1)}
           type="button"
         >
           <ArrowLeft aria-hidden="true" className="size-5" />
         </button>
-        <div className="min-w-40 text-center">
+        <div className="min-w-44 text-center">
           <p className="text-xs uppercase tracking-widest text-slate-400">
-            Prototypvariant
-          </p>
-          <p className="font-bold">
-            {definition.key} — {definition.name}
+            {definition.key} · {definition.name}
           </p>
         </div>
         <button
           aria-label="Nästa variant"
-          className="flex size-11 items-center justify-center rounded-full hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="flex size-9 items-center justify-center rounded-full hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           onClick={() => selectOffset(1)}
           type="button"
         >
@@ -718,7 +1218,6 @@ export default function InfographicPrototypeClient() {
     requestedVariant === 'B' || requestedVariant === 'C'
       ? requestedVariant
       : 'A'
-
   const selectVariant = useCallback(
     (key: VariantKey) => {
       const next = new URLSearchParams(searchParams.toString())
@@ -730,7 +1229,7 @@ export default function InfographicPrototypeClient() {
 
   return (
     <main
-      className="min-h-screen bg-slate-200 px-3 pb-32 pt-8 dark:bg-slate-900 sm:px-6 lg:px-10"
+      className="min-h-screen bg-slate-300 px-3 pb-36 pt-8 dark:bg-slate-900 sm:px-6 lg:px-10"
       {...devMarker({
         context: 'infographic prototype',
         name: 'topology-independent infographic series',
@@ -739,21 +1238,28 @@ export default function InfographicPrototypeClient() {
       })}
     >
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-50 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-8 grid gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-50 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>
-            <p className="font-black">PROTOTYP — ska kastas</p>
+            <p className="font-black">
+              PROTOTYP — bedöm innehållshierarki och komposition
+            </p>
             <p className="text-sm">
-              Bedöm hierarki, komposition, läsordning och legend. Inte slutlig
-              illustration eller typografisk finish.
+              Alla tre alternativ är nu innehållsrika. De provar vad som
+              prioriteras, hur informationen grupperas och hur den visuella
+              grammatiken bär läsordningen.
             </p>
           </div>
-          <p className="text-sm font-bold">
-            Tre bilder · 16:9 · svenska · variant {current}
-          </p>
+          <div className="text-right text-sm">
+            <p className="font-black">
+              Variant {current}:{' '}
+              {variants.find(item => item.key === current)?.name}
+            </p>
+            <p>Tre bilder · 16:9 · svenska</p>
+          </div>
         </div>
-        {current === 'A' ? <VariantAOrbit /> : null}
-        {current === 'B' ? <VariantBTransit /> : null}
-        {current === 'C' ? <VariantCFieldGuide /> : null}
+        {current === 'A' ? <VariantANumberedOverview /> : null}
+        {current === 'B' ? <VariantBDeveloperJourney /> : null}
+        {current === 'C' ? <VariantCArchitectureAtlas /> : null}
       </div>
       <PrototypeSwitcher current={current} onSelect={selectVariant} />
     </main>
