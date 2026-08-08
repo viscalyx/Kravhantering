@@ -130,6 +130,20 @@
     color: var(--sb-fg-light);
     background-color: var(--sb-bg-light);
   }
+
+  /* Compact requirements-library companion status: readable icon, no badge fill. */
+  .pending-version-indicator {
+    color: var(--color-secondary-600);
+  }
+  .pending-version-indicator[data-accent-color] {
+    color: var(--pending-version-fg-light);
+  }
+  .dark .pending-version-indicator {
+    color: var(--color-secondary-300);
+  }
+  .dark .pending-version-indicator[data-accent-color] {
+    color: var(--pending-version-fg-dark);
+  }
 }
 
 @layer utilities {

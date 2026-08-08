@@ -578,11 +578,13 @@ produktansvar som hon inte har.
 
 **Användare:** `ada.admin`.
 
-**Steg:** Öppna `/sv/requirements`, vänta in tabellen och öppna ett känt krav
-som `INT0001`.
+**Steg:** Öppna `/sv/requirements`, vänta in tabellen och kontrollera
+kravversionsstatusen för `INT0001`. Öppna sedan kravet.
 
-**Förväntat resultat:** Listan laddar, kravets detalj visas och metadata är
-läslig.
+**Förväntat resultat:** Listan laddar. Den publicerade statusen kompletteras med
+en fristående utkastikon; ikonen har
+verktygstipset `Det arbetas på en ny version`.
+Kravets detalj visas och metadata är läslig.
 
 ### REQ-02: språkbyte behåller användbar lista
 
