@@ -814,8 +814,42 @@ system-wide and verifies that the `codex` and `copilot` commands start. The
 Codex installer requires and verifies the upstream SHA-256 release-asset digest
 before execution; missing or mismatched evidence stops setup. The rolling
 `@github/copilot` channel relies on npm registry SRI metadata and npm's package-
-integrity verification under ADR 0045. Rerun `setup` to install updates on an
-existing VM.
+integrity verification under ADR 0045.
+
+To update the managed tools on an existing VM, run setup again from the
+workstation repository root:
+
+```powershell
+./scripts/azure-dev.ps1 setup -Yes
+```
+
+Setup uploads the current verified installer helper and installs the latest
+stable Codex CLI release. To refresh only Codex from an SSH session on the VM,
+run the same helper directly:
+
+```sh
+cd /workspace
+sudo env \
+  CODEX_HOME=/usr/local/lib/codex \
+  CODEX_INSTALL_DIR=/usr/local/bin \
+  CODEX_NON_INTERACTIVE=1 \
+  bash scripts/azure-dev/templates/install-codex.sh
+command -v codex
+codex --version
+```
+
+The expected command path is `/usr/local/bin/codex`.
+
+Do not install or update Codex CLI with npm on the Azure development VM. A
+global npm installation creates a second `codex` command under `/usr/bin`, but
+`/usr/local/bin/codex` appears first on `PATH`, so the command continues to run
+the standalone version managed by Azure setup. It also leaves two independent
+installations to maintain. Remove an accidental npm installation, then use one
+of the update procedures above:
+
+```sh
+sudo npm uninstall --global @openai/codex
+```
 
 Setup also resolves Oh My Zsh, `zsh-autosuggestions`,
 `zsh-syntax-highlighting`, and Powerlevel10k as four rolling Git channels at
