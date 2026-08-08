@@ -13,11 +13,11 @@ Den versionssatta manifestfilen
 `typeorm/runtime-permission-manifest.mjs` är auktoritativ för varje
 fullständigt kvalificerat objekt, tillåten operation och eventuell
 kolumnbegränsad uppdatering. Nya objekt får ingen implicit runtime-behörighet.
-Databasjobbet kör avstämning efter lyckad migrering, tar bort oväntade direkta
+Databasjobbet kör avstämning när migreringen är klar, tar bort oväntade direkta
 behörigheter från projektrollen och verifierar manifestets digest samt
-deklarerade runtime-användares medlemskap. Först efter att dessa behörigheter
-och medlemskap har verifierats tar avstämningen bort runtime-användarens äldre
-medlemskap i `db_datareader` och `db_datawriter`.
+deklarerade runtime-användares medlemskap. Om en runtime-användare är medlem i
+`db_datareader` eller `db_datawriter` tar avstämningen bort medlemskapet först
+när projektrollens behörigheter och medlemskap verifierar korrekt.
 
 Avstämningen ändrar inte andra användarroller, direkta användarbehörigheter
 eller lokalt ägda tilläggsroller. Verifieringen misslyckas dock om sådana

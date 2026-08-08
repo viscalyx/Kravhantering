@@ -501,13 +501,14 @@ runtime role intentionally has no DDL permission; only the separate db-job
 identity may apply TypeORM migrations.
 
 Role reconciliation removes unexpected direct permissions from the custom role
-and migrates managed runtime users off those two broad roles. Custom membership
-and manifest grants are verified before removing the obsolete memberships.
-Other user roles, direct user grants, and site extensions remain unchanged. An
-effective schema-migration or protected-audit mutation capability inherited
-from them makes verification incompatible. An unexpected custom-role parent is
-also reported for explicit DBA handling. Future tables do not inherit access;
-their required operations must first be added to the release manifest.
+and verifies every managed runtime user's custom membership. If a managed user
+belongs to either broad role, reconciliation removes those memberships only
+after the custom membership and manifest grants verify. Other user roles,
+direct user grants, and site extensions remain unchanged. An effective
+schema-migration or protected-audit mutation capability inherited from them
+makes verification incompatible. An unexpected custom-role parent is also
+reported for explicit DBA handling. Future tables do not inherit access; their
+required operations must first be added to the release manifest.
 
 Set `/etc/kravhantering/app.env` with the app runtime user:
 

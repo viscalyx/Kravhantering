@@ -2916,12 +2916,13 @@ release-versioned manifest in
 is authoritative for exact object, operation, and update-column grants. Future
 tables receive no implicit access through `kravhantering_runtime`.
 Reconciliation removes unexpected direct permissions from the project role.
-For managed runtime users, it verifies the custom grants and membership before
-removing obsolete `db_datareader` and `db_datawriter` memberships. Other user
-roles, direct user grants, and site-owned extension roles remain unchanged;
-effective schema-migration or protected-audit mutation permissions inherited
-from them fail verification. Unexpected custom-role parents also fail
-verification.
+For managed runtime users, it verifies the custom grants and membership. If a
+managed user belongs to `db_datareader` or `db_datawriter`, reconciliation
+removes those broad memberships only after the custom contract verifies. Other
+user roles, direct user grants, and site-owned extension roles remain
+unchanged; effective schema-migration or protected-audit mutation permissions
+inherited from them fail verification. Unexpected custom-role parents also
+fail verification.
 
 Through `kravhantering_runtime`, `dbo.migrations` is `SELECT`-only.
 `action_audit_events` permits `SELECT`, `INSERT`, and `UPDATE` only for
@@ -2933,7 +2934,8 @@ or stored-procedure execution grant.
 The application runtime and the migration job use separate SQL Server logins.
 The migration login retains `db_owner` so TypeORM can apply versioned schema
 changes. Bootstrap assigns only the custom role to the application login.
-During ordinary upgrades, reconciliation adds any explicitly declared
-`DB_RUNTIME_USER` principal that lacks `kravhantering_runtime` membership,
-verifies the restricted permission contract, and removes its obsolete broad
-memberships. It does not change the migration login's `db_owner` privileges.
+Reconciliation adds any explicitly declared `DB_RUNTIME_USER` principal that
+lacks `kravhantering_runtime` membership and verifies the restricted permission
+contract. If the user belongs to either broad read/write role, reconciliation
+removes that membership after the custom contract verifies. It does not change
+the migration login's `db_owner` privileges.

@@ -3,8 +3,8 @@
 
   Replace every value in angle brackets before running. The migration/job
   principal needs db_owner because TypeORM migrations create and alter schema.
-  The custom runtime role's release-versioned grants are reconciled by db-job
-  after migrations; this template owns principals and initial membership only.
+  The db-job reconciles the custom runtime role's release-versioned grants when
+  migration completes; this template owns principals and initial membership only.
   The app principal receives only the custom runtime role.
 */
 

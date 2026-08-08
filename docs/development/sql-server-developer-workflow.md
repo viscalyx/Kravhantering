@@ -78,7 +78,7 @@ DB_TRUST_SERVER_CERTIFICATE=...
 The committed development defaults use `kravhantering_app` for the application,
 `kravhantering_job` for migration and required seed, and `sa` only for
 principal/database bootstrap. `db:setup` creates and maps those principals
-idempotently; it does not rotate existing login passwords.
+idempotently. Password rotation is outside `db:setup`'s scope.
 
 For the read-only login, avoid passwords that contain the login name
 (`readonly`) because SQL Server password policy can reject them even when they
@@ -104,20 +104,20 @@ The release-versioned manifest in
 [`typeorm/runtime-permission-manifest.mjs`](../../typeorm/runtime-permission-manifest.mjs)
 lists exact object/operation grants, including protected column-scoped updates;
 new tables receive nothing implicitly through `kravhantering_runtime`.
-`db:migrate` reconciles direct grants after migrations, establishes and verifies
-`DB_RUNTIME_USER` membership, and then removes that user's obsolete
-`db_datareader` and `db_datawriter` memberships. It does not alter other user
-roles or direct user permissions. Verification fails when those permissions
-still give the runtime user effective schema-migration or protected-audit
-mutation access. Reconciliation, legacy-role removal, and final effective
-verification are atomic, and a role-only runtime login cannot run TypeORM
-migrations.
+`db:migrate` applies migrations and then reconciles direct grants and verifies
+`DB_RUNTIME_USER` membership. If that user belongs to `db_datareader` or
+`db_datawriter`, reconciliation removes those broad memberships only after the
+custom contract verifies. It does not alter other user roles or direct user
+permissions. Verification fails when those permissions give the runtime user
+effective schema-migration or protected-audit mutation access. Reconciliation,
+broad-role removal, and final effective verification are atomic, and a
+role-only runtime login cannot run TypeORM migrations.
 
 Use `npm run db:permission-status` for secret-free JSON evidence or
 `npm run db:permission-reconcile` for an explicit repair. Both report the
 manifest version/digest, role presence, missing/unexpected grants, managed-user
-presence and membership, obsolete broad memberships, and unexpected parent
-roles. A compatible report has empty `legacyRoles` and
+presence and membership, broad-role memberships, and unexpected parent roles.
+A compatible report has empty `legacyRoles` and
 `prohibitedEffectivePermissions` arrays for every managed runtime user.
 
 The Next.js runtime builds one shared TypeORM `DataSource` per process. The

@@ -382,15 +382,15 @@ configuration change.
    Run the database jobs. Review the target release's Operator Upgrade Notes
    before running `db-job migrate`:
 
-   Migration 0054 and the post-migration reconciler apply the explicit runtime
-   manifest. The custom membership and manifest grants are verified before
-   removing the managed runtime user's obsolete `db_datareader` and
-   `db_datawriter` memberships. Other user roles and direct grants remain
-   unchanged, but verification rejects effective schema-migration or
-   protected-audit mutation access inherited from them. Only the db-job
-   identity has migration permission. A successful `permission-status` report
-   has `compatible: true` and empty `legacyRoles` and
-   `prohibitedEffectivePermissions` arrays for every managed runtime user.
+   The migration sequence applies the explicit runtime manifest and verifies
+   the custom membership and grants. If a managed runtime user belongs to
+   `db_datareader` or `db_datawriter`, reconciliation removes those broad
+   memberships only after the custom contract verifies. Other user roles and
+   direct grants remain unchanged, but verification rejects effective
+   schema-migration or protected-audit mutation access inherited from them.
+   Only the db-job identity has migration permission. A successful
+   `permission-status` report has `compatible: true` and empty `legacyRoles`
+   and `prohibitedEffectivePermissions` arrays for every managed runtime user.
 
    ```bash
    sudo -iu kravhantering
@@ -602,10 +602,9 @@ snapshot or restore point taken before the upgrade. Use the captured migration
 evidence to confirm which database head was observed before and after the
 failed upgrade. The supported sequence is:
 
-Do not run migration 0054's down path against the restricted runtime identity:
-after this upgrade there are no broad memberships to preserve application
-access. The supported production rollback restores the pre-upgrade role
-memberships as one database state with the schema and data, as described below.
+Do not run an individual migration down path against the restricted runtime
+identity. Use the full database restore point so schema, data, permissions, and
+role memberships return as one database state.
 
 1. Disable traffic.
 2. Stop `nginx` and `app-runtime`.
