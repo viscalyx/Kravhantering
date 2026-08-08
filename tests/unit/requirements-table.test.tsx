@@ -3465,6 +3465,22 @@ describe('RequirementsTable', () => {
     expect(indicator.querySelector('svg')).toHaveClass('lucide-eye')
   })
 
+  it('falls back to the alert icon for an unknown pending version icon', () => {
+    const row = {
+      ...makeRow(),
+      hasPendingVersion: true,
+      pendingVersionStatusIconName: 'MadeUpIcon',
+      pendingVersionStatusId: 2,
+    }
+
+    render(<RequirementsTable locale="sv" rows={[row]} />)
+
+    const indicator = screen.getByRole('img', {
+      name: 'hasPendingVersionReview',
+    })
+    expect(indicator.querySelector('svg')).toHaveClass('lucide-circle-alert')
+  })
+
   it('shows a blue pending draft indicator for archived rows', () => {
     const rows = [
       {

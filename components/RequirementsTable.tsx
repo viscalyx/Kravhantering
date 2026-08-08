@@ -46,13 +46,13 @@ import { useResizeHandles } from '@/components/_requirements-table/useResizeHand
 import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePurposeTooltip'
 import RequirementsPackageFilter from '@/components/RequirementsPackageFilter'
 import StatusBadge from '@/components/StatusBadge'
-import StatusIcon from '@/components/StatusIcon'
 import { Link, useRouter } from '@/i18n/routing'
 import { getReadableTextColors, isStrictHexColor } from '@/lib/color-contrast'
 import {
   devMarker,
   getRequirementColumnDeveloperModeLabel,
 } from '@/lib/developer-mode-markers'
+import { getStatusIconComponent } from '@/lib/icons/status-icon-components'
 import {
   type AreaOption,
   clearRequirementFiltersForHiddenColumns,
@@ -2520,6 +2520,9 @@ export default function RequirementsTable({
               '--pending-version-fg-light': pendingVersionColors.light,
             } as CSSProperties)
           : undefined
+        const PendingVersionStatusIcon =
+          getStatusIconComponent(row.pendingVersionStatusIconName) ??
+          AlertCircle
 
         return (
           <td className={`py-2 px-2 ${dividerClass}`}>
@@ -2566,14 +2569,11 @@ export default function RequirementsTable({
                   style={pendingVersionStyle}
                   title={pendingVersionLabel}
                 >
-                  {row.pendingVersionStatusIconName ? (
-                    <StatusIcon
-                      className="h-3.5 w-3.5"
-                      name={row.pendingVersionStatusIconName}
-                    />
-                  ) : (
-                    <AlertCircle aria-hidden="true" className="h-3.5 w-3.5" />
-                  )}
+                  <PendingVersionStatusIcon
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5"
+                    focusable="false"
+                  />
                 </span>
               )}
             </span>

@@ -430,58 +430,60 @@ test.describe('Requirements specifications destructive manual cases', () => {
     const reloadRequestStarted = new Promise<void>(resolve => {
       markReloadRequestStarted = resolve
     })
-    await page.route('**/api/requirements-specifications', async route => {
-      if (route.request().method() !== 'GET') {
-        await route.continue()
-        return
-      }
-      if (deleted) {
-        markReloadRequestStarted()
-        await new Promise<void>(resolve => {
-          releaseReloadRequest = resolve
+    await test.step('set up post-deletion reload interception', async () => {
+      await page.route('**/api/requirements-specifications', async route => {
+        if (route.request().method() !== 'GET') {
+          await route.continue()
+          return
+        }
+        if (deleted) {
+          markReloadRequestStarted()
+          await new Promise<void>(resolve => {
+            releaseReloadRequest = resolve
+          })
+        }
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            collectionPermissions: { canCreateSpecification: true },
+            specifications: deleted
+              ? []
+              : [
+                  {
+                    businessNeedsReference:
+                      'PWT-MANUAL delete confirmation fixture.',
+                    governanceObjectType: {
+                      id: 2,
+                      nameEn: 'Information system',
+                      nameSv: 'Informationssystem',
+                    },
+                    id: 920001,
+                    implementationType: {
+                      id: 2,
+                      nameEn: 'Development',
+                      nameSv: 'Utveckling',
+                    },
+                    itemCount: 0,
+                    lifecycleStatus: {
+                      id: 3,
+                      nameEn: 'Development',
+                      nameSv: 'Utveckling',
+                    },
+                    name: 'PWT-MANUAL redigerbart kravunderlag',
+                    permissions: {
+                      canEditContent: true,
+                      canManageAssignments: true,
+                      canReviewDecisions: true,
+                      canUseAi: false,
+                    },
+                    requirementAreas: [],
+                    responsibleDisplayName: 'Petra specresp',
+                    responsibleHsaId: 'SE5560000001-specresp1',
+                    specificationCode: 'PWT-SPEC-EDIT-2026',
+                  },
+                ],
+          },
         })
-      }
-      await route.fulfill({
-        contentType: 'application/json',
-        json: {
-          collectionPermissions: { canCreateSpecification: true },
-          specifications: deleted
-            ? []
-            : [
-                {
-                  businessNeedsReference:
-                    'PWT-MANUAL delete confirmation fixture.',
-                  governanceObjectType: {
-                    id: 2,
-                    nameEn: 'Information system',
-                    nameSv: 'Informationssystem',
-                  },
-                  id: 920001,
-                  implementationType: {
-                    id: 2,
-                    nameEn: 'Development',
-                    nameSv: 'Utveckling',
-                  },
-                  itemCount: 0,
-                  lifecycleStatus: {
-                    id: 3,
-                    nameEn: 'Development',
-                    nameSv: 'Utveckling',
-                  },
-                  name: 'PWT-MANUAL redigerbart kravunderlag',
-                  permissions: {
-                    canEditContent: true,
-                    canManageAssignments: true,
-                    canReviewDecisions: true,
-                    canUseAi: false,
-                  },
-                  requirementAreas: [],
-                  responsibleDisplayName: 'Petra specresp',
-                  responsibleHsaId: 'SE5560000001-specresp1',
-                  specificationCode: 'PWT-SPEC-EDIT-2026',
-                },
-              ],
-        },
       })
     })
     await page.route(
@@ -523,20 +525,24 @@ test.describe('Requirements specifications destructive manual cases', () => {
       const dialog = page.getByRole('alertdialog')
       await dialog.getByRole('button', { name: 'Bekräfta' }).click()
       await expect.poll(() => deleteRequests.length).toBe(1)
-      await reloadRequestStarted
+      await test.step('verify loading and release the post-deletion reload', async () => {
+        await reloadRequestStarted
 
-      const loadingStatus = page
-        .getByRole('status')
-        .filter({ hasText: 'Laddar...' })
-      await expect(loadingStatus).toBeVisible()
-      await expect(page.getByRole('table')).toHaveCount(0)
+        const loadingStatus = page
+          .getByRole('status')
+          .filter({ hasText: 'Laddar...' })
+        await expect(loadingStatus).toBeVisible()
+        await expect(page.getByRole('table')).toHaveCount(0)
 
-      releaseReloadRequest()
-      await expect(loadingStatus).toHaveCount(0)
-      await expect(page.getByRole('table')).toBeVisible()
-      await expect(
-        page.getByRole('row', { name: /PWT-MANUAL redigerbart kravunderlag/ }),
-      ).toHaveCount(0)
+        releaseReloadRequest()
+        await expect(loadingStatus).toHaveCount(0)
+        await expect(page.getByRole('table')).toBeVisible()
+        await expect(
+          page.getByRole('row', {
+            name: /PWT-MANUAL redigerbart kravunderlag/,
+          }),
+        ).toHaveCount(0)
+      })
     })
   })
 })

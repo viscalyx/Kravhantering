@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -16,9 +16,12 @@ import { deterministicBytes } from './helpers/bundle-test-helpers.mjs'
 const BOUNDARY_MODULE =
   '[project]/app/[locale]/requirements/stewardship/stewardship-lazy-workspace.tsx'
 const LAYOUT_MODULE = '[project]/app/[locale]/layout'
+const fixtureRoots = new Set()
 
 function fixtureRoot() {
-  return mkdtempSync(join(tmpdir(), 'stewardship-bundle-'))
+  const root = mkdtempSync(join(tmpdir(), 'stewardship-bundle-'))
+  fixtureRoots.add(root)
+  return root
 }
 
 function write(root, relativePath, content) {
@@ -82,6 +85,10 @@ function writeCompleteFixture() {
 }
 
 afterEach(() => {
+  for (const root of fixtureRoots) {
+    rmSync(root, { force: true, recursive: true })
+  }
+  fixtureRoots.clear()
   vi.restoreAllMocks()
 })
 
