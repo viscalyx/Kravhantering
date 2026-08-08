@@ -128,6 +128,7 @@ const API_DOCS_CONTENT_SECURITY_POLICY = [
 ].join('; ')
 
 const nextConfig: NextConfig = {
+  agentRules: false,
   reactStrictMode: true,
   typedRoutes: true,
   output: 'standalone',
