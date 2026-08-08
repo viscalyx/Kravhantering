@@ -708,6 +708,15 @@ export const REST_OPERATION_DECLARATIONS = [
   ],
   [
     'GET',
+    '/api/requirement-area-stewardship',
+    'session',
+    'none',
+    'authenticated',
+    'framework-default',
+    'openapi',
+  ],
+  [
+    'GET',
     '/api/requirement-areas/[id]',
     'session',
     'none',

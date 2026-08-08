@@ -2462,11 +2462,11 @@
       "title": "Requirement areas",
       "overview": {
         "heading": "What are requirement areas?",
-        "body": "Requirement areas define the ID prefix for requirements (e.g. PERF-001) and assign a responsible owner. A requirement must belong to a requirement area before it can be saved."
+        "body": "Requirement areas define the ID prefix for requirements (e.g. PERF-001) and assign a responsible owner. The list shows the owner's name and HSA-id together with a name-only summary of every co-author. A requirement must belong to a requirement area before it can be saved."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Create a new requirement area using the New button. Click the edit icon to update the prefix, name, description, or owner. Deleting a requirement area is only possible if no requirements are assigned to it."
+        "body": "Create a new requirement area using the New button. Click the edit icon to update the prefix, name, description, or owner. Use Manage co-authors when the action is available; the list refreshes after a successful assignment change. Deleting a requirement area is only possible if no requirements are assigned to it."
       }
     },
     "requirementCategories": {
@@ -2499,11 +2499,11 @@
       "title": "Requirements packages",
       "overview": {
         "heading": "What are requirements packages?",
-        "body": "Requirements packages group requirements for a specific area of concern, such as mobile use, data migration, integrations with other systems, case management, usability, cloud operations, normal operations, high load, or disaster recovery."
+        "body": "Requirements packages group requirements for a specific area of concern, such as mobile use, data migration, integrations with other systems, case management, usability, cloud operations, normal operations, high load, or disaster recovery. The list shows the package lead's name and HSA-id together with a name-only summary of every co-author."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Create and edit requirements packages using the toolbar. A requirements package can be linked to multiple requirements. Removing a package only removes the package record; linked requirements are not affected."
+        "body": "Create and edit requirements packages using the toolbar. Use Manage co-authors when the action is available; the list refreshes after a successful assignment change. A requirements package can be linked to multiple requirements. Removing a package only removes the package record; linked requirements are not affected."
       }
     },
     "requirementSelectionQuestionsStewardship": {

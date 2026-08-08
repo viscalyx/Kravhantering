@@ -1,7 +1,7 @@
 'use client'
 
 import { UserRoundCog, UsersRound } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import CoAuthorsManagementModal from '@/components/CoAuthorsManagementModal'
 import CrudAdminPanel, {
@@ -19,6 +19,10 @@ import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import {
+  formatActorDisplayNameForLocale,
+  formatActorDisplayNameSummaryForLocale,
+} from '@/lib/privacy/display-name'
 
 const REQUIREMENT_AREAS_HELP: HelpContent = {
   sections: [
@@ -40,9 +44,14 @@ const AREA_INPUT_CLASS_NAME =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
 interface Area {
+  coAuthors: Array<{
+    displayName: string | null
+    hsaId: string
+  }>
   description: string | null
   id: number
   name: string
+  ownerDisplayName: string
   ownerHsaId: string
   permissions?: {
     canManageAssignments: boolean
@@ -97,6 +106,7 @@ export default function RequirementAreasClient() {
   const t = useTranslations('area')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
+  const locale = useLocale()
   const [ownerChange, setOwnerChange] = useState<OwnerChangeState | null>(null)
   const [coAuthorsArea, setCoAuthorsArea] = useState<Area | null>(null)
   const ownerChangeErrorMessage = t('ownerChangeError')
@@ -106,6 +116,7 @@ export default function RequirementAreasClient() {
     endpoint: '/api/requirement-areas',
     errorMessage: tc('error'),
     getInitialForm,
+    listEndpoint: '/api/requirement-area-stewardship',
     listKey: 'areas',
     toCreatePayload,
     toForm,
@@ -177,7 +188,38 @@ export default function RequirementAreasClient() {
       className: 'py-3 px-4 text-secondary-600 dark:text-secondary-400',
       header: t('owner'),
       key: 'owner',
-      render: area => area.ownerHsaId,
+      render: area => (
+        <>
+          <span className="block">
+            {formatActorDisplayNameForLocale(area.ownerDisplayName, locale) ??
+              area.ownerHsaId}
+          </span>
+          <span className="block whitespace-nowrap text-xs text-secondary-500 dark:text-secondary-500">
+            {area.ownerHsaId}
+          </span>
+        </>
+      ),
+    },
+    {
+      className:
+        'py-3 px-4 align-top whitespace-normal wrap-break-word text-secondary-600 dark:text-secondary-400',
+      header: (
+        <span
+          {...devMarker({
+            context: 'areas',
+            name: 'table column',
+            value: 'co-authors',
+          })}
+        >
+          {t('coAuthors')}
+        </span>
+      ),
+      key: 'coAuthors',
+      render: area =>
+        formatActorDisplayNameSummaryForLocale(
+          area.coAuthors.map(coAuthor => coAuthor.displayName),
+          locale,
+        ),
     },
   ]
 

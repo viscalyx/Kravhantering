@@ -141,7 +141,7 @@ const MANUAL_CASE_LINKS = {
   'ADMIN-10':
     'docs/governance/manuella-testfall.md#admin-10-arkiveringsgallring-kraver-dataskyddsroll',
   'ADMIN-13':
-    'docs/governance/manuella-testfall.md#admin-13-byte-av-kravomradesagare-anvander-hsa-id',
+    'docs/governance/manuella-testfall.md#admin-13-kravomradesansvar-visas-i-listan',
   'LIFE-11':
     'docs/governance/manuella-testfall.md#life-11-detaljrapporter-finns-per-status',
   'REQ-10':

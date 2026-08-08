@@ -75,6 +75,39 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
 
     const row = page.getByRole('row', { name: new RegExp(areaPrefixPattern) })
     await expect(row).toBeVisible()
+    await expect(
+      page.getByRole('columnheader', { name: 'Kravområdesmedförfattare' }),
+    ).toBeVisible()
+    await expect(row).toContainText('Olle AreaOwner')
+    await expect(row).toContainText(HSA.areaOwner)
+    const coAuthorCell = row.getByRole('cell').filter({
+      hasText: 'Cora CoAuthor',
+    })
+    await expect(coAuthorCell).toHaveText('Cora CoAuthor')
+    await expect(coAuthorCell).not.toContainText(HSA.areaCoauthor)
+    const areaNameCell = row.getByRole('cell').filter({
+      hasText: 'Behörighetsyta',
+    })
+    await expect(areaNameCell.getByRole('link')).toHaveCount(0)
+    await expect(areaNameCell.getByRole('button')).toHaveCount(0)
+
+    await test.step('keep every identity reachable on a narrow screen', async () => {
+      await page.setViewportSize({ height: 812, width: 375 })
+      const tableScroller = page.getByRole('table').locator('..')
+      await expect
+        .poll(() =>
+          tableScroller.evaluate(
+            element => element.scrollWidth > element.clientWidth,
+          ),
+        )
+        .toBe(true)
+      await coAuthorCell.scrollIntoViewIfNeeded()
+      await expect(coAuthorCell).toHaveText('Cora CoAuthor')
+      await expect(row).toContainText('Olle AreaOwner')
+      await expect(row).toContainText(HSA.areaOwner)
+      await page.setViewportSize({ height: 720, width: 1280 })
+    })
+
     await row.getByRole('button', { name: 'Redigera' }).click()
 
     const form = page.locator('form').filter({ hasText: 'Kravområdesägare' })
@@ -116,6 +149,7 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
       .fill('admin1')
     await coAuthorsDialog.getByRole('button', { name: 'Hämta' }).click()
     await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toBeVisible()
+    await expect(updatedRow).toContainText('Ada Admin')
     await coAuthorsDialog
       .getByRole('row', { name: new RegExp(escapeRegExp(temporaryCoAuthor)) })
       .getByRole('button', { name: 'Ta bort' })
@@ -125,6 +159,7 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
       .getByRole('button', { name: 'Ta bort' })
       .click()
     await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toHaveCount(0)
+    await expect(updatedRow).not.toContainText('Ada Admin')
     await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
     await expect(coAuthorsDialog).toBeHidden()
 

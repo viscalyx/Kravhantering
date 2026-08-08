@@ -38,6 +38,17 @@ const sampleAreas = [
     prefix: 'INT',
     name: 'Integration',
     description: 'System integration',
+    coAuthors: [
+      {
+        displayName: 'Cora CoAuthor',
+        hsaId: 'SE5560000001-areaco1',
+      },
+      {
+        displayName: 'no-user',
+        hsaId: 'SE5560000001-deleted1',
+      },
+    ],
+    ownerDisplayName: 'Anna Jansson',
     ownerHsaId: 'SE5560000001-annaj',
     permissions: { canManageAssignments: true },
   },
@@ -46,6 +57,8 @@ const sampleAreas = [
     prefix: 'SAK',
     name: 'Säkerhet',
     description: null,
+    coAuthors: [],
+    ownerDisplayName: 'no-user',
     ownerHsaId: 'SE5560000001-1002',
     permissions: { canManageAssignments: true },
   },
@@ -89,14 +102,14 @@ describe('RequirementAreasClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/requirement-areas')
+      if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       return okJson({})
     })
   })
 
-  it('renders areas with owner HSA-id', async () => {
+  it('renders localized owner identities and name-only co-author summaries', async () => {
     render(<RequirementAreasClient />)
 
     await waitFor(() => {
@@ -104,7 +117,20 @@ describe('RequirementAreasClient', () => {
     })
 
     expect(screen.getByText('INT')).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'area.coAuthors' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Anna Jansson')).toBeInTheDocument()
     expect(screen.getByText('SE5560000001-annaj')).toBeInTheDocument()
+    expect(screen.getByText('Cora CoAuthor, Anonymous')).toBeInTheDocument()
+    expect(screen.getByText('Anonymous')).toBeInTheDocument()
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.queryByText('SE5560000001-areaco1')).toBeNull()
+    expect(screen.queryByText('SE5560000001-deleted1')).toBeNull()
+    expect(screen.queryByText('no-user')).toBeNull()
+    const nameCell = screen.getByRole('cell', { name: 'Integration' })
+    expect(within(nameCell).queryByRole('link')).toBeNull()
+    expect(within(nameCell).queryByRole('button')).toBeNull()
     const editAction = screen.getAllByRole('button', {
       name: /common\.edit/i,
     })[0]
@@ -168,7 +194,7 @@ describe('RequirementAreasClient', () => {
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/requirement-areas' && init?.method === 'POST')
         return okJson({ id: 3 })
-      if (url === '/api/requirement-areas')
+      if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       return okJson({})
@@ -238,7 +264,7 @@ describe('RequirementAreasClient', () => {
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/requirement-areas/1' && init?.method === 'PUT')
         return okJson({ id: 1 })
-      if (url === '/api/requirement-areas')
+      if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       return okJson({})
     })
@@ -268,12 +294,33 @@ describe('RequirementAreasClient', () => {
   })
 
   it('autosaves a verified requirement area co-author assignment', async () => {
+    let assignmentSaved = false
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url === '/api/requirement-areas')
-        return okJson({ areas: sampleAreas })
+      if (url === '/api/requirement-area-stewardship') {
+        return okJson({
+          areas: sampleAreas.map(area =>
+            area.id === 1
+              ? {
+                  ...area,
+                  coAuthors: assignmentSaved
+                    ? [
+                        {
+                          displayName: 'Cora CoAuthor',
+                          hsaId: 'SE5560000001-coa1',
+                        },
+                      ]
+                    : [],
+                }
+              : area,
+          ),
+        })
+      }
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       if (url === '/api/requirement-areas/1/co-authors') {
-        if (init?.method === 'PUT') return okJson({ ok: true })
+        if (init?.method === 'PUT') {
+          assignmentSaved = true
+          return okJson({ ok: true })
+        }
         return okJson({ coAuthors: [] })
       }
       if (url === '/api/requirement-responsibility-people/verify') {
@@ -294,6 +341,8 @@ describe('RequirementAreasClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
+    const areaRow = screen.getByRole('row', { name: /INT Integration/ })
+    expect(within(areaRow).queryByText('Cora CoAuthor')).toBeNull()
 
     const dialog = await openAreaCoAuthorsDialog()
 
@@ -336,11 +385,14 @@ describe('RequirementAreasClient', () => {
       coAuthorHsaIds: ['SE5560000001-coa1'],
     })
     expect(within(dialog).getByText(/Cora CoAuthor/)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(within(areaRow).getByText('Cora CoAuthor')).toBeInTheDocument()
+    })
   })
 
   it('shows an error and keeps the requirement area co-author draft when assignment autosave fails', async () => {
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url === '/api/requirement-areas')
+      if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       if (url === '/api/requirement-areas/1/co-authors') {
@@ -401,7 +453,7 @@ describe('RequirementAreasClient', () => {
   it('confirms and autosaves requirement area co-author removal', async () => {
     confirmMock.mockResolvedValue(true)
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url === '/api/requirement-areas')
+      if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       if (url === '/api/requirement-areas/1/co-authors') {
@@ -457,7 +509,7 @@ describe('RequirementAreasClient', () => {
   it('shows an error and keeps the requirement area co-author when removal autosave fails', async () => {
     confirmMock.mockResolvedValue(true)
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url === '/api/requirement-areas')
+      if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       if (url === '/api/requirement-areas/1/co-authors') {
@@ -556,7 +608,7 @@ describe('RequirementAreasClient', () => {
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/requirement-areas/1' && init?.method === 'PUT')
         return okJson({ id: 1, ownerHsaId: 'NO5560000001-next1' })
-      if (url === '/api/requirement-areas')
+      if (url === '/api/requirement-area-stewardship')
         return okJson({
           areas: [
             {
@@ -624,7 +676,7 @@ describe('RequirementAreasClient', () => {
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/requirement-areas/1' && init?.method === 'PUT')
         return errJson({ error: 'Owner change failed' }, 400, 'Bad Request')
-      if (url === '/api/requirement-areas')
+      if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
       return okJson({})

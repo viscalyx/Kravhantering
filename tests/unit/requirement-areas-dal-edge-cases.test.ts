@@ -9,6 +9,7 @@ import {
   listAreas,
   listAreasActorCanAuthor,
   listRequirementAreaCoAuthors,
+  listRequirementAreaStewardshipRows,
   replaceRequirementAreaCoAuthors,
   updateArea,
   updateAreaWithOwnerCheck,
@@ -115,6 +116,91 @@ describe('requirement-area DAL coverage', () => {
       email: null,
       hsaId: 'SE5560000001-unknown',
     })
+  })
+
+  it('lists area stewardship responsibility summaries in stable person-name order', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        ...areaRow,
+        coAuthorGivenName: 'Anna',
+        coAuthorHsaId: 'SE5560000001-anna',
+        coAuthorMiddleName: null,
+        coAuthorSurname: 'Andersson',
+        ownerGivenName: 'Olle',
+        ownerMiddleName: null,
+        ownerSurname: 'Owner',
+      },
+      {
+        ...areaRow,
+        coAuthorGivenName: 'Zelda',
+        coAuthorHsaId: 'SE5560000001-zelda',
+        coAuthorMiddleName: null,
+        coAuthorSurname: 'Öberg',
+        ownerGivenName: 'Olle',
+        ownerMiddleName: null,
+        ownerSurname: 'Owner',
+      },
+      {
+        ...areaRow,
+        coAuthorGivenName: 'Zelda',
+        coAuthorHsaId: 'SE5560000001-zelda',
+        coAuthorMiddleName: null,
+        coAuthorSurname: 'Öberg',
+        ownerGivenName: 'Olle',
+        ownerMiddleName: null,
+        ownerSurname: 'Owner',
+      },
+      {
+        ...areaRow,
+        coAuthorGivenName: null,
+        coAuthorHsaId: null,
+        coAuthorMiddleName: null,
+        coAuthorSurname: null,
+        id: 5,
+        name: 'No co-authors',
+        ownerGivenName: null,
+        ownerHsaId: 'SE5560000001-unknown',
+        ownerMiddleName: null,
+        ownerSurname: null,
+      },
+    ])
+    const db = { query } as unknown as Parameters<
+      typeof listRequirementAreaStewardshipRows
+    >[0]
+
+    await expect(listRequirementAreaStewardshipRows(db)).resolves.toEqual([
+      {
+        coAuthors: [
+          {
+            displayName: 'Anna Andersson',
+            hsaId: 'SE5560000001-anna',
+          },
+          {
+            displayName: 'Zelda Öberg',
+            hsaId: 'SE5560000001-zelda',
+          },
+        ],
+        description: null,
+        id: 4,
+        name: 'Security',
+        ownerDisplayName: 'Olle Owner',
+        ownerHsaId: 'SE5560000001-owner',
+        prefix: 'SEC',
+      },
+      {
+        coAuthors: [],
+        description: null,
+        id: 5,
+        name: 'No co-authors',
+        ownerDisplayName: 'SE5560000001-unknown',
+        ownerHsaId: 'SE5560000001-unknown',
+        prefix: 'SEC',
+      },
+    ])
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query.mock.calls[0]?.[0]).toMatch(
+      /ORDER BY[\s\S]*area\.name ASC[\s\S]*co_author_person\.surname ASC[\s\S]*co_author_person\.given_name ASC[\s\S]*co_author\.hsa_id ASC/u,
+    )
   })
 
   it('gets present and missing areas', async () => {

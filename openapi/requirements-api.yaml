@@ -797,6 +797,18 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /api/requirement-area-stewardship:
+    get:
+      x-auth: session
+      x-csrf: none
+      x-cache: framework-default
+      tags: [catalogs]
+      operationId: listRequirementAreaStewardship
+      responses:
+        '200': { $ref: '#/components/responses/JsonObject' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
   /api/requirement-areas:
     get:
       x-auth: session

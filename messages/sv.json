@@ -2462,11 +2462,11 @@
       "title": "Kravområden",
       "overview": {
         "heading": "Vad är kravområden?",
-        "body": "Kravområden definierar ID-prefixet för krav (t.ex. PERF-001) och tilldelar en ansvarig ägare. Ett krav måste tillhöra ett kravområde innan det kan sparas."
+        "body": "Kravområden definierar ID-prefixet för krav (t.ex. PERF-001) och tilldelar en ansvarig ägare. Listan visar ägarens namn och HSA-id tillsammans med en sammanfattning av samtliga medförfattares namn. Ett krav måste tillhöra ett kravområde innan det kan sparas."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Skapa ett nytt kravområde med Nytt-knappen. Klicka på redigeringsikonen för att uppdatera prefix, namn, beskrivning eller ägare. Det går bara att ta bort ett kravområde om inga krav är kopplade till det."
+        "body": "Skapa ett nytt kravområde med Nytt-knappen. Klicka på redigeringsikonen för att uppdatera prefix, namn, beskrivning eller ägare. Använd Hantera medförfattare när åtgärden är tillgänglig; listan läses om efter en lyckad ändring. Det går bara att ta bort ett kravområde om inga krav är kopplade till det."
       }
     },
     "requirementCategories": {
@@ -2499,11 +2499,11 @@
       "title": "Kravpaket",
       "overview": {
         "heading": "Vad är kravpaket?",
-        "body": "Kravpaket samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning."
+        "body": "Kravpaket samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Listan visar kravpaketsansvarigs namn och HSA-id tillsammans med en sammanfattning av samtliga medförfattares namn."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Skapa och redigera kravpaket med verktygsfältet. Ett kravpaket kan kopplas till flera krav. Att ta bort ett kravpaket tar bara bort posten för kravpaketet; kopplade krav påverkas inte."
+        "body": "Skapa och redigera kravpaket med verktygsfältet. Använd Hantera medförfattare när åtgärden är tillgänglig; listan läses om efter en lyckad ändring. Ett kravpaket kan kopplas till flera krav. Att ta bort ett kravpaket tar bara bort posten för kravpaketet; kopplade krav påverkas inte."
       }
     },
     "requirementSelectionQuestionsStewardship": {

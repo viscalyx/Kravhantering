@@ -24,17 +24,21 @@ import RequirementAreasClient from '@/app/[locale]/requirement-areas/requirement
 
 const areas = [
   {
+    coAuthors: [],
     description: 'System integration',
     id: 1,
     name: 'Integration',
+    ownerDisplayName: 'Owner Person',
     ownerHsaId: 'SE5560000001-owner',
     permissions: { canManageAssignments: true },
     prefix: 'INT',
   },
   {
+    coAuthors: [],
     description: null,
     id: 2,
     name: 'Nullable area',
+    ownerDisplayName: 'Other Person',
     ownerHsaId: 'SE5560000001-other',
     permissions: { canManageAssignments: false },
     prefix: 'NULL',
@@ -52,7 +56,7 @@ describe('RequirementAreasClient observable callback behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fetchMock.mockImplementation((url: string) => {
-      if (url === '/api/requirement-areas') {
+      if (url === '/api/requirement-area-stewardship') {
         return Promise.resolve(response({ areas }))
       }
       if (url === '/api/hsa-id-prefixes') {

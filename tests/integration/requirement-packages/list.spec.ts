@@ -98,6 +98,20 @@ for (const viewport of viewports) {
         await expect(nameFilter).toHaveValue('')
         await expect(mobilePackage).toHaveCount(1)
         await expect(ssoPackage).toHaveCount(1)
+        await expect(
+          page.getByRole('columnheader', { name: 'Kravpaketsmedförfattare' }),
+        ).toBeVisible()
+        const mobileRow = page.getByRole('row', { name: /Mobil användning/ })
+        await expect(mobileRow).toContainText('Anna Johansson')
+        await expect(mobileRow).toContainText('SE5560000001-annaj')
+        const coAuthorCell = mobileRow.getByRole('cell').filter({
+          hasText: 'Paul PkgCoAuthor',
+        })
+        await expect(coAuthorCell).toHaveText('Paul PkgCoAuthor')
+        await expect(coAuthorCell).not.toContainText('SE5560000001-pkgco1')
+        await expect(coAuthorCell).not.toContainText('@')
+        await expect(mobilePackage.getByRole('link')).toHaveCount(0)
+        await expect(mobilePackage.getByRole('button')).toHaveCount(0)
       })
 
       if (viewport.name === 'desktop') {

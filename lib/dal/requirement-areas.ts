@@ -29,6 +29,21 @@ export interface RequirementAreaCoAuthorSummary {
   hsaId: string
 }
 
+export interface RequirementAreaStewardshipCoAuthorSummary {
+  displayName: string | null
+  hsaId: string
+}
+
+export interface RequirementAreaStewardshipRow {
+  coAuthors: RequirementAreaStewardshipCoAuthorSummary[]
+  description: string | null
+  id: number
+  name: string
+  ownerDisplayName: string
+  ownerHsaId: string
+  prefix: string
+}
+
 export type RequirementAreaOwnerPersonResolver = (
   executor: QueryExecutor,
   ownerHsaId: string,
@@ -36,8 +51,13 @@ export type RequirementAreaOwnerPersonResolver = (
 
 function mapAreaRow(row: RequirementAreaRow): RequirementAreaRow {
   return {
-    ...row,
     createdAt: toIsoString(row.createdAt),
+    description: row.description,
+    id: row.id,
+    name: row.name,
+    nextSequence: row.nextSequence,
+    ownerHsaId: row.ownerHsaId,
+    prefix: row.prefix,
     updatedAt: toIsoString(row.updatedAt),
   }
 }
@@ -99,6 +119,82 @@ export async function listAreas(
     ORDER BY name ASC
   `)
   return rows.map(mapAreaRow)
+}
+
+export async function listRequirementAreaStewardshipRows(
+  db: SqlServerDatabase,
+): Promise<RequirementAreaStewardshipRow[]> {
+  const rows = (await db.query(
+    `
+      SELECT
+        area.id AS id,
+        area.prefix AS prefix,
+        area.name AS name,
+        area.description AS description,
+        area.owner_hsa_id AS ownerHsaId,
+        owner_person.given_name AS ownerGivenName,
+        owner_person.middle_name AS ownerMiddleName,
+        owner_person.surname AS ownerSurname,
+        co_author.hsa_id AS coAuthorHsaId,
+        co_author_person.given_name AS coAuthorGivenName,
+        co_author_person.middle_name AS coAuthorMiddleName,
+        co_author_person.surname AS coAuthorSurname
+      FROM requirement_areas AS area
+      LEFT JOIN requirement_responsibility_people AS owner_person
+        ON owner_person.hsa_id = area.owner_hsa_id
+      LEFT JOIN requirement_area_co_authors AS co_author
+        ON co_author.area_id = area.id
+      LEFT JOIN requirement_responsibility_people AS co_author_person
+        ON co_author_person.hsa_id = co_author.hsa_id
+      ORDER BY
+        area.name ASC,
+        area.id ASC,
+        co_author_person.surname ASC,
+        co_author_person.given_name ASC,
+        co_author.hsa_id ASC
+    `,
+  )) as Array<Record<string, unknown>>
+
+  const areasById = new Map<number, RequirementAreaStewardshipRow>()
+  for (const row of rows) {
+    const id = Number(row.id)
+    const ownerHsaId = String(row.ownerHsaId)
+    const area =
+      areasById.get(id) ??
+      ({
+        coAuthors: [],
+        description: toStr(row.description),
+        id,
+        name: String(row.name),
+        ownerDisplayName:
+          displayNameFromPersonRow({
+            givenName: row.ownerGivenName,
+            hsaId: ownerHsaId,
+            middleName: row.ownerMiddleName,
+            surname: row.ownerSurname,
+          }) ?? ownerHsaId,
+        ownerHsaId,
+        prefix: String(row.prefix),
+      } satisfies RequirementAreaStewardshipRow)
+    const coAuthorHsaId = toStr(row.coAuthorHsaId)
+    if (
+      coAuthorHsaId &&
+      !area.coAuthors.some(coAuthor => coAuthor.hsaId === coAuthorHsaId)
+    ) {
+      area.coAuthors.push({
+        displayName: displayNameFromPersonRow({
+          givenName: row.coAuthorGivenName,
+          hsaId: coAuthorHsaId,
+          middleName: row.coAuthorMiddleName,
+          surname: row.coAuthorSurname,
+        }),
+        hsaId: coAuthorHsaId,
+      })
+    }
+    areasById.set(id, area)
+  }
+
+  return [...areasById.values()]
 }
 
 export async function listAreasActorCanAuthor(

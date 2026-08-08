@@ -394,20 +394,23 @@ kravområdesägare.
 
 1. Logga in som `olle.areaowner`.
 1. Öppna kravområdet `AUTHZ-AREA-2026` eller skapa en isolerad testyta.
+1. Kontrollera att listan visar kravområdesägarens namn och HSA-id samt
+   medförfattarnas namn utan deras HSA-id eller e-postadress.
 1. Gör en liten tillåten ändring i kravområdets metadata.
 1. Öppna radåtgärden `Hantera medförfattare` och verifiera att
    dialogen visar ett tilläggsfält överst, laddningsläge vid hämtning och en
    sparad tabell med kravområdesmedförfattare.
 1. Lägg till ett tillfälligt HSA-id som kravområdesmedförfattare, kontrollera
-   att raden visas i den sparade tabellen, ta bort samma rad och ladda om
-   dialogen.
+   att namnet visas direkt i listans medförfattarkolumn och i dialogens sparade
+   tabell, ta bort samma rad och kontrollera att listkolumnen uppdateras igen.
 1. Ladda om sidan och kontrollera att ändringen finns kvar.
 1. Försök administrera global Admin-yta.
 
 **Förväntat resultat:** Olle kan arbeta inom sitt kravområde men kan inte ta
 global Admin-behörighet utanför sin tilldelning. Dialogens sparade tabell visar
 tillagd medförfattare efter sparande och saknar samma rad efter borttagning och
-omladdning.
+omladdning. Listan visar ägarens namn och HSA-id samt en kommaseparerad,
+namnbaserad sammanfattning av medförfattarna och läses om efter ändringar.
 
 ### AUTHZ-03: kravområdesmedförfattare
 
@@ -481,18 +484,22 @@ utföra Admin-only-åtgärder.
 
 1. Logga in som `leo.pkglead`.
 1. Öppna `Kravbiblioteksförvaltning` och sök efter `AUTHZ kravpaket`.
+1. Kontrollera att listan visar kravpaketsansvarigs namn och HSA-id samt
+   medförfattarnas namn utan deras HSA-id eller e-postadress.
 1. Redigera paketets syfte och avgränsning med en liten unik testtext.
 1. Öppna radåtgärden `Hantera medförfattare` och verifiera att paketets
    kravpaketsmedförfattare visas i en sparad tabell och kan läggas till eller
    tas bort i den separata dialogen.
 1. Lägg till ett tillfälligt HSA-id, kontrollera att raden sparas, ta bort
-   samma rad och öppna dialogen igen.
+   samma rad och kontrollera att listans medförfattarkolumn uppdateras efter
+   respektive ändring.
 1. Ladda om sidan och verifiera att Leo fortfarande är kravpaketsansvarig.
 1. Försök arkivera paketet om UI visar åtgärden, annars kontrollera API.
 
 **Förväntat resultat:** Leo kan uppdatera paketmetadata men kan inte utföra
 Admin-only-arkivering. Tillfällig paketmedförfattare finns kvar efter sparande
-och saknas efter borttagning och omladdad dialog.
+och saknas efter borttagning och omladdad dialog. Listan visar samtliga
+medförfattarnamn kommaseparerade och läses om efter ändringar.
 
 ### AUTHZ-07: kravpaketsmedförfattare
 
@@ -705,13 +712,17 @@ med piltangenter och stäng med Escape.
 på paketnamn, syfte och avgränsning och rensa sökningen. Öppna dialogen
 `Nytt kravpaket` och kontrollera ansvarssammanfattningen. Öppna radåtgärden
 `Hantera medförfattare`, öppna kopplade krav från redigeringsformuläret och
-starta byte av kravpaketsansvarig med HSA-id.
+starta byte av kravpaketsansvarig med HSA-id. Kontrollera även att listans
+skrivskyddade medförfattarkolumn visar namn utan HSA-id eller e-postadress och
+att paketnamnet inte är klickbart.
 
 **Förväntat resultat:** Paketlistan filtreras och återställs korrekt. Den som
 skapar kravpaketet visas som kravpaketsansvarig utan redigerbart ansvarsfält.
 Kopplade krav öppnas i en skrivskyddad dialog utan att redigeringsformuläret
 försvinner. Medförfattare hanteras i separat dialog, och byte av
 kravpaketsansvarig verifierar HSA-id och visar namn och e-post som text.
+Listan visar kravpaketsansvarigs namn och HSA-id samt en kommaseparerad
+namnlista för samtliga medförfattare; rader utan medförfattare visar `—`.
 
 ### REQ-14b: kravurvalsfrågor behåller flik och kan ordnas
 
@@ -1743,10 +1754,14 @@ Resolverade prioriteter visar P-kod, tankstreck och lokaliserat namn.
 Automatiserad täckning ska verifiera serverns gallringsförhandsgranskning så
 att historiska sparade svar inte förekommer bland kandidaterna.
 
-### ADMIN-13: kravområdesägare och medförfattare visas med HSA-id
+### ADMIN-13: kravområdesansvar visas i listan
 
-**Steg:** Öppna kravområdeslistan och kontrollera radåtgärderna för
-medförfattare, redigering och borttagning. Öppna radåtgärden
+**Steg:** Öppna kravområdeslistan och kontrollera att kravområdesägaren visas
+med namn och HSA-id på separata rader. Kontrollera att medförfattarkolumnen
+visar samtliga namn kommaseparerade utan HSA-id eller e-postadress och `—` när
+medförfattare saknas. Kontrollera även att kravområdesnamnet inte är klickbart.
+Kontrollera sedan radåtgärderna för medförfattare, redigering och borttagning.
+Öppna radåtgärden
 `Hantera medförfattare` och kontrollera att den separata dialogen kan läsa in,
 visa laddningsläge, lägga till och ta bort
 kravområdesmedförfattare i en sparad tabell. Öppna sedan ett kravområde för
@@ -1754,9 +1769,11 @@ redigering och kontrollera HSA-id för kravområdesägaren.
 
 **Förväntat resultat:** Åtgärderna Hantera medförfattare, Redigera och Ta bort
 är tillgängliga. Medförfattare hanteras i en separat modal, inte i
-metadataformuläret. Kravområdesägaren visas och sparas som HSA-id och dialogen
-för medförfattare visar befintliga HSA-id-rader samt sparar tillagd rad och tar
-bort den efter omladdning.
+metadataformuläret. Kravområdesägaren visas med lokaliserat namn och HSA-id i
+listan och sparas som HSA-id. Listans medförfattarkolumn visar endast
+lokaliserade namn och uppdateras efter tillägg och borttagning. Dialogen för
+medförfattare visar befintliga HSA-id-rader samt sparar tillagd rad och tar bort
+den efter omladdning.
 
 ### ADMIN-14: HSA-id-prefix administreras från Identitet
 

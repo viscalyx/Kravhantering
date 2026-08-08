@@ -239,7 +239,7 @@ policy. Restrictive reads use `withRestResponsePolicy`; route modules do not
 repeat `Cache-Control` declarations. Coverage tests inspect actual route
 exports and observable wrapper branding.
 
-The OpenAPI file keeps its bounded 28-operation scope. Each included operation
+The OpenAPI file keeps its bounded 29-operation scope. Each included operation
 declares `x-auth`, `x-csrf`, and `x-cache`; tests require exact agreement with
 `contract: openapi` registry entries and keep `contract: focused` operations
 outside OpenAPI. See

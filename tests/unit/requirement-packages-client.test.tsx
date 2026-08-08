@@ -70,6 +70,18 @@ const hsaIdPrefixPayload = {
 
 const sampleRequirementPackages = [
   {
+    coAuthors: [
+      {
+        displayName: 'Paul PkgCoAuthor',
+        email: 'paul@example.test',
+        hsaId: 'SE5560000001-pkgco1',
+      },
+      {
+        displayName: 'no-user',
+        email: 'deleted@example.test',
+        hsaId: 'SE5560000001-deleted1',
+      },
+    ],
     id: 1,
     isArchived: false,
     leadDisplayName: 'Anna Owner',
@@ -83,9 +95,10 @@ const sampleRequirementPackages = [
 ]
 
 const additionalRequirementPackage = {
+  coAuthors: [],
   id: 2,
   isArchived: false,
-  leadDisplayName: 'Sara Owner',
+  leadDisplayName: 'no-user',
   leadEmail: 'sara.owner@example.test',
   leadHsaId: 'SE5560000001-sara1',
   linkedRequirementCount: 3,
@@ -162,6 +175,106 @@ describe('RequirementPackagesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Mobile use')).toBeInTheDocument()
       expect(createButton).toBeEnabled()
+    })
+  })
+
+  it('renders a name-only localized co-author column without making package names clickable', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({
+          requirementPackages: [
+            ...sampleRequirementPackages,
+            additionalRequirementPackage,
+          ],
+        })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
+    })
+    expect(
+      screen.getByRole('columnheader', {
+        name: 'requirementPackage.coAuthors',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Paul PkgCoAuthor, Anonymous')).toBeInTheDocument()
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.getByText('Anonymous')).toBeInTheDocument()
+    expect(screen.queryByText('SE5560000001-pkgco1')).toBeNull()
+    expect(screen.queryByText('paul@example.test')).toBeNull()
+    expect(screen.queryByText('no-user')).toBeNull()
+    const nameCell = screen.getByRole('cell', { name: 'Mobile use' })
+    expect(within(nameCell).queryByRole('link')).toBeNull()
+    expect(within(nameCell).queryByRole('button')).toBeNull()
+
+    await userEvent.type(
+      screen.getByRole('textbox', {
+        name: 'requirementPackage.filterByName',
+      }),
+      'Paul PkgCoAuthor',
+    )
+    expect(screen.getByText('common.noResults')).toBeInTheDocument()
+  })
+
+  it('reloads the package list after a co-author is removed', async () => {
+    const user = userEvent.setup()
+    confirmMock.mockResolvedValue(true)
+    let assignmentRemoved = false
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const urlString = requestUrl(url)
+      if (urlString === '/api/auth/me') return okJson(currentAuthMe)
+      if (urlString === '/api/hsa-id-prefixes') {
+        return okJson(hsaIdPrefixPayload)
+      }
+      if (urlString.startsWith('/api/requirement-packages?')) {
+        return okJson({
+          requirementPackages: sampleRequirementPackages.map(item => ({
+            ...item,
+            coAuthors: assignmentRemoved ? [] : [item.coAuthors[0]],
+          })),
+        })
+      }
+      if (urlString === '/api/requirement-packages/1/co-authors') {
+        if (init?.method === 'PUT') {
+          assignmentRemoved = true
+          return okJson({ ok: true })
+        }
+        return okJson({
+          coAuthors: [sampleRequirementPackages[0].coAuthors[0]],
+        })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementPackagesClient />)
+
+    const packageRow = await screen.findByRole('row', { name: /Mobile use/ })
+    expect(within(packageRow).getByText('Paul PkgCoAuthor')).toBeInTheDocument()
+    await user.click(
+      within(packageRow).getByRole('button', {
+        name: 'requirementPackage.manageCoAuthors',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'requirementPackage.coAuthors',
+    })
+    const savedCoAuthorRow = await within(dialog).findByRole('row', {
+      name: /Paul PkgCoAuthor/,
+    })
+    await user.click(
+      within(savedCoAuthorRow).getByRole('button', {
+        name: 'requirementPackage.removeCoAuthor',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(within(packageRow).getByText('—')).toBeInTheDocument()
     })
   })
 
@@ -479,7 +592,7 @@ describe('RequirementPackagesClient', () => {
     render(<RequirementPackagesClient />)
 
     const emptyState = await screen.findByText('requirementPackage.emptyState')
-    expect(emptyState.closest('td')).toHaveAttribute('colspan', '6')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '7')
 
     const createButtons = screen.getAllByRole('button', {
       name: /common\.create/i,

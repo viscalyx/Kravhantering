@@ -56,8 +56,10 @@ const pages: MarkerSpec[] = [
       okJson({
         areas: [
           {
+            coAuthors: [],
             id: 1,
             name: 'A',
+            ownerDisplayName: 'Area Owner',
             prefix: 'A',
             description: null,
             nextSequence: 1,
@@ -67,14 +69,16 @@ const pages: MarkerSpec[] = [
       }),
     fetchHandler: input => {
       const url = String(input)
-      if (url === '/api/requirement-areas') {
+      if (url === '/api/requirement-area-stewardship') {
         return okJson({
           areas: [
             {
+              coAuthors: [],
               description: null,
               id: 1,
               name: 'A',
               nextSequence: 1,
+              ownerDisplayName: 'Area Owner',
               ownerHsaId: 'SE5560000001-area1',
               prefix: 'A',
             },
@@ -83,7 +87,12 @@ const pages: MarkerSpec[] = [
       }
       return okJson({}) as Response
     },
-    expectedMarkers: ['create button', 'crud table', 'table action'],
+    expectedMarkers: [
+      'create button',
+      'crud table',
+      'table action',
+      'table column',
+    ],
   },
   {
     label: 'RequirementPackagesClient (requirementPackages)',
@@ -135,6 +144,7 @@ const pages: MarkerSpec[] = [
       'text field',
       'crud table',
       'table action',
+      'table column',
     ],
   },
   {
@@ -343,6 +353,16 @@ describe.each(pages)('$label developer-mode markers', spec => {
         `[data-developer-mode-name="crud table"][data-developer-mode-context="${spec.context}"]`,
       )
       expect(crudTable).toHaveAttribute('data-developer-mode-priority', '340')
+
+      if (spec.expectedMarkers.includes('table column')) {
+        const column = baseElement.querySelector(
+          `[data-developer-mode-name="table column"][data-developer-mode-context="${spec.context}"]`,
+        )
+        expect(column).toHaveAttribute(
+          'data-developer-mode-value',
+          'co-authors',
+        )
+      }
     } finally {
       unmount?.()
       fetchSpy.mockRestore()

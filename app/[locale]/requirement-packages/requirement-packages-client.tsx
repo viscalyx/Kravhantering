@@ -42,6 +42,10 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { isSwedish } from '@/lib/i18n/localized'
+import {
+  formatActorDisplayNameForLocale,
+  formatActorDisplayNameSummaryForLocale,
+} from '@/lib/privacy/display-name'
 import { resolveStatusLabel } from '@/lib/requirements/status-label'
 
 const REQUIREMENT_PACKAGES_HELP: HelpContent = {
@@ -122,7 +126,7 @@ interface LinkedRequirementsModalState {
 }
 
 const DESCRIPTION_TRUNCATE = 80
-const REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT = 6
+const REQUIREMENT_PACKAGE_TABLE_COLUMN_COUNT = 7
 
 const getInitialForm = (): RequirementPackageForm => ({
   leadDisplayName: '',
@@ -1184,6 +1188,16 @@ export default function RequirementPackagesClient() {
                     {t('purposeAndScope')}
                   </th>
                   <th className="px-4 py-3 font-medium">{t('lead')}</th>
+                  <th
+                    className="px-4 py-3 font-medium"
+                    {...devMarker({
+                      context: 'requirementPackages',
+                      name: 'table column',
+                      value: 'co-authors',
+                    })}
+                  >
+                    {t('coAuthors')}
+                  </th>
                   <th className="px-4 py-3 font-medium">{t('status')}</th>
                   <th className="px-4 py-3 text-center font-medium">
                     {t('linkedRequirements')}
@@ -1242,6 +1256,13 @@ export default function RequirementPackagesClient() {
                       ? 'reactivate'
                       : 'archive'
                     const busy = isBusy(requirementPackage)
+                    const coAuthorSummary =
+                      formatActorDisplayNameSummaryForLocale(
+                        (requirementPackage.coAuthors ?? []).map(
+                          coAuthor => coAuthor.displayName,
+                        ),
+                        locale,
+                      )
 
                     return (
                       <tr
@@ -1261,11 +1282,17 @@ export default function RequirementPackagesClient() {
                         </td>
                         <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
                           <span className="block">
-                            {requirementPackage.leadDisplayName}
+                            {formatActorDisplayNameForLocale(
+                              requirementPackage.leadDisplayName,
+                              locale,
+                            ) ?? requirementPackage.leadHsaId}
                           </span>
-                          <span className="block text-xs text-secondary-500 dark:text-secondary-500">
+                          <span className="block whitespace-nowrap text-xs text-secondary-500 dark:text-secondary-500">
                             {requirementPackage.leadHsaId}
                           </span>
+                        </td>
+                        <td className="whitespace-normal wrap-break-word px-4 py-3 align-top leading-6 text-secondary-600 dark:text-secondary-400">
+                          {coAuthorSummary}
                         </td>
                         <td className="px-4 py-3 text-secondary-600 dark:text-secondary-400">
                           {requirementPackage.isArchived

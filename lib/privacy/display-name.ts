@@ -24,3 +24,14 @@ export function formatActorDisplayNameForLocale(
 ): string | null {
   return formatActorDisplayName(value, getAnonymousActorLabel(locale))
 }
+
+export function formatActorDisplayNameSummaryForLocale(
+  values: readonly (string | null | undefined)[],
+  locale: string,
+): string {
+  const displayNames = values
+    .map(value => formatActorDisplayNameForLocale(value, locale))
+    .filter((value): value is string => value != null)
+
+  return displayNames.length > 0 ? displayNames.join(', ') : '—'
+}

@@ -79,6 +79,17 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
       name: new RegExp(escapeRegExp(fixture.packageName)),
     })
     await expect(row).toBeVisible()
+    await expect(
+      page.getByRole('columnheader', { name: 'Kravpaketsmedförfattare' }),
+    ).toBeVisible()
+    await expect(row).toContainText('Leo PackageLead')
+    await expect(row).toContainText(HSA.packageLead)
+    const originalCoAuthorCell = row.getByRole('cell').filter({
+      hasText: 'Paul PkgCoAuthor',
+    })
+    await expect(originalCoAuthorCell).toHaveText('Paul PkgCoAuthor')
+    await expect(originalCoAuthorCell).not.toContainText(HSA.packageCoauthor)
+    await expect(originalCoAuthorCell).not.toContainText('@')
     await row.getByRole('button', { name: 'Redigera' }).click()
 
     const dialog = page.getByRole('dialog', { name: 'Redigera kravpaket' })
@@ -126,6 +137,12 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
       .fill('admin1')
     await coAuthorsDialog.getByRole('button', { name: 'Hämta' }).click()
     await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toBeVisible()
+    const updatedCoAuthorCell = updatedRow.getByRole('cell').filter({
+      hasText: 'Ada Admin',
+    })
+    await expect(updatedCoAuthorCell).toHaveText('Ada Admin, Paul PkgCoAuthor')
+    await expect(updatedCoAuthorCell).not.toContainText(temporaryCoAuthor)
+    await expect(updatedCoAuthorCell).not.toContainText('@')
     await coAuthorsDialog
       .getByRole('row', { name: new RegExp(escapeRegExp(temporaryCoAuthor)) })
       .getByRole('button', { name: 'Ta bort' })
@@ -135,6 +152,7 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
       .getByRole('button', { name: 'Ta bort' })
       .click()
     await expect(coAuthorsDialog.getByText(temporaryCoAuthor)).toHaveCount(0)
+    await expect(updatedRow).not.toContainText('Ada Admin')
     await coAuthorsDialog.getByRole('button', { name: 'Stäng' }).last().click()
     await expect(coAuthorsDialog).toBeHidden()
 

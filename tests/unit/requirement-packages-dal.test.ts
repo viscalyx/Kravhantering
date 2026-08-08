@@ -118,6 +118,9 @@ describe('requirement-packages DAL', () => {
       ['SE5560000001-beta1', 'SE5560000001-gamma1'],
     ])
     expect(query).toHaveBeenCalledTimes(1)
+    expect(query.mock.calls[0]?.[0]).toMatch(
+      /ORDER BY[\s\S]*requirementPackages\.name ASC[\s\S]*co_author_person\.surname ASC[\s\S]*co_author_person\.given_name ASC[\s\S]*co_author\.hsa_id ASC/u,
+    )
     expect(query.mock.calls[0]?.[1]).toEqual([1])
   })
 

@@ -3,6 +3,7 @@ import {
   DELETED_USER_INTERNAL_NAME,
   formatActorDisplayName,
   formatActorDisplayNameForLocale,
+  formatActorDisplayNameSummaryForLocale,
   getAnonymousActorLabel,
   isDeletedUserInternalName,
 } from '@/lib/privacy/display-name'
@@ -19,5 +20,15 @@ describe('privacy display names', () => {
     expect(formatActorDisplayName('Ada Admin', 'Anonymous')).toBe('Ada Admin')
     expect(formatActorDisplayName(null, 'Anonymous')).toBeNull()
     expect(getAnonymousActorLabel('sv')).toBe('Anonym')
+  })
+
+  it('formats compact localized actor summaries with a stable empty value', () => {
+    expect(
+      formatActorDisplayNameSummaryForLocale(
+        ['Ada Admin', 'no-user', null],
+        'en',
+      ),
+    ).toBe('Ada Admin, Anonymous')
+    expect(formatActorDisplayNameSummaryForLocale([], 'sv')).toBe('—')
   })
 })

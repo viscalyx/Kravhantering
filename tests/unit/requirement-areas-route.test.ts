@@ -280,6 +280,8 @@ describe('requirement-areas route', () => {
       expect(
         json.areas.map(area => area.permissions.canManageAssignments),
       ).toEqual([true, true])
+      expect(json.areas[0]).not.toHaveProperty('coAuthors')
+      expect(json.areas[0]).not.toHaveProperty('ownerDisplayName')
       expect(mocks.listAreaIdsActorCanAuthor).not.toHaveBeenCalled()
     })
 
