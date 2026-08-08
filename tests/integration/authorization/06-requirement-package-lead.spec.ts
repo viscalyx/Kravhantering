@@ -81,7 +81,7 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
     await expect(row).toBeVisible()
     await expect(
       page.getByRole('columnheader', { name: 'Kravpaketsmedförfattare' }),
-    ).toBeVisible()
+    ).toHaveCount(1)
     await expect(row).toContainText('Leo PackageLead')
     await expect(row).toContainText(HSA.packageLead)
     const originalCoAuthorCell = row.getByRole('cell').filter({

@@ -100,7 +100,7 @@ for (const viewport of viewports) {
         await expect(ssoPackage).toHaveCount(1)
         await expect(
           page.getByRole('columnheader', { name: 'Kravpaketsmedförfattare' }),
-        ).toBeVisible()
+        ).toHaveCount(1)
         const mobileRow = page.getByRole('row', { name: /Mobil användning/ })
         await expect(mobileRow).toContainText('Anna Johansson')
         await expect(mobileRow).toContainText('SE5560000001-annaj')

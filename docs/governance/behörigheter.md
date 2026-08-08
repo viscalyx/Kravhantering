@@ -104,12 +104,6 @@ kravområdesmedförfattare. Kravområdets prefix kan bara ändras av `Admin` ell
 aktuell kravområdesägare så länge kravområdet saknar kravrader. När ett krav
 finns i området returnerar prefixändring `409 conflict`.
 
-Kravområdeslistan visar kravområdesägarens lokaliserade visningsnamn och HSA-id
-samt en skrivskyddad, kommaseparerad namnlista över samtliga
-kravområdesmedförfattare för alla som får läsa listan. HSA-id och e-post visas
-inte i medförfattarkolumnen. Åtgärden `Hantera medförfattare` visas bara för
-den som får ändra tilldelningarna.
-
 ## Kravpaket
 
 Kravpaket har både uppdragsstyrning och särskilda Admin-steg.
@@ -129,12 +123,6 @@ Samma HSA-id får inte samtidigt vara kravpaketsansvarig och
 kravpaketsmedförfattare för samma kravpaket.
 
 Arkivering, återaktivering och borttag av kravpaket kräver `Admin`.
-
-Kravpaketslistan visar kravpaketsansvarigs lokaliserade visningsnamn och HSA-id
-samt en skrivskyddad, kommaseparerad namnlista över samtliga
-kravpaketsmedförfattare för alla som får läsa listan. HSA-id och e-post visas
-inte i medförfattarkolumnen. Åtgärden `Hantera medförfattare` visas bara för
-den som får ändra tilldelningarna.
 
 ## Kravunderlag
 

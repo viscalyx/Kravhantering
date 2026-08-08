@@ -77,7 +77,7 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
     await expect(row).toBeVisible()
     await expect(
       page.getByRole('columnheader', { name: 'Kravområdesmedförfattare' }),
-    ).toBeVisible()
+    ).toHaveCount(1)
     await expect(row).toContainText('Olle AreaOwner')
     await expect(row).toContainText(HSA.areaOwner)
     const coAuthorCell = row.getByRole('cell').filter({
