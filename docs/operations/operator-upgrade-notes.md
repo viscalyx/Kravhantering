@@ -65,6 +65,13 @@ database restore point so schema, data, permissions, and role memberships
 return as one database state; do not reverse only the role change against the
 restricted runtime identity.
 <!-- operator-upgrade:source pr-924 end -->
+
+<!-- operator-upgrade:source pr-927 start -->
+Production rollout now uses rootless Podman Quadlet and user-level systemd targets. Production hosts no longer require Podman Compose. Before the first rollout, verify the service account’s Quadlet environment, production configuration, image references, selected topology, and container-network resolver.
+Quadlet manages long-running services only. Database bootstrap, migrations, and required seeding remain explicit release operations. Existing single-node volume and network names are preserved, and removing managed units does not delete named volumes.
+New installations run bin/kravhantering-quadlet.sh for the
+selected topology and manage the resulting target with systemctl --user.
+<!-- operator-upgrade:source pr-927 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
