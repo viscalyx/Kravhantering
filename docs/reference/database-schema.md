@@ -949,6 +949,12 @@ assignments.
 Rows are created or refreshed only in authorized edit/save flows. Read-only
 views join to this table and do not perform HSA lookups.
 
+**Seed note:** Demo seed data stores resolved HSA person details for every live
+responsibility assignment. The unassigned
+`SE5560000001-resprefresh1` fixture alone starts with the migration placeholder
+and a null `last_fetched_at`; the matching HSA mock record supports explicit
+refresh coverage without making another seeded workflow depend on that refresh.
+
 ---
 
 ### `requirement_packages`

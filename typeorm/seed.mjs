@@ -13165,9 +13165,10 @@ const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
 const RESPONSIBILITY_PERSON_PLACEHOLDER = '(saknar namn, kräver nytt uppslag)'
 const RETENTION_OLD_PERSON_TS = '2023-01-15 09:00:00'
 const RETENTION_FRESH_PERSON_TS = '2026-04-25 09:00:00'
-const RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID = 'SE5560000001-pkgco1'
+const RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID = 'SE5560000001-resprefresh1'
 
 const EXPLICIT_REQUIREMENT_RESPONSIBILITY_PERSON_HSA_IDS = [
+  RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID,
   'SE5560000001-retentionorphan',
   'SE5560000001-retentionfresh',
 ]
@@ -13294,6 +13295,15 @@ const REQUIREMENT_RESPONSIBILITY_PERSON_BY_HSA_ID = new Map([
       givenName: 'Oscar',
       middleName: null,
       surname: 'Nilsson',
+    },
+  ],
+  [
+    'SE5560000001-pkgco1',
+    {
+      email: 'paul.pkgcoauthor@example.test',
+      givenName: 'Paul',
+      middleName: null,
+      surname: 'PkgCoAuthor',
     },
   ],
   [

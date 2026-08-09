@@ -13,12 +13,13 @@ import {
 } from '../../typeorm/seed-required.mjs'
 
 // cspell:ignore linneab manualarea manualpkg manualspec pkglead repobehörighetsöversyn specco
-// cspell:ignore retentionfresh retentionlinked retentionorphan
+// cspell:ignore resprefresh retentionfresh retentionlinked retentionorphan
 
 const LINNEA_HSA_ID = 'SE5560000001-linneab'
 const LINNEA_DISPLAY_NAME = 'Linnéa Bergström'
 const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
 const RESPONSIBILITY_PERSON_PLACEHOLDER = '(saknar namn, kräver nytt uppslag)'
+const RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID = 'SE5560000001-resprefresh1'
 
 interface SeedInsertRow {
   row: Record<string, unknown>
@@ -648,6 +649,7 @@ describe('seed profiles', () => {
       ['requirement_package_co_authors', 'hsa_id'],
     ] as const
     const expectedHsaIds = new Set([
+      RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID,
       'SE5560000001-retentionorphan',
       'SE5560000001-retentionfresh',
     ])
@@ -665,7 +667,7 @@ describe('seed profiles', () => {
     ).toEqual([])
 
     for (const personRow of responsibilityPeople) {
-      if (personRow.hsa_id === 'SE5560000001-pkgco1') {
+      if (personRow.hsa_id === RESPONSIBILITY_PERSON_REFRESH_FIXTURE_HSA_ID) {
         expect(personRow).toMatchObject({
           email: null,
           given_name: RESPONSIBILITY_PERSON_PLACEHOLDER,

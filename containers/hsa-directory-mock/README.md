@@ -159,6 +159,9 @@ Kravansvarstilldelningar.
   Dev-auth specification lead fixture.
 - `SE5560000001-pkgco1`: Paul PkgCoAuthor.
   Dev-auth requirement-package co-author fixture.
+- `SE5560000001-resprefresh1`: Rasmus ResponsibilityRefresh.
+  Dedicated lookup target for refreshing the unassigned placeholder row in the
+  demo seed.
 - `SE5560000001-reviewer1`: Rita Reviewer.
   Dev-auth Kravgranskare fixture.
 - `SE5560000001-admin1`: Ada Admin.

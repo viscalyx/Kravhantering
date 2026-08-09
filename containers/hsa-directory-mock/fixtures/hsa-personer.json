@@ -237,6 +237,16 @@
       "purposes": ["Dev-auth-person för kravpaketsmedförfattare."]
     },
     {
+      "hsaIdentity": "SE5560000001-resprefresh1",
+      "givenName": "Rasmus",
+      "sn": "ResponsibilityRefresh",
+      "mail": "rasmus.responsibility-refresh@example.test",
+      "DN": "cn=Rasmus ResponsibilityRefresh,ou=fixtures,o=kravhantering,c=se",
+      "purposes": [
+        "Dedikerad HSA-personpost för uppdatering av en ouppslagen kravansvarsperson."
+      ]
+    },
+    {
       "hsaIdentity": "SE5560000001-smoke1",
       "givenName": "Release",
       "sn": "SmokeUser",
