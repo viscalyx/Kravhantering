@@ -495,17 +495,32 @@ describe('kravhantering Quadlet helper', () => {
 
   it('allows only the documented SQL Server effective capability in the production smoke', () => {
     const productionSmoke = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
-
-    expect(productionSmoke).toContain(
-      'kravhantering-sqlserver:NET_BIND_SERVICE',
+    const contractStart = productionSmoke.indexOf(
+      'for containment_contract in \\\n',
     )
-    for (const service of [
-      'kravhantering-app-runtime',
-      'kravhantering-keycloak',
-      'kravhantering-nginx',
-    ]) {
-      expect(productionSmoke).toContain(`${service}:none`)
-    }
+    const contractEnd = productionSmoke.indexOf('; do', contractStart)
+
+    expect(productionSmoke).toContain('podman top "$name" capeff')
+    expect(productionSmoke).toContain('podman top "$name" capbnd')
+    expect(productionSmoke).not.toContain('.HostConfig.CapDrop')
+    expect(contractStart).toBeGreaterThanOrEqual(0)
+    expect(contractEnd).toBeGreaterThan(contractStart)
+    const contractEntries = Array.from(
+      productionSmoke
+        .slice(contractStart, contractEnd)
+        .matchAll(/(kravhantering-[a-z-]+):([A-Z_]+|none)/gu),
+      ([, service, capability]) => [
+        service,
+        capability === 'none' ? [] : [capability],
+      ],
+    )
+    expect(contractEntries).toHaveLength(4)
+    expect(Object.fromEntries(contractEntries)).toEqual({
+      'kravhantering-app-runtime': [],
+      'kravhantering-keycloak': [],
+      'kravhantering-nginx': [],
+      'kravhantering-sqlserver': ['NET_BIND_SERVICE'],
+    })
   })
 
   it.each([

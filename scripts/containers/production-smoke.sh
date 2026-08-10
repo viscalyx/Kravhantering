@@ -462,7 +462,8 @@ verify_network_contract() {
 }
 
 verify_containment() {
-  local containment_contract effective_caps expected_effective_cap name
+  local bounding_caps containment_contract effective_caps
+  local expected_effective_cap name
   for containment_contract in \
     kravhantering-app-runtime:none \
     kravhantering-keycloak:none \
@@ -481,12 +482,12 @@ verify_containment() {
       grep -Fvxq "$expected_effective_cap" <<<"$effective_caps"; then
       fail "$name effective capabilities did not match $expected_effective_cap: $effective_caps"
     fi
+    bounding_caps="$(as_service podman top "$name" capbnd | tail -n +2)"
+    if [[ -z "$bounding_caps" ]] ||
+      grep -Fvxq "$expected_effective_cap" <<<"$bounding_caps"; then
+      fail "$name capability bounding set did not match $expected_effective_cap: $bounding_caps"
+    fi
   done
-  as_service podman inspect kravhantering-sqlserver |
-    jq -e '((.[0].HostConfig.CapDrop | map(ascii_upcase | sub("^CAP_"; ""))) == ["ALL"]) and
-      ((.[0].HostConfig.CapAdd | map(ascii_upcase | sub("^CAP_"; ""))) == ["NET_BIND_SERVICE"])' \
-      >/dev/null ||
-    fail 'SQL Server capability bounding-set exception did not match the contract'
   as_service podman inspect kravhantering-app-runtime |
     jq -e '([(
         .[0].Mounts[]? | select(.RW) | .Destination
