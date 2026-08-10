@@ -291,7 +291,7 @@ describe('kravhantering Quadlet helper', () => {
     expect(keycloak).toContain('ReadOnlyTmpfs=false')
     expect(keycloak).toContain('PidsLimit=512')
     expect(keycloak).toContain('LogDriver=journald')
-    expect(keycloak).toContain('MemoryMax=2048M')
+    expect(keycloak).toContain('MemoryMax=3072M')
     expect(keycloak).toContain('CPUQuota=100%')
     expect(keycloak).toContain('TasksMax=544')
     expect(allContent).toContain(
@@ -535,6 +535,22 @@ describe('kravhantering Quadlet helper', () => {
     expect(productionSmoke).toContain(
       'service_systemctl restart kravhantering-single-node.target',
     )
+  })
+
+  it('reads protected recovery configuration through the service account boundary', () => {
+    const productionSmoke = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
+    const recoveryStart = productionSmoke.indexOf(
+      'verify_sqlserver_backup_recovery() {',
+    )
+    const recoveryEnd = productionSmoke.indexOf(
+      '\nverify_keycloak_backup_recovery() {',
+      recoveryStart,
+    )
+    const recoveryFunction = productionSmoke.slice(recoveryStart, recoveryEnd)
+
+    expect(recoveryStart).toBeGreaterThanOrEqual(0)
+    expect(recoveryEnd).toBeGreaterThan(recoveryStart)
+    expect(recoveryFunction).toContain('database_name="$(as_service sed -n')
   })
 
   it.each([

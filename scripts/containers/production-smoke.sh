@@ -218,7 +218,7 @@ render_runtime_configuration() {
     printf 'SQLSERVER_CPU_QUOTA_PERCENT=200\n'
     printf 'SQLSERVER_PIDS_LIMIT=1024\n'
     printf 'SQLSERVER_TMPFS_MIB=512\n'
-    printf 'KEYCLOAK_MEMORY_LIMIT_MIB=2048\n'
+    printf 'KEYCLOAK_MEMORY_LIMIT_MIB=3072\n'
     printf 'KEYCLOAK_CPU_QUOTA_PERCENT=100\n'
     printf 'KEYCLOAK_PIDS_LIMIT=512\n'
     printf 'KEYCLOAK_QUARKUS_TMPFS_MIB=64\n'
@@ -547,7 +547,7 @@ verify_containment() {
   assert_service_property kravhantering-app-runtime.service TasksMax 544
   assert_service_property kravhantering-nginx.service MemoryMax 536870912
   assert_service_property kravhantering-nginx.service TasksMax 160
-  assert_service_property kravhantering-keycloak.service MemoryMax 2147483648
+  assert_service_property kravhantering-keycloak.service MemoryMax 3221225472
   assert_service_property kravhantering-keycloak.service TasksMax 544
   assert_service_property kravhantering-sqlserver.service MemoryMax 4294967296
   assert_service_property kravhantering-sqlserver.service TasksMax 1056
@@ -556,7 +556,7 @@ verify_containment() {
   verify_service_cgroup kravhantering-nginx.service \
     536870912 160 '100000 100000'
   verify_service_cgroup kravhantering-keycloak.service \
-    2147483648 544 '100000 100000'
+    3221225472 544 '100000 100000'
   verify_service_cgroup kravhantering-sqlserver.service \
     4294967296 1056 '200000 100000'
   as_service podman exec kravhantering-app-runtime sh -ec '
@@ -593,7 +593,8 @@ wait_for_sqlserver_container() {
 
 verify_sqlserver_backup_recovery() {
   local backup_file database_name database_network result
-  database_name="$(sed -n 's/^DB_NAME=//p' "$CONFIG_ROOT/db-job.env")"
+  database_name="$(as_service sed -n 's/^DB_NAME=//p' \
+    "$CONFIG_ROOT/db-job.env")"
   [[ "$database_name" =~ ^[A-Za-z0-9_]+$ ]] || \
     fail 'production smoke database name is unsafe for backup recovery'
   backup_file="${database_name}-containment-smoke.bak"
@@ -669,7 +670,7 @@ verify_keycloak_backup_recovery() {
     --security-opt no-new-privileges \
     --read-only \
     --pids-limit 512 \
-    --memory 2048m \
+    --memory 3072m \
     --cpus 1 \
     --log-driver journald \
     --volume kravhantering-ci-keycloak-recovery:/opt/keycloak/data:U \

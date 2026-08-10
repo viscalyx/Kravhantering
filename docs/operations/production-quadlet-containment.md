@@ -125,7 +125,7 @@ unknown storage modes and values outside these ranges.
 | `SQLSERVER_CPU_QUOTA_PERCENT` | 200 | 50–online CPUs × 100 |
 | `SQLSERVER_PIDS_LIMIT` | 1024 | 128–2048 |
 | `SQLSERVER_TMPFS_MIB` | 512 | 128–2048 and at most half of SQL Server memory |
-| `KEYCLOAK_MEMORY_LIMIT_MIB` | 2048 | 512–4096 |
+| `KEYCLOAK_MEMORY_LIMIT_MIB` | 3072 | 512–4096 |
 | `KEYCLOAK_CPU_QUOTA_PERCENT` | 100 | 25–online CPUs × 100 |
 | `KEYCLOAK_PIDS_LIMIT` | 512 | 64–1024 |
 | `KEYCLOAK_QUARKUS_TMPFS_MIB` | 64 | 32–256 |
@@ -138,7 +138,7 @@ capacity and 400%. Single-node accounts for all four services and permits at
 most twice the online CPU capacity, capped at 800%; the default 700% envelope
 allows bounded burst contention on the four-core CI/reference host. The sum of
 all single-node memory limits cannot exceed 75% of host memory. Defaults total
-10.5 GiB and require at least 14 GiB, retaining over 4.5 GiB for the host on a
+11.5 GiB and require at least 16 GiB, retaining 4.5 GiB for the host on a
 16 GiB node.
 
 For disk-backed exports, set:

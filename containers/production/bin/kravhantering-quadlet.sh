@@ -168,7 +168,7 @@ configure_containment() {
   default_release_value SQLSERVER_CPU_QUOTA_PERCENT 200
   default_release_value SQLSERVER_PIDS_LIMIT 1024
   default_release_value SQLSERVER_TMPFS_MIB 512
-  default_release_value KEYCLOAK_MEMORY_LIMIT_MIB 2048
+  default_release_value KEYCLOAK_MEMORY_LIMIT_MIB 3072
   default_release_value KEYCLOAK_CPU_QUOTA_PERCENT 100
   default_release_value KEYCLOAK_PIDS_LIMIT 512
   default_release_value KEYCLOAK_QUARKUS_TMPFS_MIB 64
