@@ -1,0 +1,6 @@
+interface:
+  display_name: "Push PR"
+  short_description: "Push to my and open a templated upstream PR"
+  default_prompt: "Use $push-pr to push the current branch to my and open a pull request against origin using the repository template."
+policy:
+  allow_implicit_invocation: false
