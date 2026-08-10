@@ -325,6 +325,8 @@ configuration change.
    Before installing the new units, provision the SQL Server certificate and
    key described in the deployment guide's
    [TLS Materials](./rhel10-production-single-node-self-contained-deploy.md#tls-materials).
+   When the deployment explicitly approves a local self-signed exception, use
+   [Appendix B](./rhel10-production-single-node-self-contained-deploy.md#appendix-b-local-self-signed-microsoft-sql-server-tls-set).
    The certificate must chain to `/etc/kravhantering/tls/ca.crt` and match the
    fixed service identity `DNS:sqlserver`. Then remove the legacy insecure trust
    override and configure the database-job CA path:
@@ -344,12 +346,12 @@ configuration change.
        'NODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt' |
        sudo tee -a /etc/kravhantering/db-job.env >/dev/null
    fi
-   openssl verify -CAfile /etc/kravhantering/tls/ca.crt \
+   openssl verify -verify_hostname sqlserver \
+     -CAfile /etc/kravhantering/tls/ca.crt \
      /etc/kravhantering/sqlserver-tls/server.crt
    openssl x509 \
      -in /etc/kravhantering/sqlserver-tls/server.crt \
-     -noout -checkhost sqlserver -dates -ext extendedKeyUsage \
-     -ext subjectAltName
+     -noout -dates -ext extendedKeyUsage,subjectAltName
    ```
 
    Stop if either certificate check fails. Do not set
@@ -631,7 +633,7 @@ configuration change.
     the upgrade.
 
     If the host uses the temporary self-signed certificate from
-    [Appendix A: Local Self-Signed TLS Certificate](./rhel10-production-single-node-self-contained-deploy.md#appendix-a-local-self-signed-tls-certificate),
+    [Appendix A: Local Self-Signed Public TLS Certificate](./rhel10-production-single-node-self-contained-deploy.md#appendix-a-local-self-signed-public-tls-certificate),
     or the operator workstation does not yet trust the issuing CA, use
     `--insecure` for a manual readiness probe only:
 

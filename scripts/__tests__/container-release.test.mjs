@@ -1732,6 +1732,7 @@ describe('trusted container release helpers', () => {
     )
 
     expect(appEnv).toContain('DB_TRUST_SERVER_CERTIFICATE=false')
+    expect(dbJobEnv).toMatch(/^DB_HOST=sqlserver$/mu)
     expect(dbJobEnv).toContain('DB_TRUST_SERVER_CERTIFICATE=false')
     expect(dbJobEnv).toContain(
       'NODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt',
