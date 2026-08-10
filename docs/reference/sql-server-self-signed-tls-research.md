@@ -43,8 +43,8 @@ The release-owned
 
 ```ini
 [network]
-tlscert = /etc/ssl/certs/mssql.pem
-tlskey = /etc/ssl/private/mssql.key
+tlscert = /etc/kravhantering/sqlserver-tls/server.crt
+tlskey = /etc/kravhantering/sqlserver-tls/server.key
 forceencryption = 1
 ```
 
@@ -189,15 +189,22 @@ Review the resulting subject, issuer, validity, SAN, EKU, key usage, and basic
 constraints, then prove that the public keys match:
 
 ```bash
+set -euo pipefail
+
 openssl x509 -in "${SQLSERVER_TLS_STAGING}/server.crt" -noout \
   -subject -issuer -dates \
   -ext subjectAltName -ext extendedKeyUsage \
   -ext keyUsage -ext basicConstraints
 
-test "$(openssl x509 -in "${SQLSERVER_TLS_STAGING}/server.crt" \
-  -pubkey -noout | openssl pkey -pubin -outform DER | sha256sum)" = \
-  "$(openssl pkey -in "${SQLSERVER_TLS_STAGING}/server.key" \
-  -pubout -outform DER | sha256sum)"
+CERT_PUBLIC_KEY_SHA256="$(
+  openssl x509 -in "${SQLSERVER_TLS_STAGING}/server.crt" -pubkey -noout |
+    openssl pkey -pubin -outform DER | sha256sum
+)"
+PRIVATE_KEY_PUBLIC_SHA256="$(
+  openssl pkey -in "${SQLSERVER_TLS_STAGING}/server.key" \
+    -pubout -outform DER | sha256sum
+)"
+test "$CERT_PUBLIC_KEY_SHA256" = "$PRIVATE_KEY_PUBLIC_SHA256"
 ```
 
 OpenSSL documents purpose and host-name verification in
@@ -329,11 +336,12 @@ For ordinary leaf renewal under the same local root:
 1. generate a new leaf key and leaf certificate in protected staging;
 2. verify chain, purpose, `DNS:sqlserver`, validity, and key match;
 3. retain the current pair as a short-lived protected rollback pair;
-4. install the new leaf and key together with the documented ownership, mode,
-   and SELinux label;
-5. restart SQL Server during a maintenance window;
-6. run the validated `db-job wait` path and check `encrypt_option`; and
-7. retain serial numbers and expiry dates, but never private keys, as evidence.
+4. stop SQL Server during a maintenance window;
+5. install both the new leaf and key while the service is stopped, then apply
+   the documented ownership, mode, and SELinux label;
+6. start SQL Server;
+7. run the validated `db-job wait` path and check `encrypt_option`; and
+8. retain serial numbers and expiry dates, but never private keys, as evidence.
 
 Microsoft's TLS setup requires a SQL Server restart, and certificate validity
 is part of client validation. Those facts make a monitored pre-expiry restart
@@ -347,10 +355,11 @@ This overlap prevents a window in which either the old or new server leaf is
 untrusted. It is an operational inference from Microsoft's requirement to
 install the issuing CA on clients and Node.js's process-start trust loading.
 
-If validation fails, restore the protected previous leaf/key pair and previous
-CA bundle, reapply labels, restart SQL Server and affected Node.js clients, and
-repeat the validated connection checks. A database restore does not restore
-these bind-mounted host files.
+If validation fails, stop SQL Server, restore both files from the protected
+previous leaf/key pair, restore the previous CA bundle, and reapply ownership,
+mode, and SELinux labels while the service is stopped. Start SQL Server,
+restart affected Node.js clients, and repeat the validated connection checks.
+A database restore does not restore these bind-mounted host files.
 
 ## Limitations of the local trust set
 

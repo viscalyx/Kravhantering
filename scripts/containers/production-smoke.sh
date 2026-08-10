@@ -394,7 +394,7 @@ expect_database_tls_failure() {
 
 rotate_sqlserver_certificate() {
   local before_serial rotation_dir after_serial
-  before_serial="$(openssl x509 \
+  before_serial="$(sudo openssl x509 \
     -in "$CONFIG_ROOT/sqlserver-tls/server.crt" -noout -serial)"
   rotation_dir="$(mktemp -d)"
   node scripts/containers/generate-tls.mjs \
@@ -410,7 +410,7 @@ rotate_sqlserver_certificate() {
   rm -rf -- "$rotation_dir"
   service_systemctl restart kravhantering-sqlserver.service
   database_job wait
-  after_serial="$(openssl x509 \
+  after_serial="$(sudo openssl x509 \
     -in "$CONFIG_ROOT/sqlserver-tls/server.crt" -noout -serial)"
   [[ "$before_serial" != "$after_serial" ]] || \
     fail 'SQL Server certificate rotation did not change the certificate serial'

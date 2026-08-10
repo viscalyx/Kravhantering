@@ -1302,13 +1302,20 @@ Before installation, verify the SQL Server certificate, private-key match,
 service identity, validity period, and server-auth purpose:
 
 ```bash
-openssl verify -CAfile ca.crt sqlserver-server.crt
+set -euo pipefail
+
+openssl verify -purpose sslserver -verify_hostname sqlserver \
+  -CAfile ca.crt sqlserver-server.crt
 openssl x509 -in sqlserver-server.crt -noout \
-  -checkhost sqlserver -dates -ext extendedKeyUsage -ext subjectAltName
-test "$(openssl x509 -in sqlserver-server.crt -pubkey -noout | \
-  openssl pkey -pubin -outform DER | sha256sum)" = \
-  "$(openssl pkey -in sqlserver-server.key -pubout -outform DER | \
-  sha256sum)"
+  -checkhost sqlserver -dates -ext extendedKeyUsage,subjectAltName
+CERT_PUBLIC_KEY_SHA256="$(
+  openssl x509 -in sqlserver-server.crt -pubkey -noout |
+    openssl pkey -pubin -outform DER | sha256sum
+)"
+PRIVATE_KEY_PUBLIC_SHA256="$(
+  openssl pkey -in sqlserver-server.key -pubout -outform DER | sha256sum
+)"
+test "$CERT_PUBLIC_KEY_SHA256" = "$PRIVATE_KEY_PUBLIC_SHA256"
 ```
 
 Install the public server certificate, SQL Server certificate, private keys,
@@ -2267,12 +2274,27 @@ bundle from the current bundle and the new local root. Stage the result so the
 live bundle is never partially written:
 
 ```bash
+set -euo pipefail
+
 CURRENT_CA_BUNDLE=/etc/kravhantering/tls/ca.crt
-CA_BUNDLE_STAGE="$(mktemp)"
-sudo cat "$CURRENT_CA_BUNDLE" "$SQLSERVER_CA_CERT" > "$CA_BUNDLE_STAGE"
-sudo install -o root -g kravhantering -m 0644 \
-  "$CA_BUNDLE_STAGE" "$CURRENT_CA_BUNDLE"
-rm -f -- "$CA_BUNDLE_STAGE"
+CURRENT_CA_DIRECTORY="$(dirname "$CURRENT_CA_BUNDLE")"
+CA_BUNDLE_STAGE="$(
+  sudo mktemp "${CURRENT_CA_DIRECTORY}/.ca.crt.XXXXXX"
+)"
+cleanup_ca_bundle_stage() {
+  if [[ -n "${CA_BUNDLE_STAGE:-}" ]]; then
+    sudo rm -f -- "$CA_BUNDLE_STAGE"
+  fi
+}
+trap cleanup_ca_bundle_stage EXIT
+
+sudo sh -c 'cat -- "$1" "$2" > "$3"' sh \
+  "$CURRENT_CA_BUNDLE" "$SQLSERVER_CA_CERT" "$CA_BUNDLE_STAGE"
+sudo chown root:kravhantering "$CA_BUNDLE_STAGE"
+sudo chmod 0644 "$CA_BUNDLE_STAGE"
+sudo mv -f -- "$CA_BUNDLE_STAGE" "$CURRENT_CA_BUNDLE"
+CA_BUNDLE_STAGE=''
+trap - EXIT
 ```
 
 Do not append the same root repeatedly. For later CA changes, rebuild the
@@ -2312,6 +2334,8 @@ usage, private key, and certificate-key match before installing or starting
 the new SQL Server Quadlet unit:
 
 ```bash
+set -euo pipefail
+
 sudo openssl verify -purpose sslserver -verify_hostname sqlserver \
   -CAfile /etc/kravhantering/tls/ca.crt \
   "${SQLSERVER_TLS_DIR}/server.crt"

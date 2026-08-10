@@ -677,6 +677,87 @@ verify_sqlserver_identity_upgrade
     ).toContain('sqlserver-legacy-to-verified-tls-upgrade=passed')
   })
 
+  it('reads certificate serials through the privileged configuration boundary', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-smoke-rotate-'))
+    temporaryDirectories.push(root)
+    const configDir = path.join(root, 'config')
+    const evidenceDir = path.join(root, 'evidence')
+    const certificateDir = path.join(configDir, 'sqlserver-tls')
+    fs.mkdirSync(certificateDir, { recursive: true })
+    fs.mkdirSync(evidenceDir)
+    fs.writeFileSync(path.join(certificateDir, 'server.crt'), 'original\n')
+    fs.writeFileSync(path.join(certificateDir, 'server.key'), 'original\n')
+
+    const result = childProcess.spawnSync(
+      'bash',
+      [
+        '-c',
+        `source "$1"
+CONFIG_ROOT="$2"
+EVIDENCE_DIR="$3"
+SERVICE_USER=kravhantering
+sudo() {
+  if [[ "$1" == openssl ]]; then
+    shift
+    PRIVILEGED_OPENSSL=1 openssl "$@"
+    return
+  fi
+  if [[ "$1" == install ]]; then
+    cp "\${@: -2:1}" "\${@: -1}"
+    return
+  fi
+  "$@"
+}
+openssl() {
+  [[ "\${PRIVILEGED_OPENSSL:-}" == 1 ]] || return 77
+  local argument input=''
+  for argument in "$@"; do
+    if [[ "$input" == next ]]; then
+      input="$argument"
+      break
+    fi
+    [[ "$argument" == -in ]] && input=next
+  done
+  if grep -q '^rotated$' "$input"; then
+    printf 'serial=AFTER\\n'
+  else
+    printf 'serial=BEFORE\\n'
+  fi
+}
+node() {
+  local argument output_dir=''
+  for argument in "$@"; do
+    if [[ "$output_dir" == next ]]; then
+      output_dir="$argument"
+      break
+    fi
+    [[ "$argument" == --output-dir ]] && output_dir=next
+  done
+  printf 'rotated\\n' >"$output_dir/server.crt"
+  printf 'rotated\\n' >"$output_dir/server.key"
+}
+service_systemctl() { :; }
+database_job() { :; }
+rotate_sqlserver_certificate
+`,
+        'production-smoke-test',
+        PRODUCTION_SMOKE_PATH,
+        configDir,
+        evidenceDir,
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' },
+    )
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    expect(
+      fs.readFileSync(
+        path.join(evidenceDir, 'sqlserver-certificate-rotation.txt'),
+        'utf8',
+      ),
+    ).toBe('before-serial=BEFORE\nafter-serial=AFTER\n')
+  })
+
   it.each([
     ['APP_RUNTIME_MEMORY_LIMIT_MIB', '4095'],
     ['APP_RUNTIME_EXPORT_STORAGE', 'shared'],
