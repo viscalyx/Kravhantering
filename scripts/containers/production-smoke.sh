@@ -647,10 +647,10 @@ verify_keycloak_backup_recovery() {
   local identity_network token_response
   RECOVERY_TEMP_DIR="${RECOVERY_TEMP_DIR:-$(mktemp -d)}"
   sudo chown "$SERVICE_USER:$SERVICE_USER" "$RECOVERY_TEMP_DIR"
-  service_systemctl stop kravhantering-keycloak.service
+  service_systemctl stop kravhantering-single-node.target
   as_service podman volume export --output \
     "$RECOVERY_TEMP_DIR/keycloak-data.tar" kravhantering-keycloak-data
-  service_systemctl start kravhantering-keycloak.service
+  service_systemctl start kravhantering-single-node.target
   wait_for_url \
     https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration
 
@@ -776,7 +776,7 @@ up() {
   service_systemctl restart kravhantering-sqlserver.service
   database_job wait
   wait_for_url https://kravhantering.test/api/ready
-  service_systemctl restart kravhantering-keycloak.service
+  service_systemctl restart kravhantering-single-node.target
   wait_for_url \
     https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration
   wait_for_url https://kravhantering.test/api/ready

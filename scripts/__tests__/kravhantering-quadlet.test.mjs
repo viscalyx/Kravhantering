@@ -523,6 +523,20 @@ describe('kravhantering Quadlet helper', () => {
     })
   })
 
+  it('cycles Keycloak through the single-node target dependency boundary', () => {
+    const productionSmoke = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
+
+    expect(productionSmoke).not.toContain(
+      'service_systemctl restart kravhantering-keycloak.service',
+    )
+    expect(productionSmoke).not.toContain(
+      'service_systemctl stop kravhantering-keycloak.service',
+    )
+    expect(productionSmoke).toContain(
+      'service_systemctl restart kravhantering-single-node.target',
+    )
+  })
+
   it.each([
     ['APP_RUNTIME_MEMORY_LIMIT_MIB', '4095'],
     ['APP_RUNTIME_EXPORT_STORAGE', 'shared'],
