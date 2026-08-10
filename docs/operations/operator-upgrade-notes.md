@@ -7,20 +7,6 @@ target version.
 
 ## Unreleased
 
-<!-- operator-upgrade:source issue-488 start -->
-### Single-node SQL Server now requires a verified service certificate
-
-Before installing the new single-node Quadlet units, issue and install the SQL
-Server certificate and key documented in the single-node upgrade guide. The
-certificate must chain to the configured CA bundle and contain
-`DNS:sqlserver`. Set `DB_TRUST_SERVER_CERTIFICATE=false` in both app and
-database-job configuration, configure the database-job CA path, and mount the
-CA into every one-shot database container. The SQL Server service cannot start
-the new unit when the certificate files are absent or unreadable.
-For an explicitly approved local self-signed exception, follow
-[Appendix B in the single-node deploy guide](./rhel10-production-single-node-self-contained-deploy.md#appendix-b-local-self-signed-microsoft-sql-server-tls-set).
-<!-- operator-upgrade:source issue-488 end -->
-
 <!-- operator-upgrade:source pr-870 start -->
 Provision AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH on destination workstations through a trusted channel before generating requests. Request and package schema 3 intentionally has no compatibility path with schema 2; regenerate pending requests and responses after upgrade. Existing approval key rotation requires provisioning the replacement public key before creating a new request.
 <!-- operator-upgrade:source pr-870 end -->
