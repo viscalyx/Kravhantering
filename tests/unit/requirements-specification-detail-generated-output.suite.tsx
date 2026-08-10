@@ -270,7 +270,14 @@ export function registerGeneratedOutputTests(
       await context.waitForInitialAvailableRequirementsRefresh()
       context.triggerRequirementLoadMore('items')
       expect(await screen.findByRole('row', { name: /BEH0200/ })).toBeVisible()
-      context.triggerRequirementLoadMore('items')
+      await waitFor(() => {
+        context.triggerRequirementLoadMore('items')
+        expect(
+          context.fetchMock.mock.calls.some(([input]) =>
+            String(input).includes('cursor=items-page-3'),
+          ),
+        ).toBe(true)
+      })
       expect(await screen.findByRole('row', { name: /BEH0201/ })).toBeVisible()
 
       expect(
