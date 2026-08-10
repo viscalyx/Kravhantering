@@ -201,8 +201,8 @@ configure_containment() {
   if [[ "$TOPOLOGY" == single-node ]]; then
     (( SQLSERVER_TMPFS_MIB * 2 <= SQLSERVER_MEMORY_LIMIT_MIB )) || \
       fail 'invalid SQLSERVER_TMPFS_MIB: must not exceed half SQLSERVER_MEMORY_LIMIT_MIB'
-    (( KEYCLOAK_TMPFS_MIB * 2 <= KEYCLOAK_MEMORY_LIMIT_MIB )) || \
-      fail 'invalid KEYCLOAK_TMPFS_MIB: must not exceed half KEYCLOAK_MEMORY_LIMIT_MIB'
+    (( (KEYCLOAK_TMPFS_MIB + KEYCLOAK_QUARKUS_TMPFS_MIB) * 2 <= KEYCLOAK_MEMORY_LIMIT_MIB )) || \
+      fail 'invalid Keycloak tmpfs combination: must not exceed half KEYCLOAK_MEMORY_LIMIT_MIB'
     topology_cpu_capacity="$(( $(nproc) * 200 ))"
     (( topology_cpu_capacity <= 800 )) || topology_cpu_capacity=800
     (( APP_RUNTIME_CPU_QUOTA_PERCENT + NGINX_CPU_QUOTA_PERCENT + SQLSERVER_CPU_QUOTA_PERCENT + KEYCLOAK_CPU_QUOTA_PERCENT <= topology_cpu_capacity )) || \

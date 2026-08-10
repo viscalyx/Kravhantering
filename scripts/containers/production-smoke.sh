@@ -583,10 +583,16 @@ sqlserver_query() {
 }
 
 wait_for_sqlserver_container() {
-  local container="$1" attempts=0
+  local container="$1" attempts=0 container_state
   until sqlserver_query "$container" 'SELECT 1' >/dev/null 2>&1; do
     attempts="$(( attempts + 1 ))"
-    (( attempts < 60 )) || fail "timed out waiting for $container"
+    if (( attempts >= 60 )); then
+      container_state="$(as_service podman container inspect \
+        --format '{{.State.Status}} (exit {{.State.ExitCode}})' \
+        "$container" 2>/dev/null || printf 'unavailable')"
+      as_service podman logs "$container" >&2 || true
+      fail "timed out waiting for $container; state: $container_state"
+    fi
     sleep 2
   done
 }
@@ -625,6 +631,7 @@ verify_sqlserver_backup_recovery() {
     --pids-limit 1024 \
     --memory 4096m \
     --cpus 2 \
+    --restart on-failure:1 \
     --log-driver journald \
     --volume kravhantering-ci-sqlserver-recovery:/var/opt/mssql:U \
     --tmpfs /tmp:rw,size=512m,mode=1777,nosuid,nodev,noexec \

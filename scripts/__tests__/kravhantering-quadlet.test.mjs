@@ -537,7 +537,7 @@ describe('kravhantering Quadlet helper', () => {
     )
   })
 
-  it('reads protected recovery configuration through the service account boundary', () => {
+  it('protects and diagnoses SQL Server recovery startup', () => {
     const productionSmoke = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
     const recoveryStart = productionSmoke.indexOf(
       'verify_sqlserver_backup_recovery() {',
@@ -550,7 +550,12 @@ describe('kravhantering Quadlet helper', () => {
 
     expect(recoveryStart).toBeGreaterThanOrEqual(0)
     expect(recoveryEnd).toBeGreaterThan(recoveryStart)
-    expect(recoveryFunction).toContain('database_name="$(as_service sed -n')
+    expect(recoveryFunction).toContain(
+      `database_name="$(as_service sed -n 's/^DB_NAME=//p' \\
+    "$CONFIG_ROOT/db-job.env")"`,
+    )
+    expect(recoveryFunction).toContain('--restart on-failure:1')
+    expect(productionSmoke).toContain('podman logs "$container"')
   })
 
   it.each([
@@ -604,6 +609,30 @@ describe('kravhantering Quadlet helper', () => {
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain(`invalid ${key}`)
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
+
+  it('rejects combined Keycloak tmpfs overrides above half its memory before rendering', () => {
+    const fixture = createFixture(
+      releaseEnv({
+        KEYCLOAK_MEMORY_LIMIT_MIB: '1024',
+        KEYCLOAK_QUARKUS_TMPFS_MIB: '64',
+        KEYCLOAK_TMPFS_MIB: '512',
+      }),
+    )
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('invalid Keycloak tmpfs combination')
     expect(fs.existsSync(fixture.outputDir)).toBe(false)
   })
 

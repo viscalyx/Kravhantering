@@ -129,7 +129,7 @@ unknown storage modes and values outside these ranges.
 | `KEYCLOAK_CPU_QUOTA_PERCENT` | 100 | 25–online CPUs × 100 |
 | `KEYCLOAK_PIDS_LIMIT` | 512 | 64–1024 |
 | `KEYCLOAK_QUARKUS_TMPFS_MIB` | 64 | 32–256 |
-| `KEYCLOAK_TMPFS_MIB` | 512 | 128–2048 and at most half of Keycloak memory |
+| `KEYCLOAK_TMPFS_MIB` | 512 | 128–2048; combined with `KEYCLOAK_QUARKUS_TMPFS_MIB`, at most half of Keycloak memory |
 <!-- markdownlint-enable MD013 -->
 
 The helper derives `TasksMax` as the PIDs limit plus 32 for the Podman and
