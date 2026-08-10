@@ -8,6 +8,10 @@ const SCRIPT_PATH = path.resolve(
   process.cwd(),
   'containers/production/bin/kravhantering-quadlet.sh',
 )
+const PRODUCTION_SMOKE_PATH = path.resolve(
+  process.cwd(),
+  'scripts/containers/production-smoke.sh',
+)
 const PODMAN_USER_GENERATOR =
   '/usr/lib/systemd/user-generators/podman-user-generator'
 const PODMAN_GENERATOR_VERSION = fs.existsSync(PODMAN_USER_GENERATOR)
@@ -487,6 +491,21 @@ describe('kravhantering Quadlet helper', () => {
     expect(keycloak).toContain(
       'Tmpfs=/opt/keycloak/lib/quarkus:rw,size=96M,mode=0755,U,nosuid,nodev,noexec',
     )
+  })
+
+  it('allows only the documented SQL Server effective capability in the production smoke', () => {
+    const productionSmoke = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
+
+    expect(productionSmoke).toContain(
+      'kravhantering-sqlserver:NET_BIND_SERVICE',
+    )
+    for (const service of [
+      'kravhantering-app-runtime',
+      'kravhantering-keycloak',
+      'kravhantering-nginx',
+    ]) {
+      expect(productionSmoke).toContain(`${service}:none`)
+    }
   })
 
   it.each([

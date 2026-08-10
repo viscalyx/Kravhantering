@@ -462,9 +462,14 @@ verify_network_contract() {
 }
 
 verify_containment() {
-  local effective_caps name
-  for name in kravhantering-app-runtime kravhantering-keycloak \
-    kravhantering-nginx kravhantering-sqlserver; do
+  local containment_contract effective_caps expected_effective_cap name
+  for containment_contract in \
+    kravhantering-app-runtime:none \
+    kravhantering-keycloak:none \
+    kravhantering-nginx:none \
+    kravhantering-sqlserver:NET_BIND_SERVICE; do
+    name="${containment_contract%%:*}"
+    expected_effective_cap="${containment_contract#*:}"
     as_service podman inspect "$name" |
       jq -e '.[0].HostConfig.ReadonlyRootfs == true and
         any(.[0].HostConfig.SecurityOpt[]; startswith("no-new-privileges")) and
@@ -473,8 +478,8 @@ verify_containment() {
       fail "$name inspect did not prove its containment contract"
     effective_caps="$(as_service podman top "$name" capeff | tail -n +2)"
     if [[ -z "$effective_caps" ]] ||
-      grep -Fvxq none <<<"$effective_caps"; then
-      fail "$name retained effective capabilities: $effective_caps"
+      grep -Fvxq "$expected_effective_cap" <<<"$effective_caps"; then
+      fail "$name effective capabilities did not match $expected_effective_cap: $effective_caps"
     fi
   done
   as_service podman inspect kravhantering-sqlserver |
