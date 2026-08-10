@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 BUNDLE_ROOT="${KRAVHANTERING_BUNDLE_ROOT:-$(cd -- "$SCRIPT_DIR/.." && pwd -P)}"
 RELEASE_ENV_FILE="${KRAVHANTERING_RELEASE_ENV_FILE:-/etc/kravhantering/release.env}"
+KEYCLOAK_ENV_FILE="${KRAVHANTERING_KEYCLOAK_ENV_FILE:-/etc/kravhantering/keycloak.env}"
 TEMPLATE_ROOT="$BUNDLE_ROOT/quadlet/templates"
 QUADLET_DIR="${KRAVHANTERING_QUADLET_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/containers/systemd}"
 SYSTEMD_USER_DIR="${KRAVHANTERING_SYSTEMD_USER_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user}"
@@ -124,6 +125,7 @@ template_values() {
     NGINX_PIDS_LIMIT \
     NGINX_SINGLE_NODE_TEMPLATE \
     NGINX_TASKS_MAX \
+    PUBLIC_ISSUER_HOST_MAPPING \
     SQLSERVER_CPU_QUOTA_PERCENT \
     SQLSERVER_MEMORY_LIMIT_MIB \
     SQLSERVER_PIDS_LIMIT \
@@ -146,6 +148,17 @@ read_release_env() {
   done <"$RELEASE_ENV_FILE"
 }
 
+read_env_value() {
+  local file="$1" requested_key="$2" line value=''
+  [[ -r "$file" ]] || fail "cannot read env file: $file"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ "$line" == "$requested_key="* ]] || continue
+    value="${line#*=}"
+  done <"$file"
+  printf '%s\n' "$value"
+}
+
 configure_identity_provider() {
   default_release_value IDENTITY_PROVIDER_MODE bundled
   case "$IDENTITY_PROVIDER_MODE" in
@@ -158,6 +171,7 @@ configure_identity_provider() {
       KEYCLOAK_MANAGEMENT_MTLS_VOLUMES=''
       NGINX_KEYCLOAK_MANAGEMENT_PUBLISH=''
       NGINX_SINGLE_NODE_TEMPLATE='single-node-tls.conf.template'
+      PUBLIC_ISSUER_HOST_MAPPING="PodmanArgs=--add-host=${PUBLIC_HOSTNAME-}:host-gateway"
       ;;
     external)
       NGINX_IDENTITY_RESOLVER=''
@@ -169,6 +183,7 @@ configure_identity_provider() {
       KEYCLOAK_MANAGEMENT_MTLS_VOLUMES=''
       NGINX_KEYCLOAK_MANAGEMENT_PUBLISH=''
       NGINX_SINGLE_NODE_TEMPLATE='single-node-external-oidc-tls.conf.template'
+      PUBLIC_ISSUER_HOST_MAPPING=''
       ;;
     hardened-bundled)
       KEYCLOAK_APP_DEPENDENCIES='kravhantering-keycloak.service'
@@ -179,6 +194,7 @@ configure_identity_provider() {
       KEYCLOAK_MANAGEMENT_MTLS_VOLUMES=$'Volume=/etc/kravhantering/keycloak-management-tls/client-ca.crt:/etc/nginx/keycloak-management-tls/client-ca.crt:ro\nVolume=/etc/kravhantering/keycloak-management-tls/fullchain.pem:/etc/nginx/keycloak-management-tls/fullchain.pem:ro\nVolume=/etc/kravhantering/keycloak-management-tls/privkey.pem:/etc/nginx/keycloak-management-tls/privkey.pem:ro'
       NGINX_KEYCLOAK_MANAGEMENT_PUBLISH="PublishPort=${KEYCLOAK_MANAGEMENT_HTTPS_BIND-}"
       NGINX_SINGLE_NODE_TEMPLATE='single-node-hardened-keycloak-tls.conf.template'
+      PUBLIC_ISSUER_HOST_MAPPING="PodmanArgs=--add-host=${PUBLIC_HOSTNAME-}:host-gateway"
       ;;
     *)
       fail 'invalid IDENTITY_PROVIDER_MODE: expected bundled, external, or hardened-bundled'
@@ -195,22 +211,31 @@ validate_release_env() {
 }
 
 validate_identity_provider() {
-  local bind_address container_port host_port octet
-  local -a bind_octets=()
+  local bind_address container_port host_port host_port_value octet octet_value
+  local -a bind_octets=() bind_octet_values=()
   [[ "$IDENTITY_PROVIDER_MODE" == hardened-bundled ]] || return 0
+  KC_HOSTNAME_ADMIN="$(read_env_value "$KEYCLOAK_ENV_FILE" KC_HOSTNAME_ADMIN)"
+  [[ -n "$KC_HOSTNAME_ADMIN" ]] || \
+    fail 'keycloak.env is missing required value: KC_HOSTNAME_ADMIN for IDENTITY_PROVIDER_MODE=hardened-bundled'
   [[ -n "${KEYCLOAK_MANAGEMENT_HTTPS_BIND-}" ]] || \
     fail 'release.env is missing required value: KEYCLOAK_MANAGEMENT_HTTPS_BIND'
-  [[ "$KEYCLOAK_MANAGEMENT_HTTPS_BIND" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+:[0-9]+$ ]] || \
+  [[ "$KEYCLOAK_MANAGEMENT_HTTPS_BIND" =~ ^([0-9]+\.){3}[0-9]+:[0-9]{1,5}:[0-9]{1,5}$ ]] || \
     fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: expected an explicit IPv4 bind'
   IFS=: read -r bind_address host_port container_port <<<"$KEYCLOAK_MANAGEMENT_HTTPS_BIND"
   IFS=. read -r -a bind_octets <<<"$bind_address"
   for octet in "${bind_octets[@]}"; do
-    (( octet >= 0 && octet <= 255 )) || \
+    [[ "$octet" =~ ^(0|[1-9][0-9]{0,2})$ ]] || \
+      fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: expected canonical decimal IPv4 octets'
+    octet_value=$((10#$octet))
+    (( octet_value <= 255 )) || \
       fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: expected an explicit IPv4 bind'
+    bind_octet_values+=("$octet_value")
   done
-  [[ "$bind_address" != 0.0.0.0 ]] || \
+  (( bind_octet_values[0] != 0 || bind_octet_values[1] != 0 || \
+    bind_octet_values[2] != 0 || bind_octet_values[3] != 0 )) || \
     fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: must not use a wildcard address'
-  (( host_port >= 1 && host_port <= 65535 )) || \
+  host_port_value=$((10#$host_port))
+  (( host_port_value >= 1 && host_port_value <= 65535 )) || \
     fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: expected host port 1-65535'
   [[ "$container_port" == 9443 ]] || \
     fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: must target container port 9443'
@@ -464,7 +489,9 @@ verify_rootless_networking() {
     "$podman_bin" network rm "$network_name" >/dev/null 2>&1 || true
     fail 'rootless Podman cannot inspect the required bridge networks'
   }
-  if [[ "$TOPOLOGY" == single-node && "$IDENTITY_PROVIDER_MODE" != external ]]; then
+  if [[ "$TOPOLOGY" == single-node ]] &&
+    [[ "$IDENTITY_PROVIDER_MODE" == bundled || \
+      "$IDENTITY_PROVIDER_MODE" == hardened-bundled ]]; then
     "$podman_bin" create --name "$probe_name" --pull=never \
       --network "$network_name" \
       --add-host "${PUBLIC_HOSTNAME}:host-gateway" \

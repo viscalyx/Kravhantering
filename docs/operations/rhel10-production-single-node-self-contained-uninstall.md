@@ -33,7 +33,9 @@ Confirm these site decisions before removing anything:
 - the uninstall window is approved
 - browser traffic is drained or blocked
 - the SQL Server backup, volume snapshot or data-retention decision is recorded
-- the Keycloak user, realm and data-retention decision is recorded
+- for bundled profiles, the Keycloak user, realm and data-retention decision
+  is recorded; for `external`, provider-side client and secret revocation is
+  recorded instead
 - enough administrator-controlled storage exists for the raw staging copy
 - the approved long-term evidence location is ready
 - the operator has root access on the RHEL host
@@ -45,8 +47,9 @@ hostnames and operational identifiers.
 ## Optional Demo Cleanup
 
 Run this section only for disposable test or development deployments where demo
-data was intentionally added. Keep SQL Server and Keycloak running until these
-commands finish.
+data was intentionally added. Keep SQL Server running until these commands
+finish. For the test-oriented `bundled` profile, also keep Keycloak running
+until its demo-user cleanup finishes.
 
 Clear SQL Server demo data with the optional `kravhantering-demo-seed` image
 from the release notes or your internal mirror. This deletes all non-required
@@ -81,7 +84,9 @@ podman run --rm --network "$STACK_NETWORK" \
 exit
 ```
 
-Delete marked Keycloak demo users from the running Keycloak realm:
+For the test-oriented `bundled` profile only, delete marked Keycloak demo users
+from the running Keycloak realm. Skip this entire block for `external` and
+`hardened-bundled`:
 
 ```bash
 sudo -iu kravhantering
@@ -136,9 +141,9 @@ done
 exit
 ```
 
-The helper never deletes `kravhantering-sqlserver-data` or
-`kravhantering-keycloak-data`. The rootless volume files are copied from the
-service user's home in the staging step below.
+The helper never deletes `kravhantering-sqlserver-data` or, for bundled
+profiles, `kravhantering-keycloak-data`. The rootless volume files are copied
+from the service user's home in the staging step below.
 
 ## Stage Raw Material
 
@@ -155,8 +160,8 @@ sudo install -d -o root -g root -m 0700 "$STAGING/evidence"
 ```
 
 Copy the host-side install material before removing it from the host. The
-service user's home can be large because it normally contains the rootless
-Podman storage for SQL Server and Keycloak volumes:
+service user's home can be large because it contains rootless Podman storage
+for SQL Server and, in bundled profiles, Keycloak volumes:
 
 ```bash
 sudo cp -a /etc/kravhantering "$STAGING/raw/etc-kravhantering"
@@ -175,8 +180,10 @@ service status:
 sudo -iu kravhantering bash -lc '
   podman volume inspect kravhantering-sqlserver-data \
     --format "{{ .Mountpoint }}"
-  podman volume inspect kravhantering-keycloak-data \
-    --format "{{ .Mountpoint }}"
+  if podman volume exists kravhantering-keycloak-data; then
+    podman volume inspect kravhantering-keycloak-data \
+      --format "{{ .Mountpoint }}"
+  fi
 ' | sudo tee "$STAGING/raw/podman-volume-mountpoints.txt" >/dev/null
 
 sudo cp /var/tmp/kravhantering-systemd-status.txt "$STAGING/raw/"
@@ -197,9 +204,14 @@ sudo cp "$CURRENT_RELEASE/release-metadata.json" "$STAGING/evidence/"
 grep -E '^(APP_RUNTIME_IMAGE_REF|DB_JOB_IMAGE_REF|NGINX_IMAGE_REF)=' \
   /etc/kravhantering/release.env \
   | sudo tee "$STAGING/evidence/image-refs.env" >/dev/null
-grep -E '^(SQLSERVER_IMAGE_REF|KEYCLOAK_IMAGE_REF)=' \
+grep -E '^SQLSERVER_IMAGE_REF=' \
   /etc/kravhantering/release.env \
   | sudo tee -a "$STAGING/evidence/image-refs.env" >/dev/null
+if ! grep -q '^IDENTITY_PROVIDER_MODE=external$' \
+  /etc/kravhantering/release.env; then
+  grep -E '^KEYCLOAK_IMAGE_REF=' /etc/kravhantering/release.env \
+    | sudo tee -a "$STAGING/evidence/image-refs.env" >/dev/null
+fi
 
 grep -E '^(NEXT_PUBLIC_SITE_URL|AUTH_OIDC_ISSUER_URL|AUTH_OIDC_CLIENT_ID)=' \
   /etc/kravhantering/app.env \
@@ -276,5 +288,6 @@ Close remaining records through the site-owned procedures:
 
 - remove load-balancer, DNS and monitoring entries
 - record the SQL Server backup, volume snapshot or purge decision
-- record the Keycloak realm, user and client retention decision
+- for bundled profiles, record the Keycloak realm, user and client retention
+  decision; for `external`, record provider-side client and secret revocation
 - record where the long-term uninstall evidence archive was stored

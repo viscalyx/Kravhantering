@@ -12,6 +12,10 @@ const PRODUCTION_SMOKE_PATH = path.resolve(
   process.cwd(),
   'scripts/containers/production-smoke.sh',
 )
+const KEYCLOAK_PROXY_HEADERS_PATH = path.resolve(
+  process.cwd(),
+  'containers/production/nginx/templates/keycloak-proxy-headers.conf',
+)
 const PODMAN_USER_GENERATOR =
   '/usr/lib/systemd/user-generators/podman-user-generator'
 const PODMAN_GENERATOR_VERSION = fs.existsSync(PODMAN_USER_GENERATOR)
@@ -42,7 +46,10 @@ function writePodmanProbe(filePath, runtime = 'crun') {
   )
 }
 
-function createFixture(releaseEnv) {
+function createFixture(
+  releaseEnv,
+  keycloakEnv = 'KC_HOSTNAME_ADMIN=https://keycloak-management.example.internal:9443/auth\n',
+) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-quadlet-'))
   temporaryDirectories.push(root)
   const controllersPath = path.join(root, 'cgroup.controllers')
@@ -52,6 +59,7 @@ function createFixture(releaseEnv) {
   const podmanPath = path.join(root, 'podman')
   const systemctlPath = path.join(root, 'systemctl')
   const releaseEnvPath = path.join(root, 'release.env')
+  const keycloakEnvPath = path.join(root, 'keycloak.env')
   const outputDir = path.join(root, 'rendered')
   fs.mkdirSync(journalConfigDir)
   fs.writeFileSync(controllersPath, 'cpu memory pids\n')
@@ -68,6 +76,7 @@ function createFixture(releaseEnv) {
     mode: 0o755,
   })
   fs.writeFileSync(releaseEnvPath, releaseEnv)
+  fs.writeFileSync(keycloakEnvPath, keycloakEnv)
   return {
     outputDir,
     podmanPath,
@@ -80,6 +89,7 @@ function createFixture(releaseEnv) {
       KRAVHANTERING_SYSTEMCTL_BIN: systemctlPath,
     },
     releaseEnvPath,
+    keycloakEnvPath,
     root,
   }
 }
@@ -109,6 +119,7 @@ function runHelper(args, fixture, envOverrides = {}) {
     env: {
       ...process.env,
       KRAVHANTERING_RELEASE_ENV_FILE: fixture.releaseEnvPath,
+      KRAVHANTERING_KEYCLOAK_ENV_FILE: fixture.keycloakEnvPath,
       ...fixture.preflightEnv,
       ...envOverrides,
     },
@@ -357,8 +368,10 @@ describe('kravhantering Quadlet helper', () => {
     expect(nginx).not.toContain('NGINX_IDENTITY_RESOLVER')
     expect(nginx).not.toContain('kravhantering-single-node-identity.network')
     expect(target).not.toContain('kravhantering-keycloak.service')
-    expect(units.map(unit => unit.content).join('\n')).not.toContain(
-      'kravhantering-keycloak.service',
+    const renderedContent = units.map(unit => unit.content).join('\n')
+    expect(renderedContent).not.toContain('kravhantering-keycloak.service')
+    expect(renderedContent).not.toContain(
+      'PodmanArgs=--add-host=kravhantering.example.internal:host-gateway',
     )
   })
 
@@ -387,9 +400,22 @@ describe('kravhantering Quadlet helper', () => {
     )
   })
 
+  it('replaces untrusted forwarded chains at the public Keycloak edge', () => {
+    const proxyHeaders = fs.readFileSync(KEYCLOAK_PROXY_HEADERS_PATH, 'utf8')
+
+    expect(proxyHeaders).toContain(
+      'proxy_set_header X-Forwarded-For $remote_addr;',
+    )
+    expect(proxyHeaders).not.toContain('$proxy_add_x_forwarded_for')
+  })
+
   it.each([
     ['', 'missing required value'],
     ['0.0.0.0:9443:9443', 'must not use a wildcard address'],
+    ['00.00.00.00:9443:9443', 'expected canonical decimal IPv4 octets'],
+    ['00.20.30.40:9443:9443', 'expected canonical decimal IPv4 octets'],
+    ['0177.20.30.40:9443:9443', 'expected canonical decimal IPv4 octets'],
+    ['08.20.30.40:9443:9443', 'expected canonical decimal IPv4 octets'],
     ['10.20.30.40:9443:8443', 'must target container port 9443'],
     ['management.internal:9443:9443', 'expected an explicit IPv4 bind'],
   ])(
@@ -417,6 +443,32 @@ describe('kravhantering Quadlet helper', () => {
       expect(fs.existsSync(fixture.outputDir)).toBe(false)
     },
   )
+
+  it('requires a management hostname for hardened bundled Keycloak', () => {
+    const fixture = createFixture(
+      releaseEnv({
+        IDENTITY_PROVIDER_MODE: 'hardened-bundled',
+        KEYCLOAK_MANAGEMENT_HTTPS_BIND: '10.20.30.40:9443:9443',
+      }),
+      'KC_HOSTNAME=https://kravhantering.example.internal/auth\n',
+    )
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'keycloak.env is missing required value: KC_HOSTNAME_ADMIN for IDENTITY_PROVIDER_MODE=hardened-bundled',
+    )
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
 
   it('rejects an unknown identity-provider profile before rendering', () => {
     const fixture = createFixture(

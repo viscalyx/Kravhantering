@@ -163,8 +163,9 @@ configuration change.
      release lock.
    - For an internal registry mirror that preserves repository paths, rewrite
      only the registry host while keeping the locked tags.
-   - For an internal mirror with a custom repository layout, set the five
-     `*_IMAGE_REF` values manually to site-approved tag refs.
+   - For an internal mirror with a custom repository layout, set the four
+     always-required `*_IMAGE_REF` values manually to site-approved tag refs;
+     bundled profiles also require the Keycloak ref.
 
    For disconnected upgrades, use the manifest that
    [Upgrade Import](./rhel10-production-single-node-self-contained-disconnected.md#upgrade-import)
@@ -176,6 +177,11 @@ configuration change.
    OFFLINE_ROOT="/tmp/kravhantering-offline-${VERSION}-${TOPOLOGY}"
    TARGET_IMAGE_REGISTRY="${TARGET_IMAGE_REGISTRY:-}"
    MANIFEST="$OFFLINE_ROOT/offline-manifest.json"
+   IDENTITY_PROVIDER_MODE="$(
+     sudo sed -n 's/^IDENTITY_PROVIDER_MODE=//p' \
+       /etc/kravhantering/release.env
+   )"
+   IDENTITY_PROVIDER_MODE="${IDENTITY_PROVIDER_MODE:-bundled}"
 
    update_ref() {
      sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
@@ -199,7 +205,9 @@ configuration change.
    update_ref DB_JOB_IMAGE_REF "$(target_ref db-job)"
    update_ref NGINX_IMAGE_REF "$(target_ref nginx)"
    update_ref SQLSERVER_IMAGE_REF "$(target_ref sqlserver)"
-   update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
+   if [ "$IDENTITY_PROVIDER_MODE" != "external" ]; then
+     update_ref KEYCLOAK_IMAGE_REF "$(target_ref keycloak)"
+   fi
    if [ "$TOPOLOGY" = "single-node-demo" ]; then
      update_ref KONG_IMAGE_REF "$(target_ref kong)"
      update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
@@ -213,6 +221,11 @@ configuration change.
    release lock and verify them immediately:
 
    ```bash
+   IDENTITY_PROVIDER_MODE="$(
+     sudo sed -n 's/^IDENTITY_PROVIDER_MODE=//p' \
+       /etc/kravhantering/release.env
+   )"
+   IDENTITY_PROVIDER_MODE="${IDENTITY_PROVIDER_MODE:-bundled}"
    update_ref() {
      sudo sed -i "s#^${1}=.*#${1}=${2}#" /etc/kravhantering/release.env
    }
@@ -238,8 +251,10 @@ configuration change.
      "$(service_ref nginx)"
    update_ref SQLSERVER_IMAGE_REF \
      "$(service_ref sqlserver)"
-   update_ref KEYCLOAK_IMAGE_REF \
-     "$(service_ref keycloak)"
+   if [ "$IDENTITY_PROVIDER_MODE" != "external" ]; then
+     update_ref KEYCLOAK_IMAGE_REF \
+       "$(service_ref keycloak)"
+   fi
    ```
 
    If the site pulls from an internal registry mirror that preserves repository
@@ -247,6 +262,11 @@ configuration change.
 
    ```bash
    TARGET_IMAGE_REGISTRY=registry.example.internal
+   IDENTITY_PROVIDER_MODE="$(
+     sudo sed -n 's/^IDENTITY_PROVIDER_MODE=//p' \
+       /etc/kravhantering/release.env
+   )"
+   IDENTITY_PROVIDER_MODE="${IDENTITY_PROVIDER_MODE:-bundled}"
    LOCK_FILE=/opt/kravhantering/current/container-stack.lock.json
    service_image() {
      jq -r --arg name "$1" \
@@ -271,13 +291,17 @@ configuration change.
      "$(mirror_ref nginx)"
    update_ref SQLSERVER_IMAGE_REF \
      "$(mirror_ref sqlserver)"
-   update_ref KEYCLOAK_IMAGE_REF \
-     "$(mirror_ref keycloak)"
+   if [ "$IDENTITY_PROVIDER_MODE" != "external" ]; then
+     update_ref KEYCLOAK_IMAGE_REF \
+       "$(mirror_ref keycloak)"
+   fi
    ```
 
-   If the internal mirror uses a custom repository layout, set the five
-   `*_IMAGE_REF` values manually to site-approved tag refs, then run the
-   verification below. Each ref must resolve to the locked `imageId`.
+   If the internal mirror uses a custom repository layout, set the four
+   always-required `*_IMAGE_REF` values manually to site-approved tag refs and
+   add `KEYCLOAK_IMAGE_REF` only for a bundled profile. Then run the
+   verification below. Each configured ref must resolve to the locked
+   `imageId`.
 
    Connected upgrades pull and verify the target images as the service user:
 
@@ -292,7 +316,9 @@ configuration change.
    podman pull "$DB_JOB_IMAGE_REF"
    podman pull "$NGINX_IMAGE_REF"
    podman pull "$SQLSERVER_IMAGE_REF"
-   podman pull "$KEYCLOAK_IMAGE_REF"
+   if [ "$IDENTITY_PROVIDER_MODE" != "external" ]; then
+     podman pull "$KEYCLOAK_IMAGE_REF"
+   fi
 
    bin/kravhantering-images.sh --topology single-node \
      --lock-file container-stack.lock.json \
@@ -329,8 +355,9 @@ configuration change.
    ```
 
 8. Run the database jobs once from the new release.
-   First ensure SQL Server, Keycloak and their Quadlet networks exist for the new
-   release, then run the job sequence with the new `DB_JOB_IMAGE_REF`. Use the
+   First ensure SQL Server and its Quadlet network exist for the new release.
+   Bundled profiles must also start Keycloak and its identity network. Then run
+   the job sequence with the new `DB_JOB_IMAGE_REF`. Use the
    DBA-pre-provisioned production sequence by default, matching
    [rhel10-production-upgrade.md](./rhel10-production-upgrade.md), and skip
    `bootstrap`.
@@ -386,8 +413,10 @@ configuration change.
    starts:
 
    ```bash
-   if ! sudo grep -q '^NGINX_IDENTITY_RESOLVER=' \
-     /etc/kravhantering/release.env; then
+   if ! sudo grep -q '^IDENTITY_PROVIDER_MODE=external$' \
+     /etc/kravhantering/release.env && \
+     ! sudo grep -q '^NGINX_IDENTITY_RESOLVER=' \
+       /etc/kravhantering/release.env; then
      printf '%s\n' 'NGINX_IDENTITY_RESOLVER=10.89.1.1' |
        sudo tee -a /etc/kravhantering/release.env >/dev/null
    fi
@@ -402,13 +431,15 @@ configuration change.
    bin/kravhantering-quadlet.sh install --topology single-node
    systemctl --user daemon-reload
    systemctl --user start kravhantering-sqlserver.service
-   systemctl --user start kravhantering-keycloak.service
+   if [ "$IDENTITY_PROVIDER_MODE" != "external" ]; then
+     systemctl --user start kravhantering-keycloak.service
+   fi
 
    exit
    ```
 
-   Start the edge network, then discover the edge and identity resolvers that
-   nginx needs for `app-runtime` and Keycloak through the Quadlet helper.
+   Start the edge network and discover its resolver. Bundled profiles also
+   discover the identity resolver that nginx uses for Keycloak.
 
    ```bash
    sudo -iu kravhantering
@@ -422,18 +453,21 @@ configuration change.
      bin/kravhantering-quadlet.sh print-resolver \
        --topology single-node --purpose edge
    )"
-   IDENTITY_RESOLVER="$(
-     bin/kravhantering-quadlet.sh print-resolver \
-       --topology single-node --purpose identity
-   )"
-   printf 'Use NGINX_RESOLVER=%s and NGINX_IDENTITY_RESOLVER=%s\n' \
-     "$EDGE_RESOLVER" "$IDENTITY_RESOLVER"
+   printf 'Use NGINX_RESOLVER=%s\n' "$EDGE_RESOLVER"
+   if [ "$IDENTITY_PROVIDER_MODE" != "external" ]; then
+     IDENTITY_RESOLVER="$(
+       bin/kravhantering-quadlet.sh print-resolver \
+         --topology single-node --purpose identity
+     )"
+     printf 'Use NGINX_IDENTITY_RESOLVER=%s\n' "$IDENTITY_RESOLVER"
+   fi
 
    exit
    ```
 
-   Add or update both values before starting nginx. The add path is required
-   when upgrading from a release that predates `NGINX_IDENTITY_RESOLVER`:
+   Add or update the edge resolver before starting nginx. For bundled profiles,
+   also update the identity resolver. The add path is required when upgrading
+   from a release that predates `NGINX_IDENTITY_RESOLVER`:
 
    ```bash
    # Replace these examples with the printed resolver IPs.
@@ -450,7 +484,10 @@ configuration change.
      fi
    }
    set_release_value NGINX_RESOLVER "$EDGE_RESOLVER"
-   set_release_value NGINX_IDENTITY_RESOLVER "$ID_DNS"
+   if ! sudo grep -q '^IDENTITY_PROVIDER_MODE=external$' \
+     /etc/kravhantering/release.env; then
+     set_release_value NGINX_IDENTITY_RESOLVER "$ID_DNS"
+   fi
    ```
 
    The resolver can change when the internal Quadlet network is recreated or
@@ -567,6 +604,12 @@ configuration change.
    . /etc/kravhantering/release.env
    set +a
 
+   if [ "$IDENTITY_PROVIDER_MODE" = "external" ]; then
+     printf '%s\n' \
+       'Skip bundled Keycloak demo-user synchronization for external OIDC.'
+     exit
+   fi
+
    STACK_NETWORK="$(
      bin/kravhantering-quadlet.sh print-network \
        --topology single-node --purpose identity
@@ -621,8 +664,8 @@ configuration change.
    ```
 
 9. Start the stack from the new release. Reinstall the units after correcting
-   `NGINX_RESOLVER` and `NGINX_IDENTITY_RESOLVER`, then enable and start the
-   target:
+   `NGINX_RESOLVER` and, for bundled profiles, `NGINX_IDENTITY_RESOLVER`. Then
+   enable and start the target:
 
    ```bash
    sudo -iu kravhantering
@@ -662,9 +705,10 @@ configuration change.
       https://kravhantering.example.internal/api/health
     ```
 
-    The Quadlet networks retain the established edge, identity, database, and
-    egress names documented in the deployment guide. The SQL Server and
-    Keycloak volumes retain their established names.
+    The Quadlet networks retain the established edge, database, and egress
+    names documented in the deployment guide. Bundled profiles also retain the
+    identity network. The SQL Server volume retains its established name, and
+    bundled profiles retain the Keycloak volume name.
 
 11. Re-enable traffic.
     Put the host back into the load balancer, reverse proxy or firewall

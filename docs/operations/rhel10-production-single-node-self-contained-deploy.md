@@ -85,7 +85,7 @@ The site must provide approved runtime image refs for:
 - `db-job`
 - nginx
 - SQL Server
-- Keycloak
+- Keycloak (`bundled` and `hardened-bundled` profiles only)
 
 The optional `single-node-demo` test support overlay adds Kong, the HSA person
 lookup adapter and the HSA directory mock from
@@ -115,12 +115,18 @@ Before editing templates, record these site values. The table separates values
 that must be planned from defaults or derived values that usually only need
 verification.
 
+Rows that reference `keycloak.env`, the Keycloak realm JSON, Keycloak
+administrators or the identity-network resolver apply only to `bundled` and
+`hardened-bundled`. In `external` mode, record the equivalent client and claim
+contract with the external provider owner instead.
+
 <!-- markdownlint-disable MD013 -->
 | Name | Applies to | Default / derived value | Plan or record when |
 | --- | --- | --- | --- |
 | `VERSION` | Release artifact names | No default | Always record the release version to install, for example `1.2.3`. |
 | `IDENTITY_PROVIDER_MODE` | Single-node rendered services and nginx identity ingress | `bundled` | Always record the approved choice: `bundled`, `external` or `hardened-bundled`. Production may use only `external` or the fully verified `hardened-bundled` option. |
 | `KEYCLOAK_MANAGEMENT_HTTPS_BIND` | Hardened bundled Keycloak management-only listener | No default | Required only for `hardened-bundled`; use an explicit host IPv4 and mapping to container port `9443`, for example `10.20.30.40:9443:9443`. Wildcard and malformed binds fail closed during rendering. |
+| `KC_HOSTNAME_ADMIN` | `KC_HOSTNAME_ADMIN` in `keycloak.env`; hardened bundled only | No default | Required for `hardened-bundled`; use the management-only HTTPS origin and `/auth` path. Missing values fail closed during rendering. |
 | `APP_HOST` | `PUBLIC_HOSTNAME`, app URLs, `KC_HOSTNAME`, realm redirect/logout settings, realm web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
 | `KRAVHANTERING_EXPORT_TEMP_DIR` | Optional absolute spool root in `app.env` | Unset/blank (OS temporary directory) | Set only when generated CSV/PDF files need a dedicated filesystem. Use an existing private directory that grants only the non-root operating-system account running Node.js read/write/search access (for example, app-owned mode `0700`). Whether set or unset, verify the directory from inside `app-runtime` and size it for configured CSV/PDF concurrency times maximum file sizes plus headroom. When unset or blank, this verification of the container operating-system temporary directory is mandatory. |
@@ -133,9 +139,9 @@ verification.
 | `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` | `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA lookup adapter image when using the demo overlay. |
 | `HSA_DIRECTORY_MOCK_IMAGE_REF` | `HSA_DIRECTORY_MOCK_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA mock image when using the demo overlay. |
 | `DEMO_SEED_IMAGE_REF` | One-shot shell variable, not `release.env` | No production default | Test and development only; choose the optional `kravhantering-demo-seed` release tag or internal mirror only when running destructive demo seed in a disposable database. |
-| `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env` | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
+| `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env`; bundled profiles only | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
 | `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Quadlet network. It can change when the internal network is recreated or assigned another subnet. |
-| `NGINX_IDENTITY_RESOLVER` | `NGINX_IDENTITY_RESOLVER` in `release.env` | `10.89.1.1` | Verify from the actual identity Quadlet network. Single-node nginx needs both network-scoped resolvers. |
+| `NGINX_IDENTITY_RESOLVER` | `NGINX_IDENTITY_RESOLVER` in `release.env`; bundled profiles only | `10.89.1.1` | Verify from the actual identity Quadlet network. Bundled-profile nginx needs both network-scoped resolvers. |
 | `MSSQL_SA_PASSWORD` | `MSSQL_SA_PASSWORD` in `sqlserver.env` and `DB_BOOTSTRAP_ADMIN_PASSWORD` in `db-job.env` | No default | Always generate a unique SQL Server `sa` password. Use the same value in both places and follow [Generate Unique Secrets](#generate-unique-secrets). |
 | `DB_JOB_PASSWORD` | `DB_PASSWORD` in `db-job.env` | No default | Always generate a unique SQL Server password for the `kravhantering_job` migration/seed login. Follow [Generate Unique Secrets](#generate-unique-secrets). |
 | `APP_DB_PASSWORD` | `DB_BOOTSTRAP_APP_PASSWORD` in `db-job.env` and `DB_PASSWORD` in `app.env` | No default | Always generate a unique SQL Server password for the `kravhantering_app` runtime login. Use the same value in both places and follow [Generate Unique Secrets](#generate-unique-secrets). |
@@ -157,8 +163,8 @@ verification.
 | `AUTH_SESSION_COOKIE_NAME` | `AUTH_SESSION_COOKIE_NAME` in `app.env` | `kravhantering_session` | Plan only if this host serves another deployment on the same browser cookie scope. |
 | `SESSION_COOKIE_PASSWORD` | `AUTH_SESSION_COOKIE_PASSWORD` in `app.env` | No default | Always generate with the opaque-secret fallback in [Generate Unique Secrets](#generate-unique-secrets). |
 | `AUTH_SESSION_TTL_SECONDS` | `AUTH_SESSION_TTL_SECONDS` in `app.env` | `28800` | Plan only if another absolute browser-session lifetime is approved. |
-| `KEYCLOAK_ADMIN_USER` | `KEYCLOAK_ADMIN` in `keycloak.env` | No default | Always choose an approved Keycloak bootstrap administrator username. |
-| `KEYCLOAK_ADMIN_PASSWORD` | `KEYCLOAK_ADMIN_PASSWORD` in `keycloak.env` | No default | Always generate a strong unique Keycloak bootstrap administrator password. Follow [Generate Unique Secrets](#generate-unique-secrets). |
+| `KEYCLOAK_ADMIN_USER` | `KEYCLOAK_ADMIN` in `keycloak.env`; bundled profiles only | No default | Choose an approved Keycloak bootstrap administrator username when using bundled Keycloak. |
+| `KEYCLOAK_ADMIN_PASSWORD` | `KEYCLOAK_ADMIN_PASSWORD` in `keycloak.env`; bundled profiles only | No default | Generate a strong unique Keycloak bootstrap administrator password when using bundled Keycloak. Follow [Generate Unique Secrets](#generate-unique-secrets). |
 | `MCP_CLIENT_ID` | `MCP_CLIENT_ID` in `app.env` and realm JSON service client id | `kravhantering-mcp` | Plan only if MCP service tokens use a different service-account client id. |
 | `MCP_CLIENT_SECRET` | Realm JSON `kravhantering-mcp` client `secret` | No default | Plan only when MCP service tokens are used; generate a secret separate from `OIDC_APP_CLIENT_SECRET`. |
 | `MCP_SERVICE_EMPLOYEE_HSA_ID` | Realm JSON MCP service-account user attribute | No default | Plan only when MCP service tokens are used; record the approved service-account `hsaId`. |
@@ -1002,18 +1008,21 @@ issuer, client, redirect, logout, claim and trust ownership. Do not copy or
 configure `keycloak.env` or the realm import for this mode.
 
 Generate `AUTH_SESSION_COOKIE_PASSWORD` as described in
-[Generate Unique Secrets](#generate-unique-secrets). Keep
-`AUTH_OIDC_CLIENT_SECRET` equal to the `kravhantering-app` client `secret`
-field in `/etc/kravhantering/keycloak/realm-kravhantering-production.json`.
+[Generate Unique Secrets](#generate-unique-secrets) for every profile.
 
-The app only requires `AUTH_OIDC_CLIENT_SECRET` to be non-empty and to match
-the realm client secret. For production, use a high-entropy generated secret,
-as described in [Generate Unique Secrets](#generate-unique-secrets), and paste
-the exact same value into `app.env` and the realm JSON. Use the same strength
-for the optional `kravhantering-mcp` client secret, but generate a separate
-value for that client.
+For `bundled` and `hardened-bundled` only, keep `AUTH_OIDC_CLIENT_SECRET`
+equal to the `kravhantering-app` client `secret` field in
+`/etc/kravhantering/keycloak/realm-kravhantering-production.json`.
 
-Keep `AUTH_OIDC_SCOPES=openid profile email` unless the Keycloak realm needs
+The app requires `AUTH_OIDC_CLIENT_SECRET` to be non-empty. For production,
+use a high-entropy generated secret as described in
+[Generate Unique Secrets](#generate-unique-secrets). In bundled profiles,
+paste the exact same value into `app.env` and the realm JSON. In `external`
+mode, use the secret from the provider-owned client registration. Use the same
+strength for the optional `kravhantering-mcp` client secret, but generate a
+separate value for that client.
+
+Keep `AUTH_OIDC_SCOPES=openid profile email` unless the selected provider needs
 additional scopes to release required claims. `openid` must always be present.
 Keep `AUTH_SESSION_COOKIE_NAME=kravhantering_session` unless this host must
 serve another deployment on the same browser cookie scope. Changing the cookie
@@ -1026,9 +1035,9 @@ lifetime and the access-token lifetime controls when the user must
 re-authenticate.
 
 `MCP_CLIENT_ID=kravhantering-mcp` is used when issuing service-account tokens
-for MCP clients. Keep it aligned with the `kravhantering-mcp` client id in the
-realm JSON, or leave the default when MCP service tokens are not used. It is not
-a secret.
+for MCP clients. Keep it aligned with the service client in the bundled realm
+JSON or external provider registration, or leave the default when MCP service
+tokens are not used. It is not a secret.
 
 Set `HSA_PERSON_LOOKUP_URL` to the environment-specific server-side HSA
 lookup endpoint. The browser must not call the HSA integration directly; the
@@ -1113,6 +1122,9 @@ KEYCLOAK_ADMIN_PASSWORD=<keycloak-admin-password>
 ```
 
 ### `/etc/kravhantering/keycloak/realm-kravhantering-production.json`
+
+This section applies only to `bundled` and `hardened-bundled`. The external
+provider owner implements the equivalent client, redirect and claim contract.
 
 Update the imported realm before first Keycloak startup:
 
@@ -1209,6 +1221,10 @@ These are the realm JSON values that normally need site-specific changes:
 ```
 
 ### Optional Test and Development Demo Users
+
+The Keycloak instructions in this section apply only to the test-oriented
+`bundled` profile. External mode uses provider-owned test identities instead;
+`hardened-bundled` must not import these disposable demo users.
 
 Use this only for disposable test or development environments. The release
 bundle includes `keycloak/demo-users.not-for-production.json`, generated from
@@ -2552,9 +2568,9 @@ operator client certificates and keys in the organization's endpoint identity
 or secret-management system; do not store client private keys on the server.
 
 Allow inbound TCP 9443 only from the approved management network or VPN. A
-firewall rule is still required even though mTLS is enabled. Missing files,
-an empty or malformed bind, a wildcard bind, or a container target other than
-9443 makes Quadlet rendering fail closed.
+firewall rule is still required even though mTLS is enabled. A missing
+`KC_HOSTNAME_ADMIN`, missing certificate files, an empty or malformed bind, a
+wildcard bind, or a container target other than 9443 makes setup fail closed.
 
 Reinstall and restart the topology after setting the profile:
 
