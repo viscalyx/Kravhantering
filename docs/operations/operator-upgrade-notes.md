@@ -72,6 +72,11 @@ Quadlet manages long-running services only. Database bootstrap, migrations, and 
 New installations run bin/kravhantering-quadlet.sh for the
 selected topology and manage the resulting target with systemctl --user.
 <!-- operator-upgrade:source pr-927 end -->
+
+<!-- operator-upgrade:source pr-940 start -->
+Before upgrading, verify that each production host supports rootless container resource controls, has finite journal retention configured, and has sufficient CPU, memory, and temporary export capacity. Installation now fails closed when these prerequisites are not met. If disk-backed export storage is required, prepare its ownership, permissions, capacity, and security labels before rollout.
+Single-node deployments must set both `NGINX_RESOLVER` for the edge network and `NGINX_IDENTITY_RESOLVER` for the identity network before starting nginx. Existing installations that lack the identity setting must first add the temporary value documented in the single-node upgrade guide so the helper can render the network units. After the edge and identity networks exist, discover each resolver with `kravhantering-quadlet.sh print-resolver`, replace both settings with the discovered values, reinstall the units, and only then start the full target. nginx uses the edge resolver only for `app-runtime` and the identity resolver only for Keycloak.
+<!-- operator-upgrade:source pr-940 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
