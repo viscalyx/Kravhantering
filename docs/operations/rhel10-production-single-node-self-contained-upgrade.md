@@ -322,6 +322,39 @@ configuration change.
    environments where the `DB_BOOTSTRAP_*` values have been removed, leave
    `RUN_BOOTSTRAP=false` to avoid unintended `ALTER LOGIN` password rotations.
 
+   Before installing the new units, provision the SQL Server certificate and
+   key described in the deployment guide's
+   [TLS Materials](./rhel10-production-single-node-self-contained-deploy.md#tls-materials).
+   The certificate must chain to `/etc/kravhantering/tls/ca.crt` and match the
+   fixed service identity `DNS:sqlserver`. Then remove the legacy insecure trust
+   override and configure the database-job CA path:
+
+   ```bash
+   sudo sed -i \
+     's#^DB_TRUST_SERVER_CERTIFICATE=.*#DB_TRUST_SERVER_CERTIFICATE=false#' \
+     /etc/kravhantering/app.env /etc/kravhantering/db-job.env
+   if sudo grep -q '^NODE_EXTRA_CA_CERTS=' \
+     /etc/kravhantering/db-job.env; then
+     SQLSERVER_CA_PATH=/run/kravhantering/sqlserver-ca.crt
+     sudo sed -i \
+       "s#^NODE_EXTRA_CA_CERTS=.*#NODE_EXTRA_CA_CERTS=${SQLSERVER_CA_PATH}#" \
+       /etc/kravhantering/db-job.env
+   else
+     printf '%s\n' \
+       'NODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt' |
+       sudo tee -a /etc/kravhantering/db-job.env >/dev/null
+   fi
+   openssl verify -CAfile /etc/kravhantering/tls/ca.crt \
+     /etc/kravhantering/sqlserver-tls/server.crt
+   openssl x509 \
+     -in /etc/kravhantering/sqlserver-tls/server.crt \
+     -noout -checkhost sqlserver -dates -ext extendedKeyUsage \
+     -ext subjectAltName
+   ```
+
+   Stop if either certificate check fails. Do not set
+   `DB_TRUST_SERVER_CERTIFICATE=true` as a fallback.
+
    >[!IMPORTANT]
    >Do not run `seed:demo` or the optional demo seed image in production.
 
@@ -426,35 +459,44 @@ configuration change.
        --topology single-node --purpose database
    )"
    RUN_BOOTSTRAP=false
+   DB_CA_SOURCE=/etc/kravhantering/tls/ca.crt
+   DB_CA_TARGET=/run/kravhantering/sqlserver-ca.crt
    EVIDENCE_DIR="/var/tmp/kravhantering-upgrade-${VERSION}-evidence"
    mkdir -p "$EVIDENCE_DIR"
 
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
+     --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" wait
    if [ "$RUN_BOOTSTRAP" = "true" ]; then
      podman run --rm --network "$STACK_NETWORK" \
        --env-file /etc/kravhantering/db-job.env \
+       --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
        "$DB_JOB_IMAGE_REF" bootstrap
    fi
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
+     --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" migration-status \
      > "$EVIDENCE_DIR/migration-status-before-${VERSION}.json"
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
+     --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" migrate --json \
      > "$EVIDENCE_DIR/migration-run-${VERSION}.json"
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
+     --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" migration-status \
      > "$EVIDENCE_DIR/migration-status-after-${VERSION}.json"
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
+     --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" permission-status \
      > "$EVIDENCE_DIR/runtime-permissions-${VERSION}.json"
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
+     --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DB_JOB_IMAGE_REF" seed:required
 
    exit
@@ -543,11 +585,14 @@ configuration change.
      bin/kravhantering-quadlet.sh print-network \
        --topology single-node --purpose database
    )"
+   DB_CA_SOURCE=/etc/kravhantering/tls/ca.crt
+   DB_CA_TARGET=/run/kravhantering/sqlserver-ca.crt
    DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
 
    podman pull "$DEMO_SEED_IMAGE_REF"
    podman run --rm --network "$STACK_NETWORK" \
      --env-file /etc/kravhantering/db-job.env \
+     --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
      "$DEMO_SEED_IMAGE_REF"
 
    exit

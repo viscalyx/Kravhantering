@@ -11,6 +11,8 @@ import {
   redactSensitiveText,
 } from '../containers/collect-status.mjs'
 import {
+  CERTIFICATE_PROFILE,
+  generateServerCertificate,
   generateTlsFiles,
   opensslCommandPlan,
   parseArgs as parseTlsArgs,
@@ -266,15 +268,45 @@ describe('container stack helpers', () => {
       caCert: 'tmp/tls/ca.crt',
       serverCert: 'tmp/tls/kravhantering.test.crt',
       serverKey: 'tmp/tls/kravhantering.test.key',
+      sqlServerCert: 'tmp/tls/sqlserver.crt',
+      sqlServerKey: 'tmp/tls/sqlserver.key',
     })
-    expect(commands).toHaveLength(3)
+    expect(commands).toHaveLength(5)
     expect(commands[0][1]).toContain('/CN=kravhantering.test local CA')
+    expect(commands[3][1]).toContain('/CN=sqlserver')
+    expect(commands[4][1]).toContain('tmp/tls/sqlserver.ext')
     expect(sanitizeHostname('kravhantering.test')).toBe('kravhantering.test')
+  })
+
+  it('plans a renewed SQL Server certificate from an existing CA', () => {
+    const parsed = parseTlsArgs([
+      '--hostname',
+      'sqlserver',
+      '--output-dir',
+      'tmp/renewed',
+      '--ca-cert',
+      'tmp/tls/ca.crt',
+      '--ca-key',
+      'tmp/tls/ca.key',
+      '--file-stem',
+      'server',
+    ])
+
+    expect(parsed).toMatchObject({
+      caCert: 'tmp/tls/ca.crt',
+      caKey: 'tmp/tls/ca.key',
+      fileStem: 'server',
+      hostname: 'sqlserver',
+      outputDir: 'tmp/renewed',
+    })
   })
 
   it('rejects unsafe TLS hostnames before deriving file paths', () => {
     expect(() => parseTlsArgs(['--hostname', '../secret'])).toThrow(
       'Invalid TLS hostname',
+    )
+    expect(() => parseTlsArgs(['--ca-cert', 'tmp/tls/ca.crt'])).toThrow(
+      '--ca-cert and --ca-key must be provided together',
     )
     expect(() => tlsFilePlan('tmp/tls', 'kravhantering.test/secret')).toThrow(
       'Invalid TLS hostname',
@@ -315,7 +347,42 @@ describe('container stack helpers', () => {
     expect(writes.get(files.ext)).toContain(
       'subjectAltName=DNS:kravhantering.test',
     )
-    expect(execFileSync).toHaveBeenCalledTimes(3)
+    expect(writes.get(files.sqlServerExt)).toContain(
+      'subjectAltName=DNS:sqlserver',
+    )
+    expect(writes.get(files.sqlServerExt)).toContain(
+      'keyUsage=critical,digitalSignature,keyEncipherment',
+    )
+    expect(execFileSync).toHaveBeenCalledTimes(5)
+  })
+
+  it('issues the SQL Server certificate profile through a reusable seam', () => {
+    const writes = new Map()
+    const execFileSync = vi.fn()
+    const files = generateServerCertificate({
+      caCert: 'tmp/tls/ca.crt',
+      caKey: 'tmp/tls/ca.key',
+      execFileSync,
+      fileStem: 'server',
+      fsImpl: {
+        mkdirSync: vi.fn(),
+        writeFileSync: vi.fn((filePath, content) =>
+          writes.set(filePath, content),
+        ),
+      },
+      hostname: 'sqlserver',
+      outputDir: 'tmp/renewed',
+      profile: CERTIFICATE_PROFILE.SQL_SERVER,
+    })
+
+    expect(files).toMatchObject({
+      serverCert: 'tmp/renewed/server.crt',
+      serverKey: 'tmp/renewed/server.key',
+    })
+    expect(writes.get(files.ext)).toContain(
+      'keyUsage=critical,digitalSignature,keyEncipherment',
+    )
+    expect(execFileSync).toHaveBeenCalledTimes(2)
   })
 
   it('redacts sensitive status text and keeps mount metadata allowlisted', () => {

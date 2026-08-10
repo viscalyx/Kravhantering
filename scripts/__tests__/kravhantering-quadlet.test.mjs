@@ -260,6 +260,18 @@ describe('kravhantering Quadlet helper', () => {
     expect(sqlserver).toContain(
       'Volume=kravhantering-sqlserver-data.volume:/var/opt/mssql:U',
     )
+    expect(sqlserver).toContain(
+      'Volume=/etc/kravhantering/sqlserver-tls/server.crt:/etc/ssl/certs/mssql.pem:ro',
+    )
+    expect(sqlserver).toContain(
+      'Volume=/etc/kravhantering/sqlserver-tls/server.key:/etc/ssl/private/mssql.key:ro',
+    )
+    expect(sqlserver).toContain(
+      'Volume=' +
+        path.resolve(process.cwd(), 'containers/production') +
+        '/sqlserver/mssql.conf:/var/opt/mssql/mssql.conf:ro',
+    )
+    expect(sqlserver).toContain('PodmanArgs=--group-add=keep-groups')
     expect(sqlserver).toContain('DropCapability=all')
     expect(sqlserver).toContain('AddCapability=NET_BIND_SERVICE')
     expect(sqlserver).toContain('NoNewPrivileges=true')
@@ -556,6 +568,115 @@ describe('kravhantering Quadlet helper', () => {
     )
     expect(recoveryFunction).toContain('--restart on-failure:1')
     expect(productionSmoke).toContain('podman logs "$container"')
+  })
+
+  it('records TLS-specific rejection evidence and rejects generic failures', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-smoke-tls-'))
+    temporaryDirectories.push(root)
+    const evidenceDir = path.join(root, 'evidence')
+    fs.mkdirSync(evidenceDir)
+    const runProbe = message =>
+      childProcess.spawnSync(
+        'bash',
+        [
+          '-c',
+          `source "$1"
+EVIDENCE_DIR="$2"
+CONFIG_ROOT="$2"
+DB_JOB_IMAGE_REF=test-db-job
+touch "$CONFIG_ROOT/db-job.env"
+probe_message="$3"
+sudo() { "$@"; }
+as_service() {
+  if [[ "$*" == *print-network* ]]; then
+    printf 'database-network\\n'
+    return 0
+  fi
+  printf '%s\\n' "$probe_message" >&2
+  return 1
+}
+expect_database_tls_failure 'identity probe' 'certificate.*identity'
+`,
+          'production-smoke-test',
+          PRODUCTION_SMOKE_PATH,
+          evidenceDir,
+          message,
+        ],
+        { cwd: process.cwd(), encoding: 'utf8' },
+      )
+
+    const tlsFailure = runProbe('certificate identity mismatch')
+    expect(tlsFailure.status).toBe(0)
+    expect(
+      fs.readFileSync(path.join(evidenceDir, 'identity-probe.txt'), 'utf8'),
+    ).toContain('certificate identity mismatch')
+
+    const genericFailure = runProbe('connection refused')
+    expect(genericFailure.status).toBe(1)
+    expect(genericFailure.stderr).toContain(
+      'identity probe did not report a TLS certificate error',
+    )
+  })
+
+  it('transitions persisted clients from legacy trust to verified TLS', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-smoke-upgrade-'))
+    temporaryDirectories.push(root)
+    const configDir = path.join(root, 'config')
+    const evidenceDir = path.join(root, 'evidence')
+    fs.mkdirSync(configDir)
+    fs.mkdirSync(evidenceDir)
+    fs.writeFileSync(
+      path.join(configDir, 'app.env'),
+      'DB_TRUST_SERVER_CERTIFICATE=false\n',
+    )
+    fs.writeFileSync(
+      path.join(configDir, 'db-job.env'),
+      'DB_TRUST_SERVER_CERTIFICATE=false\nNODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt\n',
+    )
+
+    const result = childProcess.spawnSync(
+      'bash',
+      [
+        '-c',
+        `source "$1"
+CONFIG_ROOT="$2"
+EVIDENCE_DIR="$3"
+db_calls=0
+sudo() { "$@"; }
+service_systemctl() { :; }
+as_service() { :; }
+wait_for_url() { :; }
+database_job() {
+  db_calls=$((db_calls + 1))
+  if (( db_calls == 1 )); then
+    grep -q '^DB_TRUST_SERVER_CERTIFICATE=true$' "$CONFIG_ROOT/app.env"
+    grep -q '^DB_TRUST_SERVER_CERTIFICATE=true$' "$CONFIG_ROOT/db-job.env"
+    ! grep -q '^NODE_EXTRA_CA_CERTS=' "$CONFIG_ROOT/db-job.env"
+  else
+    grep -q '^DB_TRUST_SERVER_CERTIFICATE=false$' "$CONFIG_ROOT/app.env"
+    grep -q '^DB_TRUST_SERVER_CERTIFICATE=false$' "$CONFIG_ROOT/db-job.env"
+    grep -q '^NODE_EXTRA_CA_CERTS=' "$CONFIG_ROOT/db-job.env"
+  fi
+}
+verify_sqlserver_identity_upgrade
+(( db_calls == 2 ))
+`,
+        'production-smoke-test',
+        PRODUCTION_SMOKE_PATH,
+        configDir,
+        evidenceDir,
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' },
+    )
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    expect(
+      fs.readFileSync(
+        path.join(evidenceDir, 'sqlserver-identity-upgrade.txt'),
+        'utf8',
+      ),
+    ).toContain('sqlserver-legacy-to-verified-tls-upgrade=passed')
   })
 
   it.each([

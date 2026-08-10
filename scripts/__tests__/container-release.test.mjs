@@ -1720,6 +1720,27 @@ describe('trusted container release helpers', () => {
     )
   })
 
+  it('ships verified SQL Server identity configuration for single-node clients', () => {
+    const appEnv = readWorkspaceFile(
+      'containers/production/env/app.env.template',
+    )
+    const dbJobEnv = readWorkspaceFile(
+      'containers/production/env/db-job.env.template',
+    )
+    const sqlServerConfig = readWorkspaceFile(
+      'containers/production/sqlserver/mssql.conf',
+    )
+
+    expect(appEnv).toContain('DB_TRUST_SERVER_CERTIFICATE=false')
+    expect(dbJobEnv).toContain('DB_TRUST_SERVER_CERTIFICATE=false')
+    expect(dbJobEnv).toContain(
+      'NODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt',
+    )
+    expect(sqlServerConfig).toContain('tlscert = /etc/ssl/certs/mssql.pem')
+    expect(sqlServerConfig).toContain('tlskey = /etc/ssl/private/mssql.key')
+    expect(sqlServerConfig).toContain('forceencryption = 1')
+  })
+
   it('ships nginx templates with dynamic upstream DNS resolution', () => {
     const nginxResolverPlaceholder = '$' + '{NGINX_RESOLVER}'
     const nginxIdentityResolverPlaceholder = '$' + '{NGINX_IDENTITY_RESOLVER}'
@@ -2058,6 +2079,7 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain('kong/kong.yml')
       expect(result.files).toContain('bin/kravhantering-images.sh')
       expect(result.files).toContain('bin/kravhantering-quadlet.sh')
+      expect(result.files).toContain('sqlserver/mssql.conf')
       expect(result.files).toContain(
         'keycloak/realm-kravhantering-production.template.json',
       )

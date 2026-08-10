@@ -174,8 +174,15 @@ render_runtime_configuration() {
   sed -i \
     -e 's#/realms/kravhantering-test#/realms/kravhantering-production#' \
     -e 's#^HSA_PERSON_LOOKUP_URL=.*#HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup#' \
+    -e 's#^DB_TRUST_SERVER_CERTIFICATE=.*#DB_TRUST_SERVER_CERTIFICATE=false#' \
     "$CONFIG_TEMP_DIR/app.env"
   cp containers/db-job/.env.db-job.local "$CONFIG_TEMP_DIR/db-job.env"
+  sed -i \
+    -e 's#^DB_TRUST_SERVER_CERTIFICATE=.*#DB_TRUST_SERVER_CERTIFICATE=false#' \
+    "$CONFIG_TEMP_DIR/db-job.env"
+  printf '%s\n' \
+    'NODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt' \
+    >>"$CONFIG_TEMP_DIR/db-job.env"
   cp containers/keycloak/.env.keycloak.local "$CONFIG_TEMP_DIR/keycloak.env"
   cp containers/sqlserver/.env.sqlserver.local "$CONFIG_TEMP_DIR/sqlserver.env"
 
@@ -226,7 +233,8 @@ render_runtime_configuration() {
   } >"$CONFIG_TEMP_DIR/release.env"
 
   sudo install -d -o root -g "$SERVICE_USER" -m 0750 \
-    "$CONFIG_ROOT" "$CONFIG_ROOT/keycloak" "$CONFIG_ROOT/tls"
+    "$CONFIG_ROOT" "$CONFIG_ROOT/keycloak" "$CONFIG_ROOT/sqlserver-tls" \
+    "$CONFIG_ROOT/tls"
   for file in app.env db-job.env keycloak.env release.env sqlserver.env; do
     sudo install -o root -g "$SERVICE_USER" -m 0640 \
       "$CONFIG_TEMP_DIR/$file" "$CONFIG_ROOT/$file"
@@ -240,6 +248,12 @@ render_runtime_configuration() {
     tmp/container-tls/kravhantering.test.key "$CONFIG_ROOT/tls/privkey.pem"
   sudo install -o root -g "$SERVICE_USER" -m 0644 \
     tmp/container-tls/ca.crt "$CONFIG_ROOT/tls/ca.crt"
+  sudo install -o root -g "$SERVICE_USER" -m 0644 \
+    tmp/container-tls/sqlserver.crt \
+    "$CONFIG_ROOT/sqlserver-tls/server.crt"
+  sudo install -o root -g "$SERVICE_USER" -m 0640 \
+    tmp/container-tls/sqlserver.key \
+    "$CONFIG_ROOT/sqlserver-tls/server.key"
   rm -rf -- "$CONFIG_TEMP_DIR"
   CONFIG_TEMP_DIR=''
 }
@@ -324,7 +338,152 @@ database_job() {
   network="$(as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
     print-network --topology single-node --purpose database)"
   as_service podman run --rm --pull=never --network "$network" \
-    --env-file "$CONFIG_ROOT/db-job.env" "$DB_JOB_IMAGE_REF" "$command"
+    --env-file "$CONFIG_ROOT/db-job.env" \
+    --volume "$CONFIG_ROOT/tls/ca.crt:/run/kravhantering/sqlserver-ca.crt:ro" \
+    "$DB_JOB_IMAGE_REF" "$command"
+}
+
+verify_sqlserver_identity_rejection() {
+  local actual_address database_network resolved_address
+  database_network="$(as_service \
+    "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" print-network \
+    --topology single-node --purpose database)"
+
+  actual_address="$(as_service podman inspect kravhantering-sqlserver | \
+    jq -er --arg network "$database_network" \
+      '.[0].NetworkSettings.Networks[$network].IPAddress')"
+  resolved_address="$(as_service podman run --rm --pull=never \
+    --network "$database_network" --entrypoint node "$DB_JOB_IMAGE_REF" \
+    -e 'require("node:dns").lookup("kravhantering-sqlserver", (error, address) => { if (error) throw error; process.stdout.write(address) })')"
+  [[ "$resolved_address" == "$actual_address" ]] || \
+    fail 'wrong-identity probe does not resolve to the live SQL Server'
+
+  expect_database_tls_failure \
+    'certificate-chain rejection' \
+    'certificate chain|self[- ]signed|unable to verify|local issuer|untrusted' \
+    --env NODE_EXTRA_CA_CERTS=
+  expect_database_tls_failure \
+    'certificate identity rejection' \
+    'Hostname/IP does not match|does not match certificate|altnames|certificate.*(name|identity)' \
+    --env DB_HOST=kravhantering-sqlserver \
+    --volume "$CONFIG_ROOT/tls/ca.crt:/run/kravhantering/sqlserver-ca.crt:ro"
+}
+
+expect_database_tls_failure() {
+  local description="$1" pattern="$2" database_network output_file
+  shift 2
+  database_network="$(as_service \
+    "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" print-network \
+    --topology single-node --purpose database)"
+  output_file="$(mktemp)"
+  if as_service podman run --rm --pull=never --network "$database_network" \
+    --env-file "$CONFIG_ROOT/db-job.env" "$@" \
+    "$DB_JOB_IMAGE_REF" health >"$output_file" 2>&1; then
+    sudo rm -f -- "$output_file"
+    fail "$description unexpectedly succeeded"
+  fi
+  if ! grep -Eiq "$pattern" "$output_file"; then
+    sudo cat "$output_file" >&2
+    sudo rm -f -- "$output_file"
+    fail "$description did not report a TLS certificate error"
+  fi
+  sudo install -m 0644 "$output_file" \
+    "$EVIDENCE_DIR/${description// /-}.txt"
+  sudo rm -f -- "$output_file"
+}
+
+rotate_sqlserver_certificate() {
+  local before_serial rotation_dir after_serial
+  before_serial="$(openssl x509 \
+    -in "$CONFIG_ROOT/sqlserver-tls/server.crt" -noout -serial)"
+  rotation_dir="$(mktemp -d)"
+  node scripts/containers/generate-tls.mjs \
+    --hostname sqlserver \
+    --output-dir "$rotation_dir" \
+    --ca-cert tmp/container-tls/ca.crt \
+    --ca-key tmp/container-tls/ca.key \
+    --file-stem server
+  sudo install -o root -g "$SERVICE_USER" -m 0644 \
+    "$rotation_dir/server.crt" "$CONFIG_ROOT/sqlserver-tls/server.crt"
+  sudo install -o root -g "$SERVICE_USER" -m 0640 \
+    "$rotation_dir/server.key" "$CONFIG_ROOT/sqlserver-tls/server.key"
+  rm -rf -- "$rotation_dir"
+  service_systemctl restart kravhantering-sqlserver.service
+  database_job wait
+  after_serial="$(openssl x509 \
+    -in "$CONFIG_ROOT/sqlserver-tls/server.crt" -noout -serial)"
+  [[ "$before_serial" != "$after_serial" ]] || \
+    fail 'SQL Server certificate rotation did not change the certificate serial'
+  printf '%s\n' \
+    "before-$before_serial" \
+    "after-$after_serial" \
+    >"$EVIDENCE_DIR/sqlserver-certificate-rotation.txt"
+}
+
+verify_sqlserver_certificate_recovery() {
+  local rollback_dir
+  rollback_dir="$(mktemp -d)"
+  sudo install -m 0644 "$CONFIG_ROOT/sqlserver-tls/server.crt" \
+    "$rollback_dir/server.crt"
+  sudo install -m 0640 "$CONFIG_ROOT/sqlserver-tls/server.key" \
+    "$rollback_dir/server.key"
+
+  sudo install -o root -g "$SERVICE_USER" -m 0644 \
+    tmp/container-tls/kravhantering.test.crt \
+    "$CONFIG_ROOT/sqlserver-tls/server.crt"
+  sudo install -o root -g "$SERVICE_USER" -m 0640 \
+    tmp/container-tls/kravhantering.test.key \
+    "$CONFIG_ROOT/sqlserver-tls/server.key"
+  service_systemctl restart kravhantering-sqlserver.service
+  wait_for_sqlserver_container kravhantering-sqlserver
+  expect_database_tls_failure \
+    'certificate recovery identity rejection' \
+    'Hostname/IP does not match|does not match certificate|altnames|certificate.*(name|identity)' \
+    --volume "$CONFIG_ROOT/tls/ca.crt:/run/kravhantering/sqlserver-ca.crt:ro"
+
+  sudo install -o root -g "$SERVICE_USER" -m 0644 \
+    "$rollback_dir/server.crt" "$CONFIG_ROOT/sqlserver-tls/server.crt"
+  sudo install -o root -g "$SERVICE_USER" -m 0640 \
+    "$rollback_dir/server.key" "$CONFIG_ROOT/sqlserver-tls/server.key"
+  sudo rm -rf -- "$rollback_dir"
+  service_systemctl restart kravhantering-sqlserver.service
+  database_job wait
+  printf '%s\n' 'sqlserver-certificate-recovery=passed' \
+    >"$EVIDENCE_DIR/sqlserver-certificate-recovery.txt"
+}
+
+verify_sqlserver_identity_upgrade() {
+  sudo sed -i \
+    's#^DB_TRUST_SERVER_CERTIFICATE=false#DB_TRUST_SERVER_CERTIFICATE=true#' \
+    "$CONFIG_ROOT/app.env" "$CONFIG_ROOT/db-job.env"
+  sudo sed -i '/^NODE_EXTRA_CA_CERTS=\/run\/kravhantering\/sqlserver-ca.crt$/d' \
+    "$CONFIG_ROOT/db-job.env"
+  service_systemctl restart kravhantering-app-runtime.service
+  database_job wait
+  wait_for_url https://kravhantering.test/api/ready
+
+  as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
+    install --topology "$TOPOLOGY"
+  service_systemctl daemon-reload
+  service_systemctl restart kravhantering-single-node.target
+  wait_for_url https://kravhantering.test/api/ready
+
+  sudo sed -i \
+    's#^DB_TRUST_SERVER_CERTIFICATE=true#DB_TRUST_SERVER_CERTIFICATE=false#' \
+    "$CONFIG_ROOT/app.env" "$CONFIG_ROOT/db-job.env"
+  printf '%s\n' \
+    'NODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt' | \
+    sudo tee -a "$CONFIG_ROOT/db-job.env" >/dev/null
+  service_systemctl restart kravhantering-app-runtime.service
+  database_job wait
+  wait_for_url https://kravhantering.test/api/ready
+  if sudo grep -Rq '^DB_TRUST_SERVER_CERTIFICATE=true$' \
+    "$CONFIG_ROOT/app.env" "$CONFIG_ROOT/db-job.env"; then
+    fail 'legacy SQL Server certificate trust override survived the upgrade'
+  fi
+  printf '%s\n' \
+    'sqlserver-legacy-to-verified-tls-upgrade=passed' \
+    >"$EVIDENCE_DIR/sqlserver-identity-upgrade.txt"
 }
 
 stack_services_are_progressing() {
@@ -633,7 +792,11 @@ verify_sqlserver_backup_recovery() {
     --cpus 2 \
     --restart on-failure:1 \
     --log-driver journald \
+    --group-add keep-groups \
     --volume kravhantering-ci-sqlserver-recovery:/var/opt/mssql:U \
+    --volume "$INSTALL_ROOT/current/sqlserver/mssql.conf:/var/opt/mssql/mssql.conf:ro" \
+    --volume "$CONFIG_ROOT/sqlserver-tls/server.crt:/etc/ssl/certs/mssql.pem:ro" \
+    --volume "$CONFIG_ROOT/sqlserver-tls/server.key:/etc/ssl/private/mssql.key:ro" \
     --tmpfs /tmp:rw,size=512m,mode=1777,nosuid,nodev,noexec \
     "$SQLSERVER_IMAGE_REF" >/dev/null
   wait_for_sqlserver_container kravhantering-ci-sqlserver-recovery
@@ -761,6 +924,7 @@ up() {
   service_systemctl start kravhantering-keycloak.service
   configure_nginx_resolvers
   database_job wait
+  verify_sqlserver_identity_rejection
   database_job bootstrap
   database_job migration-status >"$EVIDENCE_DIR/migration-before.json"
   database_job migrate >"$EVIDENCE_DIR/migration.json"
@@ -771,7 +935,9 @@ up() {
   database_network="$(as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
     print-network --topology single-node --purpose database)"
   as_service podman run --rm --pull=never --network "$database_network" \
-    --env-file "$CONFIG_ROOT/db-job.env" "$DEMO_SEED_IMAGE_REF"
+    --env-file "$CONFIG_ROOT/db-job.env" \
+    --volume "$CONFIG_ROOT/tls/ca.crt:/run/kravhantering/sqlserver-ca.crt:ro" \
+    "$DEMO_SEED_IMAGE_REF"
   service_systemctl start kravhantering-ci-hsa.target
   service_systemctl enable kravhantering-single-node.target
   service_systemctl start kravhantering-single-node.target || \
@@ -788,9 +954,7 @@ up() {
   wait_for_url \
     https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration
   wait_for_url https://kravhantering.test/api/ready
-  as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
-    install --topology "$TOPOLOGY"
-  service_systemctl daemon-reload
+  verify_sqlserver_identity_upgrade
   service_systemctl stop kravhantering-single-node.target
   if service_systemctl is-active --quiet kravhantering-single-node.target; then
     fail 'single-node target remained active after stop'
@@ -800,12 +964,20 @@ up() {
   database_job migrate >"$EVIDENCE_DIR/migration-after-reinstall.json"
   database_job migration-status \
     >"$EVIDENCE_DIR/migration-status-after-reinstall.json"
+  rotate_sqlserver_certificate
+  wait_for_url https://kravhantering.test/api/ready
+  verify_sqlserver_certificate_recovery
+  wait_for_url https://kravhantering.test/api/ready
   verify_backup_recovery
   printf '%s\n' \
     'app-runtime-restart=passed' \
     'sqlserver-restart-and-persistence=passed' \
     'keycloak-restart-and-persistence=passed' \
     'containment-upgrade-reinstall=passed' \
+    'sqlserver-certificate-negative-verification=passed' \
+    'sqlserver-certificate-rotation=passed' \
+    'sqlserver-certificate-recovery=passed' \
+    'sqlserver-legacy-to-verified-tls-upgrade=passed' \
     'post-reinstall-migration=passed' \
     'target-stop-start=passed' >"$EVIDENCE_DIR/lifecycle.txt"
 }
@@ -1037,16 +1209,22 @@ down() {
   done
 }
 
-COMMAND="${1-}"
-case "$COMMAND" in
-  up)
-    [[ "${2-}" == --archive && -n "${3-}" ]] || \
-      fail 'usage: production-smoke.sh up --archive <path>'
-    up "$3"
-    ;;
-  verify) verify ;;
-  boundaries) boundaries ;;
-  evidence) evidence ;;
-  down) down ;;
-  *) fail 'expected up, verify, boundaries, evidence, or down' ;;
-esac
+main() {
+  local command="${1-}"
+  case "$command" in
+    up)
+      [[ "${2-}" == --archive && -n "${3-}" ]] || \
+        fail 'usage: production-smoke.sh up --archive <path>'
+      up "$3"
+      ;;
+    verify) verify ;;
+    boundaries) boundaries ;;
+    evidence) evidence ;;
+    down) down ;;
+    *) fail 'expected up, verify, boundaries, evidence, or down' ;;
+  esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

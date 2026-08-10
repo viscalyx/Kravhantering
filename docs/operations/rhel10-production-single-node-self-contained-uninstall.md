@@ -58,12 +58,15 @@ STACK_NETWORK="$(
   bin/kravhantering-quadlet.sh print-network \
     --topology single-node --purpose database
 )"
+DB_CA_SOURCE=/etc/kravhantering/tls/ca.crt
+DB_CA_TARGET=/run/kravhantering/sqlserver-ca.crt
 DEMO_SEED_IMAGE_REF=ghcr.io/viscalyx/kravhantering-demo-seed:replace-with-release-tag
 
 podman pull "$DEMO_SEED_IMAGE_REF"
 
 podman run --rm --network "$STACK_NETWORK" \
   --env-file /etc/kravhantering/db-job.env \
+  --volume "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro" \
   "$DEMO_SEED_IMAGE_REF" demo:clear --confirm-clear-non-required-data
 
 exit
