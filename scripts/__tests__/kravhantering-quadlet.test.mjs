@@ -8,6 +8,10 @@ const SCRIPT_PATH = path.resolve(
   process.cwd(),
   'containers/production/bin/kravhantering-quadlet.sh',
 )
+const PRODUCTION_SMOKE_PATH = path.resolve(
+  process.cwd(),
+  'scripts/containers/production-smoke.sh',
+)
 const PODMAN_USER_GENERATOR =
   '/usr/lib/systemd/user-generators/podman-user-generator'
 const PODMAN_GENERATOR_VERSION = fs.existsSync(PODMAN_USER_GENERATOR)
@@ -250,10 +254,25 @@ describe('kravhantering Quadlet helper', () => {
       units.find(unit => unit.file === 'kravhantering-nginx.container')
         ?.content,
     ).toContain('PodmanArgs=--group-add=keep-groups')
-    expect(
-      units.find(unit => unit.file === 'kravhantering-sqlserver.container')
-        ?.content,
-    ).toContain('Volume=kravhantering-sqlserver-data.volume:/var/opt/mssql:U')
+    const sqlserver = units.find(
+      unit => unit.file === 'kravhantering-sqlserver.container',
+    )?.content
+    expect(sqlserver).toContain(
+      'Volume=kravhantering-sqlserver-data.volume:/var/opt/mssql:U',
+    )
+    expect(sqlserver).toContain('DropCapability=all')
+    expect(sqlserver).toContain('AddCapability=NET_BIND_SERVICE')
+    expect(sqlserver).toContain('NoNewPrivileges=true')
+    expect(sqlserver).toContain('ReadOnly=true')
+    expect(sqlserver).toContain('ReadOnlyTmpfs=false')
+    expect(sqlserver).toContain('PidsLimit=1024')
+    expect(sqlserver).toContain('LogDriver=journald')
+    expect(sqlserver).toContain(
+      'Tmpfs=/tmp:rw,size=512M,mode=1777,U,nosuid,nodev,noexec',
+    )
+    expect(sqlserver).toContain('MemoryMax=4096M')
+    expect(sqlserver).toContain('CPUQuota=200%')
+    expect(sqlserver).toContain('TasksMax=1056')
     const keycloak = units.find(
       unit => unit.file === 'kravhantering-keycloak.container',
     )?.content
@@ -261,8 +280,20 @@ describe('kravhantering Quadlet helper', () => {
       'Volume=kravhantering-keycloak-data.volume:/opt/keycloak/data:U',
     )
     expect(keycloak).toContain(
-      'Tmpfs=/tmp:rw,size=512M,mode=1777,nosuid,nodev,noexec',
+      'Tmpfs=/tmp:rw,size=512M,mode=1777,U,nosuid,nodev,noexec',
     )
+    expect(keycloak).toContain(
+      'Tmpfs=/opt/keycloak/lib/quarkus:rw,size=64M,mode=0755,U,nosuid,nodev,noexec',
+    )
+    expect(keycloak).toContain('DropCapability=all')
+    expect(keycloak).toContain('NoNewPrivileges=true')
+    expect(keycloak).toContain('ReadOnly=true')
+    expect(keycloak).toContain('ReadOnlyTmpfs=false')
+    expect(keycloak).toContain('PidsLimit=512')
+    expect(keycloak).toContain('LogDriver=journald')
+    expect(keycloak).toContain('MemoryMax=3072M')
+    expect(keycloak).toContain('CPUQuota=100%')
+    expect(keycloak).toContain('TasksMax=544')
     expect(allContent).toContain(
       'PodmanArgs=--add-host=kravhantering.example.internal:host-gateway',
     )
@@ -421,6 +452,112 @@ describe('kravhantering Quadlet helper', () => {
     )
   })
 
+  it('renders bounded stateful-service overrides', () => {
+    const fixture = createFixture(
+      releaseEnv({
+        KEYCLOAK_CPU_QUOTA_PERCENT: '125',
+        KEYCLOAK_MEMORY_LIMIT_MIB: '3072',
+        KEYCLOAK_PIDS_LIMIT: '640',
+        KEYCLOAK_QUARKUS_TMPFS_MIB: '96',
+        KEYCLOAK_TMPFS_MIB: '768',
+        SQLSERVER_CPU_QUOTA_PERCENT: '250',
+        SQLSERVER_MEMORY_LIMIT_MIB: '6144',
+        SQLSERVER_PIDS_LIMIT: '1536',
+        SQLSERVER_TMPFS_MIB: '768',
+      }),
+    )
+    const units = render('single-node', fixture)
+    const sqlserver = units.find(
+      unit => unit.file === 'kravhantering-sqlserver.container',
+    )?.content
+    const keycloak = units.find(
+      unit => unit.file === 'kravhantering-keycloak.container',
+    )?.content
+
+    expect(sqlserver).toContain('MemoryMax=6144M')
+    expect(sqlserver).toContain('CPUQuota=250%')
+    expect(sqlserver).toContain('PidsLimit=1536')
+    expect(sqlserver).toContain('TasksMax=1568')
+    expect(sqlserver).toContain(
+      'Tmpfs=/tmp:rw,size=768M,mode=1777,U,nosuid,nodev,noexec',
+    )
+    expect(keycloak).toContain('MemoryMax=3072M')
+    expect(keycloak).toContain('CPUQuota=125%')
+    expect(keycloak).toContain('PidsLimit=640')
+    expect(keycloak).toContain('TasksMax=672')
+    expect(keycloak).toContain(
+      'Tmpfs=/tmp:rw,size=768M,mode=1777,U,nosuid,nodev,noexec',
+    )
+    expect(keycloak).toContain(
+      'Tmpfs=/opt/keycloak/lib/quarkus:rw,size=96M,mode=0755,U,nosuid,nodev,noexec',
+    )
+  })
+
+  it('allows only the documented SQL Server effective capability in the production smoke', () => {
+    const productionSmoke = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
+    const contractStart = productionSmoke.indexOf(
+      'for containment_contract in \\\n',
+    )
+    const contractEnd = productionSmoke.indexOf('; do', contractStart)
+
+    expect(productionSmoke).toContain('podman top "$name" capeff')
+    expect(productionSmoke).toContain('podman top "$name" capbnd')
+    expect(productionSmoke).not.toContain('.HostConfig.CapDrop')
+    expect(contractStart).toBeGreaterThanOrEqual(0)
+    expect(contractEnd).toBeGreaterThan(contractStart)
+    const contractEntries = Array.from(
+      productionSmoke
+        .slice(contractStart, contractEnd)
+        .matchAll(/(kravhantering-[a-z-]+):([A-Z_]+|none)/gu),
+      ([, service, capability]) => [
+        service,
+        capability === 'none' ? [] : [capability],
+      ],
+    )
+    expect(contractEntries).toHaveLength(4)
+    expect(Object.fromEntries(contractEntries)).toEqual({
+      'kravhantering-app-runtime': [],
+      'kravhantering-keycloak': [],
+      'kravhantering-nginx': [],
+      'kravhantering-sqlserver': ['NET_BIND_SERVICE'],
+    })
+  })
+
+  it('cycles Keycloak through the single-node target dependency boundary', () => {
+    const productionSmoke = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
+
+    expect(productionSmoke).not.toContain(
+      'service_systemctl restart kravhantering-keycloak.service',
+    )
+    expect(productionSmoke).not.toContain(
+      'service_systemctl stop kravhantering-keycloak.service',
+    )
+    expect(productionSmoke).toContain(
+      'service_systemctl restart kravhantering-single-node.target',
+    )
+  })
+
+  it('protects and diagnoses SQL Server recovery startup', () => {
+    const productionSmoke = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
+    const recoveryStart = productionSmoke.indexOf(
+      'verify_sqlserver_backup_recovery() {',
+    )
+    const recoveryEnd = productionSmoke.indexOf(
+      '\nverify_keycloak_backup_recovery() {',
+      recoveryStart,
+    )
+    const recoveryFunction = productionSmoke.slice(recoveryStart, recoveryEnd)
+
+    expect(recoveryStart).toBeGreaterThanOrEqual(0)
+    expect(recoveryEnd).toBeGreaterThan(recoveryStart)
+    expect(recoveryFunction).toContain(
+      `database_name="$(as_service sed -n 's/^DB_NAME=//p' \\
+    "$CONFIG_ROOT/db-job.env")"`,
+    )
+    expect(recoveryFunction).toContain('--restart on-failure:1')
+    expect(productionSmoke).toContain('podman logs "$container"')
+  })
+
   it.each([
     ['APP_RUNTIME_MEMORY_LIMIT_MIB', '4095'],
     ['APP_RUNTIME_EXPORT_STORAGE', 'shared'],
@@ -444,6 +581,58 @@ describe('kravhantering Quadlet helper', () => {
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain(`invalid ${key}`)
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
+
+  it.each([
+    ['SQLSERVER_MEMORY_LIMIT_MIB', '2047'],
+    ['SQLSERVER_CPU_QUOTA_PERCENT', '49'],
+    ['SQLSERVER_PIDS_LIMIT', '127'],
+    ['SQLSERVER_TMPFS_MIB', '64'],
+    ['KEYCLOAK_MEMORY_LIMIT_MIB', '511'],
+    ['KEYCLOAK_CPU_QUOTA_PERCENT', '24'],
+    ['KEYCLOAK_PIDS_LIMIT', '63'],
+    ['KEYCLOAK_QUARKUS_TMPFS_MIB', '16'],
+    ['KEYCLOAK_TMPFS_MIB', '64'],
+  ])('rejects invalid stateful override %s=%s', (key, value) => {
+    const fixture = createFixture(releaseEnv({ [key]: value }))
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(`invalid ${key}`)
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
+
+  it('rejects combined Keycloak tmpfs overrides above half its memory before rendering', () => {
+    const fixture = createFixture(
+      releaseEnv({
+        KEYCLOAK_MEMORY_LIMIT_MIB: '1024',
+        KEYCLOAK_QUARKUS_TMPFS_MIB: '64',
+        KEYCLOAK_TMPFS_MIB: '512',
+      }),
+    )
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('invalid Keycloak tmpfs combination')
     expect(fs.existsSync(fixture.outputDir)).toBe(false)
   })
 
@@ -552,6 +741,38 @@ describe('kravhantering Quadlet helper', () => {
     ).toBe('active nginx unit\n')
   })
 
+  it('leaves stateful units unchanged when a stateful override is invalid', () => {
+    const fixture = createFixture(
+      releaseEnv({ SQLSERVER_MEMORY_LIMIT_MIB: '1024' }),
+    )
+    const quadletDir = path.join(fixture.outputDir, 'containers')
+    const systemdDir = path.join(fixture.outputDir, 'systemd')
+    fs.mkdirSync(quadletDir, { recursive: true })
+    fs.mkdirSync(systemdDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(quadletDir, 'kravhantering-sqlserver.container'),
+      'active SQL Server unit\n',
+    )
+
+    const result = runHelper(
+      ['install', '--topology', 'single-node'],
+      fixture,
+      {
+        KRAVHANTERING_QUADLET_DIR: quadletDir,
+        KRAVHANTERING_SYSTEMD_USER_DIR: systemdDir,
+      },
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('invalid SQLSERVER_MEMORY_LIMIT_MIB')
+    expect(
+      fs.readFileSync(
+        path.join(quadletDir, 'kravhantering-sqlserver.container'),
+        'utf8',
+      ),
+    ).toBe('active SQL Server unit\n')
+  })
+
   it('rejects host memory that cannot enforce the topology envelope', () => {
     const fixture = createFixture(releaseEnv())
     const lowMemory = path.join(fixture.root, 'low-memory')
@@ -565,7 +786,28 @@ describe('kravhantering Quadlet helper', () => {
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain(
-      'single-node memory limits leave less than 8 GiB',
+      'single-node service memory limits exceed 75% of host memory',
+    )
+  })
+
+  it('rejects aggregate stateful CPU quotas above single-node capacity', () => {
+    const fixture = createFixture(
+      releaseEnv({ SQLSERVER_CPU_QUOTA_PERCENT: '400' }),
+    )
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'CPU quota combination: exceeds single-node CPU capacity',
     )
   })
 

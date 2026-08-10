@@ -99,12 +99,23 @@ template_values() {
     APP_RUNTIME_MEMORY_LIMIT_MIB \
     APP_RUNTIME_PIDS_LIMIT \
     APP_RUNTIME_TASKS_MAX \
+    KEYCLOAK_CPU_QUOTA_PERCENT \
+    KEYCLOAK_MEMORY_LIMIT_MIB \
+    KEYCLOAK_PIDS_LIMIT \
+    KEYCLOAK_QUARKUS_TMPFS_MIB \
+    KEYCLOAK_TASKS_MAX \
+    KEYCLOAK_TMPFS_MIB \
     NGINX_CACHE_TMPFS_MIB \
     NGINX_CPU_QUOTA_PERCENT \
     NGINX_HTTPS_PUBLISH \
     NGINX_MEMORY_LIMIT_MIB \
     NGINX_PIDS_LIMIT \
-    NGINX_TASKS_MAX
+    NGINX_TASKS_MAX \
+    SQLSERVER_CPU_QUOTA_PERCENT \
+    SQLSERVER_MEMORY_LIMIT_MIB \
+    SQLSERVER_PIDS_LIMIT \
+    SQLSERVER_TASKS_MAX \
+    SQLSERVER_TMPFS_MIB
 }
 
 read_release_env() {
@@ -153,6 +164,15 @@ configure_containment() {
   default_release_value NGINX_CPU_QUOTA_PERCENT 100
   default_release_value NGINX_PIDS_LIMIT 128
   default_release_value NGINX_CACHE_TMPFS_MIB 64
+  default_release_value SQLSERVER_MEMORY_LIMIT_MIB 4096
+  default_release_value SQLSERVER_CPU_QUOTA_PERCENT 200
+  default_release_value SQLSERVER_PIDS_LIMIT 1024
+  default_release_value SQLSERVER_TMPFS_MIB 512
+  default_release_value KEYCLOAK_MEMORY_LIMIT_MIB 3072
+  default_release_value KEYCLOAK_CPU_QUOTA_PERCENT 100
+  default_release_value KEYCLOAK_PIDS_LIMIT 512
+  default_release_value KEYCLOAK_QUARKUS_TMPFS_MIB 64
+  default_release_value KEYCLOAK_TMPFS_MIB 512
 
   validate_integer_range APP_RUNTIME_MEMORY_LIMIT_MIB 4096 8192
   validate_integer_range APP_RUNTIME_CPU_QUOTA_PERCENT 50 "$(( $(nproc) * 100 ))"
@@ -162,18 +182,42 @@ configure_containment() {
   validate_integer_range NGINX_CPU_QUOTA_PERCENT 25 "$(( $(nproc) * 100 ))"
   validate_integer_range NGINX_PIDS_LIMIT 32 512
   validate_integer_range NGINX_CACHE_TMPFS_MIB 16 256
+  if [[ "$TOPOLOGY" == single-node ]]; then
+    validate_integer_range SQLSERVER_MEMORY_LIMIT_MIB 2048 8192
+    validate_integer_range SQLSERVER_CPU_QUOTA_PERCENT 50 "$(( $(nproc) * 100 ))"
+    validate_integer_range SQLSERVER_PIDS_LIMIT 128 2048
+    validate_integer_range SQLSERVER_TMPFS_MIB 128 2048
+    validate_integer_range KEYCLOAK_MEMORY_LIMIT_MIB 512 4096
+    validate_integer_range KEYCLOAK_CPU_QUOTA_PERCENT 25 "$(( $(nproc) * 100 ))"
+    validate_integer_range KEYCLOAK_PIDS_LIMIT 64 1024
+    validate_integer_range KEYCLOAK_QUARKUS_TMPFS_MIB 32 256
+    validate_integer_range KEYCLOAK_TMPFS_MIB 128 2048
+  fi
 
   (( APP_RUNTIME_EXPORT_TMPFS_MIB * 2 <= APP_RUNTIME_MEMORY_LIMIT_MIB )) || \
     fail 'invalid APP_RUNTIME_EXPORT_TMPFS_MIB: must not exceed half APP_RUNTIME_MEMORY_LIMIT_MIB'
   (( NGINX_CACHE_TMPFS_MIB * 2 <= NGINX_MEMORY_LIMIT_MIB )) || \
     fail 'invalid NGINX_CACHE_TMPFS_MIB: must not exceed half NGINX_MEMORY_LIMIT_MIB'
-  topology_cpu_capacity="$(( $(nproc) * 100 ))"
-  (( topology_cpu_capacity <= 400 )) || topology_cpu_capacity=400
-  (( APP_RUNTIME_CPU_QUOTA_PERCENT + NGINX_CPU_QUOTA_PERCENT <= topology_cpu_capacity )) || \
-    fail 'invalid CPU quota combination: exceeds topology CPU capacity'
+  if [[ "$TOPOLOGY" == single-node ]]; then
+    (( SQLSERVER_TMPFS_MIB * 2 <= SQLSERVER_MEMORY_LIMIT_MIB )) || \
+      fail 'invalid SQLSERVER_TMPFS_MIB: must not exceed half SQLSERVER_MEMORY_LIMIT_MIB'
+    (( (KEYCLOAK_TMPFS_MIB + KEYCLOAK_QUARKUS_TMPFS_MIB) * 2 <= KEYCLOAK_MEMORY_LIMIT_MIB )) || \
+      fail 'invalid Keycloak tmpfs combination: must not exceed half KEYCLOAK_MEMORY_LIMIT_MIB'
+    topology_cpu_capacity="$(( $(nproc) * 200 ))"
+    (( topology_cpu_capacity <= 800 )) || topology_cpu_capacity=800
+    (( APP_RUNTIME_CPU_QUOTA_PERCENT + NGINX_CPU_QUOTA_PERCENT + SQLSERVER_CPU_QUOTA_PERCENT + KEYCLOAK_CPU_QUOTA_PERCENT <= topology_cpu_capacity )) || \
+      fail 'invalid CPU quota combination: exceeds single-node CPU capacity'
+  else
+    topology_cpu_capacity="$(( $(nproc) * 100 ))"
+    (( topology_cpu_capacity <= 400 )) || topology_cpu_capacity=400
+    (( APP_RUNTIME_CPU_QUOTA_PERCENT + NGINX_CPU_QUOTA_PERCENT <= topology_cpu_capacity )) || \
+      fail 'invalid CPU quota combination: exceeds topology CPU capacity'
+  fi
 
   APP_RUNTIME_TASKS_MAX="$(( APP_RUNTIME_PIDS_LIMIT + 32 ))"
   NGINX_TASKS_MAX="$(( NGINX_PIDS_LIMIT + 32 ))"
+  SQLSERVER_TASKS_MAX="$(( SQLSERVER_PIDS_LIMIT + 32 ))"
+  KEYCLOAK_TASKS_MAX="$(( KEYCLOAK_PIDS_LIMIT + 32 ))"
   if [[ -n "${NGINX_HTTPS_BIND-}" ]]; then
     NGINX_HTTPS_PUBLISH="${NGINX_HTTPS_BIND%:*}:8443"
   else
@@ -398,8 +442,8 @@ verify_host_enforcement() {
     (( (APP_RUNTIME_MEMORY_LIMIT_MIB + NGINX_MEMORY_LIMIT_MIB) * 4 <= total_memory_mib * 3 )) || \
       fail 'stateless service memory limits exceed 75% of app-node host memory'
   else
-    (( APP_RUNTIME_MEMORY_LIMIT_MIB + NGINX_MEMORY_LIMIT_MIB + 8192 <= total_memory_mib )) || \
-      fail 'single-node memory limits leave less than 8 GiB for stateful services and the host'
+    (( (APP_RUNTIME_MEMORY_LIMIT_MIB + NGINX_MEMORY_LIMIT_MIB + SQLSERVER_MEMORY_LIMIT_MIB + KEYCLOAK_MEMORY_LIMIT_MIB) * 4 <= total_memory_mib * 3 )) || \
+      fail 'single-node service memory limits exceed 75% of host memory'
   fi
   verify_journal_retention
 
