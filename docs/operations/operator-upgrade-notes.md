@@ -81,6 +81,11 @@ Single-node deployments must set both `NGINX_RESOLVER` for the edge network and 
 <!-- operator-upgrade:source pr-962 start -->
 Single-node installations now validate and apply explicit SQL Server and Keycloak CPU, memory, PID, and temporary-storage limits. Review the new `SQLSERVER_*` and `KEYCLOAK_*` values in `containers/production/env/release.env.template` before deployment; the documented defaults require at least 16 GiB host memory. Reinstall the rendered Quadlets and run the production smoke after upgrading so containment, persistence, recovery, and application readiness are verified against the existing volumes. See `docs/operations/production-quadlet-containment.md` for supported ranges, capacity rules, image qualifications, and rollback guidance.
 <!-- operator-upgrade:source pr-962 end -->
+
+<!-- operator-upgrade:source pr-965 start -->
+Before upgrading a single-node production deployment, provision a SQL Server certificate and private key for the fixed `DNS:sqlserver` service identity. The certificate must chain to the CA trusted by the application and database jobs. The upgraded SQL Server service requires readable certificate material before it can start.
+During rollout, remove any insecure server-certificate trust override, make the issuing CA available to every one-shot database container, and verify database-job and application readiness before returning the service to users. Retain the previous certificate and key as a short-lived rollback pair until the verified connection checks pass.
+<!-- operator-upgrade:source pr-965 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
