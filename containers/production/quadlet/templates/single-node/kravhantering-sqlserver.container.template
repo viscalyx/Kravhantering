@@ -8,11 +8,24 @@ After=kravhantering-single-node-database-network.service kravhantering-sqlserver
 ContainerName=kravhantering-sqlserver
 Image=@@SQLSERVER_IMAGE_REF@@
 EnvironmentFile=/etc/kravhantering/sqlserver.env
+DropCapability=all
+AddCapability=NET_BIND_SERVICE
+NoNewPrivileges=true
+ReadOnly=true
+ReadOnlyTmpfs=false
+PidsLimit=@@SQLSERVER_PIDS_LIMIT@@
+LogDriver=journald
 Network=kravhantering-single-node-database.network
 PodmanArgs=--network-alias=sqlserver
 Volume=kravhantering-sqlserver-data.volume:/var/opt/mssql:U
+Tmpfs=/tmp:rw,size=@@SQLSERVER_TMPFS_MIB@@M,mode=1777,U,nosuid,nodev,noexec
 
 [Service]
 Restart=always
 TimeoutStartSec=180
 TimeoutStopSec=90
+MemoryMax=@@SQLSERVER_MEMORY_LIMIT_MIB@@M
+CPUQuota=@@SQLSERVER_CPU_QUOTA_PERCENT@@%
+TasksMax=@@SQLSERVER_TASKS_MAX@@
+StandardOutput=journal
+StandardError=journal

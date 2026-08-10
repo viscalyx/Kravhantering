@@ -9,13 +9,25 @@ ContainerName=kravhantering-keycloak
 Image=@@KEYCLOAK_IMAGE_REF@@
 Exec=start --import-realm
 EnvironmentFile=/etc/kravhantering/keycloak.env
+DropCapability=all
+NoNewPrivileges=true
+ReadOnly=true
+ReadOnlyTmpfs=false
+PidsLimit=@@KEYCLOAK_PIDS_LIMIT@@
+LogDriver=journald
 Network=kravhantering-single-node-identity.network
 PodmanArgs=--network-alias=keycloak
 Volume=/etc/kravhantering/keycloak/realm-kravhantering-production.json:/opt/keycloak/data/import/realm-kravhantering-production.json:ro
 Volume=kravhantering-keycloak-data.volume:/opt/keycloak/data:U
-Tmpfs=/tmp:rw,size=512M,mode=1777,nosuid,nodev,noexec
+Tmpfs=/opt/keycloak/lib/quarkus:rw,size=@@KEYCLOAK_QUARKUS_TMPFS_MIB@@M,mode=0755,U,nosuid,nodev,noexec
+Tmpfs=/tmp:rw,size=@@KEYCLOAK_TMPFS_MIB@@M,mode=1777,U,nosuid,nodev,noexec
 
 [Service]
 Restart=always
 TimeoutStartSec=180
 TimeoutStopSec=90
+MemoryMax=@@KEYCLOAK_MEMORY_LIMIT_MIB@@M
+CPUQuota=@@KEYCLOAK_CPU_QUOTA_PERCENT@@%
+TasksMax=@@KEYCLOAK_TASKS_MAX@@
+StandardOutput=journal
+StandardError=journal
