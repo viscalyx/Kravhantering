@@ -1737,8 +1737,12 @@ describe('trusted container release helpers', () => {
     expect(dbJobEnv).toContain(
       'NODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt',
     )
-    expect(sqlServerConfig).toContain('tlscert = /etc/ssl/certs/mssql.pem')
-    expect(sqlServerConfig).toContain('tlskey = /etc/ssl/private/mssql.key')
+    expect(sqlServerConfig).toContain(
+      'tlscert = /etc/kravhantering/sqlserver-tls/server.crt',
+    )
+    expect(sqlServerConfig).toContain(
+      'tlskey = /etc/kravhantering/sqlserver-tls/server.key',
+    )
     expect(sqlServerConfig).toContain('forceencryption = 1')
   })
 

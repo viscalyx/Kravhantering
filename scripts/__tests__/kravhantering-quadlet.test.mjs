@@ -261,10 +261,7 @@ describe('kravhantering Quadlet helper', () => {
       'Volume=kravhantering-sqlserver-data.volume:/var/opt/mssql:U',
     )
     expect(sqlserver).toContain(
-      'Volume=/etc/kravhantering/sqlserver-tls/server.crt:/etc/ssl/certs/mssql.pem:ro',
-    )
-    expect(sqlserver).toContain(
-      'Volume=/etc/kravhantering/sqlserver-tls/server.key:/etc/ssl/private/mssql.key:ro',
+      'Volume=/etc/kravhantering/sqlserver-tls:/etc/kravhantering/sqlserver-tls:ro',
     )
     expect(sqlserver).toContain(
       'Volume=' +
@@ -547,6 +544,7 @@ describe('kravhantering Quadlet helper', () => {
     expect(productionSmoke).toContain(
       'service_systemctl restart kravhantering-single-node.target',
     )
+    expect(productionSmoke).toContain('--env KC_CACHE=local')
   })
 
   it('protects and diagnoses SQL Server recovery startup', () => {

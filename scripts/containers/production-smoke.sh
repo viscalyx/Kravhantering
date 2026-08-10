@@ -795,8 +795,7 @@ verify_sqlserver_backup_recovery() {
     --group-add keep-groups \
     --volume kravhantering-ci-sqlserver-recovery:/var/opt/mssql:U \
     --volume "$INSTALL_ROOT/current/sqlserver/mssql.conf:/var/opt/mssql/mssql.conf:ro" \
-    --volume "$CONFIG_ROOT/sqlserver-tls/server.crt:/etc/ssl/certs/mssql.pem:ro" \
-    --volume "$CONFIG_ROOT/sqlserver-tls/server.key:/etc/ssl/private/mssql.key:ro" \
+    --volume "$CONFIG_ROOT/sqlserver-tls:/etc/kravhantering/sqlserver-tls:ro" \
     --tmpfs /tmp:rw,size=512m,mode=1777,nosuid,nodev,noexec \
     "$SQLSERVER_IMAGE_REF" >/dev/null
   wait_for_sqlserver_container kravhantering-ci-sqlserver-recovery
@@ -836,6 +835,7 @@ verify_keycloak_backup_recovery() {
     --network "$identity_network" \
     --network-alias keycloak-recovery \
     --env-file "$CONFIG_ROOT/keycloak.env" \
+    --env KC_CACHE=local \
     --cap-drop all \
     --security-opt no-new-privileges \
     --read-only \
