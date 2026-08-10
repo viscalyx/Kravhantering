@@ -18,6 +18,14 @@ Red Hat Enterprise Linux 10 host from released artifacts only, with nginx,
 `db-job` runs explicitly on the database Quadlet network for release
 operations.
 
+>[!WARNING]
+>The default bundled Keycloak profile is intentionally easy to operate for
+>quality assurance, demos, automated testing, prod-like validation and smoke
+>tests. It is not sufficiently secure for production. Do not use bundled
+>Keycloak in production unless `IDENTITY_PROVIDER_MODE=hardened-bundled` and
+>all controls in [Appendix C](#appendix-c-production-hardened-bundled-keycloak)
+>are implemented and verified.
+
 Apply the shared containment defaults, validated override ranges, network
 ownership, and host preflight in
 [Production Quadlet Containment](production-quadlet-containment.md).
@@ -37,6 +45,24 @@ To uninstall a first install of this topology, use
 >The disconnected guide prepares the transferable bundle, imports the release
 >directory and images on the disconnected host, and tells you where to resume
 >these regular deployment steps.
+
+## Choose the Identity Provider Profile
+
+Record exactly one choice in `/etc/kravhantering/release.env`. Omitting the
+setting preserves `bundled`, the existing default.
+
+<!-- markdownlint-disable MD013 -->
+| `IDENTITY_PROVIDER_MODE` | Intended use | Bundled Keycloak | Required action |
+| --- | --- | --- | --- |
+| `bundled` | QA, demos, automated testing, prod-like validation and smoke tests | Installed with the permissive `/auth/` proxy | Do not use for production. Disposable bootstrap credentials may remain only in these non-production environments. |
+| `external` | Production or pre-production with a deployer-selected OIDC-compatible provider | Not installed or required | Configure the external issuer, client, redirects, logout, claims and trust in `app.env`. The deployer operates and secures the provider. |
+| `hardened-bundled` | Explicitly approved production use of bundled Keycloak | Installed with separated user-facing and mTLS management ingress | Complete and verify Appendix C before serving users. |
+<!-- markdownlint-enable MD013 -->
+
+The mode controls rendered services as well as image verification. In
+`external` mode the single-node host still provides nginx, `app-runtime` and
+SQL Server, but it renders no Keycloak container, Keycloak volume or identity
+network and does not require `KEYCLOAK_IMAGE_REF`.
 
 ![Kravhantering Infographic Single Node Access Flow](../images/infographic-single-node-access-flow.png)
 
@@ -93,6 +119,8 @@ verification.
 | Name | Applies to | Default / derived value | Plan or record when |
 | --- | --- | --- | --- |
 | `VERSION` | Release artifact names | No default | Always record the release version to install, for example `1.2.3`. |
+| `IDENTITY_PROVIDER_MODE` | Single-node rendered services and nginx identity ingress | `bundled` | Always record the approved choice: `bundled`, `external` or `hardened-bundled`. Production may use only `external` or the fully verified `hardened-bundled` option. |
+| `KEYCLOAK_MANAGEMENT_HTTPS_BIND` | Hardened bundled Keycloak management-only listener | No default | Required only for `hardened-bundled`; use an explicit host IPv4 and mapping to container port `9443`, for example `10.20.30.40:9443:9443`. Wildcard and malformed binds fail closed during rendering. |
 | `APP_HOST` | `PUBLIC_HOSTNAME`, app URLs, `KC_HOSTNAME`, realm redirect/logout settings, realm web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
 | `KRAVHANTERING_EXPORT_TEMP_DIR` | Optional absolute spool root in `app.env` | Unset/blank (OS temporary directory) | Set only when generated CSV/PDF files need a dedicated filesystem. Use an existing private directory that grants only the non-root operating-system account running Node.js read/write/search access (for example, app-owned mode `0700`). Whether set or unset, verify the directory from inside `app-runtime` and size it for configured CSV/PDF concurrency times maximum file sizes plus headroom. When unset or blank, this verification of the container operating-system temporary directory is mandatory. |
@@ -759,6 +787,30 @@ shell, not from the `kravhantering` service-user shell used for image pulls.
 
 ### `/etc/kravhantering/release.env`
 
+Set the identity-provider choice first. The unchanged easy default is:
+
+```env
+IDENTITY_PROVIDER_MODE=bundled
+```
+
+For a deployer-operated external OIDC provider, use:
+
+```env
+IDENTITY_PROVIDER_MODE=external
+```
+
+For explicitly approved production use of bundled Keycloak, complete
+[Appendix C](#appendix-c-production-hardened-bundled-keycloak) and use:
+
+```env
+IDENTITY_PROVIDER_MODE=hardened-bundled
+KEYCLOAK_MANAGEMENT_HTTPS_BIND=10.20.30.40:9443:9443
+```
+
+Replace `10.20.30.40` with the host address reachable only through the
+approved management network or VPN. The hardened listener also requires mTLS;
+the explicit bind and mTLS are independent controls.
+
 Set `PUBLIC_HOSTNAME` to the public DNS name without `https://`. This must be
 the same hostname used by `NEXT_PUBLIC_SITE_URL`, `KC_HOSTNAME`, redirect URIs
 and the TLS certificate SAN:
@@ -776,7 +828,8 @@ process to bind container port 443. Podman 4.9 does not expose Quadlet's newer
 `PodmanArgs=--add-host`; the helper's generator preflight rejects hosts where
 that compatibility form is unavailable.
 
-Set `NGINX_RESOLVER` and `NGINX_IDENTITY_RESOLVER` to the Podman DNS resolvers
+Set `NGINX_RESOLVER` and, when Keycloak is bundled,
+`NGINX_IDENTITY_RESOLVER` to the Podman DNS resolvers
 that nginx should use for dynamic `app-runtime` and Keycloak lookups. Podman
 DNS is scoped to each network, so single-node nginx needs the edge resolver for
 `app-runtime` and the identity resolver for Keycloak. These values might not be
@@ -795,7 +848,8 @@ release requirements. nginx uses them to re-resolve upstream container names aft
 The resolver can change when the internal Quadlet network is recreated or
 assigned another subnet. Before starting nginx, run the resolver
 check below and update both resolver values in
-`/etc/kravhantering/release.env` if either differs.
+`/etc/kravhantering/release.env` if either differs. The `external` profile does
+not render an identity network and ignores `NGINX_IDENTITY_RESOLVER`.
 
 SQL Server is only available internally on the
 `kravhantering-single-node_database` Podman network. Connect to it as
@@ -922,6 +976,31 @@ OPENROUTER_API_KEY=
 OPENROUTER_MGMT_API_KEY=
 ```
 
+For `IDENTITY_PROVIDER_MODE=external`, replace the bundled issuer and client
+values with the registration supplied by the deployer-selected provider. The
+provider must support OIDC Authorization Code with PKCE, discovery, signing
+keys, token exchange, user-info and logout. Register the exact application
+callback and post-logout URLs shown below and configure the canonical `roles`
+and `employeeHsaId` claims described in
+[OIDC Identity Provider Integration](../integrations/oidc-identity-provider-integration.md):
+
+```env
+AUTH_OIDC_ISSUER_URL=https://idp.example.internal/realms/kravhantering
+AUTH_OIDC_CLIENT_ID=kravhantering-app
+AUTH_OIDC_CLIENT_SECRET=<external-provider-client-secret>
+AUTH_OIDC_REDIRECT_URI=https://kravhantering.example.internal/api/auth/callback
+AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=https://kravhantering.example.internal/
+AUTH_OIDC_ROLES_CLAIM=roles
+AUTH_OIDC_SCOPES=openid profile email
+AUTH_OIDC_API_AUDIENCE=kravhantering-app
+```
+
+Install any private issuer CA in the app runtime trust path before startup.
+Use the bilingual
+[External IdP Handoff](../integrations/external-idp-handoff.md) to verify
+issuer, client, redirect, logout, claim and trust ownership. Do not copy or
+configure `keycloak.env` or the realm import for this mode.
+
 Generate `AUTH_SESSION_COOKIE_PASSWORD` as described in
 [Generate Unique Secrets](#generate-unique-secrets). Keep
 `AUTH_OIDC_CLIENT_SECRET` equal to the `kravhantering-app` client `secret`
@@ -986,6 +1065,9 @@ in it.
 
 ### `/etc/kravhantering/keycloak.env`
 
+This file applies only to `bundled` and `hardened-bundled`. Skip it for
+`external`.
+
 Set Keycloak's public hostname and administrator account:
 
 ```env
@@ -1011,9 +1093,13 @@ realm role. Choose any approved admin username and a strong unique password,
 store it in the deployment secret store, and do not leave the template
 placeholder values in place.
 
-After the stack is running, the bundled Keycloak admin console is available
-through nginx at `https://kravhantering.example.internal/auth/admin/`. From the
-application origin, the same console is reachable as `../auth/admin/`.
+In the non-production `bundled` profile, the Keycloak admin console is
+available through nginx at
+`https://kravhantering.example.internal/auth/admin/`. This shared path is one
+reason that profile is not sufficiently secure for production. The
+`hardened-bundled` profile denies the admin console, Admin REST API and master
+realm on user-facing application access and exposes them only through the
+management-only access described in Appendix C.
 The exact application path `/auth/error` remains handled by the app runtime so
 failed OIDC callbacks can show the Kravhantering error page even though the
 rest of `/auth/` is proxied to Keycloak.
@@ -1403,9 +1489,15 @@ cd /opt/kravhantering/current
 bin/kravhantering-quadlet.sh install --topology single-node
 systemctl --user daemon-reload
 systemctl --user start kravhantering-sqlserver.service
-systemctl --user start kravhantering-keycloak.service
 journalctl --user-unit kravhantering-sqlserver.service -n 100 --no-pager
-journalctl --user-unit kravhantering-keycloak.service -n 100 --no-pager
+
+set -a
+. /etc/kravhantering/release.env
+set +a
+if [ "${IDENTITY_PROVIDER_MODE:-bundled}" != external ]; then
+  systemctl --user start kravhantering-keycloak.service
+  journalctl --user-unit kravhantering-keycloak.service -n 100 --no-pager
+fi
 
 exit
 ```
@@ -1425,22 +1517,25 @@ set -a
 set +a
 
 systemctl --user start kravhantering-single-node-edge-network.service
-systemctl --user start kravhantering-single-node-identity-network.service
 EDGE_RESOLVER="$(
   bin/kravhantering-quadlet.sh print-resolver \
     --topology single-node --purpose edge
 )"
-IDENTITY_RESOLVER="$(
-  bin/kravhantering-quadlet.sh print-resolver \
-    --topology single-node --purpose identity
-)"
-printf 'Use NGINX_RESOLVER=%s and NGINX_IDENTITY_RESOLVER=%s\n' \
-  "$EDGE_RESOLVER" "$IDENTITY_RESOLVER"
+printf 'Use NGINX_RESOLVER=%s\n' "$EDGE_RESOLVER"
+if [ "${IDENTITY_PROVIDER_MODE:-bundled}" != external ]; then
+  systemctl --user start kravhantering-single-node-identity-network.service
+  IDENTITY_RESOLVER="$(
+    bin/kravhantering-quadlet.sh print-resolver \
+      --topology single-node --purpose identity
+  )"
+  printf 'Use NGINX_IDENTITY_RESOLVER=%s\n' "$IDENTITY_RESOLVER"
+fi
 
 exit
 ```
 
-Update both values before starting nginx:
+Update the edge value before starting nginx. For a bundled mode, also update
+the identity value:
 
 ```bash
 # Replace these examples with the printed resolver IPs.
@@ -2385,3 +2480,239 @@ WHERE session_id = @@SPID;
 ```
 
 The result must be `TRUE`.
+
+## Appendix C: Production-Hardened Bundled Keycloak
+
+Use this appendix only after an accountable operator explicitly chooses
+bundled Keycloak for production. The ordinary application and both Keycloak
+paths may remain inside an organization-controlled network. The security
+boundary is between **user-facing application access** and
+**management-only access**; it does not depend on exposure to the public
+Internet.
+
+The hardened profile follows Keycloak's current guidance to use a separate
+administration hostname and to enforce Admin REST API restrictions at the
+reverse proxy. `KC_HOSTNAME_ADMIN` changes generated URLs but does not itself
+block the API on the frontend URL. See Keycloak's
+[hostname](https://www.keycloak.org/server/hostname),
+[reverse proxy](https://www.keycloak.org/server/reverseproxy) and
+[production configuration](https://www.keycloak.org/server/configuration-production)
+guides.
+
+### Access Contract
+
+The supplied hardened nginx profile exposes these surfaces:
+
+<!-- markdownlint-disable MD013 -->
+| Access surface | Allowed paths | Enforcement |
+| --- | --- | --- |
+| User-facing application access on port 443 | The application, `/auth/error`, required OIDC paths below `/auth/realms/kravhantering-production/`, and `/auth/resources/` | `/auth/admin/`, `/auth/realms/master/`, the production realm's `/clients-registrations/` surface, `/auth` and every other Keycloak path return `404` in nginx before proxy selection. Required discovery, signing-key, authorization, token, callback, logout, user-info, login-continuation and browser-resource flows remain below the allowed production realm and resource paths. |
+| Management-only access on port 9443 | `/auth/`, including the console, Admin REST API and master-realm authentication | An explicit non-wildcard host bind plus mandatory client-certificate verification. Requests without a certificate signed by the configured management client CA fail before Keycloak. |
+| Direct Keycloak container access | None from user-facing or application networks | Keycloak remains only on the internal identity network. nginx is the only attached proxy. |
+<!-- markdownlint-enable MD013 -->
+
+Do not add a broader `/auth/` proxy to the user-facing server. Do not publish
+Keycloak port 8080 or management port 9000. Do not treat
+`KC_HOSTNAME_ADMIN` as an access control.
+
+### Configure the Management Boundary
+
+Choose a management hostname and an explicit host IPv4 address reachable only
+through an approved internal management network or VPN. The supplied profile
+also requires mTLS, including when network access is already restricted.
+
+Set `/etc/kravhantering/release.env`:
+
+```env
+IDENTITY_PROVIDER_MODE=hardened-bundled
+KEYCLOAK_MANAGEMENT_HTTPS_BIND=10.20.30.40:9443:9443
+```
+
+Set `/etc/kravhantering/keycloak.env`:
+
+```env
+KC_HOSTNAME=https://kravhantering.example.internal/auth
+KC_HOSTNAME_ADMIN=https://keycloak-management.example.internal:9443/auth
+KC_PROXY_HEADERS=xforwarded
+```
+
+The management DNS name must resolve to the selected management address only
+for approved operator clients. Issue a separate server certificate for that
+name and a client certificate from the approved management client CA. Install:
+
+```text
+/etc/kravhantering/keycloak-management-tls/fullchain.pem
+/etc/kravhantering/keycloak-management-tls/privkey.pem
+/etc/kravhantering/keycloak-management-tls/client-ca.crt
+```
+
+Use owner `root`, group `kravhantering`, mode `0644` for certificates and
+`0640` for the private key. Apply `container_file_t` to the directory. Keep
+operator client certificates and keys in the organization's endpoint identity
+or secret-management system; do not store client private keys on the server.
+
+Allow inbound TCP 9443 only from the approved management network or VPN. A
+firewall rule is still required even though mTLS is enabled. Missing files,
+an empty or malformed bind, a wildcard bind, or a container target other than
+9443 makes Quadlet rendering fail closed.
+
+Reinstall and restart the topology after setting the profile:
+
+```bash
+sudo chcon -R -t container_file_t \
+  /etc/kravhantering/keycloak-management-tls
+
+sudo -iu kravhantering
+cd /opt/kravhantering/current
+bin/kravhantering-quadlet.sh install --topology single-node
+systemctl --user daemon-reload
+systemctl --user restart kravhantering-single-node.target
+exit
+```
+
+### Provision Attributable Administrators
+
+Treat `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` as temporary first-start
+provisioning inputs. They are not acceptable steady-state credentials.
+
+1. Start Keycloak only through the hardened profile and connect through
+   management-only access with the bootstrap identity.
+2. Create at least two individual named administrator accounts in the master
+   realm. Do not share accounts. Grant the minimum realm-management roles each
+   operator needs.
+3. Require MFA for every administrator. Enroll and verify each administrator's
+   MFA before removing bootstrap access. Apply the site's phishing-resistant
+   method where available; otherwise require Keycloak OTP under the approved
+   authentication policy.
+4. Register recovery factors or sealed recovery material under dual control.
+   Test the recovery runbook with a named account without disabling MFA for
+   the administrator population.
+5. Sign in separately as each named administrator through management-only
+   access and verify the required console and Admin REST API operations.
+6. Delete or disable the temporary bootstrap administrator. Remove
+   `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` from `keycloak.env` and from
+   every secret, automation and configuration source used at steady state.
+7. Restart Keycloak. Attempt master-realm authentication with the retired
+   identity and record the failed result. Search the configuration and secret
+   inventory for reusable bootstrap credentials; the result must be empty.
+
+Keycloak documents startup and recovery administrators as temporary accounts
+that must be removed after permanent access exists. Follow
+[Bootstrapping and recovering an admin account](https://www.keycloak.org/server/bootstrap-admin-recovery)
+for the installed Keycloak version.
+
+Disposable QA, demo and test environments may keep their documented test
+administrator because the `bundled` profile is deliberately test-oriented.
+Never promote those credentials, realm data or recovery artifacts into the
+hardened production profile.
+
+### Verify Before User Traffic
+
+Run all checks from both an ordinary application client and an approved
+management client. Save status codes and sanitized nginx access-log lines.
+
+From user-facing application access, all of these must return `404`:
+
+```bash
+curl --fail-with-body \
+  https://kravhantering.example.internal/auth/admin/
+curl --fail-with-body \
+  https://kravhantering.example.internal/auth/admin/realms
+curl --fail-with-body \
+  https://kravhantering.example.internal/auth/realms/master/
+curl --fail-with-body \
+  https://kravhantering.example.internal/auth/realms/kravhantering-production/clients-registrations/default
+```
+
+Because `curl --fail-with-body` exits nonzero for `404`, a nonzero result with
+that exact status is expected. In nginx access logs, each denial must show
+`upstream="-"`, proving rejection before Keycloak. Confirm that the Keycloak
+admin console, Admin REST API, master-realm token surface and dynamic client
+registration surface cannot be reached through user-facing application access.
+
+From management-only access, first prove a request without a client
+certificate fails. Then use an approved operator certificate:
+
+```bash
+MGMT=https://keycloak-management.example.internal:9443
+CLIENT_CERT=/secure/operator/keycloak-management.crt
+CLIENT_KEY=/secure/operator/keycloak-management.key
+CLIENT_CA=/secure/operator/keycloak-management-ca.crt
+
+curl --fail --cacert "$CLIENT_CA" "$MGMT/auth/admin/"
+
+curl --fail --cacert "$CLIENT_CA" \
+  --cert "$CLIENT_CERT" --key "$CLIENT_KEY" \
+  "$MGMT/auth/admin/master/console/"
+```
+
+Use a named administrator token to make a read-only Admin REST API request and
+record success. Do not place tokens in evidence. Missing, malformed, expired
+or untrusted client certificates must fail closed and must never fall back to
+the user-facing listener.
+
+Finally verify all intended client flows through user-facing application
+access: discovery, JWKS/signing keys, authorization and PKCE callback, login
+continuations and resources, token exchange, user-info, logout, authentication
+error handling, application sign-in and application sign-out. `/api/ready`
+must remain ready. The production smoke performs the public denial, upstream
+selection, mTLS management console/API and browser login/logout checks.
+
+### Upgrade, Rollback, Backup and Recovery
+
+Classify every maintenance record as `bundled` test-oriented, `external`, or
+`hardened-bundled` before acting.
+
+- **Upgrade:** back up Keycloak data and realm configuration, preserve the
+  previous Keycloak image, nginx template, `keycloak.env`, management
+  certificates and firewall policy, then review the Keycloak upgrading guide.
+  Keep user-facing administration denial active throughout the maintenance
+  window. After upgrade, repeat every access and OIDC verification above
+  before reopening user traffic.
+- **Rollback:** stop the target before restoring a compatible Keycloak image
+  and data backup. Keycloak schema changes can make an old image incompatible
+  with upgraded data; never point the old image at upgraded state unless the
+  release-specific rollback procedure permits it. Restore the previous nginx
+  and management certificate configuration as one set, then re-verify both
+  access surfaces.
+- **Backup:** stop Keycloak or use a site-approved application-consistent
+  database/volume snapshot method. Back up the Keycloak data volume, realm and
+  client configuration, management server certificate chain, firewall and DNS
+  configuration, and a reference to client-CA custody. Store private keys and
+  credentials only in the approved secret backup. Test restoration on an
+  isolated identity network.
+- **Recovery:** restore data and configuration with user-facing traffic
+  closed. If all named administrators are unavailable, stop every Keycloak
+  node and use Keycloak's dedicated `bootstrap-admin` command to create one
+  temporary recovery account. Recover named MFA-protected administration,
+  delete the temporary account and its secret, then repeat the retirement and
+  access verification. Do not expose a temporary recovery route on port 443.
+- **Uninstall:** distinguish application removal from identity-data
+  destruction. The standard helper removes units but retains the Keycloak
+  volume. Revoke management client certificates, remove management DNS and
+  firewall rules, and delete the Keycloak volume or backups only with explicit
+  approval under the retention policy. External mode has no bundled Keycloak
+  volume or management certificate set to remove.
+
+### Incident Response
+
+For suspected administrator, token, signing-key, management-client or
+bootstrap credential compromise:
+
+1. Block management port 9443 at the firewall and stop user-facing identity
+   routing when active exploitation or signing-key compromise is possible.
+2. Preserve redacted nginx, Keycloak and system journals plus certificate
+   serials, administrator events and relevant timestamps. Do not copy tokens,
+   passwords or private keys into general evidence.
+3. Revoke affected management client certificates and administrator sessions.
+   Disable compromised identities and rotate their credentials through a
+   verified recovery administrator.
+4. Rotate OIDC client secrets or realm signing keys when the incident scope
+   requires it. Plan signing-key rotation so intended clients receive the new
+   JWKS and old tokens are handled according to the incident decision.
+5. Verify the bootstrap identity remains retired, named administrators use
+   MFA, user-facing denials occur before Keycloak, management mTLS fails closed,
+   and browser login/logout still work before restoring access.
+
+Escalate database or volume integrity concerns to the backup/recovery process;
+do not attempt an in-place repair without preserving recoverable evidence.

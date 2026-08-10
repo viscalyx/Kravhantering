@@ -298,6 +298,32 @@ test.describe('Release smoke container flow', () => {
     })
   })
 
+  test('preserves browser logout through the hardened Keycloak ingress', async ({
+    page,
+  }) => {
+    await page.goto('/sv/requirements')
+
+    const userMenuButton = page.getByRole('button', {
+      name: /^Inloggad som /,
+    })
+    await userMenuButton.hover()
+    const userInfoDialog = page.getByRole('dialog', {
+      name: 'Kontouppgifter',
+    })
+    await expect(userInfoDialog).toBeVisible()
+    await userInfoDialog.getByRole('button', { name: 'Logga ut' }).click()
+
+    await expect(page).toHaveURL(
+      /\/realms\/kravhantering-production\/protocol\/openid-connect\/auth/,
+    )
+    await expect
+      .poll(async () => {
+        const response = await page.request.get('/api/auth/me')
+        return response.json()
+      })
+      .toEqual({ authenticated: false })
+  })
+
   test('verifies HSA person lookup through Kong and the HSA mock', async ({
     baseURL: configuredBaseUrl,
   }) => {

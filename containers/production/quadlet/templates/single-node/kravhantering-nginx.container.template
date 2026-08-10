@@ -1,8 +1,8 @@
 [Unit]
 Description=Kravhantering nginx TLS edge
 PartOf=kravhantering-single-node.target
-Requires=kravhantering-app-runtime.service kravhantering-keycloak.service
-After=kravhantering-app-runtime.service kravhantering-keycloak.service
+Requires=kravhantering-app-runtime.service @@KEYCLOAK_NGINX_DEPENDENCIES@@
+After=kravhantering-app-runtime.service @@KEYCLOAK_NGINX_DEPENDENCIES@@
 
 [Container]
 ContainerName=kravhantering-nginx
@@ -15,22 +15,26 @@ ReadOnlyTmpfs=false
 PidsLimit=@@NGINX_PIDS_LIMIT@@
 LogDriver=journald
 Environment=NGINX_RESOLVER=@@NGINX_RESOLVER@@
-Environment=NGINX_IDENTITY_RESOLVER=@@NGINX_IDENTITY_RESOLVER@@
+@@KEYCLOAK_NGINX_ENVIRONMENT@@
 PublishPort=@@NGINX_HTTPS_PUBLISH@@
+@@NGINX_KEYCLOAK_MANAGEMENT_PUBLISH@@
 Network=kravhantering-single-node-edge.network
-Network=kravhantering-single-node-identity.network
+@@KEYCLOAK_NGINX_NETWORK@@
 PodmanArgs=--network-alias=nginx
 PodmanArgs=--group-add=keep-groups
 Tmpfs=/etc/nginx/conf.d:rw,size=1M,mode=0755,U,notmpcopyup,nosuid,nodev,noexec
 Tmpfs=/var/cache/nginx:rw,size=@@NGINX_CACHE_TMPFS_MIB@@M,mode=0750,U,notmpcopyup,nosuid,nodev,noexec
 Tmpfs=/run:rw,size=1M,mode=0755,U,notmpcopyup,nosuid,nodev,noexec
 Volume=@@BUNDLE_ROOT@@/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-Volume=@@BUNDLE_ROOT@@/nginx/templates/single-node-tls.conf.template:/etc/nginx/templates/default.conf.template:ro
+Volume=@@BUNDLE_ROOT@@/nginx/templates/@@NGINX_SINGLE_NODE_TEMPLATE@@:/etc/nginx/templates/default.conf.template:ro
 Volume=@@BUNDLE_ROOT@@/nginx/templates/api-docs-security-headers.conf:/etc/nginx/snippets/api-docs-security-headers.conf:ro
 Volume=@@BUNDLE_ROOT@@/nginx/templates/generated-output-locations.conf:/etc/nginx/snippets/generated-output-locations.conf:ro
+Volume=@@BUNDLE_ROOT@@/nginx/templates/keycloak-proxy-headers.conf:/etc/nginx/snippets/keycloak-proxy-headers.conf:ro
+Volume=@@BUNDLE_ROOT@@/nginx/templates/keycloak-management-proxy-headers.conf:/etc/nginx/snippets/keycloak-management-proxy-headers.conf:ro
 Volume=@@BUNDLE_ROOT@@/api-docs:/usr/share/nginx/html/api-docs:ro
 Volume=/etc/kravhantering/tls/fullchain.pem:/etc/nginx/tls/fullchain.pem:ro
 Volume=/etc/kravhantering/tls/privkey.pem:/etc/nginx/tls/privkey.pem:ro
+@@KEYCLOAK_MANAGEMENT_MTLS_VOLUMES@@
 
 [Service]
 Restart=always

@@ -8,6 +8,12 @@ topology and its CI-only HSA overlay are started, signs in through Keycloak via
 nginx, and verifies the release-critical path, including nginx-served API
 documentation, without duplicating the full integration suite.
 
+The production smoke runs the first authenticated test once with the default
+`bundled` profile to prove its unchanged browser login. It then switches the
+installed topology to `hardened-bundled`, verifies the ingress boundary, and
+runs the complete suite so login and logout also traverse the hardened
+user-facing allow-list.
+
 ## Data Model
 
 <!-- markdownlint-disable MD013 -->
@@ -53,7 +59,8 @@ flowchart TD
     N --> O[GET /api/requirements/:id]
     O --> P[Verify nginx API docs headers, assets, rendering and 404]
     P --> Q[Admin verifies HSA person through Kong and adapter]
-    Q --> R[Run 5 CSV exports and 3 PDF reports concurrently]
+    Q --> R[Log out through hardened Keycloak ingress]
+    R --> S[Run 5 CSV exports and 3 PDF reports concurrently]
 ```
 
 ## Test Setup
@@ -173,6 +180,17 @@ sequenceDiagram
     PW->>N: Open Swagger UI in Chromium
     Note over PW,N: Specification renders without CSP violations
 ```
+
+## preserves browser logout through the hardened Keycloak ingress
+
+This test starts with the authenticated reviewer storage state, opens the
+requirements library, and signs out through the account menu. It verifies that
+the Keycloak end-session and browser authorization continuation paths remain
+available through the hardened user-facing allow-list while administrative
+paths remain denied by the production smoke shell checks.
+
+The test confirms the browser returns to the production realm authorization
+endpoint and `/api/auth/me` reports an unauthenticated session.
 
 ## verifies HSA person lookup through Kong, adapter and the HSA mock
 

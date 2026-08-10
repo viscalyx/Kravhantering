@@ -318,6 +318,128 @@ describe('kravhantering Quadlet helper', () => {
     )
   })
 
+  it('renders the default bundled identity provider when no profile is configured', () => {
+    const fixture = createFixture(releaseEnv())
+    const units = render('single-node', fixture)
+
+    expect(units.map(unit => unit.file)).toContain(
+      'kravhantering-keycloak.container',
+    )
+    expect(
+      units.find(unit => unit.file === 'kravhantering-nginx.container')
+        ?.content,
+    ).toContain('single-node-tls.conf.template')
+  })
+
+  it('renders the external OIDC profile without bundled Keycloak resources', () => {
+    const fixture = createFixture(
+      releaseEnv({
+        IDENTITY_PROVIDER_MODE: 'external',
+        KEYCLOAK_IMAGE_REF: '',
+        NGINX_IDENTITY_RESOLVER: '',
+      }),
+    )
+    const units = render('single-node', fixture)
+    const unitNames = units.map(unit => unit.file)
+    const nginx = units.find(
+      unit => unit.file === 'kravhantering-nginx.container',
+    )?.content
+    const target = units.find(
+      unit => unit.file === 'kravhantering-single-node.target',
+    )?.content
+
+    expect(unitNames).not.toContain('kravhantering-keycloak.container')
+    expect(unitNames).not.toContain('kravhantering-keycloak-data.volume')
+    expect(unitNames).not.toContain(
+      'kravhantering-single-node-identity.network',
+    )
+    expect(nginx).toContain('single-node-external-oidc-tls.conf.template')
+    expect(nginx).not.toContain('NGINX_IDENTITY_RESOLVER')
+    expect(nginx).not.toContain('kravhantering-single-node-identity.network')
+    expect(target).not.toContain('kravhantering-keycloak.service')
+    expect(units.map(unit => unit.content).join('\n')).not.toContain(
+      'kravhantering-keycloak.service',
+    )
+  })
+
+  it('renders fail-closed user-facing and management ingress for hardened Keycloak', () => {
+    const fixture = createFixture(
+      releaseEnv({
+        IDENTITY_PROVIDER_MODE: 'hardened-bundled',
+        KEYCLOAK_MANAGEMENT_HTTPS_BIND: '10.20.30.40:9443:9443',
+      }),
+    )
+    const units = render('single-node', fixture)
+    const nginx = units.find(
+      unit => unit.file === 'kravhantering-nginx.container',
+    )?.content
+
+    expect(nginx).toContain('single-node-hardened-keycloak-tls.conf.template')
+    expect(nginx).toContain('PublishPort=10.20.30.40:9443:9443')
+    expect(nginx).toContain(
+      'Volume=/etc/kravhantering/keycloak-management-tls/client-ca.crt:/etc/nginx/keycloak-management-tls/client-ca.crt:ro',
+    )
+    expect(nginx).toContain(
+      'Volume=/etc/kravhantering/keycloak-management-tls/fullchain.pem:/etc/nginx/keycloak-management-tls/fullchain.pem:ro',
+    )
+    expect(nginx).toContain(
+      'Volume=/etc/kravhantering/keycloak-management-tls/privkey.pem:/etc/nginx/keycloak-management-tls/privkey.pem:ro',
+    )
+  })
+
+  it.each([
+    ['', 'missing required value'],
+    ['0.0.0.0:9443:9443', 'must not use a wildcard address'],
+    ['10.20.30.40:9443:8443', 'must target container port 9443'],
+    ['management.internal:9443:9443', 'expected an explicit IPv4 bind'],
+  ])(
+    'rejects unsafe hardened management bind %s',
+    (managementBind, expectedMessage) => {
+      const fixture = createFixture(
+        releaseEnv({
+          IDENTITY_PROVIDER_MODE: 'hardened-bundled',
+          KEYCLOAK_MANAGEMENT_HTTPS_BIND: managementBind,
+        }),
+      )
+      const result = runHelper(
+        [
+          'render',
+          '--topology',
+          'single-node',
+          '--output-dir',
+          fixture.outputDir,
+        ],
+        fixture,
+      )
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain(expectedMessage)
+      expect(fs.existsSync(fixture.outputDir)).toBe(false)
+    },
+  )
+
+  it('rejects an unknown identity-provider profile before rendering', () => {
+    const fixture = createFixture(
+      releaseEnv({ IDENTITY_PROVIDER_MODE: 'shared-admin-console' }),
+    )
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'invalid IDENTITY_PROVIDER_MODE: expected bundled, external, or hardened-bundled',
+    )
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
+
   it.runIf(
     fs.existsSync(PODMAN_USER_GENERATOR) &&
       PODMAN_GENERATOR_VERSION.includes('4.9.3'),
@@ -976,7 +1098,7 @@ rotate_sqlserver_certificate
   it('rejects host memory that cannot enforce the topology envelope', () => {
     const fixture = createFixture(releaseEnv())
     const lowMemory = path.join(fixture.root, 'low-memory')
-    fs.writeFileSync(lowMemory, 'MemTotal:       8388608 kB\n')
+    fs.writeFileSync(lowMemory, 'MemTotal:       12582912 kB\n')
 
     const result = runHelper(
       ['verify-host', '--topology', 'single-node'],
@@ -988,6 +1110,22 @@ rotate_sqlserver_certificate
     expect(result.stderr).toContain(
       'single-node service memory limits exceed 75% of host memory',
     )
+  })
+
+  it('sizes external OIDC single-node without bundled Keycloak memory', () => {
+    const fixture = createFixture(
+      releaseEnv({ IDENTITY_PROVIDER_MODE: 'external' }),
+    )
+    const availableMemory = path.join(fixture.root, 'available-memory')
+    fs.writeFileSync(availableMemory, 'MemTotal:       12582912 kB\n')
+
+    const result = runHelper(
+      ['verify-host', '--topology', 'single-node'],
+      fixture,
+      { KRAVHANTERING_MEMINFO_FILE: availableMemory },
+    )
+
+    expect(result.status).toBe(0)
   })
 
   it('rejects aggregate stateful CPU quotas above single-node capacity', () => {

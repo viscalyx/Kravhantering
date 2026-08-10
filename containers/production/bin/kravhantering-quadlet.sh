@@ -83,9 +83,14 @@ required_values() {
         NGINX_RESOLVER
       ;;
     single-node)
-      printf '%s\n' APP_RUNTIME_IMAGE_REF KEYCLOAK_IMAGE_REF NGINX_IMAGE_REF \
-        NGINX_HTTPS_BIND NGINX_IDENTITY_RESOLVER NGINX_RESOLVER \
-        PUBLIC_HOSTNAME SQLSERVER_IMAGE_REF
+      printf '%s\n' APP_RUNTIME_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTPS_BIND \
+        NGINX_RESOLVER PUBLIC_HOSTNAME SQLSERVER_IMAGE_REF
+      if [[ "$IDENTITY_PROVIDER_MODE" != external ]]; then
+        printf '%s\n' KEYCLOAK_IMAGE_REF NGINX_IDENTITY_RESOLVER
+      fi
+      if [[ "$IDENTITY_PROVIDER_MODE" == hardened-bundled ]]; then
+        printf '%s\n' KEYCLOAK_MANAGEMENT_HTTPS_BIND
+      fi
       ;;
     *) fail "unsupported topology: $1" ;;
   esac
@@ -105,11 +110,19 @@ template_values() {
     KEYCLOAK_QUARKUS_TMPFS_MIB \
     KEYCLOAK_TASKS_MAX \
     KEYCLOAK_TMPFS_MIB \
+    KEYCLOAK_MANAGEMENT_MTLS_VOLUMES \
+    KEYCLOAK_APP_DEPENDENCIES \
+    KEYCLOAK_NGINX_DEPENDENCIES \
+    KEYCLOAK_NGINX_ENVIRONMENT \
+    KEYCLOAK_NGINX_NETWORK \
+    KEYCLOAK_TARGET_DEPENDENCIES \
     NGINX_CACHE_TMPFS_MIB \
     NGINX_CPU_QUOTA_PERCENT \
     NGINX_HTTPS_PUBLISH \
     NGINX_MEMORY_LIMIT_MIB \
+    NGINX_KEYCLOAK_MANAGEMENT_PUBLISH \
     NGINX_PIDS_LIMIT \
+    NGINX_SINGLE_NODE_TEMPLATE \
     NGINX_TASKS_MAX \
     SQLSERVER_CPU_QUOTA_PERCENT \
     SQLSERVER_MEMORY_LIMIT_MIB \
@@ -133,12 +146,74 @@ read_release_env() {
   done <"$RELEASE_ENV_FILE"
 }
 
+configure_identity_provider() {
+  default_release_value IDENTITY_PROVIDER_MODE bundled
+  case "$IDENTITY_PROVIDER_MODE" in
+    bundled)
+      KEYCLOAK_APP_DEPENDENCIES='kravhantering-keycloak.service'
+      KEYCLOAK_NGINX_DEPENDENCIES='kravhantering-keycloak.service'
+      KEYCLOAK_NGINX_ENVIRONMENT="Environment=NGINX_IDENTITY_RESOLVER=${NGINX_IDENTITY_RESOLVER-}"
+      KEYCLOAK_NGINX_NETWORK='Network=kravhantering-single-node-identity.network'
+      KEYCLOAK_TARGET_DEPENDENCIES='kravhantering-keycloak.service'
+      KEYCLOAK_MANAGEMENT_MTLS_VOLUMES=''
+      NGINX_KEYCLOAK_MANAGEMENT_PUBLISH=''
+      NGINX_SINGLE_NODE_TEMPLATE='single-node-tls.conf.template'
+      ;;
+    external)
+      NGINX_IDENTITY_RESOLVER=''
+      KEYCLOAK_APP_DEPENDENCIES=''
+      KEYCLOAK_NGINX_DEPENDENCIES=''
+      KEYCLOAK_NGINX_ENVIRONMENT=''
+      KEYCLOAK_NGINX_NETWORK=''
+      KEYCLOAK_TARGET_DEPENDENCIES=''
+      KEYCLOAK_MANAGEMENT_MTLS_VOLUMES=''
+      NGINX_KEYCLOAK_MANAGEMENT_PUBLISH=''
+      NGINX_SINGLE_NODE_TEMPLATE='single-node-external-oidc-tls.conf.template'
+      ;;
+    hardened-bundled)
+      KEYCLOAK_APP_DEPENDENCIES='kravhantering-keycloak.service'
+      KEYCLOAK_NGINX_DEPENDENCIES='kravhantering-keycloak.service'
+      KEYCLOAK_NGINX_ENVIRONMENT="Environment=NGINX_IDENTITY_RESOLVER=${NGINX_IDENTITY_RESOLVER-}"
+      KEYCLOAK_NGINX_NETWORK='Network=kravhantering-single-node-identity.network'
+      KEYCLOAK_TARGET_DEPENDENCIES='kravhantering-keycloak.service'
+      KEYCLOAK_MANAGEMENT_MTLS_VOLUMES=$'Volume=/etc/kravhantering/keycloak-management-tls/client-ca.crt:/etc/nginx/keycloak-management-tls/client-ca.crt:ro\nVolume=/etc/kravhantering/keycloak-management-tls/fullchain.pem:/etc/nginx/keycloak-management-tls/fullchain.pem:ro\nVolume=/etc/kravhantering/keycloak-management-tls/privkey.pem:/etc/nginx/keycloak-management-tls/privkey.pem:ro'
+      NGINX_KEYCLOAK_MANAGEMENT_PUBLISH="PublishPort=${KEYCLOAK_MANAGEMENT_HTTPS_BIND-}"
+      NGINX_SINGLE_NODE_TEMPLATE='single-node-hardened-keycloak-tls.conf.template'
+      ;;
+    *)
+      fail 'invalid IDENTITY_PROVIDER_MODE: expected bundled, external, or hardened-bundled'
+      ;;
+  esac
+}
+
 validate_release_env() {
   local key value
   while IFS= read -r key; do
     value="${!key-}"
     [[ -n "$value" ]] || fail "release.env is missing required value: $key"
   done < <(required_values "$1")
+}
+
+validate_identity_provider() {
+  local bind_address container_port host_port octet
+  local -a bind_octets=()
+  [[ "$IDENTITY_PROVIDER_MODE" == hardened-bundled ]] || return 0
+  [[ -n "${KEYCLOAK_MANAGEMENT_HTTPS_BIND-}" ]] || \
+    fail 'release.env is missing required value: KEYCLOAK_MANAGEMENT_HTTPS_BIND'
+  [[ "$KEYCLOAK_MANAGEMENT_HTTPS_BIND" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+:[0-9]+$ ]] || \
+    fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: expected an explicit IPv4 bind'
+  IFS=: read -r bind_address host_port container_port <<<"$KEYCLOAK_MANAGEMENT_HTTPS_BIND"
+  IFS=. read -r -a bind_octets <<<"$bind_address"
+  for octet in "${bind_octets[@]}"; do
+    (( octet >= 0 && octet <= 255 )) || \
+      fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: expected an explicit IPv4 bind'
+  done
+  [[ "$bind_address" != 0.0.0.0 ]] || \
+    fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: must not use a wildcard address'
+  (( host_port >= 1 && host_port <= 65535 )) || \
+    fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: expected host port 1-65535'
+  [[ "$container_port" == 9443 ]] || \
+    fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: must target container port 9443'
 }
 
 default_release_value() {
@@ -187,11 +262,13 @@ configure_containment() {
     validate_integer_range SQLSERVER_CPU_QUOTA_PERCENT 50 "$(( $(nproc) * 100 ))"
     validate_integer_range SQLSERVER_PIDS_LIMIT 128 2048
     validate_integer_range SQLSERVER_TMPFS_MIB 128 2048
-    validate_integer_range KEYCLOAK_MEMORY_LIMIT_MIB 512 4096
-    validate_integer_range KEYCLOAK_CPU_QUOTA_PERCENT 25 "$(( $(nproc) * 100 ))"
-    validate_integer_range KEYCLOAK_PIDS_LIMIT 64 1024
-    validate_integer_range KEYCLOAK_QUARKUS_TMPFS_MIB 32 256
-    validate_integer_range KEYCLOAK_TMPFS_MIB 128 2048
+    if [[ "$IDENTITY_PROVIDER_MODE" != external ]]; then
+      validate_integer_range KEYCLOAK_MEMORY_LIMIT_MIB 512 4096
+      validate_integer_range KEYCLOAK_CPU_QUOTA_PERCENT 25 "$(( $(nproc) * 100 ))"
+      validate_integer_range KEYCLOAK_PIDS_LIMIT 64 1024
+      validate_integer_range KEYCLOAK_QUARKUS_TMPFS_MIB 32 256
+      validate_integer_range KEYCLOAK_TMPFS_MIB 128 2048
+    fi
   fi
 
   (( APP_RUNTIME_EXPORT_TMPFS_MIB * 2 <= APP_RUNTIME_MEMORY_LIMIT_MIB )) || \
@@ -201,11 +278,15 @@ configure_containment() {
   if [[ "$TOPOLOGY" == single-node ]]; then
     (( SQLSERVER_TMPFS_MIB * 2 <= SQLSERVER_MEMORY_LIMIT_MIB )) || \
       fail 'invalid SQLSERVER_TMPFS_MIB: must not exceed half SQLSERVER_MEMORY_LIMIT_MIB'
-    (( (KEYCLOAK_TMPFS_MIB + KEYCLOAK_QUARKUS_TMPFS_MIB) * 2 <= KEYCLOAK_MEMORY_LIMIT_MIB )) || \
-      fail 'invalid Keycloak tmpfs combination: must not exceed half KEYCLOAK_MEMORY_LIMIT_MIB'
+    if [[ "$IDENTITY_PROVIDER_MODE" != external ]]; then
+      (( (KEYCLOAK_TMPFS_MIB + KEYCLOAK_QUARKUS_TMPFS_MIB) * 2 <= KEYCLOAK_MEMORY_LIMIT_MIB )) || \
+        fail 'invalid Keycloak tmpfs combination: must not exceed half KEYCLOAK_MEMORY_LIMIT_MIB'
+    fi
     topology_cpu_capacity="$(( $(nproc) * 200 ))"
     (( topology_cpu_capacity <= 800 )) || topology_cpu_capacity=800
-    (( APP_RUNTIME_CPU_QUOTA_PERCENT + NGINX_CPU_QUOTA_PERCENT + SQLSERVER_CPU_QUOTA_PERCENT + KEYCLOAK_CPU_QUOTA_PERCENT <= topology_cpu_capacity )) || \
+    local identity_cpu_quota=0
+    [[ "$IDENTITY_PROVIDER_MODE" == external ]] || identity_cpu_quota="$KEYCLOAK_CPU_QUOTA_PERCENT"
+    (( APP_RUNTIME_CPU_QUOTA_PERCENT + NGINX_CPU_QUOTA_PERCENT + SQLSERVER_CPU_QUOTA_PERCENT + identity_cpu_quota <= topology_cpu_capacity )) || \
       fail 'invalid CPU quota combination: exceeds single-node CPU capacity'
   else
     topology_cpu_capacity="$(( $(nproc) * 100 ))"
@@ -383,7 +464,7 @@ verify_rootless_networking() {
     "$podman_bin" network rm "$network_name" >/dev/null 2>&1 || true
     fail 'rootless Podman cannot inspect the required bridge networks'
   }
-  if [[ "$TOPOLOGY" == single-node ]]; then
+  if [[ "$TOPOLOGY" == single-node && "$IDENTITY_PROVIDER_MODE" != external ]]; then
     "$podman_bin" create --name "$probe_name" --pull=never \
       --network "$network_name" \
       --add-host "${PUBLIC_HOSTNAME}:host-gateway" \
@@ -441,6 +522,9 @@ verify_host_enforcement() {
   if [[ "$TOPOLOGY" == app-node-* ]]; then
     (( (APP_RUNTIME_MEMORY_LIMIT_MIB + NGINX_MEMORY_LIMIT_MIB) * 4 <= total_memory_mib * 3 )) || \
       fail 'stateless service memory limits exceed 75% of app-node host memory'
+  elif [[ "$TOPOLOGY" == single-node && "$IDENTITY_PROVIDER_MODE" == external ]]; then
+    (( (APP_RUNTIME_MEMORY_LIMIT_MIB + NGINX_MEMORY_LIMIT_MIB + SQLSERVER_MEMORY_LIMIT_MIB) * 4 <= total_memory_mib * 3 )) || \
+      fail 'single-node service memory limits exceed 75% of host memory'
   else
     (( (APP_RUNTIME_MEMORY_LIMIT_MIB + NGINX_MEMORY_LIMIT_MIB + SQLSERVER_MEMORY_LIMIT_MIB + KEYCLOAK_MEMORY_LIMIT_MIB) * 4 <= total_memory_mib * 3 )) || \
       fail 'single-node service memory limits exceed 75% of host memory'
@@ -477,13 +561,24 @@ render_units() {
   [[ -d "$template_dir" ]] || fail "template directory is missing: $template_dir"
 
   read_release_env
+  configure_identity_provider
   validate_release_env "$TOPOLOGY"
+  validate_identity_provider
   configure_containment
   mkdir -p -- "$output_dir"
   remove_managed_units "$output_dir"
 
   while IFS= read -r template; do
     template_name="$(basename -- "$template")"
+    if [[ "$TOPOLOGY" == single-node && "$IDENTITY_PROVIDER_MODE" == external ]]; then
+      case "$template_name" in
+        kravhantering-keycloak-data.volume.template | \
+          kravhantering-keycloak.container.template | \
+          kravhantering-single-node-identity.network.template)
+          continue
+          ;;
+      esac
+    fi
     output_name="${template_name%.template}"
     render_template "$template" "$output_dir/$output_name"
   done < <(find "$template_dir" -maxdepth 1 -type f -name '*.template' | sort)

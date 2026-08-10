@@ -24,6 +24,16 @@ For upgrades and rollback, use
 To uninstall a first install of this topology, use
 [rhel10-production-uninstall.md](./rhel10-production-uninstall.md).
 
+>[!WARNING]
+>The self-contained single-node topology keeps an easy bundled Keycloak
+>profile as its default for QA, demos, automated testing, prod-like validation
+>and smoke tests. That default is not sufficiently secure for production.
+>Production single-node deployments must choose an external OIDC provider or
+>explicitly select and verify the
+>[production-hardened bundled Keycloak appendix](./rhel10-production-single-node-self-contained-deploy.md#appendix-c-production-hardened-bundled-keycloak).
+
+<!-- Separate consecutive GitHub alerts for markdownlint MD028. -->
+
 >[!IMPORTANT]
 >For disconnected deployment, first follow
 >[rhel10-production-disconnected.md](./rhel10-production-disconnected.md). The
@@ -732,6 +742,21 @@ and restarting Keycloak only affects a first import, not a running realm.
 
 Do not import the release-smoke realm into production. The smoke-test realm
 contains public test credentials.
+
+### Production-Hardened Bundled Keycloak Appendix
+
+This app-node guide normally uses a deployer-operated external IdP. If the
+deployment instead chooses bundled Keycloak on the self-contained single-node
+host, the complete and equivalent production-hardening contract is
+[Appendix C in the single-node topology guide](./rhel10-production-single-node-self-contained-deploy.md#appendix-c-production-hardened-bundled-keycloak).
+
+That appendix is mandatory for this choice. It separates **user-facing
+application access** from **management-only access** without assuming either
+surface is exposed to the public Internet. It covers fail-closed ingress,
+individual administrator identities, MFA and recovery, bootstrap-account
+retirement, verification, upgrades, rollback, backup, recovery, uninstall and
+incident response. Do not substitute `KC_HOSTNAME_ADMIN` alone for the reverse
+proxy and network controls in that appendix.
 
 ## App Node Start Alternatives
 

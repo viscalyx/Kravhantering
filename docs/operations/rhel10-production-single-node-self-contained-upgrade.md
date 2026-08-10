@@ -7,6 +7,26 @@ single-node RHEL 10 production topology from released artifacts, with nginx,
 `app-runtime`, SQL Server and Keycloak as rootless Podman Quadlet services.
 `db-job` remains an explicit release operation on the same network.
 
+Before the change, read `IDENTITY_PROVIDER_MODE` from
+`/etc/kravhantering/release.env` and record it in the change ticket:
+
+- `bundled` is the test-oriented default; do not relabel it as production
+  hardened during an upgrade.
+- `external` has no bundled Keycloak unit, image, identity network or volume.
+  Skip Keycloak image, realm-sync, backup and recovery steps and coordinate
+  provider changes with its deployer.
+- `hardened-bundled` must preserve the management bind, mTLS certificates,
+  `KC_HOSTNAME_ADMIN`, user-facing deny rules, named MFA administrators and
+  retired bootstrap identity. Follow the
+  [production-hardening appendix](./rhel10-production-single-node-self-contained-deploy.md#appendix-c-production-hardened-bundled-keycloak)
+  before and after upgrade or rollback.
+
+For `hardened-bundled`, back up Keycloak data and configuration before the
+upgrade and verify public denial before upstream selection, management-only
+mTLS console/API access and browser login/logout after the change. A rollback
+must restore the previous Keycloak image, compatible data, nginx profile and
+management certificate configuration as one tested set.
+
 For a first install, use
 [rhel10-production-single-node-self-contained-deploy.md](./rhel10-production-single-node-self-contained-deploy.md).
 For the enterprise topology with external SQL Server and external IdP, use

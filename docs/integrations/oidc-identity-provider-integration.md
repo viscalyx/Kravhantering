@@ -12,6 +12,26 @@ deployment and for the external IdP. Where this document and the current code
 differ, this document should be read as target deployment intent rather than
 current implementation.
 
+## Self-Contained Single-Node Identity Profiles
+
+The self-contained single-node topology requires an explicit identity-provider
+choice through `IDENTITY_PROVIDER_MODE`:
+
+- `bundled` is the default. It keeps the convenient bundled Keycloak service
+  for QA, demos, automated tests, prod-like validation and smoke tests. Its
+  shared user and administration ingress is not sufficiently secure for
+  production.
+- `external` omits the bundled Keycloak service. Configure the application
+  contract below against an OIDC-compatible provider selected and operated by
+  the deployer.
+- `hardened-bundled` is the explicit bundled-Keycloak production option. It
+  separates user-facing application access from fail-closed management-only
+  access and requires the complete
+  [production-hardening appendix](../operations/rhel10-production-single-node-self-contained-deploy.md#appendix-c-production-hardened-bundled-keycloak).
+
+The profile changes how the provider is hosted, not the application roles,
+claims, session behavior or provider-neutral OIDC contract in this guide.
+
 ## Target Production Setup
 
 At a high level, the production-facing connections look like this:

@@ -204,6 +204,7 @@ render_runtime_configuration() {
     printf 'APP_RUNTIME_IMAGE_REF=%s\n' "$APP_RUNTIME_IMAGE_REF"
     printf 'DB_JOB_IMAGE_REF=%s\n' "$DB_JOB_IMAGE_REF"
     printf 'KEYCLOAK_IMAGE_REF=%s\n' "$KEYCLOAK_IMAGE_REF"
+    printf 'IDENTITY_PROVIDER_MODE=bundled\n'
     printf 'NGINX_IMAGE_REF=%s\n' "$NGINX_IMAGE_REF"
     printf 'SQLSERVER_IMAGE_REF=%s\n' "$SQLSERVER_IMAGE_REF"
     printf 'PUBLIC_HOSTNAME=kravhantering.test\n'
@@ -234,7 +235,7 @@ render_runtime_configuration() {
 
   sudo install -d -o root -g "$SERVICE_USER" -m 0750 \
     "$CONFIG_ROOT" "$CONFIG_ROOT/keycloak" "$CONFIG_ROOT/sqlserver-tls" \
-    "$CONFIG_ROOT/tls"
+    "$CONFIG_ROOT/tls" "$CONFIG_ROOT/keycloak-management-tls"
   for file in app.env db-job.env keycloak.env release.env sqlserver.env; do
     sudo install -o root -g "$SERVICE_USER" -m 0640 \
       "$CONFIG_TEMP_DIR/$file" "$CONFIG_ROOT/$file"
@@ -484,6 +485,186 @@ verify_sqlserver_identity_upgrade() {
   printf '%s\n' \
     'sqlserver-legacy-to-verified-tls-upgrade=passed' \
     >"$EVIDENCE_DIR/sqlserver-identity-upgrade.txt"
+}
+
+enable_hardened_keycloak_profile() {
+  local client_ext client_serial management_tls_dir
+  local management_work_dir
+  management_tls_dir="$CONFIG_ROOT/keycloak-management-tls"
+  management_work_dir="$(mktemp -d)"
+  client_ext="$management_work_dir/client.ext"
+  client_serial="$management_work_dir/client-ca.srl"
+
+  node scripts/containers/generate-tls.mjs \
+    --hostname keycloak-management.test \
+    --output-dir "$management_work_dir" \
+    --ca-cert tmp/container-tls/ca.crt \
+    --ca-key tmp/container-tls/ca.key \
+    --file-stem management
+  openssl req -newkey rsa:2048 -nodes \
+    -subj '/CN=production-smoke-keycloak-operator' \
+    -keyout "$management_work_dir/client.key" \
+    -out "$management_work_dir/client.csr"
+  printf '%s\n' \
+    'keyUsage=critical,digitalSignature,keyEncipherment' \
+    'extendedKeyUsage=clientAuth' >"$client_ext"
+  openssl x509 -req \
+    -in "$management_work_dir/client.csr" \
+    -CA tmp/container-tls/ca.crt \
+    -CAkey tmp/container-tls/ca.key \
+    -CAserial "$client_serial" \
+    -CAcreateserial \
+    -out "$management_work_dir/client.crt" \
+    -days 7 -sha256 -extfile "$client_ext"
+
+  sudo install -o root -g "$SERVICE_USER" -m 0644 \
+    tmp/container-tls/ca.crt "$management_tls_dir/client-ca.crt"
+  sudo install -o root -g "$SERVICE_USER" -m 0644 \
+    "$management_work_dir/management.crt" \
+    "$management_tls_dir/fullchain.pem"
+  sudo install -o root -g "$SERVICE_USER" -m 0640 \
+    "$management_work_dir/management.key" \
+    "$management_tls_dir/privkey.pem"
+  sudo install -o root -g "$SERVICE_USER" -m 0644 \
+    "$management_work_dir/client.crt" \
+    "$management_tls_dir/client.crt"
+  sudo install -o root -g "$SERVICE_USER" -m 0640 \
+    "$management_work_dir/client.key" \
+    "$management_tls_dir/client.key"
+  rm -rf -- "$management_work_dir"
+
+  sudo sed -i \
+    -e 's#^IDENTITY_PROVIDER_MODE=.*#IDENTITY_PROVIDER_MODE=hardened-bundled#' \
+    -e '/^KEYCLOAK_MANAGEMENT_HTTPS_BIND=/d' \
+    "$CONFIG_ROOT/release.env"
+  printf '%s\n' \
+    'KEYCLOAK_MANAGEMENT_HTTPS_BIND=127.0.0.1:9443:9443' | \
+    sudo tee -a "$CONFIG_ROOT/release.env" >/dev/null
+  sudo sed -i '/^KC_HOSTNAME_ADMIN=/d' "$CONFIG_ROOT/keycloak.env"
+  printf '%s\n' \
+    'KC_HOSTNAME_ADMIN=https://keycloak-management.test:9443/auth' | \
+    sudo tee -a "$CONFIG_ROOT/keycloak.env" >/dev/null
+
+  as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
+    install --topology "$TOPOLOGY"
+  service_systemctl daemon-reload
+  service_systemctl restart kravhantering-single-node.target
+  wait_for_url \
+    https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration
+}
+
+verify_hardened_keycloak_ingress() {
+  local access_token admin_password admin_user code journal_cursor journal_output
+  local marker marker_count management_url path token_response
+  local -a denied_paths=(
+    /auth
+    /auth/admin/
+    /auth/admin/realms
+    /auth/realms/master/protocol/openid-connect/token
+    /auth/realms/kravhantering-production/clients-registrations/default
+  )
+  management_url='https://keycloak-management.test:9443'
+  marker="hardened-keycloak-$RANDOM-$$"
+  journal_cursor="$(
+    as_service journalctl --user -u kravhantering-nginx.service \
+      -n 0 --show-cursor 2>/dev/null |
+      sed -n 's/^-- cursor: //p'
+  )"
+
+  for path in "${denied_paths[@]}"; do
+    code="$(curl --silent --show-error --output /dev/null \
+      --write-out '%{http_code}' --cacert tmp/container-tls/ca.crt \
+      --user-agent "$marker" "https://kravhantering.test$path")"
+    [[ "$code" == 404 ]] || \
+      fail "hardened user-facing Keycloak path was not denied: $path ($code)"
+  done
+
+  journal_output=''
+  for _ in {1..10}; do
+    if [[ -n "$journal_cursor" ]]; then
+      journal_output="$(
+        as_service journalctl --user -u kravhantering-nginx.service \
+          --after-cursor "$journal_cursor" \
+          --output=cat --no-pager 2>/dev/null || true
+      )"
+    else
+      journal_output="$(
+        as_service journalctl --user -u kravhantering-nginx.service \
+          --since=-1min --output=cat --no-pager 2>/dev/null || true
+      )"
+    fi
+    marker_count="$(grep -Fc "$marker" <<<"$journal_output" || true)"
+    if [[ "$marker_count" == "${#denied_paths[@]}" ]]; then
+      break
+    fi
+    sleep 1
+  done
+  marker_count="$(grep -Fc "$marker" <<<"$journal_output" || true)"
+  [[ "$marker_count" == "${#denied_paths[@]}" ]] || \
+    fail 'hardened public denial requests are missing from nginx evidence'
+  if grep -F "$marker" <<<"$journal_output" | \
+    grep -Fv 'upstream="-"' >/dev/null; then
+    fail 'a denied user-facing Keycloak request selected an upstream'
+  fi
+
+  if sudo curl --fail --silent --show-error \
+    --resolve keycloak-management.test:9443:127.0.0.1 \
+    --cacert tmp/container-tls/ca.crt \
+    "$management_url/auth/admin/" >/dev/null 2>&1; then
+    fail 'Keycloak management ingress accepted a client without mTLS'
+  fi
+
+  admin_user="$(sudo sed -n 's/^KEYCLOAK_ADMIN=//p' \
+    "$CONFIG_ROOT/keycloak.env")"
+  admin_password="$(sudo sed -n 's/^KEYCLOAK_ADMIN_PASSWORD=//p' \
+    "$CONFIG_ROOT/keycloak.env")"
+  [[ -n "$admin_user" && -n "$admin_password" ]] || \
+    fail 'Keycloak smoke administrator credentials are unavailable'
+  token_response="$(sudo curl --fail --silent --show-error \
+    --resolve keycloak-management.test:9443:127.0.0.1 \
+    --cacert tmp/container-tls/ca.crt \
+    --cert "$CONFIG_ROOT/keycloak-management-tls/client.crt" \
+    --key "$CONFIG_ROOT/keycloak-management-tls/client.key" \
+    --data-urlencode grant_type=password \
+    --data-urlencode client_id=admin-cli \
+    --data-urlencode "username=$admin_user" \
+    --data-urlencode "password=$admin_password" \
+    "$management_url/auth/realms/master/protocol/openid-connect/token")"
+  access_token="$(jq -er '.access_token' <<<"$token_response")" || \
+    fail 'authorized management client could not obtain an admin token'
+
+  sudo curl --fail --silent --show-error --location \
+    --resolve keycloak-management.test:9443:127.0.0.1 \
+    --cacert tmp/container-tls/ca.crt \
+    --cert "$CONFIG_ROOT/keycloak-management-tls/client.crt" \
+    --key "$CONFIG_ROOT/keycloak-management-tls/client.key" \
+    "$management_url/auth/admin/master/console/" >/dev/null || \
+    fail 'authorized management client could not reach the admin console'
+  sudo curl --fail --silent --show-error \
+    --resolve keycloak-management.test:9443:127.0.0.1 \
+    --cacert tmp/container-tls/ca.crt \
+    --cert "$CONFIG_ROOT/keycloak-management-tls/client.crt" \
+    --key "$CONFIG_ROOT/keycloak-management-tls/client.key" \
+    --header "Authorization: Bearer $access_token" \
+    "$management_url/auth/admin/realms" >/dev/null || \
+    fail 'authorized management client could not use the Admin REST API'
+
+  printf '%s\n' \
+    'user-facing-admin-denial-before-upstream=passed' \
+    'user-facing-master-realm-denial-before-upstream=passed' \
+    'user-facing-client-registration-denial-before-upstream=passed' \
+    'management-mtls-fail-closed=passed' \
+    'management-console-access=passed' \
+    'management-admin-api-access=passed' \
+    >"$EVIDENCE_DIR/keycloak-hardened-ingress.txt"
+}
+
+verify_default_bundled_keycloak_login() {
+  bash .devcontainer/trust-container-ca.sh
+  CI=true npm run test:release-smoke -- \
+    --grep 'proves HTTPS, auth, SQL Server reads and writes'
+  printf '%s\n' 'default-bundled-browser-login=passed' \
+    >"$EVIDENCE_DIR/keycloak-default-login.txt"
 }
 
 stack_services_are_progressing() {
@@ -969,6 +1150,9 @@ up() {
   verify_sqlserver_certificate_recovery
   wait_for_url https://kravhantering.test/api/ready
   verify_backup_recovery
+  verify_default_bundled_keycloak_login
+  enable_hardened_keycloak_profile
+  verify_hardened_keycloak_ingress
   printf '%s\n' \
     'app-runtime-restart=passed' \
     'sqlserver-restart-and-persistence=passed' \
@@ -979,7 +1163,9 @@ up() {
     'sqlserver-certificate-recovery=passed' \
     'sqlserver-legacy-to-verified-tls-upgrade=passed' \
     'post-reinstall-migration=passed' \
-    'target-stop-start=passed' >"$EVIDENCE_DIR/lifecycle.txt"
+    'target-stop-start=passed' \
+    'keycloak-hardened-profile-transition=passed' \
+    >"$EVIDENCE_DIR/lifecycle.txt"
 }
 
 evidence() {

@@ -280,6 +280,30 @@ describe('production image helper', () => {
     expect(result.log).not.toContain('registry.example/sqlserver')
   })
 
+  it('does not require a bundled Keycloak image for external OIDC single-node', () => {
+    const dir = makeTempDir()
+    const lockFile = writeLockFile(dir)
+    const envFile = writeEnvFile(dir, {
+      IDENTITY_PROVIDER_MODE: 'external',
+      KEYCLOAK_IMAGE_REF: '',
+    })
+
+    const result = runHelper(dir, [
+      '--topology',
+      'single-node',
+      '--lock-file',
+      lockFile,
+      '--env-file',
+      envFile,
+      'verify',
+    ])
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('Verified sqlserver')
+    expect(result.stdout).not.toContain('Verified keycloak')
+    expect(result.log).not.toContain('registry.example/keycloak')
+  })
+
   it('verifies production and test support locks for single-node-demo', () => {
     const dir = makeTempDir()
     const lockFile = writeLockFile(dir)

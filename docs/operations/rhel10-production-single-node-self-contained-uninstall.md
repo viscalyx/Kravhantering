@@ -8,6 +8,15 @@ Keycloak and explicit `db-job` operations in one rootless Quadlet network. It
 is not an upgrade rollback guide. For release rollback after migration, use
 [rhel10-production-single-node-self-contained-upgrade.md](./rhel10-production-single-node-self-contained-upgrade.md).
 
+Record `IDENTITY_PROVIDER_MODE` before removal. The `external` profile has no
+bundled Keycloak container, volume, identity network or management TLS files;
+coordinate client-registration and secret revocation with the external
+provider owner. For `hardened-bundled`, revoke management client certificates,
+remove the management-only DNS and firewall route, and record whether Keycloak
+data and backups are retained or destroyed. The test-oriented `bundled`
+profile may contain disposable identities, but deletion still requires the
+recorded retention decision.
+
 The default flow copies host-side material to an administrator-controlled
 staging area, performs culling from that staging copy into a smaller long-term
 evidence archive, and then removes the install from the host.

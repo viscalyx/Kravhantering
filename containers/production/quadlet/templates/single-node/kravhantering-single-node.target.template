@@ -1,7 +1,7 @@
 [Unit]
 Description=Kravhantering single-node services
-Requires=kravhantering-sqlserver.service kravhantering-keycloak.service kravhantering-app-runtime.service kravhantering-nginx.service
-After=kravhantering-sqlserver.service kravhantering-keycloak.service kravhantering-app-runtime.service kravhantering-nginx.service
+Requires=kravhantering-sqlserver.service @@KEYCLOAK_TARGET_DEPENDENCIES@@ kravhantering-app-runtime.service kravhantering-nginx.service
+After=kravhantering-sqlserver.service @@KEYCLOAK_TARGET_DEPENDENCIES@@ kravhantering-app-runtime.service kravhantering-nginx.service
 
 [Install]
 WantedBy=default.target

@@ -1,8 +1,8 @@
 [Unit]
 Description=Kravhantering application runtime
 PartOf=kravhantering-single-node.target
-Requires=kravhantering-single-node-edge-network.service kravhantering-single-node-database-network.service kravhantering-single-node-egress-network.service kravhantering-sqlserver.service kravhantering-keycloak.service
-After=kravhantering-single-node-edge-network.service kravhantering-single-node-database-network.service kravhantering-single-node-egress-network.service kravhantering-sqlserver.service kravhantering-keycloak.service
+Requires=kravhantering-single-node-edge-network.service kravhantering-single-node-database-network.service kravhantering-single-node-egress-network.service kravhantering-sqlserver.service @@KEYCLOAK_APP_DEPENDENCIES@@
+After=kravhantering-single-node-edge-network.service kravhantering-single-node-database-network.service kravhantering-single-node-egress-network.service kravhantering-sqlserver.service @@KEYCLOAK_APP_DEPENDENCIES@@
 
 [Container]
 ContainerName=kravhantering-app-runtime

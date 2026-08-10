@@ -72,7 +72,12 @@ service_env_prefix() {
 services_for_topology() {
   case "$1" in
     app-node) printf '%s\n' app-runtime db-job nginx ;;
-    single-node | all) printf '%s\n' app-runtime db-job nginx sqlserver keycloak ;;
+    single-node)
+      printf '%s\n' app-runtime db-job nginx sqlserver
+      [[ "${IDENTITY_PROVIDER_MODE:-bundled}" == external ]] || \
+        printf '%s\n' keycloak
+      ;;
+    all) printf '%s\n' app-runtime db-job nginx sqlserver keycloak ;;
     single-node-demo)
       printf '%s\n' app-runtime db-job nginx sqlserver keycloak kong hsa-person-lookup-adapter hsa-directory-mock
       ;;
