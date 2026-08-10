@@ -376,7 +376,7 @@ function runDebug(values) {
       { environment: inputs.environment },
     )
     dockerExec(['scripts/containers/production-smoke.sh', 'verify'], {
-      environment: inputs.environment,
+      environment: existingEnvironment(),
     })
     collectEvidence(inputs.environment)
   } catch (error) {

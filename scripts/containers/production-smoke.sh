@@ -648,6 +648,7 @@ verify_normal_service_state() {
 }
 
 boundaries() {
+  local app_runtime_image_ref
   : >"$EVIDENCE_DIR/normal-load-cgroup-state.txt"
   verify_normal_service_state kravhantering-app-runtime.service
   verify_normal_service_state kravhantering-nginx.service
@@ -660,13 +661,19 @@ boundaries() {
   as_service podman exec kravhantering-app-runtime \
     rm -f /run/kravhantering/export/must-not-fit
 
+  app_runtime_image_ref="$(as_service podman container inspect \
+    --format '{{.ImageName}}' kravhantering-app-runtime)" || \
+    fail 'could not resolve the running application image reference'
+  [[ -n "$app_runtime_image_ref" ]] || \
+    fail 'running application image reference is empty'
+
   if as_service podman run --rm --network none --memory 48m \
-    --memory-swap 48m "$APP_RUNTIME_IMAGE_REF" \
+    --memory-swap 48m "$app_runtime_image_ref" \
     node -e 'Buffer.alloc(256 * 1024 * 1024).fill(1)'; then
     fail 'disposable memory boundary did not terminate an over-limit process'
   fi
   if as_service podman run --rm --network none --pids-limit 8 \
-    "$APP_RUNTIME_IMAGE_REF" node -e '
+    "$app_runtime_image_ref" node -e '
       const { spawn } = require("node:child_process")
       const children = []
       let denied = false
