@@ -851,7 +851,8 @@ om reglaget inte ändras separat.
 
 **Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
 importknappen i den flytande åtgärdsytan och ladda ner schema och
-importinstruktion. Klistra in `requirement-import.v3`-JSON med ett krav,
+importinstruktion. Klistra in `requirement-import.v3`-JSON med ett krav vars
+kravtext börjar med `=`,
 föreslagen normreferens, behovsreferensfält som ska ignoreras och ett först
 otillåtet destinationsfält. Välj kravområde, korrigera JSON, förhandsgranska,
 expandera raden, granska den föreslagna normreferensen, importera vald rad och
@@ -865,7 +866,9 @@ verifieringsmetod visas när `Verifierbar` är aktiv, löst förslag till
 normreferens visas som löst och behovsreferensfält anger att de inte används
 för kravbiblioteksimport. En vald prioritet visas med P-kod, tankstreck och
 lokaliserat namn. Importen skickar vald rad
-och skapar CSV-kvitto med importerad kravrad. Skärmläsare meddelar dynamiska
+och skapar CSV-kvitto med importerad kravrad. CSV-kvittot har kvar sina
+kolumner och sin ordning, och kravtextens inledande formelmarkör neutraliseras
+med en apostrof. Skärmläsare meddelar dynamiska
 importfel som felmeddelanden
 och icke-brådskande varningar samt CSV-kvittot som status utan att användaren
 flyttar fokus; en senare förhandsgranskning eller import meddelar bara det

@@ -39,6 +39,7 @@ import RequirementPackagePurposeTooltip from '@/components/RequirementPackagePur
 import StatusBadge from '@/components/StatusBadge'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { escapeCsvField } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import {
@@ -508,7 +509,7 @@ function toNormReferencePayload(form: NormReferenceFormData) {
 function csvCell(value: unknown): string {
   if (value == null) return ''
   const text = Array.isArray(value) ? value.join('; ') : String(value)
-  return `"${text.replaceAll('"', '""')}"`
+  return escapeCsvField(text, { delimiter: ',', quoteAll: true })
 }
 
 function receiptCsv(rows: ImportReceiptRow[]): string {
