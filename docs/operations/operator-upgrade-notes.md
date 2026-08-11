@@ -111,6 +111,11 @@ provider-specific error text. During rollout, validate identity-provider
 discovery and signing-key reachability and monitor the new `500` and `503`
 outcomes.
 <!-- operator-upgrade:source pr-978 end -->
+
+<!-- operator-upgrade:source pr-981 start -->
+AI provider failures now use stable error codes and sanitized response shapes. During rollout, verify any clients, alerts, or support runbooks that rely on the previous error payloads or treated malformed model output as a validation response.
+Provider failure diagnostics now use a structured observability channel containing only bounded operational metadata. Confirm that production log routing and dashboards capture this channel without expecting raw provider error text.
+<!-- operator-upgrade:source pr-981 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
