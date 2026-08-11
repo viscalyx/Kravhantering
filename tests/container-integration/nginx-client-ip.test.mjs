@@ -73,14 +73,34 @@ function observedForwarded(headers) {
   return headers.match(/^X-Observed-Forwarded:\s*(\S+)/imu)?.[1]
 }
 
-function expectRedactedAccessLog(containerName, rawForwardedFor) {
+function escapeRegularExpression(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+function expectRedactedAccessLog(
+  containerName,
+  expectedClientAddress,
+  rawForwardedFor,
+) {
   const logs = docker('logs', containerName)
-  expect(logs).toMatch(/GET \/probe HTTP\/(?:1\.1|2\.0)/u)
-  expect(logs).not.toContain('query-secret')
-  expect(logs).not.toContain('referrer-secret')
-  expect(logs).not.toContain(`"${rawForwardedFor}"`)
-  expect(logs).not.toContain('203.0.113.77')
-  expect(logs).not.toContain('203.0.113.88')
+  const probeLines = logs
+    .split(/\r?\n/u)
+    .filter(line => /"GET \/probe HTTP\/(?:1\.1|2\.0)"/u.test(line))
+  expect(probeLines).toHaveLength(1)
+  const accessLogLine = probeLines[0]
+  expect(accessLogLine).toMatch(
+    new RegExp(
+      `^${escapeRegularExpression(expectedClientAddress)} - - \\[[^\\]]+\\] ` +
+        `"GET \\/probe HTTP\\/(?:1\\.1|2\\.0)" 204 0 "curl\\/[^"\\s]+"` +
+        '(?: upstream="[^"\\s]+")?$',
+      'u',
+    ),
+  )
+  expect(accessLogLine).not.toContain('query-secret')
+  expect(accessLogLine).not.toContain('referrer-secret')
+  expect(accessLogLine).not.toContain(`"${rawForwardedFor}"`)
+  expect(accessLogLine).not.toContain('203.0.113.77')
+  expect(accessLogLine).not.toContain('203.0.113.88')
 }
 
 function startLoadBalancedEdge(trustedProxyConfig) {
@@ -212,7 +232,7 @@ describe.runIf(enabled)('nginx trusted client-IP boundary', () => {
     expect(observedClientIp(headers)).toBe(gateway)
     expect(observedForwardedFor(headers)).toBe(gateway)
     expect(observedForwarded(headers)).toBeUndefined()
-    expectRedactedAccessLog(name, forwardedFor)
+    expectRedactedAccessLog(name, gateway, forwardedFor)
   })
 
   it.each([
@@ -248,7 +268,7 @@ describe.runIf(enabled)('nginx trusted client-IP boundary', () => {
     expect(observedClientIp(headers)).toBe(scenario.expected)
     expect(observedForwardedFor(headers)).toBe(scenario.expected)
     expect(observedForwarded(headers)).toBeUndefined()
-    expectRedactedAccessLog(edge.name, scenario.forwardedFor)
+    expectRedactedAccessLog(edge.name, scenario.expected, scenario.forwardedFor)
   })
 
   it('does not promote a malformed forwarded chain to the canonical header', () => {
@@ -263,6 +283,6 @@ describe.runIf(enabled)('nginx trusted client-IP boundary', () => {
     expect(observedClientIp(headers)).toBe(gateway)
     expect(observedForwardedFor(headers)).toBe(gateway)
     expect(observedForwarded(headers)).toBeUndefined()
-    expectRedactedAccessLog(edge.name, '203.0.113.66, not-an-ip')
+    expectRedactedAccessLog(edge.name, gateway, '203.0.113.66, not-an-ip')
   })
 })

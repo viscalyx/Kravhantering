@@ -91,7 +91,11 @@ export function runRuntimeClassifier(args) {
 }
 
 /* v8 ignore start -- CLI orchestration delegates to the tested public functions. */
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  fs.realpathSync(process.argv[1]) ===
+    fs.realpathSync(fileURLToPath(import.meta.url))
+) {
   try {
     runRuntimeClassifier(process.argv.slice(2))
   } catch (error) {

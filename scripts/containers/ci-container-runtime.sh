@@ -126,7 +126,7 @@ bootstrap_toolchain() {
 }
 
 runtime_preflight() {
-  local name
+  local name status
   name="kravhantering-runtime-preflight-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
   cleanup_preflight() {
     "$PODMAN_BIN" rm --force "$name" >/dev/null 2>&1 || true
@@ -134,8 +134,15 @@ runtime_preflight() {
   }
   trap cleanup_preflight EXIT
   cleanup_preflight
-  "$PODMAN_BIN" run --pull=always --name "$name" --log-driver=journald \
-    "$PREFLIGHT_IMAGE" /bin/true
+  if "$PODMAN_BIN" run --pull=always --name "$name" --log-driver=journald \
+    "$PREFLIGHT_IMAGE" /bin/true; then
+    :
+  else
+    status="$?"
+    cleanup_preflight
+    trap - EXIT
+    return "$status"
+  fi
   cleanup_preflight
   trap - EXIT
   printf '%s\n' 'rootless journald preflight: passed'

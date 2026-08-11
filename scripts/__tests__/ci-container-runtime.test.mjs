@@ -15,6 +15,10 @@ const SCRIPT_PATH = path.resolve(
   process.cwd(),
   'scripts/containers/ci-container-runtime.sh',
 )
+const CLASSIFIER_PATH = path.resolve(
+  process.cwd(),
+  'scripts/containers/classify-ci-runtime-evidence.mjs',
+)
 const temporaryDirectories = []
 
 function createToolchainFixture() {
@@ -114,6 +118,9 @@ function createToolchainFixture() {
     dpkgQueryPath,
     env: {
       ...process.env,
+      GH_TOKEN: '',
+      GITHUB_REPOSITORY: '',
+      GITHUB_RUN_ID: '',
       CI_FAKE_CONMON_PATH: conmonPath,
       CI_FAKE_CRUN_PATH: crunPath,
       CI_FAKE_PODMAN_LOG: commandLog,
@@ -215,6 +222,14 @@ describe('CI container runtime', () => {
     expect(commands).toContain(
       'rm --force kravhantering-runtime-preflight-123-2',
     )
+    expect(
+      commands
+        .split('\n')
+        .filter(
+          command =>
+            command === 'rm --force kravhantering-runtime-preflight-123-2',
+        ),
+    ).toHaveLength(2)
     expect(commands).toContain('image rm --force')
   })
 
@@ -413,14 +428,12 @@ describe('CI runtime failure classification', () => {
       path.join(nestedDirectory, 'journal.txt'),
       'Include journald in compilation path',
     )
-    fs.writeFileSync(path.join(evidenceDirectory, 'ordinary.txt'), 'healthy')
+    const symlinkTarget = path.join(root, 'ordinary.txt')
+    fs.writeFileSync(symlinkTarget, 'memory.events\noom_kill 2')
     const oversizedPath = path.join(evidenceDirectory, 'oversized.txt')
-    fs.writeFileSync(oversizedPath, '')
+    fs.writeFileSync(oversizedPath, 'No space left on device')
     fs.truncateSync(oversizedPath, 5_000_001)
-    fs.symlinkSync(
-      path.join(evidenceDirectory, 'ordinary.txt'),
-      path.join(evidenceDirectory, 'ignored-link'),
-    )
+    fs.symlinkSync(symlinkTarget, path.join(evidenceDirectory, 'ignored-link'))
 
     expect(readEvidenceDirectory(path.join(root, 'missing'))).toBe('')
     runRuntimeClassifier([
@@ -432,9 +445,10 @@ describe('CI runtime failure classification', () => {
       summaryPath,
     ])
 
-    expect(fs.readFileSync(outputPath, 'utf8')).toBe(
-      'conmon_missing_journald\n',
-    )
+    const classification = fs.readFileSync(outputPath, 'utf8')
+    expect(classification).toBe('conmon_missing_journald\n')
+    expect(classification).not.toContain('cgroup_oom')
+    expect(classification).not.toContain('disk_exhausted')
     expect(fs.readFileSync(summaryPath, 'utf8')).toBe(
       'Container runtime classification: `conmon_missing_journald`\n',
     )
@@ -464,5 +478,37 @@ describe('CI runtime failure classification', () => {
     expect(() =>
       parseRuntimeClassifierArguments(['--evidence-dir', '/evidence']),
     ).toThrow('at least one --evidence-dir')
+  })
+
+  it('runs the classifier CLI through a symbolic link', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-classifier-link-'))
+    temporaryDirectories.push(root)
+    const evidenceDirectory = path.join(root, 'evidence')
+    const outputPath = path.join(root, 'classification.txt')
+    const symlinkPath = path.join(root, 'classify-runtime-evidence.mjs')
+    fs.mkdirSync(evidenceDirectory)
+    fs.writeFileSync(
+      path.join(evidenceDirectory, 'disk.txt'),
+      'No space left on device',
+    )
+    fs.symlinkSync(CLASSIFIER_PATH, symlinkPath)
+
+    const result = childProcess.spawnSync(
+      process.execPath,
+      [
+        symlinkPath,
+        '--evidence-dir',
+        evidenceDirectory,
+        '--output',
+        outputPath,
+      ],
+      { encoding: 'utf8' },
+    )
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain(
+      'Container runtime classification: `disk_exhausted`',
+    )
+    expect(fs.readFileSync(outputPath, 'utf8')).toBe('disk_exhausted\n')
   })
 })

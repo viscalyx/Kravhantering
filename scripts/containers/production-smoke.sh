@@ -461,13 +461,15 @@ verify_sqlserver_identity_upgrade() {
     "$CONFIG_ROOT/db-job.env"
   service_systemctl restart kravhantering-app-runtime.service
   database_job wait
-  wait_for_url https://kravhantering.test/api/ready
+  wait_for_url https://kravhantering.test/api/ready \
+    'app-runtime restart with transitional SQL Server certificate trust'
 
   as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
     install --topology "$TOPOLOGY"
   service_systemctl daemon-reload
   service_systemctl restart kravhantering-single-node.target
-  wait_for_url https://kravhantering.test/api/ready
+  wait_for_url https://kravhantering.test/api/ready \
+    'full-stack restart after reinstalling transitional SQL Server trust configuration'
 
   sudo sed -i \
     's#^DB_TRUST_SERVER_CERTIFICATE=true#DB_TRUST_SERVER_CERTIFICATE=false#' \
@@ -477,7 +479,8 @@ verify_sqlserver_identity_upgrade() {
     sudo tee -a "$CONFIG_ROOT/db-job.env" >/dev/null
   service_systemctl restart kravhantering-app-runtime.service
   database_job wait
-  wait_for_url https://kravhantering.test/api/ready
+  wait_for_url https://kravhantering.test/api/ready \
+    'app-runtime restart with verified SQL Server TLS restored'
   if sudo grep -Rq '^DB_TRUST_SERVER_CERTIFICATE=true$' \
     "$CONFIG_ROOT/app.env" "$CONFIG_ROOT/db-job.env"; then
     fail 'legacy SQL Server certificate trust override survived the upgrade'
@@ -550,7 +553,8 @@ enable_hardened_keycloak_profile() {
   service_systemctl daemon-reload
   service_systemctl restart kravhantering-single-node.target
   wait_for_url \
-    https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration
+    https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration \
+    'Keycloak discovery after enabling the hardened bundled profile'
 }
 
 verify_hardened_keycloak_ingress() {
@@ -698,10 +702,19 @@ configure_nginx_resolvers() {
 }
 
 wait_for_url() {
-  local url="$1" attempts=0 target_state
-  until curl --fail --silent --show-error \
-    --connect-timeout 2 --max-time 5 \
-    --cacert tmp/container-tls/ca.crt "$url" >/dev/null; do
+  local url="$1" reason="$2" attempts=0 target_state http_code curl_status
+  local probe_result started_at elapsed
+  started_at="$SECONDS"
+  printf '%s\n' \
+    "Lifecycle transition: $reason. Waiting for $url; failed curl probes (connection errors or HTTP 502/503) are expected until startup completes."
+  while true; do
+    if http_code="$(curl --fail --silent --output /dev/null \
+      --write-out '%{http_code}' --connect-timeout 2 --max-time 5 \
+      --cacert tmp/container-tls/ca.crt "$url" 2>/dev/null)"; then
+      break
+    else
+      curl_status="$?"
+    fi
     target_state="$(service_systemctl is-active \
       kravhantering-single-node.target 2>/dev/null || true)"
     case "$target_state" in
@@ -717,9 +730,26 @@ wait_for_url() {
         ;;
     esac
     attempts="$(( attempts + 1 ))"
-    (( attempts < 90 )) || fail "timed out waiting for $url"
+    elapsed="$(( SECONDS - started_at ))"
+    if [[ "$http_code" =~ ^[1-5][0-9][0-9]$ ]]; then
+      probe_result="HTTP $http_code"
+    else
+      case "$curl_status" in
+        7) probe_result='connection unavailable' ;;
+        28) probe_result='connection timed out' ;;
+        *) probe_result="curl exit $curl_status" ;;
+      esac
+    fi
+    if (( attempts == 1 || attempts % 10 == 0 )); then
+      printf '%s\n' \
+        "Still waiting for $reason (${elapsed}s elapsed; last probe: $probe_result; attempt $attempts/90)."
+    fi
+    (( attempts < 90 )) || \
+      fail "timed out waiting for $reason at $url after ${elapsed}s (last probe: $probe_result)"
     sleep 2
   done
+  elapsed="$(( SECONDS - started_at ))"
+  printf '%s\n' "Ready: $reason ($url; HTTP $http_code after ${elapsed}s)."
   [[ "$(service_systemctl is-active \
     kravhantering-single-node.target 2>/dev/null || true)" == active ]] ||
     report_target_failure \
@@ -796,9 +826,11 @@ verify_network_contract() {
     grep -Fqx "$host_gateway_ip" <<<"$public_hostname_ips" || \
     fail 'the public OIDC hostname does not resolve through the host-published nginx route'
   if as_service podman exec kravhantering-nginx \
-    wget -T 2 -qO /dev/null http://1.1.1.1; then
+    wget -T 2 -qO /dev/null http://1.1.1.1 >/dev/null 2>&1; then
     fail 'nginx unexpectedly reached an external address from internal networks'
   fi
+  printf '%s\n' \
+    'Network isolation check passed: nginx cannot reach external address 1.1.1.1.'
 }
 
 verify_containment() {
@@ -871,16 +903,20 @@ verify_containment() {
   as_service podman exec kravhantering-app-runtime \
     sh -c 'touch /tmp/allowed && rm /tmp/allowed'
   if as_service podman exec kravhantering-app-runtime \
-    sh -c 'touch /app/containment-must-fail'; then
+    sh -c 'touch /app/containment-must-fail' >/dev/null 2>&1; then
     fail 'application read-only root probe unexpectedly succeeded'
   fi
+  printf '%s\n' \
+    'Filesystem containment check passed: app-runtime application directory is read-only.'
   for name in kravhantering-keycloak kravhantering-sqlserver; do
     as_service podman exec "$name" sh -c \
       'touch /tmp/containment-allowed && rm /tmp/containment-allowed'
     if as_service podman exec "$name" sh -c \
-      'touch /containment-must-fail'; then
+      'touch /containment-must-fail' >/dev/null 2>&1; then
       fail "$name read-only root probe unexpectedly succeeded"
     fi
+    printf '%s\n' \
+      "Filesystem containment check passed: $name root filesystem is read-only."
   done
   verify_network_contract
   assert_service_property kravhantering-app-runtime.service MemoryMax 4294967296
@@ -1003,7 +1039,8 @@ verify_keycloak_backup_recovery() {
     "$RECOVERY_TEMP_DIR/keycloak-data.tar" kravhantering-keycloak-data
   service_systemctl start kravhantering-single-node.target
   wait_for_url \
-    https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration
+    https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration \
+    'Keycloak discovery after the primary-stack backup snapshot'
 
   as_service podman volume create kravhantering-ci-keycloak-recovery >/dev/null
   as_service podman volume import kravhantering-ci-keycloak-recovery \
@@ -1123,32 +1160,41 @@ up() {
   service_systemctl enable kravhantering-single-node.target
   service_systemctl start kravhantering-single-node.target || \
     report_target_failure 'single-node target failed to start'
-  wait_for_url https://kravhantering.test/api/health
-  wait_for_url https://kravhantering.test/api/ready
+  wait_for_url https://kravhantering.test/api/health \
+    'initial application process health'
+  wait_for_url https://kravhantering.test/api/ready \
+    'initial full-stack readiness'
   verify_containment
   service_systemctl restart kravhantering-app-runtime.service
-  wait_for_url https://kravhantering.test/api/ready
+  wait_for_url https://kravhantering.test/api/ready \
+    'application readiness after app-runtime restart'
   service_systemctl restart kravhantering-sqlserver.service
   database_job wait
-  wait_for_url https://kravhantering.test/api/ready
+  wait_for_url https://kravhantering.test/api/ready \
+    'application readiness after SQL Server restart'
   service_systemctl restart kravhantering-single-node.target
   wait_for_url \
-    https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration
-  wait_for_url https://kravhantering.test/api/ready
+    https://kravhantering.test/auth/realms/kravhantering-production/.well-known/openid-configuration \
+    'Keycloak discovery after full-stack restart'
+  wait_for_url https://kravhantering.test/api/ready \
+    'application readiness after full-stack restart'
   verify_sqlserver_identity_upgrade
   service_systemctl stop kravhantering-single-node.target
   if service_systemctl is-active --quiet kravhantering-single-node.target; then
     fail 'single-node target remained active after stop'
   fi
   service_systemctl start kravhantering-single-node.target
-  wait_for_url https://kravhantering.test/api/ready
+  wait_for_url https://kravhantering.test/api/ready \
+    'application readiness after target stop/start cycle'
   database_job migrate >"$EVIDENCE_DIR/migration-after-reinstall.json"
   database_job migration-status \
     >"$EVIDENCE_DIR/migration-status-after-reinstall.json"
   rotate_sqlserver_certificate
-  wait_for_url https://kravhantering.test/api/ready
+  wait_for_url https://kravhantering.test/api/ready \
+    'application readiness after SQL Server certificate rotation'
   verify_sqlserver_certificate_recovery
-  wait_for_url https://kravhantering.test/api/ready
+  wait_for_url https://kravhantering.test/api/ready \
+    'application readiness after SQL Server certificate recovery'
   verify_backup_recovery
   verify_default_bundled_keycloak_login
   enable_hardened_keycloak_profile

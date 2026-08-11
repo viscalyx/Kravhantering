@@ -34,6 +34,7 @@ type WorkflowDocument = {
 type WorkflowJob = {
   if?: unknown
   name?: unknown
+  permissions?: Record<string, unknown>
   'runs-on'?: unknown
   steps?: WorkflowStep[]
   strategy?: unknown
@@ -770,6 +771,52 @@ describe('GitHub Actions workflow security', () => {
         'scripts/containers/production-smoke.sh verify',
       )
     }
+  })
+
+  it('keeps container runtime diagnostics best-effort with job-scoped permissions', () => {
+    const cases = [
+      {
+        fileName: 'container-pr-smoke.yml',
+        jobId: 'container-smoke',
+        permissions: { actions: 'read', contents: 'read' },
+      },
+      {
+        fileName: 'container-release.yml',
+        jobId: 'trusted-release',
+        permissions: {
+          actions: 'read',
+          attestations: 'write',
+          contents: 'write',
+          'id-token': 'write',
+          packages: 'write',
+        },
+      },
+    ]
+
+    for (const { fileName, jobId, permissions } of cases) {
+      const workflow = readWorkflowYaml(fileName)
+      const job = workflow.jobs?.[jobId]
+      const diagnostics = job?.steps?.find(
+        step => step.name === 'Collect container runtime diagnostics',
+      )
+
+      expect(workflow.permissions).toBeUndefined()
+      expect(job?.permissions).toEqual(permissions)
+      expect(diagnostics).toMatchObject({
+        'continue-on-error': true,
+        if: 'always()',
+        run: 'scripts/containers/ci-container-runtime.sh collect',
+      })
+    }
+
+    const prWorkflow = readWorkflowYaml('container-pr-smoke.yml')
+    expect(prWorkflow.jobs?.['runner-metadata']?.if).toBe(
+      [
+        '${{',
+        "always() && needs.container-smoke.result != 'skipped'",
+        '}}',
+      ].join(' '),
+    )
   })
 
   it('rescans verified SBOMs for supported releases and safely synchronizes findings', () => {

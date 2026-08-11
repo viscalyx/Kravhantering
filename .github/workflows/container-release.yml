@@ -12,19 +12,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
-permissions:
-  actions: read
-  attestations: write
-  contents: write
-  id-token: write
-  packages: write
-
 jobs:
   trusted-release:
     name: Validate and Promote Trusted Container Stack
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    permissions:
+      actions: read
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
 
     env:
       KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.0-1
@@ -341,6 +340,7 @@ jobs:
 
       - name: Collect container runtime diagnostics
         if: always()
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: scripts/containers/ci-container-runtime.sh collect
