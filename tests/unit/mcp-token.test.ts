@@ -514,7 +514,8 @@ describe('verifyMcpBearerToken', () => {
         error.status === 503 &&
         error.message === 'Authentication service unavailable.' &&
         error.reason === 'oidc_discovery_failed' &&
-        !JSON.stringify(error).includes('private.issuer'),
+        !error.message.includes('private.issuer') &&
+        !(error.stack ?? '').includes('private.issuer'),
     )
   })
 
@@ -542,7 +543,42 @@ describe('verifyMcpBearerToken', () => {
         error.status === 503 &&
         error.message === 'Authentication service unavailable.' &&
         error.reason === 'jwks_unavailable' &&
-        !JSON.stringify(error).includes('jwks.internal.example'),
+        !error.message.includes('jwks.internal.example') &&
+        !(error.stack ?? '').includes('jwks.internal.example'),
+    )
+  })
+
+  it('keeps unrelated payload TypeErrors classified as token verification failures', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    const payload = {
+      sub: 'svc-account',
+      employeeHsaId: 'SE5560000001-mcp1',
+    }
+    Object.defineProperty(payload, 'roles', {
+      get: () => {
+        throw new TypeError('unrelated payload extraction failure')
+      },
+    })
+    jwtVerifyMock.mockResolvedValue({ payload })
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer valid.jwt.token' },
+        }),
+      ),
+    ).rejects.toSatisfy(
+      error =>
+        error instanceof McpAuthError &&
+        error.status === 401 &&
+        error.message === 'Invalid Bearer token.' &&
+        error.reason === 'token_verification_failed',
     )
   })
 
@@ -566,7 +602,8 @@ describe('verifyMcpBearerToken', () => {
         error.status === 500 &&
         error.message === 'Authentication failed.' &&
         error.reason === 'auth_configuration_invalid' &&
-        !JSON.stringify(error).includes('private.issuer'),
+        !error.message.includes('private.issuer') &&
+        !(error.stack ?? '').includes('private.issuer'),
     )
   })
 })

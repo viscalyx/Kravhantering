@@ -82,9 +82,6 @@ function parseJwksUrl(jwksUri: string): URL {
   }
   if (url.protocol === 'https:') return url
   if (url.protocol === 'http:' && ALLOW_INSECURE_OIDC_ISSUER) return url
-  if (url.protocol === 'http:') {
-    throw new McpAuthDependencyError('jwks_configuration_invalid')
-  }
   throw new McpAuthDependencyError('jwks_configuration_invalid')
 }
 
@@ -164,7 +161,7 @@ function classifyVerificationFailure(error: unknown): McpAuthFailureReason {
   if (code === 'ERR_JWT_CLAIM_VALIDATION_FAILED' && claim === 'aud') {
     return 'token_audience_invalid'
   }
-  if (code === 'ERR_JWKS_TIMEOUT' || error instanceof TypeError) {
+  if (code === 'ERR_JWKS_TIMEOUT') {
     return 'jwks_unavailable'
   }
   return 'token_verification_failed'
@@ -196,11 +193,20 @@ export async function verifyMcpBearerToken(
     const issuer = cfg.issuerUrl
     const audience = cfg.apiAudience
     const jwks = await getOrCreateJwks(issuer)
-    const { payload } = await jwtVerify(token, jwks, {
-      issuer,
-      audience,
-      clockTolerance: 30,
-    })
+    let verificationResult: Awaited<ReturnType<typeof jwtVerify>>
+    try {
+      verificationResult = await jwtVerify(token, jwks, {
+        issuer,
+        audience,
+        clockTolerance: 30,
+      })
+    } catch (error) {
+      if (error instanceof TypeError) {
+        throw new McpAuthDependencyError('jwks_unavailable')
+      }
+      throw error
+    }
+    const { payload } = verificationResult
     const sub = typeof payload.sub === 'string' ? payload.sub : null
     const roles = parseRolesClaim(payload.roles)
     const payloadRecord = payload as Record<string, unknown>
