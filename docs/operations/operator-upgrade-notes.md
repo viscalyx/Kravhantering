@@ -86,6 +86,20 @@ Single-node installations now validate and apply explicit SQL Server and Keycloa
 Before upgrading a single-node production deployment, provision a SQL Server certificate and private key for the fixed `DNS:sqlserver` service identity. The certificate must chain to the CA trusted by the application and database jobs. The upgraded SQL Server service requires readable certificate material before it can start.
 During rollout, remove any insecure server-certificate trust override, make the issuing CA available to every one-shot database container, and verify database-job and application readiness before returning the service to users. Retain the previous certificate and key as a short-lived rollback pair until the verified connection checks pass.
 <!-- operator-upgrade:source pr-965 end -->
+
+<!-- operator-upgrade:source pr-967 start -->
+Existing self-contained single-node deployments retain the bundled identity
+provider as their default and require no action unless changing identity
+profiles. Operators moving to an external provider must complete the provider
+registration, trust, redirect, logout, claim, and connectivity preparation
+before rollout.
+Before choosing bundled Keycloak for production, provision a separately
+controlled management route with server and client certificate trust, restrict
+its network reachability, establish named administrators with MFA and tested
+recovery, and retire reusable bootstrap access. Validate both the user-facing
+denials and authorized management access, and use the profile-specific backup,
+rollback, recovery, uninstall, and incident procedures during its lifecycle.
+<!-- operator-upgrade:source pr-967 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
