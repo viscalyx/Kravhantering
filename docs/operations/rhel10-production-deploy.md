@@ -939,15 +939,15 @@ Use this when an external load balancer terminates TLS and forwards HTTP to
 the app-node nginx. Configure the trusted proxy CIDRs first by following
 [Access Logging and Client IP Trust](access-log-and-client-ip-trust.md), then
 set the bind address and trusted-proxy file in
-`/etc/kravhantering/release.env`:
+`/etc/kravhantering/release.env`. The loopback bind shown below is valid only
+when the load-balancing proxy runs on the app node. When a remote load balancer
+connects over a private network, replace it with the app node's private address,
+for example `10.10.20.15:8080`, before copying the block:
 
 ```env
 NGINX_HTTP_BIND=127.0.0.1:8080
 NGINX_TRUSTED_PROXY_CONFIG_FILE=/etc/kravhantering/nginx-trusted-proxies.conf
 ```
-
-Change the value when the load balancer connects over a dedicated private
-network interface, for example `10.10.20.15:8080`.
 
 Render the corrected environment and start the full HTTP app node:
 

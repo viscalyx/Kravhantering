@@ -1,6 +1,6 @@
 # HSA-personuppslag som REST-gräns mot integrationsplattform
 
-Status: Antagen 2026-06-14. Uppdaterad 2026-07-02.
+Status: Antagen 2026-06-14. Uppdaterad 2026-08-11.
 
 Kravhantering behåller en stabil appnära gräns för HSA-personuppslag:
 `POST /hsa/person-records/lookup` med REST/JSON och ett kontrakt som
@@ -15,6 +15,19 @@ OAuth2 client credentials eller mTLS och OAuth2 tillsammans. OAuth2 kan använda
 en explicit token-URL eller OIDC discovery via issuer-URL. Hemligheter,
 privata nycklar, SITHS-certifikat och verkliga HSA-uppgifter ska aldrig
 checkas in eller ingå i releaseartefakter.
+
+Destinationskontrollen följer produktionsstackens befintliga ansvarsfördelning.
+Värdens brandvägg, en godkänd utgående proxy och uppströms ACL:er ansvarar för
+tillåtna IP-adresser, CIDR-intervall, DNS-vägar och nätverksdestinationer.
+Applikationen ska inte duplicera den policyn med egna IP- eller CIDR-listor
+eller DNS-pinning. Applikationen ansvarar i stället för det HTTP- och
+OAuth-nära skydd som nätverkslagret inte kan uttrycka: HTTPS krävs i
+produktion, omdirigeringar följs inte, discovery-utfärdaren måste motsvara den
+konfigurerade utfärdaren och en upptäckt token-endpoint måste ha samma origin.
+En token-endpoint på en annan origin måste konfigureras explicit. Klient- och
+bearer-hemligheter får skickas först efter dessa kontroller, och discovery-,
+token- och uppslagssvar ska ha godkänd JSON-innehållstyp och fasta
+bytegränser.
 
 Projektet äger en `hsa-person-lookup-adapter`-container för test, demo och
 miljöer som vill använda Kong framför HSA. Adaptern exponerar REST-kontraktet
