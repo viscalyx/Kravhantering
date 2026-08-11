@@ -306,7 +306,7 @@ describe('CI container runtime', () => {
     )
   })
 
-  it('extracts secret-safe runner image and provisioner metadata after the target job completes', () => {
+  it('extracts secret-safe runner metadata from job logs with escape sequences', () => {
     const fixture = createToolchainFixture()
     const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
     const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
@@ -316,7 +316,11 @@ describe('CI container runtime', () => {
         '#!/usr/bin/env bash',
         'if [[ "$*" == *"/jobs?filter=latest"* ]]; then',
         '  printf \'%s\\n\' \'{"jobs":[{"id":123,"name":"Build and Smoke Test Container Stack","status":"completed"}]}\'',
+        'elif [[ "$*" != *"--allow-escape-sequences"* ]]; then',
+        "  printf '%s\\n' 'the response contains terminal escape sequences' >&2",
+        '  exit 1',
         'else',
+        "  printf '\\033[36;1mcolored job command\\033[0m\\n'",
         "  printf '%s\\n' 'Current runner version: 2.999.0'",
         "  printf '%s\\n' 'Runner Image Provisioner'",
         "  printf '%s\\n' 'Hosted Compute Agent'",

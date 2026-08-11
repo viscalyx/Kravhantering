@@ -200,7 +200,8 @@ collect_github_runner_metadata() {
     return
   fi
   log_file="$(mktemp)"
-  if ! gh api "/repos/$GITHUB_REPOSITORY/actions/jobs/$job_id/logs" \
+  if ! gh api --allow-escape-sequences \
+    "/repos/$GITHUB_REPOSITORY/actions/jobs/$job_id/logs" \
     >"$log_file" 2>/dev/null; then
     rm -f -- "$log_file"
     metadata_unavailable 'GitHub target job log unavailable.'
