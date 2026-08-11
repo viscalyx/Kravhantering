@@ -392,6 +392,18 @@ describe('kravhantering Quadlet helper', () => {
     )
   })
 
+  it('renders single-node without load-balanced trusted proxy configuration', () => {
+    const fixture = createFixture(
+      releaseEnv().replace(/^NGINX_TRUSTED_PROXY_CONFIG_FILE=.*\n/mu, ''),
+    )
+
+    const units = render('single-node', fixture)
+
+    expect(units.map(unit => unit.file)).toContain(
+      'kravhantering-nginx.container',
+    )
+  })
+
   it('renders the default bundled identity provider when no profile is configured', () => {
     const fixture = createFixture(releaseEnv())
     const units = render('single-node', fixture)

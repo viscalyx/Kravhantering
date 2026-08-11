@@ -655,7 +655,7 @@ render_template() {
   content="${content//@@BUNDLE_ROOT@@/$BUNDLE_ROOT}"
 
   while IFS= read -r key; do
-    value="${!key}"
+    value="${!key-}"
     content="${content//@@$key@@/$value}"
   done < <(template_values "$TOPOLOGY")
 
