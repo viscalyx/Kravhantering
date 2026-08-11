@@ -12,6 +12,26 @@ import {
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
+function jsonResponse(data: unknown, init: ResponseInit = {}): Response {
+  const headers = new Headers(init.headers)
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  return new Response(JSON.stringify(data), { ...init, headers })
+}
+
+function streamResponseWithReader(reader: {
+  read: () => Promise<unknown>
+  releaseLock: () => void
+}): Response {
+  const response = new Response(new ReadableStream<Uint8Array>(), {
+    headers: { 'Content-Type': 'text/event-stream' },
+  })
+  if (!response.body) throw new Error('Expected response body')
+  vi.spyOn(response.body, 'getReader').mockReturnValue(reader as never)
+  return response
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubEnv('OPENROUTER_API_KEY', 'sk-or-v1-test-key')
@@ -219,18 +239,16 @@ describe('generateChat (non-streaming)', () => {
 
   it('rejects malformed non-streaming response shapes', async () => {
     mockFetch
-      .mockResolvedValueOnce({ json: async () => null, ok: true })
-      .mockResolvedValueOnce({
-        json: async () => ({ choices: [{ message: { content: 42 } }] }),
-        ok: true,
-      })
-      .mockResolvedValueOnce({
-        json: async () => ({
+      .mockResolvedValueOnce(jsonResponse(null))
+      .mockResolvedValueOnce(
+        jsonResponse({ choices: [{ message: { content: 42 } }] }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
           choices: [{ message: { content: '{}' } }],
           usage: { completion_tokens: 'many' },
         }),
-        ok: true,
-      })
+      )
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       await expect(generateChat({ messages: [] })).rejects.toMatchObject({
@@ -239,8 +257,8 @@ describe('generateChat (non-streaming)', () => {
     }
   })
   it('sends correct request to OpenRouter', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         choices: [
           {
             message: {
@@ -256,8 +274,7 @@ describe('generateChat (non-streaming)', () => {
           prompt_tokens: 50,
         },
       }),
-      ok: true,
-    })
+    )
 
     const result = await generateChat<{ requirements: unknown[] }>({
       messages: [
@@ -295,8 +312,8 @@ describe('generateChat (non-streaming)', () => {
   })
 
   it('reads non-streaming reasoning_details when reasoning is not present', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         choices: [
           {
             message: {
@@ -311,8 +328,7 @@ describe('generateChat (non-streaming)', () => {
           },
         ],
       }),
-      ok: true,
-    })
+    )
 
     const result = await generateChat<{ requirements: unknown[] }>({
       messages: [],
@@ -322,8 +338,8 @@ describe('generateChat (non-streaming)', () => {
   })
 
   it('ignores malformed reasoning details and joins text and summary details', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         choices: [
           {
             message: {
@@ -338,8 +354,7 @@ describe('generateChat (non-streaming)', () => {
           },
         ],
       }),
-      ok: true,
-    })
+    )
 
     const result = await generateChat<{ requirements: unknown[] }>({
       messages: [{ content: 'Generate', role: 'user' }],
@@ -428,8 +443,8 @@ describe('generateChat (non-streaming)', () => {
   })
 
   it('does not duplicate non-streaming reasoning when reasoning_details is also present', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         choices: [
           {
             message: {
@@ -445,8 +460,7 @@ describe('generateChat (non-streaming)', () => {
           },
         ],
       }),
-      ok: true,
-    })
+    )
 
     const result = await generateChat<{ requirements: unknown[] }>({
       messages: [],
@@ -456,12 +470,11 @@ describe('generateChat (non-streaming)', () => {
   })
 
   it('uses custom model when provided', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         choices: [{ message: { content: '{"requirements":[]}' } }],
       }),
-      ok: true,
-    })
+    )
 
     await generateChat({ messages: [], model: 'google/gemini-2.5-flash' })
 
@@ -488,12 +501,11 @@ describe('generateChat (non-streaming)', () => {
   })
 
   it('sends json_object when known model capabilities do not include structured_outputs', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         choices: [{ message: { content: '{"requirements":[]}' } }],
       }),
-      ok: true,
-    })
+    )
 
     await generateChat({
       format: {
@@ -511,12 +523,11 @@ describe('generateChat (non-streaming)', () => {
   })
 
   it('sends json_schema when model supports structured_outputs', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         choices: [{ message: { content: '{"requirements":[]}' } }],
       }),
-      ok: true,
-    })
+    )
 
     await generateChat({
       format: {
@@ -534,12 +545,11 @@ describe('generateChat (non-streaming)', () => {
   })
 
   it('sends json_object when model supports response_format but not structured_outputs', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         choices: [{ message: { content: '{"requirements":[]}' } }],
       }),
-      ok: true,
-    })
+    )
 
     await generateChat({
       format: {
@@ -557,11 +567,7 @@ describe('generateChat (non-streaming)', () => {
   })
 
   it('throws on non-OK response', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      text: async () => 'Internal error',
-    })
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 500 }))
 
     await expect(generateChat({ messages: [] })).rejects.toMatchObject({
       code: 'ai_provider_unavailable',
@@ -569,12 +575,11 @@ describe('generateChat (non-streaming)', () => {
   })
 
   it('throws on invalid JSON content', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         choices: [{ message: { content: 'not json' } }],
       }),
-      ok: true,
-    })
+    )
 
     await expect(generateChat({ messages: [] })).rejects.toMatchObject({
       code: 'ai_provider_invalid_response',
@@ -697,32 +702,16 @@ describe('generateChatStream', () => {
 
   it('rejects malformed SSE JSON and payload shapes', async () => {
     mockFetch
-      .mockResolvedValueOnce({
-        body: {
-          getReader: () => ({
-            read: vi.fn().mockResolvedValueOnce({
-              done: false,
-              value: new TextEncoder().encode('data: {malformed\n\n'),
-            }),
-            releaseLock: vi.fn(),
-          }),
-        },
-        ok: true,
-        status: 200,
-      })
-      .mockResolvedValueOnce({
-        body: {
-          getReader: () => ({
-            read: vi.fn().mockResolvedValueOnce({
-              done: false,
-              value: new TextEncoder().encode('data: null\n\n'),
-            }),
-            releaseLock: vi.fn(),
-          }),
-        },
-        ok: true,
-        status: 200,
-      })
+      .mockResolvedValueOnce(
+        new Response('data: {malformed\n\n', {
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response('data: null\n\n', {
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+      )
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const events = []
@@ -779,10 +768,7 @@ describe('generateChatStream', () => {
       releaseLock: vi.fn(),
     }
 
-    mockFetch.mockResolvedValueOnce({
-      body: { getReader: () => mockReader },
-      ok: true,
-    })
+    mockFetch.mockResolvedValueOnce(streamResponseWithReader(mockReader))
 
     const events = []
     for await (const event of generateChatStream({ messages: [] })) {
@@ -815,11 +801,7 @@ describe('generateChatStream', () => {
   })
 
   it('yields error on non-OK response', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 503,
-      text: async () => 'Service unavailable with sk-or-v1-secret',
-    })
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 503 }))
 
     const events = []
     for await (const event of generateChatStream({ messages: [] })) {
@@ -855,10 +837,7 @@ describe('generateChatStream', () => {
       releaseLock: vi.fn(),
     }
 
-    mockFetch.mockResolvedValueOnce({
-      body: { getReader: () => mockReader },
-      ok: true,
-    })
+    mockFetch.mockResolvedValueOnce(streamResponseWithReader(mockReader))
 
     const events = []
     for await (const event of generateChatStream({ messages: [] })) {
@@ -890,10 +869,7 @@ describe('generateChatStream', () => {
       releaseLock: vi.fn(),
     }
 
-    mockFetch.mockResolvedValueOnce({
-      body: { getReader: () => mockReader },
-      ok: true,
-    })
+    mockFetch.mockResolvedValueOnce(streamResponseWithReader(mockReader))
 
     const events = []
     for await (const event of generateChatStream({ messages: [] })) {
@@ -946,10 +922,7 @@ describe('generateChatStream', () => {
       releaseLock: vi.fn(),
     }
 
-    mockFetch.mockResolvedValueOnce({
-      body: { getReader: () => mockReader },
-      ok: true,
-    })
+    mockFetch.mockResolvedValueOnce(streamResponseWithReader(mockReader))
 
     const events = []
     for await (const event of generateChatStream({ messages: [] })) {
@@ -991,10 +964,7 @@ describe('generateChatStream', () => {
       releaseLock: vi.fn(),
     }
 
-    mockFetch.mockResolvedValueOnce({
-      body: { getReader: () => mockReader },
-      ok: true,
-    })
+    mockFetch.mockResolvedValueOnce(streamResponseWithReader(mockReader))
 
     const events = []
     for await (const event of generateChatStream({ messages: [] })) {
@@ -1038,10 +1008,7 @@ describe('generateChatStream', () => {
       result: ReadableStreamReadResult<Uint8Array>,
     ) => readResolves[index]?.(result)
 
-    mockFetch.mockResolvedValueOnce({
-      body: { getReader: () => mockReader },
-      ok: true,
-    })
+    mockFetch.mockResolvedValueOnce(streamResponseWithReader(mockReader))
 
     const eventsPromise = (async () => {
       const events = []
@@ -1104,10 +1071,7 @@ describe('generateChatStream', () => {
 
     mockFetch.mockImplementationOnce(async (_url, init) => {
       requestSignal = (init as { signal?: AbortSignal }).signal
-      return {
-        body: { getReader: () => mockReader },
-        ok: true,
-      }
+      return streamResponseWithReader(mockReader)
     })
 
     const eventsPromise = (async () => {
@@ -1326,13 +1290,11 @@ describe('listModels', () => {
       .mockRejectedValueOnce(
         new Error('Ada ada@example.test password=network-secret'),
       )
-      .mockResolvedValueOnce({
-        json: async () => {
-          throw new Error('Ada ada@example.test password=parse-secret')
-        },
-        ok: true,
-        status: 200,
-      })
+      .mockResolvedValueOnce(
+        new Response('{"data":', {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
 
     await expect(listModels()).rejects.toMatchObject({
       code: 'ai_provider_unavailable',
@@ -1357,8 +1319,8 @@ describe('listModels', () => {
   })
 
   it('returns models from OpenRouter', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         data: [
           {
             context_length: 200000,
@@ -1380,8 +1342,7 @@ describe('listModels', () => {
           },
         ],
       }),
-      ok: true,
-    })
+    )
 
     const models = await listModels()
     expect(models).toHaveLength(2)
@@ -1393,12 +1354,11 @@ describe('listModels', () => {
   })
 
   it('maps provider model defaults when optional catalog fields are absent', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         data: [{ id: 'custom/model', name: 'Minimal model' }],
       }),
-      ok: true,
-    })
+    )
 
     await expect(listModels()).resolves.toEqual([
       {
@@ -1414,17 +1374,14 @@ describe('listModels', () => {
   })
 
   it('rejects a catalog response when the provider omits data', async () => {
-    mockFetch.mockResolvedValueOnce({ json: async () => ({}), ok: true })
+    mockFetch.mockResolvedValueOnce(jsonResponse({}))
     await expect(listModels()).rejects.toMatchObject({
       code: 'ai_provider_invalid_response',
     })
   })
 
   it('passes supported_parameters filter', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({ data: [] }),
-      ok: true,
-    })
+    mockFetch.mockResolvedValueOnce(jsonResponse({ data: [] }))
 
     await listModels(['structured_outputs'])
 
@@ -1437,10 +1394,9 @@ describe('listModels', () => {
   })
 
   it('rejects malformed model entries', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({ data: [{ id: 42, name: 'Invalid model' }] }),
-      ok: true,
-    })
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ data: [{ id: 42, name: 'Invalid model' }] }),
+    )
 
     await expect(listModels()).rejects.toMatchObject({
       code: 'ai_provider_invalid_response',
@@ -1448,7 +1404,7 @@ describe('listModels', () => {
   })
 
   it('throws on non-OK response', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 500 }))
     await expect(listModels()).rejects.toMatchObject({
       code: 'ai_provider_unavailable',
     })
@@ -1458,35 +1414,32 @@ describe('listModels', () => {
 describe('getKeyInfo', () => {
   it('keeps optional credit lookup best-effort under the shared error contract', async () => {
     vi.stubEnv('OPENROUTER_MGMT_API_KEY', 'sk-or-mgmt-test-key')
-    mockFetch
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
+    mockFetch.mockImplementation(async input => {
+      const url = String(input)
+      if (url.includes('/credits')) {
+        return jsonResponse(
+          {
             error: {
               message:
                 'Echo Ada Lovelace ada@example.test password=credit-secret',
             },
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 503,
           },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            data: {
-              is_free_tier: false,
-              limit: 50,
-              limit_remaining: 40,
-              usage: 10,
-              usage_daily: 1,
-            },
-          }),
-          { headers: { 'Content-Type': 'application/json' } },
-        ),
-      )
+          { status: 503 },
+        )
+      }
+      if (url.includes('/auth/key')) {
+        return jsonResponse({
+          data: {
+            is_free_tier: false,
+            limit: 50,
+            limit_remaining: 40,
+            usage: 10,
+            usage_daily: 1,
+          },
+        })
+      }
+      throw new Error(`Unexpected OpenRouter URL: ${url}`)
+    })
 
     await expect(
       getKeyInfo({
@@ -1498,15 +1451,15 @@ describe('getKeyInfo', () => {
 
   it('returns credit info with org credits when mgmt key is set', async () => {
     vi.stubEnv('OPENROUTER_MGMT_API_KEY', 'sk-or-mgmt-test-key')
-    mockFetch
-      .mockResolvedValueOnce({
-        json: async () => ({
+    mockFetch.mockImplementation(async input => {
+      const url = String(input)
+      if (url.includes('/credits')) {
+        return jsonResponse({
           data: { total_credits: 10, total_usage: 0.13 },
-        }),
-        ok: true,
-      })
-      .mockResolvedValueOnce({
-        json: async () => ({
+        })
+      }
+      if (url.includes('/auth/key')) {
+        return jsonResponse({
           data: {
             is_free_tier: false,
             limit: 50,
@@ -1514,9 +1467,10 @@ describe('getKeyInfo', () => {
             usage: 12.5,
             usage_daily: 2.3,
           },
-        }),
-        ok: true,
-      })
+        })
+      }
+      throw new Error(`Unexpected OpenRouter URL: ${url}`)
+    })
 
     const info = await getKeyInfo()
     expect(info.isFreeTier).toBe(false)
@@ -1539,9 +1493,9 @@ describe('getKeyInfo', () => {
   it('returns null totalCredits when mgmt key credits endpoint fails', async () => {
     vi.stubEnv('OPENROUTER_MGMT_API_KEY', 'sk-or-mgmt-test-key')
     mockFetch
-      .mockResolvedValueOnce({ ok: false, status: 403 })
-      .mockResolvedValueOnce({
-        json: async () => ({
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(
+        jsonResponse({
           data: {
             is_free_tier: true,
             limit: null,
@@ -1550,8 +1504,7 @@ describe('getKeyInfo', () => {
             usage_daily: 0,
           },
         }),
-        ok: true,
-      })
+      )
 
     const info = await getKeyInfo()
     expect(info.isFreeTier).toBe(true)
@@ -1562,11 +1515,8 @@ describe('getKeyInfo', () => {
   it('rejects a missing primary key envelope and ignores missing optional credit data', async () => {
     vi.stubEnv('OPENROUTER_MGMT_API_KEY', 'sk-or-mgmt-test-key')
     mockFetch
-      .mockResolvedValueOnce({
-        json: async () => ({ data: { total_usage: 2 } }),
-        ok: true,
-      })
-      .mockResolvedValueOnce({ json: async () => ({}), ok: true })
+      .mockResolvedValueOnce(jsonResponse({ data: { total_usage: 2 } }))
+      .mockResolvedValueOnce(jsonResponse({}))
 
     await expect(getKeyInfo()).rejects.toMatchObject({
       code: 'ai_provider_invalid_response',
@@ -1576,19 +1526,16 @@ describe('getKeyInfo', () => {
   it('rejects a malformed primary key payload and ignores malformed optional credits', async () => {
     vi.stubEnv('OPENROUTER_MGMT_API_KEY', 'sk-or-mgmt-test-key')
     mockFetch
-      .mockResolvedValueOnce({ json: async () => ({ data: [] }), ok: true })
-      .mockResolvedValueOnce({ json: async () => ({ data: [] }), ok: true })
+      .mockResolvedValueOnce(jsonResponse({ data: [] }))
+      .mockResolvedValueOnce(jsonResponse({ data: [] }))
 
     await expect(getKeyInfo()).rejects.toMatchObject({
       code: 'ai_provider_invalid_response',
     })
 
     mockFetch
-      .mockResolvedValueOnce({ json: async () => ({ data: [] }), ok: true })
-      .mockResolvedValueOnce({
-        json: async () => ({ data: { usage: 1 } }),
-        ok: true,
-      })
+      .mockResolvedValueOnce(jsonResponse({ data: [] }))
+      .mockResolvedValueOnce(jsonResponse({ data: { usage: 1 } }))
 
     await expect(getKeyInfo()).resolves.toMatchObject({
       totalCredits: null,
@@ -1597,8 +1544,8 @@ describe('getKeyInfo', () => {
   })
 
   it('skips credits fetch and flags managementKeyMissing when mgmt key is not set', async () => {
-    mockFetch.mockResolvedValueOnce({
-      json: async () => ({
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
         data: {
           is_free_tier: false,
           limit: 10,
@@ -1607,8 +1554,7 @@ describe('getKeyInfo', () => {
           usage_daily: 0.5,
         },
       }),
-      ok: true,
-    })
+    )
 
     const info = await getKeyInfo()
     expect(info.managementKeyMissing).toBe(true)
@@ -1619,7 +1565,7 @@ describe('getKeyInfo', () => {
   })
 
   it('throws on non-OK key response', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false, status: 401 })
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 401 }))
     await expect(getKeyInfo()).rejects.toMatchObject({
       code: 'ai_provider_configuration_error',
     })

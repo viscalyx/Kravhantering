@@ -84,9 +84,7 @@ export async function listOpenRouterModelCatalog(
     OPENROUTER_STRUCTURED_OUTPUTS_PARAMETER,
   ])
   const loadModels = (parameters?: string[]): Promise<OpenRouterModel[]> =>
-    options.requestContext
-      ? listModels(parameters, options.requestContext)
-      : listModels(parameters)
+    listModels(parameters, options.requestContext)
 
   const [models, structuredModels] = await Promise.all([
     loadModels(providerParameters),

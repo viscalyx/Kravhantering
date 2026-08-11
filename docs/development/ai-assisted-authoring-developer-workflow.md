@@ -72,6 +72,8 @@ All OpenRouter operations use the same bounded provider-response readers and
 stable failure classification. JSON responses return `{ code, error }` and SSE
 error events return `{ code, message }`. Request and correlation identifiers
 remain in response headers rather than error payloads.
+An upstream rate limit detected before streaming begins returns HTTP `429`;
+other provider failures return HTTP `503`.
 
 Provider failures use these codes:
 

@@ -191,30 +191,67 @@ export const POST = secureMutationRoute({
     })
     if (inputGuardResponse) return inputGuardResponse
 
+    let modelCapabilities: Awaited<
+      ReturnType<typeof resolveOpenRouterModelCapabilities>
+    >
     try {
-      const modelCapabilities = await resolveOpenRouterModelCapabilities(
-        body.model,
-        {
-          correlationId: context.correlationId,
-          requestId: context.requestId,
-        },
+      modelCapabilities = await resolveOpenRouterModelCapabilities(body.model, {
+        correlationId: context.correlationId,
+        requestId: context.requestId,
+      })
+    } catch (error) {
+      const providerError = normalizeAiProviderError(error, {
+        correlationId: context.correlationId,
+        operation: 'models.list',
+        requestId: context.requestId,
+      })
+      recordRepairEvent('failure', 503)
+      return applyResponseCorrelationHeaders(
+        Response.json(aiProviderErrorPayload(providerError), { status: 503 }),
+        context,
       )
-      const importInstruction = await createRequirementsRuntime(
+    }
+
+    let importInstruction: string
+    try {
+      importInstruction = await createRequirementsRuntime(
         db,
       ).service.buildImportInstruction(
         body.locale,
         requirementImportDestination(body),
       )
-      const systemPrompt = buildRequirementImportSystemPrompt(
-        importInstruction,
-        body.locale,
+    } catch (error) {
+      logSanitizedError(
+        'AI requirement import repair instruction loading failed',
+        error,
       )
-      const repairPrompt = buildRequirementImportRepairPrompt({
-        brokenJson: body.rawJson,
-        errors: body.errors,
-        locale: body.locale,
-      })
-      const result = await generateChat<ImportRequirementsPayload>({
+      recordRepairEvent('failure', 503)
+      return applyResponseCorrelationHeaders(
+        Response.json(
+          {
+            code: 'ai_provider_unavailable',
+            error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+          },
+          { status: 503 },
+        ),
+        context,
+      )
+    }
+
+    const systemPrompt = buildRequirementImportSystemPrompt(
+      importInstruction,
+      body.locale,
+    )
+    const repairPrompt = buildRequirementImportRepairPrompt({
+      brokenJson: body.rawJson,
+      errors: body.errors,
+      locale: body.locale,
+    })
+    let result: Awaited<
+      ReturnType<typeof generateChat<ImportRequirementsPayload>>
+    >
+    try {
+      result = await generateChat<ImportRequirementsPayload>({
         format: buildRequirementImportResponseFormatSchema(body.locale),
         messages: [
           { content: systemPrompt, role: 'system' },
@@ -231,87 +268,9 @@ export const POST = secureMutationRoute({
         signal: request.signal,
         supportedParameters: modelCapabilities.supportedParameters,
       })
-      let outputSafetyScreening: Awaited<
-        ReturnType<typeof screenAiOutputDetailed>
-      >
-      try {
-        outputSafetyScreening = await screenAiOutputDetailed(db, [
-          { label: 'rawContent', text: JSON.stringify(result.content) },
-          { label: 'thinking', text: result.thinking },
-        ])
-      } catch (error) {
-        recordSafetyFilterFailure(error)
-        recordRepairEvent('failure', 503, result.stats)
-        return applyResponseCorrelationHeaders(
-          Response.json(
-            {
-              code: 'ai_provider_unavailable',
-              error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-            },
-            { status: 503 },
-          ),
-          context,
-        )
-      }
-      if (!outputSafetyScreening.decision.allowed) {
-        await recordAiSafetyBlock({
-          blockedStep: 'repaired_model_output',
-          context,
-          db,
-          direction: 'output',
-          event: 'ai.output_safety.blocked',
-          model: modelCapabilities.id,
-          operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
-          provider: modelCapabilities.provider,
-          request,
-          screening: outputSafetyScreening,
-        })
-        recordRepairEvent('failure', 422, result.stats)
-        return applyResponseCorrelationHeaders(
-          Response.json(
-            {
-              error: formatAiSafetyBlockedMessage(
-                body.locale,
-                'outputSafetyBlocked',
-                outputSafetyScreening.decision,
-              ),
-            },
-            { status: 422 },
-          ),
-          context,
-        )
-      }
-      const validation = requirementsImportPayloadSchema.safeParse(
-        result.content,
-      )
-      if (!validation.success) {
-        const providerError = normalizeAiProviderError(null, {
-          code: 'ai_provider_invalid_response',
-          correlationId: context.correlationId,
-          modelProvider: modelCapabilities.provider,
-          operation: 'chat.completions',
-          requestId: context.requestId,
-        })
-        recordRepairEvent('failure', 503, result.stats)
-        return applyResponseCorrelationHeaders(
-          Response.json(aiProviderErrorPayload(providerError), { status: 503 }),
-          context,
-        )
-      }
-
-      recordRepairEvent('success', 200, result.stats)
-      return applyResponseCorrelationHeaders(
-        Response.json({
-          model: modelCapabilities.id,
-          payload: validation.data,
-          rawContent: JSON.stringify(validation.data),
-          stats: result.stats,
-          thinking: result.thinking,
-        }),
-        context,
-      )
     } catch (error) {
       if (isAiProviderCallerCancelledError(error)) {
+        recordRepairEvent('failure', 499)
         return applyResponseCorrelationHeaders(
           new Response(null, { status: 499 }),
           context,
@@ -328,5 +287,83 @@ export const POST = secureMutationRoute({
         context,
       )
     }
+
+    let outputSafetyScreening: Awaited<
+      ReturnType<typeof screenAiOutputDetailed>
+    >
+    try {
+      outputSafetyScreening = await screenAiOutputDetailed(db, [
+        { label: 'rawContent', text: JSON.stringify(result.content) },
+        { label: 'thinking', text: result.thinking },
+      ])
+    } catch (error) {
+      recordSafetyFilterFailure(error)
+      recordRepairEvent('failure', 503, result.stats)
+      return applyResponseCorrelationHeaders(
+        Response.json(
+          {
+            code: 'ai_provider_unavailable',
+            error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+          },
+          { status: 503 },
+        ),
+        context,
+      )
+    }
+    if (!outputSafetyScreening.decision.allowed) {
+      await recordAiSafetyBlock({
+        blockedStep: 'repaired_model_output',
+        context,
+        db,
+        direction: 'output',
+        event: 'ai.output_safety.blocked',
+        model: modelCapabilities.id,
+        operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
+        provider: modelCapabilities.provider,
+        request,
+        screening: outputSafetyScreening,
+      })
+      recordRepairEvent('failure', 422, result.stats)
+      return applyResponseCorrelationHeaders(
+        Response.json(
+          {
+            error: formatAiSafetyBlockedMessage(
+              body.locale,
+              'outputSafetyBlocked',
+              outputSafetyScreening.decision,
+            ),
+          },
+          { status: 422 },
+        ),
+        context,
+      )
+    }
+    const validation = requirementsImportPayloadSchema.safeParse(result.content)
+    if (!validation.success) {
+      const providerError = normalizeAiProviderError(null, {
+        code: 'ai_provider_invalid_response',
+        correlationId: context.correlationId,
+        modelProvider: modelCapabilities.provider,
+        operation: 'chat.completions',
+        requestId: context.requestId,
+      })
+      recordRepairEvent('failure', 503, result.stats)
+      return applyResponseCorrelationHeaders(
+        Response.json(aiProviderErrorPayload(providerError), { status: 503 }),
+        context,
+      )
+    }
+
+    recordRepairEvent('success', 200, result.stats)
+    return applyResponseCorrelationHeaders(
+      Response.json({
+        model: modelCapabilities.id,
+        payload: validation.data,
+        rawContent: JSON.stringify(validation.data),
+        stats: result.stats,
+        thinking: result.thinking,
+      }),
+      context,
+    )
   },
 })

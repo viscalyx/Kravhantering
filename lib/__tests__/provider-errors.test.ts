@@ -57,6 +57,8 @@ describe('AI provider errors', () => {
           provider_code: 'safe_code',
         }),
       )
+      recordAiProviderError(error)
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
     } finally {
       consoleErrorSpy.mockRestore()
     }

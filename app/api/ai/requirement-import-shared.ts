@@ -369,15 +369,16 @@ export function createUnavailableAiStreamResponse(
 export function createAiErrorStreamResponse(
   context: RequestCorrelationIds,
   error: { code: AiProviderErrorCode; message: string },
-  recordFailure: () => void,
+  recordFailure: (statusCode: number) => void,
 ) {
+  const statusCode = error.code === 'ai_provider_rate_limited' ? 429 : 503
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder()
       controller.enqueue(
         encoder.encode(`event: error\ndata: ${JSON.stringify(error)}\n\n`),
       )
-      recordFailure()
+      recordFailure(statusCode)
       controller.close()
     },
   })
@@ -388,7 +389,7 @@ export function createAiErrorStreamResponse(
         Connection: 'keep-alive',
         'Content-Type': 'text/event-stream',
       },
-      status: 503,
+      status: statusCode,
     }),
     context,
   )

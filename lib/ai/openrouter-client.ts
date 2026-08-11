@@ -3,9 +3,9 @@ import {
   AiProviderCallerCancelledError,
   type AiProviderError,
   type AiProviderErrorCode,
+  type AiProviderErrorMetadata,
   type AiProviderOperation,
   aiProviderStreamError,
-  classifyAiProviderStatus,
   createAiProviderError,
   getAiProviderContentTypeCategory,
   getSafeUpstreamRequestId,
@@ -139,10 +139,6 @@ export function getDefaultModel(): string {
 }
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
-
-function isRuntimeResponse(response: Response): boolean {
-  return response instanceof Response
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -323,17 +319,10 @@ export async function generateChat<T>(
 
   try {
     if (!response.ok) {
-      let error = isRuntimeResponse(response)
-        ? await readAiProviderErrorResponse(response, {
-            ...diagnosticContext,
-            operation,
-          })
-        : createAiProviderError({
-            ...diagnosticContext,
-            code: classifyAiProviderStatus(response.status),
-            operation,
-            status: response.status,
-          })
+      let error = await readAiProviderErrorResponse(response, {
+        ...diagnosticContext,
+        operation,
+      })
       if (callerAbortTriggered) throw new AiProviderCallerCancelledError()
       if (timeoutTriggered) {
         error = createAiProviderError({
@@ -365,12 +354,10 @@ export async function generateChat<T>(
       }
     }
     try {
-      data = isRuntimeResponse(response)
-        ? await readAiProviderJson<typeof data>(response, {
-            ...diagnosticContext,
-            operation,
-          })
-        : ((await response.json()) as typeof data)
+      data = await readAiProviderJson<typeof data>(response, {
+        ...diagnosticContext,
+        operation,
+      })
     } catch (error) {
       if (callerAbortTriggered) throw new AiProviderCallerCancelledError()
       const providerError = isAiProviderError(error)
@@ -591,17 +578,10 @@ export async function* generateChatStream(
     let error: AiProviderError
     try {
       startIdleTimeout()
-      error = isRuntimeResponse(response)
-        ? await readAiProviderErrorResponse(response, {
-            ...diagnosticContext,
-            operation,
-          })
-        : createAiProviderError({
-            ...diagnosticContext,
-            code: classifyAiProviderStatus(response.status),
-            operation,
-            status: response.status,
-          })
+      error = await readAiProviderErrorResponse(response, {
+        ...diagnosticContext,
+        operation,
+      })
     } finally {
       clearIdleTimeout()
       options.signal?.removeEventListener('abort', onCallerAbort)
@@ -620,40 +600,39 @@ export async function* generateChatStream(
     return
   }
 
-  if (
-    isRuntimeResponse(response) &&
-    getAiProviderContentTypeCategory(response.headers.get('content-type')) !==
-      'event-stream'
-  ) {
-    options.signal?.removeEventListener('abort', onCallerAbort)
+  const streamFailure = (
+    code: AiProviderErrorCode,
+    metadata?: AiProviderErrorMetadata,
+  ): StreamEvent => {
     const error = createAiProviderError({
       ...diagnosticContext,
-      code: 'ai_provider_invalid_response',
-      metadata: {
-        contentTypeCategory: getAiProviderContentTypeCategory(
-          response.headers.get('content-type'),
-        ),
-        upstreamRequestId: getSafeUpstreamRequestId(response.headers),
-      },
+      code,
+      metadata,
       operation,
       status: response.status,
     })
     recordAiProviderError(error)
-    yield aiProviderStreamError(error)
+    return aiProviderStreamError(error)
+  }
+
+  if (
+    getAiProviderContentTypeCategory(response.headers.get('content-type')) !==
+    'event-stream'
+  ) {
+    options.signal?.removeEventListener('abort', onCallerAbort)
+    yield streamFailure('ai_provider_invalid_response', {
+      contentTypeCategory: getAiProviderContentTypeCategory(
+        response.headers.get('content-type'),
+      ),
+      upstreamRequestId: getSafeUpstreamRequestId(response.headers),
+    })
     return
   }
 
   if (!response.body) {
     clearIdleTimeout()
     options.signal?.removeEventListener('abort', onCallerAbort)
-    const error = createAiProviderError({
-      ...diagnosticContext,
-      code: 'ai_provider_invalid_response',
-      operation,
-      status: response.status,
-    })
-    recordAiProviderError(error)
-    yield aiProviderStreamError(error)
+    yield streamFailure('ai_provider_invalid_response')
     return
   }
 
@@ -681,16 +660,11 @@ export async function* generateChatStream(
         readResult = await reader.read()
       } catch {
         if (callerAbortTriggered) return
-        const error = createAiProviderError({
-          ...diagnosticContext,
-          code: idleTimeoutTriggered
+        yield streamFailure(
+          idleTimeoutTriggered
             ? 'ai_provider_timeout'
             : 'ai_provider_response_read_failed',
-          operation,
-          status: response.status,
-        })
-        recordAiProviderError(error)
-        yield aiProviderStreamError(error)
+        )
         return
       } finally {
         clearIdleTimeout()
@@ -704,37 +678,21 @@ export async function* generateChatStream(
       try {
         buffer += decoder.decode(value, { stream: true })
       } catch {
-        const error = createAiProviderError({
-          ...diagnosticContext,
-          code: 'ai_provider_invalid_response',
-          metadata: { contentTypeCategory: 'event-stream' },
-          operation,
-          status: response.status,
+        yield streamFailure('ai_provider_invalid_response', {
+          contentTypeCategory: 'event-stream',
         })
-        recordAiProviderError(error)
-        yield aiProviderStreamError(error)
         return
       }
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
-      if (
-        encoder.encode(buffer).byteLength >
-        AI_PROVIDER_RESPONSE_LIMITS.sseFrameBytes
-      ) {
+      const residualBufferBytes = encoder.encode(buffer).byteLength
+      if (residualBufferBytes > AI_PROVIDER_RESPONSE_LIMITS.sseFrameBytes) {
         await reader.cancel().catch(() => undefined)
-        const error = createAiProviderError({
-          ...diagnosticContext,
-          code: 'ai_provider_response_too_large',
-          metadata: {
-            contentTypeCategory: 'event-stream',
-            observedBytes: encoder.encode(buffer).byteLength,
-            truncated: true,
-          },
-          operation,
-          status: response.status,
+        yield streamFailure('ai_provider_response_too_large', {
+          contentTypeCategory: 'event-stream',
+          observedBytes: residualBufferBytes,
+          truncated: true,
         })
-        recordAiProviderError(error)
-        yield aiProviderStreamError(error)
         return
       }
 
@@ -747,19 +705,11 @@ export async function* generateChatStream(
         currentFrameBytes += encoder.encode(line).byteLength + 1
         if (currentFrameBytes > AI_PROVIDER_RESPONSE_LIMITS.sseFrameBytes) {
           await reader.cancel().catch(() => undefined)
-          const error = createAiProviderError({
-            ...diagnosticContext,
-            code: 'ai_provider_response_too_large',
-            metadata: {
-              contentTypeCategory: 'event-stream',
-              observedBytes: currentFrameBytes,
-              truncated: true,
-            },
-            operation,
-            status: response.status,
+          yield streamFailure('ai_provider_response_too_large', {
+            contentTypeCategory: 'event-stream',
+            observedBytes: currentFrameBytes,
+            truncated: true,
           })
-          recordAiProviderError(error)
-          yield aiProviderStreamError(error)
           return
         }
         if (trimmed.startsWith(':')) continue
@@ -797,15 +747,9 @@ export async function* generateChatStream(
         try {
           chunk = JSON.parse(jsonStr) as typeof chunk
         } catch {
-          const error = createAiProviderError({
-            ...diagnosticContext,
-            code: 'ai_provider_invalid_response',
-            metadata: { contentTypeCategory: 'event-stream' },
-            operation,
-            status: response.status,
+          yield streamFailure('ai_provider_invalid_response', {
+            contentTypeCategory: 'event-stream',
           })
-          recordAiProviderError(error)
-          yield aiProviderStreamError(error)
           return
         }
 
@@ -814,15 +758,9 @@ export async function* generateChatStream(
           (chunk.choices !== undefined && !Array.isArray(chunk.choices)) ||
           (chunk.usage !== undefined && !isRecord(chunk.usage))
         ) {
-          const error = createAiProviderError({
-            ...diagnosticContext,
-            code: 'ai_provider_invalid_response',
-            metadata: { contentTypeCategory: 'event-stream' },
-            operation,
-            status: response.status,
+          yield streamFailure('ai_provider_invalid_response', {
+            contentTypeCategory: 'event-stream',
           })
-          recordAiProviderError(error)
-          yield aiProviderStreamError(error)
           return
         }
 
@@ -844,15 +782,9 @@ export async function* generateChatStream(
                     'reasoning_tokens',
                   )))))
         ) {
-          const error = createAiProviderError({
-            ...diagnosticContext,
-            code: 'ai_provider_invalid_response',
-            metadata: { contentTypeCategory: 'event-stream' },
-            operation,
-            status: response.status,
+          yield streamFailure('ai_provider_invalid_response', {
+            contentTypeCategory: 'event-stream',
           })
-          recordAiProviderError(error)
-          yield aiProviderStreamError(error)
           return
         }
 
@@ -867,19 +799,11 @@ export async function* generateChatStream(
             AI_PROVIDER_RESPONSE_LIMITS.sseAccumulatedBytes
           ) {
             await reader.cancel().catch(() => undefined)
-            const error = createAiProviderError({
-              ...diagnosticContext,
-              code: 'ai_provider_response_too_large',
-              metadata: {
-                contentTypeCategory: 'event-stream',
-                observedBytes: accumulatedOutputBytes,
-                truncated: true,
-              },
-              operation,
-              status: response.status,
+            yield streamFailure('ai_provider_response_too_large', {
+              contentTypeCategory: 'event-stream',
+              observedBytes: accumulatedOutputBytes,
+              truncated: true,
             })
-            recordAiProviderError(error)
-            yield aiProviderStreamError(error)
             return
           }
           thinkingSoFar += reasoningChunk
@@ -898,19 +822,11 @@ export async function* generateChatStream(
             AI_PROVIDER_RESPONSE_LIMITS.sseAccumulatedBytes
           ) {
             await reader.cancel().catch(() => undefined)
-            const error = createAiProviderError({
-              ...diagnosticContext,
-              code: 'ai_provider_response_too_large',
-              metadata: {
-                contentTypeCategory: 'event-stream',
-                observedBytes: accumulatedOutputBytes,
-                truncated: true,
-              },
-              operation,
-              status: response.status,
+            yield streamFailure('ai_provider_response_too_large', {
+              contentTypeCategory: 'event-stream',
+              observedBytes: accumulatedOutputBytes,
+              truncated: true,
             })
-            recordAiProviderError(error)
-            yield aiProviderStreamError(error)
             return
           }
           contentSoFar += delta.content
@@ -933,15 +849,9 @@ export async function* generateChatStream(
       }
     }
 
-    const error = createAiProviderError({
-      ...diagnosticContext,
-      code: 'ai_provider_invalid_response',
-      metadata: { contentTypeCategory: 'event-stream' },
-      operation,
-      status: response.status,
+    yield streamFailure('ai_provider_invalid_response', {
+      contentTypeCategory: 'event-stream',
     })
-    recordAiProviderError(error)
-    yield aiProviderStreamError(error)
   } finally {
     clearIdleTimeout()
     options.signal?.removeEventListener('abort', onCallerAbort)
@@ -952,6 +862,58 @@ export async function* generateChatStream(
 // ---------------------------------------------------------------------------
 // Model listing
 // ---------------------------------------------------------------------------
+
+interface ProviderCatalogModel {
+  architecture?: { modality?: string }
+  context_length?: number
+  id: string
+  name: string
+  pricing?: {
+    completion?: string
+    prompt?: string
+    reasoning?: string
+  }
+  supported_parameters?: string[]
+}
+
+function isValidCatalogModel(model: unknown): model is ProviderCatalogModel {
+  if (!isRecord(model)) return false
+  if (typeof model.id !== 'string' || typeof model.name !== 'string')
+    return false
+  if (!hasOptionalFiniteNumber(model, 'context_length')) return false
+
+  if (model.architecture !== undefined) {
+    if (!isRecord(model.architecture)) return false
+    if (
+      model.architecture.modality !== undefined &&
+      typeof model.architecture.modality !== 'string'
+    ) {
+      return false
+    }
+  }
+
+  if (model.pricing !== undefined) {
+    if (!isRecord(model.pricing)) return false
+    if (
+      (model.pricing.completion !== undefined &&
+        typeof model.pricing.completion !== 'string') ||
+      (model.pricing.prompt !== undefined &&
+        typeof model.pricing.prompt !== 'string') ||
+      (model.pricing.reasoning !== undefined &&
+        typeof model.pricing.reasoning !== 'string')
+    ) {
+      return false
+    }
+  }
+
+  return (
+    model.supported_parameters === undefined ||
+    (Array.isArray(model.supported_parameters) &&
+      model.supported_parameters.every(
+        parameter => typeof parameter === 'string',
+      ))
+  )
+}
 
 async function fetchProviderJson<T>(
   url: string,
@@ -978,14 +940,10 @@ async function fetchProviderJson<T>(
   }
 
   if (!response.ok) {
-    let error = isRuntimeResponse(response)
-      ? await readAiProviderErrorResponse(response, { ...context, operation })
-      : createAiProviderError({
-          ...context,
-          code: classifyAiProviderStatus(response.status),
-          operation,
-          status: response.status,
-        })
+    let error = await readAiProviderErrorResponse(response, {
+      ...context,
+      operation,
+    })
     if (signal.aborted) {
       error = createAiProviderError({
         ...context,
@@ -999,9 +957,7 @@ async function fetchProviderJson<T>(
   }
 
   try {
-    return isRuntimeResponse(response)
-      ? await readAiProviderJson<T>(response, { ...context, operation })
-      : ((await response.json()) as T)
+    return await readAiProviderJson<T>(response, { ...context, operation })
   } catch (error) {
     const providerError = isAiProviderError(error)
       ? signal.aborted
@@ -1039,50 +995,18 @@ export async function listModels(
   }
   url.searchParams.set('supported_parameters', params.join(','))
 
-  const data = await fetchProviderJson<{
-    data: Array<{
-      architecture?: { modality?: string }
-      context_length?: number
-      id: string
-      name: string
-      pricing?: {
-        completion?: string
-        prompt?: string
-        reasoning?: string
-      }
-      supported_parameters?: string[]
-    }>
-  }>(url.toString(), apiKey, 'models.list', context, 10_000)
+  const data = await fetchProviderJson<{ data: ProviderCatalogModel[] }>(
+    url.toString(),
+    apiKey,
+    'models.list',
+    context,
+    10_000,
+  )
 
   if (!data || !Array.isArray(data.data)) {
     throwInvalidProviderResponse('models.list', context)
   }
-  if (
-    !data.data.every(
-      model =>
-        isRecord(model) &&
-        typeof model.id === 'string' &&
-        typeof model.name === 'string' &&
-        (model.architecture === undefined || isRecord(model.architecture)) &&
-        (model.pricing === undefined || isRecord(model.pricing)) &&
-        hasOptionalFiniteNumber(model, 'context_length') &&
-        (model.architecture === undefined ||
-          model.architecture.modality === undefined ||
-          typeof model.architecture.modality === 'string') &&
-        (model.pricing === undefined ||
-          ((model.pricing.completion === undefined ||
-            typeof model.pricing.completion === 'string') &&
-            (model.pricing.prompt === undefined ||
-              typeof model.pricing.prompt === 'string') &&
-            (model.pricing.reasoning === undefined ||
-              typeof model.pricing.reasoning === 'string'))) &&
-        (model.supported_parameters === undefined ||
-          (Array.isArray(model.supported_parameters) &&
-            model.supported_parameters.every(
-              parameter => typeof parameter === 'string',
-            ))),
-    )
-  ) {
+  if (!data.data.every(isValidCatalogModel)) {
     throwInvalidProviderResponse('models.list', context)
   }
 

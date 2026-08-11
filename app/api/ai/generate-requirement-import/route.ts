@@ -295,7 +295,7 @@ export const POST = secureMutationRoute({
       return createAiErrorStreamResponse(
         context,
         aiProviderStreamError(providerError),
-        () => recordStreamEvent('failure', 503),
+        statusCode => recordStreamEvent('failure', statusCode),
       )
     }
     const resolvedModel = modelCapabilities.id
@@ -329,10 +329,11 @@ export const POST = secureMutationRoute({
       return createAiErrorStreamResponse(
         context,
         aiProviderStreamError(providerError),
-        () => recordStreamEvent('failure', 503),
+        statusCode => recordStreamEvent('failure', statusCode),
       )
     }
     if (firstProviderEvent.done) {
+      recordStreamEvent('failure', 499)
       return applyResponseCorrelationHeaders(
         new Response(null, { status: 499 }),
         context,
@@ -343,12 +344,13 @@ export const POST = secureMutationRoute({
       return createAiErrorStreamResponse(
         context,
         firstProviderEvent.value,
-        () => recordStreamEvent('failure', 503),
+        statusCode => recordStreamEvent('failure', statusCode),
       )
     }
+    const firstStreamEvent: StreamEvent = firstProviderEvent.value
 
     async function* streamProviderEvents(): AsyncGenerator<StreamEvent> {
-      yield firstProviderEvent.value
+      yield firstStreamEvent
       yield* providerEvents
     }
 

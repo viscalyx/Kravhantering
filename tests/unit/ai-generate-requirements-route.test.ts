@@ -712,11 +712,40 @@ describe('POST /api/ai/generate-requirement-import', () => {
     try {
       const response = await POST(makeRequest())
       const body = await response.text()
-      expect(response.status).toBe(503)
+      expect(response.status).toBe(429)
       expect(body).toContain('event: error')
       expect(body).toContain('ai_provider_rate_limited')
       expect(body).toContain('AI provider rate limit reached')
       expect(body).not.toContain('provider account secret')
+      expect(parseCapacityEvents(consoleErrorSpy)[0]).toMatchObject({
+        status_code: 429,
+      })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('records a terminal capacity failure when provider setup is cancelled', async () => {
+    routeState.generateChatStream.mockReturnValue({
+      [Symbol.asyncIterator]() {
+        return this
+      },
+      next: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+    })
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+
+      expect(response.status).toBe(499)
+      expect(await response.text()).toBe('')
+      expect(parseCapacityEvents(consoleErrorSpy)[0]).toMatchObject({
+        event: 'capacity.operation.failed',
+        operation: 'ai.generate-requirement-import',
+        status_code: 499,
+      })
     } finally {
       consoleErrorSpy.mockRestore()
     }

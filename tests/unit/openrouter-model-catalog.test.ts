@@ -48,8 +48,12 @@ describe('openrouter model catalog', () => {
       supportedParameters: ['vision'],
     })
 
-    expect(mocks.listModels).toHaveBeenNthCalledWith(1, undefined)
-    expect(mocks.listModels).toHaveBeenNthCalledWith(2, ['structured_outputs'])
+    expect(mocks.listModels).toHaveBeenNthCalledWith(1, undefined, undefined)
+    expect(mocks.listModels).toHaveBeenNthCalledWith(
+      2,
+      ['structured_outputs'],
+      undefined,
+    )
     expect(catalog).toEqual([
       expect.objectContaining({
         id: 'openai/gpt-5-vision',

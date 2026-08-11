@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/ai/repair-requirement-import-json/route'
-import { createAiProviderError } from '@/lib/ai/provider-errors'
+import {
+  AiProviderCallerCancelledError,
+  createAiProviderError,
+} from '@/lib/ai/provider-errors'
 import * as aiSafety from '@/lib/ai/safety'
 import { clearAiSafetyRuntimeSettingsCacheForTests } from '@/lib/dal/ai-settings'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
@@ -12,6 +15,7 @@ import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
 import { parseSecurityForensicsEvents } from '@/tests/helpers/security-forensics-events'
 
 const routeState = vi.hoisted(() => ({
+  buildImportInstruction: vi.fn(),
   generateChat: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   query: vi.fn(),
@@ -29,7 +33,7 @@ vi.mock('@/lib/requirements/server', async importOriginal => {
     ...original,
     createRequirementsRuntime: vi.fn(() => ({
       service: {
-        buildImportInstruction: vi.fn(async () => '# Import instruction'),
+        buildImportInstruction: routeState.buildImportInstruction,
       },
     })),
   }
@@ -86,6 +90,7 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
       query: routeState.query,
     })
     routeState.query.mockResolvedValue([])
+    routeState.buildImportInstruction.mockResolvedValue('# Import instruction')
     routeState.resolveOpenRouterModelCapabilities.mockResolvedValue({
       contextLength: 200000,
       id: 'anthropic/claude-sonnet-4',
@@ -454,6 +459,75 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
       expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toContain(
         'provider secret',
       )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('attributes model lookup failures to the catalog operation', async () => {
+    routeState.resolveOpenRouterModelCapabilities.mockRejectedValue(
+      new Error('catalog unavailable'),
+    )
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      const logged = JSON.stringify(consoleErrorSpy.mock.calls)
+
+      expect(response.status).toBe(503)
+      expect(logged).toContain('ai-provider-observability')
+      expect(logged).toContain('models.list')
+      expect(logged).not.toContain('chat.completions')
+      expect(routeState.buildImportInstruction).not.toHaveBeenCalled()
+      expect(routeState.generateChat).not.toHaveBeenCalled()
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('keeps instruction loading failures out of provider diagnostics', async () => {
+    routeState.buildImportInstruction.mockRejectedValue(
+      new Error('database unavailable'),
+    )
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+      const logged = JSON.stringify(consoleErrorSpy.mock.calls)
+
+      expect(response.status).toBe(503)
+      expect(logged).toContain(
+        'AI requirement import repair instruction loading failed',
+      )
+      expect(logged).not.toContain('ai-provider-observability')
+      expect(routeState.generateChat).not.toHaveBeenCalled()
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('records a terminal capacity failure for caller cancellation', async () => {
+    routeState.generateChat.mockRejectedValue(
+      new AiProviderCallerCancelledError(),
+    )
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await POST(makeRequest())
+
+      expect(response.status).toBe(499)
+      expect(await response.text()).toBe('')
+      expect(parseCapacityEvents(consoleErrorSpy)[0]).toMatchObject({
+        event: 'capacity.operation.failed',
+        operation: 'ai.repair-requirement-import-json',
+        status_code: 499,
+      })
     } finally {
       consoleErrorSpy.mockRestore()
     }

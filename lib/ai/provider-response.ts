@@ -111,6 +111,7 @@ export async function readAiProviderErrorResponse(
   }
 
   if (contentTypeCategory !== 'json') {
+    await response.body?.cancel().catch(() => undefined)
     return createAiProviderError({
       ...options,
       code: classifyAiProviderStatus(response.status),
@@ -163,6 +164,7 @@ export async function readAiProviderJson<T>(
     response.headers.get('content-type'),
   )
   if (contentTypeCategory !== 'json') {
+    await response.body?.cancel().catch(() => undefined)
     throw createAiProviderError({
       ...options,
       code: 'ai_provider_invalid_response',
