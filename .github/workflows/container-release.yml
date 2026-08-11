@@ -893,3 +893,17 @@ jobs:
             tmp/container-release-artifacts/kravhantering-production-deploy-*.tar.gz.trusted-root.jsonl
           if-no-files-found: warn
           retention-days: 30
+
+  runner-metadata:
+    name: Capture Trusted Release Runner Metadata
+    needs: trusted-release
+    if: ${{ always() && needs.trusted-release.result != 'skipped' }}
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/reusable-container-runner-metadata.yml
+    with:
+      artifact-name: container-release-runner-metadata-${{ github.run_id }}
+      evidence-directory: tmp/container-release-runner-metadata
+      retention-days: 30
+      target-job: Validate and Promote Trusted Container Stack

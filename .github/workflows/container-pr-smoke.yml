@@ -471,3 +471,17 @@ jobs:
           path: tmp/container-pr-artifacts/oci/*.oci.tar
           if-no-files-found: ignore
           retention-days: 2
+
+  runner-metadata:
+    name: Capture Container Smoke Runner Metadata
+    needs: container-smoke
+    if: always()
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/reusable-container-runner-metadata.yml
+    with:
+      artifact-name: container-pr-runner-metadata-${{ github.run_id }}
+      evidence-directory: tmp/container-pr-runner-metadata
+      retention-days: 7
+      target-job: Build and Smoke Test Container Stack

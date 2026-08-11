@@ -154,60 +154,140 @@ write_runner_metadata() {
 }
 
 collect_github_runner_metadata() {
-  local job_id log_file
+  local required="${1:-false}"
+  local job_id jobs_file log_file message target_job
   local output="$EVIDENCE_DIR/github-runner-metadata.txt"
+  target_job="${CI_RUNTIME_TARGET_JOB:-}"
+  metadata_unavailable() {
+    message="$1"
+    printf '%s\n' "$message" >"$output"
+    [[ "$required" != true ]]
+  }
   if [[ -z "${GH_TOKEN:-}" || -z "${GITHUB_REPOSITORY:-}" || \
     -z "${GITHUB_RUN_ID:-}" ]] || ! command -v gh >/dev/null 2>&1; then
-    printf '%s\n' 'GitHub job metadata unavailable to the collector.' >"$output"
-    return 0
+    metadata_unavailable 'GitHub job metadata unavailable to the collector.'
+    return
   fi
-  job_id="$(
-    gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest" \
-      --jq '.jobs[] | select(.status == "in_progress") | .id' \
-      2>/dev/null | head -n 1
-  )" || true
+  jobs_file="$(mktemp)"
+  if ! gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest" \
+    >"$jobs_file" 2>/dev/null; then
+    rm -f -- "$jobs_file"
+    metadata_unavailable 'GitHub job metadata request failed.'
+    return
+  fi
+  if [[ -n "$target_job" ]]; then
+    job_id="$(
+      jq -r --arg target "$target_job" \
+        '[.jobs[] | select(.name == $target and .status == "completed")] | last | .id // empty' \
+        "$jobs_file"
+    )"
+  else
+    job_id="$(
+      jq -r '[.jobs[] | select(.status == "in_progress")] | first | .id // empty' \
+        "$jobs_file"
+    )"
+  fi
+  rm -f -- "$jobs_file"
   if [[ -z "$job_id" ]]; then
-    printf '%s\n' 'GitHub in-progress job metadata unavailable.' >"$output"
-    return 0
+    metadata_unavailable 'GitHub target job metadata unavailable.'
+    return
   fi
   log_file="$(mktemp)"
   if ! gh api "/repos/$GITHUB_REPOSITORY/actions/jobs/$job_id/logs" \
     >"$log_file" 2>/dev/null; then
-    printf '%s\n' 'GitHub in-progress job log unavailable.' >"$output"
     rm -f -- "$log_file"
-    return 0
+    metadata_unavailable 'GitHub target job log unavailable.'
+    return
   fi
   head -n 120 "$log_file" |
-    grep -E 'Current runner version:|Runner Image Provisioner|Hosted Compute Agent|Version: 20[0-9]{6}|Commit: [a-f0-9]{40}|Build Date:|Azure Region:|Runner Image$|Image: ubuntu-24\.04|Included Software: https://github\.com/actions/runner-images|Image Release: https://github\.com/actions/runner-images' \
-      >"$output" || true
+    sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z //' |
+    awk '
+      {
+        sub(/^[[:space:]]+/, "")
+        sub(/^##\[group\]/, "")
+      }
+      $0 == "##[endgroup]" { section = ""; next }
+      /^Current runner version: '\''?[0-9]+(\.[0-9]+){2}'\''?$/ { print; next }
+      $0 == "Runner Image Provisioner" { section = "provisioner"; print; next }
+      $0 == "Runner Image" { section = "image"; print; next }
+      section == "provisioner" && /^Hosted Compute Agent$/ { print; next }
+      section == "provisioner" && /^2\.0\.[0-9]+(\.[0-9]+)?$/ { print; next }
+      section == "provisioner" && /^Version: 20[0-9]{6}(\.[0-9]+)+$/ { print; next }
+      section == "provisioner" && /^Commit: [a-f0-9]{40}$/ { print; next }
+      section == "provisioner" && /^Build Date: [0-9TZ:.+-]+$/ { print; next }
+      section == "provisioner" && /^Azure Region: [-A-Za-z0-9 ]+$/ { print; next }
+      section == "image" && /^Image: ubuntu-24\.04$/ { print; next }
+      section == "image" && /^Version: 20[0-9]{6}(\.[0-9]+)+$/ { print; next }
+      section == "image" && /^Included Software: https:\/\/github\.com\/actions\/runner-images\/[-A-Za-z0-9._~:/?#%]+$/ { print; next }
+      section == "image" && /^Image Release: https:\/\/github\.com\/actions\/runner-images\/[-A-Za-z0-9._~:/?#%]+$/ { print; next }
+    ' >"$output"
   rm -f -- "$log_file"
-  [[ -s "$output" ]] ||
-    printf '%s\n' 'GitHub runner metadata was absent from the current job log.' \
-      >"$output"
+  if [[ ! -s "$output" ]]; then
+    metadata_unavailable 'GitHub runner metadata was absent from the target job log.'
+    return
+  fi
+  if ! awk '
+    $0 == "Runner Image Provisioner" { section = "provisioner"; next }
+    $0 == "Runner Image" { section = "image"; next }
+    section == "provisioner" && /^Hosted Compute Agent$/ { hosted = 1 }
+    section == "provisioner" && /^2\.0\.[0-9]+(\.[0-9]+)?$/ { legacy = 1 }
+    section == "provisioner" && /^Version: / { provisioner_version = 1 }
+    section == "image" && /^Image: ubuntu-24\.04$/ { image = 1 }
+    END { exit !(image && (legacy || (hosted && provisioner_version))) }
+  ' "$output"; then
+    metadata_unavailable 'GitHub runner metadata was incomplete.'
+  fi
+}
+
+append_component_evidence() {
+  local label="$1" file="$2" owner resolved
+  [[ -n "$file" ]] || return 0
+  resolved="$(canonical_path "$file")"
+  owner="$("$DPKG_QUERY_BIN" --search -- "$resolved" 2>&1 || true)"
+  {
+    printf 'source=%s\npath=%s\nresolved=%s\npackage=%s\n' \
+      "$label" "$file" "$resolved" "$owner"
+    if [[ -f "$resolved" ]]; then
+      sha256sum -- "$resolved"
+    fi
+    if [[ -x "$resolved" ]]; then
+      "$resolved" --version 2>&1 || true
+    fi
+    printf '\n'
+  } >>"$EVIDENCE_DIR/runtime-components.txt"
 }
 
 collect_component_evidence() {
-  local file owner resolved
+  local directory name podman_command podman_info selected_conmon selected_runtime
+  local -a directories
+  local search_path="${CI_RUNTIME_GENERATOR_SEARCH_PATH:-/run/systemd/user-generators:/etc/systemd/user-generators:$LOCAL_PREFIX/lib/systemd/user-generators:$SYSTEM_PREFIX/lib/systemd/user-generators:/lib/systemd/user-generators}"
   : >"$EVIDENCE_DIR/runtime-components.txt"
-  for file in "$PODMAN_BIN" "$CONMON_BIN" "$CRUN_BIN" "$QUADLET_GENERATOR"; do
-    resolved="$(canonical_path "$file")"
-    owner="$("$DPKG_QUERY_BIN" --search -- "$resolved" 2>&1 || true)"
-    {
-      printf 'path=%s\nresolved=%s\npackage=%s\n' "$file" "$resolved" "$owner"
-      if [[ -f "$resolved" ]]; then
-        sha256sum -- "$resolved"
+
+  append_component_evidence expected-podman "$PODMAN_BIN"
+  append_component_evidence expected-conmon "$CONMON_BIN"
+  append_component_evidence expected-crun "$CRUN_BIN"
+  append_component_evidence expected-quadlet "$QUADLET_GENERATOR"
+  append_component_evidence path-podman "$(command -v podman 2>/dev/null || true)"
+  append_component_evidence path-conmon "$(command -v conmon 2>/dev/null || true)"
+  append_component_evidence path-crun "$(command -v crun 2>/dev/null || true)"
+
+  IFS=: read -r -a directories <<<"$search_path"
+  for directory in "${directories[@]}"; do
+    for name in podman-user-generator podman-system-generator; do
+      if [[ -x "$directory/$name" ]]; then
+        append_component_evidence systemd-generator "$directory/$name"
       fi
-      "$resolved" --version 2>&1 || true
-      printf '\n'
-    } >>"$EVIDENCE_DIR/runtime-components.txt"
+    done
   done
-  {
-    printf 'podman_command=%s\n' "$(command -v podman 2>/dev/null || true)"
-    printf 'conmon_command=%s\n' "$(command -v conmon 2>/dev/null || true)"
-    printf 'crun_command=%s\n' "$(command -v crun 2>/dev/null || true)"
-    printf 'quadlet_generator=%s\n' "$(resolved_generator 2>/dev/null || true)"
-  } >>"$EVIDENCE_DIR/runtime-components.txt"
-  "$PODMAN_BIN" info --format json >"$EVIDENCE_DIR/podman-info.json" 2>&1 || true
+
+  podman_command="$(command -v podman 2>/dev/null || true)"
+  [[ -n "$podman_command" ]] || podman_command="$PODMAN_BIN"
+  "$podman_command" info --format json >"$EVIDENCE_DIR/podman-info.json" 2>&1 || true
+  podman_info="$(<"$EVIDENCE_DIR/podman-info.json")"
+  selected_conmon="$(jq -er '.host.conmon.path' <<<"$podman_info" 2>/dev/null || true)"
+  selected_runtime="$(jq -er '.host.ociRuntime.path' <<<"$podman_info" 2>/dev/null || true)"
+  append_component_evidence podman-selected-conmon "$selected_conmon"
+  append_component_evidence podman-selected-runtime "$selected_runtime"
 }
 
 collect_cgroup_evidence() {
@@ -286,7 +366,7 @@ collect_diagnostics() {
 }
 
 usage() {
-  printf '%s\n' 'Usage: ci-container-runtime.sh <bootstrap pr|bootstrap release|verify|preflight|collect>'
+  printf '%s\n' 'Usage: ci-container-runtime.sh <bootstrap pr|bootstrap release|verify|preflight|collect|collect-runner-metadata>'
 }
 
 command="${1:-}"
@@ -305,6 +385,12 @@ case "$command" in
     ;;
   collect)
     collect_diagnostics
+    ;;
+  collect-runner-metadata)
+    [[ -n "$EVIDENCE_DIR" ]] || fail 'collect-runner-metadata requires CI_RUNTIME_EVIDENCE_DIR'
+    [[ -n "${CI_RUNTIME_TARGET_JOB:-}" ]] || fail 'collect-runner-metadata requires CI_RUNTIME_TARGET_JOB'
+    mkdir -p -- "$EVIDENCE_DIR"
+    collect_github_runner_metadata true
     ;;
   *)
     usage >&2

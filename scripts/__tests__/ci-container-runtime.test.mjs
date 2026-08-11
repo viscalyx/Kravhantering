@@ -255,6 +255,122 @@ describe('CI container runtime', () => {
       .join('\n')
     expect(completeEvidence).not.toContain(secret)
   })
+
+  it('records provenance for runtime paths selected outside the package toolchain', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'evidence')
+    const foreignConmon = path.join(
+      fixture.localPrefix,
+      'lib',
+      'podman',
+      'conmon',
+    )
+    fs.mkdirSync(path.dirname(foreignConmon), { recursive: true })
+    fs.writeFileSync(
+      foreignConmon,
+      "#!/usr/bin/env bash\nprintf '%s\\n' 'foreign conmon 9.9.9'\n",
+      { mode: 0o755 },
+    )
+
+    const result = runRuntimeScript(['collect'], fixture, {
+      CI_FAKE_CONMON_PATH: foreignConmon,
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+    })
+
+    expect(result.status).toBe(0)
+    const components = fs.readFileSync(
+      path.join(evidenceDirectory, 'runtime-components.txt'),
+      'utf8',
+    )
+    expect(components).toContain(`resolved=${foreignConmon}`)
+    expect(components).toContain('foreign conmon 9.9.9')
+    expect(components).toContain(
+      childProcess.execFileSync('sha256sum', [foreignConmon], {
+        encoding: 'utf8',
+      }),
+    )
+  })
+
+  it('extracts secret-safe runner image and provisioner metadata after the target job completes', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
+    const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+    fs.writeFileSync(
+      ghPath,
+      [
+        '#!/usr/bin/env bash',
+        'if [[ "$*" == *"/jobs?filter=latest"* ]]; then',
+        '  printf \'%s\\n\' \'{"jobs":[{"id":123,"name":"Build and Smoke Test Container Stack","status":"completed"}]}\'',
+        'else',
+        "  printf '%s\\n' 'Current runner version: 2.999.0'",
+        "  printf '%s\\n' 'Runner Image Provisioner'",
+        "  printf '%s\\n' 'Hosted Compute Agent'",
+        "  printf '%s\\n' 'Version: 20260810.271'",
+        "  printf '%s\\n' 'Commit: 0123456789abcdef0123456789abcdef01234567'",
+        "  printf '%s\\n' 'Build Date: 2026-08-10T10:11:12Z'",
+        "  printf '%s\\n' 'Runner Image'",
+        "  printf '%s\\n' 'Image: ubuntu-24.04'",
+        "  printf '%s\\n' 'Version: 20260810.271.1'",
+        "  printf '%s\\n' 'UNRELATED_SECRET=2.0.999.1'",
+        'fi',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runRuntimeScript(['collect-runner-metadata'], fixture, {
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+      CI_RUNTIME_TARGET_JOB: 'Build and Smoke Test Container Stack',
+      GH_TOKEN: 'test-token',
+      GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+      GITHUB_RUN_ID: '12345',
+    })
+
+    expect(result.status).toBe(0)
+    const metadata = fs.readFileSync(
+      path.join(evidenceDirectory, 'github-runner-metadata.txt'),
+      'utf8',
+    )
+    expect(metadata).toContain('Hosted Compute Agent')
+    expect(metadata).toContain('Version: 20260810.271')
+    expect(metadata).toContain('Image: ubuntu-24.04')
+    expect(metadata).not.toContain('UNRELATED_SECRET')
+  })
+
+  it('rejects completed runner metadata without image and provisioner identities', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
+    const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+    fs.writeFileSync(
+      ghPath,
+      [
+        '#!/usr/bin/env bash',
+        'if [[ "$*" == *"/jobs?filter=latest"* ]]; then',
+        '  printf \'%s\\n\' \'{"jobs":[{"id":123,"name":"Build and Smoke Test Container Stack","status":"completed"}]}\'',
+        'else',
+        "  printf '%s\\n' 'Current runner version: 2.999.0'",
+        'fi',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runRuntimeScript(['collect-runner-metadata'], fixture, {
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+      CI_RUNTIME_TARGET_JOB: 'Build and Smoke Test Container Stack',
+      GH_TOKEN: 'test-token',
+      GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+      GITHUB_RUN_ID: '12345',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(
+      fs.readFileSync(
+        path.join(evidenceDirectory, 'github-runner-metadata.txt'),
+        'utf8',
+      ),
+    ).toContain('incomplete')
+  })
 })
 
 describe('CI runtime failure classification', () => {

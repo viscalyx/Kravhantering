@@ -97,9 +97,15 @@ separate directories. For PR smoke runs:
 gh run download <failed-run-id> \
   --name container-pr-runtime-<failed-run-id> \
   --dir tmp/production-smoke-comparison/failed
+gh run download <failed-run-id> \
+  --name container-pr-runner-metadata-<failed-run-id> \
+  --dir tmp/production-smoke-comparison/failed/runner-metadata
 gh run download <successful-run-id> \
   --name container-pr-runtime-<successful-run-id> \
   --dir tmp/production-smoke-comparison/successful
+gh run download <successful-run-id> \
+  --name container-pr-runner-metadata-<successful-run-id> \
+  --dir tmp/production-smoke-comparison/successful/runner-metadata
 ```
 
 Start with these comparisons:
@@ -110,6 +116,9 @@ diff -u \
   tmp/production-smoke-comparison/successful/runtime-diagnostics/runner.json \
   tmp/production-smoke-comparison/failed/runtime-diagnostics/runner.json
 diff -u \
+  tmp/production-smoke-comparison/successful/runner-metadata/github-runner-metadata.txt \
+  tmp/production-smoke-comparison/failed/runner-metadata/github-runner-metadata.txt
+diff -u \
   tmp/production-smoke-comparison/successful/runtime-diagnostics/runtime-components.txt \
   tmp/production-smoke-comparison/failed/runtime-diagnostics/runtime-components.txt
 diff -u \
@@ -118,20 +127,23 @@ diff -u \
 ```
 <!-- markdownlint-enable MD013 -->
 
-Use `runner.json`, `runner-platform.txt`, and
-`github-runner-metadata.txt` to compare the image, provisioner, and provisioned
-host. Then compare `runtime-components.txt` and `podman-info.json` for binary
-paths, package ownership, versions, hashes, and Podman's selected helpers.
+Use `runner.json`, `runner-platform.txt`, and the separate
+`runner-metadata/github-runner-metadata.txt` artifact to compare the image,
+provisioner, and provisioned host. The metadata follow-up job runs after the
+smoke job completes, so GitHub makes the target job log available before the
+allowlisted runner header is extracted. Trusted releases provide the analogous
+`container-release-runner-metadata-<run-id>` artifact. Then compare
+`runtime-components.txt` and `podman-info.json` for every expected and selected
+binary path, package ownership, version, hash, and Podman's selected helpers.
 Compare `meminfo.txt`, `free.txt`, `pressure-*.txt`, `kernel-oom.txt`, and
 `service-cgroups.txt` for host or cgroup pressure. The process report contains
 only PID, parent PID, user, executable name, and RSS; it deliberately omits
 command arguments. The collector never dumps the environment or container
 environment variables.
 
-The collector extracts only the runner and provisioner header from the current
-job log. If GitHub does not make an in-progress log available, the file records
-that limitation. In that case, use the **Set up job** log as the authoritative
-source for the hosted image-provisioner build identifier.
+The collector extracts only allowlisted runner and provisioner header fields
+from the completed target job log. A missing target log or missing header fails
+the follow-up job instead of silently publishing incomplete metadata.
 
 ## Clean up
 

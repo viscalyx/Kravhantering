@@ -1,0 +1,54 @@
+name: Container Runner Metadata
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        description: Artifact name for the allowlisted runner metadata
+        required: true
+        type: string
+      evidence-directory:
+        description: Workspace directory used to stage the metadata artifact
+        required: true
+        type: string
+      retention-days:
+        description: Artifact retention period
+        required: true
+        type: number
+      target-job:
+        description: Completed job whose runner header is collected
+        required: true
+        type: string
+
+jobs:
+  collect:
+    name: Capture Completed Job Runner Metadata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+
+    env:
+      CI_RUNTIME_EVIDENCE_DIR: ${{ inputs.evidence-directory }}
+      CI_RUNTIME_TARGET_JOB: ${{ inputs.target-job }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+
+      - name: Capture completed job runner metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/containers/ci-container-runtime.sh collect-runner-metadata
+
+      - name: Upload runner metadata
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.evidence-directory }}/
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention-days }}

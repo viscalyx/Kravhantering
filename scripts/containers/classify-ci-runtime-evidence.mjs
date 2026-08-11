@@ -43,16 +43,16 @@ export function formatRuntimeClassification(classifications) {
 
 export function readEvidenceDirectory(directory) {
   if (!fs.existsSync(directory)) return ''
-  const values = []
+  const evidenceChunks = []
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const entryPath = path.join(directory, entry.name)
     if (entry.isDirectory()) {
-      values.push(readEvidenceDirectory(entryPath))
+      evidenceChunks.push(readEvidenceDirectory(entryPath))
     } else if (entry.isFile() && fs.statSync(entryPath).size <= 5_000_000) {
-      values.push(fs.readFileSync(entryPath, 'utf8'))
+      evidenceChunks.push(fs.readFileSync(entryPath, 'utf8'))
     }
   }
-  return values.join('\n')
+  return evidenceChunks.join('\n')
 }
 
 export function parseRuntimeClassifierArguments(args) {
