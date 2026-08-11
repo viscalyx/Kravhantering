@@ -334,16 +334,22 @@ Excluded fields:
 The shared `escapeCsvField()` contract in `lib/export-csv.ts` and the
 row-wise exporters produce CSV with the following conventions:
 
-- **Separator:** semicolon (`;`) — European locale
-  compatibility.
+- **Separator:** semicolon (`;`) by default for European locale
+  compatibility. Callers with another established delimiter pass that
+  delimiter to the shared encoder so quoting follows the active format.
 - **Line endings:** CRLF (`\r\n`).
-- **Escaping:** fields containing `;`, `"`, `\n`, or `\r`
+- **Escaping:** fields containing the active delimiter, `"`, `\n`, or `\r`
   are wrapped in double-quotes with internal `"` doubled.
-- **Formula hardening:** fields beginning with `=`, `+`, `-`, `@`,
-  tab, or carriage return are prefixed with `'` and wrapped in
-  double-quotes.
+- **Formula hardening:** fields beginning with `=`, `+`, `-`, `@`, tab, or
+  carriage return are prefixed with `'` and wrapped in double-quotes. Formula
+  markers after a leading run of spaces, tabs, or carriage returns receive the
+  same treatment without changing the original whitespace.
 - **Download encoding:** UTF-8 with BOM at the HTTP/download boundary so
   Windows spreadsheet tools detect Swedish characters correctly.
+- Browser-generated requirement-import receipts retain their comma delimiter,
+  LF line endings, columns, filename, media type, and UTF-8 BOM while using the
+  same shared escaping and formula-hardening contract. They keep every
+  non-null field double-quoted for compatibility with existing receipts.
 - Requirements specification CSV exports are generated server-side from the
   whole specification, stay row-oriented, do not include metadata rows, and
   write the BOM, header, and each enriched page directly to the bounded spool.

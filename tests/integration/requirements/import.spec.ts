@@ -3,7 +3,7 @@ import { expect, type Route, test } from '@playwright/test'
 import { escapeRegExp } from '@/tests/helpers/common'
 
 const importedDescription =
-  'Playwright importerat krav ska kunna granskas och importeras.'
+  '=Playwright importerat krav ska kunna granskas och importeras.'
 
 // cSpell:ignore SOSFS
 const validImportPayload = {
@@ -325,13 +325,8 @@ test.describe('Requirements import', () => {
         throw new Error('CSV receipt download did not expose a local path.')
       }
       const receiptCsv = await readFile(receiptPath, 'utf8')
-      expect(receiptCsv).toContain(
-        'importMode,sourceIndex,createdVisibleId,createdDatabaseId,description',
-      )
-      expect(receiptCsv).toContain('"library","0","PWI9001","9001"')
-      expect(receiptCsv).toContain(`"${importedDescription}"`)
-      expect(receiptCsv).toContain(
-        '"SOSFS-IMPORT-1 - Importreferens","true","Demonstration","1"',
+      expect(receiptCsv).toBe(
+        `\uFEFFimportMode,sourceIndex,createdVisibleId,createdDatabaseId,description,acceptanceCriteria,category,type,qualityCharacteristic,priorityLevel,requirementPackages,normReferences,verifiable,verificationMethod,targetAreaId,targetSpecificationId,needsReferenceId\n"library","0","PWI9001","9001","'${importedDescription}",,,"Funktionellt",,"P2 – Låg","","SOSFS-IMPORT-1 - Importreferens","true","Demonstration","1",,\n`,
       )
 
       const refreshedRequirements = page.waitForRequest(request => {

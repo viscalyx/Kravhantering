@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { exportToCsv } from '@/lib/export-csv'
+import { escapeCsvField, exportToCsv } from '@/lib/export-csv'
 
 describe('exportToCsv', () => {
   const headers = ['Namn', 'Beskrivning', 'Antal']
@@ -18,6 +18,20 @@ describe('exportToCsv', () => {
     const csv = exportToCsv(headers, data)
 
     expect(csv).toContain('"Namn;med;semikolon"')
+  })
+
+  it('quotes the active delimiter while retaining the semicolon default', () => {
+    expect(escapeCsvField('comma,value', { delimiter: ',' })).toBe(
+      '"comma,value"',
+    )
+    expect(escapeCsvField('comma,value')).toBe('comma,value')
+  })
+
+  it('force-quotes fields when the caller contract requires it', () => {
+    const options = { delimiter: ',', quoteAll: true }
+
+    expect(escapeCsvField('ordinary', options)).toBe('"ordinary"')
+    expect(escapeCsvField('', options)).toBe('""')
   })
 
   it('escapes fields with quotes by doubling them', () => {
@@ -59,6 +73,30 @@ describe('exportToCsv', () => {
 
     expect(csv).toContain(`"'=PlainFormula";Ok;1`)
   })
+
+  it.each([
+    [' =space', `"' =space"`],
+    [' +space', `"' +space"`],
+    [' -space', `"' -space"`],
+    [' @space', `"' @space"`],
+    ['\t=tab', `"'\t=tab"`],
+    ['\t+tab', `"'\t+tab"`],
+    ['\t-tab', `"'\t-tab"`],
+    ['\t@tab', `"'\t@tab"`],
+    ['\r=carriage', `"'\r=carriage"`],
+    ['\r+carriage', `"'\r+carriage"`],
+    ['\r-carriage', `"'\r-carriage"`],
+    ['\r@carriage', `"'\r@carriage"`],
+    [' \t\r=combined', `"' \t\r=combined"`],
+    [' \t\r+combined', `"' \t\r+combined"`],
+    [' \t\r-combined', `"' \t\r-combined"`],
+    [' \t\r@combined', `"' \t\r@combined"`],
+  ])(
+    'neutralizes a formula marker after supported leading whitespace: %j',
+    (field, expected) => {
+      expect(escapeCsvField(field)).toBe(expected)
+    },
+  )
 
   it('returns only header when data is empty', () => {
     const csv = exportToCsv(headers, [])

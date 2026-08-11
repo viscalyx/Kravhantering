@@ -1184,7 +1184,43 @@ describe('RequirementsImportDialog', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledWith(false))
   })
 
-  it('executes selected rows, cleans review state, and downloads a CSV receipt', async () => {
+  it('downloads complete formula-safe CSV receipt content without changing its contract', async () => {
+    const formulaCases = [
+      { description: '=SUM("a,b")', encodedDescription: `"'=SUM(""a,b"")"` },
+      { description: '+direct', encodedDescription: `"'+direct"` },
+      { description: '-direct', encodedDescription: `"'-direct"` },
+      { description: '@direct', encodedDescription: `"'@direct"` },
+      { description: '\tTabbed', encodedDescription: `"'\tTabbed"` },
+      { description: '\rCarriage', encodedDescription: `"'\rCarriage"` },
+      { description: ' =space', encodedDescription: `"' =space"` },
+      { description: ' +space', encodedDescription: `"' +space"` },
+      { description: ' -space', encodedDescription: `"' -space"` },
+      { description: ' @space', encodedDescription: `"' @space"` },
+      { description: '\t=tab', encodedDescription: `"'\t=tab"` },
+      { description: '\t+tab', encodedDescription: `"'\t+tab"` },
+      { description: '\t-tab', encodedDescription: `"'\t-tab"` },
+      { description: '\t@tab', encodedDescription: `"'\t@tab"` },
+      { description: '\r=carriage', encodedDescription: `"'\r=carriage"` },
+      { description: '\r+carriage', encodedDescription: `"'\r+carriage"` },
+      { description: '\r-carriage', encodedDescription: `"'\r-carriage"` },
+      { description: '\r@carriage', encodedDescription: `"'\r@carriage"` },
+      {
+        description: ' \t\r=combined',
+        encodedDescription: `"' \t\r=combined"`,
+      },
+      {
+        description: ' \t\r+combined',
+        encodedDescription: `"' \t\r+combined"`,
+      },
+      {
+        description: ' \t\r-combined',
+        encodedDescription: `"' \t\r-combined"`,
+      },
+      {
+        description: ' \t\r@combined',
+        encodedDescription: `"' \t\r@combined"`,
+      },
+    ]
     const createObjectUrl = vi
       .spyOn(URL, 'createObjectURL')
       .mockReturnValue('blob:receipt')
@@ -1198,28 +1234,27 @@ describe('RequirementsImportDialog', () => {
     second.values.description = 'Keep for later'
     vi.mocked(apiFetch).mockResolvedValueOnce({
       json: async () => ({
-        createdRows: [
-          {
-            acceptanceCriteria: 'Contains "quotes"',
-            categoryName: 'Category',
-            createdDatabaseId: 9001,
-            createdVisibleId: 'KRAV9001',
-            description: 'Imported requirement',
-            importMode: 'library',
-            needsReferenceId: null,
-            normReferences: ['ISO-A', 'ISO-B'],
-            priorityLevelName: 'P4 – High',
-            qualityCharacteristicName: 'Completeness',
-            requirementPackageNames: ['Package A', 'Package B'],
-            sourceIndex: 0,
-            targetAreaId: 7,
-            targetSpecificationId: null,
-            typeName: 'Functional',
-            verifiable: true,
-            verificationMethod: 'Inspection',
-          },
-        ],
-        summary: { createdCount: 1 },
+        createdRows: formulaCases.map(({ description }, index) => ({
+          acceptanceCriteria: 'Contains "quotes", comma',
+          categoryName: 'Line 1\nLine 2',
+          createdDatabaseId: 9001 + index,
+          createdVisibleId: `KRAV${index + 1}`,
+          description,
+          importMode: 'library',
+          needsReferenceId: null,
+          normReferences: index === 0 ? [] : ['Norm "A"', 'Norm,B'],
+          priorityLevelName: index === 0 ? '' : null,
+          qualityCharacteristicName: 'Safe ordinary',
+          requirementPackageNames:
+            index === 0 ? [] : ['Package A', 'Package B'],
+          sourceIndex: index,
+          targetAreaId: 7,
+          targetSpecificationId: null,
+          typeName: 'Carriage\rreturn',
+          verifiable: true,
+          verificationMethod: 'Inspection',
+        })),
+        summary: { createdCount: formulaCases.length },
       }),
       ok: true,
     } as Response)
@@ -1276,7 +1311,9 @@ describe('RequirementsImportDialog', () => {
         expect.objectContaining({ method: 'POST' }),
       ),
     )
-    expect(await screen.findByText('Importerade rader: 1')).toBeVisible()
+    expect(
+      await screen.findByText(`Importerade rader: ${formulaCases.length}`),
+    ).toBeVisible()
     expect(screen.getByText('Keep for later')).toBeVisible()
 
     fireEvent.click(
@@ -1284,6 +1321,24 @@ describe('RequirementsImportDialog', () => {
     )
     expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:receipt')
+    const receiptBlob = createObjectUrl.mock.calls[0]?.[0] as Blob
+    const receiptBytes = new Uint8Array(await receiptBlob.arrayBuffer())
+    const receiptText = new TextDecoder('utf-8', { ignoreBOM: true }).decode(
+      receiptBytes,
+    )
+    const expectedRows = formulaCases.map(({ encodedDescription }, index) => {
+      const expectedOptionalFields =
+        index === 0
+          ? '"","",""'
+          : ',"Package A; Package B","Norm ""A""; Norm,B"'
+      return `"library","${index}","KRAV${index + 1}","${9001 + index}",${encodedDescription},"Contains ""quotes"", comma","Line 1\nLine 2","Carriage\rreturn","Safe ordinary",${expectedOptionalFields},"true","Inspection","7",,`
+    })
+
+    expect(receiptBlob.type).toBe('text/csv;charset=utf-8')
+    expect(Array.from(receiptBytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
+    expect(receiptText).toBe(
+      `\uFEFFimportMode,sourceIndex,createdVisibleId,createdDatabaseId,description,acceptanceCriteria,category,type,qualityCharacteristic,priorityLevel,requirementPackages,normReferences,verifiable,verificationMethod,targetAreaId,targetSpecificationId,needsReferenceId\n${expectedRows.join('\n')}\n`,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort från import' }))
     fireEvent.click(screen.getByRole('button', { name: 'Stäng' }))
