@@ -198,6 +198,12 @@ sequenceDiagram
         Proxy-->>Client: JSON-RPC 401 if Authorization header is missing
         Verify->>Audit: auth.token.rejected
         Route-->>Client: JSON-RPC 401 + WWW-Authenticate: Bearer
+    else Authentication configuration failure
+        Verify->>Audit: auth.token.rejected with allowlisted reason
+        Route-->>Client: Generic JSON-RPC 500 + WWW-Authenticate: Bearer
+    else Discovery or remote JWKS unavailable
+        Verify->>Audit: auth.token.rejected with allowlisted reason
+        Route-->>Client: Generic JSON-RPC 503 + WWW-Authenticate: Bearer
     end
 ```
 <!-- markdownlint-enable MD013 -->
@@ -207,6 +213,11 @@ sequenceDiagram
   [`lib/auth/mcp-token.ts`](../../lib/auth/mcp-token.ts).
 - Missing-header and invalid-token failures use a JSON-RPC error body so MCP
   clients receive the same response shape at both auth gates.
+- The MCP authentication boundary maps invalid credentials to `401`, local
+  authentication configuration failures to `500`, and unavailable discovery
+  or remote JWKS dependencies to `503`. Every response uses a stable generic
+  message and retains `WWW-Authenticate: Bearer`; underlying verifier, issuer,
+  network, JWKS, and configuration messages remain server-side.
 - `verifyMcpBearerToken()` uses OIDC discovery metadata to read the issuer's
   `jwks_uri` and caches the resulting `RemoteJWKSet`.
 - JWT verification checks signature, issuer, audience, and a 30-second clock
@@ -280,6 +291,9 @@ sequenceDiagram
   detail key is redacted, the audit writer also emits a structured
   `detail-key-redacted` breadcrumb with the source event, actor source, and
   redacted key name.
+- Rejected MCP authentication events contain an allowlisted reason code only.
+  They exclude token and claim values, issuer details, dependency text, and
+  runtime error names.
 - Privacy erasure and data subject access export security events are emitted to
   the platform security-log stream. Privacy erasure execution also writes a
   database action-log row for Admin review. Both include the handler

@@ -337,9 +337,13 @@ MCP transport or tool handler runs. Accepted tokens must contain a real-format
 local Keycloak realm instead of compensating in application code.
 
 Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer` and a
-JSON-RPC error body. MCP does not use browser cookies and is intentionally
-excluded from browser CSRF checks. Tool handlers build their actor context only
-from the verified token attached at the HTTP edge.
+stable JSON-RPC error body. Authentication configuration failures return `500`,
+and discovery or JWKS availability failures return `503`; these responses also
+use stable generic messages and the Bearer challenge. They never include token
+verification, issuer, network, JWKS, or configuration details. MCP does not use
+browser cookies and is intentionally excluded from browser CSRF checks. Tool
+handlers build their actor context only from the verified token attached at the
+HTTP edge.
 
 Authorization denials remain fail-closed. If the server cannot record the
 required denial evidence, it keeps the requested work blocked and returns a

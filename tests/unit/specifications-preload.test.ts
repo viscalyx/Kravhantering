@@ -26,6 +26,18 @@ const mocks = vi.hoisted(() => ({
   recordAuthorizationDenied: vi.fn(),
 }))
 
+vi.mock('next-intl/server', () => ({
+  getTranslations: vi.fn(
+    async ({ locale }: { locale: 'en' | 'sv'; namespace: string }) =>
+      (key: string) => {
+        if (key !== 'partialDataLoadWarning') return key
+        return locale === 'sv'
+          ? 'Vissa underlagsdata kunde inte läsas in. Befintliga data visas fortfarande där de finns.'
+          : 'Some specification data could not be loaded. Existing data is still shown where available.'
+      },
+  ),
+}))
+
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,
 }))
@@ -274,18 +286,40 @@ describe('specifications preload', () => {
   })
 
   it('returns a not-found preload shell when specification lookup fails', async () => {
-    mocks.getSpecificationById.mockRejectedValueOnce('database unavailable')
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.getSpecificationById.mockRejectedValueOnce(
+      new Error(
+        'SELECT client_secret FROM auth_configuration for NO5560000001-owner',
+      ),
+    )
 
-    const data = await loadRequirementsSpecificationDetailInitialData({
-      locale: 'sv',
-      specificationId: 404,
-    })
+    try {
+      const data = await loadRequirementsSpecificationDetailInitialData({
+        locale: 'sv',
+        specificationId: 404,
+      })
 
-    expect(data.notFound).toBe(true)
-    expect(data.spec).toBeNull()
-    expect(data.errors).toEqual([
-      { key: 'specification', message: 'database unavailable' },
-    ])
+      expect(data.notFound).toBe(true)
+      expect(data.spec).toBeNull()
+      expect(data.errors).toEqual([
+        {
+          key: 'specification',
+          message:
+            'Vissa underlagsdata kunde inte läsas in. Befintliga data visas fortfarande där de finns.',
+        },
+      ])
+      const serializedData = JSON.stringify(data)
+      expect(serializedData).not.toMatch(
+        /SELECT|client_secret|auth_configuration|NO5560000001-owner/,
+      )
+      expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toMatch(
+        /SELECT client_secret|NO5560000001-owner/,
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('returns assignment guidance and audits a forbidden preload', async () => {
@@ -339,30 +373,38 @@ describe('specifications preload', () => {
       name: 'Specification',
       responsibleHsaId: 'SE5560000001-owner',
     })
-    mocks.getAiGenerationAvailability.mockRejectedValueOnce(new Error('ai'))
-    mocks.listAreas.mockRejectedValueOnce(new Error('areas'))
-    mocks.listRequirementPackages.mockRejectedValueOnce(new Error('packages'))
+    mocks.getAiGenerationAvailability.mockRejectedValueOnce(
+      new Error('raw-ai-failure'),
+    )
+    mocks.listAreas.mockRejectedValueOnce(new Error('raw-areas-failure'))
+    mocks.listRequirementPackages.mockRejectedValueOnce(
+      new Error('raw-packages-failure'),
+    )
     mocks.listSpecificationNeedsReferences.mockRejectedValueOnce(
-      new Error('needs'),
+      new Error('raw-needs-failure'),
     )
     mocks.listSpecificationGovernanceObjectTypes.mockRejectedValueOnce(
-      new Error('governance'),
+      new Error('raw-governance-failure'),
     )
     mocks.listSpecificationImplementationTypes.mockRejectedValueOnce(
-      new Error('implementation'),
+      new Error('raw-implementation-failure'),
     )
     mocks.listSpecificationLifecycleStatuses.mockRejectedValueOnce(
-      new Error('lifecycle'),
+      new Error('raw-lifecycle-failure'),
     )
     mocks.listSpecificationItemStatuses.mockRejectedValueOnce(
-      new Error('statuses'),
+      new Error('raw-statuses-failure'),
     )
-    mocks.getSpecificationItems.mockRejectedValueOnce(new Error('items'))
-    mocks.queryRequirementList.mockRejectedValueOnce(new Error('available'))
+    mocks.getSpecificationItems.mockRejectedValueOnce(
+      new Error('raw-items-failure'),
+    )
+    mocks.queryRequirementList.mockRejectedValueOnce(
+      new Error('raw-available-failure'),
+    )
     mocks.querySpecificationRequirementPackagePage.mockRejectedValueOnce(
-      new Error('package catalog'),
+      new Error('raw-package-catalog-failure'),
     )
-    mocks.listNormReferences.mockRejectedValue(new Error('norms'))
+    mocks.listNormReferences.mockRejectedValue(new Error('raw-norms-failure'))
 
     const data = await loadRequirementsSpecificationDetailInitialData({
       locale: 'en',
@@ -370,28 +412,20 @@ describe('specifications preload', () => {
     })
 
     expect(data.spec?.id).toBe(42)
-    expect(data.errors.map(error => error.message)).toEqual(
-      expect.arrayContaining([
-        'ai',
-        'areas',
-        'packages',
-        'needs',
-        'governance',
-        'implementation',
-        'lifecycle',
-        'statuses',
-        'items',
-        'available',
-        'package catalog',
-        'norms',
+    expect(new Set(data.errors.map(error => error.message))).toEqual(
+      new Set([
+        'Some specification data could not be loaded. Existing data is still shown where available.',
       ]),
+    )
+    expect(JSON.stringify(data)).not.toMatch(
+      /raw-(?:ai|areas|packages|needs|governance|implementation|lifecycle|statuses|items|available|package-catalog|norms)-failure/,
     )
     expect(data.availableRequirements.rows).toEqual([])
     expect(data.specificationItems.items).toEqual([])
   })
 
   it('preloads the visible specification catalog with row permissions', async () => {
-    const data = await loadRequirementsSpecificationsInitialData()
+    const data = await loadRequirementsSpecificationsInitialData('en')
 
     expect(data.collectionPermissions?.canCreateSpecification).toBe(true)
     expect(data.specifications).toEqual([
@@ -423,17 +457,19 @@ describe('specifications preload', () => {
       new Error('lifecycle'),
     )
 
-    const data = await loadRequirementsSpecificationsInitialData()
+    const data = await loadRequirementsSpecificationsInitialData('en')
 
     expect(data.specifications).toEqual([])
     expect(data.governanceObjectTypes).toEqual([])
     expect(data.implementationTypes).toEqual([])
     expect(data.lifecycleStatuses).toEqual([])
-    expect(data.errors.map(error => error.message)).toEqual([
-      'specifications',
-      'governance',
-      'implementation',
-      'lifecycle',
-    ])
+    expect(data.errors.map(error => error.message)).toEqual(
+      Array(4).fill(
+        'Some specification data could not be loaded. Existing data is still shown where available.',
+      ),
+    )
+    expect(JSON.stringify(data)).not.toMatch(
+      /"message":"(?:specifications|governance|implementation|lifecycle)"/,
+    )
   })
 })

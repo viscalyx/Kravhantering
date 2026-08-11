@@ -28,28 +28,23 @@ vi.mock('@/lib/requirements/service', async () => {
   }
 })
 
-vi.mock('@/lib/auth/mcp-token', () => ({
-  McpAuthError: class McpAuthError extends Error {
-    readonly status: number
-
-    constructor(message: string, status = 401) {
-      super(message)
-      this.name = 'McpAuthError'
-      this.status = status
-    }
-  },
-  verifyMcpBearerToken: vi.fn(async () => ({
-    actor: {
-      id: 'mcp-test-actor',
-      displayName: 'MCP Test Actor',
-      hsaId: 'SE5560000001-mcp1',
-      isAuthenticated: true,
-      roles: ['Admin'],
-      source: 'mcp' as const,
-    },
-    expiresAt: null,
-  })),
-}))
+vi.mock('@/lib/auth/mcp-token', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/auth/mcp-token')>()
+  return {
+    ...actual,
+    verifyMcpBearerToken: vi.fn(async () => ({
+      actor: {
+        id: 'mcp-test-actor',
+        displayName: 'MCP Test Actor',
+        hsaId: 'SE5560000001-mcp1',
+        isAuthenticated: true,
+        roles: ['Admin'],
+        source: 'mcp' as const,
+      },
+      expiresAt: null,
+    })),
+  }
+})
 
 vi.mock('@/lib/dal/ai-settings', () => ({
   getCachedMcpRuntimeSettings: serviceState.getCachedMcpRuntimeSettings,
@@ -1604,7 +1599,7 @@ describe('handleRequirementsMcpRequest', () => {
 
   it('returns a bearer challenge and skips service creation when MCP auth fails', async () => {
     vi.mocked(verifyMcpBearerToken).mockRejectedValueOnce(
-      new McpAuthError('Missing Bearer token.', 401),
+      new McpAuthError('bearer_missing'),
     )
 
     const response = await handleRequirementsMcpRequest(
@@ -1646,17 +1641,25 @@ describe('handleRequirementsMcpRequest', () => {
     expect(serviceState.getService).not.toHaveBeenCalled()
   })
 
-  it('propagates unexpected authentication failures', async () => {
+  it('contains unexpected authentication failures behind a stable response', async () => {
     vi.mocked(verifyMcpBearerToken).mockRejectedValueOnce(
-      new Error('OIDC discovery unavailable'),
+      new Error(
+        'OIDC discovery unavailable at https://private.issuer for secret-token',
+      ),
     )
 
-    await expect(
-      handleRequirementsMcpRequest(
-        new Request('https://example.test/api/mcp'),
-        {} as never,
-      ),
-    ).rejects.toThrow('OIDC discovery unavailable')
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp'),
+      {} as never,
+    )
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('WWW-Authenticate')).toBe('Bearer')
+    const serializedResponse = JSON.stringify(await response.json())
+    expect(serializedResponse).toContain('Authentication failed.')
+    expect(serializedResponse).not.toMatch(
+      /private\.issuer|secret-token|OIDC discovery unavailable/,
+    )
     expect(serviceState.getCachedMcpRuntimeSettings).not.toHaveBeenCalled()
     expect(serviceState.getService).not.toHaveBeenCalled()
   })
@@ -1681,7 +1684,7 @@ describe('handleRequirementsMcpRequest', () => {
 
   it('returns 401 before payload size inspection when MCP auth fails', async () => {
     vi.mocked(verifyMcpBearerToken).mockRejectedValueOnce(
-      new McpAuthError('Missing Bearer token.', 401),
+      new McpAuthError('bearer_missing'),
     )
 
     const response = await handleRequirementsMcpRequest(

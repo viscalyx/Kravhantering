@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import { DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY } from '@/lib/ai/generation-availability'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import {
@@ -20,6 +21,7 @@ import { listSpecificationItemStatuses } from '@/lib/dal/specification-item-stat
 import { listSpecificationLifecycleStatuses } from '@/lib/dal/specification-lifecycle-statuses'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import { positiveIntegerStringSchema } from '@/lib/http/validation'
 import { forbiddenError } from '@/lib/requirements/errors'
 import { queryRequirementList } from '@/lib/requirements/list-query'
@@ -60,24 +62,42 @@ import {
 
 const PAGE_SIZE = 200
 
-function toErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error)
+interface CaptureResult<T> {
+  error?: SpecificationPreloadError
+  value: T
 }
 
-async function capture<T>(
+type Capture = <T>(
   key: string,
   fallback: T,
   load: () => Promise<T>,
-): Promise<{ error?: SpecificationPreloadError; value: T }> {
-  try {
-    return { value: await load() }
-  } catch (error) {
-    console.error(`Failed to preload ${key}`, error)
-    return {
-      error: { key, message: toErrorMessage(error) },
-      value: fallback,
+) => Promise<CaptureResult<T>>
+
+function createCapture(errorMessage: string): Capture {
+  return async function capture<T>(
+    key: string,
+    fallback: T,
+    load: () => Promise<T>,
+  ): Promise<CaptureResult<T>> {
+    try {
+      return { value: await load() }
+    } catch (error) {
+      logSanitizedError('Failed to preload specification data', error, {
+        resourceKey: key,
+      })
+      return {
+        error: { key, message: errorMessage },
+        value: fallback,
+      }
     }
   }
+}
+
+async function specificationPreloadErrorMessage(
+  locale: 'en' | 'sv',
+): Promise<string> {
+  const t = await getTranslations({ locale, namespace: 'specification' })
+  return t('partialDataLoadWarning')
 }
 
 async function listLinkedNormReferenceOptions(
@@ -189,6 +209,7 @@ export async function loadRequirementsSpecificationDetailInitialData({
   locale: 'en' | 'sv'
   specificationId: number
 }): Promise<RequirementsSpecificationDetailInitialData> {
+  const capture = createCapture(await specificationPreloadErrorMessage(locale))
   const db = await getRequestSqlServerDataSource()
   const { service } = createRequirementsRuntime(db)
   const context = await createServerComponentRequestContext({
@@ -429,7 +450,10 @@ export async function resolveRequirementsSpecificationRouteParam(
   return specification ? { fromCode: true, id: specification.id } : null
 }
 
-export async function loadRequirementsSpecificationsInitialData(): Promise<RequirementsSpecificationsInitialData> {
+export async function loadRequirementsSpecificationsInitialData(
+  locale: 'en' | 'sv',
+): Promise<RequirementsSpecificationsInitialData> {
+  const capture = createCapture(await specificationPreloadErrorMessage(locale))
   const db = await getRequestSqlServerDataSource()
   const context = await createServerComponentRequestContext({
     path: '/specifications',

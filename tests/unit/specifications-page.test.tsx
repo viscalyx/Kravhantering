@@ -81,11 +81,15 @@ describe('specifications pages', () => {
     const metadata = await generateMetadata()
     expect(metadata.title).toBe('specifications')
 
-    render(await RequirementsSpecificationsPage())
+    render(
+      await RequirementsSpecificationsPage({
+        params: Promise.resolve({ locale: 'en' }),
+      }),
+    )
     expect(
       screen.getByText('RequirementsSpecificationsClient mounted: 1'),
     ).toBeInTheDocument()
-    expect(loadRequirementsSpecificationsInitialData).toHaveBeenCalledWith()
+    expect(loadRequirementsSpecificationsInitialData).toHaveBeenCalledWith('en')
   })
 
   it('RequirementsSpecificationDetailPage passes the numeric id to RequirementsSpecificationDetailClient', async () => {

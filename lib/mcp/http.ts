@@ -3,6 +3,7 @@ import {
   formatMcpRequestPayloadKiB,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 } from '@/lib/ai/generation-availability'
+import { recordSecurityEvent } from '@/lib/auth/audit'
 import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
 import { getCachedMcpRuntimeSettings } from '@/lib/dal/ai-settings'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -111,23 +112,33 @@ export async function handleRequirementsMcpRequest(
     const verified = await verifyMcpBearerToken(request)
     attachVerifiedActor(request, verified.actor)
   } catch (err) {
-    if (err instanceof McpAuthError) {
-      return new Response(
-        JSON.stringify({
-          error: { code: -32000, message: err.message },
-          id: null,
-          jsonrpc: '2.0',
-        }),
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'WWW-Authenticate': 'Bearer',
-          },
-          status: err.status,
-        },
-      )
+    const authError =
+      err instanceof McpAuthError
+        ? err
+        : new McpAuthError('auth_boundary_failed')
+    if (!(err instanceof McpAuthError)) {
+      recordSecurityEvent({
+        event: 'auth.token.rejected',
+        outcome: 'failure',
+        actor: { source: 'mcp' },
+        request,
+        detail: { reason: authError.reason },
+      })
     }
-    throw err
+    return new Response(
+      JSON.stringify({
+        error: { code: -32000, message: authError.message },
+        id: null,
+        jsonrpc: '2.0',
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'WWW-Authenticate': 'Bearer',
+        },
+        status: authError.status,
+      },
+    )
   }
 
   const mcpSettings = await getCachedMcpRuntimeSettings(db)

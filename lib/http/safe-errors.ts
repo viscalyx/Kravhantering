@@ -1,3 +1,5 @@
+import { HSA_ID_PATTERN_SOURCE } from '@/lib/auth/hsa-id'
+
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error'
 export const AI_PROVIDER_UNAVAILABLE_MESSAGE = 'AI provider is unavailable'
 export const AI_CREDIT_INFORMATION_UNAVAILABLE_MESSAGE =
@@ -12,7 +14,10 @@ interface SafeErrorLogValue {
 const OPENROUTER_KEY_PATTERN = /\bsk-or-(?:v1|mgmt)-[A-Za-z0-9_-]+\b/g
 const BEARER_TOKEN_PATTERN = /\bBearer\s+[A-Za-z0-9._~+/=-]+\b/gi
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g
-const HSA_ID_PATTERN = /\bSE\d{10}-[A-Za-z0-9_-]+\b/g
+const HSA_ID_PATTERN = new RegExp(
+  `(?<![A-Za-z0-9])${HSA_ID_PATTERN_SOURCE}(?![A-Za-z0-9])`,
+  'gu',
+)
 const SECRET_ASSIGNMENT_PATTERN =
   /\b([A-Za-z0-9_.-]*(?:api[_-]?key|authorization[_-]?code|code[_-]?verifier|nonce|password|secret|state|token)[A-Za-z0-9_.-]*)\s*[:=]\s*["']?[^"',\s}]+/gi
 

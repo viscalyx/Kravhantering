@@ -19,32 +19,86 @@ type JwksCacheEntry = {
 
 let jwksCache: JwksCacheEntry | null = null
 
+export type McpAuthFailureReason =
+  | 'auth_boundary_failed'
+  | 'auth_configuration_invalid'
+  | 'bearer_missing'
+  | 'hsa_id_invalid'
+  | 'hsa_id_missing'
+  | 'jwks_configuration_invalid'
+  | 'jwks_unavailable'
+  | 'oidc_discovery_failed'
+  | 'token_audience_invalid'
+  | 'token_issuer_invalid'
+  | 'token_verification_failed'
+
+interface McpAuthFailureContract {
+  message: string
+  status: number
+}
+
+const MCP_AUTH_FAILURE_CONTRACTS: Record<
+  McpAuthFailureReason,
+  McpAuthFailureContract
+> = {
+  auth_boundary_failed: { message: 'Authentication failed.', status: 500 },
+  auth_configuration_invalid: {
+    message: 'Authentication failed.',
+    status: 500,
+  },
+  bearer_missing: { message: 'Missing Bearer token.', status: 401 },
+  hsa_id_invalid: { message: 'Invalid Bearer token.', status: 401 },
+  hsa_id_missing: { message: 'Invalid Bearer token.', status: 401 },
+  jwks_configuration_invalid: {
+    message: 'Authentication failed.',
+    status: 500,
+  },
+  jwks_unavailable: {
+    message: 'Authentication service unavailable.',
+    status: 503,
+  },
+  oidc_discovery_failed: {
+    message: 'Authentication service unavailable.',
+    status: 503,
+  },
+  token_audience_invalid: { message: 'Invalid Bearer token.', status: 401 },
+  token_issuer_invalid: { message: 'Invalid Bearer token.', status: 401 },
+  token_verification_failed: { message: 'Invalid Bearer token.', status: 401 },
+}
+
+class McpAuthDependencyError extends Error {
+  constructor(public readonly reason: McpAuthFailureReason) {
+    super(reason)
+    this.name = 'McpAuthDependencyError'
+  }
+}
+
 function parseJwksUrl(jwksUri: string): URL {
   let url: URL
   try {
     url = new URL(jwksUri)
   } catch {
-    throw new Error('OIDC discovery metadata included an invalid `jwks_uri`.')
+    throw new McpAuthDependencyError('jwks_configuration_invalid')
   }
   if (url.protocol === 'https:') return url
   if (url.protocol === 'http:' && ALLOW_INSECURE_OIDC_ISSUER) return url
   if (url.protocol === 'http:') {
-    throw new Error(
-      'Refusing to use insecure http:// JWKS URI in this build. ' +
-        'Production builds require an https:// JWKS URI.',
-    )
+    throw new McpAuthDependencyError('jwks_configuration_invalid')
   }
-  throw new Error(
-    `Refusing to use unsupported JWKS URI protocol: ${url.protocol}`,
-  )
+  throw new McpAuthDependencyError('jwks_configuration_invalid')
 }
 
 async function getOrCreateJwks(issuer: string): Promise<RemoteJwks> {
-  const { getOidcConfiguration } = await import('@/lib/auth/oidc')
-  const metadata = (await getOidcConfiguration()).serverMetadata()
+  let metadata: { jwks_uri?: string }
+  try {
+    const { getOidcConfiguration } = await import('@/lib/auth/oidc')
+    metadata = (await getOidcConfiguration()).serverMetadata()
+  } catch {
+    throw new McpAuthDependencyError('oidc_discovery_failed')
+  }
   const jwksUri = metadata.jwks_uri
   if (!jwksUri) {
-    throw new Error('OIDC discovery metadata did not include `jwks_uri`.')
+    throw new McpAuthDependencyError('jwks_configuration_invalid')
   }
   if (
     jwksCache &&
@@ -53,7 +107,13 @@ async function getOrCreateJwks(issuer: string): Promise<RemoteJwks> {
   ) {
     return jwksCache.jwks
   }
-  const jwks = createRemoteJWKSet(parseJwksUrl(jwksUri))
+  let jwks: RemoteJwks
+  try {
+    jwks = createRemoteJWKSet(parseJwksUrl(jwksUri))
+  } catch (error) {
+    if (error instanceof McpAuthDependencyError) throw error
+    throw new McpAuthDependencyError('jwks_configuration_invalid')
+  }
   jwksCache = { issuer, jwksUri, jwks }
   return jwks
 }
@@ -63,13 +123,51 @@ export function resetMcpJwksCacheForTests(): void {
 }
 
 export class McpAuthError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
-    super(message)
+  public readonly status: number
+
+  constructor(public readonly reason: McpAuthFailureReason) {
+    const contract = MCP_AUTH_FAILURE_CONTRACTS[reason]
+    super(contract.message)
     this.name = 'McpAuthError'
+    this.status = contract.status
   }
+}
+
+function rejectMcpAuthentication(
+  request: Request,
+  reason: McpAuthFailureReason,
+): never {
+  recordSecurityEvent({
+    event: 'auth.token.rejected',
+    outcome: 'failure',
+    actor: { source: 'mcp' },
+    request,
+    detail: { reason },
+  })
+  throw new McpAuthError(reason)
+}
+
+function errorProperty(error: unknown, key: string): unknown {
+  return error && typeof error === 'object'
+    ? (error as Record<string, unknown>)[key]
+    : undefined
+}
+
+function classifyVerificationFailure(error: unknown): McpAuthFailureReason {
+  if (error instanceof McpAuthDependencyError) return error.reason
+
+  const code = errorProperty(error, 'code')
+  const claim = errorProperty(error, 'claim')
+  if (code === 'ERR_JWT_CLAIM_VALIDATION_FAILED' && claim === 'iss') {
+    return 'token_issuer_invalid'
+  }
+  if (code === 'ERR_JWT_CLAIM_VALIDATION_FAILED' && claim === 'aud') {
+    return 'token_audience_invalid'
+  }
+  if (code === 'ERR_JWKS_TIMEOUT' || error instanceof TypeError) {
+    return 'jwks_unavailable'
+  }
+  return 'token_verification_failed'
 }
 
 /**
@@ -80,27 +178,23 @@ export class McpAuthError extends Error {
 export async function verifyMcpBearerToken(
   request: Request,
 ): Promise<VerifiedMcpToken> {
-  const { getAuthConfig } = await import('@/lib/auth/config')
-  const cfg = getAuthConfig()
-
   const header = request.headers.get('authorization') ?? ''
   const match = /^Bearer\s+(\S+)$/i.exec(header)
   if (!match) {
-    recordSecurityEvent({
-      event: 'auth.token.rejected',
-      outcome: 'failure',
-      actor: { source: 'mcp' },
-      request,
-      detail: { reason: 'bearer_missing' },
-    })
-    throw new McpAuthError('Missing Bearer token.', 401)
+    rejectMcpAuthentication(request, 'bearer_missing')
   }
   const token = match[1]
 
-  const issuer = cfg.issuerUrl
-  const audience = cfg.apiAudience
-
   try {
+    const { getAuthConfig } = await import('@/lib/auth/config')
+    let cfg: ReturnType<typeof getAuthConfig>
+    try {
+      cfg = getAuthConfig()
+    } catch {
+      rejectMcpAuthentication(request, 'auth_configuration_invalid')
+    }
+    const issuer = cfg.issuerUrl
+    const audience = cfg.apiAudience
     const jwks = await getOrCreateJwks(issuer)
     const { payload } = await jwtVerify(token, jwks, {
       issuer,
@@ -120,30 +214,10 @@ export async function verifyMcpBearerToken(
     const hsaIdRaw =
       typeof hsaIdClaim === 'string' && hsaIdClaim !== '' ? hsaIdClaim : null
     if (!hsaIdRaw) {
-      recordSecurityEvent({
-        event: 'auth.token.rejected',
-        outcome: 'failure',
-        actor: clientId ? { source: 'mcp', clientId } : { source: 'mcp' },
-        request,
-        detail: { reason: 'hsa_id_missing' },
-      })
-      throw new McpAuthError(
-        'Invalid Bearer token: missing required `employeeHsaId` claim.',
-        401,
-      )
+      rejectMcpAuthentication(request, 'hsa_id_missing')
     }
     if (!isHsaId(hsaIdRaw)) {
-      recordSecurityEvent({
-        event: 'auth.token.rejected',
-        outcome: 'failure',
-        actor: clientId ? { source: 'mcp', clientId } : { source: 'mcp' },
-        request,
-        detail: { reason: 'hsa_id_invalid' },
-      })
-      throw new McpAuthError(
-        'Invalid Bearer token: `employeeHsaId` is not a valid HSA-id.',
-        401,
-      )
+      rejectMcpAuthentication(request, 'hsa_id_invalid')
     }
     const scopeRaw = payloadRecord.scope
     const scopes =
@@ -172,17 +246,6 @@ export async function verifyMcpBearerToken(
     }
   } catch (err) {
     if (err instanceof McpAuthError) throw err
-    const message = err instanceof Error ? err.message : 'Invalid token.'
-    recordSecurityEvent({
-      event: 'auth.token.rejected',
-      outcome: 'failure',
-      actor: { source: 'mcp' },
-      request,
-      detail: {
-        reason: 'jwt_verify_failed',
-        errorName: err instanceof Error ? err.name : 'Error',
-      },
-    })
-    throw new McpAuthError(`Invalid Bearer token: ${message}`, 401)
+    rejectMcpAuthentication(request, classifyVerificationFailure(err))
   }
 }

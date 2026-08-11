@@ -532,7 +532,14 @@ Current behavior:
   trusting any request header. Tests can use the same seam to inject
   verified actors.
 - Missing or invalid Bearer tokens return `401` with `WWW-Authenticate:
-  Bearer` and a JSON-RPC error body before service or tool handling runs.
+  Bearer` and a stable JSON-RPC error body before service or tool handling
+  runs. Authentication configuration failures return `500`; discovery and
+  remote JWKS availability failures return `503`. All authentication failures
+  retain the Bearer challenge and generic public messages.
+- `McpAuthError` derives its public message and status from an allowlisted
+  internal reason. Rejection audit events contain only that reason, never raw
+  verifier text, runtime error names, tokens, claims, client IDs, issuer
+  details, or network endpoints.
 - The default REST and MCP service wiring uses
   `AssignmentBasedAuthorizationService` via
   `createDefaultAuthorizationService(db)`. It resolves the target resource in

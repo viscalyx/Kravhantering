@@ -20,9 +20,10 @@
 /** Maximum length of an HSA-id (inclusive). */
 export const HSA_ID_MAX_LENGTH = 31
 export const HSA_ID_PREFIX_LENGTH = 12
+export const HSA_ID_PATTERN_SOURCE = String.raw`[A-Z]{2}\d{10}-[A-Za-z0-9]{1,18}`
 
 // Anchored regex with the unicode flag so `[A-Za-z]` cannot match `å/ä/ö`.
-const HSA_ID_PATTERN = /^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u
+const HSA_ID_PATTERN = new RegExp(`^${HSA_ID_PATTERN_SOURCE}$`, 'u')
 const HSA_ID_PREFIX_PATTERN = /^[A-Z]{2}\d{10}$/u
 const HSA_ID_SUFFIX_PATTERN = /^[A-Za-z0-9]+$/u
 
