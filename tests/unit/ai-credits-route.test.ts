@@ -190,7 +190,8 @@ describe('GET /api/ai/credits', () => {
 
       expect(response.status).toBe(503)
       await expect(response.json()).resolves.toEqual({
-        error: 'AI credit information is unavailable',
+        code: 'ai_provider_unavailable',
+        error: 'AI provider is unavailable',
       })
       expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toContain(
         'sk-or-v1-secret',

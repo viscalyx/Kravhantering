@@ -2,6 +2,7 @@ import {
   getDefaultModel,
   listModels,
   type OpenRouterModel,
+  type OpenRouterRequestContext,
 } from '@/lib/ai/openrouter-client'
 
 export const OPENROUTER_STRUCTURED_OUTPUTS_PARAMETER = 'structured_outputs'
@@ -16,6 +17,7 @@ export class OpenRouterModelCatalogError extends Error {
 }
 
 export interface OpenRouterModelCatalogOptions {
+  requestContext?: OpenRouterRequestContext
   supportedParameters?: string[]
 }
 
@@ -81,10 +83,14 @@ export async function listOpenRouterModelCatalog(
     ...(providerParameters ?? []),
     OPENROUTER_STRUCTURED_OUTPUTS_PARAMETER,
   ])
+  const loadModels = (parameters?: string[]): Promise<OpenRouterModel[]> =>
+    options.requestContext
+      ? listModels(parameters, options.requestContext)
+      : listModels(parameters)
 
   const [models, structuredModels] = await Promise.all([
-    listModels(providerParameters),
-    listModels(structuredFilter),
+    loadModels(providerParameters),
+    loadModels(structuredFilter),
   ])
   const enrichedModels = enrichModelCapabilities(models, structuredModels)
 
@@ -99,9 +105,10 @@ export async function listOpenRouterModelCatalog(
 
 export async function resolveOpenRouterModelCapabilities(
   model?: string,
+  requestContext?: OpenRouterRequestContext,
 ): Promise<OpenRouterModel> {
   const modelId = model || getDefaultModel()
-  const models = await listOpenRouterModelCatalog()
+  const models = await listOpenRouterModelCatalog({ requestContext })
   const resolved = models.find(candidate => candidate.id === modelId)
   if (!resolved) {
     throw new OpenRouterModelCatalogError(

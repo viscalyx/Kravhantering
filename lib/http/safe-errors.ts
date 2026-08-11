@@ -2,8 +2,6 @@ import { HSA_ID_PATTERN_SOURCE } from '@/lib/auth/hsa-id'
 
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error'
 export const AI_PROVIDER_UNAVAILABLE_MESSAGE = 'AI provider is unavailable'
-export const AI_CREDIT_INFORMATION_UNAVAILABLE_MESSAGE =
-  'AI credit information is unavailable'
 
 interface SafeErrorLogValue {
   message: string

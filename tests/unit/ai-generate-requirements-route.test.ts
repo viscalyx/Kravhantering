@@ -212,11 +212,12 @@ describe('POST /api/ai/generate-requirement-import', () => {
     expect(text).not.toContain('unvalidated draft content')
   })
 
-  it('streams validation_error when model output does not match import schema', async () => {
+  it('streams a stable invalid-response error when model output does not match the schema', async () => {
     routeState.generateChatStream.mockImplementation(async function* () {
       yield {
         phase: 'done',
-        rawContent: '{"requirements":[]}',
+        rawContent:
+          '{"requirements":[],"echo":"Ada Lovelace ada@example.test payroll prompt"}',
         stats: {
           completionTokens: 7,
           cost: 0.02,
@@ -224,16 +225,18 @@ describe('POST /api/ai/generate-requirement-import', () => {
           reasoningTokens: 0,
           totalTokens: 10,
         },
-        thinking: '',
+        thinking: 'Prompt echo for Ada Lovelace at ada@example.test',
       }
     })
 
     const response = await POST(makeRequest())
     const text = await response.text()
 
-    expect(text).toContain('event: validation_error')
+    expect(text).toContain('event: error')
     expect(text).not.toContain('event: done')
-    expect(text).toContain('Generated JSON did not match')
+    expect(text).toContain('ai_provider_invalid_response')
+    expect(text).toContain('AI provider returned an invalid response')
+    expect(text).not.toMatch(/Ada Lovelace|ada@example\.test|payroll prompt/)
   })
 
   it('streams provider unavailable when import instruction loading fails before generation starts', async () => {
@@ -505,8 +508,8 @@ describe('POST /api/ai/generate-requirement-import', () => {
       const response = await POST(makeRequest())
       const text = await response.text()
 
-      expect(text).toContain('event: thinking')
-      expect(text).toContain('Authorization: ')
+      expect(text).not.toContain('event: thinking')
+      expect(text).not.toContain('Authorization: ')
       expect(text).toContain('event: error')
       expect(text).toContain(
         'The AI response was blocked by the AI safety filter: System-adjacent content leakage. Revise the request and try again.',
@@ -697,8 +700,8 @@ describe('POST /api/ai/generate-requirement-import', () => {
   it('sanitizes provider error events without returning their cause', async () => {
     routeState.generateChatStream.mockImplementation(async function* () {
       yield {
-        cause: new Error('provider account secret'),
-        message: 'provider account secret',
+        code: 'ai_provider_rate_limited',
+        message: 'AI provider rate limit reached',
         phase: 'error',
       }
     })
@@ -709,8 +712,10 @@ describe('POST /api/ai/generate-requirement-import', () => {
     try {
       const response = await POST(makeRequest())
       const body = await response.text()
+      expect(response.status).toBe(503)
       expect(body).toContain('event: error')
-      expect(body).toContain('AI provider is unavailable')
+      expect(body).toContain('ai_provider_rate_limited')
+      expect(body).toContain('AI provider rate limit reached')
       expect(body).not.toContain('provider account secret')
     } finally {
       consoleErrorSpy.mockRestore()
@@ -735,7 +740,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
     }
   })
 
-  it('reports malformed provider JSON as a localized validation failure', async () => {
+  it('reports malformed provider JSON as a stable invalid-response error', async () => {
     routeState.generateChatStream.mockImplementation(async function* () {
       yield {
         phase: 'done',
@@ -757,9 +762,10 @@ describe('POST /api/ai/generate-requirement-import', () => {
     try {
       const response = await POST(makeRequest())
       const body = await response.text()
-      expect(body).toContain('event: validation_error')
-      expect(body).toContain('invalid_json')
-      expect(body).toContain('Model output was not valid JSON.')
+      expect(body).toContain('event: error')
+      expect(body).toContain('ai_provider_invalid_response')
+      expect(body).toContain('AI provider returned an invalid response')
+      expect(body).not.toContain('{not-json')
     } finally {
       consoleErrorSpy.mockRestore()
     }
@@ -770,7 +776,11 @@ describe('POST /api/ai/generate-requirement-import', () => {
       yield { chunk: 'Checking contract', phase: 'thinking' }
       yield { chunk: '{', phase: 'generating' }
       yield { chunk: '"requirements":[]}', phase: 'generating' }
-      yield { message: 'provider unavailable', phase: 'error' }
+      yield {
+        code: 'ai_provider_unavailable',
+        message: 'AI provider is unavailable',
+        phase: 'error',
+      }
     })
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
@@ -789,7 +799,8 @@ describe('POST /api/ai/generate-requirement-import', () => {
       const body = await response.text()
 
       expect(body.match(/event: generating/g)).toHaveLength(1)
-      expect(body).toContain('event: thinking')
+      expect(body).not.toContain('event: thinking')
+      expect(body).not.toContain('Checking contract')
       expect(body).toContain('AI provider is unavailable')
       expect(body).not.toContain('provider unavailable')
     } finally {
@@ -799,7 +810,11 @@ describe('POST /api/ai/generate-requirement-import', () => {
 
   it('throttles repeated generation before loading instructions or calling the provider', async () => {
     routeState.generateChatStream.mockImplementation(async function* () {
-      yield { message: 'provider unavailable', phase: 'error' }
+      yield {
+        code: 'ai_provider_unavailable',
+        message: 'AI provider is unavailable',
+        phase: 'error',
+      }
     })
     const consoleErrorSpy = vi
       .spyOn(console, 'error')

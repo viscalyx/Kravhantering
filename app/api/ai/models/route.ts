@@ -3,9 +3,9 @@ import { z } from 'zod'
 import type { OpenRouterModel } from '@/lib/ai/openrouter-client'
 import { listOpenRouterModelCatalog } from '@/lib/ai/openrouter-model-catalog'
 import {
-  AI_PROVIDER_UNAVAILABLE_MESSAGE,
-  logSanitizedError,
-} from '@/lib/http/safe-errors'
+  aiProviderErrorPayload,
+  normalizeAiProviderError,
+} from '@/lib/ai/provider-errors'
 import {
   ARRAY_INPUT_MAX_ITEMS,
   boundedDbStringSchema,
@@ -215,6 +215,10 @@ export async function GET(request: NextRequest) {
       },
       async () =>
         listOpenRouterModelCatalog({
+          requestContext: {
+            correlationId: context.correlationId,
+            requestId: context.requestId,
+          },
           supportedParameters: paramList,
         }),
     )
@@ -224,12 +228,13 @@ export async function GET(request: NextRequest) {
       context,
     )
   } catch (err) {
-    logSanitizedError('Failed to list AI models', err)
+    const providerError = normalizeAiProviderError(err, {
+      correlationId: context.correlationId,
+      operation: 'models.list',
+      requestId: context.requestId,
+    })
     return applyResponseCorrelationHeaders(
-      NextResponse.json(
-        { error: AI_PROVIDER_UNAVAILABLE_MESSAGE, models: [] },
-        { status: 503 },
-      ),
+      NextResponse.json(aiProviderErrorPayload(providerError), { status: 503 }),
       context,
     )
   }

@@ -1,5 +1,6 @@
 import { type RefinementCtx, z } from 'zod'
 import type { ContentPart } from '@/lib/ai/openrouter-client'
+import type { AiProviderErrorCode } from '@/lib/ai/provider-errors'
 import {
   DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
   getPromptMessage,
@@ -355,15 +356,26 @@ export function createUnavailableAiStreamResponse(
   context: RequestCorrelationIds,
   recordFailure: () => void,
 ) {
+  return createAiErrorStreamResponse(
+    context,
+    {
+      code: 'ai_provider_unavailable',
+      message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+    },
+    recordFailure,
+  )
+}
+
+export function createAiErrorStreamResponse(
+  context: RequestCorrelationIds,
+  error: { code: AiProviderErrorCode; message: string },
+  recordFailure: () => void,
+) {
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder()
       controller.enqueue(
-        encoder.encode(
-          `event: error\ndata: ${JSON.stringify({
-            message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-          })}\n\n`,
-        ),
+        encoder.encode(`event: error\ndata: ${JSON.stringify(error)}\n\n`),
       )
       recordFailure()
       controller.close()

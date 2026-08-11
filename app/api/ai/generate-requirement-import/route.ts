@@ -2,14 +2,17 @@ import { z } from 'zod'
 import {
   type GenerationStats,
   generateChatStream,
+  type StreamEvent,
 } from '@/lib/ai/openrouter-client'
 import { resolveOpenRouterModelCapabilities } from '@/lib/ai/openrouter-model-catalog'
+import {
+  aiProviderStreamError,
+  normalizeAiProviderError,
+} from '@/lib/ai/provider-errors'
 import {
   buildRequirementImportResponseFormatSchema,
   buildRequirementImportSystemPrompt,
   buildRequirementImportUserPrompt,
-  formatSchemaIssues,
-  getPromptMessage,
   parseJsonObject,
 } from '@/lib/ai/requirement-prompt'
 import {
@@ -43,6 +46,7 @@ import {
   aiRequirementImportBaseBodySchema,
   checkAiRequirementImportThrottle,
   countImageBytes,
+  createAiErrorStreamResponse,
   createAiRequirementImportThrottleResponse,
   createUnavailableAiStreamResponse,
   formatAiSafetyBlockedMessage,
@@ -145,32 +149,16 @@ function createStreamRecorder(
 
 function parseAndValidatePayload(
   rawContent: string,
-  locale: 'en' | 'sv',
-): {
-  issues?: ReturnType<typeof formatSchemaIssues>
-  payload?: ImportRequirementsPayload
-} {
+): ImportRequirementsPayload | undefined {
   let parsed: unknown
   try {
     parsed = parseJsonObject(rawContent)
   } catch {
-    return {
-      issues: [
-        {
-          code: 'invalid_json',
-          message: getPromptMessage(locale, ['ai', 'invalidGeneratedJson']),
-          path: '$',
-        },
-      ],
-    }
+    return undefined
   }
 
   const validation = requirementsImportPayloadSchema.safeParse(parsed)
-  if (!validation.success) {
-    return { issues: formatSchemaIssues(validation.error) }
-  }
-
-  return { payload: validation.data }
+  return validation.success ? validation.data : undefined
 }
 
 function imageMetadataForSafety(
@@ -290,6 +278,80 @@ export const POST = secureMutationRoute({
     })
     const userContent = withImages(userPrompt, images)
 
+    let modelCapabilities: Awaited<
+      ReturnType<typeof resolveOpenRouterModelCapabilities>
+    >
+    try {
+      modelCapabilities = await resolveOpenRouterModelCapabilities(body.model, {
+        correlationId: context.correlationId,
+        requestId: context.requestId,
+      })
+    } catch (error) {
+      const providerError = normalizeAiProviderError(error, {
+        correlationId: context.correlationId,
+        operation: 'models.list',
+        requestId: context.requestId,
+      })
+      return createAiErrorStreamResponse(
+        context,
+        aiProviderStreamError(providerError),
+        () => recordStreamEvent('failure', 503),
+      )
+    }
+    const resolvedModel = modelCapabilities.id
+    const providerEvents = generateChatStream({
+      format: buildRequirementImportResponseFormatSchema(locale),
+      messages: [
+        { content: systemPrompt, role: 'system' },
+        { content: userContent, role: 'user' },
+      ],
+      model: resolvedModel,
+      correlationId: context.correlationId,
+      providerPreferences: body.providerPreferences,
+      reasoningEffort:
+        typeof body.reasoningEffort === 'string'
+          ? body.reasoningEffort
+          : undefined,
+      requestId: context.requestId,
+      signal: request.signal,
+      supportedParameters: modelCapabilities.supportedParameters,
+    })
+    let firstProviderEvent: IteratorResult<StreamEvent>
+    try {
+      firstProviderEvent = await providerEvents.next()
+    } catch (error) {
+      const providerError = normalizeAiProviderError(error, {
+        correlationId: context.correlationId,
+        modelProvider: modelCapabilities.provider,
+        operation: 'chat.completions',
+        requestId: context.requestId,
+      })
+      return createAiErrorStreamResponse(
+        context,
+        aiProviderStreamError(providerError),
+        () => recordStreamEvent('failure', 503),
+      )
+    }
+    if (firstProviderEvent.done) {
+      return applyResponseCorrelationHeaders(
+        new Response(null, { status: 499 }),
+        context,
+      )
+    }
+    if (firstProviderEvent.value.phase === 'error') {
+      await providerEvents.return(undefined)
+      return createAiErrorStreamResponse(
+        context,
+        firstProviderEvent.value,
+        () => recordStreamEvent('failure', 503),
+      )
+    }
+
+    async function* streamProviderEvents(): AsyncGenerator<StreamEvent> {
+      yield firstProviderEvent.value
+      yield* providerEvents
+    }
+
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder()
@@ -303,27 +365,10 @@ export const POST = secureMutationRoute({
         }
 
         try {
-          const modelCapabilities = await resolveOpenRouterModelCapabilities(
-            body.model,
-          )
-          const resolvedModel = modelCapabilities.id
           let sentGeneratingProgress = false
           let screenedThinkingLength = 0
-          for await (const event of generateChatStream({
-            format: buildRequirementImportResponseFormatSchema(locale),
-            messages: [
-              { content: systemPrompt, role: 'system' },
-              { content: userContent, role: 'user' },
-            ],
-            model: resolvedModel,
-            providerPreferences: body.providerPreferences,
-            reasoningEffort:
-              typeof body.reasoningEffort === 'string'
-                ? body.reasoningEffort
-                : undefined,
-            signal: request.signal,
-            supportedParameters: modelCapabilities.supportedParameters,
-          })) {
+          let latestThinking = ''
+          for await (const event of streamProviderEvents()) {
             switch (event.phase) {
               case 'thinking': {
                 let progressSafetyScreening: Awaited<
@@ -348,7 +393,10 @@ export const POST = secureMutationRoute({
                   ])
                 } catch (error) {
                   recordSafetyFilterFailure(error)
-                  send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+                  send('error', {
+                    code: 'ai_provider_unavailable',
+                    message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+                  })
                   recordStreamEvent('failure', 503)
                   return
                 }
@@ -377,7 +425,7 @@ export const POST = secureMutationRoute({
                   return
                 }
                 screenedThinkingLength = thinkingText.length
-                send('thinking', { thinkingSoFar: event.thinkingSoFar })
+                latestThinking = thinkingText
                 break
               }
               case 'generating':
@@ -387,17 +435,21 @@ export const POST = secureMutationRoute({
                 }
                 break
               case 'done': {
+                const safeThinking = event.thinking || latestThinking
                 let outputSafetyScreening: Awaited<
                   ReturnType<typeof screenAiOutputDetailed>
                 >
                 try {
                   outputSafetyScreening = await screenAiOutputDetailed(db, [
                     { label: 'rawContent', text: event.rawContent },
-                    { label: 'thinking', text: event.thinking },
+                    { label: 'thinking', text: safeThinking },
                   ])
                 } catch (error) {
                   recordSafetyFilterFailure(error)
-                  send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+                  send('error', {
+                    code: 'ai_provider_unavailable',
+                    message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+                  })
                   recordStreamEvent('failure', 503, event.stats)
                   return
                 }
@@ -427,61 +479,55 @@ export const POST = secureMutationRoute({
                   return
                 }
 
-                const validation = parseAndValidatePayload(
-                  event.rawContent,
-                  body.locale,
-                )
-                if (!validation.payload) {
-                  logSanitizedError(
-                    'AI requirement import output validation failed',
-                    new Error('Generated import JSON failed validation'),
-                    {
-                      issueCount: validation.issues?.length ?? 0,
-                      issues: validation.issues?.map(issue => ({
-                        code: issue.code,
-                        path: issue.path,
-                      })),
-                    },
-                  )
-                  send('validation_error', {
-                    issues: validation.issues ?? [],
-                    message: getPromptMessage(body.locale, [
-                      'ai',
-                      'generatedJsonSchemaMismatch',
-                    ]),
-                    model: resolvedModel,
-                    rawContent: event.rawContent,
-                    stats: event.stats,
-                    thinking: event.thinking,
+                const payload = parseAndValidatePayload(event.rawContent)
+                if (!payload) {
+                  const providerError = normalizeAiProviderError(null, {
+                    code: 'ai_provider_invalid_response',
+                    correlationId: context.correlationId,
+                    modelProvider: modelCapabilities.provider,
+                    operation: 'chat.completions',
+                    requestId: context.requestId,
                   })
-                  recordStreamEvent('failure', 422, event.stats)
+                  const streamError = aiProviderStreamError(providerError)
+                  send('error', {
+                    code: streamError.code,
+                    message: streamError.message,
+                  })
+                  recordStreamEvent('failure', 503, event.stats)
                   return
                 }
 
-                const rawContent = JSON.stringify(validation.payload)
+                const rawContent = JSON.stringify(payload)
+                if (safeThinking) {
+                  send('thinking', { thinkingSoFar: safeThinking })
+                }
                 send('done', {
                   model: resolvedModel,
-                  payload: validation.payload,
+                  payload,
                   rawContent,
                   stats: event.stats,
-                  thinking: event.thinking,
+                  thinking: safeThinking,
                 })
                 recordStreamEvent('success', 200, event.stats)
                 return
               }
               case 'error':
-                logSanitizedError(
-                  'AI requirement import stream failed',
-                  event.cause ?? event.message,
-                )
-                send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+                send('error', { code: event.code, message: event.message })
                 recordStreamEvent('failure', 503)
                 return
             }
           }
         } catch (error) {
-          logSanitizedError('AI requirement import generation failed', error)
-          send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
+          const providerError = normalizeAiProviderError(error, {
+            correlationId: context.correlationId,
+            operation: 'chat.completions',
+            requestId: context.requestId,
+          })
+          const streamError = aiProviderStreamError(providerError)
+          send('error', {
+            code: streamError.code,
+            message: streamError.message,
+          })
           recordStreamEvent('failure', 503)
         } finally {
           controller.close()

@@ -2,11 +2,14 @@ import { z } from 'zod'
 import { generateChat } from '@/lib/ai/openrouter-client'
 import { resolveOpenRouterModelCapabilities } from '@/lib/ai/openrouter-model-catalog'
 import {
+  aiProviderErrorPayload,
+  isAiProviderCallerCancelledError,
+  normalizeAiProviderError,
+} from '@/lib/ai/provider-errors'
+import {
   buildRequirementImportRepairPrompt,
   buildRequirementImportResponseFormatSchema,
   buildRequirementImportSystemPrompt,
-  formatSchemaIssues,
-  getPromptMessage,
 } from '@/lib/ai/requirement-prompt'
 import {
   recordAiSafetyBlock,
@@ -129,7 +132,10 @@ export const POST = secureMutationRoute({
         recordRepairEvent('failure', 503)
         return applyResponseCorrelationHeaders(
           Response.json(
-            { error: AI_PROVIDER_UNAVAILABLE_MESSAGE },
+            {
+              code: 'ai_provider_unavailable',
+              error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+            },
             { status: 503 },
           ),
           context,
@@ -143,7 +149,10 @@ export const POST = secureMutationRoute({
       recordRepairEvent('failure', 503)
       return applyResponseCorrelationHeaders(
         Response.json(
-          { error: AI_PROVIDER_UNAVAILABLE_MESSAGE },
+          {
+            code: 'ai_provider_unavailable',
+            error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+          },
           { status: 503 },
         ),
         context,
@@ -161,7 +170,10 @@ export const POST = secureMutationRoute({
         recordRepairEvent('failure', 503)
         return applyResponseCorrelationHeaders(
           Response.json(
-            { error: AI_PROVIDER_UNAVAILABLE_MESSAGE },
+            {
+              code: 'ai_provider_unavailable',
+              error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+            },
             { status: 503 },
           ),
           context,
@@ -182,6 +194,10 @@ export const POST = secureMutationRoute({
     try {
       const modelCapabilities = await resolveOpenRouterModelCapabilities(
         body.model,
+        {
+          correlationId: context.correlationId,
+          requestId: context.requestId,
+        },
       )
       const importInstruction = await createRequirementsRuntime(
         db,
@@ -205,11 +221,13 @@ export const POST = secureMutationRoute({
           { content: repairPrompt, role: 'user' },
         ],
         model: modelCapabilities.id,
+        correlationId: context.correlationId,
         providerPreferences: body.providerPreferences,
         reasoningEffort:
           typeof body.reasoningEffort === 'string'
             ? body.reasoningEffort
             : undefined,
+        requestId: context.requestId,
         signal: request.signal,
         supportedParameters: modelCapabilities.supportedParameters,
       })
@@ -226,7 +244,10 @@ export const POST = secureMutationRoute({
         recordRepairEvent('failure', 503, result.stats)
         return applyResponseCorrelationHeaders(
           Response.json(
-            { error: AI_PROVIDER_UNAVAILABLE_MESSAGE },
+            {
+              code: 'ai_provider_unavailable',
+              error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+            },
             { status: 503 },
           ),
           context,
@@ -264,30 +285,16 @@ export const POST = secureMutationRoute({
         result.content,
       )
       if (!validation.success) {
-        const issues = formatSchemaIssues(validation.error)
-        logSanitizedError(
-          'AI requirement import repair validation failed',
-          new Error('Repaired import JSON failed validation'),
-          {
-            issueCount: issues.length,
-            issues: issues.map(issue => ({
-              code: issue.code,
-              path: issue.path,
-            })),
-          },
-        )
-        recordRepairEvent('failure', 422, result.stats)
+        const providerError = normalizeAiProviderError(null, {
+          code: 'ai_provider_invalid_response',
+          correlationId: context.correlationId,
+          modelProvider: modelCapabilities.provider,
+          operation: 'chat.completions',
+          requestId: context.requestId,
+        })
+        recordRepairEvent('failure', 503, result.stats)
         return applyResponseCorrelationHeaders(
-          Response.json(
-            {
-              error: getPromptMessage(body.locale, [
-                'ai',
-                'repairedJsonSchemaMismatch',
-              ]),
-              issues,
-            },
-            { status: 422 },
-          ),
+          Response.json(aiProviderErrorPayload(providerError), { status: 503 }),
           context,
         )
       }
@@ -304,13 +311,20 @@ export const POST = secureMutationRoute({
         context,
       )
     } catch (error) {
-      logSanitizedError('AI requirement import repair failed', error)
+      if (isAiProviderCallerCancelledError(error)) {
+        return applyResponseCorrelationHeaders(
+          new Response(null, { status: 499 }),
+          context,
+        )
+      }
+      const providerError = normalizeAiProviderError(error, {
+        correlationId: context.correlationId,
+        operation: 'chat.completions',
+        requestId: context.requestId,
+      })
       recordRepairEvent('failure', 503)
       return applyResponseCorrelationHeaders(
-        Response.json(
-          { error: AI_PROVIDER_UNAVAILABLE_MESSAGE },
-          { status: 503 },
-        ),
+        Response.json(aiProviderErrorPayload(providerError), { status: 503 }),
         context,
       )
     }

@@ -215,8 +215,16 @@ describe('GET /api/ai/models', () => {
       models: { id: string; supportedParameters: string[] }[]
     }
 
-    expect(listModels).toHaveBeenNthCalledWith(1, undefined)
-    expect(listModels).toHaveBeenNthCalledWith(2, ['structured_outputs'])
+    const requestContext = {
+      correlationId: 'workflow-models',
+      requestId: 'request-models',
+    }
+    expect(listModels).toHaveBeenNthCalledWith(1, undefined, requestContext)
+    expect(listModels).toHaveBeenNthCalledWith(
+      2,
+      ['structured_outputs'],
+      requestContext,
+    )
     expect(data.models).toHaveLength(1)
     expect(data.models[0].id).toBe('openai/gpt-5-vision')
     expect(data.models[0].supportedParameters).toContain('vision')
@@ -242,10 +250,14 @@ describe('GET /api/ai/models', () => {
 
       expect(response.status).toBe(503)
       const data = (await response.json()) as {
-        models: unknown[]
+        code: string
         error: string
       }
-      expect(data.models).toEqual([])
+      expect(data).toEqual({
+        code: 'ai_provider_unavailable',
+        error: 'AI provider is unavailable',
+      })
+      expect(data.code).toBe('ai_provider_unavailable')
       expect(data.error).toBe('AI provider is unavailable')
       expect(JSON.stringify(data)).not.toMatch(/sk-or-v1|SELECT/)
       expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toMatch(
@@ -267,9 +279,16 @@ describe('GET /api/ai/models', () => {
     )
 
     // First call: base list with requested params
-    expect(listModels).toHaveBeenCalledWith(['tools'])
+    const requestContext = {
+      correlationId: 'workflow-models',
+      requestId: 'request-models',
+    }
+    expect(listModels).toHaveBeenCalledWith(['tools'], requestContext)
     // Second call: same params plus structured_outputs
-    expect(listModels).toHaveBeenCalledWith(['tools', 'structured_outputs'])
+    expect(listModels).toHaveBeenCalledWith(
+      ['tools', 'structured_outputs'],
+      requestContext,
+    )
   })
 
   it('throttles repeated refresh requests', async () => {

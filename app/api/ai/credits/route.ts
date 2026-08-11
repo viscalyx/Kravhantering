@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getKeyInfo } from '@/lib/ai/openrouter-client'
 import {
-  AI_CREDIT_INFORMATION_UNAVAILABLE_MESSAGE,
-  logSanitizedError,
-} from '@/lib/http/safe-errors'
+  aiProviderErrorPayload,
+  normalizeAiProviderError,
+} from '@/lib/ai/provider-errors'
 import {
   observeCapacity,
   recordCapacityEvent,
@@ -74,16 +74,21 @@ export async function GET(request: Request) {
         slowThresholdMs: AI_CREDITS_SLOW_THRESHOLD_MS,
         source: 'rest',
       },
-      getKeyInfo,
+      () =>
+        getKeyInfo({
+          correlationId: context.correlationId,
+          requestId: context.requestId,
+        }),
     )
     return applyResponseCorrelationHeaders(NextResponse.json(info), context)
   } catch (err) {
-    logSanitizedError('Failed to get AI credit information', err)
+    const providerError = normalizeAiProviderError(err, {
+      correlationId: context.correlationId,
+      operation: 'key.info',
+      requestId: context.requestId,
+    })
     return applyResponseCorrelationHeaders(
-      NextResponse.json(
-        { error: AI_CREDIT_INFORMATION_UNAVAILABLE_MESSAGE },
-        { status: 503 },
-      ),
+      NextResponse.json(aiProviderErrorPayload(providerError), { status: 503 }),
       context,
     )
   }

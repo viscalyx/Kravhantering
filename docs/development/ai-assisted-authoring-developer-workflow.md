@@ -66,6 +66,37 @@ Do not add production OpenRouter keys or live provider calls to CI. A manual
 provider smoke test may be run outside CI when changing provider configuration
 or investigating an integration incident.
 
+## Provider Failure Contract
+
+All OpenRouter operations use the same bounded provider-response readers and
+stable failure classification. JSON responses return `{ code, error }` and SSE
+error events return `{ code, message }`. Request and correlation identifiers
+remain in response headers rather than error payloads.
+
+Provider failures use these codes:
+
+- `ai_provider_configuration_error` for missing configuration and upstream
+  request/configuration `4xx` responses;
+- `ai_provider_rate_limited` for upstream `429`;
+- `ai_provider_timeout` for provider or application deadlines;
+- `ai_provider_unavailable` for network and remaining upstream `5xx` failures;
+- `ai_provider_invalid_response` for missing, unexpected, malformed, or
+  incomplete responses;
+- `ai_provider_response_too_large` when a response bound is exceeded;
+- `ai_provider_response_read_failed` when an upstream body cannot be read.
+
+Error bodies are inspected only for JSON media types and stop at 16 KiB.
+Successful JSON bodies stop at 4 MiB. SSE frames stop at 256 KiB, and combined
+model content plus reasoning stops at 4 MiB. Diagnostics use the
+`ai-provider-observability` channel and contain only stable codes, operation,
+gateway, validated provider/status/identifier fields, content-type category,
+observed byte count, and truncation state. They never contain provider body
+text, prompts, model output, personal data, secrets, or nested exception text.
+
+Caller cancellation produces no provider error payload or provider-failure
+diagnostic. An unavailable optional purchased-credit lookup leaves
+`totalCredits` as `null` when the primary key-information request succeeds.
+
 ## Security Scan Disable Guard
 
 Full active DAST runs set `AI_REQUIREMENT_GENERATION_DISABLED=1`. This is a
