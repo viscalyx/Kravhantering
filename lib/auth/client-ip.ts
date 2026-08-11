@@ -63,18 +63,11 @@ export function isValidClientIp(value: unknown): value is string {
 }
 
 export function getClientIp(request: Request): string | undefined {
-  let forwardedFor: string | null = null
+  let clientIp: string | null = null
   try {
-    forwardedFor = request.headers.get('x-forwarded-for')
+    clientIp = request.headers.get('x-kravhantering-client-ip')
   } catch {
     return undefined
   }
-  if (!forwardedFor) return undefined
-
-  const candidate = forwardedFor
-    .split(',')
-    .find(entry => entry.trim() !== '')
-    ?.trim()
-
-  return candidate && isValidClientIp(candidate) ? candidate : undefined
+  return clientIp && isValidClientIp(clientIp) ? clientIp : undefined
 }

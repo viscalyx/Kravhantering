@@ -97,7 +97,7 @@ describe('recordSecurityEvent', () => {
           headers: {
             'user-agent': 'TestAgent/1.0',
             'x-request-id': 'req-42',
-            'x-forwarded-for': '203.0.113.5, 10.0.0.1',
+            'x-kravhantering-client-ip': '203.0.113.5',
           },
         },
       ),
@@ -156,14 +156,14 @@ describe('recordSecurityEvent', () => {
     expect((ev.request as Record<string, unknown>).ip).toBeUndefined()
   })
 
-  it('omits request.ip when X-Forwarded-For has no valid candidate', () => {
+  it('omits request.ip when the canonical edge address is malformed', () => {
     recordSecurityEvent({
       event: 'auth.login.failed',
       outcome: 'failure',
       actor: { source: 'oidc' },
       request: new Request('https://app.example.test/api/auth/callback', {
         headers: {
-          'x-forwarded-for': '<script>, 203.0.113.5:443',
+          'x-kravhantering-client-ip': '<script>, 203.0.113.5:443',
         },
       }),
     })

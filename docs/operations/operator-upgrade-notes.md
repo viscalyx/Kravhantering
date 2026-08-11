@@ -7,6 +7,22 @@ target version.
 
 ## Unreleased
 
+<!-- operator-upgrade:source issue-477 start -->
+### Select and configure the client-IP trust boundary before upgrade
+
+Before upgrading, classify each deployment as direct ingress or load-balanced
+ingress. Load-balanced sites must provision a root-controlled list containing
+only the exact proxy network CIDRs and verify the longest approved proxy chain;
+the upgraded ingress fails closed without that trust configuration. Direct
+ingress instead overwrites forwarding evidence with the connection peer.
+
+New access logs omit query strings, referrer data, and raw forwarding values.
+Treat older access-log copies as potentially sensitive because they may contain
+OIDC callback parameters, referrer queries, or attacker-controlled forwarding
+values. Inventory and restrict those copies, apply the approved incident,
+privacy, and retention process, and rotate any credential that remains usable.
+<!-- operator-upgrade:source issue-477 end -->
+
 <!-- operator-upgrade:source pr-870 start -->
 Provision AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH on destination workstations through a trusted channel before generating requests. Request and package schema 3 intentionally has no compatibility path with schema 2; regenerate pending requests and responses after upgrade. Existing approval key rotation requires provisioning the replacement public key before creating a new request.
 <!-- operator-upgrade:source pr-870 end -->

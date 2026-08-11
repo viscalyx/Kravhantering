@@ -320,9 +320,11 @@ sequenceDiagram
   include `sub`, `hsaId`, and `clientId`.
 - `request` includes the HTTP method and path without query strings or
   fragments, and may also include `requestId`, `userAgent`, and a validated
-  `ip` when those values were present on the incoming request. `ip` is derived
-  from the first valid `X-Forwarded-For` candidate and should only be trusted
-  when that header is controlled by the reverse proxy or ingress path.
+  `ip` when the trusted edge provides one. `ip` is derived only from the single
+  `X-Kravhantering-Client-IP` value produced by the bundled Nginx boundary.
+  The application ignores raw `Forwarded` and `X-Forwarded-For` input and
+  rejects malformed values or lists. See
+  [Access Logging and Client IP Trust](../operations/access-log-and-client-ip-trust.md).
 - `detail` is optional and is redacted defensively so top-level fields such as
   tokens, secrets, authorization codes, PKCE verifiers, `state`, and `nonce`
   are not emitted. Redaction breadcrumbs use the same `security-audit` channel

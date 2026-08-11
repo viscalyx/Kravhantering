@@ -21,6 +21,10 @@ The nginx service is responsible only for:
 - TLS termination for `https://kravhantering.test`.
 - Reverse proxy traffic to the app container.
 - Forwarding Keycloak traffic under `/auth`.
+- Replacing inbound forwarding evidence with the connection peer before
+  proxying to the application.
+- Logging the method and URI path without query strings, referrer data, or raw
+  forwarded-header values.
 
 Expected mounted files:
 

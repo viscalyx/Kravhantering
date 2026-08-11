@@ -106,7 +106,10 @@ the row still preserves action, target, time, decision, request ID,
 correlation ID, and non-personal details.
 
 `client_ip` is operational forensic metadata derived from a validated
-`X-Forwarded-For` candidate. It is useful only when the reverse proxy or ingress
-controls that header. IP addresses are not included in the Privacy
-preview/export/erasure workflow in this slice; retention and access are handled
-through the action-log retention decision and Admin-only action-log access.
+`X-Kravhantering-Client-IP` value produced by the trusted Nginx edge. The
+application ignores raw forwarding chains and accepts only one valid address.
+IP addresses are not included in the Privacy preview/export/erasure workflow
+in this slice; retention and access are handled through the action-log
+retention decision and Admin-only action-log access. The topology and
+operational boundary are documented in
+[Access Logging and Client IP Trust](../operations/access-log-and-client-ip-trust.md).

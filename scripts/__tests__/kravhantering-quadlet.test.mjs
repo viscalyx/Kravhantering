@@ -60,6 +60,7 @@ function createFixture(
   const systemctlPath = path.join(root, 'systemctl')
   const releaseEnvPath = path.join(root, 'release.env')
   const keycloakEnvPath = path.join(root, 'keycloak.env')
+  const trustedProxyConfigPath = path.join(root, 'trusted-proxies.conf')
   const outputDir = path.join(root, 'rendered')
   fs.mkdirSync(journalConfigDir)
   fs.writeFileSync(controllersPath, 'cpu memory pids\n')
@@ -75,7 +76,17 @@ function createFixture(
   fs.writeFileSync(systemctlPath, '#!/usr/bin/env bash\nexit 0\n', {
     mode: 0o755,
   })
-  fs.writeFileSync(releaseEnvPath, releaseEnv)
+  fs.writeFileSync(
+    trustedProxyConfigPath,
+    'set_real_ip_from 10.20.0.0/16;\nset_real_ip_from 2001:db8:20::/48;\n',
+  )
+  fs.writeFileSync(
+    releaseEnvPath,
+    releaseEnv.replace(
+      'NGINX_TRUSTED_PROXY_CONFIG_FILE=fixture',
+      `NGINX_TRUSTED_PROXY_CONFIG_FILE=${trustedProxyConfigPath}`,
+    ),
+  )
   fs.writeFileSync(keycloakEnvPath, keycloakEnv)
   return {
     outputDir,
@@ -104,6 +115,7 @@ function releaseEnv(overrides = {}) {
     NGINX_IDENTITY_RESOLVER: '10.91.1.1',
     NGINX_IMAGE_REF: 'registry.example/nginx:1.31',
     NGINX_RESOLVER: '10.91.0.1',
+    NGINX_TRUSTED_PROXY_CONFIG_FILE: 'fixture',
     PUBLIC_HOSTNAME: 'kravhantering.example.internal',
     SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025',
     ...overrides,
@@ -236,8 +248,59 @@ describe('kravhantering Quadlet helper', () => {
 
     expect(nginx).toContain('PublishPort=127.0.0.1:9080:8080')
     expect(nginx).toContain('app-node-http.conf.template')
+    expect(nginx).toContain(
+      'trusted-proxies.conf:/etc/nginx/snippets/trusted-proxies.conf:ro',
+    )
     expect(nginx).not.toContain('fullchain.pem')
     expect(nginx).not.toContain('keep-groups')
+  })
+
+  it('requires explicit trusted proxy CIDRs for load-balanced ingress', () => {
+    const fixture = createFixture(
+      releaseEnv({ NGINX_TRUSTED_PROXY_CONFIG_FILE: '' }),
+    )
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'app-node-http',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'release.env is missing required value: NGINX_TRUSTED_PROXY_CONFIG_FILE',
+    )
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
+
+  it.each([
+    ['set_real_ip_from 10.20.0.8;\n', 'CIDR'],
+    ['set_real_ip_from 0.0.0.0/0;\n', 'CIDR'],
+    ['set_real_ip_from 10.20.0.0/33;\n', 'CIDR'],
+    ['set_real_ip_from 2001:db8::1::2/64;\n', 'CIDR'],
+    ['set_real_ip_from 10.20.0.0/16; include /tmp/unsafe;\n', 'CIDR'],
+  ])('rejects unsafe trusted proxy configuration %s', (content, message) => {
+    const fixture = createFixture(releaseEnv())
+    const configPath = path.join(fixture.root, 'trusted-proxies.conf')
+    fs.writeFileSync(configPath, content)
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'app-node-http',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(message)
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
   })
 
   it('renders single-node services, volumes and the public issuer host route', () => {

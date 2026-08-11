@@ -463,7 +463,6 @@ describe('container image contract', () => {
       'X-Forwarded-Proto https',
       'X-Forwarded-Host $host',
       'X-Forwarded-Port 443',
-      'X-Forwarded-For $proxy_add_x_forwarded_for',
     ]) {
       expect(siteConf).toContain(`proxy_set_header ${header};`)
     }

@@ -713,9 +713,11 @@ only tail them in environments where that exposure is acceptable:
 npm run dev | grep '"channel":"security-forensics"' | jq .
 ```
 
-When a valid `X-Forwarded-For` header is present, audit events may include
-`request.ip`; treat it as authoritative only in reverse-proxy paths that own or
-strip the inbound header.
+When the trusted edge supplies a valid `X-Kravhantering-Client-IP` header,
+audit events may include `request.ip`. The application ignores raw forwarding
+headers; see
+[Access Logging and Client IP Trust](../operations/access-log-and-client-ip-trust.md)
+for the deployment boundary.
 
 ## Pre-prod smoke test
 

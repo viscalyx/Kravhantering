@@ -6,6 +6,10 @@ map $http_upgrade $connection_upgrade {
 resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
 resolver_timeout 5s;
 
+include /etc/nginx/snippets/trusted-proxies.conf;
+real_ip_header X-Forwarded-For;
+real_ip_recursive on;
+
 upstream app_runtime_upstream {
     zone app_runtime_upstream 64k;
     server app-runtime:3000 resolve;
@@ -36,7 +40,9 @@ server {
         proxy_set_header X-Forwarded-Proto https;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Port 443;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Forwarded "";
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Kravhantering-Client-IP $remote_addr;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
     }

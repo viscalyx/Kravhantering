@@ -79,6 +79,10 @@ flowchart LR
   `X-Forwarded-*` headers. The same edge layer may also distribute traffic
   across multiple app replicas; because the session is carried in the encrypted
   cookie, the app does not require sticky sessions.
+- Select the deployed client-address trust model and configure only exact proxy
+  CIDRs as described in
+  [Access Logging and Client IP Trust](../operations/access-log-and-client-ip-trust.md).
+  The application accepts only the canonical address produced by that edge.
 - Allow the application instances to reach the IdP over `443`.
 - Pre-register the exact redirect URI and post-logout URI for every
   environment. Public hostname changes require both app configuration and IdP

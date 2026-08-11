@@ -55,7 +55,7 @@ describe('admin privileged action audit', () => {
           headers: {
             origin: 'http://localhost:3000',
             'user-agent': 'vitest',
-            'x-forwarded-for': '203.0.113.10',
+            'x-kravhantering-client-ip': '203.0.113.10',
             'x-requested-with': 'XMLHttpRequest',
             'x-request-id': 'request-123',
           },

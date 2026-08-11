@@ -64,8 +64,8 @@ The action log is available at `/{locale}/admin/audit-log`, and also inline
 from the Admin Center `Action log` tab at
 `/{locale}/admin?tab=actionAuditLog`. It reads `action_audit_events`, shows the
 latest 50 events by default, supports filters for actor HSA-id, action, target,
-decision, and date range, plus client IP when a validated `X-Forwarded-For`
-value was available, and exports the filtered result as CSV.
+decision, and date range, plus client IP when the trusted edge supplied a
+validated canonical address, and exports the filtered result as CSV.
 The CSV export follows the active locale for column headers and decision values,
 uses UTF-8 with BOM for Windows spreadsheet compatibility, and keeps action
 names, target kinds, request IDs and details JSON as stored evidence

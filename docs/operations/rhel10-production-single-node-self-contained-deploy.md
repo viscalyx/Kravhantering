@@ -1496,6 +1496,10 @@ exit
 
 ## Start the Single-Node Stack
 
+The single-node topology uses the direct-ingress boundary in
+[Access Logging and Client IP Trust](access-log-and-client-ip-trust.md). Its
+Nginx overwrites inbound forwarding evidence with the connection peer.
+
 Install the Quadlet files, reload the user systemd manager, and start SQL
 Server and Keycloak first:
 

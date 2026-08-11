@@ -2075,7 +2075,7 @@ of related business data.
 | `denial_reason` | nvarchar(255) | Sanitized denial reason for denied events |
 | `request_id` | nvarchar(64) | Request ID from existing tracing |
 | `correlation_id` | nvarchar(64) | Correlation ID from existing tracing |
-| `client_ip` | nvarchar(45) | Validated client IP from `X-Forwarded-For`, nullable when unavailable or invalid |
+| `client_ip` | nvarchar(45) | Validated client IP from the trusted edge's canonical `X-Kravhantering-Client-IP` value, nullable when unavailable or invalid |
 | `details_json` | nvarchar(max) | Bounded structured metadata only; no prompts, requirement text, comments, tokens, secrets, e-mail, target HSA-id, or free text |
 <!-- markdownlint-enable MD013 -->
 

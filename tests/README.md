@@ -16,6 +16,18 @@ See `package.json` for the full list of test-related scripts.
 
 - Location: `tests/integration`
 - Overview/specs: [platform smoke test](integration/platform/smoke.spec.ts)
+
+### Nginx client-IP boundary
+
+The focused container integration test runs the shipped direct-ingress and
+load-balanced Nginx configurations against the pinned local Nginx image. It
+verifies query-safe access logs, header overwriting, trusted proxy chains,
+untrusted intermediaries, prepended spoofing, and malformed values:
+
+```bash
+npm run test:nginx-client-ip
+```
+
 - Error-boundary smoke tests: [error-boundary smoke test](integration/platform/error-boundary-smoke.spec.ts)
 - Global Playwright setup: [integration/global-setup.ts](integration/global-setup.ts)
 - Chunk manifest: [integration-chunks.manifest.json](integration-chunks.manifest.json)

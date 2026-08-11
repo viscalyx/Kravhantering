@@ -123,7 +123,7 @@ describe('requirements auth', () => {
         method: 'POST',
         headers: {
           'user-agent': 'TestAgent/1.0',
-          'x-forwarded-for': '2001:db8::5',
+          'x-kravhantering-client-ip': '2001:db8::5',
           'x-request-id': 'req-audit',
         },
       })

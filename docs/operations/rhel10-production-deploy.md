@@ -93,6 +93,7 @@ verification.
 | `HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_TLS_SERVER_NAME` | Optional mTLS trust and TLS server-name values in `app.env` | Blank | Set only when the approved mTLS route requires a custom CA bundle or TLS server name. |
 | `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL`, `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, `HSA_PERSON_LOOKUP_OAUTH_SCOPE`, `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` | Optional OAuth2 client credentials values in `app.env` | Blank | Set client id, client secret and either token URL or issuer URL when the approved external integration platform requires OAuth2. Add scope or audience only when the token endpoint requires them. |
 | `NGINX_RESOLVER` | `NGINX_RESOLVER` in `release.env` | `10.89.0.1` | Verify from the actual Quadlet network. It can change when the internal network is recreated or assigned another subnet. |
+| `NGINX_TRUSTED_PROXY_CONFIG_FILE` | `app-node-http` in `release.env` | `/etc/kravhantering/nginx-trusted-proxies.conf` | Required for load-balanced ingress. Record the exact load-balancer and proxy CIDRs before installing the topology. |
 | `SQLSERVER_HOST` | `DB_HOST` in `app.env` and `db-job.env` | No default | Always obtain the external SQL Server host from the DBA. |
 | `DB_PORT` | `DB_PORT` in `app.env` and `db-job.env` | `1433` | Plan only if the DBA provides another SQL Server port. |
 | `DB_NAME` | `DB_NAME` in `app.env` and `db-job.env` | `kravhantering` | Plan only if the DBA provisions a different database name. |
@@ -903,6 +904,8 @@ sudo sed -i "s#^NGINX_RESOLVER=.*#NGINX_RESOLVER=${RESOLVER_IP}#" \
 ### Alternative A: App Node With TLS on the Node
 
 Use this when the RHEL app node terminates TLS itself.
+This is the direct-ingress trust model described in
+[Access Logging and Client IP Trust](access-log-and-client-ip-trust.md).
 
 Install the server certificate and private key:
 
@@ -933,10 +936,14 @@ The full start command reads the corrected value from
 ### Alternative B: App Node Behind a TLS-Terminating Load Balancer
 
 Use this when an external load balancer terminates TLS and forwards HTTP to
-the app-node nginx. Set the bind address in `/etc/kravhantering/release.env`:
+the app-node nginx. Configure the trusted proxy CIDRs first by following
+[Access Logging and Client IP Trust](access-log-and-client-ip-trust.md), then
+set the bind address and trusted-proxy file in
+`/etc/kravhantering/release.env`:
 
 ```env
 NGINX_HTTP_BIND=127.0.0.1:8080
+NGINX_TRUSTED_PROXY_CONFIG_FILE=/etc/kravhantering/nginx-trusted-proxies.conf
 ```
 
 Change the value when the load balancer connects over a dedicated private
