@@ -5,6 +5,8 @@ CA_PATH="${1:-tmp/container-tls/ca.crt}"
 NSS_DIR="${HOME}/.pki/nssdb"
 NSS_NAME="kravhantering-test-ca"
 SYSTEM_CA_PATH="/usr/local/share/ca-certificates/kravhantering-test-ca.crt"
+SYSTEM_CA_OUTPUT=''
+SYSTEM_CA_STATUS=0
 
 mkdir -p "${NSS_DIR}"
 
@@ -26,7 +28,13 @@ if command -v sudo >/dev/null 2>&1 &&
   [ -d /usr/local/share/ca-certificates ] &&
   sudo -n true >/dev/null 2>&1; then
   sudo cp "${CA_PATH}" "${SYSTEM_CA_PATH}"
-  sudo update-ca-certificates >/dev/null
+  if SYSTEM_CA_OUTPUT="$(sudo update-ca-certificates 2>&1)"; then
+    :
+  else
+    SYSTEM_CA_STATUS="$?"
+    printf '%s\n' "${SYSTEM_CA_OUTPUT}" >&2
+    exit "${SYSTEM_CA_STATUS}"
+  fi
 else
   echo "System CA tooling is unavailable; skipping system CA trust setup." >&2
 fi

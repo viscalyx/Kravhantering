@@ -314,13 +314,15 @@ describe('CI container runtime', () => {
       ghPath,
       [
         '#!/usr/bin/env bash',
-        'if [[ "$*" == *"/jobs?filter=latest"* ]]; then',
+        'if [[ "$*" == "api --help" ]]; then',
+        "  printf '%s\\n' '      --allow-escape-sequences   Allow printing terminal escape sequences'",
+        'elif [[ "$*" == *"/jobs?filter=latest"* ]]; then',
         '  printf \'%s\\n\' \'{"jobs":[{"id":123,"name":"Build and Smoke Test Container Stack","status":"completed"}]}\'',
         'elif [[ "$*" != *"--allow-escape-sequences"* ]]; then',
         "  printf '%s\\n' 'the response contains terminal escape sequences' >&2",
         '  exit 1',
         'else',
-        "  printf '\\033[36;1mcolored job command\\033[0m\\n'",
+        "  printf '\\033[36;1m%s\\033[0m\\n' 'colored job command'",
         "  printf '%s\\n' 'Current runner version: 2.999.0'",
         "  printf '%s\\n' 'Runner Image Provisioner'",
         "  printf '%s\\n' 'Hosted Compute Agent'",
@@ -354,6 +356,96 @@ describe('CI container runtime', () => {
     expect(metadata).toContain('Version: 20260810.271')
     expect(metadata).toContain('Image: ubuntu-24.04')
     expect(metadata).not.toContain('UNRELATED_SECRET')
+  })
+
+  it('collects runner metadata with GitHub CLI versions before escape filtering', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
+    const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+    fs.writeFileSync(
+      ghPath,
+      [
+        '#!/usr/bin/env bash',
+        'if [[ "$*" == "api --help" ]]; then',
+        '  exit 0',
+        'elif [[ "$*" == *"/jobs?filter=latest"* ]]; then',
+        '  printf \'%s\\n\' \'{"jobs":[{"id":123,"name":"Build and Smoke Test Container Stack","status":"completed"}]}\'',
+        'elif [[ "$*" == *"--allow-escape-sequences"* ]]; then',
+        "  printf '%s\\n' 'unknown flag: --allow-escape-sequences' >&2",
+        '  exit 1',
+        'else',
+        "  printf '%s\\n' 'Runner Image Provisioner'",
+        "  printf '%s\\n' 'Hosted Compute Agent'",
+        "  printf '%s\\n' 'Version: 20260707.563'",
+        "  printf '%s\\n' 'Runner Image'",
+        "  printf '%s\\n' 'Image: ubuntu-24.04'",
+        'fi',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runRuntimeScript(['collect-runner-metadata'], fixture, {
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+      CI_RUNTIME_TARGET_JOB: 'Build and Smoke Test Container Stack',
+      GH_TOKEN: 'test-token',
+      GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+      GITHUB_RUN_ID: '12345',
+    })
+
+    expect(result.status).toBe(0)
+    expect(
+      fs.readFileSync(
+        path.join(evidenceDirectory, 'github-runner-metadata.txt'),
+        'utf8',
+      ),
+    ).toContain('Version: 20260707.563')
+  })
+
+  it('reports bounded safe diagnostics when the job log request fails', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
+    const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+    fs.writeFileSync(
+      ghPath,
+      [
+        '#!/usr/bin/env bash',
+        'if [[ "$*" == "--version" ]]; then',
+        "  printf '%s\\n' 'gh version 2.97.0 (fixture)'",
+        'elif [[ "$*" == "api --help" ]]; then',
+        "  printf '%s\\n' '      --allow-escape-sequences'",
+        'elif [[ "$*" == *"/jobs?filter=latest"* ]]; then',
+        '  printf \'%s\\n\' \'{"jobs":[{"id":456,"name":"Build and Smoke Test Container Stack","status":"completed"}]}\'',
+        'else',
+        "  printf '\\033[31m%s\\033[0m\\n' 'simulated job log API failure' >&2",
+        '  exit 1',
+        'fi',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runRuntimeScript(['collect-runner-metadata'], fixture, {
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+      CI_RUNTIME_TARGET_JOB: 'Build and Smoke Test Container Stack',
+      GH_TOKEN: 'test-token',
+      GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+      GITHUB_RUN_ID: '12345',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'GitHub target job log request failed for job 456',
+    )
+    expect(result.stderr).toContain('gh version 2.97.0 (fixture)')
+    expect(result.stderr).toContain('simulated job log API failure')
+    expect(result.stderr).not.toContain('\u001b')
+    expect(
+      fs.readFileSync(
+        path.join(evidenceDirectory, 'github-runner-metadata.txt'),
+        'utf8',
+      ),
+    ).toContain('simulated job log API failure')
   })
 
   it('rejects completed runner metadata without image and provisioner identities', () => {

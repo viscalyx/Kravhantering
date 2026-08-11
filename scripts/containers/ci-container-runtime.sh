@@ -162,26 +162,44 @@ write_runner_metadata() {
 
 collect_github_runner_metadata() {
   local required="${1:-false}"
-  local job_id jobs_file log_file message target_job
+  local api_error_file gh_version job_id jobs_file log_file message
+  local request_error target_job
+  local -a gh_log_api_args=(api)
   local output="$EVIDENCE_DIR/github-runner-metadata.txt"
   target_job="${CI_RUNTIME_TARGET_JOB:-}"
   metadata_unavailable() {
     message="$1"
     printf '%s\n' "$message" >"$output"
+    printf 'ci-container-runtime: %s\n' "$message" >&2
     [[ "$required" != true ]]
+  }
+  format_api_error() {
+    request_error="$(
+      LC_ALL=C tr -cd '[:print:]\n' <"$1" |
+        tr '\n' ' ' |
+        cut -c1-500
+    )"
+    printf '%s\n' "${request_error:-no GitHub CLI diagnostic was returned}"
   }
   if [[ -z "${GH_TOKEN:-}" || -z "${GITHUB_REPOSITORY:-}" || \
     -z "${GITHUB_RUN_ID:-}" ]] || ! command -v gh >/dev/null 2>&1; then
     metadata_unavailable 'GitHub job metadata unavailable to the collector.'
     return
   fi
+  gh_version="$(gh --version 2>/dev/null || true)"
+  gh_version="${gh_version%%$'\n'*}"
+  gh_version="${gh_version:-gh version unavailable}"
   jobs_file="$(mktemp)"
+  api_error_file="$(mktemp)"
   if ! gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest" \
-    >"$jobs_file" 2>/dev/null; then
-    rm -f -- "$jobs_file"
-    metadata_unavailable 'GitHub job metadata request failed.'
+    >"$jobs_file" 2>"$api_error_file"; then
+    request_error="$(format_api_error "$api_error_file")"
+    rm -f -- "$api_error_file" "$jobs_file"
+    metadata_unavailable \
+      "GitHub job metadata request failed for run $GITHUB_RUN_ID ($gh_version; $request_error)."
     return
   fi
+  rm -f -- "$api_error_file"
   if [[ -n "$target_job" ]]; then
     job_id="$(
       jq -r --arg target "$target_job" \
@@ -196,17 +214,25 @@ collect_github_runner_metadata() {
   fi
   rm -f -- "$jobs_file"
   if [[ -z "$job_id" ]]; then
-    metadata_unavailable 'GitHub target job metadata unavailable.'
+    metadata_unavailable \
+      "GitHub target job metadata unavailable for '$target_job' in run $GITHUB_RUN_ID."
     return
   fi
   log_file="$(mktemp)"
-  if ! gh api --allow-escape-sequences \
+  api_error_file="$(mktemp)"
+  if gh api --help 2>&1 | grep -Fq -- '--allow-escape-sequences'; then
+    gh_log_api_args+=(--allow-escape-sequences)
+  fi
+  if ! gh "${gh_log_api_args[@]}" \
     "/repos/$GITHUB_REPOSITORY/actions/jobs/$job_id/logs" \
-    >"$log_file" 2>/dev/null; then
-    rm -f -- "$log_file"
-    metadata_unavailable 'GitHub target job log unavailable.'
+    >"$log_file" 2>"$api_error_file"; then
+    request_error="$(format_api_error "$api_error_file")"
+    rm -f -- "$api_error_file" "$log_file"
+    metadata_unavailable \
+      "GitHub target job log request failed for job $job_id ($gh_version; $request_error)."
     return
   fi
+  rm -f -- "$api_error_file"
   head -n 120 "$log_file" |
     sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z //' |
     awk '

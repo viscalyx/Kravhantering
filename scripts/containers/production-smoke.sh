@@ -756,6 +756,66 @@ wait_for_url() {
       "single-node target was not active after $url became ready"
 }
 
+describe_wget_probe_failure() {
+  local output="$1" status="$2"
+  if [[ "$output" == *"can't connect"* || \
+    "$output" == *'Connection refused'* ]]; then
+    printf '%s\n' 'connection unavailable'
+  elif [[ "$output" =~ HTTP/[0-9.]+[[:space:]]+([0-9]{3}) ]]; then
+    printf 'HTTP %s\n' "${BASH_REMATCH[1]}"
+  else
+    printf 'wget exit %s\n' "$status"
+  fi
+}
+
+collect_keycloak_recovery_failure_evidence() {
+  as_service podman inspect kravhantering-ci-keycloak-recovery 2>/dev/null |
+    jq '.[0] | del(.Config.Env)' \
+      >"$EVIDENCE_DIR/keycloak-recovery-inspect.redacted.json" || true
+  {
+    as_service cat "$CONFIG_ROOT/keycloak.env" 2>/dev/null || true
+    printf '\0'
+    as_service podman logs --tail 120 \
+      kravhantering-ci-keycloak-recovery 2>&1 || true
+  } | redact_configured_secrets \
+    >"$EVIDENCE_DIR/keycloak-recovery-log.redacted.txt" || true
+}
+
+wait_for_keycloak_recovery() {
+  local url="$1" reason="$2" max_attempts="${3:-60}"
+  local attempts=0 elapsed probe_error probe_result probe_status
+  local started_at="$SECONDS"
+  local error_file="$EVIDENCE_DIR/keycloak-recovery-probe-error.txt"
+  local output_file="$EVIDENCE_DIR/keycloak-recovery-openid.json"
+  printf '%s\n' \
+    "Lifecycle transition: $reason. Waiting for $url; failed wget probes (connection errors or HTTP 503) are expected until startup completes."
+  while true; do
+    if as_service podman exec kravhantering-nginx wget -qO - "$url" \
+      >"$output_file" 2>"$error_file"; then
+      break
+    else
+      probe_status="$?"
+    fi
+    probe_error="$(<"$error_file")"
+    probe_result="$(describe_wget_probe_failure \
+      "$probe_error" "$probe_status")"
+    attempts="$(( attempts + 1 ))"
+    elapsed="$(( SECONDS - started_at ))"
+    if (( attempts == 1 || attempts % 10 == 0 )); then
+      printf '%s\n' \
+        "Still waiting for $reason (${elapsed}s elapsed; last probe: $probe_result; attempt $attempts/$max_attempts)."
+    fi
+    if (( attempts >= max_attempts )); then
+      collect_keycloak_recovery_failure_evidence
+      fail "timed out waiting for $reason at $url after ${elapsed}s (last probe: $probe_result)"
+    fi
+    sleep 2
+  done
+  rm -f -- "$error_file"
+  elapsed="$(( SECONDS - started_at ))"
+  printf '%s\n' "Ready: $reason ($url; HTTP 200 after ${elapsed}s)."
+}
+
 report_target_failure() {
   local message="$1" unit
   service_systemctl list-units 'kravhantering-*' --state=failed --no-pager \
@@ -1030,7 +1090,7 @@ verify_sqlserver_backup_recovery() {
 }
 
 verify_keycloak_backup_recovery() {
-  local admin_password admin_response admin_token admin_user attempts=0
+  local admin_password admin_response admin_token admin_user
   local identity_network token_response
   RECOVERY_TEMP_DIR="${RECOVERY_TEMP_DIR:-$(mktemp -d)}"
   sudo chown "$SERVICE_USER:$SERVICE_USER" "$RECOVERY_TEMP_DIR"
@@ -1065,13 +1125,9 @@ verify_keycloak_backup_recovery() {
     --tmpfs /opt/keycloak/lib/quarkus:rw,size=64m,mode=0755,U,nosuid,nodev,noexec \
     --tmpfs /tmp:rw,size=512m,mode=1777,nosuid,nodev,noexec \
     "$KEYCLOAK_IMAGE_REF" start >/dev/null
-  until as_service podman exec kravhantering-nginx wget -qO - \
+  wait_for_keycloak_recovery \
     http://keycloak-recovery:8080/realms/kravhantering-production/.well-known/openid-configuration \
-    >"$EVIDENCE_DIR/keycloak-recovery-openid.json"; do
-    attempts="$(( attempts + 1 ))"
-    (( attempts < 60 )) || fail 'timed out waiting for recovered Keycloak realm'
-    sleep 2
-  done
+    'isolated Keycloak backup recovery discovery'
   jq -e '.issuer | endswith("/auth/realms/kravhantering-production")' \
     "$EVIDENCE_DIR/keycloak-recovery-openid.json" >/dev/null || \
     fail 'isolated Keycloak recovery did not expose the saved realm'
@@ -1263,14 +1319,8 @@ evidence() {
   collect_redacted_journal || true
 }
 
-collect_redacted_journal() {
-  {
-    as_service cat "$CONFIG_ROOT/keycloak.env" "$CONFIG_ROOT/sqlserver.env"
-    printf '\0'
-    as_service journalctl --user -u 'kravhantering-*' --since=-30min \
-      --no-pager 2>&1
-  } |
-    node --input-type=module -e '
+redact_configured_secrets() {
+  node --input-type=module -e '
       import { redactSensitiveText } from "./scripts/containers/collect-status.mjs"
       let value = ""
       for await (const chunk of process.stdin) value += chunk
@@ -1287,7 +1337,16 @@ collect_redacted_journal() {
         journal = journal.split(secret).join("[redacted]")
       }
       process.stdout.write(journal)
-    ' >"$EVIDENCE_DIR/journal.redacted.txt"
+    '
+}
+
+collect_redacted_journal() {
+  {
+    as_service cat "$CONFIG_ROOT/keycloak.env" "$CONFIG_ROOT/sqlserver.env"
+    printf '\0'
+    as_service journalctl --user -u 'kravhantering-*' --since=-30min \
+      --no-pager 2>&1
+  } | redact_configured_secrets >"$EVIDENCE_DIR/journal.redacted.txt"
 }
 
 verify_secret_safe_journal() {

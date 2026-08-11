@@ -20,6 +20,7 @@
     "bubblewrap",
     "bytegränser",
     "bwrap",
+    "certutil",
     "cgroupns",
     "conmon",
     "crun",
