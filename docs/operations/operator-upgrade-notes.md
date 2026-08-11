@@ -100,6 +100,17 @@ recovery, and retire reusable bootstrap access. Validate both the user-facing
 denials and authorized management access, and use the profile-specific backup,
 rollback, recovery, uninstall, and incident procedures during its lifecycle.
 <!-- operator-upgrade:source pr-967 end -->
+
+<!-- operator-upgrade:source pr-978 start -->
+MCP authentication failures now use stable generic responses. Invalid
+credentials remain `401`; local authentication configuration failures return
+`500`, and identity-provider discovery or signing-key availability failures
+return `503`. All retain the Bearer challenge.
+Ensure MCP clients and monitoring classify failures by HTTP status rather than
+provider-specific error text. During rollout, validate identity-provider
+discovery and signing-key reachability and monitor the new `500` and `503`
+outcomes.
+<!-- operator-upgrade:source pr-978 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
