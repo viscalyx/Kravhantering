@@ -252,6 +252,19 @@ describe('responsibility person verification', () => {
     },
   )
 
+  it('rejects an undersized evidence signing secret', () => {
+    expect(() =>
+      createRequirementResponsibilityPersonVerificationEvidence(
+        {
+          actor: ACTOR,
+          person: LOOKUP_PERSON,
+          purpose: 'requirement_area_owner',
+        },
+        { secret: 'too-short' },
+      ),
+    ).toThrow('HSA verification evidence secret must be at least 32 characters')
+  })
+
   it('resolves a unique evidence set and rejects missing or duplicate targets', () => {
     const now = new Date('2026-08-12T10:00:00.000Z')
     const secondPerson = {

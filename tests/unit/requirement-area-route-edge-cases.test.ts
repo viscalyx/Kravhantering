@@ -294,4 +294,25 @@ describe('requirement-area routes', () => {
       ).status,
     ).toBe(404)
   })
+
+  it('requires owner evidence only when an owner is being changed', async () => {
+    const path = '/api/requirement-areas/7'
+
+    expect(
+      (
+        await callMutation(areaPut, path, 'PUT', {
+          body: { ownerHsaId: 'SE5560000001-next' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(400)
+    expect(
+      (
+        await callMutation(areaPut, path, 'PUT', {
+          body: { name: 'Updated', verificationEvidence: 'orphan-evidence' },
+          id: '7',
+        })
+      ).status,
+    ).toBe(400)
+  })
 })

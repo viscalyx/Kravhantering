@@ -321,6 +321,20 @@ describe('requirement-package routes', () => {
     ).toBe(400)
   })
 
+  it('rejects lead verification evidence without a lead change', async () => {
+    expect(
+      (
+        await callMutation(packagePut, '/api/requirement-packages/7', 'PUT', {
+          body: {
+            name: 'Updated',
+            verificationEvidence: 'orphan-evidence',
+          },
+          id: '7',
+        })
+      ).status,
+    ).toBe(400)
+  })
+
   it('covers delete conflict, missing, success, audit failure, and reactivation', async () => {
     const path = '/api/requirement-packages/7'
     state.deleteRequirementPackage.mockResolvedValueOnce({
