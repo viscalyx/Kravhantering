@@ -132,6 +132,20 @@ outcomes.
 AI provider failures now use stable error codes and sanitized response shapes. During rollout, verify any clients, alerts, or support runbooks that rely on the previous error payloads or treated malformed model output as a validation response.
 Provider failure diagnostics now use a structured observability channel containing only bounded operational metadata. Confirm that production log routing and dashboards capture this channel without expecting raw provider error text.
 <!-- operator-upgrade:source pr-981 end -->
+
+<!-- operator-upgrade:source pr-984 start -->
+Before upgrading, classify each deployment as direct ingress or load-balanced
+ingress. Load-balanced sites must provision a root-controlled list containing
+only the exact proxy network CIDRs and verify the longest approved proxy chain;
+the upgraded ingress fails closed without that trust configuration. Direct
+ingress instead overwrites forwarding evidence with the connection peer.
+New access logs omit query strings, referrer data, and raw forwarding values.
+Treat older access-log copies as potentially sensitive because they may contain
+authorization callback parameters, referrer queries, or attacker-controlled
+forwarding values. Inventory and restrict those copies, apply the approved
+incident, privacy, and retention process, and rotate any credential that
+remains usable.
+<!-- operator-upgrade:source pr-984 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
