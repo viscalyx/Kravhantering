@@ -245,6 +245,7 @@ describe('production smoke output', () => {
     expect(kongUnit).toContain(
       `Volume=${configRoot}/kong-tls/kong.crt:/run/kong-tls/server.crt:ro`,
     )
+    expect(kongUnit).toContain('Environment=KONG_PREFIX=/tmp/kong')
     expect(kongUnit).toContain('PodmanArgs=--group-add=keep-groups')
     expect(kongUnit).not.toContain('@@CONFIG_ROOT@@')
   })

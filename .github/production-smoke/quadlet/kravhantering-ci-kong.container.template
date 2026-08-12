@@ -11,6 +11,7 @@ Environment=KONG_ADMIN_ERROR_LOG=/dev/stderr
 Environment=KONG_ADMIN_LISTEN=127.0.0.1:8001
 Environment=KONG_DATABASE=off
 Environment=KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml
+Environment=KONG_PREFIX=/tmp/kong
 Environment=KONG_PROXY_ACCESS_LOG=/dev/stdout
 Environment=KONG_PROXY_ERROR_LOG=/dev/stderr
 Environment="KONG_PROXY_LISTEN=0.0.0.0:8443 ssl"
