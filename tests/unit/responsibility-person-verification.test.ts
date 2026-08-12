@@ -19,9 +19,12 @@ vi.mock('@/lib/hsa/person-lookup', () => ({
 
 import {
   createRequirementResponsibilityPersonVerificationEvidence,
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH,
   REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_PURPOSES,
   requirementResponsibilityPersonActorFingerprint,
+  requirementResponsibilityPersonFromActor,
   requirementResponsibilityPersonTargetFingerprint,
+  resolveVerifiedRequirementResponsibilityPeople,
   resolveVerifiedRequirementResponsibilityPerson,
   toRequirementResponsibilityPersonVerificationPayload,
   verifyRequirementResponsibilityPerson,
@@ -205,6 +208,105 @@ describe('responsibility person verification', () => {
     ).toThrow('Verification evidence is invalid or expired')
   })
 
+  it.each([
+    '',
+    'payload-without-signature',
+    '.signature',
+    'payload.',
+    'x'.repeat(
+      REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH + 1,
+    ),
+  ])(
+    'rejects malformed verification evidence without decoding it',
+    evidence => {
+      expect(() =>
+        resolveVerifiedRequirementResponsibilityPerson(
+          evidence,
+          {
+            actor: ACTOR,
+            hsaId: LOOKUP_PERSON.hsaId,
+            purpose: 'requirement_area_owner',
+          },
+          {
+            now: new Date('2026-08-12T10:00:30.000Z'),
+            secret: EVIDENCE_SECRET,
+          },
+        ),
+      ).toThrow('Verification evidence is invalid or expired')
+    },
+  )
+
+  it.each([0, 601, 1.5])(
+    'rejects an unsafe evidence TTL of %s seconds',
+    ttlSeconds => {
+      expect(() =>
+        createRequirementResponsibilityPersonVerificationEvidence(
+          {
+            actor: ACTOR,
+            person: LOOKUP_PERSON,
+            purpose: 'requirement_area_owner',
+          },
+          { secret: EVIDENCE_SECRET, ttlSeconds },
+        ),
+      ).toThrow('Invalid HSA verification evidence TTL')
+    },
+  )
+
+  it('resolves a unique evidence set and rejects missing or duplicate targets', () => {
+    const now = new Date('2026-08-12T10:00:00.000Z')
+    const secondPerson = {
+      ...LOCAL_PERSON,
+      hsaId: 'SE5560000001-local2',
+    }
+    const evidence = [LOOKUP_PERSON, secondPerson].map(
+      person =>
+        createRequirementResponsibilityPersonVerificationEvidence(
+          {
+            actor: ACTOR,
+            person,
+            purpose: 'requirements_specification_co_author',
+            scopeId: 17,
+          },
+          { now, secret: EVIDENCE_SECRET },
+        ).evidence,
+    )
+    const expected = {
+      actor: ACTOR,
+      hsaIds: [LOOKUP_PERSON.hsaId, secondPerson.hsaId],
+      purpose: 'requirements_specification_co_author' as const,
+      scopeId: 17,
+    }
+    const options = {
+      now: new Date('2026-08-12T10:01:00.000Z'),
+      secret: EVIDENCE_SECRET,
+    }
+
+    expect(
+      resolveVerifiedRequirementResponsibilityPeople(
+        evidence,
+        expected,
+        options,
+      ),
+    ).toEqual([
+      { ...LOOKUP_PERSON, hasProtectedPersonalData: false },
+      { ...secondPerson, hasProtectedPersonalData: false },
+    ])
+    expect(() =>
+      resolveVerifiedRequirementResponsibilityPeople(
+        [evidence[0], evidence[0]],
+        expected,
+        options,
+      ),
+    ).toThrow('Verification evidence is invalid or expired')
+    expect(() =>
+      resolveVerifiedRequirementResponsibilityPeople(
+        [evidence[1]],
+        { ...expected, hsaIds: [LOOKUP_PERSON.hsaId] },
+        options,
+      ),
+    ).toThrow('Verification evidence is invalid or expired')
+  })
+
   it.each(REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_PURPOSES)(
     'binds evidence for the supported %s assignment purpose',
     purpose => {
@@ -287,6 +389,20 @@ describe('responsibility person verification', () => {
     ).not.toBe(fingerprint)
   })
 
+  it('normalizes optional actor identity fields before fingerprinting', () => {
+    const whitespaceFingerprint =
+      requirementResponsibilityPersonActorFingerprint(
+        { hsaId: ' ', id: ' ', source: 'anonymous' },
+        { secret: EVIDENCE_SECRET },
+      )
+    const nullFingerprint = requirementResponsibilityPersonActorFingerprint(
+      { hsaId: null, id: null, source: 'anonymous' },
+      { secret: EVIDENCE_SECRET },
+    )
+
+    expect(whitespaceFingerprint).toBe(nullFingerprint)
+  })
+
   it('creates one stable target fingerprint across HSA-id case variants', () => {
     const lowerCase = requirementResponsibilityPersonTargetFingerprint(
       'SE5560000001-target1',
@@ -310,5 +426,52 @@ describe('responsibility person verification', () => {
       ),
     ).rejects.toSatisfy(error => isRequirementsServiceError(error))
     expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
+  })
+
+  it('builds a server-trusted person from the authenticated actor', () => {
+    expect(
+      requirementResponsibilityPersonFromActor({
+        displayName: '  Display Name  ',
+        email: '  actor@example.test  ',
+        familyName: '  Family  ',
+        givenName: '  Given  ',
+        hsaId: '  SE5560000001-actor1  ',
+        isAuthenticated: true,
+      }),
+    ).toEqual({
+      email: 'actor@example.test',
+      givenName: 'Given',
+      hsaId: 'SE5560000001-actor1',
+      middleName: null,
+      surname: 'Family',
+    })
+
+    expect(
+      requirementResponsibilityPersonFromActor({
+        displayName: '  Display fallback  ',
+        email: ' ',
+        familyName: ' ',
+        givenName: ' ',
+        hsaId: 'SE5560000001-actor1',
+        isAuthenticated: true,
+      }),
+    ).toMatchObject({
+      email: null,
+      givenName: 'Display fallback',
+      surname: null,
+    })
+  })
+
+  it('rejects an unauthenticated actor when deriving assignment identity', () => {
+    expect(() =>
+      requirementResponsibilityPersonFromActor({
+        displayName: 'Anonymous',
+        email: undefined,
+        familyName: undefined,
+        givenName: undefined,
+        hsaId: 'SE5560000001-actor1',
+        isAuthenticated: false,
+      }),
+    ).toThrow('Authenticated actor is required')
   })
 })
