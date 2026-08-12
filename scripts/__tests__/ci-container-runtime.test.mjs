@@ -42,6 +42,13 @@ function createToolchainFixture() {
   )
   const commandLog = path.join(root, 'podman-commands.log')
   const sudoLog = path.join(root, 'sudo-commands.log')
+  const containersConfigPath = path.join(root, 'etc', 'containers.conf')
+  const runtimeDropInPath = path.join(
+    root,
+    'etc',
+    'containers.conf.d',
+    '00-fix-runtime.conf',
+  )
   fs.mkdirSync(binDir, { recursive: true })
   fs.mkdirSync(libexecDir, { recursive: true })
   fs.mkdirSync(userGeneratorDir, { recursive: true })
@@ -58,8 +65,12 @@ function createToolchainFixture() {
       'printf \'%s\\n\' "$*" >>"$CI_FAKE_PODMAN_LOG"',
       'case "$1" in',
       "  --version) printf 'podman version 4.9.3\\n' ;;",
-      '  info) printf \'{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n\' "$CI_FAKE_CONMON_PATH" "$CI_FAKE_CRUN_PATH" ;;',
+      '  info)',
+      `    sleep "\${CI_FAKE_INFO_DELAY_SECONDS:-0}"`,
+      '    printf \'{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n\' "$CI_FAKE_CONMON_PATH" "$CI_FAKE_CRUN_PATH"',
+      '    ;;',
       `  run) exit "\${CI_FAKE_RUN_STATUS:-0}" ;;`,
+      `  system) [[ "$2" == migrate ]] && exit "\${CI_FAKE_MIGRATE_STATUS:-0}" ;;`,
       'esac',
       '',
     ].join('\n'),
@@ -128,12 +139,17 @@ function createToolchainFixture() {
       CI_RUNTIME_DPKG_QUERY_BIN: dpkgQueryPath,
       CI_RUNTIME_GENERATOR_SEARCH_PATH: `${userGeneratorDir}:${systemGeneratorDir}`,
       CI_RUNTIME_LOCAL_PREFIX: localPrefix,
+      CI_RUNTIME_COMMAND_TIMEOUT_SECONDS: '5',
+      CI_RUNTIME_CONTAINERS_CONF: containersConfigPath,
+      CI_RUNTIME_RUNNER_RUNTIME_DROP_IN: runtimeDropInPath,
       CI_RUNTIME_SUDO_BIN: sudoPath,
       CI_RUNTIME_SYSTEM_PREFIX: systemPrefix,
       PATH: `${binDir}:${process.env.PATH}`,
     },
     localPrefix,
+    containersConfigPath,
     root,
+    runtimeDropInPath,
     sudoLog,
   }
 }
@@ -193,16 +209,83 @@ describe('CI container runtime', () => {
     )
     fs.mkdirSync(path.dirname(preinstalledPath), { recursive: true })
     fs.writeFileSync(preinstalledPath, 'foreign toolchain')
+    fs.mkdirSync(path.dirname(fixture.containersConfigPath), {
+      recursive: true,
+    })
+    fs.writeFileSync(
+      fixture.containersConfigPath,
+      [
+        '# static runner Podman configuration',
+        '[engine]',
+        'cgroup_manager = "cgroupfs"',
+        'events_logger="file"',
+        '',
+      ].join('\n'),
+    )
+    fs.mkdirSync(path.dirname(fixture.runtimeDropInPath), { recursive: true })
+    fs.writeFileSync(
+      fixture.runtimeDropInPath,
+      '[engine.runtimes]\ncrun = ["/usr/local/bin/crun"]\n',
+    )
 
     const result = runRuntimeScript(['bootstrap', profile], fixture)
 
     expect(result.status).toBe(0)
     expect(fs.existsSync(preinstalledPath)).toBe(false)
+    expect(fs.existsSync(fixture.containersConfigPath)).toBe(false)
+    expect(fs.existsSync(fixture.runtimeDropInPath)).toBe(false)
+    expect(fs.readFileSync(fixture.commandLog, 'utf8')).toContain(
+      'system migrate',
+    )
+    expect(result.stdout).toContain(
+      'existing rootless Podman runtime state: stopped',
+    )
     const commands = fs.readFileSync(fixture.sudoLog, 'utf8')
     expect(commands).toContain(
       'apt-get install -y --no-install-recommends --reinstall conmon crun jq libnss3-tools podman',
     )
     expect(commands.includes('skopeo')).toBe(usesSkopeo)
+  })
+
+  it('aborts bootstrap before replacing binaries when Podman migration fails', () => {
+    const fixture = createToolchainFixture()
+    const preinstalledPath = path.join(
+      fixture.localPrefix,
+      'lib',
+      'podman',
+      'conmon',
+    )
+    fs.mkdirSync(path.dirname(preinstalledPath), { recursive: true })
+    fs.writeFileSync(preinstalledPath, 'foreign toolchain')
+
+    const result = runRuntimeScript(['bootstrap', 'pr'], fixture, {
+      CI_FAKE_MIGRATE_STATUS: '42',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'cannot stop the existing rootless Podman runtime state (exit 42)',
+    )
+    expect(fs.existsSync(preinstalledPath)).toBe(true)
+    expect(
+      fs.existsSync(fixture.sudoLog)
+        ? fs.readFileSync(fixture.sudoLog, 'utf8')
+        : '',
+    ).not.toContain('apt-get')
+  })
+
+  it('bounds Podman inspection so a runtime lock cannot consume the job timeout', () => {
+    const fixture = createToolchainFixture()
+
+    const result = runRuntimeScript(['verify'], fixture, {
+      CI_FAKE_INFO_DELAY_SECONDS: '2',
+      CI_RUNTIME_COMMAND_TIMEOUT_SECONDS: '1',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'cannot inspect the selected Podman runtime toolchain (exit 124)',
+    )
   })
 
   it('cleans its pinned journald preflight resources after failure', () => {

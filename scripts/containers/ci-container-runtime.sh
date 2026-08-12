@@ -11,6 +11,10 @@ QUADLET_GENERATOR="${CI_RUNTIME_QUADLET_GENERATOR:-$SYSTEM_PREFIX/libexec/podman
 DPKG_QUERY_BIN="${CI_RUNTIME_DPKG_QUERY_BIN:-dpkg-query}"
 SUDO_BIN="${CI_RUNTIME_SUDO_BIN:-sudo}"
 APT_GET_BIN="${CI_RUNTIME_APT_GET_BIN:-apt-get}"
+TIMEOUT_BIN="${CI_RUNTIME_TIMEOUT_BIN:-timeout}"
+COMMAND_TIMEOUT_SECONDS="${CI_RUNTIME_COMMAND_TIMEOUT_SECONDS:-30}"
+CONTAINERS_CONF="${CI_RUNTIME_CONTAINERS_CONF:-/etc/containers/containers.conf}"
+RUNNER_RUNTIME_DROP_IN="${CI_RUNTIME_RUNNER_RUNTIME_DROP_IN:-/etc/containers/containers.conf.d/00-fix-runtime.conf}"
 EVIDENCE_DIR="${CI_RUNTIME_EVIDENCE_DIR:-}"
 PREFLIGHT_IMAGE='docker.io/library/alpine@sha256:eafc1edb577d2e9b458664a15f23ea1c370214193226069eb22921169fc7e43f'
 
@@ -21,6 +25,52 @@ fail() {
 
 canonical_path() {
   realpath -m -- "$1"
+}
+
+run_bounded() {
+  [[ "$COMMAND_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] ||
+    fail 'CI_RUNTIME_COMMAND_TIMEOUT_SECONDS must be a positive integer'
+  "$TIMEOUT_BIN" --kill-after=5s \
+    "${COMMAND_TIMEOUT_SECONDS}s" "$@"
+}
+
+active_config_lines() {
+  sed -E \
+    -e 's/[[:space:]]*#.*$//' \
+    -e '/^[[:space:]]*$/d' \
+    -e 's/[[:space:]]//g' \
+    -- "$1"
+}
+
+remove_runner_static_configuration() {
+  local active
+  if [[ -f "$CONTAINERS_CONF" ]]; then
+    active="$(active_config_lines "$CONTAINERS_CONF")"
+    if [[ "$active" == $'[engine]\ncgroup_manager="cgroupfs"\nevents_logger="file"' ]]; then
+      "$SUDO_BIN" rm -f -- "$CONTAINERS_CONF"
+    fi
+  fi
+  if [[ -f "$RUNNER_RUNTIME_DROP_IN" ]]; then
+    active="$(active_config_lines "$RUNNER_RUNTIME_DROP_IN")"
+    if [[ "$active" == $'[engine.runtimes]\ncrun=["/usr/local/bin/crun"]' ]]; then
+      "$SUDO_BIN" rm -f -- "$RUNNER_RUNTIME_DROP_IN"
+    elif grep -Fq -- '/usr/local/bin/crun' "$RUNNER_RUNTIME_DROP_IN"; then
+      fail "runner runtime drop-in still selects the static crun path: $RUNNER_RUNTIME_DROP_IN"
+    fi
+  fi
+}
+
+stop_existing_rootless_runtime() {
+  local existing_podman status
+  existing_podman="$(command -v podman 2>/dev/null || true)"
+  [[ -n "$existing_podman" ]] || return 0
+  printf '%s\n' 'Stopping existing rootless Podman runtime state before replacing the toolchain.'
+  if run_bounded "$existing_podman" system migrate; then
+    printf '%s\n' 'existing rootless Podman runtime state: stopped'
+  else
+    status="$?"
+    fail "cannot stop the existing rootless Podman runtime state (exit $status)"
+  fi
 }
 
 start_evidence_log() {
@@ -66,7 +116,7 @@ resolved_generator() {
 }
 
 verify_toolchain() {
-  local generator podman_info selected_conmon selected_runtime
+  local generator podman_info selected_conmon selected_runtime status
   assert_executable "$PODMAN_BIN"
   assert_executable "$CONMON_BIN"
   assert_executable "$CRUN_BIN"
@@ -79,8 +129,12 @@ verify_toolchain() {
   [[ "$generator" == "$(canonical_path "$QUADLET_GENERATOR")" ]] ||
     fail "systemd selected unexpected Quadlet generator: $generator"
 
-  podman_info="$("$PODMAN_BIN" info --format json)" ||
-    fail 'cannot inspect the selected Podman runtime toolchain'
+  if podman_info="$(run_bounded "$PODMAN_BIN" info --format json)"; then
+    :
+  else
+    status="$?"
+    fail "cannot inspect the selected Podman runtime toolchain (exit $status)"
+  fi
   selected_conmon="$(jq -er '.host.conmon.path' <<<"$podman_info")" ||
     fail 'Podman info does not identify conmon'
   selected_runtime="$(jq -er '.host.ociRuntime.path' <<<"$podman_info")" ||
@@ -109,6 +163,8 @@ bootstrap_toolchain() {
     fail 'bootstrap expects the pr or release profile'
   [[ "$profile" == release ]] && packages+=(skopeo)
 
+  stop_existing_rootless_runtime
+  remove_runner_static_configuration
   "$SUDO_BIN" rm -rf -- \
     "$LOCAL_PREFIX/lib/podman" \
     "$LOCAL_PREFIX/libexec/podman"

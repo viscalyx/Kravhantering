@@ -75,10 +75,11 @@ jobs:
           else
             echo "docker not available"
           fi
-          if command -v podman >/dev/null 2>&1; then
+          if [[ -f "${RUNNER_TEMP}/kravhantering-ci-runtime-ready" ]] && \
+            command -v podman >/dev/null 2>&1; then
             podman system df || true
           else
-            echo "podman not available"
+            echo "podman storage report deferred until runtime bootstrap"
           fi
           du -sh \
             "${GITHUB_WORKSPACE}/tmp/container-pr-artifacts/oci" \
@@ -155,9 +156,10 @@ jobs:
         run: |
           set -euo pipefail
           scripts/containers/ci-container-runtime.sh bootstrap pr
+          touch "${RUNNER_TEMP}/kravhantering-ci-runtime-ready"
           sudo sysctl net.ipv4.ip_unprivileged_port_start=0
           echo "127.0.0.1 kravhantering.test" | sudo tee -a /etc/hosts
-          podman info
+          timeout --kill-after=5s 30s podman info
           docker --version
           docker buildx version
           docker info
