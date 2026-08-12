@@ -20,6 +20,7 @@ Environment=KONG_SSL_CERT_KEY=/run/kong-tls/server.key
 Network=kravhantering-single-node-egress.network
 PodmanArgs=--network-alias=kong
 PodmanArgs=--group-add=keep-groups
+Tmpfs=/tmp:rw,size=64M,mode=1777,U,nosuid,nodev,noexec
 Volume=@@BUNDLE_ROOT@@/kong/kong.yml:/kong/declarative/kong.yml:ro
 Volume=@@CONFIG_ROOT@@/kong-tls/kong.crt:/run/kong-tls/server.crt:ro
 Volume=@@CONFIG_ROOT@@/kong-tls/kong.key:/run/kong-tls/server.key:ro
