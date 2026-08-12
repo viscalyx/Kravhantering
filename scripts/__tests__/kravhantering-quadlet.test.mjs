@@ -23,6 +23,9 @@ const PODMAN_GENERATOR_VERSION = fs.existsSync(PODMAN_USER_GENERATOR)
       encoding: 'utf8',
     }).stdout ?? '')
   : ''
+const STAT_BIN = childProcess
+  .execFileSync('sh', ['-c', 'command -v stat'], { encoding: 'utf8' })
+  .trim()
 const temporaryDirectories = []
 
 function writePodmanProbe(filePath, runtime = 'crun') {
@@ -46,6 +49,32 @@ function writePodmanProbe(filePath, runtime = 'crun') {
   )
 }
 
+function writeStatProbe(filePath) {
+  fs.writeFileSync(
+    filePath,
+    [
+      '#!/usr/bin/env bash',
+      'set -euo pipefail',
+      `real_stat=${JSON.stringify(STAT_BIN)}`,
+      `if [[ "\${1-}" == -c && "\${2-}" == "%u %g %a" && "\${3-}" == -- ]]; then`,
+      '  target="$4"',
+      '  mode="$("$real_stat" -c "%a" -- "$target")"',
+      '  [[ -d "$target" ]] && mode=755',
+      `  [[ "$target" == "\${KRAVHANTERING_TEST_WRITABLE_PARENT-}" ]] && mode=777`,
+      '  owner=0',
+      `  if [[ "$target" == "\${KRAVHANTERING_TEST_UNTRUSTED_CONFIG-}" ]]; then`,
+      '    owner="$("$real_stat" -c "%u" -- "$target")"',
+      '  fi',
+      '  printf "%s 0 %s\\n" "$owner" "$mode"',
+      '  exit 0',
+      'fi',
+      'exec "$real_stat" "$@"',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  )
+}
+
 function createFixture(
   releaseEnv,
   keycloakEnv = 'KC_HOSTNAME_ADMIN=https://keycloak-management.example.internal:9443/auth\n',
@@ -58,6 +87,7 @@ function createFixture(
   const meminfoPath = path.join(root, 'meminfo')
   const podmanPath = path.join(root, 'podman')
   const systemctlPath = path.join(root, 'systemctl')
+  const statPath = path.join(root, 'stat')
   const releaseEnvPath = path.join(root, 'release.env')
   const keycloakEnvPath = path.join(root, 'keycloak.env')
   const readinessProbeConfigPath = path.join(root, 'readiness-probes.conf')
@@ -74,16 +104,19 @@ function createFixture(
     mode: 0o755,
   })
   writePodmanProbe(podmanPath)
+  writeStatProbe(statPath)
   fs.writeFileSync(systemctlPath, '#!/usr/bin/env bash\nexit 0\n', {
     mode: 0o755,
   })
   fs.writeFileSync(
     trustedProxyConfigPath,
     'set_real_ip_from 10.20.0.0/16;\nset_real_ip_from 2001:db8:20::/48;\n',
+    { mode: 0o644 },
   )
   fs.writeFileSync(
     readinessProbeConfigPath,
     '# Monitoring networks\nallow 10.30.0.10/32;\nallow 2001:db8:30::10/128;\n',
+    { mode: 0o644 },
   )
   fs.writeFileSync(
     releaseEnvPath,
@@ -102,6 +135,7 @@ function createFixture(
     outputDir,
     podmanPath,
     preflightEnv: {
+      PATH: `${root}:${process.env.PATH}`,
       KRAVHANTERING_CGROUP_CONTROLLERS_FILE: controllersPath,
       KRAVHANTERING_JOURNAL_CONFIG_DIR: journalConfigDir,
       KRAVHANTERING_MEMINFO_FILE: meminfoPath,
@@ -417,6 +451,73 @@ describe('kravhantering Quadlet helper', () => {
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain('file is not readable')
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
+
+  it.each([0o664, 0o646])(
+    'rejects a group- or other-writable readiness probe configuration with mode %s',
+    mode => {
+      const fixture = createFixture(releaseEnv())
+      const configPath = path.join(fixture.root, 'readiness-probes.conf')
+      fs.chmodSync(configPath, mode)
+
+      const result = runHelper(
+        [
+          'render',
+          '--topology',
+          'single-node',
+          '--output-dir',
+          fixture.outputDir,
+        ],
+        fixture,
+      )
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain('group- or other-writable')
+      expect(fs.existsSync(fixture.outputDir)).toBe(false)
+    },
+  )
+
+  it('rejects a readiness probe configuration not owned by root', () => {
+    const fixture = createFixture(releaseEnv())
+    const configPath = path.join(fixture.root, 'readiness-probes.conf')
+
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+      { KRAVHANTERING_TEST_UNTRUSTED_CONFIG: configPath },
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('file must be owned by root')
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
+
+  it('rejects a readiness probe path writable by the service account', () => {
+    const fixture = createFixture(releaseEnv())
+
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+      { KRAVHANTERING_TEST_WRITABLE_PARENT: fixture.root },
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'parent directory is writable by the service account',
+    )
     expect(fs.existsSync(fixture.outputDir)).toBe(false)
   })
 

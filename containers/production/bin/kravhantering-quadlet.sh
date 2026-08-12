@@ -247,7 +247,10 @@ validate_identity_provider() {
 validate_cidr_directive_config() {
   local config_file="$1" config_key="$2" directive="$3" label="$4"
   local address address_without_compression cidr compression_count group line
-  local octet octet_value prefix prefix_value entry_count=0
+  local config_gid config_mode config_mode_value config_uid
+  local octet octet_value parent parent_gid parent_mode parent_mode_value
+  local parent_uid prefix prefix_value service_groups service_uid write_mask
+  local entry_count=0
   local -a groups=() octets=()
   [[ "$config_file" == /* ]] || \
     fail "invalid $config_key: expected an absolute path"
@@ -259,6 +262,35 @@ validate_cidr_directive_config() {
     fail "invalid $config_key: expected an existing nonsymlink file"
   [[ -r "$config_file" ]] || \
     fail "invalid $config_key: file is not readable"
+  read -r config_uid config_gid config_mode < <(
+    stat -c '%u %g %a' -- "$config_file"
+  )
+  [[ "$config_uid" == 0 ]] || \
+    fail "invalid $config_key: file must be owned by root"
+  config_mode_value=$((8#$config_mode))
+  (( (config_mode_value & 0022) == 0 )) || \
+    fail "invalid $config_key: file must not be group- or other-writable"
+
+  service_uid="$(id -u)"
+  service_groups=" $(id -G) "
+  parent="$(dirname -- "$config_file")"
+  while :; do
+    read -r parent_uid parent_gid parent_mode < <(
+      stat -c '%u %g %a' -- "$parent"
+    )
+    parent_mode_value=$((8#$parent_mode))
+    if [[ "$parent_uid" == "$service_uid" ]]; then
+      write_mask=0200
+    elif [[ "$service_groups" == *" $parent_gid "* ]]; then
+      write_mask=0020
+    else
+      write_mask=0002
+    fi
+    (( (parent_mode_value & write_mask) == 0 )) || \
+      fail "invalid $config_key: parent directory is writable by the service account"
+    [[ "$parent" == / ]] && break
+    parent="$(dirname -- "$parent")"
+  done
 
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%$'\r'}"
