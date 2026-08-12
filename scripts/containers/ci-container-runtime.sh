@@ -372,7 +372,8 @@ collect_component_evidence() {
 
   podman_command="$(command -v podman 2>/dev/null || true)"
   [[ -n "$podman_command" ]] || podman_command="$PODMAN_BIN"
-  "$podman_command" info --format json >"$EVIDENCE_DIR/podman-info.json" 2>&1 || true
+  run_bounded "$podman_command" info --format json \
+    >"$EVIDENCE_DIR/podman-info.json" 2>&1 || true
   podman_info="$(<"$EVIDENCE_DIR/podman-info.json")"
   selected_conmon="$(jq -er '.host.conmon.path' <<<"$podman_info" 2>/dev/null || true)"
   selected_runtime="$(jq -er '.host.ociRuntime.path' <<<"$podman_info" 2>/dev/null || true)"
@@ -415,7 +416,6 @@ collect_diagnostics() {
   [[ -n "$EVIDENCE_DIR" ]] || fail 'collect requires CI_RUNTIME_EVIDENCE_DIR'
   mkdir -p -- "$EVIDENCE_DIR"
   write_runner_metadata "$EVIDENCE_DIR/runner.json"
-  collect_github_runner_metadata
   {
     uname -a
     cat /etc/os-release

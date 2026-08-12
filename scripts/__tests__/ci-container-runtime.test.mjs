@@ -354,6 +354,59 @@ describe('CI container runtime', () => {
     expect(completeEvidence).not.toContain(secret)
   })
 
+  it('bounds Podman inspection while collecting runtime evidence', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'evidence')
+
+    const result = runRuntimeScript(['collect'], fixture, {
+      CI_FAKE_INFO_DELAY_SECONDS: '2',
+      CI_RUNTIME_COMMAND_TIMEOUT_SECONDS: '1',
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+    })
+
+    expect(result.status).toBe(0)
+    expect(
+      fs.readFileSync(path.join(evidenceDirectory, 'podman-info.json'), 'utf8'),
+    ).not.toContain('ociRuntime')
+    expect(
+      fs.readFileSync(
+        path.join(evidenceDirectory, 'classification.txt'),
+        'utf8',
+      ),
+    ).toContain('unknown')
+  })
+
+  it('defers current-job runner metadata until the job has completed', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'evidence')
+    const ghCallLog = path.join(fixture.root, 'gh-calls.log')
+    const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+    fs.writeFileSync(
+      ghPath,
+      [
+        '#!/usr/bin/env bash',
+        'printf \'%s\\n\' "$*" >>"$CI_FAKE_GH_CALL_LOG"',
+        'exit 99',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runRuntimeScript(['collect'], fixture, {
+      CI_FAKE_GH_CALL_LOG: ghCallLog,
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+      GH_TOKEN: 'test-token',
+      GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+      GITHUB_RUN_ID: '12345',
+    })
+
+    expect(result.status).toBe(0)
+    expect(fs.existsSync(ghCallLog)).toBe(false)
+    expect(
+      fs.existsSync(path.join(evidenceDirectory, 'github-runner-metadata.txt')),
+    ).toBe(false)
+  })
+
   it('records provenance for runtime paths selected outside the package toolchain', () => {
     const fixture = createToolchainFixture()
     const evidenceDirectory = path.join(fixture.root, 'evidence')
