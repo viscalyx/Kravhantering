@@ -31,7 +31,16 @@ vi.mock('@/lib/generated-output/spool', () => ({
 
 import * as route from '@/app/api/ready/route'
 
-const request = () => new Request('http://localhost/api/ready')
+const request = (init?: RequestInit) =>
+  new Request('http://localhost/api/ready', init)
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(resolvePromise => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
 
 function setReadyDefaults() {
   const query = vi.fn(
@@ -58,14 +67,15 @@ function setReadyDefaults() {
   vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://app.example.com')
   vi.stubGlobal(
     'fetch',
-    vi
-      .fn()
-      .mockResolvedValue(
+    vi.fn().mockImplementation(
+      async () =>
         new Response(
-          JSON.stringify({ issuer: 'https://issuer.example.com/realms/test' }),
+          JSON.stringify({
+            issuer: 'https://issuer.example.com/realms/test',
+          }),
           { status: 200 },
         ),
-      ),
+    ),
   )
   return { query }
 }
@@ -76,9 +86,11 @@ async function readJson(response: Response) {
 
 describe('GET /api/ready', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     vi.clearAllMocks()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
+    route.__resetReadinessStateForTests()
   })
 
   it('returns ready when runtime config, SQL Server, and OIDC discovery pass', async () => {
@@ -105,19 +117,18 @@ describe('GET /api/ready', () => {
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', '')
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET(request())
+    const response = await route.GET(
+      request({
+        headers: {
+          'X-Correlation-Id': 'readiness-correlation',
+          'X-Request-Id': 'readiness-request',
+        },
+      }),
+    )
     const body = await response.text()
 
     expect(response.status).toBe(503)
-    expect(JSON.parse(body)).toEqual({
-      failedChecks: [
-        {
-          name: 'runtime_config',
-          reason: 'runtime_config_invalid',
-        },
-      ],
-      status: 'not_ready',
-    })
+    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
     expect(body).not.toContain('NEXT_PUBLIC_SITE_URL')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()
@@ -133,25 +144,55 @@ describe('GET /api/ready', () => {
     query.mockRejectedValue(new Error('database unavailable'))
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const response = await route.GET(request())
+    const response = await route.GET(
+      request({
+        headers: {
+          'X-Correlation-Id': 'readiness-correlation',
+          'X-Request-Id': 'readiness-request',
+        },
+      }),
+    )
     const body = await response.text()
 
     expect(response.status).toBe(503)
-    expect(JSON.parse(body)).toEqual({
-      failedChecks: [
-        {
-          name: 'sql_server',
-          reason: 'sql_server_unavailable',
-        },
-      ],
-      status: 'not_ready',
-    })
+    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
     expect(body).not.toContain('database unavailable')
     expect(fetch).not.toHaveBeenCalled()
-    expect(warn).toHaveBeenCalledWith(
-      '[readiness] check failed',
-      expect.objectContaining({ check: 'sql_server' }),
+    expect(warn).toHaveBeenCalledWith('[readiness] check failed', {
+      check: 'sql_server',
+      correlation_id: 'readiness-correlation',
+      diagnostic: 'check_failed',
+      reason: 'sql_server_unavailable',
+      request_id: 'readiness-request',
+    })
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(
+      'database unavailable',
     )
+    warn.mockRestore()
+  })
+
+  it('redacts URL-shaped correlation metadata from readiness warnings', async () => {
+    const { query } = setReadyDefaults()
+    query.mockRejectedValue(new Error('database unavailable'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await route.GET(
+      request({
+        headers: {
+          'X-Correlation-Id': 'https://secret.example/private',
+          'X-Request-Id': 'https://secret.example/request',
+        },
+      }),
+    )
+
+    expect(warn).toHaveBeenCalledWith('[readiness] check failed', {
+      check: 'sql_server',
+      correlation_id: 'redacted',
+      diagnostic: 'check_failed',
+      reason: 'sql_server_unavailable',
+      request_id: 'redacted',
+    })
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('secret.example')
     warn.mockRestore()
   })
 
@@ -168,21 +209,14 @@ describe('GET /api/ready', () => {
     const body = await response.text()
 
     expect(response.status).toBe(503)
-    expect(JSON.parse(body)).toEqual({
-      failedChecks: [
-        {
-          name: 'sql_server',
-          reason: 'sql_server_unavailable',
-        },
-      ],
-      status: 'not_ready',
-    })
+    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
     expect(body).not.toContain('mssql')
     expect(warn).toHaveBeenCalledWith('[readiness] check failed', {
       check: 'sql_server',
+      correlation_id: expect.any(String),
       diagnostic: 'sql_server_driver_unavailable',
-      error: 'DriverPackageNotInstalledError',
       reason: 'sql_server_unavailable',
+      request_id: expect.any(String),
     })
     warn.mockRestore()
   })
@@ -198,15 +232,7 @@ describe('GET /api/ready', () => {
     const body = await response.text()
 
     expect(response.status).toBe(503)
-    expect(JSON.parse(body)).toEqual({
-      failedChecks: [
-        {
-          name: 'temporary_storage',
-          reason: 'temporary_storage_unavailable',
-        },
-      ],
-      status: 'not_ready',
-    })
+    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
     expect(body).not.toContain('/private/spool')
     expect(warn).toHaveBeenCalledWith(
       '[readiness] check failed',
@@ -227,15 +253,7 @@ describe('GET /api/ready', () => {
     const body = await response.text()
 
     expect(response.status).toBe(503)
-    expect(JSON.parse(body)).toEqual({
-      failedChecks: [
-        {
-          name: 'database_migration_compatibility',
-          reason: 'database_schema_version_missing',
-        },
-      ],
-      status: 'not_ready',
-    })
+    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
     expect(body).not.toContain('InitialSchema1713720000000')
     expect(fetch).not.toHaveBeenCalled()
     expect(warn).toHaveBeenCalledWith(
@@ -260,15 +278,7 @@ describe('GET /api/ready', () => {
     const body = await response.text()
 
     expect(response.status).toBe(503)
-    expect(JSON.parse(body)).toEqual({
-      failedChecks: [
-        {
-          name: 'database_migration_compatibility',
-          reason: 'database_schema_version_mismatch',
-        },
-      ],
-      status: 'not_ready',
-    })
+    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
     expect(body).not.toContain('OlderSchema1713000000000')
     expect(body).not.toContain('InitialSchema1713720000000')
     expect(fetch).not.toHaveBeenCalled()
@@ -286,15 +296,7 @@ describe('GET /api/ready', () => {
     const response = await route.GET(request())
 
     expect(response.status).toBe(503)
-    expect(await readJson(response)).toEqual({
-      failedChecks: [
-        {
-          name: 'oidc_discovery',
-          reason: 'oidc_discovery_unavailable',
-        },
-      ],
-      status: 'not_ready',
-    })
+    expect(await readJson(response)).toEqual({ status: 'not_ready' })
     expect(warn).toHaveBeenCalledWith(
       '[readiness] check failed',
       expect.objectContaining({ check: 'oidc_discovery' }),
@@ -313,15 +315,7 @@ describe('GET /api/ready', () => {
     const response = await route.GET(request())
 
     expect(response.status).toBe(503)
-    expect(await readJson(response)).toEqual({
-      failedChecks: [
-        {
-          name: 'oidc_discovery',
-          reason: 'oidc_discovery_unavailable',
-        },
-      ],
-      status: 'not_ready',
-    })
+    expect(await readJson(response)).toEqual({ status: 'not_ready' })
     expect(warn).toHaveBeenCalledWith(
       '[readiness] check failed',
       expect.objectContaining({ check: 'oidc_discovery' }),
@@ -339,23 +333,94 @@ describe('GET /api/ready', () => {
     const response = await route.GET(request())
 
     expect(response.status).toBe(503)
-    expect(await readJson(response)).toEqual({
-      failedChecks: [
-        {
-          name: 'oidc_discovery',
-          reason: 'oidc_discovery_unavailable',
-        },
-      ],
-      status: 'not_ready',
-    })
+    expect(await readJson(response)).toEqual({ status: 'not_ready' })
     expect(warn).toHaveBeenCalledWith(
       '[readiness] check failed',
       expect.objectContaining({
         check: 'oidc_discovery',
-        error: 'TimeoutError',
+        diagnostic: 'check_failed',
       }),
     )
     warn.mockRestore()
+  })
+
+  it('coalesces concurrent route requests into one complete evaluation', async () => {
+    const { query } = setReadyDefaults()
+    const databaseGate = deferred<void>()
+    routeState.getRequestSqlServerDataSource.mockImplementation(async () => {
+      await databaseGate.promise
+      return { query }
+    })
+
+    const first = route.GET(request())
+    const joined = route.GET(request())
+    await vi.waitFor(() => {
+      expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledOnce()
+    })
+
+    databaseGate.resolve()
+
+    await expect(first.then(readJson)).resolves.toEqual({ status: 'ready' })
+    await expect(joined.then(readJson)).resolves.toEqual({ status: 'ready' })
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledOnce()
+  })
+
+  it('caches successful and failed results for five seconds from completion', async () => {
+    let now = 100
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    setReadyDefaults()
+
+    await expect(route.GET(request()).then(readJson)).resolves.toEqual({
+      status: 'ready',
+    })
+    now = 5_099
+    await expect(route.GET(request()).then(readJson)).resolves.toEqual({
+      status: 'ready',
+    })
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(2)
+
+    now = 5_100
+    await expect(route.GET(request()).then(readJson)).resolves.toEqual({
+      status: 'ready',
+    })
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(4)
+
+    route.__resetReadinessStateForTests()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    routeState.getRequestSqlServerDataSource.mockRejectedValueOnce(
+      new Error('database secret'),
+    )
+    await expect(route.GET(request()).then(readJson)).resolves.toEqual({
+      status: 'not_ready',
+    })
+    routeState.getRequestSqlServerDataSource.mockResolvedValue({
+      query: vi.fn(),
+    })
+    await expect(route.GET(request()).then(readJson)).resolves.toEqual({
+      status: 'not_ready',
+    })
+    expect(warn).toHaveBeenCalledOnce()
+    warn.mockRestore()
+  })
+
+  it('keeps shared evaluation running when the initiating caller disconnects', async () => {
+    const { query } = setReadyDefaults()
+    const databaseGate = deferred<void>()
+    routeState.getRequestSqlServerDataSource.mockImplementation(async () => {
+      await databaseGate.promise
+      return { query }
+    })
+    const controller = new AbortController()
+
+    const first = route.GET(request({ signal: controller.signal }))
+    controller.abort()
+    const joined = route.GET(request())
+    databaseGate.resolve()
+
+    await expect(first.then(readJson)).resolves.toEqual({ status: 'ready' })
+    await expect(joined.then(readJson)).resolves.toEqual({ status: 'ready' })
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(2)
   })
 
   it('does not expose POST handler', () => {

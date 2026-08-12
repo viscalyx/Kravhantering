@@ -28,6 +28,13 @@ upgrade. The first-install template-copy steps are intentionally not part of
 this checklist unless the release notes require a specific configuration
 change.
 
+>[!IMPORTANT]
+>Before the downtime window, create the mandatory site-specific
+>[readiness probe boundary](./readiness-probe-boundary.md) and add its path to
+>`/etc/kravhantering/release.env`. The target release refuses to render or
+>install every topology without this file. Verify readiness from an allowed
+>monitoring source and denial from another source after rollout.
+
 Run app-node steps on every RHEL app node. Run the database job sequence once
 for the release, after the target release bundle and image references are in
 place.

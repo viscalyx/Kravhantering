@@ -97,6 +97,13 @@ Write the operator notes as standalone, high-level operational guidance:
   `.github/pull_request_template.md` and
   `docs/operations/operator-upgrade-notes.md`.
 
+## Delivery
+
+- Populate or update `Operator Upgrade Impact` only on a pull request created
+  by the current agent session.
+- Otherwise, return paste-ready notes for the user to insert manually and leave
+  pre-existing pull requests unchanged.
+
 ## Output
 
 When no notes are needed, respond exactly with:
@@ -118,7 +125,7 @@ Rationale:
 <brief evidence summary for the maintainer; code references are allowed here>
 ```
 
-If asked to edit a PR body, preserve the
+When updating a pull request created by the current agent session, preserve the
 `operator-upgrade:no-notes`,
 `operator-upgrade:notes start`, and
 `operator-upgrade:notes end` markers. Check `No operator notes needed` only

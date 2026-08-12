@@ -124,7 +124,8 @@ The local orchestration does the same explicit ordering intended for CI:
 5. Start SQL Server and Keycloak.
 6. Run `db-bootstrap`, `db-migrate` and `db-seed-required`.
 7. Start `app-runtime` and nginx, then wait for nginx, Keycloak discovery,
-   `/api/health` and `/api/ready`.
+   `/api/health` and `/api/ready`. The non-production Nginx configuration
+   admits readiness only from loopback and private container networks.
 
 Status and hash artifacts are written to `container-status.txt`,
 `container-status.json` and `hashes.sha256`. They intentionally contain only

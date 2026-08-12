@@ -28,10 +28,13 @@ It is intentionally not a replacement for the more detailed workflow docs:
   requires a Bearer header to be present for `/api/mcp`.
 - Public REST operations are declared individually in
   `lib/http/route-security-policy.ts` and are limited to the implemented
-  authentication operations plus health and readiness probes. An unknown URL
-  under `/api/auth` is not implicitly public. The authentication error page,
-  reviewed Next.js framework resources and metadata routes, and exact
-  repository-owned public asset paths remain separate proxy bypasses. The
+  authentication operations plus health and readiness probes. Production and
+  prodlike Nginx edges additionally restrict readiness to configured probe
+  networks; its application-level public classification supports direct local
+  development and unauthenticated monitoring after that edge decision. An
+  unknown URL under `/api/auth` is not implicitly public. The authentication
+  error page, reviewed Next.js framework resources and metadata routes, and
+  exact repository-owned public asset paths remain separate proxy bypasses. The
   proxy matcher itself skips only those framework, metadata, and exact public
   asset paths. All other paths, including dynamic page and API paths containing
   dots, enter the authentication boundary. The generated HSA Swagger files

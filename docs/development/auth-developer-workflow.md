@@ -22,12 +22,15 @@ If the dev server cannot reach the IdP, requests fail loudly instead of
 falling back to an unauthenticated mode. Bring up Keycloak first with
 `npm run idp:up` (or via the devcontainer compose).
 
-`GET /api/ready` is intentionally public so container wait scripts can call it
-before a browser session exists. It validates the runtime configuration,
-performs a read-only SQL Server probe, and checks OIDC discovery for the
-configured issuer with a short timeout. The response is deliberately terse:
-`{ "status": "ready" }` on success or `{ "status": "not_ready" }` on failure.
-Detailed dependency names are written only to server logs.
+Direct access to the Next.js development server keeps `GET /api/ready`
+available without a browser session. Production and prodlike Nginx edges expose
+it only to configured probe networks. It validates runtime configuration,
+performs read-only SQL Server and schema probes, checks temporary storage, and
+checks OIDC discovery with a short timeout. Concurrent requests share one
+evaluation, and both outcomes are cached internally for five seconds. The
+response is deliberately terse: `{ "status": "ready" }` on success or
+`{ "status": "not_ready" }` on failure. Detailed dependency identifiers are
+written only to sanitized server logs.
 
 ## Local IdP (Keycloak)
 

@@ -32,13 +32,10 @@ test('RES-03: readiness, build metadata, and navigation metadata are exposed saf
   const readyResponse = await request.get('/api/ready')
   expect([200, 503]).toContain(readyResponse.status())
   const readyBody = (await readyResponse.json()) as {
-    failedChecks?: Array<{ name?: string; reason?: string }>
     status?: string
   }
   expect(readyBody.status).toMatch(/^(ready|not_ready)$/)
-  expect(JSON.stringify(readyBody.failedChecks ?? {})).not.toMatch(
-    /token|secret|password/i,
-  )
+  expect(readyBody).toEqual({ status: readyBody.status })
 
   const buildResponse = await request.get('/build.json')
   await expectApiResponseOk(buildResponse, 'GET build metadata')
@@ -67,13 +64,6 @@ test('RES-03: readiness, build metadata, and navigation metadata are exposed saf
     expect(schemaBody.status).toBe('matches')
   } else {
     await expectApiResponseStatus(readyResponse, 503, 'ready endpoint')
-    const schemaFailure = readyBody.failedChecks?.find(
-      check => check.name === 'database_migration_compatibility',
-    )
-    if (schemaFailure) {
-      expect(schemaBody.status).not.toBe('matches')
-      expect(schemaBody.reason).toBe(schemaFailure.reason)
-    }
   }
 
   await page.goto('/sv/requirements')

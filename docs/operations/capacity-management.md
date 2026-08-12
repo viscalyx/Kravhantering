@@ -137,7 +137,10 @@ Logical maximum bytes are reserved against current filesystem capacity before
 generation. Files are removed after complete transfer, cancellation, or error,
 and stale owned operation directories older than 15 minutes are removed on
 startup. `/api/ready` fails its sanitized `temporary_storage` check when the
-runtime cannot create, write, close, and remove a probe file.
+runtime cannot create, write, close, and remove a probe file. Each application
+process shares concurrent readiness work and caches the completed aggregate
+result for five seconds, reducing repeated database, schema, storage, and OIDC
+load without enabling HTTP cache reuse.
 
 Successful file responses set exact `Content-Length`,
 `Cache-Control: no-store`, and `X-Accel-Buffering: no`. Production Nginx grants

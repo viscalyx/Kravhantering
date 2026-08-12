@@ -17,6 +17,7 @@ upstream app_runtime_upstream {
 
 server {
     listen 8080;
+    listen [::]:8080;
     server_name _;
 
     location = /api-docs/hsa-person-lookup {
@@ -32,6 +33,7 @@ server {
     }
 
     include /etc/nginx/snippets/generated-output-locations.conf;
+    include /etc/nginx/snippets/readiness-locations.conf;
 
     location / {
         proxy_pass http://app_runtime_upstream;

@@ -7,12 +7,19 @@ import {
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { probeGeneratedOutputTempDirectory } from '@/lib/generated-output/spool'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
+import { resolveRequestCorrelationIds } from '@/lib/observability/request-ids'
+import {
+  createReadinessCoordinator,
+  type ReadinessEvaluationContext,
+  type ReadinessResult,
+} from '@/lib/readiness/coordinator'
 import { getSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const OIDC_DISCOVERY_TIMEOUT_MS = 2_000
+const READINESS_LOG_ID_PATTERN = /^[A-Za-z0-9._@-]{1,128}$/
 
 type ReadinessCheckName =
   | 'runtime_config'
@@ -34,9 +41,14 @@ interface ReadinessCheck {
   run: () => Promise<void> | void
 }
 
-interface FailedReadinessCheck {
-  name: ReadinessCheckName
-  reason: ReadinessFailureReason
+function readinessLogIds(context: ReadinessEvaluationContext) {
+  const safeId = (value: string) =>
+    READINESS_LOG_ID_PATTERN.test(value) ? value : 'redacted'
+
+  return {
+    correlation_id: safeId(context.correlationId),
+    request_id: safeId(context.requestId),
+  }
 }
 
 class ReadinessFailure extends Error {
@@ -52,14 +64,8 @@ class ReadinessFailure extends Error {
 function jsonResponse(
   status: 'ready' | 'not_ready',
   httpStatus: 200 | 503,
-  failedChecks: FailedReadinessCheck[] = [],
-) {
-  return NextResponse.json(
-    status === 'ready' ? { status } : { failedChecks, status },
-    {
-      status: httpStatus,
-    },
-  )
+): NextResponse {
+  return NextResponse.json({ status }, { status: httpStatus })
 }
 
 function assertSiteUrlConfigured() {
@@ -75,11 +81,6 @@ function assertSiteUrlConfigured() {
 
 function discoveryUrl(issuerUrl: string): string {
   return `${issuerUrl.replace(/\/+$/, '')}/.well-known/openid-configuration`
-}
-
-function sanitizeError(error: unknown): string {
-  if (error instanceof Error && error.name) return error.name
-  return 'Error'
 }
 
 function readinessDiagnostic(
@@ -146,23 +147,26 @@ async function checkOidcDiscovery() {
 
 async function runCheck(
   check: ReadinessCheck,
-): Promise<FailedReadinessCheck | null> {
+  context: ReadinessEvaluationContext,
+): Promise<boolean> {
   try {
     await check.run()
-    return null
+    return true
   } catch (error) {
     const reason = failureReason(error, check.defaultReason)
     console.warn('[readiness] check failed', {
       check: check.name,
       diagnostic: readinessDiagnostic(check.name, error),
-      error: sanitizeError(error),
       reason,
+      ...readinessLogIds(context),
     })
-    return { name: check.name, reason }
+    return false
   }
 }
 
-async function getHandler() {
+async function evaluateReadiness(
+  context: ReadinessEvaluationContext,
+): Promise<ReadinessResult> {
   const checks: ReadinessCheck[] = [
     {
       defaultReason: 'runtime_config_invalid',
@@ -192,13 +196,39 @@ async function getHandler() {
   ]
 
   for (const check of checks) {
-    const failedCheck = await runCheck(check)
-    if (failedCheck) {
-      return jsonResponse('not_ready', 503, [failedCheck])
-    }
+    if (!(await runCheck(check, context))) return { status: 'not_ready' }
   }
 
-  return jsonResponse('ready', 200)
+  return { status: 'ready' }
+}
+
+function createRouteReadinessCoordinator() {
+  return createReadinessCoordinator({
+    evaluate: evaluateReadiness,
+    onUnexpectedError: (_error, context) => {
+      console.warn('[readiness] evaluation failed', {
+        check: 'readiness_evaluation',
+        diagnostic: 'unexpected_evaluation_failure',
+        reason: 'readiness_evaluation_failed',
+        ...readinessLogIds(context),
+      })
+    },
+  })
+}
+
+let readinessCoordinator = createRouteReadinessCoordinator()
+
+export function __resetReadinessStateForTests(): void {
+  readinessCoordinator = createRouteReadinessCoordinator()
+}
+
+async function getHandler(request: Request): Promise<NextResponse> {
+  const result = await readinessCoordinator.get(
+    resolveRequestCorrelationIds(request.headers),
+  )
+  return result.status === 'ready'
+    ? jsonResponse('ready', 200)
+    : jsonResponse('not_ready', 503)
 }
 
 export const GET = withRestResponsePolicy(getHandler)

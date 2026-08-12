@@ -1917,12 +1917,15 @@ sessionslägena.
 
 ### RES-03: readiness och build-metadata
 
-**Steg:** Kontrollera readiness-endpoint och synlig buildmetadata enligt lokal
-miljö. Hovra över Kravhantering-loggan i global sidopanel efter inloggning.
+**Steg:** Kontrollera readiness-endpoint från en tillåten IP-adress för proben
+och synlig buildmetadata enligt lokal miljö. Hovra över Kravhantering-loggan i
+global sidopanel efter inloggning.
 
 **Förväntat resultat:** Readiness svarar OK när databasen har samma
 migrations-`name` som `expectedDatabaseSchemaVersion` i `/build.json`. Vid
-fel svarar readiness med ett sanerat `failedChecks`-objekt, och metadata saknar
-känsliga värden. Automatiserad täckning ska verifiera aktuell körningsgren och
-en separat mismatch-gren om lokal miljö inte säkert kan tvinga fram schemafel.
-Tooltipen visar appversion i global sidopanel.
+fel svarar readiness endast med generell status `not_ready`; beroenden och
+felorsaker visas inte i svaret. Anrop från andra adresser stoppas vid den
+betrodda kanten. Metadata saknar känsliga värden. Automatiserad täckning ska
+verifiera aktuell körningsgren och en separat mismatch-gren om lokal miljö inte
+säkert kan tvinga fram schemafel. Tooltipen visar appversion i global
+sidopanel.

@@ -22,7 +22,8 @@ See `package.json` for the full list of test-related scripts.
 The focused container integration test runs the shipped direct-ingress and
 load-balanced Nginx configurations against the pinned local Nginx image. It
 verifies query-safe access logs, header overwriting, trusted proxy chains,
-untrusted intermediaries, prepended spoofing, and malformed values:
+untrusted intermediaries, prepended spoofing, malformed values, readiness probe
+authorization, method precedence, and per-client rate limiting:
 
 ```bash
 npm run test:nginx-client-ip

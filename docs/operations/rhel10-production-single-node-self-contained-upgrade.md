@@ -49,6 +49,14 @@ JSON during upgrade. The first-install template-copy steps are intentionally
 not part of this checklist unless the release notes require a specific
 configuration change.
 
+>[!IMPORTANT]
+>Before the downtime window, create the mandatory site-specific
+>[readiness probe boundary](./readiness-probe-boundary.md) and add its path to
+>`/etc/kravhantering/release.env`. The target release refuses to render or
+>install every identity-provider profile without this file. Verify readiness
+>from an allowed monitoring source and denial from another source after
+>rollout.
+
 1. Confirm the target release bundle, checksum and locked image identities.
    Download the target bundle and checksum from the approved release source:
 

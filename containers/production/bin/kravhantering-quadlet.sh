@@ -77,15 +77,17 @@ required_values() {
   case "$1" in
     app-node-tls)
       printf '%s\n' APP_RUNTIME_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTPS_BIND \
-        NGINX_RESOLVER
+        NGINX_READINESS_PROBE_CONFIG_FILE NGINX_RESOLVER
       ;;
     app-node-http)
       printf '%s\n' APP_RUNTIME_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTP_BIND \
-        NGINX_RESOLVER NGINX_TRUSTED_PROXY_CONFIG_FILE
+        NGINX_READINESS_PROBE_CONFIG_FILE NGINX_RESOLVER \
+        NGINX_TRUSTED_PROXY_CONFIG_FILE
       ;;
     single-node)
       printf '%s\n' APP_RUNTIME_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTPS_BIND \
-        NGINX_RESOLVER PUBLIC_HOSTNAME SQLSERVER_IMAGE_REF
+        NGINX_READINESS_PROBE_CONFIG_FILE NGINX_RESOLVER PUBLIC_HOSTNAME \
+        SQLSERVER_IMAGE_REF
       if [[ "$IDENTITY_PROVIDER_MODE" != external ]]; then
         printf '%s\n' KEYCLOAK_IMAGE_REF NGINX_IDENTITY_RESOLVER
       fi
@@ -242,87 +244,95 @@ validate_identity_provider() {
     fail 'invalid KEYCLOAK_MANAGEMENT_HTTPS_BIND: must target container port 9443'
 }
 
-validate_trusted_proxy_config() {
-  [[ "$TOPOLOGY" == app-node-http ]] || return 0
-
+validate_cidr_directive_config() {
+  local config_file="$1" config_key="$2" directive="$3" label="$4"
   local address address_without_compression cidr compression_count group line
-  local octet octet_value prefix
-  local prefix_value trusted_proxy_count=0
+  local octet octet_value prefix prefix_value entry_count=0
   local -a groups=() octets=()
-  [[ "$NGINX_TRUSTED_PROXY_CONFIG_FILE" == /* ]] || \
-    fail 'invalid NGINX_TRUSTED_PROXY_CONFIG_FILE: expected an absolute path'
-  [[ "$NGINX_TRUSTED_PROXY_CONFIG_FILE" =~ ^/[A-Za-z0-9._/-]+$ ]] || \
-    fail 'invalid NGINX_TRUSTED_PROXY_CONFIG_FILE: expected a plain absolute path'
-  [[ "$NGINX_TRUSTED_PROXY_CONFIG_FILE" != */../* && \
-    "$NGINX_TRUSTED_PROXY_CONFIG_FILE" != */.. ]] || \
-    fail 'invalid NGINX_TRUSTED_PROXY_CONFIG_FILE: parent traversal is not allowed'
-  [[ -f "$NGINX_TRUSTED_PROXY_CONFIG_FILE" && ! -L "$NGINX_TRUSTED_PROXY_CONFIG_FILE" ]] || \
-    fail 'invalid NGINX_TRUSTED_PROXY_CONFIG_FILE: expected an existing nonsymlink file'
-  [[ -r "$NGINX_TRUSTED_PROXY_CONFIG_FILE" ]] || \
-    fail 'invalid NGINX_TRUSTED_PROXY_CONFIG_FILE: file is not readable'
+  [[ "$config_file" == /* ]] || \
+    fail "invalid $config_key: expected an absolute path"
+  [[ "$config_file" =~ ^/[A-Za-z0-9._/-]+$ ]] || \
+    fail "invalid $config_key: expected a plain absolute path"
+  [[ "$config_file" != */../* && "$config_file" != */.. ]] || \
+    fail "invalid $config_key: parent traversal is not allowed"
+  [[ -f "$config_file" && ! -L "$config_file" ]] || \
+    fail "invalid $config_key: expected an existing nonsymlink file"
+  [[ -r "$config_file" ]] || \
+    fail "invalid $config_key: file is not readable"
 
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%$'\r'}"
     line="${line#"${line%%[![:space:]]*}"}"
     line="${line%"${line##*[![:space:]]}"}"
     [[ -z "$line" || "$line" == \#* ]] && continue
-    [[ "$line" =~ ^set_real_ip_from[[:space:]]+([0-9A-Fa-f:.]+/[0-9]{1,3})\;$ ]] || \
-      fail 'invalid trusted proxy CIDR configuration: expected one set_real_ip_from CIDR; directive per line'
+    [[ "$line" =~ ^${directive}[[:space:]]+([0-9A-Fa-f:.]+/[0-9]{1,3})\;$ ]] || \
+      fail "invalid $label CIDR configuration: expected one $directive CIDR; directive per line"
     cidr="${BASH_REMATCH[1]}"
     address="${cidr%/*}"
     prefix="${cidr##*/}"
     [[ "$prefix" =~ ^(0|[1-9][0-9]{0,2})$ ]] || \
-      fail "invalid trusted proxy CIDR prefix: $cidr"
+      fail "invalid $label CIDR prefix: $cidr"
     prefix_value=$((10#$prefix))
     (( prefix_value > 0 )) || \
-      fail "invalid trusted proxy CIDR prefix: $cidr"
+      fail "invalid $label CIDR prefix: $cidr"
     if [[ "$address" == *.* ]]; then
       (( prefix_value <= 32 )) || \
-        fail "invalid trusted proxy CIDR prefix: $cidr"
+        fail "invalid $label CIDR prefix: $cidr"
       IFS=. read -r -a octets <<<"$address"
       (( ${#octets[@]} == 4 )) || \
-        fail "invalid trusted proxy CIDR address: $cidr"
+        fail "invalid $label CIDR address: $cidr"
       for octet in "${octets[@]}"; do
         [[ "$octet" =~ ^(0|[1-9][0-9]{0,2})$ ]] || \
-          fail "invalid trusted proxy CIDR address: $cidr"
+          fail "invalid $label CIDR address: $cidr"
         octet_value=$((10#$octet))
         (( octet_value <= 255 )) || \
-          fail "invalid trusted proxy CIDR address: $cidr"
+          fail "invalid $label CIDR address: $cidr"
       done
     elif [[ "$address" == *:* ]]; then
       (( prefix_value <= 128 )) || \
-        fail "invalid trusted proxy CIDR prefix: $cidr"
+        fail "invalid $label CIDR prefix: $cidr"
       [[ "$address" != : && "$address" != *:::* ]] || \
-        fail "invalid trusted proxy CIDR address: $cidr"
+        fail "invalid $label CIDR address: $cidr"
       address_without_compression="${address//::/}"
       compression_count=$(( ${#address} - ${#address_without_compression} ))
       (( compression_count == 0 || compression_count == 2 )) || \
-        fail "invalid trusted proxy CIDR address: $cidr"
+        fail "invalid $label CIDR address: $cidr"
       IFS=: read -r -a groups <<<"$address"
       local group_count=0
       for group in "${groups[@]}"; do
         [[ -z "$group" ]] && continue
         [[ "$group" =~ ^[0-9A-Fa-f]{1,4}$ ]] || \
-          fail "invalid trusted proxy CIDR address: $cidr"
+          fail "invalid $label CIDR address: $cidr"
         (( group_count += 1 ))
       done
       if (( compression_count == 2 )); then
         (( group_count < 8 )) || \
-          fail "invalid trusted proxy CIDR address: $cidr"
+          fail "invalid $label CIDR address: $cidr"
       else
         (( group_count == 8 )) || \
-          fail "invalid trusted proxy CIDR address: $cidr"
+          fail "invalid $label CIDR address: $cidr"
         [[ "$address" != :* && "$address" != *: ]] || \
-          fail "invalid trusted proxy CIDR address: $cidr"
+          fail "invalid $label CIDR address: $cidr"
       fi
     else
-      fail "invalid trusted proxy CIDR address: $cidr"
+      fail "invalid $label CIDR address: $cidr"
     fi
-    (( trusted_proxy_count += 1 ))
-  done <"$NGINX_TRUSTED_PROXY_CONFIG_FILE"
+    (( entry_count += 1 ))
+  done <"$config_file"
 
-  (( trusted_proxy_count > 0 )) || \
-    fail 'invalid trusted proxy CIDR configuration: expected at least one trusted proxy network'
+  (( entry_count > 0 )) || \
+    fail "invalid $label CIDR configuration: expected at least one $label network"
+}
+
+validate_readiness_probe_config() {
+  validate_cidr_directive_config "$NGINX_READINESS_PROBE_CONFIG_FILE" \
+    NGINX_READINESS_PROBE_CONFIG_FILE allow 'readiness probe'
+}
+
+validate_trusted_proxy_config() {
+  [[ "$TOPOLOGY" == app-node-http ]] || return 0
+  validate_cidr_directive_config "$NGINX_TRUSTED_PROXY_CONFIG_FILE" \
+    NGINX_TRUSTED_PROXY_CONFIG_FILE set_real_ip_from 'trusted proxy'
 }
 
 default_release_value() {
@@ -675,6 +685,7 @@ render_units() {
   configure_identity_provider
   validate_release_env "$TOPOLOGY"
   validate_identity_provider
+  validate_readiness_probe_config
   validate_trusted_proxy_config
   configure_containment
   mkdir -p -- "$output_dir"

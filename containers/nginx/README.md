@@ -5,6 +5,12 @@ It defines the image lock and the static configuration mounted into the
 upstream nginx image. It does not define a Compose service, certificates, or a
 wrapper image.
 
+The local container edge mounts `readiness-probes.conf` as its explicit
+non-production readiness boundary. It admits loopback and private container
+networks used by the stack. Production deployments must supply their own
+validated site-specific boundary; see
+`docs/operations/readiness-probe-boundary.md`.
+
 ## Owned Configuration
 
 - The vendor image lock in `image.lock.json`.

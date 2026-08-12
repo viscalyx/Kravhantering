@@ -104,8 +104,7 @@ ALTER TABLE [<table>]
 ## Operator Upgrade Notes
 
 - When a migration or required seed change requires operator action before
-  upgrade, update `docs/operations/operator-upgrade-notes.md` under `## Unreleased` with
-  a 1-3 sentence note.
+  upgrade, use `/operator-upgrade-notes` to create the operator impact.
 - Complete the PR's Operator Upgrade Impact section.
 
 ## Personal Data / Privacy

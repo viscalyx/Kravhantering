@@ -38,6 +38,8 @@ services:
       - ./containers/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./containers/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./containers/production/nginx/templates/api-docs-security-headers.conf:/etc/nginx/snippets/api-docs-security-headers.conf:ro
+      - ./containers/production/nginx/templates/readiness-locations.conf:/etc/nginx/snippets/readiness-locations.conf:ro
+      - ./containers/nginx/readiness-probes.conf:/etc/nginx/snippets/readiness-probes.conf:ro
       - ./public/api-docs:/usr/share/nginx/html/api-docs:ro
       - "{{tlsDir}}/kravhantering.test.crt:/etc/nginx/tls/kravhantering.test.crt:ro"
       - "{{tlsDir}}/kravhantering.test.key:/etc/nginx/tls/kravhantering.test.key:ro"

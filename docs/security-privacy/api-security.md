@@ -65,10 +65,13 @@ Covered by this contract:
   stable JSON responses.
 
 Operational probes stay outside the OpenAPI/Schemathesis contract. `/api/health`
-is a liveness check, and `/api/ready` is a public readiness check for
-container orchestration. `/api/ready` returns only `ready` or `not_ready`,
-uses `Cache-Control: no-store`, and logs sanitized dependency failures on the
-server instead of exposing topology in the HTTP response.
+is a public, dependency-free liveness check. `/api/ready` is a management probe
+restricted to configured source networks at production and prodlike Nginx
+edges; direct development-server access retains its local behavior. Readiness
+returns only `ready` or `not_ready`, uses `Cache-Control: no-store`, coalesces
+concurrent work, caches completed outcomes internally for five seconds, and
+logs sanitized dependency failures on the server instead of exposing topology
+in the HTTP response.
 
 The delete-draft success contract intentionally reports the same deletion-ledger
 payload for both outcomes: `deleted` is an ordered array with the

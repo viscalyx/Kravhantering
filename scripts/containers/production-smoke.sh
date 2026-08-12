@@ -210,6 +210,8 @@ render_runtime_configuration() {
     printf 'PUBLIC_HOSTNAME=kravhantering.test\n'
     printf 'NGINX_HTTPS_BIND=443:443\n'
     printf 'NGINX_HTTP_BIND=127.0.0.1:8080\n'
+    printf 'NGINX_READINESS_PROBE_CONFIG_FILE=%s/nginx-readiness-probes.conf\n' \
+      "$CONFIG_ROOT"
     printf 'NGINX_RESOLVER=%s\n' "${NGINX_RESOLVER:-10.89.0.1}"
     printf 'NGINX_IDENTITY_RESOLVER=%s\n' \
       "${NGINX_IDENTITY_RESOLVER:-10.89.1.1}"
@@ -232,6 +234,13 @@ render_runtime_configuration() {
     printf 'KEYCLOAK_QUARKUS_TMPFS_MIB=64\n'
     printf 'KEYCLOAK_TMPFS_MIB=512\n'
   } >"$CONFIG_TEMP_DIR/release.env"
+  printf '%s\n' \
+    '# Disposable production-smoke probe networks.' \
+    'allow 10.0.0.0/8;' \
+    'allow 172.16.0.0/12;' \
+    'allow 192.168.0.0/16;' \
+    'allow ::1/128;' \
+    >"$CONFIG_TEMP_DIR/nginx-readiness-probes.conf"
 
   sudo install -d -o root -g "$SERVICE_USER" -m 0750 \
     "$CONFIG_ROOT" "$CONFIG_ROOT/keycloak" "$CONFIG_ROOT/sqlserver-tls" \
@@ -240,6 +249,9 @@ render_runtime_configuration() {
     sudo install -o root -g "$SERVICE_USER" -m 0640 \
       "$CONFIG_TEMP_DIR/$file" "$CONFIG_ROOT/$file"
   done
+  sudo install -o root -g "$SERVICE_USER" -m 0644 \
+    "$CONFIG_TEMP_DIR/nginx-readiness-probes.conf" \
+    "$CONFIG_ROOT/nginx-readiness-probes.conf"
   sudo install -o root -g "$SERVICE_USER" -m 0640 \
     "$CONFIG_TEMP_DIR/realm-with-demo-users.json" \
     "$CONFIG_ROOT/keycloak/realm-kravhantering-production.json"

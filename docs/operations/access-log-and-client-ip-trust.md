@@ -4,6 +4,10 @@ This guide defines the production Nginx access-log and client-address trust
 boundary. Select the ingress topology before installing or upgrading the
 Quadlet units.
 
+The same canonical client address controls the path-specific
+[readiness probe boundary](./readiness-probe-boundary.md). Firewall ingress,
+trusted proxy resolution, and readiness authorization are separate controls.
+
 ## Access-log contract
 
 The bundled Nginx logs the connection address, timestamp, method, normalized
