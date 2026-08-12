@@ -392,6 +392,47 @@ describe('HSA person lookup', () => {
     }
   })
 
+  it('rejects when the native HTTP response stream errors', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(200, {
+        'Content-Length': '100',
+        'Content-Type': 'application/json',
+      })
+      response.write('{"access_token":"partial')
+      setImmediate(() => response.socket?.destroy())
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    try {
+      const address = server.address()
+      if (!address || typeof address === 'string') throw new Error('No port')
+      const origin = `http://127.0.0.1:${address.port}`
+
+      await expect(
+        lookupHsaPerson(HSA_ID, {
+          config: {
+            oauth: {
+              clientId: 'client-id',
+              clientSecret: 'client-secret',
+              tokenUrl: `${origin}/token`,
+            },
+            timeoutMs: 5000,
+            url: `${origin}/lookup`,
+          },
+        }),
+      ).rejects.toSatisfy(error => {
+        expectRequirementsError(error, 'service_unavailable')
+        if (isRequirementsServiceError(error)) {
+          expect(error.details?.reason).toBe('hsa_lookup_unavailable')
+        }
+        return true
+      })
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close(error => (error ? reject(error) : resolve())),
+      )
+    }
+  })
+
   it('does not follow token or bearer-authenticated lookup redirects', async () => {
     let redirectTargetRequests = 0
     const server = createServer((request, response) => {
@@ -844,21 +885,9 @@ describe('HSA person lookup', () => {
     )
   })
 
-  it('does not acquire or forward a cached bearer token after lookup destination validation fails', async () => {
+  it('does not forward an acquired bearer token after lookup destination validation fails', async () => {
     vi.stubEnv('NODE_ENV', 'production')
     try {
-      const httpRequestImpl = vi
-        .fn()
-        .mockResolvedValueOnce({
-          body: JSON.stringify({ access_token: 'token-1', expires_in: 3600 }),
-          headers: { 'content-type': 'application/json' },
-          status: 200,
-        })
-        .mockResolvedValueOnce({
-          body: JSON.stringify({ givenName: 'Kalle', hsaId: HSA_ID }),
-          headers: { 'content-type': 'application/json' },
-          status: 200,
-        })
       const config = {
         oauth: {
           clientId: 'client-id',
@@ -868,9 +897,14 @@ describe('HSA person lookup', () => {
         timeoutMs: 5000,
         url: 'https://lookup.example.test/person',
       }
-
-      await lookupHsaPerson(HSA_ID, { config, httpRequestImpl })
-      config.url = 'http://unapproved.example.test/person'
+      const httpRequestImpl = vi.fn().mockImplementationOnce(async () => {
+        config.url = 'http://unapproved.example.test/person'
+        return {
+          body: JSON.stringify({ access_token: 'token-1', expires_in: 3600 }),
+          headers: { 'content-type': 'application/json' },
+          status: 200,
+        }
+      })
 
       await expect(
         lookupHsaPerson(HSA_ID, { config, httpRequestImpl }),
@@ -878,7 +912,7 @@ describe('HSA person lookup', () => {
         expectRequirementsError(error, 'service_unavailable')
         return true
       })
-      expect(httpRequestImpl).toHaveBeenCalledTimes(2)
+      expect(httpRequestImpl).toHaveBeenCalledOnce()
     } finally {
       vi.unstubAllEnvs()
     }

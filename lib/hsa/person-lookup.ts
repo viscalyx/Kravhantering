@@ -492,6 +492,9 @@ function executeHttpRequest(input: HttpRequestInput): Promise<HttpResponse> {
             )
             return
           }
+          response.on('error', error => {
+            finish(() => reject(error))
+          })
           response.on('data', chunk => {
             const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
             totalBytes += buffer.byteLength
@@ -564,10 +567,14 @@ async function resolveTokenUrl(
     throw new Error('OAuth issuer URL or token URL is required.')
   }
   const issuer = oauth.issuerUrl.replace(/\/+$/u, '')
-  validateEndpointUrl(issuer, 'HSA person lookup OAuth issuer URL', {
-    mtls: Boolean(config.mtls),
-    production: process.env.NODE_ENV === 'production',
-  })
+  const issuerUrl = validateEndpointUrl(
+    issuer,
+    'HSA person lookup OAuth issuer URL',
+    {
+      mtls: Boolean(config.mtls),
+      production: process.env.NODE_ENV === 'production',
+    },
+  )
   const response = await requestImpl({
     headers: { Accept: 'application/json' },
     method: 'GET',
@@ -577,10 +584,10 @@ async function resolveTokenUrl(
     timeoutMs: config.timeoutMs,
     url: `${issuer}/.well-known/openid-configuration`,
   })
-  const payload = parseJsonHttpResponse(response, DISCOVERY_RESPONSE_MAX_BYTES)
   if (response.status < 200 || response.status >= 300) {
     throw new Error(`OIDC discovery failed with ${response.status}.`)
   }
+  const payload = parseJsonHttpResponse(response, DISCOVERY_RESPONSE_MAX_BYTES)
   const discoveredIssuer =
     payload && typeof payload === 'object'
       ? stringField((payload as Record<string, unknown>).issuer)
@@ -589,11 +596,7 @@ async function resolveTokenUrl(
     payload && typeof payload === 'object'
       ? stringField((payload as Record<string, unknown>).token_endpoint)
       : null
-  const normalizedIssuer = oauth.issuerUrl.replace(/\/+$/u, '')
-  if (
-    !discoveredIssuer ||
-    discoveredIssuer.replace(/\/+$/u, '') !== normalizedIssuer
-  ) {
+  if (!discoveredIssuer || discoveredIssuer.replace(/\/+$/u, '') !== issuer) {
     throw new Error(
       'OIDC discovery response issuer did not match configuration.',
     )
@@ -605,11 +608,6 @@ async function resolveTokenUrl(
     mtls: Boolean(config.mtls),
     production: process.env.NODE_ENV === 'production',
   }
-  const issuerUrl = validateEndpointUrl(
-    normalizedIssuer,
-    'HSA person lookup OAuth issuer URL',
-    validationOptions,
-  )
   const tokenUrl = validateEndpointUrl(
     tokenEndpoint,
     'Discovered HSA person lookup OAuth token URL',
