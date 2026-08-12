@@ -146,6 +146,11 @@ forwarding values. Inventory and restrict those copies, apply the approved
 incident, privacy, and retention process, and rotate any credential that
 remains usable.
 <!-- operator-upgrade:source pr-984 end -->
+
+<!-- operator-upgrade:source pr-987 start -->
+Before upgrading, create a site-specific readiness probe boundary containing the approved IPv4 and IPv6 monitoring source networks and configure the deployment to use it. The upgrade will refuse to render or install if the boundary is absent or invalid.
+After rollout, verify readiness from an allowed monitoring source, confirm other sources receive an empty denial, and confirm liveness and normal application traffic remain available. Update monitoring expectations for one request per second with a burst of five and generic rate-limit/not-ready responses.
+<!-- operator-upgrade:source pr-987 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
