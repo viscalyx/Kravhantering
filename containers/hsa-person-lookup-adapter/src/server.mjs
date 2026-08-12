@@ -15,6 +15,7 @@ const DEFAULT_TO = 'SE165565594230-1000'
 const HEALTH_PATH = '/health'
 const LOOKUP_PATH = '/hsa/person-records/lookup'
 const MAX_BODY_BYTES = 1024 * 1024
+const SOAP_RESPONSE_MAX_BYTES = 1024 * 1024
 
 class AdapterError extends Error {
   constructor(status, code, message) {
@@ -47,7 +48,7 @@ function readTimeout(env = process.env) {
 }
 
 export function readConfig(env = process.env) {
-  return {
+  const config = {
     caPath: readString('HSA_SOAP_CA_PATH', '/run/hsa-mtls/ca.crt', env),
     certPath: readString(
       'HSA_SOAP_CLIENT_CERT_PATH',
@@ -67,6 +68,23 @@ export function readConfig(env = process.env) {
     serverName: readString('HSA_SOAP_TLS_SERVER_NAME', undefined, env),
     timeoutMs: readTimeout(env),
     to: readString('HSA_SOAP_TO', DEFAULT_TO, env),
+  }
+  validateConfig(config, env)
+  return config
+}
+
+export function validateConfig(config, env = process.env) {
+  let endpoint
+  try {
+    endpoint = new URL(config.endpointUrl)
+  } catch {
+    throw new Error('HSA SOAP endpoint must be a valid URL.')
+  }
+  if (endpoint.protocol !== 'http:' && endpoint.protocol !== 'https:') {
+    throw new Error('HSA SOAP endpoint must use HTTP or HTTPS.')
+  }
+  if (env.NODE_ENV === 'production' && endpoint.protocol !== 'https:') {
+    throw new Error('HSA SOAP endpoint must use HTTPS in production.')
   }
 }
 
@@ -250,7 +268,13 @@ async function tlsOptions(config) {
   }
 }
 
+function isSoapMediaType(value) {
+  const mediaType = value?.split(';', 1)[0]?.trim().toLowerCase()
+  return mediaType === 'text/xml' || mediaType === 'application/soap+xml'
+}
+
 export async function postSoap(xml, config) {
+  validateConfig(config)
   const parsed = new URL(config.endpointUrl)
   const isHttps = parsed.protocol === 'https:'
   if (!isHttps && parsed.protocol !== 'http:') {
@@ -273,25 +297,60 @@ export async function postSoap(xml, config) {
   }
 
   return new Promise((resolve, reject) => {
+    let settled = false
+    const finish = callback => {
+      if (settled) return
+      settled = true
+      callback()
+    }
     const transport = isHttps ? https : http
     const req = transport.request(options, response => {
+      if (!isSoapMediaType(response.headers['content-type'])) {
+        response.destroy()
+        finish(() => reject(new Error('HSA SOAP response must use XML.')))
+        return
+      }
       const chunks = []
+      let totalBytes = 0
+      const declaredLength = Number(response.headers['content-length'])
+      if (
+        Number.isFinite(declaredLength) &&
+        declaredLength > SOAP_RESPONSE_MAX_BYTES
+      ) {
+        response.destroy()
+        finish(() =>
+          reject(new Error('HSA SOAP response exceeds the 1 MiB limit.')),
+        )
+        return
+      }
       response.on('data', chunk => {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+        totalBytes += buffer.byteLength
+        if (totalBytes > SOAP_RESPONSE_MAX_BYTES) {
+          response.destroy()
+          finish(() =>
+            reject(new Error('HSA SOAP response exceeds the 1 MiB limit.')),
+          )
+          return
+        }
+        chunks.push(buffer)
       })
       response.on('end', () => {
-        resolve({
-          body: Buffer.concat(chunks).toString('utf8'),
-          status: response.statusCode ?? 0,
-        })
+        finish(() =>
+          resolve({
+            body: Buffer.concat(chunks).toString('utf8'),
+            status: response.statusCode ?? 0,
+          }),
+        )
       })
+      response.on('error', error => finish(() => reject(error)))
     })
     req.on('timeout', () => {
       req.destroy(
         new AdapterError(504, 'timeout', 'HSA SOAP request timed out.'),
       )
     })
-    req.on('error', reject)
+    req.on('error', error => finish(() => reject(error)))
     req.write(xml)
     req.end()
   })
@@ -394,6 +453,7 @@ async function handleLookup(req, res, config) {
 }
 
 export function createServer(config = readConfig()) {
+  validateConfig(config)
   return http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://hsa-person-lookup-adapter')
     try {

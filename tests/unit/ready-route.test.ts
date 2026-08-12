@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
   getAuthConfig: vi.fn(),
+  getHsaPersonLookupConfig: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   getSqlServerDatabaseUrl: vi.fn(),
   probeGeneratedOutputTempDirectory: vi.fn(),
@@ -14,6 +15,10 @@ vi.mock('@/lib/auth/config', () => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/hsa/person-lookup', () => ({
+  getHsaPersonLookupConfig: routeState.getHsaPersonLookupConfig,
 }))
 
 vi.mock('@/lib/build-metadata', () => ({
@@ -52,6 +57,7 @@ function setReadyDefaults() {
   routeState.getAuthConfig.mockReturnValue({
     issuerUrl: 'https://issuer.example.com/realms/test',
   })
+  routeState.getHsaPersonLookupConfig.mockReturnValue(null)
   routeState.readBuildMetadata.mockReturnValue({
     builtAt: '2026-05-21T19:00:00.000Z',
     commitSha: 'abc123',
@@ -130,6 +136,28 @@ describe('GET /api/ready', () => {
     expect(response.status).toBe(503)
     expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
     expect(body).not.toContain('NEXT_PUBLIC_SITE_URL')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(
+      '[readiness] check failed',
+      expect.objectContaining({ check: 'runtime_config' }),
+    )
+    warn.mockRestore()
+  })
+
+  it('returns not_ready for invalid optional HSA configuration without making a network call', async () => {
+    setReadyDefaults()
+    routeState.getHsaPersonLookupConfig.mockImplementation(() => {
+      throw new Error('HSA_PERSON_LOOKUP_URL contains a private endpoint')
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await route.GET(request())
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
+    expect(body).not.toContain('HSA_PERSON_LOOKUP_URL')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()
     expect(warn).toHaveBeenCalledWith(

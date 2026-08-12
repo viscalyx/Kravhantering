@@ -25,7 +25,7 @@ describe('HSA person lookup', () => {
     resetHsaPersonLookupAuthCacheForTests()
   })
 
-  it('reads lookup URL and clamps timeout from environment', () => {
+  it('reads lookup URL and validates timeout from environment', () => {
     expect(
       getHsaPersonLookupConfig({
         HSA_PERSON_LOOKUP_TIMEOUT_MS: '750',
@@ -36,19 +36,14 @@ describe('HSA person lookup', () => {
       url: 'http://kong:8000/hsa/person-records/lookup',
     })
 
-    expect(
-      getHsaPersonLookupConfig({
-        HSA_PERSON_LOOKUP_TIMEOUT_MS: 'not-a-timeout',
-        HSA_PERSON_LOOKUP_URL: 'http://kong:8000/hsa/person-records/lookup',
-      } as unknown as NodeJS.ProcessEnv),
-    ).toMatchObject({ timeoutMs: 5000 })
-
-    expect(
-      getHsaPersonLookupConfig({
-        HSA_PERSON_LOOKUP_TIMEOUT_MS: '0',
-        HSA_PERSON_LOOKUP_URL: 'http://kong:8000/hsa/person-records/lookup',
-      } as unknown as NodeJS.ProcessEnv),
-    ).toMatchObject({ timeoutMs: 5000 })
+    for (const timeout of ['not-a-timeout', '0', '-1', '30001']) {
+      expect(() =>
+        getHsaPersonLookupConfig({
+          HSA_PERSON_LOOKUP_TIMEOUT_MS: timeout,
+          HSA_PERSON_LOOKUP_URL: 'http://kong:8000/hsa/person-records/lookup',
+        } as unknown as NodeJS.ProcessEnv),
+      ).toThrow(/timeout must be an integer/u)
+    }
   })
 
   it('reads optional mTLS and OAuth2 lookup auth from environment', () => {
@@ -104,6 +99,12 @@ describe('HSA person lookup', () => {
   it('rejects incomplete app-to-platform auth configuration', () => {
     expect(() =>
       getHsaPersonLookupConfig({
+        HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'client-id',
+      } as unknown as NodeJS.ProcessEnv),
+    ).toThrow(/OAuth2 configuration/u)
+
+    expect(() =>
+      getHsaPersonLookupConfig({
         HSA_PERSON_LOOKUP_CLIENT_CERT_PATH: '/certs/client.crt',
         HSA_PERSON_LOOKUP_URL:
           'https://kong.example.internal/hsa/person-records/lookup',
@@ -135,6 +136,34 @@ describe('HSA person lookup', () => {
     ).toThrow(/OAuth2 configuration/u)
   })
 
+  it.each([
+    {
+      HSA_PERSON_LOOKUP_URL: 'http://lookup.example.test/person',
+      label: 'lookup',
+    },
+    {
+      HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'client-id',
+      HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'client-secret',
+      HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL: 'http://issuer.example.test',
+      HSA_PERSON_LOOKUP_URL: 'https://lookup.example.test/person',
+      label: 'issuer',
+    },
+    {
+      HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'client-id',
+      HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'client-secret',
+      HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL: 'http://issuer.example.test/token',
+      HSA_PERSON_LOOKUP_URL: 'https://lookup.example.test/person',
+      label: 'token',
+    },
+  ])('rejects a plaintext production $label endpoint', config => {
+    expect(() =>
+      getHsaPersonLookupConfig({
+        ...config,
+        NODE_ENV: 'production',
+      } as unknown as NodeJS.ProcessEnv),
+    ).toThrow(/must use HTTPS in production/u)
+  })
+
   it('posts HSA-id as JSON and maps split person fields', async () => {
     const fetchImpl = vi.fn(
       async () =>
@@ -146,7 +175,12 @@ describe('HSA person lookup', () => {
             middleName: 'Bertil',
             surname: 'Svensson',
           }),
-          { status: 200 },
+          {
+            headers: {
+              'Content-Type': 'application/vnd.hsa-person+json; charset=utf-8',
+            },
+            status: 200,
+          },
         ),
     ) as unknown as typeof fetch
 
@@ -164,6 +198,7 @@ describe('HSA person lookup', () => {
         body: JSON.stringify({ hsaId: HSA_ID }),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
+        redirect: 'manual',
       }),
     )
     expect(person).toEqual({
@@ -174,6 +209,126 @@ describe('HSA person lookup', () => {
       middleName: 'Bertil',
       surname: 'Svensson',
     })
+  })
+
+  it.each([
+    {
+      body: JSON.stringify({ givenName: 'Kalle', hsaId: HSA_ID }),
+      status: 200,
+    },
+    { body: JSON.stringify({ code: 'not_found' }), status: 404 },
+  ])(
+    'rejects a non-JSON lookup response before mapping HTTP $status',
+    async ({ body, status }) => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(body, {
+            headers: { 'Content-Type': 'text/plain' },
+            status,
+          }),
+      )
+
+      await expect(
+        lookupHsaPerson(HSA_ID, {
+          config: { timeoutMs: 5000, url: 'http://kong/lookup' },
+          fetchImpl: fetchImpl as unknown as typeof fetch,
+        }),
+      ).rejects.toSatisfy(error => {
+        expectRequirementsError(error, 'service_unavailable')
+        return true
+      })
+    },
+  )
+
+  it('cancels a streaming lookup response as soon as it exceeds 64 KiB', async () => {
+    let cancelled = false
+    const oversizedPayload = `${JSON.stringify({
+      givenName: 'Kalle',
+      hsaId: HSA_ID,
+    })}${' '.repeat(64 * 1024)}`
+    const body = new ReadableStream<Uint8Array>({
+      cancel: () => {
+        cancelled = true
+      },
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(oversizedPayload))
+      },
+    })
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(body, {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        }),
+    )
+
+    await expect(
+      lookupHsaPerson(HSA_ID, {
+        config: { timeoutMs: 5000, url: 'http://kong/lookup' },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toSatisfy(error => {
+      expectRequirementsError(error, 'service_unavailable')
+      return true
+    })
+    expect(cancelled).toBe(true)
+  })
+
+  it.each([
+    {
+      body: JSON.stringify({
+        issuer: 'https://issuer.example.test',
+        token_endpoint: 'https://issuer.example.test/token',
+      }),
+      contentType: 'text/plain',
+      stage: 'discovery media type',
+    },
+    {
+      body: `${JSON.stringify({
+        issuer: 'https://issuer.example.test',
+        token_endpoint: 'https://issuer.example.test/token',
+      })}${' '.repeat(256 * 1024)}`,
+      contentType: 'application/json',
+      stage: 'discovery byte limit',
+    },
+    {
+      body: JSON.stringify({ access_token: 'token' }),
+      contentType: 'text/plain',
+      stage: 'token media type',
+    },
+    {
+      body: `${JSON.stringify({ access_token: 'token' })}${' '.repeat(64 * 1024)}`,
+      contentType: 'application/problem+json; charset=utf-8',
+      stage: 'token byte limit',
+    },
+  ])('fails closed for an invalid OAuth $stage', async testCase => {
+    const discovery = testCase.stage.startsWith('discovery')
+    const httpRequestImpl = vi.fn(async (_input: unknown) => ({
+      body: testCase.body,
+      headers: { 'content-type': testCase.contentType },
+      status: 200,
+    }))
+
+    await expect(
+      lookupHsaPerson(HSA_ID, {
+        config: {
+          oauth: {
+            clientId: 'client-id',
+            clientSecret: 'client-secret',
+            ...(discovery
+              ? { issuerUrl: 'https://issuer.example.test' }
+              : { tokenUrl: 'https://issuer.example.test/token' }),
+          },
+          timeoutMs: 5000,
+          url: 'https://lookup.example.test/person',
+        },
+        httpRequestImpl,
+      }),
+    ).rejects.toSatisfy(error => {
+      expectRequirementsError(error, 'service_unavailable')
+      return true
+    })
+    expect(httpRequestImpl).toHaveBeenCalledOnce()
   })
 
   it('uses the native HTTP transport for OAuth token and lookup requests', async () => {
@@ -230,6 +385,60 @@ describe('HSA person lookup', () => {
           path: '/lookup?source=test',
         }),
       ])
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close(error => (error ? reject(error) : resolve())),
+      )
+    }
+  })
+
+  it('does not follow token or bearer-authenticated lookup redirects', async () => {
+    let redirectTargetRequests = 0
+    const server = createServer((request, response) => {
+      response.setHeader('Content-Type', 'application/json')
+      if (request.url === '/token-redirect') {
+        response.writeHead(302, { Location: '/credential-sink' })
+        response.end('{}')
+        return
+      }
+      if (request.url === '/token') {
+        response.end(JSON.stringify({ access_token: 'redirect-test-token' }))
+        return
+      }
+      if (request.url === '/lookup') {
+        response.writeHead(302, { Location: '/credential-sink' })
+        response.end('{}')
+        return
+      }
+      redirectTargetRequests += 1
+      response.end('{}')
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    try {
+      const address = server.address()
+      if (!address || typeof address === 'string') throw new Error('No port')
+      const origin = `http://127.0.0.1:${address.port}`
+
+      for (const tokenPath of ['/token-redirect', '/token']) {
+        await expect(
+          lookupHsaPerson(HSA_ID, {
+            config: {
+              oauth: {
+                clientId: `client-${tokenPath}`,
+                clientSecret: 'client-secret',
+                tokenUrl: `${origin}${tokenPath}`,
+              },
+              timeoutMs: 5000,
+              url: `${origin}/lookup`,
+            },
+          }),
+        ).rejects.toSatisfy(error => {
+          expectRequirementsError(error, 'service_unavailable')
+          return true
+        })
+      }
+
+      expect(redirectTargetRequests).toBe(0)
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close(error => (error ? reject(error) : resolve())),
@@ -325,7 +534,10 @@ describe('HSA person lookup', () => {
             middleName: null,
             surname: 'Person',
           }),
-          { status: 200 },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            status: 200,
+          },
         ),
     ) as unknown as typeof fetch
 
@@ -385,7 +597,10 @@ describe('HSA person lookup', () => {
   it('maps catalog not found and conflict responses to domain errors', async () => {
     const notFoundFetch = vi.fn(
       async () =>
-        new Response(JSON.stringify({ code: 'not_found' }), { status: 404 }),
+        new Response(JSON.stringify({ code: 'not_found' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 404,
+        }),
     )
     await expect(
       lookupHsaPerson(HSA_ID, {
@@ -397,7 +612,13 @@ describe('HSA person lookup', () => {
       return true
     })
 
-    const conflictFetch = vi.fn(async () => new Response('{}', { status: 409 }))
+    const conflictFetch = vi.fn(
+      async () =>
+        new Response('{}', {
+          headers: { 'Content-Type': 'application/json' },
+          status: 409,
+        }),
+    )
     await expect(
       lookupHsaPerson(HSA_ID, {
         config: { timeoutMs: 5000, url: 'http://kong/lookup' },
@@ -413,7 +634,10 @@ describe('HSA person lookup', () => {
     for (const status of [401, 403]) {
       const fetchImpl = vi.fn(
         async () =>
-          new Response(JSON.stringify({ code: 'auth_failed' }), { status }),
+          new Response(JSON.stringify({ code: 'auth_failed' }), {
+            headers: { 'Content-Type': 'application/json' },
+            status,
+          }),
       )
 
       await expect(
@@ -432,6 +656,7 @@ describe('HSA person lookup', () => {
     const fetchImpl = vi.fn(
       async () =>
         new Response(JSON.stringify({ message: 'no Route matched' }), {
+          headers: { 'Content-Type': 'application/json' },
           status: 404,
         }),
     )
@@ -479,7 +704,7 @@ describe('HSA person lookup', () => {
         middleName: null,
         surname: 'Svensson',
       }),
-      headers: {},
+      headers: { 'content-type': 'application/json' },
       status: 200,
     }))
 
@@ -559,7 +784,7 @@ describe('HSA person lookup', () => {
           access_token: 'token-1',
           expires_in: 3600,
         }),
-        headers: {},
+        headers: { 'content-type': 'application/json' },
         status: 200,
       })
       .mockResolvedValue({
@@ -571,7 +796,7 @@ describe('HSA person lookup', () => {
           middleName: null,
           surname: 'Svensson',
         }),
-        headers: {},
+        headers: { 'content-type': 'application/json' },
         status: 200,
       })
 
@@ -619,6 +844,97 @@ describe('HSA person lookup', () => {
     )
   })
 
+  it('does not acquire or forward a cached bearer token after lookup destination validation fails', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      const httpRequestImpl = vi
+        .fn()
+        .mockResolvedValueOnce({
+          body: JSON.stringify({ access_token: 'token-1', expires_in: 3600 }),
+          headers: { 'content-type': 'application/json' },
+          status: 200,
+        })
+        .mockResolvedValueOnce({
+          body: JSON.stringify({ givenName: 'Kalle', hsaId: HSA_ID }),
+          headers: { 'content-type': 'application/json' },
+          status: 200,
+        })
+      const config = {
+        oauth: {
+          clientId: 'client-id',
+          clientSecret: 'client-secret',
+          tokenUrl: 'https://issuer.example.test/token',
+        },
+        timeoutMs: 5000,
+        url: 'https://lookup.example.test/person',
+      }
+
+      await lookupHsaPerson(HSA_ID, { config, httpRequestImpl })
+      config.url = 'http://unapproved.example.test/person'
+
+      await expect(
+        lookupHsaPerson(HSA_ID, { config, httpRequestImpl }),
+      ).rejects.toSatisfy(error => {
+        expectRequirementsError(error, 'service_unavailable')
+        return true
+      })
+      expect(httpRequestImpl).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it('does not send Basic credentials to an invalid explicit token endpoint', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      const httpRequestImpl = vi.fn()
+
+      await expect(
+        lookupHsaPerson(HSA_ID, {
+          config: {
+            oauth: {
+              clientId: 'client-id',
+              clientSecret: 'client-secret',
+              tokenUrl: 'http://issuer.example.test/token',
+            },
+            timeoutMs: 5000,
+            url: 'https://lookup.example.test/person',
+          },
+          httpRequestImpl,
+        }),
+      ).rejects.toSatisfy(error => {
+        expectRequirementsError(error, 'service_unavailable')
+        return true
+      })
+      expect(httpRequestImpl).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it('rejects an invalid runtime timeout before any outbound request', async () => {
+    const httpRequestImpl = vi.fn()
+
+    await expect(
+      lookupHsaPerson(HSA_ID, {
+        config: {
+          oauth: {
+            clientId: 'client-id',
+            clientSecret: 'client-secret',
+            tokenUrl: 'https://issuer.example.test/token',
+          },
+          timeoutMs: 0,
+          url: 'https://lookup.example.test/person',
+        },
+        httpRequestImpl,
+      }),
+    ).rejects.toSatisfy(error => {
+      expectRequirementsError(error, 'service_unavailable')
+      return true
+    })
+    expect(httpRequestImpl).not.toHaveBeenCalled()
+  })
+
   it('supports OIDC discovery and combined mTLS plus OAuth2 mode', async () => {
     const mtls = {
       certPath: '/certs/client.crt',
@@ -628,14 +944,15 @@ describe('HSA person lookup', () => {
       .fn()
       .mockResolvedValueOnce({
         body: JSON.stringify({
+          issuer: 'https://issuer.example.test',
           token_endpoint: 'https://issuer.example.test/oauth/token',
         }),
-        headers: {},
+        headers: { 'content-type': 'application/json' },
         status: 200,
       })
       .mockResolvedValueOnce({
         body: JSON.stringify({ access_token: 'token-2', expires_in: 300 }),
-        headers: {},
+        headers: { 'content-type': 'application/json' },
         status: 200,
       })
       .mockResolvedValueOnce({
@@ -647,7 +964,7 @@ describe('HSA person lookup', () => {
           middleName: null,
           surname: 'Svensson',
         }),
-        headers: {},
+        headers: { 'content-type': 'application/json' },
         status: 200,
       })
 
@@ -692,6 +1009,62 @@ describe('HSA person lookup', () => {
   })
 
   it.each([
+    {
+      metadata: {
+        token_endpoint: 'https://issuer.example.test/oauth/token',
+      },
+      reason: 'missing issuer',
+    },
+    {
+      metadata: {
+        issuer: 'https://other-issuer.example.test',
+        token_endpoint: 'https://issuer.example.test/oauth/token',
+      },
+      reason: 'mismatched issuer',
+    },
+    {
+      metadata: {
+        issuer: 'https://issuer.example.test',
+        token_endpoint: 'https://tokens.example.test/oauth/token',
+      },
+      reason: 'cross-origin token endpoint',
+    },
+  ])(
+    'does not send client credentials after discovery reports a $reason',
+    async ({ metadata }) => {
+      const httpRequestImpl = vi.fn(async (_input: unknown) => ({
+        body: JSON.stringify(metadata),
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      }))
+
+      await expect(
+        lookupHsaPerson(HSA_ID, {
+          config: {
+            oauth: {
+              clientId: 'client-id',
+              clientSecret: 'client-secret',
+              issuerUrl: 'https://issuer.example.test/',
+            },
+            timeoutMs: 5000,
+            url: 'https://lookup.example.test/person',
+          },
+          httpRequestImpl,
+        }),
+      ).rejects.toSatisfy(error => {
+        expectRequirementsError(error, 'service_unavailable')
+        return true
+      })
+
+      expect(httpRequestImpl).toHaveBeenCalledOnce()
+      const firstRequest = httpRequestImpl.mock.calls[0]?.[0] as
+        | { headers?: Record<string, string> }
+        | undefined
+      expect(firstRequest?.headers).not.toHaveProperty('Authorization')
+    },
+  )
+
+  it.each([
     { body: '', status: 200 },
     { body: '{invalid', status: 200 },
     { body: JSON.stringify({ givenName: 'Kalle', hsaId: '' }), status: 200 },
@@ -709,7 +1082,7 @@ describe('HSA person lookup', () => {
         config: { timeoutMs: 5000, url: 'https://kong/lookup' },
         httpRequestImpl: vi.fn(async () => ({
           body: response.body,
-          headers: {},
+          headers: { 'content-type': 'application/json' },
           status: response.status,
         })),
       }),
@@ -721,29 +1094,49 @@ describe('HSA person lookup', () => {
 
   it.each([
     {
-      responses: [{ body: '{}', headers: {}, status: 500 }],
-    },
-    {
-      responses: [{ body: '{}', headers: {}, status: 200 }],
+      responses: [
+        {
+          body: '{}',
+          headers: { 'content-type': 'application/json' },
+          status: 500,
+        },
+      ],
     },
     {
       responses: [
         {
-          body: JSON.stringify({ token_endpoint: 'https://idp/token' }),
-          headers: {},
+          body: '{}',
+          headers: { 'content-type': 'application/json' },
           status: 200,
         },
-        { body: '{}', headers: {}, status: 401 },
       ],
     },
     {
       responses: [
         {
           body: JSON.stringify({ token_endpoint: 'https://idp/token' }),
-          headers: {},
+          headers: { 'content-type': 'application/json' },
           status: 200,
         },
-        { body: '{}', headers: {}, status: 200 },
+        {
+          body: '{}',
+          headers: { 'content-type': 'application/json' },
+          status: 401,
+        },
+      ],
+    },
+    {
+      responses: [
+        {
+          body: JSON.stringify({ token_endpoint: 'https://idp/token' }),
+          headers: { 'content-type': 'application/json' },
+          status: 200,
+        },
+        {
+          body: '{}',
+          headers: { 'content-type': 'application/json' },
+          status: 200,
+        },
       ],
     },
   ])(
@@ -781,12 +1174,12 @@ describe('HSA person lookup', () => {
           access_token: 'token-default',
           expires_in: 'invalid',
         }),
-        headers: {},
+        headers: { 'content-type': 'application/json' },
         status: 200,
       })
       .mockResolvedValueOnce({
         body: JSON.stringify({ givenName: 'Kalle', hsaId: HSA_ID }),
-        headers: {},
+        headers: { 'content-type': 'application/json' },
         status: 200,
       })
     await lookupHsaPerson(HSA_ID, {

@@ -6,6 +6,7 @@ import {
 } from '@/lib/database-schema-status'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { probeGeneratedOutputTempDirectory } from '@/lib/generated-output/spool'
+import { getHsaPersonLookupConfig } from '@/lib/hsa/person-lookup'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { resolveRequestCorrelationIds } from '@/lib/observability/request-ids'
 import {
@@ -108,6 +109,7 @@ function failureReason(
 async function checkRuntimeConfig() {
   assertSiteUrlConfigured()
   getAuthConfig()
+  getHsaPersonLookupConfig()
   getSqlServerDatabaseUrl(process.env, false)
 }
 

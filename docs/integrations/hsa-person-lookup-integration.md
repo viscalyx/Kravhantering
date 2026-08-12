@@ -59,6 +59,15 @@ Production environments should point at the approved environment-specific
 Kong route or integration-platform REST facade. The browser must never receive
 this endpoint or call it directly.
 
+Production lookup, OAuth issuer, explicit token, and adapter SOAP endpoints
+must use HTTPS. Explicit HTTP fixtures remain available only outside
+production. Application readiness validates configured HSA settings without
+contacting lookup, discovery, token, or SOAP services; absent optional app HSA
+configuration remains ready. The app and adapter repeat endpoint validation
+immediately before outbound requests. Invalid static configuration therefore
+fails before certificate files, client credentials, or cached bearer tokens
+can be used.
+
 `HSA_PERSON_LOOKUP_TIMEOUT_MS` controls the app-side timeout. Keep the default
 unless the approved integration path for an environment requires a different
 timeout.
@@ -77,6 +86,26 @@ changing the URL knob. Set `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH` and
 `HSA_PERSON_LOOKUP_OAUTH_SCOPE` and `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` are
 sent to the token endpoint when configured. Supplying both mTLS and OAuth2
 enables mixed mode.
+
+OIDC discovery must return an issuer equal to the normalized configured issuer
+and a token endpoint on that issuer's origin. If the approved token service is
+on another origin, configure its HTTPS URL explicitly instead of using the
+discovered endpoint. Lookup, discovery, token, and SOAP transports never follow
+redirects.
+
+The app accepts `application/json` and `application/*+json` responses.
+Discovery responses are limited to 256 KiB; token and REST lookup responses
+are limited to 64 KiB. The adapter accepts `text/xml` and
+`application/soap+xml` responses up to 1 MiB. Media type and streaming byte
+limits apply to successful and error responses, and an over-limit stream is
+aborted before parsing.
+
+The application does not implement site-specific origin allowlists, IP or CIDR
+classification, DNS pinning, or route filtering. Production operators must
+enforce the approved lookup, issuer, explicit token, and SOAP destinations with
+the host firewall, approved egress proxy, controlled DNS, route policy, and
+upstream ACLs. Those controls own loopback, link-local, private-address, DNS
+rebinding, and destination-change protection for each deployed environment.
 
 ## Verify route
 
