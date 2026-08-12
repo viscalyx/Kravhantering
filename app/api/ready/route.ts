@@ -6,7 +6,11 @@ import {
 } from '@/lib/database-schema-status'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { probeGeneratedOutputTempDirectory } from '@/lib/generated-output/spool'
-import { getHsaPersonLookupConfig } from '@/lib/hsa/person-lookup'
+import {
+  getHsaPersonLookupConfig,
+  type HsaPersonLookupConfigDiagnostic,
+  hsaPersonLookupConfigDiagnostic,
+} from '@/lib/hsa/person-lookup'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { resolveRequestCorrelationIds } from '@/lib/observability/request-ids'
 import {
@@ -87,7 +91,14 @@ function discoveryUrl(issuerUrl: string): string {
 function readinessDiagnostic(
   check: ReadinessCheckName,
   error: unknown,
-): 'check_failed' | 'sql_server_driver_unavailable' {
+):
+  | 'check_failed'
+  | HsaPersonLookupConfigDiagnostic
+  | 'sql_server_driver_unavailable' {
+  if (check === 'runtime_config') {
+    const hsaDiagnostic = hsaPersonLookupConfigDiagnostic(error)
+    if (hsaDiagnostic) return hsaDiagnostic
+  }
   if (
     check === 'sql_server' &&
     error instanceof Error &&

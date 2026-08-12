@@ -82,36 +82,96 @@ interface CachedTlsFile {
   mtimeMs: number
 }
 
+const ENDPOINT_CONFIG_DIAGNOSTICS = {
+  discoveredToken: {
+    httpsRequired: 'hsa_oauth_discovered_token_url_https_required',
+    invalid: 'hsa_oauth_discovered_token_url_invalid',
+    mtlsHttpsRequired: 'hsa_oauth_discovered_token_url_mtls_https_required',
+    protocolInvalid: 'hsa_oauth_discovered_token_url_protocol_invalid',
+  },
+  issuer: {
+    httpsRequired: 'hsa_oauth_issuer_url_https_required',
+    invalid: 'hsa_oauth_issuer_url_invalid',
+    mtlsHttpsRequired: 'hsa_oauth_issuer_url_mtls_https_required',
+    protocolInvalid: 'hsa_oauth_issuer_url_protocol_invalid',
+  },
+  lookup: {
+    httpsRequired: 'hsa_lookup_url_https_required',
+    invalid: 'hsa_lookup_url_invalid',
+    mtlsHttpsRequired: 'hsa_lookup_url_mtls_https_required',
+    protocolInvalid: 'hsa_lookup_url_protocol_invalid',
+  },
+  token: {
+    httpsRequired: 'hsa_oauth_token_url_https_required',
+    invalid: 'hsa_oauth_token_url_invalid',
+    mtlsHttpsRequired: 'hsa_oauth_token_url_mtls_https_required',
+    protocolInvalid: 'hsa_oauth_token_url_protocol_invalid',
+  },
+} as const
+
+type EndpointConfigDiagnostics =
+  (typeof ENDPOINT_CONFIG_DIAGNOSTICS)[keyof typeof ENDPOINT_CONFIG_DIAGNOSTICS]
+
+export type HsaPersonLookupConfigDiagnostic =
+  | EndpointConfigDiagnostics[keyof EndpointConfigDiagnostics]
+  | 'hsa_lookup_auth_requires_url'
+  | 'hsa_lookup_mtls_incomplete'
+  | 'hsa_lookup_oauth_incomplete'
+  | 'hsa_lookup_timeout_invalid'
+
 class HsaPersonLookupConfigError extends Error {
-  constructor(message: string) {
+  readonly diagnostic: HsaPersonLookupConfigDiagnostic
+
+  constructor(diagnostic: HsaPersonLookupConfigDiagnostic, message: string) {
     super(message)
     this.name = 'HsaPersonLookupConfigError'
+    this.diagnostic = diagnostic
   }
+}
+
+export function hsaPersonLookupConfigDiagnostic(
+  error: unknown,
+): HsaPersonLookupConfigDiagnostic | null {
+  return error instanceof HsaPersonLookupConfigError ? error.diagnostic : null
 }
 
 function validateEndpointUrl(
   value: string,
   label: string,
-  { mtls, production }: { mtls: boolean; production: boolean },
+  {
+    diagnostics,
+    mtls,
+    production,
+  }: {
+    diagnostics: EndpointConfigDiagnostics
+    mtls: boolean
+    production: boolean
+  },
 ): URL {
   let parsed: URL
   try {
     parsed = new URL(value)
   } catch {
-    throw new HsaPersonLookupConfigError(`${label} must be a valid URL.`)
+    throw new HsaPersonLookupConfigError(
+      diagnostics.invalid,
+      `${label} must be a valid URL.`,
+    )
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new HsaPersonLookupConfigError(
+      diagnostics.protocolInvalid,
       `${label} must use the HTTP or HTTPS protocol.`,
     )
   }
   if (production && parsed.protocol !== 'https:') {
     throw new HsaPersonLookupConfigError(
+      diagnostics.httpsRequired,
       `${label} must use HTTPS in production.`,
     )
   }
   if (mtls && parsed.protocol !== 'https:') {
     throw new HsaPersonLookupConfigError(
+      diagnostics.mtlsHttpsRequired,
       `${label} must use HTTPS when mTLS is configured.`,
     )
   }
@@ -128,6 +188,7 @@ export function validateHsaPersonLookupConfig(
     config.timeoutMs > 30_000
   ) {
     throw new HsaPersonLookupConfigError(
+      'hsa_lookup_timeout_invalid',
       'HSA person lookup timeout must be an integer from 1 through 30000 milliseconds.',
     )
   }
@@ -136,6 +197,7 @@ export function validateHsaPersonLookupConfig(
     (!stringField(config.mtls.certPath) || !stringField(config.mtls.keyPath))
   ) {
     throw new HsaPersonLookupConfigError(
+      'hsa_lookup_mtls_incomplete',
       'HSA lookup mTLS configuration requires both client certificate and client key paths.',
     )
   }
@@ -147,6 +209,7 @@ export function validateHsaPersonLookupConfig(
         !stringField(config.oauth.issuerUrl)))
   ) {
     throw new HsaPersonLookupConfigError(
+      'hsa_lookup_oauth_incomplete',
       'HSA lookup OAuth2 configuration requires client id, client secret, and token URL or issuer URL.',
     )
   }
@@ -154,19 +217,28 @@ export function validateHsaPersonLookupConfig(
     mtls: Boolean(config.mtls),
     production: env.NODE_ENV === 'production',
   }
-  validateEndpointUrl(config.url, 'HSA person lookup URL', validationOptions)
+  validateEndpointUrl(config.url, 'HSA person lookup URL', {
+    ...validationOptions,
+    diagnostics: ENDPOINT_CONFIG_DIAGNOSTICS.lookup,
+  })
   if (config.oauth?.issuerUrl) {
     validateEndpointUrl(
       config.oauth.issuerUrl,
       'HSA person lookup OAuth issuer URL',
-      validationOptions,
+      {
+        ...validationOptions,
+        diagnostics: ENDPOINT_CONFIG_DIAGNOSTICS.issuer,
+      },
     )
   }
   if (config.oauth?.tokenUrl) {
     validateEndpointUrl(
       config.oauth.tokenUrl,
       'HSA person lookup OAuth token URL',
-      validationOptions,
+      {
+        ...validationOptions,
+        diagnostics: ENDPOINT_CONFIG_DIAGNOSTICS.token,
+      },
     )
   }
 }
@@ -179,6 +251,7 @@ function parseTimeout(value: string | undefined): number {
   const parsed = Number(value)
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 30_000) {
     throw new HsaPersonLookupConfigError(
+      'hsa_lookup_timeout_invalid',
       'HSA person lookup timeout must be an integer from 1 through 30000 milliseconds.',
     )
   }
@@ -204,6 +277,7 @@ function oauthConfigFromEnv(
   if (!anyOAuth) return undefined
   if (!clientId || !clientSecret || (!tokenUrl && !issuerUrl)) {
     throw new HsaPersonLookupConfigError(
+      'hsa_lookup_oauth_incomplete',
       'HSA lookup OAuth2 configuration requires client id, client secret, and token URL or issuer URL.',
     )
   }
@@ -229,6 +303,7 @@ function mtlsConfigFromEnv(
   if (!anyMtls) return undefined
   if (!certPath || !keyPath) {
     throw new HsaPersonLookupConfigError(
+      'hsa_lookup_mtls_incomplete',
       'HSA lookup mTLS configuration requires both client certificate and client key paths.',
     )
   }
@@ -250,6 +325,7 @@ export function getHsaPersonLookupConfig(
   if (!url) {
     if (mtls || oauth) {
       throw new HsaPersonLookupConfigError(
+        'hsa_lookup_auth_requires_url',
         'HSA lookup authentication configuration requires HSA_PERSON_LOOKUP_URL.',
       )
     }
@@ -571,6 +647,7 @@ async function resolveTokenUrl(
     issuer,
     'HSA person lookup OAuth issuer URL',
     {
+      diagnostics: ENDPOINT_CONFIG_DIAGNOSTICS.issuer,
       mtls: Boolean(config.mtls),
       production: process.env.NODE_ENV === 'production',
     },
@@ -611,7 +688,10 @@ async function resolveTokenUrl(
   const tokenUrl = validateEndpointUrl(
     tokenEndpoint,
     'Discovered HSA person lookup OAuth token URL',
-    validationOptions,
+    {
+      ...validationOptions,
+      diagnostics: ENDPOINT_CONFIG_DIAGNOSTICS.discoveredToken,
+    },
   )
   if (tokenUrl.origin !== issuerUrl.origin) {
     throw new Error('OIDC discovery token endpoint must match issuer origin.')
@@ -636,6 +716,7 @@ async function getOAuthAccessToken(
 
   const tokenUrl = await resolveTokenUrl(oauth, requestImpl, config, signal)
   validateEndpointUrl(tokenUrl, 'HSA person lookup OAuth token URL', {
+    diagnostics: ENDPOINT_CONFIG_DIAGNOSTICS.token,
     mtls: Boolean(config.mtls),
     production: process.env.NODE_ENV === 'production',
   })

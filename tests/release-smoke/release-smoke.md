@@ -75,7 +75,8 @@ flowchart TD
   production realm.
 - The CI-only Quadlet overlay starts Kong, the HSA person lookup adapter and
   the HSA directory mock. The app runtime receives
-  `HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup`.
+  `HSA_PERSON_LOOKUP_URL=https://kong:8443/hsa/person-records/lookup`; Kong's
+  CI-only certificate is issued by the same disposable CA trusted by the app.
 - The config adds same-origin and `X-Requested-With` headers so API mutations
   exercise the same CSRF path as the browser UI.
 

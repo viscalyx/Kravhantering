@@ -5,6 +5,7 @@ import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getHsaPersonLookupConfig,
+  hsaPersonLookupConfigDiagnostic,
   lookupHsaPerson,
   readHsaPersonLookupTlsFileForTests,
   resetHsaPersonLookupAuthCacheForTests,
@@ -196,12 +197,31 @@ describe('HSA person lookup', () => {
       label: 'token',
     },
   ])('rejects a plaintext production $label endpoint', config => {
-    expect(() =>
+    let error: unknown
+    try {
       getHsaPersonLookupConfig({
         ...config,
         NODE_ENV: 'production',
-      } as unknown as NodeJS.ProcessEnv),
-    ).toThrow(/must use HTTPS in production/u)
+      } as unknown as NodeJS.ProcessEnv)
+    } catch (caught) {
+      error = caught
+    }
+
+    expect(error).toHaveProperty(
+      'message',
+      expect.stringMatching(/must use HTTPS in production/u),
+    )
+    expect(hsaPersonLookupConfigDiagnostic(error)).toBe(
+      config.label === 'lookup'
+        ? 'hsa_lookup_url_https_required'
+        : `hsa_oauth_${config.label}_url_https_required`,
+    )
+  })
+
+  it('does not expose diagnostics for unrelated errors', () => {
+    expect(
+      hsaPersonLookupConfigDiagnostic(new Error('secret value')),
+    ).toBeNull()
   })
 
   it('posts HSA-id as JSON and maps split person fields', async () => {
@@ -527,8 +547,11 @@ describe('HSA person lookup', () => {
         response.setHeader('Content-Type', 'application/json')
         if (responseMode === 'declared') {
           response.setHeader('Content-Length', String(oversizedBody.length))
+          response.end(oversizedBody)
+          return
         }
-        response.end(oversizedBody)
+        response.write(oversizedBody.slice(0, 64 * 1024))
+        response.end(oversizedBody.slice(64 * 1024))
       })
       await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
       try {
