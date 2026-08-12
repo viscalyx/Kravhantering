@@ -103,8 +103,6 @@ ALTER TABLE [<table>]
 
 ## Operator Upgrade Notes
 
-- When a migration or required seed change requires operator action before
-  upgrade, use `/operator-upgrade-notes` to create the operator impact.
 - Complete the PR's Operator Upgrade Impact section.
 
 ## Personal Data / Privacy
