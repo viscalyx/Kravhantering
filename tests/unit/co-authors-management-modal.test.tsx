@@ -138,10 +138,13 @@ describe('CoAuthorsManagementModal', () => {
       if (url === '/api/requirement-responsibility-people/verify') {
         return Promise.resolve(
           okJson({
+            evidence: 'signed-evidence',
+            expiresAt: '2026-08-12T10:05:00.000Z',
             person: {
               displayName: 'Cora CoAuthor',
               email: 'cora.coauthor@example.test',
               givenName: 'Cora',
+              hasProtectedPersonalData: false,
               hsaId: 'SE5560000001-coa1',
               middleName: null,
               surname: 'CoAuthor',
@@ -196,6 +199,7 @@ describe('CoAuthorsManagementModal', () => {
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
       coAuthorHsaIds: ['SE5560000001-coa1'],
+      verificationEvidence: ['signed-evidence'],
     })
     expect(await screen.findByText('Cora CoAuthor')).toBeInTheDocument()
     expect(
@@ -228,10 +232,13 @@ describe('CoAuthorsManagementModal', () => {
       if (url === '/api/requirement-responsibility-people/verify') {
         return Promise.resolve(
           okJson({
+            evidence: 'signed-evidence',
+            expiresAt: '2026-08-12T10:05:00.000Z',
             person: {
               displayName: 'Cora CoAuthor',
               email: 'cora.coauthor@example.test',
               givenName: 'Cora',
+              hasProtectedPersonalData: false,
               hsaId: 'SE5560000001-coa1',
               middleName: null,
               surname: 'CoAuthor',
@@ -378,6 +385,7 @@ describe('CoAuthorsManagementModal', () => {
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
       coAuthorHsaIds: [],
+      verificationEvidence: [],
     })
   })
 
@@ -434,6 +442,7 @@ describe('CoAuthorsManagementModal', () => {
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
       coAuthorHsaIds: [],
+      verificationEvidence: [],
     })
   })
 })

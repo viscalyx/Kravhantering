@@ -395,8 +395,8 @@ async function verifyResponsibilityPerson(
       | 'requirements_specification_responsible'
     scopeId?: number
   },
-): Promise<void> {
-  await expectOk(
+): Promise<string> {
+  const response = await expectOk(
     await request.post('/api/requirement-responsibility-people/verify', {
       data: {
         hsaId: input.hsaId,
@@ -407,6 +407,11 @@ async function verifyResponsibilityPerson(
     }),
     `verify ${input.purpose} ${input.hsaId}`,
   )
+  const payload = (await response.json()) as { evidence?: unknown }
+  if (typeof payload.evidence !== 'string' || !payload.evidence) {
+    throw new Error(`Verification did not return evidence for ${input.purpose}`)
+  }
+  return payload.evidence
 }
 
 function stamp(): string {
@@ -430,7 +435,7 @@ export async function createAuthorizationFixture(
   const packageName = `Behörighetspaket ${uniqueStamp}`
 
   try {
-    await verifyResponsibilityPerson(admin, {
+    const areaOwnerEvidence = await verifyResponsibilityPerson(admin, {
       hsaId: HSA.areaOwner,
       purpose: 'requirement_area_owner',
     })
@@ -441,27 +446,27 @@ export async function createAuthorizationFixture(
         name: `Behörighetsyta ${uniqueStamp}`,
         ownerHsaId: HSA.areaOwner,
         prefix: areaPrefix,
+        verificationEvidence: areaOwnerEvidence,
       },
     })
     await expectStatus(areaResponse, 201, 'create requirement area fixture')
     const area = (await areaResponse.json()) as RequirementAreaResponse
 
-    await verifyResponsibilityPerson(admin, {
+    const areaCoAuthorEvidence = await verifyResponsibilityPerson(admin, {
       hsaId: HSA.areaCoauthor,
       purpose: 'requirement_area_co_author',
       scopeId: area.id,
     })
     await expectOk(
       await admin.put(`/api/requirement-areas/${area.id}/co-authors`, {
-        data: { coAuthorHsaIds: [HSA.areaCoauthor] },
+        data: {
+          coAuthorHsaIds: [HSA.areaCoauthor],
+          verificationEvidence: [areaCoAuthorEvidence],
+        },
       }),
       'assign requirement area co-author',
     )
 
-    await verifyResponsibilityPerson(specificationResponsible, {
-      hsaId: HSA.specificationResponsible,
-      purpose: 'requirements_specification_responsible',
-    })
     const specificationResponse = await specificationResponsible.post(
       '/api/requirements-specifications',
       {
@@ -483,33 +488,27 @@ export async function createAuthorizationFixture(
     const specification =
       (await specificationResponse.json()) as SpecificationResponse
 
-    await verifyResponsibilityPerson(specificationResponsible, {
-      hsaId: HSA.specificationCoauthor,
-      purpose: 'requirements_specification_co_author',
-      scopeId: specification.id,
-    })
+    const specificationCoAuthorEvidence = await verifyResponsibilityPerson(
+      specificationResponsible,
+      {
+        hsaId: HSA.specificationCoauthor,
+        purpose: 'requirements_specification_co_author',
+        scopeId: specification.id,
+      },
+    )
     await expectOk(
       await specificationResponsible.put(
         `/api/requirements-specifications/${specification.id}/co-authors`,
         {
-          data: { coAuthorHsaIds: [HSA.specificationCoauthor] },
+          data: {
+            coAuthorHsaIds: [HSA.specificationCoauthor],
+            verificationEvidence: [specificationCoAuthorEvidence],
+          },
         },
       ),
       'assign specification co-author',
     )
 
-    await verifyResponsibilityPerson(admin, {
-      hsaId: HSA.admin,
-      purpose: 'requirement_package_lead',
-    })
-    await verifyResponsibilityPerson(admin, {
-      hsaId: HSA.packageLead,
-      purpose: 'requirement_package_lead',
-    })
-    await verifyResponsibilityPerson(admin, {
-      hsaId: HSA.packageCoauthor,
-      purpose: 'requirement_package_co_author',
-    })
     const packageResponse = await admin.post('/api/requirement-packages', {
       data: {
         name: packageName,
@@ -519,20 +518,32 @@ export async function createAuthorizationFixture(
     await expectStatus(packageResponse, 201, 'create package fixture')
     const requirementPackage =
       (await packageResponse.json()) as RequirementPackageResponse
+    const packageLeadEvidence = await verifyResponsibilityPerson(admin, {
+      hsaId: HSA.packageLead,
+      purpose: 'requirement_package_lead',
+      scopeId: requirementPackage.id,
+    })
     await expectOk(
       await admin.put(`/api/requirement-packages/${requirementPackage.id}`, {
         data: {
           leadHsaId: HSA.packageLead,
+          verificationEvidence: packageLeadEvidence,
         },
       }),
       'assign package lead fixture',
     )
+    const packageCoAuthorEvidence = await verifyResponsibilityPerson(admin, {
+      hsaId: HSA.packageCoauthor,
+      purpose: 'requirement_package_co_author',
+      scopeId: requirementPackage.id,
+    })
     await expectOk(
       await admin.put(
         `/api/requirement-packages/${requirementPackage.id}/co-authors`,
         {
           data: {
             coAuthorHsaIds: [HSA.packageCoauthor],
+            verificationEvidence: [packageCoAuthorEvidence],
           },
         },
       ),

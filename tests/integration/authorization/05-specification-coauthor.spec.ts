@@ -86,7 +86,10 @@ test('AUTHZ-05/AUTH-10/AUTH-11: specification co-authors can edit content but no
       await specificationCoauthor.put(
         `/api/requirements-specifications/${fixture.specificationId}/co-authors`,
         {
-          data: { coAuthorHsaIds: [HSA.areaCoauthor] },
+          data: {
+            coAuthorHsaIds: [HSA.areaCoauthor],
+            verificationEvidence: [],
+          },
         },
       ),
       403,
@@ -96,7 +99,10 @@ test('AUTHZ-05/AUTH-10/AUTH-11: specification co-authors can edit content but no
       await specificationCoauthor.put(
         `/api/requirements-specifications/${fixture.specificationId}/responsible`,
         {
-          data: { responsibleHsaId: HSA.specificationResponsible },
+          data: {
+            responsibleHsaId: HSA.specificationResponsible,
+            verificationEvidence: 'permission-check-evidence',
+          },
         },
       ),
       403,

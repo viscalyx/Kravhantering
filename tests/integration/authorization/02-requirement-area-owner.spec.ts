@@ -200,7 +200,10 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
   } finally {
     await areaOwner
       .put(`/api/requirement-areas/${fixture.areaId}/co-authors`, {
-        data: { coAuthorHsaIds: originalCoAuthors },
+        data: {
+          coAuthorHsaIds: originalCoAuthors,
+          verificationEvidence: [],
+        },
       })
       .catch(() => undefined)
     await areaOwner.dispose()

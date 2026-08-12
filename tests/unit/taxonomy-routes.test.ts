@@ -1,6 +1,16 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { conflictError, validationError } from '@/lib/requirements/errors'
+import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
+import type { ActorContext } from '@/lib/requirements/auth'
+import {
+  conflictError,
+  serviceUnavailableError,
+  validationError,
+} from '@/lib/requirements/errors'
+import {
+  createRequirementResponsibilityPersonVerificationEvidence,
+  type RequirementResponsibilityPersonVerificationPurpose,
+} from '@/lib/requirements/responsibility-person-verification'
 
 /* ── shared request DB mocks ─────────────────────────────────────── */
 
@@ -59,8 +69,13 @@ const auditState = vi.hoisted(() => ({
 }))
 
 const actionAuditState = vi.hoisted(() => ({
+  recordActionAuditEvent: vi.fn(async () => undefined),
   recordAllowedActionAuditEvent: vi.fn(async () => undefined),
   recordDeniedActionAuditEvent: vi.fn(async () => undefined),
+}))
+
+const securityAuditState = vi.hoisted(() => ({
+  recordSecurityEvent: vi.fn(),
 }))
 
 const requirementsRuntimeState = vi.hoisted(() => {
@@ -146,9 +161,18 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
 }))
 
 vi.mock('@/lib/audit/action-audit', () => ({
+  recordActionAuditEvent: actionAuditState.recordActionAuditEvent,
   recordAllowedActionAuditEvent: actionAuditState.recordAllowedActionAuditEvent,
   recordDeniedActionAuditEvent: actionAuditState.recordDeniedActionAuditEvent,
 }))
+
+vi.mock('@/lib/auth/audit', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/auth/audit')>()
+  return {
+    ...actual,
+    recordSecurityEvent: securityAuditState.recordSecurityEvent,
+  }
+})
 
 vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
   recordRequirementSelectionCleanupAudit:
@@ -544,6 +568,39 @@ function specificationCreateBody(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function verificationEvidence(
+  hsaId: string,
+  purpose: RequirementResponsibilityPersonVerificationPurpose,
+  scopeId?: number,
+) {
+  return createRequirementResponsibilityPersonVerificationEvidence({
+    actor: authState.context.actor as ActorContext,
+    person: {
+      email: `${hsaId.toLowerCase()}@example.test`,
+      givenName: 'Verified',
+      hasProtectedPersonalData: false,
+      hsaId,
+      middleName: null,
+      surname: 'Person',
+    },
+    purpose,
+    scopeId,
+  }).evidence
+}
+
+function coAuthorAssignmentBody(
+  coAuthorHsaIds: string[],
+  purpose: RequirementResponsibilityPersonVerificationPurpose,
+  scopeId: number,
+) {
+  return {
+    coAuthorHsaIds,
+    verificationEvidence: coAuthorHsaIds.map(hsaId =>
+      verificationEvidence(hsaId, purpose, scopeId),
+    ),
+  }
+}
+
 async function expectInvalidRequest(
   response: Response,
   path?: string,
@@ -561,11 +618,76 @@ async function expectInvalidRequest(
   }
 }
 
+describe('responsibility assignment evidence contract', () => {
+  it.each([
+    [
+      'requirement area owner',
+      () =>
+        postReqArea(
+          jsonReq('POST', {
+            name: 'Evidence area',
+            ownerHsaId: 'SE5560000001-owner1',
+            prefix: 'EVI',
+          }),
+        ),
+    ],
+    [
+      'requirement area co-author',
+      () =>
+        putRequirementAreaCoAuthors(
+          jsonReq('PUT', { coAuthorHsaIds: ['SE5560000001-coa1'] }),
+          makeParams('1'),
+        ),
+    ],
+    [
+      'requirement package lead',
+      () =>
+        putRequirementPackage(
+          jsonReq('PUT', { leadHsaId: 'SE5560000001-lead1' }),
+          makeParams('1'),
+        ),
+    ],
+    [
+      'requirement package co-author',
+      () =>
+        putRequirementPackageCoAuthors(
+          jsonReq('PUT', { coAuthorHsaIds: ['SE5560000001-coa1'] }),
+          makeParams('1'),
+        ),
+    ],
+    [
+      'specification responsible',
+      () =>
+        putSpecResponsible(
+          jsonReq('PUT', { responsibleHsaId: 'SE5560000001-resp1' }),
+          makeParams('1'),
+        ),
+    ],
+    [
+      'specification co-author',
+      () =>
+        putSpecCoAuthors(
+          jsonReq('PUT', { coAuthorHsaIds: ['SE5560000001-coa1'] }),
+          makeParams('1'),
+        ),
+    ],
+  ] as const)(
+    'requires verification evidence for %s assignment',
+    async (_label, request) => {
+      const response = await request()
+
+      expect(response.status).toBe(400)
+      await expectInvalidRequest(response, 'verificationEvidence')
+    },
+  )
+})
+
 /* ── tests ───────────────────────────────────────────────────────── */
 
 describe('requirement responsibility person verify route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearInMemoryThrottleForTests()
     authState.context.actor = {
       displayName: 'Route Tester',
       hsaId: 'SE5560000001-route',
@@ -617,7 +739,7 @@ describe('requirement responsibility person verify route', () => {
     ])
   })
 
-  it('allows Admin to refresh-verify a requirement area owner HSA-id', async () => {
+  it('returns short-lived evidence without storing a refreshed area owner', async () => {
     authState.context.actor.roles = ['Admin']
 
     const r = await postRequirementResponsibilityPersonVerify(
@@ -630,6 +752,8 @@ describe('requirement responsibility person verify route', () => {
 
     expect(r.status).toBe(200)
     await expect(r.json()).resolves.toEqual({
+      evidence: expect.any(String),
+      expiresAt: expect.stringMatching(/Z$/u),
       person: expect.objectContaining({
         displayName: 'Test Person',
         hsaId: 'SE5560000001-owner1',
@@ -640,10 +764,7 @@ describe('requirement responsibility person verify route', () => {
     )
     expect(
       responsibilityPersonState.upsertRequirementResponsibilityPerson,
-    ).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ hsaId: 'SE5560000001-owner1' }),
-    )
+    ).not.toHaveBeenCalled()
   })
 
   it('reuses a local responsibility person without HSA lookup on blur mode', async () => {
@@ -668,6 +789,8 @@ describe('requirement responsibility person verify route', () => {
 
     expect(r.status).toBe(200)
     await expect(r.json()).resolves.toEqual({
+      evidence: expect.any(String),
+      expiresAt: expect.stringMatching(/Z$/u),
       person: expect.objectContaining({
         displayName: 'Local Owner',
         email: 'local.owner@example.test',
@@ -678,6 +801,144 @@ describe('requirement responsibility person verify route', () => {
     expect(
       responsibilityPersonState.upsertRequirementResponsibilityPerson,
     ).not.toHaveBeenCalled()
+  })
+
+  it('throttles one target and target cycling with the same stable response contract', async () => {
+    authState.context.actor.roles = ['Admin']
+    const requestVerification = (hsaId: string) =>
+      postRequirementResponsibilityPersonVerify(
+        jsonReq('POST', {
+          hsaId,
+          mode: 'refresh',
+          purpose: 'requirement_area_owner',
+        }),
+      )
+
+    for (let index = 0; index < 10; index += 1) {
+      expect((await requestVerification('SE5560000001-owner1')).status).toBe(
+        200,
+      )
+    }
+    const targetThrottled = await requestVerification('SE5560000001-owner1')
+    expect(targetThrottled.status).toBe(429)
+    expect(targetThrottled.headers.get('Retry-After')).toMatch(/^\d+$/u)
+    const targetBody = await targetThrottled.json()
+    expect(targetBody).toEqual({
+      code: 'hsa_verification_throttled',
+      error: 'Too many HSA verification requests.',
+      retryAfterSeconds: expect.any(Number),
+    })
+    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledTimes(10)
+
+    clearInMemoryThrottleForTests()
+    hsaLookupState.lookupHsaPerson.mockClear()
+    for (let index = 0; index < 50; index += 1) {
+      expect(
+        (await requestVerification(`SE5560000001-cycle${index}`)).status,
+      ).toBe(200)
+    }
+    const actorThrottled = await requestVerification('SE5560000001-cycle50')
+    expect(actorThrottled.status).toBe(429)
+    await expect(actorThrottled.json()).resolves.toEqual({
+      ...targetBody,
+      retryAfterSeconds: expect.any(Number),
+    })
+    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledTimes(50)
+  })
+
+  it('throttles one target across actors without case-variant bypasses', async () => {
+    authState.context.actor.roles = ['Admin']
+    const requestVerification = (hsaId: string) =>
+      postRequirementResponsibilityPersonVerify(
+        jsonReq('POST', {
+          hsaId,
+          mode: 'refresh',
+          purpose: 'requirement_area_owner',
+        }),
+      )
+
+    for (let index = 0; index < 10; index += 1) {
+      authState.context.actor.id = `actor-${index}`
+      authState.context.actor.hsaId = `SE5560000001-actor${index}`
+      const target =
+        index % 2 === 0 ? 'SE5560000001-Target1' : 'SE5560000001-target1'
+      expect((await requestVerification(target)).status).toBe(200)
+    }
+
+    authState.context.actor.id = 'actor-10'
+    authState.context.actor.hsaId = 'SE5560000001-actor10'
+    const response = await requestVerification('SE5560000001-target1')
+
+    expect(response.status).toBe(429)
+    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledTimes(10)
+  })
+
+  it.each([
+    {
+      error: null,
+      outcome: 'success',
+      status: 200,
+    },
+    {
+      error: validationError('not found', {
+        reason: 'hsa_lookup_not_found',
+      }),
+      outcome: 'not_found',
+      status: 400,
+    },
+    {
+      error: conflictError('conflict', { reason: 'hsa_lookup_conflict' }),
+      outcome: 'conflict',
+      status: 409,
+    },
+    {
+      error: serviceUnavailableError('provider failed', {
+        reason: 'hsa_lookup_unavailable',
+      }),
+      outcome: 'provider_failure',
+      status: 503,
+    },
+  ])('audits sanitized $outcome verification outcomes', async testCase => {
+    authState.context.actor.roles = ['Admin']
+    authState.context.actor.hsaId = 'SE5560000001-sensitive1'
+    authState.context.actor.id = 'SE5560000001-sensitive1'
+    if (testCase.error) {
+      hsaLookupState.lookupHsaPerson.mockRejectedValueOnce(testCase.error)
+    }
+
+    const response = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-sensitive1',
+        mode: 'refresh',
+        purpose: 'requirement_area_owner',
+      }),
+    )
+
+    expect(response.status).toBe(testCase.status)
+    expect(actionAuditState.recordActionAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        action: 'requirement_responsibility_person.verify',
+        actorClientId: expect.stringMatching(/^afp_[A-Za-z0-9_-]{22}$/u),
+        actorDisplayName: null,
+        actorHsaId: null,
+        details: expect.objectContaining({ outcome: testCase.outcome }),
+        targetId: expect.stringMatching(/^hfp_[A-Za-z0-9_-]{22}$/u),
+      }),
+    )
+    expect(securityAuditState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ outcome: testCase.outcome }),
+        event: 'requirements.hsa_verification.completed',
+      }),
+    )
+    const auditPayload = JSON.stringify({
+      action: actionAuditState.recordActionAuditEvent.mock.calls.at(-1),
+      security: securityAuditState.recordSecurityEvent.mock.calls.at(-1),
+    })
+    expect(auditPayload).not.toContain('SE5560000001-sensitive1')
+    expect(auditPayload).not.toContain('Test Person')
+    expect(auditPayload).not.toContain('@example.test')
   })
 
   it('rejects non-Admin requirement area owner verification before HSA lookup', async () => {
@@ -774,6 +1035,43 @@ describe('requirement responsibility person verify route', () => {
 
     expect(r.status).toBe(403)
     expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+  })
+
+  it('requires scope for requirement package co-author verification', async () => {
+    const response = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-coa1',
+        mode: 'refresh',
+        purpose: 'requirement_package_co_author',
+      }),
+    )
+
+    expect(response.status).toBe(403)
+    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+  })
+
+  it('only allows an unscoped package lead verification for the actor', async () => {
+    const denied = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-other1',
+        mode: 'refresh',
+        purpose: 'requirement_package_lead',
+      }),
+    )
+    expect(denied.status).toBe(403)
+    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+
+    const allowed = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-route',
+        mode: 'refresh',
+        purpose: 'requirement_package_lead',
+      }),
+    )
+    expect(allowed.status).toBe(200)
+    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledWith(
+      'SE5560000001-route',
+    )
   })
 
   it('checks specification assignment manager permission before scoped responsible verification lookup', async () => {
@@ -1236,6 +1534,14 @@ describe('specification-item-statuses catalog routes', () => {
 describe('requirement-areas routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    authState.context.actor = {
+      displayName: 'Ada Admin',
+      hsaId: 'SE5560000001-admin1',
+      id: 'admin-sub',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'oidc',
+    }
   })
 
   it('GET returns areas', async () => {
@@ -1244,11 +1550,16 @@ describe('requirement-areas routes', () => {
     expect(j.areas).toHaveLength(1)
   })
   it('POST creates with 201', async () => {
+    const evidence = verificationEvidence(
+      'SE5560000001-ta1',
+      'requirement_area_owner',
+    )
     const r = await postReqArea(
-      new Request('http://l', {
-        method: 'POST',
-        body: '{"name":"Test area","prefix":"TA","ownerHsaId":"SE5560000001-ta1"}',
-        headers: { 'Content-Type': 'application/json' },
+      jsonReq('POST', {
+        name: 'Test area',
+        ownerHsaId: 'SE5560000001-ta1',
+        prefix: 'TA',
+        verificationEvidence: evidence,
       }),
     )
     expect(r.status).toBe(201)
@@ -1303,7 +1614,14 @@ describe('requirement-areas/[id] routes', () => {
       makeParams('1'),
     )
     const putResponse = await putRequirementAreaCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: ['SE5560000001-coa1'] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody(
+          ['SE5560000001-coa1'],
+          'requirement_area_co_author',
+          1,
+        ),
+      ),
       makeParams('1'),
     )
 
@@ -1341,7 +1659,10 @@ describe('requirement-areas/[id] routes', () => {
       makeParams('1'),
     )
     const missingPut = await putRequirementAreaCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody([], 'requirement_area_co_author', 404),
+      ),
       makeParams('404'),
     )
 
@@ -1353,11 +1674,30 @@ describe('requirement-areas/[id] routes', () => {
   it('PUT area co-authors reports a concurrent disappearance', async () => {
     mockReplaceRequirementAreaCoAuthors.mockResolvedValueOnce(null)
     const response = await putRequirementAreaCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody([], 'requirement_area_co_author', 1),
+      ),
       makeParams('1'),
     )
 
     expect(response.status).toBe(404)
+  })
+  it('rejects oversized requirement area co-author lists', async () => {
+    const response = await putRequirementAreaCoAuthors(
+      jsonReq('PUT', {
+        coAuthorHsaIds: Array.from(
+          { length: 201 },
+          (_value, index) => `SE5560000001-coa${index}`,
+        ),
+        verificationEvidence: [],
+      }),
+      makeParams('1'),
+    )
+
+    expect(response.status).toBe(400)
+    await expectInvalidRequest(response, 'coAuthorHsaIds')
+    expect(mockReplaceRequirementAreaCoAuthors).not.toHaveBeenCalled()
   })
   it('falls back to stable actor identifiers for area co-author changes', async () => {
     authState.context.actor.displayName = ' '
@@ -1367,7 +1707,10 @@ describe('requirement-areas/[id] routes', () => {
       requirementAreaId: 1,
     })
     const response = await putRequirementAreaCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody([], 'requirement_area_co_author', 1),
+      ),
       makeParams('1'),
     )
     expect(response.status).toBe(200)
@@ -1433,7 +1776,14 @@ describe('requirement-areas/[id] routes', () => {
     )
 
     const r = await putReqArea(
-      jsonReq('PUT', { ownerHsaId: 'SE5560000001-coa1' }),
+      jsonReq('PUT', {
+        ownerHsaId: 'SE5560000001-coa1',
+        verificationEvidence: verificationEvidence(
+          'SE5560000001-coa1',
+          'requirement_area_owner',
+          1,
+        ),
+      }),
       makeParams('1'),
     )
 
@@ -2016,6 +2366,11 @@ describe('requirement-specifications routes', () => {
     const r = await putSpecResponsible(
       jsonReq('PUT', {
         responsibleHsaId: 'SE5560000001-rita1',
+        verificationEvidence: verificationEvidence(
+          'SE5560000001-rita1',
+          'requirements_specification_responsible',
+          1,
+        ),
       }),
       makeParams('1'),
     )
@@ -2075,6 +2430,11 @@ describe('requirement-specifications routes', () => {
     const r = await putSpecResponsible(
       jsonReq('PUT', {
         responsibleHsaId: 'SE5560000001-coa1',
+        verificationEvidence: verificationEvidence(
+          'SE5560000001-coa1',
+          'requirements_specification_responsible',
+          1,
+        ),
       }),
       makeParams('1'),
     )
@@ -2101,9 +2461,14 @@ describe('requirement-specifications routes', () => {
     )
 
     const r = await putSpecCoAuthors(
-      jsonReq('PUT', {
-        coAuthorHsaIds: ['SE5560000001-coa1'],
-      }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody(
+          ['SE5560000001-coa1'],
+          'requirements_specification_co_author',
+          1,
+        ),
+      ),
       makeParams('1'),
     )
 
@@ -2118,6 +2483,22 @@ describe('requirement-specifications routes', () => {
         ],
       }),
     )
+  })
+  it('rejects oversized specification co-author lists', async () => {
+    const response = await putSpecCoAuthors(
+      jsonReq('PUT', {
+        coAuthorHsaIds: Array.from(
+          { length: 201 },
+          (_value, index) => `SE5560000001-coa${index}`,
+        ),
+        verificationEvidence: [],
+      }),
+      makeParams('1'),
+    )
+
+    expect(response.status).toBe(400)
+    await expectInvalidRequest(response, 'coAuthorHsaIds')
+    expect(mockReplaceSpecificationCoAuthors).not.toHaveBeenCalled()
   })
   it('GET lists specification co-authors and enforces assignment permission', async () => {
     mockListSpecificationCoAuthors.mockResolvedValueOnce([
@@ -2156,7 +2537,10 @@ describe('requirement-specifications routes', () => {
       .mockResolvedValueOnce(null)
 
     const r = await putSpecCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody([], 'requirements_specification_co_author', 404),
+      ),
       makeParams('404'),
     )
 
@@ -2169,7 +2553,10 @@ describe('requirement-specifications routes', () => {
     )
 
     const r = await putSpecCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody([], 'requirements_specification_co_author', 1),
+      ),
       makeParams('1'),
     )
 
@@ -2180,7 +2567,10 @@ describe('requirement-specifications routes', () => {
     mockReplaceSpecificationCoAuthors.mockResolvedValueOnce(null)
 
     const r = await putSpecCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody([], 'requirements_specification_co_author', 1),
+      ),
       makeParams('1'),
     )
 
@@ -2199,7 +2589,10 @@ describe('requirement-specifications routes', () => {
       })
 
       const r = await putSpecCoAuthors(
-        jsonReq('PUT', { coAuthorHsaIds: [] }),
+        jsonReq(
+          'PUT',
+          coAuthorAssignmentBody([], 'requirements_specification_co_author', 1),
+        ),
         makeParams('1'),
       )
 
@@ -2223,7 +2616,14 @@ describe('requirement-specifications routes', () => {
     )
 
     const r = await putSpecResponsible(
-      jsonReq('PUT', { responsibleHsaId: 'SE5560000001-rita1' }),
+      jsonReq('PUT', {
+        responsibleHsaId: 'SE5560000001-rita1',
+        verificationEvidence: verificationEvidence(
+          'SE5560000001-rita1',
+          'requirements_specification_responsible',
+          1,
+        ),
+      }),
       makeParams('1'),
     )
 
@@ -2236,7 +2636,14 @@ describe('requirement-specifications routes', () => {
       .mockResolvedValueOnce(null)
 
     const r = await putSpecResponsible(
-      jsonReq('PUT', { responsibleHsaId: 'SE5560000001-rita1' }),
+      jsonReq('PUT', {
+        responsibleHsaId: 'SE5560000001-rita1',
+        verificationEvidence: verificationEvidence(
+          'SE5560000001-rita1',
+          'requirements_specification_responsible',
+          404,
+        ),
+      }),
       makeParams('404'),
     )
 
@@ -2247,7 +2654,14 @@ describe('requirement-specifications routes', () => {
     mockUpdateSpecResponsible.mockResolvedValueOnce(null)
 
     const r = await putSpecResponsible(
-      jsonReq('PUT', { responsibleHsaId: 'SE5560000001-rita1' }),
+      jsonReq('PUT', {
+        responsibleHsaId: 'SE5560000001-rita1',
+        verificationEvidence: verificationEvidence(
+          'SE5560000001-rita1',
+          'requirements_specification_responsible',
+          1,
+        ),
+      }),
       makeParams('1'),
     )
 
@@ -2525,7 +2939,14 @@ describe('requirement-packages routes', () => {
     })
 
     const r = await putRequirementPackage(
-      jsonReq('PUT', { leadHsaId: 'SE5560000001-coa1' }),
+      jsonReq('PUT', {
+        leadHsaId: 'SE5560000001-coa1',
+        verificationEvidence: verificationEvidence(
+          'SE5560000001-coa1',
+          'requirement_package_lead',
+          1,
+        ),
+      }),
       makeParams('1'),
     )
 
@@ -2595,7 +3016,10 @@ describe('requirement-packages routes', () => {
     )
     mockGetRequirementPackageById.mockResolvedValueOnce(null)
     const missingPut = await putRequirementPackageCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody([], 'requirement_package_co_author', 404),
+      ),
       makeParams('404'),
     )
     expect(invalid.status).toBe(400)
@@ -2607,7 +3031,10 @@ describe('requirement-packages routes', () => {
     authState.context.actor.id = ''
     mockReplaceRequirementPackageCoAuthors.mockResolvedValueOnce(null)
     const disappeared = await putRequirementPackageCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody([], 'requirement_package_co_author', 1),
+      ),
       makeParams('1'),
     )
     expect(disappeared.status).toBe(404)
@@ -2617,7 +3044,10 @@ describe('requirement-packages routes', () => {
       requirementPackageId: 1,
     })
     const success = await putRequirementPackageCoAuthors(
-      jsonReq('PUT', { coAuthorHsaIds: [] }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody([], 'requirement_package_co_author', 1),
+      ),
       makeParams('1'),
     )
     expect(success.status).toBe(200)
@@ -2647,9 +3077,14 @@ describe('requirement-packages routes', () => {
     )
 
     const r = await putRequirementPackageCoAuthors(
-      jsonReq('PUT', {
-        coAuthorHsaIds: ['SE5560000001-coa1'],
-      }),
+      jsonReq(
+        'PUT',
+        coAuthorAssignmentBody(
+          ['SE5560000001-coa1'],
+          'requirement_package_co_author',
+          1,
+        ),
+      ),
       makeParams('1'),
     )
 

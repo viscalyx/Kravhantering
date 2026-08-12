@@ -13,6 +13,7 @@ import {
 import {
   formatRequirementResponsibilityPersonName,
   type RequirementResponsibilityPersonRecord,
+  verifiedPeopleCoverAddedAssignments,
 } from '@/lib/requirements/responsibility-person'
 import {
   STATUS_DRAFT,
@@ -1412,6 +1413,7 @@ async function syncSpecificationCoAuthors(
   specificationId: number,
   nextHsaIds: string[],
   changedBy: { displayName: string | null; hsaId: string | null } | undefined,
+  coAuthorPeople: RequirementResponsibilityPersonRecord[],
 ): Promise<string[]> {
   const existingRows = (await db.query(
     `
@@ -1426,6 +1428,13 @@ async function syncSpecificationCoAuthors(
   const existingIdSet = new Set(existingIds)
   const removedIds = existingIds.filter(hsaId => !nextIdSet.has(hsaId))
   const addedIds = nextHsaIds.filter(hsaId => !existingIdSet.has(hsaId))
+
+  if (!verifiedPeopleCoverAddedAssignments(addedIds, coAuthorPeople)) {
+    throw validationError(
+      'Verification evidence is required for every added specification co-author',
+      { reason: 'requirement_responsibility_person_evidence_required' },
+    )
+  }
 
   if (removedIds.length > 0) {
     const placeholders = removedIds
@@ -1481,7 +1490,16 @@ export async function replaceSpecificationCoAuthors(
       )
     }
 
+    const coAuthorHsaIdSet = new Set(normalizedCoAuthorHsaIds)
     for (const coAuthorPerson of data.coAuthorPeople ?? []) {
+      if (
+        !coAuthorHsaIdSet.has(normalizeHsaIdForComparison(coAuthorPerson.hsaId))
+      ) {
+        throw validationError(
+          'Specification co-author person must match a co-author HSA-id',
+          { reason: 'co_author_person_hsa_id_mismatch' },
+        )
+      }
       await upsertRequirementResponsibilityPerson(manager, coAuthorPerson)
     }
     const removedHsaIds = await syncSpecificationCoAuthors(
@@ -1489,6 +1507,7 @@ export async function replaceSpecificationCoAuthors(
       specificationId,
       coAuthorHsaIds,
       data.changedBy,
+      data.coAuthorPeople ?? [],
     )
     await cleanupUnassignedRequirementResponsibilityPeople(
       manager,

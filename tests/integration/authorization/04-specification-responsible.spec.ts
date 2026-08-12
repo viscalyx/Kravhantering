@@ -189,7 +189,10 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
       .put(
         `/api/requirements-specifications/${fixture.specificationId}/co-authors`,
         {
-          data: { coAuthorHsaIds: originalCoAuthors },
+          data: {
+            coAuthorHsaIds: originalCoAuthors,
+            verificationEvidence: [],
+          },
         },
       )
       .catch(() => undefined)

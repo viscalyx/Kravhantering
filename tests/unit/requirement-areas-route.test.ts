@@ -71,6 +71,7 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
   updateAreaWithOwnerCheck: mocks.updateAreaWithOwnerCheck,
 }))
 vi.mock('@/lib/requirements/responsibility-person-verification', () => ({
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH: 4096,
   resolveVerifiedRequirementResponsibilityPerson:
     mocks.resolveVerifiedRequirementResponsibilityPerson,
 }))
@@ -124,7 +125,7 @@ describe('requirement-areas route', () => {
       prefix: 'INT',
     })
     mocks.listAreaIdsActorCanAuthor.mockResolvedValue([])
-    mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValue({
+    mocks.resolveVerifiedRequirementResponsibilityPerson.mockReturnValue({
       email: 'new@example.test',
       givenName: 'New',
       hsaId: 'NO5560000001-new1',
@@ -357,6 +358,7 @@ describe('requirement-areas route', () => {
         ownerHsaId: 'NO5560000001-new1',
         prefix: 'NEW',
         name: 'New requirement area',
+        verificationEvidence: 'verified-owner',
       }
       mocks.createArea.mockResolvedValue({ id: 3, ...body })
 
@@ -364,10 +366,12 @@ describe('requirement-areas route', () => {
       expect(res.status).toBe(201)
       expect(await res.json()).toMatchObject({ id: 3 })
       expect(mocks.createArea).toHaveBeenCalledWith(mocks.db, {
-        ...body,
+        name: body.name,
+        ownerHsaId: body.ownerHsaId,
         ownerPerson: expect.objectContaining({
           hsaId: 'NO5560000001-new1',
         }),
+        prefix: body.prefix,
       })
       expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
         expect.objectContaining({ requestId: 'request-area' }),
@@ -381,19 +385,18 @@ describe('requirement-areas route', () => {
     })
 
     it('uses a locally verified owner person without HSA lookup on save', async () => {
-      mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValueOnce(
-        {
-          email: 'verified.owner@example.test',
-          givenName: 'Verified',
-          hsaId: 'NO5560000001-new1',
-          middleName: null,
-          surname: 'Owner',
-        },
-      )
+      mocks.resolveVerifiedRequirementResponsibilityPerson.mockReturnValueOnce({
+        email: 'verified.owner@example.test',
+        givenName: 'Verified',
+        hsaId: 'NO5560000001-new1',
+        middleName: null,
+        surname: 'Owner',
+      })
       const body = {
         ownerHsaId: 'NO5560000001-new1',
         prefix: 'NEW',
         name: 'New requirement area',
+        verificationEvidence: 'verified-owner',
       }
       mocks.createArea.mockResolvedValue({ id: 4, ...body })
 
@@ -402,7 +405,13 @@ describe('requirement-areas route', () => {
       expect(res.status).toBe(201)
       expect(
         mocks.resolveVerifiedRequirementResponsibilityPerson,
-      ).toHaveBeenCalledWith(mocks.db, 'NO5560000001-new1')
+      ).toHaveBeenCalledWith(
+        'verified-owner',
+        expect.objectContaining({
+          hsaId: 'NO5560000001-new1',
+          purpose: 'requirement_area_owner',
+        }),
+      )
       expect(mocks.createArea).toHaveBeenCalledWith(mocks.db, {
         name: 'New requirement area',
         ownerHsaId: 'NO5560000001-new1',
@@ -448,7 +457,7 @@ describe('requirement-areas route', () => {
 
   describe('PUT', () => {
     it('can change ownerHsaId', async () => {
-      mocks.resolveVerifiedRequirementResponsibilityPerson.mockResolvedValue({
+      mocks.resolveVerifiedRequirementResponsibilityPerson.mockReturnValue({
         email: 'next@example.test',
         givenName: 'Next',
         hsaId: 'NO5560000001-next1',
@@ -465,7 +474,10 @@ describe('requirement-areas route', () => {
 
       const res = await PUT(
         request(
-          { ownerHsaId: 'NO5560000001-next1' },
+          {
+            ownerHsaId: 'NO5560000001-next1',
+            verificationEvidence: 'verified-owner',
+          },
           'http://localhost/api/requirement-areas/1',
           'PUT',
         ),
@@ -478,7 +490,9 @@ describe('requirement-areas route', () => {
         1,
         expect.objectContaining({
           ownerHsaId: 'NO5560000001-next1',
-          resolveOwnerPerson: expect.any(Function),
+          ownerPerson: expect.objectContaining({
+            hsaId: 'NO5560000001-next1',
+          }),
         }),
       )
       expect(mocks.recordAdminPrivilegedActionSucceeded).toHaveBeenCalledWith(
@@ -557,7 +571,10 @@ describe('requirement-areas route', () => {
 
       const res = await PUT(
         request(
-          { ownerHsaId: 'NO5560000001-next1' },
+          {
+            ownerHsaId: 'NO5560000001-next1',
+            verificationEvidence: 'verified-owner',
+          },
           'http://localhost/api/requirement-areas/1',
           'PUT',
         ),

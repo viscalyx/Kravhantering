@@ -77,3 +77,11 @@ uppgifterna ska bara visas där de behövs för ansvar, spårbarhet, uppdrag ell
 behörighetsprövning, och export, loggning, hjälptext och eventuell
 skyddsmarkering styrs av policybeslutet i GitHub issue
 [#326](https://github.com/viscalyx/Kravhantering/issues/326).
+
+Verifieringsanropet är läsande och lagrar inte HSA-svaret. Det returnerar i
+stället kortlivat, signerat bevis bundet till aktör, målidentitet, ändamål och
+omfattning. Slutlig tilldelning verifierar beviset och sparar personpost och
+ansvar i samma transaktion. Begränsningsnycklar och utfallsloggar använder
+icke-reversibla fingeravtryck, inte rått mål-HSA-id eller personuppgifter.
+Utfallet loggas som `success`, `not_found`, `conflict`, `throttled` eller
+`provider_failure`.

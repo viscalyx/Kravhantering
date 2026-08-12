@@ -408,6 +408,58 @@ describe('requirement-packages DAL', () => {
     })
   })
 
+  it('rolls back the person upsert when the lead assignment fails', async () => {
+    const state = { assignmentExists: false, personExists: false }
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM requirement_packages WITH')) {
+        return [{ leadHsaId: 'SE5560000001-old1' }]
+      }
+      if (sql.includes('FROM requirement_package_co_authors WITH')) return []
+      if (sql.includes('MERGE INTO requirement_responsibility_people')) {
+        state.personExists = true
+        return []
+      }
+      if (sql.includes('UPDATE requirement_packages')) {
+        state.assignmentExists = true
+        throw new Error('lead update failed')
+      }
+      return []
+    })
+    const transaction = vi.fn(
+      async (
+        _isolation: string,
+        callback: (manager: { query: typeof query }) => Promise<unknown>,
+      ) => {
+        const snapshot = { ...state }
+        try {
+          return await callback({ query })
+        } catch (error) {
+          Object.assign(state, snapshot)
+          throw error
+        }
+      },
+    )
+    const db = { transaction } as unknown as Parameters<
+      typeof updateRequirementPackage
+    >[0]
+
+    await expect(
+      updateRequirementPackage(db, 13, {
+        leadHsaId: 'SE5560000001-new1',
+        leadPerson: {
+          email: 'new.lead@example.test',
+          givenName: 'New',
+          hsaId: 'SE5560000001-new1',
+          middleName: null,
+          surname: 'Lead',
+        },
+      }),
+    ).rejects.toThrow('lead update failed')
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(state).toEqual({ assignmentExists: false, personExists: false })
+  })
+
   it('rejects lead changes to an existing package co-author before updating', async () => {
     const query = vi
       .fn()
@@ -542,6 +594,65 @@ describe('requirement-packages DAL', () => {
       'INSERT INTO requirement_package_co_authors',
     )
     expect(String(query.mock.calls[5]?.[0])).toContain('DELETE person')
+  })
+
+  it('rolls back the person upsert when a package co-author assignment fails', async () => {
+    const state = { assignmentExists: false, personExists: false }
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM requirement_packages WITH')) {
+        return [{ leadHsaId: 'SE5560000001-lead1' }]
+      }
+      if (sql.includes('MERGE INTO requirement_responsibility_people')) {
+        state.personExists = true
+        return []
+      }
+      if (
+        sql.includes('FROM requirement_package_co_authors') &&
+        sql.includes('SELECT hsa_id')
+      ) {
+        return []
+      }
+      if (sql.includes('INSERT INTO requirement_package_co_authors')) {
+        state.assignmentExists = true
+        throw new Error('co-author insert failed')
+      }
+      return []
+    })
+    const transaction = vi.fn(
+      async (
+        _isolation: string,
+        callback: (manager: { query: typeof query }) => Promise<unknown>,
+      ) => {
+        const snapshot = { ...state }
+        try {
+          return await callback({ query })
+        } catch (error) {
+          Object.assign(state, snapshot)
+          throw error
+        }
+      },
+    )
+    const db = { transaction } as unknown as Parameters<
+      typeof replaceRequirementPackageCoAuthors
+    >[0]
+
+    await expect(
+      replaceRequirementPackageCoAuthors(db, 13, {
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+        coAuthorPeople: [
+          {
+            email: 'co.author@example.test',
+            givenName: 'Co',
+            hsaId: 'SE5560000001-coa1',
+            middleName: null,
+            surname: 'Author',
+          },
+        ],
+      }),
+    ).rejects.toThrow('co-author insert failed')
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(state).toEqual({ assignmentExists: false, personExists: false })
   })
 
   it('rejects package co-author replacements that include the package lead', async () => {

@@ -9,7 +9,7 @@ import {
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { forbiddenError, validationError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
-import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
+import { requirementResponsibilityPersonFromActor } from '@/lib/requirements/responsibility-person-verification'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { createSpecificationWithAudit } from '@/lib/requirements/specification-mutations'
 import { canCreateSpecification } from '@/lib/specifications/permissions'
@@ -53,8 +53,9 @@ export const POST = secureMutationRoute({
     }
 
     const db = await getRequestSqlServerDataSource()
-    const responsiblePerson =
-      await resolveVerifiedRequirementResponsibilityPerson(db, responsibleHsaId)
+    const responsiblePerson = requirementResponsibilityPersonFromActor(
+      context.actor,
+    )
     try {
       const specification = await createSpecificationWithAudit(
         db,

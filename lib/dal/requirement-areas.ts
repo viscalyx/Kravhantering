@@ -5,7 +5,10 @@ import {
 import type { SqlServerDatabase } from '@/lib/db'
 import { conflictError, validationError } from '@/lib/requirements/errors'
 import type { RequirementResponsibilityPersonRecord } from '@/lib/requirements/responsibility-person'
-import { formatRequirementResponsibilityPersonName } from '@/lib/requirements/responsibility-person'
+import {
+  formatRequirementResponsibilityPersonName,
+  verifiedPeopleCoverAddedAssignments,
+} from '@/lib/requirements/responsibility-person'
 import { toIsoString } from '@/lib/typeorm/value-mappers'
 
 export interface RequirementAreaRow {
@@ -662,6 +665,7 @@ async function syncRequirementAreaCoAuthors(
   areaId: number,
   nextHsaIds: string[],
   changedBy: { displayName: string | null; hsaId: string | null } | undefined,
+  coAuthorPeople: RequirementResponsibilityPersonRecord[],
 ): Promise<string[]> {
   const existingRows = (await db.query(
     `
@@ -676,6 +680,13 @@ async function syncRequirementAreaCoAuthors(
   const existingIdSet = new Set(existingIds)
   const removedIds = existingIds.filter(hsaId => !nextIdSet.has(hsaId))
   const addedIds = nextHsaIds.filter(hsaId => !existingIdSet.has(hsaId))
+
+  if (!verifiedPeopleCoverAddedAssignments(addedIds, coAuthorPeople)) {
+    throw validationError(
+      'Verification evidence is required for every added requirement area co-author',
+      { reason: 'requirement_responsibility_person_evidence_required' },
+    )
+  }
 
   if (removedIds.length > 0) {
     const placeholders = removedIds
@@ -748,6 +759,7 @@ export async function replaceRequirementAreaCoAuthors(
       areaId,
       coAuthorHsaIds,
       data.changedBy,
+      data.coAuthorPeople ?? [],
     )
     await cleanupUnassignedRequirementResponsibilityPeople(
       manager,

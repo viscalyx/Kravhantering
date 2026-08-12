@@ -83,16 +83,31 @@ enables mixed mode.
 The responsibility-assignment person lookup flow stays server-side. The browser
 calls `POST /api/requirement-responsibility-people/verify`, and the app checks
 session, CSRF, purpose, and scope before any local read or HSA lookup.
+It then applies per-caller, per-target, and caller-target limits. Caller and
+target use non-reversible HMAC fingerprints in throttle keys, and target
+fingerprints normalize HSA-id case to prevent variant-based bypasses. A limited
+request returns stable code `hsa_verification_throttled`, HTTP `429`,
+`Retry-After`, and `retryAfterSeconds` without calling local storage or the HSA
+provider.
 
 The route has two explicit modes:
 
 - `reuse_local` is used when the editor leaves an HSA-id field. If a local
   `Kravansvarsperson` row already exists, the app reuses it without calling
   HSA. If the row is missing, the app calls `HSA_PERSON_LOOKUP_URL`, normalizes
-  the response, and updates or inserts the local person row.
+  the response, and returns it without updating local person storage.
 - `refresh` is used by the manual fetch icon. It always calls
-  `HSA_PERSON_LOOKUP_URL` and updates or inserts the local person row with the
-  returned name components and e-mail.
+  `HSA_PERSON_LOOKUP_URL` and returns the normalized person without updating
+  local person storage.
+
+A successful response also contains short-lived, signed `evidence` and its
+`expiresAt` time. The evidence is bound to the authenticated caller, normalized
+target HSA-id, assignment purpose, optional scope ID, and verified person
+record. Final assignment routes reject missing, expired, tampered, cross-actor,
+cross-target, cross-purpose, or cross-scope evidence. Verification outcomes
+(`success`, `not_found`, `conflict`, `throttled`, and `provider_failure`) are
+audited with target fingerprints and operational metadata only, never the raw
+target HSA-id or returned person details.
 
 ## Technical API and authentication flows
 
@@ -141,7 +156,7 @@ sequenceDiagram
     end
     Kong-->>Client: Person JSON or mapped error
     Client-->>Verify: Normalized person or domain error
-    Verify-->>UI: Verified person payload or validation error
+    Verify-->>UI: Person + short-lived signed evidence, or stable error
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -213,41 +228,36 @@ sequenceDiagram
             DB-->>Verify: Local person row
         else Local person missing
             Verify->>Verify: Perform external HSA lookup
-            Verify->>DB: Store Kravansvarsperson
         end
-        Verify-->>UI: Read-only name and e-mail
+        Verify->>Verify: Sign actor/target/purpose/scope evidence
+        Verify-->>UI: Read-only identity and evidence
     else Editor selects Fetch icon
         UI->>Verify: POST /api/requirement-responsibility-people/verify mode=refresh
         Verify->>Policy: Validate session, CSRF, purpose and scope
         Policy-->>Verify: Allowed
         Verify->>Verify: Perform external HSA lookup
-        Verify->>DB: Store Kravansvarsperson
-        Verify-->>UI: Read-only name and e-mail
+        Verify->>Verify: Sign actor/target/purpose/scope evidence
+        Verify-->>UI: Read-only identity and evidence
     end
 
     alt Save responsibility assignment
         Editor->>UI: Save form
-        UI->>Save: POST/PUT area, specification or package route
+        UI->>Save: POST/PUT assignment with signed evidence
         Save->>Policy: Validate mutation permission
-        Save->>DB: Read Kravansvarsperson by HSA-id
-        alt Local person missing
-            Save->>Save: Wait briefly
-            Save->>DB: Read Kravansvarsperson again
-        end
-        alt Local person still missing
-            Save-->>UI: Error: verify HSA-id first
-        else Local person exists
-            Save->>DB: Store assignment HSA-id
-            DB-->>Save: Updated responsibility data
-            Save-->>UI: Saved response with local person data
-        end
+        Save->>Save: Validate actor, target, purpose, scope and expiry
+        Save->>DB: Begin serializable transaction
+        Save->>DB: Upsert verified person and assignment
+        DB-->>Save: Commit both changes
+        Save-->>UI: Saved response with local person data
     end
 ```
 
-The save routes require a local `Kravansvarsperson` row for the HSA-id being
-assigned. They retry the local read once after a short delay to handle a
-verification request that just completed. If the local row is still missing,
-the route returns an error asking the editor to verify the HSA-id first.
+The verification request never persists a person. The final assignment owns
+persistence: it validates the signed evidence, then upserts
+`Kravansvarsperson` and writes the responsibility assignment in one database
+transaction. Any failure rolls back both changes, preventing orphan person
+rows and partial assignments. Removing an assignment does not require new
+evidence; every newly added identity does.
 
 ## Related decisions
 

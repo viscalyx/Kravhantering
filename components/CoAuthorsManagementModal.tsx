@@ -22,6 +22,7 @@ export interface CoAuthorSummary {
 
 interface CoAuthorFormRow extends CoAuthorSummary {
   clientId: string
+  verificationEvidence?: string
 }
 
 interface CoAuthorDraft {
@@ -183,6 +184,11 @@ export default function CoAuthorsManagementModal({
       const response = await apiFetch(endpoint, {
         body: JSON.stringify({
           coAuthorHsaIds: sortedNextCoAuthors.map(coAuthor => coAuthor.hsaId),
+          verificationEvidence: sortedNextCoAuthors.flatMap(coAuthor =>
+            coAuthor.verificationEvidence
+              ? [coAuthor.verificationEvidence]
+              : [],
+          ),
         }),
         headers: { 'Content-Type': 'application/json' },
         method: 'PUT',
@@ -191,7 +197,12 @@ export default function CoAuthorsManagementModal({
         setError((await readResponseMessage(response)) ?? saveErrorMessage)
         return false
       }
-      setCoAuthors(sortedNextCoAuthors)
+      setCoAuthors(
+        sortedNextCoAuthors.map(coAuthor => ({
+          ...coAuthor,
+          verificationEvidence: undefined,
+        })),
+      )
       await onChanged?.()
       return true
     } catch (saveError) {
@@ -241,6 +252,7 @@ export default function CoAuthorsManagementModal({
         displayName: person.displayName,
         email: person.email,
         hsaId: person.hsaId,
+        verificationEvidence: person.verificationEvidence,
       },
     ]
     if (await saveCoAuthorAssignments(nextCoAuthors)) {

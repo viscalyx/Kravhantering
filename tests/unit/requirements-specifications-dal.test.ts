@@ -832,6 +832,58 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     })
   })
 
+  it('rolls back the person upsert when the responsible assignment fails', async () => {
+    const state = { assignmentExists: false, personExists: false }
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM requirements_specifications WITH')) {
+        return [{ responsibleHsaId: 'SE5560000001-old1' }]
+      }
+      if (sql.includes('FROM specification_co_authors WITH')) return []
+      if (sql.includes('MERGE INTO requirement_responsibility_people')) {
+        state.personExists = true
+        return []
+      }
+      if (sql.includes('UPDATE requirements_specifications')) {
+        state.assignmentExists = true
+        throw new Error('responsible update failed')
+      }
+      return []
+    })
+    const transaction = vi.fn(
+      async (
+        _isolation: string,
+        callback: (manager: { query: typeof query }) => Promise<unknown>,
+      ) => {
+        const snapshot = { ...state }
+        try {
+          return await callback({ query })
+        } catch (error) {
+          Object.assign(state, snapshot)
+          throw error
+        }
+      },
+    )
+    const db = { transaction } as unknown as Parameters<
+      typeof updateSpecificationResponsible
+    >[0]
+
+    await expect(
+      updateSpecificationResponsible(db, 11, {
+        responsibleHsaId: 'SE5560000001-new1',
+        responsiblePerson: {
+          email: 'new.responsible@example.test',
+          givenName: 'New',
+          hsaId: 'SE5560000001-new1',
+          middleName: null,
+          surname: 'Responsible',
+        },
+      }),
+    ).rejects.toThrow('responsible update failed')
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(state).toEqual({ assignmentExists: false, personExists: false })
+  })
+
   it('rejects invalid specification co-author HSA-ids before syncing assignments', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
@@ -862,13 +914,22 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
     const result = await replaceSpecificationCoAuthors(db, 11, {
       coAuthorHsaIds: [' SE5560000001-coa1 ', 'SE5560000001-coa1'],
+      coAuthorPeople: [
+        {
+          email: 'co.author@example.test',
+          givenName: 'Co',
+          hsaId: 'SE5560000001-coa1',
+          middleName: null,
+          surname: 'Author',
+        },
+      ],
     })
 
     expect(result).toEqual({
       coAuthorHsaIds: ['SE5560000001-coa1'],
       specificationId: 11,
     })
-    expect(query.mock.calls[2]?.[1]).toEqual([
+    expect(query.mock.calls[3]?.[1]).toEqual([
       11,
       'SE5560000001-coa1',
       expect.any(Date),
@@ -877,10 +938,70 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     ])
   })
 
+  it('rolls back the person upsert when a specification co-author assignment fails', async () => {
+    const state = { assignmentExists: false, personExists: false }
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM requirements_specifications WITH')) {
+        return [{ responsibleHsaId: 'SE5560000001-owner1' }]
+      }
+      if (sql.includes('MERGE INTO requirement_responsibility_people')) {
+        state.personExists = true
+        return []
+      }
+      if (
+        sql.includes('FROM specification_co_authors') &&
+        sql.includes('SELECT hsa_id')
+      ) {
+        return []
+      }
+      if (sql.includes('INSERT INTO specification_co_authors')) {
+        state.assignmentExists = true
+        throw new Error('co-author insert failed')
+      }
+      return []
+    })
+    const transaction = vi.fn(
+      async (
+        _isolation: string,
+        callback: (manager: { query: typeof query }) => Promise<unknown>,
+      ) => {
+        const snapshot = { ...state }
+        try {
+          return await callback({ query })
+        } catch (error) {
+          Object.assign(state, snapshot)
+          throw error
+        }
+      },
+    )
+    const db = { transaction } as unknown as Parameters<
+      typeof replaceSpecificationCoAuthors
+    >[0]
+
+    await expect(
+      replaceSpecificationCoAuthors(db, 11, {
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+        coAuthorPeople: [
+          {
+            email: 'co.author@example.test',
+            givenName: 'Co',
+            hsaId: 'SE5560000001-coa1',
+            middleName: null,
+            surname: 'Author',
+          },
+        ],
+      }),
+    ).rejects.toThrow('co-author insert failed')
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(state).toEqual({ assignmentExists: false, personExists: false })
+  })
+
   it('removes stale co-authors and handles a missing specification', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([{ responsibleHsaId: 'SE5560000001-ada1' }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         { hsaId: 'SE5560000001-old1' },
         { hsaId: 'SE5560000001-keep1' },
@@ -896,12 +1017,21 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           hsaId: 'SE5560000001-ada1',
         },
         coAuthorHsaIds: ['SE5560000001-keep1', 'SE5560000001-new1'],
+        coAuthorPeople: [
+          {
+            email: 'new.coauthor@example.test',
+            givenName: 'New',
+            hsaId: 'SE5560000001-new1',
+            middleName: null,
+            surname: 'Coauthor',
+          },
+        ],
       }),
     ).resolves.toEqual({
       coAuthorHsaIds: ['SE5560000001-keep1', 'SE5560000001-new1'],
       specificationId: 11,
     })
-    expect(query.mock.calls[2]?.[1]).toEqual([11, 'SE5560000001-old1'])
+    expect(query.mock.calls[3]?.[1]).toEqual([11, 'SE5560000001-old1'])
 
     const missing = createSqlServerDb()
     missing.query.mockResolvedValueOnce([])

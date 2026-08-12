@@ -43,6 +43,7 @@ export type SecurityEventName =
   | 'privacy.data_subject_export.generated'
   | 'privacy.erasure.executed'
   | 'privacy.erasure.previewed'
+  | 'requirements.hsa_verification.completed'
   | 'requirements.sensitive_mutation.succeeded'
 
 export type SecurityEventOutcome = 'success' | 'failure'

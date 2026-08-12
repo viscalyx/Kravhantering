@@ -53,6 +53,7 @@ vi.mock('@/lib/admin/privileged-audit', () => ({
 }))
 
 vi.mock('@/lib/requirements/responsibility-person-verification', () => ({
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH: 4096,
   resolveVerifiedRequirementResponsibilityPeople: state.resolvePeople,
   resolveVerifiedRequirementResponsibilityPerson: state.resolvePerson,
 }))
@@ -87,8 +88,8 @@ describe('requirement-area routes', () => {
     state.getAreaById.mockResolvedValue({ id: 7 })
     state.listRequirementAreaCoAuthors.mockResolvedValue([{ hsaId: 'author' }])
     state.replaceRequirementAreaCoAuthors.mockResolvedValue({ areaId: 7 })
-    state.resolvePeople.mockResolvedValue([])
-    state.resolvePerson.mockResolvedValue({ hsaId: 'SE5560000001-next' })
+    state.resolvePeople.mockReturnValue([])
+    state.resolvePerson.mockReturnValue({ hsaId: 'SE5560000001-next' })
     state.updateAreaWithOwnerCheck.mockResolvedValue({ id: 7 })
   })
 
@@ -114,7 +115,10 @@ describe('requirement-area routes', () => {
 
   it('covers co-author PUT validation, authorization, and outcomes', async () => {
     const path = '/api/requirement-areas/7/co-authors'
-    const body = { coAuthorHsaIds: ['SE5560000001-author'] }
+    const body = {
+      coAuthorHsaIds: ['SE5560000001-author'],
+      verificationEvidence: ['verified-author'],
+    }
     expect(
       (await callMutation(areaCoAuthorsPut, path, 'PUT', { body, id: '7' }))
         .status,
@@ -235,20 +239,26 @@ describe('requirement-area routes', () => {
   it('executes owner resolution and observes policy outcomes', async () => {
     state.updateAreaWithOwnerCheck.mockImplementationOnce(
       async (_db: unknown, _id: number, data: Record<string, unknown>) => {
-        const resolveOwnerPerson = data.resolveOwnerPerson as (
-          executor: unknown,
-          hsaId: string,
-        ) => Promise<unknown>
-        await resolveOwnerPerson(db, 'SE5560000001-next')
+        expect(data.ownerPerson).toEqual({ hsaId: 'SE5560000001-next' })
         return { id: 7 }
       },
     )
     const path = '/api/requirement-areas/7'
-    const body = { ownerHsaId: 'SE5560000001-next' }
+    const body = {
+      ownerHsaId: 'SE5560000001-next',
+      verificationEvidence: 'verified-owner',
+    }
     expect(
       (await callMutation(areaPut, path, 'PUT', { body, id: '7' })).status,
     ).toBe(200)
-    expect(state.resolvePerson).toHaveBeenCalledWith(db, 'SE5560000001-next')
+    expect(state.resolvePerson).toHaveBeenCalledWith(
+      'verified-owner',
+      expect.objectContaining({
+        hsaId: 'SE5560000001-next',
+        purpose: 'requirement_area_owner',
+        scopeId: 7,
+      }),
+    )
 
     state.getAreaById.mockResolvedValueOnce(null)
     expect(

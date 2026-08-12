@@ -477,7 +477,10 @@ export default function RequirementPackagesClient() {
       const response = await apiFetch(
         `/api/requirement-packages/${leadChange.packageId}`,
         {
-          body: JSON.stringify({ leadHsaId: nextLeadHsaId }),
+          body: JSON.stringify({
+            leadHsaId: nextLeadHsaId,
+            verificationEvidence: person?.verificationEvidence ?? '',
+          }),
           headers: { 'Content-Type': 'application/json' },
           method: 'PUT',
         },

@@ -24,7 +24,7 @@ import {
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 import { requireRequirementPackageCreatePermission } from '@/lib/requirements/requirement-package-permissions'
-import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
+import { requirementResponsibilityPersonFromActor } from '@/lib/requirements/responsibility-person-verification'
 
 const requirementPackageSchema = z
   .object({
@@ -79,10 +79,7 @@ export const POST = secureMutationRoute({
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
     const actor = requireHumanActorSnapshot(context)
-    const leadPerson = await resolveVerifiedRequirementResponsibilityPerson(
-      db,
-      actor.hsaId,
-    )
+    const leadPerson = requirementResponsibilityPersonFromActor(context.actor)
     const requirementPackage = await db.transaction(async manager => {
       const createdRequirementPackage = await createRequirementPackage(
         manager,

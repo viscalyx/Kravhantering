@@ -1,6 +1,6 @@
 'use client'
 
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, ShieldAlert } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -11,24 +11,24 @@ import {
   isHsaIdPrefix,
   splitHsaId,
 } from '@/lib/auth/hsa-id'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import type { RequirementResponsibilityPersonVerificationPurpose } from '@/lib/requirements/responsibility-person-verification-contract'
 
 export type HsaPersonVerificationPurpose =
-  | 'requirement_area_owner'
-  | 'requirement_area_co_author'
-  | 'requirement_package_co_author'
-  | 'requirement_package_lead'
-  | 'requirements_specification_responsible'
-  | 'requirements_specification_co_author'
+  RequirementResponsibilityPersonVerificationPurpose
 
 export interface HsaPersonVerification {
   displayName: string
   email: string | null
   givenName: string
+  hasProtectedPersonalData: boolean
   hsaId: string
   middleName: string | null
   surname: string | null
+  verificationEvidence: string
+  verificationExpiresAt: string
 }
 
 interface HsaIdPrefixOption {
@@ -214,16 +214,26 @@ export default function HsaPersonVerifyField({
         return
       }
       const payload = (await response.json()) as {
-        person?: HsaPersonVerification
+        evidence?: string
+        expiresAt?: string
+        person?: Omit<
+          HsaPersonVerification,
+          'verificationEvidence' | 'verificationExpiresAt'
+        >
       }
-      if (!payload.person) {
+      if (!payload.person || !payload.evidence || !payload.expiresAt) {
         if (currentHsaIdRef.current !== requestedHsaId) return
         setError(errorFallback)
         return
       }
       if (currentHsaIdRef.current !== requestedHsaId) return
-      setVerification(payload.person)
-      onVerified?.(payload.person)
+      const verifiedPerson = {
+        ...payload.person,
+        verificationEvidence: payload.evidence,
+        verificationExpiresAt: payload.expiresAt,
+      }
+      setVerification(verifiedPerson)
+      onVerified?.(verifiedPerson)
     } catch {
       if (currentHsaIdRef.current !== requestedHsaId) return
       setError(errorFallback)
@@ -370,6 +380,24 @@ export default function HsaPersonVerifyField({
             />
           </label>
         </div>
+      ) : null}
+      {activeVerification?.hasProtectedPersonalData ? (
+        <p
+          className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+          role="status"
+          {...devMarker({
+            context: 'hsa person verification',
+            name: 'protection guidance',
+            value: purpose,
+          })}
+        >
+          <ShieldAlert
+            aria-hidden="true"
+            className="mt-0.5 h-4 w-4 shrink-0"
+            focusable={false}
+          />
+          {tc('hsaProtectedPersonGuidance')}
+        </p>
       ) : null}
       {error && (
         <p className="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">

@@ -188,6 +188,7 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
         {
           data: {
             coAuthorHsaIds: [HSA.packageCoauthor],
+            verificationEvidence: [],
           },
         },
       ),
@@ -209,6 +210,7 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
           {
             data: {
               coAuthorHsaIds: originalCoAuthors,
+              verificationEvidence: [],
             },
           },
         ),

@@ -114,7 +114,11 @@ export default function HsaPersonChangeModal({
 
   const handleSubmit = async () => {
     if (submitting) return
-    if (validationError || !isHsaId(trimmedNextHsaId)) {
+    if (
+      validationError ||
+      !isHsaId(trimmedNextHsaId) ||
+      verifiedPerson?.hsaId !== trimmedNextHsaId
+    ) {
       setSubmitError(validationError ?? invalidError)
       return
     }
@@ -210,7 +214,10 @@ export default function HsaPersonChangeModal({
           <button
             className="btn-primary"
             disabled={
-              submitting || !!validationError || !isHsaId(trimmedNextHsaId)
+              submitting ||
+              !!validationError ||
+              !isHsaId(trimmedNextHsaId) ||
+              verifiedPerson?.hsaId !== trimmedNextHsaId
             }
             onClick={handleSubmit}
             type="button"

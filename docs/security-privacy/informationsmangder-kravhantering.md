@@ -92,8 +92,11 @@ nyckelhantering, loggplattform och behörighet till driftloggar.
 
 Kravansvarsperson kan också bära flaggan `hasProtectedPersonalData`, mappad
 från HSA `hsaProtectedPerson`, för att visa att HSA-personposten har skyddade
-personuppgifter. Flaggan transporteras och exporteras men ger ännu ingen
-särskild UI-maskering eller gallringsregel; sådan policy beslutas separat.
+personuppgifter. I ett behörigt och ändamålsbundet tilldelningsflöde visas den
+verifierade identiteten utan generell maskering. Gränssnittet visar samtidigt
+en skyddsvägledning som begränsar användningen till uppdraget, uppmanar till
+minskad spridning och hänvisar till regionens dataskydds-, säkerhets- eller
+HR-funktion. Flaggan ger ingen separat gallringsregel.
 
 ## Gallrings- och arkiveringsmatris
 

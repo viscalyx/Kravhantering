@@ -21,6 +21,7 @@
     "hsaVerifyEmail": "E-post",
     "hsaVerifyError": "Kunde inte hämta personuppgifter.",
     "hsaVerifyName": "Namn",
+    "hsaProtectedPersonGuidance": "Skyddade personuppgifter: använd identiteten endast för det behöriga uppdraget och begränsa fortsatt spridning. Kontakta regionens dataskydds-, säkerhets- eller HR-funktion om du är osäker på hur du ska fortsätta.",
     "hsaPrefixCurrent": "Aktuellt prefix",
     "hsaPrefixLabel": "HSA-id-prefix",
     "hsaPrefixLoadError": "Kunde inte läsa HSA-id-prefix.",

@@ -86,6 +86,7 @@ test('AUTHZ-07/AUTH-10/AUTH-11: requirement package co-authors are exported but 
         {
           data: {
             coAuthorHsaIds: [],
+            verificationEvidence: [],
           },
         },
       ),

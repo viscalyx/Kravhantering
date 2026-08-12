@@ -171,7 +171,10 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
       await areaCoauthor.put(
         `/api/requirement-areas/${fixture.areaId}/co-authors`,
         {
-          data: { coAuthorHsaIds: [HSA.areaCoauthor] },
+          data: {
+            coAuthorHsaIds: [HSA.areaCoauthor],
+            verificationEvidence: [],
+          },
           timeout: 30_000,
         },
       ),

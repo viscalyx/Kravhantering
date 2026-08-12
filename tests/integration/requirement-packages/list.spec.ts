@@ -21,6 +21,7 @@ const deterministicPackageLeadVerification = {
   displayName: 'Ada Admin',
   email: 'ada.admin@example.test',
   givenName: 'Ada',
+  hasProtectedPersonalData: true,
   hsaId: 'SE5560000001-admin1',
   middleName: null,
   surname: 'Admin',
@@ -61,6 +62,8 @@ for (const viewport of viewports) {
           ) {
             await route.fulfill({
               body: JSON.stringify({
+                evidence: 'playwright-signed-evidence',
+                expiresAt: '2099-01-01T00:00:00.000Z',
                 person: deterministicPackageLeadVerification,
               }),
               contentType: 'application/json',
@@ -308,6 +311,9 @@ for (const viewport of viewports) {
         await expect(
           changeDialog.getByText('Ada Admin (ada.admin@example.test)'),
         ).toBeVisible()
+        await expect(
+          changeDialog.getByText(/Skyddade personuppgifter:/),
+        ).toContainText(/endast för det behöriga uppdraget/)
         expect(hsaVerifyRequests).toContainEqual(
           expect.objectContaining({
             hsaId: deterministicPackageLeadVerification.hsaId,

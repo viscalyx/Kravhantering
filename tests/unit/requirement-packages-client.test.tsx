@@ -68,6 +68,31 @@ const hsaIdPrefixPayload = {
   prefixes: [{ id: 1, isDefault: true, label: null, prefix: 'SE5560000001' }],
 }
 
+const verificationResponse = (hsaId: string, displayName = 'Verified Lead') =>
+  okJson({
+    evidence: 'signed-evidence',
+    expiresAt: '2026-08-12T10:05:00.000Z',
+    person: {
+      displayName,
+      email: 'verified.lead@example.test',
+      givenName: 'Verified',
+      hasProtectedPersonalData: false,
+      hsaId,
+      middleName: null,
+      surname: 'Lead',
+    },
+  })
+
+async function verifyLeadIn(
+  dialog: HTMLElement,
+  displayName = 'Verified Lead',
+) {
+  fireEvent.click(
+    within(dialog).getByRole('button', { name: /common\.fetchHsaPerson/ }),
+  )
+  await within(dialog).findByText(new RegExp(displayName))
+}
+
 const sampleRequirementPackages = [
   {
     coAuthors: [
@@ -882,6 +907,8 @@ describe('RequirementPackagesClient', () => {
       if (urlString === '/api/auth/me') return okJson(currentAuthMe)
       if (urlString === '/api/hsa-id-prefixes')
         return okJson(hsaIdPrefixPayload)
+      if (urlString === '/api/requirement-responsibility-people/verify')
+        return verificationResponse('SE5560000001-new1', 'New Lead')
       if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
         return okJson({
           id: 1,
@@ -895,6 +922,8 @@ describe('RequirementPackagesClient', () => {
       return okJson({})
     })
 
+    await verifyLeadIn(changeDialog, 'New Lead')
+
     fireEvent.click(
       within(changeDialog).getByRole('button', {
         name: /requirementPackage\.changeLead/,
@@ -905,7 +934,10 @@ describe('RequirementPackagesClient', () => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/requirement-packages/1',
         expect.objectContaining({
-          body: JSON.stringify({ leadHsaId: 'SE5560000001-new1' }),
+          body: JSON.stringify({
+            leadHsaId: 'SE5560000001-new1',
+            verificationEvidence: 'signed-evidence',
+          }),
           method: 'PUT',
         }),
       )
@@ -953,6 +985,8 @@ describe('RequirementPackagesClient', () => {
       if (urlString === '/api/auth/me') return okJson(currentAuthMe)
       if (urlString === '/api/hsa-id-prefixes')
         return okJson(hsaIdPrefixPayload)
+      if (urlString === '/api/requirement-responsibility-people/verify')
+        return verificationResponse('SE5560000001-new1')
       if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
         return notOk({ error: 'Package lead handover failed' })
       if (urlString.startsWith('/api/requirement-packages?')) {
@@ -960,6 +994,8 @@ describe('RequirementPackagesClient', () => {
       }
       return okJson({})
     })
+
+    await verifyLeadIn(changeDialog)
 
     fireEvent.click(
       within(changeDialog).getByRole('button', {
@@ -991,6 +1027,8 @@ describe('RequirementPackagesClient', () => {
       if (urlString === '/api/auth/me') return okJson(nonAdminAuthMe)
       if (urlString === '/api/hsa-id-prefixes')
         return okJson(hsaIdPrefixPayload)
+      if (urlString === '/api/requirement-responsibility-people/verify')
+        return verificationResponse('SE5560000001-next1')
       if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
         return okJson({ id: 1, leadHsaId: 'SE5560000001-next1' })
       if (urlString.startsWith('/api/requirement-packages?')) {
@@ -1022,6 +1060,7 @@ describe('RequirementPackagesClient', () => {
       expect(newLeadInput).toBeEnabled()
     })
     fireEvent.change(newLeadInput, { target: { value: 'next1' } })
+    await verifyLeadIn(changeDialog)
     fireEvent.click(
       within(changeDialog).getByRole('button', {
         name: /requirementPackage\.changeLead/,

@@ -18,7 +18,10 @@ vi.mock('@/lib/hsa/person-lookup', () => ({
 }))
 
 import {
-  resolveVerifiedRequirementResponsibilityPeople,
+  createRequirementResponsibilityPersonVerificationEvidence,
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_PURPOSES,
+  requirementResponsibilityPersonActorFingerprint,
+  requirementResponsibilityPersonTargetFingerprint,
   resolveVerifiedRequirementResponsibilityPerson,
   toRequirementResponsibilityPersonVerificationPayload,
   verifyRequirementResponsibilityPerson,
@@ -39,6 +42,14 @@ const LOOKUP_PERSON = {
   middleName: null,
   surname: 'Owner',
 }
+
+const ACTOR = {
+  hsaId: 'SE5560000001-route',
+  id: 'route-test',
+  source: 'oidc' as const,
+}
+
+const EVIDENCE_SECRET = 'test-verification-secret-at-least-32-characters'
 
 describe('responsibility person verification', () => {
   beforeEach(() => {
@@ -65,7 +76,7 @@ describe('responsibility person verification', () => {
     expect(mocks.upsertRequirementResponsibilityPerson).not.toHaveBeenCalled()
   })
 
-  it('fetches and stores a person in reuse-local mode when no local row exists', async () => {
+  it('fetches without storing a person in reuse-local mode when no local row exists', async () => {
     await expect(
       verifyRequirementResponsibilityPerson(
         'mock-db' as never,
@@ -75,10 +86,7 @@ describe('responsibility person verification', () => {
     ).resolves.toEqual(LOOKUP_PERSON)
 
     expect(mocks.lookupHsaPerson).toHaveBeenCalledWith('SE5560000001-sara1')
-    expect(mocks.upsertRequirementResponsibilityPerson).toHaveBeenCalledWith(
-      'mock-db',
-      LOOKUP_PERSON,
-    )
+    expect(mocks.upsertRequirementResponsibilityPerson).not.toHaveBeenCalled()
   })
 
   it('always refreshes from HSA in refresh mode even when a local row exists', async () => {
@@ -94,84 +102,143 @@ describe('responsibility person verification', () => {
 
     expect(mocks.getRequirementResponsibilityPerson).not.toHaveBeenCalled()
     expect(mocks.lookupHsaPerson).toHaveBeenCalledWith('SE5560000001-sara1')
-    expect(mocks.upsertRequirementResponsibilityPerson).toHaveBeenCalledWith(
-      'mock-db',
-      LOOKUP_PERSON,
-    )
+    expect(mocks.upsertRequirementResponsibilityPerson).not.toHaveBeenCalled()
   })
 
-  it('resolves a verified person from the local table during save', async () => {
-    mocks.getRequirementResponsibilityPerson.mockResolvedValueOnce(LOCAL_PERSON)
+  it('accepts short-lived evidence only for its actor, target, purpose, and scope', () => {
+    const issuedAt = new Date('2026-08-12T10:00:00.000Z')
+    const verification =
+      createRequirementResponsibilityPersonVerificationEvidence(
+        {
+          actor: ACTOR,
+          person: LOOKUP_PERSON,
+          purpose: 'requirement_area_co_author',
+          scopeId: 42,
+        },
+        { now: issuedAt, secret: EVIDENCE_SECRET, ttlSeconds: 300 },
+      )
 
-    await expect(
+    expect(verification.expiresAt).toBe('2026-08-12T10:05:00.000Z')
+    expect(
       resolveVerifiedRequirementResponsibilityPerson(
-        'mock-db' as never,
-        'SE5560000001-local1',
-        { retryDelayMs: 0 },
+        verification.evidence,
+        {
+          actor: ACTOR,
+          hsaId: LOOKUP_PERSON.hsaId,
+          purpose: 'requirement_area_co_author',
+          scopeId: 42,
+        },
+        {
+          now: new Date('2026-08-12T10:04:59.000Z'),
+          secret: EVIDENCE_SECRET,
+        },
       ),
-    ).resolves.toEqual(LOCAL_PERSON)
+    ).toEqual({ ...LOOKUP_PERSON, hasProtectedPersonalData: false })
 
-    expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
+    const mismatches = [
+      { actor: { ...ACTOR, id: 'another-actor' } },
+      { hsaId: 'SE5560000001-other1' },
+      { purpose: 'requirement_package_co_author' as const },
+      { scopeId: 43 },
+    ]
+    for (const mismatch of mismatches) {
+      expect(() =>
+        resolveVerifiedRequirementResponsibilityPerson(
+          verification.evidence,
+          {
+            actor: ACTOR,
+            hsaId: LOOKUP_PERSON.hsaId,
+            purpose: 'requirement_area_co_author',
+            scopeId: 42,
+            ...mismatch,
+          },
+          {
+            now: new Date('2026-08-12T10:04:59.000Z'),
+            secret: EVIDENCE_SECRET,
+          },
+        ),
+      ).toThrow('Verification evidence is invalid or expired')
+    }
   })
 
-  it('fails invalid HSA-id formats before local reads or retry delay', async () => {
-    await expect(
+  it('rejects expired and tampered verification evidence', () => {
+    const verification =
+      createRequirementResponsibilityPersonVerificationEvidence(
+        {
+          actor: ACTOR,
+          person: LOOKUP_PERSON,
+          purpose: 'requirements_specification_responsible',
+          scopeId: 7,
+        },
+        {
+          now: new Date('2026-08-12T10:00:00.000Z'),
+          secret: EVIDENCE_SECRET,
+          ttlSeconds: 60,
+        },
+      )
+    const expected = {
+      actor: ACTOR,
+      hsaId: LOOKUP_PERSON.hsaId,
+      purpose: 'requirements_specification_responsible' as const,
+      scopeId: 7,
+    }
+
+    expect(() =>
       resolveVerifiedRequirementResponsibilityPerson(
-        'mock-db' as never,
-        'not-a-valid-hsa-id',
-        { retryDelayMs: 10_000 },
+        verification.evidence,
+        expected,
+        {
+          now: new Date('2026-08-12T10:01:00.000Z'),
+          secret: EVIDENCE_SECRET,
+        },
       ),
-    ).rejects.toSatisfy(error => {
-      expect(isRequirementsServiceError(error)).toBe(true)
-      if (isRequirementsServiceError(error)) {
-        expect(error.code).toBe('validation')
-        expect(error.details).toMatchObject({ reason: 'invalid_hsa_id' })
-      }
-      return true
-    })
+    ).toThrow('Verification evidence is invalid or expired')
 
-    expect(mocks.getRequirementResponsibilityPerson).not.toHaveBeenCalled()
-    expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
+    const tampered = `${verification.evidence.slice(0, -1)}${
+      verification.evidence.endsWith('a') ? 'b' : 'a'
+    }`
+    expect(() =>
+      resolveVerifiedRequirementResponsibilityPerson(tampered, expected, {
+        now: new Date('2026-08-12T10:00:30.000Z'),
+        secret: EVIDENCE_SECRET,
+      }),
+    ).toThrow('Verification evidence is invalid or expired')
   })
 
-  it('retries the local table once before failing save validation', async () => {
-    mocks.getRequirementResponsibilityPerson
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(LOCAL_PERSON)
+  it.each(REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_PURPOSES)(
+    'binds evidence for the supported %s assignment purpose',
+    purpose => {
+      const scopeId =
+        purpose === 'requirement_area_owner' ||
+        purpose === 'requirement_package_lead'
+          ? undefined
+          : 17
+      const verification =
+        createRequirementResponsibilityPersonVerificationEvidence(
+          { actor: ACTOR, person: LOOKUP_PERSON, purpose, scopeId },
+          {
+            now: new Date('2026-08-12T10:00:00.000Z'),
+            secret: EVIDENCE_SECRET,
+          },
+        )
 
-    await expect(
-      resolveVerifiedRequirementResponsibilityPerson(
-        'mock-db' as never,
-        'SE5560000001-local1',
-        { retryDelayMs: 0 },
-      ),
-    ).resolves.toEqual(LOCAL_PERSON)
-
-    expect(mocks.getRequirementResponsibilityPerson).toHaveBeenCalledTimes(2)
-    expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
-  })
-
-  it('fails save validation without HSA lookup when no local row exists', async () => {
-    await expect(
-      resolveVerifiedRequirementResponsibilityPerson(
-        'mock-db' as never,
-        'SE5560000001-missing1',
-        { retryDelayMs: 0 },
-      ),
-    ).rejects.toSatisfy(error => {
-      expect(isRequirementsServiceError(error)).toBe(true)
-      if (isRequirementsServiceError(error)) {
-        expect(error.code).toBe('validation')
-        expect(error.details).toMatchObject({
-          reason: 'requirement_responsibility_person_not_verified',
-        })
-      }
-      return true
-    })
-
-    expect(mocks.getRequirementResponsibilityPerson).toHaveBeenCalledTimes(2)
-    expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
-  })
+      expect(
+        resolveVerifiedRequirementResponsibilityPerson(
+          verification.evidence,
+          {
+            actor: ACTOR,
+            hsaId: LOOKUP_PERSON.hsaId,
+            purpose,
+            scopeId,
+          },
+          {
+            now: new Date('2026-08-12T10:01:00.000Z'),
+            secret: EVIDENCE_SECRET,
+          },
+        ),
+      ).toMatchObject({ hsaId: LOOKUP_PERSON.hsaId })
+    },
+  )
 
   it('normalizes names and protected-data flags in the verification payload', () => {
     expect(
@@ -199,23 +266,39 @@ describe('responsibility person verification', () => {
     })
   })
 
-  it('resolves multiple verified people after the configured retry delay', async () => {
-    let localReads = 0
-    mocks.getRequirementResponsibilityPerson.mockImplementation(
-      async (_db, hsaId) => {
-        if (hsaId === LOOKUP_PERSON.hsaId) return LOOKUP_PERSON
-        localReads += 1
-        return localReads === 1 ? null : LOCAL_PERSON
-      },
+  it('creates a stable caller fingerprint without retaining raw identity values', () => {
+    const fingerprint = requirementResponsibilityPersonActorFingerprint(ACTOR, {
+      secret: EVIDENCE_SECRET,
+    })
+
+    expect(fingerprint).toMatch(/^afp_[A-Za-z0-9_-]{22}$/u)
+    expect(fingerprint).not.toContain(ACTOR.hsaId)
+    expect(fingerprint).not.toContain(ACTOR.id)
+    expect(
+      requirementResponsibilityPersonActorFingerprint(ACTOR, {
+        secret: EVIDENCE_SECRET,
+      }),
+    ).toBe(fingerprint)
+    expect(
+      requirementResponsibilityPersonActorFingerprint(
+        { ...ACTOR, id: 'different-actor' },
+        { secret: EVIDENCE_SECRET },
+      ),
+    ).not.toBe(fingerprint)
+  })
+
+  it('creates one stable target fingerprint across HSA-id case variants', () => {
+    const lowerCase = requirementResponsibilityPersonTargetFingerprint(
+      'SE5560000001-target1',
+      { secret: EVIDENCE_SECRET },
+    )
+    const mixedCase = requirementResponsibilityPersonTargetFingerprint(
+      'SE5560000001-Target1',
+      { secret: EVIDENCE_SECRET },
     )
 
-    await expect(
-      resolveVerifiedRequirementResponsibilityPeople(
-        'mock-db' as never,
-        ['SE5560000001-local1', 'SE5560000001-sara1'],
-        { retryDelayMs: 1 },
-      ),
-    ).resolves.toEqual([LOCAL_PERSON, LOOKUP_PERSON])
+    expect(mixedCase).toBe(lowerCase)
+    expect(mixedCase).not.toContain('target1')
   })
 
   it('rejects invalid HSA-id input in direct verification', async () => {

@@ -855,8 +855,8 @@ export const REST_OPERATION_DECLARATIONS = [
     '/api/requirement-responsibility-people/verify',
     'session',
     'same-origin',
-    'authenticated',
-    'framework-default',
+    'sensitive',
+    'no-store',
     'focused',
   ],
   [

@@ -30,3 +30,15 @@ export function formatRequirementResponsibilityPersonName(
 
   return parts.length > 0 ? parts.join(' ') : person.hsaId
 }
+
+export function verifiedPeopleCoverAddedAssignments(
+  addedHsaIds: readonly string[],
+  people: readonly RequirementResponsibilityPersonRecord[],
+): boolean {
+  const verifiedHsaIds = new Set(
+    people.map(person => person.hsaId.trim().toLowerCase()),
+  )
+  return addedHsaIds.every(hsaId =>
+    verifiedHsaIds.has(hsaId.trim().toLowerCase()),
+  )
+}

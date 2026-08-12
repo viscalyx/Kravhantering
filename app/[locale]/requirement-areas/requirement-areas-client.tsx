@@ -93,6 +93,8 @@ const toCreatePayload = (form: AreaForm) => ({
   name: form.name,
   ownerHsaId: form.ownerHsaId,
   prefix: form.prefix,
+  verificationEvidence:
+    form.ownerPersonVerification?.verificationEvidence ?? '',
 })
 
 const toUpdatePayload = (form: AreaForm) => ({
@@ -137,13 +139,17 @@ export default function RequirementAreasClient() {
 
   const submitOwnerChange = async (
     nextOwnerHsaId: string,
+    person: HsaPersonVerification | null,
   ): Promise<HsaPersonChangeSubmitResult> => {
     if (!ownerChange) return { ok: false }
     try {
       const response = await apiFetch(
         `/api/requirement-areas/${ownerChange.areaId}`,
         {
-          body: JSON.stringify({ ownerHsaId: nextOwnerHsaId }),
+          body: JSON.stringify({
+            ownerHsaId: nextOwnerHsaId,
+            verificationEvidence: person?.verificationEvidence ?? '',
+          }),
           headers: { 'Content-Type': 'application/json' },
           method: 'PUT',
         },

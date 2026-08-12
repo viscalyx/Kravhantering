@@ -13,7 +13,10 @@ import {
 } from '@/lib/http/secure-mutation-route'
 import { idParamSchema } from '@/lib/http/validation'
 import { forbiddenError } from '@/lib/requirements/errors'
-import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
+import {
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH,
+  resolveVerifiedRequirementResponsibilityPerson,
+} from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +30,10 @@ const hsaIdSchema = z.string().trim().max(HSA_ID_MAX_LENGTH).refine(isHsaId, {
 const updateSpecificationResponsibleSchema = z
   .object({
     responsibleHsaId: hsaIdSchema,
+    verificationEvidence: z
+      .string()
+      .min(1)
+      .max(REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH),
   })
   .strict()
 
@@ -59,16 +66,20 @@ export const PUT = secureMutationRoute({
       }
     },
   ),
-  handler: async ({ body, params }) => {
+  handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
     const spec = await getSpecificationById(db, params.id)
     if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const responsiblePerson =
-      await resolveVerifiedRequirementResponsibilityPerson(
-        db,
-        body.responsibleHsaId,
-      )
+    const responsiblePerson = resolveVerifiedRequirementResponsibilityPerson(
+      body.verificationEvidence,
+      {
+        actor: context.actor,
+        hsaId: body.responsibleHsaId,
+        purpose: 'requirements_specification_responsible',
+        scopeId: params.id,
+      },
+    )
     const updated = await updateSpecificationResponsible(db, spec.id, {
       responsibleHsaId: body.responsibleHsaId,
       responsiblePerson,

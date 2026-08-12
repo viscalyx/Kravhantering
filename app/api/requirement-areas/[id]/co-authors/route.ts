@@ -12,14 +12,21 @@ import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
+import {
+  ARRAY_INPUT_MAX_ITEMS,
+  idParamSchema,
+  parseRouteParams,
+} from '@/lib/http/validation'
 import {
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
-import { resolveVerifiedRequirementResponsibilityPeople } from '@/lib/requirements/responsibility-person-verification'
+import {
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH,
+  resolveVerifiedRequirementResponsibilityPeople,
+} from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +37,17 @@ const hsaIdSchema = z.string().trim().max(HSA_ID_MAX_LENGTH).refine(isHsaId, {
 
 const updateRequirementAreaCoAuthorsSchema = z
   .object({
-    coAuthorHsaIds: z.array(hsaIdSchema),
+    coAuthorHsaIds: z.array(hsaIdSchema).max(ARRAY_INPUT_MAX_ITEMS),
+    verificationEvidence: z
+      .array(
+        z
+          .string()
+          .min(1)
+          .max(
+            REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH,
+          ),
+      )
+      .max(ARRAY_INPUT_MAX_ITEMS),
   })
   .strict()
 
@@ -115,9 +132,14 @@ export const PUT = secureMutationRoute({
     const area = await getAreaById(db, params.id)
     if (!area) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const coAuthorPeople = await resolveVerifiedRequirementResponsibilityPeople(
-      db,
-      body.coAuthorHsaIds,
+    const coAuthorPeople = resolveVerifiedRequirementResponsibilityPeople(
+      body.verificationEvidence,
+      {
+        actor: context.actor,
+        hsaIds: body.coAuthorHsaIds,
+        purpose: 'requirement_area_co_author',
+        scopeId: params.id,
+      },
     )
     const result = await replaceRequirementAreaCoAuthors(db, params.id, {
       changedBy: assignmentActor(context),

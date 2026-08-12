@@ -11,6 +11,7 @@ import { validationError } from '@/lib/requirements/errors'
 import {
   formatRequirementResponsibilityPersonName,
   type RequirementResponsibilityPersonRecord,
+  verifiedPeopleCoverAddedAssignments,
 } from '@/lib/requirements/responsibility-person'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 import { toBoolean, toIsoString } from '@/lib/typeorm/value-mappers'
@@ -727,6 +728,7 @@ async function syncRequirementPackageCoAuthors(
   requirementPackageId: number,
   nextHsaIds: string[],
   changedBy: { displayName: string | null; hsaId: string | null } | undefined,
+  coAuthorPeople: RequirementResponsibilityPersonRecord[],
 ): Promise<string[]> {
   const existingRows = (await db.query(
     `
@@ -741,6 +743,13 @@ async function syncRequirementPackageCoAuthors(
   const existingIdSet = new Set(existingIds)
   const removedIds = existingIds.filter(hsaId => !nextIdSet.has(hsaId))
   const addedIds = nextHsaIds.filter(hsaId => !existingIdSet.has(hsaId))
+
+  if (!verifiedPeopleCoverAddedAssignments(addedIds, coAuthorPeople)) {
+    throw validationError(
+      'Verification evidence is required for every added requirement package co-author',
+      { reason: 'requirement_responsibility_person_evidence_required' },
+    )
+  }
 
   if (removedIds.length > 0) {
     const placeholders = removedIds
@@ -820,6 +829,7 @@ export async function replaceRequirementPackageCoAuthors(
       requirementPackageId,
       coAuthorHsaIds,
       data.changedBy,
+      data.coAuthorPeople ?? [],
     )
     await cleanupUnassignedRequirementResponsibilityPeople(
       manager,

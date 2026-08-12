@@ -456,7 +456,10 @@ export default function SpecificationFormModal({
       const response = await apiFetch(
         `/api/requirements-specifications/${editSpecificationId}/responsible`,
         {
-          body: JSON.stringify({ responsibleHsaId: nextResponsibleHsaId }),
+          body: JSON.stringify({
+            responsibleHsaId: nextResponsibleHsaId,
+            verificationEvidence: person?.verificationEvidence ?? '',
+          }),
           headers: { 'Content-Type': 'application/json' },
           method: 'PUT',
         },

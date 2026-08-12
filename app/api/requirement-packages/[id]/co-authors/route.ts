@@ -23,7 +23,10 @@ import {
 } from '@/lib/requirements/auth'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { requireRequirementPackageLeadOrAdmin } from '@/lib/requirements/requirement-package-permissions'
-import { resolveVerifiedRequirementResponsibilityPeople } from '@/lib/requirements/responsibility-person-verification'
+import {
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH,
+  resolveVerifiedRequirementResponsibilityPeople,
+} from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +43,16 @@ const updateRequirementPackageCoAuthorsSchema = z
       .refine(values => new Set(values).size === values.length, {
         message: 'Co-author HSA-ids must be unique',
       }),
+    verificationEvidence: z
+      .array(
+        z
+          .string()
+          .min(1)
+          .max(
+            REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH,
+          ),
+      )
+      .max(ARRAY_INPUT_MAX_ITEMS),
   })
   .strict()
 
@@ -114,9 +127,14 @@ export const PUT = secureMutationRoute({
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const coAuthorPeople = await resolveVerifiedRequirementResponsibilityPeople(
-      db,
-      body.coAuthorHsaIds,
+    const coAuthorPeople = resolveVerifiedRequirementResponsibilityPeople(
+      body.verificationEvidence,
+      {
+        actor: context.actor,
+        hsaIds: body.coAuthorHsaIds,
+        purpose: 'requirement_package_co_author',
+        scopeId: params.id,
+      },
     )
     const result = await replaceRequirementPackageCoAuthors(db, params.id, {
       changedBy: assignmentActor(context),

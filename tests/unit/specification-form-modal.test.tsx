@@ -43,6 +43,28 @@ const hsaIdPrefixPayload = {
   prefixes: [{ id: 1, isDefault: true, label: null, prefix: 'SE5560000001' }],
 }
 
+const verificationResponse = (hsaId: string) =>
+  okJson({
+    evidence: 'signed-evidence',
+    expiresAt: '2026-08-12T10:05:00.000Z',
+    person: {
+      displayName: 'Rita Reviewer',
+      email: 'rita.reviewer@example.test',
+      givenName: 'Rita',
+      hasProtectedPersonalData: false,
+      hsaId,
+      middleName: null,
+      surname: 'Reviewer',
+    },
+  })
+
+async function verifyResponsibleIn(dialog: HTMLElement) {
+  fireEvent.click(
+    within(dialog).getByRole('button', { name: /common\.fetchHsaPerson/ }),
+  )
+  await within(dialog).findByText(/Rita Reviewer/)
+}
+
 async function getEnabledChangeResponsibleButton() {
   const button = screen.getByRole('button', {
     name: /specification\.changeResponsible/,
@@ -427,18 +449,7 @@ describe('SpecificationFormModal', () => {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
       if (url === '/api/requirement-responsibility-people/verify') {
-        return Promise.resolve(
-          okJson({
-            person: {
-              displayName: 'Rita Reviewer',
-              email: 'rita.reviewer@example.test',
-              givenName: 'Rita',
-              hsaId: 'SE5560000001-rita1',
-              middleName: null,
-              surname: 'Reviewer',
-            },
-          }),
-        )
+        return Promise.resolve(verificationResponse('SE5560000001-rita1'))
       }
       return Promise.resolve(okJson({ ok: true }))
     })
@@ -456,6 +467,7 @@ describe('SpecificationFormModal', () => {
       expect(newResponsibleInput).toBeEnabled()
     })
     fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
+    await verifyResponsibleIn(dialog)
     fireEvent.click(
       within(dialog).getByRole('button', { name: /common\.fetchHsaPerson/ }),
     )
@@ -631,6 +643,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return Promise.resolve(verificationResponse('SE5560000001-rita1'))
+      }
       if (opts?.method === 'PUT') {
         return Promise.resolve(
           okJson({
@@ -658,6 +673,7 @@ describe('SpecificationFormModal', () => {
       expect(newResponsibleInput).toBeEnabled()
     })
     fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
+    await verifyResponsibleIn(dialog)
     fireEvent.click(
       within(dialog).getByRole('button', {
         name: /specification\.changeResponsible/,
@@ -677,7 +693,10 @@ describe('SpecificationFormModal', () => {
         (init as RequestInit | undefined)?.method === 'PUT',
     ) as [string, RequestInit]
     const body = JSON.parse((requestInit.body as string) ?? '{}')
-    expect(body).toEqual({ responsibleHsaId: 'SE5560000001-rita1' })
+    expect(body).toEqual({
+      responsibleHsaId: 'SE5560000001-rita1',
+      verificationEvidence: 'signed-evidence',
+    })
     expect(onResponsibleChanged).toHaveBeenCalledWith(
       expect.objectContaining({
         responsibleDisplayName: 'Rita Reviewer',
@@ -706,6 +725,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return Promise.resolve(verificationResponse('SE5560000001-rita1'))
+      }
       if (
         url === '/api/requirements-specifications/1/responsible' &&
         opts?.method === 'PUT'
@@ -732,6 +754,7 @@ describe('SpecificationFormModal', () => {
       expect(newResponsibleInput).toBeEnabled()
     })
     fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
+    await verifyResponsibleIn(dialog)
     fireEvent.click(
       within(dialog).getByRole('button', {
         name: /specification\.changeResponsible/,
@@ -849,6 +872,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return Promise.resolve(verificationResponse('SE5560000001-rita1'))
+      }
       if (opts?.method === 'PUT') {
         return Promise.resolve(
           okJson({
@@ -887,6 +913,7 @@ describe('SpecificationFormModal', () => {
       expect(newResponsibleInput).toBeEnabled()
     })
     fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
+    await verifyResponsibleIn(dialog)
     fireEvent.click(
       within(dialog).getByRole('button', {
         name: /specification\.changeResponsible/,

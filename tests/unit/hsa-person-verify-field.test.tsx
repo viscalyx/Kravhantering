@@ -148,10 +148,13 @@ describe('HsaPersonVerifyField', () => {
         return Promise.resolve(
           new Response(
             JSON.stringify({
+              evidence: 'signed-evidence',
+              expiresAt: '2026-08-12T10:05:00.000Z',
               person: {
                 displayName: 'Nora New',
                 email: null,
                 givenName: 'Nora',
+                hasProtectedPersonalData: false,
                 hsaId: 'SE5560000001-new1',
                 middleName: null,
                 surname: 'New',
@@ -249,10 +252,13 @@ describe('HsaPersonVerifyField', () => {
         return Promise.resolve(
           new Response(
             JSON.stringify({
+              evidence: 'signed-evidence',
+              expiresAt: '2026-08-12T10:05:00.000Z',
               person: {
                 displayName: 'Nora New',
                 email: 'nora.new@example.test',
                 givenName: 'Nora',
+                hasProtectedPersonalData: false,
                 hsaId: 'SE5560000001-new1',
                 middleName: null,
                 surname: 'New',
@@ -411,10 +417,13 @@ describe('HsaPersonVerifyField', () => {
       async () =>
         new Response(
           JSON.stringify({
+            evidence: 'signed-evidence',
+            expiresAt: '2026-08-12T10:05:00.000Z',
             person: {
               displayName: 'Ada Admin',
               email: 'ada.admin@example.test',
               givenName: 'Ada',
+              hasProtectedPersonalData: false,
               hsaId: 'SE5560000001-admin1',
               middleName: null,
               surname: 'Admin',
@@ -501,6 +510,53 @@ describe('HsaPersonVerifyField', () => {
     expect(screen.queryByText('Unavailable')).not.toBeInTheDocument()
     expect(screen.queryByText('Name')).not.toBeInTheDocument()
     expect(screen.queryByText('Email')).not.toBeInTheDocument()
+  })
+
+  it('shows protection guidance only after a protected person is verified', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        okJson({
+          evidence: 'signed-evidence',
+          expiresAt: '2026-08-12T10:05:00.000Z',
+          person: {
+            displayName: 'Protected Person',
+            email: 'protected@example.test',
+            givenName: 'Protected',
+            hasProtectedPersonalData: true,
+            hsaId: 'SE5560000001-protected1',
+            middleName: null,
+            surname: 'Person',
+          },
+        }),
+      ),
+    )
+
+    render(
+      <HsaPersonVerifyField
+        emailLabel="Email"
+        errorFallback="Could not verify"
+        fetchingLabel="Fetching"
+        fetchLabel="Fetch"
+        hsaId="SE5560000001-protected1"
+        inputClassName="input"
+        inputId="hsa-id"
+        nameLabel="Name"
+        onHsaIdChange={vi.fn()}
+        purpose="requirements_specification_responsible"
+        readOnly
+        unavailableText="Unavailable"
+      />,
+    )
+
+    expect(
+      screen.queryByText('common.hsaProtectedPersonGuidance'),
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch' }))
+    expect(
+      await screen.findByText('common.hsaProtectedPersonGuidance'),
+    ).toHaveAttribute('role', 'status')
+    expect(screen.getByDisplayValue('Protected Person')).toBeVisible()
   })
 
   it('uses the compact HSA-id layout only when requested', async () => {

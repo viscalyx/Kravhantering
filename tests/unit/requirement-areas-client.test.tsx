@@ -71,6 +71,34 @@ const hsaIdPrefixPayload = {
   ],
 }
 
+const verificationResponse = (hsaId: string, displayName = 'Verified Person') =>
+  okJson({
+    evidence: 'signed-evidence',
+    expiresAt: '2026-08-12T10:05:00.000Z',
+    person: {
+      displayName,
+      email: 'verified.person@example.test',
+      givenName: 'Verified',
+      hasProtectedPersonalData: false,
+      hsaId,
+      middleName: null,
+      surname: 'Person',
+    },
+  })
+
+async function verifyPersonIn(dialog: HTMLElement) {
+  const verifyButton = within(dialog).getByRole('button', {
+    name: /common\.fetchHsaPerson/,
+  })
+  fireEvent.click(verifyButton)
+  await waitFor(() => {
+    expect(
+      within(dialog).queryByDisplayValue('Verified Person') ??
+        within(dialog).queryByText(/Verified Person/),
+    ).toBeInTheDocument()
+  })
+}
+
 async function openAreaEditDialog() {
   fireEvent.click(screen.getAllByRole('button', { name: /common\.edit/i })[0])
   return screen.findByRole('dialog', { name: 'area.editArea' })
@@ -197,8 +225,12 @@ describe('RequirementAreasClient', () => {
       if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/requirement-responsibility-people/verify')
+        return verificationResponse('SE5560000001-new1')
       return okJson({})
     })
+
+    await verifyPersonIn(dialog)
 
     fireEvent.click(
       within(dialog).getByRole('button', { name: /common\.save/i }),
@@ -221,6 +253,7 @@ describe('RequirementAreasClient', () => {
         name: 'New requirement area',
         ownerHsaId: 'SE5560000001-new1',
         prefix: 'NEW',
+        verificationEvidence: 'signed-evidence',
       }),
     )
   })
@@ -324,16 +357,7 @@ describe('RequirementAreasClient', () => {
         return okJson({ coAuthors: [] })
       }
       if (url === '/api/requirement-responsibility-people/verify') {
-        return okJson({
-          person: {
-            displayName: 'Cora CoAuthor',
-            email: 'cora.coauthor@example.test',
-            givenName: 'Cora',
-            hsaId: 'SE5560000001-coa1',
-            middleName: null,
-            surname: 'CoAuthor',
-          },
-        })
+        return verificationResponse('SE5560000001-coa1', 'Cora CoAuthor')
       }
       return okJson({})
     })
@@ -383,6 +407,7 @@ describe('RequirementAreasClient', () => {
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
       coAuthorHsaIds: ['SE5560000001-coa1'],
+      verificationEvidence: ['signed-evidence'],
     })
     expect(within(dialog).getByText(/Cora CoAuthor/)).toBeInTheDocument()
     await waitFor(() => {
@@ -405,16 +430,7 @@ describe('RequirementAreasClient', () => {
         return okJson({ coAuthors: [] })
       }
       if (url === '/api/requirement-responsibility-people/verify') {
-        return okJson({
-          person: {
-            displayName: 'Cora CoAuthor',
-            email: 'cora.coauthor@example.test',
-            givenName: 'Cora',
-            hsaId: 'SE5560000001-coa1',
-            middleName: null,
-            surname: 'CoAuthor',
-          },
-        })
+        return verificationResponse('SE5560000001-coa1', 'Cora CoAuthor')
       }
       return okJson({})
     })
@@ -503,6 +519,7 @@ describe('RequirementAreasClient', () => {
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
       coAuthorHsaIds: [],
+      verificationEvidence: [],
     })
   })
 
@@ -558,6 +575,7 @@ describe('RequirementAreasClient', () => {
     ) as [string, RequestInit]
     expect(JSON.parse((putCall[1].body as string) ?? '{}')).toEqual({
       coAuthorHsaIds: [],
+      verificationEvidence: [],
     })
   })
 
@@ -603,7 +621,7 @@ describe('RequirementAreasClient', () => {
     fireEvent.change(newOwnerInput, {
       target: { value: 'next1' },
     })
-    expect(changeOwnerButton).toBeEnabled()
+    expect(changeOwnerButton).toBeDisabled()
 
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/requirement-areas/1' && init?.method === 'PUT')
@@ -619,8 +637,13 @@ describe('RequirementAreasClient', () => {
           ],
         })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/requirement-responsibility-people/verify')
+        return verificationResponse('NO5560000001-next1')
       return okJson({})
     })
+
+    await verifyPersonIn(dialog)
+    expect(changeOwnerButton).toBeEnabled()
 
     fireEvent.click(changeOwnerButton)
 
@@ -636,7 +659,10 @@ describe('RequirementAreasClient', () => {
         (init as RequestInit | undefined)?.method === 'PUT',
     )
     expect((putCall?.[1] as RequestInit | undefined)?.body).toBe(
-      JSON.stringify({ ownerHsaId: 'NO5560000001-next1' }),
+      JSON.stringify({
+        ownerHsaId: 'NO5560000001-next1',
+        verificationEvidence: 'signed-evidence',
+      }),
     )
     await waitFor(() => {
       expect(
@@ -679,8 +705,12 @@ describe('RequirementAreasClient', () => {
       if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/requirement-responsibility-people/verify')
+        return verificationResponse('SE5560000001-next1')
       return okJson({})
     })
+
+    await verifyPersonIn(dialog)
 
     fireEvent.click(
       within(dialog).getByRole('button', { name: /area\.changeOwner/ }),

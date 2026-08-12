@@ -27,7 +27,10 @@ import {
 } from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
-import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
+import {
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH,
+  resolveVerifiedRequirementResponsibilityPerson,
+} from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,8 +47,29 @@ const updateAreaSchema = z
     name: boundedDbStringSchema.optional(),
     ownerHsaId: hsaIdSchema.optional(),
     prefix: boundedDbStringSchema.optional(),
+    verificationEvidence: z
+      .string()
+      .min(1)
+      .max(REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH)
+      .optional(),
   })
   .strict()
+  .superRefine((body, context) => {
+    if (body.ownerHsaId !== undefined && !body.verificationEvidence) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Verification evidence is required when changing owner',
+        path: ['verificationEvidence'],
+      })
+    }
+    if (body.ownerHsaId === undefined && body.verificationEvidence) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Verification evidence is only accepted when changing owner',
+        path: ['verificationEvidence'],
+      })
+    }
+  })
 
 function isAdmin(roles: readonly string[]): boolean {
   return roles.includes('Admin')
@@ -110,22 +134,28 @@ export const PUT = secureMutationRoute({
   ),
   handler: async ({ body, context, params }) => {
     const db = await getRequestSqlServerDataSource()
+    const ownerPerson =
+      body.ownerHsaId === undefined
+        ? undefined
+        : resolveVerifiedRequirementResponsibilityPerson(
+            body.verificationEvidence ?? '',
+            {
+              actor: context.actor,
+              hsaId: body.ownerHsaId,
+              purpose: 'requirement_area_owner',
+              scopeId: params.id,
+            },
+          )
+    const { verificationEvidence: _verificationEvidence, ...areaUpdate } = body
     const area = await updateAreaWithOwnerCheck(db, params.id, {
-      ...body,
-      resolveOwnerPerson:
-        body.ownerHsaId === undefined
-          ? undefined
-          : (executor, ownerHsaId) =>
-              resolveVerifiedRequirementResponsibilityPerson(
-                executor,
-                ownerHsaId,
-              ),
+      ...areaUpdate,
+      ownerPerson,
     })
     if (!area) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const auditDetail = {
-      changedFields: Object.keys(body),
+      changedFields: Object.keys(areaUpdate),
       operation: 'update',
       resourceId: params.id,
       resourceType: 'requirement_area',

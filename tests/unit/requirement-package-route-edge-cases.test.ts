@@ -28,6 +28,7 @@ const state = vi.hoisted(() => ({
   requirePackagePermission: vi.fn(),
   resolvePeople: vi.fn(),
   resolvePerson: vi.fn(),
+  responsibilityPersonFromActor: vi.fn(),
   updateRequirementPackage: vi.fn(),
 }))
 
@@ -70,6 +71,8 @@ vi.mock('@/lib/requirements/requirement-package-permissions', () => ({
 }))
 
 vi.mock('@/lib/requirements/responsibility-person-verification', () => ({
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH: 4096,
+  requirementResponsibilityPersonFromActor: state.responsibilityPersonFromActor,
   resolveVerifiedRequirementResponsibilityPeople: state.resolvePeople,
   resolveVerifiedRequirementResponsibilityPerson: state.resolvePerson,
 }))
@@ -122,8 +125,8 @@ describe('requirement-package routes', () => {
       coAuthorHsaIds: ['SE5560000001-author'],
       requirementPackageId: 7,
     })
-    state.resolvePeople.mockResolvedValue([])
-    state.resolvePerson.mockResolvedValue({ hsaId: 'SE5560000001-next' })
+    state.resolvePeople.mockReturnValue([])
+    state.resolvePerson.mockReturnValue({ hsaId: 'SE5560000001-next' })
     state.updateRequirementPackage.mockResolvedValue({ id: 7 })
     state.deleteRequirementPackage.mockResolvedValue({
       cleanup: { removedLinkCount: 0 },
@@ -176,7 +179,10 @@ describe('requirement-package routes', () => {
     )
 
     const path = '/api/requirement-packages/7/co-authors'
-    const body = { coAuthorHsaIds: ['SE5560000001-author'] }
+    const body = {
+      coAuthorHsaIds: ['SE5560000001-author'],
+      verificationEvidence: ['verified-author'],
+    }
     expect(
       (
         await callMutation(packageCoAuthorsPut, path, 'PUT', {

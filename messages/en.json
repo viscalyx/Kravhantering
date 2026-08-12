@@ -21,6 +21,7 @@
     "hsaVerifyEmail": "Email",
     "hsaVerifyError": "Could not fetch person details.",
     "hsaVerifyName": "Name",
+    "hsaProtectedPersonGuidance": "Protected personal data: use this identity only for the authorized assignment and minimize further disclosure. Contact your regional privacy, security, or HR function if you are unsure how to proceed.",
     "hsaPrefixCurrent": "Current prefix",
     "hsaPrefixLabel": "HSA-id prefix",
     "hsaPrefixLoadError": "Could not load HSA-id prefixes.",

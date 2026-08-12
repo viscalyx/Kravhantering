@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { recordActionAuditEvent } from '@/lib/audit/action-audit'
+import { recordSecurityEvent } from '@/lib/auth/audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import { canManageAreaCoAuthors } from '@/lib/dal/requirement-areas'
 import { canManageSpecificationAssignments } from '@/lib/dal/requirements-specifications'
@@ -12,24 +14,43 @@ import {
   boundedDbStringSchema,
   positiveIntegerSchema,
 } from '@/lib/http/validation'
-import { forbiddenError } from '@/lib/requirements/errors'
+import { checkInMemoryThrottle } from '@/lib/observability/throttle'
+import {
+  forbiddenError,
+  isRequirementsServiceError,
+} from '@/lib/requirements/errors'
 import {
   requireRequirementPackageCreatePermission,
   requireRequirementPackageLeadOrAdmin,
 } from '@/lib/requirements/requirement-package-permissions'
 import {
+  createRequirementResponsibilityPersonVerificationEvidence,
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_PURPOSES,
+  requirementResponsibilityPersonActorFingerprint,
+  requirementResponsibilityPersonTargetFingerprint,
   toRequirementResponsibilityPersonVerificationPayload,
   verifyRequirementResponsibilityPerson,
 } from '@/lib/requirements/responsibility-person-verification'
 
-const verifyPurposeSchema = z.enum([
-  'requirement_area_owner',
-  'requirement_area_co_author',
-  'requirement_package_co_author',
-  'requirement_package_lead',
-  'requirements_specification_responsible',
-  'requirements_specification_co_author',
-])
+const ACTOR_RATE_LIMIT = 50
+const ACTOR_TARGET_RATE_LIMIT = 10
+const TARGET_RATE_LIMIT = 10
+const RATE_LIMIT_WINDOW_MS = 60_000
+const THROTTLED_ERROR = {
+  code: 'hsa_verification_throttled',
+  error: 'Too many HSA verification requests.',
+} as const
+
+type VerificationAuditOutcome =
+  | 'conflict'
+  | 'not_found'
+  | 'provider_failure'
+  | 'success'
+  | 'throttled'
+
+const verifyPurposeSchema = z.enum(
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_PURPOSES,
+)
 
 const verifyModeSchema = z.enum(['reuse_local', 'refresh'])
 
@@ -46,6 +67,13 @@ const verifySchema = z
 
 function isAdmin(roles: string[]): boolean {
   return roles.includes('Admin')
+}
+
+function verificationOutcome(error: unknown): VerificationAuditOutcome {
+  if (!isRequirementsServiceError(error)) return 'provider_failure'
+  if (error.details?.reason === 'hsa_lookup_not_found') return 'not_found'
+  if (error.code === 'conflict') return 'conflict'
+  return 'provider_failure'
 }
 
 export const POST = secureMutationRoute({
@@ -114,11 +142,19 @@ export const POST = secureMutationRoute({
             body.scopeId,
             'requirement_package.update',
           )
-        } else {
+        } else if (
+          body.purpose === 'requirement_package_lead' &&
+          context.actor.hsaId?.trim().toLowerCase() ===
+            body.hsaId.trim().toLowerCase()
+        ) {
           await requireRequirementPackageCreatePermission(
             await getDb(),
             context,
           )
+        } else {
+          throw forbiddenError('Requirement package scope is required', {
+            reason: 'scope_required',
+          })
         }
       }
 
@@ -130,7 +166,8 @@ export const POST = secureMutationRoute({
           body.purpose === 'requirements_specification_responsible' &&
           !body.scopeId &&
           context.actor.hsaId &&
-          body.hsaId === context.actor.hsaId
+          body.hsaId.trim().toLowerCase() ===
+            context.actor.hsaId.trim().toLowerCase()
         ) {
           return
         }
@@ -154,14 +191,114 @@ export const POST = secureMutationRoute({
       }
     },
   ),
-  handler: async ({ body }) => {
+  handler: async ({ body, context, request }) => {
     const db = await getRequestSqlServerDataSource()
-    const person = await verifyRequirementResponsibilityPerson(
-      db,
+    const targetFingerprint = requirementResponsibilityPersonTargetFingerprint(
       body.hsaId,
-      body.mode,
     )
+    const actorFingerprint = requirementResponsibilityPersonActorFingerprint(
+      context.actor,
+    )
+    const actorThrottle = checkInMemoryThrottle({
+      key: `hsa.verify:actor:${actorFingerprint}`,
+      limit: ACTOR_RATE_LIMIT,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    })
+    const actorTargetThrottle = checkInMemoryThrottle({
+      key: `hsa.verify:actor-target:${actorFingerprint}:${targetFingerprint}`,
+      limit: ACTOR_TARGET_RATE_LIMIT,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    })
+    const targetThrottle = checkInMemoryThrottle({
+      key: `hsa.verify:target:${targetFingerprint}`,
+      limit: TARGET_RATE_LIMIT,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    })
+
+    const recordOutcome = async (
+      outcome: VerificationAuditOutcome,
+    ): Promise<void> => {
+      const details = {
+        mode: body.mode,
+        outcome,
+        purpose: body.purpose,
+        ...(body.scopeId === undefined ? {} : { scopeId: body.scopeId }),
+        targetFingerprint,
+      }
+      recordSecurityEvent({
+        actor: {
+          source: context.actor.source,
+          sub: actorFingerprint,
+        },
+        detail: details,
+        event: 'requirements.hsa_verification.completed',
+        outcome: outcome === 'success' ? 'success' : 'failure',
+        request,
+      })
+      await recordActionAuditEvent(db, {
+        action: 'requirement_responsibility_person.verify',
+        actorClientId: actorFingerprint,
+        actorDisplayName: null,
+        actorHsaId: null,
+        actorKind:
+          context.source === 'mcp' || context.actor.source === 'mcp'
+            ? 'mcp_client'
+            : context.actor.isAuthenticated
+              ? 'user'
+              : 'system',
+        clientIp: context.request?.ip ?? null,
+        correlationId: context.correlationId,
+        decision: 'allowed',
+        details,
+        requestId: context.requestId,
+        targetId: targetFingerprint,
+        targetKind: 'requirement_responsibility_person_verification',
+      })
+    }
+
+    if (
+      !actorThrottle.allowed ||
+      !actorTargetThrottle.allowed ||
+      !targetThrottle.allowed
+    ) {
+      const retryAfterSeconds = Math.max(
+        actorThrottle.retryAfterSeconds,
+        actorTargetThrottle.retryAfterSeconds,
+        targetThrottle.retryAfterSeconds,
+      )
+      await recordOutcome('throttled')
+      return NextResponse.json(
+        { ...THROTTLED_ERROR, retryAfterSeconds },
+        {
+          headers: { 'Retry-After': String(retryAfterSeconds) },
+          status: 429,
+        },
+      )
+    }
+
+    let person: Awaited<
+      ReturnType<typeof verifyRequirementResponsibilityPerson>
+    >
+    try {
+      person = await verifyRequirementResponsibilityPerson(
+        db,
+        body.hsaId,
+        body.mode,
+      )
+    } catch (error) {
+      await recordOutcome(verificationOutcome(error))
+      throw error
+    }
+    const verification =
+      createRequirementResponsibilityPersonVerificationEvidence({
+        actor: context.actor,
+        person,
+        purpose: body.purpose,
+        scopeId: body.scopeId,
+      })
+    await recordOutcome('success')
     return NextResponse.json({
+      ...verification,
       person: toRequirementResponsibilityPersonVerificationPayload(person),
     })
   },

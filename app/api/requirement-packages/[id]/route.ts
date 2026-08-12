@@ -27,7 +27,10 @@ import {
   requireRequirementPackageLeadOrAdmin,
   requireRequirementPackagePermission,
 } from '@/lib/requirements/requirement-package-permissions'
-import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
+import {
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH,
+  resolveVerifiedRequirementResponsibilityPerson,
+} from '@/lib/requirements/responsibility-person-verification'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,6 +45,11 @@ const updateRequirementPackageSchema = z
     leadHsaId: hsaIdSchema.optional(),
     name: boundedDbStringSchema.optional(),
     purposeAndScope: optionalBusinessTextSchema,
+    verificationEvidence: z
+      .string()
+      .min(1)
+      .max(REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH)
+      .optional(),
   })
   .strict()
   .refine(
@@ -51,6 +59,22 @@ const updateRequirementPackageSchema = z
       ),
     { message: 'At least one field must be provided for update' },
   )
+  .superRefine((body, context) => {
+    if (body.leadHsaId !== undefined && !body.verificationEvidence) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Verification evidence is required when changing lead',
+        path: ['verificationEvidence'],
+      })
+    }
+    if (body.leadHsaId === undefined && body.verificationEvidence) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Verification evidence is only accepted when changing lead',
+        path: ['verificationEvidence'],
+      })
+    }
+  })
 
 export async function GET(
   _request: NextRequest,
@@ -109,12 +133,19 @@ export const PUT = secureMutationRoute({
     const leadPerson =
       body.leadHsaId === undefined
         ? undefined
-        : await resolveVerifiedRequirementResponsibilityPerson(
-            db,
-            body.leadHsaId,
+        : resolveVerifiedRequirementResponsibilityPerson(
+            body.verificationEvidence ?? '',
+            {
+              actor: context.actor,
+              hsaId: body.leadHsaId,
+              purpose: 'requirement_package_lead',
+              scopeId: params.id,
+            },
           )
+    const { verificationEvidence: _verificationEvidence, ...packageUpdate } =
+      body
     const requirementPackage = await updateRequirementPackage(db, params.id, {
-      ...body,
+      ...packageUpdate,
       leadPerson,
     })
     if (!requirementPackage) {

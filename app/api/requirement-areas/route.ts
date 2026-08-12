@@ -17,7 +17,10 @@ import {
   optionalBusinessTextSchema,
 } from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
-import { resolveVerifiedRequirementResponsibilityPerson } from '@/lib/requirements/responsibility-person-verification'
+import {
+  REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH,
+  resolveVerifiedRequirementResponsibilityPerson,
+} from '@/lib/requirements/responsibility-person-verification'
 
 const hsaIdSchema = boundedDbStringSchema.refine(isHsaId, {
   message:
@@ -30,6 +33,10 @@ const createAreaSchema = z
     name: boundedDbStringSchema,
     ownerHsaId: hsaIdSchema,
     prefix: boundedDbStringSchema,
+    verificationEvidence: z
+      .string()
+      .min(1)
+      .max(REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH),
   })
   .strict()
 
@@ -58,13 +65,18 @@ export const POST = secureMutationRoute({
   policy: adminMutationPolicy(),
   handler: async ({ body, context }) => {
     const db = await getRequestSqlServerDataSource()
-    const ownerPerson = await resolveVerifiedRequirementResponsibilityPerson(
-      db,
-      body.ownerHsaId,
+    const ownerPerson = resolveVerifiedRequirementResponsibilityPerson(
+      body.verificationEvidence,
+      {
+        actor: context.actor,
+        hsaId: body.ownerHsaId,
+        purpose: 'requirement_area_owner',
+      },
     )
-    const area = await createArea(db, { ...body, ownerPerson })
+    const { verificationEvidence: _verificationEvidence, ...areaInput } = body
+    const area = await createArea(db, { ...areaInput, ownerPerson })
     await recordAdminPrivilegedActionSucceeded(context, {
-      changedFields: Object.keys(body),
+      changedFields: Object.keys(areaInput),
       operation: 'create',
       resourceId: area.id,
       resourceType: 'requirement_area',

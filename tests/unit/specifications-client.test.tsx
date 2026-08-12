@@ -34,6 +34,22 @@ function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
 
+function verifiedPersonResponse(hsaId: string) {
+  return {
+    evidence: 'verified-person-evidence',
+    expiresAt: '2026-08-12T10:05:00.000Z',
+    person: {
+      displayName: 'Rita Reviewer',
+      email: 'rita.reviewer@example.test',
+      givenName: 'Rita',
+      hasProtectedPersonalData: false,
+      hsaId,
+      middleName: null,
+      surname: 'Reviewer',
+    },
+  }
+}
+
 function createDeferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>(resolver => {
@@ -1398,6 +1414,14 @@ describe('RequirementsSpecificationsClient', () => {
     fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
 
     mockApi((url: string, opts?: RequestInit) => {
+      if (
+        url === '/api/requirement-responsibility-people/verify' &&
+        opts?.method === 'POST'
+      ) {
+        return Promise.resolve(
+          okJson(verifiedPersonResponse('SE5560000001-rita1')),
+        )
+      }
       if (opts?.method === 'PUT') {
         return Promise.resolve(
           okJson({
@@ -1421,6 +1445,16 @@ describe('RequirementsSpecificationsClient', () => {
     })
 
     fireEvent.click(
+      within(dialog).getByRole('button', { name: /common\.fetchHsaPerson/ }),
+    )
+    await waitFor(() => {
+      expect(
+        within(dialog).getByRole('button', {
+          name: /specification\.changeResponsible/,
+        }),
+      ).toBeEnabled()
+    })
+    fireEvent.click(
       within(dialog).getByRole('button', {
         name: /specification\.changeResponsible/,
       }),
@@ -1439,7 +1473,10 @@ describe('RequirementsSpecificationsClient', () => {
     )
     expect(
       JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? '{}'),
-    ).toEqual({ responsibleHsaId: 'SE5560000001-rita1' })
+    ).toEqual({
+      responsibleHsaId: 'SE5560000001-rita1',
+      verificationEvidence: 'verified-person-evidence',
+    })
     expect(
       screen.getByRole('textbox', { name: /specification\.name/ }),
     ).toBeInTheDocument()
@@ -1457,6 +1494,14 @@ describe('RequirementsSpecificationsClient', () => {
         )
       if (url === '/api/hsa-id-prefixes')
         return Promise.resolve(okJson(hsaIdPrefixPayload))
+      if (
+        url === '/api/requirement-responsibility-people/verify' &&
+        opts?.method === 'POST'
+      ) {
+        return Promise.resolve(
+          okJson(verifiedPersonResponse('SE5560000001-rita1')),
+        )
+      }
       if (opts?.method === 'PUT') {
         return Promise.resolve(
           okJson({
@@ -1505,6 +1550,16 @@ describe('RequirementsSpecificationsClient', () => {
       expect(newResponsibleInput).toBeEnabled()
     })
     fireEvent.change(newResponsibleInput, { target: { value: 'rita1' } })
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /common\.fetchHsaPerson/ }),
+    )
+    await waitFor(() => {
+      expect(
+        within(dialog).getByRole('button', {
+          name: /specification\.changeResponsible/,
+        }),
+      ).toBeEnabled()
+    })
     fireEvent.click(
       within(dialog).getByRole('button', {
         name: /specification\.changeResponsible/,

@@ -284,6 +284,141 @@ describe('requirement-areas DAL', () => {
     ).toBe(false)
   })
 
+  it('rejects a newly added co-author without verified person evidence', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ ownerHsaId: 'SE5560000001-owner1' }])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      replaceRequirementAreaCoAuthors(db, 11, {
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: {
+        reason: 'requirement_responsibility_person_evidence_required',
+      },
+    })
+
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('INSERT INTO requirement_area_co_authors'),
+      ),
+    ).toBe(false)
+  })
+
+  it('rolls back the person upsert when the co-author assignment fails', async () => {
+    const state = { assignmentExists: false, personExists: false }
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM requirement_areas')) {
+        return [{ ownerHsaId: 'SE5560000001-owner1' }]
+      }
+      if (sql.includes('MERGE INTO requirement_responsibility_people')) {
+        state.personExists = true
+        return []
+      }
+      if (
+        sql.includes('FROM requirement_area_co_authors') &&
+        sql.includes('SELECT hsa_id')
+      ) {
+        return []
+      }
+      if (sql.includes('INSERT INTO requirement_area_co_authors')) {
+        state.assignmentExists = true
+        throw new Error('assignment insert failed')
+      }
+      return []
+    })
+    const transaction = vi.fn(
+      async (
+        _isolation: string,
+        callback: (manager: { query: typeof query }) => Promise<unknown>,
+      ) => {
+        const snapshot = { ...state }
+        try {
+          return await callback({ query })
+        } catch (error) {
+          Object.assign(state, snapshot)
+          throw error
+        }
+      },
+    )
+    const db = { transaction } as unknown as Parameters<
+      typeof replaceRequirementAreaCoAuthors
+    >[0]
+
+    await expect(
+      replaceRequirementAreaCoAuthors(db, 11, {
+        coAuthorHsaIds: ['SE5560000001-coa1'],
+        coAuthorPeople: [
+          {
+            email: 'co.author@example.test',
+            givenName: 'Co',
+            hsaId: 'SE5560000001-coa1',
+            middleName: null,
+            surname: 'Author',
+          },
+        ],
+      }),
+    ).rejects.toThrow('assignment insert failed')
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(state).toEqual({ assignmentExists: false, personExists: false })
+  })
+
+  it('rolls back the person upsert when the owner assignment fails', async () => {
+    const state = { assignmentExists: false, personExists: false }
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('FROM requirement_areas WITH')) {
+        return [{ ownerHsaId: 'SE5560000001-old1', prefix: 'KH' }]
+      }
+      if (sql.includes('FROM requirement_area_co_authors WITH')) return []
+      if (sql.includes('MERGE INTO requirement_responsibility_people')) {
+        state.personExists = true
+        return []
+      }
+      if (sql.includes('UPDATE requirement_areas')) {
+        state.assignmentExists = true
+        throw new Error('owner update failed')
+      }
+      return []
+    })
+    const transaction = vi.fn(
+      async (
+        _isolation: string,
+        callback: (manager: { query: typeof query }) => Promise<unknown>,
+      ) => {
+        const snapshot = { ...state }
+        try {
+          return await callback({ query })
+        } catch (error) {
+          Object.assign(state, snapshot)
+          throw error
+        }
+      },
+    )
+    const db = { transaction } as unknown as Parameters<
+      typeof updateAreaWithOwnerCheck
+    >[0]
+
+    await expect(
+      updateAreaWithOwnerCheck(db, 11, {
+        ownerHsaId: 'SE5560000001-new1',
+        ownerPerson: {
+          email: 'new.owner@example.test',
+          givenName: 'New',
+          hsaId: 'SE5560000001-new1',
+          middleName: null,
+          surname: 'Owner',
+        },
+      }),
+    ).rejects.toThrow('owner update failed')
+
+    expect(transaction).toHaveBeenCalledWith('SERIALIZABLE', expect.anything())
+    expect(state).toEqual({ assignmentExists: false, personExists: false })
+  })
+
   it('rejects owner and co-author conflicts after normalizing whitespace and case', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query.mockResolvedValueOnce([{ ownerHsaId: ' SE5560000001-Owner1 ' }])

@@ -713,13 +713,17 @@ på paketnamn, syfte och avgränsning och rensa sökningen. Öppna dialogen
 `Nytt kravpaket` och kontrollera ansvarssammanfattningen. Öppna radåtgärden
 `Hantera medförfattare`, öppna kopplade krav från redigeringsformuläret och
 starta byte av kravpaketsansvarig med HSA-id. Kontrollera även att listans
-skrivskyddade medförfattarkolumn visar namn utan HSA-id eller e-postadress.
+skrivskyddade medförfattarkolumn visar namn utan HSA-id eller e-postadress. Gör
+uppslaget mot en testperson markerad med skyddade personuppgifter.
 
 **Förväntat resultat:** Paketlistan filtreras och återställs korrekt. Den som
 skapar kravpaketet visas som kravpaketsansvarig utan redigerbart ansvarsfält.
 Kopplade krav öppnas i en skrivskyddad dialog utan att redigeringsformuläret
 försvinner. Medförfattare hanteras i separat dialog, och byte av
 kravpaketsansvarig verifierar HSA-id och visar namn och e-post som text.
+Den skyddade identiteten förblir synlig i det behöriga arbetsflödet och en
+tydlig vägledning begränsar användningen till uppdraget, uppmanar till minskad
+spridning och hänvisar till regionens dataskydds-, säkerhets- eller HR-funktion.
 
 ### REQ-14b: kravurvalsfrågor behåller flik och kan ordnas
 
