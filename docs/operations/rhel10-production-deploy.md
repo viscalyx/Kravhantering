@@ -670,7 +670,10 @@ lookup endpoint. The browser must not call the HSA integration directly; the
 app calls this internal Kong or integration-platform REST facade only when an
 editable HSA-id needs lookup or refresh. Keep
 `HSA_PERSON_LOOKUP_TIMEOUT_MS=5000` unless the approved integration path needs
-another timeout.
+another timeout. Production lookup, OAuth issuer, and explicit token URLs must
+use HTTPS. OIDC discovery accepts only the configured issuer and a token
+endpoint on the same origin; use an explicit approved HTTPS token URL when the
+token service uses another origin.
 
 Leave the optional `HSA_PERSON_LOOKUP_*` authentication values blank for an
 internal same-stack route. When the approved external route requires mTLS, set
@@ -685,6 +688,12 @@ and either `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
 when the token endpoint requires them. Supplying both mTLS and OAuth2 enables
 mixed mode. The canonical flow is described in
 [HSA person lookup integration](../integrations/hsa-person-lookup-integration.md).
+
+Before rollout, allow only the approved lookup, issuer, explicit token, and
+adapter SOAP destinations through the host firewall, approved egress proxy,
+controlled DNS and routes, and upstream ACLs. These infrastructure controls
+own IP, CIDR, loopback, link-local, private-address, DNS-rebinding, and route
+allowlisting; the application does not duplicate them.
 
 Ownership for the optional MCP service-token client is split by responsibility:
 

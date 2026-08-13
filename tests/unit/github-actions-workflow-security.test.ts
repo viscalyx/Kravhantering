@@ -773,7 +773,7 @@ describe('GitHub Actions workflow security', () => {
     }
   })
 
-  it('keeps container runtime diagnostics best-effort with job-scoped permissions', () => {
+  it('keeps container runtime diagnostics bounded and cancellation-safe', () => {
     const cases = [
       {
         fileName: 'container-pr-smoke.yml',
@@ -804,9 +804,11 @@ describe('GitHub Actions workflow security', () => {
       expect(job?.permissions).toEqual(permissions)
       expect(diagnostics).toMatchObject({
         'continue-on-error': true,
-        if: 'always()',
+        if: ['${{', '!cancelled()', '}}'].join(' '),
         run: 'scripts/containers/ci-container-runtime.sh collect',
+        'timeout-minutes': 2,
       })
+      expect(diagnostics?.env).toBeUndefined()
     }
 
     const prWorkflow = readWorkflowYaml('container-pr-smoke.yml')

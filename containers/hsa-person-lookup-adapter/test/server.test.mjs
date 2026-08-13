@@ -13,6 +13,7 @@ import {
   createServer,
   mapSoapPeopleToRest,
   parseGetHsaPersonResponse,
+  readConfig,
   soapRequestXml,
 } from '../src/server.mjs'
 
@@ -127,6 +128,17 @@ function successEnvelope(userInformations) {
 }
 
 describe('HSA person lookup adapter SOAP mapping', () => {
+  it('rejects a plaintext production SOAP endpoint during configuration', () => {
+    assert.throws(
+      () =>
+        readConfig({
+          HSA_SOAP_ENDPOINT_URL: 'http://hsa.example.test/soap',
+          NODE_ENV: 'production',
+        }),
+      /must use HTTPS in production/u,
+    )
+  })
+
   it('generates dynamic server SANs and owner-only private key permissions', async () => {
     const customCertDir = await mkdtemp(path.join(tmpdir(), 'hsa-certs-'))
     try {
@@ -309,6 +321,113 @@ describe('HSA person lookup adapter REST facade', () => {
 
       assert.equal(response.status, 503)
       assert.equal(response.body.code, 'service_unavailable')
+    } finally {
+      await stop(adapter)
+      await stop(upstream)
+    }
+  })
+
+  it('rejects a successful SOAP response with a non-XML media type', async () => {
+    const upstream = http.createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
+      res.end(
+        successEnvelope(
+          [
+            '<hsa:userInformation>',
+            '<hsa:hsaIdentity>SE5560000001-annaj</hsa:hsaIdentity>',
+            '<hsa:givenName>Anna</hsa:givenName>',
+            '</hsa:userInformation>',
+          ].join(''),
+        ),
+      )
+    })
+    const upstreamBaseUrl = await listen(upstream, 'http')
+    const adapter = createServer({
+      endpointUrl: `${upstreamBaseUrl}${SOAP_URL}`,
+      timeoutMs: 5000,
+      to: 'SE165565594230-1000',
+    })
+    const localAdapterBaseUrl = await listen(adapter, 'http')
+    try {
+      const response = await postLookupAt(
+        localAdapterBaseUrl,
+        'SE5560000001-annaj',
+      )
+
+      assert.equal(response.status, 503)
+      assert.equal(response.body.code, 'service_unavailable')
+    } finally {
+      await stop(adapter)
+      await stop(upstream)
+    }
+  })
+
+  it('rejects a streaming SOAP response as soon as it exceeds 1 MiB', async () => {
+    const upstream = http.createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/xml; charset=utf-8' })
+      res.end(
+        `${successEnvelope(
+          [
+            '<hsa:userInformation>',
+            '<hsa:hsaIdentity>SE5560000001-annaj</hsa:hsaIdentity>',
+            '<hsa:givenName>Anna</hsa:givenName>',
+            '</hsa:userInformation>',
+          ].join(''),
+        )}${' '.repeat(1024 * 1024)}`,
+      )
+    })
+    const upstreamBaseUrl = await listen(upstream, 'http')
+    const adapter = createServer({
+      endpointUrl: `${upstreamBaseUrl}${SOAP_URL}`,
+      timeoutMs: 5000,
+      to: 'SE165565594230-1000',
+    })
+    const localAdapterBaseUrl = await listen(adapter, 'http')
+    try {
+      const response = await postLookupAt(
+        localAdapterBaseUrl,
+        'SE5560000001-annaj',
+      )
+
+      assert.equal(response.status, 503)
+      assert.equal(response.body.code, 'service_unavailable')
+    } finally {
+      await stop(adapter)
+      await stop(upstream)
+    }
+  })
+
+  it('does not follow SOAP redirects', async () => {
+    let redirectTargetRequests = 0
+    const upstream = http.createServer((req, res) => {
+      if (req.url === '/credential-sink') {
+        redirectTargetRequests += 1
+        res.writeHead(200, { 'Content-Type': 'text/xml' })
+        res.end(successEnvelope(''))
+        return
+      }
+      res.writeHead(302, {
+        'Content-Type': 'application/soap+xml; charset=utf-8',
+        Location: '/credential-sink',
+      })
+      res.end('<redirect/>')
+    })
+    const upstreamBaseUrl = await listen(upstream, 'http')
+    const adapter = createServer({
+      endpointUrl: `${upstreamBaseUrl}${SOAP_URL}`,
+      timeoutMs: 5000,
+      to: 'SE165565594230-1000',
+    })
+    const localAdapterBaseUrl = await listen(adapter, 'http')
+    try {
+      const response = await postLookupAt(
+        localAdapterBaseUrl,
+        'SE5560000001-annaj',
+      )
+
+      assert.equal(response.status, 503)
+      assert.equal(response.body.code, 'service_unavailable')
+      assert.equal(redirectTargetRequests, 0)
     } finally {
       await stop(adapter)
       await stop(upstream)

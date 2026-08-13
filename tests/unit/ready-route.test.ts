@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
   getAuthConfig: vi.fn(),
+  getHsaPersonLookupConfig: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   getSqlServerDatabaseUrl: vi.fn(),
+  hsaPersonLookupConfigDiagnostic: vi.fn(),
   probeGeneratedOutputTempDirectory: vi.fn(),
   readBuildMetadata: vi.fn(),
 }))
@@ -14,6 +16,11 @@ vi.mock('@/lib/auth/config', () => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/hsa/person-lookup', () => ({
+  getHsaPersonLookupConfig: routeState.getHsaPersonLookupConfig,
+  hsaPersonLookupConfigDiagnostic: routeState.hsaPersonLookupConfigDiagnostic,
 }))
 
 vi.mock('@/lib/build-metadata', () => ({
@@ -52,6 +59,8 @@ function setReadyDefaults() {
   routeState.getAuthConfig.mockReturnValue({
     issuerUrl: 'https://issuer.example.com/realms/test',
   })
+  routeState.getHsaPersonLookupConfig.mockReturnValue(null)
+  routeState.hsaPersonLookupConfigDiagnostic.mockReturnValue(null)
   routeState.readBuildMetadata.mockReturnValue({
     builtAt: '2026-05-21T19:00:00.000Z',
     commitSha: 'abc123',
@@ -136,6 +145,41 @@ describe('GET /api/ready', () => {
       '[readiness] check failed',
       expect.objectContaining({ check: 'runtime_config' }),
     )
+    warn.mockRestore()
+  })
+
+  it('returns not_ready for invalid optional HSA configuration without making a network call', async () => {
+    setReadyDefaults()
+    const configError = new Error(
+      'HSA_PERSON_LOOKUP_URL=https://private.example contains a private endpoint',
+    )
+    routeState.getHsaPersonLookupConfig.mockImplementation(() => {
+      throw configError
+    })
+    routeState.hsaPersonLookupConfigDiagnostic.mockReturnValue(
+      'hsa_lookup_url_https_required',
+    )
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await route.GET(request())
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
+    expect(body).not.toContain('HSA_PERSON_LOOKUP_URL')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(
+      '[readiness] check failed',
+      expect.objectContaining({
+        check: 'runtime_config',
+        diagnostic: 'hsa_lookup_url_https_required',
+      }),
+    )
+    expect(routeState.hsaPersonLookupConfigDiagnostic).toHaveBeenCalledWith(
+      configError,
+    )
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('private.example')
     warn.mockRestore()
   })
 

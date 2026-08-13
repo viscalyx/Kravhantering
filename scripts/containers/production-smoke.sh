@@ -168,14 +168,19 @@ install_archive() {
   sudo ln -sfn "$release_root" "$INSTALL_ROOT/current"
 }
 
+configure_smoke_app_env() {
+  local app_env="$1"
+  sed -i \
+    -e 's#/realms/kravhantering-test#/realms/kravhantering-production#' \
+    -e 's#^HSA_PERSON_LOOKUP_URL=.*#HSA_PERSON_LOOKUP_URL=https://kong:8443/hsa/person-records/lookup#' \
+    -e 's#^DB_TRUST_SERVER_CERTIFICATE=.*#DB_TRUST_SERVER_CERTIFICATE=false#' \
+    "$app_env"
+}
+
 render_runtime_configuration() {
   CONFIG_TEMP_DIR="$(mktemp -d)"
   cp containers/app/.env.app.local "$CONFIG_TEMP_DIR/app.env"
-  sed -i \
-    -e 's#/realms/kravhantering-test#/realms/kravhantering-production#' \
-    -e 's#^HSA_PERSON_LOOKUP_URL=.*#HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup#' \
-    -e 's#^DB_TRUST_SERVER_CERTIFICATE=.*#DB_TRUST_SERVER_CERTIFICATE=false#' \
-    "$CONFIG_TEMP_DIR/app.env"
+  configure_smoke_app_env "$CONFIG_TEMP_DIR/app.env"
   cp containers/db-job/.env.db-job.local "$CONFIG_TEMP_DIR/db-job.env"
   sed -i \
     -e 's#^DB_TRUST_SERVER_CERTIFICATE=.*#DB_TRUST_SERVER_CERTIFICATE=false#' \
@@ -242,9 +247,16 @@ render_runtime_configuration() {
     'allow ::1/128;' \
     >"$CONFIG_TEMP_DIR/nginx-readiness-probes.conf"
 
+  node scripts/containers/generate-tls.mjs \
+    --hostname kong \
+    --output-dir "$CONFIG_TEMP_DIR/kong-tls" \
+    --ca-cert tmp/container-tls/ca.crt \
+    --ca-key tmp/container-tls/ca.key
+
   sudo install -d -o root -g "$SERVICE_USER" -m 0750 \
     "$CONFIG_ROOT" "$CONFIG_ROOT/keycloak" "$CONFIG_ROOT/sqlserver-tls" \
-    "$CONFIG_ROOT/tls" "$CONFIG_ROOT/keycloak-management-tls"
+    "$CONFIG_ROOT/tls" "$CONFIG_ROOT/keycloak-management-tls" \
+    "$CONFIG_ROOT/kong-tls"
   for file in app.env db-job.env keycloak.env release.env sqlserver.env; do
     sudo install -o root -g "$SERVICE_USER" -m 0640 \
       "$CONFIG_TEMP_DIR/$file" "$CONFIG_ROOT/$file"
@@ -261,6 +273,10 @@ render_runtime_configuration() {
     tmp/container-tls/kravhantering.test.key "$CONFIG_ROOT/tls/privkey.pem"
   sudo install -o root -g "$SERVICE_USER" -m 0644 \
     tmp/container-tls/ca.crt "$CONFIG_ROOT/tls/ca.crt"
+  sudo install -o root -g "$SERVICE_USER" -m 0644 \
+    "$CONFIG_TEMP_DIR/kong-tls/kong.crt" "$CONFIG_ROOT/kong-tls/kong.crt"
+  sudo install -o root -g "$SERVICE_USER" -m 0640 \
+    "$CONFIG_TEMP_DIR/kong-tls/kong.key" "$CONFIG_ROOT/kong-tls/kong.key"
   sudo install -o root -g "$SERVICE_USER" -m 0644 \
     tmp/container-tls/sqlserver.crt \
     "$CONFIG_ROOT/sqlserver-tls/server.crt"
@@ -339,6 +355,7 @@ render_ci_overlay() {
     fi
     sed \
       -e "s#@@BUNDLE_ROOT@@#$INSTALL_ROOT/current#g" \
+      -e "s#@@CONFIG_ROOT@@#$CONFIG_ROOT#g" \
       -e "s#@@HSA_DIRECTORY_MOCK_IMAGE_REF@@#$HSA_DIRECTORY_MOCK_IMAGE_REF#g" \
       -e "s#@@HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF@@#$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF#g" \
       -e "s#@@KONG_IMAGE_REF@@#$KONG_IMAGE_REF#g" \

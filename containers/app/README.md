@@ -114,8 +114,9 @@ Required application values:
 - `AUTH_OIDC_REDIRECT_URI` and `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` must
   match the Keycloak realm imported for the stack.
 - `AUTH_SESSION_COOKIE_PASSWORD` must be at least 32 characters.
-- `HSA_PERSON_LOOKUP_URL` must point to the server-side Kong or
-  integration-platform REST facade for HSA person lookup.
+- `HSA_PERSON_LOOKUP_URL` must use HTTPS in production and point to the
+  server-side Kong or integration-platform REST facade approved by the
+  environment's egress policy for HSA person lookup.
 
 Optional application values:
 
@@ -141,7 +142,10 @@ Optional application values:
   `HSA_PERSON_LOOKUP_OAUTH_SCOPE`, and
   `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` enable optional OAuth2 client
   credentials auth. Set either token URL or issuer URL; issuer URL uses OIDC
-  discovery.
+  discovery. Production OAuth URLs must use HTTPS. Discovery must return the
+  configured issuer and a token endpoint on the same origin; configure an
+  explicit HTTPS token URL when the approved token service uses another
+  origin.
 - `OPENROUTER_API_KEY`, `OPENROUTER_MGMT_API_KEY`, and
   `NEXT_PUBLIC_DEFAULT_MODEL` enable optional AI integrations.
 - `KRAVHANTERING_EXPORT_TEMP_DIR` selects an absolute private spool root for

@@ -169,7 +169,90 @@ function runCaTrust(updateStatus) {
   })
 }
 
+function renderHsaSmokeConfiguration() {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kh-hsa-smoke-config-'),
+  )
+  temporaryDirectories.push(temporaryDirectory)
+  const appEnvPath = path.join(temporaryDirectory, 'app.env')
+  const serviceHome = path.join(temporaryDirectory, 'service-home')
+  const configRoot = path.join(temporaryDirectory, 'config')
+  fs.writeFileSync(
+    appEnvPath,
+    [
+      'AUTH_OIDC_ISSUER_URL=https://kravhantering.test/auth/realms/kravhantering-test',
+      'HSA_PERSON_LOOKUP_URL=http://localhost:8000/hsa/person-records/lookup',
+      'DB_TRUST_SERVER_CERTIFICATE=true',
+      '',
+    ].join('\n'),
+  )
+
+  const shell = `
+    source "$1"
+    SERVICE_HOME="$2"
+    CONFIG_ROOT="$3"
+    INSTALL_ROOT=/opt/kravhantering
+    HSA_DIRECTORY_MOCK_IMAGE_REF=test/hsa-directory-mock:latest
+    HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF=test/hsa-person-lookup-adapter:latest
+    KONG_IMAGE_REF=test/kong:latest
+    configure_smoke_app_env "$4"
+    as_service() { "$@"; }
+    render_ci_overlay
+  `
+  const result = childProcess.spawnSync(
+    'bash',
+    [
+      '-c',
+      shell,
+      'bash',
+      PRODUCTION_SMOKE_PATH,
+      serviceHome,
+      configRoot,
+      appEnvPath,
+    ],
+    { cwd: process.cwd(), encoding: 'utf8' },
+  )
+  const kongUnitPath = path.join(
+    serviceHome,
+    '.config/containers/systemd/kravhantering-ci-kong.container',
+  )
+  return {
+    appEnv: fs.readFileSync(appEnvPath, 'utf8'),
+    configRoot,
+    kongUnit: fs.existsSync(kongUnitPath)
+      ? fs.readFileSync(kongUnitPath, 'utf8')
+      : '',
+    result,
+  }
+}
+
 describe('production smoke output', () => {
+  it('renders the CI-only HSA route with verified HTTPS', () => {
+    const { appEnv, configRoot, kongUnit, result } =
+      renderHsaSmokeConfiguration()
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    expect(appEnv).toContain(
+      'HSA_PERSON_LOOKUP_URL=https://kong:8443/hsa/person-records/lookup',
+    )
+    expect(kongUnit).toContain(
+      'Environment="KONG_PROXY_LISTEN=0.0.0.0:8443 ssl"',
+    )
+    expect(kongUnit).toContain(
+      'Environment=KONG_SSL_CERT=/run/kong-tls/server.crt',
+    )
+    expect(kongUnit).toContain(
+      `Volume=${configRoot}/kong-tls/kong.crt:/run/kong-tls/server.crt:ro`,
+    )
+    expect(kongUnit).toContain('Environment=KONG_PREFIX=/tmp/kong')
+    expect(kongUnit).toContain('PodmanArgs=--group-add=keep-groups')
+    expect(kongUnit).toContain(
+      'Tmpfs=/tmp:rw,size=64M,mode=1777,U,nosuid,nodev,noexec',
+    )
+    expect(kongUnit).not.toContain('@@CONFIG_ROOT@@')
+  })
+
   it('summarizes expected readiness retries with lifecycle context', () => {
     const { countPath, result } = runReadinessProbe(12)
 

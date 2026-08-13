@@ -11,12 +11,19 @@ Environment=KONG_ADMIN_ERROR_LOG=/dev/stderr
 Environment=KONG_ADMIN_LISTEN=127.0.0.1:8001
 Environment=KONG_DATABASE=off
 Environment=KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml
+Environment=KONG_PREFIX=/tmp/kong
 Environment=KONG_PROXY_ACCESS_LOG=/dev/stdout
 Environment=KONG_PROXY_ERROR_LOG=/dev/stderr
-Environment=KONG_PROXY_LISTEN=0.0.0.0:8000
+Environment="KONG_PROXY_LISTEN=0.0.0.0:8443 ssl"
+Environment=KONG_SSL_CERT=/run/kong-tls/server.crt
+Environment=KONG_SSL_CERT_KEY=/run/kong-tls/server.key
 Network=kravhantering-single-node-egress.network
 PodmanArgs=--network-alias=kong
+PodmanArgs=--group-add=keep-groups
+Tmpfs=/tmp:rw,size=64M,mode=1777,U,nosuid,nodev,noexec
 Volume=@@BUNDLE_ROOT@@/kong/kong.yml:/kong/declarative/kong.yml:ro
+Volume=@@CONFIG_ROOT@@/kong-tls/kong.crt:/run/kong-tls/server.crt:ro
+Volume=@@CONFIG_ROOT@@/kong-tls/kong.key:/run/kong-tls/server.key:ro
 NoNewPrivileges=true
 DropCapability=all
 

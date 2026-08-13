@@ -21,21 +21,22 @@ const CLASSIFIER_PATH = path.resolve(
 )
 const temporaryDirectories = []
 
-function createToolchainFixture() {
+function createToolchainFixture({ toolchain = 'package' } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-ci-runtime-'))
   temporaryDirectories.push(root)
   const systemPrefix = path.join(root, 'usr')
   const localPrefix = path.join(root, 'usr-local')
-  const binDir = path.join(systemPrefix, 'bin')
-  const libexecDir = path.join(systemPrefix, 'libexec', 'podman')
+  const toolchainPrefix = toolchain === 'static' ? localPrefix : systemPrefix
+  const binDir = path.join(toolchainPrefix, 'bin')
+  const libexecDir = path.join(toolchainPrefix, 'libexec', 'podman')
   const userGeneratorDir = path.join(
-    systemPrefix,
+    toolchainPrefix,
     'lib',
     'systemd',
     'user-generators',
   )
   const systemGeneratorDir = path.join(
-    systemPrefix,
+    toolchainPrefix,
     'lib',
     'systemd',
     'system-generators',
@@ -49,13 +50,17 @@ function createToolchainFixture() {
     'containers.conf.d',
     '00-fix-runtime.conf',
   )
+  const conmonPath =
+    toolchain === 'static'
+      ? path.join(localPrefix, 'lib', 'podman', 'conmon')
+      : path.join(binDir, 'conmon')
   fs.mkdirSync(binDir, { recursive: true })
   fs.mkdirSync(libexecDir, { recursive: true })
+  fs.mkdirSync(path.dirname(conmonPath), { recursive: true })
   fs.mkdirSync(userGeneratorDir, { recursive: true })
   fs.mkdirSync(systemGeneratorDir, { recursive: true })
 
   const podmanPath = path.join(binDir, 'podman')
-  const conmonPath = path.join(binDir, 'conmon')
   const crunPath = path.join(binDir, 'crun')
   const generatorPath = path.join(libexecDir, 'quadlet')
   fs.writeFileSync(
@@ -63,6 +68,7 @@ function createToolchainFixture() {
     [
       '#!/usr/bin/env bash',
       'printf \'%s\\n\' "$*" >>"$CI_FAKE_PODMAN_LOG"',
+      '[[ "$1" == "--log-level=debug" ]] && shift',
       'case "$1" in',
       "  --version) printf 'podman version 4.9.3\\n' ;;",
       '  info)',
@@ -70,7 +76,7 @@ function createToolchainFixture() {
       '    printf \'{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n\' "$CI_FAKE_CONMON_PATH" "$CI_FAKE_CRUN_PATH"',
       '    ;;',
       `  run) exit "\${CI_FAKE_RUN_STATUS:-0}" ;;`,
-      `  system) [[ "$2" == migrate ]] && exit "\${CI_FAKE_MIGRATE_STATUS:-0}" ;;`,
+      `  system) [[ "$2 $3" == "reset --force" ]] && exit "\${CI_FAKE_RESET_STATUS:-0}" ;;`,
       'esac',
       '',
     ].join('\n'),
@@ -130,6 +136,7 @@ function createToolchainFixture() {
     env: {
       ...process.env,
       GH_TOKEN: '',
+      GITHUB_ACTIONS: 'true',
       GITHUB_REPOSITORY: '',
       GITHUB_RUN_ID: '',
       CI_FAKE_CONMON_PATH: conmonPath,
@@ -235,10 +242,10 @@ describe('CI container runtime', () => {
     expect(fs.existsSync(fixture.containersConfigPath)).toBe(false)
     expect(fs.existsSync(fixture.runtimeDropInPath)).toBe(false)
     expect(fs.readFileSync(fixture.commandLog, 'utf8')).toContain(
-      'system migrate',
+      'system reset --force',
     )
     expect(result.stdout).toContain(
-      'existing rootless Podman runtime state: stopped',
+      'existing rootless Podman runtime state: reset',
     )
     const commands = fs.readFileSync(fixture.sudoLog, 'utf8')
     expect(commands).toContain(
@@ -247,7 +254,33 @@ describe('CI container runtime', () => {
     expect(commands.includes('skopeo')).toBe(usesSkopeo)
   })
 
-  it('aborts bootstrap before replacing binaries when Podman migration fails', () => {
+  it.each([
+    ['pr', false],
+    ['release', true],
+  ])(
+    'keeps a coherent static runner %s profile instead of downgrading it',
+    (profile, usesSkopeo) => {
+      const fixture = createToolchainFixture({ toolchain: 'static' })
+
+      const result = runRuntimeScript(['bootstrap', profile], fixture)
+
+      expect(result.status).toBe(0)
+      expect(result.stdout).toContain('coherent static toolchain: verified')
+      const podmanCommands = fs.readFileSync(fixture.commandLog, 'utf8')
+      expect(podmanCommands).toContain('--log-level=debug info --format json')
+      expect(podmanCommands).not.toContain('system reset')
+      const sudoCommands = fs.readFileSync(fixture.sudoLog, 'utf8')
+      expect(sudoCommands).toContain(
+        'apt-get install -y --no-install-recommends --reinstall jq libnss3-tools',
+      )
+      expect(sudoCommands.includes('skopeo')).toBe(usesSkopeo)
+      expect(sudoCommands).not.toContain(' podman')
+      expect(sudoCommands).not.toContain(' conmon')
+      expect(sudoCommands).not.toContain(' crun')
+    },
+  )
+
+  it('aborts bootstrap before replacing binaries when Podman reset fails', () => {
     const fixture = createToolchainFixture()
     const preinstalledPath = path.join(
       fixture.localPrefix,
@@ -259,14 +292,37 @@ describe('CI container runtime', () => {
     fs.writeFileSync(preinstalledPath, 'foreign toolchain')
 
     const result = runRuntimeScript(['bootstrap', 'pr'], fixture, {
-      CI_FAKE_MIGRATE_STATUS: '42',
+      CI_FAKE_RESET_STATUS: '42',
     })
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain(
-      'cannot stop the existing rootless Podman runtime state (exit 42)',
+      'cannot reset the existing rootless Podman runtime state (exit 42)',
     )
     expect(fs.existsSync(preinstalledPath)).toBe(true)
+    expect(
+      fs.existsSync(fixture.sudoLog)
+        ? fs.readFileSync(fixture.sudoLog, 'utf8')
+        : '',
+    ).not.toContain('apt-get')
+  })
+
+  it('refuses to reset Podman state outside an ephemeral GitHub Actions runner', () => {
+    const fixture = createToolchainFixture()
+
+    const result = runRuntimeScript(['bootstrap', 'pr'], fixture, {
+      GITHUB_ACTIONS: '',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'refusing to reset rootless Podman state outside GitHub Actions',
+    )
+    expect(
+      fs.existsSync(fixture.commandLog)
+        ? fs.readFileSync(fixture.commandLog, 'utf8')
+        : '',
+    ).not.toContain('system reset')
     expect(
       fs.existsSync(fixture.sudoLog)
         ? fs.readFileSync(fixture.sudoLog, 'utf8')
@@ -285,6 +341,9 @@ describe('CI container runtime', () => {
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain(
       'cannot inspect the selected Podman runtime toolchain (exit 124)',
+    )
+    expect(fs.readFileSync(fixture.commandLog, 'utf8')).toContain(
+      '--log-level=debug info --format json',
     )
   })
 
@@ -352,6 +411,59 @@ describe('CI container runtime', () => {
       .map(file => fs.readFileSync(path.join(evidenceDirectory, file), 'utf8'))
       .join('\n')
     expect(completeEvidence).not.toContain(secret)
+  })
+
+  it('bounds Podman inspection while collecting runtime evidence', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'evidence')
+
+    const result = runRuntimeScript(['collect'], fixture, {
+      CI_FAKE_INFO_DELAY_SECONDS: '2',
+      CI_RUNTIME_COMMAND_TIMEOUT_SECONDS: '1',
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+    })
+
+    expect(result.status).toBe(0)
+    expect(
+      fs.readFileSync(path.join(evidenceDirectory, 'podman-info.json'), 'utf8'),
+    ).not.toContain('ociRuntime')
+    expect(
+      fs.readFileSync(
+        path.join(evidenceDirectory, 'classification.txt'),
+        'utf8',
+      ),
+    ).toContain('unknown')
+  })
+
+  it('defers current-job runner metadata until the job has completed', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'evidence')
+    const ghCallLog = path.join(fixture.root, 'gh-calls.log')
+    const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+    fs.writeFileSync(
+      ghPath,
+      [
+        '#!/usr/bin/env bash',
+        'printf \'%s\\n\' "$*" >>"$CI_FAKE_GH_CALL_LOG"',
+        'exit 99',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runRuntimeScript(['collect'], fixture, {
+      CI_FAKE_GH_CALL_LOG: ghCallLog,
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+      GH_TOKEN: 'test-token',
+      GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+      GITHUB_RUN_ID: '12345',
+    })
+
+    expect(result.status).toBe(0)
+    expect(fs.existsSync(ghCallLog)).toBe(false)
+    expect(
+      fs.existsSync(path.join(evidenceDirectory, 'github-runner-metadata.txt')),
+    ).toBe(false)
   })
 
   it('records provenance for runtime paths selected outside the package toolchain', () => {
