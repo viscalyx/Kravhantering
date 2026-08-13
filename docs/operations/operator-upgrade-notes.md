@@ -155,6 +155,11 @@ After rollout, verify readiness from an allowed monitoring source, confirm other
 <!-- operator-upgrade:source pr-989 start -->
 Before rollout, verify every production HSA lookup, OAuth, and SOAP endpoint uses HTTPS and that discovery returns a token endpoint on the configured issuer's origin. Confirm host firewall, approved egress proxy, DNS, routing, and upstream ACL rules allow only approved HSA destinations.
 <!-- operator-upgrade:source pr-989 end -->
+
+<!-- operator-upgrade:source pr-990 start -->
+After deployment, verify responsibility assignment workflows for areas, packages, and specifications. HSA lookup no longer persists a person immediately; the final assignment must present the short-lived evidence returned by verification, after which person creation and assignment are committed atomically.
+Update any automation that calls these internal verification and assignment endpoints to forward the returned evidence. Verification is now rate limited, and audit records use target fingerprints and outcomes instead of raw target HSA IDs or personal data. Brief support and privacy teams on the protected-person handling guidance shown in the assignment workflow.
+<!-- operator-upgrade:source pr-990 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
