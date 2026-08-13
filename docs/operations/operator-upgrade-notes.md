@@ -151,6 +151,10 @@ remains usable.
 Before upgrading, create a site-specific readiness probe boundary containing the approved IPv4 and IPv6 monitoring source networks and configure the deployment to use it. The upgrade will refuse to render or install if the boundary is absent or invalid.
 After rollout, verify readiness from an allowed monitoring source, confirm other sources receive an empty denial, and confirm liveness and normal application traffic remain available. Update monitoring expectations for one request per second with a burst of five and generic rate-limit/not-ready responses.
 <!-- operator-upgrade:source pr-987 end -->
+
+<!-- operator-upgrade:source pr-989 start -->
+Before rollout, verify every production HSA lookup, OAuth, and SOAP endpoint uses HTTPS and that discovery returns a token endpoint on the configured issuer's origin. Confirm host firewall, approved egress proxy, DNS, routing, and upstream ACL rules allow only approved HSA destinations.
+<!-- operator-upgrade:source pr-989 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
