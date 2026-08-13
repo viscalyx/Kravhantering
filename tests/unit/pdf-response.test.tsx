@@ -61,6 +61,23 @@ describe('PDF response helpers', () => {
     expect(pdfState.renderToBuffer).not.toHaveBeenCalled()
   })
 
+  it('rejects rendering with active capacity for another output kind', async () => {
+    const capacity = acquireGeneratedOutputCapacity({
+      concurrencyLimit: 1,
+      output: 'csv',
+    })
+    try {
+      await expect(
+        renderPdfResponse(createElement('mock-document'), 'report.pdf', {
+          capacity,
+        }),
+      ).rejects.toThrow('Active PDF generation capacity is required')
+      expect(pdfState.renderToBuffer).not.toHaveBeenCalled()
+    } finally {
+      capacity.release()
+    }
+  })
+
   it('sanitizes fallback filenames and parses RFC 5987 attachment filenames', () => {
     const filename = sanitizePdfFilename('\u0000../Risk:rapport?.pdf')
     expect(filename).toBe('..-Risk-rapport-.pdf')

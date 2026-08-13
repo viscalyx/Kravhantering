@@ -1,8 +1,12 @@
 import type { NextRequest } from 'next/server'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
 import { getSpecificationItemById } from '@/lib/dal/requirements-specifications'
-import { runSynchronousPdfGeneration } from '@/lib/pdf/synchronous-generation'
 import {
+  createPdfItemLimitError,
+  runSynchronousPdfGeneration,
+} from '@/lib/pdf/synchronous-generation'
+import {
+  assertRequirementReportItemLimit,
   collectDeviationForReport,
   parseLibrarySpecificationItemId,
   ReportDataError,
@@ -47,7 +51,12 @@ export async function GET(
     return await runSynchronousPdfGeneration(
       runtime.db,
       request.signal,
-      async ({ capacity }) => {
+      async ({ capacity, itemLimit }) => {
+        await assertRequirementReportItemLimit(runtime.db, id, {
+          collection: 'versions',
+          createItemLimitError: createPdfItemLimitError,
+          maxItems: itemLimit,
+        })
         const data = await collectDeviationForReport(
           runtime.db,
           id,

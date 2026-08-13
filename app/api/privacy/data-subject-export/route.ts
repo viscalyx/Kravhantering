@@ -11,6 +11,7 @@ import {
   type LoggedInSession,
 } from '@/lib/auth/session'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   customMutationPolicy,
@@ -146,7 +147,7 @@ export const POST = secureMutationRoute({
         return await runSynchronousPdfGeneration(
           db,
           request.signal,
-          async ({ capacity, itemLimit }) => {
+          async ({ capacity, itemLimit, signal }) => {
             const exportPayload = await collectDataSubjectExport(
               db,
               exportInput,
@@ -155,13 +156,8 @@ export const POST = secureMutationRoute({
                 maxItems: itemLimit,
               },
             )
-            recordDataSubjectExportSecurityEvent(
-              body.delivery,
-              exportPayload,
-              context,
-              request,
-            )
-            return renderPdfResponse(
+            throwIfGenerationAborted(signal)
+            const response = await renderPdfResponse(
               createElement(DataSubjectExportPdfRenderer, {
                 exportData: exportPayload,
                 locale: body.locale,
@@ -169,6 +165,14 @@ export const POST = secureMutationRoute({
               dataSubjectExportFilename(exportPayload, 'pdf', body.locale),
               { capacity },
             )
+            throwIfGenerationAborted(signal)
+            recordDataSubjectExportSecurityEvent(
+              body.delivery,
+              exportPayload,
+              context,
+              request,
+            )
+            return response
           },
         )
       }

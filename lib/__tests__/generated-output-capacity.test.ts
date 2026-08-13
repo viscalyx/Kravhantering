@@ -17,21 +17,23 @@ describe('generated-output capacity', () => {
       output: 'pdf',
     })
 
-    expect(generatedOutputCapacitySnapshot().activePdf).toBe(2)
-    expect(() =>
-      acquireGeneratedOutputCapacity({
-        concurrencyLimit: 2,
-        output: 'pdf',
-      }),
-    ).toThrow(
-      expect.objectContaining({
-        code: 'capacity_busy',
-        details: { output: 'pdf', retryAfterSeconds: 5 },
-      }),
-    )
-
-    first.release()
-    second.release()
+    try {
+      expect(generatedOutputCapacitySnapshot().activePdf).toBe(2)
+      expect(() =>
+        acquireGeneratedOutputCapacity({
+          concurrencyLimit: 2,
+          output: 'pdf',
+        }),
+      ).toThrow(
+        expect.objectContaining({
+          code: 'capacity_busy',
+          details: { output: 'pdf', retryAfterSeconds: 5 },
+        }),
+      )
+    } finally {
+      first.release()
+      second.release()
+    }
   })
 
   it.each([

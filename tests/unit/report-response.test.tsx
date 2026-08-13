@@ -55,8 +55,11 @@ describe('report PDF response', () => {
       concurrencyLimit: 1,
       output: 'pdf',
     })
-    await renderReportModelPdfResponse(model, 'en', 'report.pdf', capacity)
-    capacity.release()
+    try {
+      await renderReportModelPdfResponse(model, 'en', 'report.pdf', capacity)
+    } finally {
+      capacity.release()
+    }
 
     expect(responseState.collectStatusIconNames).toHaveBeenCalledWith(model)
     expect(responseState.preloadStatusIconNodes).toHaveBeenCalledWith([

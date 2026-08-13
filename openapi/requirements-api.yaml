@@ -1225,7 +1225,7 @@ components:
           $ref: '#/components/headers/NoStore'
         Retry-After:
           description: Seconds to wait before retrying.
-          schema: { type: integer, minimum: 0 }
+          schema: { type: integer, minimum: 5, maximum: 5 }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }

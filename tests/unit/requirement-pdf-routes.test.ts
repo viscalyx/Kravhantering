@@ -1123,6 +1123,38 @@ describe('requirement PDF routes', () => {
     expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
   })
 
+  it('rejects oversized deviation reviews before loading requirement details', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...(await routeState.getApplicationSettings()),
+      pdfReportMaxRequirements: 1,
+    })
+    routeState.assertRequirementReportItemLimit.mockImplementationOnce(
+      async (_db, _id, options) => {
+        throw options.createItemLimitError(options.maxItems)
+      },
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/deviation-review/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/deviation-review/1?item=lib:55',
+      ),
+      { params: Promise.resolve({ id: '1', locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.assertRequirementReportItemLimit).toHaveBeenCalledWith(
+      { db: true },
+      '1',
+      expect.objectContaining({ collection: 'versions', maxItems: 1 }),
+    )
+    expect(routeState.collectDeviationForReport).not.toHaveBeenCalled()
+    expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
+  })
+
   it('authorizes specification profile PDFs before collecting report data', async () => {
     const { GET } = await import(
       '@/app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route'
@@ -1151,7 +1183,10 @@ describe('requirement PDF routes', () => {
     ).toHaveBeenCalledWith(
       { db: true },
       42,
-      expect.objectContaining({ maxItems: 1000 }),
+      expect.objectContaining({
+        maxItems: 1000,
+        signal: expect.any(AbortSignal),
+      }),
     )
     expect(routeState.buildSpecificationProfileReport).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1396,7 +1431,10 @@ describe('requirement PDF routes', () => {
         locale: 'sv',
         sortDirection: 'desc',
       }),
-      expect.objectContaining({ maxItems: 1000 }),
+      expect.objectContaining({
+        maxItems: 1000,
+        signal: expect.any(AbortSignal),
+      }),
     )
     expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
       { kind: 'specification-traceability' },

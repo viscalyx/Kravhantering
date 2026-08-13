@@ -175,13 +175,13 @@ flows return a tool error and log `capacity.throttled`.
 
 Generated output uses `429 capacity_busy` with `Retry-After: 5` when its
 process-local concurrency slot is unavailable. Item and completed-file limits
-return `422 output_limit_exceeded`. These rejections include
-`Cache-Control: no-store`; operators should tell users to reduce selected rows
-or narrow report filters before retrying an item-limit rejection. Timeout,
-temporary-storage, worker-memory, and unexpected worker failures return stable
-`503` error codes. Client cancellation stops cancellation-aware upstream work,
-keeps any non-cancellable direct render admitted until it settles, and exposes
-no response body.
+return `422 output_limit_exceeded`. Generated-output error responses with status
+`422`, `429`, and `503` include `Cache-Control: no-store`. Operators should tell
+users to reduce selected rows or narrow report filters before retrying an
+item-limit rejection. Timeout, temporary-storage, worker-memory, and unexpected
+worker failures return stable `503` error codes. Client cancellation stops
+cancellation-aware upstream work, keeps any non-cancellable direct render
+admitted until it settles, and exposes no response body.
 
 This solution is not distributed. In scaled production, throttling must move to
 SQL Server, Redis, or a platform rate-limiting capability.

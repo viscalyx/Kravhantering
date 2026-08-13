@@ -171,11 +171,17 @@ function reviewDetail() {
   }
 }
 
-function jsonRequest(url: string, body: unknown, method = 'POST'): Request {
+function jsonRequest(
+  url: string,
+  body: unknown,
+  method = 'POST',
+  signal?: AbortSignal,
+): Request {
   return new Request(url, {
     body: JSON.stringify(body),
     headers: { 'Content-Type': 'application/json' },
     method,
+    signal,
   })
 }
 
@@ -704,6 +710,50 @@ describe('access review routes', () => {
         event: 'access_review.exported',
       }),
     )
+  })
+
+  it('does not record PDF export success when rendering fails', async () => {
+    routeState.renderPdfResponse.mockRejectedValueOnce(
+      new Error('PDF render failed'),
+    )
+    const { POST } = await import(
+      '@/app/api/admin/access-reviews/[id]/export/route'
+    )
+
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/access-reviews/42/export', {
+        delivery: 'pdf',
+      }) as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(500)
+    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
+  })
+
+  it('does not record PDF export success when cancellation occurs during rendering', async () => {
+    const controller = new AbortController()
+    routeState.renderPdfResponse.mockImplementationOnce(async () => {
+      controller.abort()
+      return new Response('%PDF')
+    })
+    const { POST } = await import(
+      '@/app/api/admin/access-reviews/[id]/export/route'
+    )
+
+    const response = await POST(
+      jsonRequest(
+        'http://localhost/api/admin/access-reviews/42/export',
+        { delivery: 'pdf' },
+        'POST',
+        controller.signal,
+      ) as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(499)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
   it('authorizes PDF exports before reading generation settings', async () => {

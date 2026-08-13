@@ -15,6 +15,7 @@ import {
 } from '@/lib/access-review/service'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
 import {
   customMutationPolicy,
   secureMutationRoute,
@@ -49,7 +50,7 @@ export const POST = secureMutationRoute({
         return await runSynchronousPdfGeneration(
           db,
           request.signal,
-          async ({ capacity, itemLimit }) => {
+          async ({ capacity, itemLimit, signal }) => {
             const exportPayload = await buildAccessReviewExport(
               db,
               params.id,
@@ -60,14 +61,7 @@ export const POST = secureMutationRoute({
                 maxItems: itemLimit,
               },
             )
-            recordExportSecurityEvent(
-              body.delivery,
-              exportPayload,
-              params.id,
-              context,
-              request,
-            )
-            return renderPdfResponse(
+            const response = await renderPdfResponse(
               createElement(AccessReviewExportPdfRenderer, {
                 exportData: exportPayload,
                 locale: body.locale,
@@ -75,6 +69,15 @@ export const POST = secureMutationRoute({
               accessReviewExportFilename(exportPayload, 'pdf', body.locale),
               { capacity },
             )
+            throwIfGenerationAborted(signal)
+            recordExportSecurityEvent(
+              body.delivery,
+              exportPayload,
+              params.id,
+              context,
+              request,
+            )
+            return response
           },
         )
       }

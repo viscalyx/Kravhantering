@@ -887,13 +887,15 @@ async function getSpecificationRfiListHeader(
   }
 }
 
+export interface SpecificationRfiListItemLimitOptions {
+  createItemLimitError: (limit: number) => Error
+  maxItems: number
+}
+
 export async function getSpecificationRfiList(
   db: SqlServerDatabase,
   specificationId: number,
-  options: {
-    createItemLimitError?: (limit: number) => Error
-    maxItems?: number
-  } = {},
+  options?: SpecificationRfiListItemLimitOptions,
 ): Promise<SpecificationRfiListRow> {
   const header = await getSpecificationRfiListHeader(db, specificationId)
   const selectedVersions: SqlSelection = header.isLocked
@@ -920,9 +922,9 @@ export async function getSpecificationRfiList(
           )
         `,
       }
-  const rowLimitSql = options.maxItems == null ? '' : 'TOP (@1)'
+  const rowLimitSql = options ? 'TOP (@1)' : ''
   const queryParameters =
-    options.maxItems == null
+    options == null
       ? [specificationId]
       : [specificationId, options.maxItems + 1]
   const rows = header.isLocked
@@ -995,11 +997,8 @@ export async function getSpecificationRfiList(
         `,
         queryParameters,
       )) as SpecificationRfiQuestionItemDbRow[])
-  if (options.maxItems != null && rows.length > options.maxItems) {
-    throw (
-      options.createItemLimitError?.(options.maxItems) ??
-      new Error('RFI list exceeded its item bound')
-    )
+  if (options && rows.length > options.maxItems) {
+    throw options.createItemLimitError(options.maxItems)
   }
   const items = rows.map(mapSpecificationRfiQuestionItemRow)
   await hydrateVersionLinks(db, items, selectedVersions)

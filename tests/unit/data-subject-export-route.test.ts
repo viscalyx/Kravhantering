@@ -118,11 +118,12 @@ function signedSession() {
   }
 }
 
-function jsonPost(body: unknown): Request {
+function jsonPost(body: unknown, signal?: AbortSignal): Request {
   return new Request('http://localhost/api/privacy/data-subject-export', {
     body: JSON.stringify(body),
     headers: { 'Content-Type': 'application/json' },
     method: 'POST',
+    signal,
   })
 }
 
@@ -233,6 +234,36 @@ describe('data-subject export route', () => {
     expect(routeState.renderPdfResponse.mock.calls[0][0].props.locale).toBe(
       'en',
     )
+  })
+
+  it('does not record PDF export success when rendering fails', async () => {
+    routeState.renderPdfResponse.mockRejectedValueOnce(
+      new Error('PDF render failed'),
+    )
+    const { POST } = await import('@/app/api/privacy/data-subject-export/route')
+
+    const response = await POST(jsonPost({ delivery: 'pdf' }) as never)
+
+    expect(response.status).toBe(500)
+    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
+  })
+
+  it('stops a cancelled PDF export after collection and before rendering', async () => {
+    const controller = new AbortController()
+    routeState.collectDataSubjectExport.mockImplementationOnce((_db, input) => {
+      controller.abort()
+      return Promise.resolve(exportPayload(input.target.hsaId))
+    })
+    const { POST } = await import('@/app/api/privacy/data-subject-export/route')
+
+    const response = await POST(
+      jsonPost({ delivery: 'pdf' }, controller.signal) as never,
+    )
+
+    expect(response.status).toBe(499)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.renderPdfResponse).not.toHaveBeenCalled()
+    expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
   it('rejects an oversized PDF privacy export before rendering', async () => {
