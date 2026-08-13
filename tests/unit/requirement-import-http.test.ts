@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
+import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import { importCapacityBusyError } from '@/lib/requirements/errors'
 import type { RequirementImportBudget } from '@/lib/requirements/import-budget'
 import {
@@ -7,9 +8,24 @@ import {
   REQUIREMENT_IMPORT_TRANSPORT_MAX_BYTES,
 } from '@/lib/requirements/import-budget'
 import {
+  createRequirementImportBodyReader,
   readRequirementImportRequest,
   requirementImportHttpErrorResponse,
 } from '@/lib/requirements/import-http'
+
+const readerState = vi.hoisted(() => ({
+  db: { query: vi.fn() },
+  getApplicationSettings: vi.fn(),
+  getRequestSqlServerDataSource: vi.fn(),
+}))
+
+vi.mock('@/lib/db', () => ({
+  getRequestSqlServerDataSource: readerState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: readerState.getApplicationSettings,
+}))
 
 const budget: RequirementImportBudget = {
   maxJsonDepth: 4,
@@ -27,6 +43,34 @@ function request(body: unknown): Request {
 }
 
 describe('requirement import HTTP reader', () => {
+  it('loads the current budget before building and applying the route schema', async () => {
+    readerState.getRequestSqlServerDataSource.mockResolvedValueOnce(
+      readerState.db,
+    )
+    readerState.getApplicationSettings.mockResolvedValueOnce({
+      ...DEFAULT_APPLICATION_SETTINGS,
+      requirementImportMaxRows: 1,
+    })
+    const schema = vi.fn(() =>
+      z.object({ payload: z.object({ requirements: z.array(z.object({})) }) }),
+    )
+    const content = vi.fn(
+      (body: unknown) => (body as { payload: unknown }).payload,
+    )
+    const readBody = createRequirementImportBodyReader({ content, schema })
+
+    const result = await readBody({
+      request: request({ payload: { requirements: [{}] } }),
+    })
+
+    expect(result.ok).toBe(true)
+    expect(readerState.getApplicationSettings).toHaveBeenCalledWith(
+      readerState.db,
+    )
+    expect(schema).toHaveBeenCalledWith(expect.objectContaining({ maxRows: 1 }))
+    expect(content).toHaveBeenCalledOnce()
+  })
+
   it('maps capacity rejection to stable 429 retry metadata', async () => {
     const response = requirementImportHttpErrorResponse(
       importCapacityBusyError(),

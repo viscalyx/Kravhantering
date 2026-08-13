@@ -1779,6 +1779,42 @@ describe('RequirementsImportDialog', () => {
     expect(global.fetch).toHaveBeenCalledTimes(6)
   })
 
+  it('rejects a successful schema response without import budget metadata', async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/api/requirements/import/schema')) {
+        return { json: async () => ({ type: 'object' }), ok: true } as Response
+      }
+      return {
+        json: async () =>
+          url.includes('requirement-types') ? { types: [] } : {},
+        ok: true,
+      } as Response
+    })
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 7, name: 'Clinical systems', permissions: {} }]}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.change(screen.getByLabelText(/^Kravområde/), {
+      target: { value: '7' },
+    })
+
+    expect(
+      await screen.findByText(/De aktuella importgränserna kunde inte laddas/),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    ).toBeDisabled()
+  })
+
   it('invalidates previous JSON when a replacement file exceeds the size limit', async () => {
     mockReferenceDataFetch()
     render(

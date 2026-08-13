@@ -5,6 +5,7 @@ import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import { clearAiSafetyRuntimeSettingsCacheForTests } from '@/lib/dal/ai-settings'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
+import { REQUIREMENT_IMPORT_CONTENT_MAX_BYTES } from '@/lib/requirements/import-budget'
 import { REQUIREMENTS_IMPORT_SCHEMA_VERSION } from '@/lib/requirements/import-schema'
 import { mockAiSafetyScreening } from '@/tests/helpers/ai-safety-screening'
 import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
@@ -278,6 +279,30 @@ describe('POST /api/ai/generate-requirement-import', () => {
     const text = await response.text()
 
     expect(text).toContain('import_row_count_cap_exceeded')
+    expect(outputSafetySpy).not.toHaveBeenCalled()
+  })
+
+  it('rejects generated content over the byte budget before output safety work', async () => {
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        phase: 'done',
+        rawContent: JSON.stringify({
+          requirements: [
+            { description: 'a'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES) },
+          ],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        }),
+        stats: { totalTokens: 10 },
+        thinking: '',
+      }
+    })
+    const outputSafetySpy = vi.mocked(aiSafety.screenAiOutputDetailed)
+    outputSafetySpy.mockClear()
+
+    const response = await POST(makeRequest())
+    const text = await response.text()
+
+    expect(text).toContain('import_content_bytes_exceeded')
     expect(outputSafetySpy).not.toHaveBeenCalled()
   })
 

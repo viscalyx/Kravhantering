@@ -76,4 +76,25 @@ describe('browser requirement import content guard', () => {
       }),
     ).toBeNull()
   })
+
+  it('rejects absent, non-object, and negative schema budget metadata', () => {
+    expect(parseRequirementImportBudgetFromJsonSchema(null)).toBeNull()
+    expect(parseRequirementImportBudgetFromJsonSchema({})).toBeNull()
+    expect(
+      parseRequirementImportBudgetFromJsonSchema({
+        'x-requirement-import-budget': null,
+      }),
+    ).toBeNull()
+    expect(
+      parseRequirementImportBudgetFromJsonSchema({
+        'x-requirement-import-budget': {
+          maxJsonDepth: 6,
+          maxNestedItems: 40,
+          maxProposedNeedsReferences: 20,
+          maxProposedNormReferences: 30,
+          maxRows: -1,
+        },
+      }),
+    ).toBeNull()
+  })
 })

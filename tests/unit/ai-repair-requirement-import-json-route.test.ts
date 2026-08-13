@@ -9,6 +9,7 @@ import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import { clearAiSafetyRuntimeSettingsCacheForTests } from '@/lib/dal/ai-settings'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
+import { REQUIREMENT_IMPORT_CONTENT_MAX_BYTES } from '@/lib/requirements/import-budget'
 import { REQUIREMENTS_IMPORT_SCHEMA_VERSION } from '@/lib/requirements/import-schema'
 import { mockAiSafetyScreening } from '@/tests/helpers/ai-safety-screening'
 import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
@@ -239,6 +240,29 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
     expect(response.status).toBe(422)
     await expect(response.json()).resolves.toMatchObject({
       code: 'import_row_count_cap_exceeded',
+    })
+    expect(outputSafetySpy).not.toHaveBeenCalled()
+  })
+
+  it('rejects repaired content over the byte budget before output safety work', async () => {
+    routeState.generateChat.mockResolvedValue({
+      content: {
+        requirements: [
+          { description: 'a'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES) },
+        ],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+      stats: { totalTokens: 10 },
+      thinking: '',
+    })
+    const outputSafetySpy = vi.mocked(aiSafety.screenAiOutputDetailed)
+    outputSafetySpy.mockClear()
+
+    const response = await POST(makeRequest())
+
+    expect(response.status).toBe(413)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'import_content_bytes_exceeded',
     })
     expect(outputSafetySpy).not.toHaveBeenCalled()
   })

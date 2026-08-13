@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   getAdminApplicationSettings,
   getApplicationSettings,
+  getApplicationSettingsForUpdate,
   updateApplicationSetting,
 } from '@/lib/dal/application-settings'
 
@@ -49,6 +50,16 @@ describe('application settings DAL', () => {
     expect(settings.pdfReportMaxFileBytes).toBe(50 * 1024 * 1024)
     expect(Object.isFrozen(settings)).toBe(true)
     expect(query.mock.calls[0]?.[0]).not.toContain('UPDLOCK')
+  })
+
+  it('returns a locked immutable snapshot for transactional revalidation', async () => {
+    const { executor, query } = queryExecutor([persistedRow()])
+
+    const settings = await getApplicationSettingsForUpdate(executor)
+
+    expect(settings.requirementImportMaxRows).toBe(500)
+    expect(Object.isFrozen(settings)).toBe(true)
+    expect(query.mock.calls[0]?.[0]).toContain('UPDLOCK, HOLDLOCK')
   })
 
   it('returns constraints and timestamp to Admin Center', async () => {

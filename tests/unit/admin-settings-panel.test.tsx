@@ -554,4 +554,32 @@ describe('SettingsPanel', () => {
     await waitFor(() => expect(ceilings).toHaveTextContent('500/500'))
     expect(input).toHaveValue(500)
   })
+
+  it('reconciles the persisted MCP ceiling after the global limit PATCH succeeds', async () => {
+    const patch = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(okJson(settingsResponse()))
+      .mockReturnValueOnce(patch.promise)
+    render(<SettingsPanel />)
+
+    const input = await screen.findByLabelText(
+      'admin.applicationSettings.fields.requirementImportMaxRows.label',
+    )
+    const ceilings = screen.getByLabelText('MCP import row ceilings')
+
+    fireEvent.change(input, { target: { value: '400' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(ceilings).toHaveTextContent('400/500'))
+
+    patch.resolve(
+      okJson({
+        field: 'requirementImportMaxRows',
+        updatedAt: '2026-07-18T12:01:00.000Z',
+        value: 400,
+      }),
+    )
+
+    await waitFor(() => expect(ceilings).toHaveTextContent('400/400'))
+    expect(input).toHaveValue(400)
+  })
 })
