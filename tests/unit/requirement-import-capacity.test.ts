@@ -43,6 +43,25 @@ describe('requirement import capacity', () => {
     }
   })
 
+  it('makes releasing a capacity lease idempotent', () => {
+    const lease = tryAcquireRequirementImportCapacity()
+    expect(lease).not.toBeNull()
+
+    lease?.release()
+    lease?.release()
+
+    const first = tryAcquireRequirementImportCapacity()
+    const second = tryAcquireRequirementImportCapacity()
+    try {
+      expect(first).not.toBeNull()
+      expect(second).not.toBeNull()
+      expect(tryAcquireRequirementImportCapacity()).toBeNull()
+    } finally {
+      second?.release()
+      first?.release()
+    }
+  })
+
   it('records a structured capacity event before rejecting a third operation', async () => {
     const first = tryAcquireRequirementImportCapacity()
     const second = tryAcquireRequirementImportCapacity()

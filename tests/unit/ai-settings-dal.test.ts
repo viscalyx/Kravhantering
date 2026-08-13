@@ -423,6 +423,26 @@ describe('AI settings DAL', () => {
     expect(manager.query).toHaveBeenCalledTimes(1)
   })
 
+  it('fails closed when the locked global import row limit is missing', async () => {
+    manager.query.mockResolvedValueOnce([])
+
+    await expect(
+      updateAiGenerationSettings(db, {
+        aiSafetyForensicLoggingEnabled: true,
+        aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        requirementGenerationEnabled: true,
+      }),
+    ).rejects.toMatchObject({
+      code: 'service_unavailable',
+      details: { reason: 'application_settings_database_drift' },
+    })
+    expect(manager.query.mock.calls[0]?.[0]).toContain('UPDLOCK, HOLDLOCK')
+  })
+
   it.each([
     ['mcpImportMaxRows', -1, 'invalid_mcp_import_max_rows'],
     [

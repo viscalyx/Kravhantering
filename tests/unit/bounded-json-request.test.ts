@@ -65,6 +65,16 @@ describe('bounded JSON request reader', () => {
     }
   })
 
+  it('ignores an unsafe integer Content-Length and measures the body', async () => {
+    const { request } = streamedRequest(['{"ok":true}'], {
+      'Content-Length': String(Number.MAX_SAFE_INTEGER + 1),
+    })
+
+    await expect(
+      readBoundedJsonRequest(request, { maxBytes: 11 }),
+    ).resolves.toMatchObject({ data: { ok: true }, ok: true })
+  })
+
   it('returns a stable invalid JSON result after bounded reading', async () => {
     const request = new Request('https://example.test/api/import', {
       body: '{',

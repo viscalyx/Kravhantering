@@ -145,6 +145,34 @@ describe('requirement import HTTP reader', () => {
     }
   })
 
+  it('returns the standard invalid JSON response for malformed input', async () => {
+    const result = await readRequirementImportRequest(
+      new Request('https://example.test/api/requirements/import/preview', {
+        body: '{',
+        method: 'POST',
+      }),
+      { budget, content: body => body, schema: z.unknown() },
+    )
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.response.status).toBe(400)
+      await expect(result.response.json()).resolves.toMatchObject({
+        issues: [expect.objectContaining({ code: 'invalid_json' })],
+      })
+    }
+  })
+
+  it('accepts a route extractor with no canonical content', async () => {
+    const result = await readRequirementImportRequest(request({}), {
+      budget,
+      content: () => undefined,
+      schema: z.unknown(),
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
   it('accepts exact 8 MiB UTF-8 content and rejects one byte over', async () => {
     const exactContent = 'a'.repeat(REQUIREMENT_IMPORT_CONTENT_MAX_BYTES - 2)
     const exact = await readRequirementImportRequest(

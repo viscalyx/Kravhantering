@@ -464,6 +464,42 @@ körning.
 _Avoid_: MCP-gräns när budgeten gäller alla kravimportflöden, kvot när en
 aktörs förbrukning inte avses.
 
+**MCP-principal**:
+Den autentiserade person som anropar MCP och vars varaktiga identitet utgörs av
+normaliserat HSA-id. Tillfälliga tokenegenskaper, klient-id och visningsnamn är
+inte delar av MCP-principalens identitet.
+
+- `en`: MCP principal
+
+_Avoid_: MCP-klient när personen avses, JWT-subjekt, tokenägare.
+
+**MCP-importvalideringssession**:
+Ett kortlivat persisterat valideringstillstånd för MCP-kravimport, bundet till
+den skapande MCP-principalen och den valda destinationen fram till utgångstid.
+
+- `en`: MCP import validation session
+
+_Avoid_: Delad valideringssession, kravimportfil, webbläsarens
+förhandsgranskningstoken.
+
+**Aktiv MCP-importvalideringssession**:
+En MCP-importvalideringssession vars utgångstid inte har passerat, oavsett om
+sessionen är okörd, delvis körd eller fullständigt körd.
+
+- `en`: Active MCP import validation session
+
+_Avoid_: Okörd session, oanvänd session.
+
+**MCP-importsessionskvot**:
+De konfigurerbara förbrukningsgränserna för aktiva
+MCP-importvalideringssessioner: antal per MCP-principal och destination,
+skapandetakt per MCP-principal samt totalt lagrade byte.
+
+- `en`: MCP import session quota
+
+_Avoid_: Kravimportbudget, samtidighetsgräns, lagringskapacitet utan
+sessionssammanhang.
+
 **Importinstruktion**:
 Vägledning för att ta fram en kravimportfil. Importinstruktionen beskriver
 regler, fältval och stödjande sammanhang för import-JSON, men JSON Schema är

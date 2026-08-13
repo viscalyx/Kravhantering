@@ -218,6 +218,22 @@ function generationErrorStreamResponse(code: string) {
   }
 }
 
+function generationErrorStreamResponseWithoutMessage(code: string) {
+  return {
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            `event: error\ndata: ${JSON.stringify({ code })}\n\n`,
+          ),
+        )
+        controller.close()
+      },
+    }),
+    ok: true,
+  }
+}
+
 function thinkingStreamResponse(thinkingSoFar: string) {
   return {
     body: new ReadableStream({
@@ -2737,6 +2753,27 @@ describe('AiRequirementGenerator', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Untrusted server English',
     )
+  })
+
+  it('uses the localized fallback for a non-budget stream error without a message', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/ai/models')) return modelResponse()
+      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/generate-requirement-import') {
+        return generationErrorStreamResponseWithoutMessage(
+          'ai_provider_rate_limited',
+        )
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('createError')
   })
 
   it('ignores data-less and unknown SSE blocks before handling a minimal validation error', async () => {

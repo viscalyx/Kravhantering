@@ -1382,6 +1382,69 @@ describe('requirements import service', () => {
     )
   })
 
+  it('does not rewrite an execution result when every validated row was already imported', async () => {
+    const { db } = makeManageImportDb()
+    const workflow = createRequirementsImportWorkflow({
+      authorization: { assertAuthorized: vi.fn() },
+      db: db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+
+    await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [{ description: 'Systemet ska redan vara importerat.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+    const createData = vi
+      .mocked(createRequirementImportValidationSession)
+      .mock.calls.at(-1)?.[1]
+    if (!createData) throw new Error('Expected validation session data')
+    const session = makeSessionRecord({
+      ...createData,
+      executionResultJson: JSON.stringify({
+        importedRows: [
+          {
+            importedAt: '2026-08-05T08:00:00.000Z',
+            kravId: 'TEST0001',
+            reviewRowId: 'row-0',
+            sourceIndex: 0,
+            uniqueId: 'TEST0001',
+          },
+        ],
+        schemaVersion: 'mcp-requirement-import-execution.v1',
+      }),
+    })
+    vi.mocked(
+      getRequirementImportValidationSessionByTokenHash,
+    ).mockResolvedValue(session)
+    vi.mocked(
+      updateRequirementImportValidationSessionExecutionResult,
+    ).mockClear()
+    vi.mocked(createRequirementsBatchWithExecutor).mockClear()
+
+    const result = await workflow.manageImport(context, {
+      operation: 'execute',
+      validationToken: 'opaque-validation-token',
+    })
+
+    expect(result).toMatchObject({
+      importedRows: [],
+      notImportedRows: [],
+      summary: {
+        importedCount: 0,
+        notImportedCount: 0,
+        totalRowCount: 1,
+      },
+    })
+    expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
+    expect(
+      updateRequirementImportValidationSessionExecutionResult,
+    ).not.toHaveBeenCalled()
+  })
+
   it('executes a validated specification-local MCP import in the locked transaction', async () => {
     vi.mocked(getSpecificationById).mockResolvedValue({ id: 8 } as never)
     const { db, manager } = makeManageImportDb()

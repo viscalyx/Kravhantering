@@ -1638,6 +1638,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
   it('returns created specification-local batch details and skips empty batches', async () => {
     const { db, query, transaction } = createSqlServerDb()
+    const batchAudit = vi.fn()
     query
       .mockResolvedValueOnce([{ nextSequence: 2 }])
       .mockResolvedValueOnce([{ id: 41 }])
@@ -1656,9 +1657,12 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([])
 
     await expect(
-      createSpecificationLocalRequirementsBatch(db, 5, [
-        { description: 'Created local requirement' },
-      ]),
+      createSpecificationLocalRequirementsBatch(
+        db,
+        5,
+        [{ description: 'Created local requirement' }],
+        { batchAudit },
+      ),
     ).resolves.toEqual([
       expect.objectContaining({
         description: 'Created local requirement',
@@ -1670,6 +1674,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       createSpecificationLocalRequirementsBatch(db, 5, []),
     ).resolves.toEqual([])
     expect(transaction).toHaveBeenCalledTimes(1)
+    expect(batchAudit).toHaveBeenCalledWith(expect.anything(), [41])
   })
 
   it('validates specification-local batch input before writing', async () => {
