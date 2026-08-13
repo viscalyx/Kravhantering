@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AiSettingsPanel from '@/app/[locale]/admin/panels/settings/ai-settings-panel'
+import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import { DEFAULT_ADMIN_AI_SETTINGS } from '@/lib/ai/generation-availability'
 import {
   clickAdminConfirmationAction,
@@ -545,6 +546,44 @@ describe('AiSettingsPanel', () => {
         ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
       ),
     ).toHaveLength(0)
+  })
+
+  it('uses an optimistic global ceiling only as the effective MCP display value', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/admin/ai-settings') {
+        return Promise.resolve(okJson({ mcpImportMaxRows: 500 }))
+      }
+      if (url === '/api/admin/ai-safety-rules') {
+        return Promise.resolve(okJson({ rules: [] }))
+      }
+      return Promise.reject(new Error(`Unexpected fetch ${url}`))
+    })
+    const panel = (ceiling: number, persistedCeiling: number) => (
+      <ConfirmModalProvider>
+        <AiSettingsPanel
+          mcpImportMaxRowsCeiling={ceiling}
+          persistedMcpImportMaxRowsCeiling={persistedCeiling}
+        />
+      </ConfirmModalProvider>
+    )
+    const view = renderAdminPanel(panel(500, 500))
+    const input = await screen.findByLabelText('admin.ai.mcpImportMaxRows')
+    expect(input).toHaveValue(500)
+
+    view.rerender(panel(400, 500))
+    await waitFor(() => expect(input).toHaveValue(400))
+    expect(
+      fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
+      ),
+    ).toHaveLength(0)
+
+    view.rerender(panel(500, 500))
+    await waitFor(() => expect(input).toHaveValue(500))
+
+    view.rerender(panel(400, 400))
+    await waitFor(() => expect(input).toHaveValue(400))
   })
 
   it('bounds every safety-rule mutation failure and fallback message', async () => {

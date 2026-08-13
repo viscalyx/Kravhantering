@@ -859,17 +859,21 @@ att sektionen `Importer` visas efter AI-inställningarna men före `Exporter` oc
 normreferenser, föreslagna behovsreferenser, underposter per krav och JSON-djup.
 Sänk kravgränsen under den aktuella MCP-gränsen, hämta importschema och försök
 sedan förhandsgranska en `requirement-import.v4`-fil med exakt gränsen respektive
-gränsen plus en rad. Upprepa en gränskontroll för en nästlad referenslista och
-för JSON-djup. Återställ samtliga värden.
+gränsen plus en rad. Förhandsgranska också filer med exakt gränsen respektive
+gränsen plus en post i `proposedNormReferences` och
+`proposedNeedsReferences`. Upprepa en gränskontroll för en nästlad
+referenslista och för JSON-djup. Återställ samtliga värden.
 
 **Förväntat resultat:** Sektionen och alla fält är lokaliserade och visar
 tillåtna intervall: krav `1–500`, vardera förslagstyp `0–500`, underposter
 `0–200` och JSON-djup `4–8`. MCP:s radgräns sänks atomärt till den globala
 kravgränsen men höjs inte när den globala gränsen återställs. Det hämtade
 schemat innehåller de effektiva gränserna. Exakta gränsvärden godtas, medan
-gränsen plus ett avvisas före referensuppslag eller databasskrivning med stabil
-felkod. En tidigare förhandsgranskning eller MCP-validering avvisas som inaktuell
-efter att budgeten har ändrats.
+gränsen plus ett krav, en föreslagen normreferens, en föreslagen
+behovsreferens, en underpost eller en nivå i JSON-djupet avvisas före
+referensuppslag eller databasskrivning med stabil felkod. En tidigare
+förhandsgranskning eller MCP-validering avvisas som inaktuell efter att budgeten
+har ändrats.
 
 ### REQ-17: importera krav till kravbiblioteket
 

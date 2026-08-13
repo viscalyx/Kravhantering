@@ -330,7 +330,7 @@ export const POST = secureMutationRoute({
     >
     try {
       outputSafetyScreening = await screenAiOutputDetailed(db, [
-        { label: 'rawContent', text: JSON.stringify(result.content) },
+        { label: 'rawContent', text: serializedContent },
         { label: 'thinking', text: result.thinking },
       ])
     } catch (error) {

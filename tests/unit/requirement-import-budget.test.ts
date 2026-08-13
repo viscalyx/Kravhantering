@@ -33,6 +33,39 @@ describe('requirement import budget', () => {
     ).toBe(4)
   })
 
+  it('rejects attacker-controlled nesting without recursive stack overflow', () => {
+    let nested: unknown = 'leaf'
+    for (let depth = 0; depth < 20_000; depth += 1) {
+      nested = { nested }
+    }
+
+    expect(getJsonDepth(nested)).toBe(20_000)
+    expect(
+      validateImportContentBudget(
+        { requirements: [{ nested }] },
+        DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+      ),
+    ).toContainEqual(
+      expect.objectContaining({ code: 'import_json_depth_cap_exceeded' }),
+    )
+  })
+
+  it('preserves the first largest nested collection path', () => {
+    expect(
+      validateImportContentBudget(
+        {
+          requirements: [{ first: [1, 2], second: [3, 4] }, { third: [5, 6] }],
+        },
+        { ...DEFAULT_REQUIREMENT_IMPORT_BUDGET, maxNestedItems: 1 },
+      ),
+    ).toContainEqual({
+      actual: 2,
+      code: 'import_nested_collection_cap_exceeded',
+      limit: 1,
+      path: '/requirements/0/first',
+    })
+  })
+
   it('accepts exact structural boundaries', () => {
     const budget = {
       maxJsonDepth: 4,

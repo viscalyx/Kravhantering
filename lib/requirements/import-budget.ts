@@ -53,25 +53,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function getJsonDepth(value: unknown): number {
-  if (Array.isArray(value)) {
-    return (
-      1 +
-      value.reduce<number>(
-        (depth, item) => Math.max(depth, getJsonDepth(item)),
-        0,
-      )
-    )
+  let maximumDepth = 0
+  const stack: Array<{ depth: number; value: unknown }> = [{ depth: 0, value }]
+
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current) continue
+    const nestedValues = Array.isArray(current.value)
+      ? current.value
+      : isRecord(current.value)
+        ? Object.values(current.value)
+        : null
+    if (!nestedValues) continue
+
+    const depth = current.depth + 1
+    maximumDepth = Math.max(maximumDepth, depth)
+    for (const nested of nestedValues) {
+      stack.push({ depth, value: nested })
+    }
   }
-  if (isRecord(value)) {
-    return (
-      1 +
-      Object.values(value).reduce<number>(
-        (depth, item) => Math.max(depth, getJsonDepth(item)),
-        0,
-      )
-    )
-  }
-  return 0
+
+  return maximumDepth
 }
 
 function arrayLength(value: unknown): number {
@@ -93,26 +95,65 @@ function findLargestNestedRowCollection(value: unknown): {
   const rowCollectionPath = usesReviewRows ? '/rows' : '/requirements'
   let largest = { length: 0, path: '' }
 
-  function visit(item: unknown, path: string): void {
-    if (Array.isArray(item)) {
-      if (item.length > largest.length) {
-        largest = { length: item.length, path }
-      }
-      for (const [index, nested] of item.entries()) {
-        visit(nested, `${path}/${index}`)
-      }
-      return
+  interface TraversalPath {
+    parent: TraversalPath | null
+    segment: number | string
+  }
+  const appendPath = (
+    parent: TraversalPath | null,
+    segment: number | string,
+  ): TraversalPath => ({ parent, segment })
+  const formatPath = (path: TraversalPath): string => {
+    const segments: Array<number | string> = []
+    let current: TraversalPath | null = path
+    while (current) {
+      segments.push(current.segment)
+      current = current.parent
     }
-    if (!isRecord(item)) return
-    for (const [key, nested] of Object.entries(item)) {
-      visit(nested, `${path}/${key}`)
+    return `/${segments.reverse().join('/')}`
+  }
+  const rowRootPath = appendPath(null, rowCollectionPath.slice(1))
+  const stack: Array<{ path: TraversalPath; value: unknown }> = []
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index]
+    if (!isRecord(row)) continue
+    const entries = Object.entries(row)
+    for (
+      let entryIndex = entries.length - 1;
+      entryIndex >= 0;
+      entryIndex -= 1
+    ) {
+      const [key, nested] = entries[entryIndex]
+      stack.push({
+        path: appendPath(appendPath(rowRootPath, index), key),
+        value: nested,
+      })
     }
   }
 
-  for (const [index, row] of rows.entries()) {
-    if (!isRecord(row)) continue
-    for (const [key, nested] of Object.entries(row)) {
-      visit(nested, `${rowCollectionPath}/${index}/${key}`)
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current) continue
+    if (Array.isArray(current.value)) {
+      if (current.value.length > largest.length) {
+        largest = {
+          length: current.value.length,
+          path: formatPath(current.path),
+        }
+      }
+      for (let index = current.value.length - 1; index >= 0; index -= 1) {
+        stack.push({
+          path: appendPath(current.path, index),
+          value: current.value[index],
+        })
+      }
+      continue
+    }
+    if (!isRecord(current.value)) continue
+    const entries = Object.entries(current.value)
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const [key, nested] = entries[index]
+      stack.push({ path: appendPath(current.path, key), value: nested })
     }
   }
   return largest

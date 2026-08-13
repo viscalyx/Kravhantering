@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { expect, type Route, test } from '@playwright/test'
+import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
 import { escapeRegExp } from '@/tests/helpers/common'
 
 const importedDescription =
@@ -51,9 +52,7 @@ test.describe('Requirements import', () => {
 
     await page.route('**/api/requirements/import/schema?*', async route => {
       artifactDownloads.push('schema')
-      await fulfillJson(route, {
-        schema: 'requirement-import.v4',
-      })
+      await fulfillJson(route, buildRequirementsImportJsonSchema('sv'))
     })
     await page.route(
       '**/api/requirements/import/instruction?*',
@@ -179,8 +178,11 @@ test.describe('Requirements import', () => {
         .getByRole('button', { name: 'Ladda ner importinstruktion' })
         .click()
       await expect
-        .poll(() => artifactDownloads.sort())
-        .toEqual(['instruction', 'schema'])
+        .poll(() => ({
+          instruction: artifactDownloads.includes('instruction'),
+          schema: artifactDownloads.includes('schema'),
+        }))
+        .toEqual({ instruction: true, schema: true })
       await expect(
         dialog.getByText(
           /Importinstruktionen är bara formatdelen och referensdata för import/,

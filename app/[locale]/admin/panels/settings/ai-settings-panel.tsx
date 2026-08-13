@@ -241,10 +241,12 @@ export default function AiSettingsPanel({
   embedded = false,
   mcpImportMaxRowsCeiling = MCP_IMPORT_MAX_ROWS_MAX,
   onSettingsSettled,
+  persistedMcpImportMaxRowsCeiling = mcpImportMaxRowsCeiling,
 }: {
   embedded?: boolean
   mcpImportMaxRowsCeiling?: number
   onSettingsSettled?: () => void
+  persistedMcpImportMaxRowsCeiling?: number
 }) {
   const locale = useLocale()
   const ta = useTranslations('admin')
@@ -318,18 +320,26 @@ export default function AiSettingsPanel({
   const [mcpLimitInputKiB, setMcpLimitInputKiB] = useState(committedMcpLimitKiB)
   const currentMcpImportMaxRows =
     settings.mcpImportMaxRows ?? MCP_IMPORT_MAX_ROWS_DEFAULT
-  const committedMcpImportRows = String(currentMcpImportMaxRows)
+  const effectiveMcpImportMaxRows = Math.min(
+    currentMcpImportMaxRows,
+    mcpImportMaxRowsCeiling,
+  )
+  const committedMcpImportRows = String(effectiveMcpImportMaxRows)
   const [mcpImportRowsInput, setMcpImportRowsInput] = useState(
     committedMcpImportRows,
   )
   useEffect(() => {
-    if (currentMcpImportMaxRows <= mcpImportMaxRowsCeiling) return
+    setMcpImportRowsInput(String(effectiveMcpImportMaxRows))
+  }, [effectiveMcpImportMaxRows])
+  useEffect(() => {
     setSettings(current => ({
       ...current,
-      mcpImportMaxRows: mcpImportMaxRowsCeiling,
+      mcpImportMaxRows: Math.min(
+        current.mcpImportMaxRows ?? MCP_IMPORT_MAX_ROWS_DEFAULT,
+        persistedMcpImportMaxRowsCeiling,
+      ),
     }))
-    setMcpImportRowsInput(String(mcpImportMaxRowsCeiling))
-  }, [currentMcpImportMaxRows, mcpImportMaxRowsCeiling])
+  }, [persistedMcpImportMaxRowsCeiling])
   const committedMcpImportTtlMinutes = String(
     settings.mcpImportValidationTtlMinutes ??
       MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,

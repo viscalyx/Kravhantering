@@ -199,6 +199,25 @@ function generationStreamResponse(payload: Record<string, unknown>) {
   }
 }
 
+function generationErrorStreamResponse(code: string) {
+  return {
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            `event: error\ndata: ${JSON.stringify({
+              code,
+              message: 'Untrusted server English',
+            })}\n\n`,
+          ),
+        )
+        controller.close()
+      },
+    }),
+    ok: true,
+  }
+}
+
 function thinkingStreamResponse(thinkingSoFar: string) {
   return {
     body: new ReadableStream({
@@ -2661,6 +2680,42 @@ describe('AiRequirementGenerator', () => {
       name: 'Generation failed',
     })
     await waitFor(() => expect(errorSummary).toHaveFocus())
+  })
+
+  it.each([
+    ['import_content_bytes_exceeded', 'generatedImportContentLimitExceeded'],
+    ['import_json_depth_cap_exceeded', 'generatedImportJsonDepthLimitExceeded'],
+    [
+      'import_nested_collection_cap_exceeded',
+      'generatedImportNestedItemsLimitExceeded',
+    ],
+    [
+      'import_proposed_needs_reference_count_cap_exceeded',
+      'generatedImportNeedsProposalLimitExceeded',
+    ],
+    [
+      'import_proposed_norm_reference_count_cap_exceeded',
+      'generatedImportNormProposalLimitExceeded',
+    ],
+    ['import_row_count_cap_exceeded', 'generatedImportRowLimitExceeded'],
+  ])('localizes the %s generation stream error', async (code, messageKey) => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/ai/models')) return modelResponse()
+      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/generate-requirement-import') {
+        return generationErrorStreamResponse(code)
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(messageKey)
+    expect(screen.queryByText('Untrusted server English')).toBeNull()
   })
 
   it('ignores data-less and unknown SSE blocks before handling a minimal validation error', async () => {

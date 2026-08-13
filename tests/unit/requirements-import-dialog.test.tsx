@@ -4,6 +4,8 @@ import RequirementsImportDialog, {
   type ImportPreviewResponse,
 } from '@/components/RequirementsImportDialog'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { REQUIREMENT_IMPORT_CONTENT_MAX_BYTES } from '@/lib/requirements/import-budget'
+import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
 
 const confirmMock = vi.hoisted(() => vi.fn())
 const downloadBlobMock = vi.hoisted(() => vi.fn())
@@ -83,15 +85,17 @@ function mockReferenceDataFetch(
 ) {
   global.fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
-    const body = url.includes('requirement-packages')
-      ? { requirementPackages: options.requirementPackages ?? [] }
-      : url.includes('norm-references')
-        ? { normReferences: options.normReferences ?? [] }
-        : url.includes('requirement-types')
-          ? { types: options.types ?? [] }
-          : url.includes('priority-levels')
-            ? { priorityLevels: options.priorityLevels ?? [] }
-            : { categories: [] }
+    const body = url.includes('/api/requirements/import/schema')
+      ? buildRequirementsImportJsonSchema('sv')
+      : url.includes('requirement-packages')
+        ? { requirementPackages: options.requirementPackages ?? [] }
+        : url.includes('norm-references')
+          ? { normReferences: options.normReferences ?? [] }
+          : url.includes('requirement-types')
+            ? { types: options.types ?? [] }
+            : url.includes('priority-levels')
+              ? { priorityLevels: options.priorityLevels ?? [] }
+              : { categories: [] }
 
     return {
       json: async () => body,
@@ -113,6 +117,15 @@ function validImportPayload() {
     requirements: [{ description: 'Kravtext' }],
     schemaVersion: 'requirement-import.v4',
   })
+}
+
+async function clickPreviewButton() {
+  const button = screen.getByRole('button', {
+    name: 'Förhandsgranska krav',
+  })
+  await waitFor(() => expect(button).toBeEnabled())
+  fireEvent.click(button)
+  return button
 }
 
 function importPreviewRow(
@@ -299,11 +312,7 @@ describe('RequirementsImportDialog', () => {
     fireEvent.change(screen.getByLabelText(/Import-JSON/), {
       target: { value: validImportPayload() },
     })
-    const previewButton = screen.getByRole('button', {
-      name: 'Förhandsgranska krav',
-    })
-
-    fireEvent.click(previewButton)
+    const previewButton = await clickPreviewButton()
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Förhandsgranskningen misslyckades.',
     )
@@ -315,34 +324,6 @@ describe('RequirementsImportDialog', () => {
         'Förhandsgranskningen misslyckades.',
       )
     })
-  })
-
-  it('announces large-preview warnings with status semantics', async () => {
-    vi.mocked(apiFetch).mockResolvedValue(
-      importPreviewResponse(
-        Array.from({ length: 200 }, (_, index) => importPreviewRow(index)),
-      ),
-    )
-
-    render(
-      <RequirementsImportDialog
-        mode="specification-local"
-        onClose={vi.fn()}
-        open
-        specificationId={8}
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
-      target: { value: validImportPayload() },
-    })
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
-
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Filen innehåller 200 eller fler krav.',
-    )
   })
 
   it('renders an imported priority with its localized name and configured icon', async () => {
@@ -378,9 +359,7 @@ describe('RequirementsImportDialog', () => {
     fireEvent.change(screen.getByLabelText(/Import-JSON/), {
       target: { value: validImportPayload() },
     })
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
+    await clickPreviewButton()
 
     const priorityBadge = await screen.findByText('P2 – Låg')
     expect(
@@ -421,9 +400,7 @@ describe('RequirementsImportDialog', () => {
     fireEvent.change(screen.getByLabelText(/Import-JSON/), {
       target: { value: validImportPayload() },
     })
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
+    await clickPreviewButton()
 
     expect(await screen.findByText('P2')).toBeInTheDocument()
 
@@ -454,9 +431,7 @@ describe('RequirementsImportDialog', () => {
     fireEvent.change(screen.getByLabelText(/Import-JSON/), {
       target: { value: validImportPayload() },
     })
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
+    await clickPreviewButton()
 
     const priorityBadge = await screen.findByText('P2 – Låg')
     expect(priorityBadge.closest('.status-badge')).toHaveAttribute(
@@ -482,9 +457,7 @@ describe('RequirementsImportDialog', () => {
     fireEvent.change(screen.getByLabelText(/Import-JSON/), {
       target: { value: validImportPayload() },
     })
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
+    await clickPreviewButton()
     fireEvent.click(
       await screen.findByRole('button', { name: 'Importera valda' }),
     )
@@ -522,9 +495,7 @@ describe('RequirementsImportDialog', () => {
     fireEvent.change(screen.getByLabelText(/Import-JSON/), {
       target: { value: validImportPayload() },
     })
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
-    )
+    await clickPreviewButton()
     await screen.findByRole('button', { name: 'Importera valda' })
 
     fireEvent.click(
@@ -587,15 +558,17 @@ describe('RequirementsImportDialog', () => {
   it('downloads the library-scoped import instruction before a requirement area is selected', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
-      const body = url.includes('requirement-packages')
-        ? { requirementPackages: [] }
-        : url.includes('norm-references')
-          ? { normReferences: [] }
-          : url.includes('requirement-types')
-            ? { types: [] }
-            : url.includes('priority-levels')
-              ? { priorityLevels: [] }
-              : { categories: [] }
+      const body = url.includes('/api/requirements/import/schema')
+        ? buildRequirementsImportJsonSchema('sv')
+        : url.includes('requirement-packages')
+          ? { requirementPackages: [] }
+          : url.includes('norm-references')
+            ? { normReferences: [] }
+            : url.includes('requirement-types')
+              ? { types: [] }
+              : url.includes('priority-levels')
+                ? { priorityLevels: [] }
+                : { categories: [] }
 
       return {
         blob: async () => new Blob(['# Importinstruktion']),
@@ -1454,14 +1427,11 @@ describe('RequirementsImportDialog', () => {
       />,
     )
 
-    expect(
-      await screen.findByText(/Filen innehåller 200 eller fler krav/),
-    ).toBeVisible()
+    expect(await screen.findByText(/200 valda, 2 varningar/)).toBeVisible()
     expect(apiFetch).toHaveBeenCalledWith(
       '/api/requirements/import/preview',
       expect.objectContaining({ method: 'POST' }),
     )
-    expect(screen.getByText(/200 valda, 2 varningar/)).toBeVisible()
   })
 
   it('reports initial preview transport and response failures', async () => {
@@ -1722,6 +1692,168 @@ describe('RequirementsImportDialog', () => {
     await waitFor(() => expect(rawJson).toHaveValue(filePayload))
   })
 
+  it('keeps preview disabled until the independently loaded schema budget resolves', async () => {
+    const schema = createDeferred<Response>()
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/api/requirements/import/schema')) {
+        return schema.promise
+      }
+      return {
+        json: async () =>
+          url.includes('requirement-types') ? { types: [] } : {},
+        ok: true,
+      } as Response
+    })
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 7, name: 'Clinical systems', permissions: {} }]}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.change(screen.getByLabelText(/^Kravområde/), {
+      target: { value: '7' },
+    })
+    const preview = screen.getByRole('button', {
+      name: 'Förhandsgranska krav',
+    })
+    expect(preview).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Laddar aktuella importgränser',
+    )
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(6))
+
+    schema.resolve({
+      json: async () => buildRequirementsImportJsonSchema('sv'),
+      ok: true,
+    } as Response)
+    await waitFor(() => expect(preview).toBeEnabled())
+  })
+
+  it('does not activate the default budget when the schema request fails', async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/api/requirements/import/schema')) {
+        return { ok: false } as Response
+      }
+      return {
+        json: async () =>
+          url.includes('requirement-types')
+            ? {
+                types: [
+                  { id: 1, nameEn: 'Functional', nameSv: 'Funktionellt' },
+                ],
+              }
+            : {},
+        ok: true,
+      } as Response
+    })
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 7, name: 'Clinical systems', permissions: {} }]}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/Import-JSON/), {
+      target: { value: validImportPayload() },
+    })
+    fireEvent.change(screen.getByLabelText(/^Kravområde/), {
+      target: { value: '7' },
+    })
+
+    expect(
+      await screen.findByText(/De aktuella importgränserna kunde inte laddas/),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    ).toBeDisabled()
+    expect(global.fetch).toHaveBeenCalledTimes(6)
+  })
+
+  it('invalidates previous JSON when a replacement file exceeds the size limit', async () => {
+    mockReferenceDataFetch()
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 7, name: 'Clinical systems', permissions: {} }]}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+    const rawJson = screen.getByLabelText(/Import-JSON/)
+    fireEvent.change(rawJson, { target: { value: validImportPayload() } })
+    fireEvent.change(screen.getByLabelText(/^Kravområde/), {
+      target: { value: '7' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+      ).toBeEnabled(),
+    )
+    const text = vi.fn(async () => 'must not be read')
+
+    fireEvent.drop(
+      screen.getByRole('button', {
+        name: 'Släpp en JSON-fil här, eller klicka för att välja fil.',
+      }),
+      {
+        dataTransfer: {
+          files: [{ size: REQUIREMENT_IMPORT_CONTENT_MAX_BYTES + 1, text }],
+        },
+      },
+    )
+
+    await waitFor(() => expect(rawJson).toHaveValue(''))
+    expect(text).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Kravimportens innehåll får inte överstiga 8 MiB',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    ).toBeDisabled()
+  })
+
+  it('invalidates previous JSON when replacement textarea input is oversized', async () => {
+    mockReferenceDataFetch()
+    render(
+      <RequirementsImportDialog
+        areas={[{ id: 7, name: 'Clinical systems', permissions: {} }]}
+        mode="library"
+        onClose={vi.fn()}
+        open
+      />,
+    )
+    const rawJson = screen.getByLabelText(/Import-JSON/)
+    fireEvent.change(rawJson, { target: { value: validImportPayload() } })
+    await waitFor(() => expect(rawJson).toHaveValue(validImportPayload()))
+    const encode = vi.spyOn(TextEncoder.prototype, 'encode').mockReturnValue({
+      byteLength: REQUIREMENT_IMPORT_CONTENT_MAX_BYTES + 1,
+    } as Uint8Array<ArrayBuffer>)
+
+    try {
+      fireEvent.change(rawJson, { target: { value: 'oversized' } })
+    } finally {
+      encode.mockRestore()
+    }
+
+    expect(rawJson).toHaveValue('')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Kravimportens innehåll får inte överstiga 8 MiB',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Förhandsgranska krav' }),
+    ).toBeDisabled()
+  })
+
   it('downloads specification artifacts and reports a failed schema request', async () => {
     let schemaFails = true
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -1781,6 +1913,12 @@ describe('RequirementsImportDialog', () => {
   it('tolerates partial taxonomy failures and stops fetching while closed', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = String(input)
+      if (url.includes('/api/requirements/import/schema')) {
+        return Promise.resolve({
+          json: async () => buildRequirementsImportJsonSchema('sv'),
+          ok: true,
+        } as Response)
+      }
       if (url.includes('requirement-categories')) {
         return Promise.reject(new Error('categories unavailable'))
       }

@@ -140,6 +140,14 @@ describe('requirement import HTTP reader', () => {
       'import_json_depth_cap_exceeded',
       { requirements: [{ nested: { child: {} } }] },
     ],
+    [
+      'import_proposed_norm_reference_count_cap_exceeded',
+      { proposedNormReferences: [{}, {}], requirements: [{}] },
+    ],
+    [
+      'import_proposed_needs_reference_count_cap_exceeded',
+      { proposedNeedsReferences: [{}, {}], requirements: [{}] },
+    ],
   ])(
     'returns stable 422 %s before semantic validation',
     async (code, payload) => {

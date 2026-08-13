@@ -21,6 +21,8 @@ const STATUS_BY_CODE: Record<RequirementsErrorCode, number> = {
   internal: 500,
 }
 
+export const REQUIREMENT_IMPORT_CAPACITY_RETRY_AFTER_SECONDS = 5
+
 export class RequirementsServiceError extends Error {
   readonly code: RequirementsErrorCode
   readonly status: number
@@ -106,7 +108,10 @@ export function importCapacityBusyError() {
   return createRequirementsError(
     'import_capacity_busy',
     'Requirement import capacity is busy. Try again shortly.',
-    { reason: 'import_capacity_busy', retryAfterSeconds: 5 },
+    {
+      reason: 'import_capacity_busy',
+      retryAfterSeconds: REQUIREMENT_IMPORT_CAPACITY_RETRY_AFTER_SECONDS,
+    },
   )
 }
 

@@ -10,6 +10,7 @@ const routeMocks = vi.hoisted(() => ({
   deniedAudit: vi.fn(),
   executeLibraryImport: vi.fn(),
   getApplicationSettings: vi.fn(),
+  getImportSchema: vi.fn(),
   logSanitizedError: vi.fn(),
   previewLibraryImport: vi.fn(),
 }))
@@ -48,7 +49,7 @@ import { POST as executePost } from '@/app/api/requirements/import/execute/route
 import { POST as previewPost } from '@/app/api/requirements/import/preview/route'
 import { GET as schemaGet } from '@/app/api/requirements/import/schema/route'
 import { getRouteHandlerBrand } from '@/lib/http/response-policy'
-import { forbiddenError } from '@/lib/requirements/errors'
+import { forbiddenError, unauthorizedError } from '@/lib/requirements/errors'
 
 function makeContext(isAuthenticated: boolean): RequestContext {
   return {
@@ -83,10 +84,15 @@ describe('requirements-library import routes', () => {
       mode: 'library',
       summary: { createdCount: 0 },
     })
+    routeMocks.getImportSchema.mockResolvedValue({
+      properties: { requirements: {} },
+      type: 'object',
+    })
     routeMocks.createRequirementsRestRuntime.mockResolvedValue({
       context: makeContext(true),
       service: {
         executeLibraryImport: routeMocks.executeLibraryImport,
+        getImportSchema: routeMocks.getImportSchema,
         previewLibraryImport: routeMocks.previewLibraryImport,
       },
     })
@@ -301,6 +307,10 @@ describe('requirements-library import routes', () => {
     await expect(response.json()).resolves.toMatchObject({
       properties: { requirements: expect.any(Object) },
     })
+    expect(routeMocks.getImportSchema).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'rest' }),
+      { locale: 'sv' },
+    )
   })
 
   it('defaults the import schema locale and rejects anonymous callers', async () => {
@@ -308,9 +318,16 @@ describe('requirements-library import routes', () => {
       new Request('http://localhost/api/requirements/import/schema?locale=de'),
     )
     expect(english.status).toBe(200)
+    expect(routeMocks.getImportSchema).toHaveBeenLastCalledWith(
+      expect.any(Object),
+      { locale: 'en' },
+    )
 
     routeMocks.createRequirementsRestRuntime.mockResolvedValueOnce({
       context: makeContext(false),
+      service: {
+        getImportSchema: vi.fn().mockRejectedValueOnce(unauthorizedError()),
+      },
     })
     const anonymous = await schemaGet(
       new Request('http://localhost/api/requirements/import/schema'),

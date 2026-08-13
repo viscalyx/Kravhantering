@@ -2329,7 +2329,7 @@ describe('requirements import service', () => {
     expect(getApplicationSettingsForUpdate).toHaveBeenCalledOnce()
     vi.mocked(getApplicationSettingsForUpdate).mockResolvedValueOnce({
       ...DEFAULT_APPLICATION_SETTINGS,
-      requirementImportMaxRows: 0,
+      requirementImportMaxRows: 499,
     })
     const writeOptions = vi.mocked(createRequirementsBatch).mock.calls[0]?.[2]
     await expect(

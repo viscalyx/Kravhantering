@@ -219,8 +219,10 @@ an explicit in-modal error.
   refreshes when the dialog closes. If all rows have been imported and no
   review rows remain, closing the dialog does not ask the user to confirm
   discarding changes.
-- Imports with 200 or more rows show a warning but are not blocked. There is no
-  hard row-count limit.
+- Imports enforce the administrator-controlled row budget advertised by the
+  schema endpoint. Browser validation derives the row limit from the live
+  `requirement-import.v4` schema and blocks payloads above that limit before
+  preview.
 - The schema and AI reference prompt are downloadable from the import dialog.
   The AI prompt contains the full schema and current reference data, but no
   examples. A successful execute can optionally be recorded by downloading the

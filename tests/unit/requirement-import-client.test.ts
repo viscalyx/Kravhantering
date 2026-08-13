@@ -5,6 +5,7 @@ import {
 } from '@/lib/requirements/import-budget'
 import {
   assertRequirementImportTextSize,
+  parseRequirementImportBudgetFromJsonSchema,
   RequirementImportClientBudgetError,
   readRequirementImportBudgetFromJsonSchema,
   readRequirementImportFile,
@@ -69,5 +70,10 @@ describe('browser requirement import content guard', () => {
         'x-requirement-import-budget': { maxRows: '500' },
       }),
     ).toEqual(DEFAULT_REQUIREMENT_IMPORT_BUDGET)
+    expect(
+      parseRequirementImportBudgetFromJsonSchema({
+        'x-requirement-import-budget': { maxRows: '500' },
+      }),
+    ).toBeNull()
   })
 })

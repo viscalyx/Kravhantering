@@ -41,14 +41,23 @@ export async function readRequirementImportFile(
 export function readRequirementImportBudgetFromJsonSchema(
   schema: unknown,
 ): RequirementImportBudget {
+  return (
+    parseRequirementImportBudgetFromJsonSchema(schema) ??
+    DEFAULT_REQUIREMENT_IMPORT_BUDGET
+  )
+}
+
+export function parseRequirementImportBudgetFromJsonSchema(
+  schema: unknown,
+): RequirementImportBudget | null {
   if (typeof schema !== 'object' || schema === null) {
-    return DEFAULT_REQUIREMENT_IMPORT_BUDGET
+    return null
   }
   const candidate = (schema as Record<string, unknown>)[
     'x-requirement-import-budget'
   ]
   if (typeof candidate !== 'object' || candidate === null) {
-    return DEFAULT_REQUIREMENT_IMPORT_BUDGET
+    return null
   }
   const budget = candidate as Record<string, unknown>
   const fields = [
@@ -64,7 +73,7 @@ export function readRequirementImportBudgetFromJsonSchema(
         !Number.isInteger(budget[field]) || (budget[field] as number) < 0,
     )
   ) {
-    return DEFAULT_REQUIREMENT_IMPORT_BUDGET
+    return null
   }
   return Object.freeze({
     maxJsonDepth: budget.maxJsonDepth as number,

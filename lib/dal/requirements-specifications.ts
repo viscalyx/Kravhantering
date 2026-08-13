@@ -1,4 +1,5 @@
 import { isHsaId } from '@/lib/auth/hsa-id'
+import { normalizedBatchGroups } from '@/lib/dal/batch-groups'
 import { validateRequirementTaxonomyReferences } from '@/lib/dal/requirement-reference-validation'
 import {
   cleanupUnassignedRequirementResponsibilityPeople,
@@ -2503,18 +2504,14 @@ export async function createSpecificationLocalRequirementsBatch(
   if (inputs.length === 0) return []
 
   const created = await db.transaction(async (manager: SqlExecutor) => {
-    const maxGroupSize = Math.max(
-      1,
-      Math.min(inputs.length, options.maxGroupSize ?? inputs.length),
-    )
     const results: CreatedSpecificationLocalRequirementRow[] = []
     await options.beforeWrite?.(manager)
-    for (let index = 0; index < inputs.length; index += maxGroupSize) {
+    for (const group of normalizedBatchGroups(inputs, options.maxGroupSize)) {
       results.push(
         ...(await createSpecificationLocalRequirementsBatchWithExecutor(
           manager,
           specificationId,
-          inputs.slice(index, index + maxGroupSize),
+          group.items,
         )),
       )
     }

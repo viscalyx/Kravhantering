@@ -23,9 +23,24 @@ vi.mock('next-intl', () => ({
 }))
 
 vi.mock('@/app/[locale]/admin/panels/settings/ai-settings-panel', () => ({
-  default: ({ onSettingsSettled }: { onSettingsSettled?: () => void }) => {
+  default: ({
+    mcpImportMaxRowsCeiling,
+    onSettingsSettled,
+    persistedMcpImportMaxRowsCeiling,
+  }: {
+    mcpImportMaxRowsCeiling?: number
+    onSettingsSettled?: () => void
+    persistedMcpImportMaxRowsCeiling?: number
+  }) => {
     useEffect(() => onSettingsSettled?.(), [onSettingsSettled])
-    return <section aria-label="AI settings">AI settings</section>
+    return (
+      <section aria-label="AI settings">
+        AI settings
+        <output aria-label="MCP import row ceilings">
+          {mcpImportMaxRowsCeiling}/{persistedMcpImportMaxRowsCeiling}
+        </output>
+      </section>
+    )
   },
 }))
 
@@ -516,5 +531,27 @@ describe('SettingsPanel', () => {
     expect(input).toHaveValue(
       DEFAULT_APPLICATION_SETTINGS.csvExportTimeoutSeconds,
     )
+  })
+
+  it('restores the effective MCP ceiling when the global limit PATCH fails', async () => {
+    const patch = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(okJson(settingsResponse()))
+      .mockReturnValueOnce(patch.promise)
+    render(<SettingsPanel />)
+
+    const input = await screen.findByLabelText(
+      'admin.applicationSettings.fields.requirementImportMaxRows.label',
+    )
+    const ceilings = screen.getByLabelText('MCP import row ceilings')
+    expect(ceilings).toHaveTextContent('500/500')
+
+    fireEvent.change(input, { target: { value: '400' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(ceilings).toHaveTextContent('400/500'))
+
+    patch.resolve(errorJson({ message: 'admin.applicationSettings.rejected' }))
+    await waitFor(() => expect(ceilings).toHaveTextContent('500/500'))
+    expect(input).toHaveValue(500)
   })
 })

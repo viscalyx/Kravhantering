@@ -16,6 +16,7 @@ import {
 } from '@/lib/requirements/auth'
 import {
   isRequirementsServiceError,
+  REQUIREMENT_IMPORT_CAPACITY_RETRY_AFTER_SECONDS,
   type RequirementsErrorCode,
 } from '@/lib/requirements/errors'
 import { REQUIREMENT_SORT_FIELDS } from '@/lib/requirements/list-view'
@@ -622,7 +623,7 @@ function formatError(error: unknown) {
       {
         type: 'text' as const,
         text: capacityBusy
-          ? `Error [import_capacity_busy]: ${message} Retry after 5 seconds.`
+          ? `Error [import_capacity_busy]: ${message} Retry after ${REQUIREMENT_IMPORT_CAPACITY_RETRY_AFTER_SECONDS} seconds.`
           : isRequirementsServiceError(error) && error.code === 'invalid_cursor'
             ? `Error [invalid_cursor]: ${message}. Restart without cursor while retaining the normalized filters, locale, and sort.`
             : `Error: ${message}`,

@@ -42,11 +42,11 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { escapeCsvField } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
-import { DEFAULT_REQUIREMENT_IMPORT_BUDGET } from '@/lib/requirements/import-budget'
+import type { RequirementImportBudget } from '@/lib/requirements/import-budget'
 import {
   assertRequirementImportTextSize,
+  parseRequirementImportBudgetFromJsonSchema,
   RequirementImportClientBudgetError,
-  readRequirementImportBudgetFromJsonSchema,
   readRequirementImportFile,
 } from '@/lib/requirements/import-client'
 import {
@@ -243,6 +243,8 @@ type ImportPayloadValidation =
       reason:
         | 'invalid-json'
         | 'content-too-large'
+        | 'import-budget-loading'
+        | 'import-budget-unavailable'
         | 'missing-json'
         | 'schema-invalid'
         | 'wrong-version'
@@ -282,6 +284,9 @@ const TEXT = {
     contentTooLarge: 'Requirement import content must not exceed 8 MiB.',
     importTitleLibrary: 'Import requirements',
     importTitleSpecification: 'Import local requirements',
+    importBudgetLoading: 'Loading the current import limits.',
+    importBudgetUnavailable:
+      'The current import limits could not be loaded. Close and reopen the dialog to try again.',
     importReviewTabs: 'Import review',
     ignoredRequirementPackagesInfo:
       'Requirement packages in the import file are not used for specification-local requirements.',
@@ -347,8 +352,6 @@ const TEXT = {
     startImportWrongSchemaVersion: (schemaVersion: string) =>
       `schemaVersion must be ${schemaVersion}.`,
     success: 'Imported rows',
-    tooManyRows:
-      'The file contains 200 or more requirements. You can continue, but review may be slower.',
     type: 'Type',
     unknownNormReferenceId: 'No matching norm reference found.',
     unknownPackageId: 'No matching requirement package found.',
@@ -389,6 +392,9 @@ const TEXT = {
     contentTooLarge: 'Kravimportens innehåll får inte överstiga 8 MiB.',
     importTitleLibrary: 'Importera krav',
     importTitleSpecification: 'Importera lokala krav',
+    importBudgetLoading: 'Laddar aktuella importgränser.',
+    importBudgetUnavailable:
+      'De aktuella importgränserna kunde inte laddas. Stäng och öppna dialogen igen för att försöka på nytt.',
     importReviewTabs: 'Importgranskning',
     ignoredRequirementPackagesInfo:
       'Kravpaket i importfilen används inte för kravunderlagslokala krav.',
@@ -453,8 +459,6 @@ const TEXT = {
     startImportWrongSchemaVersion: (schemaVersion: string) =>
       `schemaVersion måste vara ${schemaVersion}.`,
     success: 'Importerade rader',
-    tooManyRows:
-      'Filen innehåller 200 eller fler krav. Du kan fortsätta, men granskningen kan bli långsammare.',
     type: 'Typ',
     unknownNormReferenceId: 'Ingen matchande normreferens hittades.',
     unknownPackageId: 'Inget matchande kravpaket hittades.',
@@ -743,9 +747,11 @@ export default function RequirementsImportDialog({
   const titleId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [rawJson, setRawJson] = useState('')
-  const [importBudget, setImportBudget] = useState(
-    DEFAULT_REQUIREMENT_IMPORT_BUDGET,
-  )
+  const [importBudget, setImportBudget] =
+    useState<RequirementImportBudget | null>(null)
+  const [importBudgetStatus, setImportBudgetStatus] = useState<
+    'error' | 'loading' | 'ready'
+  >('loading')
   const [selectedAreaId, setSelectedAreaId] = useState('')
   const [jsonDropActive, setJsonDropActive] = useState(false)
   const [rows, setRows] = useState<ImportPreviewRow[]>([])
@@ -829,10 +835,17 @@ export default function RequirementsImportDialog({
     return areas.find(area => String(area.id) === selectedAreaId)?.name ?? null
   }, [areas, mode, selectedAreaId])
   const runtimeImportPayloadSchema = useMemo(
-    () => buildRequirementsImportPayloadSchema(importBudget),
+    () =>
+      importBudget ? buildRequirementsImportPayloadSchema(importBudget) : null,
     [importBudget],
   )
   const importPayloadValidation = useMemo<ImportPayloadValidation>(() => {
+    if (importBudgetStatus === 'loading') {
+      return { payload: null, reason: 'import-budget-loading' }
+    }
+    if (importBudgetStatus === 'error' || !runtimeImportPayloadSchema) {
+      return { payload: null, reason: 'import-budget-unavailable' }
+    }
     if (!rawJson.trim()) return { payload: null, reason: 'missing-json' }
     try {
       assertRequirementImportTextSize(rawJson)
@@ -856,7 +869,7 @@ export default function RequirementsImportDialog({
       }
       return { payload: null, reason: 'invalid-json' }
     }
-  }, [rawJson, runtimeImportPayloadSchema])
+  }, [importBudgetStatus, rawJson, runtimeImportPayloadSchema])
   const parsedImportPayload = importPayloadValidation.payload
   const hasRequiredImportTarget = mode !== 'library' || selectedAreaId !== ''
   const canDownloadImportInstruction =
@@ -866,19 +879,23 @@ export default function RequirementsImportDialog({
   const startImportDisabledReason = useMemo(() => {
     if (loading || canLoadPreview) return null
     const jsonReason =
-      importPayloadValidation.reason === 'missing-json'
-        ? text.startImportMissingJson
-        : importPayloadValidation.reason === 'content-too-large'
-          ? text.contentTooLarge
-          : importPayloadValidation.reason === 'invalid-json'
-            ? text.startImportInvalidJson
-            : importPayloadValidation.reason === 'wrong-version'
-              ? text.startImportWrongSchemaVersion(
-                  REQUIREMENTS_IMPORT_SCHEMA_VERSION,
-                )
-              : importPayloadValidation.reason === 'schema-invalid'
-                ? text.startImportInvalidSchema
-                : null
+      importPayloadValidation.reason === 'import-budget-loading'
+        ? text.importBudgetLoading
+        : importPayloadValidation.reason === 'import-budget-unavailable'
+          ? text.importBudgetUnavailable
+          : importPayloadValidation.reason === 'missing-json'
+            ? text.startImportMissingJson
+            : importPayloadValidation.reason === 'content-too-large'
+              ? text.contentTooLarge
+              : importPayloadValidation.reason === 'invalid-json'
+                ? text.startImportInvalidJson
+                : importPayloadValidation.reason === 'wrong-version'
+                  ? text.startImportWrongSchemaVersion(
+                      REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+                    )
+                  : importPayloadValidation.reason === 'schema-invalid'
+                    ? text.startImportInvalidSchema
+                    : null
     if (
       !hasRequiredImportTarget &&
       importPayloadValidation.reason === 'missing-json'
@@ -982,6 +999,8 @@ export default function RequirementsImportDialog({
   useEffect(() => {
     if (!open) return
     let cancelled = false
+    setImportBudget(null)
+    setImportBudgetStatus('loading')
     async function fetchTaxonomy() {
       const [
         categoriesRes,
@@ -989,14 +1008,12 @@ export default function RequirementsImportDialog({
         priorityLevelsRes,
         packagesRes,
         normRefsRes,
-        schemaRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-categories'),
         fetch('/api/requirement-types'),
         fetch('/api/priority-levels'),
         fetch('/api/requirement-packages'),
         fetch('/api/norm-references'),
-        fetch(`/api/requirements/import/schema?locale=${locale}`),
       ])
       if (cancelled) return
       async function read<T>(
@@ -1033,17 +1050,28 @@ export default function RequirementsImportDialog({
       setNormReferences(
         await read<NormReferenceOption>(normRefsRes, 'normReferences'),
       )
-      if (schemaRes.status === 'fulfilled' && schemaRes.value.ok) {
-        setImportBudget(
-          readRequirementImportBudgetFromJsonSchema(
-            await schemaRes.value.json().catch(() => ({})),
-          ),
+    }
+    async function fetchImportBudget() {
+      try {
+        const response = await fetch(
+          `/api/requirements/import/schema?locale=${locale}`,
         )
-      } else {
-        setImportBudget(DEFAULT_REQUIREMENT_IMPORT_BUDGET)
+        if (!response.ok) throw new Error('Import schema unavailable')
+        const budget = parseRequirementImportBudgetFromJsonSchema(
+          await response.json(),
+        )
+        if (!budget) throw new Error('Import schema budget unavailable')
+        if (cancelled) return
+        setImportBudget(budget)
+        setImportBudgetStatus('ready')
+      } catch {
+        if (cancelled) return
+        setImportBudget(null)
+        setImportBudgetStatus('error')
       }
     }
     void fetchTaxonomy()
+    void fetchImportBudget()
     return () => {
       cancelled = true
     }
@@ -1051,6 +1079,7 @@ export default function RequirementsImportDialog({
 
   useEffect(() => {
     if (!open || !initialImport) return
+    if (!initialImport.preview && importBudgetStatus !== 'ready') return
     if (appliedInitialImportKeyRef.current === initialImport.key) return
     const initial = initialImport
     setInitialImportLoading(true)
@@ -1082,9 +1111,6 @@ export default function RequirementsImportDialog({
         setAssociationPickerDraftIds([])
         setAssociationPickerSearch('')
         setPreviewToken(preview.previewToken)
-        if (preview.rows.length >= 200) {
-          setNoticeMessage(text.tooManyRows)
-        }
       }
       try {
         if (initial.preview) {
@@ -1132,13 +1158,13 @@ export default function RequirementsImportDialog({
     }
   }, [
     initialImport,
+    importBudgetStatus,
     locale,
     mode,
     open,
     revalidateEditableRow,
     specificationId,
     text.error,
-    text.tooManyRows,
   ])
 
   useEffect(() => {
@@ -1766,6 +1792,7 @@ export default function RequirementsImportDialog({
       setRawJson(await readRequirementImportFile(file))
       setErrorMessage(null)
     } catch (error) {
+      setRawJson('')
       setErrorMessage(
         error instanceof RequirementImportClientBudgetError
           ? text.contentTooLarge
@@ -1809,6 +1836,10 @@ export default function RequirementsImportDialog({
         payload = JSON.parse(rawJson)
       } catch {
         setErrorMessage(locale === 'sv' ? 'Ogiltig JSON.' : 'Invalid JSON.')
+        return
+      }
+      if (!runtimeImportPayloadSchema) {
+        setErrorMessage(text.importBudgetUnavailable)
         return
       }
       const schemaResult = runtimeImportPayloadSchema.safeParse(payload)
@@ -1857,9 +1888,6 @@ export default function RequirementsImportDialog({
       setPackageEditDraftIds({})
       closeAssociationPicker()
       setPreviewToken(preview.previewToken)
-      if (preview.rows.length >= 200) {
-        setNoticeMessage(text.tooManyRows)
-      }
     } finally {
       setLoading(false)
     }
@@ -2251,6 +2279,7 @@ export default function RequirementsImportDialog({
                         setRawJson(event.target.value)
                         setErrorMessage(null)
                       } catch (error) {
+                        setRawJson('')
                         setErrorMessage(
                           error instanceof RequirementImportClientBudgetError
                             ? text.contentTooLarge

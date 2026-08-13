@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server'
 import type { ZodType } from 'zod'
+import { getApplicationSettings } from '@/lib/dal/application-settings'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { readBoundedJsonRequest } from '@/lib/http/bounded-json-request'
 import { invalidJsonResponse, parseWithSchema } from '@/lib/http/validation'
-import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import {
+  isRequirementsServiceError,
+  REQUIREMENT_IMPORT_CAPACITY_RETRY_AFTER_SECONDS,
+} from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import {
   REQUIREMENT_IMPORT_CONTENT_MAX_BYTES,
   REQUIREMENT_IMPORT_TRANSPORT_MAX_BYTES,
   type RequirementImportBudget,
+  requirementImportBudgetFromSettings,
   validateImportContentBudget,
 } from '@/lib/requirements/import-budget'
 
@@ -15,6 +21,27 @@ export interface ReadRequirementImportRequestOptions<T> {
   budget: RequirementImportBudget
   content: (body: unknown) => unknown
   schema: ZodType<T>
+}
+
+export interface RequirementImportBodyReaderOptions<T> {
+  content: (body: unknown) => unknown
+  schema: (budget: RequirementImportBudget) => ZodType<T>
+}
+
+export function createRequirementImportBodyReader<T>(
+  options: RequirementImportBodyReaderOptions<T>,
+) {
+  return async ({ request }: { request: Request }) => {
+    const db = await getRequestSqlServerDataSource()
+    const budget = requirementImportBudgetFromSettings(
+      await getApplicationSettings(db),
+    )
+    return readRequirementImportRequest(request, {
+      budget,
+      content: options.content,
+      schema: options.schema(budget),
+    })
+  }
 }
 
 function stableImportError(
@@ -88,7 +115,11 @@ export function requirementImportHttpErrorResponse(
   return NextResponse.json(body, {
     headers:
       isRequirementsServiceError(error) && error.code === 'import_capacity_busy'
-        ? { 'Retry-After': '5' }
+        ? {
+            'Retry-After': String(
+              REQUIREMENT_IMPORT_CAPACITY_RETRY_AFTER_SECONDS,
+            ),
+          }
         : undefined,
     status,
   })

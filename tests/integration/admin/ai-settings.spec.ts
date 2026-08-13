@@ -267,6 +267,169 @@ test.describe('Admin settings', () => {
     }
   })
 
+  test('REQ-16C: enforces every schema-derived import budget boundary', async ({
+    request,
+  }) => {
+    const original = await getApplicationSettings(request)
+    const originalAi = await getAiSettings(request)
+    const changedBudget = {
+      requirementImportMaxJsonDepth: 4,
+      requirementImportMaxNestedItems: 2,
+      requirementImportMaxProposedNeedsReferences: 2,
+      requirementImportMaxProposedNormReferences: 2,
+      requirementImportMaxRows: 2,
+    } as const
+    const areasResponse = await request.get('/api/requirement-areas')
+    expect(areasResponse.ok()).toBe(true)
+    const areasPayload = (await areasResponse.json()) as {
+      areas: Array<{ id: number }>
+    }
+    const areaId = areasPayload.areas[0]?.id
+    if (!areaId) throw new Error('REQ-16C requires one seeded requirement area')
+
+    const proposedNormReferences = Array.from({ length: 2 }, (_, index) => ({
+      issuer: 'Playwright',
+      key: `REQ-16C-NORM-${index}`,
+      name: `REQ-16C norm ${index}`,
+      reference: `REQ-16C-${index}`,
+      type: 'Test reference',
+    }))
+    const proposedNeedsReferences = Array.from({ length: 2 }, (_, index) => ({
+      key: `REQ-16C-NEED-${index}`,
+      text: `REQ-16C need ${index}`,
+    }))
+    const exactPayload = {
+      proposedNeedsReferences,
+      proposedNormReferences,
+      requirements: Array.from({ length: 2 }, (_, index) => ({
+        description: `REQ-16C exact requirement ${index}`,
+        proposedNormReferenceKeys: proposedNormReferences.map(
+          proposal => proposal.key,
+        ),
+      })),
+      schemaVersion: 'requirement-import.v4',
+    }
+    const preview = (payload: unknown) =>
+      request.post('/api/requirements/import/preview', {
+        data: { areaId, locale: 'sv', payload },
+      })
+
+    try {
+      for (const [field, value] of Object.entries(changedBudget)) {
+        await patchApplicationSetting(request, { [field]: value })
+      }
+
+      const schemaResponse = await request.get(
+        '/api/requirements/import/schema?locale=sv',
+      )
+      expect(schemaResponse.ok()).toBe(true)
+      await expect(schemaResponse.json()).resolves.toMatchObject({
+        'x-requirement-import-budget': {
+          maxJsonDepth: changedBudget.requirementImportMaxJsonDepth,
+          maxNestedItems: changedBudget.requirementImportMaxNestedItems,
+          maxProposedNeedsReferences:
+            changedBudget.requirementImportMaxProposedNeedsReferences,
+          maxProposedNormReferences:
+            changedBudget.requirementImportMaxProposedNormReferences,
+          maxRows: changedBudget.requirementImportMaxRows,
+        },
+      })
+
+      const exact = await preview(exactPayload)
+      expect(exact.ok()).toBe(true)
+
+      const oneOverCases: Array<[string, unknown, string]> = [
+        [
+          'rows',
+          {
+            ...exactPayload,
+            requirements: [
+              ...exactPayload.requirements,
+              { description: 'REQ-16C row over limit' },
+            ],
+          },
+          'import_row_count_cap_exceeded',
+        ],
+        [
+          'proposed norm references',
+          {
+            ...exactPayload,
+            proposedNormReferences: [
+              ...proposedNormReferences,
+              {
+                issuer: 'Playwright',
+                key: 'REQ-16C-NORM-OVER',
+                name: 'REQ-16C norm over limit',
+                reference: 'REQ-16C-OVER',
+                type: 'Test reference',
+              },
+            ],
+          },
+          'import_proposed_norm_reference_count_cap_exceeded',
+        ],
+        [
+          'proposed needs references',
+          {
+            ...exactPayload,
+            proposedNeedsReferences: [
+              ...proposedNeedsReferences,
+              { key: 'REQ-16C-NEED-OVER', text: 'Need over limit' },
+            ],
+          },
+          'import_proposed_needs_reference_count_cap_exceeded',
+        ],
+        [
+          'nested items',
+          {
+            ...exactPayload,
+            requirements: [
+              {
+                description: 'REQ-16C nested over limit',
+                proposedNormReferenceKeys: ['one', 'two', 'three'],
+              },
+            ],
+          },
+          'import_nested_collection_cap_exceeded',
+        ],
+        [
+          'JSON depth',
+          {
+            requirements: [
+              {
+                description: 'REQ-16C depth over limit',
+                nested: { values: [] },
+              },
+            ],
+            schemaVersion: 'requirement-import.v4',
+          },
+          'import_json_depth_cap_exceeded',
+        ],
+      ]
+      for (const [name, payload, code] of oneOverCases) {
+        await test.step(`rejects one over ${name}`, async () => {
+          const response = await preview(payload)
+          expect(response.status()).toBe(422)
+          await expect(response.json()).resolves.toMatchObject({ code })
+        })
+      }
+    } finally {
+      for (const field of Object.keys(changedBudget) as Array<
+        keyof typeof changedBudget
+      >) {
+        await patchApplicationSetting(request, { [field]: original[field] })
+      }
+      await putAiSettings(request, {
+        aiSafetyRuleCacheTtlSeconds: originalAi.aiSafetyRuleCacheTtlSeconds,
+        aiSafetyForensicLoggingEnabled:
+          originalAi.aiSafetyForensicLoggingEnabled,
+        mcpImportMaxRows: originalAi.mcpImportMaxRows,
+        mcpImportValidationTtlMinutes: originalAi.mcpImportValidationTtlMinutes,
+        mcpMaxRequestBytes: originalAi.mcpMaxRequestBytes,
+        requirementGenerationEnabled: originalAi.requirementGenerationEnabled,
+      })
+    }
+  })
+
   test('REQ-16B: Admin Center controls the MCP request payload limit', async ({
     page,
     request,

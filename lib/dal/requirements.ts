@@ -1,3 +1,4 @@
+import { normalizedBatchGroups } from '@/lib/dal/batch-groups'
 import { validateRequirementTaxonomyReferences } from '@/lib/dal/requirement-reference-validation'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
@@ -647,25 +648,17 @@ export async function createRequirementsBatch(
     const tx: SqlServerTxExecutor = {
       query: (sql, params) => manager.query(sql, params),
     }
-    const maxGroupSize = Math.max(
-      1,
-      Math.min(inputs.length, options.maxGroupSize ?? inputs.length),
-    )
     const audit = options.audit
     const results: CreateRequirementResult[] = []
     await options.beforeWrite?.(tx)
-    for (let index = 0; index < inputs.length; index += maxGroupSize) {
+    for (const group of normalizedBatchGroups(inputs, options.maxGroupSize)) {
       results.push(
-        ...(await createRequirementsBatchWithExecutor(
-          tx,
-          inputs.slice(index, index + maxGroupSize),
-          {
-            audit: audit
-              ? (executor, result, groupIndex) =>
-                  audit(executor, result, index + groupIndex)
-              : undefined,
-          },
-        )),
+        ...(await createRequirementsBatchWithExecutor(tx, group.items, {
+          audit: audit
+            ? (executor, result, groupIndex) =>
+                audit(executor, result, group.startIndex + groupIndex)
+            : undefined,
+        })),
       )
     }
     await options.batchAudit?.(tx, results)

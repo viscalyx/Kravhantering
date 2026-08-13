@@ -117,6 +117,10 @@ export default function SettingsPanel() {
   const tc = useTranslations('common')
   const [settings, setSettings] =
     useState<AdminApplicationSettings>(initialSettings)
+  const [
+    persistedMcpImportMaxRowsCeiling,
+    setPersistedMcpImportMaxRowsCeiling,
+  ] = useState(DEFAULT_APPLICATION_SETTINGS.requirementImportMaxRows)
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [aiSettled, setAiSettled] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -144,7 +148,9 @@ export default function SettingsPanel() {
         setLoadState('error')
         return
       }
-      setSettings((await response.json()) as AdminApplicationSettings)
+      const payload = (await response.json()) as AdminApplicationSettings
+      setSettings(payload)
+      setPersistedMcpImportMaxRowsCeiling(payload.requirementImportMaxRows)
       setDrafts({})
       setSaveStates(emptySaveStates())
       setLoadState('ready')
@@ -219,6 +225,9 @@ export default function SettingsPanel() {
         [payload.field]: payload.value,
         updatedAt: payload.updatedAt,
       }))
+      if (payload.field === 'requirementImportMaxRows') {
+        setPersistedMcpImportMaxRowsCeiling(payload.value)
+      }
       setSaveStates(current => ({ ...current, [field]: 'saved' }))
     } catch {
       if (token !== saveTokens.current[field]) return
@@ -463,6 +472,7 @@ export default function SettingsPanel() {
           embedded
           mcpImportMaxRowsCeiling={settings.requirementImportMaxRows}
           onSettingsSettled={handleAiSettingsSettled}
+          persistedMcpImportMaxRowsCeiling={persistedMcpImportMaxRowsCeiling}
         />
 
         <section

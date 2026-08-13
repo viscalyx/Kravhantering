@@ -468,6 +468,28 @@ function parseSseBlock(block: string): { data: unknown; event: string } | null {
   return { data: JSON.parse(dataLines.join('\n')) as unknown, event }
 }
 
+function importBudgetErrorMessage(
+  code: unknown,
+  translate: (key: string) => string,
+): string | null {
+  switch (code) {
+    case 'import_content_bytes_exceeded':
+      return translate('generatedImportContentLimitExceeded')
+    case 'import_json_depth_cap_exceeded':
+      return translate('generatedImportJsonDepthLimitExceeded')
+    case 'import_nested_collection_cap_exceeded':
+      return translate('generatedImportNestedItemsLimitExceeded')
+    case 'import_proposed_needs_reference_count_cap_exceeded':
+      return translate('generatedImportNeedsProposalLimitExceeded')
+    case 'import_proposed_norm_reference_count_cap_exceeded':
+      return translate('generatedImportNormProposalLimitExceeded')
+    case 'import_row_count_cap_exceeded':
+      return translate('generatedImportRowLimitExceeded')
+    default:
+      return null
+  }
+}
+
 function issueText(issue: SchemaIssue): string {
   return `${issue.path}: ${issue.message}`
 }
@@ -1450,7 +1472,10 @@ export default function AiRequirementGenerator({
           } else if (parsed.event === 'error') {
             receivedTerminalEvent = true
             flushQueuedThinking()
-            throw new Error(String(payload.message ?? t('createError')))
+            throw new Error(
+              importBudgetErrorMessage(payload.code, t) ??
+                String(payload.message ?? t('createError')),
+            )
           }
         }
       }
