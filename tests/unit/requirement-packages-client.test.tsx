@@ -71,7 +71,7 @@ const hsaIdPrefixPayload = {
 const verificationResponse = (hsaId: string, displayName = 'Verified Lead') =>
   okJson({
     evidence: 'signed-evidence',
-    expiresAt: '2026-08-12T10:05:00.000Z',
+    expiresAt: new Date(Date.now() + 300_000).toISOString(),
     person: {
       displayName,
       email: 'verified.lead@example.test',

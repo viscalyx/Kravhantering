@@ -23,6 +23,10 @@ function okJson(body: unknown) {
   })
 }
 
+function futureExpiresAt(): string {
+  return new Date(Date.now() + 300_000).toISOString()
+}
+
 function ControlledHsaPersonVerifyField() {
   const [hsaId, setHsaId] = useState('SE5560000001-old1')
   return (
@@ -149,7 +153,7 @@ describe('HsaPersonVerifyField', () => {
           new Response(
             JSON.stringify({
               evidence: 'signed-evidence',
-              expiresAt: '2026-08-12T10:05:00.000Z',
+              expiresAt: futureExpiresAt(),
               person: {
                 displayName: 'Nora New',
                 email: null,
@@ -253,7 +257,7 @@ describe('HsaPersonVerifyField', () => {
           new Response(
             JSON.stringify({
               evidence: 'signed-evidence',
-              expiresAt: '2026-08-12T10:05:00.000Z',
+              expiresAt: futureExpiresAt(),
               person: {
                 displayName: 'Nora New',
                 email: 'nora.new@example.test',
@@ -418,7 +422,7 @@ describe('HsaPersonVerifyField', () => {
         new Response(
           JSON.stringify({
             evidence: 'signed-evidence',
-            expiresAt: '2026-08-12T10:05:00.000Z',
+            expiresAt: futureExpiresAt(),
             person: {
               displayName: 'Ada Admin',
               email: 'ada.admin@example.test',
@@ -518,7 +522,7 @@ describe('HsaPersonVerifyField', () => {
       vi.fn(async () =>
         okJson({
           evidence: 'signed-evidence',
-          expiresAt: '2026-08-12T10:05:00.000Z',
+          expiresAt: futureExpiresAt(),
           person: {
             displayName: 'Protected Person',
             email: 'protected@example.test',

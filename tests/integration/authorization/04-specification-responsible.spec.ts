@@ -11,6 +11,7 @@ import {
   referenceManualCases,
   type SpecificationResponse,
   seedAuthorizationResponsibilityPeople,
+  verifyResponsibilityPerson,
 } from './authorization-test-helpers'
 
 let fixture: AuthorizationFixture
@@ -185,17 +186,29 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
       'specification responsible privacy preview',
     )
   } finally {
-    await specificationResponsible
-      .put(
-        `/api/requirements-specifications/${fixture.specificationId}/co-authors`,
-        {
-          data: {
-            coAuthorHsaIds: originalCoAuthors,
-            verificationEvidence: [],
-          },
-        },
+    try {
+      const verificationEvidence = await Promise.all(
+        originalCoAuthors.map(hsaId =>
+          verifyResponsibilityPerson(specificationResponsible, {
+            hsaId,
+            purpose: 'requirements_specification_co_author',
+            scopeId: fixture.specificationId,
+          }),
+        ),
       )
-      .catch(() => undefined)
-    await specificationResponsible.dispose()
+      await specificationResponsible
+        .put(
+          `/api/requirements-specifications/${fixture.specificationId}/co-authors`,
+          {
+            data: {
+              coAuthorHsaIds: originalCoAuthors,
+              verificationEvidence,
+            },
+          },
+        )
+        .catch(() => undefined)
+    } finally {
+      await specificationResponsible.dispose()
+    }
   }
 })

@@ -154,7 +154,13 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
         priority: 340,
         value: formMode,
       })}
-      onSubmit={controller.submit}
+      onSubmit={
+        formSubmitDisabled
+          ? event => {
+              event.preventDefault()
+            }
+          : controller.submit
+      }
     >
       {renderCrudFormBody(showHeading)}
     </form>

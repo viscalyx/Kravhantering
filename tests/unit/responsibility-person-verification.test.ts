@@ -138,6 +138,22 @@ describe('responsibility person verification', () => {
       ),
     ).toEqual({ ...LOOKUP_PERSON, hasProtectedPersonalData: false })
 
+    expect(() =>
+      resolveVerifiedRequirementResponsibilityPerson(
+        verification.evidence,
+        {
+          actor: ACTOR,
+          hsaId: LOOKUP_PERSON.hsaId,
+          purpose: 'requirement_area_co_author',
+          scopeId: 42,
+        },
+        {
+          now: new Date('2026-08-12T10:05:00.000Z'),
+          secret: EVIDENCE_SECRET,
+        },
+      ),
+    ).toThrow('Verification evidence is invalid or expired')
+
     const mismatches = [
       { actor: { ...ACTOR, id: 'another-actor' } },
       { hsaId: 'SE5560000001-other1' },
@@ -354,6 +370,39 @@ describe('responsibility person verification', () => {
       ).toMatchObject({ hsaId: LOOKUP_PERSON.hsaId })
     },
   )
+
+  it('binds requirement package lead evidence to a package scope', () => {
+    const scopeId = 23
+    const verification =
+      createRequirementResponsibilityPersonVerificationEvidence(
+        {
+          actor: ACTOR,
+          person: LOOKUP_PERSON,
+          purpose: 'requirement_package_lead',
+          scopeId,
+        },
+        {
+          now: new Date('2026-08-12T10:00:00.000Z'),
+          secret: EVIDENCE_SECRET,
+        },
+      )
+
+    expect(
+      resolveVerifiedRequirementResponsibilityPerson(
+        verification.evidence,
+        {
+          actor: ACTOR,
+          hsaId: LOOKUP_PERSON.hsaId,
+          purpose: 'requirement_package_lead',
+          scopeId,
+        },
+        {
+          now: new Date('2026-08-12T10:01:00.000Z'),
+          secret: EVIDENCE_SECRET,
+        },
+      ),
+    ).toMatchObject({ hsaId: LOOKUP_PERSON.hsaId })
+  })
 
   it('normalizes names and protected-data flags in the verification payload', () => {
     expect(

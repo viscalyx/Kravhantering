@@ -74,7 +74,7 @@ const hsaIdPrefixPayload = {
 const verificationResponse = (hsaId: string, displayName = 'Verified Person') =>
   okJson({
     evidence: 'signed-evidence',
-    expiresAt: '2026-08-12T10:05:00.000Z',
+    expiresAt: new Date(Date.now() + 300_000).toISOString(),
     person: {
       displayName,
       email: 'verified.person@example.test',
@@ -219,6 +219,19 @@ describe('RequirementAreasClient', () => {
       target: { value: 'new1' },
     })
 
+    const saveButton = within(dialog).getByRole('button', {
+      name: /common\.save/i,
+    })
+    expect(saveButton).toBeDisabled()
+    fireEvent.submit(saveButton.closest('form') as HTMLFormElement)
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          url === '/api/requirement-areas' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      ),
+    ).toBe(false)
+
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/requirement-areas' && init?.method === 'POST')
         return okJson({ id: 3 })
@@ -231,10 +244,9 @@ describe('RequirementAreasClient', () => {
     })
 
     await verifyPersonIn(dialog)
+    expect(saveButton).toBeEnabled()
 
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: /common\.save/i }),
-    )
+    fireEvent.click(saveButton)
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import {
   type APIRequestContext,
   type APIResponse,
+  expect,
   request as playwrightRequest,
   type TestInfo,
 } from '@playwright/test'
@@ -381,7 +382,18 @@ export async function expectOk(
   return expectApiResponseOk(response, label)
 }
 
-async function verifyResponsibilityPerson(
+export async function expectStatusCode(
+  response: APIResponse,
+  status: number,
+  code: string,
+  label: string,
+): Promise<APIResponse> {
+  await expectStatus(response, status, label)
+  await expect(response.json()).resolves.toMatchObject({ code })
+  return response
+}
+
+export async function verifyResponsibilityPerson(
   request: APIRequestContext,
   input: {
     hsaId: string

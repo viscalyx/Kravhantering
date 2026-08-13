@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
+import {
+  clearInMemoryThrottleForTests,
+  getInMemoryThrottleBucketCountForTests,
+} from '@/lib/observability/throttle'
 import type { ActorContext } from '@/lib/requirements/auth'
 import {
   conflictError,
@@ -837,6 +840,11 @@ describe('requirement responsibility person verify route', () => {
         (await requestVerification(`SE5560000001-cycle${index}`)).status,
       ).toBe(200)
     }
+    const bucketCountBeforeDenial = getInMemoryThrottleBucketCountForTests()
+    const dbCallsBeforeDenial =
+      routeState.getRequestSqlServerDataSource.mock.calls.length
+    const actionAuditCallsBeforeDenial =
+      actionAuditState.recordActionAuditEvent.mock.calls.length
     const actorThrottled = await requestVerification('SE5560000001-cycle50')
     expect(actorThrottled.status).toBe(429)
     await expect(actorThrottled.json()).resolves.toEqual({
@@ -844,6 +852,20 @@ describe('requirement responsibility person verify route', () => {
       retryAfterSeconds: expect.any(Number),
     })
     expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledTimes(50)
+    expect(getInMemoryThrottleBucketCountForTests()).toBe(
+      bucketCountBeforeDenial,
+    )
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(
+      dbCallsBeforeDenial,
+    )
+    expect(actionAuditState.recordActionAuditEvent).toHaveBeenCalledTimes(
+      actionAuditCallsBeforeDenial,
+    )
+    expect(securityAuditState.recordSecurityEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ outcome: 'throttled' }),
+      }),
+    )
   })
 
   it('throttles one target across actors without case-variant bypasses', async () => {
@@ -939,6 +961,39 @@ describe('requirement responsibility person verify route', () => {
     expect(auditPayload).not.toContain('SE5560000001-sensitive1')
     expect(auditPayload).not.toContain('Test Person')
     expect(auditPayload).not.toContain('@example.test')
+  })
+
+  it('keeps a successful verification response when action audit persistence fails', async () => {
+    authState.context.actor.roles = ['Admin']
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    actionAuditState.recordActionAuditEvent.mockRejectedValueOnce(
+      new Error('audit unavailable'),
+    )
+
+    const response = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-owner1',
+        mode: 'refresh',
+        purpose: 'requirement_area_owner',
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      evidence: expect.any(String),
+      person: { hsaId: 'SE5560000001-owner1' },
+    })
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining('verification action audit event'),
+      expect.objectContaining({
+        error: expect.objectContaining({ message: 'audit unavailable' }),
+      }),
+    )
+    expect(securityAuditState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ outcome: 'success' }),
+      }),
+    )
   })
 
   it('rejects non-Admin requirement area owner verification before HSA lookup', async () => {

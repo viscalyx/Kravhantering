@@ -280,6 +280,24 @@ describe('requirement-package routes', () => {
         })
       ).status,
     ).toBe(200)
+    expect(
+      (
+        await callMutation(packagePut, path, 'PUT', {
+          body: {
+            leadHsaId: 'SE5560000001-next',
+            verificationEvidence: 'verified-lead',
+          },
+          id: '7',
+        })
+      ).status,
+    ).toBe(200)
+    expect(state.audit).toHaveBeenLastCalledWith(
+      db,
+      context,
+      expect.objectContaining({
+        details: { changedFields: ['leadHsaId'] },
+      }),
+    )
     state.getRequirementPackageById.mockResolvedValueOnce(null)
     expect(
       (

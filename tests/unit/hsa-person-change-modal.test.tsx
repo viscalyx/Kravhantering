@@ -63,6 +63,22 @@ function prefixPayload(prefix = 'SE5560000001') {
   }
 }
 
+function verifiedPersonResponse() {
+  return {
+    evidence: 'signed-evidence',
+    expiresAt: new Date(Date.now() + 300_000).toISOString(),
+    person: {
+      displayName: 'Nora New',
+      email: 'nora.new@example.test',
+      givenName: 'Nora',
+      hasProtectedPersonalData: false,
+      hsaId: 'SE5560000001-new1',
+      middleName: null,
+      surname: 'New',
+    },
+  }
+}
+
 describe('HsaPersonChangeModal', () => {
   afterEach(() => {
     vi.clearAllMocks()
@@ -126,19 +142,7 @@ describe('HsaPersonChangeModal', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url === '/api/hsa-id-prefixes') return okJson(prefixPayload())
-      return okJson({
-        evidence: 'signed-evidence',
-        expiresAt: '2026-08-12T10:05:00.000Z',
-        person: {
-          displayName: 'Nora New',
-          email: 'nora.new@example.test',
-          givenName: 'Nora',
-          hasProtectedPersonalData: false,
-          hsaId: 'SE5560000001-new1',
-          middleName: null,
-          surname: 'New',
-        },
-      })
+      return okJson(verifiedPersonResponse())
     })
     vi.stubGlobal('fetch', fetchMock)
     const onSubmit = vi.fn(async () => ({ ok: true as const }))
@@ -183,19 +187,7 @@ describe('HsaPersonChangeModal', () => {
         if (String(input) === '/api/hsa-id-prefixes') {
           return okJson(prefixPayload())
         }
-        return okJson({
-          evidence: 'signed-evidence',
-          expiresAt: '2026-08-12T10:05:00.000Z',
-          person: {
-            displayName: 'Nora New',
-            email: 'nora.new@example.test',
-            givenName: 'Nora',
-            hasProtectedPersonalData: false,
-            hsaId: 'SE5560000001-new1',
-            middleName: null,
-            surname: 'New',
-          },
-        })
+        return okJson(verifiedPersonResponse())
       }),
     )
     const onSubmit = vi.fn(async () => ({

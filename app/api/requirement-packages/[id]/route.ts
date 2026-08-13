@@ -153,7 +153,7 @@ export const PUT = secureMutationRoute({
     }
     await recordAllowedActionAuditEvent(db, context, {
       action: 'requirement_package.update',
-      details: { changedFields: Object.keys(body) },
+      details: { changedFields: Object.keys(packageUpdate) },
       targetId: params.id,
       targetKind: 'requirement_package',
     })

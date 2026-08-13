@@ -17,8 +17,9 @@ co-authors. The browser never calls Kong or the HSA directory directly. It
 only talks to the app's protected same-origin routes.
 
 Read views do not call HSA. Save routes also do not call HSA. Person lookup
-happens before save through the app-owned verify route, and the result is
-stored as a local `Kravansvarsperson` row keyed by HSA-id.
+happens before save through the app-owned verify route without persisting the
+lookup result. Only the final assignment atomically persists the verified
+person as a local `Kravansvarsperson` row and creates or updates the assignment.
 
 ## Devcontainer and Release Test Support
 

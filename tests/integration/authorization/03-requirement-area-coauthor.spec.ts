@@ -5,6 +5,7 @@ import {
   createAuthorizationFixture,
   type DataSubjectExportResponse,
   expectStatus,
+  expectStatusCode,
   HSA,
   newRoleContext,
   ROLE_STORAGE_STATE,
@@ -167,7 +168,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
       403,
       'area co-author area metadata update',
     )
-    await expectStatus(
+    await expectStatusCode(
       await areaCoauthor.put(
         `/api/requirement-areas/${fixture.areaId}/co-authors`,
         {
@@ -179,6 +180,7 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors cannot delegate area
         },
       ),
       403,
+      'forbidden',
       'area co-author co-author update',
     )
   } finally {

@@ -11,6 +11,7 @@ import {
   ROLE_STORAGE_STATE,
   referenceManualCases,
   seedAuthorizationResponsibilityPeople,
+  verifyResponsibilityPerson,
 } from './authorization-test-helpers'
 
 let fixture: AuthorizationFixture
@@ -198,14 +199,26 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
       'area-owner action log read',
     )
   } finally {
-    await areaOwner
-      .put(`/api/requirement-areas/${fixture.areaId}/co-authors`, {
-        data: {
-          coAuthorHsaIds: originalCoAuthors,
-          verificationEvidence: [],
-        },
-      })
-      .catch(() => undefined)
-    await areaOwner.dispose()
+    try {
+      const verificationEvidence = await Promise.all(
+        originalCoAuthors.map(hsaId =>
+          verifyResponsibilityPerson(areaOwner, {
+            hsaId,
+            purpose: 'requirement_area_co_author',
+            scopeId: fixture.areaId,
+          }),
+        ),
+      )
+      await areaOwner
+        .put(`/api/requirement-areas/${fixture.areaId}/co-authors`, {
+          data: {
+            coAuthorHsaIds: originalCoAuthors,
+            verificationEvidence,
+          },
+        })
+        .catch(() => undefined)
+    } finally {
+      await areaOwner.dispose()
+    }
   }
 })

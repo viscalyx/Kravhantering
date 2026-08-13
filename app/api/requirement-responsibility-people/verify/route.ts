@@ -6,6 +6,7 @@ import { isHsaId } from '@/lib/auth/hsa-id'
 import { canManageAreaCoAuthors } from '@/lib/dal/requirement-areas'
 import { canManageSpecificationAssignments } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   customMutationPolicy,
   secureMutationRoute,
@@ -192,32 +193,13 @@ export const POST = secureMutationRoute({
     },
   ),
   handler: async ({ body, context, request }) => {
-    const db = await getRequestSqlServerDataSource()
     const targetFingerprint = requirementResponsibilityPersonTargetFingerprint(
       body.hsaId,
     )
     const actorFingerprint = requirementResponsibilityPersonActorFingerprint(
       context.actor,
     )
-    const actorThrottle = checkInMemoryThrottle({
-      key: `hsa.verify:actor:${actorFingerprint}`,
-      limit: ACTOR_RATE_LIMIT,
-      windowMs: RATE_LIMIT_WINDOW_MS,
-    })
-    const actorTargetThrottle = checkInMemoryThrottle({
-      key: `hsa.verify:actor-target:${actorFingerprint}:${targetFingerprint}`,
-      limit: ACTOR_TARGET_RATE_LIMIT,
-      windowMs: RATE_LIMIT_WINDOW_MS,
-    })
-    const targetThrottle = checkInMemoryThrottle({
-      key: `hsa.verify:target:${targetFingerprint}`,
-      limit: TARGET_RATE_LIMIT,
-      windowMs: RATE_LIMIT_WINDOW_MS,
-    })
-
-    const recordOutcome = async (
-      outcome: VerificationAuditOutcome,
-    ): Promise<void> => {
+    const recordSecurityOutcome = (outcome: VerificationAuditOutcome) => {
       const details = {
         mode: body.mode,
         outcome,
@@ -235,38 +217,11 @@ export const POST = secureMutationRoute({
         outcome: outcome === 'success' ? 'success' : 'failure',
         request,
       })
-      await recordActionAuditEvent(db, {
-        action: 'requirement_responsibility_person.verify',
-        actorClientId: actorFingerprint,
-        actorDisplayName: null,
-        actorHsaId: null,
-        actorKind:
-          context.source === 'mcp' || context.actor.source === 'mcp'
-            ? 'mcp_client'
-            : context.actor.isAuthenticated
-              ? 'user'
-              : 'system',
-        clientIp: context.request?.ip ?? null,
-        correlationId: context.correlationId,
-        decision: 'allowed',
-        details,
-        requestId: context.requestId,
-        targetId: targetFingerprint,
-        targetKind: 'requirement_responsibility_person_verification',
-      })
+      return details
     }
 
-    if (
-      !actorThrottle.allowed ||
-      !actorTargetThrottle.allowed ||
-      !targetThrottle.allowed
-    ) {
-      const retryAfterSeconds = Math.max(
-        actorThrottle.retryAfterSeconds,
-        actorTargetThrottle.retryAfterSeconds,
-        targetThrottle.retryAfterSeconds,
-      )
-      await recordOutcome('throttled')
+    const throttledResponse = (retryAfterSeconds: number) => {
+      recordSecurityOutcome('throttled')
       return NextResponse.json(
         { ...THROTTLED_ERROR, retryAfterSeconds },
         {
@@ -274,6 +229,66 @@ export const POST = secureMutationRoute({
           status: 429,
         },
       )
+    }
+
+    const actorThrottle = checkInMemoryThrottle({
+      key: `hsa.verify:actor:${actorFingerprint}`,
+      limit: ACTOR_RATE_LIMIT,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    })
+    if (!actorThrottle.allowed) {
+      return throttledResponse(actorThrottle.retryAfterSeconds)
+    }
+
+    const actorTargetThrottle = checkInMemoryThrottle({
+      key: `hsa.verify:actor-target:${actorFingerprint}:${targetFingerprint}`,
+      limit: ACTOR_TARGET_RATE_LIMIT,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    })
+    if (!actorTargetThrottle.allowed) {
+      return throttledResponse(actorTargetThrottle.retryAfterSeconds)
+    }
+
+    const targetThrottle = checkInMemoryThrottle({
+      key: `hsa.verify:target:${targetFingerprint}`,
+      limit: TARGET_RATE_LIMIT,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    })
+    if (!targetThrottle.allowed) {
+      return throttledResponse(targetThrottle.retryAfterSeconds)
+    }
+
+    const db = await getRequestSqlServerDataSource()
+    const recordOutcome = async (
+      outcome: VerificationAuditOutcome,
+    ): Promise<void> => {
+      const details = recordSecurityOutcome(outcome)
+      try {
+        await recordActionAuditEvent(db, {
+          action: 'requirement_responsibility_person.verify',
+          actorClientId: actorFingerprint,
+          actorDisplayName: null,
+          actorHsaId: null,
+          actorKind:
+            context.source === 'mcp' || context.actor.source === 'mcp'
+              ? 'mcp_client'
+              : context.actor.isAuthenticated
+                ? 'user'
+                : 'system',
+          clientIp: context.request?.ip ?? null,
+          correlationId: context.correlationId,
+          decision: 'allowed',
+          details,
+          requestId: context.requestId,
+          targetId: targetFingerprint,
+          targetKind: 'requirement_responsibility_person_verification',
+        })
+      } catch (error) {
+        logSanitizedError(
+          'Failed to record requirement responsibility person verification action audit event',
+          error,
+        )
+      }
     }
 
     let person: Awaited<
