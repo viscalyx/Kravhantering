@@ -556,7 +556,7 @@ describe('least-privilege SQL Server runtime role', () => {
     const migrationResult = await runSqlServerMigrations(migrationProbeUrl)
     expect(migrationResult.migrationsApplied).toBeGreaterThan(50)
     expect(migrationResult.postMigration.observedHead?.name).toBe(
-      'RuntimeRole1720100000000',
+      'RequirementImportBudget1720200000000',
     )
     await expect(
       seedSqlServerDatabase(migrationProbeUrl, {
