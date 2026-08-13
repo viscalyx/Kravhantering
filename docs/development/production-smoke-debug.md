@@ -78,8 +78,16 @@ label before entering, collecting evidence, or removing it.
 
 Every PR and trusted release smoke run uploads `runtime-diagnostics/` in its
 runtime artifact, including runs that stop during toolchain setup, the early
-journald preflight, Quadlet installation, or service startup. The job summary
-lists any recognized infrastructure signatures:
+journald preflight, Quadlet installation, or service startup.
+
+The bootstrap resets any preinstalled Podman state, removes hosted-runner
+components under `/usr/local`, and reinstalls the Ubuntu package-owned Podman,
+conmon, crun, and Quadlet toolchain. It verifies command resolution, helper
+selection, package ownership, and generator resolution before the workflow
+runs a live rootless journald preflight. This keeps rolling runner-image
+updates from silently changing the production-smoke runtime contract.
+
+The job summary lists any recognized infrastructure signatures:
 
 - `conmon_missing_journald` identifies a conmon build without journald support;
 - `cgroup_oom` identifies a service cgroup OOM kill;

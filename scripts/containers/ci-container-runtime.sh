@@ -203,17 +203,10 @@ bootstrap_toolchain() {
     fail 'bootstrap expects the pr or release profile'
   [[ "$profile" == release ]] && packages+=(skopeo)
 
-  select_toolchain
-  if [[ "$TOOLCHAIN_PROFILE" == static ]]; then
-    packages=(jq libnss3-tools)
-    [[ "$profile" == release ]] && packages+=(skopeo)
-    "$SUDO_BIN" "$APT_GET_BIN" update
-    "$SUDO_BIN" "$APT_GET_BIN" install -y --no-install-recommends \
-      --reinstall "${packages[@]}"
-    verify_toolchain
-    return 0
-  fi
-
+  # Hosted runner images can ship a coherent static toolchain with optional
+  # production features such as journald compiled out. Always converge on the
+  # package-owned Ubuntu toolchain; the separate live preflight then verifies
+  # the required journald capability instead of trusting version provenance.
   reset_existing_rootless_runtime
   remove_runner_static_configuration
   "$SUDO_BIN" rm -rf -- \
@@ -226,10 +219,16 @@ bootstrap_toolchain() {
     "$LOCAL_PREFIX/lib/systemd/system-generators/podman-system-generator" \
     "$LOCAL_PREFIX/lib/systemd/user-generators/podman-user-generator"
   hash -r
+  PODMAN_BIN="$PACKAGE_PODMAN_BIN"
+  PATH="$SYSTEM_PREFIX/bin:$PATH"
+  export PATH
   "$SUDO_BIN" "$APT_GET_BIN" update
   "$SUDO_BIN" "$APT_GET_BIN" install -y --no-install-recommends \
     --reinstall "${packages[@]}"
   verify_toolchain
+  if [[ -n "${GITHUB_PATH:-}" ]]; then
+    printf '%s\n' "$SYSTEM_PREFIX/bin" >>"$GITHUB_PATH"
+  fi
 }
 
 runtime_preflight() {

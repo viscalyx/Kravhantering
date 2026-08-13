@@ -1079,7 +1079,12 @@ export default function RequirementsImportDialog({
 
   useEffect(() => {
     if (!open || !initialImport) return
-    if (!initialImport.preview && importBudgetStatus !== 'ready') return
+    if (!initialImport.preview && importBudgetStatus !== 'ready') {
+      if (importBudgetStatus === 'error') {
+        appliedInitialImportKeyRef.current = initialImport.key
+      }
+      return
+    }
     if (appliedInitialImportKeyRef.current === initialImport.key) return
     const initial = initialImport
     setInitialImportLoading(true)
@@ -2025,6 +2030,7 @@ export default function RequirementsImportDialog({
   const isPreparingInitialImport = Boolean(
     initialImport &&
       !hasLoadedReview &&
+      importBudgetStatus !== 'error' &&
       (initialImportLoading ||
         appliedInitialImportKeyRef.current !== initialImport.key),
   )

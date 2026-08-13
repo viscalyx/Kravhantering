@@ -23,6 +23,7 @@
     "bytegränser",
     "bwrap",
     "certutil",
+    "cgroupfs",
     "cgroupns",
     "conmon",
     "crun",

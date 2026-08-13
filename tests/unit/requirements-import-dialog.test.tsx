@@ -1434,6 +1434,38 @@ describe('RequirementsImportDialog', () => {
     )
   })
 
+  it('shows the import form when an initial review cannot load its budget', async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/api/requirements/import/schema')) {
+        return { ok: false } as Response
+      }
+      return { json: async () => ({}), ok: true } as Response
+    })
+
+    render(
+      <RequirementsImportDialog
+        embedded
+        initialImport={{
+          key: 'budget-unavailable-preview',
+          payload: JSON.parse(validImportPayload()),
+        }}
+        mode="specification-local"
+        onClose={vi.fn()}
+        open
+        specificationId={8}
+      />,
+    )
+
+    expect(
+      await screen.findByText(/De aktuella importgränserna kunde inte laddas/),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('Förbereder importgranskning...'),
+    ).not.toBeInTheDocument()
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
+
   it('reports initial preview transport and response failures', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce({
       json: async () => ({ error: 'Preview rejected' }),

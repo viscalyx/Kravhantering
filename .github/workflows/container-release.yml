@@ -101,7 +101,7 @@ jobs:
           scripts/containers/ci-container-runtime.sh bootstrap release
           sudo sysctl net.ipv4.ip_unprivileged_port_start=0
           echo "127.0.0.1 kravhantering.test" | sudo tee -a /etc/hosts
-          timeout --kill-after=5s 30s podman info
+          timeout --kill-after=5s 30s /usr/bin/podman info
           docker --version
           docker buildx version
           docker info

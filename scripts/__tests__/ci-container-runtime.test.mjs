@@ -21,38 +21,36 @@ const CLASSIFIER_PATH = path.resolve(
 )
 const temporaryDirectories = []
 
-function createToolchainFixture({ toolchain = 'package' } = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-ci-runtime-'))
-  temporaryDirectories.push(root)
-  const systemPrefix = path.join(root, 'usr')
-  const localPrefix = path.join(root, 'usr-local')
-  const toolchainPrefix = toolchain === 'static' ? localPrefix : systemPrefix
-  const binDir = path.join(toolchainPrefix, 'bin')
-  const libexecDir = path.join(toolchainPrefix, 'libexec', 'podman')
+function createRuntimeToolchain({ prefix, profile }) {
+  const versions =
+    profile === 'static'
+      ? {
+          conmon: '2.2.1',
+          crun: '1.28',
+          podman: '5.8.4',
+        }
+      : {
+          conmon: '2.1.10',
+          crun: '1.14.1',
+          podman: '4.9.3',
+        }
+  const binDir = path.join(prefix, 'bin')
+  const libexecDir = path.join(prefix, 'libexec', 'podman')
   const userGeneratorDir = path.join(
-    toolchainPrefix,
+    prefix,
     'lib',
     'systemd',
     'user-generators',
   )
   const systemGeneratorDir = path.join(
-    toolchainPrefix,
+    prefix,
     'lib',
     'systemd',
     'system-generators',
   )
-  const commandLog = path.join(root, 'podman-commands.log')
-  const sudoLog = path.join(root, 'sudo-commands.log')
-  const containersConfigPath = path.join(root, 'etc', 'containers.conf')
-  const runtimeDropInPath = path.join(
-    root,
-    'etc',
-    'containers.conf.d',
-    '00-fix-runtime.conf',
-  )
   const conmonPath =
-    toolchain === 'static'
-      ? path.join(localPrefix, 'lib', 'podman', 'conmon')
+    profile === 'static'
+      ? path.join(prefix, 'lib', 'podman', 'conmon')
       : path.join(binDir, 'conmon')
   fs.mkdirSync(binDir, { recursive: true })
   fs.mkdirSync(libexecDir, { recursive: true })
@@ -70,10 +68,10 @@ function createToolchainFixture({ toolchain = 'package' } = {}) {
       'printf \'%s\\n\' "$*" >>"$CI_FAKE_PODMAN_LOG"',
       '[[ "$1" == "--log-level=debug" ]] && shift',
       'case "$1" in',
-      "  --version) printf 'podman version 4.9.3\\n' ;;",
+      `  --version) printf 'podman version ${versions.podman}\\n' ;;`,
       '  info)',
       `    sleep "\${CI_FAKE_INFO_DELAY_SECONDS:-0}"`,
-      '    printf \'{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n\' "$CI_FAKE_CONMON_PATH" "$CI_FAKE_CRUN_PATH"',
+      `    printf '{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n' "\${CI_FAKE_CONMON_PATH:-${conmonPath}}" "\${CI_FAKE_CRUN_PATH:-${crunPath}}"`,
       '    ;;',
       `  run) exit "\${CI_FAKE_RUN_STATUS:-0}" ;;`,
       `  system) [[ "$2 $3" == "reset --force" ]] && exit "\${CI_FAKE_RESET_STATUS:-0}" ;;`,
@@ -83,9 +81,9 @@ function createToolchainFixture({ toolchain = 'package' } = {}) {
     { mode: 0o755 },
   )
   for (const [filePath, output] of [
-    [conmonPath, 'conmon version 2.1.10'],
-    [crunPath, 'crun version 1.14.1'],
-    [generatorPath, 'quadlet version 4.9.3'],
+    [conmonPath, `conmon version ${versions.conmon}`],
+    [crunPath, `crun version ${versions.crun}`],
+    [generatorPath, `quadlet version ${versions.podman}`],
   ]) {
     fs.writeFileSync(
       filePath,
@@ -101,22 +99,63 @@ function createToolchainFixture({ toolchain = 'package' } = {}) {
     generatorPath,
     path.join(systemGeneratorDir, 'podman-system-generator'),
   )
-  const dpkgQueryPath = path.join(binDir, 'dpkg-query')
+
+  return {
+    binDir,
+    conmonPath,
+    crunPath,
+    generatorPath,
+    podmanPath,
+    systemGeneratorDir,
+    userGeneratorDir,
+  }
+}
+
+function createToolchainFixture({ toolchain = 'package' } = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-ci-runtime-'))
+  temporaryDirectories.push(root)
+  const systemPrefix = path.join(root, 'usr')
+  const localPrefix = path.join(root, 'usr-local')
+  const commandLog = path.join(root, 'podman-commands.log')
+  const githubPathFile = path.join(root, 'github-path')
+  const sudoLog = path.join(root, 'sudo-commands.log')
+  const containersConfigPath = path.join(root, 'etc', 'containers.conf')
+  const runtimeDropInPath = path.join(
+    root,
+    'etc',
+    'containers.conf.d',
+    '00-fix-runtime.conf',
+  )
+  const packageToolchain = createRuntimeToolchain({
+    prefix: systemPrefix,
+    profile: 'package',
+  })
+  const staticToolchain =
+    toolchain === 'static'
+      ? createRuntimeToolchain({
+          prefix: localPrefix,
+          profile: 'static',
+        })
+      : null
+  const selectedToolchain = staticToolchain ?? packageToolchain
+  const fakeBinDir = path.join(root, 'fake-bin')
+  fs.mkdirSync(fakeBinDir, { recursive: true })
+  const dpkgQueryPath = path.join(fakeBinDir, 'dpkg-query')
   fs.writeFileSync(
     dpkgQueryPath,
     [
       '#!/usr/bin/env bash',
       'case "$3" in',
-      `  "${podmanPath}"|"${generatorPath}") printf 'podman: %s\\n' "$3" ;;`,
-      `  "${conmonPath}") printf 'conmon: %s\\n' "$3" ;;`,
-      `  "${crunPath}") printf 'crun: %s\\n' "$3" ;;`,
+      `  "${packageToolchain.podmanPath}"|"${packageToolchain.generatorPath}") printf 'podman: %s\\n' "$3" ;;`,
+      `  "${packageToolchain.conmonPath}") printf 'conmon: %s\\n' "$3" ;;`,
+      `  "${packageToolchain.crunPath}") printf 'crun: %s\\n' "$3" ;;`,
       '  *) exit 1 ;;',
       'esac',
       '',
     ].join('\n'),
     { mode: 0o755 },
   )
-  const sudoPath = path.join(binDir, 'sudo')
+  const sudoPath = path.join(fakeBinDir, 'sudo')
   fs.writeFileSync(
     sudoPath,
     [
@@ -130,33 +169,46 @@ function createToolchainFixture({ toolchain = 'package' } = {}) {
 
   return {
     commandLog,
-    conmonPath,
-    crunPath,
+    conmonPath: selectedToolchain.conmonPath,
+    crunPath: selectedToolchain.crunPath,
     dpkgQueryPath,
     env: {
       ...process.env,
       GH_TOKEN: '',
       GITHUB_ACTIONS: 'true',
+      GITHUB_PATH: githubPathFile,
       GITHUB_REPOSITORY: '',
       GITHUB_RUN_ID: '',
-      CI_FAKE_CONMON_PATH: conmonPath,
-      CI_FAKE_CRUN_PATH: crunPath,
       CI_FAKE_PODMAN_LOG: commandLog,
       CI_FAKE_SUDO_LOG: sudoLog,
       CI_RUNTIME_DPKG_QUERY_BIN: dpkgQueryPath,
-      CI_RUNTIME_GENERATOR_SEARCH_PATH: `${userGeneratorDir}:${systemGeneratorDir}`,
+      CI_RUNTIME_GENERATOR_SEARCH_PATH: [
+        staticToolchain?.userGeneratorDir,
+        staticToolchain?.systemGeneratorDir,
+        packageToolchain.userGeneratorDir,
+        packageToolchain.systemGeneratorDir,
+      ]
+        .filter(Boolean)
+        .join(':'),
       CI_RUNTIME_LOCAL_PREFIX: localPrefix,
       CI_RUNTIME_COMMAND_TIMEOUT_SECONDS: '5',
       CI_RUNTIME_CONTAINERS_CONF: containersConfigPath,
       CI_RUNTIME_RUNNER_RUNTIME_DROP_IN: runtimeDropInPath,
       CI_RUNTIME_SUDO_BIN: sudoPath,
       CI_RUNTIME_SYSTEM_PREFIX: systemPrefix,
-      PATH: `${binDir}:${process.env.PATH}`,
+      PATH: [
+        fakeBinDir,
+        selectedToolchain.binDir,
+        packageToolchain.binDir,
+        process.env.PATH,
+      ].join(':'),
     },
+    githubPathFile,
     localPrefix,
     containersConfigPath,
     root,
     runtimeDropInPath,
+    systemPrefix,
     sudoLog,
   }
 }
@@ -258,38 +310,58 @@ describe('CI container runtime', () => {
     ['pr', false],
     ['release', true],
   ])(
-    'keeps a coherent static runner %s profile instead of downgrading it',
+    'replaces a coherent static runner toolchain for the %s profile',
     (profile, usesSkopeo) => {
       const fixture = createToolchainFixture({ toolchain: 'static' })
+      fs.mkdirSync(path.dirname(fixture.containersConfigPath), {
+        recursive: true,
+      })
+      fs.writeFileSync(
+        fixture.containersConfigPath,
+        '[engine]\ncgroup_manager="cgroupfs"\nevents_logger="file"\n',
+      )
+      fs.mkdirSync(path.dirname(fixture.runtimeDropInPath), {
+        recursive: true,
+      })
+      fs.writeFileSync(
+        fixture.runtimeDropInPath,
+        '[engine.runtimes]\ncrun=["/usr/local/bin/crun"]\n',
+      )
 
       const result = runRuntimeScript(['bootstrap', profile], fixture)
 
       expect(result.status).toBe(0)
-      expect(result.stdout).toContain('coherent static toolchain: verified')
+      expect(result.stdout).toContain('coherent package toolchain: verified')
       const podmanCommands = fs.readFileSync(fixture.commandLog, 'utf8')
       expect(podmanCommands).toContain('--log-level=debug info --format json')
-      expect(podmanCommands).not.toContain('system reset')
+      expect(podmanCommands).toContain('system reset --force')
       const sudoCommands = fs.readFileSync(fixture.sudoLog, 'utf8')
       expect(sudoCommands).toContain(
-        'apt-get install -y --no-install-recommends --reinstall jq libnss3-tools',
+        'apt-get install -y --no-install-recommends --reinstall conmon crun jq libnss3-tools podman',
       )
       expect(sudoCommands.includes('skopeo')).toBe(usesSkopeo)
-      expect(sudoCommands).not.toContain(' podman')
-      expect(sudoCommands).not.toContain(' conmon')
-      expect(sudoCommands).not.toContain(' crun')
+      expect(
+        fs.existsSync(path.join(fixture.localPrefix, 'bin', 'podman')),
+      ).toBe(false)
+      expect(
+        fs.existsSync(path.join(fixture.localPrefix, 'lib', 'podman')),
+      ).toBe(false)
+      expect(fs.existsSync(fixture.containersConfigPath)).toBe(false)
+      expect(fs.existsSync(fixture.runtimeDropInPath)).toBe(false)
+      expect(fs.readFileSync(fixture.githubPathFile, 'utf8')).toBe(
+        `${fixture.systemPrefix}/bin\n`,
+      )
     },
   )
 
   it('aborts bootstrap before replacing binaries when Podman reset fails', () => {
-    const fixture = createToolchainFixture()
+    const fixture = createToolchainFixture({ toolchain: 'static' })
     const preinstalledPath = path.join(
       fixture.localPrefix,
       'lib',
       'podman',
       'conmon',
     )
-    fs.mkdirSync(path.dirname(preinstalledPath), { recursive: true })
-    fs.writeFileSync(preinstalledPath, 'foreign toolchain')
 
     const result = runRuntimeScript(['bootstrap', 'pr'], fixture, {
       CI_FAKE_RESET_STATUS: '42',
