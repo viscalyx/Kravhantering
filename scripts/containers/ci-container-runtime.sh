@@ -134,7 +134,9 @@ verify_toolchain() {
   [[ "$generator" == "$(canonical_path "$QUADLET_GENERATOR")" ]] ||
     fail "systemd selected unexpected Quadlet generator: $generator"
 
-  if podman_info="$(run_bounded "$PODMAN_BIN" info --format json)"; then
+  if podman_info="$(
+    run_bounded "$PODMAN_BIN" --log-level=debug info --format json
+  )"; then
     :
   else
     status="$?"
@@ -377,7 +379,7 @@ collect_component_evidence() {
 
   podman_command="$(command -v podman 2>/dev/null || true)"
   [[ -n "$podman_command" ]] || podman_command="$PODMAN_BIN"
-  run_bounded "$podman_command" info --format json \
+  run_bounded "$podman_command" --log-level=debug info --format json \
     >"$EVIDENCE_DIR/podman-info.json" 2>&1 || true
   podman_info="$(<"$EVIDENCE_DIR/podman-info.json")"
   selected_conmon="$(jq -er '.host.conmon.path' <<<"$podman_info" 2>/dev/null || true)"

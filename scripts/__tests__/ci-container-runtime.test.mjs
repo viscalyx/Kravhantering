@@ -63,6 +63,7 @@ function createToolchainFixture() {
     [
       '#!/usr/bin/env bash',
       'printf \'%s\\n\' "$*" >>"$CI_FAKE_PODMAN_LOG"',
+      '[[ "$1" == "--log-level=debug" ]] && shift',
       'case "$1" in',
       "  --version) printf 'podman version 4.9.3\\n' ;;",
       '  info)',
@@ -309,6 +310,9 @@ describe('CI container runtime', () => {
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain(
       'cannot inspect the selected Podman runtime toolchain (exit 124)',
+    )
+    expect(fs.readFileSync(fixture.commandLog, 'utf8')).toContain(
+      '--log-level=debug info --format json',
     )
   })
 
