@@ -60,16 +60,21 @@ remove_runner_static_configuration() {
   fi
 }
 
-stop_existing_rootless_runtime() {
+reset_existing_rootless_runtime() {
   local existing_podman status
   existing_podman="$(command -v podman 2>/dev/null || true)"
   [[ -n "$existing_podman" ]] || return 0
-  printf '%s\n' 'Stopping existing rootless Podman runtime state before replacing the toolchain.'
-  if run_bounded "$existing_podman" system migrate; then
-    printf '%s\n' 'existing rootless Podman runtime state: stopped'
+  [[ "${GITHUB_ACTIONS:-}" == true ]] ||
+    fail 'refusing to reset rootless Podman state outside GitHub Actions'
+  printf '%s\n' 'Resetting existing rootless Podman runtime state before replacing the toolchain.'
+  # Hosted runners are disposable and have no workflow-owned Podman resources yet.
+  # A migration writes state for the preinstalled version, which can be newer than
+  # Ubuntu's package version and therefore unsafe to reuse after the downgrade.
+  if run_bounded "$existing_podman" system reset --force; then
+    printf '%s\n' 'existing rootless Podman runtime state: reset'
   else
     status="$?"
-    fail "cannot stop the existing rootless Podman runtime state (exit $status)"
+    fail "cannot reset the existing rootless Podman runtime state (exit $status)"
   fi
 }
 
@@ -163,7 +168,7 @@ bootstrap_toolchain() {
     fail 'bootstrap expects the pr or release profile'
   [[ "$profile" == release ]] && packages+=(skopeo)
 
-  stop_existing_rootless_runtime
+  reset_existing_rootless_runtime
   remove_runner_static_configuration
   "$SUDO_BIN" rm -rf -- \
     "$LOCAL_PREFIX/lib/podman" \

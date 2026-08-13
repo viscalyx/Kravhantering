@@ -70,7 +70,7 @@ function createToolchainFixture() {
       '    printf \'{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n\' "$CI_FAKE_CONMON_PATH" "$CI_FAKE_CRUN_PATH"',
       '    ;;',
       `  run) exit "\${CI_FAKE_RUN_STATUS:-0}" ;;`,
-      `  system) [[ "$2" == migrate ]] && exit "\${CI_FAKE_MIGRATE_STATUS:-0}" ;;`,
+      `  system) [[ "$2 $3" == "reset --force" ]] && exit "\${CI_FAKE_RESET_STATUS:-0}" ;;`,
       'esac',
       '',
     ].join('\n'),
@@ -130,6 +130,7 @@ function createToolchainFixture() {
     env: {
       ...process.env,
       GH_TOKEN: '',
+      GITHUB_ACTIONS: 'true',
       GITHUB_REPOSITORY: '',
       GITHUB_RUN_ID: '',
       CI_FAKE_CONMON_PATH: conmonPath,
@@ -235,10 +236,10 @@ describe('CI container runtime', () => {
     expect(fs.existsSync(fixture.containersConfigPath)).toBe(false)
     expect(fs.existsSync(fixture.runtimeDropInPath)).toBe(false)
     expect(fs.readFileSync(fixture.commandLog, 'utf8')).toContain(
-      'system migrate',
+      'system reset --force',
     )
     expect(result.stdout).toContain(
-      'existing rootless Podman runtime state: stopped',
+      'existing rootless Podman runtime state: reset',
     )
     const commands = fs.readFileSync(fixture.sudoLog, 'utf8')
     expect(commands).toContain(
@@ -247,7 +248,7 @@ describe('CI container runtime', () => {
     expect(commands.includes('skopeo')).toBe(usesSkopeo)
   })
 
-  it('aborts bootstrap before replacing binaries when Podman migration fails', () => {
+  it('aborts bootstrap before replacing binaries when Podman reset fails', () => {
     const fixture = createToolchainFixture()
     const preinstalledPath = path.join(
       fixture.localPrefix,
@@ -259,14 +260,37 @@ describe('CI container runtime', () => {
     fs.writeFileSync(preinstalledPath, 'foreign toolchain')
 
     const result = runRuntimeScript(['bootstrap', 'pr'], fixture, {
-      CI_FAKE_MIGRATE_STATUS: '42',
+      CI_FAKE_RESET_STATUS: '42',
     })
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain(
-      'cannot stop the existing rootless Podman runtime state (exit 42)',
+      'cannot reset the existing rootless Podman runtime state (exit 42)',
     )
     expect(fs.existsSync(preinstalledPath)).toBe(true)
+    expect(
+      fs.existsSync(fixture.sudoLog)
+        ? fs.readFileSync(fixture.sudoLog, 'utf8')
+        : '',
+    ).not.toContain('apt-get')
+  })
+
+  it('refuses to reset Podman state outside an ephemeral GitHub Actions runner', () => {
+    const fixture = createToolchainFixture()
+
+    const result = runRuntimeScript(['bootstrap', 'pr'], fixture, {
+      GITHUB_ACTIONS: '',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'refusing to reset rootless Podman state outside GitHub Actions',
+    )
+    expect(
+      fs.existsSync(fixture.commandLog)
+        ? fs.readFileSync(fixture.commandLog, 'utf8')
+        : '',
+    ).not.toContain('system reset')
     expect(
       fs.existsSync(fixture.sudoLog)
         ? fs.readFileSync(fixture.sudoLog, 'utf8')
