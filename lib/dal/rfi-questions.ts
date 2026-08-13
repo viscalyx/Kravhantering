@@ -890,6 +890,10 @@ async function getSpecificationRfiListHeader(
 export async function getSpecificationRfiList(
   db: SqlServerDatabase,
   specificationId: number,
+  options: {
+    createItemLimitError?: (limit: number) => Error
+    maxItems?: number
+  } = {},
 ): Promise<SpecificationRfiListRow> {
   const header = await getSpecificationRfiListHeader(db, specificationId)
   const selectedVersions: SqlSelection = header.isLocked
@@ -916,10 +920,15 @@ export async function getSpecificationRfiList(
           )
         `,
       }
+  const rowLimitSql = options.maxItems == null ? '' : 'TOP (@1)'
+  const queryParameters =
+    options.maxItems == null
+      ? [specificationId]
+      : [specificationId, options.maxItems + 1]
   const rows = header.isLocked
     ? ((await db.query(
         `
-          SELECT
+          SELECT ${rowLimitSql}
             question.id AS questionId,
             question.question_code AS questionCode,
             question.area_id AS areaId,
@@ -944,11 +953,11 @@ export async function getSpecificationRfiList(
           WHERE item.specification_id = @0
           ORDER BY area.name ASC, question.sort_order ASC, question.question_code ASC
         `,
-        [specificationId],
+        queryParameters,
       )) as SpecificationRfiQuestionItemDbRow[])
     : ((await db.query(
         `
-          SELECT
+          SELECT ${rowLimitSql}
             question.id AS questionId,
             question.question_code AS questionCode,
             question.area_id AS areaId,
@@ -984,8 +993,14 @@ export async function getSpecificationRfiList(
           WHERE question.is_archived = 0
           ORDER BY area.name ASC, question.sort_order ASC, question.question_code ASC
         `,
-        [specificationId],
+        queryParameters,
       )) as SpecificationRfiQuestionItemDbRow[])
+  if (options.maxItems != null && rows.length > options.maxItems) {
+    throw (
+      options.createItemLimitError?.(options.maxItems) ??
+      new Error('RFI list exceeded its item bound')
+    )
+  }
   const items = rows.map(mapSpecificationRfiQuestionItemRow)
   await hydrateVersionLinks(db, items, selectedVersions)
   return { ...header, items }

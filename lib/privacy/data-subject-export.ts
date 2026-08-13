@@ -20,6 +20,25 @@ interface QueryExecutor {
 
 type ExportRow = Record<string, unknown>
 
+function withDataSubjectExportRowLimit(
+  db: QueryExecutor,
+  maxRows: number,
+): QueryExecutor {
+  return {
+    query: <T = unknown[]>(
+      sql: string,
+      parameters: unknown[] = [],
+    ): Promise<T> => {
+      const limitParameter = `@${parameters.length}`
+      const boundedSql = sql.replace(
+        /\bSELECT\b/u,
+        `SELECT TOP (${limitParameter})`,
+      )
+      return db.query<T>(boundedSql, [...parameters, maxRows])
+    },
+  }
+}
+
 interface DataSubjectExportSourceDefinition {
   collect: (
     db: QueryExecutor,
@@ -36,6 +55,11 @@ export interface CollectDataSubjectExportInput {
   target: {
     hsaId: string
   }
+}
+
+export interface DataSubjectExportItemLimitOptions {
+  createItemLimitError: (limit: number) => Error
+  maxItems: number
 }
 
 const POLICY_BY_KEY = new Map(
@@ -1197,13 +1221,35 @@ export function dataSubjectExportLimitations(): DataSubjectExportV1['limitations
 export async function collectDataSubjectExport(
   db: QueryExecutor,
   input: CollectDataSubjectExportInput,
+  itemLimit?: DataSubjectExportItemLimitOptions,
 ): Promise<DataSubjectExportV1> {
   const generatedAt = (input.generatedAt ?? new Date()).toISOString()
   const sources: DataSubjectExportSource[] = []
 
+  if (input.selfSession) {
+    sources.push(sessionSource(input.selfSession))
+  }
+  let itemCount = sources.reduce(
+    (count, source) => count + source.items.length,
+    0,
+  )
+  if (itemLimit && itemCount > itemLimit.maxItems) {
+    throw itemLimit.createItemLimitError(itemLimit.maxItems)
+  }
+
   for (const definition of SOURCE_DEFINITIONS) {
-    const items = await definition.collect(db, input.target.hsaId)
+    const remainingItemBudget = itemLimit
+      ? Math.max(itemLimit.maxItems + 1 - itemCount, 1)
+      : undefined
+    const sourceDb =
+      remainingItemBudget == null
+        ? db
+        : withDataSubjectExportRowLimit(db, remainingItemBudget)
+    const items = await definition.collect(sourceDb, input.target.hsaId)
     if (items.length < 1) continue
+    if (itemLimit && itemCount + items.length > itemLimit.maxItems) {
+      throw itemLimit.createItemLimitError(itemLimit.maxItems)
+    }
     sources.push({
       fieldKey: definition.policy.fieldKey,
       items,
@@ -1212,16 +1258,10 @@ export async function collectDataSubjectExport(
       relationToSubject: definition.relationToSubject,
       table: definition.policy.table ?? definition.policy.key,
     })
-  }
-
-  if (input.selfSession) {
-    sources.unshift(sessionSource(input.selfSession))
+    itemCount += items.length
   }
 
   const limitations = dataSubjectExportLimitations()
-  const itemCount = sources.reduce((count, source) => {
-    return count + source.items.length
-  }, 0)
 
   return {
     generatedAt,

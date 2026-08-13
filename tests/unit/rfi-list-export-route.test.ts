@@ -6,6 +6,7 @@ const routeState = vi.hoisted(() => ({
   authorize: vi.fn(),
   buildSpecificationRfiListCsv: vi.fn(),
   createRequirementsRestRuntime: vi.fn(),
+  getApplicationSettings: vi.fn(),
   getSpecificationById: vi.fn(),
   getSpecificationRfiList: vi.fn(),
   renderPdfResponse: vi.fn(),
@@ -13,6 +14,10 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock('@/lib/requirements/server', () => ({
   createRequirementsRestRuntime: routeState.createRequirementsRestRuntime,
+}))
+
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: routeState.getApplicationSettings,
 }))
 
 vi.mock('@/lib/requirements/service-shared', () => ({
@@ -55,6 +60,11 @@ describe('RFI list export route', () => {
       specificationCode: 'SPEC:1',
     })
     routeState.getSpecificationRfiList.mockResolvedValue({ items: [] })
+    routeState.getApplicationSettings.mockResolvedValue({
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxRequirements: 1000,
+      pdfReportTimeoutSeconds: 180,
+    })
     routeState.buildSpecificationRfiListCsv.mockReturnValue('Question\r\n')
     routeState.renderPdfResponse.mockResolvedValue(
       new Response('pdf bytes', {
@@ -132,6 +142,12 @@ describe('RFI list export route', () => {
   })
 
   it('renders the Swedish PDF export with a localized attachment name', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxRequirements: 1,
+      pdfReportTimeoutSeconds: 180,
+    })
+    routeState.getSpecificationRfiList.mockResolvedValueOnce({ items: [{}] })
     const { GET } = await import(
       '@/app/api/requirements-specifications/[id]/rfi-list/export/route'
     )
@@ -148,7 +164,40 @@ describe('RFI list export route', () => {
     expect(routeState.renderPdfResponse).toHaveBeenCalledWith(
       expect.any(Object),
       'RFI-frågelista Spec\\Part "å" SPEC:1.pdf',
+      { capacity: expect.objectContaining({ output: 'pdf' }) },
     )
+    expect(routeState.getSpecificationRfiList).toHaveBeenCalledWith(
+      { db: true },
+      42,
+      expect.objectContaining({ maxItems: 1 }),
+    )
+  })
+
+  it('rejects an oversized PDF list before rendering', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxRequirements: 1,
+      pdfReportTimeoutSeconds: 180,
+    })
+    routeState.getSpecificationRfiList.mockImplementationOnce(
+      async (_db, _id, options) => {
+        throw options.createItemLimitError(options.maxItems)
+      },
+    )
+    const { GET } = await import(
+      '@/app/api/requirements-specifications/[id]/rfi-list/export/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/42/rfi-list/export?format=pdf&locale=en',
+      ),
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.renderPdfResponse).not.toHaveBeenCalled()
   })
 
   it('returns a correlated sanitized response when export authorization fails', async () => {

@@ -74,6 +74,11 @@ export interface AccessReviewMutationResult {
   detail: AccessReviewRunDetail
 }
 
+export interface AccessReviewItemLimitOptions {
+  createItemLimitError: (limit: number) => Error
+  maxItems: number
+}
+
 export interface DecideAccessReviewAuditDetail {
   decision: Exclude<AccessReviewDecision, 'pending'>
   itemId: number
@@ -137,7 +142,7 @@ function canUseAccessReview(actor: AccessReviewAuthContext): boolean {
   return isAdmin(actor) || actor.roles.includes(PRIVACY_OFFICER_ROLE)
 }
 
-function requireAccessReviewRole(
+export function requireAccessReviewRole(
   actor: AccessReviewAuthContext,
 ): AccessReviewActor {
   if (!canUseAccessReview(actor)) {
@@ -697,6 +702,7 @@ export async function getAccessReviewRun(
   db: QueryExecutor,
   id: number,
   actor: AccessReviewAuthContext,
+  itemLimit?: AccessReviewItemLimitOptions,
 ): Promise<AccessReviewRunDetail> {
   assertCanViewRun(actor)
 
@@ -711,6 +717,9 @@ export async function getAccessReviewRun(
   }
 
   const run = mapRun(runRows[0])
+  if (itemLimit && run.summary.itemCount > itemLimit.maxItems) {
+    throw itemLimit.createItemLimitError(itemLimit.maxItems)
+  }
 
   const itemRows = (await db.query(
     `SELECT
@@ -1004,9 +1013,10 @@ export async function buildAccessReviewExport(
   runId: number,
   actor: AccessReviewAuthContext,
   generatedAt = new Date(),
+  itemLimit?: AccessReviewItemLimitOptions,
 ): Promise<AccessReviewExportV1> {
   const generatedBy = requireAccessReviewRole(actor)
-  const detail = await getAccessReviewRun(db, runId, actor)
+  const detail = await getAccessReviewRun(db, runId, actor, itemLimit)
 
   return {
     generatedAt: generatedAt.toISOString(),

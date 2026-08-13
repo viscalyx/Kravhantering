@@ -36,6 +36,16 @@ export class ReportDataError extends Error {
   }
 }
 
+export type RequirementReportCollection =
+  | 'versions'
+  | 'versions-and-suggestions'
+
+export interface RequirementReportItemLimitOptions {
+  collection: RequirementReportCollection
+  createItemLimitError: (limit: number) => Error
+  maxItems: number
+}
+
 function decodeSegment(value: string | number): string {
   const raw = String(value)
   try {
@@ -57,6 +67,44 @@ async function resolveRequirement(db: SqlServerDatabase, id: string | number) {
   return numericId == null
     ? getRequirementByUniqueId(db, decodeSegment(id))
     : getRequirementById(db, numericId)
+}
+
+export async function assertRequirementReportItemLimit(
+  db: SqlServerDatabase,
+  id: string | number,
+  options: RequirementReportItemLimitOptions,
+): Promise<void> {
+  const numericId = parseRequirementId(id)
+  const rows = (await db.query(
+    `SELECT TOP (1)
+        requirement.id AS id,
+        (SELECT COUNT_BIG(*)
+         FROM requirement_versions version
+         WHERE version.requirement_id = requirement.id) AS versionCount,
+        (SELECT COUNT_BIG(*)
+         FROM improvement_suggestions suggestion
+         WHERE suggestion.requirement_id = requirement.id) AS suggestionCount
+      FROM requirements requirement
+      WHERE ${numericId == null ? 'requirement.unique_id = @0' : 'requirement.id = @0'}`,
+    [numericId ?? decodeSegment(id)],
+  )) as Array<{
+    id: number
+    suggestionCount: number | string
+    versionCount: number | string
+  }>
+  const row = rows[0]
+  if (!row) {
+    throw new ReportDataError(`Requirement not found: ${id}`, 404)
+  }
+
+  const itemCount =
+    Number(row.versionCount) +
+    (options.collection === 'versions-and-suggestions'
+      ? Number(row.suggestionCount)
+      : 0)
+  if (itemCount > options.maxItems) {
+    throw options.createItemLimitError(options.maxItems)
+  }
 }
 
 export async function collectRequirementForReport(

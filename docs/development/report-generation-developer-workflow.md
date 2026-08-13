@@ -35,18 +35,25 @@ authorized report data and do not call the authorization service themselves.
 
 ## Data Flow
 
-1. Route/page authorizes the requested report scope.
-2. Route/page collects report data server-side.
-3. Template function converts raw data into a `ReportModel`, an array of typed
+1. Route/page validates the request and authorizes its base report scope.
+2. The route reads one settings snapshot and acquires the shared process-wide
+   PDF capacity slot.
+3. The route checks explicit IDs or traverses at most the configured item
+   limit plus one before broad enrichment.
+4. Route/page collects the admitted report data server-side.
+5. Template function converts raw data into a `ReportModel`, an array of typed
    sections like header, diff, version-summary, and timeline-entry. Priority
    values become a normalized `ReportPriorityIdentity`; invalid colors and icon
    names become `null` before reaching React-PDF.
-4. The rendering entrypoint collects allowlisted icon names from the complete
+6. The rendering entrypoint collects allowlisted icon names from the complete
    model and preloads their static vector nodes.
-5. Engine-specific renderer consumes the `ReportModel` and produces output.
+7. Engine-specific renderer consumes the `ReportModel` and produces output.
    The large requirements-list route uses the isolated worker; smaller existing
    report routes keep the direct Node renderer.
-6. PDF routes return binary `application/pdf` responses with attachment headers
+8. The capacity slot is released after success, failure, timeout, or
+   cancellation. A cancelled direct render keeps its slot until React-PDF has
+   settled, so abandoned work cannot exceed the configured concurrency.
+9. PDF routes return binary `application/pdf` responses with attachment headers
    and `Cache-Control: no-store`.
 
 ## Route URL Patterns
@@ -105,6 +112,22 @@ direct renderer. `report-worker-entry.ts` performs the same preload inside the
 worker because icon caches are process-local. Icon resolution must remain a
 static allowlist operation without network or file loading.
 
+`runSynchronousPdfGeneration()` is the admission boundary for direct PDF
+routes. It loads `pdfReportMaxRequirements`,
+`pdfReportConcurrencyPerNode`, and `pdfReportTimeoutSeconds`, then supplies the
+active admission token required by `renderPdfResponse()` and
+`renderReportModelPdfResponse()`. Direct callers cannot render without this
+token. The list-PDF spool acquires capacity from the same process-wide pool
+before its bounded traversal and worker render.
+
+The item limit counts distinct IDs for combined and selected-list reports;
+versions for history and review; versions plus suggestions for suggestion
+history; and top-level rendered rows for filtered lists, specifications,
+traceability, RFI, access review, and data-subject PDFs. A `limit + 1`
+traversal detects broad filtered results before page enrichment. Limit
+rejections use `422 output_limit_exceeded`; saturated capacity uses
+`429 capacity_busy` with `Retry-After: 5`. Both responses are `no-store`.
+
 The shared client helper opens immediately, shows separate indeterminate
 generation and Blob-download phases, supports cancellation, and maps only
 stable generated-output error codes. One hook instance permits only one active
@@ -152,7 +175,8 @@ to the client.
 
 1. Create a template in `lib/reports/templates/` that returns a `ReportModel`.
 2. Add a route handler under `app/.../reports/pdf/`.
-3. In server PDF handlers, authorize the report scope before collecting data.
+3. In server PDF handlers, authorize the base report scope, acquire capacity,
+   and enforce an explicit ID or row limit before collecting broad data.
 4. Add menu items in the detail view or list view to open the report. PDF menu
    item labels must be the report name only.
 5. Add translations to both `messages/en.json` and `messages/sv.json`.

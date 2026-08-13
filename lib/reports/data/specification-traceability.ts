@@ -5,8 +5,12 @@ import {
   type TraceabilityReportItem,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
+import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
 import { ReportDataError } from '@/lib/reports/data/server'
-import { traverseCompleteSpecificationItemResult } from '@/lib/requirements/specification-item-page'
+import {
+  type CompleteSpecificationItemTraversalOptions,
+  traverseCompleteSpecificationItemResult,
+} from '@/lib/requirements/specification-item-page'
 import {
   type SpecificationItemQueryState,
   toSpecificationItemPageInput,
@@ -45,6 +49,7 @@ export async function collectSpecificationTraceabilityData(
   db: SqlServerDatabase,
   specificationInput: SpecificationTraceabilitySource,
   query: SpecificationItemQueryState,
+  traversalOptions: CompleteSpecificationItemTraversalOptions = {},
 ): Promise<SpecificationTraceabilityData> {
   const specification =
     typeof specificationInput === 'object'
@@ -55,6 +60,9 @@ export async function collectSpecificationTraceabilityData(
     db,
     toSpecificationItemPageInput(specification.id, query),
     async pageItems => {
+      if (traversalOptions.signal) {
+        throwIfGenerationAborted(traversalOptions.signal)
+      }
       const itemRefs = pageItems.flatMap(item =>
         item.itemRef ? [item.itemRef as SpecificationItemRef] : [],
       )
@@ -79,6 +87,7 @@ export async function collectSpecificationTraceabilityData(
       }
       items.push(...orderedPage)
     },
+    traversalOptions,
   )
 
   return { items, specification }

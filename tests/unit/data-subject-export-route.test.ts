@@ -5,6 +5,7 @@ const routeState = vi.hoisted(() => ({
   collectDataSubjectExport: vi.fn(),
   createRequestContext: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
+  getApplicationSettings: vi.fn(),
   getSessionFromRequest: vi.fn(),
   isSignedIn: vi.fn(),
   recordDeniedActionAuditEvent: vi.fn(),
@@ -30,6 +31,10 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: routeState.getApplicationSettings,
 }))
 
 vi.mock('@/lib/auth/audit', () => ({
@@ -151,6 +156,11 @@ describe('data-subject export route', () => {
     vi.clearAllMocks()
     routeState.createRequestContext.mockResolvedValue(context())
     routeState.getSessionFromRequest.mockResolvedValue(signedSession())
+    routeState.getApplicationSettings.mockResolvedValue({
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxRequirements: 1000,
+      pdfReportTimeoutSeconds: 180,
+    })
     routeState.isSignedIn.mockReturnValue(true)
     routeState.renderPdfResponse.mockClear()
     routeState.collectDataSubjectExport.mockImplementation((_db, input) =>
@@ -187,6 +197,11 @@ describe('data-subject export route', () => {
   })
 
   it('allows PrivacyOfficer to export another verified HSA-id', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxRequirements: 2,
+      pdfReportTimeoutSeconds: 180,
+    })
     routeState.createRequestContext.mockResolvedValueOnce(
       context(['PrivacyOfficer']),
     )
@@ -208,14 +223,38 @@ describe('data-subject export route', () => {
         selfSession: null,
         target: { hsaId: OTHER_HSA_ID },
       }),
+      expect.objectContaining({ maxItems: 2 }),
     )
     expect(routeState.renderPdfResponse).toHaveBeenCalledWith(
       expect.any(Object),
       'data-subject-access-export-fingerprint-2026-05-12.pdf',
+      { capacity: expect.objectContaining({ output: 'pdf' }) },
     )
     expect(routeState.renderPdfResponse.mock.calls[0][0].props.locale).toBe(
       'en',
     )
+  })
+
+  it('rejects an oversized PDF privacy export before rendering', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxRequirements: 1,
+      pdfReportTimeoutSeconds: 180,
+    })
+    routeState.collectDataSubjectExport.mockImplementationOnce(
+      async (_db, _input, itemLimit) => {
+        throw itemLimit.createItemLimitError(itemLimit.maxItems)
+      },
+    )
+    const { POST } = await import('@/app/api/privacy/data-subject-export/route')
+
+    const response = await POST(
+      jsonPost({ delivery: 'pdf', locale: 'sv' }) as never,
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.renderPdfResponse).not.toHaveBeenCalled()
   })
 
   it('rejects cross-user export without PrivacyOfficer', async () => {

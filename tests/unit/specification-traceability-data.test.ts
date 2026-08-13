@@ -85,6 +85,7 @@ describe('collectSpecificationTraceabilityData', () => {
         specificationId: 10,
       }),
       expect.any(Function),
+      {},
     )
     expect(dalState.listSpecificationTraceabilityItems).toHaveBeenCalledWith(
       db,

@@ -19,6 +19,11 @@ import {
 import { boundedDbStringSchema, localeSchema } from '@/lib/http/validation'
 import { renderPdfResponse } from '@/lib/pdf/server-response'
 import {
+  createPdfItemLimitError,
+  runSynchronousPdfGeneration,
+  synchronousPdfErrorResponse,
+} from '@/lib/pdf/synchronous-generation'
+import {
   type CollectDataSubjectExportInput,
   collectDataSubjectExport,
 } from '@/lib/privacy/data-subject-export'
@@ -125,7 +130,7 @@ export const POST = secureMutationRoute({
           : null
       const db = await getRequestSqlServerDataSource()
       const actorSnapshot = requireHumanActorSnapshot(context)
-      const exportPayload = await collectDataSubjectExport(db, {
+      const exportInput = {
         generatedBy: {
           displayName: actorSnapshot.displayName,
           hsaId: actorSnapshot.hsaId,
@@ -135,37 +140,54 @@ export const POST = secureMutationRoute({
         },
         selfSession: selfExport,
         target: { hsaId: targetHsaId },
-      } satisfies CollectDataSubjectExportInput)
-
-      recordSecurityEvent({
-        actor: auditActor(context),
-        detail: {
-          delivery: body.delivery,
-          itemCount: exportPayload.summary.itemCount,
-          sourceCount: exportPayload.summary.sourceCount,
-          targetFingerprint: exportPayload.subject.targetFingerprint,
-        },
-        event: 'privacy.data_subject_export.generated',
-        outcome: 'success',
-        request: context.request ?? request,
-      })
+      } satisfies CollectDataSubjectExportInput
 
       if (body.delivery === 'pdf') {
-        return renderPdfResponse(
-          createElement(DataSubjectExportPdfRenderer, {
-            exportData: exportPayload,
-            locale: body.locale,
-          }),
-          dataSubjectExportFilename(exportPayload, 'pdf', body.locale),
+        return await runSynchronousPdfGeneration(
+          db,
+          request.signal,
+          async ({ capacity, itemLimit }) => {
+            const exportPayload = await collectDataSubjectExport(
+              db,
+              exportInput,
+              {
+                createItemLimitError: createPdfItemLimitError,
+                maxItems: itemLimit,
+              },
+            )
+            recordDataSubjectExportSecurityEvent(
+              body.delivery,
+              exportPayload,
+              context,
+              request,
+            )
+            return renderPdfResponse(
+              createElement(DataSubjectExportPdfRenderer, {
+                exportData: exportPayload,
+                locale: body.locale,
+              }),
+              dataSubjectExportFilename(exportPayload, 'pdf', body.locale),
+              { capacity },
+            )
+          },
         )
       }
 
+      const exportPayload = await collectDataSubjectExport(db, exportInput)
+      recordDataSubjectExportSecurityEvent(
+        body.delivery,
+        exportPayload,
+        context,
+        request,
+      )
       return NextResponse.json(exportPayload)
     } catch (error) {
       if (error instanceof CsrfError || isRequirementsServiceError(error)) {
         const { body, status } = toHttpErrorPayload(error)
         return NextResponse.json(body, { status })
       }
+      const generatedResponse = synchronousPdfErrorResponse(error)
+      if (generatedResponse) return generatedResponse
       logSanitizedError('Failed to generate data-subject export', error)
       return NextResponse.json(
         unexpectedErrorBody('Failed to generate data-subject export', error),
@@ -174,3 +196,23 @@ export const POST = secureMutationRoute({
     }
   },
 })
+
+function recordDataSubjectExportSecurityEvent(
+  delivery: 'json' | 'pdf',
+  exportPayload: Awaited<ReturnType<typeof collectDataSubjectExport>>,
+  context: RequestContext,
+  request: Request,
+): void {
+  recordSecurityEvent({
+    actor: auditActor(context),
+    detail: {
+      delivery,
+      itemCount: exportPayload.summary.itemCount,
+      sourceCount: exportPayload.summary.sourceCount,
+      targetFingerprint: exportPayload.subject.targetFingerprint,
+    },
+    event: 'privacy.data_subject_export.generated',
+    outcome: 'success',
+    request: context.request ?? request,
+  })
+}

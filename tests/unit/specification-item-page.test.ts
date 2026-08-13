@@ -275,6 +275,7 @@ describe('traverseCompleteSpecificationItemResult', () => {
     ).rejects.toThrow('limit:2')
 
     expect(createItemLimitError).toHaveBeenCalledWith(2)
+    expect(mocks.enrichSpecificationItemPage).not.toHaveBeenCalled()
     expect(visitPage).not.toHaveBeenCalled()
   })
 

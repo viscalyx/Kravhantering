@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
+  assertRequirementReportItemLimit,
   collectDeviationForReport,
   collectMultipleRequirementListItemsForReport,
   collectMultipleRequirementsForReport,
@@ -102,6 +103,34 @@ function createReportDb(): SqlServerDatabase {
 }
 
 describe('report data server helpers', () => {
+  it('accepts exact requirement collection bounds and rejects the first excess row', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValue([{ id: 7, suggestionCount: 1, versionCount: 2 }])
+    const db = { query } as unknown as SqlServerDatabase
+    const createItemLimitError = (limit: number) =>
+      Object.assign(new Error('limit'), { limit })
+
+    await expect(
+      assertRequirementReportItemLimit(db, 'REQ-7', {
+        collection: 'versions-and-suggestions',
+        createItemLimitError,
+        maxItems: 3,
+      }),
+    ).resolves.toBeUndefined()
+    await expect(
+      assertRequirementReportItemLimit(db, 'REQ-7', {
+        collection: 'versions-and-suggestions',
+        createItemLimitError,
+        maxItems: 2,
+      }),
+    ).rejects.toMatchObject({ limit: 2 })
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('requirement.unique_id = @0'),
+      ['REQ-7'],
+    )
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     dalState.parseSpecificationItemRef.mockReturnValue(null)

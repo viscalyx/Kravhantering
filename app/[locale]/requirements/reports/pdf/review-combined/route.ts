@@ -1,6 +1,10 @@
 import type { NextRequest } from 'next/server'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
 import {
+  assertPdfItemLimit,
+  runSynchronousPdfGeneration,
+} from '@/lib/pdf/synchronous-generation'
+import {
   collectMultipleRequirementsForReport,
   ReportDataError,
 } from '@/lib/reports/data/server'
@@ -30,23 +34,32 @@ export async function GET(
     }
 
     const runtime = await createReportRuntime(request)
-    for (const id of ids) {
-      await authorizeRequirementReportRead(
-        runtime.authorization,
-        runtime.context,
-        id,
-        'history',
-      )
-    }
-    const requirements = await collectMultipleRequirementsForReport(
+    const uniqueIds = [...new Set(ids)]
+    return await runSynchronousPdfGeneration(
       runtime.db,
-      ids,
-    )
-    const label = getReportLabels(locale).filenames.combinedReview
-    return renderReportModelPdfResponse(
-      buildCombinedReviewReport(requirements, locale),
-      locale,
-      `${label} ${timestampForFilename()}.pdf`,
+      request.signal,
+      async ({ capacity, itemLimit }) => {
+        assertPdfItemLimit(uniqueIds.length, itemLimit)
+        for (const id of uniqueIds) {
+          await authorizeRequirementReportRead(
+            runtime.authorization,
+            runtime.context,
+            id,
+            'history',
+          )
+        }
+        const requirements = await collectMultipleRequirementsForReport(
+          runtime.db,
+          uniqueIds,
+        )
+        const label = getReportLabels(locale).filenames.combinedReview
+        return renderReportModelPdfResponse(
+          buildCombinedReviewReport(requirements, locale),
+          locale,
+          `${label} ${timestampForFilename()}.pdf`,
+          capacity,
+        )
+      },
     )
   } catch (error) {
     return reportErrorResponse(error)

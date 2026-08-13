@@ -1,6 +1,10 @@
 import { createElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  acquireGeneratedOutputCapacity,
+  runWithGeneratedOutputCapacity,
+} from '@/lib/generated-output/capacity'
+import {
   filenameFromContentDisposition,
   sanitizeAttachmentFilename,
   sanitizePdfFilename,
@@ -22,9 +26,14 @@ describe('PDF response helpers', () => {
   })
 
   it('returns binary PDF responses with attachment and no-store headers', async () => {
-    const response = await renderPdfResponse(
-      createElement('mock-document'),
-      'Granskning: <REQ-1>.pdf',
+    const response = await runWithGeneratedOutputCapacity(
+      { concurrencyLimit: 1, output: 'pdf' },
+      capacity =>
+        renderPdfResponse(
+          createElement('mock-document'),
+          'Granskning: <REQ-1>.pdf',
+          { capacity },
+        ),
     )
 
     expect(response.status).toBe(200)
@@ -35,6 +44,21 @@ describe('PDF response helpers', () => {
       'filename="Granskning- -REQ-1-.pdf"',
     )
     expect(await response.text()).toBe('%PDF-1.4')
+  })
+
+  it('rejects rendering without an active PDF admission', async () => {
+    const capacity = acquireGeneratedOutputCapacity({
+      concurrencyLimit: 1,
+      output: 'pdf',
+    })
+    capacity.release()
+
+    await expect(
+      renderPdfResponse(createElement('mock-document'), 'report.pdf', {
+        capacity,
+      }),
+    ).rejects.toThrow('Active PDF generation capacity is required')
+    expect(pdfState.renderToBuffer).not.toHaveBeenCalled()
   })
 
   it('sanitizes fallback filenames and parses RFC 5987 attachment filenames', () => {
@@ -49,9 +73,14 @@ describe('PDF response helpers', () => {
   })
 
   it('removes Unicode spoofing controls from server and parsed filenames', async () => {
-    const response = await renderPdfResponse(
-      createElement('mock-document'),
-      'Review\u202ePDF\u2066\u200b\ufeff.pdf',
+    const response = await runWithGeneratedOutputCapacity(
+      { concurrencyLimit: 1, output: 'pdf' },
+      capacity =>
+        renderPdfResponse(
+          createElement('mock-document'),
+          'Review\u202ePDF\u2066\u200b\ufeff.pdf',
+          { capacity },
+        ),
     )
     const encodedFilename = encodeURIComponent(
       'Review\u202ePDF\u2066\u200b\ufeff.pdf',

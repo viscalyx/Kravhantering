@@ -1137,6 +1137,62 @@ describe('RFI questions DAL', () => {
     })
   })
 
+  it('bounds RFI list rows before link hydration', async () => {
+    const item = {
+      areaId: 2,
+      areaName: 'Security',
+      areaPrefix: 'SEC',
+      expectedAnswerFormat: 'Text',
+      helpText: null,
+      isIncluded: 1,
+      isVersionStale: 0,
+      questionCode: 'SEC-RFI001',
+      questionId: 12,
+      questionText: 'Question',
+      relevance: null,
+      sortOrder: 1,
+      versionId: 34,
+      versionNumber: 1,
+    }
+    const header = {
+      isLocked: 1,
+      lockedAt: null,
+      lockedByDisplayName: null,
+      lockedByHsaId: null,
+      specificationId: 4,
+    }
+    const exactQuery = createQuery([[header], [item], []])
+    const createItemLimitError = (limit: number) =>
+      Object.assign(new Error('limit'), { limit })
+
+    await expect(
+      getSpecificationRfiList(
+        { query: exactQuery } as unknown as Parameters<
+          typeof getSpecificationRfiList
+        >[0],
+        4,
+        { createItemLimitError, maxItems: 1 },
+      ),
+    ).resolves.toMatchObject({ items: [{ questionId: 12 }] })
+    expect(exactQuery.mock.calls[1][0]).toContain('TOP (@1)')
+    expect(exactQuery.mock.calls[1][1]).toEqual([4, 2])
+
+    const excessQuery = createQuery([
+      [header],
+      [item, { ...item, questionId: 13, versionId: 35 }],
+    ])
+    await expect(
+      getSpecificationRfiList(
+        { query: excessQuery } as unknown as Parameters<
+          typeof getSpecificationRfiList
+        >[0],
+        4,
+        { createItemLimitError, maxItems: 1 },
+      ),
+    ).rejects.toMatchObject({ limit: 1 })
+    expect(excessQuery).toHaveBeenCalledTimes(2)
+  })
+
   it('locks an empty catalog and unlocks an existing RFI list', async () => {
     const emptyLock = createTransactionalDb({
       managerResponses: [[], [], [], []],

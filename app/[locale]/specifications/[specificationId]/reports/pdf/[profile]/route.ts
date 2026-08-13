@@ -7,6 +7,10 @@ import {
   resolveReportSpecification,
 } from '@/app/[locale]/requirements/reports/pdf/route-helpers'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
+import {
+  createPdfItemLimitError,
+  runSynchronousPdfGeneration,
+} from '@/lib/pdf/synchronous-generation'
 import { ReportDataError } from '@/lib/reports/data/server'
 import { collectCompleteSpecificationOutputData } from '@/lib/reports/data/specification-output'
 import { getReportLabels } from '@/lib/reports/report-labels'
@@ -57,22 +61,34 @@ export async function GET(
       )
     }
 
-    const data = await collectCompleteSpecificationOutputData(
+    return await runSynchronousPdfGeneration(
       runtime.db,
-      specification.id,
-    )
-    const labels = getReportLabels(locale).columns
-    const title =
-      profile === 'procurement'
-        ? labels.procurementReportTitle
-        : profile === 'management'
-          ? labels.managementReportTitle
-          : labels.progressReportTitle
+      request.signal,
+      async ({ capacity, itemLimit, signal }) => {
+        const data = await collectCompleteSpecificationOutputData(
+          runtime.db,
+          specification.id,
+          {
+            createItemLimitError: createPdfItemLimitError,
+            maxItems: itemLimit,
+            signal,
+          },
+        )
+        const labels = getReportLabels(locale).columns
+        const title =
+          profile === 'procurement'
+            ? labels.procurementReportTitle
+            : profile === 'management'
+              ? labels.managementReportTitle
+              : labels.progressReportTitle
 
-    return renderReportModelPdfResponse(
-      buildSpecificationProfileReport(data, profile, locale),
-      locale,
-      `${title} ${data.specification.name} ${data.specification.specificationCode}.pdf`,
+        return renderReportModelPdfResponse(
+          buildSpecificationProfileReport(data, profile, locale),
+          locale,
+          `${title} ${data.specification.name} ${data.specification.specificationCode}.pdf`,
+          capacity,
+        )
+      },
     )
   } catch (error) {
     return reportErrorResponse(error)

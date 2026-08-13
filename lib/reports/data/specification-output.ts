@@ -533,6 +533,7 @@ export async function visitSpecificationOutputPages(
 export async function collectCompleteSpecificationOutputData(
   db: SqlServerDatabase,
   specificationId: number,
+  traversalOptions: CompleteSpecificationItemTraversalOptions = {},
 ): Promise<SpecificationOutputData> {
   const items: SpecificationOutputItem[] = []
   const { specification } = await visitSpecificationOutputPages(
@@ -541,6 +542,7 @@ export async function collectCompleteSpecificationOutputData(
     pageItems => {
       items.push(...pageItems)
     },
+    traversalOptions,
   )
 
   return { items, specification }

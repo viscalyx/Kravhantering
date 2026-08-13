@@ -245,6 +245,37 @@ describe('access review service', () => {
     expect(exported.items).toEqual([])
   })
 
+  it('bounds access-review export items before loading detail rows', async () => {
+    const createItemLimitError = (limit: number) =>
+      Object.assign(new Error('limit'), { limit })
+    const exactQuery = vi
+      .fn()
+      .mockResolvedValueOnce([accessReviewRunRow(1)])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      buildAccessReviewExport(
+        { query: exactQuery } as never,
+        42,
+        adminActor,
+        new Date('2026-08-04T00:00:00.000Z'),
+        { createItemLimitError, maxItems: 1 },
+      ),
+    ).resolves.toMatchObject({ run: { summary: { itemCount: 1 } } })
+
+    const excessQuery = vi.fn().mockResolvedValueOnce([accessReviewRunRow(2)])
+    await expect(
+      buildAccessReviewExport(
+        { query: excessQuery } as never,
+        42,
+        adminActor,
+        new Date('2026-08-04T00:00:00.000Z'),
+        { createItemLimitError, maxItems: 1 },
+      ),
+    ).rejects.toMatchObject({ limit: 1 })
+    expect(excessQuery).toHaveBeenCalledTimes(1)
+  })
+
   it('rejects invalid generated dates before opening a create transaction', async () => {
     const db = { transaction: vi.fn() }
     await expect(

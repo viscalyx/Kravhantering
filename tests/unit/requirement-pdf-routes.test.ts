@@ -17,6 +17,7 @@ const routeState = vi.hoisted(() => ({
   buildReviewReport: vi.fn(),
   buildSpecificationProfileReport: vi.fn(),
   buildSpecificationTraceabilityReport: vi.fn(),
+  assertRequirementReportItemLimit: vi.fn(),
   collectDeviationForReport: vi.fn(),
   collectMultipleRequirementListItemsForReport: vi.fn(),
   collectMultipleRequirementsForReport: vi.fn(),
@@ -83,6 +84,7 @@ vi.mock('@/lib/observability/capacity', () => ({
 
 vi.mock('@/lib/reports/data/server', () => ({
   ReportDataError: routeState.ReportDataError,
+  assertRequirementReportItemLimit: routeState.assertRequirementReportItemLimit,
   collectDeviationForReport: routeState.collectDeviationForReport,
   collectMultipleRequirementListItemsForReport:
     routeState.collectMultipleRequirementListItemsForReport,
@@ -249,6 +251,7 @@ describe('requirement PDF routes', () => {
       reservedBytes: 50 * 1024 * 1024,
     })
     routeState.authorization.assertAuthorized.mockResolvedValue(undefined)
+    routeState.assertRequirementReportItemLimit.mockResolvedValue(undefined)
     routeState.createRequirementsRestRuntime.mockResolvedValue({
       authorization: routeState.authorization,
       context: routeState.context,
@@ -373,6 +376,7 @@ describe('requirement PDF routes', () => {
       { kind: 'review' },
       'sv',
       'Granskningsrapport REQ-1.pdf',
+      expect.objectContaining({ output: 'pdf' }),
     )
   })
 
@@ -395,6 +399,58 @@ describe('requirement PDF routes', () => {
     expect(response.status).toBe(404)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(body.error).toBe('Requirement not found: missing')
+    expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
+  })
+
+  it('rejects oversized history collections before loading requirement details', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...(await routeState.getApplicationSettings()),
+      pdfReportMaxRequirements: 1,
+    })
+    routeState.assertRequirementReportItemLimit.mockImplementationOnce(
+      async (_db, _id, options) => {
+        throw options.createItemLimitError(options.maxItems)
+      },
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/history/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest('http://localhost/en/requirements/reports/pdf/history/1'),
+      { params: Promise.resolve({ id: '1', locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.collectRequirementForReport).not.toHaveBeenCalled()
+    expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
+  })
+
+  it('rejects oversized suggestion history before loading versions or suggestions', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...(await routeState.getApplicationSettings()),
+      pdfReportMaxRequirements: 1,
+    })
+    routeState.assertRequirementReportItemLimit.mockImplementationOnce(
+      async (_db, _id, options) => {
+        throw options.createItemLimitError(options.maxItems)
+      },
+    )
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/suggestion-history/[id]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/suggestion-history/1',
+      ),
+      { params: Promise.resolve({ id: '1', locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(422)
+    expect(routeState.collectRequirementForReport).not.toHaveBeenCalled()
+    expect(routeState.collectSuggestionsForReport).not.toHaveBeenCalled()
     expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
   })
 
@@ -828,8 +884,12 @@ describe('requirement PDF routes', () => {
     )
   })
 
-  it('accepts combined review PDFs with more than 50 requirement ids', async () => {
-    const ids = reportIds(60)
+  it('accepts combined review PDFs at the exact configured item limit', async () => {
+    const ids = reportIds(2)
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...(await routeState.getApplicationSettings()),
+      pdfReportMaxRequirements: 2,
+    })
     const { GET } = await import(
       '@/app/[locale]/requirements/reports/pdf/review-combined/route'
     )
@@ -855,7 +915,72 @@ describe('requirement PDF routes', () => {
       expect.stringMatching(
         /^Kombinerad granskningsrapport \d{4}-\d{2}-\d{2} /,
       ),
+      expect.objectContaining({ output: 'pdf' }),
     )
+  })
+
+  it('rejects combined review PDFs above the item limit before per-row work', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...(await routeState.getApplicationSettings()),
+      pdfReportMaxRequirements: 1,
+    })
+    const { GET } = await import(
+      '@/app/[locale]/requirements/reports/pdf/review-combined/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/requirements/reports/pdf/review-combined?ids=1,2',
+      ),
+      { params: Promise.resolve({ locale: 'en' }) },
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'output_limit_exceeded',
+      details: { limit: 1, limitKind: 'items', output: 'pdf' },
+    })
+    expect(routeState.authorization.assertAuthorized).not.toHaveBeenCalled()
+    expect(
+      routeState.collectMultipleRequirementsForReport,
+    ).not.toHaveBeenCalled()
+    expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
+  })
+
+  it('rejects saturated PDF capacity before per-row collection', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...(await routeState.getApplicationSettings()),
+      pdfReportConcurrencyPerNode: 1,
+    })
+    const { acquireGeneratedOutputCapacity } = await import(
+      '@/lib/generated-output/capacity'
+    )
+    const occupied = acquireGeneratedOutputCapacity({
+      concurrencyLimit: 1,
+      output: 'pdf',
+    })
+    try {
+      const { GET } = await import(
+        '@/app/[locale]/requirements/reports/pdf/review-combined/route'
+      )
+      const response = await GET(
+        new NextRequest(
+          'http://localhost/en/requirements/reports/pdf/review-combined?ids=1',
+        ),
+        { params: Promise.resolve({ locale: 'en' }) },
+      )
+
+      expect(response.status).toBe(429)
+      expect(response.headers.get('Cache-Control')).toBe('no-store')
+      expect(response.headers.get('Retry-After')).toBe('5')
+      expect(routeState.authorization.assertAuthorized).not.toHaveBeenCalled()
+      expect(
+        routeState.collectMultipleRequirementsForReport,
+      ).not.toHaveBeenCalled()
+    } finally {
+      occupied.release()
+    }
   })
 
   it('returns localized PDF filenames for history, deviation, suggestion, and specification reports', async () => {
@@ -922,21 +1047,25 @@ describe('requirement PDF routes', () => {
       expect.anything(),
       'sv',
       'Historikrapport REQ-1.pdf',
+      expect.objectContaining({ output: 'pdf' }),
     )
     expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
       expect.anything(),
       'sv',
       'Avstegsgranskningsrapport REQ-1.pdf',
+      expect.objectContaining({ output: 'pdf' }),
     )
     expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
       expect.anything(),
       'sv',
       'Förbättringsförslagshistorik REQ-1.pdf',
+      expect.objectContaining({ output: 'pdf' }),
     )
     expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
       { kind: 'specification-profile' },
       'sv',
       'Genomföranderapport Införande SPEC-2.pdf',
+      expect.objectContaining({ output: 'pdf' }),
     )
   })
 
@@ -1019,7 +1148,11 @@ describe('requirement PDF routes', () => {
     )
     expect(
       routeState.collectCompleteSpecificationOutputData,
-    ).toHaveBeenCalledWith({ db: true }, 42)
+    ).toHaveBeenCalledWith(
+      { db: true },
+      42,
+      expect.objectContaining({ maxItems: 1000 }),
+    )
     expect(routeState.buildSpecificationProfileReport).toHaveBeenCalledWith(
       expect.objectContaining({
         specification: expect.objectContaining({ specificationCode: 'SPEC-1' }),
@@ -1027,6 +1160,39 @@ describe('requirement PDF routes', () => {
       'procurement',
       'en',
     )
+  })
+
+  it('rejects oversized specification PDFs before enriching report rows', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...(await routeState.getApplicationSettings()),
+      pdfReportMaxRequirements: 1,
+    })
+    routeState.collectCompleteSpecificationOutputData.mockImplementationOnce(
+      async (_db, _id, options) => {
+        throw options.createItemLimitError(options.maxItems)
+      },
+    )
+    const { GET } = await import(
+      '@/app/[locale]/specifications/[specificationId]/reports/pdf/[profile]/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/specifications/42/reports/pdf/procurement',
+      ),
+      {
+        params: Promise.resolve({
+          locale: 'en',
+          profile: 'procurement',
+          specificationId: '42',
+        }),
+      },
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.buildSpecificationProfileReport).not.toHaveBeenCalled()
+    expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
   })
 
   it('rejects oversized specification profile PDF ids before lookup', async () => {
@@ -1230,12 +1396,43 @@ describe('requirement PDF routes', () => {
         locale: 'sv',
         sortDirection: 'desc',
       }),
+      expect.objectContaining({ maxItems: 1000 }),
     )
     expect(routeState.renderReportModelPdfResponse).toHaveBeenCalledWith(
       { kind: 'specification-traceability' },
       'sv',
       'Tillämpningsspårbarhet Specification SPEC-1.pdf',
+      expect.objectContaining({ output: 'pdf' }),
     )
+  })
+
+  it('rejects oversized traceability PDFs before building the report model', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...(await routeState.getApplicationSettings()),
+      pdfReportMaxRequirements: 1,
+    })
+    routeState.collectSpecificationTraceabilityData.mockImplementationOnce(
+      async (_db, _specification, _query, options) => {
+        throw options.createItemLimitError(options.maxItems)
+      },
+    )
+    const { GET } = await import(
+      '@/app/[locale]/specifications/[specificationId]/reports/pdf/traceability/route'
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/en/specifications/42/reports/pdf/traceability',
+      ),
+      { params: Promise.resolve({ locale: 'en', specificationId: '42' }) },
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(
+      routeState.buildSpecificationTraceabilityReport,
+    ).not.toHaveBeenCalled()
+    expect(routeState.renderReportModelPdfResponse).not.toHaveBeenCalled()
   })
 
   it('rejects unsupported traceability filters before opening a runtime', async () => {

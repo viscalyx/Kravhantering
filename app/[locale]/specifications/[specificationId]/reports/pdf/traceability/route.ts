@@ -8,6 +8,10 @@ import {
 } from '@/app/[locale]/requirements/reports/pdf/route-helpers'
 import { renderReportModelPdfResponse } from '@/components/reports/pdf/report-response'
 import { parseSearchParams } from '@/lib/http/validation'
+import {
+  createPdfItemLimitError,
+  runSynchronousPdfGeneration,
+} from '@/lib/pdf/synchronous-generation'
 import { collectSpecificationTraceabilityData } from '@/lib/reports/data/specification-traceability'
 import { getReportLabels } from '@/lib/reports/report-labels'
 import { buildSpecificationTraceabilityReport } from '@/lib/reports/templates/specification-traceability-template'
@@ -41,16 +45,28 @@ export async function GET(
       specification.id,
     )
 
-    const data = await collectSpecificationTraceabilityData(
+    return await runSynchronousPdfGeneration(
       runtime.db,
-      specification,
-      parsedQuery.data,
-    )
-    const label = getReportLabels(locale).filenames.traceability
-    return renderReportModelPdfResponse(
-      buildSpecificationTraceabilityReport(data, locale),
-      locale,
-      `${label} ${data.specification.name} ${data.specification.specificationCode}.pdf`,
+      request.signal,
+      async ({ capacity, itemLimit, signal }) => {
+        const data = await collectSpecificationTraceabilityData(
+          runtime.db,
+          specification,
+          parsedQuery.data,
+          {
+            createItemLimitError: createPdfItemLimitError,
+            maxItems: itemLimit,
+            signal,
+          },
+        )
+        const label = getReportLabels(locale).filenames.traceability
+        return renderReportModelPdfResponse(
+          buildSpecificationTraceabilityReport(data, locale),
+          locale,
+          `${label} ${data.specification.name} ${data.specification.specificationCode}.pdf`,
+          capacity,
+        )
+      },
     )
   } catch (error) {
     return reportErrorResponse(error)

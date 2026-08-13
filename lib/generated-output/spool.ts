@@ -12,6 +12,10 @@ import {
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import {
+  acquireGeneratedOutputCapacity,
+  generatedOutputCapacitySnapshot as capacitySnapshot,
+} from '@/lib/generated-output/capacity'
+import {
   GeneratedOutputError,
   type GeneratedOutputKind,
 } from '@/lib/generated-output/errors'
@@ -20,7 +24,6 @@ const OWNED_DIRECTORY_PREFIX = 'kravhantering-output-'
 const STALE_DIRECTORY_AGE_MS = (600 + 5 * 60) * 1000
 const startupCleanupByBase = new Map<string, Promise<void>>()
 let reservedBytes = 0
-const activeGeneration: Record<GeneratedOutputKind, number> = { csv: 0, pdf: 0 }
 
 export interface GeneratedOutputAdmissionOptions {
   concurrencyLimit: number
@@ -144,25 +147,11 @@ export async function acquireGeneratedOutputSpool(
   options: GeneratedOutputAdmissionOptions,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<GeneratedOutputSpool> {
-  if (activeGeneration[options.output] >= options.concurrencyLimit) {
-    throw new GeneratedOutputError('capacity_busy', 'concurrency_limit', {
-      output: options.output,
-      retryAfterSeconds: 5,
-    })
-  }
-  activeGeneration[options.output] += 1
-  let generationReleased = false
+  const capacity = acquireGeneratedOutputCapacity(options)
   let reservationHeld = false
   let directoryPath: string | undefined
 
-  const releaseGeneration = (): void => {
-    if (generationReleased) return
-    generationReleased = true
-    activeGeneration[options.output] = Math.max(
-      0,
-      activeGeneration[options.output] - 1,
-    )
-  }
+  const releaseGeneration = capacity.release
 
   try {
     const basePath = resolveGeneratedOutputTempDirectory(env)
@@ -294,9 +283,9 @@ export function generatedOutputCapacitySnapshot(): {
   activePdf: number
   reservedBytes: number
 } {
+  const capacity = capacitySnapshot()
   return {
-    activeCsv: activeGeneration.csv,
-    activePdf: activeGeneration.pdf,
+    ...capacity,
     reservedBytes,
   }
 }

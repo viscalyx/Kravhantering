@@ -167,7 +167,10 @@ paths:
         '400': { $ref: '#/components/responses/NoStoreBadRequest' }
         '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
         '403': { $ref: '#/components/responses/NoStoreForbidden' }
+        '422': { $ref: '#/components/responses/NoStoreUnprocessableEntity' }
+        '429': { $ref: '#/components/responses/NoStoreTooManyRequests' }
         '500': { $ref: '#/components/responses/NoStoreInternalServerError' }
+        '503': { $ref: '#/components/responses/NoStoreServiceUnavailable' }
 
   /api/requirements:
     get:
@@ -1207,8 +1210,35 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NoStoreUnprocessableEntity:
+      description: The generated output exceeds a configured limit.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NoStoreTooManyRequests:
+      description: Generated-output capacity is temporarily busy.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema: { type: integer, minimum: 0 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
     NoStoreInternalServerError:
       description: Internal server error.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NoStoreServiceUnavailable:
+      description: Generated-output processing is temporarily unavailable.
       headers:
         Cache-Control:
           $ref: '#/components/headers/NoStore'

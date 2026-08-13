@@ -9,7 +9,10 @@ import {
   recordAccessReviewAuthorizationDenied,
 } from '@/lib/access-review/route-audit'
 import { accessReviewErrorResponse } from '@/lib/access-review/route-helpers'
-import { buildAccessReviewExport } from '@/lib/access-review/service'
+import {
+  buildAccessReviewExport,
+  requireAccessReviewRole,
+} from '@/lib/access-review/service'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -18,6 +21,11 @@ import {
 } from '@/lib/http/secure-mutation-route'
 import { idParamSchema, localeSchema } from '@/lib/http/validation'
 import { renderPdfResponse } from '@/lib/pdf/server-response'
+import {
+  createPdfItemLimitError,
+  runSynchronousPdfGeneration,
+  synchronousPdfErrorResponse,
+} from '@/lib/pdf/synchronous-generation'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,33 +42,50 @@ export const POST = secureMutationRoute({
   policy: customMutationPolicy('access_review.export', () => {}),
   handler: async ({ body, context, params, request }) => {
     try {
+      const actor = accessReviewServiceActor(context)
+      requireAccessReviewRole(actor)
       const db = await getRequestSqlServerDataSource()
-      const exportPayload = await buildAccessReviewExport(
-        db,
-        params.id,
-        accessReviewServiceActor(context),
-      )
-      recordSecurityEvent({
-        actor: accessReviewAuditActor(context),
-        detail: {
-          delivery: body.delivery,
-          itemCount: exportPayload.run.summary.itemCount,
-          reviewId: params.id,
-          status: exportPayload.run.status,
-        },
-        event: 'access_review.exported',
-        outcome: 'success',
-        request: context.request ?? request,
-      })
       if (body.delivery === 'pdf') {
-        return renderPdfResponse(
-          createElement(AccessReviewExportPdfRenderer, {
-            exportData: exportPayload,
-            locale: body.locale,
-          }),
-          accessReviewExportFilename(exportPayload, 'pdf', body.locale),
+        return await runSynchronousPdfGeneration(
+          db,
+          request.signal,
+          async ({ capacity, itemLimit }) => {
+            const exportPayload = await buildAccessReviewExport(
+              db,
+              params.id,
+              actor,
+              new Date(),
+              {
+                createItemLimitError: createPdfItemLimitError,
+                maxItems: itemLimit,
+              },
+            )
+            recordExportSecurityEvent(
+              body.delivery,
+              exportPayload,
+              params.id,
+              context,
+              request,
+            )
+            return renderPdfResponse(
+              createElement(AccessReviewExportPdfRenderer, {
+                exportData: exportPayload,
+                locale: body.locale,
+              }),
+              accessReviewExportFilename(exportPayload, 'pdf', body.locale),
+              { capacity },
+            )
+          },
         )
       }
+      const exportPayload = await buildAccessReviewExport(db, params.id, actor)
+      recordExportSecurityEvent(
+        body.delivery,
+        exportPayload,
+        params.id,
+        context,
+        request,
+      )
       return NextResponse.json(exportPayload)
     } catch (error) {
       await recordAccessReviewAuthorizationDenied(
@@ -73,7 +98,31 @@ export const POST = secureMutationRoute({
         },
         error,
       )
-      return accessReviewErrorResponse('Failed to export access review', error)
+      return (
+        synchronousPdfErrorResponse(error) ??
+        accessReviewErrorResponse('Failed to export access review', error)
+      )
     }
   },
 })
+
+function recordExportSecurityEvent(
+  delivery: 'json' | 'pdf',
+  exportPayload: Awaited<ReturnType<typeof buildAccessReviewExport>>,
+  reviewId: number,
+  context: Parameters<typeof accessReviewAuditActor>[0],
+  request: Request,
+): void {
+  recordSecurityEvent({
+    actor: accessReviewAuditActor(context),
+    detail: {
+      delivery,
+      itemCount: exportPayload.run.summary.itemCount,
+      reviewId,
+      status: exportPayload.run.status,
+    },
+    event: 'access_review.exported',
+    outcome: 'success',
+    request: context.request ?? request,
+  })
+}

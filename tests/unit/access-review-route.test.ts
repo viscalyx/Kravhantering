@@ -14,11 +14,13 @@ const routeState = vi.hoisted(() => ({
   createRequestContext: vi.fn(),
   decideAccessReviewItem: vi.fn(),
   getAccessReviewRun: vi.fn(),
+  getApplicationSettings: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   listAccessReviewRuns: vi.fn(),
   recordAllowedActionAuditEvent: vi.fn(),
   recordDeniedActionAuditEvent: vi.fn(),
   recordSecurityEvent: vi.fn(),
+  requireAccessReviewRole: vi.fn(),
   renderPdfResponse: vi.fn((_document, _filename) =>
     Promise.resolve(
       new Response('%PDF', {
@@ -40,6 +42,10 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: routeState.getApplicationSettings,
 }))
 
 vi.mock('@/lib/auth/audit', () => ({
@@ -72,6 +78,7 @@ vi.mock('@/lib/access-review/service', () => ({
   decideAccessReviewItem: routeState.decideAccessReviewItem,
   getAccessReviewRun: routeState.getAccessReviewRun,
   listAccessReviewRuns: routeState.listAccessReviewRuns,
+  requireAccessReviewRole: routeState.requireAccessReviewRole,
 }))
 
 vi.mock('@/components/access-review/AccessReviewExportPdfRenderer', () => ({
@@ -176,6 +183,11 @@ describe('access review routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.createRequestContext.mockResolvedValue(context())
+    routeState.getApplicationSettings.mockResolvedValue({
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxRequirements: 1000,
+      pdfReportTimeoutSeconds: 180,
+    })
     routeState.createAccessReviewRun.mockResolvedValue(reviewDetail())
     routeState.listAccessReviewRuns.mockResolvedValue([reviewDetail().run])
     routeState.getAccessReviewRun.mockResolvedValue(reviewDetail())
@@ -654,6 +666,11 @@ describe('access review routes', () => {
   })
 
   it('exports PDF as binary while keeping JSON delivery separate', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxRequirements: 1,
+      pdfReportTimeoutSeconds: 180,
+    })
     const { POST } = await import(
       '@/app/api/admin/access-reviews/[id]/export/route'
     )
@@ -671,6 +688,7 @@ describe('access review routes', () => {
     expect(routeState.renderPdfResponse).toHaveBeenCalledWith(
       expect.any(Object),
       'access-review-0042-2026-05-12.pdf',
+      { capacity: expect.objectContaining({ output: 'pdf' }) },
     )
     expect(routeState.renderPdfResponse.mock.calls[0][0].props.locale).toBe(
       'en',
@@ -686,6 +704,56 @@ describe('access review routes', () => {
         event: 'access_review.exported',
       }),
     )
+  })
+
+  it('authorizes PDF exports before reading generation settings', async () => {
+    routeState.requireAccessReviewRole.mockImplementationOnce(() => {
+      throw forbiddenError('Admin or PrivacyOfficer role is required', {
+        reason: 'access_review_role_required',
+      })
+    })
+    routeState.createRequestContext.mockResolvedValueOnce(context(['Reviewer']))
+    const { POST } = await import(
+      '@/app/api/admin/access-reviews/[id]/export/route'
+    )
+
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/access-reviews/42/export', {
+        delivery: 'pdf',
+      }) as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.getApplicationSettings).not.toHaveBeenCalled()
+    expect(routeState.buildAccessReviewExport).not.toHaveBeenCalled()
+  })
+
+  it('rejects an oversized PDF access review before rendering', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      pdfReportConcurrencyPerNode: 3,
+      pdfReportMaxRequirements: 1,
+      pdfReportTimeoutSeconds: 180,
+    })
+    routeState.buildAccessReviewExport.mockImplementationOnce(
+      async (_db, _id, _actor, _generatedAt, itemLimit) => {
+        throw itemLimit.createItemLimitError(itemLimit.maxItems)
+      },
+    )
+    const { POST } = await import(
+      '@/app/api/admin/access-reviews/[id]/export/route'
+    )
+
+    const response = await POST(
+      jsonRequest('http://localhost/api/admin/access-reviews/42/export', {
+        delivery: 'pdf',
+      }) as never,
+      { params: Promise.resolve({ id: '42' }) },
+    )
+
+    expect(response.status).toBe(422)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(routeState.renderPdfResponse).not.toHaveBeenCalled()
   })
 
   it('rejects exports with no-store headers when CSRF validation fails before opening the database', async () => {

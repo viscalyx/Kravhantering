@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { acquireGeneratedOutputCapacity } from '@/lib/generated-output/capacity'
 
 const responseState = vi.hoisted(() => ({
   collectStatusIconNames: vi.fn(() => ['CircleAlert']),
@@ -50,7 +51,12 @@ describe('report PDF response', () => {
       ],
     }
 
-    await renderReportModelPdfResponse(model, 'en', 'report.pdf')
+    const capacity = acquireGeneratedOutputCapacity({
+      concurrencyLimit: 1,
+      output: 'pdf',
+    })
+    await renderReportModelPdfResponse(model, 'en', 'report.pdf', capacity)
+    capacity.release()
 
     expect(responseState.collectStatusIconNames).toHaveBeenCalledWith(model)
     expect(responseState.preloadStatusIconNodes).toHaveBeenCalledWith([

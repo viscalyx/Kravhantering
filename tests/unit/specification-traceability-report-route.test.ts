@@ -4,7 +4,15 @@ import { describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   authorizeSpecificationReportRead: vi.fn(),
   collectSpecificationTraceabilityData: vi.fn(),
+  getApplicationSettings: vi.fn(async () => ({
+    pdfReportConcurrencyPerNode: 3,
+    pdfReportMaxRequirements: 1000,
+    pdfReportTimeoutSeconds: 180,
+  })),
   renderReportModelPdfResponse: vi.fn(() => new Response('pdf')),
+}))
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: mocks.getApplicationSettings,
 }))
 
 vi.mock('@/app/[locale]/requirements/reports/pdf/route-helpers', () => ({
@@ -58,6 +66,7 @@ describe('specification traceability PDF route', () => {
       expect.anything(),
       expect.objectContaining({ id: 7 }),
       expect.objectContaining({ locale: 'sv' }),
+      expect.objectContaining({ maxItems: 1000 }),
     )
   })
 })

@@ -55,6 +55,11 @@ export interface CompleteSpecificationItemTraversalOptions {
   signal?: AbortSignal
 }
 
+interface SpecificationItemPageQueryOptions {
+  createItemLimitError?: (limit: number) => Error
+  maxItems?: number
+}
+
 function normalizeIds(values: number[] | undefined): number[] | undefined {
   if (!values?.length) return undefined
   const ids = [
@@ -128,6 +133,7 @@ function normalizeSort(sort: RequirementSortState | undefined): {
 export async function querySpecificationItemPage(
   db: SqlServerDatabase,
   input: SpecificationItemPageInput,
+  options: SpecificationItemPageQueryOptions = {},
 ): Promise<SpecificationItemPageResult> {
   const filters = normalizeSpecificationItemFilters(input.filters)
   const limit = normalizeLimit(input.limit)
@@ -155,6 +161,14 @@ export async function querySpecificationItemPage(
     sortDirection: sort.direction,
     specificationId: input.specificationId,
   })
+  if (options.maxItems != null && candidates.length > options.maxItems) {
+    throw (
+      options.createItemLimitError?.(options.maxItems) ??
+      internalError('Specification item page exceeded its item bound', {
+        reason: 'specification_item_page_bound',
+      })
+    )
+  }
   const hasMore = candidates.length > limit
   const selectedCandidates = hasMore ? candidates.slice(0, limit) : candidates
   const items = await enrichSpecificationItemPage(
@@ -203,12 +217,24 @@ export async function traverseCompleteSpecificationItemResult(
     const remainingItemBudget =
       traversalOptions.maxItems == null
         ? MAX_SPECIFICATION_ITEM_PAGE_LIMIT
-        : Math.max(traversalOptions.maxItems + 1 - itemCount, 1)
-    const page = await querySpecificationItemPage(db, {
-      ...input,
-      cursor,
-      limit: Math.min(MAX_SPECIFICATION_ITEM_PAGE_LIMIT, remainingItemBudget),
-    })
+        : Math.max(traversalOptions.maxItems - itemCount, 0)
+    const page = await querySpecificationItemPage(
+      db,
+      {
+        ...input,
+        cursor,
+        limit: Math.max(
+          1,
+          Math.min(MAX_SPECIFICATION_ITEM_PAGE_LIMIT, remainingItemBudget),
+        ),
+      },
+      traversalOptions.maxItems == null
+        ? undefined
+        : {
+            createItemLimitError: traversalOptions.createItemLimitError,
+            maxItems: remainingItemBudget,
+          },
+    )
     if (traversalOptions.signal) {
       throwIfGenerationAborted(traversalOptions.signal)
     }

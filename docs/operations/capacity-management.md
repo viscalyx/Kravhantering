@@ -104,14 +104,23 @@ V1 measures:
 - Server-side PDF rendering for requirement, specification, privacy, and
   access-review exports.
 
-Large report PDFs are rendered in isolated Node worker threads from the
-production-bundled report renderer so production CSP can stay strict without
-`unsafe-eval` or `wasm-unsafe-eval`. Requirements Library CSV, procurement and
-full requirements-specification CSV, Action-log CSV, and large report-list PDF
-use Admin-configured item, byte, timeout, and per-node concurrency limits. All
-CSV operations reuse the generalized CSV row settings and process-local pool.
-PDF workers additionally have an Admin-configured JavaScript heap limit. Each
-operation uses one database settings snapshot.
+The large requirements-list PDF is rendered in an isolated Node worker thread
+from the production-bundled report renderer so production CSP can stay strict
+without `unsafe-eval` or `wasm-unsafe-eval`. All synchronous PDFs share the
+Admin-configured PDF item, timeout, and process-local per-node concurrency
+limits. Requirements Library CSV, procurement and full
+requirements-specification CSV, and Action-log CSV use their separate CSV
+limits and process-local pool. The list-PDF worker additionally uses the PDF
+byte and JavaScript heap limits. Each operation uses one database settings
+snapshot.
+
+The PDF item setting counts distinct requirement IDs for selected reports,
+versions for history and review, versions plus suggestions for suggestion
+history, and top-level rows for list, specification, traceability, RFI,
+access-review, and data-subject reports. The exact limit is accepted. Bounded
+collectors request no more than the limit plus one before broad enrichment.
+The direct renderer requires an active capacity admission, and cancellation
+does not release that admission until abandoned React-PDF work settles.
 
 These flows use `operation == "admin.action_log_csv_export"`,
 `operation == "requirements.library_csv_export"`,
@@ -166,10 +175,13 @@ flows return a tool error and log `capacity.throttled`.
 
 Generated output uses `429 capacity_busy` with `Retry-After: 5` when its
 process-local concurrency slot is unavailable. Item and completed-file limits
-return `422 output_limit_exceeded`. Timeout, temporary-storage, worker-memory,
-and unexpected worker failures return stable `503` error codes. Client
-cancellation stops upstream query/render work and cleans up without exposing a
-response body.
+return `422 output_limit_exceeded`. These rejections include
+`Cache-Control: no-store`; operators should tell users to reduce selected rows
+or narrow report filters before retrying an item-limit rejection. Timeout,
+temporary-storage, worker-memory, and unexpected worker failures return stable
+`503` error codes. Client cancellation stops cancellation-aware upstream work,
+keeps any non-cancellable direct render admitted until it settles, and exposes
+no response body.
 
 This solution is not distributed. In scaled production, throttling must move to
 SQL Server, Redis, or a platform rate-limiting capability.

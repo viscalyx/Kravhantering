@@ -461,4 +461,44 @@ describe('data-subject export service', () => {
       ]),
     )
   })
+
+  it('bounds self-session PDF rows before querying database sources', async () => {
+    const exact = createExportDb({})
+    const input = {
+      generatedBy: generatedBy(),
+      selfSession: {
+        expiresAt: 1_800_000_000,
+        familyName: 'Svensson',
+        givenName: 'Kalle',
+        hsaId: TARGET_HSA_ID,
+        name: 'Kalle Svensson',
+        roles: ['Reviewer'],
+        sub: 'subject-1',
+      },
+      target: { hsaId: TARGET_HSA_ID },
+    }
+    const createItemLimitError = (limit: number) =>
+      Object.assign(new Error('limit'), { limit })
+
+    await expect(
+      collectDataSubjectExport(exact.db, input, {
+        createItemLimitError,
+        maxItems: 8,
+      }),
+    ).resolves.toMatchObject({ summary: { itemCount: 8 } })
+    expect(exact.query).toHaveBeenCalled()
+    for (const [sql, parameters] of exact.query.mock.calls) {
+      expect(sql).toContain('SELECT TOP (@1)')
+      expect(parameters).toEqual([TARGET_HSA_ID, 1])
+    }
+
+    const excess = createExportDb({})
+    await expect(
+      collectDataSubjectExport(excess.db, input, {
+        createItemLimitError,
+        maxItems: 7,
+      }),
+    ).rejects.toMatchObject({ limit: 7 })
+    expect(excess.query).not.toHaveBeenCalled()
+  })
 })

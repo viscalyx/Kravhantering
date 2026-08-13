@@ -1,8 +1,10 @@
 import { renderToBuffer } from '@react-pdf/renderer'
 import type { ReactElement } from 'react'
+import type { GeneratedOutputCapacity } from '@/lib/generated-output/capacity'
 import { pdfContentDisposition } from '@/lib/http/content-disposition'
 
 interface PdfResponseOptions {
+  capacity: GeneratedOutputCapacity
   headers?: HeadersInit
   status?: number
 }
@@ -10,8 +12,11 @@ interface PdfResponseOptions {
 export async function renderPdfResponse(
   document: ReactElement,
   filename: string,
-  options: PdfResponseOptions = {},
+  options: PdfResponseOptions,
 ): Promise<Response> {
+  if (options.capacity.output !== 'pdf' || !options.capacity.isActive()) {
+    throw new Error('Active PDF generation capacity is required')
+  }
   const buffer = await renderToBuffer(
     document as ReactElement<import('@react-pdf/renderer').DocumentProps>,
   )

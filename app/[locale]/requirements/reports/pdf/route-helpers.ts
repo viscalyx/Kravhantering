@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { positiveIntegerStringSchema } from '@/lib/http/validation'
+import { synchronousPdfErrorResponse } from '@/lib/pdf/synchronous-generation'
 import { ReportDataError } from '@/lib/reports/data/server'
 import type {
   AuthorizationService,
@@ -93,7 +94,10 @@ export async function resolveReportSpecification(
   return specification
 }
 
-export function reportErrorResponse(error: unknown): NextResponse {
+export function reportErrorResponse(error: unknown): Response {
+  const generatedResponse = synchronousPdfErrorResponse(error)
+  if (generatedResponse) return generatedResponse
+
   if (!(error instanceof ReportDataError)) {
     const { body, status } = toHttpErrorPayload(error)
     return NextResponse.json(

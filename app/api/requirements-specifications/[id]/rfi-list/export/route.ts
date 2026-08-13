@@ -11,6 +11,11 @@ import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { parseRouteParams, parseSearchParams } from '@/lib/http/validation'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import { renderPdfResponse } from '@/lib/pdf/server-response'
+import {
+  createPdfItemLimitError,
+  runSynchronousPdfGeneration,
+  synchronousPdfErrorResponse,
+} from '@/lib/pdf/synchronous-generation'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { authorize } from '@/lib/requirements/service-shared'
@@ -68,7 +73,6 @@ async function getHandler(
       runtime.context,
     )
 
-    const list = await getSpecificationRfiList(runtime.db, specification.id)
     const exportMeta = {
       name: specification.name,
       specificationCode: specification.specificationCode,
@@ -78,17 +82,33 @@ async function getHandler(
     const baseFilename = `${label} ${specification.name} ${specification.specificationCode}`
 
     if (parsedQuery.data.format === 'pdf') {
-      const response = await renderPdfResponse(
-        createElement(SpecificationRfiListPdfRenderer, {
-          list,
-          locale: parsedQuery.data.locale,
-          specification: exportMeta,
-        }),
-        `${baseFilename}.pdf`,
+      const response = await runSynchronousPdfGeneration(
+        runtime.db,
+        request.signal,
+        async ({ capacity, itemLimit }) => {
+          const list = await getSpecificationRfiList(
+            runtime.db,
+            specification.id,
+            {
+              createItemLimitError: createPdfItemLimitError,
+              maxItems: itemLimit,
+            },
+          )
+          return renderPdfResponse(
+            createElement(SpecificationRfiListPdfRenderer, {
+              list,
+              locale: parsedQuery.data.locale,
+              specification: exportMeta,
+            }),
+            `${baseFilename}.pdf`,
+            { capacity },
+          )
+        },
       )
       return applyResponseCorrelationHeaders(response, runtime.context)
     }
 
+    const list = await getSpecificationRfiList(runtime.db, specification.id)
     const response = new NextResponse(
       withUtf8Bom(
         buildSpecificationRfiListCsv(exportMeta, list, parsedQuery.data.locale),
@@ -103,7 +123,7 @@ async function getHandler(
     return applyResponseCorrelationHeaders(response, runtime.context)
   } catch (error) {
     return applyResponseCorrelationHeaders(
-      errorResponse(error),
+      synchronousPdfErrorResponse(error) ?? errorResponse(error),
       runtime.context,
     )
   }

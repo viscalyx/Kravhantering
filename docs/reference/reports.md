@@ -7,6 +7,42 @@ PDF renderer.
 Implementation architecture and contributor workflow live in
 [report-generation-developer-workflow.md](../development/report-generation-developer-workflow.md).
 
+## Synchronous PDF Limits
+
+Every synchronous multi-item PDF uses the Admin-managed maximum PDF item
+count, and every synchronous PDF uses the per-node concurrency setting. The
+item setting defaults to 1,000. The counted unit depends on the report's
+top-level repeated content:
+
+<!-- markdownlint-disable MD013 -->
+| PDF route or report | Counted unit |
+| --- | --- |
+| Requirements List | Distinct selected requirements or filtered requirement rows |
+| Combined Review | Distinct requirement IDs |
+| History and Review | Requirement versions |
+| Improvement Suggestion History | Requirement versions plus suggestions |
+| Specification profile | Requirement applications |
+| Requirement application traceability | Filtered requirement applications |
+| RFI question list | RFI questions |
+| Access-review export | Access-review assignment rows |
+| Data-subject export | Exported personal-data items |
+| Deviation Review | One selected requirement application and review version |
+<!-- markdownlint-enable MD013 -->
+
+The deviation review is a single-item report and therefore has no separate
+collection count. It still shares the PDF concurrency pool. Specification,
+traceability, filtered-list, and RFI collectors request at most the configured
+limit plus one before enrichment, so they can detect an excessive result
+without retaining every match. History, review, access-review, and
+data-subject routes check their row counts before loading the complete report
+details.
+
+The exact item limit is accepted. The first item above it returns
+`422 output_limit_exceeded` with `Cache-Control: no-store` and no partial PDF.
+When all per-node render slots are occupied, the route returns
+`429 capacity_busy` with `Retry-After: 5`. Reduce the selected rows or narrow
+the active filters before retrying an item-limit rejection.
+
 Version summaries include requirement package names when present. Blank or
 whitespace-only package names are ignored so report output does not show empty
 package entries.
@@ -94,8 +130,8 @@ Generates a multi-requirement review report from the list view.
 - The combined report menu item is disabled if any selected requirement is not
   in Review status
 - The combined report menu item shows the selected requirement count as a badge
-- Does not apply an application-level item-count cap to the selected
-  requirements
+- Applies the Admin-configured PDF item cap to distinct selected requirement
+  IDs before per-requirement authorization or detail loading
 - Table of contents on the first page, grouped by report type:
   archiving requests first, then review reports
 - Each TOC entry shows its page number
