@@ -4,10 +4,20 @@ set -euo pipefail
 
 SYSTEM_PREFIX="${CI_RUNTIME_SYSTEM_PREFIX:-/usr}"
 LOCAL_PREFIX="${CI_RUNTIME_LOCAL_PREFIX:-/usr/local}"
-PODMAN_BIN="${CI_RUNTIME_PODMAN_BIN:-$SYSTEM_PREFIX/bin/podman}"
-CONMON_BIN="${CI_RUNTIME_CONMON_BIN:-$SYSTEM_PREFIX/bin/conmon}"
-CRUN_BIN="${CI_RUNTIME_CRUN_BIN:-$SYSTEM_PREFIX/bin/crun}"
-QUADLET_GENERATOR="${CI_RUNTIME_QUADLET_GENERATOR:-$SYSTEM_PREFIX/libexec/podman/quadlet}"
+PACKAGE_PODMAN_BIN="$SYSTEM_PREFIX/bin/podman"
+PACKAGE_CONMON_BIN="$SYSTEM_PREFIX/bin/conmon"
+PACKAGE_CRUN_BIN="$SYSTEM_PREFIX/bin/crun"
+PACKAGE_QUADLET_GENERATOR="$SYSTEM_PREFIX/libexec/podman/quadlet"
+STATIC_PODMAN_BIN="$LOCAL_PREFIX/bin/podman"
+STATIC_CONMON_BIN="$LOCAL_PREFIX/lib/podman/conmon"
+STATIC_CRUN_BIN="$LOCAL_PREFIX/bin/crun"
+STATIC_QUADLET_GENERATOR="$LOCAL_PREFIX/libexec/podman/quadlet"
+PODMAN_BIN="${CI_RUNTIME_PODMAN_BIN:-$(command -v podman 2>/dev/null || true)}"
+PODMAN_BIN="${PODMAN_BIN:-$PACKAGE_PODMAN_BIN}"
+CONMON_BIN=''
+CRUN_BIN=''
+QUADLET_GENERATOR=''
+TOOLCHAIN_PROFILE=''
 DPKG_QUERY_BIN="${CI_RUNTIME_DPKG_QUERY_BIN:-dpkg-query}"
 SUDO_BIN="${CI_RUNTIME_SUDO_BIN:-sudo}"
 APT_GET_BIN="${CI_RUNTIME_APT_GET_BIN:-apt-get}"
@@ -25,6 +35,24 @@ fail() {
 
 canonical_path() {
   realpath -m -- "$1"
+}
+
+select_toolchain() {
+  local resolved_podman
+  resolved_podman="$(canonical_path "$PODMAN_BIN")"
+  if [[ "$resolved_podman" == "$(canonical_path "$STATIC_PODMAN_BIN")" ]]; then
+    TOOLCHAIN_PROFILE=static
+    CONMON_BIN="${CI_RUNTIME_CONMON_BIN:-$STATIC_CONMON_BIN}"
+    CRUN_BIN="${CI_RUNTIME_CRUN_BIN:-$STATIC_CRUN_BIN}"
+    QUADLET_GENERATOR="${CI_RUNTIME_QUADLET_GENERATOR:-$STATIC_QUADLET_GENERATOR}"
+  elif [[ "$resolved_podman" == "$(canonical_path "$PACKAGE_PODMAN_BIN")" ]]; then
+    TOOLCHAIN_PROFILE=package
+    CONMON_BIN="${CI_RUNTIME_CONMON_BIN:-$PACKAGE_CONMON_BIN}"
+    CRUN_BIN="${CI_RUNTIME_CRUN_BIN:-$PACKAGE_CRUN_BIN}"
+    QUADLET_GENERATOR="${CI_RUNTIME_QUADLET_GENERATOR:-$PACKAGE_QUADLET_GENERATOR}"
+  else
+    fail "Podman resolves outside the supported runner toolchains: $PODMAN_BIN"
+  fi
 }
 
 run_bounded() {
@@ -122,13 +150,16 @@ resolved_generator() {
 
 verify_toolchain() {
   local generator podman_info selected_conmon selected_runtime status
+  select_toolchain
   assert_executable "$PODMAN_BIN"
   assert_executable "$CONMON_BIN"
   assert_executable "$CRUN_BIN"
   assert_executable "$QUADLET_GENERATOR"
   verify_command_resolution podman "$PODMAN_BIN"
-  verify_command_resolution conmon "$CONMON_BIN"
   verify_command_resolution crun "$CRUN_BIN"
+  if [[ "$TOOLCHAIN_PROFILE" == package ]]; then
+    verify_command_resolution conmon "$CONMON_BIN"
+  fi
 
   generator="$(resolved_generator)"
   [[ "$generator" == "$(canonical_path "$QUADLET_GENERATOR")" ]] ||
@@ -151,16 +182,18 @@ verify_toolchain() {
   [[ "$(canonical_path "$selected_runtime")" == "$(canonical_path "$CRUN_BIN")" ]] ||
     fail "Podman selected unexpected OCI runtime: $selected_runtime"
 
-  assert_package_owner "$PODMAN_BIN" podman
-  assert_package_owner "$CONMON_BIN" conmon
-  assert_package_owner "$CRUN_BIN" crun
-  assert_package_owner "$QUADLET_GENERATOR" podman
+  if [[ "$TOOLCHAIN_PROFILE" == package ]]; then
+    assert_package_owner "$PODMAN_BIN" podman
+    assert_package_owner "$CONMON_BIN" conmon
+    assert_package_owner "$CRUN_BIN" crun
+    assert_package_owner "$QUADLET_GENERATOR" podman
+  fi
 
   "$PODMAN_BIN" --version
   "$CONMON_BIN" --version
   "$CRUN_BIN" --version
   "$QUADLET_GENERATOR" --version
-  printf '%s\n' 'coherent package toolchain: verified'
+  printf 'coherent %s toolchain: verified\n' "$TOOLCHAIN_PROFILE"
 }
 
 bootstrap_toolchain() {
@@ -169,6 +202,17 @@ bootstrap_toolchain() {
   [[ "$profile" == pr || "$profile" == release ]] ||
     fail 'bootstrap expects the pr or release profile'
   [[ "$profile" == release ]] && packages+=(skopeo)
+
+  select_toolchain
+  if [[ "$TOOLCHAIN_PROFILE" == static ]]; then
+    packages=(jq libnss3-tools)
+    [[ "$profile" == release ]] && packages+=(skopeo)
+    "$SUDO_BIN" "$APT_GET_BIN" update
+    "$SUDO_BIN" "$APT_GET_BIN" install -y --no-install-recommends \
+      --reinstall "${packages[@]}"
+    verify_toolchain
+    return 0
+  fi
 
   reset_existing_rootless_runtime
   remove_runner_static_configuration
@@ -358,6 +402,7 @@ collect_component_evidence() {
   local directory name podman_command podman_info selected_conmon selected_runtime
   local -a directories
   local search_path="${CI_RUNTIME_GENERATOR_SEARCH_PATH:-/run/systemd/user-generators:/etc/systemd/user-generators:$LOCAL_PREFIX/lib/systemd/user-generators:$SYSTEM_PREFIX/lib/systemd/user-generators:/lib/systemd/user-generators}"
+  select_toolchain
   : >"$EVIDENCE_DIR/runtime-components.txt"
 
   append_component_evidence expected-podman "$PODMAN_BIN"

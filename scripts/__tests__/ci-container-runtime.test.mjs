@@ -21,21 +21,22 @@ const CLASSIFIER_PATH = path.resolve(
 )
 const temporaryDirectories = []
 
-function createToolchainFixture() {
+function createToolchainFixture({ toolchain = 'package' } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-ci-runtime-'))
   temporaryDirectories.push(root)
   const systemPrefix = path.join(root, 'usr')
   const localPrefix = path.join(root, 'usr-local')
-  const binDir = path.join(systemPrefix, 'bin')
-  const libexecDir = path.join(systemPrefix, 'libexec', 'podman')
+  const toolchainPrefix = toolchain === 'static' ? localPrefix : systemPrefix
+  const binDir = path.join(toolchainPrefix, 'bin')
+  const libexecDir = path.join(toolchainPrefix, 'libexec', 'podman')
   const userGeneratorDir = path.join(
-    systemPrefix,
+    toolchainPrefix,
     'lib',
     'systemd',
     'user-generators',
   )
   const systemGeneratorDir = path.join(
-    systemPrefix,
+    toolchainPrefix,
     'lib',
     'systemd',
     'system-generators',
@@ -49,13 +50,17 @@ function createToolchainFixture() {
     'containers.conf.d',
     '00-fix-runtime.conf',
   )
+  const conmonPath =
+    toolchain === 'static'
+      ? path.join(localPrefix, 'lib', 'podman', 'conmon')
+      : path.join(binDir, 'conmon')
   fs.mkdirSync(binDir, { recursive: true })
   fs.mkdirSync(libexecDir, { recursive: true })
+  fs.mkdirSync(path.dirname(conmonPath), { recursive: true })
   fs.mkdirSync(userGeneratorDir, { recursive: true })
   fs.mkdirSync(systemGeneratorDir, { recursive: true })
 
   const podmanPath = path.join(binDir, 'podman')
-  const conmonPath = path.join(binDir, 'conmon')
   const crunPath = path.join(binDir, 'crun')
   const generatorPath = path.join(libexecDir, 'quadlet')
   fs.writeFileSync(
@@ -248,6 +253,32 @@ describe('CI container runtime', () => {
     )
     expect(commands.includes('skopeo')).toBe(usesSkopeo)
   })
+
+  it.each([
+    ['pr', false],
+    ['release', true],
+  ])(
+    'keeps a coherent static runner %s profile instead of downgrading it',
+    (profile, usesSkopeo) => {
+      const fixture = createToolchainFixture({ toolchain: 'static' })
+
+      const result = runRuntimeScript(['bootstrap', profile], fixture)
+
+      expect(result.status).toBe(0)
+      expect(result.stdout).toContain('coherent static toolchain: verified')
+      const podmanCommands = fs.readFileSync(fixture.commandLog, 'utf8')
+      expect(podmanCommands).toContain('--log-level=debug info --format json')
+      expect(podmanCommands).not.toContain('system reset')
+      const sudoCommands = fs.readFileSync(fixture.sudoLog, 'utf8')
+      expect(sudoCommands).toContain(
+        'apt-get install -y --no-install-recommends --reinstall jq libnss3-tools',
+      )
+      expect(sudoCommands.includes('skopeo')).toBe(usesSkopeo)
+      expect(sudoCommands).not.toContain(' podman')
+      expect(sudoCommands).not.toContain(' conmon')
+      expect(sudoCommands).not.toContain(' crun')
+    },
+  )
 
   it('aborts bootstrap before replacing binaries when Podman reset fails', () => {
     const fixture = createToolchainFixture()
