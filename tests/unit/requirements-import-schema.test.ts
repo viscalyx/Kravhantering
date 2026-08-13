@@ -3,12 +3,29 @@ import {
   specificationImportExecuteBodySchema,
   specificationImportPreviewBodySchema,
 } from '@/app/api/specification-local-requirements/import/_shared'
+import type { RequirementImportBudget } from '@/lib/requirements/import-budget'
 import {
   buildRequirementsImportJsonSchema,
+  buildRequirementsImportPayloadSchema,
   importExecuteBodySchema,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
   requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
+
+const strictBudget: RequirementImportBudget = {
+  maxJsonDepth: 4,
+  maxNestedItems: 1,
+  maxProposedNeedsReferences: 1,
+  maxProposedNormReferences: 1,
+  maxRows: 1,
+}
+
+const normProposal = {
+  issuer: 'ISO',
+  name: 'ISO standard',
+  reference: 'ISO 1',
+  type: 'standard',
+}
 
 describe('requirements import schema', () => {
   it('accepts a minimal requirement import payload', () => {
@@ -42,7 +59,7 @@ describe('requirements import schema', () => {
     }
   })
 
-  it('accepts needs reference fields in the shared v3 file format', () => {
+  it('accepts needs reference fields in the shared v4 file format', () => {
     const result = requirementsImportPayloadSchema.safeParse({
       proposedNeedsReferences: [
         {
@@ -62,6 +79,37 @@ describe('requirements import schema', () => {
     })
 
     expect(result.success).toBe(true)
+  })
+
+  it('aligns runtime row, proposal, and every nested-array maximum', () => {
+    const schema = buildRequirementsImportPayloadSchema(strictBudget)
+    const base = {
+      requirements: [{ description: 'One' }],
+      schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+    }
+
+    expect(schema.safeParse(base).success).toBe(true)
+    expect(
+      schema.safeParse({
+        ...base,
+        requirements: [{ description: 'One' }, { description: 'Two' }],
+      }).success,
+    ).toBe(false)
+    expect(
+      schema.safeParse({
+        ...base,
+        requirements: [{ description: 'One', normReferenceIds: ['A', 'B'] }],
+      }).success,
+    ).toBe(false)
+    expect(
+      schema.safeParse({
+        ...base,
+        proposedNormReferences: [
+          { ...normProposal, key: 'one' },
+          { ...normProposal, key: 'two' },
+        ],
+      }).success,
+    ).toBe(false)
   })
 
   it('rejects duplicate proposed needs reference keys', () => {
@@ -212,13 +260,14 @@ describe('requirements import schema', () => {
   })
 
   it('emits a strict JSON Schema for the shared file format', () => {
-    const schema = buildRequirementsImportJsonSchema('sv')
+    const schema = buildRequirementsImportJsonSchema('sv', strictBudget)
 
     expect(schema).toMatchObject({
       additionalProperties: false,
       required: ['schemaVersion', 'requirements'],
       title: 'Kravimport',
       type: 'object',
+      'x-requirement-import-budget': strictBudget,
     })
     const properties = schema.properties as Record<string, unknown>
     expect(properties).not.toHaveProperty('areaId')
@@ -255,8 +304,20 @@ describe('requirements import schema', () => {
       description: 'Toppnivåfältet som versionerar hela kravimportfilen.',
     })
     const requirements = properties.requirements as {
-      items: { properties: Record<string, unknown> }
+      items: { properties: Record<string, { maxItems?: number }> }
+      maxItems: number
     }
+    expect(requirements.maxItems).toBe(1)
+    expect(properties.proposedNormReferences).toMatchObject({ maxItems: 1 })
+    expect(properties.proposedNeedsReferences).toMatchObject({ maxItems: 1 })
+    expect(requirements.items.properties.normReferenceIds.maxItems).toBe(1)
+    expect(
+      requirements.items.properties.proposedNormReferenceKeys.maxItems,
+    ).toBe(1)
+    expect(requirements.items.properties.requirementPackageIds.maxItems).toBe(1)
+    expect(requirements.items.properties.requirementPackageNames.maxItems).toBe(
+      1,
+    )
     expect(requirements.items.properties.needsReferenceId).toMatchObject({
       description:
         'Behovsreferens-ID används vid import till kravunderlag. Vid import till kravbiblioteket ignoreras fältet.',

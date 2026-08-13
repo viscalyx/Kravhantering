@@ -476,6 +476,56 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(transaction).toHaveBeenCalledOnce()
   })
 
+  it('keeps 51 rows in one transaction while auditing across 50-row groups', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    let sequence = 0
+    query.mockImplementation(async (sql: string, parameters?: unknown[]) => {
+      if (sql.includes('SELECT id')) {
+        return (parameters ?? []).map(id => ({ id }))
+      }
+      if (sql.includes('UPDATE requirement_areas')) {
+        sequence += 1
+        return [{ prefix: 'BATCH-', sequenceNumber: sequence }]
+      }
+      if (sql.includes('INSERT INTO requirements (')) {
+        return [
+          { id: sequence, requirementAreaId: 1, sequenceNumber: sequence },
+        ]
+      }
+      if (sql.includes('INSERT INTO requirement_versions (')) {
+        return [
+          {
+            id: 1000 + sequence,
+            requirementId: sequence,
+            statusId: 1,
+            versionNumber: 1,
+          },
+        ]
+      }
+      return []
+    })
+    const audit = vi.fn(
+      async (_executor: unknown, _result: unknown, _index: number) => undefined,
+    )
+    const batchAudit = vi.fn(async () => undefined)
+
+    await expect(
+      createRequirementsBatch(
+        db,
+        Array.from({ length: 51 }, (_, index) => ({
+          description: `Requirement ${index + 1}`,
+          requirementAreaId: 1,
+        })),
+        { audit, batchAudit, maxGroupSize: 50 },
+      ),
+    ).resolves.toHaveLength(51)
+
+    expect(transaction).toHaveBeenCalledOnce()
+    expect(audit).toHaveBeenCalledTimes(51)
+    expect(audit.mock.calls.at(-1)?.[2]).toBe(50)
+    expect(batchAudit).toHaveBeenCalledOnce()
+  })
+
   it('rejects missing areas in single and batch creation and missing sequence rows', async () => {
     const missingArea = createSqlServerDb()
     await expect(

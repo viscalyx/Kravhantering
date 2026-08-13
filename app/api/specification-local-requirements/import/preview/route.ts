@@ -1,18 +1,34 @@
 import { NextResponse } from 'next/server'
+import { getApplicationSettings } from '@/lib/dal/application-settings'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { requirementImportBudgetFromSettings } from '@/lib/requirements/import-budget'
+import {
+  readRequirementImportRequest,
+  requirementImportHttpErrorResponse,
+} from '@/lib/requirements/import-http'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import {
   type SpecificationImportPreviewBody as Body,
-  specificationImportPreviewBodySchema as bodySchema,
+  buildSpecificationImportPreviewBodySchema,
 } from '../_shared'
 
-export const POST = secureMutationRoute({
-  bodySchema,
+export const POST = secureMutationRoute<Body>({
+  bodyReader: async ({ request }) => {
+    const db = await getRequestSqlServerDataSource()
+    const budget = requirementImportBudgetFromSettings(
+      await getApplicationSettings(db),
+    )
+    return readRequirementImportRequest(request, {
+      budget,
+      content: body => (body as { payload?: unknown })?.payload,
+      schema: buildSpecificationImportPreviewBodySchema(budget),
+    })
+  },
   policy: requirementsMutationPolicy<Body>(({ body }) => ({
     kind: 'manage_specification_local_requirement',
     operation: 'create',
@@ -34,8 +50,7 @@ export const POST = secureMutationRoute({
         '[API] Failed to preview specification-local requirements import',
         error,
       )
-      const { body: errorBody, status } = toHttpErrorPayload(error)
-      return NextResponse.json(errorBody, { status })
+      return requirementImportHttpErrorResponse(error)
     }
   },
 })

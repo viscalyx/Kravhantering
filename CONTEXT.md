@@ -454,6 +454,16 @@ var kraven ska sparas; destinationen väljs i importflödet.
 _Avoid_: Kravbiblioteksimport när filformatet avses, kravunderlagsimport när
 filformatet avses, datamigrering.
 
+**Kravimportbudget**:
+De applikationsgemensamma gränserna för nyttolaststorlek och strukturell
+komplexitet hos en kravimportfil och de granskade rader som skickas för
+körning.
+
+- `en`: Requirement import budget
+
+_Avoid_: MCP-gräns när budgeten gäller alla kravimportflöden, kvot när en
+aktörs förbrukning inte avses.
+
 **Importinstruktion**:
 Vägledning för att ta fram en kravimportfil. Importinstruktionen beskriver
 regler, fältval och stödjande sammanhang för import-JSON, men JSON Schema är

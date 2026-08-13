@@ -552,6 +552,8 @@ export interface CreateRequirementsBatchOptions {
     executor: SqlServerTxExecutor,
     results: CreateRequirementResult[],
   ) => Promise<void>
+  beforeWrite?: (executor: SqlServerTxExecutor) => Promise<void>
+  maxGroupSize?: number
 }
 
 export async function createRequirementsBatchWithExecutor(
@@ -645,7 +647,29 @@ export async function createRequirementsBatch(
     const tx: SqlServerTxExecutor = {
       query: (sql, params) => manager.query(sql, params),
     }
-    return createRequirementsBatchWithExecutor(tx, inputs, options)
+    const maxGroupSize = Math.max(
+      1,
+      Math.min(inputs.length, options.maxGroupSize ?? inputs.length),
+    )
+    const audit = options.audit
+    const results: CreateRequirementResult[] = []
+    await options.beforeWrite?.(tx)
+    for (let index = 0; index < inputs.length; index += maxGroupSize) {
+      results.push(
+        ...(await createRequirementsBatchWithExecutor(
+          tx,
+          inputs.slice(index, index + maxGroupSize),
+          {
+            audit: audit
+              ? (executor, result, groupIndex) =>
+                  audit(executor, result, index + groupIndex)
+              : undefined,
+          },
+        )),
+      )
+    }
+    await options.batchAudit?.(tx, results)
+    return results
   })
 }
 

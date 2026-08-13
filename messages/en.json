@@ -1751,13 +1751,17 @@
     },
     "applicationSettings": {
       "title": "Settings",
-      "description": "Shared settings for AI, exports, and reports.",
+      "description": "Shared settings for AI, requirement imports, exports, and reports.",
       "loading": "Loading settings…",
       "loadError": "Could not load application settings.",
       "saveError": "Could not save the setting.",
       "invalidValue": "Enter a value within the allowed range.",
       "decreaseValue": "Decrease {field}",
       "increaseValue": "Increase {field}",
+      "imports": {
+        "title": "Imports",
+        "description": "Controls the shared content budget for browser, REST, AI, and MCP requirement imports. Lower limits apply immediately to new previews and validations."
+      },
       "exports": {
         "title": "Exports",
         "description": "Controls resource limits for CSV exports. Limits apply per operation unless stated otherwise."
@@ -1767,14 +1771,38 @@
         "description": "Controls resource limits for large server-generated PDF reports. Limits apply per operation unless stated otherwise."
       },
       "units": {
+        "depthLevels": "levels",
         "exports": "exports",
+        "importItems": "items per requirement",
+        "importRows": "import rows",
         "mib": "MiB",
+        "proposals": "proposals",
         "renderings": "renderings",
         "requirements": "requirements",
         "rows": "CSV rows",
         "seconds": "seconds"
       },
       "fields": {
+        "requirementImportMaxRows": {
+          "label": "Maximum requirements per import",
+          "help": "Limits requirement rows in every import channel. The MCP row limit is clamped when this value is lowered. Allowed: 1–500."
+        },
+        "requirementImportMaxProposedNormReferences": {
+          "label": "Maximum proposed norm references",
+          "help": "Limits proposed norm references in one import. Allowed: 0–500."
+        },
+        "requirementImportMaxProposedNeedsReferences": {
+          "label": "Maximum proposed needs references",
+          "help": "Limits proposed needs references in one import. Allowed: 0–500."
+        },
+        "requirementImportMaxNestedItems": {
+          "label": "Maximum nested items per requirement",
+          "help": "Limits entries in nested reference and package lists for each requirement row. Allowed: 0–200."
+        },
+        "requirementImportMaxJsonDepth": {
+          "label": "Maximum import JSON depth",
+          "help": "Limits structural nesting before schema and reference validation begins. Allowed: 4–8 levels."
+        },
         "csvExportMaxItems": {
           "label": "Maximum rows per CSV export",
           "help": "Limits how many data rows a CSV export may contain. The export is rejected before download begins when the result exceeds the limit. Allowed: 1–5,000."

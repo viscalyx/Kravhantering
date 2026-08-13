@@ -17,7 +17,7 @@ describe('requirements import schema', () => {
     const result = requirementsImportPayloadSchema.safeParse({
       proposedNormReferences: [normProposal, normProposal],
       requirements: [{ description: 'Requirement' }],
-      schemaVersion: 'requirement-import.v3',
+      schemaVersion: 'requirement-import.v4',
     })
 
     expect(result.success).toBe(false)
@@ -35,7 +35,7 @@ describe('requirements import schema', () => {
     const result = requirementsImportPayloadSchema.safeParse({
       proposedNeedsReferences: [proposal, proposal],
       requirements: [{ description: 'Requirement' }],
-      schemaVersion: 'requirement-import.v3',
+      schemaVersion: 'requirement-import.v4',
     })
 
     expect(result.success).toBe(false)

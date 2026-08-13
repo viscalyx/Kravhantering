@@ -105,7 +105,7 @@ Loading cannot be cancelled; activation resolves to the requested feature or
 an explicit in-modal error.
 
 - Requirement import uses one strict JSON file format,
-  `requirement-import.v3`, for both kravbiblioteksimport and
+  `requirement-import.v4`, for both kravbiblioteksimport and
   kravunderlagsimport. The top-level `schemaVersion` versions the whole import
   file, including requirement candidates and support data such as proposed norm
   references and proposed needs references. Destination fields such as `areaId`
@@ -136,10 +136,14 @@ an explicit in-modal error.
   clickable drop target, or dropped onto that target. The paste field uses
   placeholder text so the instruction is not inserted into the JSON value.
   `Förhandsgranska krav` stays disabled until the JSON parses and passes
-  `requirement-import.v3` schema validation and, for kravbiblioteksimport, a
+  `requirement-import.v4` schema validation and, for kravbiblioteksimport, a
   kravområde is selected. When the action is disabled, a short warning above
   the button explains the current blocker, such as missing kravområde, missing
   JSON, parse errors, wrong `schemaVersion`, or schema validation errors.
+  Selected files larger than 8 MiB are rejected before their contents are read,
+  and pasted content is measured as UTF-8 before parsing. The schema endpoint
+  supplies the current administrator-controlled row, proposal, nested-item,
+  and JSON-depth limits used by the browser.
 - Before the review is loaded, the dialog shows only the JSON setup panel. After
   the user loads review, the setup panel collapses and the editable krav review
   uses the dialog body.

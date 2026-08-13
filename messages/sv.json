@@ -1751,13 +1751,17 @@
     },
     "applicationSettings": {
       "title": "Inställningar",
-      "description": "Gemensamma inställningar för AI, exporter och rapporter.",
+      "description": "Gemensamma inställningar för AI, kravimporter, exporter och rapporter.",
       "loading": "Laddar inställningar…",
       "loadError": "Kunde inte läsa applikationsinställningar.",
       "saveError": "Kunde inte spara inställningen.",
       "invalidValue": "Ange ett värde inom det tillåtna intervallet.",
       "decreaseValue": "Minska {field}",
       "increaseValue": "Öka {field}",
+      "imports": {
+        "title": "Importer",
+        "description": "Styr den gemensamma innehållsbudgeten för kravimport via webbläsare, REST, AI och MCP. Sänkta gränser gäller direkt för nya granskningar och valideringar."
+      },
       "exports": {
         "title": "Exporter",
         "description": "Styr resursgränser för CSV-exporter. Gränserna gäller per operation om inget annat anges."
@@ -1767,14 +1771,38 @@
         "description": "Styr resursgränser för stora servergenererade PDF-rapporter. Gränserna gäller per operation om inget annat anges."
       },
       "units": {
+        "depthLevels": "nivåer",
         "exports": "exporter",
+        "importItems": "poster per krav",
+        "importRows": "importrader",
         "mib": "MiB",
+        "proposals": "förslag",
         "renderings": "renderingar",
         "requirements": "krav",
         "rows": "CSV-rader",
         "seconds": "sekunder"
       },
       "fields": {
+        "requirementImportMaxRows": {
+          "label": "Högsta antal krav per import",
+          "help": "Begränsar kravrader i alla importkanaler. MCP:s radgräns sänks automatiskt när detta värde sänks. Tillåtet: 1–500."
+        },
+        "requirementImportMaxProposedNormReferences": {
+          "label": "Högsta antal föreslagna normreferenser",
+          "help": "Begränsar föreslagna normreferenser i en import. Tillåtet: 0–500."
+        },
+        "requirementImportMaxProposedNeedsReferences": {
+          "label": "Högsta antal föreslagna behovsreferenser",
+          "help": "Begränsar föreslagna behovsreferenser i en import. Tillåtet: 0–500."
+        },
+        "requirementImportMaxNestedItems": {
+          "label": "Högsta antal underposter per krav",
+          "help": "Begränsar poster i underliggande referens- och paketlistor för varje kravrad. Tillåtet: 0–200."
+        },
+        "requirementImportMaxJsonDepth": {
+          "label": "Högsta JSON-djup för import",
+          "help": "Begränsar strukturell nästling innan schema- och referensvalidering börjar. Tillåtet: 4–8 nivåer."
+        },
         "csvExportMaxItems": {
           "label": "Högsta antal rader per CSV-export",
           "help": "Begränsar hur många datarader en CSV-export får innehålla. Exporten avvisas innan nedladdningen börjar om resultatet överstiger gränsen. Tillåtet: 1–5 000."

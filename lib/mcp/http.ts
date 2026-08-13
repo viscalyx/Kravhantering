@@ -6,9 +6,11 @@ import {
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
 import { getCachedMcpRuntimeSettings } from '@/lib/dal/ai-settings'
+import { getApplicationSettings } from '@/lib/dal/application-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
+import { requirementImportBudgetFromSettings } from '@/lib/requirements/import-budget'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 
 export const MCP_DEFAULT_REQUEST_BYTES = MCP_REQUEST_PAYLOAD_DEFAULT_BYTES
@@ -69,7 +71,7 @@ async function inspectRequestPayloadSize(
 ): Promise<RequestPayloadSize> {
   if (request.method !== 'POST') return {}
   const contentLength = parseContentLength(request)
-  if (contentLength !== undefined) {
+  if (contentLength !== undefined && contentLength > limitBytes) {
     return { contentLength }
   }
   if (!request.body) return {}
@@ -81,12 +83,12 @@ async function inspectRequestPayloadSize(
   while (true) {
     const { done, value } = await reader.read()
     if (done) {
-      return { measuredBytes: totalBytes }
+      return { contentLength, measuredBytes: totalBytes }
     }
     totalBytes += value.byteLength
     if (totalBytes > limitBytes) {
       void reader.cancel().catch(() => undefined)
-      return { measuredBytes: totalBytes }
+      return { contentLength, measuredBytes: totalBytes }
     }
   }
 }
@@ -96,7 +98,8 @@ function requestPayloadExceedsLimit(
   limitBytes: number,
 ): boolean {
   return (
-    (payloadSize.contentLength ?? payloadSize.measuredBytes ?? 0) > limitBytes
+    (payloadSize.contentLength ?? 0) > limitBytes ||
+    (payloadSize.measuredBytes ?? 0) > limitBytes
   )
 }
 
@@ -141,7 +144,17 @@ export async function handleRequirementsMcpRequest(
     )
   }
 
-  const mcpSettings = await getCachedMcpRuntimeSettings(db)
+  const configuredMcpSettings = await getCachedMcpRuntimeSettings(db)
+  const importBudget = requirementImportBudgetFromSettings(
+    await getApplicationSettings(db),
+  )
+  const mcpSettings = {
+    ...configuredMcpSettings,
+    mcpImportMaxRows: Math.min(
+      configuredMcpSettings.mcpImportMaxRows,
+      importBudget.maxRows,
+    ),
+  }
   if (request.method === 'POST') {
     const payloadSize = await inspectRequestPayloadSize(
       request,

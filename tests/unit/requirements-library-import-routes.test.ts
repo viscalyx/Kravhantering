@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import type { RequestContext } from '@/lib/requirements/auth'
 import { jsonRequest } from '@/tests/unit/helpers/route-handler-test-helpers'
 
@@ -8,6 +9,7 @@ const routeMocks = vi.hoisted(() => ({
   createRequirementsRestRuntime: vi.fn(),
   deniedAudit: vi.fn(),
   executeLibraryImport: vi.fn(),
+  getApplicationSettings: vi.fn(),
   logSanitizedError: vi.fn(),
   previewLibraryImport: vi.fn(),
 }))
@@ -16,6 +18,10 @@ const db = { query: vi.fn() }
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: vi.fn(async () => db),
+}))
+
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: routeMocks.getApplicationSettings,
 }))
 
 vi.mock('@/lib/requirements/auth', async importOriginal => ({
@@ -63,6 +69,9 @@ function makeContext(isAuthenticated: boolean): RequestContext {
 describe('requirements-library import routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routeMocks.getApplicationSettings.mockResolvedValue(
+      DEFAULT_APPLICATION_SETTINGS,
+    )
     routeMocks.createRequestContext.mockResolvedValue(makeContext(true))
     routeMocks.previewLibraryImport.mockResolvedValue({
       previewToken: 'preview-token',
@@ -91,7 +100,7 @@ describe('requirements-library import routes', () => {
   it('previews a library import and derives area authorization from its body', async () => {
     const payload = {
       requirements: [{ description: 'Requirement' }],
-      schemaVersion: 'requirement-import.v3',
+      schemaVersion: 'requirement-import.v4',
     }
     const response = await previewPost(
       jsonRequest('/api/requirements/import/preview', {
@@ -121,7 +130,7 @@ describe('requirements-library import routes', () => {
         locale: 'en',
         payload: {
           requirements: [{ description: 'Requirement' }],
-          schemaVersion: 'requirement-import.v3',
+          schemaVersion: 'requirement-import.v4',
         },
       }),
     )
@@ -140,7 +149,7 @@ describe('requirements-library import routes', () => {
         locale: 'en',
         payload: {
           requirements: [{ description: 'Requirement' }],
-          schemaVersion: 'requirement-import.v3',
+          schemaVersion: 'requirement-import.v4',
         },
       }),
     )
@@ -158,7 +167,7 @@ describe('requirements-library import routes', () => {
         locale: 'en',
         payload: {
           requirements: [{ description: 'Requirement' }],
-          schemaVersion: 'requirement-import.v3',
+          schemaVersion: 'requirement-import.v4',
         },
       }),
     )
@@ -201,6 +210,62 @@ describe('requirements-library import routes', () => {
       makeContext(true),
     )
   })
+
+  it.each([
+    {
+      invoke: (count: number) =>
+        previewPost(
+          jsonRequest('/api/requirements/import/preview', {
+            areaId: 7,
+            locale: 'en',
+            payload: {
+              requirements: Array.from({ length: count }, (_, index) => ({
+                description: `Requirement ${index}`,
+              })),
+              schemaVersion: 'requirement-import.v4',
+            },
+          }),
+        ),
+      service: routeMocks.previewLibraryImport,
+      variant: 'preview',
+    },
+    {
+      invoke: (count: number) =>
+        executePost(
+          jsonRequest('/api/requirements/import/execute', {
+            areaId: 7,
+            locale: 'en',
+            previewToken: 'preview-token',
+            rows: Array.from({ length: count }, (_, index) => ({
+              description: `Requirement ${index}`,
+              reviewRowId: `row-${index}`,
+              sourceIndex: index,
+            })),
+          }),
+        ),
+      service: routeMocks.executeLibraryImport,
+      variant: 'execute',
+    },
+  ])(
+    'accepts the exact live row budget and rejects one over before $variant mutation',
+    async testCase => {
+      routeMocks.getApplicationSettings.mockResolvedValue({
+        ...DEFAULT_APPLICATION_SETTINGS,
+        requirementImportMaxRows: 2,
+      })
+
+      expect((await testCase.invoke(2)).status).toBeLessThan(300)
+      expect(testCase.service).toHaveBeenCalledOnce()
+      testCase.service.mockClear()
+
+      const over = await testCase.invoke(3)
+      expect(over.status).toBe(422)
+      await expect(over.json()).resolves.toMatchObject({
+        code: 'import_row_count_cap_exceeded',
+      })
+      expect(testCase.service).not.toHaveBeenCalled()
+    },
+  )
 
   it('maps execute failures without leaking the internal exception', async () => {
     routeMocks.executeLibraryImport.mockRejectedValueOnce(

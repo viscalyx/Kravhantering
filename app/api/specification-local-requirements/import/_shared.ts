@@ -1,6 +1,9 @@
 import type { z } from 'zod'
 import { positiveIntegerSchema } from '@/lib/http/validation'
+import type { RequirementImportBudget } from '@/lib/requirements/import-budget'
 import {
+  buildImportExecuteBodySchema,
+  buildImportPreviewBodySchema,
   importExecuteBodySchema,
   importPreviewBodySchema,
 } from '@/lib/requirements/import-schema'
@@ -18,6 +21,24 @@ export const specificationImportExecuteBodySchema = importExecuteBodySchema
   .omit({ areaId: true })
   .extend(specificationIdBodyShape)
   .strict()
+
+export function buildSpecificationImportPreviewBodySchema(
+  budget: RequirementImportBudget,
+) {
+  return buildImportPreviewBodySchema(budget)
+    .omit({ areaId: true })
+    .extend(specificationIdBodyShape)
+    .strict()
+}
+
+export function buildSpecificationImportExecuteBodySchema(
+  budget: RequirementImportBudget,
+) {
+  return buildImportExecuteBodySchema(budget)
+    .omit({ areaId: true })
+    .extend(specificationIdBodyShape)
+    .strict()
+}
 
 export type SpecificationImportPreviewBody = z.infer<
   typeof specificationImportPreviewBodySchema

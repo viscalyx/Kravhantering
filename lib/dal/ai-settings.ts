@@ -71,6 +71,32 @@ interface AiSettingsWriteOptions {
   env?: NodeJS.ProcessEnv
 }
 
+async function assertMcpRowsWithinLockedGlobalLimit(
+  executor: QueryExecutor,
+  mcpImportMaxRows: number,
+): Promise<void> {
+  const rows = await executor.query<
+    Array<{ requirementImportMaxRows: number }>
+  >(
+    `SELECT [requirement_import_max_rows] AS [requirementImportMaxRows]
+     FROM [application_settings] WITH (UPDLOCK, HOLDLOCK)
+     WHERE [id] = 1`,
+  )
+  const globalLimit = Number(rows[0]?.requirementImportMaxRows)
+  if (!Number.isInteger(globalLimit)) {
+    throw serviceUnavailableError(
+      'Application settings are missing from the database. Run privileged database repair before changing settings.',
+      { reason: 'application_settings_database_drift' },
+    )
+  }
+  if (mcpImportMaxRows > globalLimit) {
+    throw validationError('Invalid AI settings', {
+      globalLimit,
+      reason: 'mcp_import_max_rows_exceeds_global_limit',
+    })
+  }
+}
+
 export const DEFAULT_AI_GENERATION_SETTINGS: AiGenerationSettings =
   Object.freeze({
     aiSafetyForensicLoggingEnabled: true,
@@ -597,6 +623,7 @@ export async function updateAiGenerationSettings(
   const now = new Date().toISOString()
 
   await db.transaction(async manager => {
+    await assertMcpRowsWithinLockedGlobalLimit(manager, values.mcpImportMaxRows)
     const updatedRows = (await manager.query(
       `
         UPDATE ai_settings

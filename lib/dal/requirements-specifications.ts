@@ -2388,6 +2388,8 @@ export async function createSpecificationLocalRequirement(
 
 export interface CreateSpecificationLocalRequirementsBatchOptions {
   batchAudit?: (executor: SqlExecutor, createdIds: number[]) => Promise<void>
+  beforeWrite?: (executor: SqlExecutor) => Promise<void>
+  maxGroupSize?: number
 }
 
 export interface CreatedSpecificationLocalRequirementRow {
@@ -2500,14 +2502,28 @@ export async function createSpecificationLocalRequirementsBatch(
 ): Promise<SpecificationLocalRequirementDetail[]> {
   if (inputs.length === 0) return []
 
-  const created = await db.transaction(async (manager: SqlExecutor) =>
-    createSpecificationLocalRequirementsBatchWithExecutor(
+  const created = await db.transaction(async (manager: SqlExecutor) => {
+    const maxGroupSize = Math.max(
+      1,
+      Math.min(inputs.length, options.maxGroupSize ?? inputs.length),
+    )
+    const results: CreatedSpecificationLocalRequirementRow[] = []
+    await options.beforeWrite?.(manager)
+    for (let index = 0; index < inputs.length; index += maxGroupSize) {
+      results.push(
+        ...(await createSpecificationLocalRequirementsBatchWithExecutor(
+          manager,
+          specificationId,
+          inputs.slice(index, index + maxGroupSize),
+        )),
+      )
+    }
+    await options.batchAudit?.(
       manager,
-      specificationId,
-      inputs,
-      options,
-    ),
-  )
+      results.map(row => row.id),
+    )
+    return results
+  })
 
   const details: SpecificationLocalRequirementDetail[] = []
   for (const { id: createdId } of created) {

@@ -17,6 +17,7 @@ import {
   screenAiOutputDetailed,
 } from '@/lib/ai/safety'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
+import { getApplicationSettings } from '@/lib/dal/application-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   AI_PROVIDER_UNAVAILABLE_MESSAGE,
@@ -29,8 +30,14 @@ import {
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import {
+  REQUIREMENT_IMPORT_CONTENT_MAX_BYTES,
+  type RequirementImportBudget,
+  requirementImportBudgetFromSettings,
+  validateImportContentBudget,
+} from '@/lib/requirements/import-budget'
+import {
+  buildRequirementsImportPayloadSchema,
   type ImportRequirementsPayload,
-  requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
@@ -213,7 +220,11 @@ export const POST = secureMutationRoute({
     }
 
     let importInstruction: string
+    let importBudget: RequirementImportBudget
     try {
+      importBudget = requirementImportBudgetFromSettings(
+        await getApplicationSettings(db),
+      )
       importInstruction = await createRequirementsRuntime(
         db,
       ).service.buildImportInstruction(
@@ -252,7 +263,10 @@ export const POST = secureMutationRoute({
     >
     try {
       result = await generateChat<ImportRequirementsPayload>({
-        format: buildRequirementImportResponseFormatSchema(body.locale),
+        format: buildRequirementImportResponseFormatSchema(
+          body.locale,
+          importBudget,
+        ),
         messages: [
           { content: systemPrompt, role: 'system' },
           { content: repairPrompt, role: 'user' },
@@ -284,6 +298,29 @@ export const POST = secureMutationRoute({
       recordRepairEvent('failure', 503)
       return applyResponseCorrelationHeaders(
         Response.json(aiProviderErrorPayload(providerError), { status: 503 }),
+        context,
+      )
+    }
+
+    const serializedContent = JSON.stringify(result.content)
+    const contentBytes = new TextEncoder().encode(serializedContent).byteLength
+    const [budgetIssue] = validateImportContentBudget(
+      result.content,
+      importBudget,
+    )
+    if (contentBytes > REQUIREMENT_IMPORT_CONTENT_MAX_BYTES || budgetIssue) {
+      const code =
+        contentBytes > REQUIREMENT_IMPORT_CONTENT_MAX_BYTES
+          ? 'import_content_bytes_exceeded'
+          : budgetIssue?.code
+      const status =
+        contentBytes > REQUIREMENT_IMPORT_CONTENT_MAX_BYTES ? 413 : 422
+      recordRepairEvent('failure', status, result.stats)
+      return applyResponseCorrelationHeaders(
+        Response.json(
+          { code, error: 'Generated import exceeds the allowed budget.' },
+          { status },
+        ),
         context,
       )
     }
@@ -338,8 +375,10 @@ export const POST = secureMutationRoute({
         context,
       )
     }
-    const validation = requirementsImportPayloadSchema.safeParse(result.content)
-    if (!validation.success) {
+    const validation = buildRequirementsImportPayloadSchema(
+      importBudget,
+    ).safeParse(result.content)
+    if (!validation?.success) {
       const providerError = normalizeAiProviderError(null, {
         code: 'ai_provider_invalid_response',
         correlationId: context.correlationId,
@@ -353,13 +392,12 @@ export const POST = secureMutationRoute({
         context,
       )
     }
-
     recordRepairEvent('success', 200, result.stats)
     return applyResponseCorrelationHeaders(
       Response.json({
         model: modelCapabilities.id,
         payload: validation.data,
-        rawContent: JSON.stringify(validation.data),
+        rawContent: serializedContent,
         stats: result.stats,
         thinking: result.thinking,
       }),

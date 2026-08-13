@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/ai/generate-requirement-import/route'
 import * as aiSafety from '@/lib/ai/safety'
+import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import { clearAiSafetyRuntimeSettingsCacheForTests } from '@/lib/dal/ai-settings'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
@@ -13,6 +14,7 @@ import { parseSecurityForensicsEvents } from '@/tests/helpers/security-forensics
 const routeState = vi.hoisted(() => ({
   buildImportInstruction: vi.fn(),
   generateChatStream: vi.fn(),
+  getApplicationSettings: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   query: vi.fn(),
   resolveOpenRouterModelCapabilities: vi.fn(),
@@ -20,6 +22,10 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: routeState.getApplicationSettings,
 }))
 
 vi.mock('@/lib/requirements/server', async importOriginal => {
@@ -84,6 +90,9 @@ describe('POST /api/ai/generate-requirement-import', () => {
     routeState.getRequestSqlServerDataSource.mockResolvedValue({
       query: routeState.query,
     })
+    routeState.getApplicationSettings.mockResolvedValue(
+      DEFAULT_APPLICATION_SETTINGS,
+    )
     routeState.query.mockResolvedValue([])
     routeState.buildImportInstruction.mockResolvedValue('# Import instruction')
     routeState.resolveOpenRouterModelCapabilities.mockResolvedValue({
@@ -106,6 +115,10 @@ describe('POST /api/ai/generate-requirement-import', () => {
   })
 
   it('streams generated requirement import JSON after schema validation', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...DEFAULT_APPLICATION_SETTINGS,
+      requirementImportMaxRows: 1,
+    })
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -237,6 +250,35 @@ describe('POST /api/ai/generate-requirement-import', () => {
     expect(text).toContain('ai_provider_invalid_response')
     expect(text).toContain('AI provider returned an invalid response')
     expect(text).not.toMatch(/Ada Lovelace|ada@example\.test|payroll prompt/)
+  })
+
+  it('rejects generated content over the live row budget before output safety work', async () => {
+    routeState.getApplicationSettings.mockResolvedValueOnce({
+      ...DEFAULT_APPLICATION_SETTINGS,
+      requirementImportMaxRows: 1,
+    })
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        phase: 'done',
+        rawContent: JSON.stringify({
+          requirements: [
+            { description: 'First requirement.' },
+            { description: 'Second requirement.' },
+          ],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        }),
+        stats: { totalTokens: 10 },
+        thinking: '',
+      }
+    })
+    const outputSafetySpy = vi.mocked(aiSafety.screenAiOutputDetailed)
+    outputSafetySpy.mockClear()
+
+    const response = await POST(makeRequest())
+    const text = await response.text()
+
+    expect(text).toContain('import_row_count_cap_exceeded')
+    expect(outputSafetySpy).not.toHaveBeenCalled()
   })
 
   it('streams provider unavailable when import instruction loading fails before generation starts', async () => {

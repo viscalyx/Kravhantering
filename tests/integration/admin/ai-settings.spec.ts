@@ -104,15 +104,48 @@ test.describe('Admin settings', () => {
         'false',
       )
       await expect(page.locator('#admin-settings-ai-section')).toBeVisible()
+      const importsHeading = panel.getByRole('heading', {
+        exact: true,
+        name: 'Importer',
+      })
+      await expect(importsHeading).toBeVisible()
       await expect(
         panel.getByRole('heading', { exact: true, name: 'Exporter' }),
       ).toBeVisible()
       await expect(
         panel.getByRole('heading', { exact: true, name: 'Rapporter' }),
       ).toBeVisible()
+      const sectionOrder = await panel
+        .locator(
+          '#admin-settings-ai-section, [aria-labelledby="admin-settings-imports-title"], [aria-labelledby="admin-settings-exports-title"], [aria-labelledby="admin-settings-reports-title"]',
+        )
+        .evaluateAll(sections =>
+          sections.map(
+            section => section.getAttribute('aria-labelledby') ?? section.id,
+          ),
+        )
+      expect(sectionOrder).toEqual([
+        'admin-settings-ai-title',
+        'admin-settings-imports-title',
+        'admin-settings-exports-title',
+        'admin-settings-reports-title',
+      ])
 
       const inputs = panel.locator('input[id^="admin-application-setting-"]')
-      await expect(inputs).toHaveCount(9)
+      await expect(inputs).toHaveCount(14)
+      await expect(
+        panel.locator('#admin-application-setting-requirementImportMaxRows'),
+      ).toHaveValue(String(original.requirementImportMaxRows))
+      await expect(
+        panel.locator(
+          '#admin-application-setting-requirementImportMaxNestedItems',
+        ),
+      ).toHaveValue(String(original.requirementImportMaxNestedItems))
+      await expect(
+        panel.locator(
+          '#admin-application-setting-requirementImportMaxJsonDepth',
+        ),
+      ).toHaveValue(String(original.requirementImportMaxJsonDepth))
       await expect(
         panel.locator('#admin-application-setting-csvExportMaxFileBytes'),
       ).toHaveValue(String(original.csvExportMaxFileBytes / (1024 * 1024)))

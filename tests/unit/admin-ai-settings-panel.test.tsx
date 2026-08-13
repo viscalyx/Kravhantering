@@ -258,7 +258,7 @@ describe('AiSettingsPanel', () => {
     await waitFor(() => expect(mcpLimit).toBeEnabled())
 
     const importRows = screen.getByLabelText('admin.ai.mcpImportMaxRows')
-    fireEvent.change(importRows, { target: { value: '501' } })
+    fireEvent.change(importRows, { target: { value: '499' } })
     fireEvent.blur(importRows)
     await waitFor(() => expect(importRows).toBeEnabled())
 

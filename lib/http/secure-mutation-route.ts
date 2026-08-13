@@ -73,9 +73,22 @@ export interface SecureMutationPreParseArgs {
   request: Request
 }
 
+export type SecureMutationBodyReadResult<TBody> =
+  | { data: TBody; ok: true }
+  | { ok: false; response: NextResponse }
+
+export interface SecureMutationBodyReaderArgs<TParams> {
+  context: RequestContext
+  params: TParams
+  request: Request
+}
+
 type NoInferMutation<T> = [T][T extends unknown ? 0 : never]
 
 export interface SecureMutationRouteOptions<TBody, TParams> {
+  bodyReader?: (
+    args: SecureMutationBodyReaderArgs<TParams>,
+  ) => Promise<SecureMutationBodyReadResult<TBody>>
   bodySchema?: ZodType<TBody>
   decorateErrorResponse?: (response: NextResponse) => NextResponse
   decorateResponse?: (response: Response) => Response
@@ -289,9 +302,24 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
       return decorateErrorResponse(options, request, parsedParams.response)
     }
 
-    const parsedBody = options.bodySchema
-      ? await readJsonWithSchema(request, options.bodySchema)
-      : ({ data: undefined as TBody, ok: true } as const)
+    let parsedBody: SecureMutationBodyReadResult<TBody>
+    try {
+      parsedBody = options.bodyReader
+        ? await options.bodyReader({
+            context,
+            params: parsedParams.data,
+            request,
+          })
+        : options.bodySchema
+          ? await readJsonWithSchema(request, options.bodySchema)
+          : ({ data: undefined as TBody, ok: true } as const)
+    } catch (error) {
+      return decorateErrorResponse(
+        options,
+        request,
+        errorResponse(errorMessage, error),
+      )
+    }
     if (!parsedBody.ok) {
       return decorateErrorResponse(options, request, parsedBody.response)
     }

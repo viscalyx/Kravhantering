@@ -16,6 +16,11 @@ export interface ApplicationSettingEntity {
   pdfReportMaxRequirements: number
   pdfReportTimeoutSeconds: number
   pdfWorkerMemoryMib: number
+  requirementImportMaxJsonDepth: number
+  requirementImportMaxNestedItems: number
+  requirementImportMaxProposedNeedsReferences: number
+  requirementImportMaxProposedNormReferences: number
+  requirementImportMaxRows: number
   updatedAt: Date
 }
 
@@ -75,6 +80,31 @@ export const applicationSettingEntity =
         name: 'pdf_worker_memory_mib',
         type: 'int',
       },
+      requirementImportMaxRows: {
+        default: 500,
+        name: 'requirement_import_max_rows',
+        type: 'int',
+      },
+      requirementImportMaxProposedNormReferences: {
+        default: 500,
+        name: 'requirement_import_max_proposed_norm_references',
+        type: 'int',
+      },
+      requirementImportMaxProposedNeedsReferences: {
+        default: 500,
+        name: 'requirement_import_max_proposed_needs_references',
+        type: 'int',
+      },
+      requirementImportMaxNestedItems: {
+        default: 200,
+        name: 'requirement_import_max_nested_items',
+        type: 'int',
+      },
+      requirementImportMaxJsonDepth: {
+        default: 8,
+        name: 'requirement_import_max_json_depth',
+        type: 'int',
+      },
       createdAt: { name: 'created_at', type: 'datetime2' },
       updatedAt: { name: 'updated_at', type: 'datetime2' },
     },
@@ -118,6 +148,26 @@ export const applicationSettingEntity =
       {
         expression: `[pdf_worker_memory_mib] >= ${APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.min} AND [pdf_worker_memory_mib] <= ${APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.max}`,
         name: 'chk_application_settings_pdf_worker_memory_mib',
+      },
+      {
+        expression: `[requirement_import_max_rows] >= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxRows.min} AND [requirement_import_max_rows] <= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxRows.max}`,
+        name: 'chk_application_settings_requirement_import_max_rows',
+      },
+      {
+        expression: `[requirement_import_max_proposed_norm_references] >= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxProposedNormReferences.min} AND [requirement_import_max_proposed_norm_references] <= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxProposedNormReferences.max}`,
+        name: 'chk_application_settings_requirement_import_max_proposed_norm_references',
+      },
+      {
+        expression: `[requirement_import_max_proposed_needs_references] >= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxProposedNeedsReferences.min} AND [requirement_import_max_proposed_needs_references] <= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxProposedNeedsReferences.max}`,
+        name: 'chk_application_settings_requirement_import_max_proposed_needs_references',
+      },
+      {
+        expression: `[requirement_import_max_nested_items] >= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxNestedItems.min} AND [requirement_import_max_nested_items] <= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxNestedItems.max}`,
+        name: 'chk_application_settings_requirement_import_max_nested_items',
+      },
+      {
+        expression: `[requirement_import_max_json_depth] >= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxJsonDepth.min} AND [requirement_import_max_json_depth] <= ${APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxJsonDepth.max}`,
+        name: 'chk_application_settings_requirement_import_max_json_depth',
       },
     ],
   })

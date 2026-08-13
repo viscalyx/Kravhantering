@@ -13,7 +13,7 @@ const generatedPayload = {
       typeId: 1,
     },
   ],
-  schemaVersion: 'requirement-import.v3',
+  schemaVersion: 'requirement-import.v4',
 }
 const generatedAnalysis = [
   '# Analys av betygskrav',

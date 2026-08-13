@@ -19,6 +19,23 @@ ignoreras behovsreferensfält med informationsmeddelande. Version 3 ersätter
 version 2 som kanoniskt schema; äldre versioner behöver inte stödjas som
 inläsningsformat.
 
+Tillägg 2026-08-13: `requirement-import.v4` gör `Kravimportbudget` till en del
+av det kanoniska kontraktet för webbläsare, REST, AI-assisterat författande och
+MCP. Hela transportbegäran har ett fast applikationstak på 10 MiB och
+importinnehållet har ett fast tak på 8 MiB. Administratören kan inom fasta
+säkerhetstak sänka högsta antal kravrader från 500, respektive typ av föreslagen
+referens från 500, objekt i varje nästlad samling från 200 och importinnehållets
+JSON-djup från 8. Det genererade schemat uttrycker den aktuella budgeten utan
+att varje inställningsändring skapar en ny schemaversion; version 3 behöver inte
+stödjas som inläsningsformat.
+
+En förhandsgranskning eller MCP-valideringssession binds till den budget som
+gäller när den skapas och blir inaktuell när budgeten ändras. Dyr
+förhandsgranskning, validering och körning delar en pool med två samtidiga
+operationer per applikationsnod. Databasarbetet delas i grupper om högst 50
+rader inom samma transaktion, så att hela körningen fortfarande lyckas eller
+återställs atomärt.
+
 Efter schemavalidering laddas importfilen till en redigerbar granskningsyta där
 användaren väljer rader, kompletterar obligatoriska sparvärden och löser eller
 accepterar varningar för frivillig metadata. Importen persisterar inte raw JSON
@@ -36,3 +53,11 @@ destinationskontext och referensdata innan alla valda rader skapas atomärt.
 - Persisterad importsession eller raw importfil: avvisat eftersom skapade krav,
   audit events och frivillig CSV-kvitto räcker som varaktiga spår, medan raw
   importdata skulle skapa onödiga retention- och personuppgiftsfrågor.
+- Enbart MCP-specifika gränser: avvisat eftersom samma importkontrakt används av
+  flera ingångar och alla behöver omfattas av samma applikationsägda
+  säkerhetstak.
+- Delvis bekräftade databasbatcher: avvisat eftersom de bryter löftet att alla
+  valda rader skapas atomärt.
+- Distribuerad samtidighetsstyrning: avvisat eftersom kapaciteten hanteras per
+  applikationsnod och en distribuerad kö skulle göra importflödet och driften
+  väsentligt mer komplexa.

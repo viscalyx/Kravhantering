@@ -280,10 +280,10 @@ Sources: `lib/requirements/import-schema.ts`,
 `app/api/requirements/import/instruction`.
 
 Requirement import publishes a strict shared JSON Schema whose top-level
-`schemaVersion` is `requirement-import.v3`. The version applies to the whole
+`schemaVersion` is `requirement-import.v4`. The version applies to the whole
 import file, including requirement candidates and support data such as
-`proposedNormReferences` and `proposedNeedsReferences`. Version 3 replaces
-version 2 as the canonical schema; automated producers must emit v3. The same
+`proposedNormReferences` and `proposedNeedsReferences`. Version 4 replaces
+version 3 as the canonical schema; automated producers must emit v4. The same
 file format is used for kravbiblioteksimport and kravunderlagsimport;
 destination context is selected in the UI/API outside the file. Unknown fields
 are rejected, including destination fields such as `areaId` and
@@ -292,7 +292,9 @@ In the schema artifact this is represented as `properties.schemaVersion`,
 because JSON Schema describes top-level object fields under `properties`; the
 actual import JSON still places `schemaVersion` at the root.
 
-The authenticated schema endpoint returns only the raw global schema. The
+The authenticated schema endpoint returns the schema with the current global
+row, proposal, nested-item, and JSON-depth limits. The fixed request transport
+ceiling is 10 MiB and import content is limited to 8 MiB of UTF-8 data. The
 authenticated import instruction endpoint returns Markdown containing the
 schema plus current taxonomy and norm references so an AI system can produce
 valid JSON without guessing reference data. When the caller passes a
@@ -397,7 +399,7 @@ Minimal valid import JSON:
 
 ```json
 {
-  "schemaVersion": "requirement-import.v3",
+  "schemaVersion": "requirement-import.v4",
   "requirements": [
     {
       "description": "Systemet ska logga säkerhetsrelevanta händelser."
@@ -411,7 +413,7 @@ needs references:
 
 ```json
 {
-  "schemaVersion": "requirement-import.v3",
+  "schemaVersion": "requirement-import.v4",
   "proposedNormReferences": [
     {
       "key": "gdpr-article-32",

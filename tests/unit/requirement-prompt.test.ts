@@ -118,6 +118,7 @@ describe('buildRequirementImportResponseFormatSchema', () => {
       'requirements',
     ])
     expect(schema).not.toHaveProperty('$schema')
+    expect(schema).not.toHaveProperty('x-requirement-import-budget')
     expect(schema).toMatchObject({
       additionalProperties: false,
       required: [
@@ -234,6 +235,26 @@ describe('buildRequirementImportResponseFormatSchema', () => {
         }
       ).items,
     ).not.toHaveProperty('maximum')
+  })
+
+  it('uses the effective import budget in structured output constraints', () => {
+    const schema = buildRequirementImportResponseFormatSchema('en', {
+      maxJsonDepth: 6,
+      maxNestedItems: 10,
+      maxProposedNeedsReferences: 20,
+      maxProposedNormReferences: 30,
+      maxRows: 40,
+    })
+
+    expect(schema).toHaveProperty('properties.requirements.maxItems', 40)
+    expect(schema).toHaveProperty(
+      'properties.proposedNormReferences.maxItems',
+      30,
+    )
+    expect(schema).toHaveProperty(
+      'properties.proposedNeedsReferences.maxItems',
+      20,
+    )
   })
 
   it('keeps the OpenRouter structured-output schema below provider union limits', () => {

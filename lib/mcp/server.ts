@@ -56,6 +56,7 @@ const READABLE_MCP_ERROR_CODES = new Set<RequirementsErrorCode>([
   'conflict',
   'unauthorized',
   'forbidden',
+  'import_capacity_busy',
 ])
 
 const QueryCatalogKindSchema = z.enum([
@@ -614,12 +615,15 @@ function formatError(error: unknown) {
       ? error.message
       : 'An internal error occurred'
 
+  const capacityBusy =
+    isRequirementsServiceError(error) && error.code === 'import_capacity_busy'
   return {
     content: [
       {
         type: 'text' as const,
-        text:
-          isRequirementsServiceError(error) && error.code === 'invalid_cursor'
+        text: capacityBusy
+          ? `Error [import_capacity_busy]: ${message} Retry after 5 seconds.`
+          : isRequirementsServiceError(error) && error.code === 'invalid_cursor'
             ? `Error [invalid_cursor]: ${message}. Restart without cursor while retaining the normalized filters, locale, and sort.`
             : `Error: ${message}`,
       },

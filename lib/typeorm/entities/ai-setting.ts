@@ -62,8 +62,7 @@ export const aiSettingEntity = new EntitySchema<AiSettingEntity>({
       name: 'chk_ai_settings_mcp_max_request_bytes',
     },
     {
-      expression:
-        '[mcp_import_max_rows] >= 1 AND [mcp_import_max_rows] <= 5000',
+      expression: '[mcp_import_max_rows] >= 1 AND [mcp_import_max_rows] <= 500',
       name: 'chk_ai_settings_mcp_import_max_rows',
     },
     {

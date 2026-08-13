@@ -28,6 +28,11 @@ describe('application settings contract', () => {
       pdfReportMaxRequirements: 1000,
       pdfReportTimeoutSeconds: 180,
       pdfWorkerMemoryMib: 512,
+      requirementImportMaxJsonDepth: 8,
+      requirementImportMaxNestedItems: 200,
+      requirementImportMaxProposedNeedsReferences: 500,
+      requirementImportMaxProposedNormReferences: 500,
+      requirementImportMaxRows: 500,
     })
   })
 
@@ -60,7 +65,7 @@ describe('application settings contract', () => {
     ).toBe(false)
   })
 
-  it('maps the singleton entity and all nine checks', () => {
+  it('maps the singleton entity and every application setting check', () => {
     expect(applicationSettingEntity.options.tableName).toBe(
       'application_settings',
     )
@@ -72,7 +77,7 @@ describe('application settings contract', () => {
     ).toMatchObject({
       name: 'csv_export_max_items',
     })
-    expect(applicationSettingEntity.options.checks).toHaveLength(10)
+    expect(applicationSettingEntity.options.checks).toHaveLength(15)
     expect(
       applicationSettingEntity.options.checks?.map(check => check.name),
     ).toContain('chk_application_settings_pdf_worker_memory_mib')
@@ -92,6 +97,28 @@ describe('application settings contract', () => {
     ).toBe(
       `[pdf_worker_memory_mib] >= ${APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.min} AND [pdf_worker_memory_mib] <= ${APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.max}`,
     )
+    expect(
+      expressions.get('chk_application_settings_requirement_import_max_rows'),
+    ).toBe(
+      '[requirement_import_max_rows] >= 1 AND [requirement_import_max_rows] <= 500',
+    )
+  })
+
+  it('adds requirement import settings and clamps legacy MCP rows in migration 0055', async () => {
+    const migration = await import(
+      '@/typeorm/migrations/0055_requirement_import_budget.mjs'
+    )
+    const queryRunner = { query: vi.fn(async (_statement: string) => {}) }
+
+    await new migration.default().up(queryRunner)
+
+    const sql = queryRunner.query.mock.calls
+      .map(([statement]) => String(statement))
+      .join('\n')
+    expect(sql).toContain('requirement_import_max_rows')
+    expect(sql).toContain('requirement_import_max_json_depth')
+    expect(sql).toContain('mcp_import_max_rows] > 500')
+    expect(sql).toContain('chk_ai_settings_mcp_import_max_rows')
   })
 
   it('keeps migration and both seed profiles synchronized', async () => {

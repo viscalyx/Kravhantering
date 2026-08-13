@@ -14,6 +14,13 @@ const serviceState = vi.hoisted(() => ({
     mcpImportValidationTtlMinutes: 60,
     mcpMaxRequestBytes: 1024 * 1024,
   })),
+  getApplicationSettings: vi.fn(async () => ({
+    requirementImportMaxJsonDepth: 8,
+    requirementImportMaxNestedItems: 200,
+    requirementImportMaxProposedNeedsReferences: 500,
+    requirementImportMaxProposedNormReferences: 500,
+    requirementImportMaxRows: 500,
+  })),
   getService: vi.fn(),
 }))
 
@@ -50,6 +57,10 @@ vi.mock('@/lib/dal/ai-settings', () => ({
   getCachedMcpRuntimeSettings: serviceState.getCachedMcpRuntimeSettings,
 }))
 
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: serviceState.getApplicationSettings,
+}))
+
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
@@ -60,7 +71,10 @@ import {
   MCP_DEFAULT_REQUEST_BYTES,
 } from '@/lib/mcp/http'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
-import { RequirementsServiceError } from '@/lib/requirements/errors'
+import {
+  importCapacityBusyError,
+  RequirementsServiceError,
+} from '@/lib/requirements/errors'
 import {
   buildRequirementsImportJsonSchema,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
@@ -1531,6 +1545,38 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
+  it('returns stable MCP capacity retry guidance', async () => {
+    const fakeService = createFakeService()
+    fakeService.manageImport.mockRejectedValueOnce(importCapacityBusyError())
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+    const result = await client.callTool({
+      arguments: {
+        destination: { areaId: 7, kind: 'requirements_library' },
+        operation: 'validate',
+        payload: {
+          requirements: [{ description: 'Requirement' }],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      },
+      name: 'requirements_manage_import',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: expect.stringContaining('Error [import_capacity_busy]:'),
+          type: 'text',
+        }),
+      ]),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
   it('returns invalid_cursor explicitly for specification continuation', async () => {
     const fakeService = createFakeService()
     fakeService.getSpecificationItems.mockRejectedValueOnce(
@@ -1787,6 +1833,34 @@ describe('handleRequirementsMcpRequest', () => {
     expect(pullCount).toBeLessThan(50)
     expect(serviceState.getCachedMcpRuntimeSettings).toHaveBeenCalledOnce()
     expect(verifyMcpBearerToken).toHaveBeenCalledOnce()
+    expect(serviceState.getService).not.toHaveBeenCalled()
+  })
+
+  it('rejects an understated Content-Length using measured MCP body bytes', async () => {
+    serviceState.getCachedMcpRuntimeSettings.mockResolvedValueOnce({
+      mcpImportMaxRows: 500,
+      mcpImportValidationTtlMinutes: 60,
+      mcpMaxRequestBytes: 1024,
+    })
+
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'tools/list',
+          padding: 'x'.repeat(1024),
+        }),
+        headers: {
+          'content-length': '1',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(413)
     expect(serviceState.getService).not.toHaveBeenCalled()
   })
 

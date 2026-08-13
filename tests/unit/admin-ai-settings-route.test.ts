@@ -7,6 +7,7 @@ import {
   MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 } from '@/lib/ai/generation-availability'
+import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
@@ -48,6 +49,7 @@ const routeState = vi.hoisted(() => ({
   })),
   clearAiSafetyRuntimeSettingsCache: vi.fn(),
   getAdminAiSettings: vi.fn(),
+  getApplicationSettings: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   patchAiGenerationSettings: vi.fn(),
   recordAdminPrivilegedActionSucceeded: vi.fn(),
@@ -76,6 +78,10 @@ vi.mock('@/lib/dal/ai-settings', () => ({
   updateAiGenerationSettings: routeState.updateAiGenerationSettings,
 }))
 
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: routeState.getApplicationSettings,
+}))
+
 vi.mock('@/lib/requirements/auth', () => ({
   createDefaultAuthorizationService: () => ({
     assertAuthorized: vi.fn(),
@@ -101,6 +107,9 @@ describe('admin AI settings route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.getAdminAiSettings.mockResolvedValue(enabledResponse)
+    routeState.getApplicationSettings.mockResolvedValue(
+      DEFAULT_APPLICATION_SETTINGS,
+    )
     routeState.updateAiGenerationSettings.mockImplementation(
       async (_db, values, options) => {
         await options?.audit?.({ query: vi.fn() })
@@ -384,6 +393,28 @@ describe('admin AI settings route', () => {
       },
       expect.anything(),
     )
+  })
+
+  it('rejects an MCP row override above the global import row limit', async () => {
+    routeState.patchAiGenerationSettings.mockRejectedValueOnce(
+      new RequirementsServiceError('validation', 'Invalid AI settings', {
+        details: { reason: 'mcp_import_max_rows_exceeds_global_limit' },
+        httpStatus: 400,
+      }),
+    )
+
+    const response = await PATCH(
+      new NextRequest('https://example.test/api/admin/ai-settings', {
+        body: JSON.stringify({ mcpImportMaxRows: 251 }),
+        method: 'PATCH',
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'validation',
+    })
+    expect(routeState.patchAiGenerationSettings).toHaveBeenCalledOnce()
   })
 
   it('rejects empty patches before DAL work', async () => {

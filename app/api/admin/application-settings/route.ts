@@ -81,6 +81,48 @@ const applicationSettingsPatchSchema = z
       .min(APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.min)
       .max(APPLICATION_SETTING_CONSTRAINTS.pdfWorkerMemoryMib.max)
       .optional(),
+    requirementImportMaxJsonDepth: z
+      .number()
+      .int()
+      .min(APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxJsonDepth.min)
+      .max(APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxJsonDepth.max)
+      .optional(),
+    requirementImportMaxNestedItems: z
+      .number()
+      .int()
+      .min(APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxNestedItems.min)
+      .max(APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxNestedItems.max)
+      .optional(),
+    requirementImportMaxProposedNeedsReferences: z
+      .number()
+      .int()
+      .min(
+        APPLICATION_SETTING_CONSTRAINTS
+          .requirementImportMaxProposedNeedsReferences.min,
+      )
+      .max(
+        APPLICATION_SETTING_CONSTRAINTS
+          .requirementImportMaxProposedNeedsReferences.max,
+      )
+      .optional(),
+    requirementImportMaxProposedNormReferences: z
+      .number()
+      .int()
+      .min(
+        APPLICATION_SETTING_CONSTRAINTS
+          .requirementImportMaxProposedNormReferences.min,
+      )
+      .max(
+        APPLICATION_SETTING_CONSTRAINTS
+          .requirementImportMaxProposedNormReferences.max,
+      )
+      .optional(),
+    requirementImportMaxRows: z
+      .number()
+      .int()
+      .min(APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxRows.min)
+      .max(APPLICATION_SETTING_CONSTRAINTS.requirementImportMaxRows.max)
+      .optional(),
   })
   .strict()
   .refine(body => Object.keys(body).length === 1, {

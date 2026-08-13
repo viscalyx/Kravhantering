@@ -239,9 +239,11 @@ function restoreSafetyRuleDefaultsInRules(
 
 export default function AiSettingsPanel({
   embedded = false,
+  mcpImportMaxRowsCeiling = MCP_IMPORT_MAX_ROWS_MAX,
   onSettingsSettled,
 }: {
   embedded?: boolean
+  mcpImportMaxRowsCeiling?: number
   onSettingsSettled?: () => void
 }) {
   const locale = useLocale()
@@ -320,6 +322,14 @@ export default function AiSettingsPanel({
   const [mcpImportRowsInput, setMcpImportRowsInput] = useState(
     committedMcpImportRows,
   )
+  useEffect(() => {
+    if (currentMcpImportMaxRows <= mcpImportMaxRowsCeiling) return
+    setSettings(current => ({
+      ...current,
+      mcpImportMaxRows: mcpImportMaxRowsCeiling,
+    }))
+    setMcpImportRowsInput(String(mcpImportMaxRowsCeiling))
+  }, [currentMcpImportMaxRows, mcpImportMaxRowsCeiling])
   const committedMcpImportTtlMinutes = String(
     settings.mcpImportValidationTtlMinutes ??
       MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
@@ -440,7 +450,10 @@ export default function AiSettingsPanel({
   }
 
   function updateMcpImportMaxRows(nextValue: number) {
-    const next = coerceMcpImportMaxRows(nextValue)
+    const next = Math.min(
+      coerceMcpImportMaxRows(nextValue),
+      mcpImportMaxRowsCeiling,
+    )
     setMcpImportRowsInput(String(next))
     if (next === currentMcpImportMaxRows) return
     void saveSettingsPatch(
@@ -1651,7 +1664,7 @@ export default function AiSettingsPanel({
                       }
                       id={mcpImportRowsId}
                       inputMode="numeric"
-                      max={MCP_IMPORT_MAX_ROWS_MAX}
+                      max={mcpImportMaxRowsCeiling}
                       min={MCP_IMPORT_MAX_ROWS_MIN}
                       onBlur={event => {
                         commitMcpImportMaxRowsInput(event.currentTarget.value)

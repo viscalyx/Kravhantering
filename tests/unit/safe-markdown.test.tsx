@@ -29,7 +29,7 @@ describe('SafeMarkdown', () => {
           '> Quoted source text',
           '',
           '```json',
-          '{"schemaVersion":"requirement-import.v3"}',
+          '{"schemaVersion":"requirement-import.v4"}',
           '```',
         ].join('\n')}
       </SafeMarkdown>,
@@ -43,7 +43,7 @@ describe('SafeMarkdown', () => {
     expect(screen.getByText('schemaVersion').tagName).toBe('CODE')
     expect(screen.getAllByRole('list')).toHaveLength(2)
     expect(screen.getByText('Quoted source text')).toBeInTheDocument()
-    expect(screen.getByText(/requirement-import\.v3/u)).toBeInTheDocument()
+    expect(screen.getByText(/requirement-import\.v4/u)).toBeInTheDocument()
   })
 
   it('normalizes deeper Markdown headings to compact in-panel headings', () => {

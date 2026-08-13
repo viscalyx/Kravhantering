@@ -251,7 +251,7 @@ function generatedImportPayload(description: string) {
         typeId: 1,
       },
     ],
-    schemaVersion: 'requirement-import.v3',
+    schemaVersion: 'requirement-import.v4',
   }
 }
 
@@ -2364,7 +2364,7 @@ describe('AiRequirementGenerator', () => {
             description: 'Generated security requirement',
           }),
         ],
-        schemaVersion: 'requirement-import.v3',
+        schemaVersion: 'requirement-import.v4',
       }),
       {
         areaId: 1,
@@ -2701,7 +2701,7 @@ describe('AiRequirementGenerator', () => {
       if (url.startsWith('/api/ai/credits')) return creditResponse()
       if (url === '/api/ai/generate-requirement-import') {
         return generationStreamResponse({
-          payload: { requirements: [], schemaVersion: 'requirement-import.v3' },
+          payload: { requirements: [], schemaVersion: 'requirement-import.v4' },
         })
       }
       if (url === '/api/requirements/import/preview') {

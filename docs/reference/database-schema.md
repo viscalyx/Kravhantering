@@ -196,6 +196,11 @@ erDiagram
 
     application_settings {
         integer id PK
+        integer requirement_import_max_rows
+        integer requirement_import_max_proposed_norm_references
+        integer requirement_import_max_proposed_needs_references
+        integer requirement_import_max_nested_items
+        integer requirement_import_max_json_depth
         integer csv_export_max_items
         integer csv_export_max_file_bytes
         integer csv_export_concurrency_per_node
@@ -1495,15 +1500,23 @@ defaults used by the app.
 
 ### `application_settings`
 
-Singleton Admin Center resource limits for generated CSV exports and large PDF
-reports. `csv_export_max_items` counts CSV data rows across every CSV dataset;
-it is not requirement-specific. File-size values are persisted as bytes; the
-UI converts them to MiB.
+Singleton Admin Center resource limits for requirement imports, generated CSV
+exports, and large PDF reports. Requirement-import limits are shared by the
+browser, REST, AI-assisted authoring, and MCP; the fixed transport and content
+byte ceilings are application-owned rather than persisted here.
+`csv_export_max_items` counts CSV data rows across every CSV dataset; it is not
+requirement-specific. File-size values are persisted as bytes; the UI converts
+them to MiB.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Default | Allowed value |
 | --- | --- | --- | --- |
 | `id` | integer PK | `1` | Singleton row `1` |
+| `requirement_import_max_rows` | integer | `500` | `1`–`500` |
+| `requirement_import_max_proposed_norm_references` | integer | `500` | `0`–`500` |
+| `requirement_import_max_proposed_needs_references` | integer | `500` | `0`–`500` |
+| `requirement_import_max_nested_items` | integer | `200` | `0`–`200` |
+| `requirement_import_max_json_depth` | integer | `8` | `4`–`8` |
 | `csv_export_max_items` | integer | `1000` | `1`–`5000` |
 | `csv_export_max_file_bytes` | integer | `104857600` | `1`–`1024` MiB in `1 MiB` steps |
 | `csv_export_concurrency_per_node` | integer | `5` | `1`–`20` |
@@ -1519,11 +1532,12 @@ UI converts them to MiB.
 
 Required and demo seed profiles create row `id = 1` without overwriting an
 existing row. `chk_application_settings_id` enforces the singleton identity.
-The nine field-specific `chk_application_settings_*` constraints enforce the
+The fourteen field-specific `chk_application_settings_*` constraints enforce the
 ranges above; the two byte fields additionally enforce exact `1 MiB` steps.
-Each generated-output operation reads one settings snapshot after
-authorization and uses that snapshot for admission, bounds, timeout, worker
-memory, and telemetry.
+Lowering `requirement_import_max_rows` atomically clamps the persisted MCP row
+override when necessary. Each import or generated-output operation reads one
+settings snapshot after authorization and uses that snapshot for admission and
+runtime bounds.
 
 ### `ai_settings`
 
@@ -1571,7 +1585,7 @@ existing singleton row.
 **Check constraints:** `chk_ai_settings_id` enforces the singleton row ID.
 `chk_ai_settings_mcp_max_request_bytes` enforces integer byte values on a
 `1 MiB` grid from `1 MiB` through `10 MiB`, with no unlimited value.
-`chk_ai_settings_mcp_import_max_rows` enforces values from `1` through `5000`.
+`chk_ai_settings_mcp_import_max_rows` enforces values from `1` through `500`.
 `chk_ai_settings_mcp_import_validation_ttl_minutes` enforces values from `1`
 through `1440`.
 `chk_ai_settings_ai_safety_rule_cache_ttl_seconds` enforces cache values from

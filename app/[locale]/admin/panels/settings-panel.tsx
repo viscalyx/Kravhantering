@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, FileText, Minus, Plus } from 'lucide-react'
+import { Download, FileInput, FileText, Minus, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
   type KeyboardEvent,
@@ -31,8 +31,26 @@ interface SettingDefinition {
   field: ApplicationSettingField
   stepper?: boolean
   storedAsBytes?: boolean
-  unit: 'exports' | 'mib' | 'renderings' | 'requirements' | 'rows' | 'seconds'
+  unit:
+    | 'depthLevels'
+    | 'exports'
+    | 'importItems'
+    | 'importRows'
+    | 'mib'
+    | 'proposals'
+    | 'renderings'
+    | 'requirements'
+    | 'rows'
+    | 'seconds'
 }
+
+const IMPORT_SETTINGS: readonly SettingDefinition[] = [
+  { field: 'requirementImportMaxRows', unit: 'importRows' },
+  { field: 'requirementImportMaxProposedNormReferences', unit: 'proposals' },
+  { field: 'requirementImportMaxProposedNeedsReferences', unit: 'proposals' },
+  { field: 'requirementImportMaxNestedItems', unit: 'importItems' },
+  { field: 'requirementImportMaxJsonDepth', unit: 'depthLevels' },
+]
 
 const EXPORT_SETTINGS: readonly SettingDefinition[] = [
   { field: 'csvExportMaxItems', unit: 'rows' },
@@ -88,10 +106,9 @@ function apiValue(definition: SettingDefinition, value: number): number {
 
 function emptySaveStates(): Record<ApplicationSettingField, SaveState> {
   return Object.fromEntries(
-    [...EXPORT_SETTINGS, ...REPORT_SETTINGS].map(({ field }) => [
-      field,
-      'idle',
-    ]),
+    [...IMPORT_SETTINGS, ...EXPORT_SETTINGS, ...REPORT_SETTINGS].map(
+      ({ field }) => [field, 'idle'],
+    ),
   ) as Record<ApplicationSettingField, SaveState>
 }
 
@@ -110,7 +127,9 @@ export default function SettingsPanel() {
   const [openHelp, setOpenHelp] = useState<ApplicationSettingField | null>(null)
   const saveTokens = useRef<Record<ApplicationSettingField, number>>(
     Object.fromEntries(
-      [...EXPORT_SETTINGS, ...REPORT_SETTINGS].map(({ field }) => [field, 0]),
+      [...IMPORT_SETTINGS, ...EXPORT_SETTINGS, ...REPORT_SETTINGS].map(
+        ({ field }) => [field, 0],
+      ),
     ) as Record<ApplicationSettingField, number>,
   )
   const loadErrorMessage = ta('applicationSettings.loadError')
@@ -440,7 +459,49 @@ export default function SettingsPanel() {
         aria-busy={!allSettled}
         className={`mt-6 space-y-6 ${allSettled ? '' : 'invisible'}`}
       >
-        <AiSettingsPanel embedded onSettingsSettled={handleAiSettingsSettled} />
+        <AiSettingsPanel
+          embedded
+          mcpImportMaxRowsCeiling={settings.requirementImportMaxRows}
+          onSettingsSettled={handleAiSettingsSettled}
+        />
+
+        <section
+          aria-labelledby="admin-settings-imports-title"
+          className="min-h-152 rounded-4xl border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80 lg:min-h-0"
+        >
+          <h3
+            className="flex items-center gap-2 text-xl font-semibold text-secondary-950 dark:text-secondary-50"
+            id="admin-settings-imports-title"
+          >
+            <FileInput
+              aria-hidden="true"
+              className="h-5 w-5 text-primary-700 dark:text-primary-300"
+            />
+            {ta('applicationSettings.imports.title')}
+          </h3>
+          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+            {ta('applicationSettings.imports.description')}
+          </p>
+          {loadState === 'error' ? (
+            <div
+              className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
+              role="alert"
+            >
+              <span>{ta('applicationSettings.loadError')}</span>
+              <button
+                className="min-h-11 rounded-full border border-red-300 px-4 py-2 font-medium hover:bg-red-100 dark:border-red-700 dark:hover:bg-red-900"
+                onClick={() => void loadSettings()}
+                type="button"
+              >
+                {tc('retry')}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              {IMPORT_SETTINGS.map(renderSetting)}
+            </div>
+          )}
+        </section>
 
         <section
           aria-labelledby="admin-settings-exports-title"

@@ -235,6 +235,24 @@ describe('admin application settings route', () => {
     )
   })
 
+  it('accepts exact import safety ceilings and rejects one over', async () => {
+    const accepted = await PATCH(
+      new NextRequest('https://example.test/api/admin/application-settings', {
+        body: JSON.stringify({ requirementImportMaxRows: 500 }),
+        method: 'PATCH',
+      }),
+    )
+    const rejected = await PATCH(
+      new NextRequest('https://example.test/api/admin/application-settings', {
+        body: JSON.stringify({ requirementImportMaxRows: 501 }),
+        method: 'PATCH',
+      }),
+    )
+
+    expect(accepted.status).toBe(200)
+    expect(rejected.status).toBe(400)
+  })
+
   it.each([
     [
       new RequirementsServiceError('validation', 'Invalid setting', {

@@ -3213,7 +3213,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
           typeId: 1,
         },
       ],
-      schemaVersion: 'requirement-import.v3',
+      schemaVersion: 'requirement-import.v4',
     }
     const previewRequests: unknown[] = []
     const executeRequests: unknown[] = []

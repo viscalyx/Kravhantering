@@ -765,7 +765,7 @@ kravområde och generera en kravkandidat. Öppna fliken `AI-analys` och
 kontrollera modellens analys. Välj sedan `Förhandsgranska krav i import`.
 
 **Förväntat resultat:** Den genererade kandidaten skickas som
-`requirement-import.v3` till importgranskningen för valt kravområde.
+`requirement-import.v4` till importgranskningen för valt kravområde.
 En resolverad prioritet visas i AI-förhandsgranskningen med P-kod och
 lokaliserat namn. Ett ogiltigt förslag visas i stället med en varning.
 Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
@@ -776,7 +776,7 @@ När AI-assisterat författande aktiveras öppnas dialogen omedelbart med en
 översatt laddningsstatus tills innehållet är klart, och fokus stannar i
 dialogflödet. `Förhandsgranska krav i import` flyttar fokus direkt till
 importgranskningen utan att fokusera sidan emellan, behåller valt kravområde
-och den genererade `requirement-import.v3`-nyttolasten samt visar kandidaten
+och den genererade `requirement-import.v4`-nyttolasten samt visar kandidaten
 utan formuläret `Import-JSON`.
 
 ### REQ-15B: AI-assisterat författande blockerar osäkert AI-anrop
@@ -851,11 +851,31 @@ efter ett steg upp från minimum. Återställningen visar en varningsdialog inna
 någon ändring skickas. Inställningen påverkar inte reglaget för kravgenerering
 om reglaget inte ändras separat.
 
+### REQ-16C: Admincenter styr gemensam kravimportbudget
+
+**Steg:** Logga in som `Admin`, öppna `/sv/admin?tab=settings` och kontrollera
+att sektionen `Importer` visas efter AI-inställningarna men före `Exporter` och
+`Rapporter`. Kontrollera fälten för högsta antal krav, föreslagna
+normreferenser, föreslagna behovsreferenser, underposter per krav och JSON-djup.
+Sänk kravgränsen under den aktuella MCP-gränsen, hämta importschema och försök
+sedan förhandsgranska en `requirement-import.v4`-fil med exakt gränsen respektive
+gränsen plus en rad. Upprepa en gränskontroll för en nästlad referenslista och
+för JSON-djup. Återställ samtliga värden.
+
+**Förväntat resultat:** Sektionen och alla fält är lokaliserade och visar
+tillåtna intervall: krav `1–500`, vardera förslagstyp `0–500`, underposter
+`0–200` och JSON-djup `4–8`. MCP:s radgräns sänks atomärt till den globala
+kravgränsen men höjs inte när den globala gränsen återställs. Det hämtade
+schemat innehåller de effektiva gränserna. Exakta gränsvärden godtas, medan
+gränsen plus ett avvisas före referensuppslag eller databasskrivning med stabil
+felkod. En tidigare förhandsgranskning eller MCP-validering avvisas som inaktuell
+efter att budgeten har ändrats.
+
 ### REQ-17: importera krav till kravbiblioteket
 
 **Steg:** Logga in som `olle.areaowner`, öppna `/sv/requirements`, välj
 importknappen i den flytande åtgärdsytan och ladda ner schema och
-importinstruktion. Klistra in `requirement-import.v3`-JSON med ett krav vars
+importinstruktion. Klistra in `requirement-import.v4`-JSON med ett krav vars
 kravtext börjar med `=`,
 föreslagen normreferens, behovsreferensfält som ska ignoreras och ett först
 otillåtet destinationsfält. Välj kravområde, korrigera JSON, förhandsgranska,
@@ -1513,7 +1533,7 @@ gång.
 
 **Steg:** Logga in som `petra.specresp`, öppna ett kravunderlag där användaren
 är ansvarig, välj `Fler åtgärder` och sedan `Importera unika krav`.
-Klistra in giltig `requirement-import.v3`-JSON med kravtext, föreslagen
+Klistra in giltig `requirement-import.v4`-JSON med kravtext, föreslagen
 normreferens, `proposedNeedsReferences` med radens `needsReferenceKey` och fält
 för kravpaket som ska ignoreras för kravunderlagslokala krav. Lös
 behovsreferensen i fliken `Föreslagna behovsreferenser` genom att skapa eller

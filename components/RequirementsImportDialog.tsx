@@ -42,10 +42,17 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { escapeCsvField } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { DEFAULT_REQUIREMENT_IMPORT_BUDGET } from '@/lib/requirements/import-budget'
 import {
+  assertRequirementImportTextSize,
+  RequirementImportClientBudgetError,
+  readRequirementImportBudgetFromJsonSchema,
+  readRequirementImportFile,
+} from '@/lib/requirements/import-client'
+import {
+  buildRequirementsImportPayloadSchema,
   type ImportRequirementsPayload,
   REQUIREMENTS_IMPORT_SCHEMA_VERSION,
-  requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
 import { createUtf8BomBlob } from '@/lib/text-export'
 
@@ -235,6 +242,7 @@ type ImportPayloadValidation =
       payload: null
       reason:
         | 'invalid-json'
+        | 'content-too-large'
         | 'missing-json'
         | 'schema-invalid'
         | 'wrong-version'
@@ -271,6 +279,7 @@ const TEXT = {
     expandRow: 'Expand row',
     infoCount: (count: number) => `${count} info`,
     invalidSchema: `The JSON does not match ${REQUIREMENTS_IMPORT_SCHEMA_VERSION}. Fix the import file before previewing requirements.`,
+    contentTooLarge: 'Requirement import content must not exceed 8 MiB.',
     importTitleLibrary: 'Import requirements',
     importTitleSpecification: 'Import local requirements',
     importReviewTabs: 'Import review',
@@ -377,6 +386,7 @@ const TEXT = {
     expandRow: 'Expandera rad',
     infoCount: (count: number) => `${count} info`,
     invalidSchema: `JSON följer inte ${REQUIREMENTS_IMPORT_SCHEMA_VERSION}. Korrigera importfilen innan granskningen laddas.`,
+    contentTooLarge: 'Kravimportens innehåll får inte överstiga 8 MiB.',
     importTitleLibrary: 'Importera krav',
     importTitleSpecification: 'Importera lokala krav',
     importReviewTabs: 'Importgranskning',
@@ -733,6 +743,9 @@ export default function RequirementsImportDialog({
   const titleId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [rawJson, setRawJson] = useState('')
+  const [importBudget, setImportBudget] = useState(
+    DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+  )
   const [selectedAreaId, setSelectedAreaId] = useState('')
   const [jsonDropActive, setJsonDropActive] = useState(false)
   const [rows, setRows] = useState<ImportPreviewRow[]>([])
@@ -815,9 +828,14 @@ export default function RequirementsImportDialog({
     if (mode !== 'library' || !selectedAreaId) return null
     return areas.find(area => String(area.id) === selectedAreaId)?.name ?? null
   }, [areas, mode, selectedAreaId])
+  const runtimeImportPayloadSchema = useMemo(
+    () => buildRequirementsImportPayloadSchema(importBudget),
+    [importBudget],
+  )
   const importPayloadValidation = useMemo<ImportPayloadValidation>(() => {
     if (!rawJson.trim()) return { payload: null, reason: 'missing-json' }
     try {
+      assertRequirementImportTextSize(rawJson)
       const parsed = JSON.parse(rawJson) as unknown
       if (
         typeof parsed !== 'object' ||
@@ -828,14 +846,17 @@ export default function RequirementsImportDialog({
       ) {
         return { payload: null, reason: 'wrong-version' }
       }
-      const result = requirementsImportPayloadSchema.safeParse(parsed)
+      const result = runtimeImportPayloadSchema.safeParse(parsed)
       return result.success
         ? { payload: result.data, reason: null }
         : { payload: null, reason: 'schema-invalid' }
-    } catch {
+    } catch (error) {
+      if (error instanceof RequirementImportClientBudgetError) {
+        return { payload: null, reason: 'content-too-large' }
+      }
       return { payload: null, reason: 'invalid-json' }
     }
-  }, [rawJson])
+  }, [rawJson, runtimeImportPayloadSchema])
   const parsedImportPayload = importPayloadValidation.payload
   const hasRequiredImportTarget = mode !== 'library' || selectedAreaId !== ''
   const canDownloadImportInstruction =
@@ -847,15 +868,17 @@ export default function RequirementsImportDialog({
     const jsonReason =
       importPayloadValidation.reason === 'missing-json'
         ? text.startImportMissingJson
-        : importPayloadValidation.reason === 'invalid-json'
-          ? text.startImportInvalidJson
-          : importPayloadValidation.reason === 'wrong-version'
-            ? text.startImportWrongSchemaVersion(
-                REQUIREMENTS_IMPORT_SCHEMA_VERSION,
-              )
-            : importPayloadValidation.reason === 'schema-invalid'
-              ? text.startImportInvalidSchema
-              : null
+        : importPayloadValidation.reason === 'content-too-large'
+          ? text.contentTooLarge
+          : importPayloadValidation.reason === 'invalid-json'
+            ? text.startImportInvalidJson
+            : importPayloadValidation.reason === 'wrong-version'
+              ? text.startImportWrongSchemaVersion(
+                  REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+                )
+              : importPayloadValidation.reason === 'schema-invalid'
+                ? text.startImportInvalidSchema
+                : null
     if (
       !hasRequiredImportTarget &&
       importPayloadValidation.reason === 'missing-json'
@@ -966,12 +989,14 @@ export default function RequirementsImportDialog({
         priorityLevelsRes,
         packagesRes,
         normRefsRes,
+        schemaRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-categories'),
         fetch('/api/requirement-types'),
         fetch('/api/priority-levels'),
         fetch('/api/requirement-packages'),
         fetch('/api/norm-references'),
+        fetch(`/api/requirements/import/schema?locale=${locale}`),
       ])
       if (cancelled) return
       async function read<T>(
@@ -1008,12 +1033,21 @@ export default function RequirementsImportDialog({
       setNormReferences(
         await read<NormReferenceOption>(normRefsRes, 'normReferences'),
       )
+      if (schemaRes.status === 'fulfilled' && schemaRes.value.ok) {
+        setImportBudget(
+          readRequirementImportBudgetFromJsonSchema(
+            await schemaRes.value.json().catch(() => ({})),
+          ),
+        )
+      } else {
+        setImportBudget(DEFAULT_REQUIREMENT_IMPORT_BUDGET)
+      }
     }
     void fetchTaxonomy()
     return () => {
       cancelled = true
     }
-  }, [open])
+  }, [locale, open])
 
   useEffect(() => {
     if (!open || !initialImport) return
@@ -1728,8 +1762,16 @@ export default function RequirementsImportDialog({
 
   const readImportFile = async (file: File | undefined) => {
     if (!file) return
-    setRawJson(await file.text())
-    setErrorMessage(null)
+    try {
+      setRawJson(await readRequirementImportFile(file))
+      setErrorMessage(null)
+    } catch (error) {
+      setErrorMessage(
+        error instanceof RequirementImportClientBudgetError
+          ? text.contentTooLarge
+          : text.error,
+      )
+    }
   }
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -1769,7 +1811,7 @@ export default function RequirementsImportDialog({
         setErrorMessage(locale === 'sv' ? 'Ogiltig JSON.' : 'Invalid JSON.')
         return
       }
-      const schemaResult = requirementsImportPayloadSchema.safeParse(payload)
+      const schemaResult = runtimeImportPayloadSchema.safeParse(payload)
       if (!schemaResult.success) {
         setErrorMessage(text.invalidSchema)
         return
@@ -2203,7 +2245,19 @@ export default function RequirementsImportDialog({
                   <textarea
                     className={`${inputClass} min-h-52 resize-y font-mono text-xs`}
                     id="import-json"
-                    onChange={event => setRawJson(event.target.value)}
+                    onChange={event => {
+                      try {
+                        assertRequirementImportTextSize(event.target.value)
+                        setRawJson(event.target.value)
+                        setErrorMessage(null)
+                      } catch (error) {
+                        setErrorMessage(
+                          error instanceof RequirementImportClientBudgetError
+                            ? text.contentTooLarge
+                            : text.error,
+                        )
+                      }
+                    }}
                     placeholder={text.rawJsonPlaceholder}
                     value={rawJson}
                   />

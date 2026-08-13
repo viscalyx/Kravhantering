@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "requirement-import.v3",
+  "schemaVersion": "requirement-import.v4",
   "proposedNormReferences": [
     {
       "key": "DICOM-PS3.2",

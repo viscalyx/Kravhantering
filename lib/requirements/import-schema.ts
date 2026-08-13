@@ -5,8 +5,13 @@ import {
   positiveIntegerSchema,
   SQL_SERVER_INT_MAX,
 } from '@/lib/http/validation'
+import {
+  DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+  type RequirementImportBudget,
+  validateImportContentBudget,
+} from '@/lib/requirements/import-budget'
 
-export const REQUIREMENTS_IMPORT_SCHEMA_VERSION = 'requirement-import.v3'
+export const REQUIREMENTS_IMPORT_SCHEMA_VERSION = 'requirement-import.v4'
 
 const optionalImportTextSchema = z.string().max(BUSINESS_TEXT_MAX_LENGTH)
 const optionalImportDbStringSchema = z.string().max(DB_STRING_MAX_LENGTH)
@@ -21,8 +26,6 @@ const nonEmptyArrayStringSchema = z
   .trim()
   .min(1)
   .max(DB_STRING_MAX_LENGTH)
-
-const positiveIntegerArraySchema = z.array(positiveIntegerSchema)
 
 export const proposedNormReferenceSchema = z
   .object({
@@ -45,103 +48,163 @@ export const proposedNeedsReferenceSchema = z
   })
   .strict()
 
-export const importRequirementSchema = z
-  .object({
-    acceptanceCriteria: optionalNullableImportTextSchema,
-    categoryId: positiveIntegerSchema.nullable().optional(),
-    categoryName: optionalNullableImportDbStringSchema,
-    description: z.string().trim().min(1).max(BUSINESS_TEXT_MAX_LENGTH),
-    needsReferenceId: positiveIntegerSchema.nullable().optional(),
-    needsReferenceKey: optionalNullableImportDbStringSchema,
-    normReferenceIds: z.array(nonEmptyArrayStringSchema).optional(),
-    proposedNormReferenceKeys: z.array(nonEmptyArrayStringSchema).optional(),
-    qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
-    qualityCharacteristicName: optionalNullableImportDbStringSchema,
-    requirementPackageIds: positiveIntegerArraySchema.optional(),
-    requirementPackageNames: z.array(nonEmptyArrayStringSchema).optional(),
-    verifiable: z.boolean().nullable().optional(),
-    priorityLevelCode: optionalNullableImportDbStringSchema,
-    priorityLevelId: positiveIntegerSchema.nullable().optional(),
-    priorityLevelName: optionalNullableImportDbStringSchema,
-    typeId: positiveIntegerSchema.nullable().optional(),
-    typeName: optionalNullableImportDbStringSchema,
-    verificationMethod: optionalNullableImportTextSchema,
-  })
-  .strict()
+export function buildImportRequirementSchema(budget: RequirementImportBudget) {
+  const positiveIntegerArraySchema = z
+    .array(positiveIntegerSchema)
+    .max(budget.maxNestedItems)
+  const boundedStringArraySchema = z
+    .array(nonEmptyArrayStringSchema)
+    .max(budget.maxNestedItems)
+  return z
+    .object({
+      acceptanceCriteria: optionalNullableImportTextSchema,
+      categoryId: positiveIntegerSchema.nullable().optional(),
+      categoryName: optionalNullableImportDbStringSchema,
+      description: z.string().trim().min(1).max(BUSINESS_TEXT_MAX_LENGTH),
+      needsReferenceId: positiveIntegerSchema.nullable().optional(),
+      needsReferenceKey: optionalNullableImportDbStringSchema,
+      normReferenceIds: boundedStringArraySchema.optional(),
+      proposedNormReferenceKeys: boundedStringArraySchema.optional(),
+      qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
+      qualityCharacteristicName: optionalNullableImportDbStringSchema,
+      requirementPackageIds: positiveIntegerArraySchema.optional(),
+      requirementPackageNames: boundedStringArraySchema.optional(),
+      verifiable: z.boolean().nullable().optional(),
+      priorityLevelCode: optionalNullableImportDbStringSchema,
+      priorityLevelId: positiveIntegerSchema.nullable().optional(),
+      priorityLevelName: optionalNullableImportDbStringSchema,
+      typeId: positiveIntegerSchema.nullable().optional(),
+      typeName: optionalNullableImportDbStringSchema,
+      verificationMethod: optionalNullableImportTextSchema,
+    })
+    .strict()
+}
 
-export const requirementsImportPayloadSchema = z
-  .object({
-    proposedNeedsReferences: z.array(proposedNeedsReferenceSchema).optional(),
-    proposedNormReferences: z.array(proposedNormReferenceSchema).optional(),
-    requirements: z.array(importRequirementSchema).min(1),
-    schemaVersion: z.literal(REQUIREMENTS_IMPORT_SCHEMA_VERSION),
-  })
-  .strict()
-  .superRefine((payload, ctx) => {
-    const keys = new Set<string>()
-    for (const [index, proposal] of (
-      payload.proposedNormReferences ?? []
-    ).entries()) {
-      if (keys.has(proposal.key)) {
+export const importRequirementSchema = buildImportRequirementSchema(
+  DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+)
+
+export function buildRequirementsImportPayloadSchema(
+  budget: RequirementImportBudget,
+) {
+  return z
+    .object({
+      proposedNeedsReferences: z
+        .array(proposedNeedsReferenceSchema)
+        .max(budget.maxProposedNeedsReferences)
+        .optional(),
+      proposedNormReferences: z
+        .array(proposedNormReferenceSchema)
+        .max(budget.maxProposedNormReferences)
+        .optional(),
+      requirements: z
+        .array(buildImportRequirementSchema(budget))
+        .min(1)
+        .max(budget.maxRows),
+      schemaVersion: z.literal(REQUIREMENTS_IMPORT_SCHEMA_VERSION),
+    })
+    .strict()
+    .superRefine((payload, ctx) => {
+      const keys = new Set<string>()
+      for (const [index, proposal] of (
+        payload.proposedNormReferences ?? []
+      ).entries()) {
+        if (keys.has(proposal.key)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Expected unique proposed norm reference keys',
+            path: ['proposedNormReferences', index, 'key'],
+          })
+        }
+        keys.add(proposal.key)
+      }
+      const needsReferenceKeys = new Set<string>()
+      for (const [index, proposal] of (
+        payload.proposedNeedsReferences ?? []
+      ).entries()) {
+        if (needsReferenceKeys.has(proposal.key)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Expected unique proposed needs reference keys',
+            path: ['proposedNeedsReferences', index, 'key'],
+          })
+        }
+        needsReferenceKeys.add(proposal.key)
+      }
+      for (const issue of validateImportContentBudget(payload, budget)) {
+        if (issue.code !== 'import_json_depth_cap_exceeded') continue
         ctx.addIssue({
           code: 'custom',
-          message: 'Expected unique proposed norm reference keys',
-          path: ['proposedNormReferences', index, 'key'],
+          message: issue.code,
+          path: [],
         })
       }
-      keys.add(proposal.key)
-    }
-    const needsReferenceKeys = new Set<string>()
-    for (const [index, proposal] of (
-      payload.proposedNeedsReferences ?? []
-    ).entries()) {
-      if (needsReferenceKeys.has(proposal.key)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Expected unique proposed needs reference keys',
-          path: ['proposedNeedsReferences', index, 'key'],
-        })
-      }
-      needsReferenceKeys.add(proposal.key)
-    }
-  })
+    })
+}
+
+export const requirementsImportPayloadSchema =
+  buildRequirementsImportPayloadSchema(DEFAULT_REQUIREMENT_IMPORT_BUDGET)
 
 export const importLocaleSchema = z.enum(['en', 'sv']).optional().default('en')
 
-export const importPreviewBodySchema = z
-  .object({
-    areaId: positiveIntegerSchema.optional(),
-    locale: importLocaleSchema,
-    payload: requirementsImportPayloadSchema,
-  })
-  .strict()
+export function buildImportPreviewBodySchema(budget: RequirementImportBudget) {
+  return z
+    .object({
+      areaId: positiveIntegerSchema.optional(),
+      locale: importLocaleSchema,
+      payload: buildRequirementsImportPayloadSchema(budget),
+    })
+    .strict()
+}
 
-export const importReviewRowSchema = z
-  .object({
-    acceptanceCriteria: optionalNullableImportTextSchema,
-    categoryId: positiveIntegerSchema.nullable().optional(),
-    description: z.string().trim().min(1).max(BUSINESS_TEXT_MAX_LENGTH),
-    needsReferenceId: positiveIntegerSchema.nullable().optional(),
-    normReferenceIds: positiveIntegerArraySchema.optional().default([]),
-    qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
-    requirementPackageIds: positiveIntegerArraySchema.optional().default([]),
-    verifiable: z.boolean().optional().default(false),
-    reviewRowId: z.string().trim().min(1).max(DB_STRING_MAX_LENGTH),
-    priorityLevelId: positiveIntegerSchema.nullable().optional(),
-    sourceIndex: z.number().int().min(0).max(SQL_SERVER_INT_MAX),
-    typeId: positiveIntegerSchema.nullable().optional(),
-    verificationMethod: optionalNullableImportTextSchema,
-  })
-  .strict()
+export const importPreviewBodySchema = buildImportPreviewBodySchema(
+  DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+)
 
-export const importExecuteBodySchema = z
-  .object({
-    areaId: positiveIntegerSchema,
-    locale: importLocaleSchema,
-    previewToken: z.string().trim().min(1).max(DB_STRING_MAX_LENGTH),
-    rows: z.array(importReviewRowSchema).min(1),
-  })
-  .strict()
+export function buildImportReviewRowSchema(budget: RequirementImportBudget) {
+  const positiveIntegerArraySchema = z
+    .array(positiveIntegerSchema)
+    .max(budget.maxNestedItems)
+  return z
+    .object({
+      acceptanceCriteria: optionalNullableImportTextSchema,
+      categoryId: positiveIntegerSchema.nullable().optional(),
+      description: z.string().trim().min(1).max(BUSINESS_TEXT_MAX_LENGTH),
+      needsReferenceId: positiveIntegerSchema.nullable().optional(),
+      normReferenceIds: positiveIntegerArraySchema.optional().default([]),
+      qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
+      requirementPackageIds: positiveIntegerArraySchema.optional().default([]),
+      verifiable: z.boolean().optional().default(false),
+      reviewRowId: z.string().trim().min(1).max(DB_STRING_MAX_LENGTH),
+      priorityLevelId: positiveIntegerSchema.nullable().optional(),
+      sourceIndex: z.number().int().min(0).max(SQL_SERVER_INT_MAX),
+      typeId: positiveIntegerSchema.nullable().optional(),
+      verificationMethod: optionalNullableImportTextSchema,
+    })
+    .strict()
+}
+
+export const importReviewRowSchema = buildImportReviewRowSchema(
+  DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+)
+
+export function buildImportExecuteBodySchema(budget: RequirementImportBudget) {
+  return z
+    .object({
+      areaId: positiveIntegerSchema,
+      locale: importLocaleSchema,
+      previewToken: z.string().trim().min(1).max(DB_STRING_MAX_LENGTH),
+      rows: z
+        .array(buildImportReviewRowSchema(budget))
+        .min(1)
+        .max(budget.maxRows),
+    })
+    .strict()
+}
+
+export const importExecuteBodySchema = buildImportExecuteBodySchema(
+  DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+)
 
 export type ImportRequirement = z.infer<typeof importRequirementSchema>
 export type ImportRequirementsPayload = z.infer<
@@ -192,6 +255,7 @@ const positiveIntegerArrayJsonSchema = {
 
 export function buildRequirementsImportJsonSchema(
   locale: 'en' | 'sv' = 'en',
+  budget: RequirementImportBudget = DEFAULT_REQUIREMENT_IMPORT_BUDGET,
 ): JsonSchema {
   const isSv = locale === 'sv'
   const description = isSv
@@ -202,6 +266,8 @@ export function buildRequirementsImportJsonSchema(
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     additionalProperties: false,
     description,
+    'x-requirement-import-budget': budget,
+    'x-import-content-max-depth': budget.maxJsonDepth,
     properties: {
       proposedNormReferences: {
         items: {
@@ -219,6 +285,7 @@ export function buildRequirementsImportJsonSchema(
           required: ['key', 'name', 'type', 'reference', 'issuer'],
           type: 'object',
         },
+        maxItems: budget.maxProposedNormReferences,
         type: 'array',
       },
       proposedNeedsReferences: {
@@ -232,6 +299,7 @@ export function buildRequirementsImportJsonSchema(
           required: ['key', 'text'],
           type: 'object',
         },
+        maxItems: budget.maxProposedNeedsReferences,
         type: 'array',
       },
       requirements: {
@@ -260,8 +328,14 @@ export function buildRequirementsImportJsonSchema(
                 ? 'Nyckel till proposedNeedsReferences. Används vid import till kravunderlag när en föreslagen behovsreferens ska lösas i granskningen. Vid import till kravbiblioteket ignoreras fältet.'
                 : 'Key into proposedNeedsReferences. Used when importing to a requirements specification and a proposed needs reference must be resolved in review. When importing to the requirements library, this field is ignored.',
             },
-            normReferenceIds: stringArrayJsonSchema,
-            proposedNormReferenceKeys: stringArrayJsonSchema,
+            normReferenceIds: {
+              ...stringArrayJsonSchema,
+              maxItems: budget.maxNestedItems,
+            },
+            proposedNormReferenceKeys: {
+              ...stringArrayJsonSchema,
+              maxItems: budget.maxNestedItems,
+            },
             qualityCharacteristicId: {
               anyOf: [positiveIntegerJsonSchema, { type: 'null' }],
             },
@@ -269,12 +343,14 @@ export function buildRequirementsImportJsonSchema(
               nullableOptionalStringSchema(DB_STRING_MAX_LENGTH),
             requirementPackageIds: {
               ...positiveIntegerArrayJsonSchema,
+              maxItems: budget.maxNestedItems,
               description: isSv
                 ? 'Kravpakets-ID:n används vid import till kravbiblioteket. Vid import till kravunderlagslokala krav ignoreras fältet.'
                 : 'Requirement package IDs are used when importing to the requirements library. When importing specification-local requirements, this field is ignored.',
             },
             requirementPackageNames: {
               ...stringArrayJsonSchema,
+              maxItems: budget.maxNestedItems,
               description: isSv
                 ? 'Namn på kravpaket används som reserv när ID saknas. Namn måste matcha exakt och unikt. Vid import till kravunderlagslokala krav ignoreras fältet.'
                 : 'Requirement package names are a fallback when IDs are unavailable. Names must match exactly and uniquely. When importing specification-local requirements, this field is ignored.',
@@ -298,6 +374,7 @@ export function buildRequirementsImportJsonSchema(
           required: ['description'],
           type: 'object',
         },
+        maxItems: budget.maxRows,
         minItems: 1,
         type: 'array',
       },

@@ -6,6 +6,7 @@ export type RequirementsErrorCode =
   | 'unauthorized'
   | 'forbidden'
   | 'service_unavailable'
+  | 'import_capacity_busy'
   | 'internal'
 
 const STATUS_BY_CODE: Record<RequirementsErrorCode, number> = {
@@ -16,6 +17,7 @@ const STATUS_BY_CODE: Record<RequirementsErrorCode, number> = {
   unauthorized: 401,
   forbidden: 403,
   service_unavailable: 503,
+  import_capacity_busy: 429,
   internal: 500,
 }
 
@@ -98,6 +100,14 @@ export function serviceUnavailableError(
   details?: Record<string, unknown>,
 ): RequirementsServiceError {
   return createRequirementsError('service_unavailable', message, details)
+}
+
+export function importCapacityBusyError() {
+  return createRequirementsError(
+    'import_capacity_busy',
+    'Requirement import capacity is busy. Try again shortly.',
+    { reason: 'import_capacity_busy', retryAfterSeconds: 5 },
+  )
 }
 
 export function internalError(

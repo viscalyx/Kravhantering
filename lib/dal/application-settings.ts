@@ -21,6 +21,11 @@ interface ApplicationSettingsRow {
   pdfReportMaxRequirements: number | string
   pdfReportTimeoutSeconds: number | string
   pdfWorkerMemoryMib: number | string
+  requirementImportMaxJsonDepth: number | string
+  requirementImportMaxNestedItems: number | string
+  requirementImportMaxProposedNeedsReferences: number | string
+  requirementImportMaxProposedNormReferences: number | string
+  requirementImportMaxRows: number | string
   updatedAt: Date | string
 }
 
@@ -58,6 +63,13 @@ const COLUMN_BY_FIELD: Readonly<Record<ApplicationSettingField, string>> =
     pdfReportMaxRequirements: 'pdf_report_max_requirements',
     pdfReportTimeoutSeconds: 'pdf_report_timeout_seconds',
     pdfWorkerMemoryMib: 'pdf_worker_memory_mib',
+    requirementImportMaxJsonDepth: 'requirement_import_max_json_depth',
+    requirementImportMaxNestedItems: 'requirement_import_max_nested_items',
+    requirementImportMaxProposedNeedsReferences:
+      'requirement_import_max_proposed_needs_references',
+    requirementImportMaxProposedNormReferences:
+      'requirement_import_max_proposed_norm_references',
+    requirementImportMaxRows: 'requirement_import_max_rows',
   })
 
 const APPLICATION_SETTINGS_SELECT = `
@@ -72,6 +84,11 @@ const APPLICATION_SETTINGS_SELECT = `
     [pdf_report_concurrency_per_node] AS [pdfReportConcurrencyPerNode],
     [pdf_report_timeout_seconds] AS [pdfReportTimeoutSeconds],
     [pdf_worker_memory_mib] AS [pdfWorkerMemoryMib],
+    [requirement_import_max_rows] AS [requirementImportMaxRows],
+    [requirement_import_max_proposed_norm_references] AS [requirementImportMaxProposedNormReferences],
+    [requirement_import_max_proposed_needs_references] AS [requirementImportMaxProposedNeedsReferences],
+    [requirement_import_max_nested_items] AS [requirementImportMaxNestedItems],
+    [requirement_import_max_json_depth] AS [requirementImportMaxJsonDepth],
     [created_at] AS [createdAt],
     [updated_at] AS [updatedAt]
   FROM [application_settings]
@@ -89,6 +106,17 @@ function rowToSettings(row: ApplicationSettingsRow): ApplicationSettings {
     pdfReportMaxRequirements: Number(row.pdfReportMaxRequirements),
     pdfReportTimeoutSeconds: Number(row.pdfReportTimeoutSeconds),
     pdfWorkerMemoryMib: Number(row.pdfWorkerMemoryMib),
+    requirementImportMaxJsonDepth: Number(row.requirementImportMaxJsonDepth),
+    requirementImportMaxNestedItems: Number(
+      row.requirementImportMaxNestedItems,
+    ),
+    requirementImportMaxProposedNeedsReferences: Number(
+      row.requirementImportMaxProposedNeedsReferences,
+    ),
+    requirementImportMaxProposedNormReferences: Number(
+      row.requirementImportMaxProposedNormReferences,
+    ),
+    requirementImportMaxRows: Number(row.requirementImportMaxRows),
   }
 }
 
@@ -125,6 +153,14 @@ export async function getApplicationSettings(
   db: QueryExecutor,
 ): Promise<ApplicationSettings> {
   const settings = rowToSettings(await readSingleton(db))
+  assertSettings(settings)
+  return Object.freeze(settings)
+}
+
+export async function getApplicationSettingsForUpdate(
+  executor: QueryExecutor,
+): Promise<ApplicationSettings> {
+  const settings = rowToSettings(await readSingleton(executor, true))
   assertSettings(settings)
   return Object.freeze(settings)
 }
@@ -166,6 +202,14 @@ export async function updateApplicationSetting(
        WHERE [id] = 1`,
       [value, now],
     )
+    if (field === 'requirementImportMaxRows') {
+      await manager.query(
+        `UPDATE [ai_settings]
+         SET [mcp_import_max_rows] = @0, [updated_at] = @1
+         WHERE [id] = 1 AND [mcp_import_max_rows] > @0`,
+        [value, now],
+      )
+    }
     await options.audit?.(manager, change)
   })
 

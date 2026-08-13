@@ -87,9 +87,17 @@ describe('SettingsPanel', () => {
       .map(heading => heading.textContent)
     expect(headings).toEqual([
       'admin.applicationSettings.title',
+      'admin.applicationSettings.imports.title',
       'admin.applicationSettings.exports.title',
       'admin.applicationSettings.reports.title',
     ])
+    expect(
+      screen
+        .getByRole('heading', {
+          name: 'admin.applicationSettings.imports.title',
+        })
+        .querySelector('.lucide-file-input'),
+    ).toHaveAttribute('aria-hidden', 'true')
     expect(
       screen
         .getByRole('heading', {
@@ -129,6 +137,11 @@ describe('SettingsPanel', () => {
       pdfReportMaxRequirements: 'requirements',
       pdfReportTimeoutSeconds: 'seconds',
       pdfWorkerMemoryMib: 'mib',
+      requirementImportMaxJsonDepth: 'depthLevels',
+      requirementImportMaxNestedItems: 'importItems',
+      requirementImportMaxProposedNeedsReferences: 'proposals',
+      requirementImportMaxProposedNormReferences: 'proposals',
+      requirementImportMaxRows: 'importRows',
     } as const
 
     for (const [field, unit] of Object.entries(expectedUnits)) {
@@ -351,7 +364,7 @@ describe('SettingsPanel', () => {
     })
     expect(
       screen.getAllByText('admin.applicationSettings.loadError'),
-    ).toHaveLength(2)
+    ).toHaveLength(3)
     fireEvent.click(retryButtons[0])
 
     await waitFor(() =>
@@ -455,11 +468,11 @@ describe('SettingsPanel', () => {
 
     expect(
       await screen.findAllByText('admin.applicationSettings.loadError'),
-    ).toHaveLength(2)
+    ).toHaveLength(3)
     expect(response.bodyUsed).toBe(true)
     expect(
       screen.getAllByRole('button', { name: 'common.retry' }),
-    ).toHaveLength(2)
+    ).toHaveLength(3)
   })
 
   it('rolls back an optimistic edit when saving is rejected', async () => {

@@ -1,6 +1,10 @@
 import type { ZodError } from 'zod'
 import type { GenerationStats } from '@/lib/ai/openrouter-client'
 import {
+  DEFAULT_REQUIREMENT_IMPORT_BUDGET,
+  type RequirementImportBudget,
+} from '@/lib/requirements/import-budget'
+import {
   buildRequirementsImportJsonSchema,
   type ImportRequirementsPayload,
 } from '@/lib/requirements/import-schema'
@@ -210,7 +214,7 @@ function toStructuredOutputStrictSchema(value: unknown): unknown {
   const stripIntegerRange = hasIntegerType(schema)
 
   for (const [key, item] of Object.entries(schema)) {
-    if (key === '$schema') continue
+    if (key === '$schema' || key.startsWith('x-')) continue
     if (stripIntegerRange && (key === 'maximum' || key === 'minimum')) {
       continue
     }
@@ -232,9 +236,10 @@ function toStructuredOutputStrictSchema(value: unknown): unknown {
 
 export function buildRequirementImportResponseFormatSchema(
   locale: 'en' | 'sv' = 'en',
+  budget: RequirementImportBudget = DEFAULT_REQUIREMENT_IMPORT_BUDGET,
 ): Record<string, unknown> {
   return toStructuredOutputStrictSchema(
-    buildRequirementsImportJsonSchema(locale),
+    buildRequirementsImportJsonSchema(locale, budget),
   ) as Record<string, unknown>
 }
 

@@ -111,7 +111,7 @@ function createDeferred<T>() {
 function validImportPayload() {
   return JSON.stringify({
     requirements: [{ description: 'Kravtext' }],
-    schemaVersion: 'requirement-import.v3',
+    schemaVersion: 'requirement-import.v4',
   })
 }
 
@@ -273,7 +273,7 @@ describe('RequirementsImportDialog', () => {
       />,
     )
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(5))
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(6))
     expect(
       screen.getByRole('heading', {
         name: 'Importera lokala krav för Upphandling av e-tjänstplattform',
@@ -564,7 +564,7 @@ describe('RequirementsImportDialog', () => {
 
     const payload = JSON.stringify({
       requirements: [{ description: 'Kravtext' }],
-      schemaVersion: 'requirement-import.v3',
+      schemaVersion: 'requirement-import.v4',
     })
     const file = new File([payload], 'requirements.json', {
       type: 'application/json',
@@ -621,7 +621,7 @@ describe('RequirementsImportDialog', () => {
       />,
     )
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6))
     const instructionButton = screen.getByRole('button', {
       name: 'Ladda ner importinstruktion',
     })
@@ -724,7 +724,7 @@ describe('RequirementsImportDialog', () => {
               needsReferenceKey: 'gdpr-need',
             },
           ],
-          schemaVersion: 'requirement-import.v3',
+          schemaVersion: 'requirement-import.v4',
         }),
       },
     })
@@ -795,7 +795,7 @@ describe('RequirementsImportDialog', () => {
               needsReferenceKey: 'gdpr-need',
             },
           ],
-          schemaVersion: 'requirement-import.v3',
+          schemaVersion: 'requirement-import.v4',
         }),
       },
     })
@@ -904,7 +904,7 @@ describe('RequirementsImportDialog', () => {
               needsReferenceKey: 'gdpr-need',
             },
           ],
-          schemaVersion: 'requirement-import.v3',
+          schemaVersion: 'requirement-import.v4',
         }),
       },
     })
@@ -1667,7 +1667,7 @@ describe('RequirementsImportDialog', () => {
     const preview = screen.getByRole('button', {
       name: 'Förhandsgranska krav',
     })
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(5))
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(6))
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'Välj kravområde och lägg till import-JSON',
@@ -1680,13 +1680,13 @@ describe('RequirementsImportDialog', () => {
       },
     })
     expect(screen.getByRole('status')).toHaveTextContent(
-      'schemaVersion måste vara requirement-import.v3',
+      'schemaVersion måste vara requirement-import.v4',
     )
     fireEvent.change(rawJson, {
       target: {
         value: JSON.stringify({
           requirements: [],
-          schemaVersion: 'requirement-import.v3',
+          schemaVersion: 'requirement-import.v4',
         }),
       },
     })
@@ -1709,7 +1709,7 @@ describe('RequirementsImportDialog', () => {
     fireEvent.dragLeave(dropZone)
     const filePayload = JSON.stringify({
       requirements: [{ description: 'Selected file requirement' }],
-      schemaVersion: 'requirement-import.v3',
+      schemaVersion: 'requirement-import.v4',
     })
     const file = new File([filePayload], 'selected.json', {
       type: 'application/json',
@@ -1814,7 +1814,7 @@ describe('RequirementsImportDialog', () => {
       />,
     )
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6))
     expect(screen.getByText('Importera lokala krav')).toBeVisible()
 
     rerender(
@@ -1826,6 +1826,6 @@ describe('RequirementsImportDialog', () => {
       />,
     )
     expect(screen.queryByText('Importera lokala krav')).not.toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(5)
+    expect(fetchMock).toHaveBeenCalledTimes(6)
   })
 })

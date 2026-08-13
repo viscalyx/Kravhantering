@@ -309,7 +309,11 @@ describe('AI settings DAL', () => {
 
   it('updates the singleton row and returns full Admin settings', async () => {
     const audit = vi.fn()
-    manager.query.mockResolvedValueOnce([{ id: 1 }])
+    manager.query
+      .mockResolvedValueOnce([
+        { requirementImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT },
+      ])
+      .mockResolvedValueOnce([{ id: 1 }])
 
     await expect(
       updateAiGenerationSettings(
@@ -354,7 +358,11 @@ describe('AI settings DAL', () => {
   })
 
   it('fails clearly when the migration-owned singleton row is missing', async () => {
-    manager.query.mockResolvedValueOnce([])
+    manager.query
+      .mockResolvedValueOnce([
+        { requirementImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT },
+      ])
+      .mockResolvedValueOnce([])
 
     await expect(
       updateAiGenerationSettings(db, {
@@ -392,6 +400,27 @@ describe('AI settings DAL', () => {
     })
 
     expect(transaction).not.toHaveBeenCalled()
+  })
+
+  it('locks and enforces the global import row limit before updating AI settings', async () => {
+    manager.query.mockResolvedValueOnce([{ requirementImportMaxRows: 250 }])
+
+    await expect(
+      updateAiGenerationSettings(db, {
+        aiSafetyForensicLoggingEnabled: true,
+        aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+        mcpImportMaxRows: 251,
+        mcpImportValidationTtlMinutes:
+          MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+        requirementGenerationEnabled: true,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'mcp_import_max_rows_exceeds_global_limit' },
+    })
+    expect(manager.query.mock.calls[0]?.[0]).toContain('UPDLOCK, HOLDLOCK')
+    expect(manager.query).toHaveBeenCalledTimes(1)
   })
 
   it.each([
@@ -437,7 +466,11 @@ describe('AI settings DAL', () => {
         requirementGenerationEnabled: 1,
       },
     ])
-    manager.query.mockResolvedValueOnce([{ id: 1 }])
+    manager.query
+      .mockResolvedValueOnce([
+        { requirementImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT },
+      ])
+      .mockResolvedValueOnce([{ id: 1 }])
 
     await expect(
       patchAiGenerationSettings(

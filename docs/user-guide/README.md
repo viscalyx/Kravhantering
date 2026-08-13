@@ -377,13 +377,17 @@ som servergenererad PDF för dokumentation och revision.
 
 ## Import av krav
 
-Importfunktionen använder JSON enligt `requirement-import.v3`. **AI-assisterat
+Importfunktionen använder JSON enligt `requirement-import.v4`. **AI-assisterat
 författande** använder samma importkontrakt och samma redigerbara
 importgranskning som manuell JSON-import. **Kravbiblioteksimport** skapar nya
 utkast i kravbiblioteket, medan **kravunderlagsimport** skapar unika krav direkt
 i ett kravunderlag. Importen laddar först en granskning där rader, metadata,
 föreslagna normreferenser och föreslagna behovsreferenser kan kontrolleras innan
 något sparas.
+
+Importfiler får innehålla högst 8 MiB importdata. Aktuella gränser för antal
+krav, referensförslag, underposter och JSON-djup visas i det nedladdningsbara
+schemat och kan sänkas av en administratör.
 
 ### AI-assisterat författande — behov och modell
 

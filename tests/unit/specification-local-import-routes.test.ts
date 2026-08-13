@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import type { RequestContext } from '@/lib/requirements/auth'
 import { jsonRequest } from '@/tests/unit/helpers/route-handler-test-helpers'
 
@@ -7,6 +8,7 @@ const routeState = vi.hoisted(() => ({
   createRequestContext: vi.fn(),
   createRequirementsRestRuntime: vi.fn(),
   executeSpecificationLocalImport: vi.fn(),
+  getApplicationSettings: vi.fn(),
   logSanitizedError: vi.fn(),
   previewSpecificationLocalImport: vi.fn(),
 }))
@@ -15,6 +17,10 @@ const db = { query: vi.fn() }
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: vi.fn(async () => db),
+}))
+
+vi.mock('@/lib/dal/application-settings', () => ({
+  getApplicationSettings: routeState.getApplicationSettings,
 }))
 vi.mock('@/lib/requirements/auth', async importOriginal => ({
   ...(await importOriginal<typeof import('@/lib/requirements/auth')>()),
@@ -54,7 +60,7 @@ const context: RequestContext = {
 
 const payload = {
   requirements: [{ description: 'Local requirement' }],
-  schemaVersion: 'requirement-import.v3',
+  schemaVersion: 'requirement-import.v4',
 }
 const rows = [
   {
@@ -67,6 +73,9 @@ const rows = [
 describe('specification-local import routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routeState.getApplicationSettings.mockResolvedValue(
+      DEFAULT_APPLICATION_SETTINGS,
+    )
     routeState.createRequestContext.mockResolvedValue(context)
     routeState.previewSpecificationLocalImport.mockResolvedValue({
       previewToken: 'preview-token',
@@ -178,6 +187,102 @@ describe('specification-local import routes', () => {
       expect.objectContaining({ locale: 'sv', specificationId: 7 }),
     )
   })
+
+  it.each([
+    {
+      invoke: (count: number) =>
+        previewPost(
+          jsonRequest('/api/specification-local-requirements/import/preview', {
+            locale: 'en',
+            payload: {
+              requirements: Array.from({ length: count }, (_, index) => ({
+                description: `Requirement ${index}`,
+              })),
+              schemaVersion: 'requirement-import.v4',
+            },
+            specificationId: 7,
+          }),
+        ),
+      service: routeState.previewSpecificationLocalImport,
+      variant: 'body-selected preview',
+    },
+    {
+      invoke: (count: number) =>
+        executePost(
+          jsonRequest('/api/specification-local-requirements/import/execute', {
+            locale: 'en',
+            previewToken: 'preview-token',
+            rows: Array.from({ length: count }, (_, index) => ({
+              description: `Requirement ${index}`,
+              reviewRowId: `row-${index}`,
+              sourceIndex: index,
+            })),
+            specificationId: 7,
+          }),
+        ),
+      service: routeState.executeSpecificationLocalImport,
+      variant: 'body-selected execute',
+    },
+    {
+      invoke: (count: number) =>
+        legacyPreviewPost(
+          jsonRequest(
+            '/api/requirements-specifications/7/local-requirements/import/preview',
+            {
+              locale: 'en',
+              payload: {
+                requirements: Array.from({ length: count }, (_, index) => ({
+                  description: `Requirement ${index}`,
+                })),
+                schemaVersion: 'requirement-import.v4',
+              },
+            },
+          ),
+          { params: Promise.resolve({ id: '7' }) },
+        ),
+      service: routeState.previewSpecificationLocalImport,
+      variant: 'URL-selected preview',
+    },
+    {
+      invoke: (count: number) =>
+        legacyExecutePost(
+          jsonRequest(
+            '/api/requirements-specifications/7/local-requirements/import/execute',
+            {
+              locale: 'en',
+              previewToken: 'preview-token',
+              rows: Array.from({ length: count }, (_, index) => ({
+                description: `Requirement ${index}`,
+                reviewRowId: `row-${index}`,
+                sourceIndex: index,
+              })),
+            },
+          ),
+          { params: Promise.resolve({ id: '7' }) },
+        ),
+      service: routeState.executeSpecificationLocalImport,
+      variant: 'URL-selected execute',
+    },
+  ])(
+    'accepts the exact live row budget and rejects one over before $variant mutation',
+    async testCase => {
+      routeState.getApplicationSettings.mockResolvedValue({
+        ...DEFAULT_APPLICATION_SETTINGS,
+        requirementImportMaxRows: 2,
+      })
+
+      expect((await testCase.invoke(2)).status).toBeLessThan(300)
+      expect(testCase.service).toHaveBeenCalledOnce()
+      testCase.service.mockClear()
+
+      const over = await testCase.invoke(3)
+      expect(over.status).toBe(422)
+      await expect(over.json()).resolves.toMatchObject({
+        code: 'import_row_count_cap_exceeded',
+      })
+      expect(testCase.service).not.toHaveBeenCalled()
+    },
+  )
 
   it.each([
     {

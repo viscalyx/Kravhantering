@@ -148,6 +148,54 @@ describe('secureMutationRoute', () => {
     )
   })
 
+  it('supports a route-owned bounded body reader before authorization', async () => {
+    const order: string[] = []
+    const bodyReader = vi.fn(async () => {
+      order.push('body')
+      return { data: { name: 'Bounded' }, ok: true as const }
+    })
+    authState.assertAuthorized.mockImplementationOnce(async () => {
+      order.push('authorize')
+    })
+    const handler = vi.fn(() => {
+      order.push('handler')
+      return NextResponse.json({ ok: true })
+    })
+    const route = secureMutationRoute({
+      bodyReader,
+      handler,
+      policy: requirementsMutationPolicy({ kind: 'get_import_schema' }),
+    })
+
+    const response = await route(jsonRequest({ ignored: true }))
+
+    expect(response.status).toBe(200)
+    expect(order).toEqual(['body', 'authorize', 'handler'])
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { name: 'Bounded' } }),
+    )
+  })
+
+  it('bounds unexpected route-owned body reader failures', async () => {
+    const handler = vi.fn(() => NextResponse.json({ ok: true }))
+    const route = secureMutationRoute({
+      bodyReader: async () => {
+        throw new Error('database password must remain private')
+      },
+      handler,
+      policy: requirementsMutationPolicy({ kind: 'get_import_schema' }),
+    })
+
+    const response = await route(jsonRequest({ ignored: true }))
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.not.toEqual(
+      expect.objectContaining({ error: expect.stringContaining('password') }),
+    )
+    expect(handler).not.toHaveBeenCalled()
+    expect(authState.assertAuthorized).not.toHaveBeenCalled()
+  })
+
   it('rejects unauthenticated actors before validation and handler work', async () => {
     adminAuditState.createAdminPrivilegedAuditContext.mockResolvedValueOnce({
       ...context([]),

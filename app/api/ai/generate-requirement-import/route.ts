@@ -22,6 +22,7 @@ import {
   screenAiOutputDetailed,
 } from '@/lib/ai/safety'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
+import { getApplicationSettings } from '@/lib/dal/application-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   AI_PROVIDER_UNAVAILABLE_MESSAGE,
@@ -37,8 +38,14 @@ import {
   type RequestCorrelationIds,
 } from '@/lib/observability/request-ids'
 import {
+  REQUIREMENT_IMPORT_CONTENT_MAX_BYTES,
+  type RequirementImportBudget,
+  requirementImportBudgetFromSettings,
+  validateImportContentBudget,
+} from '@/lib/requirements/import-budget'
+import {
+  buildRequirementsImportPayloadSchema,
   type ImportRequirementsPayload,
-  requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
@@ -149,16 +156,36 @@ function createStreamRecorder(
 
 function parseAndValidatePayload(
   rawContent: string,
-): ImportRequirementsPayload | undefined {
+  budget: RequirementImportBudget,
+):
+  | { ok: true; payload: ImportRequirementsPayload }
+  | { code: string; ok: false; status: 413 | 422 | 503 } {
+  if (
+    new TextEncoder().encode(rawContent).byteLength >
+    REQUIREMENT_IMPORT_CONTENT_MAX_BYTES
+  ) {
+    return {
+      code: 'import_content_bytes_exceeded',
+      ok: false,
+      status: 413,
+    }
+  }
   let parsed: unknown
   try {
     parsed = parseJsonObject(rawContent)
   } catch {
-    return undefined
+    return { code: 'ai_provider_invalid_response', ok: false, status: 503 }
   }
 
-  const validation = requirementsImportPayloadSchema.safeParse(parsed)
-  return validation.success ? validation.data : undefined
+  const [budgetIssue] = validateImportContentBudget(parsed, budget)
+  if (budgetIssue) {
+    return { code: budgetIssue.code, ok: false, status: 422 }
+  }
+  const validation =
+    buildRequirementsImportPayloadSchema(budget).safeParse(parsed)
+  return validation.success
+    ? { ok: true, payload: validation.data }
+    : { code: 'ai_provider_invalid_response', ok: false, status: 503 }
 }
 
 function imageMetadataForSafety(
@@ -251,7 +278,11 @@ export const POST = secureMutationRoute({
     if (inputGuardResponse) return inputGuardResponse
 
     let importInstruction: string
+    let importBudget: RequirementImportBudget
     try {
+      importBudget = requirementImportBudgetFromSettings(
+        await getApplicationSettings(db),
+      )
       importInstruction = await createRequirementsRuntime(
         db,
       ).service.buildImportInstruction(
@@ -272,7 +303,7 @@ export const POST = secureMutationRoute({
       locale,
     )
     const userPrompt = buildRequirementImportUserPrompt({
-      count: body.count,
+      count: Math.min(body.count, importBudget.maxRows),
       locale,
       need: body.need,
     })
@@ -300,7 +331,7 @@ export const POST = secureMutationRoute({
     }
     const resolvedModel = modelCapabilities.id
     const providerEvents = generateChatStream({
-      format: buildRequirementImportResponseFormatSchema(locale),
+      format: buildRequirementImportResponseFormatSchema(locale, importBudget),
       messages: [
         { content: systemPrompt, role: 'system' },
         { content: userContent, role: 'user' },
@@ -438,6 +469,37 @@ export const POST = secureMutationRoute({
                 break
               case 'done': {
                 const safeThinking = event.thinking || latestThinking
+                const payloadValidation = parseAndValidatePayload(
+                  event.rawContent,
+                  importBudget,
+                )
+                if (!payloadValidation.ok) {
+                  if (payloadValidation.code.startsWith('import_')) {
+                    send('error', {
+                      code: payloadValidation.code,
+                      message: 'Generated import exceeds the allowed budget.',
+                    })
+                  } else {
+                    const providerError = normalizeAiProviderError(null, {
+                      code: 'ai_provider_invalid_response',
+                      correlationId: context.correlationId,
+                      modelProvider: modelCapabilities.provider,
+                      operation: 'chat.completions',
+                      requestId: context.requestId,
+                    })
+                    const streamError = aiProviderStreamError(providerError)
+                    send('error', {
+                      code: streamError.code,
+                      message: streamError.message,
+                    })
+                  }
+                  recordStreamEvent(
+                    'failure',
+                    payloadValidation.status,
+                    event.stats,
+                  )
+                  return
+                }
                 let outputSafetyScreening: Awaited<
                   ReturnType<typeof screenAiOutputDetailed>
                 >
@@ -481,24 +543,7 @@ export const POST = secureMutationRoute({
                   return
                 }
 
-                const payload = parseAndValidatePayload(event.rawContent)
-                if (!payload) {
-                  const providerError = normalizeAiProviderError(null, {
-                    code: 'ai_provider_invalid_response',
-                    correlationId: context.correlationId,
-                    modelProvider: modelCapabilities.provider,
-                    operation: 'chat.completions',
-                    requestId: context.requestId,
-                  })
-                  const streamError = aiProviderStreamError(providerError)
-                  send('error', {
-                    code: streamError.code,
-                    message: streamError.message,
-                  })
-                  recordStreamEvent('failure', 503, event.stats)
-                  return
-                }
-
+                const payload = payloadValidation.payload
                 const rawContent = JSON.stringify(payload)
                 if (safeThinking) {
                   send('thinking', { thinkingSoFar: safeThinking })
