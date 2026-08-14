@@ -1,6 +1,7 @@
 {
   "realm": "kravhantering-production",
   "enabled": true,
+  "attributes": { "CreateDefaultClientScopes": "true" },
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,

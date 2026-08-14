@@ -1,6 +1,7 @@
 {
   "realm": "kravhantering-dev",
   "enabled": true,
+  "attributes": { "CreateDefaultClientScopes": "true" },
   "displayName": "Kravhantering Dev",
   "sslRequired": "none",
   "registrationAllowed": false,

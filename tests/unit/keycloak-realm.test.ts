@@ -26,6 +26,7 @@ type KeycloakRealmComponent = {
 }
 
 type KeycloakRealm = {
+  attributes?: Record<string, string>
   clientScopes?: Array<{
     attributes?: Record<string, string>
     name?: string
@@ -157,6 +158,11 @@ function expectMcpServiceTokenContract(
   realm: KeycloakRealm,
   client: KeycloakRealmClient | undefined,
 ) {
+  // Keycloak otherwise skips its built-in profile and email scopes when a
+  // realm import declares at least one custom client scope.
+  expect(realm.attributes).toMatchObject({
+    CreateDefaultClientScopes: 'true',
+  })
   expect(client?.attributes).toMatchObject({
     'access.token.header.type.rfc9068': 'true',
     'access.token.lifespan': '300',

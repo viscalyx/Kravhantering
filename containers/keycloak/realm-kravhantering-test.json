@@ -1,6 +1,7 @@
 {
   "realm": "kravhantering-test",
   "enabled": true,
+  "attributes": { "CreateDefaultClientScopes": "true" },
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
