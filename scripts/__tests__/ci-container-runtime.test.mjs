@@ -309,6 +309,7 @@ describe('CI container runtime', () => {
       'apt-get install -y --no-install-recommends --reinstall conmon crun jq libnss3-tools podman',
     )
     expect(commands.includes('skopeo')).toBe(usesSkopeo)
+    expect(fs.existsSync(fixture.githubPathFile)).toBe(false)
   })
 
   it.each([
@@ -356,9 +357,7 @@ describe('CI container runtime', () => {
       )
       expect(fs.existsSync(fixture.containersConfigPath)).toBe(true)
       expect(fs.existsSync(fixture.runtimeDropInPath)).toBe(true)
-      expect(fs.readFileSync(fixture.githubPathFile, 'utf8')).toBe(
-        `${fixture.localPrefix}/bin\n`,
-      )
+      expect(fs.existsSync(fixture.githubPathFile)).toBe(false)
     },
   )
 

@@ -201,6 +201,10 @@ bootstrap_toolchain() {
     fail 'bootstrap expects the pr or release profile'
   [[ "$profile" == release ]] && packages+=(skopeo)
 
+  # Keep runtime selection local to this process. Publishing an entire system
+  # prefix through GITHUB_PATH can shadow the Node and npm selected by
+  # actions/setup-node in every later workflow step.
+
   select_toolchain
   if [[ "$TOOLCHAIN_PROFILE" == static ]]; then
     # Newer hosted images provide a current static Podman, crun, and Quadlet,
@@ -216,9 +220,6 @@ bootstrap_toolchain() {
     "$SUDO_BIN" ln -s -- "$PACKAGE_CONMON_BIN" "$STATIC_BUNDLED_CONMON_BIN"
     hash -r
     verify_toolchain
-    if [[ -n "${GITHUB_PATH:-}" ]]; then
-      dirname "$PODMAN_BIN" >>"$GITHUB_PATH"
-    fi
     return 0
   fi
 
@@ -243,9 +244,6 @@ bootstrap_toolchain() {
   "$SUDO_BIN" "$APT_GET_BIN" install -y --no-install-recommends \
     --reinstall "${packages[@]}"
   verify_toolchain
-  if [[ -n "${GITHUB_PATH:-}" ]]; then
-    printf '%s\n' "$SYSTEM_PREFIX/bin" >>"$GITHUB_PATH"
-  fi
 }
 
 runtime_preflight() {

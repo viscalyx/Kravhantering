@@ -108,6 +108,9 @@ jobs:
           docker buildx ls
           skopeo --version
 
+      - name: Restore repository npm after container runtime setup
+        run: node scripts/install-repository-npm.mjs
+
       - name: Preflight rootless Podman journald logging
         run: scripts/containers/ci-container-runtime.sh preflight
 

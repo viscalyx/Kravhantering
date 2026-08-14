@@ -754,9 +754,16 @@ describe('GitHub Actions workflow security', () => {
       expect(job, `${fileName} must define ${jobId}`).toBeDefined()
       const steps = job?.steps ?? []
       const stepNames = steps.map(step => step.name)
+      const runtimeSetupIndex = stepNames.indexOf(
+        'Install container runtime tools',
+      )
+      const npmRestoreIndex = stepNames.indexOf(
+        'Restore repository npm after container runtime setup',
+      )
       const verification = steps.find(
         step => step.name === 'Verify production stack',
       )
+      const npmRestore = steps[npmRestoreIndex]
 
       expect(job?.['runs-on']).toBe('ubuntu-24.04')
       expect(stepNames).toEqual(
@@ -767,6 +774,9 @@ describe('GitHub Actions workflow security', () => {
           'Remove production Quadlet stack',
         ]),
       )
+      expect(runtimeSetupIndex).toBeGreaterThanOrEqual(0)
+      expect(npmRestoreIndex).toBeGreaterThan(runtimeSetupIndex)
+      expect(npmRestore?.run).toBe('node scripts/install-repository-npm.mjs')
       expect(verification?.run).toBe(
         'scripts/containers/production-smoke.sh verify',
       )
