@@ -1,28 +1,3 @@
-import {
-  buildRuntimePermissionReconcileSql,
-  RUNTIME_PERMISSION_MANIFEST,
-} from '../runtime-permission-manifest.mjs'
-
-const MCP_QUOTA_COLUMNS = new Set([
-  'mcp_import_max_active_sessions_per_destination',
-  'mcp_import_max_active_sessions_per_principal',
-  'mcp_import_max_creations_per_window',
-  'mcp_import_max_reserved_bytes',
-])
-const PRE_OWNERSHIP_RUNTIME_PERMISSION_MANIFEST =
-  RUNTIME_PERMISSION_MANIFEST.filter(
-    entry => entry.object !== 'dbo.requirement_import_validation_rate_buckets',
-  ).map(entry =>
-    entry.object === 'dbo.ai_settings'
-      ? {
-          ...entry,
-          updateColumns: entry.updateColumns.filter(
-            column => !MCP_QUOTA_COLUMNS.has(column),
-          ),
-        }
-      : entry,
-  )
-
 const SESSION_QUOTA_SETTING_COLUMNS = [
   {
     check:
@@ -146,11 +121,33 @@ const UP_STATEMENTS = [
       CONSTRAINT [df_ai_settings_mcp_import_max_reserved_bytes]
       DEFAULT (536870912) WITH VALUES;`,
   ...SESSION_QUOTA_SETTING_COLUMNS.map(addSettingCheckStatement),
-  buildRuntimePermissionReconcileSql(RUNTIME_PERMISSION_MANIFEST),
+  `IF DATABASE_PRINCIPAL_ID(N'kravhantering_runtime') IS NULL
+    THROW 51022, 'Runtime permission role is missing.', 1;
+  GRANT SELECT, INSERT, UPDATE, DELETE
+    ON OBJECT::[dbo].[requirement_import_validation_rate_buckets]
+    TO [kravhantering_runtime];
+  GRANT UPDATE (
+    [mcp_import_max_active_sessions_per_destination],
+    [mcp_import_max_active_sessions_per_principal],
+    [mcp_import_max_creations_per_window],
+    [mcp_import_max_reserved_bytes]
+  ) ON OBJECT::[dbo].[ai_settings] TO [kravhantering_runtime];`,
 ]
 
 const DOWN_STATEMENTS = [
   `DELETE FROM [requirement_import_validation_sessions];`,
+  `IF DATABASE_PRINCIPAL_ID(N'kravhantering_runtime') IS NOT NULL
+  BEGIN
+    REVOKE UPDATE (
+      [mcp_import_max_active_sessions_per_destination],
+      [mcp_import_max_active_sessions_per_principal],
+      [mcp_import_max_creations_per_window],
+      [mcp_import_max_reserved_bytes]
+    ) ON OBJECT::[dbo].[ai_settings] FROM [kravhantering_runtime];
+    REVOKE SELECT, INSERT, UPDATE, DELETE
+      ON OBJECT::[dbo].[requirement_import_validation_rate_buckets]
+      FROM [kravhantering_runtime];
+  END;`,
   `IF OBJECT_ID(N'requirement_import_validation_rate_buckets', N'U') IS NOT NULL
     DROP TABLE [requirement_import_validation_rate_buckets];`,
   `IF EXISTS (
@@ -187,7 +184,6 @@ const DOWN_STATEMENTS = [
     `IF COL_LENGTH(N'ai_settings', N'${column.name}') IS NOT NULL
       ALTER TABLE [ai_settings] DROP COLUMN [${column.name}];`,
   ]),
-  buildRuntimePermissionReconcileSql(PRE_OWNERSHIP_RUNTIME_PERMISSION_MANIFEST),
 ]
 
 async function runStatements(queryRunner, statements) {

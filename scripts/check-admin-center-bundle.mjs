@@ -76,8 +76,8 @@ export const ADMIN_WORKSPACE_GZIP_MAX_BYTES = {
   identity: 9_651,
   // 2026-07-20 isolated-route baseline: 12,599 gzip bytes plus 5% headroom.
   privacy: 13_229,
-  // 2026-07-20 isolated-route baseline: 15,778 gzip bytes plus 5% headroom.
-  settings: 16_567,
+  // 2026-08-14 MCP quota-control baseline: 17,174 gzip bytes plus 5% headroom.
+  settings: 18_033,
   // 2026-07-20 isolated-route baseline: 4,879 gzip bytes plus 5% headroom.
   statusesAndWorkflows: 5_123,
   // 2026-07-20 isolated-route baseline: 5,256 gzip bytes plus 5% headroom.

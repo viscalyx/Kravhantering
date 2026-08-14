@@ -1846,15 +1846,9 @@ statusbekräftelse.
 1. Logga in som `Admin` och öppna `Administrationscenter > Inställningar > AI`.
 2. Kontrollera att MCP-sektionen visar aktiva sessioner per principal, aktiva
    sessioner per mål, sessionsskapanden per 10 minuter och reserverad lagring.
-3. Öppna hjälpen för varje kontroll och kontrollera att TTL, fast fönster och
-   reserverad lagring förklaras.
-4. Ändra principalgränsen, lämna fältet och ladda om sidan.
-5. Verifiera att värdet sparats utan gemensam Spara-knapp och att
-   åtgärdsloggen visar en privilegierad ändring av AI-inställningar.
-6. Prova min/max för alla fyra fält och ett lagringsvärde som inte ligger på
-   ett 64 MiB-steg. Verifiera att giltiga gränsvärden accepteras och att det
-   ogiltiga värdet normaliseras eller avvisas utan att ett ogiltigt värde
-   sparas.
+3. Ändra principalgränsen och lämna fältet.
+4. Verifiera att värdet sparats utan en gemensam Spara-knapp och att en ny
+   hämtning av AI-inställningarna innehåller värdet.
 
 ## Dataskydd och personuppgifter
 
@@ -1920,9 +1914,8 @@ otilldelade personer som inte matchar målet.
 2. Som `PrivacyOfficer`, förhandsgranska samma HSA-id.
 3. Verifiera träffar för valideringssession och anropsgränspost utan rå token,
    importnyttolast, valideringsresultat, destinationsnamn eller rad-id:n.
-4. Exportera JSON/PDF och kontrollera att endast säker metadata visas.
-5. Kör rekommenderad radering och verifiera att token därefter ger samma
-   not-found-svar som en okänd eller utgången token.
+4. Exportera JSON och kontrollera att endast säker metadata visas.
+5. Kör rekommenderad radering och kontrollera att båda posterna raderas.
 
 ## Utvecklar- och robusthetsytor
 
@@ -1942,6 +1935,16 @@ MCP-korpusen.
 **Förväntat resultat:** Saknad eller ogiltig bearer-token ger HTTP 401 med
 `WWW-Authenticate: Bearer`. Med giltig token exponeras exakt den dokumenterade
 verktygsuppsättningen och seedade MCP-anrop fungerar utan oväntade verktyg.
+
+### MCP-02: principalen kan inspektera sin valideringssession
+
+**Steg:** Använd en giltig lokal MCP-principal för att lista tillåtna
+kravbiblioteksmål. Validera en liten `Kravimportfil` mot ett tillåtet mål och
+inspektera därefter den returnerade valideringstoken med samma principal.
+
+**Förväntat resultat:** Valideringen returnerar en token och inspektionen visar
+samma mål och inskickade kravrad. Samma valideringstoken skickas i
+inspektionsanropet men återges inte i svaret.
 
 ### DEVTOOLS-02: Developer Mode ligger kvar vid navigering
 

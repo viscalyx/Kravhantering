@@ -1,5 +1,22 @@
+import { createMcpImportValidationPrincipalFingerprint } from '../lib/mcp/import-validation-fingerprint.mjs'
 import { REQUIRED_SEED_TABLES } from './seed-required.mjs'
 import { runSeedData, seedPositionDetail } from './seed-runner.mjs'
+
+const DEMO_MCP_PRINCIPAL_HSA_ID = 'SE5560000001-mcp1'
+const DEMO_MCP_FINGERPRINT_FALLBACK_SECRET =
+  'kravhantering-demo-seed-cookie-password-only-2026'
+
+function demoMcpPrincipalFingerprint() {
+  const secret =
+    process.env.AUTH_SESSION_COOKIE_PASSWORD?.trim() ||
+    DEMO_MCP_FINGERPRINT_FALLBACK_SECRET
+  return createMcpImportValidationPrincipalFingerprint(
+    DEMO_MCP_PRINCIPAL_HSA_ID,
+    secret,
+  )
+}
+
+const DEMO_MCP_PRINCIPAL_FINGERPRINT = demoMcpPrincipalFingerprint()
 
 const TABLE_ORDER = [
   'norm_references',
@@ -88,7 +105,7 @@ const SEED_DATA = {
       [
         9001,
         '1'.repeat(64),
-        '2'.repeat(64),
+        DEMO_MCP_PRINCIPAL_FINGERPRINT,
         '3'.repeat(64),
         'requirements_library',
         1001,
@@ -118,7 +135,7 @@ const SEED_DATA = {
     rows: [
       [
         9001,
-        '2'.repeat(64),
+        DEMO_MCP_PRINCIPAL_FINGERPRINT,
         '2026-04-20 20:00:00',
         1,
         '2026-04-20 20:10:00',

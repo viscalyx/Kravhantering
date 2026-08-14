@@ -775,4 +775,83 @@ test.describe('MCP seeded HTTP security gate', () => {
       await transport?.close().catch(() => undefined)
     }
   })
+
+  test('MCP-02: principal can inspect its validation session', async ({
+    browserName: _browserName,
+  }, testInfo) => {
+    const targetUrl = getMcpUrl(testInfo)
+    let client: Client | undefined
+    let transport: StreamableHTTPClientTransport | undefined
+
+    try {
+      const connection = await createMcpClient(
+        targetUrl,
+        await getBearerToken(),
+      )
+      client = connection.client
+      transport = connection.transport
+
+      const destinations = await callToolOk(
+        client,
+        'requirements_manage_import',
+        {
+          kind: 'requirements_library',
+          operation: 'list_destinations',
+        },
+      )
+      const destination = firstRecord(
+        arrayField(destinations, 'result', 'import destinations'),
+        'requirements library destinations',
+      )
+      const areaId = numberField(
+        destination,
+        'areaId',
+        'requirements library destination',
+      )
+      const submittedPayload = {
+        requirements: [
+          { description: 'MCP-02 inspectable validation requirement' },
+        ],
+        schemaVersion: 'requirement-import.v4',
+      }
+      const validation = await callToolOk(
+        client,
+        'requirements_manage_import',
+        {
+          destination: { areaId, kind: 'requirements_library' },
+          operation: 'validate',
+          payload: submittedPayload,
+        },
+      )
+      const validationToken = stringField(
+        validation,
+        'validationToken',
+        'import validation',
+      )
+
+      const inspection = await callToolOk(
+        client,
+        'requirements_manage_import',
+        {
+          operation: 'inspect_validation',
+          validationToken,
+        },
+      )
+
+      expect(
+        numberField(
+          recordField(inspection, 'destination', 'validation inspection'),
+          'areaId',
+          'validation inspection destination',
+        ),
+      ).toBe(areaId)
+      expect(
+        recordField(inspection, 'submittedPayload', 'validation inspection'),
+      ).toMatchObject(submittedPayload)
+      expect(inspection).not.toHaveProperty('validationToken')
+    } finally {
+      await client?.close().catch(() => undefined)
+      await transport?.close().catch(() => undefined)
+    }
+  })
 })
