@@ -16,6 +16,8 @@ const execFileAsync = promisify(execFile)
 const SCAN_DIR = 'test-results/mcp-seeded'
 const EVENTS_PATH = `${SCAN_DIR}/events.ndjson`
 const SUMMARY_PATH = `${SCAN_DIR}/summary.md`
+const PRODLIKE_MCP_CLIENT_ID = 'kravhantering-mcp'
+const PRODLIKE_MCP_REQUIRED_SCOPES = 'kravhantering:mcp'
 const REAL_HSA_ID_PATTERN = /^[A-Z]{2}\d{10}-[A-Za-z0-9]+$/u
 
 type UnknownRecord = Record<string, unknown>
@@ -219,9 +221,12 @@ async function getBearerToken() {
     {
       env: {
         ...process.env,
+        AUTH_MCP_REQUIRED_SCOPES:
+          process.env.AUTH_MCP_REQUIRED_SCOPES ?? PRODLIKE_MCP_REQUIRED_SCOPES,
         AUTH_OIDC_ISSUER_URL:
           process.env.AUTH_OIDC_ISSUER_URL ??
           'http://localhost:8080/realms/kravhantering-dev',
+        MCP_CLIENT_ID: process.env.MCP_CLIENT_ID ?? PRODLIKE_MCP_CLIENT_ID,
       },
     },
   )
