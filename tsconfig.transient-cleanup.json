@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "declaration": false,
+    "incremental": false,
+    "isolatedModules": false,
+    "lib": ["es2022"],
+    "module": "node16",
+    "moduleResolution": "node16",
+    "noEmit": false,
+    "outDir": ".build/transient-cleanup",
+    "rootDir": ".",
+    "sourceMap": false,
+    "target": "es2022"
+  },
+  "include": [
+    "lib/transient-cleanup/**/*.ts",
+    "lib/typeorm/sqlserver-config.ts"
+  ],
+  "exclude": ["**/__tests__/**", "node_modules"]
+}

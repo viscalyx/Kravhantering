@@ -94,6 +94,10 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
     target: 'docs/operations/production-quadlet-containment.md',
   },
   {
+    source: 'docs/operations/transient-state-cleanup.md',
+    target: 'docs/operations/transient-state-cleanup.md',
+  },
+  {
     source: 'docs/operations/api-docs-edge-verification.md',
     target: 'docs/operations/api-docs-edge-verification.md',
   },

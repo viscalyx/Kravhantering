@@ -649,3 +649,10 @@ must sign in again after the app runtime restarts.
 Add the rotation date, affected credential names, IdP change reference,
 verification result and old-secret revocation confirmation to the operational
 evidence record. Do not store raw secret values in that record.
+
+## Scheduled Transient-State Cleanup Upgrade Impact
+
+The release adds a timer and one-shot container to every supported app-node
+topology. Complete the activation, first-run verification and rollback steps in
+[Scheduled Transient-State Cleanup](transient-state-cleanup.md) during the
+upgrade window.

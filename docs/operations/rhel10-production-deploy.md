@@ -1179,3 +1179,10 @@ Keep these files with the deployment record:
 
 Do not archive `/etc/kravhantering/*.env`, private keys or raw container
 inspect output in general release evidence stores.
+
+## Scheduled Transient-State Cleanup
+
+Every supported app-node topology installs scheduled cleanup for expired MCP
+import-validation sessions. Follow
+[Scheduled Transient-State Cleanup](transient-state-cleanup.md) to configure
+bounds, verify the timer, monitor aggregate backlog telemetry and retry safely.

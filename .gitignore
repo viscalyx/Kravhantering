@@ -67,6 +67,7 @@ certificates
 
 # Next.js build output
 .next
+/.build/
 out
 build/
 /public/build.json

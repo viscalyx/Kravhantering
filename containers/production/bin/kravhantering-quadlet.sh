@@ -76,16 +76,16 @@ network_resolver() {
 required_values() {
   case "$1" in
     app-node-tls)
-      printf '%s\n' APP_RUNTIME_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTPS_BIND \
+      printf '%s\n' APP_RUNTIME_IMAGE_REF DB_JOB_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTPS_BIND \
         NGINX_READINESS_PROBE_CONFIG_FILE NGINX_RESOLVER
       ;;
     app-node-http)
-      printf '%s\n' APP_RUNTIME_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTP_BIND \
+      printf '%s\n' APP_RUNTIME_IMAGE_REF DB_JOB_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTP_BIND \
         NGINX_READINESS_PROBE_CONFIG_FILE NGINX_RESOLVER \
         NGINX_TRUSTED_PROXY_CONFIG_FILE
       ;;
     single-node)
-      printf '%s\n' APP_RUNTIME_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTPS_BIND \
+      printf '%s\n' APP_RUNTIME_IMAGE_REF DB_JOB_IMAGE_REF NGINX_IMAGE_REF NGINX_HTTPS_BIND \
         NGINX_READINESS_PROBE_CONFIG_FILE NGINX_RESOLVER PUBLIC_HOSTNAME \
         SQLSERVER_IMAGE_REF
       if [[ "$IDENTITY_PROVIDER_MODE" != external ]]; then
@@ -504,7 +504,9 @@ managed_unit_names() {
     kravhantering-single-node-identity.network \
     kravhantering-single-node.target \
     kravhantering-sqlserver-data.volume \
-    kravhantering-sqlserver.container
+    kravhantering-sqlserver.container \
+    kravhantering-transient-cleanup.container \
+    kravhantering-transient-cleanup.timer
 }
 
 remove_managed_units() {
@@ -761,7 +763,7 @@ install_units() {
 
   while IFS= read -r file; do
     staging_dir="$quadlet_stage"
-    if [[ "$file" == *.target ]]; then
+    if [[ "$file" == *.target || "$file" == *.timer ]]; then
       staging_dir="$systemd_stage"
       systemd_files+=("$file")
     else
@@ -851,12 +853,14 @@ case "$COMMAND" in
   status)
     [[ -z "$OUTPUT_DIR" ]] || fail '--output-dir is only valid with render'
     [[ -z "$PURPOSE" ]] || fail '--purpose is only valid with print-network'
-    systemctl --user status "$(topology_target "$TOPOLOGY")"
+    systemctl --user status "$(topology_target "$TOPOLOGY")" \
+      kravhantering-transient-cleanup.timer
     ;;
   remove)
     [[ -z "$OUTPUT_DIR" ]] || fail '--output-dir is only valid with render'
     [[ -z "$PURPOSE" ]] || fail '--purpose is only valid with print-network'
     target="$(topology_target "$TOPOLOGY")"
+    systemctl --user disable --now kravhantering-transient-cleanup.timer
     systemctl --user stop "$target"
     systemctl --user disable "$target"
     remove_managed_units "$QUADLET_DIR"

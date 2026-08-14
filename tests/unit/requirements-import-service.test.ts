@@ -278,7 +278,7 @@ describe('requirements import service', () => {
     vi.mocked(getRequirementImportValidationSessionByTokenHash).mockReset()
     vi.mocked(
       purgeExpiredRequirementImportValidationSessions,
-    ).mockResolvedValue(undefined)
+    ).mockResolvedValue({ deletedRows: 0 })
     vi.mocked(
       updateRequirementImportValidationSessionExecutionResult,
     ).mockResolvedValue(undefined)

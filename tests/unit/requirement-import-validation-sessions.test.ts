@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createRequirementImportValidationSession,
   getRequirementImportValidationSessionByTokenHash,
+  inspectExpiredRequirementImportValidationSessions,
   purgeExpiredRequirementImportValidationSessions,
   updateRequirementImportValidationSessionExecutionResult,
 } from '@/lib/dal/requirement-import-validation-sessions'
+import { createRequirementImportValidationSessionCleanupTarget } from '@/lib/transient-cleanup/requirement-import-validation-sessions'
 
 const row = {
   createdAt: new Date('2026-08-01T10:00:00.000Z'),
@@ -124,13 +126,60 @@ describe('requirement import validation-session DAL', () => {
     ])
   })
 
+  it('reports only aggregate expired-session backlog metrics', async () => {
+    query.mockResolvedValueOnce([
+      {
+        expiredRowCount: '12',
+        expiredStoredBytes: '4096',
+        oldestExpiredAgeMs: '60000',
+      },
+    ])
+
+    await expect(
+      inspectExpiredRequirementImportValidationSessions(db),
+    ).resolves.toEqual({
+      expiredRowCount: 12,
+      expiredStoredBytes: 4096,
+      oldestExpiredAgeMs: 60000,
+    })
+    expect(query.mock.calls[0]?.[0]).toContain('COUNT_BIG(*)')
+    expect(query.mock.calls[0]?.[0]).toContain('DATALENGTH')
+    expect(query.mock.calls[0]?.[0]).toContain('SYSUTCDATETIME()')
+    expect(query.mock.calls[0]?.[1]).toBeUndefined()
+  })
+
   it.each([
     [0, 1],
     [42.9, 42],
     [999, 500],
   ])('bounds purge limit %s to %s', async (limit, expected) => {
-    query.mockResolvedValueOnce(undefined)
-    await purgeExpiredRequirementImportValidationSessions(db, limit)
-    expect(query.mock.calls[0]?.[0]).toContain(`DELETE TOP (${expected})`)
+    query.mockResolvedValueOnce([{ deletedRows: String(expected) }])
+    await expect(
+      purgeExpiredRequirementImportValidationSessions(db, limit),
+    ).resolves.toEqual({ deletedRows: expected })
+    expect(query.mock.calls[0]?.[0]).toContain('TOP (@0)')
+    expect(query.mock.calls[0]?.[0]).toContain('UPDLOCK, READPAST, ROWLOCK')
+    expect(query.mock.calls[0]?.[0]).toContain('expires_at <= SYSUTCDATETIME()')
+    expect(query.mock.calls[0]?.[0]).toContain('ORDER BY expires_at, id')
+    expect(query.mock.calls[0]?.[1]).toEqual([expected])
+  })
+
+  it('adapts aggregate inspection and bounded purge as one cleanup target', async () => {
+    query
+      .mockResolvedValueOnce([
+        {
+          expiredRowCount: '1',
+          expiredStoredBytes: '100',
+          oldestExpiredAgeMs: '1000',
+        },
+      ])
+      .mockResolvedValueOnce([{ deletedRows: '1' }])
+    const target = createRequirementImportValidationSessionCleanupTarget(db)
+
+    await expect(target.inspect()).resolves.toMatchObject({
+      expiredRowCount: 1,
+    })
+    await expect(target.purgeBatch(1)).resolves.toEqual({ deletedRows: 1 })
+    expect(target.kind).toBe('requirement_import_validation_sessions')
   })
 })

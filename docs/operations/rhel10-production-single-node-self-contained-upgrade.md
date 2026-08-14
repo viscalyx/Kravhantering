@@ -759,3 +759,8 @@ For either rollback that follows a failed Quadlet start:
 
 Do not rely on app-only image rollback after schema migration unless the
 specific release notes explicitly say it is supported.
+
+The release also adds the scheduled transient-state cleanup units. Before
+restoring traffic, complete the activation and first-run verification in
+[Scheduled Transient-State Cleanup](transient-state-cleanup.md). Its rollback
+section removes the new timer before an older release is started.

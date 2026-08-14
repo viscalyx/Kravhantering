@@ -1245,6 +1245,10 @@ up() {
   service_systemctl enable kravhantering-single-node.target
   service_systemctl start kravhantering-single-node.target || \
     report_target_failure 'single-node target failed to start'
+  service_systemctl is-active --quiet kravhantering-transient-cleanup.timer || \
+    fail 'transient cleanup timer was not active after topology startup'
+  service_systemctl start kravhantering-transient-cleanup.service || \
+    fail 'transient cleanup manual release-smoke invocation failed'
   wait_for_url https://kravhantering.test/api/health \
     'initial application process health'
   wait_for_url https://kravhantering.test/api/ready \
@@ -1295,6 +1299,7 @@ up() {
     'sqlserver-legacy-to-verified-tls-upgrade=passed' \
     'post-reinstall-migration=passed' \
     'target-stop-start=passed' \
+    'transient-cleanup-schedule-and-manual-run=passed' \
     'keycloak-hardened-profile-transition=passed' \
     >"$EVIDENCE_DIR/lifecycle.txt"
 }
@@ -1309,6 +1314,8 @@ evidence() {
   done
   service_systemctl status kravhantering-single-node.target --no-pager \
     >"$EVIDENCE_DIR/systemd-status.txt" 2>&1 || true
+  service_systemctl status kravhantering-transient-cleanup.timer --no-pager \
+    >>"$EVIDENCE_DIR/systemd-status.txt" 2>&1 || true
   service_systemctl list-units 'kravhantering-*' --all --no-pager \
     >"$EVIDENCE_DIR/systemd-units.txt" 2>&1 || true
   as_service podman ps --all --format json \

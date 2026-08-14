@@ -2746,3 +2746,10 @@ bootstrap credential compromise:
 
 Escalate database or volume integrity concerns to the backup/recovery process;
 do not attempt an in-place repair without preserving recoverable evidence.
+
+## Scheduled Transient-State Cleanup
+
+The single-node topology installs the same bounded cleanup timer as both
+app-node topologies. Follow
+[Scheduled Transient-State Cleanup](transient-state-cleanup.md) for activation,
+monitoring, manual retry and troubleshooting.

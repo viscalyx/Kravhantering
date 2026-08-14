@@ -1,4 +1,10 @@
 import type { SqlServerDatabase } from '@/lib/db'
+
+export {
+  inspectExpiredRequirementImportValidationSessions,
+  purgeExpiredRequirementImportValidationSessions,
+} from '@/lib/transient-cleanup/requirement-import-validation-sessions'
+
 import { toIsoString } from '@/lib/typeorm/value-mappers'
 
 export interface RequirementImportValidationSessionRecord {
@@ -175,19 +181,5 @@ export async function updateRequirementImportValidationSessionExecutionResult(
       WHERE id = @2
     `,
     [executionResultJson, updatedAt, id],
-  )
-}
-
-export async function purgeExpiredRequirementImportValidationSessions(
-  db: SqlServerDatabase,
-  limit = 100,
-): Promise<void> {
-  const boundedLimit = Math.max(1, Math.min(500, Math.trunc(limit)))
-  await db.query(
-    `
-      DELETE TOP (${boundedLimit})
-      FROM requirement_import_validation_sessions
-      WHERE expires_at <= SYSUTCDATETIME()
-    `,
   )
 }

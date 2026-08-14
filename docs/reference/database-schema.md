@@ -1619,8 +1619,15 @@ to either a requirement area or a requirements specification depending on
 
 **Indexes and constraints:** `uq_requirement_import_validation_sessions_token_hash`
 enforces unique token hashes. `idx_requirement_import_validation_sessions_expires_at`
-supports opportunistic expiry cleanup. JSON columns have `ISJSON` checks, and
-scalar checks constrain token/payload/fingerprint length and destination kind.
+supports expiry cleanup. JSON columns have `ISJSON` checks, and scalar checks
+constrain token/payload/fingerprint length and destination kind.
+
+Expired rows are removed both opportunistically during MCP activity and by the
+production scheduled transient-state cleanup. The scheduled path deletes
+bounded, skip-locked batches using SQL Server UTC and reports only aggregate
+expired-row count, stored bytes and oldest age. It never logs stored session
+content. See
+[Scheduled Transient-State Cleanup](../operations/transient-state-cleanup.md).
 
 ### `ai_safety_rules`
 

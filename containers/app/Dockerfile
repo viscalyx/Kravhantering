@@ -9,6 +9,13 @@ COPY package.json package-lock.json .npmrc ./
 RUN npm install --global "npm@$(node -p 'require("./package.json").packageManager.slice(4)')"
 RUN npm ci
 
+FROM dependencies AS transient-cleanup-build
+
+COPY tsconfig.json tsconfig.transient-cleanup.json ./
+COPY lib/transient-cleanup ./lib/transient-cleanup
+COPY lib/typeorm/sqlserver-config.ts ./lib/typeorm/sqlserver-config.ts
+RUN npm run transient-cleanup:build
+
 FROM dependencies AS app-build
 
 ARG BUILD_COMMIT_SHA=unknown
@@ -94,6 +101,7 @@ WORKDIR /workspace
 COPY --from=db-job-dependencies --chown=node:node /workspace/node_modules ./node_modules
 COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-admin.mjs
+COPY --from=transient-cleanup-build --chown=node:node /workspace/.build/transient-cleanup ./transient-cleanup
 COPY --chown=node:node typeorm/migrations ./typeorm/migrations
 COPY --chown=node:node typeorm/runtime-permission-manifest.mjs ./typeorm/runtime-permission-manifest.mjs
 COPY --chown=node:node typeorm/seed-required.mjs ./typeorm/seed-required.mjs

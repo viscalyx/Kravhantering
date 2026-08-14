@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Kravhantering transient-state cleanup every five minutes
+PartOf=kravhantering-single-node.target
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=30s
+RandomizedDelaySec=60s
+Persistent=true
+Unit=kravhantering-transient-cleanup.service
+
+[Install]
+WantedBy=timers.target
