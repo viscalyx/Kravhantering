@@ -473,6 +473,32 @@ inte delar av MCP-principalens identitet.
 
 _Avoid_: MCP-klient när personen avses, JWT-subjekt, tokenägare.
 
+**MCP-tjänstklient**:
+En godkänd anropande applikation som autentiserar sig mot MCP-servern med ett
+eget OAuth-klient-id. MCP-tjänstklienten är inte MCP-principalen eller
+MCP-servern.
+
+- `en`: MCP service client
+
+_Avoid_: MCP-server, MCP-principal, OAuth-resurs.
+
+**MCP-tjänsttoken**:
+En kortlivad åtkomsttoken som en godkänd MCP-tjänstklient använder för att
+autentisera en MCP-principal. Tokenen är bunden till tjänstklienten och MCP:s
+minsta nödvändiga åtkomstomfång.
+
+- `en`: MCP service token
+
+_Avoid_: Webbläsartoken, ID-token, generell bearer-token.
+
+**Aktiverad MCP-yta**:
+En MCP-yta för vilken en MCP-tjänstklient har konfigurerats. Utan en sådan
+tjänstklient är MCP-ytan inaktiverad medan övriga applikationen kan användas.
+
+- `en`: Enabled MCP surface
+
+_Avoid_: Delvis konfigurerad MCP-yta, publik MCP-yta.
+
 **MCP-importvalideringssession**:
 Ett kortlivat persisterat valideringstillstånd för MCP-kravimport, bundet till
 den skapande MCP-principalen och den valda destinationen fram till utgångstid.
