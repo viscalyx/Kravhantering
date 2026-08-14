@@ -1023,7 +1023,15 @@ export default function AiSettingsPanel({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+          <div
+            className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40"
+            {...devMarker({
+              context: 'AI security',
+              name: 'setting',
+              priority: 260,
+              value: 'raw forensic capture',
+            })}
+          >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
@@ -1040,6 +1048,9 @@ export default function AiSettingsPanel({
                     onClick={() => setIsForensicLoggingHelpOpen(open => !open)}
                   />
                 </div>
+                <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+                  {ta('ai.aiSafetyForensicLoggingDefault')}
+                </p>
                 <AnimatedHelpPanel
                   id={forensicLoggingHelpId}
                   isOpen={isForensicLoggingHelpOpen}

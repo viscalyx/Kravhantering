@@ -87,6 +87,15 @@ function makeRequest(
   return request
 }
 
+function enableAiSafetyForensicLogging(): void {
+  routeState.query.mockResolvedValue([
+    {
+      aiSafetyForensicLoggingEnabled: 1,
+      requirementGenerationEnabled: 1,
+    },
+  ])
+}
+
 describe('POST /api/ai/repair-requirement-import-json', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -268,6 +277,7 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
   })
 
   it('blocks unsafe repair input before provider use', async () => {
+    enableAiSafetyForensicLogging()
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -332,6 +342,7 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
   })
 
   it('blocks unsafe repaired output before returning raw content', async () => {
+    enableAiSafetyForensicLogging()
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)

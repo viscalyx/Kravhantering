@@ -245,9 +245,12 @@ all rule IDs/types, categories, source, request/correlation IDs, and
 model/provider when available. The metadata event does not include prompts, raw
 model output, repair JSON, image data, matched terms, or actor HSA-id values.
 
-During the current diagnostic phase, Admin Center seed data defaults
-`aiSafetyForensicLoggingEnabled` to enabled. When enabled, an AI safety block
-also writes a separate `security-forensics` JSON event named
+Fresh installations and missing-setting fallbacks default
+`aiSafetyForensicLoggingEnabled` to disabled. Upgrades preserve the stored
+value for both enabled and disabled installations; only the database default
+for future rows changes. Failure to load the setting also fails closed to the
+metadata-only event. When an administrator enables raw forensic capture, an AI
+safety block also writes a separate `security-forensics` JSON event named
 `ai.input_safety.blocked_content_captured` or
 `ai.output_safety.blocked_content_captured`. It uses top-level request id,
 correlation id, and event id fields matching the metadata event, while its
@@ -256,6 +259,16 @@ and user agent. It contains the screened content parts for the blocked step
 plus matched evidence for handling/action, target, coding words, and direct
 markers. It still does not include system prompts, import instruction text,
 response schemas, raw images, or unrelated request state.
+
+Operators upgrading an installation where raw forensic capture is enabled must
+review whether that exposure is still required. Disable it in Admin Center if
+the installation should adopt metadata-only behavior; no action is required to
+preserve either stored value.
+
+When raw forensic capture is disabled, blocked prompts, model output,
+reasoning, repair payloads, matched evidence, secrets, and personal data are
+not written to ordinary logs. Operational errors while loading the setting are
+logged only with a non-sensitive error classification.
 
 **Reference-data binding:** the import instruction includes current taxonomy
 and norm-reference data so the model can emit import JSON with stable IDs where

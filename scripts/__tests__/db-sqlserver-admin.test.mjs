@@ -30,6 +30,7 @@ import {
   resetSqlServerDatabase,
   runSqlServerMigrations,
   seedSqlServerDatabase,
+  setMigrationInstallationContext,
   stripWrappingQuotes,
   waitForSqlServer,
 } from '../db-sqlserver-admin.mjs'
@@ -622,6 +623,7 @@ describe('db-sqlserver-admin.mjs', () => {
     class FakeDataSource {
       constructor(options) {
         dataSourceOptions = options
+        this.options = options
       }
       destroy = destroy
       initialize = initialize
@@ -646,6 +648,7 @@ describe('db-sqlserver-admin.mjs', () => {
       dataSourceOptions.migrations.map(migration => migration.name),
     ).toEqual(expectedMigrationNames)
     expect(runMigrations).toHaveBeenCalled()
+    expect(dataSourceOptions.kravhanteringFreshInstallation).toBe(false)
     expect(reconcileRuntimePermissionsImpl).toHaveBeenCalled()
     expect(destroy).toHaveBeenCalled()
     expect(result).toMatchObject({
@@ -661,6 +664,22 @@ describe('db-sqlserver-admin.mjs', () => {
         compatible: true,
       },
     })
+  })
+
+  it('marks only an empty migration history as a fresh installation', () => {
+    const freshDataSource = { options: {} }
+    const upgradeDataSource = { options: {} }
+
+    setMigrationInstallationContext(freshDataSource, {
+      executedMigrationCount: 0,
+    })
+    setMigrationInstallationContext(upgradeDataSource, {
+      executedMigrationCount: 56,
+    })
+    setMigrationInstallationContext({}, { executedMigrationCount: 0 })
+
+    expect(freshDataSource.options.kravhanteringFreshInstallation).toBe(true)
+    expect(upgradeDataSource.options.kravhanteringFreshInstallation).toBe(false)
   })
 
   it('parses explicitly managed runtime users without duplicates', () => {

@@ -375,7 +375,8 @@ sequenceDiagram
   step, direction, rule metadata, and model/provider at top level, while
   `request` carries transport context. Logging pipelines can correlate the
   forensic record with the metadata event even when streams route to separate
-  sinks.
+  sinks. Fresh installations and missing-setting or settings-load fallbacks
+  keep this raw-content stream disabled. Upgrades preserve the stored value.
 - Application action-log rows in `action_audit_events` are separate from
   this stream. They are database records for successful app-owned mutations and
   authorization denials, include request/correlation IDs and optional validated

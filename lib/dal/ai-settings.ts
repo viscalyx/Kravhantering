@@ -1,6 +1,7 @@
 import {
   ADMIN_AI_SETTINGS_CONSTRAINTS,
   type AdminAiSettings,
+  AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
   AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
   type AiRequirementGenerationAvailability,
   isValidAiSafetyRuleCacheTtlSeconds,
@@ -119,7 +120,7 @@ async function assertMcpRowsWithinLockedGlobalLimit(
 
 export const DEFAULT_AI_GENERATION_SETTINGS: AiGenerationSettings =
   Object.freeze({
-    aiSafetyForensicLoggingEnabled: true,
+    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     mcpImportMaxActiveSessionsPerDestination:
       MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
@@ -147,7 +148,7 @@ const DEFAULT_MCP_RUNTIME_SETTINGS: McpRuntimeSettings = Object.freeze({
 
 const DEFAULT_AI_SAFETY_RUNTIME_SETTINGS: AiSafetyRuntimeSettings =
   Object.freeze({
-    aiSafetyForensicLoggingEnabled: true,
+    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
   })
 
 const MCP_RUNTIME_SETTINGS_CACHE_TTL_MS = 30_000
@@ -468,7 +469,7 @@ async function getLegacyAiGenerationSettings(
   }
 
   return {
-    aiSafetyForensicLoggingEnabled: true,
+    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     mcpImportMaxActiveSessionsPerDestination:
       MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
@@ -483,7 +484,7 @@ async function getLegacyAiGenerationSettings(
   }
 }
 
-async function getAiGenerationSettingsWithLegacyForensicDefault(
+async function getAiGenerationSettingsWithoutForensicColumn(
   db: SqlServerDatabase,
 ): Promise<AiGenerationSettings> {
   const rows = (await db.query(`
@@ -503,7 +504,7 @@ async function getAiGenerationSettingsWithLegacyForensicDefault(
   }
 
   return {
-    aiSafetyForensicLoggingEnabled: true,
+    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
     aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
       row.aiSafetyRuleCacheTtlSeconds,
     ),
@@ -544,7 +545,7 @@ async function getAiGenerationSettingsWithQuotaDefaults(
 
   return {
     aiSafetyForensicLoggingEnabled: toBoolean(
-      row.aiSafetyForensicLoggingEnabled ?? true,
+      row.aiSafetyForensicLoggingEnabled ?? AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
     ),
     aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
       row.aiSafetyRuleCacheTtlSeconds,
@@ -581,7 +582,7 @@ async function getAiGenerationSettingsWithLegacyMcpDefaults(
   }
 
   return {
-    aiSafetyForensicLoggingEnabled: true,
+    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     mcpImportMaxActiveSessionsPerDestination:
       MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
@@ -685,7 +686,8 @@ export async function getCachedAiSafetyRuntimeSettings(
 
     const settings = {
       aiSafetyForensicLoggingEnabled: toBoolean(
-        row.aiSafetyForensicLoggingEnabled ?? true,
+        row.aiSafetyForensicLoggingEnabled ??
+          AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
       ),
     }
     cacheAiSafetyRuntimeSettings(settings)
@@ -737,7 +739,8 @@ export async function getAiGenerationSettings(
 
     return {
       aiSafetyForensicLoggingEnabled: toBoolean(
-        row.aiSafetyForensicLoggingEnabled ?? true,
+        row.aiSafetyForensicLoggingEnabled ??
+          AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
       ),
       aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
         row.aiSafetyRuleCacheTtlSeconds,
@@ -789,7 +792,7 @@ export async function getAiGenerationSettings(
           'ai_safety_forensic_logging_enabled',
         )
       ) {
-        return await getAiGenerationSettingsWithLegacyForensicDefault(db)
+        return await getAiGenerationSettingsWithoutForensicColumn(db)
       }
       return await getAiGenerationSettingsWithLegacyMcpDefaults(db)
     } catch (fallbackError) {

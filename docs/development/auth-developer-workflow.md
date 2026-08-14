@@ -728,7 +728,9 @@ verifiers, `state`, `nonce`, and `code` values are stripped before emit.
 AI safety forensic events use `"channel":"security-forensics"` instead. They
 can include raw screened blocked content and matched rule terms. Forensic
 metadata is emitted at top level, while `request` carries transport context, so
-only tail them in environments where that exposure is acceptable:
+only enable and tail them in environments where that exposure is acceptable.
+Fresh installations default this stream to disabled; enable it explicitly in
+Admin Center when local forensic diagnosis requires raw blocked content:
 
 ```bash
 npm run dev | grep '"channel":"security-forensics"' | jq .

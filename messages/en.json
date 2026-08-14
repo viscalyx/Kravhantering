@@ -1507,6 +1507,7 @@
       "adminPreferenceDisabled": "Disabled",
       "adminPreferenceEnabled": "Enabled",
       "aiSafetyForensicLogging": "Log forensic AI security data",
+      "aiSafetyForensicLoggingDefault": "Raw forensic capture is disabled by default on new installations. Enable it only when your incident-handling process requires raw blocked content.",
       "aiSecurityDescription": "Control the AI safety filter, safety-rule cache, forensic logging, and AI safety rules.",
       "aiSecurityTitle": "AI security",
       "assistanceDescription": "Control AI-assisted requirement generation.",
@@ -1515,7 +1516,7 @@
       "environmentOverrideNotice": "Deployment configuration currently disables AI requirement generation. You can save the Admin Center preference, but generation stays disabled until the deployment override is removed.",
       "decreaseMcpMaxRequestLimit": "Decrease MCP request limit",
       "fieldHelp": {
-        "aiSafetyForensicLogging": "When enabled, AI safety blocks write a separate forensic JSON event with raw blocked content and matched rule terms. The metadata event in the security audit log is always written. Changes apply immediately in this app process and can take up to 30 seconds in other app processes.",
+        "aiSafetyForensicLogging": "New installations start with raw forensic capture disabled. When enabled, AI safety blocks write a separate forensic JSON event with raw blocked content and matched rule terms. The metadata event in the security audit log is always written. Changes apply immediately in this app process and can take up to 30 seconds in other app processes.",
         "mcpImportMaxActiveSessionsPerDestination": "Maximum number of unexpired validation sessions, including executed sessions, reserved for one destination across all principals.",
         "mcpImportMaxActiveSessionsPerPrincipal": "Maximum number of unexpired validation sessions, including executed sessions, that one authenticated MCP principal may own.",
         "mcpImportMaxCreationsPerWindow": "Maximum successful validation-session creations per principal in each fixed, epoch-aligned 10-minute window. Rejected validations do not consume the quota.",
@@ -2404,7 +2405,7 @@
       },
       "settings": {
         "heading": "Available settings",
-        "body": "You can enable or disable AI-assisted requirement generation, control how long the active safety rule set may stay in the server cache, maintain the words used by the AI safety screen, and set MCP request/session and import limits. Every change on the AI tab is saved immediately when a field or row changes."
+        "body": "You can enable or disable AI-assisted requirement generation, control raw forensic capture, control how long the active safety rule set may stay in the server cache, maintain the words used by the AI safety screen, and set MCP request/session and import limits. New installations start with raw forensic capture disabled. Every change on the AI tab is saved immediately when a field or row changes."
       },
       "precedence": {
         "heading": "Precedence",

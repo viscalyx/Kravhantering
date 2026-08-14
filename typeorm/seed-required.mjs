@@ -251,7 +251,7 @@ export const REQUIRED_SEED_DATA = {
       [
         1,
         1,
-        1,
+        0,
         1048576,
         500,
         60,

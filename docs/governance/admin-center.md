@@ -209,7 +209,11 @@ existing sessions.
 The forensic AI safety logging setting only controls the separate
 `security-forensics` JSON output. It does not enable or disable the AI safety
 filter, the metadata-only `security-audit` event, blocking behavior, or
-user-facing error messages. When an admin saves
+user-facing error messages. Fresh installations, missing singleton rows,
+missing setting columns, and setting-load failures all default to metadata-only
+behavior. Upgrades preserve the stored administrator preference while changing
+the database default for future rows to disabled. No operator action is needed
+to keep an existing enabled or disabled value. When an admin saves
 this setting, the saving process clears `cachedAiSafetyRuntimeSettings` in the
 local process immediately; other app processes can continue to use their cached
 value until

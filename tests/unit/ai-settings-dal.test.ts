@@ -57,10 +57,10 @@ describe('AI settings DAL', () => {
     )
   })
 
-  it('loads the default enabled setting when the singleton row is absent', async () => {
+  it('loads forensic capture disabled when the singleton row is absent', async () => {
     await expect(getAiGenerationSettings(db)).resolves.toEqual({
       ...MCP_QUOTA_DEFAULTS,
-      aiSafetyForensicLoggingEnabled: true,
+      aiSafetyForensicLoggingEnabled: false,
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
       mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
@@ -83,7 +83,7 @@ describe('AI settings DAL', () => {
     try {
       await expect(getAiGenerationSettings(db)).resolves.toEqual({
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: true,
+        aiSafetyForensicLoggingEnabled: false,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
@@ -110,7 +110,7 @@ describe('AI settings DAL', () => {
     try {
       await expect(getAiGenerationSettings(db)).resolves.toEqual({
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: true,
+        aiSafetyForensicLoggingEnabled: false,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
@@ -203,7 +203,7 @@ describe('AI settings DAL', () => {
     await expect(getAdminAiSettings(db, { NODE_ENV: 'test' })).resolves.toEqual(
       {
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: true,
+        aiSafetyForensicLoggingEnabled: false,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
         disabledByEnvironment: false,
@@ -239,7 +239,7 @@ describe('AI settings DAL', () => {
       ])
 
     await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
-      aiSafetyForensicLoggingEnabled: true,
+      aiSafetyForensicLoggingEnabled: false,
       requirementGenerationEnabled: false,
     })
     expect(query.mock.calls[1]?.[0]).not.toContain(
@@ -319,7 +319,7 @@ describe('AI settings DAL', () => {
 
     await expect(getAiGenerationSettings(db)).resolves.toEqual({
       ...MCP_QUOTA_DEFAULTS,
-      aiSafetyForensicLoggingEnabled: true,
+      aiSafetyForensicLoggingEnabled: false,
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
       mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
@@ -618,7 +618,7 @@ describe('AI settings DAL', () => {
     )
   })
 
-  it('caches AI safety runtime settings and defaults forensic logging on', async () => {
+  it('caches the configured AI safety runtime setting', async () => {
     query.mockResolvedValueOnce([{ aiSafetyForensicLoggingEnabled: 0 }])
 
     await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
@@ -631,18 +631,18 @@ describe('AI settings DAL', () => {
     expect(query).toHaveBeenCalledTimes(1)
   })
 
-  it('defaults AI safety runtime settings on when the singleton row is absent', async () => {
+  it('fails closed when the AI settings singleton row is absent', async () => {
     await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: true,
+      aiSafetyForensicLoggingEnabled: false,
     })
     await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: true,
+      aiSafetyForensicLoggingEnabled: false,
     })
 
     expect(query).toHaveBeenCalledTimes(1)
   })
 
-  it('defaults AI safety runtime settings on when the forensic column is missing', async () => {
+  it('fails closed when the forensic setting column is missing', async () => {
     query.mockRejectedValueOnce(
       Object.assign(
         new Error("Invalid column name 'ai_safety_forensic_logging_enabled'."),
@@ -651,7 +651,7 @@ describe('AI settings DAL', () => {
     )
 
     await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: true,
+      aiSafetyForensicLoggingEnabled: false,
     })
   })
 

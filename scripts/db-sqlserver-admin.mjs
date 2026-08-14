@@ -656,6 +656,12 @@ function assertPostMigrationHeadMatchesTarget(report) {
   )
 }
 
+export function setMigrationInstallationContext(dataSource, migrationState) {
+  if (!dataSource.options || typeof dataSource.options !== 'object') return
+  dataSource.options.kravhanteringFreshInstallation =
+    migrationState.executedMigrationCount === 0
+}
+
 async function inspectMigrationState(
   dataSource,
   connectionString,
@@ -1454,6 +1460,8 @@ export async function runSqlServerMigrations(connectionString, options = {}) {
       },
     )
     assertMigrationStateCompatible(preflight)
+
+    setMigrationInstallationContext(dataSource, preflight)
 
     const migrations = await dataSource.runMigrations()
     const postMigration = await inspectMigrationState(

@@ -1846,8 +1846,10 @@ statusbekräftelse.
 1. Logga in som `Admin` och öppna `Administrationscenter > Inställningar > AI`.
 2. Kontrollera att MCP-sektionen visar aktiva sessioner per principal, aktiva
    sessioner per mål, sessionsskapanden per 10 minuter och reserverad lagring.
-3. Ändra principalgränsen och lämna fältet.
-4. Verifiera att värdet sparats utan en gemensam Spara-knapp och att en ny
+3. Kontrollera att AI-säkerhetssektionen tydligt anger att rå forensisk
+   insamling är avstängd som standard i nya installationer.
+4. Ändra principalgränsen och lämna fältet.
+5. Verifiera att värdet sparats utan en gemensam Spara-knapp och att en ny
    hämtning av AI-inställningarna innehåller värdet.
 
 ## Dataskydd och personuppgifter

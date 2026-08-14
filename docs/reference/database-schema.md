@@ -1565,7 +1565,7 @@ security, and MCP request payload security.
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key; constrained to singleton row `1` |
 | `requirement_generation_enabled` | bit | Admin preference for AI requirement generation |
-| `ai_safety_forensic_logging_enabled` | bit | Admin preference for separate raw-content AI safety forensic JSON logging |
+| `ai_safety_forensic_logging_enabled` | bit | Admin preference for separate raw-content AI safety forensic JSON logging; database default `0` |
 | `mcp_max_request_bytes` | integer | Maximum MCP request payload and persisted MCP import session size in bytes |
 | `mcp_import_max_rows` | integer | Maximum rows accepted in one MCP import validation session |
 | `mcp_import_max_active_sessions_per_principal` | integer | Maximum unexpired validation sessions owned by one MCP principal |
@@ -1595,7 +1595,7 @@ security, and MCP request payload security.
 
 **Seed value:** Required and demo seed data create row `id = 1` with
 `requirement_generation_enabled = 1`,
-`ai_safety_forensic_logging_enabled = 1`,
+`ai_safety_forensic_logging_enabled = 0`,
 `mcp_max_request_bytes = 1048576`, `mcp_import_max_rows = 500`,
 `mcp_import_validation_ttl_minutes = 60`,
 `mcp_import_max_active_sessions_per_principal = 10`,
@@ -1603,10 +1603,14 @@ security, and MCP request payload security.
 `mcp_import_max_creations_per_window = 20`,
 `mcp_import_max_reserved_bytes = 536870912`, and
 `ai_safety_rule_cache_ttl_seconds = 600`, so new seed insertions keep AI
-requirement generation enabled, forensic AI safety logging on, the existing
+requirement generation enabled, forensic AI safety logging off, the existing
 `1 MiB` seeded MCP limit, 500-row import cap, 60-minute validation TTL, and
 ten-minute AI safety rule cache. Required seed data does not overwrite an
-existing singleton row.
+existing singleton row. The migration runner identifies an empty migration
+history as a fresh installation and applies the disabled value to the singleton
+created by the historical migration chain. On upgrades, the migration changes
+only the database default and does not update stored singleton values, so both
+enabled and disabled administrator preferences are preserved.
 
 **Check constraints:** `chk_ai_settings_id` enforces the singleton row ID.
 `chk_ai_settings_mcp_max_request_bytes` enforces integer byte values on a

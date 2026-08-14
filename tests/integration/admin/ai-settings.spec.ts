@@ -475,6 +475,11 @@ test.describe('Admin settings', () => {
           }),
         ).toBeVisible()
         await expect(
+          aiPanel.getByText(
+            'Rå forensisk insamling är avstängd som standard i nya installationer. Slå endast på den när er incidenthantering kräver rått blockerat innehåll.',
+          ),
+        ).toBeVisible()
+        await expect(
           aiPanel.getByRole('heading', {
             exact: true,
             name: 'AI-säkerhetsregler',

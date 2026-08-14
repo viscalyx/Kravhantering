@@ -624,8 +624,8 @@ function forensicEventName(
     : 'ai.output_safety.blocked_content_captured'
 }
 
-function safeForensicLogString(value: unknown): string {
-  return value instanceof Error ? value.message : String(value)
+function safeForensicLogErrorKind(value: unknown): string {
+  return value instanceof Error ? 'Error' : 'NonError'
 }
 
 interface AiSafetyForensicEventPayload {
@@ -763,7 +763,7 @@ function recordAiSafetyForensicEvent(args: {
       // eslint-disable-next-line no-console
       console.error(
         '[security-forensics] failed to record AI safety blocked content',
-        safeForensicLogString(error),
+        safeForensicLogErrorKind(error),
       )
     } catch {
       /* best-effort forensic logging must not break the request */
@@ -818,7 +818,7 @@ export async function recordAiSafetyBlock(args: {
       // eslint-disable-next-line no-console
       console.error(
         '[security-forensics] failed to load AI safety runtime settings',
-        safeForensicLogString(error),
+        safeForensicLogErrorKind(error),
       )
     } catch {
       /* best-effort forensic logging must not break the request */

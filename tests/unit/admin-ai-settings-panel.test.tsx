@@ -87,6 +87,24 @@ describe('AiSettingsPanel', () => {
         .getByRole('heading', { name: 'admin.ai.title' })
         .querySelector('.lucide-sparkles'),
     ).toHaveAttribute('aria-hidden', 'true')
+
+    const forensicDefault = screen.getByText(
+      'admin.ai.aiSafetyForensicLoggingDefault',
+    )
+    const forensicSetting = forensicDefault.closest(
+      '[data-developer-mode-name="setting"]',
+    )
+    expect(forensicSetting).toHaveAttribute(
+      'data-developer-mode-context',
+      'AI security',
+    )
+    expect(forensicSetting).toHaveAttribute(
+      'data-developer-mode-value',
+      'raw forensic capture',
+    )
+    expect(
+      screen.getByLabelText('admin.ai.aiSafetyForensicLogging'),
+    ).not.toBeChecked()
   })
 
   it('uses matching plain minus and plus icons for the MCP limit stepper', async () => {

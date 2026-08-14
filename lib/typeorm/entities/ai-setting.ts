@@ -33,7 +33,7 @@ export const aiSettingEntity = new EntitySchema<AiSettingEntity>({
       type: 'bit',
     },
     aiSafetyForensicLoggingEnabled: {
-      default: true,
+      default: false,
       name: 'ai_safety_forensic_logging_enabled',
       type: 'bit',
     },

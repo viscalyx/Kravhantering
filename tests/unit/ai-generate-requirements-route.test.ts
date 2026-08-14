@@ -82,6 +82,15 @@ function makeRequest(
   return request
 }
 
+function enableAiSafetyForensicLogging(): void {
+  routeState.query.mockResolvedValue([
+    {
+      aiSafetyForensicLoggingEnabled: 1,
+      requirementGenerationEnabled: 1,
+    },
+  ])
+}
+
 describe('POST /api/ai/generate-requirement-import', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -336,6 +345,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
   })
 
   it('blocks unsafe input before import instruction loading or provider use', async () => {
+    enableAiSafetyForensicLogging()
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -427,6 +437,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
   })
 
   it('blocks unsafe model output without echoing raw content', async () => {
+    enableAiSafetyForensicLogging()
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -500,6 +511,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
   })
 
   it('blocks unsafe streamed reasoning without echoing the chunk', async () => {
+    enableAiSafetyForensicLogging()
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)

@@ -1507,6 +1507,7 @@
       "adminPreferenceDisabled": "Avstängt",
       "adminPreferenceEnabled": "Påslaget",
       "aiSafetyForensicLogging": "Logga forensisk AI-säkerhetsdata",
+      "aiSafetyForensicLoggingDefault": "Rå forensisk insamling är avstängd som standard i nya installationer. Slå endast på den när er incidenthantering kräver rått blockerat innehåll.",
       "aiSecurityDescription": "Styr AI-säkerhetsfilter, säkerhetsregelcache, forensisk loggning och AI-säkerhetsregler.",
       "aiSecurityTitle": "AI-säkerhet",
       "assistanceDescription": "Styr AI-assisterad kravgenerering.",
@@ -1515,7 +1516,7 @@
       "environmentOverrideNotice": "Driftkonfigurationen stänger för närvarande av AI-kravgenerering. Du kan spara inställningen i Administrationscenter, men generering är fortsatt avstängd tills driftöverskrivningen tas bort.",
       "decreaseMcpMaxRequestLimit": "Sänk MCP-anropsgränsen",
       "fieldHelp": {
-        "aiSafetyForensicLogging": "När inställningen är på skriver AI-säkerhetsblockeringar en separat forensisk JSON-händelse med rått blockerat innehåll och matchade regeltermer. Metadatahändelsen i säkerhetsloggen skrivs alltid. Ändringar gäller direkt i denna app-process och kan ta upp till 30 sekunder i andra app-processer.",
+        "aiSafetyForensicLogging": "Nya installationer startar med rå forensisk insamling avstängd. När inställningen är på skriver AI-säkerhetsblockeringar en separat forensisk JSON-händelse med rått blockerat innehåll och matchade regeltermer. Metadatahändelsen i säkerhetsloggen skrivs alltid. Ändringar gäller direkt i denna app-process och kan ta upp till 30 sekunder i andra app-processer.",
         "mcpImportMaxActiveSessionsPerDestination": "Högsta antal ej utgångna valideringssessioner, inklusive körda sessioner, som reserveras för ett mål över alla principaler.",
         "mcpImportMaxActiveSessionsPerPrincipal": "Högsta antal ej utgångna valideringssessioner, inklusive körda sessioner, som en autentiserad MCP-principal får äga.",
         "mcpImportMaxCreationsPerWindow": "Högsta antal lyckade skapanden av valideringssessioner per principal i varje fast, epokjusterat 10-minutersfönster. Avvisade valideringar förbrukar inte kvoten.",
@@ -2404,7 +2405,7 @@
       },
       "settings": {
         "heading": "Vad kan ställas in",
-        "body": "Du kan slå på eller av AI-assisterad kravgenerering, styra hur länge den aktiva säkerhetsregeluppsättningen får ligga i servercache, förvalta orden som AI-säkerhetskontrollen använder samt sätta gränser för MCP-begäran, MCP-sessioner och MCP-import. Alla ändringar på AI-fliken sparas direkt när du ändrar ett fält eller en rad."
+        "body": "Du kan slå på eller av AI-assisterad kravgenerering, styra rå forensisk insamling, styra hur länge den aktiva säkerhetsregeluppsättningen får ligga i servercache, förvalta orden som AI-säkerhetskontrollen använder samt sätta gränser för MCP-begäran, MCP-sessioner och MCP-import. Nya installationer startar med rå forensisk insamling avstängd. Alla ändringar på AI-fliken sparas direkt när du ändrar ett fält eller en rad."
       },
       "precedence": {
         "heading": "Prioritet",
