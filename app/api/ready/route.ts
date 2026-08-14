@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAuthConfig } from '@/lib/auth/config'
+import { getAuthConfig, getMcpAuthConfig } from '@/lib/auth/config'
 import {
   type DatabaseSchemaStatusReason,
   readDatabaseSchemaStatus,
@@ -120,6 +120,7 @@ function failureReason(
 async function checkRuntimeConfig() {
   assertSiteUrlConfigured()
   getAuthConfig()
+  getMcpAuthConfig()
   getHsaPersonLookupConfig()
   getSqlServerDatabaseUrl(process.env, false)
 }

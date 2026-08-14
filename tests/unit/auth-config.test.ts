@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   AuthConfigError,
   getAuthConfig,
+  getMcpAuthConfig,
   resetAuthConfigForTests,
 } from '@/lib/auth/config'
 
@@ -16,6 +17,10 @@ const TRACKED_ENV_KEYS = [
   'AUTH_OIDC_REDIRECT_URI',
   'AUTH_SESSION_COOKIE_PASSWORD',
   'AUTH_SESSION_TTL_SECONDS',
+  'AUTH_MCP_REQUIRED_SCOPES',
+  'AUTH_MCP_ROLES_CLAIM',
+  'AUTH_MCP_TOKEN_MAX_AGE_SECONDS',
+  'MCP_CLIENT_ID',
 ] as const
 
 const env = process.env as Record<string, string | undefined>
@@ -81,6 +86,67 @@ describe('auth config', () => {
     expect(cfg.postLogoutRedirectUri).toBe('https://app.example.com/')
     expect(cfg.cookiePassword.length).toBeGreaterThanOrEqual(32)
   })
+
+  it('keeps MCP disabled when no service client is configured', () => {
+    delete env.MCP_CLIENT_ID
+    env.AUTH_MCP_REQUIRED_SCOPES = ''
+    env.AUTH_MCP_TOKEN_MAX_AGE_SECONDS = 'invalid'
+    resetAuthConfigForTests()
+
+    expect(getMcpAuthConfig()).toBeNull()
+  })
+
+  it('loads the enabled MCP service-token contract', () => {
+    env.MCP_CLIENT_ID = 'kravhantering-mcp'
+    env.AUTH_MCP_REQUIRED_SCOPES = 'kravhantering:mcp requirements:read'
+    env.AUTH_MCP_TOKEN_MAX_AGE_SECONDS = '420'
+    env.AUTH_MCP_ROLES_CLAIM = 'mcp_roles'
+    resetAuthConfigForTests()
+
+    expect(getMcpAuthConfig()).toEqual({
+      clientId: 'kravhantering-mcp',
+      requiredScopes: ['kravhantering:mcp', 'requirements:read'],
+      rolesClaim: 'mcp_roles',
+      tokenMaxAgeSeconds: 420,
+    })
+  })
+
+  it('uses the documented MCP role claim and token-age defaults', () => {
+    env.MCP_CLIENT_ID = 'kravhantering-mcp'
+    env.AUTH_MCP_REQUIRED_SCOPES = 'kravhantering:mcp'
+    delete env.AUTH_MCP_ROLES_CLAIM
+    delete env.AUTH_MCP_TOKEN_MAX_AGE_SECONDS
+    resetAuthConfigForTests()
+
+    expect(getMcpAuthConfig()).toEqual({
+      clientId: 'kravhantering-mcp',
+      requiredScopes: ['kravhantering:mcp'],
+      rolesClaim: 'roles',
+      tokenMaxAgeSeconds: 300,
+    })
+  })
+
+  it.each([
+    ['missing scopes', 'AUTH_MCP_REQUIRED_SCOPES', '', 'required'],
+    ['non-integer age', 'AUTH_MCP_TOKEN_MAX_AGE_SECONDS', '60.5', 'integer'],
+    ['too-small age', 'AUTH_MCP_TOKEN_MAX_AGE_SECONDS', '59', '60 through 900'],
+    [
+      'too-large age',
+      'AUTH_MCP_TOKEN_MAX_AGE_SECONDS',
+      '901',
+      '60 through 900',
+    ],
+  ] as const)(
+    'rejects enabled MCP configuration with %s',
+    (_, key, value, message) => {
+      env.MCP_CLIENT_ID = 'kravhantering-mcp'
+      env.AUTH_MCP_REQUIRED_SCOPES = 'kravhantering:mcp'
+      env[key] = value
+      resetAuthConfigForTests()
+
+      expect(() => getMcpAuthConfig()).toThrow(message)
+    },
+  )
 
   it('throws AuthConfigError when a required env var is missing', () => {
     delete env.AUTH_OIDC_ISSUER_URL

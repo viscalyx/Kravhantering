@@ -166,7 +166,10 @@ contract with the external provider owner instead.
 | `AUTH_SESSION_TTL_SECONDS` | `AUTH_SESSION_TTL_SECONDS` in `app.env` | `28800` | Plan only if another absolute browser-session lifetime is approved. |
 | `KEYCLOAK_ADMIN_USER` | `KEYCLOAK_ADMIN` in `keycloak.env`; bundled profiles only | No default | Choose an approved Keycloak bootstrap administrator username when using bundled Keycloak. |
 | `KEYCLOAK_ADMIN_PASSWORD` | `KEYCLOAK_ADMIN_PASSWORD` in `keycloak.env`; bundled profiles only | No default | Generate a strong unique Keycloak bootstrap administrator password when using bundled Keycloak. Follow [Generate Unique Secrets](#generate-unique-secrets). |
-| `MCP_CLIENT_ID` | `MCP_CLIENT_ID` in `app.env` and realm JSON service client id | `kravhantering-mcp` | Plan only if MCP service tokens use a different service-account client id. |
+| `MCP_CLIENT_ID` | `MCP_CLIENT_ID` in `app.env` and realm JSON service client id | Empty | Set to the approved service-client id to enable MCP; leave empty to keep `/api/mcp` disabled. |
+| `AUTH_MCP_REQUIRED_SCOPES` | `AUTH_MCP_REQUIRED_SCOPES` in `app.env` | No default | Required when MCP is enabled; bundled Keycloak uses `kravhantering:mcp`. |
+| `AUTH_MCP_ROLES_CLAIM` | `AUTH_MCP_ROLES_CLAIM` in `app.env` | `roles` | Keep aligned with the bundled or external provider's MCP role mapper. |
+| `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` in `app.env` | `300` | Integer from `60` through `900`; keep aligned with the service-client lifetime. |
 | `MCP_CLIENT_SECRET` | Realm JSON `kravhantering-mcp` client `secret` | No default | Plan only when MCP service tokens are used; generate a secret separate from `OIDC_APP_CLIENT_SECRET`. |
 | `MCP_SERVICE_EMPLOYEE_HSA_ID` | Realm JSON MCP service-account user attribute | No default | Plan only when MCP service tokens are used; record the approved service-account `hsaId`. |
 | `redirectUris` | Realm JSON `kravhantering-app` client `redirectUris` | `https://<APP_HOST>/api/auth/callback` | Verify it stays aligned with `AUTH_OIDC_REDIRECT_URI`. |
@@ -965,6 +968,9 @@ AUTH_SESSION_COOKIE_NAME=kravhantering_session
 AUTH_SESSION_COOKIE_PASSWORD=<at-least-32-random-characters>
 AUTH_SESSION_TTL_SECONDS=28800
 MCP_CLIENT_ID=kravhantering-mcp
+AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp
+AUTH_MCP_ROLES_CLAIM=roles
+AUTH_MCP_TOKEN_MAX_AGE_SECONDS=300
 HSA_PERSON_LOOKUP_TIMEOUT_MS=5000
 HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup
 HSA_PERSON_LOOKUP_CA_PATH=
@@ -1035,10 +1041,12 @@ not an idle timeout; the shortest of this value, the Keycloak SSO session
 lifetime and the access-token lifetime controls when the user must
 re-authenticate.
 
-`MCP_CLIENT_ID=kravhantering-mcp` is used when issuing service-account tokens
-for MCP clients. Keep it aligned with the service client in the bundled realm
-JSON or external provider registration, or leave the default when MCP service
-tokens are not used. It is not a secret.
+`MCP_CLIENT_ID=kravhantering-mcp` enables MCP and must match the service
+client's top-level token `client_id`. Leave it empty when MCP is not approved;
+the endpoint then returns `404` without making readiness unhealthy. Enabled
+deployments keep the required scope, role claim, and maximum age aligned with
+the bundled realm JSON or external provider contract. Tokens use
+protected-header `typ: at+jwt` and a five-minute lifetime.
 
 Set `HSA_PERSON_LOOKUP_URL` to the environment-specific server-side HSA
 lookup endpoint. The browser must not call the HSA integration directly; the

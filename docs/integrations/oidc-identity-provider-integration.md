@@ -144,15 +144,25 @@ flowchart LR
   `client_credentials`.
 - Issue signed JWT access tokens that can be verified against the IdP JWKS.
   Opaque access tokens are not sufficient for the current MCP implementation.
-- Ensure MCP access tokens match the configured issuer and audience.
-- Include `sub` and a real-format `employeeHsaId` on every MCP access token.
+- Set the protected access-token header type to `at+jwt` and issue a maximum
+  five-minute (`300` second) lifetime.
+- Ensure MCP access tokens match the configured issuer and API audience and
+  emit a top-level `client_id` equal to `MCP_CLIENT_ID`. `azp` is not accepted
+  as a substitute.
+- Include numeric `exp` and `iat`, a non-empty `sub`, and a real-format
+  `employeeHsaId` on every MCP access token.
   The value must match the HSA-id syntax documented in
   [hsa-id.md](../reference/hsa-id.md). If a local or prodlike token lacks the
   claim, update the Keycloak realm configuration or reset the local IdP so the
   current realm JSON is imported.
-- The current MCP implementation may also consume `roles` and/or `scope`.
-  If role-based behavior is needed there, emit the canonical app roles as a
-  JSON array on a `roles` claim.
+- Assign the `kravhantering:mcp` client scope and emit it in the standard
+  top-level, space-separated `scope` string. Every scope configured in
+  `AUTH_MCP_REQUIRED_SCOPES` is mandatory.
+- Emit canonical application roles as a JSON array in the claim configured by
+  `AUTH_MCP_ROLES_CLAIM` (default `roles`). Missing or empty arrays grant no
+  roles. Malformed, duplicate, or unknown entries make the entire claim grant
+  no roles.
+- Do not issue browser or ID-token-shaped credentials to this integration.
 
 ### Identity Semantics
 

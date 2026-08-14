@@ -81,7 +81,9 @@ The launcher stages the standalone runtime assets and binds the server to
 In another shell, run:
 
 ```bash
-MCP_BEARER_TOKEN="$(node scripts/security/get-mcp-token.mjs)" \
+MCP_BEARER_TOKEN="$(MCP_CLIENT_ID=kravhantering-mcp \
+  AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp \
+  node scripts/security/get-mcp-token.mjs)" \
 PLAYWRIGHT_BASE_URL=http://localhost:3001 \
 PLAYWRIGHT_SKIP_WEBSERVER=1 \
 PLAYWRIGHT_SKIP_AUTH_SETUP=1 \
@@ -93,6 +95,9 @@ The helper defaults match the committed dev realm:
 ```text
 AUTH_OIDC_ISSUER_URL=http://localhost:8080/realms/kravhantering-dev
 MCP_CLIENT_ID=kravhantering-mcp
+AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp
+AUTH_MCP_ROLES_CLAIM=roles
+AUTH_MCP_TOKEN_MAX_AGE_SECONDS=300
 MCP_CLIENT_SECRET=dev-only-mcp-secret
 ```
 

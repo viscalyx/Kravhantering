@@ -30,6 +30,10 @@ jobs:
       # CI-only service-to-service issuer. Keep the app scan target on localhost,
       # but fetch Keycloak token/JWKS over explicit IPv4 loopback.
       AUTH_OIDC_ISSUER_URL: http://127.0.0.1:8080/realms/kravhantering-dev
+      AUTH_OIDC_API_AUDIENCE: kravhantering-app
+      AUTH_MCP_REQUIRED_SCOPES: kravhantering:mcp
+      AUTH_MCP_ROLES_CLAIM: roles
+      AUTH_MCP_TOKEN_MAX_AGE_SECONDS: '300'
       MCP_CLIENT_ID: kravhantering-mcp
       MCP_CLIENT_SECRET: dev-only-mcp-secret
 

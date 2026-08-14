@@ -58,6 +58,25 @@ function createPayloadTooLargeResponse(limitBytes: number) {
   )
 }
 
+export function createMcpAuthenticationErrorResponse(
+  authError: McpAuthError,
+): Response {
+  return new Response(
+    JSON.stringify({
+      error: { code: -32000, message: authError.message },
+      id: null,
+      jsonrpc: '2.0',
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'WWW-Authenticate': 'Bearer',
+      },
+      status: authError.status,
+    },
+  )
+}
+
 function parseContentLength(request: Request): number | undefined {
   const value = request.headers.get('content-length')
   if (!value) return undefined
@@ -105,7 +124,7 @@ function requestPayloadExceedsLimit(
 
 export async function handleRequirementsMcpRequest(
   request: Request,
-  db: SqlServerDatabase,
+  getDatabase: () => Promise<SqlServerDatabase>,
 ): Promise<Response> {
   if (!['DELETE', 'GET', 'POST'].includes(request.method)) {
     return createMethodNotAllowedResponse()
@@ -128,22 +147,10 @@ export async function handleRequirementsMcpRequest(
         detail: { reason: authError.reason },
       })
     }
-    return new Response(
-      JSON.stringify({
-        error: { code: -32000, message: authError.message },
-        id: null,
-        jsonrpc: '2.0',
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'WWW-Authenticate': 'Bearer',
-        },
-        status: authError.status,
-      },
-    )
+    return createMcpAuthenticationErrorResponse(authError)
   }
 
+  const db = await getDatabase()
   const configuredMcpSettings = await getCachedMcpRuntimeSettings(db)
   const importBudget = requirementImportBudgetFromSettings(
     await getApplicationSettings(db),

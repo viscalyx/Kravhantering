@@ -326,15 +326,24 @@ flowchart TD
 
 ## Current Security Status
 
-The MCP route is authenticated. Every request to `/api/mcp` must include an
-`Authorization: Bearer <token>` header.
+The MCP route is optional and authenticated. `MCP_CLIENT_ID` enables it and
+identifies the only approved calling OAuth service client. When that variable
+is empty, GET, POST, and DELETE return `404` before authentication, audit,
+discovery, database, transport, or tool work. Every request to an enabled
+endpoint must include an `Authorization: Bearer <token>` header.
 
-`proxy.ts` checks that the Bearer header is present. The MCP HTTP route then
-validates the JWT against the configured issuer JWKS and API audience before any
-MCP transport or tool handler runs. Accepted tokens must contain a real-format
-`employeeHsaId` claim. The committed local MCP service client emits
-`SE5560000001-mcp1`. If a local token lacks that claim, reset or re-import the
-local Keycloak realm instead of compensating in application code.
+The MCP HTTP route validates the JWT against the configured issuer JWKS and API
+audience before database acquisition or MCP transport and tool work. Accepted
+tokens must use protected-header `typ: at+jwt`; contain numeric `exp` and `iat`,
+non-blank `sub`, exact top-level `client_id`, every configured top-level
+`scope`, and a real-format `employeeHsaId`; and remain within the configured
+current-age and declared-lifetime bound. The committed local client emits a
+five-minute token with `kravhantering:mcp` and
+`employeeHsaId=SE5560000001-mcp1`.
+
+Roles are read only from `AUTH_MCP_ROLES_CLAIM`. A missing or empty array grants
+no roles; a malformed, duplicate, or unknown entry makes the entire claim grant
+no roles. Browser-role parsing is unchanged.
 
 Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer` and a
 stable JSON-RPC error body. Authentication configuration failures return `500`,
@@ -367,7 +376,13 @@ TypeORM stack. For the full developer setup, see
 
    To obtain a dev MCP token, first make sure the local IdP is running with
    the current realm JSON (`npm run idp:up` if the realm may be stale), then
-   run `node scripts/security/get-mcp-token.mjs`.
+   run the token helper with the explicit local contract:
+
+   ```sh
+   MCP_CLIENT_ID=kravhantering-mcp \
+   AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp \
+   node scripts/security/get-mcp-token.mjs
+   ```
 
 5. Configure your MCP client with the non-production Bearer token from
    `scripts/security/get-mcp-token.mjs` for the local issuer/audience and
@@ -393,8 +408,15 @@ Codespaces-specific forwarding workflow.
 For local development, obtain a dev MCP token with:
 
 ```sh
+MCP_CLIENT_ID=kravhantering-mcp \
+AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp \
 node scripts/security/get-mcp-token.mjs
 ```
+
+The helper has no implicit client id. It requests the configured scopes and
+checks the returned JWT's non-secret header and payload shape before printing
+it. This local check does not replace the server's signature and JWKS
+verification.
 
 Do not commit tokens to repository files. If a client cannot send the Bearer
 header, it cannot use the current protected MCP route.

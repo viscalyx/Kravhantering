@@ -274,17 +274,6 @@ function rejectUnsupportedApiMethod(request: NextRequest): NextResponse | null {
   )
 }
 
-function createMcpUnauthorizedResponse(message: string): NextResponse {
-  return NextResponse.json(
-    {
-      error: { code: -32000, message },
-      id: null,
-      jsonrpc: '2.0',
-    },
-    { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } },
-  )
-}
-
 function isMutatingMethod(method: string): boolean {
   return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())
 }
@@ -338,13 +327,9 @@ function redirectLocaleRootToRequirements(request: NextRequest): NextResponse {
 async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   const { pathname, search } = request.nextUrl
 
-  // /api/mcp/* is a non-browser endpoint; require a bearer token. Token
-  // validity is checked inside the MCP route handler.
+  // /api/mcp/* owns its optional enablement and Bearer validation at the
+  // route boundary, before database acquisition.
   if (isMcpPath(pathname)) {
-    const auth = request.headers.get('authorization') ?? ''
-    if (!/^Bearer\s+\S+/i.test(auth)) {
-      return createMcpUnauthorizedResponse('Missing Bearer token.')
-    }
     return null
   }
 

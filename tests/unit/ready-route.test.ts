@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
   getAuthConfig: vi.fn(),
+  getMcpAuthConfig: vi.fn(),
   getHsaPersonLookupConfig: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   getSqlServerDatabaseUrl: vi.fn(),
@@ -12,6 +13,7 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock('@/lib/auth/config', () => ({
   getAuthConfig: routeState.getAuthConfig,
+  getMcpAuthConfig: routeState.getMcpAuthConfig,
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -59,6 +61,7 @@ function setReadyDefaults() {
   routeState.getAuthConfig.mockReturnValue({
     issuerUrl: 'https://issuer.example.com/realms/test',
   })
+  routeState.getMcpAuthConfig.mockReturnValue(null)
   routeState.getHsaPersonLookupConfig.mockReturnValue(null)
   routeState.hsaPersonLookupConfigDiagnostic.mockReturnValue(null)
   routeState.readBuildMetadata.mockReturnValue({
@@ -146,6 +149,27 @@ describe('GET /api/ready', () => {
       expect.objectContaining({ check: 'runtime_config' }),
     )
     warn.mockRestore()
+  })
+
+  it('fails readiness for invalid enabled MCP configuration before database work', async () => {
+    setReadyDefaults()
+    routeState.getMcpAuthConfig.mockImplementation(() => {
+      throw new Error('AUTH_MCP_REQUIRED_SCOPES contains private detail')
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const response = await route.GET(request())
+    const body = await response.text()
+
+    expect(response.status).toBe(503)
+    expect(JSON.parse(body)).toEqual({ status: 'not_ready' })
+    expect(body).not.toMatch(/AUTH_MCP|required|private/i)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(
+      '[readiness] check failed',
+      expect.objectContaining({ check: 'runtime_config' }),
+    )
   })
 
   it('returns not_ready for invalid optional HSA configuration without making a network call', async () => {

@@ -176,7 +176,12 @@ Please confirm or provide the following information.
     confidential client, normally `kravhantering-mcp`, with
     `grant_type=client_credentials`. The access token must be a signed JWT
     that the application can validate through the provider `jwks_uri`. It must
-    match the configured issuer and audience and include `employeeHsaId`.
+    use protected-header `typ: at+jwt`; match the configured issuer, audience,
+    and top-level `client_id`; include numeric `exp` and `iat`, non-empty `sub`,
+    and real-format `employeeHsaId`; and have a maximum five-minute current age
+    and declared lifetime. Emit `kravhantering:mcp` in the standard top-level
+    space-separated `scope` claim and canonical roles as a JSON array in the
+    agreed MCP role claim (default `roles`).
     Please confirm that the identity-platform or IdP administration owner will
     issue, rotate and revoke this client's credentials, and that each
     consuming MCP integration owner will store and update the client secret in
@@ -342,7 +347,13 @@ Bekräfta eller lämna följande information.
     konfidentiell klient, normalt `kravhantering-mcp`, med
     `grant_type=client_credentials`. Access-token måste vara en signerad JWT
     som applikationen kan validera via leverantörens `jwks_uri`. Den måste
-    matcha konfigurerad issuer och audience samt innehålla `employeeHsaId`.
+    använda det skyddade huvudet `typ: at+jwt`, matcha konfigurerad issuer,
+    audience och claimen `client_id` på toppnivå, innehålla numeriska `exp` och
+    `iat`, icke-tomt `sub` och verkligt `employeeHsaId` samt ha högst fem
+    minuters aktuell ålder och deklarerad livslängd. Emittera
+    `kravhantering:mcp` i den vanliga blankstegsseparerade claimen på toppnivå
+    `scope` och kanoniska roller som en JSON-array i överenskommen MCP-rollclaim
+    (standard `roles`).
     Bekräfta att ägaren för identitetsplattformen eller IdP-administrationen
     utfärdar, roterar och spärrar klientens credentials, och att varje
     konsumerande MCP-integrationsägare lagrar och uppdaterar klienthemligheten

@@ -1,9 +1,22 @@
+import { getMcpAuthConfig } from '@/lib/auth/config'
+import { McpAuthError } from '@/lib/auth/mcp-token'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
+import {
+  createMcpAuthenticationErrorResponse,
+  handleRequirementsMcpRequest,
+} from '@/lib/mcp/http'
 
 async function handleRequest(request: Request) {
-  const db = await getRequestSqlServerDataSource()
-  return handleRequirementsMcpRequest(request, db)
+  try {
+    if (getMcpAuthConfig() === null) {
+      return new Response(null, { status: 404 })
+    }
+  } catch {
+    return createMcpAuthenticationErrorResponse(
+      new McpAuthError('auth_configuration_invalid'),
+    )
+  }
+  return handleRequirementsMcpRequest(request, getRequestSqlServerDataSource)
 }
 
 export async function GET(request: Request) {

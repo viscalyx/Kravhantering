@@ -6,6 +6,7 @@ import { isHsaId } from '@/lib/auth/hsa-id'
 type KeycloakRealmClient = {
   attributes?: Record<string, string>
   clientId?: string
+  defaultClientScopes?: string[]
   publicClient?: boolean
   protocolMappers?: Array<{
     name?: string
@@ -25,6 +26,11 @@ type KeycloakRealmComponent = {
 }
 
 type KeycloakRealm = {
+  clientScopes?: Array<{
+    attributes?: Record<string, string>
+    name?: string
+    protocol?: string
+  }>
   clients?: KeycloakRealmClient[]
   components?: Record<string, KeycloakRealmComponent[]>
   enabled?: boolean
@@ -147,6 +153,26 @@ function expectLocalMcpPrivilegedRoleMapper(
   ])
 }
 
+function expectMcpServiceTokenContract(
+  realm: KeycloakRealm,
+  client: KeycloakRealmClient | undefined,
+) {
+  expect(client?.attributes).toMatchObject({
+    'access.token.header.type.rfc9068': 'true',
+    'access.token.lifespan': '300',
+  })
+  expect(client?.defaultClientScopes).toContain('kravhantering:mcp')
+  expect(realm.clientScopes).toContainEqual(
+    expect.objectContaining({
+      attributes: expect.objectContaining({
+        'include.in.token.scope': 'true',
+      }),
+      name: 'kravhantering:mcp',
+      protocol: 'openid-connect',
+    }),
+  )
+}
+
 describe('production Keycloak realm template', () => {
   it('targets the production issuer realm and canonical clients', () => {
     const realm = readProductionRealm()
@@ -232,6 +258,7 @@ describe('production Keycloak realm template', () => {
     expect(mcpClient?.publicClient).toBe(false)
     expect(mcpClient?.standardFlowEnabled).toBe(false)
     expect(mcpClient?.serviceAccountsEnabled).toBe(true)
+    expectMcpServiceTokenContract(realm, mcpClient)
 
     const audienceMapper = getMapper(mcpClient, 'mcp-audience')
     expect(audienceMapper?.protocolMapper).toBe('oidc-audience-mapper')
@@ -248,6 +275,17 @@ describe('production Keycloak realm template', () => {
     expect(hsaMapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE5560000001-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
+
+    const rolesMapper = getMapper(mcpClient, 'mcp-roles')
+    expect(rolesMapper?.protocolMapper).toBe('oidc-hardcoded-claim-mapper')
+    expect(rolesMapper?.config).toMatchObject({
+      'access.token.claim': 'true',
+      'claim.name': 'roles',
+      'jsonType.label': 'JSON',
+    })
+    expect(JSON.parse(rolesMapper?.config?.['claim.value'] ?? 'null')).toEqual(
+      [],
+    )
   })
 })
 
@@ -289,6 +327,7 @@ describe('dev Keycloak realm', () => {
   it('emits the expected audience, local privileged roles, and real-format HSA-id for MCP tokens', () => {
     const realm = readDevRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
+    expectMcpServiceTokenContract(realm, mcpClient)
 
     const audienceMapper = getMapper(mcpClient, 'mcp-audience')
     expect(audienceMapper?.protocolMapper).toBe('oidc-audience-mapper')
@@ -445,6 +484,7 @@ describe('container Keycloak realm', () => {
     expect(mcpClient?.publicClient).toBe(false)
     expect(mcpClient?.standardFlowEnabled).toBe(false)
     expect(mcpClient?.serviceAccountsEnabled).toBe(true)
+    expectMcpServiceTokenContract(realm, mcpClient)
 
     const audienceMapper = getMapper(mcpClient, 'mcp-audience')
     expect(audienceMapper?.protocolMapper).toBe('oidc-audience-mapper')

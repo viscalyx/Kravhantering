@@ -118,7 +118,10 @@ verification.
 | `AUTH_SESSION_COOKIE_NAME` | `AUTH_SESSION_COOKIE_NAME` in `app.env` | `kravhantering_session` | Plan only if this host serves another deployment on the same browser cookie scope. |
 | `SESSION_COOKIE_PASSWORD` | `AUTH_SESSION_COOKIE_PASSWORD` in `app.env` | No default | Always generate with the opaque-secret fallback in [Generate Unique Secrets](#generate-unique-secrets). |
 | `AUTH_SESSION_TTL_SECONDS` | `AUTH_SESSION_TTL_SECONDS` in `app.env` | `28800` | Plan only if another absolute browser-session lifetime is approved. |
-| `MCP_CLIENT_ID` | `MCP_CLIENT_ID` in `app.env` | `kravhantering-mcp` | Plan only if MCP service tokens use a different service-account client id. |
+| `MCP_CLIENT_ID` | `MCP_CLIENT_ID` in `app.env` | Empty | Set to the approved service-client id to enable MCP; leave empty to keep `/api/mcp` disabled. |
+| `AUTH_MCP_REQUIRED_SCOPES` | `AUTH_MCP_REQUIRED_SCOPES` in `app.env` | No default | Required when MCP is enabled; use `kravhantering:mcp` unless the approved IdP contract differs. |
+| `AUTH_MCP_ROLES_CLAIM` | `AUTH_MCP_ROLES_CLAIM` in `app.env` | `roles` | Plan only if the approved MCP role mapper emits another claim. |
+| `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` in `app.env` | `300` | Integer from `60` through `900`; keep aligned with the service client's declared token lifetime. |
 | `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation is approved. |
 | `OPENROUTER_MGMT_API_KEY` | `OPENROUTER_MGMT_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation and organization credit display are approved. |
 | `NEXT_PUBLIC_DEFAULT_MODEL` | `NEXT_PUBLIC_DEFAULT_MODEL` in `app.env` | Empty | Plan only if the deployment should preselect a public default AI model. |
@@ -626,6 +629,9 @@ AUTH_SESSION_COOKIE_NAME=kravhantering_session
 AUTH_SESSION_COOKIE_PASSWORD=<at-least-32-random-characters>
 AUTH_SESSION_TTL_SECONDS=28800
 MCP_CLIENT_ID=kravhantering-mcp
+AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp
+AUTH_MCP_ROLES_CLAIM=roles
+AUTH_MCP_TOKEN_MAX_AGE_SECONDS=300
 HSA_PERSON_LOOKUP_TIMEOUT_MS=5000
 HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup
 HSA_PERSON_LOOKUP_CA_PATH=
@@ -661,9 +667,12 @@ lifetime unless the site has approved another browser-session lifetime. It is
 not an idle timeout; the shortest of this value, the IdP SSO session lifetime
 and the access-token lifetime controls when the user must re-authenticate.
 
-`MCP_CLIENT_ID=kravhantering-mcp` is used when issuing service-account tokens
-for MCP clients. Keep it aligned with the IdP service-account client id, or
-leave the default when MCP service tokens are not used. It is not a secret.
+`MCP_CLIENT_ID=kravhantering-mcp` enables MCP and must match the approved
+top-level `client_id` in each service token. Leave `MCP_CLIENT_ID` empty when
+MCP is not approved; the endpoint then returns `404` and readiness remains
+healthy. Enabled deployments must configure the required scopes, role claim,
+and bounded token age shown above. The IdP must emit protected-header
+`typ: at+jwt`, a five-minute lifetime, and the matching scope and claims.
 
 Set `HSA_PERSON_LOOKUP_URL` to the environment-specific server-side HSA
 lookup endpoint. The browser must not call the HSA integration directly; the

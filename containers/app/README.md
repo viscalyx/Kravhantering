@@ -126,8 +126,9 @@ Optional application values:
   `name` that the built app expects. When omitted, the build metadata generator
   derives it from the latest file in `typeorm/migrations/`.
 - `AUTH_OIDC_API_AUDIENCE` configures token audiences for MCP traffic.
-- `MCP_CLIENT_ID` selects the local MCP service-account client for token
-  helper scripts.
+- `MCP_CLIENT_ID` enables MCP and identifies the approved calling service
+  client. `AUTH_MCP_REQUIRED_SCOPES`, `AUTH_MCP_ROLES_CLAIM`, and
+  `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` define its service-token contract.
 - `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_SCOPES`,
   `AUTH_SESSION_COOKIE_NAME`, and `AUTH_SESSION_TTL_SECONDS` override
   defaults.

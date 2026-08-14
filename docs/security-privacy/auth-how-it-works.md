@@ -24,8 +24,8 @@ It is intentionally not a replacement for the more detailed workflow docs:
 
 - [`proxy.ts`](../../proxy.ts) is the front door. Auth is always on, so it:
   allows public paths, redirects unauthenticated browser page requests to
-  `/api/auth/login`, returns `401` for unauthenticated API requests, and
-  requires a Bearer header to be present for `/api/mcp`.
+  `/api/auth/login`, and returns `401` for unauthenticated REST requests. It
+  passes `/api/mcp` to the route-owned enablement and Bearer boundary.
 - Public REST operations are declared individually in
   `lib/http/route-security-policy.ts` and are limited to the implemented
   authentication operations plus health and readiness probes. Production and
@@ -181,26 +181,29 @@ sequenceDiagram
     participant JWKS as JWKS endpoint
     participant Audit as security-audit log
     participant Attach as attachVerifiedActor()
+    participant DB as SQL Server
     participant Handler as MCP JSON-RPC handler
 
     Client->>Proxy: POST /api/mcp with Authorization Bearer JWT
-    Proxy->>Proxy: Require Bearer header to be present
     Proxy->>Route: Forward request
+    Route->>Route: Resolve optional MCP configuration
     Route->>Verify: verifyMcpBearerToken(request)
     Verify->>JWKS: Fetch/cache signing keys via createRemoteJWKSet(...)
     JWKS-->>Verify: JWK set
     Verify->>Verify: jwtVerify(...): issuer + audience + clockTolerance
-    Verify->>Verify: Extract sub, employeeHsaId,<br/>roles, optional scope
+    Verify->>Verify: Validate at+jwt, exp, sub, iat,<br/>age, client_id, scope, HSA-id, roles
     Verify->>Audit: auth.mcp.token.accepted
     Verify-->>Route: Verified actor
     Route->>Attach: attachVerifiedActor(request, actor)
+    Route->>DB: Acquire request-scoped database
     Route->>Handler: Continue with JSON-RPC handling
     Handler-->>Client: JSON-RPC response
 
     alt Missing or invalid token
-        Proxy-->>Client: JSON-RPC 401 if Authorization header is missing
         Verify->>Audit: auth.token.rejected
         Route-->>Client: JSON-RPC 401 + WWW-Authenticate: Bearer
+    else MCP is disabled
+        Route-->>Client: Empty 404 without auth, audit, discovery, or database work
     else Authentication configuration failure
         Verify->>Audit: auth.token.rejected with allowlisted reason
         Route-->>Client: Generic JSON-RPC 500 + WWW-Authenticate: Bearer
@@ -211,11 +214,15 @@ sequenceDiagram
 ```
 <!-- markdownlint-enable MD013 -->
 
-- `proxy.ts` only checks that a Bearer token is present for `/api/mcp`.
-  Cryptographic verification is done later in
-  [`lib/auth/mcp-token.ts`](../../lib/auth/mcp-token.ts).
-- Missing-header and invalid-token failures use a JSON-RPC error body so MCP
-  clients receive the same response shape at both auth gates.
+- `MCP_CLIENT_ID` is the MCP enablement switch and the exact approved OAuth
+  service-client identity. When it is empty, `/api/mcp` returns `404` before
+  inspecting the Bearer header or reaching discovery, audit, runtime settings,
+  SQL Server, MCP transport, or requirements-service work.
+- Enabled MCP configuration is validated before database acquisition. Invalid
+  configuration also fails readiness and uses the stable, redacted JSON-RPC
+  authentication-configuration response.
+- Missing-header and invalid-token failures use the same JSON-RPC `401` error
+  body and `WWW-Authenticate: Bearer` challenge.
 - The MCP authentication boundary maps invalid credentials to `401`, local
   authentication configuration failures to `500`, and unavailable discovery
   or remote JWKS dependencies to `503`. Every response uses a stable generic
@@ -223,15 +230,22 @@ sequenceDiagram
   network, JWKS, and configuration messages remain server-side.
 - `verifyMcpBearerToken()` uses OIDC discovery metadata to read the issuer's
   `jwks_uri` and caches the resulting `RemoteJWKSet`.
-- JWT verification checks signature, issuer, audience, and a 30-second clock
-  tolerance.
+- JWT verification preserves signature, issuer, audience, HTTPS JWKS, and a
+  30-second clock tolerance. It also requires protected-header `typ: at+jwt`,
+  numeric `exp` and `iat`, non-blank `sub`, exact top-level `client_id`, and
+  every scope in `AUTH_MCP_REQUIRED_SCOPES` in the top-level space-separated
+  `scope` claim. Current age and declared `exp - iat` lifetime are bounded by
+  `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (default `300`, allowed `60`–`900`).
 - The required MCP identity is `employeeHsaId`. Values must match the HSA-id
   syntax documented in [hsa-id.md](../reference/hsa-id.md). The configured local
   MCP service client emits `SE5560000001-mcp1`; a missing claim means the IdP
   realm must be reset or re-imported from the current realm JSON.
-- The current MCP implementation reads `roles` and `scope` directly from the
-  access token payload. On success it attaches a verified actor to the active
-  `Request` before the requirements service builds its request context.
+- MCP roles are read only from `AUTH_MCP_ROLES_CLAIM` (default `roles`). A
+  missing or empty array grants no roles; any non-array, non-string, duplicate,
+  or unknown entry makes the entire claim grant no roles. Browser-role parsing
+  remains separate and unchanged. On success the verifier records
+  `auth.mcp.token.accepted`, attaches the verified actor, and only then permits
+  database acquisition and requirements-service construction.
 - Persisted MCP import validation sessions normalize that verified HSA-id and
   bind ownership with a purpose-separated keyed HMAC derived from
   `AUTH_SESSION_COOKIE_PASSWORD`. Only the fingerprint is stored. Inspect and

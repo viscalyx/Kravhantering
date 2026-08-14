@@ -55,6 +55,18 @@
       "realmRoles": ["Admin"]
     }
   ],
+  "clientScopes": [
+    {
+      "name": "kravhantering:mcp",
+      "description": "Least-privilege scope for the Kravhantering MCP endpoint",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "false",
+        "include.in.token.scope": "true"
+      },
+      "protocolMappers": []
+    }
+  ],
   "clients": [
     {
       "clientId": "kravhantering-app",
@@ -115,8 +127,10 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["kravhantering:mcp"],
       "attributes": {
-        "access.token.lifespan": "3600"
+        "access.token.header.type.rfc9068": "true",
+        "access.token.lifespan": "300"
       },
       "protocolMappers": [
         {

@@ -75,6 +75,17 @@ export interface AuthConfig {
   sessionTtlSeconds: number
 }
 
+export interface McpAuthConfig {
+  /** OAuth client id of the only approved calling MCP service client. */
+  clientId: string
+  /** Every scope an MCP access token must contain. */
+  requiredScopes: readonly string[]
+  /** Claim name that carries MCP roles. */
+  rolesClaim: string
+  /** Maximum accepted token age and declared lifetime, in seconds. */
+  tokenMaxAgeSeconds: number
+}
+
 export class AuthConfigError extends Error {
   constructor(message: string) {
     super(message)
@@ -83,6 +94,7 @@ export class AuthConfigError extends Error {
 }
 
 let cached: AuthConfig | undefined
+let mcpCached: McpAuthConfig | null | undefined
 
 function loadAuthConfig(): AuthConfig {
   const issuerUrl = readString('AUTH_OIDC_ISSUER_URL')
@@ -141,7 +153,44 @@ export function getAuthConfig(): AuthConfig {
   return cached
 }
 
+/** Returns null when the optional MCP endpoint is intentionally disabled. */
+export function getMcpAuthConfig(): McpAuthConfig | null {
+  if (mcpCached === undefined) {
+    const clientId = readString('MCP_CLIENT_ID')
+    if (!clientId) {
+      mcpCached = null
+      return mcpCached
+    }
+    const requiredScopesRaw = readString('AUTH_MCP_REQUIRED_SCOPES')
+    if (!requiredScopesRaw) {
+      throw new AuthConfigError(
+        'AUTH_MCP_REQUIRED_SCOPES is required when MCP_CLIENT_ID is configured.',
+      )
+    }
+    const tokenMaxAgeRaw = readString('AUTH_MCP_TOKEN_MAX_AGE_SECONDS') ?? '300'
+    const tokenMaxAgeSeconds = Number(tokenMaxAgeRaw)
+    if (!Number.isInteger(tokenMaxAgeSeconds)) {
+      throw new AuthConfigError(
+        'AUTH_MCP_TOKEN_MAX_AGE_SECONDS must be an integer.',
+      )
+    }
+    if (tokenMaxAgeSeconds < 60 || tokenMaxAgeSeconds > 900) {
+      throw new AuthConfigError(
+        'AUTH_MCP_TOKEN_MAX_AGE_SECONDS must be from 60 through 900.',
+      )
+    }
+    mcpCached = {
+      clientId,
+      requiredScopes: [...new Set(requiredScopesRaw.split(/\s+/))],
+      rolesClaim: readString('AUTH_MCP_ROLES_CLAIM') ?? 'roles',
+      tokenMaxAgeSeconds,
+    }
+  }
+  return mcpCached
+}
+
 /** For tests only: clears the cached config so env-var changes take effect. */
 export function resetAuthConfigForTests(): void {
   cached = undefined
+  mcpCached = undefined
 }

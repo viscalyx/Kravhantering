@@ -479,6 +479,22 @@ envs at the per-env OIDC issuer and client registration.
 | `AUTH_OIDC_API_AUDIENCE` | no | falls back to `AUTH_OIDC_CLIENT_ID` | Audience expected on **access tokens** validated by the MCP path ([lib/auth/mcp-token.ts](../../lib/auth/mcp-token.ts)). Set explicitly when the MCP client receives tokens scoped to a different `aud` than the web client. |
 <!-- markdownlint-enable MD013 -->
 
+### Optional MCP service-token endpoint
+
+<!-- markdownlint-disable MD013 -->
+| Variable | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `MCP_CLIENT_ID` | no | _(none)_ | Enables `/api/mcp` and identifies the only approved calling OAuth service client. Empty means the endpoint returns `404` and readiness remains healthy. |
+| `AUTH_MCP_REQUIRED_SCOPES` | when MCP is enabled | _(none)_ | Space-separated scopes required in the token's top-level `scope` string. Local fixtures use `kravhantering:mcp`. |
+| `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | no | `300` | Maximum current token age and declared `exp - iat` lifetime. Must be an integer from `60` through `900`. |
+| `AUTH_MCP_ROLES_CLAIM` | no | `roles` | MCP-only JSON-array role claim. Invalid, duplicate, or unknown entries make the entire claim grant no roles and do not change browser parsing. |
+<!-- markdownlint-enable MD013 -->
+
+An enabled token must use protected-header `typ: at+jwt`, carry numeric `exp`
+and `iat`, non-blank `sub`, exact top-level `client_id`, every configured scope,
+and a real-format `employeeHsaId`. The local Keycloak service client emits this
+contract with a five-minute lifetime.
+
 ### Session cookie (`iron-session`)
 
 The app keeps no server-side session store; everything is in a signed,
@@ -547,7 +563,7 @@ Production values are set per environment by ops on the real IdP.
 | `ssoSessionIdleTimeout` | `28800` (8 h) | **Idle** SSO session timeout. If the user is gone longer than this, the next silent re-auth via `/api/auth/login` requires a fresh password. |
 | `ssoSessionMaxLifespan` | `28800` (8 h) | **Absolute** SSO session lifetime. Hard cap regardless of activity; after this the user must sign in again. |
 | `accessTokenLifespan` (realm) | `1800` (30 min) | Access-token lifetime issued to the `kravhantering-app` web client. The app does **not** refresh access tokens client-side; it warns shortly before this timestamp and re-bounces through `/api/auth/login` at expiry. |
-| `access.token.lifespan` (`kravhantering-mcp` client) | `3600` (1 h) | Access-token lifetime for service-to-service MCP tokens. Validated by [lib/auth/mcp-token.ts](../../lib/auth/mcp-token.ts). |
+| `access.token.lifespan` (`kravhantering-mcp` client) | `300` (5 min) | Access-token lifetime for service-to-service MCP tokens. The verifier also rejects excessive current age and declared lifetime. |
 <!-- markdownlint-enable MD013 -->
 
 **How they interact:**
@@ -589,7 +605,9 @@ For OpenShift, this is the split between Secret and ConfigMap:
 - **ConfigMap**: `AUTH_OIDC_ISSUER_URL`, `AUTH_OIDC_REDIRECT_URI`,
   `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`, `AUTH_OIDC_SCOPES`,
   `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_API_AUDIENCE`,
-  `AUTH_SESSION_COOKIE_NAME`, and `AUTH_SESSION_TTL_SECONDS`.
+  `AUTH_SESSION_COOKIE_NAME`, `AUTH_SESSION_TTL_SECONDS`, `MCP_CLIENT_ID`,
+  `AUTH_MCP_REQUIRED_SCOPES`, `AUTH_MCP_ROLES_CLAIM`, and
+  `AUTH_MCP_TOKEN_MAX_AGE_SECONDS`.
 
 `AUTH_OIDC_CLIENT_ID` is technically not secret (it's quoted in every
 authorization request), but it's grouped with the secret because ops

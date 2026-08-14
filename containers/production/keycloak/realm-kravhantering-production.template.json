@@ -28,6 +28,18 @@
       }
     ]
   },
+  "clientScopes": [
+    {
+      "name": "kravhantering:mcp",
+      "description": "Least-privilege scope for the Kravhantering MCP endpoint",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "false",
+        "include.in.token.scope": "true"
+      },
+      "protocolMappers": []
+    }
+  ],
   "clients": [
     {
       "clientId": "kravhantering-app",
@@ -90,8 +102,10 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["kravhantering:mcp"],
       "attributes": {
-        "access.token.lifespan": "3600"
+        "access.token.header.type.rfc9068": "true",
+        "access.token.lifespan": "300"
       },
       "protocolMappers": [
         {
@@ -116,6 +130,20 @@
             "jsonType.label": "String",
             "id.token.claim": "false",
             "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "mcp-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "claim.value": "[]",
+            "jsonType.label": "JSON",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
           }
         }
       ]

@@ -686,19 +686,14 @@ describe('proxy', () => {
     )
   })
 
-  it('requires Authorization: Bearer for /api/mcp', async () => {
+  it('leaves MCP enablement and bearer validation to the route boundary', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const without = await proxy(
         buildRequest('http://localhost/api/mcp', { method: 'POST' }),
       )
-      expect(without.status).toBe(401)
-      expect(without.headers.get('www-authenticate')).toBe('Bearer')
-      await expect(without.json()).resolves.toEqual({
-        error: { code: -32000, message: 'Missing Bearer token.' },
-        id: null,
-        jsonrpc: '2.0',
-      })
+      expect(without.status).toBe(200)
+      expect(without.headers.get('www-authenticate')).toBeNull()
 
       const withBearer = await proxy(
         buildRequest('http://localhost/api/mcp', {
