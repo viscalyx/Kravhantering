@@ -172,6 +172,21 @@ describe('GET /api/ready', () => {
     )
   })
 
+  it('preserves readiness for valid enabled MCP configuration', async () => {
+    setReadyDefaults()
+    routeState.getMcpAuthConfig.mockReturnValue({
+      clientId: 'kravhantering-mcp',
+      requiredScopes: ['kravhantering:mcp'],
+      rolesClaim: 'roles',
+      tokenMaxAgeSeconds: 300,
+    })
+
+    const response = await route.GET(request())
+
+    expect(response.status).toBe(200)
+    expect(await readJson(response)).toEqual({ status: 'ready' })
+  })
+
   it('returns not_ready for invalid optional HSA configuration without making a network call', async () => {
     setReadyDefaults()
     const configError = new Error(

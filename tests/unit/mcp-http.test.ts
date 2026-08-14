@@ -1689,11 +1689,13 @@ describe('handleRequirementsMcpRequest', () => {
 
   it.each([
     'hsa_id_invalid',
+    'hsa_id_missing',
     'token_audience_invalid',
     'token_class_invalid',
     'token_client_invalid',
     'token_exp_invalid',
     'token_iat_invalid',
+    'token_issuer_invalid',
     'token_lifetime_invalid',
     'token_scope_invalid',
     'token_subject_invalid',

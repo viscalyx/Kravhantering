@@ -87,11 +87,13 @@ export function parseAccessTokenPayload(payload) {
   return accessToken.trim()
 }
 
-function accessTokenContractError() {
-  return new Error('Returned JWT violates the MCP access-token contract')
+function accessTokenContractError(reason) {
+  return new Error(
+    `Returned JWT violates the MCP access-token contract: ${reason}`,
+  )
 }
 
-function decodeJwtJson(segment) {
+function decodeJwtJson(segment, reason) {
   try {
     const decoded = JSON.parse(Buffer.from(segment, 'base64url').toString())
     if (
@@ -99,11 +101,11 @@ function decodeJwtJson(segment) {
       decoded === null ||
       Array.isArray(decoded)
     ) {
-      throw accessTokenContractError()
+      throw accessTokenContractError(reason)
     }
     return decoded
   } catch {
-    throw accessTokenContractError()
+    throw accessTokenContractError(reason)
   }
 }
 
@@ -127,15 +129,18 @@ export function validateMcpTokenShape(
     tokenMaxAgeSeconds < 60 ||
     tokenMaxAgeSeconds > 900
   ) {
-    throw new Error(
-      'AUTH_MCP_TOKEN_MAX_AGE_SECONDS must be an integer from 60 through 900',
-    )
+    throw accessTokenContractError('token_max_age_invalid')
+  }
+  if (typeof token !== 'string') {
+    throw accessTokenContractError('jwt_structure_invalid')
   }
   const segments = token.split('.')
-  if (segments.length !== 3) throw accessTokenContractError()
+  if (segments.length !== 3) {
+    throw accessTokenContractError('jwt_structure_invalid')
+  }
 
-  const header = decodeJwtJson(segments[0])
-  const payload = decodeJwtJson(segments[1])
+  const header = decodeJwtJson(segments[0], 'jwt_header_invalid')
+  const payload = decodeJwtJson(segments[1], 'jwt_payload_invalid')
   const scopes =
     typeof payload.scope === 'string'
       ? new Set(payload.scope.split(/\s+/).filter(Boolean))
@@ -150,30 +155,49 @@ export function validateMcpTokenShape(
   const audienceMatches =
     payload.aud === apiAudience ||
     (Array.isArray(payload.aud) && payload.aud.includes(apiAudience))
+  const nowSeconds = Date.now() / 1000
 
+  if (header.typ !== 'at+jwt') {
+    throw accessTokenContractError('typ_invalid')
+  }
   if (
-    header.typ !== 'at+jwt' ||
     payload.client_id !== normalizedClientId ||
-    (payload.azp !== undefined && payload.azp !== normalizedClientId) ||
-    typeof payload.sub !== 'string' ||
-    payload.sub.trim() === '' ||
-    typeof payload.exp !== 'number' ||
-    !Number.isFinite(payload.exp) ||
-    typeof payload.iat !== 'number' ||
-    !Number.isFinite(payload.iat) ||
-    payload.exp <= payload.iat ||
-    payload.exp <= Date.now() / 1000 - 30 ||
-    payload.exp - payload.iat > tokenMaxAgeSeconds ||
-    payload.iat > Date.now() / 1000 + 30 ||
-    Date.now() / 1000 - payload.iat > tokenMaxAgeSeconds + 30 ||
-    typeof payload.employeeHsaId !== 'string' ||
-    !HSA_ID_PATTERN.test(payload.employeeHsaId) ||
-    scopes === null ||
-    !normalizedScopes.every(scope => scopes.has(scope)) ||
-    !rolesAreValid ||
-    !audienceMatches
+    (payload.azp !== undefined && payload.azp !== normalizedClientId)
   ) {
-    throw accessTokenContractError()
+    throw accessTokenContractError('client_id_invalid')
+  }
+  if (typeof payload.sub !== 'string' || payload.sub.trim() === '') {
+    throw accessTokenContractError('subject_invalid')
+  }
+  if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) {
+    throw accessTokenContractError('expiration_invalid')
+  }
+  if (typeof payload.iat !== 'number' || !Number.isFinite(payload.iat)) {
+    throw accessTokenContractError('issued_at_invalid')
+  }
+  if (
+    payload.exp <= payload.iat ||
+    payload.exp <= nowSeconds - 30 ||
+    payload.exp - payload.iat > tokenMaxAgeSeconds ||
+    payload.iat > nowSeconds + 30 ||
+    nowSeconds - payload.iat > tokenMaxAgeSeconds + 30
+  ) {
+    throw accessTokenContractError('lifetime_invalid')
+  }
+  if (
+    typeof payload.employeeHsaId !== 'string' ||
+    !HSA_ID_PATTERN.test(payload.employeeHsaId)
+  ) {
+    throw accessTokenContractError('employee_hsa_id_invalid')
+  }
+  if (scopes === null || !normalizedScopes.every(scope => scopes.has(scope))) {
+    throw accessTokenContractError('scope_invalid')
+  }
+  if (!rolesAreValid) {
+    throw accessTokenContractError('roles_invalid')
+  }
+  if (!audienceMatches) {
+    throw accessTokenContractError('audience_invalid')
   }
 
   return token

@@ -136,27 +136,10 @@ function expectWebClaimMappers(client: KeycloakRealmClient | undefined) {
   })
 }
 
-function expectLocalMcpPrivilegedRoleMapper(
-  client: KeycloakRealmClient | undefined,
-) {
-  const rolesMapper = getMapper(client, 'mcp-roles')
-  expect(rolesMapper?.protocolMapper).toBe('oidc-hardcoded-claim-mapper')
-  expect(rolesMapper?.config).toMatchObject({
-    'access.token.claim': 'true',
-    'claim.name': 'roles',
-    'id.token.claim': 'false',
-    'jsonType.label': 'JSON',
-    'userinfo.token.claim': 'false',
-  })
-  expect(JSON.parse(rolesMapper?.config?.['claim.value'] ?? 'null')).toEqual([
-    'Admin',
-    'Reviewer',
-  ])
-}
-
 function expectMcpServiceTokenContract(
   realm: KeycloakRealm,
   client: KeycloakRealmClient | undefined,
+  expectedRoles: string[],
 ) {
   // Keycloak otherwise skips its built-in profile and email scopes when a
   // realm import declares at least one custom client scope.
@@ -176,6 +159,19 @@ function expectMcpServiceTokenContract(
       name: 'kravhantering:mcp',
       protocol: 'openid-connect',
     }),
+  )
+
+  const rolesMapper = getMapper(client, 'mcp-roles')
+  expect(rolesMapper?.protocolMapper).toBe('oidc-hardcoded-claim-mapper')
+  expect(rolesMapper?.config).toMatchObject({
+    'access.token.claim': 'true',
+    'claim.name': 'roles',
+    'id.token.claim': 'false',
+    'jsonType.label': 'JSON',
+    'userinfo.token.claim': 'false',
+  })
+  expect(JSON.parse(rolesMapper?.config?.['claim.value'] ?? 'null')).toEqual(
+    expectedRoles,
   )
 }
 
@@ -264,7 +260,7 @@ describe('production Keycloak realm template', () => {
     expect(mcpClient?.publicClient).toBe(false)
     expect(mcpClient?.standardFlowEnabled).toBe(false)
     expect(mcpClient?.serviceAccountsEnabled).toBe(true)
-    expectMcpServiceTokenContract(realm, mcpClient)
+    expectMcpServiceTokenContract(realm, mcpClient, [])
 
     const audienceMapper = getMapper(mcpClient, 'mcp-audience')
     expect(audienceMapper?.protocolMapper).toBe('oidc-audience-mapper')
@@ -281,17 +277,6 @@ describe('production Keycloak realm template', () => {
     expect(hsaMapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE5560000001-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
-
-    const rolesMapper = getMapper(mcpClient, 'mcp-roles')
-    expect(rolesMapper?.protocolMapper).toBe('oidc-hardcoded-claim-mapper')
-    expect(rolesMapper?.config).toMatchObject({
-      'access.token.claim': 'true',
-      'claim.name': 'roles',
-      'jsonType.label': 'JSON',
-    })
-    expect(JSON.parse(rolesMapper?.config?.['claim.value'] ?? 'null')).toEqual(
-      [],
-    )
   })
 })
 
@@ -333,7 +318,7 @@ describe('dev Keycloak realm', () => {
   it('emits the expected audience, local privileged roles, and real-format HSA-id for MCP tokens', () => {
     const realm = readDevRealm()
     const mcpClient = getClient(realm, 'kravhantering-mcp')
-    expectMcpServiceTokenContract(realm, mcpClient)
+    expectMcpServiceTokenContract(realm, mcpClient, ['Admin', 'Reviewer'])
 
     const audienceMapper = getMapper(mcpClient, 'mcp-audience')
     expect(audienceMapper?.protocolMapper).toBe('oidc-audience-mapper')
@@ -350,7 +335,6 @@ describe('dev Keycloak realm', () => {
     expect(hsaMapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE5560000001-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
-    expectLocalMcpPrivilegedRoleMapper(mcpClient)
   })
 
   it('keeps canonical realm roles and all documented fixture users', () => {
@@ -490,7 +474,7 @@ describe('container Keycloak realm', () => {
     expect(mcpClient?.publicClient).toBe(false)
     expect(mcpClient?.standardFlowEnabled).toBe(false)
     expect(mcpClient?.serviceAccountsEnabled).toBe(true)
-    expectMcpServiceTokenContract(realm, mcpClient)
+    expectMcpServiceTokenContract(realm, mcpClient, ['Admin', 'Reviewer'])
 
     const audienceMapper = getMapper(mcpClient, 'mcp-audience')
     expect(audienceMapper?.protocolMapper).toBe('oidc-audience-mapper')
@@ -507,7 +491,6 @@ describe('container Keycloak realm', () => {
     expect(hsaMapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE5560000001-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
-    expectLocalMcpPrivilegedRoleMapper(mcpClient)
   })
 
   it('keeps canonical roles and minimal smoke users', () => {

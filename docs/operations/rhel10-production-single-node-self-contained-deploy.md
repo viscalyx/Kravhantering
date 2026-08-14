@@ -1046,7 +1046,8 @@ client's top-level token `client_id`. Leave it empty when MCP is not approved;
 the endpoint then returns `404` without making readiness unhealthy. Enabled
 deployments keep the required scope, role claim, and maximum age aligned with
 the bundled realm JSON or external provider contract. Tokens use
-protected-header `typ: at+jwt` and a five-minute lifetime.
+protected-header `typ: at+jwt` and a lifetime no greater than
+`AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (for example, `300` seconds).
 
 Set `HSA_PERSON_LOOKUP_URL` to the environment-specific server-side HSA
 lookup endpoint. The browser must not call the HSA integration directly; the

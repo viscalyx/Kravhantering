@@ -244,10 +244,10 @@ sequenceDiagram
   syntax documented in [hsa-id.md](../reference/hsa-id.md). The configured local
   MCP service client emits `SE5560000001-mcp1`; a missing claim means the IdP
   realm must be reset or re-imported from the current realm JSON.
-- MCP roles are read only from `AUTH_MCP_ROLES_CLAIM` (default `roles`). A
-  missing or empty array grants no roles; any non-array, non-string, duplicate,
-  or unknown entry makes the entire claim grant no roles. Browser-role parsing
-  remains separate and unchanged. On success the verifier records
+- The verifier reads MCP roles only from `AUTH_MCP_ROLES_CLAIM` (default
+  `roles`). A missing or empty array grants no roles; any non-array, non-string,
+  duplicate, or unknown entry makes the entire claim grant no roles. Browser
+  role parsing remains separate and unchanged. On success the verifier records
   `auth.mcp.token.accepted`, attaches the verified actor, and only then permits
   database acquisition and requirements-service construction.
 - Persisted MCP import validation sessions normalize that verified HSA-id and

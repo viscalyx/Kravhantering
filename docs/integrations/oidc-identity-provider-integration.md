@@ -144,8 +144,9 @@ flowchart LR
   `client_credentials`.
 - Issue signed JWT access tokens that can be verified against the IdP JWKS.
   Opaque access tokens are not sufficient for the current MCP implementation.
-- Set the protected access-token header type to `at+jwt` and issue a maximum
-  five-minute (`300` second) lifetime.
+- Set the protected access-token header type to `at+jwt` and issue tokens with
+  a lifetime no greater than `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (for example,
+  `300` seconds).
 - Ensure MCP access tokens match the configured issuer and API audience and
   emit a top-level `client_id` equal to `MCP_CLIENT_ID`. `azp` is not accepted
   as a substitute.

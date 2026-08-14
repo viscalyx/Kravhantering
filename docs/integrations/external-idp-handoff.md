@@ -178,8 +178,9 @@ Please confirm or provide the following information.
     that the application can validate through the provider `jwks_uri`. It must
     use protected-header `typ: at+jwt`; match the configured issuer, audience,
     and top-level `client_id`; include numeric `exp` and `iat`, non-empty `sub`,
-    and real-format `employeeHsaId`; and have a maximum five-minute current age
-    and declared lifetime. Emit `kravhantering:mcp` in the standard top-level
+    and real-format `employeeHsaId`; and have a current age and declared
+    lifetime no greater than `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (for example,
+    `300` seconds). Emit `kravhantering:mcp` in the standard top-level
     space-separated `scope` claim and canonical roles as a JSON array in the
     agreed MCP role claim (default `roles`).
     Please confirm that the identity-platform or IdP administration owner will
@@ -349,8 +350,9 @@ Bekräfta eller lämna följande information.
     som applikationen kan validera via leverantörens `jwks_uri`. Den måste
     använda det skyddade huvudet `typ: at+jwt`, matcha konfigurerad issuer,
     audience och claimen `client_id` på toppnivå, innehålla numeriska `exp` och
-    `iat`, icke-tomt `sub` och verkligt `employeeHsaId` samt ha högst fem
-    minuters aktuell ålder och deklarerad livslängd. Emittera
+    `iat`, icke-tomt `sub` och verkligt `employeeHsaId` samt ha en aktuell ålder
+    och deklarerad livslängd som inte överstiger
+    `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (exempelvis `300` sekunder). Emittera
     `kravhantering:mcp` i den vanliga blankstegsseparerade claimen på toppnivå
     `scope` och kanoniska roller som en JSON-array i överenskommen MCP-rollclaim
     (standard `roles`).

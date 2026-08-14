@@ -672,7 +672,9 @@ top-level `client_id` in each service token. Leave `MCP_CLIENT_ID` empty when
 MCP is not approved; the endpoint then returns `404` and readiness remains
 healthy. Enabled deployments must configure the required scopes, role claim,
 and bounded token age shown above. The IdP must emit protected-header
-`typ: at+jwt`, a five-minute lifetime, and the matching scope and claims.
+`typ: at+jwt`, a lifetime no greater than
+`AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (for example, `300` seconds), and the matching
+scope and claims.
 
 Set `HSA_PERSON_LOOKUP_URL` to the environment-specific server-side HSA
 lookup endpoint. The browser must not call the HSA integration directly; the

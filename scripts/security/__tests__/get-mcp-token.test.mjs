@@ -195,27 +195,65 @@ describe('get-mcp-token', () => {
         clientId: 'client-id',
         requiredScopes: 'kravhantering:mcp',
       }),
-    ).toThrow('access-token contract')
+    ).toThrow('access-token contract: typ_invalid')
   })
 
   it.each([
-    ['wrong client', serviceToken({ client_id: 'browser-app' })],
-    ['conflicting authorized party', serviceToken({ azp: 'browser-app' })],
-    ['wrong audience', serviceToken({ aud: 'other-api' })],
-    ['missing scope', serviceToken({ scope: undefined })],
-    ['wrong scope', serviceToken({ scope: 'requirements:read' })],
-    ['malformed HSA-id', serviceToken({ employeeHsaId: 'private-value' })],
+    [
+      'wrong client',
+      serviceToken({ client_id: 'browser-app' }),
+      'client_id_invalid',
+    ],
+    [
+      'conflicting authorized party',
+      serviceToken({ azp: 'browser-app' }),
+      'client_id_invalid',
+    ],
+    ['missing subject', serviceToken({ sub: undefined }), 'subject_invalid'],
+    [
+      'missing expiration',
+      serviceToken({ exp: undefined }),
+      'expiration_invalid',
+    ],
+    [
+      'missing issued-at time',
+      serviceToken({ iat: undefined }),
+      'issued_at_invalid',
+    ],
+    ['wrong audience', serviceToken({ aud: 'other-api' }), 'audience_invalid'],
+    ['missing scope', serviceToken({ scope: undefined }), 'scope_invalid'],
+    [
+      'wrong scope',
+      serviceToken({ scope: 'requirements:read' }),
+      'scope_invalid',
+    ],
+    [
+      'malformed HSA-id',
+      serviceToken({ employeeHsaId: 'private-value' }),
+      'employee_hsa_id_invalid',
+    ],
     [
       'overlong HSA-id',
       serviceToken({ employeeHsaId: 'SE5560000001-1234567890123456789' }),
+      'employee_hsa_id_invalid',
     ],
-    ['unknown role', serviceToken({ roles: ['Admin', 'Owner'] })],
+    [
+      'unknown role',
+      serviceToken({ roles: ['Admin', 'Owner'] }),
+      'roles_invalid',
+    ],
+    [
+      'duplicate roles',
+      serviceToken({ roles: ['Admin', 'Admin'] }),
+      'roles_invalid',
+    ],
     [
       'excessive lifetime',
       serviceToken({
         exp: Math.floor(Date.now() / 1000) + 301,
         iat: Math.floor(Date.now() / 1000),
       }),
+      'lifetime_invalid',
     ],
     [
       'expired lifetime',
@@ -223,26 +261,52 @@ describe('get-mcp-token', () => {
         exp: Math.floor(Date.now() / 1000) - 31,
         iat: Math.floor(Date.now() / 1000) - 300,
       }),
+      'lifetime_invalid',
     ],
-    ['malformed JWT', 'not-a-jwt'],
-  ])('rejects a returned token with %s', (_label, token) => {
+    ['non-string JWT', null, 'jwt_structure_invalid'],
+    ['malformed JWT', 'not-a-jwt', 'jwt_structure_invalid'],
+    [
+      'malformed JWT header',
+      `not-json.${serviceToken().split('.')[1]}.signature`,
+      'jwt_header_invalid',
+    ],
+    [
+      'malformed JWT payload',
+      `${serviceToken().split('.')[0]}.not-json.signature`,
+      'jwt_payload_invalid',
+    ],
+  ])('rejects a returned token with %s', (_label, token, reason) => {
     expect(() =>
       validateMcpTokenShape(token, {
         clientId: 'client-id',
         requiredScopes: 'kravhantering:mcp',
       }),
-    ).toThrow('access-token contract')
+    ).toThrow(`access-token contract: ${reason}`)
   })
 
-  it('rejects an invalid configured maximum age', () => {
-    expect(() =>
-      validateMcpTokenShape(serviceToken(), {
+  it('accepts an array audience containing the API audience', () => {
+    const token = serviceToken({ aud: ['account', 'kravhantering-app'] })
+
+    expect(
+      validateMcpTokenShape(token, {
         clientId: 'client-id',
         requiredScopes: 'kravhantering:mcp',
-        tokenMaxAgeSeconds: 59,
       }),
-    ).toThrow('integer from 60 through 900')
+    ).toBe(token)
   })
+
+  it.each([59, 60.5, 901])(
+    'rejects an invalid configured maximum age of %s',
+    tokenMaxAgeSeconds => {
+      expect(() =>
+        validateMcpTokenShape(serviceToken(), {
+          clientId: 'client-id',
+          requiredScopes: 'kravhantering:mcp',
+          tokenMaxAgeSeconds,
+        }),
+      ).toThrow('access-token contract: token_max_age_invalid')
+    },
+  )
 
   it('has no implicit MCP client identifier', () => {
     expect(() =>
