@@ -917,9 +917,12 @@ function formatFieldValue(
     return formatActorDisplayNameForLocale(stringified, locale) ?? stringified
   }
   if (
+    fieldName === 'created_at' ||
     fieldName === 'due_at' ||
+    fieldName === 'expires_at' ||
     fieldName === 'period_end' ||
-    fieldName === 'period_start'
+    fieldName === 'period_start' ||
+    fieldName === 'window_started_at'
   ) {
     return formatTimestamp(stringified, locale)
   }

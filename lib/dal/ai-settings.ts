@@ -522,6 +522,48 @@ async function getAiGenerationSettingsWithLegacyForensicDefault(
   }
 }
 
+async function getAiGenerationSettingsWithQuotaDefaults(
+  db: SqlServerDatabase,
+): Promise<AiGenerationSettings> {
+  const rows = (await db.query(`
+    SELECT TOP (1)
+      ai_safety_forensic_logging_enabled AS aiSafetyForensicLoggingEnabled,
+      ai_safety_rule_cache_ttl_seconds AS aiSafetyRuleCacheTtlSeconds,
+      mcp_import_max_rows AS mcpImportMaxRows,
+      mcp_import_validation_ttl_minutes AS mcpImportValidationTtlMinutes,
+      mcp_max_request_bytes AS mcpMaxRequestBytes,
+      requirement_generation_enabled AS requirementGenerationEnabled
+    FROM ai_settings
+    WHERE id = 1
+  `)) as AiSettingsRow[]
+
+  const row = rows[0]
+  if (!row) {
+    return DEFAULT_AI_GENERATION_SETTINGS
+  }
+
+  return {
+    aiSafetyForensicLoggingEnabled: toBoolean(
+      row.aiSafetyForensicLoggingEnabled ?? true,
+    ),
+    aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
+      row.aiSafetyRuleCacheTtlSeconds,
+    ),
+    mcpImportMaxActiveSessionsPerDestination:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+    mcpImportMaxActiveSessionsPerPrincipal:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+    mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+    mcpImportMaxRows: readMcpImportMaxRows(row.mcpImportMaxRows),
+    mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
+    mcpImportValidationTtlMinutes: readMcpImportValidationTtlMinutes(
+      row.mcpImportValidationTtlMinutes,
+    ),
+    mcpMaxRequestBytes: readMcpMaxRequestBytes(row.mcpMaxRequestBytes),
+    requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
+  }
+}
+
 async function getAiGenerationSettingsWithLegacyMcpDefaults(
   db: SqlServerDatabase,
 ): Promise<AiGenerationSettings> {
@@ -734,7 +776,7 @@ export async function getAiGenerationSettings(
           'mcp_import_max_reserved_bytes',
         ].some(column => isExpectedMissingAiSettingsColumnError(error, column))
       ) {
-        return await getAiGenerationSettingsWithLegacyForensicDefault(db)
+        return await getAiGenerationSettingsWithQuotaDefaults(db)
       }
       if (
         isExpectedMissingAiSettingsColumnError(error, 'mcp_max_request_bytes')

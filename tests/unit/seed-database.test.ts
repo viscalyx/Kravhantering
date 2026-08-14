@@ -261,6 +261,31 @@ describe('seed profiles', () => {
     expect(seedRowsFor(rows, 'action_audit_events')).toHaveLength(0)
   })
 
+  it('keeps demo MCP transient rows active when they are seeded', async () => {
+    const beforeSeed = new Date()
+    const { executor, rows } = collectSeedInsertRows()
+
+    await seedDemoDatabase(executor)
+
+    const [session] = seedRowsFor(
+      rows,
+      'requirement_import_validation_sessions',
+    )
+    const [rateBucket] = seedRowsFor(
+      rows,
+      'requirement_import_validation_rate_buckets',
+    )
+    expect(new Date(String(session.expires_at)).getTime()).toBeGreaterThan(
+      beforeSeed.getTime(),
+    )
+    expect(new Date(String(rateBucket.expires_at)).getTime()).toBeGreaterThan(
+      beforeSeed.getTime(),
+    )
+    expect(
+      new Date(String(rateBucket.window_started_at)).getTime(),
+    ).toBeLessThanOrEqual(Date.now())
+  })
+
   it('seeds demo requirement-selection data with valid published links', async () => {
     const { executor, rows } = collectSeedInsertRows()
 

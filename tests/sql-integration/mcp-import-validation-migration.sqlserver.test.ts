@@ -130,4 +130,19 @@ describe('MCP import-validation ownership migration against SQL Server', () => {
       },
     ])
   })
+
+  it('preserves owned sessions when up is repeated', async () => {
+    await insertSession(queryRunner, '3'.repeat(64), true)
+
+    await migration.up(queryRunner)
+
+    await expect(
+      queryRunner.query(
+        `SELECT COUNT(*) AS count
+         FROM requirement_import_validation_sessions
+         WHERE token_hash = @0`,
+        ['3'.repeat(64)],
+      ),
+    ).resolves.toEqual([{ count: 1 }])
+  })
 })

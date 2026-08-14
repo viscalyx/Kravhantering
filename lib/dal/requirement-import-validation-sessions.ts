@@ -271,19 +271,6 @@ export async function createRequirementImportValidationSessionAtomically(
       throw new Error('Failed to acquire MCP import-validation quota lock')
     }
 
-    await manager.query(
-      `;WITH expired AS (
-         SELECT TOP (100) id
-         FROM requirement_import_validation_rate_buckets WITH (
-           UPDLOCK, ROWLOCK
-         )
-         WHERE expires_at <= SYSUTCDATETIME()
-         ORDER BY expires_at, id
-       )
-       DELETE FROM expired;
-       SELECT CONVERT(bigint, @@ROWCOUNT) AS deletedRows;`,
-    )
-
     const settingsRows = await manager.query<QuotaSettingsRow[]>(
       `SELECT TOP (1)
          mcp_import_max_active_sessions_per_destination AS maxActiveSessionsPerDestination,

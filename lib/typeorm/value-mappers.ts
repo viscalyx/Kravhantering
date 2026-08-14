@@ -1,3 +1,18 @@
+import type { ValueTransformer } from 'typeorm'
+
+function toSafeInteger(value: unknown): number {
+  const numberValue = Number(value)
+  if (!Number.isSafeInteger(numberValue)) {
+    throw new RangeError(`SQL Server bigint is not a safe integer: ${value}`)
+  }
+  return numberValue
+}
+
+export const safeBigIntNumberTransformer: ValueTransformer = {
+  from: toSafeInteger,
+  to: toSafeInteger,
+}
+
 export function toIsoString(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value
 }

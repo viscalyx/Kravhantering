@@ -1,9 +1,12 @@
 import {
   buildRuntimePermissionReconcileSql,
   buildRuntimeRoleDropSql,
+  RUNTIME_PERMISSION_MANIFEST_AT_0054,
 } from '../runtime-permission-manifest.mjs'
 
-const UP_STATEMENTS = [buildRuntimePermissionReconcileSql()]
+const UP_STATEMENTS = [
+  buildRuntimePermissionReconcileSql(RUNTIME_PERMISSION_MANIFEST_AT_0054),
+]
 const DOWN_STATEMENTS = [buildRuntimeRoleDropSql()]
 
 async function runStatements(queryRunner, statements) {

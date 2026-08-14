@@ -1,4 +1,5 @@
 import { EntitySchema } from 'typeorm'
+import { safeBigIntNumberTransformer } from '@/lib/typeorm/value-mappers'
 
 export interface AiSettingEntity {
   aiSafetyForensicLoggingEnabled: boolean
@@ -64,6 +65,7 @@ export const aiSettingEntity = new EntitySchema<AiSettingEntity>({
     mcpImportMaxReservedBytes: {
       default: 536870912,
       name: 'mcp_import_max_reserved_bytes',
+      transformer: safeBigIntNumberTransformer,
       type: 'bigint',
     },
     mcpImportValidationTtlMinutes: {

@@ -1,4 +1,5 @@
 import { EntitySchema } from 'typeorm'
+import { safeBigIntNumberTransformer } from '@/lib/typeorm/value-mappers'
 
 export interface RequirementImportValidationSessionEntity {
   createdAt: Date
@@ -60,6 +61,7 @@ export const requirementImportValidationSessionEntity =
       },
       reservedBytes: {
         name: 'reserved_bytes',
+        transformer: safeBigIntNumberTransformer,
         type: 'bigint',
       },
       destinationSnapshotJson: {

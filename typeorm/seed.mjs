@@ -17,6 +17,34 @@ function demoMcpPrincipalFingerprint() {
 }
 
 const DEMO_MCP_PRINCIPAL_FINGERPRINT = demoMcpPrincipalFingerprint()
+const MCP_RATE_WINDOW_MILLISECONDS = 10 * 60 * 1000
+
+function formatSqlServerSeedTimestamp(value) {
+  return value.toISOString().replace('T', ' ').replace('Z', '')
+}
+
+function refreshDemoMcpTransientTimestamps(now = new Date()) {
+  const createdAt = formatSqlServerSeedTimestamp(now)
+  const sessionExpiresAt = formatSqlServerSeedTimestamp(
+    new Date(now.getTime() + 60 * 60 * 1000),
+  )
+  const windowStartedAt = new Date(
+    Math.floor(now.getTime() / MCP_RATE_WINDOW_MILLISECONDS) *
+      MCP_RATE_WINDOW_MILLISECONDS,
+  )
+  const bucketExpiresAt = formatSqlServerSeedTimestamp(
+    new Date(windowStartedAt.getTime() + MCP_RATE_WINDOW_MILLISECONDS),
+  )
+  const sessionRow = SEED_DATA.requirement_import_validation_sessions.rows[0]
+  sessionRow[12] = sessionExpiresAt
+  sessionRow[13] = createdAt
+  sessionRow[14] = createdAt
+  const bucketRow = SEED_DATA.requirement_import_validation_rate_buckets.rows[0]
+  bucketRow[2] = formatSqlServerSeedTimestamp(windowStartedAt)
+  bucketRow[4] = bucketExpiresAt
+  bucketRow[5] = createdAt
+  bucketRow[6] = createdAt
+}
 
 const TABLE_ORDER = [
   'norm_references',
@@ -14494,6 +14522,7 @@ async function seedDemoLifecycleRow({
 }
 
 export async function seedDemoDatabase(executor) {
+  refreshDemoMcpTransientTimestamps()
   return runSeedData(executor, SEED_DATA, TABLE_ORDER, {
     includeTables: DEMO_SEED_TABLES,
     insertRow: seedDemoLifecycleRow,

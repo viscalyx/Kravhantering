@@ -50,7 +50,6 @@ function createDb(
   const query = vi
     .fn()
     .mockResolvedValueOnce([{ lockResult: 0 }])
-    .mockResolvedValueOnce([{ deletedRows: 0 }])
     .mockResolvedValueOnce([settings])
     .mockResolvedValueOnce([{ now, windowEnd, windowStart }])
     .mockResolvedValueOnce([
@@ -102,12 +101,17 @@ describe('MCP import-validation quota insertion', () => {
       expect.any(Function),
     )
     expect(query.mock.calls[0]?.[0]).toContain('sp_getapplock')
-    expect(query.mock.calls[6]?.[0]).toContain(
+    expect(query.mock.calls[5]?.[0]).toContain(
       'INSERT INTO requirement_import_validation_sessions',
     )
-    expect(query.mock.calls[7]?.[0]).toContain(
+    expect(query.mock.calls[6]?.[0]).toContain(
       'requirement_import_validation_rate_buckets',
     )
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('expires_at <= SYSUTCDATETIME()'),
+      ),
+    ).toBe(false)
   })
 
   it.each<{
@@ -262,19 +266,18 @@ describe('MCP import-validation quota insertion', () => {
     },
     {
       message: 'quota settings',
-      responses: [[{ lockResult: 0 }], [{ deletedRows: 0 }], []],
+      responses: [[{ lockResult: 0 }], []],
       text: 'quota settings are missing',
     },
     {
       message: 'quota clock',
-      responses: [[{ lockResult: 0 }], [{ deletedRows: 0 }], [settings], []],
+      responses: [[{ lockResult: 0 }], [settings], []],
       text: 'quota clock is unavailable',
     },
     {
       message: 'quota usage',
       responses: [
         [{ lockResult: 0 }],
-        [{ deletedRows: 0 }],
         [settings],
         [{ now, windowEnd, windowStart }],
         [],
@@ -285,7 +288,6 @@ describe('MCP import-validation quota insertion', () => {
       message: 'insert result',
       responses: [
         [{ lockResult: 0 }],
-        [{ deletedRows: 0 }],
         [settings],
         [{ now, windowEnd, windowStart }],
         [
@@ -311,7 +313,6 @@ describe('MCP import-validation quota insertion', () => {
   it('creates the first rate bucket when no current window row exists', async () => {
     const { db } = createDbFromResponses([
       [{ lockResult: 0 }],
-      [{ deletedRows: 0 }],
       [settings],
       [{ now, windowEnd, windowStart }],
       [

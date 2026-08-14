@@ -37,10 +37,12 @@ function addSettingCheckStatement(column) {
 }
 
 const UP_STATEMENTS = [
-  `DELETE FROM [requirement_import_validation_sessions];`,
   `IF COL_LENGTH(N'requirement_import_validation_sessions', N'creator_principal_fingerprint') IS NULL
+  BEGIN
+    DELETE FROM [requirement_import_validation_sessions];
     ALTER TABLE [requirement_import_validation_sessions]
-      ADD [creator_principal_fingerprint] nvarchar(64) NOT NULL;`,
+      ADD [creator_principal_fingerprint] nvarchar(64) NOT NULL;
+  END;`,
   `IF COL_LENGTH(N'requirement_import_validation_sessions', N'reserved_bytes') IS NULL
     ALTER TABLE [requirement_import_validation_sessions]
       ADD [reserved_bytes] bigint NOT NULL;`,

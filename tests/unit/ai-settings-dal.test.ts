@@ -280,22 +280,52 @@ describe('AI settings DAL', () => {
       )
       .mockResolvedValueOnce([
         {
+          aiSafetyForensicLoggingEnabled: 0,
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
-          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
-          mcpImportValidationTtlMinutes:
-            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
-          mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
-          requirementGenerationEnabled: 1,
+          mcpImportMaxRows: 321,
+          mcpImportValidationTtlMinutes: 45,
+          mcpMaxRequestBytes: 2 * 1024 * 1024,
+          requirementGenerationEnabled: 0,
         },
       ])
 
     await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
       ...MCP_QUOTA_DEFAULTS,
-      requirementGenerationEnabled: true,
+      aiSafetyForensicLoggingEnabled: false,
+      mcpImportMaxRows: 321,
+      mcpImportValidationTtlMinutes: 45,
+      mcpMaxRequestBytes: 2 * 1024 * 1024,
+      requirementGenerationEnabled: false,
     })
+    expect(query.mock.calls[1]?.[0]).toContain(
+      'ai_safety_forensic_logging_enabled',
+    )
     expect(query.mock.calls[1]?.[0]).not.toContain(
       'mcp_import_max_active_sessions_per_principal',
     )
+  })
+
+  it('uses complete defaults when the quota compatibility row is absent', async () => {
+    query
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error(
+            "Invalid column name 'mcp_import_max_active_sessions_per_destination'.",
+          ),
+          { number: 207 },
+        ),
+      )
+      .mockResolvedValueOnce([])
+
+    await expect(getAiGenerationSettings(db)).resolves.toEqual({
+      ...MCP_QUOTA_DEFAULTS,
+      aiSafetyForensicLoggingEnabled: true,
+      aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+      mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+      mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+      mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+      requirementGenerationEnabled: true,
+    })
   })
 
   it('falls through to the legacy projection when an intermediate fallback fails', async () => {

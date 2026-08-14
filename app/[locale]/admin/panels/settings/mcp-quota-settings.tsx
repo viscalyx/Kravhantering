@@ -44,7 +44,7 @@ export default function McpQuotaSettings({
     key: McpQuotaSettingKey,
     value: number,
     displayDivisor: number,
-  ) => void
+  ) => number
   saveStates: Record<McpQuotaSettingKey, SaveState>
   settings: AdminAiSettings
 }) {
@@ -105,7 +105,11 @@ export default function McpQuotaSettings({
       const rawValue = inputs[card.key].trim()
       const parsed = Number(rawValue)
       if (rawValue !== '' && Number.isFinite(parsed)) {
-        onCommit(card.key, parsed, card.displayDivisor)
+        const committedValue = onCommit(card.key, parsed, card.displayDivisor)
+        setInputs(current => ({
+          ...current,
+          [card.key]: String(committedValue / card.displayDivisor),
+        }))
       } else {
         setInputs(current => ({
           ...current,

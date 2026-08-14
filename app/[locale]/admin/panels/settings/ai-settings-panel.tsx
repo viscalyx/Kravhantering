@@ -453,7 +453,7 @@ export default function AiSettingsPanel({
     key: McpQuotaSettingKey,
     inputValue: number,
     displayDivisor = 1,
-  ) {
+  ): number {
     const constraint = constraints[key]
     const rawValue = inputValue * displayDivisor
     const next = Math.min(
@@ -465,11 +465,13 @@ export default function AiSettingsPanel({
             constraint.step,
       ),
     )
-    if (next === settings[key]) return
-    void saveSettingsPatch(key, { [key]: next }, current => ({
-      ...current,
-      [key]: next,
-    }))
+    if (next !== settings[key]) {
+      void saveSettingsPatch(key, { [key]: next }, current => ({
+        ...current,
+        [key]: next,
+      }))
+    }
+    return next
   }
 
   function updateMcpMaxRequestBytes(nextValue: number) {

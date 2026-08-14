@@ -782,73 +782,87 @@ test.describe('MCP seeded HTTP security gate', () => {
     const targetUrl = getMcpUrl(testInfo)
     let client: Client | undefined
     let transport: StreamableHTTPClientTransport | undefined
+    let areaId: number
+    let submittedPayload: {
+      requirements: Array<{ description: string }>
+      schemaVersion: string
+    }
+    let validationToken: string
 
     try {
-      const connection = await createMcpClient(
-        targetUrl,
-        await getBearerToken(),
-      )
-      client = connection.client
-      transport = connection.transport
+      await test.step('connect to the MCP endpoint', async () => {
+        const connection = await createMcpClient(
+          targetUrl,
+          await getBearerToken(),
+        )
+        client = connection.client
+        transport = connection.transport
+      })
+      if (!client) throw new Error('MCP client connection was not established')
+      const connectedClient = client
 
-      const destinations = await callToolOk(
-        client,
-        'requirements_manage_import',
-        {
-          kind: 'requirements_library',
-          operation: 'list_destinations',
-        },
-      )
-      const destination = firstRecord(
-        arrayField(destinations, 'result', 'import destinations'),
-        'requirements library destinations',
-      )
-      const areaId = numberField(
-        destination,
-        'areaId',
-        'requirements library destination',
-      )
-      const submittedPayload = {
-        requirements: [
-          { description: 'MCP-02 inspectable validation requirement' },
-        ],
-        schemaVersion: 'requirement-import.v4',
-      }
-      const validation = await callToolOk(
-        client,
-        'requirements_manage_import',
-        {
-          destination: { areaId, kind: 'requirements_library' },
-          operation: 'validate',
-          payload: submittedPayload,
-        },
-      )
-      const validationToken = stringField(
-        validation,
-        'validationToken',
-        'import validation',
-      )
-
-      const inspection = await callToolOk(
-        client,
-        'requirements_manage_import',
-        {
-          operation: 'inspect_validation',
-          validationToken,
-        },
-      )
-
-      expect(
-        numberField(
-          recordField(inspection, 'destination', 'validation inspection'),
+      await test.step('create an inspectable validation session', async () => {
+        const destinations = await callToolOk(
+          connectedClient,
+          'requirements_manage_import',
+          {
+            kind: 'requirements_library',
+            operation: 'list_destinations',
+          },
+        )
+        const destination = firstRecord(
+          arrayField(destinations, 'result', 'import destinations'),
+          'requirements library destinations',
+        )
+        areaId = numberField(
+          destination,
           'areaId',
-          'validation inspection destination',
-        ),
-      ).toBe(areaId)
-      expect(
-        recordField(inspection, 'submittedPayload', 'validation inspection'),
-      ).toMatchObject(submittedPayload)
-      expect(inspection).not.toHaveProperty('validationToken')
+          'requirements library destination',
+        )
+        submittedPayload = {
+          requirements: [
+            { description: 'MCP-02 inspectable validation requirement' },
+          ],
+          schemaVersion: 'requirement-import.v4',
+        }
+        const validation = await callToolOk(
+          connectedClient,
+          'requirements_manage_import',
+          {
+            destination: { areaId, kind: 'requirements_library' },
+            operation: 'validate',
+            payload: submittedPayload,
+          },
+        )
+        validationToken = stringField(
+          validation,
+          'validationToken',
+          'import validation',
+        )
+      })
+
+      await test.step('inspect the validation session', async () => {
+        const inspection = await callToolOk(
+          connectedClient,
+          'requirements_manage_import',
+          {
+            operation: 'inspect_validation',
+            validationToken,
+          },
+        )
+
+        expect(
+          numberField(
+            recordField(inspection, 'destination', 'validation inspection'),
+            'areaId',
+            'validation inspection destination',
+          ),
+        ).toBe(areaId)
+        expect(
+          recordField(inspection, 'submittedPayload', 'validation inspection'),
+        ).toMatchObject(submittedPayload)
+        expect(inspection).not.toHaveProperty('validationToken')
+      })
     } finally {
       await client?.close().catch(() => undefined)
       await transport?.close().catch(() => undefined)

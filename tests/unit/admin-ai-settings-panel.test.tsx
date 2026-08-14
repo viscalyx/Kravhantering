@@ -589,6 +589,47 @@ describe('AiSettingsPanel', () => {
     ).toHaveLength(0)
   })
 
+  it('replaces MCP quota drafts with the normalized committed value', async () => {
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url === '/api/admin/ai-settings' && !init?.method) {
+          return Promise.resolve(okJson({}))
+        }
+        if (url === '/api/admin/ai-settings' && init?.method === 'PATCH') {
+          return Promise.resolve(okJson(JSON.parse(String(init?.body))))
+        }
+        if (url === '/api/admin/ai-safety-rules') {
+          return Promise.resolve(okJson({ rules: [] }))
+        }
+        return Promise.reject(new Error(`Unexpected fetch ${url}`))
+      },
+    )
+    renderAdminPanel(<AiSettingsPanel />, { confirmModal: true })
+    const input = await screen.findByLabelText(
+      'admin.ai.mcpImportMaxActiveSessionsPerDestination',
+    )
+
+    fireEvent.change(input, { target: { value: '100.4' } })
+    fireEvent.blur(input)
+    expect(input).toHaveValue(100)
+    expect(
+      fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
+      ),
+    ).toHaveLength(0)
+
+    fireEvent.change(input, { target: { value: '1000.6' } })
+    fireEvent.blur(input)
+    expect(input).toHaveValue(1000)
+    await waitFor(() => expect(input).toBeEnabled())
+    expect(
+      fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
+      ),
+    ).toHaveLength(1)
+  })
+
   it('uses an optimistic global ceiling only as the effective MCP display value', async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

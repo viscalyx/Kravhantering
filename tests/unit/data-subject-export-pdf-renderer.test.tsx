@@ -368,6 +368,12 @@ describe('DataSubjectExportPdfRenderer', () => {
           { fieldName: 'item_count', value: 3 },
           { fieldName: 'display_name', value: 'no-user' },
           { fieldName: 'due_at', value: 'invalid-date' },
+          { fieldName: 'created_at', value: '2026-05-12T10:00:00.000Z' },
+          { fieldName: 'expires_at', value: '2026-05-12T11:00:00.000Z' },
+          {
+            fieldName: 'window_started_at',
+            value: '2026-05-12T12:00:00.000Z',
+          },
           { fieldName: 'action', value: 'unknown.action' },
           { fieldName: 'decision', value: 'approved' },
           { fieldName: 'permission_type', value: 'area_owner' },
@@ -417,6 +423,18 @@ describe('DataSubjectExportPdfRenderer', () => {
     const text = JSON.stringify(buildDataSubjectExportPdfModel(payload, 'en'))
     expect(text).toContain('Other data')
     expect(text).toContain('user@example.test')
+    expect(text).toContain(
+      new Date('2026-05-12T10:00:00.000Z').toLocaleString('en'),
+    )
+    expect(text).toContain(
+      new Date('2026-05-12T11:00:00.000Z').toLocaleString('en'),
+    )
+    expect(text).toContain(
+      new Date('2026-05-12T12:00:00.000Z').toLocaleString('en'),
+    )
+    expect(text).not.toContain('2026-05-12T10:00:00.000Z')
+    expect(text).not.toContain('2026-05-12T11:00:00.000Z')
+    expect(text).not.toContain('2026-05-12T12:00:00.000Z')
     expect(text).not.toContain('hidden-subject')
     expect(text).not.toContain('not exposed')
   })
