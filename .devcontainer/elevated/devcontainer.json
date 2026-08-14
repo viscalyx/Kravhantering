@@ -97,7 +97,7 @@
         "editor.formatOnPaste": true,
         "editor.codeActionsOnSave": {
           "source.fixAll.biome": "explicit",
-          "source.fixAll.markdownlint": "explicit",
+          "source.fixAll.markdownlint": "never",
           "source.organizeImports.biome": "explicit",
           "source.organizeImports": "never"
         },
@@ -119,12 +119,19 @@
         "files.insertFinalNewline": true,
         "files.trimFinalNewlines": true,
         "files.exclude": {
+          "**/.worktrees": true,
           "**/node_modules": true,
           "**/.next": true,
           "**/out": true,
           "**/.git": true,
           "**/.DS_Store": true,
           "**/tsconfig.tsbuildinfo": true
+        },
+        "search.exclude": {
+          "**/.worktrees/**": true
+        },
+        "files.watcherExclude": {
+          "**/.worktrees/**": true
         },
 
         // TypeScript settings
