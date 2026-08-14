@@ -490,6 +490,26 @@ test.describe('Admin settings', () => {
           aiPanel.getByRole('spinbutton', { name: 'MCP-anropsgräns' }),
         ).toHaveCount(1)
         await expect(
+          aiPanel.getByRole('spinbutton', {
+            name: 'Aktiva sessioner per principal',
+          }),
+        ).toHaveValue(String(original.mcpImportMaxActiveSessionsPerPrincipal))
+        await expect(
+          aiPanel.getByRole('spinbutton', {
+            name: 'Aktiva sessioner per mål',
+          }),
+        ).toHaveValue(String(original.mcpImportMaxActiveSessionsPerDestination))
+        await expect(
+          aiPanel.getByRole('spinbutton', {
+            name: 'Sessionsskapanden per 10 minuter',
+          }),
+        ).toHaveValue(String(original.mcpImportMaxCreationsPerWindow))
+        await expect(
+          aiPanel.getByRole('spinbutton', {
+            name: 'Reserverad lagring för valideringssessioner',
+          }),
+        ).toHaveValue(String(original.mcpImportMaxReservedBytes / 1024 / 1024))
+        await expect(
           aiPanel.getByText(
             'Tillåtet intervall: 1 MiB till 10 MiB. Steg: 1 MiB.',
           ),
@@ -577,6 +597,25 @@ test.describe('Admin settings', () => {
         ).toHaveCount(1)
       })
 
+      await test.step('direct-saves a principal session quota', async () => {
+        const quotaInput = page.getByRole('spinbutton', {
+          name: 'Aktiva sessioner per principal',
+        })
+        const nextQuota =
+          original.mcpImportMaxActiveSessionsPerPrincipal === 100
+            ? 99
+            : original.mcpImportMaxActiveSessionsPerPrincipal + 1
+        await quotaInput.fill(String(nextQuota))
+        await quotaInput.blur()
+        await expect
+          .poll(
+            async () =>
+              (await getAiSettings(request))
+                .mcpImportMaxActiveSessionsPerPrincipal,
+          )
+          .toBe(nextQuota)
+      })
+
       const mcpLimitInput = page.locator('#admin-ai-mcp-max-request-kib')
       const increaseButton = page.getByRole('button', {
         name: 'Höj MCP-anropsgränsen',
@@ -611,6 +650,8 @@ test.describe('Admin settings', () => {
           aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
           aiSafetyForensicLoggingEnabled:
             original.aiSafetyForensicLoggingEnabled,
+          mcpImportMaxActiveSessionsPerPrincipal:
+            original.mcpImportMaxActiveSessionsPerPrincipal,
           mcpImportMaxRows: original.mcpImportMaxRows,
           mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
           mcpMaxRequestBytes: original.mcpMaxRequestBytes,

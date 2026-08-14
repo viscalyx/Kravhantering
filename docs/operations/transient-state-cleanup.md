@@ -5,10 +5,8 @@ traffic. Every supported production topology installs one generic systemd timer
 and one one-shot cleanup container. The timer runs every five minutes with a
 small randomized delay.
 
-The current cleanup registry includes expired MCP import-validation sessions.
-Additional payload-free transient targets, including principal creation-rate
-buckets when that persistence contract is available, use the same runner and
-timer.
+The current cleanup registry includes expired MCP import-validation sessions
+and expired principal creation-rate buckets. Both use the same runner and timer.
 
 ## Work Bounds and Safety
 
@@ -130,5 +128,9 @@ systemctl --user daemon-reload
 Then install and start the previous release using its normal rollback
 procedure. Rollback stops scheduled deletion; it does not restore already
 expired rows. Remaining expired rows are harmless to active-session lookup and
-stay retained until request-triggered cleanup or a later release restores the
-timer. Active unexpired sessions are not removed by upgrade or rollback.
+quota accounting and stay retained until request-triggered cleanup or a later
+release restores the timer. Active unexpired sessions and rate buckets are not
+removed by the cleanup upgrade or rollback. A schema rollback across the MCP
+ownership/quota migration is different: it deliberately deletes all validation
+sessions first so older code cannot accept a session under weaker ownership
+rules.

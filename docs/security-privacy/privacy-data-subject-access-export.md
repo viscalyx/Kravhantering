@@ -78,9 +78,17 @@ sources include:
 - local requirement responsibility person identity rows, including standalone
   rows until retention deletes them
 - current auth session claims for self-export only
+- short-lived MCP import validation-session metadata and principal creation-rate
+  metadata, matched by the exact keyed principal fingerprint
 
 Matching is exact HSA-id matching only. Names and email addresses are never used
-to find a subject.
+to find a subject. MCP sources derive the same purpose-separated keyed HMAC used
+at session creation and never query those tables with raw HSA-id. They export
+only destination kind, reserved bytes, aggregate successful creations and
+timestamps; tokens/hashes, payloads, validation/execution JSON, destination
+IDs/names, session/row IDs and issue arrays are excluded. Privacy erasure offers
+delete or skip for the same exact fingerprint. Deleting a session invalidates
+its token; deleting a rate bucket resets the current short-lived counter.
 
 ## Limits
 

@@ -12,7 +12,7 @@ function permissionFor(objectName: string) {
 
 describe('runtime permission manifest', () => {
   it('is release-versioned, stable, and explicit about protected objects', () => {
-    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.08\.08\./u)
+    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.08\.14\./u)
     expect(RUNTIME_PERMISSION_MANIFEST_DIGEST).toMatch(/^[a-f0-9]{64}$/u)
     expect(permissionFor('dbo.migrations')).toEqual({
       object: 'dbo.migrations',
@@ -27,6 +27,20 @@ describe('runtime permission manifest', () => {
       object: 'dbo.archiving_retention_runs',
       permissions: ['SELECT', 'INSERT'],
     })
+    expect(
+      permissionFor('dbo.requirement_import_validation_rate_buckets'),
+    ).toEqual({
+      object: 'dbo.requirement_import_validation_rate_buckets',
+      permissions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+    })
+    expect(permissionFor('dbo.ai_settings')?.updateColumns).toEqual(
+      expect.arrayContaining([
+        'mcp_import_max_active_sessions_per_destination',
+        'mcp_import_max_active_sessions_per_principal',
+        'mcp_import_max_creations_per_window',
+        'mcp_import_max_reserved_bytes',
+      ]),
+    )
   })
 
   it('builds reconciliation from explicit objects without schema-wide or dynamic grants', () => {

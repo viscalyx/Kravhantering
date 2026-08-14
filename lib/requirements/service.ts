@@ -547,7 +547,13 @@ export function createRequirementsService(
   } = {},
 ): RequirementsService {
   return {
-    ...createRequirementsImportWorkflow({ authorization, db, logger }),
+    ...createRequirementsImportWorkflow({
+      authorization,
+      db,
+      logger,
+      transactionalAuthorizationFactory: executor =>
+        createDefaultAuthorizationService(executor as SqlServerDatabase),
+    }),
     ...createNeedsReferenceWorkflow({ authorization, db, logger }),
     ...createNormReferenceWorkflow({ authorization, db, logger }),
     ...createRequirementWorkflow({ authorization, db, logger }),

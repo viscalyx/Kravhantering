@@ -1516,7 +1516,11 @@
       "decreaseMcpMaxRequestLimit": "Decrease MCP request limit",
       "fieldHelp": {
         "aiSafetyForensicLogging": "When enabled, AI safety blocks write a separate forensic JSON event with raw blocked content and matched rule terms. The metadata event in the security audit log is always written. Changes apply immediately in this app process and can take up to 30 seconds in other app processes.",
+        "mcpImportMaxActiveSessionsPerDestination": "Maximum number of unexpired validation sessions, including executed sessions, reserved for one destination across all principals.",
+        "mcpImportMaxActiveSessionsPerPrincipal": "Maximum number of unexpired validation sessions, including executed sessions, that one authenticated MCP principal may own.",
+        "mcpImportMaxCreationsPerWindow": "Maximum successful validation-session creations per principal in each fixed, epoch-aligned 10-minute window. Rejected validations do not consume the quota.",
         "mcpImportMaxRows": "Maximum number of rows accepted in one MCP import validation session. Use this to keep import validation work within an operationally manageable size.",
+        "mcpImportMaxReservedBytes": "Maximum storage reserved globally for unexpired validation sessions. Reservations cover the submitted data and a conservative execution-receipt allowance.",
         "mcpImportValidationTtl": "How long a persisted MCP import validation token remains usable for inspection or execution before it expires.",
         "mcpMaxRequestLimit": "Maximum accepted MCP POST payload and persisted MCP import session size. Use this to control how large MCP requests and validation sessions may become.",
         "requirementGenerationEnabled": "Control whether users can generate draft requirements with AI assistance. When disabled, users can still view the AI controls but cannot start new requirement generation. The setting affects the requirements library button, the generator modal, and the REST generation route.",
@@ -1526,11 +1530,18 @@
       "increaseMcpMaxRequestLimit": "Increase MCP request limit",
       "loadError": "Could not load AI settings.",
       "minutes": "min",
+      "creations": "creations",
+      "sessions": "sessions",
+      "mcpImportMaxActiveSessionsPerDestination": "Active sessions per destination",
+      "mcpImportMaxActiveSessionsPerPrincipal": "Active sessions per principal",
+      "mcpImportMaxCreationsPerWindow": "Session creations per 10 minutes",
       "mcpImportMaxRows": "MCP import row limit",
+      "mcpImportMaxReservedBytes": "Reserved validation-session storage",
       "mcpImportValidationTtl": "MCP validation TTL",
       "mcpInterfaceDescription": "Control MCP transport, persisted MCP import sessions, and validation limits for import flows.",
       "mcpInterfaceTitle": "MCP interface",
       "mcpImportMaxRowsConstraint": "Allowed range: {min} to {max} rows. Step: {step}.",
+      "mcpQuotaConstraint": "Allowed range: {min} to {max} {unit}. Step: {step}.",
       "mcpMaxRequestLimit": "MCP request limit",
       "mcpImportValidationTtlConstraint": "Allowed range: {min} to {max} min. Step: {step}.",
       "mcpMaxRequestLimitConstraint": "Allowed range: {min} to {max}. Step: {step}.",
@@ -1708,7 +1719,9 @@
         "specificationCoAuthors": "Specification co-authors",
         "accessReviewRuns": "Access review rounds",
         "accessReviewItems": "Access review rows",
-        "actionAuditEvents": "Action log events"
+        "actionAuditEvents": "Action log events",
+        "requirementImportValidationRateBuckets": "MCP validation-session rate limits",
+        "requirementImportValidationSessions": "MCP import validation sessions"
       },
       "fields": {
         "identity": "Identity",
@@ -1721,6 +1734,8 @@
         "coAuthor": "Co-author",
         "reviewer": "Assigned reviewer",
         "actor": "Actor",
+        "creatorPrincipalFingerprint": "Session creator",
+        "principalFingerprint": "Rate-limit principal",
         "accessReviewPrincipal": "Access review principal",
         "taxonomy": "Taxonomy",
         "lifecycleStatus": "Specification lifecycle status",
@@ -1738,7 +1753,9 @@
         "ownerAreaAndPackageSwitchOnly": "This owner is assigned to requirement areas and packages. Switch those assignments to the replacement owner, or skip the owner row.",
         "liveAssignment": "Live assignments normally switch to the replacement HSA-id. Without a replacement, remove co-author rows or keep the anonymized owner.",
         "historySwitch": "Switching historical authorship can change the record's meaning. Anonymize is the default.",
-        "decisionSwitch": "Decisions and resolutions should not be reassigned unless legally documented. Anonymize is the default."
+        "decisionSwitch": "Decisions and resolutions should not be reassigned unless legally documented. Anonymize is the default.",
+        "rateBucketDeletion": "Deleting the temporary rate-limit bucket resets the principal's current 10-minute creation count.",
+        "tokenInvalidation": "Deleting these temporary sessions immediately invalidates their validation tokens."
       },
       "blockers": {
         "ownerAreaReplacementRequired": "This owner is assigned to requirement areas. Update those areas first or specify a replacement HSA-id and name.",

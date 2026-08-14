@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  createRequirementImportValidationSession,
-  getRequirementImportValidationSessionByTokenHash,
+  getOwnedRequirementImportValidationSession,
   inspectExpiredRequirementImportValidationSessions,
   purgeExpiredRequirementImportValidationSessions,
   updateRequirementImportValidationSessionExecutionResult,
@@ -10,6 +9,7 @@ import { createRequirementImportValidationSessionCleanupTarget } from '@/lib/tra
 
 const row = {
   createdAt: new Date('2026-08-01T10:00:00.000Z'),
+  creatorPrincipalFingerprint: 'principal-fingerprint',
   destinationId: '7' as unknown as number,
   destinationKind: 'requirements_library',
   destinationSnapshotJson: '{}',
@@ -18,6 +18,7 @@ const row = {
   id: '11' as unknown as number,
   payloadHash: 'payload-hash',
   referenceDataFingerprint: 'fingerprint',
+  reservedBytes: 4096,
   submittedPayloadJson: '{}',
   tokenHash: 'token-hash',
   updatedAt: new Date('2026-08-01T10:01:00.000Z'),
@@ -30,84 +31,33 @@ describe('requirement import validation-session DAL', () => {
 
   beforeEach(() => vi.clearAllMocks())
 
-  it('creates and maps an import validation session with nullable execution', async () => {
-    query.mockResolvedValueOnce([row])
-
-    const result = await createRequirementImportValidationSession(db, {
-      destinationId: 7,
-      destinationKind: 'requirements_library',
-      destinationSnapshotJson: '{}',
-      expiresAt: new Date('2026-08-01T10:15:00.000Z'),
-      payloadHash: 'payload-hash',
-      referenceDataFingerprint: 'fingerprint',
-      submittedPayloadJson: '{}',
-      tokenHash: 'token-hash',
-      validationResultJson: '{}',
-    })
-
-    expect(result).toMatchObject({
-      createdAt: '2026-08-01T10:00:00.000Z',
-      destinationId: 7,
-      executionResultJson: null,
-      id: 11,
-      updatedAt: '2026-08-01T10:01:00.000Z',
-    })
-    expect(query.mock.calls[0]?.[1]?.[8]).toBeNull()
-  })
-
-  it('preserves an initial execution result and fails if insert returns no row', async () => {
+  it('loads stored content only when token and principal fingerprints both match', async () => {
     query.mockResolvedValueOnce([
-      { ...row, executionResultJson: '{"done":true}' },
+      {
+        ...row,
+        creatorPrincipalFingerprint: 'principal-fingerprint',
+        reservedBytes: 4096,
+      },
     ])
-    await createRequirementImportValidationSession(db, {
-      destinationId: 7,
-      destinationKind: 'requirements_library',
-      destinationSnapshotJson: '{}',
-      executionResultJson: '{"done":true}',
-      expiresAt: new Date('2026-08-01T10:15:00.000Z'),
-      payloadHash: 'payload-hash',
-      referenceDataFingerprint: 'fingerprint',
-      submittedPayloadJson: '{}',
-      tokenHash: 'token-hash',
-      validationResultJson: '{}',
-    })
-    expect(query.mock.calls[0]?.[1]?.[8]).toBe('{"done":true}')
 
-    query.mockResolvedValueOnce([])
     await expect(
-      createRequirementImportValidationSession(db, {
-        destinationId: 7,
-        destinationKind: 'requirements_library',
-        destinationSnapshotJson: '{}',
-        expiresAt: new Date(),
-        payloadHash: 'payload-hash',
-        referenceDataFingerprint: 'fingerprint',
-        submittedPayloadJson: '{}',
-        tokenHash: 'token-hash',
-        validationResultJson: '{}',
-      }),
-    ).rejects.toThrow('Failed to create')
-  })
-
-  it('reads active sessions with optional update locks and returns null', async () => {
-    query.mockResolvedValueOnce([row])
-    await expect(
-      getRequirementImportValidationSessionByTokenHash(
+      getOwnedRequirementImportValidationSession(
         { query },
         'token-hash',
+        'principal-fingerprint',
         { lockForUpdate: true },
       ),
-    ).resolves.toMatchObject({ id: 11 })
-    expect(query.mock.calls[0]?.[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
-
-    query.mockResolvedValueOnce([])
-    await expect(
-      getRequirementImportValidationSessionByTokenHash(
-        { query },
-        'missing-token',
-      ),
-    ).resolves.toBeNull()
-    expect(query.mock.calls[1]?.[0]).not.toContain('UPDLOCK')
+    ).resolves.toMatchObject({
+      creatorPrincipalFingerprint: 'principal-fingerprint',
+      id: 11,
+    })
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'creator_principal_fingerprint = @1',
+    )
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      'token-hash',
+      'principal-fingerprint',
+    ])
   })
 
   it('updates execution results with bound parameters', async () => {

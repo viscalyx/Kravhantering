@@ -16,6 +16,19 @@ export const MCP_IMPORT_MAX_ROWS_MAX = 500
 export const MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES = 60
 export const MCP_IMPORT_VALIDATION_TTL_MIN_MINUTES = 1
 export const MCP_IMPORT_VALIDATION_TTL_MAX_MINUTES = 1440
+export const MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT = 10
+export const MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_MIN = 1
+export const MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_MAX = 100
+export const MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT = 100
+export const MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_MIN = 1
+export const MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_MAX = 1_000
+export const MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT = 20
+export const MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_MIN = 1
+export const MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_MAX = 200
+export const MCP_IMPORT_RESERVED_BYTES_STEP = 64 * 1024 * 1024
+export const MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT = 512 * 1024 * 1024
+export const MCP_IMPORT_MAX_RESERVED_BYTES_MIN = MCP_IMPORT_RESERVED_BYTES_STEP
+export const MCP_IMPORT_MAX_RESERVED_BYTES_MAX = 8 * 1024 * 1024 * 1024
 export const MCP_REQUEST_PAYLOAD_STEP_KIB =
   MCP_REQUEST_PAYLOAD_STEP_BYTES / 1024
 
@@ -23,7 +36,7 @@ export interface NumericSettingConstraint {
   max: number
   min: number
   step: number
-  unit: 'bytes' | 'minutes' | 'rows' | 'seconds'
+  unit: 'bytes' | 'creations' | 'minutes' | 'rows' | 'seconds' | 'sessions'
 }
 
 export const ADMIN_AI_SETTINGS_CONSTRAINTS = Object.freeze({
@@ -38,6 +51,30 @@ export const ADMIN_AI_SETTINGS_CONSTRAINTS = Object.freeze({
     min: MCP_IMPORT_MAX_ROWS_MIN,
     step: 1,
     unit: 'rows',
+  },
+  mcpImportMaxActiveSessionsPerDestination: {
+    max: MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_MAX,
+    min: MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_MIN,
+    step: 1,
+    unit: 'sessions',
+  },
+  mcpImportMaxActiveSessionsPerPrincipal: {
+    max: MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_MAX,
+    min: MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_MIN,
+    step: 1,
+    unit: 'sessions',
+  },
+  mcpImportMaxCreationsPerWindow: {
+    max: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_MAX,
+    min: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_MIN,
+    step: 1,
+    unit: 'creations',
+  },
+  mcpImportMaxReservedBytes: {
+    max: MCP_IMPORT_MAX_RESERVED_BYTES_MAX,
+    min: MCP_IMPORT_MAX_RESERVED_BYTES_MIN,
+    step: MCP_IMPORT_RESERVED_BYTES_STEP,
+    unit: 'bytes',
   },
   mcpImportValidationTtlMinutes: {
     max: MCP_IMPORT_VALIDATION_TTL_MAX_MINUTES,
@@ -59,6 +96,10 @@ export interface AdminAiSettings {
   constraints: typeof ADMIN_AI_SETTINGS_CONSTRAINTS
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
+  mcpImportMaxActiveSessionsPerDestination: number
+  mcpImportMaxActiveSessionsPerPrincipal: number
+  mcpImportMaxCreationsPerWindow: number
+  mcpImportMaxReservedBytes: number
   mcpImportMaxRows: number
   mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
@@ -78,6 +119,12 @@ export const DEFAULT_ADMIN_AI_SETTINGS: AdminAiSettings = Object.freeze({
   disabledByEnvironment: false,
   effectiveRequirementGenerationEnabled: true,
   mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+  mcpImportMaxActiveSessionsPerDestination:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  mcpImportMaxActiveSessionsPerPrincipal:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+  mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
   mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
   requirementGenerationEnabled: true,
@@ -121,6 +168,43 @@ export function isValidMcpImportMaxRows(value: number): boolean {
     Number.isInteger(value) &&
     value >= MCP_IMPORT_MAX_ROWS_MIN &&
     value <= MCP_IMPORT_MAX_ROWS_MAX
+  )
+}
+
+export function isValidMcpImportMaxActiveSessionsPerPrincipal(
+  value: number,
+): boolean {
+  return (
+    Number.isInteger(value) &&
+    value >= MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_MIN &&
+    value <= MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_MAX
+  )
+}
+
+export function isValidMcpImportMaxActiveSessionsPerDestination(
+  value: number,
+): boolean {
+  return (
+    Number.isInteger(value) &&
+    value >= MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_MIN &&
+    value <= MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_MAX
+  )
+}
+
+export function isValidMcpImportMaxCreationsPerWindow(value: number): boolean {
+  return (
+    Number.isInteger(value) &&
+    value >= MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_MIN &&
+    value <= MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_MAX
+  )
+}
+
+export function isValidMcpImportMaxReservedBytes(value: number): boolean {
+  return (
+    Number.isSafeInteger(value) &&
+    value >= MCP_IMPORT_MAX_RESERVED_BYTES_MIN &&
+    value <= MCP_IMPORT_MAX_RESERVED_BYTES_MAX &&
+    value % MCP_IMPORT_RESERVED_BYTES_STEP === 0
   )
 }
 

@@ -36,6 +36,15 @@ Nuclei still owns the unauthenticated `/api/mcp` exposure check. The MCP
 unit/property tests remain the primary protocol and authorization seam
 contract.
 
+Persisted import-session security is verified below the seeded HTTP corpus:
+unit tests cover keyed principal normalization, same-public-response ownership
+failures, stable quota issue codes, diagnostic redaction and authorization
+inside the execute transaction; SQL integration tests race two concurrent
+creations independently against the principal, fixed-window, destination and
+reserved-storage boundaries. Migration tests require legacy-session deletion
+before both upgrade and rollback. Keep these seams when extending the corpus;
+never place bearer tokens or stored import content in security artifacts.
+
 ## OpenRouter Policy
 
 Security CI deliberately does not call live OpenRouter endpoints. OpenRouter is

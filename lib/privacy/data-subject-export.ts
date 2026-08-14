@@ -1,3 +1,4 @@
+import { mcpImportValidationPrincipalFingerprint } from '@/lib/mcp/import-validation-principal'
 import {
   DATA_SUBJECT_EXPORT_SCHEMA_VERSION,
   type DataSubjectExportActor,
@@ -947,6 +948,91 @@ async function collectActionAuditEventActors(
   )
 }
 
+async function collectRequirementImportValidationSessions(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor('requirement_import_validation_sessions.creator')
+  const rows = (await db.query(
+    `/* privacy:data-export:requirement_import_validation_sessions.creator */
+      SELECT
+        session.destination_kind AS destinationKind,
+        session.reserved_bytes AS reservedBytes,
+        session.created_at AS createdAt,
+        session.expires_at AS expiresAt
+      FROM requirement_import_validation_sessions session
+      WHERE session.creator_principal_fingerprint = @0
+      ORDER BY session.created_at DESC, session.id DESC`,
+    [mcpImportValidationPrincipalFingerprint(targetHsaId)],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    [
+      {
+        fieldName: 'destination_kind',
+        value: stringValue(row.destinationKind),
+      },
+      { fieldName: 'reserved_bytes', value: Number(row.reservedBytes) },
+      { fieldName: 'created_at', value: isoTimestamp(row.createdAt) ?? null },
+      { fieldName: 'expires_at', value: isoTimestamp(row.expiresAt) ?? null },
+    ].map(field =>
+      item(
+        policy,
+        'mcp_import_validation_session_creator',
+        field.fieldName,
+        field.value,
+        {
+          timestamp: row.createdAt,
+        },
+      ),
+    ),
+  )
+}
+
+async function collectRequirementImportValidationRateBuckets(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor(
+    'requirement_import_validation_rate_buckets.principal',
+  )
+  const rows = (await db.query(
+    `/* privacy:data-export:requirement_import_validation_rate_buckets.principal */
+      SELECT
+        bucket.successful_creations AS successfulCreations,
+        bucket.window_started_at AS windowStartedAt,
+        bucket.expires_at AS expiresAt
+      FROM requirement_import_validation_rate_buckets bucket
+      WHERE bucket.principal_fingerprint = @0
+      ORDER BY bucket.window_started_at DESC, bucket.id DESC`,
+    [mcpImportValidationPrincipalFingerprint(targetHsaId)],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    [
+      {
+        fieldName: 'successful_creations',
+        value: Number(row.successfulCreations),
+      },
+      {
+        fieldName: 'window_started_at',
+        value: isoTimestamp(row.windowStartedAt) ?? null,
+      },
+      { fieldName: 'expires_at', value: isoTimestamp(row.expiresAt) ?? null },
+    ].map(field =>
+      item(
+        policy,
+        'mcp_import_validation_rate_bucket_principal',
+        field.fieldName,
+        field.value,
+        {
+          timestamp: row.windowStartedAt,
+        },
+      ),
+    ),
+  )
+}
+
 const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
   {
     collect: collectRequirementAreaOwners,
@@ -1139,6 +1225,16 @@ const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
     collect: collectActionAuditEventActors,
     policy: policyFor('action_audit_events.actor'),
     relationToSubject: 'action_audit_actor_snapshot',
+  },
+  {
+    collect: collectRequirementImportValidationSessions,
+    policy: policyFor('requirement_import_validation_sessions.creator'),
+    relationToSubject: 'mcp_import_validation_session_creator',
+  },
+  {
+    collect: collectRequirementImportValidationRateBuckets,
+    policy: policyFor('requirement_import_validation_rate_buckets.principal'),
+    relationToSubject: 'mcp_import_validation_rate_bucket_principal',
   },
 ]
 

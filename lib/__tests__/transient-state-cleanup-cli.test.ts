@@ -30,7 +30,7 @@ function target(rows: number): TransientCleanupTarget {
 }
 
 describe('transient cleanup command', () => {
-  it('uses default bounds and the registered validation-session target', async () => {
+  it('uses default bounds for every registered MCP cleanup target', async () => {
     const query = vi.fn().mockResolvedValue([
       {
         expiredRowCount: 0,
@@ -49,7 +49,7 @@ describe('transient cleanup command', () => {
         write: vi.fn(),
       }),
     ).resolves.toBe(0)
-    expect(query).toHaveBeenCalledOnce()
+    expect(query).toHaveBeenCalledTimes(2)
   })
 
   it('cleans registered targets without any MCP request traffic', async () => {

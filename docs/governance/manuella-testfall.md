@@ -1841,6 +1841,21 @@ felorsak. Kvalitetssektionerna visar att data inte är tillgängliga, aldrig
 återställning visas de lokaliserade kvalitetsegenskaperna och en synlig
 statusbekräftelse.
 
+### ADMIN-17: MCP-kvoter sparas direkt och visar gränser
+
+1. Logga in som `Admin` och öppna `Administrationscenter > Inställningar > AI`.
+2. Kontrollera att MCP-sektionen visar aktiva sessioner per principal, aktiva
+   sessioner per mål, sessionsskapanden per 10 minuter och reserverad lagring.
+3. Öppna hjälpen för varje kontroll och kontrollera att TTL, fast fönster och
+   reserverad lagring förklaras.
+4. Ändra principalgränsen, lämna fältet och ladda om sidan.
+5. Verifiera att värdet sparats utan gemensam Spara-knapp och att
+   åtgärdsloggen visar en privilegierad ändring av AI-inställningar.
+6. Prova min/max för alla fyra fält och ett lagringsvärde som inte ligger på
+   ett 64 MiB-steg. Verifiera att giltiga gränsvärden accepteras och att det
+   ogiltiga värdet normaliseras eller avvisas utan att ett ogiltigt värde
+   sparas.
+
 ## Dataskydd och personuppgifter
 
 ### PRIV-01: egen personuppgiftsexport
@@ -1899,6 +1914,16 @@ förhandsgranskning.
 **Förväntat resultat:** Exporten innehåller lokal kravansvarsperson men inte
 otilldelade personer som inte matchar målet.
 
+### PRIV-10: MCP-fingerprint i export och radering
+
+1. Skapa en MCP-importvalidering som en testprincipal men kör den inte.
+2. Som `PrivacyOfficer`, förhandsgranska samma HSA-id.
+3. Verifiera träffar för valideringssession och anropsgränspost utan rå token,
+   importnyttolast, valideringsresultat, destinationsnamn eller rad-id:n.
+4. Exportera JSON/PDF och kontrollera att endast säker metadata visas.
+5. Kör rekommenderad radering och verifiera att token därefter ger samma
+   not-found-svar som en okänd eller utgången token.
+
 ## Utvecklar- och robusthetsytor
 
 ### DEVTOOLS-01: Developer Mode-chip kopierar referens
@@ -1917,6 +1942,19 @@ MCP-korpusen.
 **Förväntat resultat:** Saknad eller ogiltig bearer-token ger HTTP 401 med
 `WWW-Authenticate: Bearer`. Med giltig token exponeras exakt den dokumenterade
 verktygsuppsättningen och seedade MCP-anrop fungerar utan oväntade verktyg.
+
+### MCP-02: ägarskap, transaktionsbehörighet och samtidiga kvoter
+
+1. Skapa en giltig valideringstoken som principal A.
+2. Verifiera att A kan inspektera den och att principal B får samma not-found
+   som för en okänd token vid både inspektion och körning.
+3. Ta bort A:s behörighet till målet efter validering och verifiera att körning
+   nekas utan skapade krav eller körningskvitto.
+4. Sätt varje kvot till en låg gräns och skicka två samtidiga giltiga
+   valideringar vid gränsen. Verifiera att endast en skapelse lyckas och att den
+   andra får rätt stabil issue-kod. Kontrollera principal, skapandefönster, mål
+   och lagring var för sig.
+5. Verifiera att schemafel och nekad behörighet inte ökar skapanderäknaren.
 
 ### DEVTOOLS-02: Developer Mode ligger kvar vid navigering
 

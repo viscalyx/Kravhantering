@@ -7,7 +7,15 @@ import {
   DEFAULT_ADMIN_AI_SETTINGS,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
   formatMcpRequestPayloadKiB,
+  isValidMcpImportMaxActiveSessionsPerDestination,
+  isValidMcpImportMaxActiveSessionsPerPrincipal,
+  isValidMcpImportMaxCreationsPerWindow,
+  isValidMcpImportMaxReservedBytes,
   isValidMcpMaxRequestBytes,
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+  MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
   MCP_IMPORT_MAX_ROWS_DEFAULT,
   MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
@@ -53,9 +61,29 @@ describe('AI generation availability MCP payload grid', () => {
       disabledByEnvironment: false,
       effectiveRequirementGenerationEnabled: true,
       mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+      mcpImportMaxActiveSessionsPerDestination:
+        MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+      mcpImportMaxActiveSessionsPerPrincipal:
+        MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+      mcpImportMaxCreationsPerWindow:
+        MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+      mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
       mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
       mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
       requirementGenerationEnabled: true,
     })
+  })
+
+  it('accepts exact MCP validation-session quota boundaries and rejects one-over values', () => {
+    expect(isValidMcpImportMaxActiveSessionsPerPrincipal(1)).toBe(true)
+    expect(isValidMcpImportMaxActiveSessionsPerPrincipal(100)).toBe(true)
+    expect(isValidMcpImportMaxActiveSessionsPerPrincipal(101)).toBe(false)
+    expect(isValidMcpImportMaxActiveSessionsPerDestination(1_000)).toBe(true)
+    expect(isValidMcpImportMaxActiveSessionsPerDestination(1_001)).toBe(false)
+    expect(isValidMcpImportMaxCreationsPerWindow(200)).toBe(true)
+    expect(isValidMcpImportMaxCreationsPerWindow(201)).toBe(false)
+    expect(isValidMcpImportMaxReservedBytes(64 * 1024 * 1024)).toBe(true)
+    expect(isValidMcpImportMaxReservedBytes(8 * 1024 * 1024 * 1024)).toBe(true)
+    expect(isValidMcpImportMaxReservedBytes(64 * 1024 * 1024 + 1)).toBe(false)
   })
 })

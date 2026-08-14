@@ -182,7 +182,11 @@ describe('AiSettingsPanel', () => {
               aiSafetyForensicLoggingEnabled: false,
               aiSafetyRuleCacheTtlSeconds: 60,
               disabledByEnvironment: true,
+              mcpImportMaxActiveSessionsPerDestination: 100,
+              mcpImportMaxActiveSessionsPerPrincipal: 10,
+              mcpImportMaxCreationsPerWindow: 20,
               mcpImportMaxRows: 500,
+              mcpImportMaxReservedBytes: 512 * 1024 * 1024,
               mcpImportValidationTtlMinutes: 60,
               mcpMaxRequestBytes: 5 * 1024 * 1024,
               requirementGenerationEnabled: false,
@@ -216,6 +220,10 @@ describe('AiSettingsPanel', () => {
       'admin.ai.safetyRuleCacheTtl',
       'admin.ai.safetyRulesTitle',
       'admin.ai.mcpMaxRequestLimit',
+      'admin.ai.mcpImportMaxActiveSessionsPerPrincipal',
+      'admin.ai.mcpImportMaxActiveSessionsPerDestination',
+      'admin.ai.mcpImportMaxCreationsPerWindow',
+      'admin.ai.mcpImportMaxReservedBytes',
       'admin.ai.mcpImportMaxRows',
       'admin.ai.mcpImportValidationTtl',
     ]) {
@@ -251,6 +259,18 @@ describe('AiSettingsPanel', () => {
       }),
     )
     await waitFor(() => expect(mcpLimit).toBeEnabled())
+
+    for (const [label, value] of [
+      ['admin.ai.mcpImportMaxActiveSessionsPerPrincipal', '11'],
+      ['admin.ai.mcpImportMaxActiveSessionsPerDestination', '101'],
+      ['admin.ai.mcpImportMaxCreationsPerWindow', '21'],
+      ['admin.ai.mcpImportMaxReservedBytes', '576'],
+    ] as const) {
+      const input = screen.getByLabelText(label)
+      fireEvent.change(input, { target: { value } })
+      fireEvent.blur(input)
+      await waitFor(() => expect(input).toBeEnabled())
+    }
     fireEvent.click(
       screen.getByRole('button', {
         name: 'admin.ai.increaseMcpMaxRequestLimit',
@@ -272,8 +292,15 @@ describe('AiSettingsPanel', () => {
         fetchMock.mock.calls.filter(
           ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
         ),
-      ).toHaveLength(8),
+      ).toHaveLength(12),
     )
+    expect(
+      fetchMock.mock.calls.some(([, init]) =>
+        String(init?.body).includes(
+          `"mcpImportMaxReservedBytes":${576 * 1024 * 1024}`,
+        ),
+      ),
+    ).toBe(true)
     expect(screen.getAllByText('admin.saved').length).toBeGreaterThan(0)
   })
 

@@ -550,6 +550,29 @@ For either rollback that follows a failed Quadlet start:
 Do not rely on app-only image rollback after schema migration unless the
 specific release notes explicitly say it is supported.
 
+### MCP validation-session ownership migration
+
+The migration that adds principal ownership and atomic quotas is intentionally
+fail closed. Its upgrade deletes every existing
+`requirement_import_validation_sessions` row before adding the creator
+fingerprint and reservation columns; its rollback also deletes all sessions
+before removing them. Existing validation tokens cannot survive either
+direction. The migration also adds the short-lived creation-rate table and four
+`ai_settings` quota columns.
+
+Keep all app nodes drained and stopped while the database job runs. Mixed old
+and new app versions are unsupported because the old version performs
+token-only lookup and does not participate in the new atomic quota protocol.
+After upgrade or rollback, tell MCP users to run `validate` again. Verify all
+four Admin settings, the runtime permission manifest, one same-principal
+inspect, one wrong-principal not-found result, and the transient cleanup target
+before restoring traffic.
+
+Rotating `AUTH_SESSION_COOKIE_PASSWORD` derives a new principal-fingerprint
+key. Treat rotation as intentional validation-token invalidation: drain MCP
+traffic, rotate every app node together, restart them, and tell clients to
+revalidate. Do not retain the old secret solely to preserve transient sessions.
+
 ## Credential Rotation
 
 Use this procedure for day-2 rotation of production auth credentials when no

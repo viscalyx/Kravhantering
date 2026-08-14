@@ -5,6 +5,7 @@ import {
   upsertRequirementResponsibilityPerson,
 } from '@/lib/dal/requirement-responsibility-people'
 import type { SqlServerDatabase } from '@/lib/db'
+import { mcpImportValidationPrincipalFingerprint } from '@/lib/mcp/import-validation-principal'
 import { DELETED_USER_INTERNAL_NAME } from '@/lib/privacy/display-name'
 import { conflictError, validationError } from '@/lib/requirements/errors'
 import {
@@ -81,6 +82,7 @@ interface QueryExecutor {
 
 export type PrivacyGroupKind =
   | 'coAuthor'
+  | 'fingerprintOnly'
   | 'hsaOnly'
   | 'ownerReference'
   | 'simpleDisplay'
@@ -97,6 +99,7 @@ export interface PrivacyGroupPolicy {
   hsaColumn?: string
   key: string
   kind: PrivacyGroupKind
+  matchBy?: 'hsaId' | 'mcpPrincipalFingerprint'
   objectKey: string
   table?: string
   warningKey: string | null
@@ -659,6 +662,36 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     table: 'action_audit_events',
     warningKey: 'historySwitch',
   },
+  {
+    allowedActions: ['delete', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM requirement_import_validation_sessions WHERE creator_principal_fingerprint = @0',
+    defaultWithReplacement: 'delete',
+    defaultWithoutReplacement: 'delete',
+    fieldKey: 'creatorPrincipalFingerprint',
+    hsaColumn: 'creator_principal_fingerprint',
+    key: 'requirement_import_validation_sessions.creator',
+    kind: 'fingerprintOnly',
+    matchBy: 'mcpPrincipalFingerprint',
+    objectKey: 'requirementImportValidationSessions',
+    table: 'requirement_import_validation_sessions',
+    warningKey: 'tokenInvalidation',
+  },
+  {
+    allowedActions: ['delete', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM requirement_import_validation_rate_buckets WHERE principal_fingerprint = @0',
+    defaultWithReplacement: 'delete',
+    defaultWithoutReplacement: 'delete',
+    fieldKey: 'principalFingerprint',
+    hsaColumn: 'principal_fingerprint',
+    key: 'requirement_import_validation_rate_buckets.principal',
+    kind: 'fingerprintOnly',
+    matchBy: 'mcpPrincipalFingerprint',
+    objectKey: 'requirementImportValidationRateBuckets',
+    table: 'requirement_import_validation_rate_buckets',
+    warningKey: 'rateBucketDeletion',
+  },
 ]
 
 const POLICY_BY_KEY = new Map(
@@ -682,6 +715,15 @@ function valuesFromRows(rows: Array<Record<string, unknown>>): string[] {
     .map(row => row.value)
     .filter((value): value is number | string => value != null)
     .map(String)
+}
+
+function policyTargetValue(
+  policy: PrivacyGroupPolicy,
+  targetHsaId: string,
+): string {
+  return policy.matchBy === 'mcpPrincipalFingerprint'
+    ? mcpImportValidationPrincipalFingerprint(targetHsaId)
+    : targetHsaId
 }
 
 function actionsAllowedForReplacement(
@@ -790,7 +832,7 @@ async function listAffectedReferences(
 ): Promise<string[]> {
   if (!policy.affectedReferencesSql) return []
   const rows = (await db.query(policy.affectedReferencesSql, [
-    targetHsaId,
+    policyTargetValue(policy, targetHsaId),
   ])) as Array<Record<string, unknown>>
   return valuesFromRows(rows)
 }
@@ -804,13 +846,14 @@ export async function previewPrivacyErasure(
   const groups: PrivacyOccurrenceGroup[] = []
 
   for (const policy of GROUP_POLICIES) {
-    const countRows = (await db.query(policy.countSql, [
-      target.hsaId,
-    ])) as Array<Record<string, unknown>>
+    const targetValue = policyTargetValue(policy, target.hsaId)
+    const countRows = (await db.query(policy.countSql, [targetValue])) as Array<
+      Record<string, unknown>
+    >
     const count = countFromRows(countRows)
     if (count < 1) continue
     const valueRows = policy.currentDisplaySql
-      ? ((await db.query(policy.currentDisplaySql, [target.hsaId])) as Array<
+      ? ((await db.query(policy.currentDisplaySql, [targetValue])) as Array<
           Record<string, unknown>
         >)
       : []
@@ -1096,7 +1139,13 @@ export async function executePrivacyErasure(
       if (!policy) continue
       const action = actions[group.key] ?? group.recommendedAction
       if (policy.kind !== 'ownerReference') {
-        await applyDirectHsaGroup(tx, policy, action, target.hsaId, replacement)
+        await applyDirectHsaGroup(
+          tx,
+          policy,
+          action,
+          policyTargetValue(policy, target.hsaId),
+          replacement,
+        )
         if (usesRequirementResponsibilityPerson(policy)) {
           responsibilityPersonCleanupHsaIds.add(target.hsaId)
         }

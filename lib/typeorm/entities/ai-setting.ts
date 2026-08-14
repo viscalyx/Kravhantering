@@ -5,6 +5,10 @@ export interface AiSettingEntity {
   aiSafetyRuleCacheTtlSeconds: number
   createdAt: Date
   id: number
+  mcpImportMaxActiveSessionsPerDestination: number
+  mcpImportMaxActiveSessionsPerPrincipal: number
+  mcpImportMaxCreationsPerWindow: number
+  mcpImportMaxReservedBytes: number
   mcpImportMaxRows: number
   mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
@@ -42,6 +46,26 @@ export const aiSettingEntity = new EntitySchema<AiSettingEntity>({
       name: 'mcp_import_max_rows',
       type: 'int',
     },
+    mcpImportMaxActiveSessionsPerPrincipal: {
+      default: 10,
+      name: 'mcp_import_max_active_sessions_per_principal',
+      type: 'int',
+    },
+    mcpImportMaxActiveSessionsPerDestination: {
+      default: 100,
+      name: 'mcp_import_max_active_sessions_per_destination',
+      type: 'int',
+    },
+    mcpImportMaxCreationsPerWindow: {
+      default: 20,
+      name: 'mcp_import_max_creations_per_window',
+      type: 'int',
+    },
+    mcpImportMaxReservedBytes: {
+      default: 536870912,
+      name: 'mcp_import_max_reserved_bytes',
+      type: 'bigint',
+    },
     mcpImportValidationTtlMinutes: {
       default: 60,
       name: 'mcp_import_validation_ttl_minutes',
@@ -64,6 +88,26 @@ export const aiSettingEntity = new EntitySchema<AiSettingEntity>({
     {
       expression: '[mcp_import_max_rows] >= 1 AND [mcp_import_max_rows] <= 500',
       name: 'chk_ai_settings_mcp_import_max_rows',
+    },
+    {
+      expression:
+        '[mcp_import_max_active_sessions_per_principal] >= 1 AND [mcp_import_max_active_sessions_per_principal] <= 100',
+      name: 'chk_ai_settings_mcp_import_max_active_sessions_per_principal',
+    },
+    {
+      expression:
+        '[mcp_import_max_active_sessions_per_destination] >= 1 AND [mcp_import_max_active_sessions_per_destination] <= 1000',
+      name: 'chk_ai_settings_mcp_import_max_active_sessions_per_destination',
+    },
+    {
+      expression:
+        '[mcp_import_max_creations_per_window] >= 1 AND [mcp_import_max_creations_per_window] <= 200',
+      name: 'chk_ai_settings_mcp_import_max_creations_per_window',
+    },
+    {
+      expression:
+        '[mcp_import_max_reserved_bytes] >= 67108864 AND [mcp_import_max_reserved_bytes] <= 8589934592 AND [mcp_import_max_reserved_bytes] % 67108864 = 0',
+      name: 'chk_ai_settings_mcp_import_max_reserved_bytes',
     },
     {
       expression:

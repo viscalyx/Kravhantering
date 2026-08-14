@@ -160,7 +160,9 @@ The `AI` section manages AI-assisted requirement generation. Its
 its `AI security` section contains the forensic AI safety JSON logging toggle,
 safety-rule cache time and editable AI safety-rule terms, and its
 `MCP interface` section contains the MCP request/session payload limit and MCP
-import row/TTL limits. The section has no shared Save button; controls save
+import row/TTL limits, plus active-session quotas per principal and destination,
+successful session creations per fixed 10-minute window, and global reserved
+validation-session storage. The section has no shared Save button; controls save
 directly when changed, with per-control or per-row status. Numeric controls
 show their allowed range and step directly under the control.
 
@@ -184,11 +186,25 @@ Admin-managed AI settings include:
   as `aiSafetyForensicLoggingEnabled`
 - the maximum MCP request payload size, sent as `mcpMaxRequestBytes`
 - the maximum MCP import validation row count, sent as `mcpImportMaxRows`
+- active validation sessions per normalized HSA-id principal, sent as
+  `mcpImportMaxActiveSessionsPerPrincipal` (`1`–`100`, default `10`)
+- active validation sessions per destination, sent as
+  `mcpImportMaxActiveSessionsPerDestination` (`1`–`1000`, default `100`)
+- successful session creations per principal and fixed epoch-aligned 10-minute
+  window, sent as `mcpImportMaxCreationsPerWindow` (`1`–`200`, default `20`)
+- globally reserved validation-session storage, sent as
+  `mcpImportMaxReservedBytes` (`64 MiB`–`8 GiB`, default `512 MiB`, exact
+  `64 MiB` steps)
 - the MCP import validation-session lifetime, sent as
   `mcpImportValidationTtlMinutes`
 - the AI safety-rule cache time, sent as `aiSafetyRuleCacheTtlSeconds`
 - active AI safety-rule terms, their direction, and whether standard terms have
   been disabled
+
+The active counts include executed sessions until their TTL expires. Exact
+quota equality is accepted. Changes are audited as privileged setting changes
+and apply to new `validate` admission checks; lowering a quota does not delete
+existing sessions.
 
 The forensic AI safety logging setting only controls the separate
 `security-forensics` JSON output. It does not enable or disable the AI safety

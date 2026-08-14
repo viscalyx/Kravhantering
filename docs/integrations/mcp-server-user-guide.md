@@ -792,6 +792,33 @@ unchanged status fields.
 
 ## Limitations
 
+### Persisted import validation sessions
+
+`requirements_manage_import validate` returns a random validation token. The
+token is usable only by the same authenticated, normalized HSA-id principal
+that created it; sharing it with another principal produces the same not-found
+response as an unknown or expired token. `inspect_validation` re-authorizes the
+stored destination, and `execute` repeats authorization inside the serializable
+mutation transaction. A role change, removed co-author assignment or archived
+destination can therefore stop a previously validated import.
+
+Admission is bounded by four Admin-managed quotas: unexpired sessions per
+principal, unexpired sessions per destination, successful creations per fixed
+epoch-aligned 10-minute principal window, and global reserved bytes. Executed
+sessions remain active until expiry. Rejected validation, authorization and
+schema attempts do not consume the creation counter. Quota failures use stable
+issue codes:
+
+- `import_validation_principal_session_quota_exceeded`
+- `import_validation_creation_rate_exceeded` (includes `retryAfterSeconds`)
+- `import_validation_destination_session_quota_exceeded`
+- `import_validation_storage_quota_exceeded`
+
+Wait for session expiry, retry after the supplied rate delay, reduce the
+payload, or ask an administrator to review the limits. Rotating
+`AUTH_SESSION_COOKIE_PASSWORD` intentionally invalidates ownership matching for
+existing validation sessions; run `validate` again after rotation.
+
 - The server is HTTP-only in this project. There is no stdio transport.
 - GitHub Copilot coding agent only uses tools from this server. It does not use
   the requirement resource or the requirement app view.

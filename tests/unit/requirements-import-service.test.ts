@@ -1,4 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+  MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
+} from '@/lib/ai/generation-availability'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import {
   getAiGenerationSettings,
@@ -19,8 +25,9 @@ import {
 } from '@/lib/dal/requirement-areas'
 import { listCategories } from '@/lib/dal/requirement-categories'
 import {
-  createRequirementImportValidationSession,
-  getRequirementImportValidationSessionByTokenHash,
+  checkRequirementImportValidationSessionQuotaAdvisory,
+  createRequirementImportValidationSessionAtomically as createRequirementImportValidationSession,
+  getOwnedRequirementImportValidationSession as getRequirementImportValidationSessionByTokenHash,
   purgeExpiredRequirementImportValidationSessions,
   type RequirementImportValidationSessionRecord,
   updateRequirementImportValidationSessionExecutionResult,
@@ -46,6 +53,15 @@ import {
   requirementsImportPayloadSchema,
 } from '@/lib/requirements/import-schema'
 import { createRequirementsImportWorkflow } from '@/lib/requirements/import-service'
+
+const MCP_QUOTA_DEFAULTS = {
+  mcpImportMaxActiveSessionsPerDestination:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  mcpImportMaxActiveSessionsPerPrincipal:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+  mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
+}
 
 const auditState = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(),
@@ -93,8 +109,9 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
 }))
 
 vi.mock('@/lib/dal/requirement-import-validation-sessions', () => ({
-  createRequirementImportValidationSession: vi.fn(),
-  getRequirementImportValidationSessionByTokenHash: vi.fn(),
+  checkRequirementImportValidationSessionQuotaAdvisory: vi.fn(),
+  createRequirementImportValidationSessionAtomically: vi.fn(),
+  getOwnedRequirementImportValidationSession: vi.fn(),
   purgeExpiredRequirementImportValidationSessions: vi.fn(),
   updateRequirementImportValidationSessionExecutionResult: vi.fn(),
 }))
@@ -169,6 +186,7 @@ function makeContext(toolName: string): RequestContext {
 
 function makeSessionRecord(
   data: {
+    creatorPrincipalFingerprint: string
     destinationId: number
     destinationKind: string
     destinationSnapshotJson: string
@@ -176,6 +194,7 @@ function makeSessionRecord(
     expiresAt: Date
     payloadHash: string
     referenceDataFingerprint: string
+    reservedBytes: number
     submittedPayloadJson: string
     tokenHash: string
     validationResultJson: string
@@ -184,6 +203,7 @@ function makeSessionRecord(
 ): RequirementImportValidationSessionRecord {
   return {
     createdAt: '2026-07-05T10:00:00.000Z',
+    creatorPrincipalFingerprint: data.creatorPrincipalFingerprint,
     destinationId: data.destinationId,
     destinationKind: data.destinationKind,
     destinationSnapshotJson: data.destinationSnapshotJson,
@@ -192,6 +212,7 @@ function makeSessionRecord(
     id,
     payloadHash: data.payloadHash,
     referenceDataFingerprint: data.referenceDataFingerprint,
+    reservedBytes: data.reservedBytes,
     submittedPayloadJson: data.submittedPayloadJson,
     tokenHash: data.tokenHash,
     updatedAt: '2026-07-05T10:00:00.000Z',
@@ -239,11 +260,13 @@ describe('requirements import service', () => {
     vi.mocked(listNormReferences).mockResolvedValue([])
     vi.mocked(listSpecificationNeedsReferences).mockResolvedValue([])
     vi.mocked(getCachedMcpRuntimeSettings).mockResolvedValue({
+      ...MCP_QUOTA_DEFAULTS,
       mcpImportMaxRows: 500,
       mcpImportValidationTtlMinutes: 60,
       mcpMaxRequestBytes: 10 * 1024 * 1024,
     })
     vi.mocked(getAiGenerationSettings).mockResolvedValue({
+      ...MCP_QUOTA_DEFAULTS,
       aiSafetyForensicLoggingEnabled: true,
       aiSafetyRuleCacheTtlSeconds: 600,
       mcpImportMaxRows: 500,
@@ -273,8 +296,11 @@ describe('requirements import service', () => {
     vi.mocked(getSpecificationById).mockResolvedValue(null)
     vi.mocked(createRequirementImportValidationSession).mockReset()
     vi.mocked(createRequirementImportValidationSession).mockImplementation(
-      async (_db, data) => makeSessionRecord(data),
+      async (_db, data) => ({ session: makeSessionRecord(data) }),
     )
+    vi.mocked(
+      checkRequirementImportValidationSessionQuotaAdvisory,
+    ).mockResolvedValue(null)
     vi.mocked(getRequirementImportValidationSessionByTokenHash).mockReset()
     vi.mocked(
       purgeExpiredRequirementImportValidationSessions,
@@ -801,6 +827,7 @@ describe('requirements import service', () => {
     const context = makeContext('requirements_manage_import')
 
     vi.mocked(getCachedMcpRuntimeSettings).mockResolvedValue({
+      ...MCP_QUOTA_DEFAULTS,
       mcpImportMaxRows: 1,
       mcpImportValidationTtlMinutes: 60,
       mcpMaxRequestBytes: 10 * 1024 * 1024,
@@ -1090,15 +1117,16 @@ describe('requirements import service', () => {
       'requirements.manage_import.validation_session_diagnostic',
       expect.objectContaining({
         consumed_row_count: 0,
-        destination_id: 7,
-        issue_codes: null,
+        destination_fingerprint_prefix: expect.any(String),
+        outcome: 'failure',
+        principal_fingerprint_prefix: expect.any(String),
         reason: 'reference_data_stale',
         row_count: 1,
-        token_hash_prefix: expect.any(String),
       }),
     )
-    expect(JSON.stringify(logger.error.mock.calls[0]?.[1])).not.toContain(
-      'Systemet ska logga viktiga händelser.',
+    const diagnostic = JSON.stringify(logger.error.mock.calls[0]?.[1])
+    expect(diagnostic).not.toMatch(
+      /Systemet ska logga|token|payload|destination_id|destination_name|session_id|review_row/u,
     )
     expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
   })
@@ -1147,9 +1175,14 @@ describe('requirements import service', () => {
 
   it('rejects MCP execute when the budget changes after the transaction lock is acquired', async () => {
     const { db } = makeManageImportDb()
+    const transactionalAuthorization = { assertAuthorized: vi.fn() }
+    const transactionalAuthorizationFactory = vi.fn(
+      () => transactionalAuthorization,
+    )
     const workflow = createRequirementsImportWorkflow({
       authorization: { assertAuthorized: vi.fn() },
       db: db as never,
+      transactionalAuthorizationFactory,
     })
     const context = makeContext('requirements_manage_import')
     await workflow.manageImport(context, {
@@ -1168,12 +1201,10 @@ describe('requirements import service', () => {
     vi.mocked(
       getRequirementImportValidationSessionByTokenHash,
     ).mockResolvedValue(session)
-    vi.mocked(getApplicationSettings)
-      .mockResolvedValueOnce(DEFAULT_APPLICATION_SETTINGS)
-      .mockResolvedValueOnce({
-        ...DEFAULT_APPLICATION_SETTINGS,
-        requirementImportMaxRows: 499,
-      })
+    vi.mocked(getApplicationSettings).mockResolvedValue({
+      ...DEFAULT_APPLICATION_SETTINGS,
+      requirementImportMaxRows: 499,
+    })
 
     const result = await workflow.manageImport(context, {
       operation: 'execute',
@@ -1184,6 +1215,8 @@ describe('requirements import service', () => {
       hasErrors: true,
       issues: [expect.objectContaining({ code: 'import_budget_stale' })],
     })
+    expect(transactionalAuthorizationFactory).toHaveBeenCalledOnce()
+    expect(transactionalAuthorization.assertAuthorized).toHaveBeenCalled()
     expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
   })
 
@@ -1228,10 +1261,60 @@ describe('requirements import service', () => {
     expect(logger.error).toHaveBeenCalledWith(
       'requirements.manage_import.validation_session_diagnostic',
       expect.objectContaining({
-        error_name: 'RequirementsServiceError',
         reason: 'execution_failed',
       }),
     )
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain('error_name')
+  })
+
+  it('re-authorizes the stored destination inside the execute transaction', async () => {
+    const { db, manager } = makeManageImportDb()
+    const transactionalAuthorization = {
+      assertAuthorized: vi.fn().mockRejectedValue(
+        forbiddenError('Destination authorization was revoked', {
+          reason: 'area_author_required',
+        }),
+      ),
+    }
+    const transactionalAuthorizationFactory = vi.fn(
+      () => transactionalAuthorization,
+    )
+    const workflow = createRequirementsImportWorkflow({
+      authorization: { assertAuthorized: vi.fn() },
+      db: db as never,
+      transactionalAuthorizationFactory,
+    })
+    const context = makeContext('requirements_manage_import')
+    await workflow.manageImport(context, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [{ description: 'Systemet ska vara spårbart.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+    const createData = vi
+      .mocked(createRequirementImportValidationSession)
+      .mock.calls.at(-1)?.[1]
+    if (!createData) throw new Error('Expected validation session data')
+    vi.mocked(
+      getRequirementImportValidationSessionByTokenHash,
+    ).mockResolvedValue(makeSessionRecord(createData))
+    vi.mocked(createRequirementsBatchWithExecutor).mockClear()
+
+    await expect(
+      workflow.manageImport(context, {
+        operation: 'execute',
+        validationToken: 'opaque-validation-token',
+      }),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+
+    expect(transactionalAuthorizationFactory).toHaveBeenCalledWith(manager)
+    expect(transactionalAuthorization.assertAuthorized).toHaveBeenCalled()
+    expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
+    expect(
+      updateRequirementImportValidationSessionExecutionResult,
+    ).not.toHaveBeenCalled()
   })
 
   it('re-checks the stored destination before MCP execute imports rows', async () => {
@@ -3015,6 +3098,64 @@ describe('requirements import service', () => {
     })
   })
 
+  it('returns the same not-found response when another principal presents a valid token', async () => {
+    const { db } = makeManageImportDb()
+    const workflow = createRequirementsImportWorkflow({
+      authorization: { assertAuthorized: vi.fn() },
+      db: db as never,
+    })
+    const ownerContext = makeContext('requirements_manage_import')
+    await workflow.manageImport(ownerContext, {
+      destination: { areaId: 7, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        requirements: [{ description: 'Systemet ska vara spårbart.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+    })
+    const createData = vi
+      .mocked(createRequirementImportValidationSession)
+      .mock.calls.at(-1)?.[1]
+    if (!createData) throw new Error('Expected validation session data')
+    const session = makeSessionRecord(createData)
+    vi.mocked(
+      getRequirementImportValidationSessionByTokenHash,
+    ).mockImplementation(async (_executor, _tokenHash, fingerprint) =>
+      fingerprint === createData.creatorPrincipalFingerprint ? session : null,
+    )
+
+    await expect(
+      workflow.manageImport(ownerContext, {
+        operation: 'inspect_validation',
+        validationToken: 'opaque-validation-token',
+      }),
+    ).resolves.toMatchObject({ destination: { areaId: 7 } })
+
+    const otherContext = {
+      ...ownerContext,
+      actor: {
+        ...ownerContext.actor,
+        hsaId: 'SE5560000001-import2',
+        id: 'actor-import-2',
+      },
+    }
+    await expect(
+      workflow.manageImport(otherContext, {
+        operation: 'inspect_validation',
+        validationToken: 'opaque-validation-token',
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      details: { reason: 'validation_session_not_found_or_expired' },
+    })
+
+    const fingerprints = vi
+      .mocked(getRequirementImportValidationSessionByTokenHash)
+      .mock.calls.slice(-2)
+      .map(call => call[2])
+    expect(fingerprints[0]).not.toBe(fingerprints[1])
+  })
+
   it('rejects blank, expired, and corrupt validation sessions', async () => {
     const { db } = makeManageImportDb()
     const authorization = { assertAuthorized: vi.fn() }
@@ -3048,12 +3189,14 @@ describe('requirements import service', () => {
       getRequirementImportValidationSessionByTokenHash,
     ).mockResolvedValueOnce(
       makeSessionRecord({
+        creatorPrincipalFingerprint: 'a'.repeat(64),
         destinationId: 7,
         destinationKind: 'requirements_library',
         destinationSnapshotJson: '{bad-json',
         expiresAt: new Date('2026-08-05T09:00:00.000Z'),
         payloadHash: 'payload',
         referenceDataFingerprint: 'fingerprint',
+        reservedBytes: 4096,
         submittedPayloadJson: '{}',
         tokenHash: 'token',
         validationResultJson: '{}',

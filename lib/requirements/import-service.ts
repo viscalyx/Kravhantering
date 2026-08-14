@@ -16,9 +16,11 @@ import {
 } from '@/lib/dal/requirement-areas'
 import { listCategories } from '@/lib/dal/requirement-categories'
 import {
-  createRequirementImportValidationSession,
-  getRequirementImportValidationSessionByTokenHash,
+  checkRequirementImportValidationSessionQuotaAdvisory,
+  createRequirementImportValidationSessionAtomically,
+  getOwnedRequirementImportValidationSession,
   purgeExpiredRequirementImportValidationSessions,
+  type RequirementImportValidationSessionQuotaRejection,
   type RequirementImportValidationSessionRecord,
   updateRequirementImportValidationSessionExecutionResult,
 } from '@/lib/dal/requirement-import-validation-sessions'
@@ -42,6 +44,14 @@ import {
   type SpecificationNeedsReferenceSummary,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
+import {
+  mcpImportValidationDestinationFingerprint,
+  mcpImportValidationPrincipalFingerprint,
+} from '@/lib/mcp/import-validation-principal'
+import {
+  calculateMcpImportValidationSessionReservedBytes,
+  maximumMcpImportExecutionReceiptBytes,
+} from '@/lib/mcp/import-validation-storage'
 import {
   type AuthorizationService,
   type RequestContext,
@@ -245,6 +255,10 @@ export type McpImportInstructionDestinationRef =
 
 export const MCP_IMPORT_ISSUE_CODES = [
   'import_destination_invalid',
+  'import_validation_principal_session_quota_exceeded',
+  'import_validation_creation_rate_exceeded',
+  'import_validation_destination_session_quota_exceeded',
+  'import_validation_storage_quota_exceeded',
   'import_duplicate_norm_references_collapsed',
   'import_duplicate_requirement_packages_collapsed',
   'import_invalid_id_name_used',
@@ -455,6 +469,9 @@ export interface ImportWorkflowOptions {
   authorization: AuthorizationService
   db: SqlServerDatabase
   logger?: RequirementsLogger
+  transactionalAuthorizationFactory?: (
+    executor: Pick<SqlServerDatabase, 'query'>,
+  ) => AuthorizationService
 }
 
 function compactText(value: string | null | undefined): string | null {
@@ -2256,6 +2273,19 @@ function errorIssueResponse(issue: Omit<McpImportIssue, 'severity'>) {
   return issueResponse({ ...issue, severity: 'error' })
 }
 
+function quotaIssueResponse(
+  rejection: RequirementImportValidationSessionQuotaRejection,
+): ManageImportOutput {
+  return errorIssueResponse({
+    code: rejection.code,
+    ...(rejection.retryAfterSeconds != null
+      ? { details: { retryAfterSeconds: rejection.retryAfterSeconds } }
+      : {}),
+    message: 'MCP import-validation session quota exceeded.',
+    path: '',
+  })
+}
+
 function currentReferenceDataIncludes(
   referenceData: ImportReferenceData,
 ): Record<string, number> {
@@ -2270,40 +2300,17 @@ function currentReferenceDataIncludes(
   }
 }
 
-function hashPrefix(value: string | null | undefined): string | null {
+function fingerprintPrefix(value: string | null | undefined): string | null {
   return value ? value.slice(0, 16) : null
 }
 
-function issueCodeSummary(
-  validation: McpImportValidationSessionJson,
-): string | null {
-  const codes = [
-    ...new Set(
-      [
-        ...validation.rows.flatMap(row => row.issues.map(issue => issue.code)),
-        ...validation.needsReferenceProposals.flatMap(proposal =>
-          proposal.issues.map(issue => issue.code),
-        ),
-        ...validation.proposals.flatMap(proposal =>
-          proposal.issues.map(issue => issue.code),
-        ),
-      ].sort((left, right) => left.localeCompare(right, 'sv')),
-    ),
-  ]
-  return codes.length > 0 ? codes.join(',') : null
-}
-
 function validationSessionDiagnosticFields(args: {
-  currentReferenceDataFingerprint?: string
-  destination: McpImportDestination
+  creatorPrincipalFingerprint: string
   execution: McpImportExecutionSessionJson
   reason: string
   session: RequirementImportValidationSessionRecord
   validation: McpImportValidationSessionJson
 }): Record<string, string | number | boolean | null | undefined> {
-  const importedReviewRowIds = args.execution.importedRows
-    .map(row => row.reviewRowId)
-    .sort((left, right) => left.localeCompare(right, 'sv'))
   const errorRowCount = args.validation.rows.filter(row =>
     row.issues.some(issue => issue.severity === 'error'),
   ).length
@@ -2314,29 +2321,23 @@ function validationSessionDiagnosticFields(args: {
   return {
     consumed_row_count: args.execution.importedRows.length,
     created_at: args.session.createdAt,
-    current_reference_data_fingerprint_prefix: hashPrefix(
-      args.currentReferenceDataFingerprint,
+    destination_fingerprint_prefix: fingerprintPrefix(
+      mcpImportValidationDestinationFingerprint(
+        args.session.destinationKind as
+          | 'requirements_library'
+          | 'requirements_specification',
+        args.session.destinationId,
+      ),
     ),
-    destination_id: args.session.destinationId,
-    destination_kind: args.session.destinationKind,
-    destination_name: args.destination.name,
     error_row_count: errorRowCount,
     expires_at: args.session.expiresAt,
-    imported_review_row_ids: importedReviewRowIds.join(',') || null,
-    issue_codes: issueCodeSummary(args.validation),
     operation: 'execute',
-    payload_hash_prefix: hashPrefix(args.session.payloadHash),
+    outcome: 'failure',
+    principal_fingerprint_prefix: fingerprintPrefix(
+      args.creatorPrincipalFingerprint,
+    ),
     reason: args.reason,
-    reference_data_fingerprint_prefix: hashPrefix(
-      args.session.referenceDataFingerprint,
-    ),
     row_count: args.validation.rows.length,
-    session_id: args.session.id,
-    submitted_payload_hash_prefix: hashPrefix(args.session.payloadHash),
-    token_hash_prefix: hashPrefix(args.session.tokenHash),
-    validation_result_hash_prefix: hashPrefix(
-      hashString(args.session.validationResultJson),
-    ),
     warning_row_count: warningRowCount,
   }
 }
@@ -2507,6 +2508,7 @@ export function createRequirementsImportWorkflow({
   authorization,
   db,
   logger = createRequirementsLogger(),
+  transactionalAuthorizationFactory = () => authorization,
 }: ImportWorkflowOptions) {
   const workflow = {
     async manageImport(
@@ -2560,6 +2562,11 @@ export function createRequirementsImportWorkflow({
             return { result: matched }
           }
 
+          const creatorPrincipalFingerprint =
+            mcpImportValidationPrincipalFingerprint(
+              context.actor.hsaId?.trim() ?? '',
+            )
+
           if (input.operation === 'validate') {
             await purgeExpiredRequirementImportValidationSessions(db).catch(
               () => undefined,
@@ -2569,6 +2576,33 @@ export function createRequirementsImportWorkflow({
               context,
               input.destination,
             )
+            const advisoryRejection =
+              await checkRequirementImportValidationSessionQuotaAdvisory(db, {
+                creatorPrincipalFingerprint,
+                destinationId: destinationId(input.destination),
+                destinationKind: input.destination.kind,
+                requestedReservedBytes: 0,
+              })
+            if (advisoryRejection) {
+              logger.info(
+                'requirements.manage_import.validation_session_quota',
+                {
+                  destination_fingerprint_prefix: fingerprintPrefix(
+                    mcpImportValidationDestinationFingerprint(
+                      input.destination.kind,
+                      destinationId(input.destination),
+                    ),
+                  ),
+                  operation: 'validate',
+                  outcome: 'rejected',
+                  principal_fingerprint_prefix: fingerprintPrefix(
+                    creatorPrincipalFingerprint,
+                  ),
+                  reason: advisoryRejection.code,
+                },
+              )
+              return quotaIssueResponse(advisoryRejection)
+            }
             const destinationOrIssue =
               await resolveImportableDestinationSnapshot(db, input.destination)
             if ('code' in destinationOrIssue) {
@@ -2657,21 +2691,58 @@ export function createRequirementsImportWorkflow({
               const expiresAt = new Date(
                 Date.now() + settings.mcpImportValidationTtlMinutes * 60 * 1000,
               )
-              const session = await createRequirementImportValidationSession(
-                db,
-                {
-                  destinationId: destinationId(input.destination),
+              const destinationSnapshotJson = canonicalJson(destination)
+              const payloadHash = hashString(submittedPayloadJson)
+              const storedReferenceDataFingerprint =
+                referenceDataFingerprint(referenceData)
+              const validationResultJson = canonicalJson(validation)
+              const reservedBytes =
+                calculateMcpImportValidationSessionReservedBytes({
+                  creatorPrincipalFingerprint,
                   destinationKind: input.destination.kind,
-                  destinationSnapshotJson: canonicalJson(destination),
-                  expiresAt,
-                  payloadHash: hashString(submittedPayloadJson),
-                  referenceDataFingerprint:
-                    referenceDataFingerprint(referenceData),
+                  destinationSnapshotJson,
+                  payloadHash,
+                  referenceDataFingerprint: storedReferenceDataFingerprint,
                   submittedPayloadJson,
                   tokenHash,
-                  validationResultJson: canonicalJson(validation),
-                },
-              )
+                  validatedRowCount: validation.rows.length,
+                  validationResultJson,
+                })
+              const creation =
+                await createRequirementImportValidationSessionAtomically(db, {
+                  creatorPrincipalFingerprint,
+                  destinationId: destinationId(input.destination),
+                  destinationKind: input.destination.kind,
+                  destinationSnapshotJson,
+                  expiresAt,
+                  payloadHash,
+                  referenceDataFingerprint: storedReferenceDataFingerprint,
+                  reservedBytes,
+                  submittedPayloadJson,
+                  tokenHash,
+                  validationResultJson,
+                })
+              if ('rejection' in creation) {
+                logger.info(
+                  'requirements.manage_import.validation_session_quota',
+                  {
+                    destination_fingerprint_prefix: fingerprintPrefix(
+                      mcpImportValidationDestinationFingerprint(
+                        input.destination.kind,
+                        destinationId(input.destination),
+                      ),
+                    ),
+                    operation: 'validate',
+                    outcome: 'rejected',
+                    principal_fingerprint_prefix: fingerprintPrefix(
+                      creatorPrincipalFingerprint,
+                    ),
+                    reason: creation.rejection.code,
+                  },
+                )
+                return quotaIssueResponse(creation.rejection)
+              }
+              const { session } = creation
               const issues = validationIssues(validation)
 
               return {
@@ -2692,46 +2763,21 @@ export function createRequirementsImportWorkflow({
             () => undefined,
           )
           const tokenHash = validationTokenHash(token)
-          const session =
-            await getRequirementImportValidationSessionByTokenHash(
-              db,
-              tokenHash,
-            )
+          const session = await getOwnedRequirementImportValidationSession(
+            db,
+            tokenHash,
+            creatorPrincipalFingerprint,
+          )
           if (!session) {
             throw sessionNotFoundError()
           }
           const destination = destinationFromSession(session)
-          await assertMcpImportDestinationAuthorized(
-            authorization,
-            context,
-            destinationRefFromSnapshot(destination),
-          )
-
-          const currentBudget = await loadRequirementImportBudget(db)
-          const currentMcpSettings = await getCachedMcpRuntimeSettings(db)
-          const currentEffectiveBudget = {
-            ...currentBudget,
-            maxRows: Math.min(
-              currentBudget.maxRows,
-              currentMcpSettings.mcpImportMaxRows,
-            ),
-          }
-          const storedValidation =
-            parseSessionJson<McpImportValidationSessionJson>(
-              session.validationResultJson,
-              'validation result',
+          if (input.operation === 'inspect_validation') {
+            await assertMcpImportDestinationAuthorized(
+              authorization,
+              context,
+              destinationRefFromSnapshot(destination),
             )
-          if (
-            input.operation === 'execute' &&
-            storedValidation.budgetFingerprint !==
-              requirementImportBudgetFingerprint(currentEffectiveBudget)
-          ) {
-            return errorIssueResponse({
-              code: 'import_budget_stale',
-              message:
-                'The import budget changed since validation. Run validate again before executing.',
-              path: '',
-            })
           }
 
           if (input.operation === 'inspect_validation') {
@@ -2790,15 +2836,14 @@ export function createRequirementsImportWorkflow({
               'validation result',
             )
           const diagnosticExecution = parseExecutionSession(session)
-          let diagnosticCurrentFingerprint: string | undefined
-
           try {
             return await withRequirementImportCapacity(() =>
               db.transaction('SERIALIZABLE', async manager => {
                 const lockedSession =
-                  await getRequirementImportValidationSessionByTokenHash(
+                  await getOwnedRequirementImportValidationSession(
                     manager,
                     tokenHash,
+                    creatorPrincipalFingerprint,
                     { lockForUpdate: true },
                   )
                 if (!lockedSession) {
@@ -2806,6 +2851,11 @@ export function createRequirementsImportWorkflow({
                 }
 
                 const lockedDestination = destinationFromSession(lockedSession)
+                await assertMcpImportDestinationAuthorized(
+                  transactionalAuthorizationFactory(manager),
+                  context,
+                  destinationRefFromSnapshot(lockedDestination),
+                )
                 const validation =
                   parseSessionJson<McpImportValidationSessionJson>(
                     lockedSession.validationResultJson,
@@ -2848,15 +2898,13 @@ export function createRequirementsImportWorkflow({
                   )
                 const currentFingerprint =
                   referenceDataFingerprint(referenceData)
-                diagnosticCurrentFingerprint = currentFingerprint
                 if (
                   currentFingerprint !== lockedSession.referenceDataFingerprint
                 ) {
                   logger.error(
                     'requirements.manage_import.validation_session_diagnostic',
                     validationSessionDiagnosticFields({
-                      currentReferenceDataFingerprint: currentFingerprint,
-                      destination: lockedDestination,
+                      creatorPrincipalFingerprint,
                       execution,
                       reason: 'reference_data_stale',
                       session: lockedSession,
@@ -2875,8 +2923,7 @@ export function createRequirementsImportWorkflow({
                   logger.error(
                     'requirements.manage_import.validation_session_diagnostic',
                     validationSessionDiagnosticFields({
-                      currentReferenceDataFingerprint: currentFingerprint,
-                      destination: lockedDestination,
+                      creatorPrincipalFingerprint,
                       execution,
                       reason: 'destination_invalid',
                       session: lockedSession,
@@ -3026,10 +3073,22 @@ export function createRequirementsImportWorkflow({
                   schemaVersion: 'mcp-requirement-import-execution.v1',
                 }
                 if (importedRows.length > 0) {
+                  const executionResultJson = canonicalJson(nextExecution)
+                  if (
+                    Buffer.byteLength(executionResultJson, 'utf16le') >
+                    maximumMcpImportExecutionReceiptBytes(
+                      validation.rows.length,
+                    )
+                  ) {
+                    throw validationError(
+                      'Import execution receipt exceeded its reserved capacity',
+                      { reason: 'execution_receipt_reservation_exceeded' },
+                    )
+                  }
                   await updateRequirementImportValidationSessionExecutionResult(
                     manager,
                     lockedSession.id,
-                    canonicalJson(nextExecution),
+                    executionResultJson,
                     new Date(),
                   )
                 }
@@ -3057,14 +3116,12 @@ export function createRequirementsImportWorkflow({
               'requirements.manage_import.validation_session_diagnostic',
               {
                 ...validationSessionDiagnosticFields({
-                  currentReferenceDataFingerprint: diagnosticCurrentFingerprint,
-                  destination,
+                  creatorPrincipalFingerprint,
                   execution: diagnosticExecution,
                   reason: 'execution_failed',
                   session,
                   validation: diagnosticValidation,
                 }),
-                error_name: error instanceof Error ? error.name : 'unknown',
               },
             )
             throw error

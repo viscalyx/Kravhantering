@@ -4,6 +4,10 @@ import {
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as z from 'zod'
 import {
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+  MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
   MCP_IMPORT_MAX_ROWS_DEFAULT,
   MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
@@ -45,7 +49,13 @@ const HTML_BASE_MESSAGES = {
 } satisfies Record<'en' | 'sv', Record<string, unknown>>
 
 const DEFAULT_MCP_RUNTIME_SETTINGS: McpRuntimeSettings = Object.freeze({
+  mcpImportMaxActiveSessionsPerDestination:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  mcpImportMaxActiveSessionsPerPrincipal:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
   mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+  mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
   mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 })
@@ -1967,7 +1977,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description: `Manage MCP requirement import. Normal flow: call list_destinations or search_destinations when an exact validate destination or specificationId is needed; call requirements_get_import_schema; call requirements_get_import_instruction with {kind:"requirements_library"} for library imports or {kind:"requirements_specification", specificationId} for specification imports; create a Kravimportfil payload; call validate with exactly {kind:"requirements_library", areaId} or {kind:"requirements_specification", specificationId}; optionally resolve missing norm references with requirements_manage_norm_reference and specification needs references with requirements_manage_needs_reference; then call execute with validationToken. For requirements_specification imports, use needsReferenceId from requirements_manage_needs_reference result[].id/needsReference.id when a row belongs to an existing or newly created needs reference. Ask the user before creating missing needs references; if the user does not approve creation, ask whether importing without the needs-reference link is acceptable and stop when the link is central to why the row belongs in the specification. Do not rely on unresolved proposedNeedsReferences being resolved after MCP execute; MCP has no human import-review step between validate and execute. Validation sessions are immutable after validate, and execute accepts only validationToken. Use inspect_validation to troubleshoot full row/proposal detail or recover row state after a lost or uncertain execute response. To retry, build a corrected Kravimportfil from rows that were not successfully imported, then run validate and execute the new token. Do not copy successfully imported rows into the corrected payload because the server does not do generic duplicate detection across validation sessions. validate accepts at most ${mcpSettings.mcpImportMaxRows} rows and ${formatBytes(mcpSettings.mcpMaxRequestBytes)} per request/session. validationToken expires after ${mcpSettings.mcpImportValidationTtlMinutes} minute(s). execute imports all unconsumed rows without errors; warning rows are importable.`,
+      description: `Manage MCP requirement import. Normal flow: call list_destinations or search_destinations when an exact validate destination or specificationId is needed; call requirements_get_import_schema; call requirements_get_import_instruction with {kind:"requirements_library"} for library imports or {kind:"requirements_specification", specificationId} for specification imports; create a Kravimportfil payload; call validate with exactly {kind:"requirements_library", areaId} or {kind:"requirements_specification", specificationId}; optionally resolve missing norm references with requirements_manage_norm_reference and specification needs references with requirements_manage_needs_reference; then call execute with validationToken. For requirements_specification imports, use needsReferenceId from requirements_manage_needs_reference result[].id/needsReference.id when a row belongs to an existing or newly created needs reference. Ask the user before creating missing needs references; if the user does not approve creation, ask whether importing without the needs-reference link is acceptable and stop when the link is central to why the row belongs in the specification. Do not rely on unresolved proposedNeedsReferences being resolved after MCP execute; MCP has no human import-review step between validate and execute. Validation sessions are immutable after validate, principal-bound, and execute accepts only validationToken from the same authenticated principal. Use inspect_validation to troubleshoot full row/proposal detail or recover row state after a lost or uncertain execute response. To retry, build a corrected Kravimportfil from rows that were not successfully imported, then run validate and execute the new token. Do not copy successfully imported rows into the corrected payload because the server does not do generic duplicate detection across validation sessions. validate accepts at most ${mcpSettings.mcpImportMaxRows} rows and ${formatBytes(mcpSettings.mcpMaxRequestBytes)} per request/session. Quotas allow ${mcpSettings.mcpImportMaxActiveSessionsPerPrincipal} unexpired sessions per principal, ${mcpSettings.mcpImportMaxActiveSessionsPerDestination} per destination, ${mcpSettings.mcpImportMaxCreationsPerWindow} successful creations per fixed 10-minute principal window, and ${formatBytes(mcpSettings.mcpImportMaxReservedBytes)} globally reserved storage. validationToken expires after ${mcpSettings.mcpImportValidationTtlMinutes} minute(s). execute imports all unconsumed rows without errors; warning rows are importable.`,
       inputSchema: createManageImportSchema(),
       outputSchema: ManageImportOutputSchema,
       title: 'Manage Requirement Import',

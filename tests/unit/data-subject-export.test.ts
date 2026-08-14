@@ -22,7 +22,13 @@ function createExportDb(rowsByKey: RowMap) {
     <T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T> => {
       const key = keyForExportSql(sql)
       const target = parameters?.[0]
-      const rows = key && target === TARGET_HSA_ID ? (rowsByKey[key] ?? []) : []
+      const usesMcpFingerprint = key?.startsWith(
+        'requirement_import_validation_',
+      )
+      const targetMatches = usesMcpFingerprint
+        ? typeof target === 'string' && /^[a-f0-9]{64}$/u.test(target)
+        : target === TARGET_HSA_ID
+      const rows = key && targetMatches ? (rowsByKey[key] ?? []) : []
       return Promise.resolve(rows as T)
     },
   )
@@ -41,6 +47,52 @@ function generatedBy() {
 }
 
 describe('data-subject export service', () => {
+  it('exports safe MCP session and rate metadata without token, payload, validation, or destination names', async () => {
+    const { db, query } = createExportDb({
+      'requirement_import_validation_rate_buckets.principal': [
+        {
+          expiresAt: new Date('2026-08-14T10:20:00Z'),
+          successfulCreations: 4,
+          windowStartedAt: new Date('2026-08-14T10:00:00Z'),
+        },
+      ],
+      'requirement_import_validation_sessions.creator': [
+        {
+          createdAt: new Date('2026-08-14T10:01:00Z'),
+          destinationKind: 'requirements_library',
+          expiresAt: new Date('2026-08-14T11:01:00Z'),
+          reservedBytes: 4096,
+        },
+      ],
+    })
+
+    const result = await collectDataSubjectExport(db, {
+      generatedBy: generatedBy(),
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.sources.map(source => source.key)).toEqual(
+      expect.arrayContaining([
+        'requirement_import_validation_sessions.creator',
+        'requirement_import_validation_rate_buckets.principal',
+      ]),
+    )
+    const serialized = JSON.stringify(result.sources)
+    expect(serialized).toContain('reserved_bytes')
+    expect(serialized).toContain('successful_creations')
+    expect(serialized).not.toMatch(
+      /token_hash|submitted_payload|validation_result|execution_result|destination_name/u,
+    )
+    const mcpQueryParameters = query.mock.calls
+      .filter(([sql]) =>
+        String(sql).includes(
+          'privacy:data-export:requirement_import_validation',
+        ),
+      )
+      .map(([, parameters]) => parameters?.[0])
+    expect(mcpQueryParameters).not.toContain(TARGET_HSA_ID)
+  })
+
   it('uses the same HSA-id backed source keys as privacy erasure', () => {
     expect(new Set(DATA_SUBJECT_EXPORT_SOURCE_KEYS)).toEqual(
       new Set(PRIVACY_ERASURE_GROUP_POLICIES.map(policy => policy.key)),
@@ -489,7 +541,12 @@ describe('data-subject export service', () => {
     expect(exact.query).toHaveBeenCalled()
     for (const [sql, parameters] of exact.query.mock.calls) {
       expect(sql).toContain('SELECT TOP (@1)')
-      expect(parameters).toEqual([TARGET_HSA_ID, 1])
+      expect(parameters?.[1]).toBe(1)
+      expect(parameters?.[0]).toSatisfy(
+        value =>
+          value === TARGET_HSA_ID ||
+          (typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value)),
+      )
     }
 
     const excess = createExportDb({})

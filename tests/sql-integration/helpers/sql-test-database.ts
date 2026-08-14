@@ -27,6 +27,7 @@ import { createAppDataSource } from '@/lib/typeorm/data-source'
 import { tryGetSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 const TRANSACTIONAL_TABLES = [
+  'requirement_import_validation_rate_buckets',
   'requirement_import_validation_sessions',
   'access_review_items',
   'access_review_runs',

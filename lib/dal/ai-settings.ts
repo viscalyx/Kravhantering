@@ -4,9 +4,17 @@ import {
   AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
   type AiRequirementGenerationAvailability,
   isValidAiSafetyRuleCacheTtlSeconds,
+  isValidMcpImportMaxActiveSessionsPerDestination,
+  isValidMcpImportMaxActiveSessionsPerPrincipal,
+  isValidMcpImportMaxCreationsPerWindow,
+  isValidMcpImportMaxReservedBytes,
   isValidMcpImportMaxRows,
   isValidMcpImportValidationTtlMinutes,
   isValidMcpMaxRequestBytes,
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+  MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
   MCP_IMPORT_MAX_ROWS_DEFAULT,
   MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
@@ -22,6 +30,10 @@ import { toBoolean } from '@/lib/typeorm/value-mappers'
 export interface AiGenerationSettings {
   aiSafetyForensicLoggingEnabled: boolean
   aiSafetyRuleCacheTtlSeconds: number
+  mcpImportMaxActiveSessionsPerDestination: number
+  mcpImportMaxActiveSessionsPerPrincipal: number
+  mcpImportMaxCreationsPerWindow: number
+  mcpImportMaxReservedBytes: number
   mcpImportMaxRows: number
   mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
@@ -31,6 +43,10 @@ export interface AiGenerationSettings {
 export type AiGenerationSettingsPatch = Partial<AiGenerationSettings>
 
 export interface McpRuntimeSettings {
+  mcpImportMaxActiveSessionsPerDestination: number
+  mcpImportMaxActiveSessionsPerPrincipal: number
+  mcpImportMaxCreationsPerWindow: number
+  mcpImportMaxReservedBytes: number
   mcpImportMaxRows: number
   mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
@@ -43,6 +59,10 @@ export interface AiSafetyRuntimeSettings {
 interface AiSettingsRow {
   aiSafetyForensicLoggingEnabled?: boolean | number | string
   aiSafetyRuleCacheTtlSeconds?: number | string
+  mcpImportMaxActiveSessionsPerDestination?: number | string
+  mcpImportMaxActiveSessionsPerPrincipal?: number | string
+  mcpImportMaxCreationsPerWindow?: number | string
+  mcpImportMaxReservedBytes?: number | string
   mcpImportMaxRows?: number | string
   mcpImportValidationTtlMinutes?: number | string
   mcpMaxRequestBytes?: number | string
@@ -101,14 +121,26 @@ export const DEFAULT_AI_GENERATION_SETTINGS: AiGenerationSettings =
   Object.freeze({
     aiSafetyForensicLoggingEnabled: true,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+    mcpImportMaxActiveSessionsPerDestination:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+    mcpImportMaxActiveSessionsPerPrincipal:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+    mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
     mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+    mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
     mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
     mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
     requirementGenerationEnabled: true,
   })
 
 const DEFAULT_MCP_RUNTIME_SETTINGS: McpRuntimeSettings = Object.freeze({
+  mcpImportMaxActiveSessionsPerDestination:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  mcpImportMaxActiveSessionsPerPrincipal:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
   mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+  mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
   mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 })
@@ -179,6 +211,38 @@ function readMcpImportMaxRows(value: unknown): number {
     : MCP_IMPORT_MAX_ROWS_DEFAULT
 }
 
+function readMcpImportMaxActiveSessionsPerPrincipal(value: unknown): number {
+  const numeric = Number(
+    value ?? MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  )
+  return isValidMcpImportMaxActiveSessionsPerPrincipal(numeric)
+    ? numeric
+    : MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT
+}
+
+function readMcpImportMaxActiveSessionsPerDestination(value: unknown): number {
+  const numeric = Number(
+    value ?? MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  )
+  return isValidMcpImportMaxActiveSessionsPerDestination(numeric)
+    ? numeric
+    : MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT
+}
+
+function readMcpImportMaxCreationsPerWindow(value: unknown): number {
+  const numeric = Number(value ?? MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT)
+  return isValidMcpImportMaxCreationsPerWindow(numeric)
+    ? numeric
+    : MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT
+}
+
+function readMcpImportMaxReservedBytes(value: unknown): number {
+  const numeric = Number(value ?? MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT)
+  return isValidMcpImportMaxReservedBytes(numeric)
+    ? numeric
+    : MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT
+}
+
 function readMcpImportValidationTtlMinutes(value: unknown): number {
   const numeric = Number(value ?? MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES)
   return isValidMcpImportValidationTtlMinutes(numeric)
@@ -209,6 +273,38 @@ function assertMcpImportMaxRows(value: number): void {
   }
 }
 
+function assertMcpImportMaxActiveSessionsPerPrincipal(value: number): void {
+  if (!isValidMcpImportMaxActiveSessionsPerPrincipal(value)) {
+    throw validationError('Invalid AI settings', {
+      reason: 'invalid_mcp_import_max_active_sessions_per_principal',
+    })
+  }
+}
+
+function assertMcpImportMaxActiveSessionsPerDestination(value: number): void {
+  if (!isValidMcpImportMaxActiveSessionsPerDestination(value)) {
+    throw validationError('Invalid AI settings', {
+      reason: 'invalid_mcp_import_max_active_sessions_per_destination',
+    })
+  }
+}
+
+function assertMcpImportMaxCreationsPerWindow(value: number): void {
+  if (!isValidMcpImportMaxCreationsPerWindow(value)) {
+    throw validationError('Invalid AI settings', {
+      reason: 'invalid_mcp_import_max_creations_per_window',
+    })
+  }
+}
+
+function assertMcpImportMaxReservedBytes(value: number): void {
+  if (!isValidMcpImportMaxReservedBytes(value)) {
+    throw validationError('Invalid AI settings', {
+      reason: 'invalid_mcp_import_max_reserved_bytes',
+    })
+  }
+}
+
 function assertMcpImportValidationTtlMinutes(value: number): void {
   if (!isValidMcpImportValidationTtlMinutes(value)) {
     throw validationError('Invalid AI settings', {
@@ -226,8 +322,16 @@ function assertAiSafetyRuleCacheTtlSeconds(value: number): void {
 }
 
 function assertMcpRuntimeSettings(values: McpRuntimeSettings): void {
+  assertMcpImportMaxActiveSessionsPerDestination(
+    values.mcpImportMaxActiveSessionsPerDestination,
+  )
+  assertMcpImportMaxActiveSessionsPerPrincipal(
+    values.mcpImportMaxActiveSessionsPerPrincipal,
+  )
+  assertMcpImportMaxCreationsPerWindow(values.mcpImportMaxCreationsPerWindow)
   assertMcpMaxRequestBytes(values.mcpMaxRequestBytes)
   assertMcpImportMaxRows(values.mcpImportMaxRows)
+  assertMcpImportMaxReservedBytes(values.mcpImportMaxReservedBytes)
   assertMcpImportValidationTtlMinutes(values.mcpImportValidationTtlMinutes)
 }
 
@@ -255,7 +359,13 @@ function adminAiSettingsFromSettings(
     aiSafetyRuleCacheTtlSeconds: settings.aiSafetyRuleCacheTtlSeconds,
     constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
     ...availability,
+    mcpImportMaxActiveSessionsPerDestination:
+      settings.mcpImportMaxActiveSessionsPerDestination,
+    mcpImportMaxActiveSessionsPerPrincipal:
+      settings.mcpImportMaxActiveSessionsPerPrincipal,
+    mcpImportMaxCreationsPerWindow: settings.mcpImportMaxCreationsPerWindow,
     mcpImportMaxRows: settings.mcpImportMaxRows,
+    mcpImportMaxReservedBytes: settings.mcpImportMaxReservedBytes,
     mcpImportValidationTtlMinutes: settings.mcpImportValidationTtlMinutes,
     mcpMaxRequestBytes: settings.mcpMaxRequestBytes,
     requirementGenerationEnabled: settings.requirementGenerationEnabled,
@@ -318,7 +428,7 @@ function isExpectedLegacyAiSettingsReadError(error: unknown): boolean {
   const joinedMessages = collectErrorMessages(error).join(' ')
   return (
     /\b207\b/.test(joinedMessages) &&
-    /(?:mcp_max_request_bytes|mcp_import_max_rows|mcp_import_validation_ttl_minutes|ai_safety_rule_cache_ttl_seconds|ai_safety_forensic_logging_enabled)/i.test(
+    /(?:mcp_max_request_bytes|mcp_import_max_rows|mcp_import_validation_ttl_minutes|mcp_import_max_active_sessions_per_principal|mcp_import_max_active_sessions_per_destination|mcp_import_max_creations_per_window|mcp_import_max_reserved_bytes|ai_safety_rule_cache_ttl_seconds|ai_safety_forensic_logging_enabled)/i.test(
       joinedMessages,
     )
   )
@@ -360,7 +470,13 @@ async function getLegacyAiGenerationSettings(
   return {
     aiSafetyForensicLoggingEnabled: true,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+    mcpImportMaxActiveSessionsPerDestination:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+    mcpImportMaxActiveSessionsPerPrincipal:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+    mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
     mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+    mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
     mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
     mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
     requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
@@ -391,7 +507,13 @@ async function getAiGenerationSettingsWithLegacyForensicDefault(
     aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
       row.aiSafetyRuleCacheTtlSeconds,
     ),
+    mcpImportMaxActiveSessionsPerDestination:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+    mcpImportMaxActiveSessionsPerPrincipal:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+    mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
     mcpImportMaxRows: readMcpImportMaxRows(row.mcpImportMaxRows),
+    mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
     mcpImportValidationTtlMinutes: readMcpImportValidationTtlMinutes(
       row.mcpImportValidationTtlMinutes,
     ),
@@ -419,7 +541,13 @@ async function getAiGenerationSettingsWithLegacyMcpDefaults(
   return {
     aiSafetyForensicLoggingEnabled: true,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+    mcpImportMaxActiveSessionsPerDestination:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+    mcpImportMaxActiveSessionsPerPrincipal:
+      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+    mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
     mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+    mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
     mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
     mcpMaxRequestBytes: readMcpMaxRequestBytes(row.mcpMaxRequestBytes),
     requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
@@ -454,7 +582,11 @@ export async function getCachedMcpRuntimeSettings(
 
   const rows = (await db.query(`
     SELECT TOP (1)
+      mcp_import_max_active_sessions_per_destination AS mcpImportMaxActiveSessionsPerDestination,
+      mcp_import_max_active_sessions_per_principal AS mcpImportMaxActiveSessionsPerPrincipal,
+      mcp_import_max_creations_per_window AS mcpImportMaxCreationsPerWindow,
       mcp_import_max_rows AS mcpImportMaxRows,
+      mcp_import_max_reserved_bytes AS mcpImportMaxReservedBytes,
       mcp_import_validation_ttl_minutes AS mcpImportValidationTtlMinutes,
       mcp_max_request_bytes AS mcpMaxRequestBytes
     FROM ai_settings
@@ -468,7 +600,15 @@ export async function getCachedMcpRuntimeSettings(
   }
 
   const settings = {
+    mcpImportMaxActiveSessionsPerDestination: Number(
+      row.mcpImportMaxActiveSessionsPerDestination,
+    ),
+    mcpImportMaxActiveSessionsPerPrincipal: Number(
+      row.mcpImportMaxActiveSessionsPerPrincipal,
+    ),
+    mcpImportMaxCreationsPerWindow: Number(row.mcpImportMaxCreationsPerWindow),
     mcpImportMaxRows: Number(row.mcpImportMaxRows),
+    mcpImportMaxReservedBytes: Number(row.mcpImportMaxReservedBytes),
     mcpImportValidationTtlMinutes: Number(row.mcpImportValidationTtlMinutes),
     mcpMaxRequestBytes: Number(row.mcpMaxRequestBytes),
   }
@@ -536,7 +676,11 @@ export async function getAiGenerationSettings(
       SELECT TOP (1)
         ai_safety_forensic_logging_enabled AS aiSafetyForensicLoggingEnabled,
         ai_safety_rule_cache_ttl_seconds AS aiSafetyRuleCacheTtlSeconds,
+        mcp_import_max_active_sessions_per_destination AS mcpImportMaxActiveSessionsPerDestination,
+        mcp_import_max_active_sessions_per_principal AS mcpImportMaxActiveSessionsPerPrincipal,
+        mcp_import_max_creations_per_window AS mcpImportMaxCreationsPerWindow,
         mcp_import_max_rows AS mcpImportMaxRows,
+        mcp_import_max_reserved_bytes AS mcpImportMaxReservedBytes,
         mcp_import_validation_ttl_minutes AS mcpImportValidationTtlMinutes,
         mcp_max_request_bytes AS mcpMaxRequestBytes,
         requirement_generation_enabled AS requirementGenerationEnabled
@@ -556,7 +700,21 @@ export async function getAiGenerationSettings(
       aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
         row.aiSafetyRuleCacheTtlSeconds,
       ),
+      mcpImportMaxActiveSessionsPerDestination:
+        readMcpImportMaxActiveSessionsPerDestination(
+          row.mcpImportMaxActiveSessionsPerDestination,
+        ),
+      mcpImportMaxActiveSessionsPerPrincipal:
+        readMcpImportMaxActiveSessionsPerPrincipal(
+          row.mcpImportMaxActiveSessionsPerPrincipal,
+        ),
+      mcpImportMaxCreationsPerWindow: readMcpImportMaxCreationsPerWindow(
+        row.mcpImportMaxCreationsPerWindow,
+      ),
       mcpImportMaxRows: readMcpImportMaxRows(row.mcpImportMaxRows),
+      mcpImportMaxReservedBytes: readMcpImportMaxReservedBytes(
+        row.mcpImportMaxReservedBytes,
+      ),
       mcpImportValidationTtlMinutes: readMcpImportValidationTtlMinutes(
         row.mcpImportValidationTtlMinutes,
       ),
@@ -568,6 +726,16 @@ export async function getAiGenerationSettings(
       warnUnexpectedAiSettingsFallback(error)
     }
     try {
+      if (
+        [
+          'mcp_import_max_active_sessions_per_principal',
+          'mcp_import_max_active_sessions_per_destination',
+          'mcp_import_max_creations_per_window',
+          'mcp_import_max_reserved_bytes',
+        ].some(column => isExpectedMissingAiSettingsColumnError(error, column))
+      ) {
+        return await getAiGenerationSettingsWithLegacyForensicDefault(db)
+      }
       if (
         isExpectedMissingAiSettingsColumnError(error, 'mcp_max_request_bytes')
       ) {
@@ -616,8 +784,16 @@ export async function updateAiGenerationSettings(
   values: AiGenerationSettings,
   options: AiSettingsWriteOptions = {},
 ): Promise<AdminAiSettings> {
+  assertMcpImportMaxActiveSessionsPerDestination(
+    values.mcpImportMaxActiveSessionsPerDestination,
+  )
+  assertMcpImportMaxActiveSessionsPerPrincipal(
+    values.mcpImportMaxActiveSessionsPerPrincipal,
+  )
+  assertMcpImportMaxCreationsPerWindow(values.mcpImportMaxCreationsPerWindow)
   assertMcpMaxRequestBytes(values.mcpMaxRequestBytes)
   assertMcpImportMaxRows(values.mcpImportMaxRows)
+  assertMcpImportMaxReservedBytes(values.mcpImportMaxReservedBytes)
   assertMcpImportValidationTtlMinutes(values.mcpImportValidationTtlMinutes)
   assertAiSafetyRuleCacheTtlSeconds(values.aiSafetyRuleCacheTtlSeconds)
   const now = new Date().toISOString()
@@ -630,17 +806,25 @@ export async function updateAiGenerationSettings(
         SET
           ai_safety_forensic_logging_enabled = @0,
           ai_safety_rule_cache_ttl_seconds = @1,
-          mcp_import_max_rows = @2,
-          mcp_import_validation_ttl_minutes = @3,
-          mcp_max_request_bytes = @4,
-          requirement_generation_enabled = @5,
-          updated_at = @6
+          mcp_import_max_active_sessions_per_destination = @2,
+          mcp_import_max_active_sessions_per_principal = @3,
+          mcp_import_max_creations_per_window = @4,
+          mcp_import_max_reserved_bytes = @5,
+          mcp_import_max_rows = @6,
+          mcp_import_validation_ttl_minutes = @7,
+          mcp_max_request_bytes = @8,
+          requirement_generation_enabled = @9,
+          updated_at = @10
         OUTPUT INSERTED.id AS id
         WHERE id = 1;
       `,
       [
         values.aiSafetyForensicLoggingEnabled,
         values.aiSafetyRuleCacheTtlSeconds,
+        values.mcpImportMaxActiveSessionsPerDestination,
+        values.mcpImportMaxActiveSessionsPerPrincipal,
+        values.mcpImportMaxCreationsPerWindow,
+        values.mcpImportMaxReservedBytes,
         values.mcpImportMaxRows,
         values.mcpImportValidationTtlMinutes,
         values.mcpMaxRequestBytes,
@@ -658,7 +842,13 @@ export async function updateAiGenerationSettings(
   })
 
   cacheMcpRuntimeSettings({
+    mcpImportMaxActiveSessionsPerDestination:
+      values.mcpImportMaxActiveSessionsPerDestination,
+    mcpImportMaxActiveSessionsPerPrincipal:
+      values.mcpImportMaxActiveSessionsPerPrincipal,
+    mcpImportMaxCreationsPerWindow: values.mcpImportMaxCreationsPerWindow,
     mcpImportMaxRows: values.mcpImportMaxRows,
+    mcpImportMaxReservedBytes: values.mcpImportMaxReservedBytes,
     mcpImportValidationTtlMinutes: values.mcpImportValidationTtlMinutes,
     mcpMaxRequestBytes: values.mcpMaxRequestBytes,
   })

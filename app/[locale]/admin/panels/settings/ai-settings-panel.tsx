@@ -101,7 +101,11 @@ function normalizeAdminAiSettings(
 type AiSettingSaveKey =
   | 'aiSafetyForensicLoggingEnabled'
   | 'aiSafetyRuleCacheTtlSeconds'
+  | 'mcpImportMaxActiveSessionsPerDestination'
+  | 'mcpImportMaxActiveSessionsPerPrincipal'
+  | 'mcpImportMaxCreationsPerWindow'
   | 'mcpImportMaxRows'
+  | 'mcpImportMaxReservedBytes'
   | 'mcpImportValidationTtlMinutes'
   | 'mcpMaxRequestBytes'
   | 'requirementGenerationEnabled'
@@ -111,7 +115,11 @@ type AiSettingsPatch = Partial<
     AdminAiSettings,
     | 'aiSafetyForensicLoggingEnabled'
     | 'aiSafetyRuleCacheTtlSeconds'
+    | 'mcpImportMaxActiveSessionsPerDestination'
+    | 'mcpImportMaxActiveSessionsPerPrincipal'
+    | 'mcpImportMaxCreationsPerWindow'
     | 'mcpImportMaxRows'
+    | 'mcpImportMaxReservedBytes'
     | 'mcpImportValidationTtlMinutes'
     | 'mcpMaxRequestBytes'
     | 'requirementGenerationEnabled'
@@ -132,6 +140,10 @@ const AI_SETTING_SAVE_KEYS: readonly AiSettingSaveKey[] = [
   'requirementGenerationEnabled',
   'aiSafetyForensicLoggingEnabled',
   'mcpMaxRequestBytes',
+  'mcpImportMaxActiveSessionsPerDestination',
+  'mcpImportMaxActiveSessionsPerPrincipal',
+  'mcpImportMaxCreationsPerWindow',
+  'mcpImportMaxReservedBytes',
   'mcpImportMaxRows',
   'mcpImportValidationTtlMinutes',
   'aiSafetyRuleCacheTtlSeconds',
@@ -154,6 +166,117 @@ function initialAiSettingSaveStates(): Record<AiSettingSaveKey, SaveState> {
   return Object.fromEntries(
     AI_SETTING_SAVE_KEYS.map(key => [key, 'idle']),
   ) as Record<AiSettingSaveKey, SaveState>
+}
+
+function NumericSettingCard({
+  constraintText,
+  disabled,
+  help,
+  helpButtonLabel,
+  id,
+  label,
+  max,
+  min,
+  onCommit,
+  saveState,
+  saveStateText,
+  step,
+  unit,
+  value,
+}: {
+  constraintText: string
+  disabled: boolean
+  help: string
+  helpButtonLabel: string
+  id: string
+  label: string
+  max: number
+  min: number
+  onCommit: (value: number) => void
+  saveState: SaveState
+  saveStateText: string
+  step: number
+  unit: string
+  value: number
+}) {
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [input, setInput] = useState(String(value))
+  const helpId = `${id}-help`
+  const constraintId = `${id}-constraint`
+
+  useEffect(() => setInput(String(value)), [value])
+
+  const commit = () => {
+    const parsed = Number(input.trim())
+    if (!Number.isFinite(parsed)) {
+      setInput(String(value))
+      return
+    }
+    onCommit(parsed)
+  }
+
+  return (
+    <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1">
+            <label
+              className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+              htmlFor={id}
+            >
+              {label}
+            </label>
+            <FieldHelpButton
+              controls={helpId}
+              expanded={helpOpen}
+              label={helpButtonLabel}
+              onClick={() => setHelpOpen(open => !open)}
+            />
+          </div>
+          <AnimatedHelpPanel id={helpId} isOpen={helpOpen}>
+            {help}
+          </AnimatedHelpPanel>
+        </div>
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <div className="flex min-h-11 items-center overflow-hidden rounded-full border border-secondary-200 bg-white text-sm font-medium text-secondary-800 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-100">
+            <input
+              aria-describedby={`${helpId} ${constraintId}`}
+              className="h-11 w-28 border-0 bg-transparent px-3 text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-500"
+              disabled={disabled}
+              id={id}
+              inputMode="numeric"
+              max={max}
+              min={min}
+              onBlur={commit}
+              onChange={event => setInput(event.target.value)}
+              onKeyDown={event => {
+                if (event.key !== 'Enter') return
+                event.preventDefault()
+                commit()
+              }}
+              step={step}
+              type="number"
+              value={input}
+            />
+            <span className="px-3 text-xs text-secondary-500 dark:text-secondary-400">
+              {unit}
+            </span>
+          </div>
+          <p
+            className="max-w-xs text-xs text-secondary-500 dark:text-secondary-400 sm:text-right"
+            id={constraintId}
+          >
+            {constraintText}
+          </p>
+        </div>
+      </div>
+      {saveState !== 'idle' ? (
+        <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+          {saveStateText}
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
 function defaultAiSafetyTermForm(): AiSafetyTermForm {
@@ -289,7 +412,11 @@ export default function AiSettingsPanel({
   const settingSaveTokensRef = useRef<Record<AiSettingSaveKey, number>>({
     aiSafetyForensicLoggingEnabled: 0,
     aiSafetyRuleCacheTtlSeconds: 0,
+    mcpImportMaxActiveSessionsPerDestination: 0,
+    mcpImportMaxActiveSessionsPerPrincipal: 0,
+    mcpImportMaxCreationsPerWindow: 0,
     mcpImportMaxRows: 0,
+    mcpImportMaxReservedBytes: 0,
     mcpImportValidationTtlMinutes: 0,
     mcpMaxRequestBytes: 0,
     requirementGenerationEnabled: 0,
@@ -430,6 +557,46 @@ export default function AiSettingsPanel({
       setSettingSaveState(key, 'error')
       setMessage(saveErrorMessage)
     }
+  }
+
+  type McpQuotaSettingKey =
+    | 'mcpImportMaxActiveSessionsPerDestination'
+    | 'mcpImportMaxActiveSessionsPerPrincipal'
+    | 'mcpImportMaxCreationsPerWindow'
+    | 'mcpImportMaxReservedBytes'
+
+  function updateMcpQuotaSetting(
+    key: McpQuotaSettingKey,
+    inputValue: number,
+    displayDivisor = 1,
+  ) {
+    const constraint = constraints[key]
+    const rawValue = inputValue * displayDivisor
+    const next = Math.min(
+      constraint.max,
+      Math.max(
+        constraint.min,
+        constraint.min +
+          Math.round((rawValue - constraint.min) / constraint.step) *
+            constraint.step,
+      ),
+    )
+    if (next === settings[key]) return
+    void saveSettingsPatch(key, { [key]: next }, current => ({
+      ...current,
+      [key]: next,
+    }))
+  }
+
+  function settingSaveStateText(key: AiSettingSaveKey): string {
+    const state = settingSaveStates[key]
+    return state === 'saving'
+      ? tc('saving')
+      : state === 'saved'
+        ? ta('saved')
+        : state === 'error'
+          ? ta('ai.rowSaveError')
+          : ''
   }
 
   function updateMcpMaxRequestBytes(nextValue: number) {
@@ -1639,6 +1806,132 @@ export default function AiSettingsPanel({
                 </p>
               ) : null}
             </div>
+
+            <NumericSettingCard
+              constraintText={ta('ai.mcpQuotaConstraint', {
+                max: constraints.mcpImportMaxActiveSessionsPerPrincipal.max,
+                min: constraints.mcpImportMaxActiveSessionsPerPrincipal.min,
+                step: constraints.mcpImportMaxActiveSessionsPerPrincipal.step,
+                unit: ta('ai.sessions'),
+              })}
+              disabled={
+                isLoading ||
+                isSettingSaving('mcpImportMaxActiveSessionsPerPrincipal')
+              }
+              help={ta('ai.fieldHelp.mcpImportMaxActiveSessionsPerPrincipal')}
+              helpButtonLabel={`${tc('help')}: ${ta('ai.mcpImportMaxActiveSessionsPerPrincipal')}`}
+              id="admin-ai-mcp-import-principal-session-quota"
+              label={ta('ai.mcpImportMaxActiveSessionsPerPrincipal')}
+              max={constraints.mcpImportMaxActiveSessionsPerPrincipal.max}
+              min={constraints.mcpImportMaxActiveSessionsPerPrincipal.min}
+              onCommit={value =>
+                updateMcpQuotaSetting(
+                  'mcpImportMaxActiveSessionsPerPrincipal',
+                  value,
+                )
+              }
+              saveState={
+                settingSaveStates.mcpImportMaxActiveSessionsPerPrincipal
+              }
+              saveStateText={settingSaveStateText(
+                'mcpImportMaxActiveSessionsPerPrincipal',
+              )}
+              step={constraints.mcpImportMaxActiveSessionsPerPrincipal.step}
+              unit={ta('ai.sessions')}
+              value={settings.mcpImportMaxActiveSessionsPerPrincipal}
+            />
+
+            <NumericSettingCard
+              constraintText={ta('ai.mcpQuotaConstraint', {
+                max: constraints.mcpImportMaxActiveSessionsPerDestination.max,
+                min: constraints.mcpImportMaxActiveSessionsPerDestination.min,
+                step: constraints.mcpImportMaxActiveSessionsPerDestination.step,
+                unit: ta('ai.sessions'),
+              })}
+              disabled={
+                isLoading ||
+                isSettingSaving('mcpImportMaxActiveSessionsPerDestination')
+              }
+              help={ta('ai.fieldHelp.mcpImportMaxActiveSessionsPerDestination')}
+              helpButtonLabel={`${tc('help')}: ${ta('ai.mcpImportMaxActiveSessionsPerDestination')}`}
+              id="admin-ai-mcp-import-destination-session-quota"
+              label={ta('ai.mcpImportMaxActiveSessionsPerDestination')}
+              max={constraints.mcpImportMaxActiveSessionsPerDestination.max}
+              min={constraints.mcpImportMaxActiveSessionsPerDestination.min}
+              onCommit={value =>
+                updateMcpQuotaSetting(
+                  'mcpImportMaxActiveSessionsPerDestination',
+                  value,
+                )
+              }
+              saveState={
+                settingSaveStates.mcpImportMaxActiveSessionsPerDestination
+              }
+              saveStateText={settingSaveStateText(
+                'mcpImportMaxActiveSessionsPerDestination',
+              )}
+              step={constraints.mcpImportMaxActiveSessionsPerDestination.step}
+              unit={ta('ai.sessions')}
+              value={settings.mcpImportMaxActiveSessionsPerDestination}
+            />
+
+            <NumericSettingCard
+              constraintText={ta('ai.mcpQuotaConstraint', {
+                max: constraints.mcpImportMaxCreationsPerWindow.max,
+                min: constraints.mcpImportMaxCreationsPerWindow.min,
+                step: constraints.mcpImportMaxCreationsPerWindow.step,
+                unit: ta('ai.creations'),
+              })}
+              disabled={
+                isLoading || isSettingSaving('mcpImportMaxCreationsPerWindow')
+              }
+              help={ta('ai.fieldHelp.mcpImportMaxCreationsPerWindow')}
+              helpButtonLabel={`${tc('help')}: ${ta('ai.mcpImportMaxCreationsPerWindow')}`}
+              id="admin-ai-mcp-import-creation-rate-quota"
+              label={ta('ai.mcpImportMaxCreationsPerWindow')}
+              max={constraints.mcpImportMaxCreationsPerWindow.max}
+              min={constraints.mcpImportMaxCreationsPerWindow.min}
+              onCommit={value =>
+                updateMcpQuotaSetting('mcpImportMaxCreationsPerWindow', value)
+              }
+              saveState={settingSaveStates.mcpImportMaxCreationsPerWindow}
+              saveStateText={settingSaveStateText(
+                'mcpImportMaxCreationsPerWindow',
+              )}
+              step={constraints.mcpImportMaxCreationsPerWindow.step}
+              unit={ta('ai.creations')}
+              value={settings.mcpImportMaxCreationsPerWindow}
+            />
+
+            <NumericSettingCard
+              constraintText={ta('ai.mcpQuotaConstraint', {
+                max: constraints.mcpImportMaxReservedBytes.max / 1024 / 1024,
+                min: constraints.mcpImportMaxReservedBytes.min / 1024 / 1024,
+                step: constraints.mcpImportMaxReservedBytes.step / 1024 / 1024,
+                unit: 'MiB',
+              })}
+              disabled={
+                isLoading || isSettingSaving('mcpImportMaxReservedBytes')
+              }
+              help={ta('ai.fieldHelp.mcpImportMaxReservedBytes')}
+              helpButtonLabel={`${tc('help')}: ${ta('ai.mcpImportMaxReservedBytes')}`}
+              id="admin-ai-mcp-import-reserved-storage-quota"
+              label={ta('ai.mcpImportMaxReservedBytes')}
+              max={constraints.mcpImportMaxReservedBytes.max / 1024 / 1024}
+              min={constraints.mcpImportMaxReservedBytes.min / 1024 / 1024}
+              onCommit={value =>
+                updateMcpQuotaSetting(
+                  'mcpImportMaxReservedBytes',
+                  value,
+                  1024 * 1024,
+                )
+              }
+              saveState={settingSaveStates.mcpImportMaxReservedBytes}
+              saveStateText={settingSaveStateText('mcpImportMaxReservedBytes')}
+              step={constraints.mcpImportMaxReservedBytes.step / 1024 / 1024}
+              unit="MiB"
+              value={settings.mcpImportMaxReservedBytes / 1024 / 1024}
+            />
 
             <div className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40">
               <div className="flex flex-wrap items-start justify-between gap-4">

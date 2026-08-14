@@ -2,6 +2,7 @@ import { EntitySchema } from 'typeorm'
 
 export interface RequirementImportValidationSessionEntity {
   createdAt: Date
+  creatorPrincipalFingerprint: string
   destinationId: number
   destinationKind: string
   destinationSnapshotJson: string
@@ -10,6 +11,7 @@ export interface RequirementImportValidationSessionEntity {
   id: number
   payloadHash: string
   referenceDataFingerprint: string
+  reservedBytes: number
   submittedPayloadJson: string
   tokenHash: string
   updatedAt: Date
@@ -32,6 +34,11 @@ export const requirementImportValidationSessionEntity =
         name: 'token_hash',
         type: 'nvarchar',
       },
+      creatorPrincipalFingerprint: {
+        length: 64,
+        name: 'creator_principal_fingerprint',
+        type: 'nvarchar',
+      },
       payloadHash: {
         length: 64,
         name: 'payload_hash',
@@ -50,6 +57,10 @@ export const requirementImportValidationSessionEntity =
         length: 64,
         name: 'reference_data_fingerprint',
         type: 'nvarchar',
+      },
+      reservedBytes: {
+        name: 'reserved_bytes',
+        type: 'bigint',
       },
       destinationSnapshotJson: {
         length: 'MAX',
@@ -86,6 +97,14 @@ export const requirementImportValidationSessionEntity =
         columns: ['expiresAt'],
         name: 'idx_requirement_import_validation_sessions_expires_at',
       },
+      {
+        columns: ['creatorPrincipalFingerprint', 'expiresAt'],
+        name: 'idx_requirement_import_validation_sessions_principal_expires_at',
+      },
+      {
+        columns: ['destinationKind', 'destinationId', 'expiresAt'],
+        name: 'idx_requirement_import_validation_sessions_destination_expires_at',
+      },
     ],
     checks: [
       {
@@ -102,12 +121,20 @@ export const requirementImportValidationSessionEntity =
         name: 'chk_requirement_import_validation_sessions_token_hash',
       },
       {
+        expression: 'LEN([creator_principal_fingerprint]) = 64',
+        name: 'chk_requirement_import_validation_sessions_creator_principal_fingerprint',
+      },
+      {
         expression: 'LEN([payload_hash]) = 64',
         name: 'chk_requirement_import_validation_sessions_payload_hash',
       },
       {
         expression: 'LEN([reference_data_fingerprint]) = 64',
         name: 'chk_requirement_import_validation_sessions_reference_data_fingerprint',
+      },
+      {
+        expression: '[reserved_bytes] > 0',
+        name: 'chk_requirement_import_validation_sessions_reserved_bytes',
       },
       {
         expression: '[expires_at] > [created_at]',

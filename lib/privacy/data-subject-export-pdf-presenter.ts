@@ -222,6 +222,18 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
       section: 'actionLog',
       title: 'Application action',
     },
+    'requirement_import_validation_rate_buckets.principal': {
+      description:
+        'The application temporarily stores an aggregate MCP validation-session creation count for this person.',
+      section: 'other',
+      title: 'MCP validation-session rate limit',
+    },
+    'requirement_import_validation_sessions.creator': {
+      description:
+        'The application temporarily stores safe metadata for MCP import validation sessions created by this person.',
+      section: 'other',
+      title: 'MCP import validation session',
+    },
     'auth.session': {
       description:
         'Current sign-in information is included only when a person exports their own data.',
@@ -360,6 +372,18 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
       section: 'actionLog',
       title: 'Åtgärd i applikationen',
     },
+    'requirement_import_validation_rate_buckets.principal': {
+      description:
+        'Applikationen lagrar tillfälligt ett aggregerat antal skapade MCP-valideringssessioner för personen.',
+      section: 'other',
+      title: 'Anropsgräns för MCP-valideringssessioner',
+    },
+    'requirement_import_validation_sessions.creator': {
+      description:
+        'Applikationen lagrar tillfälligt säker metadata för MCP-importvalideringssessioner som personen har skapat.',
+      section: 'other',
+      title: 'Valideringssession för MCP-import',
+    },
     'auth.session': {
       description:
         'Aktuella inloggningsuppgifter ingår bara när en person exporterar sina egna uppgifter.',
@@ -469,6 +493,7 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     actor_hsa_id: 'HSA-id',
     completed_by_display_name: 'Name',
     completed_by_hsa_id: 'HSA-id',
+    created_at: 'Created',
     created_by: 'Name',
     created_by_display_name: 'Name',
     created_by_hsa_id: 'HSA-id',
@@ -476,10 +501,12 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     decided_by_display_name: 'Name',
     decided_by_hsa_id: 'HSA-id',
     decision: 'Decision',
+    destination_kind: 'Destination type',
     display_name: 'Name',
     due_at: 'Due date',
     email: 'Email address',
     expiresAt: 'Session valid until',
+    expires_at: 'Valid until',
     external_evidence_reference: 'External evidence',
     familyName: 'Family name',
     first_name: 'First name',
@@ -508,13 +535,16 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     reviewer_display_name: 'Name',
     reviewer_hsa_id: 'HSA-id',
     roles: 'Roles',
+    reserved_bytes: 'Reserved storage (bytes)',
     scope_label: 'Scope',
     scope_type: 'Scope type',
     source_key: 'Permission source',
     status: 'Status',
+    successful_creations: 'Successful creations',
     surname: 'Surname',
     target_kind: 'Affected object type',
     target_unique_id: 'Affected object',
+    window_started_at: 'Window started',
   },
   sv: {
     action: 'Åtgärd',
@@ -522,6 +552,7 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     actor_hsa_id: 'HSA-id',
     completed_by_display_name: 'Namn',
     completed_by_hsa_id: 'HSA-id',
+    created_at: 'Skapad',
     created_by: 'Namn',
     created_by_display_name: 'Namn',
     created_by_hsa_id: 'HSA-id',
@@ -529,10 +560,12 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     decided_by_display_name: 'Namn',
     decided_by_hsa_id: 'HSA-id',
     decision: 'Beslut',
+    destination_kind: 'Typ av mål',
     display_name: 'Namn',
     due_at: 'Förfaller',
     email: 'E-postadress',
     expiresAt: 'Sessionen gäller till',
+    expires_at: 'Gäller till',
     external_evidence_reference: 'Extern evidens',
     familyName: 'Efternamn',
     first_name: 'Förnamn',
@@ -561,13 +594,16 @@ const FIELD_LABELS: Record<LocaleKey, Record<string, string>> = {
     reviewer_display_name: 'Namn',
     reviewer_hsa_id: 'HSA-id',
     roles: 'Roller',
+    reserved_bytes: 'Reserverad lagring (byte)',
     scope_label: 'Omfattning',
     scope_type: 'Typ av omfattning',
     source_key: 'Källa för behörighet',
     status: 'Status',
+    successful_creations: 'Lyckade skapanden',
     surname: 'Efternamn',
     target_kind: 'Typ av berört objekt',
     target_unique_id: 'Berört objekt',
+    window_started_at: 'Fönstret började',
   },
 }
 

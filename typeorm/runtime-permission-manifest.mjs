@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 export const SQL_SERVER_RUNTIME_ROLE = 'kravhantering_runtime'
-export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.08.1'
+export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.14.1'
 
 const CRUD = Object.freeze(['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
 const READ_CREATE = Object.freeze(['SELECT', 'INSERT'])
@@ -57,6 +57,10 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
         'ai_safety_forensic_logging_enabled',
         'ai_safety_rule_cache_ttl_seconds',
         'mcp_import_max_rows',
+        'mcp_import_max_active_sessions_per_destination',
+        'mcp_import_max_active_sessions_per_principal',
+        'mcp_import_max_creations_per_window',
+        'mcp_import_max_reserved_bytes',
         'mcp_import_validation_ttl_minutes',
         'mcp_max_request_bytes',
         'requirement_generation_enabled',
@@ -84,6 +88,10 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
     },
     { object: 'dbo.requirement_areas', permissions: CRUD },
     { object: 'dbo.requirement_categories', permissions: CRUD },
+    {
+      object: 'dbo.requirement_import_validation_rate_buckets',
+      permissions: CRUD,
+    },
     {
       object: 'dbo.requirement_import_validation_sessions',
       permissions: CRUD,
@@ -234,22 +242,28 @@ export function buildRuntimeRoleCreateSql() {
     CREATE ROLE [${SQL_SERVER_RUNTIME_ROLE}] AUTHORIZATION [dbo];`
 }
 
-export function buildRuntimePermissionReconcileSql() {
-  const expectedObjectChecks = RUNTIME_PERMISSION_MANIFEST.map(entry => {
-    const { schema, table } = objectParts(entry.object)
-    return `IF OBJECT_ID(N'${schema}.${table}', N'U') IS NULL
+export function buildRuntimePermissionReconcileSql(
+  manifest = RUNTIME_PERMISSION_MANIFEST,
+) {
+  const expectedObjectChecks = manifest
+    .map(entry => {
+      const { schema, table } = objectParts(entry.object)
+      return `IF OBJECT_ID(N'${schema}.${table}', N'U') IS NULL
     THROW 51022, 'Runtime permission manifest object is missing: ${schema}.${table}.', 1;`
-  }).join('\n  ')
-  const explicitRevokes = RUNTIME_PERMISSION_MANIFEST.flatMap(entry => [
-    permissionSql(entry, 'REVOKE'),
-    updateSql(entry, 'REVOKE'),
-  ])
+    })
+    .join('\n  ')
+  const explicitRevokes = manifest
+    .flatMap(entry => [
+      permissionSql(entry, 'REVOKE'),
+      updateSql(entry, 'REVOKE'),
+    ])
     .filter(Boolean)
     .join('\n  ')
-  const grants = RUNTIME_PERMISSION_MANIFEST.flatMap(entry => [
-    permissionSql(entry, 'GRANT'),
-    updateSql(entry, 'GRANT'),
-  ])
+  const grants = manifest
+    .flatMap(entry => [
+      permissionSql(entry, 'GRANT'),
+      updateSql(entry, 'GRANT'),
+    ])
     .filter(Boolean)
     .join('\n  ')
 

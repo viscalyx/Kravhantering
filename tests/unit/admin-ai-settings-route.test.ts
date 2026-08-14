@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ADMIN_AI_SETTINGS_CONSTRAINTS,
   AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+  MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
   MCP_IMPORT_MAX_ROWS_DEFAULT,
   MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
@@ -91,7 +95,17 @@ vi.mock('@/lib/requirements/auth', () => ({
 
 import { GET, PATCH, PUT } from '@/app/api/admin/ai-settings/route'
 
+const mcpQuotaPayload = {
+  mcpImportMaxActiveSessionsPerDestination:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
+  mcpImportMaxActiveSessionsPerPrincipal:
+    MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
+  mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
+  mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
+}
+
 const enabledResponse = {
+  ...mcpQuotaPayload,
   aiSafetyForensicLoggingEnabled: true,
   aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
   constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
@@ -119,7 +133,13 @@ describe('admin AI settings route', () => {
           constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
           disabledByEnvironment: true,
           effectiveRequirementGenerationEnabled: false,
+          mcpImportMaxActiveSessionsPerDestination:
+            values.mcpImportMaxActiveSessionsPerDestination,
+          mcpImportMaxActiveSessionsPerPrincipal:
+            values.mcpImportMaxActiveSessionsPerPrincipal,
+          mcpImportMaxCreationsPerWindow: values.mcpImportMaxCreationsPerWindow,
           mcpImportMaxRows: values.mcpImportMaxRows,
+          mcpImportMaxReservedBytes: values.mcpImportMaxReservedBytes,
           mcpImportValidationTtlMinutes: values.mcpImportValidationTtlMinutes,
           mcpMaxRequestBytes: values.mcpMaxRequestBytes,
           requirementGenerationEnabled: values.requirementGenerationEnabled,
@@ -221,6 +241,7 @@ describe('admin AI settings route', () => {
     const response = await PUT(
       new NextRequest('https://example.test/api/admin/ai-settings', {
         body: JSON.stringify({
+          ...mcpQuotaPayload,
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
           aiSafetyForensicLoggingEnabled: true,
           mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
@@ -241,6 +262,7 @@ describe('admin AI settings route', () => {
     const response = await PUT(
       new NextRequest('https://example.test/api/admin/ai-settings', {
         body: JSON.stringify({
+          ...mcpQuotaPayload,
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
           aiSafetyForensicLoggingEnabled: false,
           mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
@@ -257,6 +279,7 @@ describe('admin AI settings route', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(body).toEqual({
+      ...mcpQuotaPayload,
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       aiSafetyForensicLoggingEnabled: false,
       constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
@@ -270,6 +293,7 @@ describe('admin AI settings route', () => {
     expect(routeState.updateAiGenerationSettings).toHaveBeenCalledWith(
       { db: true },
       {
+        ...mcpQuotaPayload,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         aiSafetyForensicLoggingEnabled: false,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
@@ -289,6 +313,10 @@ describe('admin AI settings route', () => {
           'requirementGenerationEnabled',
           'aiSafetyForensicLoggingEnabled',
           'mcpMaxRequestBytes',
+          'mcpImportMaxActiveSessionsPerDestination',
+          'mcpImportMaxActiveSessionsPerPrincipal',
+          'mcpImportMaxCreationsPerWindow',
+          'mcpImportMaxReservedBytes',
           'mcpImportMaxRows',
           'mcpImportValidationTtlMinutes',
           'aiSafetyRuleCacheTtlSeconds',
@@ -311,6 +339,7 @@ describe('admin AI settings route', () => {
     const response = await PUT(
       new NextRequest('https://example.test/api/admin/ai-settings', {
         body: JSON.stringify({
+          ...mcpQuotaPayload,
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
           aiSafetyForensicLoggingEnabled: true,
           mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
@@ -342,6 +371,7 @@ describe('admin AI settings route', () => {
       const response = await PUT(
         new NextRequest('https://example.test/api/admin/ai-settings', {
           body: JSON.stringify({
+            ...mcpQuotaPayload,
             aiSafetyRuleCacheTtlSeconds:
               AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
             aiSafetyForensicLoggingEnabled: true,

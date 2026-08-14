@@ -232,6 +232,14 @@ sequenceDiagram
 - The current MCP implementation reads `roles` and `scope` directly from the
   access token payload. On success it attaches a verified actor to the active
   `Request` before the requirements service builds its request context.
+- Persisted MCP import validation sessions normalize that verified HSA-id and
+  bind ownership with a purpose-separated keyed HMAC derived from
+  `AUTH_SESSION_COOKIE_PASSWORD`. Only the fingerprint is stored. Inspect and
+  execute require both token and the same fingerprint; a different principal
+  gets the same not-found response as an unknown or expired token. Destination
+  authorization is checked again on inspect and inside execute's serializable
+  transaction. Secret rotation intentionally invalidates existing ownership
+  matches.
 
 ### Security controls and audit events
 

@@ -1552,6 +1552,10 @@ security, and MCP request payload security.
 | `ai_safety_forensic_logging_enabled` | bit | Admin preference for separate raw-content AI safety forensic JSON logging |
 | `mcp_max_request_bytes` | integer | Maximum MCP request payload and persisted MCP import session size in bytes |
 | `mcp_import_max_rows` | integer | Maximum rows accepted in one MCP import validation session |
+| `mcp_import_max_active_sessions_per_principal` | integer | Maximum unexpired validation sessions owned by one MCP principal |
+| `mcp_import_max_active_sessions_per_destination` | integer | Maximum unexpired validation sessions for one destination |
+| `mcp_import_max_creations_per_window` | integer | Maximum successful session creations per principal in a fixed 10-minute window |
+| `mcp_import_max_reserved_bytes` | bigint | Maximum bytes reserved globally by unexpired validation sessions |
 | `mcp_import_validation_ttl_minutes` | integer | TTL for persisted MCP import validation sessions |
 | `ai_safety_rule_cache_ttl_seconds` | integer | Process-local active AI safety rule-set cache time in seconds |
 | `created_at` | datetime2 | Creation timestamp |
@@ -1567,6 +1571,8 @@ security, and MCP request payload security.
 - organization-wide MCP request payload and import-session byte limit used by
   `/api/mcp` and MCP import validation
 - organization-wide MCP import row cap and validation-session TTL
+- atomic principal, destination, fixed-window creation and reserved-storage
+  quotas for persisted MCP validation sessions
 - process-local cache time for DB-backed AI safety rules
 - input to effective availability together with the deployment guard
   `AI_REQUIREMENT_GENERATION_DISABLED`
@@ -1575,7 +1581,11 @@ security, and MCP request payload security.
 `requirement_generation_enabled = 1`,
 `ai_safety_forensic_logging_enabled = 1`,
 `mcp_max_request_bytes = 1048576`, `mcp_import_max_rows = 500`,
-`mcp_import_validation_ttl_minutes = 60`, and
+`mcp_import_validation_ttl_minutes = 60`,
+`mcp_import_max_active_sessions_per_principal = 10`,
+`mcp_import_max_active_sessions_per_destination = 100`,
+`mcp_import_max_creations_per_window = 20`,
+`mcp_import_max_reserved_bytes = 536870912`, and
 `ai_safety_rule_cache_ttl_seconds = 600`, so new seed insertions keep AI
 requirement generation enabled, forensic AI safety logging on, the existing
 `1 MiB` seeded MCP limit, 500-row import cap, 60-minute validation TTL, and
@@ -1586,6 +1596,9 @@ existing singleton row.
 `chk_ai_settings_mcp_max_request_bytes` enforces integer byte values on a
 `1 MiB` grid from `1 MiB` through `10 MiB`, with no unlimited value.
 `chk_ai_settings_mcp_import_max_rows` enforces values from `1` through `500`.
+The MCP quota checks enforce principal sessions `1`–`100`, destination sessions
+`1`–`1000`, creations `1`–`200`, and reserved storage from `64 MiB` through
+`8 GiB` on an exact `64 MiB` grid.
 `chk_ai_settings_mcp_import_validation_ttl_minutes` enforces values from `1`
 through `1440`.
 `chk_ai_settings_ai_safety_rule_cache_ttl_seconds` enforces cache values from
@@ -1604,10 +1617,12 @@ to either a requirement area or a requirements specification depending on
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
 | `token_hash` | nvarchar(64) | SHA-256 hash of the opaque validation token; raw tokens are never stored |
+| `creator_principal_fingerprint` | nvarchar(64) | Purpose-separated keyed HMAC of the normalized creator HSA-id; raw HSA-id is never stored |
 | `payload_hash` | nvarchar(64) | SHA-256 hash of the canonical submitted import payload JSON |
 | `destination_kind` | nvarchar(64) | `requirements_library` or `requirements_specification` |
 | `destination_id` | integer | Requirement area ID or requirements specification ID, depending on `destination_kind` |
 | `reference_data_fingerprint` | nvarchar(64) | Reference-data fingerprint captured at validation time |
+| `reserved_bytes` | bigint | Conservative storage reservation for initial JSON state and the maximum execution receipt |
 | `destination_snapshot_json` | nvarchar(max) | JSON snapshot of the resolved destination |
 | `submitted_payload_json` | nvarchar(max) | Submitted `Kravimportfil` payload JSON |
 | `validation_result_json` | nvarchar(max) | Immutable resolved rows, issues, proposal metadata, and reference-data include names |
@@ -1620,7 +1635,32 @@ to either a requirement area or a requirements specification depending on
 **Indexes and constraints:** `uq_requirement_import_validation_sessions_token_hash`
 enforces unique token hashes. `idx_requirement_import_validation_sessions_expires_at`
 supports expiry cleanup. JSON columns have `ISJSON` checks, and scalar checks
-constrain token/payload/fingerprint length and destination kind.
+constrain token/payload/fingerprint length, positive reservations and destination
+kind. Principal and destination indexes support quota counts. Active means
+`expires_at > SYSUTCDATETIME()` and includes sessions already executed.
+
+Token lookup always includes the creator fingerprint. A token presented by a
+different principal therefore has the same public not-found result as an
+unknown or expired token. Execute locks the owned session and re-authorizes the
+stored destination inside the same serializable transaction as requirement
+mutation and receipt persistence.
+
+### `requirement_import_validation_rate_buckets`
+
+Transient, aggregate counters for successful MCP validation-session creation.
+Each row is keyed by a principal fingerprint and an epoch-aligned 10-minute
+window. It stores `successful_creations`, `window_started_at`, `expires_at` and
+audit timestamps; it never stores raw HSA-id, token, payload, destination or
+validation content. A unique index on `(principal_fingerprint,
+window_started_at)` prevents duplicate counters, and an expiry index supports
+bounded cleanup.
+
+Session admission is one serializable, application-locked operation. It checks
+and rejects in principal, creation-rate, destination, then storage order; exact
+quota equality succeeds. Only a committed session insert increments the rate
+bucket. The ownership/quota migration and its rollback delete all legacy
+validation sessions before changing the security model, so mixed application
+versions are unsupported and old tokens fail closed.
 
 Expired rows are removed both opportunistically during MCP activity and by the
 production scheduled transient-state cleanup. The scheduled path deletes
@@ -2542,6 +2582,7 @@ its purpose and the table/column(s) it covers.
 | `uq_requirements_specification_items_specification_requirement` | `requirements_specification_items` | `(requirements_specification_id, requirement_id)` | Prevents linking the same requirement into a specification more than once |
 | `uq_norm_references_norm_reference_id` | `norm_references` | `norm_reference_id` | Ensures each norm reference has a distinct external identifier |
 | `uq_requirement_import_validation_sessions_token_hash` | `requirement_import_validation_sessions` | `token_hash` | Ensures each hashed MCP import validation token identifies one session |
+| `uq_requirement_import_validation_rate_buckets_principal_window` | `requirement_import_validation_rate_buckets` | `principal_fingerprint, window_started_at` | Ensures one creation counter per principal and fixed 10-minute window |
 <!-- markdownlint-enable MD013 -->
 
 ### Non-Unique Indexes
@@ -2619,6 +2660,9 @@ its purpose and the table/column(s) it covers.
 | `idx_archiving_retention_exceptions_policy_source` | `archiving_retention_exceptions` | `(policy_id, source_key)` | Speed up filtering legal-hold exceptions during preview |
 | `idx_ai_safety_rule_terms_rule_id` | `ai_safety_rule_terms` | `rule_id` | Speed up loading safety terms per rule |
 | `idx_requirement_import_validation_sessions_expires_at` | `requirement_import_validation_sessions` | `expires_at` | Speed up expired MCP import validation-session cleanup |
+| `idx_requirement_import_validation_sessions_principal_expires_at` | `requirement_import_validation_sessions` | `creator_principal_fingerprint, expires_at` | Support owned lookup and active principal quota counts |
+| `idx_requirement_import_validation_sessions_destination_expires_at` | `requirement_import_validation_sessions` | `destination_kind, destination_id, expires_at` | Support active destination quota counts |
+| `idx_requirement_import_validation_rate_buckets_expires_at` | `requirement_import_validation_rate_buckets` | `expires_at` | Support bounded cleanup of expired creation counters |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints

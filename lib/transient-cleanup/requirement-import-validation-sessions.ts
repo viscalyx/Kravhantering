@@ -43,10 +43,12 @@ export async function inspectExpiredRequirementImportValidationSessions(
       COALESCE(SUM(CONVERT(bigint,
         DATALENGTH(id) +
         DATALENGTH(token_hash) +
+        DATALENGTH(creator_principal_fingerprint) +
         DATALENGTH(payload_hash) +
         DATALENGTH(destination_kind) +
         DATALENGTH(destination_id) +
         DATALENGTH(reference_data_fingerprint) +
+        DATALENGTH(reserved_bytes) +
         DATALENGTH(destination_snapshot_json) +
         DATALENGTH(submitted_payload_json) +
         DATALENGTH(validation_result_json) +

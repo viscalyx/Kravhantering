@@ -1,3 +1,4 @@
+import { createRequirementImportValidationRateBucketCleanupTarget } from './requirement-import-validation-rate-buckets'
 import {
   createRequirementImportValidationSessionCleanupTarget,
   type TransientCleanupQueryExecutor,
@@ -7,5 +8,8 @@ import type { TransientCleanupTarget } from './runner'
 export function createTransientCleanupTargets(
   executor: TransientCleanupQueryExecutor,
 ): TransientCleanupTarget[] {
-  return [createRequirementImportValidationSessionCleanupTarget(executor)]
+  return [
+    createRequirementImportValidationSessionCleanupTarget(executor),
+    createRequirementImportValidationRateBucketCleanupTarget(executor),
+  ]
 }

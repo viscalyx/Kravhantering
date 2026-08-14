@@ -3,6 +3,10 @@ import { z } from 'zod'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
 import {
   isValidAiSafetyRuleCacheTtlSeconds,
+  isValidMcpImportMaxActiveSessionsPerDestination,
+  isValidMcpImportMaxActiveSessionsPerPrincipal,
+  isValidMcpImportMaxCreationsPerWindow,
+  isValidMcpImportMaxReservedBytes,
   isValidMcpImportMaxRows,
   isValidMcpImportValidationTtlMinutes,
   isValidMcpMaxRequestBytes,
@@ -31,6 +35,34 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 const aiSettingsPayloadSchema = z
   .object({
     aiSafetyForensicLoggingEnabled: z.boolean(),
+    mcpImportMaxActiveSessionsPerDestination: z
+      .number()
+      .int()
+      .refine(
+        isValidMcpImportMaxActiveSessionsPerDestination,
+        'Invalid MCP destination session quota.',
+      ),
+    mcpImportMaxActiveSessionsPerPrincipal: z
+      .number()
+      .int()
+      .refine(
+        isValidMcpImportMaxActiveSessionsPerPrincipal,
+        'Invalid MCP principal session quota.',
+      ),
+    mcpImportMaxCreationsPerWindow: z
+      .number()
+      .int()
+      .refine(
+        isValidMcpImportMaxCreationsPerWindow,
+        'Invalid MCP validation-session creation quota.',
+      ),
+    mcpImportMaxReservedBytes: z
+      .number()
+      .int()
+      .refine(
+        isValidMcpImportMaxReservedBytes,
+        'Invalid MCP validation-session storage quota.',
+      ),
     mcpMaxRequestBytes: z
       .number()
       .int()
@@ -112,6 +144,10 @@ export const PUT = secureMutationRoute({
                 'requirementGenerationEnabled',
                 'aiSafetyForensicLoggingEnabled',
                 'mcpMaxRequestBytes',
+                'mcpImportMaxActiveSessionsPerDestination',
+                'mcpImportMaxActiveSessionsPerPrincipal',
+                'mcpImportMaxCreationsPerWindow',
+                'mcpImportMaxReservedBytes',
                 'mcpImportMaxRows',
                 'mcpImportValidationTtlMinutes',
                 'aiSafetyRuleCacheTtlSeconds',

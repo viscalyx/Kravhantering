@@ -6,6 +6,10 @@ export interface AiGenerationAvailability {
   aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
+  mcpImportMaxActiveSessionsPerDestination: number
+  mcpImportMaxActiveSessionsPerPrincipal: number
+  mcpImportMaxCreationsPerWindow: number
+  mcpImportMaxReservedBytes: number
   mcpImportMaxRows: number
   mcpImportValidationTtlMinutes: number
   mcpMaxRequestBytes: number
@@ -20,7 +24,16 @@ export type AiGenerationSettingsPayload = Pick<
   | 'mcpImportValidationTtlMinutes'
   | 'mcpMaxRequestBytes'
   | 'requirementGenerationEnabled'
->
+> &
+  Partial<
+    Pick<
+      AiGenerationAvailability,
+      | 'mcpImportMaxActiveSessionsPerDestination'
+      | 'mcpImportMaxActiveSessionsPerPrincipal'
+      | 'mcpImportMaxCreationsPerWindow'
+      | 'mcpImportMaxReservedBytes'
+    >
+  >
 
 export async function getAiSettings(
   request: APIRequestContext,
@@ -34,8 +47,22 @@ export async function putAiSettings(
   request: APIRequestContext,
   settings: AiGenerationSettingsPayload,
 ): Promise<AiGenerationAvailability> {
+  const current = await getAiSettings(request)
   const response = await request.put('/api/admin/ai-settings', {
-    data: settings,
+    data: {
+      ...settings,
+      mcpImportMaxActiveSessionsPerDestination:
+        settings.mcpImportMaxActiveSessionsPerDestination ??
+        current.mcpImportMaxActiveSessionsPerDestination,
+      mcpImportMaxActiveSessionsPerPrincipal:
+        settings.mcpImportMaxActiveSessionsPerPrincipal ??
+        current.mcpImportMaxActiveSessionsPerPrincipal,
+      mcpImportMaxCreationsPerWindow:
+        settings.mcpImportMaxCreationsPerWindow ??
+        current.mcpImportMaxCreationsPerWindow,
+      mcpImportMaxReservedBytes:
+        settings.mcpImportMaxReservedBytes ?? current.mcpImportMaxReservedBytes,
+    },
   })
   await expectApiResponseOk(response, 'PUT AI settings')
   return (await response.json()) as AiGenerationAvailability

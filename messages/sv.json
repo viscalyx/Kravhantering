@@ -1516,7 +1516,11 @@
       "decreaseMcpMaxRequestLimit": "Sänk MCP-anropsgränsen",
       "fieldHelp": {
         "aiSafetyForensicLogging": "När inställningen är på skriver AI-säkerhetsblockeringar en separat forensisk JSON-händelse med rått blockerat innehåll och matchade regeltermer. Metadatahändelsen i säkerhetsloggen skrivs alltid. Ändringar gäller direkt i denna app-process och kan ta upp till 30 sekunder i andra app-processer.",
+        "mcpImportMaxActiveSessionsPerDestination": "Högsta antal ej utgångna valideringssessioner, inklusive körda sessioner, som reserveras för ett mål över alla principaler.",
+        "mcpImportMaxActiveSessionsPerPrincipal": "Högsta antal ej utgångna valideringssessioner, inklusive körda sessioner, som en autentiserad MCP-principal får äga.",
+        "mcpImportMaxCreationsPerWindow": "Högsta antal lyckade skapanden av valideringssessioner per principal i varje fast, epokjusterat 10-minutersfönster. Avvisade valideringar förbrukar inte kvoten.",
         "mcpImportMaxRows": "Högsta antal rader som accepteras i en MCP-valideringssession för import. Använd detta för att hålla importvalidering på en hanterbar nivå.",
+        "mcpImportMaxReservedBytes": "Högsta lagringsutrymme som reserveras globalt för ej utgångna valideringssessioner. Reservationen täcker inskickade data och ett konservativt utrymme för körningskvittot.",
         "mcpImportValidationTtl": "Hur länge en sparad MCP-valideringstoken för import kan användas för inspektion eller körning innan den upphör att gälla.",
         "mcpMaxRequestLimit": "Största tillåtna MCP POST-nyttolast och sparad MCP-importsession. Använd detta för att styra hur stora MCP-anrop och valideringssessioner får bli.",
         "requirementGenerationEnabled": "Styr om användare kan generera kravutkast med AI-stöd. När detta är avstängt kan användare fortfarande se AI-kontrollerna, men inte starta ny kravgenerering. Inställningen påverkar knappen i kravbiblioteket, genereringsdialogen och REST-rutten för generering.",
@@ -1526,11 +1530,18 @@
       "increaseMcpMaxRequestLimit": "Höj MCP-anropsgränsen",
       "loadError": "Kunde inte läsa AI-inställningar.",
       "minutes": "min",
+      "creations": "skapanden",
+      "sessions": "sessioner",
+      "mcpImportMaxActiveSessionsPerDestination": "Aktiva sessioner per mål",
+      "mcpImportMaxActiveSessionsPerPrincipal": "Aktiva sessioner per principal",
+      "mcpImportMaxCreationsPerWindow": "Sessionsskapanden per 10 minuter",
       "mcpImportMaxRows": "Radgräns för MCP-import",
+      "mcpImportMaxReservedBytes": "Reserverad lagring för valideringssessioner",
       "mcpImportValidationTtl": "TTL för MCP-validering",
       "mcpInterfaceDescription": "Styr MCP-transport, sparade MCP-importsessioner och valideringsgränser för importflöden.",
       "mcpInterfaceTitle": "MCP-gränssnitt",
       "mcpImportMaxRowsConstraint": "Tillåtet intervall: {min} till {max} rader. Steg: {step}.",
+      "mcpQuotaConstraint": "Tillåtet intervall: {min} till {max} {unit}. Steg: {step}.",
       "mcpMaxRequestLimit": "MCP-anropsgräns",
       "mcpImportValidationTtlConstraint": "Tillåtet intervall: {min} till {max} min. Steg: {step}.",
       "mcpMaxRequestLimitConstraint": "Tillåtet intervall: {min} till {max}. Steg: {step}.",
@@ -1708,7 +1719,9 @@
         "specificationCoAuthors": "Kravunderlagsmedförfattare",
         "accessReviewRuns": "Behörighetsöversyner",
         "accessReviewItems": "Rader i behörighetsöversyn",
-        "actionAuditEvents": "Åtgärdsloggsposter"
+        "actionAuditEvents": "Åtgärdsloggsposter",
+        "requirementImportValidationRateBuckets": "Anropsgränser för MCP-valideringssessioner",
+        "requirementImportValidationSessions": "Valideringssessioner för MCP-import"
       },
       "fields": {
         "identity": "Identitet",
@@ -1721,6 +1734,8 @@
         "coAuthor": "Medförfattare",
         "reviewer": "Tilldelad granskningsperson",
         "actor": "Aktör",
+        "creatorPrincipalFingerprint": "Sessionsskapare",
+        "principalFingerprint": "Principal för anropsgräns",
         "accessReviewPrincipal": "Behörig i översyn",
         "taxonomy": "Taxonomi",
         "lifecycleStatus": "Kravunderlagets livscykelstatus",
@@ -1738,7 +1753,9 @@
         "ownerAreaAndPackageSwitchOnly": "Ägaren är kopplad till kravområden och kravpaket. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
         "liveAssignment": "Aktiva tilldelningar byts normalt till ersättande HSA-id. Utan ersättare tas rader för medförfattare bort eller så behålls den anonymiserade ägaren.",
         "historySwitch": "Att byta historiskt författarskap kan ändra postens innebörd. Anonymisering är standard.",
-        "decisionSwitch": "Beslut och åtgärder ska inte tilldelas om utan dokumenterad rättslig grund. Anonymisering är standard."
+        "decisionSwitch": "Beslut och åtgärder ska inte tilldelas om utan dokumenterad rättslig grund. Anonymisering är standard.",
+        "rateBucketDeletion": "När den tillfälliga anropsgränsposten tas bort nollställs principalens aktuella antal skapanden under 10-minutersfönstret.",
+        "tokenInvalidation": "När dessa tillfälliga sessioner tas bort blir deras valideringstoken omedelbart ogiltiga."
       },
       "blockers": {
         "ownerAreaReplacementRequired": "Ägaren är kopplad till kravområden. Uppdatera de kravområdena först eller ange ersättande HSA-id och namn.",

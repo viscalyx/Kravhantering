@@ -229,9 +229,12 @@ Manages persisted MCP import validation sessions.
   `Kravimportfil` payload. Schema-valid payloads create a SQL-backed validation
   session even when individual rows have errors.
 - Validation sessions are immutable after `validate`.
+- Validation sessions are bound to a purpose-separated keyed HMAC of the
+  normalized HSA-id principal. Persist only that fingerprint, never raw HSA-id.
 - `execute` accepts only `validationToken`. It imports all unconsumed rows
   without errors in the same transaction that marks the session rows consumed,
-  after re-checking that the stored destination still exists.
+  after locking the owned session and re-authorizing and re-checking the stored
+  destination inside that serializable transaction.
 - `inspect_validation` accepts only `validationToken` and returns full
   submitted/resolved row details, proposals, reference-data freshness, and
   imported state.
@@ -243,10 +246,22 @@ Manages persisted MCP import validation sessions.
   not generic.
 
 Validation tokens are random 32-byte base64url values. Only SHA-256 token hashes
-are stored. `validation_result_json` stores resolved row state, issues,
-proposal metadata, and reference-data include names; the submitted payload and
-execution receipts are stored separately. Session TTL, row cap, and byte cap
-come from `ai_settings`.
+are stored. Ownership lookup always combines token hash and creator fingerprint;
+a wrong principal must receive the same public not-found result. The fingerprint
+key is purpose-separated from `AUTH_SESSION_COOKIE_PASSWORD`, so rotating that
+secret invalidates existing ownership matches. `validation_result_json` stores
+resolved row state, issues, proposal metadata, and reference-data include names;
+the submitted payload and execution receipts are stored separately. Session
+TTL, row cap, byte cap and principal/destination/rate/storage quotas come from
+`ai_settings`.
+
+Creation admission is atomic under a SQL Server transaction-owned application
+lock and serializable transaction. Count only `expires_at > SYSUTCDATETIME()`;
+executed sessions remain active. Use fixed epoch-aligned 10-minute buckets and
+increment only after a successful session insert in the same transaction.
+Preserve rejection precedence: principal, rate, destination, storage. Equality
+is allowed. Reserve UTF-16 JSON bytes plus fixed overhead and a conservative
+per-row execution receipt before inserting.
 
 ### `requirements_get_requirement`
 
@@ -470,6 +485,12 @@ Typical fields include:
 
 Use the existing logger interface instead of ad hoc `console.log` statements so
 REST and MCP telemetry stay consistent.
+
+Quota and ownership diagnostics may contain only stable event/operation,
+outcome/reason, timestamps/durations, aggregate counts/limits, and short
+principal/destination fingerprint prefixes. Never log raw HSA-id, destination
+ID/name, session ID, token/hash, submitted payload, stored validation/execution
+JSON, row identifiers or issue arrays.
 
 ## Error Handling
 

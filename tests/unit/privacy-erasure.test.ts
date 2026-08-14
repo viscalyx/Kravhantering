@@ -88,6 +88,18 @@ function keyForPrivacySql(sql: string): string | null {
   if (sql.includes('FROM action_audit_events WHERE actor_hsa_id')) {
     return 'action_audit_events.actor'
   }
+  if (
+    sql.includes('FROM requirement_import_validation_sessions') &&
+    sql.includes('creator_principal_fingerprint')
+  ) {
+    return 'requirement_import_validation_sessions.creator'
+  }
+  if (
+    sql.includes('FROM requirement_import_validation_rate_buckets') &&
+    sql.includes('principal_fingerprint')
+  ) {
+    return 'requirement_import_validation_rate_buckets.principal'
+  }
   return null
 }
 
@@ -125,6 +137,54 @@ function createTransactionalDb(query: ReturnType<typeof vi.fn>) {
 }
 
 describe('privacy erasure service', () => {
+  it('previews and deletes exact MCP principal fingerprints without querying raw HSA-id', async () => {
+    const previewDb = createPrivacyDb({
+      'requirement_import_validation_rate_buckets.principal': { count: 1 },
+      'requirement_import_validation_sessions.creator': { count: 2 },
+    })
+    const preview = await previewPrivacyErasure(previewDb.db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(preview.groups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          count: 2,
+          key: 'requirement_import_validation_sessions.creator',
+          recommendedAction: 'delete',
+        }),
+        expect.objectContaining({
+          count: 1,
+          key: 'requirement_import_validation_rate_buckets.principal',
+          recommendedAction: 'delete',
+        }),
+      ]),
+    )
+    const fingerprintParameters = previewDb.query.mock.calls
+      .filter(([sql]) => String(sql).includes('principal_fingerprint'))
+      .map(([, parameters]) => parameters?.[0])
+    expect(fingerprintParameters).not.toContain(TARGET_HSA_ID)
+    expect(fingerprintParameters).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^[a-f0-9]{64}$/u)]),
+    )
+
+    const executionDb = createPrivacyDb({
+      'requirement_import_validation_rate_buckets.principal': { count: 1 },
+      'requirement_import_validation_sessions.creator': { count: 2 },
+    })
+    await executePrivacyErasure(createTransactionalDb(executionDb.query), {
+      previewToken: preview.previewToken,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    const deletes = executionDb.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('DELETE FROM requirement_import_validation'),
+    )
+    expect(deletes).toHaveLength(2)
+    expect(
+      deletes.every(([, parameters]) => parameters?.[0] !== TARGET_HSA_ID),
+    ).toBe(true)
+  })
+
   it('rejects blank target HSA-id values', async () => {
     const { db } = createPrivacyDb({})
 
