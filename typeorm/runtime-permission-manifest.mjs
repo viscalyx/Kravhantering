@@ -13,7 +13,7 @@ const READ_UPDATE = Object.freeze(['SELECT', 'UPDATE'])
  * fully qualified and every operation is explicit so new tables receive no
  * access until this manifest changes.
  */
-export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
+const RUNTIME_PERMISSION_MANIFEST_AT_0054 = Object.freeze(
   [
     {
       object: 'dbo.access_review_items',
@@ -57,10 +57,6 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
         'ai_safety_forensic_logging_enabled',
         'ai_safety_rule_cache_ttl_seconds',
         'mcp_import_max_rows',
-        'mcp_import_max_active_sessions_per_destination',
-        'mcp_import_max_active_sessions_per_principal',
-        'mcp_import_max_creations_per_window',
-        'mcp_import_max_reserved_bytes',
         'mcp_import_validation_ttl_minutes',
         'mcp_max_request_bytes',
         'requirement_generation_enabled',
@@ -88,10 +84,6 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
     },
     { object: 'dbo.requirement_areas', permissions: CRUD },
     { object: 'dbo.requirement_categories', permissions: CRUD },
-    {
-      object: 'dbo.requirement_import_validation_rate_buckets',
-      permissions: CRUD,
-    },
     {
       object: 'dbo.requirement_import_validation_sessions',
       permissions: CRUD,
@@ -197,6 +189,27 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
   ),
 )
 
+export const RUNTIME_PERMISSION_MANIFEST = Object.freeze([
+  ...RUNTIME_PERMISSION_MANIFEST_AT_0054.map(entry =>
+    entry.object === 'dbo.ai_settings'
+      ? Object.freeze({
+          ...entry,
+          updateColumns: Object.freeze([
+            ...entry.updateColumns,
+            'mcp_import_max_active_sessions_per_destination',
+            'mcp_import_max_active_sessions_per_principal',
+            'mcp_import_max_creations_per_window',
+            'mcp_import_max_reserved_bytes',
+          ]),
+        })
+      : entry,
+  ),
+  Object.freeze({
+    object: 'dbo.requirement_import_validation_rate_buckets',
+    permissions: CRUD,
+  }),
+])
+
 export const RUNTIME_PERMISSION_MANIFEST_DIGEST = createHash('sha256')
   .update(
     JSON.stringify({
@@ -243,7 +256,7 @@ export function buildRuntimeRoleCreateSql() {
 }
 
 export function buildRuntimePermissionReconcileSql(
-  manifest = RUNTIME_PERMISSION_MANIFEST,
+  manifest = RUNTIME_PERMISSION_MANIFEST_AT_0054,
 ) {
   const expectedObjectChecks = manifest
     .map(entry => {

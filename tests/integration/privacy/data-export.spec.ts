@@ -682,6 +682,138 @@ test('PRIV-09: export includes the orphaned responsibility person target only', 
   })
 })
 
+test('PRIV-10: MCP fingerprints export safe metadata and delete owned transient state', async ({
+  page,
+}) => {
+  const targetHsaId = 'SE5560000001-mcp1'
+  const exportRequests: unknown[] = []
+  const executeRequests: unknown[] = []
+  const safeExport = {
+    ...exportPayload(targetHsaId),
+    sources: [
+      {
+        items: [
+          {
+            fields: [
+              { label: 'Måltyp', value: 'requirements_library' },
+              { label: 'Reserverade byte', value: 4096 },
+              { label: 'Skapad', value: '2026-05-12T11:00:00.000Z' },
+              { label: 'Upphör', value: '2026-05-12T12:00:00.000Z' },
+            ],
+            title: 'MCP-importvalidering',
+          },
+        ],
+        source: 'requirement_import_validation_sessions.creator',
+      },
+      {
+        items: [
+          {
+            fields: [
+              { label: 'Skapanden', value: 1 },
+              { label: 'Fönsterstart', value: '2026-05-12T11:00:00.000Z' },
+              { label: 'Upphör', value: '2026-05-12T11:10:00.000Z' },
+            ],
+            title: 'MCP-anropsgräns',
+          },
+        ],
+        source: 'requirement_import_validation_rate_buckets.principal',
+      },
+    ],
+  }
+
+  await test.step('set up fingerprint-only privacy routes', async () => {
+    await page.route('**/api/privacy/erasure-preview', async route => {
+      await fulfillJson(
+        route,
+        privacyPreview(
+          targetHsaId,
+          [
+            {
+              affectedReferences: [],
+              allowedActions: ['delete', 'skip'],
+              count: 1,
+              fieldKey: 'creatorPrincipalFingerprint',
+              key: 'requirement_import_validation_sessions.creator',
+              objectKey: 'requirementImportValidationSessions',
+              recommendedAction: 'delete',
+              warningKey: 'tokenInvalidation',
+            },
+            {
+              affectedReferences: [],
+              allowedActions: ['delete', 'skip'],
+              count: 1,
+              fieldKey: 'principalFingerprint',
+              key: 'requirement_import_validation_rate_buckets.principal',
+              objectKey: 'requirementImportValidationRateBuckets',
+              recommendedAction: 'delete',
+              warningKey: 'rateBucketDeletion',
+            },
+          ],
+          'mcp-fingerprint-preview-token',
+        ),
+      )
+    })
+    await page.route('**/api/privacy/data-subject-export', async route => {
+      exportRequests.push(route.request().postDataJSON())
+      await fulfillJson(route, safeExport)
+    })
+    await page.route('**/api/privacy/erasure-requests', async route => {
+      executeRequests.push(route.request().postDataJSON())
+      await fulfillJson(route, {
+        actions: { anonymize: 0, delete: 2, skip: 0, switch: 0 },
+        groups: [],
+        requestId: 'mcp-fingerprint-erasure',
+        targetFingerprint: 'mcp-fingerprint',
+        totalCount: 2,
+      })
+    })
+  })
+
+  await test.step('preview and export only safe MCP metadata', async () => {
+    await page.goto('/sv/admin?tab=privacy')
+    await waitForPrivacyPanelHydration(page)
+    await page
+      .getByRole('textbox', { name: 'HSA-id att söka efter' })
+      .fill(targetHsaId)
+    await page.getByRole('button', { name: 'Förhandsgranska' }).click()
+
+    await expect(
+      page.getByText('Valideringssessioner för MCP-import'),
+    ).toHaveCount(1)
+    await expect(
+      page.getByText('Anropsgränser för MCP-valideringssessioner'),
+    ).toHaveCount(1)
+    await page.getByRole('button', { name: 'Exportera JSON' }).click()
+    await expect.poll(() => exportRequests.length).toBe(1)
+    expect(exportRequests[0]).toMatchObject({
+      delivery: 'json',
+      target: { hsaId: targetHsaId },
+    })
+    expect(JSON.stringify(safeExport)).not.toMatch(
+      /validationToken|submittedPayload|validationResult|destinationName|rowId/u,
+    )
+  })
+
+  await test.step('delete both fingerprint-owned transient records', async () => {
+    await page.getByRole('button', { name: 'Kör radering' }).click()
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Kör radering' })
+      .click()
+
+    await expect.poll(() => executeRequests.length).toBe(1)
+    expect(executeRequests[0]).toMatchObject({
+      actions: {
+        'requirement_import_validation_rate_buckets.principal': 'delete',
+        'requirement_import_validation_sessions.creator': 'delete',
+      },
+      previewToken: 'mcp-fingerprint-preview-token',
+      target: { hsaId: targetHsaId },
+    })
+    await expect(page.getByText('Dataskyddsradering slutförd.')).toHaveCount(1)
+  })
+})
+
 test('PRIV-01: self-service privacy page exports the signed-in user without target override', async ({
   page,
 }) => {

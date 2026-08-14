@@ -15,6 +15,8 @@ const TABLE_ORDER = [
   'requirement_area_co_authors',
   'requirement_categories',
   'ai_settings',
+  'requirement_import_validation_sessions',
+  'requirement_import_validation_rate_buckets',
   'application_settings',
   'ai_safety_rules',
   'ai_safety_rule_terms',
@@ -63,6 +65,68 @@ const TABLE_ORDER = [
 ]
 
 const SEED_DATA = {
+  requirement_import_validation_sessions: {
+    columns: [
+      'id',
+      'token_hash',
+      'creator_principal_fingerprint',
+      'payload_hash',
+      'destination_kind',
+      'destination_id',
+      'reference_data_fingerprint',
+      'reserved_bytes',
+      'destination_snapshot_json',
+      'submitted_payload_json',
+      'validation_result_json',
+      'execution_result_json',
+      'expires_at',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['id'],
+    rows: [
+      [
+        9001,
+        '1'.repeat(64),
+        '2'.repeat(64),
+        '3'.repeat(64),
+        'requirements_library',
+        1001,
+        '4'.repeat(64),
+        4096,
+        '{"kind":"requirements_library","areaId":1001}',
+        '{"schemaVersion":"requirement-import.v4","requirements":[]}',
+        '{"issues":[],"rows":[]}',
+        null,
+        '2026-04-20 20:17:00',
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+    ],
+  },
+  requirement_import_validation_rate_buckets: {
+    columns: [
+      'id',
+      'principal_fingerprint',
+      'window_started_at',
+      'successful_creations',
+      'expires_at',
+      'created_at',
+      'updated_at',
+    ],
+    pk: ['id'],
+    rows: [
+      [
+        9001,
+        '2'.repeat(64),
+        '2026-04-20 20:00:00',
+        1,
+        '2026-04-20 20:10:00',
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+    ],
+  },
   norm_references: {
     columns: [
       'id',

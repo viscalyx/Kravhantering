@@ -1943,19 +1943,6 @@ MCP-korpusen.
 `WWW-Authenticate: Bearer`. Med giltig token exponeras exakt den dokumenterade
 verktygsuppsättningen och seedade MCP-anrop fungerar utan oväntade verktyg.
 
-### MCP-02: ägarskap, transaktionsbehörighet och samtidiga kvoter
-
-1. Skapa en giltig valideringstoken som principal A.
-2. Verifiera att A kan inspektera den och att principal B får samma not-found
-   som för en okänd token vid både inspektion och körning.
-3. Ta bort A:s behörighet till målet efter validering och verifiera att körning
-   nekas utan skapade krav eller körningskvitto.
-4. Sätt varje kvot till en låg gräns och skicka två samtidiga giltiga
-   valideringar vid gränsen. Verifiera att endast en skapelse lyckas och att den
-   andra får rätt stabil issue-kod. Kontrollera principal, skapandefönster, mål
-   och lagring var för sig.
-5. Verifiera att schemafel och nekad behörighet inte ökar skapanderäknaren.
-
 ### DEVTOOLS-02: Developer Mode ligger kvar vid navigering
 
 **Steg:** Aktivera Developer Mode, navigera mellan kravbibliotek och Admincenter.

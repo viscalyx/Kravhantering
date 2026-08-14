@@ -188,6 +188,10 @@ erDiagram
         bit ai_safety_forensic_logging_enabled
         integer mcp_max_request_bytes
         integer mcp_import_max_rows
+        integer mcp_import_max_active_sessions_per_principal
+        integer mcp_import_max_active_sessions_per_destination
+        integer mcp_import_max_creations_per_window
+        bigint mcp_import_max_reserved_bytes
         integer mcp_import_validation_ttl_minutes
         integer ai_safety_rule_cache_ttl_seconds
         datetime2 created_at
@@ -217,6 +221,7 @@ erDiagram
     requirement_import_validation_sessions {
         integer id PK
         text token_hash UK
+        text creator_principal_fingerprint
         text payload_hash
         text destination_kind
         integer destination_id
@@ -225,6 +230,17 @@ erDiagram
         text submitted_payload_json
         text validation_result_json
         text execution_result_json "nullable"
+        bigint reserved_bytes
+        datetime2 expires_at
+        datetime2 created_at
+        datetime2 updated_at
+    }
+
+    requirement_import_validation_rate_buckets {
+        integer id PK
+        text principal_fingerprint
+        datetime2 window_started_at
+        integer successful_creations
         datetime2 expires_at
         datetime2 created_at
         datetime2 updated_at
@@ -1645,6 +1661,10 @@ unknown or expired token. Execute locks the owned session and re-authorizes the
 stored destination inside the same serializable transaction as requirement
 mutation and receipt persistence.
 
+**Demo seed:** one expired synthetic session exercises the persisted ownership
+and reservation fields without creating active quota usage or storing a real
+person identity.
+
 ### `requirement_import_validation_rate_buckets`
 
 Transient, aggregate counters for successful MCP validation-session creation.
@@ -1654,6 +1674,9 @@ audit timestamps; it never stores raw HSA-id, token, payload, destination or
 validation content. A unique index on `(principal_fingerprint,
 window_started_at)` prevents duplicate counters, and an expiry index supports
 bounded cleanup.
+
+**Demo seed:** one expired synthetic counter corresponds to the synthetic
+validation session and does not consume the current creation window.
 
 Session admission is one serializable, application-locked operation. It checks
 and rejects in principal, creation-rate, destination, then storage order; exact
@@ -2791,6 +2814,11 @@ graph LR
         IS[improvement_suggestions]
     end
 
+    subgraph Transient MCP State
+        MIVS[requirement_import_validation_sessions]
+        MIVR[requirement_import_validation_rate_buckets]
+    end
+
     subgraph Specifications
         PGOT[specification_governance_object_types]
         PIT[specification_implementation_types]
@@ -2838,6 +2866,12 @@ graph LR
     HIP -- "idx_hsa_id_prefixes_is_visible\n(is_visible)" --> HIP
     AIRT -- "FK rule_id" --> AIR
     AIRT -- "uq_..._rule_type_normalized\n(rule_id, term_type, normalized_term)" --> AIRT
+
+    MIVS -- "uq_..._token_hash\n(token_hash)" --> MIVS
+    MIVS -- "idx_..._principal_expires_at\n(creator_principal_fingerprint, expires_at)" --> MIVS
+    MIVS -- "idx_..._destination_expires_at\n(destination_kind, destination_id, expires_at)" --> MIVS
+    MIVR -- "uq_..._principal_window\n(principal_fingerprint, window_started_at)" --> MIVR
+    MIVR -- "idx_..._expires_at\n(expires_at)" --> MIVR
 
     RA -- "uq_requirement_areas_prefix\n(prefix)" --> RA
     RA -- "FK owner_hsa_id" --> RRP

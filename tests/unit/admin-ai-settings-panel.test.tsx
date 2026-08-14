@@ -302,6 +302,11 @@ describe('AiSettingsPanel', () => {
       ),
     ).toBe(true)
     expect(screen.getAllByText('admin.saved').length).toBeGreaterThan(0)
+    expect(
+      screen
+        .getAllByRole('status')
+        .some(status => status.textContent === 'admin.saved'),
+    ).toBe(true)
   })
 
   it('restores blank numeric drafts without saving', async () => {

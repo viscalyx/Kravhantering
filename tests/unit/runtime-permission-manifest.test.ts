@@ -33,7 +33,12 @@ describe('runtime permission manifest', () => {
       object: 'dbo.requirement_import_validation_rate_buckets',
       permissions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
     })
-    expect(permissionFor('dbo.ai_settings')?.updateColumns).toEqual(
+    const aiSettingsPermission = permissionFor('dbo.ai_settings')
+    expect(
+      aiSettingsPermission && 'updateColumns' in aiSettingsPermission
+        ? aiSettingsPermission.updateColumns
+        : undefined,
+    ).toEqual(
       expect.arrayContaining([
         'mcp_import_max_active_sessions_per_destination',
         'mcp_import_max_active_sessions_per_principal',
@@ -44,7 +49,7 @@ describe('runtime permission manifest', () => {
   })
 
   it('builds reconciliation from explicit objects without schema-wide or dynamic grants', () => {
-    const sql = buildRuntimePermissionReconcileSql()
+    const sql = buildRuntimePermissionReconcileSql(RUNTIME_PERMISSION_MANIFEST)
 
     expect(sql).toContain('REVOKE SELECT ON OBJECT::[dbo].[migrations]')
     expect(sql).toContain('GRANT SELECT ON OBJECT::[dbo].[migrations]')

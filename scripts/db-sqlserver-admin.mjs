@@ -57,6 +57,8 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'specification_co_authors',
   'requirements_specifications',
   'hsa_id_prefixes',
+  'requirement_import_validation_rate_buckets',
+  'requirement_import_validation_sessions',
   'requirement_area_co_authors',
   'requirement_areas',
   'requirement_responsibility_people',
@@ -1329,7 +1331,9 @@ async function reconcileSqlServerRuntimePermissionsInTransaction(
   queryExecutor,
   expectedRuntimeUsers,
 ) {
-  await queryExecutor.query(buildRuntimePermissionReconcileSql())
+  await queryExecutor.query(
+    buildRuntimePermissionReconcileSql(RUNTIME_PERMISSION_MANIFEST),
+  )
   const beforeMembership = await getSqlServerRuntimePermissionStatus(
     queryExecutor,
     { expectedRuntimeUsers },

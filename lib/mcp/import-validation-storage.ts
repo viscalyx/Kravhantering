@@ -14,6 +14,9 @@ const EXECUTION_RECEIPT_BASE_BYTES = 1024
 const EXECUTION_RECEIPT_BYTES_PER_ROW = 2048
 const FIXED_AND_ROW_OVERHEAD_BYTES = 256
 
+export const MCP_IMPORT_VALIDATION_MINIMUM_RESERVED_BYTES =
+  EXECUTION_RECEIPT_BASE_BYTES + FIXED_AND_ROW_OVERHEAD_BYTES
+
 function sqlServerNvarcharBytes(value: string): number {
   return Buffer.byteLength(value, 'utf16le')
 }

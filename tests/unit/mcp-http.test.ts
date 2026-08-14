@@ -500,6 +500,14 @@ describe('handleRequirementsMcpRequest', () => {
       expect(importTool?.description).toContain(
         'Validation sessions are immutable after validate',
       )
+      expect(importTool?.description).toContain('principal-bound')
+      expect(importTool?.description).toContain(
+        'from the same authenticated principal',
+      )
+      expect(importTool?.description).toContain(
+        'successful creations per fixed 10-minute principal window',
+      )
+      expect(importTool?.description).toContain('globally reserved storage')
       expect(importTool?.description).toContain('corrected Kravimportfil')
       expect(importTool?.description).toContain(
         'does not do generic duplicate detection',

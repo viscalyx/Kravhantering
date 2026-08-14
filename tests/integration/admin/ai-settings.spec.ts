@@ -430,7 +430,7 @@ test.describe('Admin settings', () => {
     }
   })
 
-  test('REQ-16B: Admin Center controls the MCP request payload limit', async ({
+  test('ADMIN-17/REQ-16B: Admin Center controls MCP request and session limits', async ({
     page,
     request,
   }) => {

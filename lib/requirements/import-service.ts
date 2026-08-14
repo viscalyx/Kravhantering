@@ -50,6 +50,7 @@ import {
 } from '@/lib/mcp/import-validation-principal'
 import {
   calculateMcpImportValidationSessionReservedBytes,
+  MCP_IMPORT_VALIDATION_MINIMUM_RESERVED_BYTES,
   maximumMcpImportExecutionReceiptBytes,
 } from '@/lib/mcp/import-validation-storage'
 import {
@@ -2581,7 +2582,8 @@ export function createRequirementsImportWorkflow({
                 creatorPrincipalFingerprint,
                 destinationId: destinationId(input.destination),
                 destinationKind: input.destination.kind,
-                requestedReservedBytes: 0,
+                requestedReservedBytes:
+                  MCP_IMPORT_VALIDATION_MINIMUM_RESERVED_BYTES,
               })
             if (advisoryRejection) {
               logger.info(

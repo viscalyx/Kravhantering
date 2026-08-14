@@ -146,7 +146,7 @@ const UP_STATEMENTS = [
       CONSTRAINT [df_ai_settings_mcp_import_max_reserved_bytes]
       DEFAULT (536870912) WITH VALUES;`,
   ...SESSION_QUOTA_SETTING_COLUMNS.map(addSettingCheckStatement),
-  buildRuntimePermissionReconcileSql(),
+  buildRuntimePermissionReconcileSql(RUNTIME_PERMISSION_MANIFEST),
 ]
 
 const DOWN_STATEMENTS = [

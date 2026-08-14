@@ -271,7 +271,10 @@ function NumericSettingCard({
         </div>
       </div>
       {saveState !== 'idle' ? (
-        <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+        <p
+          className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400"
+          role="status"
+        >
           {saveStateText}
         </p>
       ) : null}
@@ -1126,7 +1129,10 @@ export default function AiSettingsPanel({
               </label>
             </div>
             {settingSaveStates.requirementGenerationEnabled !== 'idle' ? (
-              <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+              <p
+                className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400"
+                role="status"
+              >
                 {settingSaveStates.requirementGenerationEnabled === 'saving'
                   ? tc('saving')
                   : settingSaveStates.requirementGenerationEnabled === 'saved'
@@ -1198,7 +1204,10 @@ export default function AiSettingsPanel({
               </label>
             </div>
             {settingSaveStates.aiSafetyForensicLoggingEnabled !== 'idle' ? (
-              <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+              <p
+                className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400"
+                role="status"
+              >
                 {settingSaveStates.aiSafetyForensicLoggingEnabled === 'saving'
                   ? tc('saving')
                   : settingSaveStates.aiSafetyForensicLoggingEnabled === 'saved'
@@ -1283,7 +1292,10 @@ export default function AiSettingsPanel({
                 </div>
               </div>
               {settingSaveStates.aiSafetyRuleCacheTtlSeconds !== 'idle' ? (
-                <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                <p
+                  className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400"
+                  role="status"
+                >
                   {settingSaveStates.aiSafetyRuleCacheTtlSeconds === 'saving'
                     ? tc('saving')
                     : settingSaveStates.aiSafetyRuleCacheTtlSeconds === 'saved'
@@ -1797,7 +1809,10 @@ export default function AiSettingsPanel({
                 </div>
               </div>
               {settingSaveStates.mcpMaxRequestBytes !== 'idle' ? (
-                <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                <p
+                  className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400"
+                  role="status"
+                >
                   {settingSaveStates.mcpMaxRequestBytes === 'saving'
                     ? tc('saving')
                     : settingSaveStates.mcpMaxRequestBytes === 'saved'
@@ -1999,7 +2014,10 @@ export default function AiSettingsPanel({
                 </div>
               </div>
               {settingSaveStates.mcpImportMaxRows !== 'idle' ? (
-                <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                <p
+                  className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400"
+                  role="status"
+                >
                   {settingSaveStates.mcpImportMaxRows === 'saving'
                     ? tc('saving')
                     : settingSaveStates.mcpImportMaxRows === 'saved'
@@ -2083,7 +2101,10 @@ export default function AiSettingsPanel({
                 </div>
               </div>
               {settingSaveStates.mcpImportValidationTtlMinutes !== 'idle' ? (
-                <p className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400">
+                <p
+                  className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400"
+                  role="status"
+                >
                   {settingSaveStates.mcpImportValidationTtlMinutes === 'saving'
                     ? tc('saving')
                     : settingSaveStates.mcpImportValidationTtlMinutes ===

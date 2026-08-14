@@ -133,6 +133,32 @@ describe('MCP import-validation quota insertion', () => {
         ),
       ),
     ).toBe(false)
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes(
+          'UPDATE requirement_import_validation_rate_buckets',
+        ),
+      ),
+    ).toBe(false)
+  })
+
+  it('rejects immediately when settings are reduced below current usage', async () => {
+    const { db, query } = createDb({ principalActiveSessions: 42 })
+
+    await expect(
+      createRequirementImportValidationSessionAtomically(db, data),
+    ).resolves.toEqual({
+      rejection: {
+        code: 'import_validation_principal_session_quota_exceeded',
+      },
+    })
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes(
+          'INSERT INTO requirement_import_validation_sessions',
+        ),
+      ),
+    ).toBe(false)
   })
 
   it('reports only the highest-precedence quota and bounds the caller retry delay', async () => {

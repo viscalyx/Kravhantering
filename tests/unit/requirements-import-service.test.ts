@@ -45,6 +45,7 @@ import {
   listSpecificationNeedsReferences,
   listSpecificationsForActor,
 } from '@/lib/dal/requirements-specifications'
+import { MCP_IMPORT_VALIDATION_MINIMUM_RESERVED_BYTES } from '@/lib/mcp/import-validation-storage'
 import type { RequestContext } from '@/lib/requirements/auth'
 import { forbiddenError } from '@/lib/requirements/errors'
 import {
@@ -305,9 +306,9 @@ describe('requirements import service', () => {
     vi.mocked(
       purgeExpiredRequirementImportValidationSessions,
     ).mockResolvedValue({ deletedRows: 0 })
-    vi.mocked(
-      updateRequirementImportValidationSessionExecutionResult,
-    ).mockResolvedValue(undefined)
+    vi.mocked(updateRequirementImportValidationSessionExecutionResult)
+      .mockReset()
+      .mockResolvedValue(undefined)
     vi.mocked(createRequirementsBatch).mockReset()
     vi.mocked(createRequirementsBatchWithExecutor).mockReset()
     vi.mocked(createSpecificationLocalRequirementsBatch).mockReset()
@@ -709,6 +710,7 @@ describe('requirements import service', () => {
       ]),
     )
     expect(getAreaById).not.toHaveBeenCalled()
+    expect(createRequirementImportValidationSession).not.toHaveBeenCalled()
   })
 
   it('fails closed when MCP destination-denial evidence cannot persist', async () => {
@@ -765,6 +767,49 @@ describe('requirements import service', () => {
     expect(getAreaById).not.toHaveBeenCalled()
   })
 
+  it('applies the same principal quota to Admin actors before destination loading', async () => {
+    vi.mocked(
+      checkRequirementImportValidationSessionQuotaAdvisory,
+    ).mockResolvedValueOnce({
+      code: 'import_validation_principal_session_quota_exceeded',
+    })
+    const workflow = createRequirementsImportWorkflow({
+      authorization: { assertAuthorized: vi.fn() },
+      db: makeManageImportDb().db as never,
+    })
+    const context = makeContext('requirements_manage_import')
+    context.actor.roles = ['Admin']
+
+    await expect(
+      workflow.manageImport(context, {
+        destination: { areaId: 7, kind: 'requirements_library' },
+        operation: 'validate',
+        payload: {
+          requirements: [{ description: 'Systemet ska logga händelser.' }],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      }),
+    ).resolves.toMatchObject({
+      hasErrors: true,
+      issues: [
+        expect.objectContaining({
+          code: 'import_validation_principal_session_quota_exceeded',
+        }),
+      ],
+    })
+
+    expect(
+      checkRequirementImportValidationSessionQuotaAdvisory,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        requestedReservedBytes: MCP_IMPORT_VALIDATION_MINIMUM_RESERVED_BYTES,
+      }),
+    )
+    expect(getAreaById).not.toHaveBeenCalled()
+    expect(createRequirementImportValidationSession).not.toHaveBeenCalled()
+  })
+
   it('maps MCP import schema failures to the public issue-code set', async () => {
     const authorization = { assertAuthorized: vi.fn() }
     const workflow = createRequirementsImportWorkflow({
@@ -816,6 +861,9 @@ describe('requirements import service', () => {
       ],
     })
     expect(createRequirementImportValidationSession).not.toHaveBeenCalled()
+    expect(
+      vi.mocked(createRequirementImportValidationSession).mock.calls,
+    ).toHaveLength(0)
   })
 
   it('returns pinned MCP import cap codes and JSON Pointer paths', async () => {
@@ -3149,11 +3197,30 @@ describe('requirements import service', () => {
       details: { reason: 'validation_session_not_found_or_expired' },
     })
 
+    await expect(
+      workflow.manageImport(otherContext, {
+        operation: 'execute',
+        validationToken: 'opaque-validation-token',
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      details: { reason: 'validation_session_not_found_or_expired' },
+    })
+
+    expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
+    expect(
+      createSpecificationLocalRequirementsBatchWithExecutor,
+    ).not.toHaveBeenCalled()
+    expect(
+      updateRequirementImportValidationSessionExecutionResult,
+    ).not.toHaveBeenCalled()
+
     const fingerprints = vi
       .mocked(getRequirementImportValidationSessionByTokenHash)
-      .mock.calls.slice(-2)
+      .mock.calls.slice(-3)
       .map(call => call[2])
     expect(fingerprints[0]).not.toBe(fingerprints[1])
+    expect(fingerprints[1]).toBe(fingerprints[2])
   })
 
   it('rejects blank, expired, and corrupt validation sessions', async () => {
