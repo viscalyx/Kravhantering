@@ -8,6 +8,7 @@ After=kravhantering-single-node-database-network.service kravhantering-single-no
 ContainerName=kravhantering-transient-cleanup
 Image=@@DB_JOB_IMAGE_REF@@
 EnvironmentFile=/etc/kravhantering/app.env
+Environment=NODE_EXTRA_CA_CERTS=/run/kravhantering/tls/ca.crt
 Exec=/workspace/transient-cleanup/lib/transient-cleanup/cli.js
 PodmanArgs=--entrypoint=/usr/local/bin/node
 DropCapability=all

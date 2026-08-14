@@ -606,6 +606,9 @@ describe('kravhantering Quadlet helper', () => {
     expect(cleanup).toContain(
       'Network=kravhantering-single-node-egress.network',
     )
+    expect(cleanup).toContain(
+      'Environment=NODE_EXTRA_CA_CERTS=/run/kravhantering/tls/ca.crt',
+    )
     expect(
       units.find(unit => unit.file === 'kravhantering-nginx.container')
         ?.content,

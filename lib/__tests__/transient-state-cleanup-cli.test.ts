@@ -230,7 +230,10 @@ describe('transient cleanup command', () => {
         write: vi.fn(),
       }),
     ).resolves.toBe(0)
-    expect(createSqlServerDataSource).toHaveBeenCalledWith({ entities: [] })
+    expect(createSqlServerDataSource).toHaveBeenCalledWith({
+      entities: [],
+      logging: false,
+    })
     expect(dataSource.initialize).toHaveBeenCalledOnce()
     expect(dataSource.destroy).toHaveBeenCalledOnce()
   })

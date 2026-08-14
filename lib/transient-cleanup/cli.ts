@@ -97,7 +97,7 @@ function readConfig(env: CleanupEnv): CleanupCommandConfig {
 }
 
 async function connect(): Promise<CleanupConnection> {
-  const dataSource = createSqlServerDataSource({ entities: [] })
+  const dataSource = createSqlServerDataSource({ entities: [], logging: false })
   await dataSource.initialize()
   return { destroy: () => dataSource.destroy(), executor: dataSource }
 }
