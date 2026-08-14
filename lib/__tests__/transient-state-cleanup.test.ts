@@ -36,6 +36,7 @@ function createBacklogTarget(
 describe('transient state cleanup runner', () => {
   it('uses bounded batches and stops at the total work limit', async () => {
     const target = createBacklogTarget(250)
+    const inspect = vi.spyOn(target, 'inspect')
 
     const result = await runTransientStateCleanup([target], {
       backlogTarget: 0,
@@ -44,6 +45,7 @@ describe('transient state cleanup runner', () => {
     })
 
     expect(target.requestedLimits).toEqual([100, 100, 20])
+    expect(inspect).toHaveBeenCalledTimes(2)
     expect(result).toMatchObject({ outcome: 'success' })
     expect(result.targets[0]).toMatchObject({
       deletedRows: 220,

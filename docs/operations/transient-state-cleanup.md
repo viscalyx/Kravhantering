@@ -69,8 +69,9 @@ contain session tokens, hashes, destinations, submitted payloads, validation or
 execution results, identities, or raw database errors.
 
 A nonzero expired-row count may be normal while a run is respecting its work
-limit. A count that does not decrease over several schedules, a growing oldest
-age, or a failure outcome requires investigation.
+limit. Track `remaining_expired_row_count` as the backlog after each run. This
+field should decrease over successive schedules. A backlog that does not
+decrease, a growing oldest age, or a failure outcome requires investigation.
 
 ## Manual Retry
 

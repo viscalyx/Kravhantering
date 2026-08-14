@@ -112,19 +112,23 @@ export async function runTransientStateCleanup(
     try {
       initial = await target.inspect()
       current = initial
-      while (remainingWork > 0 && current.expiredRowCount > backlogTarget) {
+      let estimatedExpiredRowCount = current.expiredRowCount
+      let attemptedPurge = false
+      while (remainingWork > 0 && estimatedExpiredRowCount > backlogTarget) {
         const limit = Math.min(
           batchSize,
           remainingWork,
-          current.expiredRowCount - backlogTarget,
+          estimatedExpiredRowCount - backlogTarget,
         )
+        attemptedPurge = true
         const batch = await target.purgeBatch(limit)
         const boundedDeletedRows = boundedInteger(batch.deletedRows, 0, limit)
         deletedRows += boundedDeletedRows
         remainingWork -= boundedDeletedRows
-        current = await target.inspect()
+        estimatedExpiredRowCount -= boundedDeletedRows
         if (boundedDeletedRows === 0) break
       }
+      if (attemptedPurge) current = await target.inspect()
     } catch {
       outcome = 'failure'
       failureCode = 'target_execution_failed'

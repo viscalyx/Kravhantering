@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { runTransientCleanupCommand } from '@/lib/transient-cleanup/cli'
+import {
+  runTransientCleanupCommand,
+  setTransientCleanupProcessExitCode,
+} from '@/lib/transient-cleanup/cli'
 import type { TransientCleanupTarget } from '@/lib/transient-cleanup/runner'
 import { createSqlServerDataSource } from '@/lib/typeorm/sqlserver-config'
 
@@ -236,5 +239,20 @@ describe('transient cleanup command', () => {
     })
     expect(dataSource.initialize).toHaveBeenCalledOnce()
     expect(dataSource.destroy).toHaveBeenCalledOnce()
+  })
+
+  it('sets a failed process exit code when the top-level command rejects', async () => {
+    const originalExitCode = process.exitCode
+    try {
+      await setTransientCleanupProcessExitCode(Promise.resolve(0))
+      expect(process.exitCode).toBe(0)
+
+      await setTransientCleanupProcessExitCode(
+        Promise.reject(new Error('unexpected top-level failure')),
+      )
+      expect(process.exitCode).toBe(1)
+    } finally {
+      process.exitCode = originalExitCode
+    }
   })
 })

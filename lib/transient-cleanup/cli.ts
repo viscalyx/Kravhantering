@@ -183,8 +183,18 @@ export async function runTransientCleanupCommand(
   return exitCode
 }
 
+export async function setTransientCleanupProcessExitCode(
+  command: Promise<number>,
+): Promise<void> {
+  try {
+    process.exitCode = await command
+  } catch {
+    process.exitCode = 1
+  }
+}
+
 if (typeof require !== 'undefined' && require.main === module) {
-  void runTransientCleanupCommand(process.argv.slice(2)).then(exitCode => {
-    process.exitCode = exitCode
-  })
+  void setTransientCleanupProcessExitCode(
+    runTransientCleanupCommand(process.argv.slice(2)),
+  )
 }
