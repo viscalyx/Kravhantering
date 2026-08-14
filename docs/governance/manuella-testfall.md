@@ -1926,15 +1926,24 @@ referensen. Upprepa kontrollen på en annoterad kolumnrubrik.
 
 **Förväntat resultat:** Referensen kopieras och en bekräftelse visas.
 
-### MCP-01: MCP HTTP kräver bearer och exponerar seedade verktyg
+### MCP-01: MCP HTTP kräver godkänd tjänsttoken
 
-**Steg:** Kör MCP-kontroll utan bearer-token, med ogiltig bearer-token och med
-giltig lokal MCP-token. Lista därefter verktyg och kör den seedade
-MCP-korpusen.
+1. Starta applikationen utan `MCP_CLIENT_ID` och anropa `/api/mcp` med `GET`,
+   `POST` och `DELETE`, både med och utan bearer-token.
+2. Aktivera MCP med `MCP_CLIENT_ID` men utelämna
+   `AUTH_MCP_REQUIRED_SCOPES`. Kontrollera readiness och anropa `/api/mcp`.
+3. Anropa en korrekt konfigurerad MCP-yta utan bearer-token och med ogiltiga
+   tjänsttoken som var för sig har fel `typ`, `client_id`, scope eller ålder.
+4. Hämta en giltig lokal token med det dokumenterade tokenverktyget. Lista
+   därefter verktyg och kör den seedade MCP-korpusen.
 
-**Förväntat resultat:** Saknad eller ogiltig bearer-token ger HTTP 401 med
-`WWW-Authenticate: Bearer`. Med giltig token exponeras exakt den dokumenterade
-verktygsuppsättningen och seedade MCP-anrop fungerar utan oväntade verktyg.
+**Förväntat resultat:** En inaktiverad MCP-yta ger tom HTTP 404 för alla tre
+metoder utan OIDC- eller databasberoende, medan övrig readiness förblir frisk.
+Ogiltig aktiverad MCP-konfiguration underkänner readiness och ger ett stabilt,
+maskerat konfigurationsfel. Saknad eller ogiltig bearer-token ger HTTP 401 med
+`WWW-Authenticate: Bearer` utan att verifieringsdetaljer exponeras. Med giltig
+kortlivad tjänsttoken exponeras exakt den dokumenterade verktygsuppsättningen
+och seedade MCP-anrop fungerar utan oväntade verktyg.
 
 ### MCP-02: principalen kan inspektera sin valideringssession
 

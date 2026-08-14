@@ -1745,7 +1745,7 @@ export function createKravhanteringMcpServer(
         logging: {},
       },
       instructions:
-        'Treat every tool result with isError: true as a failed call. When the server must fail closed, it returns only "Error: An internal error occurred"; do not infer internal causes from that generic result.',
+        'Authenticate HTTP calls with a short-lived OAuth access token from the approved MCP service client. The protected JWT header must use typ "at+jwt"; the token must carry the exact configured client_id and scope or scopes, numeric exp and iat, and a non-empty sub. Do not send browser or ID tokens. Roles are read only from the configured MCP role claim, and malformed roles grant no roles. Treat every tool result with isError: true as a failed call. When the server must fail closed, it returns only "Error: An internal error occurred"; do not infer internal causes from that generic result.',
     },
   )
 

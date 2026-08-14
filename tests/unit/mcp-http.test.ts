@@ -371,6 +371,10 @@ describe('handleRequirementsMcpRequest', () => {
     it('advertises the generic fail-closed error contract', () => {
       const instructions = toolSchemaClient?.client.getInstructions()
 
+      expect(instructions).toContain('short-lived OAuth access token')
+      expect(instructions).toContain('typ "at+jwt"')
+      expect(instructions).toContain('exact configured client_id')
+      expect(instructions).toContain('configured MCP role claim')
       expect(instructions).toContain('isError: true')
       expect(instructions).toContain('failed call')
       expect(instructions).toContain('Error: An internal error occurred')

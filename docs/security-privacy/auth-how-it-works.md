@@ -187,29 +187,33 @@ sequenceDiagram
     Client->>Proxy: POST /api/mcp with Authorization Bearer JWT
     Proxy->>Route: Forward request
     Route->>Route: Resolve optional MCP configuration
-    Route->>Verify: verifyMcpBearerToken(request)
-    Verify->>JWKS: Fetch/cache signing keys via createRemoteJWKSet(...)
-    JWKS-->>Verify: JWK set
-    Verify->>Verify: jwtVerify(...): issuer + audience + clockTolerance
-    Verify->>Verify: Validate at+jwt, exp, sub, iat,<br/>age, client_id, scope, HSA-id, roles
-    Verify->>Audit: auth.mcp.token.accepted
-    Verify-->>Route: Verified actor
-    Route->>Attach: attachVerifiedActor(request, actor)
-    Route->>DB: Acquire request-scoped database
-    Route->>Handler: Continue with JSON-RPC handling
-    Handler-->>Client: JSON-RPC response
-
-    alt Missing or invalid token
-        Verify->>Audit: auth.token.rejected
-        Route-->>Client: JSON-RPC 401 + WWW-Authenticate: Bearer
-    else MCP is disabled
+    alt MCP is disabled
         Route-->>Client: Empty 404 without auth, audit, discovery, or database work
-    else Authentication configuration failure
-        Verify->>Audit: auth.token.rejected with allowlisted reason
+    else Invalid enabled MCP configuration
         Route-->>Client: Generic JSON-RPC 500 + WWW-Authenticate: Bearer
-    else Discovery or remote JWKS unavailable
-        Verify->>Audit: auth.token.rejected with allowlisted reason
-        Route-->>Client: Generic JSON-RPC 503 + WWW-Authenticate: Bearer
+    else MCP is enabled and configured
+        Route->>Verify: verifyMcpBearerToken(request)
+        Verify->>JWKS: Fetch/cache signing keys via createRemoteJWKSet(...)
+        JWKS-->>Verify: JWK set
+        Verify->>Verify: jwtVerify(...): issuer + audience + clockTolerance
+        Verify->>Verify: Validate at+jwt, exp, sub, iat,<br/>age, client_id, scope, HSA-id, roles
+        alt Missing or invalid token
+            Verify->>Audit: auth.token.rejected
+            Route-->>Client: JSON-RPC 401 + WWW-Authenticate: Bearer
+        else Base auth configuration failure
+            Verify->>Audit: auth.token.rejected with allowlisted reason
+            Route-->>Client: Generic JSON-RPC 500 + WWW-Authenticate: Bearer
+        else Discovery or remote JWKS unavailable
+            Verify->>Audit: auth.token.rejected with allowlisted reason
+            Route-->>Client: Generic JSON-RPC 503 + WWW-Authenticate: Bearer
+        else Token accepted
+            Verify->>Audit: auth.mcp.token.accepted
+            Verify-->>Route: Verified actor
+            Route->>Attach: attachVerifiedActor(request, actor)
+            Route->>DB: Acquire request-scoped database
+            Route->>Handler: Continue with JSON-RPC handling
+            Handler-->>Client: JSON-RPC response
+        end
     end
 ```
 <!-- markdownlint-enable MD013 -->
