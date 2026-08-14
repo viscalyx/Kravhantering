@@ -90,6 +90,12 @@ generator resolution before the workflow runs a live rootless journald
 preflight. This keeps regional runner-image differences from silently changing
 the production-smoke runtime contract.
 
+The production Quadlet installer likewise discovers generators from both the
+static `/usr/local` runner layout and Ubuntu's package-owned `/usr` layout.
+Regional runner updates can leave multiple layouts active concurrently, so a
+new generator location supplements the existing candidates until the older
+runner profile is explicitly retired.
+
 The job summary lists any recognized infrastructure signatures:
 
 - `conmon_missing_journald` identifies a conmon build without journald support;

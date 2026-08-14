@@ -1658,6 +1658,36 @@ rotate_sqlserver_certificate
     expect(result.status).toBe(0)
   })
 
+  it.each([
+    [
+      'static runner',
+      '/usr/local/lib/systemd/user-generators/podman-user-generator',
+    ],
+    [
+      'package runner',
+      '/usr/lib/systemd/user-generators/podman-user-generator',
+    ],
+  ])('discovers the Quadlet generator on a %s', (_profile, defaultPath) => {
+    const fixture = createFixture(releaseEnv())
+    const unavailableGenerator = path.join(fixture.root, 'unavailable-quadlet')
+    const availableGenerator = path.join(fixture.root, 'available-quadlet')
+    fs.writeFileSync(availableGenerator, '#!/usr/bin/env bash\nexit 0\n', {
+      mode: 0o755,
+    })
+
+    const result = runHelper(
+      ['verify-host', '--topology', 'app-node-tls'],
+      fixture,
+      {
+        KRAVHANTERING_QUADLET_GENERATOR: '',
+        KRAVHANTERING_QUADLET_GENERATOR_SEARCH_PATH: `${unavailableGenerator}:${availableGenerator}`,
+      },
+    )
+
+    expect(result.status).toBe(0)
+    expect(fs.readFileSync(SCRIPT_PATH, 'utf8')).toContain(defaultPath)
+  })
+
   it('reports Quadlet generator output when rendered units are rejected', () => {
     const fixture = createFixture(releaseEnv())
     const generatorPath = path.join(fixture.root, 'podman-user-generator')

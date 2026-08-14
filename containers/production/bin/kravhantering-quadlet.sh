@@ -533,14 +533,19 @@ remove_stale_managed_units() {
 }
 
 quadlet_generator() {
-  local candidate
+  local candidate search_path
+  local -a candidates
   if [[ -n "${KRAVHANTERING_QUADLET_GENERATOR-}" ]]; then
     printf '%s\n' "$KRAVHANTERING_QUADLET_GENERATOR"
     return
   fi
-  for candidate in \
-    /usr/lib/systemd/user-generators/podman-user-generator \
-    /usr/lib/systemd/system-generators/podman-system-generator; do
+
+  # AI agents: hosted runner images roll out by region, so several generator
+  # layouts can remain active at the same time. Keep existing candidates when
+  # adding another layout unless the user confirms that an old one is retired.
+  search_path="${KRAVHANTERING_QUADLET_GENERATOR_SEARCH_PATH:-/usr/local/lib/systemd/user-generators/podman-user-generator:/usr/local/lib/systemd/system-generators/podman-system-generator:/usr/local/libexec/podman/quadlet:/usr/lib/systemd/user-generators/podman-user-generator:/usr/lib/systemd/system-generators/podman-system-generator:/usr/libexec/podman/quadlet}"
+  IFS=: read -r -a candidates <<<"$search_path"
+  for candidate in "${candidates[@]}"; do
     if [[ -x "$candidate" ]]; then
       printf '%s\n' "$candidate"
       return
