@@ -43,6 +43,24 @@ describe('MCP import-validation rate-bucket cleanup', () => {
     expect(query.mock.calls[0]?.[1]).toEqual([42])
   })
 
+  it('normalizes malformed and negative backlog aggregates', async () => {
+    query.mockResolvedValueOnce([
+      {
+        expiredRowCount: -1,
+        expiredStoredBytes: 'invalid',
+        oldestExpiredAgeMs: -2,
+      },
+    ])
+
+    await expect(
+      inspectExpiredRequirementImportValidationRateBuckets(db),
+    ).resolves.toEqual({
+      expiredRowCount: 0,
+      expiredStoredBytes: 0,
+      oldestExpiredAgeMs: 0,
+    })
+  })
+
   it('registers rate buckets beside validation sessions for scheduled cleanup', () => {
     const targets = createTransientCleanupTargets(db)
 
@@ -53,5 +71,25 @@ describe('MCP import-validation rate-bucket cleanup', () => {
     expect(
       createRequirementImportValidationRateBucketCleanupTarget(db).kind,
     ).toBe('requirement_import_validation_rate_buckets')
+  })
+
+  it('delegates inspection and purge through the cleanup target', async () => {
+    query
+      .mockResolvedValueOnce([
+        {
+          expiredRowCount: 0,
+          expiredStoredBytes: 0,
+          oldestExpiredAgeMs: null,
+        },
+      ])
+      .mockResolvedValueOnce([{ deletedRows: 2 }])
+    const target = createRequirementImportValidationRateBucketCleanupTarget(db)
+
+    await expect(target.inspect()).resolves.toEqual({
+      expiredRowCount: 0,
+      expiredStoredBytes: 0,
+      oldestExpiredAgeMs: null,
+    })
+    await expect(target.purgeBatch(2)).resolves.toEqual({ deletedRows: 2 })
   })
 })

@@ -56,4 +56,13 @@ describe('MCP import-validation storage reservation', () => {
         }),
     ).toBe(2048)
   })
+
+  it.each([-1, 1.5])(
+    'rejects invalid validated row count %s',
+    validatedRowCount => {
+      expect(() =>
+        maximumMcpImportExecutionReceiptBytes(validatedRowCount),
+      ).toThrow('must be non-negative')
+    },
+  )
 })

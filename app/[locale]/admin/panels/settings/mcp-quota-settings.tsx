@@ -102,8 +102,9 @@ export default function McpQuotaSettings({
     const helpId = `${card.id}-help`
     const constraintId = `${card.id}-constraint`
     const commit = () => {
-      const parsed = Number(inputs[card.key].trim())
-      if (Number.isFinite(parsed)) {
+      const rawValue = inputs[card.key].trim()
+      const parsed = Number(rawValue)
+      if (rawValue !== '' && Number.isFinite(parsed)) {
         onCommit(card.key, parsed, card.displayDivisor)
       } else {
         setInputs(current => ({

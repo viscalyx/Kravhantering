@@ -268,7 +268,12 @@ describe('AiSettingsPanel', () => {
     ] as const) {
       const input = screen.getByLabelText(label)
       fireEvent.change(input, { target: { value } })
-      fireEvent.blur(input)
+      if (label === 'admin.ai.mcpImportMaxActiveSessionsPerPrincipal') {
+        fireEvent.keyDown(input, { key: 'Escape' })
+        fireEvent.keyDown(input, { key: 'Enter' })
+      } else {
+        fireEvent.blur(input)
+      }
       await waitFor(() => expect(input).toBeEnabled())
     }
     fireEvent.click(
@@ -327,6 +332,10 @@ describe('AiSettingsPanel', () => {
     for (const label of [
       'admin.ai.safetyRuleCacheTtl',
       'admin.ai.mcpMaxRequestLimit',
+      'admin.ai.mcpImportMaxActiveSessionsPerPrincipal',
+      'admin.ai.mcpImportMaxActiveSessionsPerDestination',
+      'admin.ai.mcpImportMaxCreationsPerWindow',
+      'admin.ai.mcpImportMaxReservedBytes',
       'admin.ai.mcpImportMaxRows',
       'admin.ai.mcpImportValidationTtl',
     ]) {

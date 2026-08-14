@@ -189,7 +189,11 @@ describe('AI settings DAL', () => {
       {
         aiSafetyForensicLoggingEnabled: undefined,
         aiSafetyRuleCacheTtlSeconds: -1,
+        mcpImportMaxActiveSessionsPerDestination: -1,
+        mcpImportMaxActiveSessionsPerPrincipal: -1,
+        mcpImportMaxCreationsPerWindow: -1,
         mcpImportMaxRows: -1,
+        mcpImportMaxReservedBytes: -1,
         mcpImportValidationTtlMinutes: -1,
         mcpMaxRequestBytes: -1,
         requirementGenerationEnabled: 1,
@@ -262,6 +266,36 @@ describe('AI settings DAL', () => {
       mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
       requirementGenerationEnabled: true,
     })
+  })
+
+  it('uses quota defaults when the principal quota migration is absent', async () => {
+    query
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error(
+            "Invalid column name 'mcp_import_max_active_sessions_per_principal'.",
+          ),
+          { number: 207 },
+        ),
+      )
+      .mockResolvedValueOnce([
+        {
+          aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
+          mcpImportValidationTtlMinutes:
+            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
+          mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+          requirementGenerationEnabled: 1,
+        },
+      ])
+
+    await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
+      ...MCP_QUOTA_DEFAULTS,
+      requirementGenerationEnabled: true,
+    })
+    expect(query.mock.calls[1]?.[0]).not.toContain(
+      'mcp_import_max_active_sessions_per_principal',
+    )
   })
 
   it('falls through to the legacy projection when an intermediate fallback fails', async () => {
@@ -473,6 +507,22 @@ describe('AI settings DAL', () => {
   })
 
   it.each([
+    [
+      'mcpImportMaxActiveSessionsPerPrincipal',
+      -1,
+      'invalid_mcp_import_max_active_sessions_per_principal',
+    ],
+    [
+      'mcpImportMaxActiveSessionsPerDestination',
+      -1,
+      'invalid_mcp_import_max_active_sessions_per_destination',
+    ],
+    [
+      'mcpImportMaxCreationsPerWindow',
+      -1,
+      'invalid_mcp_import_max_creations_per_window',
+    ],
+    ['mcpImportMaxReservedBytes', -1, 'invalid_mcp_import_max_reserved_bytes'],
     ['mcpImportMaxRows', -1, 'invalid_mcp_import_max_rows'],
     [
       'mcpImportValidationTtlMinutes',
@@ -631,6 +681,22 @@ describe('AI settings DAL', () => {
   })
 
   it.each([
+    [
+      { mcpImportMaxActiveSessionsPerPrincipal: -1 },
+      'invalid_mcp_import_max_active_sessions_per_principal',
+    ],
+    [
+      { mcpImportMaxActiveSessionsPerDestination: -1 },
+      'invalid_mcp_import_max_active_sessions_per_destination',
+    ],
+    [
+      { mcpImportMaxCreationsPerWindow: -1 },
+      'invalid_mcp_import_max_creations_per_window',
+    ],
+    [
+      { mcpImportMaxReservedBytes: -1 },
+      'invalid_mcp_import_max_reserved_bytes',
+    ],
     [{ mcpImportMaxRows: -1 }, 'invalid_mcp_import_max_rows'],
     [
       { mcpImportValidationTtlMinutes: -1 },

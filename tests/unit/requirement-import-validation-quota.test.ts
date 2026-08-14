@@ -73,6 +73,19 @@ function createDb(
   return { db: { transaction } as never, manager, query, transaction }
 }
 
+function createDbFromResponses(responses: unknown[]) {
+  const query = vi.fn()
+  for (const response of responses) query.mockResolvedValueOnce(response)
+  const manager = { query }
+  const transaction = vi.fn(
+    async (
+      _isolation: string,
+      callback: (executor: typeof manager) => Promise<unknown>,
+    ) => callback(manager),
+  )
+  return { db: { transaction } as never, query }
+}
+
 describe('MCP import-validation quota insertion', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -220,5 +233,101 @@ describe('MCP import-validation quota insertion', () => {
     expect(query.mock.calls[0]?.[0]).not.toMatch(
       /submitted_payload|validation_result|destination_snapshot/u,
     )
+  })
+
+  it('fails closed when advisory quota settings are missing', async () => {
+    await expect(
+      checkRequirementImportValidationSessionQuotaAdvisory(
+        { query: vi.fn().mockResolvedValue([]) },
+        {
+          creatorPrincipalFingerprint: data.creatorPrincipalFingerprint,
+          destinationId: data.destinationId,
+          destinationKind: data.destinationKind,
+          requestedReservedBytes: 0,
+        },
+      ),
+    ).rejects.toThrow('quota settings are missing')
+  })
+
+  it.each([
+    {
+      message: 'quota lock row',
+      responses: [[]],
+      text: 'Failed to acquire MCP import-validation quota lock',
+    },
+    {
+      message: 'quota lock',
+      responses: [[{ lockResult: -1 }]],
+      text: 'Failed to acquire MCP import-validation quota lock',
+    },
+    {
+      message: 'quota settings',
+      responses: [[{ lockResult: 0 }], [{ deletedRows: 0 }], []],
+      text: 'quota settings are missing',
+    },
+    {
+      message: 'quota clock',
+      responses: [[{ lockResult: 0 }], [{ deletedRows: 0 }], [settings], []],
+      text: 'quota clock is unavailable',
+    },
+    {
+      message: 'quota usage',
+      responses: [
+        [{ lockResult: 0 }],
+        [{ deletedRows: 0 }],
+        [settings],
+        [{ now, windowEnd, windowStart }],
+        [],
+      ],
+      text: 'quota usage is unavailable',
+    },
+    {
+      message: 'insert result',
+      responses: [
+        [{ lockResult: 0 }],
+        [{ deletedRows: 0 }],
+        [settings],
+        [{ now, windowEnd, windowStart }],
+        [
+          {
+            destinationActiveSessions: 0,
+            principalActiveSessions: 0,
+            reservedBytes: 0,
+          },
+        ],
+        [{ successfulCreations: 0 }],
+        [],
+      ],
+      text: 'Failed to create requirement import validation session',
+    },
+  ])('fails closed when the $message is unavailable', async entry => {
+    const { db } = createDbFromResponses(entry.responses)
+
+    await expect(
+      createRequirementImportValidationSessionAtomically(db, data),
+    ).rejects.toThrow(entry.text)
+  })
+
+  it('creates the first rate bucket when no current window row exists', async () => {
+    const { db } = createDbFromResponses([
+      [{ lockResult: 0 }],
+      [{ deletedRows: 0 }],
+      [settings],
+      [{ now, windowEnd, windowStart }],
+      [
+        {
+          destinationActiveSessions: 0,
+          principalActiveSessions: 0,
+          reservedBytes: 0,
+        },
+      ],
+      [],
+      [insertedRow],
+      [],
+    ])
+
+    await expect(
+      createRequirementImportValidationSessionAtomically(db, data),
+    ).resolves.toEqual({ session: expect.objectContaining({ id: 11 }) })
   })
 })

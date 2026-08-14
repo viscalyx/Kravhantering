@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
+import { createMcpImportValidationPrincipalFingerprint } from '@/lib/mcp/import-validation-fingerprint.mjs'
 import {
   mcpImportValidationDestinationFingerprint,
   mcpImportValidationPrincipalFingerprint,
@@ -49,5 +50,29 @@ describe('MCP import-validation principal fingerprints', () => {
         secret: SECRET,
       }),
     ).toThrow('valid HSA-id')
+  })
+
+  it('rejects secrets that are too short at both public and shared boundaries', () => {
+    expect(() =>
+      mcpImportValidationPrincipalFingerprint('SE5560000001-import1', {
+        secret: 'too-short',
+      }),
+    ).toThrow('at least 32 characters')
+    expect(() =>
+      createMcpImportValidationPrincipalFingerprint(
+        'SE5560000001-import1',
+        'too-short',
+      ),
+    ).toThrow('at least 32 characters')
+  })
+
+  it.each([0, 1.5])('rejects invalid destination ID %s', destinationId => {
+    expect(() =>
+      mcpImportValidationDestinationFingerprint(
+        'requirements_library',
+        destinationId,
+        { secret: SECRET },
+      ),
+    ).toThrow('positive integer')
   })
 })
