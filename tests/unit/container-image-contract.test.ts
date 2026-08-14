@@ -222,6 +222,7 @@ describe('container image contract', () => {
     expect(target).toContain('typeorm/seed-required.mjs')
     expect(target).toContain('typeorm/ai-safety-seed-data.mjs')
     expect(target).toContain('typeorm/seed-runner.mjs')
+    expect(target).toContain('lib/mcp/import-validation-fingerprint.mjs')
     expect(target).toContain('typeorm/seed.mjs')
     expect(target).toContain('typeorm/seed-dogfood.mjs')
     expect(target).toContain('typeorm/seed-dogfood-build.mjs')

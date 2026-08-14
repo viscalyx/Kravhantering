@@ -80,12 +80,15 @@ Every PR and trusted release smoke run uploads `runtime-diagnostics/` in its
 runtime artifact, including runs that stop during toolchain setup, the early
 journald preflight, Quadlet installation, or service startup.
 
-The bootstrap resets any preinstalled Podman state, removes hosted-runner
-components under `/usr/local`, and reinstalls the Ubuntu package-owned Podman,
-conmon, crun, and Quadlet toolchain. It verifies command resolution, helper
-selection, package ownership, and generator resolution before the workflow
-runs a live rootless journald preflight. This keeps rolling runner-image
-updates from silently changing the production-smoke runtime contract.
+The bootstrap supports both hosted-runner toolchains. For package-based
+runners, it resets the disposable rootless state and reinstalls Ubuntu's
+Podman, conmon, crun, and Quadlet packages. For runners with Podman 5.x under
+`/usr/local`, it keeps the static Podman, crun, and Quadlet components and
+replaces the bundled conmon with Ubuntu's journald-capable conmon package. It
+verifies command resolution, helper selection, package ownership, and
+generator resolution before the workflow runs a live rootless journald
+preflight. This keeps regional runner-image differences from silently changing
+the production-smoke runtime contract.
 
 The job summary lists any recognized infrastructure signatures:
 

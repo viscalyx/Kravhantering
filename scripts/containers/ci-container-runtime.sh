@@ -9,7 +9,7 @@ PACKAGE_CONMON_BIN="$SYSTEM_PREFIX/bin/conmon"
 PACKAGE_CRUN_BIN="$SYSTEM_PREFIX/bin/crun"
 PACKAGE_QUADLET_GENERATOR="$SYSTEM_PREFIX/libexec/podman/quadlet"
 STATIC_PODMAN_BIN="$LOCAL_PREFIX/bin/podman"
-STATIC_CONMON_BIN="$LOCAL_PREFIX/lib/podman/conmon"
+STATIC_BUNDLED_CONMON_BIN="$LOCAL_PREFIX/lib/podman/conmon"
 STATIC_CRUN_BIN="$LOCAL_PREFIX/bin/crun"
 STATIC_QUADLET_GENERATOR="$LOCAL_PREFIX/libexec/podman/quadlet"
 PODMAN_BIN="${CI_RUNTIME_PODMAN_BIN:-$(command -v podman 2>/dev/null || true)}"
@@ -42,7 +42,7 @@ select_toolchain() {
   resolved_podman="$(canonical_path "$PODMAN_BIN")"
   if [[ "$resolved_podman" == "$(canonical_path "$STATIC_PODMAN_BIN")" ]]; then
     TOOLCHAIN_PROFILE=static
-    CONMON_BIN="${CI_RUNTIME_CONMON_BIN:-$STATIC_CONMON_BIN}"
+    CONMON_BIN="${CI_RUNTIME_CONMON_BIN:-$PACKAGE_CONMON_BIN}"
     CRUN_BIN="${CI_RUNTIME_CRUN_BIN:-$STATIC_CRUN_BIN}"
     QUADLET_GENERATOR="${CI_RUNTIME_QUADLET_GENERATOR:-$STATIC_QUADLET_GENERATOR}"
   elif [[ "$resolved_podman" == "$(canonical_path "$PACKAGE_PODMAN_BIN")" ]]; then
@@ -156,10 +156,8 @@ verify_toolchain() {
   assert_executable "$CRUN_BIN"
   assert_executable "$QUADLET_GENERATOR"
   verify_command_resolution podman "$PODMAN_BIN"
+  verify_command_resolution conmon "$CONMON_BIN"
   verify_command_resolution crun "$CRUN_BIN"
-  if [[ "$TOOLCHAIN_PROFILE" == package ]]; then
-    verify_command_resolution conmon "$CONMON_BIN"
-  fi
 
   generator="$(resolved_generator)"
   [[ "$generator" == "$(canonical_path "$QUADLET_GENERATOR")" ]] ||
@@ -182,9 +180,9 @@ verify_toolchain() {
   [[ "$(canonical_path "$selected_runtime")" == "$(canonical_path "$CRUN_BIN")" ]] ||
     fail "Podman selected unexpected OCI runtime: $selected_runtime"
 
+  assert_package_owner "$CONMON_BIN" conmon
   if [[ "$TOOLCHAIN_PROFILE" == package ]]; then
     assert_package_owner "$PODMAN_BIN" podman
-    assert_package_owner "$CONMON_BIN" conmon
     assert_package_owner "$CRUN_BIN" crun
     assert_package_owner "$QUADLET_GENERATOR" podman
   fi
@@ -203,10 +201,29 @@ bootstrap_toolchain() {
     fail 'bootstrap expects the pr or release profile'
   [[ "$profile" == release ]] && packages+=(skopeo)
 
-  # Hosted runner images can ship a coherent static toolchain with optional
-  # production features such as journald compiled out. Always converge on the
-  # package-owned Ubuntu toolchain; the separate live preflight then verifies
-  # the required journald capability instead of trusting version provenance.
+  select_toolchain
+  if [[ "$TOOLCHAIN_PROFILE" == static ]]; then
+    # Newer hosted images provide a current static Podman, crun, and Quadlet,
+    # but their bundled conmon omits journald support. Keep the current runtime
+    # and replace only conmon with Ubuntu's journald-capable package. This also
+    # avoids migrating rootless state from Podman 5.x back to Podman 4.x.
+    packages=(conmon jq libnss3-tools)
+    [[ "$profile" == release ]] && packages+=(skopeo)
+    "$SUDO_BIN" "$APT_GET_BIN" update
+    "$SUDO_BIN" "$APT_GET_BIN" install -y --no-install-recommends \
+      --reinstall "${packages[@]}"
+    "$SUDO_BIN" rm -f -- "$STATIC_BUNDLED_CONMON_BIN"
+    "$SUDO_BIN" ln -s -- "$PACKAGE_CONMON_BIN" "$STATIC_BUNDLED_CONMON_BIN"
+    hash -r
+    verify_toolchain
+    if [[ -n "${GITHUB_PATH:-}" ]]; then
+      dirname "$PODMAN_BIN" >>"$GITHUB_PATH"
+    fi
+    return 0
+  fi
+
+  # Older hosted images use Ubuntu's package-owned runtime. Reset its disposable
+  # rootless state and reinstall the complete package toolchain coherently.
   reset_existing_rootless_runtime
   remove_runner_static_configuration
   "$SUDO_BIN" rm -rf -- \

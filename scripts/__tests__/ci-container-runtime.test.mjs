@@ -71,7 +71,11 @@ function createRuntimeToolchain({ prefix, profile }) {
       `  --version) printf 'podman version ${versions.podman}\\n' ;;`,
       '  info)',
       `    sleep "\${CI_FAKE_INFO_DELAY_SECONDS:-0}"`,
-      `    printf '{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n' "\${CI_FAKE_CONMON_PATH:-${conmonPath}}" "\${CI_FAKE_CRUN_PATH:-${crunPath}}"`,
+      `    selected_conmon="\${CI_FAKE_CONMON_PATH:-${conmonPath}}"`,
+      `    if [[ -z "\${CI_FAKE_CONMON_PATH:-}" && ! -x "$selected_conmon" && -n "\${CI_FAKE_FALLBACK_CONMON_PATH:-}" ]]; then`,
+      '      selected_conmon="$CI_FAKE_FALLBACK_CONMON_PATH"',
+      '    fi',
+      `    printf '{"host":{"conmon":{"path":"%s"},"ociRuntime":{"path":"%s"}}}\\n' "$selected_conmon" "\${CI_FAKE_CRUN_PATH:-${crunPath}}"`,
       '    ;;',
       `  run) exit "\${CI_FAKE_RUN_STATUS:-0}" ;;`,
       `  system) [[ "$2 $3" == "reset --force" ]] && exit "\${CI_FAKE_RESET_STATUS:-0}" ;;`,
@@ -161,7 +165,7 @@ function createToolchainFixture({ toolchain = 'package' } = {}) {
     [
       '#!/usr/bin/env bash',
       'printf \'%s\\n\' "$*" >>"$CI_FAKE_SUDO_LOG"',
-      'if [[ "$1" == rm ]]; then "$@"; fi',
+      'if [[ "$1" == rm || "$1" == ln ]]; then "$@"; fi',
       '',
     ].join('\n'),
     { mode: 0o755 },
@@ -181,6 +185,7 @@ function createToolchainFixture({ toolchain = 'package' } = {}) {
       GITHUB_RUN_ID: '',
       CI_FAKE_PODMAN_LOG: commandLog,
       CI_FAKE_SUDO_LOG: sudoLog,
+      CI_FAKE_FALLBACK_CONMON_PATH: packageToolchain.conmonPath,
       CI_RUNTIME_DPKG_QUERY_BIN: dpkgQueryPath,
       CI_RUNTIME_GENERATOR_SEARCH_PATH: [
         staticToolchain?.userGeneratorDir,
@@ -310,7 +315,7 @@ describe('CI container runtime', () => {
     ['pr', false],
     ['release', true],
   ])(
-    'replaces a coherent static runner toolchain for the %s profile',
+    'adapts a coherent static runner toolchain for the %s profile',
     (profile, usesSkopeo) => {
       const fixture = createToolchainFixture({ toolchain: 'static' })
       fs.mkdirSync(path.dirname(fixture.containersConfigPath), {
@@ -331,37 +336,34 @@ describe('CI container runtime', () => {
       const result = runRuntimeScript(['bootstrap', profile], fixture)
 
       expect(result.status).toBe(0)
-      expect(result.stdout).toContain('coherent package toolchain: verified')
+      expect(result.stdout).toContain('coherent static toolchain: verified')
       const podmanCommands = fs.readFileSync(fixture.commandLog, 'utf8')
       expect(podmanCommands).toContain('--log-level=debug info --format json')
-      expect(podmanCommands).toContain('system reset --force')
+      expect(podmanCommands).not.toContain('system reset --force')
       const sudoCommands = fs.readFileSync(fixture.sudoLog, 'utf8')
       expect(sudoCommands).toContain(
-        'apt-get install -y --no-install-recommends --reinstall conmon crun jq libnss3-tools podman',
+        'apt-get install -y --no-install-recommends --reinstall conmon jq libnss3-tools',
       )
       expect(sudoCommands.includes('skopeo')).toBe(usesSkopeo)
       expect(
         fs.existsSync(path.join(fixture.localPrefix, 'bin', 'podman')),
-      ).toBe(false)
+      ).toBe(true)
       expect(
         fs.existsSync(path.join(fixture.localPrefix, 'lib', 'podman')),
-      ).toBe(false)
-      expect(fs.existsSync(fixture.containersConfigPath)).toBe(false)
-      expect(fs.existsSync(fixture.runtimeDropInPath)).toBe(false)
+      ).toBe(true)
+      expect(fs.realpathSync(fixture.conmonPath)).toBe(
+        path.join(fixture.systemPrefix, 'bin', 'conmon'),
+      )
+      expect(fs.existsSync(fixture.containersConfigPath)).toBe(true)
+      expect(fs.existsSync(fixture.runtimeDropInPath)).toBe(true)
       expect(fs.readFileSync(fixture.githubPathFile, 'utf8')).toBe(
-        `${fixture.systemPrefix}/bin\n`,
+        `${fixture.localPrefix}/bin\n`,
       )
     },
   )
 
   it('aborts bootstrap before replacing binaries when Podman reset fails', () => {
-    const fixture = createToolchainFixture({ toolchain: 'static' })
-    const preinstalledPath = path.join(
-      fixture.localPrefix,
-      'lib',
-      'podman',
-      'conmon',
-    )
+    const fixture = createToolchainFixture()
 
     const result = runRuntimeScript(['bootstrap', 'pr'], fixture, {
       CI_FAKE_RESET_STATUS: '42',
@@ -371,7 +373,9 @@ describe('CI container runtime', () => {
     expect(result.stderr).toContain(
       'cannot reset the existing rootless Podman runtime state (exit 42)',
     )
-    expect(fs.existsSync(preinstalledPath)).toBe(true)
+    expect(
+      fs.existsSync(path.join(fixture.systemPrefix, 'bin', 'podman')),
+    ).toBe(true)
     expect(
       fs.existsSync(fixture.sudoLog)
         ? fs.readFileSync(fixture.sudoLog, 'utf8')
