@@ -1,4 +1,4 @@
-import { recordSecurityEvent } from '@/lib/auth/audit'
+import { recordSecurityEvent } from '../auth/audit'
 import type {
   ExpiredTransientStateBacklog,
   TransientCleanupBatchResult,

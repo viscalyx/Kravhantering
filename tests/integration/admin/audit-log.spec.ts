@@ -72,7 +72,7 @@ test('ADMIN-07: admin can filter action-log events and export CSV', async ({
   ].join('\r\n')
   const csvRoute = await deferRoute(
     page,
-    '**/api/admin/audit-events?*format=csv',
+    '**/api/admin/audit-events?**format=csv**',
     async route => {
       exportUrl = new URL(route.request().url())
       await route.fulfill({

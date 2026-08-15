@@ -129,6 +129,24 @@ describe('container image contract', () => {
     }
   })
 
+  it('includes standalone transient cleanup compiler dependencies', () => {
+    const dockerfile = readWorkspaceFile('containers/app/Dockerfile')
+    const transientCleanupBuild = dockerfile.slice(
+      dockerfile.indexOf('FROM dependencies AS transient-cleanup-build'),
+      dockerfile.indexOf('FROM dependencies AS app-build'),
+    )
+
+    expect(transientCleanupBuild).toContain(
+      'COPY lib/auth/audit.ts lib/auth/client-ip.ts ./lib/auth/',
+    )
+    expect(transientCleanupBuild).toContain(
+      'COPY lib/transient-cleanup ./lib/transient-cleanup',
+    )
+    expect(transientCleanupBuild).toContain(
+      'COPY lib/typeorm/sqlserver-config.ts ./lib/typeorm/sqlserver-config.ts',
+    )
+  })
+
   it('runs the HSA certificate generator without runtime npm', () => {
     for (const relativePath of [
       '.devcontainer/docker-compose.yml',

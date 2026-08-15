@@ -12,6 +12,7 @@ RUN npm ci
 FROM dependencies AS transient-cleanup-build
 
 COPY tsconfig.json tsconfig.transient-cleanup.json ./
+COPY lib/auth/audit.ts lib/auth/client-ip.ts ./lib/auth/
 COPY lib/transient-cleanup ./lib/transient-cleanup
 COPY lib/typeorm/sqlserver-config.ts ./lib/typeorm/sqlserver-config.ts
 RUN npm run transient-cleanup:build

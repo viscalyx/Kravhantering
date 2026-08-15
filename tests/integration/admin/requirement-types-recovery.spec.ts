@@ -5,6 +5,8 @@ test.describe('Requirement types catalog recovery', () => {
     page,
   }) => {
     let qualityCharacteristicsRequests = 0
+    let recoveryRequests = 0
+    let recoveryRequested = false
     let releaseRecoveryRequest = () => {}
     let markRecoveryRequestStarted = () => {}
     const recoveryRequestStarted = new Promise<void>(resolve => {
@@ -12,7 +14,7 @@ test.describe('Requirement types catalog recovery', () => {
     })
     await page.route('**/api/quality-characteristics', async route => {
       qualityCharacteristicsRequests += 1
-      if (qualityCharacteristicsRequests === 1) {
+      if (!recoveryRequested) {
         await route.fulfill({
           body: JSON.stringify({ error: 'simulated upstream detail' }),
           contentType: 'application/json',
@@ -20,6 +22,7 @@ test.describe('Requirement types catalog recovery', () => {
         })
         return
       }
+      recoveryRequests += 1
       markRecoveryRequestStarted()
       await new Promise<void>(resolve => {
         releaseRecoveryRequest = resolve
@@ -48,6 +51,7 @@ test.describe('Requirement types catalog recovery', () => {
 
     const retry = alert.getByRole('button')
     await expect(retry).toHaveText('Försök igen')
+    recoveryRequested = true
     await retry.click()
     await recoveryRequestStarted
     await expect(retry).toBeDisabled()
@@ -61,6 +65,7 @@ test.describe('Requirement types catalog recovery', () => {
       }),
     ).toHaveCount(1)
     await expect(alert).toHaveCount(0)
-    expect(qualityCharacteristicsRequests).toBe(2)
+    expect(recoveryRequests).toBe(1)
+    expect(qualityCharacteristicsRequests).toBeGreaterThanOrEqual(2)
   })
 })

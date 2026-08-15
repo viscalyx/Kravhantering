@@ -11,7 +11,7 @@
  * name matches the deny-list as a defense-in-depth measure.
  */
 
-import { getClientIp, isValidClientIp } from '@/lib/auth/client-ip'
+import { getClientIp, isValidClientIp } from './client-ip'
 
 export type SecurityEventName =
   | 'access_review.cancelled'

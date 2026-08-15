@@ -512,7 +512,7 @@ for (const { name, viewport } of viewportVariants) {
 
         await row.getByRole('button', { name: 'Gallra evidens' }).click()
         const dialog = page.getByRole('alertdialog', {
-          name: 'Gallra forensisk evidens?',
+          name: 'Gallra AI-forensisk evidens?',
         })
         await dialog.getByRole('button', { name: 'Avbryt' }).click()
         expect(mutationBodies).toEqual([])
