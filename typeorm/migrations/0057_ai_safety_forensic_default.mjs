@@ -35,8 +35,8 @@ async function runStatements(queryRunner, statements) {
   }
 }
 
-export class AiSafetyForensicDefault1719300000000 {
-  name = 'AiSafetyForensicDefault1719300000000'
+export class AiSafetyForensicDefault1720400000000 {
+  name = 'AiSafetyForensicDefault1720400000000'
 
   async up(queryRunner) {
     const freshInstallation =
@@ -52,4 +52,4 @@ export class AiSafetyForensicDefault1719300000000 {
   }
 }
 
-export default AiSafetyForensicDefault1719300000000
+export default AiSafetyForensicDefault1720400000000

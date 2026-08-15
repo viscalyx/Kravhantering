@@ -18,6 +18,22 @@ describe('AI safety forensic capture default migration', () => {
     expect(seed.rows[0]?.[forensicColumnIndex]).toBe(0)
   })
 
+  it('sorts after the previous migration by TypeORM timestamp', async () => {
+    const [previousMigration, migration] = await Promise.all([
+      import(
+        '@/typeorm/migrations/0056_mcp_import_validation_ownership_quotas.mjs'
+      ),
+      import('@/typeorm/migrations/0057_ai_safety_forensic_default.mjs'),
+    ])
+    const previousName = new previousMigration.default().name
+    const name = new migration.default().name
+
+    expect(name).toBe('AiSafetyForensicDefault1720400000000')
+    expect(Number(name.match(/\d+$/)?.[0])).toBeGreaterThan(
+      Number(previousName.match(/\d+$/)?.[0]),
+    )
+  })
+
   it('changes only the database default to disabled during upgrade', async () => {
     const migration = await import(
       '@/typeorm/migrations/0057_ai_safety_forensic_default.mjs'

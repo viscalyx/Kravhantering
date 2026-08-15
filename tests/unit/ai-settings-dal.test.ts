@@ -69,6 +69,20 @@ describe('AI settings DAL', () => {
     })
   })
 
+  it('defaults an unset forensic capture value to disabled', async () => {
+    query.mockResolvedValueOnce([
+      {
+        aiSafetyForensicLoggingEnabled: undefined,
+        requirementGenerationEnabled: 1,
+      },
+    ])
+
+    await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
+      aiSafetyForensicLoggingEnabled: false,
+      requirementGenerationEnabled: true,
+    })
+  })
+
   it('falls back to the default MCP limit when the migrated column is missing on read', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     query
@@ -624,6 +638,16 @@ describe('AI settings DAL', () => {
     await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
       aiSafetyForensicLoggingEnabled: false,
     })
+    await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
+      aiSafetyForensicLoggingEnabled: false,
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('caches the disabled default when the forensic setting is unset', async () => {
+    query.mockResolvedValueOnce([{ aiSafetyForensicLoggingEnabled: undefined }])
+
     await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
       aiSafetyForensicLoggingEnabled: false,
     })
