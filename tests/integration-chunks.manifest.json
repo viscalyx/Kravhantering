@@ -7,7 +7,7 @@
     "areasPerChunk": 1,
     "targetSpecs": 10
   },
-  "discoveredSpecCount": 46,
+  "discoveredSpecCount": 47,
   "suites": {
     "dev": {
       "chunks": [
@@ -62,6 +62,11 @@
           "specCount": 1
         },
         {
+          "id": "dev-requirement-detail-prefetch",
+          "paths": ["tests/integration/requirement-detail-prefetch"],
+          "specCount": 1
+        },
+        {
           "id": "dev-requirement-packages",
           "paths": ["tests/integration/requirement-packages"],
           "specCount": 1
@@ -88,7 +93,7 @@
         }
       ],
       "ignoredSpecs": ["tests/integration/mcp/seeded-scan.spec.ts"],
-      "includedSpecCount": 45
+      "includedSpecCount": 46
     },
     "prodlike": {
       "chunks": [
@@ -138,6 +143,11 @@
           "specCount": 1
         },
         {
+          "id": "prodlike-requirement-detail-prefetch",
+          "paths": ["tests/integration/requirement-detail-prefetch"],
+          "specCount": 1
+        },
+        {
           "id": "prodlike-requirement-packages",
           "paths": ["tests/integration/requirement-packages"],
           "specCount": 1
@@ -169,7 +179,7 @@
         }
       ],
       "ignoredSpecs": ["tests/integration/developer-mode/overlay.spec.ts"],
-      "includedSpecCount": 45
+      "includedSpecCount": 46
     }
   }
 }

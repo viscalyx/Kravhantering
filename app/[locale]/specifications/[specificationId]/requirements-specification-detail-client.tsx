@@ -80,7 +80,7 @@ import {
   createSpecificationLocalRequirementDetailCache,
   type DetailPrefetchIntentTarget,
   type DetailPrefetchTarget,
-  REQUIREMENT_DETAIL_PREFETCH_ENABLED,
+  isRequirementDetailPrefetchEnabled,
   type RequirementDetailPrefetchContext,
 } from '@/lib/requirements/detail-prefetch'
 import {
@@ -4242,7 +4242,7 @@ export default function KravunderlagDetailClient({
                           item.specificationLocalRequirementId != null ? (
                             <SpecificationLocalRequirementDetailClient
                               detailCache={
-                                REQUIREMENT_DETAIL_PREFETCH_ENABLED
+                                isRequirementDetailPrefetchEnabled()
                                   ? localDetailCache
                                   : undefined
                               }
@@ -4282,7 +4282,7 @@ export default function KravunderlagDetailClient({
                           ) : item?.specificationItemId != null ? (
                             <RequirementDetailClient
                               detailCache={
-                                REQUIREMENT_DETAIL_PREFETCH_ENABLED
+                                isRequirementDetailPrefetchEnabled()
                                   ? libraryDetailCache
                                   : undefined
                               }
@@ -4317,7 +4317,7 @@ export default function KravunderlagDetailClient({
                           ) : (
                             <RequirementDetailClient
                               detailCache={
-                                REQUIREMENT_DETAIL_PREFETCH_ENABLED
+                                isRequirementDetailPrefetchEnabled()
                                   ? libraryDetailCache
                                   : undefined
                               }
@@ -4704,7 +4704,7 @@ export default function KravunderlagDetailClient({
                       renderExpanded={id => (
                         <RequirementDetailClient
                           detailCache={
-                            REQUIREMENT_DETAIL_PREFETCH_ENABLED
+                            isRequirementDetailPrefetchEnabled()
                               ? libraryDetailCache
                               : undefined
                           }

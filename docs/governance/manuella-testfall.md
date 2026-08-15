@@ -1657,6 +1657,27 @@ använder en separat cache med kravunderlag och lokalt krav-ID som nyckel. Varje
 klick återanvänder det pågående anropet från förhämtningen. Direktklick
 fungerar omedelbart och inga dubbla samtidiga huvudförfrågningar startas.
 
+### PREFETCH-01: prodlike-proxy ger fullständig beslutsevidens
+
+**Steg:** Återställ den seedade SQL Server-databasen och kör
+`npm run test:prefetch-proxy:prodlike`. Profilen använder samma valideringsbuild
+och växlar en isolerad valideringsstyrning mellan av och på för varje yta. Den
+gör fem direktklick samt tre använda och en oanvänd förhämtning för var och en
+av de fyra yt- och resurskombinationerna. Den sista förhämtningen avslutas genom
+ett sidbyte. Profilen lägger också till ett verkligt bibliotekskrav i ett
+kravunderlag efter en startad förhämtning och öppnar sedan den invaliderade
+detaljen igen.
+
+**Förväntat resultat:** Av- och påkörningen använder samma klicklyssnare och
+`MutationObserver` från klick till synlig **Kravtext**. Rapporten innehåller
+p95, latensvinst och den deklarerade brusgränsen
+`max(25 ms, 2 × största MAD, största p95−p50-spann)` för direktklick. En
+direktklicksregression kräver dessutom ett p50-delta över 25 ms. Varje
+kandidatprov gör exakt ett huvud-GET. Mutationen tvingar fram ett nytt
+huvud-GET och inget äldre svar återanvänds. Varje startad förhämtning har exakt
+ett korrelerat slututfall; tre av fyra används och en av fyra klassificeras som
+oanvänd vid sidbyte, så andelen oanvända förhämtningar är högst 25 procent.
+
 ## Avsteg
 
 ### DEV-01: skapa avstegsutkast
