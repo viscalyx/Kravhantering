@@ -273,6 +273,7 @@ describe('AiSettingsPanel', () => {
     ].entries()) {
       const input = screen.getByLabelText(label)
       fireEvent.change(input, { target: { value } })
+      await waitFor(() => expect(input).toHaveValue(Number(value)))
       if (label === 'admin.ai.mcpImportMaxActiveSessionsPerPrincipal') {
         fireEvent.keyDown(input, { key: 'Escape' })
         fireEvent.keyDown(input, { key: 'Enter' })
