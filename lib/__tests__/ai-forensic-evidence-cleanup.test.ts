@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 import { purgeExpiredAiForensicEvidence } from '@/lib/transient-cleanup/ai-forensic-evidence'
-import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
 
 describe('AI forensic evidence cleanup', () => {
   it('audits expiry and purge with metadata only', async () => {
@@ -45,7 +44,10 @@ describe('AI forensic evidence cleanup', () => {
         purgeExpiredAiForensicEvidence({ query }, 10),
       ).resolves.toEqual({ deletedRows: 3 })
 
-      expect(parseSecurityAuditEvents(infoSpy)).toEqual([
+      const securityAuditEvents = infoSpy.mock.calls
+        .map(([message]) => JSON.parse(String(message)))
+        .filter(event => event.channel === 'security-audit')
+      expect(securityAuditEvents).toEqual([
         expect.objectContaining({
           detail: expect.objectContaining({ captureWindowId: 47 }),
           event: 'ai.forensic_capture.expired',
