@@ -17,6 +17,20 @@ export const REQUIREMENT_DETAIL_PREFETCH_SYNTHETIC_LATENCY_MS = Math.max(
   ) || 0,
 )
 
+export function isRequirementDetailPrefetchEnabled(): boolean {
+  if (!REQUIREMENT_DETAIL_PREFETCH_ENABLED) return false
+  if (
+    !REQUIREMENT_DETAIL_PREFETCH_VALIDATION_ENABLED ||
+    typeof window === 'undefined'
+  ) {
+    return true
+  }
+  const validationWindow = window as typeof window & {
+    __requirementDetailPrefetchValidationOverride?: boolean
+  }
+  return validationWindow.__requirementDetailPrefetchValidationOverride ?? true
+}
+
 export type RequirementDetailResource =
   | 'library-requirement'
   | 'specification-local-requirement'
@@ -41,6 +55,15 @@ export interface DetailPrefetchTarget extends RequirementDetailPrefetchContext {
   key: string
 }
 
+export type RequirementDetailPrefetchOutcome =
+  | 'capacity-evicted-unused'
+  | 'cleared-unused'
+  | 'expired-unused'
+  | 'failed-unused'
+  | 'invalidated-unused'
+  | 'page-disposed-unused'
+  | 'used'
+
 export class DetailFetchError extends Error {
   readonly status: number
 
@@ -55,6 +78,8 @@ export type RequirementDetailPrefetchEvent =
   RequirementDetailPrefetchContext & {
     durationMs?: number
     key: string
+    outcome?: RequirementDetailPrefetchOutcome
+    prefetchId?: number
     timestamp: number
     trigger?: DetailPrefetchIntentTarget['trigger']
     type:
@@ -65,10 +90,104 @@ export type RequirementDetailPrefetchEvent =
       | 'invalidated'
       | 'intent-to-click'
       | 'prefetch-started'
+      | 'prefetch-outcome'
       | 'timer-cancelled'
       | 'timer-started'
       | 'unused'
   }
+
+export interface RequirementDetailPrefetchSummary {
+  classified: number
+  duplicateOutcomes: number
+  orphanOutcomes: number
+  outcomes: Record<RequirementDetailPrefetchOutcome, number>
+  started: number
+  unresolved: number
+  unused: number
+  unusedRate: number | null
+  used: number
+}
+
+const EMPTY_PREFETCH_OUTCOME_COUNTS: Record<
+  RequirementDetailPrefetchOutcome,
+  number
+> = {
+  'capacity-evicted-unused': 0,
+  'cleared-unused': 0,
+  'expired-unused': 0,
+  'failed-unused': 0,
+  'invalidated-unused': 0,
+  'page-disposed-unused': 0,
+  used: 0,
+}
+
+let requirementDetailPrefetchSequence = 0
+
+function prefetchEventIdentity(event: RequirementDetailPrefetchEvent) {
+  return event.prefetchId === undefined
+    ? null
+    : `${event.surface}:${event.resource}:${event.prefetchId}`
+}
+
+export function summarizeRequirementDetailPrefetchEvents(
+  events: RequirementDetailPrefetchEvent[],
+): RequirementDetailPrefetchSummary {
+  const starts = new Set<string>()
+  const outcomesByPrefetch = new Map<
+    string,
+    RequirementDetailPrefetchOutcome[]
+  >()
+  const outcomes = { ...EMPTY_PREFETCH_OUTCOME_COUNTS }
+
+  for (const event of events) {
+    const identity = prefetchEventIdentity(event)
+    if (identity === null) continue
+    if (event.type === 'prefetch-started') {
+      starts.add(identity)
+      continue
+    }
+    if (event.type !== 'prefetch-outcome' || event.outcome === undefined) {
+      continue
+    }
+    const recorded = outcomesByPrefetch.get(identity) ?? []
+    recorded.push(event.outcome)
+    outcomesByPrefetch.set(identity, recorded)
+    outcomes[event.outcome] += 1
+  }
+
+  let duplicateOutcomes = 0
+  let orphanOutcomes = 0
+  for (const [identity, recorded] of outcomesByPrefetch) {
+    duplicateOutcomes += Math.max(0, recorded.length - 1)
+    if (!starts.has(identity)) orphanOutcomes += recorded.length
+  }
+
+  let unresolved = 0
+  let used = 0
+  let unused = 0
+  for (const identity of starts) {
+    const recorded = outcomesByPrefetch.get(identity) ?? []
+    if (recorded.length === 0) {
+      unresolved += 1
+    } else if (recorded.length === 1 && recorded[0] === 'used') {
+      used += 1
+    } else if (recorded.length === 1) {
+      unused += 1
+    }
+  }
+
+  return {
+    classified: starts.size - unresolved,
+    duplicateOutcomes,
+    orphanOutcomes,
+    outcomes,
+    started: starts.size,
+    unresolved,
+    unused,
+    unusedRate: starts.size === 0 ? null : unused / starts.size,
+    used,
+  }
+}
 
 interface PendingIntent {
   startedAt: number
@@ -215,6 +334,9 @@ interface InFlightEntry<Value> {
   expiresAt: number | null
   expiryTimer: ReturnType<typeof setTimeout> | null
   lastUsed: number
+  prefetchId: number | null
+  prefetchOutcomeRecorded: boolean
+  prefetchStartedAt: number | null
   promise: Promise<Value>
   startContext: RequirementDetailPrefetchContext
   startedAsPrefetch: boolean
@@ -233,7 +355,6 @@ export class DetailResourceCache<Key, Value> {
   private readonly onEvent: NonNullable<
     DetailResourceCacheOptions<Key, Value>['onEvent']
   >
-
   constructor(options: DetailResourceCacheOptions<Key, Value>) {
     this.fetchDetail = options.fetchDetail
     this.keyOf = options.keyOf
@@ -256,6 +377,8 @@ export class DetailResourceCache<Key, Value> {
         existing.expiresAt !== null &&
         existing.expiresAt <= performance.now()
       ) {
+        if (existing.expiryTimer) clearTimeout(existing.expiryTimer)
+        this.settlePrefetch(existing, cacheKey, 'expired-unused')
         this.entries.delete(cacheKey)
       } else {
         existing.lastUsed = ++this.accessSequence
@@ -264,6 +387,7 @@ export class DetailResourceCache<Key, Value> {
           existing.activatedAt = performance.now()
           if (existing.state === 'pending') {
             this.emit('click-reused-in-flight', cacheKey, context)
+            this.settlePrefetch(existing, cacheKey, 'used')
             if (existing.startedAsPrefetch) {
               return existing.promise.catch(error => {
                 if (isRetryableSpeculativeFailure(error)) {
@@ -274,17 +398,16 @@ export class DetailResourceCache<Key, Value> {
             }
           } else {
             this.emit('click-reused-cache', cacheKey, context)
+            this.settlePrefetch(existing, cacheKey, 'used')
           }
         }
         return existing.promise
       }
     }
 
-    if (mode === 'prefetch') {
-      this.emit('prefetch-started', cacheKey, context)
-    }
-
     const controller = new AbortController()
+    const prefetchId =
+      mode === 'prefetch' ? ++requirementDetailPrefetchSequence : null
     const entry: InFlightEntry<Value> = {
       activatedAt: mode === 'activate' ? performance.now() : null,
       controller,
@@ -292,10 +415,16 @@ export class DetailResourceCache<Key, Value> {
       expiryTimer: null,
       lastUsed: ++this.accessSequence,
       promise: Promise.resolve(undefined as Value),
+      prefetchId,
+      prefetchOutcomeRecorded: false,
+      prefetchStartedAt: mode === 'prefetch' ? performance.now() : null,
       startedAsPrefetch: mode === 'prefetch',
       startContext: context,
       state: 'pending',
       used: mode === 'activate' || mode === 'refresh',
+    }
+    if (prefetchId !== null) {
+      this.emit('prefetch-started', cacheKey, context, { prefetchId })
     }
     entry.promise = this.fetchDetail(key, controller.signal)
       .then(value => {
@@ -308,7 +437,7 @@ export class DetailResourceCache<Key, Value> {
           }
           this.entries.delete(cacheKey)
           if (entry.startedAsPrefetch && !entry.used) {
-            this.emit('unused', cacheKey, entry.startContext)
+            this.settlePrefetch(entry, cacheKey, 'expired-unused')
           }
         }, 30_000)
         this.enforceCompletedCapacity()
@@ -318,6 +447,7 @@ export class DetailResourceCache<Key, Value> {
         if (error instanceof DetailFetchError && error.status === 401) {
           this.clear()
         } else if (this.entries.get(cacheKey) === entry) {
+          this.settlePrefetch(entry, cacheKey, 'failed-unused')
           this.entries.delete(cacheKey)
         }
         if (!controller.signal.aborted) {
@@ -332,6 +462,9 @@ export class DetailResourceCache<Key, Value> {
   invalidate(key: Key, context: RequirementDetailPrefetchContext) {
     const cacheKey = this.keyOf(key)
     const entry = this.entries.get(cacheKey)
+    if (entry) {
+      this.settlePrefetch(entry, cacheKey, 'invalidated-unused')
+    }
     entry?.controller.abort()
     if (entry?.expiryTimer) clearTimeout(entry.expiryTimer)
     this.entries.delete(cacheKey)
@@ -348,10 +481,11 @@ export class DetailResourceCache<Key, Value> {
     })
   }
 
-  clear() {
+  clear(outcome: RequirementDetailPrefetchOutcome = 'cleared-unused') {
     const entries = [...this.entries.entries()]
     this.entries.clear()
     for (const [key, entry] of entries) {
+      this.settlePrefetch(entry, key, outcome)
       entry.controller.abort()
       if (entry.expiryTimer) clearTimeout(entry.expiryTimer)
       this.emit('invalidated', key, entry.startContext)
@@ -359,7 +493,7 @@ export class DetailResourceCache<Key, Value> {
   }
 
   dispose() {
-    this.clear()
+    this.clear('page-disposed-unused')
   }
 
   private enforceCompletedCapacity() {
@@ -371,7 +505,7 @@ export class DetailResourceCache<Key, Value> {
       if (entry.expiryTimer) clearTimeout(entry.expiryTimer)
       this.entries.delete(key)
       if (entry.startedAsPrefetch && !entry.used) {
-        this.emit('unused', key, entry.startContext)
+        this.settlePrefetch(entry, key, 'capacity-evicted-unused')
       }
     }
   }
@@ -380,7 +514,10 @@ export class DetailResourceCache<Key, Value> {
     type: RequirementDetailPrefetchEvent['type'],
     key: string,
     context: RequirementDetailPrefetchContext,
-    detail: Pick<RequirementDetailPrefetchEvent, 'durationMs'> = {},
+    detail: Pick<
+      RequirementDetailPrefetchEvent,
+      'durationMs' | 'outcome' | 'prefetchId'
+    > = {},
   ) {
     this.onEvent({
       ...context,
@@ -389,6 +526,30 @@ export class DetailResourceCache<Key, Value> {
       timestamp: Date.now(),
       type,
     })
+  }
+
+  private settlePrefetch(
+    entry: InFlightEntry<Value>,
+    key: string,
+    outcome: RequirementDetailPrefetchOutcome,
+  ) {
+    if (
+      entry.prefetchId === null ||
+      entry.prefetchOutcomeRecorded ||
+      entry.prefetchStartedAt === null
+    ) {
+      return
+    }
+    entry.prefetchOutcomeRecorded = true
+    const detail = {
+      durationMs: performance.now() - entry.prefetchStartedAt,
+      outcome,
+      prefetchId: entry.prefetchId,
+    }
+    this.emit('prefetch-outcome', key, entry.startContext, detail)
+    if (outcome !== 'used') {
+      this.emit('unused', key, entry.startContext, detail)
+    }
   }
 }
 

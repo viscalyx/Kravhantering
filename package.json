@@ -96,6 +96,7 @@
     "test:integration": "node tests/integration-chunks.mjs run --suite dev",
     "pretest:integration:prodlike": "npm run test:integration:chunks:check",
     "test:integration:prodlike": "node tests/integration-chunks.mjs run --suite prodlike",
+    "test:prefetch-proxy:prodlike": "node scripts/test-requirement-detail-prefetch-proxy.mjs",
     "test:integration:chunks:generate": "node tests/integration-chunks.mjs generate",
     "test:integration:chunks:check": "node tests/integration-chunks.mjs check",
     "test:release-smoke": "cross-env NODE_EXTRA_CA_CERTS=tmp/container-tls/ca.crt playwright test --config=playwright.release-smoke.config.ts",

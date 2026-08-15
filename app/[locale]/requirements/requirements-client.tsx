@@ -40,7 +40,7 @@ import {
   createLibraryRequirementDetailCache,
   type DetailPrefetchIntentTarget,
   type DetailPrefetchTarget,
-  REQUIREMENT_DETAIL_PREFETCH_ENABLED,
+  isRequirementDetailPrefetchEnabled,
   type RequirementDetailPrefetchContext,
 } from '@/lib/requirements/detail-prefetch'
 import {
@@ -1457,7 +1457,7 @@ export default function RequirementsClient({
                   renderExpanded={id => (
                     <RequirementDetailClient
                       detailCache={
-                        REQUIREMENT_DETAIL_PREFETCH_ENABLED
+                        isRequirementDetailPrefetchEnabled()
                           ? detailCache
                           : undefined
                       }

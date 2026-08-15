@@ -7,16 +7,17 @@ import {
   DetailPrefetchIntentController,
   type DetailPrefetchIntentTarget,
   type DetailPrefetchTarget,
-  REQUIREMENT_DETAIL_PREFETCH_ENABLED,
+  isRequirementDetailPrefetchEnabled,
   REQUIREMENT_DETAIL_PREFETCH_SYNTHETIC_LATENCY_MS,
   REQUIREMENT_DETAIL_PREFETCH_VALIDATION_ENABLED,
   type RequirementDetailPrefetchEvent,
+  summarizeRequirementDetailPrefetchEvents,
 } from '@/lib/requirements/detail-prefetch'
 
 const PREFETCH_EVENT_NAME = 'krav:requirement-detail-prefetch'
 
 export function useRequirementDetailPrefetchIntent(
-  enabled = REQUIREMENT_DETAIL_PREFETCH_ENABLED,
+  enabled = isRequirementDetailPrefetchEnabled(),
 ) {
   const [pending, setPending] = useState<DetailPrefetchIntentTarget[]>([])
   const controllerRef = useRef<DetailPrefetchIntentController | null>(null)
@@ -83,6 +84,7 @@ export function RequirementDetailPrefetchValidation({
       {
         exportedAt: new Date().toISOString(),
         events: eventsRef.current,
+        summary: summarizeRequirementDetailPrefetchEvents(eventsRef.current),
         syntheticLatencyMs: REQUIREMENT_DETAIL_PREFETCH_SYNTHETIC_LATENCY_MS,
       },
       null,

@@ -7,7 +7,9 @@ import {
   DetailPrefetchIntentController,
   DetailResourceCache,
   emitRequirementDetailPrefetchEvent,
+  isRequirementDetailPrefetchEnabled,
   type RequirementDetailPrefetchEvent,
+  summarizeRequirementDetailPrefetchEvents,
 } from '@/lib/requirements/detail-prefetch'
 
 vi.mock('@/lib/http/api-fetch', () => ({ apiFetch: vi.fn() }))
@@ -53,8 +55,13 @@ describe('DetailResourceCache', () => {
     expect(events.map(event => event.type)).toEqual([
       'prefetch-started',
       'click-reused-in-flight',
+      'prefetch-outcome',
       'click-to-usable-content',
     ])
+    expect(events[2]).toMatchObject({
+      outcome: 'used',
+      prefetchId: 1,
+    })
   })
 
   it('reuses a completed response during its 30 second lifetime', async () => {
@@ -108,6 +115,28 @@ describe('DetailResourceCache', () => {
     expect(fetchDetail).toHaveBeenCalledTimes(2)
   })
 
+  it('classifies an unactivated prefetch invalidated by a mutation', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
+    const request = deferred<{ description: string }>()
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail: vi.fn(() => request.promise),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    const prefetch = cache.load(42, 'prefetch', context)
+    cache.invalidate(42, context)
+    request.resolve({ description: 'Inaktuell kravtext' })
+    await prefetch
+
+    expect(events.filter(event => event.type === 'prefetch-outcome')).toEqual([
+      expect.objectContaining({
+        outcome: 'invalidated-unused',
+        prefetchId: expect.any(Number),
+      }),
+    ])
+  })
+
   it('retries activation once after a shared speculative server failure', async () => {
     const speculativeRequest = deferred<{ description: string }>()
     const activationRetry = deferred<{ description: string }>()
@@ -130,6 +159,28 @@ describe('DetailResourceCache', () => {
       description: 'Kravtext efter nytt försök',
     })
     expect(fetchDetail).toHaveBeenCalledTimes(2)
+  })
+
+  it('classifies a failed unactivated prefetch', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail: vi.fn(async () => {
+        throw new DetailFetchError(500, 'Tillfälligt fel')
+      }),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    await expect(cache.load(53, 'prefetch', context)).rejects.toMatchObject({
+      status: 500,
+    })
+
+    expect(events.filter(event => event.type === 'prefetch-outcome')).toEqual([
+      expect.objectContaining({
+        outcome: 'failed-unused',
+        prefetchId: expect.any(Number),
+      }),
+    ])
   })
 
   it('does not retry an authentication failure and clears actor-bound data', async () => {
@@ -166,8 +217,26 @@ describe('DetailResourceCache', () => {
 
     await cache.load(61, 'prefetch', context)
     await vi.advanceTimersByTimeAsync(30_000)
+    const prefetchId = events[0]?.prefetchId
 
-    expect(events.map(event => event.type)).toContain('unused')
+    expect(prefetchId).toEqual(expect.any(Number))
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        prefetchId,
+        type: 'prefetch-started',
+      }),
+      expect.objectContaining({
+        outcome: 'expired-unused',
+        prefetchId,
+        type: 'prefetch-outcome',
+      }),
+      expect.objectContaining({
+        outcome: 'expired-unused',
+        prefetchId,
+        type: 'unused',
+      }),
+    ])
     vi.useRealTimers()
   })
 
@@ -175,9 +244,11 @@ describe('DetailResourceCache', () => {
     const fetchDetail = vi.fn(async (key: number) => ({
       description: `${key}`,
     }))
+    const events: RequirementDetailPrefetchEvent[] = []
     const cache = new DetailResourceCache<number, { description: string }>({
       fetchDetail,
       keyOf: String,
+      onEvent: event => events.push(event),
     })
 
     for (let key = 1; key <= 33; key += 1) {
@@ -188,15 +259,26 @@ describe('DetailResourceCache', () => {
     })
 
     expect(fetchDetail).toHaveBeenCalledTimes(34)
+    expect(
+      events.filter(event => event.type === 'prefetch-outcome'),
+    ).toContainEqual(
+      expect.objectContaining({
+        key: '1',
+        outcome: 'capacity-evicted-unused',
+        prefetchId: expect.any(Number),
+      }),
+    )
   })
 
   it('drops an expired completed response even before its timer callback runs', async () => {
     vi.useFakeTimers()
     const now = vi.spyOn(performance, 'now').mockReturnValue(0)
     const fetchDetail = vi.fn(async () => ({ description: 'Kravtext' }))
+    const events: RequirementDetailPrefetchEvent[] = []
     const cache = new DetailResourceCache<number, { description: string }>({
       fetchDetail,
       keyOf: String,
+      onEvent: event => events.push(event),
     })
 
     await cache.load(91, 'prefetch', context)
@@ -204,6 +286,12 @@ describe('DetailResourceCache', () => {
     await cache.load(91, 'activate', context)
 
     expect(fetchDetail).toHaveBeenCalledTimes(2)
+    expect(events.filter(event => event.type === 'prefetch-outcome')).toEqual([
+      expect.objectContaining({
+        outcome: 'expired-unused',
+        prefetchId: expect.any(Number),
+      }),
+    ])
     vi.useRealTimers()
   })
 
@@ -223,7 +311,47 @@ describe('DetailResourceCache', () => {
 
     expect(events.map(event => event.type)).toEqual([
       'prefetch-started',
+      'prefetch-outcome',
+      'unused',
       'invalidated',
+    ])
+  })
+
+  it('classifies an unactivated prefetch removed by an explicit clear', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail: vi.fn(async () => ({ description: 'Kravtext' })),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    await cache.load(93, 'prefetch', context)
+    cache.clear()
+
+    expect(events.filter(event => event.type === 'prefetch-outcome')).toEqual([
+      expect.objectContaining({
+        outcome: 'cleared-unused',
+        prefetchId: expect.any(Number),
+      }),
+    ])
+  })
+
+  it('classifies an unactivated prefetch when its page cache is disposed', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail: vi.fn(async () => ({ description: 'Kravtext' })),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    await cache.load(94, 'prefetch', context)
+    cache.dispose()
+
+    expect(events.filter(event => event.type === 'prefetch-outcome')).toEqual([
+      expect.objectContaining({
+        outcome: 'page-disposed-unused',
+        prefetchId: expect.any(Number),
+      }),
     ])
   })
 
@@ -338,6 +466,110 @@ describe('DetailPrefetchIntentController', () => {
 })
 
 describe('detail cache browser adapters', () => {
+  it('allows an explicit runtime off profile only in validation builds', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH', 'true')
+    vi.stubEnv('NEXT_PUBLIC_VALIDATE_REQUIREMENT_DETAIL_PREFETCH', 'true')
+    vi.resetModules()
+    const prefetchModule = await import('@/lib/requirements/detail-prefetch')
+    const target = window as typeof window & {
+      __requirementDetailPrefetchValidationOverride?: boolean
+    }
+
+    target.__requirementDetailPrefetchValidationOverride = false
+    expect(prefetchModule.isRequirementDetailPrefetchEnabled()).toBe(false)
+    target.__requirementDetailPrefetchValidationOverride = true
+    expect(prefetchModule.isRequirementDetailPrefetchEnabled()).toBe(true)
+
+    delete target.__requirementDetailPrefetchValidationOverride
+    vi.unstubAllEnvs()
+    expect(isRequirementDetailPrefetchEnabled()).toBe(false)
+  })
+
+  it('summarizes correlated outcomes without undercounting unused prefetches', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail: vi.fn(async () => ({ description: 'Kravtext' })),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    await cache.load(201, 'prefetch', context)
+    await cache.load(201, 'activate', context)
+    await cache.load(202, 'prefetch', context)
+    cache.clear()
+
+    expect(summarizeRequirementDetailPrefetchEvents(events)).toMatchObject({
+      classified: 2,
+      duplicateOutcomes: 0,
+      orphanOutcomes: 0,
+      started: 2,
+      unresolved: 0,
+      unused: 1,
+      unusedRate: 0.5,
+      used: 1,
+    })
+  })
+
+  it('keeps equal cache-local prefetch ids distinct across surfaces', () => {
+    const base = {
+      key: '301',
+      prefetchId: 1,
+      resource: 'library-requirement' as const,
+      timestamp: 1,
+    }
+    const events: RequirementDetailPrefetchEvent[] = [
+      { ...base, surface: 'requirements-library', type: 'prefetch-started' },
+      {
+        ...base,
+        outcome: 'used',
+        surface: 'requirements-library',
+        type: 'prefetch-outcome',
+      },
+      { ...base, surface: 'specification-left', type: 'prefetch-started' },
+      {
+        ...base,
+        outcome: 'used',
+        surface: 'specification-left',
+        type: 'prefetch-outcome',
+      },
+    ]
+
+    expect(summarizeRequirementDetailPrefetchEvents(events)).toMatchObject({
+      classified: 2,
+      duplicateOutcomes: 0,
+      orphanOutcomes: 0,
+      started: 2,
+      unresolved: 0,
+      used: 2,
+    })
+  })
+
+  it('keeps prefetch correlation distinct across cache instances', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
+    const createCache = () =>
+      new DetailResourceCache<number, { description: string }>({
+        fetchDetail: vi.fn(async () => ({ description: 'Kravtext' })),
+        keyOf: String,
+        onEvent: event => events.push(event),
+      })
+    const first = createCache()
+    const second = createCache()
+
+    await first.load(401, 'prefetch', context)
+    await second.load(402, 'prefetch', context)
+    first.clear()
+    second.clear()
+
+    expect(summarizeRequirementDetailPrefetchEvents(events)).toMatchObject({
+      classified: 2,
+      duplicateOutcomes: 0,
+      orphanOutcomes: 0,
+      started: 2,
+      unresolved: 0,
+      unused: 2,
+    })
+  })
+
   it('dispatches content-free events only when a browser window exists', () => {
     const event = {
       ...context,

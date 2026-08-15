@@ -1315,9 +1315,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     expect(localDetailRequests).toBe(1)
 
     const leftLibraryRow = leftPanel
-      .locator(
-        'tbody tr:not(:has([data-specification-local-marker="true"]))',
-      )
+      .locator('tbody tr:not(:has([data-specification-local-marker="true"]))')
       .filter({ has: page.getByRole('button') })
       .first()
     const leftLibraryButton = leftLibraryRow.getByRole('button').first()
