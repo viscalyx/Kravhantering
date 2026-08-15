@@ -1274,6 +1274,80 @@ test.describe('Requirements specification deterministic manual cases', () => {
   test.setTimeout(180_000)
   test.use({ viewport: { height: 720, width: 1280 } })
 
+  test('SPEC-21: intent prefetch reuses one main request in both requirement lists', async ({
+    page,
+  }) => {
+    let libraryDetailRequests = 0
+    let localDetailRequests = 0
+    await page.route(/\/api\/requirements\/\d+$/u, async route => {
+      libraryDetailRequests += 1
+      await delay(350)
+      await route.continue()
+    })
+    await page.route(
+      new RegExp(
+        `/api/requirements-specifications/${specificationId}/local-requirements/\\d+$`,
+        'u',
+      ),
+      async route => {
+        localDetailRequests += 1
+        await delay(350)
+        await route.continue()
+      },
+    )
+    await gotoSpecificationDetail(page)
+
+    const leftPanel = page.locator(
+      '[data-specification-detail-list-panel="items"]',
+    )
+    const localMarker = leftPanel
+      .locator('[data-specification-local-marker="true"]')
+      .first()
+    await expect(localMarker).toBeVisible()
+    const localRow = localMarker.locator('xpath=ancestor::tr[1]')
+    const localButton = localRow.getByRole('button').first()
+    await localRow.hover()
+    await expect.poll(() => localDetailRequests).toBe(1)
+    await localButton.click()
+    await expect(
+      localRow.locator('xpath=following-sibling::tr[1]'),
+    ).toContainText('Kravtext')
+    expect(localDetailRequests).toBe(1)
+
+    const leftLibraryRow = leftPanel
+      .locator(
+        'tbody tr:not(:has([data-specification-local-marker="true"]))',
+      )
+      .filter({ has: page.getByRole('button') })
+      .first()
+    const leftLibraryButton = leftLibraryRow.getByRole('button').first()
+    await leftLibraryRow.hover()
+    await expect.poll(() => libraryDetailRequests).toBe(1)
+    await leftLibraryButton.click()
+    await expect(
+      leftLibraryRow.locator('xpath=following-sibling::tr[1]'),
+    ).toContainText('Kravtext')
+    expect(libraryDetailRequests).toBe(1)
+
+    const rightPanel = page.locator(
+      '[data-specification-detail-list-panel="available"]',
+    )
+    const libraryButton = rightPanel
+      .getByRole('table', { name: 'Lista över krav' })
+      .locator('tbody tr')
+      .first()
+      .getByRole('button')
+      .first()
+    const libraryRow = libraryButton.locator('xpath=ancestor::tr[1]')
+    await libraryRow.hover()
+    await expect.poll(() => libraryDetailRequests).toBe(2)
+    await libraryButton.click()
+    await expect(
+      libraryRow.locator('xpath=following-sibling::tr[1]'),
+    ).toContainText('Kravtext')
+    expect(libraryDetailRequests).toBe(2)
+  })
+
   test('SPEC-18: sorts the complete specification item list in both directions', async ({
     page,
   }) => {

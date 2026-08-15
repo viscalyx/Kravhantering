@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@/lib/http/api-fetch'
+import type {
+  LibraryRequirementDetailCache,
+  RequirementDetailPrefetchContext,
+} from '@/lib/requirements/detail-prefetch'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 import type { StatusInfo, TransitionTarget } from './types'
 
 interface UseRequirementDetailDataOptions {
+  detailCache?: LibraryRequirementDetailCache
+  detailContext?: RequirementDetailPrefetchContext
   requirementId: number | string
 }
 
@@ -16,6 +22,8 @@ interface UseRequirementDetailDataResult {
 }
 
 export function useRequirementDetailData({
+  detailCache,
+  detailContext,
   requirementId,
 }: UseRequirementDetailDataOptions): UseRequirementDetailDataResult {
   const [requirement, setRequirement] =
@@ -25,28 +33,46 @@ export function useRequirementDetailData({
   const [statuses, setStatuses] = useState<StatusInfo[]>([])
   const hasDataRef = useRef(false)
 
-  const refreshRequirement = useCallback(async () => {
-    if (!hasDataRef.current) setLoading(true)
-    try {
-      const res = await apiFetch(`/api/requirements/${requirementId}`)
-      if (!res.ok) {
-        console.error(
-          'Failed to load requirement detail:',
-          res.statusText || res.status,
-        )
+  const loadRequirement = useCallback(
+    async (authoritative: boolean) => {
+      if (!hasDataRef.current) setLoading(true)
+      try {
+        let detail: RequirementDetailResponse
+        if (detailCache && detailContext && typeof requirementId === 'number') {
+          detail = await detailCache.load(
+            requirementId,
+            authoritative ? 'refresh' : 'activate',
+            detailContext,
+          )
+        } else {
+          const res = await apiFetch(`/api/requirements/${requirementId}`)
+          if (!res.ok) {
+            console.error(
+              'Failed to load requirement detail:',
+              res.statusText || res.status,
+            )
+            setRequirement(null)
+            return
+          }
+          detail = (await res.json()) as RequirementDetailResponse
+        }
+        setRequirement(detail)
+        hasDataRef.current = true
+      } catch (error) {
+        console.error('Failed to load requirement detail:', error)
         setRequirement(null)
-        return
+        hasDataRef.current = false
+      } finally {
+        setLoading(false)
       }
-      setRequirement((await res.json()) as RequirementDetailResponse)
-      hasDataRef.current = true
-    } catch (error) {
-      console.error('Failed to load requirement detail:', error)
-      setRequirement(null)
-      hasDataRef.current = false
-    } finally {
-      setLoading(false)
-    }
-  }, [requirementId])
+    },
+    [detailCache, detailContext, requirementId],
+  )
+
+  const refreshRequirement = useCallback(
+    () => loadRequirement(true),
+    [loadRequirement],
+  )
 
   const fetchTransitions = useCallback(async (statusId: number) => {
     try {
@@ -77,8 +103,8 @@ export function useRequirementDetailData({
   }, [])
 
   useEffect(() => {
-    void refreshRequirement()
-  }, [refreshRequirement])
+    void loadRequirement(false)
+  }, [loadRequirement])
 
   const latestStatusId = requirement?.versions[0]?.status ?? null
   useEffect(() => {

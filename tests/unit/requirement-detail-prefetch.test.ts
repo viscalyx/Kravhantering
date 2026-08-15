@@ -1,0 +1,441 @@
+import { describe, expect, it, vi } from 'vitest'
+import { apiFetch } from '@/lib/http/api-fetch'
+import {
+  createLibraryRequirementDetailCache,
+  createSpecificationLocalRequirementDetailCache,
+  DetailFetchError,
+  DetailPrefetchIntentController,
+  DetailResourceCache,
+  emitRequirementDetailPrefetchEvent,
+  type RequirementDetailPrefetchEvent,
+} from '@/lib/requirements/detail-prefetch'
+
+vi.mock('@/lib/http/api-fetch', () => ({ apiFetch: vi.fn() }))
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, reject, resolve }
+}
+
+const context = {
+  resource: 'library-requirement' as const,
+  surface: 'requirements-library' as const,
+}
+
+describe('DetailResourceCache', () => {
+  it('shares one in-flight request between intent and activation', async () => {
+    const request = deferred<{ description: string }>()
+    const fetchDetail = vi.fn(() => request.promise)
+    const events: RequirementDetailPrefetchEvent[] = []
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail,
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    const prefetch = cache.load(17, 'prefetch', context)
+    const activation = cache.load(17, 'activate', context)
+    request.resolve({ description: 'Användbar kravtext' })
+
+    await expect(prefetch).resolves.toEqual({
+      description: 'Användbar kravtext',
+    })
+    await expect(activation).resolves.toEqual({
+      description: 'Användbar kravtext',
+    })
+    cache.markUsable(17, context)
+    expect(fetchDetail).toHaveBeenCalledTimes(1)
+    expect(events.map(event => event.type)).toEqual([
+      'prefetch-started',
+      'click-reused-in-flight',
+      'click-to-usable-content',
+    ])
+  })
+
+  it('reuses a completed response during its 30 second lifetime', async () => {
+    vi.useFakeTimers()
+    const fetchDetail = vi.fn(async () => ({ description: 'Kravtext' }))
+    const events: RequirementDetailPrefetchEvent[] = []
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail,
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    await cache.load(23, 'prefetch', context)
+    await vi.advanceTimersByTimeAsync(29_999)
+    await expect(cache.load(23, 'activate', context)).resolves.toEqual({
+      description: 'Kravtext',
+    })
+
+    expect(fetchDetail).toHaveBeenCalledTimes(1)
+    expect(events.map(event => event.type)).toContain('click-reused-cache')
+    vi.useRealTimers()
+  })
+
+  it('prevents a late response from returning after invalidation', async () => {
+    const staleRequest = deferred<{ description: string }>()
+    const freshRequest = deferred<{ description: string }>()
+    const fetchDetail = vi
+      .fn()
+      .mockReturnValueOnce(staleRequest.promise)
+      .mockReturnValueOnce(freshRequest.promise)
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail,
+      keyOf: String,
+    })
+
+    const stalePrefetch = cache.load(41, 'prefetch', context)
+    cache.invalidate(41, context)
+    const authoritativeRefresh = cache.load(41, 'refresh', context)
+    staleRequest.resolve({ description: 'Inaktuell kravtext' })
+    freshRequest.resolve({ description: 'Ny kravtext' })
+
+    await expect(stalePrefetch).resolves.toEqual({
+      description: 'Inaktuell kravtext',
+    })
+    await expect(authoritativeRefresh).resolves.toEqual({
+      description: 'Ny kravtext',
+    })
+    await expect(cache.load(41, 'activate', context)).resolves.toEqual({
+      description: 'Ny kravtext',
+    })
+    expect(fetchDetail).toHaveBeenCalledTimes(2)
+  })
+
+  it('retries activation once after a shared speculative server failure', async () => {
+    const speculativeRequest = deferred<{ description: string }>()
+    const activationRetry = deferred<{ description: string }>()
+    const fetchDetail = vi
+      .fn()
+      .mockReturnValueOnce(speculativeRequest.promise)
+      .mockReturnValueOnce(activationRetry.promise)
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail,
+      keyOf: String,
+    })
+
+    const prefetch = cache.load(52, 'prefetch', context)
+    const activation = cache.load(52, 'activate', context)
+    speculativeRequest.reject(new DetailFetchError(500, 'Tillfälligt fel'))
+    activationRetry.resolve({ description: 'Kravtext efter nytt försök' })
+
+    await expect(prefetch).rejects.toMatchObject({ status: 500 })
+    await expect(activation).resolves.toEqual({
+      description: 'Kravtext efter nytt försök',
+    })
+    expect(fetchDetail).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not retry an authentication failure and clears actor-bound data', async () => {
+    const fetchDetail = vi
+      .fn()
+      .mockResolvedValueOnce({ description: 'Tidigare cachad kravtext' })
+      .mockRejectedValueOnce(new DetailFetchError(401, 'Logga in igen'))
+      .mockResolvedValueOnce({ description: 'Kravtext efter ny inloggning' })
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail,
+      keyOf: String,
+    })
+
+    await cache.load(1, 'prefetch', context)
+    const rejectedPrefetch = cache.load(2, 'prefetch', context)
+    const rejectedActivation = cache.load(2, 'activate', context)
+
+    await expect(rejectedPrefetch).rejects.toMatchObject({ status: 401 })
+    await expect(rejectedActivation).rejects.toMatchObject({ status: 401 })
+    await expect(cache.load(1, 'activate', context)).resolves.toEqual({
+      description: 'Kravtext efter ny inloggning',
+    })
+    expect(fetchDetail).toHaveBeenCalledTimes(3)
+  })
+
+  it('reports a speculative response unused when its lifetime expires', async () => {
+    vi.useFakeTimers()
+    const events: RequirementDetailPrefetchEvent[] = []
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail: vi.fn(async () => ({ description: 'Kravtext' })),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    await cache.load(61, 'prefetch', context)
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    expect(events.map(event => event.type)).toContain('unused')
+    vi.useRealTimers()
+  })
+
+  it('caps completed responses at 32 without counting in-flight requests', async () => {
+    const fetchDetail = vi.fn(async (key: number) => ({
+      description: `${key}`,
+    }))
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail,
+      keyOf: String,
+    })
+
+    for (let key = 1; key <= 33; key += 1) {
+      await cache.load(key, 'prefetch', context)
+    }
+    await expect(cache.load(1, 'activate', context)).resolves.toEqual({
+      description: '1',
+    })
+
+    expect(fetchDetail).toHaveBeenCalledTimes(34)
+  })
+
+  it('drops an expired completed response even before its timer callback runs', async () => {
+    vi.useFakeTimers()
+    const now = vi.spyOn(performance, 'now').mockReturnValue(0)
+    const fetchDetail = vi.fn(async () => ({ description: 'Kravtext' }))
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail,
+      keyOf: String,
+    })
+
+    await cache.load(91, 'prefetch', context)
+    now.mockReturnValue(30_001)
+    await cache.load(91, 'activate', context)
+
+    expect(fetchDetail).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it('clears completed timers and tolerates unusable or disposed entries', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail: vi.fn(async () => ({ description: 'Kravtext' })),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    cache.markUsable(92, context)
+    await cache.load(92, 'prefetch', context)
+    cache.markUsable(92, context)
+    cache.invalidate(92, context)
+    cache.dispose()
+
+    expect(events.map(event => event.type)).toEqual([
+      'prefetch-started',
+      'invalidated',
+    ])
+  })
+
+  it.each([403, 404])(
+    'does not retry a shared speculative %i response',
+    async status => {
+      const fetchDetail = vi
+        .fn()
+        .mockRejectedValue(new DetailFetchError(status, 'Permanent avvisning'))
+      const cache = new DetailResourceCache<number, { description: string }>({
+        fetchDetail,
+        keyOf: String,
+      })
+
+      const prefetch = cache.load(status, 'prefetch', context)
+      const activation = cache.load(status, 'activate', context)
+
+      await expect(prefetch).rejects.toMatchObject({ status })
+      await expect(activation).rejects.toMatchObject({ status })
+      expect(fetchDetail).toHaveBeenCalledTimes(1)
+    },
+  )
+})
+
+describe('DetailPrefetchIntentController', () => {
+  it('starts prefetch only after the 150 ms intent threshold', async () => {
+    vi.useFakeTimers()
+    const prefetch = vi.fn()
+    const controller = new DetailPrefetchIntentController()
+
+    controller.schedule({ ...context, key: '72', trigger: 'pointer' }, prefetch)
+    await vi.advanceTimersByTimeAsync(149)
+    expect(prefetch).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(prefetch).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('cancels pending pointer intent when the pointer leaves', async () => {
+    vi.useFakeTimers()
+    const events: RequirementDetailPrefetchEvent[] = []
+    const prefetch = vi.fn()
+    const target = { ...context, key: '73', trigger: 'pointer' as const }
+    const controller = new DetailPrefetchIntentController({
+      onEvent: event => events.push(event),
+    })
+
+    controller.schedule(target, prefetch)
+    await vi.advanceTimersByTimeAsync(80)
+    controller.cancel(target)
+    await vi.advanceTimersByTimeAsync(100)
+
+    expect(prefetch).not.toHaveBeenCalled()
+    expect(events.map(event => event.type)).toEqual([
+      'timer-started',
+      'timer-cancelled',
+    ])
+    vi.useRealTimers()
+  })
+
+  it('records pointer-to-click and prevents a pre-threshold request', async () => {
+    vi.useFakeTimers()
+    const events: RequirementDetailPrefetchEvent[] = []
+    const prefetch = vi.fn()
+    const target = { ...context, key: '74', trigger: 'pointer' as const }
+    const controller = new DetailPrefetchIntentController({
+      onEvent: event => events.push(event),
+    })
+
+    controller.schedule(target, prefetch)
+    await vi.advanceTimersByTimeAsync(90)
+    controller.activate({ ...context, key: '74' })
+
+    expect(prefetch).not.toHaveBeenCalled()
+    expect(events.at(-1)).toMatchObject({
+      durationMs: 90,
+      trigger: 'pointer',
+      type: 'intent-to-click',
+    })
+    vi.useRealTimers()
+  })
+
+  it('cancels every pending timer when its page is disposed', async () => {
+    vi.useFakeTimers()
+    const prefetch = vi.fn()
+    const controller = new DetailPrefetchIntentController()
+    controller.schedule({ ...context, key: '81', trigger: 'pointer' }, prefetch)
+    controller.schedule({ ...context, key: '82', trigger: 'focus' }, prefetch)
+
+    controller.dispose()
+    await vi.advanceTimersByTimeAsync(150)
+
+    expect(prefetch).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it('ignores duplicate intent schedules for the same trigger', () => {
+    vi.useFakeTimers()
+    const firstPrefetch = vi.fn()
+    const secondPrefetch = vi.fn()
+    const target = { ...context, key: '83', trigger: 'focus' as const }
+    const controller = new DetailPrefetchIntentController()
+
+    controller.schedule(target, firstPrefetch)
+    controller.schedule(target, secondPrefetch)
+    vi.advanceTimersByTime(150)
+
+    expect(firstPrefetch).toHaveBeenCalledTimes(1)
+    expect(secondPrefetch).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+})
+
+describe('detail cache browser adapters', () => {
+  it('dispatches content-free events only when a browser window exists', () => {
+    const event = {
+      ...context,
+      key: '101',
+      timestamp: Date.now(),
+      type: 'prefetch-started' as const,
+    }
+    const listener = vi.fn()
+    window.addEventListener('krav:requirement-detail-prefetch', listener)
+
+    emitRequirementDetailPrefetchEvent(event)
+    expect(listener).toHaveBeenCalledTimes(1)
+
+    vi.stubGlobal('window', undefined)
+    expect(() => emitRequirementDetailPrefetchEvent(event)).not.toThrow()
+    vi.unstubAllGlobals()
+  })
+
+  it('loads library and specification-local details through their API paths', async () => {
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ description: 'Bibliotekskrav' })),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ description: 'Lokalt krav' })),
+      )
+    const libraryCache = createLibraryRequirementDetailCache()
+    const localCache = createSpecificationLocalRequirementDetailCache()
+
+    await expect(libraryCache.load(102, 'activate', context)).resolves.toEqual({
+      description: 'Bibliotekskrav',
+    })
+    await expect(
+      localCache.load(
+        { localRequirementId: 104, specificationId: 103 },
+        'activate',
+        {
+          resource: 'specification-local-requirement',
+          surface: 'specification-left',
+        },
+      ),
+    ).resolves.toEqual({ description: 'Lokalt krav' })
+
+    expect(apiFetch).toHaveBeenNthCalledWith(1, '/api/requirements/102', {
+      signal: expect.any(AbortSignal),
+    })
+    expect(apiFetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/requirements-specifications/103/local-requirements/104',
+      { signal: expect.any(AbortSignal) },
+    )
+  })
+
+  it('surfaces API status errors without requiring status text', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(
+      new Response(null, { status: 404, statusText: '' }),
+    )
+    const cache = createLibraryRequirementDetailCache()
+
+    await expect(cache.load(105, 'activate', context)).rejects.toMatchObject({
+      message: 'Detail request failed (404)',
+      status: 404,
+    })
+  })
+
+  it('keeps synthetic latency validation abortable and outside normal builds', async () => {
+    vi.useFakeTimers()
+    vi.stubEnv('NEXT_PUBLIC_VALIDATE_REQUIREMENT_DETAIL_PREFETCH', 'true')
+    vi.stubEnv(
+      'NEXT_PUBLIC_REQUIREMENT_DETAIL_PREFETCH_SYNTHETIC_LATENCY_MS',
+      '75',
+    )
+    vi.resetModules()
+    const [{ apiFetch: isolatedApiFetch }, prefetchModule] = await Promise.all([
+      import('@/lib/http/api-fetch'),
+      import('@/lib/requirements/detail-prefetch'),
+    ])
+    vi.mocked(isolatedApiFetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 106 })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 107 })))
+    const cache = prefetchModule.createLibraryRequirementDetailCache()
+
+    const delayed = cache.load(106, 'activate', context)
+    let settled = false
+    void delayed.then(() => {
+      settled = true
+    })
+    await vi.advanceTimersByTimeAsync(74)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    await expect(delayed).resolves.toEqual({ id: 106 })
+
+    const aborted = cache.load(107, 'activate', context)
+    await vi.advanceTimersByTimeAsync(1)
+    cache.invalidate(107, context)
+    await expect(aborted).rejects.toMatchObject({ name: 'AbortError' })
+
+    vi.unstubAllEnvs()
+    vi.useRealTimers()
+  })
+})

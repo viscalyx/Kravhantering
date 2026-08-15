@@ -1318,7 +1318,20 @@
     "tlskey",
     "tlsprotocols",
     "UEFI",
-    "vTPM"
+    "vTPM",
+    "deduplicerat",
+    "fokuserbara",
+    "förhämtar",
+    "förhämtning",
+    "förhämtningen",
+    "förhämtningar",
+    "invalidationen",
+    "Mätprofiler",
+    "observerbarheten",
+    "pointerenter",
+    "pointerleave",
+    "sidägda",
+    "valideringsbuild"
   ],
   "flagWords": [],
   "ignorePaths": [

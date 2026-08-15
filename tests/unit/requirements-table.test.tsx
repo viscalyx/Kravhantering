@@ -3406,6 +3406,37 @@ describe('RequirementsTable', () => {
     expect(onRowClick).toHaveBeenNthCalledWith(3, 1)
   })
 
+  it('exposes row pointer, focus, and activation intent at the table seam', () => {
+    const onRowActivate = vi.fn()
+    const onRowIntentEnd = vi.fn()
+    const onRowIntentStart = vi.fn()
+    const rowData = makeRow()
+    render(
+      <RequirementsTable
+        locale="sv"
+        onRowActivate={onRowActivate}
+        onRowClick={vi.fn()}
+        onRowIntentEnd={onRowIntentEnd}
+        onRowIntentStart={onRowIntentStart}
+        rows={[rowData]}
+      />,
+    )
+
+    const action = screen.getByRole('button', { name: 'INT0001' })
+    const row = action.closest('tr') as HTMLTableRowElement
+    fireEvent.pointerEnter(row, { pointerType: 'mouse' })
+    fireEvent.pointerLeave(row, { pointerType: 'mouse' })
+    fireEvent.focus(action)
+    fireEvent.blur(action)
+    fireEvent.click(action)
+
+    expect(onRowIntentStart).toHaveBeenNthCalledWith(1, rowData, 'pointer')
+    expect(onRowIntentStart).toHaveBeenNthCalledWith(2, rowData, 'focus')
+    expect(onRowIntentEnd).toHaveBeenNthCalledWith(1, rowData, 'pointer')
+    expect(onRowIntentEnd).toHaveBeenNthCalledWith(2, rowData, 'focus')
+    expect(onRowActivate).toHaveBeenCalledWith(rowData)
+  })
+
   it('navigates from whole-row clicks and the row action button when no row click handler is provided', () => {
     render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 
