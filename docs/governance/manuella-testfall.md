@@ -978,6 +978,18 @@ inaktuellt eller inte stämma med den aktiva frågan. Vanlig sidinläsning är
 inte tillgänglig före en lyckad uppdatering. `Försök igen` upprepar den senaste
 frågan och tar bort varningen först när uppdateringen lyckas.
 
+### REQ-21: avsikt förhämtar kravdetalj i kravbiblioteket
+
+**Steg:** Kör en valideringsbuild med kandidat och valideringsverktyg
+aktiverade. För pekaren över ett krav och lämna raden före 150 ms. Hovra sedan
+över samma rad längre än 150 ms och klicka medan huvudförfrågan pågår. Upprepa
+med tangentbordsfokus på krav-ID-kommandot och med ett omedelbart direktklick.
+
+**Förväntat resultat:** Kort passage startar ingen huvudförfrågan. Indikatorn
+visas endast medan 150 ms-timern väntar. Hovring eller fokus över tröskeln
+startar exakt en huvudförfrågan som klicket återanvänder. Direktklick öppnar
+detaljen utan att vänta på förhämtning och utan dubbla samtidiga anrop.
+
 ## Skapa krav och livscykel
 
 ### LIFE-01: skapa krav från UI
@@ -1631,6 +1643,19 @@ avmarkeras. Ingen markering tas bort automatiskt. Åtgärden för att avmarkera 
 krav som inte visas är aktiverad och kravets enskilda detaljåtgärder påverkas
 inte. Efter avmarkeringen återstår 200 markerade krav, meddelandet försvinner
 och de fyra gemensamma åtgärderna aktiveras igen.
+
+### SPEC-21: avsikt förhämtar båda typerna av kravdetalj
+
+**Steg:** Kör en valideringsbuild och öppna ett kravunderlag som innehåller ett
+bibliotekskrav och ett kravunderlagslokalt krav. Prova 150 ms-hovring, fokus
+och direktklick i vänster lista för båda typerna samt i höger lista för ett
+bibliotekskrav.
+
+**Förväntat resultat:** Vänster och höger lista följer samma avsiktspolicy.
+Bibliotekskraven i båda listorna använder samma sidägda cache. Lokala krav
+använder en separat cache med kravunderlag och lokalt krav-ID som nyckel. Varje
+klick återanvänder det pågående anropet från förhämtningen. Direktklick
+fungerar omedelbart och inga dubbla samtidiga huvudförfrågningar startas.
 
 ## Avsteg
 

@@ -127,6 +127,40 @@ test.describe('Requirements library', () => {
     })
   })
 
+  test('REQ-21: intent prefetch is cancelled, reused, and never duplicated', async ({
+    page,
+  }) => {
+    let detailRequests = 0
+    await page.route(/\/api\/requirements\/\d+$/u, async route => {
+      detailRequests += 1
+      await delay(350)
+      await route.continue()
+    })
+    await page.goto('/sv/requirements')
+    await filterRequirementId(page, 'INT0001')
+    const rowButton = page.getByRole('button', { name: /^INT0001\b/u })
+    const row = rowButton.locator('xpath=ancestor::tr[1]')
+
+    await row.hover()
+    await expect(
+      page.locator('[data-prefetch-intent-indicator="true"]'),
+    ).toBeVisible()
+    await page.mouse.move(0, 0)
+    await delay(100)
+    expect(detailRequests).toBe(0)
+    await expect(
+      page.locator('[data-prefetch-intent-indicator="true"]'),
+    ).toHaveCount(0)
+
+    await row.hover()
+    await expect.poll(() => detailRequests).toBe(1)
+    await rowButton.click()
+    const detailPaneId = await rowButton.getAttribute('aria-controls')
+    expect(detailPaneId).toBeTruthy()
+    await expect(page.locator(`#${detailPaneId}`)).toContainText('Kravtext')
+    expect(detailRequests).toBe(1)
+  })
+
   test('REQ-01: an invalid continuation cursor refreshes and announces the list', async ({
     page,
   }) => {
