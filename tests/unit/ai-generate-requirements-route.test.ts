@@ -82,11 +82,11 @@ function makeRequest(
 
 function enableAiForensicCapture(): void {
   routeState.query.mockImplementation((sql: string) => {
-    if (sql.includes('FROM ai_forensic_capture_windows')) {
-      return Promise.resolve([{ captureWindowId: 47 }])
-    }
     if (sql.includes('INSERT INTO ai_forensic_evidence_events')) {
       return Promise.resolve([{ id: 1 }])
+    }
+    if (sql.includes('FROM ai_forensic_capture_windows')) {
+      return Promise.resolve([{ captureWindowId: 47 }])
     }
     return Promise.resolve([])
   })

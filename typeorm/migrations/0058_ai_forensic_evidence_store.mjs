@@ -28,7 +28,8 @@ const UP_STATEMENTS = [
       CONSTRAINT [chk_ai_forensic_capture_windows_direction]
         CHECK ([direction] IN (N'input', N'output')),
       CONSTRAINT [chk_ai_forensic_capture_windows_expires_at]
-        CHECK ([expires_at] > [requested_at]),
+        CHECK ([expires_at] BETWEEN DATEADD(minute, 5, [requested_at])
+          AND DATEADD(minute, 60, [requested_at])),
       CONSTRAINT [chk_ai_forensic_capture_windows_event_byte_limit]
         CHECK ([event_byte_limit] BETWEEN 256 AND 8192),
       CONSTRAINT [chk_ai_forensic_capture_windows_event_item_limit]

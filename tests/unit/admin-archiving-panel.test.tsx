@@ -227,6 +227,46 @@ describe('ArchivingPanel', () => {
     ).toBeVisible()
   })
 
+  it('preserves a forensic metadata reload error after purge', async () => {
+    const capture = {
+      direction: 'output',
+      eventCount: 2,
+      expiresAt: '2026-08-15T12:00:00.000Z',
+      id: 47,
+      operation: 'ai.generate-requirement-import',
+      requestedAt: '2026-08-15T11:30:00.000Z',
+      status: 'stopped',
+      stoppedAt: '2026-08-15T11:45:00.000Z',
+    }
+    fetchMock
+      .mockResolvedValueOnce(okJson({ policies: [] }))
+      .mockResolvedValueOnce(okJson({ canPurge: true, captures: [capture] }))
+      .mockResolvedValueOnce(okJson({ captureWindowId: 47 }))
+      .mockResolvedValueOnce(errorJson('metadata unavailable'))
+
+    renderAdminPanel(<ArchivingPanel />, { confirmModal: true })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.archiving.forensic.reload',
+      }),
+    )
+    await screen.findByText('#47')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.archiving.forensic.purge' }),
+    )
+    await clickAdminConfirmationAction('admin.archiving.forensic.purge')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'admin.archiving.forensic.loadError',
+    )
+    expect(
+      screen.queryByText('admin.archiving.forensic.purgeSuccess'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText('admin.archiving.forensic.statuses.stopped'),
+    ).toBeVisible()
+  })
+
   it('creates an exception, refreshes preview, and executes after confirmation', async () => {
     const preview = retentionPreview()
     fetchMock

@@ -58,6 +58,37 @@ const screening: AiSafetyScreeningResult = {
 describe('AI forensic evidence against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
 
+  it('accepts only inclusive five-to-sixty-minute capture windows', async () => {
+    const insertWindow = (durationMilliseconds: number) =>
+      appDb().query(
+        `DECLARE @requestedAt datetime2(3) = SYSUTCDATETIME();
+         INSERT INTO ai_forensic_capture_windows (
+           operation, direction, requested_by_display_name, requested_at,
+           expires_at, is_open, event_byte_limit, event_item_limit,
+           collection_item_limit
+         ) VALUES (
+           N'ai.generate-requirement-import', N'input', N'Boundary Admin',
+           @requestedAt, DATEADD(millisecond, @0, @requestedAt), NULL,
+           8192, 8, 1000
+         );`,
+        [durationMilliseconds],
+      )
+
+    await insertWindow(5 * 60_000)
+    await insertWindow(60 * 60_000)
+    await expect(insertWindow(5 * 60_000 - 1)).rejects.toThrow(
+      'chk_ai_forensic_capture_windows_expires_at',
+    )
+    await expect(insertWindow(60 * 60_000 + 1)).rejects.toThrow(
+      'chk_ai_forensic_capture_windows_expires_at',
+    )
+
+    const rows = (await appDb().query(
+      'SELECT COUNT_BIG(*) AS captureCount FROM ai_forensic_capture_windows',
+    )) as Array<{ captureCount: number | string }>
+    expect(Number(rows[0]?.captureCount)).toBe(2)
+  })
+
   it('requires a different person to approve a capture request', async () => {
     const requester = context(
       'SE5560000001-forensic-two-person1',

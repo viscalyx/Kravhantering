@@ -736,14 +736,11 @@ describe('privacy erasure service', () => {
       target: { hsaId: TARGET_HSA_ID },
     })
 
-    expect(query).toHaveBeenCalledWith(
-      expect.any(String),
-      [TARGET_HSA_ID, DELETED_USER_INTERNAL_NAME],
-    )
-    expect(query).toHaveBeenCalledWith(
-      expect.any(String),
-      [TARGET_HSA_ID],
-    )
+    expect(query).toHaveBeenCalledWith(expect.any(String), [
+      TARGET_HSA_ID,
+      DELETED_USER_INTERNAL_NAME,
+    ])
+    expect(query).toHaveBeenCalledWith(expect.any(String), [TARGET_HSA_ID])
     expect(
       query.mock.calls.some(([, parameters]) =>
         parameters?.includes(OTHER_HSA_ID),

@@ -413,7 +413,10 @@ After upgrade, review the Admin Center MCP limits before enabling high-volume im
 <!-- operator-upgrade:source pr-406 end -->
 
 <!-- operator-upgrade:source pr-409 start -->
-Before or immediately after upgrade, route the new AI safety forensic log stream separately from metadata security audit logs, with stricter access, retention, and masking controls, or disable forensic AI safety logging in Admin Center until that routing is ready. The forensic stream is enabled by default during this diagnostic phase and can contain raw blocked AI content, model reasoning, repair payloads, matched rule terms, personal data, or secrets.
+Persistent raw AI forensic logging is not available. Use the separately
+requested and approved, time-limited evidence-capture workflow only for an
+authorized incident investigation. Verify its expiry and purge, and run
+transient cleanup after a database restore before allowing evidence reads.
 <!-- operator-upgrade:source pr-409 end -->
 
 <!-- operator-upgrade:source pr-430 start -->

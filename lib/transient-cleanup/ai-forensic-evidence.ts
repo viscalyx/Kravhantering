@@ -78,6 +78,7 @@ export async function inspectExpiredAiForensicEvidence(
       ON evidence.ai_forensic_capture_window_id = capture.id
     WHERE (
         capture.expiry_audited_at IS NULL
+        AND capture.stopped_at IS NULL
         AND capture.expires_at <= SYSUTCDATETIME()
       ) OR (
         capture.purged_at IS NULL
@@ -107,6 +108,7 @@ export async function purgeExpiredAiForensicEvidence(
         SELECT TOP (@0) *
         FROM ai_forensic_capture_windows WITH (UPDLOCK, READPAST, ROWLOCK)
         WHERE expiry_audited_at IS NULL
+          AND stopped_at IS NULL
           AND expires_at <= SYSUTCDATETIME()
         ORDER BY expires_at, id
       )

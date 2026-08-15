@@ -8,8 +8,9 @@ small randomized delay.
 The current cleanup registry includes time-limited AI forensic evidence,
 expired MCP import-validation sessions, and expired principal creation-rate
 buckets. All use the same runner and timer. The forensic target records a
-metadata-only expiry event at SQL-time expiry, then purges evidence 72 hours
-after manual stop or expiry.
+metadata-only expiry event when a cleanup run detects a row that has already
+expired according to SQL Server time, then purges evidence 72 hours after
+manual stop or expiry.
 
 ## Work Bounds and Safety
 

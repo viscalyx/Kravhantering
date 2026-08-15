@@ -78,16 +78,13 @@ describe('AI forensic capture control', () => {
       'SERIALIZABLE',
       expect.any(Function),
     )
-    expect(manager.query).toHaveBeenCalledWith(
-      expect.any(String),
-      [
-        'ai.generate-requirement-import',
-        'output',
-        '2026-08-15T14:00:00.000Z',
-        'SE5560000001-admin1',
-        'Ada Admin',
-      ],
-    )
+    expect(manager.query).toHaveBeenCalledWith(expect.any(String), [
+      'ai.generate-requirement-import',
+      'output',
+      '2026-08-15T14:00:00.000Z',
+      'SE5560000001-admin1',
+      'Ada Admin',
+    ])
     expect(auditState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         detail: expect.objectContaining({ captureWindowId: 47 }),
@@ -117,7 +114,7 @@ describe('AI forensic capture control', () => {
     expect(auditState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
-  it('fails approval closed when requester and approver have the same HSA-id', async () => {
+  it('fails approval closed with a conflict when the update matches no row', async () => {
     const privacyContext = {
       ...context,
       actor: { ...context.actor, roles: ['PrivacyOfficer'] },
@@ -130,10 +127,11 @@ describe('AI forensic capture control', () => {
         captureWindowId: 47,
       }),
     ).rejects.toMatchObject({ code: 'conflict' })
-    expect(manager.query).toHaveBeenCalledWith(
-      expect.any(String),
-      [47, 'SE5560000001-admin1', 'Ada Admin'],
-    )
+    expect(manager.query).toHaveBeenCalledWith(expect.any(String), [
+      47,
+      'SE5560000001-admin1',
+      'Ada Admin',
+    ])
     expect(auditState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
@@ -176,11 +174,11 @@ describe('AI forensic capture control', () => {
     ).resolves.toMatchObject({ id: 48, status: 'active' })
 
     expect(transaction).toHaveBeenCalledWith(expect.any(Function))
-    expect(manager.query).toHaveBeenNthCalledWith(
-      2,
-      expect.any(String),
-      [48, 'SE5560000001-privacy1', 'Disa Privacy Officer'],
-    )
+    expect(manager.query).toHaveBeenNthCalledWith(2, expect.any(String), [
+      48,
+      'SE5560000001-privacy1',
+      'Disa Privacy Officer',
+    ])
     expect(auditState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         detail: expect.objectContaining({
@@ -221,16 +219,12 @@ describe('AI forensic capture control', () => {
     ).resolves.toMatchObject({ id: 47, status: 'purged' })
 
     expect(transaction).toHaveBeenCalledWith(expect.any(Function))
-    expect(manager.query).toHaveBeenNthCalledWith(
-      1,
-      expect.any(String),
-      [47],
-    )
-    expect(manager.query).toHaveBeenNthCalledWith(
-      2,
-      expect.any(String),
-      [47, 'SE5560000001-privacy1', 'Disa Privacy Officer'],
-    )
+    expect(manager.query).toHaveBeenNthCalledWith(1, expect.any(String), [47])
+    expect(manager.query).toHaveBeenNthCalledWith(2, expect.any(String), [
+      47,
+      'SE5560000001-privacy1',
+      'Disa Privacy Officer',
+    ])
   })
 
   it('returns stopped evidence only when the actor is requester or approver', async () => {
@@ -262,13 +256,34 @@ describe('AI forensic capture control', () => {
         },
       ],
     })
-    expect(query).toHaveBeenCalledWith(
-      expect.any(String),
-      [47, 'SE5560000001-admin1'],
-    )
+    expect(query).toHaveBeenCalledWith(expect.any(String), [
+      47,
+      'SE5560000001-admin1',
+    ])
     expect(auditState.recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({ event: 'ai.forensic_evidence.accessed' }),
     )
+  })
+
+  it('denies a capture party whose current role cannot read evidence', async () => {
+    const query = vi.fn()
+    const partyWithoutRoleContext = {
+      ...context,
+      actor: { ...context.actor, roles: [] },
+    } as RequestContext
+
+    await expect(
+      readStoppedAiForensicCaptureEvidence(
+        { query } as unknown as SqlServerDatabase,
+        partyWithoutRoleContext,
+        47,
+      ),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      message: 'Forensic evidence is unavailable to this actor',
+    })
+    expect(query).not.toHaveBeenCalled()
+    expect(auditState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
   it('lists aggregate capture metadata for Admin and Privacy Officer roles', async () => {

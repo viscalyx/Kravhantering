@@ -74,15 +74,6 @@ export const REST_OPERATION_DECLARATIONS = [
     'focused',
   ],
   [
-    'GET',
-    '/api/admin/ai-forensic-captures',
-    'session',
-    'none',
-    'sensitive',
-    'no-store',
-    'focused',
-  ],
-  [
     'PATCH',
     '/api/admin/access-reviews/[id]/items/[itemId]',
     'session',
@@ -116,6 +107,15 @@ export const REST_OPERATION_DECLARATIONS = [
     'same-origin',
     'authenticated',
     'framework-default',
+    'focused',
+  ],
+  [
+    'GET',
+    '/api/admin/ai-forensic-captures',
+    'session',
+    'none',
+    'sensitive',
+    'no-store',
     'focused',
   ],
   [

@@ -1674,10 +1674,10 @@ have `is_open = 1`. SQL Server UTC time is authoritative for the required
 
 The Admin requester cannot approve their own request. Admin or Privacy Officer
 may stop an active window; Privacy Officer approves and purges. After stop or
-expiry, only the original requester or approver can read evidence through the
-sensitive, no-store API. Demo seed data includes one stopped synthetic window
-with duplicate display names and distinct HSA-ids to exercise exact identity
-matching.
+expiry, only the original requester or approver who currently has the `Admin`
+or `PrivacyOfficer` role can read evidence through the sensitive, no-store API.
+Demo seed data includes one stopped synthetic window with duplicate display
+names and distinct HSA-ids to exercise exact identity matching.
 
 ### `ai_forensic_evidence_events`
 

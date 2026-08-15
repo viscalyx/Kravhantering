@@ -120,9 +120,9 @@ describe('transient cleanup against SQL Server', () => {
         collection_item_limit
       ) VALUES (
         N'ai.generate-requirement-import', N'output',
-        N'SE5560000001-cleanup-admin1', N'Ada Admin', DATEADD(hour, -74, @now),
+        N'SE5560000001-cleanup-admin1', N'Ada Admin', DATEADD(minute, -10, @now),
         N'SE5560000001-cleanup-privacy1', N'Disa Privacy Officer',
-        DATEADD(hour, -74, @now), DATEADD(hour, -73, @now),
+        DATEADD(hour, -74, @now), DATEADD(minute, 10, @now),
         DATEADD(hour, -73, @now), NULL, 8192, 8, 1000
       );
       DECLARE @captureId int = SCOPE_IDENTITY();
@@ -145,13 +145,19 @@ describe('transient cleanup against SQL Server', () => {
       deletedRows: 1,
     })
     const rows = (await appDb().query(`
-      SELECT capture.purged_at AS purgedAt,
+      SELECT capture.expiry_audited_at AS expiryAuditedAt,
+        capture.purged_at AS purgedAt,
         COUNT_BIG(evidence.id) AS eventCount
       FROM ai_forensic_capture_windows capture
       LEFT JOIN ai_forensic_evidence_events evidence
         ON evidence.ai_forensic_capture_window_id = capture.id
-      GROUP BY capture.purged_at
-    `)) as Array<{ eventCount: number | string; purgedAt: Date | null }>
+      GROUP BY capture.expiry_audited_at, capture.purged_at
+    `)) as Array<{
+      eventCount: number | string
+      expiryAuditedAt: Date | null
+      purgedAt: Date | null
+    }>
+    expect(rows[0]?.expiryAuditedAt).toBeNull()
     expect(rows[0]?.purgedAt).toBeInstanceOf(Date)
     expect(Number(rows[0]?.eventCount)).toBe(0)
   })

@@ -300,7 +300,10 @@ sequenceDiagram
   [`lib/auth/audit.ts`](../../lib/auth/audit.ts). The current event set is:
   `access_review.cancelled`, `access_review.completed`,
   `access_review.created`, `access_review.exported`,
-  `access_review.item_decided`, `ai.input_safety.blocked`,
+  `access_review.item_decided`, `ai.forensic_capture.disabled`,
+  `ai.forensic_capture.enabled`, `ai.forensic_capture.expired`,
+  `ai.forensic_capture.requested`, `ai.forensic_evidence.accessed`,
+  `ai.forensic_evidence.purged`, `ai.input_safety.blocked`,
   `ai.output_safety.blocked`, `ai.safety_filter.failed`,
   `admin.archiving.exception.created`,
   `admin.archiving.exception.deleted`, `admin.archiving.executed`,

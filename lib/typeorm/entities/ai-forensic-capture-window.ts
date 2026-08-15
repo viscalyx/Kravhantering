@@ -150,7 +150,8 @@ export const aiForensicCaptureWindowEntity =
         name: 'chk_ai_forensic_capture_windows_direction',
       },
       {
-        expression: '[expires_at] > [requested_at]',
+        expression:
+          '[expires_at] BETWEEN DATEADD(minute, 5, [requested_at]) AND DATEADD(minute, 60, [requested_at])',
         name: 'chk_ai_forensic_capture_windows_expires_at',
       },
       {

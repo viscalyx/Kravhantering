@@ -9,7 +9,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useState } from 'react'
+import { type MouseEvent, useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -164,7 +164,7 @@ export default function ArchivingPanel() {
       if (!response.ok) {
         setForensicStatus('error')
         setForensicMessage(ta('archiving.forensic.loadError'))
-        return
+        return false
       }
       const body = (await response.json()) as {
         canPurge?: boolean
@@ -174,9 +174,11 @@ export default function ArchivingPanel() {
       setForensicCaptures(body.captures ?? [])
       setForensicStatus('idle')
       setForensicMessage(null)
+      return true
     } catch {
       setForensicStatus('error')
       setForensicMessage(ta('archiving.forensic.loadError'))
+      return false
     }
   }, [ta])
 
@@ -184,8 +186,13 @@ export default function ArchivingPanel() {
     void loadRetentionPolicies()
   }, [loadRetentionPolicies])
 
-  const purgeForensicCapture = async (captureWindowId: number) => {
+  const purgeForensicCapture = async (
+    event: MouseEvent<HTMLButtonElement>,
+    captureWindowId: number,
+  ) => {
+    const anchorEl = event.currentTarget
     const confirmed = await confirm({
+      anchorEl,
       confirmText: ta('archiving.forensic.purge'),
       icon: 'caution',
       message: ta('archiving.forensic.purgeConfirmMessage'),
@@ -209,7 +216,7 @@ export default function ArchivingPanel() {
         )
         return
       }
-      await loadForensicCaptures()
+      if (!(await loadForensicCaptures())) return
       setForensicStatus('saved')
       setForensicMessage(ta('archiving.forensic.purgeSuccess'))
     } catch {
@@ -284,9 +291,11 @@ export default function ArchivingPanel() {
     }
   }
 
-  const executeRetention = async () => {
+  const executeRetention = async (event: MouseEvent<HTMLButtonElement>) => {
     if (!retentionPreview) return
+    const anchorEl = event.currentTarget
     const confirmed = await confirm({
+      anchorEl,
       confirmText: ta('archiving.retention.execute'),
       icon: 'caution',
       message: ta('archiving.retention.confirmMessage', {
@@ -496,7 +505,9 @@ export default function ArchivingPanel() {
                           !canPurgeForensicCapture ||
                           capture.status === 'purged'
                         }
-                        onClick={() => void purgeForensicCapture(capture.id)}
+                        onClick={event =>
+                          void purgeForensicCapture(event, capture.id)
+                        }
                         title={
                           !canPurgeForensicCapture
                             ? ta('archiving.forensic.requiresPrivacyOfficer')
@@ -689,7 +700,7 @@ export default function ArchivingPanel() {
                     retentionPreview.summary.candidateCount === 0 ||
                     (retentionRequiresArchiveExport && !retentionExportToken)
                   }
-                  onClick={() => void executeRetention()}
+                  onClick={event => void executeRetention(event)}
                   type="button"
                 >
                   <ShieldCheck aria-hidden="true" className="h-4 w-4" />

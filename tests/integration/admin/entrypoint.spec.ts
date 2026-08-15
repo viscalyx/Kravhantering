@@ -652,6 +652,9 @@ for (const { name, viewport } of viewportVariants) {
           expect(JSON.stringify(approverEvidence)).not.toContain(
             'manual-secret',
           )
+          expect(JSON.stringify(approverEvidence)).not.toContain(
+            'SE5560000001-manual1',
+          )
 
           const requesterEvidenceResponse = await requesterContext.request.get(
             absoluteUrl(requesterPage, evidencePath),

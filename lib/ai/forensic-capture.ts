@@ -277,6 +277,15 @@ export async function readStoppedAiForensicCaptureEvidence(
   captureWindowId: number,
 ): Promise<AiForensicEvidenceResult> {
   const actor = requireHumanActorSnapshot(context)
+  if (
+    !context.actor.roles.includes('Admin') &&
+    !context.actor.roles.includes('PrivacyOfficer')
+  ) {
+    throw forbiddenError('Forensic evidence is unavailable to this actor', {
+      captureWindowId,
+      reason: 'capture_not_stopped_or_actor_not_party',
+    })
+  }
   const rows = await db.query<EvidenceRow[]>(
     `
       SELECT capture.id, capture.operation, capture.direction,

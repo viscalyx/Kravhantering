@@ -212,8 +212,9 @@ different human with `PrivacyOfficer` must approve it through `PATCH`; Admin or
 Privacy Officer may stop it, and Privacy Officer may purge it. SQL Server time
 controls expiry and only one request or active window can exist. After stop or
 expiry, `GET` returns the isolated evidence only to the original requester or
-approver. These sensitive operations are same-origin protected for mutations,
-`no-store`, and metadata-audited.
+approver while that person currently has the `Admin` or `PrivacyOfficer` role.
+These sensitive operations are same-origin protected for mutations, `no-store`,
+and metadata-audited.
 
 The effective setting is disabled when either the Admin Center preference is
 off or the deployment environment has `AI_REQUIREMENT_GENERATION_DISABLED=1` or
