@@ -1,0 +1,1383 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PROTOTYP — avsiktsstyrd detaljförhämtning</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172033;
+        --muted: #5b6475;
+        --line: #d9deea;
+        --soft: #f5f7fb;
+        --accent: #3156a3;
+        --accent-soft: #e8eefb;
+        --good: #176b48;
+        --warn: #8a4b08;
+        --bad: #a12b32;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #eef1f7;
+        color: var(--ink);
+        margin: 0;
+      }
+
+      main {
+        margin: 0 auto;
+        max-width: 1180px;
+        padding: 32px 20px 64px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        font-size: clamp(1.8rem, 4vw, 2.7rem);
+        line-height: 1.08;
+        margin-bottom: 10px;
+      }
+
+      h2 {
+        font-size: 1.3rem;
+        margin-bottom: 14px;
+      }
+
+      h3 {
+        font-size: 1rem;
+        margin-bottom: 8px;
+      }
+
+      .eyebrow {
+        color: var(--accent);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .lede {
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
+        max-width: 900px;
+      }
+
+      .question,
+      .panel {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 8px 26px rgb(23 32 51 / 6%);
+      }
+
+      .question {
+        border-left: 5px solid var(--accent);
+        margin: 24px 0;
+        padding: 18px 20px;
+      }
+
+      .question p:last-child {
+        margin-bottom: 0;
+      }
+
+      .panel {
+        margin-top: 18px;
+        padding: 20px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      }
+
+      .grid.four {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      .stat {
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        min-height: 96px;
+        padding: 14px;
+      }
+
+      .stat .label {
+        color: var(--muted);
+        display: block;
+        font-size: 0.8rem;
+        margin-bottom: 6px;
+      }
+
+      .stat .value {
+        display: block;
+        font-size: 1.3rem;
+        font-weight: 750;
+      }
+
+      .stat .detail {
+        color: var(--muted);
+        display: block;
+        font-size: 0.8rem;
+        line-height: 1.4;
+        margin-top: 5px;
+      }
+
+      button,
+      select,
+      input {
+        font: inherit;
+      }
+
+      button {
+        background: #fff;
+        border: 1px solid #aeb8cc;
+        border-radius: 8px;
+        color: var(--ink);
+        cursor: pointer;
+        min-height: 38px;
+        padding: 8px 12px;
+      }
+
+      button:hover:not(:disabled) {
+        border-color: var(--accent);
+      }
+
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible {
+        outline: 3px solid #8ca9e8;
+        outline-offset: 2px;
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .controls {
+        align-items: end;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      label {
+        color: var(--muted);
+        display: grid;
+        font-size: 0.82rem;
+        font-weight: 650;
+        gap: 5px;
+      }
+
+      select,
+      input {
+        background: #fff;
+        border: 1px solid #aeb8cc;
+        border-radius: 8px;
+        color: var(--ink);
+        min-height: 40px;
+        padding: 7px 9px;
+        width: 100%;
+      }
+
+      .note {
+        background: #fff8e8;
+        border: 1px solid #e9cc8d;
+        border-radius: 9px;
+        color: #69400f;
+        font-size: 0.84rem;
+        line-height: 1.5;
+        margin-top: 12px;
+        padding: 10px 12px;
+      }
+
+      .tabs {
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+      }
+
+      .tab {
+        border: 0;
+        border-bottom: 3px solid transparent;
+        border-radius: 7px 7px 0 0;
+        white-space: nowrap;
+      }
+
+      .tab[aria-selected="true"] {
+        border-bottom-color: var(--accent);
+        color: var(--accent);
+        font-weight: 750;
+      }
+
+      .walkthrough {
+        padding-top: 16px;
+      }
+
+      .steps {
+        counter-reset: step;
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .step {
+        align-items: center;
+        display: grid;
+        gap: 9px;
+        grid-template-columns: 28px minmax(0, 1fr) auto;
+      }
+
+      .step::before {
+        align-items: center;
+        background: var(--accent-soft);
+        border-radius: 999px;
+        color: var(--accent);
+        content: counter(step);
+        counter-increment: step;
+        display: flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        height: 26px;
+        justify-content: center;
+        width: 26px;
+      }
+
+      .step.done {
+        color: var(--muted);
+        text-decoration: line-through;
+      }
+
+      .surface {
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+      }
+
+      .surface strong,
+      .surface small {
+        display: block;
+      }
+
+      .surface small {
+        color: var(--muted);
+        line-height: 1.45;
+        margin-top: 4px;
+      }
+
+      .status-line {
+        align-items: flex-start;
+        display: flex;
+        gap: 8px;
+      }
+
+      .dot {
+        background: #8791a5;
+        border-radius: 999px;
+        flex: 0 0 auto;
+        height: 10px;
+        margin-top: 6px;
+        width: 10px;
+      }
+
+      .dot.good {
+        background: var(--good);
+      }
+
+      .dot.warn {
+        background: #d8821c;
+      }
+
+      .dot.bad {
+        background: var(--bad);
+      }
+
+      .scroll {
+        overflow-x: auto;
+      }
+
+      table {
+        border-collapse: collapse;
+        font-size: 0.84rem;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 9px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 0.74rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+
+      code {
+        background: #edf0f6;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        padding: 2px 4px;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 8px 0 0;
+      }
+
+      .log {
+        background: #172033;
+        border-radius: 10px;
+        color: #e9eef9;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.8rem;
+        line-height: 1.55;
+        margin: 0;
+        max-height: 300px;
+        overflow: auto;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+
+      footer {
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        margin-top: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Throwaway-prototyp · öppnas direkt i webbläsaren</p>
+      <h1>Avsiktsstyrd förhämtning av kravdetaljer</h1>
+      <p class="lede">
+        Kör deterministiska händelseförlopp och se exakt när en begäran startar,
+        återbrukas, föråldras eller blir onödig. Tiden är virtuell, så samma
+        scenario ger samma resultat varje gång.
+      </p>
+
+      <section class="question" aria-labelledby="question-heading">
+        <h2 id="question-heading">Frågan prototypen ska besvara</h2>
+        <p>
+          Kan 150 ms hovringsavsikt för fin pekare och motsvarande fokusavsikt
+          minska väntan efter aktivering med minst 100 ms, utan dubblettanrop,
+          felaktigt återbruk över resurs- eller aktörsgränser eller beroende av
+          att förhämtningen lyckas?
+        </p>
+        <p>
+          Prototypen kan visa mekanik och kostnad per händelseförlopp. Den kan
+          inte ensam visa hur ofta verkliga användare hovrar utan att aktivera;
+          det kräver en representativ interaktionsfördelning.
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="settings-heading">
+        <h2 id="settings-heading">Förutsättningar</h2>
+        <div class="controls">
+          <label>
+            Latensprofil
+            <select id="profile">
+              <option value="slow" selected>Huvud-GET +150 ms</option>
+              <option value="local">Lokal produktionslik väg</option>
+            </select>
+          </label>
+          <label>
+            Avsiktströskel (ms)
+            <input id="intent-delay" type="number" min="0" value="150" />
+          </label>
+          <label>
+            Cachelivslängd (ms)
+            <input id="ttl" type="number" min="1" value="30000" />
+          </label>
+          <label>
+            Kapacitet per bibliotekskravscache
+            <input id="library-capacity" type="number" min="1" value="3" />
+          </label>
+          <label>
+            Kapacitet för lokala krav
+            <input id="local-capacity" type="number" min="1" value="2" />
+          </label>
+          <button class="primary" id="apply-settings" type="button">
+            Tillämpa och nollställ
+          </button>
+        </div>
+        <p class="note">
+          Livslängd och kapacitet är synliga demovärden, inte en
+          produktionsrekommendation. Varje kravbibliotekssida får en egen cache.
+          Kravunderlagssidan delar bibliotekskravscachen mellan vänster och
+          höger lista men håller lokala krav i en separat, kravunderlagsbunden
+          cache.
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="baseline-heading">
+        <h2 id="baseline-heading">Uppmätt jämförelsegrund</h2>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Yta och resurs</th>
+                <th>Lokal klick-p95</th>
+                <th>+150 ms klick-p95</th>
+                <th>+150 ms huvud-GET-p95</th>
+              </tr>
+            </thead>
+            <tbody id="baseline-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="walkthrough-heading">
+        <h2 id="walkthrough-heading">Guidade genomgångar</h2>
+        <div class="tabs" id="scenario-tabs" role="tablist"></div>
+        <div class="walkthrough" id="walkthrough"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="free-heading">
+        <h2 id="free-heading">Fri körning</h2>
+        <div class="grid two">
+          <label>
+            Aktiv kravrad
+            <select id="active-row"></select>
+          </label>
+          <div class="surface" id="active-row-detail"></div>
+        </div>
+        <div class="button-row" style="margin-top: 14px">
+          <button data-action="hover" type="button">Börja finpekarhovring</button>
+          <button data-action="focus" type="button">Fokusera radkommandot</button>
+          <button data-action="coarse" type="button">Hovra med grov pekare</button>
+          <button data-action="leave" type="button">Lämna raden</button>
+          <button class="primary" data-action="activate" type="button">
+            Aktivera raden
+          </button>
+          <button data-action="mutate" type="button">Bekräfta mutation</button>
+          <button data-action="navigate" type="button">Navigera bort</button>
+          <button data-action="reset" type="button">Nollställ</button>
+        </div>
+        <div class="button-row" style="margin-top: 8px">
+          <button data-advance="50" type="button">Flytta tiden +50 ms</button>
+          <button data-advance="100" type="button">+100 ms</button>
+          <button data-advance="150" type="button">+150 ms</button>
+          <button data-advance="250" type="button">+250 ms</button>
+          <button data-advance="1000" type="button">+1 s</button>
+          <button data-advance="30000" type="button">+30 s</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="state-heading">
+        <h2 id="state-heading">Aktuellt tillstånd</h2>
+        <div class="grid four" id="headline-state"></div>
+        <div class="grid two" style="margin-top: 14px">
+          <div>
+            <h3>Väntande avsikt och nätverksanrop</h3>
+            <div id="pending-state"></div>
+          </div>
+          <div>
+            <h3>Typade cacheposter</h3>
+            <div id="cache-state"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="metrics-heading">
+        <h2 id="metrics-heading">Mätetal för körningen</h2>
+        <div class="grid four" id="metrics"></div>
+        <p class="note">
+          Ett förhämtningsanrop räknas som onödigt först när det avbryts,
+          föråldras, löper ut eller vräks utan att ha försörjt en aktivering.
+          Andelen är därför ett utfall av den körda interaktionssekvensen, inte
+          en egenskap som 150 ms-tröskeln ensam kan garantera.
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="log-heading">
+        <h2 id="log-heading">Händelselogg</h2>
+        <pre class="log" id="event-log" aria-live="polite"></pre>
+      </section>
+
+      <footer>
+        PROTOTYP — inte produktionskod. Resurserna följer kartläggningen:
+        bibliotekskrav nycklas med numeriskt krav-ID; kravunderlagslokala krav
+        nycklas med kravunderlags-ID och lokalt krav-ID. Kravtillämpningens
+        metadata och övriga följdresurser ingår inte.
+      </footer>
+    </main>
+
+    <script>
+      // Portable logic module: no DOM access. The page below is only a shell.
+      const IntentPrefetchModel = (() => {
+        const rowDefinitions = Object.freeze([
+          {
+            id: 'library-list',
+            label: 'Kravbibliotek · ANV0002',
+            surface: 'Kravbibliotekets lista',
+            owner: 'Kravbibliotekssidan',
+            cacheName: 'requirements-page/library',
+            cacheType: 'Bibliotekskrav',
+            resourceKey: 'requirement:2',
+            profiles: {
+              local: { click: 141.0, request: 86.6 },
+              slow: { click: 263.3, request: 222.2 },
+            },
+          },
+          {
+            id: 'spec-left-library',
+            label: 'Kravunderlag vänster · BEH0001',
+            surface: 'Kravunderlagets vänstra lista',
+            owner: 'Kravunderlagssidan',
+            cacheName: 'specification-page/library',
+            cacheType: 'Bibliotekskrav',
+            resourceKey: 'requirement:11',
+            profiles: {
+              local: { click: 128.1, request: 100.3 },
+              slow: { click: 248.7, request: 218.7 },
+            },
+          },
+          {
+            id: 'spec-left-local',
+            label: 'Kravunderlag vänster · KRAV0001',
+            surface: 'Kravunderlagets vänstra lista',
+            owner: 'Kravunderlagssidan',
+            cacheName: 'specification-page/local:8',
+            cacheType: 'Kravunderlagslokalt krav',
+            resourceKey: 'localRequirement:8:1',
+            profiles: {
+              local: { click: 131.6, request: 103.7 },
+              slow: { click: 270.4, request: 246.6 },
+            },
+          },
+          {
+            id: 'spec-right-library',
+            label: 'Kravunderlag höger · BEH0001',
+            surface: 'Kravunderlagets högra lista',
+            owner: 'Kravunderlagssidan',
+            cacheName: 'specification-page/library',
+            cacheType: 'Bibliotekskrav',
+            resourceKey: 'requirement:11',
+            profiles: {
+              local: { click: 129.9, request: 98.4 },
+              slow: { click: 249.8, request: 218.5 },
+            },
+          },
+        ])
+
+        function create(configuration) {
+          const config = { ...configuration }
+          const rowsById = new Map(rowDefinitions.map(row => [row.id, row]))
+          const state = {
+            now: 0,
+            nextRequestId: 1,
+            nextClickId: 1,
+            intents: new Map(),
+            inflight: new Map(),
+            caches: new Map(),
+            generations: new Map(),
+            renders: [],
+            expanded: null,
+            metrics: {
+              cacheHits: 0,
+              clickRequests: 0,
+              deduplications: 0,
+              intentCancelled: 0,
+              prefetchRequests: 0,
+              requests: 0,
+              staleDiscarded: 0,
+              usefulPrefetches: 0,
+              wastedPrefetches: 0,
+            },
+            log: [],
+          }
+
+          function rowFor(rowId) {
+            const row = rowsById.get(rowId)
+            if (!row) throw new Error(`Okänd kravrad: ${rowId}`)
+            return row
+          }
+
+          function profileFor(row) {
+            return row.profiles[config.profile]
+          }
+
+          function renderDelayFor(row) {
+            const profile = profileFor(row)
+            return Math.max(0, profile.click - profile.request)
+          }
+
+          function identityFor(row) {
+            return `${row.cacheName}|${row.resourceKey}`
+          }
+
+          function generationFor(identity) {
+            return state.generations.get(identity) ?? 0
+          }
+
+          function log(message) {
+            state.log.push({ at: state.now, message })
+          }
+
+          function cacheFor(row) {
+            if (!state.caches.has(row.cacheName)) {
+              state.caches.set(row.cacheName, new Map())
+            }
+            return state.caches.get(row.cacheName)
+          }
+
+          function capacityFor(row) {
+            return row.cacheType === 'Bibliotekskrav'
+              ? config.libraryCapacity
+              : config.localCapacity
+          }
+
+          function countWaste(entry, reason) {
+            if (entry.prefetched && !entry.used && !entry.wasteCounted) {
+              entry.wasteCounted = true
+              state.metrics.wastedPrefetches += 1
+              log(`Onödig förhämtning: ${entry.label} (${reason}).`)
+            }
+          }
+
+          function enforceCapacity(row) {
+            const cache = cacheFor(row)
+            const capacity = capacityFor(row)
+            while (cache.size > capacity) {
+              const oldest = [...cache.entries()].sort(
+                (left, right) => left[1].lastAccessAt - right[1].lastAccessAt,
+              )[0]
+              if (!oldest) return
+              countWaste(oldest[1], 'kapacitetsvräkning')
+              cache.delete(oldest[0])
+              log(`Vräkte ${oldest[1].label} ur ${row.cacheName}.`)
+            }
+          }
+
+          function markUseful(entry) {
+            if (entry.prefetched && !entry.used) {
+              entry.used = true
+              state.metrics.usefulPrefetches += 1
+            }
+          }
+
+          function scheduleRender(clickId, row, availableAt) {
+            state.renders.push({
+              at: availableAt + renderDelayFor(row),
+              clickId,
+              rowId: row.id,
+            })
+          }
+
+          function startRequest(row, origin, clickId = null) {
+            const identity = identityFor(row)
+            const existing = state.inflight.get(identity)
+            if (existing) {
+              if (clickId !== null && !existing.clickIds.includes(clickId)) {
+                existing.clickIds.push(clickId)
+              }
+              state.metrics.deduplications += 1
+              log(
+                `Återbrukade pågående ${existing.origin === 'prefetch' ? 'förhämtning' : 'klickhämtning'} för ${row.label}.`,
+              )
+              return existing
+            }
+
+            const request = {
+              id: state.nextRequestId++,
+              identity,
+              rowId: row.id,
+              label: row.label,
+              origin,
+              startedAt: state.now,
+              completeAt: state.now + profileFor(row).request,
+              generation: generationFor(identity),
+              clickIds: clickId === null ? [] : [clickId],
+              wasteCounted: false,
+            }
+            state.inflight.set(identity, request)
+            state.metrics.requests += 1
+            if (origin === 'prefetch') state.metrics.prefetchRequests += 1
+            else state.metrics.clickRequests += 1
+            log(
+              `Startade ${origin === 'prefetch' ? 'förhämtning' : 'klickhämtning'} för ${row.label}; svar väntas om ${profileFor(row).request.toFixed(1)} ms.`,
+            )
+            return request
+          }
+
+          function completeRequest(request) {
+            if (state.inflight.get(request.identity)?.id !== request.id) return
+            state.inflight.delete(request.identity)
+            const row = rowFor(request.rowId)
+            if (generationFor(request.identity) !== request.generation) {
+              state.metrics.staleDiscarded += 1
+              if (request.origin === 'prefetch' && request.clickIds.length === 0) {
+                state.metrics.wastedPrefetches += 1
+              }
+              log(
+                `Kasserade sent svar för ${request.label}; generationen hade invaliderats.`,
+              )
+              return
+            }
+
+            const entry = {
+              identity: request.identity,
+              key: row.resourceKey,
+              label: request.label,
+              loadedAt: state.now,
+              expiresAt: state.now + config.ttl,
+              lastAccessAt: state.now,
+              prefetched: request.origin === 'prefetch',
+              used: request.clickIds.length > 0,
+              wasteCounted: false,
+            }
+            cacheFor(row).set(row.resourceKey, entry)
+            if (entry.prefetched && entry.used) {
+              state.metrics.usefulPrefetches += 1
+            }
+            enforceCapacity(row)
+            log(`Huvuddetaljen för ${request.label} lades i ${row.cacheName}.`)
+            for (const clickId of request.clickIds) {
+              scheduleRender(clickId, row, state.now)
+            }
+          }
+
+          function completeRender(render) {
+            const expanded = state.expanded
+            if (!expanded || expanded.clickId !== render.clickId) return
+            expanded.status = 'usable'
+            expanded.usableAt = state.now
+            expanded.latency = state.now - expanded.clickedAt
+            expanded.saving = profileFor(rowFor(expanded.rowId)).click - expanded.latency
+            log(
+              `Kravtexten för ${rowFor(expanded.rowId).label} blev användbar ${expanded.latency.toFixed(1)} ms efter aktivering.`,
+            )
+          }
+
+          function expireEntries() {
+            for (const [cacheName, cache] of state.caches.entries()) {
+              for (const [key, entry] of cache.entries()) {
+                if (entry.expiresAt <= state.now) {
+                  countWaste(entry, 'utgångstid')
+                  cache.delete(key)
+                  log(`Cacheposten ${entry.label} löpte ut ur ${cacheName}.`)
+                }
+              }
+            }
+          }
+
+          function fireIntent(intent) {
+            if (state.intents.get(intent.rowId) !== intent) return
+            state.intents.delete(intent.rowId)
+            const row = rowFor(intent.rowId)
+            const cache = cacheFor(row).get(row.resourceKey)
+            if (cache && cache.expiresAt > state.now) {
+              cache.lastAccessAt = state.now
+              log(`Avsikten för ${row.label} träffade en färsk cachepost.`)
+              return
+            }
+            startRequest(row, 'prefetch')
+          }
+
+          function nextEventAt(target) {
+            const times = []
+            for (const intent of state.intents.values()) times.push(intent.dueAt)
+            for (const request of state.inflight.values()) times.push(request.completeAt)
+            for (const render of state.renders) times.push(render.at)
+            for (const cache of state.caches.values()) {
+              for (const entry of cache.values()) times.push(entry.expiresAt)
+            }
+            const eligible = times.filter(time => time <= target && time >= state.now)
+            return eligible.length ? Math.min(...eligible) : null
+          }
+
+          function advance(milliseconds) {
+            const target = state.now + milliseconds
+            let eventAt = nextEventAt(target)
+            while (eventAt !== null) {
+              state.now = eventAt
+              const dueIntents = [...state.intents.values()].filter(
+                intent => intent.dueAt <= state.now,
+              )
+              for (const intent of dueIntents) fireIntent(intent)
+
+              const dueRequests = [...state.inflight.values()].filter(
+                request => request.completeAt <= state.now,
+              )
+              for (const request of dueRequests) completeRequest(request)
+
+              const dueRenders = state.renders.filter(render => render.at <= state.now)
+              state.renders = state.renders.filter(render => render.at > state.now)
+              for (const render of dueRenders) completeRender(render)
+
+              expireEntries()
+              eventAt = nextEventAt(target)
+            }
+            state.now = target
+            log(`Flyttade den virtuella tiden ${milliseconds} ms.`)
+          }
+
+          function startIntent(rowId, source) {
+            const row = rowFor(rowId)
+            if (source === 'coarse-pointer') {
+              log(`Ignorerade hovring för ${row.label}: pekaren är inte fin.`)
+              return
+            }
+            const intent = {
+              rowId,
+              source,
+              dueAt: state.now + config.intentDelay,
+            }
+            state.intents.set(rowId, intent)
+            log(
+              `Startade ${source === 'focus' ? 'fokusavsikt' : 'hovringsavsikt'} för ${row.label}; tröskel om ${config.intentDelay} ms.`,
+            )
+          }
+
+          function leave(rowId) {
+            const row = rowFor(rowId)
+            if (state.intents.delete(rowId)) {
+              state.metrics.intentCancelled += 1
+              log(`Avbröt avsikten för ${row.label} före tröskeln.`)
+            } else {
+              log(
+                `Lämnade ${row.label}; redan startat nätverksanrop får slutföras.`,
+              )
+            }
+          }
+
+          function activate(rowId) {
+            const row = rowFor(rowId)
+            state.intents.delete(rowId)
+            const clickId = state.nextClickId++
+            state.expanded = {
+              clickId,
+              rowId,
+              clickedAt: state.now,
+              status: 'loading',
+              usableAt: null,
+              latency: null,
+              saving: null,
+            }
+            log(`Aktiverade ${row.label}; detaljskalet öppnades omedelbart.`)
+
+            const cache = cacheFor(row).get(row.resourceKey)
+            if (cache && cache.expiresAt > state.now) {
+              cache.lastAccessAt = state.now
+              markUseful(cache)
+              state.metrics.cacheHits += 1
+              scheduleRender(clickId, row, state.now)
+              log(`Klicket använde färsk cachepost för ${row.label}.`)
+              return
+            }
+
+            const existing = state.inflight.get(identityFor(row))
+            if (existing) {
+              startRequest(row, existing.origin, clickId)
+              return
+            }
+            startRequest(row, 'click', clickId)
+          }
+
+          function invalidate(rowId) {
+            const row = rowFor(rowId)
+            const identity = identityFor(row)
+            state.generations.set(identity, generationFor(identity) + 1)
+            const cache = cacheFor(row)
+            const existing = cache.get(row.resourceKey)
+            if (existing) countWaste(existing, 'invalidation')
+            cache.delete(row.resourceKey)
+            log(
+              `Mutation lyckades: invaliderade ${row.resourceKey}; sena svar tillhör nu en äldre generation.`,
+            )
+          }
+
+          function navigateAway() {
+            for (const cache of state.caches.values()) {
+              for (const entry of cache.values()) countWaste(entry, 'sidbyte')
+            }
+            for (const request of state.inflight.values()) {
+              if (request.origin === 'prefetch' && request.clickIds.length === 0) {
+                state.metrics.wastedPrefetches += 1
+              }
+            }
+            state.intents.clear()
+            state.inflight.clear()
+            state.caches.clear()
+            state.renders = []
+            state.expanded = null
+            log('Navigerade bort: förstörde sidägda cacher och avbröt anrop.')
+          }
+
+          function dispatch(action) {
+            switch (action.type) {
+              case 'advance':
+                advance(action.ms)
+                break
+              case 'intent':
+                startIntent(action.rowId, action.source)
+                break
+              case 'leave':
+                leave(action.rowId)
+                break
+              case 'activate':
+                activate(action.rowId)
+                break
+              case 'invalidate':
+                invalidate(action.rowId)
+                break
+              case 'navigate-away':
+                navigateAway()
+                break
+              default:
+                throw new Error(`Okänd händelse: ${action.type}`)
+            }
+            return snapshot()
+          }
+
+          function snapshot() {
+            const caches = []
+            for (const [cacheName, cache] of state.caches.entries()) {
+              for (const entry of cache.values()) {
+                caches.push({ cacheName, ...entry })
+              }
+            }
+            return {
+              now: state.now,
+              config: { ...config },
+              intents: [...state.intents.values()].map(value => ({ ...value })),
+              inflight: [...state.inflight.values()].map(value => ({ ...value })),
+              caches,
+              expanded: state.expanded ? { ...state.expanded } : null,
+              metrics: { ...state.metrics },
+              log: state.log.map(entry => ({ ...entry })),
+            }
+          }
+
+          log('Prototypen nollställdes.')
+          return { dispatch, snapshot }
+        }
+
+        return { create, rowDefinitions }
+      })()
+
+      // Throwaway page shell.
+      const scenarioDefinitions = [
+        {
+          id: 'baseline',
+          title: 'Klick utan avsikt',
+          description:
+            'Visar säkerhetsnätet: raden öppnas omedelbart och klicket startar huvudhämtningen när ingen förhämtning finns.',
+          watch:
+            'Efterklickslatensen ska motsvara den valda profilens uppmätta p95.',
+          steps: [
+            {
+              label: 'Aktivera ANV0002 direkt',
+              action: { type: 'activate', rowId: 'library-list' },
+            },
+            {
+              label: 'Flytta tiden tills svaret och renderingen är klara (+264 ms)',
+              action: { type: 'advance', ms: 264 },
+            },
+          ],
+        },
+        {
+          id: 'useful',
+          title: 'Avsikt sparar 150 ms',
+          description:
+            'En användare stannar över ett lokalt krav. Begäran startar först vid 150 ms och får sedan 150 ms försprång före klicket.',
+          watch:
+            'Detaljskalet öppnas direkt vid klick och Kravtext blir användbar cirka 150 ms tidigare än utan avsikt.',
+          steps: [
+            {
+              label: 'Börja hovra över KRAV0001',
+              action: { type: 'intent', rowId: 'spec-left-local', source: 'fine-pointer' },
+            },
+            { label: 'Nå avsiktströskeln (+150 ms)', action: { type: 'advance', ms: 150 } },
+            { label: 'Ge hämtningen 150 ms försprång', action: { type: 'advance', ms: 150 } },
+            {
+              label: 'Aktivera KRAV0001',
+              action: { type: 'activate', rowId: 'spec-left-local' },
+            },
+            { label: 'Flytta tiden tills Kravtext är användbar (+121 ms)', action: { type: 'advance', ms: 121 } },
+          ],
+        },
+        {
+          id: 'quick-pass',
+          title: 'Snabb passage filtreras',
+          description:
+            'Pekaren passerar en rad men lämnar före 150 ms. Ingen nätverksbegäran ska skapas.',
+          watch: 'Avbruten avsikt ökar, men antal nätverksanrop förblir noll.',
+          steps: [
+            {
+              label: 'Börja hovra över ANV0002',
+              action: { type: 'intent', rowId: 'library-list', source: 'fine-pointer' },
+            },
+            { label: 'Flytta tiden 100 ms', action: { type: 'advance', ms: 100 } },
+            { label: 'Lämna raden före tröskeln', action: { type: 'leave', rowId: 'library-list' } },
+            { label: 'Flytta tiden förbi en hel hämtning', action: { type: 'advance', ms: 300 } },
+          ],
+        },
+        {
+          id: 'deduplicate',
+          title: 'Vänster och höger dedupliceras',
+          description:
+            'Fokus i vänsterlistan startar hämtning av BEH0001. Ett klick på samma bibliotekskrav i högerlistan ansluter till samma pågående anrop.',
+          watch:
+            'Ett nätverksanrop, en deduplicering och 100 ms kortare väntan efter klick.',
+          steps: [
+            {
+              label: 'Fokusera BEH0001 i vänsterlistan',
+              action: { type: 'intent', rowId: 'spec-left-library', source: 'focus' },
+            },
+            { label: 'Nå avsiktströskeln (+150 ms)', action: { type: 'advance', ms: 150 } },
+            { label: 'Ge anropet 100 ms försprång', action: { type: 'advance', ms: 100 } },
+            {
+              label: 'Aktivera BEH0001 i högerlistan',
+              action: { type: 'activate', rowId: 'spec-right-library' },
+            },
+            { label: 'Flytta tiden tills Kravtext är användbar (+150 ms)', action: { type: 'advance', ms: 150 } },
+          ],
+        },
+        {
+          id: 'stale',
+          title: 'Sent svar återinförs inte',
+          description:
+            'En mutation lyckas medan en förhämtning pågår. Generationen byts så att det gamla svaret inte kan återinsätta föråldrad data.',
+          watch:
+            'Det sena svaret kasseras. Ett senare klick fungerar och startar en ny, aktuell hämtning.',
+          steps: [
+            {
+              label: 'Börja hovra över KRAV0001',
+              action: { type: 'intent', rowId: 'spec-left-local', source: 'fine-pointer' },
+            },
+            { label: 'Nå avsiktströskeln (+150 ms)', action: { type: 'advance', ms: 150 } },
+            { label: 'Låt hämtningen pågå 50 ms', action: { type: 'advance', ms: 50 } },
+            { label: 'Bekräfta en lyckad mutation', action: { type: 'invalidate', rowId: 'spec-left-local' } },
+            { label: 'Låt det gamla svaret anlända (+200 ms)', action: { type: 'advance', ms: 200 } },
+            { label: 'Aktivera KRAV0001', action: { type: 'activate', rowId: 'spec-left-local' } },
+            { label: 'Slutför den nya hämtningen (+271 ms)', action: { type: 'advance', ms: 271 } },
+          ],
+        },
+        {
+          id: 'waste',
+          title: 'Hovring utan klick kostar ett anrop',
+          description:
+            'En användare stannar längre än tröskeln men aktiverar aldrig raden. Det visar kostnaden som bara riktig användningsdata kan kvantifiera.',
+          watch:
+            'Förhämtningen blir onödig först när cacheposten löper ut eller sidan lämnas.',
+          steps: [
+            {
+              label: 'Börja hovra över ANV0002',
+              action: { type: 'intent', rowId: 'library-list', source: 'fine-pointer' },
+            },
+            { label: 'Nå avsiktströskeln (+150 ms)', action: { type: 'advance', ms: 150 } },
+            { label: 'Slutför förhämtningen (+223 ms)', action: { type: 'advance', ms: 223 } },
+            { label: 'Låt cacheposten löpa ut (+30 s)', action: { type: 'advance', ms: 30000 } },
+          ],
+        },
+      ]
+
+      const elements = {
+        activeRow: document.querySelector('#active-row'),
+        activeRowDetail: document.querySelector('#active-row-detail'),
+        baselineBody: document.querySelector('#baseline-body'),
+        eventLog: document.querySelector('#event-log'),
+        headlineState: document.querySelector('#headline-state'),
+        metrics: document.querySelector('#metrics'),
+        pendingState: document.querySelector('#pending-state'),
+        cacheState: document.querySelector('#cache-state'),
+        tabs: document.querySelector('#scenario-tabs'),
+        walkthrough: document.querySelector('#walkthrough'),
+      }
+
+      let model
+      let activeScenarioId = scenarioDefinitions[0].id
+      let scenarioStep = -1
+
+      function currentConfiguration() {
+        return {
+          profile: document.querySelector('#profile').value,
+          intentDelay: Number(document.querySelector('#intent-delay').value),
+          ttl: Number(document.querySelector('#ttl').value),
+          libraryCapacity: Number(document.querySelector('#library-capacity').value),
+          localCapacity: Number(document.querySelector('#local-capacity').value),
+        }
+      }
+
+      function resetModel() {
+        model = IntentPrefetchModel.create(currentConfiguration())
+        scenarioStep = -1
+        render()
+      }
+
+      function dispatch(action) {
+        model.dispatch(action)
+        render()
+      }
+
+      function formatMs(value) {
+        return `${Number(value).toFixed(1).replace('.0', '')} ms`
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;')
+      }
+
+      function renderBaseline() {
+        elements.baselineBody.innerHTML = IntentPrefetchModel.rowDefinitions
+          .map(row => `
+            <tr>
+              <td>${escapeHtml(row.label)}</td>
+              <td>${formatMs(row.profiles.local.click)}</td>
+              <td>${formatMs(row.profiles.slow.click)}</td>
+              <td>${formatMs(row.profiles.slow.request)}</td>
+            </tr>
+          `)
+          .join('')
+      }
+
+      function renderRowSelector() {
+        if (!elements.activeRow.options.length) {
+          elements.activeRow.innerHTML = IntentPrefetchModel.rowDefinitions
+            .map(row => `<option value="${row.id}">${escapeHtml(row.label)}</option>`)
+            .join('')
+        }
+        const row = IntentPrefetchModel.rowDefinitions.find(
+          candidate => candidate.id === elements.activeRow.value,
+        ) ?? IntentPrefetchModel.rowDefinitions[0]
+        const profile = row.profiles[currentConfiguration().profile]
+        elements.activeRowDetail.innerHTML = `
+          <strong>${escapeHtml(row.surface)}</strong>
+          <small>${escapeHtml(row.cacheType)} · ${escapeHtml(row.owner)}</small>
+          <small>Nyckel: <code>${escapeHtml(row.resourceKey)}</code></small>
+          <small>Direkt klick-p95: ${formatMs(profile.click)}; huvud-GET-p95: ${formatMs(profile.request)}</small>
+        `
+      }
+
+      function stat(label, value, detail = '') {
+        return `
+          <div class="stat">
+            <span class="label">${escapeHtml(label)}</span>
+            <span class="value">${escapeHtml(value)}</span>
+            ${detail ? `<span class="detail">${escapeHtml(detail)}</span>` : ''}
+          </div>
+        `
+      }
+
+      function renderState(snapshot) {
+        const expanded = snapshot.expanded
+        const expandedRow = expanded
+          ? IntentPrefetchModel.rowDefinitions.find(row => row.id === expanded.rowId)
+          : null
+        const clickValue = !expanded
+          ? 'Ingen rad öppen'
+          : expanded.status === 'usable'
+            ? formatMs(expanded.latency)
+            : 'Laddar'
+        const clickDetail = !expanded
+          ? 'Klick öppnar alltid detaljskalet.'
+          : expanded.status === 'usable'
+            ? `${expandedRow.label}; sparade ${formatMs(expanded.saving)} mot direkt klick.`
+            : `${expandedRow.label}; detaljskalet är redan öppet.`
+
+        elements.headlineState.innerHTML = [
+          stat('Virtuell tid', formatMs(snapshot.now), 'Flyttas bara med knapparna.'),
+          stat('Detalj efter senaste klick', clickValue, clickDetail),
+          stat('Väntande avsikter', String(snapshot.intents.length), 'Tröskel 150 ms som standard.'),
+          stat('Pågående huvud-GET', String(snapshot.inflight.length), 'Samma resurs dedupliceras.'),
+        ].join('')
+
+        if (!snapshot.intents.length && !snapshot.inflight.length) {
+          elements.pendingState.innerHTML = '<p class="empty">Inga väntande händelser.</p>'
+        } else {
+          const intentRows = snapshot.intents.map(intent => {
+            const row = IntentPrefetchModel.rowDefinitions.find(candidate => candidate.id === intent.rowId)
+            return `<tr><td>Avsikt</td><td>${escapeHtml(row.label)}</td><td>${formatMs(intent.dueAt - snapshot.now)}</td></tr>`
+          })
+          const requestRows = snapshot.inflight.map(request =>
+            `<tr><td>${request.origin === 'prefetch' ? 'Förhämtning' : 'Klickhämtning'}</td><td>${escapeHtml(request.label)}</td><td>${formatMs(request.completeAt - snapshot.now)}</td></tr>`,
+          )
+          elements.pendingState.innerHTML = `
+            <div class="scroll"><table><thead><tr><th>Typ</th><th>Kravrad</th><th>Kvar</th></tr></thead>
+            <tbody>${[...intentRows, ...requestRows].join('')}</tbody></table></div>
+          `
+        }
+
+        if (!snapshot.caches.length) {
+          elements.cacheState.innerHTML = '<p class="empty">Cacherna är tomma.</p>'
+        } else {
+          elements.cacheState.innerHTML = `
+            <div class="scroll"><table><thead><tr><th>Cache</th><th>Nyckel</th><th>Kvar</th><th>Använd</th></tr></thead>
+            <tbody>${snapshot.caches
+              .map(entry => `<tr><td>${escapeHtml(entry.cacheName)}</td><td><code>${escapeHtml(entry.key)}</code></td><td>${formatMs(entry.expiresAt - snapshot.now)}</td><td>${entry.used ? 'Ja' : 'Nej'}</td></tr>`)
+              .join('')}</tbody></table></div>
+          `
+        }
+      }
+
+      function renderMetrics(snapshot) {
+        const metrics = snapshot.metrics
+        const wasteRate = metrics.prefetchRequests
+          ? `${Math.round((metrics.wastedPrefetches / metrics.prefetchRequests) * 100)} %`
+          : '—'
+        elements.metrics.innerHTML = [
+          stat('Nätverksanrop', String(metrics.requests), `${metrics.prefetchRequests} från avsikt; ${metrics.clickRequests} från klick.`),
+          stat('Dedupliceringar', String(metrics.deduplications), 'Pågående anrop återanvändes.'),
+          stat('Nyttiga förhämtningar', String(metrics.usefulPrefetches), `${metrics.cacheHits} aktivering(ar) träffade färdig cache.`),
+          stat('Onödiga förhämtningar', String(metrics.wastedPrefetches), `Andel av startade förhämtningar: ${wasteRate}.`),
+          stat('Avbrutna avsikter', String(metrics.intentCancelled), 'Filtrerades före nätverksstart.'),
+          stat('Kasserade sena svar', String(metrics.staleDiscarded), 'Återinförde inte invaliderad data.'),
+        ].join('')
+      }
+
+      function renderLog(snapshot) {
+        elements.eventLog.textContent = snapshot.log.length
+          ? snapshot.log
+              .slice(-30)
+              .map(entry => `[${entry.at.toFixed(1).padStart(7)} ms] ${entry.message}`)
+              .join('\n')
+          : 'Inga händelser.'
+        elements.eventLog.scrollTop = elements.eventLog.scrollHeight
+      }
+
+      function renderScenarios() {
+        elements.tabs.innerHTML = scenarioDefinitions
+          .map(scenario => `
+            <button
+              class="tab"
+              id="tab-${scenario.id}"
+              role="tab"
+              aria-controls="scenario-${scenario.id}"
+              aria-selected="${scenario.id === activeScenarioId}"
+              data-scenario="${scenario.id}"
+              type="button"
+            >${escapeHtml(scenario.title)}</button>
+          `)
+          .join('')
+
+        const scenario = scenarioDefinitions.find(item => item.id === activeScenarioId)
+        elements.walkthrough.innerHTML = `
+          <div id="scenario-${scenario.id}" role="tabpanel" aria-labelledby="tab-${scenario.id}">
+            <p>${escapeHtml(scenario.description)}</p>
+            <p><strong>Titta särskilt på:</strong> ${escapeHtml(scenario.watch)}</p>
+            <button class="primary" id="start-scenario" type="button">Starta om genomgången</button>
+            <div class="steps">
+              ${scenario.steps
+                .map((step, index) => `
+                  <div class="step ${index < scenarioStep ? 'done' : ''}">
+                    <span>${escapeHtml(step.label)}</span>
+                    <button
+                      data-scenario-step="${index}"
+                      type="button"
+                      ${index === scenarioStep ? '' : 'disabled'}
+                    >Utför</button>
+                  </div>
+                `)
+                .join('')}
+            </div>
+          </div>
+        `
+      }
+
+      function render() {
+        const snapshot = model.snapshot()
+        renderRowSelector()
+        renderState(snapshot)
+        renderMetrics(snapshot)
+        renderLog(snapshot)
+        renderScenarios()
+      }
+
+      document.querySelector('#apply-settings').addEventListener('click', resetModel)
+      elements.activeRow.addEventListener('change', renderRowSelector)
+      document.querySelectorAll('[data-action]').forEach(button => {
+        button.addEventListener('click', () => {
+          const rowId = elements.activeRow.value
+          const actions = {
+            hover: { type: 'intent', rowId, source: 'fine-pointer' },
+            focus: { type: 'intent', rowId, source: 'focus' },
+            coarse: { type: 'intent', rowId, source: 'coarse-pointer' },
+            leave: { type: 'leave', rowId },
+            activate: { type: 'activate', rowId },
+            mutate: { type: 'invalidate', rowId },
+            navigate: { type: 'navigate-away' },
+          }
+          if (button.dataset.action === 'reset') resetModel()
+          else dispatch(actions[button.dataset.action])
+        })
+      })
+      document.querySelectorAll('[data-advance]').forEach(button => {
+        button.addEventListener('click', () =>
+          dispatch({ type: 'advance', ms: Number(button.dataset.advance) }),
+        )
+      })
+      elements.tabs.addEventListener('click', event => {
+        const button = event.target.closest('[data-scenario]')
+        if (!button) return
+        activeScenarioId = button.dataset.scenario
+        scenarioStep = -1
+        renderScenarios()
+      })
+      elements.walkthrough.addEventListener('click', event => {
+        if (event.target.closest('#start-scenario')) {
+          model = IntentPrefetchModel.create(currentConfiguration())
+          scenarioStep = 0
+          render()
+          return
+        }
+        const button = event.target.closest('[data-scenario-step]')
+        if (!button) return
+        const scenario = scenarioDefinitions.find(item => item.id === activeScenarioId)
+        const index = Number(button.dataset.scenarioStep)
+        if (index !== scenarioStep) return
+        model.dispatch(scenario.steps[index].action)
+        scenarioStep += 1
+        render()
+      })
+
+      renderBaseline()
+      resetModel()
+    </script>
+  </body>
+</html>
