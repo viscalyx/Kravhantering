@@ -178,6 +178,32 @@ AI-nära säkerhetsrisker.
 _Avoid_: AI-assistering när säkerhetskontrollerna avses, MCP-säkerhet när
 kontrollerna gäller alla AI-säkerhetsblockeringar.
 
+**AI-forensisk evidensinsamling**:
+En uttryckligen godkänd och tidsbegränsad insamling av avgränsad evidens från
+AI-säkerhetsblockeringar för incidentutredning. Insamlingen är skild från
+säkerhetsloggen och vanlig applikationsloggning.
+
+- `en`: AI forensic evidence capture
+
+_Avoid_: Forensisk loggning, loggning av rådata, säkerhetslogg när den
+avgränsade evidensinsamlingen avses.
+
+**AI-forensisk insamlingsperiod**:
+Den godkända tidsperiod under vilken AI-forensisk evidens får samlas in.
+
+- `en`: AI forensic capture window
+
+_Avoid_: Loggningsperiod, obegränsad insamling.
+
+**AI-forensiskt evidenslager**:
+En skyddad informationsmängd för evidens från en godkänd AI-forensisk
+evidensinsamling. Lagret är inte en del av säkerhetsloggen eller
+åtgärdsloggen.
+
+- `en`: AI forensic evidence store
+
+_Avoid_: Säkerhetslogg, åtgärdslogg, logg med rådata.
+
 **AI-säkerhetsregel**:
 En regel som bedömer om text i AI-relaterade flöden ska tillåtas eller
 blockeras för att skydda instruktioner, hemligheter, uppgifter i bakomliggande

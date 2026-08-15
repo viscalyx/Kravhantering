@@ -81,6 +81,8 @@ interface QueryExecutor {
 }
 
 export type PrivacyGroupKind =
+  | 'aiForensicCaptureIdentity'
+  | 'aiForensicFingerprint'
   | 'coAuthor'
   | 'fingerprintOnly'
   | 'hsaOnly'
@@ -663,6 +665,60 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     warningKey: 'historySwitch',
   },
   {
+    affectedReferencesSql: `/* privacy:affected:ai_forensic_capture_windows.identity */
+      SELECT CONCAT(N'ai_forensic_capture:', id) AS value
+      FROM ai_forensic_capture_windows
+      WHERE requested_by_hsa_id = @0
+        OR approved_by_hsa_id = @0
+        OR stopped_by_hsa_id = @0
+        OR purged_by_hsa_id = @0
+      ORDER BY id ASC`,
+    allowedActions: ['anonymize', 'skip'],
+    countSql: `SELECT COUNT(*) AS count
+      FROM ai_forensic_capture_windows
+      WHERE requested_by_hsa_id = @0
+        OR approved_by_hsa_id = @0
+        OR stopped_by_hsa_id = @0
+        OR purged_by_hsa_id = @0`,
+    currentDisplaySql: `SELECT TOP (1) COALESCE(
+        CASE WHEN requested_by_hsa_id = @0 THEN requested_by_display_name END,
+        CASE WHEN approved_by_hsa_id = @0 THEN approved_by_display_name END,
+        CASE WHEN stopped_by_hsa_id = @0 THEN stopped_by_display_name END,
+        CASE WHEN purged_by_hsa_id = @0 THEN purged_by_display_name END
+      ) AS value
+      FROM ai_forensic_capture_windows
+      WHERE requested_by_hsa_id = @0
+        OR approved_by_hsa_id = @0
+        OR stopped_by_hsa_id = @0
+        OR purged_by_hsa_id = @0
+      ORDER BY id ASC`,
+    defaultWithReplacement: 'anonymize',
+    defaultWithoutReplacement: 'anonymize',
+    fieldKey: 'captureActor',
+    key: 'ai_forensic_capture_windows.identity',
+    kind: 'aiForensicCaptureIdentity',
+    objectKey: 'aiForensicCaptureWindows',
+    table: 'ai_forensic_capture_windows',
+    warningKey: 'forensicEvidencePurge',
+  },
+  {
+    allowedActions: ['delete', 'skip'],
+    countSql: `SELECT COUNT(*) AS count
+      FROM ai_forensic_evidence_events
+      WHERE actor_fingerprint = LOWER(CONVERT(varchar(64), HASHBYTES(
+        'SHA2_256',
+        CONVERT(varchar(256), CONCAT(ai_forensic_capture_window_id, N':', @0))
+      ), 2))`,
+    defaultWithReplacement: 'delete',
+    defaultWithoutReplacement: 'delete',
+    fieldKey: 'actorFingerprint',
+    key: 'ai_forensic_evidence_events.actor_fingerprint',
+    kind: 'aiForensicFingerprint',
+    objectKey: 'aiForensicEvidenceEvents',
+    table: 'ai_forensic_evidence_events',
+    warningKey: 'forensicEvidencePurge',
+  },
+  {
     allowedActions: ['delete', 'skip'],
     countSql:
       'SELECT COUNT(*) AS count FROM requirement_import_validation_sessions WHERE creator_principal_fingerprint = @0',
@@ -1006,6 +1062,76 @@ async function applyDirectHsaGroup(
   targetHsaId: string,
   replacement: PrivacyReplacementInput | null,
 ): Promise<void> {
+  if (policy.kind === 'aiForensicCaptureIdentity') {
+    if (action !== 'anonymize') return
+    await tx.query(
+      `DELETE evidence
+       FROM ai_forensic_evidence_events AS evidence
+       INNER JOIN ai_forensic_capture_windows AS capture
+         ON capture.id = evidence.ai_forensic_capture_window_id
+       WHERE capture.requested_by_hsa_id = @0
+         OR capture.approved_by_hsa_id = @0
+         OR capture.stopped_by_hsa_id = @0
+         OR capture.purged_by_hsa_id = @0`,
+      [targetHsaId],
+    )
+    await tx.query(
+      `UPDATE ai_forensic_capture_windows
+       SET requested_by_display_name = CASE
+             WHEN requested_by_hsa_id = @0 THEN @1
+             ELSE requested_by_display_name
+           END,
+           requested_by_hsa_id = CASE
+             WHEN requested_by_hsa_id = @0 THEN NULL
+             ELSE requested_by_hsa_id
+           END,
+           approved_by_display_name = CASE
+             WHEN approved_by_hsa_id = @0 THEN @1
+             ELSE approved_by_display_name
+           END,
+           approved_by_hsa_id = CASE
+             WHEN approved_by_hsa_id = @0 THEN NULL
+             ELSE approved_by_hsa_id
+           END,
+           stopped_by_display_name = CASE
+             WHEN stopped_by_hsa_id = @0 THEN @1
+             ELSE stopped_by_display_name
+           END,
+           stopped_by_hsa_id = CASE
+             WHEN stopped_by_hsa_id = @0 THEN NULL
+             ELSE stopped_by_hsa_id
+           END,
+           purged_by_display_name = CASE
+             WHEN purged_by_hsa_id = @0 THEN @1
+             ELSE purged_by_display_name
+           END,
+           purged_by_hsa_id = CASE
+             WHEN purged_by_hsa_id = @0 THEN NULL
+             ELSE purged_by_hsa_id
+           END,
+           stopped_at = COALESCE(stopped_at, SYSUTCDATETIME()),
+           purged_at = COALESCE(purged_at, SYSUTCDATETIME()),
+           is_open = NULL
+       WHERE requested_by_hsa_id = @0
+         OR approved_by_hsa_id = @0
+         OR stopped_by_hsa_id = @0
+         OR purged_by_hsa_id = @0`,
+      [targetHsaId, DELETED_USER_INTERNAL_NAME],
+    )
+    return
+  }
+  if (policy.kind === 'aiForensicFingerprint') {
+    if (action !== 'delete') return
+    await tx.query(
+      `DELETE FROM ai_forensic_evidence_events
+       WHERE actor_fingerprint = LOWER(CONVERT(varchar(64), HASHBYTES(
+         'SHA2_256',
+         CONVERT(varchar(256), CONCAT(ai_forensic_capture_window_id, N':', @0))
+       ), 2))`,
+      [targetHsaId],
+    )
+    return
+  }
   if (!policy.table || !policy.hsaColumn || action === 'skip') return
   const displayColumn = displayColumnFor(policy)
   if (action === 'delete') {

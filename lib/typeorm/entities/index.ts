@@ -1,6 +1,8 @@
 import { accessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
 import { accessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
 import { actionAuditEventEntity } from '@/lib/typeorm/entities/action-audit-event'
+import { aiForensicCaptureWindowEntity } from '@/lib/typeorm/entities/ai-forensic-capture-window'
+import { aiForensicEvidenceEventEntity } from '@/lib/typeorm/entities/ai-forensic-evidence-event'
 import { aiSafetyRuleEntity } from '@/lib/typeorm/entities/ai-safety-rule'
 import { aiSafetyRuleTermEntity } from '@/lib/typeorm/entities/ai-safety-rule-term'
 import { aiSettingEntity } from '@/lib/typeorm/entities/ai-setting'
@@ -61,6 +63,8 @@ import { specificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/speci
 
 export const sqlServerEntities = [
   actionAuditEventEntity,
+  aiForensicCaptureWindowEntity,
+  aiForensicEvidenceEventEntity,
   aiSettingEntity,
   applicationSettingEntity,
   aiSafetyRuleEntity,
@@ -125,6 +129,8 @@ export const sqlServerEntities = [
 export type { AccessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
 export type { AccessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
 export type { ActionAuditEventEntity } from '@/lib/typeorm/entities/action-audit-event'
+export type { AiForensicCaptureWindowEntity } from '@/lib/typeorm/entities/ai-forensic-capture-window'
+export type { AiForensicEvidenceEventEntity } from '@/lib/typeorm/entities/ai-forensic-evidence-event'
 export type { AiSafetyRuleEntity } from '@/lib/typeorm/entities/ai-safety-rule'
 export type { AiSafetyRuleTermEntity } from '@/lib/typeorm/entities/ai-safety-rule-term'
 export type { AiSettingEntity } from '@/lib/typeorm/entities/ai-setting'
@@ -187,6 +193,8 @@ export {
   accessReviewItemEntity,
   accessReviewRunEntity,
   actionAuditEventEntity,
+  aiForensicCaptureWindowEntity,
+  aiForensicEvidenceEventEntity,
   aiSafetyRuleEntity,
   aiSafetyRuleTermEntity,
   aiSettingEntity,

@@ -2,7 +2,6 @@ import type { APIRequestContext } from '@playwright/test'
 import { expectApiResponseOk } from './api-response-assertions'
 
 export interface AiGenerationAvailability {
-  aiSafetyForensicLoggingEnabled: boolean
   aiSafetyRuleCacheTtlSeconds: number
   disabledByEnvironment: boolean
   effectiveRequirementGenerationEnabled: boolean
@@ -18,7 +17,6 @@ export interface AiGenerationAvailability {
 
 export type AiGenerationSettingsPayload = Pick<
   AiGenerationAvailability,
-  | 'aiSafetyForensicLoggingEnabled'
   | 'aiSafetyRuleCacheTtlSeconds'
   | 'mcpImportMaxRows'
   | 'mcpImportValidationTtlMinutes'

@@ -261,7 +261,6 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
   try {
     await putAiSettings(request, {
       aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
-      aiSafetyForensicLoggingEnabled: original.aiSafetyForensicLoggingEnabled,
       mcpImportMaxRows: original.mcpImportMaxRows,
       mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
       mcpMaxRequestBytes: original.mcpMaxRequestBytes,
@@ -303,7 +302,6 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
     if (shouldRestoreSettings) {
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
-        aiSafetyForensicLoggingEnabled: original.aiSafetyForensicLoggingEnabled,
         mcpImportMaxRows: original.mcpImportMaxRows,
         mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
         mcpMaxRequestBytes: original.mcpMaxRequestBytes,

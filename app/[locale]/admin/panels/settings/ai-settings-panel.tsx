@@ -100,7 +100,6 @@ function normalizeAdminAiSettings(
 }
 
 type AiSettingSaveKey =
-  | 'aiSafetyForensicLoggingEnabled'
   | 'aiSafetyRuleCacheTtlSeconds'
   | 'mcpImportMaxActiveSessionsPerDestination'
   | 'mcpImportMaxActiveSessionsPerPrincipal'
@@ -114,7 +113,6 @@ type AiSettingSaveKey =
 type AiSettingsPatch = Partial<
   Pick<
     AdminAiSettings,
-    | 'aiSafetyForensicLoggingEnabled'
     | 'aiSafetyRuleCacheTtlSeconds'
     | 'mcpImportMaxActiveSessionsPerDestination'
     | 'mcpImportMaxActiveSessionsPerPrincipal'
@@ -139,7 +137,6 @@ interface AiSafetyTermForm {
 
 const AI_SETTING_SAVE_KEYS: readonly AiSettingSaveKey[] = [
   'requirementGenerationEnabled',
-  'aiSafetyForensicLoggingEnabled',
   'mcpMaxRequestBytes',
   'mcpImportMaxActiveSessionsPerDestination',
   'mcpImportMaxActiveSessionsPerPrincipal',
@@ -295,12 +292,9 @@ export default function AiSettingsPanel({
   const [isMcpLimitHelpOpen, setIsMcpLimitHelpOpen] = useState(false)
   const [isMcpImportRowsHelpOpen, setIsMcpImportRowsHelpOpen] = useState(false)
   const [isMcpImportTtlHelpOpen, setIsMcpImportTtlHelpOpen] = useState(false)
-  const [isForensicLoggingHelpOpen, setIsForensicLoggingHelpOpen] =
-    useState(false)
   const [isCacheTtlHelpOpen, setIsCacheTtlHelpOpen] = useState(false)
   const [isRulesHelpOpen, setIsRulesHelpOpen] = useState(false)
   const settingSaveTokensRef = useRef<Record<AiSettingSaveKey, number>>({
-    aiSafetyForensicLoggingEnabled: 0,
     aiSafetyRuleCacheTtlSeconds: 0,
     mcpImportMaxActiveSessionsPerDestination: 0,
     mcpImportMaxActiveSessionsPerPrincipal: 0,
@@ -322,8 +316,6 @@ export default function AiSettingsPanel({
   const mcpImportRowsHelpId = `${mcpImportRowsId}-help`
   const mcpImportTtlId = 'admin-ai-mcp-import-validation-ttl-minutes'
   const mcpImportTtlHelpId = `${mcpImportTtlId}-help`
-  const forensicLoggingId = 'admin-ai-safety-forensic-logging-enabled'
-  const forensicLoggingHelpId = `${forensicLoggingId}-help`
   const cacheTtlId = 'admin-ai-safety-rule-cache-ttl-seconds'
   const cacheTtlHelpId = `${cacheTtlId}-help`
   const cacheTtlConstraintId = `${cacheTtlId}-constraint`
@@ -1021,83 +1013,6 @@ export default function AiSettingsPanel({
             <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
               {ta('ai.aiSecurityDescription')}
             </p>
-          </div>
-
-          <div
-            className="rounded-2xl border border-secondary-200/70 bg-secondary-50/60 p-4 dark:border-secondary-700/60 dark:bg-secondary-950/40"
-            {...devMarker({
-              context: 'AI security',
-              name: 'setting',
-              priority: 260,
-              value: 'raw forensic capture',
-            })}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1">
-                  <label
-                    className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
-                    htmlFor={forensicLoggingId}
-                  >
-                    {ta('ai.aiSafetyForensicLogging')}
-                  </label>
-                  <FieldHelpButton
-                    controls={forensicLoggingHelpId}
-                    expanded={isForensicLoggingHelpOpen}
-                    label={`${tc('help')}: ${ta('ai.aiSafetyForensicLogging')}`}
-                    onClick={() => setIsForensicLoggingHelpOpen(open => !open)}
-                  />
-                </div>
-                <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-                  {ta('ai.aiSafetyForensicLoggingDefault')}
-                </p>
-                <AnimatedHelpPanel
-                  id={forensicLoggingHelpId}
-                  isOpen={isForensicLoggingHelpOpen}
-                >
-                  {ta('ai.fieldHelp.aiSafetyForensicLogging')}
-                </AnimatedHelpPanel>
-              </div>
-              <label className="inline-flex min-h-11 items-center gap-3 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200">
-                <input
-                  checked={settings.aiSafetyForensicLoggingEnabled}
-                  disabled={
-                    isLoading ||
-                    isSettingSaving('aiSafetyForensicLoggingEnabled')
-                  }
-                  id={forensicLoggingId}
-                  onChange={event => {
-                    const checked = event.target.checked
-                    void saveSettingsPatch(
-                      'aiSafetyForensicLoggingEnabled',
-                      { aiSafetyForensicLoggingEnabled: checked },
-                      current => ({
-                        ...current,
-                        aiSafetyForensicLoggingEnabled: checked,
-                      }),
-                    )
-                  }}
-                  type="checkbox"
-                />
-                <span>
-                  {settings.aiSafetyForensicLoggingEnabled
-                    ? ta('ai.adminPreferenceEnabled')
-                    : ta('ai.adminPreferenceDisabled')}
-                </span>
-              </label>
-            </div>
-            {settingSaveStates.aiSafetyForensicLoggingEnabled !== 'idle' ? (
-              <p
-                className="mt-2 text-xs font-medium text-secondary-500 dark:text-secondary-400"
-                role="status"
-              >
-                {settingSaveStates.aiSafetyForensicLoggingEnabled === 'saving'
-                  ? tc('saving')
-                  : settingSaveStates.aiSafetyForensicLoggingEnabled === 'saved'
-                    ? ta('saved')
-                    : ta('ai.rowSaveError')}
-              </p>
-            ) : null}
           </div>
 
           <div className="grid gap-4">

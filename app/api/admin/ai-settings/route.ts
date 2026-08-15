@@ -13,7 +13,6 @@ import {
 } from '@/lib/ai/generation-availability'
 import { clearAiSafetyRuleSetCache } from '@/lib/dal/ai-safety-rules'
 import {
-  clearAiSafetyRuntimeSettingsCache,
   formatAiSettingsLoadError,
   getAdminAiSettings,
   patchAiGenerationSettings,
@@ -34,7 +33,6 @@ import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 const aiSettingsPayloadSchema = z
   .object({
-    aiSafetyForensicLoggingEnabled: z.boolean(),
     mcpImportMaxActiveSessionsPerDestination: z
       .number()
       .int()
@@ -142,7 +140,6 @@ export const PUT = secureMutationRoute({
             {
               changedFields: [
                 'requirementGenerationEnabled',
-                'aiSafetyForensicLoggingEnabled',
                 'mcpMaxRequestBytes',
                 'mcpImportMaxActiveSessionsPerDestination',
                 'mcpImportMaxActiveSessionsPerPrincipal',
@@ -160,7 +157,6 @@ export const PUT = secureMutationRoute({
           ),
       })
       clearAiSafetyRuleSetCache()
-      clearAiSafetyRuntimeSettingsCache()
 
       return NextResponse.json(settings)
     } catch (error) {
@@ -201,7 +197,6 @@ export const PATCH = secureMutationRoute({
           ),
       })
       clearAiSafetyRuleSetCache()
-      clearAiSafetyRuntimeSettingsCache()
 
       return NextResponse.json(settings)
     } catch (error) {

@@ -65,6 +65,7 @@ describe('MCP import-validation rate-bucket cleanup', () => {
     const targets = createTransientCleanupTargets(db)
 
     expect(targets.map(target => target.kind)).toEqual([
+      'ai_forensic_evidence',
       'requirement_import_validation_sessions',
       'requirement_import_validation_rate_buckets',
     ])

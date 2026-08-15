@@ -1506,9 +1506,7 @@
       "description": "Control system-wide AI settings.",
       "adminPreferenceDisabled": "Disabled",
       "adminPreferenceEnabled": "Enabled",
-      "aiSafetyForensicLogging": "Log forensic AI security data",
-      "aiSafetyForensicLoggingDefault": "Raw forensic capture is disabled by default on new installations. Enable it only when your incident-handling process requires raw blocked content.",
-      "aiSecurityDescription": "Control the AI safety filter, safety-rule cache, forensic logging, and AI safety rules.",
+      "aiSecurityDescription": "Control the AI safety filter, safety-rule cache, and AI safety rules. Time-limited forensic evidence capture uses a separately approved administrative workflow.",
       "aiSecurityTitle": "AI security",
       "assistanceDescription": "Control AI-assisted requirement generation.",
       "assistanceTitle": "AI assistance",
@@ -1516,7 +1514,6 @@
       "environmentOverrideNotice": "Deployment configuration currently disables AI requirement generation. You can save the Admin Center preference, but generation stays disabled until the deployment override is removed.",
       "decreaseMcpMaxRequestLimit": "Decrease MCP request limit",
       "fieldHelp": {
-        "aiSafetyForensicLogging": "New installations start with raw forensic capture disabled. When enabled, AI safety blocks write a separate forensic JSON event with raw blocked content and matched rule terms. The metadata event in the security audit log is always written. Changes apply immediately in this app process and can take up to 30 seconds in other app processes.",
         "mcpImportMaxActiveSessionsPerDestination": "Maximum number of unexpired validation sessions, including executed sessions, reserved for one destination across all principals.",
         "mcpImportMaxActiveSessionsPerPrincipal": "Maximum number of unexpired validation sessions, including executed sessions, that one authenticated MCP principal may own.",
         "mcpImportMaxCreationsPerWindow": "Maximum successful validation-session creations per principal in each fixed, epoch-aligned 10-minute window. Rejected validations do not consume the quota.",
@@ -1721,6 +1718,8 @@
         "accessReviewRuns": "Access review rounds",
         "accessReviewItems": "Access review rows",
         "actionAuditEvents": "Action log events",
+        "aiForensicCaptureWindows": "AI forensic capture windows",
+        "aiForensicEvidenceEvents": "AI forensic evidence events",
         "requirementImportValidationRateBuckets": "MCP validation-session rate limits",
         "requirementImportValidationSessions": "MCP import validation sessions"
       },
@@ -1735,6 +1734,8 @@
         "coAuthor": "Co-author",
         "reviewer": "Assigned reviewer",
         "actor": "Actor",
+        "captureActor": "Capture requester or controller",
+        "actorFingerprint": "Capture-specific actor fingerprint",
         "creatorPrincipalFingerprint": "Session creator",
         "principalFingerprint": "Rate-limit principal",
         "accessReviewPrincipal": "Access review principal",
@@ -1756,7 +1757,8 @@
         "historySwitch": "Switching historical authorship can change the record's meaning. Anonymize is the default.",
         "decisionSwitch": "Decisions and resolutions should not be reassigned unless legally documented. Anonymize is the default.",
         "rateBucketDeletion": "Deleting the temporary rate-limit bucket resets the principal's current 10-minute creation count.",
-        "tokenInvalidation": "Deleting these temporary sessions immediately invalidates their validation tokens."
+        "tokenInvalidation": "Deleting these temporary sessions immediately invalidates their validation tokens.",
+        "forensicEvidencePurge": "Erasure stops matching capture windows and permanently purges their isolated evidence."
       },
       "blockers": {
         "ownerAreaReplacementRequired": "This owner is assigned to requirement areas. Update those areas first or specify a replacement HSA-id and name.",
@@ -1864,6 +1866,37 @@
       "description": "Preview retention candidates, manage exceptions, and export archive material before data is removed from the application.",
       "disabledTooltip": "You need the Privacy officer role.",
       "heading": "Archiving and retention",
+      "forensic": {
+        "capture": "Capture",
+        "description": "Load aggregate metadata for short-lived AI safety captures. Evidence content is never shown here and is purged automatically 72 hours after capture ends.",
+        "directions": {
+          "input": "Input",
+          "output": "Output"
+        },
+        "empty": "Load captures to review their metadata.",
+        "eventCount": "Events",
+        "expiresAt": "Capture expires",
+        "loadError": "Could not load forensic capture metadata.",
+        "purge": "Purge evidence",
+        "alreadyPurged": "The evidence for this capture window has already been purged.",
+        "purgeConfirmMessage": "This permanently deletes the isolated evidence for this capture while retaining lifecycle metadata.",
+        "purgeConfirmTitle": "Purge forensic evidence?",
+        "purgeError": "Could not purge forensic evidence.",
+        "purgePending": "AI forensic evidence purge is in progress.",
+        "purgeSuccess": "Forensic evidence purged.",
+        "reload": "Load captures",
+        "requiresPrivacyOfficer": "You need the Privacy officer role to purge evidence.",
+        "scope": "Operation and direction",
+        "status": "Status",
+        "statuses": {
+          "active": "Active",
+          "expired": "Expired",
+          "pending_approval": "Pending approval",
+          "purged": "Purged",
+          "stopped": "Stopped"
+        },
+        "title": "AI forensic evidence"
+      },
       "retention": {
         "action": "Retention action",
         "actions": {
@@ -2405,7 +2438,7 @@
       },
       "settings": {
         "heading": "Available settings",
-        "body": "You can enable or disable AI-assisted requirement generation, control raw forensic capture, control how long the active safety rule set may stay in the server cache, maintain the words used by the AI safety screen, and set MCP request/session and import limits. New installations start with raw forensic capture disabled. Every change on the AI tab is saved immediately when a field or row changes."
+        "body": "You can enable or disable AI-assisted requirement generation, control how long the active safety rule set may stay in the server cache, maintain the words used by the AI safety screen, and set MCP request/session and import limits. Time-limited AI forensic evidence collection is managed separately under Archiving. Every change on the AI tab is saved immediately when a field or row changes."
       },
       "precedence": {
         "heading": "Precedence",

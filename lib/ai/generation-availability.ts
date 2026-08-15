@@ -8,7 +8,6 @@ export const MCP_REQUEST_PAYLOAD_STEP_BYTES = 1024 * 1024
 export const MCP_REQUEST_PAYLOAD_MIN_BYTES = 1024 * 1024
 export const MCP_REQUEST_PAYLOAD_MAX_BYTES = 10 * 1024 * 1024
 export const AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS = 600
-export const AI_SAFETY_FORENSIC_LOGGING_DEFAULT = false
 export const AI_SAFETY_RULE_CACHE_TTL_MIN_SECONDS = 30
 export const AI_SAFETY_RULE_CACHE_TTL_MAX_SECONDS = 3600
 export const MCP_IMPORT_MAX_ROWS_DEFAULT = 500
@@ -92,7 +91,6 @@ export const ADMIN_AI_SETTINGS_CONSTRAINTS = Object.freeze({
 } satisfies Record<string, NumericSettingConstraint>)
 
 export interface AdminAiSettings {
-  aiSafetyForensicLoggingEnabled: boolean
   aiSafetyRuleCacheTtlSeconds: number
   constraints: typeof ADMIN_AI_SETTINGS_CONSTRAINTS
   disabledByEnvironment: boolean
@@ -114,7 +112,6 @@ export const DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY: AiRequirementGenera
   })
 
 export const DEFAULT_ADMIN_AI_SETTINGS: AdminAiSettings = Object.freeze({
-  aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
   aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
   constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
   disabledByEnvironment: false,

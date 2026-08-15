@@ -18,7 +18,7 @@ const validDeclaration = [
 
 describe('REST route security policy registry', () => {
   it('contains the complete explicit REST operation baseline', () => {
-    expect(REST_OPERATIONS).toHaveLength(206)
+    expect(REST_OPERATIONS).toHaveLength(209)
     expect(
       REST_OPERATIONS.filter(operation => operation.contract === 'openapi'),
     ).toHaveLength(29)

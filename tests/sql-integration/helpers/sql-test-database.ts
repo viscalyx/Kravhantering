@@ -27,6 +27,8 @@ import { createAppDataSource } from '@/lib/typeorm/data-source'
 import { tryGetSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 const TRANSACTIONAL_TABLES = [
+  'ai_forensic_evidence_events',
+  'ai_forensic_capture_windows',
   'requirement_import_validation_rate_buckets',
   'requirement_import_validation_sessions',
   'access_review_items',

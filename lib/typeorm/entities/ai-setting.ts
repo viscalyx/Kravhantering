@@ -2,7 +2,6 @@ import { EntitySchema } from 'typeorm'
 import { safeBigIntNumberTransformer } from '@/lib/typeorm/value-mappers'
 
 export interface AiSettingEntity {
-  aiSafetyForensicLoggingEnabled: boolean
   aiSafetyRuleCacheTtlSeconds: number
   createdAt: Date
   id: number
@@ -30,11 +29,6 @@ export const aiSettingEntity = new EntitySchema<AiSettingEntity>({
     requirementGenerationEnabled: {
       default: true,
       name: 'requirement_generation_enabled',
-      type: 'bit',
-    },
-    aiSafetyForensicLoggingEnabled: {
-      default: false,
-      name: 'ai_safety_forensic_logging_enabled',
       type: 'bit',
     },
     mcpMaxRequestBytes: {

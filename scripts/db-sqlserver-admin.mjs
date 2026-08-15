@@ -59,6 +59,8 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'hsa_id_prefixes',
   'requirement_import_validation_rate_buckets',
   'requirement_import_validation_sessions',
+  'ai_forensic_evidence_events',
+  'ai_forensic_capture_windows',
   'requirement_area_co_authors',
   'requirement_areas',
   'requirement_responsibility_people',

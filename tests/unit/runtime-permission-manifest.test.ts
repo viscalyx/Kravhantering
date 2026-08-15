@@ -33,6 +33,14 @@ describe('runtime permission manifest', () => {
       object: 'dbo.archiving_retention_runs',
       permissions: ['SELECT', 'INSERT'],
     })
+    expect(permissionFor('dbo.ai_forensic_capture_windows')).toEqual({
+      object: 'dbo.ai_forensic_capture_windows',
+      permissions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+    })
+    expect(permissionFor('dbo.ai_forensic_evidence_events')).toEqual({
+      object: 'dbo.ai_forensic_evidence_events',
+      permissions: ['SELECT', 'INSERT', 'DELETE'],
+    })
     expect(
       permissionFor('dbo.requirement_import_validation_rate_buckets'),
     ).toEqual({
@@ -52,6 +60,11 @@ describe('runtime permission manifest', () => {
         'mcp_import_max_reserved_bytes',
       ]),
     )
+    expect(
+      aiSettingsPermission && 'updateColumns' in aiSettingsPermission
+        ? aiSettingsPermission.updateColumns
+        : undefined,
+    ).not.toContain('ai_safety_forensic_logging_enabled')
   })
 
   it('builds reconciliation from explicit objects without schema-wide or dynamic grants', () => {

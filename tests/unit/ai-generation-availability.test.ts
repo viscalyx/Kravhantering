@@ -55,7 +55,6 @@ describe('AI generation availability MCP payload grid', () => {
       effectiveRequirementGenerationEnabled: true,
     })
     expect(DEFAULT_ADMIN_AI_SETTINGS).toEqual({
-      aiSafetyForensicLoggingEnabled: false,
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
       disabledByEnvironment: false,

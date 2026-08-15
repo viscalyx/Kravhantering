@@ -948,6 +948,115 @@ async function collectActionAuditEventActors(
   )
 }
 
+async function collectAiForensicCaptureActors(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor('ai_forensic_capture_windows.identity')
+  const rows = (await db.query(
+    `/* privacy:data-export:ai_forensic_capture_windows.identity */
+      SELECT
+        capture.id AS captureWindowId,
+        capture.operation,
+        capture.direction,
+        actor.actorRole,
+        actor.hsaId,
+        actor.displayName,
+        capture.requested_at AS requestedAt,
+        capture.expires_at AS expiresAt
+      FROM ai_forensic_capture_windows capture
+      CROSS APPLY (VALUES
+        (capture.requested_by_hsa_id, capture.requested_by_display_name, N'requester'),
+        (capture.approved_by_hsa_id, capture.approved_by_display_name, N'approver'),
+        (capture.stopped_by_hsa_id, capture.stopped_by_display_name, N'stopped_by'),
+        (capture.purged_by_hsa_id, capture.purged_by_display_name, N'purged_by')
+      ) actor(hsaId, displayName, actorRole)
+      WHERE actor.hsaId = @0
+      ORDER BY capture.id ASC, actor.actorRole ASC`,
+    [targetHsaId],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    fieldsForRow(
+      policy,
+      'ai_forensic_capture_actor',
+      [
+        { fieldName: 'actor_role', value: stringValue(row.actorRole) },
+        { fieldName: 'actor_hsa_id', value: stringValue(row.hsaId) },
+        {
+          fieldName: 'actor_display_name',
+          value: stringValue(row.displayName),
+        },
+        { fieldName: 'operation', value: stringValue(row.operation) },
+        { fieldName: 'direction', value: stringValue(row.direction) },
+        {
+          fieldName: 'expires_at',
+          value: isoTimestamp(row.expiresAt) ?? null,
+        },
+      ],
+      {
+        relatedObject: relatedObject(
+          row,
+          'ai_forensic_capture_window',
+          'captureWindowId',
+        ),
+        timestamp: row.requestedAt,
+      },
+    ),
+  )
+}
+
+async function collectAiForensicEvidenceActorFingerprints(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor('ai_forensic_evidence_events.actor_fingerprint')
+  const rows = (await db.query(
+    `/* privacy:data-export:ai_forensic_evidence_events.actor_fingerprint */
+      SELECT
+        evidence.id AS evidenceId,
+        evidence.event_id AS eventId,
+        evidence.actor_fingerprint AS actorFingerprint,
+        capture.operation,
+        capture.direction,
+        evidence.blocked_step AS blockedStep,
+        evidence.captured_at AS capturedAt
+      FROM ai_forensic_evidence_events evidence
+      INNER JOIN ai_forensic_capture_windows capture
+        ON capture.id = evidence.ai_forensic_capture_window_id
+      WHERE evidence.actor_fingerprint = LOWER(CONVERT(varchar(64), HASHBYTES(
+        'SHA2_256',
+        CONVERT(varchar(256), CONCAT(evidence.ai_forensic_capture_window_id, N':', @0))
+      ), 2))
+      ORDER BY evidence.captured_at DESC, evidence.id DESC`,
+    [targetHsaId],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    fieldsForRow(
+      policy,
+      'ai_forensic_evidence_actor',
+      [
+        {
+          fieldName: 'actor_fingerprint',
+          value: stringValue(row.actorFingerprint),
+        },
+        { fieldName: 'operation', value: stringValue(row.operation) },
+        { fieldName: 'direction', value: stringValue(row.direction) },
+        { fieldName: 'blocked_step', value: stringValue(row.blockedStep) },
+      ],
+      {
+        relatedObject: relatedObject(
+          row,
+          'ai_forensic_evidence_event',
+          'eventId',
+        ),
+        timestamp: row.capturedAt,
+      },
+    ),
+  )
+}
+
 async function collectRequirementImportValidationSessions(
   db: QueryExecutor,
   targetHsaId: string,
@@ -1225,6 +1334,16 @@ const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
     collect: collectActionAuditEventActors,
     policy: policyFor('action_audit_events.actor'),
     relationToSubject: 'action_audit_actor_snapshot',
+  },
+  {
+    collect: collectAiForensicCaptureActors,
+    policy: policyFor('ai_forensic_capture_windows.identity'),
+    relationToSubject: 'ai_forensic_capture_actor',
+  },
+  {
+    collect: collectAiForensicEvidenceActorFingerprints,
+    policy: policyFor('ai_forensic_evidence_events.actor_fingerprint'),
+    relationToSubject: 'ai_forensic_evidence_actor',
   },
   {
     collect: collectRequirementImportValidationSessions,

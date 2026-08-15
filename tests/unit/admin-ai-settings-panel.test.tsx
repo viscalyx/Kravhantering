@@ -87,24 +87,6 @@ describe('AiSettingsPanel', () => {
         .getByRole('heading', { name: 'admin.ai.title' })
         .querySelector('.lucide-sparkles'),
     ).toHaveAttribute('aria-hidden', 'true')
-
-    const forensicDefault = screen.getByText(
-      'admin.ai.aiSafetyForensicLoggingDefault',
-    )
-    const forensicSetting = forensicDefault.closest(
-      '[data-developer-mode-name="setting"]',
-    )
-    expect(forensicSetting).toHaveAttribute(
-      'data-developer-mode-context',
-      'AI security',
-    )
-    expect(forensicSetting).toHaveAttribute(
-      'data-developer-mode-value',
-      'raw forensic capture',
-    )
-    expect(
-      screen.getByLabelText('admin.ai.aiSafetyForensicLogging'),
-    ).not.toBeChecked()
   })
 
   it('uses matching plain minus and plus icons for the MCP limit stepper', async () => {
@@ -197,7 +179,6 @@ describe('AiSettingsPanel', () => {
         if (url === '/api/admin/ai-settings' && method === 'GET') {
           return Promise.resolve(
             okJson({
-              aiSafetyForensicLoggingEnabled: false,
               aiSafetyRuleCacheTtlSeconds: 60,
               disabledByEnvironment: true,
               mcpImportMaxActiveSessionsPerDestination: 100,
@@ -234,7 +215,6 @@ describe('AiSettingsPanel', () => {
 
     for (const label of [
       'admin.ai.requirementGenerationEnabled',
-      'admin.ai.aiSafetyForensicLogging',
       'admin.ai.safetyRuleCacheTtl',
       'admin.ai.safetyRulesTitle',
       'admin.ai.mcpMaxRequestLimit',
@@ -255,12 +235,6 @@ describe('AiSettingsPanel', () => {
 
     fireEvent.click(requirementToggle)
     await waitFor(() => expect(requirementToggle).toBeEnabled())
-    const forensicToggle = screen.getByLabelText(
-      'admin.ai.aiSafetyForensicLogging',
-    )
-    fireEvent.click(forensicToggle)
-    await waitFor(() => expect(forensicToggle).toBeEnabled())
-
     const cacheTtl = screen.getByLabelText('admin.ai.safetyRuleCacheTtl')
     fireEvent.change(cacheTtl, { target: { value: '61' } })
     fireEvent.keyDown(cacheTtl, { key: 'Escape' })
@@ -315,7 +289,7 @@ describe('AiSettingsPanel', () => {
         fetchMock.mock.calls.filter(
           ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
         ),
-      ).toHaveLength(12),
+      ).toHaveLength(11),
     )
     expect(
       fetchMock.mock.calls.some(([, init]) =>
@@ -416,10 +390,9 @@ describe('AiSettingsPanel', () => {
     )
     fireEvent.click(requirementToggle)
     expect(await screen.findByText('setting rejected')).toBeVisible()
-    const forensicToggle = screen.getByLabelText(
-      'admin.ai.aiSafetyForensicLogging',
-    )
-    fireEvent.click(forensicToggle)
+    const cacheTtl = screen.getByLabelText('admin.ai.safetyRuleCacheTtl')
+    fireEvent.change(cacheTtl, { target: { value: '61' } })
+    fireEvent.keyDown(cacheTtl, { key: 'Enter' })
     expect(await screen.findByText('admin.ai.saveError')).toBeVisible()
   })
 

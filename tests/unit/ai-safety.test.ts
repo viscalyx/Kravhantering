@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   recordAiSafetyBlock,
   recordAiSafetyDecision,
@@ -13,10 +13,8 @@ import type {
   ActiveAiSafetyRuleTerm,
   AiSafetyTermType,
 } from '@/lib/dal/ai-safety-rules'
-import { clearAiSafetyRuntimeSettingsCacheForTests } from '@/lib/dal/ai-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
-import { parseSecurityForensicsEvents } from '@/tests/helpers/security-forensics-events'
 
 function term(
   termType: AiSafetyTermType,
@@ -106,10 +104,6 @@ function screenAiOutput(textParts: readonly string[]) {
 }
 
 describe('AI safety screening', () => {
-  beforeEach(() => {
-    clearAiSafetyRuntimeSettingsCacheForTests()
-  })
-
   it('allows ordinary requirement-authoring input', () => {
     const decision = screenAiInput([
       'Create requirements for security audit logging and retention.',
@@ -436,7 +430,7 @@ describe('AI safety screening', () => {
     ['input', 'ai.input_safety.blocked', 'ai_request_input'],
     ['output', 'ai.output_safety.blocked', 'final_model_output'],
   ] as const)(
-    'keeps blocked %s content out of logs when forensic capture is disabled',
+    'keeps blocked %s content out of logs when no capture window is active',
     async (direction, event, blockedStep) => {
       const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -453,9 +447,7 @@ describe('AI safety screening', () => {
               { label: 'rawContent', text: unsafeContent },
             ])
       const db = {
-        query: vi
-          .fn()
-          .mockResolvedValue([{ aiSafetyForensicLoggingEnabled: 0 }]),
+        query: vi.fn().mockResolvedValue([]),
       } as unknown as SqlServerDatabase
 
       try {
@@ -499,7 +491,6 @@ describe('AI safety screening', () => {
           safetyRuleDirection: direction,
           textLengthBucket: '0-1k',
         })
-        expect(parseSecurityForensicsEvents(infoSpy)).toEqual([])
         expect(
           [...infoSpy.mock.calls, ...errorSpy.mock.calls]
             .flat()
@@ -563,9 +554,8 @@ describe('AI safety screening', () => {
         })
 
         expect(parseSecurityAuditEvents(infoSpy)).toHaveLength(1)
-        expect(parseSecurityForensicsEvents(infoSpy)).toEqual([])
         expect(errorSpy).toHaveBeenCalledWith(
-          '[security-forensics] failed to load AI safety runtime settings',
+          '[ai-forensic-evidence] failed closed to metadata-only recording',
           expectedKind,
         )
         expect(
@@ -581,19 +571,28 @@ describe('AI safety screening', () => {
     },
   )
 
-  it('records raw blocked content and trigger evidence only on the forensic channel', async () => {
+  it('persists redacted evidence without writing blocked content to ordinary logs', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const db = {
-      query: vi.fn().mockResolvedValue([
-        {
-          aiSafetyForensicLoggingEnabled: 1,
-        },
-      ]),
+      query: vi
+        .fn()
+        .mockResolvedValueOnce([{ captureWindowId: 47 }])
+        .mockResolvedValueOnce([]),
     } as unknown as SqlServerDatabase
     const screening = screenAiOutputDetailedWithRuleSet(TEST_RULE_SET, [
       {
+        label: 'unrelated',
+        text: 'unrelated-part-marker',
+      },
+      {
         label: 'thinking',
-        text: 'Authorization: Bearer unsafe-output-secret',
+        text: [
+          `beginning-marker SE5560000001-${'boundary-secret'.repeat(250)} ${'å'.repeat(2_000)}`,
+          'Authorization: Bearer unsafe-output-secret',
+          '{"password":"unsafe json secret with spaces"}',
+          'Contact analyst@example.test for SE5560000001-ai1.',
+        ].join(' '),
       },
     ])
 
@@ -630,62 +629,106 @@ describe('AI safety screening', () => {
       })
 
       const auditEvent = parseSecurityAuditEvents(infoSpy)[0]
-      const forensicEvent = parseSecurityForensicsEvents(infoSpy)[0]
 
       expect(auditEvent).toMatchObject({
         channel: 'security-audit',
         event: 'ai.output_safety.blocked',
       })
       expect(JSON.stringify(auditEvent)).not.toContain('unsafe-output-secret')
-      expect(forensicEvent).toMatchObject({
-        actor: { source: 'oidc', sub: 'ai-user' },
-        blockedStep: 'final_model_output',
-        categories: ['backend_leakage'],
-        channel: 'security-forensics',
-        correlationId: 'corr-ai',
-        decision: 'blocked',
-        event: 'ai.output_safety.blocked_content_captured',
-        operation: 'ai.generate-requirement-import',
-        outcome: 'failure',
-        primaryRuleId: 'sensitive_backend_leak',
-        primaryRuleType: 'System-adjacent content leakage',
-        reason: 'ai_safety_rule_match',
-        requestId: 'req-ai',
-        ruleIds: ['sensitive_backend_leak'],
-        ruleTypes: ['System-adjacent content leakage'],
-        safetyRuleDirection: 'output',
-        source: 'rest',
-        textLengthBucket: '0-1k',
-        content: [
-          {
-            label: 'thinking',
-            text: 'Authorization: Bearer unsafe-output-secret',
-          },
-        ],
-        evidence: [
-          expect.objectContaining({
-            partLabel: 'thinking',
-            ruleId: 'sensitive_backend_leak',
-            terms: [
-              expect.objectContaining({
-                configuredTerm: 'authorization: bearer',
-                matchedText: 'Authorization: Bearer',
-                termType: 'direct_marker',
-              }),
-            ],
-          }),
-        ],
-      })
-      expect(forensicEvent).not.toHaveProperty('detail')
-      expect(forensicEvent?.request).toEqual({
-        method: 'POST',
-        path: '/api/ai/generate-requirement-import',
-      })
-      expect(forensicEvent?.request).not.toHaveProperty('requestId')
-      expect(forensicEvent?.eventId).toBe(
-        (auditEvent?.detail as Record<string, unknown> | undefined)?.eventId,
+      expect(db.query).toHaveBeenCalledTimes(2)
+      const storedParameters = JSON.stringify(
+        (db.query as ReturnType<typeof vi.fn>).mock.calls[1]?.[1],
       )
-      expect(JSON.stringify(forensicEvent)).toContain('unsafe-output-secret')
+      expect(storedParameters).toContain('[REDACTED_SECRET]')
+      expect(storedParameters).toContain('[REDACTED_IDENTIFIER]')
+      expect(storedParameters).not.toContain('beginning-marker')
+      expect(storedParameters).not.toContain('boundary-secret')
+      expect(storedParameters).not.toContain('unrelated-part-marker')
+      expect(storedParameters).not.toContain('unsafe-output-secret')
+      expect(storedParameters).not.toContain('unsafe json secret with spaces')
+      expect(storedParameters).not.toContain('json secret with spaces')
+      expect(storedParameters).not.toContain('analyst@example.test')
+      expect(storedParameters).not.toContain('SE5560000001-ai1')
+      const ordinaryLogs = [...infoSpy.mock.calls, ...errorSpy.mock.calls]
+        .flat()
+        .map(String)
+        .join(' ')
+      expect(ordinaryLogs).not.toContain('unsafe-output-secret')
+      expect(ordinaryLogs).not.toContain('unsafe json secret with spaces')
+      expect(ordinaryLogs).not.toContain('json secret with spaces')
+      expect(ordinaryLogs).not.toContain('analyst@example.test')
+      expect(ordinaryLogs).not.toContain('SE5560000001-ai1')
+    } finally {
+      infoSpy.mockRestore()
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('keeps stored evidence valid within the capture item and byte bounds', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const db = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce([
+          {
+            captureWindowId: 48,
+            eventByteLimit: 256,
+            eventItemLimit: 2,
+          },
+        ])
+        .mockResolvedValueOnce([]),
+    } as unknown as SqlServerDatabase
+    const screening = screenAiOutputDetailedWithRuleSet(TEST_RULE_SET, [
+      {
+        label: 'first',
+        text: `Authorization: Bearer first-secret ${'a'.repeat(500)}`,
+      },
+      {
+        label: 'second',
+        text: `Authorization: Bearer second-secret ${'b'.repeat(500)}`,
+      },
+      {
+        label: 'third',
+        text: `Authorization: Bearer third-secret ${'c'.repeat(500)}`,
+      },
+    ])
+
+    try {
+      await recordAiSafetyBlock({
+        blockedStep: 'final_model_output',
+        context: {
+          actor: {
+            displayName: 'AI User',
+            hsaId: 'SE5560000001-ai1',
+            id: 'ai-user',
+            isAuthenticated: true,
+            roles: [],
+            source: 'oidc',
+          },
+          correlationId: 'corr-bounds',
+          requestId: 'req-bounds',
+          source: 'rest',
+        },
+        db,
+        direction: 'output',
+        event: 'ai.output_safety.blocked',
+        operation: 'ai.generate-requirement-import',
+        request: new Request('https://example.test/api/ai/generate', {
+          method: 'POST',
+        }),
+        screening,
+      })
+
+      const parameters = (db.query as ReturnType<typeof vi.fn>).mock
+        .calls[1]?.[1]
+      const storedJson = String(parameters?.[8])
+      expect(Buffer.byteLength(storedJson, 'utf8')).toBeLessThanOrEqual(256)
+      expect(Buffer.byteLength(storedJson, 'utf16le')).toBeLessThanOrEqual(256)
+      expect(JSON.parse(storedJson)).toHaveLength(2)
+      expect(storedJson).toContain('Authorization: Bearer')
+      expect(storedJson).not.toContain('first-secret')
+      expect(storedJson).not.toContain('second-secret')
+      expect(parameters?.[9]).toBe(2)
     } finally {
       infoSpy.mockRestore()
     }

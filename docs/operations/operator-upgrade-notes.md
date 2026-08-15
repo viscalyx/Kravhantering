@@ -355,11 +355,14 @@ the disposable single-node demo path.
 Releases with DB-backed AI safety rules require the `seed:required` step to
 complete after migration.
 
-Releases with AI safety forensic logging add
-`ai_settings.ai_safety_forensic_logging_enabled` with default `1`. Review the
-Admin Center `Settings` tab, section `AI`, after migration and either route
-`channel == "security-forensics"` logs with stricter access/retention controls
-or disable `Log forensic AI security data` until that routing is ready.
+This release removes persistent raw AI forensic logging and replaces it with
+time-limited evidence capture that requires a separate requester and approver.
+Before rollout, confirm encrypted database transport, encryption at rest and in
+backups, least-privilege runtime access, and scheduled transient cleanup.
+
+After rollout, verify automatic capture expiry and the 72-hour post-stop purge.
+After a database restore, run transient cleanup before allowing evidence reads
+so expired evidence does not become operationally available.
 
 Review Admin Center > Identity and confirm the visible/default HSA-id-prefix
 values are correct for the organization. The migration seeds prefixes from
