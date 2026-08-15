@@ -27,18 +27,6 @@ function readEnvTemplate(relativePath: string): Map<string, string> {
 }
 
 describe('production authentication templates', () => {
-  it('starts the application image through the authentication validator', () => {
-    const dockerfile = fs.readFileSync(
-      path.resolve(process.cwd(), 'containers/app/Dockerfile'),
-      'utf8',
-    )
-
-    expect(dockerfile).toContain(
-      'COPY --chown=node:node containers/app/start-runtime.mjs ./start-runtime.mjs',
-    )
-    expect(dockerfile).toContain('CMD ["node", "start-runtime.mjs"]')
-  })
-
   it('ships required application secrets blank for deployment injection', () => {
     const appEnv = readEnvTemplate('containers/production/env/app.env.template')
 

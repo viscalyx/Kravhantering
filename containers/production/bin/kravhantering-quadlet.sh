@@ -190,16 +190,10 @@ validate_auth_secret() {
 
 read_realm_client_secret() {
   local client_id="$1"
-  awk -v requested_client_id="$client_id" '
-    index($0, "\"clientId\": \"" requested_client_id "\"") { client_found = 1 }
-    client_found && index($0, "\"secret\":") {
-      value = $0
-      sub(/^[^:]*:[[:space:]]*"/, "", value)
-      sub(/",?[[:space:]]*$/, "", value)
-      print value
-      exit
-    }
-  ' "$KEYCLOAK_REALM_FILE"
+  jq -r --arg client_id "$client_id" '
+    [.clients[]? | select(.clientId == $client_id)]
+    | if length == 1 then (.[0].secret // "") else "" end
+  ' "$KEYCLOAK_REALM_FILE" 2>/dev/null || true
 }
 
 validate_application_auth() {
@@ -237,6 +231,7 @@ validate_bundled_keycloak_auth() {
 
   [[ -r "$KEYCLOAK_REALM_FILE" ]] || \
     fail "cannot read Keycloak realm configuration: $KEYCLOAK_REALM_FILE"
+  command -v jq >/dev/null 2>&1 || fail 'required command not found: jq'
   app_client_secret="$(
     require_auth_value "$APP_ENV_FILE" app.env AUTH_OIDC_CLIENT_SECRET
   )"

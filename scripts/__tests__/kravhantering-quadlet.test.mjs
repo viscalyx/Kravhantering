@@ -3,6 +3,13 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import {
+  SHIPPED_KEYCLOAK_ADMIN_PASSWORD_SENTINELS,
+  SHIPPED_KEYCLOAK_ADMIN_SENTINELS,
+  SHIPPED_MCP_CLIENT_SECRET_SENTINELS,
+  SHIPPED_OIDC_CLIENT_SECRET_SENTINELS,
+  SHIPPED_SESSION_COOKIE_SENTINELS,
+} from '../../tests/fixtures/auth-placeholder-sentinels.mjs'
 
 const SCRIPT_PATH = path.resolve(
   process.cwd(),
@@ -958,12 +965,15 @@ describe('kravhantering Quadlet helper', () => {
 
   it.each([
     ['AUTH_OIDC_CLIENT_SECRET', ''],
-    ['AUTH_OIDC_CLIENT_SECRET', 'replace-with-oidc-client-secret'],
+    ...SHIPPED_OIDC_CLIENT_SECRET_SENTINELS.map(sentinel => [
+      'AUTH_OIDC_CLIENT_SECRET',
+      sentinel,
+    ]),
     ['AUTH_SESSION_COOKIE_PASSWORD', ''],
-    [
+    ...SHIPPED_SESSION_COOKIE_SENTINELS.map(sentinel => [
       'AUTH_SESSION_COOKIE_PASSWORD',
-      'replace-with-at-least-32-random-characters',
-    ],
+      sentinel,
+    ]),
   ])(
     'rejects the bundled %s placeholder before writing units',
     (field, placeholder) => {
@@ -993,11 +1003,15 @@ describe('kravhantering Quadlet helper', () => {
 
   it.each([
     ['KEYCLOAK_ADMIN', ''],
-    ['KEYCLOAK_ADMIN', 'admin'],
-    ['KEYCLOAK_ADMIN', 'replace-with-keycloak-admin-user'],
+    ...SHIPPED_KEYCLOAK_ADMIN_SENTINELS.map(sentinel => [
+      'KEYCLOAK_ADMIN',
+      sentinel,
+    ]),
     ['KEYCLOAK_ADMIN_PASSWORD', ''],
-    ['KEYCLOAK_ADMIN_PASSWORD', 'admin-not-for-production'],
-    ['KEYCLOAK_ADMIN_PASSWORD', 'replace-with-keycloak-admin-password'],
+    ...SHIPPED_KEYCLOAK_ADMIN_PASSWORD_SENTINELS.map(sentinel => [
+      'KEYCLOAK_ADMIN_PASSWORD',
+      sentinel,
+    ]),
   ])(
     'rejects the bundled %s placeholder before writing single-node units',
     (field, placeholder) => {
@@ -1027,14 +1041,15 @@ describe('kravhantering Quadlet helper', () => {
 
   it.each([
     ['kravhantering-app', ''],
-    ['kravhantering-app', 'dev-only-app-secret'],
-    ['kravhantering-app', 'prodlike-kc-app-secret'],
-    ['kravhantering-app', 'container-demo-app-secret-not-for-production'],
-    ['kravhantering-app', 'replace-with-production-app-client-secret'],
+    ...SHIPPED_OIDC_CLIENT_SECRET_SENTINELS.map(sentinel => [
+      'kravhantering-app',
+      sentinel,
+    ]),
     ['kravhantering-mcp', ''],
-    ['kravhantering-mcp', 'dev-only-mcp-secret'],
-    ['kravhantering-mcp', 'container-demo-mcp-secret-not-for-production'],
-    ['kravhantering-mcp', 'replace-with-production-mcp-client-secret'],
+    ...SHIPPED_MCP_CLIENT_SECRET_SENTINELS.map(sentinel => [
+      'kravhantering-mcp',
+      sentinel,
+    ]),
   ])(
     'rejects the bundled %s realm secret before writing single-node units',
     (clientId, placeholder) => {
@@ -1066,6 +1081,39 @@ describe('kravhantering Quadlet helper', () => {
       expect(fs.existsSync(fixture.outputDir)).toBe(false)
     },
   )
+
+  it('does not borrow a later realm client secret for the application client', () => {
+    const fixture = createFixture(releaseEnv())
+    const realm = JSON.parse(fs.readFileSync(fixture.keycloakRealmPath, 'utf8'))
+    const appClient = realm.clients.find(
+      client => client.clientId === 'kravhantering-app',
+    )
+    const mcpClient = realm.clients.find(
+      client => client.clientId === 'kravhantering-mcp',
+    )
+    delete appClient.secret
+    mcpClient.secret = 'unique-production-oidc-secret'
+    fs.writeFileSync(
+      fixture.keycloakRealmPath,
+      `${JSON.stringify(realm, null, 2)}\n`,
+    )
+
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('kravhantering-app')
+    expect(result.stderr).not.toContain('unique-production-oidc-secret')
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
 
   it('prints purpose-specific Podman network names for explicit jobs', () => {
     const fixture = createFixture(releaseEnv())

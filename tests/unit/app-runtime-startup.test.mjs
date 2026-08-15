@@ -4,31 +4,23 @@ import {
   startRuntime,
   validateRuntimeAuthEnvironment,
 } from '../../containers/app/start-runtime.mjs'
+import {
+  SHIPPED_OIDC_CLIENT_SECRET_SENTINELS,
+  SHIPPED_SESSION_COOKIE_SENTINELS,
+} from '../fixtures/auth-placeholder-sentinels.mjs'
 
 const COOKIE_PASSWORD =
   'unique-production-cookie-password-with-more-than-32-characters'
 
 const SHIPPED_AUTH_SECRET_SENTINELS = [
-  ['AUTH_OIDC_CLIENT_SECRET', 'dev-only-app-secret'],
-  ['AUTH_OIDC_CLIENT_SECRET', 'prodlike-kc-app-secret'],
-  ['AUTH_OIDC_CLIENT_SECRET', 'container-demo-app-secret-not-for-production'],
-  ['AUTH_OIDC_CLIENT_SECRET', 'replace-with-oidc-client-secret'],
-  [
+  ...SHIPPED_OIDC_CLIENT_SECRET_SENTINELS.map(sentinel => [
+    'AUTH_OIDC_CLIENT_SECRET',
+    sentinel,
+  ]),
+  ...SHIPPED_SESSION_COOKIE_SENTINELS.map(sentinel => [
     'AUTH_SESSION_COOKIE_PASSWORD',
-    'dev-only-cookie-password-not-for-production-32chars-min',
-  ],
-  [
-    'AUTH_SESSION_COOKIE_PASSWORD',
-    'local-kc-session-key-not-for-production-32chars',
-  ],
-  [
-    'AUTH_SESSION_COOKIE_PASSWORD',
-    'container-demo-session-key-not-for-production-32chars',
-  ],
-  [
-    'AUTH_SESSION_COOKIE_PASSWORD',
-    'replace-with-at-least-32-random-characters',
-  ],
+    sentinel,
+  ]),
 ]
 
 function productionAuthEnv() {

@@ -460,6 +460,11 @@ different sources:
   [oidc-identity-provider-integration.md](../integrations/oidc-identity-provider-integration.md)
   for the committed production mapping.
 
+Committed `dev-only`, `prodlike`, `container-demo`, and `replace-with` values
+are non-production fixtures. Production builds and the application container
+startup reject these placeholders even when they satisfy the session key length
+requirement. Inject unique OIDC and session secrets for every deployment.
+
 ### OIDC client (deployed OIDC provider / Keycloak)
 
 These describe the relationship between the app (the OIDC Relying Party)
