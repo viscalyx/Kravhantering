@@ -198,6 +198,8 @@ describe('get-mcp-token', () => {
     ).toThrow('access-token contract: typ_invalid')
   })
 
+  const excessiveLifetimeIssuedAt = Math.floor(Date.now() / 1000)
+
   it.each([
     [
       'wrong client',
@@ -250,8 +252,8 @@ describe('get-mcp-token', () => {
     [
       'excessive lifetime',
       serviceToken({
-        exp: Math.floor(Date.now() / 1000) + 301,
-        iat: Math.floor(Date.now() / 1000),
+        exp: excessiveLifetimeIssuedAt + 301,
+        iat: excessiveLifetimeIssuedAt,
       }),
       'lifetime_invalid',
     ],
