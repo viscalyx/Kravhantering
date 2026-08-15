@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { forbiddenError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   context: {
@@ -107,6 +108,57 @@ describe('admin AI forensic capture requests route', () => {
       expect.objectContaining({ query: expect.any(Function) }),
       routeState.context,
       47,
+    )
+  })
+
+  it('rejects malformed evidence read query parameters before database work', async () => {
+    const response = await GET(
+      new NextRequest(
+        'https://example.test/api/admin/ai-forensic-captures?captureWindowId=invalid',
+      ),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.listCaptureMetadata).not.toHaveBeenCalled()
+    expect(routeState.readCaptureEvidence).not.toHaveBeenCalled()
+  })
+
+  it('maps actor-bound evidence authorization failures to the route contract', async () => {
+    routeState.readCaptureEvidence.mockRejectedValue(
+      forbiddenError('Forensic evidence is unavailable to this actor'),
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'https://example.test/api/admin/ai-forensic-captures?captureWindowId=47',
+      ),
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Forbidden',
+    })
+  })
+
+  it.each([
+    ['Error', new Error('database unavailable')],
+    ['NonError', 'database unavailable'],
+  ])('redacts an unexpected %s evidence read failure', async (_, error) => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    routeState.listCaptureMetadata.mockRejectedValue(error)
+
+    const response = await GET(
+      new NextRequest('https://example.test/api/admin/ai-forensic-captures'),
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Failed to read AI forensic evidence.',
+    })
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to read AI forensic evidence',
+      { errorKind: error instanceof Error ? 'Error' : 'NonError' },
     )
   })
 

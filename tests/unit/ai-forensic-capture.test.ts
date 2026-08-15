@@ -114,6 +114,19 @@ describe('AI forensic capture control', () => {
     expect(auditState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
+  it('rejects a second request while a capture slot is already open', async () => {
+    const { db } = database([])
+
+    await expect(
+      createAiForensicCaptureRequest(db, context, {
+        direction: 'output',
+        expiresAt: '2026-08-15T14:00:00.000Z',
+        operation: 'ai.generate-requirement-import',
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    expect(auditState.recordSecurityEvent).not.toHaveBeenCalled()
+  })
+
   it('fails approval closed with a conflict when the update matches no row', async () => {
     const privacyContext = {
       ...context,
@@ -265,6 +278,52 @@ describe('AI forensic capture control', () => {
     )
   })
 
+  it('drops incomplete and malformed evidence fields from a readable capture', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        blockedStep: null,
+        capturedAt: null,
+        direction: 'output',
+        evidenceJson: null,
+        eventId: null,
+        expiresAt: '2026-08-15T14:00:00.000Z',
+        id: 47,
+        operation: 'ai.generate-requirement-import',
+        primaryRuleId: null,
+        ruleIdsJson: null,
+        status: 'stopped',
+      },
+      {
+        blockedStep: 'provider_output',
+        capturedAt: new Date('2026-08-15T13:50:00.000Z'),
+        direction: 'output',
+        evidenceJson: '{malformed',
+        eventId: '2af7d96a-1552-42dc-9ab0-52990574bcc8',
+        expiresAt: '2026-08-15T14:00:00.000Z',
+        id: 47,
+        operation: 'ai.generate-requirement-import',
+        primaryRuleId: 'instruction_override',
+        ruleIdsJson: '["instruction_override",42]',
+        status: 'stopped',
+      },
+    ])
+
+    await expect(
+      readStoppedAiForensicCaptureEvidence(
+        { query } as unknown as SqlServerDatabase,
+        context,
+        47,
+      ),
+    ).resolves.toMatchObject({
+      events: [
+        {
+          evidence: [],
+          ruleIds: ['instruction_override'],
+        },
+      ],
+    })
+  })
+
   it('denies a capture party whose current role cannot read evidence', async () => {
     const query = vi.fn()
     const partyWithoutRoleContext = {
@@ -283,6 +342,22 @@ describe('AI forensic capture control', () => {
       message: 'Forensic evidence is unavailable to this actor',
     })
     expect(query).not.toHaveBeenCalled()
+    expect(auditState.recordSecurityEvent).not.toHaveBeenCalled()
+  })
+
+  it('denies evidence when no stopped capture belongs to the actor', async () => {
+    const query = vi.fn().mockResolvedValue([])
+
+    await expect(
+      readStoppedAiForensicCaptureEvidence(
+        { query } as unknown as SqlServerDatabase,
+        context,
+        47,
+      ),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      message: 'Forensic evidence is unavailable to this actor',
+    })
     expect(auditState.recordSecurityEvent).not.toHaveBeenCalled()
   })
 
@@ -309,5 +384,97 @@ describe('AI forensic capture control', () => {
       expect.objectContaining({ eventCount: 3, id: 47, status: 'expired' }),
     ])
     expect(query).toHaveBeenCalledOnce()
+  })
+
+  it('lets a Privacy Officer list dated metadata with fallback audit context', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        direction: 'input',
+        eventCount: '2',
+        expiresAt: new Date('2026-08-15T14:00:00.000Z'),
+        id: 48,
+        operation: 'ai.repair-requirement-import-json',
+        requestedAt: new Date('2026-08-15T13:30:00.000Z'),
+        status: 'stopped',
+        stoppedAt: new Date('2026-08-15T13:45:00.000Z'),
+      },
+    ])
+    const privacyContext = {
+      ...context,
+      actor: {
+        ...context.actor,
+        id: null,
+        roles: ['PrivacyOfficer'],
+      },
+      request: undefined,
+    } as RequestContext
+
+    await expect(
+      listAiForensicCaptureMetadata(
+        { query } as unknown as SqlServerDatabase,
+        privacyContext,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        eventCount: 2,
+        id: 48,
+        requestedAt: '2026-08-15T13:30:00.000Z',
+        stoppedAt: '2026-08-15T13:45:00.000Z',
+      }),
+    ])
+    expect(auditState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: expect.not.objectContaining({ sub: expect.anything() }),
+        request: {
+          method: 'GET',
+          path: '/api/admin/ai-forensic-captures',
+          requestId: 'capture-request',
+        },
+      }),
+    )
+  })
+
+  it('denies aggregate capture metadata without an authorized role', async () => {
+    const query = vi.fn()
+    const unauthorizedContext = {
+      ...context,
+      actor: { ...context.actor, roles: [] },
+    } as RequestContext
+
+    await expect(
+      listAiForensicCaptureMetadata(
+        { query } as unknown as SqlServerDatabase,
+        unauthorizedContext,
+      ),
+    ).rejects.toMatchObject({ code: 'forbidden' })
+    expect(query).not.toHaveBeenCalled()
+  })
+
+  it('lets an Admin stop an active capture and audits the transition', async () => {
+    const { db, manager } = database([
+      {
+        direction: 'output',
+        expiresAt: new Date('2026-08-15T14:00:00.000Z'),
+        id: 47,
+        operation: 'ai.generate-requirement-import',
+        status: 'stopped',
+      },
+    ])
+
+    await expect(
+      transitionAiForensicCapture(db, context, {
+        action: 'stop',
+        captureWindowId: 47,
+      }),
+    ).resolves.toMatchObject({ id: 47, status: 'stopped' })
+
+    expect(manager.query).toHaveBeenCalledWith(expect.any(String), [
+      47,
+      'SE5560000001-admin1',
+      'Ada Admin',
+    ])
+    expect(auditState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'ai.forensic_capture.disabled' }),
+    )
   })
 })
