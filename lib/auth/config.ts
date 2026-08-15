@@ -11,6 +11,27 @@
  * contract and deployment expectations.
  */
 
+import { BUILD_TARGET } from '@/lib/runtime/build-target'
+
+const SHIPPED_AUTH_SECRET_MARKERS = [
+  'dev-only-',
+  'local-kc-',
+  'not-for-production',
+  'prodlike-',
+  'replace-with-',
+] as const
+
+function assertProductionAuthSecret(name: string, value: string): void {
+  if (
+    BUILD_TARGET === 'prod' &&
+    SHIPPED_AUTH_SECRET_MARKERS.some(marker => value.includes(marker))
+  ) {
+    throw new AuthConfigError(
+      `${name} must not use a shipped authentication placeholder.`,
+    )
+  }
+}
+
 function readString(name: string): string | undefined {
   const raw = process.env[name]
   if (raw === undefined) {
@@ -123,6 +144,12 @@ function loadAuthConfig(): AuthConfig {
       'AUTH_SESSION_COOKIE_PASSWORD must be at least 32 characters.',
     )
   }
+
+  assertProductionAuthSecret('AUTH_OIDC_CLIENT_SECRET', clientSecret as string)
+  assertProductionAuthSecret(
+    'AUTH_SESSION_COOKIE_PASSWORD',
+    cookiePassword as string,
+  )
 
   assertAbsoluteHttpUrl('AUTH_OIDC_REDIRECT_URI', redirectUri as string)
   assertAbsoluteHttpUrl(

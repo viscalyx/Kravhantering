@@ -65,6 +65,10 @@ flowchart LR
 - Provide per-environment secret configuration for
   `AUTH_OIDC_CLIENT_ID`, `AUTH_OIDC_CLIENT_SECRET`, and
   `AUTH_SESSION_COOKIE_PASSWORD`.
+- Inject unique production secrets before deployment. Production preflight and
+  application startup reject blank values and shipped development or template
+  placeholders. With bundled Keycloak, the application client secret must match
+  the realm import while the MCP client uses a separate secret.
 - Provide the remaining auth settings through non-secret environment
   configuration:
   `AUTH_OIDC_ISSUER_URL`, `AUTH_OIDC_REDIRECT_URI`,

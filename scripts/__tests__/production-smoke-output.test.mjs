@@ -181,6 +181,8 @@ function renderHsaSmokeConfiguration() {
     appEnvPath,
     [
       'AUTH_OIDC_ISSUER_URL=https://kravhantering.test/auth/realms/kravhantering-test',
+      'AUTH_OIDC_CLIENT_SECRET=',
+      'AUTH_SESSION_COOKIE_PASSWORD=',
       'HSA_PERSON_LOOKUP_URL=http://localhost:8000/hsa/person-records/lookup',
       'DB_TRUST_SERVER_CERTIFICATE=true',
       '',
@@ -195,7 +197,8 @@ function renderHsaSmokeConfiguration() {
     HSA_DIRECTORY_MOCK_IMAGE_REF=test/hsa-directory-mock:latest
     HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF=test/hsa-person-lookup-adapter:latest
     KONG_IMAGE_REF=test/kong:latest
-    configure_smoke_app_env "$4"
+    configure_smoke_app_env \
+      "$4" smoke-test-client-secret smoke-test-cookie-password
     as_service() { "$@"; }
     render_ci_overlay
   `
@@ -235,6 +238,10 @@ describe('production smoke output', () => {
     expect(result.status).toBe(0)
     expect(appEnv).toContain(
       'HSA_PERSON_LOOKUP_URL=https://kong:8443/hsa/person-records/lookup',
+    )
+    expect(appEnv).toContain('AUTH_OIDC_CLIENT_SECRET=smoke-test-client-secret')
+    expect(appEnv).toContain(
+      'AUTH_SESSION_COOKIE_PASSWORD=smoke-test-cookie-password',
     )
     expect(kongUnit).toContain(
       'Environment="KONG_PROXY_LISTEN=0.0.0.0:8443 ssl"',

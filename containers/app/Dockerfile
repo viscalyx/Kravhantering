@@ -83,10 +83,11 @@ WORKDIR /app
 COPY --from=app-build --chown=node:node /workspace/.next/standalone ./
 COPY --from=app-build --chown=node:node /workspace/.next/static ./.next/static
 COPY --from=app-build --chown=node:node /workspace/public ./public
+COPY --chown=node:node containers/app/start-runtime.mjs ./start-runtime.mjs
 
 USER node
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", "start-runtime.mjs"]
 
 FROM node:24-trixie-slim@sha256:10c950bed4f33b3cedac92b6a46a14f18b8bf4bed18affbf86c871d9bc0d0a91 AS db-job
 
