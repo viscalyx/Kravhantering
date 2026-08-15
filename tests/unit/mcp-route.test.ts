@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
 
 const mocks = vi.hoisted(() => ({
   getMcpAuthConfig: vi.fn(),
@@ -52,27 +53,44 @@ describe('MCP route adapters', () => {
   )
 
   it('returns the stable configuration error before database work', async () => {
+    const consoleInfoSpy = vi
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined)
     mocks.getMcpAuthConfig.mockImplementation(() => {
       throw new Error('AUTH_MCP_REQUIRED_SCOPES contains private detail')
     })
 
-    const response = await GET(
-      new Request('https://example.test/api/mcp', {
-        headers: { authorization: 'Bearer secret.token.value' },
-      }),
-    )
-    const body = await response.text()
+    try {
+      const response = await GET(
+        new Request('https://example.test/api/mcp', {
+          headers: { authorization: 'Bearer secret.token.value' },
+        }),
+      )
+      const body = await response.text()
 
-    expect(response.status).toBe(500)
-    expect(response.headers.get('WWW-Authenticate')).toBe('Bearer')
-    expect(JSON.parse(body)).toEqual({
-      error: { code: -32000, message: 'Authentication failed.' },
-      id: null,
-      jsonrpc: '2.0',
-    })
-    expect(body).not.toMatch(/AUTH_MCP|required|private|secret|token\.value/i)
-    expect(mocks.getDataSource).not.toHaveBeenCalled()
-    expect(mocks.handleRequest).not.toHaveBeenCalled()
+      expect(response.status).toBe(500)
+      expect(response.headers.get('WWW-Authenticate')).toBe('Bearer')
+      expect(JSON.parse(body)).toEqual({
+        error: { code: -32000, message: 'Authentication failed.' },
+        id: null,
+        jsonrpc: '2.0',
+      })
+      expect(body).not.toMatch(/AUTH_MCP|required|private|secret|token\.value/i)
+      const securityEvent = parseSecurityAuditEvents(consoleInfoSpy)[0]
+      expect(securityEvent).toMatchObject({
+        actor: { source: 'mcp' },
+        detail: { reason: 'auth_configuration_invalid' },
+        event: 'auth.token.rejected',
+        outcome: 'failure',
+      })
+      expect(JSON.stringify(securityEvent)).not.toMatch(
+        /AUTH_MCP|required|private|secret|token\.value/i,
+      )
+      expect(mocks.getDataSource).not.toHaveBeenCalled()
+      expect(mocks.handleRequest).not.toHaveBeenCalled()
+    } finally {
+      consoleInfoSpy.mockRestore()
+    }
   })
 
   it.each([

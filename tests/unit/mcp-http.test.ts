@@ -373,7 +373,12 @@ describe('handleRequirementsMcpRequest', () => {
 
       expect(instructions).toContain('short-lived OAuth access token')
       expect(instructions).toContain('typ "at+jwt"')
+      expect(instructions).toContain('configured issuer and audience')
       expect(instructions).toContain('exact configured client_id')
+      expect(instructions).toContain('required employeeHsaId')
+      expect(instructions).toContain(
+        'configured current-age and declared-lifetime limits',
+      )
       expect(instructions).toContain('configured MCP role claim')
       expect(instructions).toContain('isError: true')
       expect(instructions).toContain('failed call')

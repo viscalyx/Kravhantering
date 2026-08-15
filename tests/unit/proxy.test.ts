@@ -694,6 +694,15 @@ describe('proxy', () => {
       )
       expect(without.status).toBe(200)
       expect(without.headers.get('www-authenticate')).toBeNull()
+      const overrides = (
+        without.headers.get('x-middleware-override-headers') ?? ''
+      ).split(',')
+      expect(overrides).not.toContain('x-user-id')
+      expect(overrides).not.toContain('x-user-roles')
+      expect(without.headers.get('x-middleware-request-x-user-id')).toBeNull()
+      expect(
+        without.headers.get('x-middleware-request-x-user-roles'),
+      ).toBeNull()
 
       const withBearer = await proxy(
         buildRequest('http://localhost/api/mcp', {

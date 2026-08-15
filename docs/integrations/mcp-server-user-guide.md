@@ -341,9 +341,9 @@ current-age and declared-lifetime bound. The committed local client emits a
 five-minute token with `kravhantering:mcp` and
 `employeeHsaId=SE5560000001-mcp1`.
 
-Roles are read only from `AUTH_MCP_ROLES_CLAIM`. A missing or empty array grants
-no roles; a malformed, duplicate, or unknown entry makes the entire claim grant
-no roles. Browser-role parsing is unchanged.
+The server reads roles only from `AUTH_MCP_ROLES_CLAIM`. A missing or empty
+array grants no roles; a malformed, duplicate, or unknown entry makes the
+entire claim grant no roles. Browser-role parsing is unchanged.
 
 Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer` and a
 stable JSON-RPC error body. Authentication configuration failures return `500`,
