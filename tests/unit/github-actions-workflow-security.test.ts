@@ -461,6 +461,13 @@ describe('GitHub Actions workflow security', () => {
     expect(workflow).toContain(
       'NOTES_BRANCH: automation/operator-upgrade-notes',
     )
+    expect(workflow).toContain('open_notes_pr="$(')
+    expect(workflow).toContain(`gh pr list --repo "\${GITHUB_REPOSITORY}"`)
+    expect(workflow).toContain(`--head "\${NOTES_BRANCH}"`)
+    expect(workflow).toContain(`if [ -n "\${open_notes_pr}" ]; then`)
+    expect(workflow).toContain(
+      `git switch --create "\${NOTES_BRANCH}" origin/main`,
+    )
     expect(workflow).toContain(
       'node scripts/release/operator-upgrade-notes.mjs sync-pr --github-pr',
     )

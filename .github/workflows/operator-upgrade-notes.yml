@@ -52,17 +52,31 @@ jobs:
 
       - name: Prepare operator notes branch
         env:
+          GH_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           NOTES_BRANCH: automation/operator-upgrade-notes
         run: |
           set -euo pipefail
           git config user.name "Viscalyxbot"
           git config user.email "viscalyxbot@viscalyx.se"
+
           if git ls-remote --exit-code --heads origin "${NOTES_BRANCH}" >/dev/null; then
             git fetch origin "${NOTES_BRANCH}:refs/remotes/origin/${NOTES_BRANCH}"
+          fi
+
+          open_notes_pr="$(
+            gh pr list --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head "${NOTES_BRANCH}" \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty'
+          )"
+          if [ -n "${open_notes_pr}" ]; then
             git switch --create "${NOTES_BRANCH}" "origin/${NOTES_BRANCH}"
             git rebase origin/main
           else
-            git switch --create "${NOTES_BRANCH}"
+            git switch --create "${NOTES_BRANCH}" origin/main
           fi
 
       - name: Sync operator upgrade notes
