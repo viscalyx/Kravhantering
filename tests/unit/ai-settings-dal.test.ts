@@ -282,42 +282,46 @@ describe('AI settings DAL', () => {
     })
   })
 
-  it('uses quota defaults when the principal quota migration is absent', async () => {
-    query
-      .mockRejectedValueOnce(
-        Object.assign(
-          new Error(
-            "Invalid column name 'mcp_import_max_active_sessions_per_principal'.",
+  it.each([0, undefined])(
+    'uses quota defaults when the principal quota migration is absent (%s forensic value)',
+    async forensicValue => {
+      query
+        .mockRejectedValueOnce(
+          Object.assign(
+            new Error(
+              "Invalid column name 'mcp_import_max_active_sessions_per_principal'.",
+            ),
+            { number: 207 },
           ),
-          { number: 207 },
-        ),
-      )
-      .mockResolvedValueOnce([
-        {
-          aiSafetyForensicLoggingEnabled: 0,
-          aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
-          mcpImportMaxRows: 321,
-          mcpImportValidationTtlMinutes: 45,
-          mcpMaxRequestBytes: 2 * 1024 * 1024,
-          requirementGenerationEnabled: 0,
-        },
-      ])
+        )
+        .mockResolvedValueOnce([
+          {
+            aiSafetyForensicLoggingEnabled: forensicValue,
+            aiSafetyRuleCacheTtlSeconds:
+              AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+            mcpImportMaxRows: 321,
+            mcpImportValidationTtlMinutes: 45,
+            mcpMaxRequestBytes: 2 * 1024 * 1024,
+            requirementGenerationEnabled: 0,
+          },
+        ])
 
-    await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
-      ...MCP_QUOTA_DEFAULTS,
-      aiSafetyForensicLoggingEnabled: false,
-      mcpImportMaxRows: 321,
-      mcpImportValidationTtlMinutes: 45,
-      mcpMaxRequestBytes: 2 * 1024 * 1024,
-      requirementGenerationEnabled: false,
-    })
-    expect(query.mock.calls[1]?.[0]).toContain(
-      'ai_safety_forensic_logging_enabled',
-    )
-    expect(query.mock.calls[1]?.[0]).not.toContain(
-      'mcp_import_max_active_sessions_per_principal',
-    )
-  })
+      await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
+        ...MCP_QUOTA_DEFAULTS,
+        aiSafetyForensicLoggingEnabled: false,
+        mcpImportMaxRows: 321,
+        mcpImportValidationTtlMinutes: 45,
+        mcpMaxRequestBytes: 2 * 1024 * 1024,
+        requirementGenerationEnabled: false,
+      })
+      expect(query.mock.calls[1]?.[0]).toContain(
+        'ai_safety_forensic_logging_enabled',
+      )
+      expect(query.mock.calls[1]?.[0]).not.toContain(
+        'mcp_import_max_active_sessions_per_principal',
+      )
+    },
+  )
 
   it('uses complete defaults when the quota compatibility row is absent', async () => {
     query
