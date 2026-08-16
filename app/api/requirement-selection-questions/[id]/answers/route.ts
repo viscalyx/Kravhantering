@@ -33,7 +33,7 @@ export const POST = secureMutationRoute({
     await recordAllowedActionAuditEvent(activeDb, context, {
       action: 'requirement_selection_answer.create',
       details: { questionId },
-      targetId: params.id,
+      targetId: questionId,
       targetKind: 'requirement_selection_question',
       targetUniqueId: question.questionCode,
     })

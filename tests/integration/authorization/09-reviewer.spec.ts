@@ -50,10 +50,16 @@ test('AUTHZ-09/AUTH-10/AUTH-11: Reviewers can read broadly without privileged ad
       await expect(
         page.getByRole('heading', { level: 1, name: 'Kravurvalsfrågor' }),
       ).toHaveText('Kravurvalsfrågor')
-      await page
-        .getByRole('button', { name: /KUF\d+/ })
+      const questionDisclosure = page
+        .getByRole('button', { expanded: false, name: /KUF\d+/ })
         .first()
-        .click()
+      const detailsId = await questionDisclosure.getAttribute('aria-controls')
+      expect(detailsId).not.toBeNull()
+      await questionDisclosure.click()
+      await expect(
+        page.getByRole('button', { expanded: true, name: /KUF\d+/ }).first(),
+      ).toHaveAttribute('aria-controls', detailsId ?? '')
+      await expect(page.locator(`[id="${detailsId}"]`)).toBeVisible()
       for (const mutationName of [
         'Skapa kravurvalsfråga',
         'Ändra frågeordning',

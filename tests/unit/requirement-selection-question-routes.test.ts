@@ -489,6 +489,7 @@ describe('requirement selection question routes', () => {
       expect.objectContaining({
         action: 'requirement_selection_answer.create',
         details: { questionId: 11 },
+        targetId: 11,
         targetUniqueId: 'INF-SQ001',
       }),
     )

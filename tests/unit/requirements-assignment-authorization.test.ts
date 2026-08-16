@@ -1046,7 +1046,6 @@ describe('AssignmentBasedAuthorizationService', () => {
 
     for (const context of [
       makeContext([], 'SE5560000001-unassigned'),
-      makeContext([], 'SE5560000001-foreign-area-author'),
       makeContext(['Reviewer'], 'SE5560000001-reviewer'),
     ]) {
       await expect(
@@ -1059,6 +1058,22 @@ describe('AssignmentBasedAuthorizationService', () => {
         details: { reason: 'requirement_area_author_required' },
       })
     }
+
+    const foreignAreaAuthor = makeService({
+      areaAuthor: areaId => areaId === 8,
+    })
+    await expect(
+      foreignAreaAuthor.service.assertAuthorized(
+        action,
+        makeContext([], 'SE5560000001-foreign-area-author'),
+      ),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'requirement_area_author_required' },
+    })
+    expect(
+      foreignAreaAuthor.lookup.isRequirementAreaAuthor,
+    ).toHaveBeenCalledWith(7, 'SE5560000001-foreign-area-author')
 
     const admin = makeService({ areaAuthor: false })
     await expect(
