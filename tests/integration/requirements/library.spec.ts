@@ -60,6 +60,16 @@ async function filterRequirementId(
   ).toHaveCount(1)
 }
 
+async function collapsePackageFilter(page: Page) {
+  const packageFilter = page.getByRole('button', {
+    name: 'Filtrera kravpaket',
+  })
+  if ((await packageFilter.getAttribute('aria-expanded')) === 'true') {
+    await packageFilter.click()
+  }
+  await expect(packageFilter).toHaveAttribute('aria-expanded', 'false')
+}
+
 async function visiblePointerPoint(target: Locator) {
   await expect(target).toBeVisible()
   return target.evaluate(element => {
@@ -162,6 +172,7 @@ test.describe('Requirements library', () => {
     await test.step('open and filter the requirement library', async () => {
       await page.goto('/sv/requirements')
       await filterRequirementId(page, 'INT0001')
+      await collapsePackageFilter(page)
     })
 
     await test.step('cancel short hover and reuse the held pointer prefetch', async () => {
@@ -197,6 +208,7 @@ test.describe('Requirements library', () => {
     await test.step('open and filter the requirement library', async () => {
       await page.goto('/sv/requirements')
       await filterRequirementId(page, 'INT0001')
+      await collapsePackageFilter(page)
     })
 
     await test.step('reuse the held keyboard-focus prefetch', async () => {
@@ -226,6 +238,7 @@ test.describe('Requirements library', () => {
     await test.step('open and filter the requirement library', async () => {
       await page.goto('/sv/requirements')
       await filterRequirementId(page, 'INT0001')
+      await collapsePackageFilter(page)
     })
 
     await test.step('open directly without scheduling a duplicate', async () => {
