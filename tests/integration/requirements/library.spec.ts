@@ -144,6 +144,7 @@ test.describe('Requirements library', () => {
     })
 
     await test.step('cancel short hover and reuse the held pointer prefetch', async () => {
+      await row.evaluate(element => element.scrollIntoView({ block: 'center' }))
       await row.hover()
       await page.mouse.move(0, 0)
       await delay(200)
