@@ -1,21 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { forbiddenError, notFoundError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
+  authorization: { assertAuthorized: vi.fn() },
+  authorize: vi.fn(),
   countDeviationsBySpecification: vi.fn(),
-  getRequestSqlServerDataSource: vi.fn(),
-  getSpecificationById: vi.fn(),
+  context: { requestId: 'request-1' },
+  createRequirementsRestRuntime: vi.fn(),
   listDeviationsForSpecification: vi.fn(),
 }))
 
-vi.mock('@/lib/db', () => ({
-  getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
-}))
-vi.mock('@/lib/dal/requirements-specifications', () => ({
-  getSpecificationById: routeState.getSpecificationById,
-}))
 vi.mock('@/lib/dal/deviations', () => ({
   countDeviationsBySpecification: routeState.countDeviationsBySpecification,
   listDeviationsForSpecification: routeState.listDeviationsForSpecification,
+}))
+vi.mock('@/lib/requirements/server', () => ({
+  createRequirementsRestRuntime: routeState.createRequirementsRestRuntime,
+}))
+vi.mock('@/lib/requirements/service-shared', () => ({
+  authorize: routeState.authorize,
 }))
 
 import { GET } from '@/app/api/requirements-specifications/[id]/deviations/route'
@@ -28,28 +31,34 @@ const params = (id: string) => ({ params: Promise.resolve({ id }) })
 describe('requirements specification deviations route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    routeState.getRequestSqlServerDataSource.mockResolvedValue({ db: true })
+    routeState.createRequirementsRestRuntime.mockResolvedValue({
+      authorization: routeState.authorization,
+      context: routeState.context,
+      db: { db: true },
+    })
   })
 
   it('rejects an invalid specification identifier before database work', async () => {
     const response = await GET(request as never, params('invalid'))
 
     expect(response.status).toBe(400)
-    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.createRequirementsRestRuntime).not.toHaveBeenCalled()
   })
 
   it('returns not found when the specification does not exist', async () => {
-    routeState.getSpecificationById.mockResolvedValue(null)
+    routeState.authorize.mockRejectedValueOnce(notFoundError('Not found'))
 
     const response = await GET(request as never, params('7'))
 
     expect(response.status).toBe(404)
-    await expect(response.json()).resolves.toEqual({ error: 'Not found' })
+    await expect(response.json()).resolves.toEqual({
+      code: 'not_found',
+      error: 'Not found',
+    })
     expect(routeState.listDeviationsForSpecification).not.toHaveBeenCalled()
   })
 
   it('returns deviation rows and counts for the resolved specification', async () => {
-    routeState.getSpecificationById.mockResolvedValue({ id: 11 })
     routeState.listDeviationsForSpecification.mockResolvedValue([
       { id: 2, motivation: 'Documented exception' },
     ])
@@ -64,11 +73,44 @@ describe('requirements specification deviations route', () => {
     })
     expect(routeState.listDeviationsForSpecification).toHaveBeenCalledWith(
       { db: true },
-      11,
+      7,
     )
     expect(routeState.countDeviationsBySpecification).toHaveBeenCalledWith(
       { db: true },
-      11,
+      7,
     )
+    expect(routeState.authorize).toHaveBeenCalledWith(
+      routeState.authorization,
+      {
+        childKind: 'deviation_collection',
+        kind: 'get_specification_child',
+        specificationId: 7,
+      },
+      routeState.context,
+    )
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+  })
+
+  it('denies a foreign specification before deviation payloads are read', async () => {
+    routeState.authorize.mockRejectedValueOnce(
+      forbiddenError('Specification read denied'),
+    )
+
+    const response = await GET(request as never, params('7'))
+
+    expect(response.status).toBe(403)
+    expect(routeState.listDeviationsForSpecification).not.toHaveBeenCalled()
+    expect(routeState.countDeviationsBySpecification).not.toHaveBeenCalled()
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+  })
+
+  it('rethrows unexpected authorization failures before reading deviations', async () => {
+    routeState.authorize.mockRejectedValueOnce(new Error('database offline'))
+
+    await expect(GET(request as never, params('7'))).rejects.toThrow(
+      'database offline',
+    )
+    expect(routeState.listDeviationsForSpecification).not.toHaveBeenCalled()
+    expect(routeState.countDeviationsBySpecification).not.toHaveBeenCalled()
   })
 })

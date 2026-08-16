@@ -164,11 +164,16 @@ export type ManualCaseId = keyof typeof MANUAL_CASE_LINKS
 export interface AuthorizationFixture {
   areaId: number
   areaPrefix: string
+  foreignSpecificationId: number
+  localDeviationId: number
+  localRequirementId: number
   packageId: number
   packageName: string
+  publishedSuggestionId: number
   specificationCode: string
   specificationId: number
   specificationName: string
+  unpublishedSuggestionId: number
 }
 
 export interface AuthMeResponse {
@@ -479,6 +484,65 @@ export async function createAuthorizationFixture(
       'assign requirement area co-author',
     )
 
+    const draftRequirementResponse = await admin.post('/api/requirements', {
+      data: {
+        areaId: area.id,
+        description: `Unpublished suggestion authorization ${uniqueStamp}`,
+        verifiable: false,
+      },
+    })
+    await expectStatus(
+      draftRequirementResponse,
+      201,
+      'create unpublished suggestion requirement fixture',
+    )
+    const draftRequirement = (await draftRequirementResponse.json()) as {
+      requirement: { id: number }
+    }
+
+    const publishedRequirementsResponse = await admin.get(
+      '/api/requirements?limit=1&statuses=3',
+    )
+    await expectOk(
+      publishedRequirementsResponse,
+      'find published suggestion requirement fixture',
+    )
+    const publishedRequirements =
+      (await publishedRequirementsResponse.json()) as RequirementListResponse
+    const publishedRequirement = publishedRequirements.requirements[0]
+    if (!publishedRequirement) {
+      throw new Error('No published requirement available for authorization')
+    }
+
+    const publishedSuggestionResponse = await admin.post(
+      `/api/requirement-suggestions/${publishedRequirement.id}`,
+      {
+        data: { content: `Published suggestion fixture ${uniqueStamp}` },
+      },
+    )
+    await expectStatus(
+      publishedSuggestionResponse,
+      201,
+      'create published suggestion fixture',
+    )
+    const publishedSuggestion = (await publishedSuggestionResponse.json()) as {
+      id: number
+    }
+
+    const unpublishedSuggestionResponse = await admin.post(
+      `/api/requirement-suggestions/${draftRequirement.requirement.id}`,
+      {
+        data: { content: `Unpublished suggestion fixture ${uniqueStamp}` },
+      },
+    )
+    await expectStatus(
+      unpublishedSuggestionResponse,
+      201,
+      'create unpublished suggestion fixture',
+    )
+    const unpublishedSuggestion =
+      (await unpublishedSuggestionResponse.json()) as { id: number }
+
     const specificationResponse = await specificationResponsible.post(
       '/api/requirements-specifications',
       {
@@ -500,6 +564,27 @@ export async function createAuthorizationFixture(
     const specification =
       (await specificationResponse.json()) as SpecificationResponse
 
+    const foreignSpecificationResponse = await specificationResponsible.post(
+      '/api/requirements-specifications',
+      {
+        data: {
+          businessNeedsReference:
+            'Foreign parent fixture for child authorization checks.',
+          name: `Främmande behörighetsmatris ${uniqueStamp}`,
+          specificationLifecycleStatusId:
+            SPECIFICATION_LIFECYCLE_STATUS_MANAGEMENT_ID,
+          specificationCode: `FOREIGN-${uniqueStamp}`,
+        },
+      },
+    )
+    await expectStatus(
+      foreignSpecificationResponse,
+      201,
+      'create foreign specification fixture',
+    )
+    const foreignSpecification =
+      (await foreignSpecificationResponse.json()) as SpecificationResponse
+
     const specificationCoAuthorEvidence = await verifyResponsibilityPerson(
       specificationResponsible,
       {
@@ -520,6 +605,41 @@ export async function createAuthorizationFixture(
       ),
       'assign specification co-author',
     )
+
+    const localRequirementResponse = await specificationResponsible.post(
+      `/api/requirements-specifications/${specification.id}/local-requirements`,
+      {
+        data: {
+          description: 'Scoped child authorization fixture.',
+          verifiable: true,
+          verificationMethod: 'Focused authorization route check.',
+        },
+      },
+    )
+    await expectStatus(
+      localRequirementResponse,
+      201,
+      'create specification-local requirement fixture',
+    )
+    const localRequirementPayload = (await localRequirementResponse.json()) as {
+      localRequirement: { id: number }
+    }
+    const localRequirementId = localRequirementPayload.localRequirement.id
+
+    const localDeviationResponse = await specificationResponsible.post(
+      `/api/specification-item-deviations/${encodeURIComponent(`local:${localRequirementId}`)}`,
+      {
+        data: { motivation: 'Scoped child authorization deviation fixture.' },
+      },
+    )
+    await expectStatus(
+      localDeviationResponse,
+      201,
+      'create specification-local deviation fixture',
+    )
+    const localDeviation = (await localDeviationResponse.json()) as {
+      id: number
+    }
 
     const packageResponse = await admin.post('/api/requirement-packages', {
       data: {
@@ -565,11 +685,16 @@ export async function createAuthorizationFixture(
     return {
       areaId: area.id,
       areaPrefix,
+      foreignSpecificationId: foreignSpecification.id,
+      localDeviationId: localDeviation.id,
+      localRequirementId,
       packageId: requirementPackage.id,
       packageName,
+      publishedSuggestionId: publishedSuggestion.id,
       specificationCode,
       specificationId: specification.id,
       specificationName,
+      unpublishedSuggestionId: unpublishedSuggestion.id,
     }
   } finally {
     await Promise.all([admin.dispose(), specificationResponsible.dispose()])

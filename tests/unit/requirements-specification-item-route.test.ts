@@ -126,7 +126,12 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     )
     expect(mocks.authorize).toHaveBeenCalledWith(
       mockAuthorization,
-      { kind: 'get_specification_items', specificationId: 5 },
+      {
+        childId: 31,
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+        specificationId: 5,
+      },
       mockContext,
     )
     expect(mocks.authorize.mock.invocationCallOrder[0]).toBeLessThan(
@@ -147,6 +152,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
 
     expect(response.status).toBe(403)
     expect(mocks.getLibrarySpecificationItemMetadata).not.toHaveBeenCalled()
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 
   it('rejects invalid metadata ids and reports missing items', async () => {

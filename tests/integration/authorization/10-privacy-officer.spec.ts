@@ -1,8 +1,6 @@
 // cSpell:ignore linneab
 import { expect, type Page, test } from '@playwright/test'
 import {
-  type AuthorizationFixture,
-  createAuthorizationFixture,
   expectOk,
   expectStatus,
   HSA,
@@ -11,7 +9,7 @@ import {
   referenceManualCases,
 } from './authorization-test-helpers'
 
-let fixture: AuthorizationFixture
+let fixture: { areaId: number; packageId: number }
 const PRIVACY_PREVIEW_TARGET_HSA_ID = 'SE5560000001-linneab'
 
 async function waitForPrivacyPanelHydration(page: Page) {
@@ -32,7 +30,36 @@ async function waitForPrivacyPanelHydration(page: Page) {
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
-  fixture = await createAuthorizationFixture(testInfo)
+  const admin = await newRoleContext(testInfo, 'admin')
+
+  try {
+    const [areasResponse, packagesResponse] = await Promise.all([
+      admin.get('/api/requirement-areas'),
+      admin.get('/api/requirement-packages'),
+    ])
+    await expectOk(areasResponse, 'find requirement area authorization target')
+    await expectOk(
+      packagesResponse,
+      'find requirement package authorization target',
+    )
+
+    const { areas } = (await areasResponse.json()) as {
+      areas: Array<{ id: number }>
+    }
+    const { requirementPackages } = (await packagesResponse.json()) as {
+      requirementPackages: Array<{ id: number }>
+    }
+    const areaId = areas[0]?.id
+    const packageId = requirementPackages[0]?.id
+    if (!areaId || !packageId) {
+      throw new Error(
+        'PrivacyOfficer authorization tests require seeded area and package targets',
+      )
+    }
+    fixture = { areaId, packageId }
+  } finally {
+    await admin.dispose()
+  }
 })
 
 test('AUTHZ-10/AUTH-07/AUTH-11: PrivacyOfficer users can use privacy and access review without action log', async ({

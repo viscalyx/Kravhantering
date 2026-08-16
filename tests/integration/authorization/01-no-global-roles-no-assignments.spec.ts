@@ -242,6 +242,38 @@ test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or ass
       canRestore: false,
     })
 
+    const publishedSuggestionsResponse = await noRoles.get(
+      `/api/requirement-suggestions/${publishedRequirement.id}`,
+    )
+    await expectOk(
+      publishedSuggestionsResponse,
+      'published requirement suggestion list',
+    )
+    expect(publishedSuggestionsResponse.headers()['cache-control']).toBe(
+      'no-store',
+    )
+    const publishedSuggestionResponse = await noRoles.get(
+      `/api/improvement-suggestions/${fixture.publishedSuggestionId}`,
+    )
+    await expectOk(
+      publishedSuggestionResponse,
+      'published requirement direct suggestion read',
+    )
+    expect(publishedSuggestionResponse.headers()['cache-control']).toBe(
+      'no-store',
+    )
+    const unpublishedSuggestionResponse = await noRoles.get(
+      `/api/improvement-suggestions/${fixture.unpublishedSuggestionId}`,
+    )
+    await expectStatus(
+      unpublishedSuggestionResponse,
+      403,
+      'unpublished requirement direct suggestion read',
+    )
+    expect(unpublishedSuggestionResponse.headers()['cache-control']).toBe(
+      'no-store',
+    )
+
     const specificationsResponse = await noRoles.get(
       '/api/requirements-specifications',
     )
@@ -260,6 +292,33 @@ test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or ass
       ),
       403,
       'no-role direct existing specification read',
+    )
+    for (const [path, label] of [
+      [
+        `/api/requirements-specifications/${fixture.specificationId}/local-requirements/${fixture.localRequirementId}`,
+        'no-role specification-local requirement read',
+      ],
+      [
+        `/api/specification-item-deviations/${encodeURIComponent(`local:${fixture.localRequirementId}`)}`,
+        'no-role direct requirement-application deviation list',
+      ],
+      [
+        `/api/specification-local-deviations/${fixture.localDeviationId}`,
+        'no-role direct local deviation read',
+      ],
+      [
+        `/api/requirements-specifications/${fixture.foreignSpecificationId}/local-requirements/${fixture.localRequirementId}`,
+        'no-role foreign-parent child read',
+      ],
+    ] as const) {
+      await expectStatus(await noRoles.get(path), 403, label)
+    }
+    await expectStatus(
+      await noRoles.get(
+        `/api/specification-local-deviations/${fixture.localDeviationId + 1_000_000}`,
+      ),
+      404,
+      'no-role genuinely missing child read',
     )
     await expectStatus(
       await noRoles.put(

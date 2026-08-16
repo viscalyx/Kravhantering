@@ -7,6 +7,7 @@ import {
   updateSpecificationLocalRequirement,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -21,6 +22,8 @@ import {
 import type { RequirementsAction } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { authorize } from '@/lib/requirements/service-shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,8 +55,8 @@ function specificationLocalRequirementAction(
   }
 }
 
-export async function GET(
-  _request: NextRequest,
+async function getHandler(
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(
@@ -65,23 +68,36 @@ export async function GET(
   }
   const { id, localRequirementId: numericLocalRequirementId } =
     parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const specification = await getSpecificationById(db, id)
-  if (!specification) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
+  const runtime = await createRequirementsRestRuntime(request)
+  try {
+    await authorize(
+      runtime.authorization,
+      {
+        childId: numericLocalRequirementId,
+        childKind: 'specification_local_requirement',
+        kind: 'get_specification_child',
+        specificationId: id,
+      },
+      runtime.context,
+    )
+    const requirement = await getSpecificationLocalRequirementDetail(
+      runtime.db,
+      id,
+      numericLocalRequirementId,
+    )
+    if (!requirement) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
 
-  const requirement = await getSpecificationLocalRequirementDetail(
-    db,
-    specification.id,
-    numericLocalRequirementId,
-  )
-  if (!requirement) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(requirement)
+  } catch (error) {
+    if (!isRequirementsServiceError(error)) throw error
+    const { body, status } = toHttpErrorPayload(error)
+    return NextResponse.json(body, { status })
   }
-
-  return NextResponse.json(requirement)
 }
+
+export const GET = withRestResponsePolicy(getHandler)
 
 export const PUT = secureMutationRoute<
   SpecificationLocalRequirementBody,

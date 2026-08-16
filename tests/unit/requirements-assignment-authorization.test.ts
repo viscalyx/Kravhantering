@@ -89,6 +89,9 @@ function makeLookup(
       async (input: { specificationId?: number }) =>
         input.specificationId ?? options.specificationId ?? 42,
     ),
+    resolveSpecificationChildTarget: vi.fn(
+      async () => options.specificationId ?? 42,
+    ),
     resolveSpecificationIdForLocalRequirement: vi.fn(
       async () => options.specificationId ?? 42,
     ),
@@ -100,6 +103,9 @@ function makeLookup(
     ),
     resolveSuggestionRequirementArea: vi.fn(
       async () => options.suggestionAreaId ?? options.requirement?.areaId ?? 7,
+    ),
+    resolveSuggestionRequirementTarget: vi.fn(async () =>
+      requirementTarget(options.requirement ?? {}),
     ),
   } satisfies AssignmentLookup
   return lookup
@@ -241,6 +247,85 @@ describe('AssignmentBasedAuthorizationService', () => {
       service.assertAuthorized(action, makeContext(['Reviewer'])),
     ).resolves.toBeUndefined()
     expect(lookup.isSpecificationAuthor).not.toHaveBeenCalled()
+  })
+
+  describe('assignment authorization quality invariant for child reads', () => {
+    const specificationChildAction: RequirementsAction = {
+      childId: 3,
+      childKind: 'requirement_application',
+      kind: 'get_specification_child',
+      specificationId: 42,
+    }
+
+    it('allows assigned specification authors and denies unrelated users', async () => {
+      await expect(
+        makeService({ specAuthor: true }).service.assertAuthorized(
+          specificationChildAction,
+          makeContext([]),
+        ),
+      ).resolves.toBeUndefined()
+
+      await expect(
+        makeService({ specAuthor: false }).service.assertAuthorized(
+          specificationChildAction,
+          makeContext([]),
+        ),
+      ).rejects.toMatchObject({
+        code: 'forbidden',
+        details: { reason: 'specification_author_required' },
+      })
+    })
+
+    it.each(['Reviewer', 'Admin'])(
+      'allows %s only after the child parent has resolved',
+      async role => {
+        const { lookup, service } = makeService()
+
+        await expect(
+          service.assertAuthorized(
+            specificationChildAction,
+            makeContext([role]),
+          ),
+        ).resolves.toBeUndefined()
+        expect(lookup.resolveSpecificationChildTarget).toHaveBeenCalledWith(
+          specificationChildAction,
+        )
+      },
+    )
+
+    it('applies the published requirement policy to improvement suggestions', async () => {
+      const action: RequirementsAction = {
+        kind: 'get_improvement_suggestion',
+        suggestionId: 5,
+      }
+
+      await expect(
+        makeService({
+          requirement: { hasPublishedVersion: true },
+        }).service.assertAuthorized(action, makeContext([])),
+      ).resolves.toBeUndefined()
+      await expect(
+        makeService({
+          areaAuthor: false,
+          requirement: { hasPublishedVersion: false },
+        }).service.assertAuthorized(action, makeContext([])),
+      ).rejects.toMatchObject({
+        details: { reason: 'requirement_area_author_required' },
+      })
+      await expect(
+        makeService({
+          requirement: { hasPublishedVersion: false },
+        }).service.assertAuthorized(action, makeContext(['Reviewer'])),
+      ).resolves.toBeUndefined()
+
+      const admin = makeService()
+      await expect(
+        admin.service.assertAuthorized(action, makeContext(['Admin'])),
+      ).resolves.toBeUndefined()
+      expect(
+        admin.lookup.resolveSuggestionRequirementTarget,
+      ).toHaveBeenCalledWith(5)
+    })
   })
 
   it.each<RequirementsAction>([
@@ -599,14 +684,19 @@ describe('AssignmentBasedAuthorizationService', () => {
   })
 
   it('allows published suggestion lists but requires area authorship for unpublished suggestion lists', async () => {
+    const published = makeService({
+      requirement: { hasPublishedVersion: true },
+    })
     await expect(
-      makeService({
-        requirement: { hasPublishedVersion: true },
-      }).service.assertAuthorized(
+      published.service.assertAuthorized(
         { kind: 'list_suggestions', requirementId: 11 },
         makeContext([]),
       ),
     ).resolves.toBeUndefined()
+    expect(published.lookup.resolveRequirementTarget).toHaveBeenCalledWith({
+      id: 11,
+      uniqueId: undefined,
+    })
 
     await expect(
       makeService({
@@ -847,6 +937,179 @@ describe('SqlAssignmentLookup', () => {
       ),
       [5],
     )
+  })
+
+  it('resolves paired child parents and denies foreign-parent identifiers', async () => {
+    const matching = makeDb([
+      [{ specificationId: 42 }],
+      [{ specificationId: 42 }],
+    ])
+    await expect(
+      new SqlAssignmentLookup(matching.db).resolveSpecificationChildTarget({
+        childId: 3,
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+        specificationId: 42,
+      }),
+    ).resolves.toBe(42)
+    expect(matching.query).toHaveBeenNthCalledWith(2, expect.any(String), [3])
+
+    const foreign = makeDb([
+      [{ specificationId: 42 }],
+      [{ specificationId: 99 }],
+    ])
+    await expect(
+      new SqlAssignmentLookup(foreign.db).resolveSpecificationChildTarget({
+        childId: 3,
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+        specificationId: 42,
+      }),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'foreign_specification_child' },
+    })
+  })
+
+  it('validates specification deviation collection targets', async () => {
+    const existing = makeDb([[{ specificationId: 42 }]])
+    await expect(
+      new SqlAssignmentLookup(existing.db).resolveSpecificationChildTarget({
+        childKind: 'deviation_collection',
+        kind: 'get_specification_child',
+        specificationId: 42,
+      }),
+    ).resolves.toBe(42)
+
+    await expect(
+      new SqlAssignmentLookup(makeDb([[]]).db).resolveSpecificationChildTarget({
+        childKind: 'deviation_collection',
+        kind: 'get_specification_child',
+        specificationId: 404,
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+
+    await expect(
+      new SqlAssignmentLookup(makeDb().db).resolveSpecificationChildTarget({
+        childKind: 'deviation_collection',
+        kind: 'get_specification_child',
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_specification_reference' },
+    })
+  })
+
+  it('validates direct specification child targets and missing rows', async () => {
+    const lookup = new SqlAssignmentLookup(makeDb().db)
+    await expect(
+      lookup.resolveSpecificationChildTarget({
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_specification_child_reference' },
+    })
+    await expect(
+      lookup.resolveSpecificationChildTarget({
+        childId: 5,
+        childKind: 'deviation',
+        kind: 'get_specification_child',
+      }),
+    ).rejects.toMatchObject({ details: { reason: 'missing_deviation_kind' } })
+    await expect(
+      new SqlAssignmentLookup(makeDb([[]]).db).resolveSpecificationChildTarget({
+        childId: 404,
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it('resolves direct child parents through the lookup contract', async () => {
+    const cases = [
+      {
+        action: {
+          childId: 5,
+          childKind: 'deviation',
+          deviationKind: 'library',
+          kind: 'get_specification_child',
+        } as const,
+      },
+      {
+        action: {
+          childId: 6,
+          childKind: 'deviation',
+          deviationKind: 'specification-local',
+          kind: 'get_specification_child',
+        } as const,
+      },
+      {
+        action: {
+          childId: 7,
+          childKind: 'specification_local_requirement',
+          kind: 'get_specification_child',
+        } as const,
+      },
+    ]
+
+    for (const { action } of cases) {
+      const { db, query } = makeDb([[{ specificationId: 42 }]])
+      await expect(
+        new SqlAssignmentLookup(db).resolveSpecificationChildTarget(action),
+      ).resolves.toBe(42)
+      expect(query).toHaveBeenCalledOnce()
+    }
+  })
+
+  it('resolves improvement suggestions to the requirement read target', async () => {
+    const { db, query } = makeDb([
+      [
+        {
+          areaId: 7,
+          hasPublishedVersion: 1,
+          id: 11,
+          latestStatusId: STATUS_PUBLISHED,
+          uniqueId: 'INT0011',
+        },
+      ],
+    ])
+
+    await expect(
+      new SqlAssignmentLookup(db).resolveSuggestionRequirementTarget(5),
+    ).resolves.toMatchObject({
+      areaId: 7,
+      hasPublishedVersion: true,
+      id: 11,
+    })
+    expect(query).toHaveBeenCalledWith(expect.any(String), [
+      5,
+      STATUS_PUBLISHED,
+    ])
+
+    await expect(
+      new SqlAssignmentLookup(
+        makeDb([
+          [
+            {
+              areaId: 7,
+              hasPublishedVersion: 0,
+              id: 12,
+              latestStatusId: null,
+              uniqueId: 'INT0012',
+            },
+          ],
+        ]).db,
+      ).resolveSuggestionRequirementTarget(6),
+    ).resolves.toMatchObject({
+      hasPublishedVersion: false,
+      latestStatusId: null,
+    })
+
+    await expect(
+      new SqlAssignmentLookup(
+        makeDb([[]]).db,
+      ).resolveSuggestionRequirementTarget(404),
+    ).rejects.toMatchObject({ code: 'not_found' })
   })
 
   it('resolves typed library deviations without querying the local table', async () => {

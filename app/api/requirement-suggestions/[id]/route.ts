@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -28,7 +29,7 @@ const createSuggestionSchema = z
   })
   .strict()
 
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Params },
 ) {
@@ -51,6 +52,8 @@ export async function GET(
     return NextResponse.json(body, { status })
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)
 
 export const POST = secureMutationRoute({
   bodySchema: createSuggestionSchema,

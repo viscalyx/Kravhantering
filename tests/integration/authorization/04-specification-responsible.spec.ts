@@ -173,6 +173,31 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
       coAuthorsResponse,
       'specification responsible co-author read',
     )
+    for (const [path, label] of [
+      [
+        `/api/requirements-specifications/${fixture.specificationId}/local-requirements/${fixture.localRequirementId}`,
+        'specification responsible local requirement read',
+      ],
+      [
+        `/api/specification-item-deviations/${encodeURIComponent(`local:${fixture.localRequirementId}`)}`,
+        'specification responsible child deviation list',
+      ],
+      [
+        `/api/specification-local-deviations/${fixture.localDeviationId}`,
+        'specification responsible direct local deviation read',
+      ],
+    ] as const) {
+      const childResponse = await specificationResponsible.get(path)
+      await expectOk(childResponse, label)
+      expect(childResponse.headers()['cache-control']).toBe('no-store')
+    }
+    await expectStatus(
+      await specificationResponsible.get(
+        `/api/requirements-specifications/${fixture.foreignSpecificationId}/local-requirements/${fixture.localRequirementId}`,
+      ),
+      403,
+      'specification responsible foreign-parent child read',
+    )
     await expectStatus(
       await specificationResponsible.get('/api/admin/audit-events'),
       403,

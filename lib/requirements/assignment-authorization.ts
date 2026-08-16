@@ -61,6 +61,9 @@ export interface AssignmentLookup {
       { kind: 'manage_rfi_question_suggestion' }
     >,
   ): Promise<number>
+  resolveSpecificationChildTarget(
+    action: Extract<RequirementsAction, { kind: 'get_specification_child' }>,
+  ): Promise<number>
   resolveSpecificationId(input: SpecificationReference): Promise<number>
   resolveSpecificationIdForLocalRequirement(
     localRequirementId?: number,
@@ -70,6 +73,9 @@ export interface AssignmentLookup {
       | Extract<RequirementsAction, { kind: 'list_suggestions' }>
       | Extract<RequirementsAction, { kind: 'manage_suggestion' }>,
   ): Promise<number>
+  resolveSuggestionRequirementTarget(
+    suggestionId: number,
+  ): Promise<RequirementTarget>
 }
 
 function hasRole(context: RequestContext, role: string): boolean {
@@ -111,7 +117,9 @@ function isAssignmentLookup(value: unknown): value is AssignmentLookup {
     value !== null &&
     'isRequirementAreaAuthor' in value &&
     'isSpecificationAuthor' in value &&
-    'resolveRequirementTarget' in value
+    'resolveRequirementTarget' in value &&
+    'resolveSpecificationChildTarget' in value &&
+    'resolveSuggestionRequirementTarget' in value
   )
 }
 
@@ -173,6 +181,110 @@ export class SqlAssignmentLookup implements AssignmentLookup {
     throw validationError('Missing specification reference', {
       reason: 'missing_specification_reference',
     })
+  }
+
+  async resolveSpecificationChildTarget(
+    action: Extract<RequirementsAction, { kind: 'get_specification_child' }>,
+  ): Promise<number> {
+    const db = await this.getDb()
+    const requestedSpecificationId = action.specificationId
+    if (requestedSpecificationId != null) {
+      const specificationRows = (await db.query(
+        `
+          SELECT TOP (1) id AS specificationId
+          FROM requirements_specifications
+          WHERE id = @0
+        `,
+        [requestedSpecificationId],
+      )) as Array<Record<string, unknown>>
+      if (firstNumber(specificationRows, 'specificationId') == null) {
+        throw notFoundError('Requirements specification not found', {
+          specificationId: requestedSpecificationId,
+        })
+      }
+    }
+
+    if (action.childKind === 'deviation_collection') {
+      if (requestedSpecificationId != null) return requestedSpecificationId
+      throw validationError('Missing specification reference', {
+        reason: 'missing_specification_reference',
+      })
+    }
+
+    if (action.childId == null) {
+      throw validationError('Missing specification child reference', {
+        childKind: action.childKind,
+        reason: 'missing_specification_child_reference',
+      })
+    }
+
+    let rows: Array<Record<string, unknown>>
+    if (action.childKind === 'requirement_application') {
+      rows = (await db.query(
+        `
+          SELECT TOP (1) requirements_specification_id AS specificationId
+          FROM requirements_specification_items
+          WHERE id = @0
+        `,
+        [action.childId],
+      )) as Array<Record<string, unknown>>
+    } else if (action.childKind === 'specification_local_requirement') {
+      rows = (await db.query(
+        `
+          SELECT TOP (1) specification_id AS specificationId
+          FROM specification_local_requirements
+          WHERE id = @0
+        `,
+        [action.childId],
+      )) as Array<Record<string, unknown>>
+    } else if (action.deviationKind === 'library') {
+      rows = (await db.query(
+        `
+          SELECT TOP (1)
+            item.requirements_specification_id AS specificationId
+          FROM deviations deviation
+          INNER JOIN requirements_specification_items item
+            ON item.id = deviation.specification_item_id
+          WHERE deviation.id = @0
+        `,
+        [action.childId],
+      )) as Array<Record<string, unknown>>
+    } else if (action.deviationKind === 'specification-local') {
+      rows = (await db.query(
+        `
+          SELECT TOP (1)
+            local_requirement.specification_id AS specificationId
+          FROM specification_local_requirement_deviations local_deviation
+          INNER JOIN specification_local_requirements local_requirement
+            ON local_requirement.id =
+              local_deviation.specification_local_requirement_id
+          WHERE local_deviation.id = @0
+        `,
+        [action.childId],
+      )) as Array<Record<string, unknown>>
+    } else {
+      throw validationError('Missing deviation kind', {
+        reason: 'missing_deviation_kind',
+      })
+    }
+
+    const owningSpecificationId = firstNumber(rows, 'specificationId')
+    if (owningSpecificationId == null) {
+      throw notFoundError('Specification child not found', {
+        childId: action.childId,
+        childKind: action.childKind,
+      })
+    }
+    if (
+      requestedSpecificationId != null &&
+      requestedSpecificationId !== owningSpecificationId
+    ) {
+      throw forbiddenError('Specification child belongs to another parent', {
+        reason: 'foreign_specification_child',
+        specificationId: requestedSpecificationId,
+      })
+    }
+    return owningSpecificationId
   }
 
   async resolveSpecificationIdForLocalRequirement(
@@ -369,6 +481,50 @@ export class SqlAssignmentLookup implements AssignmentLookup {
     return requirement.areaId
   }
 
+  async resolveSuggestionRequirementTarget(
+    suggestionId: number,
+  ): Promise<RequirementTarget> {
+    const db = await this.getDb()
+    const rows = (await db.query(
+      `
+        SELECT TOP (1)
+          requirement.id AS id,
+          requirement.unique_id AS uniqueId,
+          requirement.requirement_area_id AS areaId,
+          latest.requirement_status_id AS latestStatusId,
+          CASE WHEN EXISTS (
+            SELECT 1
+            FROM requirement_versions published_version
+            WHERE published_version.requirement_id = requirement.id
+              AND published_version.requirement_status_id = @1
+          ) THEN 1 ELSE 0 END AS hasPublishedVersion
+        FROM improvement_suggestions suggestion
+        INNER JOIN requirements requirement
+          ON requirement.id = suggestion.requirement_id
+        OUTER APPLY (
+          SELECT TOP (1) requirement_status_id
+          FROM requirement_versions latest_version
+          WHERE latest_version.requirement_id = requirement.id
+          ORDER BY latest_version.version_number DESC
+        ) latest
+        WHERE suggestion.id = @0
+      `,
+      [suggestionId, STATUS_PUBLISHED],
+    )) as Array<Record<string, unknown>>
+    const row = rows[0]
+    if (!row) {
+      throw notFoundError('Improvement suggestion not found', { suggestionId })
+    }
+    return {
+      areaId: Number(row.areaId),
+      hasPublishedVersion: numericFlag(row.hasPublishedVersion),
+      id: Number(row.id),
+      latestStatusId:
+        row.latestStatusId == null ? null : Number(row.latestStatusId),
+      uniqueId: String(row.uniqueId),
+    }
+  }
+
   async resolveRfiQuestionArea(
     action: Extract<RequirementsAction, { kind: 'manage_rfi_question' }>,
   ): Promise<number> {
@@ -441,6 +597,20 @@ export class AssignmentBasedAuthorizationService
     context: RequestContext,
   ): Promise<void> {
     requireAuthenticated(context)
+
+    if (action.kind === 'get_specification_child') {
+      const specificationId =
+        await this.lookup.resolveSpecificationChildTarget(action)
+      if (hasRole(context, 'Admin')) return
+      return this.assertCanReadSpecification(context, specificationId)
+    }
+    if (action.kind === 'get_improvement_suggestion') {
+      const target = await this.lookup.resolveSuggestionRequirementTarget(
+        action.suggestionId,
+      )
+      if (hasRole(context, 'Admin')) return
+      return this.assertCanReadRequirementTarget(context, target)
+    }
 
     if (hasRole(context, 'Admin') && !this.isReviewerOnlyAction(action)) {
       return
@@ -592,7 +762,15 @@ export class AssignmentBasedAuthorizationService
     action: Extract<RequirementsAction, { kind: 'get_requirement' }>,
   ): Promise<void> {
     const target = await this.lookup.resolveRequirementTarget(action)
-    if (target.hasPublishedVersion && action.view !== 'history') return
+    return this.assertCanReadRequirementTarget(context, target, action.view)
+  }
+
+  private async assertCanReadRequirementTarget(
+    context: RequestContext,
+    target: RequirementTarget,
+    view: 'detail' | 'history' | 'version' = 'detail',
+  ): Promise<void> {
+    if (target.hasPublishedVersion && view !== 'history') return
     if (hasRole(context, 'Reviewer')) return
     await this.assertAreaAuthor(context, target.areaId)
   }
@@ -657,7 +835,10 @@ export class AssignmentBasedAuthorizationService
     context: RequestContext,
     action: Extract<RequirementsAction, { kind: 'list_suggestions' }>,
   ): Promise<void> {
-    const requirement = await this.lookup.resolveRequirementTarget(action)
+    const requirement = await this.lookup.resolveRequirementTarget({
+      id: action.requirementId,
+      uniqueId: action.uniqueId,
+    })
     if (requirement.hasPublishedVersion) return
     if (hasRole(context, 'Reviewer')) return
     await this.assertAreaAuthor(context, requirement.areaId)

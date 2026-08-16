@@ -215,6 +215,59 @@ describe('requirements security audit', () => {
     )
   })
 
+  it.each<{
+    action: RequirementsAction
+    expected: { action: string; targetId: number; targetKind: string }
+  }>([
+    {
+      action: {
+        childKind: 'deviation_collection',
+        kind: 'get_specification_child',
+        specificationId: 1,
+      },
+      expected: {
+        action: 'get_specification_child.denied',
+        targetId: 1,
+        targetKind: 'RequirementsSpecification',
+      },
+    },
+    {
+      action: { kind: 'get_improvement_suggestion', suggestionId: 2 },
+      expected: {
+        action: 'improvement_suggestion.read.denied',
+        targetId: 2,
+        targetKind: 'ImprovementSuggestion',
+      },
+    },
+    {
+      action: {
+        kind: 'manage_suggestion',
+        operation: 'create',
+        requirementId: 3,
+      },
+      expected: {
+        action: 'improvement_suggestion.create.denied',
+        targetId: 3,
+        targetKind: 'ImprovementSuggestion',
+      },
+    },
+  ])(
+    'persists scoped denial target evidence for $action.kind',
+    async ({ action, expected }) => {
+      await recordAuthorizationDenied(
+        context(),
+        action,
+        forbiddenError('Denied', { reason: 'assignment_required' }),
+      )
+
+      expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining(expected),
+      )
+    },
+  )
+
   it('ignores unrelated failures and sanitizes non-Error audit failures', async () => {
     await recordAuthorizationDenied(
       context(),

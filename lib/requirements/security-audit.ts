@@ -107,6 +107,18 @@ function actionAuditDetail(
         actionKind: action.kind,
         specificationId: action.specificationId,
       }
+    case 'get_specification_child':
+      return {
+        actionKind: action.kind,
+        childId: action.childId,
+        childKind: action.childKind,
+        specificationId: action.specificationId,
+      }
+    case 'get_improvement_suggestion':
+      return {
+        actionKind: action.kind,
+        suggestionId: action.suggestionId,
+      }
     case 'add_to_specification':
     case 'remove_from_specification':
       return {
@@ -232,6 +244,8 @@ function actionNameForAuthorizationDenied(action: RequirementsAction): string {
       return `deviation.${action.operation}.denied`
     case 'manage_suggestion':
       return `improvement_suggestion.${action.operation}.denied`
+    case 'get_improvement_suggestion':
+      return 'improvement_suggestion.read.denied'
     case 'manage_rfi_question':
       return `rfi_question.${action.operation}.denied`
     case 'manage_specification_rfi':
@@ -257,6 +271,11 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
     case 'list_deviations':
       return {
         targetId: action.specificationId,
+        targetKind: 'RequirementsSpecification',
+      }
+    case 'get_specification_child':
+      return {
+        targetId: action.childId ?? action.specificationId,
         targetKind: 'RequirementsSpecification',
       }
     case 'graduate_specification_local_requirement':
@@ -290,8 +309,12 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
         targetKind: 'Deviation',
       }
     case 'manage_suggestion':
+    case 'get_improvement_suggestion':
       return {
-        targetId: action.suggestionId ?? action.requirementId,
+        targetId:
+          action.kind === 'get_improvement_suggestion'
+            ? action.suggestionId
+            : (action.suggestionId ?? action.requirementId),
         targetKind: 'ImprovementSuggestion',
       }
     case 'list_suggestions':

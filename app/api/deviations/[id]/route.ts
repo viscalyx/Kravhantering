@@ -6,6 +6,7 @@ import {
   updateDeviation,
 } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -19,6 +20,8 @@ import {
 import { requireHumanActorSnapshot } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { authorize } from '@/lib/requirements/service-shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,26 +33,38 @@ const updateDeviationSchema = z
   })
   .strict()
 
-export async function GET(
-  _request: NextRequest,
+async function getHandler(
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
   const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
+  const runtime = await createRequirementsRestRuntime(request)
 
   try {
-    const deviation = await getDeviation(db, id)
+    await authorize(
+      runtime.authorization,
+      {
+        childId: id,
+        childKind: 'deviation',
+        deviationKind: 'library',
+        kind: 'get_specification_child',
+      },
+      runtime.context,
+    )
+    const deviation = await getDeviation(runtime.db, id)
     return NextResponse.json(deviation)
   } catch (error) {
-    if (isRequirementsServiceError(error) && error.code === 'not_found') {
+    if (isRequirementsServiceError(error)) {
       const { body, status } = toHttpErrorPayload(error)
       return NextResponse.json(body, { status })
     }
     throw error
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)
 
 export const PUT = secureMutationRoute({
   bodySchema: updateDeviationSchema,

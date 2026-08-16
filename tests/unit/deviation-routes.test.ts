@@ -203,6 +203,16 @@ describe('deviation mutation routes', () => {
       motivation: 'Why',
     })
     expect(routeState.getDeviation).toHaveBeenCalledWith(mockDb, 7)
+    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        childId: 7,
+        childKind: 'deviation',
+        deviationKind: 'library',
+        kind: 'get_specification_child',
+      },
+      expect.any(Object),
+    )
+    expect(foundResponse.headers.get('Cache-Control')).toBe('no-store')
 
     routeState.getDeviation.mockRejectedValueOnce(notFoundError('Not found'))
     const missingResponse = await GET(
@@ -222,6 +232,22 @@ describe('deviation mutation routes', () => {
         params({ id: '7' }),
       ),
     ).rejects.toThrow('db offline')
+  })
+
+  it('denies direct deviation enumeration before reading its payload', async () => {
+    routeState.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Specification read denied'),
+    )
+    const { GET } = await import('@/app/api/deviations/[id]/route')
+
+    const response = await GET(
+      new Request('https://example.test/api/deviations/7') as never,
+      params({ id: '7' }),
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.getDeviation).not.toHaveBeenCalled()
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 
   it('rejects invalid deviation identifiers before database work', async () => {
@@ -283,6 +309,15 @@ describe('deviation mutation routes', () => {
       mockDb,
       7,
     )
+    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        childId: 7,
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+      },
+      expect.any(Object),
+    )
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 
   it('rejects an empty requirement application route segment before database work', async () => {
@@ -320,6 +355,44 @@ describe('deviation mutation routes', () => {
     expect(
       routeState.listDeviationsForSpecificationLocalRequirement,
     ).toHaveBeenCalledWith(mockDb, 8)
+    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        childId: 8,
+        childKind: 'specification_local_requirement',
+        kind: 'get_specification_child',
+      },
+      expect.any(Object),
+    )
+  })
+
+  it('lists deviations for a stable library requirement reference', async () => {
+    routeState.listDeviationsForSpecificationItem.mockResolvedValueOnce([
+      { id: 6, motivation: 'Library item deviation' },
+    ])
+    const { GET } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await GET(
+      new Request(
+        'https://example.test/api/specification-item-deviations/lib%3A7',
+      ) as never,
+      params({ itemId: 'lib%3A7' }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(routeState.listDeviationsForSpecificationItem).toHaveBeenCalledWith(
+      mockDb,
+      7,
+    )
+    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        childId: 7,
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+      },
+      expect.any(Object),
+    )
   })
 
   it.each(['%', '0', '999999999999999999999'])(
@@ -362,6 +435,28 @@ describe('deviation mutation routes', () => {
       error: 'Internal server error',
     })
     expect(consoleError).toHaveBeenCalled()
+  })
+
+  it('maps domain failures while listing requirement application deviations', async () => {
+    routeState.listDeviationsForSpecificationItem.mockRejectedValueOnce(
+      notFoundError('Specification item not found'),
+    )
+    const { GET } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await GET(
+      new Request(
+        'https://example.test/api/specification-item-deviations/7',
+      ) as never,
+      params({ itemId: '7' }),
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      code: 'not_found',
+      error: 'Specification item not found',
+    })
   })
 
   it('creates a deviation for a numeric requirement application', async () => {
@@ -869,6 +964,16 @@ describe('deviation mutation routes', () => {
     )
     expect(found.status).toBe(200)
     await expect(found.json()).resolves.toMatchObject({ id: 7 })
+    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        childId: 7,
+        childKind: 'deviation',
+        deviationKind: 'specification-local',
+        kind: 'get_specification_child',
+      },
+      expect.any(Object),
+    )
+    expect(found.headers.get('Cache-Control')).toBe('no-store')
 
     routeState.getSpecificationLocalDeviation.mockRejectedValueOnce(
       notFoundError('Not found'),

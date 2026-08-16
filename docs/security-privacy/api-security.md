@@ -155,8 +155,9 @@ Deferred from this contract:
 - Specification deviation routes, requirement-library deviation routes, and
   improvement-suggestion routes remain outside the OpenAPI/Schemathesis v1
   contract. Their useful assertions are lifecycle state machines, reviewer
-  decisions, revert-to-draft behavior, authorization boundaries, audit detail,
-  and UI stepper behavior.
+  decisions, revert-to-draft behavior, parent authorization before child
+  payload reads, published and unpublished requirement policy, 403/404
+  separation, `Cache-Control: no-store`, audit detail, and UI stepper behavior.
 - Norm-reference create, update, and delete routes remain outside the
   OpenAPI/Schemathesis v1 contract. `GET /api/norm-references`,
   `POST /api/norm-reference-actions/{id}/archive`, and

@@ -379,9 +379,19 @@ arbete.
 1. Kontrollera att sidan inte visar redigerings- eller AI-kontroller.
 1. Försök öppna `/sv/admin`.
 1. Kör API-kontroll för att uppdatera `AUTHZ-SPEC-2026`.
+1. Anropa kravunderlagets kravunderlagslokala krav, avstegslista och ett
+   enskilt avsteg direkt med deras identifierare. Anropa även ett saknat
+   avsteg och kombinera ett befintligt lokalt krav med ett annat befintligt
+   kravunderlag.
+1. Läs förbättringsförslag via direkt identifierare för både ett publicerat
+   och ett opublicerat krav. Kontrollera även förslagslistan för det
+   publicerade kravet och svarens `Cache-Control`.
 
 **Förväntat resultat:** Läsning är bara tillåten där produkten medger det.
-Privilegierade UI-kontroller saknas och API svarar 403.
+Privilegierade UI-kontroller saknas. Befintliga otillåtna underresurser och
+fel föräldrakombination ger 403, medan den saknade underresursen ger 404.
+Förslaget för det publicerade kravet och dess lista kan läsas, förslaget för
+det opublicerade kravet ger 403 och samtliga förslagssvar har `no-store`.
 
 ### AUTHZ-02: kravområdesägare
 
@@ -448,11 +458,16 @@ tilldelningsstyrning och global Admin.
    till en tillfällig kravunderlagsmedförfattare i dialogen.
 1. Kontrollera att medförfattaren visas i den sparade tabellen, ta bort samma
    rad och öppna dialogen igen.
+1. Läs ett kravunderlagslokalt krav, dess avstegslista och ett enskilt avsteg
+   via direkta API-identifierare. Kombinera därefter det lokala kravets
+   identifierare med ett annat befintligt kravunderlag.
 1. Försök utföra Admin-only-åtgärd eller dataskyddsförhandsgranskning.
 
 **Förväntat resultat:** Petra kan förvalta sitt kravunderlag och dess
 tilldelningar men nekas global Admin och dataskydd. Tillfällig medförfattare
 sparas i dialogens tabell och är borttagen efter ny öppning av dialogen.
+Behöriga underresurssvar använder `Cache-Control: no-store`; kombinationen med
+fel kravunderlag ger 403.
 
 ### AUTHZ-05: kravunderlagsmedförfattare
 
@@ -536,10 +551,13 @@ rollen saknas.
 1. Kontrollera Admin-flikar, åtgärdslogg och åtkomstöversyn.
 1. Kontrollera att Ada även kan använda dataskyddsytor.
 1. Logga ut och logga in som `only.admin`.
-1. Upprepa Admin-kontrollen och försök använda dataskyddsflikar.
+1. Upprepa Admin-kontrollen, försök använda dataskyddsflikar, läs ett enskilt
+   kravunderlagsavsteg via dess direkta API-identifierare och försök kombinera
+   ett lokalt krav med fel befintligt kravunderlag.
 
 **Förväntat resultat:** Ada har både Admin och dataskydd. Only har Admin men
-nekas dataskydd.
+nekas dataskydd. Only kan läsa underresurser efter att föräldern har slagits
+upp, men fel föräldrakombination ger 403 även för `Admin`.
 
 ### AUTHZ-09: Reviewer
 
@@ -552,10 +570,13 @@ nekas dataskydd.
 1. Logga in som `rita.reviewer`.
 1. Öppna en krav- eller avstegsgranskning som ligger i granskningsläge.
 1. Utför en tillåten granskningsåtgärd.
+1. Läs ett enskilt kravunderlagsavsteg via dess direkta API-identifierare och
+   försök kombinera ett lokalt krav med fel befintligt kravunderlag.
 1. Försök öppna Admincenter, dataskydd och ansvarstilldelnings-API.
 
 **Förväntat resultat:** Rita kan utföra granskningsarbete men nekas Admin,
-dataskydd och ansvarsstyrning.
+dataskydd och ansvarsstyrning. Underresursen kan läsas efter föräldrauppslag,
+men fel föräldrakombination ger 403 även för `Reviewer`.
 
 <a id="authz-10-dataskyddshandlaggare"></a>
 

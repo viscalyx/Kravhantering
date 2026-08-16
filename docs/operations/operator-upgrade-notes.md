@@ -254,6 +254,18 @@ a database restore, run transient cleanup before evidence reads are enabled so
 expired evidence does not become operationally available.
 <!-- operator-upgrade:source pr-1024 end -->
 
+<!-- operator-upgrade:source pr-1035 start -->
+Before the upgrade, inject unique authentication secrets into the production
+application configuration. For bundled Keycloak, also set temporary bootstrap
+administrator credentials and separate application and MCP realm client
+secrets. Make sure that the application client secret matches the application
+configuration.
+During rollout, the deployment preflight rejects blank or shipped placeholder
+credentials before services start. The application image also stops if these
+placeholders remain. If you rotate the session secret, all active browser
+sessions become invalid. Plan this action for a low-traffic period and verify
+sign-in after deployment.
+<!-- operator-upgrade:source pr-1035 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade

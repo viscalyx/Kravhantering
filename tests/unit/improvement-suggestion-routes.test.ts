@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   conflictError,
+  forbiddenError,
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
@@ -26,13 +27,17 @@ const mocks = vi.hoisted(() => {
   }
 
   return {
+    authorization: { assertAuthorized: vi.fn() },
     context,
     createRequirementsRestRuntime: vi.fn(async () => ({
+      authorization: { assertAuthorized: vi.fn() },
       context,
+      db: {},
       service,
     })),
     getRequestSqlServerDataSource: vi.fn(async () => ({})),
     getSuggestion: vi.fn(),
+    recordDeniedActionAuditEvent: vi.fn(),
     service,
   }
 })
@@ -60,6 +65,15 @@ vi.mock('@/lib/dal/improvement-suggestions', () => ({
   SUGGESTION_DISMISSED: 2,
   SUGGESTION_RESOLVED: 1,
 }))
+
+vi.mock('@/lib/audit/action-audit', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/audit/action-audit')>()
+  return {
+    ...actual,
+    recordDeniedActionAuditEvent: mocks.recordDeniedActionAuditEvent,
+  }
+})
 
 import { POST as requestSuggestionReview } from '@/app/api/improvement-suggestions/[id]/request-review/route'
 import { POST as recordSuggestionResolution } from '@/app/api/improvement-suggestions/[id]/resolution/route'
@@ -157,6 +171,13 @@ describe('improvement suggestion REST service boundary', () => {
       message: 'ok',
       result: { id: 9 },
     })
+    mocks.createRequirementsRestRuntime.mockResolvedValue({
+      authorization: mocks.authorization,
+      context: mocks.context,
+      db: {},
+      service: mocks.service,
+    })
+    mocks.authorization.assertAuthorized.mockResolvedValue(undefined)
   })
 
   it('lists requirement suggestions through the requirements service', async () => {
@@ -166,6 +187,7 @@ describe('improvement suggestion REST service boundary', () => {
     )
 
     expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('no-store')
     await expect(response.json()).resolves.toEqual({
       suggestions: [{ content: 'Clarify this', id: 5 }],
     })
@@ -327,6 +349,11 @@ describe('improvement suggestion REST service boundary', () => {
       content: 'Clarify this',
       id: 9,
     })
+    expect(mocks.authorization.assertAuthorized).toHaveBeenCalledWith(
+      { kind: 'get_improvement_suggestion', suggestionId: 9 },
+      mocks.context,
+    )
+    expect(foundResponse.headers.get('Cache-Control')).toBe('no-store')
 
     mocks.getSuggestion.mockRejectedValueOnce(notFoundError('Not found'))
     const missingResponse = await getSuggestion(
@@ -346,6 +373,21 @@ describe('improvement suggestion REST service boundary', () => {
         makeParams('9'),
       ),
     ).rejects.toThrow('db offline')
+  })
+
+  it('denies direct suggestion enumeration before reading personal data', async () => {
+    mocks.authorization.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Requirement read denied'),
+    )
+
+    const response = await getSuggestion(
+      new NextRequest('http://localhost/api/improvement-suggestions/9'),
+      makeParams('9'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.getSuggestion).not.toHaveBeenCalled()
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 
   it('rejects invalid suggestion identifiers before database work', async () => {
