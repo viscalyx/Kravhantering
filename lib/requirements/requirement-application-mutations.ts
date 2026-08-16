@@ -27,7 +27,7 @@ import {
 } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import {
-  recordAuthorizationDenied,
+  recordAuthorizationDeniedWithDatabase,
   recordSensitiveMutationActionAuditEvent,
   recordSensitiveMutationSecurityEvent,
   type SensitiveMutationAuditDetail,
@@ -190,7 +190,7 @@ export function createRequirementApplicationMutationWorkflow({
   return {
     async mutate(context, input) {
       const action = requirementApplicationMutationAction(input)
-      await authorize(authorization, action, context)
+      await authorize(authorization, action, context, db)
 
       if ('itemRefs' in input && input.itemRefs.length === 0) {
         throw validationError('At least one itemRef must be supplied')
@@ -344,7 +344,12 @@ export function createRequirementApplicationMutationWorkflow({
         )
       } catch (error) {
         if (isRequirementsServiceError(error) && error.code === 'forbidden') {
-          await recordAuthorizationDenied(context, action, error)
+          await recordAuthorizationDeniedWithDatabase(
+            db,
+            context,
+            action,
+            error,
+          )
         }
         throw error
       }

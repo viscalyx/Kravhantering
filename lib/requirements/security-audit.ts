@@ -9,7 +9,7 @@ import {
   type SecurityEventDetailValue,
   type SecurityEventRequest,
 } from '@/lib/auth/audit'
-import { getRequestSqlServerDataSource } from '@/lib/db'
+import { getRequestSqlServerDataSource, type SqlServerDatabase } from '@/lib/db'
 import { redactSensitiveText } from '@/lib/http/safe-errors'
 import type {
   ActorContext,
@@ -466,6 +466,7 @@ export function recordAuthorizationDeniedAuditFailure(
 }
 
 async function recordDeniedActionAuditEventRequired(
+  db: SqlServerDatabase | undefined,
   context: RequestContext,
   action: RequirementsAction,
   authorizationError: RequirementsServiceError,
@@ -473,8 +474,8 @@ async function recordDeniedActionAuditEventRequired(
   reason: string | undefined,
 ): Promise<void> {
   try {
-    const db = await getRequestSqlServerDataSource()
-    await recordDeniedActionAuditEvent(db, context, {
+    const auditDb = db ?? (await getRequestSqlServerDataSource())
+    await recordDeniedActionAuditEvent(auditDb, context, {
       action: actionNameForAuthorizationDenied(action),
       denialReason: reason ?? authorizationError.code,
       details: compactDetail({
@@ -498,7 +499,8 @@ async function recordDeniedActionAuditEventRequired(
   }
 }
 
-export async function recordAuthorizationDenied(
+async function recordAuthorizationDeniedUsingDatabase(
+  db: SqlServerDatabase | undefined,
   context: RequestContext,
   action: RequirementsAction,
   error: unknown,
@@ -529,12 +531,35 @@ export async function recordAuthorizationDenied(
   })
 
   await recordDeniedActionAuditEventRequired(
+    db,
     context,
     action,
     error,
     requiredRoles,
     reason,
   )
+}
+
+export async function recordAuthorizationDenied(
+  context: RequestContext,
+  action: RequirementsAction,
+  error: unknown,
+): Promise<void> {
+  await recordAuthorizationDeniedUsingDatabase(
+    undefined,
+    context,
+    action,
+    error,
+  )
+}
+
+export async function recordAuthorizationDeniedWithDatabase(
+  db: SqlServerDatabase,
+  context: RequestContext,
+  action: RequirementsAction,
+  error: unknown,
+): Promise<void> {
+  await recordAuthorizationDeniedUsingDatabase(db, context, action, error)
 }
 
 export async function recordSensitiveMutationSucceeded(

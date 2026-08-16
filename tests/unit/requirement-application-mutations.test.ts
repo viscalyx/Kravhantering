@@ -21,6 +21,7 @@ const dal = vi.hoisted(() => ({
 
 const audit = vi.hoisted(() => ({
   recordAuthorizationDenied: vi.fn(),
+  recordAuthorizationDeniedWithDatabase: vi.fn(),
   recordSensitiveMutationActionAuditEvent: vi.fn(),
   recordSensitiveMutationSecurityEvent: vi.fn(),
 }))
@@ -52,6 +53,8 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 
 vi.mock('@/lib/requirements/security-audit', () => ({
   recordAuthorizationDenied: audit.recordAuthorizationDenied,
+  recordAuthorizationDeniedWithDatabase:
+    audit.recordAuthorizationDeniedWithDatabase,
   recordSensitiveMutationActionAuditEvent:
     audit.recordSensitiveMutationActionAuditEvent,
   recordSensitiveMutationSecurityEvent:
@@ -156,7 +159,8 @@ describe('requirement application mutation workflow', () => {
     expect(transaction).not.toHaveBeenCalled()
     expect(dal.updateSpecificationItemFields).not.toHaveBeenCalled()
     expect(dal.updateSpecificationLocalRequirementFields).not.toHaveBeenCalled()
-    expect(audit.recordAuthorizationDenied).toHaveBeenCalledWith(
+    expect(audit.recordAuthorizationDeniedWithDatabase).toHaveBeenCalledWith(
+      expect.anything(),
       context,
       expect.objectContaining({
         kind: 'manage_requirement_applications',
@@ -189,7 +193,8 @@ describe('requirement application mutation workflow', () => {
     expect(dal.updateSpecificationItemFields).not.toHaveBeenCalled()
     expect(dal.updateSpecificationLocalRequirementFields).not.toHaveBeenCalled()
     expect(audit.recordSensitiveMutationActionAuditEvent).not.toHaveBeenCalled()
-    expect(audit.recordAuthorizationDenied).toHaveBeenCalledWith(
+    expect(audit.recordAuthorizationDeniedWithDatabase).toHaveBeenCalledWith(
+      expect.anything(),
       context,
       expect.objectContaining({
         itemRefs: ['lib:31'],

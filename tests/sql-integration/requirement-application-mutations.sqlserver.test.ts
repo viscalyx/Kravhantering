@@ -263,5 +263,21 @@ describe('requirement application mutation workflow', () => {
         [libraryItemId],
       ),
     ).resolves.toEqual([{ note: null }])
+    await expect(
+      appDb().query(
+        `SELECT decision, denial_reason AS denialReason
+         FROM action_audit_events
+         WHERE action = @0 AND target_id = @1`,
+        [
+          'specification.requirement_application.update.denied',
+          String(claimedParent.id),
+        ],
+      ),
+    ).resolves.toEqual([
+      {
+        decision: 'denied',
+        denialReason: 'foreign_specification_child',
+      },
+    ])
   })
 })
