@@ -28,6 +28,7 @@ jobs:
     env:
       KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.0-1
       KONG_IMAGE_REF: docker.io/kong/kong-gateway:3.15.0.2-20260721-ubuntu
+      NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH: 'true'
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       NGINX_IMAGE_REF: docker.io/library/nginx:1.31.3-alpine
       SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU7-ubuntu-24.04
@@ -142,6 +143,7 @@ jobs:
             --build-arg BUILD_EXPECTED_DATABASE_SCHEMA_VERSION="${BUILD_EXPECTED_DATABASE_SCHEMA_VERSION}" \
             --build-arg BUILD_TIME="$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")" \
             --build-arg BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG}" \
+            --build-arg NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH="${NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH}" \
             --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}" \
             --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
             --label "org.opencontainers.image.description=${APP_RUNTIME_DESCRIPTION}" \

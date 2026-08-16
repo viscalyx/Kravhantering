@@ -73,6 +73,31 @@ function dockerfileTarget(name: string) {
 }
 
 describe('container image contract', () => {
+  it('enables requirement-detail prefetching in production builds with a rebuild rollback', () => {
+    const dockerfile = readWorkspaceFile('containers/app/Dockerfile')
+    const prefetchBuildVariable =
+      'NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH'
+    const productionEnv = readWorkspaceFile('.env.production')
+
+    expect(dockerfile).toContain(`ARG ${prefetchBuildVariable}=true`)
+    expect(dockerfile).toContain(
+      `ENV ${prefetchBuildVariable}=\${${prefetchBuildVariable}}`,
+    )
+    expect(productionEnv).toContain(`${prefetchBuildVariable}=true`)
+
+    for (const workflowPath of [
+      '.github/workflows/container-pr-smoke.yml',
+      '.github/workflows/container-release.yml',
+    ]) {
+      const commands = workflowRunCommands(workflowPath)
+      expect(commands).toContainEqual(
+        expect.stringContaining(
+          `--build-arg ${prefetchBuildVariable}="\${${prefetchBuildVariable}}"`,
+        ),
+      )
+    }
+  })
+
   it('pins every Node base image by tag and digest', () => {
     const dockerfile = readWorkspaceFile('containers/app/Dockerfile')
     const fromLines = dockerfile.split('\n').flatMap(line => {

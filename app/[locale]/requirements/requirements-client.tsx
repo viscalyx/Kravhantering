@@ -25,11 +25,8 @@ import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
-import {
-  RequirementDetailPrefetchValidation,
-  useRequirementDetailPrefetchIntent,
-} from '@/components/RequirementDetailPrefetchValidation'
 import RequirementsTable from '@/components/RequirementsTable'
+import { useRequirementDetailPrefetchIntent } from '@/hooks/useRequirementDetailPrefetchIntent'
 import {
   type AiRequirementGenerationAvailability,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
@@ -289,7 +286,6 @@ export default function RequirementsClient({
   const {
     activate: activateDetailIntent,
     cancel: cancelDetailIntent,
-    pending: pendingDetailIntents,
     schedule: scheduleDetailIntent,
   } = useRequirementDetailPrefetchIntent()
   useEffect(() => () => detailCache.dispose(), [detailCache])
@@ -1492,7 +1488,6 @@ export default function RequirementsClient({
         </div>
       </div>
       {pdfDownload.dialog}
-      <RequirementDetailPrefetchValidation pending={pendingDetailIntents} />
       <LazyAiRequirementGenerator
         aiGenerationAvailability={aiGenerationAvailability}
         areas={areas}

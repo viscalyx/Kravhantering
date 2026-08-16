@@ -30,6 +30,7 @@ jobs:
       HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-person-lookup-adapter.oci.tar
       KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.0-1
       KONG_IMAGE_REF: docker.io/kong/kong-gateway:3.15.0.2-20260721-ubuntu
+      NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH: 'true'
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       NGINX_IMAGE_REF: docker.io/library/nginx:1.31.3-alpine
       SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU7-ubuntu-24.04
@@ -231,6 +232,7 @@ jobs:
             --build-arg BUILD_COMMIT_SHA="${BUILD_COMMIT_SHA}" \
             --build-arg BUILD_TIME="${BUILD_TIME}" \
             --build-arg BUILD_IMAGE_TAG="${BUILD_IMAGE_TAG}" \
+            --build-arg NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH="${NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH}" \
             --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}" \
             --provenance=false \
             --output "type=oci,dest=${APP_RUNTIME_OCI_ARCHIVE}" \

@@ -9,7 +9,6 @@ import {
   emitRequirementDetailPrefetchEvent,
   isRequirementDetailPrefetchEnabled,
   type RequirementDetailPrefetchEvent,
-  summarizeRequirementDetailPrefetchEvents,
 } from '@/lib/requirements/detail-prefetch'
 
 vi.mock('@/lib/http/api-fetch', () => ({ apiFetch: vi.fn() }))
@@ -466,108 +465,19 @@ describe('DetailPrefetchIntentController', () => {
 })
 
 describe('detail cache browser adapters', () => {
-  it('allows an explicit runtime off profile only in validation builds', async () => {
+  it('honors the build-time activation switch', async () => {
     vi.stubEnv('NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH', 'true')
-    vi.stubEnv('NEXT_PUBLIC_VALIDATE_REQUIREMENT_DETAIL_PREFETCH', 'true')
     vi.resetModules()
-    const prefetchModule = await import('@/lib/requirements/detail-prefetch')
-    const target = window as typeof window & {
-      __requirementDetailPrefetchValidationOverride?: boolean
-    }
+    const enabledModule = await import('@/lib/requirements/detail-prefetch')
+    expect(enabledModule.isRequirementDetailPrefetchEnabled()).toBe(true)
 
-    target.__requirementDetailPrefetchValidationOverride = false
-    expect(prefetchModule.isRequirementDetailPrefetchEnabled()).toBe(false)
-    target.__requirementDetailPrefetchValidationOverride = true
-    expect(prefetchModule.isRequirementDetailPrefetchEnabled()).toBe(true)
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH', 'false')
+    vi.resetModules()
+    const disabledModule = await import('@/lib/requirements/detail-prefetch')
+    expect(disabledModule.isRequirementDetailPrefetchEnabled()).toBe(false)
 
-    delete target.__requirementDetailPrefetchValidationOverride
     vi.unstubAllEnvs()
     expect(isRequirementDetailPrefetchEnabled()).toBe(false)
-  })
-
-  it('summarizes correlated outcomes without undercounting unused prefetches', async () => {
-    const events: RequirementDetailPrefetchEvent[] = []
-    const cache = new DetailResourceCache<number, { description: string }>({
-      fetchDetail: vi.fn(async () => ({ description: 'Kravtext' })),
-      keyOf: String,
-      onEvent: event => events.push(event),
-    })
-
-    await cache.load(201, 'prefetch', context)
-    await cache.load(201, 'activate', context)
-    await cache.load(202, 'prefetch', context)
-    cache.clear()
-
-    expect(summarizeRequirementDetailPrefetchEvents(events)).toMatchObject({
-      classified: 2,
-      duplicateOutcomes: 0,
-      orphanOutcomes: 0,
-      started: 2,
-      unresolved: 0,
-      unused: 1,
-      unusedRate: 0.5,
-      used: 1,
-    })
-  })
-
-  it('keeps equal cache-local prefetch ids distinct across surfaces', () => {
-    const base = {
-      key: '301',
-      prefetchId: 1,
-      resource: 'library-requirement' as const,
-      timestamp: 1,
-    }
-    const events: RequirementDetailPrefetchEvent[] = [
-      { ...base, surface: 'requirements-library', type: 'prefetch-started' },
-      {
-        ...base,
-        outcome: 'used',
-        surface: 'requirements-library',
-        type: 'prefetch-outcome',
-      },
-      { ...base, surface: 'specification-left', type: 'prefetch-started' },
-      {
-        ...base,
-        outcome: 'used',
-        surface: 'specification-left',
-        type: 'prefetch-outcome',
-      },
-    ]
-
-    expect(summarizeRequirementDetailPrefetchEvents(events)).toMatchObject({
-      classified: 2,
-      duplicateOutcomes: 0,
-      orphanOutcomes: 0,
-      started: 2,
-      unresolved: 0,
-      used: 2,
-    })
-  })
-
-  it('keeps prefetch correlation distinct across cache instances', async () => {
-    const events: RequirementDetailPrefetchEvent[] = []
-    const createCache = () =>
-      new DetailResourceCache<number, { description: string }>({
-        fetchDetail: vi.fn(async () => ({ description: 'Kravtext' })),
-        keyOf: String,
-        onEvent: event => events.push(event),
-      })
-    const first = createCache()
-    const second = createCache()
-
-    await first.load(401, 'prefetch', context)
-    await second.load(402, 'prefetch', context)
-    first.clear()
-    second.clear()
-
-    expect(summarizeRequirementDetailPrefetchEvents(events)).toMatchObject({
-      classified: 2,
-      duplicateOutcomes: 0,
-      orphanOutcomes: 0,
-      started: 2,
-      unresolved: 0,
-      unused: 2,
-    })
   })
 
   it('dispatches content-free events only when a browser window exists', () => {
@@ -633,41 +543,5 @@ describe('detail cache browser adapters', () => {
       message: 'Detail request failed (404)',
       status: 404,
     })
-  })
-
-  it('keeps synthetic latency validation abortable and outside normal builds', async () => {
-    vi.useFakeTimers()
-    vi.stubEnv('NEXT_PUBLIC_VALIDATE_REQUIREMENT_DETAIL_PREFETCH', 'true')
-    vi.stubEnv(
-      'NEXT_PUBLIC_REQUIREMENT_DETAIL_PREFETCH_SYNTHETIC_LATENCY_MS',
-      '75',
-    )
-    vi.resetModules()
-    const [{ apiFetch: isolatedApiFetch }, prefetchModule] = await Promise.all([
-      import('@/lib/http/api-fetch'),
-      import('@/lib/requirements/detail-prefetch'),
-    ])
-    vi.mocked(isolatedApiFetch)
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 106 })))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 107 })))
-    const cache = prefetchModule.createLibraryRequirementDetailCache()
-
-    const delayed = cache.load(106, 'activate', context)
-    let settled = false
-    void delayed.then(() => {
-      settled = true
-    })
-    await vi.advanceTimersByTimeAsync(74)
-    expect(settled).toBe(false)
-    await vi.advanceTimersByTimeAsync(1)
-    await expect(delayed).resolves.toEqual({ id: 106 })
-
-    const aborted = cache.load(107, 'activate', context)
-    await vi.advanceTimersByTimeAsync(1)
-    cache.invalidate(107, context)
-    await expect(aborted).rejects.toMatchObject({ name: 'AbortError' })
-
-    vi.unstubAllEnvs()
-    vi.useRealTimers()
   })
 })
