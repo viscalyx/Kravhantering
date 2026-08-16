@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   RuntimeAuthConfigError,
   startRuntime,
-  validateRuntimeAuthEnvironment,
 } from '../../containers/app/start-runtime.mjs'
 import {
   SHIPPED_OIDC_CLIENT_SECRET_SENTINELS,
@@ -37,15 +36,17 @@ function productionAuthEnv() {
 describe('application runtime startup', () => {
   it.each(SHIPPED_AUTH_SECRET_SENTINELS)(
     'rejects shipped %s sentinel without exposing it',
-    (field, sentinel) => {
+    async (field, sentinel) => {
       const env = { ...productionAuthEnv(), [field]: sentinel }
+      const loadServer = vi.fn()
 
       try {
-        validateRuntimeAuthEnvironment(env)
+        await startRuntime({ env, loadServer })
       } catch (error) {
         expect(error).toBeInstanceOf(RuntimeAuthConfigError)
         expect(error.message).toContain(field)
         expect(error.message).not.toContain(sentinel)
+        expect(loadServer).not.toHaveBeenCalled()
         return
       }
 

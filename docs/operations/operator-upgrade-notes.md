@@ -215,9 +215,9 @@ Rotating it intentionally invalidates all outstanding validation tokens.
 Before the upgrade, decide whether the MCP surface must be enabled. If it is
 enabled, update the identity provider and application configuration together.
 MCP service tokens must identify the approved service client, use the
-access-token class, contain every required scope, and have a short lifetime. An
-incomplete enabled configuration makes the application not ready, and old
-token shapes are rejected.
+access-token class, contain every required scope and the configured role claim,
+and have a short lifetime. An incomplete enabled configuration makes the
+application not ready, and old token shapes are rejected.
 
 If MCP is not used, leave the MCP service client unconfigured. The MCP endpoint
 then returns `404` while the rest of the application remains available. During
@@ -229,10 +229,10 @@ MCP clients.
 Before upgrade, review every MCP integration. The MCP endpoint is disabled
 unless an approved service client is configured. For enabled deployments,
 update the identity provider and MCP clients so that service tokens use the
-approved client, access-token class, required scope, configured role claim, and
-approved short lifetime. Existing tokens that do not meet this contract will
-be rejected. After rollout, confirm readiness and request a new service token
-before running MCP work.
+approved service client and access-token class, contain every required scope and
+the configured role claim, and have an approved short lifetime. Existing tokens
+that do not meet this contract will be rejected. After rollout, confirm
+readiness and request a new service token before running MCP work.
 
 Raw AI safety forensic capture is disabled by default for fresh installations.
 Upgrades preserve the stored setting. Review the AI setting in Admin Center and
