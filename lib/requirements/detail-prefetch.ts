@@ -7,28 +7,9 @@ import type {
 
 export const REQUIREMENT_DETAIL_PREFETCH_ENABLED =
   process.env.NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH === 'true'
-export const REQUIREMENT_DETAIL_PREFETCH_VALIDATION_ENABLED =
-  process.env.NEXT_PUBLIC_VALIDATE_REQUIREMENT_DETAIL_PREFETCH === 'true'
-export const REQUIREMENT_DETAIL_PREFETCH_SYNTHETIC_LATENCY_MS = Math.max(
-  0,
-  Number(
-    process.env.NEXT_PUBLIC_REQUIREMENT_DETAIL_PREFETCH_SYNTHETIC_LATENCY_MS ??
-      0,
-  ) || 0,
-)
 
 export function isRequirementDetailPrefetchEnabled(): boolean {
-  if (!REQUIREMENT_DETAIL_PREFETCH_ENABLED) return false
-  if (
-    !REQUIREMENT_DETAIL_PREFETCH_VALIDATION_ENABLED ||
-    typeof window === 'undefined'
-  ) {
-    return true
-  }
-  const validationWindow = window as typeof window & {
-    __requirementDetailPrefetchValidationOverride?: boolean
-  }
-  return validationWindow.__requirementDetailPrefetchValidationOverride ?? true
+  return REQUIREMENT_DETAIL_PREFETCH_ENABLED
 }
 
 export type RequirementDetailResource =
@@ -96,98 +77,7 @@ export type RequirementDetailPrefetchEvent =
       | 'unused'
   }
 
-export interface RequirementDetailPrefetchSummary {
-  classified: number
-  duplicateOutcomes: number
-  orphanOutcomes: number
-  outcomes: Record<RequirementDetailPrefetchOutcome, number>
-  started: number
-  unresolved: number
-  unused: number
-  unusedRate: number | null
-  used: number
-}
-
-const EMPTY_PREFETCH_OUTCOME_COUNTS: Record<
-  RequirementDetailPrefetchOutcome,
-  number
-> = {
-  'capacity-evicted-unused': 0,
-  'cleared-unused': 0,
-  'expired-unused': 0,
-  'failed-unused': 0,
-  'invalidated-unused': 0,
-  'page-disposed-unused': 0,
-  used: 0,
-}
-
 let requirementDetailPrefetchSequence = 0
-
-function prefetchEventIdentity(event: RequirementDetailPrefetchEvent) {
-  return event.prefetchId === undefined
-    ? null
-    : `${event.surface}:${event.resource}:${event.prefetchId}`
-}
-
-export function summarizeRequirementDetailPrefetchEvents(
-  events: RequirementDetailPrefetchEvent[],
-): RequirementDetailPrefetchSummary {
-  const starts = new Set<string>()
-  const outcomesByPrefetch = new Map<
-    string,
-    RequirementDetailPrefetchOutcome[]
-  >()
-  const outcomes = { ...EMPTY_PREFETCH_OUTCOME_COUNTS }
-
-  for (const event of events) {
-    const identity = prefetchEventIdentity(event)
-    if (identity === null) continue
-    if (event.type === 'prefetch-started') {
-      starts.add(identity)
-      continue
-    }
-    if (event.type !== 'prefetch-outcome' || event.outcome === undefined) {
-      continue
-    }
-    const recorded = outcomesByPrefetch.get(identity) ?? []
-    recorded.push(event.outcome)
-    outcomesByPrefetch.set(identity, recorded)
-    outcomes[event.outcome] += 1
-  }
-
-  let duplicateOutcomes = 0
-  let orphanOutcomes = 0
-  for (const [identity, recorded] of outcomesByPrefetch) {
-    duplicateOutcomes += Math.max(0, recorded.length - 1)
-    if (!starts.has(identity)) orphanOutcomes += recorded.length
-  }
-
-  let unresolved = 0
-  let used = 0
-  let unused = 0
-  for (const identity of starts) {
-    const recorded = outcomesByPrefetch.get(identity) ?? []
-    if (recorded.length === 0) {
-      unresolved += 1
-    } else if (recorded.length === 1 && recorded[0] === 'used') {
-      used += 1
-    } else if (recorded.length === 1) {
-      unused += 1
-    }
-  }
-
-  return {
-    classified: starts.size - unresolved,
-    duplicateOutcomes,
-    orphanOutcomes,
-    outcomes,
-    started: starts.size,
-    unresolved,
-    unused,
-    unusedRate: starts.size === 0 ? null : unused / starts.size,
-    used,
-  }
-}
 
 interface PendingIntent {
   startedAt: number
@@ -197,7 +87,6 @@ interface PendingIntent {
 
 interface DetailPrefetchIntentControllerOptions {
   onEvent?: (event: RequirementDetailPrefetchEvent) => void
-  onPendingChange?: (pending: DetailPrefetchIntentTarget[]) => void
 }
 
 export class DetailPrefetchIntentController {
@@ -208,14 +97,10 @@ export class DetailPrefetchIntentController {
   private readonly onEvent: NonNullable<
     DetailPrefetchIntentControllerOptions['onEvent']
   >
-  private readonly onPendingChange: NonNullable<
-    DetailPrefetchIntentControllerOptions['onPendingChange']
-  >
   private readonly pending = new Map<string, PendingIntent>()
 
   constructor(options: DetailPrefetchIntentControllerOptions = {}) {
     this.onEvent = options.onEvent ?? emitRequirementDetailPrefetchEvent
-    this.onPendingChange = options.onPendingChange ?? (() => undefined)
   }
 
   schedule(target: DetailPrefetchIntentTarget, prefetch: () => void) {
@@ -225,13 +110,11 @@ export class DetailPrefetchIntentController {
     const startedAt = performance.now()
     const timer = setTimeout(() => {
       this.pending.delete(intentKey)
-      this.notifyPendingChange()
       prefetch()
     }, 150)
     this.pending.set(intentKey, { startedAt, target, timer })
     this.latestIntent.set(intentKey, { startedAt, target })
     this.emit('timer-started', target)
-    this.notifyPendingChange()
   }
 
   cancel(target: DetailPrefetchIntentTarget) {
@@ -270,7 +153,6 @@ export class DetailPrefetchIntentController {
     }
     this.pending.clear()
     this.latestIntent.clear()
-    this.notifyPendingChange()
   }
 
   private cancelPending(target: DetailPrefetchIntentTarget) {
@@ -280,7 +162,6 @@ export class DetailPrefetchIntentController {
     clearTimeout(pending.timer)
     this.pending.delete(intentKey)
     this.emit('timer-cancelled', target, performance.now() - pending.startedAt)
-    this.notifyPendingChange()
   }
 
   private emit(
@@ -297,12 +178,6 @@ export class DetailPrefetchIntentController {
       trigger: target.trigger,
       type,
     })
-  }
-
-  private notifyPendingChange() {
-    this.onPendingChange(
-      [...this.pending.values()].map(pending => pending.target),
-    )
   }
 }
 
@@ -571,34 +446,7 @@ async function readDetailResponse<Value>(
       response.statusText || `Detail request failed (${response.status})`,
     )
   }
-  if (
-    REQUIREMENT_DETAIL_PREFETCH_VALIDATION_ENABLED &&
-    REQUIREMENT_DETAIL_PREFETCH_SYNTHETIC_LATENCY_MS > 0
-  ) {
-    await waitForSyntheticLatency(
-      REQUIREMENT_DETAIL_PREFETCH_SYNTHETIC_LATENCY_MS,
-      signal,
-    )
-  }
   return (await response.json()) as Value
-}
-
-function waitForSyntheticLatency(durationMs: number, signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    const onAbort = () => {
-      clearTimeout(timer)
-      reject(new DOMException('Aborted', 'AbortError'))
-    }
-    const timer = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort)
-      resolve()
-    }, durationMs)
-    if (signal.aborted) {
-      onAbort()
-      return
-    }
-    signal.addEventListener('abort', onAbort, { once: true })
-  })
 }
 
 export function createLibraryRequirementDetailCache() {

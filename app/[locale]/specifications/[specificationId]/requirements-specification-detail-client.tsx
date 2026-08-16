@@ -46,10 +46,6 @@ import LazyAiRequirementGenerator from '@/components/LazyAiRequirementGenerator'
 import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
-import {
-  RequirementDetailPrefetchValidation,
-  useRequirementDetailPrefetchIntent,
-} from '@/components/RequirementDetailPrefetchValidation'
 import RequirementsTable, {
   type FloatingActionItem,
   type FloatingActionMenuItem,
@@ -62,6 +58,7 @@ import SpecificationLocalRequirementForm, {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
+import { useRequirementDetailPrefetchIntent } from '@/hooks/useRequirementDetailPrefetchIntent'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
@@ -555,7 +552,6 @@ export default function KravunderlagDetailClient({
   const {
     activate: activateDetailIntent,
     cancel: cancelDetailIntent,
-    pending: pendingDetailIntents,
     schedule: scheduleDetailIntent,
   } = useRequirementDetailPrefetchIntent()
   useEffect(
@@ -4848,7 +4844,6 @@ export default function KravunderlagDetailClient({
       />
       {needsReferenceFormModal}
       {generatedOutputDownload.dialog}
-      <RequirementDetailPrefetchValidation pending={pendingDetailIntents} />
     </>
   )
 }

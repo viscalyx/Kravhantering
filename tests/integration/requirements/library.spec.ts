@@ -142,15 +142,9 @@ test.describe('Requirements library', () => {
     const row = rowButton.locator('xpath=ancestor::tr[1]')
 
     await row.hover()
-    await expect(
-      page.locator('[data-prefetch-intent-indicator="true"]'),
-    ).toBeVisible()
     await page.mouse.move(0, 0)
     await delay(100)
     expect(detailRequests).toBe(0)
-    await expect(
-      page.locator('[data-prefetch-intent-indicator="true"]'),
-    ).toHaveCount(0)
 
     await row.hover()
     await expect.poll(() => detailRequests).toBe(1)
