@@ -10,18 +10,9 @@ import {
   emitRequirementDetailPrefetchEvent,
   type RequirementDetailPrefetchEvent,
 } from '@/lib/requirements/detail-prefetch'
+import { deferred } from '@/tests/helpers/deferred'
 
 vi.mock('@/lib/http/api-fetch', () => ({ apiFetch: vi.fn() }))
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise
-    reject = rejectPromise
-  })
-  return { promise, reject, resolve }
-}
 
 const context = {
   resource: 'library-requirement' as const,
@@ -248,10 +239,9 @@ describe('DetailResourceCache', () => {
     const signals: AbortSignal[] = []
     const events: RequirementDetailPrefetchEvent[] = []
     const fetchDetail = vi
-      .fn((_: number, signal: AbortSignal) => {
-        signals.push(signal)
-        return pendingRequest.promise
-      })
+      .fn<
+        (key: number, signal: AbortSignal) => Promise<{ description: string }>
+      >()
       .mockImplementationOnce((_: number, signal: AbortSignal) => {
         signals.push(signal)
         return pendingRequest.promise
@@ -550,13 +540,21 @@ describe('detail cache browser adapters', () => {
       type: 'prefetch-started' as const,
     }
     const listener = vi.fn()
-    window.addEventListener('krav:requirement-detail-prefetch', listener)
+    const browserWindow = window
+    browserWindow.addEventListener('krav:requirement-detail-prefetch', listener)
 
-    emitRequirementDetailPrefetchEvent(event)
-    expect(listener).toHaveBeenCalledTimes(1)
+    try {
+      emitRequirementDetailPrefetchEvent(event)
+      expect(listener).toHaveBeenCalledTimes(1)
 
-    vi.stubGlobal('window', undefined)
-    expect(() => emitRequirementDetailPrefetchEvent(event)).not.toThrow()
+      vi.stubGlobal('window', undefined)
+      expect(() => emitRequirementDetailPrefetchEvent(event)).not.toThrow()
+    } finally {
+      browserWindow.removeEventListener(
+        'krav:requirement-detail-prefetch',
+        listener,
+      )
+    }
   })
 
   it('loads library and specification-local details through their API paths', async () => {

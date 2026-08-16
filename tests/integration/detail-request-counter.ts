@@ -17,6 +17,7 @@ export async function countDetailRequests(
 ): Promise<DetailRequestCounter> {
   let count = 0
   let holdNextRequest = false
+  let releaseRequested = false
   let releaseHeldRequest: (() => void) | null = null
   let signalHeldRequest: (() => void) | null = null
 
@@ -24,9 +25,12 @@ export async function countDetailRequests(
     count += 1
     if (holdNextRequest) {
       holdNextRequest = false
-      const heldRequest = new Promise<void>(resolve => {
-        releaseHeldRequest = resolve
-      })
+      const heldRequest = releaseRequested
+        ? Promise.resolve()
+        : new Promise<void>(resolve => {
+            releaseHeldRequest = resolve
+          })
+      releaseRequested = false
       signalHeldRequest?.()
       signalHeldRequest = null
       await heldRequest
@@ -47,9 +51,16 @@ export async function countDetailRequests(
       const started = new Promise<void>(resolve => {
         signalHeldRequest = resolve
       })
+      let released = false
       return {
         release() {
-          releaseHeldRequest?.()
+          if (released) return
+          released = true
+          if (releaseHeldRequest) {
+            releaseHeldRequest()
+          } else {
+            releaseRequested = true
+          }
         },
         started,
       }

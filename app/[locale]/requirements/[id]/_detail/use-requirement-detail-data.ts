@@ -71,6 +71,7 @@ export function useRequirementDetailData({
               res.statusText || res.status,
             )
             setRequirement(null)
+            hasDataRef.current = false
             return
           }
           detail = (await res.json()) as RequirementDetailResponse

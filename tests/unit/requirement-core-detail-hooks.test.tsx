@@ -14,16 +14,7 @@ import { useVersionPillConnector } from '@/app/[locale]/requirements/[id]/_detai
 import { useDetailActionMenu } from '@/app/[locale]/requirements/[id]/_detail/useDetailActionMenu'
 import { DetailResourceCache } from '@/lib/requirements/detail-prefetch'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise
-    reject = rejectPromise
-  })
-  return { promise, reject, resolve }
-}
+import { deferred } from '@/tests/helpers/deferred'
 
 function jsonResponse(
   body: unknown,
@@ -227,6 +218,42 @@ describe('requirement detail core hooks', () => {
 
     expect(result.current.requirement?.uniqueId).toBe('REQ-43')
     expect(consoleError).not.toHaveBeenCalled()
+  })
+
+  it('re-enters loading after a failed refresh clears loaded detail', async () => {
+    const nextRequest = deferred<Response>()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 46, uniqueId: 'REQ-46', versions: [] }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({}, { ok: false, status: 503, statusText: '' }),
+      )
+      .mockReturnValueOnce(nextRequest.promise)
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const { result } = renderHook(() =>
+      useRequirementDetailData({ requirementId: 46 }),
+    )
+    await waitFor(() => expect(result.current.requirement?.id).toBe(46))
+
+    await act(async () => result.current.refreshRequirement())
+    expect(result.current.requirement).toBeNull()
+
+    let reload!: Promise<void>
+    act(() => {
+      reload = result.current.refreshRequirement()
+    })
+    expect(result.current.loading).toBe(true)
+
+    nextRequest.resolve(
+      jsonResponse({ id: 46, uniqueId: 'REQ-46', versions: [] }),
+    )
+    await act(async () => reload)
+    expect(result.current.loading).toBe(false)
+    expect(result.current.requirement?.id).toBe(46)
   })
 
   it('clears detail and transition state on response and transport failures', async () => {

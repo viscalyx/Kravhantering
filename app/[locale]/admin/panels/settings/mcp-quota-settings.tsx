@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import FieldHelpButton from '@/components/FieldHelpButton'
 import type { AdminAiSettings } from '@/lib/ai/generation-availability'
@@ -52,6 +52,7 @@ export default function McpQuotaSettings({
   const tc = useTranslations('common')
   const [helpOpen, setHelpOpen] = useState<McpQuotaSettingKey | null>(null)
   const [inputs, setInputs] = useState(() => settingInputs(settings))
+  const previousSettingInputsRef = useRef(settingInputs(settings))
   const cards: Array<{
     displayDivisor: number
     help: string
@@ -94,7 +95,32 @@ export default function McpQuotaSettings({
     },
   ]
 
-  useEffect(() => setInputs(settingInputs(settings)), [settings])
+  useEffect(() => {
+    const previous = previousSettingInputsRef.current
+    const next = settingInputs(settings)
+    setInputs(current => ({
+      mcpImportMaxActiveSessionsPerDestination:
+        current.mcpImportMaxActiveSessionsPerDestination ===
+        previous.mcpImportMaxActiveSessionsPerDestination
+          ? next.mcpImportMaxActiveSessionsPerDestination
+          : current.mcpImportMaxActiveSessionsPerDestination,
+      mcpImportMaxActiveSessionsPerPrincipal:
+        current.mcpImportMaxActiveSessionsPerPrincipal ===
+        previous.mcpImportMaxActiveSessionsPerPrincipal
+          ? next.mcpImportMaxActiveSessionsPerPrincipal
+          : current.mcpImportMaxActiveSessionsPerPrincipal,
+      mcpImportMaxCreationsPerWindow:
+        current.mcpImportMaxCreationsPerWindow ===
+        previous.mcpImportMaxCreationsPerWindow
+          ? next.mcpImportMaxCreationsPerWindow
+          : current.mcpImportMaxCreationsPerWindow,
+      mcpImportMaxReservedBytes:
+        current.mcpImportMaxReservedBytes === previous.mcpImportMaxReservedBytes
+          ? next.mcpImportMaxReservedBytes
+          : current.mcpImportMaxReservedBytes,
+    }))
+    previousSettingInputsRef.current = next
+  }, [settings])
 
   return cards.map(card => {
     const constraint = constraints[card.key]
