@@ -64,9 +64,7 @@ async function collapsePackageFilter(page: Page) {
   const packageFilter = page.getByRole('button', {
     name: 'Filtrera kravpaket',
   })
-  if ((await packageFilter.getAttribute('aria-expanded')) === 'true') {
-    await packageFilter.click()
-  }
+  await packageFilter.press('Escape')
   await expect(packageFilter).toHaveAttribute('aria-expanded', 'false')
 }
 
