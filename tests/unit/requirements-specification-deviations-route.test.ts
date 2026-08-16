@@ -51,7 +51,10 @@ describe('requirements specification deviations route', () => {
     const response = await GET(request as never, params('7'))
 
     expect(response.status).toBe(404)
-    await expect(response.json()).resolves.toEqual({ error: 'Not found' })
+    await expect(response.json()).resolves.toEqual({
+      code: 'not_found',
+      error: 'Not found',
+    })
     expect(routeState.listDeviationsForSpecification).not.toHaveBeenCalled()
   })
 

@@ -185,7 +185,12 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     )
 
     expect(missingDetail.status).toBe(404)
+    await expect(missingDetail.json()).resolves.toEqual({ error: 'Not found' })
     expect(missingSpecification.status).toBe(404)
+    await expect(missingSpecification.json()).resolves.toEqual({
+      code: 'not_found',
+      error: 'Not found',
+    })
   })
 
   it('rejects invalid detail route parameters before querying', async () => {

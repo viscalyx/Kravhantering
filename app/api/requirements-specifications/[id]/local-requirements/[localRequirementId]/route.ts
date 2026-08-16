@@ -91,9 +91,6 @@ async function getHandler(
 
     return NextResponse.json(requirement)
   } catch (error) {
-    if (isRequirementsServiceError(error) && error.code === 'not_found') {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
     if (!isRequirementsServiceError(error)) throw error
     const { body, status } = toHttpErrorPayload(error)
     return NextResponse.json(body, { status })
