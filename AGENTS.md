@@ -23,4 +23,8 @@ Follow the rules in `.github/copilot-instructions.md` and the instructions in `.
 
 ### Issue tracker
 
-Issues are tracked as GitHub issues in repository `viscalyx/Kravhantering`.
+Issues (tickets) are tracked as GitHub issues in repository `viscalyx/Kravhantering`.
+
+- For multiline GitHub Markdown, use `gh ... --body-file -` with a
+  single-quoted heredoc, then verify real line breaks with
+  `gh ... view --json body --jq .body` before finishing.
