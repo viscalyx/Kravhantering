@@ -63,14 +63,19 @@ async function filterRequirementId(
 async function visiblePointerPoint(target: Locator) {
   await expect(target).toBeVisible()
   return target.evaluate(element => {
+    element.scrollIntoView({ block: 'center', inline: 'center' })
+
     const rect = element.getBoundingClientRect()
-    const x = rect.left + rect.width / 2
+    const firstX = Math.max(1, Math.ceil(rect.left) + 1)
+    const lastX = Math.min(window.innerWidth - 1, Math.floor(rect.right) - 1)
     const firstY = Math.max(1, Math.ceil(rect.top) + 1)
     const lastY = Math.min(window.innerHeight - 1, Math.floor(rect.bottom) - 1)
 
     for (let y = firstY; y <= lastY; y += 1) {
-      const hit = document.elementFromPoint(x, y)
-      if (hit === element || (hit && element.contains(hit))) return { x, y }
+      for (let x = firstX; x <= lastX; x += 1) {
+        const hit = document.elementFromPoint(x, y)
+        if (hit === element || (hit && element.contains(hit))) return { x, y }
+      }
     }
 
     throw new Error('Requirement row button has no hit-testable pointer point.')
