@@ -103,4 +103,14 @@ describe('requirements specification deviations route', () => {
     expect(routeState.countDeviationsBySpecification).not.toHaveBeenCalled()
     expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
+
+  it('rethrows unexpected authorization failures before reading deviations', async () => {
+    routeState.authorize.mockRejectedValueOnce(new Error('database offline'))
+
+    await expect(GET(request as never, params('7'))).rejects.toThrow(
+      'database offline',
+    )
+    expect(routeState.listDeviationsForSpecification).not.toHaveBeenCalled()
+    expect(routeState.countDeviationsBySpecification).not.toHaveBeenCalled()
+  })
 })

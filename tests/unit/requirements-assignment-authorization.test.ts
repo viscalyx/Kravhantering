@@ -971,6 +971,60 @@ describe('SqlAssignmentLookup', () => {
     })
   })
 
+  it('validates specification deviation collection targets', async () => {
+    const existing = makeDb([[{ specificationId: 42 }]])
+    await expect(
+      new SqlAssignmentLookup(existing.db).resolveSpecificationChildTarget({
+        childKind: 'deviation_collection',
+        kind: 'get_specification_child',
+        specificationId: 42,
+      }),
+    ).resolves.toBe(42)
+
+    await expect(
+      new SqlAssignmentLookup(makeDb([[]]).db).resolveSpecificationChildTarget({
+        childKind: 'deviation_collection',
+        kind: 'get_specification_child',
+        specificationId: 404,
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+
+    await expect(
+      new SqlAssignmentLookup(makeDb().db).resolveSpecificationChildTarget({
+        childKind: 'deviation_collection',
+        kind: 'get_specification_child',
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_specification_reference' },
+    })
+  })
+
+  it('validates direct specification child targets and missing rows', async () => {
+    const lookup = new SqlAssignmentLookup(makeDb().db)
+    await expect(
+      lookup.resolveSpecificationChildTarget({
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_specification_child_reference' },
+    })
+    await expect(
+      lookup.resolveSpecificationChildTarget({
+        childId: 5,
+        childKind: 'deviation',
+        kind: 'get_specification_child',
+      }),
+    ).rejects.toMatchObject({ details: { reason: 'missing_deviation_kind' } })
+    await expect(
+      new SqlAssignmentLookup(makeDb([[]]).db).resolveSpecificationChildTarget({
+        childId: 404,
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+  })
+
   it('resolves direct child parents through the lookup contract', async () => {
     const cases = [
       {
@@ -1031,6 +1085,31 @@ describe('SqlAssignmentLookup', () => {
       5,
       STATUS_PUBLISHED,
     ])
+
+    await expect(
+      new SqlAssignmentLookup(
+        makeDb([
+          [
+            {
+              areaId: 7,
+              hasPublishedVersion: 0,
+              id: 12,
+              latestStatusId: null,
+              uniqueId: 'INT0012',
+            },
+          ],
+        ]).db,
+      ).resolveSuggestionRequirementTarget(6),
+    ).resolves.toMatchObject({
+      hasPublishedVersion: false,
+      latestStatusId: null,
+    })
+
+    await expect(
+      new SqlAssignmentLookup(
+        makeDb([[]]).db,
+      ).resolveSuggestionRequirementTarget(404),
+    ).rejects.toMatchObject({ code: 'not_found' })
   })
 
   it('resolves typed library deviations without querying the local table', async () => {

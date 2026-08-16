@@ -355,6 +355,44 @@ describe('deviation mutation routes', () => {
     expect(
       routeState.listDeviationsForSpecificationLocalRequirement,
     ).toHaveBeenCalledWith(mockDb, 8)
+    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        childId: 8,
+        childKind: 'specification_local_requirement',
+        kind: 'get_specification_child',
+      },
+      expect.any(Object),
+    )
+  })
+
+  it('lists deviations for a stable library requirement reference', async () => {
+    routeState.listDeviationsForSpecificationItem.mockResolvedValueOnce([
+      { id: 6, motivation: 'Library item deviation' },
+    ])
+    const { GET } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await GET(
+      new Request(
+        'https://example.test/api/specification-item-deviations/lib%3A7',
+      ) as never,
+      params({ itemId: 'lib%3A7' }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(routeState.listDeviationsForSpecificationItem).toHaveBeenCalledWith(
+      mockDb,
+      7,
+    )
+    expect(routeState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        childId: 7,
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+      },
+      expect.any(Object),
+    )
   })
 
   it.each(['%', '0', '999999999999999999999'])(
@@ -397,6 +435,28 @@ describe('deviation mutation routes', () => {
       error: 'Internal server error',
     })
     expect(consoleError).toHaveBeenCalled()
+  })
+
+  it('maps domain failures while listing requirement application deviations', async () => {
+    routeState.listDeviationsForSpecificationItem.mockRejectedValueOnce(
+      notFoundError('Specification item not found'),
+    )
+    const { GET } = await import(
+      '@/app/api/specification-item-deviations/[itemId]/route'
+    )
+
+    const response = await GET(
+      new Request(
+        'https://example.test/api/specification-item-deviations/7',
+      ) as never,
+      params({ itemId: '7' }),
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      code: 'not_found',
+      error: 'Specification item not found',
+    })
   })
 
   it('creates a deviation for a numeric requirement application', async () => {

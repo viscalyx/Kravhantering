@@ -168,6 +168,22 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
     expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 
+  it('rethrows unexpected authorization failures before reading local requirement details', async () => {
+    authState.assertAuthorized.mockRejectedValueOnce(
+      new Error('database offline'),
+    )
+
+    await expect(
+      GET(
+        new NextRequest(
+          'http://localhost/api/requirements-specifications/5/local-requirements/41',
+        ),
+        makeParams('5', '41'),
+      ),
+    ).rejects.toThrow('database offline')
+    expect(mocks.getSpecificationLocalRequirementDetail).not.toHaveBeenCalled()
+  })
+
   it('returns not found when the detail or owning specification is missing', async () => {
     mocks.getSpecificationLocalRequirementDetail.mockResolvedValueOnce(null)
     const missingDetail = await GET(
