@@ -58,7 +58,10 @@ vi.mock('@/lib/requirements/security-audit', () => ({
     audit.recordSensitiveMutationSecurityEvent,
 }))
 
-import { createRequirementApplicationMutationWorkflow } from '@/lib/requirements/requirement-application-mutations'
+import {
+  createRequirementApplicationMutationWorkflow,
+  resolveRequirementApplicationMutationTarget,
+} from '@/lib/requirements/requirement-application-mutations'
 
 const context = {
   actor: {
@@ -103,8 +106,12 @@ function makeWorkflow() {
 describe('requirement application mutation workflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    dal.deleteLibrarySpecificationItemsByIds.mockResolvedValue(1)
-    dal.deleteSpecificationLocalRequirementsByIds.mockResolvedValue(1)
+    dal.deleteLibrarySpecificationItemsByIds.mockImplementation(
+      async (_db, _specificationId, ids: number[]) => ids.length,
+    )
+    dal.deleteSpecificationLocalRequirementsByIds.mockImplementation(
+      async (_db, _specificationId, ids: number[]) => ids.length,
+    )
     dal.findSpecificationIdentity.mockResolvedValue({ id: 5 })
     dal.findSpecificationNeedsReferenceIdentity.mockResolvedValue({ id: 7 })
     dal.getSpecificationItemById.mockResolvedValue({ specificationId: 5 })
@@ -216,6 +223,83 @@ describe('requirement application mutation workflow', () => {
     expect(dal.deleteSpecificationLocalRequirementsByIds).not.toHaveBeenCalled()
   })
 
+  it.each([
+    { itemRefs: undefined, label: 'absent' },
+    { itemRefs: [] as const, label: 'empty' },
+  ])(
+    'resolves a specification identity when itemRefs are $label',
+    async ({ itemRefs }) => {
+      const { manager } = makeWorkflow()
+
+      await expect(
+        resolveRequirementApplicationMutationTarget(manager, {
+          ...(itemRefs === undefined ? {} : { itemRefs }),
+          kind: 'manage_requirement_applications',
+          operation: 'remove',
+          specificationId: 5,
+        }),
+      ).resolves.toBe(5)
+
+      expect(dal.findSpecificationIdentity).toHaveBeenCalledWith(manager, 5)
+    },
+  )
+
+  it('rejects a missing specification when itemRefs are empty', async () => {
+    const { manager } = makeWorkflow()
+    dal.findSpecificationIdentity.mockResolvedValueOnce(null)
+
+    await expect(
+      resolveRequirementApplicationMutationTarget(manager, {
+        itemRefs: [],
+        kind: 'manage_requirement_applications',
+        operation: 'remove',
+        specificationId: 5,
+      }),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      details: { specificationId: 5 },
+    })
+  })
+
+  it.each([
+    {
+      input: {
+        fields: { note: 'Empty target set' },
+        itemRefs: [],
+        operation: 'update' as const,
+        specificationId: 5,
+      },
+      label: 'update',
+    },
+    {
+      input: {
+        itemRefs: [],
+        operation: 'remove' as const,
+        specificationId: 5,
+      },
+      label: 'remove',
+    },
+  ])(
+    'rejects an empty itemRef $label without success evidence',
+    async testCase => {
+      const { authorization, transaction, workflow } = makeWorkflow()
+
+      await expect(
+        workflow.mutate(context, testCase.input),
+      ).rejects.toMatchObject({
+        code: 'validation',
+        message: 'At least one itemRef must be supplied',
+      })
+
+      expect(authorization.assertAuthorized).toHaveBeenCalledTimes(1)
+      expect(transaction).not.toHaveBeenCalled()
+      expect(
+        audit.recordSensitiveMutationActionAuditEvent,
+      ).not.toHaveBeenCalled()
+      expect(audit.recordSensitiveMutationSecurityEvent).not.toHaveBeenCalled()
+    },
+  )
+
   it('rejects empty update fields before starting a transaction', async () => {
     const { transaction, workflow } = makeWorkflow()
 
@@ -306,6 +390,30 @@ describe('requirement application mutation workflow', () => {
       code: 'conflict',
       details: { reason: 'requirement_applications_changed' },
     })
+    expect(audit.recordSensitiveMutationActionAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('updates a duplicate item reference once and reports a conflict', async () => {
+    const { manager, workflow } = makeWorkflow()
+
+    await expect(
+      workflow.mutate(context, {
+        fields: { note: 'Duplicate update' },
+        itemRefs: ['lib:31', 'lib:31'],
+        operation: 'update',
+        specificationId: 5,
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: { reason: 'requirement_applications_changed' },
+    })
+
+    expect(dal.updateSpecificationItemFields).toHaveBeenCalledTimes(1)
+    expect(dal.updateSpecificationItemFields).toHaveBeenCalledWith(
+      manager,
+      31,
+      { note: 'Duplicate update' },
+    )
     expect(audit.recordSensitiveMutationActionAuditEvent).not.toHaveBeenCalled()
   })
 
@@ -411,6 +519,29 @@ describe('requirement application mutation workflow', () => {
       code: 'conflict',
       details: { reason: 'requirement_applications_changed' },
     })
+    expect(audit.recordSensitiveMutationActionAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('removes a duplicate item reference once and reports a conflict', async () => {
+    const { manager, workflow } = makeWorkflow()
+
+    await expect(
+      workflow.mutate(context, {
+        itemRefs: ['lib:31', 'lib:31'],
+        operation: 'remove',
+        specificationId: 5,
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: { reason: 'requirement_applications_changed' },
+    })
+
+    expect(dal.deleteLibrarySpecificationItemsByIds).toHaveBeenCalledTimes(1)
+    expect(dal.deleteLibrarySpecificationItemsByIds).toHaveBeenCalledWith(
+      manager,
+      5,
+      [31],
+    )
     expect(audit.recordSensitiveMutationActionAuditEvent).not.toHaveBeenCalled()
   })
 })

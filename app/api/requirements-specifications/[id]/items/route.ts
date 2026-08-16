@@ -199,6 +199,7 @@ export const POST = secureMutationRoute({
 
 export const PATCH = secureMutationRoute({
   bodySchema: patchItemsSchema,
+  errorMessage: 'Failed to update requirement applications',
   paramsSchema: specificationParamSchema,
   policy: requirementsMutationPolicy<
     z.infer<typeof patchItemsSchema>,
@@ -230,6 +231,7 @@ export const PATCH = secureMutationRoute({
 
 export const DELETE = secureMutationRoute({
   bodySchema: deleteItemsSchema,
+  errorMessage: 'Failed to remove requirement applications',
   paramsSchema: specificationParamSchema,
   policy: requirementsMutationPolicy<
     z.infer<typeof deleteItemsSchema>,

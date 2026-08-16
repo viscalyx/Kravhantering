@@ -149,8 +149,12 @@ describe('requirements-specifications/[id]/items route', () => {
           : {
               operation: 'remove',
               removedCount: input.itemRefs?.length ?? 2,
-              removedLibraryCount: input.itemRefs ? 1 : 2,
-              removedSpecificationLocalCount: input.itemRefs ? 1 : 0,
+              removedLibraryCount:
+                input.itemRefs?.filter(itemRef => itemRef.startsWith('lib:'))
+                  .length ?? 2,
+              removedSpecificationLocalCount:
+                input.itemRefs?.filter(itemRef => itemRef.startsWith('local:'))
+                  .length ?? 0,
             },
     )
     mocks.removeFromSpecification.mockResolvedValue({
@@ -686,6 +690,39 @@ describe('requirements-specifications/[id]/items route', () => {
     )
   })
 
+  it('returns an update-specific JSON 500 error for unexpected failures', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.mutateRequirementApplications.mockRejectedValueOnce(
+      new Error('update failed'),
+    )
+
+    try {
+      const response = await PATCH(
+        new NextRequest(
+          'http://localhost/api/requirements-specifications/5/items',
+          {
+            body: JSON.stringify({
+              itemRefs: ['lib:31'],
+              needsReferenceId: 7,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'PATCH',
+          },
+        ),
+        makeParams('5'),
+      )
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Failed to update requirement applications',
+      })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
   it('denies a bulk field update before the route workflow starts', async () => {
     mocks.assertAuthorized.mockRejectedValueOnce(
       forbiddenError('Specification author assignment is required', {
@@ -813,7 +850,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
       expect(response.status).toBe(500)
       await expect(response.json()).resolves.toEqual({
-        error: 'Failed to process mutation',
+        error: 'Failed to remove requirement applications',
       })
       expect(mocks.mutateRequirementApplications).toHaveBeenCalled()
     } finally {
@@ -948,7 +985,7 @@ describe('requirements-specifications/[id]/items route', () => {
       expect(serviceFailure.status).toBe(400)
       expect(unexpectedFailure.status).toBe(500)
       await expect(unexpectedFailure.json()).resolves.toEqual({
-        error: 'Failed to process mutation',
+        error: 'Failed to remove requirement applications',
       })
     } finally {
       consoleErrorSpy.mockRestore()

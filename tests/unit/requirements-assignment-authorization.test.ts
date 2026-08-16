@@ -430,11 +430,6 @@ describe('AssignmentBasedAuthorizationService', () => {
 
   it.each([
     { areaAuthor: false, label: 'an unassigned actor', roles: [] },
-    {
-      areaAuthor: false,
-      label: 'an author of another specification',
-      roles: [],
-    },
     { areaAuthor: true, label: 'a requirement-area author', roles: [] },
     { areaAuthor: false, label: 'a Reviewer', roles: ['Reviewer'] },
   ] as const)(

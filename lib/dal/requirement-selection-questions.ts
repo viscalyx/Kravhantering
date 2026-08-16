@@ -2145,8 +2145,7 @@ export async function replaceSpecificationRequirementSelectionAnswersWithExecuto
   options: { confirmHiddenAnswerClear?: boolean } = {},
 ): Promise<void> {
   const answerIds = uniquePositiveIntegers(answerIdsInput)
-  const manager = db
-  const questionRows = (await manager.query(
+  const questionRows = (await db.query(
     `
         SELECT selection_type AS selectionType
         FROM requirement_selection_questions
@@ -2170,7 +2169,7 @@ export async function replaceSpecificationRequirementSelectionAnswersWithExecuto
     })
   }
   if (answerIds.length > 0) {
-    const answerRows = (await manager.query(
+    const answerRows = (await db.query(
       `
           SELECT id, is_no_requirement_selection AS isNoRequirementSelection
           FROM requirement_selection_answers
@@ -2206,7 +2205,7 @@ export async function replaceSpecificationRequirementSelectionAnswersWithExecuto
   }
   const questionsBeforeChange =
     await loadSpecificationRequirementSelectionQuestionsForVisibility(
-      manager,
+      db,
       specificationId,
     )
   const impact = hiddenCurrentSelectionImpact(
@@ -2217,7 +2216,7 @@ export async function replaceSpecificationRequirementSelectionAnswersWithExecuto
   if (!options.confirmHiddenAnswerClear) {
     assertNoHiddenSelectionImpact(impact)
   }
-  await manager.query(
+  await db.query(
     `
         DELETE FROM specification_requirement_selection_answers
         WHERE specification_id = @0
@@ -2227,7 +2226,7 @@ export async function replaceSpecificationRequirementSelectionAnswersWithExecuto
   )
   const now = new Date()
   for (const answerId of answerIds) {
-    await manager.query(
+    await db.query(
       `
           INSERT INTO specification_requirement_selection_answers (
             specification_id,
@@ -2251,7 +2250,7 @@ export async function replaceSpecificationRequirementSelectionAnswersWithExecuto
   }
   if (impact.length > 0) {
     const hiddenQuestionIds = impact.map(item => item.questionId)
-    await manager.query(
+    await db.query(
       `
           UPDATE specification_requirement_selection_answers
           SET is_historical = 1,

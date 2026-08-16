@@ -111,6 +111,17 @@ async function getHandler(
 
 export const GET = withRestResponsePolicy(getHandler)
 
+function decodeItemRef(itemId: string): string {
+  try {
+    return decodeURIComponent(itemId)
+  } catch (decodeError) {
+    if (decodeError instanceof URIError) {
+      throw validationError('Invalid itemId')
+    }
+    throw decodeError
+  }
+}
+
 export const PATCH = secureMutationRoute({
   bodySchema: patchSpecificationItemSchema,
   paramsSchema: specificationItemRefParamSchema,
@@ -118,15 +129,7 @@ export const PATCH = secureMutationRoute({
     z.infer<typeof patchSpecificationItemSchema>,
     z.infer<typeof specificationItemRefParamSchema>
   >(({ params }) => {
-    let itemRef: string
-    try {
-      itemRef = decodeURIComponent(params.itemId)
-    } catch (decodeError) {
-      if (decodeError instanceof URIError) {
-        throw validationError('Invalid itemId')
-      }
-      throw decodeError
-    }
+    const itemRef = decodeItemRef(params.itemId)
     return {
       itemRefs: [itemRef],
       kind: 'manage_requirement_applications',
@@ -135,7 +138,7 @@ export const PATCH = secureMutationRoute({
     }
   }),
   handler: async ({ body, context, db, params, request }) => {
-    const itemRef = decodeURIComponent(params.itemId)
+    const itemRef = decodeItemRef(params.itemId)
     const { service } = await createRequirementsRestRuntime(request, {
       context,
       db,

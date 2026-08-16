@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SqlServerDatabase } from '@/lib/db'
+import { DELETED_USER_INTERNAL_NAME } from '@/lib/privacy/display-name'
 import type {
   AuthorizationService,
   RequestContext,
@@ -152,25 +153,28 @@ describe('specification requirement-selection answer mutation workflow', () => {
     },
     {
       actor: { ...context.actor, id: null },
-      expectedDisplayName: 'no-user',
+      expectedDisplayName: DELETED_USER_INTERNAL_NAME,
     },
-  ])('records the bounded actor display-name fallback', async testCase => {
-    const { manager, workflow } = makeWorkflow()
-    const actorContext = { ...context, actor: testCase.actor }
+  ])(
+    'records the bounded actor display-name fallback $expectedDisplayName',
+    async testCase => {
+      const { manager, workflow } = makeWorkflow()
+      const actorContext = { ...context, actor: testCase.actor }
 
-    await workflow.replace(actorContext, input)
+      await workflow.replace(actorContext, input)
 
-    expect(mocks.replaceAnswers).toHaveBeenCalledWith(
-      manager,
-      7,
-      11,
-      [101, 102],
-      expect.objectContaining({
-        displayName: testCase.expectedDisplayName,
-      }),
-      expect.anything(),
-    )
-  })
+      expect(mocks.replaceAnswers).toHaveBeenCalledWith(
+        manager,
+        7,
+        11,
+        [101, 102],
+        expect.objectContaining({
+          displayName: testCase.expectedDisplayName,
+        }),
+        expect.anything(),
+      )
+    },
+  )
 
   it('does not write success audit evidence when answer replacement fails', async () => {
     const { workflow } = makeWorkflow()

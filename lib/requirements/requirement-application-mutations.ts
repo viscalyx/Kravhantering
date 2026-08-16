@@ -101,7 +101,7 @@ export async function resolveRequirementApplicationMutationTarget(
     { kind: 'manage_requirement_applications' }
   >,
 ): Promise<number> {
-  if (!action.itemRefs) {
+  if (!action.itemRefs || action.itemRefs.length === 0) {
     const specification = await findSpecificationIdentity(
       db,
       action.specificationId,
@@ -114,15 +114,17 @@ export async function resolveRequirementApplicationMutationTarget(
     return specification.id
   }
 
-  for (const target of parseItemRefs(action.itemRefs)) {
+  for (const itemRef of parseItemRefs(action.itemRefs)) {
     const child =
-      target.kind === 'library'
-        ? await getSpecificationItemById(db, target.id)
-        : await getSpecificationLocalRequirementParentById(db, target.id)
+      itemRef.kind === 'library'
+        ? await getSpecificationItemById(db, itemRef.id)
+        : await getSpecificationLocalRequirementParentById(db, itemRef.id)
     if (!child) {
       throw notFoundError('Requirement application not found', {
         itemRef:
-          target.kind === 'library' ? `lib:${target.id}` : `local:${target.id}`,
+          itemRef.kind === 'library'
+            ? `lib:${itemRef.id}`
+            : `local:${itemRef.id}`,
       })
     }
     if (child.specificationId !== action.specificationId) {
@@ -147,13 +149,15 @@ type ParsedRequirementApplicationItemRef = Exclude<
 function parseItemRefs(
   itemRefs: readonly string[],
 ): ParsedRequirementApplicationItemRef[] {
-  return itemRefs.map(itemRef => {
+  const parsedItemRefs = new Map<string, ParsedRequirementApplicationItemRef>()
+  for (const itemRef of itemRefs) {
     const parsed = parseSpecificationItemRef(itemRef)
     if (!parsed) {
       throw validationError('Invalid itemRef', { itemRef })
     }
-    return parsed
-  })
+    parsedItemRefs.set(`${parsed.kind}:${parsed.id}`, parsed)
+  }
+  return [...parsedItemRefs.values()]
 }
 
 function mutationAuditDetail(
@@ -188,6 +192,9 @@ export function createRequirementApplicationMutationWorkflow({
       const action = requirementApplicationMutationAction(input)
       await authorize(authorization, action, context)
 
+      if ('itemRefs' in input && input.itemRefs.length === 0) {
+        throw validationError('At least one itemRef must be supplied')
+      }
       if (
         input.operation === 'update' &&
         Object.keys(input.fields).length === 0
@@ -228,21 +235,21 @@ export function createRequirementApplicationMutationWorkflow({
                 }
 
                 let updatedCount = 0
-                for (const target of targets) {
+                for (const itemRef of targets) {
                   updatedCount +=
-                    target.kind === 'library'
+                    itemRef.kind === 'library'
                       ? await updateSpecificationItemFields(
                           manager,
-                          target.id,
+                          itemRef.id,
                           input.fields,
                         )
                       : await updateSpecificationLocalRequirementFields(
                           manager,
-                          target.id,
+                          itemRef.id,
                           input.fields,
                         )
                 }
-                if (updatedCount !== targets.length) {
+                if (updatedCount !== input.itemRefs.length) {
                   throw conflictError(
                     'Requirement applications changed during update',
                     { reason: 'requirement_applications_changed' },
@@ -288,11 +295,11 @@ export function createRequirementApplicationMutationWorkflow({
               }
 
               const targets = parseItemRefs(input.itemRefs)
-              const libraryIds = targets.flatMap(target =>
-                target.kind === 'library' ? [target.id] : [],
+              const libraryIds = targets.flatMap(itemRef =>
+                itemRef.kind === 'library' ? [itemRef.id] : [],
               )
-              const specificationLocalIds = targets.flatMap(target =>
-                target.kind === 'specificationLocal' ? [target.id] : [],
+              const specificationLocalIds = targets.flatMap(itemRef =>
+                itemRef.kind === 'specificationLocal' ? [itemRef.id] : [],
               )
               const removedLibraryCount =
                 await deleteLibrarySpecificationItemsByIds(
@@ -308,7 +315,7 @@ export function createRequirementApplicationMutationWorkflow({
                 )
               const removedCount =
                 removedLibraryCount + removedSpecificationLocalCount
-              if (removedCount !== targets.length) {
+              if (removedCount !== input.itemRefs.length) {
                 throw conflictError(
                   'Requirement applications changed during removal',
                   { reason: 'requirement_applications_changed' },

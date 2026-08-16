@@ -2310,12 +2310,16 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(transaction).not.toHaveBeenCalled()
     expect(query).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining('DELETE FROM requirements_specification_items'),
+      expect.stringMatching(
+        /DELETE FROM requirements_specification_items[\s\S]*WHERE requirements_specification_id = @0 AND id IN \(@1\)/u,
+      ),
       [5, 31],
     )
     expect(query).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('DELETE FROM specification_local_requirements'),
+      expect.stringMatching(
+        /DELETE FROM specification_local_requirements[\s\S]*WHERE specification_id = @0 AND id IN \(@1\)/u,
+      ),
       [5, 4],
     )
   })
