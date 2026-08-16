@@ -163,7 +163,7 @@
     "@react-pdf/renderer": "^4.5.1",
     "@tailwindcss/typography": "^0.5.20",
     "content-disposition": "^2.0.1",
-    "framer-motion": "^13.0.0",
+    "framer-motion": "^13.1.0",
     "iron-session": "^8.0.4",
     "jose": "^6.2.8",
     "lucide-react": "^1.30.0",
