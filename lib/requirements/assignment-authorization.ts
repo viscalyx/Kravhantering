@@ -10,6 +10,7 @@ import {
   unauthorizedError,
   validationError,
 } from '@/lib/requirements/errors'
+import { resolveRequirementApplicationMutationTarget } from '@/lib/requirements/requirement-application-mutations'
 import {
   STATUS_ARCHIVED,
   STATUS_PUBLISHED,
@@ -49,6 +50,12 @@ export interface AssignmentLookup {
   resolveDeviationTarget(
     action: Extract<RequirementsAction, { kind: 'manage_deviation' }>,
   ): Promise<DeviationTarget>
+  resolveRequirementApplicationMutationTarget(
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_requirement_applications' }
+    >,
+  ): Promise<number>
   resolveRequirementTarget(
     input: RequirementReference,
   ): Promise<RequirementTarget>
@@ -117,6 +124,7 @@ function isAssignmentLookup(value: unknown): value is AssignmentLookup {
     value !== null &&
     'isRequirementAreaAuthor' in value &&
     'isSpecificationAuthor' in value &&
+    'resolveRequirementApplicationMutationTarget' in value &&
     'resolveRequirementTarget' in value &&
     'resolveSpecificationChildTarget' in value &&
     'resolveSuggestionRequirementTarget' in value
@@ -181,6 +189,18 @@ export class SqlAssignmentLookup implements AssignmentLookup {
     throw validationError('Missing specification reference', {
       reason: 'missing_specification_reference',
     })
+  }
+
+  async resolveRequirementApplicationMutationTarget(
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_requirement_applications' }
+    >,
+  ): Promise<number> {
+    return resolveRequirementApplicationMutationTarget(
+      await this.getDb(),
+      action,
+    )
   }
 
   async resolveSpecificationChildTarget(
@@ -611,6 +631,12 @@ export class AssignmentBasedAuthorizationService
       if (hasRole(context, 'Admin')) return
       return this.assertCanReadRequirementTarget(context, target)
     }
+    if (action.kind === 'manage_requirement_applications') {
+      const specificationId =
+        await this.lookup.resolveRequirementApplicationMutationTarget(action)
+      if (hasRole(context, 'Admin')) return
+      return this.assertSpecificationAuthor(context, specificationId)
+    }
 
     if (hasRole(context, 'Admin') && !this.isReviewerOnlyAction(action)) {
       return
@@ -655,6 +681,10 @@ export class AssignmentBasedAuthorizationService
         return this.assertSpecificationAuthor(context, specificationId)
       }
       case 'manage_specification_needs_reference': {
+        const specificationId = await this.lookup.resolveSpecificationId(action)
+        return this.assertSpecificationAuthor(context, specificationId)
+      }
+      case 'manage_specification_requirement_selection_answers': {
         const specificationId = await this.lookup.resolveSpecificationId(action)
         return this.assertSpecificationAuthor(context, specificationId)
       }

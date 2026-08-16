@@ -11,6 +11,7 @@ import type {
   RequestContext,
   RequirementsAction,
 } from '@/lib/requirements/auth'
+import { forbiddenError } from '@/lib/requirements/errors'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
@@ -84,6 +85,9 @@ function makeLookup(
     ),
     resolveRequirementTarget: vi.fn(async () =>
       requirementTarget(options.requirement ?? {}),
+    ),
+    resolveRequirementApplicationMutationTarget: vi.fn(
+      async () => options.specificationId ?? 42,
     ),
     resolveSpecificationId: vi.fn(
       async (input: { specificationId?: number }) =>
@@ -342,6 +346,17 @@ describe('AssignmentBasedAuthorizationService', () => {
       specificationId: 42,
     },
     {
+      itemRefs: ['lib:3'],
+      kind: 'manage_requirement_applications',
+      operation: 'update',
+      specificationId: 42,
+    },
+    {
+      kind: 'manage_specification_requirement_selection_answers',
+      operation: 'replace',
+      specificationId: 42,
+    },
+    {
       kind: 'list_graduation_target_areas',
       localRequirementId: 3,
       specificationId: 42,
@@ -380,6 +395,17 @@ describe('AssignmentBasedAuthorizationService', () => {
       specificationId: 42,
     },
     {
+      itemRefs: ['lib:3', 'local:4'],
+      kind: 'manage_requirement_applications',
+      operation: 'remove',
+      specificationId: 42,
+    },
+    {
+      kind: 'manage_specification_requirement_selection_answers',
+      operation: 'replace',
+      specificationId: 42,
+    },
+    {
       kind: 'list_graduation_target_areas',
       localRequirementId: 3,
       specificationId: 42,
@@ -400,6 +426,113 @@ describe('AssignmentBasedAuthorizationService', () => {
     await expect(
       service.assertAuthorized(action, makeContext([])),
     ).resolves.toBeUndefined()
+  })
+
+  it.each([
+    { areaAuthor: false, label: 'an unassigned actor', roles: [] },
+    {
+      areaAuthor: false,
+      label: 'an author of another specification',
+      roles: [],
+    },
+    { areaAuthor: true, label: 'a requirement-area author', roles: [] },
+    { areaAuthor: false, label: 'a Reviewer', roles: ['Reviewer'] },
+  ] as const)(
+    'denies specification child writes for $label',
+    async ({ areaAuthor, roles }) => {
+      const { service } = makeService({ areaAuthor, specAuthor: false })
+      const actions: RequirementsAction[] = [
+        {
+          itemRefs: ['lib:3'],
+          kind: 'manage_requirement_applications',
+          operation: 'update',
+          specificationId: 42,
+        },
+        {
+          kind: 'manage_specification_requirement_selection_answers',
+          operation: 'replace',
+          specificationId: 42,
+        },
+      ]
+
+      for (const action of actions) {
+        await expect(
+          service.assertAuthorized(action, makeContext([...roles])),
+        ).rejects.toMatchObject({
+          code: 'forbidden',
+          details: { reason: 'specification_author_required' },
+        })
+      }
+    },
+  )
+
+  it('allows Admin to change requirement applications and saved answers', async () => {
+    const { service } = makeService()
+
+    await expect(
+      service.assertAuthorized(
+        {
+          itemRefs: ['lib:3'],
+          kind: 'manage_requirement_applications',
+          operation: 'update',
+          specificationId: 42,
+        },
+        makeContext(['Admin']),
+      ),
+    ).resolves.toBeUndefined()
+    await expect(
+      service.assertAuthorized(
+        {
+          kind: 'manage_specification_requirement_selection_answers',
+          operation: 'replace',
+          specificationId: 42,
+        },
+        makeContext(['Admin']),
+      ),
+    ).resolves.toBeUndefined()
+  })
+
+  it('resolves the stored parent before an Admin requirement-application mutation shortcut', async () => {
+    const { lookup, service } = makeService({ specificationId: 42 })
+    const action: RequirementsAction = {
+      itemRefs: ['lib:3'],
+      kind: 'manage_requirement_applications',
+      operation: 'update',
+      specificationId: 42,
+    }
+
+    await expect(
+      service.assertAuthorized(action, makeContext(['Admin'])),
+    ).resolves.toBeUndefined()
+    expect(
+      lookup.resolveRequirementApplicationMutationTarget,
+    ).toHaveBeenCalledWith(action)
+    expect(lookup.isSpecificationAuthor).not.toHaveBeenCalled()
+  })
+
+  it('rejects a claimed parent mismatch before checking specification authorship', async () => {
+    const { lookup, service } = makeService()
+    lookup.resolveRequirementApplicationMutationTarget.mockRejectedValueOnce(
+      forbiddenError('Requirement application belongs to another parent', {
+        reason: 'foreign_specification_child',
+      }),
+    )
+
+    await expect(
+      service.assertAuthorized(
+        {
+          itemRefs: ['local:4'],
+          kind: 'manage_requirement_applications',
+          operation: 'remove',
+          specificationId: 42,
+        },
+        makeContext(['Admin']),
+      ),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'foreign_specification_child' },
+    })
+    expect(lookup.isSpecificationAuthor).not.toHaveBeenCalled()
   })
 
   it('requires both specification and requirement-area authorship for graduation', async () => {
@@ -969,6 +1102,69 @@ describe('SqlAssignmentLookup', () => {
       code: 'forbidden',
       details: { reason: 'foreign_specification_child' },
     })
+  })
+
+  it('resolves every mixed mutation item to the claimed stored parent', async () => {
+    const matching = makeDb([
+      [
+        {
+          createdAt: new Date('2026-08-16T10:00:00.000Z'),
+          id: 31,
+          requirementId: 7,
+          requirementVersionId: 9,
+          specificationId: 42,
+          specificationItemStatusId: 1,
+        },
+      ],
+      [{ id: 41, specificationId: 42 }],
+    ])
+    const action = {
+      itemRefs: ['lib:31', 'local:41'],
+      kind: 'manage_requirement_applications',
+      operation: 'remove',
+      specificationId: 42,
+    } as const
+
+    await expect(
+      new SqlAssignmentLookup(
+        matching.db,
+      ).resolveRequirementApplicationMutationTarget(action),
+    ).resolves.toBe(42)
+    expect(matching.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('FROM requirements_specification_items'),
+      [31],
+    )
+    expect(matching.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('FROM specification_local_requirements'),
+      [41],
+    )
+
+    const foreign = makeDb([
+      [
+        {
+          createdAt: new Date('2026-08-16T10:00:00.000Z'),
+          id: 31,
+          requirementId: 7,
+          requirementVersionId: 9,
+          specificationId: 99,
+          specificationItemStatusId: 1,
+        },
+      ],
+    ])
+    await expect(
+      new SqlAssignmentLookup(
+        foreign.db,
+      ).resolveRequirementApplicationMutationTarget(action),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: {
+        reason: 'foreign_specification_child',
+        specificationId: 42,
+      },
+    })
+    expect(foreign.query).toHaveBeenCalledTimes(1)
   })
 
   it('validates specification deviation collection targets', async () => {

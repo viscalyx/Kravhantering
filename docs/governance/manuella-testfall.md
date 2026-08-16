@@ -598,6 +598,29 @@ inte administrera taxonomi eller krav.
 **Förväntat resultat:** Disa kan köra dataskyddsflöden men nekas Admin och
 produktansvar som hon inte har.
 
+### AUTHZ-11: skrivbehörighet för innehåll i kravunderlag
+
+**Syfte:** Kontrollera att skrivningar till kravtillämpningar och sparade
+kravurvalssvar använder det ägande kravunderlagets författaruppdrag.
+
+**Användare:** `petra.specresp`, `signe.speccoauthor`, `ada.admin`,
+`noah.noroles`, `olle.areaowner` och `rita.reviewer`.
+
+**Steg:**
+
+1. Uppdatera ett fält för ett tillämpat krav och spara ett kravurvalssvar som
+   Petra, Signe respektive Ada.
+1. Försök samma skrivningar samt båda formerna av massborttagning
+   (`itemRefs` och `requirementIds`) som Noah, Olle och Rita.
+1. Som Signe, kombinera ett befintligt krav från det tilldelade kravunderlaget
+   med ett annat kravunderlags identifierare.
+
+**Förväntat resultat:** Kravunderlagsansvarig, kravunderlagsmedförfattare och
+`Admin` kan ändra kravunderlagets innehåll. En användare utan tilldelning,
+författare i kravområdet och `Reviewer` får 403 före domänändringen. Ett krav
+vars lagrade förälder inte matchar den angivna föräldern ger 403 utan mutation,
+och den begärda ändringen genomförs inte.
+
 ## Kravbibliotek
 
 ### REQ-01: kravbiblioteket laddar seedade krav

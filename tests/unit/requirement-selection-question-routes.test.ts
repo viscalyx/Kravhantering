@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { conflictError } from '@/lib/requirements/errors'
+import {
+  conflictError,
+  forbiddenError,
+  notFoundError,
+} from '@/lib/requirements/errors'
 
 const mocks = vi.hoisted(() => {
   const context = {
@@ -19,6 +23,7 @@ const mocks = vi.hoisted(() => {
   const db = { query: vi.fn() }
 
   return {
+    assertAuthorized: vi.fn(),
     context,
     createRequirementSelectionAnswer: vi.fn(),
     createRequirementSelectionQuestion: vi.fn(),
@@ -33,6 +38,7 @@ const mocks = vi.hoisted(() => {
     listRequirementSelectionQuestions: vi.fn(),
     recordAllowedActionAuditEvent: vi.fn(),
     recordDeniedActionAuditEvent: vi.fn(),
+    replaceSavedAnswers: vi.fn(),
     replaceRequirementSelectionQuestionVisibilityGroups: vi.fn(),
     replaceSpecificationRequirementSelectionAnswers: vi.fn(),
     resolveRequirementSelectionQuestionId: vi.fn(),
@@ -52,6 +58,9 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
     await importOriginal<typeof import('@/lib/requirements/auth')>()
   return {
     ...actual,
+    createDefaultAuthorizationService: () => ({
+      assertAuthorized: mocks.assertAuthorized,
+    }),
     createRequestContext: vi.fn(async () => mocks.context),
   }
 })
@@ -89,6 +98,15 @@ vi.mock('@/lib/dal/requirement-selection-questions', () => ({
   updateRequirementSelectionAnswer: mocks.updateRequirementSelectionAnswer,
   updateRequirementSelectionQuestion: mocks.updateRequirementSelectionQuestion,
 }))
+
+vi.mock(
+  '@/lib/requirements/specification-requirement-selection-answer-mutations',
+  () => ({
+    createSpecificationRequirementSelectionAnswerMutationWorkflow: () => ({
+      replace: mocks.replaceSavedAnswers,
+    }),
+  }),
+)
 
 import { POST as activateQuestion } from '@/app/api/requirement-selection-questions/[id]/activate/route'
 import { POST as activateAnswer } from '@/app/api/requirement-selection-questions/[id]/answers/[answerId]/activate/route'
@@ -169,6 +187,7 @@ describe('requirement selection question routes', () => {
     mocks.replaceSpecificationRequirementSelectionAnswers.mockResolvedValue([
       question,
     ])
+    mocks.replaceSavedAnswers.mockResolvedValue([question])
     mocks.resolveRequirementSelectionQuestionId.mockResolvedValue(11)
     mocks.setRequirementSelectionAnswerState.mockResolvedValue(question)
     mocks.setRequirementSelectionQuestionState.mockResolvedValue(question)
@@ -654,7 +673,7 @@ describe('requirement selection question routes', () => {
     expect(missing.status).toBe(404)
   })
 
-  it('replaces specification answers and records the actor snapshot', async () => {
+  it('delegates saved-answer replacement to the authorized domain workflow', async () => {
     const response = await replaceSpecificationAnswers(
       request(
         '/api/requirements-specifications/7/requirement-selection-answers/11',
@@ -665,24 +684,54 @@ describe('requirement selection question routes', () => {
     )
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({ questions: [question] })
-    expect(
-      mocks.replaceSpecificationRequirementSelectionAnswers,
-    ).toHaveBeenCalledWith(
-      mocks.db,
-      7,
-      11,
-      [101, 102],
+    expect(mocks.assertAuthorized).toHaveBeenCalledWith(
       {
-        displayName: 'Selection Steward',
-        hsaId: 'SE5560000001-steward',
+        kind: 'manage_specification_requirement_selection_answers',
+        operation: 'replace',
+        specificationId: 7,
       },
-      { confirmHiddenAnswerClear: undefined },
+      mocks.context,
     )
+    await expect(response.json()).resolves.toEqual({ questions: [question] })
+    expect(mocks.replaceSavedAnswers).toHaveBeenCalledWith(mocks.context, {
+      answerIds: [101, 102],
+      confirmHiddenAnswerClear: undefined,
+      questionId: 11,
+      specificationId: 7,
+    })
+  })
+
+  it('denies saved-answer replacement before specification or answer work', async () => {
+    mocks.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Specification author assignment is required', {
+        reason: 'specification_author_required',
+      }),
+    )
+
+    const response = await replaceSpecificationAnswers(
+      request(
+        '/api/requirements-specifications/7/requirement-selection-answers/11',
+        'PUT',
+        { answerIds: [101] },
+      ),
+      { params: Promise.resolve({ id: '7', questionId: '11' }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      mocks.db,
+      mocks.context,
+      expect.objectContaining({
+        action: 'requirements.authorization.denied',
+        denialReason: 'specification_author_required',
+        targetKind: 'requirements',
+      }),
+    )
+    expect(mocks.replaceSavedAnswers).not.toHaveBeenCalled()
   })
 
   it('returns hidden selections for the confirmation conflict', async () => {
-    mocks.replaceSpecificationRequirementSelectionAnswers.mockRejectedValueOnce(
+    mocks.replaceSavedAnswers.mockRejectedValueOnce(
       conflictError('Confirm clearing hidden answers', {
         hiddenSelections: [{ answerId: 101, questionId: 11 }],
         reason: 'hidden_selection_clear_required',
@@ -708,7 +757,7 @@ describe('requirement selection question routes', () => {
   })
 
   it('returns an empty hidden-selection list when the conflict has no details', async () => {
-    mocks.replaceSpecificationRequirementSelectionAnswers.mockRejectedValueOnce(
+    mocks.replaceSavedAnswers.mockRejectedValueOnce(
       conflictError('Confirm clearing hidden answers', {
         reason: 'hidden_selection_clear_required',
       }),
@@ -728,32 +777,10 @@ describe('requirement selection question routes', () => {
     })
   })
 
-  it('uses the actor id fallback and returns not found for a missing specification', async () => {
-    mocks.context.actor.displayName = '   '
-    const fallbackResponse = await replaceSpecificationAnswers(
-      request(
-        '/api/requirements-specifications/7/requirement-selection-answers/11',
-        'PUT',
-        { answerIds: [] },
-      ),
-      { params: Promise.resolve({ id: '7', questionId: '11' }) },
+  it('returns not found when the domain workflow cannot resolve the specification', async () => {
+    mocks.replaceSavedAnswers.mockRejectedValueOnce(
+      notFoundError('Requirements specification not found'),
     )
-    expect(fallbackResponse.status).toBe(200)
-    expect(
-      mocks.replaceSpecificationRequirementSelectionAnswers,
-    ).toHaveBeenCalledWith(
-      mocks.db,
-      7,
-      11,
-      [],
-      {
-        displayName: 'selection-steward',
-        hsaId: 'SE5560000001-steward',
-      },
-      { confirmHiddenAnswerClear: undefined },
-    )
-
-    mocks.getSpecificationById.mockResolvedValueOnce(null)
     const missing = await replaceSpecificationAnswers(
       request(
         '/api/requirements-specifications/99/requirement-selection-answers/11',
@@ -766,7 +793,7 @@ describe('requirement selection question routes', () => {
   })
 
   it('sanitizes unexpected specification answer replacement failures', async () => {
-    mocks.replaceSpecificationRequirementSelectionAnswers.mockRejectedValueOnce(
+    mocks.replaceSavedAnswers.mockRejectedValueOnce(
       new Error('database detail'),
     )
     const response = await replaceSpecificationAnswers(

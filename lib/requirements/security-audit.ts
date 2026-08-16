@@ -126,6 +126,14 @@ function actionAuditDetail(
         requirementCount: action.requirementIds.length,
         specificationId: action.specificationId,
       }
+    case 'manage_requirement_applications':
+      return {
+        actionKind: action.kind,
+        operation: action.operation,
+        requirementCount:
+          action.itemRefs?.length ?? action.requirementIds?.length ?? 0,
+        specificationId: action.specificationId,
+      }
     case 'list_graduation_target_areas':
       return {
         actionKind: action.kind,
@@ -150,6 +158,12 @@ function actionAuditDetail(
       return {
         actionKind: action.kind,
         needsReferenceId: action.needsReferenceId,
+        operation: action.operation,
+        specificationId: action.specificationId,
+      }
+    case 'manage_specification_requirement_selection_answers':
+      return {
+        actionKind: action.kind,
         operation: action.operation,
         specificationId: action.specificationId,
       }
@@ -230,12 +244,16 @@ function actionNameForAuthorizationDenied(action: RequirementsAction): string {
       return 'specification.requirement.add.denied'
     case 'remove_from_specification':
       return 'specification.requirement.remove.denied'
+    case 'manage_requirement_applications':
+      return `specification.requirement_application.${action.operation}.denied`
     case 'graduate_specification_local_requirement':
       return 'specification_local_requirement.graduate.denied'
     case 'manage_specification_local_requirement':
       return `specification_local_requirement.${action.operation}.denied`
     case 'manage_specification_needs_reference':
       return `specification_needs_reference.${action.operation}.denied`
+    case 'manage_specification_requirement_selection_answers':
+      return 'specification_requirement_selection_answer.replace.denied'
     case 'manage_requirement':
       return `requirement.${action.operation}.denied`
     case 'transition_requirement':
@@ -267,6 +285,7 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
   switch (action.kind) {
     case 'add_to_specification':
     case 'remove_from_specification':
+    case 'manage_requirement_applications':
     case 'get_specification_items':
     case 'list_deviations':
       return {
@@ -289,6 +308,11 @@ function targetForAuthorizationDenied(action: RequirementsAction): {
       return {
         targetId: action.needsReferenceId ?? action.specificationId,
         targetKind: 'SpecificationNeedsReference',
+      }
+    case 'manage_specification_requirement_selection_answers':
+      return {
+        targetId: action.specificationId,
+        targetKind: 'RequirementsSpecification',
       }
     case 'get_requirement':
     case 'manage_requirement':

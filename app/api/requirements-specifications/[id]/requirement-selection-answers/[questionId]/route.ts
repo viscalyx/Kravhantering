@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordAllowedActionAuditEvent } from '@/lib/audit/action-audit'
-import {
-  replaceSpecificationRequirementSelectionAnswers,
-  type SpecificationRequirementSelectionQuestionRow,
-} from '@/lib/dal/requirement-selection-questions'
-import { getSpecificationById } from '@/lib/dal/requirements-specifications'
+import type { SpecificationRequirementSelectionQuestionRow } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
-  authenticatedMutationPolicy,
+  requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -16,8 +11,9 @@ import {
   positiveIntegerSchema,
   positiveIntegerStringSchema,
 } from '@/lib/http/validation'
-import { DELETED_USER_INTERNAL_NAME } from '@/lib/privacy/display-name'
+import { createDefaultAuthorizationService } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { createSpecificationRequirementSelectionAnswerMutationWorkflow } from '@/lib/requirements/specification-requirement-selection-answer-mutations'
 
 const paramsSchema = z
   .object({
@@ -36,32 +32,29 @@ const bodySchema = z
 export const PUT = secureMutationRoute({
   bodySchema,
   paramsSchema,
-  policy: authenticatedMutationPolicy(
-    'specification_requirement_selection_answer.replace',
-  ),
-  handler: async ({ body, context, params }) => {
-    const db = await getRequestSqlServerDataSource()
-    const specification = await getSpecificationById(db, params.id)
-    if (!specification) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
-    const specificationId = specification.id
+  policy: requirementsMutationPolicy<
+    z.infer<typeof bodySchema>,
+    z.infer<typeof paramsSchema>
+  >(({ params }) => ({
+    kind: 'manage_specification_requirement_selection_answers',
+    operation: 'replace',
+    specificationId: params.id,
+  })),
+  handler: async ({ body, context, db: authorizedDb, params }) => {
+    const db = authorizedDb ?? (await getRequestSqlServerDataSource())
+    const workflow =
+      createSpecificationRequirementSelectionAnswerMutationWorkflow({
+        authorization: createDefaultAuthorizationService(db),
+        db,
+      })
     let questions: SpecificationRequirementSelectionQuestionRow[]
     try {
-      questions = await replaceSpecificationRequirementSelectionAnswers(
-        db,
-        specificationId,
-        params.questionId,
-        body.answerIds,
-        {
-          displayName:
-            context.actor.displayName.trim() ||
-            context.actor.id ||
-            DELETED_USER_INTERNAL_NAME,
-          hsaId: context.actor.hsaId,
-        },
-        { confirmHiddenAnswerClear: body.confirmHiddenAnswerClear },
-      )
+      questions = await workflow.replace(context, {
+        answerIds: body.answerIds,
+        confirmHiddenAnswerClear: body.confirmHiddenAnswerClear,
+        questionId: params.questionId,
+        specificationId: params.id,
+      })
     } catch (error) {
       if (
         isRequirementsServiceError(error) &&
@@ -80,15 +73,6 @@ export const PUT = secureMutationRoute({
       }
       throw error
     }
-    await recordAllowedActionAuditEvent(db, context, {
-      action: 'specification_requirement_selection_answer.replace',
-      details: {
-        answerCount: body.answerIds.length,
-        questionId: params.questionId,
-      },
-      targetId: specificationId,
-      targetKind: 'requirements_specification',
-    })
     return NextResponse.json({ questions })
   },
 })

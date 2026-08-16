@@ -154,6 +154,17 @@ describe('requirements security audit', () => {
       specificationId: 1,
     },
     {
+      itemRefs: ['lib:1', 'local:2'],
+      kind: 'manage_requirement_applications',
+      operation: 'remove',
+      specificationId: 1,
+    },
+    {
+      kind: 'manage_specification_requirement_selection_answers',
+      operation: 'replace',
+      specificationId: 1,
+    },
+    {
       kind: 'list_graduation_target_areas',
       localRequirementId: 2,
       specificationId: 1,
@@ -219,6 +230,31 @@ describe('requirements security audit', () => {
     action: RequirementsAction
     expected: { action: string; targetId: number; targetKind: string }
   }>([
+    {
+      action: {
+        itemRefs: ['lib:2'],
+        kind: 'manage_requirement_applications',
+        operation: 'update',
+        specificationId: 1,
+      },
+      expected: {
+        action: 'specification.requirement_application.update.denied',
+        targetId: 1,
+        targetKind: 'RequirementsSpecification',
+      },
+    },
+    {
+      action: {
+        kind: 'manage_specification_requirement_selection_answers',
+        operation: 'replace',
+        specificationId: 1,
+      },
+      expected: {
+        action: 'specification_requirement_selection_answer.replace.denied',
+        targetId: 1,
+        targetKind: 'RequirementsSpecification',
+      },
+    },
     {
       action: {
         childKind: 'deviation_collection',

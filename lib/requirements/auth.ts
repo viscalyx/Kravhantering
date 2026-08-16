@@ -147,6 +147,18 @@ export type RequirementsAction =
       requirementIds: number[]
     }
   | {
+      itemRefs?: readonly string[]
+      kind: 'manage_requirement_applications'
+      operation: 'remove' | 'update'
+      requirementIds?: readonly number[]
+      specificationId: number
+    }
+  | {
+      kind: 'manage_specification_requirement_selection_answers'
+      operation: 'replace'
+      specificationId: number
+    }
+  | {
       kind: 'list_graduation_target_areas'
       localRequirementId: number
       specificationId?: number
