@@ -8,6 +8,7 @@ import {
 } from '@/lib/dal/deviations'
 import { parseSpecificationItemRef } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   requirementsMutationPolicy,
@@ -29,6 +30,8 @@ import {
   validationError,
 } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { authorize } from '@/lib/requirements/service-shared'
 
 type Params = Promise<{ itemId: string }>
 type ParsedSpecificationItemId =
@@ -121,8 +124,8 @@ function createDeviationAction(itemId: string): RequirementsAction {
   }
 }
 
-export async function GET(
-  _request: NextRequest,
+async function getHandler(
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, itemDeviationParamSchema)
@@ -134,18 +137,43 @@ export async function GET(
     return itemIdResult.response
   }
   const { parsedItemRef, numericItemId } = itemIdResult
-  const db = await getRequestSqlServerDataSource()
+  const runtime = await createRequirementsRestRuntime(request)
 
   try {
+    const localRequirementId =
+      parsedItemRef?.kind === 'specificationLocal'
+        ? parsedItemRef.id
+        : undefined
+    const specificationItemId = localRequirementId
+      ? undefined
+      : (numericItemId ?? 0)
+    await authorize(
+      runtime.authorization,
+      {
+        childId: localRequirementId ?? specificationItemId,
+        childKind: localRequirementId
+          ? 'specification_local_requirement'
+          : 'requirement_application',
+        kind: 'get_specification_child',
+      },
+      runtime.context,
+    )
     const deviations =
       parsedItemRef?.kind === 'specificationLocal'
         ? await listDeviationsForSpecificationLocalRequirement(
-            db,
+            runtime.db,
             parsedItemRef.id,
           )
-        : await listDeviationsForSpecificationItem(db, numericItemId ?? 0)
+        : await listDeviationsForSpecificationItem(
+            runtime.db,
+            numericItemId ?? 0,
+          )
     return NextResponse.json({ deviations })
   } catch (error) {
+    if (isRequirementsServiceError(error)) {
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
+    }
     logSanitizedError(
       'Failed to list deviations for requirement application',
       error,
@@ -156,6 +184,8 @@ export async function GET(
     )
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)
 
 export const POST = secureMutationRoute({
   bodySchema: createDeviationSchema,

@@ -6,6 +6,7 @@ import {
   updateSpecificationItemFieldsByItemRef,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   customMutationPolicy,
   secureMutationRoute,
@@ -59,7 +60,7 @@ const patchSpecificationItemSchema = z
     },
   )
 
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Params },
 ) {
@@ -75,7 +76,12 @@ export async function GET(
     const runtime = await createRequirementsRestRuntime(request)
     await authorize(
       runtime.authorization,
-      { kind: 'get_specification_items', specificationId: id },
+      {
+        childId: numericItemId,
+        childKind: 'requirement_application',
+        kind: 'get_specification_child',
+        specificationId: id,
+      },
       runtime.context,
     )
     const item = await getLibrarySpecificationItemMetadata(
@@ -107,6 +113,8 @@ export async function GET(
     return NextResponse.json(body, { status })
   }
 }
+
+export const GET = withRestResponsePolicy(getHandler)
 
 export const PATCH = secureMutationRoute({
   bodySchema: patchSpecificationItemSchema,

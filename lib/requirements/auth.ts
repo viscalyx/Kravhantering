@@ -122,6 +122,21 @@ export type RequirementsAction =
       specificationId?: number
     }
   | {
+      childId?: number
+      childKind:
+        | 'deviation'
+        | 'deviation_collection'
+        | 'requirement_application'
+        | 'specification_local_requirement'
+      deviationKind?: 'library' | 'specification-local'
+      kind: 'get_specification_child'
+      specificationId?: number
+    }
+  | {
+      kind: 'get_improvement_suggestion'
+      suggestionId: number
+    }
+  | {
       kind: 'add_to_specification'
       specificationId?: number
       requirementIds: number[]

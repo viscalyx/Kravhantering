@@ -76,6 +76,7 @@ import {
 import { POST as postLocalRequirement } from '@/app/api/requirements-specifications/[id]/local-requirements/route'
 import {
   forbiddenError,
+  notFoundError,
   RequirementsServiceError,
 } from '@/lib/requirements/errors'
 
@@ -137,6 +138,34 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
       5,
       41,
     )
+    expect(authState.assertAuthorized).toHaveBeenCalledWith(
+      {
+        childId: 41,
+        childKind: 'specification_local_requirement',
+        kind: 'get_specification_child',
+        specificationId: 5,
+      },
+      expect.objectContaining({ requestId: 'request-1' }),
+    )
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+  })
+
+  it('denies a foreign local requirement before any child payload is read', async () => {
+    authState.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Specification read denied'),
+    )
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/local-requirements/41',
+      ),
+      makeParams('5', '41'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.getSpecificationById).not.toHaveBeenCalled()
+    expect(mocks.getSpecificationLocalRequirementDetail).not.toHaveBeenCalled()
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 
   it('returns not found when the detail or owning specification is missing', async () => {
@@ -147,7 +176,7 @@ describe('requirements-specifications/[id]/local-requirements/[localRequirementI
       ),
       makeParams('5', '41'),
     )
-    mocks.getSpecificationById.mockResolvedValueOnce(null)
+    authState.assertAuthorized.mockRejectedValueOnce(notFoundError('Not found'))
     const missingSpecification = await GET(
       new NextRequest(
         'http://localhost/api/requirements-specifications/404/local-requirements/41',

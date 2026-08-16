@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  type AuthorizationFixture,
   createAuthorizationFixture,
   expectOk,
   expectStatus,
@@ -12,8 +13,10 @@ import {
 
 test.describe.configure({ mode: 'serial' })
 
+let fixture: AuthorizationFixture
+
 test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
-  await createAuthorizationFixture(testInfo)
+  fixture = await createAuthorizationFixture(testInfo)
 })
 
 test('AUTHZ-08/AUTH-06/AUTH-10/AUTH-11/ADMIN-10: Admin keeps admin powers without PrivacyOfficer or Reviewer powers', async ({
@@ -38,6 +41,19 @@ test('AUTHZ-08/AUTH-06/AUTH-10/AUTH-11/ADMIN-10: Admin keeps admin powers withou
     await expectOk(
       await adminOnly.get('/api/requirements-specifications'),
       'admin-only broad specifications list',
+    )
+    await expectOk(
+      await adminOnly.get(
+        `/api/specification-local-deviations/${fixture.localDeviationId}`,
+      ),
+      'admin-only direct local deviation read',
+    )
+    await expectStatus(
+      await adminOnly.get(
+        `/api/requirements-specifications/${fixture.foreignSpecificationId}/local-requirements/${fixture.localRequirementId}`,
+      ),
+      403,
+      'admin-only foreign-parent child read',
     )
     await expectStatus(
       await adminOnly.post('/api/privacy/erasure-preview', {

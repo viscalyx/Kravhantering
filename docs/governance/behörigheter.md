@@ -161,6 +161,15 @@ saknar tilldelade kravunderlag visas en tom lista. En direktlänk till ett
 befintligt men otillåtet kravunderlag stoppas med 403, medan ett saknat
 kravunderlag stoppas med 404.
 
+Samma läsregel gäller kravunderlagets underresurser: kravtillämpningar,
+kravunderlagslokala krav, avstegslistor och enskilda avsteg. Vid direktanrop
+slår tjänsten först upp underresursens kravunderlag med endast dess tekniska
+identifierare. Därefter kontrolleras läsbehörigheten innan kravtext,
+motiveringar, beslut eller personuppgifter hämtas. Ett befintligt men
+otillåtet objekt ger 403, ett saknat objekt ger 404 och en underresurs som
+anges tillsammans med fel kravunderlag ger 403. Svaren lagras inte av
+webbläsare eller mellanliggande cache.
+
 ## Bibliotekskrav i kravunderlag
 
 Användare som kan ändra ett kravunderlag kan lägga till publicerade
@@ -218,6 +227,12 @@ men tjänsten loggar detta som en högriskhändelse.
 Förbättringsförslag kan skapas och ändras av inloggade användare. Att lösa ett
 förslag eller besluta att avvisa det kräver författarbehörighet i kravområdet
 eller `Admin`. Egen lösning loggas som högriskhändelse.
+
+Direkt läsning av ett förbättringsförslag följer läsregeln för det tillhörande
+kravet. Förslag till publicerade krav kan därför läsas där publicerad
+kravinformation är tillåten. Förslag till opublicerade krav kräver
+författarbehörighet i kravområdet, `Reviewer` eller `Admin`. Tjänsten avgör
+kravet och behörigheten innan förslagets innehåll eller personuppgifter hämtas.
 
 API-svaret för kravdetalj innehåller serverberäknade behörigheter för den
 aktuella användaren och det aktuella kravet. UI:t använder de besluten för
