@@ -37,7 +37,6 @@ import {
   createLibraryRequirementDetailCache,
   type DetailPrefetchIntentTarget,
   type DetailPrefetchTarget,
-  isRequirementDetailPrefetchEnabled,
   type RequirementDetailPrefetchContext,
 } from '@/lib/requirements/detail-prefetch'
 import {
@@ -1437,9 +1436,12 @@ export default function RequirementsClient({
                         row,
                         trigger,
                       ) as DetailPrefetchIntentTarget,
-                      () => {
+                      scheduledTarget => {
                         void detailCache
-                          .load(row.id, 'prefetch', libraryDetailContext)
+                          .load(row.id, 'prefetch', {
+                            ...libraryDetailContext,
+                            trigger: scheduledTarget.trigger,
+                          })
                           .catch(() => undefined)
                       },
                     )
@@ -1452,11 +1454,7 @@ export default function RequirementsClient({
                   qualityCharacteristics={qualityCharacteristics}
                   renderExpanded={id => (
                     <RequirementDetailClient
-                      detailCache={
-                        isRequirementDetailPrefetchEnabled()
-                          ? detailCache
-                          : undefined
-                      }
+                      detailCache={detailCache}
                       detailPrefetchContext={libraryDetailContext}
                       inline
                       onChange={detail => handleRequirementChange(id, detail)}

@@ -638,6 +638,13 @@ export default function RequirementDetailClient({
         })
         return
       }
+      if (
+        detailCache &&
+        detailPrefetchContext &&
+        typeof requirementId === 'number'
+      ) {
+        detailCache.invalidate(requirementId, detailPrefetchContext)
+      }
       await onChange?.()
       if (onClose) onClose()
       else router.push('/requirements')
@@ -747,6 +754,13 @@ export default function RequirementDetailClient({
         item => item.type === 'requirement',
       )
       if (requirementDeleted) {
+        if (
+          detailCache &&
+          detailPrefetchContext &&
+          typeof requirementId === 'number'
+        ) {
+          detailCache.invalidate(requirementId, detailPrefetchContext)
+        }
         if (onClose) onClose()
         else router.push('/requirements')
         await onChange?.()

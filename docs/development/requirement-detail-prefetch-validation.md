@@ -5,12 +5,11 @@ förhämtar den blockerande huvudresursen för kravtext efter 150 ms avsikt.
 Beteendet gäller bibliotekskrav i alla tre listorna och kravunderlagslokala
 krav i kravunderlagets vänstra lista.
 
-## Produktionsaktivering
+## Produktionsbeteende
 
-`NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH=true` aktiverar funktionen vid
-build. Produktionsbygget, prodlike och lokal utveckling använder värdet
-`true`. Ett akut återställningsbygge kan ange `false`; en ändring av
-runtime-miljön påverkar inte ett redan byggt klientpaket.
+Förhämtningen är en del av kravlistornas ordinarie beteende i utveckling,
+prodlike och produktion. Ett fel rättas eller återställs genom det vanliga
+kodändrings-, build- och driftsättningsflödet.
 
 Den temporära valideringsindikatorn, exportdiagnostiken, den syntetiska
 latensen och den runtime-styrda av/på-profilen ingår inte i
@@ -78,4 +77,4 @@ kravlistorna.
 - `SPEC-21` täcker bibliotekskrav och kravunderlagslokala krav i
   kravunderlagets båda kravlistor.
 - Fokuserade enhetstester täcker cachelivslängd, kapacitet, samtidighet,
-  felhantering, invalidation, resursnycklar och avstängningsflaggan.
+  felhantering, invalidation och resursnycklar.

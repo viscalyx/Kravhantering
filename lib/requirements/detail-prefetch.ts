@@ -5,13 +5,6 @@ import type {
   SpecificationLocalRequirementKey,
 } from '@/lib/specifications/local-requirement-detail'
 
-export const REQUIREMENT_DETAIL_PREFETCH_ENABLED =
-  process.env.NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH === 'true'
-
-export function isRequirementDetailPrefetchEnabled(): boolean {
-  return REQUIREMENT_DETAIL_PREFETCH_ENABLED
-}
-
 export type RequirementDetailResource =
   | 'library-requirement'
   | 'specification-local-requirement'
@@ -26,10 +19,16 @@ export interface RequirementDetailPrefetchContext {
   surface: RequirementDetailSurface
 }
 
-export interface DetailPrefetchIntentTarget
+export type RequirementDetailPrefetchTrigger = 'focus' | 'pointer'
+
+export interface RequirementDetailSpeculativeContext
   extends RequirementDetailPrefetchContext {
+  trigger: RequirementDetailPrefetchTrigger
+}
+
+export interface DetailPrefetchIntentTarget
+  extends RequirementDetailSpeculativeContext {
   key: string
-  trigger: 'focus' | 'pointer'
 }
 
 export interface DetailPrefetchTarget extends RequirementDetailPrefetchContext {
@@ -103,26 +102,29 @@ export class DetailPrefetchIntentController {
     this.onEvent = options.onEvent ?? emitRequirementDetailPrefetchEvent
   }
 
-  schedule(target: DetailPrefetchIntentTarget, prefetch: () => void) {
+  schedule(
+    target: DetailPrefetchIntentTarget,
+    prefetch: (target: DetailPrefetchIntentTarget) => void,
+  ): void {
     const intentKey = intentTargetKey(target)
     if (this.pending.has(intentKey)) return
 
     const startedAt = performance.now()
     const timer = setTimeout(() => {
       this.pending.delete(intentKey)
-      prefetch()
+      prefetch(target)
     }, 150)
     this.pending.set(intentKey, { startedAt, target, timer })
     this.latestIntent.set(intentKey, { startedAt, target })
     this.emit('timer-started', target)
   }
 
-  cancel(target: DetailPrefetchIntentTarget) {
+  cancel(target: DetailPrefetchIntentTarget): void {
     this.cancelPending(target)
     this.latestIntent.delete(intentTargetKey(target))
   }
 
-  activate(target: DetailPrefetchTarget) {
+  activate(target: DetailPrefetchTarget): void {
     const intents = (['pointer', 'focus'] as const)
       .flatMap(trigger => {
         const intentTarget = { ...target, trigger }
@@ -147,7 +149,7 @@ export class DetailPrefetchIntentController {
     }
   }
 
-  dispose() {
+  dispose(): void {
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer)
     }
@@ -155,7 +157,7 @@ export class DetailPrefetchIntentController {
     this.latestIntent.clear()
   }
 
-  private cancelPending(target: DetailPrefetchIntentTarget) {
+  private cancelPending(target: DetailPrefetchIntentTarget): void {
     const intentKey = intentTargetKey(target)
     const pending = this.pending.get(intentKey)
     if (!pending) return
@@ -168,7 +170,7 @@ export class DetailPrefetchIntentController {
     type: RequirementDetailPrefetchEvent['type'],
     target: DetailPrefetchIntentTarget,
     durationMs?: number,
-  ) {
+  ): void {
     this.onEvent({
       durationMs,
       key: target.key,
@@ -181,13 +183,13 @@ export class DetailPrefetchIntentController {
   }
 }
 
-function intentTargetKey(target: DetailPrefetchIntentTarget) {
+function intentTargetKey(target: DetailPrefetchIntentTarget): string {
   return `${target.surface}:${target.resource}:${target.key}:${target.trigger}`
 }
 
 export function emitRequirementDetailPrefetchEvent(
   event: RequirementDetailPrefetchEvent,
-) {
+): void {
   if (typeof window === 'undefined') return
   window.dispatchEvent(
     new CustomEvent<RequirementDetailPrefetchEvent>(
@@ -213,7 +215,9 @@ interface InFlightEntry<Value> {
   prefetchOutcomeRecorded: boolean
   prefetchStartedAt: number | null
   promise: Promise<Value>
-  startContext: RequirementDetailPrefetchContext
+  startContext:
+    | RequirementDetailPrefetchContext
+    | RequirementDetailSpeculativeContext
   startedAsPrefetch: boolean
   state: 'fulfilled' | 'pending'
   used: boolean
@@ -238,8 +242,20 @@ export class DetailResourceCache<Key, Value> {
 
   load(
     key: Key,
-    mode: 'activate' | 'prefetch' | 'refresh',
+    mode: 'prefetch',
+    context: RequirementDetailSpeculativeContext,
+  ): Promise<Value>
+  load(
+    key: Key,
+    mode: 'activate' | 'refresh',
     context: RequirementDetailPrefetchContext,
+  ): Promise<Value>
+  load(
+    key: Key,
+    mode: 'activate' | 'prefetch' | 'refresh',
+    context:
+      | RequirementDetailPrefetchContext
+      | RequirementDetailSpeculativeContext,
   ): Promise<Value> {
     const cacheKey = this.keyOf(key)
     if (mode === 'refresh') {
@@ -303,6 +319,9 @@ export class DetailResourceCache<Key, Value> {
     }
     entry.promise = this.fetchDetail(key, controller.signal)
       .then(value => {
+        if (this.entries.get(cacheKey) !== entry) {
+          throw new DOMException('Detail request was invalidated', 'AbortError')
+        }
         entry.expiresAt = performance.now() + 30_000
         entry.state = 'fulfilled'
         entry.lastUsed = ++this.accessSequence
@@ -334,7 +353,7 @@ export class DetailResourceCache<Key, Value> {
     return entry.promise
   }
 
-  invalidate(key: Key, context: RequirementDetailPrefetchContext) {
+  invalidate(key: Key, context: RequirementDetailPrefetchContext): void {
     const cacheKey = this.keyOf(key)
     const entry = this.entries.get(cacheKey)
     if (entry) {
@@ -346,7 +365,7 @@ export class DetailResourceCache<Key, Value> {
     this.emit('invalidated', cacheKey, context)
   }
 
-  markUsable(key: Key, context: RequirementDetailPrefetchContext) {
+  markUsable(key: Key, context: RequirementDetailPrefetchContext): void {
     const entry = this.entries.get(this.keyOf(key))
     if (!entry || entry.activatedAt === null) return
     const activatedAt = entry.activatedAt
@@ -356,7 +375,7 @@ export class DetailResourceCache<Key, Value> {
     })
   }
 
-  clear(outcome: RequirementDetailPrefetchOutcome = 'cleared-unused') {
+  clear(outcome: RequirementDetailPrefetchOutcome = 'cleared-unused'): void {
     const entries = [...this.entries.entries()]
     this.entries.clear()
     for (const [key, entry] of entries) {
@@ -367,11 +386,11 @@ export class DetailResourceCache<Key, Value> {
     }
   }
 
-  dispose() {
+  dispose(): void {
     this.clear('page-disposed-unused')
   }
 
-  private enforceCompletedCapacity() {
+  private enforceCompletedCapacity(): void {
     const completed = [...this.entries.entries()]
       .filter(([, entry]) => entry.state === 'fulfilled')
       .sort(([, left], [, right]) => left.lastUsed - right.lastUsed)
@@ -388,12 +407,14 @@ export class DetailResourceCache<Key, Value> {
   private emit(
     type: RequirementDetailPrefetchEvent['type'],
     key: string,
-    context: RequirementDetailPrefetchContext,
+    context:
+      | RequirementDetailPrefetchContext
+      | RequirementDetailSpeculativeContext,
     detail: Pick<
       RequirementDetailPrefetchEvent,
       'durationMs' | 'outcome' | 'prefetchId'
     > = {},
-  ) {
+  ): void {
     this.onEvent({
       ...context,
       ...detail,
@@ -407,7 +428,7 @@ export class DetailResourceCache<Key, Value> {
     entry: InFlightEntry<Value>,
     key: string,
     outcome: RequirementDetailPrefetchOutcome,
-  ) {
+  ): void {
     if (
       entry.prefetchId === null ||
       entry.prefetchOutcomeRecorded ||
@@ -428,7 +449,7 @@ export class DetailResourceCache<Key, Value> {
   }
 }
 
-function isRetryableSpeculativeFailure(error: unknown) {
+function isRetryableSpeculativeFailure(error: unknown): boolean {
   return !(
     error instanceof DetailFetchError &&
     (error.status === 401 || error.status === 403 || error.status === 404)
@@ -449,7 +470,17 @@ async function readDetailResponse<Value>(
   return (await response.json()) as Value
 }
 
-export function createLibraryRequirementDetailCache() {
+export type LibraryRequirementDetailCache = DetailResourceCache<
+  number,
+  RequirementDetailResponse
+>
+
+export type SpecificationLocalRequirementDetailCache = DetailResourceCache<
+  SpecificationLocalRequirementKey,
+  SpecificationLocalRequirementDetail
+>
+
+export function createLibraryRequirementDetailCache(): LibraryRequirementDetailCache {
   return new DetailResourceCache<number, RequirementDetailResponse>({
     fetchDetail: (requirementId, signal) =>
       readDetailResponse<RequirementDetailResponse>(
@@ -460,7 +491,7 @@ export function createLibraryRequirementDetailCache() {
   })
 }
 
-export function createSpecificationLocalRequirementDetailCache() {
+export function createSpecificationLocalRequirementDetailCache(): SpecificationLocalRequirementDetailCache {
   return new DetailResourceCache<
     SpecificationLocalRequirementKey,
     SpecificationLocalRequirementDetail
@@ -474,10 +505,3 @@ export function createSpecificationLocalRequirementDetailCache() {
       `${specificationId}:${localRequirementId}`,
   })
 }
-
-export type LibraryRequirementDetailCache = ReturnType<
-  typeof createLibraryRequirementDetailCache
->
-export type SpecificationLocalRequirementDetailCache = ReturnType<
-  typeof createSpecificationLocalRequirementDetailCache
->

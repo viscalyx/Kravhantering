@@ -77,7 +77,6 @@ import {
   createSpecificationLocalRequirementDetailCache,
   type DetailPrefetchIntentTarget,
   type DetailPrefetchTarget,
-  isRequirementDetailPrefetchEnabled,
   type RequirementDetailPrefetchContext,
 } from '@/lib/requirements/detail-prefetch'
 import {
@@ -632,8 +631,9 @@ export default function KravunderlagDetailClient({
     (
       row: RequirementRow,
       surface: 'specification-left' | 'specification-right',
+      trigger: DetailPrefetchIntentTarget['trigger'],
     ) => {
-      const context = detailContext(row, surface)
+      const context = { ...detailContext(row, surface), trigger }
       if (
         row.isSpecificationLocal &&
         row.specificationLocalRequirementId != null
@@ -4219,7 +4219,12 @@ export default function KravunderlagDetailClient({
                           'specification-left',
                           trigger,
                         ) as DetailPrefetchIntentTarget,
-                        () => prefetchRowDetail(row, 'specification-left'),
+                        scheduledTarget =>
+                          prefetchRowDetail(
+                            row,
+                            'specification-left',
+                            scheduledTarget.trigger,
+                          ),
                       )
                     }
                     onSelectionChange={handleLeftSelectionChange}
@@ -4237,11 +4242,7 @@ export default function KravunderlagDetailClient({
                           {item?.isSpecificationLocal &&
                           item.specificationLocalRequirementId != null ? (
                             <SpecificationLocalRequirementDetailClient
-                              detailCache={
-                                isRequirementDetailPrefetchEnabled()
-                                  ? localDetailCache
-                                  : undefined
-                              }
+                              detailCache={localDetailCache}
                               detailPrefetchContext={detailContext(
                                 item,
                                 'specification-left',
@@ -4277,11 +4278,7 @@ export default function KravunderlagDetailClient({
                             />
                           ) : item?.specificationItemId != null ? (
                             <RequirementDetailClient
-                              detailCache={
-                                isRequirementDetailPrefetchEnabled()
-                                  ? libraryDetailCache
-                                  : undefined
-                              }
+                              detailCache={libraryDetailCache}
                               detailPrefetchContext={detailContext(
                                 item,
                                 'specification-left',
@@ -4312,11 +4309,7 @@ export default function KravunderlagDetailClient({
                             />
                           ) : (
                             <RequirementDetailClient
-                              detailCache={
-                                isRequirementDetailPrefetchEnabled()
-                                  ? libraryDetailCache
-                                  : undefined
-                              }
+                              detailCache={libraryDetailCache}
                               detailPrefetchContext={{
                                 resource: 'library-requirement',
                                 surface: 'specification-left',
@@ -4691,7 +4684,12 @@ export default function KravunderlagDetailClient({
                             'specification-right',
                             trigger,
                           ) as DetailPrefetchIntentTarget,
-                          () => prefetchRowDetail(row, 'specification-right'),
+                          scheduledTarget =>
+                            prefetchRowDetail(
+                              row,
+                              'specification-right',
+                              scheduledTarget.trigger,
+                            ),
                         )
                       }
                       onSelectionChange={setRightSelectedIds}
@@ -4699,11 +4697,7 @@ export default function KravunderlagDetailClient({
                       onVisibleColumnsChange={setRightVisibleCols}
                       renderExpanded={id => (
                         <RequirementDetailClient
-                          detailCache={
-                            isRequirementDetailPrefetchEnabled()
-                              ? libraryDetailCache
-                              : undefined
-                          }
+                          detailCache={libraryDetailCache}
                           detailPrefetchContext={{
                             resource: 'library-requirement',
                             surface: 'specification-right',
