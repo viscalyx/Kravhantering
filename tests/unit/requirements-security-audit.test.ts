@@ -165,6 +165,12 @@ describe('requirements security audit', () => {
       specificationId: 1,
     },
     {
+      answerId: 3,
+      kind: 'manage_requirement_selection_question',
+      operation: 'answer.update',
+      questionId: 2,
+    },
+    {
       kind: 'list_graduation_target_areas',
       localRequirementId: 2,
       specificationId: 1,

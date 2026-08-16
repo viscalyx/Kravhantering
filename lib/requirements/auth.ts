@@ -230,6 +230,13 @@ export type RequirementsAction =
       questionId?: number
     }
   | {
+      answerId?: number
+      areaId?: number
+      kind: 'manage_requirement_selection_question'
+      operation: string
+      questionId?: number | string
+    }
+  | {
       kind: 'manage_specification_rfi'
       operation: string
       specificationId?: number

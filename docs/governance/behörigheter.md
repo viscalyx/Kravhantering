@@ -224,6 +224,15 @@ arkiveringsflöden kräver däremot `Reviewer`; `Admin` räcker inte ensamt för
 sådana beslut. En `Reviewer` får besluta om sitt eget förslag eller avsteg,
 men tjänsten loggar detta som en högriskhändelse.
 
+För kravurvalsfrågor omfattar författarbehörigheten skapande, redigering,
+duplicering, ordning, synlighetsvillkor, svar och livscykel. Vid skapande
+kontrolleras det begärda kravområdet. Övriga åtgärder slår upp frågans lagrade
+kravområde, och svar måste tillhöra den angivna frågan. Ett nekat anrop ger
+`403` före domänskrivning och tillåten åtgärdsloggning. Nekandet lämnar
+auktoriseringsevidens utan fråga-, svars- eller annan känslig fritext. Den som
+får läsa men inte författa ser en skrivskyddad förvaltningsyta utan
+mutationskontroller.
+
 Förbättringsförslag kan skapas och ändras av inloggade användare. Att lösa ett
 förslag eller besluta att avvisa det kräver författarbehörighet i kravområdet
 eller `Admin`. Egen lösning loggas som högriskhändelse.

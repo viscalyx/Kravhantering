@@ -53,6 +53,7 @@ interface RequirementArea {
   description: string | null
   id: number
   name: string
+  permissions: { canAuthor: boolean }
   prefix: string
 }
 
@@ -130,6 +131,7 @@ interface RequirementSelectionQuestion {
   id: number
   isActive: boolean
   isArchived: boolean
+  permissions: { canManage: boolean }
   questionCode: string
   selectionType: SelectionType
   sortOrder: number
@@ -1446,6 +1448,11 @@ export default function RequirementSelectionQuestionsClient() {
     })
   }, [areaFilter, questionSearch, questions, statusFilter])
 
+  const authorableAreas = useMemo(
+    () => areas.filter(area => area.permissions.canAuthor),
+    [areas],
+  )
+
   const isQuestionReorderFiltered =
     questionSearch.trim().length > 0 || statusFilter !== ''
 
@@ -2626,7 +2633,7 @@ export default function RequirementSelectionQuestionsClient() {
             value={questionForm.areaId}
           >
             <option value="">-</option>
-            {areas.map(area => (
+            {(isEditingQuestion ? areas : authorableAreas).map(area => (
               <option key={area.id} value={area.id}>
                 {area.prefix} {area.name}
               </option>
@@ -3581,17 +3588,21 @@ export default function RequirementSelectionQuestionsClient() {
         <FloatingActionRail
           anchorRef={listAnchorRef}
           developerModeContext="requirementSelectionQuestions"
-          items={[
-            {
-              ariaLabel: copy.createQuestion,
-              developerModeValue: 'new requirement selection question',
-              disabled: submitting,
-              icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-              id: 'create',
-              onClick: openQuestionForm,
-              variant: 'primary',
-            },
-          ]}
+          items={
+            authorableAreas.length > 0
+              ? [
+                  {
+                    ariaLabel: copy.createQuestion,
+                    developerModeValue: 'new requirement selection question',
+                    disabled: submitting,
+                    icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                    id: 'create',
+                    onClick: openQuestionForm,
+                    variant: 'primary' as const,
+                  },
+                ]
+              : []
+          }
         />
         <FormModal
           closeDisabled={submitting}
@@ -3751,6 +3762,7 @@ export default function RequirementSelectionQuestionsClient() {
                       const hierarchyCount =
                         hierarchyBadgeCounts.get(question.id) ?? 0
                       const questionReorderEnabled =
+                        question.permissions.canManage &&
                         !submitting &&
                         !isQuestionReorderFiltered &&
                         group.questions.length > 1
@@ -3797,59 +3809,65 @@ export default function RequirementSelectionQuestionsClient() {
                                 : ''
                             }`}
                           >
-                            <button
-                              aria-describedby={`kuf-question-reorder-hint-${question.id}`}
-                              aria-label={copy.reorderQuestion}
-                              className="inline-flex min-h-16 w-11 shrink-0 touch-none select-none self-stretch items-center justify-center border-r border-secondary-200 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-800 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
-                              data-question-drag-handle="true"
-                              disabled={!questionReorderEnabled}
-                              onKeyDown={event =>
-                                handleQuestionReorderKeyDown(
-                                  event,
-                                  group.questions,
-                                  question,
-                                )
-                              }
-                              onPointerCancel={
-                                handleQuestionDragHandlePointerCancel
-                              }
-                              onPointerDown={event =>
-                                handleQuestionDragHandlePointerDown(
-                                  event,
-                                  group.questions,
-                                  question,
-                                )
-                              }
-                              onPointerMove={
-                                handleQuestionDragHandlePointerMove
-                              }
-                              onPointerUp={handleQuestionDragHandlePointerUp}
-                              title={questionReorderHint}
-                              type="button"
-                              {...devMarker({
-                                context: 'requirementSelectionQuestions',
-                                name: 'question reorder handle',
-                                value: question.questionCode,
-                              })}
-                            >
-                              <span
-                                aria-hidden="true"
-                                className="flex h-full min-h-16 w-full cursor-grab items-center justify-center active:cursor-grabbing"
-                                data-question-drag-handle="true"
-                                role="presentation"
-                              >
-                                <GripVertical
-                                  aria-hidden="true"
-                                  className="h-4 w-4"
-                                />
-                              </span>
-                            </button>
-                            <span
-                              className="sr-only"
-                              id={`kuf-question-reorder-hint-${question.id}`}
-                            >
-                              {questionReorderHint}
-                            </span>
+                            {question.permissions.canManage ? (
+                              <>
+                                <button
+                                  aria-describedby={`kuf-question-reorder-hint-${question.id}`}
+                                  aria-label={copy.reorderQuestion}
+                                  className="inline-flex min-h-16 w-11 shrink-0 touch-none select-none self-stretch items-center justify-center border-r border-secondary-200 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-secondary-800 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50"
+                                  data-question-drag-handle="true"
+                                  disabled={!questionReorderEnabled}
+                                  onKeyDown={event =>
+                                    handleQuestionReorderKeyDown(
+                                      event,
+                                      group.questions,
+                                      question,
+                                    )
+                                  }
+                                  onPointerCancel={
+                                    handleQuestionDragHandlePointerCancel
+                                  }
+                                  onPointerDown={event =>
+                                    handleQuestionDragHandlePointerDown(
+                                      event,
+                                      group.questions,
+                                      question,
+                                    )
+                                  }
+                                  onPointerMove={
+                                    handleQuestionDragHandlePointerMove
+                                  }
+                                  onPointerUp={
+                                    handleQuestionDragHandlePointerUp
+                                  }
+                                  title={questionReorderHint}
+                                  type="button"
+                                  {...devMarker({
+                                    context: 'requirementSelectionQuestions',
+                                    name: 'question reorder handle',
+                                    value: question.questionCode,
+                                  })}
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className="flex h-full min-h-16 w-full cursor-grab items-center justify-center active:cursor-grabbing"
+                                    data-question-drag-handle="true"
+                                    role="presentation"
+                                  >
+                                    <GripVertical
+                                      aria-hidden="true"
+                                      className="h-4 w-4"
+                                    />
+                                  </span>
+                                </button>
+                                <span
+                                  className="sr-only"
+                                  id={`kuf-question-reorder-hint-${question.id}`}
+                                >
+                                  {questionReorderHint}
+                                </span>
+                              </>
+                            ) : null}
                             <button
                               aria-controls={detailsId}
                               aria-expanded={isExpanded}
@@ -3958,129 +3976,132 @@ export default function RequirementSelectionQuestionsClient() {
                                     {question.helpText}
                                   </p>
                                 )}
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  <button
-                                    className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
-                                    disabled={submitting}
-                                    onClick={() =>
-                                      openQuestionEditForm(question)
-                                    }
-                                    type="button"
-                                  >
-                                    <Pencil
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                    {copy.edit}
-                                  </button>
-                                  <button
-                                    className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
-                                    disabled={submitting}
-                                    onClick={() =>
-                                      openVisibilityPanel(question)
-                                    }
-                                    type="button"
-                                  >
-                                    <Eye
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                    {copy.visibilityButtonText}
-                                  </button>
-                                  <button
-                                    className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
-                                    disabled={submitting}
-                                    onClick={() =>
-                                      questionAction(
-                                        question,
-                                        question.isActive
-                                          ? 'deactivate'
-                                          : 'activate',
-                                      )
-                                    }
-                                    type="button"
-                                  >
-                                    {question.isActive ? (
-                                      <PauseCircle
+                                {question.permissions.canManage ? (
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    <button
+                                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                                      disabled={submitting}
+                                      onClick={() =>
+                                        openQuestionEditForm(question)
+                                      }
+                                      type="button"
+                                    >
+                                      <Pencil
                                         aria-hidden="true"
                                         className="h-4 w-4"
                                       />
-                                    ) : (
-                                      <CheckCircle2
+                                      {copy.edit}
+                                    </button>
+                                    <button
+                                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                                      disabled={submitting}
+                                      onClick={() =>
+                                        openVisibilityPanel(question)
+                                      }
+                                      type="button"
+                                    >
+                                      <Eye
                                         aria-hidden="true"
                                         className="h-4 w-4"
                                       />
-                                    )}
-                                    {question.isActive
-                                      ? copy.deactivate
-                                      : copy.activate}
-                                  </button>
-                                  <button
-                                    className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
-                                    disabled={submitting}
-                                    onClick={event =>
-                                      questionAction(
-                                        question,
-                                        question.isArchived
-                                          ? 'reactivate'
-                                          : 'archive',
-                                        event.currentTarget,
-                                      )
-                                    }
-                                    type="button"
-                                  >
-                                    {question.isArchived ? (
-                                      <RotateCcw
+                                      {copy.visibilityButtonText}
+                                    </button>
+                                    <button
+                                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                                      disabled={submitting}
+                                      onClick={() =>
+                                        questionAction(
+                                          question,
+                                          question.isActive
+                                            ? 'deactivate'
+                                            : 'activate',
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      {question.isActive ? (
+                                        <PauseCircle
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      ) : (
+                                        <CheckCircle2
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      )}
+                                      {question.isActive
+                                        ? copy.deactivate
+                                        : copy.activate}
+                                    </button>
+                                    <button
+                                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                                      disabled={submitting}
+                                      onClick={event =>
+                                        questionAction(
+                                          question,
+                                          question.isArchived
+                                            ? 'reactivate'
+                                            : 'archive',
+                                          event.currentTarget,
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      {question.isArchived ? (
+                                        <RotateCcw
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      ) : (
+                                        <Archive
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      )}
+                                      {question.isArchived
+                                        ? copy.reactivate
+                                        : copy.archive}
+                                    </button>
+                                    <button
+                                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
+                                      disabled={submitting}
+                                      onClick={() =>
+                                        questionAction(question, 'duplicate')
+                                      }
+                                      type="button"
+                                    >
+                                      <Copy
                                         aria-hidden="true"
                                         className="h-4 w-4"
                                       />
-                                    ) : (
-                                      <Archive
+                                      {copy.clone}
+                                    </button>
+                                    <button
+                                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-red-200 px-3 text-sm text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
+                                      disabled={submitting}
+                                      onClick={event =>
+                                        questionAction(
+                                          question,
+                                          'delete',
+                                          event.currentTarget,
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      <Trash2
                                         aria-hidden="true"
                                         className="h-4 w-4"
                                       />
-                                    )}
-                                    {question.isArchived
-                                      ? copy.reactivate
-                                      : copy.archive}
-                                  </button>
-                                  <button
-                                    className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-sm disabled:opacity-50"
-                                    disabled={submitting}
-                                    onClick={() =>
-                                      questionAction(question, 'duplicate')
-                                    }
-                                    type="button"
-                                  >
-                                    <Copy
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                    {copy.clone}
-                                  </button>
-                                  <button
-                                    className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-red-200 px-3 text-sm text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
-                                    disabled={submitting}
-                                    onClick={event =>
-                                      questionAction(
-                                        question,
-                                        'delete',
-                                        event.currentTarget,
-                                      )
-                                    }
-                                    type="button"
-                                  >
-                                    <Trash2
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                    {copy.delete}
-                                  </button>
-                                </div>
+                                      {copy.delete}
+                                    </button>
+                                  </div>
+                                ) : null}
                                 {question.answers.length > 0 && (
                                   <ul className="mt-4 divide-y rounded-xl border dark:border-secondary-800">
                                     {question.answers.map(answer => {
                                       const answerReorderEnabled =
+                                        question.permissions.canManage &&
                                         !submitting &&
                                         question.answers.length > 1
                                       const answerDragSurfaceClass =
@@ -4148,54 +4169,64 @@ export default function RequirementSelectionQuestionsClient() {
                               but the whole answer row remains the drop target
                               and visible drag preview.
                             */}
-                                            <button
-                                              aria-describedby={`kuf-answer-reorder-hint-${answer.id}`}
-                                              aria-label={copy.reorderAnswer}
-                                              className={`inline-flex min-h-11 w-8 shrink-0 touch-none select-none self-stretch items-center justify-center rounded-lg border border-secondary-300 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50 ${
-                                                answerReorderEnabled
-                                                  ? 'cursor-grab active:cursor-grabbing'
-                                                  : 'cursor-not-allowed opacity-40'
-                                              }`}
-                                              data-answer-drag-handle="true"
-                                              disabled={!answerReorderEnabled}
-                                              onKeyDown={event =>
-                                                handleAnswerReorderKeyDown(
-                                                  event,
-                                                  question,
-                                                  answer,
-                                                )
-                                              }
-                                              onPointerCancel={
-                                                clearArmedAnswerDrag
-                                              }
-                                              onPointerDown={() =>
-                                                handleAnswerDragHandlePointerDown(
-                                                  question,
-                                                  answer,
-                                                )
-                                              }
-                                              onPointerUp={clearArmedAnswerDrag}
-                                              title={copy.reorderAnswerHint}
-                                              type="button"
-                                            >
-                                              <span
-                                                aria-hidden="true"
-                                                className="flex h-full min-h-11 w-full cursor-grab items-center justify-center active:cursor-grabbing"
-                                                data-answer-drag-handle="true"
-                                                role="presentation"
-                                              >
-                                                <GripVertical
-                                                  aria-hidden="true"
-                                                  className="h-4 w-4"
-                                                />
-                                              </span>
-                                            </button>
-                                            <span
-                                              className="sr-only"
-                                              id={`kuf-answer-reorder-hint-${answer.id}`}
-                                            >
-                                              {copy.reorderAnswerHint}
-                                            </span>
+                                            {question.permissions.canManage ? (
+                                              <>
+                                                <button
+                                                  aria-describedby={`kuf-answer-reorder-hint-${answer.id}`}
+                                                  aria-label={
+                                                    copy.reorderAnswer
+                                                  }
+                                                  className={`inline-flex min-h-11 w-8 shrink-0 touch-none select-none self-stretch items-center justify-center rounded-lg border border-secondary-300 p-0 text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-950 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 dark:hover:text-secondary-50 ${
+                                                    answerReorderEnabled
+                                                      ? 'cursor-grab active:cursor-grabbing'
+                                                      : 'cursor-not-allowed opacity-40'
+                                                  }`}
+                                                  data-answer-drag-handle="true"
+                                                  disabled={
+                                                    !answerReorderEnabled
+                                                  }
+                                                  onKeyDown={event =>
+                                                    handleAnswerReorderKeyDown(
+                                                      event,
+                                                      question,
+                                                      answer,
+                                                    )
+                                                  }
+                                                  onPointerCancel={
+                                                    clearArmedAnswerDrag
+                                                  }
+                                                  onPointerDown={() =>
+                                                    handleAnswerDragHandlePointerDown(
+                                                      question,
+                                                      answer,
+                                                    )
+                                                  }
+                                                  onPointerUp={
+                                                    clearArmedAnswerDrag
+                                                  }
+                                                  title={copy.reorderAnswerHint}
+                                                  type="button"
+                                                >
+                                                  <span
+                                                    aria-hidden="true"
+                                                    className="flex h-full min-h-11 w-full cursor-grab items-center justify-center active:cursor-grabbing"
+                                                    data-answer-drag-handle="true"
+                                                    role="presentation"
+                                                  >
+                                                    <GripVertical
+                                                      aria-hidden="true"
+                                                      className="h-4 w-4"
+                                                    />
+                                                  </span>
+                                                </button>
+                                                <span
+                                                  className="sr-only"
+                                                  id={`kuf-answer-reorder-hint-${answer.id}`}
+                                                >
+                                                  {copy.reorderAnswerHint}
+                                                </span>
+                                              </>
+                                            ) : null}
                                             <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                               <div className="min-w-0 sm:flex-1">
                                                 <p className="font-medium">
@@ -4620,100 +4651,103 @@ export default function RequirementSelectionQuestionsClient() {
                                                   </span>
                                                 )}
                                               </div>
-                                              <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
-                                                <button
-                                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
-                                                  disabled={submitting}
-                                                  onClick={() =>
-                                                    editAnswer(answer)
-                                                  }
-                                                  type="button"
-                                                >
-                                                  <Pencil
-                                                    aria-hidden="true"
-                                                    className="h-4 w-4"
-                                                  />
-                                                  {copy.edit}
-                                                </button>
-                                                <button
-                                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
-                                                  disabled={submitting}
-                                                  onClick={() =>
-                                                    answerAction(
-                                                      question,
-                                                      answer,
-                                                      answer.isActive
-                                                        ? 'deactivate'
-                                                        : 'activate',
-                                                    )
-                                                  }
-                                                  type="button"
-                                                >
-                                                  {answer.isActive ? (
-                                                    <PauseCircle
+                                              {question.permissions
+                                                .canManage ? (
+                                                <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+                                                  <button
+                                                    className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                                    disabled={submitting}
+                                                    onClick={() =>
+                                                      editAnswer(answer)
+                                                    }
+                                                    type="button"
+                                                  >
+                                                    <Pencil
                                                       aria-hidden="true"
                                                       className="h-4 w-4"
                                                     />
-                                                  ) : (
-                                                    <CheckCircle2
+                                                    {copy.edit}
+                                                  </button>
+                                                  <button
+                                                    className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                                    disabled={submitting}
+                                                    onClick={() =>
+                                                      answerAction(
+                                                        question,
+                                                        answer,
+                                                        answer.isActive
+                                                          ? 'deactivate'
+                                                          : 'activate',
+                                                      )
+                                                    }
+                                                    type="button"
+                                                  >
+                                                    {answer.isActive ? (
+                                                      <PauseCircle
+                                                        aria-hidden="true"
+                                                        className="h-4 w-4"
+                                                      />
+                                                    ) : (
+                                                      <CheckCircle2
+                                                        aria-hidden="true"
+                                                        className="h-4 w-4"
+                                                      />
+                                                    )}
+                                                    {answer.isActive
+                                                      ? copy.deactivate
+                                                      : copy.activate}
+                                                  </button>
+                                                  <button
+                                                    className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
+                                                    disabled={submitting}
+                                                    onClick={event =>
+                                                      answerAction(
+                                                        question,
+                                                        answer,
+                                                        answer.isArchived
+                                                          ? 'reactivate'
+                                                          : 'archive',
+                                                        event.currentTarget,
+                                                      )
+                                                    }
+                                                    type="button"
+                                                  >
+                                                    {answer.isArchived ? (
+                                                      <RotateCcw
+                                                        aria-hidden="true"
+                                                        className="h-4 w-4"
+                                                      />
+                                                    ) : (
+                                                      <Archive
+                                                        aria-hidden="true"
+                                                        className="h-4 w-4"
+                                                      />
+                                                    )}
+                                                    {answer.isArchived
+                                                      ? copy.reactivate
+                                                      : copy.archive}
+                                                  </button>
+                                                  <button
+                                                    className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border border-red-200 px-2 text-xs text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
+                                                    disabled={submitting}
+                                                    onClick={event =>
+                                                      answerAction(
+                                                        question,
+                                                        answer,
+                                                        'delete',
+                                                        event.currentTarget,
+                                                      )
+                                                    }
+                                                    type="button"
+                                                  >
+                                                    <Trash2
                                                       aria-hidden="true"
                                                       className="h-4 w-4"
                                                     />
-                                                  )}
-                                                  {answer.isActive
-                                                    ? copy.deactivate
-                                                    : copy.activate}
-                                                </button>
-                                                <button
-                                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-2 text-xs disabled:opacity-50"
-                                                  disabled={submitting}
-                                                  onClick={event =>
-                                                    answerAction(
-                                                      question,
-                                                      answer,
-                                                      answer.isArchived
-                                                        ? 'reactivate'
-                                                        : 'archive',
-                                                      event.currentTarget,
-                                                    )
-                                                  }
-                                                  type="button"
-                                                >
-                                                  {answer.isArchived ? (
-                                                    <RotateCcw
-                                                      aria-hidden="true"
-                                                      className="h-4 w-4"
-                                                    />
-                                                  ) : (
-                                                    <Archive
-                                                      aria-hidden="true"
-                                                      className="h-4 w-4"
-                                                    />
-                                                  )}
-                                                  {answer.isArchived
-                                                    ? copy.reactivate
-                                                    : copy.archive}
-                                                </button>
-                                                <button
-                                                  className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border border-red-200 px-2 text-xs text-red-700 disabled:opacity-50 dark:border-red-800 dark:text-red-300"
-                                                  disabled={submitting}
-                                                  onClick={event =>
-                                                    answerAction(
-                                                      question,
-                                                      answer,
-                                                      'delete',
-                                                      event.currentTarget,
-                                                    )
-                                                  }
-                                                  type="button"
-                                                >
-                                                  <Trash2
-                                                    aria-hidden="true"
-                                                    className="h-4 w-4"
-                                                  />
-                                                  {copy.delete}
-                                                </button>
-                                              </div>
+                                                    {copy.delete}
+                                                  </button>
+                                                </div>
+                                              ) : null}
                                             </div>
                                           </div>
                                         </li>
@@ -4721,31 +4755,35 @@ export default function RequirementSelectionQuestionsClient() {
                                     })}
                                   </ul>
                                 )}
-                                <div
-                                  className={
-                                    question.answers.length > 0
-                                      ? 'mt-3'
-                                      : 'mt-4'
-                                  }
-                                >
-                                  <button
-                                    className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium text-secondary-800 transition-colors hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-100 dark:hover:bg-secondary-800"
-                                    disabled={submitting}
-                                    onClick={() => openAnswerForm(question)}
-                                    type="button"
-                                    {...devMarker({
-                                      context: 'requirementSelectionQuestions',
-                                      name: 'button',
-                                      value: 'new requirement selection answer',
-                                    })}
+                                {question.permissions.canManage ? (
+                                  <div
+                                    className={
+                                      question.answers.length > 0
+                                        ? 'mt-3'
+                                        : 'mt-4'
+                                    }
                                   >
-                                    <Plus
-                                      aria-hidden="true"
-                                      className="h-4 w-4"
-                                    />
-                                    {copy.addAnswer}
-                                  </button>
-                                </div>
+                                    <button
+                                      className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium text-secondary-800 transition-colors hover:bg-secondary-50 disabled:opacity-50 dark:border-secondary-700 dark:text-secondary-100 dark:hover:bg-secondary-800"
+                                      disabled={submitting}
+                                      onClick={() => openAnswerForm(question)}
+                                      type="button"
+                                      {...devMarker({
+                                        context:
+                                          'requirementSelectionQuestions',
+                                        name: 'button',
+                                        value:
+                                          'new requirement selection answer',
+                                      })}
+                                    >
+                                      <Plus
+                                        aria-hidden="true"
+                                        className="h-4 w-4"
+                                      />
+                                      {copy.addAnswer}
+                                    </button>
+                                  </div>
+                                ) : null}
                               </div>
                               {visibilityPanelQuestionId === question.id ? (
                                 <aside

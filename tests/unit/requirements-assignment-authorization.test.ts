@@ -66,6 +66,7 @@ function makeLookup(
     areaAuthor?: boolean | ((areaId: number) => boolean)
     deviation?: Partial<DeviationTarget>
     requirement?: Partial<RequirementTarget>
+    requirementSelectionAreaId?: number
     specAuthor?: boolean
     specificationId?: number
     suggestionAreaId?: number
@@ -88,6 +89,10 @@ function makeLookup(
     ),
     resolveRequirementApplicationMutationTarget: vi.fn(
       async () => options.specificationId ?? 42,
+    ),
+    resolveRequirementSelectionQuestionArea: vi.fn(
+      async () =>
+        options.requirementSelectionAreaId ?? options.requirement?.areaId ?? 7,
     ),
     resolveSpecificationId: vi.fn(
       async (input: { specificationId?: number }) =>
@@ -976,6 +981,94 @@ describe('AssignmentBasedAuthorizationService', () => {
       ),
     ).resolves.toBeUndefined()
   })
+
+  it.each<{
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_requirement_selection_question' }
+    >
+    label: string
+  }>([
+    {
+      action: {
+        areaId: 7,
+        kind: 'manage_requirement_selection_question',
+        operation: 'create',
+      },
+      label: 'question creation',
+    },
+    ...[
+      'update',
+      'delete',
+      'duplicate',
+      'visibility.update',
+      'activate',
+      'archive',
+      'deactivate',
+      'reactivate',
+      'answer.create',
+    ].map(operation => ({
+      action: {
+        kind: 'manage_requirement_selection_question' as const,
+        operation,
+        questionId: 'SEC-KUF001',
+      },
+      label: operation,
+    })),
+    ...[
+      'answer.update',
+      'answer.delete',
+      'answer.activate',
+      'answer.archive',
+      'answer.deactivate',
+      'answer.reactivate',
+    ].map(operation => ({
+      action: {
+        answerId: 13,
+        kind: 'manage_requirement_selection_question' as const,
+        operation,
+        questionId: 'SEC-KUF001',
+      },
+      label: operation,
+    })),
+  ])('enforces the assignment role matrix for $label', async ({ action }) => {
+    const assignedAuthor = makeService({ areaAuthor: true })
+    await expect(
+      assignedAuthor.service.assertAuthorized(action, makeContext([])),
+    ).resolves.toBeUndefined()
+    expect(
+      assignedAuthor.lookup.resolveRequirementSelectionQuestionArea,
+    ).toHaveBeenCalledWith(action)
+    expect(assignedAuthor.lookup.isRequirementAreaAuthor).toHaveBeenCalledWith(
+      7,
+      'SE5560000001-user1',
+    )
+
+    for (const context of [
+      makeContext([], 'SE5560000001-unassigned'),
+      makeContext([], 'SE5560000001-foreign-area-author'),
+      makeContext(['Reviewer'], 'SE5560000001-reviewer'),
+    ]) {
+      await expect(
+        makeService({ areaAuthor: false }).service.assertAuthorized(
+          action,
+          context,
+        ),
+      ).rejects.toMatchObject({
+        code: 'forbidden',
+        details: { reason: 'requirement_area_author_required' },
+      })
+    }
+
+    const admin = makeService({ areaAuthor: false })
+    await expect(
+      admin.service.assertAuthorized(action, makeContext(['Admin'], '')),
+    ).resolves.toBeUndefined()
+    expect(
+      admin.lookup.resolveRequirementSelectionQuestionArea,
+    ).toHaveBeenCalledWith(action)
+    expect(admin.lookup.isRequirementAreaAuthor).not.toHaveBeenCalled()
+  })
 })
 
 describe('SqlAssignmentLookup', () => {
@@ -1587,5 +1680,63 @@ describe('SqlAssignmentLookup', () => {
         },
       ),
     ).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it('resolves requirement-selection question and nested-answer areas from stored ownership', async () => {
+    const byCode = makeDb([[{ areaId: 7 }]])
+    await expect(
+      new SqlAssignmentLookup(
+        byCode.db,
+      ).resolveRequirementSelectionQuestionArea({
+        kind: 'manage_requirement_selection_question',
+        operation: 'update',
+        questionId: 'SEC-KUF001',
+      }),
+    ).resolves.toBe(7)
+    expect(byCode.query).toHaveBeenCalledWith(
+      expect.stringContaining('question.question_code = @0'),
+      ['SEC-KUF001'],
+    )
+
+    const nestedAnswer = makeDb([[{ areaId: 8 }]])
+    await expect(
+      new SqlAssignmentLookup(
+        nestedAnswer.db,
+      ).resolveRequirementSelectionQuestionArea({
+        answerId: 13,
+        kind: 'manage_requirement_selection_question',
+        operation: 'answer.update',
+        questionId: 11,
+      }),
+    ).resolves.toBe(8)
+    expect(nestedAnswer.query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'answer.question_id = question.id AND answer.id = @1',
+      ),
+      [11, 13],
+    )
+  })
+
+  it('rejects missing or mismatched requirement-selection mutation targets', async () => {
+    const lookup = new SqlAssignmentLookup(makeDb([[]]).db)
+    await expect(
+      lookup.resolveRequirementSelectionQuestionArea({
+        answerId: 99,
+        kind: 'manage_requirement_selection_question',
+        operation: 'answer.delete',
+        questionId: 11,
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+
+    await expect(
+      new SqlAssignmentLookup(
+        makeDb().db,
+      ).resolveRequirementSelectionQuestionArea({
+        kind: 'manage_requirement_selection_question',
+        operation: 'update',
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_requirement_selection_question_target' },
+    })
   })
 })

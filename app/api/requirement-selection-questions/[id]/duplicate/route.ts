@@ -5,34 +5,30 @@ import {
   resolveRequirementSelectionQuestionId,
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  authenticatedMutationPolicy,
-  secureMutationRoute,
-} from '@/lib/http/secure-mutation-route'
+import { secureMutationRoute } from '@/lib/http/secure-mutation-route'
+import { requirementSelectionQuestionPolicy } from '../../_authorization'
 import { questionRouteParamsSchema } from '../../_schemas'
 
 export const POST = secureMutationRoute({
   paramsSchema: questionRouteParamsSchema,
-  policy: authenticatedMutationPolicy(
-    'requirement_selection_question.duplicate',
-  ),
-  handler: async ({ context, params }) => {
-    const db = await getRequestSqlServerDataSource()
+  policy: requirementSelectionQuestionPolicy('duplicate'),
+  handler: async ({ context, db, params }) => {
+    const activeDb = db ?? (await getRequestSqlServerDataSource())
     const sourceQuestionId = await resolveRequirementSelectionQuestionId(
-      db,
+      activeDb,
       params.id,
     )
     if (sourceQuestionId == null) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const question = await duplicateRequirementSelectionQuestion(
-      db,
+      activeDb,
       sourceQuestionId,
     )
     if (!question) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAllowedActionAuditEvent(db, context, {
+    await recordAllowedActionAuditEvent(activeDb, context, {
       action: 'requirement_selection_question.duplicate',
       details: { sourceQuestionId },
       targetId: question.id,

@@ -167,6 +167,14 @@ function actionAuditDetail(
         operation: action.operation,
         specificationId: action.specificationId,
       }
+    case 'manage_requirement_selection_question':
+      return {
+        actionKind: action.kind,
+        answerId: action.answerId,
+        areaId: action.areaId,
+        operation: action.operation,
+        questionId: action.questionId,
+      }
     case 'get_requirement':
       return {
         actionKind: action.kind,

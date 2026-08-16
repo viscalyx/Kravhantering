@@ -572,11 +572,14 @@ upp, men fel föräldrakombination ger 403 även för `Admin`.
 1. Utför en tillåten granskningsåtgärd.
 1. Läs ett enskilt kravunderlagsavsteg via dess direkta API-identifierare och
    försök kombinera ett lokalt krav med fel befintligt kravunderlag.
+1. Öppna kravbiblioteksförvaltningens kravurvalsfrågor och expandera en fråga.
 1. Försök öppna Admincenter, dataskydd och ansvarstilldelnings-API.
 
 **Förväntat resultat:** Rita kan utföra granskningsarbete men nekas Admin,
 dataskydd och ansvarsstyrning. Underresursen kan läsas efter föräldrauppslag,
-men fel föräldrakombination ger 403 även för `Reviewer`.
+men fel föräldrakombination ger 403 även för `Reviewer`. Kravurvalsfrågorna
+kan läsas, men ytan visar inga kontroller för att skapa, ändra, ordna,
+duplicera, arkivera eller ta bort frågor eller svar.
 
 <a id="authz-10-dataskyddshandlaggare"></a>
 
