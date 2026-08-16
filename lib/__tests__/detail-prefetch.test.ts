@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apiFetch } from '@/lib/http/api-fetch'
 import {
   createLibraryRequirementDetailCache,
@@ -28,6 +28,12 @@ const context = {
   surface: 'requirements-library' as const,
   trigger: 'pointer' as const,
 }
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 describe('DetailResourceCache', () => {
   it('shares one in-flight request between intent and activation', async () => {
@@ -82,7 +88,6 @@ describe('DetailResourceCache', () => {
 
     expect(fetchDetail).toHaveBeenCalledTimes(1)
     expect(events.map(event => event.type)).toContain('click-reused-cache')
-    vi.useRealTimers()
   })
 
   it('prevents a late response from returning after invalidation', async () => {
@@ -235,7 +240,47 @@ describe('DetailResourceCache', () => {
         type: 'unused',
       }),
     ])
-    vi.useRealTimers()
+  })
+
+  it('removes and aborts a timed-out pending request before retry', async () => {
+    vi.useFakeTimers()
+    const pendingRequest = deferred<{ description: string }>()
+    const signals: AbortSignal[] = []
+    const events: RequirementDetailPrefetchEvent[] = []
+    const fetchDetail = vi
+      .fn((_: number, signal: AbortSignal) => {
+        signals.push(signal)
+        return pendingRequest.promise
+      })
+      .mockImplementationOnce((_: number, signal: AbortSignal) => {
+        signals.push(signal)
+        return pendingRequest.promise
+      })
+      .mockImplementationOnce(async (_: number, signal: AbortSignal) => {
+        signals.push(signal)
+        return { description: 'Fresh detail' }
+      })
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail,
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+
+    void cache.load(95, 'prefetch', context).catch(() => undefined)
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    expect(signals[0]?.aborted).toBe(true)
+    await expect(cache.load(95, 'activate', context)).resolves.toEqual({
+      description: 'Fresh detail',
+    })
+    expect(fetchDetail).toHaveBeenCalledTimes(2)
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        key: '95',
+        outcome: 'failed-unused',
+        type: 'prefetch-outcome',
+      }),
+    )
   })
 
   it('caps completed responses at 32 without counting in-flight requests', async () => {
@@ -290,7 +335,6 @@ describe('DetailResourceCache', () => {
         prefetchId: expect.any(Number),
       }),
     ])
-    vi.useRealTimers()
   })
 
   it('clears completed timers and tolerates unusable or disposed entries', async () => {
@@ -412,7 +456,6 @@ describe('DetailPrefetchIntentController', () => {
       prefetchId: started?.prefetchId,
       trigger: 'focus',
     })
-    vi.useRealTimers()
   })
 
   it('starts prefetch only after the 150 ms intent threshold', async () => {
@@ -425,7 +468,6 @@ describe('DetailPrefetchIntentController', () => {
     expect(prefetch).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)
     expect(prefetch).toHaveBeenCalledTimes(1)
-    vi.useRealTimers()
   })
 
   it('cancels pending pointer intent when the pointer leaves', async () => {
@@ -447,7 +489,6 @@ describe('DetailPrefetchIntentController', () => {
       'timer-started',
       'timer-cancelled',
     ])
-    vi.useRealTimers()
   })
 
   it('records pointer-to-click and prevents a pre-threshold request', async () => {
@@ -469,7 +510,6 @@ describe('DetailPrefetchIntentController', () => {
       trigger: 'pointer',
       type: 'intent-to-click',
     })
-    vi.useRealTimers()
   })
 
   it('cancels every pending timer when its page is disposed', async () => {
@@ -483,7 +523,6 @@ describe('DetailPrefetchIntentController', () => {
     await vi.advanceTimersByTimeAsync(150)
 
     expect(prefetch).not.toHaveBeenCalled()
-    vi.useRealTimers()
   })
 
   it('ignores duplicate intent schedules for the same trigger', () => {
@@ -499,7 +538,6 @@ describe('DetailPrefetchIntentController', () => {
 
     expect(firstPrefetch).toHaveBeenCalledTimes(1)
     expect(secondPrefetch).not.toHaveBeenCalled()
-    vi.useRealTimers()
   })
 })
 
@@ -519,7 +557,6 @@ describe('detail cache browser adapters', () => {
 
     vi.stubGlobal('window', undefined)
     expect(() => emitRequirementDetailPrefetchEvent(event)).not.toThrow()
-    vi.unstubAllGlobals()
   })
 
   it('loads library and specification-local details through their API paths', async () => {

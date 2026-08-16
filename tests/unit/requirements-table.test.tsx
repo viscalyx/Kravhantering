@@ -99,9 +99,9 @@ describe('RequirementsTable', () => {
     resizeObserverCallbacks = []
     setViewportHeight(DEFAULT_VIEWPORT_HEIGHT)
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
-    Object.defineProperty(window, 'matchMedia', {
-      configurable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
         addEventListener: vi.fn(),
         addListener: vi.fn(),
         dispatchEvent: vi.fn(),
@@ -111,7 +111,7 @@ describe('RequirementsTable', () => {
         removeEventListener: vi.fn(),
         removeListener: vi.fn(),
       })),
-    })
+    )
     vi.stubGlobal(
       'ResizeObserver',
       class ResizeObserver {
@@ -151,6 +151,7 @@ describe('RequirementsTable', () => {
   afterEach(() => {
     setViewportHeight(DEFAULT_VIEWPORT_HEIGHT)
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
+    vi.unstubAllGlobals()
   })
 
   // jsdom's PointerEvent defaults `isPrimary` to false and `pointerType` to ''.
@@ -3460,9 +3461,9 @@ describe('RequirementsTable', () => {
   })
 
   it('does not expose pointer movement when the primary pointer is coarse', () => {
-    Object.defineProperty(window, 'matchMedia', {
-      configurable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
         addEventListener: vi.fn(),
         addListener: vi.fn(),
         dispatchEvent: vi.fn(),
@@ -3472,7 +3473,7 @@ describe('RequirementsTable', () => {
         removeEventListener: vi.fn(),
         removeListener: vi.fn(),
       })),
-    })
+    )
     const onRowIntentEnd = vi.fn()
     const onRowIntentStart = vi.fn()
     render(

@@ -143,6 +143,21 @@ const SPECIFICATION_ITEM_MATCH_PROBE_CHUNK_SIZE = 100
 const SPECIFICATION_ITEMS_PAGE_SIZE = 50
 const SPECIFICATION_NEEDS_REFERENCE_USAGE_PAGE_SIZE = 100
 const SPECIFICATION_REQUIREMENT_PACKAGES_PAGE_SIZE = 50
+const SPECIFICATION_LEFT_LIBRARY_DETAIL_CONTEXT: RequirementDetailPrefetchContext =
+  {
+    resource: 'library-requirement',
+    surface: 'specification-left',
+  }
+const SPECIFICATION_LEFT_LOCAL_DETAIL_CONTEXT: RequirementDetailPrefetchContext =
+  {
+    resource: 'specification-local-requirement',
+    surface: 'specification-left',
+  }
+const SPECIFICATION_RIGHT_LIBRARY_DETAIL_CONTEXT: RequirementDetailPrefetchContext =
+  {
+    resource: 'library-requirement',
+    surface: 'specification-right',
+  }
 
 const useClientLayoutEffect =
   typeof window === 'undefined' ? useEffect : useLayoutEffect
@@ -612,20 +627,29 @@ export default function KravunderlagDetailClient({
     }),
     [],
   )
-  const detailIntentTarget = useCallback(
+  const detailTarget = useCallback(
     (
       row: RequirementRow,
       surface: 'specification-left' | 'specification-right',
-      trigger?: DetailPrefetchIntentTarget['trigger'],
-    ): DetailPrefetchIntentTarget | DetailPrefetchTarget => ({
+    ): DetailPrefetchTarget => ({
       ...detailContext(row, surface),
       key:
         row.isSpecificationLocal && row.specificationLocalRequirementId != null
           ? `${specificationId}:${row.specificationLocalRequirementId}`
           : String(row.id),
-      ...(trigger ? { trigger } : {}),
     }),
     [detailContext, specificationId],
+  )
+  const detailIntentTarget = useCallback(
+    (
+      row: RequirementRow,
+      surface: 'specification-left' | 'specification-right',
+      trigger: DetailPrefetchIntentTarget['trigger'],
+    ): DetailPrefetchIntentTarget => ({
+      ...detailTarget(row, surface),
+      trigger,
+    }),
+    [detailTarget],
   )
   const prefetchRowDetail = useCallback(
     (
@@ -4177,22 +4201,19 @@ export default function KravunderlagDetailClient({
                             row,
                             'specification-left',
                             'pointer',
-                          ) as DetailPrefetchIntentTarget,
+                          ),
                         )
                         cancelDetailIntent(
                           detailIntentTarget(
                             row,
                             'specification-left',
                             'focus',
-                          ) as DetailPrefetchIntentTarget,
+                          ),
                         )
                         return
                       }
                       activateDetailIntent(
-                        detailIntentTarget(
-                          row,
-                          'specification-left',
-                        ) as DetailPrefetchTarget,
+                        detailTarget(row, 'specification-left'),
                       )
                     }}
                     onRowClick={id => {
@@ -4205,20 +4226,12 @@ export default function KravunderlagDetailClient({
                     }}
                     onRowIntentEnd={(row, trigger) =>
                       cancelDetailIntent(
-                        detailIntentTarget(
-                          row,
-                          'specification-left',
-                          trigger,
-                        ) as DetailPrefetchIntentTarget,
+                        detailIntentTarget(row, 'specification-left', trigger),
                       )
                     }
                     onRowIntentStart={(row, trigger) =>
                       scheduleDetailIntent(
-                        detailIntentTarget(
-                          row,
-                          'specification-left',
-                          trigger,
-                        ) as DetailPrefetchIntentTarget,
+                        detailIntentTarget(row, 'specification-left', trigger),
                         scheduledTarget =>
                           prefetchRowDetail(
                             row,
@@ -4243,10 +4256,9 @@ export default function KravunderlagDetailClient({
                           item.specificationLocalRequirementId != null ? (
                             <SpecificationLocalRequirementDetailClient
                               detailCache={localDetailCache}
-                              detailPrefetchContext={detailContext(
-                                item,
-                                'specification-left',
-                              )}
+                              detailPrefetchContext={
+                                SPECIFICATION_LEFT_LOCAL_DETAIL_CONTEXT
+                              }
                               localRequirementId={
                                 item.specificationLocalRequirementId
                               }
@@ -4279,10 +4291,9 @@ export default function KravunderlagDetailClient({
                           ) : item?.specificationItemId != null ? (
                             <RequirementDetailClient
                               detailCache={libraryDetailCache}
-                              detailPrefetchContext={detailContext(
-                                item,
-                                'specification-left',
-                              )}
+                              detailPrefetchContext={
+                                SPECIFICATION_LEFT_LIBRARY_DETAIL_CONTEXT
+                              }
                               inline
                               onChange={async () => {
                                 await fetchSpecificationItems()
@@ -4310,10 +4321,9 @@ export default function KravunderlagDetailClient({
                           ) : (
                             <RequirementDetailClient
                               detailCache={libraryDetailCache}
-                              detailPrefetchContext={{
-                                resource: 'library-requirement',
-                                surface: 'specification-left',
-                              }}
+                              detailPrefetchContext={
+                                SPECIFICATION_LEFT_LIBRARY_DETAIL_CONTEXT
+                              }
                               inline
                               onChange={async () => {
                                 await fetchSpecificationItems()
@@ -4647,22 +4657,19 @@ export default function KravunderlagDetailClient({
                               row,
                               'specification-right',
                               'pointer',
-                            ) as DetailPrefetchIntentTarget,
+                            ),
                           )
                           cancelDetailIntent(
                             detailIntentTarget(
                               row,
                               'specification-right',
                               'focus',
-                            ) as DetailPrefetchIntentTarget,
+                            ),
                           )
                           return
                         }
                         activateDetailIntent(
-                          detailIntentTarget(
-                            row,
-                            'specification-right',
-                          ) as DetailPrefetchTarget,
+                          detailTarget(row, 'specification-right'),
                         )
                       }}
                       onRowClick={id =>
@@ -4674,7 +4681,7 @@ export default function KravunderlagDetailClient({
                             row,
                             'specification-right',
                             trigger,
-                          ) as DetailPrefetchIntentTarget,
+                          ),
                         )
                       }
                       onRowIntentStart={(row, trigger) =>
@@ -4683,7 +4690,7 @@ export default function KravunderlagDetailClient({
                             row,
                             'specification-right',
                             trigger,
-                          ) as DetailPrefetchIntentTarget,
+                          ),
                           scheduledTarget =>
                             prefetchRowDetail(
                               row,
@@ -4698,10 +4705,9 @@ export default function KravunderlagDetailClient({
                       renderExpanded={id => (
                         <RequirementDetailClient
                           detailCache={libraryDetailCache}
-                          detailPrefetchContext={{
-                            resource: 'library-requirement',
-                            surface: 'specification-right',
-                          }}
+                          detailPrefetchContext={
+                            SPECIFICATION_RIGHT_LIBRARY_DETAIL_CONTEXT
+                          }
                           inline
                           requirementId={id}
                         />

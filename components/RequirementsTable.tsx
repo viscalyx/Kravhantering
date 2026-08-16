@@ -78,6 +78,15 @@ import {
 } from '@/lib/requirements/list-view'
 import { resolveStatusLabel } from '@/lib/requirements/status-label'
 
+const FINE_HOVER_MEDIA_QUERY = '(hover: hover) and (pointer: fine)'
+
+function supportsFineHover(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.(FINE_HOVER_MEDIA_QUERY)?.matches ?? false)
+  )
+}
+
 export interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
@@ -3524,9 +3533,7 @@ export default function RequirementsTable({
                         onPointerEnter={event => {
                           if (
                             event.pointerType !== 'touch' &&
-                            window.matchMedia(
-                              '(hover: hover) and (pointer: fine)',
-                            ).matches
+                            supportsFineHover()
                           ) {
                             onRowIntentStart?.(row, 'pointer')
                           }
@@ -3534,9 +3541,7 @@ export default function RequirementsTable({
                         onPointerLeave={event => {
                           if (
                             event.pointerType !== 'touch' &&
-                            window.matchMedia(
-                              '(hover: hover) and (pointer: fine)',
-                            ).matches
+                            supportsFineHover()
                           ) {
                             onRowIntentEnd?.(row, 'pointer')
                           }

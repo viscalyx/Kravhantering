@@ -980,9 +980,12 @@ frågan och tar bort varningen först när uppdateringen lyckas.
 
 ### REQ-21: avsikt förhämtar kravdetalj i kravbiblioteket
 
-**Steg:** För pekaren över ett krav och lämna raden före 150 ms. Hovra sedan
-över samma rad längre än 150 ms och klicka medan huvudförfrågan pågår. Upprepa
-med tangentbordsfokus på krav-ID-kommandot och med ett omedelbart direktklick.
+**Steg:** För pekaren över ett krav och lämna raden före 150 ms. Ställ sedan in
+webbläsarens nätverksverktyg så att nästa huvudförfrågan för kravets detalj hålls
+kvar. Hovra över samma rad längre än 150 ms, invänta den hållna förfrågan och
+klicka medan den fortfarande pågår. Kontrollera antalet samtidiga förfrågningar
+innan förfrågan släpps. Upprepa med tangentbordsfokus på krav-ID-kommandot.
+Avsluta med ett omedelbart direktklick utan att hålla förfrågan.
 
 **Förväntat resultat:** Kort passage startar ingen huvudförfrågan. Hovring eller
 fokus över tröskeln startar exakt en huvudförfrågan som klicket återanvänder.
@@ -1646,10 +1649,14 @@ och de fyra gemensamma åtgärderna aktiveras igen.
 ### SPEC-21: avsikt förhämtar båda typerna av kravdetalj
 
 **Steg:** Öppna ett kravunderlag som innehåller ett bibliotekskrav och ett
-kravunderlagslokalt krav. Prova 150 ms-hovring, fokus och direktklick i vänster
-lista för båda typerna samt i höger lista för ett bibliotekskrav. Lägg till
-bibliotekskravet från höger lista, öppna detaljen i vänster lista, ta bort det
-och öppna detaljen igen i höger lista.
+kravunderlagslokalt krav. Ställ in webbläsarens nätverksverktyg så att nästa
+motsvarande detaljförfrågan hålls kvar. Hovra längre än 150 ms, invänta den
+hållna förfrågan och klicka medan den fortfarande pågår. Kontrollera antalet
+samtidiga förfrågningar innan den hållna förfrågan släpps. Upprepa med fokus i
+vänster lista för båda typerna samt i höger lista för ett bibliotekskrav. Prova
+sedan direktklick utan att hålla förfrågan. Lägg till bibliotekskravet från
+höger lista, öppna detaljen i vänster lista, ta bort det och öppna detaljen igen
+i höger lista.
 
 **Förväntat resultat:** Vänster och höger lista följer samma avsiktspolicy.
 Klick efter hovring eller fokus återanvänder det pågående anropet från

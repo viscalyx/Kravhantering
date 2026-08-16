@@ -21,6 +21,15 @@ interface UseRequirementDetailDataResult {
   transitions: TransitionTarget[]
 }
 
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'AbortError'
+  )
+}
+
 export function useRequirementDetailData({
   detailCache,
   detailContext,
@@ -32,20 +41,30 @@ export function useRequirementDetailData({
   const [transitions, setTransitions] = useState<TransitionTarget[]>([])
   const [statuses, setStatuses] = useState<StatusInfo[]>([])
   const hasDataRef = useRef(false)
+  const latestRequestIdRef = useRef(0)
+  const detailResource = detailContext?.resource
+  const detailSurface = detailContext?.surface
 
   const loadRequirement = useCallback(
     async (authoritative: boolean) => {
+      const requestId = ++latestRequestIdRef.current
       if (!hasDataRef.current) setLoading(true)
       try {
         let detail: RequirementDetailResponse
-        if (detailCache && detailContext && typeof requirementId === 'number') {
+        if (
+          detailCache &&
+          detailResource &&
+          detailSurface &&
+          typeof requirementId === 'number'
+        ) {
           detail = await detailCache.load(
             requirementId,
             authoritative ? 'refresh' : 'activate',
-            detailContext,
+            { resource: detailResource, surface: detailSurface },
           )
         } else {
           const res = await apiFetch(`/api/requirements/${requirementId}`)
+          if (requestId !== latestRequestIdRef.current) return
           if (!res.ok) {
             console.error(
               'Failed to load requirement detail:',
@@ -56,17 +75,23 @@ export function useRequirementDetailData({
           }
           detail = (await res.json()) as RequirementDetailResponse
         }
+        if (requestId !== latestRequestIdRef.current) return
         setRequirement(detail)
         hasDataRef.current = true
       } catch (error) {
+        if (requestId !== latestRequestIdRef.current || isAbortError(error)) {
+          return
+        }
         console.error('Failed to load requirement detail:', error)
         setRequirement(null)
         hasDataRef.current = false
       } finally {
-        setLoading(false)
+        if (requestId === latestRequestIdRef.current) {
+          setLoading(false)
+        }
       }
     },
-    [detailCache, detailContext, requirementId],
+    [detailCache, detailResource, detailSurface, requirementId],
   )
 
   const refreshRequirement = useCallback(
@@ -104,6 +129,9 @@ export function useRequirementDetailData({
 
   useEffect(() => {
     void loadRequirement(false)
+    return () => {
+      latestRequestIdRef.current += 1
+    }
   }, [loadRequirement])
 
   const latestStatusId = requirement?.versions[0]?.status ?? null

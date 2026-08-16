@@ -553,6 +553,14 @@ export default function SpecificationLocalRequirementDetailClient({
         }
         setRequirement(applyUsageStatusSnapshot(detail, usageStatusRef.current))
       } catch (fetchError) {
+        if (
+          typeof fetchError === 'object' &&
+          fetchError !== null &&
+          'name' in fetchError &&
+          fetchError.name === 'AbortError'
+        ) {
+          return
+        }
         setRequirement(null)
         setError(
           fetchError instanceof Error
@@ -768,13 +776,12 @@ export default function SpecificationLocalRequirementDetailClient({
           return
         }
 
-        detailCache?.invalidate(
-          { localRequirementId, specificationId },
-          detailPrefetchContext ?? {
-            resource: 'specification-local-requirement',
-            surface: 'specification-left',
-          },
-        )
+        if (detailCache && detailPrefetchContext) {
+          detailCache.invalidate(
+            { localRequirementId, specificationId },
+            detailPrefetchContext,
+          )
+        }
         await onChange?.()
       } catch (deleteError) {
         setError(

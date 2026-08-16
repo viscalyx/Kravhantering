@@ -78,6 +78,10 @@ export type RequirementDetailPrefetchEvent =
 
 let requirementDetailPrefetchSequence = 0
 
+const DETAIL_CACHE_MAX_COMPLETED_ENTRIES = 32
+const DETAIL_CACHE_TTL_MS = 30_000
+const DETAIL_REQUEST_TIMEOUT_MS = 30_000
+
 interface PendingIntent {
   startedAt: number
   target: DetailPrefetchIntentTarget
@@ -211,6 +215,7 @@ interface InFlightEntry<Value> {
   expiresAt: number | null
   expiryTimer: ReturnType<typeof setTimeout> | null
   lastUsed: number
+  pendingTimer: ReturnType<typeof setTimeout> | null
   prefetchId: number | null
   prefetchOutcomeRecorded: boolean
   prefetchStartedAt: number | null
@@ -305,6 +310,7 @@ export class DetailResourceCache<Key, Value> {
       expiresAt: null,
       expiryTimer: null,
       lastUsed: ++this.accessSequence,
+      pendingTimer: null,
       promise: Promise.resolve(undefined as Value),
       prefetchId,
       prefetchOutcomeRecorded: false,
@@ -317,12 +323,26 @@ export class DetailResourceCache<Key, Value> {
     if (prefetchId !== null) {
       this.emit('prefetch-started', cacheKey, context, { prefetchId })
     }
+    entry.pendingTimer = setTimeout(() => {
+      if (this.entries.get(cacheKey) !== entry || entry.state !== 'pending') {
+        return
+      }
+      entry.pendingTimer = null
+      this.settlePrefetch(entry, cacheKey, 'failed-unused')
+      this.entries.delete(cacheKey)
+      controller.abort()
+      this.emit('failed', cacheKey, entry.startContext)
+    }, DETAIL_REQUEST_TIMEOUT_MS)
     entry.promise = this.fetchDetail(key, controller.signal)
       .then(value => {
+        if (entry.pendingTimer) {
+          clearTimeout(entry.pendingTimer)
+          entry.pendingTimer = null
+        }
         if (this.entries.get(cacheKey) !== entry) {
           throw new DOMException('Detail request was invalidated', 'AbortError')
         }
-        entry.expiresAt = performance.now() + 30_000
+        entry.expiresAt = performance.now() + DETAIL_CACHE_TTL_MS
         entry.state = 'fulfilled'
         entry.lastUsed = ++this.accessSequence
         entry.expiryTimer = setTimeout(() => {
@@ -333,11 +353,15 @@ export class DetailResourceCache<Key, Value> {
           if (entry.startedAsPrefetch && !entry.used) {
             this.settlePrefetch(entry, cacheKey, 'expired-unused')
           }
-        }, 30_000)
+        }, DETAIL_CACHE_TTL_MS)
         this.enforceCompletedCapacity()
         return value
       })
       .catch(error => {
+        if (entry.pendingTimer) {
+          clearTimeout(entry.pendingTimer)
+          entry.pendingTimer = null
+        }
         if (error instanceof DetailFetchError && error.status === 401) {
           this.clear()
         } else if (this.entries.get(cacheKey) === entry) {
@@ -361,6 +385,7 @@ export class DetailResourceCache<Key, Value> {
     }
     entry?.controller.abort()
     if (entry?.expiryTimer) clearTimeout(entry.expiryTimer)
+    if (entry?.pendingTimer) clearTimeout(entry.pendingTimer)
     this.entries.delete(cacheKey)
     this.emit('invalidated', cacheKey, context)
   }
@@ -382,6 +407,7 @@ export class DetailResourceCache<Key, Value> {
       this.settlePrefetch(entry, key, outcome)
       entry.controller.abort()
       if (entry.expiryTimer) clearTimeout(entry.expiryTimer)
+      if (entry.pendingTimer) clearTimeout(entry.pendingTimer)
       this.emit('invalidated', key, entry.startContext)
     }
   }
@@ -395,7 +421,10 @@ export class DetailResourceCache<Key, Value> {
       .filter(([, entry]) => entry.state === 'fulfilled')
       .sort(([, left], [, right]) => left.lastUsed - right.lastUsed)
 
-    for (const [key, entry] of completed.slice(0, -32)) {
+    for (const [key, entry] of completed.slice(
+      0,
+      -DETAIL_CACHE_MAX_COMPLETED_ENTRIES,
+    )) {
       if (entry.expiryTimer) clearTimeout(entry.expiryTimer)
       this.entries.delete(key)
       if (entry.startedAsPrefetch && !entry.used) {

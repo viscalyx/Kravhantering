@@ -12,6 +12,18 @@ import { getLocalizedName } from '@/app/[locale]/requirements/[id]/_detail/local
 import { useRequirementDetailData } from '@/app/[locale]/requirements/[id]/_detail/use-requirement-detail-data'
 import { useVersionPillConnector } from '@/app/[locale]/requirements/[id]/_detail/use-version-pill-connector'
 import { useDetailActionMenu } from '@/app/[locale]/requirements/[id]/_detail/useDetailActionMenu'
+import { DetailResourceCache } from '@/lib/requirements/detail-prefetch'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, reject, resolve }
+}
 
 function jsonResponse(
   body: unknown,
@@ -135,6 +147,86 @@ describe('requirement detail core hooks', () => {
     rerender({ requirementId: 43 })
     await waitFor(() => expect(result.current.requirement?.id).toBe(43))
     await waitFor(() => expect(result.current.transitions).toEqual([]))
+  })
+
+  it('ignores a superseded requirement response', async () => {
+    const firstRequest = deferred<Response>()
+    const secondRequest = deferred<Response>()
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/requirements/41') return firstRequest.promise
+      if (url === '/api/requirements/42') return secondRequest.promise
+      throw new Error(`Unhandled fetch ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result, rerender } = renderHook(
+      ({ requirementId }: { requirementId: number }) =>
+        useRequirementDetailData({ requirementId }),
+      { initialProps: { requirementId: 41 } },
+    )
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/41'),
+    )
+
+    rerender({ requirementId: 42 })
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/42'),
+    )
+    secondRequest.resolve(
+      jsonResponse({ id: 42, uniqueId: 'REQ-42', versions: [] }),
+    )
+    await waitFor(() => expect(result.current.requirement?.id).toBe(42))
+
+    firstRequest.resolve(
+      jsonResponse({ id: 41, uniqueId: 'REQ-41', versions: [] }),
+    )
+    await act(async () => undefined)
+    expect(result.current.requirement?.id).toBe(42)
+  })
+
+  it('preserves loaded requirement data when a cache request is aborted', async () => {
+    const pendingRefresh = deferred<RequirementDetailResponse>()
+    const requirement = {
+      id: 43,
+      uniqueId: 'REQ-43',
+      versions: [],
+    } as unknown as RequirementDetailResponse
+    const fetchDetail = vi
+      .fn<() => Promise<RequirementDetailResponse>>()
+      .mockResolvedValueOnce(requirement)
+      .mockReturnValueOnce(pendingRefresh.promise)
+    const detailCache = new DetailResourceCache<
+      number,
+      RequirementDetailResponse
+    >({ fetchDetail, keyOf: String })
+    const detailContext = {
+      resource: 'library-requirement' as const,
+      surface: 'requirements-library' as const,
+    }
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    const { result } = renderHook(() =>
+      useRequirementDetailData({
+        detailCache,
+        detailContext,
+        requirementId: 43,
+      }),
+    )
+    await waitFor(() => expect(result.current.requirement?.id).toBe(43))
+
+    let refreshPromise: Promise<void> | undefined
+    act(() => {
+      refreshPromise = result.current.refreshRequirement()
+    })
+    detailCache.invalidate(43, detailContext)
+    pendingRefresh.resolve({ ...requirement, uniqueId: 'STALE-43' })
+    await act(async () => refreshPromise)
+
+    expect(result.current.requirement?.uniqueId).toBe('REQ-43')
+    expect(consoleError).not.toHaveBeenCalled()
   })
 
   it('clears detail and transition state on response and transport failures', async () => {

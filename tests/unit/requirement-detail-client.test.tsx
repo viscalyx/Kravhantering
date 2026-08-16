@@ -1552,16 +1552,17 @@ describe('RequirementDetailClient', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Approve Archiving' }),
     )
+    events.length = 0
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     expect(onChange).toHaveBeenCalledOnce()
-    expect(events).toContainEqual(
+    expect(events.filter(event => event.type === 'invalidated')).toEqual([
       expect.objectContaining({
         key: '123',
         type: 'invalidated',
       }),
-    )
+    ])
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/requirement-transitions/123',
       expect.objectContaining({
@@ -2218,18 +2219,19 @@ describe('RequirementDetailClient', () => {
     expect(await screen.findByText('Only draft')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    events.length = 0
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() => expect(onChange).toHaveBeenCalled())
     expect(onClose.mock.invocationCallOrder[0]).toBeLessThan(
       onChange.mock.invocationCallOrder[0],
     )
-    expect(events).toContainEqual(
+    expect(events.filter(event => event.type === 'invalidated')).toEqual([
       expect.objectContaining({
         key: '123',
         type: 'invalidated',
       }),
-    )
+    ])
     expect(routerPush).not.toHaveBeenCalled()
   })
 

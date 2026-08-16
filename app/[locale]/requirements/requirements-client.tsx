@@ -379,16 +379,22 @@ export default function RequirementsClient({
     }),
     [],
   )
+  const libraryTarget = useCallback(
+    (row: RequirementRow): DetailPrefetchTarget => ({
+      ...libraryDetailContext,
+      key: String(row.id),
+    }),
+    [libraryDetailContext],
+  )
   const libraryIntentTarget = useCallback(
     (
       row: RequirementRow,
-      trigger?: DetailPrefetchIntentTarget['trigger'],
-    ): DetailPrefetchIntentTarget | DetailPrefetchTarget => ({
-      ...libraryDetailContext,
-      key: String(row.id),
-      ...(trigger ? { trigger } : {}),
+      trigger: DetailPrefetchIntentTarget['trigger'],
+    ): DetailPrefetchIntentTarget => ({
+      ...libraryTarget(row),
+      trigger,
     }),
-    [libraryDetailContext],
+    [libraryTarget],
   )
 
   useEffect(() => {
@@ -1395,23 +1401,11 @@ export default function RequirementsClient({
                   onLoadMore={loadMore}
                   onRowActivate={row => {
                     if (selectedIdRef.current === row.id) {
-                      cancelDetailIntent(
-                        libraryIntentTarget(
-                          row,
-                          'pointer',
-                        ) as DetailPrefetchIntentTarget,
-                      )
-                      cancelDetailIntent(
-                        libraryIntentTarget(
-                          row,
-                          'focus',
-                        ) as DetailPrefetchIntentTarget,
-                      )
+                      cancelDetailIntent(libraryIntentTarget(row, 'pointer'))
+                      cancelDetailIntent(libraryIntentTarget(row, 'focus'))
                       return
                     }
-                    activateDetailIntent(
-                      libraryIntentTarget(row) as DetailPrefetchTarget,
-                    )
+                    activateDetailIntent(libraryTarget(row))
                   }}
                   onRowClick={id => {
                     const previousSelectedId = selectedIdRef.current
@@ -1423,19 +1417,11 @@ export default function RequirementsClient({
                     }
                   }}
                   onRowIntentEnd={(row, trigger) =>
-                    cancelDetailIntent(
-                      libraryIntentTarget(
-                        row,
-                        trigger,
-                      ) as DetailPrefetchIntentTarget,
-                    )
+                    cancelDetailIntent(libraryIntentTarget(row, trigger))
                   }
                   onRowIntentStart={(row, trigger) =>
                     scheduleDetailIntent(
-                      libraryIntentTarget(
-                        row,
-                        trigger,
-                      ) as DetailPrefetchIntentTarget,
+                      libraryIntentTarget(row, trigger),
                       scheduledTarget => {
                         void detailCache
                           .load(row.id, 'prefetch', {

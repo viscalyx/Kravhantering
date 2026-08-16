@@ -140,6 +140,15 @@ export default function RequirementDetailClient({
     detailContext: detailPrefetchContext,
     requirementId,
   })
+  const invalidateRequirementDetail = useCallback(() => {
+    if (
+      detailCache &&
+      detailPrefetchContext &&
+      typeof requirementId === 'number'
+    ) {
+      detailCache.invalidate(requirementId, detailPrefetchContext)
+    }
+  }, [detailCache, detailPrefetchContext, requirementId])
   useEffect(() => {
     if (
       req &&
@@ -638,13 +647,7 @@ export default function RequirementDetailClient({
         })
         return
       }
-      if (
-        detailCache &&
-        detailPrefetchContext &&
-        typeof requirementId === 'number'
-      ) {
-        detailCache.invalidate(requirementId, detailPrefetchContext)
-      }
+      invalidateRequirementDetail()
       await onChange?.()
       if (onClose) onClose()
       else router.push('/requirements')
@@ -754,13 +757,7 @@ export default function RequirementDetailClient({
         item => item.type === 'requirement',
       )
       if (requirementDeleted) {
-        if (
-          detailCache &&
-          detailPrefetchContext &&
-          typeof requirementId === 'number'
-        ) {
-          detailCache.invalidate(requirementId, detailPrefetchContext)
-        }
+        invalidateRequirementDetail()
         if (onClose) onClose()
         else router.push('/requirements')
         await onChange?.()
