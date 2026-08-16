@@ -169,18 +169,27 @@ install_archive() {
 }
 
 configure_smoke_app_env() {
-  local app_env="$1"
+  local app_env="$1" client_secret="$2" cookie_password="$3"
   sed -i \
     -e 's#/realms/kravhantering-test#/realms/kravhantering-production#' \
     -e 's#^HSA_PERSON_LOOKUP_URL=.*#HSA_PERSON_LOOKUP_URL=https://kong:8443/hsa/person-records/lookup#' \
     -e 's#^DB_TRUST_SERVER_CERTIFICATE=.*#DB_TRUST_SERVER_CERTIFICATE=false#' \
+    -e "s#^AUTH_OIDC_CLIENT_SECRET=.*#AUTH_OIDC_CLIENT_SECRET=$client_secret#" \
+    -e "s#^AUTH_SESSION_COOKIE_PASSWORD=.*#AUTH_SESSION_COOKIE_PASSWORD=$cookie_password#" \
     "$app_env"
 }
 
 render_runtime_configuration() {
+  local app_client_secret cookie_password keycloak_admin_password
+  local mcp_client_secret
+  app_client_secret="$(openssl rand -hex 32)"
+  cookie_password="$(openssl rand -hex 32)"
+  keycloak_admin_password="$(openssl rand -hex 32)"
+  mcp_client_secret="$(openssl rand -hex 32)"
   CONFIG_TEMP_DIR="$(mktemp -d)"
   cp containers/app/.env.app.local "$CONFIG_TEMP_DIR/app.env"
-  configure_smoke_app_env "$CONFIG_TEMP_DIR/app.env"
+  configure_smoke_app_env \
+    "$CONFIG_TEMP_DIR/app.env" "$app_client_secret" "$cookie_password"
   cp containers/db-job/.env.db-job.local "$CONFIG_TEMP_DIR/db-job.env"
   sed -i \
     -e 's#^DB_TRUST_SERVER_CERTIFICATE=.*#DB_TRUST_SERVER_CERTIFICATE=false#' \
@@ -189,15 +198,35 @@ render_runtime_configuration() {
     'NODE_EXTRA_CA_CERTS=/run/kravhantering/sqlserver-ca.crt' \
     >>"$CONFIG_TEMP_DIR/db-job.env"
   cp containers/keycloak/.env.keycloak.local "$CONFIG_TEMP_DIR/keycloak.env"
+  sed -i \
+    -e 's#^KEYCLOAK_ADMIN=.*#KEYCLOAK_ADMIN=kravhantering-smoke-admin#' \
+    -e "s#^KEYCLOAK_ADMIN_PASSWORD=.*#KEYCLOAK_ADMIN_PASSWORD=$keycloak_admin_password#" \
+    "$CONFIG_TEMP_DIR/keycloak.env"
   cp containers/sqlserver/.env.sqlserver.local "$CONFIG_TEMP_DIR/sqlserver.env"
 
   cp "$INSTALL_ROOT/current/keycloak/realm-kravhantering-production.template.json" \
     "$CONFIG_TEMP_DIR/realm.json"
   sed -i \
     -e 's#kravhantering.example.internal#kravhantering.test#g' \
-    -e 's#replace-with-production-app-client-secret#container-demo-app-secret-not-for-production#g' \
-    -e 's#replace-with-production-mcp-client-secret#container-demo-mcp-secret-not-for-production#g' \
     "$CONFIG_TEMP_DIR/realm.json"
+  APP_CLIENT_SECRET="$app_client_secret" \
+    MCP_CLIENT_SECRET="$mcp_client_secret" \
+    node - "$CONFIG_TEMP_DIR/realm.json" <<'NODE'
+const fs = require('node:fs')
+
+const realmPath = process.argv[2]
+const realm = JSON.parse(fs.readFileSync(realmPath, 'utf8'))
+const secrets = new Map([
+  ['kravhantering-app', process.env.APP_CLIENT_SECRET],
+  ['kravhantering-mcp', process.env.MCP_CLIENT_SECRET],
+])
+for (const client of realm.clients ?? []) {
+  if (secrets.has(client.clientId)) {
+    client.secret = secrets.get(client.clientId)
+  }
+}
+fs.writeFileSync(realmPath, `${JSON.stringify(realm, null, 2)}\n`)
+NODE
   node "$INSTALL_ROOT/current/scripts/keycloak-demo-users.mjs" merge-file \
     --users "$INSTALL_ROOT/current/keycloak/demo-users.not-for-production.json" \
     --realm-file "$CONFIG_TEMP_DIR/realm.json" \

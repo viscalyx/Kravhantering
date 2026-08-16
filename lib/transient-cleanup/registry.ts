@@ -9,7 +9,10 @@ export function createTransientCleanupTargets(
   executor: TransientCleanupQueryExecutor,
 ): TransientCleanupTarget[] {
   return [
+    createAiForensicEvidenceCleanupTarget(executor),
     createRequirementImportValidationSessionCleanupTarget(executor),
     createRequirementImportValidationRateBucketCleanupTarget(executor),
   ]
 }
+
+import { createAiForensicEvidenceCleanupTarget } from './ai-forensic-evidence'

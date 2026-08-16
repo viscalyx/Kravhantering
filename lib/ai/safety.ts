@@ -1,8 +1,4 @@
-import {
-  recordSecurityEvent,
-  type SecurityEventName,
-  type SecurityEventRequest,
-} from '@/lib/auth/audit'
+import { recordSecurityEvent, type SecurityEventName } from '@/lib/auth/audit'
 import {
   type ActiveAiSafetyRule,
   type ActiveAiSafetyRuleSet,
@@ -11,9 +7,9 @@ import {
   type AiSafetyTermType,
   getCachedAiSafetyRuleSet,
 } from '@/lib/dal/ai-safety-rules'
-import { getCachedAiSafetyRuntimeSettings } from '@/lib/dal/ai-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import type { RequestContext } from '@/lib/requirements/auth'
+import { persistAiForensicEvidence } from './forensic-evidence'
 
 export type { AiSafetyRuleId } from '@/lib/dal/ai-safety-rules'
 
@@ -590,73 +586,8 @@ function textLengthBucket(textLength: number): string {
   return '16k+'
 }
 
-function requestForForensicEvent(
-  context: RequestContext,
-  request: Request,
-): Omit<SecurityEventRequest, 'requestId'> {
-  const omitRequestId = ({
-    requestId: _requestId,
-    ...transportRequest
-  }: SecurityEventRequest): Omit<SecurityEventRequest, 'requestId'> =>
-    transportRequest
-  if (context.request) return omitRequestId(context.request)
-  let path = ''
-  try {
-    path = new URL(request.url).pathname
-  } catch {
-    path = request.url.split(/[?#]/, 1)[0] ?? ''
-  }
-  return omitRequestId({
-    method: request.method,
-    path,
-    requestId: context.requestId,
-  })
-}
-
-function forensicEventName(
-  event: Extract<
-    SecurityEventName,
-    'ai.input_safety.blocked' | 'ai.output_safety.blocked'
-  >,
-) {
-  return event === 'ai.input_safety.blocked'
-    ? 'ai.input_safety.blocked_content_captured'
-    : 'ai.output_safety.blocked_content_captured'
-}
-
 function safeForensicLogErrorKind(value: unknown): string {
   return value instanceof Error ? 'Error' : 'NonError'
-}
-
-interface AiSafetyForensicEventPayload {
-  actor: {
-    source: RequestContext['actor']['source']
-    sub?: string
-  }
-  blockedStep: AiSafetyBlockedStep
-  categories: readonly string[]
-  channel: 'security-forensics'
-  content: readonly AiSafetyScreenPart[]
-  correlationId: string
-  decision: 'blocked'
-  event: ReturnType<typeof forensicEventName>
-  eventId: string
-  evidence: readonly AiSafetyForensicEvidence[]
-  model?: string
-  operation: string
-  outcome: 'failure'
-  primaryRuleId: AiSafetyRuleId | null
-  primaryRuleType: string | null
-  provider?: string
-  reason: typeof AI_SAFETY_BLOCK_REASON
-  request: Omit<SecurityEventRequest, 'requestId'>
-  requestId: string
-  ruleIds: readonly AiSafetyRuleId[]
-  ruleTypes: readonly string[]
-  safetyRuleDirection: AiSafetyDirection
-  source: RequestContext['source']
-  textLengthBucket: string
-  ts: string
 }
 
 export function recordAiSafetyDecision(args: {
@@ -709,68 +640,6 @@ export function recordAiSafetyDecision(args: {
   return eventId
 }
 
-function recordAiSafetyForensicEvent(args: {
-  blockedStep: AiSafetyBlockedStep
-  context: RequestContext
-  direction: AiSafetyDirection
-  event: Extract<
-    SecurityEventName,
-    'ai.input_safety.blocked' | 'ai.output_safety.blocked'
-  >
-  eventId: string
-  model?: string
-  operation: string
-  provider?: string
-  request: Request
-  screening: AiSafetyScreeningResult
-}): void {
-  try {
-    const request = requestForForensicEvent(args.context, args.request)
-    const payload: AiSafetyForensicEventPayload = {
-      actor: {
-        source: args.context.actor.source,
-        ...(args.context.actor.id ? { sub: args.context.actor.id } : {}),
-      },
-      blockedStep: args.blockedStep,
-      categories: args.screening.decision.categories,
-      channel: 'security-forensics',
-      content: args.screening.contentParts,
-      correlationId: args.context.correlationId,
-      decision: 'blocked',
-      event: forensicEventName(args.event),
-      eventId: args.eventId,
-      evidence: args.screening.forensicEvidence,
-      operation: args.operation,
-      outcome: 'failure',
-      primaryRuleId: args.screening.decision.primaryRuleId,
-      primaryRuleType: args.screening.decision.primaryRuleType,
-      reason: AI_SAFETY_BLOCK_REASON,
-      request,
-      requestId: args.context.requestId,
-      ruleIds: args.screening.decision.ruleIds,
-      ruleTypes: args.screening.decision.ruleTypes,
-      safetyRuleDirection: args.direction,
-      source: args.context.source,
-      textLengthBucket: textLengthBucket(args.screening.decision.textLength),
-      ts: new Date().toISOString(),
-      ...(args.model ? { model: args.model } : {}),
-      ...(args.provider ? { provider: args.provider } : {}),
-    }
-    // eslint-disable-next-line no-console
-    console.info(JSON.stringify(payload))
-  } catch (error) {
-    try {
-      // eslint-disable-next-line no-console
-      console.error(
-        '[security-forensics] failed to record AI safety blocked content',
-        safeForensicLogErrorKind(error),
-      )
-    } catch {
-      /* best-effort forensic logging must not break the request */
-    }
-  }
-}
-
 export async function recordAiSafetyBlock(args: {
   blockedStep: AiSafetyBlockedStep
   context: RequestContext
@@ -799,29 +668,24 @@ export async function recordAiSafetyBlock(args: {
   })
 
   try {
-    const settings = await getCachedAiSafetyRuntimeSettings(args.db)
-    if (!settings.aiSafetyForensicLoggingEnabled) return
-    recordAiSafetyForensicEvent({
+    await persistAiForensicEvidence({
       blockedStep: args.blockedStep,
       context: args.context,
+      db: args.db,
       direction: args.direction,
-      event: args.event,
       eventId,
-      model: args.model,
       operation: args.operation,
-      provider: args.provider,
-      request: args.request,
       screening: args.screening,
     })
   } catch (error) {
     try {
       // eslint-disable-next-line no-console
       console.error(
-        '[security-forensics] failed to load AI safety runtime settings',
+        '[ai-forensic-evidence] failed closed to metadata-only recording',
         safeForensicLogErrorKind(error),
       )
     } catch {
-      /* best-effort forensic logging must not break the request */
+      /* best-effort isolated evidence persistence must not break the request */
     }
   }
 }

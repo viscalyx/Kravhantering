@@ -460,6 +460,11 @@ different sources:
   [oidc-identity-provider-integration.md](../integrations/oidc-identity-provider-integration.md)
   for the committed production mapping.
 
+Committed `dev-only`, `prodlike`, `container-demo`, and `replace-with` values
+are non-production fixtures. Production builds and the application container
+startup reject these placeholders even when they satisfy the session key length
+requirement. Inject unique OIDC and session secrets for every deployment.
+
 ### OIDC client (deployed OIDC provider / Keycloak)
 
 These describe the relationship between the app (the OIDC Relying Party)
@@ -725,16 +730,11 @@ Use `jq 'select(.event=="auth.login.failed")'` to filter by event, or
 `select(.outcome=="failure")` to surface only rejections. Tokens, PKCE
 verifiers, `state`, `nonce`, and `code` values are stripped before emit.
 
-AI safety forensic events use `"channel":"security-forensics"` instead. They
-can include raw screened blocked content and matched rule terms. Forensic
-metadata is emitted at top level, while `request` carries transport context, so
-only enable and tail them in environments where that exposure is acceptable.
-Fresh installations default this stream to disabled; enable it explicitly in
-Admin Center when local forensic diagnosis requires raw blocked content:
-
-```bash
-npm run dev | grep '"channel":"security-forensics"' | jq .
-```
+There is no raw AI forensic stdout channel. Time-limited AI evidence capture
+uses the isolated SQL tables and the protected
+`/api/admin/ai-forensic-captures` workflow. Local diagnosis should inspect the
+metadata-only `security-audit` lifecycle events and use the requester/approver
+evidence read endpoint only after the capture has stopped.
 
 When the trusted edge supplies a valid `X-Kravhantering-Client-IP` header,
 audit events may include `request.ip`. The application ignores raw forwarding

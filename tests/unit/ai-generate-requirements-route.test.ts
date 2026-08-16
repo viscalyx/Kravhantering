@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/ai/generate-requirement-import/route'
 import * as aiSafety from '@/lib/ai/safety'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
-import { clearAiSafetyRuntimeSettingsCacheForTests } from '@/lib/dal/ai-settings'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
 import { REQUIREMENT_IMPORT_CONTENT_MAX_BYTES } from '@/lib/requirements/import-budget'
@@ -10,7 +9,6 @@ import { REQUIREMENTS_IMPORT_SCHEMA_VERSION } from '@/lib/requirements/import-sc
 import { mockAiSafetyScreening } from '@/tests/helpers/ai-safety-screening'
 import { parseCapacityEvents } from '@/tests/helpers/capacity-events'
 import { parseSecurityAuditEvents } from '@/tests/helpers/security-audit-events'
-import { parseSecurityForensicsEvents } from '@/tests/helpers/security-forensics-events'
 
 const routeState = vi.hoisted(() => ({
   buildImportInstruction: vi.fn(),
@@ -82,19 +80,28 @@ function makeRequest(
   return request
 }
 
-function enableAiSafetyForensicLogging(): void {
-  routeState.query.mockResolvedValue([
-    {
-      aiSafetyForensicLoggingEnabled: 1,
-      requirementGenerationEnabled: 1,
-    },
-  ])
+function enableAiForensicCapture(): void {
+  routeState.query.mockImplementation((sql: string) => {
+    if (sql.includes('INSERT INTO ai_forensic_evidence_events')) {
+      return Promise.resolve([{ id: 1 }])
+    }
+    if (sql.includes('FROM ai_forensic_capture_windows')) {
+      return Promise.resolve([{ captureWindowId: 47 }])
+    }
+    return Promise.resolve([])
+  })
+}
+
+function storedEvidenceCall(): unknown[] {
+  const call = routeState.query.mock.calls.find(([sql]) =>
+    String(sql).includes('INSERT INTO ai_forensic_evidence_events'),
+  )
+  return (call?.[1] as unknown[] | undefined) ?? []
 }
 
 describe('POST /api/ai/generate-requirement-import', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    clearAiSafetyRuntimeSettingsCacheForTests()
     clearInMemoryThrottleForTests()
     mockAiSafetyScreening(aiSafety)
     routeState.getRequestSqlServerDataSource.mockResolvedValue({
@@ -345,7 +352,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
   })
 
   it('blocks unsafe input before import instruction loading or provider use', async () => {
-    enableAiSafetyForensicLogging()
+    enableAiForensicCapture()
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -400,36 +407,12 @@ describe('POST /api/ai/generate-requirement-import', () => {
       expect(JSON.stringify(securityEvent)).not.toContain('SE5560000001-ai1')
       expect(JSON.stringify(securityEvent)).not.toContain('JSON format')
 
-      const forensicEvent = parseSecurityForensicsEvents(consoleInfoSpy)[0]
-      expect(forensicEvent).toMatchObject({
-        event: 'ai.input_safety.blocked_content_captured',
-        outcome: 'failure',
-      })
-      expect(forensicEvent?.eventId).toBe(
+      const evidenceParameters = storedEvidenceCall()
+      expect(evidenceParameters[1]).toBe(
         (securityEvent.detail as Record<string, unknown>).eventId,
       )
-      expect(JSON.stringify(forensicEvent)).toContain('JSON format')
-      expect(JSON.stringify(forensicEvent)).toContain('"label":"need"')
-      expect(forensicEvent?.evidence).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            partLabel: 'need',
-            ruleId: 'instruction_override',
-            terms: expect.arrayContaining([
-              expect.objectContaining({
-                configuredTerm: 'ignore',
-                matchedText: 'Ignore',
-                termType: 'action',
-              }),
-              expect.objectContaining({
-                configuredTerm: 'previous',
-                matchedText: 'previous',
-                termType: 'target',
-              }),
-            ]),
-          }),
-        ]),
-      )
+      expect(String(evidenceParameters[8])).toContain('JSON format')
+      expect(String(evidenceParameters[8])).toContain('"label":"need"')
     } finally {
       consoleInfoSpy.mockRestore()
       consoleErrorSpy.mockRestore()
@@ -437,7 +420,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
   })
 
   it('blocks unsafe model output without echoing raw content', async () => {
-    enableAiSafetyForensicLogging()
+    enableAiForensicCapture()
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -493,17 +476,15 @@ describe('POST /api/ai/generate-requirement-import', () => {
         ruleIds: ['sensitive_backend_leak'],
         safetyRuleDirection: 'output',
       })
-      const forensicEvent = parseSecurityForensicsEvents(consoleInfoSpy)[0]
-      expect(forensicEvent?.eventId).toBe(
+      const evidenceParameters = storedEvidenceCall()
+      expect(evidenceParameters[1]).toBe(
         (securityEvent.detail as Record<string, unknown>).eventId,
       )
-      expect(forensicEvent).toMatchObject({
-        blockedStep: 'final_model_output',
-        event: 'ai.output_safety.blocked_content_captured',
-        safetyRuleDirection: 'output',
-      })
-      expect(forensicEvent).not.toHaveProperty('detail')
-      expect(JSON.stringify(forensicEvent)).toContain('unsafe-output-secret')
+      expect(evidenceParameters[5]).toBe('final_model_output')
+      expect(String(evidenceParameters[8])).toContain('[REDACTED_SECRET]')
+      expect(String(evidenceParameters[8])).not.toContain(
+        'unsafe-output-secret',
+      )
     } finally {
       consoleInfoSpy.mockRestore()
       consoleErrorSpy.mockRestore()
@@ -511,7 +492,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
   })
 
   it('blocks unsafe streamed reasoning without echoing the chunk', async () => {
-    enableAiSafetyForensicLogging()
+    enableAiForensicCapture()
     const consoleInfoSpy = vi
       .spyOn(console, 'info')
       .mockImplementation(() => undefined)
@@ -554,9 +535,10 @@ describe('POST /api/ai/generate-requirement-import', () => {
         provider: 'anthropic',
         ruleIds: ['sensitive_backend_leak'],
       })
-      expect(
-        JSON.stringify(parseSecurityForensicsEvents(consoleInfoSpy)[0]),
-      ).toContain('unsafe-output-secret')
+      expect(String(storedEvidenceCall()[8])).toContain('[REDACTED_SECRET]')
+      expect(String(storedEvidenceCall()[8])).not.toContain(
+        'unsafe-output-secret',
+      )
     } finally {
       consoleInfoSpy.mockRestore()
       consoleErrorSpy.mockRestore()

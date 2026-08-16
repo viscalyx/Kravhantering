@@ -1506,9 +1506,7 @@
       "description": "Styr övergripande AI-inställningar för hela systemet.",
       "adminPreferenceDisabled": "Avstängt",
       "adminPreferenceEnabled": "Påslaget",
-      "aiSafetyForensicLogging": "Logga forensisk AI-säkerhetsdata",
-      "aiSafetyForensicLoggingDefault": "Rå forensisk insamling är avstängd som standard i nya installationer. Slå endast på den när er incidenthantering kräver rått blockerat innehåll.",
-      "aiSecurityDescription": "Styr AI-säkerhetsfilter, säkerhetsregelcache, forensisk loggning och AI-säkerhetsregler.",
+      "aiSecurityDescription": "Styr AI-säkerhetsfilter, säkerhetsregelcache och AI-säkerhetsregler. Tidsbegränsad AI-forensisk evidensinsamling använder ett separat godkänt administrativt arbetsflöde.",
       "aiSecurityTitle": "AI-säkerhet",
       "assistanceDescription": "Styr AI-assisterad kravgenerering.",
       "assistanceTitle": "AI-assistering",
@@ -1516,7 +1514,6 @@
       "environmentOverrideNotice": "Driftkonfigurationen stänger för närvarande av AI-kravgenerering. Du kan spara inställningen i Administrationscenter, men generering är fortsatt avstängd tills driftöverskrivningen tas bort.",
       "decreaseMcpMaxRequestLimit": "Sänk MCP-anropsgränsen",
       "fieldHelp": {
-        "aiSafetyForensicLogging": "Nya installationer startar med rå forensisk insamling avstängd. När inställningen är på skriver AI-säkerhetsblockeringar en separat forensisk JSON-händelse med rått blockerat innehåll och matchade regeltermer. Metadatahändelsen i säkerhetsloggen skrivs alltid. Ändringar gäller direkt i denna app-process och kan ta upp till 30 sekunder i andra app-processer.",
         "mcpImportMaxActiveSessionsPerDestination": "Högsta antal ej utgångna valideringssessioner, inklusive körda sessioner, som reserveras för ett mål över alla principaler.",
         "mcpImportMaxActiveSessionsPerPrincipal": "Högsta antal ej utgångna valideringssessioner, inklusive körda sessioner, som en autentiserad MCP-principal får äga.",
         "mcpImportMaxCreationsPerWindow": "Högsta antal lyckade skapanden av valideringssessioner per principal i varje fast, epokjusterat 10-minutersfönster. Avvisade valideringar förbrukar inte kvoten.",
@@ -1721,6 +1718,8 @@
         "accessReviewRuns": "Behörighetsöversyner",
         "accessReviewItems": "Rader i behörighetsöversyn",
         "actionAuditEvents": "Åtgärdsloggsposter",
+        "aiForensicCaptureWindows": "AI-forensiska insamlingsperioder",
+        "aiForensicEvidenceEvents": "Poster i AI-forensiskt evidenslager",
         "requirementImportValidationRateBuckets": "Anropsgränser för MCP-valideringssessioner",
         "requirementImportValidationSessions": "Valideringssessioner för MCP-import"
       },
@@ -1735,6 +1734,8 @@
         "coAuthor": "Medförfattare",
         "reviewer": "Tilldelad granskningsperson",
         "actor": "Aktör",
+        "captureActor": "Begärande eller styrande aktör",
+        "actorFingerprint": "Insamlingsspecifikt aktörsfingeravtryck",
         "creatorPrincipalFingerprint": "Sessionsskapare",
         "principalFingerprint": "Principal för anropsgräns",
         "accessReviewPrincipal": "Behörig i översyn",
@@ -1756,7 +1757,8 @@
         "historySwitch": "Att byta historiskt författarskap kan ändra postens innebörd. Anonymisering är standard.",
         "decisionSwitch": "Beslut och åtgärder ska inte tilldelas om utan dokumenterad rättslig grund. Anonymisering är standard.",
         "rateBucketDeletion": "När den tillfälliga anropsgränsposten tas bort nollställs principalens aktuella antal skapanden under 10-minutersfönstret.",
-        "tokenInvalidation": "När dessa tillfälliga sessioner tas bort blir deras valideringstoken omedelbart ogiltiga."
+        "tokenInvalidation": "När dessa tillfälliga sessioner tas bort blir deras valideringstoken omedelbart ogiltiga.",
+        "forensicEvidencePurge": "Radering stoppar matchande insamlingsfönster och tar permanent bort deras isolerade evidens."
       },
       "blockers": {
         "ownerAreaReplacementRequired": "Ägaren är kopplad till kravområden. Uppdatera de kravområdena först eller ange ersättande HSA-id och namn.",
@@ -1864,6 +1866,37 @@
       "description": "Förhandsgranska gallringskandidater, hantera undantag och exportera arkivmaterial innan data tas bort ur applikationen.",
       "disabledTooltip": "Du behöver rollen Dataskyddshandläggare.",
       "heading": "Arkivering och gallring",
+      "forensic": {
+        "capture": "Insamling",
+        "description": "Läs in aggregerad metadata för kortlivade AI-forensiska insamlingsperioder. Evidensinnehåll visas aldrig här och gallras automatiskt 72 timmar efter att insamlingsperioden avslutats.",
+        "directions": {
+          "input": "Indata",
+          "output": "Utdata"
+        },
+        "empty": "Läs in AI-forensiska insamlingsperioder för att granska deras metadata.",
+        "eventCount": "Händelser",
+        "expiresAt": "Insamlingen upphör",
+        "loadError": "Kunde inte läsa in metadata för AI-forensiska insamlingsperioder.",
+        "purge": "Gallra evidens",
+        "alreadyPurged": "Evidensen för insamlingsperioden är redan gallrad.",
+        "purgeConfirmMessage": "Detta raderar isolerad evidens permanent men behåller livscykelmetadata för insamlingen.",
+        "purgeConfirmTitle": "Gallra AI-forensisk evidens?",
+        "purgeError": "Kunde inte gallra AI-forensisk evidens.",
+        "purgePending": "Gallring av AI-forensisk evidens pågår.",
+        "purgeSuccess": "AI-forensisk evidens har gallrats.",
+        "reload": "Läs in insamlingar",
+        "requiresPrivacyOfficer": "Du behöver rollen Dataskyddshandläggare för att gallra evidens.",
+        "scope": "Operation och riktning",
+        "status": "Status",
+        "statuses": {
+          "active": "Aktiv",
+          "expired": "Utgången",
+          "pending_approval": "Inväntar godkännande",
+          "purged": "Gallrad",
+          "stopped": "Stoppad"
+        },
+        "title": "AI-forensisk evidensinsamling"
+      },
       "retention": {
         "action": "Gallringsåtgärd",
         "actions": {
@@ -2405,7 +2438,7 @@
       },
       "settings": {
         "heading": "Vad kan ställas in",
-        "body": "Du kan slå på eller av AI-assisterad kravgenerering, styra rå forensisk insamling, styra hur länge den aktiva säkerhetsregeluppsättningen får ligga i servercache, förvalta orden som AI-säkerhetskontrollen använder samt sätta gränser för MCP-begäran, MCP-sessioner och MCP-import. Nya installationer startar med rå forensisk insamling avstängd. Alla ändringar på AI-fliken sparas direkt när du ändrar ett fält eller en rad."
+        "body": "Du kan slå på eller av AI-assisterad kravgenerering, styra hur länge den aktiva säkerhetsregeluppsättningen får ligga i servercache, förvalta orden som AI-säkerhetskontrollen använder samt sätta gränser för MCP-begäran, MCP-sessioner och MCP-import. Tidsbegränsad AI-forensisk evidensinsamling hanteras separat under Arkivering. Alla ändringar på AI-fliken sparas direkt när du ändrar ett fält eller en rad."
       },
       "precedence": {
         "heading": "Prioritet",

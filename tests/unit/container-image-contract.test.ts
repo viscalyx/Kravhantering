@@ -129,6 +129,24 @@ describe('container image contract', () => {
     }
   })
 
+  it('includes standalone transient cleanup compiler dependencies', () => {
+    const dockerfile = readWorkspaceFile('containers/app/Dockerfile')
+    const transientCleanupBuild = dockerfile.slice(
+      dockerfile.indexOf('FROM dependencies AS transient-cleanup-build'),
+      dockerfile.indexOf('FROM dependencies AS app-build'),
+    )
+
+    expect(transientCleanupBuild).toContain(
+      'COPY lib/auth/audit.ts lib/auth/client-ip.ts ./lib/auth/',
+    )
+    expect(transientCleanupBuild).toContain(
+      'COPY lib/transient-cleanup ./lib/transient-cleanup',
+    )
+    expect(transientCleanupBuild).toContain(
+      'COPY lib/typeorm/sqlserver-config.ts ./lib/typeorm/sqlserver-config.ts',
+    )
+  })
+
   it('runs the HSA certificate generator without runtime npm', () => {
     for (const relativePath of [
       '.devcontainer/docker-compose.yml',
@@ -157,8 +175,9 @@ describe('container image contract', () => {
     expect(target).toContain('/workspace/.next/standalone')
     expect(target).toContain('/workspace/.next/static')
     expect(target).toContain('/workspace/public')
+    expect(target).toContain('containers/app/start-runtime.mjs')
     expect(target).toContain('USER node')
-    expect(target).toContain('CMD ["node", "server.js"]')
+    expect(target).toContain('CMD ["node", "start-runtime.mjs"]')
     expect(target).not.toContain('COPY . .')
     expect(target).not.toContain('typeorm/')
     expect(target).not.toContain('tests/')

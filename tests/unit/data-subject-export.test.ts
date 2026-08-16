@@ -47,6 +47,57 @@ function generatedBy() {
 }
 
 describe('data-subject export service', () => {
+  it('exports forensic actor metadata for every matching lifecycle role', async () => {
+    const { db, query } = createExportDb({
+      'ai_forensic_capture_windows.identity': [
+        {
+          actorRole: 'requester',
+          captureWindowId: 47,
+          direction: 'output',
+          displayName: 'Kalle Svensson',
+          expiresAt: new Date('2026-08-15T14:00:00Z'),
+          hsaId: TARGET_HSA_ID,
+          operation: 'ai.generate-requirement-import',
+          requestedAt: new Date('2026-08-15T13:45:00Z'),
+        },
+      ],
+      'ai_forensic_evidence_events.actor_fingerprint': [
+        {
+          actorFingerprint: 'a'.repeat(64),
+          blockedStep: 'provider_output',
+          capturedAt: new Date('2026-08-15T13:46:00Z'),
+          direction: 'output',
+          eventId: 'event-47',
+          operation: 'ai.generate-requirement-import',
+        },
+      ],
+    })
+
+    const result = await collectDataSubjectExport(db, {
+      generatedBy: generatedBy(),
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.sources.map(source => source.key)).toEqual(
+      expect.arrayContaining([
+        'ai_forensic_capture_windows.identity',
+        'ai_forensic_evidence_events.actor_fingerprint',
+      ]),
+    )
+    expect(JSON.stringify(result.sources)).not.toContain('evidence_json')
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('CROSS APPLY (VALUES'),
+      ),
+    ).toBe(true)
+    expect(
+      query.mock.calls
+        .filter(([sql]) => String(sql).includes('ai_forensic'))
+        .every(([, parameters]) => parameters?.[0] === TARGET_HSA_ID),
+    ).toBe(true)
+    expect(JSON.stringify(result.sources)).not.toContain(OTHER_HSA_ID)
+  })
+
   it('exports safe MCP session and rate metadata without token, payload, validation, or destination names', async () => {
     const { db, query } = createExportDb({
       'requirement_import_validation_rate_buckets.principal': [

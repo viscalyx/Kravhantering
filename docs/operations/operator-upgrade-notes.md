@@ -160,6 +160,100 @@ Before rollout, verify every production HSA lookup, OAuth, and SOAP endpoint use
 After deployment, verify responsibility assignment workflows for areas, packages, and specifications. HSA lookup no longer persists a person immediately; the final assignment must present the short-lived evidence returned by verification, after which person creation and assignment are committed atomically.
 Update any automation that calls these internal verification and assignment endpoints to forward the returned evidence. Verification is now rate limited, and audit records use target fingerprints and outcomes instead of raw target HSA IDs or personal data. Brief support and privacy teams on the protected-person handling guidance shown in the assignment workflow.
 <!-- operator-upgrade:source pr-990 end -->
+
+<!-- operator-upgrade:source pr-993 start -->
+After upgrade, every synchronous PDF report and export shares the configured
+per-node PDF concurrency, timeout, and item limits. Requests above the item
+limit return `422`; saturated capacity returns `429` with retry guidance; and
+generation timeouts return `503`.
+
+Before rollout, confirm the existing PDF limits are appropriate for combined,
+history, specification, RFI, access-review, and privacy exports. No schema,
+secret, or configuration migration is required.
+<!-- operator-upgrade:source pr-993 end -->
+
+<!-- operator-upgrade:source pr-994 start -->
+Before rollout, update browser, API, MCP, and AI producers to emit
+`requirement-import.v4`; v3 is no longer accepted. Apply database migrations
+before starting the new application version. The migration adds global import
+budgets and clamps existing MCP row limits above 500.
+
+After deployment, verify the Admin Center Imports settings and any
+site-specific MCP limit.
+<!-- operator-upgrade:source pr-994 end -->
+
+<!-- operator-upgrade:source pr-998 start -->
+This release adds a five-minute transient-state cleanup job to every supported
+production topology. Before upgrade, make the database-job image available on
+each host. Add the cleanup limits to the production application configuration,
+or confirm that the default limits are suitable.
+
+During rollout, install and reload the updated units, and restart the topology
+target. Confirm that the timer is active. Complete one manual cleanup run before
+you restore traffic. Monitor failed cleanup outcomes and an expired-state
+backlog that does not decrease.
+
+Before rollback to a release without scheduled cleanup, disable and remove the
+cleanup timer and job with the newer release procedure. Rollback stops future
+scheduled deletion. It does not restore expired sessions that the cleanup job
+already removed.
+<!-- operator-upgrade:source pr-998 end -->
+
+<!-- operator-upgrade:source pr-1001 start -->
+Before upgrade, drain MCP import-validation traffic and stop all application
+nodes. Upgrade the database and all nodes as one coordinated rollout; mixed
+versions are unsupported. Upgrade and rollback invalidate every outstanding
+validation token, so tell MCP clients to validate imports again.
+
+After upgrade, review the four new validation-session quotas in Admin Center
+and verify principal isolation and transient cleanup before restoring traffic.
+Keep the authentication session secret unchanged during routine rollout.
+Rotating it intentionally invalidates all outstanding validation tokens.
+<!-- operator-upgrade:source pr-1001 end -->
+
+<!-- operator-upgrade:source pr-1002 start -->
+Before the upgrade, decide whether the MCP surface must be enabled. If it is
+enabled, update the identity provider and application configuration together.
+MCP service tokens must identify the approved service client, use the
+access-token class, contain every required scope and the configured role claim,
+and have a short lifetime. An incomplete enabled configuration makes the
+application not ready, and old token shapes are rejected.
+
+If MCP is not used, leave the MCP service client unconfigured. The MCP endpoint
+then returns `404` while the rest of the application remains available. During
+rollout, verify readiness and obtain one valid service token before enabling
+MCP clients.
+<!-- operator-upgrade:source pr-1002 end -->
+
+<!-- operator-upgrade:source pr-1003 start -->
+Before upgrade, review every MCP integration. The MCP endpoint is disabled
+unless an approved service client is configured. For enabled deployments,
+update the identity provider and MCP clients so that service tokens use the
+approved service client and access-token class, contain every required scope and
+the configured role claim, and have an approved short lifetime. Existing tokens
+that do not meet this contract will be rejected. After rollout, confirm
+readiness and request a new service token before running MCP work.
+
+Raw AI safety forensic capture is disabled by default for fresh installations.
+Upgrades preserve the stored setting. Review the AI setting in Admin Center and
+disable raw forensic capture if the installation must use metadata-only
+logging. No action is required when capture is already disabled or when
+continued raw capture is approved with suitable access and retention controls.
+<!-- operator-upgrade:source pr-1003 end -->
+
+<!-- operator-upgrade:source pr-1024 start -->
+This release removes persistent raw AI forensic logging and replaces it with
+time-limited evidence capture that requires a separate requester and approver.
+Update support and incident-response procedures that depend on the former raw
+forensic log stream.
+
+Before rollout, confirm encrypted database transport, encryption at rest and in
+backups, least-privilege runtime access, and scheduled transient cleanup. After
+rollout, verify automatic capture expiry and the 72-hour post-stop purge. After
+a database restore, run transient cleanup before evidence reads are enabled so
+expired evidence does not become operationally available.
+<!-- operator-upgrade:source pr-1024 end -->
+
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
@@ -355,11 +449,14 @@ the disposable single-node demo path.
 Releases with DB-backed AI safety rules require the `seed:required` step to
 complete after migration.
 
-Releases with AI safety forensic logging add
-`ai_settings.ai_safety_forensic_logging_enabled` with default `1`. Review the
-Admin Center `Settings` tab, section `AI`, after migration and either route
-`channel == "security-forensics"` logs with stricter access/retention controls
-or disable `Log forensic AI security data` until that routing is ready.
+This release removes persistent raw AI forensic logging and replaces it with
+time-limited evidence capture that requires a separate requester and approver.
+Before rollout, confirm encrypted database transport, encryption at rest and in
+backups, least-privilege runtime access, and scheduled transient cleanup.
+
+After rollout, verify automatic capture expiry and the 72-hour post-stop purge.
+After a database restore, run transient cleanup before allowing evidence reads
+so expired evidence does not become operationally available.
 
 Review Admin Center > Identity and confirm the visible/default HSA-id-prefix
 values are correct for the organization. The migration seeds prefixes from
@@ -410,7 +507,10 @@ After upgrade, review the Admin Center MCP limits before enabling high-volume im
 <!-- operator-upgrade:source pr-406 end -->
 
 <!-- operator-upgrade:source pr-409 start -->
-Before or immediately after upgrade, route the new AI safety forensic log stream separately from metadata security audit logs, with stricter access, retention, and masking controls, or disable forensic AI safety logging in Admin Center until that routing is ready. The forensic stream is enabled by default during this diagnostic phase and can contain raw blocked AI content, model reasoning, repair payloads, matched rule terms, personal data, or secrets.
+Persistent raw AI forensic logging is not available. Use the separately
+requested and approved, time-limited evidence-capture workflow only for an
+authorized incident investigation. Verify its expiry and purge, and run
+transient cleanup after a database restore before allowing evidence reads.
 <!-- operator-upgrade:source pr-409 end -->
 
 <!-- operator-upgrade:source pr-430 start -->

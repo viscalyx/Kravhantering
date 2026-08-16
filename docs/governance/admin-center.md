@@ -157,8 +157,8 @@ alias.
 
 The `AI` section manages AI-assisted requirement generation. Its
 `AI assistance` subsection contains the requirement-generation toggle,
-its `AI security` section contains the forensic AI safety JSON logging toggle,
-safety-rule cache time and editable AI safety-rule terms, and its
+its `AI security` section contains the safety-rule cache time and editable AI
+safety-rule terms, and its
 `MCP interface` section contains the MCP request/session payload limit and MCP
 import row/TTL limits, plus active-session quotas per principal and destination,
 successful session creations per fixed 10-minute window, and global reserved
@@ -177,13 +177,12 @@ The source of truth is:
 - admin API: `PATCH/DELETE /api/admin/ai-safety-rules/terms/{id}`
 - admin API: `POST /api/admin/ai-safety-rules/terms/remove`
 - admin API: `POST /api/admin/ai-safety-rules/{ruleId}/restore-defaults`
+- forensic control API: `GET/POST/PATCH /api/admin/ai-forensic-captures`
 - hard override: `AI_REQUIREMENT_GENERATION_DISABLED`
 
 Admin-managed AI settings include:
 
 - whether requirement generation is enabled as an administrator preference
-- whether AI safety blocks emit separate raw-content forensic JSON events, sent
-  as `aiSafetyForensicLoggingEnabled`
 - the maximum MCP request payload size, sent as `mcpMaxRequestBytes`
 - the maximum MCP import validation row count, sent as `mcpImportMaxRows`
 - active validation sessions per normalized HSA-id principal, sent as
@@ -206,18 +205,16 @@ quota equality is accepted. Changes are audited as privileged setting changes
 and apply to new `validate` admission checks; lowering a quota does not delete
 existing sessions.
 
-The forensic AI safety logging setting only controls the separate
-`security-forensics` JSON output. It does not enable or disable the AI safety
-filter, the metadata-only `security-audit` event, blocking behavior, or
-user-facing error messages. Fresh installations, missing singleton rows,
-missing setting columns, and setting-load failures all default to metadata-only
-behavior. Upgrades preserve the stored administrator preference while changing
-the database default for future rows to disabled. No operator action is needed
-to keep an existing enabled or disabled value. When an admin saves
-this setting, the saving process clears `cachedAiSafetyRuntimeSettings` in the
-local process immediately; other app processes can continue to use their cached
-value until
-`AI_SAFETY_RUNTIME_SETTINGS_CACHE_TTL_MS` expires after 30 seconds.
+Forensic evidence capture is not an AI setting or a persistent toggle. An Admin
+creates a request through `POST /api/admin/ai-forensic-captures` with an exact
+operation, direction, and explicit expiry 5–60 minutes in the future. A
+different human with `PrivacyOfficer` must approve it through `PATCH`; Admin or
+Privacy Officer may stop it, and Privacy Officer may purge it. SQL Server time
+controls expiry and only one request or active window can exist. After stop or
+expiry, `GET` returns the isolated evidence only to the original requester or
+approver while that person currently has the `Admin` or `PrivacyOfficer` role.
+These sensitive operations are same-origin protected for mutations, `no-store`,
+and metadata-audited.
 
 The effective setting is disabled when either the Admin Center preference is
 off or the deployment environment has `AI_REQUIREMENT_GENERATION_DISABLED=1` or
@@ -262,16 +259,14 @@ own saving state and request token, so an older response cannot overwrite a
 newer edit. Every successful change is written to the privileged action log
 with the field and old/new values.
 
-When an AI safety block happens, the metadata event is always written to
-`security-audit`. If forensic AI safety logging is enabled, the same block also
-writes a `security-forensics` JSON event with the same request id,
-correlation id, and event id as top-level fields. Its `request` object carries
-transport context such as method, path, IP address, and user agent. The
-forensic event includes actor/source metadata, blocked step, direction,
-operation, source, text-length bucket, decision/reason fields, category values,
-primary and matched rule IDs/types, optional model/provider values, the
-screened content parts for the blocked step, and matched rule evidence including
-configured terms and matched text.
+When an AI safety block happens, metadata is always written to
+`security-audit`. During an approved matching window, redacted and strictly
+bounded evidence is additionally persisted in
+`ai_forensic_evidence_events`. The evidence never uses stdout or ordinary
+logs. Secret-shaped values and direct HSA-id, email, and IP identifiers are
+replaced before persistence; per-event and whole-window limits fail closed.
+Scheduled cleanup records metadata-only expiry and purges evidence 72 hours
+after stop or expiry.
 
 ## Precedence Rules
 
@@ -418,6 +413,14 @@ values in `action_audit_events.client_ip` are not handled by the Privacy
 workflow in this slice.
 Retention or redaction of handler identity in external security logs is handled
 by the platform logging policy, because removing it can reduce traceability.
+
+The same exact-HSA preview also covers forensic capture requester, approver,
+stopper, and purger snapshots plus capture-specific actor fingerprints.
+Execution stops and purges matching capture windows, anonymizes their actor
+snapshots, and deletes exact fingerprint matches. Person-data export includes
+only safe matching capture and evidence metadata, never evidence excerpts.
+Display names are never used as the match key, including the duplicate-name
+demo fixture.
 
 Signed-in users can export their own data at `/{locale}/privacy`. That
 self-service path sends no target HSA-id in the request body; the server derives

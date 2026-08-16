@@ -68,8 +68,8 @@ export const ADMIN_WORKSPACE_GZIP_MAX_BYTES = {
   accessReview: 13_898,
   // 2026-07-25 eager bounded-export baseline: 10,101 gzip bytes plus 5% headroom.
   actionAuditLog: 10_607,
-  // 2026-07-20 isolated-route baseline: 7,676 gzip bytes plus 5% headroom.
-  archiving: 8_060,
+  // 2026-08-15 AI forensic metadata baseline: 8,608 gzip bytes plus 5% headroom.
+  archiving: 9_039,
   // 2026-07-20 isolated-route baseline: 9,265 gzip bytes plus 5% headroom.
   columns: 9_729,
   // 2026-07-20 isolated-route baseline: 9,191 gzip bytes plus 5% headroom.

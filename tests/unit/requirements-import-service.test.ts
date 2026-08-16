@@ -268,7 +268,6 @@ describe('requirements import service', () => {
     })
     vi.mocked(getAiGenerationSettings).mockResolvedValue({
       ...MCP_QUOTA_DEFAULTS,
-      aiSafetyForensicLoggingEnabled: true,
       aiSafetyRuleCacheTtlSeconds: 600,
       mcpImportMaxRows: 500,
       mcpImportValidationTtlMinutes: 60,

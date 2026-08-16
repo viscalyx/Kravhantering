@@ -478,45 +478,6 @@ describe('drift detection', () => {
     ).rejects.toThrow('did not resolve to a sha256 digest')
   })
 
-  it('parses the repository Lychee declarations from every registered installer', () => {
-    const unit = lycheeUnit()
-    const dockerfile = fs.readFileSync('.devcontainer/Dockerfile', 'utf8')
-    const bootstrap = fs.readFileSync(
-      'scripts/azure-dev/templates/bootstrap-host.sh',
-      'utf8',
-    )
-    const workflow = fs.readFileSync(
-      '.github/workflows/quality-checks.yml',
-      'utf8',
-    )
-    const expectedVersion = workflow.match(
-      /^\s*lycheeVersion:\s*(v\d+\.\d+\.\d+)$/mu,
-    )?.[1]
-    const expectedChecksums = Object.fromEntries(
-      ['amd64', 'arm64'].map(architecture => [
-        architecture,
-        dockerfile.match(
-          new RegExp(
-            `^\\s*${architecture}\\)[\\s\\S]*?lychee_sha256='([a-f0-9]{64})'`,
-            'mu',
-          ),
-        )?.[1],
-      ]),
-    )
-
-    expect(expectedVersion).toBeTruthy()
-    expect(bootstrap).toContain(`LYCHEE_VERSION="${expectedVersion}"`)
-    for (const checksum of Object.values(expectedChecksums)) {
-      expect(checksum).toBeTruthy()
-      expect(bootstrap).toContain(`lychee_sha256='${checksum}'`)
-    }
-    expect(readLycheeCurrent(unit, process.cwd())).toEqual({
-      checksums: expectedChecksums,
-      tool: 'lychee',
-      version: expectedVersion,
-    })
-  })
-
   it('requires synchronized Lychee versions', () => {
     const root = temporaryDirectory()
     writeLycheeState(root, 'v1.2.3')

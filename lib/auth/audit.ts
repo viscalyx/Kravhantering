@@ -11,7 +11,7 @@
  * name matches the deny-list as a defense-in-depth measure.
  */
 
-import { getClientIp, isValidClientIp } from '@/lib/auth/client-ip'
+import { getClientIp, isValidClientIp } from './client-ip'
 
 export type SecurityEventName =
   | 'access_review.cancelled'
@@ -22,6 +22,12 @@ export type SecurityEventName =
   | 'ai.input_safety.blocked'
   | 'ai.output_safety.blocked'
   | 'ai.safety_filter.failed'
+  | 'ai.forensic_capture.requested'
+  | 'ai.forensic_capture.disabled'
+  | 'ai.forensic_capture.enabled'
+  | 'ai.forensic_capture.expired'
+  | 'ai.forensic_evidence.accessed'
+  | 'ai.forensic_evidence.purged'
   | 'admin.archiving.exception.created'
   | 'admin.archiving.exception.deleted'
   | 'admin.archiving.executed'

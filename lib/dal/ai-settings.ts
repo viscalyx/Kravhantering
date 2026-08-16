@@ -1,7 +1,6 @@
 import {
   ADMIN_AI_SETTINGS_CONSTRAINTS,
   type AdminAiSettings,
-  AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
   AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
   type AiRequirementGenerationAvailability,
   isValidAiSafetyRuleCacheTtlSeconds,
@@ -29,7 +28,6 @@ import {
 import { toBoolean } from '@/lib/typeorm/value-mappers'
 
 export interface AiGenerationSettings {
-  aiSafetyForensicLoggingEnabled: boolean
   aiSafetyRuleCacheTtlSeconds: number
   mcpImportMaxActiveSessionsPerDestination: number
   mcpImportMaxActiveSessionsPerPrincipal: number
@@ -53,12 +51,7 @@ export interface McpRuntimeSettings {
   mcpMaxRequestBytes: number
 }
 
-export interface AiSafetyRuntimeSettings {
-  aiSafetyForensicLoggingEnabled: boolean
-}
-
 interface AiSettingsRow {
-  aiSafetyForensicLoggingEnabled?: boolean | number | string
   aiSafetyRuleCacheTtlSeconds?: number | string
   mcpImportMaxActiveSessionsPerDestination?: number | string
   mcpImportMaxActiveSessionsPerPrincipal?: number | string
@@ -120,7 +113,6 @@ async function assertMcpRowsWithinLockedGlobalLimit(
 
 export const DEFAULT_AI_GENERATION_SETTINGS: AiGenerationSettings =
   Object.freeze({
-    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     mcpImportMaxActiveSessionsPerDestination:
       MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
@@ -146,25 +138,12 @@ const DEFAULT_MCP_RUNTIME_SETTINGS: McpRuntimeSettings = Object.freeze({
   mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 })
 
-const DEFAULT_AI_SAFETY_RUNTIME_SETTINGS: AiSafetyRuntimeSettings =
-  Object.freeze({
-    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
-  })
-
 const MCP_RUNTIME_SETTINGS_CACHE_TTL_MS = 30_000
-const AI_SAFETY_RUNTIME_SETTINGS_CACHE_TTL_MS = 30_000
 
 let cachedMcpRuntimeSettings:
   | {
       expiresAt: number
       value: McpRuntimeSettings
-    }
-  | undefined
-
-let cachedAiSafetyRuntimeSettings:
-  | {
-      expiresAt: number
-      value: AiSafetyRuntimeSettings
     }
   | undefined
 
@@ -343,20 +322,12 @@ function cacheMcpRuntimeSettings(value: McpRuntimeSettings): void {
   }
 }
 
-function cacheAiSafetyRuntimeSettings(value: AiSafetyRuntimeSettings): void {
-  cachedAiSafetyRuntimeSettings = {
-    expiresAt: Date.now() + AI_SAFETY_RUNTIME_SETTINGS_CACHE_TTL_MS,
-    value,
-  }
-}
-
 function adminAiSettingsFromSettings(
   settings: AiGenerationSettings,
   env: NodeJS.ProcessEnv = process.env,
 ): AdminAiSettings {
   const availability = resolveAiGenerationAvailability(settings, env)
   return {
-    aiSafetyForensicLoggingEnabled: settings.aiSafetyForensicLoggingEnabled,
     aiSafetyRuleCacheTtlSeconds: settings.aiSafetyRuleCacheTtlSeconds,
     constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
     ...availability,
@@ -429,7 +400,7 @@ function isExpectedLegacyAiSettingsReadError(error: unknown): boolean {
   const joinedMessages = collectErrorMessages(error).join(' ')
   return (
     /\b207\b/.test(joinedMessages) &&
-    /(?:mcp_max_request_bytes|mcp_import_max_rows|mcp_import_validation_ttl_minutes|mcp_import_max_active_sessions_per_principal|mcp_import_max_active_sessions_per_destination|mcp_import_max_creations_per_window|mcp_import_max_reserved_bytes|ai_safety_rule_cache_ttl_seconds|ai_safety_forensic_logging_enabled)/i.test(
+    /(?:mcp_max_request_bytes|mcp_import_max_rows|mcp_import_validation_ttl_minutes|mcp_import_max_active_sessions_per_principal|mcp_import_max_active_sessions_per_destination|mcp_import_max_creations_per_window|mcp_import_max_reserved_bytes|ai_safety_rule_cache_ttl_seconds)/i.test(
       joinedMessages,
     )
   )
@@ -469,7 +440,6 @@ async function getLegacyAiGenerationSettings(
   }
 
   return {
-    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     mcpImportMaxActiveSessionsPerDestination:
       MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
@@ -484,51 +454,11 @@ async function getLegacyAiGenerationSettings(
   }
 }
 
-async function getAiGenerationSettingsWithoutForensicColumn(
-  db: SqlServerDatabase,
-): Promise<AiGenerationSettings> {
-  const rows = (await db.query(`
-    SELECT TOP (1)
-      ai_safety_rule_cache_ttl_seconds AS aiSafetyRuleCacheTtlSeconds,
-      mcp_import_max_rows AS mcpImportMaxRows,
-      mcp_import_validation_ttl_minutes AS mcpImportValidationTtlMinutes,
-      mcp_max_request_bytes AS mcpMaxRequestBytes,
-      requirement_generation_enabled AS requirementGenerationEnabled
-    FROM ai_settings
-    WHERE id = 1
-  `)) as AiSettingsRow[]
-
-  const row = rows[0]
-  if (!row) {
-    return DEFAULT_AI_GENERATION_SETTINGS
-  }
-
-  return {
-    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
-    aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
-      row.aiSafetyRuleCacheTtlSeconds,
-    ),
-    mcpImportMaxActiveSessionsPerDestination:
-      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
-    mcpImportMaxActiveSessionsPerPrincipal:
-      MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
-    mcpImportMaxCreationsPerWindow: MCP_IMPORT_MAX_CREATIONS_PER_WINDOW_DEFAULT,
-    mcpImportMaxRows: readMcpImportMaxRows(row.mcpImportMaxRows),
-    mcpImportMaxReservedBytes: MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
-    mcpImportValidationTtlMinutes: readMcpImportValidationTtlMinutes(
-      row.mcpImportValidationTtlMinutes,
-    ),
-    mcpMaxRequestBytes: readMcpMaxRequestBytes(row.mcpMaxRequestBytes),
-    requirementGenerationEnabled: toBoolean(row.requirementGenerationEnabled),
-  }
-}
-
 async function getAiGenerationSettingsWithQuotaDefaults(
   db: SqlServerDatabase,
 ): Promise<AiGenerationSettings> {
   const rows = (await db.query(`
     SELECT TOP (1)
-      ai_safety_forensic_logging_enabled AS aiSafetyForensicLoggingEnabled,
       ai_safety_rule_cache_ttl_seconds AS aiSafetyRuleCacheTtlSeconds,
       mcp_import_max_rows AS mcpImportMaxRows,
       mcp_import_validation_ttl_minutes AS mcpImportValidationTtlMinutes,
@@ -544,9 +474,6 @@ async function getAiGenerationSettingsWithQuotaDefaults(
   }
 
   return {
-    aiSafetyForensicLoggingEnabled: toBoolean(
-      row.aiSafetyForensicLoggingEnabled ?? AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
-    ),
     aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
       row.aiSafetyRuleCacheTtlSeconds,
     ),
@@ -582,7 +509,6 @@ async function getAiGenerationSettingsWithLegacyMcpDefaults(
   }
 
   return {
-    aiSafetyForensicLoggingEnabled: AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
     aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
     mcpImportMaxActiveSessionsPerDestination:
       MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
@@ -603,14 +529,6 @@ export function clearMcpMaxRequestBytesCacheForTests(): void {
 
 export function clearMcpRuntimeSettingsCacheForTests(): void {
   cachedMcpRuntimeSettings = undefined
-}
-
-export function clearAiSafetyRuntimeSettingsCache(): void {
-  cachedAiSafetyRuntimeSettings = undefined
-}
-
-export function clearAiSafetyRuntimeSettingsCacheForTests(): void {
-  clearAiSafetyRuntimeSettingsCache()
 }
 
 export async function getCachedMcpRuntimeSettings(
@@ -660,52 +578,6 @@ export async function getCachedMcpRuntimeSettings(
   return settings
 }
 
-export async function getCachedAiSafetyRuntimeSettings(
-  db: SqlServerDatabase,
-): Promise<AiSafetyRuntimeSettings> {
-  if (
-    cachedAiSafetyRuntimeSettings &&
-    cachedAiSafetyRuntimeSettings.expiresAt > Date.now()
-  ) {
-    return cachedAiSafetyRuntimeSettings.value
-  }
-
-  try {
-    const rows = (await db.query(`
-      SELECT TOP (1)
-        ai_safety_forensic_logging_enabled AS aiSafetyForensicLoggingEnabled
-      FROM ai_settings
-      WHERE id = 1
-    `)) as AiSettingsRow[]
-
-    const row = rows[0]
-    if (!row) {
-      cacheAiSafetyRuntimeSettings(DEFAULT_AI_SAFETY_RUNTIME_SETTINGS)
-      return DEFAULT_AI_SAFETY_RUNTIME_SETTINGS
-    }
-
-    const settings = {
-      aiSafetyForensicLoggingEnabled: toBoolean(
-        row.aiSafetyForensicLoggingEnabled ??
-          AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
-      ),
-    }
-    cacheAiSafetyRuntimeSettings(settings)
-    return settings
-  } catch (error) {
-    if (
-      isExpectedMissingAiSettingsColumnError(
-        error,
-        'ai_safety_forensic_logging_enabled',
-      )
-    ) {
-      cacheAiSafetyRuntimeSettings(DEFAULT_AI_SAFETY_RUNTIME_SETTINGS)
-      return DEFAULT_AI_SAFETY_RUNTIME_SETTINGS
-    }
-    throw error
-  }
-}
-
 export async function getCachedMcpMaxRequestBytes(
   db: SqlServerDatabase,
 ): Promise<number> {
@@ -718,7 +590,6 @@ export async function getAiGenerationSettings(
   try {
     const rows = (await db.query(`
       SELECT TOP (1)
-        ai_safety_forensic_logging_enabled AS aiSafetyForensicLoggingEnabled,
         ai_safety_rule_cache_ttl_seconds AS aiSafetyRuleCacheTtlSeconds,
         mcp_import_max_active_sessions_per_destination AS mcpImportMaxActiveSessionsPerDestination,
         mcp_import_max_active_sessions_per_principal AS mcpImportMaxActiveSessionsPerPrincipal,
@@ -738,10 +609,6 @@ export async function getAiGenerationSettings(
     }
 
     return {
-      aiSafetyForensicLoggingEnabled: toBoolean(
-        row.aiSafetyForensicLoggingEnabled ??
-          AI_SAFETY_FORENSIC_LOGGING_DEFAULT,
-      ),
       aiSafetyRuleCacheTtlSeconds: readAiSafetyRuleCacheTtlSeconds(
         row.aiSafetyRuleCacheTtlSeconds,
       ),
@@ -785,14 +652,6 @@ export async function getAiGenerationSettings(
         isExpectedMissingAiSettingsColumnError(error, 'mcp_max_request_bytes')
       ) {
         return await getLegacyAiGenerationSettings(db)
-      }
-      if (
-        isExpectedMissingAiSettingsColumnError(
-          error,
-          'ai_safety_forensic_logging_enabled',
-        )
-      ) {
-        return await getAiGenerationSettingsWithoutForensicColumn(db)
       }
       return await getAiGenerationSettingsWithLegacyMcpDefaults(db)
     } catch (fallbackError) {
@@ -849,22 +708,20 @@ export async function updateAiGenerationSettings(
       `
         UPDATE ai_settings
         SET
-          ai_safety_forensic_logging_enabled = @0,
-          ai_safety_rule_cache_ttl_seconds = @1,
-          mcp_import_max_active_sessions_per_destination = @2,
-          mcp_import_max_active_sessions_per_principal = @3,
-          mcp_import_max_creations_per_window = @4,
-          mcp_import_max_reserved_bytes = @5,
-          mcp_import_max_rows = @6,
-          mcp_import_validation_ttl_minutes = @7,
-          mcp_max_request_bytes = @8,
-          requirement_generation_enabled = @9,
-          updated_at = @10
+          ai_safety_rule_cache_ttl_seconds = @0,
+          mcp_import_max_active_sessions_per_destination = @1,
+          mcp_import_max_active_sessions_per_principal = @2,
+          mcp_import_max_creations_per_window = @3,
+          mcp_import_max_reserved_bytes = @4,
+          mcp_import_max_rows = @5,
+          mcp_import_validation_ttl_minutes = @6,
+          mcp_max_request_bytes = @7,
+          requirement_generation_enabled = @8,
+          updated_at = @9
         OUTPUT INSERTED.id AS id
         WHERE id = 1;
       `,
       [
-        values.aiSafetyForensicLoggingEnabled,
         values.aiSafetyRuleCacheTtlSeconds,
         values.mcpImportMaxActiveSessionsPerDestination,
         values.mcpImportMaxActiveSessionsPerPrincipal,
@@ -896,9 +753,6 @@ export async function updateAiGenerationSettings(
     mcpImportMaxReservedBytes: values.mcpImportMaxReservedBytes,
     mcpImportValidationTtlMinutes: values.mcpImportValidationTtlMinutes,
     mcpMaxRequestBytes: values.mcpMaxRequestBytes,
-  })
-  cacheAiSafetyRuntimeSettings({
-    aiSafetyForensicLoggingEnabled: values.aiSafetyForensicLoggingEnabled,
   })
   return adminAiSettingsFromSettings(values, options.env)
 }

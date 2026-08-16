@@ -5,7 +5,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 BUNDLE_ROOT="${KRAVHANTERING_BUNDLE_ROOT:-$(cd -- "$SCRIPT_DIR/.." && pwd -P)}"
 RELEASE_ENV_FILE="${KRAVHANTERING_RELEASE_ENV_FILE:-/etc/kravhantering/release.env}"
+APP_ENV_FILE="${KRAVHANTERING_APP_ENV_FILE:-/etc/kravhantering/app.env}"
 KEYCLOAK_ENV_FILE="${KRAVHANTERING_KEYCLOAK_ENV_FILE:-/etc/kravhantering/keycloak.env}"
+KEYCLOAK_REALM_FILE="${KRAVHANTERING_KEYCLOAK_REALM_FILE:-/etc/kravhantering/keycloak/realm-kravhantering-production.json}"
 TEMPLATE_ROOT="$BUNDLE_ROOT/quadlet/templates"
 QUADLET_DIR="${KRAVHANTERING_QUADLET_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/containers/systemd}"
 SYSTEMD_USER_DIR="${KRAVHANTERING_SYSTEMD_USER_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user}"
@@ -160,6 +162,94 @@ read_env_value() {
     value="${line#*=}"
   done <"$file"
   printf '%s\n' "$value"
+}
+
+is_shipped_auth_placeholder() {
+  case "$1" in
+    admin | *dev-only-* | *local-kc-* | *not-for-production* | *prodlike-* | \
+      replace-with-*)
+      return 0
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+require_auth_value() {
+  local file="$1" file_label="$2" key="$3" value
+  value="$(read_env_value "$file" "$key")"
+  [[ -n "$value" ]] || fail "$file_label is missing required value: $key"
+  printf '%s\n' "$value"
+}
+
+validate_auth_secret() {
+  local field="$1" value="$2"
+  if is_shipped_auth_placeholder "$value"; then
+    fail "invalid authentication configuration: $field uses a shipped placeholder"
+  fi
+}
+
+read_realm_client_secret() {
+  local client_id="$1"
+  jq -r --arg client_id "$client_id" '
+    [.clients[]? | select(.clientId == $client_id)]
+    | if length == 1 then (.[0].secret // "") else "" end
+  ' "$KEYCLOAK_REALM_FILE" 2>/dev/null || true
+}
+
+validate_application_auth() {
+  local client_secret cookie_password key
+  for key in \
+    AUTH_OIDC_ISSUER_URL \
+    AUTH_OIDC_CLIENT_ID \
+    AUTH_OIDC_REDIRECT_URI \
+    AUTH_OIDC_POST_LOGOUT_REDIRECT_URI; do
+    require_auth_value "$APP_ENV_FILE" app.env "$key" >/dev/null
+  done
+  client_secret="$(
+    require_auth_value "$APP_ENV_FILE" app.env AUTH_OIDC_CLIENT_SECRET
+  )"
+  cookie_password="$(
+    require_auth_value "$APP_ENV_FILE" app.env AUTH_SESSION_COOKIE_PASSWORD
+  )"
+  validate_auth_secret AUTH_OIDC_CLIENT_SECRET "$client_secret"
+  validate_auth_secret AUTH_SESSION_COOKIE_PASSWORD "$cookie_password"
+  (( ${#cookie_password} >= 32 )) || \
+    fail 'invalid authentication configuration: AUTH_SESSION_COOKIE_PASSWORD must be at least 32 characters'
+}
+
+validate_bundled_keycloak_auth() {
+  local admin_password admin_user app_client_secret client_id client_secret
+  [[ "$TOPOLOGY" == single-node && "$IDENTITY_PROVIDER_MODE" != external ]] || \
+    return 0
+
+  admin_user="$(require_auth_value "$KEYCLOAK_ENV_FILE" keycloak.env KEYCLOAK_ADMIN)"
+  admin_password="$(
+    require_auth_value "$KEYCLOAK_ENV_FILE" keycloak.env KEYCLOAK_ADMIN_PASSWORD
+  )"
+  validate_auth_secret KEYCLOAK_ADMIN "$admin_user"
+  validate_auth_secret KEYCLOAK_ADMIN_PASSWORD "$admin_password"
+
+  [[ -r "$KEYCLOAK_REALM_FILE" ]] || \
+    fail "cannot read Keycloak realm configuration: $KEYCLOAK_REALM_FILE"
+  command -v jq >/dev/null 2>&1 || fail 'required command not found: jq'
+  app_client_secret="$(
+    require_auth_value "$APP_ENV_FILE" app.env AUTH_OIDC_CLIENT_SECRET
+  )"
+  for client_id in kravhantering-app kravhantering-mcp; do
+    client_secret="$(read_realm_client_secret "$client_id")"
+    [[ -n "$client_secret" ]] || \
+      fail "Keycloak realm client is missing a secret: $client_id"
+    validate_auth_secret "$client_id realm client secret" "$client_secret"
+    if [[ "$client_id" == kravhantering-app && \
+      "$client_secret" != "$app_client_secret" ]]; then
+      fail 'authentication configuration mismatch: AUTH_OIDC_CLIENT_SECRET and kravhantering-app realm client secret'
+    fi
+  done
+}
+
+validate_authentication_config() {
+  validate_application_auth
+  validate_bundled_keycloak_auth
 }
 
 configure_identity_provider() {
@@ -724,6 +814,7 @@ render_units() {
   configure_identity_provider
   validate_release_env "$TOPOLOGY"
   validate_identity_provider
+  validate_authentication_config
   validate_readiness_probe_config
   validate_trusted_proxy_config
   configure_containment

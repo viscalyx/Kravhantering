@@ -234,7 +234,6 @@ export const REQUIRED_SEED_DATA = {
     columns: [
       'id',
       'requirement_generation_enabled',
-      'ai_safety_forensic_logging_enabled',
       'mcp_max_request_bytes',
       'mcp_import_max_rows',
       'mcp_import_validation_ttl_minutes',
@@ -251,7 +250,6 @@ export const REQUIRED_SEED_DATA = {
       [
         1,
         1,
-        0,
         1048576,
         500,
         60,

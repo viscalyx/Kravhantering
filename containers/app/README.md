@@ -42,10 +42,12 @@ building a deployable image for another origin.
 `app-runtime` is the long-running Next.js image. It is based on
 `output: "standalone"` and only copies `.next/standalone`, `.next/static`, and
 `public` into the final runtime stage. The stage runs as the non-root `node`
-user and starts `node server.js` on port `3000`. The post-build standalone
-dependency check verifies that TypeORM and the SQL Server driver packages were
-traced into this output; a missing runtime database dependency therefore fails
-the image build with an explicit error.
+user and starts `node start-runtime.mjs` on port `3000`. The startup wrapper
+validates mandatory authentication fields and rejects committed placeholder
+credentials before loading `server.js`. The post-build standalone dependency
+check verifies that TypeORM and the SQL Server driver packages were traced into
+this output; a missing runtime database dependency therefore fails the image
+build with an explicit error.
 
 `db-job` is built from the same Dockerfile for release consistency, but it is
 documented in [../db-job/README.md](../db-job/README.md) because it has a
@@ -114,6 +116,9 @@ Required application values:
 - `AUTH_OIDC_REDIRECT_URI` and `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` must
   match the Keycloak realm imported for the stack.
 - `AUTH_SESSION_COOKIE_PASSWORD` must be at least 32 characters.
+- Production startup rejects public development, prodlike, smoke-test, and
+  template placeholder values for the OIDC client secret and session-cookie
+  password.
 - `HSA_PERSON_LOOKUP_URL` must use HTTPS in production and point to the
   server-side Kong or integration-platform REST facade approved by the
   environment's egress policy for HSA person lookup.

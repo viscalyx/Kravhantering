@@ -258,8 +258,12 @@ fine-scoped PAT or GitHub App token for the `Viscalyxbot` machine user that can
 push branches and create pull requests so the normal PR checks run for that
 automation PR. The workflow commits those documentation changes as
 `Viscalyxbot <viscalyxbot@viscalyx.se>` before opening or updating the PR, and
-the PR title includes the latest source PR number. Stable release archives use
-the same token and protected-branch PR pattern, with a version-specific branch.
+the PR title includes the latest source PR number. When the remote automation
+branch has no open pull request, the workflow treats it as stale and recreates
+its content from `main`. This prevents squash-merged automation commits from
+being rebased onto their equivalent changes on `main`. Stable release archives
+use the same token and protected-branch PR pattern, with a version-specific
+branch.
 The automation fails when that secret is absent or cannot authenticate against
 the repository; it does not fall back to `github.token`, because that would
 hide token expiry and can suppress downstream PR workflow runs. The container

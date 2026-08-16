@@ -52,17 +52,36 @@ jobs:
 
       - name: Prepare operator notes branch
         env:
+          GH_TOKEN: ${{ secrets.OPERATOR_UPGRADE_NOTES_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           NOTES_BRANCH: automation/operator-upgrade-notes
         run: |
           set -euo pipefail
           git config user.name "Viscalyxbot"
           git config user.email "viscalyxbot@viscalyx.se"
+
           if git ls-remote --exit-code --heads origin "${NOTES_BRANCH}" >/dev/null; then
             git fetch origin "${NOTES_BRANCH}:refs/remotes/origin/${NOTES_BRANCH}"
+          fi
+
+          open_notes_pr="$(
+            gh pr list --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head "${GITHUB_REPOSITORY%%/*}:${NOTES_BRANCH}" \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty'
+          )"
+          if [ -n "${open_notes_pr}" ]; then
+            if ! git show-ref --verify --quiet \
+              "refs/remotes/origin/${NOTES_BRANCH}"; then
+              echo "::error::Operator upgrade notes PR exists without a target-repository branch."
+              exit 1
+            fi
             git switch --create "${NOTES_BRANCH}" "origin/${NOTES_BRANCH}"
             git rebase origin/main
           else
-            git switch --create "${NOTES_BRANCH}"
+            git switch --create "${NOTES_BRANCH}" origin/main
           fi
 
       - name: Sync operator upgrade notes
@@ -118,10 +137,28 @@ jobs:
             echo "- [x] I have reviewed SSDLC requirements for this change and addressed any security, data protection, threat-model, and security-testing impacts. <!-- DO NOT REMOVE: ssdlc:requirements -->"
           } > "${body_file}"
 
-          pr_number="$(gh pr list --base main --head "${NOTES_BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          pr_number="$(
+            gh pr list --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head "${GITHUB_REPOSITORY%%/*}:${NOTES_BRANCH}" \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty'
+          )"
           if [ -z "${pr_number}" ]; then
-            gh pr create --base main --head "${NOTES_BRANCH}" --title "${title}" --body-file "${body_file}"
-            pr_number="$(gh pr list --base main --head "${NOTES_BRANCH}" --state open --json number --jq '.[0].number // empty')"
+            gh pr create --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head "${GITHUB_REPOSITORY%%/*}:${NOTES_BRANCH}" \
+              --title "${title}" \
+              --body-file "${body_file}"
+            pr_number="$(
+              gh pr list --repo "${GITHUB_REPOSITORY}" \
+                --base main \
+                --head "${GITHUB_REPOSITORY%%/*}:${NOTES_BRANCH}" \
+                --state open \
+                --json number \
+                --jq '.[0].number // empty'
+            )"
           else
             gh pr edit "${pr_number}" --title "${title}" --body-file "${body_file}"
           fi

@@ -5,8 +5,12 @@ traffic. Every supported production topology installs one generic systemd timer
 and one one-shot cleanup container. The timer runs every five minutes with a
 small randomized delay.
 
-The current cleanup registry includes expired MCP import-validation sessions
-and expired principal creation-rate buckets. Both use the same runner and timer.
+The current cleanup registry includes time-limited AI forensic evidence,
+expired MCP import-validation sessions, and expired principal creation-rate
+buckets. All use the same runner and timer. The forensic target records a
+metadata-only expiry event when a cleanup run detects a row that has already
+expired according to SQL Server time, then purges evidence 72 hours after
+manual stop or expiry.
 
 ## Work Bounds and Safety
 
@@ -64,7 +68,7 @@ Each target emits one JSON journal event with `kind`, `outcome`,
 the stable `failure_code` value `target_execution_failed`; a connection,
 configuration or runner failure emits `runner_execution_failed`. Events never
 contain session tokens, hashes, destinations, submitted payloads, validation or
-execution results, identities, or raw database errors.
+execution results, forensic evidence, identities, or raw database errors.
 
 A nonzero expired-row count may be normal while a run is respecting its work
 limit. Track `remaining_expired_row_count` as the backlog after each run. This
@@ -94,7 +98,8 @@ Check these boundaries in order:
 2. Confirm `/etc/kravhantering/app.env` contains the runtime database connection
    and valid numeric cleanup bounds.
 3. Confirm the app runtime identity retains `SELECT` and `DELETE` access to the
-   registered transient tables by running the release's normal runtime
+   registered transient tables, including the forensic capture/evidence tables,
+   by running the release's normal runtime
    permission verification.
 4. For app-node topologies, verify the egress network reaches SQL Server. For
    `single-node`, verify the database network, SQL Server service and mounted CA
@@ -127,10 +132,11 @@ systemctl --user daemon-reload
 
 Then install and start the previous release using its normal rollback
 procedure. Rollback stops scheduled deletion; it does not restore already
-expired rows. Remaining expired rows are harmless to active-session lookup and
-quota accounting and stay retained until request-triggered cleanup or a later
-release restores the timer. Active unexpired sessions and rate buckets are not
-removed by the cleanup upgrade or rollback. A schema rollback across the MCP
-ownership/quota migration is different: it deliberately deletes all validation
-sessions first so older code cannot accept a session under weaker ownership
-rules.
+expired rows. Remaining expired MCP rows are harmless to active-session lookup
+and quota accounting. Expired forensic evidence is sensitive and must not
+remain without an equivalent site-managed purge; do not roll back the cleanup
+timer while forensic rows exist. Active unexpired sessions, rate buckets, and
+capture windows are not removed by the cleanup upgrade or rollback. A schema
+rollback across the MCP ownership/quota migration is different: it deliberately
+deletes all validation sessions first so older code cannot accept a session
+under weaker ownership rules.

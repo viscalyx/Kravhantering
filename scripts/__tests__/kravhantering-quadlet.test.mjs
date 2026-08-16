@@ -3,6 +3,13 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import {
+  SHIPPED_KEYCLOAK_ADMIN_PASSWORD_SENTINELS,
+  SHIPPED_KEYCLOAK_ADMIN_SENTINELS,
+  SHIPPED_MCP_CLIENT_SECRET_SENTINELS,
+  SHIPPED_OIDC_CLIENT_SECRET_SENTINELS,
+  SHIPPED_SESSION_COOKIE_SENTINELS,
+} from '../../tests/fixtures/auth-placeholder-sentinels.mjs'
 
 const SCRIPT_PATH = path.resolve(
   process.cwd(),
@@ -77,7 +84,12 @@ function writeStatProbe(filePath) {
 
 function createFixture(
   releaseEnv,
-  keycloakEnv = 'KC_HOSTNAME_ADMIN=https://keycloak-management.example.internal:9443/auth\n',
+  keycloakEnv = [
+    'KC_HOSTNAME_ADMIN=https://keycloak-management.example.internal:9443/auth',
+    'KEYCLOAK_ADMIN=kravhantering-bootstrap-admin',
+    'KEYCLOAK_ADMIN_PASSWORD=unique-keycloak-bootstrap-password',
+    '',
+  ].join('\n'),
 ) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-quadlet-'))
   temporaryDirectories.push(root)
@@ -89,7 +101,9 @@ function createFixture(
   const systemctlPath = path.join(root, 'systemctl')
   const statPath = path.join(root, 'stat')
   const releaseEnvPath = path.join(root, 'release.env')
+  const appEnvPath = path.join(root, 'app.env')
   const keycloakEnvPath = path.join(root, 'keycloak.env')
+  const keycloakRealmPath = path.join(root, 'realm.json')
   const readinessProbeConfigPath = path.join(root, 'readiness-probes.conf')
   const trustedProxyConfigPath = path.join(root, 'trusted-proxies.conf')
   const outputDir = path.join(root, 'rendered')
@@ -130,8 +144,40 @@ function createFixture(
         `NGINX_TRUSTED_PROXY_CONFIG_FILE=${trustedProxyConfigPath}`,
       ),
   )
+  fs.writeFileSync(
+    appEnvPath,
+    [
+      'AUTH_OIDC_CLIENT_ID=kravhantering-app',
+      'AUTH_OIDC_CLIENT_SECRET=unique-production-oidc-secret',
+      'AUTH_OIDC_ISSUER_URL=https://issuer.example.internal/realms/kravhantering',
+      'AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=https://app.example.internal/',
+      'AUTH_OIDC_REDIRECT_URI=https://app.example.internal/api/auth/callback',
+      'AUTH_SESSION_COOKIE_PASSWORD=unique-production-cookie-password-with-more-than-32-characters',
+      '',
+    ].join('\n'),
+  )
   fs.writeFileSync(keycloakEnvPath, keycloakEnv)
+  fs.writeFileSync(
+    keycloakRealmPath,
+    `${JSON.stringify(
+      {
+        clients: [
+          {
+            clientId: 'kravhantering-app',
+            secret: 'unique-production-oidc-secret',
+          },
+          {
+            clientId: 'kravhantering-mcp',
+            secret: 'unique-production-realm-mcp-secret',
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  )
   return {
+    appEnvPath,
     outputDir,
     podmanPath,
     preflightEnv: {
@@ -139,12 +185,15 @@ function createFixture(
       KRAVHANTERING_CGROUP_CONTROLLERS_FILE: controllersPath,
       KRAVHANTERING_JOURNAL_CONFIG_DIR: journalConfigDir,
       KRAVHANTERING_MEMINFO_FILE: meminfoPath,
+      KRAVHANTERING_APP_ENV_FILE: appEnvPath,
+      KRAVHANTERING_KEYCLOAK_REALM_FILE: keycloakRealmPath,
       KRAVHANTERING_PODMAN_BIN: podmanPath,
       KRAVHANTERING_QUADLET_GENERATOR: generatorPath,
       KRAVHANTERING_SYSTEMCTL_BIN: systemctlPath,
     },
     releaseEnvPath,
     keycloakEnvPath,
+    keycloakRealmPath,
     root,
   }
 }
@@ -911,6 +960,158 @@ describe('kravhantering Quadlet helper', () => {
     expect(result.stderr).toContain(
       'release.env is missing required value: APP_RUNTIME_IMAGE_REF',
     )
+    expect(fs.existsSync(fixture.outputDir)).toBe(false)
+  })
+
+  it.each([
+    ['AUTH_OIDC_CLIENT_SECRET', ''],
+    ...SHIPPED_OIDC_CLIENT_SECRET_SENTINELS.map(sentinel => [
+      'AUTH_OIDC_CLIENT_SECRET',
+      sentinel,
+    ]),
+    ['AUTH_SESSION_COOKIE_PASSWORD', ''],
+    ...SHIPPED_SESSION_COOKIE_SENTINELS.map(sentinel => [
+      'AUTH_SESSION_COOKIE_PASSWORD',
+      sentinel,
+    ]),
+  ])(
+    'rejects the bundled %s placeholder before writing units',
+    (field, placeholder) => {
+      const fixture = createFixture(releaseEnv())
+      const appEnv = fs
+        .readFileSync(fixture.appEnvPath, 'utf8')
+        .replace(new RegExp(`^${field}=.*$`, 'mu'), `${field}=${placeholder}`)
+      fs.writeFileSync(fixture.appEnvPath, appEnv)
+
+      const result = runHelper(
+        [
+          'render',
+          '--topology',
+          'app-node-tls',
+          '--output-dir',
+          fixture.outputDir,
+        ],
+        fixture,
+      )
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain(field)
+      if (placeholder) expect(result.stderr).not.toContain(placeholder)
+      expect(fs.existsSync(fixture.outputDir)).toBe(false)
+    },
+  )
+
+  it.each([
+    ['KEYCLOAK_ADMIN', ''],
+    ...SHIPPED_KEYCLOAK_ADMIN_SENTINELS.map(sentinel => [
+      'KEYCLOAK_ADMIN',
+      sentinel,
+    ]),
+    ['KEYCLOAK_ADMIN_PASSWORD', ''],
+    ...SHIPPED_KEYCLOAK_ADMIN_PASSWORD_SENTINELS.map(sentinel => [
+      'KEYCLOAK_ADMIN_PASSWORD',
+      sentinel,
+    ]),
+  ])(
+    'rejects the bundled %s placeholder before writing single-node units',
+    (field, placeholder) => {
+      const fixture = createFixture(releaseEnv())
+      const keycloakEnv = fs
+        .readFileSync(fixture.keycloakEnvPath, 'utf8')
+        .replace(new RegExp(`^${field}=.*$`, 'mu'), `${field}=${placeholder}`)
+      fs.writeFileSync(fixture.keycloakEnvPath, keycloakEnv)
+
+      const result = runHelper(
+        [
+          'render',
+          '--topology',
+          'single-node',
+          '--output-dir',
+          fixture.outputDir,
+        ],
+        fixture,
+      )
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain(field)
+      if (placeholder) expect(result.stderr).not.toContain(placeholder)
+      expect(fs.existsSync(fixture.outputDir)).toBe(false)
+    },
+  )
+
+  it.each([
+    ['kravhantering-app', ''],
+    ...SHIPPED_OIDC_CLIENT_SECRET_SENTINELS.map(sentinel => [
+      'kravhantering-app',
+      sentinel,
+    ]),
+    ['kravhantering-mcp', ''],
+    ...SHIPPED_MCP_CLIENT_SECRET_SENTINELS.map(sentinel => [
+      'kravhantering-mcp',
+      sentinel,
+    ]),
+  ])(
+    'rejects the bundled %s realm secret before writing single-node units',
+    (clientId, placeholder) => {
+      const fixture = createFixture(releaseEnv())
+      const realm = JSON.parse(
+        fs.readFileSync(fixture.keycloakRealmPath, 'utf8'),
+      )
+      realm.clients.find(client => client.clientId === clientId).secret =
+        placeholder
+      fs.writeFileSync(
+        fixture.keycloakRealmPath,
+        `${JSON.stringify(realm, null, 2)}\n`,
+      )
+
+      const result = runHelper(
+        [
+          'render',
+          '--topology',
+          'single-node',
+          '--output-dir',
+          fixture.outputDir,
+        ],
+        fixture,
+      )
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain(clientId)
+      if (placeholder) expect(result.stderr).not.toContain(placeholder)
+      expect(fs.existsSync(fixture.outputDir)).toBe(false)
+    },
+  )
+
+  it('does not borrow a later realm client secret for the application client', () => {
+    const fixture = createFixture(releaseEnv())
+    const realm = JSON.parse(fs.readFileSync(fixture.keycloakRealmPath, 'utf8'))
+    const appClient = realm.clients.find(
+      client => client.clientId === 'kravhantering-app',
+    )
+    const mcpClient = realm.clients.find(
+      client => client.clientId === 'kravhantering-mcp',
+    )
+    delete appClient.secret
+    mcpClient.secret = 'unique-production-oidc-secret'
+    fs.writeFileSync(
+      fixture.keycloakRealmPath,
+      `${JSON.stringify(realm, null, 2)}\n`,
+    )
+
+    const result = runHelper(
+      [
+        'render',
+        '--topology',
+        'single-node',
+        '--output-dir',
+        fixture.outputDir,
+      ],
+      fixture,
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('kravhantering-app')
+    expect(result.stderr).not.toContain('unique-production-oidc-secret')
     expect(fs.existsSync(fixture.outputDir)).toBe(false)
   })
 

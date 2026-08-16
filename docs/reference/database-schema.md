@@ -102,7 +102,7 @@ Apply these rules to all schema objects.
 | 4 | RFI join tables and `specification_rfi_question_items` use composite PKs | These rows are natural links between a question version and advisory target, or between a specification and an RFI question. A surrogate `id` would not improve identity. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
 | Versioning | `requirement_version_norm_references` stores only FK IDs, not snapshots of mutable `norm_references` fields (`name`, `type`, `reference`, `version`, `issuer`, `uri`, `is_archived`) | Norm references are shared external documents whose metadata should reflect the latest known state across all requirement versions. Snapshotting would create stale duplicates of external metadata that the system does not own. If point-in-time fidelity is needed in the future, a dedicated snapshot table can be added without breaking the current schema. |
-| Boolean columns | `ai_settings.requirement_generation_enabled` and `ai_settings.ai_safety_forensic_logging_enabled` omit the `is_` prefix | These columns name positive feature preferences exposed by Admin Center and REST response fields; `is_*` names would read as observed state rather than administrator preference. |
+| Boolean columns | `ai_settings.requirement_generation_enabled` omits the `is_` prefix | The column names a positive feature preference exposed by Admin Center and REST response fields; an `is_*` name would read as observed state rather than administrator preference. |
 <!-- markdownlint-enable MD013 -->
 
 ---
@@ -185,7 +185,6 @@ erDiagram
     ai_settings {
         integer id PK
         bit requirement_generation_enabled
-        bit ai_safety_forensic_logging_enabled
         integer mcp_max_request_bytes
         integer mcp_import_max_rows
         integer mcp_import_max_active_sessions_per_principal
@@ -196,6 +195,31 @@ erDiagram
         integer ai_safety_rule_cache_ttl_seconds
         datetime2 created_at
         datetime2 updated_at
+    }
+
+    ai_forensic_capture_windows {
+        integer id PK
+        text operation
+        text direction
+        text requested_by_hsa_id
+        text approved_by_hsa_id
+        datetime2 requested_at
+        datetime2 expires_at
+        datetime2 stopped_at
+        datetime2 purged_at
+        bit is_open UK
+        integer collection_item_limit
+    }
+
+    ai_forensic_evidence_events {
+        bigint id PK
+        integer ai_forensic_capture_window_id FK
+        uniqueidentifier event_id UK
+        text actor_fingerprint
+        text evidence_json
+        integer item_count
+        integer byte_count
+        datetime2 captured_at
     }
 
     application_settings {
@@ -684,6 +708,7 @@ erDiagram
     }
 
     %% Relationships
+    ai_forensic_capture_windows ||--o{ ai_forensic_evidence_events : "contains bounded evidence"
     requirement_responsibility_people ||--o{ requirement_areas : "owns areas"
     requirement_responsibility_people ||--o{ requirement_area_co_authors : "assigned to areas"
     requirement_responsibility_people ||--o{ requirements_specifications : "leads specifications"
@@ -1565,7 +1590,6 @@ security, and MCP request payload security.
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key; constrained to singleton row `1` |
 | `requirement_generation_enabled` | bit | Admin preference for AI requirement generation |
-| `ai_safety_forensic_logging_enabled` | bit | Admin preference for separate raw-content AI safety forensic JSON logging; database default `0` |
 | `mcp_max_request_bytes` | integer | Maximum MCP request payload and persisted MCP import session size in bytes |
 | `mcp_import_max_rows` | integer | Maximum rows accepted in one MCP import validation session |
 | `mcp_import_max_active_sessions_per_principal` | integer | Maximum unexpired validation sessions owned by one MCP principal |
@@ -1582,8 +1606,6 @@ security, and MCP request payload security.
 
 - organization-wide Admin Center preference for AI requirement generation
 - persisted default used by the requirements UI and REST generation route
-- organization-wide preference for emitting separate `security-forensics` JSON
-  events with raw blocked AI safety content and matched rule evidence
 - organization-wide MCP request payload and import-session byte limit used by
   `/api/mcp` and MCP import validation
 - organization-wide MCP import row cap and validation-session TTL
@@ -1595,7 +1617,6 @@ security, and MCP request payload security.
 
 **Seed value:** Required and demo seed data create row `id = 1` with
 `requirement_generation_enabled = 1`,
-`ai_safety_forensic_logging_enabled = 0`,
 `mcp_max_request_bytes = 1048576`, `mcp_import_max_rows = 500`,
 `mcp_import_validation_ttl_minutes = 60`,
 `mcp_import_max_active_sessions_per_principal = 10`,
@@ -1603,14 +1624,10 @@ security, and MCP request payload security.
 `mcp_import_max_creations_per_window = 20`,
 `mcp_import_max_reserved_bytes = 536870912`, and
 `ai_safety_rule_cache_ttl_seconds = 600`, so new seed insertions keep AI
-requirement generation enabled, forensic AI safety logging off, the existing
-`1 MiB` seeded MCP limit, 500-row import cap, 60-minute validation TTL, and
+requirement generation enabled, the existing `1 MiB` seeded MCP limit,
+500-row import cap, 60-minute validation TTL, and
 ten-minute AI safety rule cache. Required seed data does not overwrite an
-existing singleton row. The migration runner identifies an empty migration
-history as a fresh installation and applies the disabled value to the singleton
-created by the historical migration chain. On upgrades, the migration changes
-only the database default and does not update stored singleton values, so both
-enabled and disabled administrator preferences are preserved.
+existing singleton row.
 
 **Check constraints:** `chk_ai_settings_id` enforces the singleton row ID.
 `chk_ai_settings_mcp_max_request_bytes` enforces integer byte values on a
@@ -1623,6 +1640,78 @@ The MCP quota checks enforce principal sessions `1`–`100`, destination session
 through `1440`.
 `chk_ai_settings_ai_safety_rule_cache_ttl_seconds` enforces cache values from
 `30` to `3600` seconds.
+
+### `ai_forensic_capture_windows`
+
+Metadata-only control records for explicitly requested, independently approved,
+time-limited AI forensic evidence capture. Only one pending or active row may
+have `is_open = 1`. SQL Server UTC time is authoritative for the required
+5–60-minute expiry interval and for automatic capture stop.
+
+<!-- markdownlint-disable MD013 -->
+
+| Column | Type | Description |
+| ------ | ---- | ----------- |
+| `id` | integer PK | Capture-window identifier |
+| `operation` | nvarchar(80) | Exact AI operation in scope |
+| `direction` | nvarchar(6) | `input` or `output` |
+| `requested_by_hsa_id` / `requested_by_display_name` | nvarchar | Requester snapshot; HSA-id is nullable for privacy erasure |
+| `requested_at` | datetime2 | SQL Server request time |
+| `approved_by_hsa_id` / `approved_by_display_name` | nvarchar, nullable | Independent Privacy Officer snapshot |
+| `approved_at` | datetime2, nullable | Approval time; capture is inactive until set |
+| `expires_at` | datetime2 | Mandatory automatic-stop time |
+| `expiry_audited_at` | datetime2, nullable | Metadata audit emission checkpoint |
+| `stopped_by_hsa_id` / `stopped_by_display_name` | nvarchar, nullable | Manual stop actor snapshot |
+| `stopped_at` | datetime2, nullable | Manual or privacy-erasure stop time |
+| `purged_by_hsa_id` / `purged_by_display_name` | nvarchar, nullable | Manual purge actor snapshot |
+| `purged_at` | datetime2, nullable | Evidence purge completion time |
+| `is_open` | bit, nullable | Filtered unique slot for one pending/active window |
+| `event_byte_limit` | integer | Per-event JSON byte limit; maximum `8192` |
+| `event_item_limit` | integer | Per-event evidence item limit; maximum `8` |
+| `collection_item_limit` | integer | Whole-window event limit; maximum `1000` |
+
+<!-- markdownlint-enable MD013 -->
+
+The Admin requester cannot approve their own request. Admin or Privacy Officer
+may stop an active window; Privacy Officer approves and purges. After stop or
+expiry, only the original requester or approver who currently has the `Admin`
+or `PrivacyOfficer` role can read evidence through the sensitive, no-store API.
+Demo seed data includes one stopped synthetic window with duplicate display
+names and distinct HSA-ids to exercise exact identity matching.
+
+### `ai_forensic_evidence_events`
+
+Isolated, bounded evidence captured only while an approved matching window is
+active. Evidence never uses ordinary application or container stdout. Secret
+patterns and direct identifiers are replaced before persistence; actor identity
+is represented by a SHA-256 fingerprint purpose-separated with the capture
+window ID.
+
+<!-- markdownlint-disable MD013 -->
+
+| Column | Type | Description |
+| ------ | ---- | ----------- |
+| `id` | bigint PK | Evidence row identifier |
+| `ai_forensic_capture_window_id` | integer FK | Owning capture window; cascade-deleted |
+| `event_id` | uniqueidentifier | Correlates with metadata-only security audit |
+| `actor_fingerprint` | nvarchar(64), nullable | Capture-specific actor fingerprint |
+| `blocked_step` | nvarchar(40) | Safety-screening stage |
+| `primary_rule_id` | nvarchar(80), nullable | Primary matching rule ID |
+| `rule_ids_json` | nvarchar(1024) | Valid bounded JSON rule-ID array |
+| `evidence_json` | nvarchar(max) | Valid redacted JSON; check-bounded to `8192` bytes |
+| `item_count` | integer | Stored item count, `1`–`8` |
+| `byte_count` | integer | Exact `DATALENGTH(evidence_json)`, at most `8192` |
+| `captured_at` | datetime2 | SQL Server capture time |
+
+<!-- markdownlint-enable MD013 -->
+
+The scheduled transient cleanup target independently marks expiry and purges
+evidence 72 hours after stop or expiry. Privacy erasure stops and purges windows
+where the target is a lifecycle actor and deletes evidence matching the exact
+capture-specific actor fingerprint. Demo seed data uses only synthetic,
+pre-redacted evidence. This asset is intentionally outside Admin Archiving:
+its fixed 72-hour security retention cannot be extended by a legal-hold or
+backup workflow in the application.
 
 ### `requirement_import_validation_sessions`
 
@@ -2610,6 +2699,8 @@ its purpose and the table/column(s) it covers.
 | `uq_norm_references_norm_reference_id` | `norm_references` | `norm_reference_id` | Ensures each norm reference has a distinct external identifier |
 | `uq_requirement_import_validation_sessions_token_hash` | `requirement_import_validation_sessions` | `token_hash` | Ensures each hashed MCP import validation token identifies one session |
 | `uq_requirement_import_validation_rate_buckets_principal_window` | `requirement_import_validation_rate_buckets` | `principal_fingerprint, window_started_at` | Ensures one creation counter per principal and fixed 10-minute window |
+| `uq_ai_forensic_capture_windows_is_open` | `ai_forensic_capture_windows` | `is_open` where `is_open = 1` | Ensures only one pending or active capture window exists |
+| `uq_ai_forensic_evidence_events_event_id` | `ai_forensic_evidence_events` | `event_id` | Ensures one isolated evidence row per security event |
 <!-- markdownlint-enable MD013 -->
 
 ### Non-Unique Indexes
@@ -2686,6 +2777,12 @@ its purpose and the table/column(s) it covers.
 | `idx_archiving_retention_runs_started_at` | `archiving_retention_runs` | `started_at` | Speed up retention execution history ordering |
 | `idx_archiving_retention_exceptions_policy_source` | `archiving_retention_exceptions` | `(policy_id, source_key)` | Speed up filtering legal-hold exceptions during preview |
 | `idx_ai_safety_rule_terms_rule_id` | `ai_safety_rule_terms` | `rule_id` | Speed up loading safety terms per rule |
+| `idx_ai_forensic_capture_windows_expires_at` | `ai_forensic_capture_windows` | `expires_at` | Support SQL-time expiry and bounded cleanup |
+| `idx_ai_forensic_capture_windows_requested_by_hsa_id` | `ai_forensic_capture_windows` | `requested_by_hsa_id` | Support requester access and exact privacy lookup |
+| `idx_ai_forensic_capture_windows_approved_by_hsa_id` | `ai_forensic_capture_windows` | `approved_by_hsa_id` | Support approver access and exact privacy lookup |
+| `idx_ai_forensic_evidence_events_ai_forensic_capture_window_id` | `ai_forensic_evidence_events` | `ai_forensic_capture_window_id` | Support bounded capture reads and cascade cleanup |
+| `idx_ai_forensic_evidence_events_actor_fingerprint` | `ai_forensic_evidence_events` | `actor_fingerprint` | Support capture-specific privacy deletion |
+| `idx_ai_forensic_evidence_events_captured_at` | `ai_forensic_evidence_events` | `captured_at` | Support stable evidence ordering and retention inspection |
 | `idx_requirement_import_validation_sessions_expires_at` | `requirement_import_validation_sessions` | `expires_at` | Speed up expired MCP import validation-session cleanup |
 | `idx_requirement_import_validation_sessions_principal_expires_at` | `requirement_import_validation_sessions` | `creator_principal_fingerprint, expires_at` | Support owned lookup and active principal quota counts |
 | `idx_requirement_import_validation_sessions_destination_expires_at` | `requirement_import_validation_sessions` | `destination_kind, destination_id, expires_at` | Support active destination quota counts |
@@ -2716,6 +2813,7 @@ The following table lists every named FK constraint:
 | --------------- | ----- | --------- | ---------- | --------- | --------- |
 | `fk_requirement_areas_owner_hsa_id` | `requirement_areas` | `owner_hsa_id` | `requirement_responsibility_people.hsa_id` | NO ACTION | NO ACTION |
 | `fk_ai_safety_rule_terms_rule_id` | `ai_safety_rule_terms` | `rule_id` | `ai_safety_rules.id` | CASCADE | NO ACTION |
+| `fk_ai_forensic_evidence_events_ai_forensic_capture_window_id` | `ai_forensic_evidence_events` | `ai_forensic_capture_window_id` | `ai_forensic_capture_windows.id` | CASCADE | NO ACTION |
 | `fk_requirement_area_co_authors_area_id` | `requirement_area_co_authors` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
 | `fk_requirement_area_co_authors_hsa_id` | `requirement_area_co_authors` | `hsa_id` | `requirement_responsibility_people.hsa_id` | NO ACTION | NO ACTION |
 | `fk_requirements_specifications_specification_implementation_type_id` | `requirements_specifications` | `specification_implementation_type_id` | `specification_implementation_types.id` | NO ACTION | NO ACTION |
@@ -2823,6 +2921,11 @@ graph LR
         MIVR[requirement_import_validation_rate_buckets]
     end
 
+    subgraph Time-limited AI Forensic State
+        AFCW[ai_forensic_capture_windows]
+        AFEE[ai_forensic_evidence_events]
+    end
+
     subgraph Specifications
         PGOT[specification_governance_object_types]
         PIT[specification_implementation_types]
@@ -2870,6 +2973,13 @@ graph LR
     HIP -- "idx_hsa_id_prefixes_is_visible\n(is_visible)" --> HIP
     AIRT -- "FK rule_id" --> AIR
     AIRT -- "uq_..._rule_type_normalized\n(rule_id, term_type, normalized_term)" --> AIRT
+
+    AFCW -- "uq_..._is_open\n(is_open WHERE is_open = 1)" --> AFCW
+    AFCW -- "idx_..._expires_at\n(expires_at)" --> AFCW
+    AFEE -- "FK ai_forensic_capture_window_id" --> AFCW
+    AFEE -- "uq_..._event_id\n(event_id)" --> AFEE
+    AFEE -- "idx_..._actor_fingerprint\n(actor_fingerprint)" --> AFEE
+    AFEE -- "idx_..._captured_at\n(captured_at)" --> AFEE
 
     MIVS -- "uq_..._token_hash\n(token_hash)" --> MIVS
     MIVS -- "idx_..._principal_expires_at\n(creator_principal_fingerprint, expires_at)" --> MIVS
@@ -3037,8 +3147,10 @@ Through `kravhantering_runtime`, `dbo.migrations` is `SELECT`-only.
 `action_audit_events` permits `SELECT`, `INSERT`, and `UPDATE` only for
 `actor_hsa_id` and `actor_display_name`, with no `DELETE`; access-review and
 retention evidence tables have similarly explicit workflow/privacy columns and
-no unsupported deletion. Runtime has no DDL, ownership, role-administration,
-or stored-procedure execution grant.
+no unsupported deletion. `ai_forensic_capture_windows` has explicit lifecycle
+CRUD, while `ai_forensic_evidence_events` permits only `SELECT`, `INSERT`, and
+`DELETE` so stored evidence cannot be edited in place. Runtime has no DDL,
+ownership, role-administration, or stored-procedure execution grant.
 
 The application runtime and the migration job use separate SQL Server logins.
 The migration login retains `db_owner` so TypeORM can apply versioned schema

@@ -12,13 +12,11 @@ import {
   MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
 } from '@/lib/ai/generation-availability'
 import {
-  clearAiSafetyRuntimeSettingsCacheForTests,
   clearMcpMaxRequestBytesCacheForTests,
   formatAiSettingsLoadError,
   getAdminAiSettings,
   getAiGenerationAvailability,
   getAiGenerationSettings,
-  getCachedAiSafetyRuntimeSettings,
   getCachedMcpMaxRequestBytes,
   getCachedMcpRuntimeSettings,
   patchAiGenerationSettings,
@@ -47,7 +45,6 @@ describe('AI settings DAL', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    clearAiSafetyRuntimeSettingsCacheForTests()
     clearMcpMaxRequestBytesCacheForTests()
     query.mockResolvedValue([])
     manager.query.mockResolvedValue([])
@@ -57,10 +54,9 @@ describe('AI settings DAL', () => {
     )
   })
 
-  it('loads forensic capture disabled when the singleton row is absent', async () => {
+  it('loads the remaining defaults when the singleton row is absent', async () => {
     await expect(getAiGenerationSettings(db)).resolves.toEqual({
       ...MCP_QUOTA_DEFAULTS,
-      aiSafetyForensicLoggingEnabled: false,
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
       mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
@@ -69,16 +65,14 @@ describe('AI settings DAL', () => {
     })
   })
 
-  it('defaults an unset forensic capture value to disabled', async () => {
+  it('loads a saved requirement-generation preference', async () => {
     query.mockResolvedValueOnce([
       {
-        aiSafetyForensicLoggingEnabled: undefined,
         requirementGenerationEnabled: 1,
       },
     ])
 
     await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
-      aiSafetyForensicLoggingEnabled: false,
       requirementGenerationEnabled: true,
     })
   })
@@ -97,7 +91,6 @@ describe('AI settings DAL', () => {
     try {
       await expect(getAiGenerationSettings(db)).resolves.toEqual({
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: false,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
@@ -124,7 +117,6 @@ describe('AI settings DAL', () => {
     try {
       await expect(getAiGenerationSettings(db)).resolves.toEqual({
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: false,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
@@ -181,7 +173,6 @@ describe('AI settings DAL', () => {
     query.mockResolvedValueOnce([
       {
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: 0,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
           MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
@@ -201,7 +192,6 @@ describe('AI settings DAL', () => {
   it('maps a complete current row and defaults invalid migrated values', async () => {
     query.mockResolvedValueOnce([
       {
-        aiSafetyForensicLoggingEnabled: undefined,
         aiSafetyRuleCacheTtlSeconds: -1,
         mcpImportMaxActiveSessionsPerDestination: -1,
         mcpImportMaxActiveSessionsPerPrincipal: -1,
@@ -217,7 +207,6 @@ describe('AI settings DAL', () => {
     await expect(getAdminAiSettings(db, { NODE_ENV: 'test' })).resolves.toEqual(
       {
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: false,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
         disabledByEnvironment: false,
@@ -228,36 +217,6 @@ describe('AI settings DAL', () => {
         mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
         requirementGenerationEnabled: true,
       },
-    )
-  })
-
-  it('uses the forensic-column compatibility projection when that migration is absent', async () => {
-    query
-      .mockRejectedValueOnce(
-        Object.assign(
-          new Error(
-            "Invalid column name 'ai_safety_forensic_logging_enabled'.",
-          ),
-          { number: 207 },
-        ),
-      )
-      .mockResolvedValueOnce([
-        {
-          aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
-          mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
-          mcpImportValidationTtlMinutes:
-            MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
-          mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
-          requirementGenerationEnabled: 0,
-        },
-      ])
-
-    await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
-      aiSafetyForensicLoggingEnabled: false,
-      requirementGenerationEnabled: false,
-    })
-    expect(query.mock.calls[1]?.[0]).not.toContain(
-      'ai_safety_forensic_logging_enabled',
     )
   })
 
@@ -282,46 +241,37 @@ describe('AI settings DAL', () => {
     })
   })
 
-  it.each([0, undefined])(
-    'uses quota defaults when the principal quota migration is absent (%s forensic value)',
-    async forensicValue => {
-      query
-        .mockRejectedValueOnce(
-          Object.assign(
-            new Error(
-              "Invalid column name 'mcp_import_max_active_sessions_per_principal'.",
-            ),
-            { number: 207 },
+  it('uses quota defaults when the principal quota migration is absent', async () => {
+    query
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error(
+            "Invalid column name 'mcp_import_max_active_sessions_per_principal'.",
           ),
-        )
-        .mockResolvedValueOnce([
-          {
-            aiSafetyForensicLoggingEnabled: forensicValue,
-            aiSafetyRuleCacheTtlSeconds:
-              AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
-            mcpImportMaxRows: 321,
-            mcpImportValidationTtlMinutes: 45,
-            mcpMaxRequestBytes: 2 * 1024 * 1024,
-            requirementGenerationEnabled: 0,
-          },
-        ])
+          { number: 207 },
+        ),
+      )
+      .mockResolvedValueOnce([
+        {
+          aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
+          mcpImportMaxRows: 321,
+          mcpImportValidationTtlMinutes: 45,
+          mcpMaxRequestBytes: 2 * 1024 * 1024,
+          requirementGenerationEnabled: 0,
+        },
+      ])
 
-      await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
-        ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: false,
-        mcpImportMaxRows: 321,
-        mcpImportValidationTtlMinutes: 45,
-        mcpMaxRequestBytes: 2 * 1024 * 1024,
-        requirementGenerationEnabled: false,
-      })
-      expect(query.mock.calls[1]?.[0]).toContain(
-        'ai_safety_forensic_logging_enabled',
-      )
-      expect(query.mock.calls[1]?.[0]).not.toContain(
-        'mcp_import_max_active_sessions_per_principal',
-      )
-    },
-  )
+    await expect(getAiGenerationSettings(db)).resolves.toMatchObject({
+      ...MCP_QUOTA_DEFAULTS,
+      mcpImportMaxRows: 321,
+      mcpImportValidationTtlMinutes: 45,
+      mcpMaxRequestBytes: 2 * 1024 * 1024,
+      requirementGenerationEnabled: false,
+    })
+    expect(query.mock.calls[1]?.[0]).not.toContain(
+      'mcp_import_max_active_sessions_per_principal',
+    )
+  })
 
   it('uses complete defaults when the quota compatibility row is absent', async () => {
     query
@@ -337,7 +287,6 @@ describe('AI settings DAL', () => {
 
     await expect(getAiGenerationSettings(db)).resolves.toEqual({
       ...MCP_QUOTA_DEFAULTS,
-      aiSafetyForensicLoggingEnabled: false,
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
       mcpImportValidationTtlMinutes: MCP_IMPORT_VALIDATION_TTL_DEFAULT_MINUTES,
@@ -392,7 +341,6 @@ describe('AI settings DAL', () => {
       resolveAiGenerationAvailability(
         {
           ...MCP_QUOTA_DEFAULTS,
-          aiSafetyForensicLoggingEnabled: true,
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
           mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
           mcpImportValidationTtlMinutes:
@@ -421,7 +369,6 @@ describe('AI settings DAL', () => {
         db,
         {
           ...MCP_QUOTA_DEFAULTS,
-          aiSafetyForensicLoggingEnabled: false,
           aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
           mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
           mcpImportValidationTtlMinutes:
@@ -433,7 +380,6 @@ describe('AI settings DAL', () => {
       ),
     ).resolves.toEqual({
       ...MCP_QUOTA_DEFAULTS,
-      aiSafetyForensicLoggingEnabled: false,
       aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
       constraints: ADMIN_AI_SETTINGS_CONSTRAINTS,
       disabledByEnvironment: false,
@@ -448,7 +394,6 @@ describe('AI settings DAL', () => {
     expect(manager.query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE ai_settings'),
       [
-        false,
         AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_DESTINATION_DEFAULT,
         MCP_IMPORT_MAX_ACTIVE_SESSIONS_PER_PRINCIPAL_DEFAULT,
@@ -474,7 +419,6 @@ describe('AI settings DAL', () => {
     await expect(
       updateAiGenerationSettings(db, {
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: true,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
@@ -495,7 +439,6 @@ describe('AI settings DAL', () => {
     await expect(
       updateAiGenerationSettings(db, {
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: true,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
@@ -517,7 +460,6 @@ describe('AI settings DAL', () => {
     await expect(
       updateAiGenerationSettings(db, {
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: true,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: 251,
         mcpImportValidationTtlMinutes:
@@ -539,7 +481,6 @@ describe('AI settings DAL', () => {
     await expect(
       updateAiGenerationSettings(db, {
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: true,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
@@ -586,7 +527,6 @@ describe('AI settings DAL', () => {
     await expect(
       updateAiGenerationSettings(db, {
         ...MCP_QUOTA_DEFAULTS,
-        aiSafetyForensicLoggingEnabled: true,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
@@ -605,7 +545,6 @@ describe('AI settings DAL', () => {
   it('patches only supplied values through the atomic full-row update', async () => {
     query.mockResolvedValueOnce([
       {
-        aiSafetyForensicLoggingEnabled: 1,
         aiSafetyRuleCacheTtlSeconds: AI_SAFETY_RULE_CACHE_TTL_DEFAULT_SECONDS,
         mcpImportMaxRows: MCP_IMPORT_MAX_ROWS_DEFAULT,
         mcpImportValidationTtlMinutes:
@@ -623,71 +562,16 @@ describe('AI settings DAL', () => {
     await expect(
       patchAiGenerationSettings(
         db,
-        { aiSafetyForensicLoggingEnabled: false },
+        { aiSafetyRuleCacheTtlSeconds: 601 },
         { env: { NODE_ENV: 'test' } },
       ),
     ).resolves.toMatchObject({
-      aiSafetyForensicLoggingEnabled: false,
+      aiSafetyRuleCacheTtlSeconds: 601,
       requirementGenerationEnabled: true,
     })
     expect(manager.query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE ai_settings'),
-      expect.arrayContaining([false]),
-    )
-  })
-
-  it('caches the configured AI safety runtime setting', async () => {
-    query.mockResolvedValueOnce([{ aiSafetyForensicLoggingEnabled: 0 }])
-
-    await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: false,
-    })
-    await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: false,
-    })
-
-    expect(query).toHaveBeenCalledTimes(1)
-  })
-
-  it('caches the disabled default when the forensic setting is unset', async () => {
-    query.mockResolvedValueOnce([{ aiSafetyForensicLoggingEnabled: undefined }])
-
-    await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: false,
-    })
-
-    expect(query).toHaveBeenCalledTimes(1)
-  })
-
-  it('fails closed when the AI settings singleton row is absent', async () => {
-    await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: false,
-    })
-    await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: false,
-    })
-
-    expect(query).toHaveBeenCalledTimes(1)
-  })
-
-  it('fails closed when the forensic setting column is missing', async () => {
-    query.mockRejectedValueOnce(
-      Object.assign(
-        new Error("Invalid column name 'ai_safety_forensic_logging_enabled'."),
-        { number: 207 },
-      ),
-    )
-
-    await expect(getCachedAiSafetyRuntimeSettings(db)).resolves.toEqual({
-      aiSafetyForensicLoggingEnabled: false,
-    })
-  })
-
-  it('rethrows unexpected AI safety runtime load failures', async () => {
-    query.mockRejectedValueOnce(new Error('connection unavailable'))
-
-    await expect(getCachedAiSafetyRuntimeSettings(db)).rejects.toThrow(
-      'connection unavailable',
+      expect.arrayContaining([601]),
     )
   })
 

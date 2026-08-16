@@ -420,8 +420,6 @@ test.describe('Admin settings', () => {
       }
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: originalAi.aiSafetyRuleCacheTtlSeconds,
-        aiSafetyForensicLoggingEnabled:
-          originalAi.aiSafetyForensicLoggingEnabled,
         mcpImportMaxRows: originalAi.mcpImportMaxRows,
         mcpImportValidationTtlMinutes: originalAi.mcpImportValidationTtlMinutes,
         mcpMaxRequestBytes: originalAi.mcpMaxRequestBytes,
@@ -442,7 +440,6 @@ test.describe('Admin settings', () => {
     try {
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
-        aiSafetyForensicLoggingEnabled: original.aiSafetyForensicLoggingEnabled,
         mcpImportMaxRows: original.mcpImportMaxRows,
         mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
         mcpMaxRequestBytes: initialLimit,
@@ -469,16 +466,6 @@ test.describe('Admin settings', () => {
         await expect(
           aiPanel.getByRole('heading', { exact: true, name: 'AI-säkerhet' }),
         ).toHaveCount(1)
-        await expect(
-          aiPanel.getByRole('checkbox', {
-            name: /Logga forensisk AI-säkerhetsdata/,
-          }),
-        ).toBeVisible()
-        await expect(
-          aiPanel.getByText(
-            'Rå forensisk insamling är avstängd som standard i nya installationer. Slå endast på den när er incidenthantering kräver rått blockerat innehåll.',
-          ),
-        ).toBeVisible()
         await expect(
           aiPanel.getByRole('heading', {
             exact: true,
@@ -525,7 +512,6 @@ test.describe('Admin settings', () => {
           return {
             aiAssistance: text.indexOf('AI-assistering'),
             aiSecurity: text.indexOf('AI-säkerhet'),
-            forensicLogging: text.indexOf('Logga forensisk AI-säkerhetsdata'),
             limit: text.indexOf('MCP-anropsgräns'),
             mcpInterface: text.indexOf('MCP-gränssnitt'),
             requirementGeneration: text.indexOf('Kravgenerering'),
@@ -538,11 +524,8 @@ test.describe('Admin settings', () => {
         expect(panelTextOrder.aiSecurity).toBeGreaterThan(
           panelTextOrder.requirementGeneration,
         )
-        expect(panelTextOrder.forensicLogging).toBeGreaterThan(
-          panelTextOrder.aiSecurity,
-        )
         expect(panelTextOrder.mcpInterface).toBeGreaterThan(
-          panelTextOrder.forensicLogging,
+          panelTextOrder.aiSecurity,
         )
         expect(panelTextOrder.limit).toBeGreaterThan(
           panelTextOrder.mcpInterface,
@@ -653,8 +636,6 @@ test.describe('Admin settings', () => {
       if (shouldRestoreSettings) {
         await putAiSettings(request, {
           aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
-          aiSafetyForensicLoggingEnabled:
-            original.aiSafetyForensicLoggingEnabled,
           mcpImportMaxActiveSessionsPerPrincipal:
             original.mcpImportMaxActiveSessionsPerPrincipal,
           mcpImportMaxRows: original.mcpImportMaxRows,
@@ -697,7 +678,6 @@ test.describe('Admin settings', () => {
 
       await putAiSettings(request, {
         aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
-        aiSafetyForensicLoggingEnabled: original.aiSafetyForensicLoggingEnabled,
         mcpImportMaxRows: original.mcpImportMaxRows,
         mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
         mcpMaxRequestBytes: original.mcpMaxRequestBytes,
@@ -767,8 +747,6 @@ test.describe('Admin settings', () => {
       if (shouldRestoreSettings) {
         await putAiSettings(request, {
           aiSafetyRuleCacheTtlSeconds: original.aiSafetyRuleCacheTtlSeconds,
-          aiSafetyForensicLoggingEnabled:
-            original.aiSafetyForensicLoggingEnabled,
           mcpImportMaxRows: original.mcpImportMaxRows,
           mcpImportValidationTtlMinutes: original.mcpImportValidationTtlMinutes,
           mcpMaxRequestBytes: original.mcpMaxRequestBytes,

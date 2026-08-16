@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 export const SQL_SERVER_RUNTIME_ROLE = 'kravhantering_runtime'
-export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.14.1'
+export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.14.2'
 
 const CRUD = Object.freeze(['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
 const READ_CREATE = Object.freeze(['SELECT', 'INSERT'])
@@ -196,7 +196,9 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
         ? Object.freeze({
             ...entry,
             updateColumns: Object.freeze([
-              ...entry.updateColumns,
+              ...entry.updateColumns.filter(
+                column => column !== 'ai_safety_forensic_logging_enabled',
+              ),
               'mcp_import_max_active_sessions_per_destination',
               'mcp_import_max_active_sessions_per_principal',
               'mcp_import_max_creations_per_window',
@@ -204,6 +206,19 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
             ]),
           })
         : entry
+    if (entry.object === 'dbo.ai_safety_rule_terms') {
+      return [
+        Object.freeze({
+          object: 'dbo.ai_forensic_capture_windows',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.ai_forensic_evidence_events',
+          permissions: READ_CREATE_DELETE,
+        }),
+        currentEntry,
+      ]
+    }
     return entry.object === 'dbo.requirement_import_validation_sessions'
       ? [
           Object.freeze({

@@ -676,7 +676,6 @@ describe('AdminClient', () => {
         if (url === '/api/admin/ai-settings' && method === 'GET') {
           return Promise.resolve(
             okJson({
-              aiSafetyForensicLoggingEnabled: true,
               aiSafetyRuleCacheTtlSeconds: 600,
               disabledByEnvironment: true,
               effectiveRequirementGenerationEnabled: false,
@@ -687,15 +686,12 @@ describe('AdminClient', () => {
         }
         if (url === '/api/admin/ai-settings' && method === 'PATCH') {
           const requestBody = JSON.parse(String(init?.body ?? '{}')) as {
-            aiSafetyForensicLoggingEnabled?: boolean
             aiSafetyRuleCacheTtlSeconds?: number
             mcpMaxRequestBytes?: number
             requirementGenerationEnabled?: boolean
           }
           return Promise.resolve(
             okJson({
-              aiSafetyForensicLoggingEnabled:
-                requestBody.aiSafetyForensicLoggingEnabled ?? true,
               aiSafetyRuleCacheTtlSeconds:
                 requestBody.aiSafetyRuleCacheTtlSeconds ?? 600,
               disabledByEnvironment: true,
@@ -774,14 +770,10 @@ describe('AdminClient', () => {
     )
     const assistanceHeading = screen.getByText('admin.ai.assistanceTitle')
     const aiSecurityHeading = screen.getByText('admin.ai.aiSecurityTitle')
-    const forensicLoggingLabel = screen.getByText(
-      'admin.ai.aiSafetyForensicLogging',
-    )
     const mcpInterfaceHeading = screen.getByText('admin.ai.mcpInterfaceTitle')
     const mcpLimitLabel = screen.getByText('admin.ai.mcpMaxRequestLimit')
     expect(assistanceHeading).toBeVisible()
     expect(aiSecurityHeading).toBeVisible()
-    expect(forensicLoggingLabel).toBeVisible()
     expect(mcpInterfaceHeading).toBeVisible()
     expect(mcpLimitLabel).toBeVisible()
     expect(
@@ -813,17 +805,6 @@ describe('AdminClient', () => {
     expect(
       screen.queryByText('admin.ai.fieldHelp.mcpMaxRequestLimit'),
     ).not.toBeInTheDocument()
-    expect(
-      screen.queryByText('admin.ai.fieldHelp.aiSafetyForensicLogging'),
-    ).not.toBeInTheDocument()
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'common.help: admin.ai.aiSafetyForensicLogging',
-      }),
-    )
-    expect(
-      screen.getByText('admin.ai.fieldHelp.aiSafetyForensicLogging'),
-    ).toBeVisible()
     fireEvent.click(
       screen.getByRole('button', {
         name: 'common.help: admin.ai.mcpMaxRequestLimit',
@@ -850,11 +831,7 @@ describe('AdminClient', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
-      aiSecurityHeading.compareDocumentPosition(forensicLoggingLabel) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(
-      forensicLoggingLabel.compareDocumentPosition(mcpInterfaceHeading) &
+      aiSecurityHeading.compareDocumentPosition(mcpInterfaceHeading) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
@@ -865,12 +842,8 @@ describe('AdminClient', () => {
     const toggle = screen.getByLabelText(
       'admin.ai.requirementGenerationEnabled',
     )
-    const forensicToggle = screen.getByLabelText(
-      'admin.ai.aiSafetyForensicLogging',
-    )
     const mcpLimitInput = screen.getByLabelText('admin.ai.mcpMaxRequestLimit')
     await waitFor(() => expect(toggle).toBeChecked())
-    expect(forensicToggle).toBeChecked()
     expect(mcpLimitInput).toHaveValue(9216)
     expect(screen.queryByRole('button', { name: 'common.save' })).toBeNull()
 
@@ -880,8 +853,6 @@ describe('AdminClient', () => {
     expect(mcpLimitInput).toHaveValue(10240)
     fireEvent.click(toggle)
     expect(toggle).not.toBeChecked()
-    fireEvent.click(forensicToggle)
-    expect(forensicToggle).not.toBeChecked()
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -917,21 +888,6 @@ describe('AdminClient', () => {
     ).toEqual({
       requirementGenerationEnabled: false,
     })
-    const forensicPatchCall = fetchMock.mock.calls.find(
-      ([url, init]) =>
-        url === '/api/admin/ai-settings' &&
-        (init as RequestInit | undefined)?.method === 'PATCH' &&
-        String((init as RequestInit | undefined)?.body ?? '').includes(
-          'aiSafetyForensicLoggingEnabled',
-        ),
-    )
-    expect(
-      JSON.parse(
-        ((forensicPatchCall?.[1] as RequestInit)?.body as string) ?? '{}',
-      ),
-    ).toEqual({
-      aiSafetyForensicLoggingEnabled: false,
-    })
     await waitFor(() =>
       expect(screen.getAllByText('admin.saved').length).toBeGreaterThan(0),
     )
@@ -947,7 +903,6 @@ describe('AdminClient', () => {
         if (url === '/api/admin/ai-settings' && method === 'GET') {
           return Promise.resolve(
             okJson({
-              aiSafetyForensicLoggingEnabled: true,
               aiSafetyRuleCacheTtlSeconds: 600,
               disabledByEnvironment: false,
               effectiveRequirementGenerationEnabled: true,
@@ -961,7 +916,6 @@ describe('AdminClient', () => {
         }
         if (url === '/api/admin/ai-settings' && method === 'PATCH') {
           const requestBody = JSON.parse(String(init?.body ?? '{}')) as {
-            aiSafetyForensicLoggingEnabled?: boolean
             mcpMaxRequestBytes?: number
             requirementGenerationEnabled?: boolean
           }
@@ -970,8 +924,6 @@ describe('AdminClient', () => {
           }
           return Promise.resolve(
             okJson({
-              aiSafetyForensicLoggingEnabled:
-                requestBody.aiSafetyForensicLoggingEnabled ?? true,
               aiSafetyRuleCacheTtlSeconds: 600,
               disabledByEnvironment: false,
               effectiveRequirementGenerationEnabled:
@@ -1031,7 +983,6 @@ describe('AdminClient', () => {
         if (url === '/api/admin/ai-settings' && method === 'GET') {
           return Promise.resolve(
             okJson({
-              aiSafetyForensicLoggingEnabled: true,
               aiSafetyRuleCacheTtlSeconds: 600,
               disabledByEnvironment: false,
               effectiveRequirementGenerationEnabled: true,

@@ -497,6 +497,11 @@ sudo install -o root -g kravhantering -m 0640 \
 Edit the copied files with environment-specific values. Do not edit files
 under `/opt/kravhantering/current`; they are release artifacts.
 
+Required application secrets, Keycloak bootstrap credentials, and confidential
+realm-client secrets are blank in the distributable templates. Populate them
+through the site's approved secret-injection workflow before running the
+Quadlet helper.
+
 ## Image References
 
 Set image references in `/etc/kravhantering/release.env` to the site's
@@ -1021,8 +1026,9 @@ For `bundled` and `hardened-bundled` only, keep `AUTH_OIDC_CLIENT_SECRET`
 equal to the `kravhantering-app` client `secret` field in
 `/etc/kravhantering/keycloak/realm-kravhantering-production.json`.
 
-The app requires `AUTH_OIDC_CLIENT_SECRET` to be non-empty. For production,
-use a high-entropy generated secret as described in
+The app requires `AUTH_OIDC_CLIENT_SECRET` to be non-empty and different from
+every credential shipped in a template, development target, or test fixture.
+For production, use a high-entropy generated secret as described in
 [Generate Unique Secrets](#generate-unique-secrets). In bundled profiles,
 paste the exact same value into `app.env` and the realm JSON. In `external`
 mode, use the secret from the provider-owned client registration. Use the same
@@ -1119,7 +1125,7 @@ administrator when the Keycloak data volume is empty. The username is local to
 Keycloak administration; it does not need to match an app user, SQL login or
 realm role. Choose any approved admin username and a strong unique password,
 store it in the deployment secret store, and do not leave the template
-placeholder values in place.
+fields blank.
 
 In the non-production `bundled` profile, the Keycloak admin console is
 available through nginx at
@@ -1700,6 +1706,13 @@ podman run --rm --network "$STACK_NETWORK" \
 
 exit
 ```
+
+The `install` command validates application authentication settings before it
+stages units. For bundled profiles it also validates the Keycloak bootstrap
+credentials, both confidential realm-client secrets, and the equality of the
+app client secret in `app.env` and the realm JSON. A failure names the field or
+client without printing the supplied secret. Do not start any affected service
+after a failed preflight.
 
 The production `db-job` image still contains only migrations and required seed
 code. Demo seed files are not included in the production deployment bundle; use

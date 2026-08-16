@@ -87,24 +87,6 @@ describe('AiSettingsPanel', () => {
         .getByRole('heading', { name: 'admin.ai.title' })
         .querySelector('.lucide-sparkles'),
     ).toHaveAttribute('aria-hidden', 'true')
-
-    const forensicDefault = screen.getByText(
-      'admin.ai.aiSafetyForensicLoggingDefault',
-    )
-    const forensicSetting = forensicDefault.closest(
-      '[data-developer-mode-name="setting"]',
-    )
-    expect(forensicSetting).toHaveAttribute(
-      'data-developer-mode-context',
-      'AI security',
-    )
-    expect(forensicSetting).toHaveAttribute(
-      'data-developer-mode-value',
-      'raw forensic capture',
-    )
-    expect(
-      screen.getByLabelText('admin.ai.aiSafetyForensicLogging'),
-    ).not.toBeChecked()
   })
 
   it('uses matching plain minus and plus icons for the MCP limit stepper', async () => {
@@ -190,6 +172,19 @@ describe('AiSettingsPanel', () => {
 
   it('autosaves every AI setting and exercises the field help controls', async () => {
     const settled = vi.fn()
+    const patchCalls = () =>
+      fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
+      )
+    const expectSaved = async (
+      control: HTMLElement,
+      expectedPatchCount: number,
+    ) => {
+      await waitFor(() => {
+        expect(patchCalls()).toHaveLength(expectedPatchCount)
+        expect(control).toBeEnabled()
+      })
+    }
     fetchMock.mockImplementation(
       (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input)
@@ -197,7 +192,6 @@ describe('AiSettingsPanel', () => {
         if (url === '/api/admin/ai-settings' && method === 'GET') {
           return Promise.resolve(
             okJson({
-              aiSafetyForensicLoggingEnabled: false,
               aiSafetyRuleCacheTtlSeconds: 60,
               disabledByEnvironment: true,
               mcpImportMaxActiveSessionsPerDestination: 100,
@@ -234,7 +228,6 @@ describe('AiSettingsPanel', () => {
 
     for (const label of [
       'admin.ai.requirementGenerationEnabled',
-      'admin.ai.aiSafetyForensicLogging',
       'admin.ai.safetyRuleCacheTtl',
       'admin.ai.safetyRulesTitle',
       'admin.ai.mcpMaxRequestLimit',
@@ -254,69 +247,58 @@ describe('AiSettingsPanel', () => {
     }
 
     fireEvent.click(requirementToggle)
-    await waitFor(() => expect(requirementToggle).toBeEnabled())
-    const forensicToggle = screen.getByLabelText(
-      'admin.ai.aiSafetyForensicLogging',
-    )
-    fireEvent.click(forensicToggle)
-    await waitFor(() => expect(forensicToggle).toBeEnabled())
-
+    await expectSaved(requirementToggle, 1)
     const cacheTtl = screen.getByLabelText('admin.ai.safetyRuleCacheTtl')
     fireEvent.change(cacheTtl, { target: { value: '61' } })
     fireEvent.keyDown(cacheTtl, { key: 'Escape' })
     fireEvent.keyDown(cacheTtl, { key: 'Enter' })
-    await waitFor(() => expect(cacheTtl).toBeEnabled())
+    await expectSaved(cacheTtl, 2)
 
     const mcpLimit = screen.getByLabelText('admin.ai.mcpMaxRequestLimit')
     fireEvent.change(mcpLimit, { target: { value: '6144' } })
     fireEvent.blur(mcpLimit)
-    await waitFor(() => expect(mcpLimit).toBeEnabled())
+    await expectSaved(mcpLimit, 3)
     fireEvent.click(
       screen.getByRole('button', {
         name: 'admin.ai.decreaseMcpMaxRequestLimit',
       }),
     )
-    await waitFor(() => expect(mcpLimit).toBeEnabled())
+    await expectSaved(mcpLimit, 4)
 
-    for (const [label, value] of [
+    for (const [index, [label, value]] of [
       ['admin.ai.mcpImportMaxActiveSessionsPerPrincipal', '11'],
       ['admin.ai.mcpImportMaxActiveSessionsPerDestination', '101'],
       ['admin.ai.mcpImportMaxCreationsPerWindow', '21'],
       ['admin.ai.mcpImportMaxReservedBytes', '576'],
-    ] as const) {
+    ].entries()) {
       const input = screen.getByLabelText(label)
       fireEvent.change(input, { target: { value } })
+      await waitFor(() => expect(input).toHaveValue(Number(value)))
       if (label === 'admin.ai.mcpImportMaxActiveSessionsPerPrincipal') {
         fireEvent.keyDown(input, { key: 'Escape' })
         fireEvent.keyDown(input, { key: 'Enter' })
       } else {
         fireEvent.blur(input)
       }
-      await waitFor(() => expect(input).toBeEnabled())
+      await expectSaved(input, 5 + index)
     }
     fireEvent.click(
       screen.getByRole('button', {
         name: 'admin.ai.increaseMcpMaxRequestLimit',
       }),
     )
-    await waitFor(() => expect(mcpLimit).toBeEnabled())
+    await expectSaved(mcpLimit, 9)
 
     const importRows = screen.getByLabelText('admin.ai.mcpImportMaxRows')
     fireEvent.change(importRows, { target: { value: '499' } })
     fireEvent.blur(importRows)
-    await waitFor(() => expect(importRows).toBeEnabled())
+    await expectSaved(importRows, 10)
 
     const importTtl = screen.getByLabelText('admin.ai.mcpImportValidationTtl')
     fireEvent.change(importTtl, { target: { value: '61' } })
     fireEvent.keyDown(importTtl, { key: 'Enter' })
 
-    await waitFor(() =>
-      expect(
-        fetchMock.mock.calls.filter(
-          ([, init]) => (init as RequestInit | undefined)?.method === 'PATCH',
-        ),
-      ).toHaveLength(12),
-    )
+    await expectSaved(importTtl, 11)
     expect(
       fetchMock.mock.calls.some(([, init]) =>
         String(init?.body).includes(
@@ -416,10 +398,9 @@ describe('AiSettingsPanel', () => {
     )
     fireEvent.click(requirementToggle)
     expect(await screen.findByText('setting rejected')).toBeVisible()
-    const forensicToggle = screen.getByLabelText(
-      'admin.ai.aiSafetyForensicLogging',
-    )
-    fireEvent.click(forensicToggle)
+    const cacheTtl = screen.getByLabelText('admin.ai.safetyRuleCacheTtl')
+    fireEvent.change(cacheTtl, { target: { value: '61' } })
+    fireEvent.keyDown(cacheTtl, { key: 'Enter' })
     expect(await screen.findByText('admin.ai.saveError')).toBeVisible()
   })
 

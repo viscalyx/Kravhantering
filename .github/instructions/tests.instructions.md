@@ -49,6 +49,7 @@ expect(result).toEqual([{ slug: 'post-1' }, { slug: 'post-2' }])
 
 ## Guidelines
 
+- Do not assert workflows in `.github/workflows/`.
 - Use `screen.getByRole()` over `getByTestId()`
 - Test user behavior, not implementation
 - Clear mocks in `beforeEach`

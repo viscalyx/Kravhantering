@@ -6,9 +6,10 @@ import {
   FileJson,
   RefreshCw,
   ShieldCheck,
+  Trash2,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useState } from 'react'
+import { type MouseEvent, useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -77,6 +78,17 @@ interface ArchivingRetentionExportResponse {
   exportToken: string
 }
 
+interface AiForensicCaptureMetadata {
+  direction: 'input' | 'output'
+  eventCount: number
+  expiresAt: string
+  id: number
+  operation: string
+  requestedAt: string
+  status: 'active' | 'expired' | 'pending_approval' | 'purged' | 'stopped'
+  stoppedAt: string | null
+}
+
 function archivingRetentionExportFilename(
   preview: ArchivingRetentionPreview,
   locale: string,
@@ -107,6 +119,12 @@ export default function ArchivingPanel() {
   >(null)
   const [retentionStatus, setRetentionStatus] = useState<SaveState>('idle')
   const [retentionMessage, setRetentionMessage] = useState<string | null>(null)
+  const [forensicCaptures, setForensicCaptures] = useState<
+    AiForensicCaptureMetadata[]
+  >([])
+  const [canPurgeForensicCapture, setCanPurgeForensicCapture] = useState(false)
+  const [forensicStatus, setForensicStatus] = useState<SaveState>('idle')
+  const [forensicMessage, setForensicMessage] = useState<string | null>(null)
   const selectedRetentionPolicy =
     retentionPolicies.find(policy => policy.id === selectedRetentionPolicyId) ??
     null
@@ -139,9 +157,73 @@ export default function ArchivingPanel() {
     }
   }, [ta])
 
+  const loadForensicCaptures = useCallback(async () => {
+    setForensicStatus('saving')
+    try {
+      const response = await apiFetch('/api/admin/ai-forensic-captures')
+      if (!response.ok) {
+        setForensicStatus('error')
+        setForensicMessage(ta('archiving.forensic.loadError'))
+        return false
+      }
+      const body = (await response.json()) as {
+        canPurge?: boolean
+        captures?: AiForensicCaptureMetadata[]
+      }
+      setCanPurgeForensicCapture(body.canPurge === true)
+      setForensicCaptures(body.captures ?? [])
+      setForensicStatus('idle')
+      setForensicMessage(null)
+      return true
+    } catch {
+      setForensicStatus('error')
+      setForensicMessage(ta('archiving.forensic.loadError'))
+      return false
+    }
+  }, [ta])
+
   useEffect(() => {
     void loadRetentionPolicies()
   }, [loadRetentionPolicies])
+
+  const purgeForensicCapture = async (
+    event: MouseEvent<HTMLButtonElement>,
+    captureWindowId: number,
+  ) => {
+    const anchorEl = event.currentTarget
+    const confirmed = await confirm({
+      anchorEl,
+      confirmText: ta('archiving.forensic.purge'),
+      icon: 'caution',
+      message: ta('archiving.forensic.purgeConfirmMessage'),
+      title: ta('archiving.forensic.purgeConfirmTitle'),
+      variant: 'danger',
+    })
+    if (!confirmed) return
+    setForensicStatus('saving')
+    setForensicMessage(null)
+    try {
+      const response = await apiFetch('/api/admin/ai-forensic-captures', {
+        body: JSON.stringify({ action: 'purge', captureWindowId }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      })
+      if (!response.ok) {
+        setForensicStatus('error')
+        setForensicMessage(
+          (await readResponseMessage(response)) ??
+            ta('archiving.forensic.purgeError'),
+        )
+        return
+      }
+      if (!(await loadForensicCaptures())) return
+      setForensicStatus('saved')
+      setForensicMessage(ta('archiving.forensic.purgeSuccess'))
+    } catch {
+      setForensicStatus('error')
+      setForensicMessage(ta('archiving.forensic.purgeError'))
+    }
+  }
 
   const runRetentionPreview = async (policyId = selectedRetentionPolicyId) => {
     if (!policyId) return
@@ -209,9 +291,11 @@ export default function ArchivingPanel() {
     }
   }
 
-  const executeRetention = async () => {
+  const executeRetention = async (event: MouseEvent<HTMLButtonElement>) => {
     if (!retentionPreview) return
+    const anchorEl = event.currentTarget
     const confirmed = await confirm({
+      anchorEl,
       confirmText: ta('archiving.retention.execute'),
       icon: 'caution',
       message: ta('archiving.retention.confirmMessage', {
@@ -323,6 +407,132 @@ export default function ArchivingPanel() {
         <p className="mt-2 max-w-3xl text-sm text-secondary-600 dark:text-secondary-300">
           {ta('archiving.description')}
         </p>
+      </div>
+
+      <div
+        className="mt-6 border-t border-secondary-200/70 pt-6 dark:border-secondary-700/60"
+        {...devMarker({
+          context: 'admin center',
+          name: 'forensic evidence',
+          priority: 350,
+          value: 'AI forensic evidence',
+        })}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-secondary-950 dark:text-secondary-50">
+              {ta('archiving.forensic.title')}
+            </h3>
+            <p className="mt-1 max-w-3xl text-sm text-secondary-600 dark:text-secondary-300">
+              {ta('archiving.forensic.description')}
+            </p>
+          </div>
+          <button
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-secondary-200 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+            disabled={forensicStatus === 'saving'}
+            onClick={() => void loadForensicCaptures()}
+            type="button"
+          >
+            <RefreshCw aria-hidden="true" className="h-4 w-4" />
+            {ta('archiving.forensic.reload')}
+          </button>
+        </div>
+
+        {forensicMessage ? (
+          <p
+            className={`mt-4 text-sm font-medium ${
+              forensicStatus === 'error'
+                ? 'text-red-700 dark:text-red-300'
+                : 'text-emerald-700 dark:text-emerald-300'
+            }`}
+            role={forensicStatus === 'error' ? 'alert' : 'status'}
+          >
+            {forensicMessage}
+          </p>
+        ) : null}
+
+        {forensicCaptures.length > 0 ? (
+          <div className="mt-5 overflow-x-auto rounded-2xl border border-secondary-200/70 dark:border-secondary-700/60">
+            <table className="min-w-full divide-y divide-secondary-200 text-sm dark:divide-secondary-700">
+              <thead className="bg-secondary-50 dark:bg-secondary-950/40">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {ta('archiving.forensic.capture')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {ta('archiving.forensic.scope')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {ta('archiving.forensic.status')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {ta('archiving.forensic.eventCount')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {ta('archiving.forensic.expiresAt')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {ta('privacy.action')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-secondary-200 bg-white dark:divide-secondary-700 dark:bg-secondary-900">
+                {forensicCaptures.map(capture => (
+                  <tr key={capture.id}>
+                    <td className="px-4 py-3 font-medium">#{capture.id}</td>
+                    <td className="px-4 py-3">
+                      <div>{capture.operation}</div>
+                      <div className="text-xs text-secondary-500 dark:text-secondary-400">
+                        {ta(
+                          `archiving.forensic.directions.${capture.direction}`,
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {ta(`archiving.forensic.statuses.${capture.status}`)}
+                    </td>
+                    <td className="px-4 py-3">{capture.eventCount}</td>
+                    <td className="px-4 py-3">
+                      {new Date(capture.expiresAt).toLocaleString(locale, {
+                        timeZone: ARCHIVING_TIME_ZONE,
+                      })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-red-300 px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/30"
+                        disabled={
+                          forensicStatus === 'saving' ||
+                          !canPurgeForensicCapture ||
+                          capture.status === 'purged'
+                        }
+                        onClick={event =>
+                          void purgeForensicCapture(event, capture.id)
+                        }
+                        title={
+                          !canPurgeForensicCapture
+                            ? ta('archiving.forensic.requiresPrivacyOfficer')
+                            : forensicStatus === 'saving'
+                              ? ta('archiving.forensic.purgePending')
+                              : capture.status === 'purged'
+                                ? ta('archiving.forensic.alreadyPurged')
+                                : undefined
+                        }
+                        type="button"
+                      >
+                        <Trash2 aria-hidden="true" className="h-4 w-4" />
+                        {ta('archiving.forensic.purge')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : forensicStatus === 'idle' ? (
+          <p className="mt-4 text-sm text-secondary-500 dark:text-secondary-400">
+            {ta('archiving.forensic.empty')}
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-6 border-t border-secondary-200/70 pt-6 dark:border-secondary-700/60">
@@ -490,7 +700,7 @@ export default function ArchivingPanel() {
                     retentionPreview.summary.candidateCount === 0 ||
                     (retentionRequiresArchiveExport && !retentionExportToken)
                   }
-                  onClick={() => void executeRetention()}
+                  onClick={event => void executeRetention(event)}
                   type="button"
                 >
                   <ShieldCheck aria-hidden="true" className="h-4 w-4" />

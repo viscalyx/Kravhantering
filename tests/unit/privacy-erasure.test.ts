@@ -89,6 +89,18 @@ function keyForPrivacySql(sql: string): string | null {
     return 'action_audit_events.actor'
   }
   if (
+    sql.includes('FROM ai_forensic_capture_windows') &&
+    sql.includes('requested_by_hsa_id = @0')
+  ) {
+    return 'ai_forensic_capture_windows.identity'
+  }
+  if (
+    sql.includes('FROM ai_forensic_evidence_events') &&
+    sql.includes('HASHBYTES')
+  ) {
+    return 'ai_forensic_evidence_events.actor_fingerprint'
+  }
+  if (
     sql.includes('FROM requirement_import_validation_sessions') &&
     sql.includes('creator_principal_fingerprint')
   ) {
@@ -689,6 +701,49 @@ describe('privacy erasure service', () => {
     expect(
       query.mock.calls.some(([sql]) =>
         String(sql).includes('DELETE FROM action_audit_events'),
+      ),
+    ).toBe(false)
+  })
+
+  it('stops and purges forensic capture data by exact HSA-id and actor fingerprint', async () => {
+    const { db, query } = createPrivacyDb({
+      'ai_forensic_capture_windows.identity': {
+        affectedValues: ['ai_forensic_capture:47'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+      'ai_forensic_evidence_events.actor_fingerprint': { count: 2 },
+    })
+    const preview = await previewPrivacyErasure(db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(preview.groups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'ai_forensic_capture_windows.identity',
+          recommendedAction: 'anonymize',
+        }),
+        expect.objectContaining({
+          key: 'ai_forensic_evidence_events.actor_fingerprint',
+          recommendedAction: 'delete',
+        }),
+      ]),
+    )
+
+    await executePrivacyErasure(createTransactionalDb(query), {
+      previewToken: preview.previewToken,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(query).toHaveBeenCalledWith(expect.any(String), [
+      TARGET_HSA_ID,
+      DELETED_USER_INTERNAL_NAME,
+    ])
+    expect(query).toHaveBeenCalledWith(expect.any(String), [TARGET_HSA_ID])
+    expect(
+      query.mock.calls.some(([, parameters]) =>
+        parameters?.includes(OTHER_HSA_ID),
       ),
     ).toBe(false)
   })

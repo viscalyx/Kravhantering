@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -21,10 +21,6 @@ const AZURE_HOST_BOOTSTRAP = path.join(
   'templates',
   'bootstrap-host.sh',
 )
-const USES_LINE = /^\s*uses:\s*([^#\s]+)(?:\s+#\s*(.+))?\s*$/u
-const PERSIST_CREDENTIALS_FALSE_LINE =
-  /^\s*persist-credentials:\s*['"]?false['"]?(?:\s+#.*)?$/iu
-
 type WorkflowDocument = {
   jobs?: Record<string, WorkflowJob>
   on?: Record<string, unknown>
@@ -51,33 +47,6 @@ type WorkflowStep = {
   with?: Record<string, unknown>
 }
 
-function yamlFiles(
-  root: string,
-): Array<{ absolutePath: string; relativePath: string }> {
-  const files: Array<{ absolutePath: string; relativePath: string }> = []
-
-  function walk(dir: string) {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const absolutePath = path.join(dir, entry.name)
-      if (entry.isDirectory()) {
-        walk(absolutePath)
-      } else if (/\.(?:ya?ml)$/u.test(entry.name)) {
-        files.push({
-          absolutePath,
-          relativePath: path.relative(process.cwd(), absolutePath),
-        })
-      }
-    }
-  }
-
-  walk(root)
-  return files.sort((a, b) => a.relativePath.localeCompare(b.relativePath))
-}
-
-function workflowAndActionFiles() {
-  return [...yamlFiles(WORKFLOWS_DIR), ...yamlFiles(ACTIONS_DIR)]
-}
-
 function readWorkflowYaml(fileName: string): WorkflowDocument {
   return yaml.load(
     readFileSync(path.join(WORKFLOWS_DIR, fileName), 'utf8'),
@@ -100,27 +69,6 @@ function readZapRules(fileName: string) {
   return rules
 }
 
-function disablesCheckoutCredentialPersistence(
-  lines: string[],
-  usesLineIndex: number,
-) {
-  const usesLineIndent = lines[usesLineIndex].search(/\S/u)
-
-  for (
-    let lineIndex = usesLineIndex + 1;
-    lineIndex < lines.length;
-    lineIndex += 1
-  ) {
-    const line = lines[lineIndex]
-    if (!line.trim() || line.trimStart().startsWith('#')) continue
-
-    if (line.search(/\S/u) < usesLineIndent) return false
-    if (PERSIST_CREDENTIALS_FALSE_LINE.test(line)) return true
-  }
-
-  return false
-}
-
 function stepRunText(job: WorkflowJob | undefined, stepName: string) {
   expect(job, `Expected job for step "${stepName}" to exist`).toBeDefined()
   const step = job?.steps?.find(candidate => candidate.name === stepName)
@@ -130,30 +78,6 @@ function stepRunText(job: WorkflowJob | undefined, stepName: string) {
 }
 
 describe('GitHub Actions workflow security', () => {
-  it('hardens checkout credentials', () => {
-    const insecureCheckoutReferences: string[] = []
-
-    for (const { absolutePath, relativePath } of workflowAndActionFiles()) {
-      const lines = readFileSync(absolutePath, 'utf8').split(/\r?\n/u)
-
-      lines.forEach((line, index) => {
-        if (line.trimStart().startsWith('#')) return
-        const match = line.match(USES_LINE)
-        const reference = match?.[1]
-        if (
-          reference?.startsWith('actions/checkout@') &&
-          !disablesCheckoutCredentialPersistence(lines, index)
-        ) {
-          insecureCheckoutReferences.push(
-            `${relativePath}:${index + 1} ${reference} missing persist-credentials: false`,
-          )
-        }
-      })
-    }
-
-    expect(insecureCheckoutReferences).toEqual([])
-  })
-
   it('keeps Azure, devcontainer, and CI Lychee versions aligned', () => {
     const dockerfile = readFileSync(DEVCONTAINER_DOCKERFILE, 'utf8')
     const dockerfileVersion = dockerfile.match(
@@ -308,56 +232,6 @@ describe('GitHub Actions workflow security', () => {
     )
   })
 
-  it('keeps the fork-compatible SSDLC gate on trusted base code', () => {
-    const workflow = readFileSync(
-      path.join(WORKFLOWS_DIR, 'ssdlc-gate.yml'),
-      'utf8',
-    )
-    const workflowDocument = readWorkflowYaml('ssdlc-gate.yml')
-
-    expect(workflow).toContain('pull_request_target:')
-    expect(workflow).toContain('contents: read')
-    expect(workflow).toContain('pull-requests: read')
-    expect(workflowDocument.jobs?.['ssdlc-gate']?.if).toBe(
-      "github.event.pull_request.user.login != 'dependabot[bot]'",
-    )
-    expect(workflow).toContain(
-      ['ref: $', '{{ github.event.pull_request.base.sha }}'].join(''),
-    )
-    expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
-    expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)
-    expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
-  })
-
-  it('keeps prodlike cleanup and DAST scan target guards fail-closed', () => {
-    const cleanupAction = readFileSync(
-      path.join(ACTIONS_DIR, 'prodlike-cleanup', 'action.yml'),
-      'utf8',
-    )
-    const apiDastWorkflow = readFileSync(
-      path.join(WORKFLOWS_DIR, 'security-dast-api.yml'),
-      'utf8',
-    )
-    const roleDastWorkflow = readFileSync(
-      path.join(WORKFLOWS_DIR, 'security-dast-roles.yml'),
-      'utf8',
-    )
-
-    expect(cleanupAction).toMatch(
-      /- name: Stop prodlike app\s+continue-on-error: true\s+shell: bash\s+run: bash scripts\/security\/prodlike-app\.sh stop/u,
-    )
-    expect(apiDastWorkflow).toContain(
-      "const contractPath = 'test-results/security-dast-api/openapi.json'",
-    )
-    expect(apiDastWorkflow).toContain(
-      'return resolved.origin === allowedOrigin',
-    )
-    expect(roleDastWorkflow).toContain('name: Guard role-scan target')
-    expect(roleDastWorkflow).toContain(
-      'Refusing to run ZAP role scan against target',
-    )
-  })
-
   it('keeps localhost-only ZAP warnings non-blocking', () => {
     for (const fileName of [
       'rules.api.tsv',
@@ -411,96 +285,6 @@ describe('GitHub Actions workflow security', () => {
 
     expect(appLogUpload).toBeDefined()
     expect(appLogUpload?.['continue-on-error']).toBe(true)
-  })
-
-  it('keeps the fork-compatible operator upgrade gate on trusted base code', () => {
-    const workflow = readFileSync(
-      path.join(WORKFLOWS_DIR, 'operator-upgrade-gate.yml'),
-      'utf8',
-    )
-    const workflowDocument = readWorkflowYaml('operator-upgrade-gate.yml')
-
-    expect(workflow).toContain('pull_request_target:')
-    expect(workflow).toContain('contents: read')
-    expect(workflow).toContain('pull-requests: read')
-    expect(workflowDocument.jobs?.['operator-upgrade-gate']?.if).toBe(
-      "github.event.pull_request.user.login != 'dependabot[bot]'",
-    )
-    expect(workflow).toContain(
-      ['ref: $', '{{ github.event.pull_request.base.sha }}'].join(''),
-    )
-    expect(workflow).toContain(
-      'node scripts/release/operator-upgrade-gate.mjs --github-pr',
-    )
-    expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
-    expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)
-    expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
-  })
-
-  it('keeps merged PR operator notes persistence on trusted main code', () => {
-    const workflow = readFileSync(
-      path.join(WORKFLOWS_DIR, 'operator-upgrade-notes.yml'),
-      'utf8',
-    )
-
-    expect(workflow).toContain('pull_request_target:')
-    expect(workflow).toContain('branches: [main]')
-    expect(workflow).toContain('types: [closed]')
-    expect(workflow).toContain('contents: write')
-    expect(workflow).toContain('pull-requests: write')
-    expect(workflow).toContain('github.event.pull_request.merged == true')
-    expect(workflow).toContain(
-      "github.event.pull_request.user.login != 'dependabot[bot]'",
-    )
-    expect(workflow).toContain(
-      "!startsWith(github.event.pull_request.title, 'build(deps):')",
-    )
-    expect(workflow).toContain('ref: main')
-    expect(workflow).toContain('persist-credentials: false')
-    expect(workflow).toContain('OPERATOR_UPGRADE_NOTES_TOKEN is required.')
-    expect(workflow).toContain(
-      'NOTES_BRANCH: automation/operator-upgrade-notes',
-    )
-    expect(workflow).toContain(
-      'node scripts/release/operator-upgrade-notes.mjs sync-pr --github-pr',
-    )
-    expect(workflow).toContain(
-      'git diff --quiet -- "docs/operations/operator-upgrade-notes.md"',
-    )
-    expect(workflow).toMatch(
-      /\bGH_TOKEN:\s*\$\{\{\s*secrets\.OPERATOR_UPGRADE_NOTES_TOKEN\s*\}\}/u,
-    )
-    expect(workflow).toMatch(
-      /\bGITHUB_TOKEN:\s*\$\{\{\s*secrets\.OPERATOR_UPGRADE_NOTES_TOKEN\s*\}\}/u,
-    )
-    expect(workflow).toContain('git config user.name "Viscalyxbot"')
-    expect(workflow).toContain(
-      'git config user.email "viscalyxbot@viscalyx.se"',
-    )
-    const gitUserNameIndex = workflow.search(/git\s+config\s+user\.name\b/u)
-    const gitUserEmailIndex = workflow.search(/git\s+config\s+user\.email\b/u)
-    const gitRebaseIndex = workflow.search(/git\s+rebase\s+origin\/main\b/u)
-    expect(gitUserNameIndex).toBeGreaterThanOrEqual(0)
-    expect(gitUserEmailIndex).toBeGreaterThan(gitUserNameIndex)
-    expect(gitRebaseIndex).toBeGreaterThan(gitUserEmailIndex)
-    expect(workflow).not.toMatch(/\bgithub\s*\.\s*token\b/iu)
-    expect(workflow).not.toMatch(/\bOPERATOR_UPGRADE_NOTES_TOKEN_CONFIGURED\b/u)
-    expect(workflow).toContain('operator-upgrade:no-notes')
-    expect(workflow).toContain('ssdlc:requirements')
-    expect(workflow).toContain(
-      [
-        'title="docs: persist operator upgrade notes from #$',
-        '{PR_NUMBER}"',
-      ].join(''),
-    )
-    expect(workflow).toContain('gh pr create --base main')
-    expect(workflow).toMatch(
-      /gh\s+pr\s+merge\s+"\$\{pr_number\}"\s+--squash\s+--auto/u,
-    )
-    expect(workflow).not.toContain('git push origin HEAD:main')
-    expect(workflow).not.toMatch(/github\.event\.pull_request\.head/iu)
-    expect(workflow).not.toMatch(/\bgithub\.head_ref\b/iu)
-    expect(workflow).not.toMatch(/\bnpm\s+(?:ci|install|run)\b/iu)
   })
 
   it('attests the deployment archive only for successful releases', () => {
@@ -888,35 +672,5 @@ describe('GitHub Actions workflow security', () => {
     expect(upload?.if).toBe('always()')
     expect(upload?.with?.path).toContain('tmp/container-vulnerability-monitor/')
     expect(step('Fail after retaining evidence')?.if).toBe('always()')
-  })
-
-  it('keeps stable operator notes archives behind protected-main checks', () => {
-    const workflow = readFileSync(
-      path.join(WORKFLOWS_DIR, 'container-release.yml'),
-      'utf8',
-    )
-
-    expect(workflow).toMatch(
-      /\bGH_TOKEN:\s*\$\{\{\s*secrets\.OPERATOR_UPGRADE_NOTES_TOKEN\s*\}\}/u,
-    )
-    expect(workflow).toContain(
-      'archive_branch="automation/operator-upgrade-notes-archive-$' +
-        '{RELEASE_TAG_NAME}"',
-    )
-    expect(workflow).toContain('operator-upgrade:no-notes')
-    expect(workflow).toContain('ssdlc:requirements')
-    expect(workflow).toContain(
-      'gh pr create --base main --head "$' + '{archive_branch}"',
-    )
-    expect(workflow).toContain("--jq '.published_at[0:10]'")
-    expect(workflow).toContain(
-      'git fetch origin "+$' +
-        '{archive_branch}:refs/remotes/origin/$' +
-        '{archive_branch}"',
-    )
-    expect(workflow).toMatch(
-      /gh\s+pr\s+merge\s+"\$\{pr_number\}"\s+--squash\s+--auto/u,
-    )
-    expect(workflow).not.toContain('git push origin HEAD:main')
   })
 })

@@ -649,7 +649,9 @@ describe('least-privilege SQL Server runtime role', () => {
     })
     await expect(deleteArea(runtimeDb, rollbackArea.id)).resolves.toBe(1)
 
-    await migration.up(migrationDb)
+    // Re-install the current role contract after exercising the historical
+    // migration rollback. Later schema migrations may remove columns that the
+    // immutable 0054 snapshot intentionally still names.
     await reconcileSqlServerRuntimePermissions(migrationDb, {
       expectedRuntimeUsers: [RUNTIME_LOGIN],
     })

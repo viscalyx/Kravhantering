@@ -330,6 +330,12 @@ sudo install -o root -g kravhantering -m 0640 \
 Edit the copied files with environment-specific values. Do not edit files
 under `/opt/kravhantering/current`; they are release artifacts.
 
+The production template leaves `AUTH_OIDC_CLIENT_SECRET` and
+`AUTH_SESSION_COOKIE_PASSWORD` blank. Populate them through the site's
+approved secret-injection workflow before running the Quadlet helper. Its
+preflight rejects missing values and every shipped development or placeholder
+credential before it writes service units.
+
 ## Image References
 
 Set image references in `/etc/kravhantering/release.env` to the site's
@@ -650,11 +656,13 @@ OPENROUTER_API_KEY=
 OPENROUTER_MGMT_API_KEY=
 ```
 
-The app only requires `AUTH_OIDC_CLIENT_SECRET` to be non-empty and to match
-the client secret configured in the IdP. For production, use a high-entropy
+`AUTH_OIDC_CLIENT_SECRET` must be non-empty, must match the client secret
+configured in the IdP, and must not equal a credential shipped in a template,
+development target, or test fixture. For production, use a high-entropy
 IdP-generated secret or the fallback in
 [Generate Unique Secrets](#generate-unique-secrets).
-`AUTH_SESSION_COOKIE_PASSWORD` is separate and must be at least 32 characters.
+`AUTH_SESSION_COOKIE_PASSWORD` is separate, must be at least 32 characters,
+and must not equal a shipped placeholder.
 
 Keep `AUTH_OIDC_SCOPES=openid profile email` unless the IdP needs additional
 scopes to release the required claims. `openid` must always be present. Keep
@@ -836,6 +844,10 @@ systemctl --user status kravhantering-app-runtime.service --no-pager
 
 exit
 ```
+
+The `install` command validates the application authentication settings before
+staging units. A failure names the invalid field without printing its supplied
+value. Do not start or restart services after a failed preflight.
 
 Verify generated-output temporary storage from inside `app-runtime` before
 starting nginx. If `KRAVHANTERING_EXPORT_TEMP_DIR` is unset or blank, the

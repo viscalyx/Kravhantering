@@ -300,7 +300,10 @@ sequenceDiagram
   [`lib/auth/audit.ts`](../../lib/auth/audit.ts). The current event set is:
   `access_review.cancelled`, `access_review.completed`,
   `access_review.created`, `access_review.exported`,
-  `access_review.item_decided`, `ai.input_safety.blocked`,
+  `access_review.item_decided`, `ai.forensic_capture.disabled`,
+  `ai.forensic_capture.enabled`, `ai.forensic_capture.expired`,
+  `ai.forensic_capture.requested`, `ai.forensic_evidence.accessed`,
+  `ai.forensic_evidence.purged`, `ai.input_safety.blocked`,
   `ai.output_safety.blocked`, `ai.safety_filter.failed`,
   `admin.archiving.exception.created`,
   `admin.archiving.exception.deleted`, `admin.archiving.executed`,
@@ -368,15 +371,10 @@ sequenceDiagram
   model/provider when available. Prompts, model output, repair JSON, image
   data, matched terms, and actor HSA-id values are not emitted in AI safety
   details.
-- AI safety blocks can also emit a separate `security-forensics` JSON line when
-  Admin Center enables forensic AI safety logging. That forensic stream is not
-  metadata-only: it contains raw screened blocked content and matched rule
-  evidence. It keeps request id, correlation id, event id, operation, blocked
-  step, direction, rule metadata, and model/provider at top level, while
-  `request` carries transport context. Logging pipelines can correlate the
-  forensic record with the metadata event even when streams route to separate
-  sinks. Fresh installations and missing-setting or settings-load fallbacks
-  keep this raw-content stream disabled. Upgrades preserve the stored value.
+- AI safety evidence capture is a separate, time-limited SQL workflow rather
+  than a log channel. An Admin requester and a different Privacy Officer
+  approver authorize one operation/direction window. Stored evidence is
+  redacted and bounded, while the security stream contains metadata only.
 - Application action-log rows in `action_audit_events` are separate from
   this stream. They are database records for successful app-owned mutations and
   authorization denials, include request/correlation IDs and optional validated
@@ -393,10 +391,5 @@ sequenceDiagram
   log pipeline to select records where `channel == "security-audit"` and
   forward them to the desired sink, for example a centralized log store, a
   SIEM, a message queue, or a dedicated audit pipeline.
-- Route records where `channel == "security-forensics"` with stricter access,
-  retention, and masking policy than metadata-only audit records.
-- This routing can be done with whatever logging mechanism the platform
-  already provides, such as a container log driver, a host or node log agent,
-  a sidecar collector, or a managed platform log-forwarding service.
 - Because the audit records are separate JSON lines with a stable channel tag,
   they can be split and forwarded independently from normal application logs.
