@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
+import { deferred } from '@/lib/__tests__/deferred'
+import { DetailResourceCache } from '@/lib/requirements/detail-prefetch'
+import type { SpecificationLocalRequirementDetail } from '@/lib/specifications/local-requirement-detail'
 
 const emptyNeedsReferencesResource = {
   data: [],
@@ -957,6 +960,64 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Network unavailable',
     )
+  })
+
+  it('preserves loaded detail when a superseded cache request aborts', async () => {
+    mockWorkflow()
+    const pendingRequest = deferred<SpecificationLocalRequirementDetail>()
+    const detail =
+      localRequirement() as unknown as SpecificationLocalRequirementDetail
+    const fetchDetail = vi
+      .fn<() => Promise<SpecificationLocalRequirementDetail>>()
+      .mockResolvedValueOnce(detail)
+      .mockReturnValueOnce(pendingRequest.promise)
+    const detailCache = new DetailResourceCache<
+      { localRequirementId: number; specificationId: number },
+      SpecificationLocalRequirementDetail
+    >({
+      fetchDetail,
+      keyOf: key => `${key.specificationId}:${key.localRequirementId}`,
+    })
+    const detailPrefetchContext = {
+      resource: 'specification-local-requirement' as const,
+      surface: 'specification-left' as const,
+    }
+    const { rerender } = render(
+      <SpecificationLocalRequirementDetailClient
+        detailCache={detailCache}
+        detailPrefetchContext={detailPrefetchContext}
+        localRequirementId={1}
+        needsReferencesResource={emptyNeedsReferencesResource}
+        specificationId={1}
+      />,
+    )
+    expect(await screen.findByText('Local requirement')).toBeInTheDocument()
+
+    detailCache.invalidate(
+      { localRequirementId: 1, specificationId: 1 },
+      detailPrefetchContext,
+    )
+    rerender(
+      <SpecificationLocalRequirementDetailClient
+        detailCache={detailCache}
+        detailPrefetchContext={{ ...detailPrefetchContext }}
+        localRequirementId={1}
+        needsReferencesResource={emptyNeedsReferencesResource}
+        specificationId={1}
+      />,
+    )
+    await waitFor(() => expect(fetchDetail).toHaveBeenCalledTimes(2))
+    detailCache.invalidate(
+      { localRequirementId: 1, specificationId: 1 },
+      detailPrefetchContext,
+    )
+    pendingRequest.resolve({ ...detail, description: 'Stale detail' })
+
+    await waitFor(() =>
+      expect(screen.getByText('Local requirement')).toBeInTheDocument(),
+    )
+    expect(screen.queryByText('Stale detail')).not.toBeInTheDocument()
+    expect(screen.queryByText('Detail request was invalidated')).toBeNull()
   })
 
   it('deletes an included unique requirement after confirmation', async () => {

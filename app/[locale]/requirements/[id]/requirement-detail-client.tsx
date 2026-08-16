@@ -19,6 +19,10 @@ import { isStrictHexColor } from '@/lib/color-contrast'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
+import type {
+  LibraryRequirementDetailCache,
+  RequirementDetailPrefetchContext,
+} from '@/lib/requirements/detail-prefetch'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
@@ -74,6 +78,8 @@ interface SpecificationDeviationPermissions {
 
 interface RequirementDetailClientPropsBase {
   defaultVersion?: number
+  detailCache?: LibraryRequirementDetailCache
+  detailPrefetchContext?: RequirementDetailPrefetchContext
   inline?: boolean
   onChange?: (detail?: RequirementDetailResponse) => void | Promise<void>
   onClose?: () => void
@@ -101,6 +107,8 @@ type RequirementDetailClientProps =
 
 export default function RequirementDetailClient({
   defaultVersion,
+  detailCache,
+  detailPrefetchContext,
   inline,
   onChange,
   onClose,
@@ -127,7 +135,30 @@ export default function RequirementDetailClient({
     requirement: req,
     statuses,
     transitions,
-  } = useRequirementDetailData({ requirementId })
+  } = useRequirementDetailData({
+    detailCache,
+    detailContext: detailPrefetchContext,
+    requirementId,
+  })
+  const invalidateRequirementDetail = useCallback(() => {
+    if (
+      detailCache &&
+      detailPrefetchContext &&
+      typeof requirementId === 'number'
+    ) {
+      detailCache.invalidate(requirementId, detailPrefetchContext)
+    }
+  }, [detailCache, detailPrefetchContext, requirementId])
+  useEffect(() => {
+    if (
+      req &&
+      detailCache &&
+      detailPrefetchContext &&
+      typeof requirementId === 'number'
+    ) {
+      detailCache.markUsable(requirementId, detailPrefetchContext)
+    }
+  }, [detailCache, detailPrefetchContext, req, requirementId])
   const { isSpecificationItemContext, specificationItemDetail } =
     useSpecificationItemContext({
       specificationItemId,
@@ -164,6 +195,20 @@ export default function RequirementDetailClient({
   const addToSpecificationDialog = useAddToSpecificationDialog({
     requirementInternalId: req?.id ?? null,
   })
+  const addToSpecificationHandledRef = useRef(false)
+  useEffect(() => {
+    if (addToSpecificationDialog.state.addToSpecificationStatus !== 'success') {
+      addToSpecificationHandledRef.current = false
+      return
+    }
+    if (addToSpecificationHandledRef.current) return
+    addToSpecificationHandledRef.current = true
+    void Promise.all([refreshRequirement(), onChange?.()])
+  }, [
+    addToSpecificationDialog.state.addToSpecificationStatus,
+    onChange,
+    refreshRequirement,
+  ])
   const { cardRef, connectorHeight, triangleLeft, versionHistoryRef } =
     useVersionPillConnector(selectedVersionNumber)
 
@@ -602,6 +647,7 @@ export default function RequirementDetailClient({
         })
         return
       }
+      invalidateRequirementDetail()
       await onChange?.()
       if (onClose) onClose()
       else router.push('/requirements')
@@ -711,6 +757,7 @@ export default function RequirementDetailClient({
         item => item.type === 'requirement',
       )
       if (requirementDeleted) {
+        invalidateRequirementDetail()
         if (onClose) onClose()
         else router.push('/requirements')
         await onChange?.()

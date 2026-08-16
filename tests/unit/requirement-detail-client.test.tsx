@@ -11,6 +11,10 @@ import type { ComponentProps, ForwardedRef, ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import {
+  DetailResourceCache,
+  type RequirementDetailPrefetchEvent,
+} from '@/lib/requirements/detail-prefetch'
 import type {
   DeleteDraftResult,
   RequirementDetailResponse,
@@ -1500,6 +1504,7 @@ describe('RequirementDetailClient', () => {
   })
 
   it('approves an archiving review and closes an open detail modal', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
     const onChange = vi.fn()
     const onClose = vi.fn()
     const requirement = makeRequirement([
@@ -1514,8 +1519,29 @@ describe('RequirementDetailClient', () => {
       }),
     ])
     const fetchMock = setupFetch({ initialRequirement: requirement })
+    const detailCache = new DetailResourceCache<
+      number,
+      RequirementDetailResponse
+    >({
+      fetchDetail: vi.fn(async () => requirement),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+    const detailPrefetchContext = {
+      resource: 'library-requirement' as const,
+      surface: 'requirements-library' as const,
+    }
+    await detailCache.load(123, 'prefetch', {
+      ...detailPrefetchContext,
+      trigger: 'pointer',
+    })
 
-    renderSubject({ onChange, onClose })
+    renderSubject({
+      detailCache,
+      detailPrefetchContext,
+      onChange,
+      onClose,
+    })
     await screen.findByText('Archiving requirement')
 
     await userEvent.click(
@@ -1526,10 +1552,17 @@ describe('RequirementDetailClient', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Approve Archiving' }),
     )
+    events.length = 0
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
     expect(onChange).toHaveBeenCalledOnce()
+    expect(events.filter(event => event.type === 'invalidated')).toEqual([
+      expect.objectContaining({
+        key: '123',
+        type: 'invalidated',
+      }),
+    ])
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/requirement-transitions/123',
       expect.objectContaining({
@@ -1894,6 +1927,7 @@ describe('RequirementDetailClient', () => {
   })
 
   it('transitions a draft requirement to review and deletes the draft version after confirmation', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
     const onChange = vi.fn()
     const initialRequirement = makeRequirement([
       makeVersion(2, {
@@ -1928,8 +1962,29 @@ describe('RequirementDetailClient', () => {
       initialRequirement,
       transitionNextRequirement: initialRequirement,
     })
+    const detailCache = new DetailResourceCache<
+      number,
+      RequirementDetailResponse
+    >({
+      fetchDetail: vi.fn(async () => initialRequirement),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+    const detailPrefetchContext = {
+      resource: 'library-requirement' as const,
+      surface: 'requirements-library' as const,
+    }
+    await detailCache.load(123, 'prefetch', {
+      ...detailPrefetchContext,
+      trigger: 'pointer',
+    })
 
-    renderSubject({ defaultVersion: 2, onChange })
+    renderSubject({
+      defaultVersion: 2,
+      detailCache,
+      detailPrefetchContext,
+      onChange,
+    })
 
     expect(await screen.findByText('Draft description')).toBeInTheDocument()
 
@@ -1946,6 +2001,8 @@ describe('RequirementDetailClient', () => {
         }),
       ),
     )
+    await waitFor(() => expect(onChange).toHaveBeenCalledOnce())
+    events.length = 0
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
     expect(screen.getByText('Delete this draft?')).toBeInTheDocument()
@@ -1963,7 +2020,8 @@ describe('RequirementDetailClient', () => {
         expect.objectContaining({ method: 'POST' }),
       ),
     )
-    expect(onChange).toHaveBeenCalled()
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2))
+    expect(events.filter(event => event.type === 'invalidated')).toHaveLength(1)
   })
 
   it('shows a red cascade warning before deleting the only draft when improvement suggestions exist', async () => {
@@ -2104,6 +2162,7 @@ describe('RequirementDetailClient', () => {
   })
 
   it('closes inline detail before refreshing parents after deleting the whole requirement', async () => {
+    const events: RequirementDetailPrefetchEvent[] = []
     const onChange = vi.fn()
     const onClose = vi.fn()
     const initialRequirement = makeRequirement([
@@ -2132,17 +2191,47 @@ describe('RequirementDetailClient', () => {
       initialRequirement,
     })
 
-    renderSubject({ defaultVersion: 1, onChange, onClose })
+    const detailCache = new DetailResourceCache<
+      number,
+      RequirementDetailResponse
+    >({
+      fetchDetail: vi.fn(async () => initialRequirement),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+    const detailPrefetchContext = {
+      resource: 'library-requirement' as const,
+      surface: 'requirements-library' as const,
+    }
+    await detailCache.load(123, 'prefetch', {
+      ...detailPrefetchContext,
+      trigger: 'pointer',
+    })
+
+    renderSubject({
+      defaultVersion: 1,
+      detailCache,
+      detailPrefetchContext,
+      onChange,
+      onClose,
+    })
 
     expect(await screen.findByText('Only draft')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    events.length = 0
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() => expect(onChange).toHaveBeenCalled())
     expect(onClose.mock.invocationCallOrder[0]).toBeLessThan(
       onChange.mock.invocationCallOrder[0],
     )
+    expect(events.filter(event => event.type === 'invalidated')).toEqual([
+      expect.objectContaining({
+        key: '123',
+        type: 'invalidated',
+      }),
+    ])
     expect(routerPush).not.toHaveBeenCalled()
   })
 

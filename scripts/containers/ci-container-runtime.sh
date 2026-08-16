@@ -283,7 +283,7 @@ write_runner_metadata() {
 
 collect_github_runner_metadata() {
   local required="${1:-false}"
-  local api_error_file gh_version job_id jobs_file log_file message
+  local api_error_file api_help gh_version job_id jobs_file log_file message
   local request_error target_job
   local -a gh_log_api_args=(api)
   local output="$EVIDENCE_DIR/github-runner-metadata.txt"
@@ -341,7 +341,8 @@ collect_github_runner_metadata() {
   fi
   log_file="$(mktemp)"
   api_error_file="$(mktemp)"
-  if gh api --help 2>&1 | grep -Fq -- '--allow-escape-sequences'; then
+  api_help="$(gh api --help 2>&1 || true)"
+  if [[ "$api_help" == *'--allow-escape-sequences'* ]]; then
     gh_log_api_args+=(--allow-escape-sequences)
   fi
   if ! gh "${gh_log_api_args[@]}" \

@@ -23,51 +23,12 @@ import { useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+import type {
+  RequirementDetailPrefetchContext,
+  SpecificationLocalRequirementDetailCache,
+} from '@/lib/requirements/detail-prefetch'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
-
-interface SpecificationLocalRequirementDetail {
-  acceptanceCriteria: string | null
-  createdAt: string
-  description: string
-  id: number
-  itemRef: string
-  needsReference: string | null
-  needsReferenceId: number | null
-  normReferences: {
-    id: number
-    name: string
-    normReferenceId: string
-    uri: string | null
-  }[]
-  priorityLevel: {
-    code: string
-    color: string
-    iconName: string | null
-    id: number
-    nameEn: string
-    nameSv: string
-    sortOrder: number
-  } | null
-  qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
-  requirementArea: null
-  requirementCategory: { id: number; nameEn: string; nameSv: string } | null
-  requirementPackages: {
-    id: number
-    name: string | null
-    purposeAndScope: string | null
-  }[]
-  requirementType: { id: number; nameEn: string; nameSv: string } | null
-  specificationId: number
-  specificationItemStatusColor: string | null
-  specificationItemStatusIconName: string | null
-  specificationItemStatusId: number | null
-  specificationItemStatusNameEn: string | null
-  specificationItemStatusNameSv: string | null
-  uniqueId: string
-  updatedAt: string
-  verifiable: boolean
-  verificationMethod: string | null
-}
+import type { SpecificationLocalRequirementDetail } from '@/lib/specifications/local-requirement-detail'
 
 interface SpecificationLocalRequirementUsageStatusSnapshot {
   specificationItemStatusColor: string | null
@@ -130,6 +91,8 @@ interface GraduationTargetArea {
 }
 
 interface SpecificationLocalRequirementDetailClientProps {
+  detailCache?: SpecificationLocalRequirementDetailCache
+  detailPrefetchContext?: RequirementDetailPrefetchContext
   localRequirementId: number
   needsReferencesResource: AsyncResourceState<{ id: number; text: string }[]>
   onChange?: () => void | Promise<void>
@@ -457,6 +420,8 @@ function SpecificationLocalRequirementEditModal({
 }
 
 export default function SpecificationLocalRequirementDetailClient({
+  detailCache,
+  detailPrefetchContext,
   localRequirementId,
   needsReferencesResource,
   onChange,
@@ -510,6 +475,21 @@ export default function SpecificationLocalRequirementDetailClient({
     useState<string>('')
   const [showGraduationModal, setShowGraduationModal] = useState(false)
 
+  useEffect(() => {
+    if (requirement && detailCache && detailPrefetchContext) {
+      detailCache.markUsable(
+        { localRequirementId, specificationId },
+        detailPrefetchContext,
+      )
+    }
+  }, [
+    detailCache,
+    detailPrefetchContext,
+    localRequirementId,
+    requirement,
+    specificationId,
+  ])
+
   const handleOpenEditForm = useCallback(() => {
     setShowEditForm(true)
     if (needsReferencesResource.data === undefined) {
@@ -543,36 +523,63 @@ export default function SpecificationLocalRequirementDetailClient({
     return 'draft'
   }, [latestDeviation])
 
-  const fetchRequirement = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const fetchRequirement = useCallback(
+    async (authoritative = false) => {
+      setLoading(true)
+      setError(null)
 
-    try {
-      const response = await apiFetch(
-        `/api/requirements-specifications/${specificationId}/local-requirements/${localRequirementId}`,
-      )
+      try {
+        let detail: SpecificationLocalRequirementDetail
+        if (detailCache && detailPrefetchContext) {
+          detail = await detailCache.load(
+            { localRequirementId, specificationId },
+            authoritative ? 'refresh' : 'activate',
+            detailPrefetchContext,
+          )
+        } else {
+          const response = await apiFetch(
+            `/api/requirements-specifications/${specificationId}/local-requirements/${localRequirementId}`,
+          )
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as unknown
-        throw new Error(
-          readResponseError(body) ?? tp('localRequirementNotFound'),
+          if (!response.ok) {
+            const body = (await response.json().catch(() => null)) as unknown
+            throw new Error(
+              readResponseError(body) ?? tp('localRequirementNotFound'),
+            )
+          }
+
+          detail =
+            (await response.json()) as SpecificationLocalRequirementDetail
+        }
+        setRequirement(applyUsageStatusSnapshot(detail, usageStatusRef.current))
+      } catch (fetchError) {
+        if (
+          typeof fetchError === 'object' &&
+          fetchError !== null &&
+          'name' in fetchError &&
+          fetchError.name === 'AbortError'
+        ) {
+          return
+        }
+        setRequirement(null)
+        setError(
+          fetchError instanceof Error
+            ? fetchError.message
+            : tc('unexpectedError'),
         )
+      } finally {
+        setLoading(false)
       }
-
-      const detail =
-        (await response.json()) as SpecificationLocalRequirementDetail
-      setRequirement(applyUsageStatusSnapshot(detail, usageStatusRef.current))
-    } catch (fetchError) {
-      setRequirement(null)
-      setError(
-        fetchError instanceof Error
-          ? fetchError.message
-          : tc('unexpectedError'),
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [localRequirementId, specificationId, tc, tp])
+    },
+    [
+      detailCache,
+      detailPrefetchContext,
+      localRequirementId,
+      specificationId,
+      tc,
+      tp,
+    ],
+  )
 
   const fetchDeviations = useCallback(
     async (signal?: AbortSignal) => {
@@ -668,7 +675,7 @@ export default function SpecificationLocalRequirementDetailClient({
   )
 
   useEffect(() => {
-    void fetchRequirement()
+    void fetchRequirement(false)
   }, [fetchRequirement])
 
   useEffect(() => {
@@ -703,7 +710,7 @@ export default function SpecificationLocalRequirementDetailClient({
   }, [fetchGraduationTargetAreas])
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([fetchRequirement(), fetchDeviations(), onChange?.()])
+    await Promise.all([fetchRequirement(true), fetchDeviations(), onChange?.()])
   }, [fetchDeviations, fetchRequirement, onChange])
 
   const railSecondaryButtonClass =
@@ -769,6 +776,12 @@ export default function SpecificationLocalRequirementDetailClient({
           return
         }
 
+        if (detailCache && detailPrefetchContext) {
+          detailCache.invalidate(
+            { localRequirementId, specificationId },
+            detailPrefetchContext,
+          )
+        }
         await onChange?.()
       } catch (deleteError) {
         setError(
@@ -780,6 +793,8 @@ export default function SpecificationLocalRequirementDetailClient({
     },
     [
       confirm,
+      detailCache,
+      detailPrefetchContext,
       isDeleting,
       localRequirementId,
       onChange,

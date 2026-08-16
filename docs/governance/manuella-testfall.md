@@ -1001,6 +1001,20 @@ inaktuellt eller inte stämma med den aktiva frågan. Vanlig sidinläsning är
 inte tillgänglig före en lyckad uppdatering. `Försök igen` upprepar den senaste
 frågan och tar bort varningen först när uppdateringen lyckas.
 
+### REQ-21: avsikt förhämtar kravdetalj i kravbiblioteket
+
+**Steg:** För pekaren över ett krav och lämna raden före 150 ms. Ställ sedan in
+webbläsarens nätverksverktyg så att nästa huvudförfrågan för kravets detalj hålls
+kvar. Hovra över samma rad längre än 150 ms, invänta den hållna förfrågan och
+klicka medan den fortfarande pågår. Kontrollera antalet samtidiga förfrågningar
+innan förfrågan släpps. Upprepa med tangentbordsfokus på krav-ID-kommandot.
+Avsluta med ett omedelbart direktklick utan att hålla förfrågan.
+
+**Förväntat resultat:** Kort passage startar ingen huvudförfrågan. Hovring eller
+fokus över tröskeln startar exakt en huvudförfrågan som klicket återanvänder.
+Direktklick öppnar detaljen utan att vänta på förhämtning och utan dubbla
+samtidiga anrop.
+
 ## Skapa krav och livscykel
 
 ### LIFE-01: skapa krav från UI
@@ -1654,6 +1668,25 @@ avmarkeras. Ingen markering tas bort automatiskt. Åtgärden för att avmarkera 
 krav som inte visas är aktiverad och kravets enskilda detaljåtgärder påverkas
 inte. Efter avmarkeringen återstår 200 markerade krav, meddelandet försvinner
 och de fyra gemensamma åtgärderna aktiveras igen.
+
+### SPEC-21: avsikt förhämtar båda typerna av kravdetalj
+
+**Steg:** Öppna ett kravunderlag som innehåller ett bibliotekskrav och ett
+kravunderlagslokalt krav. Ställ in webbläsarens nätverksverktyg så att nästa
+motsvarande detaljförfrågan hålls kvar. Hovra längre än 150 ms, invänta den
+hållna förfrågan och klicka medan den fortfarande pågår. Kontrollera antalet
+samtidiga förfrågningar innan den hållna förfrågan släpps. Upprepa med fokus i
+vänster lista för båda typerna samt i höger lista för ett bibliotekskrav. Prova
+sedan direktklick utan att hålla förfrågan. Lägg till bibliotekskravet från
+höger lista, öppna detaljen i vänster lista, ta bort det och öppna detaljen igen
+i höger lista.
+
+**Förväntat resultat:** Vänster och höger lista följer samma avsiktspolicy.
+Klick efter hovring eller fokus återanvänder det pågående anropet från
+förhämtningen. Direktklick startar en vanlig detaljförfrågan om inget svar redan
+finns och orsakar inte ett fördröjt duplicerat anrop. Ett krav som läggs till
+eller tas bort byter lista och läses om efter ändringen; det återanvänder inte
+detaljdata med ett inaktuellt antal kravunderlag.
 
 ## Avsteg
 
