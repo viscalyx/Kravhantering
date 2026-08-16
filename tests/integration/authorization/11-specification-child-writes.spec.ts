@@ -1,19 +1,71 @@
 import { test } from '@playwright/test'
 import {
-  type AuthorizationFixture,
-  createAuthorizationFixture,
   expectOk,
   expectStatus,
   newRoleContext,
+  type RequirementListResponse,
   referenceManualCases,
 } from './authorization-test-helpers'
 
-let fixture: AuthorizationFixture
+interface ChildWriteFixture {
+  foreignSpecificationId: number
+  localRequirementId: number
+  publishedRequirementId: number
+  specificationId: number
+}
+
+const AUTHORIZATION_SPECIFICATION_ID = 910400
+const FOREIGN_SPECIFICATION_ID = 1
+
+let fixture: ChildWriteFixture
 
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async ({ browserName: _browserName }, testInfo) => {
-  fixture = await createAuthorizationFixture(testInfo)
+  const responsible = await newRoleContext(testInfo, 'specificationResponsible')
+  try {
+    const localRequirementResponse = await responsible.post(
+      `/api/requirements-specifications/${AUTHORIZATION_SPECIFICATION_ID}/local-requirements`,
+      {
+        data: {
+          description: 'Scoped child authorization fixture.',
+          verifiable: true,
+          verificationMethod: 'Focused authorization route check.',
+        },
+      },
+    )
+    await expectStatus(
+      localRequirementResponse,
+      201,
+      'create specification-local requirement fixture',
+    )
+    const localRequirementPayload = (await localRequirementResponse.json()) as {
+      localRequirement: { id: number }
+    }
+
+    const publishedRequirementsResponse = await responsible.get(
+      '/api/requirements?limit=1&statuses=3',
+    )
+    await expectOk(
+      publishedRequirementsResponse,
+      'find published requirement fixture',
+    )
+    const publishedRequirements =
+      (await publishedRequirementsResponse.json()) as RequirementListResponse
+    const publishedRequirement = publishedRequirements.requirements[0]
+    if (!publishedRequirement) {
+      throw new Error('No published requirement available for authorization')
+    }
+
+    fixture = {
+      foreignSpecificationId: FOREIGN_SPECIFICATION_ID,
+      localRequirementId: localRequirementPayload.localRequirement.id,
+      publishedRequirementId: publishedRequirement.id,
+      specificationId: AUTHORIZATION_SPECIFICATION_ID,
+    }
+  } finally {
+    await responsible.dispose()
+  }
 })
 
 test('AUTHZ-11: requirements-specification child writes inherit specification authorship', async ({

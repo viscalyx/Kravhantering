@@ -2166,7 +2166,19 @@ test.describe('Requirements specification deterministic manual cases', () => {
             items?: unknown[]
             pagination?: unknown
           }
-          let items = data.items ?? []
+          let items = (data.items ?? []).map(item =>
+            typeof item === 'object' &&
+            item !== null &&
+            'uniqueId' in item &&
+            item.uniqueId === 'PWT-SPEC-EDIT-SOURCE'
+              ? {
+                  ...item,
+                  deviationCount: 0,
+                  hasApprovedDeviation: false,
+                  hasPendingDeviation: false,
+                }
+              : item,
+          )
           if (editSourceRemoved) {
             items = items.filter(
               item =>
