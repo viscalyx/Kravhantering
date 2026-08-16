@@ -3,9 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SpecificationLocalRequirementDetailClient from '@/components/SpecificationLocalRequirementDetailClient'
+import { deferred } from '@/lib/__tests__/deferred'
 import { DetailResourceCache } from '@/lib/requirements/detail-prefetch'
 import type { SpecificationLocalRequirementDetail } from '@/lib/specifications/local-requirement-detail'
-import { deferred } from '@/tests/helpers/deferred'
 
 const emptyNeedsReferencesResource = {
   data: [],

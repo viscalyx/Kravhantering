@@ -10,7 +10,7 @@ import {
   emitRequirementDetailPrefetchEvent,
   type RequirementDetailPrefetchEvent,
 } from '@/lib/requirements/detail-prefetch'
-import { deferred } from '@/tests/helpers/deferred'
+import { deferred } from './deferred'
 
 vi.mock('@/lib/http/api-fetch', () => ({ apiFetch: vi.fn() }))
 

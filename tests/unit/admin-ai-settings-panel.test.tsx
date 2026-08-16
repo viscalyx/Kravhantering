@@ -2,8 +2,8 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AiSettingsPanel from '@/app/[locale]/admin/panels/settings/ai-settings-panel'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import { deferred } from '@/lib/__tests__/deferred'
 import { DEFAULT_ADMIN_AI_SETTINGS } from '@/lib/ai/generation-availability'
-import { deferred } from '../helpers/deferred'
 import {
   clickAdminConfirmationAction,
   expectAdminPanelContract,

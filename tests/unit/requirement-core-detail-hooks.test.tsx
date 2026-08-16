@@ -12,9 +12,9 @@ import { getLocalizedName } from '@/app/[locale]/requirements/[id]/_detail/local
 import { useRequirementDetailData } from '@/app/[locale]/requirements/[id]/_detail/use-requirement-detail-data'
 import { useVersionPillConnector } from '@/app/[locale]/requirements/[id]/_detail/use-version-pill-connector'
 import { useDetailActionMenu } from '@/app/[locale]/requirements/[id]/_detail/useDetailActionMenu'
+import { deferred } from '@/lib/__tests__/deferred'
 import { DetailResourceCache } from '@/lib/requirements/detail-prefetch'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
-import { deferred } from '@/tests/helpers/deferred'
 
 function jsonResponse(
   body: unknown,

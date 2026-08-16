@@ -586,6 +586,7 @@ describe('CI container runtime', () => {
         '#!/usr/bin/env bash',
         'if [[ "$*" == "api --help" ]]; then',
         "  printf '%s\\n' '      --allow-escape-sequences   Allow printing terminal escape sequences'",
+        "  for _ in {1..10000}; do printf '%s\\n' 'additional help text'; done",
         'elif [[ "$*" == *"/jobs?filter=latest"* ]]; then',
         '  printf \'%s\\n\' \'{"jobs":[{"id":123,"name":"Build and Smoke Test Container Stack","status":"completed"}]}\'',
         'elif [[ "$*" != *"--allow-escape-sequences"* ]]; then',
