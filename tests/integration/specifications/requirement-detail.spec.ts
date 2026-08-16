@@ -1307,6 +1307,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
     const localRow = localMarker.locator('xpath=ancestor::tr[1]')
     const localButton = localRow.getByRole('button').first()
     await localRow.hover()
+    await page.mouse.move(0, 0)
+    await delay(200)
+    expect(localDetailRequests).toBe(0)
+
+    await localRow.hover()
     await expect.poll(() => localDetailRequests).toBe(1)
     await localButton.click()
     await expect(
@@ -1319,6 +1324,11 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .filter({ has: page.getByRole('button') })
       .first()
     const leftLibraryButton = leftLibraryRow.getByRole('button').first()
+    await leftLibraryRow.hover()
+    await page.mouse.move(0, 0)
+    await delay(200)
+    expect(libraryDetailRequests).toBe(0)
+
     await leftLibraryRow.hover()
     await expect.poll(() => libraryDetailRequests).toBe(1)
     await leftLibraryButton.click()
@@ -1338,12 +1348,147 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .first()
     const libraryRow = libraryButton.locator('xpath=ancestor::tr[1]')
     await libraryRow.hover()
+    await page.mouse.move(0, 0)
+    await delay(200)
+    expect(libraryDetailRequests).toBe(1)
+
+    await libraryRow.hover()
     await expect.poll(() => libraryDetailRequests).toBe(2)
     await libraryButton.click()
     await expect(
       libraryRow.locator('xpath=following-sibling::tr[1]'),
     ).toContainText('Kravtext')
     expect(libraryDetailRequests).toBe(2)
+
+    await test.step('keyboard focus prefetches each supported detail resource', async () => {
+      libraryDetailRequests = 0
+      localDetailRequests = 0
+      await page.reload()
+
+      await localButton.focus()
+      await expect.poll(() => localDetailRequests).toBe(1)
+      await localButton.click()
+      await expect(
+        localRow.locator('xpath=following-sibling::tr[1]'),
+      ).toContainText('Kravtext')
+      expect(localDetailRequests).toBe(1)
+
+      await leftLibraryButton.focus()
+      await expect.poll(() => libraryDetailRequests).toBe(1)
+      await leftLibraryButton.click()
+      await expect(
+        leftLibraryRow.locator('xpath=following-sibling::tr[1]'),
+      ).toContainText('Kravtext')
+      expect(libraryDetailRequests).toBe(1)
+
+      await libraryButton.focus()
+      await expect.poll(() => libraryDetailRequests).toBe(2)
+      await libraryButton.click()
+      await expect(
+        libraryRow.locator('xpath=following-sibling::tr[1]'),
+      ).toContainText('Kravtext')
+      expect(libraryDetailRequests).toBe(2)
+    })
+
+    await test.step('immediate clicks load each detail once without delayed duplicates', async () => {
+      libraryDetailRequests = 0
+      localDetailRequests = 0
+      await page.reload()
+
+      await localButton.click()
+      await expect(
+        localRow.locator('xpath=following-sibling::tr[1]'),
+      ).toContainText('Kravtext')
+      expect(localDetailRequests).toBe(1)
+
+      await leftLibraryButton.click()
+      await expect(
+        leftLibraryRow.locator('xpath=following-sibling::tr[1]'),
+      ).toContainText('Kravtext')
+      expect(libraryDetailRequests).toBe(1)
+
+      await libraryButton.click()
+      await expect(
+        libraryRow.locator('xpath=following-sibling::tr[1]'),
+      ).toContainText('Kravtext')
+      expect(libraryDetailRequests).toBe(2)
+    })
+
+    await test.step('add and remove invalidate the moved library requirement detail', async () => {
+      const libraryRequirementUniqueId = (
+        (await libraryButton.textContent()) ?? ''
+      ).trim()
+      expect(libraryRequirementUniqueId).not.toBe('')
+
+      const readSpecificationCount = async (
+        row: typeof libraryRow,
+      ): Promise<number> => {
+        const detailRow = row.locator('xpath=following-sibling::tr[1]')
+        const countSection = detailRow
+          .getByRole('heading', { name: 'Används i kravunderlag' })
+          .locator('..')
+        await expect(countSection).toBeVisible()
+        const count = Number(await countSection.locator('div').innerText())
+        expect(Number.isInteger(count)).toBe(true)
+        return count
+      }
+
+      const baselineCount = await readSpecificationCount(libraryRow)
+      const requestsBeforeAdd = libraryDetailRequests
+      await libraryRow.getByRole('checkbox').check()
+      await page.getByRole('button', { name: 'Lägg till valda (1)' }).click()
+      const addDialog = page.getByRole('dialog').filter({
+        hasText: 'Lägger till 1 krav i underlaget',
+      })
+      await addDialog.getByRole('button', { name: 'Lägg till' }).click()
+
+      const movedLeftRow = leftPanel
+        .locator('tbody tr')
+        .filter({ hasText: libraryRequirementUniqueId })
+        .first()
+      await expect(movedLeftRow).toBeVisible()
+      const movedLeftButton = movedLeftRow.getByRole('button').first()
+      await movedLeftButton.click()
+      await expect.poll(() => libraryDetailRequests).toBe(requestsBeforeAdd + 1)
+      expect(await readSpecificationCount(movedLeftRow)).toBe(baselineCount + 1)
+
+      await movedLeftRow.getByRole('checkbox').check()
+      await page.getByRole('button', { name: 'Ta bort valda (1)' }).click()
+      const refreshedItems = page.waitForResponse(response => {
+        const url = new URL(response.url())
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname ===
+            `/api/requirements-specifications/${specificationId}/items`
+        )
+      })
+      const refreshedAvailableRequirements = page.waitForResponse(response => {
+        const url = new URL(response.url())
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname ===
+            `/api/requirements-specifications/${specificationId}/available-requirements`
+        )
+      })
+      await page
+        .getByRole('alertdialog', { name: 'Ta bort valda (1)' })
+        .getByRole('button', { name: 'Ta bort' })
+        .click()
+      await Promise.all([refreshedItems, refreshedAvailableRequirements])
+
+      const movedRightRow = rightPanel
+        .locator('tbody tr')
+        .filter({ hasText: libraryRequirementUniqueId })
+        .first()
+      await expect(movedLeftRow).toHaveCount(0)
+      await expect(movedRightRow).toBeVisible()
+      const movedRightButton = movedRightRow.getByRole('button').first()
+      if ((await movedRightButton.getAttribute('aria-expanded')) !== 'true') {
+        await movedRightButton.click()
+      }
+      await expect.poll(() => libraryDetailRequests).toBe(requestsBeforeAdd + 2)
+      expect(await readSpecificationCount(movedRightRow)).toBe(baselineCount)
+    })
   })
 
   test('SPEC-18: sorts the complete specification item list in both directions', async ({

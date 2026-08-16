@@ -1626,13 +1626,16 @@ och de fyra gemensamma åtgärderna aktiveras igen.
 
 **Steg:** Öppna ett kravunderlag som innehåller ett bibliotekskrav och ett
 kravunderlagslokalt krav. Prova 150 ms-hovring, fokus och direktklick i vänster
-lista för båda typerna samt i höger lista för ett bibliotekskrav.
+lista för båda typerna samt i höger lista för ett bibliotekskrav. Lägg till
+bibliotekskravet från höger lista, öppna detaljen i vänster lista, ta bort det
+och öppna detaljen igen i höger lista.
 
 **Förväntat resultat:** Vänster och höger lista följer samma avsiktspolicy.
-Bibliotekskraven i båda listorna använder samma sidägda cache. Lokala krav
-använder en separat cache med kravunderlag och lokalt krav-ID som nyckel. Varje
-klick återanvänder det pågående anropet från förhämtningen. Direktklick
-fungerar omedelbart och inga dubbla samtidiga huvudförfrågningar startas.
+Klick efter hovring eller fokus återanvänder det pågående anropet från
+förhämtningen. Direktklick startar en vanlig detaljförfrågan om inget svar redan
+finns och orsakar inte ett fördröjt duplicerat anrop. Ett krav som läggs till
+eller tas bort byter lista och läses om efter ändringen; det återanvänder inte
+detaljdata med ett inaktuellt antal kravunderlag.
 
 ## Avsteg
 

@@ -5,9 +5,9 @@ import {
   createSpecificationLocalRequirementDetailCache,
   DetailFetchError,
   DetailPrefetchIntentController,
+  type DetailPrefetchIntentTarget,
   DetailResourceCache,
   emitRequirementDetailPrefetchEvent,
-  isRequirementDetailPrefetchEnabled,
   type RequirementDetailPrefetchEvent,
 } from '@/lib/requirements/detail-prefetch'
 
@@ -26,6 +26,7 @@ function deferred<T>() {
 const context = {
   resource: 'library-requirement' as const,
   surface: 'requirements-library' as const,
+  trigger: 'pointer' as const,
 }
 
 describe('DetailResourceCache', () => {
@@ -102,9 +103,7 @@ describe('DetailResourceCache', () => {
     staleRequest.resolve({ description: 'Inaktuell kravtext' })
     freshRequest.resolve({ description: 'Ny kravtext' })
 
-    await expect(stalePrefetch).resolves.toEqual({
-      description: 'Inaktuell kravtext',
-    })
+    await expect(stalePrefetch).rejects.toMatchObject({ name: 'AbortError' })
     await expect(authoritativeRefresh).resolves.toEqual({
       description: 'Ny kravtext',
     })
@@ -126,7 +125,7 @@ describe('DetailResourceCache', () => {
     const prefetch = cache.load(42, 'prefetch', context)
     cache.invalidate(42, context)
     request.resolve({ description: 'Inaktuell kravtext' })
-    await prefetch
+    await expect(prefetch).rejects.toMatchObject({ name: 'AbortError' })
 
     expect(events.filter(event => event.type === 'prefetch-outcome')).toEqual([
       expect.objectContaining({
@@ -376,6 +375,46 @@ describe('DetailResourceCache', () => {
 })
 
 describe('DetailPrefetchIntentController', () => {
+  it('correlates a started prefetch with its focus trigger and outcome', async () => {
+    vi.useFakeTimers()
+    const events: RequirementDetailPrefetchEvent[] = []
+    const cache = new DetailResourceCache<number, { description: string }>({
+      fetchDetail: vi.fn(async () => ({ description: 'Kravtext' })),
+      keyOf: String,
+      onEvent: event => events.push(event),
+    })
+    const target = { ...context, key: '71', trigger: 'focus' as const }
+    let prefetchPromise: Promise<{ description: string }> | undefined
+    const prefetch = vi.fn((...targets: DetailPrefetchIntentTarget[]) => {
+      const scheduledTarget = targets[0]
+      if (scheduledTarget) {
+        prefetchPromise = cache.load(71, 'prefetch', scheduledTarget)
+      }
+    })
+    const controller = new DetailPrefetchIntentController({
+      onEvent: event => events.push(event),
+    })
+
+    controller.schedule(target, prefetch)
+    await vi.advanceTimersByTimeAsync(150)
+    await prefetchPromise
+    cache.invalidate(71, context)
+
+    expect(prefetch).toHaveBeenCalledWith(target)
+    const started = events.find(event => event.type === 'prefetch-started')
+    const outcome = events.find(event => event.type === 'prefetch-outcome')
+    expect(started).toMatchObject({
+      prefetchId: expect.any(Number),
+      trigger: 'focus',
+    })
+    expect(outcome).toMatchObject({
+      outcome: 'invalidated-unused',
+      prefetchId: started?.prefetchId,
+      trigger: 'focus',
+    })
+    vi.useRealTimers()
+  })
+
   it('starts prefetch only after the 150 ms intent threshold', async () => {
     vi.useFakeTimers()
     const prefetch = vi.fn()
@@ -465,21 +504,6 @@ describe('DetailPrefetchIntentController', () => {
 })
 
 describe('detail cache browser adapters', () => {
-  it('honors the build-time activation switch', async () => {
-    vi.stubEnv('NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH', 'true')
-    vi.resetModules()
-    const enabledModule = await import('@/lib/requirements/detail-prefetch')
-    expect(enabledModule.isRequirementDetailPrefetchEnabled()).toBe(true)
-
-    vi.stubEnv('NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH', 'false')
-    vi.resetModules()
-    const disabledModule = await import('@/lib/requirements/detail-prefetch')
-    expect(disabledModule.isRequirementDetailPrefetchEnabled()).toBe(false)
-
-    vi.unstubAllEnvs()
-    expect(isRequirementDetailPrefetchEnabled()).toBe(false)
-  })
-
   it('dispatches content-free events only when a browser window exists', () => {
     const event = {
       ...context,

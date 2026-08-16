@@ -5,12 +5,9 @@ import {
   DetailPrefetchIntentController,
   type DetailPrefetchIntentTarget,
   type DetailPrefetchTarget,
-  isRequirementDetailPrefetchEnabled,
 } from '@/lib/requirements/detail-prefetch'
 
-export function useRequirementDetailPrefetchIntent(
-  enabled = isRequirementDetailPrefetchEnabled(),
-) {
+export function useRequirementDetailPrefetchIntent() {
   const controllerRef = useRef<DetailPrefetchIntentController | null>(null)
   if (!controllerRef.current) {
     controllerRef.current = new DetailPrefetchIntentController()
@@ -24,26 +21,20 @@ export function useRequirementDetailPrefetchIntent(
   )
 
   const schedule = useCallback(
-    (target: DetailPrefetchIntentTarget, prefetch: () => void) => {
-      if (!enabled) return
+    (
+      target: DetailPrefetchIntentTarget,
+      prefetch: (target: DetailPrefetchIntentTarget) => void,
+    ) => {
       controllerRef.current?.schedule(target, prefetch)
     },
-    [enabled],
+    [],
   )
-  const cancel = useCallback(
-    (target: DetailPrefetchIntentTarget) => {
-      if (!enabled) return
-      controllerRef.current?.cancel(target)
-    },
-    [enabled],
-  )
-  const activate = useCallback(
-    (target: DetailPrefetchTarget) => {
-      if (!enabled) return
-      controllerRef.current?.activate(target)
-    },
-    [enabled],
-  )
+  const cancel = useCallback((target: DetailPrefetchIntentTarget) => {
+    controllerRef.current?.cancel(target)
+  }, [])
+  const activate = useCallback((target: DetailPrefetchTarget) => {
+    controllerRef.current?.activate(target)
+  }, [])
 
   return { activate, cancel, schedule }
 }

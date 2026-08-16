@@ -143,11 +143,53 @@ test.describe('Requirements library', () => {
 
     await row.hover()
     await page.mouse.move(0, 0)
-    await delay(100)
+    await delay(200)
     expect(detailRequests).toBe(0)
 
     await row.hover()
     await expect.poll(() => detailRequests).toBe(1)
+    await rowButton.click()
+    const detailPaneId = await rowButton.getAttribute('aria-controls')
+    expect(detailPaneId).toBeTruthy()
+    await expect(page.locator(`#${detailPaneId}`)).toContainText('Kravtext')
+    expect(detailRequests).toBe(1)
+  })
+
+  test('REQ-21: keyboard focus prefetches and reuses one detail request', async ({
+    page,
+  }) => {
+    let detailRequests = 0
+    await page.route(/\/api\/requirements\/\d+$/u, async route => {
+      detailRequests += 1
+      await delay(350)
+      await route.continue()
+    })
+    await page.goto('/sv/requirements')
+    await filterRequirementId(page, 'INT0001')
+    const rowButton = page.getByRole('button', { name: /^INT0001\b/u })
+
+    await rowButton.focus()
+    await expect.poll(() => detailRequests).toBe(1)
+    await rowButton.click()
+    const detailPaneId = await rowButton.getAttribute('aria-controls')
+    expect(detailPaneId).toBeTruthy()
+    await expect(page.locator(`#${detailPaneId}`)).toContainText('Kravtext')
+    expect(detailRequests).toBe(1)
+  })
+
+  test('REQ-21: immediate click opens detail without a delayed duplicate request', async ({
+    page,
+  }) => {
+    let detailRequests = 0
+    await page.route(/\/api\/requirements\/\d+$/u, async route => {
+      detailRequests += 1
+      await delay(350)
+      await route.continue()
+    })
+    await page.goto('/sv/requirements')
+    await filterRequirementId(page, 'INT0001')
+    const rowButton = page.getByRole('button', { name: /^INT0001\b/u })
+
     await rowButton.click()
     const detailPaneId = await rowButton.getAttribute('aria-controls')
     expect(detailPaneId).toBeTruthy()

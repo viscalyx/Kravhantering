@@ -3437,6 +3437,64 @@ describe('RequirementsTable', () => {
     expect(onRowActivate).toHaveBeenCalledWith(rowData)
   })
 
+  it('does not expose touch pointer movement as row intent', () => {
+    const onRowIntentEnd = vi.fn()
+    const onRowIntentStart = vi.fn()
+    render(
+      <RequirementsTable
+        locale="sv"
+        onRowIntentEnd={onRowIntentEnd}
+        onRowIntentStart={onRowIntentStart}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const row = screen
+      .getByRole('button', { name: 'INT0001' })
+      .closest('tr') as HTMLTableRowElement
+    fireEvent.pointerEnter(row, { pointerType: 'touch' })
+    fireEvent.pointerLeave(row, { pointerType: 'touch' })
+
+    expect(onRowIntentStart).not.toHaveBeenCalled()
+    expect(onRowIntentEnd).not.toHaveBeenCalled()
+  })
+
+  it('does not expose pointer movement when the primary pointer is coarse', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        matches: false,
+        media: query,
+        onchange: null,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      })),
+    })
+    const onRowIntentEnd = vi.fn()
+    const onRowIntentStart = vi.fn()
+    render(
+      <RequirementsTable
+        locale="sv"
+        onRowIntentEnd={onRowIntentEnd}
+        onRowIntentStart={onRowIntentStart}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const action = screen.getByRole('button', { name: 'INT0001' })
+    const row = action.closest('tr') as HTMLTableRowElement
+    fireEvent.pointerEnter(row, { pointerType: 'mouse' })
+    fireEvent.pointerLeave(row, { pointerType: 'mouse' })
+    fireEvent.focus(action)
+
+    expect(onRowIntentStart).toHaveBeenCalledOnce()
+    expect(onRowIntentStart).toHaveBeenCalledWith(makeRow(), 'focus')
+    expect(onRowIntentEnd).not.toHaveBeenCalled()
+  })
+
   it('navigates from whole-row clicks and the row action button when no row click handler is provided', () => {
     render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 

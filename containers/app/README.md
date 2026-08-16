@@ -39,11 +39,6 @@ The app build stage sets `NEXT_PUBLIC_SITE_URL` to
 developer `.env` file. Pass `--build-arg NEXT_PUBLIC_SITE_URL=<origin>` when
 building a deployable image for another origin.
 
-Intent-driven requirement-detail prefetching is enabled at build time through
-`NEXT_PUBLIC_ENABLE_REQUIREMENT_DETAIL_PREFETCH=true`. An emergency rollback
-sets the build argument to `false` and rebuilds the image; changing the runtime
-environment does not alter an already built client bundle.
-
 `app-runtime` is the long-running Next.js image. It is based on
 `output: "standalone"` and only copies `.next/standalone`, `.next/static`, and
 `public` into the final runtime stage. The stage runs as the non-root `node`
