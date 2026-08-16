@@ -266,6 +266,11 @@ placeholders remain. If you rotate the session secret, all active browser
 sessions become invalid. Plan this action for a low-traffic period and verify
 sign-in after deployment.
 <!-- operator-upgrade:source pr-1035 end -->
+
+<!-- operator-upgrade:source pr-1037 start -->
+Before rollout, validate the responsibility assignments for requirements specifications and requirement areas. Direct reads of child resources now use the access rules of their parent resource.
+Tell API consumers and support staff that an existing child resource can now return `403` when the user cannot read its parent. A missing resource still returns `404`. Published requirement information remains readable according to the existing policy. Sensitive child responses are not cached. No configuration or data migration is required.
+<!-- operator-upgrade:source pr-1037 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade

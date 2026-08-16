@@ -565,6 +565,10 @@ export default function KravunderlagDetailClient({
     specificationItemsContinuationError,
     setSpecificationItemsContinuationError,
   ] = useState<'continuation' | 'recovery' | null>(null)
+  const [
+    restoreSpecificationItemsRetryFocus,
+    setRestoreSpecificationItemsRetryFocus,
+  ] = useState(false)
   const [specificationItemsAnnouncement, setSpecificationItemsAnnouncement] =
     useState<string | null>(null)
   const [availableRows, setAvailableRows] = useState<RequirementRow[]>(
@@ -1138,10 +1142,8 @@ export default function KravunderlagDetailClient({
   const loadFirstSpecificationItemsPage = useCallback(
     async ({
       recoveringInvalidCursor = false,
-      restoreRetryFocusOnFailure = false,
     }: {
       recoveringInvalidCursor?: boolean
-      restoreRetryFocusOnFailure?: boolean
     } = {}) => {
       const requestId = ++specificationItemsRequestIdRef.current
       specificationItemsAbortRef.current?.abort()
@@ -1196,11 +1198,6 @@ export default function KravunderlagDetailClient({
           setSpecificationItemsContinuationError('recovery')
         } else {
           setSpecificationItemsError(message)
-        }
-        if (restoreRetryFocusOnFailure) {
-          requestAnimationFrame(() =>
-            specificationItemsRetryRef.current?.focus(),
-          )
         }
         return false
       } finally {
@@ -1346,18 +1343,31 @@ export default function KravunderlagDetailClient({
   const retrySpecificationItems = useCallback(async () => {
     if (specificationItemsContinuationError === 'continuation') {
       await loadMoreSpecificationItems()
-      requestAnimationFrame(() => specificationItemsRetryRef.current?.focus())
+      setRestoreSpecificationItemsRetryFocus(true)
       return
     }
     await loadFirstSpecificationItemsPage({
       recoveringInvalidCursor:
         specificationItemsContinuationError === 'recovery',
-      restoreRetryFocusOnFailure: true,
     })
+    setRestoreSpecificationItemsRetryFocus(true)
   }, [
     loadFirstSpecificationItemsPage,
     loadMoreSpecificationItems,
     specificationItemsContinuationError,
+  ])
+
+  useEffect(() => {
+    if (!restoreSpecificationItemsRetryFocus) return
+
+    if (specificationItemsError || specificationItemsContinuationError) {
+      specificationItemsRetryRef.current?.focus()
+    }
+    setRestoreSpecificationItemsRetryFocus(false)
+  }, [
+    restoreSpecificationItemsRetryFocus,
+    specificationItemsContinuationError,
+    specificationItemsError,
   ])
 
   const needsReferenceUsageLoadError = t('loadSpecificationItemsFailed')
