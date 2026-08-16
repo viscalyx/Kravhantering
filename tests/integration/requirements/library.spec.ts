@@ -60,6 +60,23 @@ async function filterRequirementId(
   ).toHaveCount(1)
 }
 
+async function visiblePointerPoint(target: Locator) {
+  await expect(target).toBeVisible()
+  return target.evaluate(element => {
+    const rect = element.getBoundingClientRect()
+    const x = rect.left + rect.width / 2
+    const firstY = Math.max(1, Math.ceil(rect.top) + 1)
+    const lastY = Math.min(window.innerHeight - 1, Math.floor(rect.bottom) - 1)
+
+    for (let y = firstY; y <= lastY; y += 1) {
+      const hit = document.elementFromPoint(x, y)
+      if (hit === element || (hit && element.contains(hit))) return { x, y }
+    }
+
+    throw new Error('Requirement row button has no hit-testable pointer point.')
+  })
+}
+
 async function expectRequirementDetailRoute(
   page: Page,
   path: string,
@@ -136,7 +153,6 @@ test.describe('Requirements library', () => {
       /\/api\/requirements\/\d+$/u,
     )
     const rowButton = page.getByRole('button', { name: /^INT0001\b/u })
-    const row = rowButton.locator('xpath=ancestor::tr[1]')
 
     await test.step('open and filter the requirement library', async () => {
       await page.goto('/sv/requirements')
@@ -144,16 +160,16 @@ test.describe('Requirements library', () => {
     })
 
     await test.step('cancel short hover and reuse the held pointer prefetch', async () => {
-      await row.evaluate(element => element.scrollIntoView({ block: 'center' }))
-      await row.hover()
+      const pointer = await visiblePointerPoint(rowButton)
+      await page.mouse.move(pointer.x, pointer.y)
       await page.mouse.move(0, 0)
       await delay(200)
       expect(detailRequests.count).toBe(0)
 
       const heldRequest = detailRequests.holdNext()
-      await row.hover()
+      await page.mouse.move(pointer.x, pointer.y)
       await heldRequest.started
-      await rowButton.click()
+      await page.mouse.click(pointer.x, pointer.y)
       expect(detailRequests.count).toBe(1)
       heldRequest.release()
 
@@ -208,7 +224,8 @@ test.describe('Requirements library', () => {
     })
 
     await test.step('open directly without scheduling a duplicate', async () => {
-      await rowButton.click()
+      const pointer = await visiblePointerPoint(rowButton)
+      await page.mouse.click(pointer.x, pointer.y)
       const detailPaneId = await rowButton.getAttribute('aria-controls')
       expect(detailPaneId).toBeTruthy()
       await expect(page.locator(`#${detailPaneId}`)).toContainText('Kravtext')
