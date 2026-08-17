@@ -287,6 +287,13 @@ rollout validation, confirm assigned-author access, the Administrator bypass,
 and authorization-denial audit evidence. No data migration or configuration
 change is required.
 <!-- operator-upgrade:source pr-1056 end -->
+
+<!-- operator-upgrade:source pr-1059 start -->
+Before upgrade, notify owners of MCP integrations that add requirements to a
+requirements specification. Each request now accepts 1–200 unique requirement
+IDs. Clients must remove duplicate IDs and split larger batches. Invalid
+requests are rejected before database work starts.
+<!-- operator-upgrade:source pr-1059 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
