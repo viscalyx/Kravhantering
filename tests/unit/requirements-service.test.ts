@@ -166,6 +166,7 @@ vi.mock('@/lib/dal/requirements', () => ({
   transitionStatus: mocks.transitionStatus,
 }))
 
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation'
 import { createRequirementsService } from '@/lib/requirements/service'
 import {
   buildRequirementViewUri,
@@ -1743,6 +1744,69 @@ describe('createRequirementsService', () => {
       lines: ['Added 1 requirement to specification 7.'],
       title: 'Requirements Added to Specification',
     })
+  })
+
+  it.each([
+    ['an empty collection', []],
+    ['duplicate IDs', [10, 10]],
+    [
+      'more than the shared item limit',
+      Array.from(
+        { length: ARRAY_INPUT_MAX_ITEMS + 1 },
+        (_, index) => index + 1,
+      ),
+    ],
+  ])(
+    'rejects %s before add-to-specification database work',
+    async (_case, requirementIds) => {
+      const service = createTestRequirementsService()
+
+      await expect(
+        service.addToSpecification(makeContext(), {
+          requirementIds,
+          specificationId: 7,
+        }),
+      ).rejects.toMatchObject({ code: 'validation' })
+
+      expect(mocks.getPublishedVersionIdForRequirement).not.toHaveBeenCalled()
+      expect(
+        mocks.linkRequirementsToSpecificationAtomically,
+      ).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps published-version lookup concurrency fixed at the maximum collection size', async () => {
+    let activeLookups = 0
+    let peakConcurrentLookups = 0
+    mocks.getPublishedVersionIdForRequirement.mockImplementation(
+      async requirementId => {
+        activeLookups += 1
+        peakConcurrentLookups = Math.max(peakConcurrentLookups, activeLookups)
+        await new Promise<void>(resolve => queueMicrotask(resolve))
+        activeLookups -= 1
+        return requirementId + 1_000
+      },
+    )
+    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(
+      ARRAY_INPUT_MAX_ITEMS,
+    )
+    const service = createTestRequirementsService()
+    const requirementIds = Array.from(
+      { length: ARRAY_INPUT_MAX_ITEMS },
+      (_, index) => index + 1,
+    )
+
+    const result = await service.addToSpecification(makeContext(), {
+      requirementIds,
+      specificationId: 7,
+    })
+
+    expect(result.addedCount).toBe(ARRAY_INPUT_MAX_ITEMS)
+    expect(peakConcurrentLookups).toBeGreaterThan(0)
+    expect(peakConcurrentLookups).toBeLessThanOrEqual(8)
+    expect(mocks.getPublishedVersionIdForRequirement).toHaveBeenCalledTimes(
+      ARRAY_INPUT_MAX_ITEMS,
+    )
   })
 
   it('uses actual deleted specification link counts in removeFromSpecification', async () => {

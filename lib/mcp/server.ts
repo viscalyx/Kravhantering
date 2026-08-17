@@ -15,6 +15,10 @@ import {
 import type { McpRuntimeSettings } from '@/lib/dal/ai-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
+  ARRAY_INPUT_MAX_ITEMS,
+  uniquePositiveIntegerArraySchema,
+} from '@/lib/http/validation'
+import {
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
@@ -2595,7 +2599,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description: `Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach an existing needsReferenceId or create a new needsReferenceText plus needsReferenceDescription for all added items. Identify the specification with specificationId. ${specificationIdCopyPath} ${addRequirementIdsCopyPath}`,
+      description: `Link up to ${ARRAY_INPUT_MAX_ITEMS} unique requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach an existing needsReferenceId or create a new needsReferenceText plus needsReferenceDescription for all added items. Identify the specification with specificationId. ${specificationIdCopyPath} ${addRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
           locale: ResponseLocaleSchema,
@@ -2626,11 +2630,10 @@ export function createKravhanteringMcpServer(
             .describe(
               `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
             ),
-          requirementIds: z
-            .array(z.number().int().positive())
+          requirementIds: uniquePositiveIntegerArraySchema()
             .min(1)
             .describe(
-              `Numeric requirement IDs (not uniqueId strings) to add to the specification. ${addRequirementIdsCopyPath}`,
+              `One to ${ARRAY_INPUT_MAX_ITEMS} unique numeric requirement IDs (not uniqueId strings) to add to the specification. ${addRequirementIdsCopyPath}`,
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })

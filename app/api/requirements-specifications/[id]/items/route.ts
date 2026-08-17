@@ -8,7 +8,6 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
-  ARRAY_INPUT_MAX_ITEMS,
   idParamSchema,
   nullableBoundedDbStringSchema,
   nullableBusinessTextSchema,
@@ -16,6 +15,7 @@ import {
   parseSearchParams,
   positiveIntegerSchema,
   routeSegmentSchema,
+  uniquePositiveIntegerArraySchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
@@ -31,13 +31,7 @@ const ADD_REQUIREMENTS_ERROR = 'Failed to add requirements'
 
 const specificationParamSchema = idParamSchema
 
-const requirementIdsSchema = z
-  .array(positiveIntegerSchema)
-  .min(1)
-  .max(ARRAY_INPUT_MAX_ITEMS)
-  .refine(values => new Set(values).size === values.length, {
-    message: 'Expected unique positive integers',
-  })
+const requirementIdsSchema = uniquePositiveIntegerArraySchema().min(1)
 
 const itemRefsSchema = z
   .array(routeSegmentSchema)

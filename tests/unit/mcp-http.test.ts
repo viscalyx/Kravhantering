@@ -66,6 +66,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { addMcpMaxRequestBytesSteps } from '@/lib/ai/generation-availability'
 import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation'
 import {
   handleRequirementsMcpRequest,
   MCP_DEFAULT_REQUEST_BYTES,
@@ -1320,6 +1321,49 @@ describe('handleRequirementsMcpRequest', () => {
 
     expect(fakeService.addToSpecification).not.toHaveBeenCalled()
     expect(fakeService.removeFromSpecification).not.toHaveBeenCalled()
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('bounds unique add-to-specification requirement IDs before mutation delegation', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    const maximumRequirementIds = Array.from(
+      { length: ARRAY_INPUT_MAX_ITEMS },
+      (_, index) => index + 1,
+    )
+
+    const maximumResult = await client.callTool({
+      arguments: {
+        requirementIds: maximumRequirementIds,
+        specificationId: 7,
+      },
+      name: 'requirements_add_to_specification',
+    })
+    const overMaximumResult = await client.callTool({
+      arguments: {
+        requirementIds: [...maximumRequirementIds, ARRAY_INPUT_MAX_ITEMS + 1],
+        specificationId: 7,
+      },
+      name: 'requirements_add_to_specification',
+    })
+    const duplicateResult = await client.callTool({
+      arguments: {
+        requirementIds: [1, 1],
+        specificationId: 7,
+      },
+      name: 'requirements_add_to_specification',
+    })
+
+    expect(maximumResult.isError).not.toBe(true)
+    expect(overMaximumResult.isError).toBe(true)
+    expect(duplicateResult.isError).toBe(true)
+    expect(fakeService.addToSpecification).toHaveBeenCalledTimes(1)
+    expect(fakeService.addToSpecification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ requirementIds: maximumRequirementIds }),
+    )
 
     await client.close()
     await transport.close()

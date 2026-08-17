@@ -107,11 +107,11 @@ agents can use it reliably.
   unique requirement. Use a returned `areas[].id` as
   `requirementAreaId` for `requirements_graduate_local_requirement`.
 - `requirements_add_to_specification`
-  Link one or more requirements to a specification. Requirements must have a
-  published version; those without are skipped and returned in `skippedIds`.
-  Optionally attach an existing `needsReferenceId`, or create a new
-  `needsReferenceText` with an optional `needsReferenceDescription`, for all
-  added items. New needs-reference text must be unique inside the
+  Link from 1 through 200 unique requirements to a specification. Requirements
+  must have a published version; those without are skipped and returned in
+  `skippedIds`. Optionally attach an existing `needsReferenceId`, or create a
+  new `needsReferenceText` with an optional `needsReferenceDescription`, for
+  all added items. New needs-reference text must be unique inside the
   specification. Use `specificationId` to identify the specification. Copy
   requirement IDs from:
 

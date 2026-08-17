@@ -338,12 +338,12 @@ requirements_get_specification_items.items[kind == "library"].id -> requirementI
 
 ### `requirements_add_to_specification`
 
-Links requirements to a specification. Accepts numeric `specificationId`.
-Requirements without a published
-version are skipped and returned in `skippedIds` rather than causing an error —
-this lets an agent batch-add requirements without needing to pre-filter by
-publish state. `needsReferenceId` links the added items to an existing
-specification-local needs reference. `needsReferenceText` creates a new
+Links from 1 through 200 unique requirements to a specification. Accepts
+numeric `specificationId`. Requirements without a published version are
+skipped and returned in `skippedIds` rather than causing an error — this lets
+an agent batch-add requirements without needing to pre-filter by publish state.
+`needsReferenceId` links the added items to an existing specification-local
+needs reference. `needsReferenceText` creates a new
 `specification_needs_references` row, with optional
 `needsReferenceDescription`, and links it to all added items. The tool rejects
 duplicate `needsReferenceText` values inside the same specification. Use the

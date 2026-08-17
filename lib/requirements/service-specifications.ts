@@ -13,12 +13,20 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
+  ARRAY_INPUT_MAX_ITEMS,
+  uniquePositiveIntegerArraySchema,
+} from '@/lib/http/validation'
+import {
   type AuthorizationService,
   type RequestContext,
   type RequirementsAction,
   requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
-import { forbiddenError, notFoundError } from '@/lib/requirements/errors'
+import {
+  forbiddenError,
+  notFoundError,
+  validationError,
+} from '@/lib/requirements/errors'
 import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
@@ -63,6 +71,72 @@ interface SpecificationWorkflowDependencies {
   authorization: AuthorizationService
   db: SqlServerDatabase
   logger: RequirementsLogger
+}
+
+interface RequirementPublishedVersionLookup {
+  publishedVersionId: number | null
+  requirementId: number
+}
+
+const addToSpecificationRequirementIdsSchema =
+  uniquePositiveIntegerArraySchema().min(1)
+const PUBLISHED_VERSION_LOOKUP_CONCURRENCY = 8
+
+function assertValidAddToSpecificationRequirementIds(
+  requirementIds: number[],
+): void {
+  if (
+    addToSpecificationRequirementIdsSchema.safeParse(requirementIds).success
+  ) {
+    return
+  }
+
+  throw validationError(
+    `Expected 1 to ${ARRAY_INPUT_MAX_ITEMS} unique positive requirement IDs`,
+    {
+      maxItems: ARRAY_INPUT_MAX_ITEMS,
+      reason: 'invalid_requirement_ids',
+    },
+  )
+}
+
+async function resolveRequirementPublishedVersions(
+  db: SqlServerDatabase,
+  requirementIds: number[],
+): Promise<RequirementPublishedVersionLookup[]> {
+  const results = new Array<RequirementPublishedVersionLookup>(
+    requirementIds.length,
+  )
+  let nextIndex = 0
+
+  async function worker(): Promise<void> {
+    while (nextIndex < requirementIds.length) {
+      const index = nextIndex
+      nextIndex += 1
+      const requirementId = requirementIds[index]
+      if (requirementId === undefined) continue
+      results[index] = {
+        publishedVersionId: await getPublishedVersionIdForRequirement(
+          db,
+          requirementId,
+        ),
+        requirementId,
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      {
+        length: Math.min(
+          PUBLISHED_VERSION_LOOKUP_CONCURRENCY,
+          requirementIds.length,
+        ),
+      },
+      () => worker(),
+    ),
+  )
+  return results
 }
 
 function getSpecificationReferenceLabel(
@@ -514,6 +588,7 @@ export function createSpecificationWorkflow({
     async addToSpecification(context, input: AddToSpecificationInput) {
       const responseFormat = input.responseFormat ?? 'markdown'
       const locale = input.locale ?? 'en'
+      assertValidAddToSpecificationRequirementIds(input.requirementIds)
 
       await authorize(
         authorization,
@@ -535,17 +610,17 @@ export function createSpecificationWorkflow({
         },
         async () => {
           const specificationId = await resolveSpecificationIdOrThrow(input)
-          const versionResults = await Promise.all(
-            input.requirementIds.map(async id => ({
-              id,
-              versionId: await getPublishedVersionIdForRequirement(db, id),
-            })),
-          )
-          const succeeded = versionResults.filter(r => r.versionId != null) as {
-            id: number
-            versionId: number
+          const publishedVersionLookups =
+            await resolveRequirementPublishedVersions(db, input.requirementIds)
+          const succeeded = publishedVersionLookups.filter(
+            lookup => lookup.publishedVersionId != null,
+          ) as {
+            publishedVersionId: number
+            requirementId: number
           }[]
-          const skipped = versionResults.filter(r => r.versionId == null)
+          const skipped = publishedVersionLookups.filter(
+            lookup => lookup.publishedVersionId == null,
+          )
 
           let addedCount = 0
           if (succeeded.length > 0) {
@@ -553,7 +628,7 @@ export function createSpecificationWorkflow({
               db,
               specificationId,
               {
-                requirementIds: succeeded.map(r => r.id),
+                requirementIds: succeeded.map(result => result.requirementId),
                 needsReferenceDescription: input.needsReferenceDescription,
                 needsReferenceId: input.needsReferenceId,
                 needsReferenceText: input.needsReferenceText,
@@ -567,13 +642,13 @@ export function createSpecificationWorkflow({
               locale,
               operation: 'add_to_specification',
               requirementCount: input.requirementIds.length,
-              requirementIds: succeeded.map(r => r.id),
+              requirementIds: succeeded.map(result => result.requirementId),
               specificationId,
             })
           }
 
           const ref = getSpecificationReferenceLabel(input, specificationId)
-          const skippedIds = skipped.map(r => r.id)
+          const skippedIds = skipped.map(result => result.requirementId)
           const lines: string[] = [
             translateServiceMessage(
               locale,
