@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { POST } from '@/app/api/ai/generate-requirement-import/route'
+import {
+  AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
+  POST,
+} from '@/app/api/ai/generate-requirement-import/route'
 import * as aiSafety from '@/lib/ai/safety'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
@@ -129,6 +132,53 @@ describe('POST /api/ai/generate-requirement-import', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs()
+  })
+
+  it('rejects an oversized request before consuming its body or starting work', async () => {
+    const request = makeRequest()
+    request.headers.set(
+      'Content-Length',
+      String(AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES + 1),
+    )
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(413)
+    await expect(response.json()).resolves.toEqual({
+      code: 'ai_request_bytes_exceeded',
+      details: {
+        maxBytes: AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
+      },
+      error: 'AI generation request exceeds the allowed size.',
+    })
+    expect(request.bodyUsed).toBe(false)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.generateChatStream).not.toHaveBeenCalled()
+  })
+
+  it('accepts a declared request at the transport byte boundary', async () => {
+    routeState.generateChatStream.mockImplementation(async function* () {
+      yield {
+        phase: 'done',
+        rawContent: JSON.stringify({
+          requirements: [{ description: 'A bounded requirement.' }],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        }),
+        stats: { totalTokens: 1 },
+        thinking: '',
+      }
+    })
+    const request = makeRequest()
+    request.headers.set(
+      'Content-Length',
+      String(AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES),
+    )
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toContain('event: done')
+    expect(routeState.generateChatStream).toHaveBeenCalledOnce()
   })
 
   it('streams generated requirement import JSON after schema validation', async () => {

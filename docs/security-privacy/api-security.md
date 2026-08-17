@@ -99,7 +99,10 @@ Deferred from this contract:
   contract. They include streaming responses, provider-specific failure modes,
   model capability discovery, prompt construction, image payload validation,
   throttling, and vendor-token boundaries that are covered by focused route,
-  schema, and provider-client tests.
+  schema, and provider-client tests. The requirement-generation route reads at
+  most 42 MiB of JSON before parsing, returns `413` with
+  `ai_request_bytes_exceeded` above that limit, and retains the separate limit
+  of three images at 10 MiB decoded bytes each.
 - Admin catalog and settings mutations remain outside the
   OpenAPI/Schemathesis v1 contract when their assertions depend on Admin-only
   access, CSRF/same-origin enforcement for saves, privileged audit, effective
