@@ -230,13 +230,13 @@ describe('POST /api/ai/generate-requirement-import', () => {
     expect(routeState.generateChatStream).toHaveBeenCalledOnce()
   })
 
-  it('rejects duplicate images before provider work', async () => {
+  it('rejects decoded duplicate images across Base64 aliases and MIME labels', async () => {
     const response = await POST(
       makeRequest({
         areaId: 1,
         images: [
-          { dataUrl: 'data:image/png;base64,YQ' },
           { dataUrl: 'data:image/png;base64,YQ==' },
+          { dataUrl: 'data:image/jpeg;base64,YR==' },
         ],
         locale: 'en',
         mode: 'library',

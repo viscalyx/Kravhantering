@@ -296,8 +296,8 @@ describe('AI requirement import shared contracts', () => {
         images: [
           { dataUrl: 'data:image/png;base64,YQ' },
           { dataUrl: 'data:image/jpeg;base64,YWI' },
-          { dataUrl: 'data:image/gif;base64,YQ==' },
-          { dataUrl: 'data:image/webp;base64,YWI=' },
+          { dataUrl: 'data:image/gif;base64,YWJjZA==' },
+          { dataUrl: 'data:image/webp;base64,YWJjZGU=' },
         ],
       }).success,
     ).toBe(true)
