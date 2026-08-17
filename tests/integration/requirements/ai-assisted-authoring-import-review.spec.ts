@@ -339,24 +339,48 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
       return
     }
 
+    if (generationAttempts === 2) {
+      await route.fulfill({
+        body: [
+          'event: validation_error',
+          `data: ${JSON.stringify({
+            issues: [
+              {
+                code: 'invalid_json',
+                message: 'Modellens svar var inte giltig JSON.',
+                path: '$',
+              },
+            ],
+            message: 'Genererad JSON matchade inte importens schema.',
+            rawContent: '{"requirements":',
+          })}`,
+          '',
+          '',
+        ].join('\n'),
+        contentType: 'text/event-stream',
+      })
+      return
+    }
+
+    const requestBody = route.request().postDataJSON() as {
+      images: Array<{ dataUrl: string }>
+    }
+    expect(requestBody.images).toEqual([
+      { dataUrl: 'data:image/png;base64,aW1hZ2U=' },
+      { dataUrl: 'data:image/jpeg;base64,aW1hZ2U=' },
+    ])
     await route.fulfill({
-      body: [
-        'event: validation_error',
-        `data: ${JSON.stringify({
-          issues: [
-            {
-              code: 'invalid_json',
-              message: 'Modellens svar var inte giltig JSON.',
-              path: '$',
-            },
-          ],
-          message: 'Genererad JSON matchade inte importens schema.',
-          rawContent: '{"requirements":',
-        })}`,
-        '',
-        '',
-      ].join('\n'),
-      contentType: 'text/event-stream',
+      ...jsonResponse({
+        error: 'Invalid request',
+        issues: [
+          {
+            code: 'custom',
+            message: 'Varje uppladdad bild måste vara unik.',
+            path: 'images.1.dataUrl',
+          },
+        ],
+      }),
+      status: 400,
     })
   })
 
@@ -505,6 +529,24 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
       dialog.getByText('Den genererade JSON:en reparerades.'),
     ).toHaveAttribute('role', 'status')
     await expect(resultsHeading).toBeFocused()
+  })
+
+  await test.step('decoded duplicate image rejection', async () => {
+    await dialog.locator('input[type="file"]').setInputFiles({
+      buffer: Buffer.from('image'),
+      mimeType: 'image/jpeg',
+      name: 'duplicate-diagram.jpg',
+    })
+    await expect(dialog.getByText('duplicate-diagram.jpg')).toBeVisible()
+
+    await generateButton.click()
+
+    await expect(dialog.getByRole('alert')).toContainText(
+      'Varje uppladdad bild måste vara unik.',
+    )
+    await expect(generationFailure).toBeFocused()
+    await expect(dialog.getByText('diagram.png')).toBeVisible()
+    await expect(dialog.getByText('duplicate-diagram.jpg')).toBeVisible()
   })
 })
 

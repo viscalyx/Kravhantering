@@ -190,6 +190,28 @@ interface SchemaIssue {
   path: string
 }
 
+async function readGenerationResponseMessage(
+  response: Response,
+): Promise<string | null> {
+  const contentType =
+    response.headers?.get?.('content-type')?.toLowerCase() ?? ''
+  if (!contentType.includes('application/json')) {
+    return readResponseMessage(response)
+  }
+
+  const fallbackResponse = response.clone()
+  const body = (await response.json().catch(() => null)) as {
+    issues?: Array<{ message?: unknown }>
+  } | null
+  const issueMessage = body?.issues?.find(
+    issue =>
+      typeof issue.message === 'string' && issue.message.trim().length > 0,
+  )?.message
+  return typeof issueMessage === 'string'
+    ? issueMessage.trim()
+    : readResponseMessage(fallbackResponse)
+}
+
 interface AttachedImage {
   dataUrl: string
   id: string
@@ -1412,7 +1434,7 @@ export default function AiRequirementGenerator({
       })
       if (!response.ok || !response.body) {
         throw new Error(
-          (await readResponseMessage(response)) ?? t('createError'),
+          (await readGenerationResponseMessage(response)) ?? t('createError'),
         )
       }
 

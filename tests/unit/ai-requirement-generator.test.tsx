@@ -2698,6 +2698,39 @@ describe('AiRequirementGenerator', () => {
     await waitFor(() => expect(errorSummary).toHaveFocus())
   })
 
+  it('announces the localized request-validation issue returned before streaming', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.startsWith('/api/ai/models')) return modelResponse()
+      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/generate-requirement-import') {
+        return Response.json(
+          {
+            error: 'Invalid request',
+            issues: [
+              {
+                code: 'custom',
+                message: 'Each uploaded image must be unique.',
+                path: 'images.1.dataUrl',
+              },
+            ],
+          },
+          { status: 400 },
+        )
+      }
+      return Response.json({})
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Grade access')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Each uploaded image must be unique.',
+    )
+  })
+
   it.each([
     ['import_content_bytes_exceeded', 'generatedImportContentLimitExceeded'],
     ['import_json_depth_cap_exceeded', 'generatedImportJsonDepthLimitExceeded'],
