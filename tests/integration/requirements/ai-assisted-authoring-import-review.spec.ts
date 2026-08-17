@@ -539,7 +539,9 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     })
     await expect(dialog.getByText('duplicate-diagram.jpg')).toBeVisible()
 
-    await generateButton.click()
+    await dialog
+      .getByRole('button', { name: 'Skapa nya kravkandidater' })
+      .click()
 
     await expect(dialog.getByRole('alert')).toContainText(
       'Varje uppladdad bild måste vara unik.',
