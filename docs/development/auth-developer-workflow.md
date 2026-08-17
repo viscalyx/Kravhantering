@@ -36,7 +36,7 @@ written only to sanitized server logs.
 
 <!-- cSpell:ignore socat -->
 
-Both setups use the same Keycloak image (`quay.io/keycloak/keycloak:26.7.0-1`)
+Both setups use the same Keycloak image (`quay.io/keycloak/keycloak:26.7.1-0`)
 and import the realm config from `dev/keycloak/realm-kravhantering-dev.json`
 on every start. The JSON file is the source of truth — changes made via
 the admin UI on `http://localhost:8080` are NOT persisted across restarts.

@@ -28,7 +28,7 @@ jobs:
       HSA_DIRECTORY_MOCK_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-directory-mock.oci.tar
       HSA_PERSON_LOOKUP_ADAPTER_IMAGE: localhost/kravhantering/hsa-person-lookup-adapter
       HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-person-lookup-adapter.oci.tar
-      KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.0-1
+      KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.1-0
       KONG_IMAGE_REF: docker.io/kong/kong-gateway:3.15.0.2-20260721-ubuntu
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       NGINX_IMAGE_REF: docker.io/library/nginx:1.31.3-alpine

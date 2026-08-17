@@ -72,7 +72,7 @@ binary with exit 126 and `Operation not permitted`. Adding only
 `CapEff=0`, `NoNewPrivs=1`, and no other bounding capability for both
 `sqlservr` processes. SQL Server does not publish port 1433 to the host.
 
-The pinned `quay.io/keycloak/keycloak:26.7.0-1` image augments Quarkus during
+The pinned `quay.io/keycloak/keycloak:26.7.1-0` image augments Quarkus during
 stock-image startup. A read-only root without an exception fails while
 replacing `/opt/keycloak/lib/quarkus/transformed-bytecode.jar`. That image
 directory is about 5 MiB. The 64 MiB tmpfs relies on Podman's default
@@ -93,7 +93,7 @@ tag alone.
 | Service | Tag | Manifest digest |
 | --- | --- | --- |
 | SQL Server | `mcr.microsoft.com/mssql/server:2025-CU7-ubuntu-24.04` | `sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a` |
-| Keycloak | `quay.io/keycloak/keycloak:26.7.0-1` | `sha256:26939e1318d6f008fc2ee6e10cec1cf8f1ba8a21846c1bc81b91ed0506bc2a7a` |
+| Keycloak | `quay.io/keycloak/keycloak:26.7.1-0` | `sha256:7523ccfbd950f59783504cdf5a0138dae48746dfe36075bbfccdb5a9ee245ee2` |
 <!-- markdownlint-enable MD013 -->
 
 Repeat the failure/success probes whenever either digest changes. Microsoft

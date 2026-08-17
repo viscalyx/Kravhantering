@@ -5,7 +5,7 @@ After=krav-support-network.service
 
 [Container]
 ContainerName=idp
-Image=quay.io/keycloak/keycloak:26.7.0-1
+Image=quay.io/keycloak/keycloak:26.7.1-0
 Network=krav-support.network
 PublishPort=127.0.0.1:8080:8080
 Volume=/workspace/dev/keycloak:/opt/keycloak/data/import:ro
