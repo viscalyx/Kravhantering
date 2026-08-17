@@ -832,6 +832,11 @@ down.
 
 ## Requirement Selection Question Stewardship
 
+- The server marks each question with whether the current actor may manage its
+  stored requirement area. Requirement-area owners, co-authors and `Admin` see
+  the applicable create, edit, reorder, visibility, answer and lifecycle
+  controls. Other users keep the read-only question, hierarchy and requirement
+  preview surfaces, but are not offered mutation controls.
 - The stewardship route loads only the selected workspace's client code.
   Direct query links, remembered selection, workspace switching, and browser
   back/forward navigation resolve the selected workspace before rendering, so

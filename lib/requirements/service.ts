@@ -41,6 +41,10 @@ import {
   createRequirementsLogger,
   type RequirementsLogger,
 } from '@/lib/requirements/logging'
+import type {
+  RequirementApplicationMutationInput,
+  RequirementApplicationMutationOutput,
+} from '@/lib/requirements/requirement-application-mutations'
 import { recordSensitiveMutationSucceeded } from '@/lib/requirements/security-audit'
 import {
   createNeedsReferenceWorkflow,
@@ -502,6 +506,10 @@ export interface RequirementsService {
       responseFormat?: ResponseFormat
     },
   ): Promise<ManageSuggestionOutput>
+  mutateRequirementApplications(
+    context: RequestContext,
+    input: RequirementApplicationMutationInput,
+  ): Promise<RequirementApplicationMutationOutput>
   previewLibraryImport(
     context: RequestContext,
     input: {

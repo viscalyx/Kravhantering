@@ -58,6 +58,7 @@ import SpecificationLocalRequirementForm, {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useDiscardChangesConfirmation } from '@/hooks/useDiscardChangesConfirmation'
 import { useModalFocus } from '@/hooks/useModalFocus'
+import { useRequirementDetailPrefetchIntent } from '@/hooks/useRequirementDetailPrefetchIntent'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { createDirtySnapshot } from '@/lib/forms/dirty-state'
@@ -71,6 +72,13 @@ import {
   type SpecificationCsvProfile,
   type SpecificationReportProfile,
 } from '@/lib/reports/specification-profiles'
+import {
+  createLibraryRequirementDetailCache,
+  createSpecificationLocalRequirementDetailCache,
+  type DetailPrefetchIntentTarget,
+  type DetailPrefetchTarget,
+  type RequirementDetailPrefetchContext,
+} from '@/lib/requirements/detail-prefetch'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -135,6 +143,21 @@ const SPECIFICATION_ITEM_MATCH_PROBE_CHUNK_SIZE = 100
 const SPECIFICATION_ITEMS_PAGE_SIZE = 50
 const SPECIFICATION_NEEDS_REFERENCE_USAGE_PAGE_SIZE = 100
 const SPECIFICATION_REQUIREMENT_PACKAGES_PAGE_SIZE = 50
+const SPECIFICATION_LEFT_LIBRARY_DETAIL_CONTEXT: RequirementDetailPrefetchContext =
+  {
+    resource: 'library-requirement',
+    surface: 'specification-left',
+  }
+const SPECIFICATION_LEFT_LOCAL_DETAIL_CONTEXT: RequirementDetailPrefetchContext =
+  {
+    resource: 'specification-local-requirement',
+    surface: 'specification-left',
+  }
+const SPECIFICATION_RIGHT_LIBRARY_DETAIL_CONTEXT: RequirementDetailPrefetchContext =
+  {
+    resource: 'library-requirement',
+    surface: 'specification-right',
+  }
 
 const useClientLayoutEffect =
   typeof window === 'undefined' ? useEffect : useLayoutEffect
@@ -535,6 +558,23 @@ export default function KravunderlagDetailClient({
   const confirmDiscardChanges = useDiscardChangesConfirmation()
   const searchParams = useSearchParams()
   const shouldReduceMotion = useReducedMotion()
+  const libraryDetailCache = useMemo(createLibraryRequirementDetailCache, [])
+  const localDetailCache = useMemo(
+    createSpecificationLocalRequirementDetailCache,
+    [],
+  )
+  const {
+    activate: activateDetailIntent,
+    cancel: cancelDetailIntent,
+    schedule: scheduleDetailIntent,
+  } = useRequirementDetailPrefetchIntent()
+  useEffect(
+    () => () => {
+      libraryDetailCache.dispose()
+      localDetailCache.dispose()
+    },
+    [libraryDetailCache, localDetailCache],
+  )
   const preFilterAreaId = searchParams.get('areaId')
     ? Number(searchParams.get('areaId'))
     : null
@@ -573,6 +613,92 @@ export default function KravunderlagDetailClient({
     useState<string | null>(null)
   const [availableRows, setAvailableRows] = useState<RequirementRow[]>(
     initialData.availableRequirements.rows,
+  )
+  const detailContext = useCallback(
+    (
+      row: RequirementRow,
+      surface: 'specification-left' | 'specification-right',
+    ): RequirementDetailPrefetchContext => ({
+      resource:
+        row.isSpecificationLocal && row.specificationLocalRequirementId != null
+          ? 'specification-local-requirement'
+          : 'library-requirement',
+      surface,
+    }),
+    [],
+  )
+  const detailTarget = useCallback(
+    (
+      row: RequirementRow,
+      surface: 'specification-left' | 'specification-right',
+    ): DetailPrefetchTarget => ({
+      ...detailContext(row, surface),
+      key:
+        row.isSpecificationLocal && row.specificationLocalRequirementId != null
+          ? `${specificationId}:${row.specificationLocalRequirementId}`
+          : String(row.id),
+    }),
+    [detailContext, specificationId],
+  )
+  const detailIntentTarget = useCallback(
+    (
+      row: RequirementRow,
+      surface: 'specification-left' | 'specification-right',
+      trigger: DetailPrefetchIntentTarget['trigger'],
+    ): DetailPrefetchIntentTarget => ({
+      ...detailTarget(row, surface),
+      trigger,
+    }),
+    [detailTarget],
+  )
+  const prefetchRowDetail = useCallback(
+    (
+      row: RequirementRow,
+      surface: 'specification-left' | 'specification-right',
+      trigger: DetailPrefetchIntentTarget['trigger'],
+    ) => {
+      const context = { ...detailContext(row, surface), trigger }
+      if (
+        row.isSpecificationLocal &&
+        row.specificationLocalRequirementId != null
+      ) {
+        void localDetailCache
+          .load(
+            {
+              localRequirementId: row.specificationLocalRequirementId,
+              specificationId,
+            },
+            'prefetch',
+            context,
+          )
+          .catch(() => undefined)
+        return
+      }
+      void libraryDetailCache
+        .load(row.id, 'prefetch', context)
+        .catch(() => undefined)
+    },
+    [detailContext, libraryDetailCache, localDetailCache, specificationId],
+  )
+  const invalidateItemDetail = useCallback(
+    (item: RequirementRow) => {
+      const context = detailContext(item, 'specification-left')
+      if (
+        item.isSpecificationLocal &&
+        item.specificationLocalRequirementId != null
+      ) {
+        localDetailCache.invalidate(
+          {
+            localRequirementId: item.specificationLocalRequirementId,
+            specificationId,
+          },
+          context,
+        )
+        return
+      }
+      libraryDetailCache.invalidate(item.id, context)
+    },
+    [detailContext, libraryDetailCache, localDetailCache, specificationId],
   )
   const [areas] = useState<AreaOption[]>(initialData.areas)
   const [requirementPackages] = useState<RequirementPackageOption[]>(
@@ -1922,6 +2048,12 @@ export default function KravunderlagDetailClient({
         setAddModalError(data.error ?? tc('error'))
         return
       }
+      for (const requirementId of pendingAddIds) {
+        libraryDetailCache.invalidate(requirementId, {
+          resource: 'library-requirement',
+          surface: 'specification-right',
+        })
+      }
       const hasActiveLeftFilters = hasSpecificationListFilters(leftFilters)
       const [, , , matchingAddedRequirementIds] = await Promise.all([
         fetchSpecificationItems({ throwOnError: true }),
@@ -1958,6 +2090,7 @@ export default function KravunderlagDetailClient({
     fetchMatchingSpecificationRequirementIds,
     fetchSpecificationItems,
     leftFilters,
+    libraryDetailCache,
     needsReferencesResource,
     specificationId,
     pendingAddIds,
@@ -2046,6 +2179,7 @@ export default function KravunderlagDetailClient({
         return
       }
 
+      localDetailCache.clear()
       setNeedsReferenceForm(null)
       await Promise.all([
         fetchNeedsReferences({ throwOnError: true }),
@@ -2063,6 +2197,7 @@ export default function KravunderlagDetailClient({
     fetchSpecificationItems,
     needsReferenceForm,
     needsReferenceFormDirty,
+    localDetailCache,
     specificationId,
     tc,
   ])
@@ -2100,12 +2235,13 @@ export default function KravunderlagDetailClient({
         return
       }
 
+      localDetailCache.clear()
       setExpandedNeedsReferenceId(current =>
         current === needsReference.id ? null : current,
       )
       await fetchNeedsReferences({ throwOnError: true })
     },
-    [confirm, fetchNeedsReferences, specificationId, t, tc],
+    [confirm, fetchNeedsReferences, localDetailCache, specificationId, t, tc],
   )
 
   const handleNeedsReferenceAssignment = useCallback(
@@ -2151,6 +2287,7 @@ export default function KravunderlagDetailClient({
           restoreOriginalItem()
           return
         }
+        if (originalItem) invalidateItemDetail(originalItem)
         await Promise.all([fetchSpecificationItems(), fetchNeedsReferences()])
       } catch {
         restoreOriginalItem()
@@ -2160,6 +2297,7 @@ export default function KravunderlagDetailClient({
       availableNeedsRefs,
       fetchNeedsReferences,
       fetchSpecificationItems,
+      invalidateItemDetail,
       specificationItems,
       specificationId,
     ],
@@ -2286,6 +2424,11 @@ export default function KravunderlagDetailClient({
             .filter(item => item.needsReferenceId !== needsReferenceId)
             .map(item => item.itemRef as string),
         )
+        for (const item of items) {
+          if (successfulRefs.has(item.itemRef as string)) {
+            invalidateItemDetail(item)
+          }
+        }
 
         setLeftSelectedItemRefs(current => {
           const next = new Set(current)
@@ -2308,6 +2451,7 @@ export default function KravunderlagDetailClient({
     [
       fetchNeedsReferences,
       fetchSpecificationItems,
+      invalidateItemDetail,
       resolveItemRefs,
       specificationId,
       tc,
@@ -2385,6 +2529,7 @@ export default function KravunderlagDetailClient({
             await fetchSpecificationItems()
           }
         } else {
+          if (originalItem) invalidateItemDetail(originalItem)
           await fetchSpecificationItems()
         }
       } catch {
@@ -2402,6 +2547,7 @@ export default function KravunderlagDetailClient({
       specificationItemStatuses,
       specificationItems,
       fetchSpecificationItems,
+      invalidateItemDetail,
     ],
   )
 
@@ -2508,6 +2654,11 @@ export default function KravunderlagDetailClient({
         const removedRefs = new Set(
           itemRefs.filter(itemRef => !remainingRefs.has(itemRef)),
         )
+        for (const item of items) {
+          if (removedRefs.has(item.itemRef as string)) {
+            invalidateItemDetail(item)
+          }
+        }
         setLeftSelectedItemRefs(current => {
           const next = new Set(current)
           for (const itemRef of removedRefs) next.delete(itemRef)
@@ -2542,6 +2693,7 @@ export default function KravunderlagDetailClient({
       fetchAvailableRequirements,
       fetchNeedsReferences,
       fetchSpecificationItems,
+      invalidateItemDetail,
       resolveItemRefs,
       specificationId,
       t,
@@ -4042,6 +4194,28 @@ export default function KravunderlagDetailClient({
                         ? handleNeedsReferenceAssignment
                         : undefined
                     }
+                    onRowActivate={row => {
+                      if (leftExpandedId === row.id) {
+                        cancelDetailIntent(
+                          detailIntentTarget(
+                            row,
+                            'specification-left',
+                            'pointer',
+                          ),
+                        )
+                        cancelDetailIntent(
+                          detailIntentTarget(
+                            row,
+                            'specification-left',
+                            'focus',
+                          ),
+                        )
+                        return
+                      }
+                      activateDetailIntent(
+                        detailTarget(row, 'specification-left'),
+                      )
+                    }}
                     onRowClick={id => {
                       const itemRef =
                         specificationItems.find(item => item.id === id)
@@ -4050,6 +4224,22 @@ export default function KravunderlagDetailClient({
                         current === itemRef ? null : itemRef,
                       )
                     }}
+                    onRowIntentEnd={(row, trigger) =>
+                      cancelDetailIntent(
+                        detailIntentTarget(row, 'specification-left', trigger),
+                      )
+                    }
+                    onRowIntentStart={(row, trigger) =>
+                      scheduleDetailIntent(
+                        detailIntentTarget(row, 'specification-left', trigger),
+                        scheduledTarget =>
+                          prefetchRowDetail(
+                            row,
+                            'specification-left',
+                            scheduledTarget.trigger,
+                          ),
+                      )
+                    }
                     onSelectionChange={handleLeftSelectionChange}
                     onSortChange={setLeftSort}
                     onSpecificationItemStatusChange={
@@ -4065,6 +4255,10 @@ export default function KravunderlagDetailClient({
                           {item?.isSpecificationLocal &&
                           item.specificationLocalRequirementId != null ? (
                             <SpecificationLocalRequirementDetailClient
+                              detailCache={localDetailCache}
+                              detailPrefetchContext={
+                                SPECIFICATION_LEFT_LOCAL_DETAIL_CONTEXT
+                              }
                               localRequirementId={
                                 item.specificationLocalRequirementId
                               }
@@ -4096,6 +4290,10 @@ export default function KravunderlagDetailClient({
                             />
                           ) : item?.specificationItemId != null ? (
                             <RequirementDetailClient
+                              detailCache={libraryDetailCache}
+                              detailPrefetchContext={
+                                SPECIFICATION_LEFT_LIBRARY_DETAIL_CONTEXT
+                              }
                               inline
                               onChange={async () => {
                                 await fetchSpecificationItems()
@@ -4122,6 +4320,10 @@ export default function KravunderlagDetailClient({
                             />
                           ) : (
                             <RequirementDetailClient
+                              detailCache={libraryDetailCache}
+                              detailPrefetchContext={
+                                SPECIFICATION_LEFT_LIBRARY_DETAIL_CONTEXT
+                              }
                               inline
                               onChange={async () => {
                                 await fetchSpecificationItems()
@@ -4448,14 +4650,67 @@ export default function KravunderlagDetailClient({
                         setRightFilters(rest)
                       }}
                       onLoadMore={loadMoreAvailable}
+                      onRowActivate={row => {
+                        if (rightExpandedId === row.id) {
+                          cancelDetailIntent(
+                            detailIntentTarget(
+                              row,
+                              'specification-right',
+                              'pointer',
+                            ),
+                          )
+                          cancelDetailIntent(
+                            detailIntentTarget(
+                              row,
+                              'specification-right',
+                              'focus',
+                            ),
+                          )
+                          return
+                        }
+                        activateDetailIntent(
+                          detailTarget(row, 'specification-right'),
+                        )
+                      }}
                       onRowClick={id =>
                         setRightExpandedId(prev => (prev === id ? null : id))
+                      }
+                      onRowIntentEnd={(row, trigger) =>
+                        cancelDetailIntent(
+                          detailIntentTarget(
+                            row,
+                            'specification-right',
+                            trigger,
+                          ),
+                        )
+                      }
+                      onRowIntentStart={(row, trigger) =>
+                        scheduleDetailIntent(
+                          detailIntentTarget(
+                            row,
+                            'specification-right',
+                            trigger,
+                          ),
+                          scheduledTarget =>
+                            prefetchRowDetail(
+                              row,
+                              'specification-right',
+                              scheduledTarget.trigger,
+                            ),
+                        )
                       }
                       onSelectionChange={setRightSelectedIds}
                       onSortChange={setRightSort}
                       onVisibleColumnsChange={setRightVisibleCols}
                       renderExpanded={id => (
-                        <RequirementDetailClient inline requirementId={id} />
+                        <RequirementDetailClient
+                          detailCache={libraryDetailCache}
+                          detailPrefetchContext={
+                            SPECIFICATION_RIGHT_LIBRARY_DETAIL_CONTEXT
+                          }
+                          inline
+                          requirementId={id}
+                        />
                       )}
                       requirementPackageCatalogStatus={
                         rightRequirementPackageCatalogStatus

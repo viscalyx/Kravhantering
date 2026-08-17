@@ -915,6 +915,17 @@ export async function getSpecificationById(db: SqlServerDatabase, id: number) {
   return mapSpecificationRow(rows[0])
 }
 
+export async function findSpecificationIdentity(
+  db: SqlExecutor,
+  specificationId: number,
+): Promise<{ id: number } | null> {
+  const rows = (await db.query(
+    `SELECT TOP (1) id FROM requirements_specifications WHERE id = @0`,
+    [specificationId],
+  )) as Array<{ id: number }>
+  return rows[0] ? { id: Number(rows[0].id) } : null
+}
+
 export async function getSpecificationByCode(
   db: SqlServerDatabase,
   specificationCode: string,
@@ -3036,7 +3047,7 @@ export async function linkRequirementsToSpecificationAtomically(
 }
 
 export async function unlinkRequirementsFromSpecification(
-  db: SqlServerDatabase,
+  db: SqlExecutor,
   specificationId: number,
   requirementIds: number[],
 ): Promise<number> {
@@ -3095,6 +3106,26 @@ export async function getSpecificationItemById(
     statusUpdatedAt: toIso(row.statusUpdatedAt),
     createdAt: toIso(row.createdAt) ?? '',
   }
+}
+
+export async function getSpecificationLocalRequirementParentById(
+  db: SqlExecutor,
+  specificationLocalRequirementId: number,
+): Promise<{ id: number; specificationId: number } | null> {
+  const rows = (await db.query(
+    `
+      SELECT TOP (1)
+        id AS id,
+        specification_id AS specificationId
+      FROM specification_local_requirements
+      WHERE id = @0
+    `,
+    [specificationLocalRequirementId],
+  )) as Row[]
+  const row = rows[0]
+  return row
+    ? { id: Number(row.id), specificationId: Number(row.specificationId) }
+    : null
 }
 
 export async function getSpecificationItemByRef(
@@ -3205,7 +3236,7 @@ async function validateSpecificationItemStatus(
   }
 }
 
-type SpecificationItemFieldUpdate = {
+export type SpecificationItemFieldUpdate = {
   needsReferenceId?: number | null
   note?: string | null
   specificationItemStatusId?: number
@@ -3215,7 +3246,7 @@ export async function updateSpecificationItemFields(
   db: SqlExecutor,
   itemId: number,
   data: SpecificationItemFieldUpdate,
-): Promise<void> {
+): Promise<number> {
   const setClauses: string[] = []
   const params: unknown[] = []
   let nextStatusId: number | null | undefined
@@ -3245,7 +3276,7 @@ export async function updateSpecificationItemFields(
     params.push(data.needsReferenceId ?? null)
   }
 
-  if (setClauses.length === 0) return
+  if (setClauses.length === 0) return 0
 
   if (nextStatusId === DEVIATED_SPECIFICATION_ITEM_STATUS_ID) {
     const approvedDeviationRows = (await db.query(
@@ -3268,21 +3299,23 @@ export async function updateSpecificationItemFields(
   const idPlaceholder = `@${params.length}`
   params.push(itemId)
 
-  await db.query(
+  const rows = (await db.query(
     `
       UPDATE requirements_specification_items
       SET ${setClauses.join(', ')}
+      OUTPUT INSERTED.id AS id
       WHERE id = ${idPlaceholder}
     `,
     params,
-  )
+  )) as Array<{ id: number }>
+  return rows.length
 }
 
 export async function updateSpecificationLocalRequirementFields(
   db: SqlExecutor,
   specificationLocalRequirementId: number,
   data: SpecificationItemFieldUpdate,
-): Promise<void> {
+): Promise<number> {
   const setClauses: string[] = []
   const params: unknown[] = []
   let nextStatusId: number | null | undefined
@@ -3312,7 +3345,7 @@ export async function updateSpecificationLocalRequirementFields(
     params.push(data.needsReferenceId ?? null)
   }
 
-  if (setClauses.length === 0) return
+  if (setClauses.length === 0) return 0
 
   if (nextStatusId === DEVIATED_SPECIFICATION_ITEM_STATUS_ID) {
     const approvedDeviationRows = (await db.query(
@@ -3336,82 +3369,19 @@ export async function updateSpecificationLocalRequirementFields(
   const idPlaceholder = `@${params.length}`
   params.push(specificationLocalRequirementId)
 
-  await db.query(
+  const rows = (await db.query(
     `
       UPDATE specification_local_requirements
       SET ${setClauses.join(', ')}
+      OUTPUT INSERTED.id AS id
       WHERE id = ${idPlaceholder}
     `,
     params,
-  )
+  )) as Array<{ id: number }>
+  return rows.length
 }
 
-export async function updateSpecificationItemFieldsByItemRef(
-  db: SqlExecutor,
-  specificationId: number,
-  itemRef: string,
-  data: SpecificationItemFieldUpdate,
-) {
-  const item = await getSpecificationItemByRef(db, specificationId, itemRef)
-  if (!item) {
-    throw notFoundError('Item not found in specification', {
-      itemRef,
-      specificationId,
-    })
-  }
-
-  const normalizedData = { ...data }
-  if ('needsReferenceId' in normalizedData) {
-    const needsReferenceId = normalizeOptionalForeignKeyId(
-      normalizedData.needsReferenceId,
-    )
-    if (needsReferenceId != null) {
-      await resolveExistingSpecificationNeedsReferenceForLinking(
-        db,
-        specificationId,
-        needsReferenceId,
-      )
-    }
-    normalizedData.needsReferenceId = needsReferenceId
-  }
-
-  if (item.kind === 'library') {
-    await updateSpecificationItemFields(db, item.id, normalizedData)
-    return
-  }
-
-  await updateSpecificationLocalRequirementFields(db, item.id, normalizedData)
-}
-
-export async function updateSpecificationItemFieldsByItemRefs(
-  db: SqlServerDatabase,
-  specificationId: number,
-  itemRefs: string[],
-  data: SpecificationItemFieldUpdate,
-): Promise<number> {
-  if (itemRefs.length === 0) {
-    return 0
-  }
-
-  let updatedCount = 0
-  await db.transaction(async manager => {
-    for (const itemRef of itemRefs) {
-      await updateSpecificationItemFieldsByItemRef(
-        manager,
-        specificationId,
-        itemRef,
-        data,
-      )
-      updatedCount += 1
-    }
-  })
-
-  return updatedCount
-}
-
-// ─── Bulk delete by refs ─────────────────────────────────────────────────────
-
-async function deleteLibrarySpecificationItemsByIds(
+export async function deleteLibrarySpecificationItemsByIds(
   db: SqlExecutor,
   specificationId: number,
   libraryIds: number[],
@@ -3429,7 +3399,7 @@ async function deleteLibrarySpecificationItemsByIds(
   return rows.length
 }
 
-async function deleteSpecificationLocalRequirementsByIds(
+export async function deleteSpecificationLocalRequirementsByIds(
   db: SqlExecutor,
   specificationId: number,
   specificationLocalRequirementIds: number[],
@@ -3447,59 +3417,4 @@ async function deleteSpecificationLocalRequirementsByIds(
     [specificationId, ...specificationLocalRequirementIds],
   )) as Array<{ id: number }>
   return rows.length
-}
-
-export async function deleteSpecificationItemsByRefs(
-  db: SqlServerDatabase,
-  specificationId: number,
-  itemRefs: string[],
-) {
-  const libraryIds: number[] = []
-  const specificationLocalRequirementIds: number[] = []
-
-  for (const itemRef of itemRefs) {
-    const parsed = parseSpecificationItemRef(itemRef)
-    if (!parsed) {
-      throw validationError('Invalid itemRef', { itemRef })
-    }
-
-    if (parsed.kind === 'library') {
-      libraryIds.push(parsed.id)
-    } else {
-      specificationLocalRequirementIds.push(parsed.id)
-    }
-  }
-
-  if (
-    libraryIds.length === 0 ||
-    specificationLocalRequirementIds.length === 0
-  ) {
-    const deletedLibraryCount = await deleteLibrarySpecificationItemsByIds(
-      db,
-      specificationId,
-      libraryIds,
-    )
-    const deletedSpecificationLocalCount =
-      await deleteSpecificationLocalRequirementsByIds(
-        db,
-        specificationId,
-        specificationLocalRequirementIds,
-      )
-    return { deletedLibraryCount, deletedSpecificationLocalCount }
-  }
-
-  return db.transaction(async (manager: SqlExecutor) => {
-    const deletedLibraryCount = await deleteLibrarySpecificationItemsByIds(
-      manager,
-      specificationId,
-      libraryIds,
-    )
-    const deletedSpecificationLocalCount =
-      await deleteSpecificationLocalRequirementsByIds(
-        manager,
-        specificationId,
-        specificationLocalRequirementIds,
-      )
-    return { deletedLibraryCount, deletedSpecificationLocalCount }
-  })
 }

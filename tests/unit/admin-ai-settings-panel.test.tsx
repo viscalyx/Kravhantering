@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AiSettingsPanel from '@/app/[locale]/admin/panels/settings/ai-settings-panel'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import { deferred } from '@/lib/__tests__/deferred'
 import { DEFAULT_ADMIN_AI_SETTINGS } from '@/lib/ai/generation-availability'
 import {
   clickAdminConfirmationAction,
@@ -312,6 +313,54 @@ describe('AiSettingsPanel', () => {
         .getAllByRole('status')
         .some(status => status.textContent === 'admin.saved'),
     ).toBe(true)
+  })
+
+  it('preserves an edited quota while a sibling quota save settles', async () => {
+    const patchResponse = deferred<Response>()
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method ?? 'GET'
+        if (url === '/api/admin/ai-settings' && method === 'GET') {
+          return Promise.resolve(
+            okJson({
+              mcpImportMaxActiveSessionsPerDestination: 100,
+              mcpImportMaxActiveSessionsPerPrincipal: 10,
+              mcpImportMaxCreationsPerWindow: 20,
+              mcpImportMaxReservedBytes: 512 * 1024 * 1024,
+            }),
+          )
+        }
+        if (url === '/api/admin/ai-safety-rules' && method === 'GET') {
+          return Promise.resolve(okJson(safetyRulesResponse()))
+        }
+        if (url === '/api/admin/ai-settings' && method === 'PATCH') {
+          return patchResponse.promise
+        }
+        return Promise.reject(new Error(`Unexpected fetch ${method} ${url}`))
+      },
+    )
+
+    renderAdminPanel(<AiSettingsPanel />, { confirmModal: true })
+
+    const principal = await screen.findByLabelText(
+      'admin.ai.mcpImportMaxActiveSessionsPerPrincipal',
+    )
+    await waitFor(() => expect(principal).toBeEnabled())
+    fireEvent.change(principal, { target: { value: '11' } })
+    fireEvent.blur(principal)
+    await waitFor(() => expect(principal).toBeDisabled())
+
+    const creations = screen.getByLabelText(
+      'admin.ai.mcpImportMaxCreationsPerWindow',
+    )
+    fireEvent.change(creations, { target: { value: '21' } })
+    patchResponse.resolve(
+      okJson({ mcpImportMaxActiveSessionsPerPrincipal: 11 }),
+    )
+
+    await waitFor(() => expect(principal).toBeEnabled())
+    expect(creations).toHaveValue(21)
   })
 
   it('restores blank numeric drafts without saving', async () => {

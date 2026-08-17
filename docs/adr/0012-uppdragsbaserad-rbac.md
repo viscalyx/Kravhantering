@@ -45,10 +45,15 @@ kravunderlag returnerar `404`. Kravunderlagsansvarig och
 kravunderlagsmedförfattare får ändra kravunderlagets innehåll; bara
 kravunderlagsansvarig och `Admin` får ändra kravunderlagets uppdrag.
 
-Kravurvalsfrågor hör till kravområdet. Sparade kravurvalssvar hör till
-kravunderlaget. Förbättringsförslag kan skapas och ändras av inloggade
-användare, medan lösning eller beslut att avvisa kräver författare i
-kravområdet eller `Admin`. Egen lösning högriskloggas.
+Kravurvalsfrågor och deras förvaltade svar hör till kravområdet. Alla
+förvaltningsskrivningar använder frågans lagrade kravområde och kräver
+kravområdesägare, kravområdesmedförfattare eller `Admin`. Ett svar slås upp
+tillsammans med sin lagrade fråga innan ändringen, så ett anrop kan inte flytta
+behörighetskontrollen genom att ange en annan frågeidentifierare. Sparade
+kravurvalssvar i ett kravunderlag hör däremot till kravunderlaget.
+Förbättringsförslag kan skapas och ändras av inloggade användare, medan
+lösning eller beslut att avvisa kräver författare i kravområdet eller `Admin`.
+Egen lösning högriskloggas.
 
 AI-assisterat författande styrs av den generella autentiserings- och
 auktoriseringsgränsen och har ingen separat AI-behörighet i nuvarande modell.

@@ -1,40 +1,47 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mockDb = {}
-const mockAuthorization = {}
-const mockContext = {
-  actor: {
-    displayName: 'Route Tester',
-    hsaId: 'SE5560000001-route',
-    id: 'route-test',
-    isAuthenticated: true,
-    roles: ['RequirementsEditor'],
-    source: 'oidc',
+const { mockAuthorization, mockContext, mockDb, mocks } = vi.hoisted(() => ({
+  mockAuthorization: {},
+  mockContext: {
+    actor: {
+      displayName: 'Route Tester',
+      hsaId: 'SE5560000001-route',
+      id: 'route-test',
+      isAuthenticated: true,
+      roles: ['RequirementsEditor'],
+      source: 'oidc',
+    },
+    correlationId: 'correlation-1',
+    requestId: 'request-1',
+    source: 'rest',
   },
-  correlationId: 'correlation-1',
-  requestId: 'request-1',
-  source: 'rest',
-}
-
-const mocks = {
-  authorize: vi.fn(),
-  getLibrarySpecificationItemMetadata: vi.fn(),
-  getSpecificationItemByRef: vi.fn(),
-  updateSpecificationItemFieldsByItemRef: vi.fn(),
-}
+  mockDb: {},
+  mocks: {
+    assertAuthorized: vi.fn(),
+    authorize: vi.fn(),
+    getLibrarySpecificationItemMetadata: vi.fn(),
+    mutateRequirementApplications: vi.fn(),
+    recordDeniedActionAuditEvent: vi.fn(),
+  },
+}))
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: () => mockDb,
 }))
 
+vi.mock('@/lib/audit/action-audit', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/audit/action-audit')>()
+  return {
+    ...actual,
+    recordDeniedActionAuditEvent: mocks.recordDeniedActionAuditEvent,
+  }
+})
+
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   getLibrarySpecificationItemMetadata: (...args: unknown[]) =>
     mocks.getLibrarySpecificationItemMetadata(...args),
-  getSpecificationItemByRef: (...args: unknown[]) =>
-    mocks.getSpecificationItemByRef(...args),
-  updateSpecificationItemFieldsByItemRef: (...args: unknown[]) =>
-    mocks.updateSpecificationItemFieldsByItemRef(...args),
 }))
 
 vi.mock('@/lib/requirements/auth', async importOriginal => {
@@ -42,7 +49,9 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
     await importOriginal<typeof import('@/lib/requirements/auth')>()
   return {
     ...actual,
-    createDefaultAuthorizationService: () => ({ assertAuthorized: vi.fn() }),
+    createDefaultAuthorizationService: () => ({
+      assertAuthorized: mocks.assertAuthorized,
+    }),
     createRequestContext: vi.fn(async () => mockContext),
   }
 })
@@ -52,6 +61,9 @@ vi.mock('@/lib/requirements/server', () => ({
     authorization: mockAuthorization,
     context: mockContext,
     db: mockDb,
+    service: {
+      mutateRequirementApplications: mocks.mutateRequirementApplications,
+    },
   })),
 }))
 
@@ -89,6 +101,10 @@ async function expectInvalidRequest(
 describe('requirements-specifications/[id]/items/[itemId] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.mutateRequirementApplications.mockResolvedValue({
+      operation: 'update',
+      updatedCount: 1,
+    })
   })
 
   it('returns specification-specific metadata for a library requirement item', async () => {
@@ -204,12 +220,6 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
   })
 
   it('updates usage status by item ref within the specification', async () => {
-    mocks.getSpecificationItemByRef.mockResolvedValue({
-      itemRef: 'lib:31',
-      specificationId: 7,
-      specificationItemId: 31,
-    })
-
     const request = new NextRequest(
       'http://localhost/api/requirements-specifications/7/items/lib%3A31',
       {
@@ -223,16 +233,23 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
-    expect(mocks.getSpecificationItemByRef).toHaveBeenCalledWith(
-      mockDb,
-      7,
-      'lib:31',
+    expect(mocks.assertAuthorized).toHaveBeenCalledWith(
+      {
+        itemRefs: ['lib:31'],
+        kind: 'manage_requirement_applications',
+        operation: 'update',
+        specificationId: 7,
+      },
+      mockContext,
     )
-    expect(mocks.updateSpecificationItemFieldsByItemRef).toHaveBeenCalledWith(
-      mockDb,
-      7,
-      'lib:31',
-      { specificationItemStatusId: 5 },
+    expect(mocks.mutateRequirementApplications).toHaveBeenCalledWith(
+      mockContext,
+      {
+        fields: { specificationItemStatusId: 5 },
+        itemRefs: ['lib:31'],
+        operation: 'update',
+        specificationId: 7,
+      },
     )
   })
 
@@ -252,19 +269,11 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
 
       expect(response.status).toBe(400)
       await expectInvalidRequest(response, 'specificationItemStatusId')
-      expect(
-        mocks.updateSpecificationItemFieldsByItemRef,
-      ).not.toHaveBeenCalled()
+      expect(mocks.mutateRequirementApplications).not.toHaveBeenCalled()
     },
   )
 
   it('allows note-only item updates without a status field', async () => {
-    mocks.getSpecificationItemByRef.mockResolvedValue({
-      itemRef: 'lib:31',
-      specificationId: 7,
-      specificationItemId: 31,
-    })
-
     const request = new NextRequest(
       'http://localhost/api/requirements-specifications/7/items/lib%3A31',
       {
@@ -277,12 +286,47 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     const response = await PATCH(request, makeParams('7', 'lib%3A31'))
 
     expect(response.status).toBe(200)
-    expect(mocks.updateSpecificationItemFieldsByItemRef).toHaveBeenCalledWith(
-      mockDb,
-      7,
-      'lib:31',
-      { note: 'Follow-up' },
+    expect(mocks.mutateRequirementApplications).toHaveBeenCalledWith(
+      mockContext,
+      {
+        fields: { note: 'Follow-up' },
+        itemRefs: ['lib:31'],
+        operation: 'update',
+        specificationId: 7,
+      },
     )
+  })
+
+  it('denies a field update before the route workflow starts', async () => {
+    mocks.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Specification author assignment is required', {
+        reason: 'specification_author_required',
+      }),
+    )
+
+    const response = await PATCH(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/7/items/lib%3A31',
+        {
+          body: JSON.stringify({ note: 'Denied change' }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        },
+      ),
+      makeParams('7', 'lib%3A31'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      mockDb,
+      mockContext,
+      expect.objectContaining({
+        action: 'requirements.authorization.denied',
+        denialReason: 'specification_author_required',
+        targetKind: 'requirements',
+      }),
+    )
+    expect(mocks.mutateRequirementApplications).not.toHaveBeenCalled()
   })
 
   it('rejects empty patch payloads before resolving the specification', async () => {
@@ -311,7 +355,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
         }),
       ]),
     )
-    expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
+    expect(mocks.mutateRequirementApplications).not.toHaveBeenCalled()
   })
 
   it('rejects malformed encoded item references', async () => {
@@ -328,11 +372,16 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: 'Invalid itemId' })
+    await expect(response.json()).resolves.toEqual({
+      code: 'validation',
+      error: 'Invalid itemId',
+    })
   })
 
   it('returns not found before or during an item update', async () => {
-    mocks.getSpecificationItemByRef.mockResolvedValueOnce(null)
+    mocks.assertAuthorized.mockRejectedValueOnce(
+      notFoundError('Item not found in specification'),
+    )
     const missing = await PATCH(
       new NextRequest(
         'http://localhost/api/requirements-specifications/7/items/lib%3A999',
@@ -344,12 +393,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
       ),
       makeParams('7', 'lib%3A999'),
     )
-    mocks.getSpecificationItemByRef.mockResolvedValueOnce({
-      itemRef: 'lib:31',
-      specificationId: 7,
-      specificationItemId: 31,
-    })
-    mocks.updateSpecificationItemFieldsByItemRef.mockRejectedValueOnce(
+    mocks.mutateRequirementApplications.mockRejectedValueOnce(
       notFoundError('Item disappeared'),
     )
     const disappeared = await PATCH(

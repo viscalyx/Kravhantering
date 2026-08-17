@@ -1,3 +1,4 @@
+import type { SqlServerDatabase } from '@/lib/db'
 import { redactSensitiveText } from '@/lib/http/safe-errors'
 import {
   type CapacityMetrics,
@@ -14,7 +15,10 @@ import {
   validationError,
 } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
-import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
+import {
+  recordAuthorizationDenied,
+  recordAuthorizationDeniedWithDatabase,
+} from '@/lib/requirements/security-audit'
 import type {
   ResponseFormat,
   ResponseLocale,
@@ -194,11 +198,16 @@ export async function authorize(
   authorization: AuthorizationService,
   action: RequirementsAction,
   context: RequestContext,
+  db?: SqlServerDatabase,
 ): Promise<void> {
   try {
     await authorization.assertAuthorized(action, context)
   } catch (error) {
-    await recordAuthorizationDenied(context, action, error)
+    if (db) {
+      await recordAuthorizationDeniedWithDatabase(db, context, action, error)
+    } else {
+      await recordAuthorizationDenied(context, action, error)
+    }
     throw error
   }
 }

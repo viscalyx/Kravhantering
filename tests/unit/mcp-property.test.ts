@@ -274,6 +274,10 @@ function createService() {
     queryCatalog: vi.fn(async () => ({
       result: [],
     })),
+    mutateRequirementApplications: vi.fn(async () => ({
+      operation: 'update' as const,
+      updatedCount: 0,
+    })),
     removeFromSpecification: vi.fn(async () => ({
       message: 'Requirements removed',
       removedCount: 1,

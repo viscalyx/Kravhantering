@@ -186,6 +186,10 @@ function createService() {
     manageNormReference: vi.fn(async () => ({ result: [] })),
     manageRequirement,
     manageSuggestion,
+    mutateRequirementApplications: vi.fn(async () => ({
+      operation: 'update' as const,
+      updatedCount: 0,
+    })),
     previewLibraryImport: vi.fn(async () => ({
       mode: 'library' as const,
       needsReferenceProposals: [],

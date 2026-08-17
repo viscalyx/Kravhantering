@@ -4,13 +4,13 @@ Status: Antagen 2026-05-31.
 
 Kravurvalsfrågor är kravområdesägt innehåll i kravbiblioteksförvaltningen, inte
 referensdata i Admin Center och inte ett nytt flöde för att lägga till krav.
-Målbilden för behörigheter är att kravområdesägare,
-kravområdesmedförfattare och användare med `Admin` underhåller frågorna, medan
-kravunderlagsansvariga och kravunderlagsmedförfattare besvarar dem i ett
-kravunderlag. Den första implementationen kräver medvetet bara autentisering
-för dessa nya skrivningar tills det uppdragsbaserade RBAC-arbetet finns på
-plats; det är en tillfällig implementationsbegränsning, inte domänens
-behörighetsmodell.
+Kravområdesägare, kravområdesmedförfattare och användare med `Admin`
+underhåller frågorna, medan kravunderlagsansvariga och
+kravunderlagsmedförfattare besvarar dem i ett kravunderlag. Alla skrivningar
+av frågor, svar, synlighetsvillkor, ordning och livscykel kontrolleras mot
+frågans lagrade kravområde. Vid skapande kontrolleras det begärda
+kravområdet. Ett kravurvalssvar måste dessutom tillhöra den angivna frågan
+innan en ändring får genomföras.
 
 Valda kravurvalssvar bevarar kravurvalssammanhanget för kravunderlaget och kan
 bilda ett kravurvalsfilter över den befintliga listan `Available

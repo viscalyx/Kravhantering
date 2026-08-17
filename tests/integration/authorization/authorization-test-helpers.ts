@@ -139,6 +139,8 @@ const MANUAL_CASE_LINKS = {
   'AUTHZ-09': 'docs/governance/manuella-testfall.md#authz-09-reviewer',
   'AUTHZ-10':
     'docs/governance/manuella-testfall.md#authz-10-dataskyddshandlaggare',
+  'AUTHZ-11':
+    'docs/governance/manuella-testfall.md#authz-11-skrivbehorighet-for-innehall-i-kravunderlag',
   'ADMIN-10':
     'docs/governance/manuella-testfall.md#admin-10-arkiveringsgallring-kraver-dataskyddsroll',
   'ADMIN-13':
@@ -169,6 +171,7 @@ export interface AuthorizationFixture {
   localRequirementId: number
   packageId: number
   packageName: string
+  publishedRequirementId: number
   publishedSuggestionId: number
   specificationCode: string
   specificationId: number
@@ -690,6 +693,7 @@ export async function createAuthorizationFixture(
       localRequirementId,
       packageId: requirementPackage.id,
       packageName,
+      publishedRequirementId: publishedRequirement.id,
       publishedSuggestionId: publishedSuggestion.id,
       specificationCode,
       specificationId: specification.id,

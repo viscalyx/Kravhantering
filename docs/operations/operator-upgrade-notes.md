@@ -271,6 +271,22 @@ sign-in after deployment.
 Before rollout, validate the responsibility assignments for requirements specifications and requirement areas. Direct reads of child resources now use the access rules of their parent resource.
 Tell API consumers and support staff that an existing child resource can now return `403` when the user cannot read its parent. A missing resource still returns `404`. Published requirement information remains readable according to the existing policy. Sensitive child responses are not cached. No configuration or data migration is required.
 <!-- operator-upgrade:source pr-1037 end -->
+
+<!-- operator-upgrade:source pr-1042 start -->
+Before rollout, inform requirement-area authors and Reviewers that they can no longer change requirement applications or saved requirement-selection answers unless they are also the responsible author or a co-author of the requirements specification. Administrators remain allowed.
+After rollout, verify that denied attempts return `403` and that the action log and security audit log receive denial evidence.
+<!-- operator-upgrade:source pr-1042 end -->
+
+<!-- operator-upgrade:source pr-1056 start -->
+Before the upgrade, verify that requirement-area owner and co-author assignments
+are current. After the upgrade, only these assigned authors and Administrators
+can create or change requirement-selection questions and answers. Other
+authenticated users have read-only access.
+Communicate this permission change to requirement-library maintainers. During
+rollout validation, confirm assigned-author access, the Administrator bypass,
+and authorization-denial audit evidence. No data migration or configuration
+change is required.
+<!-- operator-upgrade:source pr-1056 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade

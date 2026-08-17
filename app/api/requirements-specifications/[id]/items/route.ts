@@ -1,14 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  deleteSpecificationItemsByRefs,
-  getSpecificationById,
-  updateSpecificationItemFieldsByItemRefs,
-} from '@/lib/dal/requirements-specifications'
+import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
-  customMutationPolicy,
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
@@ -204,104 +199,75 @@ export const POST = secureMutationRoute({
 
 export const PATCH = secureMutationRoute({
   bodySchema: patchItemsSchema,
+  errorMessage: 'Failed to update requirement applications',
   paramsSchema: specificationParamSchema,
   policy: requirementsMutationPolicy<
     z.infer<typeof patchItemsSchema>,
     z.infer<typeof specificationParamSchema>
   >(({ body, params }) => ({
-    kind: 'manage_specification_needs_reference',
-    needsReferenceId: body.needsReferenceId ?? undefined,
-    operation: 'assign',
+    itemRefs: body.itemRefs,
+    kind: 'manage_requirement_applications',
+    operation: 'update',
     specificationId: params.id,
   })),
-  handler: async ({ body, params }) => {
-    const { id } = params
-    const db = await getRequestSqlServerDataSource()
-
-    const specification = await getSpecificationById(db, id)
-    if (!specification) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  handler: async ({ body, context, db, params, request }) => {
+    const { service } = await createRequirementsRestRuntime(request, {
+      context,
+      db,
+    })
+    const outcome = await service.mutateRequirementApplications(context, {
+      fields: { needsReferenceId: body.needsReferenceId },
+      itemRefs: body.itemRefs,
+      operation: 'update',
+      specificationId: params.id,
+    })
+    if (outcome.operation !== 'update') {
+      throw new Error('Unexpected requirement application mutation outcome')
     }
 
-    const updatedCount = await updateSpecificationItemFieldsByItemRefs(
-      db,
-      specification.id,
-      body.itemRefs,
-      { needsReferenceId: body.needsReferenceId },
-    )
-
-    return NextResponse.json({ ok: true, updatedCount })
+    return NextResponse.json({ ok: true, updatedCount: outcome.updatedCount })
   },
 })
 
 export const DELETE = secureMutationRoute({
   bodySchema: deleteItemsSchema,
+  errorMessage: 'Failed to remove requirement applications',
   paramsSchema: specificationParamSchema,
-  policy: customMutationPolicy('specification_items.delete', () => {}),
-  handler: async ({ body, context, params, request }) => {
-    const { id } = params
-    const db = await getRequestSqlServerDataSource()
-
-    const specification = await getSpecificationById(db, id)
-    if (!specification)
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-    if ('itemRefs' in body) {
-      try {
-        const { deletedLibraryCount, deletedSpecificationLocalCount } =
-          await deleteSpecificationItemsByRefs(
-            db,
-            specification.id,
-            body.itemRefs,
-          )
-        return NextResponse.json({
-          deletedLibraryCount,
-          deletedSpecificationLocalCount,
-          ok: true,
-          removedCount: deletedLibraryCount + deletedSpecificationLocalCount,
-        })
-      } catch (error) {
-        if (isRequirementsServiceError(error)) {
-          const { body, status } = toHttpErrorPayload(error)
-          return NextResponse.json(body, { status })
-        }
-
-        logSanitizedError(
-          'Failed to delete requirement applications by refs',
-          error,
-        )
-        return NextResponse.json(
-          { error: 'Failed to remove items' },
-          { status: 500 },
-        )
-      }
+  policy: requirementsMutationPolicy<
+    z.infer<typeof deleteItemsSchema>,
+    z.infer<typeof specificationParamSchema>
+  >(({ body, params }) => ({
+    ...('itemRefs' in body ? { itemRefs: body.itemRefs } : {}),
+    kind: 'manage_requirement_applications',
+    operation: 'remove',
+    ...('requirementIds' in body
+      ? { requirementIds: body.requirementIds }
+      : {}),
+    specificationId: params.id,
+  })),
+  handler: async ({ body, context, db, params, request }) => {
+    const { service } = await createRequirementsRestRuntime(request, {
+      context,
+      db,
+    })
+    const outcome = await service.mutateRequirementApplications(context, {
+      ...body,
+      operation: 'remove',
+      specificationId: params.id,
+    })
+    if (outcome.operation !== 'remove') {
+      throw new Error('Unexpected requirement application mutation outcome')
     }
-
-    try {
-      const { service } = await createRequirementsRestRuntime(request, {
-        context,
-        db,
-      })
-      const payload = await service.removeFromSpecification(context, {
-        specificationId: specification.id,
-        requirementIds: body.requirementIds,
-        responseFormat: 'json',
-      })
-      return NextResponse.json({ ok: true, removedCount: payload.removedCount })
-    } catch (error) {
-      if (isRequirementsServiceError(error)) {
-        const { body, status } = toHttpErrorPayload(error)
-        return NextResponse.json(body, { status })
-      }
-
-      logSanitizedError(
-        'Failed to unlink requirements from specification',
-        error,
-      )
-      return NextResponse.json(
-        { error: 'Failed to unlink requirements' },
-        { status: 500 },
-      )
-    }
+    return NextResponse.json(
+      'itemRefs' in body
+        ? {
+            deletedLibraryCount: outcome.removedLibraryCount,
+            deletedSpecificationLocalCount:
+              outcome.removedSpecificationLocalCount,
+            ok: true,
+            removedCount: outcome.removedCount,
+          }
+        : { ok: true, removedCount: outcome.removedCount },
+    )
   },
 })

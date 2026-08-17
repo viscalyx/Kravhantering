@@ -1,14 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  getLibrarySpecificationItemMetadata,
-  getSpecificationItemByRef,
-  updateSpecificationItemFieldsByItemRef,
-} from '@/lib/dal/requirements-specifications'
-import { getRequestSqlServerDataSource } from '@/lib/db'
+import { getLibrarySpecificationItemMetadata } from '@/lib/dal/requirements-specifications'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
-  customMutationPolicy,
+  requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import {
@@ -19,7 +14,7 @@ import {
   positiveIntegerStringSchema,
   routeSegmentSchema,
 } from '@/lib/http/validation'
-import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { validationError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { authorize } from '@/lib/requirements/service-shared'
@@ -116,40 +111,44 @@ async function getHandler(
 
 export const GET = withRestResponsePolicy(getHandler)
 
+function decodeItemRef(itemId: string): string {
+  try {
+    return decodeURIComponent(itemId)
+  } catch (decodeError) {
+    if (decodeError instanceof URIError) {
+      throw validationError('Invalid itemId')
+    }
+    throw decodeError
+  }
+}
+
 export const PATCH = secureMutationRoute({
   bodySchema: patchSpecificationItemSchema,
   paramsSchema: specificationItemRefParamSchema,
-  policy: customMutationPolicy('specification_item.patch', () => {}),
-  handler: async ({ body, params }) => {
-    const { id, itemId } = params
-    const db = await getRequestSqlServerDataSource()
-    let decodedItemRef: string
-    try {
-      decodedItemRef = decodeURIComponent(itemId)
-    } catch (decodeError) {
-      if (decodeError instanceof URIError) {
-        return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
-      }
-      throw decodeError
+  policy: requirementsMutationPolicy<
+    z.infer<typeof patchSpecificationItemSchema>,
+    z.infer<typeof specificationItemRefParamSchema>
+  >(({ params }) => {
+    const itemRef = decodeItemRef(params.itemId)
+    return {
+      itemRefs: [itemRef],
+      kind: 'manage_requirement_applications',
+      operation: 'update',
+      specificationId: params.id,
     }
-    const item = await getSpecificationItemByRef(db, id, decodedItemRef)
-    if (!item) {
-      return NextResponse.json(
-        { error: 'Item not found in specification' },
-        { status: 404 },
-      )
-    }
-    try {
-      await updateSpecificationItemFieldsByItemRef(db, id, decodedItemRef, body)
-    } catch (error) {
-      if (isRequirementsServiceError(error) && error.code === 'not_found') {
-        return NextResponse.json(
-          { error: 'Item not found in specification' },
-          { status: 404 },
-        )
-      }
-      throw error
-    }
+  }),
+  handler: async ({ body, context, db, params, request }) => {
+    const itemRef = decodeItemRef(params.itemId)
+    const { service } = await createRequirementsRestRuntime(request, {
+      context,
+      db,
+    })
+    await service.mutateRequirementApplications(context, {
+      fields: body,
+      itemRefs: [itemRef],
+      operation: 'update',
+      specificationId: params.id,
+    })
     return NextResponse.json({ ok: true })
   },
 })
