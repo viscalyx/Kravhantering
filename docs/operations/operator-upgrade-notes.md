@@ -294,6 +294,10 @@ requirements specification. Each request now accepts 1–200 unique requirement
 IDs. Clients must remove duplicate IDs and split larger batches. Invalid
 requests are rejected before database work starts.
 <!-- operator-upgrade:source pr-1059 end -->
+
+<!-- operator-upgrade:source pr-1062 start -->
+Standard Kravhantering Keycloak provisioning and demo-user setup are not affected. This change affects only deployments that use custom delegated Keycloak administrators: make sure these administrators can manage client scopes, and assign Admin API roles directly or through groups instead of through protocol mappers.
+<!-- operator-upgrade:source pr-1062 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
