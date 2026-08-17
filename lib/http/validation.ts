@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { type ZodError, type ZodType, z } from 'zod'
 import { isStrictHexColor } from '@/lib/color-contrast'
+import { readBoundedJsonRequest } from '@/lib/http/bounded-json-request'
 import {
   ARRAY_INPUT_MAX_ITEMS,
   BUSINESS_TEXT_MAX_LENGTH,
@@ -25,6 +26,15 @@ export interface InvalidRequestBody {
 export type ValidationResult<T> =
   | { data: T; ok: true }
   | { ok: false; response: NextResponse<InvalidRequestBody> }
+
+export type BoundedValidationResult<T> =
+  | { data: T; ok: true }
+  | { ok: false; response: NextResponse }
+
+export interface ReadBoundedJsonWithSchemaOptions {
+  maxBytes: number
+  requestBytesExceededResponse: () => NextResponse
+}
 
 export const positiveIntegerSchema = z
   .number()
@@ -210,6 +220,27 @@ export async function readJsonWithSchema<T>(
   }
 
   return parseWithSchema(schema, body)
+}
+
+export async function readBoundedJsonWithSchema<T>(
+  request: Request,
+  schema: ZodType<T>,
+  options: ReadBoundedJsonWithSchemaOptions,
+): Promise<BoundedValidationResult<T>> {
+  const bounded = await readBoundedJsonRequest(request, {
+    maxBytes: options.maxBytes,
+  })
+  if (!bounded.ok) {
+    return {
+      ok: false,
+      response:
+        bounded.code === 'invalid_json'
+          ? invalidJsonResponse()
+          : options.requestBytesExceededResponse(),
+    }
+  }
+
+  return parseWithSchema(schema, bounded.data)
 }
 
 export async function parseRouteParams<T>(

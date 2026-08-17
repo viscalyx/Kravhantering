@@ -83,6 +83,59 @@ function makeRequest(
   return request
 }
 
+function makePaddedStreamRequest(totalBytes: number): Request {
+  const body = new TextEncoder().encode(
+    JSON.stringify({
+      areaId: 1,
+      locale: 'en',
+      mode: 'library',
+      need: 'secure audit logging',
+    }),
+  )
+  if (totalBytes < body.byteLength) {
+    throw new Error('Stream size must fit the valid JSON body')
+  }
+  let bodySent = false
+  let paddingBytes = totalBytes - body.byteLength
+  const request = new Request(
+    'https://example.test/api/ai/generate-requirement-import',
+    {
+      body: new ReadableStream({
+        pull(controller) {
+          if (!bodySent) {
+            bodySent = true
+            controller.enqueue(body)
+            return
+          }
+          if (paddingBytes === 0) {
+            controller.close()
+            return
+          }
+          const chunkBytes = Math.min(paddingBytes, 1024 * 1024)
+          controller.enqueue(new Uint8Array(chunkBytes).fill(0x20))
+          paddingBytes -= chunkBytes
+        },
+      }),
+      duplex: 'half',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-correlation-id': 'workflow-ai',
+        'x-request-id': 'request-ai',
+      },
+      method: 'POST',
+    } as RequestInit,
+  )
+  attachVerifiedActor(request, {
+    displayName: 'AI User',
+    hsaId: 'SE5560000001-ai1',
+    id: 'ai-user',
+    isAuthenticated: true,
+    roles: ['Admin'],
+    source: 'oidc',
+  })
+  return request
+}
+
 function enableAiForensicCapture(): void {
   routeState.query.mockImplementation((sql: string) => {
     if (sql.includes('INSERT INTO ai_forensic_evidence_events')) {
@@ -134,11 +187,9 @@ describe('POST /api/ai/generate-requirement-import', () => {
     vi.unstubAllEnvs()
   })
 
-  it('rejects an oversized request before consuming its body or starting work', async () => {
-    const request = makeRequest()
-    request.headers.set(
-      'Content-Length',
-      String(AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES + 1),
+  it('rejects an oversized streamed request before starting work', async () => {
+    const request = makePaddedStreamRequest(
+      AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES + 1,
     )
 
     const response = await POST(request)
@@ -151,12 +202,12 @@ describe('POST /api/ai/generate-requirement-import', () => {
       },
       error: 'AI generation request exceeds the allowed size.',
     })
-    expect(request.bodyUsed).toBe(false)
+    expect(request.bodyUsed).toBe(true)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.generateChatStream).not.toHaveBeenCalled()
   })
 
-  it('accepts a declared request at the transport byte boundary', async () => {
+  it('accepts an actual request at the transport byte boundary', async () => {
     routeState.generateChatStream.mockImplementation(async function* () {
       yield {
         phase: 'done',
@@ -168,10 +219,8 @@ describe('POST /api/ai/generate-requirement-import', () => {
         thinking: '',
       }
     })
-    const request = makeRequest()
-    request.headers.set(
-      'Content-Length',
-      String(AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES),
+    const request = makePaddedStreamRequest(
+      AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
     )
 
     const response = await POST(request)
@@ -179,6 +228,33 @@ describe('POST /api/ai/generate-requirement-import', () => {
     expect(response.status).toBe(200)
     expect(await response.text()).toContain('event: done')
     expect(routeState.generateChatStream).toHaveBeenCalledOnce()
+  })
+
+  it('rejects duplicate images before provider work', async () => {
+    const response = await POST(
+      makeRequest({
+        areaId: 1,
+        images: [
+          { dataUrl: 'data:image/png;base64,YQ' },
+          { dataUrl: 'data:image/png;base64,YQ==' },
+        ],
+        locale: 'en',
+        mode: 'library',
+        need: 'secure audit logging',
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      issues: [
+        {
+          message: 'Each uploaded image must be unique.',
+          path: 'images.1.dataUrl',
+        },
+      ],
+    })
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.generateChatStream).not.toHaveBeenCalled()
   })
 
   it('streams generated requirement import JSON after schema validation', async () => {

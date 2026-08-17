@@ -25,7 +25,6 @@ import {
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getApplicationSettings } from '@/lib/dal/application-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { readBoundedJsonRequest } from '@/lib/http/bounded-json-request'
 import {
   AI_PROVIDER_UNAVAILABLE_MESSAGE,
   logSanitizedError,
@@ -34,7 +33,7 @@ import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
-import { invalidJsonResponse, parseWithSchema } from '@/lib/http/validation'
+import { readBoundedJsonWithSchema } from '@/lib/http/validation'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import {
   applyResponseCorrelationHeaders,
@@ -102,30 +101,17 @@ type GenerateRequirementImportBody = z.infer<
   typeof generateRequirementImportSchema
 >
 
-async function readGenerateRequirementImportBody(request: Request) {
-  const bounded = await readBoundedJsonRequest(request, {
-    maxBytes: AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
-  })
-  if (!bounded.ok) {
-    return {
-      ok: false as const,
-      response:
-        bounded.code === 'invalid_json'
-          ? invalidJsonResponse()
-          : NextResponse.json(
-              {
-                code: 'ai_request_bytes_exceeded',
-                details: {
-                  maxBytes: AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
-                },
-                error: 'AI generation request exceeds the allowed size.',
-              },
-              { status: 413 },
-            ),
-    }
-  }
-
-  return parseWithSchema(generateRequirementImportSchema, bounded.data)
+function aiRequestBytesExceededResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      code: 'ai_request_bytes_exceeded',
+      details: {
+        maxBytes: AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
+      },
+      error: 'AI generation request exceeds the allowed size.',
+    },
+    { status: 413 },
+  )
 }
 
 function createStreamRecorder(
@@ -233,7 +219,11 @@ function imageMetadataForSafety(
 }
 
 export const POST = secureMutationRoute<GenerateRequirementImportBody>({
-  bodyReader: ({ request }) => readGenerateRequirementImportBody(request),
+  bodyReader: ({ request }) =>
+    readBoundedJsonWithSchema(request, generateRequirementImportSchema, {
+      maxBytes: AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
+      requestBytesExceededResponse: aiRequestBytesExceededResponse,
+    }),
   policy: requirementsMutationPolicy<GenerateRequirementImportBody>(
     ({ body }) => requirementImportScopeAction(body),
   ),

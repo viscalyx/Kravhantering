@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import {
@@ -26,6 +27,7 @@ import {
   queryArraySchema,
   queryBooleanSchema,
   queryBooleanStringSchema,
+  readBoundedJsonWithSchema,
   readJsonWithSchema,
   refOrPositiveIntegerSegmentSchema,
   SQL_SERVER_INT_MAX,
@@ -70,6 +72,31 @@ describe('http validation helpers', () => {
           path: '$',
         },
       ],
+    })
+  })
+
+  it('maps bounded JSON overflow before schema parsing', async () => {
+    const result = await readBoundedJsonWithSchema(
+      new Request('http://localhost/api/test', {
+        body: JSON.stringify({ name: 'Ada' }),
+        method: 'POST',
+      }),
+      z.object({ name: z.string() }).strict(),
+      {
+        maxBytes: 5,
+        requestBytesExceededResponse: () =>
+          NextResponse.json(
+            { code: 'request_bytes_exceeded' },
+            { status: 413 },
+          ),
+      },
+    )
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.response.status).toBe(413)
+    await expect(result.response.json()).resolves.toEqual({
+      code: 'request_bytes_exceeded',
     })
   })
 

@@ -102,7 +102,9 @@ Deferred from this contract:
   schema, and provider-client tests. The requirement-generation route reads at
   most 42 MiB of JSON before parsing, returns `413` with
   `ai_request_bytes_exceeded` above that limit, and retains the separate limit
-  of three images at 10 MiB decoded bytes each.
+  of three unique images at 10 MiB decoded bytes each. Image data URLs are
+  schema-bounded to their maximum base64 representation before decoded-size
+  validation.
 - Admin catalog and settings mutations remain outside the
   OpenAPI/Schemathesis v1 contract when their assertions depend on Admin-only
   access, CSRF/same-origin enforcement for saves, privileged audit, effective

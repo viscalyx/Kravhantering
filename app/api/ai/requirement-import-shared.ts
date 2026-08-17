@@ -39,6 +39,8 @@ const ALLOWED_IMAGE_MIMES = [
 
 export const MAX_AI_IMAGE_BYTES = 10 * 1024 * 1024
 export const MAX_AI_IMAGES = 3
+export const MAX_AI_IMAGE_DATA_URL_LENGTH =
+  Math.ceil(MAX_AI_IMAGE_BYTES / 3) * 4 + 'data:image/jpeg;base64,'.length
 export const MAX_AI_INSTRUCTION_LENGTH = 4000
 export const MAX_AI_MODEL_LENGTH = 100
 export const MAX_AI_NEED_LENGTH = 4000
@@ -132,7 +134,7 @@ export async function guardAiInput(args: {
   )
 }
 
-export const imageDataUrlSchema = z.string()
+export const imageDataUrlSchema = z.string().max(MAX_AI_IMAGE_DATA_URL_LENGTH)
 
 const BASE64_PAYLOAD_PATTERN =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/
@@ -162,7 +164,7 @@ function validateImageDataUrl(
   context: RefinementCtx,
   locale: RequirementImportLocale,
   path: Array<number | string>,
-): void {
+): { mime: string; payload: string } | null {
   const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/)
   if (
     !mimeMatch ||
@@ -175,7 +177,7 @@ function validateImageDataUrl(
       message: getPromptMessage(locale, ['ai', 'imageSchemaErrorType']),
       path,
     })
-    return
+    return null
   }
 
   const base64Data = dataUrl.slice(dataUrl.indexOf(',') + 1)
@@ -186,7 +188,7 @@ function validateImageDataUrl(
       message: getPromptMessage(locale, ['ai', 'imageSchemaErrorBase64']),
       path,
     })
-    return
+    return null
   }
 
   if (countBase64Bytes(normalizedBase64Data) > MAX_AI_IMAGE_BYTES) {
@@ -196,6 +198,7 @@ function validateImageDataUrl(
       path,
     })
   }
+  return { mime: mimeMatch[1], payload: normalizedBase64Data }
 }
 
 export function validateRequirementImportImages(
@@ -206,12 +209,28 @@ export function validateRequirementImportImages(
   context: RefinementCtx,
 ): void {
   const locale = requirementImportLocale(body)
+  const uniquePayloadsByMime = new Map<string, Set<string>>()
   for (const [index, image] of (body.images ?? []).entries()) {
-    validateImageDataUrl(image.dataUrl, context, locale, [
-      'images',
-      index,
-      'dataUrl',
-    ])
+    const path = ['images', index, 'dataUrl']
+    const normalizedImage = validateImageDataUrl(
+      image.dataUrl,
+      context,
+      locale,
+      path,
+    )
+    if (normalizedImage === null) continue
+    const uniquePayloads =
+      uniquePayloadsByMime.get(normalizedImage.mime) ?? new Set<string>()
+    if (uniquePayloads.has(normalizedImage.payload)) {
+      context.addIssue({
+        code: 'custom',
+        message: getPromptMessage(locale, ['ai', 'imageSchemaErrorDuplicate']),
+        path,
+      })
+      continue
+    }
+    uniquePayloads.add(normalizedImage.payload)
+    uniquePayloadsByMime.set(normalizedImage.mime, uniquePayloads)
   }
 }
 

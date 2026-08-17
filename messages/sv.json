@@ -2883,6 +2883,7 @@
     "outputSafetyBlocked": "AI-svaret blockerades av AI-säkerhetsfiltret: {ruleType}. Ändra anropet och försök igen.",
     "imageSchemaErrorType": "Bildtypen stöds inte. Använd PNG, JPEG, GIF eller WebP.",
     "imageSchemaErrorBase64": "Bilddata är inte giltigt base64.",
+    "imageSchemaErrorDuplicate": "Varje uppladdad bild måste vara unik.",
     "imageSchemaErrorSize": "Bilden överskrider gränsen på 10 MB.",
     "invalidRequirementImportScope": "Biblioteksläge kräver areaId och kravunderlagslokalt läge kräver specificationId.",
     "prompt": {
