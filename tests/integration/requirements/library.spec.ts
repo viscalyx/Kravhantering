@@ -2,6 +2,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test'
 import { delay, escapeRegExp } from '@/tests/helpers/common'
 import { referenceManualCases } from '@/tests/integration/authorization/authorization-test-helpers'
 import { deferRoute } from '../deferred-route'
+import { countDetailRequests } from '../detail-request-counter'
 
 // cSpell:ignore requestfailed
 
@@ -57,6 +58,36 @@ async function filterRequirementId(
       name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`, 'u'),
     }),
   ).toHaveCount(1)
+}
+
+async function collapsePackageFilter(page: Page) {
+  const packageFilter = page.getByRole('button', {
+    name: 'Filtrera kravpaket',
+  })
+  await packageFilter.press('Escape')
+  await expect(packageFilter).toHaveAttribute('aria-expanded', 'false')
+}
+
+async function visiblePointerPoint(target: Locator) {
+  await expect(target).toBeVisible()
+  return target.evaluate(element => {
+    element.scrollIntoView({ block: 'center', inline: 'center' })
+
+    const rect = element.getBoundingClientRect()
+    const firstX = Math.max(1, Math.ceil(rect.left) + 1)
+    const lastX = Math.min(window.innerWidth - 1, Math.floor(rect.right) - 1)
+    const firstY = Math.max(1, Math.ceil(rect.top) + 1)
+    const lastY = Math.min(window.innerHeight - 1, Math.floor(rect.bottom) - 1)
+
+    for (let y = firstY; y <= lastY; y += 1) {
+      for (let x = firstX; x <= lastX; x += 1) {
+        const hit = document.elementFromPoint(x, y)
+        if (hit === element || (hit && element.contains(hit))) return { x, y }
+      }
+    }
+
+    throw new Error('Requirement row button has no hit-testable pointer point.')
+  })
 }
 
 async function expectRequirementDetailRoute(
@@ -124,6 +155,97 @@ test.describe('Requirements library', () => {
       const detailPane = await openRequirementDetail(page, 'INT0001')
       await expect(detailPane).toContainText('Kravtext')
       await expect(detailPane).toContainText('Kravområde')
+    })
+  })
+
+  test('REQ-21: intent prefetch is cancelled, reused, and never duplicated', async ({
+    page,
+  }) => {
+    const detailRequests = await countDetailRequests(
+      page,
+      /\/api\/requirements\/\d+$/u,
+    )
+    const rowButton = page.getByRole('button', { name: /^INT0001\b/u })
+
+    await test.step('open and filter the requirement library', async () => {
+      await page.goto('/sv/requirements')
+      await filterRequirementId(page, 'INT0001')
+      await collapsePackageFilter(page)
+    })
+
+    await test.step('cancel short hover and reuse the held pointer prefetch', async () => {
+      const pointer = await visiblePointerPoint(rowButton)
+      await page.mouse.move(pointer.x, pointer.y)
+      await page.mouse.move(0, 0)
+      await delay(200)
+      expect(detailRequests.count).toBe(0)
+
+      const heldRequest = detailRequests.holdNext()
+      await page.mouse.move(pointer.x, pointer.y)
+      await heldRequest.started
+      await page.mouse.click(pointer.x, pointer.y)
+      expect(detailRequests.count).toBe(1)
+      heldRequest.release()
+
+      const detailPaneId = await rowButton.getAttribute('aria-controls')
+      expect(detailPaneId).toBeTruthy()
+      await expect(page.locator(`#${detailPaneId}`)).toContainText('Kravtext')
+      expect(detailRequests.count).toBe(1)
+    })
+  })
+
+  test('REQ-21: keyboard focus prefetches and reuses one detail request', async ({
+    page,
+  }) => {
+    const detailRequests = await countDetailRequests(
+      page,
+      /\/api\/requirements\/\d+$/u,
+    )
+    const rowButton = page.getByRole('button', { name: /^INT0001\b/u })
+
+    await test.step('open and filter the requirement library', async () => {
+      await page.goto('/sv/requirements')
+      await filterRequirementId(page, 'INT0001')
+      await collapsePackageFilter(page)
+    })
+
+    await test.step('reuse the held keyboard-focus prefetch', async () => {
+      const heldRequest = detailRequests.holdNext()
+      await rowButton.focus()
+      await heldRequest.started
+      await rowButton.click()
+      expect(detailRequests.count).toBe(1)
+      heldRequest.release()
+
+      const detailPaneId = await rowButton.getAttribute('aria-controls')
+      expect(detailPaneId).toBeTruthy()
+      await expect(page.locator(`#${detailPaneId}`)).toContainText('Kravtext')
+      expect(detailRequests.count).toBe(1)
+    })
+  })
+
+  test('REQ-21: immediate click opens detail without a delayed duplicate request', async ({
+    page,
+  }) => {
+    const detailRequests = await countDetailRequests(
+      page,
+      /\/api\/requirements\/\d+$/u,
+    )
+    const rowButton = page.getByRole('button', { name: /^INT0001\b/u })
+
+    await test.step('open and filter the requirement library', async () => {
+      await page.goto('/sv/requirements')
+      await filterRequirementId(page, 'INT0001')
+      await collapsePackageFilter(page)
+    })
+
+    await test.step('open directly without scheduling a duplicate', async () => {
+      const pointer = await visiblePointerPoint(rowButton)
+      await page.mouse.click(pointer.x, pointer.y)
+      const detailPaneId = await rowButton.getAttribute('aria-controls')
+      expect(detailPaneId).toBeTruthy()
+      await expect(page.locator(`#${detailPaneId}`)).toContainText('Kravtext')
+      expect(detailRequests.count).toBe(1)
     })
   })
 

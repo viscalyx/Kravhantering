@@ -10,6 +10,7 @@ import {
   unauthorizedError,
   validationError,
 } from '@/lib/requirements/errors'
+import { resolveRequirementApplicationMutationTarget } from '@/lib/requirements/requirement-application-mutations'
 import {
   STATUS_ARCHIVED,
   STATUS_PUBLISHED,
@@ -49,6 +50,18 @@ export interface AssignmentLookup {
   resolveDeviationTarget(
     action: Extract<RequirementsAction, { kind: 'manage_deviation' }>,
   ): Promise<DeviationTarget>
+  resolveRequirementApplicationMutationTarget(
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_requirement_applications' }
+    >,
+  ): Promise<number>
+  resolveRequirementSelectionQuestionArea(
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_requirement_selection_question' }
+    >,
+  ): Promise<number>
   resolveRequirementTarget(
     input: RequirementReference,
   ): Promise<RequirementTarget>
@@ -117,6 +130,8 @@ function isAssignmentLookup(value: unknown): value is AssignmentLookup {
     value !== null &&
     'isRequirementAreaAuthor' in value &&
     'isSpecificationAuthor' in value &&
+    'resolveRequirementApplicationMutationTarget' in value &&
+    'resolveRequirementSelectionQuestionArea' in value &&
     'resolveRequirementTarget' in value &&
     'resolveSpecificationChildTarget' in value &&
     'resolveSuggestionRequirementTarget' in value
@@ -181,6 +196,18 @@ export class SqlAssignmentLookup implements AssignmentLookup {
     throw validationError('Missing specification reference', {
       reason: 'missing_specification_reference',
     })
+  }
+
+  async resolveRequirementApplicationMutationTarget(
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_requirement_applications' }
+    >,
+  ): Promise<number> {
+    return resolveRequirementApplicationMutationTarget(
+      await this.getDb(),
+      action,
+    )
   }
 
   async resolveSpecificationChildTarget(
@@ -550,6 +577,56 @@ export class SqlAssignmentLookup implements AssignmentLookup {
     })
   }
 
+  async resolveRequirementSelectionQuestionArea(
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_requirement_selection_question' }
+    >,
+  ): Promise<number> {
+    if (action.operation === 'create') {
+      if (action.areaId != null) return action.areaId
+      throw validationError('Missing requirement selection question area', {
+        reason: 'missing_requirement_selection_question_area',
+      })
+    }
+    if (action.questionId == null) {
+      throw validationError('Missing requirement selection question target', {
+        reason: 'missing_requirement_selection_question_target',
+      })
+    }
+
+    const db = await this.getDb()
+    const questionIdIsNumeric =
+      typeof action.questionId === 'number' || /^\d+$/.test(action.questionId)
+    const questionPredicate = questionIdIsNumeric
+      ? 'question.id = @0'
+      : 'question.question_code = @0'
+    const answerJoin =
+      action.answerId == null
+        ? ''
+        : `INNER JOIN requirement_selection_answers answer
+          ON answer.question_id = question.id AND answer.id = @1`
+    const parameters =
+      action.answerId == null
+        ? [action.questionId]
+        : [action.questionId, action.answerId]
+    const rows = (await db.query(
+      `
+        SELECT TOP (1) question.area_id AS areaId
+        FROM requirement_selection_questions question
+        ${answerJoin}
+        WHERE ${questionPredicate}
+      `,
+      parameters,
+    )) as Array<Record<string, unknown>>
+    const areaId = firstNumber(rows, 'areaId')
+    if (areaId != null) return areaId
+    throw notFoundError('Requirement selection question target not found', {
+      answerId: action.answerId,
+      questionId: action.questionId,
+    })
+  }
+
   async resolveRfiQuestionSuggestionArea(
     action: Extract<
       RequirementsAction,
@@ -611,6 +688,18 @@ export class AssignmentBasedAuthorizationService
       if (hasRole(context, 'Admin')) return
       return this.assertCanReadRequirementTarget(context, target)
     }
+    if (action.kind === 'manage_requirement_applications') {
+      const specificationId =
+        await this.lookup.resolveRequirementApplicationMutationTarget(action)
+      if (hasRole(context, 'Admin')) return
+      return this.assertSpecificationAuthor(context, specificationId)
+    }
+    if (action.kind === 'manage_requirement_selection_question') {
+      const areaId =
+        await this.lookup.resolveRequirementSelectionQuestionArea(action)
+      if (hasRole(context, 'Admin')) return
+      return this.assertAreaAuthor(context, areaId)
+    }
 
     if (hasRole(context, 'Admin') && !this.isReviewerOnlyAction(action)) {
       return
@@ -655,6 +744,10 @@ export class AssignmentBasedAuthorizationService
         return this.assertSpecificationAuthor(context, specificationId)
       }
       case 'manage_specification_needs_reference': {
+        const specificationId = await this.lookup.resolveSpecificationId(action)
+        return this.assertSpecificationAuthor(context, specificationId)
+      }
+      case 'manage_specification_requirement_selection_answers': {
         const specificationId = await this.lookup.resolveSpecificationId(action)
         return this.assertSpecificationAuthor(context, specificationId)
       }

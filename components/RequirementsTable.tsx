@@ -78,6 +78,15 @@ import {
 } from '@/lib/requirements/list-view'
 import { resolveStatusLabel } from '@/lib/requirements/status-label'
 
+const FINE_HOVER_MEDIA_QUERY = '(hover: hover) and (pointer: fine)'
+
+function supportsFineHover(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.(FINE_HOVER_MEDIA_QUERY)?.matches ?? false)
+  )
+}
+
 export interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
@@ -109,7 +118,10 @@ export interface RequirementsTableProps {
     itemRef: string,
     needsReferenceId: number | null,
   ) => void
+  onRowActivate?: (row: RequirementRow) => void
   onRowClick?: (id: number) => void
+  onRowIntentEnd?: (row: RequirementRow, trigger: 'focus' | 'pointer') => void
+  onRowIntentStart?: (row: RequirementRow, trigger: 'focus' | 'pointer') => void
   onSelectionChange?: (ids: Set<number>) => void
   onSortChange?: (value: RequirementSortState) => void
   onSpecificationItemStatusChange?: (itemRef: string, statusId: number) => void
@@ -1509,6 +1521,9 @@ export default function RequirementsTable({
   onNeedsReferenceChange,
   onSpecificationItemStatusChange,
   onRowClick,
+  onRowActivate,
+  onRowIntentEnd,
+  onRowIntentStart,
   onColumnWidthsChange,
   onSelectionChange,
   onSortChange,
@@ -1825,15 +1840,18 @@ export default function RequirementsTable({
   }
   const handleRowAction = useCallback(
     (id: number) => {
+      const row = rows.find(candidate => candidate.id === id)
+      if (row) {
+        onRowActivate?.(row)
+      }
       if (onRowClick) {
         onRowClick(id)
         return
       }
 
-      const row = rows.find(r => r.id === id)
       router.push(`/requirements/${row?.uniqueId ?? id}`)
     },
-    [onRowClick, router, rows],
+    [onRowActivate, onRowClick, router, rows],
   )
   const handleBodyRowClick = useCallback(
     (event: ReactMouseEvent<HTMLTableRowElement>, id: number) => {
@@ -2378,10 +2396,12 @@ export default function RequirementsTable({
               aria-controls={renderExpanded ? expandedDetailCellId : undefined}
               aria-expanded={renderExpanded ? isExpanded : undefined}
               className="inline-flex min-h-11 min-w-11 w-full items-center gap-1.5 rounded border-0 bg-transparent px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-950"
+              onBlur={() => onRowIntentEnd?.(row, 'focus')}
               onClick={event => {
                 event.stopPropagation()
                 handleRowAction(row.id)
               }}
+              onFocus={() => onRowIntentStart?.(row, 'focus')}
               type="button"
             >
               {renderExpanded ? (
@@ -3510,6 +3530,22 @@ export default function RequirementsTable({
                           value: row.uniqueId,
                         })}
                         onClick={event => handleBodyRowClick(event, row.id)}
+                        onPointerEnter={event => {
+                          if (
+                            event.pointerType !== 'touch' &&
+                            supportsFineHover()
+                          ) {
+                            onRowIntentStart?.(row, 'pointer')
+                          }
+                        }}
+                        onPointerLeave={event => {
+                          if (
+                            event.pointerType !== 'touch' &&
+                            supportsFineHover()
+                          ) {
+                            onRowIntentEnd?.(row, 'pointer')
+                          }
+                        }}
                       >
                         {selectable && (
                           <td className="w-9 px-1 py-2 text-center align-middle">

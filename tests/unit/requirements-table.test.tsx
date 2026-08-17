@@ -99,9 +99,9 @@ describe('RequirementsTable', () => {
     resizeObserverCallbacks = []
     setViewportHeight(DEFAULT_VIEWPORT_HEIGHT)
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
-    Object.defineProperty(window, 'matchMedia', {
-      configurable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
         addEventListener: vi.fn(),
         addListener: vi.fn(),
         dispatchEvent: vi.fn(),
@@ -111,7 +111,7 @@ describe('RequirementsTable', () => {
         removeEventListener: vi.fn(),
         removeListener: vi.fn(),
       })),
-    })
+    )
     vi.stubGlobal(
       'ResizeObserver',
       class ResizeObserver {
@@ -151,6 +151,7 @@ describe('RequirementsTable', () => {
   afterEach(() => {
     setViewportHeight(DEFAULT_VIEWPORT_HEIGHT)
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
+    vi.unstubAllGlobals()
   })
 
   // jsdom's PointerEvent defaults `isPrimary` to false and `pointerType` to ''.
@@ -3404,6 +3405,95 @@ describe('RequirementsTable', () => {
     fireEvent.click(action)
     expect(onRowClick).toHaveBeenCalledTimes(3)
     expect(onRowClick).toHaveBeenNthCalledWith(3, 1)
+  })
+
+  it('exposes row pointer, focus, and activation intent at the table seam', () => {
+    const onRowActivate = vi.fn()
+    const onRowIntentEnd = vi.fn()
+    const onRowIntentStart = vi.fn()
+    const rowData = makeRow()
+    render(
+      <RequirementsTable
+        locale="sv"
+        onRowActivate={onRowActivate}
+        onRowClick={vi.fn()}
+        onRowIntentEnd={onRowIntentEnd}
+        onRowIntentStart={onRowIntentStart}
+        rows={[rowData]}
+      />,
+    )
+
+    const action = screen.getByRole('button', { name: 'INT0001' })
+    const row = action.closest('tr') as HTMLTableRowElement
+    fireEvent.pointerEnter(row, { pointerType: 'mouse' })
+    fireEvent.pointerLeave(row, { pointerType: 'mouse' })
+    fireEvent.focus(action)
+    fireEvent.blur(action)
+    fireEvent.click(action)
+
+    expect(onRowIntentStart).toHaveBeenNthCalledWith(1, rowData, 'pointer')
+    expect(onRowIntentStart).toHaveBeenNthCalledWith(2, rowData, 'focus')
+    expect(onRowIntentEnd).toHaveBeenNthCalledWith(1, rowData, 'pointer')
+    expect(onRowIntentEnd).toHaveBeenNthCalledWith(2, rowData, 'focus')
+    expect(onRowActivate).toHaveBeenCalledWith(rowData)
+  })
+
+  it('does not expose touch pointer movement as row intent', () => {
+    const onRowIntentEnd = vi.fn()
+    const onRowIntentStart = vi.fn()
+    render(
+      <RequirementsTable
+        locale="sv"
+        onRowIntentEnd={onRowIntentEnd}
+        onRowIntentStart={onRowIntentStart}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const row = screen
+      .getByRole('button', { name: 'INT0001' })
+      .closest('tr') as HTMLTableRowElement
+    fireEvent.pointerEnter(row, { pointerType: 'touch' })
+    fireEvent.pointerLeave(row, { pointerType: 'touch' })
+
+    expect(onRowIntentStart).not.toHaveBeenCalled()
+    expect(onRowIntentEnd).not.toHaveBeenCalled()
+  })
+
+  it('does not expose pointer movement when the primary pointer is coarse', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        matches: false,
+        media: query,
+        onchange: null,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      })),
+    )
+    const onRowIntentEnd = vi.fn()
+    const onRowIntentStart = vi.fn()
+    render(
+      <RequirementsTable
+        locale="sv"
+        onRowIntentEnd={onRowIntentEnd}
+        onRowIntentStart={onRowIntentStart}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const action = screen.getByRole('button', { name: 'INT0001' })
+    const row = action.closest('tr') as HTMLTableRowElement
+    fireEvent.pointerEnter(row, { pointerType: 'mouse' })
+    fireEvent.pointerLeave(row, { pointerType: 'mouse' })
+    fireEvent.focus(action)
+
+    expect(onRowIntentStart).toHaveBeenCalledOnce()
+    expect(onRowIntentStart).toHaveBeenCalledWith(makeRow(), 'focus')
+    expect(onRowIntentEnd).not.toHaveBeenCalled()
   })
 
   it('navigates from whole-row clicks and the row action button when no row click handler is provided', () => {

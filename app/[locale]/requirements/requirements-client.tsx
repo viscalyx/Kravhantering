@@ -26,12 +26,19 @@ import LazyRequirementsImportDialog, {
   type InitialRequirementsImport,
 } from '@/components/LazyRequirementsImportDialog'
 import RequirementsTable from '@/components/RequirementsTable'
+import { useRequirementDetailPrefetchIntent } from '@/hooks/useRequirementDetailPrefetchIntent'
 import {
   type AiRequirementGenerationAvailability,
   DEFAULT_AI_REQUIREMENT_GENERATION_AVAILABILITY,
 } from '@/lib/ai/generation-availability'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import {
+  createLibraryRequirementDetailCache,
+  type DetailPrefetchIntentTarget,
+  type DetailPrefetchTarget,
+  type RequirementDetailPrefetchContext,
+} from '@/lib/requirements/detail-prefetch'
 import {
   hasRequirementListSnapshot,
   INITIAL_REQUIREMENT_LIST_RESOURCE_STATE,
@@ -274,6 +281,13 @@ export default function RequirementsClient({
   const requirementListRefreshedMessage = tc('requirementListRefreshed')
   const locale = useLocale()
   const pdfDownload = useGeneratedOutputDownload()
+  const detailCache = useMemo(createLibraryRequirementDetailCache, [])
+  const {
+    activate: activateDetailIntent,
+    cancel: cancelDetailIntent,
+    schedule: scheduleDetailIntent,
+  } = useRequirementDetailPrefetchIntent()
+  useEffect(() => () => detailCache.dispose(), [detailCache])
   const normalizedColumnDefaults = useMemo(
     () => normalizeRequirementListColumnDefaults(initialColumnDefaults),
     [initialColumnDefaults],
@@ -357,6 +371,31 @@ export default function RequirementsClient({
   const rowsAbortRef = useRef<AbortController | null>(null)
   const rowsRetryRef = useRef<HTMLButtonElement>(null)
   const scrollToIdRef = useRef<number | null>(null)
+
+  const libraryDetailContext: RequirementDetailPrefetchContext = useMemo(
+    () => ({
+      resource: 'library-requirement',
+      surface: 'requirements-library',
+    }),
+    [],
+  )
+  const libraryTarget = useCallback(
+    (row: RequirementRow): DetailPrefetchTarget => ({
+      ...libraryDetailContext,
+      key: String(row.id),
+    }),
+    [libraryDetailContext],
+  )
+  const libraryIntentTarget = useCallback(
+    (
+      row: RequirementRow,
+      trigger: DetailPrefetchIntentTarget['trigger'],
+    ): DetailPrefetchIntentTarget => ({
+      ...libraryTarget(row),
+      trigger,
+    }),
+    [libraryTarget],
+  )
 
   useEffect(() => {
     if (typeof selectedIdRef.current !== 'string') {
@@ -1360,6 +1399,14 @@ export default function RequirementsClient({
                     setSelectedIds(new Set())
                   }}
                   onLoadMore={loadMore}
+                  onRowActivate={row => {
+                    if (selectedIdRef.current === row.id) {
+                      cancelDetailIntent(libraryIntentTarget(row, 'pointer'))
+                      cancelDetailIntent(libraryIntentTarget(row, 'focus'))
+                      return
+                    }
+                    activateDetailIntent(libraryTarget(row))
+                  }}
                   onRowClick={id => {
                     const previousSelectedId = selectedIdRef.current
                     const nextSelectedId = previousSelectedId === id ? null : id
@@ -1369,6 +1416,22 @@ export default function RequirementsClient({
                       setPinnedRow(null)
                     }
                   }}
+                  onRowIntentEnd={(row, trigger) =>
+                    cancelDetailIntent(libraryIntentTarget(row, trigger))
+                  }
+                  onRowIntentStart={(row, trigger) =>
+                    scheduleDetailIntent(
+                      libraryIntentTarget(row, trigger),
+                      scheduledTarget => {
+                        void detailCache
+                          .load(row.id, 'prefetch', {
+                            ...libraryDetailContext,
+                            trigger: scheduledTarget.trigger,
+                          })
+                          .catch(() => undefined)
+                      },
+                    )
+                  }
                   onSelectionChange={setSelectedIds}
                   onSortChange={setSortState}
                   onVisibleColumnsChange={setVisibleColumns}
@@ -1377,6 +1440,8 @@ export default function RequirementsClient({
                   qualityCharacteristics={qualityCharacteristics}
                   renderExpanded={id => (
                     <RequirementDetailClient
+                      detailCache={detailCache}
+                      detailPrefetchContext={libraryDetailContext}
                       inline
                       onChange={detail => handleRequirementChange(id, detail)}
                       onClose={() => {

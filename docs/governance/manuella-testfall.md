@@ -572,11 +572,14 @@ upp, men fel föräldrakombination ger 403 även för `Admin`.
 1. Utför en tillåten granskningsåtgärd.
 1. Läs ett enskilt kravunderlagsavsteg via dess direkta API-identifierare och
    försök kombinera ett lokalt krav med fel befintligt kravunderlag.
+1. Öppna kravbiblioteksförvaltningens kravurvalsfrågor och expandera en fråga.
 1. Försök öppna Admincenter, dataskydd och ansvarstilldelnings-API.
 
 **Förväntat resultat:** Rita kan utföra granskningsarbete men nekas Admin,
 dataskydd och ansvarsstyrning. Underresursen kan läsas efter föräldrauppslag,
-men fel föräldrakombination ger 403 även för `Reviewer`.
+men fel föräldrakombination ger 403 även för `Reviewer`. Kravurvalsfrågorna
+kan läsas, men ytan visar inga kontroller för att skapa, ändra, ordna,
+duplicera, arkivera eller ta bort frågor eller svar.
 
 <a id="authz-10-dataskyddshandlaggare"></a>
 
@@ -597,6 +600,29 @@ inte administrera taxonomi eller krav.
 
 **Förväntat resultat:** Disa kan köra dataskyddsflöden men nekas Admin och
 produktansvar som hon inte har.
+
+### AUTHZ-11: skrivbehörighet för innehåll i kravunderlag
+
+**Syfte:** Kontrollera att skrivningar till kravtillämpningar och sparade
+kravurvalssvar använder det ägande kravunderlagets författaruppdrag.
+
+**Användare:** `petra.specresp`, `signe.speccoauthor`, `ada.admin`,
+`noah.noroles`, `olle.areaowner` och `rita.reviewer`.
+
+**Steg:**
+
+1. Uppdatera ett fält för ett tillämpat krav och spara ett kravurvalssvar som
+   Petra, Signe respektive Ada.
+1. Försök samma skrivningar samt båda formerna av massborttagning
+   (`itemRefs` och `requirementIds`) som Noah, Olle och Rita.
+1. Som Signe, kombinera ett befintligt krav från det tilldelade kravunderlaget
+   med ett annat kravunderlags identifierare.
+
+**Förväntat resultat:** Kravunderlagsansvarig, kravunderlagsmedförfattare och
+`Admin` kan ändra kravunderlagets innehåll. En användare utan tilldelning,
+författare i kravområdet och `Reviewer` får 403 före domänändringen. Ett krav
+vars lagrade förälder inte matchar den angivna föräldern ger 403 utan mutation,
+och den begärda ändringen genomförs inte.
 
 ## Kravbibliotek
 
@@ -977,6 +1003,20 @@ den senaste frågan kvar, och en varning anger att resultatet kan vara
 inaktuellt eller inte stämma med den aktiva frågan. Vanlig sidinläsning är
 inte tillgänglig före en lyckad uppdatering. `Försök igen` upprepar den senaste
 frågan och tar bort varningen först när uppdateringen lyckas.
+
+### REQ-21: avsikt förhämtar kravdetalj i kravbiblioteket
+
+**Steg:** För pekaren över ett krav och lämna raden före 150 ms. Ställ sedan in
+webbläsarens nätverksverktyg så att nästa huvudförfrågan för kravets detalj hålls
+kvar. Hovra över samma rad längre än 150 ms, invänta den hållna förfrågan och
+klicka medan den fortfarande pågår. Kontrollera antalet samtidiga förfrågningar
+innan förfrågan släpps. Upprepa med tangentbordsfokus på krav-ID-kommandot.
+Avsluta med ett omedelbart direktklick utan att hålla förfrågan.
+
+**Förväntat resultat:** Kort passage startar ingen huvudförfrågan. Hovring eller
+fokus över tröskeln startar exakt en huvudförfrågan som klicket återanvänder.
+Direktklick öppnar detaljen utan att vänta på förhämtning och utan dubbla
+samtidiga anrop.
 
 ## Skapa krav och livscykel
 
@@ -1631,6 +1671,25 @@ avmarkeras. Ingen markering tas bort automatiskt. Åtgärden för att avmarkera 
 krav som inte visas är aktiverad och kravets enskilda detaljåtgärder påverkas
 inte. Efter avmarkeringen återstår 200 markerade krav, meddelandet försvinner
 och de fyra gemensamma åtgärderna aktiveras igen.
+
+### SPEC-21: avsikt förhämtar båda typerna av kravdetalj
+
+**Steg:** Öppna ett kravunderlag som innehåller ett bibliotekskrav och ett
+kravunderlagslokalt krav. Ställ in webbläsarens nätverksverktyg så att nästa
+motsvarande detaljförfrågan hålls kvar. Hovra längre än 150 ms, invänta den
+hållna förfrågan och klicka medan den fortfarande pågår. Kontrollera antalet
+samtidiga förfrågningar innan den hållna förfrågan släpps. Upprepa med fokus i
+vänster lista för båda typerna samt i höger lista för ett bibliotekskrav. Prova
+sedan direktklick utan att hålla förfrågan. Lägg till bibliotekskravet från
+höger lista, öppna detaljen i vänster lista, ta bort det och öppna detaljen igen
+i höger lista.
+
+**Förväntat resultat:** Vänster och höger lista följer samma avsiktspolicy.
+Klick efter hovring eller fokus återanvänder det pågående anropet från
+förhämtningen. Direktklick startar en vanlig detaljförfrågan om inget svar redan
+finns och orsakar inte ett fördröjt duplicerat anrop. Ett krav som läggs till
+eller tas bort byter lista och läses om efter ändringen; det återanvänder inte
+detaljdata med ett inaktuellt antal kravunderlag.
 
 ## Avsteg
 

@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { conflictError } from '@/lib/requirements/errors'
+import {
+  conflictError,
+  forbiddenError,
+  notFoundError,
+} from '@/lib/requirements/errors'
 
 const mocks = vi.hoisted(() => {
   const context = {
@@ -19,6 +23,7 @@ const mocks = vi.hoisted(() => {
   const db = { query: vi.fn() }
 
   return {
+    assertAuthorized: vi.fn(),
     context,
     createRequirementSelectionAnswer: vi.fn(),
     createRequirementSelectionQuestion: vi.fn(),
@@ -30,9 +35,11 @@ const mocks = vi.hoisted(() => {
     getRequirementSelectionQuestionByIdentifier: vi.fn(),
     getRequestSqlServerDataSource: vi.fn(async () => db),
     getSpecificationById: vi.fn(),
+    listAreaIdsActorCanAuthor: vi.fn(),
     listRequirementSelectionQuestions: vi.fn(),
     recordAllowedActionAuditEvent: vi.fn(),
     recordDeniedActionAuditEvent: vi.fn(),
+    replaceSavedAnswers: vi.fn(),
     replaceRequirementSelectionQuestionVisibilityGroups: vi.fn(),
     replaceSpecificationRequirementSelectionAnswers: vi.fn(),
     resolveRequirementSelectionQuestionId: vi.fn(),
@@ -52,6 +59,9 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
     await importOriginal<typeof import('@/lib/requirements/auth')>()
   return {
     ...actual,
+    createDefaultAuthorizationService: () => ({
+      assertAuthorized: mocks.assertAuthorized,
+    }),
     createRequestContext: vi.fn(async () => mocks.context),
   }
 })
@@ -63,6 +73,10 @@ vi.mock('@/lib/audit/action-audit', () => ({
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   getSpecificationById: mocks.getSpecificationById,
+}))
+
+vi.mock('@/lib/dal/requirement-areas', () => ({
+  listAreaIdsActorCanAuthor: mocks.listAreaIdsActorCanAuthor,
 }))
 
 vi.mock('@/lib/dal/requirement-selection-questions', () => ({
@@ -89,6 +103,15 @@ vi.mock('@/lib/dal/requirement-selection-questions', () => ({
   updateRequirementSelectionAnswer: mocks.updateRequirementSelectionAnswer,
   updateRequirementSelectionQuestion: mocks.updateRequirementSelectionQuestion,
 }))
+
+vi.mock(
+  '@/lib/requirements/specification-requirement-selection-answer-mutations',
+  () => ({
+    createSpecificationRequirementSelectionAnswerMutationWorkflow: () => ({
+      replace: mocks.replaceSavedAnswers,
+    }),
+  }),
+)
 
 import { POST as activateQuestion } from '@/app/api/requirement-selection-questions/[id]/activate/route'
 import { POST as activateAnswer } from '@/app/api/requirement-selection-questions/[id]/answers/[answerId]/activate/route'
@@ -144,8 +167,11 @@ function answerParams(id = '11', answerId = '101') {
 describe('requirement selection question routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.assertAuthorized.mockReset()
+    mocks.assertAuthorized.mockResolvedValue(undefined)
     mocks.context.actor.displayName = 'Selection Steward'
     mocks.context.actor.id = 'selection-steward'
+    mocks.context.actor.roles = ['RequirementsEditor']
     mocks.createRequirementSelectionAnswer.mockResolvedValue(question)
     mocks.createRequirementSelectionQuestion.mockResolvedValue(question)
     mocks.deleteRequirementSelectionAnswer.mockResolvedValue('deleted')
@@ -161,6 +187,7 @@ describe('requirement selection question routes', () => {
     )
     mocks.getSpecificationById.mockResolvedValue({ id: 7 })
     mocks.listRequirementSelectionQuestions.mockResolvedValue([question])
+    mocks.listAreaIdsActorCanAuthor.mockResolvedValue([5])
     mocks.recordAllowedActionAuditEvent.mockResolvedValue(undefined)
     mocks.recordDeniedActionAuditEvent.mockResolvedValue(undefined)
     mocks.replaceRequirementSelectionQuestionVisibilityGroups.mockResolvedValue(
@@ -169,6 +196,7 @@ describe('requirement selection question routes', () => {
     mocks.replaceSpecificationRequirementSelectionAnswers.mockResolvedValue([
       question,
     ])
+    mocks.replaceSavedAnswers.mockResolvedValue([question])
     mocks.resolveRequirementSelectionQuestionId.mockResolvedValue(11)
     mocks.setRequirementSelectionAnswerState.mockResolvedValue(question)
     mocks.setRequirementSelectionQuestionState.mockResolvedValue(question)
@@ -184,7 +212,12 @@ describe('requirement selection question routes', () => {
     )
     expect(listResponse.status).toBe(200)
     await expect(listResponse.json()).resolves.toEqual({
-      questions: [question],
+      questions: [
+        {
+          ...question,
+          permissions: { canManage: true },
+        },
+      ],
     })
     expect(mocks.listRequirementSelectionQuestions).toHaveBeenCalledWith(
       mocks.db,
@@ -208,6 +241,36 @@ describe('requirement selection question routes', () => {
         targetUniqueId: 'INF-SQ001',
       }),
     )
+  })
+
+  it('marks foreign-area questions read-only and gives Admin the authoring bypass', async () => {
+    mocks.listAreaIdsActorCanAuthor.mockResolvedValueOnce([])
+
+    const foreignResponse = await listQuestions(
+      request('/api/requirement-selection-questions?includeArchived=true'),
+    )
+    await expect(foreignResponse.json()).resolves.toEqual({
+      questions: [
+        {
+          ...question,
+          permissions: { canManage: false },
+        },
+      ],
+    })
+
+    mocks.context.actor.roles = ['Admin']
+    const adminResponse = await listQuestions(
+      request('/api/requirement-selection-questions?includeArchived=true'),
+    )
+    await expect(adminResponse.json()).resolves.toEqual({
+      questions: [
+        {
+          ...question,
+          permissions: { canManage: true },
+        },
+      ],
+    })
+    expect(mocks.listAreaIdsActorCanAuthor).toHaveBeenCalledTimes(1)
   })
 
   it('returns a question by stable identifier and rejects invalid or missing identifiers', async () => {
@@ -426,6 +489,7 @@ describe('requirement selection question routes', () => {
       expect.objectContaining({
         action: 'requirement_selection_answer.create',
         details: { questionId: 11 },
+        targetId: 11,
         targetUniqueId: 'INF-SQ001',
       }),
     )
@@ -654,7 +718,7 @@ describe('requirement selection question routes', () => {
     expect(missing.status).toBe(404)
   })
 
-  it('replaces specification answers and records the actor snapshot', async () => {
+  it('delegates saved-answer replacement to the authorized domain workflow', async () => {
     const response = await replaceSpecificationAnswers(
       request(
         '/api/requirements-specifications/7/requirement-selection-answers/11',
@@ -665,24 +729,249 @@ describe('requirement selection question routes', () => {
     )
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({ questions: [question] })
-    expect(
-      mocks.replaceSpecificationRequirementSelectionAnswers,
-    ).toHaveBeenCalledWith(
-      mocks.db,
-      7,
-      11,
-      [101, 102],
+    expect(mocks.assertAuthorized).toHaveBeenCalledWith(
       {
-        displayName: 'Selection Steward',
-        hsaId: 'SE5560000001-steward',
+        kind: 'manage_specification_requirement_selection_answers',
+        operation: 'replace',
+        specificationId: 7,
       },
-      { confirmHiddenAnswerClear: undefined },
+      mocks.context,
     )
+    await expect(response.json()).resolves.toEqual({ questions: [question] })
+    expect(mocks.replaceSavedAnswers).toHaveBeenCalledWith(mocks.context, {
+      answerIds: [101, 102],
+      confirmHiddenAnswerClear: undefined,
+      questionId: 11,
+      specificationId: 7,
+    })
   })
 
+  it('denies saved-answer replacement before specification or answer work', async () => {
+    mocks.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Specification author assignment is required', {
+        reason: 'specification_author_required',
+      }),
+    )
+
+    const response = await replaceSpecificationAnswers(
+      request(
+        '/api/requirements-specifications/7/requirement-selection-answers/11',
+        'PUT',
+        { answerIds: [101] },
+      ),
+      { params: Promise.resolve({ id: '7', questionId: '11' }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      mocks.db,
+      mocks.context,
+      expect.objectContaining({
+        action: 'requirements.authorization.denied',
+        denialReason: 'specification_author_required',
+        targetKind: 'requirements',
+      }),
+    )
+    expect(mocks.replaceSavedAnswers).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      action: {
+        areaId: 5,
+        kind: 'manage_requirement_selection_question',
+        operation: 'create',
+      },
+      label: 'question creation',
+      run: () =>
+        createQuestion(
+          request('/api/requirement-selection-questions', 'POST', {
+            areaId: 5,
+            selectionType: 'single',
+            text: 'Sensitive denied question text',
+          }),
+        ),
+    },
+    ...(
+      [
+        ['update', updateQuestion, 'PUT', { text: 'Denied question update' }],
+        ['delete', deleteQuestion, 'DELETE', undefined],
+      ] as const
+    ).map(([operation, route, method, body]) => ({
+      action: {
+        kind: 'manage_requirement_selection_question',
+        operation,
+        questionId: '11',
+      },
+      label: `question ${operation}`,
+      run: () =>
+        route(
+          request('/api/requirement-selection-questions/11', method, body),
+          questionParams(),
+        ),
+    })),
+    {
+      action: {
+        kind: 'manage_requirement_selection_question',
+        operation: 'duplicate',
+        questionId: '11',
+      },
+      label: 'question duplication',
+      run: () =>
+        duplicateQuestion(
+          request('/api/requirement-selection-questions/11/duplicate', 'POST'),
+          questionParams(),
+        ),
+    },
+    {
+      action: {
+        kind: 'manage_requirement_selection_question',
+        operation: 'visibility.update',
+        questionId: '11',
+      },
+      label: 'question visibility',
+      run: () =>
+        updateVisibility(
+          request('/api/requirement-selection-questions/11/visibility', 'PUT', {
+            groups: [],
+          }),
+          questionParams(),
+        ),
+    },
+    ...(
+      [
+        ['activate', activateQuestion],
+        ['archive', archiveQuestion],
+        ['deactivate', deactivateQuestion],
+        ['reactivate', reactivateQuestion],
+      ] as const
+    ).map(([operation, route]) => ({
+      action: {
+        kind: 'manage_requirement_selection_question',
+        operation,
+        questionId: '11',
+      },
+      label: `question ${operation}`,
+      run: () =>
+        route(
+          request(
+            `/api/requirement-selection-questions/11/${operation}`,
+            'POST',
+          ),
+          questionParams(),
+        ),
+    })),
+    {
+      action: {
+        kind: 'manage_requirement_selection_question',
+        operation: 'answer.create',
+        questionId: '11',
+      },
+      label: 'answer creation',
+      run: () =>
+        createAnswer(
+          request('/api/requirement-selection-questions/11/answers', 'POST', {
+            text: 'Sensitive denied answer text',
+          }),
+          questionParams(),
+        ),
+    },
+    ...(
+      [
+        [
+          'answer.update',
+          updateAnswer,
+          'PUT',
+          { text: 'Denied answer update' },
+        ],
+        ['answer.delete', deleteAnswer, 'DELETE', undefined],
+      ] as const
+    ).map(([operation, route, method, body]) => ({
+      action: {
+        answerId: 101,
+        kind: 'manage_requirement_selection_question',
+        operation,
+        questionId: '11',
+      },
+      label: operation,
+      run: () =>
+        route(
+          request(
+            '/api/requirement-selection-questions/11/answers/101',
+            method,
+            body,
+          ),
+          answerParams(),
+        ),
+    })),
+    ...(
+      [
+        ['activate', activateAnswer],
+        ['archive', archiveAnswer],
+        ['deactivate', deactivateAnswer],
+        ['reactivate', reactivateAnswer],
+      ] as const
+    ).map(([operation, route]) => ({
+      action: {
+        answerId: 101,
+        kind: 'manage_requirement_selection_question',
+        operation: `answer.${operation}`,
+        questionId: '11',
+      },
+      label: `answer ${operation}`,
+      run: () =>
+        route(
+          request(
+            `/api/requirement-selection-questions/11/answers/101/${operation}`,
+            'POST',
+          ),
+          answerParams(),
+        ),
+    })),
+  ])(
+    'denies $label before every domain write and records redacted evidence',
+    async ({ action, run }) => {
+      mocks.assertAuthorized.mockRejectedValueOnce(
+        forbiddenError('Requirement area author assignment is required', {
+          reason: 'requirement_area_author_required',
+        }),
+      )
+
+      const response = await run()
+
+      expect(response.status).toBe(403)
+      expect(mocks.assertAuthorized).toHaveBeenCalledWith(action, mocks.context)
+      for (const domainWrite of [
+        mocks.createRequirementSelectionQuestion,
+        mocks.updateRequirementSelectionQuestion,
+        mocks.deleteRequirementSelectionQuestion,
+        mocks.duplicateRequirementSelectionQuestion,
+        mocks.setRequirementSelectionQuestionState,
+        mocks.replaceRequirementSelectionQuestionVisibilityGroups,
+        mocks.createRequirementSelectionAnswer,
+        mocks.updateRequirementSelectionAnswer,
+        mocks.deleteRequirementSelectionAnswer,
+        mocks.setRequirementSelectionAnswerState,
+      ]) {
+        expect(domainWrite).not.toHaveBeenCalled()
+      }
+      expect(mocks.recordAllowedActionAuditEvent).not.toHaveBeenCalled()
+      expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+        mocks.db,
+        mocks.context,
+        expect.objectContaining({
+          action: 'requirements.authorization.denied',
+          denialReason: 'requirement_area_author_required',
+          details: expect.not.objectContaining({
+            text: expect.anything(),
+          }),
+        }),
+      )
+    },
+  )
+
   it('returns hidden selections for the confirmation conflict', async () => {
-    mocks.replaceSpecificationRequirementSelectionAnswers.mockRejectedValueOnce(
+    mocks.replaceSavedAnswers.mockRejectedValueOnce(
       conflictError('Confirm clearing hidden answers', {
         hiddenSelections: [{ answerId: 101, questionId: 11 }],
         reason: 'hidden_selection_clear_required',
@@ -708,7 +997,7 @@ describe('requirement selection question routes', () => {
   })
 
   it('returns an empty hidden-selection list when the conflict has no details', async () => {
-    mocks.replaceSpecificationRequirementSelectionAnswers.mockRejectedValueOnce(
+    mocks.replaceSavedAnswers.mockRejectedValueOnce(
       conflictError('Confirm clearing hidden answers', {
         reason: 'hidden_selection_clear_required',
       }),
@@ -728,32 +1017,10 @@ describe('requirement selection question routes', () => {
     })
   })
 
-  it('uses the actor id fallback and returns not found for a missing specification', async () => {
-    mocks.context.actor.displayName = '   '
-    const fallbackResponse = await replaceSpecificationAnswers(
-      request(
-        '/api/requirements-specifications/7/requirement-selection-answers/11',
-        'PUT',
-        { answerIds: [] },
-      ),
-      { params: Promise.resolve({ id: '7', questionId: '11' }) },
+  it('returns not found when the domain workflow cannot resolve the specification', async () => {
+    mocks.replaceSavedAnswers.mockRejectedValueOnce(
+      notFoundError('Requirements specification not found'),
     )
-    expect(fallbackResponse.status).toBe(200)
-    expect(
-      mocks.replaceSpecificationRequirementSelectionAnswers,
-    ).toHaveBeenCalledWith(
-      mocks.db,
-      7,
-      11,
-      [],
-      {
-        displayName: 'selection-steward',
-        hsaId: 'SE5560000001-steward',
-      },
-      { confirmHiddenAnswerClear: undefined },
-    )
-
-    mocks.getSpecificationById.mockResolvedValueOnce(null)
     const missing = await replaceSpecificationAnswers(
       request(
         '/api/requirements-specifications/99/requirement-selection-answers/11',
@@ -766,7 +1033,7 @@ describe('requirement selection question routes', () => {
   })
 
   it('sanitizes unexpected specification answer replacement failures', async () => {
-    mocks.replaceSpecificationRequirementSelectionAnswers.mockRejectedValueOnce(
+    mocks.replaceSavedAnswers.mockRejectedValueOnce(
       new Error('database detail'),
     )
     const response = await replaceSpecificationAnswers(

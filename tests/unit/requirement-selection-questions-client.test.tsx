@@ -110,6 +110,7 @@ interface TestQuestion {
   id: number
   isActive: boolean
   isArchived: boolean
+  permissions: { canManage: boolean }
   questionCode: string
   selectionType: 'multiple' | 'single'
   sortOrder: number
@@ -121,6 +122,7 @@ const sampleArea = {
   description: 'Controls authentication and authorization requirements.',
   id: 1,
   name: 'Security',
+  permissions: { canAuthor: true },
   prefix: 'SEC',
 }
 const samplePackage = {
@@ -144,6 +146,7 @@ const sampleQuestion: TestQuestion = {
   id: 11,
   isActive: true,
   isArchived: false,
+  permissions: { canManage: true },
   questionCode: 'SEC-KUF001',
   selectionType: 'single',
   sortOrder: 0,
@@ -523,6 +526,7 @@ describe('RequirementSelectionQuestionsClient', () => {
       description: 'Architecture ownership.',
       id: 2,
       name: 'Architecture',
+      permissions: { canAuthor: true },
       prefix: 'ARK',
     }
     const architectureQuestion: TestQuestion = {
@@ -600,6 +604,58 @@ describe('RequirementSelectionQuestionsClient', () => {
     expect(
       screen.getByRole('button', { name: 'Add answer' }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps foreign-area questions readable without offering mutation controls', async () => {
+    const readOnlyArea = {
+      ...sampleArea,
+      permissions: { canAuthor: false },
+    }
+    const readOnlyQuestion = {
+      ...sampleQuestion,
+      answers: [sampleAnswer],
+      permissions: { canManage: false },
+    }
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [readOnlyArea] })
+      }
+      if (url === '/api/requirement-packages') {
+        return okJson({ requirementPackages: [samplePackage] })
+      }
+      if (url === '/api/requirement-selection-questions?includeArchived=true') {
+        return okJson({ questions: [readOnlyQuestion] })
+      }
+      return okJson({})
+    })
+
+    render(<RequirementSelectionQuestionsClient />)
+
+    expect(await screen.findByText(readOnlyQuestion.text)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'Create requirement selection question',
+      }),
+    ).not.toBeInTheDocument()
+    const questionCard = expandQuestion(readOnlyQuestion.text)
+    expect(
+      within(questionCard).getByText(sampleAnswer.text),
+    ).toBeInTheDocument()
+    for (const buttonName of [
+      'Reorder question',
+      'Edit',
+      'Visibility conditions',
+      'Deactivate',
+      'Archive',
+      'Clone',
+      'Delete',
+      'Reorder answer',
+      'Add answer',
+    ]) {
+      expect(
+        within(questionCard).queryByRole('button', { name: buttonName }),
+      ).not.toBeInTheDocument()
+    }
   })
 
   it('opens a read-only hierarchy modal from a separate badge without expanding the question row', async () => {

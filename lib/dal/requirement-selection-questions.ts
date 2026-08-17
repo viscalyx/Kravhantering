@@ -1740,7 +1740,7 @@ async function loadSpecificationRequirementSelectionQuestionsForVisibility(
 }
 
 export async function listSpecificationRequirementSelectionQuestions(
-  db: SqlServerDatabase,
+  db: QueryExecutor,
   specificationId: number,
 ): Promise<SpecificationRequirementSelectionQuestionRow[]> {
   const questions =
@@ -2136,42 +2136,41 @@ function assertNoHiddenSelectionImpact(
   )
 }
 
-export async function replaceSpecificationRequirementSelectionAnswers(
-  db: SqlServerDatabase,
+export async function replaceSpecificationRequirementSelectionAnswersWithExecutor(
+  db: QueryExecutor,
   specificationId: number,
   questionId: number,
   answerIdsInput: number[],
   actor: { displayName: string; hsaId: string | null },
   options: { confirmHiddenAnswerClear?: boolean } = {},
-): Promise<SpecificationRequirementSelectionQuestionRow[]> {
+): Promise<void> {
   const answerIds = uniquePositiveIntegers(answerIdsInput)
-  await db.transaction(async manager => {
-    const questionRows = (await manager.query(
-      `
+  const questionRows = (await db.query(
+    `
         SELECT selection_type AS selectionType
         FROM requirement_selection_questions
         WHERE id = @0
           AND is_active = 1
           AND is_archived = 0
       `,
-      [questionId],
-    )) as Array<{ selectionType: RequirementSelectionType }>
-    const question = questionRows[0]
-    if (!question && answerIds.length > 0) {
-      throw validationError('Question is not active', {
-        questionId,
-        reason: 'inactive_question',
-      })
-    }
-    if (question?.selectionType === 'single' && answerIds.length > 1) {
-      throw validationError('Single-choice questions accept one answer', {
-        questionId,
-        reason: 'single_choice_multiple_answers',
-      })
-    }
-    if (answerIds.length > 0) {
-      const answerRows = (await manager.query(
-        `
+    [questionId],
+  )) as Array<{ selectionType: RequirementSelectionType }>
+  const question = questionRows[0]
+  if (!question && answerIds.length > 0) {
+    throw validationError('Question is not active', {
+      questionId,
+      reason: 'inactive_question',
+    })
+  }
+  if (question?.selectionType === 'single' && answerIds.length > 1) {
+    throw validationError('Single-choice questions accept one answer', {
+      questionId,
+      reason: 'single_choice_multiple_answers',
+    })
+  }
+  if (answerIds.length > 0) {
+    const answerRows = (await db.query(
+      `
           SELECT id, is_no_requirement_selection AS isNoRequirementSelection
           FROM requirement_selection_answers
           WHERE question_id = @0
@@ -2179,59 +2178,56 @@ export async function replaceSpecificationRequirementSelectionAnswers(
             AND is_active = 1
             AND is_archived = 0
         `,
-        [questionId, ...answerIds],
-      )) as Array<{
-        id: number
-        isNoRequirementSelection: boolean | number | string
-      }>
-      if (answerRows.length !== answerIds.length) {
-        throw validationError(
-          'All saved answers must be active answers on the question',
-          {
-            answerIds,
-            questionId,
-            reason: 'invalid_saved_answers',
-          },
-        )
-      }
-      const noSelectionCount = answerRows.filter(row =>
-        toBoolean(row.isNoRequirementSelection),
-      ).length
-      if (noSelectionCount > 0 && answerIds.length > 1) {
-        throw validationError(
-          'No-requirement-selection answers are exclusive',
-          {
-            questionId,
-            reason: 'no_selection_exclusive',
-          },
-        )
-      }
-    }
-    const questionsBeforeChange =
-      await loadSpecificationRequirementSelectionQuestionsForVisibility(
-        manager,
-        specificationId,
+      [questionId, ...answerIds],
+    )) as Array<{
+      id: number
+      isNoRequirementSelection: boolean | number | string
+    }>
+    if (answerRows.length !== answerIds.length) {
+      throw validationError(
+        'All saved answers must be active answers on the question',
+        {
+          answerIds,
+          questionId,
+          reason: 'invalid_saved_answers',
+        },
       )
-    const impact = hiddenCurrentSelectionImpact(
-      questionsBeforeChange,
-      questionId,
-      answerIds,
-    )
-    if (!options.confirmHiddenAnswerClear) {
-      assertNoHiddenSelectionImpact(impact)
     }
-    await manager.query(
-      `
+    const noSelectionCount = answerRows.filter(row =>
+      toBoolean(row.isNoRequirementSelection),
+    ).length
+    if (noSelectionCount > 0 && answerIds.length > 1) {
+      throw validationError('No-requirement-selection answers are exclusive', {
+        questionId,
+        reason: 'no_selection_exclusive',
+      })
+    }
+  }
+  const questionsBeforeChange =
+    await loadSpecificationRequirementSelectionQuestionsForVisibility(
+      db,
+      specificationId,
+    )
+  const impact = hiddenCurrentSelectionImpact(
+    questionsBeforeChange,
+    questionId,
+    answerIds,
+  )
+  if (!options.confirmHiddenAnswerClear) {
+    assertNoHiddenSelectionImpact(impact)
+  }
+  await db.query(
+    `
         DELETE FROM specification_requirement_selection_answers
         WHERE specification_id = @0
           AND question_id = @1
       `,
-      [specificationId, questionId],
-    )
-    const now = new Date()
-    for (const answerId of answerIds) {
-      await manager.query(
-        `
+    [specificationId, questionId],
+  )
+  const now = new Date()
+  for (const answerId of answerIds) {
+    await db.query(
+      `
           INSERT INTO specification_requirement_selection_answers (
             specification_id,
             question_id,
@@ -2242,20 +2238,20 @@ export async function replaceSpecificationRequirementSelectionAnswers(
             changed_by_display_name
           ) VALUES (@0, @1, @2, 0, @3, @4, @5)
         `,
-        [
-          specificationId,
-          questionId,
-          answerId,
-          now,
-          actor.hsaId,
-          actor.displayName,
-        ],
-      )
-    }
-    if (impact.length > 0) {
-      const hiddenQuestionIds = impact.map(item => item.questionId)
-      await manager.query(
-        `
+      [
+        specificationId,
+        questionId,
+        answerId,
+        now,
+        actor.hsaId,
+        actor.displayName,
+      ],
+    )
+  }
+  if (impact.length > 0) {
+    const hiddenQuestionIds = impact.map(item => item.questionId)
+    await db.query(
+      `
           UPDATE specification_requirement_selection_answers
           SET is_historical = 1,
               changed_at = @${hiddenQuestionIds.length + 1},
@@ -2265,16 +2261,35 @@ export async function replaceSpecificationRequirementSelectionAnswers(
             AND question_id IN (${placeholders(hiddenQuestionIds, 1)})
             AND is_historical = 0
         `,
-        [
-          specificationId,
-          ...hiddenQuestionIds,
-          now,
-          actor.hsaId,
-          actor.displayName,
-        ],
-      )
-    }
-  })
+      [
+        specificationId,
+        ...hiddenQuestionIds,
+        now,
+        actor.hsaId,
+        actor.displayName,
+      ],
+    )
+  }
+}
+
+export async function replaceSpecificationRequirementSelectionAnswers(
+  db: SqlServerDatabase,
+  specificationId: number,
+  questionId: number,
+  answerIdsInput: number[],
+  actor: { displayName: string; hsaId: string | null },
+  options: { confirmHiddenAnswerClear?: boolean } = {},
+): Promise<SpecificationRequirementSelectionQuestionRow[]> {
+  await db.transaction(manager =>
+    replaceSpecificationRequirementSelectionAnswersWithExecutor(
+      manager,
+      specificationId,
+      questionId,
+      answerIdsInput,
+      actor,
+      options,
+    ),
+  )
   return listSpecificationRequirementSelectionQuestions(db, specificationId)
 }
 

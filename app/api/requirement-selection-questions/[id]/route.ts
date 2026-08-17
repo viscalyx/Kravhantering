@@ -7,11 +7,9 @@ import {
   updateRequirementSelectionQuestion,
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  authenticatedMutationPolicy,
-  secureMutationRoute,
-} from '@/lib/http/secure-mutation-route'
+import { secureMutationRoute } from '@/lib/http/secure-mutation-route'
 import { parseRouteParams } from '@/lib/http/validation'
+import { requirementSelectionQuestionPolicy } from '../_authorization'
 import { questionRouteParamsSchema, questionUpdateSchema } from '../_schemas'
 
 type Params = Promise<{ id: string }>
@@ -36,25 +34,25 @@ export async function GET(
 export const PUT = secureMutationRoute({
   bodySchema: questionUpdateSchema,
   paramsSchema: questionRouteParamsSchema,
-  policy: authenticatedMutationPolicy('requirement_selection_question.update'),
-  handler: async ({ body, context, params }) => {
-    const db = await getRequestSqlServerDataSource()
+  policy: requirementSelectionQuestionPolicy('update'),
+  handler: async ({ body, context, db, params }) => {
+    const activeDb = db ?? (await getRequestSqlServerDataSource())
     const questionId = await resolveRequirementSelectionQuestionId(
-      db,
+      activeDb,
       params.id,
     )
     if (questionId == null) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const question = await updateRequirementSelectionQuestion(
-      db,
+      activeDb,
       questionId,
       body,
     )
     if (!question) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAllowedActionAuditEvent(db, context, {
+    await recordAllowedActionAuditEvent(activeDb, context, {
       action: 'requirement_selection_question.update',
       details: { changedFields: Object.keys(body) },
       targetId: question.id,
@@ -67,17 +65,20 @@ export const PUT = secureMutationRoute({
 
 export const DELETE = secureMutationRoute({
   paramsSchema: questionRouteParamsSchema,
-  policy: authenticatedMutationPolicy('requirement_selection_question.delete'),
-  handler: async ({ context, params }) => {
-    const db = await getRequestSqlServerDataSource()
+  policy: requirementSelectionQuestionPolicy('delete'),
+  handler: async ({ context, db, params }) => {
+    const activeDb = db ?? (await getRequestSqlServerDataSource())
     const questionId = await resolveRequirementSelectionQuestionId(
-      db,
+      activeDb,
       params.id,
     )
     if (questionId == null) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    const result = await deleteRequirementSelectionQuestion(db, questionId)
+    const result = await deleteRequirementSelectionQuestion(
+      activeDb,
+      questionId,
+    )
     if (result === 'not_found') {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -87,7 +88,7 @@ export const DELETE = secureMutationRoute({
         { status: 409 },
       )
     }
-    await recordAllowedActionAuditEvent(db, context, {
+    await recordAllowedActionAuditEvent(activeDb, context, {
       action: 'requirement_selection_question.delete',
       targetId: questionId,
       targetKind: 'requirement_selection_question',

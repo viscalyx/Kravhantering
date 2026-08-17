@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   deleteDraftVersion: vi.fn(),
   deleteSuggestion: vi.fn(),
   editRequirement: vi.fn(),
+  findSpecificationIdentity: vi.fn(),
   getAreaById: vi.fn(),
   getRequirementById: vi.fn(),
   getRequirementByUniqueId: vi.fn(),
@@ -104,6 +105,7 @@ vi.mock('@/lib/dal/improvement-suggestions', () => ({
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   canAuthorSpecification: mocks.canAuthorSpecification,
+  findSpecificationIdentity: mocks.findSpecificationIdentity,
   graduateSpecificationLocalRequirementToLibrary:
     mocks.graduateSpecificationLocalRequirementToLibrary,
   getOrCreateSpecificationNeedsReference:
@@ -321,6 +323,9 @@ describe('createRequirementsService', () => {
     mocks.createSuggestion.mockResolvedValue({ id: 6 })
     mocks.deleteDeviation.mockResolvedValue(undefined)
     mocks.deleteSuggestion.mockResolvedValue(undefined)
+    mocks.findSpecificationIdentity.mockImplementation(async (_db, id) => ({
+      id,
+    }))
     mocks.canAuthorArea.mockResolvedValue(true)
     mocks.canAuthorSpecification.mockResolvedValue(true)
     mocks.listRequirements.mockResolvedValue([])

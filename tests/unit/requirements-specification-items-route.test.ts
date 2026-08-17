@@ -1,53 +1,53 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mockDb = {
-  transaction: vi.fn(),
-}
-
-const mockTx = {}
-
-const mocks = {
-  addToSpecification: vi.fn(),
-  createRequirementsRestRuntime: vi.fn(),
-  deleteSpecificationItemsByRefs: vi.fn(),
-  getSpecificationItems: vi.fn(),
-  getSpecificationById: vi.fn(),
-  linkRequirementsToSpecificationAtomically: vi.fn(),
-  removeFromSpecification: vi.fn(),
-  unlinkRequirementsFromSpecification: vi.fn(),
-  updateSpecificationItemFieldsByItemRefs: vi.fn(),
-}
-
-const mockContext = {
-  actor: {
-    displayName: 'Route Tester',
-    hsaId: 'SE5560000001-route',
-    id: 'route-test',
-    isAuthenticated: true,
-    roles: ['RequirementsEditor'],
-    source: 'oidc',
+const { mockContext, mockDb, mockTx, mocks } = vi.hoisted(() => ({
+  mockContext: {
+    actor: {
+      displayName: 'Route Tester',
+      hsaId: 'SE5560000001-route',
+      id: 'route-test',
+      isAuthenticated: true,
+      roles: ['RequirementsEditor'],
+      source: 'oidc',
+    },
+    correlationId: 'correlation-1',
+    requestId: 'request-1',
+    source: 'rest',
   },
-  correlationId: 'correlation-1',
-  requestId: 'request-1',
-  source: 'rest',
-}
+  mockDb: { transaction: vi.fn() },
+  mocks: {
+    addToSpecification: vi.fn(),
+    assertAuthorized: vi.fn(),
+    createRequirementsRestRuntime: vi.fn(),
+    getSpecificationItems: vi.fn(),
+    getSpecificationById: vi.fn(),
+    linkRequirementsToSpecificationAtomically: vi.fn(),
+    mutateRequirementApplications: vi.fn(),
+    recordDeniedActionAuditEvent: vi.fn(),
+    removeFromSpecification: vi.fn(),
+  },
+  mockTx: {},
+}))
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: () => mockDb,
 }))
 
+vi.mock('@/lib/audit/action-audit', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/lib/audit/action-audit')>()
+  return {
+    ...actual,
+    recordDeniedActionAuditEvent: mocks.recordDeniedActionAuditEvent,
+  }
+})
+
 vi.mock('@/lib/dal/requirements-specifications', () => ({
-  deleteSpecificationItemsByRefs: (...args: unknown[]) =>
-    mocks.deleteSpecificationItemsByRefs(...args),
   getSpecificationById: (...args: unknown[]) =>
     mocks.getSpecificationById(...args),
   linkRequirementsToSpecificationAtomically: (...args: unknown[]) =>
     mocks.linkRequirementsToSpecificationAtomically(...args),
-  unlinkRequirementsFromSpecification: (...args: unknown[]) =>
-    mocks.unlinkRequirementsFromSpecification(...args),
-  updateSpecificationItemFieldsByItemRefs: (...args: unknown[]) =>
-    mocks.updateSpecificationItemFieldsByItemRefs(...args),
 }))
 
 vi.mock('@/lib/dal/deviations', () => ({
@@ -64,7 +64,9 @@ vi.mock('@/lib/requirements/auth', async importOriginal => {
     await importOriginal<typeof import('@/lib/requirements/auth')>()
   return {
     ...actual,
-    createDefaultAuthorizationService: () => ({ assertAuthorized: vi.fn() }),
+    createDefaultAuthorizationService: () => ({
+      assertAuthorized: mocks.assertAuthorized,
+    }),
     createRequestContext: vi.fn(async () => mockContext),
   }
 })
@@ -75,7 +77,12 @@ import {
   PATCH,
   POST,
 } from '@/app/api/requirements-specifications/[id]/items/route'
-import { invalidCursorError, validationError } from '@/lib/requirements/errors'
+import {
+  forbiddenError,
+  invalidCursorError,
+  notFoundError,
+  validationError,
+} from '@/lib/requirements/errors'
 import { SPECIFICATION_ITEM_SELECTION_ACTION_LIMIT } from '@/lib/specifications/selection-action-limit'
 
 function makeParams(id: string) {
@@ -105,10 +112,6 @@ describe('requirements-specifications/[id]/items route', () => {
     mockDb.transaction.mockImplementation(
       async (callback: (tx: typeof mockTx) => unknown) => callback(mockTx),
     )
-    mocks.deleteSpecificationItemsByRefs.mockResolvedValue({
-      deletedLibraryCount: 1,
-      deletedSpecificationLocalCount: 1,
-    })
     mocks.addToSpecification.mockResolvedValue({
       addedCount: 1,
       message: 'ok',
@@ -123,6 +126,7 @@ describe('requirements-specifications/[id]/items route', () => {
         service: {
           addToSpecification: mocks.addToSpecification,
           getSpecificationItems: mocks.getSpecificationItems,
+          mutateRequirementApplications: mocks.mutateRequirementApplications,
           removeFromSpecification: mocks.removeFromSpecification,
         },
       }),
@@ -135,12 +139,28 @@ describe('requirements-specifications/[id]/items route', () => {
       specificationId: 5,
     })
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(1)
+    mocks.mutateRequirementApplications.mockImplementation(
+      async (
+        _context: unknown,
+        input: { itemRefs?: string[]; operation: string },
+      ) =>
+        input.operation === 'update'
+          ? { operation: 'update', updatedCount: input.itemRefs?.length ?? 0 }
+          : {
+              operation: 'remove',
+              removedCount: input.itemRefs?.length ?? 2,
+              removedLibraryCount:
+                input.itemRefs?.filter(itemRef => itemRef.startsWith('lib:'))
+                  .length ?? 2,
+              removedSpecificationLocalCount:
+                input.itemRefs?.filter(itemRef => itemRef.startsWith('local:'))
+                  .length ?? 0,
+            },
+    )
     mocks.removeFromSpecification.mockResolvedValue({
       message: 'ok',
       removedCount: 2,
     })
-    mocks.unlinkRequirementsFromSpecification.mockResolvedValue(2)
-    mocks.updateSpecificationItemFieldsByItemRefs.mockResolvedValue(2)
   })
 
   it('rejects needsReferenceId values that belong to another specification', async () => {
@@ -549,8 +569,7 @@ describe('requirements-specifications/[id]/items route', () => {
 
     expect(patchResponse.status).toBe(400)
     expect(deleteResponse.status).toBe(400)
-    expect(mocks.updateSpecificationItemFieldsByItemRefs).not.toHaveBeenCalled()
-    expect(mocks.deleteSpecificationItemsByRefs).not.toHaveBeenCalled()
+    expect(mocks.mutateRequirementApplications).not.toHaveBeenCalled()
   })
 
   it('returns a JSON 500 error when linking requirements fails unexpectedly', async () => {
@@ -620,12 +639,24 @@ describe('requirements-specifications/[id]/items route', () => {
       ok: true,
       removedCount: 2,
     })
-    expect(mocks.removeFromSpecification).toHaveBeenCalledTimes(1)
-    expect(mocks.removeFromSpecification).toHaveBeenCalledWith(mockContext, {
-      specificationId: 5,
-      requirementIds: [1, 2],
-      responseFormat: 'json',
-    })
+    expect(mocks.mutateRequirementApplications).toHaveBeenCalledTimes(1)
+    expect(mocks.mutateRequirementApplications).toHaveBeenCalledWith(
+      mockContext,
+      {
+        operation: 'remove',
+        requirementIds: [1, 2],
+        specificationId: 5,
+      },
+    )
+    expect(mocks.assertAuthorized).toHaveBeenCalledWith(
+      {
+        kind: 'manage_requirement_applications',
+        operation: 'remove',
+        requirementIds: [1, 2],
+        specificationId: 5,
+      },
+      mockContext,
+    )
   })
 
   it('bulk-updates needs references by item refs', async () => {
@@ -648,19 +679,158 @@ describe('requirements-specifications/[id]/items route', () => {
       ok: true,
       updatedCount: 2,
     })
-    expect(mocks.updateSpecificationItemFieldsByItemRefs).toHaveBeenCalledWith(
-      mockDb,
-      5,
-      ['lib:31', 'local:41'],
-      { needsReferenceId: 7 },
+    expect(mocks.mutateRequirementApplications).toHaveBeenCalledWith(
+      mockContext,
+      {
+        fields: { needsReferenceId: 7 },
+        itemRefs: ['lib:31', 'local:41'],
+        operation: 'update',
+        specificationId: 5,
+      },
     )
+  })
+
+  it('returns an update-specific JSON 500 error for unexpected failures', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.mutateRequirementApplications.mockRejectedValueOnce(
+      new Error('update failed'),
+    )
+
+    try {
+      const response = await PATCH(
+        new NextRequest(
+          'http://localhost/api/requirements-specifications/5/items',
+          {
+            body: JSON.stringify({
+              itemRefs: ['lib:31'],
+              needsReferenceId: 7,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+            method: 'PATCH',
+          },
+        ),
+        makeParams('5'),
+      )
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Failed to update requirement applications',
+      })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('denies a bulk field update before the route workflow starts', async () => {
+    mocks.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Specification author assignment is required', {
+        reason: 'specification_author_required',
+      }),
+    )
+
+    const response = await PATCH(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items',
+        {
+          body: JSON.stringify({
+            itemRefs: ['lib:31', 'local:41'],
+            needsReferenceId: 7,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        },
+      ),
+      makeParams('5'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      mockDb,
+      mockContext,
+      expect.objectContaining({
+        action: 'requirements.authorization.denied',
+        denialReason: 'specification_author_required',
+        targetKind: 'requirements',
+      }),
+    )
+    expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    expect(mocks.mutateRequirementApplications).not.toHaveBeenCalled()
+  })
+
+  it('denies mixed removal before route workflow or low-level mutation work', async () => {
+    mocks.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Specification author assignment is required', {
+        reason: 'specification_author_required',
+      }),
+    )
+
+    const response = await DELETE(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items',
+        {
+          body: JSON.stringify({ itemRefs: ['lib:31', 'local:41'] }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'DELETE',
+        },
+      ),
+      makeParams('5'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      mockDb,
+      mockContext,
+      expect.objectContaining({
+        action: 'requirements.authorization.denied',
+        denialReason: 'specification_author_required',
+        targetKind: 'requirements',
+      }),
+    )
+    expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    expect(mocks.mutateRequirementApplications).not.toHaveBeenCalled()
+    expect(mocks.removeFromSpecification).not.toHaveBeenCalled()
+  })
+
+  it('denies requirement-id removal before the route workflow starts', async () => {
+    mocks.assertAuthorized.mockRejectedValueOnce(
+      forbiddenError('Specification author assignment is required', {
+        reason: 'specification_author_required',
+      }),
+    )
+
+    const response = await DELETE(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/5/items',
+        {
+          body: JSON.stringify({ requirementIds: [1, 2] }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'DELETE',
+        },
+      ),
+      makeParams('5'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(mocks.recordDeniedActionAuditEvent).toHaveBeenCalledWith(
+      mockDb,
+      mockContext,
+      expect.objectContaining({
+        action: 'requirements.authorization.denied',
+        denialReason: 'specification_author_required',
+        targetKind: 'requirements',
+      }),
+    )
+    expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    expect(mocks.mutateRequirementApplications).not.toHaveBeenCalled()
   })
 
   it('returns a JSON 500 error when unlinking requirements fails unexpectedly', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
-    mocks.removeFromSpecification.mockRejectedValueOnce(
+    mocks.mutateRequirementApplications.mockRejectedValueOnce(
       new Error('SQL unlink failed'),
     )
 
@@ -680,21 +850,9 @@ describe('requirements-specifications/[id]/items route', () => {
 
       expect(response.status).toBe(500)
       await expect(response.json()).resolves.toEqual({
-        error: 'Failed to unlink requirements',
+        error: 'Failed to remove requirement applications',
       })
-      expect(mocks.removeFromSpecification).toHaveBeenCalledWith(mockContext, {
-        specificationId: 5,
-        requirementIds: [1, 2],
-        responseFormat: 'json',
-      })
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to unlink requirements from specification',
-        expect.objectContaining({
-          error: expect.objectContaining({
-            message: 'SQL unlink failed',
-          }),
-        }),
-      )
+      expect(mocks.mutateRequirementApplications).toHaveBeenCalled()
     } finally {
       consoleErrorSpy.mockRestore()
     }
@@ -721,10 +879,13 @@ describe('requirements-specifications/[id]/items route', () => {
       ok: true,
       removedCount: 2,
     })
-    expect(mocks.deleteSpecificationItemsByRefs).toHaveBeenCalledWith(
-      mockDb,
-      5,
-      ['lib:31', 'local:2'],
+    expect(mocks.mutateRequirementApplications).toHaveBeenCalledWith(
+      mockContext,
+      {
+        itemRefs: ['lib:31', 'local:2'],
+        operation: 'remove',
+        specificationId: 5,
+      },
     )
     expect(mocks.removeFromSpecification).not.toHaveBeenCalled()
   })
@@ -749,6 +910,9 @@ describe('requirements-specifications/[id]/items route', () => {
       ),
       makeParams('404'),
     )
+    mocks.assertAuthorized.mockRejectedValueOnce(
+      notFoundError('Requirements specification not found'),
+    )
     const patchResponse = await PATCH(
       new NextRequest(
         'http://localhost/api/requirements-specifications/404/items',
@@ -762,6 +926,9 @@ describe('requirements-specifications/[id]/items route', () => {
         },
       ),
       makeParams('404'),
+    )
+    mocks.assertAuthorized.mockRejectedValueOnce(
+      notFoundError('Requirements specification not found'),
     )
     const deleteResponse = await DELETE(
       new NextRequest(
@@ -782,7 +949,7 @@ describe('requirements-specifications/[id]/items route', () => {
   })
 
   it('maps item-ref deletion service and unexpected failures', async () => {
-    mocks.deleteSpecificationItemsByRefs.mockRejectedValueOnce(
+    mocks.mutateRequirementApplications.mockRejectedValueOnce(
       validationError('Referenced item does not belong to specification'),
     )
     const serviceFailure = await DELETE(
@@ -799,7 +966,7 @@ describe('requirements-specifications/[id]/items route', () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
-    mocks.deleteSpecificationItemsByRefs.mockRejectedValueOnce(
+    mocks.mutateRequirementApplications.mockRejectedValueOnce(
       new Error('delete failed'),
     )
     try {
@@ -818,7 +985,7 @@ describe('requirements-specifications/[id]/items route', () => {
       expect(serviceFailure.status).toBe(400)
       expect(unexpectedFailure.status).toBe(500)
       await expect(unexpectedFailure.json()).resolves.toEqual({
-        error: 'Failed to remove items',
+        error: 'Failed to remove requirement applications',
       })
     } finally {
       consoleErrorSpy.mockRestore()
@@ -826,7 +993,7 @@ describe('requirements-specifications/[id]/items route', () => {
   })
 
   it('maps requirement-id unlink service errors', async () => {
-    mocks.removeFromSpecification.mockRejectedValueOnce(
+    mocks.mutateRequirementApplications.mockRejectedValueOnce(
       validationError('Requirement is not linked'),
     )
 
