@@ -622,7 +622,10 @@ for (const viewport of viewports) {
               specificationId: MANUAL_SPECIFICATION_ID,
             },
           )
-          await detailPane.getByRole('button', { name: 'Granskning ↗' }).click()
+          await detailPane
+            .getByRole('button', { name: 'Granskning ↗' })
+            .first()
+            .click()
           await expectLatestDeviationState(coauthorRequest, fixture.itemRef, {
             decision: null,
             isReviewRequested: 1,

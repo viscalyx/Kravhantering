@@ -9,9 +9,10 @@ import {
   createSpecificationLocalRequirementsBatch,
   createSpecificationLocalRequirementsBatchWithExecutor,
   createSpecificationNeedsReference,
+  deleteLibrarySpecificationItemsByIds,
   deleteSpecification,
-  deleteSpecificationItemsByRefs,
   deleteSpecificationLocalRequirement,
+  deleteSpecificationLocalRequirementsByIds,
   deleteSpecificationNeedsReference,
   findSpecificationNeedsReferenceIdentity,
   getLibrarySpecificationItemMetadata,
@@ -40,8 +41,6 @@ import {
   unlinkRequirementsFromSpecification,
   updateSpecification,
   updateSpecificationItemFields,
-  updateSpecificationItemFieldsByItemRef,
-  updateSpecificationItemFieldsByItemRefs,
   updateSpecificationLocalRequirement,
   updateSpecificationLocalRequirementFields,
   updateSpecificationNeedsReference,
@@ -2197,75 +2196,40 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).not.toHaveBeenCalled()
   })
 
-  it('updates requirement application fields by item ref on SQL Server', async () => {
+  it('updates library requirement application fields on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
-    query
-      .mockResolvedValueOnce([
-        {
-          id: 31,
-          specificationId: 5,
-          requirementId: 7,
-          requirementVersionId: 101,
-          needsReferenceId: null,
-          specificationItemStatusId: 1,
-          note: null,
-          statusUpdatedAt: null,
-          createdAt: new Date('2026-04-20T10:00:00.000Z'),
-        },
-      ])
-      .mockResolvedValueOnce([{ id: 2 }])
-      .mockResolvedValueOnce([])
+    query.mockResolvedValueOnce([{ id: 2 }]).mockResolvedValueOnce([])
 
-    await updateSpecificationItemFieldsByItemRef(db, 5, 'lib:31', {
+    await updateSpecificationItemFields(db, 31, {
       note: 'Follow-up',
       specificationItemStatusId: 2,
     })
 
     expect(query).toHaveBeenNthCalledWith(
-      2,
+      1,
       expect.stringContaining(
         'FROM specification_item_statuses specification_item_status',
       ),
       [2],
     )
     expect(query).toHaveBeenNthCalledWith(
-      3,
+      2,
       expect.stringContaining('UPDATE requirements_specification_items'),
       [2, expect.any(String), 'Follow-up', 31],
     )
   })
 
-  it('rejects needs references from another specification before item updates', async () => {
+  it('returns no needs-reference identity for another specification', async () => {
     const { db, query } = createSqlServerDb()
-    query
-      .mockResolvedValueOnce([
-        {
-          id: 31,
-          specificationId: 5,
-          requirementId: 7,
-          requirementVersionId: 101,
-          needsReferenceId: null,
-          specificationItemStatusId: 1,
-          note: null,
-          statusUpdatedAt: null,
-          createdAt: new Date('2026-04-20T10:00:00.000Z'),
-        },
-      ])
-      .mockResolvedValueOnce([])
+    query.mockResolvedValueOnce([])
 
     await expect(
-      updateSpecificationItemFieldsByItemRef(db, 5, 'lib:31', {
-        needsReferenceId: 99,
-      }),
-    ).rejects.toMatchObject({
-      code: 'validation',
-      message:
-        'needsReferenceId does not belong to this requirements specification',
-    })
+      findSpecificationNeedsReferenceIdentity(db, 5, 99),
+    ).resolves.toBeNull()
 
-    expect(query).toHaveBeenCalledTimes(2)
+    expect(query).toHaveBeenCalledTimes(1)
     expect(query).toHaveBeenNthCalledWith(
-      2,
+      1,
       expect.stringContaining('FROM specification_needs_references'),
       [99, 5],
     )
@@ -2273,56 +2237,24 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
 
   it('rejects clearing library usage status before SQL update', async () => {
     const { db, query } = createSqlServerDb()
-    query.mockResolvedValueOnce([
-      {
-        id: 31,
-        specificationId: 5,
-        requirementId: 7,
-        requirementVersionId: 101,
-        needsReferenceId: null,
-        specificationItemStatusId: 1,
-        note: null,
-        statusUpdatedAt: null,
-        createdAt: new Date('2026-04-20T10:00:00.000Z'),
-      },
-    ])
 
     await expect(
-      updateSpecificationItemFieldsByItemRef(db, 5, 'lib:31', {
+      updateSpecificationItemFields(db, 31, {
         specificationItemStatusId: null,
-      } as unknown as Parameters<
-        typeof updateSpecificationItemFieldsByItemRef
-      >[3]),
+      } as never),
     ).rejects.toMatchObject({
       code: 'validation',
       message: 'Usage status cannot be cleared',
     })
 
-    expect(query).toHaveBeenCalledTimes(1)
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('FROM requirements_specification_items'),
-      [31],
-    )
+    expect(query).not.toHaveBeenCalled()
   })
 
   it('rejects custom library usage status before status lookup', async () => {
     const { db, query } = createSqlServerDb()
-    query.mockResolvedValueOnce([
-      {
-        id: 31,
-        specificationId: 5,
-        requirementId: 7,
-        requirementVersionId: 101,
-        needsReferenceId: null,
-        specificationItemStatusId: 1,
-        note: null,
-        statusUpdatedAt: null,
-        createdAt: new Date('2026-04-20T10:00:00.000Z'),
-      },
-    ])
 
     await expect(
-      updateSpecificationItemFieldsByItemRef(db, 5, 'lib:31', {
+      updateSpecificationItemFields(db, 31, {
         specificationItemStatusId: 7,
       }),
     ).rejects.toMatchObject({
@@ -2330,39 +2262,22 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       message: 'Invalid usage status ID',
     })
 
-    expect(query).toHaveBeenCalledTimes(1)
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('FROM requirements_specification_items'),
-      [31],
-    )
+    expect(query).not.toHaveBeenCalled()
   })
 
   it('rejects clearing specification-local item status before SQL update', async () => {
     const { db, query } = createSqlServerDb()
-    query.mockResolvedValueOnce([
-      {
-        id: 41,
-        itemRef: 'local:41',
-        kind: 'specificationLocal',
-      },
-    ])
 
     await expect(
-      updateSpecificationItemFieldsByItemRef(db, 5, 'local:41', {
+      updateSpecificationLocalRequirementFields(db, 41, {
         specificationItemStatusId: null,
-      } as unknown as Parameters<
-        typeof updateSpecificationItemFieldsByItemRef
-      >[3]),
+      } as never),
     ).rejects.toMatchObject({
       code: 'validation',
       message: 'Usage status cannot be cleared',
     })
 
-    expect(query).toHaveBeenCalledTimes(1)
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('FROM specification_local_requirements'),
-      [41, 5],
-    )
+    expect(query).not.toHaveBeenCalled()
   })
 
   it('unlinks requirements from a specification on SQL Server', async () => {
@@ -2382,28 +2297,29 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('deletes mixed requirement applications by refs on SQL Server inside one transaction', async () => {
+  it('deletes scoped library and local requirement application ids', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 31 }]).mockResolvedValueOnce([{ id: 4 }])
 
-    const result = await deleteSpecificationItemsByRefs(db, 5, [
-      'lib:31',
-      'local:4',
-    ])
-
-    expect(result).toEqual({
-      deletedLibraryCount: 1,
-      deletedSpecificationLocalCount: 1,
-    })
-    expect(transaction).toHaveBeenCalledTimes(1)
+    await expect(
+      deleteLibrarySpecificationItemsByIds(db, 5, [31]),
+    ).resolves.toBe(1)
+    await expect(
+      deleteSpecificationLocalRequirementsByIds(db, 5, [4]),
+    ).resolves.toBe(1)
+    expect(transaction).not.toHaveBeenCalled()
     expect(query).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining('DELETE FROM requirements_specification_items'),
+      expect.stringMatching(
+        /DELETE FROM requirements_specification_items[\s\S]*WHERE requirements_specification_id = @0 AND id IN \(@1\)/u,
+      ),
       [5, 31],
     )
     expect(query).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('DELETE FROM specification_local_requirements'),
+      expect.stringMatching(
+        /DELETE FROM specification_local_requirements[\s\S]*WHERE specification_id = @0 AND id IN \(@1\)/u,
+      ),
       [5, 4],
     )
   })
@@ -2680,11 +2596,14 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     )
   })
 
-  it('returns zero without a transaction for an empty batch field update', async () => {
+  it('returns zero without SQL for empty scoped delete primitives', async () => {
     const { db, transaction } = createSqlServerDb()
 
+    await expect(deleteLibrarySpecificationItemsByIds(db, 5, [])).resolves.toBe(
+      0,
+    )
     await expect(
-      updateSpecificationItemFieldsByItemRefs(db, 5, [], { note: 'No-op' }),
+      deleteSpecificationLocalRequirementsByIds(db, 5, []),
     ).resolves.toBe(0)
     expect(transaction).not.toHaveBeenCalled()
   })

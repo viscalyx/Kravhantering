@@ -5,37 +5,35 @@ import {
   resolveRequirementSelectionQuestionId,
 } from '@/lib/dal/requirement-selection-questions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import {
-  authenticatedMutationPolicy,
-  secureMutationRoute,
-} from '@/lib/http/secure-mutation-route'
+import { secureMutationRoute } from '@/lib/http/secure-mutation-route'
+import { requirementSelectionQuestionPolicy } from '../../_authorization'
 import { answerSchema, questionRouteParamsSchema } from '../../_schemas'
 
 export const POST = secureMutationRoute({
   bodySchema: answerSchema,
   paramsSchema: questionRouteParamsSchema,
-  policy: authenticatedMutationPolicy('requirement_selection_answer.create'),
-  handler: async ({ body, context, params }) => {
-    const db = await getRequestSqlServerDataSource()
+  policy: requirementSelectionQuestionPolicy('answer.create'),
+  handler: async ({ body, context, db, params }) => {
+    const activeDb = db ?? (await getRequestSqlServerDataSource())
     const questionId = await resolveRequirementSelectionQuestionId(
-      db,
+      activeDb,
       params.id,
     )
     if (questionId == null) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const question = await createRequirementSelectionAnswer(
-      db,
+      activeDb,
       questionId,
       body,
     )
     if (!question) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    await recordAllowedActionAuditEvent(db, context, {
+    await recordAllowedActionAuditEvent(activeDb, context, {
       action: 'requirement_selection_answer.create',
       details: { questionId },
-      targetId: params.id,
+      targetId: questionId,
       targetKind: 'requirement_selection_question',
       targetUniqueId: question.questionCode,
     })

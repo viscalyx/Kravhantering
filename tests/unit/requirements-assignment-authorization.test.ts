@@ -11,6 +11,7 @@ import type {
   RequestContext,
   RequirementsAction,
 } from '@/lib/requirements/auth'
+import { forbiddenError } from '@/lib/requirements/errors'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
@@ -65,6 +66,7 @@ function makeLookup(
     areaAuthor?: boolean | ((areaId: number) => boolean)
     deviation?: Partial<DeviationTarget>
     requirement?: Partial<RequirementTarget>
+    requirementSelectionAreaId?: number
     specAuthor?: boolean
     specificationId?: number
     suggestionAreaId?: number
@@ -84,6 +86,13 @@ function makeLookup(
     ),
     resolveRequirementTarget: vi.fn(async () =>
       requirementTarget(options.requirement ?? {}),
+    ),
+    resolveRequirementApplicationMutationTarget: vi.fn(
+      async () => options.specificationId ?? 42,
+    ),
+    resolveRequirementSelectionQuestionArea: vi.fn(
+      async () =>
+        options.requirementSelectionAreaId ?? options.requirement?.areaId ?? 7,
     ),
     resolveSpecificationId: vi.fn(
       async (input: { specificationId?: number }) =>
@@ -342,6 +351,17 @@ describe('AssignmentBasedAuthorizationService', () => {
       specificationId: 42,
     },
     {
+      itemRefs: ['lib:3'],
+      kind: 'manage_requirement_applications',
+      operation: 'update',
+      specificationId: 42,
+    },
+    {
+      kind: 'manage_specification_requirement_selection_answers',
+      operation: 'replace',
+      specificationId: 42,
+    },
+    {
       kind: 'list_graduation_target_areas',
       localRequirementId: 3,
       specificationId: 42,
@@ -380,6 +400,17 @@ describe('AssignmentBasedAuthorizationService', () => {
       specificationId: 42,
     },
     {
+      itemRefs: ['lib:3', 'local:4'],
+      kind: 'manage_requirement_applications',
+      operation: 'remove',
+      specificationId: 42,
+    },
+    {
+      kind: 'manage_specification_requirement_selection_answers',
+      operation: 'replace',
+      specificationId: 42,
+    },
+    {
       kind: 'list_graduation_target_areas',
       localRequirementId: 3,
       specificationId: 42,
@@ -400,6 +431,108 @@ describe('AssignmentBasedAuthorizationService', () => {
     await expect(
       service.assertAuthorized(action, makeContext([])),
     ).resolves.toBeUndefined()
+  })
+
+  it.each([
+    { areaAuthor: false, label: 'an unassigned actor', roles: [] },
+    { areaAuthor: true, label: 'a requirement-area author', roles: [] },
+    { areaAuthor: false, label: 'a Reviewer', roles: ['Reviewer'] },
+  ] as const)(
+    'denies specification child writes for $label',
+    async ({ areaAuthor, roles }) => {
+      const { service } = makeService({ areaAuthor, specAuthor: false })
+      const actions: RequirementsAction[] = [
+        {
+          itemRefs: ['lib:3'],
+          kind: 'manage_requirement_applications',
+          operation: 'update',
+          specificationId: 42,
+        },
+        {
+          kind: 'manage_specification_requirement_selection_answers',
+          operation: 'replace',
+          specificationId: 42,
+        },
+      ]
+
+      for (const action of actions) {
+        await expect(
+          service.assertAuthorized(action, makeContext([...roles])),
+        ).rejects.toMatchObject({
+          code: 'forbidden',
+          details: { reason: 'specification_author_required' },
+        })
+      }
+    },
+  )
+
+  it('allows Admin to change requirement applications and saved answers', async () => {
+    const { service } = makeService()
+
+    await expect(
+      service.assertAuthorized(
+        {
+          itemRefs: ['lib:3'],
+          kind: 'manage_requirement_applications',
+          operation: 'update',
+          specificationId: 42,
+        },
+        makeContext(['Admin']),
+      ),
+    ).resolves.toBeUndefined()
+    await expect(
+      service.assertAuthorized(
+        {
+          kind: 'manage_specification_requirement_selection_answers',
+          operation: 'replace',
+          specificationId: 42,
+        },
+        makeContext(['Admin']),
+      ),
+    ).resolves.toBeUndefined()
+  })
+
+  it('resolves the stored parent before an Admin requirement-application mutation shortcut', async () => {
+    const { lookup, service } = makeService({ specificationId: 42 })
+    const action: RequirementsAction = {
+      itemRefs: ['lib:3'],
+      kind: 'manage_requirement_applications',
+      operation: 'update',
+      specificationId: 42,
+    }
+
+    await expect(
+      service.assertAuthorized(action, makeContext(['Admin'])),
+    ).resolves.toBeUndefined()
+    expect(
+      lookup.resolveRequirementApplicationMutationTarget,
+    ).toHaveBeenCalledWith(action)
+    expect(lookup.isSpecificationAuthor).not.toHaveBeenCalled()
+  })
+
+  it('rejects a claimed parent mismatch before checking specification authorship', async () => {
+    const { lookup, service } = makeService()
+    lookup.resolveRequirementApplicationMutationTarget.mockRejectedValueOnce(
+      forbiddenError('Requirement application belongs to another parent', {
+        reason: 'foreign_specification_child',
+      }),
+    )
+
+    await expect(
+      service.assertAuthorized(
+        {
+          itemRefs: ['local:4'],
+          kind: 'manage_requirement_applications',
+          operation: 'remove',
+          specificationId: 42,
+        },
+        makeContext(['Admin']),
+      ),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'foreign_specification_child' },
+    })
+    expect(lookup.isSpecificationAuthor).not.toHaveBeenCalled()
   })
 
   it('requires both specification and requirement-area authorship for graduation', async () => {
@@ -848,6 +981,109 @@ describe('AssignmentBasedAuthorizationService', () => {
       ),
     ).resolves.toBeUndefined()
   })
+
+  it.each<{
+    action: Extract<
+      RequirementsAction,
+      { kind: 'manage_requirement_selection_question' }
+    >
+    label: string
+  }>([
+    {
+      action: {
+        areaId: 7,
+        kind: 'manage_requirement_selection_question',
+        operation: 'create',
+      },
+      label: 'question creation',
+    },
+    ...[
+      'update',
+      'delete',
+      'duplicate',
+      'visibility.update',
+      'activate',
+      'archive',
+      'deactivate',
+      'reactivate',
+      'answer.create',
+    ].map(operation => ({
+      action: {
+        kind: 'manage_requirement_selection_question' as const,
+        operation,
+        questionId: 'SEC-KUF001',
+      },
+      label: operation,
+    })),
+    ...[
+      'answer.update',
+      'answer.delete',
+      'answer.activate',
+      'answer.archive',
+      'answer.deactivate',
+      'answer.reactivate',
+    ].map(operation => ({
+      action: {
+        answerId: 13,
+        kind: 'manage_requirement_selection_question' as const,
+        operation,
+        questionId: 'SEC-KUF001',
+      },
+      label: operation,
+    })),
+  ])('enforces the assignment role matrix for $label', async ({ action }) => {
+    const assignedAuthor = makeService({ areaAuthor: true })
+    await expect(
+      assignedAuthor.service.assertAuthorized(action, makeContext([])),
+    ).resolves.toBeUndefined()
+    expect(
+      assignedAuthor.lookup.resolveRequirementSelectionQuestionArea,
+    ).toHaveBeenCalledWith(action)
+    expect(assignedAuthor.lookup.isRequirementAreaAuthor).toHaveBeenCalledWith(
+      7,
+      'SE5560000001-user1',
+    )
+
+    for (const context of [
+      makeContext([], 'SE5560000001-unassigned'),
+      makeContext(['Reviewer'], 'SE5560000001-reviewer'),
+    ]) {
+      await expect(
+        makeService({ areaAuthor: false }).service.assertAuthorized(
+          action,
+          context,
+        ),
+      ).rejects.toMatchObject({
+        code: 'forbidden',
+        details: { reason: 'requirement_area_author_required' },
+      })
+    }
+
+    const foreignAreaAuthor = makeService({
+      areaAuthor: areaId => areaId === 8,
+    })
+    await expect(
+      foreignAreaAuthor.service.assertAuthorized(
+        action,
+        makeContext([], 'SE5560000001-foreign-area-author'),
+      ),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: { reason: 'requirement_area_author_required' },
+    })
+    expect(
+      foreignAreaAuthor.lookup.isRequirementAreaAuthor,
+    ).toHaveBeenCalledWith(7, 'SE5560000001-foreign-area-author')
+
+    const admin = makeService({ areaAuthor: false })
+    await expect(
+      admin.service.assertAuthorized(action, makeContext(['Admin'], '')),
+    ).resolves.toBeUndefined()
+    expect(
+      admin.lookup.resolveRequirementSelectionQuestionArea,
+    ).toHaveBeenCalledWith(action)
+    expect(admin.lookup.isRequirementAreaAuthor).not.toHaveBeenCalled()
+  })
 })
 
 describe('SqlAssignmentLookup', () => {
@@ -969,6 +1205,69 @@ describe('SqlAssignmentLookup', () => {
       code: 'forbidden',
       details: { reason: 'foreign_specification_child' },
     })
+  })
+
+  it('resolves every mixed mutation item to the claimed stored parent', async () => {
+    const matching = makeDb([
+      [
+        {
+          createdAt: new Date('2026-08-16T10:00:00.000Z'),
+          id: 31,
+          requirementId: 7,
+          requirementVersionId: 9,
+          specificationId: 42,
+          specificationItemStatusId: 1,
+        },
+      ],
+      [{ id: 41, specificationId: 42 }],
+    ])
+    const action = {
+      itemRefs: ['lib:31', 'local:41'],
+      kind: 'manage_requirement_applications',
+      operation: 'remove',
+      specificationId: 42,
+    } as const
+
+    await expect(
+      new SqlAssignmentLookup(
+        matching.db,
+      ).resolveRequirementApplicationMutationTarget(action),
+    ).resolves.toBe(42)
+    expect(matching.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('FROM requirements_specification_items'),
+      [31],
+    )
+    expect(matching.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('FROM specification_local_requirements'),
+      [41],
+    )
+
+    const foreign = makeDb([
+      [
+        {
+          createdAt: new Date('2026-08-16T10:00:00.000Z'),
+          id: 31,
+          requirementId: 7,
+          requirementVersionId: 9,
+          specificationId: 99,
+          specificationItemStatusId: 1,
+        },
+      ],
+    ])
+    await expect(
+      new SqlAssignmentLookup(
+        foreign.db,
+      ).resolveRequirementApplicationMutationTarget(action),
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      details: {
+        reason: 'foreign_specification_child',
+        specificationId: 42,
+      },
+    })
+    expect(foreign.query).toHaveBeenCalledTimes(1)
   })
 
   it('validates specification deviation collection targets', async () => {
@@ -1396,5 +1695,63 @@ describe('SqlAssignmentLookup', () => {
         },
       ),
     ).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it('resolves requirement-selection question and nested-answer areas from stored ownership', async () => {
+    const byCode = makeDb([[{ areaId: 7 }]])
+    await expect(
+      new SqlAssignmentLookup(
+        byCode.db,
+      ).resolveRequirementSelectionQuestionArea({
+        kind: 'manage_requirement_selection_question',
+        operation: 'update',
+        questionId: 'SEC-KUF001',
+      }),
+    ).resolves.toBe(7)
+    expect(byCode.query).toHaveBeenCalledWith(
+      expect.stringContaining('question.question_code = @0'),
+      ['SEC-KUF001'],
+    )
+
+    const nestedAnswer = makeDb([[{ areaId: 8 }]])
+    await expect(
+      new SqlAssignmentLookup(
+        nestedAnswer.db,
+      ).resolveRequirementSelectionQuestionArea({
+        answerId: 13,
+        kind: 'manage_requirement_selection_question',
+        operation: 'answer.update',
+        questionId: 11,
+      }),
+    ).resolves.toBe(8)
+    expect(nestedAnswer.query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'answer.question_id = question.id AND answer.id = @1',
+      ),
+      [11, 13],
+    )
+  })
+
+  it('rejects missing or mismatched requirement-selection mutation targets', async () => {
+    const lookup = new SqlAssignmentLookup(makeDb([[]]).db)
+    await expect(
+      lookup.resolveRequirementSelectionQuestionArea({
+        answerId: 99,
+        kind: 'manage_requirement_selection_question',
+        operation: 'answer.delete',
+        questionId: 11,
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+
+    await expect(
+      new SqlAssignmentLookup(
+        makeDb().db,
+      ).resolveRequirementSelectionQuestionArea({
+        kind: 'manage_requirement_selection_question',
+        operation: 'update',
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'missing_requirement_selection_question_target' },
+    })
   })
 })

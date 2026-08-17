@@ -10,7 +10,6 @@ import {
   graduateSpecificationLocalRequirementToLibrary,
   linkRequirementsToSpecificationAtomically,
   listSpecificationsForActorCatalog,
-  unlinkRequirementsFromSpecification,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
@@ -25,6 +24,7 @@ import {
   type FilterValues,
 } from '@/lib/requirements/list-view'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
+import { createRequirementApplicationMutationWorkflow } from '@/lib/requirements/requirement-application-mutations'
 import {
   recordAuthorizationDenied,
   recordSensitiveMutationSucceeded,
@@ -114,9 +114,20 @@ export function createSpecificationWorkflow({
   | 'graduateSpecificationLocalRequirement'
   | 'listGraduationTargetAreas'
   | 'listSpecifications'
+  | 'mutateRequirementApplications'
   | 'removeFromSpecification'
 > {
+  const requirementApplicationMutations =
+    createRequirementApplicationMutationWorkflow({
+      authorization,
+      db,
+      logger,
+    })
+
   return {
+    async mutateRequirementApplications(context, input) {
+      return requirementApplicationMutations.mutate(context, input)
+    },
     async listSpecifications(context, input: ListSpecificationsInput) {
       const responseFormat = input.responseFormat ?? 'markdown'
       const locale = input.locale ?? 'en'
@@ -611,58 +622,34 @@ export function createSpecificationWorkflow({
       const responseFormat = input.responseFormat ?? 'markdown'
       const locale = input.locale ?? 'en'
 
-      await authorize(
-        authorization,
+      const specificationId = await resolveSpecificationIdOrThrow(input)
+      const outcome = await requirementApplicationMutations.mutate(context, {
+        operation: 'remove',
+        requirementIds: input.requirementIds,
+        specificationId,
+      })
+      if (outcome.operation !== 'remove') {
+        throw new Error('Unexpected requirement application mutation outcome')
+      }
+      const removedCount = outcome.removedCount
+      const ref = getSpecificationReferenceLabel(input, specificationId)
+      const summary = translateServiceMessage(
+        locale,
+        'requirements.specifications.remove.count',
         {
-          kind: 'remove_from_specification',
-          specificationId: input.specificationId,
-          requirementIds: input.requirementIds,
-        },
-        context,
-      )
-
-      return withLogging(
-        logger,
-        context,
-        'requirements.remove_from_specification',
-        {
-          specification_id: input.specificationId,
-          requirement_count: input.requirementIds.length,
-        },
-        async () => {
-          const specificationId = await resolveSpecificationIdOrThrow(input)
-          const removedCount = await unlinkRequirementsFromSpecification(
-            db,
-            specificationId,
-            input.requirementIds,
-          )
-          await recordSensitiveMutationSucceeded(context, {
-            action: 'specification.requirements.removed',
-            operation: 'remove_from_specification',
-            removedCount,
-            requirementCount: input.requirementIds.length,
-            specificationId,
-          })
-          const ref = getSpecificationReferenceLabel(input, specificationId)
-          const summary = translateServiceMessage(
-            locale,
-            'requirements.specifications.remove.count',
-            {
-              count: removedCount,
-              reference: ref,
-              requirementWord: getRequirementWord(locale, removedCount),
-            },
-          )
-          return {
-            message: createServiceMessage(
-              getSpecificationServiceTitle('remove', locale),
-              [summary],
-              responseFormat,
-            ),
-            removedCount,
-          }
+          count: removedCount,
+          reference: ref,
+          requirementWord: getRequirementWord(locale, removedCount),
         },
       )
+      return {
+        message: createServiceMessage(
+          getSpecificationServiceTitle('remove', locale),
+          [summary],
+          responseFormat,
+        ),
+        removedCount,
+      }
     },
   }
 }
