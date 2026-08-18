@@ -87,6 +87,16 @@ const QueryCatalogKindSchema = z.enum([
   'transitions',
 ])
 
+function createRequirementCatalogFilterIdsSchema(
+  description: string,
+): z.ZodOptional<ReturnType<typeof uniquePositiveIntegerArraySchema>> {
+  return uniquePositiveIntegerArraySchema()
+    .optional()
+    .describe(
+      `${description} Accepts up to ${ARRAY_INPUT_MAX_ITEMS} unique IDs.`,
+    )
+}
+
 const ResponseFormatSchema = z
   .enum(['json', 'markdown'])
   .default('markdown')
@@ -847,21 +857,15 @@ function renderRequirementHtml(
 function createQueryCatalogSchema() {
   return z
     .object({
-      areaIds: z
-        .array(z.number().int().positive())
-        .optional()
-        .describe(
-          'Requirement area IDs. Applies only to catalog "requirements".',
-        ),
+      areaIds: createRequirementCatalogFilterIdsSchema(
+        'Requirement area IDs. Applies only to catalog "requirements".',
+      ),
       catalog: QueryCatalogKindSchema.describe(
         'Catalog to list or search. Use "requirements" for requirement rows or a lookup catalog for reference rows.',
       ),
-      categoryIds: z
-        .array(z.number().int().positive())
-        .optional()
-        .describe(
-          'Requirement category IDs. Applies only to catalog "requirements".',
-        ),
+      categoryIds: createRequirementCatalogFilterIdsSchema(
+        'Requirement category IDs. Applies only to catalog "requirements".',
+      ),
       cursor: z
         .string()
         .min(1)
@@ -886,35 +890,26 @@ function createQueryCatalogSchema() {
         .describe(
           'Bounded page size for catalog "requirements"; defaults to 50 and accepts 1 through 100.',
         ),
-      normReferenceIds: z
-        .array(z.number().int().positive())
-        .optional()
-        .describe(
-          'Norm reference IDs. Applies only to catalog "requirements".',
-        ),
+      normReferenceIds: createRequirementCatalogFilterIdsSchema(
+        'Norm reference IDs. Applies only to catalog "requirements".',
+      ),
       operation: z
         .enum(['list', 'search'])
         .describe(
           '"list" returns all matching rows in structuredContent.result. "search" returns matching rows with top-level match metadata.',
         ),
-      qualityCharacteristicIds: z
-        .array(z.number().int().positive())
-        .optional()
-        .describe(
-          'Quality characteristic IDs. Applies only to catalog "requirements".',
-        ),
+      qualityCharacteristicIds: createRequirementCatalogFilterIdsSchema(
+        'Quality characteristic IDs. Applies only to catalog "requirements".',
+      ),
       verifiable: z
         .array(z.boolean())
         .optional()
         .describe(
           'Filter by verifiability. Applies only to catalog "requirements".',
         ),
-      priorityLevelIds: z
-        .array(z.number().int().positive())
-        .optional()
-        .describe(
-          'Priority level IDs. Applies only to catalog "requirements".',
-        ),
+      priorityLevelIds: createRequirementCatalogFilterIdsSchema(
+        'Priority level IDs. Applies only to catalog "requirements".',
+      ),
       sortBy: z
         .enum([
           'uniqueId',
@@ -946,12 +941,9 @@ function createQueryCatalogSchema() {
         .describe(
           'Search text for operation "search". Requirement search matches id, uniqueId, version.description, and version.acceptanceCriteria; lookup search matches stable lookup fields.',
         ),
-      statuses: z
-        .array(z.number().int().positive())
-        .optional()
-        .describe(
-          'Requirement version status IDs. Applies only to catalog "requirements".',
-        ),
+      statuses: createRequirementCatalogFilterIdsSchema(
+        'Requirement version status IDs. Applies only to catalog "requirements".',
+      ),
       typeId: z
         .number()
         .int()
@@ -960,18 +952,12 @@ function createQueryCatalogSchema() {
         .describe(
           'Requirement type ID used only to filter catalog "quality_characteristics".',
         ),
-      typeIds: z
-        .array(z.number().int().positive())
-        .optional()
-        .describe(
-          'Requirement type IDs. Applies only to catalog "requirements".',
-        ),
-      requirementPackageIds: z
-        .array(z.number().int().positive())
-        .optional()
-        .describe(
-          'Requirements package IDs. Applies only to catalog "requirements".',
-        ),
+      typeIds: createRequirementCatalogFilterIdsSchema(
+        'Requirement type IDs. Applies only to catalog "requirements".',
+      ),
+      requirementPackageIds: createRequirementCatalogFilterIdsSchema(
+        'Requirements package IDs. Applies only to catalog "requirements".',
+      ),
     })
     .strict()
     .superRefine((val, ctx) => {
@@ -1861,8 +1847,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: true,
       },
-      description:
-        'List or search the requirements library and lookup catalogs: requirements, areas, categories, types, quality_characteristics, priority_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Catalog "requirements" uses bounded forward pages in result plus pagination, defaults to 50 rows, and returns no exact total; continue with pagination.nextCursor. Requirement search is SQL Server-authoritative and returns match.matchedFields without match.quality. On invalid_cursor, restart without cursor while retaining normalized filters, locale, and sort. Other catalogs keep the non-paginated { result: [...] } contract; typeId filters quality_characteristics.',
+      description: `List or search the requirements library and lookup catalogs: requirements, areas, categories, types, quality_characteristics, priority_levels, specification_item_statuses, statuses, requirement_packages, and transitions. Catalog "requirements" uses bounded forward pages in result plus pagination, defaults to 50 rows, and returns no exact total; continue with pagination.nextCursor. Its numeric filter arrays accept up to ${ARRAY_INPUT_MAX_ITEMS} unique IDs each. Requirement search is SQL Server-authoritative and returns match.matchedFields without match.quality. On invalid_cursor, restart without cursor while retaining normalized filters, locale, and sort. Other catalogs keep the non-paginated { result: [...] } contract; typeId filters quality_characteristics.`,
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
       title: 'Query Requirements Library',

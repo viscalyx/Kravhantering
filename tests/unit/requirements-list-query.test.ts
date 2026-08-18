@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation-constants'
 import type { RequestContext } from '@/lib/requirements/auth'
 import {
   normalizeRequirementListFilters,
@@ -106,6 +107,38 @@ describe('queryRequirementList', () => {
       }),
     )
   })
+
+  it.each([
+    'areaIds',
+    'categoryIds',
+    'normReferenceIds',
+    'priorityLevelIds',
+    'qualityCharacteristicIds',
+    'requirementPackageIds',
+    'statuses',
+    'typeIds',
+  ] as const)(
+    'rejects an oversized %s filter before database work',
+    async field => {
+      await expect(
+        queryRequirementList(
+          {} as never,
+          {
+            filters: {
+              [field]: Array.from(
+                { length: ARRAY_INPUT_MAX_ITEMS + 1 },
+                (_, index) => index + 1,
+              ),
+            },
+          },
+          { allowUnauthenticated: true },
+        ),
+      ).rejects.toMatchObject({ code: 'validation' })
+
+      expect(mocks.listRequirements).not.toHaveBeenCalled()
+      expect(mocks.resolveRequirementListVisibility).not.toHaveBeenCalled()
+    },
+  )
 
   it('fails closed when authorization options are missing', async () => {
     await expect(queryRequirementList({} as never, {})).rejects.toMatchObject({

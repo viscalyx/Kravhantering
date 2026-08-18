@@ -3,6 +3,7 @@ import {
   buildRequirementListSql,
   escapeLike,
 } from '@/lib/dal/requirements-list-sql.mjs'
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation-constants'
 import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 describe('requirement list SQL builders', () => {
@@ -89,6 +90,30 @@ describe('requirement list SQL builders', () => {
     )
     expect(query.sqlText).toContain('priority_level.code AS priorityLevelCode')
     expect(query.sqlText).toContain('ORDER BY CASE WHEN requirement_status')
+  })
+
+  it('keeps maximum MCP filter combinations below the SQL Server parameter ceiling', () => {
+    const maximumFilterIds = Array.from(
+      { length: ARRAY_INPUT_MAX_ITEMS },
+      (_, index) => index + 1,
+    )
+    const query = buildRequirementListSql({
+      after: { nullRank: 0, requirementId: 1, sortValue: 'REQ-1' },
+      areaIds: maximumFilterIds,
+      categoryIds: maximumFilterIds,
+      limit: 100,
+      normReferenceIds: maximumFilterIds,
+      priorityLevelIds: maximumFilterIds,
+      qualityCharacteristicIds: maximumFilterIds,
+      requirementPackageIds: maximumFilterIds,
+      search: 'security',
+      statuses: maximumFilterIds,
+      typeIds: maximumFilterIds,
+      verifiable: [true, false],
+    })
+
+    expect(query.parameters).toHaveLength(1_607)
+    expect(query.parameters.length).toBeLessThan(2_100)
   })
 
   it('omits the active-only filter when archived rows are explicitly included', () => {

@@ -27,7 +27,9 @@ agents can use it reliably.
   types, quality characteristics, priority levels, statuses, usage statuses,
   requirement packages, and transitions. Pass both `catalog` and `operation`
   (`"list"` or `"search"`). Rows are always returned in
-  `structuredContent.result`; search rows include `match` metadata.
+  `structuredContent.result`; search rows include `match` metadata. Numeric
+  requirement filter arrays accept at most 200 unique positive integer IDs
+  each.
 - `requirements_get_import_schema`
   Retrieve the canonical JSON Schema for a `Kravimportfil`. Use this as the
   mandatory file-format contract for generated import JSON. The schema tool is
@@ -750,6 +752,9 @@ For requirement lists and searches, it supports:
 - `verifiable`
 - `sortBy`
 - `sortDirection`
+
+Each numeric ID filter array accepts at most 200 unique positive integer IDs.
+Split a larger filter into separate paginated calls; duplicate IDs are invalid.
 
 For `quality_characteristics`, `typeId` filters rows to one requirement type.
 

@@ -101,6 +101,11 @@ filters, norm-reference filters, and requirement-package filters. Lookup
 catalogs ignore requirement-only filters except `typeId`, which filters the
 `quality_characteristics` catalog.
 
+Each numeric requirement filter array accepts at most 200 unique positive
+integer IDs. The MCP schema rejects duplicate or oversized collections, and
+the shared requirement-list boundary independently rejects oversized arrays,
+before the requirements service can expand the filters into SQL parameters.
+
 Requirement version status, usage status, and priority-level catalog rows expose
 nullable `iconName` fields. Requirement list/detail version output also carries
 status icon data and priority-level icon data as additive fields so older

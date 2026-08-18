@@ -417,11 +417,22 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryTool).toBeDefined()
       expect(queryTool?.description).toContain('priority_levels')
       expect(queryTool?.description).toContain('quality_characteristics')
+      expect(queryTool?.description).toContain(
+        `up to ${ARRAY_INPUT_MAX_ITEMS} unique IDs`,
+      )
       const queryInputSchemaText = JSON.stringify(queryTool?.inputSchema)
       const queryInputSchema = JSON.parse(queryInputSchemaText) as {
         properties: {
+          areaIds: { maxItems: number }
+          categoryIds: { maxItems: number }
           cursor: { maxLength: number }
           limit: { maximum: number }
+          normReferenceIds: { maxItems: number }
+          priorityLevelIds: { maxItems: number }
+          qualityCharacteristicIds: { maxItems: number }
+          requirementPackageIds: { maxItems: number }
+          statuses: { maxItems: number }
+          typeIds: { maxItems: number }
         }
       }
       expect(queryInputSchemaText).toContain('priority_levels')
@@ -432,6 +443,20 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryInputSchemaText).toContain('sortBy')
       expect(queryInputSchema.properties.cursor.maxLength).toBe(512)
       expect(queryInputSchema.properties.limit.maximum).toBe(100)
+      for (const filter of [
+        'areaIds',
+        'categoryIds',
+        'normReferenceIds',
+        'priorityLevelIds',
+        'qualityCharacteristicIds',
+        'requirementPackageIds',
+        'statuses',
+        'typeIds',
+      ] as const) {
+        expect(queryInputSchema.properties[filter].maxItems).toBe(
+          ARRAY_INPUT_MAX_ITEMS,
+        )
+      }
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('result')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
       expect(queryTool?.description).toContain('without match.quality')
@@ -914,6 +939,59 @@ describe('handleRequirementsMcpRequest', () => {
         sortDirection: 'desc',
         requirementPackageIds: [3],
       }),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('bounds requirements catalog filter IDs before query delegation', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    const maximumFilterIds = Array.from(
+      { length: ARRAY_INPUT_MAX_ITEMS },
+      (_, index) => index + 1,
+    )
+
+    const maximumResult = await client.callTool({
+      arguments: {
+        areaIds: maximumFilterIds,
+        catalog: 'requirements',
+        categoryIds: maximumFilterIds,
+        normReferenceIds: maximumFilterIds,
+        operation: 'list',
+        priorityLevelIds: maximumFilterIds,
+        qualityCharacteristicIds: maximumFilterIds,
+        requirementPackageIds: maximumFilterIds,
+        statuses: maximumFilterIds,
+        typeIds: maximumFilterIds,
+      },
+      name: 'requirements_query_catalog',
+    })
+    const overMaximumResult = await client.callTool({
+      arguments: {
+        areaIds: [...maximumFilterIds, ARRAY_INPUT_MAX_ITEMS + 1],
+        catalog: 'requirements',
+        operation: 'list',
+      },
+      name: 'requirements_query_catalog',
+    })
+    const duplicateResult = await client.callTool({
+      arguments: {
+        catalog: 'requirements',
+        operation: 'list',
+        statuses: [1, 1],
+      },
+      name: 'requirements_query_catalog',
+    })
+
+    expect(maximumResult.isError).not.toBe(true)
+    expect(overMaximumResult.isError).toBe(true)
+    expect(duplicateResult.isError).toBe(true)
+    expect(fakeService.queryCatalog).toHaveBeenCalledTimes(1)
+    expect(fakeService.queryCatalog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ areaIds: maximumFilterIds }),
     )
 
     await client.close()

@@ -4,6 +4,7 @@ import {
 } from '@/lib/dal/requirements'
 import type { SqlServerDatabase } from '@/lib/db'
 import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation-constants'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import type {
   AuthorizationService,
@@ -13,6 +14,7 @@ import {
   internalError,
   isRequirementsServiceError,
   unauthorizedError,
+  validationError,
 } from '@/lib/requirements/errors'
 import {
   assertRequirementListCursorMatches,
@@ -39,6 +41,17 @@ export const DEFAULT_REQUIREMENT_LIST_PAGE_LIMIT = 200
 export const MAX_REQUIREMENT_LIST_PAGE_LIMIT = 200
 export const REQUIREMENT_COMPLETE_RESULT_PAGE_SIZE = 200
 export const MAX_COMPLETE_REQUIREMENT_LIST_PAGES = 10_000
+
+const REQUIREMENT_LIST_FILTER_ID_FIELDS = [
+  'areaIds',
+  'categoryIds',
+  'normReferenceIds',
+  'priorityLevelIds',
+  'qualityCharacteristicIds',
+  'requirementPackageIds',
+  'statuses',
+  'typeIds',
+] as const satisfies ReadonlyArray<keyof FilterValues>
 
 export interface RequirementListPagination {
   count: number
@@ -97,6 +110,19 @@ function normalizeLimit(limit: number | undefined): number {
     Math.max(Math.trunc(limit ?? DEFAULT_REQUIREMENT_LIST_PAGE_LIMIT), 1),
     MAX_REQUIREMENT_LIST_PAGE_LIMIT,
   )
+}
+
+function assertBoundedRequirementListFilterIds(
+  filters: FilterValues | undefined,
+): void {
+  for (const field of REQUIREMENT_LIST_FILTER_ID_FIELDS) {
+    if ((filters?.[field]?.length ?? 0) > ARRAY_INPUT_MAX_ITEMS) {
+      throw validationError(
+        `Requirement list filter ${field} accepts at most ${ARRAY_INPUT_MAX_ITEMS} IDs`,
+        { field, maxItems: ARRAY_INPUT_MAX_ITEMS },
+      )
+    }
+  }
 }
 
 function normalizeIds(values: number[] | undefined): number[] | undefined {
@@ -210,6 +236,7 @@ export async function queryRequirementList(
 
   try {
     await authorizeRequirementListQuery(authorizationOptions)
+    assertBoundedRequirementListFilterIds(input.filters)
 
     const filters = normalizeRequirementListFilters(input.filters)
     const limit = normalizeLimit(input.limit)
