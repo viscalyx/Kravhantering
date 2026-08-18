@@ -11,6 +11,8 @@ export type RfiRelevance = 'not_relevant' | 'relevant'
 
 export const RFI_SUGGESTION_RESOLVED = 1
 export const RFI_SUGGESTION_DISMISSED = 2
+export const MAX_RFI_QUESTION_SUGGESTION_QUERY_ROWS = 201
+export const MAX_RFI_QUESTION_SUGGESTION_TEXT_CHARACTERS = 10_000
 
 export interface SqlExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
@@ -38,6 +40,20 @@ export interface RfiQuestionSuggestionMutationTarget {
   id: number
   rfiQuestionId: number | null
   specificationId: number | null
+}
+
+export interface RfiQuestionSuggestionPageBoundary {
+  createdAt: string
+  id: number
+}
+
+export interface RfiQuestionSuggestionListOptions {
+  actorHsaId?: string
+  after?: RfiQuestionSuggestionPageBoundary
+  areaId?: number
+  limit?: number
+  specificationId?: number
+  suggestionId?: number
 }
 
 export interface RfiQuestionVersionLinks {
@@ -1472,14 +1488,19 @@ export async function getRfiQuestionSuggestion(
 
 export async function listRfiQuestionSuggestions(
   db: SqlExecutor,
-  options: {
-    areaId?: number
-    specificationId?: number
-    suggestionId?: number
-  } = {},
+  options: RfiQuestionSuggestionListOptions = {},
 ): Promise<RfiQuestionSuggestionRow[]> {
   const params: unknown[] = []
   const conditions: string[] = []
+  const limit = options.limit ?? MAX_RFI_QUESTION_SUGGESTION_QUERY_ROWS
+  if (
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > MAX_RFI_QUESTION_SUGGESTION_QUERY_ROWS
+  ) {
+    throw validationError('Invalid RFI question suggestion query row limit')
+  }
+  params.push(limit)
   if (options.suggestionId != null) {
     params.push(options.suggestionId)
     conditions.push(`suggestion.id = @${params.length - 1}`)
@@ -1488,6 +1509,27 @@ export async function listRfiQuestionSuggestions(
     params.push(options.areaId)
     conditions.push(`suggestion.area_id = @${params.length - 1}`)
   }
+  if (options.actorHsaId != null) {
+    params.push(options.actorHsaId)
+    const actorParameter = `@${params.length - 1}`
+    conditions.push(
+      `(area.owner_hsa_id = ${actorParameter} OR EXISTS (
+        SELECT 1
+        FROM requirement_area_co_authors co_author
+        WHERE co_author.area_id = area.id
+          AND co_author.hsa_id = ${actorParameter}
+      ))`,
+    )
+  }
+  if (options.after != null) {
+    params.push(options.after.createdAt)
+    const createdAtParameter = `@${params.length - 1}`
+    params.push(options.after.id)
+    const idParameter = `@${params.length - 1}`
+    conditions.push(
+      `(suggestion.created_at < ${createdAtParameter} OR (suggestion.created_at = ${createdAtParameter} AND suggestion.id < ${idParameter}))`,
+    )
+  }
   if (options.specificationId != null) {
     params.push(options.specificationId)
     conditions.push(`suggestion.specification_id = @${params.length - 1}`)
@@ -1495,26 +1537,26 @@ export async function listRfiQuestionSuggestions(
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const rows = (await db.query(
     `
-      SELECT
+      SELECT TOP (@0)
         suggestion.id AS id,
         suggestion.area_id AS areaId,
-        area.name AS areaName,
+        LEFT(area.name, ${MAX_RFI_QUESTION_SUGGESTION_TEXT_CHARACTERS}) AS areaName,
         suggestion.rfi_question_id AS rfiQuestionId,
         question.question_code AS questionCode,
         suggestion.specification_id AS specificationId,
         suggestion.source_specification_code AS sourceSpecificationCode,
-        suggestion.source_specification_name AS sourceSpecificationName,
-        suggestion.content AS content,
+        LEFT(suggestion.source_specification_name, ${MAX_RFI_QUESTION_SUGGESTION_TEXT_CHARACTERS}) AS sourceSpecificationName,
+        LEFT(suggestion.content, ${MAX_RFI_QUESTION_SUGGESTION_TEXT_CHARACTERS}) AS content,
         suggestion.is_review_requested AS isReviewRequested,
         suggestion.review_requested_at AS reviewRequestedAt,
         suggestion.resolution AS resolution,
-        suggestion.resolution_motivation AS resolutionMotivation,
+        LEFT(suggestion.resolution_motivation, ${MAX_RFI_QUESTION_SUGGESTION_TEXT_CHARACTERS}) AS resolutionMotivation,
         suggestion.created_by_hsa_id AS createdByHsaId,
-        suggestion.created_by_display_name AS createdByDisplayName,
+        LEFT(suggestion.created_by_display_name, ${MAX_RFI_QUESTION_SUGGESTION_TEXT_CHARACTERS}) AS createdByDisplayName,
         suggestion.created_at AS createdAt,
         suggestion.updated_at AS updatedAt,
         suggestion.resolved_by_hsa_id AS resolvedByHsaId,
-        suggestion.resolved_by_display_name AS resolvedByDisplayName,
+        LEFT(suggestion.resolved_by_display_name, ${MAX_RFI_QUESTION_SUGGESTION_TEXT_CHARACTERS}) AS resolvedByDisplayName,
         suggestion.resolved_at AS resolvedAt
       FROM rfi_question_suggestions suggestion
       INNER JOIN requirement_areas area

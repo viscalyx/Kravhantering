@@ -9,6 +9,10 @@ import {
   positiveIntegerStringSchema,
   queryBooleanSchema,
 } from '@/lib/http/validation'
+import {
+  MAX_RFI_QUESTION_SUGGESTION_PAGE_LIMIT,
+  RFI_QUESTION_SUGGESTION_CURSOR_MAX_LENGTH,
+} from '@/lib/requirements/rfi-question-suggestion-cursor'
 
 const idArraySchema = z.array(positiveIntegerSchema).max(200).optional()
 
@@ -98,6 +102,16 @@ export const rfiQuestionSuggestionCreateSchema = z
 export const rfiQuestionSuggestionQuerySchema = z
   .object({
     areaId: positiveIntegerStringSchema.optional(),
+    cursor: z
+      .string()
+      .min(1)
+      .max(RFI_QUESTION_SUGGESTION_CURSOR_MAX_LENGTH)
+      .optional(),
+    limit: positiveIntegerStringSchema
+      .refine(value => value <= MAX_RFI_QUESTION_SUGGESTION_PAGE_LIMIT, {
+        message: `Expected limit to be at most ${MAX_RFI_QUESTION_SUGGESTION_PAGE_LIMIT}`,
+      })
+      .optional(),
     specificationId: positiveIntegerStringSchema.optional(),
   })
   .strict()

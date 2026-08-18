@@ -1395,6 +1395,10 @@ insert, update, and delete rules. It permits creation only as draft, the
 forward-only lifecycle, actor anonymization, and specification cleanup while
 rejecting evidence changes and non-draft deletion.
 
+**Page indexes:** `idx_rfi_question_suggestions_created_at_id` supports the
+stable collection order. The area and specification variants prefix that order
+with `area_id` or `specification_id` for filtered pages.
+
 ---
 
 ### `norm_references`
@@ -2764,6 +2768,9 @@ its purpose and the table/column(s) it covers.
 | `idx_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | Speed up lookups of suggestions by requirement version |
 | `idx_improvement_suggestions_created_by_hsa_id` | `improvement_suggestions` | `created_by_hsa_id` | Speed up privacy erasure of suggestion creators |
 | `idx_improvement_suggestions_resolved_by_hsa_id` | `improvement_suggestions` | `resolved_by_hsa_id` | Speed up privacy erasure of suggestion resolvers |
+| `idx_rfi_question_suggestions_created_at_id` | `rfi_question_suggestions` | `created_at, id` | Support stable bounded suggestion pages |
+| `idx_rfi_question_suggestions_area_id_created_at_id` | `rfi_question_suggestions` | `area_id, created_at, id` | Support stable bounded suggestion pages filtered by requirement area |
+| `idx_rfi_question_suggestions_specification_id_created_at_id` | `rfi_question_suggestions` | `specification_id, created_at, id` | Support stable bounded suggestion pages filtered by specification |
 | `idx_access_review_runs_status` | `access_review_runs` | `status` | Speed up filtering review runs by lifecycle status |
 | `idx_access_review_runs_due_at` | `access_review_runs` | `due_at` | Speed up overdue and next-due review queries |
 | `idx_access_review_runs_reviewer_hsa_id` | `access_review_runs` | `reviewer_hsa_id` | Speed up assigned-reviewer access checks and privacy lookups |
@@ -2918,6 +2925,7 @@ graph LR
         R[requirements]
         RV[requirement_versions]
         IS[improvement_suggestions]
+        RFIS[rfi_question_suggestions]
     end
 
     subgraph Transient MCP State
@@ -3011,6 +3019,10 @@ graph LR
     IS -- "idx_..._requirement_version_id\n(requirement_version_id)" --> RV
     IS -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> IS
     IS -- "idx_..._resolved_by_hsa_id\n(resolved_by_hsa_id)" --> IS
+
+    RFIS -- "idx_..._created_at_id\n(created_at, id)" --> RFIS
+    RFIS -- "idx_..._area_id_created_at_id\n(area_id, created_at, id)" --> RFIS
+    RFIS -- "idx_..._specification_id_created_at_id\n(specification_id, created_at, id)" --> RFIS
 
     RAC -- "FK area_id" --> RA
     RAC -- "FK hsa_id" --> RRP

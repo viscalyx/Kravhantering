@@ -179,6 +179,7 @@ function createService() {
     listDeviations: vi.fn(),
     listGraduationTargetAreas,
     listRfiQuestions: vi.fn(async () => []),
+    listRfiQuestionSuggestions: vi.fn(),
     listSpecifications,
     listSuggestions,
     manageDeviation: vi.fn(),

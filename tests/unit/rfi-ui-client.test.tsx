@@ -763,9 +763,7 @@ describe('RFI client UI states', () => {
         if (href === '/api/requirements-specifications/1/rfi-list') {
           return Promise.resolve(okJson({ list: rfiList }))
         }
-        if (
-          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
-        ) {
+        if (href === '/api/rfi-question-suggestions?specificationId=1') {
           return Promise.resolve(okJson({ suggestions: initialSuggestions }))
         }
         if (
@@ -919,9 +917,7 @@ describe('RFI client UI states', () => {
         if (href === '/api/requirements-specifications/1/rfi-list') {
           return Promise.resolve(okJson({ list: rfiList }))
         }
-        if (
-          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
-        ) {
+        if (href === '/api/rfi-question-suggestions?specificationId=1') {
           suggestionLoads += 1
           return Promise.resolve(
             okJson({
@@ -1050,10 +1046,7 @@ describe('RFI client UI states', () => {
         if (href === '/api/requirements-specifications/1/rfi-list') {
           return Promise.resolve(okJson({ list: initialList }))
         }
-        if (
-          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1' ||
-          href === '/api/rfi-question-suggestions?areaId=2&specificationId=1'
-        ) {
+        if (href === '/api/rfi-question-suggestions?specificationId=1') {
           return Promise.resolve(okJson({ suggestions: [] }))
         }
         if (
@@ -1078,6 +1071,12 @@ describe('RFI client UI states', () => {
     const securitySection = await screen.findByRole('region', {
       name: 'Security',
     })
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url]) =>
+          String(url) === '/api/rfi-question-suggestions?specificationId=1',
+      ),
+    ).toHaveLength(1)
     expect(
       within(securitySection).getByText('specificationRfiList.partial'),
     ).toBeInTheDocument()
@@ -1221,9 +1220,7 @@ describe('RFI client UI states', () => {
         if (href === '/api/requirements-specifications/1/rfi-list') {
           return Promise.resolve(okJson({ list: lockedList }))
         }
-        if (
-          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
-        ) {
+        if (href === '/api/rfi-question-suggestions?specificationId=1') {
           return Promise.resolve(okJson({ suggestions: [] }))
         }
         if (
@@ -1315,9 +1312,7 @@ describe('RFI client UI states', () => {
         if (href === '/api/requirements-specifications/1/rfi-list') {
           return Promise.resolve(okJson({ list: unlockedList }))
         }
-        if (
-          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
-        ) {
+        if (href === '/api/rfi-question-suggestions?specificationId=1') {
           return Promise.resolve(okJson({ suggestions: [] }))
         }
         if (
@@ -1874,9 +1869,7 @@ describe('RFI client UI states', () => {
         if (href === '/api/requirements-specifications/1/rfi-list') {
           return Promise.resolve(okJson({ list }))
         }
-        if (
-          href === '/api/rfi-question-suggestions?areaId=1&specificationId=1'
-        ) {
+        if (href === '/api/rfi-question-suggestions?specificationId=1') {
           return Promise.resolve(okJson({}))
         }
         if (init?.method === 'POST' || init?.method === 'PATCH') {

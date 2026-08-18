@@ -783,15 +783,59 @@ describe('RFI questions DAL', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining(
-        'WHERE suggestion.area_id = @0 AND suggestion.specification_id = @1',
+        'WHERE suggestion.area_id = @1 AND suggestion.specification_id = @2',
       ),
-      [2, 4],
+      [201, 2, 4],
     )
     expect(result).toHaveLength(1)
     expect(result[0]).toMatchObject({
       content: 'Ny fråga om loggning',
       specificationId: 4,
     })
+  })
+
+  it('bounds suggestion rows and scopes them to the actor in SQL', async () => {
+    const query = createQuery([[]])
+
+    await listRfiQuestionSuggestions(
+      { query } as unknown as Parameters<typeof listRfiQuestionSuggestions>[0],
+      {
+        actorHsaId: 'SE5560000001-author',
+        after: { createdAt: '2026-08-18T10:00:00.000Z', id: 77 },
+        limit: 101,
+        specificationId: 9,
+      },
+    )
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('SELECT TOP (@0)'),
+      [101, 'SE5560000001-author', '2026-08-18T10:00:00.000Z', 77, 9],
+    )
+    const sql = String(query.mock.calls[0]?.[0])
+    expect(sql).toContain('area.owner_hsa_id = @1')
+    expect(sql).toContain('co_author.hsa_id = @1')
+    expect(sql).toContain('suggestion.created_at < @2')
+    expect(sql).toContain('suggestion.id < @3')
+    expect(sql).toContain('suggestion.specification_id = @4')
+    expect(sql).toContain('LEFT(area.name, 10000)')
+    expect(sql).toContain('LEFT(suggestion.content, 10000)')
+    expect(sql).toContain(
+      'ORDER BY suggestion.created_at DESC, suggestion.id DESC',
+    )
+  })
+
+  it('rejects oversized suggestion reads before querying', async () => {
+    const query = createQuery([[]])
+
+    await expect(
+      listRfiQuestionSuggestions(
+        { query } as unknown as Parameters<
+          typeof listRfiQuestionSuggestions
+        >[0],
+        { limit: 202 },
+      ),
+    ).rejects.toMatchObject({ code: 'validation', status: 400 })
+    expect(query).not.toHaveBeenCalled()
   })
 
   it('deletes only RFI question suggestions that have not entered review or resolution', async () => {
@@ -1519,7 +1563,7 @@ describe('RFI questions DAL', () => {
 
     const result = await listRfiQuestionSuggestions({ query })
 
-    expect(query.mock.calls[0]?.[1]).toEqual([])
+    expect(query.mock.calls[0]?.[1]).toEqual([201])
     expect(result[0]).toMatchObject({
       resolvedAt: '2026-06-21T09:00:00.000Z',
       reviewRequestedAt: '2026-06-20T10:00:00.000Z',

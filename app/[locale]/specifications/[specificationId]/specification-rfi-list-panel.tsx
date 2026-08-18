@@ -28,6 +28,7 @@ import {
   readRfiQuestionSuggestionMutationError,
   shouldReloadRfiQuestionSuggestions,
 } from '@/lib/requirements/rfi-question-suggestion-conflicts'
+import { fetchRfiQuestionSuggestionPages } from '@/lib/requirements/rfi-question-suggestion-pages'
 
 type RfiRelevance = 'not_relevant' | 'relevant'
 
@@ -173,29 +174,15 @@ export default function SpecificationRfiListPanel({
         setSuggestions([])
         return
       }
-      const areaIds = Array.from(new Set(items.map(item => item.areaId)))
-      if (areaIds.length === 0) {
+      if (items.length === 0) {
         setSuggestions([])
         return
       }
-      const loaded = await Promise.all(
-        areaIds.map(async areaId => {
-          const response = await apiFetch(
-            `/api/rfi-question-suggestions?areaId=${areaId}&specificationId=${specificationId}`,
-          )
-          if (!response.ok) {
-            throw new Error(
-              (await readResponseMessage(response)) ??
-                t('loadSuggestionsError'),
-            )
-          }
-          const data = (await response.json()) as {
-            suggestions?: RfiSuggestion[]
-          }
-          return data.suggestions ?? []
-        }),
+      const loaded = await fetchRfiQuestionSuggestionPages<RfiSuggestion>(
+        `/api/rfi-question-suggestions?specificationId=${specificationId}`,
+        { errorMessage: t('loadSuggestionsError') },
       )
-      setSuggestions(loaded.flat())
+      setSuggestions(loaded)
     },
     [canEdit, specificationId, t],
   )
