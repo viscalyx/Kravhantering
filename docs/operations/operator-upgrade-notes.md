@@ -308,6 +308,13 @@ Before rollout, confirm that users who manage RFI questions have the required re
 Before upgrade, review generated-output limits and temporary-storage capacity. JSON person data exports now use the existing CSV item, file-size, timeout, and shared per-node concurrency limits. PDF person data exports use the PDF item, file-size, timeout, per-node concurrency, and worker-memory limits.
 Exports that exceed these limits are rejected without a partial file. Validate the limits against retained subject histories and monitor privacy export capacity events after rollout.
 <!-- operator-upgrade:source pr-1068 end -->
+
+<!-- operator-upgrade:source pr-1072 start -->
+Before upgrade, inform MCP integration owners that numeric requirement catalog
+filters accept at most 200 unique positive IDs per filter. Update clients to
+remove duplicate IDs and split larger filter collections into separate calls.
+Calls that do not meet this contract are rejected before database work.
+<!-- operator-upgrade:source pr-1072 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
