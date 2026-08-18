@@ -331,16 +331,28 @@ async function insertVersionJoinsSqlServer(
   requirementPackageIds: number[],
   normRefIds: number[],
 ) {
-  for (const requirementPackageId of requirementPackageIds) {
+  const joins = [
+    {
+      foreignKey: 'requirement_package_id',
+      ids: requirementPackageIds,
+      table: 'requirement_version_requirement_packages',
+    },
+    {
+      foreignKey: 'norm_reference_id',
+      ids: normRefIds,
+      table: 'requirement_version_norm_references',
+    },
+  ] as const
+
+  for (const join of joins) {
+    if (join.ids.length === 0) continue
+
+    const valuesSql = join.ids
+      .map((_, index) => `(@0, @${index + 1})`)
+      .join(', ')
     await tx.query(
-      `INSERT INTO requirement_version_requirement_packages (requirement_version_id, requirement_package_id) VALUES (@0, @1)`,
-      [versionId, requirementPackageId],
-    )
-  }
-  for (const normReferenceId of normRefIds) {
-    await tx.query(
-      `INSERT INTO requirement_version_norm_references (requirement_version_id, norm_reference_id) VALUES (@0, @1)`,
-      [versionId, normReferenceId],
+      `INSERT INTO ${join.table} (requirement_version_id, ${join.foreignKey}) VALUES ${valuesSql}`,
+      [versionId, ...join.ids],
     )
   }
 }

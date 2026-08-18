@@ -297,6 +297,13 @@ Edit calls must first fetch the requirement with `view: "history"` and copy
 tokens to `409 Conflict` details with `reason: "stale_requirement_edit"` and
 the latest requirement snapshot.
 
+`requirement.normReferenceIds` and `requirement.requirementPackageIds` each
+accept at most 200 unique positive integer IDs. The MCP schema rejects
+duplicates and oversized collections before service delegation. The shared
+taxonomy-reference boundary independently caps direct callers, deduplicates
+accepted values before lookups, and persists each collection with one bounded
+multi-row insert.
+
 Delete-draft results use one canonical shape across REST and MCP:
 `result.deleted` is an ordered deletion ledger. It contains a
 `draftRequirementVersion` item with `requirementUniqueId` and `versionNumber`,

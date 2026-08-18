@@ -87,7 +87,7 @@ const QueryCatalogKindSchema = z.enum([
   'transitions',
 ])
 
-function createRequirementCatalogFilterIdsSchema(
+function createUniquePositiveIntegerIdsSchema(
   description: string,
 ): z.ZodOptional<ReturnType<typeof uniquePositiveIntegerArraySchema>> {
   return uniquePositiveIntegerArraySchema()
@@ -857,13 +857,13 @@ function renderRequirementHtml(
 function createQueryCatalogSchema() {
   return z
     .object({
-      areaIds: createRequirementCatalogFilterIdsSchema(
+      areaIds: createUniquePositiveIntegerIdsSchema(
         'Requirement area IDs. Applies only to catalog "requirements".',
       ),
       catalog: QueryCatalogKindSchema.describe(
         'Catalog to list or search. Use "requirements" for requirement rows or a lookup catalog for reference rows.',
       ),
-      categoryIds: createRequirementCatalogFilterIdsSchema(
+      categoryIds: createUniquePositiveIntegerIdsSchema(
         'Requirement category IDs. Applies only to catalog "requirements".',
       ),
       cursor: z
@@ -890,7 +890,7 @@ function createQueryCatalogSchema() {
         .describe(
           'Bounded page size for catalog "requirements"; defaults to 50 and accepts 1 through 100.',
         ),
-      normReferenceIds: createRequirementCatalogFilterIdsSchema(
+      normReferenceIds: createUniquePositiveIntegerIdsSchema(
         'Norm reference IDs. Applies only to catalog "requirements".',
       ),
       operation: z
@@ -898,7 +898,7 @@ function createQueryCatalogSchema() {
         .describe(
           '"list" returns all matching rows in structuredContent.result. "search" returns matching rows with top-level match metadata.',
         ),
-      qualityCharacteristicIds: createRequirementCatalogFilterIdsSchema(
+      qualityCharacteristicIds: createUniquePositiveIntegerIdsSchema(
         'Quality characteristic IDs. Applies only to catalog "requirements".',
       ),
       verifiable: z
@@ -907,7 +907,7 @@ function createQueryCatalogSchema() {
         .describe(
           'Filter by verifiability. Applies only to catalog "requirements".',
         ),
-      priorityLevelIds: createRequirementCatalogFilterIdsSchema(
+      priorityLevelIds: createUniquePositiveIntegerIdsSchema(
         'Priority level IDs. Applies only to catalog "requirements".',
       ),
       sortBy: z
@@ -941,7 +941,7 @@ function createQueryCatalogSchema() {
         .describe(
           'Search text for operation "search". Requirement search matches id, uniqueId, version.description, and version.acceptanceCriteria; lookup search matches stable lookup fields.',
         ),
-      statuses: createRequirementCatalogFilterIdsSchema(
+      statuses: createUniquePositiveIntegerIdsSchema(
         'Requirement version status IDs. Applies only to catalog "requirements".',
       ),
       typeId: z
@@ -952,10 +952,10 @@ function createQueryCatalogSchema() {
         .describe(
           'Requirement type ID used only to filter catalog "quality_characteristics".',
         ),
-      typeIds: createRequirementCatalogFilterIdsSchema(
+      typeIds: createUniquePositiveIntegerIdsSchema(
         'Requirement type IDs. Applies only to catalog "requirements".',
       ),
-      requirementPackageIds: createRequirementCatalogFilterIdsSchema(
+      requirementPackageIds: createUniquePositiveIntegerIdsSchema(
         'Requirements package IDs. Applies only to catalog "requirements".',
       ),
     })
@@ -1386,14 +1386,12 @@ const RequirementMutationSchema = z
       .describe(
         'How the requirement should be verified when verifiable is true.',
       ),
-    requirementPackageIds: z
-      .array(z.number().int().positive())
-      .optional()
-      .describe('Requirements package IDs linked to the version.'),
-    normReferenceIds: z
-      .array(z.number().int().positive())
-      .optional()
-      .describe('Norm reference IDs linked to the version.'),
+    requirementPackageIds: createUniquePositiveIntegerIdsSchema(
+      'Requirements package IDs linked to the version.',
+    ),
+    normReferenceIds: createUniquePositiveIntegerIdsSchema(
+      'Norm reference IDs linked to the version.',
+    ),
     qualityCharacteristicId: z
       .number()
       .int()
@@ -2127,8 +2125,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description:
-        'Create, edit, archive, delete a latest draft, or restore a historical requirement version. For operation "create", pass requirement.areaId and requirement.description, plus optional classification/verification fields. For operation "edit", first call requirements_get_requirement with view: "history", then pass requirement.versions[0].id as requirement.baseVersionId and requirement.versions[0].revisionToken as requirement.baseRevisionToken.',
+      description: `Create, edit, archive, delete a latest draft, or restore a historical requirement version. For operation "create", pass requirement.areaId and requirement.description, plus optional classification/verification fields. For operation "edit", first call requirements_get_requirement with view: "history", then pass requirement.versions[0].id as requirement.baseVersionId and requirement.versions[0].revisionToken as requirement.baseRevisionToken. requirement.normReferenceIds and requirement.requirementPackageIds each accept up to ${ARRAY_INPUT_MAX_ITEMS} unique IDs.`,
       inputSchema: createManageRequirementSchema(),
       outputSchema: ManageRequirementOutputSchema,
       title: 'Manage Requirement',

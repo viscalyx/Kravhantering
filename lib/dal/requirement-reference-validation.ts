@@ -1,3 +1,4 @@
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation-constants'
 import { validationError } from '@/lib/requirements/errors'
 
 export interface RequirementReferenceExecutor {
@@ -105,6 +106,12 @@ function normalizeIdArray(
 
   if (!Array.isArray(values)) {
     throw validationError(`${field} must contain positive integer IDs`)
+  }
+  if (values.length > ARRAY_INPUT_MAX_ITEMS) {
+    throw validationError(
+      `${field} accepts at most ${ARRAY_INPUT_MAX_ITEMS} IDs`,
+      { field, maxItems: ARRAY_INPUT_MAX_ITEMS },
+    )
   }
 
   const normalized: number[] = []

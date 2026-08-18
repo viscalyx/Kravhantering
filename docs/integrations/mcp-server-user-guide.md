@@ -67,7 +67,9 @@ agents can use it reliably.
   version. For `operation: "edit"`, first fetch the requirement with
   `view: "history"` and pass `requirement.versions[0].id` and
   `requirement.versions[0].revisionToken` back as
-  `requirement.baseVersionId` and `requirement.baseRevisionToken`. A
+  `requirement.baseVersionId` and `requirement.baseRevisionToken`.
+  `requirement.normReferenceIds` and `requirement.requirementPackageIds` each
+  accept at most 200 unique positive integer IDs. A
   successful `operation: "delete_draft"` returns `result.deleted` as an
   ordered deletion ledger. It contains a `draftRequirementVersion` item with
   `requirementUniqueId` and `versionNumber`, followed by a `requirement` item

@@ -705,6 +705,9 @@ describe('handleRequirementsMcpRequest', () => {
       expect(manageTool?.description).toContain('requirement.areaId')
       expect(manageTool?.description).toContain('requirement.description')
       expect(manageTool?.description).toContain('view: "history"')
+      expect(manageTool?.description).toContain(
+        `up to ${ARRAY_INPUT_MAX_ITEMS} unique IDs`,
+      )
       const manageInputSchemaText = JSON.stringify(manageTool?.inputSchema)
       expect(manageInputSchemaText).toContain('For create')
       expect(manageInputSchemaText).toContain('acceptanceCriteria')
@@ -712,6 +715,24 @@ describe('handleRequirementsMcpRequest', () => {
       expect(manageInputSchemaText).toContain(
         'requirement.versions[0].revisionToken',
       )
+      const manageInputSchema = JSON.parse(manageInputSchemaText) as {
+        properties: {
+          requirement: {
+            properties: {
+              normReferenceIds: { maxItems: number }
+              requirementPackageIds: { maxItems: number }
+            }
+          }
+        }
+      }
+      expect(
+        manageInputSchema.properties.requirement.properties.normReferenceIds
+          .maxItems,
+      ).toBe(ARRAY_INPUT_MAX_ITEMS)
+      expect(
+        manageInputSchema.properties.requirement.properties
+          .requirementPackageIds.maxItems,
+      ).toBe(ARRAY_INPUT_MAX_ITEMS)
       const manageOutputSchemaText = JSON.stringify(manageTool?.outputSchema)
       expect(manageOutputSchemaText).toContain('draftRequirementVersion')
       expect(manageOutputSchemaText).toContain('requirement')
@@ -2390,6 +2411,73 @@ describe('handleRequirementsMcpRequest', () => {
           baseRevisionToken: '11111111-1111-4111-8111-111111111111',
           baseVersionId: 10,
           normReferenceIds: [1, 2],
+        }),
+      }),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('bounds manage_requirement taxonomy IDs before service delegation', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+    const maximumIds = Array.from(
+      { length: ARRAY_INPUT_MAX_ITEMS },
+      (_, index) => index + 1,
+    )
+
+    const maximumResult = await client.callTool({
+      arguments: {
+        operation: 'edit',
+        requirement: {
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: 'Updated description',
+          normReferenceIds: maximumIds,
+          requirementPackageIds: maximumIds,
+        },
+        uniqueId: 'INT0001',
+      },
+      name: 'requirements_manage_requirement',
+    })
+    const overMaximumResult = await client.callTool({
+      arguments: {
+        operation: 'edit',
+        requirement: {
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: 'Updated description',
+          normReferenceIds: [...maximumIds, ARRAY_INPUT_MAX_ITEMS + 1],
+        },
+        uniqueId: 'INT0001',
+      },
+      name: 'requirements_manage_requirement',
+    })
+    const duplicateResult = await client.callTool({
+      arguments: {
+        operation: 'edit',
+        requirement: {
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: 'Updated description',
+          requirementPackageIds: [1, 1],
+        },
+        uniqueId: 'INT0001',
+      },
+      name: 'requirements_manage_requirement',
+    })
+
+    expect(maximumResult.isError).not.toBe(true)
+    expect(overMaximumResult.isError).toBe(true)
+    expect(duplicateResult.isError).toBe(true)
+    expect(fakeService.manageRequirement).toHaveBeenCalledTimes(1)
+    expect(fakeService.manageRequirement).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        requirement: expect.objectContaining({
+          normReferenceIds: maximumIds,
+          requirementPackageIds: maximumIds,
         }),
       }),
     )

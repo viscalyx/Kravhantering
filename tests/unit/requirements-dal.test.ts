@@ -423,9 +423,9 @@ describe('requirements DAL (SQL Server path)', () => {
         [
           {
             description: 'Batch one',
-            normReferenceIds: [10],
+            normReferenceIds: [10, 11, 10],
             requirementAreaId: 1,
-            requirementPackageIds: [20],
+            requirementPackageIds: [20, 21, 20],
             verifiable: true,
             verificationMethod: 'inspection',
           },
@@ -444,6 +444,20 @@ describe('requirements DAL (SQL Server path)', () => {
         sql.includes('requirement_version_requirement_packages'),
       ),
     ).toBe(true)
+    const packageInsertCalls = query.mock.calls.filter(([sql]) =>
+      sql.includes('INSERT INTO requirement_version_requirement_packages'),
+    )
+    const normReferenceInsertCalls = query.mock.calls.filter(([sql]) =>
+      sql.includes('INSERT INTO requirement_version_norm_references'),
+    )
+    expect(packageInsertCalls).toHaveLength(1)
+    expect(packageInsertCalls[0]?.[0]).toContain('VALUES (@0, @1), (@0, @2)')
+    expect(packageInsertCalls[0]?.[1]).toEqual([101, 20, 21])
+    expect(normReferenceInsertCalls).toHaveLength(1)
+    expect(normReferenceInsertCalls[0]?.[0]).toContain(
+      'VALUES (@0, @1), (@0, @2)',
+    )
+    expect(normReferenceInsertCalls[0]?.[1]).toEqual([101, 10, 11])
     await expect(
       createRequirementsBatchWithExecutor(executor, []),
     ).resolves.toEqual([])

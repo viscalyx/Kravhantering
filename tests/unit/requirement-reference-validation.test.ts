@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { validateRequirementTaxonomyReferences } from '@/lib/dal/requirement-reference-validation'
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation'
 
 function createExecutor(missing: string[] = []) {
   const missingKeys = new Set(missing)
@@ -71,6 +72,39 @@ describe('validateRequirementTaxonomyReferences', () => {
       requirementPackageIds: [],
       requirementTypeId: null,
       priorityLevelId: null,
+    })
+    expect(query).not.toHaveBeenCalled()
+  })
+
+  it('bounds taxonomy ID arrays before database lookups', async () => {
+    const { executor, query } = createExecutor()
+    const maximumIds = Array.from(
+      { length: ARRAY_INPUT_MAX_ITEMS },
+      (_, index) => index + 1,
+    )
+
+    await expect(
+      validateRequirementTaxonomyReferences(executor, {
+        normReferenceIds: maximumIds,
+        requirementPackageIds: maximumIds,
+      }),
+    ).resolves.toMatchObject({
+      normReferenceIds: maximumIds,
+      requirementPackageIds: maximumIds,
+    })
+
+    query.mockClear()
+    await expect(
+      validateRequirementTaxonomyReferences(executor, {
+        normReferenceIds: [...maximumIds, ARRAY_INPUT_MAX_ITEMS + 1],
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: {
+        field: 'normReferenceIds',
+        maxItems: ARRAY_INPUT_MAX_ITEMS,
+      },
+      status: 400,
     })
     expect(query).not.toHaveBeenCalled()
   })
