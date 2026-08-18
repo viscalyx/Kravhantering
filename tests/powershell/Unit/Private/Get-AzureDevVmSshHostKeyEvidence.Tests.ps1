@@ -38,7 +38,7 @@ Describe 'Get-AzureDevVmSshHostKeyEvidence' -Tag 'Unit' {
       Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
         return [System.Management.Automation.PSObject]@{
           value = @(
-            [System.Management.Automation.PSObject]@{
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
               code = 'ComponentStatus/StdOut/succeeded'
               message = (
                 'ssh-ed25519 ' +
@@ -92,7 +92,7 @@ Describe 'Get-AzureDevVmSshHostKeyEvidence' -Tag 'Unit' {
       Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
         return [System.Management.Automation.PSObject]@{
           value = @(
-            [System.Management.Automation.PSObject]@{
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
               code = 'ComponentStatus/StdOut/succeeded'
               message = 'ssh-ed25519 QQ=='
             }
@@ -112,6 +112,144 @@ Describe 'Get-AzureDevVmSshHostKeyEvidence' -Tag 'Unit' {
       } | Should-Throw -ExceptionMessage (
         '*control-plane SSH host-key evidence was malformed*'
       )
+    }
+  }
+
+  Context 'When Run Command omits its value collection' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        return New-Object `
+          -TypeName System.Management.Automation.PSObject `
+          -Property @{
+          status = 'succeeded'
+        }
+      }
+    }
+
+    It 'Should reject the malformed response' {
+      {
+        InModuleScope `
+          -Parameters @{ Context = $script:context } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Get-AzureDevVmSshHostKeyEvidence -Context $Context
+          }
+      } | Should-Throw -ExceptionMessage (
+        '*control-plane SSH host-key evidence was malformed*'
+      )
+    }
+  }
+
+  Context 'When a Run Command result omits its code' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        return New-Object `
+          -TypeName System.Management.Automation.PSObject `
+          -Property @{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              message = 'unexpected output'
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should report malformed evidence explicitly' {
+      {
+        InModuleScope `
+          -Parameters @{ Context = $script:context } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Get-AzureDevVmSshHostKeyEvidence -Context $Context
+          }
+      } | Should-Throw -ExceptionMessage (
+        '*control-plane SSH host-key evidence was malformed*'
+      )
+    }
+  }
+
+  Context 'When Run Command returns guest errors' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        return New-Object `
+          -TypeName System.Management.Automation.PSObject `
+          -Property @{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = 'ComponentStatus/StdErr/succeeded'
+              message = 'host keys unavailable'
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should fail closed before accepting output' {
+      {
+        InModuleScope `
+          -Parameters @{ Context = $script:context } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Get-AzureDevVmSshHostKeyEvidence -Context $Context
+          }
+      } | Should-Throw -ExceptionMessage (
+        '*control-plane SSH host-key retrieval returned guest errors*'
+      )
+    }
+  }
+
+  Context 'When Run Command repeats valid keys across algorithms' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        $ed25519 = (
+          'ssh-ed25519 ' +
+          'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
+        )
+        $rsa = (
+          'ssh-rsa ' +
+          'AAAAB3NzaC1yc2EAAAADAQABAAAAgQC5rITfpGc4oPleBfphM/dw00CuU8+E0xzLsRxLfTzCwsn5r4+mYeYNvdpxLaIVqPxiX6EXI8mdU6KwWExxo/QDLy8XXw27VFwgeFQJTQB/SVLRkDMjpP6q0a17E9Xm3BoSwDCyQNBFtO4CBF82p5otDgLCt6+AChsr36+GeJ8QCw=='
+        )
+        return New-Object `
+          -TypeName System.Management.Automation.PSObject `
+          -Property @{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = 'ComponentStatus/StdOut/succeeded'
+              message = "$ed25519`n$rsa"
+            }
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = 'ComponentStatus/StdOut/succeeded'
+              message = "$rsa duplicate`n$ed25519 duplicate"
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should preserve only unique normalized key material' {
+      $result = @(
+        InModuleScope `
+          -Parameters @{ Context = $script:context } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Get-AzureDevVmSshHostKeyEvidence -Context $Context
+          }
+      )
+
+      $result.Count | Should-Be 2
+      $result[0] | Should-BeString `
+        -Expected (
+          'ssh-ed25519 ' +
+          'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
+        ) `
+        -CaseSensitive
+      $result[1] | Should-BeString `
+        -Expected (
+          'ssh-rsa ' +
+          'AAAAB3NzaC1yc2EAAAADAQABAAAAgQC5rITfpGc4oPleBfphM/dw00CuU8+E0xzLsRxLfTzCwsn5r4+mYeYNvdpxLaIVqPxiX6EXI8mdU6KwWExxo/QDLy8XXw27VFwgeFQJTQB/SVLRkDMjpP6q0a17E9Xm3BoSwDCyQNBFtO4CBF82p5otDgLCt6+AChsr36+GeJ8QCw=='
+        ) `
+        -CaseSensitive
     }
   }
 }

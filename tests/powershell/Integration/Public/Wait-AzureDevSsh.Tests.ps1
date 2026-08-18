@@ -42,7 +42,7 @@ Describe `
     Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
       return [System.Management.Automation.PSObject]@{
         value = @(
-          [System.Management.Automation.PSObject]@{
+          New-Object -TypeName System.Management.Automation.PSObject -Property @{
             code = 'ComponentStatus/StdOut/succeeded'
             message = (
               'ssh-ed25519 ' +
@@ -77,13 +77,13 @@ Describe `
   Context 'When replacing hashed managed host entries' {
     BeforeEach {
       $script:knownHostsPath = Join-Path $TestDrive 'known_hosts'
-      $oldHostKey = (
+      $script:oldHostKey = (
         'ssh-ed25519 ' +
         'AAAAC3NzaC1lZDI1NTE5AAAAINHTPpE1LHuzHN/oirKpSYd7H/LfaLu0H1gp8VOcBt1y'
       )
       Set-Content -LiteralPath $script:knownHostsPath -Value @(
-        "krav-test $oldHostKey"
-        "203.0.113.10 $oldHostKey"
+        "krav-test $script:oldHostKey"
+        "203.0.113.10 $script:oldHostKey"
         "unrelated.example $script:trustedHostKey"
       )
       & ssh-keygen -H -f $script:knownHostsPath | Out-Null
@@ -136,6 +136,10 @@ Describe `
         Should-BeTrue
       (($hostLookup -join "`n") -like "*$script:trustedHostKey*") |
         Should-BeTrue
+      (($aliasLookup -join "`n") -like "*$script:oldHostKey*") |
+        Should-BeFalse
+      (($hostLookup -join "`n") -like "*$script:oldHostKey*") |
+        Should-BeFalse
       (($unrelatedLookup -join "`n") -like "*$script:trustedHostKey*") |
         Should-BeTrue
     }

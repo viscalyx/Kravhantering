@@ -15,6 +15,7 @@ Describe 'Set-AzureDevKnownHostTrust' -Tag 'Unit' {
       'InModuleScope:ModuleName' = $script:moduleName
       'Mock:ModuleName' = $script:moduleName
       'Should-Invoke:ModuleName' = $script:moduleName
+      'Should-NotInvoke:ModuleName' = $script:moduleName
     }
     Import-Module (
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Ssh.psm1'
@@ -100,6 +101,113 @@ Describe 'Set-AzureDevKnownHostTrust' -Tag 'Unit' {
         -ParameterFilter { $FilePath -eq 'ssh-keygen' } `
         -Exactly `
         -Times 2 `
+        -Scope It
+    }
+  }
+
+  Context 'When ssh-keygen cannot remove a managed entry' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevNativeCommand -MockWith {
+        if ($FilePath -eq 'ssh-keygen') {
+          return [System.Management.Automation.PSObject]@{
+            ExitCode = 1
+            Text = 'failed'
+          }
+        }
+        throw "Unexpected native command: $FilePath"
+      }
+    }
+
+    It 'Should fail without replacing the known-hosts file' {
+      $original = Get-Content -LiteralPath $script:knownHostsPath -Raw
+
+      {
+        InModuleScope `
+          -Parameters @{
+            Context = $script:context
+            TrustedHostKey = $script:trustedHostKey
+          } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Set-AzureDevKnownHostTrust `
+              -Context $Context `
+              -HostName '203.0.113.10' `
+              -HostKeys @($TrustedHostKey)
+          }
+      } | Should-Throw -ExceptionMessage (
+        '*Could not update managed SSH host trust*'
+      )
+
+      (Get-Content -LiteralPath $script:knownHostsPath -Raw) |
+        Should-BeString -Expected $original -CaseSensitive
+    }
+  }
+
+  Context 'When ssh-keygen creates its backup file' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevNativeCommand -MockWith {
+        if ($FilePath -eq 'ssh-keygen') {
+          $fileOption = [System.Array]::IndexOf($Arguments, '-f')
+          $path = [System.String]$Arguments[$fileOption + 1]
+          [System.IO.File]::WriteAllText("$path.old", 'backup')
+          return [System.Management.Automation.PSObject]@{
+            ExitCode = 0
+            Text = ''
+          }
+        }
+        if ($FilePath -eq 'chmod') {
+          return [System.Management.Automation.PSObject]@{
+            ExitCode = 0
+            Text = ''
+          }
+        }
+        throw "Unexpected native command: $FilePath"
+      }
+    }
+
+    It 'Should remove the backup after installing authenticated trust' {
+      $null = InModuleScope `
+        -Parameters @{
+          Context = $script:context
+          TrustedHostKey = $script:trustedHostKey
+        } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Set-AzureDevKnownHostTrust `
+            -Context $Context `
+            -HostName '203.0.113.10' `
+            -HostKeys @($TrustedHostKey)
+        }
+
+      @(Get-ChildItem -LiteralPath $TestDrive -Filter '*.old').Count |
+        Should-Be 0
+    }
+  }
+
+  Context 'When WhatIf is requested' {
+    It 'Should not create or replace managed trust files' {
+      $directory = Join-Path $TestDrive 'whatif'
+      $script:context.Config.SshKnownHostsPath = Join-Path `
+        $directory `
+        'known_hosts'
+
+      $null = InModuleScope `
+        -Parameters @{
+          Context = $script:context
+          TrustedHostKey = $script:trustedHostKey
+        } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Set-AzureDevKnownHostTrust `
+            -Context $Context `
+            -HostName '203.0.113.10' `
+            -HostKeys @($TrustedHostKey) `
+            -WhatIf
+        }
+
+      (Test-Path -LiteralPath $directory) | Should-BeFalse
+      Should-NotInvoke `
+        -CommandName Invoke-AzureDevNativeCommand `
         -Scope It
     }
   }

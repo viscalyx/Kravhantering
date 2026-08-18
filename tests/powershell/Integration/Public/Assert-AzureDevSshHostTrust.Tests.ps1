@@ -37,4 +37,18 @@ Describe `
       $null = Assert-AzureDevSshHostTrust -Context $context
     }
   }
+
+  Context 'When the setup context has no authenticated host trust' {
+    It 'Should reject the context across the module boundary' {
+      $context = [System.Management.Automation.PSObject]@{
+        SshHostTrustEstablished = $false
+      }
+
+      {
+        Assert-AzureDevSshHostTrust -Context $context
+      } | Should-Throw -ExceptionMessage (
+        '*Authenticated SSH host trust has not been established*'
+      )
+    }
+  }
 }

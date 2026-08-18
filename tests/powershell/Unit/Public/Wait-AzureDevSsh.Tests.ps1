@@ -33,7 +33,7 @@ Describe 'Wait-AzureDevSsh' -Tag 'Unit' {
     Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
       return [System.Management.Automation.PSObject]@{
         value = @(
-          [System.Management.Automation.PSObject]@{
+          New-Object -TypeName System.Management.Automation.PSObject -Property @{
             code = 'ComponentStatus/StdOut/succeeded'
             message = (
               'ssh-ed25519 ' +
@@ -131,6 +131,7 @@ Describe 'Wait-AzureDevSsh' -Tag 'Unit' {
         -TimeoutSeconds 1
 
       $result | Should-BeTrue
+      $script:context.SshHostTrustEstablished | Should-BeTrue
       $knownHosts = Get-Content -LiteralPath $script:knownHostsPath
       ($knownHosts -contains "krav-test $script:trustedHostKey") |
         Should-BeTrue
@@ -235,7 +236,7 @@ Describe 'Wait-AzureDevSsh' -Tag 'Unit' {
         Wait-AzureDevSsh `
           -Context $script:context `
           -HostName '203.0.113.10' `
-          -TimeoutSeconds 1
+          -TimeoutSeconds 0
       } | Should-Throw -ExceptionMessage (
         '*mismatch against Azure control-plane evidence*'
       )
@@ -250,6 +251,7 @@ Describe 'Wait-AzureDevSsh' -Tag 'Unit' {
         -Exactly `
         -Times 1 `
         -Scope It
+      $script:context.SshHostTrustEstablished | Should-BeFalse
     }
   }
 
@@ -265,7 +267,7 @@ Describe 'Wait-AzureDevSsh' -Tag 'Unit' {
         Wait-AzureDevSsh `
           -Context $script:context `
           -HostName '203.0.113.10' `
-          -TimeoutSeconds 1
+          -TimeoutSeconds 0
       } | Should-Throw -ExceptionMessage (
         '*control-plane SSH host-key retrieval failed*'
       )
@@ -273,6 +275,53 @@ Describe 'Wait-AzureDevSsh' -Tag 'Unit' {
       Should-NotInvoke `
         -CommandName Invoke-AzureDevNativeCommand `
         -ParameterFilter { $FilePath -eq 'ssh' } `
+        -Scope It
+      $script:context.SshHostTrustEstablished | Should-BeFalse
+    }
+  }
+
+  Context 'When Azure host-key evidence becomes available before the deadline' {
+    BeforeAll {
+      $script:mockEvidenceAttempts = 0
+      Mock -CommandName Start-Sleep
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        $script:mockEvidenceAttempts++
+        if ($script:mockEvidenceAttempts -eq 1) {
+          throw 'VM agent starting'
+        }
+        return [System.Management.Automation.PSObject]@{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = 'ComponentStatus/StdOut/succeeded'
+              message = (
+                'ssh-ed25519 ' +
+                'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
+              )
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should retry before making the first SSH connection' {
+      $result = Wait-AzureDevSsh `
+        -Context $script:context `
+        -HostName '203.0.113.10' `
+        -TimeoutSeconds 30
+
+      $result | Should-BeTrue
+      $script:context.SshHostTrustEstablished | Should-BeTrue
+      Should-Invoke `
+        -CommandName Invoke-AzureDevHostKeyRunCommand `
+        -Exactly `
+        -Times 2 `
+        -Scope It
+      Should-Invoke -CommandName Start-Sleep -Exactly -Times 1 -Scope It
+      Should-Invoke `
+        -CommandName Invoke-AzureDevNativeCommand `
+        -ParameterFilter { $FilePath -eq 'ssh' } `
+        -Exactly `
+        -Times 1 `
         -Scope It
     }
   }
@@ -282,7 +331,7 @@ Describe 'Wait-AzureDevSsh' -Tag 'Unit' {
       Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
         return [System.Management.Automation.PSObject]@{
           value = @(
-            [System.Management.Automation.PSObject]@{
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
               code = 'ComponentStatus/StdOut/succeeded'
               message = 'ssh-ed25519 QQ=='
             }
@@ -296,7 +345,7 @@ Describe 'Wait-AzureDevSsh' -Tag 'Unit' {
         Wait-AzureDevSsh `
           -Context $script:context `
           -HostName '203.0.113.10' `
-          -TimeoutSeconds 1
+          -TimeoutSeconds 0
       } | Should-Throw -ExceptionMessage (
         '*control-plane SSH host-key evidence was malformed*'
       )
@@ -305,6 +354,27 @@ Describe 'Wait-AzureDevSsh' -Tag 'Unit' {
         -CommandName Invoke-AzureDevNativeCommand `
         -ParameterFilter { $FilePath -eq 'ssh' } `
         -Scope It
+      $script:context.SshHostTrustEstablished | Should-BeFalse
+    }
+  }
+
+  Context 'When the resolved host name is empty' {
+    It 'Should fail before retrieving evidence or opening SSH' {
+      {
+        Wait-AzureDevSsh `
+          -Context $script:context `
+          -HostName '  ' `
+          -TimeoutSeconds 0
+      } | Should-Throw -ExceptionMessage '*resolved VM host is required*'
+
+      Should-NotInvoke `
+        -CommandName Invoke-AzureDevHostKeyRunCommand `
+        -Scope It
+      Should-NotInvoke `
+        -CommandName Invoke-AzureDevNativeCommand `
+        -ParameterFilter { $FilePath -eq 'ssh' } `
+        -Scope It
+      $script:context.SshHostTrustEstablished | Should-BeFalse
     }
   }
 

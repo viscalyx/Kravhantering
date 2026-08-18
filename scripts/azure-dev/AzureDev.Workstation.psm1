@@ -1073,6 +1073,7 @@ function Register-AzureDevRemoteWorkstationKey {
   ) {
     return
   }
+  Assert-AzureDevSshHostTrust -Context $Context
   $remoteCommand = @(
     'set -eu'
     'umask 077'
@@ -1227,6 +1228,7 @@ function Get-AzureDevRemoteGitSigningPublicKey {
     [pscustomobject]$Context
   )
 
+  Assert-AzureDevSshHostTrust -Context $Context
   $arguments = [System.Object[]]@(
     '-o',
     'BatchMode=yes',
@@ -2886,6 +2888,7 @@ function Remove-AzureDevRemoteWorkstationKey {
   ) {
     return
   }
+  Assert-AzureDevSshHostTrust -Context $Context
   $remoteCommand = @(
     'set -eu'
     'file="$HOME/.ssh/authorized_keys"'
@@ -2960,6 +2963,10 @@ function Remove-AzureDevWorkstation {
   ) {
     return
   }
+  Wait-AzureDevSsh `
+    -Context $Context `
+    -HostName $Context.Config.SshHostName |
+    Out-Null
   Remove-AzureDevRemoteWorkstationKey `
     -Context $Context `
     -WorkstationName $name `

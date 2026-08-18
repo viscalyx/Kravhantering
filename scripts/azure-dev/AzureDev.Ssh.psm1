@@ -363,10 +363,23 @@ function Get-AzureDevVmSshHostKeyEvidence {
     )
   }
   $runCommandResults = @($responseValue)
+  foreach ($runCommandResult in $runCommandResults) {
+    if (
+      $null -eq $runCommandResult -or
+      $null -eq $runCommandResult.PSObject.Properties['code']
+    ) {
+      throw (
+        'Azure control-plane SSH host-key evidence was malformed. No SSH ' +
+        'connection was attempted.'
+      )
+    }
+  }
 
   $stderr = @(
     $runCommandResults |
-      Where-Object { $_.code -match '/StdErr/' } |
+      Where-Object {
+        $_.PSObject.Properties['code'].Value -match '/StdErr/'
+      } |
       ForEach-Object { [string]$_.message } |
       Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
   )
@@ -379,7 +392,9 @@ function Get-AzureDevVmSshHostKeyEvidence {
 
   $lines = @(
     $runCommandResults |
-      Where-Object { $_.code -match '/StdOut/' } |
+      Where-Object {
+        $_.PSObject.Properties['code'].Value -match '/StdOut/'
+      } |
       ForEach-Object { [string]$_.message -split '\r?\n' } |
       ForEach-Object { $_.Trim() } |
       Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
@@ -409,7 +424,7 @@ function Get-AzureDevVmSshHostKeyEvidence {
 }
 
 function Set-AzureDevKnownHostTrust {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Context,
@@ -422,6 +437,14 @@ function Set-AzureDevKnownHostTrust {
   )
 
   $knownHostsPath = $Context.Config.SshKnownHostsPath
+  if (
+    -not $PSCmdlet.ShouldProcess(
+      $knownHostsPath,
+      'Update managed SSH host trust'
+    )
+  ) {
+    return
+  }
   $directory = Split-Path -Parent $knownHostsPath
   [System.IO.Directory]::CreateDirectory($directory) | Out-Null
 
@@ -507,7 +530,30 @@ function Wait-AzureDevSsh {
       'established through Azure.'
     )
   }
-  $hostKeys = Get-AzureDevVmSshHostKeyEvidence -Context $Context
+  $hostKeys = $null
+  $lastEvidenceError = $null
+  $firstEvidenceAttempt = $true
+  while ($firstEvidenceAttempt -or (Get-Date) -lt $deadline) {
+    $firstEvidenceAttempt = $false
+    try {
+      $hostKeys = @(Get-AzureDevVmSshHostKeyEvidence -Context $Context)
+      $lastEvidenceError = $null
+      break
+    } catch {
+      $lastEvidenceError = $_
+    }
+    $remainingMilliseconds = [int][System.Math]::Ceiling(
+      ($deadline - (Get-Date)).TotalMilliseconds
+    )
+    if ($remainingMilliseconds -gt 0) {
+      Start-Sleep -Milliseconds (
+        [System.Math]::Min(10000, $remainingMilliseconds)
+      )
+    }
+  }
+  if ($null -ne $lastEvidenceError) {
+    throw $lastEvidenceError
+  }
   Set-AzureDevKnownHostTrust `
     -Context $Context `
     -HostName $HostName `
@@ -535,19 +581,13 @@ function Wait-AzureDevSsh {
     $lastOutput = $result.Text
     if (Test-AzureDevHostKeyMismatch -Output $lastOutput) {
       throw (
-        'SSH host-key mismatch against Azure control-plane evidence. Setup ' +
-        'stopped before remote commands or credential upload.'
+        'SSH host-key mismatch against Azure control-plane evidence. Rerun ' +
+        'setup or start to retrieve authenticated replacement evidence. No ' +
+        'remote commands or credential uploads were attempted.'
       )
     }
     Start-Sleep -Seconds 10
   } while ((Get-Date) -lt $deadline)
-
-  if (Test-AzureDevHostKeyMismatch -Output $lastOutput) {
-    throw (
-      'SSH host-key mismatch against Azure control-plane evidence. Rerun ' +
-      'setup or start to retrieve authenticated replacement evidence.'
-    )
-  }
 
   $diagnostics = @(
     "SSH did not become reachable for $($Context.Config.SshHostAlias)."
