@@ -412,8 +412,8 @@ export const REST_OPERATION_DECLARATIONS = [
     '/api/catalog/specification-item-statuses/[id]',
     'session',
     'none',
-    'authenticated',
-    'framework-default',
+    'sensitive',
+    'no-store',
     'focused',
   ],
   [

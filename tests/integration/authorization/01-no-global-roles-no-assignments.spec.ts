@@ -345,6 +345,17 @@ test('AUTHZ-01/AUTH-08/AUTH-10/AUTH-11: authenticated users without roles or ass
       403,
       'no-role action log read',
     )
+    const usageStatusDetailResponse = await noRoles.get(
+      '/api/catalog/specification-item-statuses/1',
+    )
+    await expectStatus(
+      usageStatusDetailResponse,
+      403,
+      'no-role usage-status linked specification detail read',
+    )
+    expect(usageStatusDetailResponse.headers()['cache-control']).toBe(
+      'no-store',
+    )
     await expectStatus(
       await noRoles.post('/api/ai/generate-requirement-import', {
         data: aiGenerationBody({

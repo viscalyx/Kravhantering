@@ -7,6 +7,7 @@ import {
   updateSpecificationItemStatus,
 } from '@/lib/dal/specification-item-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import {
   adminMutationPolicy,
   secureMutationRoute,
@@ -20,6 +21,9 @@ import {
   strictHexColorSchema,
 } from '@/lib/http/validation'
 import { nullableOptionalStatusIconNameSchema } from '@/lib/icons/status-icon-schema'
+import { createRequestContext } from '@/lib/requirements/auth'
+import { forbiddenError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,21 +41,40 @@ const specificationItemStatusUpdateSchema = z
   })
   .strict()
 
-export async function GET(
-  _request: NextRequest,
+async function getHandler(
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
-  const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const status = await getSpecificationItemStatusById(db, id)
-  if (!status) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  try {
+    const context = await createRequestContext(request, 'rest')
+    if (!context.actor.roles.includes('Admin')) {
+      throw forbiddenError(
+        'Admin role is required to inspect linked specification items',
+        {
+          actorRoles: context.actor.roles,
+          reason: 'required_role_missing',
+          requiredRoles: ['Admin'],
+        },
+      )
+    }
+
+    const { id } = parsedParams.data
+    const db = await getRequestSqlServerDataSource()
+    const status = await getSpecificationItemStatusById(db, id)
+    if (!status) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    const linkedItems = await getLinkedSpecificationItems(db, id)
+    return NextResponse.json({ status, linkedItems })
+  } catch (error) {
+    const { body, status } = toHttpErrorPayload(error)
+    return NextResponse.json(body, { status })
   }
-  const linkedItems = await getLinkedSpecificationItems(db, id)
-  return NextResponse.json({ status, linkedItems })
 }
+
+export const GET = withRestResponsePolicy(getHandler)
 
 export const PUT = secureMutationRoute({
   bodySchema: specificationItemStatusUpdateSchema,

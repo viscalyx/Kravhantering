@@ -1463,6 +1463,7 @@ describe('specification-governance-object-types routes', () => {
 describe('specification-item-statuses catalog routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    authState.context.actor.roles = ['Admin']
   })
 
   it('GET returns catalog statuses with linked item counts', async () => {
@@ -1513,6 +1514,27 @@ describe('specification-item-statuses catalog routes', () => {
       linkedItems: [],
       status: { id: 5 },
     })
+  })
+
+  it('GET by id rejects non-Admins before reading protected specification metadata', async () => {
+    authState.context.actor.roles = []
+
+    const response = await getSpecItemStatus(
+      new NextRequest('http://l/api/catalog/specification-item-statuses/5', {
+        method: 'GET',
+      }),
+      makeParams('5'),
+    )
+
+    expect(response.status).toBe(403)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'forbidden',
+      error: 'Forbidden',
+    })
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(mockGetSpecItemStatus).not.toHaveBeenCalled()
+    expect(mockGetLinkedSpecificationItems).not.toHaveBeenCalled()
   })
 
   it('GET by id rejects invalid identifiers before opening the database', async () => {

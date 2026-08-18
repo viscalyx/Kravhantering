@@ -379,6 +379,8 @@ arbete.
 1. Kontrollera att sidan inte visar redigerings- eller AI-kontroller.
 1. Försök öppna `/sv/admin`.
 1. Kör API-kontroll för att uppdatera `AUTHZ-SPEC-2026`.
+1. Anropa via direkt API de kravunderlagsdetaljer som är länkade till en
+   användningsstatus.
 1. Anropa kravunderlagets kravunderlagslokala krav, avstegslista och ett
    enskilt avsteg direkt med deras identifierare. Anropa även ett saknat
    avsteg och kombinera ett befintligt lokalt krav med ett annat befintligt
@@ -389,7 +391,8 @@ arbete.
 
 **Förväntat resultat:** Läsning är bara tillåten där produkten medger det.
 Privilegierade UI-kontroller saknas. Befintliga otillåtna underresurser och
-fel föräldrakombination ger 403, medan den saknade underresursen ger 404.
+användningsstatusens länkade kravunderlagsdetaljer ger 403 och `no-store`.
+Fel föräldrakombination ger 403, medan den saknade underresursen ger 404.
 Förslaget för det publicerade kravet och dess lista kan läsas, förslaget för
 det opublicerade kravet ger 403 och samtliga förslagssvar har `no-store`.
 
