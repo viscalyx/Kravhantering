@@ -298,6 +298,11 @@ requests are rejected before database work starts.
 <!-- operator-upgrade:source pr-1062 start -->
 Standard Kravhantering Keycloak provisioning and demo-user setup are not affected. This change affects only deployments that use custom delegated Keycloak administrators: make sure these administrators can manage client scopes, and assign Admin API roles directly or through groups instead of through protocol mappers.
 <!-- operator-upgrade:source pr-1062 end -->
+
+<!-- operator-upgrade:source pr-1066 start -->
+After the upgrade, RFI question management lists show only questions from requirement areas where the signed-in user is an owner or co-author. Direct collection reads for an unassigned requirement area now return 403. `Admin` users retain access to all requirement areas.
+Before rollout, confirm that users who manage RFI questions have the required requirement area assignments. Validate this access boundary during rollout.
+<!-- operator-upgrade:source pr-1066 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
