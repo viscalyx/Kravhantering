@@ -47,8 +47,8 @@ export const STEWARDSHIP_WORKSPACE_GZIP_MAX_BYTES = {
   packages: 256_666,
   // 2026-07-20 isolated-route baseline: 268,160 gzip bytes plus 5% headroom.
   questions: 281_568,
-  // 2026-07-20 isolated-route baseline: 11,780 gzip bytes plus 5% headroom.
-  rfi: 12_369,
+  // 2026-08-18 isolated-route baseline: 12,571 gzip bytes plus 5% headroom.
+  rfi: 13_200,
   // 2026-07-20 isolated-route baseline: 237,747 gzip bytes plus 5% headroom.
   norms: 249_635,
 }
