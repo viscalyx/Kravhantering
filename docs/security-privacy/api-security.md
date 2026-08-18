@@ -104,7 +104,9 @@ Deferred from this contract:
   `ai_request_bytes_exceeded` above that limit, and retains the separate limit
   of three unique images at 10 MiB decoded bytes each. Image data URLs are
   schema-bounded to their maximum base64 representation before decoded-size
-  validation.
+  validation. The JSON-repair route reads at most 1 MiB before parsing and
+  returns the same stable `413` code above that limit. It also normalizes and
+  deduplicates validation errors before AI safety screening and provider use.
 - Admin catalog and settings mutations remain outside the
   OpenAPI/Schemathesis v1 contract when their assertions depend on Admin-only
   access, CSRF/same-origin enforcement for saves, privileged audit, effective

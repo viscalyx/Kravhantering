@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { generateChat } from '@/lib/ai/openrouter-client'
 import { resolveOpenRouterModelCapabilities } from '@/lib/ai/openrouter-model-catalog'
@@ -27,6 +28,7 @@ import {
   requirementsMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
+import { readBoundedJsonWithSchema } from '@/lib/http/validation'
 import { recordCapacityEvent } from '@/lib/observability/capacity'
 import { applyResponseCorrelationHeaders } from '@/lib/observability/request-ids'
 import {
@@ -54,6 +56,7 @@ import {
 
 const AI_REPAIR_REQUIREMENT_IMPORT_OPERATION =
   'ai.repair-requirement-import-json'
+export const AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES = 1024 * 1024
 
 const repairRequirementImportJsonSchema = aiRequirementImportBaseBodySchema
   .extend({
@@ -61,7 +64,8 @@ const repairRequirementImportJsonSchema = aiRequirementImportBaseBodySchema
       .array(z.string().trim().min(1).max(MAX_AI_INSTRUCTION_LENGTH))
       .max(25)
       .optional()
-      .default([]),
+      .default([])
+      .transform(errors => [...new Set(errors)]),
     rawJson: z
       .string()
       .trim()
@@ -74,8 +78,25 @@ type RepairRequirementImportJsonBody = z.infer<
   typeof repairRequirementImportJsonSchema
 >
 
-export const POST = secureMutationRoute({
-  bodySchema: repairRequirementImportJsonSchema,
+function aiRepairRequestBytesExceededResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      code: 'ai_request_bytes_exceeded',
+      details: {
+        maxBytes: AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
+      },
+      error: 'AI repair request exceeds the allowed size.',
+    },
+    { status: 413 },
+  )
+}
+
+export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
+  bodyReader: ({ request }) =>
+    readBoundedJsonWithSchema(request, repairRequirementImportJsonSchema, {
+      maxBytes: AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
+      requestBytesExceededResponse: aiRepairRequestBytesExceededResponse,
+    }),
   policy: requirementsMutationPolicy<RepairRequirementImportJsonBody>(
     ({ body }) => requirementImportScopeAction(body),
   ),

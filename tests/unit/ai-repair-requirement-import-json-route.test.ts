@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { POST } from '@/app/api/ai/repair-requirement-import-json/route'
+import {
+  AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
+  POST,
+} from '@/app/api/ai/repair-requirement-import-json/route'
 import {
   AiProviderCallerCancelledError,
   createAiProviderError,
@@ -22,6 +25,7 @@ const routeState = vi.hoisted(() => ({
   query: vi.fn(),
   resolveOpenRouterModelCapabilities: vi.fn(),
 }))
+const EXPECTED_AI_REPAIR_MAX_REQUEST_BYTES = 1024 * 1024
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
@@ -85,6 +89,60 @@ function makeRequest(
   return request
 }
 
+function makePaddedStreamRequest(totalBytes: number): Request {
+  const body = new TextEncoder().encode(
+    JSON.stringify({
+      areaId: 1,
+      errors: ['schemaVersion is missing'],
+      locale: 'en',
+      mode: 'library',
+      rawJson: '{"requirements":[]}',
+    }),
+  )
+  if (totalBytes < body.byteLength) {
+    throw new Error('Stream size must fit the valid JSON body')
+  }
+  let bodySent = false
+  let paddingBytes = totalBytes - body.byteLength
+  const request = new Request(
+    'https://example.test/api/ai/repair-requirement-import-json',
+    {
+      body: new ReadableStream({
+        pull(controller) {
+          if (!bodySent) {
+            bodySent = true
+            controller.enqueue(body)
+            return
+          }
+          if (paddingBytes === 0) {
+            controller.close()
+            return
+          }
+          const chunkBytes = Math.min(paddingBytes, 64 * 1024)
+          controller.enqueue(new Uint8Array(chunkBytes).fill(0x20))
+          paddingBytes -= chunkBytes
+        },
+      }),
+      duplex: 'half',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-correlation-id': 'workflow-ai-repair',
+        'x-request-id': 'request-ai-repair',
+      },
+      method: 'POST',
+    } as RequestInit,
+  )
+  attachVerifiedActor(request, {
+    displayName: 'AI User',
+    hsaId: 'SE5560000001-ai1',
+    id: 'ai-user',
+    isAuthenticated: true,
+    roles: ['Admin'],
+    source: 'oidc',
+  })
+  return request
+}
+
 function enableAiForensicCapture(): void {
   routeState.query.mockImplementation((sql: string) => {
     if (sql.includes('FROM ai_forensic_capture_windows')) {
@@ -134,6 +192,79 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs()
+  })
+
+  it('rejects an oversized streamed request before starting work', async () => {
+    const request = makePaddedStreamRequest(
+      EXPECTED_AI_REPAIR_MAX_REQUEST_BYTES + 1,
+    )
+
+    const response = await POST(request)
+
+    expect(AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES).toBe(
+      EXPECTED_AI_REPAIR_MAX_REQUEST_BYTES,
+    )
+    expect(response.status).toBe(413)
+    await expect(response.json()).resolves.toEqual({
+      code: 'ai_request_bytes_exceeded',
+      details: {
+        maxBytes: EXPECTED_AI_REPAIR_MAX_REQUEST_BYTES,
+      },
+      error: 'AI repair request exceeds the allowed size.',
+    })
+    expect(request.bodyUsed).toBe(true)
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+    expect(routeState.generateChat).not.toHaveBeenCalled()
+  })
+
+  it('accepts an actual request at the transport byte boundary', async () => {
+    routeState.generateChat.mockResolvedValue({
+      content: {
+        requirements: [{ description: 'A bounded repaired requirement.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+      stats: { totalTokens: 1 },
+      thinking: '',
+    })
+    const request = makePaddedStreamRequest(
+      EXPECTED_AI_REPAIR_MAX_REQUEST_BYTES,
+    )
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      payload: {
+        requirements: [{ description: 'A bounded repaired requirement.' }],
+      },
+    })
+    expect(routeState.generateChat).toHaveBeenCalledOnce()
+  })
+
+  it('does not amplify provider work for duplicate repair errors', async () => {
+    routeState.generateChat.mockResolvedValue({
+      content: {
+        requirements: [{ description: 'A repaired requirement.' }],
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+      },
+      stats: { totalTokens: 1 },
+      thinking: '',
+    })
+
+    const response = await POST(
+      makeRequest({
+        areaId: 1,
+        errors: ['schemaVersion is missing', ' schemaVersion is missing '],
+        locale: 'en',
+        mode: 'library',
+        rawJson: '{"requirements":[]}',
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const providerRequest = routeState.generateChat.mock.calls[0]?.[0]
+    const repairPrompt = String(providerRequest.messages[1].content)
+    expect(repairPrompt.match(/schemaVersion is missing/g)).toHaveLength(1)
   })
 
   it('returns repaired requirement import JSON after schema validation', async () => {
