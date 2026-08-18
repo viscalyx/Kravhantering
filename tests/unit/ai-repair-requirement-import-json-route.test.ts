@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
-  POST,
-} from '@/app/api/ai/repair-requirement-import-json/route'
+import { POST } from '@/app/api/ai/repair-requirement-import-json/route'
 import {
   AiProviderCallerCancelledError,
   createAiProviderError,
@@ -201,9 +198,6 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
 
     const response = await POST(request)
 
-    expect(AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES).toBe(
-      EXPECTED_AI_REPAIR_MAX_REQUEST_BYTES,
-    )
     expect(response.status).toBe(413)
     await expect(response.json()).resolves.toEqual({
       code: 'ai_request_bytes_exceeded',

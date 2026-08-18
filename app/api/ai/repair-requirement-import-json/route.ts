@@ -56,7 +56,7 @@ import {
 
 const AI_REPAIR_REQUIREMENT_IMPORT_OPERATION =
   'ai.repair-requirement-import-json'
-export const AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES = 1024 * 1024
+const AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES = 1024 * 1024
 
 const repairRequirementImportJsonSchema = aiRequirementImportBaseBodySchema
   .extend({

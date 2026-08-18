@@ -27,8 +27,9 @@ applyTo: "{app/api/**/route.ts,lib/http/secure-mutation-route.ts,tests/unit/secu
 ## Handler Shape
 
 - Use wrapper-provided `context`, `params`, `body`, and `request` in handlers.
-- Validate route params with `paramsSchema`; validate JSON bodies with
-  `bodySchema`.
+- Validate route params with `paramsSchema`. Validate JSON bodies with
+  `bodySchema`, or use `bodyReader` with `readBoundedJsonWithSchema` when a
+  transport byte limit must run before parsing.
 - Do not re-create request context or re-read session state inside a wrapped
   route.
 - Keep HTTP parsing, response status/content type, and REST-only shaping in the
