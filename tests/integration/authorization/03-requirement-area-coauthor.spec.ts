@@ -104,80 +104,97 @@ test('AUTHZ-03/AUTH-10/AUTH-11: requirement area co-authors only list RFI questi
   const createdQuestionIds: number[] = []
 
   try {
-    const areasResponse = await expectApiResponseOkWithRetry(
-      'find a foreign requirement area for RFI authorization',
-      () => admin.get('/api/requirement-areas', { timeout: 30_000 }),
-    )
-    const areasPayload = (await areasResponse.json()) as {
-      areas?: Array<{ id: number }>
-    }
-    const foreignArea = areasPayload.areas?.find(
-      area => area.id !== fixture.areaId,
-    )
-    if (!foreignArea) {
-      throw new Error('No foreign requirement area available for RFI check')
-    }
+    const testData =
+      await test.step('create assigned and foreign RFI questions', async () => {
+        const areasResponse = await expectApiResponseOkWithRetry(
+          'find a foreign requirement area for RFI authorization',
+          () => admin.get('/api/requirement-areas', { timeout: 30_000 }),
+        )
+        const areasPayload = (await areasResponse.json()) as {
+          areas?: Array<{ id: number }>
+        }
+        const foreignArea = areasPayload.areas?.find(
+          area => area.id !== fixture.areaId,
+        )
+        if (!foreignArea) {
+          throw new Error('No foreign requirement area available for RFI check')
+        }
 
-    const timestamp = Date.now()
-    const assignedResponse = await areaCoauthor.post('/api/rfi-questions', {
-      data: {
-        areaId: fixture.areaId,
-        questionText: `Assigned RFI authorization question ${timestamp}`,
-      },
+        const timestamp = Date.now()
+        const assignedResponse = await areaCoauthor.post('/api/rfi-questions', {
+          data: {
+            areaId: fixture.areaId,
+            questionText: `Assigned RFI authorization question ${timestamp}`,
+          },
+        })
+        await expectStatus(
+          assignedResponse,
+          201,
+          'area co-author assigned RFI question create',
+        )
+        const assignedQuestion = (await assignedResponse.json()) as {
+          id: number
+        }
+        createdQuestionIds.push(assignedQuestion.id)
+
+        const foreignResponse = await admin.post('/api/rfi-questions', {
+          data: {
+            areaId: foreignArea.id,
+            questionText: `Foreign RFI authorization question ${timestamp}`,
+          },
+        })
+        await expectStatus(
+          foreignResponse,
+          201,
+          'admin foreign RFI question create',
+        )
+        const foreignQuestion = (await foreignResponse.json()) as {
+          id: number
+        }
+        createdQuestionIds.push(foreignQuestion.id)
+
+        return {
+          assignedQuestionId: assignedQuestion.id,
+          foreignAreaId: foreignArea.id,
+          foreignQuestionId: foreignQuestion.id,
+        }
+      })
+
+    await test.step('verify the unfiltered RFI question collection', async () => {
+      const listResponse = await expectApiResponseOkWithRetry(
+        'area co-author authorized RFI question list',
+        () =>
+          areaCoauthor.get('/api/rfi-questions?includeArchived=true', {
+            timeout: 30_000,
+          }),
+      )
+      const listPayload = (await listResponse.json()) as {
+        questions?: Array<{ id: number }>
+      }
+      const listedQuestionIds = (listPayload.questions ?? []).map(
+        question => question.id,
+      )
+      expect(listedQuestionIds).toContain(testData.assignedQuestionId)
+      expect(listedQuestionIds).not.toContain(testData.foreignQuestionId)
     })
-    await expectStatus(
-      assignedResponse,
-      201,
-      'area co-author assigned RFI question create',
-    )
-    const assignedQuestion = (await assignedResponse.json()) as {
-      id: number
-    }
-    createdQuestionIds.push(assignedQuestion.id)
 
-    const foreignResponse = await admin.post('/api/rfi-questions', {
-      data: {
-        areaId: foreignArea.id,
-        questionText: `Foreign RFI authorization question ${timestamp}`,
-      },
+    await test.step('verify explicit-area RFI question collections', async () => {
+      const assignedAreaResponse = await areaCoauthor.get(
+        `/api/rfi-questions?areaId=${fixture.areaId}`,
+      )
+      await expectStatus(
+        assignedAreaResponse,
+        200,
+        'area co-author assigned-area RFI question list',
+      )
+      await expectStatus(
+        await areaCoauthor.get(
+          `/api/rfi-questions?areaId=${testData.foreignAreaId}`,
+        ),
+        403,
+        'area co-author foreign-area RFI question list',
+      )
     })
-    await expectStatus(
-      foreignResponse,
-      201,
-      'admin foreign RFI question create',
-    )
-    const foreignQuestion = (await foreignResponse.json()) as { id: number }
-    createdQuestionIds.push(foreignQuestion.id)
-
-    const listResponse = await expectApiResponseOkWithRetry(
-      'area co-author authorized RFI question list',
-      () =>
-        areaCoauthor.get('/api/rfi-questions?includeArchived=true', {
-          timeout: 30_000,
-        }),
-    )
-    const listPayload = (await listResponse.json()) as {
-      questions?: Array<{ id: number }>
-    }
-    const listedQuestionIds = (listPayload.questions ?? []).map(
-      question => question.id,
-    )
-    expect(listedQuestionIds).toContain(assignedQuestion.id)
-    expect(listedQuestionIds).not.toContain(foreignQuestion.id)
-
-    const assignedAreaResponse = await areaCoauthor.get(
-      `/api/rfi-questions?areaId=${fixture.areaId}`,
-    )
-    await expectStatus(
-      assignedAreaResponse,
-      200,
-      'area co-author assigned-area RFI question list',
-    )
-    await expectStatus(
-      await areaCoauthor.get(`/api/rfi-questions?areaId=${foreignArea.id}`),
-      403,
-      'area co-author foreign-area RFI question list',
-    )
   } finally {
     for (const questionId of createdQuestionIds) {
       await admin.delete(`/api/rfi-questions/${questionId}`)

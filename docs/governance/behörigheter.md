@@ -198,7 +198,8 @@ förvaltningsdetaljer kräver författarbehörighet i frågans kravområde, som
 kravområdesägare, kravområdesmedförfattare eller `Admin`.
 Den ofiltrerade förvaltningslistan visar bara RFI-frågor från kravområden där
 användaren har författarbehörighet; `Admin` kan läsa listan över alla
-kravområden.
+kravområden. En inloggad användare som inte är `Admin` och anger `areaId` för
+ett kravområde där användaren saknar författarbehörighet får 403.
 
 Ett kravunderlags RFI-frågelista hör däremot till kravunderlaget.
 Kravunderlagsansvarig, kravunderlagsmedförfattare och `Admin` kan ändra
