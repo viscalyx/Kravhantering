@@ -303,6 +303,11 @@ Standard Kravhantering Keycloak provisioning and demo-user setup are not affecte
 After the upgrade, RFI question management lists show only questions from requirement areas where the signed-in user is an owner or co-author. Direct collection reads for an unassigned requirement area now return 403. `Admin` users retain access to all requirement areas.
 Before rollout, confirm that users who manage RFI questions have the required requirement area assignments. Validate this access boundary during rollout.
 <!-- operator-upgrade:source pr-1066 end -->
+
+<!-- operator-upgrade:source pr-1068 start -->
+Before upgrade, review generated-output limits and temporary-storage capacity. JSON person data exports now use the existing CSV item, file-size, timeout, and shared per-node concurrency limits. PDF person data exports use the PDF item, file-size, timeout, per-node concurrency, and worker-memory limits.
+Exports that exceed these limits are rejected without a partial file. Validate the limits against retained subject histories and monitor privacy export capacity events after rollout.
+<!-- operator-upgrade:source pr-1068 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
