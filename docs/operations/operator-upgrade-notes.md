@@ -315,6 +315,10 @@ filters accept at most 200 unique positive IDs per filter. Update clients to
 remove duplicate IDs and split larger filter collections into separate calls.
 Calls that do not meet this contract are rejected before database work.
 <!-- operator-upgrade:source pr-1072 end -->
+
+<!-- operator-upgrade:source pr-1074 start -->
+Before upgrade, tell MCP integration owners that requirement create and edit requests accept at most 200 unique norm reference IDs and 200 unique requirement package IDs. Requests that exceed a limit or contain duplicate IDs are rejected. Update affected clients to deduplicate these collections and keep them within the limits before rollout.
+<!-- operator-upgrade:source pr-1074 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
