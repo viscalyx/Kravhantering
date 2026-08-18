@@ -1090,14 +1090,18 @@ function Register-AzureDevRemoteWorkstationKey {
     'chmod 600 "$tmp"'
     'mv "$tmp" "$HOME/.ssh/authorized_keys"'
   ) -join '; '
+  $arguments = [System.Object[]]@(
+    '-o',
+    'ClearAllForwardings=yes'
+  )
+  $arguments += $Context.Config.SshHostKeyArguments
+  $arguments += [System.Object[]]@(
+    $Context.Config.SshHostAlias,
+    $remoteCommand
+  )
   $result = Invoke-AzureDevNativeCommand `
     -FilePath 'ssh' `
-    -Arguments @(
-      '-o',
-      'ClearAllForwardings=yes',
-      $Context.Config.SshHostAlias,
-      $remoteCommand
-    )
+    -Arguments $arguments
   if ($result.ExitCode -ne 0) {
     throw "Could not register workstation key: $($result.Text.Trim())"
   }
@@ -1223,16 +1227,20 @@ function Get-AzureDevRemoteGitSigningPublicKey {
     [pscustomobject]$Context
   )
 
+  $arguments = [System.Object[]]@(
+    '-o',
+    'BatchMode=yes',
+    '-o',
+    'ClearAllForwardings=yes'
+  )
+  $arguments += $Context.Config.SshHostKeyArguments
+  $arguments += [System.Object[]]@(
+    $Context.Config.SshHostAlias,
+    'git config --global --get user.signingkey'
+  )
   $result = Invoke-AzureDevNativeCommand `
     -FilePath 'ssh' `
-    -Arguments @(
-      '-o',
-      'BatchMode=yes',
-      '-o',
-      'ClearAllForwardings=yes',
-      $Context.Config.SshHostAlias,
-      'git config --global --get user.signingkey'
-    )
+    -Arguments $arguments
   if ($result.ExitCode -ne 0) {
     throw (
       'Git commit signing was selected, but the VM has no usable global SSH ' +
@@ -2889,14 +2897,18 @@ function Remove-AzureDevRemoteWorkstationKey {
     'chmod 600 "$tmp"'
     'mv "$tmp" "$file"'
   ) -join '; '
+  $arguments = [System.Object[]]@(
+    '-o',
+    'ClearAllForwardings=yes'
+  )
+  $arguments += $Context.Config.SshHostKeyArguments
+  $arguments += [System.Object[]]@(
+    $Context.Config.SshHostAlias,
+    $remoteCommand
+  )
   $result = Invoke-AzureDevNativeCommand `
     -FilePath 'ssh' `
-    -Arguments @(
-      '-o',
-      'ClearAllForwardings=yes',
-      $Context.Config.SshHostAlias,
-      $remoteCommand
-    )
+    -Arguments $arguments
   if ($result.ExitCode -eq 42) {
     throw 'Refusing to remove the final usable SSH key without -ForceRecovery.'
   }

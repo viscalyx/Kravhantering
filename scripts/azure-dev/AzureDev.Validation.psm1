@@ -105,6 +105,8 @@ function Invoke-AzureDevSmokeValidation {
     [pscustomobject]$Context
   )
 
+  Assert-AzureDevSshHostTrust -Context $Context
+
   $remoteScript = @'
 set -euo pipefail
 expected_git_user_name="$1"
@@ -516,18 +518,20 @@ run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modu
   )
 
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Run smoke validation')) {
+    $arguments = [System.Object[]]@(
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'ClearAllForwardings=yes'
+    )
+    $arguments += $Context.Config.SshHostKeyArguments
+    $arguments += [System.Object[]]@(
+      $Context.Config.SshHostAlias,
+      $command
+    )
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'ssh' `
-      -Arguments @(
-        '-o',
-        'BatchMode=yes',
-        '-o',
-        'ClearAllForwardings=yes',
-        '-o',
-        'StrictHostKeyChecking=accept-new',
-        $Context.Config.SshHostAlias,
-        $command
-      )
+      -Arguments $arguments
     if ($result.ExitCode -ne 0) {
       throw "Azure VM smoke validation failed.`n$($result.Text.Trim())"
     }

@@ -54,7 +54,7 @@ Module responsibilities:
 | `AzureDev.Config.psm1` | Strict dotenv parsing, defaults, precedence, config validation, and context creation. |
 | `AzureDev.Logging.psm1` | Local state, locks, JSONL logs, redaction, and native command execution helpers. |
 | `AzureDev.Azure.psm1` | Azure CLI calls, authentication checks, SKU and image lookup, resource-group ownership, deployment, power operations, CIDR updates, and tag-based deletion. |
-| `AzureDev.Ssh.psm1` | Public IPv4 detection, CIDR validation, SSH key generation, managed OpenSSH config blocks, host-key mismatch handling, SSH wait loop, and VS Code command formatting. |
+| `AzureDev.Ssh.psm1` | Public IPv4 detection, CIDR validation, SSH key generation, managed OpenSSH config blocks, Azure control-plane host-key authentication, SSH wait loop, and VS Code command formatting. |
 | `AzureDev.Bootstrap.psm1` | Uploads `bootstrap-host.sh`, Quadlet templates, and the selected Zsh profile with `scp`, then invokes bootstrap over SSH with port forwarding disabled. |
 | `AzureDev.Validation.psm1` | Checks the workstation terminal font, runs post-setup smoke validation over SSH, and reports remote diagnostics on failure. |
 | `AzureDev.Podman.psm1` | Shared support-service unit and port metadata used by validation. |
@@ -338,16 +338,44 @@ installation choices. It points to `.vscode/extensions.json` as the source for
 SSH host, and gives the workspace-only Command Palette alternative. Do not
 silently change the developer's application-wide VS Code settings.
 
-Remote command probes use:
+Before the first network SSH connection, setup and start invoke
+`RunShellScript` through the authenticated Azure control plane. The guest
+script reads `/etc/ssh/ssh_host_*_key.pub`; it does not create or transmit any
+bootstrap credential. The workstation validates every returned SSH public-key
+wire blob and rejects missing output, malformed JSON, malformed keys, or guest
+errors.
+
+Only authenticated key material may update `~/.ssh/known_hosts`. The update is
+built in a temporary file: `ssh-keygen -R` removes the managed alias and
+resolved host from that copy, including hashed entries, then the authenticated
+keys are appended for both names and the file is moved into place. Unrelated
+entries remain unchanged. This gives a recreated VM a replacement path without
+trusting the network-presented key.
+
+The first SSH probe and every setup, bootstrap, validation, start, and
+maintenance SSH or SCP operation use:
 
 ```text
 BatchMode=yes
 ClearAllForwardings=yes
-StrictHostKeyChecking=accept-new
+StrictHostKeyChecking=yes
+UserKnownHostsFile=~/.ssh/known_hosts
+GlobalKnownHostsFile=none
+KnownHostsCommand=none
+VerifyHostKeyDNS=no
+UpdateHostKeys=no
 ```
 
 `ClearAllForwardings=yes` is important for maintenance commands because an
 existing VS Code Remote SSH session may already own the forwarded local ports.
+The explicit known-host options disable global, command-provided, and DNS trust
+sources and prevent learning replacement keys from the network.
+
+A network-presented mismatch fails immediately. The workflow does not delete
+the installed entry and retry. Missing or unverifiable Azure evidence also
+fails before SSH, remote preparation, bootstrap credential generation, or SCP.
+After a successful strict probe, the in-memory setup context records that host
+trust is established; bootstrap and smoke validation require that state.
 
 Tailscale mode is explicit. It uses ordinary OpenSSH over the VM's Tailscale
 address and does not enable Tailscale SSH.

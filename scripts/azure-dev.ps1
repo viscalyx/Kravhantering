@@ -234,6 +234,9 @@ function Write-AzureDevSshInstructions {
   Write-Host 'For administration tasks, connect using standard SSH:'
   Write-Host (
     "ssh -i `"$identityFile`" -o IdentitiesOnly=yes " +
+    '-o StrictHostKeyChecking=yes -o GlobalKnownHostsFile=none ' +
+    "-o UserKnownHostsFile=`"$($Context.Config.SshKnownHostsPath)`" " +
+    '-o KnownHostsCommand=none -o VerifyHostKeyDNS=no -o UpdateHostKeys=no ' +
     "-o SendEnv=GH_TOKEN -o SendEnv=COPILOT_GITHUB_TOKEN vscode@$hostName"
   )
 
@@ -384,20 +387,22 @@ function Wait-AzureDevTrustedLaunchGuestReadiness {
   $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
   $lastReason = ''
   do {
+    $arguments = [System.Object[]]@(
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'ClearAllForwardings=yes',
+      '-o',
+      'ConnectTimeout=15'
+    )
+    $arguments += $Context.Config.SshHostKeyArguments
+    $arguments += [System.Object[]]@(
+      $Context.Config.SshHostAlias,
+      ($commands -join '; ')
+    )
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'ssh' `
-      -Arguments @(
-        '-o',
-        'BatchMode=yes',
-        '-o',
-        'ClearAllForwardings=yes',
-        '-o',
-        'ConnectTimeout=15',
-        '-o',
-        'StrictHostKeyChecking=accept-new',
-        $Context.Config.SshHostAlias,
-        ($commands -join '; ')
-      )
+      -Arguments $arguments
     if (
       $result.ExitCode -eq 0 -and
       $result.Text -match 'AZURE_DEV_TRUSTED_LAUNCH_READY'
@@ -641,6 +646,9 @@ function Invoke-AzureDevSetup {
               'config is applied. Rerun setup with -Apply or -Yes.'
             )
           }
+          Wait-AzureDevSsh `
+            -Context $Context `
+            -HostName $trustedLaunchHostName | Out-Null
           Wait-AzureDevTrustedLaunchGuestReadiness `
             -Context $Context `
             -Plan $trustedLaunchPlan `
@@ -669,6 +677,9 @@ function Invoke-AzureDevSetup {
           $trustedLaunchPlan.TemplateEnabled = $trustedLaunchResult.Succeeded
           if ($trustedLaunchResult.Succeeded) {
             Start-AzureDevAzureVm -Context $Context
+            Wait-AzureDevSsh `
+              -Context $Context `
+              -HostName $trustedLaunchHostName | Out-Null
             Wait-AzureDevTrustedLaunchGuestReadiness `
               -Context $Context `
               -Plan $trustedLaunchPlan | Out-Null

@@ -265,9 +265,11 @@ group. If the group exists without them, setup fails closed and prints the
 ### Register providers
 
 The least-practical custom role needs resource-group deployment, compute,
-network, disk, public IP, SSH public-key, and optional DevTestLab schedule
-actions. The setup command does not create role assignments and does not use VM
-extensions, VM runCommand, Azure SSH key-pair generation, or `DataActions`.
+network, disk, public IP, SSH public-key, Azure Run Command, and optional
+DevTestLab schedule actions. Host-key authentication specifically requires
+`Microsoft.Compute/virtualMachines/runCommand/action`. The setup command does
+not create role assignments and does not use Azure SSH key-pair generation or
+`DataActions`.
 
 If your tenant requires explicit provider registration, an owner can check or
 register these providers:
@@ -799,12 +801,36 @@ every charge. It does not run the Azure deployment preview; use
 
 Use `-Yes` for non-interactive confirmation. The command creates a dedicated
 SSH key if missing, provisions Azure resources, installs the managed SSH config
-block with SSH agent forwarding enabled when approved, waits for SSH, uploads
-the local bootstrap and Quadlet templates, the selected Zsh profile, and the
-Azure development-tooling files, configures the remote Git identity and SSH
-commit signing, reruns the VM bootstrap, and runs smoke validation.
+block with SSH agent forwarding enabled when approved, authenticates the VM
+host keys through Azure Run Command, waits for strict SSH, uploads the local
+bootstrap and Quadlet templates, the selected Zsh profile, and the Azure
+development-tooling files, configures the remote Git identity and SSH commit
+signing, reruns the VM bootstrap, and runs smoke validation.
 If the VM already exists but was deallocated by `stop` or auto-shutdown, `setup`
 starts it before waiting for SSH.
+
+### SSH host trust
+
+Setup and start establish host trust before their first network SSH
+connection. Through the authenticated Azure control plane, Azure Run Command
+reads the VM's `/etc/ssh/ssh_host_*_key.pub` files. The local workflow validates
+the returned public-key wire blobs, then atomically replaces only the managed
+alias and resolved-host entries in `~/.ssh/known_hosts`. Other entries,
+including hashed entries for unrelated hosts, remain intact.
+
+The first SSH probe and all later setup, bootstrap, validation, start, and
+maintenance SSH or SCP operations use `StrictHostKeyChecking=yes`, the pinned
+user `known_hosts` file, no global known-host file, and
+`KnownHostsCommand=none`, `VerifyHostKeyDNS=no`, and `UpdateHostKeys=no`.
+Missing, malformed, or unavailable Azure evidence stops the workflow before
+SSH. A network-presented mismatch stops immediately before remote preparation,
+local bootstrap credential-file generation, or upload.
+
+When Azure legitimately recreates the VM or rotates its host keys, rerun
+`setup -Yes` or `start -Yes`. The command obtains fresh keys independently
+through Azure Run Command and replaces only the entries authenticated by that
+evidence. If Azure Run Command cannot return valid keys, do not remove
+`known_hosts` entries manually; restore VM Agent/control-plane access and retry.
 
 The first setup can take a while. It installs host packages, mounts the data
 disk at `/mnt/krav-azure-dev-data`, bind-mounts
@@ -924,6 +950,9 @@ For administration tasks, use the generated regular SSH command:
 
 ```sh
 ssh -i "<private-key-path>" -o IdentitiesOnly=yes \
+  -o StrictHostKeyChecking=yes -o GlobalKnownHostsFile=none \
+  -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+  -o KnownHostsCommand=none -o VerifyHostKeyDNS=no -o UpdateHostKeys=no \
   -o SendEnv=GH_TOKEN -o SendEnv=COPILOT_GITHUB_TOKEN \
   vscode@<public-ip-or-tailscale-name>
 ```
@@ -1542,12 +1571,19 @@ for name in GH_TOKEN COPILOT_GITHUB_TOKEN; do
 done
 ```
 
-If Azure recreates the VM and SSH reports a host-key mismatch, run the exact
-command printed by the tool:
+If Azure recreates the VM or rotates its SSH host keys, refresh trust through
+the authenticated Azure control plane:
 
-```sh
-ssh-keygen -R kravhantering-azure-dev
+```powershell
+./scripts/azure-dev.ps1 setup -Yes
+# Or, when no setup convergence is needed:
+./scripts/azure-dev.ps1 start -Yes
 ```
+
+Do not run `ssh-keygen -R` and accept the next network-presented key. If the
+refresh reports missing, malformed, or unavailable Azure host-key evidence,
+restore Azure VM Agent and Run Command access first. Setup remains stopped
+before bootstrap credential generation or upload.
 
 If setup reports that the existing VM was created with a different SSH public
 key, the VM must be recreated. Azure does not allow changing

@@ -21,19 +21,22 @@ function Invoke-AzureDevRemoteCommand {
     [string]$Description = 'Run remote command'
   )
 
+  Assert-AzureDevSshHostTrust -Context $Context
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, $Description)) {
+    $arguments = [System.Object[]]@(
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'ClearAllForwardings=yes'
+    )
+    $arguments += $Context.Config.SshHostKeyArguments
+    $arguments += [System.Object[]]@(
+      $Context.Config.SshHostAlias,
+      $Command
+    )
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'ssh' `
-      -Arguments @(
-        '-o',
-        'BatchMode=yes',
-        '-o',
-        'ClearAllForwardings=yes',
-        '-o',
-        'StrictHostKeyChecking=accept-new',
-        $Context.Config.SshHostAlias,
-        $Command
-      )
+      -Arguments $arguments
     if ($result.ExitCode -ne 0) {
       throw "Remote command failed with exit code $($result.ExitCode): $Description`n$($result.Text.Trim())"
     }
@@ -50,23 +53,26 @@ function Copy-AzureDevBootstrapFile {
     [string]$RemotePath
   )
 
+  Assert-AzureDevSshHostTrust -Context $Context
   if (-not (Test-Path -LiteralPath $Context.BootstrapPath -PathType Leaf)) {
     throw "Bootstrap script is missing: $($Context.BootstrapPath)"
   }
 
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Upload host bootstrap')) {
+    $arguments = [System.Object[]]@(
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'ClearAllForwardings=yes'
+    )
+    $arguments += $Context.Config.SshHostKeyArguments
+    $arguments += [System.Object[]]@(
+      $Context.BootstrapPath,
+      "$($Context.Config.SshHostAlias):$RemotePath"
+    )
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'scp' `
-      -Arguments @(
-        '-o',
-        'BatchMode=yes',
-        '-o',
-        'ClearAllForwardings=yes',
-        '-o',
-        'StrictHostKeyChecking=accept-new',
-        $Context.BootstrapPath,
-        "$($Context.Config.SshHostAlias):$RemotePath"
-      )
+      -Arguments $arguments
     if ($result.ExitCode -ne 0) {
       throw "Bootstrap upload failed.`n$($result.Text.Trim())"
     }
@@ -83,6 +89,7 @@ function Copy-AzureDevQuadletFiles {
     [string]$RemotePath
   )
 
+  Assert-AzureDevSshHostTrust -Context $Context
   $templatesPath = Split-Path -Parent $Context.BootstrapPath
   $quadletPath = Join-Path $templatesPath 'quadlet'
   if (-not (Test-Path -LiteralPath $quadletPath -PathType Container)) {
@@ -105,10 +112,9 @@ function Copy-AzureDevQuadletFiles {
       '-o',
       'BatchMode=yes',
       '-o',
-      'ClearAllForwardings=yes',
-      '-o',
-      'StrictHostKeyChecking=accept-new'
+      'ClearAllForwardings=yes'
     )
+    $arguments += $Context.Config.SshHostKeyArguments
     $arguments += @($quadletFiles | ForEach-Object { $_.FullName })
     $arguments += "$($Context.Config.SshHostAlias):$RemotePath/"
 
@@ -131,6 +137,7 @@ function Copy-AzureDevZshTemplate {
     [string]$RemotePath
   )
 
+  Assert-AzureDevSshHostTrust -Context $Context
   $templatesPath = Split-Path -Parent $Context.BootstrapPath
   $customPath = Join-Path $templatesPath 'zshrc.template'
   $examplePath = Join-Path $templatesPath 'zshrc.template.example'
@@ -156,18 +163,20 @@ function Copy-AzureDevZshTemplate {
       -Command "mkdir -p -- $remoteDirectoryLiteral" `
       -Description 'Prepare Zsh template upload directory'
 
+    $arguments = [System.Object[]]@(
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'ClearAllForwardings=yes'
+    )
+    $arguments += $Context.Config.SshHostKeyArguments
+    $arguments += [System.Object[]]@(
+      $sourcePath,
+      "$($Context.Config.SshHostAlias):$RemotePath"
+    )
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'scp' `
-      -Arguments @(
-        '-o',
-        'BatchMode=yes',
-        '-o',
-        'ClearAllForwardings=yes',
-        '-o',
-        'StrictHostKeyChecking=accept-new',
-        $sourcePath,
-        "$($Context.Config.SshHostAlias):$RemotePath"
-      )
+      -Arguments $arguments
     if ($result.ExitCode -ne 0) {
       throw "Zsh template upload failed.`n$($result.Text.Trim())"
     }
@@ -184,6 +193,7 @@ function Copy-AzureDevDevelopmentToolFiles {
     [string]$RemotePath
   )
 
+  Assert-AzureDevSshHostTrust -Context $Context
   if ($RemotePath.Length -le 1 -or -not $RemotePath.StartsWith('/')) {
     throw "Development-tooling remote path must be absolute: $RemotePath"
   }
@@ -215,10 +225,9 @@ function Copy-AzureDevDevelopmentToolFiles {
       '-o',
       'BatchMode=yes',
       '-o',
-      'ClearAllForwardings=yes',
-      '-o',
-      'StrictHostKeyChecking=accept-new'
+      'ClearAllForwardings=yes'
     )
+    $arguments += $Context.Config.SshHostKeyArguments
     $arguments += $sourcePaths
     $arguments += "$($Context.Config.SshHostAlias):$RemotePath/"
     $result = Invoke-AzureDevNativeCommand `
@@ -310,6 +319,7 @@ function Copy-AzureDevServiceEnvironmentFiles {
     [string]$RemotePath
   )
 
+  Assert-AzureDevSshHostTrust -Context $Context
   Test-AzureDevBootstrapSecrets -Config $Context.Config
 
   $localPath = Join-Path `
@@ -387,10 +397,9 @@ function Copy-AzureDevServiceEnvironmentFiles {
         '-o',
         'BatchMode=yes',
         '-o',
-        'ClearAllForwardings=yes',
-        '-o',
-        'StrictHostKeyChecking=accept-new'
+        'ClearAllForwardings=yes'
       )
+      $arguments += $Context.Config.SshHostKeyArguments
       $arguments += $uploadPaths
       $arguments += "$($Context.Config.SshHostAlias):$RemotePath/"
       $result = Invoke-AzureDevNativeCommand `
@@ -429,6 +438,7 @@ function Invoke-AzureDevBootstrap {
     [pscustomobject]$Context
   )
 
+  Assert-AzureDevSshHostTrust -Context $Context
   $remoteBootstrapPath = '/tmp/krav-bootstrap-host.sh'
   $remoteQuadletPath = '/tmp/krav-azure-dev/quadlet'
   $remoteZshrcPath = '/tmp/krav-azure-dev/zshrc'

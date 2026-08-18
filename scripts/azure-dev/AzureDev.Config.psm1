@@ -530,6 +530,21 @@ function Get-AzureDevConfig {
   $privateKeyPath = Resolve-AzureDevPath `
     -Path $values.AZURE_DEV_VM_SSH_PRIVATE_KEY_PATH
   $publicKeyPath = "$privateKeyPath.pub"
+  $sshKnownHostsPath = Join-Path (Join-Path $HOME '.ssh') 'known_hosts'
+  $sshHostKeyArguments = [System.Object[]]@(
+    '-o',
+    'StrictHostKeyChecking=yes',
+    '-o',
+    "UserKnownHostsFile=$sshKnownHostsPath",
+    '-o',
+    'GlobalKnownHostsFile=none',
+    '-o',
+    'KnownHostsCommand=none',
+    '-o',
+    'VerifyHostKeyDNS=no',
+    '-o',
+    'UpdateHostKeys=no'
+  )
   $workstationApproverPublicKeyPath = if (
     [string]::IsNullOrWhiteSpace(
       $values.AZURE_DEV_WORKSTATION_APPROVER_PUBLIC_KEY_PATH
@@ -563,6 +578,8 @@ function Get-AzureDevConfig {
     SshHostName = $values.AZURE_DEV_VM_SSH_HOST_NAME
     SshPrivateKeyPath = $privateKeyPath
     SshPublicKeyPath = $publicKeyPath
+    SshKnownHostsPath = $sshKnownHostsPath
+    SshHostKeyArguments = $sshHostKeyArguments
     WorkstationApproverPublicKeyPath = $workstationApproverPublicKeyPath
     AutoStopEnabled = ConvertTo-AzureDevBoolean `
       -Value $values.AZURE_DEV_VM_AUTO_STOP_ENABLED `
@@ -730,6 +747,7 @@ function New-AzureDevContext {
     CleanupKeys = [bool]$CleanupKeys
     SkipSshConfig = [bool]$SkipSshConfig
     SkipSmokeValidation = [bool]$SkipSmokeValidation
+    SshHostTrustEstablished = $false
     StateDirectory = Join-Path $Config.RepoRoot '.azure'
     LogsDirectory = Join-Path $Config.RepoRoot '.azure/logs'
     StatePath = Join-Path $Config.RepoRoot '.azure/development.state.json'

@@ -150,13 +150,8 @@ function Get-AzureDevSshConfigBlock {
   )
 
   $identityFile = ConvertTo-AzureDevSshPath -Path $Context.Config.SshPrivateKeyPath
-  $strictHostKeyChecking = if (
-    -not [string]::IsNullOrWhiteSpace($Context.Config.SshHostName)
-  ) {
-    'yes'
-  } else {
-    'accept-new'
-  }
+  $knownHostsFile = ConvertTo-AzureDevSshPath `
+    -Path $Context.Config.SshKnownHostsPath
   $lines = @(
     "# >>> $script:AzureDevSshMarkerName managed",
     "Host $($Context.Config.SshHostAlias)",
@@ -165,7 +160,12 @@ function Get-AzureDevSshConfigBlock {
     "    IdentityFile $identityFile",
     '    IdentitiesOnly yes',
     '    ForwardAgent yes',
-    "    StrictHostKeyChecking $strictHostKeyChecking",
+    '    StrictHostKeyChecking yes',
+    "    UserKnownHostsFile $knownHostsFile",
+    '    GlobalKnownHostsFile none',
+    '    KnownHostsCommand none',
+    '    VerifyHostKeyDNS no',
+    '    UpdateHostKeys no',
     '    SendEnv GH_TOKEN',
     '    SendEnv COPILOT_GITHUB_TOKEN'
   )
@@ -267,24 +267,221 @@ function Test-AzureDevHostKeyMismatch {
     $Output -match 'Host key verification failed'
 }
 
-function Reset-AzureDevKnownHost {
-  [CmdletBinding(SupportsShouldProcess = $true)]
+function Assert-AzureDevSshHostTrust {
+  [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [string]$HostName
+    [pscustomobject]$Context
   )
 
-  if ([string]::IsNullOrWhiteSpace($HostName)) {
-    return
+  $trustEstablished = if (
+    $null -ne $Context.PSObject.Properties['SshHostTrustEstablished']
+  ) {
+    $Context.PSObject.Properties['SshHostTrustEstablished'].Value
+  } elseif (
+    $Context -is [System.Collections.IDictionary] -and
+    $Context.Contains('SshHostTrustEstablished')
+  ) {
+    $Context['SshHostTrustEstablished']
+  } else {
+    $false
+  }
+  if ($trustEstablished -ne $true) {
+    throw (
+      'Authenticated SSH host trust has not been established. Run the Azure ' +
+      'host-key validation flow before remote commands or credential upload.'
+    )
+  }
+}
+
+function Invoke-AzureDevHostKeyRunCommand {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context
+  )
+
+  return Invoke-AzCli `
+    -Arguments @(
+      'vm',
+      'run-command',
+      'invoke',
+      '--subscription',
+      $Context.Config.SubscriptionId,
+      '--resource-group',
+      $Context.Config.ResourceGroup,
+      '--name',
+      $Context.Config.VmName,
+      '--command-id',
+      'RunShellScript',
+      '--scripts',
+      (
+        'set -eu; found=0; for key in /etc/ssh/ssh_host_*_key.pub; do ' +
+        '[ -r "$key" ] || continue; cat "$key"; found=1; done; ' +
+        '[ "$found" -eq 1 ]'
+      ),
+      '--output',
+      'json'
+    ) `
+    -Json
+}
+
+function Get-AzureDevVmSshHostKeyEvidence {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context
+  )
+
+  try {
+    $response = Invoke-AzureDevHostKeyRunCommand -Context $Context
+  } catch {
+    throw (
+      'Azure control-plane SSH host-key retrieval failed. No SSH connection ' +
+      "was attempted. $($_.Exception.Message)"
+    )
   }
 
-  if ($PSCmdlet.ShouldProcess($HostName, 'Remove stale OpenSSH known_hosts entry')) {
-    $result = Invoke-AzureDevNativeCommand `
-      -FilePath 'ssh-keygen' `
-      -Arguments @('-R', $HostName)
-    if ($result.ExitCode -ne 0) {
-      Write-Warning "Could not remove known_hosts entry for $HostName`: $($result.Text.Trim())"
+  $responseValue = if (
+    $null -ne $response -and
+    $null -ne $response.PSObject.Properties['value']
+  ) {
+    $response.PSObject.Properties['value'].Value
+  } elseif (
+    $null -ne $response -and
+    $response -is [System.Collections.IDictionary] -and
+    $response.Contains('value')
+  ) {
+    $response['value']
+  } else {
+    $null
+  }
+  if ($null -eq $responseValue) {
+    throw (
+      'Azure control-plane SSH host-key evidence was malformed. No SSH ' +
+      'connection was attempted.'
+    )
+  }
+  $runCommandResults = @($responseValue)
+
+  $stderr = @(
+    $runCommandResults |
+      Where-Object { $_.code -match '/StdErr/' } |
+      ForEach-Object { [string]$_.message } |
+      Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+  )
+  if ($stderr.Count -gt 0) {
+    throw (
+      'Azure control-plane SSH host-key retrieval returned guest errors. No ' +
+      'SSH connection was attempted.'
+    )
+  }
+
+  $lines = @(
+    $runCommandResults |
+      Where-Object { $_.code -match '/StdOut/' } |
+      ForEach-Object { [string]$_.message -split '\r?\n' } |
+      ForEach-Object { $_.Trim() } |
+      Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+  )
+  if ($lines.Count -eq 0) {
+    throw (
+      'Azure control-plane SSH host-key evidence was empty. No SSH connection ' +
+      'was attempted.'
+    )
+  }
+
+  $hostKeys = [System.Collections.Generic.List[string]]::new()
+  foreach ($line in $lines) {
+    if (-not (Test-AzureDevSshPublicKey -Value $line)) {
+      throw (
+        'Azure control-plane SSH host-key evidence was malformed. No SSH ' +
+        'connection was attempted.'
+      )
     }
+    $parts = $line -split '[ \t]+', 3
+    $hostKey = "$($parts[0]) $($parts[1])"
+    if (-not $hostKeys.Contains($hostKey)) {
+      $hostKeys.Add($hostKey)
+    }
+  }
+  return @($hostKeys)
+}
+
+function Set-AzureDevKnownHostTrust {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [string]$HostName,
+
+    [Parameter(Mandatory = $true)]
+    [string[]]$HostKeys
+  )
+
+  $knownHostsPath = $Context.Config.SshKnownHostsPath
+  $directory = Split-Path -Parent $knownHostsPath
+  [System.IO.Directory]::CreateDirectory($directory) | Out-Null
+
+  $temporaryPath = Join-Path `
+    $directory `
+    ".$([System.IO.Path]::GetFileName($knownHostsPath)).$([guid]::NewGuid().ToString('N')).tmp"
+  $backupPath = "$temporaryPath.old"
+  try {
+    if ([System.IO.File]::Exists($knownHostsPath)) {
+      [System.IO.File]::Copy($knownHostsPath, $temporaryPath)
+    } else {
+      [System.IO.File]::WriteAllText($temporaryPath, '')
+    }
+    if ([System.IO.FileInfo]::new($temporaryPath).Length -gt 0) {
+      $existingText = [System.IO.File]::ReadAllText($temporaryPath)
+      if (-not $existingText.EndsWith("`n") -and -not $existingText.EndsWith("`r")) {
+        [System.IO.File]::AppendAllText(
+          $temporaryPath,
+          [System.Environment]::NewLine
+        )
+      }
+    }
+
+    $hostEntries = @($Context.Config.SshHostAlias, $HostName) |
+      Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+      Select-Object -Unique
+    foreach ($hostEntry in $hostEntries) {
+      $removeResult = Invoke-AzureDevNativeCommand `
+        -FilePath 'ssh-keygen' `
+        -Arguments @('-R', $hostEntry, '-f', $temporaryPath)
+      if ($removeResult.ExitCode -ne 0) {
+        throw "Could not update managed SSH host trust for $hostEntry."
+      }
+      Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+    }
+
+    $trustedLines = foreach ($hostEntry in $hostEntries) {
+      foreach ($hostKey in $HostKeys) {
+        "$hostEntry $hostKey"
+      }
+    }
+    Add-Content -LiteralPath $temporaryPath -Value $trustedLines -Encoding ascii
+    if (-not $IsWindows) {
+      $directoryPermission = Invoke-AzureDevNativeCommand `
+        -FilePath 'chmod' `
+        -Arguments @('700', $directory)
+      $filePermission = Invoke-AzureDevNativeCommand `
+        -FilePath 'chmod' `
+        -Arguments @('600', $temporaryPath)
+      if (
+        $directoryPermission.ExitCode -ne 0 -or
+        $filePermission.ExitCode -ne 0
+      ) {
+        throw 'Could not secure the managed SSH host-trust files.'
+      }
+    }
+    Move-Item -LiteralPath $temporaryPath -Destination $knownHostsPath -Force
+  } finally {
+    Remove-Item -LiteralPath $temporaryPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
   }
 }
 
@@ -303,45 +500,53 @@ function Wait-AzureDevSsh {
 
   $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
   $lastOutput = ''
-  $knownHostReset = $false
+  $Context.SshHostTrustEstablished = $false
+  if ([string]::IsNullOrWhiteSpace($HostName)) {
+    throw (
+      'The resolved VM host is required before SSH host trust can be ' +
+      'established through Azure.'
+    )
+  }
+  $hostKeys = Get-AzureDevVmSshHostKeyEvidence -Context $Context
+  Set-AzureDevKnownHostTrust `
+    -Context $Context `
+    -HostName $HostName `
+    -HostKeys $hostKeys
   do {
+    $arguments = [System.Collections.Generic.List[System.String]]::new()
+    $arguments.AddRange([System.String[]]@(
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'ClearAllForwardings=yes',
+      '-o',
+      'ConnectTimeout=10'
+    ))
+    $arguments.AddRange([System.String[]]$Context.Config.SshHostKeyArguments)
+    $arguments.Add($Context.Config.SshHostAlias)
+    $arguments.Add('true')
     $result = Invoke-AzureDevNativeCommand `
       -FilePath 'ssh' `
-      -Arguments @(
-        '-o',
-        'BatchMode=yes',
-        '-o',
-        'ClearAllForwardings=yes',
-        '-o',
-        'ConnectTimeout=10',
-        '-o',
-        'StrictHostKeyChecking=accept-new',
-        $Context.Config.SshHostAlias,
-        'true'
-      )
+      -Arguments $arguments.ToArray()
     if ($result.ExitCode -eq 0) {
+      $Context.SshHostTrustEstablished = $true
       return $true
     }
     $lastOutput = $result.Text
-    if (-not $knownHostReset -and (Test-AzureDevHostKeyMismatch -Output $lastOutput)) {
-      $hostEntries = @($Context.Config.SshHostAlias, $HostName) |
-        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
-        Select-Object -Unique
-      foreach ($hostEntry in $hostEntries) {
-        Reset-AzureDevKnownHost -HostName $hostEntry
-      }
-      $knownHostReset = $true
-      continue
+    if (Test-AzureDevHostKeyMismatch -Output $lastOutput) {
+      throw (
+        'SSH host-key mismatch against Azure control-plane evidence. Setup ' +
+        'stopped before remote commands or credential upload.'
+      )
     }
     Start-Sleep -Seconds 10
   } while ((Get-Date) -lt $deadline)
 
   if (Test-AzureDevHostKeyMismatch -Output $lastOutput) {
-    $commands = @("ssh-keygen -R $($Context.Config.SshHostAlias)")
-    if (-not [string]::IsNullOrWhiteSpace($HostName)) {
-      $commands += "ssh-keygen -R $HostName"
-    }
-    throw "SSH host-key mismatch. Run: $($commands -join '; ')"
+    throw (
+      'SSH host-key mismatch against Azure control-plane evidence. Rerun ' +
+      'setup or start to retrieve authenticated replacement evidence.'
+    )
   }
 
   $diagnostics = @(
@@ -411,6 +616,7 @@ function Get-AzureDevCodeCommand {
 }
 
 Export-ModuleMember -Function `
+  Assert-AzureDevSshHostTrust, `
   ConvertTo-AzureDevSshPath, `
   Get-AzureDevCodeCommand, `
   Get-AzureDevCurrentIpv4, `
@@ -420,7 +626,6 @@ Export-ModuleMember -Function `
   Get-AzureDevSshPublicKey, `
   New-AzureDevSshKey, `
   Remove-AzureDevManagedSshConfig, `
-  Reset-AzureDevKnownHost, `
   Set-AzureDevManagedSshConfig, `
   Test-AzureDevHostKeyMismatch, `
   Test-AzureDevCidr, `

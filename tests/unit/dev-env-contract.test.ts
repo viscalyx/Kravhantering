@@ -156,7 +156,6 @@ describe('development environment contract', () => {
     const azureModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Azure.psm1',
     )
-
     expect(entryScript).toContain(
       '$image = Get-AzureDevDeploymentImage -Config $Context.Config',
     )
@@ -339,6 +338,9 @@ describe('development environment contract', () => {
     const azureModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Azure.psm1',
     )
+    const configModule = readWorkspaceFile(
+      'scripts/azure-dev/AzureDev.Config.psm1',
+    )
     const bicepTemplate = readWorkspaceFile(
       'scripts/azure-dev/templates/main.bicep',
     )
@@ -425,7 +427,12 @@ describe('development environment contract', () => {
     expect(entryScript).not.toContain(
       'function Test-AzureDevTrustedLaunchGuestReadiness',
     )
-    expect(readinessFunction).toContain('StrictHostKeyChecking=accept-new')
+    expect(readinessFunction).toContain('$Context.Config.SshHostKeyArguments')
+    expect(configModule).toContain('StrictHostKeyChecking=yes')
+    expect(configModule).toContain('UserKnownHostsFile=')
+    expect(configModule).toContain('GlobalKnownHostsFile=none')
+    expect(configModule).toContain('KnownHostsCommand=none')
+    expect(configModule).toContain('VerifyHostKeyDNS=no')
     expect(readinessFunction).toContain('$Context.Config.SshHostAlias')
     expect(readinessFunction).toContain(
       'DKMS kernel modules require manual Secure Boot validation',
