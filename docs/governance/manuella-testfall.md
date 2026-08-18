@@ -435,11 +435,17 @@ tilldelningar.
 1. Öppna kravområdet `AUTHZ-AREA-2026`.
 1. Skapa ett krav i det tilldelade kravområdet via API eller UI och verifiera
    att kravet sparas.
+1. Skapa en RFI-fråga i det tilldelade kravområdet och en annan RFI-fråga i
+   ett främmande kravområde med en behörig testanvändare. Läs RFI-frågor utan
+   områdesfilter och försök sedan läsa det främmande kravområdet direkt via
+   API.
 1. Försök ändra kravområdets ägare eller listan över medförfattare.
 1. Kör API-kontroll mot samma otillåtna tilldelningsändring.
 
-**Förväntat resultat:** Cora kan skapa krav inom området men får 403 för
-tilldelningsstyrning och global Admin.
+**Förväntat resultat:** Cora kan skapa krav och RFI-frågor inom området. Den
+ofiltrerade RFI-frågelistan innehåller bara frågor från tilldelade kravområden,
+och direkt läsning av det främmande kravområdets RFI-frågor ger 403. Cora får
+också 403 för tilldelningsstyrning och global Admin.
 
 ### AUTHZ-04: kravunderlagsansvarig
 

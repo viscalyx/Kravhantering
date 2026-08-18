@@ -187,9 +187,13 @@ interface SqlSelection {
   sql: string
 }
 
-interface RfiQuestionSelectionOptions {
+export interface RfiQuestionListOptions {
   areaId?: number
+  areaIds?: number[]
   includeArchived?: boolean
+}
+
+interface RfiQuestionSelectionOptions extends RfiQuestionListOptions {
   questionId?: number
 }
 
@@ -209,6 +213,16 @@ function buildRfiQuestionSelection(
   if (options.areaId != null) {
     parameters.push(options.areaId)
     conditions.push(`question.area_id = @${parameters.length - 1}`)
+  } else if (options.areaIds != null) {
+    if (options.areaIds.length === 0) {
+      conditions.push('1 = 0')
+    } else {
+      const offset = parameters.length
+      parameters.push(...options.areaIds)
+      conditions.push(
+        `question.area_id IN (${placeholders(options.areaIds, offset)})`,
+      )
+    }
   }
   if (!options.includeArchived) {
     conditions.push('question.is_archived = 0')
@@ -545,7 +559,7 @@ async function getRfiQuestionRows(
 
 export async function listRfiQuestions(
   db: SqlServerDatabase,
-  options: { areaId?: number; includeArchived?: boolean } = {},
+  options: RfiQuestionListOptions = {},
 ): Promise<RfiQuestionRow[]> {
   return getRfiQuestionRows(db, options)
 }

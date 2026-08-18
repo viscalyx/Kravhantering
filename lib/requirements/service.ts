@@ -58,6 +58,10 @@ import {
 } from '@/lib/requirements/service-norm-references'
 import { createRequirementWorkflow } from '@/lib/requirements/service-requirements'
 import {
+  createRfiQuestionQueryService,
+  type RfiQuestionQueryService,
+} from '@/lib/requirements/service-rfi-questions'
+import {
   authorize,
   createServiceMessage,
   resolveSpecificationIdOrThrow,
@@ -369,7 +373,7 @@ export interface ManageSuggestionOutput {
   result: unknown
 }
 
-export interface RequirementsService {
+export interface RequirementsService extends RfiQuestionQueryService {
   addToSpecification(
     context: RequestContext,
     input: AddToSpecificationInput,
@@ -565,6 +569,7 @@ export function createRequirementsService(
     ...createNeedsReferenceWorkflow({ authorization, db, logger }),
     ...createNormReferenceWorkflow({ authorization, db, logger }),
     ...createRequirementWorkflow({ authorization, db, logger }),
+    ...createRfiQuestionQueryService({ authorization, db }),
 
     ...createSpecificationWorkflow({ authorization, db, logger }),
     ...createSuggestionWorkflow({ authorization, db, logger }),

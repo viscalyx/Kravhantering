@@ -147,6 +147,34 @@ describe('RFI questions DAL', () => {
     expect(query.mock.calls[1]?.[1]).toEqual([2])
   })
 
+  it('scopes catalog queries to the authorized requirement areas', async () => {
+    const query = createQuery([[activeQuestionRow], []])
+
+    await listRfiQuestions(
+      { query } as unknown as Parameters<typeof listRfiQuestions>[0],
+      { areaIds: [2, 4], includeArchived: true },
+    )
+
+    expect(String(query.mock.calls[0]?.[0])).toContain(
+      'question.area_id IN (@0, @1)',
+    )
+    expect(query.mock.calls[0]?.[1]).toEqual([2, 4])
+    expect(query.mock.calls[1]?.[1]).toEqual([2, 4])
+  })
+
+  it('fails closed when the authorized requirement area set is empty', async () => {
+    const query = createQuery([[]])
+
+    await expect(
+      listRfiQuestions(
+        { query } as unknown as Parameters<typeof listRfiQuestions>[0],
+        { areaIds: [], includeArchived: true },
+      ),
+    ).resolves.toEqual([])
+
+    expect(String(query.mock.calls[0]?.[0])).toContain('WHERE 1 = 0')
+  })
+
   it('returns an empty catalog without running the version-link query', async () => {
     const query = createQuery([[]])
 

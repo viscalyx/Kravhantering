@@ -178,6 +178,7 @@ function createService() {
     graduateSpecificationLocalRequirement,
     listDeviations: vi.fn(),
     listGraduationTargetAreas,
+    listRfiQuestions: vi.fn(async () => []),
     listSpecifications,
     listSuggestions,
     manageDeviation: vi.fn(),

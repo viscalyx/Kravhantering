@@ -12,6 +12,7 @@ const routeState = vi.hoisted(() => ({
   db: { query: vi.fn() },
   getRfiQuestion: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
+  listRfiQuestionsForActor: vi.fn(),
   listRfiQuestions: vi.fn(),
   recordAllowedActionAuditEvent: vi.fn(),
   recordDeniedActionAuditEvent: vi.fn(),
@@ -92,6 +93,7 @@ function jsonRequest(url: string, method: string, body?: unknown) {
 describe('RFI question routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    context.actor.roles = ['RequirementsEditor']
     routeState.assertAuthorized.mockResolvedValue(undefined)
     routeState.createDefaultAuthorizationService.mockReturnValue({
       assertAuthorized: routeState.assertAuthorized,
@@ -104,6 +106,9 @@ describe('RFI question routes', () => {
       authorization: { assertAuthorized: vi.fn() },
       context,
       db: { db: true },
+      service: {
+        listRfiQuestions: routeState.listRfiQuestionsForActor,
+      },
     })
     routeState.authorize.mockResolvedValue(undefined)
     routeState.getRfiQuestion.mockResolvedValue({
@@ -118,6 +123,7 @@ describe('RFI question routes', () => {
       questionText: 'How do you handle logs?',
     })
     routeState.listRfiQuestions.mockResolvedValue([])
+    routeState.listRfiQuestionsForActor.mockResolvedValue([])
     routeState.setRfiQuestionArchived.mockResolvedValue({
       areaId: 7,
       id: 12,
@@ -262,7 +268,7 @@ describe('RFI question routes', () => {
 
   it('lists RFI questions using the validated filters', async () => {
     const questions = [{ areaId: 7, id: 12, questionCode: 'INF-RFI001' }]
-    routeState.listRfiQuestions.mockResolvedValueOnce(questions)
+    routeState.listRfiQuestionsForActor.mockResolvedValueOnce(questions)
 
     const response = await listRfiQuestionsGet(
       new Request(
@@ -272,10 +278,58 @@ describe('RFI question routes', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ questions })
-    expect(routeState.listRfiQuestions).toHaveBeenCalledWith(routeState.db, {
+    expect(routeState.listRfiQuestionsForActor).toHaveBeenCalledWith(context, {
       areaId: 7,
       includeArchived: true,
     })
+  })
+
+  it('returns the service authorization failure for a foreign-area collection read', async () => {
+    routeState.listRfiQuestionsForActor.mockRejectedValueOnce(
+      forbiddenError('denied'),
+    )
+
+    const response = await listRfiQuestionsGet(
+      new Request('http://localhost/api/rfi-questions?areaId=8'),
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'forbidden',
+      error: 'Forbidden',
+    })
+    expect(routeState.listRfiQuestionsForActor).toHaveBeenCalledWith(context, {
+      areaId: 8,
+      includeArchived: false,
+    })
+    expect(routeState.listRfiQuestions).not.toHaveBeenCalled()
+  })
+
+  it('returns only the authorized questions supplied by the requirements service', async () => {
+    const authorizedQuestions = [
+      { areaId: 7, id: 12, questionCode: 'INF-RFI001' },
+    ]
+    routeState.listRfiQuestionsForActor.mockResolvedValueOnce(
+      authorizedQuestions,
+    )
+
+    const response = await listRfiQuestionsGet(
+      new Request('http://localhost/api/rfi-questions?includeArchived=true'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      questions: authorizedQuestions,
+    })
+  })
+
+  it('returns an empty authorized collection', async () => {
+    const response = await listRfiQuestionsGet(
+      new Request('http://localhost/api/rfi-questions'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ questions: [] })
   })
 
   it('rejects invalid RFI question filters before querying persistence', async () => {
@@ -284,7 +338,7 @@ describe('RFI question routes', () => {
     )
 
     expect(response.status).toBe(400)
-    expect(routeState.listRfiQuestions).not.toHaveBeenCalled()
+    expect(routeState.listRfiQuestionsForActor).not.toHaveBeenCalled()
   })
 
   it('returns 404 when the requested RFI question does not exist', async () => {

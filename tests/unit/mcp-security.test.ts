@@ -141,6 +141,7 @@ function createService() {
       areas: [{ id: 2, name: 'Security', prefix: 'SEC' }],
       message: 'Graduation target requirement areas',
     })),
+    listRfiQuestions: vi.fn(async () => []),
     listSpecifications: vi.fn(async () => ({
       message: 'Specifications',
       specifications: [],

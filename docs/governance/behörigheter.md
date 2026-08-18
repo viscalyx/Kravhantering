@@ -196,6 +196,9 @@ RFI-frågor hör till kravområdet i kravbiblioteksförvaltningen. Att skapa,
 redigera, arkivera, återaktivera eller läsa en enskild RFI-frågas
 förvaltningsdetaljer kräver författarbehörighet i frågans kravområde, som
 kravområdesägare, kravområdesmedförfattare eller `Admin`.
+Den ofiltrerade förvaltningslistan visar bara RFI-frågor från kravområden där
+användaren har författarbehörighet; `Admin` kan läsa listan över alla
+kravområden.
 
 Ett kravunderlags RFI-frågelista hör däremot till kravunderlaget.
 Kravunderlagsansvarig, kravunderlagsmedförfattare och `Admin` kan ändra
