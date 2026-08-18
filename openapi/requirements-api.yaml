@@ -1484,9 +1484,8 @@ components:
         table: { type: string, minLength: 1, maxLength: 255 }
         timestamp: { type: string }
         value:
-          nullable: true
           oneOf:
-            - { type: boolean }
+            - { type: boolean, nullable: true }
             - { type: number }
             - { type: string, maxLength: 8000 }
             - type: array

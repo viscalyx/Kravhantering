@@ -1,5 +1,7 @@
 import { create as createContentDisposition } from 'content-disposition'
 import {
+  type AttachmentExtension,
+  type AttachmentFallback,
   asciiAttachmentFilename,
   withRequiredAttachmentExtension,
 } from '@/lib/attachment-filename'
@@ -10,8 +12,8 @@ export const MAX_CONTENT_DISPOSITION_HEADER_UTF8_BYTES = 2048
 
 function attachmentContentDisposition(
   filename: string,
-  extension: '.csv' | '.json' | '.pdf',
-  fallbackFilename: 'export.csv' | 'export.json' | 'report.pdf',
+  extension: AttachmentExtension,
+  fallbackFilename: AttachmentFallback,
 ): string {
   const sanitized = withRequiredAttachmentExtension(
     filename,

@@ -107,11 +107,13 @@ V1 measures:
 The large requirements-list PDF and privacy PDF are rendered in isolated Node
 worker threads from production-bundled renderers so production CSP can stay
 strict without `unsafe-eval` or `wasm-unsafe-eval`. All PDFs share the
-Admin-configured PDF item, byte, timeout, process-local per-node concurrency,
-and worker-memory limits. Requirements Library CSV, procurement and full
-requirements-specification CSV, Action-log CSV, and privacy JSON use the CSV
-item, byte, timeout, and shared process-local structured-export pool. Each
-operation uses one database settings snapshot.
+Admin-configured PDF item, byte, timeout, and process-local per-node concurrency
+limits. The worker-memory limit applies only to PDFs rendered in isolated Node
+worker threads; direct `renderToBuffer` renderers do not enforce that setting.
+Requirements Library CSV, procurement and full requirements-specification CSV,
+Action-log CSV, and privacy JSON use the CSV item, byte, timeout, and shared
+process-local structured-export pool. Each operation uses one database settings
+snapshot.
 
 The PDF item setting counts distinct requirement IDs for selected reports,
 versions for history and review, versions plus suggestions for suggestion

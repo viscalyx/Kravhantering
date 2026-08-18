@@ -848,33 +848,102 @@ test('PRIV-11: bounded self-service export rejects overflow without a partial do
   page,
 }) => {
   let exportRequests = 0
-  await page.route('**/api/privacy/data-subject-export', async route => {
-    exportRequests += 1
-    await route.fulfill({
-      contentType: 'application/json',
-      headers: { 'Cache-Control': 'no-store' },
-      json: {
-        code: 'output_limit_exceeded',
-        details: { limit: 1000, limitKind: 'items', output: 'json' },
-        error: 'Internal text that must not be shown',
-      },
-      status: 422,
+  await test.step('set up the bounded export failure', async () => {
+    await page.route('**/api/privacy/data-subject-export', async route => {
+      exportRequests += 1
+      await route.fulfill({
+        contentType: 'application/json',
+        headers: { 'Cache-Control': 'no-store' },
+        json: {
+          code: 'output_limit_exceeded',
+          details: { limit: 1000, limitKind: 'items', output: 'json' },
+          error: 'Internal text that must not be shown',
+        },
+        status: 422,
+      })
     })
   })
 
-  await page.goto('/sv/privacy')
-  await expect(async () => {
-    await page.getByRole('button', { name: 'Exportera JSON' }).click()
-    await expect
-      .poll(() => exportRequests, { timeout: 1_000 })
-      .toBeGreaterThan(0)
-  }).toPass({ timeout: 15_000 })
-
-  const dialog = page.getByRole('alertdialog', {
-    name: 'Nedladdningen misslyckades',
+  await test.step('start the self-service JSON export', async () => {
+    await page.goto('/sv/privacy')
+    await expect(async () => {
+      await page.getByRole('button', { name: 'Exportera JSON' }).click()
+      await expect
+        .poll(() => exportRequests, { timeout: 1_000 })
+        .toBeGreaterThan(0)
+    }).toPass({ timeout: 15_000 })
   })
-  await expect(dialog).toContainText(
-    'Personuppgiftsexporten innehåller fler än den tillåtna gränsen på 1000 poster.',
-  )
-  await expect(dialog).not.toContainText('Internal text that must not be shown')
+
+  await test.step('verify the safe localized failure dialog', async () => {
+    const dialog = page.getByRole('alertdialog', {
+      name: 'Nedladdningen misslyckades',
+    })
+    await expect(dialog).toContainText(
+      'Personuppgiftsexporten innehåller fler än den tillåtna gränsen på 1000 poster.',
+    )
+    await expect(dialog).not.toContainText(
+      'Internal text that must not be shown',
+    )
+  })
+})
+
+test('PRIV-12: saturated structured-export capacity can be retried', async ({
+  page,
+}) => {
+  let exportRequests = 0
+  await test.step('set up a saturated structured-export response', async () => {
+    await page.route('**/api/privacy/data-subject-export', async route => {
+      exportRequests += 1
+      if (exportRequests === 1) {
+        await route.fulfill({
+          contentType: 'application/json',
+          headers: {
+            'Cache-Control': 'no-store',
+            'Retry-After': '1',
+          },
+          json: {
+            code: 'capacity_busy',
+            details: { output: 'json', retryAfterSeconds: 1 },
+            error: 'Internal capacity text that must not be shown',
+          },
+          status: 429,
+        })
+        return
+      }
+      await route.fulfill({
+        contentType: 'application/json',
+        json: exportPayload('SE5560000001-admin1'),
+      })
+    })
+  })
+
+  await test.step('start the export while capacity is saturated', async () => {
+    await page.goto('/sv/privacy')
+    await expect(async () => {
+      await page.getByRole('button', { name: 'Exportera JSON' }).click()
+      await expect
+        .poll(() => exportRequests, { timeout: 1_000 })
+        .toBeGreaterThan(0)
+    }).toPass({ timeout: 15_000 })
+  })
+
+  await test.step('retry safely after the capacity delay', async () => {
+    const dialog = page.getByRole('alertdialog', {
+      name: 'Nedladdningen misslyckades',
+    })
+    await expect(dialog).toContainText(
+      'Så många strukturerade exporter som tillåts samtidigt pågår redan.',
+    )
+    await expect(dialog).not.toContainText(
+      'Internal capacity text that must not be shown',
+    )
+    const retry = dialog.getByRole('button', {
+      exact: true,
+      name: 'Försök igen',
+    })
+    await expect(retry).toBeEnabled()
+    await retry.click()
+    await expect.poll(() => exportRequests).toBe(2)
+    await expect(dialog).toHaveCount(0)
+  })
 })

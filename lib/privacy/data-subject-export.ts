@@ -21,6 +21,23 @@ interface QueryExecutor {
 
 type ExportRow = Record<string, unknown>
 
+const SIMPLE_SELECT_PREFIX = /^(\s*(?:\/\*[\s\S]*?\*\/\s*)*SELECT)(\s+)/iu
+
+export function applyDataSubjectExportRowLimit(
+  sql: string,
+  limitParameter: string,
+): string {
+  const match = SIMPLE_SELECT_PREFIX.exec(sql)
+  if (!match) {
+    throw new Error('Privacy export source query must be a simple SELECT')
+  }
+  const remainder = sql.slice(match[0].length)
+  if (/^(?:ALL|DISTINCT|TOP)\b/iu.test(remainder)) {
+    throw new Error('Privacy export source query must be a simple SELECT')
+  }
+  return `${match[1]} TOP (${limitParameter})${match[2]}${remainder}`
+}
+
 function withDataSubjectExportRowLimit(
   db: QueryExecutor,
   maxRows: number,
@@ -33,10 +50,7 @@ function withDataSubjectExportRowLimit(
     ): Promise<T> => {
       signal.throwIfAborted()
       const limitParameter = `@${parameters.length}`
-      const boundedSql = sql.replace(
-        /\bSELECT\b/u,
-        `SELECT TOP (${limitParameter})`,
-      )
+      const boundedSql = applyDataSubjectExportRowLimit(sql, limitParameter)
       const result = await db.query<T>(boundedSql, [...parameters, maxRows])
       signal.throwIfAborted()
       return result

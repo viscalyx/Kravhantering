@@ -15,11 +15,11 @@ import { createPortal } from 'react-dom'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { downloadBlob } from '@/lib/browser-download'
 import { devMarker } from '@/lib/developer-mode-markers'
+import type { GeneratedOutputKind } from '@/lib/generated-output/errors'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { filenameFromContentDisposition } from '@/lib/pdf/filename'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
-type GeneratedOutputKind = 'csv' | 'json' | 'pdf'
 type DownloadPhase = 'downloading' | 'generating'
 
 interface GeneratedOutputDownloadRequest {

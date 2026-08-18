@@ -72,7 +72,10 @@ vi.mock('@/lib/privacy/data-subject-export', () => ({
   collectDataSubjectExport: vi.fn(async () => outputState.payload),
 }))
 
-import { generateDataSubjectExport } from '@/lib/privacy/data-subject-export-output'
+import {
+  type GenerateDataSubjectExportOptions,
+  generateDataSubjectExport,
+} from '@/lib/privacy/data-subject-export-output'
 
 function payload(): DataSubjectExportV1 {
   return {
@@ -95,7 +98,7 @@ function payload(): DataSubjectExportV1 {
   }
 }
 
-function options(delivery: 'json' | 'pdf') {
+function options(delivery: 'json' | 'pdf'): GenerateDataSubjectExportOptions {
   return {
     context: {
       actor: {
@@ -110,7 +113,7 @@ function options(delivery: 'json' | 'pdf') {
       requestId: 'request-1',
       source: 'rest' as const,
     },
-    db: { query: vi.fn() },
+    db: { query: vi.fn() } as unknown as GenerateDataSubjectExportOptions['db'],
     delivery,
     input: {
       generatedBy: payload().generatedBy,
@@ -153,7 +156,7 @@ describe('data-subject export output orchestration', () => {
   it.each(['json', 'pdf'] as const)(
     'records %s response cancellation and stream errors',
     async delivery => {
-      await generateDataSubjectExport(options(delivery) as never)
+      await generateDataSubjectExport(options(delivery))
 
       outputState.lifecycle?.onCancel?.()
       outputState.lifecycle?.onError?.()
@@ -180,7 +183,7 @@ describe('data-subject export output orchestration', () => {
       },
     } as unknown as DataSubjectExportV1
 
-    await generateDataSubjectExport(options('json') as never)
+    await generateDataSubjectExport(options('json'))
 
     expect(JSON.parse(outputState.serializedJson)).toMatchObject({
       generatedBy: { roles: ['Admin', null, null] },
@@ -192,9 +195,9 @@ describe('data-subject export output orchestration', () => {
     const failure = new Error('writer failed')
     outputState.writeFile.mockRejectedValueOnce(failure)
 
-    await expect(
-      generateDataSubjectExport(options('json') as never),
-    ).rejects.toBe(failure)
+    await expect(generateDataSubjectExport(options('json'))).rejects.toBe(
+      failure,
+    )
     expect(outputState.failed).toHaveBeenCalledWith(failure, expect.any(Object))
   })
 })

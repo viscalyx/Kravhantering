@@ -9,38 +9,18 @@ import {
   collectStatusIconNames,
   preloadStatusIconNodes,
 } from '@/lib/icons/status-icon-allowlist'
-import type { DataSubjectExportV1 } from '@/lib/privacy/data-subject-export-types'
-import type { ReportModel } from '@/lib/reports/types'
-
-interface PdfReportWorkerData {
-  locale: string
-  maxBytes: number
-  model: ReportModel
-  outputPath: string
-}
-
-interface DataSubjectExportPdfWorkerData {
-  document: {
-    exportData: DataSubjectExportV1
-    kind: 'data-subject-export'
-    locale: string
-  }
-  maxBytes: number
-  outputPath: string
-}
-
-type PdfReportWorkerMessage =
-  | { byteCount: number; ok: true }
-  | { failure: 'byte_limit' | 'storage'; ok: false }
+import type {
+  PdfReportWorkerMessage,
+  PdfWorkerData,
+} from '@/lib/pdf/report-worker-contract'
+import { isDataSubjectExportPdfWorkerData } from '@/lib/pdf/report-worker-contract'
 
 class PdfByteLimitError extends Error {}
 
 async function renderReport(): Promise<void> {
-  const data = workerData as
-    | DataSubjectExportPdfWorkerData
-    | PdfReportWorkerData
+  const data = workerData as PdfWorkerData
   let document: ReactElement
-  if ('document' in data) {
+  if (isDataSubjectExportPdfWorkerData(data)) {
     const { default: DataSubjectExportPdfRenderer } = await import(
       '@/components/privacy/DataSubjectExportPdfRenderer'
     )

@@ -170,6 +170,10 @@ function exportPayload(hsaId: string) {
 
 describe('data-subject export route', () => {
   beforeEach(() => {
+    expect(generatedOutputCapacitySnapshot()).toMatchObject({
+      activeCsv: 0,
+      activePdf: 0,
+    })
     vi.clearAllMocks()
     routeState.createRequestContext.mockResolvedValue(context())
     routeState.getSessionFromRequest.mockResolvedValue(signedSession())

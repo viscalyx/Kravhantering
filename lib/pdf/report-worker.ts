@@ -1,5 +1,9 @@
 import { Worker } from 'node:worker_threads'
 import { GeneratedOutputError } from '@/lib/generated-output/errors'
+import type {
+  PdfReportWorkerMessage,
+  PdfWorkerData,
+} from '@/lib/pdf/report-worker-contract'
 import type { DataSubjectExportV1 } from '@/lib/privacy/data-subject-export-types'
 import type { ReportModel } from '@/lib/reports/types'
 
@@ -25,12 +29,8 @@ interface RenderPdfInWorkerOptions {
   maxBytes: number
   memoryLimitMib: number
   signal?: AbortSignal
-  workerData: Record<string, unknown>
+  workerData: PdfWorkerData
 }
-
-type PdfReportWorkerMessage =
-  | { byteCount: number; ok: true }
-  | { failure: 'byte_limit' | 'storage'; ok: false }
 
 export async function renderReportInWorker(
   options: RenderReportInWorkerOptions,

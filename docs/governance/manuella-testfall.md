@@ -2112,8 +2112,19 @@ matchande antalet dataposter överstiger den konfigurerade exportgränsen. Välj
 
 **Förväntat resultat:** Ingen delfil laddas ned. En lokaliserad feldialog visar
 att personuppgiftsexporten överskrider postgränsen och låter användaren stänga
-dialogen. Motsvarande kapacitetsfel visar säker återförsöksväg utan intern
-feltext.
+dialogen.
+
+### PRIV-12: mättad strukturerad exportkapacitet kan återförsökas
+
+**Steg:** Håll den delade kapaciteten för CSV- och JSON-exporter mättad i
+testmiljön. Öppna den egna personuppgiftsexporten och välj `Exportera JSON`.
+Vänta tills den angivna återförsökstiden har gått ut och välj `Försök igen` när
+kapacitet finns.
+
+**Förväntat resultat:** Ingen delfil laddas ned från det avvisade försöket. En
+lokaliserad feldialog visar att exportkapaciteten är upptagen utan intern
+feltext. Återförsöksknappen aktiveras efter den säkra väntetiden och det nya
+försöket kan slutföras.
 
 ## Utvecklar- och robusthetsytor
 

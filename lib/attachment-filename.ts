@@ -5,8 +5,8 @@ const UTF8_ENCODER = new TextEncoder()
 
 export const MAX_ATTACHMENT_FILENAME_UTF8_BYTES = 240
 
-type AttachmentExtension = '.csv' | '.json' | '.pdf'
-type AttachmentFallback = 'export.csv' | 'export.json' | 'report.pdf'
+export type AttachmentExtension = '.csv' | '.json' | '.pdf'
+export type AttachmentFallback = 'export.csv' | 'export.json' | 'report.pdf'
 
 function utf8ByteLength(value: string): number {
   return UTF8_ENCODER.encode(value).byteLength

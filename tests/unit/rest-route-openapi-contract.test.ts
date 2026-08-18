@@ -17,7 +17,16 @@ interface OpenApiOperation {
   'x-csrf'?: RestCsrfPolicy
 }
 
+interface OpenApiSchema {
+  nullable?: boolean
+  oneOf?: OpenApiSchema[]
+  properties?: Record<string, OpenApiSchema>
+}
+
 interface OpenApiDocument {
+  components?: {
+    schemas?: Record<string, OpenApiSchema>
+  }
   paths: Record<string, Record<string, OpenApiOperation>>
   security?: Array<Record<string, unknown>>
 }
@@ -123,5 +132,14 @@ describe('REST registry and OpenAPI contract', () => {
         contractKeys.has(`${operation.method} ${operation.template}`),
       ).toBe(false)
     }
+  })
+
+  it('accepts null through exactly one data-subject value branch', async () => {
+    const document = await openApiDocument()
+    const value =
+      document.components?.schemas?.DataSubjectExportItem?.properties?.value
+
+    expect(value?.nullable).not.toBe(true)
+    expect(value?.oneOf?.filter(branch => branch.nullable)).toHaveLength(1)
   })
 })

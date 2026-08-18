@@ -1,45 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PdfWorkerData } from '@/lib/pdf/report-worker-contract'
 
-const entryState = vi.hoisted(() => ({
-  collectStatusIconNames: vi.fn(() => ['CircleAlert']),
-  events: [] as string[],
-  pipelineMode: 'success' as
-    | 'byte_limit'
-    | 'storage_efbig'
-    | 'storage_enospc'
-    | 'success'
-    | 'unexpected',
-  pipeline: vi.fn(
-    async (_source: unknown, bounded: import('node:stream').Transform) => {
-      if (entryState.pipelineMode === 'storage_enospc') {
-        throw Object.assign(new Error('disk full'), { code: 'ENOSPC' })
-      }
-      if (entryState.pipelineMode === 'storage_efbig') {
-        throw Object.assign(new Error('file too large'), { code: 'EFBIG' })
-      }
-      if (entryState.pipelineMode === 'unexpected') {
-        throw new Error('renderer failed')
-      }
-
-      const size = entryState.pipelineMode === 'byte_limit' ? 2049 : 1024
-      await new Promise<void>((resolve, reject) => {
-        bounded.once('error', () => undefined)
-        bounded.write(Buffer.alloc(size), error => {
-          if (error) reject(error)
-          else resolve()
-        })
-      })
-    },
-  ),
-  postMessage: vi.fn(),
-  preloadStatusIconNodes: vi.fn(async () => {
-    entryState.events.push('preload')
-  }),
-  renderToStream: vi.fn(async () => {
-    entryState.events.push('render')
-    return { source: true }
-  }),
-  workerData: {
+const entryState = vi.hoisted(() => {
+  const reportWorkerData = (): PdfWorkerData => ({
     locale: 'sv',
     maxBytes: 2048,
     model: {
@@ -47,15 +10,62 @@ const entryState = vi.hoisted(() => ({
         {
           generatedAt: '2026-05-01T00:00:00.000Z',
           requirementId: 'REQ-1',
-          status: { iconName: 'CircleAlert' },
+          status: {
+            color: '#dc2626',
+            iconName: 'CircleAlert',
+            label: 'Review',
+          },
           title: 'Report',
           type: 'header',
         },
       ],
     },
     outputPath: '/tmp/report-worker-entry-test.pdf',
-  } as Record<string, unknown>,
-}))
+  })
+
+  return {
+    collectStatusIconNames: vi.fn(() => ['CircleAlert']),
+    events: [] as string[],
+    pipelineMode: 'success' as
+      | 'byte_limit'
+      | 'storage_efbig'
+      | 'storage_enospc'
+      | 'success'
+      | 'unexpected',
+    pipeline: vi.fn(
+      async (_source: unknown, bounded: import('node:stream').Transform) => {
+        if (entryState.pipelineMode === 'storage_enospc') {
+          throw Object.assign(new Error('disk full'), { code: 'ENOSPC' })
+        }
+        if (entryState.pipelineMode === 'storage_efbig') {
+          throw Object.assign(new Error('file too large'), { code: 'EFBIG' })
+        }
+        if (entryState.pipelineMode === 'unexpected') {
+          throw new Error('renderer failed')
+        }
+
+        const size = entryState.pipelineMode === 'byte_limit' ? 2049 : 1024
+        await new Promise<void>((resolve, reject) => {
+          bounded.once('error', () => undefined)
+          bounded.write(Buffer.alloc(size), error => {
+            if (error) reject(error)
+            else resolve()
+          })
+        })
+      },
+    ),
+    postMessage: vi.fn(),
+    preloadStatusIconNodes: vi.fn(async () => {
+      entryState.events.push('preload')
+    }),
+    renderToStream: vi.fn(async () => {
+      entryState.events.push('render')
+      return { source: true }
+    }),
+    reportWorkerData,
+    workerData: reportWorkerData(),
+  }
+})
 
 vi.mock('node:fs', () => {
   const createWriteStream = vi.fn(() => ({ destination: true }))
@@ -100,22 +110,7 @@ describe('PDF report worker entry', () => {
     vi.clearAllMocks()
     entryState.events.length = 0
     entryState.pipelineMode = 'success'
-    entryState.workerData = {
-      locale: 'sv',
-      maxBytes: 2048,
-      model: {
-        sections: [
-          {
-            generatedAt: '2026-05-01T00:00:00.000Z',
-            requirementId: 'REQ-1',
-            status: { iconName: 'CircleAlert' },
-            title: 'Report',
-            type: 'header',
-          },
-        ],
-      },
-      outputPath: '/tmp/report-worker-entry-test.pdf',
-    }
+    entryState.workerData = entryState.reportWorkerData()
   })
 
   afterEach(() => {

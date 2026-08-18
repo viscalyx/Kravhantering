@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  applyDataSubjectExportRowLimit,
   collectDataSubjectExport as collectDataSubjectExportImplementation,
   DATA_SUBJECT_EXPORT_SOURCE_KEYS,
 } from '@/lib/privacy/data-subject-export'
@@ -64,6 +65,27 @@ function generatedBy() {
 }
 
 describe('data-subject export service', () => {
+  it('bounds only simple top-level SELECT source queries', () => {
+    expect(
+      applyDataSubjectExportRowLimit(
+        '/* privacy:data-export:test */\n SELECT value FROM records',
+        '@1',
+      ),
+    ).toBe(
+      '/* privacy:data-export:test */\n SELECT TOP (@1) value FROM records',
+    )
+    for (const sql of [
+      'WITH rows AS (SELECT value FROM records) SELECT value FROM rows',
+      'SELECT DISTINCT value FROM records',
+      '(SELECT value FROM records)',
+      'SELECT TOP (10) value FROM records',
+    ]) {
+      expect(() => applyDataSubjectExportRowLimit(sql, '@1')).toThrow(
+        'Privacy export source query must be a simple SELECT',
+      )
+    }
+  })
+
   it('exports forensic actor metadata for every matching lifecycle role', async () => {
     const { db, query } = createExportDb({
       'ai_forensic_capture_windows.identity': [
