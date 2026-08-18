@@ -296,7 +296,10 @@ Install these tools on the workstation:
 
 - PowerShell 7+ terminal
 - Azure CLI
-- OpenSSH client, `ssh-keygen`, and `scp`
+- OpenSSH 8.6 or later on Windows, or OpenSSH 8.5 or later on macOS and Linux,
+  plus `ssh-keygen` and `scp`. The workflow reads Windows application-version
+  metadata through PowerShell and reads the OpenSSH version output on macOS and
+  Linux.
 - VS Code with Remote SSH
 - GitHub CLI when GitHub access is required from the remote environment
 - MesloLGS Nerd Font Mono installed on the workstation

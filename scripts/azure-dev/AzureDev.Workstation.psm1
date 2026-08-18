@@ -2963,9 +2963,10 @@ function Remove-AzureDevWorkstation {
   ) {
     return
   }
+  $hostName = Get-AzureDevPublicIpAddress -Config $Context.Config
   Wait-AzureDevSsh `
     -Context $Context `
-    -HostName $Context.Config.SshHostName |
+    -HostName $hostName |
     Out-Null
   Remove-AzureDevRemoteWorkstationKey `
     -Context $Context `

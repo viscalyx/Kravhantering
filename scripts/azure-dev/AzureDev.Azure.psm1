@@ -72,6 +72,53 @@ function Test-AzureDevLocalTool {
   return $null -ne $command
 }
 
+function Get-AzureDevOpenSshVersion {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('windows', 'macos', 'linux')]
+    [string]$Platform
+  )
+
+  $sshCommand = Get-Command ssh -CommandType Application -ErrorAction Stop
+  if ($Platform -eq 'windows') {
+    if ($sshCommand.Version -eq [System.Version]::new(0, 0, 0, 0)) {
+      throw 'Could not determine the Windows OpenSSH client version.'
+    }
+    return $sshCommand.Version
+  }
+
+  $sshVersionResult = Invoke-AzureDevNativeCommand `
+    -FilePath $sshCommand.Source `
+    -Arguments @('-V')
+  $sshVersionMatch = [regex]::Match(
+    $sshVersionResult.Text,
+    'OpenSSH_(?<major>[0-9]+)\.(?<minor>[0-9]+)'
+  )
+  if ($sshVersionResult.ExitCode -ne 0 -or -not $sshVersionMatch.Success) {
+    throw "Could not determine the $Platform OpenSSH client version."
+  }
+  return [System.Version]::new(
+    [int]$sshVersionMatch.Groups['major'].Value,
+    [int]$sshVersionMatch.Groups['minor'].Value
+  )
+}
+
+function Get-AzureDevMinimumOpenSshVersion {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('windows', 'macos', 'linux')]
+    [string]$Platform
+  )
+
+  if ($Platform -eq 'windows') {
+    # Microsoft did not publish an OpenSSH for Windows 8.5 release.
+    return [System.Version]::new(8, 6)
+  }
+  return [System.Version]::new(8, 5)
+}
+
 function Test-AzureDevRuntime {
   [CmdletBinding()]
   param()
@@ -203,6 +250,30 @@ function Test-AzureDevPrerequisites {
   Test-AzureDevLocalTool -Name 'scp' | Out-Null
   Test-AzureDevLocalTool -Name 'git' | Out-Null
   Test-AzureDevLocalTool -Name 'code' -Optional | Out-Null
+
+  $sshPlatform = if ($IsWindows) {
+    'windows'
+  } elseif ($IsMacOS) {
+    'macos'
+  } elseif ($IsLinux) {
+    'linux'
+  } else {
+    throw 'Azure development scripts do not support this workstation platform.'
+  }
+  $sshPlatformLabels = @{
+    windows = 'Windows'
+    macos = 'macOS'
+    linux = 'Linux'
+  }
+  $sshVersion = Get-AzureDevOpenSshVersion -Platform $sshPlatform
+  $minimumSshVersion = Get-AzureDevMinimumOpenSshVersion -Platform $sshPlatform
+  if ($sshVersion -lt $minimumSshVersion) {
+    throw (
+      "OpenSSH $minimumSshVersion or later is required on " +
+      "$($sshPlatformLabels[$sshPlatform]). Detected OpenSSH $sshVersion. " +
+      'Upgrade the OpenSSH client and rerun.'
+    )
+  }
 
   $connected = Connect-AzureDevServicePrincipal `
     -Config $Context.Config `
