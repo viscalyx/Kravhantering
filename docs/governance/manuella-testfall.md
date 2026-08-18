@@ -2104,6 +2104,17 @@ otilldelade personer som inte matchar målet.
 4. Exportera JSON och kontrollera att endast säker metadata visas.
 5. Kör rekommenderad radering och kontrollera att båda posterna raderas.
 
+### PRIV-11: begränsad personuppgiftsexport avvisas utan delfil
+
+**Steg:** Öppna den egna personuppgiftsexporten med en testmiljö där det
+matchande antalet dataposter överstiger den konfigurerade exportgränsen. Välj
+`Exportera JSON`.
+
+**Förväntat resultat:** Ingen delfil laddas ned. En lokaliserad feldialog visar
+att personuppgiftsexporten överskrider postgränsen och låter användaren stänga
+dialogen. Motsvarande kapacitetsfel visar säker återförsöksväg utan intern
+feltext.
+
 ## Utvecklar- och robusthetsytor
 
 ### DEVTOOLS-01: Developer Mode-chip kopierar referens

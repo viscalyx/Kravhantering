@@ -31,6 +31,13 @@ describe('attachment filename policy', () => {
       'export.csv',
     )
     expect(
+      withRequiredAttachmentExtension(
+        'export.JSON.json',
+        '.json',
+        'export.json',
+      ),
+    ).toBe('export.json')
+    expect(
       withRequiredAttachmentExtension('\u0000', '.pdf', 'report.pdf'),
     ).toBe('report.pdf')
   })

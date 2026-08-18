@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  collectDataSubjectExport,
+  collectDataSubjectExport as collectDataSubjectExportImplementation,
   DATA_SUBJECT_EXPORT_SOURCE_KEYS,
 } from '@/lib/privacy/data-subject-export'
 import { PRIVACY_ERASURE_GROUP_POLICIES } from '@/lib/privacy/erasure'
@@ -11,6 +11,23 @@ const TARGET_HSA_ID = 'SE5560000001-kalle1'
 const OTHER_HSA_ID = 'SE5560000001-kalle2'
 
 type RowMap = Record<string, Array<Record<string, unknown>>>
+
+function collectDataSubjectExport(
+  db: Parameters<typeof collectDataSubjectExportImplementation>[0],
+  input: Parameters<typeof collectDataSubjectExportImplementation>[1],
+  itemLimit?: Parameters<typeof collectDataSubjectExportImplementation>[2],
+): ReturnType<typeof collectDataSubjectExportImplementation> {
+  return collectDataSubjectExportImplementation(
+    db,
+    input,
+    itemLimit ?? {
+      createItemLimitError: limit =>
+        Object.assign(new Error('limit'), { limit }),
+      maxItems: 5000,
+      signal: new AbortController().signal,
+    },
+  )
+}
 
 function keyForExportSql(sql: string): string | null {
   const match = sql.match(/privacy:data-export:([a-z0-9_.]+)/)
@@ -587,6 +604,7 @@ describe('data-subject export service', () => {
       collectDataSubjectExport(exact.db, input, {
         createItemLimitError,
         maxItems: 8,
+        signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({ summary: { itemCount: 8 } })
     expect(exact.query).toHaveBeenCalled()
@@ -605,8 +623,80 @@ describe('data-subject export service', () => {
       collectDataSubjectExport(excess.db, input, {
         createItemLimitError,
         maxItems: 7,
+        signal: new AbortController().signal,
       }),
     ).rejects.toMatchObject({ limit: 7 })
     expect(excess.query).not.toHaveBeenCalled()
+  })
+
+  it('stops bounded collection before database work when generation is cancelled', async () => {
+    const { db, query } = createExportDb({})
+    const controller = new AbortController()
+    const reason = new Error('cancelled before collection')
+    controller.abort(reason)
+
+    await expect(
+      collectDataSubjectExport(
+        db,
+        {
+          generatedBy: generatedBy(),
+          target: { hsaId: TARGET_HSA_ID },
+        },
+        {
+          createItemLimitError: limit =>
+            Object.assign(new Error('limit'), { limit }),
+          maxItems: 1000,
+          signal: controller.signal,
+        },
+      ),
+    ).rejects.toBe(reason)
+    expect(query).not.toHaveBeenCalled()
+  })
+
+  it('counts row expansion at the exact item boundary and fetches only one overflow row', async () => {
+    const rows = {
+      'requirement_responsibility_people.identity': [
+        {
+          email: 'kalle@example.test',
+          givenName: 'Kalle',
+          hasProtectedPersonalData: false,
+          hsaId: TARGET_HSA_ID,
+          lastFetchedAt: new Date('2026-08-18T10:00:00Z'),
+          middleName: null,
+          surname: 'Svensson',
+          updatedAt: new Date('2026-08-18T10:00:00Z'),
+        },
+      ],
+    }
+    const exact = createExportDb(rows)
+    const signal = new AbortController().signal
+    const createItemLimitError = (limit: number) =>
+      Object.assign(new Error('limit'), { limit })
+
+    await expect(
+      collectDataSubjectExport(
+        exact.db,
+        {
+          generatedBy: generatedBy(),
+          target: { hsaId: TARGET_HSA_ID },
+        },
+        { createItemLimitError, maxItems: 7, signal },
+      ),
+    ).resolves.toMatchObject({ summary: { itemCount: 7 } })
+
+    const excess = createExportDb(rows)
+    await expect(
+      collectDataSubjectExport(
+        excess.db,
+        {
+          generatedBy: generatedBy(),
+          target: { hsaId: TARGET_HSA_ID },
+        },
+        { createItemLimitError, maxItems: 6, signal },
+      ),
+    ).rejects.toMatchObject({ limit: 6 })
+    const firstQuery = excess.query.mock.calls[0]
+    expect(firstQuery[0]).toContain('SELECT TOP (@1)')
+    expect(firstQuery[1]).toEqual([TARGET_HSA_ID, 7])
   })
 })

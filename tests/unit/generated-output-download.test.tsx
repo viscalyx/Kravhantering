@@ -19,12 +19,16 @@ vi.mock('next-intl', () => ({
       'generatedOutput.errors.csv.storage': 'CSV storage unavailable',
       'generatedOutput.errors.csv.timeout': 'CSV timeout',
       'generatedOutput.errors.csv.unknown': 'Safe CSV error',
+      'generatedOutput.errors.json.items': 'JSON item limit',
+      'generatedOutput.errors.json.unknown': 'Safe JSON error',
       'generatedOutput.errors.pdf.unknown': 'Safe PDF error',
       'generatedOutput.errors.pdf.workerFailed': 'PDF worker failed',
       'generatedOutput.errors.pdf.workerMemory': 'PDF worker memory',
       'generatedOutput.errorTitle': 'Download failed',
       'generatedOutput.phases.csv.downloading': 'Downloading CSV…',
       'generatedOutput.phases.csv.generating': 'Preparing CSV export…',
+      'generatedOutput.phases.json.downloading': 'Downloading JSON…',
+      'generatedOutput.phases.json.generating': 'Preparing JSON export…',
       'generatedOutput.phases.pdf.downloading': 'Downloading PDF…',
       'generatedOutput.phases.pdf.generating': 'Generating PDF…',
       'generatedOutput.retry': 'Retry',
@@ -97,7 +101,7 @@ function DownloadProbe({
   output = 'pdf',
   url = '/reports/test.pdf',
 }: {
-  output?: 'csv' | 'pdf'
+  output?: 'csv' | 'json' | 'pdf'
   url?: string
 }) {
   const download = useGeneratedOutputDownload()
@@ -259,6 +263,31 @@ describe('useGeneratedOutputDownload', () => {
     )
   })
 
+  it('adds the UTF-8 BOM to a bounded JSON download', async () => {
+    fetchMock.mockResolvedValueOnce(
+      responseWithBlob(
+        Promise.resolve(
+          new Blob(['{"schemaVersion":"privacy-data-subject-export.v1"}'], {
+            type: 'application/json;charset=utf-8',
+          }),
+        ),
+        {
+          'Content-Disposition': 'attachment; filename="privacy.json"',
+          'Content-Type': 'application/json;charset=utf-8',
+        },
+      ),
+    )
+    render(<DownloadProbe output="json" url="/privacy/export" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }))
+    await flushMicrotasks()
+
+    const downloaded = vi.mocked(downloadBlob).mock.calls[0][0]
+    const bytes = new Uint8Array(await downloaded.arrayBuffer())
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+    expect(downloadBlob).toHaveBeenCalledWith(downloaded, 'privacy.json')
+  })
+
   it('allows only one active operation per hook across different URLs', () => {
     fetchMock.mockReturnValueOnce(new Promise(() => {}))
     render(<ConcurrentDownloadProbe />)
@@ -417,6 +446,12 @@ describe('useGeneratedOutputDownload', () => {
       details: { limit: 1024, limitKind: 'bytes', output: 'csv' },
       expected: 'CSV byte limit',
       output: 'csv' as const,
+    },
+    {
+      code: 'output_limit_exceeded',
+      details: { limit: 1000, limitKind: 'items', output: 'json' },
+      expected: 'JSON item limit',
+      output: 'json' as const,
     },
     {
       code: 'generation_timeout',

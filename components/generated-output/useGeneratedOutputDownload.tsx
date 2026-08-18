@@ -19,7 +19,7 @@ import { apiFetch } from '@/lib/http/api-fetch'
 import { filenameFromContentDisposition } from '@/lib/pdf/filename'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
-type GeneratedOutputKind = 'csv' | 'pdf'
+type GeneratedOutputKind = 'csv' | 'json' | 'pdf'
 type DownloadPhase = 'downloading' | 'generating'
 
 interface GeneratedOutputDownloadRequest {
@@ -111,7 +111,9 @@ async function parseOutputError(
       ? (record.details as Record<string, unknown>)
       : undefined
   const output =
-    rawDetails?.output === 'csv' || rawDetails?.output === 'pdf'
+    rawDetails?.output === 'csv' ||
+    rawDetails?.output === 'json' ||
+    rawDetails?.output === 'pdf'
       ? rawDetails.output
       : fallbackOutput
   const retryHeader = Number(response.headers.get('Retry-After'))
@@ -182,7 +184,13 @@ export function useGeneratedOutputDownload(): UseGeneratedOutputDownloadResult {
           throw await parseOutputError(response, pending.output)
         }
         setPhase('downloading')
-        const blob = await response.blob()
+        const responseBlob = await response.blob()
+        const blob =
+          pending.output === 'json'
+            ? new Blob(['\uFEFF', responseBlob], {
+                type: responseBlob.type || 'application/json;charset=utf-8',
+              })
+            : responseBlob
         if (controller.signal.aborted) {
           setPhase(null)
           restoreFocus()
@@ -306,7 +314,7 @@ function localizeOutputError(
   t: ReturnType<typeof useTranslations<'generatedOutput'>>,
 ): string {
   const { details } = error
-  const outputKey = details.output === 'csv' ? 'csv' : 'pdf'
+  const outputKey = details.output
   if (error.code === 'output_limit_exceeded') {
     if (details.limitKind === 'items' && details.limit != null) {
       return t(`errors.${outputKey}.items`, { limit: details.limit })

@@ -1545,9 +1545,13 @@ Singleton Admin Center resource limits for requirement imports, generated CSV
 exports, and large PDF reports. Requirement-import limits are shared by the
 browser, REST, AI-assisted authoring, and MCP; the fixed transport and content
 byte ceilings are application-owned rather than persisted here.
-`csv_export_max_items` counts CSV data rows across every CSV dataset; it is not
-requirement-specific. File-size values are persisted as bytes; the UI converts
-them to MiB.
+`csv_export_max_items` counts CSV data rows across every CSV dataset and
+personal-data items in a privacy JSON export; it is not requirement-specific.
+The CSV concurrency and timeout settings also govern privacy JSON, using one
+shared structured-export pool per node. `pdf_report_max_requirements` counts
+personal-data items for privacy PDF while retaining its documented
+requirement/row meaning for other PDF formats. File-size values are persisted
+as bytes; the UI converts them to MiB.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Default | Allowed value |

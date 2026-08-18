@@ -31,7 +31,11 @@ vi.mock('node:worker_threads', () => ({
   Worker: workerState.Worker,
 }))
 
-import { renderReportInWorker } from '@/lib/pdf/report-worker'
+import {
+  renderDataSubjectExportInWorker,
+  renderReportInWorker,
+} from '@/lib/pdf/report-worker'
+import { dataSubjectExportFixture } from './helpers/data-subject-export-fixture'
 
 function options(signal?: AbortSignal) {
   return {
@@ -64,6 +68,31 @@ describe('PDF report worker orchestration', () => {
     })
     worker.emit('message', { byteCount: 1024, ok: true })
     await expect(result).resolves.toBe(1024)
+  })
+
+  it('passes a bounded privacy export document to the terminable worker', async () => {
+    const result = renderDataSubjectExportInWorker({
+      exportData: dataSubjectExportFixture(),
+      locale: 'en',
+      maxBytes: 4096,
+      memoryLimitMib: 256,
+      outputPath: '/tmp/privacy-output.pdf',
+    })
+    const worker = workerState.instances[0]
+
+    expect(worker.options).toMatchObject({
+      resourceLimits: { maxOldGenerationSizeMb: 256 },
+      workerData: {
+        document: {
+          kind: 'data-subject-export',
+          locale: 'en',
+        },
+        maxBytes: 4096,
+        outputPath: '/tmp/privacy-output.pdf',
+      },
+    })
+    worker.emit('message', { byteCount: 2048, ok: true })
+    await expect(result).resolves.toBe(2048)
   })
 
   it.each([

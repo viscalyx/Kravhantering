@@ -46,6 +46,8 @@ export interface GeneratedOutputTerminalRecorder {
 
 export type GeneratedOutputOperation =
   | 'admin.action_log_csv_export'
+  | 'privacy.data_subject_json_export'
+  | 'privacy.data_subject_pdf_export'
   | 'requirements.library_csv_export'
   | 'requirements.list_pdf_report'
   | 'requirements.specification_csv_export'
@@ -61,6 +63,14 @@ const GENERATED_OUTPUT_OPERATIONS: Record<
 > = {
   'admin.action_log_csv_export': {
     output: 'csv',
+    surface: 'export',
+  },
+  'privacy.data_subject_json_export': {
+    output: 'json',
+    surface: 'export',
+  },
+  'privacy.data_subject_pdf_export': {
+    output: 'pdf',
     surface: 'export',
   },
   'requirements.library_csv_export': {

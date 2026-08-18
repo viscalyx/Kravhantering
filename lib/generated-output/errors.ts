@@ -1,4 +1,4 @@
-export type GeneratedOutputKind = 'csv' | 'pdf'
+export type GeneratedOutputKind = 'csv' | 'json' | 'pdf'
 export type GeneratedOutputErrorCode =
   | 'capacity_busy'
   | 'generation_timeout'

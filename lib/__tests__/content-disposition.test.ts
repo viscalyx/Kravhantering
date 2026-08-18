@@ -2,6 +2,7 @@ import { parse } from 'content-disposition'
 import { describe, expect, it } from 'vitest'
 import {
   csvContentDisposition,
+  jsonContentDisposition,
   MAX_CONTENT_DISPOSITION_HEADER_UTF8_BYTES,
   pdfContentDisposition,
 } from '@/lib/http/content-disposition'
@@ -31,5 +32,11 @@ describe('Content-Disposition helpers', () => {
     )
     expect(parse(csvHeader).parameters.filename).toMatch(/\.csv$/)
     expect(parse(pdfHeader).parameters.filename).toBe('report.pdf')
+  })
+
+  it('preserves JSON as the required attachment extension', () => {
+    const header = jsonContentDisposition('data-subject-export.json')
+
+    expect(parse(header).parameters.filename).toBe('data-subject-export.json')
   })
 })

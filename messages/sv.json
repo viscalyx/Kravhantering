@@ -1035,6 +1035,10 @@
       "csv": {
         "generating": "Förbereder CSV-export …",
         "downloading": "Laddar ned CSV …"
+      },
+      "json": {
+        "generating": "Förbereder JSON-export …",
+        "downloading": "Laddar ned JSON …"
       }
     },
     "errors": {
@@ -1046,15 +1050,23 @@
         "storage": "CSV-exporten kunde inte skapas eftersom den temporära lagringen inte är tillgänglig. Försök igen senare eller kontakta en administratör.",
         "unknown": "CSV-exporten kunde inte laddas ned. Försök igen."
       },
+      "json": {
+        "items": "Personuppgiftsexporten innehåller fler än den tillåtna gränsen på {limit} poster. Be en administratör justera exportinställningarna.",
+        "bytes": "Personuppgiftsexporten överskrider den tillåtna filstorleken på {limitMiB} MiB. Be en administratör justera exportinställningarna.",
+        "busy": "Så många strukturerade exporter som tillåts samtidigt pågår redan. Du kan försöka igen om {retryAfter} sekunder.",
+        "timeout": "Personuppgiftsexporten kunde inte slutföras inom tidsgränsen på {timeoutSeconds} sekunder. Be en administratör justera exportinställningarna.",
+        "storage": "Personuppgiftsexporten kunde inte skapas eftersom den temporära lagringen inte är tillgänglig. Försök igen senare eller kontakta en administratör.",
+        "unknown": "Personuppgiftsexporten kunde inte laddas ned. Försök igen."
+      },
       "pdf": {
-        "items": "PDF-rapporten innehåller fler än den tillåtna gränsen på {limit} krav. Begränsa urvalet eller be en administratör justera rapportinställningarna.",
-        "bytes": "PDF-rapporten överskrider den tillåtna filstorleken på {limitMiB} MiB. Begränsa urvalet eller be en administratör justera rapportinställningarna.",
+        "items": "PDF-innehållet innehåller fler än den tillåtna gränsen på {limit} poster. Minska innehållet eller be en administratör justera PDF-inställningarna.",
+        "bytes": "PDF-innehållet överskrider den tillåtna filstorleken på {limitMiB} MiB. Minska innehållet eller be en administratör justera PDF-inställningarna.",
         "busy": "Så många PDF-renderingar som tillåts samtidigt pågår redan. Du kan försöka igen om {retryAfter} sekunder.",
-        "timeout": "PDF-rapporten kunde inte skapas inom tidsgränsen på {timeoutSeconds} sekunder. Begränsa urvalet eller be en administratör justera rapportinställningarna.",
-        "storage": "PDF-rapporten kunde inte skapas eftersom den temporära lagringen inte är tillgänglig. Försök igen senare eller kontakta en administratör.",
-        "workerMemory": "PDF-rapporten kunde inte skapas inom den konfigurerade minnesgränsen. Minska antalet krav eller be en administratör justera rapportinställningarna.",
-        "workerFailed": "PDF-rapporten kunde inte skapas på grund av ett tillfälligt renderingsfel. Försök igen. Kontakta en administratör om felet kvarstår.",
-        "unknown": "PDF-rapporten kunde inte laddas ned. Försök igen."
+        "timeout": "PDF-innehållet kunde inte skapas inom tidsgränsen på {timeoutSeconds} sekunder. Minska innehållet eller be en administratör justera PDF-inställningarna.",
+        "storage": "PDF-innehållet kunde inte skapas eftersom den temporära lagringen inte är tillgänglig. Försök igen senare eller kontakta en administratör.",
+        "workerMemory": "PDF-innehållet kunde inte skapas inom den konfigurerade minnesgränsen. Minska innehållet eller be en administratör justera PDF-inställningarna.",
+        "workerFailed": "PDF-innehållet kunde inte skapas på grund av ett tillfälligt renderingsfel. Försök igen. Kontakta en administratör om felet kvarstår.",
+        "unknown": "PDF-innehållet kunde inte laddas ned. Försök igen."
       }
     }
   },
@@ -1784,7 +1796,7 @@
       },
       "exports": {
         "title": "Exporter",
-        "description": "Styr resursgränser för CSV-exporter. Gränserna gäller per operation om inget annat anges."
+        "description": "Styr resursgränser för CSV-exporter och JSON-exporter av personuppgifter. Formaten delar samtidighetsgränsen för strukturerade exporter."
       },
       "reports": {
         "title": "Rapporter",
@@ -1825,23 +1837,23 @@
         },
         "csvExportMaxItems": {
           "label": "Högsta antal rader per CSV-export",
-          "help": "Begränsar hur många datarader en CSV-export får innehålla. Exporten avvisas innan nedladdningen börjar om resultatet överstiger gränsen. Tillåtet: 1–5 000."
+          "help": "Begränsar CSV-datarader och dataposter i JSON-exporter av personuppgifter. Exporten avvisas innan nedladdningen börjar om resultatet överstiger gränsen. Tillåtet: 1–5 000."
         },
         "csvExportMaxFileBytes": {
           "label": "Högsta CSV-filstorlek",
-          "help": "Begränsar den färdiga CSV-filens storlek. Filen levereras inte om gränsen överskrids. Använd minus eller plus för att ändra med 1 MiB, eller ange ett heltal i MiB. Tillåtet: 1–1 024 MiB."
+          "help": "Begränsar färdig filstorlek för CSV och JSON-exporter av personuppgifter. Filen levereras inte om gränsen överskrids. Använd minus eller plus för att ändra med 1 MiB, eller ange ett heltal i MiB. Tillåtet: 1–1 024 MiB."
         },
         "csvExportConcurrencyPerNode": {
           "label": "Samtidiga CSV-exporter per nod",
-          "help": "Anger hur många CSV-exporter som får pågå samtidigt på varje applikationsnod. Ytterligare försök avvisas tillfälligt med möjlighet att försöka igen. Tillåtet: 1–20."
+          "help": "Anger hur många CSV- och JSON-exporter av personuppgifter som får pågå samtidigt i den delade poolen på varje applikationsnod. Ytterligare försök avvisas tillfälligt med möjlighet att försöka igen. Tillåtet: 1–20."
         },
         "csvExportTimeoutSeconds": {
           "label": "Tidsgräns för CSV-export",
-          "help": "Avbryter en CSV-export som inte har slutförts inom den angivna tiden. Värdet anges i sekunder. Tillåtet: 10–600 sekunder."
+          "help": "Avbryter en CSV- eller JSON-export av personuppgifter som inte har slutförts inom den angivna tiden. Värdet anges i sekunder. Tillåtet: 10–600 sekunder."
         },
         "pdfReportMaxRequirements": {
           "label": "Högsta antal krav per PDF-rapport",
-          "help": "Begränsar hur många krav en PDF-rapport får innehålla. Rapporten avvisas innan rendering börjar om resultatet överstiger gränsen. Tillåtet: 1–1 000."
+          "help": "Begränsar krav i vanliga PDF-rapporter och dataposter i PDF-exporter av personuppgifter. Utdata avvisas innan rendering börjar om gränsen överskrids. Tillåtet: 1–1 000."
         },
         "pdfReportMaxFileBytes": {
           "label": "Högsta PDF-filstorlek",
@@ -2535,7 +2547,7 @@
       },
       "limits": {
         "heading": "Viktiga begränsningar",
-        "body": "Fritextfält skannas inte eftersom produkten instruerar användare att inte skriva personidentifierande uppgifter där. Plattformens säkerhetsloggar hanteras i driftens loggström och ingår inte i den här exporten från applikationen."
+        "body": "Applikationen skapar en komplett begränsad fil och laddar inte ned delar av innehållet. En export som överskrider den konfigurerade post- eller filstorleksgränsen avvisas med vägledning om att kontakta en administratör. Fritextfält skannas inte eftersom produkten instruerar användare att inte skriva personidentifierande uppgifter där. Plattformens säkerhetsloggar hanteras i driftens loggström och ingår inte i den här exporten från applikationen."
       }
     },
     "requirementAreas": {

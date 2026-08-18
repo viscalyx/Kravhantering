@@ -3,7 +3,18 @@ import {
   type GeneratedOutputKind,
 } from '@/lib/generated-output/errors'
 
-const activeGeneration: Record<GeneratedOutputKind, number> = { csv: 0, pdf: 0 }
+type GeneratedOutputCapacityPool = 'csv' | 'pdf'
+
+const activeGeneration: Record<GeneratedOutputCapacityPool, number> = {
+  csv: 0,
+  pdf: 0,
+}
+
+function capacityPool(
+  output: GeneratedOutputKind,
+): GeneratedOutputCapacityPool {
+  return output === 'json' ? 'csv' : output
+}
 
 export interface GeneratedOutputCapacityOptions {
   concurrencyLimit: number
@@ -19,14 +30,15 @@ export interface GeneratedOutputCapacity {
 export function acquireGeneratedOutputCapacity(
   options: GeneratedOutputCapacityOptions,
 ): GeneratedOutputCapacity {
-  if (activeGeneration[options.output] >= options.concurrencyLimit) {
+  const pool = capacityPool(options.output)
+  if (activeGeneration[pool] >= options.concurrencyLimit) {
     throw new GeneratedOutputError('capacity_busy', 'concurrency_limit', {
       output: options.output,
       retryAfterSeconds: 5,
     })
   }
 
-  activeGeneration[options.output] += 1
+  activeGeneration[pool] += 1
   let active = true
   return {
     isActive: () => active,
@@ -34,10 +46,7 @@ export function acquireGeneratedOutputCapacity(
     release: () => {
       if (!active) return
       active = false
-      activeGeneration[options.output] = Math.max(
-        0,
-        activeGeneration[options.output] - 1,
-      )
+      activeGeneration[pool] = Math.max(0, activeGeneration[pool] - 1)
     },
   }
 }

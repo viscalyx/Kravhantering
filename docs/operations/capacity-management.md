@@ -104,25 +104,28 @@ V1 measures:
 - Server-side PDF rendering for requirement, specification, privacy, and
   access-review exports.
 
-The large requirements-list PDF is rendered in an isolated Node worker thread
-from the production-bundled report renderer so production CSP can stay strict
-without `unsafe-eval` or `wasm-unsafe-eval`. All synchronous PDFs share the
-Admin-configured PDF item, timeout, and process-local per-node concurrency
-limits. Requirements Library CSV, procurement and full
-requirements-specification CSV, and Action-log CSV use their separate CSV
-limits and process-local pool. The list-PDF worker additionally uses the PDF
-byte and JavaScript heap limits. Each operation uses one database settings
-snapshot.
+The large requirements-list PDF and privacy PDF are rendered in isolated Node
+worker threads from production-bundled renderers so production CSP can stay
+strict without `unsafe-eval` or `wasm-unsafe-eval`. All PDFs share the
+Admin-configured PDF item, byte, timeout, process-local per-node concurrency,
+and worker-memory limits. Requirements Library CSV, procurement and full
+requirements-specification CSV, Action-log CSV, and privacy JSON use the CSV
+item, byte, timeout, and shared process-local structured-export pool. Each
+operation uses one database settings snapshot.
 
 The PDF item setting counts distinct requirement IDs for selected reports,
 versions for history and review, versions plus suggestions for suggestion
 history, and top-level rows for list, specification, traceability, RFI,
-access-review, and data-subject reports. The exact limit is accepted. Bounded
+access-review, and data-subject reports; for a data-subject report it counts
+exported data items rather than requirements. The exact limit is accepted. Bounded
 collectors request no more than the limit plus one before broad enrichment.
-The direct renderer requires an active capacity admission, and cancellation
-does not release that admission until abandoned React-PDF work settles.
+Privacy PDF rendering is terminable on deadline or request cancellation. Other
+direct PDF renderers require active capacity admission and do not release that
+admission until abandoned React-PDF work settles.
 
 These flows use `operation == "admin.action_log_csv_export"`,
+`operation == "privacy.data_subject_json_export"`,
+`operation == "privacy.data_subject_pdf_export"`,
 `operation == "requirements.library_csv_export"`,
 `operation == "requirements.specification_csv_export"`, or
 `operation == "requirements.list_pdf_report"` with `surface == "export"` or

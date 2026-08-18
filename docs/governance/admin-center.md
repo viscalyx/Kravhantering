@@ -376,6 +376,15 @@ non-reversible target fingerprint and date, not the raw HSA-id. JSON downloads
 use UTF-8 with BOM for Windows text-tool compatibility, while API JSON responses
 remain BOM-free.
 
+Both formats are generated as complete bounded artifacts before download.
+Privacy JSON uses the Admin Center CSV/structured-export limits: the item value
+counts exported personal-data items, the byte value includes the browser
+download BOM, and JSON shares the CSV per-node concurrency pool and timeout.
+Privacy PDF uses the PDF limits: the item value counts exported personal-data
+items, and file bytes, timeout, per-node concurrency, and worker memory all
+apply. A result at the configured item maximum succeeds; a larger result is
+rejected without a partial file.
+
 Requirement-area ownership is direct HSA-id data on
 `requirement_areas.owner_hsa_id`, not a separate owner catalog. Preview rows for
 requirement areas are shown as greyed informational rows; their available

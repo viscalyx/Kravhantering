@@ -10,8 +10,8 @@ export const MAX_CONTENT_DISPOSITION_HEADER_UTF8_BYTES = 2048
 
 function attachmentContentDisposition(
   filename: string,
-  extension: '.csv' | '.pdf',
-  fallbackFilename: 'export.csv' | 'report.pdf',
+  extension: '.csv' | '.json' | '.pdf',
+  fallbackFilename: 'export.csv' | 'export.json' | 'report.pdf',
 ): string {
   const sanitized = withRequiredAttachmentExtension(
     filename,
@@ -33,6 +33,10 @@ function attachmentContentDisposition(
 
 export function csvContentDisposition(filename: string): string {
   return attachmentContentDisposition(filename, '.csv', 'export.csv')
+}
+
+export function jsonContentDisposition(filename: string): string {
+  return attachmentContentDisposition(filename, '.json', 'export.json')
 }
 
 export function pdfContentDisposition(filename: string): string {

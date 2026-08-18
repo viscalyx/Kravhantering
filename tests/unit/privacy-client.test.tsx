@@ -55,6 +55,13 @@ function exportPayload() {
 
 function okJson(body: unknown) {
   return {
+    blob: async () =>
+      new Blob([JSON.stringify(body)], {
+        type: 'application/json;charset=utf-8',
+      }),
+    headers: new Headers({
+      'Content-Disposition': 'attachment; filename="self-export.json"',
+    }),
     json: async () => body,
     ok: true,
   } as Response
@@ -117,7 +124,7 @@ describe('PrivacyClient', () => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/privacy/data-subject-export',
         expect.objectContaining({
-          body: JSON.stringify({ delivery: 'json' }),
+          body: JSON.stringify({ delivery: 'json', locale: 'sv' }),
           method: 'POST',
         }),
       ),
@@ -186,8 +193,12 @@ describe('PrivacyClient', () => {
 
   it('omits optional email and surfaces export failures', async () => {
     fetchMock.mockResolvedValueOnce({
+      headers: new Headers(),
+      json: async () => ({
+        code: 'output_limit_exceeded',
+        details: { limit: 100, limitKind: 'items', output: 'json' },
+      }),
       ok: false,
-      text: async () => JSON.stringify({ error: 'Export denied' }),
     } as Response)
     render(
       <PrivacyClient
@@ -201,6 +212,8 @@ describe('PrivacyClient', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'privacyDataExport.exportJson' }),
     )
-    expect(await screen.findByRole('alert')).toHaveTextContent('Export denied')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'generatedOutput.errors.json.items',
+    )
   })
 })

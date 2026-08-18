@@ -156,6 +156,12 @@ paths:
           headers:
             Cache-Control:
               $ref: '#/components/headers/NoStore'
+            Content-Disposition:
+              schema: { type: string }
+            Content-Length:
+              schema: { type: integer, minimum: 1 }
+            X-Accel-Buffering:
+              schema: { type: string, enum: ['no'] }
           content:
             application/json:
               schema:
@@ -1459,6 +1465,47 @@ components:
         itemCount: { type: integer, minimum: 0 }
         limitationCount: { type: integer, minimum: 0 }
         sourceCount: { type: integer, minimum: 0 }
+    DataSubjectExportItem:
+      type: object
+      required: [fieldName, relationToSubject, sourceKey, table, value]
+      additionalProperties: false
+      properties:
+        fieldName: { type: string, minLength: 1, maxLength: 255 }
+        relatedObject:
+          type: object
+          required: [key, type]
+          additionalProperties: false
+          properties:
+            key: { type: string, maxLength: 450 }
+            label: { type: string, maxLength: 2000 }
+            type: { type: string, minLength: 1, maxLength: 255 }
+        relationToSubject: { type: string, minLength: 1, maxLength: 255 }
+        sourceKey: { type: string, minLength: 1, maxLength: 255 }
+        table: { type: string, minLength: 1, maxLength: 255 }
+        timestamp: { type: string }
+        value:
+          nullable: true
+          oneOf:
+            - { type: boolean }
+            - { type: number }
+            - { type: string, maxLength: 8000 }
+            - type: array
+              maxItems: 100
+              items: { type: string, maxLength: 450 }
+    DataSubjectExportSource:
+      type: object
+      required: [fieldKey, items, key, objectKey, relationToSubject, table]
+      additionalProperties: false
+      properties:
+        fieldKey: { type: string, minLength: 1, maxLength: 255 }
+        items:
+          type: array
+          maxItems: 5000
+          items: { $ref: '#/components/schemas/DataSubjectExportItem' }
+        key: { type: string, minLength: 1, maxLength: 255 }
+        objectKey: { type: string, minLength: 1, maxLength: 255 }
+        relationToSubject: { type: string, minLength: 1, maxLength: 255 }
+        table: { type: string, minLength: 1, maxLength: 255 }
     DataSubjectExportResponse:
       type: object
       required:
@@ -1487,8 +1534,7 @@ components:
           type: array
           maxItems: 100
           items:
-            type: object
-            additionalProperties: true
+            $ref: '#/components/schemas/DataSubjectExportSource'
         subject:
           type: object
           required: [hsaId, targetFingerprint]

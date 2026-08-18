@@ -840,6 +840,41 @@ test('PRIV-01: self-service privacy page exports the signed-in user without targ
 
   await test.step('verify no target override was sent', async () => {
     await expect.poll(() => exportRequests.length).toBe(1)
-    expect(exportRequests[0]).toEqual({ delivery: 'json' })
+    expect(exportRequests[0]).toEqual({ delivery: 'json', locale: 'sv' })
   })
+})
+
+test('PRIV-11: bounded self-service export rejects overflow without a partial download', async ({
+  page,
+}) => {
+  let exportRequests = 0
+  await page.route('**/api/privacy/data-subject-export', async route => {
+    exportRequests += 1
+    await route.fulfill({
+      contentType: 'application/json',
+      headers: { 'Cache-Control': 'no-store' },
+      json: {
+        code: 'output_limit_exceeded',
+        details: { limit: 1000, limitKind: 'items', output: 'json' },
+        error: 'Internal text that must not be shown',
+      },
+      status: 422,
+    })
+  })
+
+  await page.goto('/sv/privacy')
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Exportera JSON' }).click()
+    await expect
+      .poll(() => exportRequests, { timeout: 1_000 })
+      .toBeGreaterThan(0)
+  }).toPass({ timeout: 15_000 })
+
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Nedladdningen misslyckades',
+  })
+  await expect(dialog).toContainText(
+    'Personuppgiftsexporten innehåller fler än den tillåtna gränsen på 1000 poster.',
+  )
+  await expect(dialog).not.toContainText('Internal text that must not be shown')
 })

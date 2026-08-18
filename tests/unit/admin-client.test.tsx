@@ -91,6 +91,11 @@ vi.mock('@/i18n/routing', () => ({
 
 function okJson(body: unknown) {
   return {
+    blob: async () =>
+      new Blob([JSON.stringify(body)], {
+        type: 'application/json;charset=utf-8',
+      }),
+    headers: new Headers(),
     json: async () => body,
     ok: true,
   } as Response
@@ -98,6 +103,7 @@ function okJson(body: unknown) {
 
 function errorJson(body: unknown, status: number) {
   return {
+    headers: new Headers(),
     json: async () => body,
     ok: false,
     status,
@@ -2755,6 +2761,7 @@ describe('AdminClient', () => {
         expect.objectContaining({
           body: JSON.stringify({
             delivery: 'json',
+            locale: 'sv',
             target: { hsaId: 'SE5560000001-kalle2' },
           }),
           method: 'POST',
@@ -2779,7 +2786,17 @@ describe('AdminClient', () => {
         }),
       )
       .mockResolvedValueOnce(
-        errorJson({ error: 'PrivacyOfficer role is required' }, 403),
+        errorJson(
+          {
+            code: 'output_limit_exceeded',
+            details: {
+              limit: 100,
+              limitKind: 'items',
+              output: 'json',
+            },
+          },
+          422,
+        ),
       )
 
     render(
@@ -2808,7 +2825,7 @@ describe('AdminClient', () => {
     await screen.findByRole('alert')
     expect(
       screen.getByText(
-        'admin.privacy.exportError PrivacyOfficer role is required',
+        'admin.privacy.exportError generatedOutput.errors.json.items',
       ),
     ).toBeTruthy()
     expect(createObjectURLMock).not.toHaveBeenCalled()

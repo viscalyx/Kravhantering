@@ -119,6 +119,11 @@ active admission token required by `renderPdfResponse()` and
 `renderReportModelPdfResponse()`. Direct callers cannot render without this
 token. The list-PDF spool acquires capacity from the same process-wide pool
 before its bounded traversal and worker render.
+Privacy PDF does not use the direct-renderer path: it acquires the same PDF
+pool and settings before collection, then renders through the terminable worker
+with the configured byte and worker-memory limits. Privacy JSON uses the CSV
+settings and shared structured-export pool, writes bounded JSON to the private
+spool, and reserves three bytes for the browser-download BOM.
 
 The item limit counts distinct IDs for combined and selected-list reports;
 versions for history and review; versions plus suggestions for suggestion
@@ -131,12 +136,13 @@ rejections use `422 output_limit_exceeded`; saturated capacity uses
 The shared client helper opens immediately, shows separate indeterminate
 generation and Blob-download phases, supports cancellation, and maps only
 stable generated-output error codes. One hook instance permits only one active
-CSV or PDF operation, including different URLs. User-facing report menu labels
-use only the report name for PDF actions, without a download verb or `(PDF)`
-suffix.
+CSV, JSON, or PDF operation, including different URLs. User-facing report menu
+labels use only the report name for PDF actions, without a download verb or
+`(PDF)` suffix.
 
-The large list-PDF route writes only to a private spool file and invokes
-`renderReportInWorker()`. It passes the literal
+The large list-PDF and privacy-PDF routes write only to private spool files and
+invoke the report worker with their respective structured document models. The
+worker client passes the literal
 `./lib/pdf/report-worker-entry.ts` filename to `node:worker_threads`.
 Next.js 16.2.10 Turbopack compiles that entry and its TSX renderer, project
 aliases, translations, privacy formatting, React-PDF graph, and icon allowlist

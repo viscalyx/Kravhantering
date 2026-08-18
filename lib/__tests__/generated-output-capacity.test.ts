@@ -79,4 +79,27 @@ describe('generated-output capacity', () => {
     await work
     expect(generatedOutputCapacitySnapshot().activePdf).toBe(0)
   })
+
+  it('shares one structured-export capacity pool between CSV and JSON', () => {
+    const csv = acquireGeneratedOutputCapacity({
+      concurrencyLimit: 1,
+      output: 'csv',
+    })
+    try {
+      expect(() =>
+        acquireGeneratedOutputCapacity({
+          concurrencyLimit: 1,
+          output: 'json',
+        }),
+      ).toThrowError(
+        expect.objectContaining({
+          code: 'capacity_busy',
+          details: expect.objectContaining({ output: 'json' }),
+        }),
+      )
+    } finally {
+      csv.release()
+    }
+    expect(generatedOutputCapacitySnapshot().activeCsv).toBe(0)
+  })
 })

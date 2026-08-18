@@ -28,9 +28,10 @@ allowed. Exporting any other HSA-id requires `PrivacyOfficer`.
 
 ## Export Schema
 
-`delivery: "json"` returns JSON with `Cache-Control: no-store`;
-`delivery: "pdf"` returns `application/pdf` with attachment headers and
-`Cache-Control: no-store`. The current JSON schema version is
+`delivery: "json"` returns JSON with attachment, exact `Content-Length`, and
+`Cache-Control: no-store` headers; `delivery: "pdf"` returns
+`application/pdf` with the same bounded-download headers. The current JSON
+schema version is
 `privacy-data-subject-export.v1`. The schema applies to JSON. The PDF is not a
 second technical schema or a field-by-field dump; it is a localized readable
 presentation of the collected data.
@@ -92,6 +93,27 @@ its token; deleting a rate bucket resets the current short-lived counter.
 
 ## Limits
 
+Both delivery modes acquire generated-output capacity before broad source
+queries. The collector applies one aggregate item budget across session claims
+and every database source, requests only the remaining budget plus one row to
+detect overflow, and rejects the complete export instead of returning partial
+content. Collection observes the request deadline and cancellation signal
+between source queries.
+
+Privacy JSON uses the Admin Center CSV/structured-export item, completed-file,
+timeout, and per-node concurrency settings. The JSON artifact is written to the
+private bounded spool before response headers are returned. Browser downloads
+add the existing UTF-8 BOM while API JSON remains BOM-free; the three BOM bytes
+are reserved within the configured completed-file limit.
+
+Privacy PDF uses the Admin Center PDF item, completed-file, timeout,
+concurrency, and worker-memory settings. Rendering runs in a terminable worker
+thread and streams into the private bounded spool, so timeout, cancellation,
+byte overflow, renderer-memory exhaustion, and renderer failure cannot return
+a partial PDF. Exact item limits are accepted; one item over is rejected with
+`422 output_limit_exceeded`. Busy capacity returns `429 capacity_busy` with
+`Retry-After`, while timeout and worker failures use stable `503` responses.
+
 Free-text fields are excluded because product policy tells users not to enter
 person-identifying data there. Platform security-audit logs are operational logs
 outside the application database and are documented as a limitation of this
@@ -117,5 +139,7 @@ generated examples for self-export and `PrivacyOfficer` cross-user export, and
 documents `Cache-Control: no-store` for JSON/PDF export responses and
 validation/authorization errors.
 
-Focused route tests continue to cover the privacy role matrix, self-export
-behavior, no-store response headers, and audit-redaction assertions.
+Focused route tests cover the privacy role matrix, exact and excessive item
+boundaries, JSON byte limits, capacity admission and release, timeout and
+cancellation, PDF worker byte/memory failure, no-store response headers, and
+audit-redaction assertions.

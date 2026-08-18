@@ -5,6 +5,9 @@ const UTF8_ENCODER = new TextEncoder()
 
 export const MAX_ATTACHMENT_FILENAME_UTF8_BYTES = 240
 
+type AttachmentExtension = '.csv' | '.json' | '.pdf'
+type AttachmentFallback = 'export.csv' | 'export.json' | 'report.pdf'
+
 function utf8ByteLength(value: string): number {
   return UTF8_ENCODER.encode(value).byteLength
 }
@@ -67,8 +70,8 @@ function withoutRepeatedExtension(filename: string, extension: string): string {
 
 export function withRequiredAttachmentExtension(
   filename: string,
-  extension: '.csv' | '.pdf',
-  fallbackFilename: 'export.csv' | 'report.pdf',
+  extension: AttachmentExtension,
+  fallbackFilename: AttachmentFallback,
 ): string {
   const sanitized = sanitizeAttachmentFilename(filename)
   const stem = sanitized ? withoutRepeatedExtension(sanitized, extension) : ''
@@ -82,7 +85,7 @@ export function withRequiredAttachmentExtension(
 
 export function asciiAttachmentFilename(
   filename: string,
-  fallbackFilename: 'export.csv' | 'report.pdf',
+  fallbackFilename: AttachmentFallback,
 ): string {
   const fallback = filename
     .replace(/[^\x20-\x7e]/g, '_')

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createElement } from 'react'
 import { z } from 'zod'
-import DataSubjectExportPdfRenderer from '@/components/privacy/DataSubjectExportPdfRenderer'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { CsrfError } from '@/lib/auth/csrf'
 import { isHsaId } from '@/lib/auth/hsa-id'
@@ -11,24 +9,15 @@ import {
   type LoggedInSession,
 } from '@/lib/auth/session'
 import { getRequestSqlServerDataSource } from '@/lib/db'
-import { throwIfGenerationAborted } from '@/lib/generated-output/operation'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   customMutationPolicy,
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 import { boundedDbStringSchema, localeSchema } from '@/lib/http/validation'
-import { renderPdfResponse } from '@/lib/pdf/server-response'
-import {
-  createPdfItemLimitError,
-  runSynchronousPdfGeneration,
-  synchronousPdfErrorResponse,
-} from '@/lib/pdf/synchronous-generation'
-import {
-  type CollectDataSubjectExportInput,
-  collectDataSubjectExport,
-} from '@/lib/privacy/data-subject-export'
-import { dataSubjectExportFilename } from '@/lib/privacy/data-subject-export-filenames'
+import { synchronousGeneratedOutputErrorResponse } from '@/lib/pdf/synchronous-generation'
+import type { CollectDataSubjectExportInput } from '@/lib/privacy/data-subject-export'
+import { generateDataSubjectExport } from '@/lib/privacy/data-subject-export-output'
 import type { DataSubjectExportSessionClaims } from '@/lib/privacy/data-subject-export-types'
 import { auditActor, unexpectedErrorBody } from '@/lib/privacy/route-helpers'
 import {
@@ -71,10 +60,14 @@ function sessionClaims(
     givenName: session.givenName,
     hsaId: session.hsaId,
     name: session.name,
-    roles: [...session.roles],
+    roles: uniqueRoles(session.roles),
     sub: session.sub,
     ...(session.email ? { email: session.email } : {}),
   }
+}
+
+function uniqueRoles(roles: readonly string[]): string[] {
+  return [...new Set(roles)]
 }
 
 function assertDataSubjectExportAllowed(
@@ -135,7 +128,7 @@ export const POST = secureMutationRoute({
         generatedBy: {
           displayName: actorSnapshot.displayName,
           hsaId: actorSnapshot.hsaId,
-          roles: [...context.actor.roles],
+          roles: uniqueRoles(context.actor.roles),
           source: context.actor.source,
           ...(context.actor.id ? { sub: context.actor.id } : {}),
         },
@@ -143,54 +136,30 @@ export const POST = secureMutationRoute({
         target: { hsaId: targetHsaId },
       } satisfies CollectDataSubjectExportInput
 
-      if (body.delivery === 'pdf') {
-        return await runSynchronousPdfGeneration(
-          db,
-          request.signal,
-          async ({ capacity, itemLimit, signal }) => {
-            const exportPayload = await collectDataSubjectExport(
-              db,
-              exportInput,
-              {
-                createItemLimitError: createPdfItemLimitError,
-                maxItems: itemLimit,
-              },
-            )
-            throwIfGenerationAborted(signal)
-            const response = await renderPdfResponse(
-              createElement(DataSubjectExportPdfRenderer, {
-                exportData: exportPayload,
-                locale: body.locale,
-              }),
-              dataSubjectExportFilename(exportPayload, 'pdf', body.locale),
-              { capacity },
-            )
-            throwIfGenerationAborted(signal)
-            recordDataSubjectExportSecurityEvent(
-              body.delivery,
-              exportPayload,
-              context,
-              request,
-            )
-            return response
-          },
-        )
-      }
-
-      const exportPayload = await collectDataSubjectExport(db, exportInput)
+      const generated = await generateDataSubjectExport({
+        context,
+        db,
+        delivery: body.delivery,
+        input: exportInput,
+        locale: body.locale,
+        requestSignal: request.signal,
+      })
       recordDataSubjectExportSecurityEvent(
         body.delivery,
-        exportPayload,
+        generated.payload,
         context,
         request,
       )
-      return NextResponse.json(exportPayload)
+      return generated.response
     } catch (error) {
       if (error instanceof CsrfError || isRequirementsServiceError(error)) {
         const { body, status } = toHttpErrorPayload(error)
         return NextResponse.json(body, { status })
       }
-      const generatedResponse = synchronousPdfErrorResponse(error)
+      const generatedResponse = synchronousGeneratedOutputErrorResponse(
+        body.delivery,
+        error,
+      )
       if (generatedResponse) return generatedResponse
       logSanitizedError('Failed to generate data-subject export', error)
       return NextResponse.json(
@@ -203,7 +172,9 @@ export const POST = secureMutationRoute({
 
 function recordDataSubjectExportSecurityEvent(
   delivery: 'json' | 'pdf',
-  exportPayload: Awaited<ReturnType<typeof collectDataSubjectExport>>,
+  exportPayload: Awaited<
+    ReturnType<typeof generateDataSubjectExport>
+  >['payload'],
   context: RequestContext,
   request: Request,
 ): void {

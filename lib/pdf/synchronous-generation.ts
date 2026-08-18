@@ -6,6 +6,7 @@ import {
 } from '@/lib/generated-output/capacity'
 import {
   GeneratedOutputError,
+  type GeneratedOutputKind,
   generatedOutputErrorResponse,
   isGeneratedOutputError,
 } from '@/lib/generated-output/errors'
@@ -71,9 +72,16 @@ export async function runSynchronousPdfGeneration<T>(
 export function synchronousPdfErrorResponse(
   error: unknown,
 ): Response | undefined {
+  return synchronousGeneratedOutputErrorResponse('pdf', error)
+}
+
+export function synchronousGeneratedOutputErrorResponse(
+  output: GeneratedOutputKind,
+  error: unknown,
+): Response | undefined {
   if (error instanceof GeneratedOutputTimeoutError) {
     return generatedOutputErrorResponse(
-      generatedOutputErrorFromTimeout('pdf', error),
+      generatedOutputErrorFromTimeout(output, error),
     )
   }
   if (isGeneratedOutputError(error)) {

@@ -39,6 +39,22 @@ const entryState = vi.hoisted(() => ({
     entryState.events.push('render')
     return { source: true }
   }),
+  workerData: {
+    locale: 'sv',
+    maxBytes: 2048,
+    model: {
+      sections: [
+        {
+          generatedAt: '2026-05-01T00:00:00.000Z',
+          requirementId: 'REQ-1',
+          status: { iconName: 'CircleAlert' },
+          title: 'Report',
+          type: 'header',
+        },
+      ],
+    },
+    outputPath: '/tmp/report-worker-entry-test.pdf',
+  } as Record<string, unknown>,
 }))
 
 vi.mock('node:fs', () => {
@@ -54,7 +70,37 @@ vi.mock('node:stream/promises', () => ({
 vi.mock('node:worker_threads', () => {
   const workerThreads = {
     parentPort: { postMessage: entryState.postMessage },
-    workerData: {
+    get workerData() {
+      return entryState.workerData
+    },
+  }
+  return { ...workerThreads, default: workerThreads }
+})
+
+vi.mock('@react-pdf/renderer', () => ({
+  renderToStream: entryState.renderToStream,
+}))
+
+vi.mock('@/components/reports/pdf/PdfReportRenderer', () => ({
+  default: 'mock-pdf-report',
+}))
+
+vi.mock('@/components/privacy/DataSubjectExportPdfRenderer', () => ({
+  default: 'mock-data-subject-export',
+}))
+
+vi.mock('@/lib/icons/status-icon-allowlist', () => ({
+  collectStatusIconNames: entryState.collectStatusIconNames,
+  preloadStatusIconNodes: entryState.preloadStatusIconNodes,
+}))
+
+describe('PDF report worker entry', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    entryState.events.length = 0
+    entryState.pipelineMode = 'success'
+    entryState.workerData = {
       locale: 'sv',
       maxBytes: 2048,
       model: {
@@ -69,30 +115,7 @@ vi.mock('node:worker_threads', () => {
         ],
       },
       outputPath: '/tmp/report-worker-entry-test.pdf',
-    },
-  }
-  return { ...workerThreads, default: workerThreads }
-})
-
-vi.mock('@react-pdf/renderer', () => ({
-  renderToStream: entryState.renderToStream,
-}))
-
-vi.mock('@/components/reports/pdf/PdfReportRenderer', () => ({
-  default: 'mock-pdf-report',
-}))
-
-vi.mock('@/lib/icons/status-icon-allowlist', () => ({
-  collectStatusIconNames: entryState.collectStatusIconNames,
-  preloadStatusIconNodes: entryState.preloadStatusIconNodes,
-}))
-
-describe('PDF report worker entry', () => {
-  beforeEach(() => {
-    vi.resetModules()
-    vi.clearAllMocks()
-    entryState.events.length = 0
-    entryState.pipelineMode = 'success'
+    }
   })
 
   afterEach(() => {
@@ -123,6 +146,42 @@ describe('PDF report worker entry', () => {
         failure: 'byte_limit',
         ok: false,
       }),
+    )
+  })
+
+  it('renders the privacy export document in the isolated worker', async () => {
+    entryState.workerData = {
+      document: {
+        exportData: {
+          generatedAt: '2026-05-01T00:00:00.000Z',
+          generatedBy: {
+            displayName: 'Ada Admin',
+            hsaId: 'SE5560000001-admin1',
+            roles: ['Admin'],
+            source: 'oidc',
+          },
+          limitations: [],
+          schemaVersion: 'privacy-data-subject-export.v1',
+          sources: [],
+          subject: {
+            hsaId: 'SE5560000001-admin1',
+            targetFingerprint: '0123456789abcdef',
+          },
+          summary: { itemCount: 0, limitationCount: 0, sourceCount: 0 },
+        },
+        kind: 'data-subject-export',
+        locale: 'en',
+      },
+      maxBytes: 2048,
+      outputPath: '/tmp/privacy-worker-entry-test.pdf',
+    }
+
+    await import('@/lib/pdf/report-worker-entry')
+    await vi.waitFor(() => expect(entryState.postMessage).toHaveBeenCalled())
+
+    expect(entryState.collectStatusIconNames).not.toHaveBeenCalled()
+    expect(entryState.renderToStream).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'mock-data-subject-export' }),
     )
   })
 
