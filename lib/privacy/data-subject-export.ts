@@ -22,6 +22,7 @@ interface QueryExecutor {
 type ExportRow = Record<string, unknown>
 
 const SIMPLE_SELECT_PREFIX = /^(\s*(?:\/\*[\s\S]*?\*\/\s*)*SELECT)(\s+)/iu
+const SQL_TRIVIA_PREFIX = /^(?:\s|\/\*[\s\S]*?\*\/|--[^\r\n]*(?:\r?\n|$))*/u
 
 export function applyDataSubjectExportRowLimit(
   sql: string,
@@ -32,7 +33,10 @@ export function applyDataSubjectExportRowLimit(
     throw new Error('Privacy export source query must be a simple SELECT')
   }
   const remainder = sql.slice(match[0].length)
-  if (/^(?:ALL|DISTINCT|TOP)\b/iu.test(remainder)) {
+  const meaningfulRemainder = remainder.slice(
+    SQL_TRIVIA_PREFIX.exec(remainder)?.[0].length ?? 0,
+  )
+  if (/^(?:ALL|DISTINCT|TOP)\b/iu.test(meaningfulRemainder)) {
     throw new Error('Privacy export source query must be a simple SELECT')
   }
   return `${match[1]} TOP (${limitParameter})${match[2]}${remainder}`

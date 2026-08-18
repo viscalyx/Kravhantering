@@ -86,6 +86,22 @@ describe('data-subject export service', () => {
     }
   })
 
+  it('rejects SELECT modifiers after block and line comments', () => {
+    for (const modifier of ['ALL', 'DISTINCT', 'TOP (10)']) {
+      for (const comment of [
+        '/* query qualifier */ ',
+        '-- query qualifier\n',
+      ]) {
+        expect(() =>
+          applyDataSubjectExportRowLimit(
+            `SELECT ${comment}${modifier} value FROM records`,
+            '@1',
+          ),
+        ).toThrow('Privacy export source query must be a simple SELECT')
+      }
+    }
+  })
+
   it('exports forensic actor metadata for every matching lifecycle role', async () => {
     const { db, query } = createExportDb({
       'ai_forensic_capture_windows.identity': [
