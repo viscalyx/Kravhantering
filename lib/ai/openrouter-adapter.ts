@@ -831,7 +831,12 @@ async function* runStreaming(
   }
 }
 
+const activeTransports = new Map<string, AbortController>()
+
 const openRouterAdapter: AIConnectionAdapter = {
+  forceClose(externalRunId): void {
+    activeTransports.get(externalRunId)?.abort()
+  },
   async *run(
     request: AiConnectionAdapterRunRequest,
   ): AsyncIterable<AiRunEvent> {
@@ -884,8 +889,10 @@ const openRouterAdapter: AIConnectionAdapter = {
       })
       return
     }
+    activeTransports.set(request.context.externalRunId, abortContext.controller)
     const initialAbort = abortEvent(request, abortContext)
     if (initialAbort) {
+      activeTransports.delete(request.context.externalRunId)
       abortContext.cleanup()
       yield initialAbort
       return
@@ -907,6 +914,7 @@ const openRouterAdapter: AIConnectionAdapter = {
         )
       }
     } finally {
+      activeTransports.delete(request.context.externalRunId)
       abortContext.cleanup()
       abortContext.controller.abort()
     }

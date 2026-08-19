@@ -324,6 +324,7 @@ erDiagram
     ai_run_coordination_entries {
         uniqueidentifier id PK
         text application_run_id UK
+        uniqueidentifier fencing_token
         uniqueidentifier ai_connection_id FK
         uniqueidentifier ai_connection_model_revision_id FK
         uniqueidentifier ai_run_profile_revision_id FK
@@ -2011,6 +2012,7 @@ delete the row; expired deadlines and leases are reclaimed transactionally.
 | ------ | ---- | ----------- |
 | `id` | uniqueidentifier PK | Opaque coordination-row identity |
 | `application_run_id` | nvarchar(100) UK | Opaque application run identity |
+| `fencing_token` | uniqueidentifier | Per-invocation token preventing stale or duplicate workers from mutating a newer lease |
 | `ai_connection_id` | uniqueidentifier FK | Connection whose distributed concurrency is consumed |
 | `ai_connection_model_revision_id` | uniqueidentifier FK | Exact model revision and optional lower concurrency ceiling |
 | `ai_run_profile_revision_id` | uniqueidentifier FK | Exact profile revision and queue policy |
@@ -3548,6 +3550,10 @@ graph LR
     AIRCE -- "FK connection_id" --> AIC
     AIRCE -- "FK model_revision_id" --> AICMR
     AIRCE -- "FK profile_revision_id" --> AIRPR
+    AIRCE -- "uq_..._application_run_id\n(application_run_id)" --> AIRCE
+    AIRCE -- "uq_..._queue_sequence\n(queue_sequence)" --> AIRCE
+    AIRCE -- "idx_..._fifo\n(connection_id, status, not_before, queue_sequence)" --> AIRCE
+    AIRCE -- "idx_..._lease_expires_at\n(lease_expires_at WHERE non-null)" --> AIRCE
 
     AFCW -- "uq_..._is_open\n(is_open WHERE is_open = 1)" --> AFCW
     AFCW -- "idx_..._expires_at\n(expires_at)" --> AFCW

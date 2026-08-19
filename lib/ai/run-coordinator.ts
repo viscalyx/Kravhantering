@@ -40,55 +40,110 @@ export type AiRunAcquireResult =
       status: 'breaker_open' | 'expired' | 'waiting'
     }
 
+export interface AiRecoveryProbeTarget {
+  adapterVersion: string
+  identity: AiRunIdentity
+  runType: AiRunType
+  totalTimeBudgetMs: number
+}
+
+export interface AiHealthProbeResult {
+  failure?: AiRunFailure
+  succeeded: boolean
+  usage?: AiRunUsage
+}
+
+export interface AiRecoveryProbeLeaseInput {
+  leaseDurationMs: number
+  leaseOwnerId: string
+  modelRevisionId: string
+  probeRunId: string
+}
+
+export interface AiRecoveryProbeResultInput {
+  failure?: AiRunFailure
+  leaseOwnerId: string
+  modelRevisionId: string
+  probeRunId: string
+  succeeded: boolean
+}
+
+export interface AiOperationalStateTransition {
+  breakerOpened: boolean
+  breakerStatus?: 'closed' | 'half_open' | 'open'
+  healthStateChanged: boolean
+  healthStatus?: 'degraded' | 'healthy' | 'unavailable' | 'unknown'
+}
+
 export interface AiRunCoordinationStore {
   acquire(input: {
     applicationRunId: string
+    fencingToken: string
     leaseDurationMs: number
     leaseOwnerId: string
   }): Promise<AiRunAcquireResult>
+  acquireManualRecoveryProbe(input: AiRecoveryProbeLeaseInput): Promise<boolean>
+  acquireRecoveryProbe(input: AiRecoveryProbeLeaseInput): Promise<boolean>
   enqueue(input: {
     applicationRunId: string
+    fencingToken: string
     identity: AiRunIdentity
     queueCapacity: number
     totalDeadlineAt: Date
   }): Promise<AiRunAdmissionResult>
   finish(input: {
     applicationRunId: string
+    fencingToken: string
     failure?: AiRunFailure
     outcome: 'cancelled' | 'completed' | 'failed'
-  }): Promise<{ breakerOpened: boolean } | undefined>
+  }): Promise<AiOperationalStateTransition | undefined>
+  finishRecoveryProbe(
+    input: AiRecoveryProbeResultInput,
+  ): Promise<AiOperationalStateTransition | undefined>
+  listDueRecoveryProbes(limit: number): Promise<AiRecoveryProbeTarget[]>
   renew(input: {
     applicationRunId: string
+    fencingToken: string
     leaseDurationMs: number
     leaseOwnerId: string
   }): Promise<boolean>
   requeueForRetry(input: {
     applicationRunId: string
+    fencingToken: string
+    leaseOwnerId: string
     notBefore: Date
   }): Promise<void>
 }
 
 export type AiRunTelemetryName =
+  | 'admin_health_check'
   | 'ai_alarm_authentication_failed'
   | 'ai_alarm_breaker_opened'
   | 'ai_alarm_active_profile_blocked'
   | 'ai_attempt_terminal'
+  | 'ai_health_probe_started'
+  | 'ai_health_probe_terminal'
+  | 'ai_health_state_changed'
   | 'ai_run_started'
   | 'ai_run_terminal'
 
 export interface AiRunTelemetryEvent {
   activeConcurrency?: number
+  actorId?: string
   adapterVersion: string
   aiConnectionId: string
   aiConnectionModelRevisionId: string
   aiRunProfileRevisionId: string
   applicationRunId: string
   attempt?: number
+  breakerStatus?: AiOperationalStateTransition['breakerStatus']
   cancellationReason?: string
   durationMs?: number
   failureCategory?: AiRunFailure['category']
+  healthStatus?: AiOperationalStateTransition['healthStatus']
   name: AiRunTelemetryName
   outcome?: 'cancelled' | 'completed' | 'failed'
+  probeKind?: 'automatic' | 'manual'
   queueDepth?: number
   queueWaitMs?: number
   retryCount?: number
@@ -111,7 +166,31 @@ export interface AiRunCoordinator {
       abortSignal: AbortSignal,
       totalDeadlineAt: string,
     ) => AsyncIterable<AiRunEvent>,
+    forceCloseAttempt: (applicationRunId: string) => void,
   ): AsyncIterable<AiRunEvent>
+  runDueRecoveryProbes(
+    executeProbe: (
+      target: Readonly<AiRecoveryProbeTarget>,
+      probeRunId: string,
+      abortSignal: AbortSignal,
+    ) => Promise<AiHealthProbeResult>,
+  ): Promise<void>
+  runManualHealthProbe(
+    target: Readonly<AiRecoveryProbeTarget>,
+    actorId: string,
+    executeProbe: (
+      target: Readonly<AiRecoveryProbeTarget>,
+      probeRunId: string,
+      abortSignal: AbortSignal,
+    ) => Promise<AiHealthProbeResult>,
+  ): Promise<AiHealthProbeResult>
+  startAutomaticRecovery(
+    executeProbe: (
+      target: Readonly<AiRecoveryProbeTarget>,
+      probeRunId: string,
+      abortSignal: AbortSignal,
+    ) => Promise<AiHealthProbeResult>,
+  ): () => void
 }
 
 interface CreateAiRunCoordinatorOptions {
@@ -121,6 +200,7 @@ interface CreateAiRunCoordinatorOptions {
   now?: () => number
   pollIntervalMs?: number
   random?: () => number
+  recoveryPollIntervalMs?: number
   telemetry?: AiRunTelemetry
 }
 
@@ -179,15 +259,22 @@ function defaultDelay(
   })
 }
 
-async function settleWithinGrace(promise: Promise<unknown>): Promise<void> {
+async function settleWithinGrace(
+  promise: Promise<unknown>,
+  forceClose: () => void,
+): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined
-  await Promise.race([
-    promise.catch(() => undefined),
-    new Promise<void>(resolve => {
-      timer = setTimeout(resolve, CANCELLATION_GRACE_MS)
+  const settled = await Promise.race([
+    promise.then(
+      () => true,
+      () => true,
+    ),
+    new Promise<false>(resolve => {
+      timer = setTimeout(() => resolve(false), CANCELLATION_GRACE_MS)
     }),
   ])
   if (timer) clearTimeout(timer)
+  if (!settled) forceClose()
 }
 
 function outputTokenCount(event: AiRunEvent): number | null {
@@ -231,6 +318,14 @@ function mayRetry(
   ) {
     return false
   }
+  if (
+    event.failure.category === 'authentication_failed' ||
+    event.failure.category === 'deadline_exceeded' ||
+    event.failure.category === 'invalid_response' ||
+    event.failure.category === 'capability_mismatch'
+  ) {
+    return false
+  }
   return (
     event.failure.retryDisposition === 'safe_before_acceptance' ||
     event.failure.retryDisposition === 'explicit_retryable_status' ||
@@ -255,10 +350,190 @@ export function createAiRunCoordinator(
   const random = options.random ?? Math.random
   const leaseOwnerId = options.leaseOwnerId ?? randomUUID()
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_MS
+  const recoveryPollIntervalMs = options.recoveryPollIntervalMs ?? 60_000
+
+  const emit = async (event: AiRunTelemetryEvent): Promise<void> => {
+    try {
+      await options.telemetry?.emit(Object.freeze(event))
+    } catch {
+      // Observability must remain content-free and cannot change run outcome.
+    }
+  }
+
+  const runDueRecoveryProbes: AiRunCoordinator['runDueRecoveryProbes'] =
+    async executeProbe => {
+      const targets = await options.coordination.listDueRecoveryProbes(10)
+      for (const target of targets) {
+        const probeRunId = randomUUID()
+        const acquired = await options.coordination.acquireRecoveryProbe({
+          leaseDurationMs: target.totalTimeBudgetMs + CANCELLATION_GRACE_MS,
+          leaseOwnerId,
+          modelRevisionId: target.identity.aiConnectionModelRevisionId,
+          probeRunId,
+        })
+        if (!acquired) continue
+        const startedAt = now()
+        const telemetryBase = {
+          adapterVersion: target.adapterVersion,
+          aiConnectionId: target.identity.aiConnectionId,
+          aiConnectionModelRevisionId:
+            target.identity.aiConnectionModelRevisionId,
+          aiRunProfileRevisionId: target.identity.aiRunProfileRevisionId,
+          applicationRunId: probeRunId,
+          probeKind: 'automatic' as const,
+          runType: target.runType,
+        }
+        await emit({ ...telemetryBase, name: 'ai_health_probe_started' })
+        await emit({
+          ...telemetryBase,
+          breakerStatus: 'half_open',
+          healthStatus: 'unavailable',
+          name: 'ai_health_state_changed',
+        })
+        const controller = new AbortController()
+        const timeout = setTimeout(
+          () => controller.abort(),
+          target.totalTimeBudgetMs,
+        )
+        let result: AiHealthProbeResult
+        try {
+          result = await executeProbe(target, probeRunId, controller.signal)
+        } catch {
+          result = {
+            failure: {
+              category: 'adapter_failure',
+              diagnosticCode: 'automatic_health_probe_failed',
+              retryable: false,
+            },
+            succeeded: false,
+          }
+        } finally {
+          clearTimeout(timeout)
+        }
+        let transition: AiOperationalStateTransition | undefined
+        try {
+          transition = await options.coordination.finishRecoveryProbe({
+            ...(result.failure ? { failure: result.failure } : {}),
+            leaseOwnerId,
+            modelRevisionId: target.identity.aiConnectionModelRevisionId,
+            probeRunId,
+            succeeded: result.succeeded,
+          })
+        } finally {
+          await emit({
+            ...telemetryBase,
+            durationMs: Math.max(0, now() - startedAt),
+            failureCategory: result.failure?.category,
+            name: 'ai_health_probe_terminal',
+            outcome: result.succeeded ? 'completed' : 'failed',
+            usage: result.usage,
+          })
+        }
+        if (transition?.healthStateChanged) {
+          await emit({
+            ...telemetryBase,
+            breakerStatus: transition.breakerStatus,
+            healthStatus: transition.healthStatus,
+            name: 'ai_health_state_changed',
+          })
+        }
+      }
+    }
+
+  const runManualHealthProbe: AiRunCoordinator['runManualHealthProbe'] = async (
+    target,
+    actorId,
+    executeProbe,
+  ) => {
+    const probeRunId = randomUUID()
+    const acquired = await options.coordination.acquireManualRecoveryProbe({
+      leaseDurationMs: target.totalTimeBudgetMs + CANCELLATION_GRACE_MS,
+      leaseOwnerId,
+      modelRevisionId: target.identity.aiConnectionModelRevisionId,
+      probeRunId,
+    })
+    if (!acquired) {
+      return {
+        failure: {
+          category: 'connection_unavailable',
+          diagnosticCode: 'manual_health_probe_unavailable',
+          retryable: false,
+        },
+        succeeded: false,
+      }
+    }
+    const startedAt = now()
+    const telemetryBase = {
+      actorId,
+      adapterVersion: target.adapterVersion,
+      aiConnectionId: target.identity.aiConnectionId,
+      aiConnectionModelRevisionId: target.identity.aiConnectionModelRevisionId,
+      aiRunProfileRevisionId: target.identity.aiRunProfileRevisionId,
+      applicationRunId: probeRunId,
+      probeKind: 'manual' as const,
+      runType: target.runType,
+    }
+    await emit({ ...telemetryBase, name: 'ai_health_probe_started' })
+    await emit({
+      ...telemetryBase,
+      breakerStatus: 'half_open',
+      healthStatus: 'unavailable',
+      name: 'ai_health_state_changed',
+    })
+    const controller = new AbortController()
+    const timeout = setTimeout(
+      () => controller.abort(),
+      target.totalTimeBudgetMs,
+    )
+    let result: AiHealthProbeResult
+    try {
+      result = await executeProbe(target, probeRunId, controller.signal)
+    } catch {
+      result = {
+        failure: {
+          category: 'adapter_failure',
+          diagnosticCode: 'manual_health_probe_failed',
+          retryable: false,
+        },
+        succeeded: false,
+      }
+    } finally {
+      clearTimeout(timeout)
+    }
+    const transition = await options.coordination.finishRecoveryProbe({
+      ...(result.failure ? { failure: result.failure } : {}),
+      leaseOwnerId,
+      modelRevisionId: target.identity.aiConnectionModelRevisionId,
+      probeRunId,
+      succeeded: result.succeeded,
+    })
+    await emit({
+      ...telemetryBase,
+      durationMs: Math.max(0, now() - startedAt),
+      failureCategory: result.failure?.category,
+      name: 'admin_health_check',
+      outcome: result.succeeded ? 'completed' : 'failed',
+      usage: result.usage,
+    })
+    if (transition?.healthStateChanged) {
+      await emit({
+        ...telemetryBase,
+        breakerStatus: transition.breakerStatus,
+        healthStatus: transition.healthStatus,
+        name: 'ai_health_state_changed',
+      })
+    }
+    return result
+  }
 
   return {
-    async *coordinate(request, executeAttempt): AsyncIterable<AiRunEvent> {
+    async *coordinate(
+      request,
+      executeAttempt,
+      forceCloseAttempt,
+    ): AsyncIterable<AiRunEvent> {
       const startedAt = now()
+      const fencingToken = randomUUID()
       const totalDeadline = startedAt + request.profile.totalTimeBudgetMs
       const totalDeadlineAt = new Date(totalDeadline)
       const controller = new AbortController()
@@ -266,14 +541,8 @@ export function createAiRunCoordinator(
       request.abortSignal.addEventListener('abort', onAbort, { once: true })
       if (request.abortSignal.aborted) controller.abort()
       let finished = false
+      let admitted = false
       let finalEvent: AiRunEvent | undefined
-      const emit = async (event: AiRunTelemetryEvent): Promise<void> => {
-        try {
-          await options.telemetry?.emit(Object.freeze(event))
-        } catch {
-          // Observability must remain content-free and cannot change run outcome.
-        }
-      }
       const telemetryBase = {
         adapterVersion: request.adapterVersion,
         aiConnectionId: request.identity.aiConnectionId,
@@ -293,6 +562,7 @@ export function createAiRunCoordinator(
       try {
         const admission = await options.coordination.enqueue({
           applicationRunId: request.applicationRunId,
+          fencingToken,
           identity: request.identity,
           queueCapacity: request.profile.queueCapacity,
           totalDeadlineAt,
@@ -310,12 +580,14 @@ export function createAiRunCoordinator(
           yield finalEvent
           return
         }
+        admitted = true
 
         for (let attempt = 1; attempt <= 2; attempt += 1) {
           let acquired = false
           while (!controller.signal.aborted && now() < totalDeadline) {
             const result = await options.coordination.acquire({
               applicationRunId: request.applicationRunId,
+              fencingToken,
               leaseDurationMs: DEFAULT_LEASE_MS,
               leaseOwnerId,
             })
@@ -382,6 +654,7 @@ export function createAiRunCoordinator(
             void options.coordination
               .renew({
                 applicationRunId: request.applicationRunId,
+                fencingToken,
                 leaseDurationMs: DEFAULT_LEASE_MS,
                 leaseOwnerId,
               })
@@ -481,14 +754,14 @@ export function createAiRunCoordinator(
                 break
               }
               const event = result.value
-              if (event.type === 'heartbeat') {
-                yield event
-                continue
-              }
               idleDeadline = Math.min(
                 totalDeadline,
                 now() + request.profile.inactivityTimeBudgetMs,
               )
+              if (event.type === 'heartbeat') {
+                yield event
+                continue
+              }
               const bytes = retainedEventBytes(event)
               if (
                 event.type === 'analysis_delta' ||
@@ -574,6 +847,7 @@ export function createAiRunCoordinator(
             }
             await settleWithinGrace(
               Promise.resolve().then(() => iterator.return?.()),
+              () => forceCloseAttempt(request.applicationRunId),
             )
           }
 
@@ -611,6 +885,8 @@ export function createAiRunCoordinator(
             ) {
               await options.coordination.requeueForRetry({
                 applicationRunId: request.applicationRunId,
+                fencingToken,
+                leaseOwnerId,
                 notBefore: new Date(now() + waitMs),
               })
               await delay(waitMs, controller.signal)
@@ -641,17 +917,20 @@ export function createAiRunCoordinator(
         if (!finished) {
           finished = true
           const outcome = terminalOutcome(finalEvent)
-          let coordinationResult: { breakerOpened: boolean } | undefined
-          try {
-            coordinationResult = await options.coordination.finish({
-              applicationRunId: request.applicationRunId,
-              ...(finalEvent.type === 'failed'
-                ? { failure: finalEvent.failure }
-                : {}),
-              outcome,
-            })
-          } catch {
-            coordinationResult = undefined
+          let coordinationResult: AiOperationalStateTransition | undefined
+          if (admitted) {
+            try {
+              coordinationResult = await options.coordination.finish({
+                applicationRunId: request.applicationRunId,
+                fencingToken,
+                ...(finalEvent.type === 'failed'
+                  ? { failure: finalEvent.failure }
+                  : {}),
+                outcome,
+              })
+            } catch {
+              coordinationResult = undefined
+            }
           }
           if (
             finalEvent.type === 'failed' &&
@@ -664,6 +943,14 @@ export function createAiRunCoordinator(
           }
           if (coordinationResult?.breakerOpened) {
             await emit({ ...telemetryBase, name: 'ai_alarm_breaker_opened' })
+          }
+          if (coordinationResult?.healthStateChanged) {
+            await emit({
+              ...telemetryBase,
+              healthStatus: coordinationResult.healthStatus,
+              breakerStatus: coordinationResult.breakerStatus,
+              name: 'ai_health_state_changed',
+            })
           }
           await emit({
             ...telemetryBase,
@@ -685,6 +972,24 @@ export function createAiRunCoordinator(
           })
         }
       }
+    },
+    runDueRecoveryProbes,
+    runManualHealthProbe,
+    startAutomaticRecovery(executeProbe): () => void {
+      let running = false
+      const tick = (): void => {
+        if (running) return
+        running = true
+        void runDueRecoveryProbes(executeProbe)
+          .catch(() => undefined)
+          .finally(() => {
+            running = false
+          })
+      }
+      tick()
+      const interval = setInterval(tick, recoveryPollIntervalMs)
+      interval.unref?.()
+      return () => clearInterval(interval)
     },
   }
 }

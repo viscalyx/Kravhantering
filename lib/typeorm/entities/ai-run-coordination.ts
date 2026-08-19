@@ -10,6 +10,7 @@ export interface AiRunCoordinationEntity {
   attemptCount: number
   connection: AiConnectionEntity
   createdAt: Date
+  fencingToken: string
   id: string
   leaseExpiresAt: Date | null
   leaseOwnerId: string | null
@@ -37,6 +38,10 @@ export const aiRunCoordinationEntity =
         length: 100,
         name: 'application_run_id',
         type: 'nvarchar',
+      },
+      fencingToken: {
+        name: 'fencing_token',
+        type: 'uniqueidentifier',
       },
       queueSequence: {
         generated: 'increment',

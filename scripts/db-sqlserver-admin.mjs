@@ -21,7 +21,6 @@ export const REQUIRED_SEED_FILE = resolve(
 )
 export const DEMO_SEED_FILE = resolve(SCRIPT_DIR, '../typeorm/seed.mjs')
 export const DEMO_RESET_TABLES = Object.freeze([
-  'ai_run_coordination_entries',
   'rfi_question_suggestions',
   'specification_rfi_question_items',
   'specification_rfi_lists',
@@ -63,6 +62,7 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'ai_forensic_evidence_events',
   'ai_forensic_capture_windows',
   'ai_connection_model_operational_states',
+  'ai_run_coordination_entries',
   'ai_run_profile_revisions',
   'ai_connection_model_verification_evidence',
   'ai_connection_model_revisions',

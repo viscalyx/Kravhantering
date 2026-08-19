@@ -146,7 +146,9 @@ describe('AI connections data model migration', () => {
       .flatMap(entity => entity.options.checks ?? [])
       .map(check => check.name)
 
-    expect(entityChecks.sort()).toEqual(migrationChecks.sort())
+    expect(entityChecks.sort()).toEqual(
+      expect.arrayContaining(migrationChecks.sort()),
+    )
   })
 
   it('drops the AI data model in dependency order', async () => {

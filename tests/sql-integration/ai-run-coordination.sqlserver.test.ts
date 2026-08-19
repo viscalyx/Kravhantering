@@ -56,12 +56,6 @@ async function createCoordinationFixture(db: SqlServerDatabase): Promise<{
        SYSUTCDATETIME())`,
     [profileId, modelRevision[0]?.id],
   )) as Array<{ id: string }>
-  await db.query(
-    `INSERT INTO ai_connection_model_operational_states (
-       ai_connection_model_revision_id, updated_at
-     ) VALUES (@0, SYSUTCDATETIME())`,
-    [modelRevision[0]?.id],
-  )
   return {
     identity: {
       aiConnectionId: connection[0]?.id,
@@ -79,13 +73,18 @@ describe('AI run coordination against SQL Server', () => {
     const store = createSqlServerAiRunCoordinationStore(appDb())
     const deadline = new Date(Date.now() + 60_000)
     const first = randomUUID()
+    const firstFence = randomUUID()
     const second = randomUUID()
+    const secondFence = randomUUID()
     const third = randomUUID()
+    const thirdFence = randomUUID()
     const fourth = randomUUID()
+    const fourthFence = randomUUID()
 
     await expect(
       store.enqueue({
         applicationRunId: first,
+        fencingToken: firstFence,
         identity,
         queueCapacity: 0,
         totalDeadlineAt: deadline,
@@ -94,6 +93,7 @@ describe('AI run coordination against SQL Server', () => {
     await expect(
       store.enqueue({
         applicationRunId: second,
+        fencingToken: secondFence,
         identity,
         queueCapacity: 0,
         totalDeadlineAt: deadline,
@@ -103,13 +103,15 @@ describe('AI run coordination against SQL Server', () => {
     await expect(
       store.acquire({
         applicationRunId: first,
+        fencingToken: firstFence,
         leaseDurationMs: 30_000,
-        leaseOwnerId: randomUUID(),
+        leaseOwnerId: firstFence,
       }),
     ).resolves.toMatchObject({ activeConcurrency: 1, status: 'acquired' })
     await expect(
       store.enqueue({
         applicationRunId: third,
+        fencingToken: thirdFence,
         identity,
         queueCapacity: 1,
         totalDeadlineAt: deadline,
@@ -118,21 +120,31 @@ describe('AI run coordination against SQL Server', () => {
     await expect(
       store.enqueue({
         applicationRunId: fourth,
+        fencingToken: fourthFence,
         identity,
         queueCapacity: 1,
         totalDeadlineAt: deadline,
       }),
     ).resolves.toMatchObject({ status: 'queue_full' })
 
-    await store.finish({ applicationRunId: first, outcome: 'completed' })
+    await store.finish({
+      applicationRunId: first,
+      fencingToken: firstFence,
+      outcome: 'completed',
+    })
     await expect(
       store.acquire({
         applicationRunId: third,
+        fencingToken: thirdFence,
         leaseDurationMs: 30_000,
-        leaseOwnerId: randomUUID(),
+        leaseOwnerId: thirdFence,
       }),
     ).resolves.toMatchObject({ activeConcurrency: 1, status: 'acquired' })
-    await store.finish({ applicationRunId: third, outcome: 'completed' })
+    await store.finish({
+      applicationRunId: third,
+      fencingToken: thirdFence,
+      outcome: 'completed',
+    })
   })
 
   it('opens after five qualifying failures and safely reclaims recovery leases', async () => {
@@ -141,24 +153,28 @@ describe('AI run coordination against SQL Server', () => {
 
     for (let attempt = 1; attempt <= 5; attempt += 1) {
       const applicationRunId = randomUUID()
+      const fencingToken = randomUUID()
       await store.enqueue({
         applicationRunId,
+        fencingToken,
         identity,
         queueCapacity: 0,
         totalDeadlineAt: new Date(Date.now() + 60_000),
       })
       await store.acquire({
         applicationRunId,
+        fencingToken,
         leaseDurationMs: 30_000,
-        leaseOwnerId: randomUUID(),
+        leaseOwnerId: fencingToken,
       })
       await expect(
         store.finish({
           applicationRunId,
+          fencingToken,
           failure: { category: 'connection_unavailable', retryable: true },
           outcome: 'failed',
         }),
-      ).resolves.toEqual({ breakerOpened: attempt === 5 })
+      ).resolves.toMatchObject({ breakerOpened: attempt === 5 })
     }
 
     await appDb().query(
@@ -228,6 +244,20 @@ describe('AI run coordination against SQL Server', () => {
   it('counts recovery leases when acquired and refuses a sixth crashed probe', async () => {
     const { identity } = await createCoordinationFixture(appDb())
     const store = createSqlServerAiRunCoordinationStore(appDb())
+    const initializationRunId = randomUUID()
+    const initializationFence = randomUUID()
+    await store.enqueue({
+      applicationRunId: initializationRunId,
+      fencingToken: initializationFence,
+      identity,
+      queueCapacity: 0,
+      totalDeadlineAt: new Date(Date.now() + 60_000),
+    })
+    await store.finish({
+      applicationRunId: initializationRunId,
+      fencingToken: initializationFence,
+      outcome: 'completed',
+    })
     await appDb().query(
       `UPDATE ai_connection_model_operational_states
        SET health_status = N'unavailable', circuit_breaker_status = N'open',
@@ -277,5 +307,91 @@ describe('AI run coordination against SQL Server', () => {
         isManualRecoveryRequired: true,
       },
     ])
+  })
+
+  it('prevents duplicate and stale workers from mutating the current run', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+    const applicationRunId = randomUUID()
+    const firstFence = randomUUID()
+    const replacementFence = randomUUID()
+    const deadline = new Date(Date.now() + 60_000)
+
+    await store.enqueue({
+      applicationRunId,
+      fencingToken: firstFence,
+      identity,
+      queueCapacity: 2,
+      totalDeadlineAt: deadline,
+    })
+    await expect(
+      store.enqueue({
+        applicationRunId,
+        fencingToken: replacementFence,
+        identity,
+        queueCapacity: 2,
+        totalDeadlineAt: deadline,
+      }),
+    ).rejects.toThrow()
+    await store.finish({
+      applicationRunId,
+      fencingToken: replacementFence,
+      outcome: 'failed',
+    })
+    await expect(
+      appDb().query(
+        `SELECT LOWER(CONVERT(nvarchar(36), fencing_token)) AS fencingToken,
+                status
+         FROM ai_run_coordination_entries
+         WHERE application_run_id = @0`,
+        [applicationRunId],
+      ),
+    ).resolves.toEqual([{ fencingToken: firstFence, status: 'queued' }])
+
+    await store.acquire({
+      applicationRunId,
+      fencingToken: firstFence,
+      leaseDurationMs: 30_000,
+      leaseOwnerId: firstFence,
+    })
+    await appDb().query(
+      `UPDATE ai_run_coordination_entries
+       SET lease_expires_at = DATEADD(second, -1, SYSUTCDATETIME())
+       WHERE application_run_id = @0`,
+      [applicationRunId],
+    )
+    await store.enqueue({
+      applicationRunId,
+      fencingToken: replacementFence,
+      identity,
+      queueCapacity: 2,
+      totalDeadlineAt: deadline,
+    })
+    await store.requeueForRetry({
+      applicationRunId,
+      fencingToken: firstFence,
+      leaseOwnerId: firstFence,
+      notBefore: new Date(),
+    })
+    await store.finish({
+      applicationRunId,
+      fencingToken: firstFence,
+      outcome: 'failed',
+    })
+
+    await expect(
+      appDb().query(
+        `SELECT LOWER(CONVERT(nvarchar(36), fencing_token)) AS fencingToken,
+                status
+         FROM ai_run_coordination_entries
+         WHERE application_run_id = @0`,
+        [applicationRunId],
+      ),
+    ).resolves.toEqual([{ fencingToken: replacementFence, status: 'queued' }])
+    await store.finish({
+      applicationRunId,
+      fencingToken: replacementFence,
+      outcome: 'cancelled',
+    })
   })
 })

@@ -185,6 +185,7 @@ async function waitForAbort(signal: AbortSignal): Promise<void> {
 }
 
 const controlledTestAdapter: AIConnectionAdapter = {
+  forceClose: () => undefined,
   async *run(
     request: AiConnectionAdapterRunRequest,
   ): AsyncIterable<AiRunEvent> {

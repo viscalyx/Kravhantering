@@ -199,6 +199,40 @@ describeAiConnectionAdapterContract('OpenRouter adapter', () => ({
 }))
 
 describe('OpenRouter AI connection adapter', () => {
+  it('force-closes the exact active transport by opaque external run ID', async () => {
+    let transportSignal: AbortSignal | undefined
+    let markStarted = (): void => undefined
+    const started = new Promise<void>(resolve => {
+      markStarted = resolve
+    })
+    mockFetch.mockImplementation(async (_input, init) => {
+      transportSignal = init?.signal ?? undefined
+      markStarted()
+      await new Promise<void>((_resolve, reject) => {
+        transportSignal?.addEventListener(
+          'abort',
+          () => reject(new DOMException('aborted', 'AbortError')),
+          { once: true },
+        )
+      })
+      throw new Error('unreachable')
+    })
+    const runRequest = request()
+    const connectionAdapter = adapter()
+    const next = connectionAdapter
+      .run(runRequest)
+      [Symbol.asyncIterator]()
+      .next()
+    await started
+
+    connectionAdapter.forceClose(runRequest.context.externalRunId)
+
+    expect(transportSignal?.aborted).toBe(true)
+    await expect(next).resolves.toMatchObject({
+      value: { failure: { category: 'connection_unavailable' } },
+    })
+  })
+
   it('is registrable and normalizes a completed non-streaming response', async () => {
     mockFetch.mockResolvedValueOnce(nonStreamingResponse())
 

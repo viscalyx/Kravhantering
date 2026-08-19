@@ -9,10 +9,14 @@ import type {
   AIConnectionAdapter,
   AiConnectionAdapterRunRequest,
   AiRunEvent,
+  AiRunIdentity,
   AiRunUsage,
 } from '@/lib/ai/run-contracts'
 import type { AiRunTrustBoundary } from '@/lib/ai/run-trust-boundary'
-import type { AiRunCoordinator } from '@/lib/ai/run-coordinator'
+import type {
+  AiRecoveryProbeTarget,
+  AiRunCoordinator,
+} from '@/lib/ai/run-coordinator'
 
 const USAGE: AiRunUsage = {
   analysisTokens: { reason: 'not_reported', status: 'unavailable' },
@@ -93,13 +97,24 @@ function profile(
   }
 }
 
+let automaticRecoveryProbe:
+  | Parameters<AiRunCoordinator['startAutomaticRecovery']>[0]
+  | undefined
+
 const RUN_COORDINATOR: AiRunCoordinator = {
-  coordinate(request, executeAttempt) {
-    return executeAttempt(
+  async *coordinate(request, executeAttempt, forceCloseAttempt) {
+    yield* executeAttempt(
       1,
       request.abortSignal,
       new Date(Date.now() + 60_000).toISOString(),
     )
+    forceCloseAttempt(request.applicationRunId)
+  },
+  runDueRecoveryProbes: async () => undefined,
+  runManualHealthProbe: async () => ({ succeeded: true }),
+  startAutomaticRecovery(executeProbe) {
+    automaticRecoveryProbe = executeProbe
+    return () => undefined
   },
 }
 
@@ -117,6 +132,38 @@ function request(abortSignal = new AbortController().signal) {
       responseSchema: { type: 'object' },
     },
     type: 'generate_without_images' as const,
+  }
+}
+
+function recoveryTarget(
+  overrides: Partial<AiRecoveryProbeTarget> = {},
+): AiRecoveryProbeTarget {
+  return {
+    adapterVersion: '3',
+    identity: {
+      aiConnectionId: 'connection-17',
+      aiConnectionModelRevisionId: 'model-revision-23',
+      aiRunProfileRevisionId: 'profile-revision-31',
+    } as AiRunIdentity,
+    runType: 'generate_without_images',
+    totalTimeBudgetMs: 10_000,
+    ...overrides,
+  }
+}
+
+function completedAdapterEvent(
+  adapterRequest: AiConnectionAdapterRunRequest,
+): Extract<AiRunEvent, { type: 'completed' }> {
+  return {
+    analysis: null,
+    identity: {
+      aiConnectionId: adapterRequest.connection.id,
+      aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+      aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+    },
+    rawOutput: '{"status":"ok"}',
+    type: 'completed',
+    usage: USAGE,
   }
 }
 
@@ -157,10 +204,289 @@ function integration(
 }
 
 describe('AI integration layer', () => {
+  it('runs the fixed synthetic recovery probe through a fresh exact profile', async () => {
+    let received: AiConnectionAdapterRunRequest | undefined
+    const adapter: AIConnectionAdapter = {
+      forceClose: vi.fn(),
+      async *run(adapterRequest) {
+        received = adapterRequest
+        yield { delta: 'thinking', type: 'analysis_delta' }
+        yield {
+          delta: '{"status":"ok"}',
+          type: 'output_delta',
+          visibility: 'internal',
+        }
+        yield {
+          analysis: 'thinking',
+          identity: {
+            aiConnectionId: adapterRequest.connection.id,
+            aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+          },
+          rawOutput: '{"status":"ok"}',
+          type: 'completed',
+          usage: USAGE,
+        }
+      },
+    }
+    integration(adapter)
+
+    await expect(
+      automaticRecoveryProbe?.(
+        recoveryTarget(),
+        'probe-run-1',
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual({ succeeded: true, usage: USAGE })
+    expect(received).toMatchObject({
+      context: {
+        deadlineAt: expect.any(String),
+        externalRunId: expect.any(String),
+      },
+      limits: { maxOutputTokens: 8_192 },
+      task: {
+        content: [
+          {
+            text: 'Return a JSON object whose status property is "ok".',
+            type: 'text',
+          },
+        ],
+      },
+    })
+    expect(JSON.stringify(received)).not.toContain('Generate requirements')
+  })
+
+  it('blocks recovery when the active exact profile changed', async () => {
+    const adapter: AIConnectionAdapter = {
+      forceClose: vi.fn(),
+      async *run() {
+        yield* [] as AiRunEvent[]
+      },
+    }
+    integration(adapter)
+
+    await expect(
+      automaticRecoveryProbe?.(
+        recoveryTarget({
+          identity: {
+            ...recoveryTarget().identity,
+            aiConnectionModelRevisionId: 'retired-model-revision',
+          } as AiRunIdentity,
+        }),
+        'probe-run-2',
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      failure: { diagnosticCode: 'health_probe_profile_changed' },
+      succeeded: false,
+    })
+  })
+
+  it('blocks recovery when its active profile can no longer resolve', async () => {
+    const adapter: AIConnectionAdapter = {
+      forceClose: vi.fn(),
+      async *run() {
+        yield* [] as AiRunEvent[]
+      },
+    }
+    integration(adapter, {
+      ...profile(),
+      connectionLifecycleStatus: 'suspended',
+    })
+
+    await expect(
+      automaticRecoveryProbe?.(
+        recoveryTarget(),
+        'probe-run-unavailable',
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      failure: { diagnosticCode: 'health_probe_profile_unavailable' },
+      succeeded: false,
+    })
+  })
+
+  it.each([
+    {
+      event: {
+        failure: {
+          category: 'connection_unavailable' as const,
+          retryable: true,
+        },
+        identity: recoveryTarget().identity,
+        type: 'failed' as const,
+      },
+      expected: 'connection_unavailable',
+    },
+    {
+      event: {
+        identity: recoveryTarget().identity,
+        reason: 'application_cancelled' as const,
+        type: 'cancelled' as const,
+      },
+      expected: 'connection_unavailable',
+    },
+  ])(
+    'normalizes a recovery terminal without exposing its payload',
+    async scenario => {
+      const adapter: AIConnectionAdapter = {
+        forceClose: vi.fn(),
+        async *run() {
+          yield scenario.event
+        },
+      }
+      integration(adapter)
+
+      await expect(
+        automaticRecoveryProbe?.(
+          recoveryTarget(),
+          'probe-run-terminal',
+          new AbortController().signal,
+        ),
+      ).resolves.toMatchObject({
+        failure: { category: scenario.expected },
+        succeeded: false,
+      })
+    },
+  )
+
+  it('aborts a recovery probe at the application byte limit', async () => {
+    const adapter: AIConnectionAdapter = {
+      forceClose: vi.fn(),
+      async *run() {
+        yield {
+          delta: 'x'.repeat(4_194_305),
+          type: 'output_delta',
+          visibility: 'internal',
+        }
+      },
+    }
+    integration(adapter)
+
+    await expect(
+      automaticRecoveryProbe?.(
+        recoveryTarget(),
+        'probe-run-limit',
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      failure: { diagnosticCode: 'health_probe_limit_exceeded' },
+      succeeded: false,
+    })
+  })
+
+  it('rejects an over-limit reported token count in a recovery completion', async () => {
+    const adapter: AIConnectionAdapter = {
+      forceClose: vi.fn(),
+      async *run(adapterRequest) {
+        yield {
+          ...completedAdapterEvent(adapterRequest),
+          usage: {
+            ...USAGE,
+            outputTokens: { status: 'reported' as const, value: 8_193 },
+          },
+        }
+      },
+    }
+    integration(adapter)
+
+    await expect(
+      automaticRecoveryProbe?.(
+        recoveryTarget(),
+        'probe-run-token-limit',
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      failure: { diagnosticCode: 'health_probe_limit_exceeded' },
+      succeeded: false,
+    })
+  })
+
+  it('contains recovery iterator cleanup rejection', async () => {
+    const adapter: AIConnectionAdapter = {
+      forceClose: vi.fn(),
+      run(adapterRequest) {
+        let emitted = false
+        return {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => {
+                if (emitted) return { done: true as const, value: undefined }
+                emitted = true
+                return {
+                  done: false as const,
+                  value: completedAdapterEvent(adapterRequest),
+                }
+              },
+              return: async () => {
+                throw new Error('private cleanup failure')
+              },
+            }
+          },
+        }
+      },
+    }
+    integration(adapter)
+
+    await expect(
+      automaticRecoveryProbe?.(
+        recoveryTarget(),
+        'probe-run-cleanup',
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({ succeeded: true })
+  })
+
+  it('force-closes an uncooperative recovery transport after five seconds', async () => {
+    vi.useFakeTimers()
+    try {
+      let markStarted = (): void => undefined
+      const started = new Promise<void>(resolve => {
+        markStarted = resolve
+      })
+      const forceClose = vi.fn()
+      const adapter: AIConnectionAdapter = {
+        forceClose,
+        run() {
+          return {
+            [Symbol.asyncIterator]() {
+              markStarted()
+              return {
+                next: () =>
+                  new Promise<IteratorResult<AiRunEvent>>(() => undefined),
+                return: () =>
+                  new Promise<IteratorResult<AiRunEvent>>(() => undefined),
+              }
+            },
+          }
+        },
+      }
+      integration(adapter)
+      const controller = new AbortController()
+      const probing = automaticRecoveryProbe?.(
+        recoveryTarget(),
+        'probe-run-abort',
+        controller.signal,
+      )
+      await started
+      controller.abort()
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      await expect(probing).resolves.toMatchObject({
+        failure: { diagnosticCode: 'health_probe_deadline_exceeded' },
+        succeeded: false,
+      })
+      expect(forceClose).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('runs one exact frozen profile revision through its exact adapter revision', async () => {
     let received: AiConnectionAdapterRunRequest | undefined
     const runRequest = request()
     const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run(adapterRequest) {
         received = adapterRequest
         yield {
@@ -231,6 +557,7 @@ describe('AI integration layer', () => {
   it('blocks before egress when the exact persisted adapter version is unavailable', async () => {
     let called = false
     const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run() {
         called = true
         yield* [] as AiRunEvent[]
@@ -250,6 +577,7 @@ describe('AI integration layer', () => {
   it('blocks safely before adapter egress when transient configuration is unavailable', async () => {
     let called = false
     const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run() {
         called = true
         yield* [] as AiRunEvent[]
@@ -316,6 +644,7 @@ describe('AI integration layer', () => {
   it('returns the selected adapter failure without trying another adapter', async () => {
     let fallbackCalled = false
     const selected: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run(adapterRequest) {
         yield {
           failure: {
@@ -332,6 +661,7 @@ describe('AI integration layer', () => {
       },
     }
     const fallback: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run() {
         fallbackCalled = true
         yield* [] as AiRunEvent[]
@@ -364,6 +694,7 @@ describe('AI integration layer', () => {
 
   it('normalizes a synchronous adapter failure without changing selection', async () => {
     const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
       run() {
         throw new Error('provider endpoint and secret must stay private')
       },
@@ -405,6 +736,7 @@ describe('AI integration layer', () => {
       },
     })
     const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run(adapterRequest) {
         expect(scopeActive).toBe(true)
         yield { delta: 'thinking', type: 'analysis_delta' }
@@ -428,12 +760,11 @@ describe('AI integration layer', () => {
         { adapter, adapterType: 'capture', adapterVersion: '3' },
       ]),
       profileResolver: resolver,
+      runCoordinator: RUN_COORDINATOR,
       trustBoundary: PASSING_TRUST_BOUNDARY,
     })
 
     await expect(collect(layer.run(request()))).resolves.toHaveLength(1)
-      runCoordinator: RUN_COORDINATOR,
-    })
     expect(scopeActive).toBe(false)
   })
 
@@ -446,6 +777,7 @@ describe('AI integration layer', () => {
       },
     })
     const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run(adapterRequest) {
         yield {
           analysis: null,

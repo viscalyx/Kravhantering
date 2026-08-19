@@ -308,9 +308,11 @@ retry delay, and the second attempt all consume the original total budget.
 SQL Server coordinates admission, FIFO order, connection concurrency, any
 lower model-revision concurrency, retry waits, and renewable execution leases
 across all app nodes. Queue rows contain only opaque identities, state,
-counters, and timestamps. A zero-capacity queue admits only runs that fit the
-currently reserved execution capacity. Expired deadlines and abandoned leases
-are reclaimed transactionally.
+counters, per-invocation fencing tokens, and timestamps. Finish, retry, and
+renewal mutations require the current fencing and lease ownership so a stale or
+duplicate worker cannot affect its replacement. A zero-capacity queue admits
+only runs that fit the currently reserved execution capacity. Expired deadlines
+and abandoned leases are reclaimed transactionally.
 
 The integration layer may retry at most once and only against the same
 connection, model revision, and run profile revision, before any analysis or
@@ -320,7 +322,8 @@ least five minutes remain after the delay. No automatic fallback is allowed.
 
 Adapter streams are pull-driven: downstream demand causes at most one upstream
 pull, and configured buffer/memory/byte/token ceilings are enforced before an
-over-limit event is exposed. Heartbeats do not extend the inactivity budget.
+over-limit event is exposed. Every valid event, including a heartbeat, resets
+the inactivity budget without moving the original total deadline.
 A client disconnect aborts provider work, with at most five seconds allowed for
 uncooperative cleanup. Silent EOF, stream failure, thrown coordination work,
 and every other failure are normalized to exactly one terminal outcome.
@@ -331,7 +334,15 @@ authentication failure opens the breaker immediately and requires manual
 recovery. Five consecutive connection, deadline, or retryable adapter failures
 open it for one hourly SQL-leased probe; a crashed half-open lease is
 reclaimable. After five failed probes, or if a probe discovers an
-authentication failure, recovery becomes manual.
+authentication or capability failure, recovery becomes manual. At process
+startup and every minute, each node scans a bounded set of only due open
+breakers; the SQL lease selects one node, and `next_recovery_at` preserves the
+60-minute cadence across restarts. Probes resolve the exact active profile
+again and use the versioned, fixed synthetic JSON prompt. Healthy and unused
+connections are never probed periodically. Manual probes emit the
+`admin_health_check` event with actor, outcome, duration, and normalized usage.
+Automatic probes and all health/breaker transitions have separate content-free
+events.
 
 ## Monitoring and Incident Response
 

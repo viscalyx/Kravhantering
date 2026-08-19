@@ -18,6 +18,23 @@ import {
 import type { AiPreparedRun, AiRunTrustBoundary } from './run-trust-boundary'
 import type { AiRunCoordinator, AiRunTelemetry } from './run-coordinator'
 
+const HEALTH_PROBE_PROMPT_VERSION = 'ai-health-probe-v1'
+const HEALTH_PROBE_TASK = Object.freeze({
+  content: Object.freeze([
+    Object.freeze({
+      text: 'Return a JSON object whose status property is "ok".',
+      type: 'text' as const,
+    }),
+  ]),
+  instructions: `Synthetic health probe ${HEALTH_PROBE_PROMPT_VERSION}.`,
+  responseSchema: Object.freeze({
+    additionalProperties: false,
+    properties: Object.freeze({ status: Object.freeze({ const: 'ok' }) }),
+    required: Object.freeze(['status']),
+    type: 'object',
+  }),
+})
+
 export interface CreateAiIntegrationLayerOptions {
   adapterRegistry: AiConnectionAdapterRegistry
   profileResolver: AiRunProfileResolver
@@ -40,6 +57,10 @@ function deferred<T>(): Deferred<T> {
     resolve = resolvePromise
   })
   return { promise, reject, resolve }
+}
+
+function settledTrue(): true {
+  return true
 }
 
 function adapterFailure(identity: AiRunIdentity): AiRunEvent {
@@ -116,6 +137,9 @@ async function* runInAdapterConfigurationScope(
     abortSignal: AbortSignal
     deadlineAt: string
   },
+  onAdapterContext: (
+    context: ReturnType<typeof createAiAdapterRunContext>,
+  ) => void,
 ): AsyncIterable<AiRunEvent> {
   const iteratorReady = deferred<AsyncIterator<AiRunEvent>>()
   const releaseScope = deferred<void>()
@@ -125,16 +149,18 @@ async function* runInAdapterConfigurationScope(
       scopeEntered = true
       let stream: AsyncIterable<AiRunEvent>
       try {
+        const context = createAiAdapterRunContext(
+          {
+            ...request.context,
+            abortSignal: attemptContext.abortSignal,
+            deadlineAt: attemptContext.deadlineAt,
+          },
+          prepared.egress,
+        )
+        onAdapterContext(context)
         stream = adapter.run({
           connection: configuredProfile.connection,
-          context: createAiAdapterRunContext(
-            {
-              ...request.context,
-              abortSignal: attemptContext.abortSignal,
-              deadlineAt: attemptContext.deadlineAt,
-            },
-            prepared.egress,
-          ),
+          context,
           limits: profile.limits,
           modelRevision: configuredProfile.modelRevision,
           runProfileRevisionId: profile.profileRevisionId,
@@ -203,6 +229,171 @@ async function* runInAdapterConfigurationScope(
 export function createAiIntegrationLayer(
   options: CreateAiIntegrationLayerOptions,
 ): AIIntegrationLayer {
+  options.runCoordinator.startAutomaticRecovery(
+    async (target, probeRunId, abortSignal) => {
+      let profile: Readonly<AiResolvedRunProfile>
+      try {
+        profile = await options.profileResolver.resolve(target.runType)
+      } catch {
+        return {
+          failure: {
+            category: 'capability_mismatch',
+            diagnosticCode: 'health_probe_profile_unavailable',
+            retryable: false,
+          },
+          succeeded: false,
+        }
+      }
+      if (
+        profile.connectionId !== target.identity.aiConnectionId ||
+        profile.modelRevisionId !==
+          target.identity.aiConnectionModelRevisionId ||
+        profile.profileRevisionId !== target.identity.aiRunProfileRevisionId
+      ) {
+        return {
+          failure: {
+            category: 'capability_mismatch',
+            diagnosticCode: 'health_probe_profile_changed',
+            retryable: false,
+          },
+          succeeded: false,
+        }
+      }
+      const adapter = resolveExactAdapter(
+        options.adapterRegistry,
+        profile.adapterType,
+        profile.adapterVersion,
+      )
+      let forceClose: (() => void) | undefined
+      const request: AiIntegrationRunRequest = {
+        context: {
+          abortSignal,
+          applicationRunId: probeRunId,
+          correlationId: probeRunId,
+          deadlineAt: new Date(
+            Date.now() + target.totalTimeBudgetMs,
+          ).toISOString(),
+        },
+        task: HEALTH_PROBE_TASK,
+        type: target.runType,
+      }
+      const stream = runInAdapterConfigurationScope(
+        adapter,
+        profile,
+        request,
+        target.identity,
+        {
+          abortSignal,
+          deadlineAt: request.context.deadlineAt,
+        },
+        context => {
+          forceClose = () => adapter.forceClose(context.externalRunId)
+        },
+      )
+      const iterator = stream[Symbol.asyncIterator]()
+      let outputBytes = 0
+      let retainedBytes = 0
+      const encoder = new TextEncoder()
+      try {
+        while (!abortSignal.aborted) {
+          let onAbort = (): void => undefined
+          const pulled = await Promise.race([
+            iterator
+              .next()
+              .then(result => ({ result, type: 'event' as const })),
+            new Promise<{ type: 'abort' }>(resolve => {
+              onAbort = () => resolve({ type: 'abort' })
+              abortSignal.addEventListener('abort', onAbort, { once: true })
+            }),
+          ])
+          abortSignal.removeEventListener('abort', onAbort)
+          if (pulled.type === 'abort') break
+          const { result } = pulled
+          if (result.done) break
+          const event = result.value
+          if (event.type === 'analysis_delta') {
+            retainedBytes += encoder.encode(event.delta).byteLength
+          } else if (event.type === 'output_delta') {
+            const bytes = encoder.encode(event.delta).byteLength
+            outputBytes += bytes
+            retainedBytes += bytes
+          } else if (event.type === 'completed') {
+            const finalOutputBytes = encoder.encode(event.rawOutput).byteLength
+            const finalRetainedBytes =
+              finalOutputBytes + encoder.encode(event.analysis ?? '').byteLength
+            const outputTokens = event.usage.outputTokens
+            const tokenCount =
+              outputTokens.status === 'reported' ||
+              outputTokens.status === 'calculated'
+                ? outputTokens.value
+                : null
+            if (
+              finalOutputBytes > profile.limits.maxOutputBytes ||
+              finalRetainedBytes > profile.limits.maxRetainedMemoryBytes ||
+              (tokenCount !== null &&
+                tokenCount > profile.limits.maxOutputTokens)
+            ) {
+              return {
+                failure: {
+                  category: 'invalid_response',
+                  diagnosticCode: 'health_probe_limit_exceeded',
+                  retryable: false,
+                },
+                succeeded: false,
+              }
+            }
+            return { succeeded: true, usage: event.usage }
+          } else if (event.type === 'failed') {
+            return { failure: event.failure, succeeded: false }
+          } else if (event.type === 'cancelled') {
+            return {
+              failure: {
+                category: 'connection_unavailable',
+                diagnosticCode: 'health_probe_cancelled',
+                retryable: true,
+              },
+              succeeded: false,
+            }
+          }
+          if (
+            outputBytes > profile.limits.maxOutputBytes ||
+            retainedBytes > profile.limits.maxRetainedMemoryBytes
+          ) {
+            return {
+              failure: {
+                category: 'invalid_response',
+                diagnosticCode: 'health_probe_limit_exceeded',
+                retryable: false,
+              },
+              succeeded: false,
+            }
+          }
+        }
+        return {
+          failure: {
+            category: abortSignal.aborted
+              ? 'deadline_exceeded'
+              : 'invalid_response',
+            diagnosticCode: abortSignal.aborted
+              ? 'health_probe_deadline_exceeded'
+              : 'health_probe_silent_eof',
+            retryable: false,
+          },
+          succeeded: false,
+        }
+      } finally {
+        let cleanupTimer: ReturnType<typeof setTimeout> | undefined
+        const settled = await Promise.race([
+          Promise.resolve(iterator.return?.()).then(settledTrue, settledTrue),
+          new Promise<false>(resolve => {
+            cleanupTimer = setTimeout(() => resolve(false), 5_000)
+          }),
+        ])
+        if (cleanupTimer) clearTimeout(cleanupTimer)
+        if (!settled) forceClose?.()
+      }
+    },
+  )
   return {
     async *run(request: AiIntegrationRunRequest): AsyncIterable<AiRunEvent> {
       let profile: Readonly<AiResolvedRunProfile>
@@ -250,6 +441,7 @@ export function createAiIntegrationLayer(
         return
       }
       const quarantinedText: string[] = []
+      let forceCloseAttempt: (() => void) | undefined
       const coordinated = options.runCoordinator.coordinate(
         {
           adapterVersion: profile.adapterVersion,
@@ -261,10 +453,22 @@ export function createAiIntegrationLayer(
           runType: request.type,
         },
         (_attempt, abortSignal, deadlineAt) =>
-          runInAdapterConfigurationScope(adapter, profile, request, identity, prepared, {
-            abortSignal,
-            deadlineAt,
-          }),
+          runInAdapterConfigurationScope(
+            adapter,
+            profile,
+            request,
+            identity,
+            prepared,
+            {
+              abortSignal,
+              deadlineAt,
+            },
+            context => {
+              forceCloseAttempt = () =>
+                adapter.forceClose(context.externalRunId)
+            },
+          ),
+        () => forceCloseAttempt?.(),
       )
       for await (const event of coordinated) {
         if (event.type === 'analysis_delta' || event.type === 'output_delta') {

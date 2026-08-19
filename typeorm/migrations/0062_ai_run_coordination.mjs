@@ -46,6 +46,7 @@ const UP_STATEMENTS = [
   `CREATE TABLE [ai_run_coordination_entries] (
     [id] uniqueidentifier NOT NULL CONSTRAINT [df_ai_run_coordination_entries_id] DEFAULT NEWID(),
     [application_run_id] nvarchar(100) NOT NULL,
+    [fencing_token] uniqueidentifier NOT NULL,
     [ai_connection_id] uniqueidentifier NOT NULL,
     [ai_connection_model_revision_id] uniqueidentifier NOT NULL,
     [ai_run_profile_revision_id] uniqueidentifier NOT NULL,
@@ -72,7 +73,8 @@ const UP_STATEMENTS = [
   `CREATE INDEX [idx_ai_run_coordination_entries_fifo] ON [ai_run_coordination_entries] ([ai_connection_id], [status], [not_before], [queue_sequence]);`,
   `CREATE INDEX [idx_ai_run_coordination_entries_lease_expires_at] ON [ai_run_coordination_entries] ([lease_expires_at]) WHERE [lease_expires_at] IS NOT NULL;`,
   `IF DATABASE_PRINCIPAL_ID(N'kravhantering_runtime') IS NULL THROW 51200, 'Runtime permission role is missing.', 1;
-   GRANT SELECT, INSERT, UPDATE, DELETE ON OBJECT::[dbo].[ai_run_coordination_entries] TO [kravhantering_runtime];`,
+   GRANT SELECT, INSERT, DELETE ON OBJECT::[dbo].[ai_run_coordination_entries] TO [kravhantering_runtime];
+   GRANT UPDATE ([status], [attempt_count], [not_before], [lease_owner_id], [lease_expires_at], [updated_at]) ON OBJECT::[dbo].[ai_run_coordination_entries] TO [kravhantering_runtime];`,
 ]
 
 const DOWN_STATEMENTS = [

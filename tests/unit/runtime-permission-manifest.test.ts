@@ -61,7 +61,15 @@ describe('runtime permission manifest', () => {
     })
     expect(permissionFor('dbo.ai_run_coordination_entries')).toEqual({
       object: 'dbo.ai_run_coordination_entries',
-      permissions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+      permissions: ['SELECT', 'INSERT', 'DELETE'],
+      updateColumns: [
+        'status',
+        'attempt_count',
+        'not_before',
+        'lease_owner_id',
+        'lease_expires_at',
+        'updated_at',
+      ],
     })
     expect(
       permissionFor('dbo.requirement_import_validation_rate_buckets'),

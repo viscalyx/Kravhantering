@@ -11,6 +11,7 @@ function registration(
 ): AiConnectionAdapterRegistration {
   return {
     adapter: {
+      forceClose: () => undefined,
       async *run() {
         yield* [] as AiRunEvent[]
       },

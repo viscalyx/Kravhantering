@@ -120,6 +120,7 @@ export interface AIIntegrationLayer {
 }
 
 export interface AIConnectionAdapter {
+  forceClose(externalRunId: AiExternalRunId): void
   run(request: AiConnectionAdapterRunRequest): AsyncIterable<AiRunEvent>
 }
 

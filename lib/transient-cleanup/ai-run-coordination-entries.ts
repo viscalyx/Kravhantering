@@ -3,6 +3,7 @@ import type {
   TransientCleanupBatchResult,
   TransientCleanupQueryExecutor,
 } from './requirement-import-validation-sessions'
+import type { TransientCleanupTarget } from './runner'
 
 interface BacklogRow {
   expiredRowCount: number | string
@@ -28,6 +29,7 @@ export async function inspectExpiredAiRunCoordinationEntries(
     SELECT COUNT_BIG(*) AS expiredRowCount,
       COALESCE(SUM(CONVERT(bigint,
         DATALENGTH([id]) + DATALENGTH([application_run_id]) +
+        DATALENGTH([fencing_token]) +
         DATALENGTH([ai_connection_id]) +
         DATALENGTH([ai_connection_model_revision_id]) +
         DATALENGTH([ai_run_profile_revision_id]) +
@@ -75,7 +77,7 @@ export async function purgeExpiredAiRunCoordinationEntries(
 
 export function createAiRunCoordinationCleanupTarget(
   executor: TransientCleanupQueryExecutor,
-) {
+): TransientCleanupTarget {
   return {
     inspect: () => inspectExpiredAiRunCoordinationEntries(executor),
     kind: 'ai_run_coordination_entries',

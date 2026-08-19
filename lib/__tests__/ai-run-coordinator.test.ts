@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AiRunEvent, AiRunIdentity } from '@/lib/ai/run-contracts'
 import {
+  type AiHealthProbeResult,
   type AiRunCoordinationStore,
   type AiRunTelemetryEvent,
   createAiRunCoordinator,
@@ -19,6 +20,10 @@ function store(
     acquire: vi.fn(async () => ({ status: 'acquired' as const })),
     enqueue: vi.fn(async () => ({ status: 'queued' as const })),
     finish: vi.fn(async () => undefined),
+    acquireRecoveryProbe: vi.fn(async () => false),
+    acquireManualRecoveryProbe: vi.fn(async () => false),
+    finishRecoveryProbe: vi.fn(async () => undefined),
+    listDueRecoveryProbes: vi.fn(async () => []),
     requeueForRetry: vi.fn(async () => undefined),
     renew: vi.fn(async () => true),
     ...overrides,
@@ -55,7 +60,434 @@ async function collect(
   return events
 }
 
+function completed(): Extract<AiRunEvent, { type: 'completed' }> {
+  return {
+    analysis: null,
+    identity: IDENTITY,
+    rawOutput: '{}',
+    type: 'completed',
+    usage: {
+      analysisTokens: { reason: 'not_reported', status: 'unavailable' },
+      cost: { reason: 'not_reported', status: 'unavailable' },
+      inputTokens: { reason: 'not_reported', status: 'unavailable' },
+      outputTokens: { reason: 'not_reported', status: 'unavailable' },
+      totalTokens: { reason: 'not_reported', status: 'unavailable' },
+    },
+  }
+}
+
+function completedProbeResult(succeeded: boolean): AiHealthProbeResult {
+  return succeeded
+    ? { succeeded: true, usage: completed().usage }
+    : {
+        failure: {
+          category: 'deadline_exceeded',
+          diagnosticCode: 'health_probe_deadline_exceeded',
+          retryable: false,
+        },
+        succeeded: false,
+      }
+}
+
 describe('AI run coordinator', () => {
+  it('claims durable due recovery rows and emits probe and health telemetry', async () => {
+    const target = {
+      adapterVersion: '1',
+      identity: IDENTITY,
+      runType: 'generate_without_images' as const,
+      totalTimeBudgetMs: 10_000,
+    }
+    const telemetry: AiRunTelemetryEvent[] = []
+    const coordination = store({
+      acquireRecoveryProbe: vi.fn(async () => true),
+      finishRecoveryProbe: vi.fn(async () => ({
+        breakerOpened: false,
+        breakerStatus: 'closed' as const,
+        healthStateChanged: true,
+        healthStatus: 'healthy' as const,
+      })),
+      listDueRecoveryProbes: vi.fn(async () => [target]),
+    })
+    const coordinator = createAiRunCoordinator({
+      coordination,
+      telemetry: {
+        emit: event => {
+          telemetry.push(event)
+        },
+      },
+    })
+
+    await coordinator.runDueRecoveryProbes(async () => ({
+      succeeded: true,
+      usage: completed().usage,
+    }))
+
+    expect(coordination.acquireRecoveryProbe).toHaveBeenCalledTimes(1)
+    expect(coordination.finishRecoveryProbe).toHaveBeenCalledWith(
+      expect.objectContaining({ succeeded: true }),
+    )
+    expect(telemetry.map(event => event.name)).toEqual([
+      'ai_health_probe_started',
+      'ai_health_state_changed',
+      'ai_health_probe_terminal',
+      'ai_health_state_changed',
+    ])
+    expect(telemetry[2]).toMatchObject({
+      outcome: 'completed',
+      probeKind: 'automatic',
+      usage: completed().usage,
+    })
+  })
+
+  it('records manual health checks with actor, duration, usage, and outcome', async () => {
+    let currentTime = 1_000
+    const telemetry: AiRunTelemetryEvent[] = []
+    const coordination = store({
+      acquireManualRecoveryProbe: vi.fn(async () => true),
+      finishRecoveryProbe: vi.fn(async () => ({
+        breakerOpened: false,
+        breakerStatus: 'closed' as const,
+        healthStateChanged: true,
+        healthStatus: 'healthy' as const,
+      })),
+    })
+    const coordinator = createAiRunCoordinator({
+      coordination,
+      now: () => currentTime,
+      telemetry: {
+        emit: event => {
+          telemetry.push(event)
+        },
+      },
+    })
+    const target = {
+      adapterVersion: '1',
+      identity: IDENTITY,
+      runType: 'generate_without_images' as const,
+      totalTimeBudgetMs: 10_000,
+    }
+
+    await coordinator.runManualHealthProbe(
+      target,
+      'admin-fingerprint',
+      async () => {
+        currentTime = 1_125
+        return { succeeded: true, usage: completed().usage }
+      },
+    )
+
+    expect(telemetry).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          actorId: 'admin-fingerprint',
+          durationMs: 125,
+          name: 'admin_health_check',
+          outcome: 'completed',
+          probeKind: 'manual',
+          usage: completed().usage,
+        }),
+      ]),
+    )
+  })
+
+  it('skips a lost recovery race and normalizes a probe exception', async () => {
+    const target = {
+      adapterVersion: '1',
+      identity: IDENTITY,
+      runType: 'generate_without_images' as const,
+      totalTimeBudgetMs: 10_000,
+    }
+    const telemetry: AiRunTelemetryEvent[] = []
+    const coordination = store({
+      acquireRecoveryProbe: vi
+        .fn()
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true),
+      finishRecoveryProbe: vi.fn(async () => ({
+        breakerOpened: false,
+        healthStateChanged: false,
+      })),
+      listDueRecoveryProbes: vi.fn(async () => [target, target]),
+    })
+    const coordinator = createAiRunCoordinator({
+      coordination,
+      telemetry: {
+        emit: event => {
+          telemetry.push(event)
+        },
+      },
+    })
+
+    await coordinator.runDueRecoveryProbes(async () => {
+      throw new Error('private provider failure')
+    })
+
+    expect(coordination.finishRecoveryProbe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failure: expect.objectContaining({
+          diagnosticCode: 'automatic_health_probe_failed',
+        }),
+        succeeded: false,
+      }),
+    )
+    expect(telemetry.map(event => event.name)).toEqual([
+      'ai_health_probe_started',
+      'ai_health_state_changed',
+      'ai_health_probe_terminal',
+    ])
+  })
+
+  it('reports an unavailable manual probe and normalizes execution failure', async () => {
+    const target = {
+      adapterVersion: '1',
+      identity: IDENTITY,
+      runType: 'generate_without_images' as const,
+      totalTimeBudgetMs: 10_000,
+    }
+    const coordination = store({
+      acquireManualRecoveryProbe: vi
+        .fn()
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true),
+      finishRecoveryProbe: vi.fn(async () => ({
+        breakerOpened: false,
+        healthStateChanged: false,
+      })),
+    })
+    const coordinator = createAiRunCoordinator({ coordination })
+
+    await expect(
+      coordinator.runManualHealthProbe(target, 'actor', async () => ({
+        succeeded: true,
+      })),
+    ).resolves.toMatchObject({
+      failure: { diagnosticCode: 'manual_health_probe_unavailable' },
+      succeeded: false,
+    })
+    await expect(
+      coordinator.runManualHealthProbe(target, 'actor', async () => {
+        throw new Error('private provider failure')
+      }),
+    ).resolves.toMatchObject({
+      failure: { diagnosticCode: 'manual_health_probe_failed' },
+      succeeded: false,
+    })
+  })
+
+  it('starts recovery immediately and contains scan failures', async () => {
+    const listDueRecoveryProbes = vi.fn(async () => {
+      throw new Error('SQL unavailable')
+    })
+    const coordinator = createAiRunCoordinator({
+      coordination: store({ listDueRecoveryProbes }),
+      recoveryPollIntervalMs: 60_000,
+    })
+
+    const stop = coordinator.startAutomaticRecovery(async () => ({
+      succeeded: true,
+    }))
+    await vi.waitFor(() => expect(listDueRecoveryProbes).toHaveBeenCalled())
+    stop()
+  })
+
+  it.each(['automatic', 'manual'] as const)(
+    'aborts a %s health probe at its total budget',
+    async kind => {
+      vi.useFakeTimers()
+      try {
+        const target = {
+          adapterVersion: '1',
+          identity: IDENTITY,
+          runType: 'generate_without_images' as const,
+          totalTimeBudgetMs: 100,
+        }
+        const coordination = store({
+          acquireManualRecoveryProbe: vi.fn(async () => true),
+          acquireRecoveryProbe: vi.fn(async () => true),
+          finishRecoveryProbe: vi.fn(async () => ({
+            breakerOpened: false,
+            healthStateChanged: false,
+          })),
+          listDueRecoveryProbes: vi.fn(async () => [target]),
+        })
+        const coordinator = createAiRunCoordinator({ coordination })
+        const execute = vi.fn(
+          (_target, _probeRunId, signal: AbortSignal) =>
+            new Promise<ReturnType<typeof completedProbeResult>>(resolve => {
+              signal.addEventListener(
+                'abort',
+                () => resolve(completedProbeResult(false)),
+                { once: true },
+              )
+            }),
+        )
+        const probing =
+          kind === 'automatic'
+            ? coordinator.runDueRecoveryProbes(execute)
+            : coordinator.runManualHealthProbe(target, 'actor', execute)
+        await vi.advanceTimersByTimeAsync(100)
+
+        await probing
+        expect(execute.mock.calls[0]?.[2].aborted).toBe(true)
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
+  it.each([
+    ['queue_full', 'rate_limited'],
+    ['breaker_open', 'connection_unavailable'],
+  ] as const)('normalizes rejected %s admission', async (status, category) => {
+    const coordination = store({
+      enqueue: vi.fn(async () => ({ retryAfterSeconds: 60, status })),
+    })
+
+    await expect(
+      collect(
+        createAiRunCoordinator({ coordination }).coordinate(
+          request(),
+          () => (async function* () {})(),
+          () => undefined,
+        ),
+      ),
+    ).resolves.toMatchObject([{ failure: { category }, type: 'failed' }])
+    expect(coordination.finish).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['breaker_open', 'circuit_breaker_open'],
+    ['expired', 'total_budget_exceeded'],
+  ] as const)(
+    'normalizes %s while acquiring capacity',
+    async (status, code) => {
+      const coordination = store({
+        acquire: vi.fn(async () => ({
+          ...(status === 'breaker_open' ? { retryAfterSeconds: 60 } : {}),
+          status,
+        })),
+      })
+
+      await expect(
+        collect(
+          createAiRunCoordinator({ coordination }).coordinate(
+            request(),
+            () => (async function* () {})(),
+            () => undefined,
+          ),
+        ),
+      ).resolves.toMatchObject([
+        { failure: { diagnosticCode: code }, type: 'failed' },
+      ])
+    },
+  )
+
+  it.each([
+    ['output', 'output_byte_limit_exceeded'],
+    ['memory', 'retained_memory_limit_exceeded'],
+    ['tokens', 'output_token_limit_exceeded'],
+  ] as const)('enforces the completed %s limit', async (kind, code) => {
+    const limited = request()
+    if (kind === 'output') limited.limits.maxOutputBytes = 1
+    if (kind === 'memory') limited.limits.maxRetainedMemoryBytes = 1
+    const event = completed()
+    if (kind === 'tokens') {
+      event.usage.outputTokens = { status: 'reported', value: 11 }
+    }
+
+    await expect(
+      collect(
+        createAiRunCoordinator({ coordination: store() }).coordinate(
+          limited,
+          () =>
+            (async function* () {
+              yield event
+            })(),
+          () => undefined,
+        ),
+      ),
+    ).resolves.toMatchObject([
+      { failure: { diagnosticCode: code }, type: 'failed' },
+    ])
+  })
+
+  it('enforces retained memory independently while streaming analysis', async () => {
+    const limited = request()
+    limited.limits.maxRetainedMemoryBytes = 1
+
+    await expect(
+      collect(
+        createAiRunCoordinator({ coordination: store() }).coordinate(
+          limited,
+          () =>
+            (async function* () {
+              yield { delta: 'ab', type: 'analysis_delta' as const }
+            })(),
+          () => undefined,
+        ),
+      ),
+    ).resolves.toMatchObject([
+      {
+        failure: { diagnosticCode: 'retained_memory_limit_exceeded' },
+        type: 'failed',
+      },
+    ])
+  })
+
+  it.each(['lost', 'threw'] as const)(
+    'cancels when lease renewal is %s',
+    async renewal => {
+      vi.useFakeTimers()
+      try {
+        const renew = vi.fn(() =>
+          renewal === 'lost'
+            ? Promise.resolve(false)
+            : Promise.reject(new Error('SQL unavailable')),
+        )
+        let markStarted = (): void => undefined
+        const started = new Promise<void>(resolve => {
+          markStarted = resolve
+        })
+        const coordination = store({ renew })
+        const leasedRequest = request()
+        leasedRequest.profile.inactivityTimeBudgetMs = 30_000
+        leasedRequest.profile.totalTimeBudgetMs = 40_000
+        const collecting = collect(
+          createAiRunCoordinator({ coordination }).coordinate(
+            leasedRequest,
+            (_attempt, signal) => ({
+              [Symbol.asyncIterator]() {
+                markStarted()
+                return {
+                  next: () =>
+                    new Promise<IteratorResult<AiRunEvent>>(resolve => {
+                      signal.addEventListener(
+                        'abort',
+                        () => resolve({ done: true, value: undefined }),
+                        { once: true },
+                      )
+                    }),
+                }
+              },
+            }),
+            () => undefined,
+          ),
+        )
+        await started
+        await vi.advanceTimersByTimeAsync(10_000)
+
+        await expect(collecting).resolves.toMatchObject([
+          {
+            failure: { diagnosticCode: 'coordination_lease_lost' },
+            type: 'failed',
+          },
+        ])
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
   it('allows the exact limit and aborts before exposing the first byte over it', async () => {
     const abort = vi.fn()
     const coordination = store()
@@ -76,7 +508,9 @@ describe('AI run coordinator', () => {
       })()
     })
 
-    const events = await collect(coordinator.coordinate(request(), execute))
+    const events = await collect(
+      coordinator.coordinate(request(), execute, () => undefined),
+    )
 
     expect(events).toEqual([
       { delta: '12345678', type: 'output_delta', visibility: 'internal' },
@@ -146,7 +580,9 @@ describe('AI run coordinator', () => {
       })(),
     )
 
-    const events = await collect(coordinator.coordinate(request(), execute))
+    const events = await collect(
+      coordinator.coordinate(request(), execute, () => undefined),
+    )
 
     expect(events.at(-1)?.type).toBe('completed')
     expect(execute).toHaveBeenCalledTimes(2)
@@ -171,7 +607,9 @@ describe('AI run coordinator', () => {
       })(),
     )
 
-    const events = await collect(coordinator.coordinate(request(), execute))
+    const events = await collect(
+      coordinator.coordinate(request(), execute, () => undefined),
+    )
 
     expect(events.map(event => event.type)).toEqual([
       'analysis_delta',
@@ -183,21 +621,25 @@ describe('AI run coordinator', () => {
   it('does not pull another adapter event while downstream is blocked', async () => {
     let pulls = 0
     const coordinator = createAiRunCoordinator({ coordination: store() })
-    const stream = coordinator.coordinate(request(), () => ({
-      [Symbol.asyncIterator]() {
-        return {
-          next: async () => {
-            pulls += 1
-            return pulls === 1
-              ? {
-                  done: false as const,
-                  value: { delta: 'a', type: 'analysis_delta' as const },
-                }
-              : { done: true as const, value: undefined }
-          },
-        }
-      },
-    }))
+    const stream = coordinator.coordinate(
+      request(),
+      () => ({
+        [Symbol.asyncIterator]() {
+          return {
+            next: async () => {
+              pulls += 1
+              return pulls === 1
+                ? {
+                    done: false as const,
+                    value: { delta: 'a', type: 'analysis_delta' as const },
+                  }
+                : { done: true as const, value: undefined }
+            },
+          }
+        },
+      }),
+      () => undefined,
+    )
     const iterator = stream[Symbol.asyncIterator]()
 
     await expect(iterator.next()).resolves.toMatchObject({
@@ -207,41 +649,44 @@ describe('AI run coordinator', () => {
     await iterator.return?.()
   })
 
-  it('forwards heartbeats without treating them as terminal or idle progress', async () => {
+  it('forwards heartbeats and treats them as idle progress', async () => {
     const coordinator = createAiRunCoordinator({ coordination: store() })
     const events = await collect(
-      coordinator.coordinate(request(), () =>
-        (async function* () {
-          yield { type: 'heartbeat' as const }
-          yield {
-            analysis: null,
-            identity: IDENTITY,
-            rawOutput: '{}',
-            type: 'completed' as const,
-            usage: {
-              analysisTokens: {
-                reason: 'not_reported' as const,
-                status: 'unavailable' as const,
+      coordinator.coordinate(
+        request(),
+        () =>
+          (async function* () {
+            yield { type: 'heartbeat' as const }
+            yield {
+              analysis: null,
+              identity: IDENTITY,
+              rawOutput: '{}',
+              type: 'completed' as const,
+              usage: {
+                analysisTokens: {
+                  reason: 'not_reported' as const,
+                  status: 'unavailable' as const,
+                },
+                cost: {
+                  reason: 'not_reported' as const,
+                  status: 'unavailable' as const,
+                },
+                inputTokens: {
+                  reason: 'not_reported' as const,
+                  status: 'unavailable' as const,
+                },
+                outputTokens: {
+                  reason: 'not_reported' as const,
+                  status: 'unavailable' as const,
+                },
+                totalTokens: {
+                  reason: 'not_reported' as const,
+                  status: 'unavailable' as const,
+                },
               },
-              cost: {
-                reason: 'not_reported' as const,
-                status: 'unavailable' as const,
-              },
-              inputTokens: {
-                reason: 'not_reported' as const,
-                status: 'unavailable' as const,
-              },
-              outputTokens: {
-                reason: 'not_reported' as const,
-                status: 'unavailable' as const,
-              },
-              totalTokens: {
-                reason: 'not_reported' as const,
-                status: 'unavailable' as const,
-              },
-            },
-          }
-        })(),
+            }
+          })(),
+        () => undefined,
       ),
     )
 
@@ -266,7 +711,9 @@ describe('AI run coordinator', () => {
     budgetedRequest.profile.totalTimeBudgetMs = 250
 
     await expect(
-      collect(coordinator.coordinate(budgetedRequest, execute)),
+      collect(
+        coordinator.coordinate(budgetedRequest, execute, () => undefined),
+      ),
     ).resolves.toMatchObject([
       {
         failure: {
@@ -279,39 +726,60 @@ describe('AI run coordinator', () => {
     expect(execute).not.toHaveBeenCalled()
   })
 
-  it('does not let heartbeats extend the inactivity budget', async () => {
-    vi.useFakeTimers()
-    try {
-      const coordinator = createAiRunCoordinator({ coordination: store() })
-      let markBlocked = (): void => undefined
-      const blocked = new Promise<void>(resolve => {
-        markBlocked = resolve
-      })
-      const collecting = collect(
-        coordinator.coordinate(request(), () =>
+  it('lets each heartbeat reset only the inactivity budget', async () => {
+    let currentTime = 0
+    const coordinator = createAiRunCoordinator({
+      coordination: store(),
+      now: () => currentTime,
+    })
+    const events = await collect(
+      coordinator.coordinate(
+        request(),
+        () =>
           (async function* () {
+            currentTime = 900
             yield { type: 'heartbeat' as const }
-            markBlocked()
-            await new Promise(() => undefined)
+            currentTime = 1_800
+            yield completed()
           })(),
-        ),
-      )
-      await blocked
-      await vi.advanceTimersByTimeAsync(6_000)
+        () => undefined,
+      ),
+    )
 
-      await expect(collecting).resolves.toMatchObject([
-        { type: 'heartbeat' },
-        {
+    expect(events.map(event => event.type)).toEqual(['heartbeat', 'completed'])
+  })
+
+  it.each([
+    'authentication_failed',
+    'deadline_exceeded',
+    'invalid_response',
+    'capability_mismatch',
+  ] as const)('never retries forbidden %s failures', async category => {
+    const coordination = store()
+    const execute = vi.fn(() =>
+      (async function* () {
+        yield {
           failure: {
-            category: 'deadline_exceeded',
-            diagnosticCode: 'inactivity_budget_exceeded',
+            category,
+            retryDisposition: 'idempotent' as const,
+            retryable: true,
           },
-          type: 'failed',
-        },
-      ])
-    } finally {
-      vi.useRealTimers()
-    }
+          identity: IDENTITY,
+          type: 'failed' as const,
+        }
+      })(),
+    )
+
+    await collect(
+      createAiRunCoordinator({ coordination }).coordinate(
+        request(),
+        execute,
+        () => undefined,
+      ),
+    )
+
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(coordination.requeueForRetry).not.toHaveBeenCalled()
   })
 
   it('does not honor Retry-After when fewer than five minutes would remain', async () => {
@@ -335,7 +803,9 @@ describe('AI run coordinator', () => {
     )
 
     await expect(
-      collect(coordinator.coordinate(budgetedRequest, execute)),
+      collect(
+        coordinator.coordinate(budgetedRequest, execute, () => undefined),
+      ),
     ).resolves.toMatchObject([{ type: 'failed' }])
     expect(execute).toHaveBeenCalledTimes(1)
     expect(coordination.requeueForRetry).not.toHaveBeenCalled()
@@ -346,6 +816,7 @@ describe('AI run coordinator', () => {
       createAiRunCoordinator({ coordination: store() }).coordinate(
         request(),
         () => (async function* () {})(),
+        () => undefined,
       ),
     )
     expect(eof).toHaveLength(1)
@@ -363,8 +834,10 @@ describe('AI run coordinator', () => {
       }),
     })
     const failed = await collect(
-      createAiRunCoordinator({ coordination }).coordinate(request(), () =>
-        (async function* () {})(),
+      createAiRunCoordinator({ coordination }).coordinate(
+        request(),
+        () => (async function* () {})(),
+        () => undefined,
       ),
     )
     expect(failed).toHaveLength(1)
@@ -375,7 +848,7 @@ describe('AI run coordinator', () => {
       },
       type: 'failed',
     })
-    expect(coordination.finish).toHaveBeenCalledTimes(1)
+    expect(coordination.finish).not.toHaveBeenCalled()
   })
 
   it('cancels an uncooperative adapter within the five-second grace', async () => {
@@ -384,6 +857,7 @@ describe('AI run coordinator', () => {
       const abortController = new AbortController()
       const coordination = store()
       const adapterAbort = vi.fn()
+      const forceClose = vi.fn()
       let markStarted = (): void => undefined
       const started = new Promise<void>(resolve => {
         markStarted = resolve
@@ -402,6 +876,7 @@ describe('AI run coordinator', () => {
             }
           },
         }),
+        forceClose,
       )
       const collecting = collect(stream)
       await started
@@ -416,10 +891,29 @@ describe('AI run coordinator', () => {
         },
       ])
       expect(adapterAbort).toHaveBeenCalledTimes(1)
+      expect(forceClose).toHaveBeenCalledTimes(1)
       expect(coordination.finish).toHaveBeenCalledTimes(1)
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('never finalizes a run that this invocation failed to admit', async () => {
+    const coordination = store({
+      enqueue: vi.fn(async () => {
+        throw new Error('duplicate application run id')
+      }),
+    })
+
+    await collect(
+      createAiRunCoordinator({ coordination }).coordinate(
+        request(),
+        () => (async function* () {})(),
+        () => undefined,
+      ),
+    )
+
+    expect(coordination.finish).not.toHaveBeenCalled()
   })
 
   it('emits content-free telemetry and binding alarm categories', async () => {
@@ -444,7 +938,7 @@ describe('AI run coordinator', () => {
         }
       })()
 
-    await collect(coordinator.coordinate(request(), execute))
+    await collect(coordinator.coordinate(request(), execute, () => undefined))
 
     expect(telemetry.map(event => event.name)).toEqual([
       'ai_run_started',
