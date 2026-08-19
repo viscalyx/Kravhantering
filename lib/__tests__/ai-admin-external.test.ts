@@ -12,6 +12,7 @@ import type { AiAdminConnectionDetail } from '@/lib/ai/admin-service'
 import type { AiDeploymentTrustPolicy } from '@/lib/ai/connection-trust'
 import { controlledTestAdminAdapterRegistration } from '@/lib/ai/controlled-test-admin-adapter'
 import { openRouterAdminAdapterRegistration } from '@/lib/ai/openrouter-admin-adapter'
+import { encryptAiProviderSecret } from '@/lib/ai/provider-secret-crypto'
 import { parseAiProviderSecretKeyring } from '@/lib/ai/provider-secret-keyring'
 import type { SqlServerDatabase } from '@/lib/db'
 
@@ -214,7 +215,7 @@ describe('AI administration provider composition', () => {
     ).resolves.toBe('data_policy_blocked')
   })
 
-  it('maps a bounded OpenRouter catalog and probe outcomes', async () => {
+  it('maps a bounded OpenRouter catalog and connection probe outcomes', async () => {
     const adapter = createAiAdminConnectionAdapterRegistry([
       openRouterAdminAdapterRegistration,
     ]).resolve('openrouter', '1')
@@ -248,25 +249,12 @@ describe('AI administration provider composition', () => {
       credential: 'opaque-test-value',
       egress: { fetch },
     }
-    const baseRevision = current.models[0]?.revisions[0]
-    if (!baseRevision) throw new Error('Revision missing')
-    const revision = {
-      ...baseRevision,
-      externalModelId: 'vendor/model',
-    }
-
     await expect(adapter.fetchCatalog(context)).resolves.toMatchObject([
       { externalModelId: 'vendor/model', capabilities: { imageInput: true } },
     ])
     await expect(adapter.probeConnection(context)).resolves.toMatchObject({
       outcome: 'passed',
     })
-    await expect(adapter.probeHealth(context, revision)).resolves.toBe(
-      'healthy',
-    )
-    await expect(
-      adapter.verifyModelRevision(context, revision),
-    ).resolves.toMatchObject({ outcome: 'passed' })
     await expect(
       adapter.verifySecretCandidate(context),
     ).resolves.toBeUndefined()
@@ -400,16 +388,55 @@ describe('AI administration provider composition', () => {
         egress: { fetch: vi.fn() },
       }),
     ).resolves.toBeUndefined()
+
+    const discovered = connection()
+    const discoveredRevision = discovered.models[0]?.revisions[0]
+    if (!discoveredRevision) throw new Error('Revision missing')
+    discoveredRevision.discoveredCapabilities = CAPABILITIES
+    await expect(
+      adapter.fetchCatalog({
+        connection: discovered,
+        credential: null,
+        egress: { fetch: vi.fn() },
+      }),
+    ).resolves.toMatchObject([{ capabilities: CAPABILITIES }])
+    const events = []
+    for await (const event of adapter.runFunctionalProbe(
+      {
+        connection: discovered,
+        credential: null,
+        egress: { fetch: vi.fn() },
+      },
+      discoveredRevision,
+      {
+        abortSignal: new AbortController().signal,
+        deadlineAt: new Date(Date.now() + 1_000).toISOString(),
+        selectedCapabilities: {
+          aiAnalysis: false,
+          cost: false,
+          imageInput: false,
+          jsonSchemaSteering: false,
+          streaming: false,
+          tokenUsage: false,
+        },
+        task: {
+          content: [{ text: 'probe', type: 'text' }],
+          instructions: 'probe',
+          responseSchema: {},
+        },
+      },
+    )) {
+      events.push(event)
+    }
+    expect(events).toMatchObject([{ type: 'completed' }])
   })
 
-  it('covers OpenRouter absent-model, degraded, unavailable, and catalog variants', async () => {
+  it('covers OpenRouter catalog variants and provider rejection', async () => {
     const adapter = openRouterAdminAdapterRegistration.adapter
     const current = connection({
       adapterKey: 'openrouter',
       endpointUrl: 'https://openrouter.ai/api/v1/',
     })
-    const revision = current.models[0]?.revisions[0]
-    if (!revision) throw new Error('Revision missing')
     const responses = [
       new Response(
         JSON.stringify({
@@ -424,9 +451,6 @@ describe('AI administration provider composition', () => {
           ],
         }),
       ),
-      new Response(JSON.stringify({ data: [] })),
-      new Response('unavailable', { status: 503 }),
-      new Response(JSON.stringify({ data: [] })),
       new Response('unavailable', { status: 503 }),
     ]
     const context: AiAdminAdapterContext = {
@@ -437,17 +461,85 @@ describe('AI administration provider composition', () => {
       },
     }
     await expect(adapter.fetchCatalog(context)).resolves.toHaveLength(1)
-    await expect(adapter.probeHealth(context, revision)).resolves.toBe(
-      'degraded',
-    )
-    await expect(adapter.probeHealth(context, revision)).resolves.toBe(
-      'unavailable',
-    )
-    await expect(
-      adapter.verifyModelRevision(context, revision),
-    ).resolves.toMatchObject({ outcome: 'failed' })
     await expect(adapter.verifySecretCandidate(context)).rejects.toThrow(
       'rejected',
     )
+  })
+
+  it('never treats an advertised model as verified or healthy when its functional run fails', async () => {
+    const current = connection({
+      adapterKey: 'openrouter',
+      authenticationType: 'static_secret',
+      endpointUrl: 'https://ai.example.test/v1',
+    })
+    const baseRevision = current.models[0]?.revisions[0]
+    if (!baseRevision) throw new Error('Revision missing')
+    const revision = { ...baseRevision, externalModelId: 'vendor/model' }
+    const secretVersionId = crypto.randomUUID()
+    const envelope = encryptAiProviderSecret(
+      ring,
+      { connectionId: current.id, secretVersionId },
+      'opaque-test-value',
+    )
+    const db = {
+      query: vi.fn(async () => [
+        {
+          activatedAt: new Date(),
+          authenticationTag: envelope.authenticationTag,
+          ciphertext: envelope.ciphertext,
+          connectionId: current.id,
+          createdAt: new Date(),
+          formatVersion: envelope.formatVersion,
+          id: secretVersionId,
+          nonce: envelope.nonce,
+          revisionNumber: 1,
+          revisionToken: crypto.randomUUID(),
+          rootKeyVersion: envelope.rootKeyVersion,
+          status: 'active',
+          verifiedAt: new Date(),
+        },
+      ]),
+      transaction: vi.fn(),
+    } as unknown as SqlServerDatabase
+    const providerFetch = vi.fn(async (request: { init: RequestInit }) => {
+      if (request.init.method === 'GET') {
+        return new Response(
+          JSON.stringify({
+            data: [{ id: 'vendor/model', name: 'Advertised model' }],
+          }),
+        )
+      }
+      return new Response('run failed', { status: 503 })
+    })
+    const basePolicy = deployment()
+    const policy: AiDeploymentTrustPolicy = {
+      ...basePolicy,
+      tlsPolicies: {
+        ...basePolicy.tlsPolicies,
+        test: {
+          certificateValidation: 'required',
+          fetchPinned: providerFetch,
+          trustSource: 'public_web_pki',
+        },
+      },
+    }
+    const external = createProductionAiAdminExternalOperations(db, () => ring, {
+      deployment: policy,
+    })
+
+    await expect(external.fetchCatalog(current)).resolves.toMatchObject([
+      { externalModelId: 'vendor/model' },
+    ])
+    await expect(
+      external.verifyModelRevision(current, revision),
+    ).resolves.toMatchObject({ outcome: 'failed' })
+    await expect(external.probeHealth(current, revision)).resolves.toBe(
+      'unavailable',
+    )
+    expect(
+      providerFetch.mock.calls.some(
+        ([request]) => request.init.method === 'POST',
+      ),
+    ).toBe(true)
   })
 })

@@ -328,7 +328,15 @@ describe('Admin AI connection routes', () => {
       name: 'Model',
     }
     const cases = [
-      ['activateSecret', { action: 'activate_secret', secretVersionId: token }],
+      [
+        'activateSecret',
+        {
+          action: 'activate_secret',
+          connectionConfigurationVersion: 1,
+          connectionRevisionToken: token,
+          secretVersionId: token,
+        },
+      ],
       [
         'saveAttestation',
         {

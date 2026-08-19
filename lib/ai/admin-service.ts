@@ -179,9 +179,14 @@ export interface AiAdminExternalOperations {
 export interface AiAdminSecretOperations {
   activateCandidate(input: {
     connection: Readonly<AiAdminConnectionDetail>
+    connectionConfigurationVersion: number
     connectionId: string
+    connectionRevisionToken: string
     secretVersionId: string
   }): Promise<AiProviderSecretVersionMetadata>
+  availabilities(
+    connectionIds: readonly string[],
+  ): Promise<ReadonlyMap<string, AiProviderSecretAvailability>>
   availability(connectionId: string): Promise<AiProviderSecretAvailability>
   confirmRevocation(input: {
     connectionId: string
@@ -258,6 +263,7 @@ export interface AiAdminStore {
     modelRevisionToken: string
   }): Promise<AiAdminConnectionDetail>
   recordModelVerification(input: {
+    connection: AiAdminConnectionDetail
     connectionEvidenceId: string
     modelRevision: AiAdminModelRevisionRecord
     result: Readonly<AiAdminModelVerificationResult>
@@ -315,6 +321,7 @@ export interface AiAdminAuditDetail {
   resourceType:
     | 'ai_connection'
     | 'ai_connection_attestation'
+    | 'ai_connection_model'
     | 'ai_connection_model_revision'
     | 'ai_provider_secret'
     | 'ai_run_profile'
@@ -473,11 +480,13 @@ export class AiConnectionAdministrationService {
 
   async #withSecretAvailability(
     connection: AiAdminConnectionDetail,
+    resolvedAvailability?: AiProviderSecretAvailability,
   ): Promise<AiAdminConnectionDetail> {
     const activeSecret =
       connection.authenticationType === 'none'
         ? connection.activeSecret
-        : await this.#secrets.availability(connection.id)
+        : (resolvedAvailability ??
+          (await this.#secrets.availability(connection.id)))
     const blockers = connection.blockers.filter(
       blocker => blocker.code !== 'active_secret_missing',
     )
@@ -521,6 +530,18 @@ export class AiConnectionAdministrationService {
 
   async listRunProfiles(): Promise<readonly AiAdminRunProfileRecord[]> {
     const entries = await this.#store.listRunProfileActivationEntries()
+    const authenticatedConnectionIds = [
+      ...new Set(
+        entries.flatMap(({ snapshot }) =>
+          snapshot && snapshot.connection.authenticationType !== 'none'
+            ? [snapshot.connection.id.toLowerCase()]
+            : [],
+        ),
+      ),
+    ]
+    const availabilities = await this.#secrets.availabilities(
+      authenticatedConnectionIds,
+    )
     return Promise.all(
       entries.map(async ({ profile, snapshot: storedSnapshot }) => {
         if (!storedSnapshot) {
@@ -533,6 +554,7 @@ export class AiConnectionAdministrationService {
           ...storedSnapshot,
           connection: await this.#withSecretAvailability(
             storedSnapshot.connection,
+            availabilities.get(storedSnapshot.connection.id.toLowerCase()),
           ),
         }
         return {
@@ -611,16 +633,24 @@ export class AiConnectionAdministrationService {
     })
   }
 
-  async activateSecret(
-    connectionId: string,
-    secretVersionId: string,
-  ): Promise<AiProviderSecretVersionMetadata> {
-    const connection = await this.getConnection(connectionId)
+  async activateSecret(input: {
+    connectionConfigurationVersion: number
+    connectionId: string
+    connectionRevisionToken: string
+    secretVersionId: string
+  }): Promise<AiProviderSecretVersionMetadata> {
+    const connection = await this.getConnection(input.connectionId)
+    if (
+      connection.configurationVersion !==
+        input.connectionConfigurationVersion ||
+      connection.revisionToken !== input.connectionRevisionToken
+    ) {
+      activationConflict()
+    }
     await this.#assertAuthorizedTarget(connection)
     return this.#secrets.activateCandidate({
       connection,
-      connectionId,
-      secretVersionId,
+      ...input,
     })
   }
 
@@ -747,6 +777,7 @@ export class AiConnectionAdministrationService {
       modelRevision,
     )
     return this.#store.recordModelVerification({
+      connection,
       connectionEvidenceId,
       modelRevision,
       result,

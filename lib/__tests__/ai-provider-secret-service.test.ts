@@ -1,4 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto'
+import type { AiAdminConnectionAdapter } from '@/lib/ai/admin-adapter'
+import type { AiAdminConnectionDetail } from '@/lib/ai/admin-service'
 import {
   decryptAiProviderSecret,
   encryptAiProviderSecret,
@@ -9,14 +11,13 @@ import {
   AiProviderSecretService,
   confirmAiProviderSecretRevocation,
   deleteAiProviderSecretCandidate,
+  getAiProviderSecretAvailabilities,
   getAiProviderSecretAvailability,
   listReferencedAiProviderSecretRootKeyVersions,
   reencryptAiProviderSecrets,
   verifyAiProviderSecretRestoreSet,
   writeAiProviderSecretCandidate,
 } from '@/lib/ai/provider-secret-service'
-import type { AiAdminConnectionAdapter } from '@/lib/ai/admin-adapter'
-import type { AiAdminConnectionDetail } from '@/lib/ai/admin-service'
 import type { AiEgressTransport } from '@/lib/ai/run-contracts'
 import type { SqlServerDatabase } from '@/lib/db'
 
@@ -115,6 +116,93 @@ describe('AI provider-secret service', () => {
     expect(adapter.fetchCatalog).not.toHaveBeenCalled()
   })
 
+  it('requires a complete schema-valid functional terminal and never overclaims capabilities', async () => {
+    const connectionId = randomUUID()
+    const revisionId = randomUUID()
+    const capabilities = {
+      aiAnalysis: true,
+      cost: true,
+      imageInput: true,
+      jsonSchemaSteering: true,
+      streaming: true,
+      tokenUsage: true,
+      validatableJson: true,
+    }
+    let run = 0
+    const adapter = {
+      async *runFunctionalProbe(
+        _context: unknown,
+        _revision: unknown,
+        probe: {
+          selectedCapabilities: typeof capabilities
+          task: { content: readonly { type: string }[] }
+        },
+      ) {
+        run += 1
+        expect(probe.task.content.some(part => part.type === 'image')).toBe(
+          probe.selectedCapabilities.imageInput,
+        )
+        if (probe.selectedCapabilities.streaming) {
+          yield {
+            delta: '{"probe":',
+            type: 'output_delta',
+            visibility: 'internal',
+          }
+        }
+        yield {
+          analysis: probe.selectedCapabilities.aiAnalysis ? 'analysis' : null,
+          identity: {
+            aiConnectionId: connectionId,
+            aiConnectionModelRevisionId: revisionId,
+            aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
+          },
+          rawOutput: run <= 2 ? '{"probe":"wrong"}' : '{"probe":"ok"}',
+          type: 'completed',
+          usage: {
+            analysisTokens: { reason: 'not_supported', status: 'unavailable' },
+            cost: { reason: 'not_supported', status: 'unavailable' },
+            inputTokens: { reason: 'not_supported', status: 'unavailable' },
+            outputTokens: { reason: 'not_supported', status: 'unavailable' },
+            totalTokens: { reason: 'not_supported', status: 'unavailable' },
+          },
+        }
+      },
+    } as unknown as AiAdminConnectionAdapter
+    const connection = {
+      authenticationType: 'none',
+      id: connectionId,
+    } as AiAdminConnectionDetail
+    const revision = {
+      declaredCapabilities: capabilities,
+      id: revisionId,
+      verifiedCapabilities: capabilities,
+    } as AiAdminConnectionDetail['models'][number]['revisions'][number]
+    const service = new AiProviderSecretAdminService(
+      database(vi.fn()).db,
+      keyring('root-1', { 'root-1': randomBytes(32) }),
+    )
+    const egress = { fetch: vi.fn() } as AiEgressTransport
+
+    await expect(
+      service.verifyModelRevision(adapter, connection, egress, revision),
+    ).resolves.toMatchObject({ outcome: 'failed' })
+    await expect(
+      service.probeHealth(adapter, connection, egress, revision),
+    ).resolves.toBe('unavailable')
+    const noCapabilities = Object.fromEntries(
+      Object.keys(capabilities).map(capability => [capability, false]),
+    ) as typeof capabilities
+    await expect(
+      service.verifyModelRevision(adapter, connection, egress, {
+        ...revision,
+        declaredCapabilities: noCapabilities,
+      }),
+    ).resolves.toMatchObject({
+      outcome: 'passed',
+      verifiedCapabilities: noCapabilities,
+    })
+  })
+
   it('encrypts before candidate persistence and never sends plaintext to SQL', async () => {
     const connectionId = randomUUID()
     const ring = keyring('root-1', { 'root-1': randomBytes(32) })
@@ -181,7 +269,9 @@ describe('AI provider-secret service', () => {
       verifyCandidate: verify,
     })
     await service.activateCandidate({
+      connectionConfigurationVersion: 1,
       connectionId,
+      connectionRevisionToken: randomUUID(),
       secretVersionId,
     })
 
@@ -205,7 +295,9 @@ describe('AI provider-secret service', () => {
       AiProviderSecretService['activateCandidate']
     >[0]
     expectTypeOf<ActivationInput>().toEqualTypeOf<{
+      connectionConfigurationVersion: number
       connectionId: string
+      connectionRevisionToken: string
       secretVersionId: string
     }>()
 
@@ -229,7 +321,9 @@ describe('AI provider-secret service', () => {
     })
 
     const result = await service.activateCandidate({
+      connectionConfigurationVersion: 1,
       connectionId,
+      connectionRevisionToken: randomUUID(),
       secretVersionId,
     })
 
@@ -266,7 +360,9 @@ describe('AI provider-secret service', () => {
       verifyCandidate: verify,
     })
     const restored = await service.activateCandidate({
+      connectionConfigurationVersion: 1,
       connectionId,
+      connectionRevisionToken: randomUUID(),
       secretVersionId,
     })
 
@@ -296,7 +392,9 @@ describe('AI provider-secret service', () => {
           throw new Error('provider rejected candidate')
         },
       }).activateCandidate({
+        connectionConfigurationVersion: 1,
         connectionId,
+        connectionRevisionToken: randomUUID(),
         secretVersionId,
       }),
     ).rejects.toThrow('provider rejected candidate')
@@ -578,6 +676,63 @@ describe('AI provider-secret service', () => {
     })
   })
 
+  it('loads deduplicated secret availability in one bounded query', async () => {
+    const firstConnectionId = randomUUID()
+    const secondConnectionId = randomUUID()
+    const missingConnectionId = randomUUID()
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const first = persistedRow(
+      firstConnectionId,
+      randomUUID(),
+      'first-secret',
+      ring,
+    )
+    const second = persistedRow(
+      secondConnectionId,
+      randomUUID(),
+      'second-secret',
+      ring,
+    )
+    const { db } = database(
+      vi.fn(async () => [
+        first,
+        { ...second, ciphertext: Buffer.from(second.ciphertext).fill(0) },
+      ]),
+    )
+
+    const result = await getAiProviderSecretAvailabilities(db, ring, [
+      firstConnectionId.toUpperCase(),
+      firstConnectionId,
+      secondConnectionId,
+      missingConnectionId,
+    ])
+
+    expect(db.query).toHaveBeenCalledOnce()
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('OPENJSON(@0)'),
+      [
+        JSON.stringify([
+          firstConnectionId,
+          secondConnectionId,
+          missingConnectionId,
+        ]),
+      ],
+    )
+    expect(result.get(firstConnectionId)).toMatchObject({ available: true })
+    expect(result.get(secondConnectionId)).toMatchObject({
+      available: false,
+      reason: 'authentication_failed',
+    })
+    expect(result.get(missingConnectionId)).toEqual({
+      available: false,
+      reason: 'secret_missing',
+    })
+    await expect(
+      getAiProviderSecretAvailabilities(db, ring, []),
+    ).resolves.toEqual(new Map())
+    expect(db.query).toHaveBeenCalledOnce()
+  })
+
   it('fails closed when lifecycle mutations no longer match a secret version', async () => {
     const connectionId = randomUUID()
     const secretVersionId = randomUUID()
@@ -594,7 +749,9 @@ describe('AI provider-secret service', () => {
       new AiProviderSecretService(missingCandidateDb, ring, {
         verifyCandidate: async () => undefined,
       }).activateCandidate({
+        connectionConfigurationVersion: 1,
         connectionId,
+        connectionRevisionToken: randomUUID(),
         secretVersionId,
       }),
     ).rejects.toMatchObject({ reason: 'secret_missing' })
@@ -607,10 +764,12 @@ describe('AI provider-secret service', () => {
       new AiProviderSecretService(database(noActivation).db, ring, {
         verifyCandidate: async () => undefined,
       }).activateCandidate({
+        connectionConfigurationVersion: 1,
         connectionId,
+        connectionRevisionToken: randomUUID(),
         secretVersionId,
       }),
-    ).rejects.toThrow('was not activated')
+    ).rejects.toThrow('state changed')
     await expect(
       confirmAiProviderSecretRevocation(database(vi.fn(async () => [])).db, {
         connectionId,

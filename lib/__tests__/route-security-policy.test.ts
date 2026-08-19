@@ -3,8 +3,8 @@ import {
   compileRestRouteRegistry,
   REST_OPERATIONS,
   REST_ROUTE_REGISTRY,
-  resolveRestPathPolicy,
   type RestOperationDeclaration,
+  resolveRestPathPolicy,
 } from '@/lib/http/route-security-policy'
 
 const validDeclaration = [

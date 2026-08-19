@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import type { SqlServerDatabase } from '@/lib/db'
+import { conflictError } from '@/lib/requirements/errors'
 import type {
   AiAdminAdapterContext,
   AiAdminConnectionAdapter,
 } from './admin-adapter'
+import type { AiCapability } from './admin-contracts'
 import type {
   AiAdminCatalogItem,
   AiAdminConnectionDetail,
@@ -21,7 +23,189 @@ import {
   type AiProviderSecretKeyring,
   AiProviderSecretKeyringError,
 } from './provider-secret-keyring.ts'
-import type { AiEgressTransport } from './run-contracts'
+import {
+  type AiCapabilitySelection,
+  type AiConnectionId,
+  type AiConnectionModelRevisionId,
+  type AiEgressTransport,
+  type AiRunEvent,
+  type AiRunIdentity,
+  type AiRunProfileRevisionId,
+  type AiTaskEnvelope,
+  guardAiRunEventStream,
+} from './run-contracts'
+
+const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v1'
+const ADMIN_PROBE_TIMEOUT_MS = 30_000
+const ADMIN_PROBE_PROFILE_REVISION_ID =
+  '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
+const ADMIN_PROBE_SCHEMA = Object.freeze({
+  additionalProperties: false,
+  properties: { probe: { const: 'ok', type: 'string' } },
+  required: ['probe'],
+  type: 'object',
+})
+const ADMIN_PROBE_IMAGE = new Uint8Array(
+  Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64',
+  ),
+)
+
+type AdminProbeTerminal = Extract<
+  AiRunEvent,
+  { type: 'cancelled' | 'completed' | 'failed' }
+>
+
+interface AdminFunctionalProbeResult {
+  capabilities: AiCapability
+  completed: boolean
+  failureCategory: string | null
+  schemaValid: boolean
+}
+
+function selectedCapabilities(
+  capabilities: AiCapability,
+): AiCapabilitySelection {
+  return {
+    aiAnalysis: capabilities.aiAnalysis,
+    cost: capabilities.cost,
+    imageInput: capabilities.imageInput,
+    jsonSchemaSteering: capabilities.jsonSchemaSteering,
+    streaming: capabilities.streaming,
+    tokenUsage: capabilities.tokenUsage,
+  }
+}
+
+function probeTask(capabilities: AiCapability): AiTaskEnvelope {
+  return {
+    content: [
+      { text: 'Return the required probe object.', type: 'text' },
+      ...(capabilities.imageInput
+        ? ([
+            {
+              data: ADMIN_PROBE_IMAGE,
+              mediaType: 'image/png',
+              type: 'image',
+            },
+          ] as const)
+        : []),
+    ],
+    instructions:
+      'This is a fixed administrative capability probe. Return exactly {"probe":"ok"}.',
+    responseSchema: ADMIN_PROBE_SCHEMA,
+  }
+}
+
+function validProbeOutput(rawOutput: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(rawOutput)
+    return (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      !Array.isArray(parsed) &&
+      Object.keys(parsed).length === 1 &&
+      (parsed as { probe?: unknown }).probe === 'ok'
+    )
+  } catch {
+    return false
+  }
+}
+
+function emptyCapabilities(): AiCapability {
+  return {
+    aiAnalysis: false,
+    cost: false,
+    imageInput: false,
+    jsonSchemaSteering: false,
+    streaming: false,
+    tokenUsage: false,
+    validatableJson: false,
+  }
+}
+
+async function runAdminFunctionalProbe(
+  adapter: AiAdminConnectionAdapter,
+  context: Readonly<AiAdminAdapterContext>,
+  revision: Readonly<AiAdminModelRevisionRecord>,
+  capabilities: AiCapability,
+): Promise<AdminFunctionalProbeResult> {
+  const controller = new AbortController()
+  const deadlineAt = new Date(Date.now() + ADMIN_PROBE_TIMEOUT_MS).toISOString()
+  const identity: AiRunIdentity = {
+    aiConnectionId: context.connection.id as AiConnectionId,
+    aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
+    aiRunProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+  }
+  let terminal: AdminProbeTerminal | undefined
+  let observedOutputDelta = false
+  const timeout = setTimeout(() => controller.abort(), ADMIN_PROBE_TIMEOUT_MS)
+  try {
+    const stream = adapter.runFunctionalProbe(context, revision, {
+      abortSignal: controller.signal,
+      deadlineAt,
+      selectedCapabilities: selectedCapabilities(capabilities),
+      task: probeTask(capabilities),
+    })
+    for await (const event of guardAiRunEventStream(stream, identity)) {
+      if (event.type === 'output_delta') observedOutputDelta = true
+      if (
+        event.type === 'completed' ||
+        event.type === 'failed' ||
+        event.type === 'cancelled'
+      ) {
+        terminal = event
+      }
+    }
+  } catch {
+    terminal = undefined
+  } finally {
+    clearTimeout(timeout)
+    controller.abort()
+  }
+
+  if (terminal?.type !== 'completed') {
+    return {
+      capabilities: emptyCapabilities(),
+      completed: false,
+      failureCategory:
+        terminal?.type === 'failed'
+          ? terminal.failure.category
+          : terminal?.type === 'cancelled'
+            ? 'cancelled'
+            : 'adapter_failure',
+      schemaValid: false,
+    }
+  }
+
+  const schemaValid = validProbeOutput(terminal.rawOutput)
+  const verified: AiCapability = {
+    aiAnalysis: capabilities.aiAnalysis && terminal.analysis !== null,
+    cost: capabilities.cost && terminal.usage.cost.status !== 'unavailable',
+    imageInput: capabilities.imageInput,
+    jsonSchemaSteering: capabilities.jsonSchemaSteering && schemaValid,
+    streaming: capabilities.streaming && observedOutputDelta,
+    tokenUsage:
+      capabilities.tokenUsage &&
+      terminal.usage.totalTokens.status !== 'unavailable',
+    validatableJson: capabilities.validatableJson && schemaValid,
+  }
+  return {
+    capabilities: verified,
+    completed: true,
+    failureCategory: schemaValid ? null : 'invalid_response',
+    schemaValid,
+  }
+}
+
+function satisfiesDeclaredCapabilities(
+  declared: AiCapability,
+  verified: AiCapability,
+): boolean {
+  return (Object.keys(declared) as (keyof AiCapability)[]).every(
+    capability => !declared[capability] || verified[capability],
+  )
+}
 
 export interface AiProviderSecretMutationExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
@@ -129,7 +313,9 @@ export interface WriteAiProviderSecretCandidateInput {
 }
 
 export interface ActivateAiProviderSecretVersionInput {
+  connectionConfigurationVersion: number
   connectionId: string
+  connectionRevisionToken: string
   secretVersionId: string
 }
 
@@ -362,6 +548,77 @@ export async function getAiProviderSecretAvailability(
   }
 }
 
+export async function getAiProviderSecretAvailabilities(
+  db: SqlServerDatabase,
+  keyring: AiProviderSecretKeyring,
+  connectionIds: readonly string[],
+): Promise<ReadonlyMap<string, AiProviderSecretAvailability>> {
+  const normalizedIds = [
+    ...new Set(connectionIds.map(connectionId => connectionId.toLowerCase())),
+  ]
+  if (normalizedIds.length === 0) return new Map()
+  const rows = await db.query<AiProviderSecretRow[]>(
+    `SELECT [secret].[id],
+       [secret].[ai_connection_id] AS [connectionId],
+       [secret].[revision_number] AS [revisionNumber], [secret].[status],
+       [secret].[ciphertext], [secret].[nonce],
+       [secret].[authentication_tag] AS [authenticationTag],
+       [secret].[cipher_format_version] AS [formatVersion],
+       [secret].[root_key_version] AS [rootKeyVersion],
+       [secret].[created_at] AS [createdAt],
+       [secret].[verified_at] AS [verifiedAt],
+       [secret].[activated_at] AS [activatedAt],
+       [secret].[provider_revoked_at] AS [providerRevokedAt],
+       [secret].[ciphertext_deleted_at] AS [ciphertextDeletedAt],
+       [secret].[revision_token] AS [revisionToken]
+     FROM OPENJSON(@0) WITH ([id] uniqueidentifier '$') AS [requested]
+     INNER JOIN [ai_provider_secret_versions] AS [secret]
+       ON [secret].[ai_connection_id] = [requested].[id]
+       AND [secret].[status] = N'active'`,
+    [JSON.stringify(normalizedIds)],
+  )
+  const byConnection = new Map(
+    rows.map(row => [row.connectionId.toLowerCase(), row] as const),
+  )
+  return new Map<string, AiProviderSecretAvailability>(
+    normalizedIds.map(connectionId => {
+      const row = byConnection.get(connectionId)
+      if (!row) {
+        return [
+          connectionId,
+          { available: false, reason: 'secret_missing' } as const,
+        ]
+      }
+      try {
+        decryptRow(keyring, row)
+        return [
+          connectionId,
+          {
+            available: true,
+            rootKeyVersion: row.rootKeyVersion,
+            secretVersionId: row.id,
+          } as const,
+        ]
+      } catch (error) {
+        if (!(error instanceof AiProviderSecretUnavailableError)) throw error
+        return [
+          connectionId,
+          {
+            available: false,
+            reason: error.reason,
+            ...(error.rootKeyVersion
+              ? { rootKeyVersion: error.rootKeyVersion }
+              : {}),
+            ...(error.secretVersionId
+              ? { secretVersionId: error.secretVersionId }
+              : {}),
+          } as const,
+        ]
+      }
+    }),
+  )
+}
+
 async function activateAiProviderSecretVersion(
   db: SqlServerDatabase,
   keyring: AiProviderSecretKeyring,
@@ -387,8 +644,28 @@ async function activateAiProviderSecretVersion(
   )
 
   const active = await db.transaction('SERIALIZABLE', async manager => {
-    const rows = await manager.query<AiProviderSecretRow[]>(
-      `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+    const rows =
+      (await manager.query<AiProviderSecretRow[]>(
+        `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+       DECLARE @activated TABLE (
+         [id] uniqueidentifier NOT NULL,
+         [connectionId] uniqueidentifier NOT NULL,
+         [revisionNumber] int NOT NULL,
+         [status] nvarchar(24) NOT NULL,
+         [rootKeyVersion] nvarchar(120) NOT NULL,
+         [createdAt] datetime2(3) NOT NULL,
+         [verifiedAt] datetime2(3) NULL,
+         [activatedAt] datetime2(3) NULL,
+         [providerRevokedAt] datetime2(3) NULL,
+         [ciphertextDeletedAt] datetime2(3) NULL,
+         [revisionToken] uniqueidentifier NOT NULL
+       );
+
+       IF NOT EXISTS (
+         SELECT 1 FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
+         WHERE [id] = @1 AND [configuration_version] = @3
+           AND [revision_token] = @4
+       ) RETURN;
 
        IF NOT EXISTS (
          SELECT 1 FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
@@ -417,11 +694,44 @@ async function activateAiProviderSecretVersion(
          INSERTED.[provider_revoked_at] AS [providerRevokedAt],
          INSERTED.[ciphertext_deleted_at] AS [ciphertextDeletedAt],
          INSERTED.[revision_token] AS [revisionToken]
-       WHERE [id] = @0 AND [ai_connection_id] = @1;`,
-      [input.secretVersionId, input.connectionId, candidate.revisionToken],
-    )
+       INTO @activated
+       WHERE [id] = @0 AND [ai_connection_id] = @1;
+
+       UPDATE [ai_connections]
+       SET [configuration_version] = [configuration_version] + 1,
+         [lifecycle_status] = CASE
+           WHEN [lifecycle_status] = N'draft' THEN N'draft'
+           ELSE N'verification_required'
+         END,
+         [updated_at] = @now, [revision_token] = NEWID()
+       WHERE [id] = @1 AND [configuration_version] = @3
+         AND [revision_token] = @4;
+
+       UPDATE [revision]
+       SET [status] = N'verification_required',
+         [verified_capabilities_json] = NULL, [verified_at] = NULL,
+         [updated_at] = @now, [revision_token] = NEWID()
+       FROM [ai_connection_model_revisions] AS [revision]
+       INNER JOIN [ai_connection_models] AS [model]
+         ON [model].[id] = [revision].[ai_connection_model_id]
+       WHERE [model].[ai_connection_id] = @1
+         AND [revision].[status] = N'verified';
+
+       SELECT * FROM @activated;`,
+        [
+          input.secretVersionId,
+          input.connectionId,
+          candidate.revisionToken,
+          input.connectionConfigurationVersion,
+          input.connectionRevisionToken,
+        ],
+      )) ?? []
     const saved = rows[0]
-    if (!saved) throw new Error('AI provider-secret version was not activated')
+    if (!saved) {
+      throw conflictError(
+        'AI connection or provider-secret state changed. Reload and try again.',
+      )
+    }
     await beforeCommit?.(manager)
     return saved
   })
@@ -524,26 +834,57 @@ export class AiProviderSecretAdminService {
     )
   }
 
-  probeHealth(
+  async probeHealth(
     adapter: AiAdminConnectionAdapter,
     connection: Readonly<AiAdminConnectionDetail>,
     egress: AiEgressTransport,
     revision: Readonly<AiAdminModelRevisionRecord>,
   ): Promise<'degraded' | 'healthy' | 'unavailable'> {
-    return this.#execute(connection, egress, context =>
-      adapter.probeHealth(context, revision),
+    const expectedCapabilities =
+      revision.verifiedCapabilities ?? revision.declaredCapabilities
+    const result = await this.#execute(connection, egress, context =>
+      runAdminFunctionalProbe(adapter, context, revision, expectedCapabilities),
     )
+    return result.completed &&
+      result.schemaValid &&
+      satisfiesDeclaredCapabilities(expectedCapabilities, result.capabilities)
+      ? 'healthy'
+      : 'unavailable'
   }
 
-  verifyModelRevision(
+  async verifyModelRevision(
     adapter: AiAdminConnectionAdapter,
     connection: Readonly<AiAdminConnectionDetail>,
     egress: AiEgressTransport,
     revision: Readonly<AiAdminModelRevisionRecord>,
   ): Promise<Readonly<AiAdminModelVerificationResult>> {
-    return this.#execute(connection, egress, context =>
-      adapter.verifyModelRevision(context, revision),
+    const result = await this.#execute(connection, egress, context =>
+      runAdminFunctionalProbe(
+        adapter,
+        context,
+        revision,
+        revision.declaredCapabilities,
+      ),
     )
+    const passed =
+      result.completed &&
+      result.schemaValid &&
+      satisfiesDeclaredCapabilities(
+        revision.declaredCapabilities,
+        result.capabilities,
+      )
+    return {
+      details: {
+        completed: result.completed,
+        schemaValid: result.schemaValid,
+      },
+      failureCategory: passed
+        ? null
+        : (result.failureCategory ?? 'capability_mismatch'),
+      outcome: passed ? 'passed' : 'failed',
+      testSuiteVersion: ADMIN_FUNCTIONAL_PROBE_VERSION,
+      verifiedCapabilities: result.capabilities,
+    }
   }
 
   verifySecretCandidate(

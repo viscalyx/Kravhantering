@@ -175,6 +175,8 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
   z
     .object({
       action: z.literal('activate_secret'),
+      connectionConfigurationVersion: z.number().int().min(1),
+      connectionRevisionToken: aiRevisionTokenSchema,
       secretVersionId: aiIdentifierSchema,
     })
     .strict(),

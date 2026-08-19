@@ -16,6 +16,7 @@ import {
   AiProviderSecretService,
   confirmAiProviderSecretRevocation,
   deleteAiProviderSecretCandidate,
+  getAiProviderSecretAvailabilities,
   getAiProviderSecretAvailability,
   writeAiProviderSecretCandidate,
 } from './provider-secret-service'
@@ -68,7 +69,9 @@ export function createAiConnectionAdministrationRuntime(
               executor,
             ),
         ).activateCandidate({
+          connectionConfigurationVersion: input.connectionConfigurationVersion,
           connectionId: input.connectionId,
+          connectionRevisionToken: input.connectionRevisionToken,
           secretVersionId: input.secretVersionId,
         }),
       availability: async connectionId => {
@@ -86,6 +89,26 @@ export function createAiConnectionAdministrationRuntime(
             available: false,
             reason: 'root_key_version_missing',
           }
+        }
+      },
+      availabilities: async connectionIds => {
+        try {
+          return await getAiProviderSecretAvailabilities(
+            db,
+            keyring(),
+            connectionIds,
+          )
+        } catch (error) {
+          if (!(error instanceof AiProviderSecretKeyringError)) throw error
+          return new Map(
+            connectionIds.map(connectionId => [
+              connectionId.toLowerCase(),
+              {
+                available: false as const,
+                reason: 'root_key_version_missing' as const,
+              },
+            ]),
+          )
         }
       },
       confirmRevocation: input =>

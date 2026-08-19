@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type {
   AiAdminAdapterContext,
   AiAdminConnectionAdapter,
@@ -8,9 +9,18 @@ import type { AiAdminCatalogItem } from './admin-service'
 import {
   OPENROUTER_ADAPTER_TYPE,
   OPENROUTER_ADAPTER_VERSION,
+  openRouterAdapterRegistration,
 } from './openrouter-adapter'
+import type {
+  AiConnectionId,
+  AiConnectionModelRevisionId,
+  AiExternalRunId,
+  AiRunProfileRevisionId,
+} from './run-contracts'
 
 const MAX_CATALOG_BYTES = 4 * 1024 * 1024
+const ADMIN_PROBE_PROFILE_REVISION_ID =
+  '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
 
 interface CatalogModel {
   architecture?: { modality?: unknown }
@@ -127,29 +137,31 @@ const openRouterAdminAdapter: AiAdminConnectionAdapter = {
       }
     }
   },
-  async probeHealth(context, revision) {
-    try {
-      const models = await fetchModels(context)
-      return models.some(model => model.id === revision.externalModelId)
-        ? 'healthy'
-        : 'degraded'
-    } catch {
-      return 'unavailable'
-    }
-  },
-  async verifyModelRevision(context, revision) {
-    const model = (await fetchModels(context)).find(
-      candidate => candidate.id === revision.externalModelId,
-    )
-    return {
-      details: { modelResolved: Boolean(model) },
-      failureCategory: model ? null : 'model_unavailable',
-      outcome: model ? 'passed' : 'failed',
-      testSuiteVersion: 'openrouter-admin-v1',
-      verifiedCapabilities: model
-        ? capabilities(model)
-        : revision.declaredCapabilities,
-    }
+  runFunctionalProbe(context, revision, probe) {
+    return openRouterAdapterRegistration.adapter.run({
+      connection: {
+        configuration: {
+          apiKey: context.credential ?? '',
+          endpoint: context.connection.endpointUrl,
+        },
+        id: context.connection.id as AiConnectionId,
+      },
+      context: {
+        abortSignal: probe.abortSignal,
+        deadlineAt: probe.deadlineAt,
+        egress: context.egress,
+        externalRunId: `admin_probe_${randomUUID()}` as AiExternalRunId,
+      },
+      modelRevision: {
+        configuration: {},
+        externalModelId: revision.externalModelId,
+        id: revision.id as AiConnectionModelRevisionId,
+        verifiedCapabilities: revision.declaredCapabilities,
+      },
+      runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+      selectedCapabilities: probe.selectedCapabilities,
+      task: probe.task,
+    })
   },
   async verifySecretCandidate(context) {
     await fetchModels(context)

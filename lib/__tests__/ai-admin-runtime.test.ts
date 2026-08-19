@@ -10,6 +10,7 @@ const runtimeState = vi.hoisted(() => {
     activate: vi.fn(),
     audit: vi.fn(async () => undefined),
     availability: vi.fn(),
+    availabilities: vi.fn(),
     confirm: vi.fn(),
     createProduction: vi.fn(),
     deleteCandidate: vi.fn(),
@@ -62,7 +63,9 @@ vi.mock('@/lib/ai/provider-secret-service', () => ({
     }
 
     async activateCandidate(input: {
+      connectionConfigurationVersion: number
       connectionId: string
+      connectionRevisionToken: string
       secretVersionId: string
     }) {
       await this.verifier.verifyCandidate(input, 'transient-candidate')
@@ -88,6 +91,8 @@ vi.mock('@/lib/ai/provider-secret-service', () => ({
   },
   getAiProviderSecretAvailability: (...args: unknown[]) =>
     runtimeState.availability(...args),
+  getAiProviderSecretAvailabilities: (...args: unknown[]) =>
+    runtimeState.availabilities(...args),
   writeAiProviderSecretCandidate: async (
     _db: unknown,
     _keyring: unknown,
@@ -167,6 +172,7 @@ describe('AI administration runtime composition', () => {
       rootKeyVersion: 'root-1',
       secretVersionId,
     })
+    runtimeState.availabilities.mockResolvedValue(new Map())
     runtimeState.activate.mockResolvedValue(metadata)
     runtimeState.confirm.mockResolvedValue(metadata)
     runtimeState.deleteCandidate.mockResolvedValue(true)
@@ -176,7 +182,12 @@ describe('AI administration runtime composition', () => {
   it('uses production external operations by default and audits secret writes in-transaction', async () => {
     const service = createAiConnectionAdministrationRuntime(db, context)
     await service.writeSecret(connectionId, 'candidate')
-    await service.activateSecret(connectionId, secretVersionId)
+    await service.activateSecret({
+      connectionConfigurationVersion: 1,
+      connectionId,
+      connectionRevisionToken: '00000000-0000-4000-8000-000000000003',
+      secretVersionId,
+    })
     await service.confirmSecretRevocation(connectionId, secretVersionId)
     await service.deleteSecretCandidate(connectionId, secretVersionId)
 
@@ -222,5 +233,37 @@ describe('AI administration runtime composition', () => {
     await expect(service.getConnection(connectionId)).rejects.toThrow(
       'database down',
     )
+  })
+
+  it('uses bulk secret availability and shapes missing bulk keyrings', async () => {
+    const store = {
+      listRunProfileActivationEntries: vi.fn(async () => []),
+    } as unknown as AiAdminStore
+    runtimeState.storeFactory.mockReturnValue(store)
+    const service = createAiConnectionAdministrationRuntime(db, context, {
+      external: runtimeState.external,
+    })
+
+    await expect(service.listRunProfiles()).resolves.toEqual([])
+    expect(runtimeState.availabilities).toHaveBeenCalledWith(
+      db,
+      expect.anything(),
+      [],
+    )
+    runtimeState.availabilities.mockRejectedValueOnce(
+      new runtimeState.KeyringError('missing'),
+    )
+    await expect(service.listRunProfiles()).resolves.toEqual([])
+  })
+
+  it('rethrows unexpected bulk secret availability failures', async () => {
+    runtimeState.storeFactory.mockReturnValue({
+      listRunProfileActivationEntries: vi.fn(async () => []),
+    } as unknown as AiAdminStore)
+    runtimeState.availabilities.mockRejectedValueOnce(new Error('bulk down'))
+    const service = createAiConnectionAdministrationRuntime(db, context, {
+      external: runtimeState.external,
+    })
+    await expect(service.listRunProfiles()).rejects.toThrow('bulk down')
   })
 })

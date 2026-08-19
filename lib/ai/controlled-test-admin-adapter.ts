@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type {
   AiAdminConnectionAdapter,
   AiAdminConnectionAdapterRegistration,
@@ -5,7 +6,17 @@ import type {
 import {
   CONTROLLED_TEST_ADAPTER_TYPE,
   CONTROLLED_TEST_ADAPTER_VERSION,
+  controlledTestAdapterRegistration,
 } from './controlled-test-adapter'
+import type {
+  AiConnectionId,
+  AiConnectionModelRevisionId,
+  AiExternalRunId,
+  AiRunProfileRevisionId,
+} from './run-contracts'
+
+const ADMIN_PROBE_PROFILE_REVISION_ID =
+  '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
 
 const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
   async fetchCatalog(context) {
@@ -27,18 +38,49 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
       testSuiteVersion: 'controlled-test-admin-v1',
     }
   },
-  async probeHealth() {
-    return 'healthy'
-  },
-  async verifyModelRevision(_context, revision) {
-    return {
-      details: { modelResolved: true },
-      failureCategory: null,
-      outcome: 'passed',
-      testSuiteVersion: 'controlled-test-admin-v1',
-      verifiedCapabilities:
-        revision.discoveredCapabilities ?? revision.declaredCapabilities,
-    }
+  runFunctionalProbe(context, revision, probe) {
+    return controlledTestAdapterRegistration.adapter.run({
+      connection: {
+        configuration: {
+          scenario: {
+            analysis: probe.selectedCapabilities.aiAnalysis
+              ? 'Probe analysis'
+              : null,
+            output: '{"probe":"ok"}',
+            outputDeltas: probe.selectedCapabilities.streaming
+              ? ['{"probe":', '"ok"}']
+              : undefined,
+            type: 'completed',
+            usage: {
+              analysisTokens: { status: 'reported', value: 1 },
+              cost: {
+                status: 'reported',
+                value: { amount: '0', currency: 'USD' },
+              },
+              inputTokens: { status: 'reported', value: 1 },
+              outputTokens: { status: 'reported', value: 1 },
+              totalTokens: { status: 'reported', value: 2 },
+            },
+          },
+        },
+        id: context.connection.id as AiConnectionId,
+      },
+      context: {
+        abortSignal: probe.abortSignal,
+        deadlineAt: probe.deadlineAt,
+        egress: context.egress,
+        externalRunId: `admin_probe_${randomUUID()}` as AiExternalRunId,
+      },
+      modelRevision: {
+        configuration: {},
+        externalModelId: revision.externalModelId,
+        id: revision.id as AiConnectionModelRevisionId,
+        verifiedCapabilities: revision.declaredCapabilities,
+      },
+      runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+      selectedCapabilities: probe.selectedCapabilities,
+      task: probe.task,
+    })
   },
   async verifySecretCandidate(context) {
     if (

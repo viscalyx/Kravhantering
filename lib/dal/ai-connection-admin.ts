@@ -957,6 +957,7 @@ export function createSqlServerAiAdminStore(
       return db.transaction('SERIALIZABLE', async manager => {
         const value = input.modelRevision
         const modelRevisionId = randomUUID()
+        let technicalChanged = true
         let modelId = value.modelId
         if (!modelId) {
           modelId = randomUUID()
@@ -988,9 +989,53 @@ export function createSqlServerAiAdminStore(
               'AI connection model changed. Reload and try again.',
             )
           }
+          const currentRows = await manager.query<
+            Array<{
+              agentRuntimeVersion: string | null
+              currentAgentRuntimeVersion: string | null
+              declaredCapabilitiesJson: string
+              discoveredCapabilitiesJson: string | null
+              externalModelId: string
+              externalModelVersion: string | null
+            }>
+          >(
+            `SELECT TOP (1)
+               [revision].[external_model_id] AS [externalModelId],
+               [revision].[external_model_version] AS [externalModelVersion],
+               [revision].[agent_runtime_version] AS [agentRuntimeVersion],
+               [connection].[agent_runtime_version]
+                 AS [currentAgentRuntimeVersion],
+               [revision].[declared_capabilities_json]
+                 AS [declaredCapabilitiesJson],
+               [revision].[discovered_capabilities_json]
+                 AS [discoveredCapabilitiesJson]
+             FROM [ai_connection_model_revisions] AS [revision]
+               WITH (UPDLOCK, HOLDLOCK)
+             INNER JOIN [ai_connection_models] AS [model]
+               ON [model].[id] = [revision].[ai_connection_model_id]
+             INNER JOIN [ai_connections] AS [connection]
+               ON [connection].[id] = [model].[ai_connection_id]
+             WHERE [model].[id] = @0 AND [model].[ai_connection_id] = @1
+             ORDER BY [revision].[revision_number] DESC`,
+            [modelId, input.connectionId],
+          )
+          const current = currentRows[0]
+          technicalChanged =
+            !current ||
+            current.externalModelId !== value.externalModelId ||
+            current.externalModelVersion !== value.externalModelVersion ||
+            current.agentRuntimeVersion !==
+              current.currentAgentRuntimeVersion ||
+            current.declaredCapabilitiesJson !==
+              JSON.stringify(value.declaredCapabilities) ||
+            current.discoveredCapabilitiesJson !==
+              (value.discoveredCapabilities === null
+                ? null
+                : JSON.stringify(value.discoveredCapabilities))
         }
-        await manager.query(
-          `DECLARE @configuration_version int = (
+        if (technicalChanged) {
+          await manager.query(
+            `DECLARE @configuration_version int = (
                SELECT [configuration_version]
                FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
                WHERE [id] = @0
@@ -1012,18 +1057,19 @@ export function createSqlServerAiAdminStore(
                SYSUTCDATETIME(), SYSUTCDATETIME()
              FROM [ai_connections]
              WHERE [id] = @0;`,
-          [
-            input.connectionId,
-            modelId,
-            modelRevisionId,
-            value.externalModelId,
-            value.externalModelVersion,
-            JSON.stringify(value.declaredCapabilities),
-            value.discoveredCapabilities === null
-              ? null
-              : JSON.stringify(value.discoveredCapabilities),
-          ],
-        )
+            [
+              input.connectionId,
+              modelId,
+              modelRevisionId,
+              value.externalModelId,
+              value.externalModelVersion,
+              JSON.stringify(value.declaredCapabilities),
+              value.discoveredCapabilities === null
+                ? null
+                : JSON.stringify(value.discoveredCapabilities),
+            ],
+          )
+        }
         const loaded = await loadConnection(manager, input.connectionId)
         const model = loaded?.models.find(candidate =>
           sameId(candidate.id, modelId),
@@ -1031,12 +1077,16 @@ export function createSqlServerAiAdminStore(
         if (!model) throw new Error('AI connection model was not saved.')
         await audit(
           {
-            changedFields: Object.keys(input.modelRevision).filter(
-              field => !field.toLowerCase().includes('token'),
-            ),
+            changedFields: technicalChanged
+              ? Object.keys(input.modelRevision).filter(
+                  field => !field.toLowerCase().includes('token'),
+                )
+              : ['name', 'description'],
             operation: 'save',
-            resourceId: modelRevisionId,
-            resourceType: 'ai_connection_model_revision',
+            resourceId: technicalChanged ? modelRevisionId : modelId,
+            resourceType: technicalChanged
+              ? 'ai_connection_model_revision'
+              : 'ai_connection_model',
           },
           manager,
         )
@@ -1123,6 +1173,34 @@ export function createSqlServerAiAdminStore(
         const rows = await manager.query<Array<{ id: string }>>(
           `DECLARE @updated TABLE ([id] uniqueidentifier NOT NULL);
 
+           IF NOT EXISTS (
+             SELECT 1
+             FROM [ai_connection_model_revisions] AS [revision]
+               WITH (UPDLOCK, HOLDLOCK)
+             INNER JOIN [ai_connection_models] AS [model]
+               ON [model].[id] = [revision].[ai_connection_model_id]
+             INNER JOIN [ai_connections] AS [connection]
+               WITH (UPDLOCK, HOLDLOCK)
+               ON [connection].[id] = [model].[ai_connection_id]
+             INNER JOIN [ai_connection_verification_evidence] AS [connection_evidence]
+               WITH (UPDLOCK, HOLDLOCK)
+               ON [connection_evidence].[id] = @2
+             WHERE [revision].[id] = @1
+               AND [revision].[revision_token] = @9
+               AND [revision].[status] IN (N'draft', N'verification_required')
+               AND [revision].[connection_configuration_version]
+                 = [connection].[configuration_version]
+               AND [connection].[id] = @10
+               AND [connection].[configuration_version] = @11
+               AND [connection].[revision_token] = @12
+               AND [connection_evidence].[ai_connection_id] = [connection].[id]
+               AND [connection_evidence].[connection_configuration_version]
+                 = [connection].[configuration_version]
+               AND [connection_evidence].[outcome] = N'passed'
+               AND ([connection_evidence].[expires_at] IS NULL
+                 OR [connection_evidence].[expires_at] > SYSUTCDATETIME())
+           ) RETURN;
+
            INSERT INTO [ai_connection_model_verification_evidence] (
              [id], [ai_connection_model_revision_id],
              [ai_connection_verification_evidence_id], [outcome],
@@ -1156,6 +1234,9 @@ export function createSqlServerAiAdminStore(
             result.failureCategory,
             JSON.stringify(result.details),
             input.modelRevision.revisionToken,
+            input.connection.id,
+            input.connection.configurationVersion,
+            input.connection.revisionToken,
           ],
         )
         if (!rows?.[0]) {

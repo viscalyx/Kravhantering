@@ -1,9 +1,14 @@
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import type {
   CreateAiConnection,
   SaveAiAttestation,
 } from '@/lib/ai/admin-contracts'
+import { parseAiProviderSecretKeyring } from '@/lib/ai/provider-secret-keyring'
+import {
+  AiProviderSecretService,
+  writeAiProviderSecretCandidate,
+} from '@/lib/ai/provider-secret-service'
 import {
   createSqlServerAiAdminStore,
   __testing as mapping,
@@ -59,6 +64,16 @@ function attestationInput(
     revisionToken,
     subprocessors: [],
   }
+}
+
+function secretKeyring() {
+  return parseAiProviderSecretKeyring(
+    JSON.stringify({
+      activeWriteVersion: 'sql-root-1',
+      formatVersion: 1,
+      keys: { 'sql-root-1': randomBytes(32).toString('base64') },
+    }),
+  )
 }
 
 async function count(
@@ -330,6 +345,7 @@ describe('AI connection administration transactions against SQL Server', () => {
     }
     await expect(
       store.recordModelVerification({
+        connection: verifiedConnection,
         connectionEvidenceId: verifiedConnection.connectionEvidenceId,
         modelRevision: { ...draftRevision, revisionToken: randomUUID() },
         result: {
@@ -515,6 +531,73 @@ describe('AI connection administration transactions against SQL Server', () => {
     )
   })
 
+  it('rejects a model verification completed against an older connection configuration', async () => {
+    const store = createSqlServerAiAdminStore(appDb(), async () => undefined)
+    const original = await store.createConnection(
+      connectionInput('-model-race'),
+    )
+    const model = await store.saveModelRevision({
+      connectionId: original.id,
+      modelRevision: {
+        declaredCapabilities: CAPABILITIES,
+        description: null,
+        discoveredCapabilities: CAPABILITIES,
+        externalModelId: 'controlled/model-race-v1',
+        externalModelVersion: '1',
+        modelId: null,
+        modelToken: null,
+        name: 'Model race',
+      },
+    })
+    const revision = model.revisions[0]
+    if (!revision) throw new Error('Model revision missing')
+    const verifiedConnection = await store.recordConnectionVerification({
+      connection: original,
+      result: {
+        details: { reachable: true },
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'sql-v1',
+      },
+    })
+    if (!verifiedConnection.connectionEvidenceId) {
+      throw new Error('Connection evidence missing')
+    }
+    const updated = await store.updateConnection({
+      connection: connectionInput('-model-race-v2'),
+      connectionId: original.id,
+      revisionToken: verifiedConnection.revisionToken,
+    })
+    expect(updated?.configurationVersion).toBe(2)
+
+    await expect(
+      store.recordModelVerification({
+        connection: verifiedConnection,
+        connectionEvidenceId: verifiedConnection.connectionEvidenceId,
+        modelRevision: revision,
+        result: {
+          details: { resolved: true },
+          failureCategory: null,
+          outcome: 'passed',
+          testSuiteVersion: 'sql-v1',
+          verifiedCapabilities: CAPABILITIES,
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    expect(
+      await count(
+        appDb(),
+        'ai_connection_model_verification_evidence',
+        '[ai_connection_model_revision_id] = @0',
+        [revision.id],
+      ),
+    ).toBe(0)
+    const persistedRevision = (await store.getConnection(original.id))?.models
+      .flatMap(candidate => candidate.revisions)
+      .find(candidate => candidate.id === revision.id)
+    expect(persistedRevision?.status).not.toBe('verified')
+  })
+
   it('serializes two administrators validating attestations from the same token', async () => {
     const store = createSqlServerAiAdminStore(appDb(), async () => undefined)
     const connection = await store.createConnection(connectionInput('-attest'))
@@ -560,6 +643,64 @@ describe('AI connection administration transactions against SQL Server', () => {
         [connection.id],
       ),
     ).toBe(1)
+  })
+
+  it('rejects secret activation when the connection changes during candidate verification', async () => {
+    const db = appDb()
+    const store = createSqlServerAiAdminStore(db, async () => undefined)
+    const original = await store.createConnection(
+      connectionInput('-secret-race'),
+    )
+    const ring = secretKeyring()
+    const candidate = await writeAiProviderSecretCandidate(db, ring, {
+      connectionId: original.id,
+      plaintext: 'candidate-secret',
+    })
+    let releaseVerification = (): void => undefined
+    let markStarted = (): void => undefined
+    const verificationStarted = new Promise<void>(resolve => {
+      markStarted = resolve
+    })
+    const verificationRelease = new Promise<void>(resolve => {
+      releaseVerification = resolve
+    })
+    const activation = new AiProviderSecretService(db, ring, {
+      async verifyCandidate() {
+        markStarted()
+        await verificationRelease
+      },
+    }).activateCandidate({
+      connectionConfigurationVersion: original.configurationVersion,
+      connectionId: original.id,
+      connectionRevisionToken: original.revisionToken,
+      secretVersionId: candidate.id,
+    })
+    await verificationStarted
+    const updated = await store.updateConnection({
+      connection: connectionInput('-secret-race-v2'),
+      connectionId: original.id,
+      revisionToken: original.revisionToken,
+    })
+    expect(updated?.configurationVersion).toBe(2)
+    releaseVerification()
+
+    await expect(activation).rejects.toMatchObject({ code: 'conflict' })
+    expect(
+      await count(
+        db,
+        'ai_provider_secret_versions',
+        "[id] = @0 AND [status] = N'candidate'",
+        [candidate.id],
+      ),
+    ).toBe(1)
+    expect(
+      await count(
+        db,
+        'ai_provider_secret_versions',
+        "[ai_connection_id] = @0 AND [status] = N'active'",
+        [original.id],
+      ),
+    ).toBe(0)
   })
 
   it('creates immutable technical revisions and retires one exact revision', async () => {
@@ -619,6 +760,253 @@ describe('AI connection administration transactions against SQL Server', () => {
     ).resolves.toMatchObject({ status: 'retired' })
   })
 
+  it('updates stable model metadata without changing revision verification history', async () => {
+    const store = createSqlServerAiAdminStore(appDb(), async () => undefined)
+    const connection = await store.createConnection(
+      connectionInput('-metadata'),
+    )
+    const model = await store.saveModelRevision({
+      connectionId: connection.id,
+      modelRevision: {
+        declaredCapabilities: CAPABILITIES,
+        description: null,
+        discoveredCapabilities: CAPABILITIES,
+        externalModelId: 'controlled/metadata',
+        externalModelVersion: '1',
+        modelId: null,
+        modelToken: null,
+        name: 'Original model name',
+      },
+    })
+    const revision = model.revisions[0]
+    if (!revision) throw new Error('Model revision missing')
+    const verifiedConnection = await store.recordConnectionVerification({
+      connection,
+      result: {
+        details: { reachable: true },
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'sql-v1',
+      },
+    })
+    if (!verifiedConnection.connectionEvidenceId) {
+      throw new Error('Connection evidence missing')
+    }
+    const verifiedRevision = await store.recordModelVerification({
+      connection: verifiedConnection,
+      connectionEvidenceId: verifiedConnection.connectionEvidenceId,
+      modelRevision: revision,
+      result: {
+        details: { resolved: true },
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'sql-v1',
+        verifiedCapabilities: CAPABILITIES,
+      },
+    })
+    const evidenceCount = await count(
+      appDb(),
+      'ai_connection_model_verification_evidence',
+      '[ai_connection_model_revision_id] = @0',
+      [revision.id],
+    )
+
+    const renamed = await store.saveModelRevision({
+      connectionId: connection.id,
+      modelRevision: {
+        declaredCapabilities: CAPABILITIES,
+        description: 'Metadata only',
+        discoveredCapabilities: CAPABILITIES,
+        externalModelId: revision.externalModelId,
+        externalModelVersion: revision.externalModelVersion,
+        modelId: model.id,
+        modelToken: model.revisionToken,
+        name: 'Renamed model',
+      },
+    })
+
+    expect(renamed.name).toBe('Renamed model')
+    expect(renamed.description).toBe('Metadata only')
+    expect(renamed.revisions).toHaveLength(1)
+    expect(renamed.revisions[0]).toMatchObject({
+      id: verifiedRevision.id,
+      revisionToken: verifiedRevision.revisionToken,
+      status: 'verified',
+    })
+    expect(
+      await count(
+        appDb(),
+        'ai_connection_model_verification_evidence',
+        '[ai_connection_model_revision_id] = @0',
+        [revision.id],
+      ),
+    ).toBe(evidenceCount)
+  })
+
+  it('atomically invalidates an active connection and profile dependencies on credential rotation', async () => {
+    const db = appDb()
+    const store = createSqlServerAiAdminStore(db, async () => undefined)
+    const ring = secretKeyring()
+    const created = await store.createConnection(connectionInput('-rotation'))
+    const firstCandidate = await writeAiProviderSecretCandidate(db, ring, {
+      connectionId: created.id,
+      plaintext: 'first-secret',
+    })
+    const secretService = new AiProviderSecretService(db, ring, {
+      verifyCandidate: async () => undefined,
+    })
+    const firstSecret = await secretService.activateCandidate({
+      connectionConfigurationVersion: created.configurationVersion,
+      connectionId: created.id,
+      connectionRevisionToken: created.revisionToken,
+      secretVersionId: firstCandidate.id,
+    })
+    const configured = await store.getConnection(created.id)
+    if (!configured) throw new Error('Configured connection missing')
+    const draftAttestation = await store.saveAttestation({
+      attestation: attestationInput(),
+      connectionId: created.id,
+      currentAttestationRevisionToken: null,
+      makeValid: false,
+    })
+    const validAttestation = await store.saveAttestation({
+      attestation: attestationInput(draftAttestation.revisionToken),
+      connectionId: created.id,
+      currentAttestationRevisionToken: null,
+      makeValid: true,
+    })
+    const model = await store.saveModelRevision({
+      connectionId: created.id,
+      modelRevision: {
+        declaredCapabilities: CAPABILITIES,
+        description: null,
+        discoveredCapabilities: CAPABILITIES,
+        externalModelId: 'controlled/rotation',
+        externalModelVersion: '1',
+        modelId: null,
+        modelToken: null,
+        name: 'Rotation model',
+      },
+    })
+    const draftRevision = model.revisions[0]
+    if (!draftRevision) throw new Error('Draft model revision missing')
+    const verifiedConnection = await store.recordConnectionVerification({
+      connection: configured,
+      result: {
+        details: { reachable: true },
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'sql-v1',
+      },
+    })
+    if (!verifiedConnection.connectionEvidenceId) {
+      throw new Error('Connection evidence missing')
+    }
+    const verifiedRevision = await store.recordModelVerification({
+      connection: verifiedConnection,
+      connectionEvidenceId: verifiedConnection.connectionEvidenceId,
+      modelRevision: draftRevision,
+      result: {
+        details: { resolved: true },
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'sql-v1',
+        verifiedCapabilities: CAPABILITIES,
+      },
+    })
+    const activeConnection = await store.activateConnection({
+      attestationId: validAttestation.id,
+      attestationRevisionToken: validAttestation.revisionToken,
+      connectionEvidenceId: verifiedConnection.connectionEvidenceId,
+      connectionId: created.id,
+      connectionRevisionToken: verifiedConnection.revisionToken,
+      modelRevisionId: verifiedRevision.id,
+      modelRevisionToken: verifiedRevision.revisionToken,
+      secretVersionId: firstSecret.id,
+    })
+    if (!activeConnection) throw new Error('Connection activation failed')
+    await db.query(
+      `INSERT INTO [ai_run_profiles] (
+         [id], [profile_key], [operational_status], [created_at], [updated_at]
+       ) VALUES (
+         NEWID(), N'generation_without_images', N'enabled',
+         SYSUTCDATETIME(), SYSUTCDATETIME()
+       )`,
+    )
+    const profile = await store.saveRunProfileRevision({
+      profileKey: 'generation_without_images',
+      revision: {
+        capabilityPolicy: {
+          aiAnalysis: 'allowed',
+          imageInput: 'disabled',
+          jsonSchema: 'required',
+          streaming: 'required',
+          usageMetadata: 'allowed',
+          validatableJson: 'required',
+        },
+        inactivityTimeBudgetSeconds: 300,
+        modelRevisionId: verifiedRevision.id,
+        queueCapacity: 2,
+        revisionToken: null,
+        totalTimeBudgetSeconds: 600,
+      },
+    })
+    const draftProfile = profile.draftRevision
+    if (!draftProfile) throw new Error('Profile draft missing')
+    await expect(
+      store.activateRunProfileRevision({
+        attestationRevisionToken: validAttestation.revisionToken,
+        connectionEvidenceId: verifiedConnection.connectionEvidenceId,
+        connectionRevisionToken: activeConnection.revisionToken,
+        modelRevisionToken: verifiedRevision.revisionToken,
+        profileRevisionId: draftProfile.id,
+        profileRevisionToken: draftProfile.revisionToken,
+        profileToken: profile.revisionToken,
+        secretVersionId: firstSecret.id,
+      }),
+    ).resolves.toMatchObject({ activeRevisionId: draftProfile.id })
+
+    const beforeRotation = await store.getConnection(created.id)
+    if (!beforeRotation) throw new Error('Active connection missing')
+    const secondCandidate = await writeAiProviderSecretCandidate(db, ring, {
+      connectionId: created.id,
+      plaintext: 'second-secret',
+    })
+    await secretService.activateCandidate({
+      connectionConfigurationVersion: beforeRotation.configurationVersion,
+      connectionId: created.id,
+      connectionRevisionToken: beforeRotation.revisionToken,
+      secretVersionId: secondCandidate.id,
+    })
+
+    const rotated = await store.getConnection(created.id)
+    expect(rotated).toMatchObject({
+      configurationVersion: beforeRotation.configurationVersion + 1,
+      lifecycleStatus: 'verification_required',
+    })
+    expect(rotated?.connectionEvidenceId).toBeNull()
+    expect(
+      rotated?.models.flatMap(candidate => candidate.revisions)[0],
+    ).toMatchObject({
+      status: 'verification_required',
+      verifiedCapabilities: null,
+    })
+    expect(rotated?.blockers).toEqual(
+      expect.arrayContaining([
+        { code: 'connection_verification_missing' },
+        { code: 'model_revision_unverified' },
+      ]),
+    )
+    const entries = await store.listRunProfileActivationEntries()
+    expect(entries[0]?.profile.activeRevisionId).toBe(draftProfile.id)
+    expect(entries[0]?.snapshot?.connection.blockers).toEqual(
+      expect.arrayContaining([
+        { code: 'connection_verification_missing' },
+        { code: 'model_revision_unverified' },
+      ]),
+    )
+  })
+
   it('persists the complete verified connection and profile lifecycle atomically', async () => {
     const store = createSqlServerAiAdminStore(appDb(), async () => undefined)
     const created = await store.createConnection({
@@ -664,6 +1052,7 @@ describe('AI connection administration transactions against SQL Server', () => {
     const connectionEvidenceId = connectionVerified.connectionEvidenceId
     if (!connectionEvidenceId) throw new Error('Connection evidence missing')
     const verifiedModelRevision = await store.recordModelVerification({
+      connection: connectionVerified,
       connectionEvidenceId,
       modelRevision: draftModelRevision,
       result: {

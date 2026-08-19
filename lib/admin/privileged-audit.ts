@@ -38,6 +38,7 @@ export type AdminPrivilegedResourceType =
   | 'ai_safety_rule_term'
   | 'ai_connection'
   | 'ai_connection_attestation'
+  | 'ai_connection_model'
   | 'ai_connection_model_revision'
   | 'ai_provider_secret'
   | 'ai_run_profile'

@@ -3,14 +3,25 @@ import type {
   AiAdminConnectionDetail,
   AiAdminConnectionVerificationResult,
   AiAdminModelRevisionRecord,
-  AiAdminModelVerificationResult,
 } from './admin-service'
-import type { AiEgressTransport } from './run-contracts'
+import type {
+  AiCapabilitySelection,
+  AiEgressTransport,
+  AiRunEvent,
+  AiTaskEnvelope,
+} from './run-contracts'
 
 export interface AiAdminAdapterContext {
   connection: Readonly<AiAdminConnectionDetail>
   credential: string | null
   egress: AiEgressTransport
+}
+
+export interface AiAdminFunctionalProbe {
+  abortSignal: AbortSignal
+  deadlineAt: string
+  selectedCapabilities: Readonly<AiCapabilitySelection>
+  task: Readonly<AiTaskEnvelope>
 }
 
 export interface AiAdminConnectionAdapter {
@@ -20,14 +31,11 @@ export interface AiAdminConnectionAdapter {
   probeConnection(
     context: Readonly<AiAdminAdapterContext>,
   ): Promise<Readonly<AiAdminConnectionVerificationResult>>
-  probeHealth(
+  runFunctionalProbe(
     context: Readonly<AiAdminAdapterContext>,
     revision: Readonly<AiAdminModelRevisionRecord>,
-  ): Promise<'degraded' | 'healthy' | 'unavailable'>
-  verifyModelRevision(
-    context: Readonly<AiAdminAdapterContext>,
-    revision: Readonly<AiAdminModelRevisionRecord>,
-  ): Promise<Readonly<AiAdminModelVerificationResult>>
+    probe: Readonly<AiAdminFunctionalProbe>,
+  ): AsyncIterable<AiRunEvent>
   verifySecretCandidate(context: Readonly<AiAdminAdapterContext>): Promise<void>
 }
 

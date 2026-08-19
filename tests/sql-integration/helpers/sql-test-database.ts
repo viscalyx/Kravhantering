@@ -216,6 +216,10 @@ async function clearTransactionalTables(
 ): Promise<void> {
   const lifecycleDeleteGuardByTable = new Map([
     [
+      'ai_provider_secret_versions',
+      'trg_ai_provider_secret_versions_delete_candidates_only',
+    ],
+    [
       'ai_connection_model_revisions',
       'trg_ai_connection_model_revisions_delete_drafts_only',
     ],

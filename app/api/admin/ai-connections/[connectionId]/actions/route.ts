@@ -22,7 +22,12 @@ export const POST = secureMutationRoute({
     switch (body.action) {
       case 'activate_secret':
         return NextResponse.json(
-          await service.activateSecret(connectionId, body.secretVersionId),
+          await service.activateSecret({
+            connectionConfigurationVersion: body.connectionConfigurationVersion,
+            connectionId,
+            connectionRevisionToken: body.connectionRevisionToken,
+            secretVersionId: body.secretVersionId,
+          }),
         )
       case 'attest':
         return NextResponse.json(

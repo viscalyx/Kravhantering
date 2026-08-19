@@ -12,21 +12,20 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 
-export const GET = withRestResponsePolicy(async (
-  request,
-  routeContext: { params: Promise<unknown> },
-) => {
-  const parsed = aiRunProfileParamsSchema.safeParse(await routeContext.params)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid route parameters.' },
-      { status: 400 },
+export const GET = withRestResponsePolicy(
+  async (request, routeContext: { params: Promise<unknown> }) => {
+    const parsed = aiRunProfileParamsSchema.safeParse(await routeContext.params)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid route parameters.' },
+        { status: 400 },
+      )
+    }
+    return adminAiRead(request, service =>
+      service.listRunProfileRevisions(parsed.data.profileKey),
     )
-  }
-  return adminAiRead(request, service =>
-    service.listRunProfileRevisions(parsed.data.profileKey),
-  )
-})
+  },
+)
 
 export const POST = secureMutationRoute({
   bodySchema: saveAiRunProfileRevisionSchema,

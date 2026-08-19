@@ -147,6 +147,7 @@ describe('AI connection administration service', () => {
   const secrets = {
     activateCandidate: vi.fn(),
     availability: vi.fn(),
+    availabilities: vi.fn(),
     confirmRevocation: vi.fn(),
     deleteCandidate: vi.fn(),
     writeCandidate: vi.fn(),
@@ -155,6 +156,15 @@ describe('AI connection administration service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     secrets.availability.mockResolvedValue(connection().activeSecret)
+    secrets.availabilities.mockImplementation(
+      async (connectionIds: string[]) =>
+        new Map(
+          connectionIds.map(connectionId => [
+            connectionId.toLowerCase(),
+            connection().activeSecret,
+          ]),
+        ),
+    )
   })
 
   it('saves an incomplete draft without making external calls', async () => {
@@ -428,6 +438,10 @@ describe('AI connection administration service', () => {
       listRunProfileActivationEntries: vi.fn(async () => [
         { profile: currentProfile, snapshot },
         {
+          profile: { ...currentProfile, profileKey: 'generation_with_images' },
+          snapshot,
+        },
+        {
           profile: { ...currentProfile, profileKey: 'invalid_json_repair' },
           snapshot: null,
         },
@@ -481,7 +495,12 @@ describe('AI connection administration service', () => {
     })
 
     await expect(service.listConnections()).resolves.toHaveLength(1)
-    await expect(service.listRunProfiles()).resolves.toHaveLength(2)
+    await expect(service.listRunProfiles()).resolves.toHaveLength(3)
+    expect(secrets.availabilities).toHaveBeenCalledOnce()
+    expect(secrets.availabilities).toHaveBeenCalledWith([
+      currentConnection.id.toLowerCase(),
+    ])
+    expect(secrets.availability).not.toHaveBeenCalled()
     await expect(
       service.listRunProfileRevisions(currentProfile.profileKey),
     ).resolves.toEqual([profileRevision])
@@ -523,7 +542,12 @@ describe('AI connection administration service', () => {
       service.writeSecret(currentConnection.id, 'new-secret'),
     ).resolves.toBe(metadata)
     await expect(
-      service.activateSecret(currentConnection.id, metadata.id),
+      service.activateSecret({
+        connectionConfigurationVersion: currentConnection.configurationVersion,
+        connectionId: currentConnection.id,
+        connectionRevisionToken: currentConnection.revisionToken,
+        secretVersionId: metadata.id,
+      }),
     ).resolves.toBe(metadata)
     await expect(
       service.confirmSecretRevocation(currentConnection.id, metadata.id),
