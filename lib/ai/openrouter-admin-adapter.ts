@@ -3,9 +3,13 @@ import type {
   AiAdminAdapterContext,
   AiAdminConnectionAdapter,
   AiAdminConnectionAdapterRegistration,
+  AiAdminFunctionalProbe,
 } from './admin-adapter'
 import type { AiCapability } from './admin-contracts'
-import type { AiAdminCatalogItem } from './admin-service'
+import type {
+  AiAdminCatalogItem,
+  AiAdminModelRevisionRecord,
+} from './admin-service'
 import {
   OPENROUTER_ADAPTER_TYPE,
   OPENROUTER_ADAPTER_VERSION,
@@ -15,6 +19,7 @@ import type {
   AiConnectionId,
   AiConnectionModelRevisionId,
   AiExternalRunId,
+  AiRunEvent,
   AiRunProfileRevisionId,
 } from './run-contracts'
 
@@ -155,6 +160,114 @@ function capabilities(model: CatalogModel): AiCapability {
   }
 }
 
+function runOpenRouterAdminProbe(
+  context: Readonly<AiAdminAdapterContext>,
+  revision: Readonly<AiAdminModelRevisionRecord>,
+  probe: Readonly<AiAdminFunctionalProbe>,
+): AsyncIterable<AiRunEvent> {
+  return openRouterAdapterRegistration.adapter.run({
+    connection: {
+      configuration: {
+        apiKey: context.credential ?? '',
+        endpoint: context.connection.endpointUrl,
+      },
+      id: context.connection.id as AiConnectionId,
+    },
+    context: {
+      abortSignal: probe.abortSignal,
+      deadlineAt: probe.deadlineAt,
+      egress: context.egress,
+      externalRunId: `admin_probe_${randomUUID()}` as AiExternalRunId,
+    },
+    modelRevision: {
+      configuration: {},
+      externalModelId: revision.externalModelId,
+      id: revision.id as AiConnectionModelRevisionId,
+      verifiedCapabilities: revision.declaredCapabilities,
+    },
+    runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+    selectedCapabilities: probe.selectedCapabilities,
+    task: probe.task,
+  })
+}
+
+async function syntheticTerminal(
+  context: Readonly<AiAdminAdapterContext>,
+  revision: Readonly<AiAdminModelRevisionRecord>,
+  response: Response,
+): Promise<AiRunEvent | null> {
+  const controller = new AbortController()
+  let terminal: AiRunEvent | null = null
+  const stream = runOpenRouterAdminProbe(
+    {
+      ...context,
+      egress: { fetch: async () => response },
+    },
+    revision,
+    {
+      abortSignal: controller.signal,
+      deadlineAt: new Date(Date.now() + ADMIN_GET_TIMEOUT_MS).toISOString(),
+      selectedCapabilities: {
+        aiAnalysis: false,
+        cost: false,
+        imageInput: false,
+        jsonSchemaSteering: false,
+        streaming: false,
+        tokenUsage: false,
+      },
+      task: {
+        content: [{ text: 'Conformance probe.', type: 'text' }],
+        instructions: 'Return a conformance response.',
+        responseSchema: { type: 'object' },
+      },
+    },
+  )
+  for await (const event of stream) terminal = event
+  return terminal
+}
+
+async function openRouterActivationConformance(
+  context: Readonly<AiAdminAdapterContext>,
+  revision: Readonly<AiAdminModelRevisionRecord>,
+): Promise<{
+  prohibitedProtocolRejection: boolean
+  safeErrorNormalization: boolean
+}> {
+  const rawMarker = 'raw-provider-secret-must-not-escape'
+  const normalizedFailure = await syntheticTerminal(
+    context,
+    revision,
+    new Response(rawMarker, { status: 503 }),
+  )
+  const prohibitedFields = ['callback', 'function_call', 'tool_calls'] as const
+  const rejected = await Promise.all(
+    prohibitedFields.map(async field => {
+      const terminal = await syntheticTerminal(
+        context,
+        revision,
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"probe":"ok"}', [field]: [] } }],
+            usage: {},
+          }),
+          { headers: { 'content-type': 'application/json' } },
+        ),
+      )
+      return (
+        terminal?.type === 'failed' &&
+        terminal.failure.category === 'invalid_response'
+      )
+    }),
+  )
+  return {
+    prohibitedProtocolRejection: rejected.every(Boolean),
+    safeErrorNormalization:
+      normalizedFailure?.type === 'failed' &&
+      normalizedFailure.failure.category === 'connection_unavailable' &&
+      !JSON.stringify(normalizedFailure).includes(rawMarker),
+  }
+}
+
 function catalogItem(model: CatalogModel): AiAdminCatalogItem | null {
   if (typeof model.id !== 'string' || typeof model.name !== 'string')
     return null
@@ -167,6 +280,9 @@ function catalogItem(model: CatalogModel): AiAdminCatalogItem | null {
 }
 
 const openRouterAdminAdapter: AiAdminConnectionAdapter = {
+  activationConformance(context, revision) {
+    return openRouterActivationConformance(context, revision)
+  },
   async fetchCatalog(context) {
     return (await fetchModels(context)).flatMap(model => {
       const item = catalogItem(model)
@@ -195,30 +311,10 @@ const openRouterAdminAdapter: AiAdminConnectionAdapter = {
     }
   },
   runFunctionalProbe(context, revision, probe) {
-    return openRouterAdapterRegistration.adapter.run({
-      connection: {
-        configuration: {
-          apiKey: context.credential ?? '',
-          endpoint: context.connection.endpointUrl,
-        },
-        id: context.connection.id as AiConnectionId,
-      },
-      context: {
-        abortSignal: probe.abortSignal,
-        deadlineAt: probe.deadlineAt,
-        egress: context.egress,
-        externalRunId: `admin_probe_${randomUUID()}` as AiExternalRunId,
-      },
-      modelRevision: {
-        configuration: {},
-        externalModelId: revision.externalModelId,
-        id: revision.id as AiConnectionModelRevisionId,
-        verifiedCapabilities: revision.declaredCapabilities,
-      },
-      runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
-      selectedCapabilities: probe.selectedCapabilities,
-      task: probe.task,
-    })
+    return runOpenRouterAdminProbe(context, revision, probe)
+  },
+  runActivationCancellationProbe(context, revision, probe) {
+    return runOpenRouterAdminProbe(context, revision, probe)
   },
   async verifySecretCandidate(context) {
     await fetchModels(context)

@@ -375,7 +375,7 @@ describe('AI connection administration service', () => {
     external.probeHealth.mockResolvedValueOnce({
       failureCategory: 'capability_mismatch',
       health: 'degraded',
-      invalidatesVerification: true,
+      invalidationScope: 'model',
     })
     const service = new AiConnectionAdministrationService({
       audit,
@@ -397,7 +397,7 @@ describe('AI connection administration service', () => {
     expect(store.recordHealth).toHaveBeenCalledWith({
       connectionId: currentConnection.id,
       health: 'degraded',
-      invalidatesVerification: true,
+      invalidationScope: 'model',
       modelRevisionId: revision.id,
       modelRevisionToken: revision.revisionToken,
     })
@@ -487,7 +487,7 @@ describe('AI connection administration service', () => {
     external.probeHealth.mockResolvedValue({
       failureCategory: null,
       health: 'healthy',
-      invalidatesVerification: false,
+      invalidationScope: 'none',
     })
     external.verifyModelRevision.mockResolvedValue({
       details: { resolved: true },

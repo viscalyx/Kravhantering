@@ -1116,7 +1116,7 @@ export function createSqlServerAiAdminStore(
            IF @3 = N'failed' AND @8 = N'authentication_failed'
            BEGIN
              UPDATE [ai_connection_verification_evidence]
-             SET [expires_at] = SYSUTCDATETIME()
+             SET [expires_at] = DATEADD(second, -1, SYSUTCDATETIME())
              WHERE [ai_connection_id] = @1
                AND [connection_configuration_version] = @2
                AND [outcome] = N'passed'
@@ -1331,10 +1331,15 @@ export function createSqlServerAiAdminStore(
                WITH (UPDLOCK, HOLDLOCK)
              INNER JOIN [ai_connection_models] AS [model]
                ON [model].[id] = [revision].[ai_connection_model_id]
+             INNER JOIN [ai_connections] AS [connection]
+               WITH (UPDLOCK, HOLDLOCK)
+               ON [connection].[id] = [model].[ai_connection_id]
              WHERE [revision].[id] = @1
                AND [revision].[revision_token] = @2
                AND [revision].[status] = N'verified'
                AND [model].[ai_connection_id] = @0
+               AND [revision].[connection_configuration_version]
+                 = [connection].[configuration_version]
            ) RETURN;
 
            MERGE [ai_connection_model_operational_states] AS [target]
@@ -1354,7 +1359,7 @@ export function createSqlServerAiAdminStore(
              SYSUTCDATETIME(), SYSUTCDATETIME()
            );
 
-           IF @4 = 1
+           IF @4 = N'model'
            BEGIN
              UPDATE [ai_connection_model_revisions]
              SET [status] = N'verification_required',
@@ -1364,13 +1369,51 @@ export function createSqlServerAiAdminStore(
                AND [status] = N'verified';
            END;
 
+           IF @4 = N'connection'
+           BEGIN
+             UPDATE [evidence]
+             SET [expires_at] = DATEADD(second, -1, SYSUTCDATETIME())
+             FROM [ai_connection_verification_evidence] AS [evidence]
+             INNER JOIN [ai_connections] AS [connection]
+               ON [connection].[id] = [evidence].[ai_connection_id]
+             WHERE [evidence].[ai_connection_id] = @0
+               AND [evidence].[connection_configuration_version]
+                 = [connection].[configuration_version]
+               AND [evidence].[outcome] = N'passed'
+               AND ([evidence].[expires_at] IS NULL
+                 OR [evidence].[expires_at] > SYSUTCDATETIME());
+
+             UPDATE [ai_connections]
+             SET [lifecycle_status] = CASE
+                 WHEN [lifecycle_status] = N'draft' THEN N'draft'
+                 WHEN [lifecycle_status] = N'retired' THEN N'retired'
+                 ELSE N'verification_required'
+               END,
+               [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
+             WHERE [id] = @0;
+
+             UPDATE [revision]
+             SET [status] = N'verification_required',
+               [verified_capabilities_json] = NULL, [verified_at] = NULL,
+               [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
+             FROM [ai_connection_model_revisions] AS [revision]
+             INNER JOIN [ai_connection_models] AS [model]
+               ON [model].[id] = [revision].[ai_connection_model_id]
+             INNER JOIN [ai_connections] AS [connection]
+               ON [connection].[id] = [model].[ai_connection_id]
+             WHERE [model].[ai_connection_id] = @0
+               AND [revision].[connection_configuration_version]
+                 = [connection].[configuration_version]
+               AND [revision].[status] = N'verified';
+           END;
+
            SELECT @1 AS [id];`,
           [
             input.connectionId,
             input.modelRevisionId,
             input.modelRevisionToken,
             input.health,
-            input.invalidatesVerification ? 1 : 0,
+            input.invalidationScope,
           ],
         )
         if (!rows?.[0]) {

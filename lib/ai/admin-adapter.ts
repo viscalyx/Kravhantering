@@ -24,13 +24,27 @@ export interface AiAdminFunctionalProbe {
   task: Readonly<AiTaskEnvelope>
 }
 
+export interface AiAdminAdapterConformance {
+  prohibitedProtocolRejection: boolean
+  safeErrorNormalization: boolean
+}
+
 export interface AiAdminConnectionAdapter {
+  activationConformance(
+    context: Readonly<AiAdminAdapterContext>,
+    revision: Readonly<AiAdminModelRevisionRecord>,
+  ): Promise<Readonly<AiAdminAdapterConformance>>
   fetchCatalog(
     context: Readonly<AiAdminAdapterContext>,
   ): Promise<readonly AiAdminCatalogItem[]>
   probeConnection(
     context: Readonly<AiAdminAdapterContext>,
   ): Promise<Readonly<AiAdminConnectionVerificationResult>>
+  runActivationCancellationProbe(
+    context: Readonly<AiAdminAdapterContext>,
+    revision: Readonly<AiAdminModelRevisionRecord>,
+    probe: Readonly<AiAdminFunctionalProbe>,
+  ): AsyncIterable<AiRunEvent>
   runFunctionalProbe(
     context: Readonly<AiAdminAdapterContext>,
     revision: Readonly<AiAdminModelRevisionRecord>,

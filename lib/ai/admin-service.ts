@@ -135,7 +135,7 @@ export interface AiAdminConnectionVerificationResult {
 export interface AiAdminHealthProbeResult {
   failureCategory: string | null
   health: 'degraded' | 'healthy' | 'unavailable'
-  invalidatesVerification: boolean
+  invalidationScope: 'connection' | 'model' | 'none'
 }
 
 export interface AiAdminModelVerificationResult {
@@ -265,7 +265,7 @@ export interface AiAdminStore {
   recordHealth(input: {
     connectionId: string
     health: 'degraded' | 'healthy' | 'unavailable'
-    invalidatesVerification: boolean
+    invalidationScope: 'connection' | 'model' | 'none'
     modelRevisionId: string
     modelRevisionToken: string
   }): Promise<AiAdminConnectionDetail>
@@ -746,7 +746,7 @@ export class AiConnectionAdministrationService {
       await this.#store.recordHealth({
         connectionId: input.connectionId,
         health: result.health,
-        invalidatesVerification: result.invalidatesVerification,
+        invalidationScope: result.invalidationScope,
         modelRevisionId: input.modelRevisionId,
         modelRevisionToken: input.revisionToken,
       }),

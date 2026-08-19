@@ -36,8 +36,9 @@ import {
   guardAiRunEventStream,
 } from './run-contracts'
 
-const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v1'
+const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v2'
 const ADMIN_PROBE_TIMEOUT_MS = 30_000
+const ADMIN_CANCELLATION_GRACE_MS = 5_000
 const ADMIN_PROBE_PROFILE_REVISION_ID =
   '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
 const ADMIN_PROBE_SCHEMA = Object.freeze({
@@ -65,13 +66,91 @@ interface AdminFunctionalProbeResult {
   schemaValid: boolean
 }
 
-function isConcreteModelContradiction(category: string | null): boolean {
+const PROHIBITED_PROTOCOL_KEYS = new Set([
+  'callback',
+  'callback_url',
+  'callbackurl',
+  'function_call',
+  'functioncall',
+  'recipient',
+  'tool_call',
+  'tool_call_id',
+  'tool_calls',
+  'toolcall',
+  'toolcalls',
+])
+
+function containsProhibitedProtocol(value: unknown, depth = 0): boolean {
+  if (depth > 8 || value === null || typeof value !== 'object') return false
+  if (Array.isArray(value))
+    return value.some(item => containsProhibitedProtocol(item, depth + 1))
+  return Object.entries(value).some(
+    ([key, item]) =>
+      PROHIBITED_PROTOCOL_KEYS.has(key.toLowerCase()) ||
+      containsProhibitedProtocol(item, depth + 1),
+  )
+}
+
+function hasOnlyKeys(
+  value: unknown,
+  allowed: ReadonlySet<string>,
+): value is Record<string, unknown> {
   return (
-    category === 'authentication_failed' ||
-    category === 'capability_mismatch' ||
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).every(key => allowed.has(key))
+  )
+}
+
+function isNormalizedAdminProbeEvent(value: unknown): value is AiRunEvent {
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    return false
+  const event = value as Record<string, unknown>
+  if (event.type === 'analysis_delta')
+    return hasOnlyKeys(event, new Set(['delta', 'type']))
+  if (event.type === 'output_delta')
+    return hasOnlyKeys(event, new Set(['delta', 'type', 'visibility']))
+  if (event.type === 'completed')
+    return hasOnlyKeys(
+      event,
+      new Set(['analysis', 'identity', 'rawOutput', 'type', 'usage']),
+    )
+  if (event.type === 'cancelled')
+    return hasOnlyKeys(event, new Set(['identity', 'reason', 'type']))
+  if (event.type !== 'failed') return false
+  return (
+    hasOnlyKeys(event, new Set(['failure', 'identity', 'type'])) &&
+    hasOnlyKeys(
+      event.failure,
+      new Set(['category', 'diagnosticCode', 'retryAfterSeconds', 'retryable']),
+    )
+  )
+}
+
+async function* rejectProhibitedProtocolEvents(
+  source: AsyncIterable<AiRunEvent>,
+): AsyncIterable<AiRunEvent> {
+  for await (const candidate of source as AsyncIterable<unknown>) {
+    if (
+      !isNormalizedAdminProbeEvent(candidate) ||
+      containsProhibitedProtocol(candidate)
+    ) {
+      throw new Error('The AI adapter emitted a prohibited protocol field.')
+    }
+    yield candidate
+  }
+}
+
+function healthInvalidationScope(
+  category: string | null,
+): AiAdminHealthProbeResult['invalidationScope'] {
+  if (category === 'authentication_failed') return 'connection'
+  return category === 'capability_mismatch' ||
     category === 'invalid_response' ||
     category === 'request_rejected'
-  )
+    ? 'model'
+    : 'none'
 }
 
 function selectedCapabilities(
@@ -157,7 +236,10 @@ async function runAdminFunctionalProbe(
       selectedCapabilities: selectedCapabilities(capabilities),
       task: probeTask(capabilities),
     })
-    for await (const event of guardAiRunEventStream(stream, identity)) {
+    for await (const event of guardAiRunEventStream(
+      rejectProhibitedProtocolEvents(stream),
+      identity,
+    )) {
       if (event.type === 'output_delta') observedOutputDelta = true
       if (
         event.type === 'completed' ||
@@ -214,27 +296,43 @@ async function runAdminCancellationProbe(
   revision: Readonly<AiAdminModelRevisionRecord>,
 ): Promise<boolean> {
   const controller = new AbortController()
-  controller.abort()
   const identity: AiRunIdentity = {
     aiConnectionId: context.connection.id as AiConnectionId,
     aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
     aiRunProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
   }
+  let grace: ReturnType<typeof setTimeout> | undefined
   try {
-    const stream = adapter.runFunctionalProbe(context, revision, {
+    const stream = adapter.runActivationCancellationProbe(context, revision, {
       abortSignal: controller.signal,
       deadlineAt: new Date(Date.now() + ADMIN_PROBE_TIMEOUT_MS).toISOString(),
       selectedCapabilities: selectedCapabilities(emptyCapabilities()),
       task: probeTask(emptyCapabilities()),
     })
-    for await (const event of guardAiRunEventStream(stream, identity)) {
-      if (event.type === 'cancelled') return true
-      if (event.type === 'completed' || event.type === 'failed') return false
-    }
+    const outcome = (async (): Promise<boolean> => {
+      for await (const event of guardAiRunEventStream(
+        rejectProhibitedProtocolEvents(stream),
+        identity,
+      )) {
+        if (event.type === 'cancelled') return true
+        if (event.type === 'completed' || event.type === 'failed') return false
+      }
+      return false
+    })()
+    await Promise.resolve()
+    controller.abort()
+    return await Promise.race([
+      outcome,
+      new Promise<boolean>(resolve => {
+        grace = setTimeout(() => resolve(false), ADMIN_CANCELLATION_GRACE_MS)
+      }),
+    ])
   } catch {
     return false
+  } finally {
+    controller.abort()
+    if (grace) clearTimeout(grace)
   }
-  return false
 }
 
 function satisfiesDeclaredCapabilities(
@@ -892,16 +990,15 @@ export class AiProviderSecretAdminService {
       return {
         failureCategory: null,
         health: 'healthy',
-        invalidatesVerification: false,
+        invalidationScope: 'none',
       }
     }
     const failureCategory = result.failureCategory ?? 'capability_mismatch'
-    const invalidatesVerification =
-      isConcreteModelContradiction(failureCategory)
+    const invalidationScope = healthInvalidationScope(failureCategory)
     return {
       failureCategory,
-      health: invalidatesVerification ? 'degraded' : 'unavailable',
-      invalidatesVerification,
+      health: invalidationScope === 'none' ? 'unavailable' : 'degraded',
+      invalidationScope,
     }
   }
 
@@ -912,6 +1009,7 @@ export class AiProviderSecretAdminService {
     revision: Readonly<AiAdminModelRevisionRecord>,
   ): Promise<Readonly<AiAdminModelVerificationResult>> {
     const result = await this.#execute(connection, egress, async context => ({
+      conformance: await adapter.activationConformance(context, revision),
       cancellationHandled: await runAdminCancellationProbe(
         adapter,
         context,
@@ -926,6 +1024,8 @@ export class AiProviderSecretAdminService {
     }))
     const functional = result.functional
     const passed =
+      result.conformance.prohibitedProtocolRejection &&
+      result.conformance.safeErrorNormalization &&
       result.cancellationHandled &&
       functional.completed &&
       functional.schemaValid &&
@@ -935,6 +1035,9 @@ export class AiProviderSecretAdminService {
       )
     return {
       details: {
+        adapterConformance:
+          result.conformance.prohibitedProtocolRejection &&
+          result.conformance.safeErrorNormalization,
         cancellationHandled: result.cancellationHandled,
         completed: functional.completed,
         schemaValid: functional.schemaValid,

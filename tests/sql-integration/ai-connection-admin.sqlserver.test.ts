@@ -368,7 +368,7 @@ describe('AI connection administration transactions against SQL Server', () => {
       store.recordHealth({
         connectionId: created.id,
         health: 'unavailable',
-        invalidatesVerification: false,
+        invalidationScope: 'none',
         modelRevisionId: draftRevision.id,
         modelRevisionToken: randomUUID(),
       }),
@@ -1064,6 +1064,33 @@ describe('AI connection administration transactions against SQL Server', () => {
         verifiedCapabilities: CAPABILITIES,
       },
     })
+    const siblingModel = await store.saveModelRevision({
+      connectionId: created.id,
+      modelRevision: {
+        declaredCapabilities: CAPABILITIES,
+        description: null,
+        discoveredCapabilities: CAPABILITIES,
+        externalModelId: 'controlled/lifecycle-sibling',
+        externalModelVersion: '1',
+        modelId: null,
+        modelToken: null,
+        name: 'Lifecycle sibling model',
+      },
+    })
+    const siblingDraftRevision = siblingModel.revisions[0]
+    if (!siblingDraftRevision) throw new Error('Sibling model revision missing')
+    const siblingVerifiedRevision = await store.recordModelVerification({
+      connection: connectionVerified,
+      connectionEvidenceId,
+      modelRevision: siblingDraftRevision,
+      result: {
+        details: { resolved: true },
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'sql-v1',
+        verifiedCapabilities: CAPABILITIES,
+      },
+    })
     const activated = await store.activateConnection({
       attestationId: validAttestation.id,
       attestationRevisionToken: validAttestation.revisionToken,
@@ -1122,8 +1149,48 @@ describe('AI connection administration transactions against SQL Server', () => {
     expect(activatedProfile?.activeRevisionId?.toLowerCase()).toBe(
       draftProfileRevision.id.toLowerCase(),
     )
-    expect(await store.listRunProfiles()).toHaveLength(1)
-    expect(await store.listRunProfileActivationEntries()).toHaveLength(1)
+    await appDb().query(
+      `INSERT INTO [ai_run_profiles] (
+         [id], [profile_key], [operational_status], [created_at], [updated_at]
+       ) VALUES (
+         NEWID(), N'invalid_json_repair', N'enabled',
+         SYSUTCDATETIME(), SYSUTCDATETIME()
+       )`,
+    )
+    const siblingProfile = await store.saveRunProfileRevision({
+      profileKey: 'invalid_json_repair',
+      revision: {
+        capabilityPolicy: {
+          aiAnalysis: 'allowed',
+          imageInput: 'disabled',
+          jsonSchema: 'required',
+          streaming: 'required',
+          usageMetadata: 'allowed',
+          validatableJson: 'required',
+        },
+        inactivityTimeBudgetSeconds: 300,
+        modelRevisionId: siblingVerifiedRevision.id,
+        queueCapacity: 2,
+        revisionToken: null,
+        totalTimeBudgetSeconds: 600,
+      },
+    })
+    const siblingProfileRevision = siblingProfile.draftRevision
+    if (!siblingProfileRevision) throw new Error('Sibling profile missing')
+    await expect(
+      store.activateRunProfileRevision({
+        attestationRevisionToken: validAttestation.revisionToken,
+        connectionEvidenceId,
+        connectionRevisionToken: activated?.revisionToken ?? '',
+        modelRevisionToken: siblingVerifiedRevision.revisionToken,
+        profileRevisionId: siblingProfileRevision.id,
+        profileRevisionToken: siblingProfileRevision.revisionToken,
+        profileToken: siblingProfile.revisionToken,
+        secretVersionId: null,
+      }),
+    ).resolves.toMatchObject({ activeRevisionId: siblingProfileRevision.id })
+    expect(await store.listRunProfiles()).toHaveLength(2)
+    expect(await store.listRunProfileActivationEntries()).toHaveLength(2)
     expect(
       await store.listRunProfileRevisions('generation_without_images'),
     ).toHaveLength(1)
@@ -1131,7 +1198,7 @@ describe('AI connection administration transactions against SQL Server', () => {
     const health = await store.recordHealth({
       connectionId: created.id,
       health: 'healthy',
-      invalidatesVerification: false,
+      invalidationScope: 'none',
       modelRevisionId: verifiedModelRevision.id,
       modelRevisionToken: verifiedModelRevision.revisionToken,
     })
@@ -1155,7 +1222,7 @@ describe('AI connection administration transactions against SQL Server', () => {
     const transientHealth = await store.recordHealth({
       connectionId: created.id,
       health: 'unavailable',
-      invalidatesVerification: false,
+      invalidationScope: 'none',
       modelRevisionId: verifiedModelRevision.id,
       modelRevisionToken: verifiedModelRevision.revisionToken,
     })
@@ -1165,7 +1232,7 @@ describe('AI connection administration transactions against SQL Server', () => {
     const contradictedHealth = await store.recordHealth({
       connectionId: created.id,
       health: 'degraded',
-      invalidatesVerification: true,
+      invalidationScope: 'model',
       modelRevisionId: verifiedModelRevision.id,
       modelRevisionToken: verifiedModelRevision.revisionToken,
     })
@@ -1177,20 +1244,43 @@ describe('AI connection administration transactions against SQL Server', () => {
       verifiedCapabilities: null,
     })
     expect(
-      (await store.listRunProfileActivationEntries())[0]?.snapshot?.connection
-        .blockers,
-    ).toEqual(expect.arrayContaining([{ code: 'model_revision_unverified' }]))
-    const authenticationFailure = await store.recordConnectionVerification({
-      connection: contradictedHealth,
-      result: {
-        details: { status: 401 },
-        failureCategory: 'authentication_failed',
-        outcome: 'failed',
-        testSuiteVersion: 'sql-v1',
-      },
+      contradictedHealth.models
+        .flatMap(model => model.revisions)
+        .find(revision => revision.id === siblingVerifiedRevision.id)?.status,
+    ).toBe('verified')
+    const entriesAfterModelContradiction =
+      await store.listRunProfileActivationEntries()
+    expect(
+      entriesAfterModelContradiction.find(
+        entry => entry.profile.profileKey === 'generation_without_images',
+      )?.snapshot?.modelRevision?.status,
+    ).toBe('verification_required')
+    expect(
+      entriesAfterModelContradiction.find(
+        entry => entry.profile.profileKey === 'invalid_json_repair',
+      )?.snapshot?.modelRevision?.status,
+    ).toBe('verified')
+    const authenticationFailure = await store.recordHealth({
+      connectionId: created.id,
+      health: 'degraded',
+      invalidationScope: 'connection',
+      modelRevisionId: siblingVerifiedRevision.id,
+      modelRevisionToken: siblingVerifiedRevision.revisionToken,
     })
     expect(authenticationFailure.lifecycleStatus).toBe('verification_required')
     expect(authenticationFailure.connectionEvidenceId).toBeNull()
+    expect(
+      authenticationFailure.models
+        .flatMap(model => model.revisions)
+        .every(revision => revision.status === 'verification_required'),
+    ).toBe(true)
+    expect(
+      (await store.listRunProfileActivationEntries()).every(entry =>
+        entry.snapshot?.connection.blockers.some(
+          blocker => blocker.code === 'connection_verification_missing',
+        ),
+      ),
+    ).toBe(true)
     const suspendedProfile = await store.setRunProfileOperationalStatus({
       profileKey: 'generation_without_images',
       revisionToken: activatedProfile?.revisionToken ?? '',

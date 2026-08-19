@@ -184,7 +184,7 @@ describe('AI administration provider composition', () => {
       external.probeHealth(current, revision),
     ).resolves.toMatchObject({
       health: 'healthy',
-      invalidatesVerification: false,
+      invalidationScope: 'none',
     })
     await expect(
       external.verifyModelRevision(current, revision),
@@ -592,8 +592,18 @@ describe('AI administration provider composition', () => {
         )
       }
       functionalRequestCount += 1
+      if (functionalRequestCount === 1) {
+        expect(request.init.signal?.aborted).toBe(false)
+        return new Promise<Response>((_resolve, reject) => {
+          request.init.signal?.addEventListener(
+            'abort',
+            () => reject(new Error('raw provider cancellation detail')),
+            { once: true },
+          )
+        })
+      }
       return new Response('run failed', {
-        status: functionalRequestCount === 3 ? 404 : 503,
+        status: functionalRequestCount === 4 ? 404 : 503,
       })
     })
     const basePolicy = deployment()
@@ -622,14 +632,14 @@ describe('AI administration provider composition', () => {
       external.probeHealth(current, revision),
     ).resolves.toMatchObject({
       health: 'unavailable',
-      invalidatesVerification: false,
+      invalidationScope: 'none',
     })
     await expect(
       external.probeHealth(current, revision),
     ).resolves.toMatchObject({
       failureCategory: 'request_rejected',
       health: 'degraded',
-      invalidatesVerification: true,
+      invalidationScope: 'model',
     })
     expect(
       providerFetch.mock.calls.some(
