@@ -111,6 +111,15 @@ Deferred from this contract:
   OpenAPI/Schemathesis v1 contract when their assertions depend on Admin-only
   access, CSRF/same-origin enforcement for saves, privileged audit, effective
   configuration precedence, or linked-object conflict checks.
+- AI connection and run-profile administration routes under
+  `/api/admin/ai-connections` and `/api/admin/ai-run-profiles` remain outside
+  the OpenAPI/Schemathesis v1 contract. They are Admin-only, sensitive,
+  `no-store` state-machine APIs whose useful assertions cover separate
+  save/verify/activate actions, encrypted write-only secrets, external probes,
+  optimistic concurrency, dependency invalidation, atomic activation, and
+  redacted privileged audit. Mutations use same-origin CSRF enforcement and
+  focused route/service/SQL tests; generated disposable-database traffic must
+  not trigger provider calls or lifecycle changes.
 - Access-review routes remain outside the OpenAPI/Schemathesis contract for
   now. They use the same request-context and CSRF protections as other Admin
   Center mutations, but the useful assertions are role-matrix and
