@@ -1,0 +1,281 @@
+import { randomUUID } from 'node:crypto'
+import { describe, expect, it } from 'vitest'
+import type { AiRunIdentity } from '@/lib/ai/run-contracts'
+import { createSqlServerAiRunCoordinationStore } from '@/lib/ai/run-coordination-store'
+import type { SqlServerDatabase } from '@/lib/db'
+import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
+
+async function createCoordinationFixture(db: SqlServerDatabase): Promise<{
+  identity: AiRunIdentity
+}> {
+  const connection = (await db.query(
+    `INSERT INTO ai_connections (
+       administration_name, public_name, adapter_key, adapter_version,
+       endpoint_url, authentication_type, tls_policy_key, egress_policy_key,
+       data_policy_summary, lifecycle_status, configuration_version,
+       maximum_concurrency, created_at, updated_at
+     ) OUTPUT INSERTED.id AS id
+     VALUES (@0, N'Coordination SQL', N'test', N'1',
+       N'https://ai.example.test/v1', N'static_secret', N'public_web_pki',
+       N'sql_test', N'No production data', N'draft', 1, 1,
+       SYSUTCDATETIME(), SYSUTCDATETIME())`,
+    [`Coordination ${randomUUID()}`],
+  )) as Array<{ id: string }>
+  const model = (await db.query(
+    `INSERT INTO ai_connection_models (
+       ai_connection_id, name, created_at, updated_at
+     ) OUTPUT INSERTED.id AS id
+     VALUES (@0, N'Coordination model', SYSUTCDATETIME(), SYSUTCDATETIME())`,
+    [connection[0]?.id],
+  )) as Array<{ id: string }>
+  const modelRevision = (await db.query(
+    `INSERT INTO ai_connection_model_revisions (
+       ai_connection_model_id, revision_number,
+       connection_configuration_version, status, external_model_id,
+       declared_capabilities_json, maximum_concurrency, created_at, updated_at
+     ) OUTPUT INSERTED.id AS id
+     VALUES (@0, 1, 1, N'draft', N'external/sql-model', N'{}', 1,
+       SYSUTCDATETIME(), SYSUTCDATETIME())`,
+    [model[0]?.id],
+  )) as Array<{ id: string }>
+  const profileId = randomUUID()
+  await db.query(
+    `INSERT INTO ai_run_profiles (
+       id, profile_key, operational_status, created_at, updated_at
+     ) VALUES (@0, N'generation_without_images', N'enabled',
+       SYSUTCDATETIME(), SYSUTCDATETIME())`,
+    [profileId],
+  )
+  const profileRevision = (await db.query(
+    `INSERT INTO ai_run_profile_revisions (
+       ai_run_profile_id, ai_connection_model_revision_id, revision_number,
+       status, capability_policy_json, total_time_budget_seconds,
+       inactivity_time_budget_seconds, queue_capacity, created_at
+     ) OUTPUT INSERTED.id AS id
+     VALUES (@0, @1, 1, N'draft', N'{}', 1200, 300, 10,
+       SYSUTCDATETIME())`,
+    [profileId, modelRevision[0]?.id],
+  )) as Array<{ id: string }>
+  await db.query(
+    `INSERT INTO ai_connection_model_operational_states (
+       ai_connection_model_revision_id, updated_at
+     ) VALUES (@0, SYSUTCDATETIME())`,
+    [modelRevision[0]?.id],
+  )
+  return {
+    identity: {
+      aiConnectionId: connection[0]?.id,
+      aiConnectionModelRevisionId: modelRevision[0]?.id,
+      aiRunProfileRevisionId: profileRevision[0]?.id,
+    } as AiRunIdentity,
+  }
+}
+
+describe('AI run coordination against SQL Server', () => {
+  const appDb = useSqlIntegrationDatabase()
+
+  it('enforces distributed capacity, bounded queueing, and lease transfer', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+    const deadline = new Date(Date.now() + 60_000)
+    const first = randomUUID()
+    const second = randomUUID()
+    const third = randomUUID()
+    const fourth = randomUUID()
+
+    await expect(
+      store.enqueue({
+        applicationRunId: first,
+        identity,
+        queueCapacity: 0,
+        totalDeadlineAt: deadline,
+      }),
+    ).resolves.toEqual({ status: 'queued' })
+    await expect(
+      store.enqueue({
+        applicationRunId: second,
+        identity,
+        queueCapacity: 0,
+        totalDeadlineAt: deadline,
+      }),
+    ).resolves.toMatchObject({ status: 'queue_full' })
+
+    await expect(
+      store.acquire({
+        applicationRunId: first,
+        leaseDurationMs: 30_000,
+        leaseOwnerId: randomUUID(),
+      }),
+    ).resolves.toMatchObject({ activeConcurrency: 1, status: 'acquired' })
+    await expect(
+      store.enqueue({
+        applicationRunId: third,
+        identity,
+        queueCapacity: 1,
+        totalDeadlineAt: deadline,
+      }),
+    ).resolves.toEqual({ status: 'queued' })
+    await expect(
+      store.enqueue({
+        applicationRunId: fourth,
+        identity,
+        queueCapacity: 1,
+        totalDeadlineAt: deadline,
+      }),
+    ).resolves.toMatchObject({ status: 'queue_full' })
+
+    await store.finish({ applicationRunId: first, outcome: 'completed' })
+    await expect(
+      store.acquire({
+        applicationRunId: third,
+        leaseDurationMs: 30_000,
+        leaseOwnerId: randomUUID(),
+      }),
+    ).resolves.toMatchObject({ activeConcurrency: 1, status: 'acquired' })
+    await store.finish({ applicationRunId: third, outcome: 'completed' })
+  })
+
+  it('opens after five qualifying failures and safely reclaims recovery leases', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      const applicationRunId = randomUUID()
+      await store.enqueue({
+        applicationRunId,
+        identity,
+        queueCapacity: 0,
+        totalDeadlineAt: new Date(Date.now() + 60_000),
+      })
+      await store.acquire({
+        applicationRunId,
+        leaseDurationMs: 30_000,
+        leaseOwnerId: randomUUID(),
+      })
+      await expect(
+        store.finish({
+          applicationRunId,
+          failure: { category: 'connection_unavailable', retryable: true },
+          outcome: 'failed',
+        }),
+      ).resolves.toEqual({ breakerOpened: attempt === 5 })
+    }
+
+    await appDb().query(
+      `UPDATE ai_connection_model_operational_states
+       SET next_recovery_at = DATEADD(second, -1, SYSUTCDATETIME())
+       WHERE ai_connection_model_revision_id = @0`,
+      [identity.aiConnectionModelRevisionId],
+    )
+    const firstOwner = randomUUID()
+    const firstProbe = randomUUID()
+    await expect(
+      store.acquireRecoveryProbe({
+        leaseDurationMs: 30_000,
+        leaseOwnerId: firstOwner,
+        modelRevisionId: identity.aiConnectionModelRevisionId,
+        probeRunId: firstProbe,
+      }),
+    ).resolves.toBe(true)
+    await appDb().query(
+      `UPDATE ai_connection_model_operational_states
+       SET lease_expires_at = DATEADD(second, -1, SYSUTCDATETIME())
+       WHERE ai_connection_model_revision_id = @0`,
+      [identity.aiConnectionModelRevisionId],
+    )
+    const secondOwner = randomUUID()
+    const secondProbe = randomUUID()
+    await expect(
+      store.acquireRecoveryProbe({
+        leaseDurationMs: 30_000,
+        leaseOwnerId: secondOwner,
+        modelRevisionId: identity.aiConnectionModelRevisionId,
+        probeRunId: secondProbe,
+      }),
+    ).resolves.toBe(true)
+    await store.finishRecoveryProbe({
+      failure: { category: 'authentication_failed', retryable: false },
+      leaseOwnerId: secondOwner,
+      modelRevisionId: identity.aiConnectionModelRevisionId,
+      probeRunId: secondProbe,
+      succeeded: false,
+    })
+
+    const rows = (await appDb().query(
+      `SELECT circuit_breaker_status AS circuitBreakerStatus,
+              circuit_open_reason AS circuitOpenReason,
+              is_manual_recovery_required AS isManualRecoveryRequired,
+              next_recovery_at AS nextRecoveryAt
+       FROM ai_connection_model_operational_states
+       WHERE ai_connection_model_revision_id = @0`,
+      [identity.aiConnectionModelRevisionId],
+    )) as Array<{
+      circuitBreakerStatus: string
+      circuitOpenReason: string
+      isManualRecoveryRequired: boolean
+      nextRecoveryAt: Date | null
+    }>
+    expect(rows).toEqual([
+      {
+        circuitBreakerStatus: 'open',
+        circuitOpenReason: 'authentication_failed',
+        isManualRecoveryRequired: true,
+        nextRecoveryAt: null,
+      },
+    ])
+  })
+
+  it('counts recovery leases when acquired and refuses a sixth crashed probe', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+    await appDb().query(
+      `UPDATE ai_connection_model_operational_states
+       SET health_status = N'unavailable', circuit_breaker_status = N'open',
+           circuit_open_reason = N'connection_unavailable',
+           automatic_recovery_attempt_count = 4,
+           next_recovery_at = DATEADD(second, -1, SYSUTCDATETIME())
+       WHERE ai_connection_model_revision_id = @0`,
+      [identity.aiConnectionModelRevisionId],
+    )
+
+    await expect(
+      store.acquireRecoveryProbe({
+        leaseDurationMs: 30_000,
+        leaseOwnerId: randomUUID(),
+        modelRevisionId: identity.aiConnectionModelRevisionId,
+        probeRunId: randomUUID(),
+      }),
+    ).resolves.toBe(true)
+    await appDb().query(
+      `UPDATE ai_connection_model_operational_states
+       SET lease_expires_at = DATEADD(second, -1, SYSUTCDATETIME())
+       WHERE ai_connection_model_revision_id = @0`,
+      [identity.aiConnectionModelRevisionId],
+    )
+    await expect(
+      store.acquireRecoveryProbe({
+        leaseDurationMs: 30_000,
+        leaseOwnerId: randomUUID(),
+        modelRevisionId: identity.aiConnectionModelRevisionId,
+        probeRunId: randomUUID(),
+      }),
+    ).resolves.toBe(false)
+
+    await expect(
+      appDb().query(
+        `SELECT circuit_breaker_status AS circuitBreakerStatus,
+                automatic_recovery_attempt_count AS automaticRecoveryAttemptCount,
+                is_manual_recovery_required AS isManualRecoveryRequired
+         FROM ai_connection_model_operational_states
+         WHERE ai_connection_model_revision_id = @0`,
+        [identity.aiConnectionModelRevisionId],
+      ),
+    ).resolves.toEqual([
+      {
+        automaticRecoveryAttemptCount: 5,
+        circuitBreakerStatus: 'open',
+        isManualRecoveryRequired: true,
+      },
+    ])
+  })
+})

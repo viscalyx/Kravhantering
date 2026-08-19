@@ -11,6 +11,7 @@ import { aiConnectionVerificationEvidenceEntity } from '@/lib/typeorm/entities/a
 import { aiForensicCaptureWindowEntity } from '@/lib/typeorm/entities/ai-forensic-capture-window'
 import { aiForensicEvidenceEventEntity } from '@/lib/typeorm/entities/ai-forensic-evidence-event'
 import { aiProviderSecretVersionEntity } from '@/lib/typeorm/entities/ai-provider-secret-version'
+import { aiRunCoordinationEntity } from '@/lib/typeorm/entities/ai-run-coordination'
 import { aiRunProfileEntity } from '@/lib/typeorm/entities/ai-run-profile'
 import { aiRunProfileRevisionEntity } from '@/lib/typeorm/entities/ai-run-profile-revision'
 import { aiSafetyRuleEntity } from '@/lib/typeorm/entities/ai-safety-rule'
@@ -81,6 +82,7 @@ export const sqlServerEntities = [
   aiConnectionModelVerificationEvidenceEntity,
   aiRunProfileEntity,
   aiRunProfileRevisionEntity,
+  aiRunCoordinationEntity,
   aiConnectionModelOperationalStateEntity,
   aiProviderSecretVersionEntity,
   aiForensicCaptureWindowEntity,
@@ -159,6 +161,7 @@ export type { AiConnectionVerificationEvidenceEntity } from '@/lib/typeorm/entit
 export type { AiForensicCaptureWindowEntity } from '@/lib/typeorm/entities/ai-forensic-capture-window'
 export type { AiForensicEvidenceEventEntity } from '@/lib/typeorm/entities/ai-forensic-evidence-event'
 export type { AiProviderSecretVersionEntity } from '@/lib/typeorm/entities/ai-provider-secret-version'
+export type { AiRunCoordinationEntity } from '@/lib/typeorm/entities/ai-run-coordination'
 export type { AiRunProfileEntity } from '@/lib/typeorm/entities/ai-run-profile'
 export type { AiRunProfileRevisionEntity } from '@/lib/typeorm/entities/ai-run-profile-revision'
 export type { AiSafetyRuleEntity } from '@/lib/typeorm/entities/ai-safety-rule'

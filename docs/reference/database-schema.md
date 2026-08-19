@@ -269,6 +269,7 @@ erDiagram
         text declared_capabilities_json
         text discovered_capabilities_json
         text verified_capabilities_json
+        integer maximum_concurrency
         uniqueidentifier revision_token
     }
 
@@ -299,6 +300,10 @@ erDiagram
         integer total_time_budget_seconds
         integer inactivity_time_budget_seconds
         integer queue_capacity
+        integer maximum_output_tokens
+        integer maximum_output_bytes
+        integer maximum_retained_memory_bytes
+        integer maximum_buffered_events
         uniqueidentifier revision_token
     }
 
@@ -307,12 +312,28 @@ erDiagram
         uniqueidentifier ai_connection_model_revision_id FK, UK
         text health_status
         text circuit_breaker_status
+        text circuit_open_reason
         integer consecutive_failure_count
         integer automatic_recovery_attempt_count
         bit is_manual_recovery_required
         datetime2 next_recovery_at
         datetime2 lease_expires_at
         uniqueidentifier revision_token
+    }
+
+    ai_run_coordination_entries {
+        uniqueidentifier id PK
+        text application_run_id UK
+        uniqueidentifier ai_connection_id FK
+        uniqueidentifier ai_connection_model_revision_id FK
+        uniqueidentifier ai_run_profile_revision_id FK
+        bigint queue_sequence UK
+        text status
+        integer attempt_count
+        datetime2 not_before
+        datetime2 total_deadline_at
+        uniqueidentifier lease_owner_id
+        datetime2 lease_expires_at
     }
 
     ai_forensic_capture_windows {
@@ -837,6 +858,9 @@ erDiagram
     ai_run_profiles ||--o{ ai_run_profile_revisions : "has revisions"
     ai_connection_model_revisions ||--o{ ai_run_profile_revisions : "selected by profiles"
     ai_connection_model_revisions ||--o| ai_connection_model_operational_states : "has operational state"
+    ai_connections ||--o{ ai_run_coordination_entries : "coordinates capacity"
+    ai_connection_model_revisions ||--o{ ai_run_coordination_entries : "coordinates model limit"
+    ai_run_profile_revisions ||--o{ ai_run_coordination_entries : "owns queue policy"
     requirement_responsibility_people ||--o{ requirement_areas : "owns areas"
     requirement_responsibility_people ||--o{ requirement_area_co_authors : "assigned to areas"
     requirement_responsibility_people ||--o{ requirements_specifications : "leads specifications"
@@ -1845,6 +1869,7 @@ allowing lifecycle transitions.
 | `declared_capabilities_json` | nvarchar(max) | Administrator-approved declared capabilities |
 | `discovered_capabilities_json` | nvarchar(max), nullable | Last explicitly approved discovery result |
 | `verified_capabilities_json` | nvarchar(max), nullable | Capabilities proven by the model test |
+| `maximum_concurrency` | integer, nullable | Optional model-specific concurrency ceiling, 1-100; the connection ceiling still applies |
 | `verified_at` | datetime2(3), nullable | Successful verification time |
 | `retired_at` | datetime2(3), nullable | Retirement time |
 | `created_at` | datetime2(3) | Revision creation time |
@@ -1917,6 +1942,10 @@ slot, enabling transactional revision swaps.
 | `total_time_budget_seconds` | integer | Total queue and execution budget, 300-3600 seconds |
 | `inactivity_time_budget_seconds` | integer | Inactivity budget, at least 300 seconds and no greater than total |
 | `queue_capacity` | integer | FIFO queue capacity, 0-100 |
+| `maximum_output_tokens` | integer | Provider output-token ceiling, 1-1,000,000 |
+| `maximum_output_bytes` | integer | Complete model-output ceiling, 1-67,108,864 bytes |
+| `maximum_retained_memory_bytes` | integer | Per-run adapter/coordinator retained-memory ceiling, 1-134,217,728 bytes |
+| `maximum_buffered_events` | integer | Maximum parsed upstream events held at once, 1-1,024 |
 | `created_at` | datetime2(3) | Revision creation time |
 | `activated_at` | datetime2(3), nullable | Activation time |
 | `superseded_at` | datetime2(3), nullable | Replacement time |
@@ -1943,6 +1972,7 @@ and is absent until runtime or an explicit health check creates it.
 | `ai_connection_model_revision_id` | uniqueidentifier FK, UK | Exact model revision |
 | `health_status` | nvarchar(24) | `unknown`, `healthy`, `degraded`, or `unavailable` |
 | `circuit_breaker_status` | nvarchar(24) | `closed`, `open`, or `half_open` |
+| `circuit_open_reason` | nvarchar(80), nullable | Content-free failure category that opened the breaker; required while open or half-open |
 | `consecutive_failure_count` | integer | Circuit-breaker failure count, 0-5 |
 | `automatic_recovery_attempt_count` | integer | Automatic recovery attempts, 0-5 |
 | `is_manual_recovery_required` | bit | Whether automatic recovery is exhausted |
@@ -1956,10 +1986,44 @@ and is absent until runtime or an explicit health check creates it.
 | `revision_token` | uniqueidentifier | Optimistic concurrency token |
 <!-- markdownlint-enable MD013 -->
 
-The lease fields are either all null or all populated. Demo seed creates only
-an OpenRouter connection draft, one draft attestation template, and three
-model-free draft profile revisions. It never creates external model IDs,
-verification evidence, operational state, or activation.
+Health evidence older than 24 hours, missing evidence, invalid timestamps, and
+future timestamps are projected as `unknown`; administrative lifecycle remains
+independent. Authentication opens the breaker immediately for manual recovery.
+Five consecutive connection, deadline, or retryable adapter failures open it
+for an hourly automatic probe. One SQL lease owns each probe, expired
+half-open leases are reclaimable, and five failed probes require manual
+recovery. The lease fields are either all null or all populated. Demo seed
+creates only an OpenRouter connection draft, one draft attestation template,
+and three model-free draft profile revisions. It never creates external model
+IDs, verification evidence, operational state, or activation.
+
+### `ai_run_coordination_entries`
+
+Short-lived, content-free SQL coordination for FIFO admission, connection and
+model concurrency, retry waits, and cross-node execution leases. A row contains
+only opaque run/configuration IDs and timing/counter state—never prompts,
+images, model output, endpoints, secrets, or error text. Queue time, retry wait,
+and attempts share `total_deadline_at`. Completion, cancellation, and failure
+delete the row; expired deadlines and leases are reclaimed transactionally.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| ------ | ---- | ----------- |
+| `id` | uniqueidentifier PK | Opaque coordination-row identity |
+| `application_run_id` | nvarchar(100) UK | Opaque application run identity |
+| `ai_connection_id` | uniqueidentifier FK | Connection whose distributed concurrency is consumed |
+| `ai_connection_model_revision_id` | uniqueidentifier FK | Exact model revision and optional lower concurrency ceiling |
+| `ai_run_profile_revision_id` | uniqueidentifier FK | Exact profile revision and queue policy |
+| `queue_sequence` | bigint identity, UK | Monotonic FIFO order |
+| `status` | nvarchar(24) | `queued`, `running`, or `retry_wait` |
+| `attempt_count` | tinyint | Acquired attempts, 0-2 |
+| `not_before` | datetime2(3) | Earliest admission time, including retry delay |
+| `total_deadline_at` | datetime2(3) | Original deadline shared by queue, attempts, and retry wait |
+| `lease_owner_id` | uniqueidentifier, nullable | App instance holding a running lease |
+| `lease_expires_at` | datetime2(3), nullable | Lease expiry used for crash recovery |
+| `created_at` | datetime2(3) | Admission time |
+| `updated_at` | datetime2(3) | Last coordination transition |
+<!-- markdownlint-enable MD013 -->
 
 ## UI Settings Tables
 
@@ -3143,6 +3207,8 @@ its purpose and the table/column(s) it covers.
 | `uq_ai_run_profile_revisions_active_profile` | `ai_run_profile_revisions` | `ai_run_profile_id` where `status = 'active'` | Enforces at most one active revision per profile slot |
 | `uq_ai_run_profile_revisions_draft_profile` | `ai_run_profile_revisions` | `ai_run_profile_id` where `status = 'draft'` | Enforces at most one draft revision per profile slot |
 | `uq_ai_connection_model_operational_states_revision` | `ai_connection_model_operational_states` | `ai_connection_model_revision_id` | Keeps operational state bound one-to-one to an exact model revision |
+| `uq_ai_run_coordination_entries_application_run_id` | `ai_run_coordination_entries` | `application_run_id` | Prevents one application run from occupying multiple queue or lease rows |
+| `uq_ai_run_coordination_entries_queue_sequence` | `ai_run_coordination_entries` | `queue_sequence` | Preserves a global monotonic FIFO tiebreaker across app nodes |
 | `uq_ai_forensic_capture_windows_is_open` | `ai_forensic_capture_windows` | `is_open` where `is_open = 1` | Ensures only one pending or active capture window exists |
 | `uq_ai_forensic_evidence_events_event_id` | `ai_forensic_evidence_events` | `event_id` | Ensures one isolated evidence row per security event |
 <!-- markdownlint-enable MD013 -->
@@ -3234,6 +3300,8 @@ its purpose and the table/column(s) it covers.
 | `idx_ai_run_profile_revisions_model_revision` | `ai_run_profile_revisions` | `ai_connection_model_revision_id` | Find profiles blocked by a changed model revision |
 | `idx_ai_connection_model_operational_states_recovery` | `ai_connection_model_operational_states` | `(circuit_breaker_status, next_recovery_at)` | Coordinate due circuit-breaker recovery attempts |
 | `idx_ai_connection_model_operational_states_lease_expires_at` | `ai_connection_model_operational_states` | `lease_expires_at` | Reclaim expired cross-node recovery leases |
+| `idx_ai_run_coordination_entries_fifo` | `ai_run_coordination_entries` | `(ai_connection_id, status, not_before, queue_sequence)` | Acquire the eligible FIFO head under a serializable SQL transaction |
+| `idx_ai_run_coordination_entries_lease_expires_at` | `ai_run_coordination_entries` | `lease_expires_at` where non-null | Reclaim expired execution leases after node failure |
 | `idx_ai_forensic_capture_windows_expires_at` | `ai_forensic_capture_windows` | `expires_at` | Support SQL-time expiry and bounded cleanup |
 | `idx_ai_forensic_capture_windows_requested_by_hsa_id` | `ai_forensic_capture_windows` | `requested_by_hsa_id` | Support requester access and exact privacy lookup |
 | `idx_ai_forensic_capture_windows_approved_by_hsa_id` | `ai_forensic_capture_windows` | `approved_by_hsa_id` | Support approver access and exact privacy lookup |
@@ -3280,6 +3348,9 @@ The following table lists every named FK constraint:
 | `fk_ai_run_profile_revisions_ai_run_profile_id` | `ai_run_profile_revisions` | `ai_run_profile_id` | `ai_run_profiles.id` | NO ACTION | NO ACTION |
 | `fk_ai_run_profile_revisions_ai_connection_model_revision_id` | `ai_run_profile_revisions` | `ai_connection_model_revision_id` | `ai_connection_model_revisions.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_model_operational_states_ai_connection_model_revision_id` | `ai_connection_model_operational_states` | `ai_connection_model_revision_id` | `ai_connection_model_revisions.id` | CASCADE | NO ACTION |
+| `fk_ai_run_coordination_entries_ai_connection_id` | `ai_run_coordination_entries` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
+| `fk_ai_run_coordination_entries_ai_connection_model_revision_id` | `ai_run_coordination_entries` | `ai_connection_model_revision_id` | `ai_connection_model_revisions.id` | NO ACTION | NO ACTION |
+| `fk_ai_run_coordination_entries_ai_run_profile_revision_id` | `ai_run_coordination_entries` | `ai_run_profile_revision_id` | `ai_run_profile_revisions.id` | NO ACTION | NO ACTION |
 | `fk_ai_forensic_evidence_events_ai_forensic_capture_window_id` | `ai_forensic_evidence_events` | `ai_forensic_capture_window_id` | `ai_forensic_capture_windows.id` | CASCADE | NO ACTION |
 | `fk_requirement_area_co_authors_area_id` | `requirement_area_co_authors` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
 | `fk_requirement_area_co_authors_hsa_id` | `requirement_area_co_authors` | `hsa_id` | `requirement_responsibility_people.hsa_id` | NO ACTION | NO ACTION |
@@ -3386,6 +3457,7 @@ graph LR
         AIRP[ai_run_profiles]
         AIRPR[ai_run_profile_revisions]
         AICMOS[ai_connection_model_operational_states]
+        AIRCE[ai_run_coordination_entries]
     end
 
     subgraph Core Tables
@@ -3473,6 +3545,9 @@ graph LR
     AIRPR -- "FK model_revision_id" --> AICMR
     AIRPR -- "uq_..._active_profile\n(profile_id WHERE active)" --> AIRP
     AICMOS -- "FK/UK model_revision_id" --> AICMR
+    AIRCE -- "FK connection_id" --> AIC
+    AIRCE -- "FK model_revision_id" --> AICMR
+    AIRCE -- "FK profile_revision_id" --> AIRPR
 
     AFCW -- "uq_..._is_open\n(is_open WHERE is_open = 1)" --> AFCW
     AFCW -- "idx_..._expires_at\n(expires_at)" --> AFCW

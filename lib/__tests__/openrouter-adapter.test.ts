@@ -47,6 +47,12 @@ function request(
       },
       { fetch: mockFetch },
     ),
+    limits: {
+      maxBufferedEvents: 32,
+      maxOutputBytes: 4_194_304,
+      maxOutputTokens: 8_192,
+      maxRetainedMemoryBytes: 8_388_608,
+    },
     modelRevision: {
       configuration: { reasoningEffort: 'high' },
       externalModelId: 'provider/model-v1',
@@ -260,6 +266,7 @@ describe('OpenRouter AI connection adapter', () => {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>
     expect(body).toMatchObject({
       include_reasoning: true,
+      max_tokens: 8_192,
       model: 'provider/model-v1',
       provider: {
         allow_fallbacks: false,
@@ -922,6 +929,38 @@ describe('OpenRouter AI connection adapter', () => {
       failure: { category: 'invalid_response', retryable: false },
       type: 'failed',
     })
+  })
+
+  it('bounds a streaming partial frame by the persisted memory limit', async () => {
+    const encoder = new TextEncoder()
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode('data: 1234567890'))
+            controller.enqueue(encoder.encode('1234567890'))
+            controller.close()
+          },
+        }),
+        { headers: { 'Content-Type': 'text/event-stream' } },
+      ),
+    )
+    const adapterRequest = enableStreaming(request())
+    adapterRequest.limits = {
+      ...adapterRequest.limits,
+      maxRetainedMemoryBytes: 20,
+    }
+
+    const events = await collectEvents(adapter().run(adapterRequest))
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        failure: expect.objectContaining({
+          diagnosticCode: 'upstream_stream_frame_too_large',
+        }),
+        type: 'failed',
+      }),
+    ])
   })
 
   it('actively cancels provider streaming when the adapter consumer stops', async () => {

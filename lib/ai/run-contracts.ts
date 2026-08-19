@@ -102,6 +102,7 @@ export interface AiRunIdentity {
 export interface AiConnectionAdapterRunRequest {
   connection: AiResolvedConnection
   context: AiAdapterRunContext
+  limits: Readonly<AiRunLimits>
   modelRevision: AiResolvedConnectionModelRevision
   runProfileRevisionId: AiRunProfileRevisionId
   selectedCapabilities: Readonly<AiCapabilitySelection>
@@ -146,6 +147,17 @@ export interface AiRunFailure {
   diagnosticCode?: string
   retryAfterSeconds?: number
   retryable: boolean
+  retryDisposition?:
+    | 'explicit_retryable_status'
+    | 'idempotent'
+    | 'safe_before_acceptance'
+}
+
+export interface AiRunLimits {
+  maxBufferedEvents: number
+  maxOutputBytes: number
+  maxOutputTokens: number
+  maxRetainedMemoryBytes: number
 }
 
 export const AI_UNAVAILABLE_USAGE_REASONS = [
@@ -189,6 +201,7 @@ export type AiRunCancellationReason =
 
 /** Shared internal port stream; downstream client projections omit output_delta. */
 export type AiRunEvent =
+  | { type: 'heartbeat' }
   | { delta: string; type: 'analysis_delta' }
   | { delta: string; type: 'output_delta'; visibility: 'internal' }
   | {

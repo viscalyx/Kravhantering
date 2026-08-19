@@ -25,19 +25,28 @@ interface AiRunProfileRow {
   connectionConfigurationVersion: number
   connectionId: string
   connectionLifecycleStatus: AiPersistedConnectionLifecycleStatus
+  connectionMaximumConcurrency: number
   dataPolicySummary: string
   egressPolicyKey: string
   endpointUrl: string
   externalModelId: string
   externalModelVersion: string | null
+  inactivityTimeBudgetSeconds: number
+  maximumBufferedEvents: number
+  maximumOutputBytes: number
+  maximumOutputTokens: number
+  maximumRetainedMemoryBytes: number
   modelRevisionAgentRuntimeVersion: string | null
   modelRevisionConnectionConfigurationVersion: number
   modelRevisionId: string
+  modelRevisionMaximumConcurrency: number | null
   modelRevisionStatus: AiPersistedModelRevisionStatus
   operationalStatus: AiRunProfileOperationalStatus
   profileRevisionId: string
   profileRevisionStatus: AiPersistedRunProfileRevisionStatus
+  queueCapacity: number
   tlsPolicyKey: string
+  totalTimeBudgetSeconds: number
   verifiedCapabilitiesJson: string | null
 }
 
@@ -47,7 +56,15 @@ const ACTIVE_RUN_PROFILE_QUERY = `
     [revision].[id] AS [profileRevisionId],
     [revision].[status] AS [profileRevisionStatus],
     [revision].[capability_policy_json] AS [capabilityPolicyJson],
+    [revision].[total_time_budget_seconds] AS [totalTimeBudgetSeconds],
+    [revision].[inactivity_time_budget_seconds] AS [inactivityTimeBudgetSeconds],
+    [revision].[queue_capacity] AS [queueCapacity],
+    [revision].[maximum_output_tokens] AS [maximumOutputTokens],
+    [revision].[maximum_output_bytes] AS [maximumOutputBytes],
+    [revision].[maximum_retained_memory_bytes] AS [maximumRetainedMemoryBytes],
+    [revision].[maximum_buffered_events] AS [maximumBufferedEvents],
     [model_revision].[id] AS [modelRevisionId],
+    [model_revision].[maximum_concurrency] AS [modelRevisionMaximumConcurrency],
     [model_revision].[status] AS [modelRevisionStatus],
     [model_revision].[connection_configuration_version]
       AS [modelRevisionConnectionConfigurationVersion],
@@ -60,6 +77,7 @@ const ACTIVE_RUN_PROFILE_QUERY = `
     [connection].[id] AS [connectionId],
     [connection].[lifecycle_status] AS [connectionLifecycleStatus],
     [connection].[configuration_version] AS [connectionConfigurationVersion],
+    [connection].[maximum_concurrency] AS [connectionMaximumConcurrency],
     [connection].[adapter_key] AS [adapterType],
     [connection].[adapter_version] AS [adapterVersion],
     [connection].[endpoint_url] AS [endpointUrl],
@@ -129,6 +147,7 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
     connectionConfigurationVersion: Number(row.connectionConfigurationVersion),
     connectionId: row.connectionId,
     connectionLifecycleStatus: row.connectionLifecycleStatus,
+    connectionMaximumConcurrency: Number(row.connectionMaximumConcurrency),
     externalModelId: row.externalModelId,
     modelRevisionAgentRuntimeVersion: row.modelRevisionAgentRuntimeVersion,
     modelRevisionConfiguration: Object.freeze({
@@ -138,8 +157,17 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
       row.modelRevisionConnectionConfigurationVersion,
     ),
     modelRevisionId: row.modelRevisionId,
+    modelRevisionMaximumConcurrency:
+      row.modelRevisionMaximumConcurrency === null
+        ? null
+        : Number(row.modelRevisionMaximumConcurrency),
     modelRevisionStatus: row.modelRevisionStatus,
     operationalStatus: row.operationalStatus,
+    inactivityTimeBudgetSeconds: Number(row.inactivityTimeBudgetSeconds),
+    maximumBufferedEvents: Number(row.maximumBufferedEvents),
+    maximumOutputBytes: Number(row.maximumOutputBytes),
+    maximumOutputTokens: Number(row.maximumOutputTokens),
+    maximumRetainedMemoryBytes: Number(row.maximumRetainedMemoryBytes),
     profileRevisionId: row.profileRevisionId,
     profileRevisionStatus: row.profileRevisionStatus,
     trustConfiguration:
@@ -165,6 +193,8 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
             tlsPolicyKey: row.tlsPolicyKey,
           })
         : null,
+    queueCapacity: Number(row.queueCapacity),
+    totalTimeBudgetSeconds: Number(row.totalTimeBudgetSeconds),
     verifiedCapabilitiesJson: row.verifiedCapabilitiesJson,
   }
 }

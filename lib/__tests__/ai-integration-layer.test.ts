@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createAiConnectionAdapterRegistry } from '@/lib/ai/adapter-registry'
 import { createAiIntegrationLayer } from '@/lib/ai/integration-layer'
 import {
@@ -12,6 +12,7 @@ import type {
   AiRunUsage,
 } from '@/lib/ai/run-contracts'
 import type { AiRunTrustBoundary } from '@/lib/ai/run-trust-boundary'
+import type { AiRunCoordinator } from '@/lib/ai/run-coordinator'
 
 const USAGE: AiRunUsage = {
   analysisTokens: { reason: 'not_reported', status: 'unavailable' },
@@ -49,12 +50,19 @@ function profile(
     connectionConfigurationVersion: 4,
     connectionId: 'connection-17',
     connectionLifecycleStatus: 'active',
+    connectionMaximumConcurrency: 4,
     externalModelId: 'external-model-v1',
     modelRevisionAgentRuntimeVersion: null,
     modelRevisionConnectionConfigurationVersion: 4,
     modelRevisionId: 'model-revision-23',
+    modelRevisionMaximumConcurrency: null,
     modelRevisionStatus: 'verified',
     operationalStatus: 'enabled',
+    inactivityTimeBudgetSeconds: 300,
+    maximumBufferedEvents: 32,
+    maximumOutputBytes: 4_194_304,
+    maximumOutputTokens: 8_192,
+    maximumRetainedMemoryBytes: 8_388_608,
     profileRevisionId: 'profile-revision-31',
     profileRevisionStatus: 'active',
     trustConfiguration: {
@@ -71,6 +79,8 @@ function profile(
       endpointUrl: 'https://capture.invalid/v1',
       tlsPolicyKey: 'public_web_pki',
     },
+    queueCapacity: 10,
+    totalTimeBudgetSeconds: 1_200,
     verifiedCapabilitiesJson: JSON.stringify({
       aiAnalysis: false,
       cost: false,
@@ -81,6 +91,16 @@ function profile(
       validatableJson: true,
     }),
   }
+}
+
+const RUN_COORDINATOR: AiRunCoordinator = {
+  coordinate(request, executeAttempt) {
+    return executeAttempt(
+      1,
+      request.abortSignal,
+      new Date(Date.now() + 60_000).toISOString(),
+    )
+  },
 }
 
 function request(abortSignal = new AbortController().signal) {
@@ -132,6 +152,7 @@ function integration(
     ]),
     profileResolver: resolver,
     trustBoundary,
+    runCoordinator: RUN_COORDINATOR,
   })
 }
 
@@ -178,8 +199,14 @@ describe('AI integration layer', () => {
       },
       context: {
         abortSignal: runRequest.context.abortSignal,
-        deadlineAt: '2026-08-19T12:30:00.000Z',
+        deadlineAt: expect.any(String),
         externalRunId: expect.stringMatching(/^airun_/u),
+      },
+      limits: {
+        maxBufferedEvents: 32,
+        maxOutputBytes: 4_194_304,
+        maxOutputTokens: 8_192,
+        maxRetainedMemoryBytes: 8_388_608,
       },
       modelRevision: {
         configuration: { opaque: 'model-configuration' },
@@ -240,6 +267,7 @@ describe('AI integration layer', () => {
       ]),
       profileResolver: resolver,
       trustBoundary: PASSING_TRUST_BOUNDARY,
+      runCoordinator: RUN_COORDINATOR,
     })
 
     const error = await collect(layer.run(request())).catch(
@@ -253,6 +281,36 @@ describe('AI integration layer', () => {
     })
     expect(JSON.stringify(error)).not.toMatch(/provider|secret/u)
     expect(called).toBe(false)
+  })
+
+  it('emits a content-free blocked-profile alarm without replacing the safe error', async () => {
+    const blocked = profile()
+    blocked.modelRevisionStatus = 'verification_required'
+    const emit = vi.fn(async () => {
+      throw new Error('telemetry unavailable')
+    })
+    const layer = createAiIntegrationLayer({
+      adapterRegistry: createAiConnectionAdapterRegistry([]),
+      profileResolver: createAiRunProfileResolver({
+        profileSource: { findActiveRevision: async () => blocked },
+        resolveAdapterConfiguration: async () => undefined,
+      }),
+      runCoordinator: RUN_COORDINATOR,
+      telemetry: { emit },
+    })
+
+    await expect(collect(layer.run(request()))).rejects.toMatchObject({
+      code: 'profile_blocked',
+    })
+    expect(emit).toHaveBeenCalledWith({
+      adapterVersion: '3',
+      aiConnectionId: 'connection-17',
+      aiConnectionModelRevisionId: 'model-revision-23',
+      aiRunProfileRevisionId: 'profile-revision-31',
+      applicationRunId: 'app-run-private',
+      name: 'ai_alarm_active_profile_blocked',
+      runType: 'generate_without_images',
+    })
   })
 
   it('returns the selected adapter failure without trying another adapter', async () => {
@@ -292,6 +350,7 @@ describe('AI integration layer', () => {
       ]),
       profileResolver: resolver,
       trustBoundary: PASSING_TRUST_BOUNDARY,
+      runCoordinator: RUN_COORDINATOR,
     })
 
     await expect(collect(layer.run(request()))).resolves.toMatchObject([
@@ -373,6 +432,8 @@ describe('AI integration layer', () => {
     })
 
     await expect(collect(layer.run(request()))).resolves.toHaveLength(1)
+      runCoordinator: RUN_COORDINATOR,
+    })
     expect(scopeActive).toBe(false)
   })
 
@@ -405,6 +466,7 @@ describe('AI integration layer', () => {
       ]),
       profileResolver: resolver,
       trustBoundary: PASSING_TRUST_BOUNDARY,
+      runCoordinator: RUN_COORDINATOR,
     })
 
     await expect(collect(layer.run(request()))).resolves.toEqual([

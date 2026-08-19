@@ -296,6 +296,43 @@ secrets and repeat connection, model-capability, and run-profile activation
 checks. Do not weaken application health or readiness to signal this AI-only
 failure.
 
+## Runtime Limits, Leases, and Recovery
+
+Each immutable run profile revision owns a total budget of 5-60 minutes, an
+inactivity budget of at least 5 minutes and no greater than the total, a FIFO
+queue capacity of 0-100, and explicit output-token, output-byte,
+retained-memory, and parsed-event limits. Defaults are 20 minutes total, 5
+minutes inactive, and 10 waiting requests. Queue time, execution, one optional
+retry delay, and the second attempt all consume the original total budget.
+
+SQL Server coordinates admission, FIFO order, connection concurrency, any
+lower model-revision concurrency, retry waits, and renewable execution leases
+across all app nodes. Queue rows contain only opaque identities, state,
+counters, and timestamps. A zero-capacity queue admits only runs that fit the
+currently reserved execution capacity. Expired deadlines and abandoned leases
+are reclaimed transactionally.
+
+The integration layer may retry at most once and only against the same
+connection, model revision, and run profile revision, before any analysis or
+output delta. Safe pre-acceptance failures use a randomized 1-3 second delay.
+Explicit retryable `429` or `503` outcomes may honor `Retry-After` only when at
+least five minutes remain after the delay. No automatic fallback is allowed.
+
+Adapter streams are pull-driven: downstream demand causes at most one upstream
+pull, and configured buffer/memory/byte/token ceilings are enforced before an
+over-limit event is exposed. Heartbeats do not extend the inactivity budget.
+A client disconnect aborts provider work, with at most five seconds allowed for
+uncooperative cleanup. Silent EOF, stream failure, thrown coordination work,
+and every other failure are normalized to exactly one terminal outcome.
+
+Operational health is independent of administrative lifecycle. Missing,
+invalid, future, or older-than-24-hour evidence is displayed as `unknown`. An
+authentication failure opens the breaker immediately and requires manual
+recovery. Five consecutive connection, deadline, or retryable adapter failures
+open it for one hourly SQL-leased probe; a crashed half-open lease is
+reclaimable. After five failed probes, or if a probe discovers an
+authentication failure, recovery becomes manual.
+
 ## Monitoring and Incident Response
 
 Monitor administrative lifecycle and operational health as separate states.
@@ -306,10 +343,14 @@ At minimum, page or alert immediately for:
 - an active run profile becoming blocked
 
 Maintain environment-specific baselines for failure rate, p95 duration, queue
-saturation, token use, and cost. Operational events may contain opaque AI
-connection, run profile revision, and AI connection model revision IDs, but
-never prompts, images, model output, endpoints, provider secrets, or secret
-references.
+saturation, active concurrency, attempt and retry counts, time to first
+analysis/output delta, cancellation reasons, token use, and cost. Operational
+events include run type, adapter version, outcome/failure category, and opaque
+application-run, connection, profile-revision, and model-revision IDs. They
+never include prompts, images, model output, endpoints, provider secrets,
+secret references, or provider error bodies. Alert rules must bind the emitted
+authentication-failure, breaker-opened, and active-profile-blocked alarm events
+to the on-call channel before AI is enabled.
 
 For an incident, activate the global AI guard or suspend the affected AI
 connection or run profile. This stops new requests and attempts to cancel

@@ -42,16 +42,25 @@ export interface AiPersistedRunProfile {
   connectionConfigurationVersion: number
   connectionId: string
   connectionLifecycleStatus: AiPersistedConnectionLifecycleStatus
+  connectionMaximumConcurrency: number
   externalModelId: string
+  inactivityTimeBudgetSeconds: number
+  maximumBufferedEvents: number
+  maximumOutputBytes: number
+  maximumOutputTokens: number
+  maximumRetainedMemoryBytes: number
   modelRevisionAgentRuntimeVersion: string | null
   modelRevisionConfiguration?: Readonly<Record<string, unknown>>
   modelRevisionConnectionConfigurationVersion: number
   modelRevisionId: string
+  modelRevisionMaximumConcurrency: number | null
   modelRevisionStatus: AiPersistedModelRevisionStatus
   operationalStatus: AiRunProfileOperationalStatus
   profileRevisionId: string
   profileRevisionStatus: AiPersistedRunProfileRevisionStatus
   trustConfiguration: Readonly<AiConnectionTrustConfiguration> | null
+  queueCapacity: number
+  totalTimeBudgetSeconds: number
   verifiedCapabilitiesJson: string | null
 }
 
@@ -82,8 +91,20 @@ export interface AiResolvedRunProfile {
   adapterType: string
   adapterVersion: string
   connectionId: AiConnectionId
+  limits: Readonly<{
+    maxBufferedEvents: number
+    maxOutputBytes: number
+    maxOutputTokens: number
+    maxRetainedMemoryBytes: number
+  }>
   modelRevisionId: AiConnectionModelRevisionId
   profileRevisionId: AiRunProfileRevisionId
+  runtime: Readonly<{
+    inactivityTimeBudgetMs: number
+    maximumConcurrency: number
+    queueCapacity: number
+    totalTimeBudgetMs: number
+  }>
   selectedCapabilities: Readonly<AiCapabilitySelection>
   trustConfiguration: Readonly<AiConnectionTrustConfiguration>
   withAdapterConfiguration(
@@ -113,15 +134,27 @@ const ERROR_LOCALIZATION_KEYS = {
 } as const satisfies Record<AiRunProfileResolutionErrorCode, string>
 
 export class AiRunProfileResolutionError extends Error {
+  readonly adapterVersion?: string
   readonly code: AiRunProfileResolutionErrorCode
   readonly localizationKey: (typeof ERROR_LOCALIZATION_KEYS)[AiRunProfileResolutionErrorCode]
   readonly safeMessage = 'The configured AI run profile is unavailable.'
+  readonly identity?: {
+    aiConnectionId: string
+    aiConnectionModelRevisionId: string
+    aiRunProfileRevisionId: string
+  }
 
-  constructor(code: AiRunProfileResolutionErrorCode) {
+  constructor(
+    code: AiRunProfileResolutionErrorCode,
+    identity?: AiRunProfileResolutionError['identity'],
+    adapterVersion?: string,
+  ) {
     super('The configured AI run profile is unavailable.')
     this.name = 'AiRunProfileResolutionError'
     this.code = code
     this.localizationKey = ERROR_LOCALIZATION_KEYS[code]
+    this.identity = identity
+    this.adapterVersion = adapterVersion
   }
 }
 
@@ -290,8 +323,51 @@ function hasValidDependencies(profile: AiPersistedRunProfile): boolean {
   )
 }
 
-function blocked(): AiRunProfileResolutionError {
-  return new AiRunProfileResolutionError('profile_blocked')
+function hasValidRuntimePolicy(profile: AiPersistedRunProfile): boolean {
+  return (
+    Number.isInteger(profile.totalTimeBudgetSeconds) &&
+    profile.totalTimeBudgetSeconds >= 300 &&
+    profile.totalTimeBudgetSeconds <= 3600 &&
+    Number.isInteger(profile.inactivityTimeBudgetSeconds) &&
+    profile.inactivityTimeBudgetSeconds >= 300 &&
+    profile.inactivityTimeBudgetSeconds <= profile.totalTimeBudgetSeconds &&
+    Number.isInteger(profile.queueCapacity) &&
+    profile.queueCapacity >= 0 &&
+    profile.queueCapacity <= 100 &&
+    Number.isInteger(profile.connectionMaximumConcurrency) &&
+    profile.connectionMaximumConcurrency >= 1 &&
+    profile.connectionMaximumConcurrency <= 100 &&
+    (profile.modelRevisionMaximumConcurrency === null ||
+      (Number.isInteger(profile.modelRevisionMaximumConcurrency) &&
+        profile.modelRevisionMaximumConcurrency >= 1 &&
+        profile.modelRevisionMaximumConcurrency <= 100)) &&
+    Number.isInteger(profile.maximumOutputTokens) &&
+    profile.maximumOutputTokens >= 1 &&
+    profile.maximumOutputTokens <= 1_000_000 &&
+    Number.isInteger(profile.maximumOutputBytes) &&
+    profile.maximumOutputBytes >= 1 &&
+    profile.maximumOutputBytes <= 67_108_864 &&
+    Number.isInteger(profile.maximumRetainedMemoryBytes) &&
+    profile.maximumRetainedMemoryBytes >= 1 &&
+    profile.maximumRetainedMemoryBytes <= 134_217_728 &&
+    Number.isInteger(profile.maximumBufferedEvents) &&
+    profile.maximumBufferedEvents >= 1 &&
+    profile.maximumBufferedEvents <= 1_024
+  )
+}
+
+function blocked(profile?: AiPersistedRunProfile): AiRunProfileResolutionError {
+  return new AiRunProfileResolutionError(
+    'profile_blocked',
+    profile
+      ? {
+          aiConnectionId: profile.connectionId,
+          aiConnectionModelRevisionId: profile.modelRevisionId,
+          aiRunProfileRevisionId: profile.profileRevisionId,
+        }
+      : undefined,
+    profile?.adapterVersion,
+  )
 }
 
 function freezePersistedProfile(
@@ -335,17 +411,19 @@ export function createAiRunProfileResolver(
       if (profile.operationalStatus === 'suspended') {
         throw new AiRunProfileResolutionError('profile_suspended')
       }
-      if (!hasValidDependencies(profile)) throw blocked()
+      if (!hasValidDependencies(profile) || !hasValidRuntimePolicy(profile)) {
+        throw blocked(profile)
+      }
 
       const policy = readCapabilityPolicy(profile.capabilityPolicyJson)
       const verified = readVerifiedCapabilities(
         profile.verifiedCapabilitiesJson,
       )
       if (!policy || !verified || !satisfiesLockedPolicy(type, policy)) {
-        throw blocked()
+        throw blocked(profile)
       }
       const selectedCapabilities = selectCapabilities(policy, verified)
-      if (!selectedCapabilities) throw blocked()
+      if (!selectedCapabilities) throw blocked(profile)
 
       const connectionId = profile.connectionId as AiConnectionId
       const modelRevisionId =
@@ -361,6 +439,22 @@ export function createAiRunProfileResolver(
         streaming: verified.streaming,
         tokenUsage: verified.tokenUsage,
       })
+      const limits = Object.freeze({
+        maxBufferedEvents: profile.maximumBufferedEvents,
+        maxOutputBytes: profile.maximumOutputBytes,
+        maxOutputTokens: profile.maximumOutputTokens,
+        maxRetainedMemoryBytes: profile.maximumRetainedMemoryBytes,
+      })
+      const runtime = Object.freeze({
+        inactivityTimeBudgetMs: profile.inactivityTimeBudgetSeconds * 1_000,
+        maximumConcurrency: Math.min(
+          profile.connectionMaximumConcurrency,
+          profile.modelRevisionMaximumConcurrency ??
+            profile.connectionMaximumConcurrency,
+        ),
+        queueCapacity: profile.queueCapacity,
+        totalTimeBudgetMs: profile.totalTimeBudgetSeconds * 1_000,
+      })
       const withAdapterConfiguration = async (
         use: (profile: Readonly<AiAdapterReadyRunProfile>) => Promise<void>,
       ): Promise<void> => {
@@ -370,7 +464,7 @@ export function createAiRunProfileResolver(
             profileSnapshot,
             async configuration => {
               callbackCount += 1
-              if (callbackCount !== 1) throw blocked()
+              if (callbackCount !== 1) throw blocked(profileSnapshot)
               await use(
                 Object.freeze({
                   connection: Object.freeze({
@@ -387,9 +481,9 @@ export function createAiRunProfileResolver(
               )
             },
           )
-          if (callbackCount !== 1) throw blocked()
+          if (callbackCount !== 1) throw blocked(profileSnapshot)
         } catch {
-          throw blocked()
+          throw blocked(profileSnapshot)
         }
       }
 
@@ -397,8 +491,10 @@ export function createAiRunProfileResolver(
         adapterType: profile.adapterType,
         adapterVersion: profile.adapterVersion,
         connectionId,
+        limits,
         modelRevisionId,
         profileRevisionId: profile.profileRevisionId as AiRunProfileRevisionId,
+        runtime,
         selectedCapabilities: Object.freeze(selectedCapabilities),
         trustConfiguration: Object.freeze({
           ...trustConfiguration,

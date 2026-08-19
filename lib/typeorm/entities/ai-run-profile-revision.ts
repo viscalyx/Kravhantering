@@ -10,6 +10,10 @@ export interface AiRunProfileRevisionEntity {
   createdAt: Date
   id: string
   inactivityTimeBudgetSeconds: number
+  maximumBufferedEvents: number
+  maximumOutputBytes: number
+  maximumOutputTokens: number
+  maximumRetainedMemoryBytes: number
   modelRevision: AiConnectionModelRevisionEntity | null
   profile: AiRunProfileEntity
   queueCapacity: number
@@ -49,6 +53,26 @@ export const aiRunProfileRevisionEntity =
         type: 'int',
       },
       queueCapacity: { default: 10, name: 'queue_capacity', type: 'int' },
+      maximumOutputTokens: {
+        default: 8192,
+        name: 'maximum_output_tokens',
+        type: 'int',
+      },
+      maximumOutputBytes: {
+        default: 4194304,
+        name: 'maximum_output_bytes',
+        type: 'int',
+      },
+      maximumRetainedMemoryBytes: {
+        default: 8388608,
+        name: 'maximum_retained_memory_bytes',
+        type: 'int',
+      },
+      maximumBufferedEvents: {
+        default: 32,
+        name: 'maximum_buffered_events',
+        type: 'int',
+      },
       createdAt: { name: 'created_at', precision: 3, type: 'datetime2' },
       activatedAt: {
         name: 'activated_at',
@@ -145,6 +169,22 @@ export const aiRunProfileRevisionEntity =
       {
         expression: '[queue_capacity] BETWEEN 0 AND 100',
         name: 'chk_ai_run_profile_revisions_queue_capacity',
+      },
+      {
+        expression: '[maximum_output_tokens] BETWEEN 1 AND 1000000',
+        name: 'chk_ai_run_profile_revisions_maximum_output_tokens',
+      },
+      {
+        expression: '[maximum_output_bytes] BETWEEN 1 AND 67108864',
+        name: 'chk_ai_run_profile_revisions_maximum_output_bytes',
+      },
+      {
+        expression: '[maximum_retained_memory_bytes] BETWEEN 1 AND 134217728',
+        name: 'chk_ai_run_profile_revisions_maximum_retained_memory_bytes',
+      },
+      {
+        expression: '[maximum_buffered_events] BETWEEN 1 AND 1024',
+        name: 'chk_ai_run_profile_revisions_maximum_buffered_events',
       },
       {
         expression:

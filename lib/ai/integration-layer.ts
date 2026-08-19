@@ -16,11 +16,14 @@ import {
   guardAiRunEventStream,
 } from './run-contracts'
 import type { AiPreparedRun, AiRunTrustBoundary } from './run-trust-boundary'
+import type { AiRunCoordinator, AiRunTelemetry } from './run-coordinator'
 
 export interface CreateAiIntegrationLayerOptions {
   adapterRegistry: AiConnectionAdapterRegistry
   profileResolver: AiRunProfileResolver
   trustBoundary: AiRunTrustBoundary
+  runCoordinator: AiRunCoordinator
+  telemetry?: AiRunTelemetry
 }
 
 interface Deferred<T> {
@@ -109,7 +112,10 @@ async function* runInAdapterConfigurationScope(
   request: AiIntegrationRunRequest,
   identity: AiRunIdentity,
   prepared: Readonly<AiPreparedRun>,
-  quarantine: (text: string) => void,
+  attemptContext: {
+    abortSignal: AbortSignal
+    deadlineAt: string
+  },
 ): AsyncIterable<AiRunEvent> {
   const iteratorReady = deferred<AsyncIterator<AiRunEvent>>()
   const releaseScope = deferred<void>()
@@ -121,7 +127,15 @@ async function* runInAdapterConfigurationScope(
       try {
         stream = adapter.run({
           connection: configuredProfile.connection,
-          context: createAiAdapterRunContext(request.context, prepared.egress),
+          context: createAiAdapterRunContext(
+            {
+              ...request.context,
+              abortSignal: attemptContext.abortSignal,
+              deadlineAt: attemptContext.deadlineAt,
+            },
+            prepared.egress,
+          ),
+          limits: profile.limits,
           modelRevision: configuredProfile.modelRevision,
           runProfileRevisionId: profile.profileRevisionId,
           selectedCapabilities: profile.selectedCapabilities,
@@ -158,7 +172,7 @@ async function* runInAdapterConfigurationScope(
       if (isTerminalEvent(result.value)) {
         terminalEvent = result.value
       } else {
-        quarantine(result.value.delta)
+        yield result.value
       }
     }
   } catch (error) {
@@ -191,7 +205,29 @@ export function createAiIntegrationLayer(
 ): AIIntegrationLayer {
   return {
     async *run(request: AiIntegrationRunRequest): AsyncIterable<AiRunEvent> {
-      const profile = await options.profileResolver.resolve(request.type)
+      let profile: Readonly<AiResolvedRunProfile>
+      try {
+        profile = await options.profileResolver.resolve(request.type)
+      } catch (error) {
+        if (
+          error instanceof AiRunProfileResolutionError &&
+          error.code === 'profile_blocked' &&
+          error.identity
+        ) {
+          try {
+            await options.telemetry?.emit({
+              ...error.identity,
+              adapterVersion: error.adapterVersion ?? 'unresolved',
+              applicationRunId: request.context.applicationRunId,
+              name: 'ai_alarm_active_profile_blocked',
+              runType: request.type,
+            })
+          } catch {
+            // Alarm transport failure must not replace the safe profile error.
+          }
+        }
+        throw error
+      }
       const adapter = resolveExactAdapter(
         options.adapterRegistry,
         profile.adapterType,
@@ -214,14 +250,27 @@ export function createAiIntegrationLayer(
         return
       }
       const quarantinedText: string[] = []
-      for await (const event of runInAdapterConfigurationScope(
-        adapter,
-        profile,
-        request,
-        identity,
-        prepared,
-        text => quarantinedText.push(text),
-      )) {
+      const coordinated = options.runCoordinator.coordinate(
+        {
+          adapterVersion: profile.adapterVersion,
+          abortSignal: request.context.abortSignal,
+          applicationRunId: request.context.applicationRunId,
+          identity,
+          limits: profile.limits,
+          profile: profile.runtime,
+          runType: request.type,
+        },
+        (_attempt, abortSignal, deadlineAt) =>
+          runInAdapterConfigurationScope(adapter, profile, request, identity, prepared, {
+            abortSignal,
+            deadlineAt,
+          }),
+      )
+      for await (const event of coordinated) {
+        if (event.type === 'analysis_delta' || event.type === 'output_delta') {
+          quarantinedText.push(event.delta)
+          continue
+        }
         if (event.type !== 'completed') {
           yield event
           continue

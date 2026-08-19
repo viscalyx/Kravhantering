@@ -70,7 +70,10 @@ function isJsonContentType(value: string | null): boolean {
   )
 }
 
-async function readBoundedJson(response: Response): Promise<unknown> {
+async function readBoundedJson(
+  response: Response,
+  maximumBytes: number,
+): Promise<unknown> {
   if (!response.body) throw new Error('missing response body')
   const reader = response.body.getReader()
   const decoder = new TextDecoder('utf-8', { fatal: true })
@@ -85,7 +88,7 @@ async function readBoundedJson(response: Response): Promise<unknown> {
         break
       }
       bytes += result.value.byteLength
-      if (bytes > MAX_JSON_RESPONSE_BYTES) {
+      if (bytes > Math.min(MAX_JSON_RESPONSE_BYTES, maximumBytes)) {
         throw new Error('response body exceeds limit')
       }
       text += decoder.decode(result.value, { stream: true })
@@ -354,6 +357,16 @@ function providerStatusFailure(
       category: 'rate_limited',
       diagnosticCode: 'upstream_rate_limited',
       retryAfterSeconds: retryAfter,
+      retryDisposition: 'explicit_retryable_status',
+      retryable: true,
+    })
+  }
+  if (status === 503) {
+    return failureEvent(request, {
+      category: 'connection_unavailable',
+      diagnosticCode: 'upstream_unavailable',
+      retryAfterSeconds: retryAfter,
+      retryDisposition: 'explicit_retryable_status',
       retryable: true,
     })
   }
@@ -434,6 +447,7 @@ function requestBody(
       { content, role: 'user' },
     ],
     model: request.modelRevision.externalModelId,
+    max_tokens: request.limits.maxOutputTokens,
     reasoning: effort === 'none' ? { enabled: false } : { effort },
     response_format: request.selectedCapabilities.jsonSchemaSteering
       ? {
@@ -504,7 +518,10 @@ async function runNonStreaming(
   }
   let data: unknown
   try {
-    data = await readBoundedJson(response)
+    data = await readBoundedJson(
+      response,
+      request.limits.maxRetainedMemoryBytes,
+    )
   } catch {
     const aborted = abortEvent(request, abortContext)
     if (aborted) return aborted
@@ -643,6 +660,7 @@ async function* runStreaming(
   let analysis = ''
   let output = ''
   let accumulatedOutputBytes = 0
+  let retainedOutputBytes = 0
   let usage: unknown
   let completed = false
   try {
@@ -661,6 +679,14 @@ async function* runStreaming(
         return
       }
       if (result.done) break
+      if (result.value.byteLength > request.limits.maxRetainedMemoryBytes) {
+        yield failureEvent(request, {
+          category: 'invalid_response',
+          diagnosticCode: 'upstream_stream_buffer_too_large',
+          retryable: false,
+        })
+        return
+      }
       try {
         buffer += decoder.decode(result.value, { stream: true })
       } catch {
@@ -673,7 +699,18 @@ async function* runStreaming(
       }
       const frames = buffer.split(/\r?\n\r?\n/u)
       buffer = frames.pop() ?? ''
-      if (encoder.encode(buffer).byteLength > MAX_STREAM_FRAME_BYTES) {
+      if (frames.length > request.limits.maxBufferedEvents) {
+        yield failureEvent(request, {
+          category: 'invalid_response',
+          diagnosticCode: 'upstream_stream_event_buffer_too_large',
+          retryable: false,
+        })
+        return
+      }
+      if (
+        encoder.encode(buffer).byteLength >
+        Math.min(MAX_STREAM_FRAME_BYTES, request.limits.maxRetainedMemoryBytes)
+      ) {
         yield failureEvent(request, {
           category: 'invalid_response',
           diagnosticCode: 'upstream_stream_frame_too_large',
@@ -726,9 +763,15 @@ async function* runStreaming(
         }
         if (chunk.usage !== undefined) usage = chunk.usage
         if (request.selectedCapabilities.aiAnalysis && delta.analysis) {
-          accumulatedOutputBytes += encoder.encode(delta.analysis).byteLength
+          retainedOutputBytes += encoder.encode(delta.analysis).byteLength
           analysis += delta.analysis
-          if (accumulatedOutputBytes > MAX_STREAM_OUTPUT_BYTES) {
+          if (
+            retainedOutputBytes >
+            Math.min(
+              MAX_STREAM_OUTPUT_BYTES,
+              request.limits.maxRetainedMemoryBytes,
+            )
+          ) {
             yield failureEvent(request, {
               category: 'invalid_response',
               diagnosticCode: 'upstream_stream_output_too_large',
@@ -739,9 +782,18 @@ async function* runStreaming(
           yield { delta: delta.analysis, type: 'analysis_delta' }
         }
         if (delta.output) {
-          accumulatedOutputBytes += encoder.encode(delta.output).byteLength
+          const outputBytes = encoder.encode(delta.output).byteLength
+          accumulatedOutputBytes += outputBytes
+          retainedOutputBytes += outputBytes
           output += delta.output
-          if (accumulatedOutputBytes > MAX_STREAM_OUTPUT_BYTES) {
+          if (
+            accumulatedOutputBytes >
+              Math.min(
+                MAX_STREAM_OUTPUT_BYTES,
+                request.limits.maxOutputBytes,
+              ) ||
+            retainedOutputBytes > request.limits.maxRetainedMemoryBytes
+          ) {
             yield failureEvent(request, {
               category: 'invalid_response',
               diagnosticCode: 'upstream_stream_output_too_large',

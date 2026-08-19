@@ -69,6 +69,7 @@ const TABLE_ORDER = [
   'ai_connection_model_verification_evidence',
   'ai_run_profiles',
   'ai_run_profile_revisions',
+  'ai_run_coordination_entries',
   'ai_connection_model_operational_states',
   'ai_forensic_capture_windows',
   'ai_forensic_evidence_events',
@@ -311,6 +312,12 @@ const SEED_DATA = {
         null,
       ],
     ],
+  },
+  ai_run_coordination_entries: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
   },
   ai_connection_model_operational_states: {
     columns: ['id'],

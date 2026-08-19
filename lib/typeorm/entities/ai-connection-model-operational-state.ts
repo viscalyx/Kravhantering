@@ -13,6 +13,7 @@ export interface AiConnectionModelOperationalStateEntity {
   automaticRecoveryAttemptCount: number
   circuitBreakerStatus: AiCircuitBreakerStatus
   circuitOpenedAt: Date | null
+  circuitOpenReason: string | null
   consecutiveFailureCount: number
   healthStatus: AiConnectionModelHealthStatus
   id: string
@@ -76,6 +77,12 @@ export const aiConnectionModelOperationalStateEntity =
         nullable: true,
         precision: 3,
         type: 'datetime2',
+      },
+      circuitOpenReason: {
+        length: 80,
+        name: 'circuit_open_reason',
+        nullable: true,
+        type: 'nvarchar',
       },
       nextRecoveryAt: {
         name: 'next_recovery_at',
@@ -146,6 +153,11 @@ export const aiConnectionModelOperationalStateEntity =
         expression:
           "[circuit_breaker_status] IN (N'closed', N'open', N'half_open')",
         name: 'chk_ai_connection_model_operational_states_breaker_status',
+      },
+      {
+        expression:
+          "([circuit_breaker_status] = N'closed' AND [circuit_open_reason] IS NULL) OR ([circuit_breaker_status] <> N'closed' AND [circuit_open_reason] IS NOT NULL)",
+        name: 'chk_ai_connection_model_operational_states_circuit_reason',
       },
       {
         expression: '[consecutive_failure_count] BETWEEN 0 AND 5',

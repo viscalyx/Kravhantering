@@ -16,6 +16,7 @@ export interface AiConnectionModelRevisionEntity {
   externalModelId: string
   externalModelVersion: string | null
   id: string
+  maximumConcurrency: number | null
   model: AiConnectionModelEntity
   retiredAt: Date | null
   revisionNumber: number
@@ -53,6 +54,11 @@ export const aiConnectionModelRevisionEntity =
         name: 'external_model_version',
         nullable: true,
         type: 'nvarchar',
+      },
+      maximumConcurrency: {
+        name: 'maximum_concurrency',
+        nullable: true,
+        type: 'int',
       },
       agentRuntimeVersion: {
         length: 100,
@@ -125,6 +131,11 @@ export const aiConnectionModelRevisionEntity =
       },
     ],
     checks: [
+      {
+        expression:
+          '[maximum_concurrency] IS NULL OR [maximum_concurrency] BETWEEN 1 AND 100',
+        name: 'chk_ai_connection_model_revisions_maximum_concurrency',
+      },
       {
         expression: '[revision_number] >= 1',
         name: 'chk_ai_connection_model_revisions_revision_number',

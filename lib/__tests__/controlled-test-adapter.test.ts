@@ -95,6 +95,12 @@ function request(
       },
       { fetch: vi.fn() },
     ),
+    limits: {
+      maxBufferedEvents: 32,
+      maxOutputBytes: 4_194_304,
+      maxOutputTokens: 8_192,
+      maxRetainedMemoryBytes: 8_388_608,
+    },
     modelRevision: {
       configuration: {},
       externalModelId: 'controlled/model-v1',
