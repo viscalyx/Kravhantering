@@ -128,7 +128,7 @@ tests/            Unit and integration tests
   [contributor guide](docs/integrations/mcp-server-contributor-guide.md).
 - Report generation implementation:
   [report generation workflow](docs/development/report-generation-developer-workflow.md).
-- AI-assisted authoring local setup and OpenRouter test policy:
+- AI-assisted authoring architecture, local setup, and adapter test policy:
   [AI-assisted authoring workflow](docs/development/ai-assisted-authoring-developer-workflow.md).
 - AI-assisted authoring behavioral contracts:
   [reference data and AI](docs/governance/reference-data-and-ai.md).

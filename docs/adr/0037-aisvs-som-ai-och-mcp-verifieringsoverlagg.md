@@ -10,11 +10,19 @@ applikationskontroller för autentisering, behörighet, loggning, SSDLC,
 SAST, DAST eller beroendekontroll. Det kompletterar dem med AI- och
 agentnära kontrollpunkter.
 
+AI-anslutningar och anslutna agentmiljöer omfattas av AI-överlägget genom
+AI-integrationslagrets gemensamma kontrakt. Adaptergränsen och tillitsgränsen
+följer [ADR 0051](./0051-ai-integrationslager-med-korprofiler-och-adaptrar.md)
+respektive
+[ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
+
 Målnivån är AISVS nivå 1 samt utvalda nivå 2-kontroller där applikationen
 redan har en faktisk riskyta: promptinjektion, utdatafiltrering,
 säkerhetsloggning och MCP-transport. Nivå 3 och kontroller för modellträning,
-finjustering, RAG, vektorindex och autonoma agentkedjor är inte tillämpliga
-så länge Kravhantering inte har dessa funktioner.
+finjustering, RAG, vektorindex och beständiga autonoma agentkedjor är inte
+tillämpliga så länge Kravhantering inte har dessa funktioner. En agentmiljös
+tillfälliga interna arbete under ett avgränsat AI-anrop ändrar inte denna
+bedömning.
 
 ## MCP-kontrollmappning
 

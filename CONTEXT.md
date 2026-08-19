@@ -422,14 +422,72 @@ _Avoid_: AI-generering som huvudterm, AI-assistering, automatisk publicering,
 AI-beslut, källa till sanning.
 
 **AI-anrop**:
-En förfrågan från applikationen till en AI-leverantör. I AI-assisterat
-författande består AI-anropet av styrande instruktioner, användarens behov och
-ett tvingande svarsformat.
+En avgränsad förfrågan från Kravhantering via en AI-anslutning. I
+AI-assisterat författande består AI-anropet av styrande instruktioner,
+användarens behov och ett tvingande svarsformat.
 
 - `en`: AI request
 
 _Avoid_: Prompt när hela anropet avses, AI-instruktion när bara
 författarinstruktionen avses.
+
+**AI-anslutning**:
+En administratörsgodkänd koppling som låter Kravhantering göra avgränsade
+AI-anrop till en AI-leverantör eller agentmiljö enligt beslutad datapolicy.
+
+- `en`: AI connection
+
+_Avoid_: AI-leverantör när kopplingen avses, endpoint, användaranslutning.
+
+**Agentmiljö**:
+En miljö som kan utföra ett AI-anrop genom egna samordnade steg men som möter
+Kravhantering genom en avgränsad AI-anslutning.
+
+- `en`: Agent runtime
+
+_Avoid_: AI-leverantör, agentsession, MCP-klient.
+
+**AI-integrationslager**:
+Kravhanterings gemensamma gräns för att välja körprofil och utföra AI-anrop
+oberoende av vilken AI-leverantör eller agentmiljö som används.
+
+- `en`: AI integration layer
+
+_Avoid_: AI-leverantör, AI-anslutning, OpenRouter-integration.
+
+**AI-leverantör**:
+En organisation eller tjänst som tillhandahåller AI-förmåga bakom en
+AI-anslutning.
+
+- `en`: AI provider
+
+_Avoid_: AI-anslutning när den administrerade kopplingen avses,
+modellleverantör.
+
+**Anslutningsmodell**:
+En administratörsgodkänd modell inom en viss AI-anslutning, med förmågor som
+måste vara verifierade för att modellen ska kunna väljas av en körprofil.
+
+- `en`: AI connection model
+
+_Avoid_: Modellval, fristående modell, leverantörsmodell.
+
+**Körprofil**:
+Administratörens styrning av vilken anslutningsmodell och vilka tillåtna eller
+krävda förmågor som gäller för en bestämd typ av AI-anrop.
+
+- `en`: Run profile
+
+_Avoid_: Användarprofil, modellfavorit, automatisk routning.
+
+**Körprofilrevision**:
+En bestämd version av en körprofil som binder en anropstyp till en verifierad
+anslutningsmodell och en beslutad förmågepolicy.
+
+- `en`: Run profile revision
+
+_Avoid_: Körprofil när en bestämd version av styrningen avses,
+modellrevision.
 
 **AI-analys**:
 Modellens stödjande resonemang som visas tillsammans med förslag i

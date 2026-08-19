@@ -1,9 +1,29 @@
 # AI-Assisted Authoring Developer Workflow
 
-This document covers local OpenRouter setup and test policy for AI-assisted
-requirement generation. Behavioral contracts for prompts, provider requests,
-taxonomy loading, and generated-requirement validation live in
+This document covers the current local OpenRouter setup and test policy for
+AI-assisted requirement generation. Behavioral contracts for prompts,
+provider requests, taxonomy loading, and generated-requirement validation live in
 [reference-data-and-ai.md](../governance/reference-data-and-ai.md).
+
+## Target Integration Architecture
+
+The target architecture routes every bounded AI request through the
+provider-neutral AI integration layer in
+[ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md).
+An administrator-controlled run profile selects an AI connection and a
+verified AI connection model revision before the adapter runs. Application
+routes and business services do not select providers, models, transports, or
+provider configuration.
+
+OpenRouter remains the first adapter, alongside a fully registrable controlled
+test adapter. Both pass the same run-profile, safety-gate, route, and terminal
+outcome contracts. The trust boundary, AI connection lifecycle, encrypted
+provider secrets, and external root keyring are governed by
+[ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
+
+The sections below describe the direct OpenRouter implementation until the
+migration tickets replace it. They are not authority for the target adapter or
+run-profile design.
 
 <!-- markdownlint-disable MD013 -->
 ![Technical infographic showing AI-assisted authoring in Kravhantering. The flow illustrates how user input is checked, processed through an LLM integration layer, sent to OpenRouter, validated, and reviewed by a human before being imported into a requirements library or requirements document.](../images/ai-assisted-authoring-llm-integration-architecture.png)

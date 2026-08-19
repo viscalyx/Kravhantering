@@ -117,6 +117,18 @@ governance object types are informational taxonomy values.
 
 ## 4 — AI Requirement Generation
 
+The target architecture executes each AI request through an administrator-
+controlled AI connection. The AI integration layer resolves the run profile
+and verified AI connection model revision before a provider-specific adapter
+runs. See
+[ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md)
+for the contract and
+[ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md)
+for the trust, lifecycle, and provider-secret boundaries.
+
+The current sources and OpenRouter contracts below remain implementation facts
+until that migration is complete. They do not override the target decisions.
+
 Sources: `app/api/ai/generate-requirement-import/route.ts`,
 `app/api/ai/repair-requirement-import-json/route.ts`,
 `lib/ai/openrouter-client.ts`, `lib/ai/openrouter-model-catalog.ts`,
