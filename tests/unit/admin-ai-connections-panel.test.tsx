@@ -12,11 +12,26 @@ import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import type { AiAdminConnectionDetail } from '@/lib/ai/admin-service'
 
 const fetchMock = vi.fn()
+const translationState = vi.hoisted(() => ({
+  swedishCandidateFailure: false,
+}))
 
 vi.mock('next-intl', () => ({
-  useTranslations: (namespace: string) => (key: string) =>
-    `${namespace}.${key}`,
+  useTranslations: (namespace: string) => (key: string) => {
+    if (
+      translationState.swedishCandidateFailure &&
+      namespace === 'admin.aiConnections' &&
+      key === 'profile.candidateBlockers'
+    ) {
+      return 'Ersättningsutkastet kunde inte aktiveras'
+    }
+    return `${namespace}.${key}`
+  },
 }))
+
+beforeEach(() => {
+  translationState.swedishCandidateFailure = false
+})
 
 function okJson(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -947,7 +962,9 @@ describe('AiConnectionsPanel workflows', () => {
       }),
     )
     expect(
-      await screen.findByText('admin.aiConnections.profile.candidateBlockers'),
+      await screen.findByText('admin.aiConnections.profile.candidateBlockers', {
+        selector: 'p',
+      }),
     ).toBeVisible()
     expect(
       screen.getByText(
@@ -980,6 +997,81 @@ describe('AiConnectionsPanel workflows', () => {
     expect(
       screen.queryByText('admin.aiConnections.profile.candidateBlockers'),
     ).not.toBeInTheDocument()
+  })
+
+  it('clears rejected candidate blockers after dependency verification and keeps the Swedish alert local', async () => {
+    const user = userEvent.setup()
+    translationState.swedishCandidateFailure = true
+    const verifiedConnection = { ...connectionOne, blockers: [] }
+    installWorkflowFetch({
+      connection: verifiedConnection,
+      profiles: [profile],
+      revisions: [profile.draftRevision],
+    })
+    const successfulFetch = fetchMock.getMockImplementation()
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        if (
+          init?.method === 'POST' &&
+          String(init.body).includes('activate_revision')
+        ) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                code: 'validation',
+                details: {
+                  blockers: [
+                    {
+                      code: 'connection_verification_missing',
+                      field: 'connection',
+                    },
+                  ],
+                },
+                error: 'AI configuration cannot be activated.',
+              }),
+              {
+                headers: { 'Content-Type': 'application/json' },
+                status: 422,
+              },
+            ),
+          )
+        }
+        return successfulFetch?.(input, init)
+      },
+    )
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'admin.aiConnections.actions.activateProfile',
+      }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Ersättningsutkastet kunde inte aktiveras',
+    )
+    expect(screen.getByRole('alert')).not.toHaveTextContent(
+      'AI configuration cannot be activated.',
+    )
+    expect(
+      screen.getByText('Ersättningsutkastet kunde inte aktiveras', {
+        selector: 'p',
+      }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /Controlled one/ }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.verifyConnection',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Ersättningsutkastet kunde inte aktiveras', {
+          selector: 'p',
+        }),
+      ).not.toBeInTheDocument(),
+    )
   })
 
   it('fails closed when a candidate blocker payload has an unknown field', async () => {

@@ -132,6 +132,7 @@ export function useRegistryRequestState() {
           readonly AiAdminRunProfileRevisionRecord[]
         >,
       )
+      setCandidateBlockers({})
     } catch (loadError) {
       setError(
         loadError instanceof Error ? loadError.message : loadErrorMessage,
@@ -167,15 +168,21 @@ export function useRegistryRequestState() {
         const profileKey = AI_RUN_PROFILE_KEYS.find(key =>
           url.includes(`/ai-run-profiles/${key}/actions`),
         )
+        const blockers = apiBlockers(responseBody)
         if (profileKey) {
           setCandidateBlockers(current => ({
             ...current,
-            [profileKey]: apiBlockers(responseBody),
+            [profileKey]: blockers,
           }))
         }
-        setError((await readResponseMessage(response)) ?? t('mutationError'))
+        setError(
+          profileKey && blockers.length > 0
+            ? t('profile.candidateBlockers')
+            : ((await readResponseMessage(response)) ?? t('mutationError')),
+        )
         return null
       }
+      setCandidateBlockers({})
       return response
     } catch {
       setError(t('mutationError'))
