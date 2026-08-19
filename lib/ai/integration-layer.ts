@@ -49,6 +49,31 @@ function adapterFailure(identity: AiRunIdentity): AiRunEvent {
   }
 }
 
+function adapterConfigurationScopeFailure(identity: AiRunIdentity): AiRunEvent {
+  return {
+    failure: {
+      category: 'adapter_failure',
+      diagnosticCode: 'adapter_configuration_scope_failed',
+      retryable: false,
+    },
+    identity,
+    type: 'failed',
+  }
+}
+
+function isTerminalEvent(
+  event: AiRunEvent,
+): event is Extract<
+  AiRunEvent,
+  { type: 'cancelled' | 'completed' | 'failed' }
+> {
+  return (
+    event.type === 'cancelled' ||
+    event.type === 'completed' ||
+    event.type === 'failed'
+  )
+}
+
 function resolveExactAdapter(
   registry: AiConnectionAdapterRegistry,
   adapterType: string,
@@ -99,18 +124,47 @@ async function* runInAdapterConfigurationScope(
     })
 
   let iterator: AsyncIterator<AiRunEvent> | undefined
+  let iteratorCompleted = false
+  let iterationError: unknown
+  let scopeError: unknown
+  let terminalEvent: AiRunEvent | undefined
   try {
     iterator = await iteratorReady.promise
     while (true) {
       const result = await iterator.next()
-      if (result.done) return
-      yield result.value
+      if (result.done) {
+        iteratorCompleted = true
+        break
+      }
+      if (isTerminalEvent(result.value)) {
+        terminalEvent = result.value
+      } else {
+        yield result.value
+      }
     }
+  } catch (error) {
+    iterationError = error
   } finally {
-    await iterator?.return?.()
-    releaseScope.resolve()
-    await scopedRun
+    try {
+      if (!iteratorCompleted) await iterator?.return?.()
+    } catch {
+      // Adapter cleanup details must not escape or strand transient config.
+    } finally {
+      releaseScope.resolve()
+      try {
+        await scopedRun
+      } catch (error) {
+        scopeError = error
+      }
+    }
   }
+
+  if (!scopeEntered) throw scopeError ?? iterationError
+  if (scopeError || iterationError || !terminalEvent) {
+    yield adapterConfigurationScopeFailure(identity)
+    return
+  }
+  yield terminalEvent
 }
 
 export function createAiIntegrationLayer(

@@ -29,6 +29,9 @@ Adapter-ready connection and model configuration exists only inside the
 resolver's opaque configuration callback; it is not returned on the resolved
 profile. The callback remains open until the adapter event stream has been
 fully consumed, so provider-secret access stays inside that lifetime boundary.
+The integration layer releases and settles that scope before publishing the
+single buffered terminal event; teardown failure replaces it with one safe
+failed terminal.
 Neither the profile source nor the integration layer interprets
 provider-specific authentication fields. The integration layer invokes only
 the exact registered adapter type-and-version pair and does not retry through

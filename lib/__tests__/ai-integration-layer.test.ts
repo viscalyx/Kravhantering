@@ -343,4 +343,97 @@ describe('AI integration layer', () => {
     await expect(collect(layer.run(request()))).resolves.toHaveLength(2)
     expect(scopeActive).toBe(false)
   })
+
+  it('closes transient configuration when adapter iterator cleanup rejects', async () => {
+    let scopeActive = false
+    const resolver = createAiRunProfileResolver({
+      profileSource: { findActiveRevision: async () => profile() },
+      resolveAdapterConfiguration: async (_stored, use) => {
+        scopeActive = true
+        try {
+          await use({ connection: {}, modelRevision: {} })
+        } finally {
+          scopeActive = false
+        }
+      },
+    })
+    const adapter: AIConnectionAdapter = {
+      run() {
+        return {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => ({
+                done: false as const,
+                value: { delta: 'thinking', type: 'analysis_delta' as const },
+              }),
+              return: async () => {
+                throw new Error('adapter cleanup details must stay private')
+              },
+            }
+          },
+        }
+      },
+    }
+    const layer = createAiIntegrationLayer({
+      adapterRegistry: createAiConnectionAdapterRegistry([
+        { adapter, adapterType: 'capture', adapterVersion: '3' },
+      ]),
+      profileResolver: resolver,
+    })
+    const iterator = layer.run(request())[Symbol.asyncIterator]()
+
+    await expect(iterator.next()).resolves.toMatchObject({
+      done: false,
+      value: { delta: 'thinking', type: 'analysis_delta' },
+    })
+    await expect(iterator.return?.()).resolves.toMatchObject({ done: true })
+    expect(scopeActive).toBe(false)
+  })
+
+  it('replaces a completed terminal when configuration teardown fails', async () => {
+    const resolver = createAiRunProfileResolver({
+      profileSource: { findActiveRevision: async () => profile() },
+      resolveAdapterConfiguration: async (_stored, use) => {
+        await use({ connection: {}, modelRevision: {} })
+        throw new Error('secret cleanup details must stay private')
+      },
+    })
+    const adapter: AIConnectionAdapter = {
+      async *run(adapterRequest) {
+        yield {
+          analysis: null,
+          identity: {
+            aiConnectionId: adapterRequest.connection.id,
+            aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+          },
+          rawOutput: '{"requirements":[]}',
+          type: 'completed',
+          usage: USAGE,
+        }
+      },
+    }
+    const layer = createAiIntegrationLayer({
+      adapterRegistry: createAiConnectionAdapterRegistry([
+        { adapter, adapterType: 'capture', adapterVersion: '3' },
+      ]),
+      profileResolver: resolver,
+    })
+
+    await expect(collect(layer.run(request()))).resolves.toEqual([
+      {
+        failure: {
+          category: 'adapter_failure',
+          diagnosticCode: 'adapter_configuration_scope_failed',
+          retryable: false,
+        },
+        identity: {
+          aiConnectionId: 'connection-17',
+          aiConnectionModelRevisionId: 'model-revision-23',
+          aiRunProfileRevisionId: 'profile-revision-31',
+        },
+        type: 'failed',
+      },
+    ])
+  })
 })
