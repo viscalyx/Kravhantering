@@ -62,6 +62,31 @@ describe('operator upgrade notes lifecycle', () => {
     expect(result.content).toContain(operatorUpgradeSourceEndMarker('pr-318'))
   })
 
+  it('keeps contributor release headings inert inside operator notes', () => {
+    const releaseHeadingPrBody = operatorNotesPrBody.replace(
+      '### Topology changes',
+      '## v9.9.9 - 2099-12-31',
+    )
+
+    const synced = addPullRequestNotesToContent(baseNotes, {
+      filePath: operatorNotesPath,
+      prBody: releaseHeadingPrBody,
+      prNumber: '854',
+    })
+    const archived = archiveStableOperatorUpgradeNotesContent(synced.content, {
+      date: '2026-08-19',
+      filePath: operatorNotesPath,
+      version: 'v1.0.0',
+    })
+
+    expect(synced.content).toContain('\\## v9.9.9 - 2099-12-31')
+    expect(archived.content).toContain(
+      `## v1.0.0 - 2026-08-19\n\n${operatorUpgradeSourceStartMarker('pr-854')}`,
+    )
+    expect(archived.content).toContain('\\## v9.9.9 - 2099-12-31')
+    expect(archived.content).toContain(operatorUpgradeSourceEndMarker('pr-854'))
+  })
+
   it('does nothing when the PR explicitly needs no operator notes', () => {
     const result = addPullRequestNotesToContent(baseNotes, {
       filePath: operatorNotesPath,

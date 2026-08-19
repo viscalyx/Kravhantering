@@ -126,6 +126,7 @@ jobs:
             echo "- Latest source PR: #${PR_NUMBER}"
             echo "- Workflow run: ${RUN_URL}"
             echo
+            echo "A human reviewer must approve the generated notes before merge."
             echo "Merge after the required checks pass."
             echo
             echo "## Operator Upgrade Impact"
@@ -168,8 +169,4 @@ jobs:
             exit 1
           fi
 
-          if gh pr merge "${pr_number}" --squash --auto --delete-branch; then
-            echo "Enabled auto-merge for operator upgrade notes PR #${pr_number}."
-          else
-            echo "::warning::Opened operator upgrade notes PR #${pr_number}, but auto-merge could not be enabled. Merge it after required checks pass."
-          fi
+          echo "Operator upgrade notes PR #${pr_number} requires human review and merge."
