@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import {
+  ADAPTER_CONTRACT_USAGE,
+  describeAiConnectionAdapterContract,
+} from '@/lib/__tests__/ai-connection-adapter-contract'
 import { createAiConnectionAdapterRegistry } from '@/lib/ai/adapter-registry'
 import {
   CONTROLLED_TEST_ADAPTER_TYPE,
@@ -110,6 +114,37 @@ async function collectEvents(
   for await (const event of events) collected.push(event)
   return collected
 }
+
+describeAiConnectionAdapterContract('controlled test adapter', () => ({
+  adapterType: CONTROLLED_TEST_ADAPTER_TYPE,
+  completedRequest: () =>
+    request({
+      scenario: {
+        analysis: 'partial analysis',
+        analysisDeltas: ['partial analysis'],
+        output: '{"requirements":[]}',
+        outputDeltas: ['{"requirements"', ':[]}'],
+        type: 'completed',
+        usage: ADAPTER_CONTRACT_USAGE,
+      },
+    }),
+  missingCapabilityRequest: () =>
+    request(
+      {
+        scenario: {
+          output: '{}',
+          type: 'completed',
+          usage: ADAPTER_CONTRACT_USAGE,
+        },
+      },
+      new AbortController().signal,
+      ALL_CAPABILITIES,
+      { ...ALL_CAPABILITIES, imageInput: false },
+    ),
+  registration: controlledTestAdapterRegistration,
+  waitForAbortRequest: signal =>
+    request({ scenario: { type: 'wait_for_abort' } }, signal),
+}))
 
 describe('controlled AI connection test adapter', () => {
   it('is registrable and returns self-contained output only at completion', async () => {
