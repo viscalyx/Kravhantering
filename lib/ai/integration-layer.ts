@@ -613,6 +613,11 @@ export function createAiIntegrationLayer(
       for await (const event of coordinated) {
         if (event.type === 'analysis_delta' || event.type === 'output_delta') {
           quarantinedText.push(event.delta)
+          // Deltas stay quarantined until the final safety gate, but this
+          // content-free event preserves demand-driven flow control across the
+          // trusted boundary. The generator cannot pull the adapter again
+          // until its downstream consumer asks for the next event.
+          yield { type: 'heartbeat' }
           continue
         }
         if (

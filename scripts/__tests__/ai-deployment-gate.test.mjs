@@ -23,9 +23,13 @@ const REQUIRED_CHECK_AXES = [
 
 const CONTROLLED_PATH = {
   adapterType: 'controlled_test',
+  adapterVersion: '1',
   aiConnectionId: '10000000-0000-4000-8000-000000000001',
   aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000001',
   aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000001',
+  connectionRevisionToken: '40000000-0000-4000-8000-000000000001',
+  modelRevisionToken: '50000000-0000-4000-8000-000000000001',
+  profileRevisionToken: '60000000-0000-4000-8000-000000000001',
 }
 
 function checkEvidence(axis) {
@@ -60,6 +64,7 @@ function verifiedEvidence(overrides = {}) {
       intendedPaths: [CONTROLLED_PATH],
       verifiedPaths: [CONTROLLED_PATH],
     },
+    liveExecutionProof: null,
     checks: REQUIRED_CHECK_AXES.map(checkEvidence),
     alerts: {
       activeProfileBlocked: true,
@@ -153,9 +158,13 @@ describe('AI deployment gate', () => {
   it('accepts an opt-in staging-live probe on the exact intended path with only synthetic data', () => {
     const intendedPath = {
       adapterType: 'openrouter',
+      adapterVersion: '1',
       aiConnectionId: '10000000-0000-4000-8000-000000000002',
       aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000002',
       aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000002',
+      connectionRevisionToken: '40000000-0000-4000-8000-000000000002',
+      modelRevisionToken: '50000000-0000-4000-8000-000000000002',
+      profileRevisionToken: '60000000-0000-4000-8000-000000000002',
     }
     const result = assessAiDeploymentGate(
       verifiedEvidence({
@@ -164,6 +173,16 @@ describe('AI deployment gate', () => {
           intendedPaths: [intendedPath],
           verifiedPaths: [intendedPath],
         },
+        liveExecutionProof: [
+          {
+            ...intendedPath,
+            executionId: '70000000-0000-4000-8000-000000000002',
+            externalLiveCallMade: true,
+            failureCategory: null,
+            outcome: 'passed',
+            testSuiteVersion: 'ai-admin-functional-probe-v3',
+          },
+        ],
         syntheticProbe: {
           ...intendedPath,
           externalLiveCallMade: true,
@@ -175,6 +194,51 @@ describe('AI deployment gate', () => {
     )
 
     expect(result).toMatchObject({ blockers: [], readyToRelease: true })
+  })
+
+  it('rejects fabricated, swapped, and stale staging-live execution proof', () => {
+    const staging = verifiedEvidence({
+      environment: 'staging',
+      verificationMode: 'staging_live',
+    })
+    const path = {
+      ...CONTROLLED_PATH,
+      adapterType: 'openrouter',
+    }
+    staging.inventory = { intendedPaths: [path], verifiedPaths: [path] }
+    staging.syntheticProbe = {
+      ...path,
+      externalLiveCallMade: true,
+      outcome: 'completed',
+      payloadClassification: 'synthetic',
+    }
+    staging.liveExecutionProof = [
+      {
+        ...path,
+        adapterType: 'controlled_test',
+        executionId: '70000000-0000-4000-8000-000000000001',
+        externalLiveCallMade: true,
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'ai-admin-functional-probe-v3',
+      },
+    ]
+    expect(assessAiDeploymentGate(staging).blockers).toEqual(
+      expect.arrayContaining([
+        'staging_live_controlled_adapter_forbidden',
+        'staging_live_execution_path_mismatch',
+      ]),
+    )
+
+    staging.liveExecutionProof[0] = {
+      ...staging.liveExecutionProof[0],
+      adapterType: 'openrouter',
+      aiConnectionModelRevisionId: path.aiConnectionId,
+      connectionRevisionToken: '40000000-0000-4000-8000-000000000099',
+    }
+    expect(assessAiDeploymentGate(staging).blockers).toContain(
+      'staging_live_execution_path_mismatch',
+    )
   })
 
   it('accepts production pre-deployment evidence without making a live authoring call', () => {
@@ -204,6 +268,7 @@ describe('AI deployment gate', () => {
     const result = assessAiDeploymentGate(
       verifiedEvidence({
         syntheticProbe: {
+          ...CONTROLLED_PATH,
           adapterType: 'openrouter',
           aiConnectionId: '10000000-0000-4000-8000-000000000999',
           aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000999',
@@ -388,8 +453,8 @@ describe('AI deployment gate', () => {
       evidence.environment = 'staging'
       evidence.verificationMode = 'staging_live'
     })
-    expect(assessAiDeploymentGate(staging).blockers).toContain(
-      'staging_live_probe_not_executed',
+    expect(() => assessAiDeploymentGate(staging)).toThrow(
+      'evidence.liveExecutionProof must contain',
     )
 
     const production = mutateEvidence(evidence => {

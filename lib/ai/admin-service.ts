@@ -20,6 +20,7 @@ import type {
   AiProviderSecretAvailability,
   AiProviderSecretVersionMetadata,
 } from './provider-secret-service'
+import { assertAiStagingLiveVerificationAllowed } from './staging-live-policy'
 
 export type {
   AiAdminBlocker,
@@ -158,6 +159,19 @@ export interface AiAdminLivePathVerificationResult
   profileRevisionToken: string
 }
 
+export interface AiAdminLivePathSelection {
+  adapterType: string
+  adapterVersion: string
+  aiConnectionId: string
+  aiConnectionModelRevisionId: string
+  aiRunProfileRevisionId: string
+  connectionRevisionToken: string
+  expectedEnvironmentId: string
+  modelRevisionToken: string
+  profileKey: AiRunProfileKey
+  profileRevisionToken: string
+}
+
 export interface AiAdminCatalogItem {
   capabilities: AiCapability
   externalModelId: string
@@ -186,6 +200,7 @@ export interface AiAdminExternalOperations {
   verifyLivePath(
     connection: Readonly<AiAdminConnectionDetail>,
     revision: Readonly<AiAdminModelRevisionRecord>,
+    selection: Readonly<AiAdminLivePathSelection>,
   ): Promise<Readonly<AiAdminLivePathExternalResult>>
   verifyModelRevision(
     connection: Readonly<AiAdminConnectionDetail>,
@@ -814,9 +829,11 @@ export class AiConnectionAdministrationService {
 
   async verifyLivePath(input: {
     connectionId: string
+    expectedEnvironmentId: string
     modelRevisionId: string
     profileRevisionId: string
   }): Promise<AiAdminLivePathVerificationResult> {
+    assertAiStagingLiveVerificationAllowed(input.expectedEnvironmentId)
     const connection = await this.getConnection(input.connectionId)
     const modelRevision = connection.models
       .flatMap(model => model.revisions)
@@ -850,10 +867,40 @@ export class AiConnectionAdministrationService {
       profileActivationBlockers(entry.profile.profileKey, exactSnapshot),
     )
     await this.#assertAuthorizedProfile(connection, entry.profile.profileKey)
+    const selection = Object.freeze({
+      adapterType: connection.adapterKey,
+      adapterVersion: connection.adapterVersion,
+      aiConnectionId: connection.id,
+      aiConnectionModelRevisionId: modelRevision.id,
+      aiRunProfileRevisionId: snapshot.profileRevision.id,
+      connectionRevisionToken: connection.revisionToken,
+      expectedEnvironmentId: input.expectedEnvironmentId,
+      modelRevisionToken: modelRevision.revisionToken,
+      profileKey: entry.profile.profileKey,
+      profileRevisionToken: snapshot.profileRevision.revisionToken,
+    })
+    assertAiStagingLiveVerificationAllowed(input.expectedEnvironmentId)
     const result = await this.#external.verifyLivePath(
       connection,
       modelRevision,
+      selection,
     )
+    assertAiStagingLiveVerificationAllowed(input.expectedEnvironmentId)
+    const refenced = await this.#store.getActivationSnapshot({
+      profileKey: entry.profile.profileKey,
+      profileRevisionId: snapshot.profileRevision.id,
+    })
+    if (
+      !refenced ||
+      refenced.connection.id !== selection.aiConnectionId ||
+      refenced.connection.revisionToken !== selection.connectionRevisionToken ||
+      refenced.modelRevision?.id !== selection.aiConnectionModelRevisionId ||
+      refenced.modelRevision.revisionToken !== selection.modelRevisionToken ||
+      refenced.profileRevision.id !== selection.aiRunProfileRevisionId ||
+      refenced.profileRevision.revisionToken !== selection.profileRevisionToken
+    ) {
+      throw validationError('The exact AI path changed during verification.')
+    }
     await this.#audit({
       operation: 'verify',
       resourceId: input.profileRevisionId,
@@ -861,12 +908,12 @@ export class AiConnectionAdministrationService {
     })
     return {
       ...result,
-      aiConnectionId: connection.id,
-      aiConnectionModelRevisionId: modelRevision.id,
-      aiRunProfileRevisionId: snapshot.profileRevision.id,
-      connectionRevisionToken: connection.revisionToken,
-      modelRevisionToken: modelRevision.revisionToken,
-      profileRevisionToken: snapshot.profileRevision.revisionToken,
+      aiConnectionId: selection.aiConnectionId,
+      aiConnectionModelRevisionId: selection.aiConnectionModelRevisionId,
+      aiRunProfileRevisionId: selection.aiRunProfileRevisionId,
+      connectionRevisionToken: selection.connectionRevisionToken,
+      modelRevisionToken: selection.modelRevisionToken,
+      profileRevisionToken: selection.profileRevisionToken,
     }
   }
 

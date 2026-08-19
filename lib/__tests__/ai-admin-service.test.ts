@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   __testing,
   type AiAdminCatalogItem,
@@ -155,8 +155,19 @@ describe('AI connection administration service', () => {
     writeCandidate: vi.fn(),
   }
 
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', '1')
+    vi.stubEnv('AI_STAGING_LIVE_PROBE_ENABLED', '1')
+    vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT', 'staging')
+    vi.stubEnv(
+      'KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID',
+      'staging-service-test',
+    )
     secrets.availability.mockResolvedValue(connection().activeSecret)
     secrets.availabilities.mockImplementation(
       async (connectionIds: string[]) =>
@@ -677,6 +688,7 @@ describe('AI connection administration service', () => {
         : null,
     }
     const store = {
+      getActivationSnapshot: vi.fn(async () => snapshot),
       getConnection: vi.fn(async () => currentConnection),
       listRunProfileActivationEntries: vi.fn(async () => [
         { profile: currentProfile, snapshot },
@@ -703,6 +715,7 @@ describe('AI connection administration service', () => {
     await expect(
       service.verifyLivePath({
         connectionId: currentConnection.id,
+        expectedEnvironmentId: 'staging-service-test',
         modelRevisionId: modelRevision.id,
         profileRevisionId: profileRevision.id,
       }),
@@ -723,10 +736,116 @@ describe('AI connection administration service', () => {
     expect(external.verifyLivePath).toHaveBeenCalledWith(
       expect.objectContaining({ id: currentConnection.id }),
       modelRevision,
+      {
+        adapterType: currentConnection.adapterKey,
+        adapterVersion: currentConnection.adapterVersion,
+        aiConnectionId: currentConnection.id,
+        aiConnectionModelRevisionId: modelRevision.id,
+        aiRunProfileRevisionId: profileRevision.id,
+        connectionRevisionToken: currentConnection.revisionToken,
+        expectedEnvironmentId: 'staging-service-test',
+        modelRevisionToken: modelRevision.revisionToken,
+        profileKey: currentProfile.profileKey,
+        profileRevisionToken: profileRevision.revisionToken,
+      },
     )
     expect(store.recordConnectionVerification).not.toHaveBeenCalled()
     expect(store.recordModelVerification).not.toHaveBeenCalled()
   })
+
+  it('emits no proof or audit when the exact active path changes during execution', async () => {
+    const currentConnection = connection()
+    const modelRevision = verifiedRevision(currentConnection)
+    const currentProfile = profile()
+    const profileRevision = {
+      ...draftRevision(currentProfile),
+      status: 'active' as const,
+    }
+    currentProfile.activeRevisionId = profileRevision.id
+    currentProfile.draftRevision = null
+    const snapshot = {
+      attestationRevisionToken:
+        currentConnection.attestation?.revisionToken ?? null,
+      connection: currentConnection,
+      connectionEvidenceId: currentConnection.connectionEvidenceId,
+      modelRevision,
+      profile: currentProfile,
+      profileRevision,
+      secretVersionId: currentConnection.activeSecret.available
+        ? currentConnection.activeSecret.secretVersionId
+        : null,
+    }
+    const store = {
+      getActivationSnapshot: vi.fn(async () => ({
+        ...snapshot,
+        profileRevision: { ...profileRevision, revisionToken: 'changed-token' },
+      })),
+      getConnection: vi.fn(async () => currentConnection),
+      listRunProfileActivationEntries: vi.fn(async () => [
+        { profile: currentProfile, snapshot },
+      ]),
+    } as unknown as AiAdminStore
+    external.verifyLivePath.mockResolvedValueOnce({
+      adapterType: 'openrouter',
+      adapterVersion: currentConnection.adapterVersion,
+      executionId: '50000000-0000-4000-8000-000000000002',
+      externalLiveCallMade: true,
+      failureCategory: null,
+      outcome: 'passed',
+      testSuiteVersion: 'ai-admin-functional-probe-v3',
+    })
+    const service = new AiConnectionAdministrationService({
+      audit,
+      external,
+      secrets,
+      store,
+    })
+
+    await expect(
+      service.verifyLivePath({
+        connectionId: currentConnection.id,
+        expectedEnvironmentId: 'staging-service-test',
+        modelRevisionId: modelRevision.id,
+        profileRevisionId: profileRevision.id,
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+    expect(audit).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['production', 'production', 'staging-service-test', '1', '1'],
+    ['guard off', 'staging', 'staging-service-test', '1', '0'],
+    ['identity mismatch', 'staging', 'different-staging', '1', '1'],
+    ['opt-in off', 'staging', 'staging-service-test', '0', '1'],
+  ])(
+    'rejects live verification before protected work for %s',
+    async (_case, environment, environmentId, optIn, guard) => {
+      vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT', environment)
+      vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID', environmentId)
+      vi.stubEnv('AI_STAGING_LIVE_PROBE_ENABLED', optIn)
+      vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', guard)
+      const store = {
+        getConnection: vi.fn(),
+      } as unknown as AiAdminStore
+      const service = new AiConnectionAdministrationService({
+        audit,
+        external,
+        secrets,
+        store,
+      })
+
+      await expect(
+        service.verifyLivePath({
+          connectionId: connection().id,
+          expectedEnvironmentId: 'staging-service-test',
+          modelRevisionId: verifiedRevision(connection()).id,
+          profileRevisionId: profile().id,
+        }),
+      ).rejects.toMatchObject({ code: 'validation' })
+      expect(store.getConnection).not.toHaveBeenCalled()
+      expect(external.verifyLivePath).not.toHaveBeenCalled()
+    },
+  )
 
   it('returns safe conflicts and validation errors for stale or incomplete state', async () => {
     const currentConnection = connection()

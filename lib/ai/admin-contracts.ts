@@ -231,6 +231,7 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
   z
     .object({
       action: z.literal('verify_live_path'),
+      expectedEnvironmentId: boundedText(160).regex(/^[A-Za-z0-9._:-]+$/u),
       modelRevisionId: aiIdentifierSchema,
       profileRevisionId: aiIdentifierSchema,
     })

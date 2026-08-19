@@ -925,7 +925,10 @@ describe('AI integration layer', () => {
       trustBoundary: PASSING_TRUST_BOUNDARY,
     })
 
-    await expect(collect(layer.run(request()))).resolves.toHaveLength(1)
+    await expect(collect(layer.run(request()))).resolves.toMatchObject([
+      { type: 'heartbeat' },
+      { type: 'completed' },
+    ])
     expect(scopeActive).toBe(false)
   })
 
@@ -1048,8 +1051,11 @@ describe('AI integration layer', () => {
       integration(adapter, profile(), trustBoundary).run(request()),
     )
 
-    expect(events).toHaveLength(1)
-    expect(events[0]).toMatchObject({ type: 'completed' })
+    expect(events).toMatchObject([
+      { type: 'heartbeat' },
+      { type: 'heartbeat' },
+      { type: 'completed' },
+    ])
     expect(approveCompleted).toHaveBeenCalledWith({
       analysis: 'private analysis delta',
       quarantinedText: ['private analysis delta', '{"requirements":'],
@@ -1112,6 +1118,7 @@ describe('AI integration layer', () => {
         ),
       ),
     ).resolves.toEqual([
+      { type: 'heartbeat' },
       {
         failure: {
           category: 'invalid_response',

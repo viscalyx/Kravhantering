@@ -31,6 +31,7 @@ const TOP_LEVEL_FIELDS = Object.freeze([
   'guardActive',
   'inventory',
   'keyring',
+  'liveExecutionProof',
   'restore',
   'schemaVersion',
   'secureDefaults',
@@ -39,10 +40,23 @@ const TOP_LEVEL_FIELDS = Object.freeze([
 ])
 const AI_PATH_FIELDS = Object.freeze([
   'adapterType',
+  'adapterVersion',
   'aiConnectionId',
   'aiConnectionModelRevisionId',
   'aiRunProfileRevisionId',
+  'connectionRevisionToken',
+  'modelRevisionToken',
+  'profileRevisionToken',
 ])
+const LIVE_EXECUTION_PROOF_FIELDS = Object.freeze([
+  ...AI_PATH_FIELDS,
+  'executionId',
+  'externalLiveCallMade',
+  'failureCategory',
+  'outcome',
+  'testSuiteVersion',
+])
+const FIXED_LIVE_SUITE_VERSION = 'ai-admin-functional-probe-v3'
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -105,6 +119,37 @@ function validatePathArray(paths, context, minimum = 1) {
     keys.add(key)
   }
   return keys
+}
+
+function validateLiveExecutionProof(proof, context) {
+  assertExactFields(proof, LIVE_EXECUTION_PROOF_FIELDS, context)
+  validatePath(
+    Object.fromEntries(AI_PATH_FIELDS.map(field => [field, proof[field]])),
+    context,
+  )
+  if (
+    typeof proof.executionId !== 'string' ||
+    !/^[A-Za-z0-9._:-]{1,160}$/u.test(proof.executionId)
+  ) {
+    throw new Error(`${context}.executionId is invalid.`)
+  }
+  assertBoolean(proof.externalLiveCallMade, `${context}.externalLiveCallMade`)
+  if (
+    proof.failureCategory !== null &&
+    (typeof proof.failureCategory !== 'string' ||
+      !/^[A-Za-z0-9._:-]{1,160}$/u.test(proof.failureCategory))
+  ) {
+    throw new Error(`${context}.failureCategory is invalid.`)
+  }
+  if (!['failed', 'passed'].includes(proof.outcome)) {
+    throw new Error(`${context}.outcome must be failed or passed.`)
+  }
+  if (
+    typeof proof.testSuiteVersion !== 'string' ||
+    !/^[A-Za-z0-9._:-]{1,160}$/u.test(proof.testSuiteVersion)
+  ) {
+    throw new Error(`${context}.testSuiteVersion is invalid.`)
+  }
 }
 
 function validateEvidence(evidence) {
@@ -200,6 +245,33 @@ function validateEvidence(evidence) {
     evidence.inventory.intendedPaths,
     'evidence.inventory.intendedPaths',
   )
+
+  if (evidence.verificationMode === 'staging_live') {
+    if (
+      !Array.isArray(evidence.liveExecutionProof) ||
+      evidence.liveExecutionProof.length < 1 ||
+      evidence.liveExecutionProof.length > MAX_INTENDED_PATHS
+    ) {
+      throw new Error(
+        `evidence.liveExecutionProof must contain between 1 and ${MAX_INTENDED_PATHS} proofs.`,
+      )
+    }
+    const proofKeys = new Set()
+    for (const [index, proof] of evidence.liveExecutionProof.entries()) {
+      validateLiveExecutionProof(proof, `evidence.liveExecutionProof[${index}]`)
+      const key = pathKey(proof)
+      if (proofKeys.has(key)) {
+        throw new Error(
+          'evidence.liveExecutionProof must not contain duplicates.',
+        )
+      }
+      proofKeys.add(key)
+    }
+  } else if (evidence.liveExecutionProof !== null) {
+    throw new Error(
+      'evidence.liveExecutionProof must be null outside staging_live.',
+    )
+  }
   validatePathArray(
     evidence.inventory.verifiedPaths,
     'evidence.inventory.verifiedPaths',
@@ -250,10 +322,7 @@ function validateEvidence(evidence) {
   assertExactFields(
     evidence.syntheticProbe,
     [
-      'adapterType',
-      'aiConnectionId',
-      'aiConnectionModelRevisionId',
-      'aiRunProfileRevisionId',
+      ...AI_PATH_FIELDS,
       'externalLiveCallMade',
       'outcome',
       'payloadClassification',
@@ -323,6 +392,32 @@ export function assessAiDeploymentGate(evidence) {
   const verifiedPathKeys = new Set(
     evidence.inventory.verifiedPaths.map(pathKey),
   )
+  if (evidence.verificationMode === 'staging_live') {
+    const liveProofs = evidence.liveExecutionProof
+    const livePathKeys = new Set(liveProofs.map(pathKey))
+    if (
+      livePathKeys.size !== intendedPathKeys.size ||
+      [...intendedPathKeys].some(key => !livePathKeys.has(key))
+    ) {
+      blockers.push('staging_live_execution_path_mismatch')
+    }
+    if (liveProofs.some(proof => proof.adapterType === 'controlled_test')) {
+      blockers.push('staging_live_controlled_adapter_forbidden')
+    }
+    if (liveProofs.some(proof => !proof.externalLiveCallMade)) {
+      blockers.push('staging_live_probe_not_executed')
+    }
+    if (
+      liveProofs.some(
+        proof =>
+          proof.outcome !== 'passed' ||
+          proof.failureCategory !== null ||
+          proof.testSuiteVersion !== FIXED_LIVE_SUITE_VERSION,
+      )
+    ) {
+      blockers.push('staging_live_execution_unverified')
+    }
+  }
   if (
     intendedPathKeys.size !== verifiedPathKeys.size ||
     [...intendedPathKeys].some(key => !verifiedPathKeys.has(key))

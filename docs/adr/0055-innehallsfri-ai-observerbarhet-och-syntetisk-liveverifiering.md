@@ -30,14 +30,20 @@ kontrollerade adaptern för produktens exakta författarväg. Den får inte gör
 ett externt live-AI-anrop.
 
 Staging-liveverifiering är en separat, explicit aktiverad driftåtgärd. Innan
-extern trafik tillåts kräver provet serverbevisad stagingidentitet, exakt
-förväntat miljö-ID och aktiv global AI-spärr. Det förhandskontrollerar samtliga
+extern trafik tillåts kräver både routen, tjänsten och den externa operationen
+serverbevisad stagingidentitet, exakt förväntat miljö-ID, explicit server-opt-in
+och aktiv global AI-spärr. Det förhandskontrollerar samtliga
 avsedda aktiva körprofilrevisioner samt exakt avsedd anslutning och
 modellrevision. Därefter använder det den spärrkompatibla och icke-muterande
 Admin-åtgärden `verify_live_path`. Åtgärden avvisar kontrollerade offlineadaptrar
-och kör den fasta syntetiska sviten `ai-admin-functional-probe-v3` genom den
-exakta aktiva anslutningen, hemligheten, tillitsgränsen, adaptern, modellen och
-körprofilen, utan områdesval eller databasbaserat författarinnehåll. Resultatet
+och kör först den fasta syntetiska adaptersviten
+`ai-admin-functional-probe-v3`. Därefter laddar den den valda aktiva
+körprofilen och kör ett fast syntetiskt anrop genom dess resolver, hemlighet,
+tillitsgräns, kö-, retry- och deadlinekoordinator, integrationslager och exakta
+adapter. Inga sentinelprofiler, områdesval eller databasbaserade
+författarindata används. Tjänsten läser om och jämför anslutningens,
+modellrevisionens och körprofilrevisionens token efter körningen; en samtidig
+administrativ ändring ger inget bevis. Resultatet
 binder aktuell körningsidentitet, svitversion, utfall, observerad adapter och
 samtliga revisionstoken. Alla svar och tidsgränser är begränsade. Provet skriver
 endast innehållsfri bevismetadata.

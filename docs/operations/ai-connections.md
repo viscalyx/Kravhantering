@@ -349,6 +349,7 @@ The staging-live probe is opt-in and otherwise exits without a network call.
 Use an Admin session created for the staging test and store only its cookie
 header in a mode `0600` file. The staging server must keep
 `AI_REQUIREMENT_GENERATION_DISABLED=1`, set
+`AI_STAGING_LIVE_PROBE_ENABLED=1`, set
 `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=staging`, and expose a stable opaque
 `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID` unique to that environment. Export
 that expected server identity, the representative exact path, and the bounded
@@ -369,14 +370,19 @@ node scripts/ai-staging-live-probe.mjs \
 ```
 
 The script first requires server-proven `staging` identity, the exact expected
-environment ID, and an active global guard. It proves that every configured
+environment ID, the server-side live-probe opt-in, and an active global guard.
+Production ships with `AI_STAGING_LIVE_PROBE_ENABLED=0`; never enable it there.
+It proves that every configured
 profile revision is active, enabled, and unblocked, and that the exact
 connection and model revision are active and verified. It then runs the
 guard-compatible, non-mutating Admin `verify_live_path` action. That action
 resolves the exact active connection/model/profile path, rejects controlled
-offline adapters, and runs the fixed synthetic `ai-admin-functional-probe-v3`
-suite through the configured secret, trust boundary, and live adapter. It does
-not select an area or send database-derived authoring data. Its response binds
+offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v3`, and
+then executes a fixed synthetic request through the selected active profile's
+resolver, configured secret, trust boundary, queue/retry/deadline coordinator,
+integration layer, and exact live adapter. It does not select an area or send
+database-derived authoring data. The service rechecks all three revision tokens
+after execution, so a concurrent Admin change emits no proof. Its response binds
 the current execution ID, suite version, outcome, observed adapter, exact path,
 and revision tokens; the script validates every field before emitting evidence.
 Every HTTP operation has a 120-second deadline and a 1 MiB streamed response

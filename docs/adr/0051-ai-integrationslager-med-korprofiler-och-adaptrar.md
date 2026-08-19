@@ -32,7 +32,10 @@ avslut är ogiltigt.
 
 Ingen partiell modelltext får nå klient eller import. AI-integrationslagrets
 säkerhetsgrind karantänbuffrar adapterströmmen och släpper ett slutfört
-resultat först efter fullständig slutscreening och schemavalidering. Ett
+resultat först efter fullständig slutscreening och schemavalidering. För varje
+karantänlagd delta får grinden släppa en innehållsfri `heartbeat`; dess
+generator gör inte nästa adapterpull förrän konsumenten begär nästa händelse.
+Det bevarar pull-baserat backpressure utan att publicera modelltext. Ett
 `completed`-utfall bär därför hela det godkända råresultatet, eventuell
 AI-analys, normaliserad användningsmetadata och identiteten för exakt
 AI-anslutning, körprofilrevision och anslutningsmodellrevision.

@@ -245,7 +245,7 @@ function preflightConnection(configuration, connection) {
   return selectedModel
 }
 
-function assertLivePathProbeResult(value, configuration) {
+function assertLivePathProbeResult(value, configuration, profileRevisionId) {
   const fields = [
     'adapterType',
     'adapterVersion',
@@ -274,8 +274,7 @@ function assertLivePathProbeResult(value, configuration) {
     value.aiConnectionId === configuration.intendedPath.aiConnectionId &&
     value.aiConnectionModelRevisionId ===
       configuration.intendedPath.aiConnectionModelRevisionId &&
-    value.aiRunProfileRevisionId ===
-      configuration.intendedPath.aiRunProfileRevisionId
+    value.aiRunProfileRevisionId === profileRevisionId
   const safeProofValues = [
     value.adapterVersion,
     value.connectionRevisionToken,
@@ -334,30 +333,49 @@ export async function runAiStagingLiveSyntheticProbe(
     origin: baseUrl.origin,
     'x-requested-with': 'XMLHttpRequest',
   }
-  const liveProof = assertLivePathProbeResult(
-    await requestJson(fetchImpl, actionsUrl, configuration.cookie, {
-      body: JSON.stringify({
-        action: 'verify_live_path',
-        modelRevisionId: configuration.intendedPath.aiConnectionModelRevisionId,
-        profileRevisionId: configuration.intendedPath.aiRunProfileRevisionId,
-      }),
-      headers: mutationHeaders,
-      method: 'POST',
-    }).then(response => response.body),
-    configuration,
+  const liveExecutionProof = []
+  for (const profileRevisionId of configuration.intendedProfileRevisionIds) {
+    liveExecutionProof.push(
+      assertLivePathProbeResult(
+        await requestJson(fetchImpl, actionsUrl, configuration.cookie, {
+          body: JSON.stringify({
+            action: 'verify_live_path',
+            expectedEnvironmentId: configuration.expectedEnvironmentId,
+            modelRevisionId:
+              configuration.intendedPath.aiConnectionModelRevisionId,
+            profileRevisionId,
+          }),
+          headers: mutationHeaders,
+          method: 'POST',
+        }).then(response => response.body),
+        configuration,
+        profileRevisionId,
+      ),
+    )
+  }
+  const representativeProof = liveExecutionProof.find(
+    proof =>
+      proof.aiRunProfileRevisionId ===
+      configuration.intendedPath.aiRunProfileRevisionId,
   )
+  if (!representativeProof) {
+    throw new Error('The representative live execution proof is missing.')
+  }
 
   return {
-    adminFunctionalProbeVersion: liveProof.testSuiteVersion,
+    adminFunctionalProbeVersion: representativeProof.testSuiteVersion,
     intendedPath: Object.freeze({ ...configuration.intendedPath }),
-    liveExecutionProof: Object.freeze({ ...liveProof }),
+    liveExecutionProof: Object.freeze(
+      liveExecutionProof.map(proof => Object.freeze({ ...proof })),
+    ),
     preflightedProfileRevisionIds: Object.freeze([
       ...configuration.intendedProfileRevisionIds,
     ]),
     syntheticProbe: Object.freeze({
       ...configuration.intendedPath,
-      externalLiveCallMade: liveProof.externalLiveCallMade,
-      outcome: liveProof.outcome === 'passed' ? 'completed' : 'failed',
+      externalLiveCallMade: representativeProof.externalLiveCallMade,
+      outcome:
+        representativeProof.outcome === 'passed' ? 'completed' : 'failed',
       payloadClassification: 'synthetic',
     }),
   }

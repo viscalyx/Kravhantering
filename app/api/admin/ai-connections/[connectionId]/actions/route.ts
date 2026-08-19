@@ -4,6 +4,7 @@ import {
   aiConnectionParamsSchema,
 } from '@/lib/ai/admin-contracts'
 import { createAiConnectionAdministrationRuntime } from '@/lib/ai/admin-runtime'
+import { assertAiStagingLiveVerificationAllowed } from '@/lib/ai/staging-live-policy'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   adminMutationPolicy,
@@ -16,6 +17,9 @@ export const POST = secureMutationRoute({
   paramsSchema: aiConnectionParamsSchema,
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {
+    if (body.action === 'verify_live_path') {
+      assertAiStagingLiveVerificationAllowed(body.expectedEnvironmentId)
+    }
     const db = await getRequestSqlServerDataSource()
     const service = createAiConnectionAdministrationRuntime(db, context)
     const connectionId = params.connectionId
@@ -96,6 +100,7 @@ export const POST = secureMutationRoute({
         return NextResponse.json(
           await service.verifyLivePath({
             connectionId,
+            expectedEnvironmentId: body.expectedEnvironmentId,
             modelRevisionId: body.modelRevisionId,
             profileRevisionId: body.profileRevisionId,
           }),

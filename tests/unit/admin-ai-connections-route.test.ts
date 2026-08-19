@@ -128,6 +128,10 @@ describe('Admin AI connection routes', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', '1')
+    vi.stubEnv('AI_STAGING_LIVE_PROBE_ENABLED', '1')
+    vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT', 'staging')
+    vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID', 'staging-route-test')
     for (const method of Object.values(routeState.serviceMethods)) {
       method.mockResolvedValue({ ok: true })
     }
@@ -464,6 +468,7 @@ describe('Admin AI connection routes', () => {
         'verifyLivePath',
         {
           action: 'verify_live_path',
+          expectedEnvironmentId: 'staging-route-test',
           modelRevisionId: modelId,
           profileRevisionId: connectionId,
         },
@@ -490,6 +495,40 @@ describe('Admin AI connection routes', () => {
       expect(routeState.serviceMethods[method]).toHaveBeenCalled()
     }
   })
+
+  it.each([
+    ['production', 'production', 'staging-route-test', '1', '1'],
+    ['guard off', 'staging', 'staging-route-test', '1', '0'],
+    ['identity mismatch', 'staging', 'different-staging', '1', '1'],
+    ['opt-in off', 'staging', 'staging-route-test', '0', '1'],
+  ])(
+    'rejects staging live verification at the route for %s',
+    async (_case, environment, environmentId, optIn, guard) => {
+      vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT', environment)
+      vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID', environmentId)
+      vi.stubEnv('AI_STAGING_LIVE_PROBE_ENABLED', optIn)
+      vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', guard)
+
+      const response = await connectionAction(
+        new NextRequest(
+          `https://example.test/api/admin/ai-connections/${connectionId}/actions`,
+          {
+            body: JSON.stringify({
+              action: 'verify_live_path',
+              expectedEnvironmentId: 'staging-route-test',
+              modelRevisionId: revisionToken,
+              profileRevisionId: connectionId,
+            }),
+            method: 'POST',
+          },
+        ),
+        { params: Promise.resolve({ connectionId }) },
+      )
+
+      expect(response.status).toBe(400)
+      expect(routeState.serviceMethods.verifyLivePath).not.toHaveBeenCalled()
+    },
+  )
 
   it('covers detail and run-profile reads, writes, actions, and invalid params', async () => {
     const request = new NextRequest(

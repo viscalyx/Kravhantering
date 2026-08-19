@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
+import { createSqlServerAiRunProfileSource } from '@/lib/dal/ai-run-profiles'
 import type { SqlServerDatabase } from '@/lib/db'
+import { aiRunTelemetry } from '@/lib/observability/ai-runs'
+import { createAiConnectionAdapterRegistry } from './adapter-registry'
 import {
   type AiAdminConnectionAdapterRegistry,
   createAiAdminConnectionAdapterRegistry,
@@ -9,6 +12,7 @@ import type {
   AiAdminConnectionDetail,
   AiAdminExternalOperations,
   AiAdminLivePathExternalResult,
+  AiAdminLivePathSelection,
 } from './admin-service'
 import {
   type AiConnectionTrustConfiguration,
@@ -19,22 +23,180 @@ import {
   createAiEgressTransport,
   enforceAiDataPolicy,
 } from './connection-trust'
+import { controlledTestAdapterRegistration } from './controlled-test-adapter'
 import { controlledTestAdminAdapterRegistration } from './controlled-test-admin-adapter'
+import { createAiIntegrationLayer } from './integration-layer'
+import { openRouterAdapterRegistration } from './openrouter-adapter'
 import { openRouterAdminAdapterRegistration } from './openrouter-admin-adapter'
 import { createPinnedHttpsFetch } from './pinned-https-transport'
-import type { AiRunProfileKey } from './profile-resolver'
+import {
+  type AiRunProfileKey,
+  createAiRunProfileResolver,
+} from './profile-resolver'
 import type { AiProviderSecretKeyring } from './provider-secret-keyring'
 import {
   AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
   AiProviderSecretAdminService,
+  createAiRuntimeAdapterConfigurationResolver,
 } from './provider-secret-service'
-import type { AiEgressTransport, AiRunType } from './run-contracts'
+import type {
+  AiEgressTransport,
+  AiRunIdentity,
+  AiRunType,
+} from './run-contracts'
+import { createSqlServerAiRunCoordinationStore } from './run-coordination-store'
+import { createAiRunCoordinator } from './run-coordinator'
+import { createAiRunTrustBoundary } from './run-trust-boundary'
+import { screenAiInput, screenAiOutput } from './safety'
+import { assertAiStagingLiveVerificationAllowed } from './staging-live-policy'
 
 const PROFILE_RUN_TYPE = {
   generation_with_images: 'generate_with_images',
   generation_without_images: 'generate_without_images',
   invalid_json_repair: 'repair_invalid_import_json',
 } as const satisfies Record<AiRunProfileKey, AiRunType>
+
+const LIVE_PATH_TASK = Object.freeze({
+  content: Object.freeze([
+    Object.freeze({
+      text: 'Return exactly one JSON object with {"status":"ok"}.',
+      type: 'text' as const,
+    }),
+  ]),
+  instructions: 'Fixed synthetic staging live-path verification.',
+  responseSchema: Object.freeze({
+    additionalProperties: false,
+    properties: Object.freeze({ status: Object.freeze({ const: 'ok' }) }),
+    required: Object.freeze(['status']),
+    type: 'object',
+  }),
+})
+
+export interface AiAdminExactLivePathRunner {
+  run(selection: Readonly<AiAdminLivePathSelection>): Promise<{
+    failureCategory: string | null
+    outcome: 'failed' | 'passed'
+  }>
+}
+
+interface ExactLivePathRuntimeFactoryOverrides {
+  createIntegration?: typeof createAiIntegrationLayer
+  createProfileSource?: typeof createSqlServerAiRunProfileSource
+  screenInput?: typeof screenAiInput
+  screenOutput?: typeof screenAiOutput
+}
+
+export function createExactLivePathRunner(
+  db: SqlServerDatabase,
+  keyring: () => AiProviderSecretKeyring,
+  deployment: AiDeploymentTrustPolicy,
+  overrides: ExactLivePathRuntimeFactoryOverrides = {},
+): AiAdminExactLivePathRunner {
+  const persistedSource = (
+    overrides.createProfileSource ?? createSqlServerAiRunProfileSource
+  )(db)
+  return {
+    async run(selection) {
+      assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
+      const persisted = await persistedSource.findActiveRevision(
+        selection.profileKey,
+      )
+      if (
+        !persisted ||
+        persisted.adapterType !== selection.adapterType ||
+        persisted.adapterVersion !== selection.adapterVersion ||
+        persisted.connectionId !== selection.aiConnectionId ||
+        persisted.modelRevisionId !== selection.aiConnectionModelRevisionId ||
+        persisted.profileRevisionId !== selection.aiRunProfileRevisionId
+      ) {
+        return { failureCategory: 'exact_profile_changed', outcome: 'failed' }
+      }
+      const profileResolver = createAiRunProfileResolver({
+        profileSource: {
+          async findActiveRevision(profileKey) {
+            return profileKey === selection.profileKey ? persisted : null
+          },
+        },
+        resolveAdapterConfiguration:
+          createAiRuntimeAdapterConfigurationResolver(db, keyring()),
+      })
+      const integration = (
+        overrides.createIntegration ?? createAiIntegrationLayer
+      )({
+        adapterRegistry: createAiConnectionAdapterRegistry([
+          openRouterAdapterRegistration,
+          controlledTestAdapterRegistration,
+        ]),
+        profileResolver,
+        runCoordinator: createAiRunCoordinator({
+          coordination: createSqlServerAiRunCoordinationStore(db),
+          telemetry: aiRunTelemetry,
+        }),
+        telemetry: aiRunTelemetry,
+        trustBoundary: createAiRunTrustBoundary({
+          deployment,
+          imageLimits: Object.freeze({
+            maximumBytes: 10 * 1024 * 1024,
+            maximumFrames: 1,
+            maximumHeight: 8192,
+            maximumPixels: 32 * 1024 * 1024,
+            maximumWidth: 8192,
+          }),
+          safetyFilter: {
+            async screenInput(textParts) {
+              return (overrides.screenInput ?? screenAiInput)(db, textParts)
+            },
+            async screenOutput(textParts) {
+              return (overrides.screenOutput ?? screenAiOutput)(db, textParts)
+            },
+          },
+        }),
+      })
+      const abort = new AbortController()
+      const deadline = setTimeout(() => abort.abort(), 30_000)
+      try {
+        let terminal:
+          | {
+              failure?: { category: string }
+              identity: AiRunIdentity
+              type: 'completed' | 'failed'
+            }
+          | undefined
+        assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
+        for await (const event of integration.run({
+          context: {
+            abortSignal: abort.signal,
+            applicationRunId: `staging_live_${randomUUID()}`,
+            correlationId: `staging_live_${randomUUID()}`,
+            deadlineAt: new Date(Date.now() + 30_000).toISOString(),
+          },
+          task: LIVE_PATH_TASK,
+          type: PROFILE_RUN_TYPE[selection.profileKey],
+        })) {
+          if (event.type === 'completed' || event.type === 'failed') {
+            terminal = event
+          }
+        }
+        return terminal?.type === 'completed' &&
+          terminal.identity.aiConnectionId === selection.aiConnectionId &&
+          terminal.identity.aiConnectionModelRevisionId ===
+            selection.aiConnectionModelRevisionId &&
+          terminal.identity.aiRunProfileRevisionId ===
+            selection.aiRunProfileRevisionId
+          ? { failureCategory: null, outcome: 'passed' }
+          : {
+              failureCategory:
+                terminal?.type === 'failed'
+                  ? (terminal.failure?.category ?? 'exact_path_failed')
+                  : 'exact_path_failed',
+              outcome: 'failed',
+            }
+      } finally {
+        clearTimeout(deadline)
+      }
+    },
+  }
+}
 
 function jsonRecord<Value>(name: string): Readonly<Record<string, Value>> {
   const raw = process.env[name]
@@ -124,6 +286,7 @@ export function createProductionAiAdminExternalOperations(
   keyring: () => AiProviderSecretKeyring,
   options: {
     deployment?: AiDeploymentTrustPolicy
+    exactLivePathRunner?: AiAdminExactLivePathRunner
     registry?: AiAdminConnectionAdapterRegistry
   } = {},
 ): AiAdminExternalOperations {
@@ -136,6 +299,9 @@ export function createProductionAiAdminExternalOperations(
     ])
   const secrets = (): AiProviderSecretAdminService =>
     new AiProviderSecretAdminService(db, keyring())
+  const exactLivePathRunner =
+    options.exactLivePathRunner ??
+    createExactLivePathRunner(db, keyring, deployment)
   const prepared = async (connection: Readonly<AiAdminConnectionDetail>) => {
     const target = await authorizeAiConnectionTarget(
       trustConfiguration(connection),
@@ -188,7 +354,8 @@ export function createProductionAiAdminExternalOperations(
         revision,
       )
     },
-    async verifyLivePath(connection, revision) {
+    async verifyLivePath(connection, revision, selection) {
+      assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
       const { egress, registration } = await prepared(connection)
       const executionId = randomUUID()
       if (registration.executionKind !== 'external_live') {
@@ -209,19 +376,25 @@ export function createProductionAiAdminExternalOperations(
           return egress.fetch(input, init)
         },
       }
+      assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
       const result = await secrets().verifyModelRevision(
         registration.adapter,
         connection,
         observedEgress,
         revision,
       )
+      assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
+      const exactResult =
+        result.outcome === 'passed'
+          ? await exactLivePathRunner.run(selection)
+          : { failureCategory: result.failureCategory, outcome: result.outcome }
       return {
         adapterType: registration.adapterType,
         adapterVersion: registration.adapterVersion,
         executionId,
         externalLiveCallMade,
-        failureCategory: result.failureCategory,
-        outcome: result.outcome,
+        failureCategory: exactResult.failureCategory,
+        outcome: exactResult.outcome,
         testSuiteVersion: result.testSuiteVersion,
       } satisfies AiAdminLivePathExternalResult
     },

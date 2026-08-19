@@ -1,19 +1,30 @@
 import { randomBytes } from 'node:crypto'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   type AiAdminAdapterContext,
   createAiAdminConnectionAdapterRegistry,
 } from '@/lib/ai/admin-adapter'
 import {
+  createExactLivePathRunner,
   createProductionAiAdminExternalOperations,
   loadAiDeploymentTrustPolicy,
 } from '@/lib/ai/admin-external'
-import type { AiAdminConnectionDetail } from '@/lib/ai/admin-service'
+import type {
+  AiAdminConnectionDetail,
+  AiAdminLivePathSelection,
+  AiAdminModelRevisionRecord,
+} from '@/lib/ai/admin-service'
 import type { AiDeploymentTrustPolicy } from '@/lib/ai/connection-trust'
 import { controlledTestAdminAdapterRegistration } from '@/lib/ai/controlled-test-admin-adapter'
 import { openRouterAdminAdapterRegistration } from '@/lib/ai/openrouter-admin-adapter'
+import type { AiPersistedRunProfile } from '@/lib/ai/profile-resolver'
 import { encryptAiProviderSecret } from '@/lib/ai/provider-secret-crypto'
 import { parseAiProviderSecretKeyring } from '@/lib/ai/provider-secret-keyring'
+import type {
+  AiIntegrationRunRequest,
+  AiRunEvent,
+  AiRunIdentity,
+} from '@/lib/ai/run-contracts'
 import type { SqlServerDatabase } from '@/lib/db'
 
 const CAPABILITIES = {
@@ -129,6 +140,24 @@ function deployment(): AiDeploymentTrustPolicy {
   }
 }
 
+function liveSelection(
+  current: AiAdminConnectionDetail,
+  revision: AiAdminModelRevisionRecord,
+): AiAdminLivePathSelection {
+  return {
+    adapterType: current.adapterKey,
+    adapterVersion: current.adapterVersion,
+    aiConnectionId: current.id,
+    aiConnectionModelRevisionId: revision.id,
+    aiRunProfileRevisionId: crypto.randomUUID(),
+    connectionRevisionToken: current.revisionToken,
+    expectedEnvironmentId: 'staging-admin-external-test',
+    modelRevisionToken: revision.revisionToken,
+    profileKey: 'generation_without_images',
+    profileRevisionToken: crypto.randomUUID(),
+  }
+}
+
 const emptyDb = {
   query: vi.fn(async () => []),
   transaction: vi.fn(),
@@ -142,6 +171,15 @@ const ring = parseAiProviderSecretKeyring(
 )
 
 describe('AI administration provider composition', () => {
+  beforeEach(() => {
+    vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT', 'staging')
+    vi.stubEnv(
+      'KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID',
+      'staging-admin-external-test',
+    )
+    vi.stubEnv('AI_STAGING_LIVE_PROBE_ENABLED', '1')
+    vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', '1')
+  })
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllEnvs()
@@ -190,7 +228,13 @@ describe('AI administration provider composition', () => {
     await expect(
       external.verifyModelRevision(current, revision),
     ).resolves.toMatchObject({ outcome: 'passed' })
-    await expect(external.verifyLivePath(current, revision)).resolves.toEqual({
+    await expect(
+      external.verifyLivePath(
+        current,
+        revision,
+        liveSelection(current, revision),
+      ),
+    ).resolves.toEqual({
       adapterType: 'controlled_test',
       adapterVersion: '1',
       executionId: expect.any(String),
@@ -206,6 +250,292 @@ describe('AI administration provider composition', () => {
         'candidate',
       ),
     ).resolves.toBeUndefined()
+  })
+
+  it('binds a passing live proof to the exact selected runtime path', async () => {
+    const current = connection({ adapterKey: 'openrouter' })
+    const revision = current.models[0]?.revisions[0]
+    if (!revision) throw new Error('Revision missing')
+    const selection = liveSelection(current, revision)
+    const exactLivePathRunner = {
+      run: vi.fn(async () => ({
+        failureCategory: null,
+        outcome: 'passed' as const,
+      })),
+    }
+    const registry = createAiAdminConnectionAdapterRegistry([
+      {
+        ...controlledTestAdminAdapterRegistration,
+        adapterType: 'openrouter',
+        executionKind: 'external_live',
+      },
+    ])
+    const external = createProductionAiAdminExternalOperations(
+      emptyDb,
+      () => ring,
+      { deployment: deployment(), exactLivePathRunner, registry },
+    )
+
+    await expect(
+      external.verifyLivePath(current, revision, selection),
+    ).resolves.toMatchObject({
+      adapterType: 'openrouter',
+      failureCategory: null,
+      outcome: 'passed',
+    })
+    expect(exactLivePathRunner.run).toHaveBeenCalledWith(selection)
+  })
+
+  it('executes the exact selected profile through the integration runtime', async () => {
+    const current = connection({ adapterKey: 'openrouter' })
+    const revision = current.models[0]?.revisions[0]
+    if (!revision) throw new Error('Revision missing')
+    const selection = liveSelection(current, revision)
+    const completed = {
+      analysis: null,
+      identity: {
+        aiConnectionId: selection.aiConnectionId,
+        aiConnectionModelRevisionId: selection.aiConnectionModelRevisionId,
+        aiRunProfileRevisionId: selection.aiRunProfileRevisionId,
+      } as AiRunIdentity,
+      rawOutput: '{"status":"ok"}',
+      type: 'completed' as const,
+      usage: {
+        analysisTokens: {
+          reason: 'not_reported' as const,
+          status: 'unavailable' as const,
+        },
+        cost: {
+          reason: 'not_reported' as const,
+          status: 'unavailable' as const,
+        },
+        inputTokens: {
+          reason: 'not_reported' as const,
+          status: 'unavailable' as const,
+        },
+        outputTokens: {
+          reason: 'not_reported' as const,
+          status: 'unavailable' as const,
+        },
+        totalTokens: {
+          reason: 'not_reported' as const,
+          status: 'unavailable' as const,
+        },
+      },
+    } satisfies Extract<AiRunEvent, { type: 'completed' }>
+    const persisted = {
+      adapterType: selection.adapterType,
+      adapterVersion: selection.adapterVersion,
+      capabilityPolicyJson: JSON.stringify({
+        aiAnalysis: 'disabled',
+        imageInput: 'disabled',
+        jsonSchema: 'allowed',
+        streaming: 'required',
+        usageMetadata: 'allowed',
+        validatableJson: 'required',
+      }),
+      connectionAgentRuntimeVersion: null,
+      connectionConfiguration: { authenticationType: 'none' },
+      connectionConfigurationVersion: 1,
+      connectionDataPolicySummary: 'Synthetic only.',
+      connectionId: selection.aiConnectionId,
+      connectionLifecycleStatus: 'active',
+      connectionMaximumConcurrency: 1,
+      connectionPublicName: 'Staging live test',
+      externalModelId: 'provider/model',
+      inactivityTimeBudgetSeconds: 300,
+      maximumBufferedEvents: 16,
+      maximumOutputBytes: 65_536,
+      maximumOutputTokens: 512,
+      maximumRetainedMemoryBytes: 131_072,
+      modelRevisionAgentRuntimeVersion: null,
+      modelRevisionConfiguration: {},
+      modelRevisionConnectionConfigurationVersion: 1,
+      modelRevisionId: selection.aiConnectionModelRevisionId,
+      modelRevisionMaximumConcurrency: null,
+      modelRevisionStatus: 'verified',
+      operationalStatus: 'enabled',
+      profileRevisionId: selection.aiRunProfileRevisionId,
+      profileRevisionStatus: 'active',
+      queueCapacity: 1,
+      totalTimeBudgetSeconds: 300,
+      trustConfiguration: {
+        authenticationType: 'none',
+        dataPolicy: {
+          isPersonalDataProcessed: false,
+          isTrainingAllowed: false,
+          maximumInformationClass: 'internal',
+          maximumRetentionDays: 0,
+          processingRegions: ['SE'],
+          subprocessors: [],
+        },
+        egressPolicyKey: current.egressPolicyKey,
+        endpointUrl: current.endpointUrl,
+        tlsPolicyKey: current.tlsPolicyKey,
+      },
+      verifiedCapabilitiesJson: JSON.stringify(CAPABILITIES),
+    } satisfies AiPersistedRunProfile
+    const run = vi.fn()
+    const runner = createExactLivePathRunner(
+      emptyDb,
+      () => ring,
+      deployment(),
+      {
+        createIntegration: vi.fn(options => ({
+          async *run(
+            request: AiIntegrationRunRequest,
+          ): AsyncIterable<AiRunEvent> {
+            run(request)
+            const profile = await options.profileResolver.resolve(request.type)
+            await profile.withAdapterConfiguration(async () => undefined)
+            const prepared = await options.trustBoundary.prepareRun({
+              runType: request.type,
+              task: request.task,
+              trustConfiguration: profile.trustConfiguration,
+            })
+            await options.trustBoundary.approveCompleted({
+              analysis: completed.analysis,
+              quarantinedText: [],
+              rawOutput: completed.rawOutput,
+              responseSchema: prepared.task.responseSchema,
+            })
+            yield completed
+          },
+          takeSafeInvalidOutput: () => undefined,
+        })),
+        createProfileSource: vi.fn(() => ({
+          findActiveRevision: vi.fn(async () => persisted),
+        })),
+        screenInput: vi.fn(async () => ({
+          allowed: true,
+          categories: [],
+          primaryRuleId: null,
+          primaryRuleType: null,
+          ruleIds: [],
+          ruleTypes: [],
+          textLength: 0,
+        })),
+        screenOutput: vi.fn(async () => ({
+          allowed: true,
+          categories: [],
+          primaryRuleId: null,
+          primaryRuleType: null,
+          ruleIds: [],
+          ruleTypes: [],
+          textLength: 0,
+        })),
+      },
+    )
+
+    await expect(runner.run(selection)).resolves.toEqual({
+      failureCategory: null,
+      outcome: 'passed',
+    })
+    expect(run).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'generate_without_images' }),
+    )
+
+    const staleRunner = createExactLivePathRunner(
+      emptyDb,
+      () => ring,
+      deployment(),
+      {
+        createProfileSource: vi.fn(() => ({
+          findActiveRevision: vi.fn(async () => null),
+        })),
+      },
+    )
+    await expect(staleRunner.run(selection)).resolves.toEqual({
+      failureCategory: 'exact_profile_changed',
+      outcome: 'failed',
+    })
+
+    const failedRunner = createExactLivePathRunner(
+      emptyDb,
+      () => ring,
+      deployment(),
+      {
+        createIntegration: vi.fn(() => ({
+          async *run(): AsyncIterable<AiRunEvent> {
+            yield {
+              failure: {
+                category: 'request_rejected',
+                diagnosticCode: 'synthetic_rejected',
+                retryable: false,
+              },
+              identity: completed.identity,
+              type: 'failed',
+            }
+          },
+          takeSafeInvalidOutput: () => undefined,
+        })),
+        createProfileSource: vi.fn(() => ({
+          findActiveRevision: vi.fn(async () => persisted),
+        })),
+      },
+    )
+    await expect(failedRunner.run(selection)).resolves.toEqual({
+      failureCategory: 'request_rejected',
+      outcome: 'failed',
+    })
+
+    const missingTerminalRunner = createExactLivePathRunner(
+      emptyDb,
+      () => ring,
+      deployment(),
+      {
+        createIntegration: vi.fn(() => ({
+          async *run(): AsyncIterable<AiRunEvent> {
+            yield { type: 'heartbeat' }
+          },
+          takeSafeInvalidOutput: () => undefined,
+        })),
+        createProfileSource: vi.fn(() => ({
+          findActiveRevision: vi.fn(async () => persisted),
+        })),
+      },
+    )
+    await expect(missingTerminalRunner.run(selection)).resolves.toEqual({
+      failureCategory: 'exact_path_failed',
+      outcome: 'failed',
+    })
+  })
+
+  it('rechecks server authorization after target resolution and before egress', async () => {
+    const current = connection({ adapterKey: 'openrouter' })
+    const revision = current.models[0]?.revisions[0]
+    if (!revision) throw new Error('Revision missing')
+    const policy = deployment()
+    policy.resolveHostname = vi.fn(async () => {
+      vi.stubEnv('AI_STAGING_LIVE_PROBE_ENABLED', '0')
+      return ['93.184.216.34']
+    })
+    const runFunctionalProbe = vi.fn()
+    const registry = createAiAdminConnectionAdapterRegistry([
+      {
+        ...controlledTestAdminAdapterRegistration,
+        adapter: {
+          ...controlledTestAdminAdapterRegistration.adapter,
+          runFunctionalProbe,
+        },
+        adapterType: 'openrouter',
+        executionKind: 'external_live',
+      },
+    ])
+    const external = createProductionAiAdminExternalOperations(
+      emptyDb,
+      () => ring,
+      { deployment: policy, registry },
+    )
+
+    await expect(
+      external.verifyLivePath(
+        current,
+        revision,
+        liveSelection(current, revision),
+      ),
+    ).rejects.toMatchObject({ code: 'validation' })
+    expect(runFunctionalProbe).not.toHaveBeenCalled()
   })
 
   it('separates egress and data-policy denial results', async () => {
@@ -648,7 +978,11 @@ describe('AI administration provider composition', () => {
       { externalModelId: 'vendor/model' },
     ])
     await expect(
-      external.verifyLivePath(current, revision),
+      external.verifyLivePath(
+        current,
+        revision,
+        liveSelection(current, revision),
+      ),
     ).resolves.toMatchObject({
       adapterType: 'openrouter',
       adapterVersion: '1',

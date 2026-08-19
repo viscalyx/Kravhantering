@@ -76,19 +76,17 @@ const identityHeaders = Object.freeze({
   'x-kravhantering-deployment-environment-id': 'staging-eu-test',
 })
 
-function successfulFetch() {
+function successfulFetch(profileRevisionIds = [PATH.aiRunProfileRevisionId]) {
   return vi.fn(async (input, init = {}) => {
     const url = new URL(String(input))
     if (url.pathname === '/api/admin/ai-run-profiles') {
       return jsonResponse(
-        [
-          {
-            activeRevisionId: PATH.aiRunProfileRevisionId,
-            blockers: [],
-            operationalStatus: 'enabled',
-            profileKey: 'generation_without_images',
-          },
-        ],
+        profileRevisionIds.map(activeRevisionId => ({
+          activeRevisionId,
+          blockers: [],
+          operationalStatus: 'enabled',
+          profileKey: 'generation_without_images',
+        })),
         { headers: identityHeaders },
       )
     }
@@ -114,7 +112,15 @@ function successfulFetch() {
       `/api/admin/ai-connections/${PATH.aiConnectionId}/actions`
     ) {
       const body = JSON.parse(String(init.body))
-      if (body.action === 'verify_live_path') return jsonResponse(LIVE_PROOF)
+      if (body.action === 'verify_live_path') {
+        const index = profileRevisionIds.indexOf(body.profileRevisionId)
+        return jsonResponse({
+          ...LIVE_PROOF,
+          aiRunProfileRevisionId: body.profileRevisionId,
+          executionId: `50000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+          profileRevisionToken: `70000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+        })
+      }
     }
     throw new Error(`Unexpected URL: ${url}`)
   })
@@ -142,7 +148,7 @@ describe('staging-live synthetic AI probe', () => {
     expect(result).toEqual({
       adminFunctionalProbeVersion: ADMIN_PROBE_VERSION,
       intendedPath: PATH,
-      liveExecutionProof: LIVE_PROOF,
+      liveExecutionProof: [LIVE_PROOF],
       preflightedProfileRevisionIds: [PATH.aiRunProfileRevisionId],
       syntheticProbe: {
         ...PATH,
@@ -164,6 +170,7 @@ describe('staging-live synthetic AI probe', () => {
       {
         body: {
           action: 'verify_live_path',
+          expectedEnvironmentId: 'staging-eu-test',
           modelRevisionId: PATH.aiConnectionModelRevisionId,
           profileRevisionId: PATH.aiRunProfileRevisionId,
         },
@@ -175,6 +182,27 @@ describe('staging-live synthetic AI probe', () => {
     expect(JSON.stringify(requests)).not.toContain(
       'generate-requirement-import',
     )
+  })
+
+  it('binds a current execution proof to every intended profile tuple', async () => {
+    const profileRevisionIds = [
+      PATH.aiRunProfileRevisionId,
+      SECOND_PROFILE_REVISION_ID,
+    ]
+    const fetchImpl = successfulFetch(profileRevisionIds)
+
+    const result = await runAiStagingLiveSyntheticProbe(
+      configuration({ intendedProfileRevisionIds: profileRevisionIds }),
+      { fetchImpl },
+    )
+
+    expect(result.liveExecutionProof).toHaveLength(2)
+    expect(
+      result.liveExecutionProof.map(proof => proof.aiRunProfileRevisionId),
+    ).toEqual(profileRevisionIds)
+    expect(
+      fetchImpl.mock.calls.filter(([, init]) => init?.method === 'POST'),
+    ).toHaveLength(2)
   })
 
   it('loads a private opt-in configuration with every intended profile revision', () => {

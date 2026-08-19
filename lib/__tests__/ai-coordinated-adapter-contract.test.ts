@@ -640,14 +640,27 @@ function describeCoordinatedAdapterContract(
       })
     })
 
-    it('keeps adapter pulls serialized through the full coordinated path', async () => {
+    it('does not prefetch after one downstream-observable event', async () => {
       const run = coordinatedRun(harness, {
         deltas: ['first', 'second'],
         output: 'first-second',
         streaming: true,
         type: 'completed',
       })
-      const events = await collect(run.events)
+      const consumer = run.events[Symbol.asyncIterator]()
+      const first = await consumer.next()
+      expect(first).toMatchObject({ done: false, value: { type: 'heartbeat' } })
+      const pullsWhilePaused = run.adapterPulls()
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(run.adapterPulls()).toBe(pullsWhilePaused)
+
+      const events = [first.value]
+      while (true) {
+        const next = await consumer.next()
+        if (next.done) break
+        events.push(next.value)
+      }
 
       expect(run.adapterPulls()).toBeGreaterThan(1)
       expect(run.maximumConcurrentAdapterPulls()).toBe(1)
