@@ -61,6 +61,7 @@ const TABLE_ORDER = [
   'requirement_categories',
   'ai_settings',
   'ai_connections',
+  'ai_provider_secret_versions',
   'ai_connection_attestations',
   'ai_connection_verification_evidence',
   'ai_connection_models',
@@ -166,6 +167,12 @@ const SEED_DATA = {
         '2026-08-19 00:00:00',
       ],
     ],
+  },
+  ai_provider_secret_versions: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
   },
   ai_connection_attestations: {
     columns: [

@@ -48,6 +48,14 @@ OpenRouter keys are not forwarded through `remoteEnv`. Put
 workspace file `.env.development.local`; the Next.js process reads them through
 the normal local application environment workflow.
 
+Both devcontainer profiles provision the ignored, external AI provider-secret
+root keyring at `.local/ai-provider-secret-keyring.json` during container
+creation. The helper is idempotent: rebuilding or reopening a container never
+reads, prints, or overwrites an existing keyring. The Azure development host
+bootstrap performs the same step on its persistent workspace data disk. See
+[AI Connections Operations](../operations/ai-connections.md#external-root-keyring)
+for the file contract and rotation boundary.
+
 ## Codex CLI
 
 The devcontainer base image uses the exact semantic version tag recorded in

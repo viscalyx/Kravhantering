@@ -211,6 +211,22 @@ erDiagram
         uniqueidentifier revision_token
     }
 
+    ai_provider_secret_versions {
+        uniqueidentifier id PK
+        uniqueidentifier ai_connection_id FK
+        integer revision_number UK
+        text status
+        binary ciphertext
+        binary nonce
+        binary authentication_tag
+        integer cipher_format_version
+        text root_key_version
+        datetime2 activated_at
+        datetime2 provider_revoked_at
+        datetime2 ciphertext_deleted_at
+        uniqueidentifier revision_token
+    }
+
     ai_connection_attestations {
         uniqueidentifier id PK
         uniqueidentifier ai_connection_id FK
@@ -812,6 +828,7 @@ erDiagram
     %% Relationships
     ai_forensic_capture_windows ||--o{ ai_forensic_evidence_events : "contains bounded evidence"
     ai_connections ||--o{ ai_connection_attestations : "has attestations"
+    ai_connections ||--o{ ai_provider_secret_versions : "has encrypted secret revisions"
     ai_connections ||--o{ ai_connection_verification_evidence : "has connection evidence"
     ai_connections ||--o{ ai_connection_models : "registers models"
     ai_connection_models ||--o{ ai_connection_model_revisions : "has immutable revisions"
@@ -1687,6 +1704,49 @@ invalidates evidence bound to an earlier configuration.
 
 **Indexes:** `uq_ai_connections_administration_name`,
 `idx_ai_connections_lifecycle_status`.
+
+### `ai_provider_secret_versions`
+
+AES-256-GCM encrypted provider-secret revisions. The root keys stay outside
+SQL Server. Each row is bound to its immutable connection and secret-version
+identities through authenticated additional data. Candidate creation,
+verified activation, restoration of a still-valid superseded revision, and
+root re-encryption rotate `revision_token` values. Only candidates may be
+deleted as rows. After a superseded provider credential is confirmed revoked,
+the ciphertext, nonce, and authentication tag are cleared while lifecycle and
+root-version metadata remain.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| ------ | ---- | ----------- |
+| `id` | uniqueidentifier PK | Immutable secret-version identity included in AES-GCM AAD |
+| `ai_connection_id` | uniqueidentifier FK | Immutable owning connection identity included in AES-GCM AAD |
+| `revision_number` | integer | Per-connection sequence, starting at 1 |
+| `status` | nvarchar(24) | `candidate`, `active`, or `superseded` |
+| `ciphertext` | varbinary(max), nullable | AES-256-GCM ciphertext; cleared only after confirmed provider revocation |
+| `nonce` | binary(12), nullable | Unique cryptographically random 96-bit GCM nonce for this encryption |
+| `authentication_tag` | binary(16), nullable | 128-bit GCM authentication tag |
+| `cipher_format_version` | smallint | Explicit cipher/AAD format version; currently `1` |
+| `root_key_version` | nvarchar(100) | Explicit external root-key version used for this encryption; never inferred from ordering |
+| `created_at` | datetime2(3) | Candidate creation time |
+| `verified_at` | datetime2(3), nullable | Most recent successful provider test before activation or restoration |
+| `activated_at` | datetime2(3), nullable | First successful activation time |
+| `deactivated_at` | datetime2(3), nullable | Time the active revision was superseded |
+| `provider_revoked_at` | datetime2(3), nullable | Operator-confirmed provider revocation time |
+| `ciphertext_deleted_at` | datetime2(3), nullable | Time encrypted material was cleared after revocation |
+| `revision_token` | uniqueidentifier | Optimistic concurrency token |
+<!-- markdownlint-enable MD013 -->
+
+**Constraints:** `(ai_connection_id, revision_number)` is unique and the
+filtered active index permits at most one active revision per connection.
+Encrypted material is all present or all absent. Missing material requires a
+superseded row with matching revocation and deletion times. Required and demo
+seed intentionally create no provider-secret rows because neither profile may
+contain credentials.
+
+**Indexes:** `uq_ai_provider_secret_versions_connection_revision`,
+`uq_ai_provider_secret_versions_active_connection`,
+`idx_ai_provider_secret_versions_root_key_version`.
 
 ### `ai_connection_attestations`
 
@@ -3073,6 +3133,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_import_validation_sessions_token_hash` | `requirement_import_validation_sessions` | `token_hash` | Ensures each hashed MCP import validation token identifies one session |
 | `uq_requirement_import_validation_rate_buckets_principal_window` | `requirement_import_validation_rate_buckets` | `principal_fingerprint, window_started_at` | Ensures one creation counter per principal and fixed 10-minute window |
 | `uq_ai_connections_administration_name` | `ai_connections` | `administration_name` | Keeps the internal administration name unique without using provider names as keys |
+| `uq_ai_provider_secret_versions_connection_revision` | `ai_provider_secret_versions` | `(ai_connection_id, revision_number)` | Preserves ordered encrypted secret history per connection |
+| `uq_ai_provider_secret_versions_active_connection` | `ai_provider_secret_versions` | `ai_connection_id` where `status = 'active'` | Permits at most one active provider-secret revision per connection |
 | `uq_ai_connection_attestations_connection_revision` | `ai_connection_attestations` | `(ai_connection_id, revision_number)` | Preserves ordered attestation history per connection |
 | `uq_ai_connection_attestations_valid_connection` | `ai_connection_attestations` | `ai_connection_id` where `status = 'valid'` | Permits at most one valid attestation per connection |
 | `uq_ai_connection_model_revisions_model_revision` | `ai_connection_model_revisions` | `(ai_connection_model_id, revision_number)` | Preserves ordered immutable model revision history |
@@ -3163,6 +3225,7 @@ its purpose and the table/column(s) it covers.
 | `idx_archiving_retention_exceptions_policy_source` | `archiving_retention_exceptions` | `(policy_id, source_key)` | Speed up filtering legal-hold exceptions during preview |
 | `idx_ai_safety_rule_terms_rule_id` | `ai_safety_rule_terms` | `rule_id` | Speed up loading safety terms per rule |
 | `idx_ai_connections_lifecycle_status` | `ai_connections` | `lifecycle_status` | Support administration lifecycle filtering |
+| `idx_ai_provider_secret_versions_root_key_version` | `ai_provider_secret_versions` | `root_key_version` where `ciphertext IS NOT NULL` | Find encrypted rows that still depend on a root-key version |
 | `idx_ai_connection_attestations_review_due_at` | `ai_connection_attestations` | `review_due_at` | Find attestations approaching or past review |
 | `idx_ai_connection_verification_evidence_connection_version` | `ai_connection_verification_evidence` | `(ai_connection_id, connection_configuration_version, verified_at)` | Resolve current connection verification evidence |
 | `idx_ai_connection_models_ai_connection_id` | `ai_connection_models` | `ai_connection_id` | List stable models under a connection |
@@ -3208,6 +3271,7 @@ The following table lists every named FK constraint:
 | `fk_requirement_areas_owner_hsa_id` | `requirement_areas` | `owner_hsa_id` | `requirement_responsibility_people.hsa_id` | NO ACTION | NO ACTION |
 | `fk_ai_safety_rule_terms_rule_id` | `ai_safety_rule_terms` | `rule_id` | `ai_safety_rules.id` | CASCADE | NO ACTION |
 | `fk_ai_connection_attestations_ai_connection_id` | `ai_connection_attestations` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
+| `fk_ai_provider_secret_versions_ai_connection_id` | `ai_provider_secret_versions` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_verification_evidence_ai_connection_id` | `ai_connection_verification_evidence` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_models_ai_connection_id` | `ai_connection_models` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_model_revisions_ai_connection_model_id` | `ai_connection_model_revisions` | `ai_connection_model_id` | `ai_connection_models.id` | NO ACTION | NO ACTION |
@@ -3313,6 +3377,7 @@ graph LR
 
     subgraph AI Connections
         AIC[ai_connections]
+        AIPSV[ai_provider_secret_versions]
         AICA[ai_connection_attestations]
         AICVE[ai_connection_verification_evidence]
         AICM[ai_connection_models]
@@ -3391,6 +3456,9 @@ graph LR
     AIRT -- "uq_..._rule_type_normalized\n(rule_id, term_type, normalized_term)" --> AIRT
 
     AIC -- "uq_..._administration_name\n(administration_name)" --> AIC
+    AIPSV -- "FK ai_connection_id" --> AIC
+    AIPSV -- "uq_..._active_connection\n(ai_connection_id WHERE active)" --> AIC
+    AIPSV -- "idx_..._root_key_version\n(root_key_version WHERE encrypted)" --> AIPSV
     AICA -- "FK ai_connection_id" --> AIC
     AICA -- "uq_..._connection_revision\n(ai_connection_id, revision_number)" --> AIC
     AICVE -- "FK ai_connection_id" --> AIC

@@ -275,6 +275,9 @@ __pycache__/
 # Cookie jars produced by scripts/dev-login.mjs
 .auth/
 
+# Locally provisioned AI provider-secret root keyring
+/.local/ai-provider-secret-keyring.json
+
 .agents
 .agent
 

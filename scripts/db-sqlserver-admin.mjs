@@ -68,6 +68,7 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'ai_connection_models',
   'ai_connection_verification_evidence',
   'ai_connection_attestations',
+  'ai_provider_secret_versions',
   'ai_connections',
   'requirement_area_co_authors',
   'requirement_areas',

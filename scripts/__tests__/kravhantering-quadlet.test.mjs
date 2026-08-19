@@ -285,6 +285,10 @@ describe('kravhantering Quadlet helper', () => {
     expect(appRuntime).toContain('ReadOnlyTmpfs=false')
     expect(appRuntime).toContain('PidsLimit=512')
     expect(appRuntime).toContain('LogDriver=journald')
+    expect(appRuntime).toContain('PodmanArgs=--group-add=keep-groups')
+    expect(appRuntime).toContain(
+      'Volume=/etc/kravhantering/secrets:/run/secrets/kravhantering:ro',
+    )
     expect(appRuntime).toContain(
       'Tmpfs=/run/kravhantering/export:rw,size=1024M,mode=0700,U,nosuid,nodev,noexec',
     )
@@ -720,6 +724,9 @@ describe('kravhantering Quadlet helper', () => {
     )
     expect(allContent).toContain(
       'Volume=/etc/kravhantering/tls/ca.crt:/run/kravhantering/tls/ca.crt:ro',
+    )
+    expect(allContent).toContain(
+      'Volume=/etc/kravhantering/secrets:/run/secrets/kravhantering:ro',
     )
     expect(allContent).not.toMatch(
       /^(?:After|Requires)=.*\.(?:container|network|volume)(?:\s|$)/mu,
@@ -1764,7 +1771,7 @@ rotate_sqlserver_certificate
     )
   })
 
-  it('requires crun for TLS key group access but not for HTTP', () => {
+  it('requires crun for restricted secret group access in every topology', () => {
     const tlsFixture = createFixture(releaseEnv())
     writePodmanProbe(tlsFixture.podmanPath, 'runc')
     const tlsResult = runHelper(
@@ -1781,9 +1788,12 @@ rotate_sqlserver_certificate
 
     expect(tlsResult.status).not.toBe(0)
     expect(tlsResult.stderr).toContain(
-      'TLS topology requires the crun OCI runtime (reported: runc)',
+      'restricted secret mounts require the crun OCI runtime (reported: runc)',
     )
-    expect(httpResult.status).toBe(0)
+    expect(httpResult.status).not.toBe(0)
+    expect(httpResult.stderr).toContain(
+      'restricted secret mounts require the crun OCI runtime (reported: runc)',
+    )
   })
 
   it('rejects journald automatic sizing as an explicit retention bound', () => {

@@ -18,6 +18,8 @@ Environment=KRAVHANTERING_EXPORT_TEMP_DIR=/run/kravhantering/export
 Network=kravhantering-app-node-edge.network
 Network=kravhantering-app-node-egress.network
 PodmanArgs=--network-alias=app-runtime
+PodmanArgs=--group-add=keep-groups
+Volume=/etc/kravhantering/secrets:/run/secrets/kravhantering:ro
 @@APP_RUNTIME_EXPORT_MOUNT@@
 Tmpfs=/tmp:rw,size=64M,mode=1777,nosuid,nodev,noexec
 

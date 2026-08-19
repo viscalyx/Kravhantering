@@ -57,6 +57,13 @@ configuration change.
 >from an allowed monitoring source and denial from another source after
 >rollout.
 
+When the target release enables connection-managed AI, provision and back up
+the external provider-secret root keyring before migration. Keep every version
+referenced by current rows or retained database backups, mount it read-only,
+and test database plus keyring restore as one recovery set. Follow
+[AI Connections Operations](./ai-connections.md); do not put root keys in
+`app.env` or release artifacts.
+
 1. Confirm the target release bundle, checksum and locked image identities.
    Download the target bundle and checksum from the approved release source:
 

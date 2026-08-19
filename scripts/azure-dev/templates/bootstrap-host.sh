@@ -898,6 +898,7 @@ run_repository_setup() {
     cd "${WORKSPACE_DIR}"
     node scripts/install-repository-npm.mjs
   )
+  run_as_vscode "cd '${WORKSPACE_DIR}' && node scripts/provision-ai-provider-secret-keyring.mjs"
   run_as_vscode "cd '${WORKSPACE_DIR}' && npm install"
   run_as_vscode "cd '${WORKSPACE_DIR}' && dotnet tool restore"
   run_as_vscode "cd '${WORKSPACE_DIR}' && npx playwright install --with-deps"

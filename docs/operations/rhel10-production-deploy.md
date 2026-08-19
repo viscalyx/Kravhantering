@@ -122,6 +122,7 @@ verification.
 | `AUTH_MCP_REQUIRED_SCOPES` | `AUTH_MCP_REQUIRED_SCOPES` in `app.env` | No default | Required when MCP is enabled; use `kravhantering:mcp` unless the approved IdP contract differs. |
 | `AUTH_MCP_ROLES_CLAIM` | `AUTH_MCP_ROLES_CLAIM` in `app.env` | `roles` | Plan only if the approved MCP role mapper emits another claim. |
 | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` in `app.env` | `300` | Integer from `60` through `900`; keep aligned with the service client's declared token lifetime. |
+| `AI_PROVIDER_SECRET_KEYRING_FILE` | External root keyring mounted into `app-runtime` | `/run/secrets/kravhantering/ai-provider-secret-keyring.json` | Required before enabling connection-managed AI. Provision all referenced 256-bit key versions through the approved secret manager; see [AI Connections Operations](./ai-connections.md#external-root-keyring). |
 | `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation is approved. |
 | `OPENROUTER_MGMT_API_KEY` | `OPENROUTER_MGMT_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation and organization credit display are approved. |
 | `NEXT_PUBLIC_DEFAULT_MODEL` | `NEXT_PUBLIC_DEFAULT_MODEL` in `app.env` | Empty | Plan only if the deployment should preselect a public default AI model. |
@@ -178,9 +179,10 @@ podman info --format '{{.Host.CgroupsVersion}}'
 podman info --format '{{.Host.OCIRuntime.Name}}'
 ```
 
-The reported cgroup version must be `v2`. Hosts that use the TLS topology must
-report `crun` as the OCI runtime so rootless nginx can preserve the service
-user's group access to the `0640` TLS private key.
+The reported cgroup version must be `v2`, and every app host must report `crun`
+as the OCI runtime. Rootless `app-runtime` uses supplementary-group
+preservation to read the `0640` provider-secret keyring; TLS nodes also use it
+for nginx access to the group-restricted TLS private key.
 
 Create a dedicated rootless service user:
 
@@ -195,6 +197,7 @@ Create immutable release and mutable configuration directories:
 sudo install -d -o root -g root -m 0755 /opt/kravhantering/releases
 sudo install -d -o root -g root -m 0755 /etc/kravhantering
 sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/tls
+sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/secrets
 ```
 
 Release files live under `/opt/kravhantering/releases/<version>`.
@@ -651,6 +654,8 @@ HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET=
 HSA_PERSON_LOOKUP_OAUTH_SCOPE=
 HSA_PERSON_LOOKUP_OAUTH_AUDIENCE=
 
+AI_PROVIDER_SECRET_KEYRING_FILE=/run/secrets/kravhantering/ai-provider-secret-keyring.json
+
 NEXT_PUBLIC_DEFAULT_MODEL=
 OPENROUTER_API_KEY=
 OPENROUTER_MGMT_API_KEY=
@@ -739,6 +744,16 @@ no model fall back to the built-in default. Set `OPENROUTER_MGMT_API_KEY` only
 if the app should display organization credit information.
 `NEXT_PUBLIC_DEFAULT_MODEL` is public client configuration; do not put secrets
 in it.
+
+Before enabling connection-managed AI, provision
+`/etc/kravhantering/secrets/ai-provider-secret-keyring.json` from the approved
+secret manager with owner `root:kravhantering` and mode `0640`, apply the
+container-readable SELinux label, and roll every app node. The Quadlet unit
+mounts the directory read-only. Follow
+[AI Connections Operations](./ai-connections.md) for the exact file format,
+provider-secret activation, rotation, backup, restore, and secure key deletion
+procedure. A missing version blocks only dependent AI profiles; it does not
+change application readiness.
 
 For Keycloak, the client must emit the realm roles and `hsaId` user attribute
 as the `roles` and `employeeHsaId` claims. The `roles` claim must be a JSON

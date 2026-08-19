@@ -124,6 +124,19 @@ describe('GET /api/ready', () => {
     )
   })
 
+  it('keeps readiness independent from an unavailable optional AI keyring', async () => {
+    setReadyDefaults()
+    vi.stubEnv(
+      'AI_PROVIDER_SECRET_KEYRING_FILE',
+      '/missing/ai-provider-secret-keyring.json',
+    )
+
+    const response = await route.GET(request())
+
+    expect(response.status).toBe(200)
+    expect(await readJson(response)).toEqual({ status: 'ready' })
+  })
+
   it('returns not_ready without leaking details when runtime config is missing', async () => {
     setReadyDefaults()
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', '')

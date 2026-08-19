@@ -24,6 +24,85 @@ Product administrators can write or replace provider secrets but can never
 read or export their plaintext. Operations handles root keys but does not need
 to participate in an ordinary provider-secret rotation.
 
+## Provider-Secret Cryptography
+
+Each secret revision is encrypted before SQL Server sees it. The envelope uses
+AES-256-GCM, a new 12-byte cryptographically random nonce, and a 16-byte
+authentication tag. Its authenticated additional data is the exact UTF-8 byte
+sequence below, where `NUL` is one zero byte and UUIDs are lowercase:
+
+<!-- markdownlint-disable MD013 -->
+
+```text
+kravhantering.ai-provider-secret NUL 1 NUL <root-key-version> NUL <connection-id> NUL <secret-revision-id>
+```
+
+<!-- markdownlint-enable MD013 -->
+
+The database stores only ciphertext, nonce, tag, cipher-format version, and the
+explicit root-key version. Moving an envelope to another connection or secret
+revision, or changing either version field, therefore makes authentication
+fail. Plaintext exists only inside the internal adapter-call callback. Do not
+return it from that callback or write it to an API response, log, error,
+telemetry event, test artifact, or export.
+
+## External Root Keyring
+
+Set `AI_PROVIDER_SECRET_KEYRING_FILE` to an external JSON file with this shape:
+
+```json
+{
+  "formatVersion": 1,
+  "activeWriteVersion": "2026-08-a",
+  "keys": {
+    "2026-08-a": "<base64-encoded-32-byte-key>",
+    "2026-05-b": "<base64-encoded-32-byte-key>"
+  }
+}
+```
+
+Versions are opaque identifiers. The application encrypts new revisions only
+with `activeWriteVersion` and decrypts each stored revision only with its
+recorded version; it never chooses the lexically or numerically highest key.
+Every key must decode to exactly 32 bytes.
+
+In the production Quadlet topologies, provision the file as
+`/etc/kravhantering/secrets/ai-provider-secret-keyring.json`, owned by
+`root:kravhantering` with mode `0640`. Keep the directory at mode `0750` and
+apply the site's container-readable SELinux label. The app mounts that
+directory read-only at `/run/secrets/kravhantering`. Distribute the same
+required versions to every app node through the approved secret manager; do
+not put key bytes in `app.env`, the repository, release artifacts, or support
+bundles.
+
+For local development, both devcontainer variants and the Azure development
+bootstrap run:
+
+```bash
+node scripts/provision-ai-provider-secret-keyring.mjs
+```
+
+The helper atomically creates the ignored
+`.local/ai-provider-secret-keyring.json` with private permissions. Repeated or
+concurrent runs leave an existing file byte-for-byte unchanged and never read
+or print its key material. Use `--path <file>` only when testing an alternate
+local path. This helper is for local provisioning, not production key
+generation or distribution.
+
+## Provider-Secret Lifecycle
+
+Writing or replacing a provider secret creates an encrypted `candidate`
+revision. Test that exact candidate against its exact AI connection before an
+atomic activation makes it `active` and supersedes the previous revision. A
+failed test leaves the candidate inactive. An unactivated candidate may be
+deleted.
+
+A still-encrypted superseded revision may be restored only after a new
+connection test. After the old provider credential has been revoked, confirm
+revocation to erase its ciphertext, nonce, and tag while retaining lifecycle
+and audit metadata. A revision whose encrypted material was erased cannot be
+restored; enter a new candidate instead.
+
 ## Pre-deployment Gate
 
 Keep the global AI guard active during installation and upgrade. Before
@@ -83,17 +162,21 @@ action and administrator decision.
 
 1. Add the new 256-bit root-key version to the external keyring without
    removing any old version.
-2. Distribute the keyring and verify that every app node has loaded the new
-   version.
-3. Change the active write version atomically. Never infer it from the highest
-   version number.
-4. Re-encrypt existing provider-secret revisions and verify that every row can
-   be decrypted with its recorded root-key version.
-5. Keep each old root-key version while any database row or restorable backup
+2. Keep `activeWriteVersion` unchanged, distribute the expanded keyring, roll
+   every app node, and verify the new version is available everywhere.
+3. Change `activeWriteVersion` explicitly and atomically, distribute it, and
+   roll every app node. Never infer it from the highest version number.
+4. Re-encrypt rows that explicitly reference the old version. This creates a
+   fresh nonce for every envelope; do not change connection or secret-revision
+   IDs.
+5. List referenced root-key versions and prove that every row decrypts with its
+   recorded version. Include retained database backups in this inventory.
+6. Keep each old root-key version while any database row or restorable backup
    depends on it.
-6. Remove an old version only through the central secret and deployment
-   mechanism, roll all nodes, and verify that no node or restorable backup
-   still needs it.
+7. Remove an old version only through the central secret and deployment
+   mechanism, roll all nodes, and verify again that no node, row, or retained
+   backup needs it. Securely delete retired key material according to the
+   secret manager's destruction procedure.
 
 ## Backup and Restore
 
@@ -102,6 +185,11 @@ set. Record which root-key versions each retained backup can require. A restore
 test must prove that encrypted provider secrets can be decrypted without
 exposing their plaintext through the API, Admin Center, logs, or test
 artifacts.
+
+Restore into an isolated environment, restore the matching keyring through the
+approved secret mechanism, and test each referenced version through the
+internal provider-secret availability or connection-test path. Do not query or
+export decrypted values. Record only opaque revision IDs and pass/fail results.
 
 If a required root-key version is missing, keep the global AI guard active and
 block affected run profiles. Restore the key version from the approved backup.

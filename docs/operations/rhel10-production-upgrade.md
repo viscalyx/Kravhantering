@@ -35,6 +35,13 @@ change.
 >install every topology without this file. Verify readiness from an allowed
 >monitoring source and denial from another source after rollout.
 
+When the target release enables connection-managed AI, provision and back up
+the external provider-secret root keyring before migration. Keep every version
+referenced by current rows or retained database backups, mount it read-only on
+every app node, and test database plus keyring restore as one recovery set.
+Follow [AI Connections Operations](./ai-connections.md); do not place root keys
+in `app.env` or release artifacts.
+
 Run app-node steps on every RHEL app node. Run the database job sequence once
 for the release, after the target release bundle and image references are in
 place.
