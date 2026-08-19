@@ -43,7 +43,7 @@ export function describeAiConnectionAdapterContract(
       const harness = createHarness()
       const adapter = createAiConnectionAdapterRegistry([
         harness.registration,
-      ]).resolve(harness.adapterType)
+      ]).resolve(harness.adapterType, harness.registration.adapterVersion)
 
       const events = await collectEvents(
         adapter.run(harness.completedRequest()),

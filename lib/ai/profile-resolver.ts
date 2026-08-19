@@ -1,3 +1,4 @@
+import type { AiConnectionTrustConfiguration } from './connection-trust'
 import type {
   AiCapabilitySelection,
   AiConnectionId,
@@ -50,6 +51,7 @@ export interface AiPersistedRunProfile {
   operationalStatus: AiRunProfileOperationalStatus
   profileRevisionId: string
   profileRevisionStatus: AiPersistedRunProfileRevisionStatus
+  trustConfiguration: Readonly<AiConnectionTrustConfiguration> | null
   verifiedCapabilitiesJson: string | null
 }
 
@@ -83,6 +85,7 @@ export interface AiResolvedRunProfile {
   modelRevisionId: AiConnectionModelRevisionId
   profileRevisionId: AiRunProfileRevisionId
   selectedCapabilities: Readonly<AiCapabilitySelection>
+  trustConfiguration: Readonly<AiConnectionTrustConfiguration>
   withAdapterConfiguration(
     use: (profile: Readonly<AiAdapterReadyRunProfile>) => Promise<void>,
   ): Promise<void>
@@ -282,7 +285,8 @@ function hasValidDependencies(profile: AiPersistedRunProfile): boolean {
     profile.modelRevisionConnectionConfigurationVersion ===
       profile.connectionConfigurationVersion &&
     profile.modelRevisionAgentRuntimeVersion ===
-      profile.connectionAgentRuntimeVersion
+      profile.connectionAgentRuntimeVersion &&
+    profile.trustConfiguration !== null
   )
 }
 
@@ -347,6 +351,8 @@ export function createAiRunProfileResolver(
       const modelRevisionId =
         profile.modelRevisionId as AiConnectionModelRevisionId
       const profileSnapshot = freezePersistedProfile(profile)
+      const trustConfiguration = profileSnapshot.trustConfiguration
+      if (!trustConfiguration) throw blocked()
       const verifiedCapabilities = Object.freeze({
         aiAnalysis: verified.aiAnalysis,
         cost: verified.cost,
@@ -394,6 +400,20 @@ export function createAiRunProfileResolver(
         modelRevisionId,
         profileRevisionId: profile.profileRevisionId as AiRunProfileRevisionId,
         selectedCapabilities: Object.freeze(selectedCapabilities),
+        trustConfiguration: Object.freeze({
+          ...trustConfiguration,
+          dataPolicy: trustConfiguration.dataPolicy
+            ? Object.freeze({
+                ...trustConfiguration.dataPolicy,
+                processingRegions: Object.freeze([
+                  ...trustConfiguration.dataPolicy.processingRegions,
+                ]),
+                subprocessors: Object.freeze([
+                  ...trustConfiguration.dataPolicy.subprocessors,
+                ]),
+              })
+            : null,
+        }),
         withAdapterConfiguration,
       })
     },

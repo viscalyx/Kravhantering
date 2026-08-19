@@ -15,10 +15,12 @@ import {
   createAiAdapterRunContext,
   guardAiRunEventStream,
 } from './run-contracts'
+import type { AiPreparedRun, AiRunTrustBoundary } from './run-trust-boundary'
 
 export interface CreateAiIntegrationLayerOptions {
   adapterRegistry: AiConnectionAdapterRegistry
   profileResolver: AiRunProfileResolver
+  trustBoundary: AiRunTrustBoundary
 }
 
 interface Deferred<T> {
@@ -61,6 +63,21 @@ function adapterConfigurationScopeFailure(identity: AiRunIdentity): AiRunEvent {
   }
 }
 
+function trustBoundaryFailure(
+  identity: AiRunIdentity,
+  diagnosticCode: 'final_safety_gate_blocked' | 'trust_boundary_blocked',
+): AiRunEvent {
+  return {
+    failure: {
+      category: 'request_rejected',
+      diagnosticCode,
+      retryable: false,
+    },
+    identity,
+    type: 'failed',
+  }
+}
+
 function isTerminalEvent(
   event: AiRunEvent,
 ): event is Extract<
@@ -91,6 +108,8 @@ async function* runInAdapterConfigurationScope(
   profile: Readonly<AiResolvedRunProfile>,
   request: AiIntegrationRunRequest,
   identity: AiRunIdentity,
+  prepared: Readonly<AiPreparedRun>,
+  quarantine: (text: string) => void,
 ): AsyncIterable<AiRunEvent> {
   const iteratorReady = deferred<AsyncIterator<AiRunEvent>>()
   const releaseScope = deferred<void>()
@@ -102,11 +121,11 @@ async function* runInAdapterConfigurationScope(
       try {
         stream = adapter.run({
           connection: configuredProfile.connection,
-          context: createAiAdapterRunContext(request.context),
+          context: createAiAdapterRunContext(request.context, prepared.egress),
           modelRevision: configuredProfile.modelRevision,
           runProfileRevisionId: profile.profileRevisionId,
           selectedCapabilities: profile.selectedCapabilities,
-          task: request.task,
+          task: prepared.task,
         })
       } catch {
         stream = (async function* failedRun() {
@@ -139,7 +158,7 @@ async function* runInAdapterConfigurationScope(
       if (isTerminalEvent(result.value)) {
         terminalEvent = result.value
       } else {
-        yield result.value
+        quarantine(result.value.delta)
       }
     }
   } catch (error) {
@@ -183,7 +202,43 @@ export function createAiIntegrationLayer(
         aiConnectionModelRevisionId: profile.modelRevisionId,
         aiRunProfileRevisionId: profile.profileRevisionId,
       })
-      yield* runInAdapterConfigurationScope(adapter, profile, request, identity)
+      let prepared: Readonly<AiPreparedRun>
+      try {
+        prepared = await options.trustBoundary.prepareRun({
+          runType: request.type,
+          task: request.task,
+          trustConfiguration: profile.trustConfiguration,
+        })
+      } catch {
+        yield trustBoundaryFailure(identity, 'trust_boundary_blocked')
+        return
+      }
+      const quarantinedText: string[] = []
+      for await (const event of runInAdapterConfigurationScope(
+        adapter,
+        profile,
+        request,
+        identity,
+        prepared,
+        text => quarantinedText.push(text),
+      )) {
+        if (event.type !== 'completed') {
+          yield event
+          continue
+        }
+        try {
+          await options.trustBoundary.approveCompleted({
+            analysis: event.analysis,
+            quarantinedText,
+            rawOutput: event.rawOutput,
+            responseSchema: prepared.task.responseSchema,
+          })
+        } catch {
+          yield trustBoundaryFailure(identity, 'final_safety_gate_blocked')
+          return
+        }
+        yield event
+      }
     },
   }
 }

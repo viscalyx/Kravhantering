@@ -11,6 +11,7 @@ import type {
   AiRunEvent,
   AiRunUsage,
 } from '@/lib/ai/run-contracts'
+import type { AiRunTrustBoundary } from '@/lib/ai/run-trust-boundary'
 
 const USAGE: AiRunUsage = {
   analysisTokens: { reason: 'not_reported', status: 'unavailable' },
@@ -18,6 +19,15 @@ const USAGE: AiRunUsage = {
   inputTokens: { reason: 'not_reported', status: 'unavailable' },
   outputTokens: { reason: 'not_reported', status: 'unavailable' },
   totalTokens: { reason: 'not_reported', status: 'unavailable' },
+}
+
+const TEST_EGRESS = { fetch: vi.fn() }
+const PASSING_TRUST_BOUNDARY: AiRunTrustBoundary = {
+  approveCompleted: vi.fn(async () => undefined),
+  prepareRun: vi.fn(async input => ({
+    egress: TEST_EGRESS,
+    task: input.task,
+  })),
 }
 
 function profile(
@@ -47,6 +57,20 @@ function profile(
     operationalStatus: 'enabled',
     profileRevisionId: 'profile-revision-31',
     profileRevisionStatus: 'active',
+    trustConfiguration: {
+      authenticationType: 'static_secret',
+      dataPolicy: {
+        isPersonalDataProcessed: false,
+        isTrainingAllowed: false,
+        maximumInformationClass: 'internal',
+        maximumRetentionDays: 0,
+        processingRegions: ['SE'],
+        subprocessors: [],
+      },
+      egressPolicyKey: 'capture',
+      endpointUrl: 'https://capture.invalid/v1',
+      tlsPolicyKey: 'public_web_pki',
+    },
     verifiedCapabilitiesJson: JSON.stringify({
       aiAnalysis: false,
       cost: false,
@@ -84,7 +108,11 @@ async function collect(
   return result
 }
 
-function integration(adapter: AIConnectionAdapter, stored = profile()) {
+function integration(
+  adapter: AIConnectionAdapter,
+  stored = profile(),
+  trustBoundary: AiRunTrustBoundary = PASSING_TRUST_BOUNDARY,
+) {
   const resolver = createAiRunProfileResolver({
     profileSource: { findActiveRevision: async () => stored },
     resolveAdapterConfiguration: async (_profile, use) => {
@@ -103,6 +131,7 @@ function integration(adapter: AIConnectionAdapter, stored = profile()) {
       },
     ]),
     profileResolver: resolver,
+    trustBoundary,
   })
 }
 
@@ -210,6 +239,7 @@ describe('AI integration layer', () => {
         { adapter, adapterType: 'capture', adapterVersion: '3' },
       ]),
       profileResolver: resolver,
+      trustBoundary: PASSING_TRUST_BOUNDARY,
     })
 
     const error = await collect(layer.run(request())).catch(
@@ -261,6 +291,7 @@ describe('AI integration layer', () => {
         { adapter: fallback, adapterType: 'fallback', adapterVersion: '1' },
       ]),
       profileResolver: resolver,
+      trustBoundary: PASSING_TRUST_BOUNDARY,
     })
 
     await expect(collect(layer.run(request()))).resolves.toMatchObject([
@@ -338,55 +369,10 @@ describe('AI integration layer', () => {
         { adapter, adapterType: 'capture', adapterVersion: '3' },
       ]),
       profileResolver: resolver,
+      trustBoundary: PASSING_TRUST_BOUNDARY,
     })
 
-    await expect(collect(layer.run(request()))).resolves.toHaveLength(2)
-    expect(scopeActive).toBe(false)
-  })
-
-  it('closes transient configuration when adapter iterator cleanup rejects', async () => {
-    let scopeActive = false
-    const resolver = createAiRunProfileResolver({
-      profileSource: { findActiveRevision: async () => profile() },
-      resolveAdapterConfiguration: async (_stored, use) => {
-        scopeActive = true
-        try {
-          await use({ connection: {}, modelRevision: {} })
-        } finally {
-          scopeActive = false
-        }
-      },
-    })
-    const adapter: AIConnectionAdapter = {
-      run() {
-        return {
-          [Symbol.asyncIterator]() {
-            return {
-              next: async () => ({
-                done: false as const,
-                value: { delta: 'thinking', type: 'analysis_delta' as const },
-              }),
-              return: async () => {
-                throw new Error('adapter cleanup details must stay private')
-              },
-            }
-          },
-        }
-      },
-    }
-    const layer = createAiIntegrationLayer({
-      adapterRegistry: createAiConnectionAdapterRegistry([
-        { adapter, adapterType: 'capture', adapterVersion: '3' },
-      ]),
-      profileResolver: resolver,
-    })
-    const iterator = layer.run(request())[Symbol.asyncIterator]()
-
-    await expect(iterator.next()).resolves.toMatchObject({
-      done: false,
-      value: { delta: 'thinking', type: 'analysis_delta' },
-    })
-    await expect(iterator.return?.()).resolves.toMatchObject({ done: true })
+    await expect(collect(layer.run(request()))).resolves.toHaveLength(1)
     expect(scopeActive).toBe(false)
   })
 
@@ -418,6 +404,7 @@ describe('AI integration layer', () => {
         { adapter, adapterType: 'capture', adapterVersion: '3' },
       ]),
       profileResolver: resolver,
+      trustBoundary: PASSING_TRUST_BOUNDARY,
     })
 
     await expect(collect(layer.run(request()))).resolves.toEqual([
@@ -431,6 +418,119 @@ describe('AI integration layer', () => {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
           aiRunProfileRevisionId: 'profile-revision-31',
+        },
+        type: 'failed',
+      },
+    ])
+  })
+
+  it('blocks before adapter egress when the app-owned input gate fails', async () => {
+    let called = false
+    const adapter: AIConnectionAdapter = {
+      async *run() {
+        called = true
+        yield* [] as AiRunEvent[]
+      },
+    }
+    const trustBoundary: AiRunTrustBoundary = {
+      approveCompleted: async () => undefined,
+      prepareRun: async () => {
+        throw new Error('raw prompt and endpoint must stay private')
+      },
+    }
+
+    await expect(
+      collect(integration(adapter, profile(), trustBoundary).run(request())),
+    ).resolves.toEqual([
+      {
+        failure: {
+          category: 'request_rejected',
+          diagnosticCode: 'trust_boundary_blocked',
+          retryable: false,
+        },
+        identity: {
+          aiConnectionId: 'connection-17',
+          aiConnectionModelRevisionId: 'model-revision-23',
+          aiRunProfileRevisionId: 'profile-revision-31',
+        },
+        type: 'failed',
+      },
+    ])
+    expect(called).toBe(false)
+  })
+
+  it('quarantines all deltas and screens them with the buffered final output', async () => {
+    const approveCompleted = vi.fn(async () => undefined)
+    const trustBoundary: AiRunTrustBoundary = {
+      approveCompleted,
+      prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
+    }
+    const adapter: AIConnectionAdapter = {
+      async *run(adapterRequest) {
+        yield { delta: 'private analysis delta', type: 'analysis_delta' }
+        yield {
+          delta: '{"requirements":',
+          type: 'output_delta',
+          visibility: 'internal',
+        }
+        yield {
+          analysis: 'private analysis delta',
+          identity: {
+            aiConnectionId: adapterRequest.connection.id,
+            aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+          },
+          rawOutput: '{"requirements":[]}',
+          type: 'completed',
+          usage: USAGE,
+        }
+      },
+    }
+
+    const events = await collect(
+      integration(adapter, profile(), trustBoundary).run(request()),
+    )
+
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ type: 'completed' })
+    expect(approveCompleted).toHaveBeenCalledWith({
+      analysis: 'private analysis delta',
+      quarantinedText: ['private analysis delta', '{"requirements":'],
+      rawOutput: '{"requirements":[]}',
+      responseSchema: { type: 'object' },
+    })
+  })
+
+  it('replaces a completed result when final screening fails', async () => {
+    const trustBoundary: AiRunTrustBoundary = {
+      approveCompleted: async () => {
+        throw new Error('unsafe raw output')
+      },
+      prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
+    }
+    const adapter: AIConnectionAdapter = {
+      async *run(adapterRequest) {
+        yield {
+          analysis: null,
+          identity: {
+            aiConnectionId: adapterRequest.connection.id,
+            aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+          },
+          rawOutput: '{"secret":"must-not-escape"}',
+          type: 'completed',
+          usage: USAGE,
+        }
+      },
+    }
+
+    await expect(
+      collect(integration(adapter, profile(), trustBoundary).run(request())),
+    ).resolves.toMatchObject([
+      {
+        failure: {
+          category: 'request_rejected',
+          diagnosticCode: 'final_safety_gate_blocked',
         },
         type: 'failed',
       },

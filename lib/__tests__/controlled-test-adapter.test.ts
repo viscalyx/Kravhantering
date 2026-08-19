@@ -86,12 +86,15 @@ function request(
       configuration,
       id: CONNECTION_ID,
     },
-    context: createAiAdapterRunContext({
-      abortSignal,
-      applicationRunId: 'app-run-98',
-      correlationId: 'correlation-42',
-      deadlineAt: '2026-08-19T12:00:00.000Z',
-    }),
+    context: createAiAdapterRunContext(
+      {
+        abortSignal,
+        applicationRunId: 'app-run-98',
+        correlationId: 'correlation-42',
+        deadlineAt: '2026-08-19T12:00:00.000Z',
+      },
+      { fetch: vi.fn() },
+    ),
     modelRevision: {
       configuration: {},
       externalModelId: 'controlled/model-v1',

@@ -9,6 +9,12 @@ describe('SQL Server AI run profile source', () => {
         adapterType: 'controlled_test',
         adapterVersion: '1',
         agentRuntimeKey: 'controlled_runtime',
+        attestationIsPersonalDataProcessed: false,
+        attestationIsTrainingAllowed: false,
+        attestationMaximumInformationClass: 'internal',
+        attestationMaximumRetentionDays: 0,
+        attestationProcessingRegionsJson: '["SE"]',
+        attestationSubprocessorsJson: '[]',
         capabilityPolicyJson: '{"streaming":"required"}',
         connectionAgentRuntimeVersion: 'runtime-v2',
         connectionConfigurationVersion: 7,
@@ -62,6 +68,20 @@ describe('SQL Server AI run profile source', () => {
       operationalStatus: 'enabled',
       profileRevisionId: 'profile-revision-31',
       profileRevisionStatus: 'active',
+      trustConfiguration: {
+        authenticationType: 'static_secret',
+        dataPolicy: {
+          isPersonalDataProcessed: false,
+          isTrainingAllowed: false,
+          maximumInformationClass: 'internal',
+          maximumRetentionDays: 0,
+          processingRegions: ['SE'],
+          subprocessors: [],
+        },
+        egressPolicyKey: 'controlled_test',
+        endpointUrl: 'https://adapter.invalid/v1',
+        tlsPolicyKey: 'public_web_pki',
+      },
       verifiedCapabilitiesJson: '{"validatableJson":true}',
     })
     expect(query).toHaveBeenCalledWith(
@@ -85,5 +105,21 @@ describe('SQL Server AI run profile source', () => {
         'invalid_json_repair',
       ),
     ).resolves.toBeNull()
+  })
+
+  it('fails closed when attestation policy JSON is malformed', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        attestationProcessingRegionsJson: 'not JSON',
+        attestationSubprocessorsJson: '[]',
+      },
+    ])
+    const db = { query } as unknown as SqlServerDatabase
+
+    await expect(
+      createSqlServerAiRunProfileSource(db).findActiveRevision(
+        'generation_without_images',
+      ),
+    ).resolves.toMatchObject({ trustConfiguration: null })
   })
 })

@@ -58,12 +58,14 @@ describe('AI run contracts', () => {
       deadlineAt: '2026-08-19T12:00:00.000Z',
     }
 
-    const first = createAiAdapterRunContext(context)
-    const second = createAiAdapterRunContext(context)
+    const egress = { fetch: vi.fn() }
+    const first = createAiAdapterRunContext(context, egress)
+    const second = createAiAdapterRunContext(context, egress)
 
     expect(first).toEqual({
       abortSignal: abortController.signal,
       deadlineAt: '2026-08-19T12:00:00.000Z',
+      egress,
       externalRunId: expect.stringMatching(
         /^airun_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
       ),

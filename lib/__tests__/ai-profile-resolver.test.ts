@@ -56,6 +56,20 @@ function persistedProfile(
     operationalStatus: 'enabled',
     profileRevisionId: 'profile-revision-31',
     profileRevisionStatus: 'active',
+    trustConfiguration: {
+      authenticationType: 'static_secret',
+      dataPolicy: {
+        isPersonalDataProcessed: false,
+        isTrainingAllowed: false,
+        maximumInformationClass: 'internal',
+        maximumRetentionDays: 0,
+        processingRegions: ['SE'],
+        subprocessors: [],
+      },
+      egressPolicyKey: 'controlled_test',
+      endpointUrl: 'https://adapter.invalid/v1',
+      tlsPolicyKey: 'public_web_pki',
+    },
     capabilityPolicyJson: capabilityPolicy(type),
     verifiedCapabilitiesJson: JSON.stringify(VERIFIED_CAPABILITIES),
   }

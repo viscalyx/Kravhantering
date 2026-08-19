@@ -470,7 +470,7 @@ async function runNonStreaming(
 ): Promise<AiRunEvent> {
   let response: Response
   try {
-    response = await fetch(
+    response = await request.context.egress.fetch(
       `${(configuration.endpoint ?? DEFAULT_ENDPOINT).replace(/\/$/u, '')}/chat/completions`,
       {
         body: JSON.stringify(
@@ -592,7 +592,7 @@ async function* runStreaming(
 ): AsyncIterable<AiRunEvent> {
   let response: Response
   try {
-    response = await fetch(
+    response = await request.context.egress.fetch(
       `${(configuration.endpoint ?? DEFAULT_ENDPOINT).replace(/\/$/u, '')}/chat/completions`,
       {
         body: JSON.stringify(

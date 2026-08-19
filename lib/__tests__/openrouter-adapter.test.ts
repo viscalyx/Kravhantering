@@ -3,6 +3,7 @@ import { describeAiConnectionAdapterContract } from '@/lib/__tests__/ai-connecti
 import { createAiConnectionAdapterRegistry } from '@/lib/ai/adapter-registry'
 import {
   OPENROUTER_ADAPTER_TYPE,
+  OPENROUTER_ADAPTER_VERSION,
   openRouterAdapterRegistration,
 } from '@/lib/ai/openrouter-adapter'
 import {
@@ -37,12 +38,15 @@ function request(
       },
       id: 'connection-17' as AiConnectionId,
     },
-    context: createAiAdapterRunContext({
-      abortSignal,
-      applicationRunId: 'app-run-98',
-      correlationId: 'correlation-42',
-      deadlineAt: '2099-08-19T12:00:00.000Z',
-    }),
+    context: createAiAdapterRunContext(
+      {
+        abortSignal,
+        applicationRunId: 'app-run-98',
+        correlationId: 'correlation-42',
+        deadlineAt: '2099-08-19T12:00:00.000Z',
+      },
+      { fetch: mockFetch },
+    ),
     modelRevision: {
       configuration: { reasoningEffort: 'high' },
       externalModelId: 'provider/model-v1',
@@ -76,7 +80,7 @@ function request(
 function adapter() {
   return createAiConnectionAdapterRegistry([
     openRouterAdapterRegistration,
-  ]).resolve(OPENROUTER_ADAPTER_TYPE)
+  ]).resolve(OPENROUTER_ADAPTER_TYPE, OPENROUTER_ADAPTER_VERSION)
 }
 
 function nonStreamingResponse(

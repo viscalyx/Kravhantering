@@ -43,7 +43,12 @@ export type AiExternalRunId = string & {
 export interface AiAdapterRunContext {
   abortSignal: AbortSignal
   deadlineAt: string
+  egress: AiEgressTransport
   externalRunId: AiExternalRunId
+}
+
+export interface AiEgressTransport {
+  fetch(input: string, init: RequestInit): Promise<Response>
 }
 
 export interface AiCapabilitySelection {
@@ -207,10 +212,12 @@ type AiRunTerminalEvent = Extract<
 
 export function createAiAdapterRunContext(
   context: AiRunTechnicalContext,
+  egress: AiEgressTransport,
 ): AiAdapterRunContext {
   return {
     abortSignal: context.abortSignal,
     deadlineAt: context.deadlineAt,
+    egress,
     externalRunId: `airun_${randomUUID()}` as AiExternalRunId,
   }
 }

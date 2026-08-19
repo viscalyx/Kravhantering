@@ -13,6 +13,12 @@ interface AiRunProfileRow {
   adapterType: string
   adapterVersion: string
   agentRuntimeKey: string | null
+  attestationIsPersonalDataProcessed: boolean
+  attestationIsTrainingAllowed: boolean
+  attestationMaximumInformationClass: string
+  attestationMaximumRetentionDays: number
+  attestationProcessingRegionsJson: string
+  attestationSubprocessorsJson: string
   authenticationType: string
   capabilityPolicyJson: string
   connectionAgentRuntimeVersion: string | null
@@ -63,6 +69,16 @@ const ACTIVE_RUN_PROFILE_QUERY = `
     [connection].[agent_runtime_key] AS [agentRuntimeKey],
     [connection].[agent_runtime_version] AS [connectionAgentRuntimeVersion],
     [connection].[data_policy_summary] AS [dataPolicySummary]
+    ,[attestation].[maximum_information_class]
+      AS [attestationMaximumInformationClass]
+    ,[attestation].[is_personal_data_processed]
+      AS [attestationIsPersonalDataProcessed]
+    ,[attestation].[subprocessors_json] AS [attestationSubprocessorsJson]
+    ,[attestation].[processing_regions_json]
+      AS [attestationProcessingRegionsJson]
+    ,[attestation].[is_training_allowed] AS [attestationIsTrainingAllowed]
+    ,[attestation].[maximum_retention_days]
+      AS [attestationMaximumRetentionDays]
   FROM [ai_run_profiles] AS [profile]
   INNER JOIN [ai_run_profile_revisions] AS [revision]
     ON [revision].[ai_run_profile_id] = [profile].[id]
@@ -72,11 +88,30 @@ const ACTIVE_RUN_PROFILE_QUERY = `
     ON [model].[id] = [model_revision].[ai_connection_model_id]
   INNER JOIN [ai_connections] AS [connection]
     ON [connection].[id] = [model].[ai_connection_id]
+  INNER JOIN [ai_connection_attestations] AS [attestation]
+    ON [attestation].[ai_connection_id] = [connection].[id]
+    AND [attestation].[status] = N'valid'
+    AND ([attestation].[review_due_at] IS NULL
+      OR [attestation].[review_due_at] > SYSUTCDATETIME())
   WHERE [profile].[profile_key] = @0
     AND [revision].[status] = N'active'
 `
 
+function stringArray(value: string): readonly string[] | null {
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return Array.isArray(parsed) &&
+      parsed.every(item => typeof item === 'string' && item.length > 0)
+      ? parsed
+      : null
+  } catch {
+    return null
+  }
+}
+
 function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
+  const processingRegions = stringArray(row.attestationProcessingRegionsJson)
+  const subprocessors = stringArray(row.attestationSubprocessorsJson)
   return {
     adapterType: row.adapterType,
     adapterVersion: row.adapterVersion,
@@ -107,6 +142,29 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
     operationalStatus: row.operationalStatus,
     profileRevisionId: row.profileRevisionId,
     profileRevisionStatus: row.profileRevisionStatus,
+    trustConfiguration:
+      processingRegions && subprocessors
+        ? Object.freeze({
+            authenticationType: row.authenticationType as
+              | 'mtls'
+              | 'none'
+              | 'oauth2_client_credentials'
+              | 'static_secret',
+            dataPolicy: Object.freeze({
+              isPersonalDataProcessed: Boolean(
+                row.attestationIsPersonalDataProcessed,
+              ),
+              isTrainingAllowed: Boolean(row.attestationIsTrainingAllowed),
+              maximumInformationClass: row.attestationMaximumInformationClass,
+              maximumRetentionDays: Number(row.attestationMaximumRetentionDays),
+              processingRegions: Object.freeze([...processingRegions]),
+              subprocessors: Object.freeze([...subprocessors]),
+            }),
+            egressPolicyKey: row.egressPolicyKey,
+            endpointUrl: row.endpointUrl,
+            tlsPolicyKey: row.tlsPolicyKey,
+          })
+        : null,
     verifiedCapabilitiesJson: row.verifiedCapabilitiesJson,
   }
 }

@@ -104,6 +104,74 @@ revocation to erase its ciphertext, nonce, and tag while retaining lifecycle
 and audit metadata. A revision whose encrypted material was erased cannot be
 restored; enter a new candidate instead.
 
+## External Trust Boundary
+
+Every adapter call uses the app-owned trust boundary. Admin Center stores only
+the fixed authentication type and deployment policy keys; it cannot supply
+arbitrary request headers, CA material, a certificate-validation override, or
+an egress implementation.
+
+Production endpoints must use `https` or `wss` and contain no user information,
+query, or fragment. The endpoint origin must occur in the selected
+deployment-owned egress policy. Ordinary origins must resolve only to public IP
+addresses. A private, loopback, link-local, or internal destination is accepted
+only when both its exact origin and every permitted address occur in the
+deployment's sidecar policy. DNS is checked when configuration is verified,
+when an activation probe runs, and immediately before every transport request.
+Redirects and requests outside the verified endpoint path are rejected.
+
+The validated address set is pinned into the deployment-owned TLS transport
+for that request. The transport connects only to one of those addresses while
+retaining the original hostname for SNI and hostname/certificate validation.
+It must not resolve the hostname again.
+
+The application check and pinned transport complement the deployment egress
+firewall or proxy. Operations must generate the network control from the same
+reviewed allowlist as defense in depth.
+
+TLS policy implementations come from deployment configuration. Public policy
+uses normal Web PKI validation. A private policy may attach the site's private
+CA to its deployment-owned transport, but hostname, chain, and validity checks
+remain mandatory. Admin Center cannot upload CA material or disable validation.
+
+The fixed authentication types are static secret, OAuth 2.0 client credentials,
+and mTLS. Production sidecars require one of these forms. The only no-auth and
+plain HTTP exception is the exact `development-local` origin supplied by the
+development deployment; it is rejected in test and production environments.
+
+## Data and Content Gates
+
+The active, unexpired connection attestation supplies the connection's
+information-class ceiling, personal-data approval, regions, subprocessors,
+training decision, and retention maximum. The deployment-owned run-type policy
+supplies the conservative requirement for each fixed run profile. Missing,
+malformed, expired, or insufficient policy blocks the run. Request data cannot
+relax either policy.
+
+Before egress, the application:
+
+1. validates each image's signature against its declared MIME type
+2. enforces deployment-owned byte, width, height, decoded-pixel, and frame
+   limits
+3. decodes and re-encodes accepted images as PNG without source metadata
+4. screens every text part with the app-owned input safety filter
+
+The integration layer quarantines both analysis and output deltas. No delta is
+client-visible or importable. At the terminal boundary, the application screens
+the quarantined text, complete analysis, and complete result; parses the final
+JSON; rejects callback, function, and tool fields; and validates the exact
+response schema. A blocked decision, filter failure, malformed JSON, schema
+failure, or activation-probe callback/tool attempt produces one safe terminal
+failure.
+
+Adapters receive only the sanitized task, opaque external run ID, fixed
+resolved revision data, transient authentication configuration, and the
+app-owned egress transport. They do not receive internal correlation IDs or an
+unrestricted network client. Normal logs and telemetry must never include
+prompt text, image bytes, model result, endpoint, provider secret, secret
+reference, CA material, or adapter configuration. Record only stable internal
+IDs, bounded metrics, and sanitized outcome categories.
+
 ## Pre-deployment Gate
 
 Keep the global AI guard active during installation and upgrade. Before
