@@ -183,6 +183,12 @@ export interface AiRunCoordinator {
       totalDeadlineAt: string,
     ) => AsyncIterable<AiRunEvent>,
     forceCloseAttempt: (applicationRunId: string) => void,
+    decideCompleted?: (
+      event: Readonly<Extract<AiRunEvent, { type: 'completed' }>>,
+      attempt: number,
+    ) => Promise<
+      Readonly<Extract<AiRunEvent, { type: 'completed' | 'failed' }>>
+    >,
   ): AsyncIterable<AiRunEvent>
   runDueRecoveryProbes(
     executeProbe: (
@@ -553,6 +559,7 @@ export function createAiRunCoordinator(
       request,
       executeAttempt,
       forceCloseAttempt,
+      decideCompleted,
     ): AsyncIterable<AiRunEvent> {
       const startedAt = now()
       const fencingToken = randomUUID()
@@ -874,7 +881,9 @@ export function createAiRunCoordinator(
                     false,
                   )
                 } else {
-                  attemptTerminal = event
+                  attemptTerminal = decideCompleted
+                    ? await decideCompleted(event, attempt)
+                    : event
                 }
               } else {
                 attemptTerminal = event

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createAiConnectionAdapterRegistry } from '@/lib/ai/adapter-registry'
-import { createAiIntegrationLayer } from '@/lib/ai/integration-layer'
+import {
+  type AiIntegrationLayerWithSafeInvalidOutput,
+  createAiIntegrationLayer,
+} from '@/lib/ai/integration-layer'
 import {
   type AiPersistedRunProfile,
   createAiRunProfileResolver,
@@ -14,8 +17,11 @@ import type {
 } from '@/lib/ai/run-contracts'
 import type {
   AiRecoveryProbeTarget,
+  AiRunCoordinationStore,
   AiRunCoordinator,
+  AiRunTelemetryEvent,
 } from '@/lib/ai/run-coordinator'
+import { createAiRunCoordinator } from '@/lib/ai/run-coordinator'
 import type { AiRunTrustBoundary } from '@/lib/ai/run-trust-boundary'
 
 const USAGE: AiRunUsage = {
@@ -104,12 +110,21 @@ let automaticRecoveryProbe:
   | undefined
 
 const RUN_COORDINATOR: AiRunCoordinator = {
-  async *coordinate(request, executeAttempt, forceCloseAttempt) {
-    yield* executeAttempt(
+  async *coordinate(
+    request,
+    executeAttempt,
+    forceCloseAttempt,
+    decideCompleted,
+  ) {
+    for await (const event of executeAttempt(
       1,
       request.abortSignal,
       new Date(Date.now() + 60_000).toISOString(),
-    )
+    )) {
+      yield event.type === 'completed' && decideCompleted
+        ? await decideCompleted(event, 1)
+        : event
+    }
     forceCloseAttempt(request.applicationRunId)
   },
   runDueRecoveryProbes: async () => undefined,
@@ -182,7 +197,8 @@ function integration(
   adapter: AIConnectionAdapter,
   stored = profile(),
   trustBoundary: AiRunTrustBoundary = PASSING_TRUST_BOUNDARY,
-) {
+  runCoordinator: AiRunCoordinator = RUN_COORDINATOR,
+): AiIntegrationLayerWithSafeInvalidOutput {
   const resolver = createAiRunProfileResolver({
     profileSource: { findActiveRevision: async () => stored },
     resolveAdapterConfiguration: async (_profile, use) => {
@@ -202,8 +218,23 @@ function integration(
     ]),
     profileResolver: resolver,
     trustBoundary,
-    runCoordinator: RUN_COORDINATOR,
+    runCoordinator,
   })
+}
+
+function coordinationStore(): AiRunCoordinationStore {
+  return {
+    abandon: vi.fn(async () => undefined),
+    acquire: vi.fn(async () => ({ status: 'acquired' }) as const),
+    acquireManualRecoveryProbe: vi.fn(async () => false),
+    acquireRecoveryProbe: vi.fn(async () => false),
+    enqueue: vi.fn(async () => ({ status: 'queued' }) as const),
+    finish: vi.fn(async () => undefined),
+    finishRecoveryProbe: vi.fn(async () => undefined),
+    listDueRecoveryProbes: vi.fn(async () => []),
+    renew: vi.fn(async () => true),
+    requeueForRetry: vi.fn(async () => 'applied' as const),
+  }
 }
 
 describe('AI integration layer', () => {
@@ -973,7 +1004,7 @@ describe('AI integration layer', () => {
     })
   })
 
-  it('releases safe schema-invalid output only as a neutral terminal event', async () => {
+  it('accounts for schema-invalid output as one failed coordinated terminal', async () => {
     const trustBoundary: AiRunTrustBoundary = {
       approveCompleted: vi.fn(async () => ({
         issues: [
@@ -1009,16 +1040,68 @@ describe('AI integration layer', () => {
       },
     }
 
+    const coordination = coordinationStore()
+    const telemetry: AiRunTelemetryEvent[] = []
+    const runCoordinator = createAiRunCoordinator({
+      coordination,
+      telemetry: {
+        emit: event => {
+          telemetry.push(event)
+        },
+      },
+    })
+
     await expect(
-      collect(integration(adapter, profile(), trustBoundary).run(request())),
+      collect(
+        integration(adapter, profile(), trustBoundary, runCoordinator).run(
+          request(),
+        ),
+      ),
     ).resolves.toEqual([
       {
-        analysis: 'screened analysis',
+        failure: {
+          category: 'invalid_response',
+          diagnosticCode: 'final_output_schema_invalid',
+          retryable: false,
+        },
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
           aiRunProfileRevisionId: 'profile-revision-31',
         },
+        type: 'failed',
+      },
+    ])
+    expect(coordination.finish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failure: expect.objectContaining({ category: 'invalid_response' }),
+        outcome: 'failed',
+      }),
+    )
+    expect(telemetry).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          failureCategory: 'invalid_response',
+          name: 'ai_attempt_terminal',
+          outcome: 'failed',
+        }),
+        expect.objectContaining({
+          failureCategory: 'invalid_response',
+          name: 'ai_run_terminal',
+          outcome: 'failed',
+        }),
+      ]),
+    )
+    expect(telemetry).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ outcome: 'completed' }),
+      ]),
+    )
+  })
+
+  it('retains screened invalid output only for its failed terminal projection', async () => {
+    const trustBoundary: AiRunTrustBoundary = {
+      approveCompleted: vi.fn(async () => ({
         issues: [
           {
             code: 'required',
@@ -1026,11 +1109,51 @@ describe('AI integration layer', () => {
             path: '$',
           },
         ],
-        rawOutput: '{"schemaVersion":"wrong"}',
-        type: 'invalid_output',
-        usage: USAGE,
+        valid: false as const,
+      })),
+      prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
+    }
+    const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
+      async *run(adapterRequest) {
+        yield {
+          analysis: 'screened analysis',
+          identity: {
+            aiConnectionId: adapterRequest.connection.id,
+            aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+          },
+          rawOutput: '{"schemaVersion":"wrong"}',
+          type: 'completed',
+          usage: USAGE,
+        }
+      },
+    }
+    const layer = integration(adapter, profile(), trustBoundary)
+    const events = await collect(layer.run(request()))
+
+    expect(events).toMatchObject([
+      {
+        failure: {
+          category: 'invalid_response',
+          diagnosticCode: 'final_output_schema_invalid',
+        },
+        type: 'failed',
       },
     ])
+    expect(layer.takeSafeInvalidOutput(events[0])).toEqual({
+      analysis: 'screened analysis',
+      issues: [
+        {
+          code: 'required',
+          message: "must have required property 'requirements'",
+          path: '$',
+        },
+      ],
+      rawOutput: '{"schemaVersion":"wrong"}',
+      usage: USAGE,
+    })
+    expect(layer.takeSafeInvalidOutput(events[0])).toBeUndefined()
   })
 
   it('replaces a completed result when final screening fails', async () => {

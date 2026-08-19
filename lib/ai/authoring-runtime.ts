@@ -3,7 +3,10 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { createAiConnectionAdapterRegistry } from './adapter-registry'
 import { loadAiDeploymentTrustPolicy } from './admin-external'
 import { controlledTestAdapterRegistration } from './controlled-test-adapter'
-import { createAiIntegrationLayer } from './integration-layer'
+import {
+  type AiIntegrationLayerWithSafeInvalidOutput,
+  createAiIntegrationLayer,
+} from './integration-layer'
 import { openRouterAdapterRegistration } from './openrouter-adapter'
 import type {
   AiResolvedRunProfile,
@@ -20,6 +23,8 @@ import type {
   AiIntegrationRunRequest,
   AiRunEvent,
   AiRunType,
+  AiRunUsage,
+  AiRunValidationIssue,
 } from './run-contracts'
 import { createSqlServerAiRunCoordinationStore } from './run-coordination-store'
 import { createAiRunCoordinator } from './run-coordinator'
@@ -42,13 +47,27 @@ export type AiAuthoringProfileDescription =
       reason: AiAuthoringProfileUnavailableReason
     }
 
+export type AiAuthoringRunEvent =
+  | AiRunEvent
+  | {
+      analysis: string | null
+      identity: Extract<AiRunEvent, { type: 'failed' }>['identity']
+      issues: readonly AiRunValidationIssue[]
+      rawOutput: string
+      type: 'invalid_output'
+      usage: AiRunUsage
+    }
+
 export interface AiAuthoringRuntime {
   describe(type: AiRunType): Promise<AiAuthoringProfileDescription>
-  run(request: AiIntegrationRunRequest): AsyncIterable<AiRunEvent>
+  run(request: AiIntegrationRunRequest): AsyncIterable<AiAuthoringRunEvent>
 }
 
 export interface CreateAiAuthoringRuntimeOptions {
-  integration: AIIntegrationLayer
+  integration: AIIntegrationLayer &
+    Partial<
+      Pick<AiIntegrationLayerWithSafeInvalidOutput, 'takeSafeInvalidOutput'>
+    >
   profileResolver: AiRunProfileResolver
 }
 
@@ -89,8 +108,24 @@ export function createAiAuthoringRuntime(
         })
       }
     },
-    run(request: AiIntegrationRunRequest): AsyncIterable<AiRunEvent> {
-      return options.integration.run(request)
+    async *run(
+      request: AiIntegrationRunRequest,
+    ): AsyncIterable<AiAuthoringRunEvent> {
+      for await (const event of options.integration.run(request)) {
+        if (event.type === 'failed') {
+          const invalidOutput =
+            options.integration.takeSafeInvalidOutput?.(event)
+          if (invalidOutput) {
+            yield {
+              ...invalidOutput,
+              identity: event.identity,
+              type: 'invalid_output',
+            }
+            continue
+          }
+        }
+        yield event
+      }
     },
   })
 }

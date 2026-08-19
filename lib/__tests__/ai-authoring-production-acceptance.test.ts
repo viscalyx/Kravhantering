@@ -152,40 +152,42 @@ function persistedProfileRow() {
   }
 }
 
-function controlledScenarioSecret() {
+function controlledScenarioSecret(
+  output = JSON.stringify({
+    proposedNeedsReferences: [],
+    proposedNormReferences: [],
+    requirements: [
+      {
+        acceptanceCriteria: '',
+        categoryId: null,
+        categoryName: '',
+        description: 'Use managed access.',
+        needsReferenceId: null,
+        needsReferenceKey: '',
+        normReferenceIds: [],
+        priorityLevelId: null,
+        priorityLevelCode: '',
+        priorityLevelName: '',
+        proposedNormReferenceKeys: [],
+        qualityCharacteristicId: null,
+        qualityCharacteristicName: '',
+        requirementPackageIds: [],
+        requirementPackageNames: [],
+        typeId: 1,
+        typeName: '',
+        verifiable: true,
+        verificationMethod: '',
+      },
+    ],
+    schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+  }),
+) {
   const keyring = parseAiProviderSecretKeyring(KEYRING_DOCUMENT)
   const plaintext = JSON.stringify({
     scenario: {
       analysis: 'Screened controlled analysis',
       analysisDeltas: ['quarantined analysis'],
-      output: JSON.stringify({
-        proposedNeedsReferences: [],
-        proposedNormReferences: [],
-        requirements: [
-          {
-            acceptanceCriteria: '',
-            categoryId: null,
-            categoryName: '',
-            description: 'Use managed access.',
-            needsReferenceId: null,
-            needsReferenceKey: '',
-            normReferenceIds: [],
-            priorityLevelId: null,
-            priorityLevelCode: '',
-            priorityLevelName: '',
-            proposedNormReferenceKeys: [],
-            qualityCharacteristicId: null,
-            qualityCharacteristicName: '',
-            requirementPackageIds: [],
-            requirementPackageNames: [],
-            typeId: 1,
-            typeName: '',
-            verifiable: true,
-            verificationMethod: '',
-          },
-        ],
-        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
-      }),
+      output,
       outputDeltas: ['quarantined output'],
       type: 'completed',
       usage: USAGE,
@@ -215,11 +217,13 @@ function controlledScenarioSecret() {
   }
 }
 
-function acceptanceDatabase() {
-  const secret = controlledScenarioSecret()
+function acceptanceDatabase(output?: string) {
+  const secret = controlledScenarioSecret(output)
   const queries: string[] = []
-  const query = vi.fn(async (sql: string) => {
+  const queryCalls: Array<{ parameters: readonly unknown[]; sql: string }> = []
+  const query = vi.fn(async (sql: string, parameters: unknown[] = []) => {
     queries.push(sql)
+    queryCalls.push({ parameters, sql })
     if (
       sql.includes('FROM [ai_run_profiles] AS [profile]') &&
       sql.includes('[profile].[profile_key] = @0')
@@ -261,7 +265,7 @@ function acceptanceDatabase() {
       return callback({ query })
     },
   } as unknown as SqlServerDatabase
-  return { db, queries }
+  return { db, queries, queryCalls }
 }
 
 function request(): Request {
@@ -367,5 +371,34 @@ describe('production AI authoring acceptance boundary', () => {
     ).toBe(true)
     expect(queries.some(sql => sql.includes('DECLARE @running int'))).toBe(true)
     expect(queries.some(sql => sql.includes("IF @3 = N'completed'"))).toBe(true)
+  })
+
+  it('preserves screened invalid output for repair while coordination records failure', async () => {
+    const rawOutput = '{"schemaVersion":"wrong"}'
+    const { db, queryCalls } = acceptanceDatabase(rawOutput)
+    acceptanceState.getRequestSqlServerDataSource.mockResolvedValue(db)
+
+    const response = await POST(request())
+    const body = await response.text()
+
+    expect(response.status).toBe(200)
+    expect(body).toContain('event: validation_error')
+    expect(body).toContain('schemaVersion')
+    expect(body).toContain('required')
+    expect(body).not.toContain('event: done')
+    expect(body).not.toContain('quarantined output')
+    expect(body).not.toContain('quarantined analysis')
+    expect(acceptanceState.screenAiOutput).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([
+        'quarantined analysis',
+        'quarantined output',
+        rawOutput,
+      ]),
+    )
+    expect(
+      queryCalls.find(call => call.sql.includes("IF @3 = N'completed'"))
+        ?.parameters,
+    ).toEqual(expect.arrayContaining(['invalid_response', 'failed']))
   })
 })

@@ -35,6 +35,9 @@ describe('AI run contracts', () => {
       AsyncIterable<AiRunEvent>
     >()
     expectTypeOf<
+      Extract<AiRunEvent, { identity: AiRunIdentity }>['type']
+    >().toEqualTypeOf<'cancelled' | 'completed' | 'failed'>()
+    expectTypeOf<
       Extract<AiRunEvent, { type: 'output_delta' }>
     >().toEqualTypeOf<{
       delta: string

@@ -220,14 +220,6 @@ export type AiRunEvent =
       usage: AiRunUsage
     }
   | {
-      analysis: string | null
-      identity: AiRunIdentity
-      issues: readonly AiRunValidationIssue[]
-      rawOutput: string
-      type: 'invalid_output'
-      usage: AiRunUsage
-    }
-  | {
       identity: AiRunIdentity
       reason: AiRunCancellationReason
       type: 'cancelled'
@@ -269,14 +261,9 @@ export async function* guardAiRunEventStream(
 ): AsyncIterable<AiRunEvent> {
   let terminal: AiRunTerminalEvent | undefined
   let invalidAfterTerminal = false
-  let invalidIntegrationEvent = false
   let terminalIdentityMismatch = false
   try {
     for await (const event of source) {
-      if (event.type === 'invalid_output') {
-        invalidIntegrationEvent = true
-        continue
-      }
       if (terminal) {
         invalidAfterTerminal = true
         continue
@@ -305,17 +292,7 @@ export async function* guardAiRunEventStream(
     return
   }
 
-  if (invalidIntegrationEvent) {
-    yield {
-      failure: {
-        category: 'invalid_response',
-        diagnosticCode: 'adapter_emitted_integration_event',
-        retryable: false,
-      },
-      identity,
-      type: 'failed',
-    }
-  } else if (invalidAfterTerminal) {
+  if (invalidAfterTerminal) {
     yield {
       failure: {
         category: 'invalid_response',

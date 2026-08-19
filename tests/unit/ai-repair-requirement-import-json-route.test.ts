@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/ai/repair-requirement-import-json/route'
+import type { AiAuthoringRunEvent } from '@/lib/ai/authoring-runtime'
 import { AiRunProfileResolutionError } from '@/lib/ai/profile-resolver'
 import type { AiRunEvent, AiRunIdentity } from '@/lib/ai/run-contracts'
 import * as aiSafety from '@/lib/ai/safety'
@@ -11,7 +12,7 @@ import { mockAiSafetyScreening } from '@/tests/helpers/ai-safety-screening'
 
 const routeState = vi.hoisted(() => ({
   buildImportInstruction: vi.fn(),
-  events: [] as AiRunEvent[],
+  events: [] as AiAuthoringRunEvent[],
   getAiGenerationAvailability: vi.fn(),
   getApplicationSettings: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),

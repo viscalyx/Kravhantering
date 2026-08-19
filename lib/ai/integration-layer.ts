@@ -10,6 +10,8 @@ import type {
   AiIntegrationRunRequest,
   AiRunEvent,
   AiRunIdentity,
+  AiRunUsage,
+  AiRunValidationIssue,
 } from './run-contracts'
 import {
   createAiAdapterRunContext,
@@ -41,6 +43,20 @@ export interface CreateAiIntegrationLayerOptions {
   runCoordinator: AiRunCoordinator
   telemetry?: AiRunTelemetry
   trustBoundary: AiRunTrustBoundary
+}
+
+export interface AiSafeInvalidOutput {
+  analysis: string | null
+  issues: readonly AiRunValidationIssue[]
+  rawOutput: string
+  usage: AiRunUsage
+}
+
+export interface AiIntegrationLayerWithSafeInvalidOutput
+  extends AIIntegrationLayer {
+  takeSafeInvalidOutput(
+    event: AiRunEvent | undefined,
+  ): Readonly<AiSafeInvalidOutput> | undefined
 }
 
 interface Deferred<T> {
@@ -105,7 +121,7 @@ function adapterConfigurationScopeFailure(identity: AiRunIdentity): AiRunEvent {
 function trustBoundaryFailure(
   identity: AiRunIdentity,
   diagnosticCode: 'final_safety_gate_blocked' | 'trust_boundary_blocked',
-): AiRunEvent {
+): Extract<AiRunEvent, { type: 'failed' }> {
   return {
     failure: {
       category: 'request_rejected',
@@ -243,7 +259,11 @@ async function* runInAdapterConfigurationScope(
 
 export function createAiIntegrationLayer(
   options: CreateAiIntegrationLayerOptions,
-): AIIntegrationLayer {
+): AiIntegrationLayerWithSafeInvalidOutput {
+  const safeInvalidOutputs = new WeakMap<
+    object,
+    Readonly<AiSafeInvalidOutput>
+  >()
   options.runCoordinator.startAutomaticRecovery(
     async (target, probeRunId, abortSignal) => {
       let profile: Readonly<AiResolvedRunProfile>
@@ -457,6 +477,12 @@ export function createAiIntegrationLayer(
     },
   )
   return {
+    takeSafeInvalidOutput(event) {
+      if (event?.type !== 'failed') return undefined
+      const output = safeInvalidOutputs.get(event)
+      safeInvalidOutputs.delete(event)
+      return output
+    },
     async *run(request: AiIntegrationRunRequest): AsyncIterable<AiRunEvent> {
       let profile: Readonly<AiResolvedRunProfile>
       try {
@@ -536,37 +562,45 @@ export function createAiIntegrationLayer(
             },
           ),
         () => forceCloseAttempt?.(),
+        async event => {
+          try {
+            const approval = await options.trustBoundary.approveCompleted({
+              analysis: event.analysis,
+              quarantinedText,
+              rawOutput: event.rawOutput,
+              responseSchema: prepared.task.responseSchema,
+            })
+            if (!approval.valid) {
+              const terminal = {
+                failure: {
+                  category: 'invalid_response',
+                  diagnosticCode: 'final_output_schema_invalid',
+                  retryable: false,
+                },
+                identity: event.identity,
+                type: 'failed',
+              } as const
+              safeInvalidOutputs.set(
+                terminal,
+                Object.freeze({
+                  analysis: event.analysis,
+                  issues: approval.issues,
+                  rawOutput: event.rawOutput,
+                  usage: event.usage,
+                }),
+              )
+              return terminal
+            }
+            return event
+          } catch {
+            return trustBoundaryFailure(identity, 'final_safety_gate_blocked')
+          }
+        },
       )
       for await (const event of coordinated) {
         if (event.type === 'analysis_delta' || event.type === 'output_delta') {
           quarantinedText.push(event.delta)
           continue
-        }
-        if (event.type !== 'completed') {
-          yield event
-          continue
-        }
-        try {
-          const approval = await options.trustBoundary.approveCompleted({
-            analysis: event.analysis,
-            quarantinedText,
-            rawOutput: event.rawOutput,
-            responseSchema: prepared.task.responseSchema,
-          })
-          if (!approval.valid) {
-            yield {
-              analysis: event.analysis,
-              identity: event.identity,
-              issues: approval.issues,
-              rawOutput: event.rawOutput,
-              type: 'invalid_output',
-              usage: event.usage,
-            }
-            continue
-          }
-        } catch {
-          yield trustBoundaryFailure(identity, 'final_safety_gate_blocked')
-          return
         }
         yield event
       }

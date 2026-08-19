@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   type AiAuthoringProfileDescription,
+  type AiAuthoringRunEvent,
   createAiAuthoringRuntime,
   createProductionAiAuthoringRuntime,
 } from '@/lib/ai/authoring-runtime'
@@ -206,10 +207,91 @@ describe('AI authoring runtime', () => {
       type: 'generate_without_images' as const,
     }
 
-    const received: AiRunEvent[] = []
+    const received: AiAuthoringRunEvent[] = []
     for await (const event of runtime.run(request)) received.push(event)
 
     expect(received).toEqual([completed])
+  })
+
+  it('projects a failed terminal with its screened repair payload for authoring', async () => {
+    const failed = {
+      failure: {
+        category: 'invalid_response',
+        diagnosticCode: 'final_output_schema_invalid',
+        retryable: false,
+      },
+      identity: {
+        aiConnectionId: 'connection',
+        aiConnectionModelRevisionId: 'model-revision',
+        aiRunProfileRevisionId: 'profile-revision',
+      } as AiRunIdentity,
+      type: 'failed',
+    } as const satisfies AiRunEvent
+    const usage = {
+      analysisTokens: { reason: 'not_reported', status: 'unavailable' },
+      cost: { reason: 'not_reported', status: 'unavailable' },
+      inputTokens: { reason: 'not_reported', status: 'unavailable' },
+      outputTokens: { reason: 'not_reported', status: 'unavailable' },
+      totalTokens: { reason: 'not_reported', status: 'unavailable' },
+    } as const
+    const integration = {
+      ...layer([failed]),
+      takeSafeInvalidOutput: vi.fn(event =>
+        event === failed
+          ? {
+              analysis: 'screened analysis',
+              issues: [
+                {
+                  code: 'required',
+                  message: "must have required property 'requirements'",
+                  path: '$',
+                },
+              ],
+              rawOutput: '{"schemaVersion":"wrong"}',
+              usage,
+            }
+          : undefined,
+      ),
+    }
+    const runtime = createAiAuthoringRuntime({
+      integration,
+      profileResolver: { resolve: vi.fn() },
+    })
+
+    const received: AiAuthoringRunEvent[] = []
+    for await (const event of runtime.run({
+      context: {
+        abortSignal: new AbortController().signal,
+        applicationRunId: crypto.randomUUID(),
+        correlationId: 'correlation',
+        deadlineAt: new Date(Date.now() + 30_000).toISOString(),
+      },
+      task: {
+        content: [{ text: 'need', type: 'text' }],
+        instructions: 'instructions',
+        responseSchema: { type: 'object' },
+      },
+      type: 'generate_without_images',
+    })) {
+      received.push(event)
+    }
+
+    expect(received).toEqual([
+      {
+        analysis: 'screened analysis',
+        identity: failed.identity,
+        issues: [
+          {
+            code: 'required',
+            message: "must have required property 'requirements'",
+            path: '$',
+          },
+        ],
+        rawOutput: '{"schemaVersion":"wrong"}',
+        type: 'invalid_output',
+        usage,
+      },
+    ])
   })
 
   it('composes and caches the production runtime for one database', async () => {

@@ -107,9 +107,12 @@ scenario through the persisted profile source, transient credential scope,
 trust boundary, run coordinator, and real authoring route projection. It does
 not replace the HTTP endpoints with route mocks. Adapter deltas stay
 quarantined. A safe-screened schema-invalid terminal becomes the neutral
-`invalid_output` event, which the generation route projects as
-`validation_error` with the preserved raw result and validation issues so the
-repair action can continue without exposing unscreened or partial output.
+`invalid_response` failure before coordinator persistence, health updates, and
+telemetry. A one-shot authoring projection tied to that failed terminal carries
+the screened raw result and validation issues as `invalid_output`; the
+generation route projects it as `validation_error` so repair can continue
+without exposing unscreened or partial output. The shared integration stream
+still has only `completed`, `failed`, and `cancelled` terminal events.
 
 Do not add production provider secrets or live provider calls to CI. A manual
 provider smoke test may be run outside CI when changing provider configuration
