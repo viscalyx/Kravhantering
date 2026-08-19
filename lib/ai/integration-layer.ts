@@ -14,6 +14,7 @@ import type {
   AiRunValidationIssue,
 } from './run-contracts'
 import {
+  AI_REQUEST_PRIVACY_MINIMUM,
   createAiAdapterRunContext,
   guardAiRunEventStream,
 } from './run-contracts'
@@ -194,6 +195,7 @@ async function* runInAdapterConfigurationScope(
           context,
           limits: profile.limits,
           modelRevision: configuredProfile.modelRevision,
+          privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
           runProfileRevisionId: profile.profileRevisionId,
           selectedCapabilities: profile.selectedCapabilities,
           task: prepared.task,

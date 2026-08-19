@@ -7,6 +7,7 @@ import {
   openRouterAdapterRegistration,
 } from '@/lib/ai/openrouter-adapter'
 import {
+  AI_REQUEST_PRIVACY_MINIMUM,
   type AiConnectionAdapterRunRequest,
   type AiConnectionId,
   type AiConnectionModelRevisionId,
@@ -66,6 +67,7 @@ function request(
         tokenUsage: true,
       },
     },
+    privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
     runProfileRevisionId: 'profile-revision-31' as AiRunProfileRevisionId,
     selectedCapabilities: {
       aiAnalysis: true,
@@ -267,8 +269,8 @@ describe('OpenRouter AI connection adapter', () => {
       apiKey: 'test-provider-secret',
       endpoint: 'https://gateway.example.test/openrouter/v1/',
       providerPreferences: {
-        dataCollection: 'deny',
-        zeroDataRetention: true,
+        dataCollection: 'allow',
+        zeroDataRetention: false,
       },
     }
     adapterRequest.selectedCapabilities = {
@@ -483,8 +485,37 @@ describe('OpenRouter AI connection adapter', () => {
       reasoning: { enabled: false },
       response_format: { type: 'json_object' },
     })
-    expect(body.provider).toEqual({ allow_fallbacks: false })
+    expect(body.provider).toEqual({
+      allow_fallbacks: false,
+      data_collection: 'deny',
+      zdr: true,
+    })
   })
+
+  it.each([
+    undefined,
+    { allowDataCollection: true, requireZeroDataRetention: true },
+    { allowDataCollection: false, requireZeroDataRetention: false },
+  ])(
+    'rejects a missing or weaker integration privacy policy before egress',
+    async privacyPolicy => {
+      const adapterRequest = request()
+      Object.assign(adapterRequest, { privacyPolicy })
+
+      await expect(
+        collectEvents(adapter().run(adapterRequest)),
+      ).resolves.toEqual([
+        expect.objectContaining({
+          failure: expect.objectContaining({
+            diagnosticCode: 'privacy_policy_not_satisfied',
+            retryable: false,
+          }),
+          type: 'failed',
+        }),
+      ])
+      expect(mockFetch).not.toHaveBeenCalled()
+    },
+  )
 
   it('normalizes reasoning detail text without duplicating fallback reasoning', async () => {
     mockFetch.mockResolvedValueOnce(

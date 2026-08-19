@@ -15,6 +15,7 @@ import type {
   AiExternalRunId,
   AiRunProfileRevisionId,
 } from './run-contracts'
+import { AI_REQUEST_PRIVACY_MINIMUM } from './run-contracts'
 
 const ADMIN_PROBE_PROFILE_REVISION_ID =
   '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
@@ -79,6 +80,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
         id: revision.id as AiConnectionModelRevisionId,
         verifiedCapabilities: revision.declaredCapabilities,
       },
+      privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
       runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
       selectedCapabilities: probe.selectedCapabilities,
       task: probe.task,
@@ -103,6 +105,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
         id: revision.id as AiConnectionModelRevisionId,
         verifiedCapabilities: revision.declaredCapabilities,
       },
+      privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
       runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
       selectedCapabilities: probe.selectedCapabilities,
       task: probe.task,
@@ -137,6 +140,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
         id: revision.id as AiConnectionModelRevisionId,
         verifiedCapabilities: revision.declaredCapabilities,
       },
+      privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
       runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
       selectedCapabilities: probe.selectedCapabilities,
       task: probe.task,

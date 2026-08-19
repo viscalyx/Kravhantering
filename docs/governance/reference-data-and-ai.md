@@ -309,6 +309,15 @@ such as functional `3.1.x` values under the functional type. Top-level
 grouping rows such as `3.1` are omitted. Taxonomy rows in the import
 instruction are localized to the requested artifact language and expose a
 single `name` field instead of both `nameEn` and `nameSv`.
+
+Requirement-package reference data crossing an AI-assistance boundary contains
+only stable ID, package name, and purpose and scope. It excludes package-lead
+display names, HSA IDs, email addresses, and other structured person
+identifiers. This minimization applies equally to built-in authoring, REST, and
+MCP consumers of the shared instruction. It does not alter ordinary package
+administration views or remove identities deliberately written by a user in
+free text.
+
 The import instruction includes concise field-selection rules for functional
 versus non-functional type choice, type-scoped quality characteristics,
 norm-reference links, priority, requirement packages and verification fields.

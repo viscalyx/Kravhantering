@@ -10,6 +10,7 @@ import {
   controlledTestAdapterRegistration,
 } from '@/lib/ai/controlled-test-adapter'
 import {
+  AI_REQUEST_PRIVACY_MINIMUM,
   type AIConnectionAdapter,
   type AiCapabilitySelection,
   type AiConnectionAdapterRunRequest,
@@ -107,6 +108,7 @@ function request(
       id: MODEL_REVISION_ID,
       verifiedCapabilities,
     },
+    privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
     runProfileRevisionId: RUN_PROFILE_REVISION_ID,
     selectedCapabilities,
     task: {

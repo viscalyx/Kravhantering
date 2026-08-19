@@ -413,6 +413,12 @@ export function enforceAiDataPolicy(
   if (!required || !isCompleteDataPolicy(connectionPolicy)) {
     denied('data_policy_not_satisfied')
   }
+  if (
+    connectionPolicy.isTrainingAllowed ||
+    connectionPolicy.maximumRetentionDays > 0
+  ) {
+    denied('data_policy_not_satisfied')
+  }
   const requiredClass = required.informationClassOrder.indexOf(
     required.maximumInformationClass,
   )

@@ -242,6 +242,54 @@ function coordinationStore(): AiRunCoordinationStore {
 }
 
 describe('AI integration layer', () => {
+  it.each([
+    'generate_without_images',
+    'generate_with_images',
+    'repair_invalid_import_json',
+  ] as const)(
+    'passes the server privacy minimum to the final adapter request for %s',
+    async type => {
+      let received: AiConnectionAdapterRunRequest | undefined
+      const adapter: AIConnectionAdapter = {
+        forceClose: vi.fn(),
+        async *run(adapterRequest) {
+          received = adapterRequest
+          yield completedAdapterEvent(adapterRequest)
+        },
+      }
+
+      const stored = profile()
+      stored.capabilityPolicyJson = JSON.stringify({
+        aiAnalysis:
+          type === 'repair_invalid_import_json' ? 'disabled' : 'allowed',
+        imageInput: type === 'generate_with_images' ? 'required' : 'disabled',
+        jsonSchema: 'allowed',
+        streaming:
+          type === 'repair_invalid_import_json' ? 'disabled' : 'required',
+        usageMetadata: 'allowed',
+        validatableJson: 'required',
+      })
+      stored.verifiedCapabilitiesJson = JSON.stringify({
+        aiAnalysis: true,
+        cost: false,
+        imageInput: true,
+        jsonSchemaSteering: true,
+        streaming: true,
+        tokenUsage: true,
+        validatableJson: true,
+      })
+
+      await collect(integration(adapter, stored).run({ ...request(), type }))
+
+      expect(received).toMatchObject({
+        privacyPolicy: {
+          allowDataCollection: false,
+          requireZeroDataRetention: true,
+        },
+      })
+    },
+  )
+
   it('runs the fixed synthetic recovery probe through a fresh exact profile', async () => {
     let received: AiConnectionAdapterRunRequest | undefined
     const adapter: AIConnectionAdapter = {

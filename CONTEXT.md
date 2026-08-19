@@ -431,6 +431,16 @@ användarens behov och ett tvingande svarsformat.
 _Avoid_: Prompt när hela anropet avses, AI-instruktion när bara
 författarinstruktionen avses.
 
+**Integritetsminimum för AI-anrop**:
+Den administratörsägda lägsta integritetsnivå som varje AI-anrop måste följa,
+oavsett om anroparen anger egna önskemål. Nivån förbjuder datainsamling och
+kräver nollagring hos AI-leverantören.
+
+- `en`: AI request privacy minimum
+
+_Avoid_: Användarens integritetsinställning, leverantörspreferens,
+datapolicysammanfattning.
+
 **AI-anslutning**:
 En administratörsgodkänd koppling som låter Kravhantering göra avgränsade
 AI-anrop till en AI-leverantör eller agentmiljö enligt beslutad datapolicy.

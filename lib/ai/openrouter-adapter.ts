@@ -8,7 +8,10 @@ import type {
   AiRunUsage,
   AiUsageMetric,
 } from './run-contracts'
-import { AI_OPTIONAL_CAPABILITIES } from './run-contracts'
+import {
+  AI_OPTIONAL_CAPABILITIES,
+  satisfiesAiRequestPrivacyMinimum,
+} from './run-contracts'
 
 export const OPENROUTER_ADAPTER_TYPE = 'openrouter'
 export const OPENROUTER_ADAPTER_VERSION = '1'
@@ -450,7 +453,6 @@ function upstreamFailure(
 
 function requestBody(
   request: AiConnectionAdapterRunRequest,
-  configuration: OpenRouterAdapterConfiguration,
   modelConfiguration: OpenRouterAdapterModelConfiguration,
 ): Record<string, unknown> {
   const content = request.task.content.map(part =>
@@ -489,14 +491,10 @@ function requestBody(
     user: request.context.externalRunId,
     provider: {
       allow_fallbacks: false,
-      ...(configuration.providerPreferences?.dataCollection
-        ? {
-            data_collection: configuration.providerPreferences.dataCollection,
-          }
-        : {}),
-      ...(configuration.providerPreferences?.zeroDataRetention !== undefined
-        ? { zdr: configuration.providerPreferences.zeroDataRetention }
-        : {}),
+      data_collection: request.privacyPolicy.allowDataCollection
+        ? 'allow'
+        : 'deny',
+      zdr: request.privacyPolicy.requireZeroDataRetention,
     },
   }
   return body
@@ -513,9 +511,7 @@ async function runNonStreaming(
     response = await request.context.egress.fetch(
       `${(configuration.endpointUrl ?? configuration.endpoint ?? DEFAULT_ENDPOINT).replace(/\/$/u, '')}/chat/completions`,
       {
-        body: JSON.stringify(
-          requestBody(request, configuration, modelConfiguration),
-        ),
+        body: JSON.stringify(requestBody(request, modelConfiguration)),
         headers: {
           Authorization: `Bearer ${configuration.credential}`,
           'Content-Type': 'application/json',
@@ -647,9 +643,7 @@ async function* runStreaming(
     response = await request.context.egress.fetch(
       `${(configuration.endpointUrl ?? configuration.endpoint ?? DEFAULT_ENDPOINT).replace(/\/$/u, '')}/chat/completions`,
       {
-        body: JSON.stringify(
-          requestBody(request, configuration, modelConfiguration),
-        ),
+        body: JSON.stringify(requestBody(request, modelConfiguration)),
         headers: {
           Authorization: `Bearer ${configuration.credential}`,
           'Content-Type': 'application/json',
@@ -938,6 +932,14 @@ const openRouterAdapter: AIConnectionAdapter = {
       yield failureEvent(request, {
         category: 'adapter_failure',
         diagnosticCode: 'invalid_adapter_configuration',
+        retryable: false,
+      })
+      return
+    }
+    if (!satisfiesAiRequestPrivacyMinimum(request.privacyPolicy)) {
+      yield failureEvent(request, {
+        category: 'request_rejected',
+        diagnosticCode: 'privacy_policy_not_satisfied',
         retryable: false,
       })
       return

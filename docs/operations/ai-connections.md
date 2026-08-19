@@ -5,6 +5,8 @@ connections. Use it when the AI integration layer from
 [ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md)
 is deployed. The trust, lifecycle, and provider-secret decision is
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
+The fixed privacy floor is
+[ADR 0053](../adr/0053-integritetsminimum-for-ai-anrop.md).
 
 AI-assisted authoring is optional. An unavailable or unconfigured AI
 connection blocks only its dependent run profiles; it does not make
@@ -168,6 +170,24 @@ supplies the conservative requirement for each fixed run profile. Missing,
 malformed, expired, or insufficient policy blocks the run. Request data cannot
 relax either policy.
 
+Every server-owned AI request also has an administrator-owned privacy minimum:
+provider data collection is denied and zero data retention is required. The
+minimum applies when caller preferences are absent and overrides weaker caller
+or adapter preferences. An attestation that permits training or retention
+above zero does not satisfy the minimum, even when a deployment run-type policy
+is weaker. OpenRouter requests always set both the deny-data-collection and ZDR
+routing controls; ZDR is a routing restriction and must never degrade to best
+effort. OpenRouter's data-collection classification still depends on its
+provider-policy information, so operators must review that evidence before
+activation.
+
+Before release, verify that every intended active connection has current
+evidence for no training, zero retention, and the selected model revision. Keep
+the global AI guard active if evidence is missing or the exact provider path
+cannot satisfy the minimum. Provider and model admission allowlisting remains
+the separate [allowlisting work](https://github.com/viscalyx/Kravhantering/issues/194);
+the privacy minimum does not select or approve a provider or model.
+
 Before egress, the application:
 
 1. validates each image's signature against its declared MIME type
@@ -205,8 +225,9 @@ releasing it, verify all of the following for the environment:
    destinations, including explicitly deployment-defined sidecars.
 4. Secure defaults and app-owned input, image, output, and schema gates are
    active.
-5. Each intended AI connection has a valid attestation, successful connection
-   test, available provider secret, and `active` lifecycle state.
+5. Each intended AI connection has a valid zero-retention, no-training
+   attestation, successful connection test, available provider secret, and
+   `active` lifecycle state.
 6. Each selected AI connection model revision has passed the required
    capability tests.
 7. Each intended run profile revision is active, unblocked, and references

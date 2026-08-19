@@ -43,6 +43,27 @@ outcome contracts. The trust boundary, AI connection lifecycle, encrypted
 provider secrets, and external root keyring are governed by
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
 
+The integration layer adds the provider-neutral AI request privacy minimum to
+every adapter request. Adapters map deny-data-collection and required
+zero-data-retention semantics explicitly; provider-shaped fields stay inside
+the adapter. Adapter-boundary tests inspect the final provider request for
+generation and repair. Browser and REST bodies cannot supply privacy, provider,
+or model overrides. A missing or weaker attestation fails at the trust boundary
+before adapter egress.
+
+The import-instruction builder is shared by built-in authoring, REST, and MCP.
+Its requirement-package reference data contains only stable ID, name, and
+purpose and scope. Do not add lead or responsible-person display names, HSA
+IDs, email addresses, or other structured person identifiers. Ordinary
+free-text entered by a user is not identity-scrubbed by this rule.
+
+The MCP server exposes import schema, instruction, validation, and execution;
+it does not expose a server-hosted AI generation tool. Any AI egress performed
+by an external MCP client is client-owned and outside the app's privacy-minimum
+enforcement. Document that boundary when MCP tools change. Provider and model
+admission allowlisting remains coordinated through
+[the separate allowlisting work](https://github.com/viscalyx/Kravhantering/issues/194).
+
 <!-- markdownlint-disable MD013 -->
 ![Technical infographic showing AI-assisted authoring in Kravhantering. The flow illustrates how user input is checked, processed through an LLM integration layer, sent to OpenRouter, validated, and reviewed by a human before being imported into a requirements library or requirements document.](../images/ai-assisted-authoring-llm-integration-architecture.png)
 <!-- markdownlint-enable MD013 -->
@@ -158,9 +179,10 @@ the persisted preference while the guard is active, but effective generation
 stays disabled until the environment variable is removed.
 
 When the environment guard or the persisted Admin Center preference disables
-generation, REST and MCP AI-assisted authoring keep their public route/tool
+generation, browser and REST AI-assisted authoring keep their public route
 contracts but return the sanitized provider-unavailable response before
-taxonomy loading or adapter egress starts.
+taxonomy loading or adapter egress starts. MCP has no server-hosted generation
+tool; its import-contract tools remain available and open no provider egress.
 
 Security CI must not provision an active provider secret or authoring profile,
 so accidental adapter access fails closed even if the guard is removed or

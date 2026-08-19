@@ -61,6 +61,29 @@ export interface AiCapabilitySelection {
   tokenUsage: boolean
 }
 
+/** Server-owned minimum. Callers and adapter configuration cannot weaken it. */
+export interface AiRequestPrivacyPolicy {
+  allowDataCollection: false
+  requireZeroDataRetention: true
+}
+
+export const AI_REQUEST_PRIVACY_MINIMUM: Readonly<AiRequestPrivacyPolicy> =
+  Object.freeze({
+    allowDataCollection: false,
+    requireZeroDataRetention: true,
+  })
+
+export function satisfiesAiRequestPrivacyMinimum(
+  value: unknown,
+): value is AiRequestPrivacyPolicy {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as Partial<AiRequestPrivacyPolicy>).allowDataCollection === false &&
+    (value as Partial<AiRequestPrivacyPolicy>).requireZeroDataRetention === true
+  )
+}
+
 export const AI_OPTIONAL_CAPABILITIES = [
   'streaming',
   'imageInput',
@@ -105,6 +128,8 @@ export interface AiConnectionAdapterRunRequest {
   context: AiAdapterRunContext
   limits: Readonly<AiRunLimits>
   modelRevision: AiResolvedConnectionModelRevision
+  /** Map exactly at the provider boundary; reject before egress if unsupported. */
+  privacyPolicy: Readonly<AiRequestPrivacyPolicy>
   runProfileRevisionId: AiRunProfileRevisionId
   selectedCapabilities: Readonly<AiCapabilitySelection>
   task: AiTaskEnvelope

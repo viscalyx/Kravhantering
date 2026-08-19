@@ -24,6 +24,7 @@ import type {
   AiRunEvent,
   AiRunProfileRevisionId,
 } from './run-contracts'
+import { AI_REQUEST_PRIVACY_MINIMUM } from './run-contracts'
 
 const MAX_CATALOG_BYTES = 4 * 1024 * 1024
 const ADMIN_GET_TIMEOUT_MS = 15_000
@@ -188,6 +189,7 @@ function runOpenRouterAdminProbe(
       id: revision.id as AiConnectionModelRevisionId,
       verifiedCapabilities: revision.declaredCapabilities,
     },
+    privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
     runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
     selectedCapabilities: probe.selectedCapabilities,
     task: probe.task,

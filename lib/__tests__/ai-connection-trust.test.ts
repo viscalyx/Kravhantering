@@ -431,6 +431,36 @@ describe('AI connection trust boundary', () => {
   })
 
   it.each([
+    {
+      connectionPolicy: { isTrainingAllowed: true },
+      runPolicy: { requireTrainingProhibited: false },
+    },
+    {
+      connectionPolicy: { maximumRetentionDays: 1 },
+      runPolicy: { maximumRetentionDays: 30 },
+    },
+  ])(
+    'does not let a weaker deployment policy relax the AI request privacy minimum',
+    ({ connectionPolicy, runPolicy }) => {
+      const dataPolicy = connection().dataPolicy
+      const required = deployment().dataPolicies.generate_without_images
+      if (!dataPolicy || !required) throw new Error('Fixture policy missing')
+
+      expect(() =>
+        enforceAiDataPolicy(
+          connection({ dataPolicy: { ...dataPolicy, ...connectionPolicy } }),
+          'generate_without_images',
+          deployment({
+            dataPolicies: {
+              generate_without_images: { ...required, ...runPolicy },
+            },
+          }),
+        ),
+      ).toThrowError(AiConnectionTrustError)
+    },
+  )
+
+  it.each([
     [{ maximumInformationClass: 'public' }, {}],
     [{ isPersonalDataProcessed: false }, { personalDataAllowed: true }],
     [{ maximumRetentionDays: 1 }, {}],
