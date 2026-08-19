@@ -755,4 +755,258 @@ test.describe('Admin settings', () => {
       }
     }
   })
+
+  test('ADMIN-20: Admin activates and safely recovers a controlled AI connection', async ({
+    page,
+  }) => {
+    const suffix = `${Date.now()}`
+    const administrationName = `Kontrollerad anslutning ${suffix}`
+    const modelName = `Kontrollerad modell ${suffix}`
+    const reviewedAt = new Date(Date.now() - 60_000).toISOString()
+    const reviewDueAt = new Date(
+      Date.now() + 365 * 24 * 60 * 60_000,
+    ).toISOString()
+
+    await test.step('create a collapsed controlled-test connection', async () => {
+      await page.goto('/sv/admin?tab=settings')
+      const settings = page.locator('#settings-panel')
+      await expect(settings.locator('[aria-busy]')).toHaveAttribute(
+        'aria-busy',
+        'false',
+      )
+      await expect(
+        settings.getByText(
+          'Anrop växlar aldrig automatiskt till en annan anslutning eller modell.',
+          { exact: false },
+        ),
+      ).toHaveCount(1)
+      await settings
+        .getByRole('button', { name: 'Lägg till AI-anslutning' })
+        .click()
+      const dialog = page.getByRole('dialog', {
+        name: 'Lägg till AI-anslutning',
+      })
+      await dialog.getByLabel(/^Administrationsnamn/).fill(administrationName)
+      await dialog.getByLabel(/^Publikt namn/).fill(administrationName)
+      await dialog.getByLabel(/^Adapternyckel/).fill('controlled_test')
+      await dialog.getByLabel(/^Adapterversion/).fill('1')
+      await dialog
+        .getByLabel(/^Anslutningsadress/)
+        .fill('https://localhost:4443')
+      await dialog.getByLabel(/^TLS-policy/).fill('controlled_test')
+      await dialog.getByLabel(/^Egress-policy/).fill('controlled_test')
+      await dialog.getByLabel(/^Autentisering/).selectOption({ value: 'none' })
+      await dialog
+        .getByLabel(/^Beskrivning/)
+        .fill('Kontrollerad aktivering utan produktionsdata.')
+      await dialog
+        .getByLabel(/^Sammanfattning av datapolicy/)
+        .fill('Intern information, ingen persondata och ingen lagring.')
+      await dialog.getByRole('button', { name: 'Spara anslutning' }).click()
+      await expect(dialog).toHaveCount(0)
+
+      const row = settings.getByRole('button').filter({
+        hasText: administrationName,
+      })
+      await expect(row).toHaveAttribute('aria-expanded', 'false')
+      await row.click()
+      await expect(row).toHaveAttribute('aria-expanded', 'true')
+      const detailsId = await row.getAttribute('aria-controls')
+      expect(detailsId).not.toBeNull()
+      const details = page.locator(`#${detailsId}`)
+      await expect(
+        details.getByText('Detta är seedad demonstrationsdata', {
+          exact: false,
+        }),
+      ).toHaveCount(0)
+      await expect(
+        details.getByText('begränsade anrop', { exact: false }),
+      ).toHaveCount(1)
+      await expect(
+        details.getByText('Återställning är manuell', { exact: false }),
+      ).toHaveCount(1)
+    })
+
+    const connectionRow = page.getByRole('button').filter({
+      hasText: administrationName,
+    })
+    const detailsId = await connectionRow.getAttribute('aria-controls')
+    expect(detailsId).not.toBeNull()
+    const details = page.locator(`#${detailsId}`)
+
+    await test.step('confirm secrets remain write-only', async () => {
+      await details.getByRole('button', { name: 'Hantera hemlighet' }).click()
+      const dialog = page.getByRole('dialog', {
+        name: 'Leverantörshemlighet',
+      })
+      await expect(
+        dialog.getByText('kan bara anges, inte läsas', { exact: false }),
+      ).toHaveCount(1)
+      const secret = dialog.getByLabel(/^Ny leverantörshemlighet/)
+      await expect(secret).toHaveAttribute('type', 'password')
+      await expect(secret).toHaveValue('')
+      await dialog.getByRole('button', { name: 'Avbryt' }).click()
+      await expect(dialog).toHaveCount(0)
+    })
+
+    await test.step('save and approve the connection attestation', async () => {
+      await details.getByRole('button', { name: 'Hantera attest' }).click()
+      const dialog = page.getByRole('dialog', { name: 'Anslutningsattest' })
+      await dialog
+        .getByLabel(/^Ansvarig organisationsenhets-id/)
+        .fill(crypto.randomUUID())
+      await dialog
+        .getByLabel(/^Leverantörsnamn/)
+        .fill('Kontrollerad testadapter')
+      await dialog.getByLabel(/^Högsta informationsklass/).fill('internal')
+      await dialog.getByLabel(/^Högsta lagringstid i dagar/).fill('0')
+      await dialog.getByLabel(/^Behandlingsregioner/).fill('SE')
+      await dialog
+        .getByLabel(/^Referens-id för incidenthantering/)
+        .fill(crypto.randomUUID())
+      await dialog.getByLabel(/^Beslutsreferens/).fill(`PW-${suffix}`)
+      await dialog.getByLabel(/^Granskad vid/).fill(reviewedAt)
+      await dialog.getByLabel(/^Nästa granskning/).fill(reviewDueAt)
+      await dialog
+        .getByLabel(/^Behandlar personuppgifter/)
+        .selectOption('false')
+      await dialog
+        .getByLabel(/^Leverantörsträning tillåten/)
+        .selectOption('false')
+      await dialog
+        .getByLabel(/^Godkänt syfte/)
+        .fill('Verifiera Admin Centers aktiveringsflöde.')
+      await dialog.getByRole('button', { name: 'Spara attestutkast' }).click()
+      await dialog
+        .getByRole('button', { name: 'Godkänn sparad attest' })
+        .click()
+      await expect(dialog).toHaveCount(0)
+    })
+
+    await test.step('add and verify a controlled model revision', async () => {
+      await details.getByRole('button', { name: 'Lägg till modell' }).click()
+      const dialog = page.getByRole('dialog', {
+        name: 'Lägg till anslutningsmodell',
+      })
+      await dialog.getByLabel(/^Modellnamn/).fill(modelName)
+      await dialog.getByLabel(/^Externt modell-id/).fill('controlled/model')
+      for (const capability of [
+        'Styrning med JSON-schema',
+        'Strömning',
+        'Validerbar JSON',
+      ]) {
+        await dialog.getByRole('checkbox', { name: capability }).check()
+      }
+      await dialog.getByRole('button', { name: 'Spara modellutkast' }).click()
+      await expect(dialog).toHaveCount(0)
+
+      await details
+        .getByRole('button', { name: 'Verifiera anslutning' })
+        .click()
+      await expect(
+        page.getByText('Den aktuella anslutningskonfigurationen verifierades.'),
+      ).toHaveCount(1)
+      const modelCard = details
+        .locator('article')
+        .filter({ hasText: modelName })
+      const verifyModel = modelCard.getByRole('button', {
+        name: 'Verifiera modell',
+      })
+      await expect(verifyModel).toBeEnabled()
+      await verifyModel.click()
+      await expect(
+        page.getByText('Anslutningsmodellrevisionen verifierades.'),
+      ).toHaveCount(1)
+      const healthProbe = modelCard.getByRole('button', {
+        name: 'Kör hälsokontroll',
+      })
+      await expect(healthProbe).toBeEnabled()
+      await healthProbe.click()
+      await expect(
+        page.getByText('Den begränsade hälsokontrollen slutfördes.'),
+      ).toHaveCount(1)
+    })
+
+    await test.step('activate the connection and fixed run profile', async () => {
+      const activateConnection = details.getByRole('button', {
+        name: 'Aktivera anslutning',
+      })
+      await expect(activateConnection).toBeEnabled()
+      await activateConnection.click()
+      await expect(page.getByText('AI-anslutningen aktiverades.')).toHaveCount(
+        1,
+      )
+      await expect(connectionRow.getByText('Fungerar')).toHaveCount(1)
+
+      const profileCard = page.locator('article').filter({
+        has: page.getByRole('heading', {
+          exact: true,
+          name: 'Kravgenerering utan bilder',
+        }),
+      })
+      await profileCard
+        .getByRole('button', {
+          name: /Skapa profilrevision|Redigera profilutkast/,
+        })
+        .click()
+      const dialog = page.getByRole('dialog', { name: 'Körprofilrevision' })
+      const modelSelect = dialog.getByLabel(/^Anslutningsmodellrevision/)
+      const modelOption = modelSelect.locator('option').filter({
+        hasText: `${administrationName} · ${modelName}`,
+      })
+      const modelRevisionId = await modelOption.getAttribute('value')
+      expect(modelRevisionId).not.toBeNull()
+      await modelSelect.selectOption(modelRevisionId ?? '')
+      await dialog.getByRole('button', { name: 'Spara profilutkast' }).click()
+      await expect(dialog).toHaveCount(0)
+      const activateProfile = profileCard.getByRole('button', {
+        name: 'Aktivera profilrevision',
+      })
+      await expect(activateProfile).toBeEnabled()
+      await activateProfile.click()
+      await expect(
+        page.getByText('Körprofilrevisionen aktiverades.'),
+      ).toHaveCount(1)
+      await expect(
+        profileCard.getByText('En aktiv revision är tilldelad'),
+      ).toHaveCount(1)
+    })
+
+    await test.step('suspend and manually recover profile and connection', async () => {
+      const profileCard = page.locator('article').filter({
+        has: page.getByRole('heading', {
+          exact: true,
+          name: 'Kravgenerering utan bilder',
+        }),
+      })
+      await profileCard
+        .getByRole('button', { name: 'Suspendera profil' })
+        .click()
+      await expect(
+        profileCard.getByRole('button', { name: 'Återställ profil' }),
+      ).toHaveCount(1)
+      await profileCard
+        .getByRole('button', { name: 'Återställ profil' })
+        .click()
+      await expect(
+        profileCard.getByRole('button', { name: 'Suspendera profil' }),
+      ).toHaveCount(1)
+
+      await details
+        .getByRole('button', { name: 'Suspendera anslutning' })
+        .click()
+      await expect(
+        details.getByRole('button', { name: 'Återställ anslutning' }),
+      ).toBeEnabled()
+      await expect(connectionRow.getByText('Suspenderad')).toHaveCount(1)
+      await expect(connectionRow.getByText('Fungerar')).toHaveCount(1)
+      await details
+        .getByRole('button', { name: 'Återställ anslutning' })
+        .click()
+      await expect(
+        details.getByRole('button', { name: 'Suspendera anslutning' }),
+      ).toHaveCount(1)
+      await expect(connectionRow.getByText('Aktiv')).toHaveCount(1)
+    })
+  })
 })

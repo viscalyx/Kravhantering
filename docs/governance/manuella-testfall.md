@@ -2040,6 +2040,49 @@ efter stopp. API-svaret innehåller storleksbegränsade utdrag med
 begäraren och godkännaren kan läsa den avslutade insamlingen; andra användare
 nekas åtkomst.
 
+### ADMIN-20: Admin aktiverar och återställer en kontrollerad AI-anslutning
+
+**Förutsättningar:** Kör mot en lokal engångsmiljö med aktuell migrering och
+Admin-session. Konfigurera `controlled_test@1` med exakt utvecklingsadress
+`https://localhost:4443`, motsvarande egress- och TLS-policy samt datapolicy för
+de tre fasta körprofilerna. Använd bara syntetiska värden och inga
+produktionshemligheter.
+
+1. Öppna `Administrationscenter > Inställningar > AI`. Kontrollera att
+   anslutningsregistret är kollapsat, att texten förbjuder automatisk fallback
+   och att livscykel och operativ hälsa visas var för sig.
+2. Välj `Lägg till AI-anslutning`. Skapa ett utkast med adaptern
+   `controlled_test`, version `1`, adressen `https://localhost:4443`, de
+   konfigurerade policyerna, autentisering `Ingen applikationsuppgift` och en
+   datapolicy utan personuppgifter, träning eller lagring. Öppna den nya raden
+   och kontrollera att den inte märks som demonstrationsdata.
+3. Öppna `Hantera hemlighet`. Kontrollera att fältet är tomt och maskerat och
+   att texten säger att hemligheter bara kan anges, aldrig läsas eller
+   exporteras. Stäng utan att spara; den kontrollerade utvecklingsanslutningen
+   behöver ingen hemlighet.
+4. Spara och godkänn en fullständig attest med syntetiska UUID-referenser,
+   region `SE`, informationsklass `internal`, noll dagars lagring, inga
+   personuppgifter, ingen leverantörsträning, aktuell granskningstid och ett
+   framtida granskningsdatum.
+5. Lägg till modellen `controlled/model`. Deklarera minst styrning med
+   JSON-schema, strömning och validerbar JSON. Spara modellutkastet.
+6. Verifiera först anslutningen och sedan modellrevisionen med testadaptern.
+   Kör den begränsade hälsokontrollen. Kontrollera informationen om möjlig
+   testkostnad och att säker återhämtning är manuell utan reservmodell.
+7. Aktivera anslutningen. Redigera den fasta körprofilen
+   `Kravgenerering utan bilder`, välj den verifierade modellrevisionen, spara
+   utkastet och aktivera profilrevisionen.
+8. Suspendera och återställ först körprofilen och därefter anslutningen.
+   Kontrollera under anslutningssuspenderingen att livscykeln är `Suspenderad`
+   medan den separata operativa hälsan fortfarande är `Fungerar`.
+
+**Förväntat resultat:** Varje verifiering och aktivering slutförs via
+`controlled_test@1`; blockerare försvinner först när respektive villkor är
+uppfyllt. Den aktiva körprofilen binder exakt den verifierade modellrevisionen.
+Ingen hemlighet visas eller exporteras, ingen automatisk fallback sker och
+suspenderade resurser återställs endast genom de uttryckliga manuella
+åtgärderna.
+
 ## Dataskydd och personuppgifter
 
 ### PRIV-01: egen personuppgiftsexport

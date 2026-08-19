@@ -53,6 +53,7 @@ import type {
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import AiConnectionsPanel from './ai-connections-panel'
 import McpQuotaSettings, { type McpQuotaSettingKey } from './mcp-quota-settings'
 
 type SaveState = 'error' | 'idle' | 'saved' | 'saving'
@@ -1005,6 +1006,8 @@ export default function AiSettingsPanel({
               </p>
             ) : null}
           </div>
+
+          <AiConnectionsPanel />
 
           <div>
             <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">

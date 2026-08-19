@@ -1781,6 +1781,387 @@
         "controlledByOwner": "Visas som information. Kravområden och kravpaket byts automatiskt när ägarraden byts."
       }
     },
+    "aiConnections": {
+      "title": "AI-anslutningar och körprofiler",
+      "description": "Hantera godkända AI-anslutningar, anslutningsmodeller och körprofiler för AI-assisterat författande.",
+      "noFallback": "Anrop växlar aldrig automatiskt till en annan anslutning eller modell. En otillgänglig körprofil blockerar bara den berörda åtgärden.",
+      "loading": "Laddar AI-anslutningar…",
+      "loadError": "Kunde inte läsa AI-anslutningar och körprofiler.",
+      "mutationError": "Den administrativa AI-åtgärden kunde inte slutföras.",
+      "empty": "Inga AI-anslutningar är konfigurerade.",
+      "seed": {
+        "demoDraft": "Detta är seedad demonstrationsdata och förblir ett ej godkänt utkast. Ersätt exempelvärdena och slutför alla verifieringar före produktionsanvändning. Obligatoriska seedade körprofilnycklar är systemstandarder, inte bevis på att anslutningen är godkänd."
+      },
+      "actions": {
+        "addConnection": "Lägg till AI-anslutning",
+        "editConnection": "Redigera anslutning",
+        "manageSecret": "Hantera hemlighet",
+        "manageAttestation": "Hantera attest",
+        "addModel": "Lägg till modell",
+        "editModel": "Redigera modell",
+        "verifyModel": "Verifiera modell",
+        "probeHealth": "Kör hälsokontroll",
+        "retireModel": "Avsluta modellrevision",
+        "fetchCatalog": "Läs modellkatalog",
+        "verifyConnection": "Verifiera anslutning",
+        "activateConnection": "Aktivera anslutning",
+        "suspendConnection": "Suspendera anslutning",
+        "recoverConnection": "Återställ anslutning",
+        "retireConnection": "Avsluta anslutning",
+        "createProfileRevision": "Skapa profilrevision",
+        "editProfile": "Redigera profilutkast",
+        "activateProfile": "Aktivera profilrevision",
+        "suspendProfile": "Suspendera profil",
+        "recoverProfile": "Återställ profil",
+        "saveConnection": "Spara anslutning",
+        "saveModel": "Spara modellutkast",
+        "saving": "Sparar…",
+        "cancel": "Avbryt"
+      },
+      "dialogs": {
+        "createConnection": "Lägg till AI-anslutning",
+        "editConnection": "Redigera AI-anslutning",
+        "createModel": "Lägg till anslutningsmodell",
+        "editModel": "Redigera anslutningsmodell",
+        "secret": "Leverantörshemlighet",
+        "attestation": "Anslutningsattest",
+        "profile": "Körprofilrevision"
+      },
+      "connection": {
+        "created": "Utkastet för AI-anslutningen skapades.",
+        "updated": "AI-anslutningen uppdaterades. Tekniska ändringar kräver ny verifiering."
+      },
+      "lifecycle": {
+        "label": "Administrativ livscykel",
+        "active": "Aktiv",
+        "draft": "Utkast",
+        "retired": "Avslutad",
+        "suspended": "Suspenderad",
+        "verification_required": "Verifiering krävs",
+        "activatedMessage": "AI-anslutningen aktiverades.",
+        "suspendedMessage": "AI-anslutningen suspenderades.",
+        "retiredMessage": "AI-anslutningen avslutades.",
+        "retireConfirmTitle": "Avsluta AI-anslutningen?",
+        "retireConfirmMessage": "En avslutad anslutning kan inte återgå till en aktiv livscykel. Befintlig historisk evidens bevaras."
+      },
+      "health": {
+        "label": "Operativ hälsa",
+        "degraded": "Nedsatt",
+        "healthy": "Fungerar",
+        "unavailable": "Otillgänglig",
+        "unknown": "Okänd",
+        "probed": "Den begränsade hälsokontrollen slutfördes.",
+        "safeRecoveryHelp": "Återställning är manuell och använder en begränsad kontroll mot samma verifierade revision. Den växlar aldrig till en reservmodell."
+      },
+      "configuration": {
+        "title": "Anslutningskonfiguration och egress",
+        "dataPolicy": "Datapolicy"
+      },
+      "authentication": {
+        "static_secret": "Statisk leverantörshemlighet",
+        "oauth2_client_credentials": "OAuth 2-klientuppgifter",
+        "mtls": "Ömsesidig TLS",
+        "none": "Ingen applikationsuppgift (endast utvecklings-sidecar)"
+      },
+      "values": {
+        "yes": "Ja",
+        "no": "Nej",
+        "noDescription": "Ingen beskrivning"
+      },
+      "fields": {
+        "administrationName": {
+          "label": "Administrationsnamn",
+          "help": "Ange det interna namn som administratörer använder för att identifiera anslutningen."
+        },
+        "publicName": {
+          "label": "Publikt namn",
+          "help": "Ange namnet som får visas utanför anslutningsadministrationen."
+        },
+        "adapterKey": {
+          "label": "Adapternyckel",
+          "help": "Ange den registrerade leverantörsoberoende adapternyckeln, till exempel openrouter eller controlled_test."
+        },
+        "adapterVersion": {
+          "label": "Adapterversion",
+          "help": "Ange exakt installerad adapterversion. Verifieringen binds till denna version."
+        },
+        "endpointUrl": {
+          "label": "Anslutningsadress",
+          "help": "Ange godkänd HTTPS- eller WSS-adress utan autentiseringsuppgifter, frågesträng eller fragment."
+        },
+        "tlsPolicyKey": {
+          "label": "TLS-policy",
+          "help": "Ange den TLS-policynyckel som driften äger och som är godkänd för adressen."
+        },
+        "egressPolicyKey": {
+          "label": "Egress-policy",
+          "help": "Ange nyckeln för driftens egress-tillåtelselista. Att spara ändrar inte nätverkets tillåtelselista."
+        },
+        "agentRuntimeKey": {
+          "label": "Agentmiljönyckel",
+          "help": "För en agentmiljö anger du dess registrerade nyckel tillsammans med en version. Lämna båda miljöfälten tomma för en direkt leverantör."
+        },
+        "agentRuntimeVersion": {
+          "label": "Agentmiljöversion",
+          "help": "Ange exakt version av agentmiljön eller lämna tomt tillsammans med miljönyckeln."
+        },
+        "authenticationType": {
+          "label": "Autentisering",
+          "help": "Välj hur adaptern autentiserar. Hemlighetsvärden hanteras separat och returneras aldrig av API:t."
+        },
+        "maximumConcurrency": {
+          "label": "Högsta samtidighet",
+          "help": "Ange högsta antal samtidiga körningar för anslutningen, från 1 till 100."
+        },
+        "description": {
+          "label": "Beskrivning",
+          "help": "Beskriv anslutningens administrativa syfte utan att ange hemligheter eller personuppgifter."
+        },
+        "dataPolicySummary": {
+          "label": "Sammanfattning av datapolicy",
+          "help": "Sammanfatta den godkända datahanteringsgränsen. Den strukturerade attesten är styrande vid aktivering."
+        },
+        "name": {
+          "label": "Modellnamn",
+          "help": "Ange administratörens namn för anslutningsmodellen."
+        },
+        "externalModelId": {
+          "label": "Externt modell-id",
+          "help": "Ange exakt modellidentifierare som adaptern skickar till leverantören eller agentmiljön."
+        },
+        "externalModelVersion": {
+          "label": "Extern modellversion",
+          "help": "Ange en låst extern version när leverantören exponerar en, annars lämnar du fältet tomt."
+        },
+        "modelDescription": {
+          "label": "Modellbeskrivning",
+          "help": "Beskriv modellens godkända syfte och begränsningar."
+        },
+        "secret": {
+          "label": "Ny leverantörshemlighet",
+          "help": "Ange en ny hemlighetskandidat. Värdet krypteras och visas eller exporteras aldrig efter att det skickats."
+        },
+        "responsibleOrganizationUnitReference": {
+          "label": "Ansvarig organisationsenhets-id",
+          "help": "Ange UUID för den organisationsenhet som ansvarar för anslutningen."
+        },
+        "providerName": {
+          "label": "Leverantörsnamn",
+          "help": "Ange juridisk leverantör eller tjänst enligt godkännandebeslutet."
+        },
+        "maximumInformationClass": {
+          "label": "Högsta informationsklass",
+          "help": "Ange den högsta informationsklass som är godkänd för anslutningen."
+        },
+        "maximumRetentionDays": {
+          "label": "Högsta lagringstid i dagar",
+          "help": "Ange leverantörens godkända lagringsgräns i hela dagar, inklusive noll."
+        },
+        "processingRegions": {
+          "label": "Behandlingsregioner",
+          "help": "Ange godkända regionkoder separerade med kommatecken, till exempel SE, EU."
+        },
+        "subprocessors": {
+          "label": "Underbiträden",
+          "help": "Ange godkända underbiträden separerade med kommatecken eller lämna tomt när inga används."
+        },
+        "incidentResponseReference": {
+          "label": "Referens-id för incidenthantering",
+          "help": "Ange UUID för den godkända incidenthanteringsreferensen."
+        },
+        "decisionReference": {
+          "label": "Beslutsreferens",
+          "help": "Ange beslutet eller ärendet som godkänner attesten."
+        },
+        "reviewedAt": {
+          "label": "Granskad vid",
+          "help": "Ange tidpunkten för slutförd granskning som ett ISO 8601-värde."
+        },
+        "reviewDueAt": {
+          "label": "Nästa granskning",
+          "help": "Ange tidpunkten för nästa granskning som ett ISO 8601-värde eller lämna tomt om inget slutdatum beslutats."
+        },
+        "isPersonalDataProcessed": {
+          "label": "Behandlar personuppgifter",
+          "help": "Ange om anrop genom anslutningen får behandla personuppgifter."
+        },
+        "isTrainingAllowed": {
+          "label": "Leverantörsträning tillåten",
+          "help": "Ange om leverantören får använda anropsdata för träning."
+        },
+        "purpose": {
+          "label": "Godkänt syfte",
+          "help": "Beskriv det specifika godkända syftet för anslutningen."
+        },
+        "modelRevisionId": {
+          "label": "Anslutningsmodellrevision",
+          "help": "Välj exakt modellrevision för anropstypen eller lämna utan tilldelning för att spara ett ofullständigt utkast."
+        },
+        "totalTimeBudgetSeconds": {
+          "label": "Total tidsbudget",
+          "help": "Ange hela budgeten för kö, försök och omförsök, från 300 till 3 600 sekunder."
+        },
+        "inactivityTimeBudgetSeconds": {
+          "label": "Inaktivitetsbudget",
+          "help": "Ange högsta tid utan livstecken eller utdata. Den får inte överstiga den totala budgeten."
+        },
+        "queueCapacity": {
+          "label": "Kapacitet i kön",
+          "help": "Ange hur många körningar som får vänta för profilen, från 0 till 100."
+        }
+      },
+      "secret": {
+        "writeOnly": "Leverantörshemligheter kan bara anges, inte läsas. Befintliga och inskickade värden visas eller exporteras aldrig.",
+        "activeAvailable": "En aktiv krypterad leverantörshemlighet finns tillgänglig.",
+        "unavailable": {
+          "authentication_failed": "Den aktiva hemligheten kan inte dekrypteras eller autentiseras just nu.",
+          "encrypted_material_deleted": "Det krypterade hemlighetsmaterialet har raderats.",
+          "root_key_version_missing": "Driftsättningen saknar root-key-versionen som hemligheten kräver.",
+          "secret_missing": "Ingen aktiv leverantörshemlighet finns tillgänglig."
+        },
+        "writeCandidate": "Spara hemlighetskandidat",
+        "written": "Hemlighetskandidaten krypterades. Värdet är inte längre tillgängligt för gränssnittet.",
+        "candidateReady": "Den krypterade kandidaten är klar för verifiering och aktivering.",
+        "activateCost": "Aktivering gör en begränsad leverantörskontroll och kan medföra en liten leverantörskostnad.",
+        "activateCandidate": "Verifiera och aktivera kandidat",
+        "confirmRevocation": "Bekräfta återkallelse hos leverantören",
+        "deleteCandidate": "Ta bort kandidat",
+        "activated": "Leverantörshemligheten verifierades och aktiverades.",
+        "revocationConfirmed": "Återkallelsen hos leverantören bekräftades och det krypterade hemlighetsmaterialet raderades.",
+        "deleted": "Hemlighetskandidaten togs bort.",
+        "revocationConfirmTitle": "Bekräfta återkallelse hos leverantören?",
+        "revocationConfirmMessage": "Fortsätt bara när hemligheten har återkallats hos leverantören. Det krypterade hemlighetsmaterialet raderas permanent från Kravhantering.",
+        "deleteConfirmTitle": "Ta bort hemlighetskandidaten?",
+        "deleteConfirmMessage": "Detta tar permanent bort den krypterade kandidaten. Den aktiva hemligheten ändras inte."
+      },
+      "attestation": {
+        "missing": "Ingen aktuell giltig attest.",
+        "select": "Välj…",
+        "saveDraft": "Spara attestutkast",
+        "approve": "Godkänn sparad attest",
+        "saved": "Attestutkastet sparades. Granska det före godkännande.",
+        "approved": "Attesten godkändes.",
+        "status": {
+          "draft": "Attest: utkast",
+          "expired": "Attest: utgången",
+          "revoked": "Attest: återkallad",
+          "superseded": "Attest: ersatt",
+          "valid": "Attest: giltig"
+        }
+      },
+      "blockers": {
+        "title": "Hinder för aktivering",
+        "resolveBeforeActivation": "Åtgärda alla blockerare före aktivering.",
+        "active_secret_missing": "En aktiv leverantörshemlighet saknas.",
+        "attestation_incomplete": "Anslutningsattesten är ofullständig.",
+        "attestation_invalid": "En aktuell giltig anslutningsattest saknas.",
+        "capability_policy_invalid": "Modellen uppfyller inte körprofilens förmågepolicy.",
+        "connection_inactive": "Anslutningen är inte aktiv.",
+        "connection_verification_missing": "Den aktuella anslutningskonfigurationen har inte verifierats.",
+        "data_policy_blocked": "Den attesterade datapolicyn uppfyller inte anropstypens krav.",
+        "egress_policy_blocked": "Driftsättningens egress- eller TLS-policy blockerar målet.",
+        "model_revision_missing": "Ingen anslutningsmodellrevision är tilldelad.",
+        "model_revision_unverified": "Den tilldelade anslutningsmodellrevisionen har inte verifierats.",
+        "optimistic_concurrency_conflict": "Konfigurationen har ändrats. Läs om sidan innan du fortsätter."
+      },
+      "verification": {
+        "title": "Verifiering och livscykel",
+        "cost": "Kontroller av anslutning, modell, hemlighet, katalog och hälsa kan skicka begränsade anrop till den konfigurerade tjänsten och medföra en liten leverantörskostnad.",
+        "completed": "Den aktuella anslutningskonfigurationen verifierades."
+      },
+      "catalog": {
+        "loaded": "Den begränsade hämtningen av modellkatalogen slutfördes.",
+        "result": "Katalogmodeller: {models}"
+      },
+      "model": {
+        "title": "Anslutningsmodeller",
+        "description": "Varje revision måste verifieras mot den aktuella anslutningskonfigurationen före aktivering.",
+        "empty": "Inga anslutningsmodeller har lagts till.",
+        "revision": "revision {number}",
+        "capabilities": "Deklarerade förmågor",
+        "capabilitiesHelp": "Deklarera bara förmågor som förväntas av denna exakta revision. Verifieringen lagrar upptäckta och verifierade förmågor separat.",
+        "verifyConnectionFirst": "Verifiera den aktuella anslutningskonfigurationen först.",
+        "testCost": "Detta begränsade överensstämmelsetest kan medföra en liten leverantörskostnad.",
+        "saved": "Utkastet för anslutningsmodellen sparades.",
+        "verified": "Anslutningsmodellrevisionen verifierades.",
+        "retired": "Anslutningsmodellrevisionen avslutades.",
+        "retireConfirmTitle": "Avsluta modellrevisionen?",
+        "retireConfirmMessage": "En avslutad modellrevision kan inte verifieras eller väljas för en ny profilrevision.",
+        "status": {
+          "draft": "Utkast",
+          "retired": "Avslutad",
+          "verification_required": "Verifiering krävs",
+          "verified": "Verifierad"
+        }
+      },
+      "capabilities": {
+        "aiAnalysis": "AI-analys",
+        "cost": "Kostnadsuppgifter",
+        "imageInput": "Bildindata",
+        "jsonSchemaSteering": "Styrning med JSON-schema",
+        "streaming": "Strömning",
+        "tokenUsage": "Användning av token",
+        "validatableJson": "Validerbar JSON"
+      },
+      "profiles": {
+        "generation_without_images": "Kravgenerering utan bilder",
+        "generation_with_images": "Kravgenerering med bilder",
+        "invalid_json_repair": "Reparation av ogiltig import-JSON"
+      },
+      "profile": {
+        "title": "Körprofiler",
+        "description": "En körprofil binder en anropstyp till en verifierad modellrevision. Automatisk fallback används inte.",
+        "impactTitle": "Påverkan på körprofiler",
+        "impactDescription": "Profiler vars aktiva revision eller utkast refererar till en modell i anslutningen visas här.",
+        "noImpact": "Ingen körprofilrevision refererar till anslutningen just nu.",
+        "blocked": "Blockerad",
+        "noModel": "Ingen modell tilldelad – ofullständigt utkast",
+        "activeRevision": "En aktiv revision är tilldelad",
+        "noActiveRevision": "Ingen aktiv revision",
+        "capabilityPolicy": "Förmågepolicy",
+        "capabilityPolicyHelp": "Ange varje förmåga som inaktiverad, tillåten eller obligatorisk för anropstypen.",
+        "saveDraft": "Spara profilutkast",
+        "saved": "Körprofilutkastet sparades.",
+        "activated": "Körprofilrevisionen aktiverades.",
+        "suspended": "Körprofilen suspenderades.",
+        "recovered": "Körprofilen aktiverades igen.",
+        "operational": {
+          "enabled": "Aktiverad",
+          "suspended": "Suspenderad"
+        }
+      },
+      "policy": {
+        "modes": {
+          "disabled": "Inaktiverad",
+          "allowed": "Tillåten",
+          "required": "Obligatorisk"
+        },
+        "aiAnalysis": {
+          "label": "AI-analys",
+          "help": "Styr om modellens analysuppgifter får eller måste returneras."
+        },
+        "imageInput": {
+          "label": "Bildindata",
+          "help": "Kräv bildindata endast för anropstyper som skickar granskade bilder."
+        },
+        "jsonSchema": {
+          "label": "JSON-schema",
+          "help": "Styr om strikt styrning med JSON-schema får eller måste användas."
+        },
+        "streaming": {
+          "label": "Strömning",
+          "help": "Styr om begränsad utdataströmning får eller måste användas."
+        },
+        "usageMetadata": {
+          "label": "Användningsmetadata",
+          "help": "Styr om normaliserade uppgifter om antal token och kostnad får eller måste rapporteras."
+        },
+        "validatableJson": {
+          "label": "Validerbar JSON",
+          "help": "Styr om slutresultatet måste vara validerbar JSON."
+        }
+      }
+    },
     "applicationSettings": {
       "title": "Inställningar",
       "description": "Gemensamma inställningar för AI, kravimporter, exporter och rapporter.",

@@ -72,6 +72,10 @@ vi.mock('next-intl', () => ({
     `${namespace}.${key}`,
 }))
 
+vi.mock('@/app/[locale]/admin/panels/settings/ai-connections-panel', () => ({
+  default: () => <div>AI connection registry</div>,
+}))
+
 describe('AiSettingsPanel', () => {
   beforeEach(() => {
     fetchMock.mockReset()

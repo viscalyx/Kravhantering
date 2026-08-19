@@ -157,6 +157,9 @@ alias.
 
 The `AI` section manages AI-assisted requirement generation. Its
 `AI assistance` subsection contains the requirement-generation toggle,
+its `AI connections and run profiles` subsection contains a collapsed
+administrator registry for provider-independent connections, model revisions,
+attestations, write-only provider secrets, and the three fixed run profiles,
 its `AI security` section contains the safety-rule cache time and editable AI
 safety-rule terms, and its
 `MCP interface` section contains the MCP request/session payload limit and MCP
@@ -177,6 +180,13 @@ The source of truth is:
 - admin API: `PATCH/DELETE /api/admin/ai-safety-rules/terms/{id}`
 - admin API: `POST /api/admin/ai-safety-rules/terms/remove`
 - admin API: `POST /api/admin/ai-safety-rules/{ruleId}/restore-defaults`
+- connection registry API: `GET/POST /api/admin/ai-connections`
+- connection detail API: `GET/PATCH /api/admin/ai-connections/{connectionId}`
+- connection workflow API:
+  `POST /api/admin/ai-connections/{connectionId}/actions`
+- run-profile API: `GET /api/admin/ai-run-profiles`
+- run-profile revision and workflow APIs under
+  `/api/admin/ai-run-profiles/{profileKey}`
 - forensic control API: `GET/POST/PATCH /api/admin/ai-forensic-captures`
 - hard override: `AI_REQUIREMENT_GENERATION_DISABLED`
 
@@ -204,6 +214,16 @@ The active counts include executed sessions until their TTL expires. Exact
 quota equality is accepted. Changes are audited as privileged setting changes
 and apply to new `validate` admission checks; lowering a quota does not delete
 existing sessions.
+
+The connection registry separates administrative lifecycle from operational
+health and keeps at most one connection expanded. Connection and model changes
+are draft revisions until their explicit checks pass. Activation fails closed
+on incomplete attestation, deployment egress/TLS/data-policy denial, missing
+secret where authentication requires one, missing verification evidence, or
+an incompatible run-profile capability policy. Provider secrets are entered
+and rotated through a write-only modal and are never returned to the browser.
+There is no automatic connection or model fallback. Suspending and recovering
+a connection or run profile is always an explicit administrative action.
 
 Forensic evidence capture is not an AI setting or a persistent toggle. An Admin
 creates a request through `POST /api/admin/ai-forensic-captures` with an exact
