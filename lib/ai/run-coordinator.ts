@@ -271,23 +271,39 @@ async function completionDecisionWithinBudget(
 > {
   if (abortSignal.aborted) return { kind: 'aborted' }
   if (remainingMs <= 0) return { kind: 'deadline' }
-  const decision = decide()
+  let active = true
+  let abortSettled = false
   let timer: ReturnType<typeof setTimeout> | undefined
-  let resolveAbort = (): void => undefined
+  let onAbort = (): void => undefined
+  const aborted = new Promise<{ kind: 'aborted' }>(resolve => {
+    onAbort = () => {
+      if (!active || abortSettled) return
+      abortSettled = true
+      resolve({ kind: 'aborted' })
+    }
+    abortSignal.addEventListener('abort', onAbort, { once: true })
+    if (abortSignal.aborted) onAbort()
+  })
+  const deadline = new Promise<{ kind: 'deadline' }>(resolve => {
+    timer = setTimeout(() => {
+      if (active) resolve({ kind: 'deadline' })
+    }, remainingMs)
+  })
   try {
+    const decision = decide()
     return await Promise.race([
       decision.then(event => ({ event, kind: 'decided' as const })),
-      new Promise<{ kind: 'aborted' }>(resolve => {
-        resolveAbort = () => resolve({ kind: 'aborted' })
-        abortSignal.addEventListener('abort', resolveAbort, { once: true })
-      }),
-      new Promise<{ kind: 'deadline' }>(resolve => {
-        timer = setTimeout(() => resolve({ kind: 'deadline' }), remainingMs)
-      }),
+      aborted,
+      deadline,
     ])
   } finally {
-    if (timer) clearTimeout(timer)
-    abortSignal.removeEventListener('abort', resolveAbort)
+    active = false
+    if (timer !== undefined) {
+      clearTimeout(timer)
+      timer = undefined
+    }
+    abortSignal.removeEventListener('abort', onAbort)
+    onAbort = () => undefined
   }
 }
 

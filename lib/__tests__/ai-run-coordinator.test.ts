@@ -1,3 +1,4 @@
+import { getEventListeners } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
 import type { AiRunEvent, AiRunIdentity } from '@/lib/ai/run-contracts'
 import {
@@ -929,6 +930,48 @@ describe('AI run coordinator', () => {
       expect(decisionSignal?.aborted).toBe(true)
       expect(coordination.finish).toHaveBeenCalledWith(
         expect.objectContaining({ outcome: 'cancelled' }),
+      )
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('observes caller abort while a completion decision starts synchronously', async () => {
+    vi.useFakeTimers()
+    try {
+      const controller = new AbortController()
+      const coordination = store()
+      let decisionSignal: AbortSignal | undefined
+      const decideCompleted = vi.fn((_event, _attempt, context) => {
+        decisionSignal = context.abortSignal
+        controller.abort()
+        return new Promise<never>(() => undefined)
+      })
+      const collecting = collect(
+        createAiRunCoordinator({ coordination }).coordinate(
+          request(controller.signal),
+          () =>
+            (async function* () {
+              yield completed()
+            })(),
+          () => undefined,
+          decideCompleted,
+        ),
+      )
+      await expect(collecting).resolves.toEqual([
+        {
+          identity: IDENTITY,
+          reason: 'application_cancelled',
+          type: 'cancelled',
+        },
+      ])
+      expect(coordination.finish).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'cancelled' }),
+      )
+      expect(decisionSignal).toBeDefined()
+      expect(getEventListeners(decisionSignal as AbortSignal, 'abort')).toEqual(
+        [],
       )
       expect(vi.getTimerCount()).toBe(0)
     } finally {

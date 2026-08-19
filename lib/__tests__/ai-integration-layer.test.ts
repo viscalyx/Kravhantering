@@ -1,3 +1,4 @@
+import { getEventListeners } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
 import { createAiConnectionAdapterRegistry } from '@/lib/ai/adapter-registry'
 import {
@@ -1230,6 +1231,64 @@ describe('AI integration layer', () => {
     expect(coordination.finish).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: 'cancelled' }),
     )
+  })
+
+  it('does not publish repair output when final screening aborts synchronously', async () => {
+    vi.useFakeTimers()
+    try {
+      const controller = new AbortController()
+      const trustBoundary: AiRunTrustBoundary = {
+        approveCompleted: vi.fn(() => {
+          controller.abort()
+          return new Promise<never>(() => undefined)
+        }),
+        prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
+      }
+      const adapter: AIConnectionAdapter = {
+        forceClose: () => undefined,
+        async *run(adapterRequest) {
+          yield {
+            analysis: 'screened analysis',
+            identity: {
+              aiConnectionId: adapterRequest.connection.id,
+              aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+              aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            },
+            rawOutput: '{"schemaVersion":"wrong"}',
+            type: 'completed',
+            usage: USAGE,
+          }
+        },
+      }
+      const coordination = coordinationStore()
+      const coordinator = createAiRunCoordinator({ coordination })
+      const layer = integration(adapter, profile(), trustBoundary, {
+        ...coordinator,
+        startAutomaticRecovery: () => () => undefined,
+      })
+
+      const events = await collect(layer.run(request(controller.signal)))
+
+      expect(events).toEqual([
+        {
+          identity: {
+            aiConnectionId: 'connection-17',
+            aiConnectionModelRevisionId: 'model-revision-23',
+            aiRunProfileRevisionId: 'profile-revision-31',
+          },
+          reason: 'application_cancelled',
+          type: 'cancelled',
+        },
+      ])
+      expect(layer.takeSafeInvalidOutput(events[0])).toBeUndefined()
+      expect(coordination.finish).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'cancelled' }),
+      )
+      expect(getEventListeners(controller.signal, 'abort')).toEqual([])
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('replaces a completed result when final screening fails', async () => {
