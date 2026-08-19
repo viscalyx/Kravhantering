@@ -8,20 +8,27 @@ inte påverka applikationens health eller readiness. Driften släpper spärren
 först när ett maskinverifierbart driftsättningsbevis för den aktuella miljön
 har passerat den versionslevererade frisläppningsgrinden.
 
-Driftsättningsbeviset är innehållsfritt och binder samma avsedda
-AI-anslutning, anslutningsmodellrevision och aktiva körprofilrevisioner genom
-hela verifieringen. Det intygar följande kontroller:
+Driftsättningsbeviset är innehållsfritt och binder en begränsad mängd exakta
+tupler av adaptertyp, AI-anslutning, anslutningsmodellrevision och aktiv
+körprofilrevision genom hela verifieringen. Mängden avsedda tupler måste vara
+identisk med mängden verifierade tupler; antal eller en representativ väg är
+inte tillräckliga. Bevisformatets versionerade kontrollposter måste dessutom
+innehålla ett begränsat opakt bevis-ID, suiteversion och godkänt utfall för
+varje föreskriven kontrollaxel. Det intygar följande kontroller:
 
 - root-keyringen är tillgänglig på alla appnoder och ett godkänt
   databas- och keyringåterställningsprov är slutfört
 - utgående trafik är begränsad till godkända mål och säkra standarder gäller
 - attest, anslutningsprov, verifierade modellförmågor och avsedda aktiva
   körprofilrevisioner är aktuella
-- providerneutrala kontrakts-, säkerhets-, SQL- och routeprov passerar
+- providerneutrala adapterkontrakts-, säkerhets-, SQL-, route-, SSE-,
+  Playwright-, manuella-, seed-, återställnings-, rotations- och rollbackprov
+  passerar
 - bindande driftlarm är kopplade till ansvarig mottagare
 
-Grinden avvisar okända eller ofullständiga fält och rapporterar endast
-kontrollnamn, opaka identiteter, antal och status. Prompt, bilder,
+Grinden avvisar okända eller ofullständiga fält, saknade kontrollaxlar och
+duplicerade, utbytta eller extra revisionstupler. Den rapporterar endast
+kontrollnamn, suiteversioner, opaka identiteter, antal och status. Prompt, bilder,
 modellresultat, endpoint, leverantörshemlighet och hemlighetsreferens får inte
 finnas i beviset eller grindens utdata.
 

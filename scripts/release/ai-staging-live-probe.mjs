@@ -4,9 +4,11 @@ import fs from 'node:fs'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
-const FIXED_SYNTHETIC_NEED =
-  'Synthetic staging verification. No personal or production data.'
+const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v3'
+const MAX_RESPONSE_BYTES = 1_048_576
+const REQUEST_TIMEOUT_MS = 120_000
 const SAFE_PATH_VALUE = /^[A-Za-z0-9._:-]{1,160}$/u
+const MAX_INTENDED_PROFILES = 100
 
 function requiredEnv(env, name) {
   const value = env[name]?.trim()
@@ -17,6 +19,30 @@ function requiredEnv(env, name) {
 function safePathValue(value, name) {
   if (!SAFE_PATH_VALUE.test(value)) throw new Error(`${name} is invalid.`)
   return value
+}
+
+function intendedProfileRevisionIds(env, representativeId) {
+  const values = requiredEnv(env, 'AI_STAGING_LIVE_PROFILE_REVISION_IDS')
+    .split(',')
+    .map(value =>
+      safePathValue(value.trim(), 'AI_STAGING_LIVE_PROFILE_REVISION_IDS'),
+    )
+  if (values.length > MAX_INTENDED_PROFILES) {
+    throw new Error(
+      `AI_STAGING_LIVE_PROFILE_REVISION_IDS supports at most ${MAX_INTENDED_PROFILES} values.`,
+    )
+  }
+  if (new Set(values).size !== values.length) {
+    throw new Error(
+      'AI_STAGING_LIVE_PROFILE_REVISION_IDS must contain unique values.',
+    )
+  }
+  if (!values.includes(representativeId)) {
+    throw new Error(
+      'AI_STAGING_LIVE_PROFILE_REVISION_IDS must include AI_STAGING_LIVE_PROFILE_REVISION_ID.',
+    )
+  }
+  return values
 }
 
 export function stagingLiveProbeConfiguration(env = process.env, fsImpl = fs) {
@@ -42,15 +68,18 @@ export function stagingLiveProbeConfiguration(env = process.env, fsImpl = fs) {
   if (!cookie || /[\r\n]/u.test(cookie) || cookie.length > 8_192) {
     throw new Error('AI staging-live session cookie file is invalid.')
   }
-  const areaId = Number(requiredEnv(env, 'AI_STAGING_LIVE_AREA_ID'))
-  if (!Number.isSafeInteger(areaId) || areaId <= 0) {
-    throw new Error('AI_STAGING_LIVE_AREA_ID must be a positive integer.')
-  }
 
+  const representativeProfileRevisionId = safePathValue(
+    requiredEnv(env, 'AI_STAGING_LIVE_PROFILE_REVISION_ID'),
+    'AI_STAGING_LIVE_PROFILE_REVISION_ID',
+  )
   return {
-    areaId,
     baseUrl: baseUrl.toString(),
     cookie,
+    expectedEnvironmentId: safePathValue(
+      requiredEnv(env, 'AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID'),
+      'AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID',
+    ),
     intendedPath: {
       adapterType: safePathValue(
         requiredEnv(env, 'AI_STAGING_LIVE_ADAPTER_TYPE'),
@@ -64,28 +93,80 @@ export function stagingLiveProbeConfiguration(env = process.env, fsImpl = fs) {
         requiredEnv(env, 'AI_STAGING_LIVE_MODEL_REVISION_ID'),
         'AI_STAGING_LIVE_MODEL_REVISION_ID',
       ),
-      aiRunProfileRevisionId: safePathValue(
-        requiredEnv(env, 'AI_STAGING_LIVE_PROFILE_REVISION_ID'),
-        'AI_STAGING_LIVE_PROFILE_REVISION_ID',
-      ),
+      aiRunProfileRevisionId: representativeProfileRevisionId,
     },
-    profileKey: 'generation_without_images',
+    intendedProfileRevisionIds: intendedProfileRevisionIds(
+      env,
+      representativeProfileRevisionId,
+    ),
     status: 'configured',
   }
 }
 
-async function requestJson(fetchImpl, url, cookie) {
+async function boundedResponseText(response) {
+  const declaredLength = Number(response.headers.get('content-length'))
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
+    throw new Error('AI staging-live probe exceeded its bounded response size.')
+  }
+  if (!response.body) return ''
+  const reader = response.body.getReader()
+  const chunks = []
+  let bytes = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      bytes += value.byteLength
+      if (bytes > MAX_RESPONSE_BYTES) {
+        await reader.cancel()
+        throw new Error(
+          'AI staging-live probe exceeded its bounded response size.',
+        )
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  const merged = new Uint8Array(bytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new TextDecoder().decode(merged)
+}
+
+async function requestJson(fetchImpl, url, cookie, init = {}) {
   const response = await fetchImpl(url, {
-    headers: { accept: 'application/json', cookie },
-    method: 'GET',
+    ...init,
+    headers: {
+      accept: 'application/json',
+      cookie,
+      ...init.headers,
+    },
     redirect: 'error',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
   if (!response.ok) {
     throw new Error(
-      `AI staging-live preflight failed with HTTP ${response.status}.`,
+      `AI staging-live request failed with HTTP ${response.status}.`,
     )
   }
-  return response.json()
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.toLowerCase().startsWith('application/json')) {
+    throw new Error('AI staging-live request returned a non-JSON response.')
+  }
+  let parsed
+  try {
+    parsed = JSON.parse(await boundedResponseText(response))
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('bounded response')) {
+      throw error
+    }
+    throw new Error('AI staging-live request returned invalid JSON.')
+  }
+  return { body: parsed, headers: response.headers }
 }
 
 function requireArray(value, context) {
@@ -94,37 +175,45 @@ function requireArray(value, context) {
   return value
 }
 
-function preflightPath(configuration, profiles, revisions, connection) {
-  const profile = requireArray(profiles, 'Run-profile preflight').find(
-    candidate => candidate?.profileKey === configuration.profileKey,
-  )
+function assertServerEnvironment(configuration, headers) {
   if (
-    profile?.operationalStatus !== 'enabled' ||
-    profile.activeRevisionId !==
-      configuration.intendedPath.aiRunProfileRevisionId ||
-    !Array.isArray(profile.blockers) ||
-    profile.blockers.length !== 0
+    headers.get('x-kravhantering-deployment-environment') !== 'staging' ||
+    headers.get('x-kravhantering-deployment-environment-id') !==
+      configuration.expectedEnvironmentId
   ) {
     throw new Error(
-      'The active run profile does not match the intended staging path.',
+      'AI staging-live probe requires the exact server-proven staging environment.',
     )
   }
-  const revision = requireArray(
-    revisions,
-    'Run-profile revision preflight',
-  ).find(
-    candidate =>
-      candidate?.id === configuration.intendedPath.aiRunProfileRevisionId,
-  )
-  if (
-    revision?.status !== 'active' ||
-    revision.modelRevisionId !==
-      configuration.intendedPath.aiConnectionModelRevisionId
-  ) {
+  if (headers.get('x-kravhantering-ai-guard-active') !== 'true') {
     throw new Error(
-      'The model revision does not match the intended staging path.',
+      'AI staging-live probe requires the server-proven global AI guard to remain active.',
     )
   }
+}
+
+function preflightProfiles(configuration, profiles) {
+  const byRevision = new Map()
+  for (const profile of requireArray(profiles, 'Run-profile preflight')) {
+    if (typeof profile?.activeRevisionId === 'string') {
+      byRevision.set(profile.activeRevisionId, profile)
+    }
+  }
+  for (const revisionId of configuration.intendedProfileRevisionIds) {
+    const profile = byRevision.get(revisionId)
+    if (
+      profile?.operationalStatus !== 'enabled' ||
+      !Array.isArray(profile.blockers) ||
+      profile.blockers.length !== 0
+    ) {
+      throw new Error(
+        'Every intended profile revision must be active, enabled, and unblocked.',
+      )
+    }
+  }
+}
+
+function preflightConnection(configuration, connection) {
   if (
     connection?.lifecycleStatus !== 'active' ||
     connection.adapterKey !== configuration.intendedPath.adapterType
@@ -140,23 +229,26 @@ function preflightPath(configuration, profiles, revisions, connection) {
       model =>
         model?.id === configuration.intendedPath.aiConnectionModelRevisionId,
     )
-  if (selectedModel?.status !== 'verified') {
+  if (
+    selectedModel?.status !== 'verified' ||
+    typeof selectedModel.revisionToken !== 'string' ||
+    !selectedModel.revisionToken
+  ) {
     throw new Error('The intended staging model revision is not verified.')
+  }
+  return selectedModel
+}
+
+function assertConnectionProbeResult(value) {
+  if (typeof value?.connectionEvidenceId !== 'string') {
+    throw new Error('The fixed Admin functional probe v3 did not pass.')
   }
 }
 
-function terminalEvents(source) {
-  return source
-    .split(/\r?\n\r?\n/u)
-    .filter(Boolean)
-    .map(block => {
-      const lines = block.split(/\r?\n/u)
-      const event = lines.find(line => line.startsWith('event: '))?.slice(7)
-      const data = lines.find(line => line.startsWith('data: '))?.slice(6)
-      if (data) JSON.parse(data)
-      return event
-    })
-    .filter(event => ['done', 'error', 'validation_error'].includes(event))
+function assertModelProbeResult(value, expectedId) {
+  if (value?.id !== expectedId || value?.status !== 'verified') {
+    throw new Error('The fixed Admin functional probe v3 did not pass.')
+  }
 }
 
 export async function runAiStagingLiveSyntheticProbe(
@@ -167,64 +259,69 @@ export async function runAiStagingLiveSyntheticProbe(
   if (baseUrl.protocol !== 'https:') {
     throw new Error('The staging-live synthetic probe must use HTTPS.')
   }
-  const profilePath = encodeURIComponent(configuration.profileKey)
-  const [profiles, revisions, connection] = await Promise.all([
-    requestJson(
-      fetchImpl,
-      new URL('/api/admin/ai-run-profiles', baseUrl),
-      configuration.cookie,
-    ),
-    requestJson(
-      fetchImpl,
-      new URL(`/api/admin/ai-run-profiles/${profilePath}/revisions`, baseUrl),
-      configuration.cookie,
-    ),
-    requestJson(
-      fetchImpl,
-      new URL(
-        `/api/admin/ai-connections/${encodeURIComponent(configuration.intendedPath.aiConnectionId)}`,
-        baseUrl,
-      ),
-      configuration.cookie,
-    ),
-  ])
-  preflightPath(configuration, profiles, revisions, connection)
-
-  const response = await fetchImpl(
-    new URL('/api/ai/generate-requirement-import', baseUrl),
-    {
-      body: JSON.stringify({
-        areaId: configuration.areaId,
-        count: 1,
-        locale: 'en',
-        mode: 'library',
-        need: FIXED_SYNTHETIC_NEED,
-      }),
-      headers: {
-        accept: 'text/event-stream',
-        'content-type': 'application/json',
-        cookie: configuration.cookie,
-        origin: baseUrl.origin,
-        'x-requested-with': 'XMLHttpRequest',
-      },
-      method: 'POST',
-      redirect: 'error',
-    },
+  const profilesResponse = await requestJson(
+    fetchImpl,
+    new URL('/api/admin/ai-run-profiles', baseUrl),
+    configuration.cookie,
+    { method: 'GET' },
   )
-  if (!response.ok) {
-    throw new Error(
-      `AI staging-live probe failed with HTTP ${response.status}.`,
-    )
+  assertServerEnvironment(configuration, profilesResponse.headers)
+  preflightProfiles(configuration, profilesResponse.body)
+
+  const connectionUrl = new URL(
+    `/api/admin/ai-connections/${encodeURIComponent(configuration.intendedPath.aiConnectionId)}`,
+    baseUrl,
+  )
+  const connection = (
+    await requestJson(fetchImpl, connectionUrl, configuration.cookie, {
+      method: 'GET',
+    })
+  ).body
+  preflightConnection(configuration, connection)
+
+  const actionsUrl = new URL(`${connectionUrl.pathname}/actions`, baseUrl)
+  const mutationHeaders = {
+    'content-type': 'application/json',
+    origin: baseUrl.origin,
+    'x-requested-with': 'XMLHttpRequest',
   }
-  const events = terminalEvents(await response.text())
-  if (events.length !== 1 || events[0] !== 'done') {
-    throw new Error(
-      'AI staging-live probe requires exactly one successful terminal event.',
-    )
-  }
+  const connectionProbe = (
+    await requestJson(fetchImpl, actionsUrl, configuration.cookie, {
+      body: JSON.stringify({ action: 'verify_connection' }),
+      headers: mutationHeaders,
+      method: 'POST',
+    })
+  ).body
+  assertConnectionProbeResult(connectionProbe)
+
+  const refreshedConnection = (
+    await requestJson(fetchImpl, connectionUrl, configuration.cookie, {
+      method: 'GET',
+    })
+  ).body
+  const selectedModel = preflightConnection(configuration, refreshedConnection)
+  const modelProbe = (
+    await requestJson(fetchImpl, actionsUrl, configuration.cookie, {
+      body: JSON.stringify({
+        action: 'verify_model_revision',
+        modelRevisionId: configuration.intendedPath.aiConnectionModelRevisionId,
+        revisionToken: selectedModel.revisionToken,
+      }),
+      headers: mutationHeaders,
+      method: 'POST',
+    })
+  ).body
+  assertModelProbeResult(
+    modelProbe,
+    configuration.intendedPath.aiConnectionModelRevisionId,
+  )
 
   return {
+    adminFunctionalProbeVersion: ADMIN_FUNCTIONAL_PROBE_VERSION,
     intendedPath: Object.freeze({ ...configuration.intendedPath }),
+    preflightedProfileRevisionIds: Object.freeze([
+      ...configuration.intendedProfileRevisionIds,
+    ]),
     syntheticProbe: Object.freeze({
       ...configuration.intendedPath,
       externalLiveCallMade: true,

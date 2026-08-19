@@ -9,6 +9,31 @@ import {
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createAiConnectionAdministrationRuntime } from './admin-runtime'
 import type { AiConnectionAdministrationService } from './admin-service'
+import { isAiRequirementGenerationDisabled } from './scan-guard'
+
+const DEPLOYMENT_ENVIRONMENTS = new Set(['production', 'prodlike', 'staging'])
+const SAFE_ENVIRONMENT_ID = /^[A-Za-z0-9._:-]{1,160}$/u
+
+function deploymentProofHeaders(env: NodeJS.ProcessEnv = process.env) {
+  const configuredEnvironment = env.KRAVHANTERING_DEPLOYMENT_ENVIRONMENT?.trim()
+  const configuredEnvironmentId =
+    env.KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID?.trim()
+  return {
+    'x-kravhantering-ai-guard-active': String(
+      isAiRequirementGenerationDisabled(env),
+    ),
+    'x-kravhantering-deployment-environment':
+      configuredEnvironment &&
+      DEPLOYMENT_ENVIRONMENTS.has(configuredEnvironment)
+        ? configuredEnvironment
+        : 'unconfigured',
+    'x-kravhantering-deployment-environment-id':
+      configuredEnvironmentId &&
+      SAFE_ENVIRONMENT_ID.test(configuredEnvironmentId)
+        ? configuredEnvironmentId
+        : 'unconfigured',
+  }
+}
 
 export async function adminAiRead(
   request: Request,
@@ -25,6 +50,7 @@ export async function adminAiRead(
     const db = await getRequestSqlServerDataSource()
     return NextResponse.json(
       await load(createAiConnectionAdministrationRuntime(db, context)),
+      { headers: deploymentProofHeaders() },
     )
   } catch (error) {
     if (isRequirementsServiceError(error)) {

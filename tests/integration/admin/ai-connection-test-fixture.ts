@@ -270,14 +270,6 @@ async function removeFixtureConnections(db: DataSource) {
 
 async function restoreProfile(db: DataSource, snapshot: ProfileSnapshot) {
   await withProfileTriggersDisabled(db, async () => {
-    await db.query(
-      `UPDATE [ai_run_profile_revisions]
-       SET [status] = N'superseded',
-         [activated_at] = COALESCE([activated_at], SYSUTCDATETIME()),
-         [superseded_at] = COALESCE([superseded_at], SYSUTCDATETIME())
-       WHERE [ai_run_profile_id] = @0`,
-      [snapshot.profile.id],
-    )
     const ids = JSON.stringify(snapshot.revisions.map(revision => revision.id))
     await db.query(
       `DELETE FROM [ai_run_profile_revisions]
@@ -286,6 +278,15 @@ async function restoreProfile(db: DataSource, snapshot: ProfileSnapshot) {
            SELECT TRY_CONVERT(uniqueidentifier, [value]) FROM OPENJSON(@1)
          )`,
       [snapshot.profile.id, ids],
+    )
+    await db.query(
+      `UPDATE [ai_run_profile_revisions]
+       SET [status] = N'superseded',
+         [activated_at] = COALESCE([activated_at], SYSUTCDATETIME()),
+         [superseded_at] = COALESCE([superseded_at], SYSUTCDATETIME())
+       WHERE [ai_run_profile_id] = @0
+         AND [ai_connection_model_revision_id] IS NOT NULL`,
+      [snapshot.profile.id],
     )
     for (const revision of snapshot.revisions) {
       await db.query(

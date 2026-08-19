@@ -34,6 +34,7 @@ function store(
 
 function request(signal = new AbortController().signal) {
   return {
+    adapterType: 'controlled_test',
     adapterVersion: '1',
     abortSignal: signal,
     applicationRunId: '00000000-0000-4000-8000-000000000001',
@@ -96,6 +97,7 @@ function completedProbeResult(succeeded: boolean): AiHealthProbeResult {
 describe('AI run coordinator', () => {
   it('claims durable due recovery rows and emits probe and health telemetry', async () => {
     const target = {
+      adapterType: 'controlled_test',
       adapterVersion: '1',
       identity: IDENTITY,
       inactivityTimeBudgetMs: 1_000,
@@ -166,6 +168,7 @@ describe('AI run coordinator', () => {
       },
     })
     const target = {
+      adapterType: 'controlled_test',
       adapterVersion: '1',
       identity: IDENTITY,
       inactivityTimeBudgetMs: 1_000,
@@ -198,6 +201,7 @@ describe('AI run coordinator', () => {
 
   it('skips a lost recovery race and normalizes a probe exception', async () => {
     const target = {
+      adapterType: 'controlled_test',
       adapterVersion: '1',
       identity: IDENTITY,
       inactivityTimeBudgetMs: 1_000,
@@ -246,6 +250,7 @@ describe('AI run coordinator', () => {
 
   it('reports an unavailable manual probe and normalizes execution failure', async () => {
     const target = {
+      adapterType: 'controlled_test',
       adapterVersion: '1',
       identity: IDENTITY,
       inactivityTimeBudgetMs: 1_000,
@@ -304,6 +309,7 @@ describe('AI run coordinator', () => {
       vi.useFakeTimers()
       try {
         const target = {
+          adapterType: 'controlled_test',
           adapterVersion: '1',
           identity: IDENTITY,
           inactivityTimeBudgetMs: 10,
@@ -697,6 +703,45 @@ describe('AI run coordinator', () => {
     expect(coordination.requeueForRetry).toHaveBeenCalledTimes(1)
     expect(coordination.abandon).toHaveBeenCalledTimes(1)
     expect(coordination.finish).not.toHaveBeenCalled()
+  })
+
+  it('cancels the default retry wait without waiting for its timer', async () => {
+    vi.useFakeTimers()
+    try {
+      const controller = new AbortController()
+      const coordination = store()
+      const execute = vi.fn(() =>
+        (async function* () {
+          yield {
+            failure: {
+              category: 'connection_unavailable' as const,
+              retryDisposition: 'safe_before_acceptance' as const,
+              retryable: true,
+            },
+            identity: IDENTITY,
+            type: 'failed' as const,
+          }
+        })(),
+      )
+      const collecting = collect(
+        createAiRunCoordinator({
+          coordination,
+          random: () => 0,
+        }).coordinate(request(controller.signal), execute, () => undefined),
+      )
+
+      await vi.waitFor(() => {
+        expect(coordination.requeueForRetry).toHaveBeenCalledTimes(1)
+      })
+      controller.abort()
+
+      await expect(collecting).resolves.toMatchObject([{ type: 'cancelled' }])
+      expect(vi.getTimerCount()).toBe(0)
+      expect(coordination.abandon).toHaveBeenCalledTimes(1)
+      expect(coordination.finish).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('does not retry after the first delta', async () => {
@@ -1210,6 +1255,7 @@ describe('AI run coordinator', () => {
       'ai_run_terminal',
     ])
     expect(telemetry.at(-1)).toMatchObject({
+      adapterType: 'controlled_test',
       adapterVersion: '1',
       correlationId: 'correlation-1',
       requestId: 'request-1',

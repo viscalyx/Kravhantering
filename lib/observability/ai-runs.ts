@@ -56,6 +56,7 @@ export function recordAiRunTelemetryEvent(
   try {
     const level = ALARM_NAMES.has(event.name) ? 'error' : 'info'
     const payload: Record<string, AiRunLogValue> = {
+      adapter_type: safeIdentifier(event.adapterType, 'adapter type'),
       adapter_version: safeIdentifier(event.adapterVersion, 'adapter version'),
       ai_connection_id: safeIdentifier(
         event.aiConnectionId,

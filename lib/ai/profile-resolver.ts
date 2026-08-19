@@ -140,6 +140,7 @@ const ERROR_LOCALIZATION_KEYS = {
 } as const satisfies Record<AiRunProfileResolutionErrorCode, string>
 
 export class AiRunProfileResolutionError extends Error {
+  readonly adapterType?: string
   readonly adapterVersion?: string
   readonly code: AiRunProfileResolutionErrorCode
   readonly localizationKey: (typeof ERROR_LOCALIZATION_KEYS)[AiRunProfileResolutionErrorCode]
@@ -154,6 +155,7 @@ export class AiRunProfileResolutionError extends Error {
     code: AiRunProfileResolutionErrorCode,
     identity?: AiRunProfileResolutionError['identity'],
     adapterVersion?: string,
+    adapterType?: string,
   ) {
     super('The configured AI run profile is unavailable.')
     this.name = 'AiRunProfileResolutionError'
@@ -161,6 +163,7 @@ export class AiRunProfileResolutionError extends Error {
     this.localizationKey = ERROR_LOCALIZATION_KEYS[code]
     this.identity = identity
     this.adapterVersion = adapterVersion
+    this.adapterType = adapterType
   }
 }
 
@@ -373,6 +376,7 @@ function blocked(profile?: AiPersistedRunProfile): AiRunProfileResolutionError {
         }
       : undefined,
     profile?.adapterVersion,
+    profile?.adapterType,
   )
 }
 

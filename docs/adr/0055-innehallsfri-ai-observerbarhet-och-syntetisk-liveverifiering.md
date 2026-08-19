@@ -5,8 +5,8 @@ Status: Antagen 2026-08-19.
 AI-integrationslagret publicerar en gemensam strukturerad och innehållsfri
 drifttelemetri för alla adaptrar. Routes och verksamhetslager får inte lägga
 till leverantörsspecifik mätning. Varje telemetrihändelse använder opaka
-identiteter och begränsade numeriska mått för kö, retry, samtidighet,
-tidsförlopp, terminalutfall och normaliserad användning.
+identiteter, adaptertyp och adapterversion samt begränsade numeriska mått för
+kö, retry, samtidighet, tidsförlopp, terminalutfall och normaliserad användning.
 
 Prompt, bilder, modellresultat, endpoint, leverantörshemlighet,
 hemlighetsreferens och fri feltext är förbjudna. Telemetrifel får inte läcka
@@ -29,11 +29,15 @@ testadaptern mot samma kontrakts- och integrationsgränser, men använder den
 kontrollerade adaptern för produktens exakta författarväg. Den får inte göra
 ett externt live-AI-anrop.
 
-Staging-liveverifiering är en separat, explicit aktiverad driftåtgärd. Provet
-förhandskontrollerar att exakt avsedd anslutning, modellrevision och aktiv
-körprofilrevision är verifierade och inte blockerade. Därefter skickar det en
-fast syntetisk förfrågan genom produktens ordinarie route och kräver exakt ett
-normaliserat terminalutfall. Provet skriver endast innehållsfri bevismetadata.
+Staging-liveverifiering är en separat, explicit aktiverad driftåtgärd. Innan
+extern trafik tillåts kräver provet serverbevisad stagingidentitet, exakt
+förväntat miljö-ID och aktiv global AI-spärr. Det förhandskontrollerar samtliga
+avsedda aktiva körprofilrevisioner samt exakt avsedd anslutning och
+modellrevision. Därefter använder det endast de spärrkompatibla Admin-åtgärderna
+för anslutnings- och modellverifiering. De kör den fasta syntetiska sviten
+`ai-admin-functional-probe-v3` utan områdesval eller databasbaserat
+författarinnehåll. Alla svar och tidsgränser är begränsade. Provet skriver
+endast innehållsfri bevismetadata.
 
 Produktionsmiljön använder inte ett liveförfattarprov. Där verifieras i stället
 den exakta konfigurationen, de säkra grindarna, larmkopplingarna och tidigare

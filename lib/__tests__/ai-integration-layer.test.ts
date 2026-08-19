@@ -160,6 +160,7 @@ function recoveryTarget(
   overrides: Partial<AiRecoveryProbeTarget> = {},
 ): AiRecoveryProbeTarget {
   return {
+    adapterType: 'capture',
     adapterVersion: '3',
     identity: {
       aiConnectionId: 'connection-17',
@@ -788,6 +789,7 @@ describe('AI integration layer', () => {
       code: 'profile_blocked',
     })
     expect(emit).toHaveBeenCalledWith({
+      adapterType: 'capture',
       adapterVersion: '3',
       aiConnectionId: 'connection-17',
       aiConnectionModelRevisionId: 'model-revision-23',

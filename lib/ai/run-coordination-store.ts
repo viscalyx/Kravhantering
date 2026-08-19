@@ -10,6 +10,7 @@ import type { SqlServerDatabase } from '@/lib/db'
 interface CoordinationRow {
   acquisitionStatus?: AiRunAcquireResult['status']
   activeConcurrency?: number | string
+  adapterType?: string
   adapterVersion?: string
   admissionStatus?: AiRunAdmissionResult['status']
   aiConnectionId?: string
@@ -474,6 +475,7 @@ export function createSqlServerAiRunCoordinationStore(
            [state].[ai_connection_model_revision_id] AS [aiConnectionModelRevisionId],
            [profile_revision].[id] AS [aiRunProfileRevisionId],
            [connection].[adapter_version] AS [adapterVersion],
+           [connection].[adapter_key] AS [adapterType],
            CASE [profile].[profile_key]
              WHEN N'generation_without_images' THEN N'generate_without_images'
              WHEN N'generation_with_images' THEN N'generate_with_images'
@@ -513,6 +515,7 @@ export function createSqlServerAiRunCoordinationStore(
         [boundedLimit],
       )
       return rows.flatMap(row =>
+        row.adapterType &&
         row.adapterVersion &&
         row.aiConnectionId &&
         row.aiConnectionModelRevisionId &&
@@ -522,6 +525,7 @@ export function createSqlServerAiRunCoordinationStore(
         row.totalTimeBudgetMs !== undefined
           ? [
               {
+                adapterType: row.adapterType,
                 adapterVersion: row.adapterVersion,
                 identity: {
                   aiConnectionId: row.aiConnectionId,

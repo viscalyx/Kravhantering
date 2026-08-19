@@ -4,18 +4,33 @@ import fs from 'node:fs'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
-export const AI_DEPLOYMENT_EVIDENCE_SCHEMA_VERSION = 1
+export const AI_DEPLOYMENT_EVIDENCE_SCHEMA_VERSION = 2
+
+export const AI_DEPLOYMENT_REQUIRED_CHECK_AXES = Object.freeze([
+  'adapter_contract',
+  'security',
+  'sql',
+  'routes',
+  'sse',
+  'playwright_dev',
+  'playwright_prodlike',
+  'manual',
+  'required_seed',
+  'demo_seed',
+  'recovery_rotation',
+  'deployment_rollback',
+])
+
+const MAX_INTENDED_PATHS = 100
 
 const TOP_LEVEL_FIELDS = Object.freeze([
   'alerts',
-  'connections',
+  'checks',
   'egress',
   'environment',
   'guardActive',
-  'intendedPath',
+  'inventory',
   'keyring',
-  'models',
-  'profiles',
   'restore',
   'schemaVersion',
   'secureDefaults',
@@ -54,10 +69,42 @@ function assertBoolean(value, context) {
   if (typeof value !== 'boolean') throw new Error(`${context} must be boolean.`)
 }
 
-function assertCount(value, context) {
-  if (!Number.isSafeInteger(value) || value < 0) {
-    throw new Error(`${context} must be a non-negative safe integer.`)
+function pathKey(path) {
+  return AI_PATH_FIELDS.map(field => path[field]).join('\u0000')
+}
+
+function validatePath(path, context) {
+  assertExactFields(path, AI_PATH_FIELDS, context)
+  for (const field of AI_PATH_FIELDS) {
+    if (
+      typeof path[field] !== 'string' ||
+      !/^[A-Za-z0-9._:-]{1,160}$/u.test(path[field])
+    ) {
+      throw new Error(`${context}.${field} is invalid.`)
+    }
   }
+}
+
+function validatePathArray(paths, context, minimum = 1) {
+  if (
+    !Array.isArray(paths) ||
+    paths.length < minimum ||
+    paths.length > MAX_INTENDED_PATHS
+  ) {
+    throw new Error(
+      `${context} must contain between ${minimum} and ${MAX_INTENDED_PATHS} paths.`,
+    )
+  }
+  const keys = new Set()
+  for (const [index, path] of paths.entries()) {
+    validatePath(path, `${context}[${index}]`)
+    const key = pathKey(path)
+    if (keys.has(key)) {
+      throw new Error(`${context} must not contain duplicates.`)
+    }
+    keys.add(key)
+  }
+  return keys
 }
 
 function validateEvidence(evidence) {
@@ -144,16 +191,50 @@ function validateEvidence(evidence) {
     'evidence.secureDefaults.privacyFloorVerified',
   )
 
-  for (const field of ['connections', 'models', 'profiles']) {
+  assertExactFields(
+    evidence.inventory,
+    ['intendedPaths', 'verifiedPaths'],
+    'evidence.inventory',
+  )
+  validatePathArray(
+    evidence.inventory.intendedPaths,
+    'evidence.inventory.intendedPaths',
+  )
+  validatePathArray(
+    evidence.inventory.verifiedPaths,
+    'evidence.inventory.verifiedPaths',
+    0,
+  )
+
+  if (!Array.isArray(evidence.checks) || evidence.checks.length > 32) {
+    throw new Error('evidence.checks must be an array with at most 32 items.')
+  }
+  const requiredAxes = new Set(AI_DEPLOYMENT_REQUIRED_CHECK_AXES)
+  const seenAxes = new Set()
+  for (const [index, check] of evidence.checks.entries()) {
+    const context = `evidence.checks[${index}]`
     assertExactFields(
-      evidence[field],
-      ['intended', 'verified'],
-      `evidence.${field}`,
+      check,
+      ['axis', 'evidenceId', 'outcome', 'suiteVersion'],
+      context,
     )
-    assertCount(evidence[field].intended, `evidence.${field}.intended`)
-    assertCount(evidence[field].verified, `evidence.${field}.verified`)
-    if (evidence[field].verified > evidence[field].intended) {
-      throw new Error(`evidence.${field}.verified cannot exceed intended.`)
+    if (!requiredAxes.has(check.axis)) {
+      throw new Error(`${context}.axis is invalid.`)
+    }
+    if (seenAxes.has(check.axis)) {
+      throw new Error('evidence.checks must not contain duplicate axes.')
+    }
+    seenAxes.add(check.axis)
+    for (const field of ['evidenceId', 'suiteVersion']) {
+      if (
+        typeof check[field] !== 'string' ||
+        !/^[A-Za-z0-9._:-]{1,160}$/u.test(check[field])
+      ) {
+        throw new Error(`${context}.${field} is invalid.`)
+      }
+    }
+    if (!['failed', 'passed'].includes(check.outcome)) {
+      throw new Error(`${context}.outcome must be failed or passed.`)
     }
   }
 
@@ -164,20 +245,6 @@ function validateEvidence(evidence) {
   )
   for (const field of Object.keys(evidence.alerts)) {
     assertBoolean(evidence.alerts[field], `evidence.alerts.${field}`)
-  }
-
-  assertExactFields(
-    evidence.intendedPath,
-    AI_PATH_FIELDS,
-    'evidence.intendedPath',
-  )
-  for (const field of AI_PATH_FIELDS) {
-    if (
-      typeof evidence.intendedPath[field] !== 'string' ||
-      !/^[A-Za-z0-9._:-]{1,160}$/u.test(evidence.intendedPath[field])
-    ) {
-      throw new Error(`evidence.intendedPath.${field} is invalid.`)
-    }
   }
 
   assertExactFields(
@@ -250,13 +317,27 @@ export function assessAiDeploymentGate(evidence) {
   if (!evidence.secureDefaults.privacyFloorVerified) {
     blockers.push('privacy_floor_unverified')
   }
-  for (const field of ['connections', 'models', 'profiles']) {
-    if (
-      evidence[field].intended === 0 ||
-      evidence[field].verified !== evidence[field].intended
-    ) {
-      blockers.push(`${field}_unverified`)
-    }
+  const intendedPathKeys = new Set(
+    evidence.inventory.intendedPaths.map(pathKey),
+  )
+  const verifiedPathKeys = new Set(
+    evidence.inventory.verifiedPaths.map(pathKey),
+  )
+  if (
+    intendedPathKeys.size !== verifiedPathKeys.size ||
+    [...intendedPathKeys].some(key => !verifiedPathKeys.has(key))
+  ) {
+    blockers.push('intended_paths_unverified')
+  }
+  const checksByAxis = new Map(
+    evidence.checks.map(check => [check.axis, check]),
+  )
+  if (
+    AI_DEPLOYMENT_REQUIRED_CHECK_AXES.some(
+      axis => checksByAxis.get(axis)?.outcome !== 'passed',
+    )
+  ) {
+    blockers.push('required_checks_unverified')
   }
   if (!evidence.alerts.authenticationFailure) {
     blockers.push('authentication_alarm_unbound')
@@ -267,11 +348,7 @@ export function assessAiDeploymentGate(evidence) {
   if (!evidence.alerts.activeProfileBlocked) {
     blockers.push('blocked_profile_alarm_unbound')
   }
-  if (
-    AI_PATH_FIELDS.some(
-      field => evidence.syntheticProbe[field] !== evidence.intendedPath[field],
-    )
-  ) {
+  if (!intendedPathKeys.has(pathKey(evidence.syntheticProbe))) {
     blockers.push('synthetic_probe_path_mismatch')
   }
   if (
@@ -325,18 +402,16 @@ export function formatAiDeploymentGateEvidence(evidence) {
   return `${JSON.stringify(
     {
       blockers: result.blockers,
+      checksPassed: evidence.checks.filter(check => check.outcome === 'passed')
+        .length,
       environment: evidence.environment,
-      intendedConnections: evidence.connections.intended,
-      intendedModels: evidence.models.intended,
-      intendedProfiles: evidence.profiles.intended,
+      intendedPaths: evidence.inventory.intendedPaths.length,
       probeAdapter: evidence.syntheticProbe.adapterType,
       probeOutcome: evidence.syntheticProbe.outcome,
       readyToRelease: result.readyToRelease,
       schemaVersion: result.schemaVersion,
       verificationMode: evidence.verificationMode,
-      verifiedConnections: evidence.connections.verified,
-      verifiedModels: evidence.models.verified,
-      verifiedProfiles: evidence.profiles.verified,
+      verifiedPaths: evidence.inventory.verifiedPaths.length,
     },
     null,
     2,

@@ -498,6 +498,7 @@ export function createAiIntegrationLayer(
           try {
             await options.telemetry?.emit({
               ...error.identity,
+              adapterType: error.adapterType ?? 'unresolved',
               adapterVersion: error.adapterVersion ?? 'unresolved',
               applicationRunId: request.context.applicationRunId,
               correlationId: request.context.correlationId,
@@ -543,6 +544,7 @@ export function createAiIntegrationLayer(
       let forceCloseAttempt: (() => void) | undefined
       const coordinated = options.runCoordinator.coordinate(
         {
+          adapterType: profile.adapterType,
           adapterVersion: profile.adapterVersion,
           abortSignal: request.context.abortSignal,
           applicationRunId: request.context.applicationRunId,

@@ -262,9 +262,11 @@ Use exactly one verification mode:
 
 The evidence shape is:
 
+<!-- markdownlint-disable MD013 -->
+
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "environment": "production",
   "verificationMode": "production",
   "guardActive": true,
@@ -281,19 +283,38 @@ The evidence shape is:
     "contentGatesVerified": true,
     "privacyFloorVerified": true
   },
-  "connections": { "intended": 1, "verified": 1 },
-  "models": { "intended": 1, "verified": 1 },
-  "profiles": { "intended": 3, "verified": 3 },
+  "inventory": {
+    "intendedPaths": [{
+      "adapterType": "openrouter",
+      "aiConnectionId": "<opaque-id>",
+      "aiConnectionModelRevisionId": "<opaque-id>",
+      "aiRunProfileRevisionId": "<opaque-id>"
+    }],
+    "verifiedPaths": [{
+      "adapterType": "openrouter",
+      "aiConnectionId": "<same-opaque-id>",
+      "aiConnectionModelRevisionId": "<same-opaque-id>",
+      "aiRunProfileRevisionId": "<same-opaque-id>"
+    }]
+  },
+  "checks": [
+    { "axis": "adapter_contract", "evidenceId": "ci-adapter-42", "outcome": "passed", "suiteVersion": "adapter-v1" },
+    { "axis": "security", "evidenceId": "ci-security-42", "outcome": "passed", "suiteVersion": "security-v1" },
+    { "axis": "sql", "evidenceId": "ci-sql-42", "outcome": "passed", "suiteVersion": "sql-v1" },
+    { "axis": "routes", "evidenceId": "ci-routes-42", "outcome": "passed", "suiteVersion": "routes-v1" },
+    { "axis": "sse", "evidenceId": "ci-sse-42", "outcome": "passed", "suiteVersion": "sse-v1" },
+    { "axis": "playwright_dev", "evidenceId": "ci-pw-dev-42", "outcome": "passed", "suiteVersion": "playwright-v1" },
+    { "axis": "playwright_prodlike", "evidenceId": "ci-pw-prodlike-42", "outcome": "passed", "suiteVersion": "playwright-v1" },
+    { "axis": "manual", "evidenceId": "manual-42", "outcome": "passed", "suiteVersion": "manual-v1" },
+    { "axis": "required_seed", "evidenceId": "ci-required-seed-42", "outcome": "passed", "suiteVersion": "seed-v1" },
+    { "axis": "demo_seed", "evidenceId": "ci-demo-seed-42", "outcome": "passed", "suiteVersion": "seed-v1" },
+    { "axis": "recovery_rotation", "evidenceId": "recovery-42", "outcome": "passed", "suiteVersion": "recovery-v1" },
+    { "axis": "deployment_rollback", "evidenceId": "rollback-42", "outcome": "passed", "suiteVersion": "rollback-v1" }
+  ],
   "alerts": {
     "activeProfileBlocked": true,
     "authenticationFailure": true,
     "circuitBreakerOpened": true
-  },
-  "intendedPath": {
-    "adapterType": "openrouter",
-    "aiConnectionId": "<opaque-id>",
-    "aiConnectionModelRevisionId": "<opaque-id>",
-    "aiRunProfileRevisionId": "<opaque-id>"
   },
   "syntheticProbe": {
     "adapterType": "openrouter",
@@ -306,6 +327,8 @@ The evidence shape is:
   }
 }
 ```
+
+<!-- markdownlint-enable MD013 -->
 
 Run the gate from the unpacked bundle and retain its output with the release
 evidence:
@@ -323,30 +346,40 @@ failure leaves the rest of Kravhantering available with AI blocked.
 ### Staging-Live Synthetic Probe
 
 The staging-live probe is opt-in and otherwise exits without a network call.
-Use an Admin session created for the staging test, store only its cookie header
-in a mode `0600` file, and select a requirement area reserved for synthetic
-test data. Export the exact intended active path:
+Use an Admin session created for the staging test and store only its cookie
+header in a mode `0600` file. The staging server must keep
+`AI_REQUIREMENT_GENERATION_DISABLED=1`, set
+`KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=staging`, and expose a stable opaque
+`KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID` unique to that environment. Export
+that expected server identity, the representative exact path, and the bounded
+comma-separated set of every intended active profile revision:
 
 ```bash
 export AI_STAGING_LIVE_SYNTHETIC_PROBE=1
 export AI_STAGING_LIVE_BASE_URL=https://staging.example.internal
 export AI_STAGING_LIVE_SESSION_COOKIE_FILE=/run/user/1000/krav-ai-cookie
-export AI_STAGING_LIVE_AREA_ID=1
+export AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID=staging-eu-test
 export AI_STAGING_LIVE_ADAPTER_TYPE=openrouter
 export AI_STAGING_LIVE_CONNECTION_ID=<opaque-id>
 export AI_STAGING_LIVE_MODEL_REVISION_ID=<opaque-id>
 export AI_STAGING_LIVE_PROFILE_REVISION_ID=<opaque-id>
+export AI_STAGING_LIVE_PROFILE_REVISION_IDS=<opaque-id>,<second-opaque-id>
 node scripts/ai-staging-live-probe.mjs \
   > /var/tmp/kravhantering-ai-staging-probe.json
 ```
 
-The script first reads the Admin API to prove that the exact path is active,
-enabled, verified, and unblocked. It then sends one fixed, non-personal,
-synthetic generation request and accepts exactly one successful SSE terminal
-event. It prints only opaque path identifiers and outcome metadata. Merge that
-fragment into a `staging_live` deployment evidence document and run the gate.
-Never point the probe at production, replace its fixed payload, or store the
-session cookie in the release evidence.
+The script first requires server-proven `staging` identity, the exact expected
+environment ID, and an active global guard. It proves that every configured
+profile revision is active, enabled, and unblocked, and that the exact
+connection and model revision are active and verified. It then runs only the
+guard-compatible Admin `verify_connection` and `verify_model_revision`
+actions. Those actions use the fixed synthetic `ai-admin-functional-probe-v3`
+suite; they do not select an area or send database-derived authoring data.
+Every HTTP operation has a 120-second deadline and a 1 MiB streamed response
+limit. The script prints only opaque path identifiers and outcome metadata.
+Merge that fragment into a `staging_live` deployment evidence document and run
+the gate. Never point the probe at production or store the session cookie in
+release evidence.
 
 ## Runtime Capacity and Failure Contract
 
@@ -512,7 +545,8 @@ At minimum, page or alert immediately for:
 Maintain environment-specific baselines for failure rate, p95 duration, queue
 saturation, active concurrency, attempt and retry counts, time to first
 analysis/output delta, cancellation reasons, token use, and cost. Operational
-events include run type, adapter version, outcome/failure category, and opaque
+events include run type, adapter type and version, outcome/failure category,
+and opaque
 application-run, connection, profile-revision, and model-revision IDs. They
 also carry request and correlation IDs; queue-full terminals carry the observed
 queue depth and active concurrency. Events never include prompts, images, model
@@ -539,12 +573,13 @@ profile-revision IDs. Do not add an endpoint, public connection name, model
 name, prompt excerpt, response excerpt, or secret reference to a notification.
 
 Build the operator-configurable dashboard from the same channel with these
-minimum panels: outcomes and failure category by run type and adapter version;
+minimum panels: outcomes and failure category by run type, adapter type, and
+adapter version;
 p50/p95 duration and time to first delta; queue depth, wait, saturation, and
 active concurrency; attempts and retry count; cancellation reason; circuit and
 health transitions; token totals; and reported cost by currency. Filters may
-use time range, environment, run type, adapter version, outcome, failure
-category, and opaque connection/profile/model revision IDs. Alert routing,
+use time range, environment, run type, adapter type, adapter version, outcome,
+failure category, and opaque connection/profile/model revision IDs. Alert routing,
 thresholds beyond the three binding alarms, panel layout, refresh rate, and
 retention remain environment-specific operator configuration.
 

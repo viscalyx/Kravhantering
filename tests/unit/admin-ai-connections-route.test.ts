@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getRouteHandlerBrand } from '@/lib/http/response-policy'
 import { resolveRestPolicy } from '@/lib/http/route-security-policy'
 
@@ -121,6 +121,10 @@ const connectionInput = {
 } as const
 
 describe('Admin AI connection routes', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     for (const method of Object.values(routeState.serviceMethods)) {
@@ -574,6 +578,24 @@ describe('Admin AI connection routes', () => {
       )
       expect(response.status).toBe(200)
     }
+  })
+
+  it('proves the deployment environment and active global guard on Admin reads', async () => {
+    vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT', 'staging')
+    vi.stubEnv('KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID', 'staging-eu-test')
+    vi.stubEnv('AI_REQUIREMENT_GENERATION_DISABLED', '1')
+
+    const response = await getRunProfiles(
+      new NextRequest('https://example.test/api/admin/ai-run-profiles'),
+    )
+
+    expect(response.headers.get('x-kravhantering-deployment-environment')).toBe(
+      'staging',
+    )
+    expect(
+      response.headers.get('x-kravhantering-deployment-environment-id'),
+    ).toBe('staging-eu-test')
+    expect(response.headers.get('x-kravhantering-ai-guard-active')).toBe('true')
   })
 
   it('declares same-origin CSRF and approved wrappers for all mutations', () => {

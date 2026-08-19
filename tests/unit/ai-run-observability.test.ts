@@ -9,6 +9,7 @@ function event(
   overrides: Partial<AiRunTelemetryEvent> = {},
 ): AiRunTelemetryEvent {
   return {
+    adapterType: 'openrouter',
     adapterVersion: '1',
     aiConnectionId: '10000000-0000-4000-8000-000000000001',
     aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000001',
@@ -48,6 +49,7 @@ describe('AI run observability', () => {
 
     const payload = JSON.parse(String(info.mock.calls[0]?.[0]))
     expect(payload).toMatchObject({
+      adapter_type: 'openrouter',
       channel: 'ai-run-observability',
       event: 'ai_run_terminal',
       level: 'info',

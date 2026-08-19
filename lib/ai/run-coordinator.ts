@@ -20,6 +20,7 @@ export interface AiRunCoordinationProfile {
 
 export interface AiCoordinatedRunRequest {
   abortSignal: AbortSignal
+  adapterType: string
   adapterVersion: string
   applicationRunId: string
   correlationId: string
@@ -48,6 +49,7 @@ export type AiRunAcquireResult =
     }
 
 export interface AiRecoveryProbeTarget {
+  adapterType: string
   adapterVersion: string
   identity: AiRunIdentity
   inactivityTimeBudgetMs: number
@@ -144,6 +146,7 @@ export type AiRunTelemetryName =
 export interface AiRunTelemetryEvent {
   activeConcurrency?: number
   actorId?: string
+  adapterType: string
   adapterVersion: string
   aiConnectionId: string
   aiConnectionModelRevisionId: string
@@ -455,6 +458,7 @@ export function createAiRunCoordinator(
         if (!acquired) continue
         const startedAt = now()
         const telemetryBase = {
+          adapterType: target.adapterType,
           adapterVersion: target.adapterVersion,
           aiConnectionId: target.identity.aiConnectionId,
           aiConnectionModelRevisionId:
@@ -549,6 +553,7 @@ export function createAiRunCoordinator(
     const startedAt = now()
     const telemetryBase = {
       actorId,
+      adapterType: target.adapterType,
       adapterVersion: target.adapterVersion,
       aiConnectionId: target.identity.aiConnectionId,
       aiConnectionModelRevisionId: target.identity.aiConnectionModelRevisionId,
@@ -636,6 +641,7 @@ export function createAiRunCoordinator(
         | 'running' = 'none'
       let finalEvent: AiRunEvent | undefined
       const telemetryBase = {
+        adapterType: request.adapterType,
         adapterVersion: request.adapterVersion,
         aiConnectionId: request.identity.aiConnectionId,
         aiConnectionModelRevisionId:

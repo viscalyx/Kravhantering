@@ -268,20 +268,27 @@ describe('SQL Server AI run coordination store', () => {
       [],
       [
         {},
-        { adapterVersion: '1' },
-        { adapterVersion: '1', aiConnectionId: 'connection' },
+        { adapterType: 'controlled_test', adapterVersion: '1' },
         {
+          adapterType: 'controlled_test',
+          adapterVersion: '1',
+          aiConnectionId: 'connection',
+        },
+        {
+          adapterType: 'controlled_test',
           adapterVersion: '1',
           aiConnectionId: 'connection',
           aiConnectionModelRevisionId: 'model',
         },
         {
+          adapterType: 'controlled_test',
           adapterVersion: '1',
           aiConnectionId: 'connection',
           aiConnectionModelRevisionId: 'model',
           aiRunProfileRevisionId: 'profile',
         },
         {
+          adapterType: 'controlled_test',
           adapterVersion: '1',
           aiConnectionId: 'connection',
           aiConnectionModelRevisionId: 'model',
@@ -356,6 +363,7 @@ describe('SQL Server AI run coordination store', () => {
     const { db, query } = database([
       [
         {
+          adapterType: 'controlled_test',
           adapterVersion: '1',
           aiConnectionId: IDENTITY.aiConnectionId,
           aiConnectionModelRevisionId: IDENTITY.aiConnectionModelRevisionId,
@@ -371,6 +379,7 @@ describe('SQL Server AI run coordination store', () => {
       createSqlServerAiRunCoordinationStore(db).listDueRecoveryProbes(500),
     ).resolves.toEqual([
       {
+        adapterType: 'controlled_test',
         adapterVersion: '1',
         identity: IDENTITY,
         inactivityTimeBudgetMs: 3_000,
@@ -381,6 +390,7 @@ describe('SQL Server AI run coordination store', () => {
     const sql = String((query.mock.calls as unknown[][])[0]?.[0])
     expect(sql).toContain("[state].[circuit_breaker_status] = N'open'")
     expect(sql).toContain('[state].[next_recovery_at] <= SYSUTCDATETIME()')
+    expect(sql).toContain('[connection].[adapter_key] AS [adapterType]')
     expect((query.mock.calls as unknown[][])[0]?.[1]).toEqual([100])
   })
 

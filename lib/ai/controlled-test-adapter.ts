@@ -44,10 +44,15 @@ export interface ControlledTestSilentEofScenario {
   type: 'silent_eof'
 }
 
+export interface ControlledTestReadErrorScenario {
+  type: 'read_error'
+}
+
 export type ControlledTestScenario =
   | ControlledTestCancelledScenario
   | ControlledTestCompletedScenario
   | ControlledTestFailedScenario
+  | ControlledTestReadErrorScenario
   | ControlledTestSilentEofScenario
   | ControlledTestWaitForAbortScenario
 
@@ -173,6 +178,7 @@ function readConfiguration(
       return null
     }
   } else if (
+    scenario.type !== 'read_error' &&
     scenario.type !== 'silent_eof' &&
     scenario.type !== 'wait_for_abort'
   ) {
@@ -243,6 +249,9 @@ const controlledTestAdapter: AIConnectionAdapter = {
     }
 
     const scenario = configuration.scenario
+    if (scenario.type === 'read_error') {
+      throw new Error('controlled test stream read failure')
+    }
     if (scenario.type === 'silent_eof') return
     if (scenario.type === 'wait_for_abort') {
       await waitForAbort(request.context.abortSignal)
@@ -264,6 +273,22 @@ const controlledTestAdapter: AIConnectionAdapter = {
     if (scenario.type === 'failed') {
       const { type: _type, ...failure } = scenario
       yield { failure, identity: identity(request), type: 'failed' }
+      return
+    }
+    if (
+      (scenario.analysisDeltas?.length ?? 0) +
+        (scenario.outputDeltas?.length ?? 0) >
+      request.limits.maxBufferedEvents
+    ) {
+      yield {
+        failure: {
+          category: 'invalid_response',
+          diagnosticCode: 'controlled_stream_event_buffer_too_large',
+          retryable: false,
+        },
+        identity: identity(request),
+        type: 'failed',
+      }
       return
     }
     for (const delta of scenario.analysisDeltas ?? []) {

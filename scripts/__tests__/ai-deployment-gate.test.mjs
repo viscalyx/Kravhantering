@@ -6,9 +6,40 @@ import {
   main,
 } from '../release/ai-deployment-gate.mjs'
 
+const REQUIRED_CHECK_AXES = [
+  'adapter_contract',
+  'security',
+  'sql',
+  'routes',
+  'sse',
+  'playwright_dev',
+  'playwright_prodlike',
+  'manual',
+  'required_seed',
+  'demo_seed',
+  'recovery_rotation',
+  'deployment_rollback',
+]
+
+const CONTROLLED_PATH = {
+  adapterType: 'controlled_test',
+  aiConnectionId: '10000000-0000-4000-8000-000000000001',
+  aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000001',
+  aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000001',
+}
+
+function checkEvidence(axis) {
+  return {
+    axis,
+    evidenceId: `evidence-${axis}`,
+    outcome: 'passed',
+    suiteVersion: 'v3',
+  }
+}
+
 function verifiedEvidence(overrides = {}) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     environment: 'prodlike',
     verificationMode: 'prodlike',
     guardActive: true,
@@ -25,25 +56,18 @@ function verifiedEvidence(overrides = {}) {
       contentGatesVerified: true,
       privacyFloorVerified: true,
     },
-    connections: { intended: 1, verified: 1 },
-    models: { intended: 1, verified: 1 },
-    profiles: { intended: 3, verified: 3 },
+    inventory: {
+      intendedPaths: [CONTROLLED_PATH],
+      verifiedPaths: [CONTROLLED_PATH],
+    },
+    checks: REQUIRED_CHECK_AXES.map(checkEvidence),
     alerts: {
       activeProfileBlocked: true,
       authenticationFailure: true,
       circuitBreakerOpened: true,
     },
-    intendedPath: {
-      adapterType: 'controlled_test',
-      aiConnectionId: '10000000-0000-4000-8000-000000000001',
-      aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000001',
-      aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000001',
-    },
     syntheticProbe: {
-      adapterType: 'controlled_test',
-      aiConnectionId: '10000000-0000-4000-8000-000000000001',
-      aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000001',
-      aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000001',
+      ...CONTROLLED_PATH,
       externalLiveCallMade: false,
       outcome: 'completed',
       payloadClassification: 'synthetic',
@@ -72,7 +96,7 @@ describe('AI deployment gate', () => {
     expect(assessAiDeploymentGate(verifiedEvidence())).toEqual({
       blockers: [],
       readyToRelease: true,
-      schemaVersion: 1,
+      schemaVersion: 2,
     })
   })
 
@@ -84,14 +108,21 @@ describe('AI deployment gate', () => {
           authenticationFailure: false,
           circuitBreakerOpened: false,
         },
-        connections: { intended: 2, verified: 1 },
         egress: { deploymentPolicyEnforced: false },
+        inventory: {
+          intendedPaths: [
+            CONTROLLED_PATH,
+            {
+              ...CONTROLLED_PATH,
+              aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000002',
+            },
+          ],
+          verifiedPaths: [CONTROLLED_PATH],
+        },
         keyring: {
           activeWriteVersionExplicit: false,
           requiredVersionsPresentOnEveryNode: false,
         },
-        models: { intended: 2, verified: 1 },
-        profiles: { intended: 3, verified: 2 },
         restore: {
           databaseAndKeyringRestoredTogether: false,
           providerSecretsAuthenticated: false,
@@ -112,9 +143,7 @@ describe('AI deployment gate', () => {
       'egress_policy_unverified',
       'content_gates_unverified',
       'privacy_floor_unverified',
-      'connections_unverified',
-      'models_unverified',
-      'profiles_unverified',
+      'intended_paths_unverified',
       'authentication_alarm_unbound',
       'breaker_alarm_unbound',
       'blocked_profile_alarm_unbound',
@@ -122,20 +151,21 @@ describe('AI deployment gate', () => {
   })
 
   it('accepts an opt-in staging-live probe on the exact intended path with only synthetic data', () => {
+    const intendedPath = {
+      adapterType: 'openrouter',
+      aiConnectionId: '10000000-0000-4000-8000-000000000002',
+      aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000002',
+      aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000002',
+    }
     const result = assessAiDeploymentGate(
       verifiedEvidence({
         environment: 'staging',
-        intendedPath: {
-          adapterType: 'openrouter',
-          aiConnectionId: '10000000-0000-4000-8000-000000000002',
-          aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000002',
-          aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000002',
+        inventory: {
+          intendedPaths: [intendedPath],
+          verifiedPaths: [intendedPath],
         },
         syntheticProbe: {
-          adapterType: 'openrouter',
-          aiConnectionId: '10000000-0000-4000-8000-000000000002',
-          aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000002',
-          aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000002',
+          ...intendedPath,
           externalLiveCallMade: true,
           outcome: 'completed',
           payloadClassification: 'synthetic',
@@ -148,19 +178,20 @@ describe('AI deployment gate', () => {
   })
 
   it('accepts production pre-deployment evidence without making a live authoring call', () => {
+    const productionPath = { ...CONTROLLED_PATH, adapterType: 'openrouter' }
     const result = assessAiDeploymentGate(
       verifiedEvidence({
         environment: 'production',
+        inventory: {
+          intendedPaths: [productionPath],
+          verifiedPaths: [productionPath],
+        },
         syntheticProbe: {
           ...verifiedEvidence().syntheticProbe,
           adapterType: 'openrouter',
           externalLiveCallMade: false,
           outcome: 'not_run',
           payloadClassification: 'none',
-        },
-        intendedPath: {
-          ...verifiedEvidence().intendedPath,
-          adapterType: 'openrouter',
         },
         verificationMode: 'production',
       }),
@@ -204,6 +235,81 @@ describe('AI deployment gate', () => {
   })
 
   it.each([
+    [
+      'missing',
+      evidence => {
+        evidence.inventory.verifiedPaths = []
+      },
+    ],
+    [
+      'swapped',
+      evidence => {
+        evidence.inventory.verifiedPaths[0] = {
+          ...CONTROLLED_PATH,
+          aiConnectionId: CONTROLLED_PATH.aiConnectionModelRevisionId,
+          aiConnectionModelRevisionId: CONTROLLED_PATH.aiConnectionId,
+        }
+      },
+    ],
+    [
+      'duplicate',
+      evidence => {
+        evidence.inventory.verifiedPaths.push(CONTROLLED_PATH)
+      },
+    ],
+    [
+      'extra',
+      evidence => {
+        evidence.inventory.verifiedPaths.push({
+          ...CONTROLLED_PATH,
+          aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000099',
+        })
+      },
+    ],
+  ])('rejects %s verified path evidence', (_name, mutate) => {
+    const evidence = mutateEvidence(mutate)
+    if (_name === 'duplicate') {
+      expect(() => assessAiDeploymentGate(evidence)).toThrow(
+        'evidence.inventory.verifiedPaths must not contain duplicates',
+      )
+      return
+    }
+    expect(assessAiDeploymentGate(evidence).blockers).toContain(
+      'intended_paths_unverified',
+    )
+  })
+
+  it('requires one versioned content-free proof for every release-check axis', () => {
+    const missing = mutateEvidence(evidence => {
+      evidence.checks = evidence.checks.filter(check => check.axis !== 'sse')
+    })
+    expect(assessAiDeploymentGate(missing).blockers).toContain(
+      'required_checks_unverified',
+    )
+
+    const duplicate = mutateEvidence(evidence => {
+      evidence.checks.push(checkEvidence('security'))
+    })
+    expect(() => assessAiDeploymentGate(duplicate)).toThrow(
+      'evidence.checks must not contain duplicate axes',
+    )
+
+    const extra = mutateEvidence(evidence => {
+      evidence.checks.push(checkEvidence('provider_specific_route'))
+    })
+    expect(() => assessAiDeploymentGate(extra)).toThrow(
+      'evidence.checks[12].axis is invalid',
+    )
+
+    const failed = mutateEvidence(evidence => {
+      evidence.checks[0].outcome = 'failed'
+    })
+    expect(assessAiDeploymentGate(failed).blockers).toContain(
+      'required_checks_unverified',
+    )
+  })
+
+  it.each([
     ['object', null, 'evidence must be an object'],
     [
       'missing field',
@@ -213,7 +319,7 @@ describe('AI deployment gate', () => {
     [
       'schema',
       mutateEvidence(evidence => {
-        evidence.schemaVersion = 2
+        evidence.schemaVersion = 1
       }),
       'Unsupported AI deployment evidence schema',
     ],
@@ -246,25 +352,11 @@ describe('AI deployment gate', () => {
       'evidence.guardActive must be boolean',
     ],
     [
-      'count',
-      mutateEvidence(evidence => {
-        evidence.connections.intended = -1
-      }),
-      'non-negative safe integer',
-    ],
-    [
-      'over-verified count',
-      mutateEvidence(evidence => {
-        evidence.models.verified = 2
-      }),
-      'verified cannot exceed intended',
-    ],
-    [
       'intended path',
       mutateEvidence(evidence => {
-        evidence.intendedPath.adapterType = 'unsafe path'
+        evidence.inventory.intendedPaths[0].adapterType = 'unsafe path'
       }),
-      'evidence.intendedPath.adapterType is invalid',
+      'evidence.inventory.intendedPaths[0].adapterType is invalid',
     ],
     [
       'probe path',
