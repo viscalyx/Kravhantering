@@ -15,6 +15,9 @@ permissions:
 jobs:
   plan:
     name: Read prodlike chunk manifest
+    if: >-
+      github.event_name != 'schedule' ||
+      github.repository == 'viscalyx/Kravhantering'
     runs-on: ubuntu-latest
     outputs:
       chunks: ${{ steps.chunks.outputs.chunks }}
@@ -39,6 +42,9 @@ jobs:
 
   isolated-chunk:
     name: Clean seed / ${{ matrix.chunk }}
+    if: >-
+      github.event_name != 'schedule' ||
+      github.repository == 'viscalyx/Kravhantering'
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 45

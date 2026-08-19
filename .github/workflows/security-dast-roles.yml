@@ -23,6 +23,9 @@ permissions:
 jobs:
   select-roles:
     name: Select role matrix
+    if: >-
+      github.event_name != 'schedule' ||
+      github.repository == 'viscalyx/Kravhantering'
     runs-on: ubuntu-latest
     outputs:
       roles: ${{ steps.roles.outputs.roles }}
@@ -72,6 +75,9 @@ jobs:
 
   zap-role-baseline:
     name: ZAP role (${{ matrix.user.username }})
+    if: >-
+      github.event_name != 'schedule' ||
+      github.repository == 'viscalyx/Kravhantering'
     runs-on: ubuntu-latest
     needs: select-roles
     timeout-minutes: 30

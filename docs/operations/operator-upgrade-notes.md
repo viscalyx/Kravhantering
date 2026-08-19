@@ -319,6 +319,10 @@ Calls that do not meet this contract are rejected before database work.
 <!-- operator-upgrade:source pr-1074 start -->
 Before upgrade, tell MCP integration owners that requirement create and edit requests accept at most 200 unique norm reference IDs and 200 unique requirement package IDs. Requests that exceed a limit or contain duplicate IDs are rejected. Update affected clients to deduplicate these collections and keep them within the limits before rollout.
 <!-- operator-upgrade:source pr-1074 end -->
+
+<!-- operator-upgrade:source pr-1077 start -->
+After upgrade, only users with the Admin role can inspect which specification items are linked to a usage status through the direct API. Verify that affected integrations use an Admin identity. Non-Admin users now receive a 403 response.
+<!-- operator-upgrade:source pr-1077 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade

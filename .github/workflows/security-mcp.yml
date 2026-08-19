@@ -22,6 +22,9 @@ permissions:
 jobs:
   mcp-seeded-scan:
     name: MCP seeded HTTP
+    if: >-
+      github.event_name != 'schedule' ||
+      github.repository == 'viscalyx/Kravhantering'
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
