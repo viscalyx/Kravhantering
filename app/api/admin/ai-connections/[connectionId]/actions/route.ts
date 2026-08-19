@@ -92,6 +92,14 @@ export const POST = secureMutationRoute({
         )
       case 'verify_connection':
         return NextResponse.json(await service.verifyConnection(connectionId))
+      case 'verify_live_path':
+        return NextResponse.json(
+          await service.verifyLivePath({
+            connectionId,
+            modelRevisionId: body.modelRevisionId,
+            profileRevisionId: body.profileRevisionId,
+          }),
+        )
       case 'verify_model_revision':
         return NextResponse.json(
           await service.verifyModelRevision({

@@ -190,6 +190,15 @@ describe('AI administration provider composition', () => {
     await expect(
       external.verifyModelRevision(current, revision),
     ).resolves.toMatchObject({ outcome: 'passed' })
+    await expect(external.verifyLivePath(current, revision)).resolves.toEqual({
+      adapterType: 'controlled_test',
+      adapterVersion: '1',
+      executionId: expect.any(String),
+      externalLiveCallMade: false,
+      failureCategory: 'controlled_adapter_forbidden',
+      outcome: 'failed',
+      testSuiteVersion: 'ai-admin-functional-probe-v3',
+    })
     await expect(
       external.verifySecretCandidate(
         current,
@@ -312,7 +321,11 @@ describe('AI administration provider composition', () => {
           )
           .mockResolvedValueOnce(
             new Response('credential details', { status: 401 }),
-          ),
+          )
+          .mockResolvedValueOnce(
+            new Response('deadline details', { status: 408 }),
+          )
+          .mockResolvedValueOnce(new Response('rate details', { status: 429 })),
       },
     }
 
@@ -324,6 +337,14 @@ describe('AI administration provider composition', () => {
     await expect(adapter.probeConnection(context)).resolves.toMatchObject({
       details: { catalogReachable: false },
       failureCategory: 'authentication_failed',
+      outcome: 'failed',
+    })
+    await expect(adapter.probeConnection(context)).resolves.toMatchObject({
+      failureCategory: 'deadline_exceeded',
+      outcome: 'failed',
+    })
+    await expect(adapter.probeConnection(context)).resolves.toMatchObject({
+      failureCategory: 'rate_limited',
       outcome: 'failed',
     })
   })
@@ -627,8 +648,15 @@ describe('AI administration provider composition', () => {
       { externalModelId: 'vendor/model' },
     ])
     await expect(
-      external.verifyModelRevision(current, revision),
-    ).resolves.toMatchObject({ outcome: 'failed' })
+      external.verifyLivePath(current, revision),
+    ).resolves.toMatchObject({
+      adapterType: 'openrouter',
+      adapterVersion: '1',
+      executionId: expect.any(String),
+      externalLiveCallMade: true,
+      outcome: 'failed',
+      testSuiteVersion: 'ai-admin-functional-probe-v3',
+    })
     await expect(
       external.probeHealth(current, revision),
     ).resolves.toMatchObject({

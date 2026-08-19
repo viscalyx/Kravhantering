@@ -160,4 +160,5 @@ export const controlledTestAdminAdapterRegistration = Object.freeze({
   adapter: controlledTestAdminAdapter,
   adapterType: CONTROLLED_TEST_ADAPTER_TYPE,
   adapterVersion: CONTROLLED_TEST_ADAPTER_VERSION,
+  executionKind: 'controlled_offline',
 }) satisfies AiAdminConnectionAdapterRegistration

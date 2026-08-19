@@ -68,10 +68,15 @@ export interface AiAdminConnectionAdapterRegistration {
   adapter: AiAdminConnectionAdapter
   adapterType: string
   adapterVersion: string
+  executionKind: 'controlled_offline' | 'external_live'
 }
 
 export interface AiAdminConnectionAdapterRegistry {
   resolve(adapterType: string, adapterVersion: string): AiAdminConnectionAdapter
+  resolveRegistration(
+    adapterType: string,
+    adapterVersion: string,
+  ): AiAdminConnectionAdapterRegistration
 }
 
 function key(adapterType: string, adapterVersion: string): string {
@@ -81,7 +86,7 @@ function key(adapterType: string, adapterVersion: string): string {
 export function createAiAdminConnectionAdapterRegistry(
   registrations: readonly AiAdminConnectionAdapterRegistration[],
 ): AiAdminConnectionAdapterRegistry {
-  const adapters = new Map<string, AiAdminConnectionAdapter>()
+  const adapters = new Map<string, AiAdminConnectionAdapterRegistration>()
   for (const registration of registrations) {
     const registrationKey = key(
       registration.adapterType,
@@ -92,17 +97,20 @@ export function createAiAdminConnectionAdapterRegistry(
         `Duplicate AI administration adapter: ${registration.adapterType}@${registration.adapterVersion}`,
       )
     }
-    adapters.set(registrationKey, registration.adapter)
+    adapters.set(registrationKey, registration)
   }
   return {
     resolve(adapterType, adapterVersion) {
-      const adapter = adapters.get(key(adapterType, adapterVersion))
-      if (!adapter) {
+      return this.resolveRegistration(adapterType, adapterVersion).adapter
+    },
+    resolveRegistration(adapterType, adapterVersion) {
+      const registration = adapters.get(key(adapterType, adapterVersion))
+      if (!registration) {
         throw new Error(
           `Unknown AI administration adapter: ${adapterType}@${adapterVersion}`,
         )
       }
-      return adapter
+      return registration
     },
   }
 }

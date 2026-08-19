@@ -33,10 +33,13 @@ Staging-liveverifiering är en separat, explicit aktiverad driftåtgärd. Innan
 extern trafik tillåts kräver provet serverbevisad stagingidentitet, exakt
 förväntat miljö-ID och aktiv global AI-spärr. Det förhandskontrollerar samtliga
 avsedda aktiva körprofilrevisioner samt exakt avsedd anslutning och
-modellrevision. Därefter använder det endast de spärrkompatibla Admin-åtgärderna
-för anslutnings- och modellverifiering. De kör den fasta syntetiska sviten
-`ai-admin-functional-probe-v3` utan områdesval eller databasbaserat
-författarinnehåll. Alla svar och tidsgränser är begränsade. Provet skriver
+modellrevision. Därefter använder det den spärrkompatibla och icke-muterande
+Admin-åtgärden `verify_live_path`. Åtgärden avvisar kontrollerade offlineadaptrar
+och kör den fasta syntetiska sviten `ai-admin-functional-probe-v3` genom den
+exakta aktiva anslutningen, hemligheten, tillitsgränsen, adaptern, modellen och
+körprofilen, utan områdesval eller databasbaserat författarinnehåll. Resultatet
+binder aktuell körningsidentitet, svitversion, utfall, observerad adapter och
+samtliga revisionstoken. Alla svar och tidsgränser är begränsade. Provet skriver
 endast innehållsfri bevismetadata.
 
 Produktionsmiljön använder inte ett liveförfattarprov. Där verifieras i stället

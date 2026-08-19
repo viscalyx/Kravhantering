@@ -138,6 +138,26 @@ export interface AiAdminModelVerificationResult {
   verifiedCapabilities: AiCapability
 }
 
+export interface AiAdminLivePathExternalResult {
+  adapterType: string
+  adapterVersion: string
+  executionId: string
+  externalLiveCallMade: boolean
+  failureCategory: string | null
+  outcome: 'failed' | 'passed'
+  testSuiteVersion: string
+}
+
+export interface AiAdminLivePathVerificationResult
+  extends AiAdminLivePathExternalResult {
+  aiConnectionId: string
+  aiConnectionModelRevisionId: string
+  aiRunProfileRevisionId: string
+  connectionRevisionToken: string
+  modelRevisionToken: string
+  profileRevisionToken: string
+}
+
 export interface AiAdminCatalogItem {
   capabilities: AiCapability
   externalModelId: string
@@ -163,6 +183,10 @@ export interface AiAdminExternalOperations {
     connection: Readonly<AiAdminConnectionDetail>,
     revision: Readonly<AiAdminModelRevisionRecord>,
   ): Promise<Readonly<AiAdminHealthProbeResult>>
+  verifyLivePath(
+    connection: Readonly<AiAdminConnectionDetail>,
+    revision: Readonly<AiAdminModelRevisionRecord>,
+  ): Promise<Readonly<AiAdminLivePathExternalResult>>
   verifyModelRevision(
     connection: Readonly<AiAdminConnectionDetail>,
     revision: Readonly<AiAdminModelRevisionRecord>,
@@ -786,6 +810,64 @@ export class AiConnectionAdministrationService {
       modelRevision,
       result,
     })
+  }
+
+  async verifyLivePath(input: {
+    connectionId: string
+    modelRevisionId: string
+    profileRevisionId: string
+  }): Promise<AiAdminLivePathVerificationResult> {
+    const connection = await this.getConnection(input.connectionId)
+    const modelRevision = connection.models
+      .flatMap(model => model.revisions)
+      .find(revision => revision.id === input.modelRevisionId)
+    const entry = (await this.#store.listRunProfileActivationEntries()).find(
+      candidate =>
+        candidate.profile.activeRevisionId === input.profileRevisionId,
+    )
+    const snapshot = entry?.snapshot
+    if (!modelRevision || !entry || !snapshot) {
+      throw notFoundError('The exact active AI path was not found.')
+    }
+    const exactSnapshot = {
+      ...snapshot,
+      connection,
+      modelRevision,
+      profile: entry.profile,
+    }
+    if (
+      connection.lifecycleStatus !== 'active' ||
+      modelRevision.status !== 'verified' ||
+      entry.profile.operationalStatus !== 'enabled' ||
+      snapshot.connection.id !== connection.id ||
+      snapshot.modelRevision?.id !== modelRevision.id ||
+      snapshot.profileRevision.id !== input.profileRevisionId ||
+      snapshot.profileRevision.status !== 'active'
+    ) {
+      throw validationError('The exact AI path is not active and verified.')
+    }
+    assertNoBlockers(
+      profileActivationBlockers(entry.profile.profileKey, exactSnapshot),
+    )
+    await this.#assertAuthorizedProfile(connection, entry.profile.profileKey)
+    const result = await this.#external.verifyLivePath(
+      connection,
+      modelRevision,
+    )
+    await this.#audit({
+      operation: 'verify',
+      resourceId: input.profileRevisionId,
+      resourceType: 'ai_run_profile_revision',
+    })
+    return {
+      ...result,
+      aiConnectionId: connection.id,
+      aiConnectionModelRevisionId: modelRevision.id,
+      aiRunProfileRevisionId: snapshot.profileRevision.id,
+      connectionRevisionToken: connection.revisionToken,
+      modelRevisionToken: modelRevision.revisionToken,
+      profileRevisionToken: snapshot.profileRevision.revisionToken,
+    }
   }
 
   async retireModelRevision(input: {

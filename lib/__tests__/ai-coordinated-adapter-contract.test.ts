@@ -8,16 +8,12 @@ import {
   type AiPersistedRunProfile,
   createAiRunProfileResolver,
 } from '@/lib/ai/profile-resolver'
-import {
-  AI_REQUEST_PRIVACY_MINIMUM,
-  type AiConnectionAdapterRegistration,
-  type AiConnectionAdapterRunRequest,
-  type AiEgressTransport,
-  type AiRunEvent,
-  type AiRunIdentity,
-  type AiRunLimits,
-  createAiAdapterRunContext,
-  guardAiRunEventStream,
+import type {
+  AiConnectionAdapterRegistration,
+  AiEgressTransport,
+  AiRunEvent,
+  AiRunIdentity,
+  AiRunLimits,
 } from '@/lib/ai/run-contracts'
 import {
   type AiRunCoordinationStore,
@@ -72,6 +68,15 @@ interface ScenarioExecution {
 interface CoordinatedAdapterHarness {
   createScenario(scenario: ContractScenario): ScenarioExecution
   registration: AiConnectionAdapterRegistration
+}
+
+interface CoordinatedRun {
+  adapterDeadlines: () => readonly string[]
+  adapterEvents: () => readonly AiRunEvent[]
+  adapterPulls: () => number
+  adapterRuns: () => number
+  events: AsyncIterable<AiRunEvent>
+  maximumConcurrentAdapterPulls: () => number
 }
 
 function controlledScenario(scenario: ContractScenario): ScenarioExecution {
@@ -342,12 +347,20 @@ function coordinatedRun(
   harness: CoordinatedAdapterHarness,
   scenario: ContractScenario,
   options: {
+    coordination?: AiRunCoordinationStore
+    delay?: (milliseconds: number, signal: AbortSignal) => Promise<void>
     limits?: AiRunLimits
     now?: () => number
+    pollIntervalMs?: number
     signal?: AbortSignal
   } = {},
-) {
+): CoordinatedRun {
   const execution = harness.createScenario(scenario)
+  const adapterDeadlines: string[] = []
+  const adapterEvents: AiRunEvent[] = []
+  let activeAdapterPulls = 0
+  let adapterPulls = 0
+  let maximumConcurrentAdapterPulls = 0
   let adapterRuns = 0
   const observedRegistration: AiConnectionAdapterRegistration = {
     ...harness.registration,
@@ -355,7 +368,33 @@ function coordinatedRun(
       forceClose: id => harness.registration.adapter.forceClose(id),
       run: request => {
         adapterRuns += 1
-        return harness.registration.adapter.run(request)
+        adapterDeadlines.push(request.context.deadlineAt)
+        const source = harness.registration.adapter.run(request)
+        return {
+          [Symbol.asyncIterator]() {
+            const iterator = source[Symbol.asyncIterator]()
+            return {
+              next: async () => {
+                adapterPulls += 1
+                activeAdapterPulls += 1
+                maximumConcurrentAdapterPulls = Math.max(
+                  maximumConcurrentAdapterPulls,
+                  activeAdapterPulls,
+                )
+                try {
+                  const result = await iterator.next()
+                  if (!result.done) adapterEvents.push(result.value)
+                  return result
+                } finally {
+                  activeAdapterPulls -= 1
+                }
+              },
+              return: () =>
+                iterator.return?.() ??
+                Promise.resolve({ done: true, value: undefined }),
+            }
+          },
+        }
       },
     },
   }
@@ -372,9 +411,10 @@ function coordinatedRun(
     },
   })
   const coordinator = createAiRunCoordinator({
-    coordination: coordinationStore(),
-    delay: async () => undefined,
+    coordination: options.coordination ?? coordinationStore(),
+    delay: options.delay ?? (async () => undefined),
     now: options.now,
+    pollIntervalMs: options.pollIntervalMs,
     random: () => 0,
   })
   const layer = createAiIntegrationLayer({
@@ -390,6 +430,10 @@ function coordinatedRun(
     },
   })
   return {
+    adapterDeadlines: () => adapterDeadlines,
+    adapterEvents: () => adapterEvents,
+    maximumConcurrentAdapterPulls: () => maximumConcurrentAdapterPulls,
+    adapterPulls: () => adapterPulls,
     adapterRuns: () => adapterRuns,
     events: layer.run({
       context: {
@@ -418,63 +462,16 @@ async function collect(
   return events
 }
 
-function terminalEvents(events: readonly AiRunEvent[]) {
+function terminalEvents(events: readonly AiRunEvent[]): AiRunEvent[] {
   return events.filter(event =>
     ['cancelled', 'completed', 'failed'].includes(event.type),
   )
 }
 
-function adapterRequest(execution: ScenarioExecution, limits: AiRunLimits) {
-  return {
-    connection: {
-      configuration: execution.connectionConfiguration,
-      id: IDENTITY.aiConnectionId,
-    },
-    context: createAiAdapterRunContext(
-      {
-        abortSignal: new AbortController().signal,
-        applicationRunId: 'application-run-raw',
-        correlationId: 'correlation-raw',
-        deadlineAt: new Date(Date.now() + 600_000).toISOString(),
-      },
-      execution.egress,
-    ),
-    limits,
-    modelRevision: {
-      configuration: execution.modelConfiguration,
-      externalModelId: 'provider/model-v1',
-      id: IDENTITY.aiConnectionModelRevisionId,
-      verifiedCapabilities: {
-        aiAnalysis: true,
-        cost: true,
-        imageInput: false,
-        jsonSchemaSteering: true,
-        streaming: true,
-        tokenUsage: true,
-      },
-    },
-    privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
-    runProfileRevisionId: IDENTITY.aiRunProfileRevisionId,
-    selectedCapabilities: {
-      aiAnalysis: true,
-      cost: true,
-      imageInput: false,
-      jsonSchemaSteering: true,
-      streaming: execution.streaming,
-      tokenUsage: true,
-    },
-    task: {
-      content: [{ text: 'Synthetic adapter contract.', type: 'text' as const }],
-      instructions: 'Return JSON.',
-      responseSchema: { type: 'object' },
-    },
-  } as unknown as AiConnectionAdapterRunRequest
-}
-
 function describeCoordinatedAdapterContract(
   name: string,
   harness: CoordinatedAdapterHarness,
-) {
+): void {
   describe(`${name} coordinated shared adapter contract`, () => {
     it('keeps the original total deadline under continuous activity', async () => {
       let now = Date.now()
@@ -503,12 +500,41 @@ function describeCoordinatedAdapterContract(
     })
 
     it('shares one total queue and retry budget and emits one terminal', async () => {
-      const run = coordinatedRun(harness, { type: 'retryable' })
+      const startedAt = Date.now()
+      let currentTime = startedAt
+      const delays: number[] = []
+      const coordination = coordinationStore()
+      vi.mocked(coordination.acquire)
+        .mockResolvedValueOnce({ status: 'waiting' })
+        .mockResolvedValueOnce({ status: 'acquired' })
+        .mockResolvedValueOnce({ status: 'acquired' })
+      const run = coordinatedRun(
+        harness,
+        { type: 'retryable' },
+        {
+          coordination,
+          delay: async milliseconds => {
+            delays.push(milliseconds)
+            currentTime += milliseconds
+          },
+          now: () => currentTime,
+          pollIntervalMs: 298_000,
+        },
+      )
       const events = await collect(run.events)
 
       expect(run.adapterRuns()).toBe(2)
+      expect(delays).toEqual([298_000, 1_000])
+      expect(currentTime - startedAt).toBe(299_000)
+      expect(run.adapterDeadlines()).toEqual([
+        new Date(startedAt + 300_000).toISOString(),
+        new Date(startedAt + 300_000).toISOString(),
+      ])
       expect(terminalEvents(events)).toHaveLength(1)
-      expect(events.at(-1)?.type).toBe('failed')
+      expect(events.at(-1)).toMatchObject({
+        failure: { category: 'connection_unavailable' },
+        type: 'failed',
+      })
     })
 
     it.each([
@@ -572,59 +598,38 @@ function describeCoordinatedAdapterContract(
 
     it('accepts the exact buffered-event limit and rejects the first event over', async () => {
       const limits = { ...DEFAULT_LIMITS, maxBufferedEvents: 4 }
-      const exact = harness.createScenario({
-        count: 4,
-        type: 'buffered_events',
-      })
-      const over = harness.createScenario({ count: 5, type: 'buffered_events' })
+      const exact = await collect(
+        coordinatedRun(
+          harness,
+          { count: 4, type: 'buffered_events' },
+          { limits },
+        ).events,
+      )
+      const over = await collect(
+        coordinatedRun(
+          harness,
+          { count: 5, type: 'buffered_events' },
+          { limits },
+        ).events,
+      )
 
-      expect(
-        (
-          await collect(
-            guardAiRunEventStream(
-              harness.registration.adapter.run(adapterRequest(exact, limits)),
-              IDENTITY,
-            ),
-          )
-        ).at(-1)?.type,
-      ).toBe('completed')
-      expect(
-        (
-          await collect(
-            guardAiRunEventStream(
-              harness.registration.adapter.run(adapterRequest(over, limits)),
-              IDENTITY,
-            ),
-          )
-        ).at(-1),
-      ).toMatchObject({ type: 'failed' })
+      expect(exact.at(-1)?.type).toBe('completed')
+      expect(over.at(-1)).toMatchObject({ type: 'failed' })
+      expect(terminalEvents(over)).toHaveLength(1)
     })
 
     it('emits linear deltas and does not pull ahead of its consumer', async () => {
-      const execution = harness.createScenario({
+      const run = coordinatedRun(harness, {
         analysis: 'a',
         deltas: ['{', '"ok":true', '}'],
         output: '{"ok":true}',
         streaming: true,
         type: 'completed',
       })
-      const source = harness.registration.adapter.run(
-        adapterRequest(execution, DEFAULT_LIMITS),
-      )
-      const iterator = source[Symbol.asyncIterator]()
-
-      const first = await iterator.next()
-      expect(first).toMatchObject({ done: false })
-      await Promise.resolve()
-      const remaining: AiRunEvent[] = []
-      for (;;) {
-        const next = await iterator.next()
-        if (next.done) break
-        remaining.push(next.value)
-      }
-      const all = [first.value, ...remaining] as AiRunEvent[]
+      const all = await collect(run.events)
       expect(
-        all
+        run
+          .adapterEvents()
           .filter(event => event.type === 'output_delta')
           .map(event => (event.type === 'output_delta' ? event.delta : ''))
           .join(''),
@@ -635,59 +640,18 @@ function describeCoordinatedAdapterContract(
       })
     })
 
-    it('keeps coordinator pulls behind downstream demand', async () => {
-      const execution = harness.createScenario({
+    it('keeps adapter pulls serialized through the full coordinated path', async () => {
+      const run = coordinatedRun(harness, {
         deltas: ['first', 'second'],
         output: 'first-second',
         streaming: true,
         type: 'completed',
       })
-      const raw = harness.registration.adapter
-        .run(adapterRequest(execution, DEFAULT_LIMITS))
-        [Symbol.asyncIterator]()
-      let pulls = 0
-      const coordinator = createAiRunCoordinator({
-        coordination: coordinationStore(),
-      })
-      const stream = coordinator
-        .coordinate(
-          {
-            abortSignal: new AbortController().signal,
-            adapterType: harness.registration.adapterType,
-            adapterVersion: harness.registration.adapterVersion,
-            applicationRunId: 'pull-run',
-            correlationId: 'pull-correlation',
-            identity: IDENTITY,
-            limits: DEFAULT_LIMITS,
-            profile: {
-              inactivityTimeBudgetMs: 300_000,
-              queueCapacity: 2,
-              totalTimeBudgetMs: 300_000,
-            },
-            requestId: 'pull-request',
-            runType: 'generate_without_images',
-          },
-          () => ({
-            [Symbol.asyncIterator]() {
-              return {
-                next: () => {
-                  pulls += 1
-                  return raw.next()
-                },
-                return: () =>
-                  raw.return?.() ??
-                  Promise.resolve({ done: true, value: undefined }),
-              }
-            },
-          }),
-          () => undefined,
-        )
-        [Symbol.asyncIterator]()
+      const events = await collect(run.events)
 
-      await expect(stream.next()).resolves.toMatchObject({ done: false })
-      await Promise.resolve()
-      expect(pulls).toBe(1)
-      await stream.return?.()
+      expect(run.adapterPulls()).toBeGreaterThan(1)
+      expect(run.maximumConcurrentAdapterPulls()).toBe(1)
+      expect(events.at(-1)?.type).toBe('completed')
     })
 
     it('cancels within five seconds with exactly one normalized terminal', async () => {

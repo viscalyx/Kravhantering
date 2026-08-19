@@ -73,6 +73,15 @@ export function stagingLiveProbeConfiguration(env = process.env, fsImpl = fs) {
     requiredEnv(env, 'AI_STAGING_LIVE_PROFILE_REVISION_ID'),
     'AI_STAGING_LIVE_PROFILE_REVISION_ID',
   )
+  const adapterType = safePathValue(
+    requiredEnv(env, 'AI_STAGING_LIVE_ADAPTER_TYPE'),
+    'AI_STAGING_LIVE_ADAPTER_TYPE',
+  )
+  if (adapterType === 'controlled_test') {
+    throw new Error(
+      'AI_STAGING_LIVE_ADAPTER_TYPE must identify an external live adapter.',
+    )
+  }
   return {
     baseUrl: baseUrl.toString(),
     cookie,
@@ -81,10 +90,7 @@ export function stagingLiveProbeConfiguration(env = process.env, fsImpl = fs) {
       'AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID',
     ),
     intendedPath: {
-      adapterType: safePathValue(
-        requiredEnv(env, 'AI_STAGING_LIVE_ADAPTER_TYPE'),
-        'AI_STAGING_LIVE_ADAPTER_TYPE',
-      ),
+      adapterType,
       aiConnectionId: safePathValue(
         requiredEnv(env, 'AI_STAGING_LIVE_CONNECTION_ID'),
         'AI_STAGING_LIVE_CONNECTION_ID',
@@ -239,16 +245,59 @@ function preflightConnection(configuration, connection) {
   return selectedModel
 }
 
-function assertConnectionProbeResult(value) {
-  if (typeof value?.connectionEvidenceId !== 'string') {
+function assertLivePathProbeResult(value, configuration) {
+  const fields = [
+    'adapterType',
+    'adapterVersion',
+    'aiConnectionId',
+    'aiConnectionModelRevisionId',
+    'aiRunProfileRevisionId',
+    'connectionRevisionToken',
+    'executionId',
+    'externalLiveCallMade',
+    'failureCategory',
+    'modelRevisionToken',
+    'outcome',
+    'profileRevisionToken',
+    'testSuiteVersion',
+  ]
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join('\u0000') !== fields.sort().join('\u0000')
+  ) {
     throw new Error('The fixed Admin functional probe v3 did not pass.')
   }
-}
-
-function assertModelProbeResult(value, expectedId) {
-  if (value?.id !== expectedId || value?.status !== 'verified') {
+  const pathMatches =
+    value.adapterType === configuration.intendedPath.adapterType &&
+    value.aiConnectionId === configuration.intendedPath.aiConnectionId &&
+    value.aiConnectionModelRevisionId ===
+      configuration.intendedPath.aiConnectionModelRevisionId &&
+    value.aiRunProfileRevisionId ===
+      configuration.intendedPath.aiRunProfileRevisionId
+  const safeProofValues = [
+    value.adapterVersion,
+    value.connectionRevisionToken,
+    value.executionId,
+    value.modelRevisionToken,
+    value.profileRevisionToken,
+  ].every(
+    candidate =>
+      typeof candidate === 'string' && SAFE_PATH_VALUE.test(candidate),
+  )
+  if (
+    !pathMatches ||
+    !safeProofValues ||
+    value.adapterType === 'controlled_test' ||
+    value.externalLiveCallMade !== true ||
+    value.failureCategory !== null ||
+    value.outcome !== 'passed' ||
+    value.testSuiteVersion !== ADMIN_FUNCTIONAL_PROBE_VERSION
+  ) {
     throw new Error('The fixed Admin functional probe v3 did not pass.')
   }
+  return value
 }
 
 export async function runAiStagingLiveSyntheticProbe(
@@ -285,47 +334,30 @@ export async function runAiStagingLiveSyntheticProbe(
     origin: baseUrl.origin,
     'x-requested-with': 'XMLHttpRequest',
   }
-  const connectionProbe = (
-    await requestJson(fetchImpl, actionsUrl, configuration.cookie, {
-      body: JSON.stringify({ action: 'verify_connection' }),
-      headers: mutationHeaders,
-      method: 'POST',
-    })
-  ).body
-  assertConnectionProbeResult(connectionProbe)
-
-  const refreshedConnection = (
-    await requestJson(fetchImpl, connectionUrl, configuration.cookie, {
-      method: 'GET',
-    })
-  ).body
-  const selectedModel = preflightConnection(configuration, refreshedConnection)
-  const modelProbe = (
+  const liveProof = assertLivePathProbeResult(
     await requestJson(fetchImpl, actionsUrl, configuration.cookie, {
       body: JSON.stringify({
-        action: 'verify_model_revision',
+        action: 'verify_live_path',
         modelRevisionId: configuration.intendedPath.aiConnectionModelRevisionId,
-        revisionToken: selectedModel.revisionToken,
+        profileRevisionId: configuration.intendedPath.aiRunProfileRevisionId,
       }),
       headers: mutationHeaders,
       method: 'POST',
-    })
-  ).body
-  assertModelProbeResult(
-    modelProbe,
-    configuration.intendedPath.aiConnectionModelRevisionId,
+    }).then(response => response.body),
+    configuration,
   )
 
   return {
-    adminFunctionalProbeVersion: ADMIN_FUNCTIONAL_PROBE_VERSION,
+    adminFunctionalProbeVersion: liveProof.testSuiteVersion,
     intendedPath: Object.freeze({ ...configuration.intendedPath }),
+    liveExecutionProof: Object.freeze({ ...liveProof }),
     preflightedProfileRevisionIds: Object.freeze([
       ...configuration.intendedProfileRevisionIds,
     ]),
     syntheticProbe: Object.freeze({
       ...configuration.intendedPath,
-      externalLiveCallMade: true,
-      outcome: 'completed',
+      externalLiveCallMade: liveProof.externalLiveCallMade,
+      outcome: liveProof.outcome === 'passed' ? 'completed' : 'failed',
       payloadClassification: 'synthetic',
     }),
   }

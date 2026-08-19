@@ -218,5 +218,7 @@ authoring, quarantine, repair, cancellation, and profile availability.
 
 The opt-in staging-live procedure is an operator verification, not a normal
 developer or CI test. It uses only the fixed synthetic payload and prints
-content-free evidence; see
+content-free evidence from the non-mutating `verify_live_path` operation. The
+operation rejects `controlled_test` and binds the just-completed fixed-v3 run
+to its exact active connection/model/profile revisions; see
 [AI Connections Operations](../operations/ai-connections.md#staging-live-synthetic-probe).

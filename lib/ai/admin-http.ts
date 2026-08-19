@@ -14,7 +14,9 @@ import { isAiRequirementGenerationDisabled } from './scan-guard'
 const DEPLOYMENT_ENVIRONMENTS = new Set(['production', 'prodlike', 'staging'])
 const SAFE_ENVIRONMENT_ID = /^[A-Za-z0-9._:-]{1,160}$/u
 
-function deploymentProofHeaders(env: NodeJS.ProcessEnv = process.env) {
+function deploymentProofHeaders(
+  env: NodeJS.ProcessEnv = process.env,
+): Readonly<Record<string, string>> {
   const configuredEnvironment = env.KRAVHANTERING_DEPLOYMENT_ENVIRONMENT?.trim()
   const configuredEnvironmentId =
     env.KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID?.trim()

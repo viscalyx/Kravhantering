@@ -290,4 +290,5 @@ export const openRouterAdminAdapterRegistration = Object.freeze({
   adapter: openRouterAdminAdapter,
   adapterType: OPENROUTER_ADAPTER_TYPE,
   adapterVersion: OPENROUTER_ADAPTER_VERSION,
+  executionKind: 'external_live',
 }) satisfies AiAdminConnectionAdapterRegistration

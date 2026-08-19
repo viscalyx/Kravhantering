@@ -41,7 +41,8 @@ import {
   guardAiRunEventStream,
 } from './run-contracts'
 
-const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v3'
+export const AI_ADMIN_FUNCTIONAL_PROBE_VERSION =
+  'ai-admin-functional-probe-v3' as const
 const ADMIN_PROBE_TIMEOUT_MS = 30_000
 const ADMIN_CANCELLATION_GRACE_MS = 5_000
 const ADMIN_PROBE_PROFILE_REVISION_ID =
@@ -1225,7 +1226,7 @@ export class AiProviderSecretAdminService {
         ? null
         : (functional.failureCategory ?? 'capability_mismatch'),
       outcome: passed ? 'passed' : 'failed',
-      testSuiteVersion: ADMIN_FUNCTIONAL_PROBE_VERSION,
+      testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
       verifiedCapabilities: functional.capabilities,
     }
   }

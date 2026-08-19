@@ -13,6 +13,21 @@ const PATH = Object.freeze({
   aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000001',
 })
 const SECOND_PROFILE_REVISION_ID = '30000000-0000-4000-8000-000000000002'
+const LIVE_PROOF = Object.freeze({
+  adapterType: PATH.adapterType,
+  adapterVersion: '1',
+  aiConnectionId: PATH.aiConnectionId,
+  aiConnectionModelRevisionId: PATH.aiConnectionModelRevisionId,
+  aiRunProfileRevisionId: PATH.aiRunProfileRevisionId,
+  connectionRevisionToken: '40000000-0000-4000-8000-000000000001',
+  executionId: '50000000-0000-4000-8000-000000000001',
+  externalLiveCallMade: true,
+  failureCategory: null,
+  modelRevisionToken: '60000000-0000-4000-8000-000000000001',
+  outcome: 'passed',
+  profileRevisionToken: '70000000-0000-4000-8000-000000000001',
+  testSuiteVersion: ADMIN_PROBE_VERSION,
+})
 
 function configuration(overrides = {}) {
   return {
@@ -99,17 +114,7 @@ function successfulFetch() {
       `/api/admin/ai-connections/${PATH.aiConnectionId}/actions`
     ) {
       const body = JSON.parse(String(init.body))
-      if (body.action === 'verify_connection') {
-        return jsonResponse({
-          connectionEvidenceId: 'connection-evidence-id',
-        })
-      }
-      if (body.action === 'verify_model_revision') {
-        return jsonResponse({
-          id: PATH.aiConnectionModelRevisionId,
-          status: 'verified',
-        })
-      }
+      if (body.action === 'verify_live_path') return jsonResponse(LIVE_PROOF)
     }
     throw new Error(`Unexpected URL: ${url}`)
   })
@@ -137,6 +142,7 @@ describe('staging-live synthetic AI probe', () => {
     expect(result).toEqual({
       adminFunctionalProbeVersion: ADMIN_PROBE_VERSION,
       intendedPath: PATH,
+      liveExecutionProof: LIVE_PROOF,
       preflightedProfileRevisionIds: [PATH.aiRunProfileRevisionId],
       syntheticProbe: {
         ...PATH,
@@ -156,18 +162,10 @@ describe('staging-live synthetic AI probe', () => {
         path: `/api/admin/ai-connections/${PATH.aiConnectionId}`,
       },
       {
-        body: { action: 'verify_connection' },
-        path: `/api/admin/ai-connections/${PATH.aiConnectionId}/actions`,
-      },
-      {
-        body: undefined,
-        path: `/api/admin/ai-connections/${PATH.aiConnectionId}`,
-      },
-      {
         body: {
-          action: 'verify_model_revision',
+          action: 'verify_live_path',
           modelRevisionId: PATH.aiConnectionModelRevisionId,
-          revisionToken: 'model-revision-token',
+          profileRevisionId: PATH.aiRunProfileRevisionId,
         },
         path: `/api/admin/ai-connections/${PATH.aiConnectionId}/actions`,
       },
@@ -228,6 +226,12 @@ describe('staging-live synthetic AI probe', () => {
       configuredEnv({ AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID: 'stage one' }),
       privateCookieFile(),
       'AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID is invalid',
+    ],
+    [
+      'controlled adapter',
+      configuredEnv({ AI_STAGING_LIVE_ADAPTER_TYPE: 'controlled_test' }),
+      privateCookieFile(),
+      'must identify an external live adapter',
     ],
     [
       'duplicate profile revision',
@@ -332,21 +336,38 @@ describe('staging-live synthetic AI probe', () => {
     ).rejects.toThrow('adapter does not match the intended staging path')
 
     const wrongSuite = successfulFetch()
+    wrongSuite.mockImplementationOnce(async input => successfulFetch()(input))
+    wrongSuite.mockImplementationOnce(async input => successfulFetch()(input))
     wrongSuite.mockImplementationOnce(async () =>
-      successfulFetch()(
-        'https://staging.example.test/api/admin/ai-run-profiles',
-      ),
+      jsonResponse({ ...LIVE_PROOF, testSuiteVersion: 'old-suite-v2' }),
     )
-    wrongSuite.mockImplementationOnce(async () =>
-      successfulFetch()(
-        `https://staging.example.test/api/admin/ai-connections/${PATH.aiConnectionId}`,
-      ),
-    )
-    wrongSuite.mockImplementationOnce(async () => jsonResponse({}))
     await expect(
       runAiStagingLiveSyntheticProbe(configuration(), {
         fetchImpl: wrongSuite,
       }),
+    ).rejects.toThrow('fixed Admin functional probe v3')
+  })
+
+  it.each([
+    ['controlled result', { ...LIVE_PROOF, adapterType: 'controlled_test' }],
+    [
+      'unobserved external call',
+      { ...LIVE_PROOF, externalLiveCallMade: false },
+    ],
+    ['swapped model', { ...LIVE_PROOF, aiConnectionModelRevisionId: 'other' }],
+    [
+      'missing proof field',
+      Object.fromEntries(Object.entries(LIVE_PROOF).slice(1)),
+    ],
+    ['extra proof field', { ...LIVE_PROOF, detail: 'forbidden' }],
+  ])('rejects %s from the current live operation', async (_name, proof) => {
+    const fetchImpl = successfulFetch()
+    fetchImpl.mockImplementationOnce(async input => successfulFetch()(input))
+    fetchImpl.mockImplementationOnce(async input => successfulFetch()(input))
+    fetchImpl.mockImplementationOnce(async () => jsonResponse(proof))
+
+    await expect(
+      runAiStagingLiveSyntheticProbe(configuration(), { fetchImpl }),
     ).rejects.toThrow('fixed Admin functional probe v3')
   })
 

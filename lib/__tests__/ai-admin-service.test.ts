@@ -142,6 +142,7 @@ describe('AI connection administration service', () => {
     fetchCatalog: vi.fn(async (): Promise<readonly AiAdminCatalogItem[]> => []),
     probeConnection: vi.fn(),
     probeHealth: vi.fn(),
+    verifyLivePath: vi.fn(),
     verifyModelRevision: vi.fn(),
     verifySecretCandidate: vi.fn(),
   }
@@ -499,6 +500,15 @@ describe('AI connection administration service', () => {
       testSuiteVersion: 'test-v1',
       verifiedCapabilities: capability,
     })
+    external.verifyLivePath.mockResolvedValue({
+      adapterType: 'openrouter',
+      adapterVersion: '1',
+      executionId: crypto.randomUUID(),
+      externalLiveCallMade: true,
+      failureCategory: null,
+      outcome: 'passed',
+      testSuiteVersion: 'ai-admin-functional-probe-v3',
+    })
     const service = new AiConnectionAdministrationService({
       audit,
       external,
@@ -636,6 +646,86 @@ describe('AI connection administration service', () => {
         status: 'suspended',
       }),
     ).resolves.toBe(currentProfile)
+  })
+
+  it('runs a current non-mutating live proof for one exact active path', async () => {
+    const currentConnection = {
+      ...connection(),
+      adapterKey: 'openrouter',
+    }
+    const modelRevision = verifiedRevision(currentConnection)
+    const baseProfile = profile()
+    const profileRevision = {
+      ...draftRevision(baseProfile),
+      status: 'active' as const,
+    }
+    const currentProfile = {
+      ...baseProfile,
+      activeRevisionId: profileRevision.id,
+      draftRevision: null,
+    }
+    const snapshot = {
+      attestationRevisionToken:
+        currentConnection.attestation?.revisionToken ?? null,
+      connection: currentConnection,
+      connectionEvidenceId: currentConnection.connectionEvidenceId,
+      modelRevision,
+      profile: currentProfile,
+      profileRevision,
+      secretVersionId: currentConnection.activeSecret.available
+        ? currentConnection.activeSecret.secretVersionId
+        : null,
+    }
+    const store = {
+      getConnection: vi.fn(async () => currentConnection),
+      listRunProfileActivationEntries: vi.fn(async () => [
+        { profile: currentProfile, snapshot },
+      ]),
+      recordConnectionVerification: vi.fn(),
+      recordModelVerification: vi.fn(),
+    } as unknown as AiAdminStore
+    external.verifyLivePath.mockResolvedValueOnce({
+      adapterType: 'openrouter',
+      adapterVersion: currentConnection.adapterVersion,
+      executionId: '50000000-0000-4000-8000-000000000001',
+      externalLiveCallMade: true,
+      failureCategory: null,
+      outcome: 'passed',
+      testSuiteVersion: 'ai-admin-functional-probe-v3',
+    })
+    const service = new AiConnectionAdministrationService({
+      audit,
+      external,
+      secrets,
+      store,
+    })
+
+    await expect(
+      service.verifyLivePath({
+        connectionId: currentConnection.id,
+        modelRevisionId: modelRevision.id,
+        profileRevisionId: profileRevision.id,
+      }),
+    ).resolves.toMatchObject({
+      adapterType: 'openrouter',
+      adapterVersion: currentConnection.adapterVersion,
+      aiConnectionId: currentConnection.id,
+      aiConnectionModelRevisionId: modelRevision.id,
+      aiRunProfileRevisionId: profileRevision.id,
+      connectionRevisionToken: currentConnection.revisionToken,
+      executionId: '50000000-0000-4000-8000-000000000001',
+      externalLiveCallMade: true,
+      modelRevisionToken: modelRevision.revisionToken,
+      outcome: 'passed',
+      profileRevisionToken: profileRevision.revisionToken,
+      testSuiteVersion: 'ai-admin-functional-probe-v3',
+    })
+    expect(external.verifyLivePath).toHaveBeenCalledWith(
+      expect.objectContaining({ id: currentConnection.id }),
+      modelRevision,
+    )
+    expect(store.recordConnectionVerification).not.toHaveBeenCalled()
+    expect(store.recordModelVerification).not.toHaveBeenCalled()
   })
 
   it('returns safe conflicts and validation errors for stale or incomplete state', async () => {

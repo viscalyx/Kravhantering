@@ -20,6 +20,7 @@ const runtimeState = vi.hoisted(() => {
       fetchCatalog: vi.fn(async () => []),
       probeConnection: vi.fn(),
       probeHealth: vi.fn(),
+      verifyLivePath: vi.fn(),
       verifyModelRevision: vi.fn(),
       verifySecretCandidate: vi.fn(async () => undefined),
     },

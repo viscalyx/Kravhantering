@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
@@ -7,6 +8,7 @@ import {
 import type {
   AiAdminConnectionDetail,
   AiAdminExternalOperations,
+  AiAdminLivePathExternalResult,
 } from './admin-service'
 import {
   type AiConnectionTrustConfiguration,
@@ -22,8 +24,11 @@ import { openRouterAdminAdapterRegistration } from './openrouter-admin-adapter'
 import { createPinnedHttpsFetch } from './pinned-https-transport'
 import type { AiRunProfileKey } from './profile-resolver'
 import type { AiProviderSecretKeyring } from './provider-secret-keyring'
-import { AiProviderSecretAdminService } from './provider-secret-service'
-import type { AiRunType } from './run-contracts'
+import {
+  AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
+  AiProviderSecretAdminService,
+} from './provider-secret-service'
+import type { AiEgressTransport, AiRunType } from './run-contracts'
 
 const PROFILE_RUN_TYPE = {
   generation_with_images: 'generate_with_images',
@@ -137,7 +142,7 @@ export function createProductionAiAdminExternalOperations(
       deployment,
     )
     return {
-      adapter: registry.resolve(
+      registration: registry.resolveRegistration(
         connection.adapterKey,
         connection.adapterVersion,
       ),
@@ -167,30 +172,72 @@ export function createProductionAiAdminExternalOperations(
       }
     },
     async fetchCatalog(connection) {
-      const { adapter, egress } = await prepared(connection)
-      return secrets().fetchCatalog(adapter, connection, egress)
+      const { egress, registration } = await prepared(connection)
+      return secrets().fetchCatalog(registration.adapter, connection, egress)
     },
     async probeConnection(connection) {
-      const { adapter, egress } = await prepared(connection)
-      return secrets().probeConnection(adapter, connection, egress)
+      const { egress, registration } = await prepared(connection)
+      return secrets().probeConnection(registration.adapter, connection, egress)
     },
     async probeHealth(connection, revision) {
-      const { adapter, egress } = await prepared(connection)
-      return secrets().probeHealth(adapter, connection, egress, revision)
+      const { egress, registration } = await prepared(connection)
+      return secrets().probeHealth(
+        registration.adapter,
+        connection,
+        egress,
+        revision,
+      )
+    },
+    async verifyLivePath(connection, revision) {
+      const { egress, registration } = await prepared(connection)
+      const executionId = randomUUID()
+      if (registration.executionKind !== 'external_live') {
+        return {
+          adapterType: registration.adapterType,
+          adapterVersion: registration.adapterVersion,
+          executionId,
+          externalLiveCallMade: false,
+          failureCategory: 'controlled_adapter_forbidden',
+          outcome: 'failed',
+          testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
+        } satisfies AiAdminLivePathExternalResult
+      }
+      let externalLiveCallMade = false
+      const observedEgress: AiEgressTransport = {
+        fetch: (input, init) => {
+          externalLiveCallMade = true
+          return egress.fetch(input, init)
+        },
+      }
+      const result = await secrets().verifyModelRevision(
+        registration.adapter,
+        connection,
+        observedEgress,
+        revision,
+      )
+      return {
+        adapterType: registration.adapterType,
+        adapterVersion: registration.adapterVersion,
+        executionId,
+        externalLiveCallMade,
+        failureCategory: result.failureCategory,
+        outcome: result.outcome,
+        testSuiteVersion: result.testSuiteVersion,
+      } satisfies AiAdminLivePathExternalResult
     },
     async verifyModelRevision(connection, revision) {
-      const { adapter, egress } = await prepared(connection)
+      const { egress, registration } = await prepared(connection)
       return secrets().verifyModelRevision(
-        adapter,
+        registration.adapter,
         connection,
         egress,
         revision,
       )
     },
     async verifySecretCandidate(connection, _context, plaintext) {
-      const { adapter, egress } = await prepared(connection)
+      const { egress, registration } = await prepared(connection)
       return secrets().verifySecretCandidate(
-        adapter,
+        registration.adapter,
         connection,
         egress,
         plaintext,

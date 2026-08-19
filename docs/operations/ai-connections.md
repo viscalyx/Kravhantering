@@ -371,10 +371,14 @@ node scripts/ai-staging-live-probe.mjs \
 The script first requires server-proven `staging` identity, the exact expected
 environment ID, and an active global guard. It proves that every configured
 profile revision is active, enabled, and unblocked, and that the exact
-connection and model revision are active and verified. It then runs only the
-guard-compatible Admin `verify_connection` and `verify_model_revision`
-actions. Those actions use the fixed synthetic `ai-admin-functional-probe-v3`
-suite; they do not select an area or send database-derived authoring data.
+connection and model revision are active and verified. It then runs the
+guard-compatible, non-mutating Admin `verify_live_path` action. That action
+resolves the exact active connection/model/profile path, rejects controlled
+offline adapters, and runs the fixed synthetic `ai-admin-functional-probe-v3`
+suite through the configured secret, trust boundary, and live adapter. It does
+not select an area or send database-derived authoring data. Its response binds
+the current execution ID, suite version, outcome, observed adapter, exact path,
+and revision tokens; the script validates every field before emitting evidence.
 Every HTTP operation has a 120-second deadline and a 1 MiB streamed response
 limit. The script prints only opaque path identifiers and outcome metadata.
 Merge that fragment into a `staging_live` deployment evidence document and run

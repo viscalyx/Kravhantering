@@ -230,6 +230,13 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('verify_connection') }).strict(),
   z
     .object({
+      action: z.literal('verify_live_path'),
+      modelRevisionId: aiIdentifierSchema,
+      profileRevisionId: aiIdentifierSchema,
+    })
+    .strict(),
+  z
+    .object({
       action: z.literal('verify_model_revision'),
       modelRevisionId: aiIdentifierSchema,
       revisionToken: aiRevisionTokenSchema,

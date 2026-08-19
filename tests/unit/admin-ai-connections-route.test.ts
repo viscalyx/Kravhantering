@@ -46,6 +46,7 @@ const routeState = vi.hoisted(() => ({
     setRunProfileOperationalStatus: vi.fn(),
     updateConnection: vi.fn(),
     verifyConnection: vi.fn(),
+    verifyLivePath: vi.fn(),
     verifyModelRevision: vi.fn(),
     writeSecret: vi.fn(),
   },
@@ -459,6 +460,14 @@ describe('Admin AI connection routes', () => {
         { action: 'set_lifecycle', revisionToken: token, status: 'suspended' },
       ],
       ['verifyConnection', { action: 'verify_connection' }],
+      [
+        'verifyLivePath',
+        {
+          action: 'verify_live_path',
+          modelRevisionId: modelId,
+          profileRevisionId: connectionId,
+        },
+      ],
       [
         'verifyModelRevision',
         {
