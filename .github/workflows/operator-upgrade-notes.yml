@@ -119,23 +119,27 @@ jobs:
           fi
 
           title="docs: persist operator upgrade notes from #${PR_NUMBER}"
-          body_file="$(mktemp)"
-          {
-            echo "This automated PR persists merged Operator Upgrade Impact notes under \`## Unreleased\`."
-            echo
-            echo "- Latest source PR: #${PR_NUMBER}"
-            echo "- Workflow run: ${RUN_URL}"
-            echo
-            echo "Merge after the required checks pass."
-            echo
-            echo "## Operator Upgrade Impact"
-            echo
-            echo "- [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->"
-            echo
-            echo "## SSDLC (Secure Software Development Life Cycle) Gate"
-            echo
-            echo "- [x] I have reviewed SSDLC requirements for this change and addressed any security, data protection, threat-model, and security-testing impacts. <!-- DO NOT REMOVE: ssdlc:requirements -->"
-          } > "${body_file}"
+          render_pr_body() {
+            sed \
+              -e "s|__PR_NUMBER__|${PR_NUMBER}|g" \
+              -e "s|__RUN_URL__|${RUN_URL}|g" <<'PR_BODY'
+          This automated PR persists merged Operator Upgrade Impact notes under `## Unreleased`.
+
+          - Latest source PR: #__PR_NUMBER__
+          - Workflow run: __RUN_URL__
+
+          A human reviewer must approve the generated notes before merge.
+          Merge after the required checks pass.
+
+          ## Operator Upgrade Impact
+
+          - [x] No operator notes needed. <!-- DO NOT REMOVE: operator-upgrade:no-notes -->
+
+          ## SSDLC (Secure Software Development Life Cycle) Gate
+
+          - [x] I have reviewed SSDLC requirements for this change and addressed any security, data protection, threat-model, and security-testing impacts. <!-- DO NOT REMOVE: ssdlc:requirements -->
+          PR_BODY
+          }
 
           pr_number="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" \
@@ -146,11 +150,12 @@ jobs:
               --jq '.[0].number // empty'
           )"
           if [ -z "${pr_number}" ]; then
-            gh pr create --repo "${GITHUB_REPOSITORY}" \
-              --base main \
-              --head "${GITHUB_REPOSITORY%%/*}:${NOTES_BRANCH}" \
-              --title "${title}" \
-              --body-file "${body_file}"
+            render_pr_body | \
+              gh pr create --repo "${GITHUB_REPOSITORY}" \
+                --base main \
+                --head "${GITHUB_REPOSITORY%%/*}:${NOTES_BRANCH}" \
+                --title "${title}" \
+                --body-file -
             pr_number="$(
               gh pr list --repo "${GITHUB_REPOSITORY}" \
                 --base main \
@@ -160,7 +165,11 @@ jobs:
                 --jq '.[0].number // empty'
             )"
           else
-            gh pr edit "${pr_number}" --title "${title}" --body-file "${body_file}"
+            render_pr_body | \
+              gh pr edit "${pr_number}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --title "${title}" \
+                --body-file -
           fi
 
           if [ -z "${pr_number}" ]; then
@@ -168,8 +177,16 @@ jobs:
             exit 1
           fi
 
-          if gh pr merge "${pr_number}" --squash --auto --delete-branch; then
-            echo "Enabled auto-merge for operator upgrade notes PR #${pr_number}."
-          else
-            echo "::warning::Opened operator upgrade notes PR #${pr_number}, but auto-merge could not be enabled. Merge it after required checks pass."
+          expected_body="$(render_pr_body)"
+          stored_body="$(
+            gh pr view "${pr_number}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --json body \
+              --jq '.body'
+          )"
+          if [ "${stored_body}" != "${expected_body}" ]; then
+            echo "::error::Operator upgrade notes PR body verification failed."
+            exit 1
           fi
+
+          echo "Operator upgrade notes PR #${pr_number} requires human review and merge."

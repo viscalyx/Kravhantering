@@ -58,6 +58,10 @@ function hasMeaningfulNoteText(line) {
   return /[^\s!-]/u.test(line)
 }
 
+function escapeLevelTwoHeadings(notes) {
+  return notes.replace(/^##(?=[ \t]|$)/gmu, '\\##')
+}
+
 function operatorUpgradeNotesBlock(prBody) {
   const body = String(prBody ?? '')
   const startMarkerMatch = body.match(
@@ -78,11 +82,13 @@ function operatorUpgradeNotesBlock(prBody) {
   }
 
   const notesSection = afterStartMarker.slice(0, endMarkerMatch.index)
-  const notes = stripHtmlCommentMarkup(notesSection)
-    .split(/\r?\n/u)
-    .map(line => line.trim())
-    .filter(hasMeaningfulNoteText)
-    .join('\n')
+  const notes = escapeLevelTwoHeadings(
+    stripHtmlCommentMarkup(notesSection)
+      .split(/\r?\n/u)
+      .map(line => line.trim())
+      .filter(hasMeaningfulNoteText)
+      .join('\n'),
+  )
 
   return { notes, status: 'found' }
 }

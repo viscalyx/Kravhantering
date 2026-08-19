@@ -248,15 +248,17 @@ Operator upgrade notes are maintained in
 `docs/operations/operator-upgrade-notes.md`. A separate merged-pull-request
 workflow reads completed Operator Upgrade Impact evidence from the trusted pull
 request body and appends it under `## Unreleased` with hidden source markers.
+Level-two headings in the contributed notes are escaped before persistence so
+they remain visible text instead of becoming release-section boundaries.
 The Operator Upgrade gate and merged-pull-request workflow both skip pull
 requests authored by `dependabot[bot]` whose title starts with `build(deps):`;
 dependency-only updates therefore do not require or persist operator notes.
 Instead of pushing directly to protected `main`, the workflow opens or updates
-the `automation/operator-upgrade-notes` PR and enables auto-merge when GitHub
-allows it. Configure an `OPERATOR_UPGRADE_NOTES_TOKEN` secret from a
-fine-scoped PAT or GitHub App token for the `Viscalyxbot` machine user that can
-push branches and create pull requests so the normal PR checks run for that
-automation PR. The workflow commits those documentation changes as
+the `automation/operator-upgrade-notes` PR. A human reviewer must approve the
+generated notes before merge. Configure an `OPERATOR_UPGRADE_NOTES_TOKEN`
+secret from a fine-scoped PAT or GitHub App token for the `Viscalyxbot` machine
+user that can push branches and create pull requests so the normal PR checks
+run for that automation PR. The workflow commits those documentation changes as
 `Viscalyxbot <viscalyxbot@viscalyx.se>` before opening or updating the PR, and
 the PR title includes the latest source PR number. When the remote automation
 branch has no open pull request, the workflow treats it as stale and recreates
@@ -294,7 +296,7 @@ sequenceDiagram
     par Persist notes through PR
         Notes->>Notes: Append PR notes under Unreleased
         Notes->>AutomationPR: Open or update automation PR
-        AutomationPR->>AutomationPR: Merge after required checks
+        AutomationPR->>AutomationPR: Human review and merge after required checks
         AutomationPR-->>Main: Persist Unreleased notes
     and Prepare release
         Release->>Release: Compute release plan
