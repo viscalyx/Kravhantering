@@ -174,6 +174,11 @@ export interface AiRunTelemetry {
   emit(event: Readonly<AiRunTelemetryEvent>): void | Promise<void>
 }
 
+export interface AiCompletedRunDecisionContext {
+  abortSignal: AbortSignal
+  totalDeadlineAt: string
+}
+
 export interface AiRunCoordinator {
   coordinate(
     request: Readonly<AiCoordinatedRunRequest>,
@@ -186,6 +191,7 @@ export interface AiRunCoordinator {
     decideCompleted?: (
       event: Readonly<Extract<AiRunEvent, { type: 'completed' }>>,
       attempt: number,
+      context: Readonly<AiCompletedRunDecisionContext>,
     ) => Promise<
       Readonly<Extract<AiRunEvent, { type: 'completed' | 'failed' }>>
     >,
@@ -247,6 +253,42 @@ function failure(
 
 function cancellation(identity: AiRunIdentity): AiRunEvent {
   return { identity, reason: 'application_cancelled', type: 'cancelled' }
+}
+
+async function completionDecisionWithinBudget(
+  decide: () => Promise<
+    Readonly<Extract<AiRunEvent, { type: 'completed' | 'failed' }>>
+  >,
+  abortSignal: AbortSignal,
+  remainingMs: number,
+): Promise<
+  | { kind: 'aborted' }
+  | { kind: 'deadline' }
+  | {
+      event: Readonly<Extract<AiRunEvent, { type: 'completed' | 'failed' }>>
+      kind: 'decided'
+    }
+> {
+  if (abortSignal.aborted) return { kind: 'aborted' }
+  if (remainingMs <= 0) return { kind: 'deadline' }
+  const decision = decide()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let resolveAbort = (): void => undefined
+  try {
+    return await Promise.race([
+      decision.then(event => ({ event, kind: 'decided' as const })),
+      new Promise<{ kind: 'aborted' }>(resolve => {
+        resolveAbort = () => resolve({ kind: 'aborted' })
+        abortSignal.addEventListener('abort', resolveAbort, { once: true })
+      }),
+      new Promise<{ kind: 'deadline' }>(resolve => {
+        timer = setTimeout(() => resolve({ kind: 'deadline' }), remainingMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+    abortSignal.removeEventListener('abort', resolveAbort)
+  }
 }
 
 function terminal(event: AiRunEvent): boolean {
@@ -881,9 +923,39 @@ export function createAiRunCoordinator(
                     false,
                   )
                 } else {
-                  attemptTerminal = decideCompleted
-                    ? await decideCompleted(event, attempt)
-                    : event
+                  if (!decideCompleted) {
+                    attemptTerminal = event
+                  } else {
+                    const decision = await completionDecisionWithinBudget(
+                      () =>
+                        decideCompleted(event, attempt, {
+                          abortSignal: attemptController.signal,
+                          totalDeadlineAt: totalDeadlineAt.toISOString(),
+                        }),
+                      attemptController.signal,
+                      totalDeadline - now(),
+                    )
+                    if (decision.kind === 'decided') {
+                      attemptTerminal = decision.event
+                    } else if (decision.kind === 'aborted') {
+                      attemptTerminal = leaseLost
+                        ? failure(
+                            request.identity,
+                            'connection_unavailable',
+                            'coordination_lease_lost',
+                            true,
+                          )
+                        : cancellation(request.identity)
+                    } else {
+                      attemptController.abort()
+                      attemptTerminal = failure(
+                        request.identity,
+                        'deadline_exceeded',
+                        'total_budget_exceeded',
+                        true,
+                      )
+                    }
+                  }
                 }
               } else {
                 attemptTerminal = event

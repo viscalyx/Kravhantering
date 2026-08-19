@@ -834,6 +834,108 @@ describe('AI run coordinator', () => {
     expect(execute).not.toHaveBeenCalled()
   })
 
+  it('ends a never-settling completion decision at the total deadline', async () => {
+    vi.useFakeTimers()
+    try {
+      let markDecisionStarted = (): void => undefined
+      const decisionStarted = new Promise<void>(resolve => {
+        markDecisionStarted = resolve
+      })
+      const coordination = store()
+      const budgetedRequest = request()
+      budgetedRequest.profile.totalTimeBudgetMs = 100
+      let decisionSignal: AbortSignal | undefined
+      const decideCompleted = vi.fn((_event, _attempt, context) => {
+        decisionSignal = context.abortSignal
+        markDecisionStarted()
+        return new Promise<never>(() => undefined)
+      })
+      const collecting = collect(
+        createAiRunCoordinator({ coordination }).coordinate(
+          budgetedRequest,
+          () =>
+            (async function* () {
+              yield completed()
+            })(),
+          () => undefined,
+          decideCompleted,
+        ),
+      )
+      let settled = false
+      void collecting.then(() => {
+        settled = true
+      })
+      await decisionStarted
+
+      await vi.advanceTimersByTimeAsync(100)
+
+      expect(settled).toBe(true)
+      await expect(collecting).resolves.toMatchObject([
+        {
+          failure: {
+            category: 'deadline_exceeded',
+            diagnosticCode: 'total_budget_exceeded',
+          },
+          type: 'failed',
+        },
+      ])
+      expect(coordination.finish).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'failed' }),
+      )
+      expect(decisionSignal?.aborted).toBe(true)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('cancels a never-settling completion decision when the caller aborts', async () => {
+    vi.useFakeTimers()
+    try {
+      const controller = new AbortController()
+      let decisionSignal: AbortSignal | undefined
+      let markDecisionStarted = (): void => undefined
+      const decisionStarted = new Promise<void>(resolve => {
+        markDecisionStarted = resolve
+      })
+      const coordination = store()
+      const decideCompleted = vi.fn((_event, _attempt, context) => {
+        decisionSignal = context.abortSignal
+        markDecisionStarted()
+        return new Promise<never>(() => undefined)
+      })
+      const collecting = collect(
+        createAiRunCoordinator({ coordination }).coordinate(
+          request(controller.signal),
+          () =>
+            (async function* () {
+              yield completed()
+            })(),
+          () => undefined,
+          decideCompleted,
+        ),
+      )
+      await decisionStarted
+
+      controller.abort()
+
+      await expect(collecting).resolves.toEqual([
+        {
+          identity: IDENTITY,
+          reason: 'application_cancelled',
+          type: 'cancelled',
+        },
+      ])
+      expect(decisionSignal?.aborted).toBe(true)
+      expect(coordination.finish).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'cancelled' }),
+      )
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('lets each heartbeat reset only the inactivity budget', async () => {
     let currentTime = 0
     const coordinator = createAiRunCoordinator({

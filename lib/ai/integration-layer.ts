@@ -532,6 +532,12 @@ export function createAiIntegrationLayer(
         return
       }
       const quarantinedText: string[] = []
+      let pendingSafeInvalidOutput:
+        | {
+            output: Readonly<AiSafeInvalidOutput>
+            terminal: Extract<AiRunEvent, { type: 'failed' }>
+          }
+        | undefined
       let forceCloseAttempt: (() => void) | undefined
       const coordinated = options.runCoordinator.coordinate(
         {
@@ -562,7 +568,7 @@ export function createAiIntegrationLayer(
             },
           ),
         () => forceCloseAttempt?.(),
-        async event => {
+        async (event, _attempt, decisionContext) => {
           try {
             const approval = await options.trustBoundary.approveCompleted({
               analysis: event.analysis,
@@ -570,6 +576,9 @@ export function createAiIntegrationLayer(
               rawOutput: event.rawOutput,
               responseSchema: prepared.task.responseSchema,
             })
+            if (decisionContext.abortSignal.aborted) {
+              return trustBoundaryFailure(identity, 'final_safety_gate_blocked')
+            }
             if (!approval.valid) {
               const terminal = {
                 failure: {
@@ -580,15 +589,15 @@ export function createAiIntegrationLayer(
                 identity: event.identity,
                 type: 'failed',
               } as const
-              safeInvalidOutputs.set(
-                terminal,
-                Object.freeze({
+              pendingSafeInvalidOutput = {
+                output: Object.freeze({
                   analysis: event.analysis,
                   issues: approval.issues,
                   rawOutput: event.rawOutput,
                   usage: event.usage,
                 }),
-              )
+                terminal,
+              }
               return terminal
             }
             return event
@@ -601,6 +610,13 @@ export function createAiIntegrationLayer(
         if (event.type === 'analysis_delta' || event.type === 'output_delta') {
           quarantinedText.push(event.delta)
           continue
+        }
+        if (
+          event.type === 'failed' &&
+          pendingSafeInvalidOutput?.terminal === event
+        ) {
+          safeInvalidOutputs.set(event, pendingSafeInvalidOutput.output)
+          pendingSafeInvalidOutput = undefined
         }
         yield event
       }

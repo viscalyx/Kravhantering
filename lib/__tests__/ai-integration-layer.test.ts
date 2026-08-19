@@ -122,7 +122,10 @@ const RUN_COORDINATOR: AiRunCoordinator = {
       new Date(Date.now() + 60_000).toISOString(),
     )) {
       yield event.type === 'completed' && decideCompleted
-        ? await decideCompleted(event, 1)
+        ? await decideCompleted(event, 1, {
+            abortSignal: request.abortSignal,
+            totalDeadlineAt: new Date(Date.now() + 60_000).toISOString(),
+          })
         : event
     }
     forceCloseAttempt(request.applicationRunId)
@@ -1154,6 +1157,79 @@ describe('AI integration layer', () => {
       usage: USAGE,
     })
     expect(layer.takeSafeInvalidOutput(events[0])).toBeUndefined()
+  })
+
+  it('does not publish repair output when caller cancellation wins final screening', async () => {
+    const controller = new AbortController()
+    let resolveApproval = (
+      _value: Awaited<ReturnType<AiRunTrustBoundary['approveCompleted']>>,
+    ): void => undefined
+    let markApprovalStarted = (): void => undefined
+    const approvalStarted = new Promise<void>(resolve => {
+      markApprovalStarted = resolve
+    })
+    const approval = new Promise<
+      Awaited<ReturnType<AiRunTrustBoundary['approveCompleted']>>
+    >(resolve => {
+      resolveApproval = resolve
+    })
+    const trustBoundary: AiRunTrustBoundary = {
+      approveCompleted: vi.fn(() => {
+        markApprovalStarted()
+        return approval
+      }),
+      prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
+    }
+    const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
+      async *run(adapterRequest) {
+        yield {
+          analysis: 'screened analysis',
+          identity: {
+            aiConnectionId: adapterRequest.connection.id,
+            aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+          },
+          rawOutput: '{"schemaVersion":"wrong"}',
+          type: 'completed',
+          usage: USAGE,
+        }
+      },
+    }
+    const coordination = coordinationStore()
+    const layer = integration(
+      adapter,
+      profile(),
+      trustBoundary,
+      createAiRunCoordinator({ coordination }),
+    )
+    const collecting = collect(layer.run(request(controller.signal)))
+    await approvalStarted
+
+    controller.abort()
+
+    const events = await collecting
+    expect(events).toEqual([
+      {
+        identity: {
+          aiConnectionId: 'connection-17',
+          aiConnectionModelRevisionId: 'model-revision-23',
+          aiRunProfileRevisionId: 'profile-revision-31',
+        },
+        reason: 'application_cancelled',
+        type: 'cancelled',
+      },
+    ])
+    resolveApproval({
+      issues: [{ code: 'required', message: 'required', path: '$' }],
+      valid: false,
+    })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(layer.takeSafeInvalidOutput(events[0])).toBeUndefined()
+    expect(coordination.finish).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'cancelled' }),
+    )
   })
 
   it('replaces a completed result when final screening fails', async () => {
