@@ -28,7 +28,7 @@ const USAGE: AiRunUsage = {
 
 const TEST_EGRESS = { fetch: vi.fn() }
 const PASSING_TRUST_BOUNDARY: AiRunTrustBoundary = {
-  approveCompleted: vi.fn(async () => undefined),
+  approveCompleted: vi.fn(async () => ({ valid: true }) as const),
   prepareRun: vi.fn(async input => ({
     egress: TEST_EGRESS,
     task: input.task,
@@ -904,7 +904,7 @@ describe('AI integration layer', () => {
       },
     }
     const trustBoundary: AiRunTrustBoundary = {
-      approveCompleted: async () => undefined,
+      approveCompleted: async () => ({ valid: true }),
       prepareRun: async () => {
         throw new Error('raw prompt and endpoint must stay private')
       },
@@ -931,7 +931,7 @@ describe('AI integration layer', () => {
   })
 
   it('quarantines all deltas and screens them with the buffered final output', async () => {
-    const approveCompleted = vi.fn(async () => undefined)
+    const approveCompleted = vi.fn(async () => ({ valid: true }) as const)
     const trustBoundary: AiRunTrustBoundary = {
       approveCompleted,
       prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
@@ -971,6 +971,66 @@ describe('AI integration layer', () => {
       rawOutput: '{"requirements":[]}',
       responseSchema: { type: 'object' },
     })
+  })
+
+  it('releases safe schema-invalid output only as a neutral terminal event', async () => {
+    const trustBoundary: AiRunTrustBoundary = {
+      approveCompleted: vi.fn(async () => ({
+        issues: [
+          {
+            code: 'required',
+            message: "must have required property 'requirements'",
+            path: '$',
+          },
+        ],
+        valid: false as const,
+      })),
+      prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
+    }
+    const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
+      async *run(adapterRequest) {
+        yield {
+          delta: '{"partial":"must remain quarantined"}',
+          type: 'output_delta',
+          visibility: 'internal',
+        }
+        yield {
+          analysis: 'screened analysis',
+          identity: {
+            aiConnectionId: adapterRequest.connection.id,
+            aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+          },
+          rawOutput: '{"schemaVersion":"wrong"}',
+          type: 'completed',
+          usage: USAGE,
+        }
+      },
+    }
+
+    await expect(
+      collect(integration(adapter, profile(), trustBoundary).run(request())),
+    ).resolves.toEqual([
+      {
+        analysis: 'screened analysis',
+        identity: {
+          aiConnectionId: 'connection-17',
+          aiConnectionModelRevisionId: 'model-revision-23',
+          aiRunProfileRevisionId: 'profile-revision-31',
+        },
+        issues: [
+          {
+            code: 'required',
+            message: "must have required property 'requirements'",
+            path: '$',
+          },
+        ],
+        rawOutput: '{"schemaVersion":"wrong"}',
+        type: 'invalid_output',
+        usage: USAGE,
+      },
+    ])
   })
 
   it('replaces a completed result when final screening fails', async () => {

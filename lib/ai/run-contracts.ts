@@ -192,6 +192,12 @@ export interface AiRunUsage {
   totalTokens: AiUsageMetric<number>
 }
 
+export interface AiRunValidationIssue {
+  code: string
+  message: string
+  path: string
+}
+
 export const AI_RUN_CANCELLATION_REASONS = [
   'user_cancelled',
   'client_disconnected',
@@ -211,6 +217,14 @@ export type AiRunEvent =
       identity: AiRunIdentity
       rawOutput: string
       type: 'completed'
+      usage: AiRunUsage
+    }
+  | {
+      analysis: string | null
+      identity: AiRunIdentity
+      issues: readonly AiRunValidationIssue[]
+      rawOutput: string
+      type: 'invalid_output'
       usage: AiRunUsage
     }
   | {
@@ -255,9 +269,14 @@ export async function* guardAiRunEventStream(
 ): AsyncIterable<AiRunEvent> {
   let terminal: AiRunTerminalEvent | undefined
   let invalidAfterTerminal = false
+  let invalidIntegrationEvent = false
   let terminalIdentityMismatch = false
   try {
     for await (const event of source) {
+      if (event.type === 'invalid_output') {
+        invalidIntegrationEvent = true
+        continue
+      }
       if (terminal) {
         invalidAfterTerminal = true
         continue
@@ -286,7 +305,17 @@ export async function* guardAiRunEventStream(
     return
   }
 
-  if (invalidAfterTerminal) {
+  if (invalidIntegrationEvent) {
+    yield {
+      failure: {
+        category: 'invalid_response',
+        diagnosticCode: 'adapter_emitted_integration_event',
+        retryable: false,
+      },
+      identity,
+      type: 'failed',
+    }
+  } else if (invalidAfterTerminal) {
     yield {
       failure: {
         category: 'invalid_response',

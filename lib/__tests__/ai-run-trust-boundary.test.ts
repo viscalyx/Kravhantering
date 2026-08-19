@@ -144,7 +144,12 @@ describe('AI run trust boundary', () => {
         rawOutput: '{"unexpected":true}',
         responseSchema: prepared.task.responseSchema,
       }),
-    ).rejects.toMatchObject({ code: 'invalid_final_output' })
+    ).resolves.toMatchObject({
+      issues: expect.arrayContaining([
+        expect.objectContaining({ code: 'additionalProperties', path: '$' }),
+      ]),
+      valid: false,
+    })
   })
 
   it('rejects a response schema that cannot be snapshotted before egress', async () => {
@@ -261,7 +266,7 @@ describe('AI run trust boundary', () => {
         rawOutput: '{"requirements":[]}',
         responseSchema,
       }),
-    ).resolves.toBeUndefined()
+    ).resolves.toEqual({ valid: true })
     expect(screenOutput).toHaveBeenCalledWith([
       'safe reasoning',
       '{"requirements":[]}',
@@ -274,7 +279,12 @@ describe('AI run trust boundary', () => {
         rawOutput: '{"unexpected":true}',
         responseSchema,
       }),
-    ).rejects.toMatchObject({ code: 'invalid_final_output' })
+    ).resolves.toMatchObject({
+      issues: expect.arrayContaining([
+        expect.objectContaining({ code: 'required', path: '$' }),
+      ]),
+      valid: false,
+    })
   })
 
   it.each([
@@ -296,7 +306,7 @@ describe('AI run trust boundary', () => {
     },
   )
 
-  it('rejects blocked, malformed, and invalid-schema final output', async () => {
+  it('rejects blocked output while returning safe invalid-output issues', async () => {
     const blocked = setup({
       safetyFilter: {
         screenInput: vi.fn(async () => ({ allowed: true })),
@@ -320,7 +330,16 @@ describe('AI run trust boundary', () => {
         rawOutput: 'not JSON',
         responseSchema: { type: 'object' },
       }),
-    ).rejects.toMatchObject({ code: 'invalid_final_output' })
+    ).resolves.toEqual({
+      issues: [
+        {
+          code: 'invalid_json',
+          message: 'Generated response is not valid JSON.',
+          path: '$',
+        },
+      ],
+      valid: false,
+    })
     await expect(
       boundary.approveCompleted({
         analysis: null,
@@ -328,7 +347,7 @@ describe('AI run trust boundary', () => {
         rawOutput: '{}',
         responseSchema: { type: 'not-a-json-schema-type' },
       }),
-    ).rejects.toMatchObject({ code: 'invalid_final_output' })
+    ).rejects.toMatchObject({ code: 'invalid_response_schema' })
   })
 
   it('does not expose rejected output or filter errors', async () => {

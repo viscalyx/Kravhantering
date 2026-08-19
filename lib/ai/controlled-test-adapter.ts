@@ -119,7 +119,20 @@ function readConfiguration(
   value: unknown,
 ): ControlledTestAdapterConfiguration | null {
   if (!isRecord(value)) return null
-  const { scenario } = value
+  let configuration = value
+  if (
+    !('scenario' in configuration) &&
+    typeof configuration.credential === 'string'
+  ) {
+    try {
+      const parsed: unknown = JSON.parse(configuration.credential)
+      if (!isRecord(parsed)) return null
+      configuration = parsed
+    } catch {
+      return null
+    }
+  }
+  const { scenario } = configuration
   if (!isRecord(scenario)) return null
   if (scenario.type === 'completed') {
     if (
@@ -165,7 +178,7 @@ function readConfiguration(
   ) {
     return null
   }
-  return value as unknown as ControlledTestAdapterConfiguration
+  return configuration as unknown as ControlledTestAdapterConfiguration
 }
 
 function identity(request: AiConnectionAdapterRunRequest): AiRunIdentity {

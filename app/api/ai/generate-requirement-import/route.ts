@@ -9,6 +9,7 @@ import {
   buildRequirementImportResponseFormatSchema,
   buildRequirementImportSystemPrompt,
   buildRequirementImportUserPrompt,
+  getPromptMessage,
   parseJsonObject,
 } from '@/lib/ai/requirement-prompt'
 import type { AiRunEvent, AiRunUsage } from '@/lib/ai/run-contracts'
@@ -42,7 +43,10 @@ import {
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
   AI_GENERATE_SLOW_THRESHOLD_MS,
+  AI_RUN_REQUEST_DEADLINE_MS,
   aiRequirementImportBaseBodySchema,
+  aiRunProfileError,
+  aiUsageMetricValue,
   checkAiRequirementImportThrottle,
   countImageBytes,
   createAiRequirementImportThrottleResponse,
@@ -61,7 +65,6 @@ import {
 
 const AI_GENERATE_REQUIREMENT_IMPORT_OPERATION =
   'ai.generate-requirement-import'
-const AI_RUN_REQUEST_DEADLINE_MS = 5 * 60 * 1_000
 export const AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES = 42 * 1024 * 1024
 
 const generateRequirementImportSchema = aiRequirementImportBaseBodySchema
@@ -94,10 +97,6 @@ function aiRequestBytesExceededResponse(): NextResponse {
   )
 }
 
-function metricValue(metric: AiRunUsage['totalTokens']): number | null {
-  return metric.status === 'unavailable' ? null : metric.value
-}
-
 function createStreamRecorder(
   context: RequestCorrelationIds,
   imageBytes: number,
@@ -119,7 +118,7 @@ function createStreamRecorder(
       metrics: {
         image_bytes: imageBytes,
         image_count: imageCount,
-        token_count: usage ? metricValue(usage.totalTokens) : null,
+        token_count: usage ? aiUsageMetricValue(usage.totalTokens) : null,
       },
       operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
       outcome,
@@ -338,11 +337,30 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
                 send('done', {
                   payload: validation.payload,
                   rawContent,
-                  stats: { totalTokens: metricValue(event.usage.totalTokens) },
+                  stats: {
+                    totalTokens: aiUsageMetricValue(event.usage.totalTokens),
+                  },
                   thinking: event.analysis ?? '',
                 })
                 recordTerminal('success', 200, event.usage)
               }
+              terminal = true
+              break
+            }
+            if (event.type === 'invalid_output') {
+              send('validation_error', {
+                issues: event.issues,
+                message: getPromptMessage(body.locale, [
+                  'ai',
+                  'validationErrors',
+                ]),
+                rawContent: event.rawOutput,
+                stats: {
+                  totalTokens: aiUsageMetricValue(event.usage.totalTokens),
+                },
+                thinking: event.analysis ?? '',
+              })
+              recordTerminal('failure', 422, event.usage)
               terminal = true
               break
             }
@@ -372,12 +390,15 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
             recordTerminal('failure', 503)
           }
         } catch (error) {
-          logSanitizedError('AI requirement import run failed', error)
+          const profileError = aiRunProfileError(error, body.locale)
           if (!request.signal.aborted) {
             send('error', {
-              code: 'ai_provider_unavailable',
-              message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+              code: profileError?.code ?? 'ai_provider_unavailable',
+              message: profileError?.message ?? AI_PROVIDER_UNAVAILABLE_MESSAGE,
             })
+          }
+          if (!profileError) {
+            logSanitizedError('AI requirement import run failed', error)
           }
           recordTerminal('failure', request.signal.aborted ? 499 : 503)
         } finally {

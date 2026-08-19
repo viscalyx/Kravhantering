@@ -1561,7 +1561,11 @@ export default function AiRequirementGenerator({
                       </div>
                     </dl>
                   ) : generationProfile ? (
-                    <p className="mt-1 text-amber-700 dark:text-amber-300">
+                    <p className="mt-1 flex items-start gap-2 text-amber-700 dark:text-amber-300">
+                      <AlertTriangle
+                        aria-hidden
+                        className="mt-0.5 h-4 w-4 shrink-0"
+                      />
                       {profileUnavailableMessage(generationProfile.reason)}
                     </p>
                   ) : null}

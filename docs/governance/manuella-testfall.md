@@ -874,7 +874,10 @@ När en bifogad bild tas bort rensas bildfelet. Vid det första terminala felet
 flyttas fokus till rubriken `Genereringen misslyckades`, medan fel vid ett nytt
 försök och reparation behåller fokus på åtgärdsknappen. Råresultat,
 valideringsfel, behov och bifogade bilder ligger kvar tills användaren
-ändrar dem. En lyckad reparation annonserar status en gång och flyttar fokus
+ändrar dem. Råresultatet visas först efter att hela svaret har passerat
+utdatafiltret; inga ofullständiga strömningsdelar visas. Reparationen får det
+bevarade råresultatet och de visade valideringsfelen. En lyckad reparation
+annonserar status en gång och flyttar fokus
 till resultatets rubrik. Bilder med samma avkodade innehåll avvisas innan en ny
 kravkandidat skapas, även när filnamn och MIME-typ skiljer sig. Dialogen
 annonserar `Varje uppladdad bild måste vara unik.`, flyttar fokus till

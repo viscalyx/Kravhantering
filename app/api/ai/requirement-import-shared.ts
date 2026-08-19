@@ -1,11 +1,12 @@
 import { type RefinementCtx, z } from 'zod'
+import { AiRunProfileResolutionError } from '@/lib/ai/profile-resolver'
 import {
   DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
   getPromptMessage,
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
 } from '@/lib/ai/requirement-prompt'
-import type { AiTaskContentPart } from '@/lib/ai/run-contracts'
+import type { AiTaskContentPart, AiUsageMetric } from '@/lib/ai/run-contracts'
 import {
   type AiSafetyBlockedStep,
   type AiSafetyDecision,
@@ -45,6 +46,32 @@ export const MAX_AI_NEED_LENGTH = 4000
 export const AI_GENERATE_RATE_LIMIT = 5
 export const AI_GENERATE_RATE_WINDOW_MS = 60_000
 export const AI_GENERATE_SLOW_THRESHOLD_MS = 30_000
+export const AI_RUN_REQUEST_DEADLINE_MS = 5 * 60 * 1_000
+
+export function aiUsageMetricValue<T>(metric: AiUsageMetric<T>): T | null {
+  return metric.status === 'unavailable' ? null : metric.value
+}
+
+export function aiRunProfileError(
+  error: unknown,
+  locale: RequirementImportLocale,
+): {
+  code: 'ai_profile_blocked' | 'ai_profile_missing' | 'ai_profile_suspended'
+  message: string
+} | null {
+  if (!(error instanceof AiRunProfileResolutionError)) return null
+  if (error.code === 'run_type_unsupported') return null
+  const reason =
+    error.code === 'profile_missing'
+      ? 'missing'
+      : error.code === 'profile_suspended'
+        ? 'suspended'
+        : 'blocked'
+  return {
+    code: `ai_profile_${reason}`,
+    message: getPromptMessage(locale, ['ai', 'profileUnavailable', reason]),
+  }
+}
 
 export function formatAiSafetyBlockedMessage(
   locale: RequirementImportLocale,

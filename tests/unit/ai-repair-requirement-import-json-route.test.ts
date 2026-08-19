@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/ai/repair-requirement-import-json/route'
+import { AiRunProfileResolutionError } from '@/lib/ai/profile-resolver'
 import type { AiRunEvent, AiRunIdentity } from '@/lib/ai/run-contracts'
 import * as aiSafety from '@/lib/ai/safety'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
@@ -115,7 +116,7 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
   })
 
   it.each(['model', 'providerPreferences', 'reasoningEffort'])(
-    'rejects the removed provider-shaped %s field',
+    'rejects caller-selected provider configuration in %s',
     async field => {
       const response = await POST(request(validBody({ [field]: 'legacy' })))
 
@@ -170,4 +171,37 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
     expect(response.status).toBe(499)
     expect(await response.text()).toBe('')
   })
+
+  it.each([
+    [
+      'profile_missing',
+      'ai_profile_missing',
+      'No active administrator-managed profile is configured for this AI action.',
+    ],
+    [
+      'profile_suspended',
+      'ai_profile_suspended',
+      'The administrator-managed profile for this AI action is suspended.',
+    ],
+    [
+      'profile_blocked',
+      'ai_profile_blocked',
+      'This AI action is blocked by its administrator-managed profile.',
+    ],
+  ] as const)(
+    'maps a direct POST %s profile race to its action-safe error',
+    async (profileCode, code, error) => {
+      routeState.run.mockImplementationOnce(() =>
+        (async function* () {
+          yield* [] as AiRunEvent[]
+          throw new AiRunProfileResolutionError(profileCode)
+        })(),
+      )
+
+      const response = await POST(request(validBody()))
+
+      expect(response.status).toBe(503)
+      await expect(response.json()).resolves.toEqual({ code, error })
+    },
+  )
 })

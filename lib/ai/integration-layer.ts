@@ -547,12 +547,23 @@ export function createAiIntegrationLayer(
           continue
         }
         try {
-          await options.trustBoundary.approveCompleted({
+          const approval = await options.trustBoundary.approveCompleted({
             analysis: event.analysis,
             quarantinedText,
             rawOutput: event.rawOutput,
             responseSchema: prepared.task.responseSchema,
           })
+          if (!approval.valid) {
+            yield {
+              analysis: event.analysis,
+              identity: event.identity,
+              issues: approval.issues,
+              rawOutput: event.rawOutput,
+              type: 'invalid_output',
+              usage: event.usage,
+            }
+            continue
+          }
         } catch {
           yield trustBoundaryFailure(identity, 'final_safety_gate_blocked')
           return

@@ -632,6 +632,13 @@ describe('AiRequirementGenerator', () => {
       'title',
       'No active profile is configured.',
     )
+    const profileStatus = screen
+      .getByText('No active profile is configured.')
+      .closest('[role="status"]')
+    expect(profileStatus).not.toBeNull()
+    expect(
+      profileStatus?.querySelector('svg[aria-hidden="true"]'),
+    ).not.toBeNull()
 
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')
     expect(input).not.toBeNull()
@@ -2125,6 +2132,18 @@ describe('AiRequirementGenerator', () => {
 
     const repairButton = await screen.findByRole('button', { name: 'repair' })
     await userEvent.click(repairButton)
+
+    const firstRepairRequest = mockFetch.mock.calls.find(
+      ([url]) => url === '/api/ai/repair-requirement-import-json',
+    )
+    expect(firstRepairRequest).toBeDefined()
+    const firstRepairBody = JSON.parse(
+      String((firstRepairRequest?.[1] as RequestInit | undefined)?.body),
+    ) as { errors: string[]; rawJson: string }
+    expect(firstRepairBody).toMatchObject({
+      errors: ['$: Generated response is not valid JSON.'],
+      rawJson: '{"requirements":',
+    })
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Repair failed: Repair service unavailable.',

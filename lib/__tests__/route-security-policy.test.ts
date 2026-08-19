@@ -30,12 +30,6 @@ describe('REST route security policy registry', () => {
       cache: 'no-store',
       registered: true,
     })
-    expect(
-      REST_ROUTE_REGISTRY.resolve('GET', '/api/ai/models').registered,
-    ).toBe(false)
-    expect(
-      REST_ROUTE_REGISTRY.resolve('GET', '/api/ai/credits').registered,
-    ).toBe(false)
   })
 
   it('matches dynamic templates while preferring literals segment by segment', () => {

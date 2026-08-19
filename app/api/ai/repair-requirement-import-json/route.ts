@@ -37,7 +37,10 @@ import {
 } from '@/lib/requirements/import-schema'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
+  AI_RUN_REQUEST_DEADLINE_MS,
   aiRequirementImportBaseBodySchema,
+  aiRunProfileError,
+  aiUsageMetricValue,
   checkAiRequirementImportThrottle,
   createAiRequirementImportThrottleResponse,
   guardAiInput,
@@ -50,7 +53,6 @@ import {
 const AI_REPAIR_REQUIREMENT_IMPORT_OPERATION =
   'ai.repair-requirement-import-json'
 const AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES = 1024 * 1024
-const AI_RUN_REQUEST_DEADLINE_MS = 5 * 60 * 1_000
 
 const repairRequirementImportJsonSchema = aiRequirementImportBaseBodySchema
   .extend({
@@ -81,10 +83,6 @@ function aiRepairRequestBytesExceededResponse(): NextResponse {
     },
     { status: 413 },
   )
-}
-
-function metricValue(metric: AiRunUsage['totalTokens']): number | null {
-  return metric.status === 'unavailable' ? null : metric.value
 }
 
 function unavailable(
@@ -140,7 +138,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
             ? 'capacity.operation.completed'
             : 'capacity.operation.failed',
         metrics: {
-          token_count: usage ? metricValue(usage.totalTokens) : null,
+          token_count: usage ? aiUsageMetricValue(usage.totalTokens) : null,
         },
         operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
         outcome,
@@ -301,7 +299,9 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
             Response.json({
               payload,
               rawContent,
-              stats: { totalTokens: metricValue(event.usage.totalTokens) },
+              stats: {
+                totalTokens: aiUsageMetricValue(event.usage.totalTokens),
+              },
               thinking: event.analysis ?? '',
             }),
             context,
@@ -333,6 +333,17 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
         }
       }
     } catch (error) {
+      const profileError = aiRunProfileError(error, body.locale)
+      if (profileError) {
+        recordTerminal('failure', 503)
+        return applyResponseCorrelationHeaders(
+          Response.json(
+            { code: profileError.code, error: profileError.message },
+            { status: 503 },
+          ),
+          context,
+        )
+      }
       logSanitizedError('AI requirement import repair run failed', error)
     }
     recordTerminal('failure', request.signal.aborted ? 499 : 503)

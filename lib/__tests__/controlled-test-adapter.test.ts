@@ -157,6 +157,35 @@ describeAiConnectionAdapterContract('controlled test adapter', () => ({
 }))
 
 describe('controlled AI connection test adapter', () => {
+  it('accepts an encrypted-store credential as its persisted scenario envelope', async () => {
+    const adapter = registeredAdapter()
+
+    await expect(
+      collectEvents(
+        adapter.run(
+          request({
+            credential: JSON.stringify({
+              scenario: {
+                analysis: null,
+                output: '{"requirements":[]}',
+                type: 'completed',
+                usage: ZERO_USAGE,
+              },
+            }),
+          }),
+        ),
+      ),
+    ).resolves.toEqual([
+      {
+        analysis: null,
+        identity: RUN_IDENTITY,
+        rawOutput: '{"requirements":[]}',
+        type: 'completed',
+        usage: ZERO_USAGE,
+      },
+    ])
+  })
+
   it('is registrable and returns self-contained output only at completion', async () => {
     const registry = createAiConnectionAdapterRegistry([
       controlledTestAdapterRegistration,

@@ -3,6 +3,7 @@ import {
   AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
   POST,
 } from '@/app/api/ai/generate-requirement-import/route'
+import { AiRunProfileResolutionError } from '@/lib/ai/profile-resolver'
 import type { AiRunEvent, AiRunIdentity } from '@/lib/ai/run-contracts'
 import * as aiSafety from '@/lib/ai/safety'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
@@ -132,7 +133,7 @@ describe('POST /api/ai/generate-requirement-import', () => {
   })
 
   it.each(['model', 'providerPreferences', 'reasoningEffort'])(
-    'rejects the removed provider-shaped %s field',
+    'rejects caller-selected provider configuration in %s',
     async field => {
       const response = await POST(request(validBody({ [field]: 'legacy' })))
 
@@ -185,6 +186,80 @@ describe('POST /api/ai/generate-requirement-import', () => {
     expect(JSON.stringify(projected)).not.toContain('secret partial')
     expect(JSON.stringify(projected)).not.toContain('model-revision')
   })
+
+  it('projects safe schema-invalid output and issues for repair', async () => {
+    routeState.events = [
+      {
+        analysis: 'Screened terminal analysis',
+        identity,
+        issues: [
+          {
+            code: 'required',
+            message: "must have required property 'requirements'",
+            path: '$',
+          },
+        ],
+        rawOutput: '{"schemaVersion":"wrong"}',
+        type: 'invalid_output',
+        usage,
+      },
+    ]
+
+    const response = await POST(request(validBody()))
+
+    await expect(events(response)).resolves.toEqual([
+      {
+        data: {
+          issues: [
+            {
+              code: 'required',
+              message: "must have required property 'requirements'",
+              path: '$',
+            },
+          ],
+          message: 'The generated JSON cannot be imported yet.',
+          rawContent: '{"schemaVersion":"wrong"}',
+          stats: { totalTokens: 20 },
+          thinking: 'Screened terminal analysis',
+        },
+        event: 'validation_error',
+      },
+    ])
+  })
+
+  it.each([
+    [
+      'profile_missing',
+      'ai_profile_missing',
+      'No active administrator-managed profile is configured for this AI action.',
+    ],
+    [
+      'profile_suspended',
+      'ai_profile_suspended',
+      'The administrator-managed profile for this AI action is suspended.',
+    ],
+    [
+      'profile_blocked',
+      'ai_profile_blocked',
+      'This AI action is blocked by its administrator-managed profile.',
+    ],
+  ] as const)(
+    'maps a direct POST %s profile race to its action-safe error',
+    async (profileCode, code, message) => {
+      routeState.run.mockImplementationOnce(() =>
+        (async function* () {
+          yield* [] as AiRunEvent[]
+          throw new AiRunProfileResolutionError(profileCode)
+        })(),
+      )
+
+      const response = await POST(request(validBody()))
+
+      await expect(events(response)).resolves.toEqual([
+        { data: { code, message }, event: 'error' },
+      ])
+    },
+  )
 
   it('projects one safe error for a neutral terminal failure', async () => {
     routeState.events = [

@@ -1,4 +1,4 @@
-import Ajv from 'ajv'
+import Ajv, { type ErrorObject } from 'ajv'
 import {
   type AiAuthorizedConnectionTarget,
   type AiConnectionTrustConfiguration,
@@ -16,6 +16,7 @@ import {
 import type {
   AiEgressTransport,
   AiRunType,
+  AiRunValidationIssue,
   AiTaskEnvelope,
 } from '@/lib/ai/run-contracts'
 
@@ -42,6 +43,10 @@ export interface AiCompletedOutputForApproval {
   responseSchema: Readonly<Record<string, unknown>>
 }
 
+export type AiCompletedOutputApproval =
+  | { valid: true }
+  | { issues: readonly AiRunValidationIssue[]; valid: false }
+
 export interface AiRunForPreparation {
   runType: AiRunType
   task: AiTaskEnvelope
@@ -49,7 +54,9 @@ export interface AiRunForPreparation {
 }
 
 export interface AiRunTrustBoundary {
-  approveCompleted(input: AiCompletedOutputForApproval): Promise<void>
+  approveCompleted(
+    input: AiCompletedOutputForApproval,
+  ): Promise<AiCompletedOutputApproval>
   prepareRun(input: AiRunForPreparation): Promise<Readonly<AiPreparedRun>>
 }
 
@@ -57,7 +64,6 @@ export type AiRunTrustBoundaryErrorCode =
   | 'forbidden_activation'
   | 'image_rejected'
   | 'input_safety_blocked'
-  | 'invalid_final_output'
   | 'invalid_response_schema'
   | 'output_safety_blocked'
   | 'safety_filter_failed'
@@ -141,25 +147,50 @@ function snapshotResponseSchema(
   }
 }
 
+function schemaIssue(error: ErrorObject): AiRunValidationIssue {
+  return Object.freeze({
+    code: error.keyword,
+    message: error.message ?? 'Generated response does not match the schema.',
+    path: error.instancePath ? `$${error.instancePath}` : '$',
+  })
+}
+
 function validateFinalOutput(
   rawOutput: string,
   responseSchema: Readonly<Record<string, unknown>>,
-): void {
+): AiCompletedOutputApproval {
   let parsed: unknown
   try {
     parsed = JSON.parse(rawOutput) as unknown
   } catch {
-    blocked('invalid_final_output')
+    return {
+      issues: [
+        Object.freeze({
+          code: 'invalid_json',
+          message: 'Generated response is not valid JSON.',
+          path: '$',
+        }),
+      ],
+      valid: false,
+    }
   }
   if (containsForbiddenActivation(parsed)) blocked('forbidden_activation')
   try {
     const ajv = new Ajv({ allErrors: false, strict: true })
     const validate = ajv.compile(responseSchema)
-    if (!validate(parsed)) blocked('invalid_final_output')
+    if (!validate(parsed)) {
+      return {
+        issues: Object.freeze(
+          (validate.errors ?? []).map(error => schemaIssue(error)),
+        ),
+        valid: false,
+      }
+    }
   } catch (error) {
     if (error instanceof AiRunTrustBoundaryError) throw error
-    blocked('invalid_final_output')
+    blocked('invalid_response_schema')
   }
+  return { valid: true }
 }
 
 async function sanitizedTask(
@@ -196,7 +227,9 @@ export function createAiRunTrustBoundary(
   options: CreateAiRunTrustBoundaryOptions,
 ): AiRunTrustBoundary {
   return Object.freeze({
-    async approveCompleted(input: AiCompletedOutputForApproval): Promise<void> {
+    async approveCompleted(
+      input: AiCompletedOutputForApproval,
+    ): Promise<AiCompletedOutputApproval> {
       await screen(
         () =>
           options.safetyFilter.screenOutput(
@@ -208,7 +241,7 @@ export function createAiRunTrustBoundary(
           ),
         'output_safety_blocked',
       )
-      validateFinalOutput(input.rawOutput, input.responseSchema)
+      return validateFinalOutput(input.rawOutput, input.responseSchema)
     },
     async prepareRun(
       input: AiRunForPreparation,

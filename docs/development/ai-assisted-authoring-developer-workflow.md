@@ -102,6 +102,15 @@ The repo-owned responsibility is to verify the integration boundary:
 - sanitization so provider keys, prompts, SQL fragments, stack traces, and
   other sensitive details are not written to scan artifacts.
 
+The production-boundary acceptance test uses an encrypted controlled-adapter
+scenario through the persisted profile source, transient credential scope,
+trust boundary, run coordinator, and real authoring route projection. It does
+not replace the HTTP endpoints with route mocks. Adapter deltas stay
+quarantined. A safe-screened schema-invalid terminal becomes the neutral
+`invalid_output` event, which the generation route projects as
+`validation_error` with the preserved raw result and validation issues so the
+repair action can continue without exposing unscreened or partial output.
+
 Do not add production provider secrets or live provider calls to CI. A manual
 provider smoke test may be run outside CI when changing provider configuration
 or investigating an integration incident.
@@ -117,15 +126,13 @@ other provider failures return HTTP `503`.
 
 Provider failures use these codes:
 
-- `ai_provider_configuration_error` for missing configuration and upstream
-  request/configuration `4xx` responses;
+- `ai_profile_missing`, `ai_profile_suspended`, and `ai_profile_blocked` for an
+  action profile that changes between availability lookup and execution;
 - `ai_provider_rate_limited` for upstream `429`;
-- `ai_provider_timeout` for provider or application deadlines;
-- `ai_provider_unavailable` for network and remaining upstream `5xx` failures;
-- `ai_provider_invalid_response` for missing, unexpected, malformed, or
-  incomplete responses;
-- `ai_provider_response_too_large` when a response bound is exceeded;
-- `ai_provider_response_read_failed` when an upstream body cannot be read.
+- `ai_provider_unavailable` for unavailable connections and remaining adapter
+  failures;
+- `ai_provider_invalid_response` for a terminal response that cannot be used
+  or preserved for repair.
 
 Error bodies are inspected only for JSON media types and stop at 16 KiB.
 Successful JSON bodies stop at 4 MiB. SSE frames stop at 256 KiB, and combined

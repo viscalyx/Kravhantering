@@ -361,6 +361,10 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
 
   let repairAttempts = 0
   await page.route('**/api/ai/repair-requirement-import-json', async route => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      errors: ['$: Modellens svar var inte giltig JSON.'],
+      rawJson: '{"requirements":',
+    })
     repairAttempts += 1
     if (repairAttempts === 1) {
       await route.fulfill({
