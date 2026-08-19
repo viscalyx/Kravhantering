@@ -59,7 +59,7 @@ function hasMeaningfulNoteText(line) {
 }
 
 function escapeLevelTwoHeadings(notes) {
-  return notes.replace(/^##(?=[ \t]+\S)/gmu, '\\##')
+  return notes.replace(/^##(?=[ \t]|$)/gmu, '\\##')
 }
 
 function operatorUpgradeNotesBlock(prBody) {

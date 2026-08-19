@@ -63,6 +63,7 @@ describe('operator upgrade notes lifecycle', () => {
   })
 
   it('keeps contributor release headings inert inside operator notes', () => {
+    const escapedHeading = '\\## v9.9.9 - 2099-12-31'
     const releaseHeadingPrBody = operatorNotesPrBody.replace(
       '### Topology changes',
       '## v9.9.9 - 2099-12-31',
@@ -78,13 +79,40 @@ describe('operator upgrade notes lifecycle', () => {
       filePath: operatorNotesPath,
       version: 'v1.0.0',
     })
+    const archivedSourceBlock = [
+      operatorUpgradeSourceStartMarker('pr-854'),
+      escapedHeading,
+      'Keep production HSA lookup pointed at the approved facade.',
+      operatorUpgradeSourceEndMarker('pr-854'),
+    ].join('\n')
 
-    expect(synced.content).toContain('\\## v9.9.9 - 2099-12-31')
+    expect(synced.content).not.toMatch(/^## v9\.9\.9 - 2099-12-31$/mu)
+    expect(synced.content).toContain(escapedHeading)
     expect(archived.content).toContain(
       `## v1.0.0 - 2026-08-19\n\n${operatorUpgradeSourceStartMarker('pr-854')}`,
     )
-    expect(archived.content).toContain('\\## v9.9.9 - 2099-12-31')
-    expect(archived.content).toContain(operatorUpgradeSourceEndMarker('pr-854'))
+    expect(archived.content).not.toMatch(/^## v9\.9\.9 - 2099-12-31$/mu)
+    expect(archived.content).toContain(escapedHeading)
+    expect(archived.content).toContain(archivedSourceBlock)
+  })
+
+  it.each([
+    ['bare', '##'],
+    ['space-only', '##   '],
+    ['tab-only', '##\t'],
+  ])('keeps %s level-two headings inert', (_label, heading) => {
+    const headingPrBody = operatorNotesPrBody.replace(
+      '### Topology changes',
+      heading,
+    )
+
+    const synced = addPullRequestNotesToContent(baseNotes, {
+      filePath: operatorNotesPath,
+      prBody: headingPrBody,
+      prNumber: '855',
+    })
+
+    expect(synced.content.split('\n')).toContain('\\##')
   })
 
   it('does nothing when the PR explicitly needs no operator notes', () => {
