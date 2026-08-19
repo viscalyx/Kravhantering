@@ -80,9 +80,6 @@ export default function AiConnectionsPanel() {
     setMessage,
   } = useRegistryRequestState()
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [renderedIds, setRenderedIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  )
   const [dialog, setDialog] = useState<DialogState>(null)
   const [candidateId, setCandidateId] = useState<string | null>(null)
   const [savedAttestation, setSavedAttestation] =
@@ -300,11 +297,6 @@ export default function AiConnectionsPanel() {
                 aria-expanded={expanded}
                 className={`grid w-full gap-3 p-5 text-left transition-colors sm:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)_minmax(10rem,auto)_auto] sm:items-center ${expanded ? 'bg-primary-50/70 dark:bg-primary-950/30' : 'hover:bg-secondary-50 dark:hover:bg-secondary-800/40'}`}
                 onClick={() => {
-                  setRenderedIds(current => {
-                    const next = new Set(current)
-                    next.add(connection.id)
-                    return next
-                  })
                   setExpandedId(current =>
                     current === connection.id ? null : connection.id,
                   )
@@ -343,7 +335,7 @@ export default function AiConnectionsPanel() {
                   )}
                 </span>
               </button>
-              {renderedIds.has(connection.id) && detail ? (
+              {detail ? (
                 <AnimatedRegistrySection
                   expanded={expanded}
                   id={`ai-connection-${connection.id}`}
@@ -1119,7 +1111,13 @@ export default function AiConnectionsPanel() {
                 value,
                 'profile.saved',
               )
-              if (success) closeDialog()
+              if (success) {
+                setCandidateBlockers(current => ({
+                  ...current,
+                  [dialog.profile.profileKey]: [],
+                }))
+                closeDialog()
+              }
             }}
             profile={dialog.profile}
           />

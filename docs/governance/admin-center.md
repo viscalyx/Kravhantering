@@ -174,13 +174,15 @@ explicit `demo_seed` provenance; administrator-created connections remain
 `administrator` data regardless of editable names or descriptions. Model
 catalog results belong to the connection that produced them and are never
 reused under another expanded row. Fixed run-profile drafts expose their locked
-capability minimums as non-configurable controls: image generation requires
+capability minimums as non-configurable controls: generation with images requires
 image input, JSON repair disables streaming and AI analysis, and administrators
 may only strengthen dimensions that the profile allows. Activating a
 replacement evaluates the candidate draft and reports capability blockers with
 their affected field; blockers on the currently active revision do not prevent
-the replacement attempt. Connection impact includes active and draft profile
-revisions, not superseded history.
+the replacement attempt. A rejected profile action returns blocker details only
+for the fixed localizable code and field enums; malformed or arbitrary details
+are omitted. Connection impact includes active and draft profile revisions, not
+superseded history.
 
 The source of truth is:
 

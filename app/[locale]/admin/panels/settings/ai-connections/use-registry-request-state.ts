@@ -4,11 +4,14 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import {
   AI_ADMIN_BLOCKER_CODES,
+  AI_ADMIN_BLOCKER_FIELDS,
   type AiAdminBlocker,
-  type AiAdminConnectionDetail,
-  type AiAdminConnectionSummary,
-  type AiAdminRunProfileRecord,
-  type AiAdminRunProfileRevisionRecord,
+} from '@/lib/ai/admin-blockers'
+import type {
+  AiAdminConnectionDetail,
+  AiAdminConnectionSummary,
+  AiAdminRunProfileRecord,
+  AiAdminRunProfileRevisionRecord,
 } from '@/lib/ai/admin-service'
 import {
   AI_RUN_PROFILE_KEYS,
@@ -22,24 +25,32 @@ function apiBlockers(value: unknown): AiAdminBlocker[] {
   const details = (value as { details?: unknown }).details
   if (!details || typeof details !== 'object') return []
   const blockers = (details as { blockers?: unknown }).blockers
-  if (!Array.isArray(blockers)) return []
-  return blockers.flatMap(blocker => {
+  if (!Array.isArray(blockers) || blockers.length === 0 || blockers.length > 16)
+    return []
+  const safeBlockers: AiAdminBlocker[] = []
+  for (const blocker of blockers) {
     if (!blocker || typeof blocker !== 'object') return []
     const code = (blocker as { code?: unknown }).code
     const field = (blocker as { field?: unknown }).field
     if (
       typeof code !== 'string' ||
-      !AI_ADMIN_BLOCKER_CODES.includes(code as AiAdminBlocker['code'])
+      !AI_ADMIN_BLOCKER_CODES.includes(code as AiAdminBlocker['code']) ||
+      (field !== undefined &&
+        (typeof field !== 'string' ||
+          !AI_ADMIN_BLOCKER_FIELDS.includes(
+            field as NonNullable<AiAdminBlocker['field']>,
+          )))
     ) {
       return []
     }
-    return [
-      {
-        code: code as AiAdminBlocker['code'],
-        ...(typeof field === 'string' ? { field } : {}),
-      },
-    ]
-  })
+    safeBlockers.push({
+      code: code as AiAdminBlocker['code'],
+      ...(field === undefined
+        ? {}
+        : { field: field as NonNullable<AiAdminBlocker['field']> }),
+    })
+  }
+  return safeBlockers
 }
 
 export function useRegistryRequestState() {

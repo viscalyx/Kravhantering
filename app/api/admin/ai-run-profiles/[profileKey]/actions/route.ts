@@ -13,6 +13,7 @@ import {
 export const POST = secureMutationRoute({
   bodySchema: aiRunProfileActionSchema,
   errorMessage: 'Failed to perform AI run profile action.',
+  handlerErrorDetails: 'ai_admin_blockers',
   paramsSchema: aiRunProfileParamsSchema,
   policy: adminMutationPolicy(),
   handler: async ({ body, context, params }) => {

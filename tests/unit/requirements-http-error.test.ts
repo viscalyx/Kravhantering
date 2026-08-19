@@ -56,6 +56,71 @@ describe('toHttpErrorPayload', () => {
     })
   })
 
+  it('allowlists only localizable AI activation blockers', () => {
+    const result = toHttpErrorPayload(
+      validationError('The candidate profile is blocked', {
+        blockers: [
+          { code: 'capability_policy_invalid', field: 'imageInput' },
+          { code: 'egress_policy_blocked' },
+        ],
+        httpStatus: 422,
+        providerResponse: 'must remain private',
+      }),
+      { safeDetails: 'ai_admin_blockers' },
+    )
+
+    expect(result).toEqual({
+      body: {
+        code: 'validation',
+        details: {
+          blockers: [
+            { code: 'capability_policy_invalid', field: 'imageInput' },
+            { code: 'egress_policy_blocked' },
+          ],
+        },
+        error: 'The candidate profile is blocked',
+      },
+      status: 422,
+    })
+    expect(JSON.stringify(result)).not.toContain('providerResponse')
+    expect(JSON.stringify(result)).not.toContain('must remain private')
+  })
+
+  it.each([
+    {
+      blockers: [{ code: 'provider_secret_leaked', field: 'imageInput' }],
+    },
+    {
+      blockers: [
+        { code: 'capability_policy_invalid', field: 'providerSecret' },
+      ],
+    },
+    { blockers: ['capability_policy_invalid'] },
+    { blockers: [] },
+    {
+      blockers: Array.from({ length: 17 }, () => ({
+        code: 'connection_inactive',
+      })),
+    },
+  ])('fails closed for malformed AI blocker payload %#', ({ blockers }) => {
+    expect(
+      toHttpErrorPayload(
+        validationError('The candidate profile is blocked', { blockers }),
+        { safeDetails: 'ai_admin_blockers' },
+      ).body.details,
+    ).toBeUndefined()
+  })
+
+  it('does not expose AI blockers without an explicit route contract', () => {
+    expect(
+      toHttpErrorPayload(
+        validationError('The candidate profile is blocked', {
+          blockers: [{ code: 'connection_inactive' }],
+        }),
+      ).body.details,
+    ).toBeUndefined()
+  })
+
   it('allowlists only safe stale edit conflict details', () => {
     const result = toHttpErrorPayload(
       conflictError('This requirement was updated', {

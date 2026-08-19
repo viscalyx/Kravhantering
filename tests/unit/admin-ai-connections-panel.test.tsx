@@ -177,14 +177,23 @@ describe('AiConnectionsPanel', () => {
       screen.getAllByText('admin.aiConnections.health.unknown'),
     ).toHaveLength(2)
 
-    fireEvent.click(first)
-    expect(first).toHaveAttribute('aria-expanded', 'true')
-    expect(
-      screen.queryByText('admin.aiConnections.seed.demoDraft'),
-    ).not.toBeInTheDocument()
     const firstRegion = container.querySelector(
       `#ai-connection-${connectionOne.id}`,
     )
+    const secondRegion = container.querySelector(
+      `#ai-connection-${connectionTwo.id}`,
+    )
+    expect(first).toHaveAttribute('aria-controls', firstRegion?.id)
+    expect(second).toHaveAttribute('aria-controls', secondRegion?.id)
+    expect(firstRegion).toHaveAttribute('data-state', 'closed')
+    expect(firstRegion).toHaveAttribute('aria-hidden', 'true')
+    expect(secondRegion).toHaveAttribute('data-state', 'closed')
+
+    fireEvent.click(first)
+    expect(first).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByText('admin.aiConnections.seed.demoDraft'),
+    ).not.toBeVisible()
     expect(firstRegion).toHaveAttribute('data-state', 'open')
     expect(firstRegion).toHaveClass('motion-reduce:transition-none')
 
@@ -204,8 +213,8 @@ describe('AiConnectionsPanel', () => {
       await screen.findByRole('button', { name: /Controlled one/ }),
     )
     expect(
-      screen.queryByText('admin.aiConnections.seed.demoDraft'),
-    ).not.toBeInTheDocument()
+      screen.getByText('admin.aiConnections.seed.demoDraft'),
+    ).not.toBeVisible()
 
     await user.click(screen.getByRole('button', { name: /Controlled two/ }))
     expect(
@@ -295,6 +304,22 @@ describe('AiConnectionsPanel', () => {
     expect(
       await screen.findByRole('button', { name: /Controlled one/ }),
     ).toBeVisible()
+  })
+
+  it('shows the bounded load error when a connection detail cannot load', async () => {
+    const registryFetch = fetchMock.getMockImplementation()
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === `/api/admin/ai-connections/${connectionOne.id}`) {
+        return Promise.resolve(new Response(null, { status: 503 }))
+      }
+      return registryFetch?.(input)
+    })
+
+    renderPanel()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'admin.aiConnections.loadError',
+    )
   })
 
   it('renders the distinct lifecycle, health, model, and recovery variants', async () => {
@@ -893,6 +918,7 @@ describe('AiConnectionsPanel workflows', () => {
           return Promise.resolve(
             new Response(
               JSON.stringify({
+                code: 'validation',
                 details: {
                   blockers: [
                     {
@@ -901,7 +927,7 @@ describe('AiConnectionsPanel workflows', () => {
                     },
                   ],
                 },
-                message: 'Candidate is blocked',
+                error: 'Candidate is blocked',
               }),
               {
                 headers: { 'Content-Type': 'application/json' },
@@ -932,6 +958,83 @@ describe('AiConnectionsPanel workflows', () => {
           ) === true,
       ),
     ).toBeVisible()
+
+    const profileArticle = screen
+      .getByRole('heading', {
+        name: 'admin.aiConnections.profiles.generation_without_images',
+      })
+      .closest('article')
+    expect(profileArticle).not.toBeNull()
+    await user.click(
+      within(profileArticle as HTMLElement).getByRole('button', {
+        name: 'admin.aiConnections.actions.editProfile',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'admin.aiConnections.profile.saveDraft',
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(
+      screen.queryByText('admin.aiConnections.profile.candidateBlockers'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('fails closed when a candidate blocker payload has an unknown field', async () => {
+    const user = userEvent.setup()
+    installWorkflowFetch({
+      profiles: [profile],
+      revisions: [profile.draftRevision],
+    })
+    const successfulFetch = fetchMock.getMockImplementation()
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        if (
+          init?.method === 'POST' &&
+          String(init.body).includes('activate_revision')
+        ) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                code: 'validation',
+                details: {
+                  blockers: [
+                    {
+                      code: 'capability_policy_invalid',
+                      field: 'providerSecret',
+                    },
+                  ],
+                },
+              }),
+              {
+                headers: { 'Content-Type': 'application/json' },
+                status: 422,
+              },
+            ),
+          )
+        }
+        return successfulFetch?.(input, init)
+      },
+    )
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'admin.aiConnections.actions.activateProfile',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'admin.aiConnections.mutationError',
+    )
+    expect(
+      screen.queryByText('admin.aiConnections.profile.candidateBlockers'),
+    ).not.toBeInTheDocument()
+    expect(document.body.textContent).not.toContain(
+      'admin.aiConnections.blockerFields.providerSecret',
+    )
   })
 
   it('shows only active or draft profile impact and names blocker fields', async () => {
@@ -1246,6 +1349,35 @@ describe('AiConnectionsPanel workflows', () => {
       }),
     )
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('shows a bounded error when a profile mutation throws', async () => {
+    const user = userEvent.setup()
+    installWorkflowFetch({
+      profiles: [profile],
+      revisions: [profile.draftRevision],
+    })
+    const successfulFetch = fetchMock.getMockImplementation()
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === 'POST'
+          ? Promise.reject(new Error('provider secret must stay private'))
+          : successfulFetch?.(input, init),
+    )
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'admin.aiConnections.actions.suspendProfile',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'admin.aiConnections.mutationError',
+    )
+    expect(document.body.textContent).not.toContain(
+      'provider secret must stay private',
+    )
   })
 
   it('executes bounded verification, recovery, profile, catalog, and confirmed retirement actions', async () => {

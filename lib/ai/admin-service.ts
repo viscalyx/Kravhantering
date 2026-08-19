@@ -5,6 +5,7 @@ import {
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
+import type { AiAdminBlocker } from './admin-blockers'
 import type {
   AiCapability,
   AiCapabilityPolicy,
@@ -20,26 +21,15 @@ import type {
   AiProviderSecretVersionMetadata,
 } from './provider-secret-service'
 
-export const AI_ADMIN_BLOCKER_CODES = [
-  'active_secret_missing',
-  'attestation_incomplete',
-  'attestation_invalid',
-  'capability_policy_invalid',
-  'connection_inactive',
-  'connection_verification_missing',
-  'data_policy_blocked',
-  'egress_policy_blocked',
-  'model_revision_missing',
-  'model_revision_unverified',
-  'optimistic_concurrency_conflict',
-] as const
-
-export type AiAdminBlockerCode = (typeof AI_ADMIN_BLOCKER_CODES)[number]
-
-export interface AiAdminBlocker {
-  code: AiAdminBlockerCode
-  field?: string
-}
+export type {
+  AiAdminBlocker,
+  AiAdminBlockerCode,
+  AiAdminBlockerField,
+} from './admin-blockers'
+export {
+  AI_ADMIN_BLOCKER_CODES,
+  AI_ADMIN_BLOCKER_FIELDS,
+} from './admin-blockers'
 
 export interface AiAdminConnectionSummary {
   administrationName: string

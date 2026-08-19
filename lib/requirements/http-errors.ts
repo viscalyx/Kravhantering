@@ -1,4 +1,11 @@
 import {
+  AI_ADMIN_BLOCKER_CODES,
+  AI_ADMIN_BLOCKER_FIELDS,
+  type AiAdminBlocker,
+  type AiAdminBlockerCode,
+  type AiAdminBlockerField,
+} from '@/lib/ai/admin-blockers'
+import {
   internalError,
   isRequirementsServiceError,
   type RequirementsErrorCode,
@@ -13,12 +20,20 @@ export interface HttpErrorPayload {
   status: number
 }
 
+export interface HttpErrorPayloadOptions {
+  safeDetails?: 'ai_admin_blockers'
+}
+
 interface SafeStaleEditHttpDetails {
   latest: {
     uniqueId: string
     versionNumber: number | null
   } | null
   reason: 'stale_requirement_edit'
+}
+
+interface SafeAiAdminBlockerHttpDetails {
+  blockers: AiAdminBlocker[]
 }
 
 const SAFE_NORM_REFERENCE_ID_CONFLICT_REASONS = [
@@ -78,11 +93,38 @@ interface SafePrivacyErasureHttpDetails {
 }
 
 type SafeHttpErrorDetails =
+  | SafeAiAdminBlockerHttpDetails
   | SafeImprovementSuggestionConflictHttpDetails
   | SafeNormReferenceIdConflictHttpDetails
   | SafePrivacyErasureHttpDetails
   | SafeRfiQuestionSuggestionConflictHttpDetails
   | SafeStaleEditHttpDetails
+
+function toSafeAiAdminBlockers(value: unknown): AiAdminBlocker[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 16) {
+    return null
+  }
+
+  const blockers: AiAdminBlocker[] = []
+  for (const valueBlocker of value) {
+    if (!valueBlocker || typeof valueBlocker !== 'object') return null
+    const blocker = valueBlocker as { code?: unknown; field?: unknown }
+    if (
+      !AI_ADMIN_BLOCKER_CODES.includes(blocker.code as AiAdminBlockerCode) ||
+      (blocker.field !== undefined &&
+        !AI_ADMIN_BLOCKER_FIELDS.includes(blocker.field as AiAdminBlockerField))
+    ) {
+      return null
+    }
+    blockers.push({
+      code: blocker.code as AiAdminBlockerCode,
+      ...(blocker.field === undefined
+        ? {}
+        : { field: blocker.field as AiAdminBlockerField }),
+    })
+  }
+  return blockers
+}
 
 function isStatusError(error: unknown): error is Error & {
   details?: Record<string, unknown>
@@ -130,7 +172,13 @@ function toSafeLatestEditSummary(
 function toSafeHttpErrorDetails(
   code: RequirementsErrorCode,
   details: Record<string, unknown> | undefined,
+  safeDetails: HttpErrorPayloadOptions['safeDetails'],
 ): SafeHttpErrorDetails | undefined {
+  if (code === 'validation' && safeDetails === 'ai_admin_blockers') {
+    const blockers = toSafeAiAdminBlockers(details?.blockers)
+    if (blockers) return { blockers }
+  }
+
   if (code === 'conflict' && details?.reason === 'stale_requirement_edit') {
     return {
       latest: toSafeLatestEditSummary(details.latest),
@@ -188,9 +236,16 @@ function toSafeHttpErrorDetails(
   }
 }
 
-export function toHttpErrorPayload(error: unknown): HttpErrorPayload {
+export function toHttpErrorPayload(
+  error: unknown,
+  options: HttpErrorPayloadOptions = {},
+): HttpErrorPayload {
   if (isRequirementsServiceError(error)) {
-    const details = toSafeHttpErrorDetails(error.code, error.details)
+    const details = toSafeHttpErrorDetails(
+      error.code,
+      error.details,
+      options.safeDetails,
+    )
     const status =
       error.code === 'validation' && error.details?.httpStatus === 422
         ? 422

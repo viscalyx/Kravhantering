@@ -99,6 +99,7 @@ import {
   createAiConnectionSchema,
   saveAiModelRevisionSchema,
 } from '@/lib/ai/admin-contracts'
+import { validationError } from '@/lib/requirements/errors'
 
 const connectionId = '00000000-0000-4000-8000-000000000001'
 const revisionToken = '00000000-0000-4000-8000-000000000003'
@@ -288,6 +289,83 @@ describe('Admin AI connection routes', () => {
       '00000000-0000-4000-8000-000000000001',
       plaintext,
     )
+  })
+
+  it('returns only allowlisted blockers from a rejected profile candidate', async () => {
+    routeState.serviceMethods.activateRunProfileRevision.mockRejectedValueOnce(
+      validationError('Run profile activation is blocked', {
+        blockers: [
+          { code: 'capability_policy_invalid', field: 'validatableJson' },
+        ],
+        httpStatus: 422,
+        providerResponse: 'must remain private',
+      }),
+    )
+
+    const response = await runProfileAction(
+      new NextRequest(
+        'https://example.test/api/admin/ai-run-profiles/generation_without_images/actions',
+        {
+          body: JSON.stringify({
+            action: 'activate_revision',
+            connectionRevisionToken: revisionToken,
+            modelRevisionToken: revisionToken,
+            profileRevisionId: connectionId,
+            profileRevisionToken: revisionToken,
+            profileToken: revisionToken,
+          }),
+          method: 'POST',
+        },
+      ),
+      { params: Promise.resolve({ profileKey: 'generation_without_images' }) },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      code: 'validation',
+      details: {
+        blockers: [
+          { code: 'capability_policy_invalid', field: 'validatableJson' },
+        ],
+      },
+      error: 'Run profile activation is blocked',
+    })
+  })
+
+  it('omits malformed profile blocker details from the route response', async () => {
+    routeState.serviceMethods.activateRunProfileRevision.mockRejectedValueOnce(
+      validationError('Run profile activation is blocked', {
+        blockers: [
+          { code: 'capability_policy_invalid', field: 'providerSecret' },
+        ],
+        httpStatus: 422,
+        providerResponse: 'must remain private',
+      }),
+    )
+
+    const response = await runProfileAction(
+      new NextRequest(
+        'https://example.test/api/admin/ai-run-profiles/generation_without_images/actions',
+        {
+          body: JSON.stringify({
+            action: 'activate_revision',
+            connectionRevisionToken: revisionToken,
+            modelRevisionToken: revisionToken,
+            profileRevisionId: connectionId,
+            profileRevisionToken: revisionToken,
+            profileToken: revisionToken,
+          }),
+          method: 'POST',
+        },
+      ),
+      { params: Promise.resolve({ profileKey: 'generation_without_images' }) },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      code: 'validation',
+      error: 'Run profile activation is blocked',
+    })
   })
 
   it('dispatches every explicit connection action to its service method', async () => {

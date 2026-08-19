@@ -96,6 +96,7 @@ export interface SecureMutationRouteOptions<TBody, TParams> {
   handler: (
     args: SecureMutationHandlerArgs<TBody, TParams>,
   ) => Promise<Response> | Response
+  handlerErrorDetails?: 'ai_admin_blockers'
   paramsSchema?: ZodType<TParams>
   policy: MutationPolicy<NoInferMutation<TBody>, NoInferMutation<TParams>>
   preParse?: (
@@ -131,9 +132,13 @@ function unexpectedErrorBody(
   }
 }
 
-function errorResponse(message: string, error: unknown): NextResponse {
+function errorResponse(
+  message: string,
+  error: unknown,
+  safeDetails?: 'ai_admin_blockers',
+): NextResponse {
   if (error instanceof CsrfError || isRequirementsServiceError(error)) {
-    const { body, status } = toHttpErrorPayload(error)
+    const { body, status } = toHttpErrorPayload(error, { safeDetails })
     return NextResponse.json(body, { status })
   }
 
@@ -357,7 +362,7 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
       return decorateErrorResponse(
         options,
         request,
-        errorResponse(errorMessage, error),
+        errorResponse(errorMessage, error, options.handlerErrorDetails),
       )
     }
   }
