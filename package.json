@@ -70,6 +70,8 @@
     "container:oci:verify": "node scripts/containers/export-oci-archives.mjs verify",
     "container:production-smoke:debug": "node scripts/containers/production-smoke-debug.mjs",
     "container:release": "node scripts/release/container-release.mjs",
+    "ai:deployment-gate": "node scripts/release/ai-deployment-gate.mjs verify",
+    "ai:staging-live-probe": "node scripts/release/ai-staging-live-probe.mjs",
     "container:status": "node scripts/containers/collect-status.mjs",
     "container:hashes": "node scripts/containers/write-hashes.mjs",
     "prebuild:local-prod": "node ./scripts/prebuild.js && npm run openapi:hsa-person-lookup:generate:public",

@@ -42,6 +42,10 @@ test adapter. Both pass the same run-profile, safety-gate, route, and terminal
 outcome contracts. The trust boundary, AI connection lifecycle, encrypted
 provider secrets, and external root keyring are governed by
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
+Deployment verification is split into explicit modes by
+[ADR 0054](../adr/0054-global-ai-sparr-och-driftsattningsbevis.md), while
+[ADR 0055](../adr/0055-innehallsfri-ai-observerbarhet-och-syntetisk-liveverifiering.md)
+defines the content-free telemetry and synthetic staging-live contract.
 
 The integration layer adds the provider-neutral AI request privacy minimum to
 every adapter request. Adapters map deny-data-collection and required
@@ -187,3 +191,32 @@ tool; its import-contract tools remain available and open no provider egress.
 Security CI must not provision an active provider secret or authoring profile,
 so accidental adapter access fails closed even if the guard is removed or
 misconfigured.
+
+## Final Provider-Neutral Acceptance
+
+The shared adapter contract runs for both OpenRouter and `controlled_test`.
+The provider-neutral coordinator tests own total and inactivity deadlines,
+queue/retry sharing, exact token/byte/memory/event limits, pull backpressure,
+delta serialization, cancellation, read failure, and silent EOF normalization.
+Run the focused acceptance set without an external AI call:
+
+```bash
+npm test -- --run \
+  lib/__tests__/controlled-test-adapter.test.ts \
+  lib/__tests__/openrouter-adapter.test.ts \
+  lib/__tests__/ai-run-coordinator.test.ts \
+  lib/__tests__/ai-integration-layer.test.ts \
+  lib/__tests__/ai-authoring-production-acceptance.test.ts \
+  tests/unit/ai-connections-data-model-migration.test.ts \
+  lib/__tests__/ai-provider-secret-service.test.ts
+```
+
+Production-like Playwright uses the controlled adapter and must not make an
+external live AI call. The existing lockstep manual/Playwright cases are
+`ADMIN-20` for activation and safe recovery and `REQ-15` through `REQ-15D` for
+authoring, quarantine, repair, cancellation, and profile availability.
+
+The opt-in staging-live procedure is an operator verification, not a normal
+developer or CI test. It uses only the fixed synthetic payload and prints
+content-free evidence; see
+[AI Connections Operations](../operations/ai-connections.md#staging-live-synthetic-probe).

@@ -47,6 +47,14 @@ export function stageProdlikeStandaloneAssets(root = process.cwd()) {
 
 export function launchProdlikeStandalone(root = process.cwd()) {
   const paths = stageProdlikeStandaloneAssets(root)
+  const providerSecretKeyring =
+    process.env.AI_PROVIDER_SECRET_KEYRING_FILE?.trim()
+  if (providerSecretKeyring && !path.isAbsolute(providerSecretKeyring)) {
+    process.env.AI_PROVIDER_SECRET_KEYRING_FILE = path.resolve(
+      root,
+      providerSecretKeyring,
+    )
+  }
 
   process.env.BUILD_TARGET = 'local-prod'
   process.env.HOSTNAME = '127.0.0.1'

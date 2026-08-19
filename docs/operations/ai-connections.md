@@ -7,6 +7,10 @@ is deployed. The trust, lifecycle, and provider-secret decision is
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
 The fixed privacy floor is
 [ADR 0053](../adr/0053-integritetsminimum-for-ai-anrop.md).
+The release gate and verification modes are defined by
+[ADR 0054](../adr/0054-global-ai-sparr-och-driftsattningsbevis.md), and the
+content-free telemetry and synthetic live-evidence contract by
+[ADR 0055](../adr/0055-innehallsfri-ai-observerbarhet-och-syntetisk-liveverifiering.md).
 
 AI-assisted authoring is optional. An unavailable or unconfigured AI
 connection blocks only its dependent run profiles; it does not make
@@ -238,6 +242,112 @@ releasing it, verify all of the following for the environment:
 Required seed leaves AI unconfigured. Demo seed may create only unverified
 drafts and must never create verification evidence or activate a run profile.
 
+### Deployment Evidence Gate
+
+The production bundle includes `scripts/ai-deployment-gate.mjs`. Keep
+`AI_REQUIREMENT_GENERATION_DISABLED=1` on every app node while gathering a
+content-free JSON evidence document. The strict schema rejects unknown fields;
+never add a prompt, image, result, endpoint, provider response, secret
+reference, or secret value.
+
+Use exactly one verification mode:
+
+- `prodlike` proves the production-like test suite used `controlled_test`,
+  made no external live AI call, and used only synthetic data.
+- `staging_live` proves the opt-in staging probe used synthetic data through
+  the exact intended adapter, connection, model revision, and profile revision.
+- `production` records that no live authoring probe ran in production. The
+  connection and model activation tests, restoration evidence, alert bindings,
+  and exact intended active path remain mandatory.
+
+The evidence shape is:
+
+```json
+{
+  "schemaVersion": 1,
+  "environment": "production",
+  "verificationMode": "production",
+  "guardActive": true,
+  "keyring": {
+    "activeWriteVersionExplicit": true,
+    "requiredVersionsPresentOnEveryNode": true
+  },
+  "restore": {
+    "databaseAndKeyringRestoredTogether": true,
+    "providerSecretsAuthenticated": true
+  },
+  "egress": { "deploymentPolicyEnforced": true },
+  "secureDefaults": {
+    "contentGatesVerified": true,
+    "privacyFloorVerified": true
+  },
+  "connections": { "intended": 1, "verified": 1 },
+  "models": { "intended": 1, "verified": 1 },
+  "profiles": { "intended": 3, "verified": 3 },
+  "alerts": {
+    "activeProfileBlocked": true,
+    "authenticationFailure": true,
+    "circuitBreakerOpened": true
+  },
+  "intendedPath": {
+    "adapterType": "openrouter",
+    "aiConnectionId": "<opaque-id>",
+    "aiConnectionModelRevisionId": "<opaque-id>",
+    "aiRunProfileRevisionId": "<opaque-id>"
+  },
+  "syntheticProbe": {
+    "adapterType": "openrouter",
+    "aiConnectionId": "<same-opaque-id>",
+    "aiConnectionModelRevisionId": "<same-opaque-id>",
+    "aiRunProfileRevisionId": "<same-opaque-id>",
+    "externalLiveCallMade": false,
+    "outcome": "not_run",
+    "payloadClassification": "none"
+  }
+}
+```
+
+Run the gate from the unpacked bundle and retain its output with the release
+evidence:
+
+```bash
+node scripts/ai-deployment-gate.mjs verify \
+  --evidence /var/tmp/kravhantering-ai-deployment-evidence.json
+```
+
+Only a report with `readyToRelease: true` permits the guard to be changed to
+`0`. Update every app node together, recreate `app-runtime`, and confirm the
+effective Admin Center availability before restoring AI authoring. A gate
+failure leaves the rest of Kravhantering available with AI blocked.
+
+### Staging-Live Synthetic Probe
+
+The staging-live probe is opt-in and otherwise exits without a network call.
+Use an Admin session created for the staging test, store only its cookie header
+in a mode `0600` file, and select a requirement area reserved for synthetic
+test data. Export the exact intended active path:
+
+```bash
+export AI_STAGING_LIVE_SYNTHETIC_PROBE=1
+export AI_STAGING_LIVE_BASE_URL=https://staging.example.internal
+export AI_STAGING_LIVE_SESSION_COOKIE_FILE=/run/user/1000/krav-ai-cookie
+export AI_STAGING_LIVE_AREA_ID=1
+export AI_STAGING_LIVE_ADAPTER_TYPE=openrouter
+export AI_STAGING_LIVE_CONNECTION_ID=<opaque-id>
+export AI_STAGING_LIVE_MODEL_REVISION_ID=<opaque-id>
+export AI_STAGING_LIVE_PROFILE_REVISION_ID=<opaque-id>
+node scripts/ai-staging-live-probe.mjs \
+  > /var/tmp/kravhantering-ai-staging-probe.json
+```
+
+The script first reads the Admin API to prove that the exact path is active,
+enabled, verified, and unblocked. It then sends one fixed, non-personal,
+synthetic generation request and accepts exactly one successful SSE terminal
+event. It prints only opaque path identifiers and outcome metadata. Merge that
+fragment into a `staging_live` deployment evidence document and run the gate.
+Never point the probe at production, replace its fixed payload, or store the
+session cookie in the release evidence.
+
 ## Runtime Capacity and Failure Contract
 
 Each run profile revision owns a total budget of 5–60 minutes, an inactivity
@@ -410,6 +520,33 @@ output, endpoints, provider secrets,
 secret references, or provider error bodies. Alert rules must bind the emitted
 authentication-failure, breaker-opened, and active-profile-blocked alarm events
 to the on-call channel before AI is enabled.
+
+Application nodes emit one JSON line on the `ai-run-observability` channel.
+The three binding alarm events use error severity:
+
+<!-- markdownlint-disable MD013 -->
+
+| Event | Binding action |
+| --- | --- |
+| `ai_alarm_authentication_failed` | Page the AI service owner and credential owner immediately. |
+| `ai_alarm_breaker_opened` | Page the AI service owner immediately. |
+| `ai_alarm_active_profile_blocked` | Alert the product administrator and service owner immediately. |
+
+<!-- markdownlint-enable MD013 -->
+
+Deduplicate only by event name plus opaque connection, model-revision, and
+profile-revision IDs. Do not add an endpoint, public connection name, model
+name, prompt excerpt, response excerpt, or secret reference to a notification.
+
+Build the operator-configurable dashboard from the same channel with these
+minimum panels: outcomes and failure category by run type and adapter version;
+p50/p95 duration and time to first delta; queue depth, wait, saturation, and
+active concurrency; attempts and retry count; cancellation reason; circuit and
+health transitions; token totals; and reported cost by currency. Filters may
+use time range, environment, run type, adapter version, outcome, failure
+category, and opaque connection/profile/model revision IDs. Alert routing,
+thresholds beyond the three binding alarms, panel layout, refresh rate, and
+retention remain environment-specific operator configuration.
 
 For an incident, activate the global AI guard or suspend the affected AI
 connection or run profile. This stops new requests and attempts to cancel

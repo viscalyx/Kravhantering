@@ -170,6 +170,7 @@ contract with the external provider owner instead.
 | `AUTH_MCP_REQUIRED_SCOPES` | `AUTH_MCP_REQUIRED_SCOPES` in `app.env` | No default | Required when MCP is enabled; bundled Keycloak uses `kravhantering:mcp`. |
 | `AUTH_MCP_ROLES_CLAIM` | `AUTH_MCP_ROLES_CLAIM` in `app.env` | `roles` | Keep aligned with the bundled or external provider's MCP role mapper. |
 | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` in `app.env` | `300` | Integer from `60` through `900`; keep aligned with the service-client lifetime. |
+| `AI_REQUIREMENT_GENERATION_DISABLED` | Global AI release guard in `app.env` | `1` | Keep at `1` during install, restore, and verification. Set to `0` only after the bundled AI deployment evidence gate passes. |
 | `AI_PROVIDER_SECRET_KEYRING_FILE` | External root keyring mounted into `app-runtime` | `/run/secrets/kravhantering/ai-provider-secret-keyring.json` | Required before enabling connection-managed AI. Provision every referenced 256-bit key version through the approved secret manager; see [AI Connections Operations](./ai-connections.md#external-root-keyring). |
 | AI connection trust maps | `AI_CONNECTION_EGRESS_POLICIES_JSON`, `AI_CONNECTION_DATA_POLICIES_JSON`, and `AI_CONNECTION_TLS_POLICIES_JSON` in `app.env` | Empty maps | Replace with reviewed deployment-owned policy maps before verifying or activating an AI connection. Keep network enforcement aligned with the egress map; see [AI Connections Operations](./ai-connections.md#external-trust-boundary). |
 | `MCP_CLIENT_SECRET` | Realm JSON `kravhantering-mcp` client `secret` | No default | Plan only when MCP service tokens are used; generate a secret separate from `OIDC_APP_CLIENT_SECRET`. |
@@ -990,6 +991,7 @@ HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET=
 HSA_PERSON_LOOKUP_OAUTH_SCOPE=
 HSA_PERSON_LOOKUP_OAUTH_AUDIENCE=
 
+AI_REQUIREMENT_GENERATION_DISABLED=1
 AI_PROVIDER_SECRET_KEYRING_FILE=/run/secrets/kravhantering/ai-provider-secret-keyring.json
 AI_CONNECTION_EGRESS_POLICIES_JSON={}
 AI_CONNECTION_DATA_POLICIES_JSON={}

@@ -84,7 +84,7 @@ describe('AiSettingsPanel', () => {
     intlState.locale = 'sv'
   })
 
-  it('owns the AI tab panel contract', () => {
+  it('owns the AI tab panel contract', async () => {
     renderAdminPanel(<AiSettingsPanel />, { confirmModal: true })
     expectAdminPanelContract({ markerValue: 'ai', tabId: 'ai' })
     expect(
@@ -92,6 +92,7 @@ describe('AiSettingsPanel', () => {
         .getByRole('heading', { name: 'admin.ai.title' })
         .querySelector('.lucide-sparkles'),
     ).toHaveAttribute('aria-hidden', 'true')
+    expect(await screen.findByText('AI connection registry')).toBeVisible()
   })
 
   it('uses matching plain minus and plus icons for the MCP limit stepper', async () => {

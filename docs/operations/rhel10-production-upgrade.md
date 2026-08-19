@@ -42,6 +42,12 @@ every app node, and test database plus keyring restore as one recovery set.
 Follow [AI Connections Operations](./ai-connections.md); do not place root keys
 in `app.env` or release artifacts.
 
+Set `AI_REQUIREMENT_GENERATION_DISABLED=1` on every app node before draining
+traffic, even when AI is already suspended in Admin Center. Keep it active
+through migration, required seeding, startup, restore testing, and application
+smoke checks. The environment guard is the upgrade and rollback boundary; it
+does not affect health or readiness.
+
 Run app-node steps on every RHEL app node. Run the database job sequence once
 for the release, after the target release bundle and image references are in
 place.
@@ -495,6 +501,12 @@ place.
     [Operational Evidence](./rhel10-production-deploy.md#operational-evidence)
     record.
 
+    Leave AI blocked while normal application traffic returns. If the intended
+    AI profiles should be enabled in this release, complete the
+    [AI deployment evidence gate](./ai-connections.md#deployment-evidence-gate),
+    change the guard to `0` on every app node, recreate app-runtime, and verify
+    effective AI availability. A failed gate does not block the non-AI release.
+
 ## Rollback
 
 Choose the rollback boundary that matches the failed step:
@@ -510,6 +522,14 @@ Choose the rollback boundary that matches the failed step:
   permissions, and role memberships as one database state.
 
 For either rollback that follows a failed Quadlet start:
+
+Set `AI_REQUIREMENT_GENERATION_DISABLED=1` in the restored app configuration
+before starting either release. Rollback may suspend an affected connection or
+profile or reactivate a previously verified revision. It must never restore or
+depend on the removed direct OpenRouter route. When a database restore is
+required, restore its matching external root-key versions before any AI
+verification and repeat the deployment evidence gate before releasing the
+guard.
 
 1. Disable traffic and stop the new target on every app node.
 

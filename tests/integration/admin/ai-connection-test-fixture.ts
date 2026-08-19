@@ -242,9 +242,21 @@ async function removeFixtureConnections(db: DataSource) {
         'ENABLE TRIGGER [trg_ai_connection_model_revisions_delete_drafts_only] ON [ai_connection_model_revisions]',
       )
     }
+    await db.query(
+      'DISABLE TRIGGER [trg_ai_provider_secret_versions_delete_candidates_only] ON [ai_provider_secret_versions]',
+    )
+    try {
+      await db.query(
+        'DELETE FROM [ai_provider_secret_versions] WHERE [ai_connection_id] = @0',
+        [id],
+      )
+    } finally {
+      await db.query(
+        'ENABLE TRIGGER [trg_ai_provider_secret_versions_delete_candidates_only] ON [ai_provider_secret_versions]',
+      )
+    }
     for (const table of [
       'ai_connection_models',
-      'ai_provider_secret_versions',
       'ai_connection_attestations',
       'ai_connection_verification_evidence',
     ]) {

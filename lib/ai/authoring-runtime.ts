@@ -1,5 +1,6 @@
 import { createSqlServerAiRunProfileSource } from '@/lib/dal/ai-run-profiles'
 import type { SqlServerDatabase } from '@/lib/db'
+import { aiRunTelemetry } from '@/lib/observability/ai-runs'
 import { createAiConnectionAdapterRegistry } from './adapter-registry'
 import { loadAiDeploymentTrustPolicy } from './admin-external'
 import { controlledTestAdapterRegistration } from './controlled-test-adapter'
@@ -146,6 +147,7 @@ export function createProductionAiAuthoringRuntime(
   })
   const runCoordinator = createAiRunCoordinator({
     coordination: createSqlServerAiRunCoordinationStore(db),
+    telemetry: aiRunTelemetry,
   })
   const integration = createAiIntegrationLayer({
     adapterRegistry: createAiConnectionAdapterRegistry([
@@ -154,6 +156,7 @@ export function createProductionAiAuthoringRuntime(
     ]),
     profileResolver,
     runCoordinator,
+    telemetry: aiRunTelemetry,
     trustBoundary: createAiRunTrustBoundary({
       deployment: loadAiDeploymentTrustPolicy(),
       imageLimits: Object.freeze({

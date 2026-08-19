@@ -2024,6 +2024,7 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain(
         'docs/operations/transient-state-cleanup.md',
       )
+      expect(result.files).toContain('docs/operations/ai-connections.md')
       expect(result.files).toContain(
         'docs/operations/rhel10-production-disconnected.md',
       )
@@ -2113,6 +2114,8 @@ describe('trusted container release helpers', () => {
         'demo-seed/seed-archiving-retention-build.mjs',
       )
       expect(result.files).toContain('scripts/keycloak-demo-users.mjs')
+      expect(result.files).toContain('scripts/ai-deployment-gate.mjs')
+      expect(result.files).toContain('scripts/ai-staging-live-probe.mjs')
       expect(result.files).toContain('sbom/hsa-directory-mock.spdx.json')
       expect(result.files).toContain('sbom/hsa-person-lookup-adapter.spdx.json')
       expect(result.files).toContain(

@@ -23,6 +23,7 @@ const productionState = vi.hoisted(() => {
     createProfileSource: vi.fn(() => ({ profiles: true })),
     createRunCoordinator: vi.fn(() => ({ coordinator: true })),
     createTrustBoundary: vi.fn(),
+    emitTelemetry: vi.fn(),
     loadKeyring: vi.fn(() => ({ activeKeyId: 'key-1' })),
     loadTrustPolicy: vi.fn(() => ({ deployment: true })),
     screenInput: vi.fn(),
@@ -80,6 +81,9 @@ vi.mock('@/lib/ai/run-coordinator', () => ({
 }))
 vi.mock('@/lib/ai/run-trust-boundary', () => ({
   createAiRunTrustBoundary: productionState.createTrustBoundary,
+}))
+vi.mock('@/lib/observability/ai-runs', () => ({
+  aiRunTelemetry: { emit: productionState.emitTelemetry },
 }))
 vi.mock('@/lib/ai/safety', () => ({
   screenAiInput: productionState.screenInput,
@@ -313,12 +317,14 @@ describe('AI authoring runtime', () => {
     expect(productionState.createCoordinationStore).toHaveBeenCalledWith(db)
     expect(productionState.createRunCoordinator).toHaveBeenCalledWith({
       coordination: { coordination: true },
+      telemetry: { emit: productionState.emitTelemetry },
     })
     expect(productionState.createIntegration).toHaveBeenCalledWith(
       expect.objectContaining({
         adapterRegistry: { registry: true },
         profileResolver: expect.any(Object),
         runCoordinator: { coordinator: true },
+        telemetry: { emit: productionState.emitTelemetry },
         trustBoundary: { trustBoundary: true },
       }),
     )

@@ -122,6 +122,7 @@ verification.
 | `AUTH_MCP_REQUIRED_SCOPES` | `AUTH_MCP_REQUIRED_SCOPES` in `app.env` | No default | Required when MCP is enabled; use `kravhantering:mcp` unless the approved IdP contract differs. |
 | `AUTH_MCP_ROLES_CLAIM` | `AUTH_MCP_ROLES_CLAIM` in `app.env` | `roles` | Plan only if the approved MCP role mapper emits another claim. |
 | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` in `app.env` | `300` | Integer from `60` through `900`; keep aligned with the service client's declared token lifetime. |
+| `AI_REQUIREMENT_GENERATION_DISABLED` | Global AI release guard in `app.env` | `1` | Keep at `1` during install, restore, and verification. Set to `0` only after the environment's content-free AI deployment evidence passes the bundled gate. |
 | `AI_PROVIDER_SECRET_KEYRING_FILE` | External root keyring mounted into `app-runtime` | `/run/secrets/kravhantering/ai-provider-secret-keyring.json` | Required before enabling connection-managed AI. Provision all referenced 256-bit key versions through the approved secret manager; see [AI Connections Operations](./ai-connections.md#external-root-keyring). |
 | AI connection trust maps | `AI_CONNECTION_EGRESS_POLICIES_JSON`, `AI_CONNECTION_DATA_POLICIES_JSON`, and `AI_CONNECTION_TLS_POLICIES_JSON` in `app.env` | Empty maps | Replace with reviewed deployment-owned policy maps before verifying or activating an AI connection. Keep network enforcement aligned with the egress map; see [AI Connections Operations](./ai-connections.md#external-trust-boundary). |
 <!-- markdownlint-enable MD013 -->
@@ -740,6 +741,14 @@ mounts the directory read-only. Follow
 provider-secret activation, rotation, backup, restore, and secure key deletion
 procedure. A missing version blocks only dependent AI profiles; it does not
 change application readiness.
+
+Fresh production configuration keeps
+`AI_REQUIREMENT_GENERATION_DISABLED=1`. After required seeding, connection and
+model activation tests, keyring/database recovery verification, egress
+enforcement, alert binding, and intended profile activation, create and run the
+strict [AI deployment evidence gate](./ai-connections.md#deployment-evidence-gate).
+Recreate every app-runtime node only after the gate passes. Do not enable AI as
+part of the initial service start.
 
 For Keycloak, the client must emit the realm roles and `hsaId` user attribute
 as the `roles` and `employeeHsaId` claims. The `roles` claim must be a JSON

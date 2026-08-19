@@ -465,6 +465,25 @@ oberoende av vilken AI-leverantör eller agentmiljö som används.
 
 _Avoid_: AI-leverantör, AI-anslutning, OpenRouter-integration.
 
+**AI-driftsättningsbevis**:
+Ett maskinverifierbart och innehållsfritt bevis på att en bestämd miljös
+keyring, egress, säkra standarder, attest, anslutning, modellförmågor,
+körprofiler och driftlarm uppfyller villkoren för att släppa den globala
+AI-spärren.
+
+- `en`: AI deployment evidence
+
+_Avoid_: AI-hälsa, readiness, fritextintyg, staging-liveprov.
+
+**Staging-liveprov för AI**:
+Ett explicit aktiverat prov som använder fast syntetisk data för att verifiera
+den avsedda live-adaptern genom Kravhanterings exakta AI-väg i en
+stagingmiljö.
+
+- `en`: AI staging live test
+
+_Avoid_: Produktionslikt prov, produktionsprov, manuellt leverantörsanrop.
+
 **AI-leverantör**:
 En organisation eller tjänst som tillhandahåller AI-förmåga bakom en
 AI-anslutning.

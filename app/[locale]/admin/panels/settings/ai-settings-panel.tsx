@@ -13,7 +13,9 @@ import {
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
+  lazy,
   type MouseEvent,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -53,8 +55,9 @@ import type {
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
-import AiConnectionsPanel from './ai-connections-panel'
 import McpQuotaSettings, { type McpQuotaSettingKey } from './mcp-quota-settings'
+
+const AiConnectionsPanel = lazy(() => import('./ai-connections-panel'))
 
 type SaveState = 'error' | 'idle' | 'saved' | 'saving'
 
@@ -1007,7 +1010,19 @@ export default function AiSettingsPanel({
             ) : null}
           </div>
 
-          <AiConnectionsPanel />
+          <Suspense
+            fallback={
+              <p
+                aria-live="polite"
+                className="rounded-2xl border border-secondary-200/70 bg-white p-4 text-sm text-secondary-600 dark:border-secondary-700/60 dark:bg-secondary-900 dark:text-secondary-300"
+                role="status"
+              >
+                {ta('aiConnections.loading')}
+              </p>
+            }
+          >
+            <AiConnectionsPanel />
+          </Suspense>
 
           <div>
             <h3 className="text-base font-semibold text-secondary-950 dark:text-secondary-50">

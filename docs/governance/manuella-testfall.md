@@ -2075,13 +2075,13 @@ operativa status återställas, även om ett steg misslyckas.
    och att livscykel och operativ hälsa visas var för sig.
 2. Välj `Lägg till AI-anslutning`. Skapa ett utkast med adaptern
    `controlled_test`, version `1`, adressen `https://localhost:4443`, de
-   konfigurerade policyerna, autentisering `Ingen applikationsuppgift` och en
-   datapolicy utan personuppgifter, träning eller lagring. Öppna den nya raden
-   och kontrollera att den inte märks som demonstrationsdata.
+   konfigurerade policyerna, autentisering `Statisk leverantörshemlighet` och
+   en datapolicy utan personuppgifter, träning eller lagring. Öppna den nya
+   raden och kontrollera att den inte märks som demonstrationsdata.
 3. Öppna `Hantera hemlighet`. Kontrollera att fältet är tomt och maskerat och
    att texten säger att hemligheter bara kan anges, aldrig läsas eller
-   exporteras. Stäng utan att spara; den kontrollerade utvecklingsanslutningen
-   behöver ingen hemlighet.
+   exporteras. Skriv en syntetisk testhemlighet, spara kandidaten och aktivera
+   den. Kontrollera att fältet töms och att klartexten aldrig visas igen.
 4. Spara och godkänn en fullständig attest med syntetiska UUID-referenser,
    region `SE`, informationsklass `internal`, noll dagars lagring, inga
    personuppgifter, ingen leverantörsträning, aktuell granskningstid och ett

@@ -798,7 +798,7 @@ test.describe('Admin settings', () => {
           await dialog.getByLabel(/^Egress-policy/).fill('controlled_test')
           await dialog
             .getByLabel(/^Autentisering/)
-            .selectOption({ value: 'none' })
+            .selectOption({ value: 'static_secret' })
           await dialog
             .getByLabel(/^Beskrivning/)
             .fill('Kontrollerad aktivering utan produktionsdata.')
@@ -850,6 +850,17 @@ test.describe('Admin settings', () => {
           const secret = dialog.getByLabel(/^Ny leverantörshemlighet/)
           await expect(secret).toHaveAttribute('type', 'password')
           await expect(secret).toHaveValue('')
+          await secret.fill('synthetic-controlled-test-credential')
+          await dialog
+            .getByRole('button', { name: 'Spara hemlighetskandidat' })
+            .click()
+          await expect(secret).toHaveValue('')
+          await expect(dialog).not.toContainText(
+            'synthetic-controlled-test-credential',
+          )
+          await dialog
+            .getByRole('button', { name: 'Aktivera kandidat' })
+            .click()
           await dialog.getByRole('button', { name: 'Avbryt' }).click()
           await expect(dialog).toHaveCount(0)
         })

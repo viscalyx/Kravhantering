@@ -102,6 +102,10 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
     target: 'docs/operations/api-docs-edge-verification.md',
   },
   {
+    source: 'docs/operations/ai-connections.md',
+    target: 'docs/operations/ai-connections.md',
+  },
+  {
     source: 'docs/operations/rhel10-production-deploy.md',
     target: 'docs/operations/rhel10-production-deploy.md',
   },
@@ -155,6 +159,14 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   {
     source: 'scripts/keycloak-demo-users.mjs',
     target: 'scripts/keycloak-demo-users.mjs',
+  },
+  {
+    source: 'scripts/release/ai-deployment-gate.mjs',
+    target: 'scripts/ai-deployment-gate.mjs',
+  },
+  {
+    source: 'scripts/release/ai-staging-live-probe.mjs',
+    target: 'scripts/ai-staging-live-probe.mjs',
   },
 ]
 

@@ -125,6 +125,10 @@ runs. See
 for the contract and
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md)
 for the trust, lifecycle, and provider-secret boundaries.
+[ADR 0054](../adr/0054-global-ai-sparr-och-driftsattningsbevis.md) defines the
+release guard and deployment evidence, while
+[ADR 0055](../adr/0055-innehallsfri-ai-observerbarhet-och-syntetisk-liveverifiering.md)
+defines content-free AI observability and synthetic live verification.
 
 Sources: `app/api/ai/generate-requirement-import/route.ts`,
 `app/api/ai/repair-requirement-import-json/route.ts`,
