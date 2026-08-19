@@ -143,14 +143,21 @@ export const rfiQuestionSuggestionEntity =
       },
     ],
     indices: [
-      { columns: ['areaId'], name: 'idx_rfi_question_suggestions_area_id' },
+      {
+        columns: ['areaId', 'createdAt', 'id'],
+        name: 'idx_rfi_question_suggestions_area_id_created_at_id',
+      },
       {
         columns: ['rfiQuestionId'],
         name: 'idx_rfi_question_suggestions_rfi_question_id',
       },
       {
-        columns: ['specificationId'],
-        name: 'idx_rfi_question_suggestions_specification_id',
+        columns: ['specificationId', 'createdAt', 'id'],
+        name: 'idx_rfi_question_suggestions_specification_id_created_at_id',
+      },
+      {
+        columns: ['createdAt', 'id'],
+        name: 'idx_rfi_question_suggestions_created_at_id',
       },
       {
         columns: ['createdByHsaId'],

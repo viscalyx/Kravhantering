@@ -275,6 +275,7 @@ function createService() {
     queryCatalog: vi.fn(async () => ({
       result: [],
     })),
+    listRfiQuestionSuggestions: vi.fn(),
     mutateRequirementApplications: vi.fn(async () => ({
       operation: 'update' as const,
       updatedCount: 0,

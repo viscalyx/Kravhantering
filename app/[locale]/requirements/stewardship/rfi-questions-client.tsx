@@ -27,6 +27,7 @@ import {
   readRfiQuestionSuggestionMutationError,
   shouldReloadRfiQuestionSuggestions,
 } from '@/lib/requirements/rfi-question-suggestion-conflicts'
+import { fetchRfiQuestionSuggestionPages } from '@/lib/requirements/rfi-question-suggestion-pages'
 
 interface RequirementArea {
   id: number
@@ -310,11 +311,14 @@ export default function RfiQuestionsClient() {
     setLoading(true)
     setError(null)
     try {
-      const [areasResponse, questionsResponse, suggestionsResponse] =
+      const [areasResponse, questionsResponse, loadedSuggestions] =
         await Promise.all([
           apiFetch('/api/requirement-areas'),
           apiFetch('/api/rfi-questions?includeArchived=true'),
-          apiFetch('/api/rfi-question-suggestions'),
+          fetchRfiQuestionSuggestionPages<RfiSuggestion>(
+            '/api/rfi-question-suggestions',
+            { errorMessage: copy.loadError },
+          ).catch(() => []),
         ])
 
       if (!areasResponse.ok) {
@@ -337,14 +341,7 @@ export default function RfiQuestionsClient() {
       setAreas(areaData.areas ?? [])
       setQuestions(questionData.questions ?? [])
 
-      if (suggestionsResponse.ok) {
-        const suggestionData = (await suggestionsResponse.json()) as {
-          suggestions?: RfiSuggestion[]
-        }
-        setSuggestions(suggestionData.suggestions ?? [])
-      } else {
-        setSuggestions([])
-      }
+      setSuggestions(loadedSuggestions)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : copy.loadError)
       setQuestions([])
