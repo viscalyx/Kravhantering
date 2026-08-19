@@ -8,8 +8,16 @@ import type {
   AiCapabilitySelection,
   AiEgressTransport,
   AiRunEvent,
+  AiRunLimits,
   AiTaskEnvelope,
 } from './run-contracts'
+
+export const AI_ADMIN_PROBE_LIMITS = Object.freeze({
+  maxBufferedEvents: 16,
+  maxOutputBytes: 65_536,
+  maxOutputTokens: 512,
+  maxRetainedMemoryBytes: 131_072,
+}) satisfies Readonly<AiRunLimits>
 
 export interface AiAdminAdapterContext {
   connection: Readonly<AiAdminConnectionDetail>

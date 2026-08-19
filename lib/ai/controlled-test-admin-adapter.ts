@@ -3,6 +3,7 @@ import type {
   AiAdminConnectionAdapter,
   AiAdminConnectionAdapterRegistration,
 } from './admin-adapter'
+import { AI_ADMIN_PROBE_LIMITS } from './admin-adapter'
 import {
   CONTROLLED_TEST_ADAPTER_TYPE,
   CONTROLLED_TEST_ADAPTER_VERSION,
@@ -71,6 +72,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
         egress: context.egress,
         externalRunId: `admin_probe_${randomUUID()}` as AiExternalRunId,
       },
+      limits: AI_ADMIN_PROBE_LIMITS,
       modelRevision: {
         configuration: {},
         externalModelId: revision.externalModelId,
@@ -94,6 +96,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
         egress: context.egress,
         externalRunId: `admin_probe_${randomUUID()}` as AiExternalRunId,
       },
+      limits: AI_ADMIN_PROBE_LIMITS,
       modelRevision: {
         configuration: {},
         externalModelId: revision.externalModelId,
@@ -127,6 +130,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
         egress: context.egress,
         externalRunId: `admin_probe_${randomUUID()}` as AiExternalRunId,
       },
+      limits: AI_ADMIN_PROBE_LIMITS,
       modelRevision: {
         configuration: {},
         externalModelId: revision.externalModelId,

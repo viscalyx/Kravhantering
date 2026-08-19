@@ -6,6 +6,7 @@ import type {
   AiAdminFunctionalProbe,
   AiAdminNegativeProbeCase,
 } from './admin-adapter'
+import { AI_ADMIN_PROBE_LIMITS } from './admin-adapter'
 import type { AiCapability } from './admin-contracts'
 import type {
   AiAdminCatalogItem,
@@ -180,6 +181,7 @@ function runOpenRouterAdminProbe(
       egress: context.egress,
       externalRunId: `admin_probe_${randomUUID()}` as AiExternalRunId,
     },
+    limits: AI_ADMIN_PROBE_LIMITS,
     modelRevision: {
       configuration: {},
       externalModelId: revision.externalModelId,
