@@ -168,7 +168,6 @@ const CONNECTION_COLUMNS = `
     INNER JOIN [ai_connection_model_operational_states] AS [state]
       ON [state].[ai_connection_model_revision_id] = [health_revision].[id]
     WHERE [health_model].[ai_connection_id] = [connection].[id]
-      AND [health_revision].[status] = N'verified'
       AND [health_revision].[connection_configuration_version]
         = [connection].[configuration_version]
   ), N'unknown') AS [operationalHealth]`
@@ -1114,8 +1113,15 @@ export function createSqlServerAiAdminStore(
              @0, @1, @2, @3, @4, @5, @6, @7, @8, @9,
              SYSUTCDATETIME(), DATEADD(day, 30, SYSUTCDATETIME())
            );
-           IF @3 = N'failed'
+           IF @3 = N'failed' AND @8 = N'authentication_failed'
            BEGIN
+             UPDATE [ai_connection_verification_evidence]
+             SET [expires_at] = SYSUTCDATETIME()
+             WHERE [ai_connection_id] = @1
+               AND [connection_configuration_version] = @2
+               AND [outcome] = N'passed'
+               AND ([expires_at] IS NULL OR [expires_at] > SYSUTCDATETIME());
+
              UPDATE [ai_connections]
              SET [lifecycle_status] = CASE
                  WHEN [lifecycle_status] = N'draft' THEN N'draft'
@@ -1322,6 +1328,7 @@ export function createSqlServerAiAdminStore(
           `IF NOT EXISTS (
              SELECT 1
              FROM [ai_connection_model_revisions] AS [revision]
+               WITH (UPDLOCK, HOLDLOCK)
              INNER JOIN [ai_connection_models] AS [model]
                ON [model].[id] = [revision].[ai_connection_model_id]
              WHERE [revision].[id] = @1
@@ -1347,12 +1354,23 @@ export function createSqlServerAiAdminStore(
              SYSUTCDATETIME(), SYSUTCDATETIME()
            );
 
+           IF @4 = 1
+           BEGIN
+             UPDATE [ai_connection_model_revisions]
+             SET [status] = N'verification_required',
+               [verified_capabilities_json] = NULL, [verified_at] = NULL,
+               [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
+             WHERE [id] = @1 AND [revision_token] = @2
+               AND [status] = N'verified';
+           END;
+
            SELECT @1 AS [id];`,
           [
             input.connectionId,
             input.modelRevisionId,
             input.modelRevisionToken,
             input.health,
+            input.invalidatesVerification ? 1 : 0,
           ],
         )
         if (!rows?.[0]) {

@@ -132,6 +132,12 @@ export interface AiAdminConnectionVerificationResult {
   testSuiteVersion: string
 }
 
+export interface AiAdminHealthProbeResult {
+  failureCategory: string | null
+  health: 'degraded' | 'healthy' | 'unavailable'
+  invalidatesVerification: boolean
+}
+
 export interface AiAdminModelVerificationResult {
   details: Readonly<Record<string, boolean | number | string>>
   failureCategory: string | null
@@ -164,7 +170,7 @@ export interface AiAdminExternalOperations {
   probeHealth(
     connection: Readonly<AiAdminConnectionDetail>,
     revision: Readonly<AiAdminModelRevisionRecord>,
-  ): Promise<'degraded' | 'healthy' | 'unavailable'>
+  ): Promise<Readonly<AiAdminHealthProbeResult>>
   verifyModelRevision(
     connection: Readonly<AiAdminConnectionDetail>,
     revision: Readonly<AiAdminModelRevisionRecord>,
@@ -259,6 +265,7 @@ export interface AiAdminStore {
   recordHealth(input: {
     connectionId: string
     health: 'degraded' | 'healthy' | 'unavailable'
+    invalidatesVerification: boolean
     modelRevisionId: string
     modelRevisionToken: string
   }): Promise<AiAdminConnectionDetail>
@@ -734,11 +741,12 @@ export class AiConnectionAdministrationService {
     if (modelRevision.revisionToken !== input.revisionToken)
       activationConflict()
     await this.#assertAuthorizedTarget(connection)
-    const health = await this.#external.probeHealth(connection, modelRevision)
+    const result = await this.#external.probeHealth(connection, modelRevision)
     return this.#withSecretAvailability(
       await this.#store.recordHealth({
         connectionId: input.connectionId,
-        health,
+        health: result.health,
+        invalidatesVerification: result.invalidatesVerification,
         modelRevisionId: input.modelRevisionId,
         modelRevisionToken: input.revisionToken,
       }),

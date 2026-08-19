@@ -112,4 +112,25 @@ describe('pinned HTTPS transport', () => {
       createPinnedHttpsFetch(failedRequest as never)(input() as never),
     ).rejects.toThrow('socket')
   })
+
+  it('force-closes a hanging pinned socket when its deadline signal aborts', async () => {
+    const controller = new AbortController()
+    const outgoing = new EventEmitter() as EventEmitter & {
+      destroy: ReturnType<typeof vi.fn>
+      end: () => void
+      write: ReturnType<typeof vi.fn>
+    }
+    outgoing.write = vi.fn()
+    outgoing.end = vi.fn()
+    outgoing.destroy = vi.fn(error => outgoing.emit('error', error))
+    const request = vi.fn(() => outgoing)
+    const pending = createPinnedHttpsFetch(request as never)(
+      input({ init: { method: 'GET', signal: controller.signal } }) as never,
+    )
+
+    controller.abort()
+
+    await expect(pending).rejects.toThrow('was aborted')
+    expect(outgoing.destroy).toHaveBeenCalledOnce()
+  })
 })

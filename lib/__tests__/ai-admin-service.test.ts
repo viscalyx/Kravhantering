@@ -372,7 +372,11 @@ describe('AI connection administration service', () => {
       getConnection: vi.fn(async () => currentConnection),
       recordHealth: vi.fn(async () => currentConnection),
     } as unknown as AiAdminStore
-    external.probeHealth.mockResolvedValueOnce('degraded')
+    external.probeHealth.mockResolvedValueOnce({
+      failureCategory: 'capability_mismatch',
+      health: 'degraded',
+      invalidatesVerification: true,
+    })
     const service = new AiConnectionAdministrationService({
       audit,
       external,
@@ -393,6 +397,7 @@ describe('AI connection administration service', () => {
     expect(store.recordHealth).toHaveBeenCalledWith({
       connectionId: currentConnection.id,
       health: 'degraded',
+      invalidatesVerification: true,
       modelRevisionId: revision.id,
       modelRevisionToken: revision.revisionToken,
     })
@@ -479,7 +484,11 @@ describe('AI connection administration service', () => {
       outcome: 'passed',
       testSuiteVersion: 'test-v1',
     })
-    external.probeHealth.mockResolvedValue('healthy')
+    external.probeHealth.mockResolvedValue({
+      failureCategory: null,
+      health: 'healthy',
+      invalidatesVerification: false,
+    })
     external.verifyModelRevision.mockResolvedValue({
       details: { resolved: true },
       failureCategory: null,

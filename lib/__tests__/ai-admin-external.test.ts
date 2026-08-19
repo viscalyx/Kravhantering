@@ -141,7 +141,10 @@ const ring = parseAiProviderSecretKeyring(
 )
 
 describe('AI administration provider composition', () => {
-  afterEach(() => vi.unstubAllEnvs())
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllEnvs()
+  })
 
   it('resolves exact adapter registrations and rejects duplicates or unknowns', () => {
     const registry = createAiAdminConnectionAdapterRegistry([
@@ -177,9 +180,12 @@ describe('AI administration provider composition', () => {
     await expect(external.probeConnection(current)).resolves.toMatchObject({
       outcome: 'passed',
     })
-    await expect(external.probeHealth(current, revision)).resolves.toBe(
-      'healthy',
-    )
+    await expect(
+      external.probeHealth(current, revision),
+    ).resolves.toMatchObject({
+      health: 'healthy',
+      invalidatesVerification: false,
+    })
     await expect(
       external.verifyModelRevision(current, revision),
     ).resolves.toMatchObject({ outcome: 'passed' })
@@ -289,6 +295,81 @@ describe('AI administration provider composition', () => {
       'invalid catalog',
     )
     await expect(adapter.fetchCatalog(context)).rejects.toThrow('size limit')
+  })
+
+  it('sanitizes status-aware connection probe failures', async () => {
+    const adapter = openRouterAdminAdapterRegistration.adapter
+    const current = connection({ adapterKey: 'openrouter' })
+    const context: AiAdminAdapterContext = {
+      connection: current,
+      credential: null,
+      egress: {
+        fetch: vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response('outage details', { status: 503 }),
+          )
+          .mockResolvedValueOnce(
+            new Response('credential details', { status: 401 }),
+          ),
+      },
+    }
+
+    await expect(adapter.probeConnection(context)).resolves.toMatchObject({
+      details: { catalogReachable: false },
+      failureCategory: 'provider_unavailable',
+      outcome: 'failed',
+    })
+    await expect(adapter.probeConnection(context)).resolves.toMatchObject({
+      details: { catalogReachable: false },
+      failureCategory: 'authentication_failed',
+      outcome: 'failed',
+    })
+  })
+
+  it('bounds catalog, connection, and candidate-secret GETs with an aborting deadline', async () => {
+    vi.useFakeTimers()
+    const adapter = openRouterAdminAdapterRegistration.adapter
+    const current = connection({ adapterKey: 'openrouter' })
+    const signals: AbortSignal[] = []
+    const context: AiAdminAdapterContext = {
+      connection: current,
+      credential: null,
+      egress: {
+        fetch: vi.fn(async (_url, init) => {
+          const signal = init.signal
+          if (!signal) throw new Error('Missing deadline signal')
+          signals.push(signal)
+          return new Promise<Response>((_resolve, reject) => {
+            signal.addEventListener(
+              'abort',
+              () => reject(new DOMException('Aborted', 'AbortError')),
+              { once: true },
+            )
+          })
+        }),
+      },
+    }
+
+    const catalog = adapter.fetchCatalog(context)
+    const catalogAssertion = expect(catalog).rejects.toThrow(
+      'administration request failed',
+    )
+    await vi.advanceTimersByTimeAsync(15_000)
+    await catalogAssertion
+    const connectionProbe = adapter.probeConnection(context)
+    await vi.advanceTimersByTimeAsync(15_000)
+    await expect(connectionProbe).resolves.toMatchObject({
+      failureCategory: 'deadline_exceeded',
+    })
+    const candidate = adapter.verifySecretCandidate(context)
+    const candidateAssertion = expect(candidate).rejects.toThrow(
+      'administration request failed',
+    )
+    await vi.advanceTimersByTimeAsync(15_000)
+    await candidateAssertion
+    expect(signals).toHaveLength(3)
+    expect(signals.every(signal => signal.aborted)).toBe(true)
   })
 
   it('loads deployment-owned policy maps from environment', () => {
@@ -462,7 +543,7 @@ describe('AI administration provider composition', () => {
     }
     await expect(adapter.fetchCatalog(context)).resolves.toHaveLength(1)
     await expect(adapter.verifySecretCandidate(context)).rejects.toThrow(
-      'rejected',
+      'administration request failed',
     )
   })
 
@@ -501,6 +582,7 @@ describe('AI administration provider composition', () => {
       ]),
       transaction: vi.fn(),
     } as unknown as SqlServerDatabase
+    let functionalRequestCount = 0
     const providerFetch = vi.fn(async (request: { init: RequestInit }) => {
       if (request.init.method === 'GET') {
         return new Response(
@@ -509,7 +591,10 @@ describe('AI administration provider composition', () => {
           }),
         )
       }
-      return new Response('run failed', { status: 503 })
+      functionalRequestCount += 1
+      return new Response('run failed', {
+        status: functionalRequestCount === 3 ? 404 : 503,
+      })
     })
     const basePolicy = deployment()
     const policy: AiDeploymentTrustPolicy = {
@@ -533,9 +618,19 @@ describe('AI administration provider composition', () => {
     await expect(
       external.verifyModelRevision(current, revision),
     ).resolves.toMatchObject({ outcome: 'failed' })
-    await expect(external.probeHealth(current, revision)).resolves.toBe(
-      'unavailable',
-    )
+    await expect(
+      external.probeHealth(current, revision),
+    ).resolves.toMatchObject({
+      health: 'unavailable',
+      invalidatesVerification: false,
+    })
+    await expect(
+      external.probeHealth(current, revision),
+    ).resolves.toMatchObject({
+      failureCategory: 'request_rejected',
+      health: 'degraded',
+      invalidatesVerification: true,
+    })
     expect(
       providerFetch.mock.calls.some(
         ([request]) => request.init.method === 'POST',

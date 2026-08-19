@@ -19,6 +19,7 @@ import type {
 } from './run-contracts'
 
 const MAX_CATALOG_BYTES = 4 * 1024 * 1024
+const ADMIN_GET_TIMEOUT_MS = 15_000
 const ADMIN_PROBE_PROFILE_REVISION_ID =
   '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
 
@@ -27,6 +28,19 @@ interface CatalogModel {
   id?: unknown
   name?: unknown
   supported_parameters?: unknown
+}
+
+class OpenRouterAdminRequestError extends Error {
+  readonly category: string
+
+  constructor(
+    category: string,
+    message = 'The AI provider administration request failed.',
+  ) {
+    super(message)
+    this.name = 'OpenRouterAdminRequestError'
+    this.category = category
+  }
 }
 
 function modelsUrl(endpointUrl: string): string {
@@ -38,24 +52,51 @@ function modelsUrl(endpointUrl: string): string {
 async function readCatalog(
   response: Response,
 ): Promise<readonly CatalogModel[]> {
-  if (!response.ok) throw new Error('The AI provider rejected the request.')
+  if (!response.ok) {
+    throw new OpenRouterAdminRequestError(
+      response.status === 401 || response.status === 403
+        ? 'authentication_failed'
+        : response.status === 408 || response.status === 504
+          ? 'deadline_exceeded'
+          : response.status === 429
+            ? 'rate_limited'
+            : response.status >= 500
+              ? 'provider_unavailable'
+              : 'request_rejected',
+    )
+  }
   const declaredLength = Number(response.headers.get('content-length') ?? 0)
   if (declaredLength > MAX_CATALOG_BYTES) {
-    throw new Error('The AI provider catalog exceeded its size limit.')
+    throw new OpenRouterAdminRequestError(
+      'invalid_response',
+      'The AI provider catalog exceeded its size limit.',
+    )
   }
   const bytes = new Uint8Array(await response.arrayBuffer())
   if (bytes.byteLength > MAX_CATALOG_BYTES) {
-    throw new Error('The AI provider catalog exceeded its size limit.')
+    throw new OpenRouterAdminRequestError(
+      'invalid_response',
+      'The AI provider catalog exceeded its size limit.',
+    )
   }
-  const parsed: unknown = JSON.parse(
-    new TextDecoder('utf-8', { fatal: true }).decode(bytes),
-  )
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+  } catch {
+    throw new OpenRouterAdminRequestError(
+      'invalid_response',
+      'The AI provider returned an invalid catalog.',
+    )
+  }
   if (
     typeof parsed !== 'object' ||
     parsed === null ||
     !Array.isArray((parsed as { data?: unknown }).data)
   ) {
-    throw new Error('The AI provider returned an invalid catalog.')
+    throw new OpenRouterAdminRequestError(
+      'invalid_response',
+      'The AI provider returned an invalid catalog.',
+    )
   }
   return (parsed as { data: CatalogModel[] }).data
 }
@@ -63,18 +104,31 @@ async function readCatalog(
 async function fetchModels(
   context: Readonly<AiAdminAdapterContext>,
 ): Promise<readonly CatalogModel[]> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), ADMIN_GET_TIMEOUT_MS)
   const headers = new Headers({ accept: 'application/json' })
   if (context.credential)
     headers.set('authorization', `Bearer ${context.credential}`)
-  const response = await context.egress.fetch(
-    modelsUrl(context.connection.endpointUrl),
-    {
-      headers,
-      method: 'GET',
-      redirect: 'error',
-    },
-  )
-  return readCatalog(response)
+  try {
+    const response = await context.egress.fetch(
+      modelsUrl(context.connection.endpointUrl),
+      {
+        headers,
+        method: 'GET',
+        redirect: 'error',
+        signal: controller.signal,
+      },
+    )
+    return await readCatalog(response)
+  } catch (error) {
+    if (error instanceof OpenRouterAdminRequestError) throw error
+    throw new OpenRouterAdminRequestError(
+      controller.signal.aborted ? 'deadline_exceeded' : 'provider_unavailable',
+    )
+  } finally {
+    clearTimeout(timeout)
+    controller.abort()
+  }
 }
 
 function capabilities(model: CatalogModel): AiCapability {
@@ -128,10 +182,13 @@ const openRouterAdminAdapter: AiAdminConnectionAdapter = {
         outcome: 'passed',
         testSuiteVersion: 'openrouter-admin-v1',
       }
-    } catch {
+    } catch (error) {
       return {
         details: { catalogReachable: false },
-        failureCategory: 'provider_unavailable',
+        failureCategory:
+          error instanceof OpenRouterAdminRequestError
+            ? error.category
+            : 'provider_unavailable',
         outcome: 'failed',
         testSuiteVersion: 'openrouter-admin-v1',
       }

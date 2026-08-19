@@ -42,8 +42,11 @@ interface OpenRouterUsage {
 
 interface OpenRouterMessage {
   content?: unknown
+  function_call?: unknown
   reasoning?: unknown
   reasoning_details?: unknown
+  tool_call_id?: unknown
+  tool_calls?: unknown
 }
 
 interface OpenRouterStreamChunk {
@@ -263,6 +266,16 @@ function readAnalysis(message: OpenRouterMessage): string | null {
     return typeof detail.summary === 'string' ? [detail.summary] : []
   })
   return parts.length > 0 ? parts.join('') : null
+}
+
+function hasProhibitedProtocolField(value: Record<string, unknown>): boolean {
+  return (
+    value.callback !== undefined ||
+    value.function_call !== undefined ||
+    value.recipient !== undefined ||
+    value.tool_call_id !== undefined ||
+    value.tool_calls !== undefined
+  )
 }
 
 function failureEvent(
@@ -558,7 +571,11 @@ async function runNonStreaming(
     isRecord(choice) && isRecord(choice.message)
       ? (choice.message as OpenRouterMessage)
       : undefined
-  if (!message || typeof message.content !== 'string') {
+  if (
+    !message ||
+    hasProhibitedProtocolField(message as Record<string, unknown>) ||
+    typeof message.content !== 'string'
+  ) {
     return failureEvent(request, {
       category: 'invalid_response',
       diagnosticCode: 'invalid_upstream_response',
@@ -585,7 +602,12 @@ function readStreamDelta(value: unknown): {
   if (choices !== undefined && !Array.isArray(choices)) return null
   const choice = Array.isArray(choices) ? choices[0] : undefined
   if (choice === undefined) return { analysis: null, output: null }
-  if (!isRecord(choice) || !isRecord(choice.delta)) return null
+  if (
+    !isRecord(choice) ||
+    !isRecord(choice.delta) ||
+    hasProhibitedProtocolField(choice.delta)
+  )
+    return null
   const delta = choice.delta
   if (
     delta.content !== undefined &&

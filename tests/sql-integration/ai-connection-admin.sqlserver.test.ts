@@ -368,6 +368,7 @@ describe('AI connection administration transactions against SQL Server', () => {
       store.recordHealth({
         connectionId: created.id,
         health: 'unavailable',
+        invalidatesVerification: false,
         modelRevisionId: draftRevision.id,
         modelRevisionToken: randomUUID(),
       }),
@@ -1130,10 +1131,66 @@ describe('AI connection administration transactions against SQL Server', () => {
     const health = await store.recordHealth({
       connectionId: created.id,
       health: 'healthy',
+      invalidatesVerification: false,
       modelRevisionId: verifiedModelRevision.id,
       modelRevisionToken: verifiedModelRevision.revisionToken,
     })
     expect(health.operationalHealth).toBe('healthy')
+    const transientConnectionFailure = await store.recordConnectionVerification(
+      {
+        connection: health,
+        result: {
+          details: { status: 503 },
+          failureCategory: 'provider_unavailable',
+          outcome: 'failed',
+          testSuiteVersion: 'sql-v1',
+        },
+      },
+    )
+    expect(transientConnectionFailure.lifecycleStatus).toBe('active')
+    expect(
+      transientConnectionFailure.models.flatMap(model => model.revisions)[0]
+        ?.status,
+    ).toBe('verified')
+    const transientHealth = await store.recordHealth({
+      connectionId: created.id,
+      health: 'unavailable',
+      invalidatesVerification: false,
+      modelRevisionId: verifiedModelRevision.id,
+      modelRevisionToken: verifiedModelRevision.revisionToken,
+    })
+    expect(
+      transientHealth.models.flatMap(model => model.revisions)[0]?.status,
+    ).toBe('verified')
+    const contradictedHealth = await store.recordHealth({
+      connectionId: created.id,
+      health: 'degraded',
+      invalidatesVerification: true,
+      modelRevisionId: verifiedModelRevision.id,
+      modelRevisionToken: verifiedModelRevision.revisionToken,
+    })
+    expect(contradictedHealth.operationalHealth).toBe('degraded')
+    expect(
+      contradictedHealth.models.flatMap(model => model.revisions)[0],
+    ).toMatchObject({
+      status: 'verification_required',
+      verifiedCapabilities: null,
+    })
+    expect(
+      (await store.listRunProfileActivationEntries())[0]?.snapshot?.connection
+        .blockers,
+    ).toEqual(expect.arrayContaining([{ code: 'model_revision_unverified' }]))
+    const authenticationFailure = await store.recordConnectionVerification({
+      connection: contradictedHealth,
+      result: {
+        details: { status: 401 },
+        failureCategory: 'authentication_failed',
+        outcome: 'failed',
+        testSuiteVersion: 'sql-v1',
+      },
+    })
+    expect(authenticationFailure.lifecycleStatus).toBe('verification_required')
+    expect(authenticationFailure.connectionEvidenceId).toBeNull()
     const suspendedProfile = await store.setRunProfileOperationalStatus({
       profileKey: 'generation_without_images',
       revisionToken: activatedProfile?.revisionToken ?? '',

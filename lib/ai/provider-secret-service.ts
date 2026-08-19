@@ -10,6 +10,7 @@ import type {
   AiAdminCatalogItem,
   AiAdminConnectionDetail,
   AiAdminConnectionVerificationResult,
+  AiAdminHealthProbeResult,
   AiAdminModelRevisionRecord,
   AiAdminModelVerificationResult,
 } from './admin-service'
@@ -62,6 +63,15 @@ interface AdminFunctionalProbeResult {
   completed: boolean
   failureCategory: string | null
   schemaValid: boolean
+}
+
+function isConcreteModelContradiction(category: string | null): boolean {
+  return (
+    category === 'authentication_failed' ||
+    category === 'capability_mismatch' ||
+    category === 'invalid_response' ||
+    category === 'request_rejected'
+  )
 }
 
 function selectedCapabilities(
@@ -196,6 +206,35 @@ async function runAdminFunctionalProbe(
     failureCategory: schemaValid ? null : 'invalid_response',
     schemaValid,
   }
+}
+
+async function runAdminCancellationProbe(
+  adapter: AiAdminConnectionAdapter,
+  context: Readonly<AiAdminAdapterContext>,
+  revision: Readonly<AiAdminModelRevisionRecord>,
+): Promise<boolean> {
+  const controller = new AbortController()
+  controller.abort()
+  const identity: AiRunIdentity = {
+    aiConnectionId: context.connection.id as AiConnectionId,
+    aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
+    aiRunProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+  }
+  try {
+    const stream = adapter.runFunctionalProbe(context, revision, {
+      abortSignal: controller.signal,
+      deadlineAt: new Date(Date.now() + ADMIN_PROBE_TIMEOUT_MS).toISOString(),
+      selectedCapabilities: selectedCapabilities(emptyCapabilities()),
+      task: probeTask(emptyCapabilities()),
+    })
+    for await (const event of guardAiRunEventStream(stream, identity)) {
+      if (event.type === 'cancelled') return true
+      if (event.type === 'completed' || event.type === 'failed') return false
+    }
+  } catch {
+    return false
+  }
+  return false
 }
 
 function satisfiesDeclaredCapabilities(
@@ -839,17 +878,31 @@ export class AiProviderSecretAdminService {
     connection: Readonly<AiAdminConnectionDetail>,
     egress: AiEgressTransport,
     revision: Readonly<AiAdminModelRevisionRecord>,
-  ): Promise<'degraded' | 'healthy' | 'unavailable'> {
+  ): Promise<Readonly<AiAdminHealthProbeResult>> {
     const expectedCapabilities =
       revision.verifiedCapabilities ?? revision.declaredCapabilities
     const result = await this.#execute(connection, egress, context =>
       runAdminFunctionalProbe(adapter, context, revision, expectedCapabilities),
     )
-    return result.completed &&
+    const healthy =
+      result.completed &&
       result.schemaValid &&
       satisfiesDeclaredCapabilities(expectedCapabilities, result.capabilities)
-      ? 'healthy'
-      : 'unavailable'
+    if (healthy) {
+      return {
+        failureCategory: null,
+        health: 'healthy',
+        invalidatesVerification: false,
+      }
+    }
+    const failureCategory = result.failureCategory ?? 'capability_mismatch'
+    const invalidatesVerification =
+      isConcreteModelContradiction(failureCategory)
+    return {
+      failureCategory,
+      health: invalidatesVerification ? 'degraded' : 'unavailable',
+      invalidatesVerification,
+    }
   }
 
   async verifyModelRevision(
@@ -858,32 +911,40 @@ export class AiProviderSecretAdminService {
     egress: AiEgressTransport,
     revision: Readonly<AiAdminModelRevisionRecord>,
   ): Promise<Readonly<AiAdminModelVerificationResult>> {
-    const result = await this.#execute(connection, egress, context =>
-      runAdminFunctionalProbe(
+    const result = await this.#execute(connection, egress, async context => ({
+      cancellationHandled: await runAdminCancellationProbe(
+        adapter,
+        context,
+        revision,
+      ),
+      functional: await runAdminFunctionalProbe(
         adapter,
         context,
         revision,
         revision.declaredCapabilities,
       ),
-    )
+    }))
+    const functional = result.functional
     const passed =
-      result.completed &&
-      result.schemaValid &&
+      result.cancellationHandled &&
+      functional.completed &&
+      functional.schemaValid &&
       satisfiesDeclaredCapabilities(
         revision.declaredCapabilities,
-        result.capabilities,
+        functional.capabilities,
       )
     return {
       details: {
-        completed: result.completed,
-        schemaValid: result.schemaValid,
+        cancellationHandled: result.cancellationHandled,
+        completed: functional.completed,
+        schemaValid: functional.schemaValid,
       },
       failureCategory: passed
         ? null
-        : (result.failureCategory ?? 'capability_mismatch'),
+        : (functional.failureCategory ?? 'capability_mismatch'),
       outcome: passed ? 'passed' : 'failed',
       testSuiteVersion: ADMIN_FUNCTIONAL_PROBE_VERSION,
-      verifiedCapabilities: result.capabilities,
+      verifiedCapabilities: functional.capabilities,
     }
   }
 

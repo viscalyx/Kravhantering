@@ -79,6 +79,16 @@ export function createPinnedHttpsFetch(
         },
       )
       outgoing.on('error', reject)
+      const abort = (): void => {
+        outgoing.destroy(
+          new Error('The pinned AI administration request was aborted.'),
+        )
+      }
+      input.init.signal?.addEventListener('abort', abort, { once: true })
+      outgoing.once('close', () =>
+        input.init.signal?.removeEventListener('abort', abort),
+      )
+      if (input.init.signal?.aborted) abort()
       if (body !== null) outgoing.write(body)
       outgoing.end()
     })

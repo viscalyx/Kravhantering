@@ -98,6 +98,14 @@ atomic activation makes it `active` and supersedes the previous revision. A
 failed test leaves the candidate inactive. An unactivated candidate may be
 deleted.
 
+Activating a new or restored credential increments the affected connection's
+configuration version, moves a non-draft connection to
+`verification_required`, and clears verification from its verified model
+revisions. Its active run-profile revisions remain recorded but are blocked.
+After credential activation, verify the connection again, verify each required
+model revision again, reactivate the connection, and confirm that its profiles
+have no blockers before resuming traffic.
+
 A still-encrypted superseded revision may be restored only after a new
 connection test. After the old provider credential has been revoked, confirm
 revocation to erase its ciphertext, nonce, and tag while retaining lifecycle

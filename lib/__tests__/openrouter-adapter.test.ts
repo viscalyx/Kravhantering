@@ -827,6 +827,43 @@ describe('OpenRouter AI connection adapter', () => {
     })
   })
 
+  it('rejects provider callback, tool, and function-call protocol fields', async () => {
+    for (const prohibited of ['callback', 'function_call', 'tool_calls']) {
+      mockFetch.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: '{"requirements":[]}',
+                  [prohibited]: {},
+                },
+              },
+            ],
+          }),
+          { headers: { 'content-type': 'application/json' } },
+        ),
+      )
+      await expect(
+        collectEvents(adapter().run(request())),
+      ).resolves.toMatchObject([
+        { failure: { category: 'invalid_response' }, type: 'failed' },
+      ])
+    }
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        'data: {"choices":[{"delta":{"tool_calls":[]}}]}\n\ndata: [DONE]\n\n',
+        { headers: { 'content-type': 'text/event-stream' } },
+      ),
+    )
+    await expect(
+      collectEvents(adapter().run(enableStreaming(request()))),
+    ).resolves.toMatchObject([
+      { failure: { category: 'invalid_response' }, type: 'failed' },
+    ])
+  })
+
   it('normalizes streaming transport and HTTP failures', async () => {
     mockFetch
       .mockRejectedValueOnce(new Error('secret stream exception'))

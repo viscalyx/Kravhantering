@@ -1850,11 +1850,13 @@ description may change without minting a model revision.
 
 ### `ai_connection_model_revisions`
 
-Immutable model configuration revisions. Changing the external model ID,
-external version, agent runtime version, or any declared, discovered, or
-verified capability requires a new row. The trigger
-`trg_ai_connection_model_revisions_immutable` enforces this boundary while
-allowing lifecycle transitions.
+Model revisions have immutable technical configuration: changing the external
+model ID, external version, agent runtime version, or declared or discovered
+capabilities requires a new row. Verified capabilities are lifecycle-owned
+output derived from exact verification evidence; verification, invalidation,
+and retirement may set or clear them on that same revision. The trigger
+`trg_ai_connection_model_revisions_immutable` enforces the technical boundary
+while allowing those evidence-fenced lifecycle transitions.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |

@@ -189,6 +189,14 @@ const controlledTestAdapter: AIConnectionAdapter = {
   async *run(
     request: AiConnectionAdapterRunRequest,
   ): AsyncIterable<AiRunEvent> {
+    if (request.context.abortSignal.aborted) {
+      yield {
+        identity: identity(request),
+        reason: 'application_cancelled',
+        type: 'cancelled',
+      }
+      return
+    }
     const configuration = readConfiguration(request.connection.configuration)
     if (!configuration) {
       yield {

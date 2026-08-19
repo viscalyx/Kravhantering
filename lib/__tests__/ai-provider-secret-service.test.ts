@@ -134,15 +134,28 @@ describe('AI provider-secret service', () => {
         _context: unknown,
         _revision: unknown,
         probe: {
+          abortSignal: AbortSignal
           selectedCapabilities: typeof capabilities
           task: { content: readonly { type: string }[] }
         },
       ) {
+        if (probe.abortSignal.aborted) {
+          yield {
+            identity: {
+              aiConnectionId: connectionId,
+              aiConnectionModelRevisionId: revisionId,
+              aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
+            },
+            reason: 'application_cancelled',
+            type: 'cancelled',
+          }
+          return
+        }
         run += 1
         expect(probe.task.content.some(part => part.type === 'image')).toBe(
           probe.selectedCapabilities.imageInput,
         )
-        if (probe.selectedCapabilities.streaming) {
+        if (probe.selectedCapabilities.streaming && run !== 4) {
           yield {
             delta: '{"probe":',
             type: 'output_delta',
@@ -188,7 +201,10 @@ describe('AI provider-secret service', () => {
     ).resolves.toMatchObject({ outcome: 'failed' })
     await expect(
       service.probeHealth(adapter, connection, egress, revision),
-    ).resolves.toBe('unavailable')
+    ).resolves.toMatchObject({
+      health: 'degraded',
+      invalidatesVerification: true,
+    })
     const noCapabilities = Object.fromEntries(
       Object.keys(capabilities).map(capability => [capability, false]),
     ) as typeof capabilities
@@ -200,6 +216,20 @@ describe('AI provider-secret service', () => {
     ).resolves.toMatchObject({
       outcome: 'passed',
       verifiedCapabilities: noCapabilities,
+    })
+    await expect(
+      service.probeHealth(adapter, connection, egress, {
+        ...revision,
+        verifiedCapabilities: {
+          ...noCapabilities,
+          streaming: true,
+          tokenUsage: true,
+        },
+      }),
+    ).resolves.toMatchObject({
+      failureCategory: 'capability_mismatch',
+      health: 'degraded',
+      invalidatesVerification: true,
     })
   })
 
