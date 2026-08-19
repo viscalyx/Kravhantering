@@ -2753,6 +2753,12 @@
     "regenerateButton": "Skapa nya kravkandidater",
     "generationDisabledByAdmin": "AI-kravgenerering är avstängd i Administrationscenter.",
     "generationDisabledByEnvironment": "AI-kravgenerering är avstängd av driftkonfigurationen.",
+    "runProfile": {
+      "profileMissing": "AI-assisterat författande är inte konfigurerat för den här åtgärden. Kontakta en administratör.",
+      "profileSuspended": "AI-assisterat författande för den här åtgärden har pausats av en administratör.",
+      "profileBlocked": "Den konfigurerade AI-anslutningen är inte tillgänglig för den här åtgärden just nu. Kontakta en administratör.",
+      "runTypeUnsupported": "Den här åtgärden för AI-assisterat författande stöds inte."
+    },
     "cancelButton": "Avbryt",
     "thinkingPhase": "Analyserar behov…",
     "generatingPhase": "Skapar kravkandidater…",

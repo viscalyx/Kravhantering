@@ -2753,6 +2753,12 @@
     "regenerateButton": "Create new requirement candidates",
     "generationDisabledByAdmin": "AI requirement generation is disabled in Admin Center.",
     "generationDisabledByEnvironment": "AI requirement generation is disabled by deployment configuration.",
+    "runProfile": {
+      "profileMissing": "AI-assisted authoring is not configured for this action. Contact an administrator.",
+      "profileSuspended": "AI-assisted authoring for this action has been paused by an administrator.",
+      "profileBlocked": "The configured AI connection is currently unavailable for this action. Contact an administrator.",
+      "runTypeUnsupported": "This AI-assisted authoring action is not supported."
+    },
     "cancelButton": "Cancel",
     "thinkingPhase": "Analyzing need…",
     "generatingPhase": "Creating requirement candidates…",

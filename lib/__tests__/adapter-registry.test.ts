@@ -34,4 +34,13 @@ describe('AI connection adapter registry', () => {
       'Unknown AI connection adapter type: missing',
     )
   })
+
+  it('resolves only the exact registered adapter version', () => {
+    const registry = createAiConnectionAdapterRegistry([registration('first')])
+
+    expect(registry.resolve('first', 'test-version')).toBeDefined()
+    expect(() => registry.resolve('first', 'other-version')).toThrow(
+      'Unknown AI connection adapter type: first',
+    )
+  })
 })

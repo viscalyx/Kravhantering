@@ -4,6 +4,7 @@
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
     "acceptenv",
+    "airun",
     "anonymization",
     "anchore",
     "rubygems",
@@ -15,6 +16,7 @@
     "transactionally",
     "Trixie",
     "unexcepted",
+    "validatable",
     "applikationsnod",
     "applikationstak",
     "applikationsägt",

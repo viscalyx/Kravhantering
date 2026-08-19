@@ -15,6 +15,23 @@ verified AI connection model revision before the adapter runs. Application
 routes and business services do not select providers, models, transports, or
 provider configuration.
 
+The runtime resolver reads the active revision for exactly one of the three
+fixed profile slots in a single SQL Server query. It rejects missing,
+suspended, or derived-blocked profiles before resolving transient adapter
+configuration. The exact connection, model revision, profile revision, adapter
+version, and capability selection are frozen for the run. `disabled`
+capabilities are never selected, `allowed` capabilities are selected only when
+the model revision verifies them, and missing `required` capabilities block the
+profile. Verified validatable JSON remains mandatory independently of optional
+strict JSON Schema steering.
+
+Adapter-ready connection and model configuration is supplied through the
+resolver's opaque configuration callback. Keep provider-secret access inside
+that callback boundary; neither the profile source nor the integration layer
+interprets provider-specific authentication fields. The integration layer
+invokes only the exact registered adapter type and version and does not retry
+through or fall back to another adapter.
+
 OpenRouter remains the first adapter, alongside a fully registrable controlled
 test adapter. Both pass the same run-profile, safety-gate, route, and terminal
 outcome contracts. The trust boundary, AI connection lifecycle, encrypted
