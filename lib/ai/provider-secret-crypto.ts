@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import {
   type AiProviderSecretKeyring,
   AiProviderSecretKeyringError,
-} from '@/lib/ai/provider-secret-keyring'
+} from './provider-secret-keyring.ts'
 
 export const AI_PROVIDER_SECRET_CIPHER_FORMAT_VERSION = 1 as const
 export const AI_PROVIDER_SECRET_NONCE_BYTES = 12 as const

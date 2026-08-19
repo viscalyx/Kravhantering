@@ -35,6 +35,7 @@ const TRANSACTIONAL_TABLES = [
   'ai_connection_models',
   'ai_connection_verification_evidence',
   'ai_connection_attestations',
+  'ai_provider_secret_versions',
   'ai_connections',
   'ai_forensic_evidence_events',
   'ai_forensic_capture_windows',

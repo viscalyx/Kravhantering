@@ -13,6 +13,8 @@
     "revisioned",
     "smallint",
     "skopeo",
+    "stoplist",
+    "stoplists",
     "subprocessors",
     "Syft",
     "transactionally",

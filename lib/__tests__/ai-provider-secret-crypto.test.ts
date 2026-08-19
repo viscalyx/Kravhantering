@@ -1,6 +1,10 @@
 import { randomBytes, randomUUID } from 'node:crypto'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   AI_PROVIDER_SECRET_CIPHER_FORMAT_VERSION,
+  AiProviderSecretCryptoError,
   buildAiProviderSecretAad,
   decryptAiProviderSecret,
   encryptAiProviderSecret,
@@ -124,6 +128,68 @@ describe('AI provider-secret cryptographic envelope', () => {
       decryptAiProviderSecret(withoutRequiredVersion, binding, encrypted),
     ).toThrow('root key version root-blue is unavailable')
   })
+
+  it('rejects invalid bindings, plaintext bounds, and envelope shapes', () => {
+    const ring = keyring()
+    const binding = {
+      connectionId: randomUUID(),
+      secretVersionId: randomUUID(),
+    }
+    expect(() =>
+      encryptAiProviderSecret(
+        ring,
+        { ...binding, connectionId: 'not-a-uuid' },
+        'secret',
+      ),
+    ).toThrow('connection ID must be a UUID')
+    expect(() => encryptAiProviderSecret(ring, binding, '')).toThrow(
+      'must contain 1-65536 UTF-8 bytes',
+    )
+    expect(() =>
+      encryptAiProviderSecret(ring, binding, 'x'.repeat(65_537)),
+    ).toThrow('must contain 1-65536 UTF-8 bytes')
+
+    const encrypted = encryptAiProviderSecret(ring, binding, 'secret')
+    for (const invalid of [
+      { ...encrypted, formatVersion: 2 as 1 },
+      { ...encrypted, nonce: Buffer.alloc(11) },
+      { ...encrypted, authenticationTag: Buffer.alloc(15) },
+      { ...encrypted, ciphertext: Buffer.alloc(0) },
+      { ...encrypted, rootKeyVersion: '' },
+    ]) {
+      expect(() => decryptAiProviderSecret(ring, binding, invalid)).toThrow(
+        AiProviderSecretCryptoError,
+      )
+    }
+  })
+
+  it('preserves non-keyring lookup failures and typed binding failures', () => {
+    const binding = {
+      connectionId: randomUUID(),
+      secretVersionId: randomUUID(),
+    }
+    const ring = keyring()
+    const encrypted = encryptAiProviderSecret(ring, binding, 'secret')
+    expect(() =>
+      decryptAiProviderSecret(
+        {
+          ...ring,
+          keyForVersion: () => {
+            throw new TypeError('key provider unavailable')
+          },
+        },
+        binding,
+        encrypted,
+      ),
+    ).toThrow('key provider unavailable')
+    expect(() =>
+      decryptAiProviderSecret(
+        ring,
+        { ...binding, secretVersionId: 'not-a-uuid' },
+        encrypted,
+      ),
+    ).toThrow('secret-version ID must be a UUID')
+  })
 })
 
 describe('AI provider-secret root keyring', () => {
@@ -186,5 +252,100 @@ describe('AI provider-secret root keyring', () => {
         },
       ),
     ).toThrow('AI provider-secret keyring file is unavailable')
+  })
+
+  it.each([
+    ['invalid JSON', '{'],
+    ['non-object document', 'null'],
+    [
+      'invalid active version',
+      JSON.stringify({
+        activeWriteVersion: '../root',
+        formatVersion: 1,
+        keys: {},
+      }),
+    ],
+    [
+      'non-object keys',
+      JSON.stringify({
+        activeWriteVersion: 'root-1',
+        formatVersion: 1,
+        keys: [],
+      }),
+    ],
+    [
+      'empty keys',
+      JSON.stringify({
+        activeWriteVersion: 'root-1',
+        formatVersion: 1,
+        keys: {},
+      }),
+    ],
+    [
+      'invalid key version',
+      JSON.stringify({
+        activeWriteVersion: 'root-1',
+        formatVersion: 1,
+        keys: { '../root': randomBytes(32).toString('base64') },
+      }),
+    ],
+    [
+      'non-string key',
+      JSON.stringify({
+        activeWriteVersion: 'root-1',
+        formatVersion: 1,
+        keys: { 'root-1': 32 },
+      }),
+    ],
+    [
+      'invalid base64 key',
+      JSON.stringify({
+        activeWriteVersion: 'root-1',
+        formatVersion: 1,
+        keys: { 'root-1': '***' },
+      }),
+    ],
+  ])('rejects a keyring with %s', (_case, serialized) => {
+    expect(() => parseAiProviderSecretKeyring(serialized)).toThrow(
+      AiProviderSecretKeyringError,
+    )
+  })
+
+  it('returns sorted versions and copied keys while rejecting an unknown version', () => {
+    const ring = keyring('root-2', {
+      'root-2': randomBytes(32).toString('base64'),
+      'root-1': randomBytes(32).toString('base64'),
+    })
+    const first = ring.keyForVersion('root-1')
+    first.fill(0)
+
+    expect(ring.versions()).toEqual(['root-1', 'root-2'])
+    expect(ring.keyForVersion('root-1')).not.toEqual(first)
+    expect(() => ring.keyForVersion('missing')).toThrow(
+      'root key version missing is unavailable',
+    )
+  })
+
+  it('requires configuration and loads the configured file with the default reader', () => {
+    expect(() => loadAiProviderSecretKeyring({})).toThrow(
+      'AI_PROVIDER_SECRET_KEYRING_FILE is not configured',
+    )
+    const directory = mkdtempSync(join(tmpdir(), 'keyring-load-'))
+    const path = join(directory, 'keyring.json')
+    writeFileSync(
+      path,
+      JSON.stringify({
+        activeWriteVersion: 'root-file',
+        formatVersion: 1,
+        keys: { 'root-file': randomBytes(32).toString('base64') },
+      }),
+    )
+    try {
+      expect(
+        loadAiProviderSecretKeyring({ AI_PROVIDER_SECRET_KEYRING_FILE: path }),
+      ).toMatchObject({ activeWriteVersion: 'root-file' })
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
   })
 })

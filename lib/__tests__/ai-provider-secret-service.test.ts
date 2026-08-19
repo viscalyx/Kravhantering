@@ -9,7 +9,9 @@ import {
   confirmAiProviderSecretRevocation,
   deleteAiProviderSecretCandidate,
   getAiProviderSecretAvailability,
+  listReferencedAiProviderSecretRootKeyVersions,
   reencryptAiProviderSecrets,
+  verifyAiProviderSecretRestoreSet,
   withActiveAiProviderSecret,
   writeAiProviderSecretCandidate,
 } from '@/lib/ai/provider-secret-service'
@@ -119,7 +121,7 @@ describe('AI provider-secret service', () => {
     expect(parameters.some(value => Buffer.isBuffer(value))).toBe(true)
   })
 
-  it('confines active plaintext to the callback and returns only its result', async () => {
+  it('confines active plaintext to a callback that cannot return a value', async () => {
     const connectionId = randomUUID()
     const secretVersionId = randomUUID()
     const ring = keyring('root-1', { 'root-1': randomBytes(32) })
@@ -130,7 +132,10 @@ describe('AI provider-secret service', () => {
       ring,
     )
     const { db } = database(vi.fn(async () => [row]))
-    const callback = vi.fn(async (plaintext: string) => plaintext.length)
+    let observedLength = 0
+    const callback = vi.fn(async (plaintext: string) => {
+      observedLength = plaintext.length
+    })
 
     const result = await withActiveAiProviderSecret(
       db,
@@ -140,7 +145,12 @@ describe('AI provider-secret service', () => {
     )
 
     expect(callback).toHaveBeenCalledWith('adapter-only-secret')
-    expect(result).toBe('adapter-only-secret'.length)
+    expect(observedLength).toBe('adapter-only-secret'.length)
+    expect(result).toBeUndefined()
+
+    expectTypeOf(async (plaintext: string) => plaintext).not.toMatchTypeOf<
+      Parameters<typeof withActiveAiProviderSecret>[3]
+    >()
   })
 
   it('tests a candidate before atomically superseding and activating revisions', async () => {
@@ -385,5 +395,241 @@ describe('AI provider-secret service', () => {
         rotated,
       ),
     ).toBe('rotate-me')
+  })
+
+  it('verifies a restored SQL backup with its keyring before safely removing an old root', async () => {
+    const firstConnectionId = randomUUID()
+    const secondConnectionId = randomUUID()
+    const firstSecretVersionId = randomUUID()
+    const secondSecretVersionId = randomUUID()
+    const root1 = randomBytes(32)
+    const root2 = randomBytes(32)
+    const root1Ring = keyring('root-1', { 'root-1': root1, 'root-2': root2 })
+    const root2Ring = keyring('root-2', { 'root-1': root1, 'root-2': root2 })
+    const restoredRows = [
+      persistedRow(
+        firstConnectionId,
+        firstSecretVersionId,
+        'backup-secret-one',
+        root1Ring,
+      ),
+      persistedRow(
+        secondConnectionId,
+        secondSecretVersionId,
+        'backup-secret-two',
+        root2Ring,
+      ),
+    ]
+    const query = vi.fn(async () => restoredRows)
+    const { db } = database(query)
+
+    const restored = await verifyAiProviderSecretRestoreSet(db, root2Ring)
+
+    expect(restored).toEqual({
+      checkedSecretVersionCount: 2,
+      compatible: true,
+      omittedRootKeyVersion: null,
+      referencedRootKeyVersions: ['root-1', 'root-2'],
+      results: [
+        {
+          available: true,
+          connectionId: firstConnectionId,
+          rootKeyVersion: 'root-1',
+          secretVersionId: firstSecretVersionId,
+        },
+        {
+          available: true,
+          connectionId: secondConnectionId,
+          rootKeyVersion: 'root-2',
+          secretVersionId: secondSecretVersionId,
+        },
+      ],
+      safeToRemoveOmittedRootKeyVersion: null,
+    })
+    expect(JSON.stringify(restored)).not.toMatch(
+      /backup-secret-one|backup-secret-two/u,
+    )
+
+    await expect(
+      verifyAiProviderSecretRestoreSet(db, root2Ring, {
+        omitRootKeyVersion: 'root-1',
+      }),
+    ).resolves.toMatchObject({
+      compatible: false,
+      safeToRemoveOmittedRootKeyVersion: false,
+    })
+
+    const rotatedRows = [
+      persistedRow(
+        firstConnectionId,
+        firstSecretVersionId,
+        'backup-secret-one',
+        root2Ring,
+      ),
+      persistedRow(
+        secondConnectionId,
+        secondSecretVersionId,
+        'backup-secret-two',
+        root2Ring,
+      ),
+    ]
+    query.mockResolvedValue(rotatedRows)
+    const prunedRing = keyring('root-2', { 'root-2': root2 })
+
+    await expect(
+      verifyAiProviderSecretRestoreSet(db, prunedRing, {
+        omitRootKeyVersion: 'root-1',
+      }),
+    ).resolves.toMatchObject({
+      checkedSecretVersionCount: 2,
+      compatible: true,
+      referencedRootKeyVersions: ['root-2'],
+      safeToRemoveOmittedRootKeyVersion: true,
+    })
+  })
+
+  it('reports missing, deleted, and unauthenticated active material safely', async () => {
+    const connectionId = randomUUID()
+    const secretVersionId = randomUUID()
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const active = persistedRow(
+      connectionId,
+      secretVersionId,
+      'availability-secret',
+      ring,
+    )
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          ...active,
+          authenticationTag: null,
+          ciphertext: null,
+          nonce: null,
+        },
+      ])
+      .mockResolvedValueOnce([
+        { ...active, ciphertext: Buffer.from(active.ciphertext).fill(0) },
+      ])
+    const { db } = database(query)
+
+    await expect(
+      getAiProviderSecretAvailability(db, ring, connectionId),
+    ).resolves.toEqual({ available: false, reason: 'secret_missing' })
+    await expect(
+      withActiveAiProviderSecret(db, ring, connectionId, async () => undefined),
+    ).rejects.toMatchObject({ reason: 'secret_missing' })
+    await expect(
+      getAiProviderSecretAvailability(db, ring, connectionId),
+    ).resolves.toMatchObject({
+      available: false,
+      reason: 'encrypted_material_deleted',
+    })
+    await expect(
+      getAiProviderSecretAvailability(db, ring, connectionId),
+    ).resolves.toMatchObject({
+      available: false,
+      reason: 'authentication_failed',
+    })
+  })
+
+  it('fails closed when lifecycle mutations no longer match a secret version', async () => {
+    const connectionId = randomUUID()
+    const secretVersionId = randomUUID()
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const candidate = persistedRow(
+      connectionId,
+      secretVersionId,
+      'candidate',
+      ring,
+      'candidate',
+    )
+    const missingCandidateDb = database(vi.fn(async () => [])).db
+    await expect(
+      activateAiProviderSecretVersion(missingCandidateDb, ring, {
+        connectionId,
+        secretVersionId,
+        verify: async () => undefined,
+      }),
+    ).rejects.toMatchObject({ reason: 'secret_missing' })
+
+    const noActivation = vi
+      .fn()
+      .mockResolvedValueOnce([candidate])
+      .mockResolvedValueOnce([])
+    await expect(
+      activateAiProviderSecretVersion(database(noActivation).db, ring, {
+        connectionId,
+        secretVersionId,
+        verify: async () => undefined,
+      }),
+    ).rejects.toThrow('was not activated')
+    await expect(
+      confirmAiProviderSecretRevocation(database(vi.fn(async () => [])).db, {
+        connectionId,
+        secretVersionId,
+      }),
+    ).rejects.toThrow('Only a superseded')
+    await expect(
+      deleteAiProviderSecretCandidate(database(vi.fn(async () => [])).db, {
+        connectionId,
+        secretVersionId,
+      }),
+    ).resolves.toBe(false)
+  })
+
+  it('handles empty writes, no-op rotation, and referenced-version inventory', async () => {
+    const connectionId = randomUUID()
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    await expect(
+      writeAiProviderSecretCandidate(database(vi.fn(async () => [])).db, ring, {
+        connectionId,
+        plaintext: 'candidate',
+      }),
+    ).rejects.toThrow('candidate was not created')
+    await expect(
+      reencryptAiProviderSecrets(database(vi.fn()).db, ring, {
+        fromRootKeyVersion: 'root-1',
+      }),
+    ).resolves.toEqual({
+      fromRootKeyVersion: 'root-1',
+      reencryptedCount: 0,
+      toRootKeyVersion: 'root-1',
+    })
+    await expect(
+      listReferencedAiProviderSecretRootKeyVersions(
+        database(
+          vi.fn(async () => [
+            { rootKeyVersion: 'root-1' },
+            { rootKeyVersion: 'root-2' },
+          ]),
+        ).db,
+      ),
+    ).resolves.toEqual(['root-1', 'root-2'])
+  })
+
+  it('returns safe empty restore evidence and never removes the active write root', async () => {
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const emptyDb = database(vi.fn(async () => [])).db
+    await expect(
+      verifyAiProviderSecretRestoreSet(emptyDb, ring),
+    ).resolves.toEqual({
+      checkedSecretVersionCount: 0,
+      compatible: true,
+      omittedRootKeyVersion: null,
+      referencedRootKeyVersions: [],
+      results: [],
+      safeToRemoveOmittedRootKeyVersion: null,
+    })
+    await expect(
+      verifyAiProviderSecretRestoreSet(emptyDb, ring, {
+        omitRootKeyVersion: 'root-1',
+      }),
+    ).resolves.toMatchObject({
+      compatible: true,
+      safeToRemoveOmittedRootKeyVersion: false,
+    })
   })
 })

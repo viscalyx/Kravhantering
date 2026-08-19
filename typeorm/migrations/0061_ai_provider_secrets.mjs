@@ -38,7 +38,7 @@ const UP_STATEMENTS = [
     AS
     BEGIN
       SET NOCOUNT ON;
-      IF UPDATE([ai_connection_id]) OR UPDATE([revision_number]) OR UPDATE([created_at])
+      IF UPDATE([id]) OR UPDATE([ai_connection_id]) OR UPDATE([revision_number]) OR UPDATE([created_at])
         THROW 51102, 'AI provider-secret immutable binding metadata cannot be changed.', 1;
     END;`,
   `CREATE TRIGGER [trg_ai_provider_secret_versions_delete_candidates_only]
@@ -52,7 +52,13 @@ const UP_STATEMENTS = [
     END;`,
   `IF DATABASE_PRINCIPAL_ID(N'kravhantering_runtime') IS NULL
     THROW 51103, 'Runtime permission role is missing.', 1;
-  GRANT SELECT, INSERT, UPDATE, DELETE ON OBJECT::[dbo].[ai_provider_secret_versions] TO [kravhantering_runtime];`,
+  GRANT SELECT, INSERT, DELETE ON OBJECT::[dbo].[ai_provider_secret_versions] TO [kravhantering_runtime];
+  GRANT UPDATE (
+    [status], [ciphertext], [nonce], [authentication_tag],
+    [cipher_format_version], [root_key_version], [verified_at],
+    [activated_at], [deactivated_at], [provider_revoked_at],
+    [ciphertext_deleted_at], [revision_token]
+  ) ON OBJECT::[dbo].[ai_provider_secret_versions] TO [kravhantering_runtime];`,
 ]
 
 const DOWN_STATEMENTS = [

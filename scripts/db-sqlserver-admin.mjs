@@ -200,6 +200,7 @@ const CORE_COMMANDS = Object.freeze([
   'migrate',
   'permission-status',
   'permission-reconcile',
+  'provider-secret-restore-verify',
   'seed:required',
 ])
 const DEMO_DATA_COMMANDS = Object.freeze(['seed:demo', 'demo:clear', 'setup'])
@@ -1425,6 +1426,30 @@ async function withRuntimePermissionDataSource(
   }
 }
 
+export async function verifyAiProviderSecretRestoreForConnection(
+  connectionString,
+  options = {},
+) {
+  const env = options.env ?? process.env
+  const keyringModule =
+    options.providerSecretKeyringModule ??
+    (await import('../lib/ai/provider-secret-keyring.ts'))
+  const serviceModule =
+    options.providerSecretServiceModule ??
+    (await import('../lib/ai/provider-secret-service.ts'))
+  const keyring = keyringModule.loadAiProviderSecretKeyring(env)
+  return withRuntimePermissionDataSource(
+    connectionString,
+    options,
+    dataSource =>
+      serviceModule.verifyAiProviderSecretRestoreSet(dataSource, keyring, {
+        ...(options.omitRootKeyVersion
+          ? { omitRootKeyVersion: options.omitRootKeyVersion }
+          : {}),
+      }),
+  )
+}
+
 export async function getSqlServerRuntimePermissionStatusForConnection(
   connectionString,
   options = {},
@@ -2064,6 +2089,37 @@ export async function main(args, dependencies = {}) {
         error instanceof Error
           ? error.message
           : `SQL Server ${command} failed.`,
+      )
+      return 1
+    }
+  }
+
+  if (command === 'provider-secret-restore-verify') {
+    const omitFlagIndex = args.indexOf('--omit-root-key-version')
+    const omitRootKeyVersion =
+      omitFlagIndex === -1 ? undefined : args[omitFlagIndex + 1]?.trim()
+    if (omitFlagIndex !== -1 && !omitRootKeyVersion) {
+      consoleObj.error('--omit-root-key-version requires a value.')
+      return 1
+    }
+    try {
+      const result = await (
+        dependencies.verifyAiProviderSecretRestoreForConnectionImpl ??
+        verifyAiProviderSecretRestoreForConnection
+      )(connectionString, {
+        ...dependencies,
+        env,
+        ...(omitRootKeyVersion ? { omitRootKeyVersion } : {}),
+      })
+      consoleObj.log(JSON.stringify(result, null, 2))
+      return result.compatible &&
+        result.checkedSecretVersionCount > 0 &&
+        result.safeToRemoveOmittedRootKeyVersion !== false
+        ? 0
+        : 1
+    } catch {
+      consoleObj.error(
+        'AI provider-secret restore verification failed. Check the restored database and external keyring.',
       )
       return 1
     }

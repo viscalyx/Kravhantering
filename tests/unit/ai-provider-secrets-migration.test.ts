@@ -27,6 +27,9 @@ describe('AI provider-secret migration', () => {
     expect(sql).toContain(
       'CREATE TRIGGER [trg_ai_provider_secret_versions_delete_candidates_only]',
     )
+    expect(sql).toContain(
+      'IF UPDATE([id]) OR UPDATE([ai_connection_id]) OR UPDATE([revision_number]) OR UPDATE([created_at])',
+    )
     expect(sql).not.toMatch(/\[(?:plain_?text|secret|value)\]\s/)
   })
 
@@ -44,6 +47,12 @@ describe('AI provider-secret migration', () => {
       'CONSTRAINT [chk_ai_provider_secret_versions_revocation]',
     )
     expect(sql).toContain(
+      'GRANT SELECT, INSERT, DELETE ON OBJECT::[dbo].[ai_provider_secret_versions]',
+    )
+    expect(sql).toContain(
+      'ON OBJECT::[dbo].[ai_provider_secret_versions] TO [kravhantering_runtime]',
+    )
+    expect(sql).not.toContain(
       'GRANT SELECT, INSERT, UPDATE, DELETE ON OBJECT::[dbo].[ai_provider_secret_versions]',
     )
   })

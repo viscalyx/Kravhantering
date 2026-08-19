@@ -103,6 +103,9 @@ WORKDIR /workspace
 COPY --from=db-job-dependencies --chown=node:node /workspace/node_modules ./node_modules
 COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-admin.mjs
+COPY --chown=node:node lib/ai/provider-secret-crypto.ts ./lib/ai/provider-secret-crypto.ts
+COPY --chown=node:node lib/ai/provider-secret-keyring.ts ./lib/ai/provider-secret-keyring.ts
+COPY --chown=node:node lib/ai/provider-secret-service.ts ./lib/ai/provider-secret-service.ts
 COPY --from=transient-cleanup-build --chown=node:node /workspace/.build/transient-cleanup ./transient-cleanup
 COPY --chown=node:node typeorm/migrations ./typeorm/migrations
 COPY --chown=node:node typeorm/runtime-permission-manifest.mjs ./typeorm/runtime-permission-manifest.mjs
@@ -128,6 +131,9 @@ WORKDIR /workspace
 COPY --from=db-job-dependencies --chown=node:node /workspace/node_modules ./node_modules
 COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-admin.mjs
+COPY --chown=node:node lib/ai/provider-secret-crypto.ts ./lib/ai/provider-secret-crypto.ts
+COPY --chown=node:node lib/ai/provider-secret-keyring.ts ./lib/ai/provider-secret-keyring.ts
+COPY --chown=node:node lib/ai/provider-secret-service.ts ./lib/ai/provider-secret-service.ts
 COPY --chown=node:node typeorm/migrations ./typeorm/migrations
 COPY --chown=node:node typeorm/runtime-permission-manifest.mjs ./typeorm/runtime-permission-manifest.mjs
 COPY --chown=node:node typeorm/seed-required.mjs ./typeorm/seed-required.mjs

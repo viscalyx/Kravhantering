@@ -19,9 +19,17 @@ export function defaultAiProviderSecretKeyringPath(
   )
 }
 
-export async function provisionAiProviderSecretKeyring({ path }) {
+export async function provisionAiProviderSecretKeyring(
+  { path },
+  {
+    linkFile = link,
+    makeDirectory = mkdir,
+    openFile = open,
+    removeFile = unlink,
+  } = {},
+) {
   const resolvedPath = resolve(path)
-  await mkdir(dirname(resolvedPath), { mode: 0o700, recursive: true })
+  await makeDirectory(dirname(resolvedPath), { mode: 0o700, recursive: true })
   const temporaryPath = `${resolvedPath}.${process.pid}.${randomUUID()}.tmp`
   const document = `${JSON.stringify(
     {
@@ -35,7 +43,7 @@ export async function provisionAiProviderSecretKeyring({ path }) {
     2,
   )}\n`
 
-  const temporary = await open(temporaryPath, 'wx', 0o600)
+  const temporary = await openFile(temporaryPath, 'wx', 0o600)
   try {
     await temporary.writeFile(document, { encoding: 'utf8' })
     await temporary.sync()
@@ -44,7 +52,7 @@ export async function provisionAiProviderSecretKeyring({ path }) {
   }
 
   try {
-    await link(temporaryPath, resolvedPath)
+    await linkFile(temporaryPath, resolvedPath)
     return { created: true, path: resolvedPath }
   } catch (error) {
     if (error && typeof error === 'object' && error.code === 'EEXIST') {
@@ -52,7 +60,7 @@ export async function provisionAiProviderSecretKeyring({ path }) {
     }
     throw error
   } finally {
-    await unlink(temporaryPath).catch(() => undefined)
+    await removeFile(temporaryPath).catch(() => undefined)
   }
 }
 
@@ -69,12 +77,13 @@ export async function runAiProviderSecretKeyringProvisioning({
   cwd = process.cwd(),
   env = process.env,
   log = console.log,
+  provision = provisionAiProviderSecretKeyring,
 } = {}) {
   const path = resolve(
     cwd,
     readPathArgument(argv) ?? defaultAiProviderSecretKeyringPath(env, cwd),
   )
-  const result = await provisionAiProviderSecretKeyring({ path })
+  const result = await provision({ path })
   log(
     result.created
       ? `Created local AI provider-secret keyring at ${result.path}`
@@ -83,6 +92,7 @@ export async function runAiProviderSecretKeyringProvisioning({
   return result
 }
 
+/* v8 ignore start -- direct CLI orchestration is exercised through the exported runner */
 const invokedPath = process.argv[1]
   ? pathToFileURL(resolve(process.argv[1])).href
   : ''
@@ -96,3 +106,4 @@ if (import.meta.url === invokedPath) {
     process.exitCode = 1
   })
 }
+/* v8 ignore stop */

@@ -41,6 +41,24 @@ describe('runtime permission manifest', () => {
       object: 'dbo.ai_forensic_evidence_events',
       permissions: ['SELECT', 'INSERT', 'DELETE'],
     })
+    expect(permissionFor('dbo.ai_provider_secret_versions')).toEqual({
+      object: 'dbo.ai_provider_secret_versions',
+      permissions: ['SELECT', 'INSERT', 'DELETE'],
+      updateColumns: [
+        'status',
+        'ciphertext',
+        'nonce',
+        'authentication_tag',
+        'cipher_format_version',
+        'root_key_version',
+        'verified_at',
+        'activated_at',
+        'deactivated_at',
+        'provider_revoked_at',
+        'ciphertext_deleted_at',
+        'revision_token',
+      ],
+    })
     expect(
       permissionFor('dbo.requirement_import_validation_rate_buckets'),
     ).toEqual({

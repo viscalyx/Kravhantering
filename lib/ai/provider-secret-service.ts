@@ -1,12 +1,15 @@
 import { randomUUID } from 'node:crypto'
+import type { SqlServerDatabase } from '@/lib/db'
 import {
   AiProviderSecretCryptoError,
   type AiProviderSecretEnvelope,
   decryptAiProviderSecret,
   encryptAiProviderSecret,
-} from '@/lib/ai/provider-secret-crypto'
-import type { AiProviderSecretKeyring } from '@/lib/ai/provider-secret-keyring'
-import type { SqlServerDatabase } from '@/lib/db'
+} from './provider-secret-crypto.ts'
+import {
+  type AiProviderSecretKeyring,
+  AiProviderSecretKeyringError,
+} from './provider-secret-keyring.ts'
 
 interface QueryExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
@@ -67,6 +70,23 @@ export type AiProviderSecretAvailability =
       rootKeyVersion?: string
       secretVersionId?: string
     }
+
+export interface AiProviderSecretRestoreVerificationResult {
+  available: boolean
+  connectionId: string
+  reason?: AiProviderSecretUnavailableReason
+  rootKeyVersion: string
+  secretVersionId: string
+}
+
+export interface AiProviderSecretRestoreVerificationReport {
+  checkedSecretVersionCount: number
+  compatible: boolean
+  omittedRootKeyVersion: string | null
+  referencedRootKeyVersions: readonly string[]
+  results: readonly AiProviderSecretRestoreVerificationResult[]
+  safeToRemoveOmittedRootKeyVersion: boolean | null
+}
 
 export class AiProviderSecretUnavailableError extends Error {
   readonly connectionId: string
@@ -314,14 +334,15 @@ export async function getAiProviderSecretAvailability(
 
 /**
  * Internal adapter-call boundary. Callers must not return, log or persist the
- * callback argument; only the callback result may escape this function.
+ * callback argument. The callback is non-value-bearing so decrypted material
+ * cannot escape through this function's return type.
  */
-export async function withActiveAiProviderSecret<T>(
+export async function withActiveAiProviderSecret(
   db: SqlServerDatabase,
   keyring: AiProviderSecretKeyring,
   connectionId: string,
-  callback: (plaintext: string) => Promise<T>,
-): Promise<T> {
+  callback: (plaintext: string) => Promise<void>,
+): Promise<void> {
   const row = await selectActiveSecret(db, connectionId)
   if (!row) {
     throw new AiProviderSecretUnavailableError(connectionId, {
@@ -329,7 +350,7 @@ export async function withActiveAiProviderSecret<T>(
       reason: 'secret_missing',
     })
   }
-  return callback(decryptRow(keyring, row))
+  await callback(decryptRow(keyring, row))
 }
 
 export async function activateAiProviderSecretVersion(
@@ -516,4 +537,94 @@ export async function listReferencedAiProviderSecretRootKeyVersions(
      ORDER BY [root_key_version]`,
   )
   return rows.map(row => row.rootKeyVersion)
+}
+
+function withoutRootKeyVersion(
+  keyring: AiProviderSecretKeyring,
+  omittedRootKeyVersion: string,
+): AiProviderSecretKeyring {
+  return {
+    activeWriteVersion: keyring.activeWriteVersion,
+    formatVersion: keyring.formatVersion,
+    keyForVersion(version: string): Buffer {
+      if (version === omittedRootKeyVersion) {
+        throw new AiProviderSecretKeyringError(
+          'root_key_version_missing',
+          'The requested AI provider-secret root-key version is unavailable.',
+        )
+      }
+      return keyring.keyForVersion(version)
+    },
+    versions(): readonly string[] {
+      return keyring
+        .versions()
+        .filter(version => version !== omittedRootKeyVersion)
+    },
+  }
+}
+
+/**
+ * Restore verification boundary. It authenticates every retained encrypted
+ * row and returns opaque identifiers plus pass/fail evidence only.
+ */
+export async function verifyAiProviderSecretRestoreSet(
+  db: SqlServerDatabase,
+  keyring: AiProviderSecretKeyring,
+  options: { omitRootKeyVersion?: string } = {},
+): Promise<AiProviderSecretRestoreVerificationReport> {
+  const rows = await db.query<AiProviderSecretRow[]>(
+    `SELECT [id], [ai_connection_id] AS [connectionId],
+       [revision_number] AS [revisionNumber], [status],
+       [ciphertext], [nonce], [authentication_tag] AS [authenticationTag],
+       [cipher_format_version] AS [formatVersion],
+       [root_key_version] AS [rootKeyVersion],
+       [created_at] AS [createdAt], [verified_at] AS [verifiedAt],
+       [activated_at] AS [activatedAt],
+       [revision_token] AS [revisionToken]
+     FROM [ai_provider_secret_versions]
+     WHERE [ciphertext] IS NOT NULL
+     ORDER BY [root_key_version], [ai_connection_id], [revision_number]`,
+  )
+  const verificationKeyring = options.omitRootKeyVersion
+    ? withoutRootKeyVersion(keyring, options.omitRootKeyVersion)
+    : keyring
+  const results = rows.map(row => {
+    try {
+      decryptRow(verificationKeyring, row)
+      return {
+        available: true,
+        connectionId: row.connectionId,
+        rootKeyVersion: row.rootKeyVersion,
+        secretVersionId: row.id,
+      }
+    } catch (error) {
+      const reason =
+        error instanceof AiProviderSecretUnavailableError
+          ? error.reason
+          : 'authentication_failed'
+      return {
+        available: false,
+        connectionId: row.connectionId,
+        reason,
+        rootKeyVersion: row.rootKeyVersion,
+        secretVersionId: row.id,
+      }
+    }
+  }) satisfies AiProviderSecretRestoreVerificationResult[]
+  const compatible = results.every(result => result.available)
+  const referencedRootKeyVersions = [
+    ...new Set(rows.map(row => row.rootKeyVersion)),
+  ]
+  const omittedRootKeyVersion = options.omitRootKeyVersion ?? null
+  return {
+    checkedSecretVersionCount: rows.length,
+    compatible,
+    omittedRootKeyVersion,
+    referencedRootKeyVersions,
+    results,
+    safeToRemoveOmittedRootKeyVersion:
+      omittedRootKeyVersion === null
+        ? null
+        : compatible && keyring.activeWriteVersion !== omittedRootKeyVersion,
+  }
 }

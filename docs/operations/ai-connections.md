@@ -191,6 +191,35 @@ approved secret mechanism, and test each referenced version through the
 internal provider-secret availability or connection-test path. Do not query or
 export decrypted values. Record only opaque revision IDs and pass/fail results.
 
+Run the restore verifier against the isolated restored database, never the live
+production database:
+
+```bash
+export DATABASE_URL=\
+'mssql://runtime-user:password@restored-sql:1433/restored-db?encrypt=true'
+export AI_PROVIDER_SECRET_KEYRING_FILE=\
+/run/secrets/kravhantering/ai-provider-secret-keyring.json
+npm run db:provider-secret-restore-verify
+```
+
+The command fails when the restore contains no encrypted provider-secret
+versions, any envelope cannot be authenticated with its recorded root-key
+version, or database/keyring access fails. Its JSON evidence contains only
+opaque connection and secret-version IDs, referenced root-key versions, and
+pass/fail results.
+
+Before destroying an old root-key version, repeat the verification while
+logically omitting that version:
+
+```bash
+npm run db:provider-secret-restore-verify -- \
+  --omit-root-key-version root-2026-01
+```
+
+Proceed only when `compatible` and `safeToRemoveOmittedRootKeyVersion` are both
+`true` for every retained backup restored with its matching keyring. This check
+does not change the database or keyring.
+
 If a required root-key version is missing, keep the global AI guard active and
 block affected run profiles. Restore the key version from the approved backup.
 If it cannot be recovered, a product administrator must enter new provider
