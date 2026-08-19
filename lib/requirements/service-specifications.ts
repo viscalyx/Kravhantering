@@ -78,16 +78,14 @@ interface RequirementPublishedVersionLookup {
   requirementId: number
 }
 
-const addToSpecificationRequirementIdsSchema =
+const specificationRequirementIdsSchema =
   uniquePositiveIntegerArraySchema().min(1)
 const PUBLISHED_VERSION_LOOKUP_CONCURRENCY = 8
 
-function assertValidAddToSpecificationRequirementIds(
+function assertValidSpecificationRequirementIds(
   requirementIds: number[],
 ): void {
-  if (
-    addToSpecificationRequirementIdsSchema.safeParse(requirementIds).success
-  ) {
+  if (specificationRequirementIdsSchema.safeParse(requirementIds).success) {
     return
   }
 
@@ -588,7 +586,7 @@ export function createSpecificationWorkflow({
     async addToSpecification(context, input: AddToSpecificationInput) {
       const responseFormat = input.responseFormat ?? 'markdown'
       const locale = input.locale ?? 'en'
-      assertValidAddToSpecificationRequirementIds(input.requirementIds)
+      assertValidSpecificationRequirementIds(input.requirementIds)
 
       await authorize(
         authorization,
@@ -696,6 +694,7 @@ export function createSpecificationWorkflow({
     ) {
       const responseFormat = input.responseFormat ?? 'markdown'
       const locale = input.locale ?? 'en'
+      assertValidSpecificationRequirementIds(input.requirementIds)
 
       const specificationId = await resolveSpecificationIdOrThrow(input)
       const outcome = await requirementApplicationMutations.mutate(context, {

@@ -129,8 +129,9 @@ agents can use it reliably.
   requirement remains unchanged in the specification, and deviations stay with
   that source row.
 - `requirements_remove_from_specification`
-  Unlink one or more requirements from a specification. The requirements themselves
-  are not deleted. Use `specificationId` to identify the specification.
+  Unlink from 1 through 200 unique requirements from a specification. The
+  requirements themselves are not deleted. Use `specificationId` to identify
+  the specification.
 
 #### Improvement Suggestions
 

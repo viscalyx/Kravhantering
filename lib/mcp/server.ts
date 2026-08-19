@@ -2683,7 +2683,7 @@ export function createKravhanteringMcpServer(
         openWorldHint: false,
         readOnlyHint: false,
       },
-      description: `Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId. ${specificationIdCopyPath} ${removeRequirementIdsCopyPath}`,
+      description: `Unlink up to ${ARRAY_INPUT_MAX_ITEMS} unique requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId. ${specificationIdCopyPath} ${removeRequirementIdsCopyPath}`,
       inputSchema: z
         .object({
           locale: ResponseLocaleSchema,
@@ -2694,11 +2694,10 @@ export function createKravhanteringMcpServer(
             .describe(
               `Numeric ID of the requirements specification. ${specificationIdCopyPath}`,
             ),
-          requirementIds: z
-            .array(z.number().int().positive())
+          requirementIds: uniquePositiveIntegerArraySchema()
             .min(1)
             .describe(
-              `Numeric requirement IDs to remove from the specification. ${removeRequirementIdsCopyPath}`,
+              `One to ${ARRAY_INPUT_MAX_ITEMS} unique numeric requirement IDs to remove from the specification. ${removeRequirementIdsCopyPath}`,
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })

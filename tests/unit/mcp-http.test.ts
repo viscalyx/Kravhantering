@@ -1425,48 +1425,60 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('bounds unique add-to-specification requirement IDs before mutation delegation', async () => {
-    const { client, transport } = await createClient()
-    const fakeService = serviceState.getService.mock.results[0]?.value
-    const maximumRequirementIds = Array.from(
-      { length: ARRAY_INPUT_MAX_ITEMS },
-      (_, index) => index + 1,
-    )
+  it.each([
+    {
+      serviceMethod: 'addToSpecification',
+      toolName: 'requirements_add_to_specification',
+    },
+    {
+      serviceMethod: 'removeFromSpecification',
+      toolName: 'requirements_remove_from_specification',
+    },
+  ] as const)(
+    'bounds unique requirement IDs before $toolName mutation delegation',
+    async ({ serviceMethod, toolName }) => {
+      const { client, transport } = await createClient()
+      const fakeService = serviceState.getService.mock.results[0]?.value
+      const maximumRequirementIds = Array.from(
+        { length: ARRAY_INPUT_MAX_ITEMS },
+        (_, index) => index + 1,
+      )
 
-    const maximumResult = await client.callTool({
-      arguments: {
-        requirementIds: maximumRequirementIds,
-        specificationId: 7,
-      },
-      name: 'requirements_add_to_specification',
-    })
-    const overMaximumResult = await client.callTool({
-      arguments: {
-        requirementIds: [...maximumRequirementIds, ARRAY_INPUT_MAX_ITEMS + 1],
-        specificationId: 7,
-      },
-      name: 'requirements_add_to_specification',
-    })
-    const duplicateResult = await client.callTool({
-      arguments: {
-        requirementIds: [1, 1],
-        specificationId: 7,
-      },
-      name: 'requirements_add_to_specification',
-    })
+      const maximumResult = await client.callTool({
+        arguments: {
+          requirementIds: maximumRequirementIds,
+          specificationId: 7,
+        },
+        name: toolName,
+      })
+      const overMaximumResult = await client.callTool({
+        arguments: {
+          requirementIds: [...maximumRequirementIds, ARRAY_INPUT_MAX_ITEMS + 1],
+          specificationId: 7,
+        },
+        name: toolName,
+      })
+      const duplicateResult = await client.callTool({
+        arguments: {
+          requirementIds: [1, 1],
+          specificationId: 7,
+        },
+        name: toolName,
+      })
 
-    expect(maximumResult.isError).not.toBe(true)
-    expect(overMaximumResult.isError).toBe(true)
-    expect(duplicateResult.isError).toBe(true)
-    expect(fakeService.addToSpecification).toHaveBeenCalledTimes(1)
-    expect(fakeService.addToSpecification).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ requirementIds: maximumRequirementIds }),
-    )
+      expect(maximumResult.isError).not.toBe(true)
+      expect(overMaximumResult.isError).toBe(true)
+      expect(duplicateResult.isError).toBe(true)
+      expect(fakeService[serviceMethod]).toHaveBeenCalledTimes(1)
+      expect(fakeService[serviceMethod]).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ requirementIds: maximumRequirementIds }),
+      )
 
-    await client.close()
-    await transport.close()
-  })
+      await client.close()
+      await transport.close()
+    },
+  )
 
   it('returns skipped unpublished requirement IDs from add-to-specification', async () => {
     const { client, transport } = await createClient()
