@@ -386,9 +386,11 @@ specification authorship before calling the transactional DAL copy operation.
 
 ### `requirements_remove_from_specification`
 
-Unlinks requirements from a specification. Accepts numeric `specificationId`.
-The requirements themselves are not deleted. The operation is idempotent —
-removing an ID that is not in the specification produces no error. Use the
+Unlinks from 1 through 200 unique requirements from a specification. Accepts
+numeric `specificationId`. The MCP schema and shared service boundary reject
+empty, duplicate, and oversized `requirementIds` collections before mutation
+work. The requirements themselves are not deleted. The operation is idempotent
+— removing an ID that is not in the specification produces no error. Use the
 specification copy path above, and copy only library requirement IDs from:
 
 ```text

@@ -284,6 +284,15 @@ function makeContext() {
   }
 }
 
+const invalidSpecificationRequirementIdCases: [string, number[]][] = [
+  ['an empty collection', []],
+  ['duplicate IDs', [10, 10]],
+  [
+    'more than the shared item limit',
+    Array.from({ length: ARRAY_INPUT_MAX_ITEMS + 1 }, (_, index) => index + 1),
+  ],
+]
+
 describe('createRequirementsService', () => {
   const logger = {
     error: vi.fn(),
@@ -1746,17 +1755,7 @@ describe('createRequirementsService', () => {
     })
   })
 
-  it.each([
-    ['an empty collection', []],
-    ['duplicate IDs', [10, 10]],
-    [
-      'more than the shared item limit',
-      Array.from(
-        { length: ARRAY_INPUT_MAX_ITEMS + 1 },
-        (_, index) => index + 1,
-      ),
-    ],
-  ])(
+  it.each(invalidSpecificationRequirementIdCases)(
     'rejects %s before add-to-specification database work',
     async (_case, requirementIds) => {
       const service = createTestRequirementsService()
@@ -1826,6 +1825,23 @@ describe('createRequirementsService', () => {
       title: 'Requirements Removed from Specification',
     })
   })
+
+  it.each(invalidSpecificationRequirementIdCases)(
+    'rejects %s before remove-from-specification database work',
+    async (_case, requirementIds) => {
+      const service = createTestRequirementsService()
+
+      await expect(
+        service.removeFromSpecification(makeContext(), {
+          requirementIds,
+          specificationId: 7,
+        }),
+      ).rejects.toMatchObject({ code: 'validation' })
+
+      expect(mocks.auditTransaction).not.toHaveBeenCalled()
+      expect(mocks.unlinkRequirementsFromSpecification).not.toHaveBeenCalled()
+    },
+  )
 
   it('lists graduation target requirement areas for actors who can author target requirement areas without source specification access', async () => {
     mocks.canAuthorSpecification.mockResolvedValueOnce(false)

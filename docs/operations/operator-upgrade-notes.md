@@ -323,6 +323,10 @@ Before upgrade, tell MCP integration owners that requirement create and edit req
 <!-- operator-upgrade:source pr-1077 start -->
 After upgrade, only users with the Admin role can inspect which specification items are linked to a usage status through the direct API. Verify that affected integrations use an Admin identity. Non-Admin users now receive a 403 response.
 <!-- operator-upgrade:source pr-1077 end -->
+
+<!-- operator-upgrade:source pr-1089 start -->
+Before upgrade, verify that MCP clients remove no more than 200 unique requirements in one request. Requests with duplicate requirement IDs or more than 200 IDs now fail validation. Split larger removals into batches of 200 or fewer.
+<!-- operator-upgrade:source pr-1089 end -->
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade

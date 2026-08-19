@@ -47,6 +47,7 @@ import {
   updateSpecificationResponsible,
   updateSpecificationWithExecutor,
 } from '@/lib/dal/requirements-specifications'
+import { ARRAY_INPUT_MAX_ITEMS } from '@/lib/http/validation'
 import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
 function createSqlServerDb() {
@@ -2280,20 +2281,27 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query).not.toHaveBeenCalled()
   })
 
-  it('unlinks requirements from a specification on SQL Server', async () => {
+  it('unlinks the maximum bounded requirement collection with one SQL Server query', async () => {
     const { db, query } = createSqlServerDb()
-    query.mockResolvedValueOnce([{ id: 31 }, { id: 32 }])
+    const requirementIds = Array.from(
+      { length: ARRAY_INPUT_MAX_ITEMS },
+      (_, index) => index + 1,
+    )
+    query.mockResolvedValueOnce(requirementIds.map(id => ({ id })))
 
     const removedCount = await unlinkRequirementsFromSpecification(
       db,
       5,
-      [7, 8],
+      requirementIds,
     )
 
-    expect(removedCount).toBe(2)
+    expect(removedCount).toBe(ARRAY_INPUT_MAX_ITEMS)
+    expect(query).toHaveBeenCalledTimes(1)
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('DELETE FROM requirements_specification_items'),
-      [5, 7, 8],
+      expect.stringMatching(
+        /DELETE FROM requirements_specification_items[\s\S]*WHERE requirements_specification_id = @0 AND requirement_id IN \(@1,[\s\S]*@200\)/u,
+      ),
+      [5, ...requirementIds],
     )
   })
 
