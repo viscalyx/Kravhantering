@@ -263,7 +263,9 @@ export interface AiAdminStore {
     result: Readonly<AiAdminConnectionVerificationResult>
   }): Promise<AiAdminConnectionDetail>
   recordHealth(input: {
+    connectionConfigurationVersion: number
     connectionId: string
+    connectionRevisionToken: string
     health: 'degraded' | 'healthy' | 'unavailable'
     invalidationScope: 'connection' | 'model' | 'none'
     modelRevisionId: string
@@ -744,7 +746,9 @@ export class AiConnectionAdministrationService {
     const result = await this.#external.probeHealth(connection, modelRevision)
     return this.#withSecretAvailability(
       await this.#store.recordHealth({
+        connectionConfigurationVersion: connection.configurationVersion,
         connectionId: input.connectionId,
+        connectionRevisionToken: connection.revisionToken,
         health: result.health,
         invalidationScope: result.invalidationScope,
         modelRevisionId: input.modelRevisionId,

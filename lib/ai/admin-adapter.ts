@@ -24,16 +24,13 @@ export interface AiAdminFunctionalProbe {
   task: Readonly<AiTaskEnvelope>
 }
 
-export interface AiAdminAdapterConformance {
-  prohibitedProtocolRejection: boolean
-  safeErrorNormalization: boolean
-}
+export type AiAdminNegativeProbeCase =
+  | 'prohibited_callback'
+  | 'prohibited_function_call'
+  | 'prohibited_tool_calls'
+  | 'safe_provider_error'
 
 export interface AiAdminConnectionAdapter {
-  activationConformance(
-    context: Readonly<AiAdminAdapterContext>,
-    revision: Readonly<AiAdminModelRevisionRecord>,
-  ): Promise<Readonly<AiAdminAdapterConformance>>
   fetchCatalog(
     context: Readonly<AiAdminAdapterContext>,
   ): Promise<readonly AiAdminCatalogItem[]>
@@ -44,6 +41,12 @@ export interface AiAdminConnectionAdapter {
     context: Readonly<AiAdminAdapterContext>,
     revision: Readonly<AiAdminModelRevisionRecord>,
     probe: Readonly<AiAdminFunctionalProbe>,
+  ): AsyncIterable<AiRunEvent>
+  runActivationNegativeProbe(
+    context: Readonly<AiAdminAdapterContext>,
+    revision: Readonly<AiAdminModelRevisionRecord>,
+    probe: Readonly<AiAdminFunctionalProbe>,
+    negativeCase: AiAdminNegativeProbeCase,
   ): AsyncIterable<AiRunEvent>
   runFunctionalProbe(
     context: Readonly<AiAdminAdapterContext>,

@@ -395,7 +395,9 @@ describe('AI connection administration service', () => {
       revision,
     )
     expect(store.recordHealth).toHaveBeenCalledWith({
+      connectionConfigurationVersion: currentConnection.configurationVersion,
       connectionId: currentConnection.id,
+      connectionRevisionToken: currentConnection.revisionToken,
       health: 'degraded',
       invalidationScope: 'model',
       modelRevisionId: revision.id,

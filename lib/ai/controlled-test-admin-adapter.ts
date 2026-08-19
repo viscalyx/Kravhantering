@@ -19,12 +19,6 @@ const ADMIN_PROBE_PROFILE_REVISION_ID =
   '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
 
 const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
-  async activationConformance() {
-    return {
-      prohibitedProtocolRejection: true,
-      safeErrorNormalization: true,
-    }
-  },
   async fetchCatalog(context) {
     return context.connection.models.flatMap(model =>
       model.revisions.slice(0, 1).map(revision => ({
@@ -92,6 +86,39 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
     return controlledTestAdapterRegistration.adapter.run({
       connection: {
         configuration: { scenario: { type: 'wait_for_abort' } },
+        id: context.connection.id as AiConnectionId,
+      },
+      context: {
+        abortSignal: probe.abortSignal,
+        deadlineAt: probe.deadlineAt,
+        egress: context.egress,
+        externalRunId: `admin_probe_${randomUUID()}` as AiExternalRunId,
+      },
+      modelRevision: {
+        configuration: {},
+        externalModelId: revision.externalModelId,
+        id: revision.id as AiConnectionModelRevisionId,
+        verifiedCapabilities: revision.declaredCapabilities,
+      },
+      runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+      selectedCapabilities: probe.selectedCapabilities,
+      task: probe.task,
+    })
+  },
+  runActivationNegativeProbe(context, revision, probe, negativeCase) {
+    return controlledTestAdapterRegistration.adapter.run({
+      connection: {
+        configuration: {
+          scenario: {
+            category:
+              negativeCase === 'safe_provider_error'
+                ? 'connection_unavailable'
+                : 'invalid_response',
+            diagnosticCode: 'normalized_conformance_failure',
+            retryable: false,
+            type: 'failed',
+          },
+        },
         id: context.connection.id as AiConnectionId,
       },
       context: {

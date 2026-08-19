@@ -4,6 +4,7 @@ import { conflictError } from '@/lib/requirements/errors'
 import type {
   AiAdminAdapterContext,
   AiAdminConnectionAdapter,
+  AiAdminNegativeProbeCase,
 } from './admin-adapter'
 import type { AiCapability } from './admin-contracts'
 import type {
@@ -25,6 +26,9 @@ import {
   AiProviderSecretKeyringError,
 } from './provider-secret-keyring.ts'
 import {
+  AI_RUN_CANCELLATION_REASONS,
+  AI_RUN_FAILURE_CATEGORIES,
+  AI_UNAVAILABLE_USAGE_REASONS,
   type AiCapabilitySelection,
   type AiConnectionId,
   type AiConnectionModelRevisionId,
@@ -36,7 +40,7 @@ import {
   guardAiRunEventStream,
 } from './run-contracts'
 
-const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v2'
+const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v3'
 const ADMIN_PROBE_TIMEOUT_MS = 30_000
 const ADMIN_CANCELLATION_GRACE_MS = 5_000
 const ADMIN_PROBE_PROFILE_REVISION_ID =
@@ -79,6 +83,12 @@ const PROHIBITED_PROTOCOL_KEYS = new Set([
   'toolcall',
   'toolcalls',
 ])
+const ADMIN_NEGATIVE_PROBE_CASES = [
+  'safe_provider_error',
+  'prohibited_callback',
+  'prohibited_function_call',
+  'prohibited_tool_calls',
+] as const satisfies readonly AiAdminNegativeProbeCase[]
 
 function containsProhibitedProtocol(value: unknown, depth = 0): boolean {
   if (depth > 8 || value === null || typeof value !== 'object') return false
@@ -103,28 +113,135 @@ function hasOnlyKeys(
   )
 }
 
+function isRunIdentity(value: unknown): boolean {
+  return (
+    hasOnlyKeys(
+      value,
+      new Set([
+        'aiConnectionId',
+        'aiConnectionModelRevisionId',
+        'aiRunProfileRevisionId',
+      ]),
+    ) &&
+    typeof value.aiConnectionId === 'string' &&
+    typeof value.aiConnectionModelRevisionId === 'string' &&
+    typeof value.aiRunProfileRevisionId === 'string'
+  )
+}
+
+function isUsageMetric(
+  value: unknown,
+  isValue: (candidate: unknown) => boolean,
+): boolean {
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    return false
+  const metric = value as Record<string, unknown>
+  if (metric.status === 'unavailable')
+    return (
+      hasOnlyKeys(metric, new Set(['reason', 'status'])) &&
+      AI_UNAVAILABLE_USAGE_REASONS.some(reason => reason === metric.reason)
+    )
+  if (metric.status === 'reported')
+    return (
+      hasOnlyKeys(metric, new Set(['status', 'value'])) && isValue(metric.value)
+    )
+  return (
+    metric.status === 'calculated' &&
+    hasOnlyKeys(metric, new Set(['calculatedAt', 'status', 'value'])) &&
+    typeof metric.calculatedAt === 'string' &&
+    Number.isFinite(Date.parse(metric.calculatedAt)) &&
+    isValue(metric.value)
+  )
+}
+
+function isTokenCount(value: unknown): boolean {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function isCost(value: unknown): boolean {
+  return (
+    hasOnlyKeys(value, new Set(['amount', 'currency'])) &&
+    typeof value.amount === 'string' &&
+    /^(?:0|[1-9]\d*)(?:\.\d+)?$/u.test(value.amount) &&
+    typeof value.currency === 'string' &&
+    /^[A-Z]{3}$/u.test(value.currency)
+  )
+}
+
+function isRunUsage(value: unknown): boolean {
+  return (
+    hasOnlyKeys(
+      value,
+      new Set([
+        'analysisTokens',
+        'cost',
+        'inputTokens',
+        'outputTokens',
+        'totalTokens',
+      ]),
+    ) &&
+    isUsageMetric(value.analysisTokens, isTokenCount) &&
+    isUsageMetric(value.cost, isCost) &&
+    isUsageMetric(value.inputTokens, isTokenCount) &&
+    isUsageMetric(value.outputTokens, isTokenCount) &&
+    isUsageMetric(value.totalTokens, isTokenCount)
+  )
+}
+
 function isNormalizedAdminProbeEvent(value: unknown): value is AiRunEvent {
   if (value === null || typeof value !== 'object' || Array.isArray(value))
     return false
   const event = value as Record<string, unknown>
   if (event.type === 'analysis_delta')
-    return hasOnlyKeys(event, new Set(['delta', 'type']))
+    return (
+      hasOnlyKeys(event, new Set(['delta', 'type'])) &&
+      typeof event.delta === 'string'
+    )
   if (event.type === 'output_delta')
-    return hasOnlyKeys(event, new Set(['delta', 'type', 'visibility']))
+    return (
+      hasOnlyKeys(event, new Set(['delta', 'type', 'visibility'])) &&
+      typeof event.delta === 'string' &&
+      event.visibility === 'internal'
+    )
   if (event.type === 'completed')
-    return hasOnlyKeys(
-      event,
-      new Set(['analysis', 'identity', 'rawOutput', 'type', 'usage']),
+    return (
+      hasOnlyKeys(
+        event,
+        new Set(['analysis', 'identity', 'rawOutput', 'type', 'usage']),
+      ) &&
+      (event.analysis === null || typeof event.analysis === 'string') &&
+      isRunIdentity(event.identity) &&
+      typeof event.rawOutput === 'string' &&
+      isRunUsage(event.usage)
     )
   if (event.type === 'cancelled')
-    return hasOnlyKeys(event, new Set(['identity', 'reason', 'type']))
+    return (
+      hasOnlyKeys(event, new Set(['identity', 'reason', 'type'])) &&
+      isRunIdentity(event.identity) &&
+      AI_RUN_CANCELLATION_REASONS.some(reason => reason === event.reason)
+    )
   if (event.type !== 'failed') return false
-  return (
-    hasOnlyKeys(event, new Set(['failure', 'identity', 'type'])) &&
-    hasOnlyKeys(
+  if (
+    !hasOnlyKeys(event, new Set(['failure', 'identity', 'type'])) ||
+    !isRunIdentity(event.identity) ||
+    !hasOnlyKeys(
       event.failure,
       new Set(['category', 'diagnosticCode', 'retryAfterSeconds', 'retryable']),
     )
+  ) {
+    return false
+  }
+  const failure = event.failure
+  return (
+    AI_RUN_FAILURE_CATEGORIES.some(category => category === failure.category) &&
+    (failure.diagnosticCode === undefined ||
+      (typeof failure.diagnosticCode === 'string' &&
+        /^[a-z][a-z0-9_.:-]{0,79}$/u.test(failure.diagnosticCode))) &&
+    (failure.retryAfterSeconds === undefined ||
+      (typeof failure.retryAfterSeconds === 'number' &&
+        Number.isSafeInteger(failure.retryAfterSeconds) &&
+        failure.retryAfterSeconds > 0)) &&
+    typeof failure.retryable === 'boolean'
   )
 }
 
@@ -333,6 +450,66 @@ async function runAdminCancellationProbe(
     controller.abort()
     if (grace) clearTimeout(grace)
   }
+}
+
+async function runAdminNegativeProbes(
+  adapter: AiAdminConnectionAdapter,
+  context: Readonly<AiAdminAdapterContext>,
+  revision: Readonly<AiAdminModelRevisionRecord>,
+): Promise<boolean> {
+  const identity: AiRunIdentity = {
+    aiConnectionId: context.connection.id as AiConnectionId,
+    aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
+    aiRunProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+  }
+  for (const negativeCase of ADMIN_NEGATIVE_PROBE_CASES) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), ADMIN_PROBE_TIMEOUT_MS)
+    let terminal: AdminProbeTerminal | undefined
+    try {
+      const stream = adapter.runActivationNegativeProbe(
+        context,
+        revision,
+        {
+          abortSignal: controller.signal,
+          deadlineAt: new Date(
+            Date.now() + ADMIN_PROBE_TIMEOUT_MS,
+          ).toISOString(),
+          selectedCapabilities: selectedCapabilities(emptyCapabilities()),
+          task: probeTask(emptyCapabilities()),
+        },
+        negativeCase,
+      )
+      for await (const event of guardAiRunEventStream(
+        rejectProhibitedProtocolEvents(stream),
+        identity,
+      )) {
+        if (
+          event.type === 'completed' ||
+          event.type === 'failed' ||
+          event.type === 'cancelled'
+        ) {
+          terminal = event
+        }
+      }
+    } catch {
+      return false
+    } finally {
+      clearTimeout(timeout)
+      controller.abort()
+    }
+    const expectedCategory =
+      negativeCase === 'safe_provider_error'
+        ? 'connection_unavailable'
+        : 'invalid_response'
+    if (
+      terminal?.type !== 'failed' ||
+      terminal.failure.category !== expectedCategory
+    ) {
+      return false
+    }
+  }
+  return true
 }
 
 function satisfiesDeclaredCapabilities(
@@ -1009,8 +1186,12 @@ export class AiProviderSecretAdminService {
     revision: Readonly<AiAdminModelRevisionRecord>,
   ): Promise<Readonly<AiAdminModelVerificationResult>> {
     const result = await this.#execute(connection, egress, async context => ({
-      conformance: await adapter.activationConformance(context, revision),
       cancellationHandled: await runAdminCancellationProbe(
+        adapter,
+        context,
+        revision,
+      ),
+      negativeCasesPassed: await runAdminNegativeProbes(
         adapter,
         context,
         revision,
@@ -1024,9 +1205,8 @@ export class AiProviderSecretAdminService {
     }))
     const functional = result.functional
     const passed =
-      result.conformance.prohibitedProtocolRejection &&
-      result.conformance.safeErrorNormalization &&
       result.cancellationHandled &&
+      result.negativeCasesPassed &&
       functional.completed &&
       functional.schemaValid &&
       satisfiesDeclaredCapabilities(
@@ -1035,9 +1215,7 @@ export class AiProviderSecretAdminService {
       )
     return {
       details: {
-        adapterConformance:
-          result.conformance.prohibitedProtocolRejection &&
-          result.conformance.safeErrorNormalization,
+        adapterConformance: result.negativeCasesPassed,
         cancellationHandled: result.cancellationHandled,
         completed: functional.completed,
         schemaValid: functional.schemaValid,

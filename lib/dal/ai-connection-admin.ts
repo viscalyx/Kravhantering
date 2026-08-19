@@ -1338,8 +1338,10 @@ export function createSqlServerAiAdminStore(
                AND [revision].[revision_token] = @2
                AND [revision].[status] = N'verified'
                AND [model].[ai_connection_id] = @0
+               AND [connection].[revision_token] = @5
+               AND [connection].[configuration_version] = @6
                AND [revision].[connection_configuration_version]
-                 = [connection].[configuration_version]
+                 = @6
            ) RETURN;
 
            MERGE [ai_connection_model_operational_states] AS [target]
@@ -1378,19 +1380,12 @@ export function createSqlServerAiAdminStore(
                ON [connection].[id] = [evidence].[ai_connection_id]
              WHERE [evidence].[ai_connection_id] = @0
                AND [evidence].[connection_configuration_version]
-                 = [connection].[configuration_version]
+                 = @6
+               AND [connection].[revision_token] = @5
+               AND [connection].[configuration_version] = @6
                AND [evidence].[outcome] = N'passed'
                AND ([evidence].[expires_at] IS NULL
                  OR [evidence].[expires_at] > SYSUTCDATETIME());
-
-             UPDATE [ai_connections]
-             SET [lifecycle_status] = CASE
-                 WHEN [lifecycle_status] = N'draft' THEN N'draft'
-                 WHEN [lifecycle_status] = N'retired' THEN N'retired'
-                 ELSE N'verification_required'
-               END,
-               [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
-             WHERE [id] = @0;
 
              UPDATE [revision]
              SET [status] = N'verification_required',
@@ -1403,8 +1398,21 @@ export function createSqlServerAiAdminStore(
                ON [connection].[id] = [model].[ai_connection_id]
              WHERE [model].[ai_connection_id] = @0
                AND [revision].[connection_configuration_version]
-                 = [connection].[configuration_version]
+                 = @6
+               AND [connection].[revision_token] = @5
+               AND [connection].[configuration_version] = @6
                AND [revision].[status] = N'verified';
+
+             UPDATE [ai_connections]
+             SET [lifecycle_status] = CASE
+                 WHEN [lifecycle_status] = N'draft' THEN N'draft'
+                 WHEN [lifecycle_status] = N'retired' THEN N'retired'
+                 ELSE N'verification_required'
+               END,
+               [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
+             WHERE [id] = @0
+               AND [revision_token] = @5
+               AND [configuration_version] = @6;
            END;
 
            SELECT @1 AS [id];`,
@@ -1414,6 +1422,8 @@ export function createSqlServerAiAdminStore(
             input.modelRevisionToken,
             input.health,
             input.invalidationScope,
+            input.connectionRevisionToken,
+            input.connectionConfigurationVersion,
           ],
         )
         if (!rows?.[0]) {

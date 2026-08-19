@@ -129,11 +129,30 @@ describe('AI provider-secret service', () => {
       validatableJson: true,
     }
     let run = 0
+    const negativeCases: string[] = []
     const adapter = {
-      activationConformance() {
-        return {
-          prohibitedProtocolRejection: true,
-          safeErrorNormalization: true,
+      async *runActivationNegativeProbe(
+        _context: unknown,
+        _revision: unknown,
+        _probe: unknown,
+        negativeCase: string,
+      ) {
+        negativeCases.push(negativeCase)
+        yield {
+          failure: {
+            category:
+              negativeCase === 'safe_provider_error'
+                ? 'connection_unavailable'
+                : 'invalid_response',
+            diagnosticCode: 'normalized_conformance_failure',
+            retryable: false,
+          },
+          identity: {
+            aiConnectionId: connectionId,
+            aiConnectionModelRevisionId: revisionId,
+            aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
+          },
+          type: 'failed',
         }
       },
       async *runActivationCancellationProbe(
@@ -230,8 +249,17 @@ describe('AI provider-secret service', () => {
       }),
     ).resolves.toMatchObject({
       outcome: 'passed',
+      testSuiteVersion: 'ai-admin-functional-probe-v3',
       verifiedCapabilities: noCapabilities,
     })
+    expect(negativeCases).toEqual(
+      expect.arrayContaining([
+        'prohibited_callback',
+        'prohibited_function_call',
+        'prohibited_tool_calls',
+        'safe_provider_error',
+      ]),
+    )
     await expect(
       service.probeHealth(adapter, connection, egress, {
         ...revision,
@@ -270,10 +298,9 @@ describe('AI provider-secret service', () => {
       ...extra,
     })
     const adapter = {
-      activationConformance: vi.fn(() => ({
-        prohibitedProtocolRejection: true,
-        safeErrorNormalization: true,
-      })),
+      async *runActivationNegativeProbe() {
+        yield terminal({ providerRawError: 'raw credential detail' }) as never
+      },
       async *runActivationCancellationProbe() {
         yield terminal()
       },
@@ -328,26 +355,11 @@ describe('AI provider-secret service', () => {
         type: 'cancelled',
       } as never
     }
-    adapter.activationConformance = vi.fn(async () => ({
-      prohibitedProtocolRejection: true,
-      safeErrorNormalization: false,
-    }))
     await expect(
       service.verifyModelRevision(adapter, connection, egress, revision),
     ).resolves.toMatchObject({ outcome: 'failed' })
 
-    adapter.activationConformance = vi.fn(async () => ({
-      prohibitedProtocolRejection: true,
-      safeErrorNormalization: true,
-    }))
-    adapter.runFunctionalProbe = async function* () {
-      yield terminal({ providerRawError: 'raw credential detail' }) as never
-    }
-    await expect(
-      service.verifyModelRevision(adapter, connection, egress, revision),
-    ).resolves.toMatchObject({ outcome: 'failed' })
-
-    adapter.runFunctionalProbe = async function* () {
+    adapter.runActivationNegativeProbe = async function* () {
       yield terminal({ tool_calls: [{ id: 'forbidden' }] }) as never
     }
     await expect(

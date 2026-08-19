@@ -366,7 +366,9 @@ describe('AI connection administration transactions against SQL Server', () => {
     ).resolves.toBeNull()
     await expect(
       store.recordHealth({
+        connectionConfigurationVersion: created.configurationVersion,
         connectionId: created.id,
+        connectionRevisionToken: created.revisionToken,
         health: 'unavailable',
         invalidationScope: 'none',
         modelRevisionId: draftRevision.id,
@@ -1195,8 +1197,119 @@ describe('AI connection administration transactions against SQL Server', () => {
       await store.listRunProfileRevisions('generation_without_images'),
     ).toHaveLength(1)
 
-    const health = await store.recordHealth({
+    const suspendedBeforeDelayedHealth = await store.setConnectionLifecycle({
       connectionId: created.id,
+      revisionToken: activated?.revisionToken ?? '',
+      status: 'suspended',
+    })
+    if (!suspendedBeforeDelayedHealth)
+      throw new Error('Connection suspension failed')
+    await expect(
+      store.recordHealth({
+        connectionConfigurationVersion: activated?.configurationVersion ?? 0,
+        connectionId: created.id,
+        connectionRevisionToken: activated?.revisionToken ?? '',
+        health: 'degraded',
+        invalidationScope: 'connection',
+        modelRevisionId: siblingVerifiedRevision.id,
+        modelRevisionToken: siblingVerifiedRevision.revisionToken,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    expect(
+      await count(
+        appDb(),
+        'ai_connection_model_operational_states',
+        '[ai_connection_model_revision_id] = @0',
+        [siblingVerifiedRevision.id],
+      ),
+    ).toBe(0)
+    const detailAfterSuspension = await store.getConnection(created.id)
+    expect(detailAfterSuspension?.lifecycleStatus).toBe('suspended')
+    expect(detailAfterSuspension?.connectionEvidenceId).toBe(
+      connectionEvidenceId,
+    )
+    expect(
+      detailAfterSuspension?.models
+        .flatMap(candidate => candidate.revisions)
+        .map(revision => ({
+          revisionToken: revision.revisionToken,
+          status: revision.status,
+        })),
+    ).toEqual(
+      expect.arrayContaining([
+        {
+          revisionToken: verifiedModelRevision.revisionToken,
+          status: 'verified',
+        },
+        {
+          revisionToken: siblingVerifiedRevision.revisionToken,
+          status: 'verified',
+        },
+      ]),
+    )
+
+    const reactivatedBeforeMetadata = await store.activateConnection({
+      attestationId: validAttestation.id,
+      attestationRevisionToken: validAttestation.revisionToken,
+      connectionEvidenceId,
+      connectionId: created.id,
+      connectionRevisionToken: suspendedBeforeDelayedHealth.revisionToken,
+      modelRevisionId: siblingVerifiedRevision.id,
+      modelRevisionToken: siblingVerifiedRevision.revisionToken,
+      secretVersionId: null,
+    })
+    if (!reactivatedBeforeMetadata)
+      throw new Error('Connection reactivation failed')
+    const metadataUpdated = await store.updateConnection({
+      connection: {
+        ...connectionInput('-lifecycle'),
+        administrationName: 'Updated lifecycle administration name',
+        authenticationType: 'none',
+      },
+      connectionId: created.id,
+      revisionToken: reactivatedBeforeMetadata.revisionToken,
+    })
+    if (!metadataUpdated) throw new Error('Connection metadata update failed')
+    expect(metadataUpdated.lifecycleStatus).toBe('active')
+    expect(metadataUpdated.configurationVersion).toBe(
+      reactivatedBeforeMetadata.configurationVersion,
+    )
+    await expect(
+      store.recordHealth({
+        connectionConfigurationVersion:
+          reactivatedBeforeMetadata.configurationVersion,
+        connectionId: created.id,
+        connectionRevisionToken: reactivatedBeforeMetadata.revisionToken,
+        health: 'degraded',
+        invalidationScope: 'connection',
+        modelRevisionId: siblingVerifiedRevision.id,
+        modelRevisionToken: siblingVerifiedRevision.revisionToken,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    expect(metadataUpdated.connectionEvidenceId).toBe(connectionEvidenceId)
+    expect(
+      metadataUpdated.models
+        .flatMap(candidate => candidate.revisions)
+        .map(revision => revision.revisionToken),
+    ).toEqual(
+      expect.arrayContaining([
+        verifiedModelRevision.revisionToken,
+        siblingVerifiedRevision.revisionToken,
+      ]),
+    )
+    expect(
+      await count(
+        appDb(),
+        'ai_connection_model_operational_states',
+        '[ai_connection_model_revision_id] = @0',
+        [siblingVerifiedRevision.id],
+      ),
+    ).toBe(0)
+
+    const health = await store.recordHealth({
+      connectionConfigurationVersion: metadataUpdated.configurationVersion,
+      connectionId: created.id,
+      connectionRevisionToken: metadataUpdated.revisionToken,
       health: 'healthy',
       invalidationScope: 'none',
       modelRevisionId: verifiedModelRevision.id,
@@ -1220,7 +1333,9 @@ describe('AI connection administration transactions against SQL Server', () => {
         ?.status,
     ).toBe('verified')
     const transientHealth = await store.recordHealth({
+      connectionConfigurationVersion: health.configurationVersion,
       connectionId: created.id,
+      connectionRevisionToken: health.revisionToken,
       health: 'unavailable',
       invalidationScope: 'none',
       modelRevisionId: verifiedModelRevision.id,
@@ -1230,7 +1345,9 @@ describe('AI connection administration transactions against SQL Server', () => {
       transientHealth.models.flatMap(model => model.revisions)[0]?.status,
     ).toBe('verified')
     const contradictedHealth = await store.recordHealth({
+      connectionConfigurationVersion: transientHealth.configurationVersion,
       connectionId: created.id,
+      connectionRevisionToken: transientHealth.revisionToken,
       health: 'degraded',
       invalidationScope: 'model',
       modelRevisionId: verifiedModelRevision.id,
@@ -1261,7 +1378,9 @@ describe('AI connection administration transactions against SQL Server', () => {
       )?.snapshot?.modelRevision?.status,
     ).toBe('verified')
     const authenticationFailure = await store.recordHealth({
+      connectionConfigurationVersion: contradictedHealth.configurationVersion,
       connectionId: created.id,
+      connectionRevisionToken: contradictedHealth.revisionToken,
       health: 'degraded',
       invalidationScope: 'connection',
       modelRevisionId: siblingVerifiedRevision.id,
