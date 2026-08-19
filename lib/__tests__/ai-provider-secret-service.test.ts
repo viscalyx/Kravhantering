@@ -5,14 +5,13 @@ import {
 } from '@/lib/ai/provider-secret-crypto'
 import { parseAiProviderSecretKeyring } from '@/lib/ai/provider-secret-keyring'
 import {
-  activateAiProviderSecretVersion,
+  AiProviderSecretService,
   confirmAiProviderSecretRevocation,
   deleteAiProviderSecretCandidate,
   getAiProviderSecretAvailability,
   listReferencedAiProviderSecretRootKeyVersions,
   reencryptAiProviderSecrets,
   verifyAiProviderSecretRestoreSet,
-  withActiveAiProviderSecret,
   writeAiProviderSecretCandidate,
 } from '@/lib/ai/provider-secret-service'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -121,38 +120,6 @@ describe('AI provider-secret service', () => {
     expect(parameters.some(value => Buffer.isBuffer(value))).toBe(true)
   })
 
-  it('confines active plaintext to a callback that cannot return a value', async () => {
-    const connectionId = randomUUID()
-    const secretVersionId = randomUUID()
-    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
-    const row = persistedRow(
-      connectionId,
-      secretVersionId,
-      'adapter-only-secret',
-      ring,
-    )
-    const { db } = database(vi.fn(async () => [row]))
-    let observedLength = 0
-    const callback = vi.fn(async (plaintext: string) => {
-      observedLength = plaintext.length
-    })
-
-    const result = await withActiveAiProviderSecret(
-      db,
-      ring,
-      connectionId,
-      callback,
-    )
-
-    expect(callback).toHaveBeenCalledWith('adapter-only-secret')
-    expect(observedLength).toBe('adapter-only-secret'.length)
-    expect(result).toBeUndefined()
-
-    expectTypeOf(async (plaintext: string) => plaintext).not.toMatchTypeOf<
-      Parameters<typeof withActiveAiProviderSecret>[3]
-    >()
-  })
-
   it('tests a candidate before atomically superseding and activating revisions', async () => {
     const connectionId = randomUUID()
     const secretVersionId = randomUUID()
@@ -179,13 +146,18 @@ describe('AI provider-secret service', () => {
     const { db, manager, transaction } = database(query)
     const verify = vi.fn(async () => undefined)
 
-    await activateAiProviderSecretVersion(db, ring, {
+    const service = new AiProviderSecretService(db, ring, {
+      verifyCandidate: verify,
+    })
+    await service.activateCandidate({
       connectionId,
       secretVersionId,
-      verify,
     })
 
-    expect(verify).toHaveBeenCalledWith('candidate-secret')
+    expect(verify).toHaveBeenCalledWith(
+      { connectionId, secretVersionId },
+      'candidate-secret',
+    )
     expect(transaction).toHaveBeenCalledWith(
       'SERIALIZABLE',
       expect.any(Function),
@@ -195,6 +167,44 @@ describe('AI provider-secret service', () => {
     )?.[0]
     expect(activationSql).toContain("SET [status] = N'superseded'")
     expect(activationSql).toContain("SET [status] = N'active'")
+  })
+
+  it('keeps the caller-facing activation request and result opaque', async () => {
+    type ActivationInput = Parameters<
+      AiProviderSecretService['activateCandidate']
+    >[0]
+    expectTypeOf<ActivationInput>().toEqualTypeOf<{
+      connectionId: string
+      secretVersionId: string
+    }>()
+
+    const connectionId = randomUUID()
+    const secretVersionId = randomUUID()
+    const plaintext = 'never-public'
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const row = persistedRow(
+      connectionId,
+      secretVersionId,
+      plaintext,
+      ring,
+      'candidate',
+    )
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([{ ...row, status: 'active' }])
+    const service = new AiProviderSecretService(database(query).db, ring, {
+      verifyCandidate: async () => undefined,
+    })
+
+    const result = await service.activateCandidate({
+      connectionId,
+      secretVersionId,
+    })
+
+    expect(Object.keys(result)).not.toContain('plaintext')
+    expect(JSON.stringify(result)).not.toContain(plaintext)
+    expect('withActiveAiProviderSecret' in service).toBe(false)
   })
 
   it('restores a still-encrypted superseded revision only after retesting it', async () => {
@@ -221,13 +231,18 @@ describe('AI provider-secret service', () => {
     const { db } = database(query)
     const verify = vi.fn(async () => undefined)
 
-    const restored = await activateAiProviderSecretVersion(db, ring, {
+    const service = new AiProviderSecretService(db, ring, {
+      verifyCandidate: verify,
+    })
+    const restored = await service.activateCandidate({
       connectionId,
       secretVersionId,
-      verify,
     })
 
-    expect(verify).toHaveBeenCalledWith('restorable-secret')
+    expect(verify).toHaveBeenCalledWith(
+      { connectionId, secretVersionId },
+      'restorable-secret',
+    )
     expect(restored).toMatchObject({ id: secretVersionId, status: 'active' })
   })
 
@@ -245,12 +260,13 @@ describe('AI provider-secret service', () => {
     const { db, transaction } = database(vi.fn(async () => [row]))
 
     await expect(
-      activateAiProviderSecretVersion(db, ring, {
-        connectionId,
-        secretVersionId,
-        verify: async () => {
+      new AiProviderSecretService(db, ring, {
+        verifyCandidate: async () => {
           throw new Error('provider rejected candidate')
         },
+      }).activateCandidate({
+        connectionId,
+        secretVersionId,
       }),
     ).rejects.toThrow('provider rejected candidate')
     expect(transaction).not.toHaveBeenCalled()
@@ -501,7 +517,6 @@ describe('AI provider-secret service', () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           ...active,
@@ -518,9 +533,6 @@ describe('AI provider-secret service', () => {
     await expect(
       getAiProviderSecretAvailability(db, ring, connectionId),
     ).resolves.toEqual({ available: false, reason: 'secret_missing' })
-    await expect(
-      withActiveAiProviderSecret(db, ring, connectionId, async () => undefined),
-    ).rejects.toMatchObject({ reason: 'secret_missing' })
     await expect(
       getAiProviderSecretAvailability(db, ring, connectionId),
     ).resolves.toMatchObject({
@@ -548,10 +560,11 @@ describe('AI provider-secret service', () => {
     )
     const missingCandidateDb = database(vi.fn(async () => [])).db
     await expect(
-      activateAiProviderSecretVersion(missingCandidateDb, ring, {
+      new AiProviderSecretService(missingCandidateDb, ring, {
+        verifyCandidate: async () => undefined,
+      }).activateCandidate({
         connectionId,
         secretVersionId,
-        verify: async () => undefined,
       }),
     ).rejects.toMatchObject({ reason: 'secret_missing' })
 
@@ -560,10 +573,11 @@ describe('AI provider-secret service', () => {
       .mockResolvedValueOnce([candidate])
       .mockResolvedValueOnce([])
     await expect(
-      activateAiProviderSecretVersion(database(noActivation).db, ring, {
+      new AiProviderSecretService(database(noActivation).db, ring, {
+        verifyCandidate: async () => undefined,
+      }).activateCandidate({
         connectionId,
         secretVersionId,
-        verify: async () => undefined,
       }),
     ).rejects.toThrow('was not activated')
     await expect(

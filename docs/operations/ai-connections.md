@@ -42,9 +42,10 @@ kravhantering.ai-provider-secret NUL 1 NUL <root-key-version> NUL <connection-id
 The database stores only ciphertext, nonce, tag, cipher-format version, and the
 explicit root-key version. Moving an envelope to another connection or secret
 revision, or changing either version field, therefore makes authentication
-fail. Plaintext exists only inside the internal adapter-call callback. Do not
-return it from that callback or write it to an API response, log, error,
-telemetry event, test artifact, or export.
+fail. Plaintext exists only inside a fixed, purpose-specific trusted operation
+owned by the provider-secret service. Request handlers cannot supply callbacks
+that receive it, and no public service method returns it. Do not write plaintext
+to an API response, log, error, telemetry event, test artifact, or export.
 
 ## External Root Keyring
 

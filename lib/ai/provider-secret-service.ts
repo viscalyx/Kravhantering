@@ -115,7 +115,18 @@ export interface WriteAiProviderSecretCandidateInput {
 export interface ActivateAiProviderSecretVersionInput {
   connectionId: string
   secretVersionId: string
-  verify(plaintext: string): Promise<void>
+}
+
+/**
+ * Trusted provider integration installed once at the service composition root.
+ * Request handlers and other ordinary callers must only receive the opaque
+ * {@link AiProviderSecretService} methods, never this dependency.
+ */
+export interface TrustedAiProviderSecretCandidateVerifier {
+  verifyCandidate(
+    context: Readonly<{ connectionId: string; secretVersionId: string }>,
+    plaintext: string,
+  ): Promise<void>
 }
 
 export interface ConfirmAiProviderSecretRevocationInput {
@@ -332,30 +343,10 @@ export async function getAiProviderSecretAvailability(
   }
 }
 
-/**
- * Internal adapter-call boundary. Callers must not return, log or persist the
- * callback argument. The callback is non-value-bearing so decrypted material
- * cannot escape through this function's return type.
- */
-export async function withActiveAiProviderSecret(
+async function activateAiProviderSecretVersion(
   db: SqlServerDatabase,
   keyring: AiProviderSecretKeyring,
-  connectionId: string,
-  callback: (plaintext: string) => Promise<void>,
-): Promise<void> {
-  const row = await selectActiveSecret(db, connectionId)
-  if (!row) {
-    throw new AiProviderSecretUnavailableError(connectionId, {
-      available: false,
-      reason: 'secret_missing',
-    })
-  }
-  await callback(decryptRow(keyring, row))
-}
-
-export async function activateAiProviderSecretVersion(
-  db: SqlServerDatabase,
-  keyring: AiProviderSecretKeyring,
+  verifier: TrustedAiProviderSecretCandidateVerifier,
   input: ActivateAiProviderSecretVersionInput,
 ): Promise<AiProviderSecretVersionMetadata> {
   const candidate = await selectActivatableSecret(
@@ -370,7 +361,10 @@ export async function activateAiProviderSecretVersion(
       secretVersionId: input.secretVersionId,
     })
   }
-  await input.verify(decryptRow(keyring, candidate))
+  await verifier.verifyCandidate(
+    { connectionId: candidate.connectionId, secretVersionId: candidate.id },
+    decryptRow(keyring, candidate),
+  )
 
   const rows = await db.transaction('SERIALIZABLE', manager =>
     manager.query<AiProviderSecretRow[]>(
@@ -410,6 +404,42 @@ export async function activateAiProviderSecretVersion(
   const active = rows[0]
   if (!active) throw new Error('AI provider-secret version was not activated')
   return metadata(active)
+}
+
+/**
+ * Purpose-specific provider-secret boundary. Ordinary callers can request
+ * candidate activation using opaque identifiers, but cannot provide code that
+ * receives decrypted material or retrieve plaintext from a result. The trusted
+ * verifier is fixed once when the service is composed.
+ *
+ * Runtime adapter execution intentionally remains unavailable until its trusted
+ * integration owns another purpose-specific operation.
+ */
+export class AiProviderSecretService {
+  readonly #db: SqlServerDatabase
+  readonly #keyring: AiProviderSecretKeyring
+  readonly #verifier: TrustedAiProviderSecretCandidateVerifier
+
+  constructor(
+    db: SqlServerDatabase,
+    keyring: AiProviderSecretKeyring,
+    verifier: TrustedAiProviderSecretCandidateVerifier,
+  ) {
+    this.#db = db
+    this.#keyring = keyring
+    this.#verifier = verifier
+  }
+
+  activateCandidate(
+    input: ActivateAiProviderSecretVersionInput,
+  ): Promise<AiProviderSecretVersionMetadata> {
+    return activateAiProviderSecretVersion(
+      this.#db,
+      this.#keyring,
+      this.#verifier,
+      input,
+    )
+  }
 }
 
 export async function confirmAiProviderSecretRevocation(
