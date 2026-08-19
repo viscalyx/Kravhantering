@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  AiConnectionAdministrationService,
+  __testing,
+  type AiAdminCatalogItem,
   type AiAdminConnectionDetail,
   type AiAdminRunProfileRecord,
   type AiAdminStore,
+  AiConnectionAdministrationService,
 } from '@/lib/ai/admin-service'
 
 const capability = {
@@ -136,7 +138,7 @@ describe('AI connection administration service', () => {
   const external = {
     authorizeConnectionTarget: vi.fn(async () => true),
     authorizeRunProfile: vi.fn(async () => 'authorized' as const),
-    fetchCatalog: vi.fn(async () => []),
+    fetchCatalog: vi.fn(async (): Promise<readonly AiAdminCatalogItem[]> => []),
     probeConnection: vi.fn(),
     probeHealth: vi.fn(),
     verifyModelRevision: vi.fn(),
@@ -157,6 +159,7 @@ describe('AI connection administration service', () => {
 
   it('saves an incomplete draft without making external calls', async () => {
     const saved = connection()
+    saved.authenticationType = 'none'
     const store = {
       createConnection: vi.fn(async () => saved),
     } as unknown as AiAdminStore
@@ -174,7 +177,7 @@ describe('AI connection administration service', () => {
         administrationName: 'Test connection',
         agentRuntimeKey: null,
         agentRuntimeVersion: null,
-        authenticationType: 'static_secret',
+        authenticationType: 'none',
         dataPolicySummary: 'No personal data.',
         description: null,
         egressPolicyKey: 'test',
@@ -187,11 +190,7 @@ describe('AI connection administration service', () => {
 
     expect(external.probeConnection).not.toHaveBeenCalled()
     expect(external.fetchCatalog).not.toHaveBeenCalled()
-    expect(audit).toHaveBeenCalledWith({
-      operation: 'create',
-      resourceId: saved.id,
-      resourceType: 'ai_connection',
-    })
+    expect(audit).not.toHaveBeenCalled()
   })
 
   it('passes the exact dependency evidence into atomic profile activation', async () => {
@@ -232,8 +231,7 @@ describe('AI connection administration service', () => {
     })
 
     expect(store.activateRunProfileRevision).toHaveBeenCalledWith({
-      attestationRevisionToken:
-        currentConnection.attestation?.revisionToken,
+      attestationRevisionToken: currentConnection.attestation?.revisionToken,
       connectionEvidenceId,
       connectionRevisionToken: currentConnection.revisionToken,
       modelRevisionToken: modelRevision.revisionToken,
@@ -388,5 +386,428 @@ describe('AI connection administration service', () => {
       modelRevisionId: revision.id,
       modelRevisionToken: revision.revisionToken,
     })
+  })
+
+  it('covers the complete successful administration service surface', async () => {
+    const currentConnection = connection()
+    const currentProfile = profile()
+    const modelRevision = verifiedRevision(currentConnection)
+    const profileRevision = draftRevision(currentProfile)
+    const metadata = {
+      activatedAt: null,
+      ciphertextDeletedAt: null,
+      connectionId: currentConnection.id,
+      createdAt: '2026-08-19T00:00:00.000Z',
+      id: currentConnection.activeSecret.available
+        ? currentConnection.activeSecret.secretVersionId
+        : randomUUID(),
+      providerRevokedAt: null,
+      revisionNumber: 1,
+      revisionToken: randomUUID(),
+      rootKeyVersion: 'root-a',
+      status: 'candidate' as const,
+      verifiedAt: null,
+    }
+    const snapshot = {
+      attestationRevisionToken:
+        currentConnection.attestation?.revisionToken ?? null,
+      connection: currentConnection,
+      connectionEvidenceId: currentConnection.connectionEvidenceId,
+      modelRevision,
+      profile: currentProfile,
+      profileRevision,
+      secretVersionId: metadata.id,
+    }
+    const store = {
+      activateConnection: vi.fn(async () => currentConnection),
+      activateRunProfileRevision: vi.fn(async () => currentProfile),
+      createConnection: vi.fn(async () => currentConnection),
+      getActivationSnapshot: vi.fn(async () => snapshot),
+      getConnection: vi.fn(async () => currentConnection),
+      listConnections: vi.fn(async () => [currentConnection]),
+      listRunProfileActivationEntries: vi.fn(async () => [
+        { profile: currentProfile, snapshot },
+        {
+          profile: { ...currentProfile, profileKey: 'invalid_json_repair' },
+          snapshot: null,
+        },
+      ]),
+      listRunProfileRevisions: vi.fn(async () => [profileRevision]),
+      recordConnectionVerification: vi.fn(async () => currentConnection),
+      recordHealth: vi.fn(async () => currentConnection),
+      recordModelVerification: vi.fn(async () => modelRevision),
+      retireModelRevision: vi.fn(async () => ({
+        ...modelRevision,
+        status: 'retired' as const,
+      })),
+      saveAttestation: vi.fn(async () => currentConnection.attestation),
+      saveModelRevision: vi.fn(async () => currentConnection.models[0]),
+      saveRunProfileRevision: vi.fn(async () => currentProfile),
+      setConnectionLifecycle: vi.fn(async () => currentConnection),
+      setRunProfileOperationalStatus: vi.fn(async () => currentProfile),
+      updateConnection: vi.fn(async () => currentConnection),
+    } as unknown as AiAdminStore
+    secrets.activateCandidate.mockResolvedValue(metadata)
+    secrets.confirmRevocation.mockResolvedValue(metadata)
+    secrets.deleteCandidate.mockResolvedValue(true)
+    secrets.writeCandidate.mockResolvedValue(metadata)
+    external.fetchCatalog.mockResolvedValue([
+      {
+        capabilities: capability,
+        externalModelId: modelRevision.externalModelId,
+        externalModelVersion: null,
+        name: 'Model',
+      },
+    ])
+    external.probeConnection.mockResolvedValue({
+      details: { reachable: true },
+      failureCategory: null,
+      outcome: 'passed',
+      testSuiteVersion: 'test-v1',
+    })
+    external.probeHealth.mockResolvedValue('healthy')
+    external.verifyModelRevision.mockResolvedValue({
+      details: { resolved: true },
+      failureCategory: null,
+      outcome: 'passed',
+      testSuiteVersion: 'test-v1',
+      verifiedCapabilities: capability,
+    })
+    const service = new AiConnectionAdministrationService({
+      audit,
+      external,
+      secrets,
+      store,
+    })
+
+    await expect(service.listConnections()).resolves.toHaveLength(1)
+    await expect(service.listRunProfiles()).resolves.toHaveLength(2)
+    await expect(
+      service.listRunProfileRevisions(currentProfile.profileKey),
+    ).resolves.toEqual([profileRevision])
+    await expect(
+      service.getConnection(currentConnection.id),
+    ).resolves.toBeDefined()
+    await expect(
+      service.updateConnection({
+        connection: {
+          adapterKey: currentConnection.adapterKey,
+          adapterVersion: currentConnection.adapterVersion,
+          administrationName: currentConnection.administrationName,
+          agentRuntimeKey: currentConnection.agentRuntimeKey,
+          agentRuntimeVersion: currentConnection.agentRuntimeVersion,
+          authenticationType: currentConnection.authenticationType,
+          dataPolicySummary: currentConnection.dataPolicySummary,
+          description: currentConnection.description,
+          egressPolicyKey: currentConnection.egressPolicyKey,
+          endpointUrl: currentConnection.endpointUrl,
+          maximumConcurrency: currentConnection.maximumConcurrency,
+          publicName: currentConnection.publicName,
+          tlsPolicyKey: currentConnection.tlsPolicyKey,
+        },
+        connectionId: currentConnection.id,
+        revisionToken: currentConnection.revisionToken,
+      }),
+    ).resolves.toBeDefined()
+    const attestation = currentConnection.attestation
+    if (!attestation) throw new Error('Attestation missing')
+    await expect(
+      service.saveAttestation({
+        attestation,
+        connectionId: currentConnection.id,
+        currentAttestationRevisionToken: attestation.revisionToken,
+        makeValid: true,
+      }),
+    ).resolves.toBeDefined()
+    await expect(
+      service.writeSecret(currentConnection.id, 'new-secret'),
+    ).resolves.toBe(metadata)
+    await expect(
+      service.activateSecret(currentConnection.id, metadata.id),
+    ).resolves.toBe(metadata)
+    await expect(
+      service.confirmSecretRevocation(currentConnection.id, metadata.id),
+    ).resolves.toBe(metadata)
+    await expect(
+      service.deleteSecretCandidate(currentConnection.id, metadata.id),
+    ).resolves.toBeUndefined()
+    await expect(
+      service.verifyConnection(currentConnection.id),
+    ).resolves.toBeDefined()
+    await expect(
+      service.fetchCatalog(currentConnection.id),
+    ).resolves.toHaveLength(1)
+    await expect(
+      service.probeHealth({
+        connectionId: currentConnection.id,
+        modelRevisionId: modelRevision.id,
+        revisionToken: modelRevision.revisionToken,
+      }),
+    ).resolves.toBeDefined()
+    await expect(
+      service.saveModelRevision({
+        connectionId: currentConnection.id,
+        modelRevision: {
+          declaredCapabilities: capability,
+          description: null,
+          discoveredCapabilities: null,
+          externalModelId: 'controlled/new',
+          externalModelVersion: null,
+          modelId: null,
+          modelToken: null,
+          name: 'New',
+        },
+      }),
+    ).resolves.toBeDefined()
+    await expect(
+      service.verifyModelRevision({
+        connectionId: currentConnection.id,
+        modelRevisionId: modelRevision.id,
+        revisionToken: modelRevision.revisionToken,
+      }),
+    ).resolves.toBe(modelRevision)
+    await expect(
+      service.retireModelRevision({
+        connectionId: currentConnection.id,
+        modelRevisionId: modelRevision.id,
+        revisionToken: modelRevision.revisionToken,
+      }),
+    ).resolves.toMatchObject({ status: 'retired' })
+    await expect(
+      service.setConnectionLifecycle({
+        connectionId: currentConnection.id,
+        revisionToken: currentConnection.revisionToken,
+        status: 'suspended',
+      }),
+    ).resolves.toBeDefined()
+    await expect(
+      service.setConnectionLifecycle({
+        connectionId: currentConnection.id,
+        revisionToken: currentConnection.revisionToken,
+        status: 'active',
+      }),
+    ).resolves.toBeDefined()
+    await expect(
+      service.saveRunProfileRevision({
+        profileKey: currentProfile.profileKey,
+        revision: profileRevision,
+      }),
+    ).resolves.toBe(currentProfile)
+    await expect(
+      service.setRunProfileOperationalStatus({
+        profileKey: currentProfile.profileKey,
+        revisionToken: currentProfile.revisionToken,
+        status: 'suspended',
+      }),
+    ).resolves.toBe(currentProfile)
+  })
+
+  it('returns safe conflicts and validation errors for stale or incomplete state', async () => {
+    const currentConnection = connection()
+    const modelRevision = verifiedRevision(currentConnection)
+    const store = {
+      getConnection: vi.fn(async () => null),
+      retireModelRevision: vi.fn(async () => null),
+      setConnectionLifecycle: vi.fn(async () => null),
+      setRunProfileOperationalStatus: vi.fn(async () => null),
+      updateConnection: vi.fn(async () => null),
+    } as unknown as AiAdminStore
+    secrets.deleteCandidate.mockResolvedValue(false)
+    const service = new AiConnectionAdministrationService({
+      audit,
+      external,
+      secrets,
+      store,
+    })
+
+    await expect(
+      service.getConnection(currentConnection.id),
+    ).rejects.toMatchObject({
+      code: 'not_found',
+    })
+    await expect(
+      service.updateConnection({
+        connection: {} as never,
+        connectionId: currentConnection.id,
+        revisionToken: currentConnection.revisionToken,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    await expect(
+      service.deleteSecretCandidate(currentConnection.id, randomUUID()),
+    ).rejects.toMatchObject({ code: 'not_found' })
+    await expect(
+      service.retireModelRevision({
+        connectionId: currentConnection.id,
+        modelRevisionId: modelRevision.id,
+        revisionToken: modelRevision.revisionToken,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    await expect(
+      service.setConnectionLifecycle({
+        connectionId: currentConnection.id,
+        revisionToken: currentConnection.revisionToken,
+        status: 'retired',
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    await expect(
+      service.setRunProfileOperationalStatus({
+        profileKey: 'invalid_json_repair',
+        revisionToken: randomUUID(),
+        status: 'enabled',
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+
+    const reachableStore = {
+      getConnection: vi.fn(async () => currentConnection),
+    } as unknown as AiAdminStore
+    const reachable = new AiConnectionAdministrationService({
+      audit,
+      external,
+      secrets,
+      store: reachableStore,
+    })
+    const reachableAttestation = currentConnection.attestation
+    if (!reachableAttestation) throw new Error('Attestation missing')
+    await expect(
+      reachable.saveAttestation({
+        attestation: {
+          ...reachableAttestation,
+          providerName: null,
+          revisionToken: null,
+        },
+        connectionId: currentConnection.id,
+        makeValid: true,
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+    await expect(
+      reachable.probeHealth({
+        connectionId: currentConnection.id,
+        modelRevisionId: randomUUID(),
+        revisionToken: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+    await expect(
+      reachable.probeHealth({
+        connectionId: currentConnection.id,
+        modelRevisionId: modelRevision.id,
+        revisionToken: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+  })
+
+  it('evaluates attestation dates and every locked capability-policy mode', () => {
+    const baseAttestation = connection().attestation
+    if (!baseAttestation) throw new Error('Attestation missing')
+    expect(__testing.completeAttestation(baseAttestation)).toBe(true)
+    for (const field of [
+      'responsibleOrganizationUnitReference',
+      'purpose',
+      'maximumInformationClass',
+      'isPersonalDataProcessed',
+      'providerName',
+      'subprocessors',
+      'processingRegions',
+      'isTrainingAllowed',
+      'maximumRetentionDays',
+      'incidentResponseReference',
+      'decisionReference',
+      'reviewedAt',
+    ] as const) {
+      expect(
+        __testing.completeAttestation({ ...baseAttestation, [field]: null }),
+      ).toBe(false)
+    }
+    expect(
+      __testing.completeAttestation({
+        ...baseAttestation,
+        processingRegions: [],
+      }),
+    ).toBe(false)
+    expect(
+      __testing.currentAttestation({ ...baseAttestation, reviewedAt: null }),
+    ).toBe(false)
+    expect(
+      __testing.currentAttestation({
+        ...baseAttestation,
+        reviewDueAt: '2020-01-01T00:00:00.000Z',
+      }),
+    ).toBe(false)
+    expect(
+      __testing.currentAttestation({
+        ...baseAttestation,
+        reviewedAt: '2099-01-01T00:00:00.000Z',
+      }),
+    ).toBe(false)
+    expect(
+      __testing.currentAttestation({
+        ...baseAttestation,
+        reviewDueAt: 'invalid',
+      }),
+    ).toBe(false)
+
+    const policy = profile().draftRevision?.capabilityPolicy
+    if (!policy) throw new Error('Policy missing')
+    expect(
+      __testing.capabilityPolicyBlockers(
+        'invalid_json_repair',
+        { ...policy, streaming: 'allowed', usageMetadata: 'required' },
+        null,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'capability_policy_invalid' }),
+        { code: 'model_revision_unverified' },
+      ]),
+    )
+    expect(
+      __testing.capabilityPolicyBlockers(
+        'generation_with_images',
+        { ...policy, imageInput: 'required', jsonSchema: 'required' },
+        { ...capability, imageInput: false, jsonSchemaSteering: false },
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        { code: 'capability_policy_invalid', field: 'imageInput' },
+        { code: 'capability_policy_invalid', field: 'jsonSchema' },
+      ]),
+    )
+    expect(
+      __testing.capabilityPolicyBlockers(
+        'generation_without_images',
+        { ...policy, usageMetadata: 'required' },
+        { ...capability, cost: false, tokenUsage: false },
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        { code: 'capability_policy_invalid', field: 'usageMetadata' },
+      ]),
+    )
+    expect(
+      __testing.capabilityPolicyBlockers(
+        'generation_without_images',
+        { ...policy, usageMetadata: 'required' },
+        { ...capability, cost: true, tokenUsage: false },
+      ),
+    ).toEqual(expect.any(Array))
+    const currentConnection = connection()
+    const currentProfile = profile()
+    const currentRevision = currentProfile.draftRevision
+    if (!currentRevision) throw new Error('Profile revision missing')
+    expect(
+      __testing.profileActivationBlockers('generation_without_images', {
+        attestationRevisionToken: null,
+        connection: { ...currentConnection, lifecycleStatus: 'draft' },
+        connectionEvidenceId: null,
+        modelRevision: null,
+        profile: currentProfile,
+        profileRevision: currentRevision,
+        secretVersionId: null,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        { code: 'connection_inactive' },
+        { code: 'model_revision_missing' },
+      ]),
+    )
   })
 })

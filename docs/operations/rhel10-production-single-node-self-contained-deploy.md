@@ -171,6 +171,7 @@ contract with the external provider owner instead.
 | `AUTH_MCP_ROLES_CLAIM` | `AUTH_MCP_ROLES_CLAIM` in `app.env` | `roles` | Keep aligned with the bundled or external provider's MCP role mapper. |
 | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` in `app.env` | `300` | Integer from `60` through `900`; keep aligned with the service-client lifetime. |
 | `AI_PROVIDER_SECRET_KEYRING_FILE` | External root keyring mounted into `app-runtime` | `/run/secrets/kravhantering/ai-provider-secret-keyring.json` | Required before enabling connection-managed AI. Provision every referenced 256-bit key version through the approved secret manager; see [AI Connections Operations](./ai-connections.md#external-root-keyring). |
+| AI connection trust maps | `AI_CONNECTION_EGRESS_POLICIES_JSON`, `AI_CONNECTION_DATA_POLICIES_JSON`, and `AI_CONNECTION_TLS_POLICIES_JSON` in `app.env` | Empty maps | Replace with reviewed deployment-owned policy maps before verifying or activating an AI connection. Keep network enforcement aligned with the egress map; see [AI Connections Operations](./ai-connections.md#external-trust-boundary). |
 | `MCP_CLIENT_SECRET` | Realm JSON `kravhantering-mcp` client `secret` | No default | Plan only when MCP service tokens are used; generate a secret separate from `OIDC_APP_CLIENT_SECRET`. |
 | `MCP_SERVICE_EMPLOYEE_HSA_ID` | Realm JSON MCP service-account user attribute | No default | Plan only when MCP service tokens are used; record the approved service-account `hsaId`. |
 | `redirectUris` | Realm JSON `kravhantering-app` client `redirectUris` | `https://<APP_HOST>/api/auth/callback` | Verify it stays aligned with `AUTH_OIDC_REDIRECT_URI`. |
@@ -993,6 +994,9 @@ HSA_PERSON_LOOKUP_OAUTH_SCOPE=
 HSA_PERSON_LOOKUP_OAUTH_AUDIENCE=
 
 AI_PROVIDER_SECRET_KEYRING_FILE=/run/secrets/kravhantering/ai-provider-secret-keyring.json
+AI_CONNECTION_EGRESS_POLICIES_JSON={}
+AI_CONNECTION_DATA_POLICIES_JSON={}
+AI_CONNECTION_TLS_POLICIES_JSON={}
 
 NEXT_PUBLIC_DEFAULT_MODEL=
 OPENROUTER_API_KEY=

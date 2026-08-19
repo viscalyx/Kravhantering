@@ -3,6 +3,7 @@ import {
   compileRestRouteRegistry,
   REST_OPERATIONS,
   REST_ROUTE_REGISTRY,
+  resolveRestPathPolicy,
   type RestOperationDeclaration,
 } from '@/lib/http/route-security-policy'
 
@@ -267,6 +268,43 @@ describe('REST route security policy registry', () => {
         ],
       ]),
     ).toThrow('Noncanonical REST route template')
+
+    expect(() =>
+      compileRestRouteRegistry([
+        [
+          'GET',
+          '/api/widgets',
+          'session',
+          'same-origin',
+          'authenticated',
+          'framework-default',
+          'focused',
+        ],
+      ]),
+    ).toThrow('Safe REST operation cannot require CSRF')
+
+    expect(() =>
+      compileRestRouteRegistry([
+        [
+          'POST',
+          '/api/widgets',
+          'public',
+          'same-origin',
+          'authenticated',
+          'framework-default',
+          'focused',
+        ],
+      ]),
+    ).toThrow('Only logout may combine public auth and CSRF')
+  })
+
+  it('resolves aggregate path policy through the public helper', () => {
+    expect(resolveRestPathPolicy('/api/admin/ai-connections')).toMatchObject({
+      auth: 'session',
+      cache: 'no-store',
+      csrf: 'same-origin',
+      sensitivity: 'sensitive',
+    })
   })
 
   it('resolves every registered operation through the compiled indexes', () => {

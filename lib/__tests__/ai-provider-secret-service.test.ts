@@ -5,6 +5,7 @@ import {
 } from '@/lib/ai/provider-secret-crypto'
 import { parseAiProviderSecretKeyring } from '@/lib/ai/provider-secret-keyring'
 import {
+  AiProviderSecretAdminService,
   AiProviderSecretService,
   confirmAiProviderSecretRevocation,
   deleteAiProviderSecretCandidate,
@@ -14,6 +15,9 @@ import {
   verifyAiProviderSecretRestoreSet,
   writeAiProviderSecretCandidate,
 } from '@/lib/ai/provider-secret-service'
+import type { AiAdminConnectionAdapter } from '@/lib/ai/admin-adapter'
+import type { AiAdminConnectionDetail } from '@/lib/ai/admin-service'
+import type { AiEgressTransport } from '@/lib/ai/run-contracts'
 import type { SqlServerDatabase } from '@/lib/db'
 
 function keyring(activeWriteVersion: string, keys: Record<string, Buffer>) {
@@ -84,6 +88,33 @@ function persistedRow(
 }
 
 describe('AI provider-secret service', () => {
+  it('fails closed when an authenticated admin operation has no active secret', async () => {
+    const connectionId = randomUUID()
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const adapter = {
+      fetchCatalog: vi.fn(),
+    } as unknown as AiAdminConnectionAdapter
+    const service = new AiProviderSecretAdminService(
+      database(vi.fn(async () => [])).db,
+      ring,
+    )
+
+    await expect(
+      service.fetchCatalog(
+        adapter,
+        {
+          authenticationType: 'static_secret',
+          id: connectionId,
+        } as AiAdminConnectionDetail,
+        { fetch: vi.fn() } as AiEgressTransport,
+      ),
+    ).rejects.toMatchObject({
+      connectionId,
+      reason: 'secret_missing',
+    })
+    expect(adapter.fetchCatalog).not.toHaveBeenCalled()
+  })
+
   it('encrypts before candidate persistence and never sends plaintext to SQL', async () => {
     const connectionId = randomUUID()
     const ring = keyring('root-1', { 'root-1': randomBytes(32) })

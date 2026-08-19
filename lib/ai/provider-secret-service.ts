@@ -1,5 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import type { SqlServerDatabase } from '@/lib/db'
+import type {
+  AiAdminAdapterContext,
+  AiAdminConnectionAdapter,
+} from './admin-adapter'
+import type {
+  AiAdminCatalogItem,
+  AiAdminConnectionDetail,
+  AiAdminConnectionVerificationResult,
+  AiAdminModelRevisionRecord,
+  AiAdminModelVerificationResult,
+} from './admin-service'
 import {
   AiProviderSecretCryptoError,
   type AiProviderSecretEnvelope,
@@ -10,10 +21,15 @@ import {
   type AiProviderSecretKeyring,
   AiProviderSecretKeyringError,
 } from './provider-secret-keyring.ts'
+import type { AiEgressTransport } from './run-contracts'
 
-interface QueryExecutor {
+export interface AiProviderSecretMutationExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
 }
+
+export type AiProviderSecretBeforeCommit = (
+  executor: AiProviderSecretMutationExecutor,
+) => Promise<void>
 
 export type AiProviderSecretVersionStatus =
   | 'active'
@@ -174,7 +190,7 @@ function envelope(row: AiProviderSecretRow): AiProviderSecretEnvelope | null {
 }
 
 async function selectActiveSecret(
-  executor: QueryExecutor,
+  executor: AiProviderSecretMutationExecutor,
   connectionId: string,
 ): Promise<AiProviderSecretRow | undefined> {
   const rows = await executor.query<AiProviderSecretRow[]>(
@@ -196,7 +212,7 @@ async function selectActiveSecret(
 }
 
 async function selectActivatableSecret(
-  executor: QueryExecutor,
+  executor: AiProviderSecretMutationExecutor,
   connectionId: string,
   secretVersionId: string,
 ): Promise<AiProviderSecretRow | undefined> {
@@ -257,6 +273,7 @@ export async function writeAiProviderSecretCandidate(
   db: SqlServerDatabase,
   keyring: AiProviderSecretKeyring,
   input: WriteAiProviderSecretCandidateInput,
+  beforeCommit?: AiProviderSecretBeforeCommit,
 ): Promise<AiProviderSecretVersionMetadata> {
   const secretVersionId = randomUUID()
   const encrypted = encryptAiProviderSecret(
@@ -264,8 +281,8 @@ export async function writeAiProviderSecretCandidate(
     { connectionId: input.connectionId, secretVersionId },
     input.plaintext,
   )
-  const rows = await db.transaction('SERIALIZABLE', manager =>
-    manager.query<AiProviderSecretRow[]>(
+  const row = await db.transaction('SERIALIZABLE', async manager => {
+    const rows = await manager.query<AiProviderSecretRow[]>(
       `IF NOT EXISTS (
          SELECT 1 FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
          WHERE [id] = @0
@@ -305,10 +322,12 @@ export async function writeAiProviderSecretCandidate(
         encrypted.formatVersion,
         encrypted.rootKeyVersion,
       ],
-    ),
-  )
-  const row = rows[0]
-  if (!row) throw new Error('AI provider-secret candidate was not created')
+    )
+    const saved = rows[0]
+    if (!saved) throw new Error('AI provider-secret candidate was not created')
+    await beforeCommit?.(manager)
+    return saved
+  })
   return metadata(row)
 }
 
@@ -348,6 +367,7 @@ async function activateAiProviderSecretVersion(
   keyring: AiProviderSecretKeyring,
   verifier: TrustedAiProviderSecretCandidateVerifier,
   input: ActivateAiProviderSecretVersionInput,
+  beforeCommit?: AiProviderSecretBeforeCommit,
 ): Promise<AiProviderSecretVersionMetadata> {
   const candidate = await selectActivatableSecret(
     db,
@@ -366,8 +386,8 @@ async function activateAiProviderSecretVersion(
     decryptRow(keyring, candidate),
   )
 
-  const rows = await db.transaction('SERIALIZABLE', manager =>
-    manager.query<AiProviderSecretRow[]>(
+  const active = await db.transaction('SERIALIZABLE', async manager => {
+    const rows = await manager.query<AiProviderSecretRow[]>(
       `DECLARE @now datetime2(3) = SYSUTCDATETIME();
 
        IF NOT EXISTS (
@@ -399,10 +419,12 @@ async function activateAiProviderSecretVersion(
          INSERTED.[revision_token] AS [revisionToken]
        WHERE [id] = @0 AND [ai_connection_id] = @1;`,
       [input.secretVersionId, input.connectionId, candidate.revisionToken],
-    ),
-  )
-  const active = rows[0]
-  if (!active) throw new Error('AI provider-secret version was not activated')
+    )
+    const saved = rows[0]
+    if (!saved) throw new Error('AI provider-secret version was not activated')
+    await beforeCommit?.(manager)
+    return saved
+  })
   return metadata(active)
 }
 
@@ -419,15 +441,18 @@ export class AiProviderSecretService {
   readonly #db: SqlServerDatabase
   readonly #keyring: AiProviderSecretKeyring
   readonly #verifier: TrustedAiProviderSecretCandidateVerifier
+  readonly #beforeCommit?: AiProviderSecretBeforeCommit
 
   constructor(
     db: SqlServerDatabase,
     keyring: AiProviderSecretKeyring,
     verifier: TrustedAiProviderSecretCandidateVerifier,
+    beforeCommit?: AiProviderSecretBeforeCommit,
   ) {
     this.#db = db
     this.#keyring = keyring
     this.#verifier = verifier
+    this.#beforeCommit = beforeCommit
   }
 
   activateCandidate(
@@ -438,16 +463,110 @@ export class AiProviderSecretService {
       this.#keyring,
       this.#verifier,
       input,
+      this.#beforeCommit,
     )
+  }
+}
+
+/**
+ * Purpose-specific administrative provider boundary. It permits the trusted
+ * adapter to consume an active credential transiently without exposing a
+ * plaintext-returning API to routes or business services.
+ */
+export class AiProviderSecretAdminService {
+  readonly #db: SqlServerDatabase
+  readonly #keyring: AiProviderSecretKeyring
+
+  constructor(db: SqlServerDatabase, keyring: AiProviderSecretKeyring) {
+    this.#db = db
+    this.#keyring = keyring
+  }
+
+  async #execute<Result>(
+    connection: Readonly<AiAdminConnectionDetail>,
+    egress: AiEgressTransport,
+    operation: (context: Readonly<AiAdminAdapterContext>) => Promise<Result>,
+  ): Promise<Result> {
+    if (connection.authenticationType === 'none') {
+      return operation({ connection, credential: null, egress })
+    }
+    const row = await selectActiveSecret(this.#db, connection.id)
+    if (!row) {
+      throw new AiProviderSecretUnavailableError(connection.id, {
+        available: false,
+        reason: 'secret_missing',
+      })
+    }
+    return operation({
+      connection,
+      credential: decryptRow(this.#keyring, row),
+      egress,
+    })
+  }
+
+  fetchCatalog(
+    adapter: AiAdminConnectionAdapter,
+    connection: Readonly<AiAdminConnectionDetail>,
+    egress: AiEgressTransport,
+  ): Promise<readonly AiAdminCatalogItem[]> {
+    return this.#execute(connection, egress, context =>
+      adapter.fetchCatalog(context),
+    )
+  }
+
+  probeConnection(
+    adapter: AiAdminConnectionAdapter,
+    connection: Readonly<AiAdminConnectionDetail>,
+    egress: AiEgressTransport,
+  ): Promise<Readonly<AiAdminConnectionVerificationResult>> {
+    return this.#execute(connection, egress, context =>
+      adapter.probeConnection(context),
+    )
+  }
+
+  probeHealth(
+    adapter: AiAdminConnectionAdapter,
+    connection: Readonly<AiAdminConnectionDetail>,
+    egress: AiEgressTransport,
+    revision: Readonly<AiAdminModelRevisionRecord>,
+  ): Promise<'degraded' | 'healthy' | 'unavailable'> {
+    return this.#execute(connection, egress, context =>
+      adapter.probeHealth(context, revision),
+    )
+  }
+
+  verifyModelRevision(
+    adapter: AiAdminConnectionAdapter,
+    connection: Readonly<AiAdminConnectionDetail>,
+    egress: AiEgressTransport,
+    revision: Readonly<AiAdminModelRevisionRecord>,
+  ): Promise<Readonly<AiAdminModelVerificationResult>> {
+    return this.#execute(connection, egress, context =>
+      adapter.verifyModelRevision(context, revision),
+    )
+  }
+
+  verifySecretCandidate(
+    adapter: AiAdminConnectionAdapter,
+    connection: Readonly<AiAdminConnectionDetail>,
+    egress: AiEgressTransport,
+    plaintext: string,
+  ): Promise<void> {
+    return adapter.verifySecretCandidate({
+      connection,
+      credential: plaintext,
+      egress,
+    })
   }
 }
 
 export async function confirmAiProviderSecretRevocation(
   db: SqlServerDatabase,
   input: ConfirmAiProviderSecretRevocationInput,
+  beforeCommit?: AiProviderSecretBeforeCommit,
 ): Promise<AiProviderSecretVersionMetadata> {
-  const rows = await db.transaction('SERIALIZABLE', manager =>
-    manager.query<AiProviderSecretRow[]>(
+  const row = await db.transaction('SERIALIZABLE', async manager => {
+    const rows = await manager.query<AiProviderSecretRow[]>(
       `DECLARE @now datetime2(3) = SYSUTCDATETIME();
        UPDATE [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
        SET [ciphertext] = NULL, [nonce] = NULL,
@@ -465,31 +584,36 @@ export async function confirmAiProviderSecretRevocation(
        WHERE [id] = @0 AND [ai_connection_id] = @1
          AND [status] = N'superseded' AND [ciphertext] IS NOT NULL;`,
       [input.secretVersionId, input.connectionId],
-    ),
-  )
-  const row = rows[0]
-  if (!row) {
-    throw new Error(
-      'Only a superseded, encrypted AI provider-secret version can be confirmed revoked',
     )
-  }
+    const saved = rows[0]
+    if (!saved) {
+      throw new Error(
+        'Only a superseded, encrypted AI provider-secret version can be confirmed revoked',
+      )
+    }
+    await beforeCommit?.(manager)
+    return saved
+  })
   return metadata(row)
 }
 
 export async function deleteAiProviderSecretCandidate(
   db: SqlServerDatabase,
   input: DeleteAiProviderSecretCandidateInput,
+  beforeCommit?: AiProviderSecretBeforeCommit,
 ): Promise<boolean> {
-  const rows = await db.transaction('SERIALIZABLE', manager =>
-    manager.query<Array<{ deletedId: string }>>(
+  return db.transaction('SERIALIZABLE', async manager => {
+    const rows = await manager.query<Array<{ deletedId: string }>>(
       `DELETE FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
        OUTPUT DELETED.[id] AS [deletedId]
        WHERE [id] = @0 AND [ai_connection_id] = @1
          AND [status] = N'candidate';`,
       [input.secretVersionId, input.connectionId],
-    ),
-  )
-  return rows[0]?.deletedId === input.secretVersionId
+    )
+    const deleted = rows[0]?.deletedId === input.secretVersionId
+    if (deleted) await beforeCommit?.(manager)
+    return deleted
+  })
 }
 
 export async function reencryptAiProviderSecrets(

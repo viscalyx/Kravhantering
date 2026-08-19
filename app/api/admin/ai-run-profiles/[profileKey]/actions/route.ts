@@ -32,9 +32,9 @@ export const POST = secureMutationRoute({
         connectionRevisionToken: body.connectionRevisionToken,
         modelRevisionToken: body.modelRevisionToken,
         profileKey: params.profileKey,
-            profileRevisionId: body.profileRevisionId,
-            profileRevisionToken: body.profileRevisionToken,
-            profileToken: body.profileToken,
+        profileRevisionId: body.profileRevisionId,
+        profileRevisionToken: body.profileRevisionToken,
+        profileToken: body.profileToken,
       }),
     )
   },

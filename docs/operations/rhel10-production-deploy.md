@@ -123,6 +123,7 @@ verification.
 | `AUTH_MCP_ROLES_CLAIM` | `AUTH_MCP_ROLES_CLAIM` in `app.env` | `roles` | Plan only if the approved MCP role mapper emits another claim. |
 | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` in `app.env` | `300` | Integer from `60` through `900`; keep aligned with the service client's declared token lifetime. |
 | `AI_PROVIDER_SECRET_KEYRING_FILE` | External root keyring mounted into `app-runtime` | `/run/secrets/kravhantering/ai-provider-secret-keyring.json` | Required before enabling connection-managed AI. Provision all referenced 256-bit key versions through the approved secret manager; see [AI Connections Operations](./ai-connections.md#external-root-keyring). |
+| AI connection trust maps | `AI_CONNECTION_EGRESS_POLICIES_JSON`, `AI_CONNECTION_DATA_POLICIES_JSON`, and `AI_CONNECTION_TLS_POLICIES_JSON` in `app.env` | Empty maps | Replace with reviewed deployment-owned policy maps before verifying or activating an AI connection. Keep network enforcement aligned with the egress map; see [AI Connections Operations](./ai-connections.md#external-trust-boundary). |
 | `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation is approved. |
 | `OPENROUTER_MGMT_API_KEY` | `OPENROUTER_MGMT_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation and organization credit display are approved. |
 | `NEXT_PUBLIC_DEFAULT_MODEL` | `NEXT_PUBLIC_DEFAULT_MODEL` in `app.env` | Empty | Plan only if the deployment should preselect a public default AI model. |
@@ -655,6 +656,9 @@ HSA_PERSON_LOOKUP_OAUTH_SCOPE=
 HSA_PERSON_LOOKUP_OAUTH_AUDIENCE=
 
 AI_PROVIDER_SECRET_KEYRING_FILE=/run/secrets/kravhantering/ai-provider-secret-keyring.json
+AI_CONNECTION_EGRESS_POLICIES_JSON={}
+AI_CONNECTION_DATA_POLICIES_JSON={}
+AI_CONNECTION_TLS_POLICIES_JSON={}
 
 NEXT_PUBLIC_DEFAULT_MODEL=
 OPENROUTER_API_KEY=

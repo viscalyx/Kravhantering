@@ -5,9 +5,9 @@ import { AI_RUN_PROFILE_KEYS } from './profile-resolver'
 export const aiIdentifierSchema = z.string().uuid()
 export const aiRevisionTokenSchema = z.string().uuid()
 
-const boundedText = (maximum: number) =>
+const boundedText = (maximum: number): z.ZodString =>
   z.string().trim().min(1).max(maximum)
-const optionalText = (maximum: number) =>
+const optionalText = (maximum: number): z.ZodNullable<z.ZodString> =>
   z.string().trim().max(maximum).nullable()
 
 export const aiCapabilitySchema = z
@@ -57,7 +57,10 @@ export const createAiConnectionSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if ((value.agentRuntimeKey === null) !== (value.agentRuntimeVersion === null)) {
+    if (
+      (value.agentRuntimeKey === null) !==
+      (value.agentRuntimeVersion === null)
+    ) {
       context.addIssue({
         code: 'custom',
         message: 'Agent runtime key and version must be supplied together.',
@@ -78,7 +81,8 @@ export const createAiConnectionSchema = z
     } catch {
       context.addIssue({
         code: 'custom',
-        message: 'Endpoint must be an HTTPS or WSS URL without credentials, query, or fragment.',
+        message:
+          'Endpoint must be an HTTPS or WSS URL without credentials, query, or fragment.',
         path: ['endpointUrl'],
       })
     }
@@ -115,12 +119,14 @@ export const saveAiModelRevisionSchema = z
   .object({
     declaredCapabilities: aiCapabilitySchema,
     description: optionalText(20_000).optional().default(null),
-    discoveredCapabilities: aiCapabilitySchema.nullable().optional().default(null),
+    discoveredCapabilities: aiCapabilitySchema
+      .nullable()
+      .optional()
+      .default(null),
     externalModelId: boundedText(450),
     externalModelVersion: optionalText(200).optional().default(null),
     modelId: aiIdentifierSchema.nullable().optional().default(null),
     modelToken: aiRevisionTokenSchema.nullable().optional().default(null),
-    modelRevisionToken: aiRevisionTokenSchema.nullable().optional().default(null),
     name: boundedText(300),
   })
   .strict()
@@ -128,15 +134,9 @@ export const saveAiModelRevisionSchema = z
     if ((value.modelId === null) !== (value.modelToken === null)) {
       context.addIssue({
         code: 'custom',
-        message: 'Existing model ID and revision token must be supplied together.',
+        message:
+          'Existing model ID and revision token must be supplied together.',
         path: ['modelToken'],
-      })
-    }
-    if (value.modelRevisionToken !== null && value.modelId === null) {
-      context.addIssue({
-        code: 'custom',
-        message: 'A model revision can only be updated for an existing model.',
-        path: ['modelRevisionToken'],
       })
     }
   })
@@ -202,12 +202,20 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
     .object({
       action: z.literal('attest'),
       attestation: saveAiAttestationSchema,
+      currentAttestationRevisionToken: aiRevisionTokenSchema.nullable(),
     })
     .strict(),
   z
     .object({
       action: z.literal('save_attestation'),
       attestation: saveAiAttestationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal('retire_model_revision'),
+      modelRevisionId: aiIdentifierSchema,
+      revisionToken: aiRevisionTokenSchema,
     })
     .strict(),
   z

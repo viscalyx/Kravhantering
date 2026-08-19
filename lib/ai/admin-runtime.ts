@@ -1,13 +1,14 @@
-import type { RequestContext } from '@/lib/requirements/auth'
 import { recordAdminPrivilegedActionSucceeded } from '@/lib/admin/privileged-audit'
-import type { SqlServerDatabase } from '@/lib/db'
 import { createSqlServerAiAdminStore } from '@/lib/dal/ai-connection-admin'
+import type { SqlServerDatabase } from '@/lib/db'
+import type { RequestContext } from '@/lib/requirements/auth'
+import { createProductionAiAdminExternalOperations } from './admin-external'
 import {
-  AiConnectionAdministrationService,
   type AiAdminExternalOperations,
-  unavailableAiAdminExternalOperations,
+  AiConnectionAdministrationService,
 } from './admin-service'
 import {
+  type AiProviderSecretKeyring,
   AiProviderSecretKeyringError,
   loadAiProviderSecretKeyring,
 } from './provider-secret-keyring'
@@ -33,27 +34,43 @@ export function createAiConnectionAdministrationRuntime(
   context: RequestContext,
   options: CreateAiConnectionAdministrationRuntimeOptions = {},
 ): AiConnectionAdministrationService {
+  const keyring = (): AiProviderSecretKeyring => loadAiProviderSecretKeyring()
   const external =
-    options.external ?? unavailableAiAdminExternalOperations()
-  const keyring = () => loadAiProviderSecretKeyring()
+    options.external ?? createProductionAiAdminExternalOperations(db, keyring)
+  const audit = (
+    detail: Parameters<typeof recordAdminPrivilegedActionSucceeded>[1],
+    executor?: Parameters<typeof recordAdminPrivilegedActionSucceeded>[2],
+  ): Promise<void> =>
+    recordAdminPrivilegedActionSucceeded(context, detail, executor)
   return new AiConnectionAdministrationService({
-    audit: detail =>
-      recordAdminPrivilegedActionSucceeded(
-        context,
-        {
-          changedFields: detail.changedFields,
-          operation: detail.operation,
-          resourceId: detail.resourceId,
-          resourceType: detail.resourceType,
-        },
-      ),
+    audit,
     external,
     secrets: {
       activateCandidate: input =>
-        new AiProviderSecretService(db, keyring(), {
-          verifyCandidate: (candidateContext, plaintext) =>
-            external.verifySecretCandidate(candidateContext, plaintext),
-        }).activateCandidate(input),
+        new AiProviderSecretService(
+          db,
+          keyring(),
+          {
+            verifyCandidate: (candidateContext, plaintext) =>
+              external.verifySecretCandidate(
+                input.connection,
+                candidateContext,
+                plaintext,
+              ),
+          },
+          executor =>
+            audit(
+              {
+                operation: 'activate',
+                resourceId: input.connectionId,
+                resourceType: 'ai_provider_secret',
+              },
+              executor,
+            ),
+        ).activateCandidate({
+          connectionId: input.connectionId,
+          secretVersionId: input.secretVersionId,
+        }),
       availability: async connectionId => {
         try {
           return await getAiProviderSecretAvailability(
@@ -72,11 +89,39 @@ export function createAiConnectionAdministrationRuntime(
         }
       },
       confirmRevocation: input =>
-        confirmAiProviderSecretRevocation(db, input),
-      deleteCandidate: input => deleteAiProviderSecretCandidate(db, input),
+        confirmAiProviderSecretRevocation(db, input, executor =>
+          audit(
+            {
+              operation: 'delete',
+              resourceId: input.connectionId,
+              resourceType: 'ai_provider_secret',
+            },
+            executor,
+          ),
+        ),
+      deleteCandidate: input =>
+        deleteAiProviderSecretCandidate(db, input, executor =>
+          audit(
+            {
+              operation: 'delete',
+              resourceId: input.connectionId,
+              resourceType: 'ai_provider_secret',
+            },
+            executor,
+          ),
+        ),
       writeCandidate: input =>
-        writeAiProviderSecretCandidate(db, keyring(), input),
+        writeAiProviderSecretCandidate(db, keyring(), input, executor =>
+          audit(
+            {
+              operation: 'rotate',
+              resourceId: input.connectionId,
+              resourceType: 'ai_provider_secret',
+            },
+            executor,
+          ),
+        ),
     },
-    store: createSqlServerAiAdminStore(db),
+    store: createSqlServerAiAdminStore(db, audit),
   })
 }

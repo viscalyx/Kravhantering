@@ -3,7 +3,6 @@ import type { SqlServerEntityManager } from '@/lib/db'
 import {
   conflictError,
   notFoundError,
-  serviceUnavailableError,
   validationError,
 } from '@/lib/requirements/errors'
 import type {
@@ -63,7 +62,11 @@ export interface AiAdminConnectionDetail extends AiAdminConnectionSummary {
   agentRuntimeKey: string | null
   agentRuntimeVersion: string | null
   attestation: AiAdminAttestationRecord | null
-  authenticationType: 'mtls' | 'none' | 'oauth2_client_credentials' | 'static_secret'
+  authenticationType:
+    | 'mtls'
+    | 'none'
+    | 'oauth2_client_credentials'
+    | 'static_secret'
   blockers: readonly AiAdminBlocker[]
   connectionEvidenceId: string | null
   dataPolicySummary: string
@@ -100,8 +103,8 @@ export interface AiAdminModelRecord {
   description: string | null
   id: string
   name: string
-  revisionToken: string
   revisions: readonly AiAdminModelRevisionRecord[]
+  revisionToken: string
 }
 
 export interface AiAdminRunProfileRecord {
@@ -167,6 +170,7 @@ export interface AiAdminExternalOperations {
     revision: Readonly<AiAdminModelRevisionRecord>,
   ): Promise<Readonly<AiAdminModelVerificationResult>>
   verifySecretCandidate(
+    connection: Readonly<AiAdminConnectionDetail>,
     context: Readonly<{ connectionId: string; secretVersionId: string }>,
     plaintext: string,
   ): Promise<void>
@@ -174,6 +178,7 @@ export interface AiAdminExternalOperations {
 
 export interface AiAdminSecretOperations {
   activateCandidate(input: {
+    connection: Readonly<AiAdminConnectionDetail>
     connectionId: string
     secretVersionId: string
   }): Promise<AiProviderSecretVersionMetadata>
@@ -202,8 +207,15 @@ export interface AiAdminActivationSnapshot {
   secretVersionId: string | null
 }
 
+export interface AiAdminProfileActivationEntry {
+  profile: AiAdminRunProfileRecord
+  snapshot: AiAdminActivationSnapshot | null
+}
+
 export interface AiAdminStore {
   activateConnection(input: {
+    attestationId: string
+    attestationRevisionToken: string
     connectionEvidenceId: string
     connectionId: string
     connectionRevisionToken: string
@@ -228,6 +240,9 @@ export interface AiAdminStore {
   }): Promise<AiAdminActivationSnapshot | null>
   getConnection(connectionId: string): Promise<AiAdminConnectionDetail | null>
   listConnections(): Promise<readonly AiAdminConnectionSummary[]>
+  listRunProfileActivationEntries(): Promise<
+    readonly AiAdminProfileActivationEntry[]
+  >
   listRunProfileRevisions(
     profileKey: AiRunProfileKey,
   ): Promise<readonly AiAdminRunProfileRevisionRecord[]>
@@ -247,9 +262,15 @@ export interface AiAdminStore {
     modelRevision: AiAdminModelRevisionRecord
     result: Readonly<AiAdminModelVerificationResult>
   }): Promise<AiAdminModelRevisionRecord>
+  retireModelRevision(input: {
+    connectionId: string
+    modelRevisionId: string
+    revisionToken: string
+  }): Promise<AiAdminModelRevisionRecord | null>
   saveAttestation(input: {
     attestation: SaveAiAttestation
     connectionId: string
+    currentAttestationRevisionToken: string | null
     makeValid: boolean
   }): Promise<AiAdminAttestationRecord>
   saveModelRevision(input: {
@@ -333,7 +354,8 @@ function currentAttestation(attestation: SaveAiAttestation): boolean {
   return (
     Number.isFinite(reviewedAt) &&
     reviewedAt <= now &&
-    (reviewDueAt === null || (Number.isFinite(reviewDueAt) && reviewDueAt > now))
+    (reviewDueAt === null ||
+      (Number.isFinite(reviewDueAt) && reviewDueAt > now))
   )
 }
 
@@ -411,9 +433,12 @@ function profileActivationBlockers(
 }
 
 function activationConflict(): never {
-  throw conflictError('AI administration state changed. Reload and try again.', {
-    blocker: 'optimistic_concurrency_conflict',
-  })
+  throw conflictError(
+    'AI administration state changed. Reload and try again.',
+    {
+      blocker: 'optimistic_concurrency_conflict',
+    },
+  )
 }
 
 function assertNoBlockers(blockers: readonly AiAdminBlocker[]): void {
@@ -481,9 +506,12 @@ export class AiConnectionAdministrationService {
       profileKey,
     )
     if (result !== 'authorized') {
-      throw validationError('The AI run profile trust policy is not satisfied.', {
-        blockers: [{ code: result }],
-      })
+      throw validationError(
+        'The AI run profile trust policy is not satisfied.',
+        {
+          blockers: [{ code: result }],
+        },
+      )
     }
   }
 
@@ -492,20 +520,9 @@ export class AiConnectionAdministrationService {
   }
 
   async listRunProfiles(): Promise<readonly AiAdminRunProfileRecord[]> {
-    const profiles = await this.#store.listRunProfiles()
+    const entries = await this.#store.listRunProfileActivationEntries()
     return Promise.all(
-      profiles.map(async profile => {
-        const revisionId = profile.activeRevisionId ?? profile.draftRevision?.id
-        if (!revisionId) {
-          return {
-            ...profile,
-            blockers: [{ code: 'model_revision_missing' as const }],
-          }
-        }
-        const storedSnapshot = await this.#store.getActivationSnapshot({
-          profileKey: profile.profileKey,
-          profileRevisionId: revisionId,
-        })
+      entries.map(async ({ profile, snapshot: storedSnapshot }) => {
         if (!storedSnapshot) {
           return {
             ...profile,
@@ -541,15 +558,9 @@ export class AiConnectionAdministrationService {
   async createConnection(
     input: CreateAiConnection,
   ): Promise<AiAdminConnectionDetail> {
-    const connection = await this.#withSecretAvailability(
+    return this.#withSecretAvailability(
       await this.#store.createConnection(input),
     )
-    await this.#audit({
-      operation: 'create',
-      resourceId: connection.id,
-      resourceType: 'ai_connection',
-    })
-    return connection
   }
 
   async updateConnection(input: {
@@ -559,19 +570,13 @@ export class AiConnectionAdministrationService {
   }): Promise<AiAdminConnectionDetail> {
     const stored = await this.#store.updateConnection(input)
     if (!stored) activationConflict()
-    const updated = await this.#withSecretAvailability(stored)
-    await this.#audit({
-      changedFields: Object.keys(input.connection),
-      operation: 'update',
-      resourceId: input.connectionId,
-      resourceType: 'ai_connection',
-    })
-    return updated
+    return this.#withSecretAvailability(stored)
   }
 
   async saveAttestation(input: {
     attestation: SaveAiAttestation
     connectionId: string
+    currentAttestationRevisionToken?: string | null
     makeValid: boolean
   }): Promise<AiAdminAttestationRecord> {
     if (input.makeValid && !completeAttestation(input.attestation)) {
@@ -584,32 +589,26 @@ export class AiConnectionAdministrationService {
         blockers: [{ code: 'attestation_invalid' }],
       })
     }
-    const result = await this.#store.saveAttestation(input)
-    await this.#audit({
-      changedFields: Object.keys(input.attestation).filter(
-        field => field !== 'revisionToken',
-      ),
-      operation: input.makeValid ? 'activate' : 'save',
-      resourceId: result.id,
-      resourceType: 'ai_connection_attestation',
+    if (input.makeValid && !input.attestation.revisionToken) {
+      throw validationError('Save the AI connection attestation draft first.', {
+        blockers: [{ code: 'attestation_incomplete' }],
+      })
+    }
+    return this.#store.saveAttestation({
+      ...input,
+      currentAttestationRevisionToken:
+        input.currentAttestationRevisionToken ?? null,
     })
-    return result
   }
 
   async writeSecret(
     connectionId: string,
     plaintext: string,
   ): Promise<AiProviderSecretVersionMetadata> {
-    const result = await this.#secrets.writeCandidate({
+    return this.#secrets.writeCandidate({
       connectionId,
       plaintext,
     })
-    await this.#audit({
-      operation: 'rotate',
-      resourceId: connectionId,
-      resourceType: 'ai_provider_secret',
-    })
-    return result
   }
 
   async activateSecret(
@@ -618,32 +617,21 @@ export class AiConnectionAdministrationService {
   ): Promise<AiProviderSecretVersionMetadata> {
     const connection = await this.getConnection(connectionId)
     await this.#assertAuthorizedTarget(connection)
-    const result = await this.#secrets.activateCandidate({
+    return this.#secrets.activateCandidate({
+      connection,
       connectionId,
       secretVersionId,
     })
-    await this.#audit({
-      operation: 'activate',
-      resourceId: connectionId,
-      resourceType: 'ai_provider_secret',
-    })
-    return result
   }
 
   async confirmSecretRevocation(
     connectionId: string,
     secretVersionId: string,
   ): Promise<AiProviderSecretVersionMetadata> {
-    const result = await this.#secrets.confirmRevocation({
+    return this.#secrets.confirmRevocation({
       connectionId,
       secretVersionId,
     })
-    await this.#audit({
-      operation: 'delete',
-      resourceId: connectionId,
-      resourceType: 'ai_provider_secret',
-    })
-    return result
   }
 
   async deleteSecretCandidate(
@@ -658,11 +646,6 @@ export class AiConnectionAdministrationService {
     ) {
       throw notFoundError('AI provider-secret candidate not found.')
     }
-    await this.#audit({
-      operation: 'delete',
-      resourceId: connectionId,
-      resourceType: 'ai_provider_secret',
-    })
   }
 
   async verifyConnection(
@@ -671,35 +654,31 @@ export class AiConnectionAdministrationService {
     const connection = await this.getConnection(connectionId)
     await this.#assertAuthorizedTarget(connection)
     const result = await this.#external.probeConnection(connection)
-    const updated = await this.#withSecretAvailability(
+    return this.#withSecretAvailability(
       await this.#store.recordConnectionVerification({
-      connection,
-      result: {
-        ...result,
-        details: {
-          ...result.details,
-          configurationFingerprint: fingerprint({
-            adapterKey: connection.adapterKey,
-            adapterVersion: connection.adapterVersion,
-            agentRuntimeVersion: connection.agentRuntimeVersion,
-            authenticationType: connection.authenticationType,
-            egressPolicyKey: connection.egressPolicyKey,
-            endpointUrl: connection.endpointUrl,
-            tlsPolicyKey: connection.tlsPolicyKey,
-          }),
+        connection,
+        result: {
+          ...result,
+          details: {
+            ...result.details,
+            configurationFingerprint: fingerprint({
+              adapterKey: connection.adapterKey,
+              adapterVersion: connection.adapterVersion,
+              agentRuntimeVersion: connection.agentRuntimeVersion,
+              authenticationType: connection.authenticationType,
+              egressPolicyKey: connection.egressPolicyKey,
+              endpointUrl: connection.endpointUrl,
+              tlsPolicyKey: connection.tlsPolicyKey,
+            }),
+          },
         },
-      },
       }),
     )
-    await this.#audit({
-      operation: 'verify',
-      resourceId: connectionId,
-      resourceType: 'ai_connection',
-    })
-    return updated
   }
 
-  async fetchCatalog(connectionId: string): Promise<readonly AiAdminCatalogItem[]> {
+  async fetchCatalog(
+    connectionId: string,
+  ): Promise<readonly AiAdminCatalogItem[]> {
     const connection = await this.getConnection(connectionId)
     await this.#assertAuthorizedTarget(connection)
     const catalog = await this.#external.fetchCatalog(connection)
@@ -720,11 +699,13 @@ export class AiConnectionAdministrationService {
     const modelRevision = connection.models
       .flatMap(model => model.revisions)
       .find(revision => revision.id === input.modelRevisionId)
-    if (!modelRevision) throw notFoundError('AI connection model revision not found.')
-    if (modelRevision.revisionToken !== input.revisionToken) activationConflict()
+    if (!modelRevision)
+      throw notFoundError('AI connection model revision not found.')
+    if (modelRevision.revisionToken !== input.revisionToken)
+      activationConflict()
     await this.#assertAuthorizedTarget(connection)
     const health = await this.#external.probeHealth(connection, modelRevision)
-    const updated = await this.#withSecretAvailability(
+    return this.#withSecretAvailability(
       await this.#store.recordHealth({
         connectionId: input.connectionId,
         health,
@@ -732,29 +713,13 @@ export class AiConnectionAdministrationService {
         modelRevisionToken: input.revisionToken,
       }),
     )
-    await this.#audit({
-      operation: 'probe',
-      resourceId: input.modelRevisionId,
-      resourceType: 'ai_connection_model_revision',
-    })
-    return updated
   }
 
   async saveModelRevision(input: {
     connectionId: string
     modelRevision: SaveAiModelRevision
   }): Promise<AiAdminModelRecord> {
-    const result = await this.#store.saveModelRevision(input)
-    const revision = result.revisions.at(-1)
-    await this.#audit({
-      changedFields: Object.keys(input.modelRevision).filter(
-        field => !field.toLowerCase().includes('token'),
-      ),
-      operation: 'save',
-      resourceId: revision?.id ?? result.id,
-      resourceType: 'ai_connection_model_revision',
-    })
-    return result
+    return this.#store.saveModelRevision(input)
   }
 
   async verifyModelRevision(input: {
@@ -766,8 +731,10 @@ export class AiConnectionAdministrationService {
     const modelRevision = connection.models
       .flatMap(model => model.revisions)
       .find(revision => revision.id === input.modelRevisionId)
-    if (!modelRevision) throw notFoundError('AI connection model revision not found.')
-    if (modelRevision.revisionToken !== input.revisionToken) activationConflict()
+    if (!modelRevision)
+      throw notFoundError('AI connection model revision not found.')
+    if (modelRevision.revisionToken !== input.revisionToken)
+      activationConflict()
     const connectionEvidenceId = connection.connectionEvidenceId
     if (!connectionEvidenceId) {
       throw validationError('The AI connection must be verified first.', {
@@ -779,17 +746,21 @@ export class AiConnectionAdministrationService {
       connection,
       modelRevision,
     )
-    const updated = await this.#store.recordModelVerification({
+    return this.#store.recordModelVerification({
       connectionEvidenceId,
       modelRevision,
       result,
     })
-    await this.#audit({
-      operation: 'verify',
-      resourceId: input.modelRevisionId,
-      resourceType: 'ai_connection_model_revision',
-    })
-    return updated
+  }
+
+  async retireModelRevision(input: {
+    connectionId: string
+    modelRevisionId: string
+    revisionToken: string
+  }): Promise<AiAdminModelRevisionRecord> {
+    const result = await this.#store.retireModelRevision(input)
+    if (!result) activationConflict()
+    return result
   }
 
   async setConnectionLifecycle(input: {
@@ -803,11 +774,6 @@ export class AiConnectionAdministrationService {
         status: input.status,
       })
       if (!updated) activationConflict()
-      await this.#audit({
-        operation: input.status === 'retired' ? 'retire' : 'suspend',
-        resourceId: input.connectionId,
-        resourceType: 'ai_connection',
-      })
       return updated
     }
     const connection = await this.getConnection(input.connectionId)
@@ -826,8 +792,16 @@ export class AiConnectionAdministrationService {
         blockers: [{ code: 'connection_verification_missing' }],
       })
     }
+    const attestation = connection.attestation
+    if (attestation?.status !== 'valid') {
+      throw validationError('A valid AI connection attestation is required.', {
+        blockers: [{ code: 'attestation_invalid' }],
+      })
+    }
     await this.#assertAuthorizedTarget(connection)
     const updated = await this.#store.activateConnection({
+      attestationId: attestation.id,
+      attestationRevisionToken: attestation.revisionToken,
       connectionEvidenceId,
       connectionId: input.connectionId,
       connectionRevisionToken: input.revisionToken,
@@ -838,11 +812,6 @@ export class AiConnectionAdministrationService {
         : null,
     })
     if (!updated) activationConflict()
-    await this.#audit({
-      operation: 'activate',
-      resourceId: input.connectionId,
-      resourceType: 'ai_connection',
-    })
     return updated
   }
 
@@ -850,16 +819,7 @@ export class AiConnectionAdministrationService {
     profileKey: AiRunProfileKey
     revision: SaveAiRunProfileRevision
   }): Promise<AiAdminRunProfileRecord> {
-    const result = await this.#store.saveRunProfileRevision(input)
-    await this.#audit({
-      changedFields: Object.keys(input.revision).filter(
-        field => field !== 'revisionToken',
-      ),
-      operation: 'save',
-      resourceId: result.draftRevision?.id ?? result.id,
-      resourceType: 'ai_run_profile_revision',
-    })
-    return result
+    return this.#store.saveRunProfileRevision(input)
   }
 
   async activateRunProfileRevision(input: {
@@ -871,7 +831,8 @@ export class AiConnectionAdministrationService {
     profileToken: string
   }): Promise<AiAdminRunProfileRecord> {
     const storedSnapshot = await this.#store.getActivationSnapshot(input)
-    if (!storedSnapshot) throw notFoundError('AI run profile revision not found.')
+    if (!storedSnapshot)
+      throw notFoundError('AI run profile revision not found.')
     const connection = await this.#withSecretAvailability(
       storedSnapshot.connection,
     )
@@ -908,11 +869,6 @@ export class AiConnectionAdministrationService {
         : null,
     })
     if (!updated) activationConflict()
-    await this.#audit({
-      operation: 'activate',
-      resourceId: input.profileRevisionId,
-      resourceType: 'ai_run_profile_revision',
-    })
     return updated
   }
 
@@ -923,27 +879,7 @@ export class AiConnectionAdministrationService {
   }): Promise<AiAdminRunProfileRecord> {
     const result = await this.#store.setRunProfileOperationalStatus(input)
     if (!result) activationConflict()
-    await this.#audit({
-      operation: input.status === 'suspended' ? 'suspend' : 'activate',
-      resourceId: result.id,
-      resourceType: 'ai_run_profile',
-    })
     return result
-  }
-}
-
-export function unavailableAiAdminExternalOperations(): AiAdminExternalOperations {
-  const unavailable = (): never => {
-    throw serviceUnavailableError('AI administration probes are not configured.')
-  }
-  return {
-    authorizeConnectionTarget: async () => unavailable(),
-    authorizeRunProfile: async () => unavailable(),
-    fetchCatalog: async () => unavailable(),
-    probeConnection: async () => unavailable(),
-    probeHealth: async () => unavailable(),
-    verifyModelRevision: async () => unavailable(),
-    verifySecretCandidate: async () => unavailable(),
   }
 }
 

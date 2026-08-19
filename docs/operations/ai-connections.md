@@ -134,6 +134,18 @@ uses normal Web PKI validation. A private policy may attach the site's private
 CA to its deployment-owned transport, but hostname, chain, and validity checks
 remain mandatory. Admin Center cannot upload CA material or disable validation.
 
+The built-in runtime composition reads the deployment-owned maps from
+`AI_CONNECTION_EGRESS_POLICIES_JSON`,
+`AI_CONNECTION_DATA_POLICIES_JSON`, and
+`AI_CONNECTION_TLS_POLICIES_JSON`. TLS map values identify the trust source;
+the built-in pinned HTTPS transport uses `public_web_pki`. A deployment that
+uses `deployment_private_ca` must compose its own deployment-owned pinned
+transport with the approved CA material. Leaving a map empty makes its policy
+keys unavailable and therefore blocks verification and activation. Local
+development may set `AI_CONNECTION_DEVELOPMENT_LOCAL_ORIGIN` to the one exact
+origin permitted to use authentication type `none`; this exception is inactive
+in test and production.
+
 The fixed authentication types are static secret, OAuth 2.0 client credentials,
 and mTLS. Production sidecars require one of these forms. The only no-auth and
 plain HTTP exception is the exact `development-local` origin supplied by the

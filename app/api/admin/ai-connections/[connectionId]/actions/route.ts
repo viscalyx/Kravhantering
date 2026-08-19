@@ -29,6 +29,8 @@ export const POST = secureMutationRoute({
           await service.saveAttestation({
             attestation: body.attestation,
             connectionId,
+            currentAttestationRevisionToken:
+              body.currentAttestationRevisionToken,
             makeValid: true,
           }),
         )
@@ -40,10 +42,7 @@ export const POST = secureMutationRoute({
           ),
         )
       case 'delete_secret_candidate':
-        await service.deleteSecretCandidate(
-          connectionId,
-          body.secretVersionId,
-        )
+        await service.deleteSecretCandidate(connectionId, body.secretVersionId)
         return new NextResponse(null, { status: 204 })
       case 'fetch_catalog':
         return NextResponse.json(await service.fetchCatalog(connectionId))
@@ -68,6 +67,14 @@ export const POST = secureMutationRoute({
           await service.saveModelRevision({
             connectionId,
             modelRevision: body.modelRevision,
+          }),
+        )
+      case 'retire_model_revision':
+        return NextResponse.json(
+          await service.retireModelRevision({
+            connectionId,
+            modelRevisionId: body.modelRevisionId,
+            revisionToken: body.revisionToken,
           }),
         )
       case 'set_lifecycle':

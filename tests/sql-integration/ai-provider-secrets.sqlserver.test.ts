@@ -50,6 +50,30 @@ async function createConnection(
 describe('AI provider secrets against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
 
+  it('rolls secret persistence back when the privileged audit write fails', async () => {
+    const connectionId = await createConnection(appDb(), 'Audit rollback')
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+
+    await expect(
+      writeAiProviderSecretCandidate(
+        appDb(),
+        ring,
+        { connectionId, plaintext: 'must-not-commit' },
+        async () => {
+          throw new Error('injected secret audit failure')
+        },
+      ),
+    ).rejects.toThrow('injected secret audit failure')
+
+    const rows = (await appDb().query(
+      `SELECT COUNT_BIG(*) AS [count]
+       FROM [ai_provider_secret_versions]
+       WHERE [ai_connection_id] = @0`,
+      [connectionId],
+    )) as Array<{ count: number | string }>
+    expect(Number(rows[0]?.count ?? 0)).toBe(0)
+  })
+
   it('rejects changing the AAD-bound secret-version ID', async () => {
     const connectionId = await createConnection(appDb(), 'Immutable binding')
     const ring = keyring('root-1', { 'root-1': randomBytes(32) })
