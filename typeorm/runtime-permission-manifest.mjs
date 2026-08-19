@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto'
 
 export const SQL_SERVER_RUNTIME_ROLE = 'kravhantering_runtime'
-export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.14.2'
+export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.14.3'
 
 const CRUD = Object.freeze(['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
 const READ_CREATE = Object.freeze(['SELECT', 'INSERT'])
 const READ_CREATE_DELETE = Object.freeze(['SELECT', 'INSERT', 'DELETE'])
+const READ_CREATE_UPDATE = Object.freeze(['SELECT', 'INSERT', 'UPDATE'])
 const READ_UPDATE = Object.freeze(['SELECT', 'UPDATE'])
 
 /**
@@ -209,12 +210,48 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
     if (entry.object === 'dbo.ai_safety_rule_terms') {
       return [
         Object.freeze({
+          object: 'dbo.ai_connection_attestations',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.ai_connection_model_operational_states',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.ai_connection_model_revisions',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.ai_connection_model_verification_evidence',
+          permissions: READ_CREATE,
+        }),
+        Object.freeze({
+          object: 'dbo.ai_connection_models',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.ai_connection_verification_evidence',
+          permissions: READ_CREATE,
+        }),
+        Object.freeze({
+          object: 'dbo.ai_connections',
+          permissions: CRUD,
+        }),
+        Object.freeze({
           object: 'dbo.ai_forensic_capture_windows',
           permissions: CRUD,
         }),
         Object.freeze({
           object: 'dbo.ai_forensic_evidence_events',
           permissions: READ_CREATE_DELETE,
+        }),
+        Object.freeze({
+          object: 'dbo.ai_run_profile_revisions',
+          permissions: CRUD,
+        }),
+        Object.freeze({
+          object: 'dbo.ai_run_profiles',
+          permissions: READ_CREATE_UPDATE,
         }),
         currentEntry,
       ]

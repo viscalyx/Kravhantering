@@ -80,6 +80,7 @@ export async function runSeedData(
       currentEntry = entry
       const colList = entry.columns.map(c => `[${c}]`).join(', ')
       const hasIdentityId =
+        entry.identity !== false &&
         entry.columns.includes('id') &&
         entry.pk.length === 1 &&
         entry.pk[0] === 'id'
