@@ -133,6 +133,7 @@ function connection(): AiAdminConnectionDetail {
     maximumConcurrency: 1,
     models: [],
     operationalHealth: 'unknown',
+    provenance: 'administrator',
     publicName: 'Runtime',
     revisionToken: '00000000-0000-4000-8000-000000000003',
     tlsPolicyKey: 'test',

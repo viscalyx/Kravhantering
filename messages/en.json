@@ -2064,6 +2064,15 @@
         "model_revision_unverified": "The assigned connection model revision has not passed verification.",
         "optimistic_concurrency_conflict": "The configuration changed. Reload before continuing."
       },
+      "blockerFields": {
+        "aiAnalysis": "AI analysis",
+        "connection": "connection",
+        "imageInput": "image input",
+        "jsonSchema": "JSON schema",
+        "streaming": "streaming",
+        "usageMetadata": "usage metadata",
+        "validatableJson": "validatable JSON"
+      },
       "verification": {
         "title": "Verification and lifecycle",
         "cost": "Connection, model, secret, catalog, and health checks can send bounded requests to the configured service and may incur a small provider cost.",
@@ -2103,6 +2112,15 @@
         "tokenUsage": "Token usage",
         "validatableJson": "Validatable JSON"
       },
+      "capabilityHelp": {
+        "aiAnalysis": "Declare whether this revision returns separate AI analysis metadata.",
+        "cost": "Declare whether this revision returns provider cost metadata.",
+        "imageInput": "Declare whether this revision accepts reviewed image input.",
+        "jsonSchemaSteering": "Declare whether this revision accepts a JSON schema to steer its response.",
+        "streaming": "Declare whether this revision streams bounded output events.",
+        "tokenUsage": "Declare whether this revision returns input and output token usage.",
+        "validatableJson": "Declare whether this revision can return JSON that is validated against the requested schema."
+      },
       "profiles": {
         "generation_without_images": "Requirement generation without images",
         "generation_with_images": "Requirement generation with images",
@@ -2120,6 +2138,8 @@
         "noActiveRevision": "No active revision",
         "capabilityPolicy": "Capability policy",
         "capabilityPolicyHelp": "Set each capability to disabled, allowed, or required for this run type.",
+        "lockedMinimum": "Locked application minimum — this value cannot be weakened for this run type.",
+        "candidateBlockers": "The replacement draft could not be activated",
         "saveDraft": "Save profile draft",
         "saved": "The run profile draft was saved.",
         "activated": "The run profile revision was activated.",

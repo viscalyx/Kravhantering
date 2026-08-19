@@ -13,6 +13,7 @@ import type {
   SaveAiModelRevision,
   SaveAiRunProfileRevision,
 } from './admin-contracts'
+import type { AiConnectionProvenance } from './connection-provenance'
 import type { AiRunProfileKey } from './profile-resolver'
 import type {
   AiProviderSecretAvailability,
@@ -51,6 +52,7 @@ export interface AiAdminConnectionSummary {
     | 'suspended'
     | 'verification_required'
   operationalHealth: 'degraded' | 'healthy' | 'unavailable' | 'unknown'
+  provenance: AiConnectionProvenance
   publicName: string
   revisionToken: string
 }

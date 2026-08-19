@@ -89,7 +89,14 @@ describe('AI administration row mapping', () => {
     expect(__testing.summary(connectionRow as never)).toMatchObject({
       configurationVersion: 2,
       operationalHealth: 'unknown',
+      provenance: 'administrator',
     })
+    expect(
+      __testing.summary({
+        ...connectionRow,
+        id: '20000000-0000-4000-8000-000000000001',
+      } as never),
+    ).toMatchObject({ provenance: 'demo_seed' })
     expect(__testing.blockers(connectionRow as never)).toEqual([
       { code: 'attestation_invalid' },
       { code: 'active_secret_missing' },
@@ -239,6 +246,7 @@ describe('AI administration row mapping', () => {
         id: 'ID',
         lifecycleStatus: 'active',
         operationalHealth: 'healthy',
+        provenance: 'administrator',
         publicName: 'Public',
         revisionToken: 'TOKEN',
       } as never),
@@ -248,6 +256,7 @@ describe('AI administration row mapping', () => {
       id: 'ID',
       lifecycleStatus: 'active',
       operationalHealth: 'healthy',
+      provenance: 'administrator',
       publicName: 'Public',
       revisionToken: 'TOKEN',
     })

@@ -94,6 +94,7 @@ function connection(
     revisionToken: crypto.randomUUID(),
     tlsPolicyKey: 'test',
     ...overrides,
+    provenance: overrides.provenance ?? 'administrator',
   }
 }
 

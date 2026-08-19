@@ -124,6 +124,7 @@ describe('AI connection administration transactions against SQL Server', () => {
       connectionEvidenceId: null,
       hasValidAttestation: 0,
       hasVerifiedModel: 0,
+      id: '40000000-0000-4000-8000-000000000001',
       operationalHealth: null,
     }
     expect(mapping.blockers(row as never)).toHaveLength(4)

@@ -19,6 +19,7 @@ import type {
   AiAdminRunProfileRevisionRecord,
   AiAdminStore,
 } from '@/lib/ai/admin-service'
+import { aiConnectionProvenance } from '@/lib/ai/connection-provenance'
 import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
 import type { SqlServerDatabase, SqlServerEntityManager } from '@/lib/db'
 import { conflictError } from '@/lib/requirements/errors'
@@ -263,6 +264,7 @@ function summary(row: ConnectionRow): AiAdminConnectionSummary {
     id: row.id,
     lifecycleStatus: row.lifecycleStatus,
     operationalHealth: row.operationalHealth ?? 'unknown',
+    provenance: aiConnectionProvenance(row.id),
     publicName: row.publicName,
     revisionToken: row.revisionToken,
   }
@@ -1844,6 +1846,7 @@ function summaryFromDetail(
     id: connection.id,
     lifecycleStatus: connection.lifecycleStatus,
     operationalHealth: connection.operationalHealth,
+    provenance: connection.provenance,
     publicName: connection.publicName,
     revisionToken: connection.revisionToken,
   }

@@ -2064,6 +2064,15 @@
         "model_revision_unverified": "Den tilldelade anslutningsmodellrevisionen har inte verifierats.",
         "optimistic_concurrency_conflict": "Konfigurationen har ändrats. Läs om sidan innan du fortsätter."
       },
+      "blockerFields": {
+        "aiAnalysis": "AI-analys",
+        "connection": "anslutning",
+        "imageInput": "bildindata",
+        "jsonSchema": "JSON-schema",
+        "streaming": "strömning",
+        "usageMetadata": "användningsuppgifter",
+        "validatableJson": "validerbar JSON"
+      },
       "verification": {
         "title": "Verifiering och livscykel",
         "cost": "Kontroller av anslutning, modell, hemlighet, katalog och hälsa kan skicka begränsade anrop till den konfigurerade tjänsten och medföra en liten leverantörskostnad.",
@@ -2103,6 +2112,15 @@
         "tokenUsage": "Användning av token",
         "validatableJson": "Validerbar JSON"
       },
+      "capabilityHelp": {
+        "aiAnalysis": "Ange om revisionen returnerar separata uppgifter om AI-analys.",
+        "cost": "Ange om revisionen returnerar kostnadsuppgifter från leverantören.",
+        "imageInput": "Ange om revisionen tar emot granskad bildindata.",
+        "jsonSchemaSteering": "Ange om revisionen tar emot ett JSON-schema som styr svaret.",
+        "streaming": "Ange om revisionen strömmar begränsade utdatahändelser.",
+        "tokenUsage": "Ange om revisionen returnerar användning av token för indata och utdata.",
+        "validatableJson": "Ange om revisionen kan returnera JSON som valideras mot det begärda schemat."
+      },
       "profiles": {
         "generation_without_images": "Kravgenerering utan bilder",
         "generation_with_images": "Kravgenerering med bilder",
@@ -2120,6 +2138,8 @@
         "noActiveRevision": "Ingen aktiv revision",
         "capabilityPolicy": "Förmågepolicy",
         "capabilityPolicyHelp": "Ange varje förmåga som inaktiverad, tillåten eller obligatorisk för anropstypen.",
+        "lockedMinimum": "Låst applikationsminimum – värdet kan inte försvagas för den här anropstypen.",
+        "candidateBlockers": "Ersättningsutkastet kunde inte aktiveras",
         "saveDraft": "Spara profilutkast",
         "saved": "Körprofilutkastet sparades.",
         "activated": "Körprofilrevisionen aktiverades.",

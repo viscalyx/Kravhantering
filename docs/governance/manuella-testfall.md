@@ -2046,7 +2046,11 @@ nekas åtkomst.
 Admin-session. Konfigurera `controlled_test@1` med exakt utvecklingsadress
 `https://localhost:4443`, motsvarande egress- och TLS-policy samt datapolicy för
 de tre fasta körprofilerna. Använd bara syntetiska värden och inga
-produktionshemligheter.
+produktionshemligheter. Kör hela fallet en gång med en skrivbordsvy på 1 280
+bildpunkter och en gång med en mobilvy på 375 bildpunkter. Använd den fasta
+engångsfixturen `PW ADMIN-20 kontrollerad anslutning`; före och efter varje
+körning ska fixturen tas bort och körprofilens tidigare aktiva revision och
+operativa status återställas, även om ett steg misslyckas.
 
 1. Öppna `Administrationscenter > Inställningar > AI`. Kontrollera att
    anslutningsregistret är kollapsat, att texten förbjuder automatisk fallback

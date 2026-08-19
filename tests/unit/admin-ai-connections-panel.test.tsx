@@ -84,19 +84,20 @@ function detail(id: string, name: string): AiAdminConnectionDetail {
     ],
     operationalHealth: 'unknown',
     publicName: name,
+    provenance: 'administrator',
     revisionToken: `${id}-token`,
     tlsPolicyKey: 'controlled_test',
-  }
+  } as AiAdminConnectionDetail
 }
 
 const connectionOne = detail(
   '10000000-0000-4000-8000-000000000001',
   'Controlled one',
 )
-const connectionTwo = detail(
-  '10000000-0000-4000-8000-000000000002',
-  'Controlled two',
-)
+const connectionTwo = {
+  ...detail('10000000-0000-4000-8000-000000000002', 'Controlled two'),
+  provenance: 'demo_seed',
+} as AiAdminConnectionDetail
 
 function installRegistryFetch() {
   fetchMock.mockImplementation((input: RequestInfo | URL) => {
@@ -110,6 +111,7 @@ function installRegistryFetch() {
             id: connectionOne.id,
             lifecycleStatus: 'draft',
             operationalHealth: 'unknown',
+            provenance: 'administrator',
             publicName: connectionOne.publicName,
             revisionToken: connectionOne.revisionToken,
           },
@@ -119,6 +121,7 @@ function installRegistryFetch() {
             id: connectionTwo.id,
             lifecycleStatus: 'draft',
             operationalHealth: 'unknown',
+            provenance: 'demo_seed',
             publicName: connectionTwo.publicName,
             revisionToken: connectionTwo.revisionToken,
           },
@@ -177,15 +180,37 @@ describe('AiConnectionsPanel', () => {
     fireEvent.click(first)
     expect(first).toHaveAttribute('aria-expanded', 'true')
     expect(
-      await screen.findByText('admin.aiConnections.seed.demoDraft'),
-    ).toBeVisible()
+      screen.queryByText('admin.aiConnections.seed.demoDraft'),
+    ).not.toBeInTheDocument()
+    const firstRegion = container.querySelector(
+      `#ai-connection-${connectionOne.id}`,
+    )
+    expect(firstRegion).toHaveAttribute('data-state', 'open')
+    expect(firstRegion).toHaveClass('motion-reduce:transition-none')
 
     fireEvent.click(second)
     expect(first).toHaveAttribute('aria-expanded', 'false')
     expect(second).toHaveAttribute('aria-expanded', 'true')
+    expect(firstRegion).toHaveAttribute('data-state', 'closed')
+    expect(screen.queryByText('Controlled one demo template')).not.toBeVisible()
+  })
+
+  it('uses explicit seed provenance without inferring it from editable prose', async () => {
+    const user = userEvent.setup()
+    installRegistryFetch()
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
     expect(
-      screen.queryByText('Controlled one demo template'),
+      screen.queryByText('admin.aiConnections.seed.demoDraft'),
     ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Controlled two/ }))
+    expect(
+      await screen.findByText('admin.aiConnections.seed.demoDraft'),
+    ).toBeVisible()
   })
 
   it('writes a secret without ever rendering its plaintext', async () => {
@@ -454,6 +479,26 @@ function installRegistryResponse(input: RequestInfo | URL): Promise<Response> {
   return Promise.reject(new Error(`Unexpected fetch ${url}`))
 }
 
+function installRegistryResponseForBoth(
+  input: RequestInfo | URL,
+): Promise<Response> {
+  const url = String(input)
+  if (url === '/api/admin/ai-connections') {
+    return Promise.resolve(okJson([connectionOne, connectionTwo]))
+  }
+  if (url === `/api/admin/ai-connections/${connectionOne.id}`) {
+    return Promise.resolve(okJson(connectionOne))
+  }
+  if (url === `/api/admin/ai-connections/${connectionTwo.id}`) {
+    return Promise.resolve(okJson(connectionTwo))
+  }
+  if (url === '/api/admin/ai-run-profiles') return Promise.resolve(okJson([]))
+  if (url.includes('/api/admin/ai-run-profiles/')) {
+    return Promise.resolve(okJson([]))
+  }
+  return Promise.reject(new Error(`Unexpected fetch ${url}`))
+}
+
 function installWorkflowFetch(options?: {
   connection?: AiAdminConnectionDetail
   profiles?: unknown[]
@@ -698,6 +743,270 @@ describe('AiConnectionsPanel workflows', () => {
       modelRevisionId: connectionOne.models[0].revisions[0].id,
       queueCapacity: 10,
     })
+  })
+
+  it('offers translated help for every declared model capability', async () => {
+    const user = userEvent.setup()
+    installWorkflowFetch()
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.addModel',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    for (const capability of [
+      'aiAnalysis',
+      'cost',
+      'imageInput',
+      'jsonSchemaSteering',
+      'streaming',
+      'tokenUsage',
+      'validatableJson',
+    ]) {
+      const label = `admin.aiConnections.capabilities.${capability}`
+      await user.click(
+        within(dialog).getByRole('button', { name: `common.help: ${label}` }),
+      )
+      expect(
+        within(dialog).getByText(
+          `admin.aiConnections.capabilityHelp.${capability}`,
+        ),
+      ).toBeVisible()
+    }
+  })
+
+  it('locks fixed profile minima and starts new drafts from profile-specific policies', async () => {
+    const user = userEvent.setup()
+    const profiles = [
+      {
+        ...profile,
+        draftRevision: null,
+        id: '51000000-0000-4000-8000-000000000001',
+        profileKey: 'generation_with_images',
+      },
+      {
+        ...profile,
+        draftRevision: null,
+        id: '51000000-0000-4000-8000-000000000002',
+        profileKey: 'invalid_json_repair',
+      },
+    ]
+    installWorkflowFetch({ profiles })
+    renderPanel()
+
+    await screen.findByRole('button', { name: /Controlled one/ })
+    const imageProfile = screen
+      .getByRole('heading', {
+        name: 'admin.aiConnections.profiles.generation_with_images',
+      })
+      .closest('article')
+    expect(imageProfile).not.toBeNull()
+    await user.click(
+      within(imageProfile as HTMLElement).getByRole('button', {
+        name: 'admin.aiConnections.actions.createProfileRevision',
+      }),
+    )
+    let dialog = await screen.findByRole('dialog')
+    const imageInput = within(dialog).getByLabelText(
+      'admin.aiConnections.policy.imageInput.label',
+      { selector: 'select' },
+    )
+    expect(imageInput).toHaveValue('required')
+    expect(imageInput).toBeDisabled()
+    expect(
+      within(dialog).getAllByText('admin.aiConnections.profile.lockedMinimum'),
+    ).toHaveLength(3)
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'admin.aiConnections.actions.cancel',
+      }),
+    )
+
+    const repairProfile = screen
+      .getByRole('heading', {
+        name: 'admin.aiConnections.profiles.invalid_json_repair',
+      })
+      .closest('article')
+    expect(repairProfile).not.toBeNull()
+    await user.click(
+      within(repairProfile as HTMLElement).getByRole('button', {
+        name: 'admin.aiConnections.actions.createProfileRevision',
+      }),
+    )
+    dialog = await screen.findByRole('dialog')
+    for (const capability of ['streaming', 'aiAnalysis']) {
+      const input = within(dialog).getByLabelText(
+        `admin.aiConnections.policy.${capability}.label`,
+        { selector: 'select' },
+      )
+      expect(input).toHaveValue('disabled')
+      expect(input).toBeDisabled()
+    }
+  })
+
+  it('allows a replacement draft to attempt activation despite active-profile blockers', async () => {
+    const blockedActiveProfile = {
+      ...profile,
+      blockers: [
+        { code: 'capability_policy_invalid' as const, field: 'imageInput' },
+      ],
+    }
+    installWorkflowFetch({
+      profiles: [blockedActiveProfile],
+      revisions: [blockedActiveProfile.draftRevision],
+    })
+    renderPanel()
+
+    const activate = await screen.findByRole('button', {
+      name: 'admin.aiConnections.actions.activateProfile',
+    })
+    expect(activate).toBeEnabled()
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'SPAN' &&
+          element.textContent?.includes(
+            'admin.aiConnections.blockerFields.imageInput',
+          ) === true,
+      ),
+    ).toBeVisible()
+  })
+
+  it('renders candidate blockers returned when replacement activation is rejected', async () => {
+    const user = userEvent.setup()
+    installWorkflowFetch({
+      profiles: [profile],
+      revisions: [profile.draftRevision],
+    })
+    const successfulFetch = fetchMock.getMockImplementation()
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        if (
+          init?.method === 'POST' &&
+          String(init.body).includes('activate_revision')
+        ) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                details: {
+                  blockers: [
+                    {
+                      code: 'capability_policy_invalid',
+                      field: 'validatableJson',
+                    },
+                  ],
+                },
+                message: 'Candidate is blocked',
+              }),
+              {
+                headers: { 'Content-Type': 'application/json' },
+                status: 422,
+              },
+            ),
+          )
+        }
+        return successfulFetch?.(input, init)
+      },
+    )
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'admin.aiConnections.actions.activateProfile',
+      }),
+    )
+    expect(
+      await screen.findByText('admin.aiConnections.profile.candidateBlockers'),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'SPAN' &&
+          element.textContent?.includes(
+            'admin.aiConnections.blockerFields.validatableJson',
+          ) === true,
+      ),
+    ).toBeVisible()
+  })
+
+  it('shows only active or draft profile impact and names blocker fields', async () => {
+    const user = userEvent.setup()
+    const historicalProfile = {
+      ...profile,
+      blockers: [
+        { code: 'capability_policy_invalid' as const, field: 'streaming' },
+      ],
+      draftRevision: null,
+    }
+    installWorkflowFetch({
+      profiles: [historicalProfile],
+      revisions: [
+        {
+          ...profile.draftRevision,
+          status: 'superseded',
+        },
+      ],
+    })
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    expect(
+      screen.getByText('admin.aiConnections.profile.noImpact'),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'SPAN' &&
+          element.textContent?.includes(
+            'admin.aiConnections.blockerFields.streaming',
+          ) === true,
+      ),
+    ).toBeVisible()
+  })
+
+  it('keeps catalog results owned by the connection that produced them', async () => {
+    const user = userEvent.setup()
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          return Promise.resolve(
+            okJson([
+              {
+                capabilities,
+                externalModelId: 'controlled/one',
+                externalModelVersion: '1',
+                name: 'Only connection one catalog model',
+              },
+            ]),
+          )
+        }
+        return installRegistryResponseForBoth(input)
+      },
+    )
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.fetchCatalog',
+      }),
+    )
+    expect(
+      await screen.findByText(/admin\.aiConnections\.catalog\.result/),
+    ).toBeVisible()
+    await user.click(screen.getByRole('button', { name: /Controlled two/ }))
+    expect(
+      screen.queryByText(/admin\.aiConnections\.catalog\.result/),
+    ).not.toBeVisible()
   })
 
   it('keeps attestation save and approval as separate mutations', async () => {
