@@ -10,6 +10,7 @@ import {
   AiProviderSecretAdminService,
   AiProviderSecretService,
   confirmAiProviderSecretRevocation,
+  createAiRuntimeAdapterConfigurationResolver,
   deleteAiProviderSecretCandidate,
   getAiProviderSecretAvailabilities,
   getAiProviderSecretAvailability,
@@ -89,6 +90,68 @@ function persistedRow(
 }
 
 describe('AI provider-secret service', () => {
+  it('injects an active credential only for the bounded runtime callback', async () => {
+    const connectionId = randomUUID()
+    const secretVersionId = randomUUID()
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const query = vi.fn(async () => [
+      persistedRow(connectionId, secretVersionId, 'runtime-secret', ring),
+    ])
+    const resolve = createAiRuntimeAdapterConfigurationResolver(
+      database(query).db,
+      ring,
+    )
+    const use = vi.fn(async configuration => {
+      expect(configuration).toEqual({
+        connection: {
+          authenticationType: 'static_secret',
+          credential: 'runtime-secret',
+          endpointUrl: 'https://provider.example/v1',
+        },
+        modelRevision: { responseMode: 'json' },
+      })
+    })
+
+    await resolve(
+      {
+        connectionConfiguration: {
+          authenticationType: 'static_secret',
+          endpointUrl: 'https://provider.example/v1',
+        },
+        connectionId,
+        modelRevisionConfiguration: { responseMode: 'json' },
+      } as never,
+      use,
+    )
+
+    expect(use).toHaveBeenCalledOnce()
+    expect(query).toHaveBeenCalledOnce()
+  })
+
+  it('does not load a secret for an unauthenticated controlled adapter', async () => {
+    const query = vi.fn()
+    const resolve = createAiRuntimeAdapterConfigurationResolver(
+      database(query).db,
+      keyring('root-1', { 'root-1': randomBytes(32) }),
+    )
+    const use = vi.fn()
+
+    await resolve(
+      {
+        connectionConfiguration: { authenticationType: 'none' },
+        connectionId: randomUUID(),
+        modelRevisionConfiguration: { scenario: { type: 'silent_eof' } },
+      } as never,
+      use,
+    )
+
+    expect(use).toHaveBeenCalledWith({
+      connection: { authenticationType: 'none' },
+      modelRevision: { scenario: { type: 'silent_eof' } },
+    })
+    expect(query).not.toHaveBeenCalled()
+  })
+
   it('fails closed when an authenticated admin operation has no active secret', async () => {
     const connectionId = randomUUID()
     const ring = keyring('root-1', { 'root-1': randomBytes(32) })

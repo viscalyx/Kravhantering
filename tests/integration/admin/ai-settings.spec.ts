@@ -19,38 +19,28 @@ import {
 } from './ai-connection-test-fixture'
 
 async function mockAiDialogReferenceData(page: Page) {
-  await page.route('**/api/ai/models?*', async route => {
+  await page.route('**/api/ai/authoring-profiles', async route => {
     await route.fulfill({
       contentType: 'application/json',
       json: {
-        models: [
-          {
-            contextLength: 200000,
-            id: 'anthropic/claude-sonnet-4',
-            name: 'Claude Sonnet 4',
-            pricing: {
-              completion: '0.000015',
-              prompt: '0.000003',
-              reasoning: '0.000015',
-            },
-            provider: 'anthropic',
-            supportedParameters: ['reasoning', 'stream', 'response_format'],
+        enabled: true,
+        profiles: {
+          generate_with_images: {
+            available: true,
+            connectionName: 'Godkänd AI-tjänst',
+            dataPolicySummary: 'Behandling inom EU; ingen träning',
           },
-        ],
-      },
-    })
-  })
-  await page.route('**/api/ai/credits', async route => {
-    await route.fulfill({
-      contentType: 'application/json',
-      json: {
-        isFreeTier: false,
-        limit: 50,
-        limitRemaining: 49,
-        managementKeyMissing: false,
-        totalCredits: 50,
-        usage: 1,
-        usageDaily: 1,
+          generate_without_images: {
+            available: true,
+            connectionName: 'Godkänd AI-tjänst',
+            dataPolicySummary: 'Behandling inom EU; ingen träning',
+          },
+          repair_invalid_import_json: {
+            available: true,
+            connectionName: 'Godkänd AI-tjänst',
+            dataPolicySummary: 'Behandling inom EU; ingen träning',
+          },
+        },
       },
     })
   })

@@ -19,9 +19,12 @@ const MAX_STREAM_FRAME_BYTES = 256 * 1024
 const MAX_STREAM_OUTPUT_BYTES = 4 * 1024 * 1024
 
 export interface OpenRouterAdapterConfiguration {
+  /** @deprecated Test-only compatibility for pre-integration fixtures. */
+  apiKey?: string
   /** Plaintext secret supplied only in transient configuration at invocation. */
-  apiKey: string
+  credential?: string
   endpoint?: string
+  endpointUrl?: string
   providerPreferences?: {
     dataCollection?: 'allow' | 'deny'
     zeroDataRetention?: boolean
@@ -106,27 +109,33 @@ async function readBoundedJson(
 function readConfiguration(
   value: unknown,
 ): OpenRouterAdapterConfiguration | null {
+  const credential = isRecord(value)
+    ? typeof value.credential === 'string'
+      ? value.credential
+      : value.apiKey
+    : undefined
   if (
     !isRecord(value) ||
-    typeof value.apiKey !== 'string' ||
-    value.apiKey.length === 0 ||
-    value.apiKey.length > 4096 ||
-    value.apiKey.trim() !== value.apiKey
+    typeof credential !== 'string' ||
+    credential.length === 0 ||
+    credential.length > 4096 ||
+    credential.trim() !== credential
   ) {
     return null
   }
-  if (value.endpoint !== undefined && typeof value.endpoint !== 'string') {
+  const endpoint = value.endpointUrl ?? value.endpoint
+  if (endpoint !== undefined && typeof endpoint !== 'string') {
     return null
   }
-  if (typeof value.endpoint === 'string') {
+  if (typeof endpoint === 'string') {
     try {
-      const endpoint = new URL(value.endpoint)
+      const parsedEndpoint = new URL(endpoint)
       if (
-        endpoint.protocol !== 'https:' ||
-        endpoint.username ||
-        endpoint.password ||
-        endpoint.search ||
-        endpoint.hash
+        parsedEndpoint.protocol !== 'https:' ||
+        parsedEndpoint.username ||
+        parsedEndpoint.password ||
+        parsedEndpoint.search ||
+        parsedEndpoint.hash
       ) {
         return null
       }
@@ -151,7 +160,11 @@ function readConfiguration(
       return null
     }
   }
-  return value as unknown as OpenRouterAdapterConfiguration
+  return Object.freeze({
+    ...value,
+    credential,
+    ...(typeof endpoint === 'string' ? { endpointUrl: endpoint } : {}),
+  }) as OpenRouterAdapterConfiguration
 }
 
 function readModelConfiguration(
@@ -498,13 +511,13 @@ async function runNonStreaming(
   let response: Response
   try {
     response = await request.context.egress.fetch(
-      `${(configuration.endpoint ?? DEFAULT_ENDPOINT).replace(/\/$/u, '')}/chat/completions`,
+      `${(configuration.endpointUrl ?? configuration.endpoint ?? DEFAULT_ENDPOINT).replace(/\/$/u, '')}/chat/completions`,
       {
         body: JSON.stringify(
           requestBody(request, configuration, modelConfiguration),
         ),
         headers: {
-          Authorization: `Bearer ${configuration.apiKey}`,
+          Authorization: `Bearer ${configuration.credential}`,
           'Content-Type': 'application/json',
         },
         method: 'POST',
@@ -632,13 +645,13 @@ async function* runStreaming(
   let response: Response
   try {
     response = await request.context.egress.fetch(
-      `${(configuration.endpoint ?? DEFAULT_ENDPOINT).replace(/\/$/u, '')}/chat/completions`,
+      `${(configuration.endpointUrl ?? configuration.endpoint ?? DEFAULT_ENDPOINT).replace(/\/$/u, '')}/chat/completions`,
       {
         body: JSON.stringify(
           requestBody(request, configuration, modelConfiguration),
         ),
         headers: {
-          Authorization: `Bearer ${configuration.apiKey}`,
+          Authorization: `Bearer ${configuration.credential}`,
           'Content-Type': 'application/json',
         },
         method: 'POST',

@@ -816,8 +816,9 @@ aktuella svaret utan att kravpaketet eller kravet tas bort från kravbiblioteket
 
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
 
-**Steg:** Öppna AI-assisterat författande från kravbiblioteket, välj
-kravområde och generera en kravkandidat. Öppna fliken `AI-analys` och
+**Steg:** Öppna AI-assisterat författande från kravbiblioteket, kontrollera
+den administratörsstyrda AI-anslutningen och datapolicyn, välj kravområde och
+generera en kravkandidat. Öppna fliken `AI-analys` och
 kontrollera modellens analys. Välj sedan `Förhandsgranska krav i import`.
 
 **Förväntat resultat:** Den genererade kandidaten skickas som
@@ -828,7 +829,9 @@ Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
 `Import-JSON`-formuläret. Fliken `AI-analys` visar analysen utan klickbara
 länkar, fjärrladdade bilder eller aktiv HTML. Råresultat visas fortfarande
 separat från analysen.
-När AI-assisterat författande aktiveras öppnas dialogen omedelbart med en
+Dialogen visar inga val för modell, leverantör, pris, krediter, förmågepolicy,
+datapolicy eller resonemangsnivå. När AI-assisterat författande aktiveras
+öppnas dialogen omedelbart med en
 översatt laddningsstatus tills innehållet är klart, och fokus stannar i
 dialogflödet. `Förhandsgranska krav i import` flyttar fokus direkt till
 importgranskningen utan att fokusera sidan emellan, behåller valt kravområde
@@ -854,7 +857,7 @@ stdout eller applikationslogg.
 ### REQ-15C: AI-assisterat författande annonserar och återhämtar fel
 
 **Steg:** Öppna AI-assisterat författande från kravbiblioteket med en
-skärmläsare, välj en Vision-modell och välj giltiga bilder tillsammans med en
+skärmläsare och välj giltiga bilder tillsammans med en
 fil av otillåten typ så att urvalet överskrider gränsen på tre bilder.
 Kontrollera synlig tangentbordsfokus för knappen `Ta bort bild`. Ta bort sedan
 en bifogad bild.
@@ -870,7 +873,7 @@ som både beskriver den otillåtna filtypen och gränsen på tre bilder.
 När en bifogad bild tas bort rensas bildfelet. Vid det första terminala felet
 flyttas fokus till rubriken `Genereringen misslyckades`, medan fel vid ett nytt
 försök och reparation behåller fokus på åtgärdsknappen. Råresultat,
-valideringsfel, behov, modell och bifogade bilder ligger kvar tills användaren
+valideringsfel, behov och bifogade bilder ligger kvar tills användaren
 ändrar dem. En lyckad reparation annonserar status en gång och flyttar fokus
 till resultatets rubrik. Bilder med samma avkodade innehåll avvisas innan en ny
 kravkandidat skapas, även när filnamn och MIME-typ skiljer sig. Dialogen
@@ -878,6 +881,18 @@ annonserar `Varje uppladdad bild måste vara unik.`, flyttar fokus till
 `Genereringen misslyckades` och behåller de bifogade bilderna. Endast sanerade
 feltexter visas eller annonseras; rått modell- eller leverantörsinnehåll visas
 inte. Att avbryta genom att stänga dialogen ger ingen felannonsering.
+
+### REQ-15D: profilbrist inaktiverar endast berörd AI-åtgärd
+
+**Steg:** Konfigurera en aktiv profil för generering med bilder men ingen aktiv
+profil för generering utan bilder. Öppna AI-assisterat författande, välj
+kravområde och ange ett behov. Bifoga därefter en giltig bild.
+
+**Förväntat resultat:** Genereringsknappen är först inaktiverad med en begriplig
+förklaring om den saknade profilen. Övriga delar av applikationen fungerar.
+När bilden bifogas väljs anropstypen för bildgenerering automatiskt, den
+godkända anslutningen och datapolicyn visas och genereringsknappen aktiveras.
+Ingen modell, leverantör eller profil kan väljas i dialogen.
 
 ### REQ-16: Admin Center stänger av AI-kravgenerering
 

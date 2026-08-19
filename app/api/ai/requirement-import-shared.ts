@@ -1,12 +1,11 @@
 import { type RefinementCtx, z } from 'zod'
-import type { ContentPart } from '@/lib/ai/openrouter-client'
-import type { AiProviderErrorCode } from '@/lib/ai/provider-errors'
 import {
   DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
   getPromptMessage,
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
 } from '@/lib/ai/requirement-prompt'
+import type { AiTaskContentPart } from '@/lib/ai/run-contracts'
 import {
   type AiSafetyBlockedStep,
   type AiSafetyDecision,
@@ -42,7 +41,6 @@ export const MAX_AI_IMAGES = 3
 export const MAX_AI_IMAGE_DATA_URL_LENGTH =
   Math.ceil(MAX_AI_IMAGE_BYTES / 3) * 4 + 'data:image/jpeg;base64,'.length
 export const MAX_AI_INSTRUCTION_LENGTH = 4000
-export const MAX_AI_MODEL_LENGTH = 100
 export const MAX_AI_NEED_LENGTH = 4000
 export const AI_GENERATE_RATE_LIMIT = 5
 export const AI_GENERATE_RATE_WINDOW_MS = 60_000
@@ -63,14 +61,6 @@ export function formatAiSafetyBlockedMessage(
     ruleType,
   )
 }
-
-export const providerPreferencesSchema = z
-  .object({
-    data_collection: z.enum(['allow', 'deny']).optional(),
-    enforce_distillable_text: z.boolean().optional(),
-    zdr: z.boolean().optional(),
-  })
-  .strict()
 
 type RequirementImportLocale = z.infer<typeof localeSchema>
 
@@ -297,9 +287,6 @@ export const aiRequirementImportScopeSchema =
 export const aiRequirementImportBaseBodySchema =
   aiRequirementImportScopeBaseSchema.extend({
     locale: localeSchema.optional().default('en'),
-    model: z.string().trim().max(MAX_AI_MODEL_LENGTH).optional(),
-    providerPreferences: providerPreferencesSchema.optional(),
-    reasoningEffort: z.string().trim().max(MAX_AI_MODEL_LENGTH).optional(),
   })
 
 export function requirementImportScopeAction(body: {
@@ -401,7 +388,16 @@ export function createUnavailableAiStreamResponse(
 
 export function createAiErrorStreamResponse(
   context: RequestCorrelationIds,
-  error: { code: AiProviderErrorCode; message: string },
+  error: {
+    code:
+      | 'ai_profile_blocked'
+      | 'ai_profile_missing'
+      | 'ai_profile_suspended'
+      | 'ai_provider_invalid_response'
+      | 'ai_provider_rate_limited'
+      | 'ai_provider_unavailable'
+    message: string
+  },
   recordFailure: (statusCode: number) => void,
 ) {
   const statusCode = error.code === 'ai_provider_rate_limited' ? 429 : 503
@@ -435,17 +431,23 @@ export function countImageBytes(images: Array<{ dataUrl: string }>): number {
   }, 0)
 }
 
-export function withImages(
+export function toAiTaskContent(
   text: string,
   images: Array<{ dataUrl: string }>,
-): ContentPart[] | string {
-  if (images.length === 0) return text
-
-  const parts: ContentPart[] = [{ text, type: 'text' }]
+): readonly AiTaskContentPart[] {
+  const parts: AiTaskContentPart[] = [{ text, type: 'text' }]
   for (const image of images) {
-    parts.push({ image_url: { url: image.dataUrl }, type: 'image_url' })
+    const commaIndex = image.dataUrl.indexOf(',')
+    const mediaType = image.dataUrl.slice(5, image.dataUrl.indexOf(';'))
+    parts.push({
+      data: new Uint8Array(
+        Buffer.from(image.dataUrl.slice(commaIndex + 1), 'base64'),
+      ),
+      mediaType,
+      type: 'image',
+    })
   }
-  return parts
+  return Object.freeze(parts)
 }
 
 export const requirementCandidateCountSchema = z

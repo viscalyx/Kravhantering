@@ -178,9 +178,6 @@ contract with the external provider owner instead.
 | `webOrigins` | Realm JSON `kravhantering-app` client `webOrigins` | `https://<APP_HOST>` | Verify it stays aligned with the browser origin. |
 | `post.logout.redirect.uris` | Realm JSON `kravhantering-app` client attribute | `https://<APP_HOST>/` | Verify it stays aligned with `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`. |
 | `INITIAL_APP_ADMIN` | Optional realm JSON `users` block or post-startup Keycloak user setup | No default | Plan before first sign-in if the site wants a pre-created app administrator; record username, email/name, real `hsaId`, one-time password and launch roles. |
-| `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation is approved. |
-| `OPENROUTER_MGMT_API_KEY` | `OPENROUTER_MGMT_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation and organization credit display are approved. |
-| `NEXT_PUBLIC_DEFAULT_MODEL` | `NEXT_PUBLIC_DEFAULT_MODEL` in `app.env` | Empty | Plan only if the deployment should preselect a public default AI model. |
 <!-- markdownlint-enable MD013 -->
 
 For the full HSA person lookup transport and authentication contract, see
@@ -998,9 +995,6 @@ AI_CONNECTION_EGRESS_POLICIES_JSON={}
 AI_CONNECTION_DATA_POLICIES_JSON={}
 AI_CONNECTION_TLS_POLICIES_JSON={}
 
-NEXT_PUBLIC_DEFAULT_MODEL=
-OPENROUTER_API_KEY=
-OPENROUTER_MGMT_API_KEY=
 ```
 
 For `IDENTITY_PROVIDER_MODE=external`, replace the bundled issuer and client
@@ -1093,18 +1087,6 @@ adapter SOAP destinations through the host firewall, approved egress proxy,
 controlled DNS and routes, and upstream ACLs. These infrastructure controls
 own IP, CIDR, loopback, link-local, private-address, DNS-rebinding, and route
 allowlisting; the application does not duplicate them.
-
-Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
-`OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
-for the environment. To enable AI, set `OPENROUTER_API_KEY` to the approved
-OpenRouter API key. `NEXT_PUBLIC_DEFAULT_MODEL` is optional; leave it empty if
-the deployment should not preselect a site default model. The UI will use the
-cheapest available saved favorite first, then this site default if it is
-available, and otherwise the first available model. Backend calls that receive
-no model fall back to the built-in default. Set `OPENROUTER_MGMT_API_KEY` only
-if the app should display organization credit information.
-`NEXT_PUBLIC_DEFAULT_MODEL` is public client configuration; do not put secrets
-in it.
 
 Before enabling connection-managed AI, provision
 `/etc/kravhantering/secrets/ai-provider-secret-keyring.json` through the

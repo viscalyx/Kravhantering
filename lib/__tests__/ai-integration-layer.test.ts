@@ -55,6 +55,8 @@ function profile(
     connectionId: 'connection-17',
     connectionLifecycleStatus: 'active',
     connectionMaximumConcurrency: 4,
+    connectionPublicName: 'Test connection',
+    connectionDataPolicySummary: 'Test data policy',
     externalModelId: 'external-model-v1',
     modelRevisionAgentRuntimeVersion: null,
     modelRevisionConnectionConfigurationVersion: 4,

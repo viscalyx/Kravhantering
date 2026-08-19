@@ -40,9 +40,11 @@ export interface AiPersistedRunProfile {
   connectionAgentRuntimeVersion: string | null
   connectionConfiguration?: Readonly<Record<string, unknown>>
   connectionConfigurationVersion: number
+  connectionDataPolicySummary: string
   connectionId: string
   connectionLifecycleStatus: AiPersistedConnectionLifecycleStatus
   connectionMaximumConcurrency: number
+  connectionPublicName: string
   externalModelId: string
   inactivityTimeBudgetSeconds: number
   maximumBufferedEvents: number
@@ -99,6 +101,10 @@ export interface AiResolvedRunProfile {
   }>
   modelRevisionId: AiConnectionModelRevisionId
   profileRevisionId: AiRunProfileRevisionId
+  publicMetadata: Readonly<{
+    connectionName: string
+    dataPolicySummary: string
+  }>
   runtime: Readonly<{
     inactivityTimeBudgetMs: number
     maximumConcurrency: number
@@ -494,6 +500,10 @@ export function createAiRunProfileResolver(
         limits,
         modelRevisionId,
         profileRevisionId: profile.profileRevisionId as AiRunProfileRevisionId,
+        publicMetadata: Object.freeze({
+          connectionName: profile.connectionPublicName,
+          dataPolicySummary: profile.connectionDataPolicySummary,
+        }),
         runtime,
         selectedCapabilities: Object.freeze(selectedCapabilities),
         trustConfiguration: Object.freeze({

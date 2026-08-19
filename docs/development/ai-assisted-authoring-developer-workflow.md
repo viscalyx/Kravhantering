@@ -1,14 +1,13 @@
 # AI-Assisted Authoring Developer Workflow
 
-This document covers the current local OpenRouter setup and test policy for
-AI-assisted requirement generation. Behavioral contracts for prompts,
+This document covers local adapter setup and test policy for AI-assisted
+requirement generation. Behavioral contracts for prompts,
 provider requests, taxonomy loading, and generated-requirement validation live in
 [reference-data-and-ai.md](../governance/reference-data-and-ai.md).
 
-## Target Integration Architecture
+## Integration Architecture
 
-The target architecture routes every bounded AI request through the
-provider-neutral AI integration layer in
+Every bounded AI request runs through the provider-neutral integration layer in
 [ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md).
 An administrator-controlled run profile selects an AI connection and a
 verified AI connection model revision before the adapter runs. Application
@@ -44,77 +43,75 @@ outcome contracts. The trust boundary, AI connection lifecycle, encrypted
 provider secrets, and external root keyring are governed by
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
 
-The sections below describe the direct OpenRouter implementation until the
-migration tickets replace it. They are not authority for the target adapter or
-run-profile design.
-
 <!-- markdownlint-disable MD013 -->
 ![Technical infographic showing AI-assisted authoring in Kravhantering. The flow illustrates how user input is checked, processed through an LLM integration layer, sent to OpenRouter, validated, and reviewed by a human before being imported into a requirements library or requirements document.](../images/ai-assisted-authoring-llm-integration-architecture.png)
 <!-- markdownlint-enable MD013 -->
 
-## Local OpenRouter Setup
+## Local Adapter Setup
 
-AI-assisted requirement generation is disabled unless local OpenRouter
-credentials are present.
+AI-assisted authoring is available only when an administrator has activated a
+valid profile for that exact action. Local development uses the same connection,
+secret, verification, and profile workflow as production.
 
-1. Get an API key at <https://openrouter.ai/keys>.
-2. Add it to `.env.development.local`:
+1. Provision the ignored local provider-secret root keyring:
 
-   ```env
-   OPENROUTER_API_KEY=sk-or-v1-...
+   ```bash
+   node scripts/provision-ai-provider-secret-keyring.mjs
    ```
 
-3. Optionally set `OPENROUTER_MGMT_API_KEY` when testing organization credit
-   display.
-4. Restart the dev server. The AI modal shows available models after the app can
-   read the configured key.
+2. Configure the deployment-owned egress, data, and TLS policy maps described in
+   [AI Connections Operations](../operations/ai-connections.md).
+3. In Admin Center under `AI`, register a connection, write its provider secret,
+   run the connection checks, verify an immutable model revision, and activate
+   the connection.
+4. Activate separate run-profile revisions for generation without images,
+   generation with images, and invalid-import repair as needed.
+5. Confirm the authoring dialog shows only the connection's public name and
+   data-policy summary. Missing, suspended, or blocked profiles disable only
+   their corresponding action.
 
-Devcontainer profiles do not forward OpenRouter keys from the workstation. A
-key in `.env.development.local` is not exported as a general VS Code remote
-environment variable, but VS Code extensions, terminal commands, and other
-remote processes with workspace access can still read the file. Treat the file
-as local credential storage, not as an isolation or security boundary.
+Provider credentials are written through the administrator workflow and stored
+as encrypted revisions. Do not put provider credentials in environment files or
+browser-visible configuration. The authoring UI does not select models or show
+provider credits.
 
 AI-assisted requirement generation is enabled by default after migrations. An
 administrator can turn generation off in Admin Center under `AI`. That setting
-disables the requirements-library action, the generator modal, the REST
-generation route, and the MCP generation tool while leaving model and credit
-read endpoints available for diagnostics.
+disables AI-assisted authoring across the requirements UI and REST routes.
 
 Verify local setup against the app API:
 
 ```bash
-scripts/dev-curl.sh -s /api/ai/models | jq '.models | length'
-scripts/dev-curl.sh -s /api/ai/credits | jq .
+scripts/dev-curl.sh -s /api/ai/authoring-profiles | jq .
 ```
 
-Do not commit real OpenRouter keys.
+Do not commit provider credentials or the generated root keyring.
 
-## OpenRouter Test Policy
+## Adapter Test Policy
 
-Automated repository tests and security gates do not call live OpenRouter
-endpoints. OpenRouter is an external service, and this project assumes the
-provider's published API works independently of the repository.
+Automated repository tests and security gates do not call live provider
+endpoints. External providers are tested outside the repository; repository
+tests use the controlled adapter or mock the adapter-owned transport boundary.
 
 The repo-owned responsibility is to verify the integration boundary:
 
-- request shape, model selection, response parsing, timeout handling, and error
-  handling with mocked network calls;
+- adapter request shape, response parsing, timeout handling, and error handling
+  with mocked transport calls;
 - prompt and taxonomy generation behavior before a provider call is made;
-- disabled-provider behavior when OpenRouter credentials are absent;
+- action-scoped behavior when a profile or encrypted credential is unavailable;
 - sanitization so provider keys, prompts, SQL fragments, stack traces, and
   other sensitive details are not written to scan artifacts.
 
-Do not add production OpenRouter keys or live provider calls to CI. A manual
+Do not add production provider secrets or live provider calls to CI. A manual
 provider smoke test may be run outside CI when changing provider configuration
 or investigating an integration incident.
 
 ## Provider Failure Contract
 
-All OpenRouter operations use the same bounded provider-response readers and
-stable failure classification. JSON responses return `{ code, error }` and SSE
-error events return `{ code, message }`. Request and correlation identifiers
-remain in response headers rather than error payloads.
+The authoring routes project adapter failures into stable response contracts.
+JSON responses return `{ code, error }` and SSE error events return
+`{ code, message }`. Request and correlation identifiers remain in response
+headers rather than error payloads.
 An upstream rate limit detected before streaming begins returns HTTP `429`;
 other provider failures return HTTP `503`.
 
@@ -139,8 +136,7 @@ observed byte count, and truncation state. They never contain provider body
 text, prompts, model output, personal data, secrets, or nested exception text.
 
 Caller cancellation produces no provider error payload or provider-failure
-diagnostic. An unavailable optional purchased-credit lookup leaves
-`totalCredits` as `null` when the primary key-information request succeeds.
+diagnostic.
 
 ## Security Scan Disable Guard
 
@@ -154,8 +150,8 @@ stays disabled until the environment variable is removed.
 When the environment guard or the persisted Admin Center preference disables
 generation, REST and MCP AI-assisted authoring keep their public route/tool
 contracts but return the sanitized provider-unavailable response before
-taxonomy loading, OpenRouter model-catalog, or chat-completion calls are made.
+taxonomy loading or adapter egress starts.
 
-Use empty `OPENROUTER_API_KEY` and `OPENROUTER_MGMT_API_KEY` in security CI as
-well, so accidental provider access fails closed even if the guard is removed
-or misconfigured.
+Security CI must not provision an active provider secret or authoring profile,
+so accidental adapter access fails closed even if the guard is removed or
+misconfigured.

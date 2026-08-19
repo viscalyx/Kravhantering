@@ -152,8 +152,9 @@ Optional application values:
   configured issuer and a token endpoint on the same origin; configure an
   explicit HTTPS token URL when the approved token service uses another
   origin.
-- `OPENROUTER_API_KEY`, `OPENROUTER_MGMT_API_KEY`, and
-  `NEXT_PUBLIC_DEFAULT_MODEL` enable optional AI integrations.
+- `AI_PROVIDER_SECRET_KEYRING_FILE` and the `AI_CONNECTION_*_POLICIES_JSON`
+  maps establish the deployment-owned boundary for optional AI connections.
+  Provider credentials and run profiles are administered in the application.
 - `KRAVHANTERING_EXPORT_TEMP_DIR` selects an absolute private spool root for
   generated CSV and PDF files. Blank or omitted uses the operating-system
   temporary directory. When configured, the directory must already exist,
@@ -177,8 +178,7 @@ These values are sensitive outside local test and smoke-test contexts:
 - `DB_PASSWORD`
 - `AUTH_OIDC_CLIENT_SECRET`
 - `AUTH_SESSION_COOKIE_PASSWORD`
-- `OPENROUTER_API_KEY`
-- `OPENROUTER_MGMT_API_KEY`
+- AI provider-secret root-key files and credentials entered through Admin Center
 - `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`
 
 The example file contains public demo values only. Treat them as unsafe for

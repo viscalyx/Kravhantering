@@ -417,11 +417,11 @@ export const REST_OPERATION_DECLARATIONS = [
   ],
   [
     'GET',
-    '/api/ai/credits',
+    '/api/ai/authoring-profiles',
     'session',
     'none',
     'authenticated',
-    'framework-default',
+    'no-store',
     'focused',
   ],
   [
@@ -431,15 +431,6 @@ export const REST_OPERATION_DECLARATIONS = [
     'same-origin',
     'authenticated',
     'no-cache',
-    'focused',
-  ],
-  [
-    'GET',
-    '/api/ai/models',
-    'session',
-    'none',
-    'authenticated',
-    'framework-default',
     'focused',
   ],
   [

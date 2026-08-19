@@ -1,27 +1,15 @@
 import type { ZodError } from 'zod'
-import type { GenerationStats } from '@/lib/ai/openrouter-client'
 import {
   DEFAULT_REQUIREMENT_IMPORT_BUDGET,
   type RequirementImportBudget,
 } from '@/lib/requirements/import-budget'
-import {
-  buildRequirementsImportJsonSchema,
-  type ImportRequirementsPayload,
-} from '@/lib/requirements/import-schema'
+import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
 import enMessages from '@/messages/en.json'
 import svMessages from '@/messages/sv.json'
 
 export const DEFAULT_REQUIREMENT_CANDIDATE_COUNT = 8
 export const MIN_REQUIREMENT_CANDIDATE_COUNT = 1
 export const MAX_REQUIREMENT_CANDIDATE_COUNT = 25
-
-export interface RequirementImportGenerationResult {
-  model: string
-  payload: ImportRequirementsPayload
-  rawContent: string
-  stats: GenerationStats
-  thinking: string
-}
 
 export interface FormattedSchemaIssue {
   code: string

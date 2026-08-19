@@ -71,8 +71,7 @@ npm run db:up
 npm run db:setup
 npm run idp:up
 npm run build:local-prod
-OPENROUTER_API_KEY= OPENROUTER_MGMT_API_KEY= \
-  npm run start:prodlike-pruned
+npm run start:prodlike-pruned
 ```
 
 The launcher stages the standalone runtime assets and binds the server to

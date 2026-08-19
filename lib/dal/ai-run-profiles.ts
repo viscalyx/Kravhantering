@@ -26,6 +26,7 @@ interface AiRunProfileRow {
   connectionId: string
   connectionLifecycleStatus: AiPersistedConnectionLifecycleStatus
   connectionMaximumConcurrency: number
+  connectionPublicName: string
   dataPolicySummary: string
   egressPolicyKey: string
   endpointUrl: string
@@ -78,6 +79,7 @@ const ACTIVE_RUN_PROFILE_QUERY = `
     [connection].[lifecycle_status] AS [connectionLifecycleStatus],
     [connection].[configuration_version] AS [connectionConfigurationVersion],
     [connection].[maximum_concurrency] AS [connectionMaximumConcurrency],
+    [connection].[public_name] AS [connectionPublicName],
     [connection].[adapter_key] AS [adapterType],
     [connection].[adapter_version] AS [adapterVersion],
     [connection].[endpoint_url] AS [endpointUrl],
@@ -148,6 +150,8 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
     connectionId: row.connectionId,
     connectionLifecycleStatus: row.connectionLifecycleStatus,
     connectionMaximumConcurrency: Number(row.connectionMaximumConcurrency),
+    connectionPublicName: row.connectionPublicName,
+    connectionDataPolicySummary: row.dataPolicySummary,
     externalModelId: row.externalModelId,
     modelRevisionAgentRuntimeVersion: row.modelRevisionAgentRuntimeVersion,
     modelRevisionConfiguration: Object.freeze({

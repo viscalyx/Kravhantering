@@ -15,6 +15,7 @@ import type {
   AiAdminModelRevisionRecord,
   AiAdminModelVerificationResult,
 } from './admin-service'
+import type { AiAdapterConfigurationResolver } from './profile-resolver'
 import {
   AiProviderSecretCryptoError,
   type AiProviderSecretEnvelope,
@@ -1463,5 +1464,45 @@ export async function verifyAiProviderSecretRestoreSet(
       omittedRootKeyVersion === null
         ? null
         : compatible && keyring.activeWriteVersion !== omittedRootKeyVersion,
+  }
+}
+
+/**
+ * Trusted runtime boundary for transient adapter configuration. It resolves an
+ * active credential only inside the integration layer's bounded callback and
+ * never returns plaintext to routes or business services.
+ */
+export function createAiRuntimeAdapterConfigurationResolver(
+  db: SqlServerDatabase,
+  keyring: AiProviderSecretKeyring,
+): AiAdapterConfigurationResolver {
+  return async (profile, use): Promise<void> => {
+    const connection = Object.freeze({
+      ...(profile.connectionConfiguration ?? {}),
+    })
+    const modelRevision = Object.freeze({
+      ...(profile.modelRevisionConfiguration ?? {}),
+    })
+    if (connection.authenticationType === 'none') {
+      await use(Object.freeze({ connection, modelRevision }))
+      return
+    }
+
+    const row = await selectActiveSecret(db, profile.connectionId)
+    if (!row) {
+      throw new AiProviderSecretUnavailableError(profile.connectionId, {
+        available: false,
+        reason: 'secret_missing',
+      })
+    }
+    await use(
+      Object.freeze({
+        connection: Object.freeze({
+          ...connection,
+          credential: decryptRow(keyring, row),
+        }),
+        modelRevision,
+      }),
+    )
   }
 }

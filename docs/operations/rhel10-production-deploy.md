@@ -124,9 +124,6 @@ verification.
 | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` in `app.env` | `300` | Integer from `60` through `900`; keep aligned with the service client's declared token lifetime. |
 | `AI_PROVIDER_SECRET_KEYRING_FILE` | External root keyring mounted into `app-runtime` | `/run/secrets/kravhantering/ai-provider-secret-keyring.json` | Required before enabling connection-managed AI. Provision all referenced 256-bit key versions through the approved secret manager; see [AI Connections Operations](./ai-connections.md#external-root-keyring). |
 | AI connection trust maps | `AI_CONNECTION_EGRESS_POLICIES_JSON`, `AI_CONNECTION_DATA_POLICIES_JSON`, and `AI_CONNECTION_TLS_POLICIES_JSON` in `app.env` | Empty maps | Replace with reviewed deployment-owned policy maps before verifying or activating an AI connection. Keep network enforcement aligned with the egress map; see [AI Connections Operations](./ai-connections.md#external-trust-boundary). |
-| `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation is approved. |
-| `OPENROUTER_MGMT_API_KEY` | `OPENROUTER_MGMT_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation and organization credit display are approved. |
-| `NEXT_PUBLIC_DEFAULT_MODEL` | `NEXT_PUBLIC_DEFAULT_MODEL` in `app.env` | Empty | Plan only if the deployment should preselect a public default AI model. |
 <!-- markdownlint-enable MD013 -->
 
 For the full HSA person lookup transport and authentication contract, see
@@ -660,9 +657,6 @@ AI_CONNECTION_EGRESS_POLICIES_JSON={}
 AI_CONNECTION_DATA_POLICIES_JSON={}
 AI_CONNECTION_TLS_POLICIES_JSON={}
 
-NEXT_PUBLIC_DEFAULT_MODEL=
-OPENROUTER_API_KEY=
-OPENROUTER_MGMT_API_KEY=
 ```
 
 `AUTH_OIDC_CLIENT_SECRET` must be non-empty, must match the client secret
@@ -736,18 +730,6 @@ Ownership for the optional MCP service-token client is split by responsibility:
 Do not store the `kravhantering-mcp` client secret in `app.env`.
 `app-runtime` validates signed bearer tokens from the IdP; it does not need the
 MCP client secret.
-
-Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
-`OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
-for the environment. To enable AI, set `OPENROUTER_API_KEY` to the approved
-OpenRouter API key. `NEXT_PUBLIC_DEFAULT_MODEL` is optional; leave it empty if
-the deployment should not preselect a site default model. The UI will use the
-cheapest available saved favorite first, then this site default if it is
-available, and otherwise the first available model. Backend calls that receive
-no model fall back to the built-in default. Set `OPENROUTER_MGMT_API_KEY` only
-if the app should display organization credit information.
-`NEXT_PUBLIC_DEFAULT_MODEL` is public client configuration; do not put secrets
-in it.
 
 Before enabling connection-managed AI, provision
 `/etc/kravhantering/secrets/ai-provider-secret-keyring.json` from the approved

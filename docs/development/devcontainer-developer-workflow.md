@@ -43,10 +43,9 @@ After adding or rotating either variable, rebuild or reopen the devcontainer so
 the VS Code remote extension host and its child processes receive the current
 values.
 
-OpenRouter keys are not forwarded through `remoteEnv`. Put
-`OPENROUTER_API_KEY` and optional `OPENROUTER_MGMT_API_KEY` in the ignored
-workspace file `.env.development.local`; the Next.js process reads them through
-the normal local application environment workflow.
+Provider credentials are not forwarded through `remoteEnv` or read from local
+environment variables. Write them through Admin Center so the application
+stores encrypted provider-secret revisions.
 
 Both devcontainer profiles provision the ignored, external AI provider-secret
 root keyring at `.local/ai-provider-secret-keyring.json` during container

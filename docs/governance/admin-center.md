@@ -261,7 +261,7 @@ removed.
 When effective generation is disabled, the requirements-library AI action stays
 visible but disabled with an explanatory tooltip. An already-open generator
 dialog disables its Generate button. The REST generation path also fails before
-taxonomy, model-catalog, or provider calls.
+taxonomy loading or adapter egress.
 
 The MCP payload/session limit defaults to exactly `10 MiB` (`10485760` bytes).
 Admins can raise or lower it in `1 MiB` increments within the `1 MiB` to

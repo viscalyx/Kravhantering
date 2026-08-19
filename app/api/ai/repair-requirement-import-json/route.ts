@@ -1,22 +1,16 @@
+import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { generateChat } from '@/lib/ai/openrouter-client'
-import { resolveOpenRouterModelCapabilities } from '@/lib/ai/openrouter-model-catalog'
 import {
-  aiProviderErrorPayload,
-  isAiProviderCallerCancelledError,
-  normalizeAiProviderError,
-} from '@/lib/ai/provider-errors'
+  type AiAuthoringRuntime,
+  createProductionAiAuthoringRuntime,
+} from '@/lib/ai/authoring-runtime'
 import {
   buildRequirementImportRepairPrompt,
   buildRequirementImportResponseFormatSchema,
   buildRequirementImportSystemPrompt,
 } from '@/lib/ai/requirement-prompt'
-import {
-  recordAiSafetyBlock,
-  recordAiSafetyFilterFailure,
-  screenAiOutputDetailed,
-} from '@/lib/ai/safety'
+import type { AiRunUsage } from '@/lib/ai/run-contracts'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getApplicationSettings } from '@/lib/dal/application-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -46,7 +40,6 @@ import {
   aiRequirementImportBaseBodySchema,
   checkAiRequirementImportThrottle,
   createAiRequirementImportThrottleResponse,
-  formatAiSafetyBlockedMessage,
   guardAiInput,
   MAX_AI_INSTRUCTION_LENGTH,
   requirementImportDestination,
@@ -57,6 +50,7 @@ import {
 const AI_REPAIR_REQUIREMENT_IMPORT_OPERATION =
   'ai.repair-requirement-import-json'
 const AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES = 1024 * 1024
+const AI_RUN_REQUEST_DEADLINE_MS = 5 * 60 * 1_000
 
 const repairRequirementImportJsonSchema = aiRequirementImportBaseBodySchema
   .extend({
@@ -82,12 +76,29 @@ function aiRepairRequestBytesExceededResponse(): NextResponse {
   return NextResponse.json(
     {
       code: 'ai_request_bytes_exceeded',
-      details: {
-        maxBytes: AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
-      },
+      details: { maxBytes: AI_REPAIR_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES },
       error: 'AI repair request exceeds the allowed size.',
     },
     { status: 413 },
+  )
+}
+
+function metricValue(metric: AiRunUsage['totalTokens']): number | null {
+  return metric.status === 'unavailable' ? null : metric.value
+}
+
+function unavailable(
+  context: Parameters<typeof applyResponseCorrelationHeaders>[1],
+) {
+  return applyResponseCorrelationHeaders(
+    Response.json(
+      {
+        code: 'ai_provider_unavailable',
+        error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+      },
+      { status: 503 },
+    ),
+    context,
   )
 }
 
@@ -116,12 +127,11 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
   handler: async ({ body, context, db: authorizationDb, request }) => {
     const db = authorizationDb ?? (await getRequestSqlServerDataSource())
     const startedAt = Date.now()
-
-    function recordRepairEvent(
+    const recordTerminal = (
       outcome: 'failure' | 'success',
       statusCode: number,
-      stats?: { cost: number; totalTokens: number },
-    ) {
+      usage?: AiRunUsage,
+    ): void => {
       recordCapacityEvent({
         correlationId: context.correlationId,
         durationMs: Date.now() - startedAt,
@@ -130,8 +140,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
             ? 'capacity.operation.completed'
             : 'capacity.operation.failed',
         metrics: {
-          cost: stats?.cost,
-          token_count: stats?.totalTokens,
+          token_count: usage ? metricValue(usage.totalTokens) : null,
         },
         operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
         outcome,
@@ -141,50 +150,19 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
       })
     }
 
-    function recordSafetyFilterFailure(error: unknown) {
-      logSanitizedError(
-        'AI requirement import repair safety filter failed',
-        error,
-      )
-      recordAiSafetyFilterFailure({
-        context,
-        error,
-        operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
-        request,
-      })
-    }
-
     try {
       const availability = await getAiGenerationAvailability(db)
       if (!availability.effectiveRequirementGenerationEnabled) {
-        recordRepairEvent('failure', 503)
-        return applyResponseCorrelationHeaders(
-          Response.json(
-            {
-              code: 'ai_provider_unavailable',
-              error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-            },
-            { status: 503 },
-          ),
-          context,
-        )
+        recordTerminal('failure', 503)
+        return unavailable(context)
       }
     } catch (error) {
       logSanitizedError(
         'AI requirement import repair availability failed',
         error,
       )
-      recordRepairEvent('failure', 503)
-      return applyResponseCorrelationHeaders(
-        Response.json(
-          {
-            code: 'ai_provider_unavailable',
-            error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-          },
-          { status: 503 },
-        ),
-        context,
-      )
+      recordTerminal('failure', 503)
+      return unavailable(context)
     }
 
     const inputGuardResponse = await guardAiInput({
@@ -192,20 +170,11 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
       context,
       db,
       locale: body.locale,
-      onBlockedInput: () => recordRepairEvent('failure', 400),
+      onBlockedInput: () => recordTerminal('failure', 400),
       onSafetyFilterFailure: error => {
-        recordSafetyFilterFailure(error)
-        recordRepairEvent('failure', 503)
-        return applyResponseCorrelationHeaders(
-          Response.json(
-            {
-              code: 'ai_provider_unavailable',
-              error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-            },
-            { status: 503 },
-          ),
-          context,
-        )
+        logSanitizedError('AI requirement import repair safety failed', error)
+        recordTerminal('failure', 503)
+        return unavailable(context)
       },
       operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
       parts: [
@@ -219,29 +188,8 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
     })
     if (inputGuardResponse) return inputGuardResponse
 
-    let modelCapabilities: Awaited<
-      ReturnType<typeof resolveOpenRouterModelCapabilities>
-    >
-    try {
-      modelCapabilities = await resolveOpenRouterModelCapabilities(body.model, {
-        correlationId: context.correlationId,
-        requestId: context.requestId,
-      })
-    } catch (error) {
-      const providerError = normalizeAiProviderError(error, {
-        correlationId: context.correlationId,
-        operation: 'models.list',
-        requestId: context.requestId,
-      })
-      recordRepairEvent('failure', 503)
-      return applyResponseCorrelationHeaders(
-        Response.json(aiProviderErrorPayload(providerError), { status: 503 }),
-        context,
-      )
-    }
-
-    let importInstruction: string
     let importBudget: RequirementImportBudget
+    let importInstruction: string
     try {
       importBudget = requirementImportBudgetFromSettings(
         await getApplicationSettings(db),
@@ -254,175 +202,145 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
       )
     } catch (error) {
       logSanitizedError(
-        'AI requirement import repair instruction loading failed',
+        'AI requirement import repair instruction failed',
         error,
       )
-      recordRepairEvent('failure', 503)
-      return applyResponseCorrelationHeaders(
-        Response.json(
-          {
-            code: 'ai_provider_unavailable',
-            error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-          },
-          { status: 503 },
-        ),
-        context,
-      )
+      recordTerminal('failure', 503)
+      return unavailable(context)
     }
 
-    const systemPrompt = buildRequirementImportSystemPrompt(
-      importInstruction,
-      body.locale,
-    )
-    const repairPrompt = buildRequirementImportRepairPrompt({
-      brokenJson: body.rawJson,
-      errors: body.errors,
-      locale: body.locale,
-    })
-    let result: Awaited<
-      ReturnType<typeof generateChat<ImportRequirementsPayload>>
-    >
+    let runtime: AiAuthoringRuntime
     try {
-      result = await generateChat<ImportRequirementsPayload>({
-        format: buildRequirementImportResponseFormatSchema(
+      runtime = createProductionAiAuthoringRuntime(db)
+    } catch (error) {
+      logSanitizedError('AI authoring runtime unavailable', error)
+      recordTerminal('failure', 503)
+      return unavailable(context)
+    }
+    const run = runtime.run({
+      context: {
+        abortSignal: request.signal,
+        applicationRunId: randomUUID(),
+        correlationId: context.correlationId,
+        deadlineAt: new Date(
+          Date.now() + AI_RUN_REQUEST_DEADLINE_MS,
+        ).toISOString(),
+        requestId: context.requestId,
+      },
+      task: {
+        content: [
+          {
+            text: buildRequirementImportRepairPrompt({
+              brokenJson: body.rawJson,
+              errors: body.errors,
+              locale: body.locale,
+            }),
+            type: 'text',
+          },
+        ],
+        instructions: buildRequirementImportSystemPrompt(
+          importInstruction,
+          body.locale,
+        ),
+        responseSchema: buildRequirementImportResponseFormatSchema(
           body.locale,
           importBudget,
         ),
-        messages: [
-          { content: systemPrompt, role: 'system' },
-          { content: repairPrompt, role: 'user' },
-        ],
-        model: modelCapabilities.id,
-        correlationId: context.correlationId,
-        providerPreferences: body.providerPreferences,
-        reasoningEffort:
-          typeof body.reasoningEffort === 'string'
-            ? body.reasoningEffort
-            : undefined,
-        requestId: context.requestId,
-        signal: request.signal,
-        supportedParameters: modelCapabilities.supportedParameters,
-      })
+      },
+      type: 'repair_invalid_import_json',
+    })
+
+    try {
+      for await (const event of run) {
+        if (event.type === 'completed') {
+          const contentBytes = new TextEncoder().encode(
+            event.rawOutput,
+          ).byteLength
+          let parsed: unknown
+          try {
+            parsed = JSON.parse(event.rawOutput) as unknown
+          } catch {
+            recordTerminal('failure', 503, event.usage)
+            return unavailable(context)
+          }
+          const [budgetIssue] = validateImportContentBudget(
+            parsed,
+            importBudget,
+          )
+          if (
+            contentBytes > REQUIREMENT_IMPORT_CONTENT_MAX_BYTES ||
+            budgetIssue
+          ) {
+            const status =
+              contentBytes > REQUIREMENT_IMPORT_CONTENT_MAX_BYTES ? 413 : 422
+            recordTerminal('failure', status, event.usage)
+            return applyResponseCorrelationHeaders(
+              Response.json(
+                {
+                  code:
+                    contentBytes > REQUIREMENT_IMPORT_CONTENT_MAX_BYTES
+                      ? 'import_content_bytes_exceeded'
+                      : budgetIssue?.code,
+                  error: 'Generated import exceeds the allowed budget.',
+                },
+                { status },
+              ),
+              context,
+            )
+          }
+          const validation =
+            buildRequirementsImportPayloadSchema(importBudget).safeParse(parsed)
+          if (!validation.success) {
+            recordTerminal('failure', 503, event.usage)
+            return unavailable(context)
+          }
+          const payload: ImportRequirementsPayload = validation.data
+          const rawContent = JSON.stringify(payload)
+          recordTerminal('success', 200, event.usage)
+          return applyResponseCorrelationHeaders(
+            Response.json({
+              payload,
+              rawContent,
+              stats: { totalTokens: metricValue(event.usage.totalTokens) },
+              thinking: event.analysis ?? '',
+            }),
+            context,
+          )
+        }
+        if (event.type === 'failed') {
+          const status = event.failure.category === 'rate_limited' ? 429 : 503
+          recordTerminal('failure', status)
+          return applyResponseCorrelationHeaders(
+            Response.json(
+              {
+                code:
+                  event.failure.category === 'rate_limited'
+                    ? 'ai_provider_rate_limited'
+                    : 'ai_provider_unavailable',
+                error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+              },
+              { status },
+            ),
+            context,
+          )
+        }
+        if (event.type === 'cancelled') {
+          recordTerminal('failure', 499)
+          return applyResponseCorrelationHeaders(
+            new Response(null, { status: 499 }),
+            context,
+          )
+        }
+      }
     } catch (error) {
-      if (isAiProviderCallerCancelledError(error)) {
-        recordRepairEvent('failure', 499)
-        return applyResponseCorrelationHeaders(
+      logSanitizedError('AI requirement import repair run failed', error)
+    }
+    recordTerminal('failure', request.signal.aborted ? 499 : 503)
+    return request.signal.aborted
+      ? applyResponseCorrelationHeaders(
           new Response(null, { status: 499 }),
           context,
         )
-      }
-      const providerError = normalizeAiProviderError(error, {
-        correlationId: context.correlationId,
-        operation: 'chat.completions',
-        requestId: context.requestId,
-      })
-      recordRepairEvent('failure', 503)
-      return applyResponseCorrelationHeaders(
-        Response.json(aiProviderErrorPayload(providerError), { status: 503 }),
-        context,
-      )
-    }
-
-    const serializedContent = JSON.stringify(result.content)
-    const contentBytes = new TextEncoder().encode(serializedContent).byteLength
-    const [budgetIssue] = validateImportContentBudget(
-      result.content,
-      importBudget,
-    )
-    if (contentBytes > REQUIREMENT_IMPORT_CONTENT_MAX_BYTES || budgetIssue) {
-      const code =
-        contentBytes > REQUIREMENT_IMPORT_CONTENT_MAX_BYTES
-          ? 'import_content_bytes_exceeded'
-          : budgetIssue?.code
-      const status =
-        contentBytes > REQUIREMENT_IMPORT_CONTENT_MAX_BYTES ? 413 : 422
-      recordRepairEvent('failure', status, result.stats)
-      return applyResponseCorrelationHeaders(
-        Response.json(
-          { code, error: 'Generated import exceeds the allowed budget.' },
-          { status },
-        ),
-        context,
-      )
-    }
-
-    let outputSafetyScreening: Awaited<
-      ReturnType<typeof screenAiOutputDetailed>
-    >
-    try {
-      outputSafetyScreening = await screenAiOutputDetailed(db, [
-        { label: 'rawContent', text: serializedContent },
-        { label: 'thinking', text: result.thinking },
-      ])
-    } catch (error) {
-      recordSafetyFilterFailure(error)
-      recordRepairEvent('failure', 503, result.stats)
-      return applyResponseCorrelationHeaders(
-        Response.json(
-          {
-            code: 'ai_provider_unavailable',
-            error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-          },
-          { status: 503 },
-        ),
-        context,
-      )
-    }
-    if (!outputSafetyScreening.decision.allowed) {
-      await recordAiSafetyBlock({
-        blockedStep: 'repaired_model_output',
-        context,
-        db,
-        direction: 'output',
-        event: 'ai.output_safety.blocked',
-        model: modelCapabilities.id,
-        operation: AI_REPAIR_REQUIREMENT_IMPORT_OPERATION,
-        provider: modelCapabilities.provider,
-        request,
-        screening: outputSafetyScreening,
-      })
-      recordRepairEvent('failure', 422, result.stats)
-      return applyResponseCorrelationHeaders(
-        Response.json(
-          {
-            error: formatAiSafetyBlockedMessage(
-              body.locale,
-              'outputSafetyBlocked',
-              outputSafetyScreening.decision,
-            ),
-          },
-          { status: 422 },
-        ),
-        context,
-      )
-    }
-    const validation = buildRequirementsImportPayloadSchema(
-      importBudget,
-    ).safeParse(result.content)
-    if (!validation?.success) {
-      const providerError = normalizeAiProviderError(null, {
-        code: 'ai_provider_invalid_response',
-        correlationId: context.correlationId,
-        modelProvider: modelCapabilities.provider,
-        operation: 'chat.completions',
-        requestId: context.requestId,
-      })
-      recordRepairEvent('failure', 503, result.stats)
-      return applyResponseCorrelationHeaders(
-        Response.json(aiProviderErrorPayload(providerError), { status: 503 }),
-        context,
-      )
-    }
-    recordRepairEvent('success', 200, result.stats)
-    return applyResponseCorrelationHeaders(
-      Response.json({
-        model: modelCapabilities.id,
-        payload: validation.data,
-        rawContent: serializedContent,
-        stats: result.stats,
-        thinking: result.thinking,
-      }),
-      context,
-    )
+      : unavailable(context)
   },
 })

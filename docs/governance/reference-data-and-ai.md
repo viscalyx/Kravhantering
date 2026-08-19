@@ -126,16 +126,13 @@ for the contract and
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md)
 for the trust, lifecycle, and provider-secret boundaries.
 
-The current sources and OpenRouter contracts below remain implementation facts
-until that migration is complete. They do not override the target decisions.
-
 Sources: `app/api/ai/generate-requirement-import/route.ts`,
 `app/api/ai/repair-requirement-import-json/route.ts`,
-`lib/ai/openrouter-client.ts`, `lib/ai/openrouter-model-catalog.ts`,
-`lib/ai/requirement-prompt.ts`, and requirement import schema/prompt sources
-listed in section 5.
+`lib/ai/authoring-runtime.ts`, `lib/ai/integration-layer.ts`,
+`lib/ai/requirement-prompt.ts`, and the requirement import schema/prompt
+sources listed in section 5.
 
-Local OpenRouter setup and live-provider smoke guidance live in
+Local integration setup and live-adapter smoke guidance live in
 [ai-assisted-authoring-developer-workflow.md](../development/ai-assisted-authoring-developer-workflow.md).
 
 ### Availability Controls
@@ -151,46 +148,29 @@ The environment guard has higher precedence and is intended for security scans
 and deployment freeze windows. When either control disables generation, the
 requirements-library and kravunderlag actions remain visible but disabled, an
 already-open generator dialog disables its Generate button, and REST generation
-returns the sanitized provider-unavailable SSE error before model-catalog or
-chat-completion work starts.
+returns the sanitized provider-unavailable SSE error before adapter egress
+starts.
 
-### OpenRouter Client Contracts
+### Authoring Integration Contracts
 
-**Timeout guarantees:**
+The browser loads fixed availability descriptions for generation without
+images, generation with images, and invalid-JSON repair. Each description is
+resolved from the active administrator-managed run profile. It exposes only
+the connection's public name and data-policy summary. Model identity, adapter
+type, credentials, capability policy, provider preferences, reasoning settings,
+pricing, and credits are not browser choices or authoring request fields.
 
-<!-- markdownlint-disable MD013 -->
+Attaching an image selects the image-generation run type; it never selects a
+connection or model. A missing, suspended, or blocked profile disables only
+that action and gives the user a safe localized reason. Other application
+features and other authoring actions remain available.
 
-| Operation | Timeout | Contract |
-| --------- | ------- | -------- |
-| Chat completion | 120 s | absolute request timeout (`DEFAULT_TIMEOUT_MS`) |
-| Streaming chat | 120 s | idle timeout; long active streams may continue while the provider sends chunks |
-| Model list | 10 s | `AbortSignal.timeout()` |
-| Key info | 5 s | `AbortSignal.timeout()` |
-
-<!-- markdownlint-enable MD013 -->
-
-**Signal handling:** the caller's `AbortSignal` and the
-internal timeout are wired so that whichever fires first
-cancels the fetch.
-
-**Error format:**
-`"OpenRouter request failed (${status}): ${body}"`
-
-**Default model:**
-`process.env.NEXT_PUBLIC_DEFAULT_MODEL` or
-`'anthropic/claude-sonnet-4'`. In the UI, saved favorite models take
-precedence: the cheapest available favorite is preselected before the
-deployment default and the first available model.
-
-**Reasoning effort:** `'high'` by default; `'none'` disables
-reasoning tokens.
-
-**Format negotiation:** generation resolves the selected or default model's
-capabilities server-side from the eligible OpenRouter model catalog. When the
-resolved model supports `structured_outputs`, the request uses `json_schema`;
-otherwise it uses `json_object`. If the model catalog cannot be resolved, or
-the selected model is outside the eligible catalog, generation fails closed
-with the sanitized AI-provider-unavailable response.
+The route builds the import instruction, user prompt, response schema,
+destination, authorization request, and safety inputs. `AIIntegrationLayer`
+then resolves the exact active profile and verified model revision, coordinates
+the run budget and queue, applies the trust boundary, and invokes the exact
+registered adapter. Adapter deltas remain internal. The browser receives only
+a terminal sanitized error or a fully screened and schema-valid result.
 
 ### Prompt Contracts
 
@@ -228,9 +208,11 @@ required seed data stored in `ai_safety_rules` and `ai_safety_rule_terms` and
 administered from the Admin Center `AI security` section. There is no
 runtime fallback list in code; if the active rule set cannot be read from the
 database, AI-assisted authoring fails closed before provider work. Input
-screening runs after AI availability is confirmed and before model-catalog or
-chat-completion work. The screen evaluates the user's need/context, repair
-`rawJson`, repair validation `errors`, and image MIME metadata. It blocks
+screening runs after AI availability is confirmed and before adapter egress.
+The screen evaluates the user's need/context, repair `rawJson`, repair
+validation `errors`, and image MIME metadata. The trust boundary also validates
+each image signature and decoded dimensions, then re-encodes accepted images
+without source metadata. The safety screen blocks
 obvious instruction override, attempts to extract non-public prompt/backend
 material, encoded smuggling tied to override terms, secret extraction, and
 harmful-generation requests. Requests to inspect the AI request text that the

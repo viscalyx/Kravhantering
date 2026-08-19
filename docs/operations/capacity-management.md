@@ -87,8 +87,7 @@ tokens, secrets, HSA-id values, or other user identity.
 V1 measures:
 
 - AI-assisted authoring through `/api/ai/generate-requirement-import`.
-- AI metadata through `/api/ai/models` cache misses, `refresh=1`, and
-  `/api/ai/credits`.
+- AI authoring-profile availability and terminal generation outcomes.
 - Shared service operations through service logging.
 - Requirements specification item pages for the `editor-preload`, `rest`, and
   `mcp` surfaces. These events use

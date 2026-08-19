@@ -11,9 +11,9 @@ import {
   MAX_AI_IMAGE_DATA_URL_LENGTH,
   requirementImportDestination,
   requirementImportScopeAction,
+  toAiTaskContent,
   validateRequirementImportImages,
   validateRequirementImportScope,
-  withImages,
 } from '@/app/api/ai/requirement-import-shared'
 import type { AiSafetyDecision, AiSafetyScreeningResult } from '@/lib/ai/safety'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -390,11 +390,17 @@ describe('AI requirement import shared contracts', () => {
       { dataUrl: 'data:image/png;base64,YWJj' },
     ]
 
-    expect(withImages('prompt', [])).toBe('prompt')
-    expect(withImages('prompt', images)).toEqual([
+    expect(toAiTaskContent('prompt', [])).toEqual([
       { text: 'prompt', type: 'text' },
-      { image_url: { url: images[0].dataUrl }, type: 'image_url' },
-      { image_url: { url: images[1].dataUrl }, type: 'image_url' },
+    ])
+    expect(toAiTaskContent('prompt', images)).toEqual([
+      { text: 'prompt', type: 'text' },
+      { data: new Uint8Array([97]), mediaType: 'image/png', type: 'image' },
+      {
+        data: new Uint8Array([97, 98, 99]),
+        mediaType: 'image/png',
+        type: 'image',
+      },
     ])
     expect(countImageBytes(images)).toBe(6)
   })
