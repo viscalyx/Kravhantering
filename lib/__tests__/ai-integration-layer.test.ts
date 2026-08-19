@@ -12,11 +12,11 @@ import type {
   AiRunIdentity,
   AiRunUsage,
 } from '@/lib/ai/run-contracts'
-import type { AiRunTrustBoundary } from '@/lib/ai/run-trust-boundary'
 import type {
   AiRecoveryProbeTarget,
   AiRunCoordinator,
 } from '@/lib/ai/run-coordinator'
+import type { AiRunTrustBoundary } from '@/lib/ai/run-trust-boundary'
 
 const USAGE: AiRunUsage = {
   analysisTokens: { reason: 'not_reported', status: 'unavailable' },
@@ -696,6 +696,7 @@ describe('AI integration layer', () => {
       }),
       runCoordinator: RUN_COORDINATOR,
       telemetry: { emit },
+      trustBoundary: PASSING_TRUST_BOUNDARY,
     })
 
     await expect(collect(layer.run(request()))).rejects.toMatchObject({
@@ -894,6 +895,7 @@ describe('AI integration layer', () => {
   it('blocks before adapter egress when the app-owned input gate fails', async () => {
     let called = false
     const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run() {
         called = true
         yield* [] as AiRunEvent[]
@@ -933,6 +935,7 @@ describe('AI integration layer', () => {
       prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
     }
     const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run(adapterRequest) {
         yield { delta: 'private analysis delta', type: 'analysis_delta' }
         yield {
@@ -976,6 +979,7 @@ describe('AI integration layer', () => {
       prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
     }
     const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
       async *run(adapterRequest) {
         yield {
           analysis: null,

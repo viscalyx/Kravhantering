@@ -423,12 +423,14 @@ describe('AI run coordination against SQL Server', () => {
       queueCapacity: 2,
       totalDeadlineAt: deadline,
     })
-    await store.requeueForRetry({
-      applicationRunId,
-      fencingToken: firstFence,
-      leaseOwnerId: firstFence,
-      notBefore: new Date(),
-    })
+    await expect(
+      store.requeueForRetry({
+        applicationRunId,
+        fencingToken: firstFence,
+        leaseOwnerId: firstFence,
+        notBefore: new Date(),
+      }),
+    ).resolves.toBe('lease_lost')
     await store.finish({
       applicationRunId,
       fencingToken: firstFence,
@@ -503,6 +505,121 @@ describe('AI run coordination against SQL Server', () => {
         consecutiveFailureCount: 0,
         healthStatus: 'unknown',
         status: 'running',
+      },
+    ])
+  })
+
+  it('does not requeue an expired running lease', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+    const applicationRunId = randomUUID()
+    const fencingToken = randomUUID()
+    const leaseOwnerId = randomUUID()
+    await store.enqueue({
+      applicationRunId,
+      fencingToken,
+      identity,
+      queueCapacity: 0,
+      totalDeadlineAt: new Date(Date.now() + 60_000),
+    })
+    await store.acquire({
+      applicationRunId,
+      fencingToken,
+      leaseDurationMs: 30_000,
+      leaseOwnerId,
+    })
+    await appDb().query(
+      `UPDATE ai_run_coordination_entries
+       SET lease_expires_at = DATEADD(second, -1, SYSUTCDATETIME())
+       WHERE application_run_id = @0`,
+      [applicationRunId],
+    )
+
+    await expect(
+      store.requeueForRetry({
+        applicationRunId,
+        fencingToken,
+        leaseOwnerId,
+        notBefore: new Date(Date.now() + 1_000),
+      }),
+    ).resolves.toBe('lease_lost')
+    await expect(
+      appDb().query(
+        `SELECT status FROM ai_run_coordination_entries
+         WHERE application_run_id = @0`,
+        [applicationRunId],
+      ),
+    ).resolves.toEqual([{ status: 'running' }])
+  })
+
+  it('abandons queued and retry-wait rows without changing model health', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+    const queuedRunId = randomUUID()
+    const queuedFence = randomUUID()
+    await store.enqueue({
+      applicationRunId: queuedRunId,
+      fencingToken: queuedFence,
+      identity,
+      queueCapacity: 2,
+      totalDeadlineAt: new Date(Date.now() + 60_000),
+    })
+
+    await store.abandon({
+      applicationRunId: queuedRunId,
+      fencingToken: queuedFence,
+    })
+
+    const retryRunId = randomUUID()
+    const retryFence = randomUUID()
+    await store.enqueue({
+      applicationRunId: retryRunId,
+      fencingToken: retryFence,
+      identity,
+      queueCapacity: 2,
+      totalDeadlineAt: new Date(Date.now() + 60_000),
+    })
+    await store.acquire({
+      applicationRunId: retryRunId,
+      fencingToken: retryFence,
+      leaseDurationMs: 30_000,
+      leaseOwnerId: retryFence,
+    })
+    await expect(
+      store.requeueForRetry({
+        applicationRunId: retryRunId,
+        fencingToken: retryFence,
+        leaseOwnerId: retryFence,
+        notBefore: new Date(Date.now() + 1_000),
+      }),
+    ).resolves.toBe('applied')
+    await store.abandon({
+      applicationRunId: retryRunId,
+      fencingToken: retryFence,
+    })
+
+    await expect(
+      appDb().query(
+        `SELECT application_run_id AS applicationRunId
+         FROM ai_run_coordination_entries
+         WHERE application_run_id IN (@0, @1)`,
+        [queuedRunId, retryRunId],
+      ),
+    ).resolves.toEqual([])
+    await expect(
+      appDb().query(
+        `SELECT health_status AS healthStatus,
+                circuit_breaker_status AS breakerStatus,
+                consecutive_failure_count AS consecutiveFailureCount
+         FROM ai_connection_model_operational_states
+         WHERE ai_connection_model_revision_id = @0`,
+        [identity.aiConnectionModelRevisionId],
+      ),
+    ).resolves.toEqual([
+      {
+        breakerStatus: 'closed',
+        consecutiveFailureCount: 0,
+        healthStatus: 'unknown',
       },
     ])
   })

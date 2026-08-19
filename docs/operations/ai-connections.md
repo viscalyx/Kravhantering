@@ -311,7 +311,9 @@ across all app nodes. Queue rows contain only opaque identities, state,
 counters, per-invocation fencing tokens, and timestamps. Finish, retry, and
 renewal mutations require the current fencing token, lease owner, and an
 unexpired running lease so a stale or duplicate worker cannot affect its
-replacement. A zero-capacity queue admits
+replacement. Cancellation before acquisition or during retry wait removes only
+the invocation's fenced queued row, without changing model health or breaker
+state. A zero-capacity queue admits
 only runs that fit the currently reserved execution capacity. Expired deadlines
 and abandoned leases are reclaimed transactionally.
 

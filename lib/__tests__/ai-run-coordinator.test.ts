@@ -17,6 +17,7 @@ function store(
   overrides: Partial<AiRunCoordinationStore> = {},
 ): AiRunCoordinationStore {
   return {
+    abandon: vi.fn(async () => undefined),
     acquire: vi.fn(async () => ({ status: 'acquired' as const })),
     enqueue: vi.fn(async () => ({ status: 'queued' as const })),
     finish: vi.fn(async () => undefined),
@@ -24,7 +25,7 @@ function store(
     acquireManualRecoveryProbe: vi.fn(async () => false),
     finishRecoveryProbe: vi.fn(async () => undefined),
     listDueRecoveryProbes: vi.fn(async () => []),
-    requeueForRetry: vi.fn(async () => undefined),
+    requeueForRetry: vi.fn(async () => 'applied' as const),
     renew: vi.fn(async () => true),
     ...overrides,
   }
@@ -604,6 +605,97 @@ describe('AI run coordinator', () => {
     expect(execute).toHaveBeenCalledTimes(2)
     expect(coordination.requeueForRetry).toHaveBeenCalledTimes(1)
     expect(coordination.acquire).toHaveBeenCalledTimes(2)
+  })
+
+  it('stops with one safe terminal when retry requeue loses its live lease', async () => {
+    const coordination = store({
+      requeueForRetry: vi.fn(async () => 'lease_lost' as const),
+    })
+    const execute = vi.fn(() =>
+      (async function* () {
+        yield {
+          failure: {
+            category: 'connection_unavailable' as const,
+            retryDisposition: 'safe_before_acceptance' as const,
+            retryable: true,
+          },
+          identity: IDENTITY,
+          type: 'failed' as const,
+        }
+      })(),
+    )
+
+    await expect(
+      collect(
+        createAiRunCoordinator({
+          coordination,
+          delay: async () => undefined,
+          random: () => 0,
+        }).coordinate(request(), execute, () => undefined),
+      ),
+    ).resolves.toMatchObject([
+      {
+        failure: { diagnosticCode: 'coordination_lease_lost' },
+        type: 'failed',
+      },
+    ])
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(coordination.acquire).toHaveBeenCalledTimes(1)
+    expect(coordination.finish).not.toHaveBeenCalled()
+    expect(coordination.abandon).not.toHaveBeenCalled()
+  })
+
+  it('abandons a queued row when cancelled before capacity acquisition', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const coordination = store()
+
+    await expect(
+      collect(
+        createAiRunCoordinator({ coordination }).coordinate(
+          request(controller.signal),
+          () => (async function* () {})(),
+          () => undefined,
+        ),
+      ),
+    ).resolves.toMatchObject([{ type: 'cancelled' }])
+    expect(coordination.abandon).toHaveBeenCalledWith({
+      applicationRunId: request().applicationRunId,
+      fencingToken: expect.any(String),
+    })
+    expect(coordination.finish).not.toHaveBeenCalled()
+  })
+
+  it('abandons a retry-wait row when cancelled during retry delay', async () => {
+    const controller = new AbortController()
+    const coordination = store()
+    const execute = vi.fn(() =>
+      (async function* () {
+        yield {
+          failure: {
+            category: 'connection_unavailable' as const,
+            retryDisposition: 'safe_before_acceptance' as const,
+            retryable: true,
+          },
+          identity: IDENTITY,
+          type: 'failed' as const,
+        }
+      })(),
+    )
+
+    await expect(
+      collect(
+        createAiRunCoordinator({
+          coordination,
+          delay: async () => controller.abort(),
+          random: () => 0,
+        }).coordinate(request(controller.signal), execute, () => undefined),
+      ),
+    ).resolves.toMatchObject([{ type: 'cancelled' }])
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(coordination.requeueForRetry).toHaveBeenCalledTimes(1)
+    expect(coordination.abandon).toHaveBeenCalledTimes(1)
+    expect(coordination.finish).not.toHaveBeenCalled()
   })
 
   it('does not retry after the first delta', async () => {

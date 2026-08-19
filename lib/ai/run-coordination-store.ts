@@ -23,6 +23,7 @@ interface CoordinationRow {
   probeStatus?: 'acquired' | 'unavailable'
   queueDepth?: number | string
   renewed?: boolean | number
+  requeued?: boolean | number
   runType?: AiRecoveryProbeTarget['runType']
   totalTimeBudgetMs?: number | string
 }
@@ -307,6 +308,15 @@ export function createSqlServerAiRunCoordinationStore(
   db: SqlServerDatabase,
 ): SqlServerAiRunCoordinationStore {
   return {
+    async abandon(input): Promise<void> {
+      await db.query(
+        `DELETE FROM [ai_run_coordination_entries]
+         WHERE [application_run_id] = @0 AND [fencing_token] = @1
+           AND [status] IN (N'queued', N'retry_wait')`,
+        [input.applicationRunId, input.fencingToken],
+      )
+    },
+
     async acquireManualRecoveryProbe(input): Promise<boolean> {
       const rows = await db.transaction('SERIALIZABLE', manager =>
         manager.query<CoordinationRow[]>(
@@ -422,14 +432,16 @@ export function createSqlServerAiRunCoordinationStore(
       return Boolean(rows[0]?.renewed)
     },
 
-    async requeueForRetry(input): Promise<void> {
-      await db.query(
+    async requeueForRetry(input): Promise<'applied' | 'lease_lost'> {
+      const rows = await db.query<CoordinationRow[]>(
         `UPDATE [ai_run_coordination_entries]
          SET [status] = N'retry_wait', [not_before] = @1,
              [lease_owner_id] = NULL, [lease_expires_at] = NULL,
              [updated_at] = SYSUTCDATETIME()
+         OUTPUT 1 AS [requeued]
          WHERE [application_run_id] = @0 AND [status] = N'running'
-           AND [lease_owner_id] = @2 AND [fencing_token] = @3`,
+           AND [lease_owner_id] = @2 AND [fencing_token] = @3
+           AND [lease_expires_at] > SYSUTCDATETIME()`,
         [
           input.applicationRunId,
           input.notBefore,
@@ -437,6 +449,7 @@ export function createSqlServerAiRunCoordinationStore(
           input.fencingToken,
         ],
       )
+      return rows[0]?.requeued ? 'applied' : 'lease_lost'
     },
 
     async finish(input): Promise<AiOperationalStateTransition> {

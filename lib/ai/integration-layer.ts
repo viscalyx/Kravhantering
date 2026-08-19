@@ -15,8 +15,8 @@ import {
   createAiAdapterRunContext,
   guardAiRunEventStream,
 } from './run-contracts'
-import type { AiPreparedRun, AiRunTrustBoundary } from './run-trust-boundary'
 import type { AiRunCoordinator, AiRunTelemetry } from './run-coordinator'
+import type { AiPreparedRun, AiRunTrustBoundary } from './run-trust-boundary'
 
 const HEALTH_PROBE_PROMPT_VERSION = 'ai-health-probe-v1'
 const HEALTH_PROBE_TASK = Object.freeze({
@@ -38,9 +38,9 @@ const HEALTH_PROBE_TASK = Object.freeze({
 export interface CreateAiIntegrationLayerOptions {
   adapterRegistry: AiConnectionAdapterRegistry
   profileResolver: AiRunProfileResolver
-  trustBoundary: AiRunTrustBoundary
   runCoordinator: AiRunCoordinator
   telemetry?: AiRunTelemetry
+  trustBoundary: AiRunTrustBoundary
 }
 
 interface Deferred<T> {
@@ -279,6 +279,23 @@ export function createAiIntegrationLayer(
         profile.adapterType,
         profile.adapterVersion,
       )
+      let prepared: Readonly<AiPreparedRun>
+      try {
+        prepared = await options.trustBoundary.prepareRun({
+          runType: target.runType,
+          task: HEALTH_PROBE_TASK,
+          trustConfiguration: profile.trustConfiguration,
+        })
+      } catch {
+        return {
+          failure: {
+            category: 'request_rejected',
+            diagnosticCode: 'health_probe_trust_boundary_blocked',
+            retryable: false,
+          },
+          succeeded: false,
+        }
+      }
       let forceClose: (() => void) | undefined
       const request: AiIntegrationRunRequest = {
         context: {
@@ -298,6 +315,7 @@ export function createAiIntegrationLayer(
         profile,
         request,
         target.identity,
+        prepared,
         {
           abortSignal,
           deadlineAt: request.context.deadlineAt,

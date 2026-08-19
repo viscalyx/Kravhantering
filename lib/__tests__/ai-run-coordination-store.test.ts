@@ -204,7 +204,7 @@ describe('SQL Server AI run coordination store', () => {
   })
 
   it('fences renewals and retries by both invocation and lease ownership', async () => {
-    const { db, query } = database([[{ renewed: 1 }], []])
+    const { db, query } = database([[{ renewed: 1 }], [{ requeued: 1 }]])
     const store = createSqlServerAiRunCoordinationStore(db)
 
     await expect(
@@ -215,18 +215,52 @@ describe('SQL Server AI run coordination store', () => {
         leaseOwnerId: '40000000-0000-4000-8000-000000000001',
       }),
     ).resolves.toBe(true)
-    await store.requeueForRetry({
-      applicationRunId: '00000000-0000-4000-8000-000000000001',
-      fencingToken: '40000000-0000-4000-8000-000000000001',
-      leaseOwnerId: '40000000-0000-4000-8000-000000000001',
-      notBefore: new Date('2026-08-19T12:00:01Z'),
-    })
+    await expect(
+      store.requeueForRetry({
+        applicationRunId: '00000000-0000-4000-8000-000000000001',
+        fencingToken: '40000000-0000-4000-8000-000000000001',
+        leaseOwnerId: '40000000-0000-4000-8000-000000000001',
+        notBefore: new Date('2026-08-19T12:00:01Z'),
+      }),
+    ).resolves.toBe('applied')
 
     const calls = query.mock.calls as unknown[][]
     expect(String(calls[0]?.[0])).toContain('[fencing_token] = @3')
     expect(String(calls[1]?.[0])).toContain(
       '[lease_owner_id] = @2 AND [fencing_token] = @3',
     )
+    expect(String(calls[1]?.[0])).toContain(
+      '[lease_expires_at] > SYSUTCDATETIME()',
+    )
+  })
+
+  it('reports a lost lease when retry requeue is not applied', async () => {
+    const { db } = database([[]])
+
+    await expect(
+      createSqlServerAiRunCoordinationStore(db).requeueForRetry({
+        applicationRunId: '00000000-0000-4000-8000-000000000001',
+        fencingToken: '40000000-0000-4000-8000-000000000001',
+        leaseOwnerId: '40000000-0000-4000-8000-000000000001',
+        notBefore: new Date('2026-08-19T12:00:01Z'),
+      }),
+    ).resolves.toBe('lease_lost')
+  })
+
+  it('abandons only fenced queued or retry-wait rows without health mutation', async () => {
+    const { db, query } = database([[]])
+
+    await expect(
+      createSqlServerAiRunCoordinationStore(db).abandon({
+        applicationRunId: '00000000-0000-4000-8000-000000000001',
+        fencingToken: '40000000-0000-4000-8000-000000000001',
+      }),
+    ).resolves.toBeUndefined()
+
+    const sql = String((query.mock.calls as unknown[][])[0]?.[0])
+    expect(sql).toContain("[status] IN (N'queued', N'retry_wait')")
+    expect(sql).toContain('[fencing_token] = @1')
+    expect(sql).not.toContain('ai_connection_model_operational_states')
   })
 
   it('reports a lost lease and ignores incomplete due-target rows', async () => {

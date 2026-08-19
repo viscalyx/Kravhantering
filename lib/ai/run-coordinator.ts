@@ -85,6 +85,10 @@ export interface AiOperationalStateTransition {
 }
 
 export interface AiRunCoordinationStore {
+  abandon(input: {
+    applicationRunId: string
+    fencingToken: string
+  }): Promise<void>
   acquire(input: {
     applicationRunId: string
     fencingToken: string
@@ -122,7 +126,7 @@ export interface AiRunCoordinationStore {
     fencingToken: string
     leaseOwnerId: string
     notBefore: Date
-  }): Promise<void>
+  }): Promise<'applied' | 'lease_lost'>
 }
 
 export type AiRunTelemetryName =
@@ -559,7 +563,12 @@ export function createAiRunCoordinator(
       request.abortSignal.addEventListener('abort', onAbort, { once: true })
       if (request.abortSignal.aborted) controller.abort()
       let finished = false
-      let admitted = false
+      let coordinationState:
+        | 'lost'
+        | 'none'
+        | 'queued'
+        | 'retry_wait'
+        | 'running' = 'none'
       let finalEvent: AiRunEvent | undefined
       const telemetryBase = {
         adapterVersion: request.adapterVersion,
@@ -606,7 +615,7 @@ export function createAiRunCoordinator(
           yield finalEvent
           return
         }
-        admitted = true
+        coordinationState = 'queued'
 
         for (let attempt = 1; attempt <= 2; attempt += 1) {
           let acquired = false
@@ -619,6 +628,7 @@ export function createAiRunCoordinator(
             })
             if (result.status === 'acquired') {
               acquired = true
+              coordinationState = 'running'
               observedCapacity = result
               queueWaitMs ??= Math.max(0, now() - startedAt)
               break
@@ -667,6 +677,7 @@ export function createAiRunCoordinator(
           let outputBytes = 0
           let attemptTerminal: AiRunEvent | undefined
           let leaseLost = false
+          let renewalActive = true
           let idleDeadline = Math.min(
             totalDeadline,
             now() + request.profile.inactivityTimeBudgetMs,
@@ -685,14 +696,18 @@ export function createAiRunCoordinator(
                 leaseOwnerId,
               })
               .then(renewed => {
-                if (!renewed) {
+                if (renewalActive && !renewed) {
                   leaseLost = true
+                  coordinationState = 'lost'
                   attemptController.abort()
                 }
               })
               .catch(() => {
-                leaseLost = true
-                attemptController.abort()
+                if (renewalActive) {
+                  leaseLost = true
+                  coordinationState = 'lost'
+                  attemptController.abort()
+                }
               })
           }, DEFAULT_LEASE_MS / 3)
           try {
@@ -866,6 +881,7 @@ export function createAiRunCoordinator(
               }
             }
           } finally {
+            renewalActive = false
             clearInterval(leaseRenewal)
             controller.signal.removeEventListener('abort', abortAttempt)
             if (attemptTerminal?.type !== 'completed') {
@@ -909,12 +925,24 @@ export function createAiRunCoordinator(
               remainingAfterWait > 0 &&
               (!retryAfterNeedsFiveMinutes || remainingAfterWait >= 300_000)
             ) {
-              await options.coordination.requeueForRetry({
+              const requeueResult = await options.coordination.requeueForRetry({
                 applicationRunId: request.applicationRunId,
                 fencingToken,
                 leaseOwnerId,
                 notBefore: new Date(now() + waitMs),
               })
+              if (requeueResult === 'lease_lost') {
+                coordinationState = 'lost'
+                finalEvent = failure(
+                  request.identity,
+                  'connection_unavailable',
+                  'coordination_lease_lost',
+                  true,
+                )
+                yield finalEvent
+                return
+              }
+              coordinationState = 'retry_wait'
               await delay(waitMs, controller.signal)
               continue
             }
@@ -955,7 +983,7 @@ export function createAiRunCoordinator(
           finished = true
           const outcome = terminalOutcome(finalEvent)
           let coordinationResult: AiOperationalStateTransition | undefined
-          if (admitted) {
+          if (coordinationState === 'running') {
             try {
               coordinationResult = await options.coordination.finish({
                 applicationRunId: request.applicationRunId,
@@ -968,6 +996,18 @@ export function createAiRunCoordinator(
               })
             } catch {
               coordinationResult = undefined
+            }
+          } else if (
+            coordinationState === 'queued' ||
+            coordinationState === 'retry_wait'
+          ) {
+            try {
+              await options.coordination.abandon({
+                applicationRunId: request.applicationRunId,
+                fencingToken,
+              })
+            } catch {
+              // Cleanup failure must not replace the application terminal.
             }
           }
           if (

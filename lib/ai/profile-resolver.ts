@@ -58,9 +58,9 @@ export interface AiPersistedRunProfile {
   operationalStatus: AiRunProfileOperationalStatus
   profileRevisionId: string
   profileRevisionStatus: AiPersistedRunProfileRevisionStatus
-  trustConfiguration: Readonly<AiConnectionTrustConfiguration> | null
   queueCapacity: number
   totalTimeBudgetSeconds: number
+  trustConfiguration: Readonly<AiConnectionTrustConfiguration> | null
   verifiedCapabilitiesJson: string | null
 }
 
