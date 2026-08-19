@@ -87,10 +87,12 @@ async function collect(
 function integration(adapter: AIConnectionAdapter, stored = profile()) {
   const resolver = createAiRunProfileResolver({
     profileSource: { findActiveRevision: async () => stored },
-    resolveAdapterConfiguration: async () => ({
-      connection: { opaque: 'connection-configuration' },
-      modelRevision: { opaque: 'model-configuration' },
-    }),
+    resolveAdapterConfiguration: async (_profile, use) => {
+      await use({
+        connection: { opaque: 'connection-configuration' },
+        modelRevision: { opaque: 'model-configuration' },
+      })
+    },
   })
   return createAiIntegrationLayer({
     adapterRegistry: createAiConnectionAdapterRegistry([
@@ -189,6 +191,40 @@ describe('AI integration layer', () => {
     expect(called).toBe(false)
   })
 
+  it('blocks safely before adapter egress when transient configuration is unavailable', async () => {
+    let called = false
+    const adapter: AIConnectionAdapter = {
+      async *run() {
+        called = true
+        yield* [] as AiRunEvent[]
+      },
+    }
+    const resolver = createAiRunProfileResolver({
+      profileSource: { findActiveRevision: async () => profile() },
+      resolveAdapterConfiguration: async () => {
+        throw new Error('provider secret must stay private')
+      },
+    })
+    const layer = createAiIntegrationLayer({
+      adapterRegistry: createAiConnectionAdapterRegistry([
+        { adapter, adapterType: 'capture', adapterVersion: '3' },
+      ]),
+      profileResolver: resolver,
+    })
+
+    const error = await collect(layer.run(request())).catch(
+      (caught: unknown) => caught,
+    )
+
+    expect(error).toMatchObject({
+      code: 'profile_blocked',
+      localizationKey: 'ai.runProfile.profileBlocked',
+      message: 'The configured AI run profile is unavailable.',
+    })
+    expect(JSON.stringify(error)).not.toMatch(/provider|secret/u)
+    expect(called).toBe(false)
+  })
+
   it('returns the selected adapter failure without trying another adapter', async () => {
     let fallbackCalled = false
     const selected: AIConnectionAdapter = {
@@ -215,10 +251,9 @@ describe('AI integration layer', () => {
     }
     const resolver = createAiRunProfileResolver({
       profileSource: { findActiveRevision: async () => profile() },
-      resolveAdapterConfiguration: async () => ({
-        connection: {},
-        modelRevision: {},
-      }),
+      resolveAdapterConfiguration: async (_profile, use) => {
+        await use({ connection: {}, modelRevision: {} })
+      },
     })
     const layer = createAiIntegrationLayer({
       adapterRegistry: createAiConnectionAdapterRegistry([
@@ -261,5 +296,51 @@ describe('AI integration layer', () => {
         },
       ],
     )
+  })
+
+  it('keeps transient adapter configuration scoped through stream consumption', async () => {
+    let scopeActive = false
+    const resolver = createAiRunProfileResolver({
+      profileSource: { findActiveRevision: async () => profile() },
+      resolveAdapterConfiguration: async (_stored, use) => {
+        scopeActive = true
+        try {
+          await use({
+            connection: { apiKey: 'transient-secret' },
+            modelRevision: {},
+          })
+        } finally {
+          scopeActive = false
+        }
+      },
+    })
+    const adapter: AIConnectionAdapter = {
+      async *run(adapterRequest) {
+        expect(scopeActive).toBe(true)
+        yield { delta: 'thinking', type: 'analysis_delta' }
+        await Promise.resolve()
+        expect(scopeActive).toBe(true)
+        yield {
+          analysis: 'thinking',
+          identity: {
+            aiConnectionId: adapterRequest.connection.id,
+            aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
+            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+          },
+          rawOutput: '{"requirements":[]}',
+          type: 'completed',
+          usage: USAGE,
+        }
+      },
+    }
+    const layer = createAiIntegrationLayer({
+      adapterRegistry: createAiConnectionAdapterRegistry([
+        { adapter, adapterType: 'capture', adapterVersion: '3' },
+      ]),
+      profileResolver: resolver,
+    })
+
+    await expect(collect(layer.run(request()))).resolves.toHaveLength(2)
+    expect(scopeActive).toBe(false)
   })
 })

@@ -66,15 +66,26 @@ export interface AiResolvedAdapterConfiguration {
 
 export type AiAdapterConfigurationResolver = (
   profile: Readonly<AiPersistedRunProfile>,
-) => Promise<AiResolvedAdapterConfiguration>
+  use: (
+    configuration: Readonly<AiResolvedAdapterConfiguration>,
+  ) => Promise<void>,
+) => Promise<void>
+
+export interface AiAdapterReadyRunProfile {
+  connection: Readonly<AiResolvedConnection>
+  modelRevision: Readonly<AiResolvedConnectionModelRevision>
+}
 
 export interface AiResolvedRunProfile {
   adapterType: string
   adapterVersion: string
-  connection: Readonly<AiResolvedConnection>
-  modelRevision: Readonly<AiResolvedConnectionModelRevision>
+  connectionId: AiConnectionId
+  modelRevisionId: AiConnectionModelRevisionId
   profileRevisionId: AiRunProfileRevisionId
   selectedCapabilities: Readonly<AiCapabilitySelection>
+  withAdapterConfiguration(
+    use: (profile: Readonly<AiAdapterReadyRunProfile>) => Promise<void>,
+  ): Promise<void>
 }
 
 export interface AiRunProfileResolver {
@@ -279,6 +290,20 @@ function blocked(): AiRunProfileResolutionError {
   return new AiRunProfileResolutionError('profile_blocked')
 }
 
+function freezePersistedProfile(
+  profile: AiPersistedRunProfile,
+): Readonly<AiPersistedRunProfile> {
+  return Object.freeze({
+    ...profile,
+    connectionConfiguration: profile.connectionConfiguration
+      ? Object.freeze({ ...profile.connectionConfiguration })
+      : undefined,
+    modelRevisionConfiguration: profile.modelRevisionConfiguration
+      ? Object.freeze({ ...profile.modelRevisionConfiguration })
+      : undefined,
+  })
+}
+
 export interface CreateAiRunProfileResolverOptions {
   profileSource: AiRunProfileSource
   resolveAdapterConfiguration: AiAdapterConfigurationResolver
@@ -318,40 +343,58 @@ export function createAiRunProfileResolver(
       const selectedCapabilities = selectCapabilities(policy, verified)
       if (!selectedCapabilities) throw blocked()
 
-      let configuration: AiResolvedAdapterConfiguration
-      try {
-        configuration = await options.resolveAdapterConfiguration(
-          Object.freeze({ ...profile }),
-        )
-      } catch {
-        throw blocked()
+      const connectionId = profile.connectionId as AiConnectionId
+      const modelRevisionId =
+        profile.modelRevisionId as AiConnectionModelRevisionId
+      const profileSnapshot = freezePersistedProfile(profile)
+      const verifiedCapabilities = Object.freeze({
+        aiAnalysis: verified.aiAnalysis,
+        cost: verified.cost,
+        imageInput: verified.imageInput,
+        jsonSchemaSteering: verified.jsonSchemaSteering,
+        streaming: verified.streaming,
+        tokenUsage: verified.tokenUsage,
+      })
+      const withAdapterConfiguration = async (
+        use: (profile: Readonly<AiAdapterReadyRunProfile>) => Promise<void>,
+      ): Promise<void> => {
+        let callbackCount = 0
+        try {
+          await options.resolveAdapterConfiguration(
+            profileSnapshot,
+            async configuration => {
+              callbackCount += 1
+              if (callbackCount !== 1) throw blocked()
+              await use(
+                Object.freeze({
+                  connection: Object.freeze({
+                    configuration: configuration.connection,
+                    id: connectionId,
+                  }),
+                  modelRevision: Object.freeze({
+                    configuration: configuration.modelRevision,
+                    externalModelId: profileSnapshot.externalModelId,
+                    id: modelRevisionId,
+                    verifiedCapabilities,
+                  }),
+                }),
+              )
+            },
+          )
+          if (callbackCount !== 1) throw blocked()
+        } catch {
+          throw blocked()
+        }
       }
-
-      const connection = Object.freeze({
-        configuration: configuration.connection,
-        id: profile.connectionId as AiConnectionId,
-      })
-      const modelRevision = Object.freeze({
-        configuration: configuration.modelRevision,
-        externalModelId: profile.externalModelId,
-        id: profile.modelRevisionId as AiConnectionModelRevisionId,
-        verifiedCapabilities: Object.freeze({
-          aiAnalysis: verified.aiAnalysis,
-          cost: verified.cost,
-          imageInput: verified.imageInput,
-          jsonSchemaSteering: verified.jsonSchemaSteering,
-          streaming: verified.streaming,
-          tokenUsage: verified.tokenUsage,
-        }),
-      })
 
       return Object.freeze({
         adapterType: profile.adapterType,
         adapterVersion: profile.adapterVersion,
-        connection,
-        modelRevision,
+        connectionId,
+        modelRevisionId,
         profileRevisionId: profile.profileRevisionId as AiRunProfileRevisionId,
         selectedCapabilities: Object.freeze(selectedCapabilities),
+        withAdapterConfiguration,
       })
     },
   }

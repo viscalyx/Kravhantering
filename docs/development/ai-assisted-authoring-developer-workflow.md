@@ -25,12 +25,15 @@ the model revision verifies them, and missing `required` capabilities block the
 profile. Verified validatable JSON remains mandatory independently of optional
 strict JSON Schema steering.
 
-Adapter-ready connection and model configuration is supplied through the
-resolver's opaque configuration callback. Keep provider-secret access inside
-that callback boundary; neither the profile source nor the integration layer
-interprets provider-specific authentication fields. The integration layer
-invokes only the exact registered adapter type and version and does not retry
-through or fall back to another adapter.
+Adapter-ready connection and model configuration exists only inside the
+resolver's opaque configuration callback; it is not returned on the resolved
+profile. The callback remains open until the adapter event stream has been
+fully consumed, so provider-secret access stays inside that lifetime boundary.
+Neither the profile source nor the integration layer interprets
+provider-specific authentication fields. The integration layer invokes only
+the exact registered adapter type-and-version pair and does not retry through
+or fall back to another adapter. Multiple registered versions of one adapter
+type remain independent selections.
 
 OpenRouter remains the first adapter, alongside a fully registrable controlled
 test adapter. Both pass the same run-profile, safety-gate, route, and terminal

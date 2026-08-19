@@ -6,6 +6,7 @@ import {
 import { createAiConnectionAdapterRegistry } from '@/lib/ai/adapter-registry'
 import {
   CONTROLLED_TEST_ADAPTER_TYPE,
+  CONTROLLED_TEST_ADAPTER_VERSION,
   controlledTestAdapterRegistration,
 } from '@/lib/ai/controlled-test-adapter'
 import {
@@ -71,7 +72,7 @@ const RUN_IDENTITY: AiRunIdentity = {
 function registeredAdapter(): AIConnectionAdapter {
   return createAiConnectionAdapterRegistry([
     controlledTestAdapterRegistration,
-  ]).resolve(CONTROLLED_TEST_ADAPTER_TYPE)
+  ]).resolve(CONTROLLED_TEST_ADAPTER_TYPE, CONTROLLED_TEST_ADAPTER_VERSION)
 }
 
 function request(
@@ -151,7 +152,10 @@ describe('controlled AI connection test adapter', () => {
     const registry = createAiConnectionAdapterRegistry([
       controlledTestAdapterRegistration,
     ])
-    const adapter = registry.resolve(CONTROLLED_TEST_ADAPTER_TYPE)
+    const adapter = registry.resolve(
+      CONTROLLED_TEST_ADAPTER_TYPE,
+      CONTROLLED_TEST_ADAPTER_VERSION,
+    )
 
     const events = await collectEvents(
       adapter.run(

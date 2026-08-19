@@ -63,10 +63,12 @@ function persistedProfile(
 
 function setup(profile: AiPersistedRunProfile | null) {
   const findActiveRevision = vi.fn(async (_key: AiRunProfileKey) => profile)
-  const resolveAdapterConfiguration = vi.fn(async () => ({
-    connection: { scenario: 'opaque' },
-    modelRevision: { option: 'opaque' },
-  }))
+  const resolveAdapterConfiguration = vi.fn(async (_profile, use) => {
+    await use({
+      connection: { scenario: 'opaque' },
+      modelRevision: { option: 'opaque' },
+    })
+  })
   const resolver = createAiRunProfileResolver({
     profileSource: { findActiveRevision },
     resolveAdapterConfiguration,
@@ -86,14 +88,45 @@ describe('AI run profile resolver', () => {
     await expect(resolver.resolve(type)).resolves.toMatchObject({
       adapterType: 'controlled_test',
       adapterVersion: '1',
-      connection: { id: 'connection-17' },
-      modelRevision: {
-        externalModelId: 'controlled/model-v1',
-        id: 'model-revision-23',
-      },
+      connectionId: 'connection-17',
+      modelRevisionId: 'model-revision-23',
       profileRevisionId: 'profile-revision-31',
     })
     expect(findActiveRevision).toHaveBeenCalledWith(key)
+  })
+
+  it('exposes adapter-ready configuration only inside its callback scope', async () => {
+    let scopeActive = false
+    const resolveAdapterConfiguration = vi.fn(async (_profile, use) => {
+      scopeActive = true
+      try {
+        await use({ connection: { secret: 'transient' }, modelRevision: {} })
+      } finally {
+        scopeActive = false
+      }
+    })
+    const resolver = createAiRunProfileResolver({
+      profileSource: { findActiveRevision: async () => persistedProfile() },
+      resolveAdapterConfiguration,
+    })
+
+    const resolved = await resolver.resolve('generate_without_images')
+
+    expect(resolveAdapterConfiguration).not.toHaveBeenCalled()
+    expect(resolved).not.toHaveProperty('connection')
+    await resolved.withAdapterConfiguration(async configured => {
+      expect(scopeActive).toBe(true)
+      expect(configured).toMatchObject({
+        connection: {
+          configuration: { secret: 'transient' },
+          id: 'connection-17',
+        },
+        modelRevision: { id: 'model-revision-23' },
+      })
+      await Promise.resolve()
+      expect(scopeActive).toBe(true)
+    })
+    expect(scopeActive).toBe(false)
   })
 
   it('applies disabled, allowed, and required modes from verified revision capabilities', async () => {
@@ -302,17 +335,23 @@ describe('AI run profile resolver', () => {
       }
       const resolver = createAiRunProfileResolver({
         profileSource,
-        resolveAdapterConfiguration: async () => {
+        resolveAdapterConfiguration: async (_profile, use) => {
           if (boundary === 'adapter configuration') {
             throw new Error('provider secret is unavailable')
           }
-          return { connection: {}, modelRevision: {} }
+          await use({ connection: {}, modelRevision: {} })
         },
       })
 
-      const error = await resolver
-        .resolve('generate_without_images')
-        .catch((caught: unknown) => caught)
+      const error = await (async (): Promise<unknown> => {
+        try {
+          const resolved = await resolver.resolve('generate_without_images')
+          await resolved.withAdapterConfiguration(async () => undefined)
+          return resolved
+        } catch (caught) {
+          return caught
+        }
+      })()
 
       expect(error).toMatchObject({
         code: 'profile_blocked',
@@ -360,6 +399,8 @@ describe('AI run profile resolver', () => {
 
     expect(Object.isFrozen(resolved)).toBe(true)
     expect(Object.isFrozen(resolved.selectedCapabilities)).toBe(true)
+    expect(resolved).not.toHaveProperty('connection')
+    expect(resolved).not.toHaveProperty('modelRevision')
     expect(resolved.profileRevisionId).toBe('profile-revision-31')
     expect(resolved.selectedCapabilities.streaming).toBe(true)
   })
