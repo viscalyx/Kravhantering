@@ -661,6 +661,7 @@ async function* runStreaming(
   let output = ''
   let accumulatedOutputBytes = 0
   let retainedOutputBytes = 0
+  let retainedUsageBytes = 0
   let usage: unknown
   let completed = false
   try {
@@ -679,7 +680,13 @@ async function* runStreaming(
         return
       }
       if (result.done) break
-      if (result.value.byteLength > request.limits.maxRetainedMemoryBytes) {
+      if (
+        retainedOutputBytes +
+          retainedUsageBytes +
+          encoder.encode(buffer).byteLength +
+          result.value.byteLength >
+        request.limits.maxRetainedMemoryBytes
+      ) {
         yield failureEvent(request, {
           category: 'invalid_response',
           diagnosticCode: 'upstream_stream_buffer_too_large',
@@ -699,6 +706,11 @@ async function* runStreaming(
       }
       const frames = buffer.split(/\r?\n\r?\n/u)
       buffer = frames.pop() ?? ''
+      const bufferedBytes = encoder.encode(buffer).byteLength
+      let pendingFrameBytes = frames.reduce(
+        (total, frame) => total + encoder.encode(frame).byteLength,
+        0,
+      )
       if (frames.length > request.limits.maxBufferedEvents) {
         yield failureEvent(request, {
           category: 'invalid_response',
@@ -707,10 +719,7 @@ async function* runStreaming(
         })
         return
       }
-      if (
-        encoder.encode(buffer).byteLength >
-        Math.min(MAX_STREAM_FRAME_BYTES, request.limits.maxRetainedMemoryBytes)
-      ) {
+      if (bufferedBytes > MAX_STREAM_FRAME_BYTES) {
         yield failureEvent(request, {
           category: 'invalid_response',
           diagnosticCode: 'upstream_stream_frame_too_large',
@@ -718,8 +727,23 @@ async function* runStreaming(
         })
         return
       }
+      if (
+        retainedOutputBytes +
+          retainedUsageBytes +
+          bufferedBytes +
+          pendingFrameBytes >
+        request.limits.maxRetainedMemoryBytes
+      ) {
+        yield failureEvent(request, {
+          category: 'invalid_response',
+          diagnosticCode: 'upstream_stream_buffer_too_large',
+          retryable: false,
+        })
+        return
+      }
       for (const frame of frames) {
-        if (encoder.encode(frame).byteLength > MAX_STREAM_FRAME_BYTES) {
+        const frameBytes = encoder.encode(frame).byteLength
+        if (frameBytes > MAX_STREAM_FRAME_BYTES) {
           yield failureEvent(request, {
             category: 'invalid_response',
             diagnosticCode: 'upstream_stream_frame_too_large',
@@ -732,8 +756,12 @@ async function* runStreaming(
           .filter(line => line.startsWith('data:'))
           .map(line => line.slice(5).trimStart())
           .join('\n')
-        if (!payload) continue
+        if (!payload) {
+          pendingFrameBytes -= frameBytes
+          continue
+        }
         if (payload === '[DONE]') {
+          pendingFrameBytes -= frameBytes
           completed = true
           break
         }
@@ -761,16 +789,20 @@ async function* runStreaming(
           })
           return
         }
-        if (chunk.usage !== undefined) usage = chunk.usage
+        if (chunk.usage !== undefined) {
+          usage = chunk.usage
+          retainedUsageBytes = encoder.encode(JSON.stringify(usage)).byteLength
+        }
         if (request.selectedCapabilities.aiAnalysis && delta.analysis) {
           retainedOutputBytes += encoder.encode(delta.analysis).byteLength
           analysis += delta.analysis
           if (
-            retainedOutputBytes >
-            Math.min(
-              MAX_STREAM_OUTPUT_BYTES,
-              request.limits.maxRetainedMemoryBytes,
-            )
+            retainedOutputBytes > MAX_STREAM_OUTPUT_BYTES ||
+            retainedOutputBytes +
+              retainedUsageBytes +
+              bufferedBytes +
+              pendingFrameBytes >
+              request.limits.maxRetainedMemoryBytes
           ) {
             yield failureEvent(request, {
               category: 'invalid_response',
@@ -792,7 +824,11 @@ async function* runStreaming(
                 MAX_STREAM_OUTPUT_BYTES,
                 request.limits.maxOutputBytes,
               ) ||
-            retainedOutputBytes > request.limits.maxRetainedMemoryBytes
+            retainedOutputBytes +
+              retainedUsageBytes +
+              bufferedBytes +
+              pendingFrameBytes >
+              request.limits.maxRetainedMemoryBytes
           ) {
             yield failureEvent(request, {
               category: 'invalid_response',
@@ -807,6 +843,21 @@ async function* runStreaming(
             visibility: 'internal',
           }
         }
+        if (
+          retainedOutputBytes +
+            retainedUsageBytes +
+            bufferedBytes +
+            pendingFrameBytes >
+          request.limits.maxRetainedMemoryBytes
+        ) {
+          yield failureEvent(request, {
+            category: 'invalid_response',
+            diagnosticCode: 'upstream_stream_buffer_too_large',
+            retryable: false,
+          })
+          return
+        }
+        pendingFrameBytes -= frameBytes
       }
     }
   } finally {

@@ -145,6 +145,7 @@ function recoveryTarget(
       aiConnectionModelRevisionId: 'model-revision-23',
       aiRunProfileRevisionId: 'profile-revision-31',
     } as AiRunIdentity,
+    inactivityTimeBudgetMs: 1_000,
     runType: 'generate_without_images',
     totalTimeBudgetMs: 10_000,
     ...overrides,
@@ -402,6 +403,76 @@ describe('AI integration layer', () => {
     })
   })
 
+  it.each(['not json', '{"status":"bad"}', '{"status":"ok","extra":true}'])(
+    'rejects recovery output outside the fixed health schema: %s',
+    async rawOutput => {
+      const adapter: AIConnectionAdapter = {
+        forceClose: vi.fn(),
+        async *run(adapterRequest) {
+          yield { ...completedAdapterEvent(adapterRequest), rawOutput }
+        },
+      }
+      integration(adapter)
+
+      await expect(
+        automaticRecoveryProbe?.(
+          recoveryTarget(),
+          'probe-run-schema',
+          new AbortController().signal,
+        ),
+      ).resolves.toMatchObject({
+        failure: { diagnosticCode: 'health_probe_schema_invalid' },
+        succeeded: false,
+      })
+    },
+  )
+
+  it('ends a recovery probe when its inactivity budget expires', async () => {
+    vi.useFakeTimers()
+    try {
+      let markStarted = (): void => undefined
+      const started = new Promise<void>(resolve => {
+        markStarted = resolve
+      })
+      const adapter: AIConnectionAdapter = {
+        forceClose: vi.fn(),
+        run() {
+          return {
+            [Symbol.asyncIterator]() {
+              return {
+                next: () => {
+                  markStarted()
+                  return new Promise<IteratorResult<AiRunEvent>>(
+                    () => undefined,
+                  )
+                },
+                return: async () => ({ done: true, value: undefined }),
+              }
+            },
+          }
+        },
+      }
+      integration(adapter)
+      const probing = automaticRecoveryProbe?.(
+        recoveryTarget({ inactivityTimeBudgetMs: 25 }),
+        'probe-run-idle',
+        new AbortController().signal,
+      )
+      await started
+      await vi.advanceTimersByTimeAsync(25)
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      await expect(probing).resolves.toMatchObject({
+        failure: {
+          diagnosticCode: 'health_probe_inactivity_budget_exceeded',
+        },
+        succeeded: false,
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('contains recovery iterator cleanup rejection', async () => {
     const adapter: AIConnectionAdapter = {
       forceClose: vi.fn(),
@@ -636,7 +707,9 @@ describe('AI integration layer', () => {
       aiConnectionModelRevisionId: 'model-revision-23',
       aiRunProfileRevisionId: 'profile-revision-31',
       applicationRunId: 'app-run-private',
+      correlationId: 'correlation-private',
       name: 'ai_alarm_active_profile_blocked',
+      requestId: 'correlation-private',
       runType: 'generate_without_images',
     })
   })

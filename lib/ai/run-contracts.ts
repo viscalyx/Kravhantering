@@ -32,6 +32,7 @@ export interface AiRunTechnicalContext {
   applicationRunId: string
   correlationId: string
   deadlineAt: string
+  requestId?: string
 }
 
 declare const aiExternalRunIdBrand: unique symbol

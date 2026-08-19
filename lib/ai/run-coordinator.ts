@@ -22,15 +22,22 @@ export interface AiCoordinatedRunRequest {
   abortSignal: AbortSignal
   adapterVersion: string
   applicationRunId: string
+  correlationId: string
   identity: AiRunIdentity
   limits: AiRunLimits
   profile: AiRunCoordinationProfile
+  requestId: string
   runType: AiRunType
 }
 
 export type AiRunAdmissionResult =
   | { status: 'queued' }
-  | { retryAfterSeconds: number; status: 'queue_full' }
+  | {
+      activeConcurrency: number
+      queueDepth: number
+      retryAfterSeconds: number
+      status: 'queue_full'
+    }
   | { retryAfterSeconds?: number; status: 'breaker_open' }
 
 export type AiRunAcquireResult =
@@ -43,6 +50,7 @@ export type AiRunAcquireResult =
 export interface AiRecoveryProbeTarget {
   adapterVersion: string
   identity: AiRunIdentity
+  inactivityTimeBudgetMs: number
   runType: AiRunType
   totalTimeBudgetMs: number
 }
@@ -54,6 +62,7 @@ export interface AiHealthProbeResult {
 }
 
 export interface AiRecoveryProbeLeaseInput {
+  identity: AiRunIdentity
   leaseDurationMs: number
   leaseOwnerId: string
   modelRevisionId: string
@@ -95,6 +104,7 @@ export interface AiRunCoordinationStore {
     applicationRunId: string
     fencingToken: string
     failure?: AiRunFailure
+    leaseOwnerId: string
     outcome: 'cancelled' | 'completed' | 'failed'
   }): Promise<AiOperationalStateTransition | undefined>
   finishRecoveryProbe(
@@ -138,6 +148,7 @@ export interface AiRunTelemetryEvent {
   attempt?: number
   breakerStatus?: AiOperationalStateTransition['breakerStatus']
   cancellationReason?: string
+  correlationId: string
   durationMs?: number
   failureCategory?: AiRunFailure['category']
   healthStatus?: AiOperationalStateTransition['healthStatus']
@@ -146,6 +157,7 @@ export interface AiRunTelemetryEvent {
   probeKind?: 'automatic' | 'manual'
   queueDepth?: number
   queueWaitMs?: number
+  requestId: string
   retryCount?: number
   runType: AiRunType
   timeToFirstAnalysisDeltaMs?: number
@@ -366,6 +378,7 @@ export function createAiRunCoordinator(
       for (const target of targets) {
         const probeRunId = randomUUID()
         const acquired = await options.coordination.acquireRecoveryProbe({
+          identity: target.identity,
           leaseDurationMs: target.totalTimeBudgetMs + CANCELLATION_GRACE_MS,
           leaseOwnerId,
           modelRevisionId: target.identity.aiConnectionModelRevisionId,
@@ -380,7 +393,9 @@ export function createAiRunCoordinator(
             target.identity.aiConnectionModelRevisionId,
           aiRunProfileRevisionId: target.identity.aiRunProfileRevisionId,
           applicationRunId: probeRunId,
+          correlationId: probeRunId,
           probeKind: 'automatic' as const,
+          requestId: probeRunId,
           runType: target.runType,
         }
         await emit({ ...telemetryBase, name: 'ai_health_probe_started' })
@@ -447,6 +462,7 @@ export function createAiRunCoordinator(
   ) => {
     const probeRunId = randomUUID()
     const acquired = await options.coordination.acquireManualRecoveryProbe({
+      identity: target.identity,
       leaseDurationMs: target.totalTimeBudgetMs + CANCELLATION_GRACE_MS,
       leaseOwnerId,
       modelRevisionId: target.identity.aiConnectionModelRevisionId,
@@ -470,7 +486,9 @@ export function createAiRunCoordinator(
       aiConnectionModelRevisionId: target.identity.aiConnectionModelRevisionId,
       aiRunProfileRevisionId: target.identity.aiRunProfileRevisionId,
       applicationRunId: probeRunId,
+      correlationId: probeRunId,
       probeKind: 'manual' as const,
+      requestId: probeRunId,
       runType: target.runType,
     }
     await emit({ ...telemetryBase, name: 'ai_health_probe_started' })
@@ -550,12 +568,14 @@ export function createAiRunCoordinator(
           request.identity.aiConnectionModelRevisionId,
         aiRunProfileRevisionId: request.identity.aiRunProfileRevisionId,
         applicationRunId: request.applicationRunId,
+        correlationId: request.correlationId,
+        requestId: request.requestId,
         runType: request.runType,
       }
 
       await emit({ ...telemetryBase, name: 'ai_run_started' })
-      let lastAcquisition:
-        | Extract<AiRunAcquireResult, { status: 'acquired' }>
+      let observedCapacity:
+        | { activeConcurrency?: number; queueDepth?: number }
         | undefined
       let queueWaitMs: number | undefined
       let attemptsRun = 0
@@ -568,6 +588,12 @@ export function createAiRunCoordinator(
           totalDeadlineAt,
         })
         if (admission.status !== 'queued') {
+          if (admission.status === 'queue_full') {
+            observedCapacity = {
+              activeConcurrency: admission.activeConcurrency,
+              queueDepth: admission.queueDepth,
+            }
+          }
           finalEvent = failure(
             request.identity,
             admission.status === 'queue_full'
@@ -593,7 +619,7 @@ export function createAiRunCoordinator(
             })
             if (result.status === 'acquired') {
               acquired = true
-              lastAcquisition = result
+              observedCapacity = result
               queueWaitMs ??= Math.max(0, now() - startedAt)
               break
             }
@@ -892,6 +918,17 @@ export function createAiRunCoordinator(
               await delay(waitMs, controller.signal)
               continue
             }
+            if (retryAfterNeedsFiveMinutes) {
+              finalEvent = failure(
+                request.identity,
+                'rate_limited',
+                'retry_after_exceeds_remaining_budget',
+                true,
+                currentTerminal.failure.retryAfterSeconds,
+              )
+              yield finalEvent
+              return
+            }
           }
           finalEvent = currentTerminal
           yield currentTerminal
@@ -923,6 +960,7 @@ export function createAiRunCoordinator(
               coordinationResult = await options.coordination.finish({
                 applicationRunId: request.applicationRunId,
                 fencingToken,
+                leaseOwnerId,
                 ...(finalEvent.type === 'failed'
                   ? { failure: finalEvent.failure }
                   : {}),
@@ -954,7 +992,7 @@ export function createAiRunCoordinator(
           }
           await emit({
             ...telemetryBase,
-            activeConcurrency: lastAcquisition?.activeConcurrency,
+            activeConcurrency: observedCapacity?.activeConcurrency,
             cancellationReason:
               finalEvent.type === 'cancelled' ? finalEvent.reason : undefined,
             durationMs: Math.max(0, now() - startedAt),
@@ -964,7 +1002,7 @@ export function createAiRunCoordinator(
                 : undefined,
             name: 'ai_run_terminal',
             outcome,
-            queueDepth: lastAcquisition?.queueDepth,
+            queueDepth: observedCapacity?.queueDepth,
             queueWaitMs,
             retryCount: Math.max(0, attemptsRun - 1),
             usage:

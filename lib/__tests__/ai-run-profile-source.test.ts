@@ -140,4 +140,18 @@ describe('SQL Server AI run profile source', () => {
       ),
     ).resolves.toMatchObject({ trustConfiguration: null })
   })
+
+  it('preserves a null optional model concurrency limit', async () => {
+    const db = {
+      query: vi
+        .fn()
+        .mockResolvedValue([{ modelRevisionMaximumConcurrency: null }]),
+    } as unknown as SqlServerDatabase
+
+    await expect(
+      createSqlServerAiRunProfileSource(db).findActiveRevision(
+        'generation_without_images',
+      ),
+    ).resolves.toMatchObject({ modelRevisionMaximumConcurrency: null })
+  })
 })

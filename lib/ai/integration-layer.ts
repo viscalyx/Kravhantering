@@ -63,6 +63,21 @@ function settledTrue(): true {
   return true
 }
 
+function isSuccessfulHealthProbeOutput(rawOutput: string): boolean {
+  try {
+    const value: unknown = JSON.parse(rawOutput)
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      Object.keys(value).length === 1 &&
+      (value as { status?: unknown }).status === 'ok'
+    )
+  } catch {
+    return false
+  }
+}
+
 function adapterFailure(identity: AiRunIdentity): AiRunEvent {
   return {
     failure: {
@@ -273,6 +288,7 @@ export function createAiIntegrationLayer(
           deadlineAt: new Date(
             Date.now() + target.totalTimeBudgetMs,
           ).toISOString(),
+          requestId: probeRunId,
         },
         task: HEALTH_PROBE_TASK,
         type: target.runType,
@@ -297,6 +313,7 @@ export function createAiIntegrationLayer(
       try {
         while (!abortSignal.aborted) {
           let onAbort = (): void => undefined
+          let inactivityTimer: ReturnType<typeof setTimeout> | undefined
           const pulled = await Promise.race([
             iterator
               .next()
@@ -305,9 +322,26 @@ export function createAiIntegrationLayer(
               onAbort = () => resolve({ type: 'abort' })
               abortSignal.addEventListener('abort', onAbort, { once: true })
             }),
+            new Promise<{ type: 'inactivity' }>(resolve => {
+              inactivityTimer = setTimeout(
+                () => resolve({ type: 'inactivity' }),
+                target.inactivityTimeBudgetMs,
+              )
+            }),
           ])
+          if (inactivityTimer) clearTimeout(inactivityTimer)
           abortSignal.removeEventListener('abort', onAbort)
           if (pulled.type === 'abort') break
+          if (pulled.type === 'inactivity') {
+            return {
+              failure: {
+                category: 'deadline_exceeded',
+                diagnosticCode: 'health_probe_inactivity_budget_exceeded',
+                retryable: false,
+              },
+              succeeded: false,
+            }
+          }
           const { result } = pulled
           if (result.done) break
           const event = result.value
@@ -337,6 +371,16 @@ export function createAiIntegrationLayer(
                 failure: {
                   category: 'invalid_response',
                   diagnosticCode: 'health_probe_limit_exceeded',
+                  retryable: false,
+                },
+                succeeded: false,
+              }
+            }
+            if (!isSuccessfulHealthProbeOutput(event.rawOutput)) {
+              return {
+                failure: {
+                  category: 'invalid_response',
+                  diagnosticCode: 'health_probe_schema_invalid',
                   retryable: false,
                 },
                 succeeded: false,
@@ -410,7 +454,10 @@ export function createAiIntegrationLayer(
               ...error.identity,
               adapterVersion: error.adapterVersion ?? 'unresolved',
               applicationRunId: request.context.applicationRunId,
+              correlationId: request.context.correlationId,
               name: 'ai_alarm_active_profile_blocked',
+              requestId:
+                request.context.requestId ?? request.context.correlationId,
               runType: request.type,
             })
           } catch {
@@ -447,9 +494,11 @@ export function createAiIntegrationLayer(
           adapterVersion: profile.adapterVersion,
           abortSignal: request.context.abortSignal,
           applicationRunId: request.context.applicationRunId,
+          correlationId: request.context.correlationId,
           identity,
           limits: profile.limits,
           profile: profile.runtime,
+          requestId: request.context.requestId ?? request.context.correlationId,
           runType: request.type,
         },
         (_attempt, abortSignal, deadlineAt) =>

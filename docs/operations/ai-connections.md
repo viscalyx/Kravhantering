@@ -309,8 +309,9 @@ SQL Server coordinates admission, FIFO order, connection concurrency, any
 lower model-revision concurrency, retry waits, and renewable execution leases
 across all app nodes. Queue rows contain only opaque identities, state,
 counters, per-invocation fencing tokens, and timestamps. Finish, retry, and
-renewal mutations require the current fencing and lease ownership so a stale or
-duplicate worker cannot affect its replacement. A zero-capacity queue admits
+renewal mutations require the current fencing token, lease owner, and an
+unexpired running lease so a stale or duplicate worker cannot affect its
+replacement. A zero-capacity queue admits
 only runs that fit the currently reserved execution capacity. Expired deadlines
 and abandoned leases are reclaimed transactionally.
 
@@ -336,9 +337,11 @@ open it for one hourly SQL-leased probe; a crashed half-open lease is
 reclaimable. After five failed probes, or if a probe discovers an
 authentication or capability failure, recovery becomes manual. At process
 startup and every minute, each node scans a bounded set of only due open
-breakers; the SQL lease selects one node, and `next_recovery_at` preserves the
+breakers; the SQL lease selects one node, reserves ordinary connection and
+model concurrency for the probe, and `next_recovery_at` preserves the
 60-minute cadence across restarts. Probes resolve the exact active profile
-again and use the versioned, fixed synthetic JSON prompt. Healthy and unused
+again, enforce its total and inactivity budgets, and accept only the versioned
+fixed synthetic response `{ "status": "ok" }`. Healthy and unused
 connections are never probed periodically. Manual probes emit the
 `admin_health_check` event with actor, outcome, duration, and normalized usage.
 Automatic probes and all health/breaker transitions have separate content-free
@@ -358,7 +361,9 @@ saturation, active concurrency, attempt and retry counts, time to first
 analysis/output delta, cancellation reasons, token use, and cost. Operational
 events include run type, adapter version, outcome/failure category, and opaque
 application-run, connection, profile-revision, and model-revision IDs. They
-never include prompts, images, model output, endpoints, provider secrets,
+also carry request and correlation IDs; queue-full terminals carry the observed
+queue depth and active concurrency. Events never include prompts, images, model
+output, endpoints, provider secrets,
 secret references, or provider error bodies. Alert rules must bind the emitted
 authentication-failure, breaker-opened, and active-profile-blocked alarm events
 to the on-call channel before AI is enabled.

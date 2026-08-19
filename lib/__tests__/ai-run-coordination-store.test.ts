@@ -23,8 +23,17 @@ function database(results: unknown[][]) {
 describe('SQL Server AI run coordination store', () => {
   it.each([
     [
-      { admissionStatus: 'queue_full' },
-      { retryAfterSeconds: 60, status: 'queue_full' },
+      {
+        activeConcurrency: '2',
+        admissionStatus: 'queue_full',
+        queueDepth: '3',
+      },
+      {
+        activeConcurrency: 2,
+        queueDepth: 3,
+        retryAfterSeconds: 60,
+        status: 'queue_full',
+      },
     ],
     [
       { admissionStatus: 'breaker_open' },
@@ -142,6 +151,7 @@ describe('SQL Server AI run coordination store', () => {
         applicationRunId: '00000000-0000-4000-8000-000000000001',
         fencingToken: '40000000-0000-4000-8000-000000000001',
         failure: { category: 'authentication_failed', retryable: false },
+        leaseOwnerId: '40000000-0000-4000-8000-000000000001',
         outcome: 'failed',
       }),
     ).resolves.toMatchObject({ breakerOpened: true })
@@ -151,6 +161,9 @@ describe('SQL Server AI run coordination store', () => {
     expect(sql).toContain('[is_manual_recovery_required] = 1')
     expect(sql).toContain('[consecutive_failure_count] >= 4')
     expect(sql).toContain('[fencing_token] = @4')
+    expect(sql).toContain('[lease_owner_id] = @5')
+    expect(sql).toContain("[status] = N'running'")
+    expect(sql).toContain('[lease_expires_at] > @now')
     expect(sql).toContain('DATEADD(minute, 60, @now)')
     expect(
       sql.match(/AND \[circuit_breaker_status\] = N'closed';/gu),
@@ -171,6 +184,7 @@ describe('SQL Server AI run coordination store', () => {
       store.finish({
         applicationRunId: '00000000-0000-4000-8000-000000000001',
         fencingToken: '40000000-0000-4000-8000-000000000001',
+        leaseOwnerId: '40000000-0000-4000-8000-000000000001',
         outcome: 'completed',
       }),
     ).resolves.toEqual({
@@ -257,6 +271,7 @@ describe('SQL Server AI run coordination store', () => {
     await expect(store.listDueRecoveryProbes(0)).resolves.toEqual([])
     await expect(
       store.acquireRecoveryProbe({
+        identity: IDENTITY,
         leaseDurationMs: 1,
         leaseOwnerId: 'owner',
         modelRevisionId: 'model',
@@ -265,6 +280,7 @@ describe('SQL Server AI run coordination store', () => {
     ).resolves.toBe(false)
     await expect(
       store.acquireManualRecoveryProbe({
+        identity: IDENTITY,
         leaseDurationMs: 1,
         leaseOwnerId: 'owner',
         modelRevisionId: 'model',
@@ -279,6 +295,7 @@ describe('SQL Server AI run coordination store', () => {
 
     await expect(
       store.acquireRecoveryProbe({
+        identity: IDENTITY,
         leaseDurationMs: 30_000,
         leaseOwnerId: '40000000-0000-4000-8000-000000000001',
         modelRevisionId: IDENTITY.aiConnectionModelRevisionId,
@@ -297,6 +314,8 @@ describe('SQL Server AI run coordination store', () => {
     expect(sql).toContain("[circuit_breaker_status] = N'half_open'")
     expect(sql).toContain('[probe_connection].[maximum_concurrency]')
     expect(sql).toContain('[probe_revision].[maximum_concurrency]')
+    expect(sql).toContain('INSERT INTO [ai_run_coordination_entries]')
+    expect(sql).toContain("@2, @2, @4, @0, @5, N'running'")
   })
 
   it('lists only bounded due open recovery targets with active dependencies', async () => {
@@ -307,6 +326,7 @@ describe('SQL Server AI run coordination store', () => {
           aiConnectionId: IDENTITY.aiConnectionId,
           aiConnectionModelRevisionId: IDENTITY.aiConnectionModelRevisionId,
           aiRunProfileRevisionId: IDENTITY.aiRunProfileRevisionId,
+          inactivityTimeBudgetMs: 3_000,
           runType: 'generate_without_images',
           totalTimeBudgetMs: 10_000,
         },
@@ -319,6 +339,7 @@ describe('SQL Server AI run coordination store', () => {
       {
         adapterVersion: '1',
         identity: IDENTITY,
+        inactivityTimeBudgetMs: 3_000,
         runType: 'generate_without_images',
         totalTimeBudgetMs: 10_000,
       },
@@ -335,6 +356,7 @@ describe('SQL Server AI run coordination store', () => {
 
     await expect(
       store.acquireManualRecoveryProbe({
+        identity: IDENTITY,
         leaseDurationMs: 30_000,
         leaseOwnerId: '40000000-0000-4000-8000-000000000001',
         modelRevisionId: IDENTITY.aiConnectionModelRevisionId,
@@ -344,6 +366,9 @@ describe('SQL Server AI run coordination store', () => {
 
     expect(String((query.mock.calls as unknown[][])[0]?.[0])).toContain(
       "[circuit_breaker_status] IN (N'closed', N'open')",
+    )
+    expect(String((query.mock.calls as unknown[][])[0]?.[0])).toContain(
+      'INSERT INTO [ai_run_coordination_entries]',
     )
   })
 

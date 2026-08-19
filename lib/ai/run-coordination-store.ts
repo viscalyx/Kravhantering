@@ -19,6 +19,7 @@ interface CoordinationRow {
   breakerStatus?: AiOperationalStateTransition['breakerStatus']
   healthStateChanged?: boolean | number
   healthStatus?: AiOperationalStateTransition['healthStatus']
+  inactivityTimeBudgetMs?: number | string
   probeStatus?: 'acquired' | 'unavailable'
   queueDepth?: number | string
   renewed?: boolean | number
@@ -42,7 +43,12 @@ function transition(
 function admission(row: CoordinationRow | undefined): AiRunAdmissionResult {
   if (row?.admissionStatus === 'queued') return { status: 'queued' }
   if (row?.admissionStatus === 'queue_full') {
-    return { retryAfterSeconds: 60, status: 'queue_full' }
+    return {
+      activeConcurrency: Number(row.activeConcurrency ?? 0),
+      queueDepth: Number(row.queueDepth ?? 0),
+      retryAfterSeconds: 60,
+      status: 'queue_full',
+    }
   }
   return { retryAfterSeconds: 3600, status: 'breaker_open' }
 }
@@ -135,7 +141,8 @@ const ENQUEUE_SQL = `
       AND @model_running + @waiting_for_model >= @model_maximum_concurrency)
   ) AND @waiting >= @5
   BEGIN
-    SELECT N'queue_full' AS [admissionStatus];
+    SELECT N'queue_full' AS [admissionStatus], @running AS [activeConcurrency],
+           @waiting_for_connection AS [queueDepth];
     RETURN;
   END;
 
@@ -222,6 +229,8 @@ const FINISH_SQL = `
     SELECT [ai_connection_model_revision_id]
     FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK)
     WHERE [application_run_id] = @0 AND [fencing_token] = @4
+      AND [lease_owner_id] = @5 AND [status] = N'running'
+      AND [lease_expires_at] > @now
   );
   DECLARE @was_open bit = COALESCE((
     SELECT CASE WHEN [circuit_breaker_status] = N'open' THEN 1 ELSE 0 END
@@ -278,7 +287,9 @@ const FINISH_SQL = `
       AND [circuit_breaker_status] = N'closed';
 
   DELETE FROM [ai_run_coordination_entries]
-  WHERE [application_run_id] = @0 AND [fencing_token] = @4;
+  WHERE [application_run_id] = @0 AND [fencing_token] = @4
+    AND [lease_owner_id] = @5 AND [status] = N'running'
+    AND [lease_expires_at] > @now;
   SELECT CASE WHEN @was_open = 0 AND EXISTS (
     SELECT 1 FROM [ai_connection_model_operational_states]
     WHERE [ai_connection_model_revision_id] = @model_revision_id
@@ -301,13 +312,23 @@ export function createSqlServerAiRunCoordinationStore(
         manager.query<CoordinationRow[]>(
           `SET NOCOUNT ON;
            DECLARE @now datetime2(3) = SYSUTCDATETIME();
+           DELETE FROM [ai_run_coordination_entries]
+           WHERE [status] = N'running' AND [lease_expires_at] <= @now;
+           DELETE [entry]
+           FROM [ai_run_coordination_entries] AS [entry]
+           INNER JOIN [ai_connection_model_operational_states] AS [state]
+             ON [state].[lease_run_id] = [entry].[application_run_id]
+           WHERE [state].[ai_connection_model_revision_id] = @0
+             AND [state].[lease_expires_at] <= @now
+             AND [entry].[status] = N'running';
+           DECLARE @acquired TABLE ([probeStatus] nvarchar(24));
            UPDATE [ai_connection_model_operational_states] WITH (UPDLOCK, HOLDLOCK)
            SET [circuit_breaker_status] = N'half_open',
                [circuit_open_reason] = COALESCE([circuit_open_reason], N'manual_health_check'),
                [lease_owner_id] = @1, [lease_run_id] = @2,
                [lease_expires_at] = DATEADD(millisecond, @3, @now),
                [updated_at] = @now, [revision_token] = NEWID()
-           OUTPUT N'acquired' AS [probeStatus]
+           OUTPUT N'acquired' INTO @acquired ([probeStatus])
            WHERE [ai_connection_model_revision_id] = @0
              AND [circuit_breaker_status] IN (N'closed', N'open')
              AND ([lease_expires_at] IS NULL OR [lease_expires_at] <= @now)
@@ -320,21 +341,35 @@ export function createSqlServerAiRunCoordinationStore(
                  ON [probe_connection].[id] = [probe_model].[ai_connection_id]
                WHERE [probe_revision].[id] = @0
                  AND (
-                   SELECT COUNT(*) FROM [ai_run_coordination_entries]
+                   SELECT COUNT(*) FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK)
                    WHERE [ai_connection_id] = [probe_connection].[id]
                      AND [status] = N'running' AND [lease_expires_at] > @now
                  ) < [probe_connection].[maximum_concurrency]
                  AND ([probe_revision].[maximum_concurrency] IS NULL OR (
-                   SELECT COUNT(*) FROM [ai_run_coordination_entries]
+                   SELECT COUNT(*) FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK)
                    WHERE [ai_connection_model_revision_id] = @0
                      AND [status] = N'running' AND [lease_expires_at] > @now
                  ) < [probe_revision].[maximum_concurrency])
-             );`,
+             );
+           IF EXISTS (SELECT 1 FROM @acquired)
+             INSERT INTO [ai_run_coordination_entries] (
+               [application_run_id], [fencing_token], [ai_connection_id],
+               [ai_connection_model_revision_id], [ai_run_profile_revision_id],
+               [status], [attempt_count], [lease_owner_id], [lease_expires_at],
+               [not_before], [total_deadline_at], [created_at], [updated_at]
+             ) VALUES (
+               @2, @2, @4, @0, @5, N'running', 1, @1,
+               DATEADD(millisecond, @3, @now), @now,
+               DATEADD(millisecond, @3, @now), @now, @now
+             );
+           SELECT [probeStatus] FROM @acquired;`,
           [
             input.modelRevisionId,
             input.leaseOwnerId,
             input.probeRunId,
             input.leaseDurationMs,
+            input.identity.aiConnectionId,
+            input.identity.aiRunProfileRevisionId,
           ],
         ),
       )
@@ -412,6 +447,7 @@ export function createSqlServerAiRunCoordinationStore(
           input.failure?.retryable ? 1 : 0,
           input.outcome,
           input.fencingToken,
+          input.leaseOwnerId,
         ]),
       )
       return transition(rows[0])
@@ -430,7 +466,8 @@ export function createSqlServerAiRunCoordinationStore(
              WHEN N'generation_with_images' THEN N'generate_with_images'
              WHEN N'invalid_json_repair' THEN N'repair_invalid_import_json'
            END AS [runType],
-           [profile_revision].[total_time_budget_seconds] * 1000 AS [totalTimeBudgetMs]
+           [profile_revision].[total_time_budget_seconds] * 1000 AS [totalTimeBudgetMs],
+           [profile_revision].[inactivity_time_budget_seconds] * 1000 AS [inactivityTimeBudgetMs]
          FROM [ai_connection_model_operational_states] AS [state]
          INNER JOIN [ai_connection_model_revisions] AS [model_revision]
            ON [model_revision].[id] = [state].[ai_connection_model_revision_id]
@@ -468,6 +505,7 @@ export function createSqlServerAiRunCoordinationStore(
         row.aiConnectionModelRevisionId &&
         row.aiRunProfileRevisionId &&
         row.runType &&
+        row.inactivityTimeBudgetMs !== undefined &&
         row.totalTimeBudgetMs !== undefined
           ? [
               {
@@ -477,6 +515,7 @@ export function createSqlServerAiRunCoordinationStore(
                   aiConnectionModelRevisionId: row.aiConnectionModelRevisionId,
                   aiRunProfileRevisionId: row.aiRunProfileRevisionId,
                 },
+                inactivityTimeBudgetMs: Number(row.inactivityTimeBudgetMs),
                 runType: row.runType,
                 totalTimeBudgetMs: Number(row.totalTimeBudgetMs),
               } as AiRecoveryProbeTarget,
@@ -490,6 +529,15 @@ export function createSqlServerAiRunCoordinationStore(
         manager.query<CoordinationRow[]>(
           `SET NOCOUNT ON;
            DECLARE @now datetime2(3) = SYSUTCDATETIME();
+           DELETE FROM [ai_run_coordination_entries]
+           WHERE [status] = N'running' AND [lease_expires_at] <= @now;
+           DELETE [entry]
+           FROM [ai_run_coordination_entries] AS [entry]
+           INNER JOIN [ai_connection_model_operational_states] AS [state]
+             ON [state].[lease_run_id] = [entry].[application_run_id]
+           WHERE [state].[ai_connection_model_revision_id] = @0
+             AND [state].[lease_expires_at] <= @now
+             AND [entry].[status] = N'running';
            UPDATE [ai_connection_model_operational_states] WITH (UPDLOCK, HOLDLOCK)
            SET [circuit_breaker_status] = N'open',
                [is_manual_recovery_required] = 1, [next_recovery_at] = NULL,
@@ -500,6 +548,7 @@ export function createSqlServerAiRunCoordinationStore(
              AND [circuit_breaker_status] = N'half_open'
              AND [lease_expires_at] <= @now
              AND [automatic_recovery_attempt_count] >= 5;
+           DECLARE @acquired TABLE ([probeStatus] nvarchar(24));
            UPDATE [ai_connection_model_operational_states] WITH (UPDLOCK, HOLDLOCK)
            SET [circuit_breaker_status] = N'half_open', [lease_owner_id] = @1,
                [lease_run_id] = @2,
@@ -507,7 +556,7 @@ export function createSqlServerAiRunCoordinationStore(
                  [automatic_recovery_attempt_count] + 1,
                [lease_expires_at] = DATEADD(millisecond, @3, @now),
                [updated_at] = @now, [revision_token] = NEWID()
-           OUTPUT N'acquired' AS [probeStatus]
+           OUTPUT N'acquired' INTO @acquired ([probeStatus])
            WHERE [ai_connection_model_revision_id] = @0
              AND (
                ([circuit_breaker_status] = N'open' AND [next_recovery_at] <= @now)
@@ -526,21 +575,35 @@ export function createSqlServerAiRunCoordinationStore(
                  ON [probe_connection].[id] = [probe_model].[ai_connection_id]
                WHERE [probe_revision].[id] = @0
                  AND (
-                   SELECT COUNT(*) FROM [ai_run_coordination_entries]
+                   SELECT COUNT(*) FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK)
                    WHERE [ai_connection_id] = [probe_connection].[id]
                      AND [status] = N'running' AND [lease_expires_at] > @now
                  ) < [probe_connection].[maximum_concurrency]
                  AND ([probe_revision].[maximum_concurrency] IS NULL OR (
-                   SELECT COUNT(*) FROM [ai_run_coordination_entries]
+                   SELECT COUNT(*) FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK)
                    WHERE [ai_connection_model_revision_id] = @0
                      AND [status] = N'running' AND [lease_expires_at] > @now
                  ) < [probe_revision].[maximum_concurrency])
-             );`,
+             );
+           IF EXISTS (SELECT 1 FROM @acquired)
+             INSERT INTO [ai_run_coordination_entries] (
+               [application_run_id], [fencing_token], [ai_connection_id],
+               [ai_connection_model_revision_id], [ai_run_profile_revision_id],
+               [status], [attempt_count], [lease_owner_id], [lease_expires_at],
+               [not_before], [total_deadline_at], [created_at], [updated_at]
+             ) VALUES (
+               @2, @2, @4, @0, @5, N'running', 1, @1,
+               DATEADD(millisecond, @3, @now), @now,
+               DATEADD(millisecond, @3, @now), @now, @now
+             );
+           SELECT [probeStatus] FROM @acquired;`,
           [
             input.modelRevisionId,
             input.leaseOwnerId,
             input.probeRunId,
             input.leaseDurationMs,
+            input.identity.aiConnectionId,
+            input.identity.aiRunProfileRevisionId,
           ],
         ),
       )
@@ -558,7 +621,9 @@ export function createSqlServerAiRunCoordinationStore(
                   @previous_breaker = [circuit_breaker_status]
            FROM [ai_connection_model_operational_states] WITH (UPDLOCK, HOLDLOCK)
            WHERE [ai_connection_model_revision_id] = @0
-             AND [lease_owner_id] = @1 AND [lease_run_id] = @2;
+             AND [lease_owner_id] = @1 AND [lease_run_id] = @2
+             AND [lease_expires_at] > @now;
+           IF @previous_health IS NULL RETURN;
            IF @3 = 1
              UPDATE [ai_connection_model_operational_states]
              SET [health_status] = N'healthy', [circuit_breaker_status] = N'closed',
@@ -570,7 +635,8 @@ export function createSqlServerAiRunCoordinationStore(
                  [lease_expires_at] = NULL, [updated_at] = @now,
                  [revision_token] = NEWID()
              WHERE [ai_connection_model_revision_id] = @0
-               AND [lease_owner_id] = @1 AND [lease_run_id] = @2;
+               AND [lease_owner_id] = @1 AND [lease_run_id] = @2
+               AND [lease_expires_at] > @now;
            ELSE IF @4 IN (N'authentication_failed', N'capability_mismatch')
              UPDATE [ai_connection_model_operational_states]
              SET [health_status] = N'unavailable', [circuit_breaker_status] = N'open',
@@ -580,7 +646,8 @@ export function createSqlServerAiRunCoordinationStore(
                  [lease_expires_at] = NULL, [last_health_evidence_at] = @now,
                  [updated_at] = @now, [revision_token] = NEWID()
              WHERE [ai_connection_model_revision_id] = @0
-               AND [lease_owner_id] = @1 AND [lease_run_id] = @2;
+               AND [lease_owner_id] = @1 AND [lease_run_id] = @2
+               AND [lease_expires_at] > @now;
            ELSE
              UPDATE [ai_connection_model_operational_states]
              SET [health_status] = N'unavailable', [circuit_breaker_status] = N'open',
@@ -590,7 +657,12 @@ export function createSqlServerAiRunCoordinationStore(
                  [lease_expires_at] = NULL, [last_health_evidence_at] = @now,
                  [updated_at] = @now, [revision_token] = NEWID()
              WHERE [ai_connection_model_revision_id] = @0
-               AND [lease_owner_id] = @1 AND [lease_run_id] = @2;
+               AND [lease_owner_id] = @1 AND [lease_run_id] = @2
+               AND [lease_expires_at] > @now;
+           DELETE FROM [ai_run_coordination_entries]
+           WHERE [application_run_id] = @2 AND [fencing_token] = @2
+             AND [lease_owner_id] = @1 AND [status] = N'running'
+             AND [lease_expires_at] > @now;
            SELECT 0 AS [breakerOpened],
                   CASE WHEN [health_status] <> @previous_health
                          OR [circuit_breaker_status] <> @previous_breaker

@@ -65,6 +65,53 @@ async function createCoordinationFixture(db: SqlServerDatabase): Promise<{
   }
 }
 
+async function createAdditionalModelIdentity(
+  db: SqlServerDatabase,
+  base: AiRunIdentity,
+): Promise<AiRunIdentity> {
+  const model = (await db.query(
+    `INSERT INTO ai_connection_models (
+       ai_connection_id, name, created_at, updated_at
+     ) OUTPUT INSERTED.id AS id
+     VALUES (@0, N'Additional coordination model',
+       SYSUTCDATETIME(), SYSUTCDATETIME())`,
+    [base.aiConnectionId],
+  )) as Array<{ id: string }>
+  const modelRevision = (await db.query(
+    `INSERT INTO ai_connection_model_revisions (
+       ai_connection_model_id, revision_number,
+       connection_configuration_version, status, external_model_id,
+       declared_capabilities_json, maximum_concurrency, created_at, updated_at
+     ) OUTPUT INSERTED.id AS id
+     VALUES (@0, 1, 1, N'draft', N'external/additional-sql-model', N'{}', 1,
+       SYSUTCDATETIME(), SYSUTCDATETIME())`,
+    [model[0]?.id],
+  )) as Array<{ id: string }>
+  const profileId = randomUUID()
+  await db.query(
+    `INSERT INTO ai_run_profiles (
+       id, profile_key, operational_status, created_at, updated_at
+     ) VALUES (@0, N'invalid_json_repair', N'enabled',
+       SYSUTCDATETIME(), SYSUTCDATETIME())`,
+    [profileId],
+  )
+  const profileRevision = (await db.query(
+    `INSERT INTO ai_run_profile_revisions (
+       ai_run_profile_id, ai_connection_model_revision_id, revision_number,
+       status, capability_policy_json, total_time_budget_seconds,
+       inactivity_time_budget_seconds, queue_capacity, created_at
+     ) OUTPUT INSERTED.id AS id
+     VALUES (@0, @1, 1, N'draft', N'{}', 1200, 300, 10,
+       SYSUTCDATETIME())`,
+    [profileId, modelRevision[0]?.id],
+  )) as Array<{ id: string }>
+  return {
+    aiConnectionId: base.aiConnectionId,
+    aiConnectionModelRevisionId: modelRevision[0]?.id,
+    aiRunProfileRevisionId: profileRevision[0]?.id,
+  } as AiRunIdentity
+}
+
 describe('AI run coordination against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
 
@@ -130,6 +177,7 @@ describe('AI run coordination against SQL Server', () => {
     await store.finish({
       applicationRunId: first,
       fencingToken: firstFence,
+      leaseOwnerId: firstFence,
       outcome: 'completed',
     })
     await expect(
@@ -143,6 +191,7 @@ describe('AI run coordination against SQL Server', () => {
     await store.finish({
       applicationRunId: third,
       fencingToken: thirdFence,
+      leaseOwnerId: thirdFence,
       outcome: 'completed',
     })
   })
@@ -172,6 +221,7 @@ describe('AI run coordination against SQL Server', () => {
           applicationRunId,
           fencingToken,
           failure: { category: 'connection_unavailable', retryable: true },
+          leaseOwnerId: fencingToken,
           outcome: 'failed',
         }),
       ).resolves.toMatchObject({ breakerOpened: attempt === 5 })
@@ -187,6 +237,7 @@ describe('AI run coordination against SQL Server', () => {
     const firstProbe = randomUUID()
     await expect(
       store.acquireRecoveryProbe({
+        identity,
         leaseDurationMs: 30_000,
         leaseOwnerId: firstOwner,
         modelRevisionId: identity.aiConnectionModelRevisionId,
@@ -203,6 +254,7 @@ describe('AI run coordination against SQL Server', () => {
     const secondProbe = randomUUID()
     await expect(
       store.acquireRecoveryProbe({
+        identity,
         leaseDurationMs: 30_000,
         leaseOwnerId: secondOwner,
         modelRevisionId: identity.aiConnectionModelRevisionId,
@@ -256,6 +308,7 @@ describe('AI run coordination against SQL Server', () => {
     await store.finish({
       applicationRunId: initializationRunId,
       fencingToken: initializationFence,
+      leaseOwnerId: initializationFence,
       outcome: 'completed',
     })
     await appDb().query(
@@ -270,6 +323,7 @@ describe('AI run coordination against SQL Server', () => {
 
     await expect(
       store.acquireRecoveryProbe({
+        identity,
         leaseDurationMs: 30_000,
         leaseOwnerId: randomUUID(),
         modelRevisionId: identity.aiConnectionModelRevisionId,
@@ -284,6 +338,7 @@ describe('AI run coordination against SQL Server', () => {
     )
     await expect(
       store.acquireRecoveryProbe({
+        identity,
         leaseDurationMs: 30_000,
         leaseOwnerId: randomUUID(),
         modelRevisionId: identity.aiConnectionModelRevisionId,
@@ -336,6 +391,7 @@ describe('AI run coordination against SQL Server', () => {
     await store.finish({
       applicationRunId,
       fencingToken: replacementFence,
+      leaseOwnerId: replacementFence,
       outcome: 'failed',
     })
     await expect(
@@ -376,6 +432,7 @@ describe('AI run coordination against SQL Server', () => {
     await store.finish({
       applicationRunId,
       fencingToken: firstFence,
+      leaseOwnerId: firstFence,
       outcome: 'failed',
     })
 
@@ -391,7 +448,143 @@ describe('AI run coordination against SQL Server', () => {
     await store.finish({
       applicationRunId,
       fencingToken: replacementFence,
+      leaseOwnerId: replacementFence,
       outcome: 'cancelled',
     })
+  })
+
+  it('does not finalize an expired running lease before replacement', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+    const applicationRunId = randomUUID()
+    const fencingToken = randomUUID()
+    const leaseOwnerId = randomUUID()
+    await store.enqueue({
+      applicationRunId,
+      fencingToken,
+      identity,
+      queueCapacity: 0,
+      totalDeadlineAt: new Date(Date.now() + 60_000),
+    })
+    await store.acquire({
+      applicationRunId,
+      fencingToken,
+      leaseDurationMs: 30_000,
+      leaseOwnerId,
+    })
+    await appDb().query(
+      `UPDATE ai_run_coordination_entries
+       SET lease_expires_at = DATEADD(second, -1, SYSUTCDATETIME())
+       WHERE application_run_id = @0`,
+      [applicationRunId],
+    )
+
+    await store.finish({
+      applicationRunId,
+      fencingToken,
+      failure: { category: 'connection_unavailable', retryable: true },
+      leaseOwnerId,
+      outcome: 'failed',
+    })
+
+    await expect(
+      appDb().query(
+        `SELECT entry.status,
+                state.health_status AS healthStatus,
+                state.consecutive_failure_count AS consecutiveFailureCount
+         FROM ai_run_coordination_entries AS entry
+         INNER JOIN ai_connection_model_operational_states AS state
+           ON state.ai_connection_model_revision_id = entry.ai_connection_model_revision_id
+         WHERE entry.application_run_id = @0`,
+        [applicationRunId],
+      ),
+    ).resolves.toEqual([
+      {
+        consecutiveFailureCount: 0,
+        healthStatus: 'unknown',
+        status: 'running',
+      },
+    ])
+  })
+
+  it('reserves connection capacity while a recovery probe is running', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const competingIdentity = await createAdditionalModelIdentity(
+      appDb(),
+      identity,
+    )
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+    const initializationRunId = randomUUID()
+    const initializationFence = randomUUID()
+    await store.enqueue({
+      applicationRunId: initializationRunId,
+      fencingToken: initializationFence,
+      identity,
+      queueCapacity: 0,
+      totalDeadlineAt: new Date(Date.now() + 60_000),
+    })
+    await store.acquire({
+      applicationRunId: initializationRunId,
+      fencingToken: initializationFence,
+      leaseDurationMs: 30_000,
+      leaseOwnerId: initializationFence,
+    })
+    await store.finish({
+      applicationRunId: initializationRunId,
+      fencingToken: initializationFence,
+      leaseOwnerId: initializationFence,
+      outcome: 'completed',
+    })
+    await appDb().query(
+      `UPDATE ai_connection_model_operational_states
+       SET health_status = N'unavailable', circuit_breaker_status = N'open',
+           circuit_open_reason = N'connection_unavailable',
+           next_recovery_at = DATEADD(second, -1, SYSUTCDATETIME())
+       WHERE ai_connection_model_revision_id = @0`,
+      [identity.aiConnectionModelRevisionId],
+    )
+    const probeOwner = randomUUID()
+    const probeRunId = randomUUID()
+    await expect(
+      store.acquireRecoveryProbe({
+        identity,
+        leaseDurationMs: 30_000,
+        leaseOwnerId: probeOwner,
+        modelRevisionId: identity.aiConnectionModelRevisionId,
+        probeRunId,
+      }),
+    ).resolves.toBe(true)
+    const competingRunId = randomUUID()
+    const competingFence = randomUUID()
+    await store.enqueue({
+      applicationRunId: competingRunId,
+      fencingToken: competingFence,
+      identity: competingIdentity,
+      queueCapacity: 1,
+      totalDeadlineAt: new Date(Date.now() + 60_000),
+    })
+
+    await expect(
+      store.acquire({
+        applicationRunId: competingRunId,
+        fencingToken: competingFence,
+        leaseDurationMs: 30_000,
+        leaseOwnerId: competingFence,
+      }),
+    ).resolves.toEqual({ status: 'waiting' })
+    await store.finishRecoveryProbe({
+      leaseOwnerId: probeOwner,
+      modelRevisionId: identity.aiConnectionModelRevisionId,
+      probeRunId,
+      succeeded: true,
+    })
+    await expect(
+      store.acquire({
+        applicationRunId: competingRunId,
+        fencingToken: competingFence,
+        leaseDurationMs: 30_000,
+        leaseOwnerId: competingFence,
+      }),
+    ).resolves.toMatchObject({ status: 'acquired' })
   })
 })

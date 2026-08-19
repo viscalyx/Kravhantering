@@ -35,6 +35,7 @@ function request(signal = new AbortController().signal) {
     adapterVersion: '1',
     abortSignal: signal,
     applicationRunId: '00000000-0000-4000-8000-000000000001',
+    correlationId: 'correlation-1',
     identity: IDENTITY,
     limits: {
       maxBufferedEvents: 2,
@@ -48,6 +49,7 @@ function request(signal = new AbortController().signal) {
       queueCapacity: 3,
       totalTimeBudgetMs: 10_000,
     },
+    requestId: 'request-1',
     runType: 'generate_without_images' as const,
   }
 }
@@ -94,6 +96,7 @@ describe('AI run coordinator', () => {
     const target = {
       adapterVersion: '1',
       identity: IDENTITY,
+      inactivityTimeBudgetMs: 1_000,
       runType: 'generate_without_images' as const,
       totalTimeBudgetMs: 10_000,
     }
@@ -163,6 +166,7 @@ describe('AI run coordinator', () => {
     const target = {
       adapterVersion: '1',
       identity: IDENTITY,
+      inactivityTimeBudgetMs: 1_000,
       runType: 'generate_without_images' as const,
       totalTimeBudgetMs: 10_000,
     }
@@ -194,6 +198,7 @@ describe('AI run coordinator', () => {
     const target = {
       adapterVersion: '1',
       identity: IDENTITY,
+      inactivityTimeBudgetMs: 1_000,
       runType: 'generate_without_images' as const,
       totalTimeBudgetMs: 10_000,
     }
@@ -241,6 +246,7 @@ describe('AI run coordinator', () => {
     const target = {
       adapterVersion: '1',
       identity: IDENTITY,
+      inactivityTimeBudgetMs: 1_000,
       runType: 'generate_without_images' as const,
       totalTimeBudgetMs: 10_000,
     }
@@ -298,6 +304,7 @@ describe('AI run coordinator', () => {
         const target = {
           adapterVersion: '1',
           identity: IDENTITY,
+          inactivityTimeBudgetMs: 10,
           runType: 'generate_without_images' as const,
           totalTimeBudgetMs: 100,
         }
@@ -340,7 +347,16 @@ describe('AI run coordinator', () => {
     ['breaker_open', 'connection_unavailable'],
   ] as const)('normalizes rejected %s admission', async (status, category) => {
     const coordination = store({
-      enqueue: vi.fn(async () => ({ retryAfterSeconds: 60, status })),
+      enqueue: vi.fn(async () =>
+        status === 'queue_full'
+          ? {
+              activeConcurrency: 2,
+              queueDepth: 3,
+              retryAfterSeconds: 60,
+              status,
+            }
+          : { retryAfterSeconds: 60, status },
+      ),
     })
 
     await expect(
@@ -791,7 +807,7 @@ describe('AI run coordinator', () => {
       (async function* () {
         yield {
           failure: {
-            category: 'rate_limited' as const,
+            category: 'connection_unavailable' as const,
             retryAfterSeconds: 1,
             retryDisposition: 'explicit_retryable_status' as const,
             retryable: true,
@@ -806,7 +822,15 @@ describe('AI run coordinator', () => {
       collect(
         coordinator.coordinate(budgetedRequest, execute, () => undefined),
       ),
-    ).resolves.toMatchObject([{ type: 'failed' }])
+    ).resolves.toMatchObject([
+      {
+        failure: {
+          category: 'rate_limited',
+          diagnosticCode: 'retry_after_exceeds_remaining_budget',
+        },
+        type: 'failed',
+      },
+    ])
     expect(execute).toHaveBeenCalledTimes(1)
     expect(coordination.requeueForRetry).not.toHaveBeenCalled()
   })
@@ -918,8 +942,10 @@ describe('AI run coordinator', () => {
 
   it('emits content-free telemetry and binding alarm categories', async () => {
     const telemetry: AiRunTelemetryEvent[] = []
+    const coordination = store()
     const coordinator = createAiRunCoordinator({
-      coordination: store(),
+      coordination,
+      leaseOwnerId: 'worker-1',
       telemetry: {
         emit: event => {
           telemetry.push(event)
@@ -948,10 +974,50 @@ describe('AI run coordinator', () => {
     ])
     expect(telemetry.at(-1)).toMatchObject({
       adapterVersion: '1',
+      correlationId: 'correlation-1',
+      requestId: 'request-1',
       retryCount: 0,
     })
+    expect(coordination.finish).toHaveBeenCalledWith(
+      expect.objectContaining({ leaseOwnerId: 'worker-1' }),
+    )
     expect(JSON.stringify(telemetry)).not.toMatch(
       /prompt|output|secret|endpoint|12345678/u,
     )
+  })
+
+  it('reports queue saturation with request and correlation identifiers', async () => {
+    const telemetry: AiRunTelemetryEvent[] = []
+    const coordination = store({
+      enqueue: vi.fn(async () => ({
+        activeConcurrency: 4,
+        queueDepth: 7,
+        retryAfterSeconds: 60,
+        status: 'queue_full' as const,
+      })),
+    })
+
+    await collect(
+      createAiRunCoordinator({
+        coordination,
+        telemetry: {
+          emit: event => {
+            telemetry.push(event)
+          },
+        },
+      }).coordinate(
+        request(),
+        () => (async function* () {})(),
+        () => undefined,
+      ),
+    )
+
+    expect(telemetry.at(-1)).toMatchObject({
+      activeConcurrency: 4,
+      correlationId: 'correlation-1',
+      failureCategory: 'rate_limited',
+      queueDepth: 7,
+      requestId: 'request-1',
+    })
   })
 })

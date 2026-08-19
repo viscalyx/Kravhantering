@@ -990,7 +990,33 @@ describe('OpenRouter AI connection adapter', () => {
     expect(events).toEqual([
       expect.objectContaining({
         failure: expect.objectContaining({
-          diagnosticCode: 'upstream_stream_frame_too_large',
+          diagnosticCode: 'upstream_stream_buffer_too_large',
+        }),
+        type: 'failed',
+      }),
+    ])
+  })
+
+  it('applies retained memory to output and buffered stream data in aggregate', async () => {
+    const output = 'x'.repeat(40)
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        `data: ${JSON.stringify({ choices: [{ delta: { content: output } }] })}\n\n`,
+        { headers: { 'Content-Type': 'text/event-stream' } },
+      ),
+    )
+    const adapterRequest = enableStreaming(request())
+    adapterRequest.limits = {
+      ...adapterRequest.limits,
+      maxRetainedMemoryBytes: 120,
+    }
+
+    const events = await collectEvents(adapter().run(adapterRequest))
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        failure: expect.objectContaining({
+          diagnosticCode: 'upstream_stream_output_too_large',
         }),
         type: 'failed',
       }),
