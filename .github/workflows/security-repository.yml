@@ -20,6 +20,9 @@ permissions:
 jobs:
   supply-chain:
     name: npm audit and Trivy
+    if: >-
+      github.event_name != 'schedule' ||
+      github.repository == 'viscalyx/Kravhantering'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 

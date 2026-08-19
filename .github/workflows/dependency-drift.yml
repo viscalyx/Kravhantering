@@ -32,7 +32,10 @@ permissions:
 jobs:
   dependency-drift:
     name: Reconcile Dependency Drift Issues
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'schedule' ||
+      github.repository == 'viscalyx/Kravhantering')
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -78,6 +78,28 @@ function stepRunText(job: WorkflowJob | undefined, stepName: string) {
 }
 
 describe('GitHub Actions workflow security', () => {
+  it('restricts scheduled jobs to the canonical repository', () => {
+    const workflowNames = readdirSync(WORKFLOWS_DIR)
+      .filter(fileName => /\.ya?ml$/u.test(fileName))
+      .sort()
+    const scheduledWorkflows = workflowNames
+      .map(fileName => ({ fileName, workflow: readWorkflowYaml(fileName) }))
+      .filter(({ workflow }) => workflow.on?.schedule !== undefined)
+
+    expect(scheduledWorkflows.length).toBeGreaterThan(0)
+    for (const { fileName, workflow } of scheduledWorkflows) {
+      for (const [jobId, job] of Object.entries(workflow.jobs ?? {})) {
+        const condition = String(job.if ?? '')
+        expect(condition, `${fileName}:${jobId}`).toContain(
+          "github.event_name != 'schedule'",
+        )
+        expect(condition, `${fileName}:${jobId}`).toContain(
+          "github.repository == 'viscalyx/Kravhantering'",
+        )
+      }
+    }
+  })
+
   it('keeps Azure, devcontainer, and CI Lychee versions aligned', () => {
     const dockerfile = readFileSync(DEVCONTAINER_DOCKERFILE, 'utf8')
     const dockerfileVersion = dockerfile.match(
@@ -630,7 +652,9 @@ describe('GitHub Actions workflow security', () => {
       issues: 'write',
       packages: 'read',
     })
-    expect(job?.if).toBe("github.ref == 'refs/heads/main'")
+    expect(job?.if).toContain("github.ref == 'refs/heads/main'")
+    expect(job?.if).toContain("github.event_name != 'schedule'")
+    expect(job?.if).toContain("github.repository == 'viscalyx/Kravhantering'")
 
     expect(step('Select supported published releases')).toBeDefined()
     expect(step('Log in to GHCR for digest verification')).toMatchObject({
