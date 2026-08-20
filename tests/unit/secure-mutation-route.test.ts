@@ -546,6 +546,25 @@ describe('secureMutationRoute', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
   })
 
+  it('exposes an explicit safe handler-error message without exposing internal details', async () => {
+    const route = secureMutationRoute({
+      errorMessage: 'Failed to perform action.',
+      handler: () => {
+        throw Object.assign(new Error('provider token=secret failed'), {
+          safeMessage: 'The configured provider rejected the request.',
+        })
+      },
+      policy: adminMutationPolicy(),
+    })
+
+    const response = await route(jsonRequest({}))
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'The configured provider rejected the request.',
+    })
+  })
+
   it('preserves framework-default cache behavior after route decoration', async () => {
     const route = secureMutationRoute({
       handler: () =>

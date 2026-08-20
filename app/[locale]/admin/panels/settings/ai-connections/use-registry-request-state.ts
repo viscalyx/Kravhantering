@@ -53,6 +53,15 @@ function apiBlockers(value: unknown): AiAdminBlocker[] {
   return safeBlockers
 }
 
+export interface RegistryMutationFeedback {
+  actionLabel: string
+}
+
+export interface RegistryRequestError {
+  kind: 'load' | 'mutation'
+  message: string
+}
+
 export function useRegistryRequestState() {
   const t = useTranslations('admin.aiConnections')
   const loadErrorMessage = t('loadError')
@@ -71,7 +80,7 @@ export function useRegistryRequestState() {
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<RegistryRequestError | null>(null)
   const [candidateBlockers, setCandidateBlockers] = useState<
     Partial<Record<AiRunProfileKey, readonly AiAdminBlocker[]>>
   >({})
@@ -134,9 +143,11 @@ export function useRegistryRequestState() {
       )
       setCandidateBlockers({})
     } catch (loadError) {
-      setError(
-        loadError instanceof Error ? loadError.message : loadErrorMessage,
-      )
+      setError({
+        kind: 'load',
+        message:
+          loadError instanceof Error ? loadError.message : loadErrorMessage,
+      })
     } finally {
       setLoading(false)
     }
@@ -149,6 +160,7 @@ export function useRegistryRequestState() {
   async function mutation(
     url: string,
     body: unknown,
+    feedback: RegistryMutationFeedback,
     method: 'PATCH' | 'POST' = 'POST',
   ): Promise<Response | null> {
     setBusy(true)
@@ -169,23 +181,36 @@ export function useRegistryRequestState() {
           url.includes(`/ai-run-profiles/${key}/actions`),
         )
         const blockers = apiBlockers(responseBody)
+        const responseMessage = await readResponseMessage(response)
         if (profileKey) {
           setCandidateBlockers(current => ({
             ...current,
             [profileKey]: blockers,
           }))
         }
-        setError(
+        const actualError =
           profileKey && blockers.length > 0
             ? t('profile.candidateBlockers')
-            : ((await readResponseMessage(response)) ?? t('mutationError')),
-        )
+            : (responseMessage ?? t('mutationError'))
+        setError({
+          kind: 'mutation',
+          message: t('actionFailed', {
+            action: feedback.actionLabel,
+            error: actualError,
+          }),
+        })
         return null
       }
       setCandidateBlockers({})
       return response
     } catch {
-      setError(t('mutationError'))
+      setError({
+        kind: 'mutation',
+        message: t('actionFailed', {
+          action: feedback.actionLabel,
+          error: t('mutationError'),
+        }),
+      })
       return null
     } finally {
       setBusy(false)
@@ -196,9 +221,10 @@ export function useRegistryRequestState() {
     url: string,
     body: unknown,
     successKey: string,
+    feedback: RegistryMutationFeedback,
     method: 'PATCH' | 'POST' = 'POST',
   ): Promise<boolean> {
-    const response = await mutation(url, body, method)
+    const response = await mutation(url, body, feedback, method)
     if (!response) return false
     setMessage(t(successKey))
     await loadRegistry()
@@ -208,6 +234,7 @@ export function useRegistryRequestState() {
   return {
     busy,
     candidateBlockers,
+    clearError: () => setError(null),
     connections,
     details,
     error,

@@ -751,6 +751,54 @@ test.describe('Admin settings', () => {
     }
   })
 
+  test('ADMIN-21: A failed AI action stays visible with action and server error', async ({
+    page,
+  }) => {
+    await page.route('**/api/admin/ai-connections/*/actions', async route => {
+      const body = route.request().postDataJSON() as { action?: unknown }
+      if (body.action === 'fetch_catalog') {
+        await route.fulfill({
+          contentType: 'application/json',
+          json: {
+            error: 'The AI connection trust policy blocked the request.',
+          },
+          status: 500,
+        })
+        return
+      }
+      await route.fallback()
+    })
+
+    await page.goto('/sv/admin?tab=settings')
+    const settings = page.locator('#settings-panel')
+    await expect(settings.locator('[aria-busy]')).toHaveAttribute(
+      'aria-busy',
+      'false',
+    )
+    const connectionToggle = settings
+      .locator('button[aria-controls^="ai-connection-"]')
+      .first()
+    await connectionToggle.click()
+    const detailsId = await connectionToggle.getAttribute('aria-controls')
+    expect(detailsId).not.toBeNull()
+    await page
+      .locator(`#${detailsId}`)
+      .getByRole('button', { name: 'Läs modellkatalog' })
+      .click()
+
+    const alert = settings.getByRole('alert')
+    await expect(alert).toContainText(
+      'Åtgärden "Läs modellkatalog" misslyckades. Fel: The AI connection trust policy blocked the request.',
+    )
+    await expect(alert).toBeInViewport()
+    await expect(alert.locator('..')).toHaveCSS('position', 'fixed')
+    await expect(alert).not.toContainText(
+      'Failed to perform AI connection action.',
+    )
+    await alert.getByRole('button', { name: 'Stäng' }).click()
+    await expect(alert).toHaveCount(0)
+  })
+
   for (const viewport of [
     { height: 760, name: 'desktop', width: 1280 },
     { height: 812, name: 'mobile', width: 375 },

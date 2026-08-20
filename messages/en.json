@@ -1788,6 +1788,7 @@
       "loading": "Loading AI connections…",
       "loadError": "Could not load AI connections and run profiles.",
       "mutationError": "The AI administration action could not be completed.",
+      "actionFailed": "The action \"{action}\" failed. Error: {error}",
       "empty": "No AI connections are configured.",
       "adapter": {
         "unavailable": "The adapter {adapter} is not installed. You can maintain configuration, attestation, and credentials, but discovery, verification, health probing, and activation are unavailable.",

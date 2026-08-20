@@ -10,6 +10,7 @@ import {
 } from '@/lib/http/response-policy'
 import {
   getErrorMessage,
+  getSafeErrorMessage,
   logSanitizedError,
   redactSensitiveText,
 } from '@/lib/http/safe-errors'
@@ -128,7 +129,7 @@ function unexpectedErrorBody(
     ...(process.env.NODE_ENV === 'development'
       ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }
       : {}),
-    error: message,
+    error: getSafeErrorMessage(error) ?? message,
   }
 }
 

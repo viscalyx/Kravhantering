@@ -17,16 +17,25 @@ const translationState = vi.hoisted(() => ({
 }))
 
 vi.mock('next-intl', () => ({
-  useTranslations: (namespace: string) => (key: string) => {
-    if (
-      translationState.swedishCandidateFailure &&
-      namespace === 'admin.aiConnections' &&
-      key === 'profile.candidateBlockers'
-    ) {
-      return 'Ersättningsutkastet kunde inte aktiveras'
-    }
-    return `${namespace}.${key}`
-  },
+  useTranslations:
+    (namespace: string) => (key: string, values?: Record<string, unknown>) => {
+      if (
+        namespace === 'admin.aiConnections' &&
+        key === 'actionFailed' &&
+        typeof values?.action === 'string' &&
+        typeof values?.error === 'string'
+      ) {
+        return `Åtgärden "${values.action}" misslyckades. Fel: ${values.error}`
+      }
+      if (
+        translationState.swedishCandidateFailure &&
+        namespace === 'admin.aiConnections' &&
+        key === 'profile.candidateBlockers'
+      ) {
+        return 'Ersättningsutkastet kunde inte aktiveras'
+      }
+      return `${namespace}.${key}`
+    },
 }))
 
 beforeEach(() => {
@@ -391,6 +400,66 @@ describe('AiConnectionsPanel', () => {
     expect(
       await screen.findByRole('button', { name: /Controlled one/ }),
     ).toBeVisible()
+  })
+
+  it('shows every action and its server-provided safe error in a floating alert', async () => {
+    const user = userEvent.setup()
+    const registryFetch = fetchMock.getMockImplementation()
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        if (
+          String(input) ===
+            `/api/admin/ai-connections/${connectionOne.id}/actions` &&
+          init?.method === 'POST'
+        ) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: 'The AI connection trust policy blocked the request.',
+              }),
+              {
+                headers: { 'Content-Type': 'application/json' },
+                status: 500,
+              },
+            ),
+          )
+        }
+        return registryFetch?.(input, init)
+      },
+    )
+    const { container } = renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.fetchCatalog',
+      }),
+    )
+
+    let alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(
+      'Åtgärden "admin.aiConnections.actions.fetchCatalog" misslyckades. Fel: The AI connection trust policy blocked the request.',
+    )
+    expect(alert).not.toHaveTextContent('Failed to perform AI connection')
+    expect(alert.parentElement).toHaveClass('fixed')
+    expect(
+      container.querySelector(
+        '[data-developer-mode-name="AI connection error feedback"]',
+      ),
+    ).toHaveAttribute('data-developer-mode-context', 'AI connection registry')
+
+    await user.click(screen.getByRole('button', { name: 'common.close' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.verifyConnection',
+      }),
+    )
+    alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(
+      'Åtgärden "admin.aiConnections.actions.verifyConnection" misslyckades. Fel: The AI connection trust policy blocked the request.',
+    )
   })
 
   it('shows the bounded load error when a connection detail cannot load', async () => {

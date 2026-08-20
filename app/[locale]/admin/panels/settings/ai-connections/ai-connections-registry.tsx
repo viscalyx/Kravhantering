@@ -38,7 +38,11 @@ import {
   revisionTone,
   StatusBadge,
 } from './registry-sections'
-import { useRegistryRequestState } from './use-registry-request-state'
+import {
+  type RegistryMutationFeedback,
+  type RegistryRequestError,
+  useRegistryRequestState,
+} from './use-registry-request-state'
 
 type DialogState =
   | { connection: AiAdminConnectionDetail | null; kind: 'connection' }
@@ -59,6 +63,44 @@ function profileName(
   return t(`profiles.${key}`)
 }
 
+function RequestErrorAlert({
+  actionLabel,
+  error,
+  loading = false,
+  onAction,
+}: {
+  actionLabel?: string
+  error: RegistryRequestError
+  loading?: boolean
+  onAction?: () => void
+}) {
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
+      role="alert"
+      {...devMarker({
+        context: 'AI connection registry',
+        name: 'AI connection error feedback',
+      })}
+    >
+      <span className="flex min-w-0 items-start gap-2">
+        <CircleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>{error.message}</span>
+      </span>
+      {onAction && actionLabel ? (
+        <button
+          className="btn-secondary px-3! py-1.5! text-xs"
+          disabled={loading}
+          onClick={onAction}
+          type="button"
+        >
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 export default function AiConnectionsPanel() {
   const t = useTranslations('admin.aiConnections')
   const tc = useTranslations('common')
@@ -66,6 +108,7 @@ export default function AiConnectionsPanel() {
   const {
     busy,
     candidateBlockers,
+    clearError,
     connections,
     details,
     error,
@@ -88,9 +131,15 @@ export default function AiConnectionsPanel() {
     Readonly<Record<string, readonly AiAdminCatalogItem[]>>
   >({})
   function closeDialog() {
+    clearError()
     setDialog(null)
     setCandidateId(null)
     setSavedAttestation(null)
+  }
+
+  function openDialog(nextDialog: Exclude<DialogState, null>) {
+    clearError()
+    setDialog(nextDialog)
   }
 
   const modelRevisions = Object.values(details).flatMap(connection =>
@@ -121,11 +170,13 @@ export default function AiConnectionsPanel() {
     connection: AiAdminConnectionDetail,
     action: Record<string, unknown>,
     successKey: string,
+    feedback: RegistryMutationFeedback,
   ) {
     await mutateAndReload(
       `/api/admin/ai-connections/${connection.id}/actions`,
       action,
       successKey,
+      feedback,
     )
   }
 
@@ -133,6 +184,9 @@ export default function AiConnectionsPanel() {
     const response = await mutation(
       `/api/admin/ai-connections/${connection.id}/actions`,
       { action: 'fetch_catalog' },
+      {
+        actionLabel: t('actions.fetchCatalog'),
+      },
     )
     if (!response) return
     const connectionId = connection.id.toLowerCase()
@@ -178,6 +232,13 @@ export default function AiConnectionsPanel() {
             status: 'retired',
           },
       revision ? 'model.retired' : 'lifecycle.retiredMessage',
+      revision
+        ? {
+            actionLabel: t('actions.retireModel'),
+          }
+        : {
+            actionLabel: t('actions.retireConnection'),
+          },
     )
   }
 
@@ -199,6 +260,9 @@ export default function AiConnectionsPanel() {
         profileToken: profile.revisionToken,
       },
       'profile.activated',
+      {
+        actionLabel: t('actions.activateProfile'),
+      },
     )
     if (activated) {
       setCandidateBlockers(current => ({
@@ -238,7 +302,7 @@ export default function AiConnectionsPanel() {
         </div>
         <button
           className="btn-primary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
-          onClick={() => setDialog({ connection: null, kind: 'connection' })}
+          onClick={() => openDialog({ connection: null, kind: 'connection' })}
           type="button"
         >
           <Plus aria-hidden="true" className="h-4 w-4" />
@@ -255,19 +319,17 @@ export default function AiConnectionsPanel() {
         </p>
       ) : null}
       {error ? (
-        <div
-          className="mx-5 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
-          role="alert"
-        >
-          <span>{error}</span>
-          <button
-            className="btn-secondary px-3! py-1.5! text-xs"
-            disabled={loading}
-            onClick={() => void loadRegistry()}
-            type="button"
-          >
-            {tc('retry')}
-          </button>
+        <div className="fixed inset-x-4 bottom-4 z-80 ml-auto max-w-xl sm:left-auto sm:right-4">
+          <RequestErrorAlert
+            actionLabel={error.kind === 'load' ? tc('retry') : tc('close')}
+            error={error}
+            loading={loading}
+            onAction={
+              error.kind === 'load'
+                ? () => void loadRegistry()
+                : () => clearError()
+            }
+          />
         </div>
       ) : null}
 
@@ -374,7 +436,7 @@ export default function AiConnectionsPanel() {
                         <button
                           className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
                           onClick={() =>
-                            setDialog({
+                            openDialog({
                               connection: detail,
                               kind: 'connection',
                             })
@@ -387,7 +449,7 @@ export default function AiConnectionsPanel() {
                         <button
                           className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
                           onClick={() =>
-                            setDialog({ connection: detail, kind: 'secret' })
+                            openDialog({ connection: detail, kind: 'secret' })
                           }
                           type="button"
                         >
@@ -397,7 +459,7 @@ export default function AiConnectionsPanel() {
                         <button
                           className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
                           onClick={() =>
-                            setDialog({
+                            openDialog({
                               connection: detail,
                               kind: 'attestation',
                             })
@@ -500,7 +562,7 @@ export default function AiConnectionsPanel() {
                           <button
                             className="btn-secondary inline-flex min-h-9 items-center gap-2 px-3! py-1.5! text-sm"
                             onClick={() =>
-                              setDialog({
+                              openDialog({
                                 connection: detail,
                                 kind: 'model',
                                 model: null,
@@ -549,7 +611,7 @@ export default function AiConnectionsPanel() {
                                     className="btn-secondary px-3! py-1.5! text-xs"
                                     disabled={latest.status === 'retired'}
                                     onClick={() =>
-                                      setDialog({
+                                      openDialog({
                                         connection: detail,
                                         kind: 'model',
                                         model,
@@ -576,6 +638,9 @@ export default function AiConnectionsPanel() {
                                           revisionToken: latest.revisionToken,
                                         },
                                         'model.verified',
+                                        {
+                                          actionLabel: t('actions.verifyModel'),
+                                        },
                                       )
                                     }
                                     title={
@@ -605,6 +670,9 @@ export default function AiConnectionsPanel() {
                                           revisionToken: latest.revisionToken,
                                         },
                                         'health.probed',
+                                        {
+                                          actionLabel: t('actions.probeHealth'),
+                                        },
                                       )
                                     }
                                     title={
@@ -722,6 +790,9 @@ export default function AiConnectionsPanel() {
                                 detail,
                                 { action: 'verify_connection' },
                                 'verification.completed',
+                                {
+                                  actionLabel: t('actions.verifyConnection'),
+                                },
                               )
                             }
                             title={
@@ -746,6 +817,9 @@ export default function AiConnectionsPanel() {
                                     status: 'suspended',
                                   },
                                   'lifecycle.suspendedMessage',
+                                  {
+                                    actionLabel: t('actions.suspendConnection'),
+                                  },
                                 )
                               }
                               type="button"
@@ -770,6 +844,13 @@ export default function AiConnectionsPanel() {
                                     status: 'active',
                                   },
                                   'lifecycle.activatedMessage',
+                                  {
+                                    actionLabel: t(
+                                      detail.lifecycleStatus === 'suspended'
+                                        ? 'actions.recoverConnection'
+                                        : 'actions.activateConnection',
+                                    ),
+                                  },
                                 )
                               }
                               title={
@@ -900,7 +981,7 @@ export default function AiConnectionsPanel() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     className="btn-secondary px-3! py-1.5! text-xs"
-                    onClick={() => setDialog({ kind: 'profile', profile })}
+                    onClick={() => openDialog({ kind: 'profile', profile })}
                     type="button"
                   >
                     {profile.draftRevision
@@ -941,6 +1022,13 @@ export default function AiConnectionsPanel() {
                         profile.operationalStatus === 'enabled'
                           ? 'profile.suspended'
                           : 'profile.recovered',
+                        {
+                          actionLabel: t(
+                            profile.operationalStatus === 'enabled'
+                              ? 'actions.suspendProfile'
+                              : 'actions.recoverProfile',
+                          ),
+                        },
                       )
                     }
                     type="button"
@@ -982,12 +1070,14 @@ export default function AiConnectionsPanel() {
                       revisionToken: dialog.connection.revisionToken,
                     },
                     'connection.updated',
+                    { actionLabel: t('actions.saveConnection') },
                     'PATCH',
                   )
                 : await mutateAndReload(
                     '/api/admin/ai-connections',
                     value,
                     'connection.created',
+                    { actionLabel: t('actions.saveConnection') },
                   )
               if (success) closeDialog()
             }}
@@ -1017,6 +1107,7 @@ export default function AiConnectionsPanel() {
                 `/api/admin/ai-connections/${dialog.connection.id}/actions`,
                 { action: 'save_model_revision', modelRevision: value },
                 'model.saved',
+                { actionLabel: t('actions.saveModel') },
               )
               if (success) closeDialog()
             }}
@@ -1048,6 +1139,7 @@ export default function AiConnectionsPanel() {
                   secretVersionId,
                 },
                 'secret.activated',
+                { actionLabel: t('secret.activateCandidate') },
               )
               if (success) closeDialog()
             }}
@@ -1067,6 +1159,7 @@ export default function AiConnectionsPanel() {
                   `/api/admin/ai-connections/${dialog.connection.id}/actions`,
                   { action: 'confirm_secret_revocation', secretVersionId },
                   'secret.revocationConfirmed',
+                  { actionLabel: t('secret.confirmRevocation') },
                 )
                 if (success) closeDialog()
               })()
@@ -1085,6 +1178,7 @@ export default function AiConnectionsPanel() {
                 `/api/admin/ai-connections/${dialog.connection.id}/actions`,
                 { action: 'delete_secret_candidate', secretVersionId },
                 'secret.deleted',
+                { actionLabel: t('secret.deleteCandidate') },
               )
               if (success) setCandidateId(null)
             }}
@@ -1092,6 +1186,7 @@ export default function AiConnectionsPanel() {
               const response = await mutation(
                 `/api/admin/ai-connections/${dialog.connection.id}/actions`,
                 { action: 'write_secret', secret },
+                { actionLabel: t('secret.writeCandidate') },
               )
               if (!response) return
               const candidate = (await response.json()) as { id: string }
@@ -1125,6 +1220,7 @@ export default function AiConnectionsPanel() {
                   currentAttestationRevisionToken,
                 },
                 'attestation.approved',
+                { actionLabel: t('attestation.approve') },
               )
               if (success) closeDialog()
             }}
@@ -1133,6 +1229,7 @@ export default function AiConnectionsPanel() {
               const response = await mutation(
                 `/api/admin/ai-connections/${dialog.connection.id}/actions`,
                 { action: 'save_attestation', attestation },
+                { actionLabel: t('attestation.saveDraft') },
               )
               if (!response) return
               const saved = (await response.json()) as AiAdminAttestationRecord
@@ -1163,6 +1260,7 @@ export default function AiConnectionsPanel() {
                 `/api/admin/ai-run-profiles/${dialog.profile.profileKey}/revisions`,
                 value,
                 'profile.saved',
+                { actionLabel: t('profile.saveDraft') },
               )
               if (success) {
                 setCandidateBlockers(current => ({

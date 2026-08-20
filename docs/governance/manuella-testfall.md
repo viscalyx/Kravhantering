@@ -2111,6 +2111,26 @@ Ingen hemlighet visas eller exporteras, ingen automatisk fallback sker och
 suspenderade resurser återställs endast genom de uttryckliga manuella
 åtgärderna.
 
+### ADMIN-21: Misslyckad AI-åtgärd visar åtgärd och serverfel i viewporten
+
+**Förutsättningar:** Logga in som Admin i en testmiljö med minst en
+AI-anslutning. Konfigurera anslutningen så att dess mål blockeras av den valda
+egress- eller TLS-policyn. Spara ursprungsvärdena så att anslutningen kan
+återställas efter testet.
+
+1. Öppna `Administrationscenter > Inställningar > AI`, expandera den blockerade
+   anslutningen och scrolla tills åtgärdsknapparna syns.
+2. Välj `Läs modellkatalog`.
+3. Kontrollera felmeddelandet, stäng det och återställ sedan anslutningens
+   ursprungliga konfiguration.
+
+**Förväntat resultat:** En beständig flytande felindikering visas i den aktuella
+viewporten utan att användaren behöver scrolla. Den visar först den valda
+åtgärden och sedan serverns säkra felmeddelande, exempelvis `Åtgärden "Läs
+modellkatalog" misslyckades. Fel: The AI connection trust policy blocked the
+request.`. Det generiska meddelandet `Failed to perform AI connection action.`
+visas inte. Indikeringen ligger kvar tills användaren stänger den.
+
 ## Dataskydd och personuppgifter
 
 ### PRIV-01: egen personuppgiftsexport

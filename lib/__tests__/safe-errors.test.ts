@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   getErrorMessage,
+  getSafeErrorMessage,
   isDuplicateKeyError,
   isForeignKeyOrConstraintError,
   isForeignKeyViolation,
@@ -10,6 +11,25 @@ import {
 } from '@/lib/http/safe-errors'
 
 describe('safe error helpers', () => {
+  it('accepts only explicit, bounded safe messages from Error instances', () => {
+    const safeError = Object.assign(new Error('internal detail'), {
+      safeMessage: '  Safe explanation  ',
+    })
+
+    expect(getSafeErrorMessage(safeError)).toBe('Safe explanation')
+    expect(getSafeErrorMessage(new Error('internal detail'))).toBeNull()
+    expect(
+      getSafeErrorMessage({ safeMessage: 'not an Error instance' }),
+    ).toBeNull()
+    expect(
+      getSafeErrorMessage(
+        Object.assign(new Error('internal detail'), {
+          safeMessage: 'x'.repeat(1_001),
+        }),
+      ),
+    ).toBeNull()
+  })
+
   it('redacts provider keys, bearer tokens, JWTs, international HSA-id values, secrets, and SQL fragments', () => {
     const text = [
       'OpenRouter sk-or-v1-secret123 failed',

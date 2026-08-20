@@ -1788,6 +1788,7 @@
       "loading": "Laddar AI-anslutningar…",
       "loadError": "Kunde inte läsa AI-anslutningar och körprofiler.",
       "mutationError": "Den administrativa AI-åtgärden kunde inte slutföras.",
+      "actionFailed": "Åtgärden \"{action}\" misslyckades. Fel: {error}",
       "empty": "Inga AI-anslutningar är konfigurerade.",
       "adapter": {
         "unavailable": "Adaptern {adapter} är inte installerad. Du kan hantera konfiguration, attest och autentiseringsuppgifter, men upptäckt, verifiering, hälsokontroll och aktivering är inte tillgängliga.",

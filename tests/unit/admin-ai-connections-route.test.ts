@@ -65,9 +65,13 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
-vi.mock('@/lib/http/safe-errors', () => ({
-  logSanitizedError: routeState.logSanitizedError,
-}))
+vi.mock('@/lib/http/safe-errors', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/http/safe-errors')>()
+  return {
+    ...actual,
+    logSanitizedError: routeState.logSanitizedError,
+  }
+})
 
 vi.mock('@/lib/ai/admin-runtime', () => ({
   createAiConnectionAdministrationRuntime: routeState.runtime,
@@ -100,6 +104,7 @@ import {
   createAiConnectionSchema,
   saveAiModelRevisionSchema,
 } from '@/lib/ai/admin-contracts'
+import { AiConnectionTrustError } from '@/lib/ai/connection-trust'
 import { validationError } from '@/lib/requirements/errors'
 
 const connectionId = '00000000-0000-4000-8000-000000000001'
@@ -494,6 +499,29 @@ describe('Admin AI connection routes', () => {
       expect([200, 204]).toContain(response.status)
       expect(routeState.serviceMethods[method]).toHaveBeenCalled()
     }
+  })
+
+  it('returns the error-provided safe message when connection verification is blocked', async () => {
+    routeState.serviceMethods.verifyConnection.mockRejectedValueOnce(
+      new AiConnectionTrustError('endpoint_not_allowed'),
+    )
+
+    const response = await connectionAction(
+      new NextRequest(
+        `https://example.test/api/admin/ai-connections/${connectionId}/actions`,
+        {
+          body: JSON.stringify({ action: 'verify_connection' }),
+          method: 'POST',
+        },
+      ),
+      { params: Promise.resolve({ connectionId }) },
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'The AI connection trust policy blocked the request.',
+    })
+    expect(routeState.logSanitizedError).toHaveBeenCalledOnce()
   })
 
   it.each([
