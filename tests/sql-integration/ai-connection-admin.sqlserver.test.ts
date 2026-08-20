@@ -92,6 +92,56 @@ async function count(
 describe('AI connection administration transactions against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
 
+  it('keeps passed verification evidence append-only when authentication later fails', async () => {
+    const db = appDb()
+    const store = createSqlServerAiAdminStore(db, async () => undefined)
+    const connection = await store.createConnection({
+      ...connectionInput('-append-only-auth'),
+      authenticationType: 'none',
+    })
+    const passed = await store.recordConnectionVerification({
+      connection,
+      result: {
+        details: { reachable: true },
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'sql-v1',
+      },
+    })
+    if (!passed.connectionEvidenceId) throw new Error('Passed evidence missing')
+    const before = (await db.query(
+      `SELECT [expires_at] AS [expiresAt]
+       FROM [ai_connection_verification_evidence] WHERE [id] = @0`,
+      [passed.connectionEvidenceId],
+    )) as Array<{ expiresAt: Date }>
+
+    const failed = await store.recordConnectionVerification({
+      connection: passed,
+      result: {
+        details: { status: 401 },
+        failureCategory: 'authentication_failed',
+        outcome: 'failed',
+        testSuiteVersion: 'sql-v1',
+      },
+    })
+    const after = (await db.query(
+      `SELECT [expires_at] AS [expiresAt]
+       FROM [ai_connection_verification_evidence] WHERE [id] = @0`,
+      [passed.connectionEvidenceId],
+    )) as Array<{ expiresAt: Date }>
+
+    expect(after[0]?.expiresAt).toEqual(before[0]?.expiresAt)
+    expect(failed.connectionEvidenceId).toBeNull()
+    expect(
+      await count(
+        db,
+        'ai_connection_verification_evidence',
+        '[ai_connection_id] = @0',
+        [connection.id],
+      ),
+    ).toBe(2)
+  })
+
   it('maps nullable and malformed persisted administration metadata safely', () => {
     expect(mapping.jsonArray(null)).toBeNull()
     expect(mapping.jsonArray('["SE"]')).toEqual(['SE'])

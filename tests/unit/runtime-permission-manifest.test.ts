@@ -13,7 +13,7 @@ function permissionFor(objectName: string) {
 
 describe('runtime permission manifest', () => {
   it('is release-versioned, stable, and explicit about protected objects', () => {
-    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.08\.19\./u)
+    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.08\.20\./u)
     expect(RUNTIME_PERMISSION_MANIFEST_DIGEST).toMatch(/^[a-f0-9]{64}$/u)
     expect(RUNTIME_PERMISSION_MANIFEST.map(entry => entry.object)).toEqual(
       [...RUNTIME_PERMISSION_MANIFEST]
@@ -68,6 +68,8 @@ describe('runtime permission manifest', () => {
         'not_before',
         'lease_owner_id',
         'lease_expires_at',
+        'cancellation_requested_at',
+        'cancellation_reason',
         'updated_at',
       ],
     })

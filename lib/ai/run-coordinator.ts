@@ -11,6 +11,12 @@ import type {
 const CANCELLATION_GRACE_MS = 5_000
 const DEFAULT_LEASE_MS = 30_000
 const DEFAULT_POLL_MS = 100
+const ADMINISTRATIVE_CANCELLATION_POLL_MS = 1_000
+
+export type AiAdministrativeCancellationReason =
+  | 'connection_retired'
+  | 'connection_suspended'
+  | 'profile_suspended'
 
 export interface AiRunCoordinationProfile {
   inactivityTimeBudgetMs: number
@@ -99,6 +105,11 @@ export interface AiRunCoordinationStore {
   }): Promise<AiRunAcquireResult>
   acquireManualRecoveryProbe(input: AiRecoveryProbeLeaseInput): Promise<boolean>
   acquireRecoveryProbe(input: AiRecoveryProbeLeaseInput): Promise<boolean>
+  cancellationRequested?(input: {
+    applicationRunId: string
+    fencingToken: string
+    leaseOwnerId: string
+  }): Promise<AiAdministrativeCancellationReason | null>
   enqueue(input: {
     applicationRunId: string
     fencingToken: string
@@ -640,6 +651,9 @@ export function createAiRunCoordinator(
         | 'retry_wait'
         | 'running' = 'none'
       let finalEvent: AiRunEvent | undefined
+      let administrativeCancellationReason:
+        | AiAdministrativeCancellationReason
+        | undefined
       const telemetryBase = {
         adapterType: request.adapterType,
         adapterVersion: request.adapterVersion,
@@ -758,16 +772,26 @@ export function createAiRunCoordinator(
             attemptController.signal,
             totalDeadlineAt.toISOString(),
           )[Symbol.asyncIterator]()
-          const leaseRenewal = setInterval(() => {
-            void options.coordination
-              .renew({
+          const leaseHeartbeat = setInterval(() => {
+            void Promise.all([
+              options.coordination.renew({
                 applicationRunId: request.applicationRunId,
                 fencingToken,
                 leaseDurationMs: DEFAULT_LEASE_MS,
                 leaseOwnerId,
-              })
-              .then(renewed => {
-                if (renewalActive && !renewed) {
+              }),
+              options.coordination.cancellationRequested?.({
+                applicationRunId: request.applicationRunId,
+                fencingToken,
+                leaseOwnerId,
+              }) ?? Promise.resolve(null),
+            ])
+              .then(([renewed, cancellationReason]) => {
+                if (!renewalActive) return
+                if (cancellationReason) {
+                  administrativeCancellationReason = cancellationReason
+                  attemptController.abort()
+                } else if (!renewed) {
                   leaseLost = true
                   coordinationState = 'lost'
                   attemptController.abort()
@@ -780,7 +804,7 @@ export function createAiRunCoordinator(
                   attemptController.abort()
                 }
               })
-          }, DEFAULT_LEASE_MS / 3)
+          }, ADMINISTRATIVE_CANCELLATION_POLL_MS)
           try {
             while (!attemptTerminal) {
               if (controller.signal.aborted) {
@@ -832,14 +856,16 @@ export function createAiRunCoordinator(
                 resolveAbort,
               )
               if (pull.kind === 'abort') {
-                attemptTerminal = leaseLost
-                  ? failure(
-                      request.identity,
-                      'connection_unavailable',
-                      'coordination_lease_lost',
-                      true,
-                    )
-                  : cancellation(request.identity)
+                attemptTerminal = administrativeCancellationReason
+                  ? cancellation(request.identity)
+                  : leaseLost
+                    ? failure(
+                        request.identity,
+                        'connection_unavailable',
+                        'coordination_lease_lost',
+                        true,
+                      )
+                    : cancellation(request.identity)
                 break
               }
               if (pull.kind === 'budget') {
@@ -985,7 +1011,7 @@ export function createAiRunCoordinator(
             }
           } finally {
             renewalActive = false
-            clearInterval(leaseRenewal)
+            clearInterval(leaseHeartbeat)
             controller.signal.removeEventListener('abort', abortAttempt)
             if (attemptTerminal?.type !== 'completed') {
               attemptController.abort()
@@ -1137,7 +1163,9 @@ export function createAiRunCoordinator(
             ...telemetryBase,
             activeConcurrency: observedCapacity?.activeConcurrency,
             cancellationReason:
-              finalEvent.type === 'cancelled' ? finalEvent.reason : undefined,
+              finalEvent.type === 'cancelled'
+                ? (administrativeCancellationReason ?? finalEvent.reason)
+                : undefined,
             durationMs: Math.max(0, now() - startedAt),
             failureCategory:
               finalEvent.type === 'failed'

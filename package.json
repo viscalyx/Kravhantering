@@ -151,6 +151,7 @@
     "db:permission-status": "node scripts/db-sqlserver-admin.mjs permission-status",
     "db:permission-reconcile": "node scripts/db-sqlserver-admin.mjs permission-reconcile",
     "db:provider-secret-restore-verify": "node scripts/db-sqlserver-admin.mjs provider-secret-restore-verify",
+    "db:provider-secret-root-rotate": "node scripts/db-sqlserver-admin.mjs provider-secret-root-rotate",
     "db:seed:required": "node scripts/db-sqlserver-admin.mjs seed:required",
     "db:seed:demo": "node scripts/db-sqlserver-admin.mjs seed:demo",
     "db:reset": "node scripts/db-sqlserver-admin.mjs reset",

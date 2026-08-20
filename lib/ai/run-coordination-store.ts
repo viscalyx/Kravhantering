@@ -18,6 +18,10 @@ interface CoordinationRow {
   aiRunProfileRevisionId?: string
   breakerOpened?: boolean | number
   breakerStatus?: AiOperationalStateTransition['breakerStatus']
+  cancellationReason?:
+    | 'connection_retired'
+    | 'connection_suspended'
+    | 'profile_suspended'
   healthStateChanged?: boolean | number
   healthStatus?: AiOperationalStateTransition['healthStatus']
   inactivityTimeBudgetMs?: number | string
@@ -90,6 +94,26 @@ const ENQUEUE_SQL = `
     INSERT INTO [ai_connection_model_operational_states] (
       [ai_connection_model_revision_id], [updated_at]
     ) VALUES (@2, @now);
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM [ai_connection_model_revisions] AS [revision]
+    INNER JOIN [ai_connection_models] AS [model]
+      ON [model].[id] = [revision].[ai_connection_model_id]
+    INNER JOIN [ai_connections] AS [connection]
+      ON [connection].[id] = [model].[ai_connection_id]
+    INNER JOIN [ai_run_profile_revisions] AS [profile_revision]
+      ON [profile_revision].[id] = @3
+    INNER JOIN [ai_run_profiles] AS [profile]
+      ON [profile].[id] = [profile_revision].[ai_run_profile_id]
+    WHERE [revision].[id] = @2 AND [connection].[id] = @1
+      AND [connection].[lifecycle_status] = N'active'
+      AND [profile].[operational_status] = N'enabled'
+  )
+  BEGIN
+    SELECT N'breaker_open' AS [admissionStatus];
+    RETURN;
+  END;
 
   IF EXISTS (
     SELECT 1
@@ -164,6 +188,11 @@ const ACQUIRE_SQL = `
 
   IF NOT EXISTS (SELECT 1 FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK) WHERE [application_run_id] = @0 AND [fencing_token] = @3)
   BEGIN SELECT N'expired' AS [acquisitionStatus]; RETURN; END;
+  IF EXISTS (
+    SELECT 1 FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK)
+    WHERE [application_run_id] = @0 AND [fencing_token] = @3
+      AND [cancellation_requested_at] IS NOT NULL
+  ) BEGIN SELECT N'expired' AS [acquisitionStatus]; RETURN; END;
 
   DECLARE @connection_id uniqueidentifier;
   DECLARE @model_revision_id uniqueidentifier;
@@ -385,6 +414,18 @@ export function createSqlServerAiRunCoordinationStore(
         ),
       )
       return rows[0]?.probeStatus === 'acquired'
+    },
+
+    async cancellationRequested(input) {
+      const rows = await db.query<CoordinationRow[]>(
+        `SELECT [cancellation_reason] AS [cancellationReason]
+         FROM [ai_run_coordination_entries]
+         WHERE [application_run_id] = @0 AND [fencing_token] = @1
+           AND [lease_owner_id] = @2 AND [status] = N'running'
+           AND [lease_expires_at] > SYSUTCDATETIME()`,
+        [input.applicationRunId, input.fencingToken, input.leaseOwnerId],
+      )
+      return rows[0]?.cancellationReason ?? null
     },
 
     async enqueue(input): Promise<AiRunAdmissionResult> {

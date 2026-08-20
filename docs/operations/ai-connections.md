@@ -242,6 +242,11 @@ releasing it, verify all of the following for the environment:
 Required seed leaves AI unconfigured. Demo seed may create only unverified
 drafts and must never create verification evidence or activate a run profile.
 
+Connection verification evidence is append-only. An authentication failure or
+runtime contradiction records a new failed evidence row and moves current
+connection/model state to verification required; it never edits the expiry or
+contents of earlier evidence. Reverification appends a new passed row.
+
 ### Deployment Evidence Gate
 
 The production bundle includes `scripts/ai-deployment-gate.mjs`. Keep
@@ -485,6 +490,18 @@ action and administrator decision.
 4. Re-encrypt rows that explicitly reference the old version. This creates a
    fresh nonce for every envelope; do not change connection or secret-revision
    IDs.
+
+   Run bounded batches from the production `db-job` image. Repeat until
+   `remainingCount` is `0`:
+
+   ```bash
+   npm run db:provider-secret-root-rotate -- \
+     --from-root-key-version root-2026-01 --batch-size 100
+   ```
+
+   The command authenticates each old envelope, re-encrypts it under the
+   keyring's explicit `activeWriteVersion`, and emits counts and root-key
+   versions only. It never prints plaintext. A failed batch rolls back.
 5. List referenced root-key versions and prove that every row decrypts with its
    recorded version. Include retained database backups in this inventory.
 6. Keep each old root-key version while any database row or restorable backup
@@ -534,7 +551,9 @@ npm run db:provider-secret-restore-verify -- \
 
 Proceed only when `compatible` and `safeToRemoveOmittedRootKeyVersion` are both
 `true` for every retained backup restored with its matching keyring. This check
-does not change the database or keyring.
+does not change the database or keyring. The live database must also report
+`remainingCount: 0` and `safeToRemoveFromRootKeyVersion: true` from the final
+rotation batch. Keep the old key while any retained backup references it.
 
 If a required root-key version is missing, keep the global AI guard active and
 block affected run profiles. Restore the key version from the approved backup.
@@ -648,7 +667,11 @@ retention remain environment-specific operator configuration.
 
 For an incident, activate the global AI guard or suspend the affected AI
 connection or run profile. This stops new requests and attempts to cancel
-running requests without automatic fallback. Restore service only after the
+running requests without automatic fallback. Suspension commits a durable,
+fenced, content-free cancellation request in the same Admin transaction. Each
+coordinator polls it every second, aborts only the matching leased run, and
+force-closes an uncooperative adapter within the existing five-second grace.
+Lifecycle remains separate from operational health. Restore service only after the
 cause, attestation, provider secret, connection test, model capabilities, and
 run profile dependencies are valid again.
 

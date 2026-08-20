@@ -1,12 +1,12 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { parseAiProviderSecretKeyring } from '@/lib/ai/provider-secret-keyring'
-import {
-  reencryptAiProviderSecrets,
-  verifyAiProviderSecretRestoreSet,
-  writeAiProviderSecretCandidate,
-} from '@/lib/ai/provider-secret-service'
+import { writeAiProviderSecretCandidate } from '@/lib/ai/provider-secret-service'
 import type { SqlServerDatabase } from '@/lib/db'
+import {
+  reencryptAiProviderSecretBatch,
+  verifyAiProviderSecretRestoreSet,
+} from '@/scripts/ai-provider-secret-maintenance.mjs'
 import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
 
 function keyring(activeWriteVersion: string, keys: Record<string, Buffer>) {
@@ -128,8 +128,16 @@ describe('AI provider secrets against SQL Server', () => {
       safeToRemoveOmittedRootKeyVersion: false,
     })
 
-    await reencryptAiProviderSecrets(appDb(), root2Ring, {
-      fromRootKeyVersion: 'root-1',
+    await expect(
+      reencryptAiProviderSecretBatch(appDb(), root2Ring, {
+        batchSize: 1,
+        fromRootKeyVersion: 'root-1',
+      }),
+    ).resolves.toMatchObject({
+      reencryptedCount: 1,
+      remainingCount: 0,
+      safeToRemoveFromRootKeyVersion: true,
+      toRootKeyVersion: 'root-2',
     })
     const prunedRing = keyring('root-2', { 'root-2': root2 })
     await expect(

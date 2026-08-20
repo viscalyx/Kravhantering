@@ -201,6 +201,7 @@ const CORE_COMMANDS = Object.freeze([
   'migrate',
   'permission-status',
   'permission-reconcile',
+  'provider-secret-root-rotate',
   'provider-secret-restore-verify',
   'seed:required',
 ])
@@ -1432,21 +1433,46 @@ export async function verifyAiProviderSecretRestoreForConnection(
   options = {},
 ) {
   const env = options.env ?? process.env
-  const keyringModule =
-    options.providerSecretKeyringModule ??
-    (await import('../lib/ai/provider-secret-keyring.ts'))
-  const serviceModule =
-    options.providerSecretServiceModule ??
-    (await import('../lib/ai/provider-secret-service.ts'))
-  const keyring = keyringModule.loadAiProviderSecretKeyring(env)
+  const maintenanceModule =
+    options.providerSecretMaintenanceModule ??
+    (options.providerSecretKeyringModule && options.providerSecretServiceModule
+      ? null
+      : await import('./ai-provider-secret-maintenance.mjs'))
+  const loadKeyring =
+    options.providerSecretKeyringModule?.loadAiProviderSecretKeyring ??
+    maintenanceModule.loadAiProviderSecretMaintenanceKeyring
+  const verifyRestore =
+    options.providerSecretServiceModule?.verifyAiProviderSecretRestoreSet ??
+    maintenanceModule.verifyAiProviderSecretRestoreSet
+  const keyring = loadKeyring(env)
   return withRuntimePermissionDataSource(
     connectionString,
     options,
     dataSource =>
-      serviceModule.verifyAiProviderSecretRestoreSet(dataSource, keyring, {
+      verifyRestore(dataSource, keyring, {
         ...(options.omitRootKeyVersion
           ? { omitRootKeyVersion: options.omitRootKeyVersion }
           : {}),
+      }),
+  )
+}
+
+export async function rotateAiProviderSecretRootForConnection(
+  connectionString,
+  options = {},
+) {
+  const env = options.env ?? process.env
+  const maintenanceModule =
+    options.providerSecretMaintenanceModule ??
+    (await import('./ai-provider-secret-maintenance.mjs'))
+  const keyring = maintenanceModule.loadAiProviderSecretMaintenanceKeyring(env)
+  return withRuntimePermissionDataSource(
+    connectionString,
+    options,
+    dataSource =>
+      maintenanceModule.reencryptAiProviderSecretBatch(dataSource, keyring, {
+        batchSize: options.batchSize,
+        fromRootKeyVersion: options.fromRootKeyVersion,
       }),
   )
 }
@@ -2121,6 +2147,46 @@ export async function main(args, dependencies = {}) {
     } catch {
       consoleObj.error(
         'AI provider-secret restore verification failed. Check the restored database and external keyring.',
+      )
+      return 1
+    }
+  }
+
+  if (command === 'provider-secret-root-rotate') {
+    const fromFlagIndex = args.indexOf('--from-root-key-version')
+    const fromRootKeyVersion = args[fromFlagIndex + 1]?.trim()
+    const batchFlagIndex = args.indexOf('--batch-size')
+    const rawBatchSize =
+      batchFlagIndex === -1 ? '100' : args[batchFlagIndex + 1]?.trim()
+    const batchSize = Number(rawBatchSize)
+    if (fromFlagIndex === -1 || !fromRootKeyVersion) {
+      consoleObj.error('--from-root-key-version requires a value.')
+      return 1
+    }
+    if (
+      !rawBatchSize ||
+      !Number.isSafeInteger(batchSize) ||
+      batchSize < 1 ||
+      batchSize > 1_000
+    ) {
+      consoleObj.error('--batch-size must be an integer from 1 through 1000.')
+      return 1
+    }
+    try {
+      const result = await (
+        dependencies.rotateAiProviderSecretRootForConnectionImpl ??
+        rotateAiProviderSecretRootForConnection
+      )(connectionString, {
+        ...dependencies,
+        batchSize,
+        env,
+        fromRootKeyVersion,
+      })
+      consoleObj.log(JSON.stringify(result, null, 2))
+      return 0
+    } catch {
+      consoleObj.error(
+        'AI provider-secret root-key rotation failed. No plaintext was emitted; retain every referenced root key and retry.',
       )
       return 1
     }

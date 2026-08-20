@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 export const SQL_SERVER_RUNTIME_ROLE = 'kravhantering_runtime'
-export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.19.4'
+export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.20.1'
 
 const CRUD = Object.freeze(['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
 const READ_CREATE = Object.freeze(['SELECT', 'INSERT'])
@@ -272,6 +272,8 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
             'not_before',
             'lease_owner_id',
             'lease_expires_at',
+            'cancellation_requested_at',
+            'cancellation_reason',
             'updated_at',
           ],
         }),

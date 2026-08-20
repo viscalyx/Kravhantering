@@ -335,6 +335,8 @@ erDiagram
         datetime2 total_deadline_at
         uniqueidentifier lease_owner_id
         datetime2 lease_expires_at
+        datetime2 cancellation_requested_at
+        text cancellation_reason
     }
 
     ai_forensic_capture_windows {
@@ -1813,6 +1815,10 @@ must contain all decision fields.
 
 Append-only technical connection-test evidence bound to an exact connection
 configuration version, adapter version, runtime version, and test suite.
+Authentication failure and runtime health contradiction append a failed row;
+they never shorten, replace, or update an earlier passed row. Current
+verification availability is derived from the newest applicable passed or
+invalidating row together with connection/model lifecycle state.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -2008,6 +2014,10 @@ only opaque run/configuration IDs and timing/counter state—never prompts,
 images, model output, endpoints, secrets, or error text. Queue time, retry wait,
 and attempts share `total_deadline_at`. Completion, cancellation, and failure
 delete the row; expired deadlines and leases are reclaimed transactionally.
+Connection retirement/suspension and profile suspension atomically add a
+content-free cancellation request to every matching queued, retrying, or
+running row. The first administrative reason is retained so a later broader
+suspension cannot rewrite the cause observed by the fenced worker.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -2025,6 +2035,8 @@ delete the row; expired deadlines and leases are reclaimed transactionally.
 | `total_deadline_at` | datetime2(3) | Original deadline shared by queue, attempts, and retry wait |
 | `lease_owner_id` | uniqueidentifier, nullable | App instance holding a running lease |
 | `lease_expires_at` | datetime2(3), nullable | Lease expiry used for crash recovery |
+| `cancellation_requested_at` | datetime2(3), nullable | Durable time at which Admin requested cancellation of this exact coordination row |
+| `cancellation_reason` | nvarchar(40), nullable | Content-free `connection_suspended`, `connection_retired`, or `profile_suspended`; populated together with the request time |
 | `created_at` | datetime2(3) | Admission time |
 | `updated_at` | datetime2(3) | Last coordination transition |
 <!-- markdownlint-enable MD013 -->
@@ -3306,6 +3318,7 @@ its purpose and the table/column(s) it covers.
 | `idx_ai_connection_model_operational_states_lease_expires_at` | `ai_connection_model_operational_states` | `lease_expires_at` | Reclaim expired cross-node recovery leases |
 | `idx_ai_run_coordination_entries_fifo` | `ai_run_coordination_entries` | `(ai_connection_id, status, not_before, queue_sequence)` | Acquire the eligible FIFO head under a serializable SQL transaction |
 | `idx_ai_run_coordination_entries_lease_expires_at` | `ai_run_coordination_entries` | `lease_expires_at` where non-null | Reclaim expired execution leases after node failure |
+| `idx_ai_run_coordination_entries_cancellation_requested_at` | `ai_run_coordination_entries` | `cancellation_requested_at` where non-null | Find durable administrative cancellation requests without scanning run content |
 | `idx_ai_forensic_capture_windows_expires_at` | `ai_forensic_capture_windows` | `expires_at` | Support SQL-time expiry and bounded cleanup |
 | `idx_ai_forensic_capture_windows_requested_by_hsa_id` | `ai_forensic_capture_windows` | `requested_by_hsa_id` | Support requester access and exact privacy lookup |
 | `idx_ai_forensic_capture_windows_approved_by_hsa_id` | `ai_forensic_capture_windows` | `approved_by_hsa_id` | Support approver access and exact privacy lookup |

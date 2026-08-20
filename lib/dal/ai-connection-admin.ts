@@ -182,7 +182,11 @@ const CONNECTION_JOINS = `
       AND [candidate].[ciphertext] IS NOT NULL
   ) AS [secret]
   OUTER APPLY (
-    SELECT TOP (1) [candidate].[id]
+    SELECT TOP (1)
+      CASE WHEN [candidate].[outcome] = N'passed'
+        AND ([candidate].[expires_at] IS NULL
+          OR [candidate].[expires_at] > SYSUTCDATETIME())
+        THEN [candidate].[id] ELSE NULL END AS [id]
     FROM [ai_connection_verification_evidence] AS [candidate]
     WHERE [candidate].[ai_connection_id] = [connection].[id]
       AND [candidate].[connection_configuration_version]
@@ -191,10 +195,10 @@ const CONNECTION_JOINS = `
       AND ([candidate].[agent_runtime_version] = [connection].[agent_runtime_version]
         OR ([candidate].[agent_runtime_version] IS NULL
           AND [connection].[agent_runtime_version] IS NULL))
-      AND [candidate].[outcome] = N'passed'
-      AND ([candidate].[expires_at] IS NULL
-        OR [candidate].[expires_at] > SYSUTCDATETIME())
-    ORDER BY [candidate].[verified_at] DESC
+      AND ([candidate].[outcome] = N'passed'
+        OR [candidate].[failure_category]
+          IN (N'authentication_failed', N'runtime_health_contradiction'))
+    ORDER BY [candidate].[verified_at] DESC, [candidate].[id] DESC
   ) AS [evidence]
   OUTER APPLY (
     SELECT TOP (1) [candidate].[id]
@@ -1117,13 +1121,6 @@ export function createSqlServerAiAdminStore(
            );
            IF @3 = N'failed' AND @8 = N'authentication_failed'
            BEGIN
-             UPDATE [ai_connection_verification_evidence]
-             SET [expires_at] = DATEADD(second, -1, SYSUTCDATETIME())
-             WHERE [ai_connection_id] = @1
-               AND [connection_configuration_version] = @2
-               AND [outcome] = N'passed'
-               AND ([expires_at] IS NULL OR [expires_at] > SYSUTCDATETIME());
-
              UPDATE [ai_connections]
              SET [lifecycle_status] = CASE
                  WHEN [lifecycle_status] = N'draft' THEN N'draft'
@@ -1375,19 +1372,29 @@ export function createSqlServerAiAdminStore(
 
            IF @4 = N'connection'
            BEGIN
-             UPDATE [evidence]
-             SET [expires_at] = DATEADD(second, -1, SYSUTCDATETIME())
+             INSERT INTO [ai_connection_verification_evidence] (
+               [id], [ai_connection_id], [connection_configuration_version],
+               [outcome], [test_suite_version], [adapter_version],
+               [agent_runtime_version], [configuration_fingerprint],
+               [failure_category], [details_json], [verified_at], [expires_at]
+             )
+             SELECT TOP (1) NEWID(), [evidence].[ai_connection_id],
+               [evidence].[connection_configuration_version], N'failed',
+               N'runtime-health-v1', [evidence].[adapter_version],
+               [evidence].[agent_runtime_version],
+               [evidence].[configuration_fingerprint],
+               N'runtime_health_contradiction',
+               N'{"source":"runtime_health"}', SYSUTCDATETIME(),
+               DATEADD(day, 30, SYSUTCDATETIME())
              FROM [ai_connection_verification_evidence] AS [evidence]
              INNER JOIN [ai_connections] AS [connection]
                ON [connection].[id] = [evidence].[ai_connection_id]
              WHERE [evidence].[ai_connection_id] = @0
-               AND [evidence].[connection_configuration_version]
-                 = @6
+               AND [evidence].[connection_configuration_version] = @6
+               AND [evidence].[outcome] = N'passed'
                AND [connection].[revision_token] = @5
                AND [connection].[configuration_version] = @6
-               AND [evidence].[outcome] = N'passed'
-               AND ([evidence].[expires_at] IS NULL
-                 OR [evidence].[expires_at] > SYSUTCDATETIME());
+             ORDER BY [evidence].[verified_at] DESC, [evidence].[id] DESC;
 
              UPDATE [revision]
              SET [status] = N'verification_required',
@@ -1601,6 +1608,19 @@ export function createSqlServerAiAdminStore(
           [input.connectionId, input.revisionToken, input.status],
         )
         if (!rows?.[0]) return null
+        if (input.status === 'suspended' || input.status === 'retired') {
+          await manager.query(
+            `UPDATE [ai_run_coordination_entries]
+             SET [cancellation_requested_at] = SYSUTCDATETIME(),
+               [cancellation_reason] = CASE WHEN @1 = N'retired'
+                 THEN N'connection_retired' ELSE N'connection_suspended' END,
+               [updated_at] = SYSUTCDATETIME()
+             WHERE [ai_connection_id] = @0
+               AND [status] IN (N'queued', N'retry_wait', N'running')
+               AND [cancellation_requested_at] IS NULL`,
+            [input.connectionId, input.status],
+          )
+        }
         const loaded = await loadConnection(manager, input.connectionId)
         if (!loaded) return null
         await audit(
@@ -1803,6 +1823,23 @@ export function createSqlServerAiAdminStore(
           [input.profileKey, input.revisionToken, input.status],
         )
         if (!rows?.[0]) return null
+        if (input.status === 'suspended') {
+          await manager.query(
+            `UPDATE [entry]
+             SET [cancellation_requested_at] = SYSUTCDATETIME(),
+               [cancellation_reason] = N'profile_suspended',
+               [updated_at] = SYSUTCDATETIME()
+             FROM [ai_run_coordination_entries] AS [entry]
+             INNER JOIN [ai_run_profile_revisions] AS [revision]
+               ON [revision].[id] = [entry].[ai_run_profile_revision_id]
+             INNER JOIN [ai_run_profiles] AS [profile]
+               ON [profile].[id] = [revision].[ai_run_profile_id]
+             WHERE [profile].[profile_key] = @0
+               AND [entry].[status] IN (N'queued', N'retry_wait', N'running')
+               AND [entry].[cancellation_requested_at] IS NULL`,
+            [input.profileKey],
+          )
+        }
         const profile =
           (await loadProfiles(manager, input.profileKey))[0] ?? null
         if (!profile) return null

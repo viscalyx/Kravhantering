@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RUNTIME_PERMISSION_MANIFEST } from '../../typeorm/runtime-permission-manifest.mjs'
 import {
+  loadAiProviderSecretMaintenanceKeyring,
+  reencryptAiProviderSecretBatch,
+  verifyAiProviderSecretRestoreSet as verifyPackagedRestoreSet,
+} from '../ai-provider-secret-maintenance.mjs'
+import {
   assertRuntimePermissionStatus,
   bootstrapSqlServerDatabase,
   buildReadonlyBrowseConfig,
@@ -28,6 +33,7 @@ import {
   reconcileSqlServerRuntimePermissionsForConnection,
   resetDemoSqlServerData,
   resetSqlServerDatabase,
+  rotateAiProviderSecretRootForConnection,
   runSqlServerMigrations,
   seedSqlServerDatabase,
   setMigrationInstallationContext,
@@ -1141,6 +1147,52 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(destroy).toHaveBeenCalledOnce()
   })
 
+  it('loads the plain-Node provider-secret maintenance module without TypeScript aliases', () => {
+    expect(loadAiProviderSecretMaintenanceKeyring).toBeTypeOf('function')
+    expect(reencryptAiProviderSecretBatch).toBeTypeOf('function')
+    expect(verifyPackagedRestoreSet).toBeTypeOf('function')
+  })
+
+  it('runs one bounded root-key rotation batch without exposing plaintext', async () => {
+    const consoleObj = { error: vi.fn(), log: vi.fn() }
+    const rotate = vi.fn(async () => ({
+      fromRootKeyVersion: 'root-1',
+      reencryptedCount: 25,
+      remainingCount: 4,
+      safeToRemoveFromRootKeyVersion: false,
+      toRootKeyVersion: 'root-2',
+    }))
+    const env = {
+      DATABASE_URL: 'mssql://runtime:Runtime123!@127.0.0.1:1433/restored',
+    }
+
+    await expect(
+      main(
+        [
+          'provider-secret-root-rotate',
+          '--from-root-key-version',
+          'root-1',
+          '--batch-size',
+          '25',
+        ],
+        {
+          consoleObj,
+          env,
+          rotateAiProviderSecretRootForConnectionImpl: rotate,
+        },
+      ),
+    ).resolves.toBe(0)
+    expect(rotate).toHaveBeenCalledWith(
+      env.DATABASE_URL,
+      expect.objectContaining({
+        batchSize: 25,
+        fromRootKeyVersion: 'root-1',
+      }),
+    )
+    expect(JSON.stringify(consoleObj.log.mock.calls)).not.toContain('secret')
+    expect(rotateAiProviderSecretRootForConnection).toBeTypeOf('function')
+  })
+
   it('prints secret-free restore evidence and fails closed for an empty restore', async () => {
     const consoleObj = { error: vi.fn(), log: vi.fn() }
     const compatible = {
@@ -2170,7 +2222,7 @@ describe('db-sqlserver-admin.mjs', () => {
 
     expect(exitCode).toBe(1)
     expect(error).toHaveBeenCalledWith(
-      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migration-status|migrate|permission-status|permission-reconcile|provider-secret-restore-verify|seed:required|seed:demo|demo:clear|setup|browse-config>',
+      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migration-status|migrate|permission-status|permission-reconcile|provider-secret-root-rotate|provider-secret-restore-verify|seed:required|seed:demo|demo:clear|setup|browse-config>',
     )
   })
 

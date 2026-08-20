@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import type { AiRunIdentity } from '@/lib/ai/run-contracts'
 import { createSqlServerAiRunCoordinationStore } from '@/lib/ai/run-coordination-store'
+import { createSqlServerAiAdminStore } from '@/lib/dal/ai-connection-admin'
 import type { SqlServerDatabase } from '@/lib/db'
 import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
 
@@ -17,7 +18,7 @@ async function createCoordinationFixture(db: SqlServerDatabase): Promise<{
      ) OUTPUT INSERTED.id AS id
      VALUES (@0, N'Coordination SQL', N'test', N'1',
        N'https://ai.example.test/v1', N'static_secret', N'public_web_pki',
-       N'sql_test', N'No production data', N'draft', 1, 1,
+       N'sql_test', N'No production data', N'active', 1, 1,
        SYSUTCDATETIME(), SYSUTCDATETIME())`,
     [`Coordination ${randomUUID()}`],
   )) as Array<{ id: string }>
@@ -50,10 +51,10 @@ async function createCoordinationFixture(db: SqlServerDatabase): Promise<{
     `INSERT INTO ai_run_profile_revisions (
        ai_run_profile_id, ai_connection_model_revision_id, revision_number,
        status, capability_policy_json, total_time_budget_seconds,
-       inactivity_time_budget_seconds, queue_capacity, created_at
+       inactivity_time_budget_seconds, queue_capacity, created_at, activated_at
      ) OUTPUT INSERTED.id AS id
-     VALUES (@0, @1, 1, N'draft', N'{}', 1200, 300, 10,
-       SYSUTCDATETIME())`,
+     VALUES (@0, @1, 1, N'active', N'{}', 1200, 300, 10,
+       SYSUTCDATETIME(), SYSUTCDATETIME())`,
     [profileId, modelRevision[0]?.id],
   )) as Array<{ id: string }>
   return {
@@ -99,10 +100,10 @@ async function createAdditionalModelIdentity(
     `INSERT INTO ai_run_profile_revisions (
        ai_run_profile_id, ai_connection_model_revision_id, revision_number,
        status, capability_policy_json, total_time_budget_seconds,
-       inactivity_time_budget_seconds, queue_capacity, created_at
+       inactivity_time_budget_seconds, queue_capacity, created_at, activated_at
      ) OUTPUT INSERTED.id AS id
-     VALUES (@0, @1, 1, N'draft', N'{}', 1200, 300, 10,
-       SYSUTCDATETIME())`,
+     VALUES (@0, @1, 1, N'active', N'{}', 1200, 300, 10,
+       SYSUTCDATETIME(), SYSUTCDATETIME())`,
     [profileId, modelRevision[0]?.id],
   )) as Array<{ id: string }>
   return {
@@ -114,6 +115,95 @@ async function createAdditionalModelIdentity(
 
 describe('AI run coordination against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
+
+  it('atomically requests exact profile and connection cancellation without overwriting the first cause', async () => {
+    const db = appDb()
+    const { identity } = await createCoordinationFixture(db)
+    const sibling = await createAdditionalModelIdentity(db, identity)
+    const coordination = createSqlServerAiRunCoordinationStore(db)
+    const admin = createSqlServerAiAdminStore(db, async () => undefined)
+    const firstRun = randomUUID()
+    const firstFence = randomUUID()
+    const secondRun = randomUUID()
+    const secondFence = randomUUID()
+    const deadline = new Date(Date.now() + 60_000)
+    await coordination.enqueue({
+      applicationRunId: firstRun,
+      fencingToken: firstFence,
+      identity,
+      queueCapacity: 10,
+      totalDeadlineAt: deadline,
+    })
+    await coordination.acquire({
+      applicationRunId: firstRun,
+      fencingToken: firstFence,
+      leaseDurationMs: 30_000,
+      leaseOwnerId: firstFence,
+    })
+    await coordination.enqueue({
+      applicationRunId: secondRun,
+      fencingToken: secondFence,
+      identity: sibling,
+      queueCapacity: 10,
+      totalDeadlineAt: deadline,
+    })
+    const profileRows = (await db.query(
+      `SELECT [revision_token] AS [revisionToken]
+       FROM [ai_run_profiles] WHERE [profile_key] = N'generation_without_images'`,
+    )) as Array<{ revisionToken: string }>
+    await admin.setRunProfileOperationalStatus({
+      profileKey: 'generation_without_images',
+      revisionToken: profileRows[0]?.revisionToken ?? '',
+      status: 'suspended',
+    })
+    await expect(
+      coordination.cancellationRequested?.({
+        applicationRunId: firstRun,
+        fencingToken: firstFence,
+        leaseOwnerId: firstFence,
+      }),
+    ).resolves.toBe('profile_suspended')
+    const beforeConnectionSuspension = (await db.query(
+      `SELECT [cancellation_reason] AS [cancellationReason]
+       FROM [ai_run_coordination_entries]
+       WHERE [application_run_id] IN (@0, @1)
+       ORDER BY [application_run_id]`,
+      [firstRun, secondRun],
+    )) as Array<{ cancellationReason: string | null }>
+    expect(
+      beforeConnectionSuspension.map(row => row.cancellationReason),
+    ).toEqual(expect.arrayContaining([null, 'profile_suspended']))
+
+    const connectionRows = (await db.query(
+      `SELECT [revision_token] AS [revisionToken]
+       FROM [ai_connections] WHERE [id] = @0`,
+      [identity.aiConnectionId],
+    )) as Array<{ revisionToken: string }>
+    await admin.setConnectionLifecycle({
+      connectionId: identity.aiConnectionId,
+      revisionToken: connectionRows[0]?.revisionToken ?? '',
+      status: 'suspended',
+    })
+    const afterConnectionSuspension = (await db.query(
+      `SELECT [application_run_id] AS [applicationRunId],
+         [cancellation_reason] AS [cancellationReason]
+       FROM [ai_run_coordination_entries]
+       WHERE [application_run_id] IN (@0, @1)`,
+      [firstRun, secondRun],
+    )) as Array<{ applicationRunId: string; cancellationReason: string }>
+    expect(afterConnectionSuspension).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          applicationRunId: firstRun,
+          cancellationReason: 'profile_suspended',
+        }),
+        expect.objectContaining({
+          applicationRunId: secondRun,
+          cancellationReason: 'connection_suspended',
+        }),
+      ]),
+    )
+  })
 
   it('enforces distributed capacity, bounded queueing, and lease transfer', async () => {
     const { identity } = await createCoordinationFixture(appDb())

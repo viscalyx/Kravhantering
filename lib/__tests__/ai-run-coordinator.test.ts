@@ -512,6 +512,66 @@ describe('AI run coordinator', () => {
     },
   )
 
+  it('cancels an in-flight attempt when administration requests durable cancellation', async () => {
+    vi.useFakeTimers()
+    try {
+      const cancellationRequested = vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue('connection_suspended')
+      let markStarted = (): void => undefined
+      const started = new Promise<void>(resolve => {
+        markStarted = resolve
+      })
+      const coordination = store({ cancellationRequested })
+      const suspendedRequest = request()
+      suspendedRequest.profile.inactivityTimeBudgetMs = 30_000
+      suspendedRequest.profile.totalTimeBudgetMs = 40_000
+      const collecting = collect(
+        createAiRunCoordinator({ coordination }).coordinate(
+          suspendedRequest,
+          (_attempt, signal) => ({
+            [Symbol.asyncIterator]() {
+              markStarted()
+              return {
+                next: () =>
+                  new Promise<IteratorResult<AiRunEvent>>(resolve => {
+                    signal.addEventListener(
+                      'abort',
+                      () => resolve({ done: true, value: undefined }),
+                      { once: true },
+                    )
+                  }),
+              }
+            },
+          }),
+          () => undefined,
+        ),
+      )
+      await started
+      await vi.advanceTimersByTimeAsync(2_000)
+
+      await expect(collecting).resolves.toEqual([
+        {
+          identity: IDENTITY,
+          reason: 'application_cancelled',
+          type: 'cancelled',
+        },
+      ])
+      expect(cancellationRequested).toHaveBeenCalledWith(
+        expect.objectContaining({
+          applicationRunId: request().applicationRunId,
+          fencingToken: expect.any(String),
+        }),
+      )
+      expect(coordination.finish).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'cancelled' }),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('allows the exact limit and aborts before exposing the first byte over it', async () => {
     const abort = vi.fn()
     const coordination = store()

@@ -184,6 +184,10 @@ These values are sensitive outside local test and smoke-test contexts:
 The example file contains public demo values only. Treat them as unsafe for
 any exposed environment.
 
+The `db-job` image includes the runtime-safe provider-secret maintenance module
+used by `provider-secret-root-rotate` and `provider-secret-restore-verify`.
+Both commands emit only bounded operational evidence and never plaintext.
+
 ## Update Rules
 
 - Keep app-only env vars in this directory; do not introduce a shared env

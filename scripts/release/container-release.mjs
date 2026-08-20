@@ -75,6 +75,7 @@ const RELEVANT_PATH_PREFIXES = [
   'scripts/build-metadata.js',
   'scripts/containers/',
   'scripts/db-sqlserver-admin.mjs',
+  'scripts/ai-provider-secret-maintenance.mjs',
   'scripts/keycloak-demo-users.mjs',
   'scripts/prebuild.js',
   'scripts/release/',

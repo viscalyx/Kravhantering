@@ -8,6 +8,12 @@ export type AiRunCoordinationStatus = 'queued' | 'retry_wait' | 'running'
 export interface AiRunCoordinationEntity {
   applicationRunId: string
   attemptCount: number
+  cancellationReason:
+    | 'connection_retired'
+    | 'connection_suspended'
+    | 'profile_suspended'
+    | null
+  cancellationRequestedAt: Date | null
   connection: AiConnectionEntity
   createdAt: Date
   fencingToken: string
@@ -50,6 +56,18 @@ export const aiRunCoordinationEntity =
       },
       status: { length: 24, name: 'status', type: 'nvarchar' },
       attemptCount: { default: 0, name: 'attempt_count', type: 'tinyint' },
+      cancellationRequestedAt: {
+        name: 'cancellation_requested_at',
+        nullable: true,
+        precision: 3,
+        type: 'datetime2',
+      },
+      cancellationReason: {
+        length: 40,
+        name: 'cancellation_reason',
+        nullable: true,
+        type: 'nvarchar',
+      },
       notBefore: { name: 'not_before', precision: 3, type: 'datetime2' },
       totalDeadlineAt: {
         name: 'total_deadline_at',
@@ -132,6 +150,11 @@ export const aiRunCoordinationEntity =
         name: 'idx_ai_run_coordination_entries_lease_expires_at',
         where: '[lease_expires_at] IS NOT NULL',
       },
+      {
+        columns: ['cancellationRequestedAt'],
+        name: 'idx_ai_run_coordination_entries_cancellation_requested_at',
+        where: '[cancellation_requested_at] IS NOT NULL',
+      },
     ],
     checks: [
       {
@@ -150,6 +173,11 @@ export const aiRunCoordinationEntity =
       {
         expression: '[total_deadline_at] > [created_at]',
         name: 'chk_ai_run_coordination_entries_deadline',
+      },
+      {
+        expression:
+          "([cancellation_requested_at] IS NULL AND [cancellation_reason] IS NULL) OR ([cancellation_requested_at] IS NOT NULL AND [cancellation_reason] IN (N'connection_suspended', N'connection_retired', N'profile_suspended'))",
+        name: 'chk_ai_run_coordination_entries_cancellation',
       },
     ],
   })
