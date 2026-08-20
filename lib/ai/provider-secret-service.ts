@@ -422,9 +422,16 @@ async function runAdminCancellationProbe(
     aiRunProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
   }
   let grace: ReturnType<typeof setTimeout> | undefined
+  let signalObservedResolve: (() => void) | undefined
+  const signalObserved = new Promise<void>(resolve => {
+    signalObservedResolve = resolve
+  })
   try {
     const stream = adapter.runActivationCancellationProbe(context, revision, {
-      abortSignal: controller.signal,
+      get abortSignal() {
+        signalObservedResolve?.()
+        return controller.signal
+      },
       deadlineAt: new Date(Date.now() + ADMIN_PROBE_TIMEOUT_MS).toISOString(),
       selectedCapabilities: selectedCapabilities(emptyCapabilities()),
       task: probeTask(emptyCapabilities()),
@@ -439,7 +446,11 @@ async function runAdminCancellationProbe(
       }
       return false
     })()
-    await Promise.resolve()
+    const handoff = await Promise.race([
+      signalObserved.then(() => 'signal_observed' as const),
+      outcome.then(() => 'terminal_observed' as const),
+    ])
+    if (handoff === 'terminal_observed') return await outcome
     controller.abort()
     return await Promise.race([
       outcome,
@@ -1310,12 +1321,16 @@ export async function deleteAiProviderSecretCandidate(
 export async function reencryptAiProviderSecrets(
   db: SqlServerDatabase,
   keyring: AiProviderSecretKeyring,
-  input: { fromRootKeyVersion: string },
+  input: { batchSize?: number; fromRootKeyVersion: string },
 ): Promise<{
   fromRootKeyVersion: string
   reencryptedCount: number
   toRootKeyVersion: string
 }> {
+  const batchSize = input.batchSize ?? 100
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 1_000) {
+    throw new Error('AI provider-secret rotation batch size must be 1-1000')
+  }
   const toRootKeyVersion = keyring.activeWriteVersion
   if (input.fromRootKeyVersion === toRootKeyVersion) {
     return {
@@ -1324,9 +1339,12 @@ export async function reencryptAiProviderSecrets(
       toRootKeyVersion,
     }
   }
-  const count = await db.transaction('SERIALIZABLE', async manager => {
-    const rows = await manager.query<AiProviderSecretRow[]>(
-      `SELECT [id], [ai_connection_id] AS [connectionId],
+  let count = 0
+  let cursor: string | null = null
+  while (true) {
+    const batch = await db.transaction('SERIALIZABLE', async manager => {
+      const rows = await manager.query<AiProviderSecretRow[]>(
+        `SELECT TOP (${batchSize}) [id], [ai_connection_id] AS [connectionId],
          [revision_number] AS [revisionNumber], [status],
          [ciphertext], [nonce],
          [authentication_tag] AS [authenticationTag],
@@ -1336,35 +1354,51 @@ export async function reencryptAiProviderSecrets(
          [activated_at] AS [activatedAt],
          [revision_token] AS [revisionToken]
        FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
-       WHERE [root_key_version] = @0 AND [ciphertext] IS NOT NULL`,
-      [input.fromRootKeyVersion],
-    )
-    for (const row of rows) {
-      const plaintext = decryptRow(keyring, row)
-      const encrypted = encryptAiProviderSecret(
-        keyring,
-        { connectionId: row.connectionId, secretVersionId: row.id },
-        plaintext,
+       WHERE [root_key_version] = @0 AND [ciphertext] IS NOT NULL
+         AND (@1 IS NULL OR [id] > CONVERT(uniqueidentifier, @1))
+       ORDER BY [id]`,
+        [input.fromRootKeyVersion, cursor],
       )
-      await manager.query(
-        `UPDATE [ai_provider_secret_versions]
+      let affectedRowCount = 0
+      for (const row of rows) {
+        const plaintext = decryptRow(keyring, row)
+        const encrypted = encryptAiProviderSecret(
+          keyring,
+          { connectionId: row.connectionId, secretVersionId: row.id },
+          plaintext,
+        )
+        const updatedRows = await manager.query<Array<{ updatedId: string }>>(
+          `UPDATE [ai_provider_secret_versions]
          SET [ciphertext] = @1, [nonce] = @2, [authentication_tag] = @3,
            [cipher_format_version] = @4, [root_key_version] = @5,
            [revision_token] = NEWID()
-         WHERE [id] = @0 AND [revision_token] = @6`,
-        [
-          row.id,
-          encrypted.ciphertext,
-          encrypted.nonce,
-          encrypted.authenticationTag,
-          encrypted.formatVersion,
-          encrypted.rootKeyVersion,
-          row.revisionToken,
-        ],
-      )
-    }
-    return rows.length
-  })
+         OUTPUT INSERTED.[id] AS [updatedId]
+         WHERE [id] = @0 AND [revision_token] = @6
+           AND [root_key_version] = @7`,
+          [
+            row.id,
+            encrypted.ciphertext,
+            encrypted.nonce,
+            encrypted.authenticationTag,
+            encrypted.formatVersion,
+            encrypted.rootKeyVersion,
+            row.revisionToken,
+            input.fromRootKeyVersion,
+          ],
+        )
+        affectedRowCount += updatedRows.length
+      }
+      return {
+        affectedRowCount,
+        cursor: rows.at(-1)?.id ?? null,
+        selectedRowCount: rows.length,
+      }
+    })
+    count += batch.affectedRowCount
+    if (batch.selectedRowCount === 0 || batch.cursor === null) break
+    cursor = batch.cursor
+    if (batch.selectedRowCount < batchSize) break
+  }
   return {
     fromRootKeyVersion: input.fromRootKeyVersion,
     reencryptedCount: count,

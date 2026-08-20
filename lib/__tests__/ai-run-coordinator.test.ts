@@ -14,6 +14,11 @@ const IDENTITY = {
   aiRunProfileRevisionId: 'profile-revision-1',
 } as AiRunIdentity
 
+const MANUAL_PROBE_ACQUISITION = {
+  breakerStatus: 'closed',
+  healthStatus: 'healthy',
+} as const
+
 function store(
   overrides: Partial<AiRunCoordinationStore> = {},
 ): AiRunCoordinationStore {
@@ -23,7 +28,7 @@ function store(
     enqueue: vi.fn(async () => ({ status: 'queued' as const })),
     finish: vi.fn(async () => undefined),
     acquireRecoveryProbe: vi.fn(async () => false),
-    acquireManualRecoveryProbe: vi.fn(async () => false),
+    acquireManualRecoveryProbe: vi.fn(async () => null),
     finishRecoveryProbe: vi.fn(async () => undefined),
     listDueRecoveryProbes: vi.fn(async () => []),
     requeueForRetry: vi.fn(async () => 'applied' as const),
@@ -150,7 +155,7 @@ describe('AI run coordinator', () => {
     let currentTime = 1_000
     const telemetry: AiRunTelemetryEvent[] = []
     const coordination = store({
-      acquireManualRecoveryProbe: vi.fn(async () => true),
+      acquireManualRecoveryProbe: vi.fn(async () => MANUAL_PROBE_ACQUISITION),
       finishRecoveryProbe: vi.fn(async () => ({
         breakerOpened: false,
         breakerStatus: 'closed' as const,
@@ -197,7 +202,60 @@ describe('AI run coordinator', () => {
         }),
       ]),
     )
+    expect(telemetry[0]).toMatchObject({
+      breakerStatus: 'closed',
+      healthStatus: 'healthy',
+      name: 'ai_health_probe_started',
+    })
   })
+
+  it.each(['automatic', 'manual'] as const)(
+    'emits the breaker-open alarm for a %s probe transition',
+    async kind => {
+      const target = {
+        adapterType: 'controlled_test',
+        adapterVersion: '1',
+        identity: IDENTITY,
+        inactivityTimeBudgetMs: 1_000,
+        runType: 'generate_without_images' as const,
+        totalTimeBudgetMs: 10_000,
+      }
+      const telemetry: AiRunTelemetryEvent[] = []
+      const coordination = store({
+        acquireManualRecoveryProbe: vi.fn(async () => MANUAL_PROBE_ACQUISITION),
+        acquireRecoveryProbe: vi.fn(async () => true),
+        finishRecoveryProbe: vi.fn(async () => ({
+          breakerOpened: true,
+          breakerStatus: 'open' as const,
+          healthStateChanged: false,
+          healthStatus: 'unavailable' as const,
+        })),
+        listDueRecoveryProbes: vi.fn(async () => [target]),
+      })
+      const coordinator = createAiRunCoordinator({
+        coordination,
+        telemetry: {
+          emit: event => {
+            telemetry.push(event)
+          },
+        },
+      })
+
+      if (kind === 'automatic') {
+        await coordinator.runDueRecoveryProbes(async () => ({
+          succeeded: false,
+        }))
+      } else {
+        await coordinator.runManualHealthProbe(target, 'actor', async () => ({
+          succeeded: false,
+        }))
+      }
+
+      expect(telemetry.map(event => event.name)).toContain(
+        'ai_alarm_breaker_opened',
+      )
+    },
+  )
 
   it('skips a lost recovery race and normalizes a probe exception', async () => {
     const target = {
@@ -260,8 +318,8 @@ describe('AI run coordinator', () => {
     const coordination = store({
       acquireManualRecoveryProbe: vi
         .fn()
-        .mockResolvedValueOnce(false)
-        .mockResolvedValueOnce(true),
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(MANUAL_PROBE_ACQUISITION),
       finishRecoveryProbe: vi.fn(async () => ({
         breakerOpened: false,
         healthStateChanged: false,
@@ -317,7 +375,9 @@ describe('AI run coordinator', () => {
           totalTimeBudgetMs: 100,
         }
         const coordination = store({
-          acquireManualRecoveryProbe: vi.fn(async () => true),
+          acquireManualRecoveryProbe: vi.fn(
+            async () => MANUAL_PROBE_ACQUISITION,
+          ),
           acquireRecoveryProbe: vi.fn(async () => true),
           finishRecoveryProbe: vi.fn(async () => ({
             breakerOpened: false,

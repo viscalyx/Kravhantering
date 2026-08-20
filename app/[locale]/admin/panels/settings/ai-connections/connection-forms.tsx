@@ -364,7 +364,8 @@ export function AttestationForm({
       ),
       reviewDueAt: nullable(data.get('reviewDueAt')),
       reviewedAt: nullable(data.get('reviewedAt')),
-      revisionToken: editable?.revisionToken ?? null,
+      revisionToken:
+        savedDraft?.revisionToken ?? editable?.revisionToken ?? null,
       subprocessors: splitList(data.get('subprocessors')),
     }
   }

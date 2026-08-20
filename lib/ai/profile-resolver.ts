@@ -440,7 +440,7 @@ export function createAiRunProfileResolver(
         profile.modelRevisionId as AiConnectionModelRevisionId
       const profileSnapshot = freezePersistedProfile(profile)
       const trustConfiguration = profileSnapshot.trustConfiguration
-      if (!trustConfiguration) throw blocked()
+      if (!trustConfiguration) throw blocked(profileSnapshot)
       const verifiedCapabilities = Object.freeze({
         aiAnalysis: verified.aiAnalysis,
         cost: verified.cost,

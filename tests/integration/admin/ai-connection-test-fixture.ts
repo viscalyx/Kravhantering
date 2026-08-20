@@ -120,13 +120,13 @@ async function withProfileTriggersDisabled(
   db: DataSource,
   operation: () => Promise<void>,
 ) {
-  await db.query(
-    'DISABLE TRIGGER [trg_ai_run_profile_revisions_immutable] ON [ai_run_profile_revisions]',
-  )
-  await db.query(
-    'DISABLE TRIGGER [trg_ai_run_profile_revisions_delete_drafts_only] ON [ai_run_profile_revisions]',
-  )
   try {
+    await db.query(
+      'DISABLE TRIGGER [trg_ai_run_profile_revisions_immutable] ON [ai_run_profile_revisions]',
+    )
+    await db.query(
+      'DISABLE TRIGGER [trg_ai_run_profile_revisions_delete_drafts_only] ON [ai_run_profile_revisions]',
+    )
     await operation()
   } finally {
     await db.query(

@@ -372,5 +372,37 @@ export function formatSchemaIssues(error: ZodError): FormattedSchemaIssue[] {
 }
 
 export function parseJsonObject(rawContent: string): unknown {
-  return JSON.parse(rawContent)
+  try {
+    return JSON.parse(rawContent)
+  } catch {
+    const fenced = rawContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/iu)?.[1]
+    if (fenced) return JSON.parse(fenced)
+
+    const start = rawContent.indexOf('{')
+    let depth = 0
+    let escaped = false
+    let inString = false
+    for (
+      let index = start;
+      index >= 0 && index < rawContent.length;
+      index += 1
+    ) {
+      const character = rawContent[index]
+      if (inString) {
+        if (escaped) escaped = false
+        else if (character === '\\') escaped = true
+        else if (character === '"') inString = false
+        continue
+      }
+      if (character === '"') {
+        inString = true
+      } else if (character === '{') {
+        depth += 1
+      } else if (character === '}') {
+        depth -= 1
+        if (depth === 0) return JSON.parse(rawContent.slice(start, index + 1))
+      }
+    }
+    return JSON.parse(rawContent)
+  }
 }

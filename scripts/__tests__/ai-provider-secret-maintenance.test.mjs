@@ -290,7 +290,7 @@ describe('plain-Node AI provider-secret maintenance', () => {
   it('validates bounded rotation arguments and rotates one fenced batch', async () => {
     const serialized = serializedKeyring()
     const row = encryptedRow(serialized)
-    const update = vi.fn(async () => undefined)
+    const update = vi.fn(async () => [{ updatedId: row.id }])
     const db = {
       query: vi.fn(async () => [{ count: 0 }]),
       transaction: vi.fn(async (_level, use) =>
@@ -318,6 +318,25 @@ describe('plain-Node AI provider-secret maintenance', () => {
       expect.stringContaining('UPDATE [ai_provider_secret_versions]'),
       expect.arrayContaining([row.id, 'root-2', row.revisionToken, 'root-1']),
     )
+
+    const missedUpdateDb = {
+      query: vi.fn(async () => [{ count: 1 }]),
+      transaction: vi.fn(async (_level, use) =>
+        use({
+          query: vi.fn().mockResolvedValueOnce([row]).mockResolvedValueOnce([]),
+        }),
+      ),
+    }
+    await expect(
+      reencryptAiProviderSecretBatch(missedUpdateDb, keyring(serialized), {
+        batchSize: 100,
+        fromRootKeyVersion: 'root-1',
+      }),
+    ).resolves.toMatchObject({
+      reencryptedCount: 0,
+      remainingCount: 1,
+      safeToRemoveFromRootKeyVersion: false,
+    })
 
     for (const input of [
       { batchSize: 0, fromRootKeyVersion: 'root-1' },

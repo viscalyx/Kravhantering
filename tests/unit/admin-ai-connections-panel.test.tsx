@@ -198,6 +198,11 @@ describe('AiConnectionsPanel', () => {
     expect(
       screen.getAllByText('admin.aiConnections.health.unknown'),
     ).toHaveLength(2)
+    for (const badge of screen.getAllByText(
+      /admin\.aiConnections\.(?:health|lifecycle)\./,
+    )) {
+      expect(badge.closest('[role="status"]')).toBeNull()
+    }
 
     const firstRegion = container.querySelector(
       `#ai-connection-${connectionOne.id}`,
@@ -1425,6 +1430,7 @@ describe('AiConnectionsPanel workflows', () => {
       'save_attestation',
       'attest',
     ])
+    expect(actionBodies[1].attestation.revisionToken).toBe(saved.revisionToken)
     expect(actionBodies[1].attestation).not.toHaveProperty('id')
     expect(actionBodies[1].attestation).not.toHaveProperty('status')
   })

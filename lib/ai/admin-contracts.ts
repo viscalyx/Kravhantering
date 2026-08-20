@@ -88,7 +88,7 @@ export const createAiConnectionSchema = z
     }
   })
 
-export const updateAiConnectionSchema = createAiConnectionSchema.extend({
+export const updateAiConnectionSchema = createAiConnectionSchema.safeExtend({
   revisionToken: aiRevisionTokenSchema,
 })
 

@@ -1007,18 +1007,19 @@ describe('AI connection administration transactions against SQL Server', () => {
     })
     const draftProfile = profile.draftRevision
     if (!draftProfile) throw new Error('Profile draft missing')
-    await expect(
-      store.activateRunProfileRevision({
-        attestationRevisionToken: validAttestation.revisionToken,
-        connectionEvidenceId: verifiedConnection.connectionEvidenceId,
-        connectionRevisionToken: activeConnection.revisionToken,
-        modelRevisionToken: verifiedRevision.revisionToken,
-        profileRevisionId: draftProfile.id,
-        profileRevisionToken: draftProfile.revisionToken,
-        profileToken: profile.revisionToken,
-        secretVersionId: firstSecret.id,
-      }),
-    ).resolves.toMatchObject({ activeRevisionId: draftProfile.id })
+    const activatedProfile = await store.activateRunProfileRevision({
+      attestationRevisionToken: validAttestation.revisionToken,
+      connectionEvidenceId: verifiedConnection.connectionEvidenceId,
+      connectionRevisionToken: activeConnection.revisionToken,
+      modelRevisionToken: verifiedRevision.revisionToken,
+      profileRevisionId: draftProfile.id,
+      profileRevisionToken: draftProfile.revisionToken,
+      profileToken: profile.revisionToken,
+      secretVersionId: firstSecret.id,
+    })
+    expect(activatedProfile?.activeRevisionId?.toLowerCase()).toBe(
+      draftProfile.id.toLowerCase(),
+    )
 
     const beforeRotation = await store.getConnection(created.id)
     if (!beforeRotation) throw new Error('Active connection missing')
@@ -1052,7 +1053,9 @@ describe('AI connection administration transactions against SQL Server', () => {
       ]),
     )
     const entries = await store.listRunProfileActivationEntries()
-    expect(entries[0]?.profile.activeRevisionId).toBe(draftProfile.id)
+    expect(entries[0]?.profile.activeRevisionId?.toLowerCase()).toBe(
+      draftProfile.id.toLowerCase(),
+    )
     expect(entries[0]?.snapshot?.connection.blockers).toEqual(
       expect.arrayContaining([
         { code: 'connection_verification_missing' },
@@ -1230,18 +1233,19 @@ describe('AI connection administration transactions against SQL Server', () => {
     })
     const siblingProfileRevision = siblingProfile.draftRevision
     if (!siblingProfileRevision) throw new Error('Sibling profile missing')
-    await expect(
-      store.activateRunProfileRevision({
-        attestationRevisionToken: validAttestation.revisionToken,
-        connectionEvidenceId,
-        connectionRevisionToken: activated?.revisionToken ?? '',
-        modelRevisionToken: siblingVerifiedRevision.revisionToken,
-        profileRevisionId: siblingProfileRevision.id,
-        profileRevisionToken: siblingProfileRevision.revisionToken,
-        profileToken: siblingProfile.revisionToken,
-        secretVersionId: null,
-      }),
-    ).resolves.toMatchObject({ activeRevisionId: siblingProfileRevision.id })
+    const activatedSibling = await store.activateRunProfileRevision({
+      attestationRevisionToken: validAttestation.revisionToken,
+      connectionEvidenceId,
+      connectionRevisionToken: activated?.revisionToken ?? '',
+      modelRevisionToken: siblingVerifiedRevision.revisionToken,
+      profileRevisionId: siblingProfileRevision.id,
+      profileRevisionToken: siblingProfileRevision.revisionToken,
+      profileToken: siblingProfile.revisionToken,
+      secretVersionId: null,
+    })
+    expect(activatedSibling?.activeRevisionId?.toLowerCase()).toBe(
+      siblingProfileRevision.id.toLowerCase(),
+    )
     expect(await store.listRunProfiles()).toHaveLength(2)
     expect(await store.listRunProfileActivationEntries()).toHaveLength(2)
     expect(

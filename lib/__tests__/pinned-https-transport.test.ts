@@ -32,9 +32,11 @@ describe('pinned HTTPS transport', () => {
     incoming.destroy = vi.fn()
     const outgoing = new EventEmitter() as EventEmitter & {
       end: () => void
+      setTimeout: ReturnType<typeof vi.fn>
       write: ReturnType<typeof vi.fn>
     }
     outgoing.write = vi.fn()
+    outgoing.setTimeout = vi.fn()
     outgoing.end = () => {
       incoming.emit('data', Buffer.from('{"ok":true}'))
       incoming.emit('end')
@@ -44,6 +46,17 @@ describe('pinned HTTPS transport', () => {
         expect(error).toBeNull()
         expect(address).toBe('93.184.216.34')
       })
+      options.lookup(
+        'ignored',
+        { all: true },
+        (
+          error: unknown,
+          addresses: Array<{ address: string; family: number }>,
+        ) => {
+          expect(error).toBeNull()
+          expect(addresses).toEqual([{ address: '93.184.216.34', family: 4 }])
+        },
+      )
       callback(incoming)
       return outgoing
     })
@@ -87,9 +100,11 @@ describe('pinned HTTPS transport', () => {
     incoming.destroy = vi.fn(error => incoming.emit('error', error))
     const outgoing = new EventEmitter() as EventEmitter & {
       end: () => void
+      setTimeout: ReturnType<typeof vi.fn>
       write: ReturnType<typeof vi.fn>
     }
     outgoing.write = vi.fn()
+    outgoing.setTimeout = vi.fn()
     outgoing.end = () => {
       incoming.emit('data', Buffer.alloc(4 * 1024 * 1024 + 1))
     }
@@ -103,9 +118,11 @@ describe('pinned HTTPS transport', () => {
 
     const failedOutgoing = new EventEmitter() as EventEmitter & {
       end: () => void
+      setTimeout: ReturnType<typeof vi.fn>
       write: ReturnType<typeof vi.fn>
     }
     failedOutgoing.write = vi.fn()
+    failedOutgoing.setTimeout = vi.fn()
     failedOutgoing.end = () => failedOutgoing.emit('error', new Error('socket'))
     const failedRequest = vi.fn(() => failedOutgoing)
     await expect(
@@ -131,6 +148,34 @@ describe('pinned HTTPS transport', () => {
     controller.abort()
 
     await expect(pending).rejects.toThrow('was aborted')
+    expect(outgoing.destroy).toHaveBeenCalledOnce()
+  })
+
+  it('force-closes a hanging pinned socket at the default timeout', async () => {
+    let timeoutCallback: (() => void) | undefined
+    const outgoing = new EventEmitter() as EventEmitter & {
+      destroy: ReturnType<typeof vi.fn>
+      end: ReturnType<typeof vi.fn>
+      setTimeout: ReturnType<typeof vi.fn>
+      write: ReturnType<typeof vi.fn>
+    }
+    outgoing.write = vi.fn()
+    outgoing.end = vi.fn()
+    outgoing.destroy = vi.fn(error => outgoing.emit('error', error))
+    outgoing.setTimeout = vi.fn((_milliseconds, callback) => {
+      timeoutCallback = callback
+      return outgoing
+    })
+    const request = vi.fn(() => outgoing)
+    const pending = createPinnedHttpsFetch(request as never)(input() as never)
+
+    expect(outgoing.setTimeout).toHaveBeenCalledWith(
+      15_000,
+      expect.any(Function),
+    )
+    timeoutCallback?.()
+
+    await expect(pending).rejects.toThrow('timed out')
     expect(outgoing.destroy).toHaveBeenCalledOnce()
   })
 })

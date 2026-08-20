@@ -347,6 +347,31 @@ describe('AI run profile resolver', () => {
     })
   })
 
+  it('retains profile identity when a trust snapshot becomes unavailable', async () => {
+    const profile = persistedProfile()
+    const trustConfiguration = profile.trustConfiguration
+    let reads = 0
+    Object.defineProperty(profile, 'trustConfiguration', {
+      enumerable: true,
+      get: () => {
+        reads += 1
+        return reads === 1 ? trustConfiguration : null
+      },
+    })
+    const { resolver } = setup(profile)
+
+    await expect(
+      resolver.resolve('generate_without_images'),
+    ).rejects.toMatchObject({
+      code: 'profile_blocked',
+      identity: {
+        aiConnectionId: profile.connectionId,
+        aiConnectionModelRevisionId: profile.modelRevisionId,
+        aiRunProfileRevisionId: profile.profileRevisionId,
+      },
+    })
+  })
+
   it.each(['profile source', 'adapter configuration'] as const)(
     'normalizes an internal %s failure to a safe blocked-profile error',
     async boundary => {

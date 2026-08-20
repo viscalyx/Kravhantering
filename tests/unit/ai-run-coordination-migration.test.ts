@@ -16,6 +16,14 @@ describe('AI run coordination migration', () => {
     expect(sql).toContain('idx_ai_run_coordination_entries_fifo')
     expect(sql).toContain('[maximum_output_tokens]')
     expect(sql).toContain('[circuit_open_reason]')
+    expect(
+      sql.indexOf("SET [circuit_open_reason] = N'connection_unavailable'"),
+    ).toBeGreaterThan(sql.indexOf('[circuit_open_reason] nvarchar(80) NULL'))
+    expect(
+      sql.indexOf('chk_ai_connection_model_operational_states_circuit_reason'),
+    ).toBeGreaterThan(
+      sql.indexOf("SET [circuit_open_reason] = N'connection_unavailable'"),
+    )
     expect(sql).toContain('GRANT SELECT, INSERT, DELETE')
     expect(sql).toContain(
       'GRANT UPDATE ([status], [attempt_count], [not_before], [lease_owner_id], [lease_expires_at], [updated_at])',

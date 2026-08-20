@@ -16,6 +16,7 @@ export function effectiveAiModelHealthStatus(input: {
   const now = (input.now ?? new Date()).getTime()
   if (
     !Number.isFinite(evidenceAt) ||
+    !Number.isFinite(now) ||
     evidenceAt > now ||
     now - evidenceAt > AI_MODEL_HEALTH_EVIDENCE_MAX_AGE_MS
   ) {

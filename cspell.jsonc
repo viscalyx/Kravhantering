@@ -1432,7 +1432,8 @@
     "pointerenter",
     "pointerleave",
     "sidägda",
-    "valideringsbuild"
+    "valideringsbuild",
+    "modelleverantör"
   ],
   "flagWords": [],
   "ignorePaths": [

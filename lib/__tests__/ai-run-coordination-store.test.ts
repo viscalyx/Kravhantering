@@ -128,6 +128,9 @@ describe('SQL Server AI run coordination store', () => {
     expect(sql).toContain(
       '@model_running + @waiting_for_model >= @model_maximum_concurrency',
     )
+    expect(sql).toContain(
+      "([status] <> N'running' AND [total_deadline_at] <= @now)",
+    )
     expect(sql).not.toMatch(/prompt|image|result|content/u)
   })
 
@@ -152,6 +155,9 @@ describe('SQL Server AI run coordination store', () => {
       '[ai_connection_model_revision_id] = @model_revision_id',
     )
     expect(sql).toContain('[lease_expires_at]')
+    expect(sql).toContain(
+      "([status] <> N'running' AND [total_deadline_at] <= @now)",
+    )
     expect(sql).toContain("N'cancelled' AS [acquisitionStatus]")
     expect(sql).toContain(
       '[cancellation_requested_at] AS [cancellationRequestedAt]',
@@ -194,7 +200,7 @@ describe('SQL Server AI run coordination store', () => {
       healthStateChanged: 1,
       healthStatus: 'healthy',
     }
-    const { db } = database([[state], [state]])
+    const { db, query } = database([[state], [state]])
     const store = createSqlServerAiRunCoordinationStore(db)
 
     await expect(
@@ -218,6 +224,8 @@ describe('SQL Server AI run coordination store', () => {
         succeeded: true,
       }),
     ).resolves.toMatchObject({ healthStatus: 'healthy' })
+    const finishProbeSql = String((query.mock.calls as unknown[][])[1]?.[0])
+    expect(finishProbeSql).toContain("@previous_breaker <> N'open'")
   })
 
   it('fences renewals and retries by both invocation and lease ownership', async () => {
@@ -401,7 +409,7 @@ describe('SQL Server AI run coordination store', () => {
         modelRevisionId: 'model',
         probeRunId: 'probe',
       }),
-    ).resolves.toBe(false)
+    ).resolves.toBeNull()
   })
 
   it('leases only eligible automatic recovery probes and stops after five', async () => {
@@ -469,7 +477,15 @@ describe('SQL Server AI run coordination store', () => {
   })
 
   it('leases explicit manual probes independently from automatic eligibility', async () => {
-    const { db, query } = database([[{ probeStatus: 'acquired' }]])
+    const { db, query } = database([
+      [
+        {
+          breakerStatus: 'closed',
+          healthStatus: 'healthy',
+          probeStatus: 'acquired',
+        },
+      ],
+    ])
     const store = createSqlServerAiRunCoordinationStore(db)
 
     await expect(
@@ -480,14 +496,18 @@ describe('SQL Server AI run coordination store', () => {
         modelRevisionId: IDENTITY.aiConnectionModelRevisionId,
         probeRunId: '50000000-0000-4000-8000-000000000001',
       }),
-    ).resolves.toBe(true)
+    ).resolves.toEqual({
+      breakerStatus: 'closed',
+      healthStatus: 'healthy',
+    })
 
-    expect(String((query.mock.calls as unknown[][])[0]?.[0])).toContain(
-      "[circuit_breaker_status] IN (N'closed', N'open')",
+    const sql = String((query.mock.calls as unknown[][])[0]?.[0])
+    expect(sql).toContain("[circuit_breaker_status] IN (N'closed', N'open')")
+    expect(sql).toContain(
+      "WHEN [circuit_breaker_status] = N'open' THEN N'half_open'",
     )
-    expect(String((query.mock.calls as unknown[][])[0]?.[0])).toContain(
-      'INSERT INTO [ai_run_coordination_entries]',
-    )
+    expect(sql).toContain('DELETED.[circuit_breaker_status]')
+    expect(sql).toContain('INSERT INTO [ai_run_coordination_entries]')
   })
 
   it('turns an authentication failure during recovery into manual recovery', async () => {

@@ -649,6 +649,29 @@ describe('AI administration provider composition', () => {
       'invalid catalog',
     )
     await expect(adapter.fetchCatalog(context)).rejects.toThrow('size limit')
+
+    const cancel = vi.fn()
+    const streamedContext: AiAdminAdapterContext = {
+      ...context,
+      egress: {
+        fetch: vi.fn(
+          async () =>
+            new Response(
+              new ReadableStream({
+                cancel,
+                start(controller) {
+                  controller.enqueue(new Uint8Array(4 * 1024 * 1024))
+                  controller.enqueue(new Uint8Array(1))
+                },
+              }),
+            ),
+        ),
+      },
+    }
+    await expect(adapter.fetchCatalog(streamedContext)).rejects.toThrow(
+      'size limit',
+    )
+    expect(cancel).toHaveBeenCalledOnce()
   })
 
   it('sanitizes status-aware connection probe failures', async () => {

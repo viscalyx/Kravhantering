@@ -122,7 +122,6 @@ export async function sanitizeAiImage(
     image.data.byteLength,
   )
   let pipeline: ReturnType<typeof sharp>
-  let dimensions: { height: number; width: number }
   try {
     const metadataPipeline = sharp(input, {
       animated: true,
@@ -130,7 +129,7 @@ export async function sanitizeAiImage(
       limitInputPixels: false,
       sequentialRead: true,
     })
-    dimensions = validateMetadata(await metadataPipeline.metadata(), limits)
+    validateMetadata(await metadataPipeline.metadata(), limits)
     pipeline = sharp(input, {
       animated: true,
       failOn: 'error',
@@ -141,20 +140,24 @@ export async function sanitizeAiImage(
     if (error instanceof AiImageSanitizationError) throw error
     return reject('image_decode_failed')
   }
-  let output: Buffer
+  let encoded: Awaited<ReturnType<ReturnType<typeof sharp>['toBuffer']>> & {
+    data: Buffer
+    info: { height: number; width: number }
+  }
   try {
-    output = await pipeline
+    encoded = await pipeline
       .rotate()
       .png({ adaptiveFiltering: false, compressionLevel: 9 })
-      .toBuffer()
+      .toBuffer({ resolveWithObject: true })
   } catch {
     return reject('image_decode_failed')
   }
+  const { data: output, info } = encoded
   if (output.byteLength > limits.maximumBytes) return reject('image_too_large')
   return Object.freeze({
     data: output,
-    height: dimensions.height,
+    height: info.height,
     mediaType: 'image/png',
-    width: dimensions.width,
+    width: info.width,
   })
 }

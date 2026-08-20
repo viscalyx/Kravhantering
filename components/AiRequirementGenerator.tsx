@@ -638,7 +638,10 @@ export default function AiRequirementGenerator({
           },
         })
       })
-      .finally(() => setAuthoringProfilesLoading(false))
+      .finally(() => {
+        if (controller.signal.aborted) return
+        setAuthoringProfilesLoading(false)
+      })
 
     return () => controller.abort()
   }, [isAiGenerationEnabled, open])

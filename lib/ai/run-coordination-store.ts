@@ -1,4 +1,5 @@
 import type {
+  AiManualRecoveryProbeAcquisition,
   AiOperationalStateTransition,
   AiRecoveryProbeTarget,
   AiRunAcquireResult,
@@ -95,7 +96,7 @@ const ENQUEUE_SQL = `
   DECLARE @now datetime2(3) = SYSUTCDATETIME();
 
   DELETE FROM [ai_run_coordination_entries]
-  WHERE [total_deadline_at] <= @now
+  WHERE ([status] <> N'running' AND [total_deadline_at] <= @now)
      OR ([status] = N'running' AND [lease_expires_at] <= @now);
 
   IF NOT EXISTS (
@@ -195,7 +196,7 @@ const ACQUIRE_SQL = `
   SET NOCOUNT ON;
   DECLARE @now datetime2(3) = SYSUTCDATETIME();
   DELETE FROM [ai_run_coordination_entries]
-  WHERE [total_deadline_at] <= @now
+  WHERE ([status] <> N'running' AND [total_deadline_at] <= @now)
      OR ([status] = N'running' AND [lease_expires_at] <= @now);
 
   IF NOT EXISTS (SELECT 1 FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK) WHERE [application_run_id] = @0 AND [fencing_token] = @3)
@@ -366,7 +367,9 @@ export function createSqlServerAiRunCoordinationStore(
       )
     },
 
-    async acquireManualRecoveryProbe(input): Promise<boolean> {
+    async acquireManualRecoveryProbe(
+      input,
+    ): Promise<AiManualRecoveryProbeAcquisition | null> {
       const rows = await db.transaction('SERIALIZABLE', manager =>
         manager.query<CoordinationRow[]>(
           `SET NOCOUNT ON;
@@ -380,14 +383,26 @@ export function createSqlServerAiRunCoordinationStore(
            WHERE [state].[ai_connection_model_revision_id] = @0
              AND [state].[lease_expires_at] <= @now
              AND [entry].[status] = N'running';
-           DECLARE @acquired TABLE ([probeStatus] nvarchar(24));
+           DECLARE @acquired TABLE (
+             [probeStatus] nvarchar(24), [healthStatus] nvarchar(24),
+             [breakerStatus] nvarchar(24)
+           );
            UPDATE [ai_connection_model_operational_states] WITH (UPDLOCK, HOLDLOCK)
-           SET [circuit_breaker_status] = N'half_open',
-               [circuit_open_reason] = COALESCE([circuit_open_reason], N'manual_health_check'),
+           SET [circuit_breaker_status] = CASE
+                 WHEN [circuit_breaker_status] = N'open' THEN N'half_open'
+                 ELSE [circuit_breaker_status]
+               END,
+               [circuit_open_reason] = CASE
+                 WHEN [circuit_breaker_status] = N'open'
+                   THEN COALESCE([circuit_open_reason], N'manual_health_check')
+                 ELSE [circuit_open_reason]
+               END,
                [lease_owner_id] = @1, [lease_run_id] = @2,
                [lease_expires_at] = DATEADD(millisecond, @3, @now),
                [updated_at] = @now, [revision_token] = NEWID()
-           OUTPUT N'acquired' INTO @acquired ([probeStatus])
+           OUTPUT N'acquired', DELETED.[health_status],
+             DELETED.[circuit_breaker_status]
+           INTO @acquired ([probeStatus], [healthStatus], [breakerStatus])
            WHERE [ai_connection_model_revision_id] = @0
              AND [circuit_breaker_status] IN (N'closed', N'open')
              AND ([lease_expires_at] IS NULL OR [lease_expires_at] <= @now)
@@ -421,7 +436,8 @@ export function createSqlServerAiRunCoordinationStore(
                DATEADD(millisecond, @3, @now), @now,
                DATEADD(millisecond, @3, @now), @now, @now
              );
-           SELECT [probeStatus] FROM @acquired;`,
+           SELECT [probeStatus], [healthStatus], [breakerStatus]
+           FROM @acquired;`,
           [
             input.modelRevisionId,
             input.leaseOwnerId,
@@ -432,7 +448,18 @@ export function createSqlServerAiRunCoordinationStore(
           ],
         ),
       )
-      return rows[0]?.probeStatus === 'acquired'
+      const acquired = rows[0]
+      if (
+        acquired?.probeStatus !== 'acquired' ||
+        !acquired.breakerStatus ||
+        !acquired.healthStatus
+      ) {
+        return null
+      }
+      return {
+        breakerStatus: acquired.breakerStatus,
+        healthStatus: acquired.healthStatus,
+      }
     },
 
     async cancellationRequested(input) {
@@ -750,7 +777,9 @@ export function createSqlServerAiRunCoordinationStore(
            WHERE [application_run_id] = @2 AND [fencing_token] = @2
              AND [lease_owner_id] = @1 AND [status] = N'running'
              AND [lease_expires_at] > @now;
-           SELECT 0 AS [breakerOpened],
+           SELECT CASE WHEN @previous_breaker <> N'open'
+                          AND [circuit_breaker_status] = N'open'
+                       THEN 1 ELSE 0 END AS [breakerOpened],
                   CASE WHEN [health_status] <> @previous_health
                          OR [circuit_breaker_status] <> @previous_breaker
                        THEN 1 ELSE 0 END AS [healthStateChanged],

@@ -80,12 +80,33 @@ async function readCatalog(
       'The AI provider catalog exceeded its size limit.',
     )
   }
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  if (bytes.byteLength > MAX_CATALOG_BYTES) {
-    throw new OpenRouterAdminRequestError(
-      'invalid_response',
-      'The AI provider catalog exceeded its size limit.',
-    )
+  const chunks: Uint8Array[] = []
+  let receivedBytes = 0
+  const reader = response.body?.getReader()
+  if (reader) {
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        receivedBytes += value.byteLength
+        if (receivedBytes > MAX_CATALOG_BYTES) {
+          await reader.cancel().catch(() => undefined)
+          throw new OpenRouterAdminRequestError(
+            'invalid_response',
+            'The AI provider catalog exceeded its size limit.',
+          )
+        }
+        chunks.push(value)
+      }
+    } finally {
+      reader.releaseLock()
+    }
+  }
+  const bytes = new Uint8Array(receivedBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
   }
   let parsed: unknown
   try {
@@ -208,20 +229,25 @@ function runOpenRouterNegativeProbe(
       : negativeCase === 'prohibited_function_call'
         ? 'function_call'
         : 'tool_calls'
-  const response =
-    negativeCase === 'safe_provider_error'
-      ? new Response('raw-provider-secret-must-not-escape', { status: 503 })
-      : new Response(
-          JSON.stringify({
-            choices: [{ message: { content: '{"probe":"ok"}', [field]: [] } }],
-            usage: {},
-          }),
-          { headers: { 'content-type': 'application/json' } },
-        )
   return runOpenRouterAdminProbe(
     {
       ...context,
-      egress: { fetch: async () => response },
+      egress: {
+        fetch: async () =>
+          negativeCase === 'safe_provider_error'
+            ? new Response('raw-provider-secret-must-not-escape', {
+                status: 503,
+              })
+            : new Response(
+                JSON.stringify({
+                  choices: [
+                    { message: { content: '{"probe":"ok"}', [field]: [] } },
+                  ],
+                  usage: {},
+                }),
+                { headers: { 'content-type': 'application/json' } },
+              ),
+      },
     },
     revision,
     {

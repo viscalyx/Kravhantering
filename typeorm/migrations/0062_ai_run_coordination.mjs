@@ -11,6 +11,10 @@ const UP_STATEMENTS = [
     CONSTRAINT [chk_ai_run_profile_revisions_maximum_buffered_events] CHECK ([maximum_buffered_events] BETWEEN 1 AND 1024);`,
   `ALTER TABLE [ai_connection_model_operational_states] ADD
     [circuit_open_reason] nvarchar(80) NULL;`,
+  `UPDATE [ai_connection_model_operational_states]
+   SET [circuit_open_reason] = N'connection_unavailable'
+   WHERE [circuit_breaker_status] <> N'closed'
+     AND [circuit_open_reason] IS NULL;`,
   `ALTER TABLE [ai_connection_model_operational_states] ADD
     CONSTRAINT [chk_ai_connection_model_operational_states_circuit_reason]
     CHECK (([circuit_breaker_status] = N'closed' AND [circuit_open_reason] IS NULL) OR ([circuit_breaker_status] <> N'closed' AND [circuit_open_reason] IS NOT NULL));`,

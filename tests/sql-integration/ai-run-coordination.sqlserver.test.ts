@@ -310,6 +310,132 @@ describe('AI run coordination against SQL Server', () => {
     })
   })
 
+  it('keeps a past-deadline running row while its lease is live', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+    const runningId = randomUUID()
+    const runningFence = randomUUID()
+    await store.enqueue({
+      applicationRunId: runningId,
+      fencingToken: runningFence,
+      identity,
+      queueCapacity: 1,
+      totalDeadlineAt: new Date(Date.now() + 60_000),
+    })
+    await store.acquire({
+      applicationRunId: runningId,
+      fencingToken: runningFence,
+      leaseDurationMs: 30_000,
+      leaseOwnerId: runningFence,
+    })
+    await appDb().query(
+      `UPDATE [ai_run_coordination_entries]
+       SET [created_at] = DATEADD(minute, -2, SYSUTCDATETIME()),
+           [total_deadline_at] = DATEADD(minute, -1, SYSUTCDATETIME())
+       WHERE [application_run_id] = @0`,
+      [runningId],
+    )
+    const queuedId = randomUUID()
+    const queuedFence = randomUUID()
+    await expect(
+      store.enqueue({
+        applicationRunId: queuedId,
+        fencingToken: queuedFence,
+        identity,
+        queueCapacity: 1,
+        totalDeadlineAt: new Date(Date.now() + 60_000),
+      }),
+    ).resolves.toEqual({ status: 'queued' })
+    await expect(
+      appDb().query(
+        `SELECT [status] FROM [ai_run_coordination_entries]
+         WHERE [application_run_id] = @0`,
+        [runningId],
+      ),
+    ).resolves.toEqual([{ status: 'running' }])
+
+    await expect(
+      store.finish({
+        applicationRunId: runningId,
+        fencingToken: runningFence,
+        failure: { category: 'deadline_exceeded', retryable: false },
+        leaseOwnerId: runningFence,
+        outcome: 'failed',
+      }),
+    ).resolves.toMatchObject({
+      breakerOpened: false,
+      healthStatus: 'degraded',
+    })
+    await expect(
+      appDb().query(
+        `SELECT [consecutive_failure_count] AS [consecutiveFailureCount]
+         FROM [ai_connection_model_operational_states]
+         WHERE [ai_connection_model_revision_id] = @0`,
+        [identity.aiConnectionModelRevisionId],
+      ),
+    ).resolves.toEqual([{ consecutiveFailureCount: 1 }])
+    await store.abandon({
+      applicationRunId: queuedId,
+      fencingToken: queuedFence,
+    })
+  })
+
+  it('keeps a healthy closed breaker closed during a manual probe', async () => {
+    const { identity } = await createCoordinationFixture(appDb())
+    const store = createSqlServerAiRunCoordinationStore(appDb())
+    const initializationRunId = randomUUID()
+    const initializationFence = randomUUID()
+    await store.enqueue({
+      applicationRunId: initializationRunId,
+      fencingToken: initializationFence,
+      identity,
+      queueCapacity: 0,
+      totalDeadlineAt: new Date(Date.now() + 60_000),
+    })
+    await store.acquire({
+      applicationRunId: initializationRunId,
+      fencingToken: initializationFence,
+      leaseDurationMs: 30_000,
+      leaseOwnerId: initializationFence,
+    })
+    await store.finish({
+      applicationRunId: initializationRunId,
+      fencingToken: initializationFence,
+      leaseOwnerId: initializationFence,
+      outcome: 'completed',
+    })
+    const probeOwner = randomUUID()
+    const probeRunId = randomUUID()
+
+    await expect(
+      store.acquireManualRecoveryProbe({
+        identity,
+        leaseDurationMs: 30_000,
+        leaseOwnerId: probeOwner,
+        modelRevisionId: identity.aiConnectionModelRevisionId,
+        probeRunId,
+      }),
+    ).resolves.toEqual({
+      breakerStatus: 'closed',
+      healthStatus: 'healthy',
+    })
+    await expect(
+      appDb().query(
+        `SELECT [circuit_breaker_status] AS [breakerStatus],
+                [circuit_open_reason] AS [circuitOpenReason]
+         FROM [ai_connection_model_operational_states]
+         WHERE [ai_connection_model_revision_id] = @0`,
+        [identity.aiConnectionModelRevisionId],
+      ),
+    ).resolves.toEqual([{ breakerStatus: 'closed', circuitOpenReason: null }])
+    await store.finishRecoveryProbe({
+      leaseOwnerId: probeOwner,
+      modelRevisionId: identity.aiConnectionModelRevisionId,
+      probeRunId,
+      succeeded: true,
+    })
+  })
+
   it('opens after five qualifying failures and safely reclaims recovery leases', async () => {
     const { identity } = await createCoordinationFixture(appDb())
     const store = createSqlServerAiRunCoordinationStore(appDb())

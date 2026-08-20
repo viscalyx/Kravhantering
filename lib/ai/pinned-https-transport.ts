@@ -3,6 +3,7 @@ import { isIP } from 'node:net'
 import type { AiPinnedTlsRequest } from './connection-trust'
 
 const MAX_ADMIN_RESPONSE_BYTES = 4 * 1024 * 1024
+const MAX_ADMIN_REQUEST_MS = 15_000
 
 type HttpsRequest = typeof httpsRequest
 
@@ -39,7 +40,12 @@ export function createPinnedHttpsFetch(
             new Headers(input.init.headers).entries(),
           ),
           lookup: (_hostname, _options, callback) => {
-            callback(null, address, isIP(address))
+            const family = isIP(address)
+            if (_options.all) {
+              callback(null, [{ address, family }])
+              return
+            }
+            callback(null, address, family)
           },
           method: input.init.method,
           servername: input.serverName,
@@ -79,6 +85,13 @@ export function createPinnedHttpsFetch(
         },
       )
       outgoing.on('error', reject)
+      if (!input.init.signal) {
+        outgoing.setTimeout(MAX_ADMIN_REQUEST_MS, () => {
+          outgoing.destroy(
+            new Error('The pinned AI administration request timed out.'),
+          )
+        })
+      }
       const abort = (): void => {
         outgoing.destroy(
           new Error('The pinned AI administration request was aborted.'),

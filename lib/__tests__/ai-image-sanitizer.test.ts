@@ -47,6 +47,24 @@ describe('AI image sanitizer', () => {
     expect(metadata.xmp).toBeUndefined()
   })
 
+  it('reports the encoded dimensions after applying image orientation', async () => {
+    const input = await sharp({
+      create: {
+        background: 'red',
+        channels: 3,
+        height: 3,
+        width: 5,
+      },
+    })
+      .withMetadata({ orientation: 6 })
+      .jpeg()
+      .toBuffer()
+
+    await expect(
+      sanitizeAiImage({ data: input, mediaType: 'image/jpeg' }, LIMITS),
+    ).resolves.toMatchObject({ height: 5, width: 3 })
+  })
+
   it('rejects a declared MIME type that disagrees with the file signature', async () => {
     await expect(
       sanitizeAiImage(

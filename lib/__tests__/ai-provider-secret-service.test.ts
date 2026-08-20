@@ -898,6 +898,57 @@ describe('AI provider-secret service', () => {
     ).toBe('rotate-me')
   })
 
+  it('commits bounded rotation batches and counts only fenced updates', async () => {
+    const root1 = randomBytes(32)
+    const root2 = randomBytes(32)
+    const oldRing = keyring('root-1', { 'root-1': root1, 'root-2': root2 })
+    const rotationRing = keyring('root-2', {
+      'root-1': root1,
+      'root-2': root2,
+    })
+    const rows = [
+      persistedRow(
+        randomUUID(),
+        '10000000-0000-4000-8000-000000000001',
+        'first',
+        oldRing,
+      ),
+      persistedRow(
+        randomUUID(),
+        '20000000-0000-4000-8000-000000000002',
+        'second',
+        oldRing,
+      ),
+    ]
+    const managerQueries = [
+      vi
+        .fn()
+        .mockResolvedValueOnce([rows[0]])
+        .mockResolvedValueOnce([{ updatedId: rows[0]?.id }]),
+      vi.fn().mockResolvedValueOnce([rows[1]]).mockResolvedValueOnce([]),
+      vi.fn().mockResolvedValueOnce([]),
+    ]
+    const db = {
+      transaction: vi.fn(async (_isolation, use) =>
+        use({ query: managerQueries.shift() }),
+      ),
+    } as unknown as SqlServerDatabase
+
+    await expect(
+      reencryptAiProviderSecrets(db, rotationRing, {
+        batchSize: 1,
+        fromRootKeyVersion: 'root-1',
+      }),
+    ).resolves.toMatchObject({ reencryptedCount: 1 })
+    expect(db.transaction).toHaveBeenCalledTimes(3)
+    await expect(
+      reencryptAiProviderSecrets(db, rotationRing, {
+        batchSize: 0,
+        fromRootKeyVersion: 'root-1',
+      }),
+    ).rejects.toThrow('batch size must be 1-1000')
+  })
+
   it('verifies a restored SQL backup with its keyring before safely removing an old root', async () => {
     const firstConnectionId = randomUUID()
     const secondConnectionId = randomUUID()

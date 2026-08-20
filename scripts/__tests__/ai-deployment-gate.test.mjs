@@ -485,6 +485,7 @@ describe('AI deployment gate', () => {
 
     const fsImpl = {
       readFileSync: vi.fn(() => JSON.stringify(verifiedEvidence())),
+      statSync: vi.fn(() => ({ size: 1024 })),
     }
     expect(
       main({ args: ['verify', '--evidence', '/evidence.json'], fsImpl }),
@@ -500,6 +501,12 @@ describe('AI deployment gate', () => {
     expect(() =>
       main({ args: ['verify', '--evidence', '/evidence.json'], fsImpl }),
     ).toThrow('exceeds 64 KiB')
+    fsImpl.readFileSync.mockClear()
+    fsImpl.statSync.mockReturnValue({ size: 64 * 1024 + 1 })
+    expect(() =>
+      main({ args: ['verify', '--evidence', '/evidence.json'], fsImpl }),
+    ).toThrow('exceeds 64 KiB')
+    expect(fsImpl.readFileSync).not.toHaveBeenCalled()
     stdout.mockRestore()
   })
 
@@ -535,7 +542,10 @@ describe('AI deployment gate', () => {
     expect(
       main({
         args: ['verify', '--evidence', '/evidence.json'],
-        fsImpl: { readFileSync: vi.fn(() => serialized) },
+        fsImpl: {
+          readFileSync: vi.fn(() => serialized),
+          statSync: vi.fn(() => ({ size: Buffer.byteLength(serialized) })),
+        },
       }),
     ).toBe(0)
 

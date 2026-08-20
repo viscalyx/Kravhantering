@@ -255,15 +255,17 @@ export async function reencryptAiProviderSecretBatch(
        ORDER BY [created_at], [id]`,
         [fromRootKeyVersion],
       )
+      let affectedRowCount = 0
       for (const row of rows) {
         const plaintext = decrypt(row, keyring)
         try {
           const encryption = encrypt(row, plaintext, keyring)
-          await manager.query(
+          const updatedRows = await manager.query(
             `UPDATE [ai_provider_secret_versions]
            SET [ciphertext] = @1, [nonce] = @2, [authentication_tag] = @3,
              [cipher_format_version] = 1, [root_key_version] = @4,
              [revision_token] = NEWID()
+           OUTPUT INSERTED.[id] AS [updatedId]
            WHERE [id] = @0 AND [revision_token] = @5
              AND [root_key_version] = @6`,
             [
@@ -276,11 +278,12 @@ export async function reencryptAiProviderSecretBatch(
               fromRootKeyVersion,
             ],
           )
+          affectedRowCount += updatedRows.length
         } finally {
           plaintext.fill(0)
         }
       }
-      return rows.length
+      return affectedRowCount
     },
   )
   const remainingRows = await db.query(

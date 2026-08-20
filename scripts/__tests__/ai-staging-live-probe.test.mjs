@@ -486,6 +486,16 @@ describe('staging-live synthetic AI probe', () => {
       'must contain valid JSON',
     ],
     [
+      'unreadable paths file',
+      configuredEnv(),
+      privateCookieFile({
+        statSync: vi.fn(() => {
+          throw new Error('EACCES')
+        }),
+      }),
+      'EACCES',
+    ],
+    [
       'missing fixed path',
       configuredEnv(),
       privateCookieFile({

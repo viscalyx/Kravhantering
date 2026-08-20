@@ -509,6 +509,14 @@ place.
 
 ## Rollback
 
+Set `AI_REQUIREMENT_GENERATION_DISABLED=1` in the restored app configuration
+before starting either release. Rollback may suspend an affected connection or
+profile or reactivate a previously verified revision. It must never restore or
+depend on the removed direct OpenRouter route. When a database restore is
+required, restore its matching external root-key versions before any AI
+verification and repeat the deployment evidence gate before releasing the
+guard.
+
 Choose the rollback boundary that matches the failed step:
 
 - Before the current Quadlet target is stopped, no runtime migration has
@@ -522,14 +530,6 @@ Choose the rollback boundary that matches the failed step:
   permissions, and role memberships as one database state.
 
 For either rollback that follows a failed Quadlet start:
-
-Set `AI_REQUIREMENT_GENERATION_DISABLED=1` in the restored app configuration
-before starting either release. Rollback may suspend an affected connection or
-profile or reactivate a previously verified revision. It must never restore or
-depend on the removed direct OpenRouter route. When a database restore is
-required, restore its matching external root-key versions before any AI
-verification and repeat the deployment evidence gate before releasing the
-guard.
 
 1. Disable traffic and stop the new target on every app node.
 

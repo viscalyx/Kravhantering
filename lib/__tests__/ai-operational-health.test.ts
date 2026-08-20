@@ -35,4 +35,14 @@ describe('AI model operational health', () => {
       }),
     ).toBe('degraded')
   })
+
+  it('projects evidence as unknown when the comparison date is invalid', () => {
+    expect(
+      effectiveAiModelHealthStatus({
+        lastHealthEvidenceAt: now,
+        now: new Date(Number.NaN),
+        persistedStatus: 'healthy',
+      }),
+    ).toBe('unknown')
+  })
 })

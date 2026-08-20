@@ -271,7 +271,7 @@ Generated output is parsed as JSON and validated with
 `requirementsImportPayloadSchema`. Valid output is previewed through the same
 editable import review surface as uploaded import files. Invalid output is
 reported as schema issues, logged without raw prompt/content, and can be sent
-to the repair route together with a generated repair prompt and selected model.
+to the repair route together with a generated repair prompt.
 
 ## 5 — Requirement Import Schema and Import Instruction
 

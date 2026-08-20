@@ -1066,17 +1066,18 @@ describe('AI connection administration service', () => {
         { code: 'capability_policy_invalid', field: 'jsonSchema' },
       ]),
     )
-    expect(
-      __testing.capabilityPolicyBlockers(
-        'generation_without_images',
-        { ...policy, usageMetadata: 'required' },
-        { ...capability, cost: false, tokenUsage: false },
-      ),
-    ).toEqual(
-      expect.arrayContaining([
-        { code: 'capability_policy_invalid', field: 'usageMetadata' },
-      ]),
+    const usageMetadataBlockers = __testing.capabilityPolicyBlockers(
+      'generation_without_images',
+      { ...policy, usageMetadata: 'required' },
+      { ...capability, cost: false, tokenUsage: false },
     )
+    expect(
+      usageMetadataBlockers.filter(
+        blocker =>
+          blocker.code === 'capability_policy_invalid' &&
+          blocker.field === 'usageMetadata',
+      ),
+    ).toEqual([{ code: 'capability_policy_invalid', field: 'usageMetadata' }])
     expect(
       __testing.capabilityPolicyBlockers(
         'generation_without_images',

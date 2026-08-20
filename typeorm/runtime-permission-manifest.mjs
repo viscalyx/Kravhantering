@@ -266,7 +266,7 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
         Object.freeze({
           object: 'dbo.ai_run_coordination_entries',
           permissions: READ_CREATE_DELETE,
-          updateColumns: [
+          updateColumns: Object.freeze([
             'status',
             'attempt_count',
             'not_before',
@@ -275,7 +275,7 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
             'cancellation_requested_at',
             'cancellation_reason',
             'updated_at',
-          ],
+          ]),
         }),
         Object.freeze({
           object: 'dbo.ai_run_profile_revisions',

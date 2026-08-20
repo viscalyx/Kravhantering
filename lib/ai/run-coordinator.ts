@@ -83,6 +83,11 @@ export interface AiRecoveryProbeLeaseInput {
   probeRunId: string
 }
 
+export interface AiManualRecoveryProbeAcquisition {
+  breakerStatus: NonNullable<AiOperationalStateTransition['breakerStatus']>
+  healthStatus: NonNullable<AiOperationalStateTransition['healthStatus']>
+}
+
 export interface AiRecoveryProbeResultInput {
   failure?: AiRunFailure
   leaseOwnerId: string
@@ -109,7 +114,9 @@ export interface AiRunCoordinationStore {
     leaseDurationMs: number
     leaseOwnerId: string
   }): Promise<AiRunAcquireResult>
-  acquireManualRecoveryProbe(input: AiRecoveryProbeLeaseInput): Promise<boolean>
+  acquireManualRecoveryProbe(
+    input: AiRecoveryProbeLeaseInput,
+  ): Promise<AiManualRecoveryProbeAcquisition | null>
   acquireRecoveryProbe(input: AiRecoveryProbeLeaseInput): Promise<boolean>
   cancellationRequested?(input: {
     applicationRunId: string
@@ -534,6 +541,9 @@ export function createAiRunCoordinator(
             usage: result.usage,
           })
         }
+        if (transition?.breakerOpened) {
+          await emit({ ...telemetryBase, name: 'ai_alarm_breaker_opened' })
+        }
         if (transition?.healthStateChanged) {
           await emit({
             ...telemetryBase,
@@ -551,14 +561,14 @@ export function createAiRunCoordinator(
     executeProbe,
   ) => {
     const probeRunId = randomUUID()
-    const acquired = await options.coordination.acquireManualRecoveryProbe({
+    const acquisition = await options.coordination.acquireManualRecoveryProbe({
       identity: target.identity,
       leaseDurationMs: target.totalTimeBudgetMs + CANCELLATION_GRACE_MS,
       leaseOwnerId,
       modelRevisionId: target.identity.aiConnectionModelRevisionId,
       probeRunId,
     })
-    if (!acquired) {
+    if (!acquisition) {
       return {
         failure: {
           category: 'connection_unavailable',
@@ -582,12 +592,11 @@ export function createAiRunCoordinator(
       requestId: probeRunId,
       runType: target.runType,
     }
-    await emit({ ...telemetryBase, name: 'ai_health_probe_started' })
     await emit({
       ...telemetryBase,
-      breakerStatus: 'half_open',
-      healthStatus: 'unavailable',
-      name: 'ai_health_state_changed',
+      breakerStatus: acquisition.breakerStatus,
+      healthStatus: acquisition.healthStatus,
+      name: 'ai_health_probe_started',
     })
     const controller = new AbortController()
     const timeout = setTimeout(
@@ -624,6 +633,9 @@ export function createAiRunCoordinator(
       outcome: result.succeeded ? 'completed' : 'failed',
       usage: result.usage,
     })
+    if (transition?.breakerOpened) {
+      await emit({ ...telemetryBase, name: 'ai_alarm_breaker_opened' })
+    }
     if (transition?.healthStateChanged) {
       await emit({
         ...telemetryBase,

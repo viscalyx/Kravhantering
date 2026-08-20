@@ -493,7 +493,7 @@ AI-anslutning.
 - `en`: AI provider
 
 _Avoid_: AI-anslutning när den administrerade kopplingen avses,
-modellleverantör.
+modelleverantör.
 
 **Anslutningsmodell**:
 En administratörsgodkänd modell inom en viss AI-anslutning, med förmågor som

@@ -145,6 +145,32 @@ describe('POST /api/ai/repair-requirement-import-json', () => {
     )
   })
 
+  it('accepts a repaired JSON object wrapped in a Markdown fence', async () => {
+    routeState.events = [
+      {
+        analysis: null,
+        identity,
+        rawOutput: `\`\`\`json
+${JSON.stringify({
+  requirements: [{ description: 'Repaired requirement.' }],
+  schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+})}
+\`\`\``,
+        type: 'completed',
+        usage,
+      },
+    ]
+
+    const response = await POST(request(validBody()))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      payload: {
+        requirements: [{ description: 'Repaired requirement.' }],
+      },
+    })
+  })
+
   it('does not return raw output when the terminal is invalid', async () => {
     routeState.events = [
       {

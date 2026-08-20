@@ -49,15 +49,11 @@ function privateFile(fsImpl, path, context, maximumBytes) {
 
 function configuredPathsFile(env, fsImpl) {
   const file = requiredEnv(env, 'AI_STAGING_LIVE_PATHS_FILE')
+  const source = privateFile(fsImpl, file, 'AI staging-live paths file', 16_384)
   let parsed
   try {
-    parsed = JSON.parse(
-      privateFile(fsImpl, file, 'AI staging-live paths file', 16_384),
-    )
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('private regular')) {
-      throw error
-    }
+    parsed = JSON.parse(source)
+  } catch {
     throw new Error('AI staging-live paths file must contain valid JSON.')
   }
   if (!Array.isArray(parsed) || parsed.length !== MAX_INTENDED_PROFILES) {

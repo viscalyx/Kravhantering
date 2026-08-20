@@ -537,8 +537,13 @@ export function main({ args = process.argv.slice(2), fsImpl = fs } = {}) {
     )
     return 0
   }
+  const maximumEvidenceBytes = 64 * 1024
+  const stat = fsImpl.statSync(options.evidencePath)
+  if (typeof stat.size === 'number' && stat.size > maximumEvidenceBytes) {
+    throw new Error('AI deployment evidence exceeds 64 KiB.')
+  }
   const source = fsImpl.readFileSync(options.evidencePath, 'utf8')
-  if (Buffer.byteLength(source, 'utf8') > 64 * 1024) {
+  if (Buffer.byteLength(source, 'utf8') > maximumEvidenceBytes) {
     throw new Error('AI deployment evidence exceeds 64 KiB.')
   }
   const evidence = JSON.parse(source)

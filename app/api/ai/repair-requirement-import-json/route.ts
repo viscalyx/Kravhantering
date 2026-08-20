@@ -9,6 +9,7 @@ import {
   buildRequirementImportRepairPrompt,
   buildRequirementImportResponseFormatSchema,
   buildRequirementImportSystemPrompt,
+  parseJsonObject,
 } from '@/lib/ai/requirement-prompt'
 import type { AiRunUsage } from '@/lib/ai/run-contracts'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
@@ -256,7 +257,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
           ).byteLength
           let parsed: unknown
           try {
-            parsed = JSON.parse(event.rawOutput) as unknown
+            parsed = parseJsonObject(event.rawOutput)
           } catch {
             recordTerminal('failure', 503, event.usage)
             return unavailable(context)

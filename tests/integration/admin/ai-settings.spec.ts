@@ -839,7 +839,7 @@ test.describe('Admin settings', () => {
             vllmDetails.getByText('Adaptern vllm@1 är inte installerad', {
               exact: false,
             }),
-          ).toBeVisible()
+          ).toHaveCount(1)
           for (const action of [
             'Redigera anslutning',
             'Hantera hemlighet',

@@ -437,9 +437,6 @@ function capabilityPolicyBlockers(
     }
   }
   requireMode('validatableJson', 'required')
-  if (policy.usageMetadata === 'required') {
-    blockers.push({ code: 'capability_policy_invalid', field: 'usageMetadata' })
-  }
   if (profileKey === 'invalid_json_repair') {
     requireMode('streaming', 'disabled')
     requireMode('imageInput', 'disabled')

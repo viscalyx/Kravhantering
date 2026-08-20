@@ -231,7 +231,7 @@ function coordinationStore(): AiRunCoordinationStore {
   return {
     abandon: vi.fn(async () => undefined),
     acquire: vi.fn(async () => ({ status: 'acquired' }) as const),
-    acquireManualRecoveryProbe: vi.fn(async () => false),
+    acquireManualRecoveryProbe: vi.fn(async () => null),
     acquireRecoveryProbe: vi.fn(async () => false),
     enqueue: vi.fn(async () => ({ status: 'queued' }) as const),
     finish: vi.fn(async () => undefined),
