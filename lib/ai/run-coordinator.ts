@@ -114,7 +114,7 @@ export interface AiRunCoordinationStore {
   cancellationRequested?(input: {
     applicationRunId: string
     fencingToken: string
-    leaseOwnerId: string
+    leaseOwnerId?: string
   }): Promise<AiAdministrativeCancellationRequest | null>
   enqueue(input: {
     applicationRunId: string
@@ -1094,7 +1094,28 @@ export function createAiRunCoordinator(
                 return
               }
               coordinationState = 'retry_wait'
-              await delay(waitMs, controller.signal)
+              let remainingRetryWaitMs = waitMs
+              while (!controller.signal.aborted && remainingRetryWaitMs > 0) {
+                const cancellationRequest =
+                  await options.coordination.cancellationRequested?.({
+                    applicationRunId: request.applicationRunId,
+                    fencingToken,
+                  })
+                if (cancellationRequest) {
+                  administrativeCancellationReason = cancellationRequest.reason
+                  administrativeCancellationRequestedAt =
+                    cancellationRequest.requestedAt
+                  finalEvent = cancellation(request.identity)
+                  yield finalEvent
+                  return
+                }
+                const waitSliceMs = Math.min(
+                  ADMINISTRATIVE_CANCELLATION_POLL_MS,
+                  remainingRetryWaitMs,
+                )
+                await delay(waitSliceMs, controller.signal)
+                remainingRetryWaitMs -= waitSliceMs
+              }
               continue
             }
             if (retryAfterNeedsFiveMinutes) {

@@ -538,15 +538,37 @@ npm run db:provider-secret-restore-verify
 The command fails when the restore contains no encrypted provider-secret
 versions, any envelope cannot be authenticated with its recorded root-key
 version, or database/keyring access fails. Its JSON evidence contains only
-opaque connection and secret-version IDs, referenced root-key versions, and
-pass/fail results.
+aggregate counts, a maximum of 20 failed opaque connection/secret-version IDs
+with stable reason codes, and at most 100 referenced root-key versions. It
+never emits successful row IDs. Rows are authenticated in keyset pages of 100
+by default; choose a bounded page size from 1 to 1000 when validating a larger
+restore:
+
+```bash
+npm run db:provider-secret-restore-verify -- --batch-size 500
+```
+
+The same packaged command in the released `db-job` image is:
+
+```bash
+docker run --rm --entrypoint node <db-job-image> \
+  scripts/ai-provider-secret-restore-cli.mjs --batch-size 500
+```
+
+Mount the restored-database connection and keyring environment exactly as in
+the normal `db-job` invocation; the command does not accept key material on its
+command line.
+
+`failureSampleTruncated` or `referencedRootKeyVersionsTruncated` means the
+bounded evidence sample is incomplete, not that verification stopped. The
+aggregate checked and failed counts still cover every retained encrypted row.
 
 Before destroying an old root-key version, repeat the verification while
 logically omitting that version:
 
 ```bash
 npm run db:provider-secret-restore-verify -- \
-  --omit-root-key-version root-2026-01
+  --omit-root-key-version root-2026-01 --batch-size 500
 ```
 
 Proceed only when `compatible` and `safeToRemoveOmittedRootKeyVersion` are both

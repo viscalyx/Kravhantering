@@ -72,6 +72,7 @@ interface AdminFunctionalProbeResult {
   schemaValid: boolean
 }
 
+// cspell:ignore callbackurl functioncall toolcall toolcalls
 const PROHIBITED_PROTOCOL_KEYS = new Set([
   'callback',
   'callback_url',
@@ -596,11 +597,16 @@ export interface AiProviderSecretRestoreVerificationResult {
 }
 
 export interface AiProviderSecretRestoreVerificationReport {
+  batchSize: number
   checkedSecretVersionCount: number
   compatible: boolean
+  failedSecretVersionCount: number
+  failureSample: readonly AiProviderSecretRestoreVerificationResult[]
+  failureSampleLimit: number
+  failureSampleTruncated: boolean
   omittedRootKeyVersion: string | null
   referencedRootKeyVersions: readonly string[]
-  results: readonly AiProviderSecretRestoreVerificationResult[]
+  referencedRootKeyVersionsTruncated: boolean
   safeToRemoveOmittedRootKeyVersion: boolean | null
 }
 
@@ -1409,10 +1415,26 @@ function withoutRootKeyVersion(
 export async function verifyAiProviderSecretRestoreSet(
   db: SqlServerDatabase,
   keyring: AiProviderSecretKeyring,
-  options: { omitRootKeyVersion?: string } = {},
+  options: { batchSize?: number; omitRootKeyVersion?: string } = {},
 ): Promise<AiProviderSecretRestoreVerificationReport> {
-  const rows = await db.query<AiProviderSecretRow[]>(
-    `SELECT [id], [ai_connection_id] AS [connectionId],
+  const batchSize = options.batchSize ?? 100
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 1_000) {
+    throw new Error('AI provider-secret restore batch size must be 1-1000')
+  }
+  const failureSampleLimit = 20
+  const rootVersionSampleLimit = 100
+  const failureSample: AiProviderSecretRestoreVerificationResult[] = []
+  const referencedRootKeyVersions = new Set<string>()
+  let referencedRootKeyVersionsTruncated = false
+  let checkedSecretVersionCount = 0
+  let failedSecretVersionCount = 0
+  let cursor: string | null = null
+  const verificationKeyring = options.omitRootKeyVersion
+    ? withoutRootKeyVersion(keyring, options.omitRootKeyVersion)
+    : keyring
+  while (true) {
+    const rows: AiProviderSecretRow[] = await db.query<AiProviderSecretRow[]>(
+      `SELECT TOP (${batchSize}) [id], [ai_connection_id] AS [connectionId],
        [revision_number] AS [revisionNumber], [status],
        [ciphertext], [nonce], [authentication_tag] AS [authenticationTag],
        [cipher_format_version] AS [formatVersion],
@@ -1422,45 +1444,53 @@ export async function verifyAiProviderSecretRestoreSet(
        [revision_token] AS [revisionToken]
      FROM [ai_provider_secret_versions]
      WHERE [ciphertext] IS NOT NULL
-     ORDER BY [root_key_version], [ai_connection_id], [revision_number]`,
-  )
-  const verificationKeyring = options.omitRootKeyVersion
-    ? withoutRootKeyVersion(keyring, options.omitRootKeyVersion)
-    : keyring
-  const results = rows.map(row => {
-    try {
-      decryptRow(verificationKeyring, row)
-      return {
-        available: true,
-        connectionId: row.connectionId,
-        rootKeyVersion: row.rootKeyVersion,
-        secretVersionId: row.id,
+       AND (@0 IS NULL OR [id] > CONVERT(uniqueidentifier, @0))
+     ORDER BY [id]`,
+      [cursor],
+    )
+    if (rows.length === 0) break
+    for (const row of rows) {
+      checkedSecretVersionCount += 1
+      if (referencedRootKeyVersions.size < rootVersionSampleLimit) {
+        referencedRootKeyVersions.add(row.rootKeyVersion)
+      } else if (!referencedRootKeyVersions.has(row.rootKeyVersion)) {
+        referencedRootKeyVersionsTruncated = true
       }
-    } catch (error) {
-      const reason =
-        error instanceof AiProviderSecretUnavailableError
-          ? error.reason
-          : 'authentication_failed'
-      return {
-        available: false,
-        connectionId: row.connectionId,
-        reason,
-        rootKeyVersion: row.rootKeyVersion,
-        secretVersionId: row.id,
+      try {
+        decryptRow(verificationKeyring, row)
+      } catch (error) {
+        failedSecretVersionCount += 1
+        if (failureSample.length < failureSampleLimit) {
+          const reason =
+            error instanceof AiProviderSecretUnavailableError
+              ? error.reason
+              : 'authentication_failed'
+          failureSample.push({
+            available: false,
+            connectionId: row.connectionId,
+            reason,
+            rootKeyVersion: row.rootKeyVersion,
+            secretVersionId: row.id,
+          })
+        }
       }
     }
-  }) satisfies AiProviderSecretRestoreVerificationResult[]
-  const compatible = results.every(result => result.available)
-  const referencedRootKeyVersions = [
-    ...new Set(rows.map(row => row.rootKeyVersion)),
-  ]
+    cursor = rows.at(-1)?.id ?? null
+    if (rows.length < batchSize) break
+  }
+  const compatible = failedSecretVersionCount === 0
   const omittedRootKeyVersion = options.omitRootKeyVersion ?? null
   return {
-    checkedSecretVersionCount: rows.length,
+    batchSize,
+    checkedSecretVersionCount,
     compatible,
+    failedSecretVersionCount,
+    failureSample,
+    failureSampleLimit,
+    failureSampleTruncated: failedSecretVersionCount > failureSample.length,
     omittedRootKeyVersion,
-    referencedRootKeyVersions,
-    results,
+    referencedRootKeyVersions: [...referencedRootKeyVersions].sort(),
+    referencedRootKeyVersionsTruncated,
     safeToRemoveOmittedRootKeyVersion:
       omittedRootKeyVersion === null
         ? null

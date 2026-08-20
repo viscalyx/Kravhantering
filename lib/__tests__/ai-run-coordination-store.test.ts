@@ -280,6 +280,34 @@ describe('SQL Server AI run coordination store', () => {
     expect(sql).toContain('[lease_expires_at] > SYSUTCDATETIME()')
   })
 
+  it('polls only the exact fenced queued or retry-wait row when no lease owner is supplied', async () => {
+    const requestedAt = new Date('2026-08-20T12:00:00.000Z')
+    const { db, query } = database([
+      [
+        {
+          cancellationReason: 'profile_suspended',
+          cancellationRequestedAt: requestedAt,
+        },
+      ],
+    ])
+
+    await expect(
+      createSqlServerAiRunCoordinationStore(db).cancellationRequested?.({
+        applicationRunId: '00000000-0000-4000-8000-000000000001',
+        fencingToken: '40000000-0000-4000-8000-000000000001',
+      }),
+    ).resolves.toEqual({ reason: 'profile_suspended', requestedAt })
+    const call = query.mock.calls[0] as unknown[]
+    expect(call[1]).toEqual([
+      '00000000-0000-4000-8000-000000000001',
+      '40000000-0000-4000-8000-000000000001',
+      null,
+    ])
+    expect(String(call[0])).toContain(
+      "@2 IS NULL AND [status] IN (N'queued', N'retry_wait')",
+    )
+  })
+
   it('reports a lost lease when retry requeue is not applied', async () => {
     const { db } = database([[]])
 

@@ -207,6 +207,15 @@ describe('AI run coordination against SQL Server', () => {
       ]),
     )
     await expect(
+      coordination.cancellationRequested?.({
+        applicationRunId: secondRun,
+        fencingToken: secondFence,
+      }),
+    ).resolves.toEqual({
+      reason: 'connection_suspended',
+      requestedAt: expect.any(Date),
+    })
+    await expect(
       coordination.acquire({
         applicationRunId: secondRun,
         fencingToken: secondFence,

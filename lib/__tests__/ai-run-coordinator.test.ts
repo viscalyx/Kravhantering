@@ -713,6 +713,66 @@ describe('AI run coordinator', () => {
     })
   })
 
+  it('polls durable admin cancellation during a real long retry-after wait', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z'))
+    try {
+      const requestedAt = new Date(Date.now() + 1)
+      const cancellationRequested = vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue({
+          reason: 'profile_suspended',
+          requestedAt,
+        })
+      const coordination = store({ cancellationRequested })
+      const retryingRequest = request()
+      retryingRequest.profile.inactivityTimeBudgetMs = 300_000
+      retryingRequest.profile.totalTimeBudgetMs = 1_000_000
+      const execute = vi.fn(() =>
+        (async function* () {
+          yield {
+            failure: {
+              category: 'rate_limited' as const,
+              retryAfterSeconds: 600,
+              retryDisposition: 'explicit_retryable_status' as const,
+              retryable: true,
+            },
+            identity: IDENTITY,
+            type: 'failed' as const,
+          }
+        })(),
+      )
+      const telemetry: AiRunTelemetryEvent[] = []
+      const collecting = collect(
+        createAiRunCoordinator({
+          coordination,
+          telemetry: {
+            emit: event => {
+              telemetry.push(event)
+            },
+          },
+        }).coordinate(retryingRequest, execute, () => undefined),
+      )
+      await vi.waitFor(() => {
+        expect(coordination.requeueForRetry).toHaveBeenCalledOnce()
+      })
+      await vi.advanceTimersByTimeAsync(2_000)
+
+      await expect(collecting).resolves.toMatchObject([{ type: 'cancelled' }])
+      expect(execute).toHaveBeenCalledOnce()
+      expect(coordination.abandon).toHaveBeenCalledOnce()
+      expect(coordination.finish).not.toHaveBeenCalled()
+      expect(Date.now() - requestedAt.getTime()).toBeLessThanOrEqual(5_000)
+      expect(telemetry.at(-1)).toMatchObject({
+        cancellationReason: 'profile_suspended',
+        outcome: 'cancelled',
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('allows the exact limit and aborts before exposing the first byte over it', async () => {
     const abort = vi.fn()
     const coordination = store()

@@ -186,7 +186,16 @@ any exposed environment.
 
 The `db-job` image includes the runtime-safe provider-secret maintenance module
 used by `provider-secret-root-rotate` and `provider-secret-restore-verify`.
-Both commands emit only bounded operational evidence and never plaintext.
+The verifier reads keyset pages selected with `--batch-size` (`1`–`1000`,
+default `100`) and emits only aggregate evidence plus at most 20 opaque failure
+samples. Both commands emit bounded operational evidence and never plaintext.
+Because `db-job` normally enters the general database command, run the bounded
+restore CLI in that image by overriding its entrypoint:
+
+```bash
+docker run --rm --entrypoint node <db-job-image> \
+  scripts/ai-provider-secret-restore-cli.mjs --batch-size 500
+```
 
 ## Update Rules
 

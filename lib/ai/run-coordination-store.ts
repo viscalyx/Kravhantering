@@ -436,14 +436,17 @@ export function createSqlServerAiRunCoordinationStore(
     },
 
     async cancellationRequested(input) {
+      const leaseOwnerId = input.leaseOwnerId ?? null
       const rows = await db.query<CoordinationRow[]>(
         `SELECT [cancellation_reason] AS [cancellationReason],
                 [cancellation_requested_at] AS [cancellationRequestedAt]
          FROM [ai_run_coordination_entries]
          WHERE [application_run_id] = @0 AND [fencing_token] = @1
-           AND [lease_owner_id] = @2 AND [status] = N'running'
-           AND [lease_expires_at] > SYSUTCDATETIME()`,
-        [input.applicationRunId, input.fencingToken, input.leaseOwnerId],
+           AND ((@2 IS NULL AND [status] IN (N'queued', N'retry_wait'))
+             OR (@2 IS NOT NULL AND [lease_owner_id] = @2
+               AND [status] = N'running'
+               AND [lease_expires_at] > SYSUTCDATETIME()))`,
+        [input.applicationRunId, input.fencingToken, leaseOwnerId],
       )
       const row = rows[0]
       return row?.cancellationReason && row.cancellationRequestedAt

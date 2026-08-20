@@ -179,7 +179,7 @@ describe('AI provider-secret service', () => {
     expect(adapter.fetchCatalog).not.toHaveBeenCalled()
   })
 
-  it('requires a complete schema-valid functional terminal and never overclaims capabilities', async () => {
+  it('requires a complete schema-valid functional terminal and never overstates capabilities', async () => {
     const connectionId = randomUUID()
     const revisionId = randomUUID()
     const capabilities = {
@@ -474,6 +474,89 @@ describe('AI provider-secret service', () => {
       health: 'degraded',
       invalidationScope: 'connection',
     })
+  })
+
+  it('accepts reported and calculated usage while exercising admin passthrough operations', async () => {
+    const connectionId = randomUUID()
+    const revisionId = randomUUID()
+    const identity = {
+      aiConnectionId: connectionId,
+      aiConnectionModelRevisionId: revisionId,
+      aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
+    }
+    const adapter = {
+      fetchCatalog: vi.fn(async () => []),
+      probeConnection: vi.fn(async () => ({ outcome: 'passed' })),
+      async *runFunctionalProbe() {
+        yield { delta: 'thinking', type: 'analysis_delta' }
+        yield {
+          delta: '{"probe":',
+          type: 'output_delta',
+          visibility: 'internal',
+        }
+        yield {
+          analysis: 'done',
+          identity,
+          rawOutput: '{"probe":"ok"}',
+          type: 'completed',
+          usage: {
+            analysisTokens: {
+              calculatedAt: '2026-08-20T00:00:00.000Z',
+              status: 'calculated',
+              value: 1,
+            },
+            cost: {
+              status: 'reported',
+              value: { amount: '0.01', currency: 'USD' },
+            },
+            inputTokens: { status: 'reported', value: 2 },
+            outputTokens: {
+              calculatedAt: '2026-08-20T00:00:00.000Z',
+              status: 'calculated',
+              value: 3,
+            },
+            totalTokens: { status: 'reported', value: 5 },
+          },
+        }
+      },
+      verifySecretCandidate: vi.fn(async () => undefined),
+    } as unknown as AiAdminConnectionAdapter
+    const service = new AiProviderSecretAdminService(
+      database(vi.fn()).db,
+      keyring('root-1', { 'root-1': randomBytes(32) }),
+    )
+    const connection = {
+      authenticationType: 'none',
+      id: connectionId,
+    } as AiAdminConnectionDetail
+    const egress = { fetch: vi.fn() } as AiEgressTransport
+    const revision = {
+      declaredCapabilities: {
+        aiAnalysis: true,
+        cost: true,
+        imageInput: false,
+        jsonSchemaSteering: true,
+        streaming: true,
+        tokenUsage: true,
+        validatableJson: true,
+      },
+      id: revisionId,
+    } as AiAdminConnectionDetail['models'][number]['revisions'][number]
+
+    await expect(
+      service.fetchCatalog(adapter, connection, egress),
+    ).resolves.toEqual([])
+    await expect(
+      service.probeConnection(adapter, connection, egress),
+    ).resolves.toEqual({
+      outcome: 'passed',
+    })
+    await expect(
+      service.probeHealth(adapter, connection, egress, revision),
+    ).resolves.toMatchObject({ health: 'healthy', invalidationScope: 'none' })
+    await expect(
+      service.verifySecretCandidate(adapter, connection, egress, 'candidate'),
+    ).resolves.toBeUndefined()
   })
 
   it('encrypts before candidate persistence and never sends plaintext to SQL', async () => {
@@ -844,24 +927,16 @@ describe('AI provider-secret service', () => {
     const restored = await verifyAiProviderSecretRestoreSet(db, root2Ring)
 
     expect(restored).toEqual({
+      batchSize: 100,
       checkedSecretVersionCount: 2,
       compatible: true,
+      failedSecretVersionCount: 0,
+      failureSample: [],
+      failureSampleLimit: 20,
+      failureSampleTruncated: false,
       omittedRootKeyVersion: null,
       referencedRootKeyVersions: ['root-1', 'root-2'],
-      results: [
-        {
-          available: true,
-          connectionId: firstConnectionId,
-          rootKeyVersion: 'root-1',
-          secretVersionId: firstSecretVersionId,
-        },
-        {
-          available: true,
-          connectionId: secondConnectionId,
-          rootKeyVersion: 'root-2',
-          secretVersionId: secondSecretVersionId,
-        },
-      ],
+      referencedRootKeyVersionsTruncated: false,
       safeToRemoveOmittedRootKeyVersion: null,
     })
     expect(JSON.stringify(restored)).not.toMatch(
@@ -1093,11 +1168,16 @@ describe('AI provider-secret service', () => {
     await expect(
       verifyAiProviderSecretRestoreSet(emptyDb, ring),
     ).resolves.toEqual({
+      batchSize: 100,
       checkedSecretVersionCount: 0,
       compatible: true,
+      failedSecretVersionCount: 0,
+      failureSample: [],
+      failureSampleLimit: 20,
+      failureSampleTruncated: false,
       omittedRootKeyVersion: null,
       referencedRootKeyVersions: [],
-      results: [],
+      referencedRootKeyVersionsTruncated: false,
       safeToRemoveOmittedRootKeyVersion: null,
     })
     await expect(
@@ -1108,5 +1188,83 @@ describe('AI provider-secret service', () => {
       compatible: true,
       safeToRemoveOmittedRootKeyVersion: false,
     })
+  })
+
+  it('checks every restore page while capping failure evidence', async () => {
+    const root = randomBytes(32)
+    const ring = keyring('root-1', { 'root-1': root })
+    const rows = Array.from({ length: 25 }, () => {
+      const row = persistedRow(
+        randomUUID(),
+        randomUUID(),
+        'paged-restore-secret',
+        ring,
+      )
+      return { ...row, authenticationTag: Buffer.alloc(16) }
+    })
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce(rows.slice(0, 10))
+      .mockResolvedValueOnce(rows.slice(10, 20))
+      .mockResolvedValueOnce(rows.slice(20))
+    const { db } = database(query)
+
+    const report = await verifyAiProviderSecretRestoreSet(db, ring, {
+      batchSize: 10,
+    })
+
+    expect(report).toMatchObject({
+      batchSize: 10,
+      checkedSecretVersionCount: 25,
+      compatible: false,
+      failedSecretVersionCount: 25,
+      failureSampleTruncated: true,
+    })
+    expect(report.failureSample).toHaveLength(20)
+    expect(query).toHaveBeenCalledTimes(3)
+    expect(JSON.stringify(report)).not.toContain('paged-restore-secret')
+    await expect(
+      verifyAiProviderSecretRestoreSet(db, ring, { batchSize: 0 }),
+    ).rejects.toThrow('batch size must be 1-1000')
+    await expect(
+      verifyAiProviderSecretRestoreSet(db, ring, { batchSize: 1_001 }),
+    ).rejects.toThrow('batch size must be 1-1000')
+    await expect(
+      verifyAiProviderSecretRestoreSet(db, ring, { batchSize: Number.NaN }),
+    ).rejects.toThrow('batch size must be 1-1000')
+  })
+
+  it('bounds the referenced-root sample and fails closed without an active runtime secret', async () => {
+    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
+    const rows = Array.from({ length: 101 }, (_, index) => ({
+      ...persistedRow(randomUUID(), randomUUID(), 'sample-secret', ring),
+      ciphertext: null,
+      rootKeyVersion: `root-${String(index).padStart(3, '0')}`,
+    }))
+    const query = vi.fn().mockResolvedValueOnce(rows).mockResolvedValueOnce([])
+
+    await expect(
+      verifyAiProviderSecretRestoreSet(database(query).db, ring, {
+        batchSize: 101,
+      }),
+    ).resolves.toMatchObject({
+      checkedSecretVersionCount: 101,
+      failedSecretVersionCount: 101,
+      referencedRootKeyVersionsTruncated: true,
+    })
+
+    const resolve = createAiRuntimeAdapterConfigurationResolver(
+      database(vi.fn(async () => [])).db,
+      ring,
+    )
+    await expect(
+      resolve(
+        {
+          connectionConfiguration: { authenticationType: 'static_secret' },
+          connectionId: randomUUID(),
+        } as never,
+        vi.fn(),
+      ),
+    ).rejects.toMatchObject({ reason: 'secret_missing' })
   })
 })

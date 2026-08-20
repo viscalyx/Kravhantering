@@ -1,5 +1,6 @@
 import { createCipheriv, randomBytes, randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
+import { decryptAiProviderSecret } from '../../lib/ai/provider-secret-crypto.ts'
 import { parseAiProviderSecretKeyring } from '../../lib/ai/provider-secret-keyring.ts'
 import {
   loadAiProviderSecretMaintenanceKeyring,
@@ -55,6 +56,7 @@ function encryptedRow(serialized, rootKeyVersion = 'root-1') {
     authenticationTag: cipher.getAuthTag(),
     ciphertext,
     connectionId,
+    formatVersion: 1,
     id,
     nonce,
     revisionToken: randomUUID(),
@@ -176,6 +178,113 @@ describe('plain-Node AI provider-secret maintenance', () => {
     await expect(
       verifyAiProviderSecretRestoreSet(db, keyring(serialized)),
     ).resolves.toMatchObject({ compatible: false })
+  })
+
+  it.each([
+    ['valid', row => row, true],
+    [
+      'empty ciphertext',
+      row => ({ ...row, ciphertext: Buffer.alloc(0) }),
+      false,
+    ],
+    ['wrong nonce length', row => ({ ...row, nonce: Buffer.alloc(11) }), false],
+    [
+      'wrong authentication tag length',
+      row => ({ ...row, authenticationTag: Buffer.alloc(15) }),
+      false,
+    ],
+    ['unsupported format', row => ({ ...row, formatVersion: 2 }), false],
+    [
+      'invalid connection binding',
+      row => ({ ...row, connectionId: 'bad' }),
+      false,
+    ],
+    ['invalid secret binding', row => ({ ...row, id: 'bad' }), false],
+    [
+      'invalid root version',
+      row => ({ ...row, rootKeyVersion: '../root' }),
+      false,
+    ],
+  ])(
+    'matches runtime envelope acceptance for %s',
+    async (_label, mutate, accepted) => {
+      const serialized = serializedKeyring()
+      const row = mutate(encryptedRow(serialized))
+      const runtimeRing = parseAiProviderSecretKeyring(serialized)
+      const runtimeAccepted = (() => {
+        try {
+          decryptAiProviderSecret(
+            runtimeRing,
+            { connectionId: row.connectionId, secretVersionId: row.id },
+            {
+              authenticationTag: row.authenticationTag,
+              ciphertext: row.ciphertext,
+              formatVersion: row.formatVersion,
+              nonce: row.nonce,
+              rootKeyVersion: row.rootKeyVersion,
+            },
+          )
+          return true
+        } catch {
+          return false
+        }
+      })()
+      const db = {
+        query: vi.fn().mockResolvedValueOnce([row]).mockResolvedValueOnce([]),
+      }
+      const maintenance = await verifyAiProviderSecretRestoreSet(
+        db,
+        keyring(serialized),
+        { batchSize: 10 },
+      )
+      expect(runtimeAccepted).toBe(accepted)
+      expect(maintenance.compatible).toBe(runtimeAccepted)
+    },
+  )
+
+  it('pages every retained row and caps opaque failure evidence', async () => {
+    const serialized = serializedKeyring()
+    const rows = Array.from({ length: 25 }, () => ({
+      ...encryptedRow(serialized),
+      authenticationTag: Buffer.alloc(16),
+    }))
+    const db = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce(rows.slice(0, 10))
+        .mockResolvedValueOnce(rows.slice(10, 20))
+        .mockResolvedValueOnce(rows.slice(20))
+        .mockResolvedValueOnce([]),
+    }
+
+    await expect(
+      verifyAiProviderSecretRestoreSet(db, keyring(serialized), {
+        batchSize: 10,
+      }),
+    ).resolves.toMatchObject({
+      checkedSecretVersionCount: 25,
+      compatible: false,
+      failedSecretVersionCount: 25,
+      failureSample: expect.any(Array),
+      failureSampleTruncated: true,
+    })
+    const report = await verifyAiProviderSecretRestoreSet(
+      {
+        query: vi
+          .fn()
+          .mockResolvedValueOnce(rows.slice(0, 10))
+          .mockResolvedValueOnce(rows.slice(10, 20))
+          .mockResolvedValueOnce(rows.slice(20))
+          .mockResolvedValueOnce([]),
+      },
+      keyring(serialized),
+      { batchSize: 10 },
+    )
+    expect(report.failureSample).toHaveLength(20)
+    expect(report).not.toHaveProperty('results')
+    expect(JSON.stringify(report).length).toBeLessThan(10_000)
+    expect(db.query).toHaveBeenCalledTimes(3)
+    expect(String(db.query.mock.calls[0][0])).toContain('TOP (10)')
   })
 
   it('validates bounded rotation arguments and rotates one fenced batch', async () => {

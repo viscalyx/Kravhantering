@@ -1,5 +1,10 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import {
+  type AiProviderSecretCryptoCoreError,
+  buildAiProviderSecretAadCore,
+  validateAiProviderSecretEnvelope,
+} from './provider-secret-crypto-core.mjs'
+import {
   type AiProviderSecretKeyring,
   AiProviderSecretKeyringError,
 } from './provider-secret-keyring.ts'
@@ -8,8 +13,6 @@ export const AI_PROVIDER_SECRET_CIPHER_FORMAT_VERSION = 1 as const
 export const AI_PROVIDER_SECRET_NONCE_BYTES = 12 as const
 export const AI_PROVIDER_SECRET_AUTHENTICATION_TAG_BYTES = 16 as const
 const MAX_PROVIDER_SECRET_BYTES = 65_536
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 export interface AiProviderSecretBinding {
   connectionId: string
@@ -41,65 +44,23 @@ export class AiProviderSecretCryptoError extends Error {
   }
 }
 
-function normalizeId(id: string, field: string): string {
-  if (!UUID_PATTERN.test(id)) {
-    throw new AiProviderSecretCryptoError(
-      'invalid_binding',
-      `AI provider-secret ${field} must be a UUID`,
-    )
-  }
-  return id.toLowerCase()
-}
-
-function validateEnvelope(envelope: AiProviderSecretEnvelope): void {
-  if (envelope.formatVersion !== AI_PROVIDER_SECRET_CIPHER_FORMAT_VERSION) {
-    throw new AiProviderSecretCryptoError(
-      'invalid_envelope',
-      'AI provider-secret cipher format version is unsupported',
-    )
-  }
-  if (envelope.nonce.byteLength !== AI_PROVIDER_SECRET_NONCE_BYTES) {
-    throw new AiProviderSecretCryptoError(
-      'invalid_envelope',
-      `AI provider-secret nonce must be ${AI_PROVIDER_SECRET_NONCE_BYTES} bytes`,
-    )
-  }
-  if (
-    envelope.authenticationTag.byteLength !==
-    AI_PROVIDER_SECRET_AUTHENTICATION_TAG_BYTES
-  ) {
-    throw new AiProviderSecretCryptoError(
-      'invalid_envelope',
-      `AI provider-secret authentication tag must be ${AI_PROVIDER_SECRET_AUTHENTICATION_TAG_BYTES} bytes`,
-    )
-  }
-  if (envelope.ciphertext.byteLength === 0 || !envelope.rootKeyVersion) {
-    throw new AiProviderSecretCryptoError(
-      'invalid_envelope',
-      'AI provider-secret encrypted material is incomplete',
-    )
-  }
+function rethrowCoreCryptoError(error: unknown): never {
+  const coreError = error as AiProviderSecretCryptoCoreError
+  throw new AiProviderSecretCryptoError(
+    coreError.code as AiProviderSecretCryptoErrorCode,
+    coreError.message,
+  )
 }
 
 export function buildAiProviderSecretAad(
   binding: AiProviderSecretBinding,
   version: Pick<AiProviderSecretEnvelope, 'formatVersion' | 'rootKeyVersion'>,
 ): Buffer {
-  const connectionId = normalizeId(binding.connectionId, 'connection ID')
-  const secretVersionId = normalizeId(
-    binding.secretVersionId,
-    'secret-version ID',
-  )
-  return Buffer.from(
-    [
-      'kravhantering.ai-provider-secret',
-      String(version.formatVersion),
-      version.rootKeyVersion,
-      connectionId,
-      secretVersionId,
-    ].join('\0'),
-    'utf8',
-  )
+  try {
+    return buildAiProviderSecretAadCore(binding, version)
+  } catch (error) {
+    rethrowCoreCryptoError(error)
+  }
 }
 
 export function encryptAiProviderSecret(
@@ -149,7 +110,11 @@ export function decryptAiProviderSecret(
   binding: AiProviderSecretBinding,
   envelope: AiProviderSecretEnvelope,
 ): string {
-  validateEnvelope(envelope)
+  try {
+    validateAiProviderSecretEnvelope(binding, envelope)
+  } catch (error) {
+    rethrowCoreCryptoError(error)
+  }
   let key: Buffer
   try {
     key = keyring.keyForVersion(envelope.rootKeyVersion)
@@ -180,8 +145,7 @@ export function decryptAiProviderSecret(
     } finally {
       plaintext.fill(0)
     }
-  } catch (error) {
-    if (error instanceof AiProviderSecretCryptoError) throw error
+  } catch {
     throw new AiProviderSecretCryptoError(
       'authentication_failed',
       'AI provider-secret authentication failed',
