@@ -22,6 +22,7 @@ interface CoordinationRow {
     | 'connection_retired'
     | 'connection_suspended'
     | 'profile_suspended'
+  cancellationRequestedAt?: Date | string
   healthStateChanged?: boolean | number
   healthStatus?: AiOperationalStateTransition['healthStatus']
   inactivityTimeBudgetMs?: number | string
@@ -72,6 +73,17 @@ function acquisition(row: CoordinationRow | undefined): AiRunAcquireResult {
     }
   }
   if (row?.acquisitionStatus === 'expired') return { status: 'expired' }
+  if (
+    row?.acquisitionStatus === 'cancelled' &&
+    row.cancellationReason &&
+    row.cancellationRequestedAt
+  ) {
+    return {
+      reason: row.cancellationReason,
+      requestedAt: new Date(row.cancellationRequestedAt),
+      status: 'cancelled',
+    }
+  }
   if (row?.acquisitionStatus === 'breaker_open') {
     return { retryAfterSeconds: 3600, status: 'breaker_open' }
   }
@@ -192,7 +204,14 @@ const ACQUIRE_SQL = `
     SELECT 1 FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK)
     WHERE [application_run_id] = @0 AND [fencing_token] = @3
       AND [cancellation_requested_at] IS NOT NULL
-  ) BEGIN SELECT N'expired' AS [acquisitionStatus]; RETURN; END;
+  ) BEGIN
+    SELECT N'cancelled' AS [acquisitionStatus],
+      [cancellation_requested_at] AS [cancellationRequestedAt],
+      [cancellation_reason] AS [cancellationReason]
+    FROM [ai_run_coordination_entries]
+    WHERE [application_run_id] = @0 AND [fencing_token] = @3;
+    RETURN;
+  END;
 
   DECLARE @connection_id uniqueidentifier;
   DECLARE @model_revision_id uniqueidentifier;
@@ -418,14 +437,21 @@ export function createSqlServerAiRunCoordinationStore(
 
     async cancellationRequested(input) {
       const rows = await db.query<CoordinationRow[]>(
-        `SELECT [cancellation_reason] AS [cancellationReason]
+        `SELECT [cancellation_reason] AS [cancellationReason],
+                [cancellation_requested_at] AS [cancellationRequestedAt]
          FROM [ai_run_coordination_entries]
          WHERE [application_run_id] = @0 AND [fencing_token] = @1
            AND [lease_owner_id] = @2 AND [status] = N'running'
            AND [lease_expires_at] > SYSUTCDATETIME()`,
         [input.applicationRunId, input.fencingToken, input.leaseOwnerId],
       )
-      return rows[0]?.cancellationReason ?? null
+      const row = rows[0]
+      return row?.cancellationReason && row.cancellationRequestedAt
+        ? {
+            reason: row.cancellationReason,
+            requestedAt: new Date(row.cancellationRequestedAt),
+          }
+        : null
     },
 
     async enqueue(input): Promise<AiRunAdmissionResult> {

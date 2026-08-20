@@ -5,6 +5,8 @@ const AUTHENTICATION_TAG_BYTES = 16
 const NONCE_BYTES = 12
 const ROOT_KEY_BYTES = 32
 const VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/u
+const BASE64_PATTERN =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u
 
 function fail(message) {
   throw new Error(message)
@@ -28,14 +30,22 @@ function parseKeyring(serialized) {
   }
   const keys = new Map()
   for (const [version, encoded] of Object.entries(document.keys)) {
-    const key = Buffer.from(
-      typeof encoded === 'string' ? encoded : '',
-      'base64',
-    )
-    if (!VERSION_PATTERN.test(version) || key.byteLength !== ROOT_KEY_BYTES) {
+    if (
+      !VERSION_PATTERN.test(version) ||
+      typeof encoded !== 'string' ||
+      encoded.length === 0 ||
+      !BASE64_PATTERN.test(encoded)
+    ) {
+      return fail('AI provider-secret keyring contains an invalid key.')
+    }
+    const key = Buffer.from(encoded, 'base64')
+    if (key.byteLength !== ROOT_KEY_BYTES) {
       return fail('AI provider-secret keyring contains an invalid key.')
     }
     keys.set(version, key)
+  }
+  if (keys.size === 0) {
+    return fail('AI provider-secret keyring is invalid.')
   }
   if (!keys.has(document.activeWriteVersion)) {
     return fail('AI provider-secret active root key is unavailable.')

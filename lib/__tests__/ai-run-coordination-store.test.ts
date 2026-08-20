@@ -58,6 +58,18 @@ describe('SQL Server AI run coordination store', () => {
     [{ acquisitionStatus: 'waiting' }, { status: 'waiting' }],
     [{ acquisitionStatus: 'expired' }, { status: 'expired' }],
     [
+      {
+        acquisitionStatus: 'cancelled',
+        cancellationReason: 'profile_suspended',
+        cancellationRequestedAt: new Date('2026-08-20T12:00:00.000Z'),
+      },
+      {
+        reason: 'profile_suspended',
+        requestedAt: new Date('2026-08-20T12:00:00.000Z'),
+        status: 'cancelled',
+      },
+    ],
+    [
       { acquisitionStatus: 'breaker_open' },
       { retryAfterSeconds: 3600, status: 'breaker_open' },
     ],
@@ -140,6 +152,11 @@ describe('SQL Server AI run coordination store', () => {
       '[ai_connection_model_revision_id] = @model_revision_id',
     )
     expect(sql).toContain('[lease_expires_at]')
+    expect(sql).toContain("N'cancelled' AS [acquisitionStatus]")
+    expect(sql).toContain(
+      '[cancellation_requested_at] AS [cancellationRequestedAt]',
+    )
+    expect(sql).toContain('[cancellation_reason] AS [cancellationReason]')
   })
 
   it('opens immediately for authentication and at five qualifying failures', async () => {
@@ -232,6 +249,35 @@ describe('SQL Server AI run coordination store', () => {
     expect(String(calls[1]?.[0])).toContain(
       '[lease_expires_at] > SYSUTCDATETIME()',
     )
+  })
+
+  it('returns the durable cancellation reason and SQL request time only for the exact live lease', async () => {
+    const requestedAt = new Date('2026-08-20T12:00:00.000Z')
+    const { db, query } = database([
+      [
+        {
+          cancellationReason: 'connection_suspended',
+          cancellationRequestedAt: requestedAt,
+        },
+      ],
+    ])
+
+    await expect(
+      createSqlServerAiRunCoordinationStore(db).cancellationRequested?.({
+        applicationRunId: '00000000-0000-4000-8000-000000000001',
+        fencingToken: '40000000-0000-4000-8000-000000000001',
+        leaseOwnerId: '50000000-0000-4000-8000-000000000001',
+      }),
+    ).resolves.toEqual({
+      reason: 'connection_suspended',
+      requestedAt,
+    })
+    const sql = String((query.mock.calls as unknown[][])[0]?.[0])
+    expect(sql).toContain('[application_run_id] = @0')
+    expect(sql).toContain('[fencing_token] = @1')
+    expect(sql).toContain('[lease_owner_id] = @2')
+    expect(sql).toContain("[status] = N'running'")
+    expect(sql).toContain('[lease_expires_at] > SYSUTCDATETIME()')
   })
 
   it('reports a lost lease when retry requeue is not applied', async () => {

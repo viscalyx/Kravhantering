@@ -670,7 +670,11 @@ connection or run profile. This stops new requests and attempts to cancel
 running requests without automatic fallback. Suspension commits a durable,
 fenced, content-free cancellation request in the same Admin transaction. Each
 coordinator polls it every second, aborts only the matching leased run, and
-force-closes an uncooperative adapter within the existing five-second grace.
+force-closes an uncooperative adapter no later than five seconds after the
+durable SQL request time; polling delay consumes that five-second cleanup
+budget. A queued or retry-wait row returns a non-retryable cancelled terminal
+with the stored administrative reason, never opens an adapter, and is removed
+only by its fencing token without changing health.
 Lifecycle remains separate from operational health. Restore service only after the
 cause, attestation, provider secret, connection test, model capabilities, and
 run profile dependencies are valid again.

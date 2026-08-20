@@ -518,7 +518,10 @@ describe('AI run coordinator', () => {
       const cancellationRequested = vi
         .fn()
         .mockResolvedValueOnce(null)
-        .mockResolvedValue('connection_suspended')
+        .mockResolvedValue({
+          reason: 'connection_suspended',
+          requestedAt: new Date(),
+        })
       let markStarted = (): void => undefined
       const started = new Promise<void>(resolve => {
         markStarted = resolve
@@ -570,6 +573,144 @@ describe('AI run coordinator', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('force-closes an uncooperative attempt within five seconds of the durable admin request', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z'))
+    try {
+      const requestedAt = new Date(Date.now() + 1)
+      const cancellationRequested = vi.fn(async () => ({
+        reason: 'connection_suspended' as const,
+        requestedAt,
+      }))
+      let markStarted = (): void => undefined
+      const started = new Promise<void>(resolve => {
+        markStarted = resolve
+      })
+      const forceClosedAt: number[] = []
+      const coordination = store({ cancellationRequested })
+      const suspendedRequest = request()
+      suspendedRequest.profile.inactivityTimeBudgetMs = 30_000
+      suspendedRequest.profile.totalTimeBudgetMs = 40_000
+      const collecting = collect(
+        createAiRunCoordinator({ coordination }).coordinate(
+          suspendedRequest,
+          () => ({
+            [Symbol.asyncIterator]() {
+              markStarted()
+              return {
+                next: () => new Promise<IteratorResult<AiRunEvent>>(() => {}),
+                return: () => new Promise<IteratorResult<AiRunEvent>>(() => {}),
+              }
+            },
+          }),
+          () => forceClosedAt.push(Date.now()),
+        ),
+      )
+      await started
+      await vi.advanceTimersByTimeAsync(5_001)
+
+      await expect(collecting).resolves.toMatchObject([{ type: 'cancelled' }])
+      expect(forceClosedAt).toHaveLength(1)
+      expect(forceClosedAt[0] - requestedAt.getTime()).toBeLessThanOrEqual(
+        5_000,
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it.each(['connection_suspended', 'connection_retired'] as const)(
+    'maps queued admin cancellation %s to one health-neutral terminal',
+    async reason => {
+      const execute = vi.fn(() => (async function* () {})())
+      const telemetry: AiRunTelemetryEvent[] = []
+      const coordination = store({
+        acquire: vi.fn(async () => ({
+          reason,
+          requestedAt: new Date('2026-08-20T12:00:00.000Z'),
+          status: 'cancelled' as const,
+        })),
+      })
+
+      await expect(
+        collect(
+          createAiRunCoordinator({
+            coordination,
+            telemetry: {
+              emit: event => {
+                telemetry.push(event)
+              },
+            },
+          }).coordinate(request(), execute, () => undefined),
+        ),
+      ).resolves.toEqual([
+        {
+          identity: IDENTITY,
+          reason: 'application_cancelled',
+          type: 'cancelled',
+        },
+      ])
+      expect(execute).not.toHaveBeenCalled()
+      expect(coordination.abandon).toHaveBeenCalledOnce()
+      expect(coordination.finish).not.toHaveBeenCalled()
+      expect(telemetry.at(-1)).toMatchObject({
+        cancellationReason: reason,
+        name: 'ai_run_terminal',
+        outcome: 'cancelled',
+      })
+    },
+  )
+
+  it('preserves profile suspension when an admin-cancelled run is in retry wait', async () => {
+    const reason = 'profile_suspended' as const
+    const coordination = store({
+      acquire: vi
+        .fn()
+        .mockResolvedValueOnce({ status: 'acquired' })
+        .mockResolvedValueOnce({
+          reason,
+          requestedAt: new Date('2026-08-20T12:00:00.000Z'),
+          status: 'cancelled',
+        }),
+    })
+    const execute = vi.fn(() =>
+      (async function* () {
+        yield {
+          failure: {
+            category: 'connection_unavailable' as const,
+            retryDisposition: 'safe_before_acceptance' as const,
+            retryable: true,
+          },
+          identity: IDENTITY,
+          type: 'failed' as const,
+        }
+      })(),
+    )
+    const telemetry: AiRunTelemetryEvent[] = []
+
+    await expect(
+      collect(
+        createAiRunCoordinator({
+          coordination,
+          delay: async () => undefined,
+          random: () => 0,
+          telemetry: {
+            emit: event => {
+              telemetry.push(event)
+            },
+          },
+        }).coordinate(request(), execute, () => undefined),
+      ),
+    ).resolves.toMatchObject([{ type: 'cancelled' }])
+    expect(execute).toHaveBeenCalledOnce()
+    expect(coordination.abandon).toHaveBeenCalledOnce()
+    expect(coordination.finish).not.toHaveBeenCalled()
+    expect(telemetry.at(-1)).toMatchObject({
+      cancellationReason: reason,
+      outcome: 'cancelled',
+    })
   })
 
   it('allows the exact limit and aborts before exposing the first byte over it', async () => {

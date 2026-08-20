@@ -1,5 +1,6 @@
 import { createCipheriv, randomBytes, randomUUID } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
+import { parseAiProviderSecretKeyring } from '../../lib/ai/provider-secret-keyring.ts'
 import {
   loadAiProviderSecretMaintenanceKeyring,
   reencryptAiProviderSecretBatch,
@@ -106,6 +107,50 @@ describe('plain-Node AI provider-secret maintenance', () => {
       ),
     ).toThrow('active root key is unavailable')
   })
+
+  it.each([
+    ['canonical', randomBytes(32).toString('base64'), true],
+    ['empty', '', false],
+    ['ignored punctuation', `${randomBytes(32).toString('base64')}!`, false],
+    [
+      'embedded whitespace',
+      `${randomBytes(16).toString('base64')}\n${randomBytes(16).toString('base64')}`,
+      false,
+    ],
+    [
+      'missing padding',
+      randomBytes(32).toString('base64').replace(/=$/u, ''),
+      false,
+    ],
+    ['wrong decoded size', randomBytes(31).toString('base64'), false],
+  ])(
+    'matches runtime keyring acceptance for %s base64',
+    (_label, encoded, accepted) => {
+      const serialized = JSON.stringify({
+        activeWriteVersion: 'root-1',
+        formatVersion: 1,
+        keys: { 'root-1': encoded },
+      })
+      const runtimeAccepted = (() => {
+        try {
+          parseAiProviderSecretKeyring(serialized)
+          return true
+        } catch {
+          return false
+        }
+      })()
+      const maintenanceAccepted = (() => {
+        try {
+          keyring(serialized)
+          return true
+        } catch {
+          return false
+        }
+      })()
+      expect(runtimeAccepted).toBe(accepted)
+      expect(maintenanceAccepted).toBe(runtimeAccepted)
+    },
+  )
 
   it('authenticates retained rows and proves an omitted root is unavailable', async () => {
     const serialized = serializedKeyring()

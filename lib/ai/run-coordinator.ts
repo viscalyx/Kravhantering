@@ -18,6 +18,11 @@ export type AiAdministrativeCancellationReason =
   | 'connection_suspended'
   | 'profile_suspended'
 
+export interface AiAdministrativeCancellationRequest {
+  reason: AiAdministrativeCancellationReason
+  requestedAt: Date
+}
+
 export interface AiRunCoordinationProfile {
   inactivityTimeBudgetMs: number
   queueCapacity: number
@@ -49,6 +54,7 @@ export type AiRunAdmissionResult =
 
 export type AiRunAcquireResult =
   | { activeConcurrency?: number; queueDepth?: number; status: 'acquired' }
+  | (AiAdministrativeCancellationRequest & { status: 'cancelled' })
   | {
       retryAfterSeconds?: number
       status: 'breaker_open' | 'expired' | 'waiting'
@@ -109,7 +115,7 @@ export interface AiRunCoordinationStore {
     applicationRunId: string
     fencingToken: string
     leaseOwnerId: string
-  }): Promise<AiAdministrativeCancellationReason | null>
+  }): Promise<AiAdministrativeCancellationRequest | null>
   enqueue(input: {
     applicationRunId: string
     fencingToken: string
@@ -356,6 +362,7 @@ function defaultDelay(
 async function settleWithinGrace(
   promise: Promise<unknown>,
   forceClose: () => void,
+  graceMs = CANCELLATION_GRACE_MS,
 ): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined
   const settled = await Promise.race([
@@ -364,7 +371,7 @@ async function settleWithinGrace(
       () => true,
     ),
     new Promise<false>(resolve => {
-      timer = setTimeout(() => resolve(false), CANCELLATION_GRACE_MS)
+      timer = setTimeout(() => resolve(false), Math.max(0, graceMs))
     }),
   ])
   if (timer) clearTimeout(timer)
@@ -654,6 +661,7 @@ export function createAiRunCoordinator(
       let administrativeCancellationReason:
         | AiAdministrativeCancellationReason
         | undefined
+      let administrativeCancellationRequestedAt: Date | undefined
       const telemetryBase = {
         adapterType: request.adapterType,
         adapterVersion: request.adapterVersion,
@@ -729,6 +737,13 @@ export function createAiRunCoordinator(
               yield finalEvent
               return
             }
+            if (result.status === 'cancelled') {
+              administrativeCancellationReason = result.reason
+              administrativeCancellationRequestedAt = result.requestedAt
+              finalEvent = cancellation(request.identity)
+              yield finalEvent
+              return
+            }
             if (result.status === 'expired') break
             await delay(
               Math.min(pollIntervalMs, totalDeadline - now()),
@@ -786,10 +801,12 @@ export function createAiRunCoordinator(
                 leaseOwnerId,
               }) ?? Promise.resolve(null),
             ])
-              .then(([renewed, cancellationReason]) => {
+              .then(([renewed, cancellationRequest]) => {
                 if (!renewalActive) return
-                if (cancellationReason) {
-                  administrativeCancellationReason = cancellationReason
+                if (cancellationRequest) {
+                  administrativeCancellationReason = cancellationRequest.reason
+                  administrativeCancellationRequestedAt =
+                    cancellationRequest.requestedAt
                   attemptController.abort()
                 } else if (!renewed) {
                   leaseLost = true
@@ -1019,6 +1036,11 @@ export function createAiRunCoordinator(
             await settleWithinGrace(
               Promise.resolve().then(() => iterator.return?.()),
               () => forceCloseAttempt(request.applicationRunId),
+              administrativeCancellationRequestedAt
+                ? administrativeCancellationRequestedAt.getTime() +
+                    CANCELLATION_GRACE_MS -
+                    now()
+                : CANCELLATION_GRACE_MS,
             )
           }
 

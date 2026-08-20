@@ -162,7 +162,10 @@ describe('AI run coordination against SQL Server', () => {
         fencingToken: firstFence,
         leaseOwnerId: firstFence,
       }),
-    ).resolves.toBe('profile_suspended')
+    ).resolves.toEqual({
+      reason: 'profile_suspended',
+      requestedAt: expect.any(Date),
+    })
     const beforeConnectionSuspension = (await db.query(
       `SELECT [cancellation_reason] AS [cancellationReason]
        FROM [ai_run_coordination_entries]
@@ -203,6 +206,18 @@ describe('AI run coordination against SQL Server', () => {
         }),
       ]),
     )
+    await expect(
+      coordination.acquire({
+        applicationRunId: secondRun,
+        fencingToken: secondFence,
+        leaseDurationMs: 30_000,
+        leaseOwnerId: secondFence,
+      }),
+    ).resolves.toEqual({
+      reason: 'connection_suspended',
+      requestedAt: expect.any(Date),
+      status: 'cancelled',
+    })
   })
 
   it('enforces distributed capacity, bounded queueing, and lease transfer', async () => {
