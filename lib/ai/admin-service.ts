@@ -14,7 +14,6 @@ import type {
   SaveAiModelRevision,
   SaveAiRunProfileRevision,
 } from './admin-contracts'
-import type { AiConnectionProvenance } from './connection-provenance'
 import type { AiRunProfileKey } from './profile-resolver'
 import type {
   AiProviderSecretAvailability,
@@ -43,12 +42,12 @@ export interface AiAdminConnectionSummary {
     | 'suspended'
     | 'verification_required'
   operationalHealth: 'degraded' | 'healthy' | 'unavailable' | 'unknown'
-  provenance: AiConnectionProvenance
   publicName: string
   revisionToken: string
 }
 
-export interface AiAdminConnectionDetail extends AiAdminConnectionSummary {
+export interface AiAdminStoredConnectionDetail
+  extends AiAdminConnectionSummary {
   activeSecret: AiProviderSecretAvailability
   adapterKey: string
   adapterVersion: string
@@ -69,6 +68,10 @@ export interface AiAdminConnectionDetail extends AiAdminConnectionSummary {
   maximumConcurrency: number
   models: readonly AiAdminModelRecord[]
   tlsPolicyKey: string
+}
+
+export interface AiAdminConnectionDetail extends AiAdminStoredConnectionDetail {
+  adapterAvailability: AiAdminAdapterAvailability
 }
 
 export interface AiAdminAttestationRecord extends SaveAiAttestation {
@@ -179,7 +182,16 @@ export interface AiAdminCatalogItem {
   name: string
 }
 
+export type AiAdminAdapterAvailability =
+  | { available: true }
+  | { available: false; reason: 'adapter_not_registered' }
+
 export interface AiAdminExternalOperations {
+  adapterAvailability(
+    connection: Readonly<
+      Pick<AiAdminStoredConnectionDetail, 'adapterKey' | 'adapterVersion'>
+    >,
+  ): AiAdminAdapterAvailability
   authorizeConnectionTarget(
     connection: Readonly<AiAdminConnectionDetail>,
   ): Promise<boolean>
@@ -241,7 +253,7 @@ export interface AiAdminSecretOperations {
 
 export interface AiAdminActivationSnapshot {
   attestationRevisionToken: string | null
-  connection: AiAdminConnectionDetail
+  connection: AiAdminStoredConnectionDetail
   connectionEvidenceId: string | null
   modelRevision: AiAdminModelRevisionRecord | null
   profile: AiAdminRunProfileRecord
@@ -275,12 +287,16 @@ export interface AiAdminStore {
     profileToken: string
     secretVersionId: string | null
   }): Promise<AiAdminRunProfileRecord | null>
-  createConnection(input: CreateAiConnection): Promise<AiAdminConnectionDetail>
+  createConnection(
+    input: CreateAiConnection,
+  ): Promise<AiAdminStoredConnectionDetail>
   getActivationSnapshot(input: {
     profileKey: AiRunProfileKey
     profileRevisionId: string
   }): Promise<AiAdminActivationSnapshot | null>
-  getConnection(connectionId: string): Promise<AiAdminConnectionDetail | null>
+  getConnection(
+    connectionId: string,
+  ): Promise<AiAdminStoredConnectionDetail | null>
   listConnections(): Promise<readonly AiAdminConnectionSummary[]>
   listRunProfileActivationEntries(): Promise<
     readonly AiAdminProfileActivationEntry[]
@@ -290,9 +306,9 @@ export interface AiAdminStore {
   ): Promise<readonly AiAdminRunProfileRevisionRecord[]>
   listRunProfiles(): Promise<readonly AiAdminRunProfileRecord[]>
   recordConnectionVerification(input: {
-    connection: AiAdminConnectionDetail
+    connection: AiAdminStoredConnectionDetail
     result: Readonly<AiAdminConnectionVerificationResult>
-  }): Promise<AiAdminConnectionDetail>
+  }): Promise<AiAdminStoredConnectionDetail>
   recordHealth(input: {
     connectionConfigurationVersion: number
     connectionId: string
@@ -301,9 +317,9 @@ export interface AiAdminStore {
     invalidationScope: 'connection' | 'model' | 'none'
     modelRevisionId: string
     modelRevisionToken: string
-  }): Promise<AiAdminConnectionDetail>
+  }): Promise<AiAdminStoredConnectionDetail>
   recordModelVerification(input: {
-    connection: AiAdminConnectionDetail
+    connection: AiAdminStoredConnectionDetail
     connectionEvidenceId: string
     modelRevision: AiAdminModelRevisionRecord
     result: Readonly<AiAdminModelVerificationResult>
@@ -341,7 +357,7 @@ export interface AiAdminStore {
     connection: CreateAiConnection
     connectionId: string
     revisionToken: string
-  }): Promise<AiAdminConnectionDetail | null>
+  }): Promise<AiAdminStoredConnectionDetail | null>
 }
 
 export interface AiAdminAuditDetail {
@@ -455,7 +471,7 @@ function capabilityPolicyBlockers(
 }
 
 function connectionBlockers(
-  connection: AiAdminConnectionDetail,
+  connection: AiAdminStoredConnectionDetail,
 ): AiAdminBlocker[] {
   return [...connection.blockers]
 }
@@ -576,7 +592,7 @@ export class AiConnectionAdministrationService {
   }
 
   async #withSecretAvailability(
-    connection: AiAdminConnectionDetail,
+    connection: AiAdminStoredConnectionDetail,
     resolvedAvailability?: AiProviderSecretAvailability,
   ): Promise<AiAdminConnectionDetail> {
     const activeSecret =
@@ -590,7 +606,12 @@ export class AiConnectionAdministrationService {
     if (connection.authenticationType !== 'none' && !activeSecret.available) {
       blockers.push({ code: 'active_secret_missing' })
     }
-    return { ...connection, activeSecret, blockers }
+    return {
+      ...connection,
+      activeSecret,
+      adapterAvailability: this.#external.adapterAvailability(connection),
+      blockers,
+    }
   }
 
   async #assertAuthorizedTarget(
@@ -943,11 +964,14 @@ export class AiConnectionAdministrationService {
       selection,
     )
     assertAiStagingLiveVerificationAllowed(input.expectedEnvironmentId)
-    const refenced = await this.#store.getActivationSnapshot({
+    const referenced = await this.#store.getActivationSnapshot({
       profileKey: entry.profile.profileKey,
       profileRevisionId: snapshot.profileRevision.id,
     })
-    if (!refenced || !isCurrentLivePathActivation(exactSnapshot, refenced)) {
+    if (
+      !referenced ||
+      !isCurrentLivePathActivation(exactSnapshot, referenced)
+    ) {
       throw validationError('The exact AI path changed during verification.')
     }
     await this.#audit({

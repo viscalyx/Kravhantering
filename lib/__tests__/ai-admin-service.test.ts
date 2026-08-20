@@ -27,6 +27,7 @@ function connection(): AiAdminConnectionDetail {
       rootKeyVersion: 'root-a',
       secretVersionId: '00000000-0000-4000-8000-000000000005',
     },
+    adapterAvailability: { available: true },
     adapterKey: 'controlled_test',
     adapterVersion: '1',
     administrationName: 'Test connection',
@@ -87,7 +88,6 @@ function connection(): AiAdminConnectionDetail {
       },
     ],
     operationalHealth: 'healthy',
-    provenance: 'administrator',
     publicName: 'Test AI',
     revisionToken: '00000000-0000-4000-8000-000000000010',
     tlsPolicyKey: 'test',
@@ -138,6 +138,7 @@ function draftRevision(profile: AiAdminRunProfileRecord) {
 describe('AI connection administration service', () => {
   const audit = vi.fn(async () => undefined)
   const external = {
+    adapterAvailability: vi.fn(() => ({ available: true as const })),
     authorizeConnectionTarget: vi.fn(async () => true),
     authorizeRunProfile: vi.fn(async () => 'authorized' as const),
     fetchCatalog: vi.fn(async (): Promise<readonly AiAdminCatalogItem[]> => []),
@@ -179,6 +180,32 @@ describe('AI connection administration service', () => {
           ]),
         ),
     )
+  })
+
+  it('reports registry-derived adapter availability on connection details', async () => {
+    const saved = connection()
+    saved.adapterKey = 'vllm'
+    external.adapterAvailability.mockReturnValueOnce({
+      available: false,
+      reason: 'adapter_not_registered',
+    } as never)
+    const service = new AiConnectionAdministrationService({
+      audit,
+      external,
+      secrets,
+      store: {
+        getConnection: vi.fn(async () => saved),
+      } as unknown as AiAdminStore,
+    })
+
+    await expect(service.getConnection(saved.id)).resolves.toMatchObject({
+      adapterAvailability: {
+        available: false,
+        reason: 'adapter_not_registered',
+      },
+      adapterKey: 'vllm',
+      adapterVersion: '1',
+    })
   })
 
   it('saves an incomplete draft without making external calls', async () => {

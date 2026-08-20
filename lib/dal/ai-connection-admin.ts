@@ -18,8 +18,8 @@ import type {
   AiAdminRunProfileRecord,
   AiAdminRunProfileRevisionRecord,
   AiAdminStore,
+  AiAdminStoredConnectionDetail,
 } from '@/lib/ai/admin-service'
-import { aiConnectionProvenance } from '@/lib/ai/connection-provenance'
 import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
 import type { SqlServerDatabase, SqlServerEntityManager } from '@/lib/db'
 import { conflictError } from '@/lib/requirements/errors'
@@ -268,7 +268,6 @@ function summary(row: ConnectionRow): AiAdminConnectionSummary {
     id: row.id,
     lifecycleStatus: row.lifecycleStatus,
     operationalHealth: row.operationalHealth ?? 'unknown',
-    provenance: aiConnectionProvenance(row.id),
     publicName: row.publicName,
     revisionToken: row.revisionToken,
   }
@@ -276,7 +275,7 @@ function summary(row: ConnectionRow): AiAdminConnectionSummary {
 
 function activeSecret(
   row: ConnectionRow,
-): AiAdminConnectionDetail['activeSecret'] {
+): AiAdminStoredConnectionDetail['activeSecret'] {
   return row.activeSecretId && row.activeSecretRootKeyVersion
     ? {
         available: true,
@@ -361,14 +360,14 @@ function emptyCapabilities(): AiCapability {
 async function loadConnection(
   executor: SqlServerDatabase | SqlServerEntityManager,
   connectionId: string,
-): Promise<AiAdminConnectionDetail | null> {
+): Promise<AiAdminStoredConnectionDetail | null> {
   return (await loadConnections(executor, [connectionId]))[0] ?? null
 }
 
 async function loadConnections(
   executor: SqlServerDatabase | SqlServerEntityManager,
   connectionIds: readonly string[],
-): Promise<AiAdminConnectionDetail[]> {
+): Promise<AiAdminStoredConnectionDetail[]> {
   if (connectionIds.length === 0) return []
   const idsJson = JSON.stringify([...new Set(connectionIds)])
   const connectionRows = await executor.query<ConnectionRow[]>(
@@ -696,7 +695,9 @@ async function loadProfileActivationEntries(
   })
 }
 
-function configurationFingerprint(connection: AiAdminConnectionDetail): string {
+function configurationFingerprint(
+  connection: AiAdminStoredConnectionDetail,
+): string {
   const value = JSON.stringify({
     adapterKey: connection.adapterKey,
     adapterVersion: connection.adapterVersion,
@@ -1875,7 +1876,7 @@ function configurationFingerprintForModel(
 }
 
 function summaryFromDetail(
-  connection: AiAdminConnectionDetail,
+  connection: AiAdminStoredConnectionDetail,
 ): AiAdminConnectionSummary {
   return {
     administrationName: connection.administrationName,
@@ -1883,7 +1884,6 @@ function summaryFromDetail(
     id: connection.id,
     lifecycleStatus: connection.lifecycleStatus,
     operationalHealth: connection.operationalHealth,
-    provenance: connection.provenance,
     publicName: connection.publicName,
     revisionToken: connection.revisionToken,
   }

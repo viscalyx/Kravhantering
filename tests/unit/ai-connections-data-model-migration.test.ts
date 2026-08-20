@@ -193,7 +193,7 @@ describe('AI connection seed profiles', () => {
     expect(String(profileInsert?.[0])).not.toContain('IDENTITY_INSERT')
   })
 
-  it('creates only unverified OpenRouter drafts in demo seed', async () => {
+  it('creates ordinary unverified OpenRouter and vLLM drafts in demo seed', async () => {
     const { executor, rows } = collectSeedRows()
 
     await seedRequiredDatabase(executor)
@@ -204,11 +204,25 @@ describe('AI connection seed profiles', () => {
         adapter_key: 'openrouter',
         lifecycle_status: 'draft',
       }),
+      expect.objectContaining({
+        adapter_key: 'vllm',
+        adapter_version: '1',
+        administration_name: 'Lokalt vLLM-kluster',
+        endpoint_url: 'https://vllm.demo.invalid/v1',
+        lifecycle_status: 'draft',
+        public_name: 'Organisationens AI',
+      }),
     ])
     expect(rowsFor(rows, 'ai_connection_attestations')).toEqual([
       expect.objectContaining({
+        ai_connection_id: '20000000-0000-4000-8000-000000000001',
         incident_response_reference: null,
         responsible_organization_unit_reference: null,
+        status: 'draft',
+      }),
+      expect.objectContaining({
+        ai_connection_id: '20000000-0000-4000-8000-000000000002',
+        provider_name: 'vLLM',
         status: 'draft',
       }),
     ])

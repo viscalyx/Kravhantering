@@ -42,6 +42,7 @@ function connection(
 ): AiAdminConnectionDetail {
   return {
     activeSecret: { available: false, reason: 'secret_missing' },
+    adapterAvailability: { available: true },
     adapterKey: 'controlled_test',
     adapterVersion: '1',
     administrationName: 'Controlled',
@@ -105,7 +106,6 @@ function connection(
     revisionToken: crypto.randomUUID(),
     tlsPolicyKey: 'test',
     ...overrides,
-    provenance: overrides.provenance ?? 'administrator',
   }
 }
 
@@ -185,10 +185,12 @@ describe('AI administration provider composition', () => {
     vi.unstubAllEnvs()
   })
 
-  it('resolves exact adapter registrations and rejects duplicates or unknowns', () => {
+  it('reports exact adapter registration availability and rejects duplicates or unknowns', () => {
     const registry = createAiAdminConnectionAdapterRegistry([
       controlledTestAdminAdapterRegistration,
     ])
+    expect(registry.isRegistered('controlled_test', '1')).toBe(true)
+    expect(registry.isRegistered('vllm', '1')).toBe(false)
     expect(registry.resolve('controlled_test', '1')).toBeDefined()
     expect(() => registry.resolve('missing', '1')).toThrow('Unknown')
     expect(() =>
@@ -197,6 +199,18 @@ describe('AI administration provider composition', () => {
         controlledTestAdminAdapterRegistration,
       ]),
     ).toThrow('Duplicate')
+
+    const external = createProductionAiAdminExternalOperations(
+      emptyDb,
+      () => ring,
+      { deployment: deployment(), registry },
+    )
+    expect(external.adapterAvailability(connection())).toEqual({
+      available: true,
+    })
+    expect(
+      external.adapterAvailability(connection({ adapterKey: 'vllm' })),
+    ).toEqual({ available: false, reason: 'adapter_not_registered' })
   })
 
   it('runs all controlled adapter operations through trust without a secret', async () => {

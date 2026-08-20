@@ -53,6 +53,7 @@ const capabilities = {
 function detail(id: string, name: string): AiAdminConnectionDetail {
   return {
     activeSecret: { available: false, reason: 'secret_missing' },
+    adapterAvailability: { available: true },
     adapterKey: 'controlled_test',
     adapterVersion: '1',
     administrationName: name,
@@ -99,7 +100,6 @@ function detail(id: string, name: string): AiAdminConnectionDetail {
     ],
     operationalHealth: 'unknown',
     publicName: name,
-    provenance: 'administrator',
     revisionToken: `${id}-token`,
     tlsPolicyKey: 'controlled_test',
   } as AiAdminConnectionDetail
@@ -109,10 +109,10 @@ const connectionOne = detail(
   '10000000-0000-4000-8000-000000000001',
   'Controlled one',
 )
-const connectionTwo = {
-  ...detail('10000000-0000-4000-8000-000000000002', 'Controlled two'),
-  provenance: 'demo_seed',
-} as AiAdminConnectionDetail
+const connectionTwo = detail(
+  '10000000-0000-4000-8000-000000000002',
+  'Controlled two',
+)
 
 function installRegistryFetch() {
   fetchMock.mockImplementation((input: RequestInfo | URL) => {
@@ -126,7 +126,6 @@ function installRegistryFetch() {
             id: connectionOne.id,
             lifecycleStatus: 'draft',
             operationalHealth: 'unknown',
-            provenance: 'administrator',
             publicName: connectionOne.publicName,
             revisionToken: connectionOne.revisionToken,
           },
@@ -136,7 +135,6 @@ function installRegistryFetch() {
             id: connectionTwo.id,
             lifecycleStatus: 'draft',
             operationalHealth: 'unknown',
-            provenance: 'demo_seed',
             publicName: connectionTwo.publicName,
             revisionToken: connectionTwo.revisionToken,
           },
@@ -206,9 +204,6 @@ describe('AiConnectionsPanel', () => {
 
     fireEvent.click(first)
     expect(first).toHaveAttribute('aria-expanded', 'true')
-    expect(
-      screen.getByText('admin.aiConnections.seed.demoDraft'),
-    ).not.toBeVisible()
     expect(firstRegion).toHaveAttribute('data-state', 'open')
     expect(firstRegion).toHaveClass('motion-reduce:transition-none')
 
@@ -219,22 +214,99 @@ describe('AiConnectionsPanel', () => {
     expect(screen.queryByText('Controlled one demo template')).not.toBeVisible()
   })
 
-  it('uses explicit seed provenance without inferring it from editable prose', async () => {
+  it('keeps administration available and disables adapter operations when the adapter is not registered', async () => {
     const user = userEvent.setup()
-    installRegistryFetch()
-    renderPanel()
+    const unavailable = {
+      ...detail('10000000-0000-4000-8000-000000000003', 'Local vLLM'),
+      adapterAvailability: {
+        available: false,
+        reason: 'adapter_not_registered',
+      },
+      adapterKey: 'vllm',
+    } satisfies AiAdminConnectionDetail
+    const unavailableProfile = {
+      ...profile,
+      draftRevision: {
+        ...profile.draftRevision,
+        modelRevisionId: unavailable.models[0].revisions[0].id,
+      },
+    }
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/admin/ai-connections') {
+        return Promise.resolve(
+          okJson([
+            {
+              administrationName: unavailable.administrationName,
+              configurationVersion: unavailable.configurationVersion,
+              id: unavailable.id,
+              lifecycleStatus: unavailable.lifecycleStatus,
+              operationalHealth: unavailable.operationalHealth,
+              publicName: unavailable.publicName,
+              revisionToken: unavailable.revisionToken,
+            },
+          ]),
+        )
+      }
+      if (url === `/api/admin/ai-connections/${unavailable.id}`) {
+        return Promise.resolve(okJson(unavailable))
+      }
+      if (url === '/api/admin/ai-run-profiles') {
+        return Promise.resolve(okJson([unavailableProfile]))
+      }
+      if (url.includes('/api/admin/ai-run-profiles/')) {
+        return Promise.resolve(okJson([unavailableProfile.draftRevision]))
+      }
+      return Promise.reject(new Error(`Unexpected fetch ${url}`))
+    })
+    const { container } = renderPanel()
 
-    await user.click(
-      await screen.findByRole('button', { name: /Controlled one/ }),
+    await user.click(await screen.findByRole('button', { name: /Local vLLM/ }))
+    const regionElement = container.querySelector(
+      `#ai-connection-${unavailable.id}`,
     )
+    if (!(regionElement instanceof HTMLElement)) {
+      throw new Error('Expanded connection region missing')
+    }
+    const region = within(regionElement)
     expect(
-      screen.getByText('admin.aiConnections.seed.demoDraft'),
-    ).not.toBeVisible()
-
-    await user.click(screen.getByRole('button', { name: /Controlled two/ }))
-    expect(
-      await screen.findByText('admin.aiConnections.seed.demoDraft'),
+      region.getByText('admin.aiConnections.adapter.unavailable'),
     ).toBeVisible()
+    for (const action of [
+      'editConnection',
+      'manageSecret',
+      'manageAttestation',
+    ]) {
+      expect(
+        region.getByRole('button', {
+          name: `admin.aiConnections.actions.${action}`,
+        }),
+      ).toBeEnabled()
+    }
+    for (const action of [
+      'fetchCatalog',
+      'verifyConnection',
+      'verifyModel',
+      'probeHealth',
+      'activateConnection',
+    ]) {
+      const button = region.getByRole('button', {
+        name: `admin.aiConnections.actions.${action}`,
+      })
+      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute(
+        'title',
+        'admin.aiConnections.adapter.unavailableAction',
+      )
+    }
+    const activateProfileButton = screen.getByRole('button', {
+      name: 'admin.aiConnections.actions.activateProfile',
+    })
+    expect(activateProfileButton).toBeDisabled()
+    expect(activateProfileButton).toHaveAttribute(
+      'title',
+      'admin.aiConnections.adapter.unavailableAction',
+    )
   })
 
   it('writes a secret without ever rendering its plaintext', async () => {

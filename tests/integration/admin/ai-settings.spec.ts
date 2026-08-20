@@ -779,6 +779,42 @@ test.describe('Admin settings', () => {
               { exact: false },
             ),
           ).toHaveCount(1)
+          const vllmRow = settings.getByRole('button').filter({
+            hasText: 'Lokalt vLLM-kluster',
+          })
+          await expect(vllmRow).toHaveAttribute('aria-expanded', 'false')
+          await vllmRow.click()
+          const vllmDetailsId = await vllmRow.getAttribute('aria-controls')
+          expect(vllmDetailsId).not.toBeNull()
+          const vllmDetails = page.locator(`#${vllmDetailsId}`)
+          await expect(
+            vllmDetails.getByText('Adaptern vllm@1 är inte installerad', {
+              exact: false,
+            }),
+          ).toBeVisible()
+          for (const action of [
+            'Redigera anslutning',
+            'Hantera hemlighet',
+            'Hantera attest',
+          ]) {
+            await expect(
+              vllmDetails.getByRole('button', { name: action }),
+            ).toBeEnabled()
+          }
+          for (const action of [
+            'Läs modellkatalog',
+            'Verifiera anslutning',
+            'Aktivera anslutning',
+          ]) {
+            const button = vllmDetails.getByRole('button', { name: action })
+            await expect(button).toBeDisabled()
+            await expect(button).toHaveAttribute(
+              'title',
+              'Installera och registrera adaptern innan leverantörsåtgärder kan användas.',
+            )
+          }
+          await vllmRow.click()
+          await expect(vllmRow).toHaveAttribute('aria-expanded', 'false')
           await settings
             .getByRole('button', { name: 'Lägg till AI-anslutning' })
             .click()

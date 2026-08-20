@@ -15,6 +15,7 @@ const runtimeState = vi.hoisted(() => {
     createProduction: vi.fn(),
     deleteCandidate: vi.fn(),
     external: {
+      adapterAvailability: vi.fn(() => ({ available: true as const })),
       authorizeConnectionTarget: vi.fn(async () => true),
       authorizeRunProfile: vi.fn(async () => 'authorized' as const),
       fetchCatalog: vi.fn(async () => []),
@@ -115,6 +116,7 @@ const secretVersionId = '00000000-0000-4000-8000-000000000002'
 function connection(): AiAdminConnectionDetail {
   return {
     activeSecret: { available: false, reason: 'secret_missing' },
+    adapterAvailability: { available: true },
     adapterKey: 'controlled_test',
     adapterVersion: '1',
     administrationName: 'Runtime',
@@ -134,7 +136,6 @@ function connection(): AiAdminConnectionDetail {
     maximumConcurrency: 1,
     models: [],
     operationalHealth: 'unknown',
-    provenance: 'administrator',
     publicName: 'Runtime',
     revisionToken: '00000000-0000-4000-8000-000000000003',
     tlsPolicyKey: 'test',

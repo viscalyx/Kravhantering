@@ -86,17 +86,15 @@ describe('AI administration row mapping', () => {
     expect(__testing.sameId('ABC', 'abc')).toBe(true)
     expect(__testing.sameId(null, undefined)).toBe(false)
     expect(__testing.sameId('a', 'b')).toBe(false)
-    expect(__testing.summary(connectionRow as never)).toMatchObject({
+    expect(__testing.summary(connectionRow as never)).toEqual({
+      administrationName: 'Admin',
       configurationVersion: 2,
+      id: 'A',
+      lifecycleStatus: 'draft',
       operationalHealth: 'unknown',
-      provenance: 'administrator',
+      publicName: 'Public',
+      revisionToken: 'B',
     })
-    expect(
-      __testing.summary({
-        ...connectionRow,
-        id: '20000000-0000-4000-8000-000000000001',
-      } as never),
-    ).toMatchObject({ provenance: 'demo_seed' })
     expect(__testing.blockers(connectionRow as never)).toEqual([
       { code: 'attestation_invalid' },
       { code: 'active_secret_missing' },
@@ -246,7 +244,6 @@ describe('AI administration row mapping', () => {
         id: 'ID',
         lifecycleStatus: 'active',
         operationalHealth: 'healthy',
-        provenance: 'administrator',
         publicName: 'Public',
         revisionToken: 'TOKEN',
       } as never),
@@ -256,7 +253,6 @@ describe('AI administration row mapping', () => {
       id: 'ID',
       lifecycleStatus: 'active',
       operationalHealth: 'healthy',
-      provenance: 'administrator',
       publicName: 'Public',
       revisionToken: 'TOKEN',
     })

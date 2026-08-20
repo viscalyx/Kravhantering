@@ -2002,9 +2002,11 @@ Five consecutive connection, deadline, or retryable adapter failures open it
 for an hourly automatic probe. One SQL lease owns each probe, expired
 half-open leases are reclaimable, and five failed probes require manual
 recovery. The lease fields are either all null or all populated. Demo seed
-creates only an OpenRouter connection draft, one draft attestation template,
-and three model-free draft profile revisions. It never creates external model
-IDs, verification evidence, operational state, or activation.
+creates ordinary OpenRouter and self-hosted vLLM connection drafts, one draft
+attestation template for each connection, and three model-free draft profile
+revisions. It never creates provider secrets, external model IDs, verification
+evidence, operational state, or activation. Seeded connections have no special
+runtime provenance or behavior.
 
 ### `ai_run_coordination_entries`
 

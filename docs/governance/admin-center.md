@@ -169,11 +169,10 @@ validation-session storage. The section has no shared Save button; controls save
 directly when changed, with per-control or per-row status. Numeric controls
 show their allowed range and step directly under the control.
 
-The connection registry distinguishes the deterministic demo seed by its
-explicit `demo_seed` provenance; administrator-created connections remain
-`administrator` data regardless of editable names or descriptions. Model
-catalog results belong to the connection that produced them and are never
-reused under another expanded row. Fixed run-profile drafts expose their locked
+Demo seed provisions ordinary administrator-managed draft connections and does
+not add runtime provenance or special connection behavior. Model catalog
+results belong to the connection that produced them and are never reused under
+another expanded row. Fixed run-profile drafts expose their locked
 capability minimums as non-configurable controls: generation with images requires
 image input, JSON repair disables streaming and AI analysis, and administrators
 may only strengthen dimensions that the profile allows. Activating a
@@ -183,6 +182,12 @@ the replacement attempt. A rejected profile action returns blocker details only
 for the fixed localizable code and field enums; malformed or arbitrary details
 are omitted. Connection impact includes active and draft profile revisions, not
 superseded history.
+
+Adapter availability is derived from the server-side Admin adapter registry,
+not from adapter names in the browser. An unregistered adapter leaves ordinary
+connection, attestation, and credential administration available while model
+catalog discovery, connection and model verification, health probes, and
+activation are disabled with an explicit explanation.
 
 The source of truth is:
 

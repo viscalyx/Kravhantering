@@ -271,6 +271,14 @@ export function createProductionAiAdminExternalOperations(
     }
   }
   return {
+    adapterAvailability(connection) {
+      return registry.isRegistered(
+        connection.adapterKey,
+        connection.adapterVersion,
+      )
+        ? { available: true }
+        : { available: false, reason: 'adapter_not_registered' }
+    },
     async authorizeConnectionTarget(connection) {
       await prepared(connection)
       return true

@@ -187,7 +187,7 @@ export default function AiConnectionsPanel() {
     const target = modelRevisions.find(
       ({ revision }) => revision.id === draft.modelRevisionId,
     )
-    if (!target) return
+    if (!target?.connection.adapterAvailability.available) return
     const activated = await mutateAndReload(
       `/api/admin/ai-run-profiles/${profile.profileKey}/actions`,
       {
@@ -341,16 +341,24 @@ export default function AiConnectionsPanel() {
                   id={`ai-connection-${connection.id}`}
                 >
                   <div className="space-y-5 border-t border-primary-200 bg-white p-5 dark:border-primary-900 dark:bg-secondary-900">
-                    {detail.provenance === 'demo_seed' ? (
+                    {!detail.adapterAvailability.available ? (
                       <div
                         className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
                         role="status"
+                        {...devMarker({
+                          context: 'AI connection registry',
+                          name: 'AI adapter unavailable status',
+                        })}
                       >
-                        <CircleAlert
+                        <TriangleAlert
                           aria-hidden="true"
                           className="h-5 w-5 shrink-0"
                         />
-                        <p>{t('seed.demoDraft')}</p>
+                        <p>
+                          {t('adapter.unavailable', {
+                            adapter: `${detail.adapterKey}@${detail.adapterVersion}`,
+                          })}
+                        </p>
                       </div>
                     ) : null}
                     <div className="flex flex-wrap items-start justify-between gap-4">
@@ -555,6 +563,7 @@ export default function AiConnectionsPanel() {
                                     className="btn-secondary px-3! py-1.5! text-xs"
                                     disabled={
                                       busy ||
+                                      !detail.adapterAvailability.available ||
                                       detail.connectionEvidenceId === null ||
                                       latest.status === 'retired'
                                     }
@@ -570,9 +579,11 @@ export default function AiConnectionsPanel() {
                                       )
                                     }
                                     title={
-                                      detail.connectionEvidenceId === null
-                                        ? t('model.verifyConnectionFirst')
-                                        : t('model.testCost')
+                                      !detail.adapterAvailability.available
+                                        ? t('adapter.unavailableAction')
+                                        : detail.connectionEvidenceId === null
+                                          ? t('model.verifyConnectionFirst')
+                                          : t('model.testCost')
                                     }
                                     type="button"
                                   >
@@ -581,7 +592,9 @@ export default function AiConnectionsPanel() {
                                   <button
                                     className="btn-secondary px-3! py-1.5! text-xs"
                                     disabled={
-                                      busy || latest.status !== 'verified'
+                                      busy ||
+                                      !detail.adapterAvailability.available ||
+                                      latest.status !== 'verified'
                                     }
                                     onClick={() =>
                                       void connectionAction(
@@ -594,7 +607,11 @@ export default function AiConnectionsPanel() {
                                         'health.probed',
                                       )
                                     }
-                                    title={t('health.safeRecoveryHelp')}
+                                    title={
+                                      detail.adapterAvailability.available
+                                        ? t('health.safeRecoveryHelp')
+                                        : t('adapter.unavailableAction')
+                                    }
                                     type="button"
                                   >
                                     {t('actions.probeHealth')}
@@ -681,8 +698,15 @@ export default function AiConnectionsPanel() {
                         <div className="flex flex-wrap gap-2">
                           <button
                             className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
-                            disabled={busy}
+                            disabled={
+                              busy || !detail.adapterAvailability.available
+                            }
                             onClick={() => void fetchCatalog(detail)}
+                            title={
+                              detail.adapterAvailability.available
+                                ? undefined
+                                : t('adapter.unavailableAction')
+                            }
                             type="button"
                           >
                             <RefreshCw aria-hidden="true" className="h-4 w-4" />
@@ -690,13 +714,20 @@ export default function AiConnectionsPanel() {
                           </button>
                           <button
                             className="btn-secondary px-4! py-2! text-sm"
-                            disabled={busy}
+                            disabled={
+                              busy || !detail.adapterAvailability.available
+                            }
                             onClick={() =>
                               void connectionAction(
                                 detail,
                                 { action: 'verify_connection' },
                                 'verification.completed',
                               )
+                            }
+                            title={
+                              detail.adapterAvailability.available
+                                ? undefined
+                                : t('adapter.unavailableAction')
                             }
                             type="button"
                           >
@@ -726,6 +757,7 @@ export default function AiConnectionsPanel() {
                               className="btn-primary px-4! py-2! text-sm"
                               disabled={
                                 busy ||
+                                !detail.adapterAvailability.available ||
                                 detail.blockers.length > 0 ||
                                 detail.lifecycleStatus === 'retired'
                               }
@@ -741,9 +773,11 @@ export default function AiConnectionsPanel() {
                                 )
                               }
                               title={
-                                detail.blockers.length > 0
-                                  ? t('blockers.resolveBeforeActivation')
-                                  : undefined
+                                !detail.adapterAvailability.available
+                                  ? t('adapter.unavailableAction')
+                                  : detail.blockers.length > 0
+                                    ? t('blockers.resolveBeforeActivation')
+                                    : undefined
                               }
                               type="button"
                             >
@@ -805,101 +839,120 @@ export default function AiConnectionsPanel() {
           </div>
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
-          {profiles.map(profile => (
-            <article
-              className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700"
-              key={profile.id}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h4 className="font-semibold text-secondary-950 dark:text-secondary-50">
-                    {profileName(t, profile.profileKey)}
-                  </h4>
-                  <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                    {profile.activeRevisionId
-                      ? t('profile.activeRevision')
-                      : t('profile.noActiveRevision')}
-                  </p>
+          {profiles.map(profile => {
+            const target = profile.draftRevision?.modelRevisionId
+              ? modelRevisions.find(
+                  ({ revision }) =>
+                    revision.id === profile.draftRevision?.modelRevisionId,
+                )
+              : undefined
+            const adapterUnavailable =
+              target?.connection.adapterAvailability.available === false
+            return (
+              <article
+                className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700"
+                key={profile.id}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="font-semibold text-secondary-950 dark:text-secondary-50">
+                      {profileName(t, profile.profileKey)}
+                    </h4>
+                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                      {profile.activeRevisionId
+                        ? t('profile.activeRevision')
+                        : t('profile.noActiveRevision')}
+                    </p>
+                  </div>
+                  <StatusBadge
+                    tone={
+                      profile.operationalStatus === 'enabled'
+                        ? 'success'
+                        : 'danger'
+                    }
+                  >
+                    {t(`profile.operational.${profile.operationalStatus}`)}
+                  </StatusBadge>
                 </div>
-                <StatusBadge
-                  tone={
-                    profile.operationalStatus === 'enabled'
-                      ? 'success'
-                      : 'danger'
-                  }
-                >
-                  {t(`profile.operational.${profile.operationalStatus}`)}
-                </StatusBadge>
-              </div>
-              {profile.blockers.length > 0 ? (
-                <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-amber-800 dark:text-amber-200">
-                  {profile.blockers.map(blocker => (
-                    <li key={`${blocker.code}-${blocker.field ?? ''}`}>
-                      <BlockerText blocker={blocker} />
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {(candidateBlockers[profile.profileKey]?.length ?? 0) > 0 ? (
-                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-                  <p className="font-semibold">
-                    {t('profile.candidateBlockers')}
-                  </p>
-                  <ul className="mt-2 list-disc space-y-1 pl-5">
-                    {candidateBlockers[profile.profileKey]?.map(blocker => (
+                {profile.blockers.length > 0 ? (
+                  <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-amber-800 dark:text-amber-200">
+                    {profile.blockers.map(blocker => (
                       <li key={`${blocker.code}-${blocker.field ?? ''}`}>
                         <BlockerText blocker={blocker} />
                       </li>
                     ))}
                   </ul>
+                ) : null}
+                {(candidateBlockers[profile.profileKey]?.length ?? 0) > 0 ? (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                    <p className="font-semibold">
+                      {t('profile.candidateBlockers')}
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                      {candidateBlockers[profile.profileKey]?.map(blocker => (
+                        <li key={`${blocker.code}-${blocker.field ?? ''}`}>
+                          <BlockerText blocker={blocker} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    className="btn-secondary px-3! py-1.5! text-xs"
+                    onClick={() => setDialog({ kind: 'profile', profile })}
+                    type="button"
+                  >
+                    {profile.draftRevision
+                      ? t('actions.editProfile')
+                      : t('actions.createProfileRevision')}
+                  </button>
+                  <button
+                    className="btn-primary px-3! py-1.5! text-xs"
+                    disabled={
+                      busy ||
+                      !profile.draftRevision?.modelRevisionId ||
+                      adapterUnavailable
+                    }
+                    onClick={() => void activateProfile(profile)}
+                    title={
+                      adapterUnavailable
+                        ? t('adapter.unavailableAction')
+                        : undefined
+                    }
+                    type="button"
+                  >
+                    {t('actions.activateProfile')}
+                  </button>
+                  <button
+                    className="btn-secondary px-3! py-1.5! text-xs"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutateAndReload(
+                        `/api/admin/ai-run-profiles/${profile.profileKey}/actions`,
+                        {
+                          action: 'set_operational_status',
+                          revisionToken: profile.revisionToken,
+                          status:
+                            profile.operationalStatus === 'enabled'
+                              ? 'suspended'
+                              : 'enabled',
+                        },
+                        profile.operationalStatus === 'enabled'
+                          ? 'profile.suspended'
+                          : 'profile.recovered',
+                      )
+                    }
+                    type="button"
+                  >
+                    {profile.operationalStatus === 'enabled'
+                      ? t('actions.suspendProfile')
+                      : t('actions.recoverProfile')}
+                  </button>
                 </div>
-              ) : null}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  className="btn-secondary px-3! py-1.5! text-xs"
-                  onClick={() => setDialog({ kind: 'profile', profile })}
-                  type="button"
-                >
-                  {profile.draftRevision
-                    ? t('actions.editProfile')
-                    : t('actions.createProfileRevision')}
-                </button>
-                <button
-                  className="btn-primary px-3! py-1.5! text-xs"
-                  disabled={busy || !profile.draftRevision?.modelRevisionId}
-                  onClick={() => void activateProfile(profile)}
-                  type="button"
-                >
-                  {t('actions.activateProfile')}
-                </button>
-                <button
-                  className="btn-secondary px-3! py-1.5! text-xs"
-                  disabled={busy}
-                  onClick={() =>
-                    void mutateAndReload(
-                      `/api/admin/ai-run-profiles/${profile.profileKey}/actions`,
-                      {
-                        action: 'set_operational_status',
-                        revisionToken: profile.revisionToken,
-                        status:
-                          profile.operationalStatus === 'enabled'
-                            ? 'suspended'
-                            : 'enabled',
-                      },
-                      profile.operationalStatus === 'enabled'
-                        ? 'profile.suspended'
-                        : 'profile.recovered',
-                    )
-                  }
-                  type="button"
-                >
-                  {profile.operationalStatus === 'enabled'
-                    ? t('actions.suspendProfile')
-                    : t('actions.recoverProfile')}
-                </button>
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
         </div>
       </div>
 

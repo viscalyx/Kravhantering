@@ -1789,8 +1789,9 @@
       "loadError": "Kunde inte läsa AI-anslutningar och körprofiler.",
       "mutationError": "Den administrativa AI-åtgärden kunde inte slutföras.",
       "empty": "Inga AI-anslutningar är konfigurerade.",
-      "seed": {
-        "demoDraft": "Detta är seedad demonstrationsdata och förblir ett ej godkänt utkast. Ersätt exempelvärdena och slutför alla verifieringar före produktionsanvändning. Obligatoriska seedade körprofilnycklar är systemstandarder, inte bevis på att anslutningen är godkänd."
+      "adapter": {
+        "unavailable": "Adaptern {adapter} är inte installerad. Du kan hantera konfiguration, attest och autentiseringsuppgifter, men upptäckt, verifiering, hälsokontroll och aktivering är inte tillgängliga.",
+        "unavailableAction": "Installera och registrera adaptern innan leverantörsåtgärder kan användas."
       },
       "actions": {
         "addConnection": "Lägg till AI-anslutning",

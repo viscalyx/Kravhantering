@@ -72,6 +72,7 @@ export interface AiAdminConnectionAdapterRegistration {
 }
 
 export interface AiAdminConnectionAdapterRegistry {
+  isRegistered(adapterType: string, adapterVersion: string): boolean
   resolve(adapterType: string, adapterVersion: string): AiAdminConnectionAdapter
   resolveRegistration(
     adapterType: string,
@@ -100,6 +101,9 @@ export function createAiAdminConnectionAdapterRegistry(
     adapters.set(registrationKey, registration)
   }
   return {
+    isRegistered(adapterType, adapterVersion) {
+      return adapters.has(key(adapterType, adapterVersion))
+    },
     resolve(adapterType, adapterVersion) {
       return this.resolveRegistration(adapterType, adapterVersion).adapter
     },

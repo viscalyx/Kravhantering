@@ -2072,7 +2072,13 @@ operativa status återställas, även om ett steg misslyckas.
 
 1. Öppna `Administrationscenter > Inställningar > AI`. Kontrollera att
    anslutningsregistret är kollapsat, att texten förbjuder automatisk fallback
-   och att livscykel och operativ hälsa visas var för sig.
+   och att livscykel och operativ hälsa visas var för sig. Expandera den seedade
+   raden `Lokalt vLLM-kluster`. Kontrollera att den beter sig som ett vanligt
+   administratörshanterat utkast utan märkning som demonstrationsdata, att
+   `vllm@1` uttryckligen visas som inte installerad och att redigering,
+   attesthantering och hemlighetshantering är tillgängliga. Kontrollera att
+   modellkatalog, verifiering, hälsokontroll och aktivering är inaktiverade med
+   en begriplig förklaring. Fäll ihop raden igen.
 2. Välj `Lägg till AI-anslutning`. Skapa ett utkast med adaptern
    `controlled_test`, version `1`, adressen `https://localhost:4443`, de
    konfigurerade policyerna, autentisering `Statisk leverantörshemlighet` och
