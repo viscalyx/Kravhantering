@@ -8,7 +8,19 @@ const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v3'
 const MAX_RESPONSE_BYTES = 1_048_576
 const REQUEST_TIMEOUT_MS = 120_000
 const SAFE_PATH_VALUE = /^[A-Za-z0-9._:-]{1,160}$/u
-const MAX_INTENDED_PROFILES = 100
+const MAX_INTENDED_PROFILES = 3
+const PROFILE_KEYS = Object.freeze([
+  'generation_without_images',
+  'generation_with_images',
+  'invalid_json_repair',
+])
+const CONFIGURED_PATH_FIELDS = Object.freeze([
+  'adapterType',
+  'aiConnectionId',
+  'aiConnectionModelRevisionId',
+  'aiRunProfileRevisionId',
+  'profileKey',
+])
 
 function requiredEnv(env, name) {
   const value = env[name]?.trim()
@@ -21,28 +33,78 @@ function safePathValue(value, name) {
   return value
 }
 
-function intendedProfileRevisionIds(env, representativeId) {
-  const values = requiredEnv(env, 'AI_STAGING_LIVE_PROFILE_REVISION_IDS')
-    .split(',')
-    .map(value =>
-      safePathValue(value.trim(), 'AI_STAGING_LIVE_PROFILE_REVISION_IDS'),
-    )
-  if (values.length > MAX_INTENDED_PROFILES) {
+function privateFile(fsImpl, path, context, maximumBytes) {
+  const stat = fsImpl.statSync(path)
+  if (
+    !stat.isFile() ||
+    (stat.mode & 0o077) !== 0 ||
+    (typeof stat.size === 'number' && stat.size > maximumBytes)
+  ) {
     throw new Error(
-      `AI_STAGING_LIVE_PROFILE_REVISION_IDS supports at most ${MAX_INTENDED_PROFILES} values.`,
+      `${context} must be a private regular file within its size limit.`,
     )
   }
-  if (new Set(values).size !== values.length) {
+  return fsImpl.readFileSync(path, 'utf8')
+}
+
+function configuredPathsFile(env, fsImpl) {
+  const file = requiredEnv(env, 'AI_STAGING_LIVE_PATHS_FILE')
+  let parsed
+  try {
+    parsed = JSON.parse(
+      privateFile(fsImpl, file, 'AI staging-live paths file', 16_384),
+    )
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('private regular')) {
+      throw error
+    }
+    throw new Error('AI staging-live paths file must contain valid JSON.')
+  }
+  if (!Array.isArray(parsed) || parsed.length !== MAX_INTENDED_PROFILES) {
+    throw new Error('AI staging-live paths file must contain exactly 3 paths.')
+  }
+  const paths = parsed.map((path, index) => {
+    if (
+      typeof path !== 'object' ||
+      path === null ||
+      Array.isArray(path) ||
+      Object.keys(path).sort().join('\u0000') !==
+        [...CONFIGURED_PATH_FIELDS].sort().join('\u0000')
+    ) {
+      throw new Error(`AI staging-live path ${index + 1} is invalid.`)
+    }
+    const profileKey = safePathValue(path.profileKey, 'profileKey')
+    if (!PROFILE_KEYS.includes(profileKey)) {
+      throw new Error(`AI staging-live path ${index + 1} is invalid.`)
+    }
+    const adapterType = safePathValue(path.adapterType, 'adapterType')
+    if (adapterType === 'controlled_test') {
+      throw new Error('Every staging-live path must use an external adapter.')
+    }
+    return Object.freeze({
+      adapterType,
+      aiConnectionId: safePathValue(path.aiConnectionId, 'aiConnectionId'),
+      aiConnectionModelRevisionId: safePathValue(
+        path.aiConnectionModelRevisionId,
+        'aiConnectionModelRevisionId',
+      ),
+      aiRunProfileRevisionId: safePathValue(
+        path.aiRunProfileRevisionId,
+        'aiRunProfileRevisionId',
+      ),
+      profileKey,
+    })
+  })
+  if (
+    new Set(paths.map(path => path.profileKey)).size !== PROFILE_KEYS.length ||
+    new Set(paths.map(path => path.aiRunProfileRevisionId)).size !==
+      paths.length
+  ) {
     throw new Error(
-      'AI_STAGING_LIVE_PROFILE_REVISION_IDS must contain unique values.',
+      'AI staging-live paths must bind each fixed profile exactly once.',
     )
   }
-  if (!values.includes(representativeId)) {
-    throw new Error(
-      'AI_STAGING_LIVE_PROFILE_REVISION_IDS must include AI_STAGING_LIVE_PROFILE_REVISION_ID.',
-    )
-  }
-  return values
+  return Object.freeze(paths)
 }
 
 export function stagingLiveProbeConfiguration(env = process.env, fsImpl = fs) {
@@ -57,31 +119,16 @@ export function stagingLiveProbeConfiguration(env = process.env, fsImpl = fs) {
   baseUrl.search = ''
   baseUrl.hash = ''
 
-  const cookieFile = requiredEnv(env, 'AI_STAGING_LIVE_SESSION_COOKIE_FILE')
-  const stat = fsImpl.statSync(cookieFile)
-  if (!stat.isFile() || (stat.mode & 0o077) !== 0) {
-    throw new Error(
-      'AI staging-live session cookie file must be a private regular file.',
-    )
-  }
-  const cookie = fsImpl.readFileSync(cookieFile, 'utf8').trim()
+  const cookie = privateFile(
+    fsImpl,
+    requiredEnv(env, 'AI_STAGING_LIVE_SESSION_COOKIE_FILE'),
+    'AI staging-live session cookie file',
+    8_192,
+  ).trim()
   if (!cookie || /[\r\n]/u.test(cookie) || cookie.length > 8_192) {
     throw new Error('AI staging-live session cookie file is invalid.')
   }
 
-  const representativeProfileRevisionId = safePathValue(
-    requiredEnv(env, 'AI_STAGING_LIVE_PROFILE_REVISION_ID'),
-    'AI_STAGING_LIVE_PROFILE_REVISION_ID',
-  )
-  const adapterType = safePathValue(
-    requiredEnv(env, 'AI_STAGING_LIVE_ADAPTER_TYPE'),
-    'AI_STAGING_LIVE_ADAPTER_TYPE',
-  )
-  if (adapterType === 'controlled_test') {
-    throw new Error(
-      'AI_STAGING_LIVE_ADAPTER_TYPE must identify an external live adapter.',
-    )
-  }
   return {
     baseUrl: baseUrl.toString(),
     cookie,
@@ -89,22 +136,7 @@ export function stagingLiveProbeConfiguration(env = process.env, fsImpl = fs) {
       requiredEnv(env, 'AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID'),
       'AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID',
     ),
-    intendedPath: {
-      adapterType,
-      aiConnectionId: safePathValue(
-        requiredEnv(env, 'AI_STAGING_LIVE_CONNECTION_ID'),
-        'AI_STAGING_LIVE_CONNECTION_ID',
-      ),
-      aiConnectionModelRevisionId: safePathValue(
-        requiredEnv(env, 'AI_STAGING_LIVE_MODEL_REVISION_ID'),
-        'AI_STAGING_LIVE_MODEL_REVISION_ID',
-      ),
-      aiRunProfileRevisionId: representativeProfileRevisionId,
-    },
-    intendedProfileRevisionIds: intendedProfileRevisionIds(
-      env,
-      representativeProfileRevisionId,
-    ),
+    intendedPaths: configuredPathsFile(env, fsImpl),
     status: 'configured',
   }
 }
@@ -198,19 +230,20 @@ function assertServerEnvironment(configuration, headers) {
   }
 }
 
-function preflightProfiles(configuration, profiles) {
+function preflightProfiles(paths, profiles) {
   const byRevision = new Map()
   for (const profile of requireArray(profiles, 'Run-profile preflight')) {
     if (typeof profile?.activeRevisionId === 'string') {
       byRevision.set(profile.activeRevisionId, profile)
     }
   }
-  for (const revisionId of configuration.intendedProfileRevisionIds) {
-    const profile = byRevision.get(revisionId)
+  for (const path of paths) {
+    const profile = byRevision.get(path.aiRunProfileRevisionId)
     if (
       profile?.operationalStatus !== 'enabled' ||
       !Array.isArray(profile.blockers) ||
-      profile.blockers.length !== 0
+      profile.blockers.length !== 0 ||
+      profile.profileKey !== path.profileKey
     ) {
       throw new Error(
         'Every intended profile revision must be active, enabled, and unblocked.',
@@ -219,10 +252,10 @@ function preflightProfiles(configuration, profiles) {
   }
 }
 
-function preflightConnection(configuration, connection) {
+function preflightConnection(path, connection) {
   if (
     connection?.lifecycleStatus !== 'active' ||
-    connection.adapterKey !== configuration.intendedPath.adapterType
+    connection.adapterKey !== path.adapterType
   ) {
     throw new Error('The adapter does not match the intended staging path.')
   }
@@ -231,10 +264,7 @@ function preflightConnection(configuration, connection) {
     'AI connection model preflight',
   )
     .flatMap(model => (Array.isArray(model?.revisions) ? model.revisions : []))
-    .find(
-      model =>
-        model?.id === configuration.intendedPath.aiConnectionModelRevisionId,
-    )
+    .find(model => model?.id === path.aiConnectionModelRevisionId)
   if (
     selectedModel?.status !== 'verified' ||
     typeof selectedModel.revisionToken !== 'string' ||
@@ -245,7 +275,7 @@ function preflightConnection(configuration, connection) {
   return selectedModel
 }
 
-function assertLivePathProbeResult(value, configuration, profileRevisionId) {
+function assertLivePathProbeResult(value, path) {
   const fields = [
     'adapterType',
     'adapterVersion',
@@ -270,11 +300,10 @@ function assertLivePathProbeResult(value, configuration, profileRevisionId) {
     throw new Error('The fixed Admin functional probe v3 did not pass.')
   }
   const pathMatches =
-    value.adapterType === configuration.intendedPath.adapterType &&
-    value.aiConnectionId === configuration.intendedPath.aiConnectionId &&
-    value.aiConnectionModelRevisionId ===
-      configuration.intendedPath.aiConnectionModelRevisionId &&
-    value.aiRunProfileRevisionId === profileRevisionId
+    value.adapterType === path.adapterType &&
+    value.aiConnectionId === path.aiConnectionId &&
+    value.aiConnectionModelRevisionId === path.aiConnectionModelRevisionId &&
+    value.aiRunProfileRevisionId === path.aiRunProfileRevisionId
   const safeProofValues = [
     value.adapterVersion,
     value.connectionRevisionToken,
@@ -307,6 +336,7 @@ export async function runAiStagingLiveSyntheticProbe(
   if (baseUrl.protocol !== 'https:') {
     throw new Error('The staging-live synthetic probe must use HTTPS.')
   }
+  const intendedPaths = configuration.intendedPaths
   const profilesResponse = await requestJson(
     fetchImpl,
     new URL('/api/admin/ai-run-profiles', baseUrl),
@@ -314,65 +344,73 @@ export async function runAiStagingLiveSyntheticProbe(
     { method: 'GET' },
   )
   assertServerEnvironment(configuration, profilesResponse.headers)
-  preflightProfiles(configuration, profilesResponse.body)
+  preflightProfiles(intendedPaths, profilesResponse.body)
 
-  const connectionUrl = new URL(
-    `/api/admin/ai-connections/${encodeURIComponent(configuration.intendedPath.aiConnectionId)}`,
-    baseUrl,
-  )
-  const connection = (
-    await requestJson(fetchImpl, connectionUrl, configuration.cookie, {
-      method: 'GET',
-    })
-  ).body
-  preflightConnection(configuration, connection)
-
-  const actionsUrl = new URL(`${connectionUrl.pathname}/actions`, baseUrl)
   const mutationHeaders = {
     'content-type': 'application/json',
     origin: baseUrl.origin,
     'x-requested-with': 'XMLHttpRequest',
   }
   const liveExecutionProof = []
-  for (const profileRevisionId of configuration.intendedProfileRevisionIds) {
+  for (const path of intendedPaths) {
+    const connectionUrl = new URL(
+      `/api/admin/ai-connections/${encodeURIComponent(path.aiConnectionId)}`,
+      baseUrl,
+    )
+    const connection = (
+      await requestJson(fetchImpl, connectionUrl, configuration.cookie, {
+        method: 'GET',
+      })
+    ).body
+    preflightConnection(path, connection)
+    const actionsUrl = new URL(`${connectionUrl.pathname}/actions`, baseUrl)
     liveExecutionProof.push(
       assertLivePathProbeResult(
         await requestJson(fetchImpl, actionsUrl, configuration.cookie, {
           body: JSON.stringify({
             action: 'verify_live_path',
             expectedEnvironmentId: configuration.expectedEnvironmentId,
-            modelRevisionId:
-              configuration.intendedPath.aiConnectionModelRevisionId,
-            profileRevisionId,
+            modelRevisionId: path.aiConnectionModelRevisionId,
+            profileRevisionId: path.aiRunProfileRevisionId,
           }),
           headers: mutationHeaders,
           method: 'POST',
         }).then(response => response.body),
-        configuration,
-        profileRevisionId,
+        path,
       ),
     )
   }
-  const representativeProof = liveExecutionProof.find(
-    proof =>
-      proof.aiRunProfileRevisionId ===
-      configuration.intendedPath.aiRunProfileRevisionId,
-  )
+  const representativeProof = liveExecutionProof[0]
   if (!representativeProof) {
     throw new Error('The representative live execution proof is missing.')
   }
 
+  const verifiedPaths = liveExecutionProof.map(proof =>
+    Object.freeze({
+      adapterType: proof.adapterType,
+      adapterVersion: proof.adapterVersion,
+      aiConnectionId: proof.aiConnectionId,
+      aiConnectionModelRevisionId: proof.aiConnectionModelRevisionId,
+      aiRunProfileRevisionId: proof.aiRunProfileRevisionId,
+      connectionRevisionToken: proof.connectionRevisionToken,
+      modelRevisionToken: proof.modelRevisionToken,
+      profileRevisionToken: proof.profileRevisionToken,
+    }),
+  )
   return {
-    adminFunctionalProbeVersion: representativeProof.testSuiteVersion,
-    intendedPath: Object.freeze({ ...configuration.intendedPath }),
+    inventory: Object.freeze({
+      intendedPaths: Object.freeze([...verifiedPaths]),
+      verifiedPaths: Object.freeze([...verifiedPaths]),
+    }),
     liveExecutionProof: Object.freeze(
       liveExecutionProof.map(proof => Object.freeze({ ...proof })),
     ),
-    preflightedProfileRevisionIds: Object.freeze([
-      ...configuration.intendedProfileRevisionIds,
-    ]),
     syntheticProbe: Object.freeze({
-      ...configuration.intendedPath,
+      ...verifiedPaths.find(
+        path =>
+          path.aiRunProfileRevisionId ===
+          representativeProof.aiRunProfileRevisionId,
+      ),
       externalLiveCallMade: representativeProof.externalLiveCallMade,
       outcome:
         representativeProof.outcome === 'passed' ? 'completed' : 'failed',

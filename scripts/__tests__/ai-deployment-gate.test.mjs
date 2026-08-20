@@ -502,4 +502,58 @@ describe('AI deployment gate', () => {
     ).toThrow('exceeds 64 KiB')
     stdout.mockRestore()
   })
+
+  it('fits the maximum three fixed profiles within the CLI evidence bound', () => {
+    const paths = Array.from({ length: 3 }, (_, index) => ({
+      ...CONTROLLED_PATH,
+      adapterType: 'openrouter',
+      aiRunProfileRevisionId: `30000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      profileRevisionToken: `60000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+    }))
+    const evidence = verifiedEvidence({
+      environment: 'staging',
+      inventory: { intendedPaths: paths, verifiedPaths: paths },
+      liveExecutionProof: paths.map((path, index) => ({
+        ...path,
+        executionId: `70000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+        externalLiveCallMade: true,
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'ai-admin-functional-probe-v3',
+      })),
+      syntheticProbe: {
+        ...paths[0],
+        externalLiveCallMade: true,
+        outcome: 'completed',
+        payloadClassification: 'synthetic',
+      },
+      verificationMode: 'staging_live',
+    })
+    const serialized = JSON.stringify(evidence)
+
+    expect(Buffer.byteLength(serialized)).toBeLessThanOrEqual(64 * 1024)
+    expect(
+      main({
+        args: ['verify', '--evidence', '/evidence.json'],
+        fsImpl: { readFileSync: vi.fn(() => serialized) },
+      }),
+    ).toBe(0)
+
+    const fourth = {
+      ...CONTROLLED_PATH,
+      adapterType: 'openrouter',
+      aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000004',
+      profileRevisionToken: '60000000-0000-4000-8000-000000000004',
+    }
+    expect(() =>
+      assessAiDeploymentGate(
+        verifiedEvidence({
+          inventory: {
+            intendedPaths: [...paths, fourth],
+            verifiedPaths: [...paths, fourth],
+          },
+        }),
+      ),
+    ).toThrow('between 1 and 3 paths')
+  })
 })

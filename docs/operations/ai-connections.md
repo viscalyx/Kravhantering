@@ -286,17 +286,26 @@ The evidence shape is:
   "inventory": {
     "intendedPaths": [{
       "adapterType": "openrouter",
+      "adapterVersion": "1",
       "aiConnectionId": "<opaque-id>",
       "aiConnectionModelRevisionId": "<opaque-id>",
-      "aiRunProfileRevisionId": "<opaque-id>"
+      "aiRunProfileRevisionId": "<opaque-id>",
+      "connectionRevisionToken": "<opaque-token>",
+      "modelRevisionToken": "<opaque-token>",
+      "profileRevisionToken": "<opaque-token>"
     }],
     "verifiedPaths": [{
       "adapterType": "openrouter",
+      "adapterVersion": "1",
       "aiConnectionId": "<same-opaque-id>",
       "aiConnectionModelRevisionId": "<same-opaque-id>",
-      "aiRunProfileRevisionId": "<same-opaque-id>"
+      "aiRunProfileRevisionId": "<same-opaque-id>",
+      "connectionRevisionToken": "<same-opaque-token>",
+      "modelRevisionToken": "<same-opaque-token>",
+      "profileRevisionToken": "<same-opaque-token>"
     }]
   },
+  "liveExecutionProof": null,
   "checks": [
     { "axis": "adapter_contract", "evidenceId": "ci-adapter-42", "outcome": "passed", "suiteVersion": "adapter-v1" },
     { "axis": "security", "evidenceId": "ci-security-42", "outcome": "passed", "suiteVersion": "security-v1" },
@@ -318,17 +327,36 @@ The evidence shape is:
   },
   "syntheticProbe": {
     "adapterType": "openrouter",
+    "adapterVersion": "1",
     "aiConnectionId": "<same-opaque-id>",
     "aiConnectionModelRevisionId": "<same-opaque-id>",
     "aiRunProfileRevisionId": "<same-opaque-id>",
+    "connectionRevisionToken": "<same-opaque-token>",
     "externalLiveCallMade": false,
+    "modelRevisionToken": "<same-opaque-token>",
     "outcome": "not_run",
-    "payloadClassification": "none"
+    "payloadClassification": "none",
+    "profileRevisionToken": "<same-opaque-token>"
   }
 }
 ```
 
 <!-- markdownlint-enable MD013 -->
+
+For `prodlike`, use `environment: "prodlike"`,
+`verificationMode: "prodlike"`, and `liveExecutionProof: null`. Every
+inventory and synthetic-probe path still contains all eight identity and
+revision fields shown above. The synthetic probe uses `adapterType:
+"controlled_test"`, `externalLiveCallMade: false`, `outcome: "completed"`,
+and `payloadClassification: "synthetic"`.
+
+For `staging_live`, use `environment: "staging"` and
+`verificationMode: "staging_live"`. Merge the probe's `inventory`,
+`syntheticProbe`, and `liveExecutionProof` fields directly into the otherwise
+complete document. `liveExecutionProof` is an array with one item per intended
+path. Each item contains all eight path fields plus `executionId`,
+`externalLiveCallMade: true`, `failureCategory: null`, `outcome: "passed"`,
+and `testSuiteVersion: "ai-admin-functional-probe-v3"`.
 
 Run the gate from the unpacked bundle and retain its output with the release
 evidence:
@@ -352,19 +380,44 @@ header in a mode `0600` file. The staging server must keep
 `AI_STAGING_LIVE_PROBE_ENABLED=1`, set
 `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT=staging`, and expose a stable opaque
 `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID` unique to that environment. Export
-that expected server identity, the representative exact path, and the bounded
-comma-separated set of every intended active profile revision:
+that expected server identity and a mode `0600` JSON paths file. The file must
+contain exactly one content-free tuple for each of the three fixed profiles;
+the tuples may use different adapters, connections, and models:
+
+```json
+[
+  {
+    "profileKey": "generation_without_images",
+    "adapterType": "openrouter",
+    "aiConnectionId": "<opaque-id-1>",
+    "aiConnectionModelRevisionId": "<opaque-id-1>",
+    "aiRunProfileRevisionId": "<opaque-id-1>"
+  },
+  {
+    "profileKey": "generation_with_images",
+    "adapterType": "openrouter",
+    "aiConnectionId": "<opaque-id-2>",
+    "aiConnectionModelRevisionId": "<opaque-id-2>",
+    "aiRunProfileRevisionId": "<opaque-id-2>"
+  },
+  {
+    "profileKey": "invalid_json_repair",
+    "adapterType": "openrouter",
+    "aiConnectionId": "<opaque-id-3>",
+    "aiConnectionModelRevisionId": "<opaque-id-3>",
+    "aiRunProfileRevisionId": "<opaque-id-3>"
+  }
+]
+```
+
+Set the file mode to `0600`, then run:
 
 ```bash
 export AI_STAGING_LIVE_SYNTHETIC_PROBE=1
 export AI_STAGING_LIVE_BASE_URL=https://staging.example.internal
 export AI_STAGING_LIVE_SESSION_COOKIE_FILE=/run/user/1000/krav-ai-cookie
 export AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID=staging-eu-test
-export AI_STAGING_LIVE_ADAPTER_TYPE=openrouter
-export AI_STAGING_LIVE_CONNECTION_ID=<opaque-id>
-export AI_STAGING_LIVE_MODEL_REVISION_ID=<opaque-id>
-export AI_STAGING_LIVE_PROFILE_REVISION_ID=<opaque-id>
-export AI_STAGING_LIVE_PROFILE_REVISION_IDS=<opaque-id>,<second-opaque-id>
+export AI_STAGING_LIVE_PATHS_FILE=/run/user/1000/krav-ai-paths.json
 node scripts/ai-staging-live-probe.mjs \
   > /var/tmp/kravhantering-ai-staging-probe.json
 ```

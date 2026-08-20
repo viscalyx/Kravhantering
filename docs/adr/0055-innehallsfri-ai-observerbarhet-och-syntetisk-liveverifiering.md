@@ -33,8 +33,9 @@ Staging-liveverifiering är en separat, explicit aktiverad driftåtgärd. Innan
 extern trafik tillåts kräver både routen, tjänsten och den externa operationen
 serverbevisad stagingidentitet, exakt förväntat miljö-ID, explicit server-opt-in
 och aktiv global AI-spärr. Det förhandskontrollerar samtliga
-avsedda aktiva körprofilrevisioner samt exakt avsedd anslutning och
-modellrevision. Därefter använder det den spärrkompatibla och icke-muterande
+tre fasta aktiva körprofilrevisioner från en begränsad, innehållsfri sökvägsfil
+samt varje exakt avsedd adapter, anslutning och modellrevision. Därefter använder
+det den spärrkompatibla och icke-muterande
 Admin-åtgärden `verify_live_path`. Åtgärden avvisar kontrollerade offlineadaptrar
 och kör först den fasta syntetiska adaptersviten
 `ai-admin-functional-probe-v3`. Därefter laddar den den valda aktiva

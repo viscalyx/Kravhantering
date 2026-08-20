@@ -21,7 +21,7 @@ export const AI_DEPLOYMENT_REQUIRED_CHECK_AXES = Object.freeze([
   'deployment_rollback',
 ])
 
-const MAX_INTENDED_PATHS = 100
+const MAX_INTENDED_PATHS = 3
 
 const TOP_LEVEL_FIELDS = Object.freeze([
   'alerts',

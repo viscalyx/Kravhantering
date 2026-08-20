@@ -2,8 +2,6 @@ import { randomUUID } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
 import { createSqlServerAiRunProfileSource } from '@/lib/dal/ai-run-profiles'
 import type { SqlServerDatabase } from '@/lib/db'
-import { aiRunTelemetry } from '@/lib/observability/ai-runs'
-import { createAiConnectionAdapterRegistry } from './adapter-registry'
 import {
   type AiAdminConnectionAdapterRegistry,
   createAiAdminConnectionAdapterRegistry,
@@ -23,31 +21,24 @@ import {
   createAiEgressTransport,
   enforceAiDataPolicy,
 } from './connection-trust'
-import { controlledTestAdapterRegistration } from './controlled-test-adapter'
 import { controlledTestAdminAdapterRegistration } from './controlled-test-admin-adapter'
-import { createAiIntegrationLayer } from './integration-layer'
-import { openRouterAdapterRegistration } from './openrouter-adapter'
 import { openRouterAdminAdapterRegistration } from './openrouter-admin-adapter'
 import { createPinnedHttpsFetch } from './pinned-https-transport'
 import {
-  type AiRunProfileKey,
-  createAiRunProfileResolver,
-} from './profile-resolver'
+  type AiProductionRuntimeCompositionOverrides,
+  createProductionAiRuntimeComposition,
+} from './production-runtime-composition'
+import type { AiRunProfileKey } from './profile-resolver'
 import type { AiProviderSecretKeyring } from './provider-secret-keyring'
 import {
   AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
   AiProviderSecretAdminService,
-  createAiRuntimeAdapterConfigurationResolver,
 } from './provider-secret-service'
 import type {
   AiEgressTransport,
   AiRunIdentity,
   AiRunType,
 } from './run-contracts'
-import { createSqlServerAiRunCoordinationStore } from './run-coordination-store'
-import { createAiRunCoordinator } from './run-coordinator'
-import { createAiRunTrustBoundary } from './run-trust-boundary'
-import { screenAiInput, screenAiOutput } from './safety'
 import { assertAiStagingLiveVerificationAllowed } from './staging-live-policy'
 
 const PROFILE_RUN_TYPE = {
@@ -79,18 +70,11 @@ export interface AiAdminExactLivePathRunner {
   }>
 }
 
-interface ExactLivePathRuntimeFactoryOverrides {
-  createIntegration?: typeof createAiIntegrationLayer
-  createProfileSource?: typeof createSqlServerAiRunProfileSource
-  screenInput?: typeof screenAiInput
-  screenOutput?: typeof screenAiOutput
-}
-
 export function createExactLivePathRunner(
   db: SqlServerDatabase,
   keyring: () => AiProviderSecretKeyring,
   deployment: AiDeploymentTrustPolicy,
-  overrides: ExactLivePathRuntimeFactoryOverrides = {},
+  overrides: AiProductionRuntimeCompositionOverrides = {},
 ): AiAdminExactLivePathRunner {
   const persistedSource = (
     overrides.createProfileSource ?? createSqlServerAiRunProfileSource
@@ -111,46 +95,17 @@ export function createExactLivePathRunner(
       ) {
         return { failureCategory: 'exact_profile_changed', outcome: 'failed' }
       }
-      const profileResolver = createAiRunProfileResolver({
+      assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
+      const composition = createProductionAiRuntimeComposition({
+        db,
+        deployment,
+        keyring: keyring(),
+        overrides,
         profileSource: {
           async findActiveRevision(profileKey) {
             return profileKey === selection.profileKey ? persisted : null
           },
         },
-        resolveAdapterConfiguration:
-          createAiRuntimeAdapterConfigurationResolver(db, keyring()),
-      })
-      const integration = (
-        overrides.createIntegration ?? createAiIntegrationLayer
-      )({
-        adapterRegistry: createAiConnectionAdapterRegistry([
-          openRouterAdapterRegistration,
-          controlledTestAdapterRegistration,
-        ]),
-        profileResolver,
-        runCoordinator: createAiRunCoordinator({
-          coordination: createSqlServerAiRunCoordinationStore(db),
-          telemetry: aiRunTelemetry,
-        }),
-        telemetry: aiRunTelemetry,
-        trustBoundary: createAiRunTrustBoundary({
-          deployment,
-          imageLimits: Object.freeze({
-            maximumBytes: 10 * 1024 * 1024,
-            maximumFrames: 1,
-            maximumHeight: 8192,
-            maximumPixels: 32 * 1024 * 1024,
-            maximumWidth: 8192,
-          }),
-          safetyFilter: {
-            async screenInput(textParts) {
-              return (overrides.screenInput ?? screenAiInput)(db, textParts)
-            },
-            async screenOutput(textParts) {
-              return (overrides.screenOutput ?? screenAiOutput)(db, textParts)
-            },
-          },
-        }),
       })
       const abort = new AbortController()
       const deadline = setTimeout(() => abort.abort(), 30_000)
@@ -163,7 +118,7 @@ export function createExactLivePathRunner(
             }
           | undefined
         assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
-        for await (const event of integration.run({
+        for await (const event of composition.integration.run({
           context: {
             abortSignal: abort.signal,
             applicationRunId: `staging_live_${randomUUID()}`,

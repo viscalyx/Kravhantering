@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { assessAiDeploymentGate } from '../release/ai-deployment-gate.mjs'
 import {
   main,
   runAiStagingLiveSyntheticProbe,
@@ -13,6 +14,37 @@ const PATH = Object.freeze({
   aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000001',
 })
 const SECOND_PROFILE_REVISION_ID = '30000000-0000-4000-8000-000000000002'
+const CONFIGURED_PATHS = Object.freeze([
+  Object.freeze({ ...PATH, profileKey: 'generation_without_images' }),
+  Object.freeze({
+    adapterType: 'openrouter',
+    aiConnectionId: '10000000-0000-4000-8000-000000000002',
+    aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000002',
+    aiRunProfileRevisionId: SECOND_PROFILE_REVISION_ID,
+    profileKey: 'generation_with_images',
+  }),
+  Object.freeze({
+    adapterType: 'openrouter',
+    aiConnectionId: '10000000-0000-4000-8000-000000000003',
+    aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000003',
+    aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000003',
+    profileKey: 'invalid_json_repair',
+  }),
+])
+const REQUIRED_CHECK_AXES = [
+  'adapter_contract',
+  'security',
+  'sql',
+  'routes',
+  'sse',
+  'playwright_dev',
+  'playwright_prodlike',
+  'manual',
+  'required_seed',
+  'demo_seed',
+  'recovery_rotation',
+  'deployment_rollback',
+]
 const LIVE_PROOF = Object.freeze({
   adapterType: PATH.adapterType,
   adapterVersion: '1',
@@ -28,27 +60,32 @@ const LIVE_PROOF = Object.freeze({
   profileRevisionToken: '70000000-0000-4000-8000-000000000001',
   testSuiteVersion: ADMIN_PROBE_VERSION,
 })
+const VERIFIED_PATH = Object.freeze({
+  adapterType: LIVE_PROOF.adapterType,
+  adapterVersion: LIVE_PROOF.adapterVersion,
+  aiConnectionId: LIVE_PROOF.aiConnectionId,
+  aiConnectionModelRevisionId: LIVE_PROOF.aiConnectionModelRevisionId,
+  aiRunProfileRevisionId: LIVE_PROOF.aiRunProfileRevisionId,
+  connectionRevisionToken: LIVE_PROOF.connectionRevisionToken,
+  modelRevisionToken: LIVE_PROOF.modelRevisionToken,
+  profileRevisionToken: LIVE_PROOF.profileRevisionToken,
+})
 
 function configuration(overrides = {}) {
   return {
     baseUrl: 'https://staging.example.test',
     cookie: 'kravhantering_session=opaque-session',
     expectedEnvironmentId: 'staging-eu-test',
-    intendedPath: PATH,
-    intendedProfileRevisionIds: [PATH.aiRunProfileRevisionId],
+    intendedPaths: [CONFIGURED_PATHS[0]],
     ...overrides,
   }
 }
 
 function configuredEnv(overrides = {}) {
   return {
-    AI_STAGING_LIVE_ADAPTER_TYPE: PATH.adapterType,
     AI_STAGING_LIVE_BASE_URL: 'https://staging.example.test/path?query=value',
-    AI_STAGING_LIVE_CONNECTION_ID: PATH.aiConnectionId,
     AI_STAGING_LIVE_EXPECTED_ENVIRONMENT_ID: 'staging-eu-test',
-    AI_STAGING_LIVE_MODEL_REVISION_ID: PATH.aiConnectionModelRevisionId,
-    AI_STAGING_LIVE_PROFILE_REVISION_ID: PATH.aiRunProfileRevisionId,
-    AI_STAGING_LIVE_PROFILE_REVISION_IDS: PATH.aiRunProfileRevisionId,
+    AI_STAGING_LIVE_PATHS_FILE: '/private/staging-paths.json',
     AI_STAGING_LIVE_SESSION_COOKIE_FILE: '/private/session-cookie',
     AI_STAGING_LIVE_SYNTHETIC_PROBE: '1',
     ...overrides,
@@ -57,8 +94,16 @@ function configuredEnv(overrides = {}) {
 
 function privateCookieFile(overrides = {}) {
   return {
-    readFileSync: vi.fn(() => 'kravhantering_session=opaque-session\n'),
-    statSync: vi.fn(() => ({ isFile: () => true, mode: 0o100600 })),
+    readFileSync: vi.fn(path =>
+      path === '/private/staging-paths.json'
+        ? JSON.stringify(CONFIGURED_PATHS)
+        : 'kravhantering_session=opaque-session\n',
+    ),
+    statSync: vi.fn(() => ({
+      isFile: () => true,
+      mode: 0o100600,
+      size: 1024,
+    })),
     ...overrides,
   }
 }
@@ -126,6 +171,59 @@ function successfulFetch(profileRevisionIds = [PATH.aiRunProfileRevisionId]) {
   })
 }
 
+function successfulDistinctPathsFetch(paths = CONFIGURED_PATHS) {
+  return vi.fn(async (input, init = {}) => {
+    const url = new URL(String(input))
+    if (url.pathname === '/api/admin/ai-run-profiles') {
+      return jsonResponse(
+        paths.map(path => ({
+          activeRevisionId: path.aiRunProfileRevisionId,
+          blockers: [],
+          operationalStatus: 'enabled',
+          profileKey: path.profileKey,
+        })),
+        { headers: identityHeaders },
+      )
+    }
+    const path = paths.find(candidate =>
+      url.pathname.startsWith(
+        `/api/admin/ai-connections/${candidate.aiConnectionId}`,
+      ),
+    )
+    if (!path) throw new Error(`Unexpected URL: ${url}`)
+    if (url.pathname.endsWith('/actions')) {
+      const body = JSON.parse(String(init.body))
+      const index = paths.indexOf(path) + 1
+      return jsonResponse({
+        ...LIVE_PROOF,
+        adapterType: path.adapterType,
+        aiConnectionId: path.aiConnectionId,
+        aiConnectionModelRevisionId: path.aiConnectionModelRevisionId,
+        aiRunProfileRevisionId: body.profileRevisionId,
+        connectionRevisionToken: `40000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+        executionId: `50000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+        modelRevisionToken: `60000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+        profileRevisionToken: `70000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      })
+    }
+    return jsonResponse({
+      adapterKey: path.adapterType,
+      lifecycleStatus: 'active',
+      models: [
+        {
+          revisions: [
+            {
+              id: path.aiConnectionModelRevisionId,
+              revisionToken: 'preflight-token',
+              status: 'verified',
+            },
+          ],
+        },
+      ],
+    })
+  })
+}
+
 describe('staging-live synthetic AI probe', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -146,12 +244,13 @@ describe('staging-live synthetic AI probe', () => {
     })
 
     expect(result).toEqual({
-      adminFunctionalProbeVersion: ADMIN_PROBE_VERSION,
-      intendedPath: PATH,
+      inventory: {
+        intendedPaths: [VERIFIED_PATH],
+        verifiedPaths: [VERIFIED_PATH],
+      },
       liveExecutionProof: [LIVE_PROOF],
-      preflightedProfileRevisionIds: [PATH.aiRunProfileRevisionId],
       syntheticProbe: {
-        ...PATH,
+        ...VERIFIED_PATH,
         externalLiveCallMade: true,
         outcome: 'completed',
         payloadClassification: 'synthetic',
@@ -184,44 +283,128 @@ describe('staging-live synthetic AI probe', () => {
     )
   })
 
-  it('binds a current execution proof to every intended profile tuple', async () => {
-    const profileRevisionIds = [
-      PATH.aiRunProfileRevisionId,
-      SECOND_PROFILE_REVISION_ID,
-    ]
-    const fetchImpl = successfulFetch(profileRevisionIds)
-
-    const result = await runAiStagingLiveSyntheticProbe(
-      configuration({ intendedProfileRevisionIds: profileRevisionIds }),
-      { fetchImpl },
+  it('emits a fragment that composes directly into strict gate v2 evidence', async () => {
+    const fragment = await runAiStagingLiveSyntheticProbe(
+      configuration({ intendedPaths: CONFIGURED_PATHS }),
+      { fetchImpl: successfulDistinctPathsFetch() },
     )
 
-    expect(result.liveExecutionProof).toHaveLength(2)
     expect(
-      result.liveExecutionProof.map(proof => proof.aiRunProfileRevisionId),
-    ).toEqual(profileRevisionIds)
+      assessAiDeploymentGate({
+        alerts: {
+          activeProfileBlocked: true,
+          authenticationFailure: true,
+          circuitBreakerOpened: true,
+        },
+        checks: REQUIRED_CHECK_AXES.map(axis => ({
+          axis,
+          evidenceId: `evidence-${axis}`,
+          outcome: 'passed',
+          suiteVersion: 'v3',
+        })),
+        egress: { deploymentPolicyEnforced: true },
+        environment: 'staging',
+        guardActive: true,
+        keyring: {
+          activeWriteVersionExplicit: true,
+          requiredVersionsPresentOnEveryNode: true,
+        },
+        restore: {
+          databaseAndKeyringRestoredTogether: true,
+          providerSecretsAuthenticated: true,
+        },
+        schemaVersion: 2,
+        secureDefaults: {
+          contentGatesVerified: true,
+          privacyFloorVerified: true,
+        },
+        verificationMode: 'staging_live',
+        ...fragment,
+      }),
+    ).toMatchObject({ blockers: [], readyToRelease: true })
+
+    const omitted = structuredClone(fragment)
+    omitted.liveExecutionProof.pop()
     expect(
-      fetchImpl.mock.calls.filter(([, init]) => init?.method === 'POST'),
-    ).toHaveLength(2)
+      assessAiDeploymentGate({
+        alerts: {
+          activeProfileBlocked: true,
+          authenticationFailure: true,
+          circuitBreakerOpened: true,
+        },
+        checks: REQUIRED_CHECK_AXES.map(axis => ({
+          axis,
+          evidenceId: `evidence-${axis}`,
+          outcome: 'passed',
+          suiteVersion: 'v3',
+        })),
+        egress: { deploymentPolicyEnforced: true },
+        environment: 'staging',
+        guardActive: true,
+        keyring: {
+          activeWriteVersionExplicit: true,
+          requiredVersionsPresentOnEveryNode: true,
+        },
+        restore: {
+          databaseAndKeyringRestoredTogether: true,
+          providerSecretsAuthenticated: true,
+        },
+        schemaVersion: 2,
+        secureDefaults: {
+          contentGatesVerified: true,
+          privacyFloorVerified: true,
+        },
+        verificationMode: 'staging_live',
+        ...omitted,
+      }).blockers,
+    ).toContain('staging_live_execution_path_mismatch')
+
+    const swapped = structuredClone(fragment)
+    swapped.liveExecutionProof[0].modelRevisionToken =
+      swapped.liveExecutionProof[1].modelRevisionToken
+    expect(
+      assessAiDeploymentGate({
+        alerts: {
+          activeProfileBlocked: true,
+          authenticationFailure: true,
+          circuitBreakerOpened: true,
+        },
+        checks: REQUIRED_CHECK_AXES.map(axis => ({
+          axis,
+          evidenceId: `evidence-${axis}`,
+          outcome: 'passed',
+          suiteVersion: 'v3',
+        })),
+        egress: { deploymentPolicyEnforced: true },
+        environment: 'staging',
+        guardActive: true,
+        keyring: {
+          activeWriteVersionExplicit: true,
+          requiredVersionsPresentOnEveryNode: true,
+        },
+        restore: {
+          databaseAndKeyringRestoredTogether: true,
+          providerSecretsAuthenticated: true,
+        },
+        schemaVersion: 2,
+        secureDefaults: {
+          contentGatesVerified: true,
+          privacyFloorVerified: true,
+        },
+        verificationMode: 'staging_live',
+        ...swapped,
+      }).blockers,
+    ).toContain('staging_live_execution_path_mismatch')
   })
 
-  it('loads a private opt-in configuration with every intended profile revision', () => {
+  it('loads one bounded private path for each fixed profile', () => {
     expect(
-      stagingLiveProbeConfiguration(
-        configuredEnv({
-          AI_STAGING_LIVE_PROFILE_REVISION_IDS: `${PATH.aiRunProfileRevisionId},${SECOND_PROFILE_REVISION_ID}`,
-        }),
-        privateCookieFile(),
-      ),
+      stagingLiveProbeConfiguration(configuredEnv(), privateCookieFile()),
     ).toEqual({
       baseUrl: 'https://staging.example.test/',
       cookie: 'kravhantering_session=opaque-session',
       expectedEnvironmentId: 'staging-eu-test',
-      intendedPath: PATH,
-      intendedProfileRevisionIds: [
-        PATH.aiRunProfileRevisionId,
-        SECOND_PROFILE_REVISION_ID,
-      ],
+      intendedPaths: CONFIGURED_PATHS,
       status: 'configured',
     })
   })
@@ -229,9 +412,9 @@ describe('staging-live synthetic AI probe', () => {
   it.each([
     [
       'missing setting',
-      configuredEnv({ AI_STAGING_LIVE_CONNECTION_ID: ' ' }),
+      configuredEnv({ AI_STAGING_LIVE_PATHS_FILE: ' ' }),
       privateCookieFile(),
-      'AI_STAGING_LIVE_CONNECTION_ID is required',
+      'AI_STAGING_LIVE_PATHS_FILE is required',
     ],
     [
       'non-HTTPS URL',
@@ -257,36 +440,78 @@ describe('staging-live synthetic AI probe', () => {
     ],
     [
       'controlled adapter',
-      configuredEnv({ AI_STAGING_LIVE_ADAPTER_TYPE: 'controlled_test' }),
-      privateCookieFile(),
-      'must identify an external live adapter',
+      configuredEnv(),
+      privateCookieFile({
+        readFileSync: vi.fn(path =>
+          path === '/private/staging-paths.json'
+            ? JSON.stringify([
+                { ...CONFIGURED_PATHS[0], adapterType: 'controlled_test' },
+                CONFIGURED_PATHS[1],
+                CONFIGURED_PATHS[2],
+              ])
+            : 'kravhantering_session=opaque-session',
+        ),
+      }),
+      'must use an external adapter',
     ],
     [
-      'duplicate profile revision',
-      configuredEnv({
-        AI_STAGING_LIVE_PROFILE_REVISION_IDS: `${PATH.aiRunProfileRevisionId},${PATH.aiRunProfileRevisionId}`,
+      'duplicate fixed profile',
+      configuredEnv(),
+      privateCookieFile({
+        readFileSync: vi.fn(path =>
+          path === '/private/staging-paths.json'
+            ? JSON.stringify([
+                CONFIGURED_PATHS[0],
+                {
+                  ...CONFIGURED_PATHS[1],
+                  profileKey: CONFIGURED_PATHS[0].profileKey,
+                },
+                CONFIGURED_PATHS[2],
+              ])
+            : 'kravhantering_session=opaque-session',
+        ),
       }),
-      privateCookieFile(),
-      'must contain unique values',
+      'bind each fixed profile exactly once',
     ],
     [
-      'too many profile revisions',
-      configuredEnv({
-        AI_STAGING_LIVE_PROFILE_REVISION_IDS: [
-          PATH.aiRunProfileRevisionId,
-          ...Array.from({ length: 100 }, (_, index) => `profile-${index}`),
-        ].join(','),
+      'malformed paths JSON',
+      configuredEnv(),
+      privateCookieFile({
+        readFileSync: vi.fn(path =>
+          path === '/private/staging-paths.json'
+            ? '{not-json'
+            : 'kravhantering_session=opaque-session',
+        ),
       }),
-      privateCookieFile(),
-      'supports at most 100 values',
+      'must contain valid JSON',
     ],
     [
-      'representative profile omitted',
-      configuredEnv({
-        AI_STAGING_LIVE_PROFILE_REVISION_IDS: SECOND_PROFILE_REVISION_ID,
+      'missing fixed path',
+      configuredEnv(),
+      privateCookieFile({
+        readFileSync: vi.fn(path =>
+          path === '/private/staging-paths.json'
+            ? JSON.stringify(CONFIGURED_PATHS.slice(0, 2))
+            : 'kravhantering_session=opaque-session',
+        ),
       }),
-      privateCookieFile(),
-      'must include AI_STAGING_LIVE_PROFILE_REVISION_ID',
+      'must contain exactly 3 paths',
+    ],
+    [
+      'unknown fixed profile',
+      configuredEnv(),
+      privateCookieFile({
+        readFileSync: vi.fn(path =>
+          path === '/private/staging-paths.json'
+            ? JSON.stringify([
+                { ...CONFIGURED_PATHS[0], profileKey: 'unknown_profile' },
+                CONFIGURED_PATHS[1],
+                CONFIGURED_PATHS[2],
+              ])
+            : 'kravhantering_session=opaque-session',
+        ),
+      }),
+      'path 1 is invalid',
     ],
   ])('rejects %s', (_name, env, fsImpl, message) => {
     expect(() => stagingLiveProbeConfiguration(env, fsImpl)).toThrow(message)
@@ -324,7 +549,7 @@ describe('staging-live synthetic AI probe', () => {
   })
 
   it('preflights every configured profile revision before live actions', async () => {
-    const fetchImpl = successfulFetch()
+    const fetchImpl = successfulDistinctPathsFetch()
     fetchImpl.mockImplementationOnce(async () =>
       jsonResponse(
         [
@@ -342,10 +567,7 @@ describe('staging-live synthetic AI probe', () => {
     await expect(
       runAiStagingLiveSyntheticProbe(
         configuration({
-          intendedProfileRevisionIds: [
-            PATH.aiRunProfileRevisionId,
-            SECOND_PROFILE_REVISION_ID,
-          ],
+          intendedPaths: CONFIGURED_PATHS.slice(0, 2),
         }),
         { fetchImpl },
       ),
@@ -357,7 +579,9 @@ describe('staging-live synthetic AI probe', () => {
     await expect(
       runAiStagingLiveSyntheticProbe(
         configuration({
-          intendedPath: { ...PATH, adapterType: 'unexpected-adapter' },
+          intendedPaths: [
+            { ...CONFIGURED_PATHS[0], adapterType: 'unexpected-adapter' },
+          ],
         }),
         { fetchImpl: successfulFetch() },
       ),
@@ -425,7 +649,7 @@ describe('staging-live synthetic AI probe', () => {
 
   it('runs the default-skip CLI without network and configured CLI with injected fetch', async () => {
     const stdout = vi.spyOn(process.stdout, 'write').mockReturnValue(true)
-    const fetchImpl = successfulFetch()
+    const fetchImpl = successfulDistinctPathsFetch()
     vi.stubGlobal('fetch', fetchImpl)
 
     await expect(main({ env: {}, fsImpl: privateCookieFile() })).resolves.toBe(

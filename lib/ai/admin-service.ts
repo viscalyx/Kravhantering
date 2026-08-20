@@ -500,6 +500,63 @@ function fingerprint(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex')
 }
 
+function livePathActivationFence(snapshot: AiAdminActivationSnapshot): string {
+  const connection = snapshot.connection
+  const modelRevision = snapshot.modelRevision
+  return fingerprint({
+    attestationRevisionToken: snapshot.attestationRevisionToken,
+    connection: {
+      activeSecretVersionId: connection.activeSecret.available
+        ? connection.activeSecret.secretVersionId
+        : null,
+      adapterKey: connection.adapterKey,
+      adapterVersion: connection.adapterVersion,
+      agentRuntimeKey: connection.agentRuntimeKey,
+      agentRuntimeVersion: connection.agentRuntimeVersion,
+      authenticationType: connection.authenticationType,
+      blockers: connection.blockers,
+      configurationVersion: connection.configurationVersion,
+      dataPolicySummary: connection.dataPolicySummary,
+      egressPolicyKey: connection.egressPolicyKey,
+      endpointUrl: connection.endpointUrl,
+      id: connection.id,
+      lifecycleStatus: connection.lifecycleStatus,
+      maximumConcurrency: connection.maximumConcurrency,
+      revisionToken: connection.revisionToken,
+      tlsPolicyKey: connection.tlsPolicyKey,
+    },
+    connectionEvidenceId: snapshot.connectionEvidenceId,
+    modelRevision,
+    profile: {
+      activeRevisionId: snapshot.profile.activeRevisionId,
+      blockers: snapshot.profile.blockers,
+      id: snapshot.profile.id,
+      operationalStatus: snapshot.profile.operationalStatus,
+      profileKey: snapshot.profile.profileKey,
+      revisionToken: snapshot.profile.revisionToken,
+    },
+    profileRevision: snapshot.profileRevision,
+    secretVersionId: snapshot.secretVersionId,
+  })
+}
+
+function isCurrentLivePathActivation(
+  expected: AiAdminActivationSnapshot,
+  current: AiAdminActivationSnapshot,
+): boolean {
+  return (
+    current.connection.lifecycleStatus === 'active' &&
+    current.modelRevision?.status === 'verified' &&
+    current.profile.operationalStatus === 'enabled' &&
+    current.profile.activeRevisionId === current.profileRevision.id &&
+    current.profile.blockers.length === 0 &&
+    current.profileRevision.status === 'active' &&
+    profileActivationBlockers(current.profile.profileKey, current).length ===
+      0 &&
+    livePathActivationFence(current) === livePathActivationFence(expected)
+  )
+}
+
 export class AiConnectionAdministrationService {
   readonly #audit: AiAdminAudit
   readonly #external: AiAdminExternalOperations
@@ -890,15 +947,7 @@ export class AiConnectionAdministrationService {
       profileKey: entry.profile.profileKey,
       profileRevisionId: snapshot.profileRevision.id,
     })
-    if (
-      !refenced ||
-      refenced.connection.id !== selection.aiConnectionId ||
-      refenced.connection.revisionToken !== selection.connectionRevisionToken ||
-      refenced.modelRevision?.id !== selection.aiConnectionModelRevisionId ||
-      refenced.modelRevision.revisionToken !== selection.modelRevisionToken ||
-      refenced.profileRevision.id !== selection.aiRunProfileRevisionId ||
-      refenced.profileRevision.revisionToken !== selection.profileRevisionToken
-    ) {
+    if (!refenced || !isCurrentLivePathActivation(exactSnapshot, refenced)) {
       throw validationError('The exact AI path changed during verification.')
     }
     await this.#audit({

@@ -1,24 +1,13 @@
-import { createSqlServerAiRunProfileSource } from '@/lib/dal/ai-run-profiles'
 import type { SqlServerDatabase } from '@/lib/db'
-import { aiRunTelemetry } from '@/lib/observability/ai-runs'
-import { createAiConnectionAdapterRegistry } from './adapter-registry'
 import { loadAiDeploymentTrustPolicy } from './admin-external'
-import { controlledTestAdapterRegistration } from './controlled-test-adapter'
-import {
-  type AiIntegrationLayerWithSafeInvalidOutput,
-  createAiIntegrationLayer,
-} from './integration-layer'
-import { openRouterAdapterRegistration } from './openrouter-adapter'
+import type { AiIntegrationLayerWithSafeInvalidOutput } from './integration-layer'
+import { createProductionAiRuntimeComposition } from './production-runtime-composition'
 import type {
   AiResolvedRunProfile,
   AiRunProfileResolver,
 } from './profile-resolver'
-import {
-  AiRunProfileResolutionError,
-  createAiRunProfileResolver,
-} from './profile-resolver'
+import { AiRunProfileResolutionError } from './profile-resolver'
 import { loadAiProviderSecretKeyring } from './provider-secret-keyring'
-import { createAiRuntimeAdapterConfigurationResolver } from './provider-secret-service'
 import type {
   AIIntegrationLayer,
   AiIntegrationRunRequest,
@@ -27,10 +16,6 @@ import type {
   AiRunUsage,
   AiRunValidationIssue,
 } from './run-contracts'
-import { createSqlServerAiRunCoordinationStore } from './run-coordination-store'
-import { createAiRunCoordinator } from './run-coordinator'
-import { createAiRunTrustBoundary } from './run-trust-boundary'
-import { screenAiInput, screenAiOutput } from './safety'
 
 export type AiAuthoringProfileUnavailableReason =
   | 'blocked'
@@ -138,44 +123,13 @@ export function createProductionAiAuthoringRuntime(
 ): AiAuthoringRuntime {
   const cached = runtimeCache.get(db)
   if (cached) return cached
-  const profileResolver = createAiRunProfileResolver({
-    profileSource: createSqlServerAiRunProfileSource(db),
-    resolveAdapterConfiguration: createAiRuntimeAdapterConfigurationResolver(
+  const { integration, profileResolver } = createProductionAiRuntimeComposition(
+    {
       db,
-      loadAiProviderSecretKeyring(),
-    ),
-  })
-  const runCoordinator = createAiRunCoordinator({
-    coordination: createSqlServerAiRunCoordinationStore(db),
-    telemetry: aiRunTelemetry,
-  })
-  const integration = createAiIntegrationLayer({
-    adapterRegistry: createAiConnectionAdapterRegistry([
-      openRouterAdapterRegistration,
-      controlledTestAdapterRegistration,
-    ]),
-    profileResolver,
-    runCoordinator,
-    telemetry: aiRunTelemetry,
-    trustBoundary: createAiRunTrustBoundary({
       deployment: loadAiDeploymentTrustPolicy(),
-      imageLimits: Object.freeze({
-        maximumBytes: 10 * 1024 * 1024,
-        maximumFrames: 1,
-        maximumHeight: 8192,
-        maximumPixels: 32 * 1024 * 1024,
-        maximumWidth: 8192,
-      }),
-      safetyFilter: {
-        async screenInput(textParts) {
-          return screenAiInput(db, textParts)
-        },
-        async screenOutput(textParts) {
-          return screenAiOutput(db, textParts)
-        },
-      },
-    }),
-  })
+      keyring: loadAiProviderSecretKeyring(),
+    },
+  )
   const runtime = createAiAuthoringRuntime({ integration, profileResolver })
   runtimeCache.set(db, runtime)
   return runtime
