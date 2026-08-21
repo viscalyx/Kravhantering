@@ -596,16 +596,9 @@ function describeCoordinatedAdapterContract(
       expect(terminalEvents(over)).toHaveLength(1)
     })
 
-    it('accepts the exact buffered-event limit and rejects the first event over', async () => {
+    it('does not count the total streamed events as concurrently buffered events', async () => {
       const limits = { ...DEFAULT_LIMITS, maxBufferedEvents: 4 }
-      const exact = await collect(
-        coordinatedRun(
-          harness,
-          { count: 4, type: 'buffered_events' },
-          { limits },
-        ).events,
-      )
-      const over = await collect(
+      const events = await collect(
         coordinatedRun(
           harness,
           { count: 5, type: 'buffered_events' },
@@ -613,9 +606,8 @@ function describeCoordinatedAdapterContract(
         ).events,
       )
 
-      expect(exact.at(-1)?.type).toBe('completed')
-      expect(over.at(-1)).toMatchObject({ type: 'failed' })
-      expect(terminalEvents(over)).toHaveLength(1)
+      expect(events.at(-1)?.type).toBe('completed')
+      expect(terminalEvents(events)).toHaveLength(1)
     })
 
     it('emits linear deltas and does not pull ahead of its consumer', async () => {

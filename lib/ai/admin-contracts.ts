@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AI_CAPABILITY_KEYS } from './capability-keys'
 import { AI_CONNECTION_AUTHENTICATION_TYPES } from './connection-trust'
 import { AI_RUN_PROFILE_KEYS } from './profile-resolver'
 
@@ -21,6 +22,8 @@ export const aiCapabilitySchema = z
     validatableJson: z.boolean(),
   })
   .strict()
+
+export const aiCapabilityKeySchema = z.enum(AI_CAPABILITY_KEYS)
 
 export const aiCapabilityPolicyModeSchema = z.enum([
   'allowed',
@@ -195,6 +198,20 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('fetch_catalog') }).strict(),
   z
     .object({
+      action: z.literal('discover_model_capabilities'),
+      capabilities: z
+        .array(aiCapabilityKeySchema)
+        .min(1)
+        .max(7)
+        .refine(value => new Set(value).size === value.length, {
+          message: 'Capability discovery entries must be unique.',
+        }),
+      externalModelId: boundedText(450),
+      externalModelVersion: optionalText(200),
+    })
+    .strict(),
+  z
+    .object({
       action: z.literal('probe_health'),
       modelRevisionId: aiIdentifierSchema,
       revisionToken: aiRevisionTokenSchema,
@@ -211,6 +228,14 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
     .object({
       action: z.literal('save_attestation'),
       attestation: saveAiAttestationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal('discard_attestation_draft'),
+      currentAttestationRevisionToken: aiRevisionTokenSchema,
+      draftAttestationId: aiIdentifierSchema,
+      draftAttestationRevisionToken: aiRevisionTokenSchema,
     })
     .strict(),
   z

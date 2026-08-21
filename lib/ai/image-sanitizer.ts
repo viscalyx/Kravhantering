@@ -1,4 +1,4 @@
-import sharp from 'sharp'
+import sharp, { type OutputInfo } from 'sharp'
 
 export interface AiImageSanitizationLimits {
   maximumBytes: number
@@ -140,9 +140,9 @@ export async function sanitizeAiImage(
     if (error instanceof AiImageSanitizationError) throw error
     return reject('image_decode_failed')
   }
-  let encoded: Awaited<ReturnType<ReturnType<typeof sharp>['toBuffer']>> & {
+  let encoded: {
     data: Buffer
-    info: { height: number; width: number }
+    info: OutputInfo
   }
   try {
     encoded = await pipeline
@@ -156,7 +156,8 @@ export async function sanitizeAiImage(
   if (output.byteLength > limits.maximumBytes) return reject('image_too_large')
   return Object.freeze({
     data: output,
-    height: info.height,
+    height:
+      limits.maximumFrames > 1 ? (info.pageHeight ?? info.height) : info.height,
     mediaType: 'image/png',
     width: info.width,
   })

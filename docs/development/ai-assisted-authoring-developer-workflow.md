@@ -46,6 +46,8 @@ Deployment verification is split into explicit modes by
 [ADR 0054](../adr/0054-global-ai-sparr-och-driftsattningsbevis.md), while
 [ADR 0055](../adr/0055-innehallsfri-ai-observerbarhet-och-syntetisk-liveverifiering.md)
 defines the content-free telemetry and synthetic staging-live contract.
+The three deployment-owned JSON trust maps are explained step by step in the
+[AI connection deployment-policy guide](../operations/ai-connection-deployment-policies.md).
 
 The integration layer adds the provider-neutral AI request privacy minimum to
 every adapter request. Adapters map deny-data-collection and required
@@ -162,6 +164,13 @@ Provider failures use these codes:
 - `ai_provider_invalid_response` for a terminal response that cannot be used
   or preserved for repair.
 
+Known terminal failures also carry an actionable localized message. When the
+adapter or coordinator supplies a content-free diagnostic code matching the
+safe identifier contract, the response includes it as `technicalCode` and the
+authoring error summary shows it for support and troubleshooting. Provider
+response bodies, prompts, model output, personal data, secrets, and nested
+exception text remain excluded.
+
 Error bodies are inspected only for JSON media types and stop at 16 KiB.
 Successful JSON bodies stop at 4 MiB. SSE frames stop at 256 KiB, and combined
 model content plus reasoning stops at 4 MiB. Diagnostics use the
@@ -219,6 +228,6 @@ authoring, quarantine, repair, cancellation, and profile availability.
 The opt-in staging-live procedure is an operator verification, not a normal
 developer or CI test. It uses only the fixed synthetic payload and prints
 content-free evidence from the non-mutating `verify_live_path` operation. The
-operation rejects `controlled_test` and binds the just-completed fixed-v3 run
+operation rejects `controlled_test` and binds the just-completed fixed-v4 run
 to its exact active connection/model/profile revisions; see
 [AI Connections Operations](../operations/ai-connections.md#staging-live-synthetic-probe).

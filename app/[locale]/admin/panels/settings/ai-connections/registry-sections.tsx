@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
 import type {
   AiAdminBlocker,
+  AiAdminConnectionDetail,
   AiAdminConnectionSummary,
   AiAdminModelRevisionRecord,
 } from '@/lib/ai/admin-service'
@@ -73,11 +74,39 @@ export function revisionTone(
   return status === 'verification_required' ? 'warning' : 'neutral'
 }
 
-export function BlockerText({ blocker }: { blocker: AiAdminBlocker }) {
+export type AttestationBlockerState = 'draft' | 'invalid' | 'missing'
+
+export function attestationBlockerState(
+  connection: Pick<AiAdminConnectionDetail, 'attestation' | 'attestationDraft'>,
+): AttestationBlockerState {
+  if (
+    connection.attestationDraft ||
+    connection.attestation?.status === 'draft'
+  ) {
+    return 'draft'
+  }
+  return connection.attestation ? 'invalid' : 'missing'
+}
+
+export function BlockerText({
+  attestationState,
+  blocker,
+}: {
+  attestationState?: AttestationBlockerState
+  blocker: AiAdminBlocker
+}) {
   const t = useTranslations('admin.aiConnections')
+  const blockerKey =
+    blocker.code === 'attestation_invalid' && attestationState
+      ? attestationState === 'draft'
+        ? 'attestation_draft_pending'
+        : attestationState === 'missing'
+          ? 'attestation_missing'
+          : 'attestation_invalid'
+      : blocker.code
   return (
     <>
-      {t(`blockers.${blocker.code}`)}
+      {t(`blockers.${blockerKey}`)}
       {blocker.field ? (
         <span className="ml-1 font-semibold">
           ({t(`blockerFields.${blocker.field}`)})

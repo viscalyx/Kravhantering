@@ -106,6 +106,7 @@ function connection(
     revisionToken: crypto.randomUUID(),
     tlsPolicyKey: 'test',
     ...overrides,
+    attestationDraft: overrides.attestationDraft ?? null,
   }
 }
 
@@ -230,6 +231,16 @@ describe('AI administration provider composition', () => {
       external.authorizeRunProfile(current, 'generation_without_images'),
     ).resolves.toBe('authorized')
     await expect(external.fetchCatalog(current)).resolves.toHaveLength(1)
+    await expect(
+      external.discoverModelCapabilities(current, {
+        capabilities: ['streaming'],
+        externalModelId: revision.externalModelId,
+        externalModelVersion: revision.externalModelVersion,
+      }),
+    ).resolves.toMatchObject({
+      assessments: { streaming: { support: 'supported' } },
+      capabilities: { streaming: true },
+    })
     await expect(external.probeConnection(current)).resolves.toMatchObject({
       outcome: 'passed',
     })
@@ -255,7 +266,7 @@ describe('AI administration provider composition', () => {
       externalLiveCallMade: false,
       failureCategory: 'controlled_adapter_forbidden',
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v3',
+      testSuiteVersion: 'ai-admin-functional-probe-v4',
     })
     await expect(
       external.verifySecretCandidate(
@@ -552,7 +563,7 @@ describe('AI administration provider composition', () => {
     expect(runFunctionalProbe).not.toHaveBeenCalled()
   })
 
-  it('separates egress and data-policy denial results', async () => {
+  it('separates egress, missing data-policy, and attestation denial results', async () => {
     const deniedEgress = createProductionAiAdminExternalOperations(
       emptyDb,
       () => ring,
@@ -572,6 +583,22 @@ describe('AI administration provider composition', () => {
     )
     await expect(
       deniedData.authorizeRunProfile(connection(), 'generation_without_images'),
+    ).resolves.toBe('data_policy_missing')
+
+    const mismatchedAttestation = connection().attestation
+    if (!mismatchedAttestation) throw new Error('Attestation missing')
+    await expect(
+      createProductionAiAdminExternalOperations(emptyDb, () => ring, {
+        deployment: deployment(),
+      }).authorizeRunProfile(
+        connection({
+          attestation: {
+            ...mismatchedAttestation,
+            processingRegions: ['US'],
+          },
+        }),
+        'generation_without_images',
+      ),
     ).resolves.toBe('data_policy_blocked')
   })
 
@@ -588,11 +615,28 @@ describe('AI administration provider composition', () => {
                 architecture: { modality: 'text+image->text' },
                 id: 'vendor/model',
                 name: 'Vendor model',
+                pricing: {
+                  completion: '0.00001',
+                  prompt: '0.0000025',
+                },
                 supported_parameters: [
+                  'include_reasoning',
                   'reasoning',
                   'response_format',
-                  'stream',
                 ],
+              },
+              {
+                id: 'standalone-model',
+                name: 'Standalone model',
+                pricing: {
+                  completion: '-1',
+                  prompt: 'not-a-price',
+                },
+              },
+              {
+                id: 'reasoning-metadata-model',
+                name: 'Reasoning metadata model',
+                reasoning: { max_tokens: 8_192 },
               },
             ],
           }),
@@ -610,7 +654,38 @@ describe('AI administration provider composition', () => {
       egress: { fetch },
     }
     await expect(adapter.fetchCatalog(context)).resolves.toMatchObject([
-      { externalModelId: 'vendor/model', capabilities: { imageInput: true } },
+      {
+        capabilities: {
+          aiAnalysis: false,
+          imageInput: true,
+          streaming: true,
+        },
+        capabilitySupport: {
+          aiAnalysis: 'unknown',
+          imageInput: 'supported',
+          streaming: 'supported',
+        },
+        externalModelId: 'vendor/model',
+        inputPricePerMillionTokens: { amount: '2.5', currency: 'USD' },
+        modelProviderName: 'vendor',
+        outputPricePerMillionTokens: { amount: '10', currency: 'USD' },
+      },
+      {
+        capabilities: { aiAnalysis: false, streaming: true },
+        capabilitySupport: {
+          aiAnalysis: 'unsupported',
+          streaming: 'supported',
+        },
+        externalModelId: 'standalone-model',
+        inputPricePerMillionTokens: null,
+        modelProviderName: null,
+        outputPricePerMillionTokens: null,
+      },
+      {
+        capabilities: { aiAnalysis: false },
+        capabilitySupport: { aiAnalysis: 'unknown' },
+        externalModelId: 'reasoning-metadata-model',
+      },
     ])
     await expect(adapter.probeConnection(context)).resolves.toMatchObject({
       outcome: 'passed',
@@ -788,6 +863,56 @@ describe('AI administration provider composition', () => {
     )
   })
 
+  it('authorizes the controlled integration connection through the configured development sidecar policy', async () => {
+    vi.stubEnv(
+      'AI_CONNECTION_EGRESS_POLICIES_JSON',
+      JSON.stringify({
+        controlled_test: {
+          allowedOrigins: [],
+          privateSidecarAddresses: ['127.0.0.1', '::1'],
+          privateSidecarOrigins: ['https://localhost:4443'],
+        },
+      }),
+    )
+    vi.stubEnv(
+      'AI_CONNECTION_DATA_POLICIES_JSON',
+      JSON.stringify({
+        generate_without_images: {
+          allowedProcessingRegions: ['SE'],
+          informationClassOrder: ['public', 'internal', 'confidential'],
+          maximumInformationClass: 'internal',
+          maximumRetentionDays: 0,
+          personalDataAllowed: false,
+          requireTrainingProhibited: true,
+        },
+      }),
+    )
+    vi.stubEnv(
+      'AI_CONNECTION_TLS_POLICIES_JSON',
+      JSON.stringify({ controlled_test: 'public_web_pki' }),
+    )
+    vi.stubEnv(
+      'AI_CONNECTION_DEVELOPMENT_LOCAL_ORIGIN',
+      'https://localhost:4443',
+    )
+    vi.stubEnv('NODE_ENV', 'development')
+    const external = createProductionAiAdminExternalOperations(
+      emptyDb,
+      () => ring,
+    )
+
+    await expect(
+      external.authorizeConnectionTarget(
+        connection({
+          authenticationType: 'static_secret',
+          egressPolicyKey: 'controlled_test',
+          endpointUrl: 'https://localhost:4443',
+          tlsPolicyKey: 'controlled_test',
+        }),
+      ),
+    ).resolves.toBe(true)
+  })
+
   it('fails closed for malformed deployment policy and resolves configured DNS', async () => {
     vi.stubEnv('AI_CONNECTION_EGRESS_POLICIES_JSON', '[]')
     expect(() => loadAiDeploymentTrustPolicy()).toThrow('must be a JSON object')
@@ -843,6 +968,35 @@ describe('AI administration provider composition', () => {
         egress: { fetch: vi.fn() },
       }),
     ).resolves.toEqual([])
+    const allFalse = Object.fromEntries(
+      Object.keys(CAPABILITIES).map(capability => [capability, false]),
+    ) as typeof CAPABILITIES
+    const allTrue = Object.fromEntries(
+      Object.keys(CAPABILITIES).map(capability => [capability, true]),
+    ) as typeof CAPABILITIES
+    for (const expected of [allFalse, allTrue]) {
+      const catalogConnection = connection()
+      const catalogRevision = catalogConnection.models[0]?.revisions[0]
+      if (!catalogRevision) throw new Error('Catalog revision missing')
+      catalogRevision.declaredCapabilities = expected
+      await expect(
+        adapter.fetchCatalog({
+          connection: catalogConnection,
+          credential: null,
+          egress: { fetch: vi.fn() },
+        }),
+      ).resolves.toMatchObject([
+        {
+          capabilities: expected,
+          capabilitySupport: Object.fromEntries(
+            Object.entries(expected).map(([capability, supported]) => [
+              capability,
+              supported ? 'supported' : 'unsupported',
+            ]),
+          ),
+        },
+      ])
+    }
     const authenticated = connection({ authenticationType: 'static_secret' })
     await expect(
       adapter.verifySecretCandidate({
@@ -1026,7 +1180,7 @@ describe('AI administration provider composition', () => {
       executionId: expect.any(String),
       externalLiveCallMade: true,
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v3',
+      testSuiteVersion: 'ai-admin-functional-probe-v4',
     })
     await expect(
       external.probeHealth(current, revision),

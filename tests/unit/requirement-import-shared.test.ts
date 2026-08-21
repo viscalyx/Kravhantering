@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import {
+  aiRunFailureError,
   checkAiRequirementImportThrottle,
   countImageBytes,
   createUnavailableAiStreamResponse,
@@ -15,6 +16,7 @@ import {
   validateRequirementImportImages,
   validateRequirementImportScope,
 } from '@/app/api/ai/requirement-import-shared'
+import type { AiRunFailure } from '@/lib/ai/run-contracts'
 import type { AiSafetyDecision, AiSafetyScreeningResult } from '@/lib/ai/safety'
 import type { SqlServerDatabase } from '@/lib/db'
 import { clearInMemoryThrottleForTests } from '@/lib/observability/throttle'
@@ -246,6 +248,67 @@ describe('guardAiInput', () => {
     expect(onSafetyFilterFailure).toHaveBeenCalledWith(error)
     expect(safetyState.recordAiSafetyBlock).not.toHaveBeenCalled()
     expect(onBlockedInput).not.toHaveBeenCalled()
+  })
+})
+
+describe('aiRunFailureError', () => {
+  it.each([
+    [
+      'authentication_failed',
+      'upstream_authentication_failed',
+      'ai_provider_unavailable',
+      'The AI connection could not authenticate with the provider.',
+    ],
+    [
+      'rate_limited',
+      'upstream_rate_limited',
+      'ai_provider_rate_limited',
+      'The AI provider is receiving too many requests.',
+    ],
+    [
+      'invalid_response',
+      'invalid_upstream_stream_event',
+      'ai_provider_invalid_response',
+      'The AI provider returned a response format that the application could not process.',
+    ],
+    [
+      'deadline_exceeded',
+      'upstream_deadline_exceeded',
+      'ai_provider_unavailable',
+      'The AI provider did not finish within the allowed time.',
+    ],
+  ] as const)(
+    'maps %s to an actionable public error',
+    (category, diagnosticCode, code, message) => {
+      const failure: AiRunFailure = {
+        category,
+        diagnosticCode,
+        retryable: false,
+      }
+
+      expect(aiRunFailureError(failure, 'en')).toEqual({
+        code,
+        message,
+        technicalCode: diagnosticCode,
+      })
+    },
+  )
+
+  it('localizes the safe explanation and omits an unsafe diagnostic value', () => {
+    expect(
+      aiRunFailureError(
+        {
+          category: 'connection_unavailable',
+          diagnosticCode: 'provider failed: secret response body',
+          retryable: true,
+        },
+        'sv',
+      ),
+    ).toEqual({
+      code: 'ai_provider_unavailable',
+      message:
+        'Det gick inte att nå AI-leverantören. Försök igen. Kontakta en administratör om problemet kvarstår.',
+    })
   })
 })
 

@@ -435,9 +435,17 @@ async function loadConnections(
     ),
   ])
   return connectionRows.map(row => {
-    const attestationRow = attestationRows.find(candidate =>
+    const connectionAttestations = attestationRows.filter(candidate =>
       sameId(candidate.connectionId, row.id),
     )
+    const validAttestationRow = connectionAttestations.find(
+      candidate => candidate.status === 'valid',
+    )
+    const draftAttestationRow = connectionAttestations.find(
+      candidate => candidate.status === 'draft',
+    )
+    const attestationRow =
+      validAttestationRow ?? draftAttestationRow ?? connectionAttestations[0]
     return {
       ...summary(row),
       activeSecret: activeSecret(row),
@@ -446,6 +454,9 @@ async function loadConnections(
       agentRuntimeKey: row.agentRuntimeKey,
       agentRuntimeVersion: row.agentRuntimeVersion,
       attestation: attestationRow ? attestation(attestationRow) : null,
+      attestationDraft: draftAttestationRow
+        ? attestation(draftAttestationRow)
+        : null,
       authenticationType: row.authenticationType,
       blockers: blockers(row),
       connectionEvidenceId: row.connectionEvidenceId,
@@ -956,6 +967,50 @@ export function createSqlServerAiAdminStore(
           manager,
         )
         return saved
+      })
+    },
+
+    async discardAttestationDraft(input) {
+      return db.transaction('SERIALIZABLE', async manager => {
+        const admitted = await manager.query<Array<{ id: string }>>(
+          `SELECT [draft].[id]
+           FROM [ai_connection_attestations] AS [draft]
+             WITH (UPDLOCK, HOLDLOCK)
+           WHERE [draft].[ai_connection_id] = @0
+             AND [draft].[id] = @1
+             AND [draft].[revision_token] = @2
+             AND [draft].[status] = N'draft'
+             AND EXISTS (
+               SELECT 1
+               FROM [ai_connection_attestations] AS [valid]
+                 WITH (UPDLOCK, HOLDLOCK)
+               WHERE [valid].[ai_connection_id] = @0
+                 AND [valid].[status] = N'valid'
+                 AND [valid].[revision_token] = @3
+             );`,
+          [
+            input.connectionId,
+            input.draftAttestationId,
+            input.draftAttestationRevisionToken,
+            input.currentAttestationRevisionToken,
+          ],
+        )
+        if (!admitted[0]) return false
+        await manager.query(
+          `UPDATE [ai_connection_attestations]
+           SET [status] = N'superseded', [revision_token] = NEWID()
+           WHERE [ai_connection_id] = @0 AND [status] = N'draft';`,
+          [input.connectionId],
+        )
+        await audit(
+          {
+            operation: 'discard',
+            resourceId: input.draftAttestationId,
+            resourceType: 'ai_connection_attestation',
+          },
+          manager,
+        )
+        return true
       })
     },
 

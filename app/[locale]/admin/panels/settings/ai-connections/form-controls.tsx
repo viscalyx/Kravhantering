@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import DirtyStateButton from '@/components/DirtyStateButton'
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 
 export function nullable(value: FormDataEntryValue | null): string | null {
@@ -44,15 +45,21 @@ export function Field({
 }
 
 export function DialogActions({
+  actions,
   busy,
   cancel,
   onCancel,
   save,
+  saveDisabled = false,
+  saveDirty = true,
 }: {
+  actions?: ReactNode
   busy: boolean
   cancel: string
   onCancel: () => void
   save: string
+  saveDisabled?: boolean
+  saveDirty?: boolean
 }) {
   return (
     <div className="mt-6 flex flex-wrap justify-end gap-3">
@@ -64,13 +71,15 @@ export function DialogActions({
       >
         {cancel}
       </button>
-      <button
+      <DirtyStateButton
         className="btn-primary px-4! py-2! text-sm"
-        disabled={busy}
+        dirty={saveDirty}
+        disabled={busy || saveDisabled}
         type="submit"
       >
         {save}
-      </button>
+      </DirtyStateButton>
+      {actions}
     </div>
   )
 }

@@ -1802,9 +1802,13 @@
         "addModel": "Add model",
         "editModel": "Edit model",
         "verifyModel": "Verify model",
+        "verifyingModel": "Verifying…",
         "probeHealth": "Run health probe",
+        "probingHealth": "Checking…",
         "retireModel": "Retire model revision",
         "fetchCatalog": "Read model catalog",
+        "checkCapabilities": "Check capabilities",
+        "checkingCapabilities": "Checking…",
         "verifyConnection": "Verify connection",
         "activateConnection": "Activate connection",
         "suspendConnection": "Suspend connection",
@@ -1853,7 +1857,14 @@
         "unavailable": "Unavailable",
         "unknown": "Unknown",
         "probed": "The bounded health probe completed.",
-        "safeRecoveryHelp": "Recovery is manual and uses a bounded probe against the same verified revision. It never switches to a fallback model."
+        "probeResult": {
+          "degraded": "The health probe completed. The model's operational health is degraded.",
+          "healthy": "The health probe completed and the model is healthy.",
+          "unavailable": "The health probe completed, but the model is unavailable.",
+          "unknown": "The health probe completed without an available health result."
+        },
+        "safeRecoveryHelp": "Recovery is manual and uses a bounded probe against the same verified revision. It never switches to a fallback model.",
+        "verifyModelFirst": "Verify the model revision before running a health probe."
       },
       "configuration": {
         "title": "Connection configuration and egress",
@@ -1941,11 +1952,11 @@
         },
         "secret": {
           "label": "New provider secret",
-          "help": "Enter a new credential candidate. The value is encrypted and never displayed or exported after submission."
+          "help": "Enter a new provider secret. The value is encrypted and never displayed or exported after submission."
         },
         "responsibleOrganizationUnitReference": {
-          "label": "Responsible organization unit ID",
-          "help": "Enter the UUID of the organization unit accountable for this connection."
+          "label": "Organization unit reference ID",
+          "help": "Obtain the UUID reference for the accountable organization unit from your organization's governance system. Do not create a new UUID here. Contact the information security or AI governance owner if you do not have the reference."
         },
         "providerName": {
           "label": "Provider name",
@@ -1968,8 +1979,8 @@
           "help": "Enter approved subprocessors separated by commas, or leave empty when none are used."
         },
         "incidentResponseReference": {
-          "label": "Incident response reference ID",
-          "help": "Enter the UUID of the approved incident response reference."
+          "label": "Incident process reference ID",
+          "help": "Obtain the UUID reference for the approved incident response process from your organization's governance system. Do not create a new UUID here. Contact the information security owner if you do not have the reference."
         },
         "decisionReference": {
           "label": "Decision reference",
@@ -1997,7 +2008,7 @@
         },
         "modelRevisionId": {
           "label": "Connection model revision",
-          "help": "Choose the exact model revision for this run type, or leave unassigned to save an incomplete draft."
+          "help": "Choose the latest verified revision of a connection model, or leave it unassigned to save an incomplete draft. Models whose latest revision is not verified are not shown."
         },
         "totalTimeBudgetSeconds": {
           "label": "Total time budget",
@@ -2021,28 +2032,40 @@
           "root_key_version_missing": "The deployment is missing the root-key version required for this secret.",
           "secret_missing": "No active provider secret is available."
         },
-        "writeCandidate": "Save secret candidate",
-        "written": "The secret candidate was encrypted. Its value is no longer available to the UI.",
-        "candidateReady": "The encrypted candidate is ready for verification and activation.",
-        "activateCost": "Activation performs a bounded provider check and may incur a small provider cost.",
-        "activateCandidate": "Verify and activate candidate",
+        "writeCandidate": "Save new secret",
+        "written": "The new provider secret was encrypted and saved. Its value is no longer available to the UI.",
+        "candidateReady": "The new encrypted provider secret is ready for verification and activation.",
+        "activateCost": "This action verifies the new provider secret and makes it active. The connection configuration must then be verified separately. The provider check may incur a small cost.",
+        "activateCandidate": "Verify and activate new secret",
         "confirmRevocation": "Confirm provider revocation",
-        "deleteCandidate": "Delete candidate",
-        "activated": "The provider secret candidate was verified and activated.",
+        "deleteCandidate": "Delete new secret",
+        "activated": "The new provider secret was verified and activated.",
         "revocationConfirmed": "Provider revocation was confirmed and the encrypted secret material was deleted.",
-        "deleted": "The provider secret candidate was deleted.",
+        "deleted": "The new provider secret was deleted.",
         "revocationConfirmTitle": "Confirm provider revocation?",
         "revocationConfirmMessage": "Only continue after the secret has been revoked at the provider. This permanently deletes the encrypted secret material from Kravhantering.",
-        "deleteConfirmTitle": "Delete secret candidate?",
-        "deleteConfirmMessage": "This permanently deletes the encrypted candidate. The currently active secret is not changed."
+        "deleteConfirmTitle": "Delete the new provider secret?",
+        "deleteConfirmMessage": "This permanently deletes the new encrypted provider secret. The currently active secret is not changed."
       },
       "attestation": {
         "missing": "No current valid attestation.",
         "select": "Select…",
         "saveDraft": "Save attestation draft",
         "approve": "Approve saved attestation",
+        "discardDraft": "Revert to approved attestation",
         "saved": "The attestation draft was saved. Review it before approval.",
         "approved": "The attestation was approved.",
+        "discarded": "The attestation draft was discarded. The previously approved attestation remains valid.",
+        "discardConfirmTitle": "Discard the attestation draft?",
+        "discardConfirmMessage": "The saved draft will be marked as discarded and can no longer be edited. The previously approved attestation will remain valid.",
+        "banner": {
+          "missing": "No attestation has been saved.",
+          "draft": "The attestation is saved as a draft and is not approved.",
+          "valid": "The attestation is approved and current.",
+          "approvedChanged": "The saved attestation is approved, but the form contains changes that have not yet been saved or approved.",
+          "unsavedChanges": "The form contains changes that have not yet been saved or approved.",
+          "replacementDraft": "A new attestation draft is awaiting approval. The previously approved attestation remains valid until the draft is approved."
+        },
         "status": {
           "draft": "Attestation: draft",
           "expired": "Attestation: expired",
@@ -2055,12 +2078,15 @@
         "title": "Activation blockers",
         "resolveBeforeActivation": "Resolve every listed blocker before activation.",
         "active_secret_missing": "An active provider secret is missing.",
+        "attestation_draft_pending": "An attestation draft is saved but not approved. Review it, complete any required details, and then approve the attestation.",
         "attestation_incomplete": "The connection attestation is incomplete.",
-        "attestation_invalid": "A current valid connection attestation is missing.",
+        "attestation_invalid": "The connection has no approved, current attestation. Review the attestation details and replace or update the attestation.",
+        "attestation_missing": "No connection attestation has been saved. Complete and save an attestation draft before it can be approved.",
         "capability_policy_invalid": "The model does not satisfy the run profile's capability policy.",
         "connection_inactive": "The connection is not active.",
         "connection_verification_missing": "The current connection configuration has not passed verification.",
         "data_policy_blocked": "The attested data policy does not satisfy this run type.",
+        "data_policy_missing": "The deployment is missing a data policy for this run type.",
         "egress_policy_blocked": "The deployment egress or TLS policy blocks this target.",
         "model_revision_missing": "No connection model revision is assigned.",
         "model_revision_unverified": "The assigned connection model revision has not passed verification.",
@@ -2077,12 +2103,22 @@
       },
       "verification": {
         "title": "Verification and lifecycle",
-        "cost": "Connection, model, secret, catalog, and health checks can send bounded requests to the configured service and may incur a small provider cost.",
+        "cost": "Connection, model-capability, model, secret, catalog, and health checks can send bounded requests to the configured service and may incur a small provider cost.",
         "completed": "The current connection configuration passed verification."
       },
       "catalog": {
         "loaded": "The bounded model catalog request completed.",
-        "result": "Catalog models: {models}"
+        "loading": "The model catalog is being read automatically from the AI connection…",
+        "inputPrice": "in {amount} {currency}/1M tokens",
+        "manualOption": "Enter manually",
+        "otherProvider": "Other models",
+        "outputPrice": "out {amount} {currency}/1M tokens",
+        "result": "Catalog models: {models}",
+        "selectionHelp": "Select a model reported by the adapter to fill in its name, external model ID, version, and advertised capabilities. Input and output prices per million tokens are shown when the catalog supplies them; prices are indicative and are not saved as model configuration. Review the values before saving; the catalog does not replace functional verification. Select Enter manually when the model is missing.",
+        "selectionIntro": "No model list was loaded for this edit. You can enter the model details manually.",
+        "selectionLabel": "Model from catalog",
+        "selectionReady": "Select a model from the catalog list or enter the model details manually in the fields.",
+        "unavailableManual": "The AI connection interface could not provide a model list. Enter the model details manually."
       },
       "model": {
         "title": "Connection models",
@@ -2091,10 +2127,45 @@
         "revision": "revision {number}",
         "capabilities": "Declared capabilities",
         "capabilitiesHelp": "Declare only capabilities expected from this exact revision. Verification records discovered and verified capabilities separately.",
+        "capabilitiesManagedHelp": "Capabilities are synchronized with the model catalog and, where the catalog has no answer, a bounded synthetic probe. Catalog-controlled answers are locked. An unknown manual answer can be changed only when the model is absent from the catalog.",
+        "capabilitiesLoading": "Declared capabilities are being loaded…",
+        "capabilitiesChecked": "The model capabilities were checked. Review the result and save the model draft if it is correct.",
+        "capabilitiesCheckedInline": "The capability check is complete. Its result is saved only when you save the model draft.",
+        "capabilityCheckIncomplete": "The capability check completed, but some capabilities could not be determined. This message remains until you close it.",
+        "capabilityCheckInvalid": "The capability check returned no valid, safe result. No form values were changed.",
+        "capabilityCheckUnknownReason": "{capability} remains unknown. Reason: {reason}",
+        "capabilitySupport": {
+          "supported": "Supported",
+          "unsupported": "Not supported",
+          "unknown": "Unknown"
+        },
         "verifyConnectionFirst": "Verify the current connection configuration first.",
+        "alreadyVerified": "The model revision is already verified. A new or changed revision must be verified again.",
         "testCost": "This bounded conformance test may incur a small provider cost.",
         "saved": "The connection model draft was saved.",
         "verified": "The connection model revision passed verification.",
+        "verificationFailed": "The verification probe completed, but the model revision did not pass verification. Its status remains Verification required.",
+        "verificationFailureReason": "Reason: {reason}",
+        "verificationFailedCapabilities": "Declared capabilities that could not be verified: {capabilities}.",
+        "verificationFailedChecks": "Checks that did not pass: {checks}.",
+        "verificationFailureCategories": {
+          "adapter_failure": "The adapter could not complete the verification contract.",
+          "authentication_failed": "The provider rejected authentication.",
+          "cancelled": "The verification request was cancelled.",
+          "capability_mismatch": "At least one declared model capability was not observed in the verification response.",
+          "connection_unavailable": "The provider connection was unavailable.",
+          "deadline_exceeded": "The verification exceeded its deadline.",
+          "invalid_response": "The provider response did not satisfy the safe response contract.",
+          "rate_limited": "The provider rate-limited the request.",
+          "request_rejected": "The provider rejected the verification request.",
+          "unknown": "Verification did not return a valid, more specific result."
+        },
+        "verificationChecks": {
+          "adapterConformance": "adapter safety and error contract",
+          "cancellationHandled": "cancellation handling",
+          "completed": "functional model response",
+          "schemaValid": "verification-schema response"
+        },
         "retired": "The connection model revision was retired.",
         "retireConfirmTitle": "Retire model revision?",
         "retireConfirmMessage": "A retired model revision cannot be verified or selected for a new profile revision.",
@@ -2136,17 +2207,30 @@
         "noImpact": "No run profile revision currently refers to this connection.",
         "blocked": "Blocked",
         "noModel": "No model assigned — incomplete draft",
-        "activeRevision": "An active revision is assigned",
-        "noActiveRevision": "No active revision",
+        "revisionMetadata": {
+          "active": "Active profile revision: {number}",
+          "activeAndDraft": "Active profile revision: {activeNumber} · Replacement draft: {draftNumber}",
+          "draft": "Draft: profile revision {number}"
+        },
         "capabilityPolicy": "Capability policy",
         "capabilityPolicyHelp": "Set each capability to disabled, allowed, or required for this run type.",
+        "selectModelForCapabilities": "Select a verified model revision to configure only the capabilities that revision actually supports.",
+        "unsupportedCapability": "The selected verified model revision does not support this capability. The value is locked to Disabled.",
+        "incompatibleModel": "incompatible with this run type",
+        "incompatibleModelHelp": "The selected model revision lacks a capability required by this run type. Select a compatible revision before saving.",
         "lockedMinimum": "Locked application minimum — this value cannot be weakened for this run type.",
-        "candidateBlockers": "The replacement draft could not be activated",
+        "candidateBlockers": "The profile revision could not be activated",
         "saveDraft": "Save profile draft",
         "saved": "The run profile draft was saved.",
         "activated": "The run profile revision was activated.",
         "suspended": "The run profile was suspended.",
         "recovered": "The run profile was enabled again.",
+        "effectiveStatus": {
+          "active": "Active",
+          "blocked": "Blocked",
+          "notActivated": "Not activated",
+          "suspended": "Suspended"
+        },
         "operational": {
           "enabled": "Enabled",
           "suspended": "Suspended"
@@ -3180,6 +3264,16 @@
       "missing": "No active administrator-managed profile is configured for this AI action.",
       "suspended": "The administrator-managed profile for this AI action is suspended."
     },
+    "providerErrors": {
+      "adapterFailure": "The configured AI adapter could not process the request. Contact an administrator.",
+      "authenticationFailed": "The AI connection could not authenticate with the provider.",
+      "capabilityMismatch": "The selected AI model does not support a capability required for this action. Contact an administrator.",
+      "connectionUnavailable": "The AI provider could not be reached. Try again. If the problem persists, contact an administrator.",
+      "deadlineExceeded": "The AI provider did not finish within the allowed time.",
+      "invalidResponse": "The AI provider returned a response format that the application could not process.",
+      "rateLimited": "The AI provider is receiving too many requests.",
+      "requestRejected": "The AI provider rejected the request. Contact an administrator to verify the selected model and connection policy."
+    },
     "requestExplanation": {
       "title": "How the AI request is built",
       "buttonHelp": "See which instructions, form values, and format rules are sent when candidates are created.",
@@ -3253,6 +3347,7 @@
     "missingSpecificationContext": "Missing specification context.",
     "invalidGeneratedJson": "Model output was not valid JSON.",
     "generationFailed": "Generation failed",
+    "technicalErrorCode": "Technical error code: {code}.",
     "generatedJsonSchemaMismatch": "Generated JSON did not match the requirement import schema.",
     "repairedJsonSchemaMismatch": "Repaired JSON did not match the requirement import schema.",
     "inputSafetyBlocked": "The AI request was blocked by the AI safety filter: {ruleType}. Revise the need or context and try again.",

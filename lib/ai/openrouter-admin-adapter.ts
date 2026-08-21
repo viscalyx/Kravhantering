@@ -9,6 +9,7 @@ import type {
 import { AI_ADMIN_PROBE_LIMITS } from './admin-adapter'
 import type { AiCapability } from './admin-contracts'
 import type {
+  AiAdminCapabilitySupportMap,
   AiAdminCatalogItem,
   AiAdminModelRevisionRecord,
 } from './admin-service'
@@ -35,8 +36,12 @@ interface CatalogModel {
   architecture?: { modality?: unknown }
   id?: unknown
   name?: unknown
+  pricing?: { completion?: unknown; prompt?: unknown }
+  reasoning?: unknown
   supported_parameters?: unknown
 }
+
+const CATALOG_PRICE_PATTERN = /^(?:0|[1-9]\d{0,11})(?:\.\d{1,24})?$/u
 
 class OpenRouterAdminRequestError extends Error {
   readonly category: string
@@ -174,13 +179,39 @@ function capabilities(model: CatalogModel): AiCapability {
     parameters.includes('response_format') ||
     parameters.includes('structured_outputs')
   return {
-    aiAnalysis: parameters.includes('reasoning'),
+    aiAnalysis: false,
     cost: true,
     imageInput: modality.includes('image'),
     jsonSchemaSteering: structured,
-    streaming: parameters.includes('stream'),
+    streaming: true,
     tokenUsage: true,
     validatableJson: structured,
+  }
+}
+
+function capabilitySupport(
+  model: Readonly<CatalogModel>,
+  value: Readonly<AiCapability>,
+): AiAdminCapabilitySupportMap {
+  const parameters = Array.isArray(model.supported_parameters)
+    ? model.supported_parameters.filter(
+        (parameter): parameter is string => typeof parameter === 'string',
+      )
+    : []
+  const reasoningAdvertised =
+    parameters.includes('reasoning') ||
+    parameters.includes('include_reasoning') ||
+    (typeof model.reasoning === 'object' &&
+      model.reasoning !== null &&
+      !Array.isArray(model.reasoning))
+  return {
+    aiAnalysis: reasoningAdvertised ? 'unknown' : 'unsupported',
+    cost: value.cost ? 'supported' : 'unsupported',
+    imageInput: value.imageInput ? 'supported' : 'unsupported',
+    jsonSchemaSteering: value.jsonSchemaSteering ? 'supported' : 'unsupported',
+    streaming: value.streaming ? 'supported' : 'unsupported',
+    tokenUsage: value.tokenUsage ? 'supported' : 'unsupported',
+    validatableJson: value.validatableJson ? 'supported' : 'unsupported',
   }
 }
 
@@ -205,7 +236,9 @@ function runOpenRouterAdminProbe(
     },
     limits: AI_ADMIN_PROBE_LIMITS,
     modelRevision: {
-      configuration: {},
+      configuration: {
+        reasoningEffort: probe.selectedCapabilities.aiAnalysis ? 'low' : 'none',
+      },
       externalModelId: revision.externalModelId,
       id: revision.id as AiConnectionModelRevisionId,
       verifiedCapabilities: revision.declaredCapabilities,
@@ -262,11 +295,45 @@ function runOpenRouterNegativeProbe(
 function catalogItem(model: CatalogModel): AiAdminCatalogItem | null {
   if (typeof model.id !== 'string' || typeof model.name !== 'string')
     return null
+  const providerNamespace = model.id.includes('/')
+    ? (model.id.split('/')[0]?.trim() ?? '')
+    : ''
+  const modelCapabilities = capabilities(model)
   return {
-    capabilities: capabilities(model),
+    capabilities: modelCapabilities,
+    capabilitySupport: capabilitySupport(model, modelCapabilities),
     externalModelId: model.id,
     externalModelVersion: null,
+    inputPricePerMillionTokens: pricePerMillionTokens(model.pricing?.prompt),
+    modelProviderName: providerNamespace || null,
     name: model.name,
+    outputPricePerMillionTokens: pricePerMillionTokens(
+      model.pricing?.completion,
+    ),
+  }
+}
+
+function pricePerMillionTokens(
+  value: unknown,
+): AiAdminCatalogItem['inputPricePerMillionTokens'] {
+  if (typeof value !== 'string' || !CATALOG_PRICE_PATTERN.test(value)) {
+    return null
+  }
+  const [whole = '0', fraction = ''] = value.split('.')
+  const digits = `${whole}${fraction}`
+  const decimalPosition = whole.length + 6
+  const scaled =
+    decimalPosition >= digits.length
+      ? digits.padEnd(decimalPosition, '0')
+      : `${digits.slice(0, decimalPosition)}.${digits.slice(decimalPosition)}`
+  const [scaledWhole = '0', scaledFraction = ''] = scaled.split('.')
+  const normalizedWhole = scaledWhole.replace(/^0+(?=\d)/u, '')
+  const normalizedFraction = scaledFraction.replace(/0+$/u, '')
+  return {
+    amount: normalizedFraction
+      ? `${normalizedWhole}.${normalizedFraction}`
+      : normalizedWhole,
+    currency: 'USD',
   }
 }
 

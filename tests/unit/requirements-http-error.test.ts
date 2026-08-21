@@ -61,6 +61,7 @@ describe('toHttpErrorPayload', () => {
       validationError('The candidate profile is blocked', {
         blockers: [
           { code: 'capability_policy_invalid', field: 'imageInput' },
+          { code: 'data_policy_missing' },
           { code: 'egress_policy_blocked' },
         ],
         httpStatus: 422,
@@ -75,6 +76,7 @@ describe('toHttpErrorPayload', () => {
         details: {
           blockers: [
             { code: 'capability_policy_invalid', field: 'imageInput' },
+            { code: 'data_policy_missing' },
             { code: 'egress_policy_blocked' },
           ],
         },

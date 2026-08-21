@@ -275,22 +275,6 @@ const controlledTestAdapter: AIConnectionAdapter = {
       yield { failure, identity: identity(request), type: 'failed' }
       return
     }
-    if (
-      (scenario.analysisDeltas?.length ?? 0) +
-        (scenario.outputDeltas?.length ?? 0) >
-      request.limits.maxBufferedEvents
-    ) {
-      yield {
-        failure: {
-          category: 'invalid_response',
-          diagnosticCode: 'controlled_stream_event_buffer_too_large',
-          retryable: false,
-        },
-        identity: identity(request),
-        type: 'failed',
-      }
-      return
-    }
     for (const delta of scenario.analysisDeltas ?? []) {
       yield { delta, type: 'analysis_delta' }
     }

@@ -6,6 +6,7 @@ export const AI_ADMIN_BLOCKER_CODES = [
   'connection_inactive',
   'connection_verification_missing',
   'data_policy_blocked',
+  'data_policy_missing',
   'egress_policy_blocked',
   'model_revision_missing',
   'model_revision_unverified',

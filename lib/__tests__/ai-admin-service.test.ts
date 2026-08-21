@@ -53,6 +53,7 @@ function connection(): AiAdminConnectionDetail {
       status: 'valid',
       subprocessors: [],
     },
+    attestationDraft: null,
     authenticationType: 'static_secret',
     blockers: [],
     connectionEvidenceId: '00000000-0000-4000-8000-000000000016',
@@ -141,6 +142,7 @@ describe('AI connection administration service', () => {
     adapterAvailability: vi.fn(() => ({ available: true as const })),
     authorizeConnectionTarget: vi.fn(async () => true),
     authorizeRunProfile: vi.fn(async () => 'authorized' as const),
+    discoverModelCapabilities: vi.fn(),
     fetchCatalog: vi.fn(async (): Promise<readonly AiAdminCatalogItem[]> => []),
     probeConnection: vi.fn(),
     probeHealth: vi.fn(),
@@ -205,6 +207,49 @@ describe('AI connection administration service', () => {
       },
       adapterKey: 'vllm',
       adapterVersion: '1',
+    })
+  })
+
+  it('reports connection blockers in the order they must be resolved', async () => {
+    const saved = connection()
+    saved.blockers = [
+      { code: 'attestation_invalid' },
+      { code: 'active_secret_missing' },
+      { code: 'connection_verification_missing' },
+      { code: 'model_revision_unverified' },
+    ]
+    secrets.availability.mockResolvedValue({
+      available: false,
+      reason: 'secret_missing',
+    })
+    const service = new AiConnectionAdministrationService({
+      audit,
+      external,
+      secrets,
+      store: {
+        getConnection: vi.fn(async () => saved),
+      } as unknown as AiAdminStore,
+    })
+
+    await expect(service.getConnection(saved.id)).resolves.toMatchObject({
+      blockers: [
+        { code: 'attestation_invalid' },
+        { code: 'active_secret_missing' },
+        { code: 'connection_verification_missing' },
+        { code: 'model_revision_unverified' },
+      ],
+    })
+
+    saved.blockers = saved.blockers.filter(
+      blocker => blocker.code !== 'active_secret_missing',
+    )
+    await expect(service.getConnection(saved.id)).resolves.toMatchObject({
+      blockers: [
+        { code: 'attestation_invalid' },
+        { code: 'active_secret_missing' },
+        { code: 'connection_verification_missing' },
+        { code: 'model_revision_unverified' },
+      ],
     })
   })
 
@@ -446,6 +491,43 @@ describe('AI connection administration service', () => {
     })
   })
 
+  it('returns no capability discovery result after the connection snapshot changes', async () => {
+    const saved = connection()
+    const changed = { ...saved, revisionToken: randomUUID() }
+    const store = {
+      getConnection: vi
+        .fn()
+        .mockResolvedValueOnce(saved)
+        .mockResolvedValueOnce(changed),
+    } as unknown as AiAdminStore
+    external.discoverModelCapabilities.mockResolvedValue({
+      assessments: Object.fromEntries(
+        Object.keys(capability).map(key => [
+          key,
+          { failureCategory: null, support: 'supported' },
+        ]),
+      ),
+      capabilities: capability,
+    })
+    const service = new AiConnectionAdministrationService({
+      audit,
+      external,
+      secrets,
+      store,
+    })
+
+    await expect(
+      service.discoverModelCapabilities({
+        capabilities: ['streaming'],
+        connectionId: saved.id,
+        externalModelId: 'controlled/model',
+        externalModelVersion: '1',
+      }),
+    ).rejects.toMatchObject({ status: 409 })
+    expect(external.discoverModelCapabilities).toHaveBeenCalledOnce()
+    expect(audit).not.toHaveBeenCalled()
+  })
+
   it('covers the complete successful administration service surface', async () => {
     const currentConnection = connection()
     const currentProfile = profile()
@@ -480,6 +562,7 @@ describe('AI connection administration service', () => {
       activateConnection: vi.fn(async () => currentConnection),
       activateRunProfileRevision: vi.fn(async () => currentProfile),
       createConnection: vi.fn(async () => currentConnection),
+      discardAttestationDraft: vi.fn(async () => true),
       getActivationSnapshot: vi.fn(async () => snapshot),
       getConnection: vi.fn(async () => currentConnection),
       listConnections: vi.fn(async () => [currentConnection]),
@@ -518,9 +601,24 @@ describe('AI connection administration service', () => {
         capabilities: capability,
         externalModelId: modelRevision.externalModelId,
         externalModelVersion: null,
+        inputPricePerMillionTokens: null,
+        modelProviderName: 'controlled_test',
         name: 'Model',
+        outputPricePerMillionTokens: null,
       },
     ])
+    external.discoverModelCapabilities.mockResolvedValue({
+      assessments: Object.fromEntries(
+        Object.keys(capability).map(key => [
+          key,
+          {
+            failureCategory: null,
+            support: key === 'streaming' ? 'supported' : 'unknown',
+          },
+        ]),
+      ),
+      capabilities: capability,
+    })
     external.probeConnection.mockResolvedValue({
       details: { reachable: true },
       failureCategory: null,
@@ -546,7 +644,7 @@ describe('AI connection administration service', () => {
       externalLiveCallMade: true,
       failureCategory: null,
       outcome: 'passed',
-      testSuiteVersion: 'ai-admin-functional-probe-v3',
+      testSuiteVersion: 'ai-admin-functional-probe-v4',
     })
     const service = new AiConnectionAdministrationService({
       audit,
@@ -600,6 +698,14 @@ describe('AI connection administration service', () => {
       }),
     ).resolves.toBeDefined()
     await expect(
+      service.discardAttestationDraft({
+        connectionId: currentConnection.id,
+        currentAttestationRevisionToken: attestation.revisionToken,
+        draftAttestationId: randomUUID(),
+        draftAttestationRevisionToken: randomUUID(),
+      }),
+    ).resolves.toBeUndefined()
+    await expect(
       service.writeSecret(currentConnection.id, 'new-secret'),
     ).resolves.toBe(metadata)
     await expect(
@@ -622,6 +728,24 @@ describe('AI connection administration service', () => {
     await expect(
       service.fetchCatalog(currentConnection.id),
     ).resolves.toHaveLength(1)
+    await expect(
+      service.discoverModelCapabilities({
+        capabilities: ['streaming'],
+        connectionId: currentConnection.id,
+        externalModelId: modelRevision.externalModelId,
+        externalModelVersion: modelRevision.externalModelVersion,
+      }),
+    ).resolves.toMatchObject({
+      assessments: { streaming: { support: 'supported' } },
+    })
+    expect(external.discoverModelCapabilities).toHaveBeenCalledWith(
+      expect.objectContaining({ id: currentConnection.id }),
+      {
+        capabilities: ['streaming'],
+        externalModelId: modelRevision.externalModelId,
+        externalModelVersion: modelRevision.externalModelVersion,
+      },
+    )
     await expect(
       service.probeHealth({
         connectionId: currentConnection.id,
@@ -650,7 +774,48 @@ describe('AI connection administration service', () => {
         modelRevisionId: modelRevision.id,
         revisionToken: modelRevision.revisionToken,
       }),
-    ).resolves.toBe(modelRevision)
+    ).resolves.toEqual({
+      revision: modelRevision,
+      verification: {
+        failedCapabilities: [],
+        failedChecks: [],
+        failureCategory: null,
+        outcome: 'passed',
+        testSuiteVersion: 'test-v1',
+      },
+    })
+    external.verifyModelRevision.mockResolvedValueOnce({
+      details: {
+        adapterConformance: true,
+        cancellationHandled: true,
+        completed: true,
+        schemaValid: false,
+      },
+      failureCategory: 'capability_mismatch',
+      outcome: 'failed',
+      testSuiteVersion: 'test-v1',
+      verifiedCapabilities: {
+        ...capability,
+        streaming: false,
+        validatableJson: false,
+      },
+    })
+    await expect(
+      service.verifyModelRevision({
+        connectionId: currentConnection.id,
+        modelRevisionId: modelRevision.id,
+        revisionToken: modelRevision.revisionToken,
+      }),
+    ).resolves.toEqual({
+      revision: modelRevision,
+      verification: {
+        failedCapabilities: ['streaming', 'validatableJson'],
+        failedChecks: ['schemaValid'],
+        failureCategory: 'capability_mismatch',
+        outcome: 'failed',
+        testSuiteVersion: 'test-v1',
+      },
+    })
     await expect(
       service.retireModelRevision({
         connectionId: currentConnection.id,
@@ -731,7 +896,7 @@ describe('AI connection administration service', () => {
       externalLiveCallMade: true,
       failureCategory: null,
       outcome: 'passed',
-      testSuiteVersion: 'ai-admin-functional-probe-v3',
+      testSuiteVersion: 'ai-admin-functional-probe-v4',
     })
     const service = new AiConnectionAdministrationService({
       audit,
@@ -759,7 +924,7 @@ describe('AI connection administration service', () => {
       modelRevisionToken: modelRevision.revisionToken,
       outcome: 'passed',
       profileRevisionToken: profileRevision.revisionToken,
-      testSuiteVersion: 'ai-admin-functional-probe-v3',
+      testSuiteVersion: 'ai-admin-functional-probe-v4',
     })
     expect(external.verifyLivePath).toHaveBeenCalledWith(
       expect.objectContaining({ id: currentConnection.id }),
@@ -841,7 +1006,7 @@ describe('AI connection administration service', () => {
         externalLiveCallMade: true,
         failureCategory: null,
         outcome: 'passed',
-        testSuiteVersion: 'ai-admin-functional-probe-v3',
+        testSuiteVersion: 'ai-admin-functional-probe-v4',
       })
       const service = new AiConnectionAdministrationService({
         audit,
@@ -901,6 +1066,7 @@ describe('AI connection administration service', () => {
     const currentConnection = connection()
     const modelRevision = verifiedRevision(currentConnection)
     const store = {
+      discardAttestationDraft: vi.fn(async () => false),
       getConnection: vi.fn(async () => null),
       retireModelRevision: vi.fn(async () => null),
       setConnectionLifecycle: vi.fn(async () => null),
@@ -925,6 +1091,14 @@ describe('AI connection administration service', () => {
         connection: {} as never,
         connectionId: currentConnection.id,
         revisionToken: currentConnection.revisionToken,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+    await expect(
+      service.discardAttestationDraft({
+        connectionId: currentConnection.id,
+        currentAttestationRevisionToken: randomUUID(),
+        draftAttestationId: randomUUID(),
+        draftAttestationRevisionToken: randomUUID(),
       }),
     ).rejects.toMatchObject({ code: 'conflict' })
     await expect(

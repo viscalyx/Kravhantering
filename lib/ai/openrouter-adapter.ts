@@ -50,6 +50,7 @@ interface OpenRouterMessage {
   content?: unknown
   function_call?: unknown
   reasoning?: unknown
+  reasoning_content?: unknown
   reasoning_details?: unknown
   tool_call_id?: unknown
   tool_calls?: unknown
@@ -275,6 +276,8 @@ function readUsage(
 
 function readAnalysis(message: OpenRouterMessage): string | null {
   if (typeof message.reasoning === 'string') return message.reasoning
+  if (typeof message.reasoning_content === 'string')
+    return message.reasoning_content
   if (!Array.isArray(message.reasoning_details)) return null
   const parts = message.reasoning_details.flatMap(detail => {
     if (!isRecord(detail)) return []
@@ -632,6 +635,21 @@ function readStreamDelta(value: unknown): {
   }
 }
 
+function streamFrameBoundary(
+  buffer: string,
+): { index: number; separatorLength: number } | null {
+  const lineFeedIndex = buffer.indexOf('\n\n')
+  const carriageReturnIndex = buffer.indexOf('\r\n\r\n')
+  if (lineFeedIndex === -1 && carriageReturnIndex === -1) return null
+  if (
+    carriageReturnIndex !== -1 &&
+    (lineFeedIndex === -1 || carriageReturnIndex < lineFeedIndex)
+  ) {
+    return { index: carriageReturnIndex, separatorLength: 4 }
+  }
+  return { index: lineFeedIndex, separatorLength: 2 }
+}
+
 async function* runStreaming(
   request: AiConnectionAdapterRunRequest,
   configuration: OpenRouterAdapterConfiguration,
@@ -733,45 +751,12 @@ async function* runStreaming(
         })
         return
       }
-      const frames = buffer.split(/\r?\n\r?\n/u)
-      buffer = frames.pop() ?? ''
-      const bufferedBytes = encoder.encode(buffer).byteLength
-      let pendingFrameBytes = frames.reduce(
-        (total, frame) => total + encoder.encode(frame).byteLength,
-        0,
-      )
-      if (frames.length > request.limits.maxBufferedEvents) {
-        yield failureEvent(request, {
-          category: 'invalid_response',
-          diagnosticCode: 'upstream_stream_event_buffer_too_large',
-          retryable: false,
-        })
-        return
-      }
-      if (bufferedBytes > MAX_STREAM_FRAME_BYTES) {
-        yield failureEvent(request, {
-          category: 'invalid_response',
-          diagnosticCode: 'upstream_stream_frame_too_large',
-          retryable: false,
-        })
-        return
-      }
-      if (
-        retainedOutputBytes +
-          retainedUsageBytes +
-          bufferedBytes +
-          pendingFrameBytes >
-        request.limits.maxRetainedMemoryBytes
-      ) {
-        yield failureEvent(request, {
-          category: 'invalid_response',
-          diagnosticCode: 'upstream_stream_buffer_too_large',
-          retryable: false,
-        })
-        return
-      }
-      for (const frame of frames) {
+      let boundary = streamFrameBoundary(buffer)
+      while (boundary) {
+        const frame = buffer.slice(0, boundary.index)
+        buffer = buffer.slice(boundary.index + boundary.separatorLength)
         const frameBytes = encoder.encode(frame).byteLength
+        const bufferedBytes = encoder.encode(buffer).byteLength
         if (frameBytes > MAX_STREAM_FRAME_BYTES) {
           yield failureEvent(request, {
             category: 'invalid_response',
@@ -786,11 +771,10 @@ async function* runStreaming(
           .map(line => line.slice(5).trimStart())
           .join('\n')
         if (!payload) {
-          pendingFrameBytes -= frameBytes
+          boundary = streamFrameBoundary(buffer)
           continue
         }
         if (payload === '[DONE]') {
-          pendingFrameBytes -= frameBytes
           completed = true
           break
         }
@@ -830,7 +814,7 @@ async function* runStreaming(
             retainedOutputBytes +
               retainedUsageBytes +
               bufferedBytes +
-              pendingFrameBytes >
+              frameBytes >
               request.limits.maxRetainedMemoryBytes
           ) {
             yield failureEvent(request, {
@@ -856,7 +840,7 @@ async function* runStreaming(
             retainedOutputBytes +
               retainedUsageBytes +
               bufferedBytes +
-              pendingFrameBytes >
+              frameBytes >
               request.limits.maxRetainedMemoryBytes
           ) {
             yield failureEvent(request, {
@@ -876,7 +860,7 @@ async function* runStreaming(
           retainedOutputBytes +
             retainedUsageBytes +
             bufferedBytes +
-            pendingFrameBytes >
+            frameBytes >
           request.limits.maxRetainedMemoryBytes
         ) {
           yield failureEvent(request, {
@@ -886,7 +870,18 @@ async function* runStreaming(
           })
           return
         }
-        pendingFrameBytes -= frameBytes
+        boundary = streamFrameBoundary(buffer)
+      }
+      if (
+        !completed &&
+        encoder.encode(buffer).byteLength > MAX_STREAM_FRAME_BYTES
+      ) {
+        yield failureEvent(request, {
+          category: 'invalid_response',
+          diagnosticCode: 'upstream_stream_frame_too_large',
+          retryable: false,
+        })
+        return
       }
     }
   } finally {

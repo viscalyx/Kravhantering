@@ -1802,9 +1802,13 @@
         "addModel": "Lägg till modell",
         "editModel": "Redigera modell",
         "verifyModel": "Verifiera modell",
+        "verifyingModel": "Verifierar…",
         "probeHealth": "Kör hälsokontroll",
+        "probingHealth": "Kontrollerar…",
         "retireModel": "Avsluta modellrevision",
         "fetchCatalog": "Läs modellkatalog",
+        "checkCapabilities": "Kontrollera förmågor",
+        "checkingCapabilities": "Kontrollerar…",
         "verifyConnection": "Verifiera anslutning",
         "activateConnection": "Aktivera anslutning",
         "suspendConnection": "Suspendera anslutning",
@@ -1853,7 +1857,14 @@
         "unavailable": "Otillgänglig",
         "unknown": "Okänd",
         "probed": "Den begränsade hälsokontrollen slutfördes.",
-        "safeRecoveryHelp": "Återställning är manuell och använder en begränsad kontroll mot samma verifierade revision. Den växlar aldrig till en reservmodell."
+        "probeResult": {
+          "degraded": "Hälsokontrollen slutfördes. Modellens operativa hälsa är nedsatt.",
+          "healthy": "Hälsokontrollen slutfördes och modellen fungerar.",
+          "unavailable": "Hälsokontrollen slutfördes, men modellen är otillgänglig.",
+          "unknown": "Hälsokontrollen slutfördes utan ett tillgängligt hälsoresultat."
+        },
+        "safeRecoveryHelp": "Återställning är manuell och använder en begränsad kontroll mot samma verifierade revision. Den växlar aldrig till en reservmodell.",
+        "verifyModelFirst": "Verifiera modellrevisionen innan du kör hälsokontrollen."
       },
       "configuration": {
         "title": "Anslutningskonfiguration och egress",
@@ -1941,11 +1952,11 @@
         },
         "secret": {
           "label": "Ny leverantörshemlighet",
-          "help": "Ange en ny hemlighetskandidat. Värdet krypteras och visas eller exporteras aldrig efter att det skickats."
+          "help": "Ange en ny leverantörshemlighet. Värdet krypteras och visas eller exporteras aldrig efter att det skickats."
         },
         "responsibleOrganizationUnitReference": {
-          "label": "Ansvarig organisationsenhets-id",
-          "help": "Ange UUID för den organisationsenhet som ansvarar för anslutningen."
+          "label": "Organisationsenhetens referens-id",
+          "help": "Hämta UUID-referensen för den ansvariga organisationsenheten från organisationens styrningssystem. Skapa inte ett nytt UUID här. Kontakta informationssäkerhets- eller AI-styrningsansvarig om du saknar referensen."
         },
         "providerName": {
           "label": "Leverantörsnamn",
@@ -1968,8 +1979,8 @@
           "help": "Ange godkända underbiträden separerade med kommatecken eller lämna tomt när inga används."
         },
         "incidentResponseReference": {
-          "label": "Referens-id för incidenthantering",
-          "help": "Ange UUID för den godkända incidenthanteringsreferensen."
+          "label": "Incidentprocessens referens-id",
+          "help": "Hämta UUID-referensen för den godkända incidenthanteringsprocessen från organisationens styrningssystem. Skapa inte ett nytt UUID här. Kontakta informationssäkerhetsansvarig om du saknar referensen."
         },
         "decisionReference": {
           "label": "Beslutsreferens",
@@ -1997,7 +2008,7 @@
         },
         "modelRevisionId": {
           "label": "Anslutningsmodellrevision",
-          "help": "Välj exakt modellrevision för anropstypen eller lämna utan tilldelning för att spara ett ofullständigt utkast."
+          "help": "Välj den senaste verifierade revisionen för en anslutningsmodell eller lämna utan tilldelning för att spara ett ofullständigt utkast. Modeller vars senaste revision inte är verifierad visas inte."
         },
         "totalTimeBudgetSeconds": {
           "label": "Total tidsbudget",
@@ -2021,28 +2032,40 @@
           "root_key_version_missing": "Driftsättningen saknar root-key-versionen som hemligheten kräver.",
           "secret_missing": "Ingen aktiv leverantörshemlighet finns tillgänglig."
         },
-        "writeCandidate": "Spara hemlighetskandidat",
-        "written": "Hemlighetskandidaten krypterades. Värdet är inte längre tillgängligt för gränssnittet.",
-        "candidateReady": "Den krypterade kandidaten är klar för verifiering och aktivering.",
-        "activateCost": "Aktivering gör en begränsad leverantörskontroll och kan medföra en liten leverantörskostnad.",
-        "activateCandidate": "Verifiera och aktivera kandidat",
+        "writeCandidate": "Spara ny hemlighet",
+        "written": "Den nya leverantörshemligheten krypterades och sparades. Värdet är inte längre tillgängligt för gränssnittet.",
+        "candidateReady": "Den nya krypterade leverantörshemligheten är klar för verifiering och aktivering.",
+        "activateCost": "Åtgärden verifierar den nya leverantörshemligheten och gör den aktiv. Anslutningskonfigurationen behöver sedan verifieras separat. Leverantörskontrollen kan medföra en liten kostnad.",
+        "activateCandidate": "Verifiera och aktivera ny hemlighet",
         "confirmRevocation": "Bekräfta återkallelse hos leverantören",
-        "deleteCandidate": "Ta bort kandidat",
+        "deleteCandidate": "Ta bort ny hemlighet",
         "activated": "Leverantörshemligheten verifierades och aktiverades.",
         "revocationConfirmed": "Återkallelsen hos leverantören bekräftades och det krypterade hemlighetsmaterialet raderades.",
-        "deleted": "Hemlighetskandidaten togs bort.",
+        "deleted": "Den nya leverantörshemligheten togs bort.",
         "revocationConfirmTitle": "Bekräfta återkallelse hos leverantören?",
         "revocationConfirmMessage": "Fortsätt bara när hemligheten har återkallats hos leverantören. Det krypterade hemlighetsmaterialet raderas permanent från Kravhantering.",
-        "deleteConfirmTitle": "Ta bort hemlighetskandidaten?",
-        "deleteConfirmMessage": "Detta tar permanent bort den krypterade kandidaten. Den aktiva hemligheten ändras inte."
+        "deleteConfirmTitle": "Ta bort den nya leverantörshemligheten?",
+        "deleteConfirmMessage": "Detta tar permanent bort den nya krypterade leverantörshemligheten. Den aktiva hemligheten ändras inte."
       },
       "attestation": {
         "missing": "Ingen aktuell giltig attest.",
         "select": "Välj…",
         "saveDraft": "Spara attestutkast",
         "approve": "Godkänn sparad attest",
+        "discardDraft": "Återgå till godkänd attest",
         "saved": "Attestutkastet sparades. Granska det före godkännande.",
         "approved": "Attesten godkändes.",
+        "discarded": "Attestutkastet kasserades. Den tidigare godkända attesten gäller fortfarande.",
+        "discardConfirmTitle": "Kassera attestutkastet?",
+        "discardConfirmMessage": "Det sparade utkastet markeras som kasserat och kan inte redigeras vidare. Den tidigare godkända attesten fortsätter att gälla.",
+        "banner": {
+          "missing": "Ingen attest har sparats.",
+          "draft": "Attesten är sparad som utkast och är inte godkänd.",
+          "valid": "Attesten är godkänd och aktuell.",
+          "approvedChanged": "Den sparade attesten är godkänd, men formuläret innehåller ändringar som ännu inte är sparade eller godkända.",
+          "unsavedChanges": "Formuläret innehåller ändringar som ännu inte är sparade eller godkända.",
+          "replacementDraft": "Ett nytt attestutkast väntar på godkännande. Den tidigare godkända attesten gäller tills utkastet godkänns."
+        },
         "status": {
           "draft": "Attest: utkast",
           "expired": "Attest: utgången",
@@ -2055,12 +2078,15 @@
         "title": "Hinder för aktivering",
         "resolveBeforeActivation": "Åtgärda alla blockerare före aktivering.",
         "active_secret_missing": "En aktiv leverantörshemlighet saknas.",
+        "attestation_draft_pending": "Ett attestutkast är sparat men inte godkänt. Granska och komplettera de obligatoriska uppgifterna vid behov och godkänn sedan attesten.",
         "attestation_incomplete": "Anslutningsattesten är ofullständig.",
-        "attestation_invalid": "En aktuell giltig anslutningsattest saknas.",
+        "attestation_invalid": "Anslutningen har ingen godkänd och aktuell attest. Granska attestuppgifterna och ersätt eller uppdatera attesten.",
+        "attestation_missing": "Ingen anslutningsattest har sparats. Fyll i och spara ett attestutkast innan det kan godkännas.",
         "capability_policy_invalid": "Modellen uppfyller inte körprofilens förmågepolicy.",
         "connection_inactive": "Anslutningen är inte aktiv.",
         "connection_verification_missing": "Den aktuella anslutningskonfigurationen har inte verifierats.",
         "data_policy_blocked": "Den attesterade datapolicyn uppfyller inte anropstypens krav.",
+        "data_policy_missing": "Driftsättningen saknar en datapolicy för anropstypen.",
         "egress_policy_blocked": "Driftsättningens egress- eller TLS-policy blockerar målet.",
         "model_revision_missing": "Ingen anslutningsmodellrevision är tilldelad.",
         "model_revision_unverified": "Den tilldelade anslutningsmodellrevisionen har inte verifierats.",
@@ -2077,12 +2103,22 @@
       },
       "verification": {
         "title": "Verifiering och livscykel",
-        "cost": "Kontroller av anslutning, modell, hemlighet, katalog och hälsa kan skicka begränsade anrop till den konfigurerade tjänsten och medföra en liten leverantörskostnad.",
+        "cost": "Kontroller av anslutning, modellförmågor, modell, hemlighet, katalog och hälsa kan skicka begränsade anrop till den konfigurerade tjänsten och medföra en liten leverantörskostnad.",
         "completed": "Den aktuella anslutningskonfigurationen verifierades."
       },
       "catalog": {
         "loaded": "Den begränsade hämtningen av modellkatalogen slutfördes.",
-        "result": "Katalogmodeller: {models}"
+        "loading": "Modellkatalogen läses automatiskt från AI-anslutningen…",
+        "inputPrice": "in {amount} {currency}/1 mn token",
+        "manualOption": "Skriv in manuellt",
+        "otherProvider": "Övriga modeller",
+        "outputPrice": "ut {amount} {currency}/1 mn token",
+        "result": "Katalogmodeller: {models}",
+        "selectionHelp": "Välj en modell som adaptern rapporterar för att fylla i namn, externt modell-id, version och annonserade förmågor. In- och utpris per en miljon token visas när katalogen tillhandahåller uppgifterna; priset är vägledande och sparas inte som modellkonfiguration. Kontrollera uppgifterna innan du sparar; katalogen ersätter inte den funktionella verifieringen. Välj Skriv in manuellt om modellen saknas.",
+        "selectionIntro": "Ingen modellista har lästs in för den här redigeringen. Du kan ange modelluppgifterna manuellt.",
+        "selectionLabel": "Modell från katalog",
+        "selectionReady": "Välj en modell från kataloglistan eller mata in modelluppgifterna manuellt i fälten.",
+        "unavailableManual": "AI-anslutningens gränssnitt kunde inte tillhandahålla någon modellista. Ange modelluppgifterna manuellt."
       },
       "model": {
         "title": "Anslutningsmodeller",
@@ -2091,10 +2127,45 @@
         "revision": "revision {number}",
         "capabilities": "Deklarerade förmågor",
         "capabilitiesHelp": "Deklarera bara förmågor som förväntas av denna exakta revision. Verifieringen lagrar upptäckta och verifierade förmågor separat.",
+        "capabilitiesManagedHelp": "Förmågorna är synkroniserade mot modellkatalogen och, där katalogen saknar besked, ett begränsat syntetiskt test. Katalogstyrda besked är låsta. Ett okänt manuellt besked kan ändras endast när modellen inte finns i katalogen.",
+        "capabilitiesLoading": "Deklarerade förmågor läses in …",
+        "capabilitiesChecked": "Modellens förmågor kontrollerades. Granska resultatet och spara modellutkastet om det är korrekt.",
+        "capabilitiesCheckedInline": "Förmågekontrollen är klar. Resultatet sparas först när du sparar modellutkastet.",
+        "capabilityCheckIncomplete": "Förmågekontrollen slutfördes, men vissa förmågor kunde inte avgöras. Meddelandet ligger kvar tills du stänger det.",
+        "capabilityCheckInvalid": "Förmågekontrollen gav inget giltigt och säkert resultat. Inga formulärvärden ändrades.",
+        "capabilityCheckUnknownReason": "{capability} är fortfarande okänd. Orsak: {reason}",
+        "capabilitySupport": {
+          "supported": "Stöds",
+          "unsupported": "Stöds inte",
+          "unknown": "Okänd"
+        },
         "verifyConnectionFirst": "Verifiera den aktuella anslutningskonfigurationen först.",
+        "alreadyVerified": "Modellrevisionen är redan verifierad. En ny eller ändrad revision måste verifieras på nytt.",
         "testCost": "Detta begränsade överensstämmelsetest kan medföra en liten leverantörskostnad.",
         "saved": "Utkastet för anslutningsmodellen sparades.",
         "verified": "Anslutningsmodellrevisionen verifierades.",
+        "verificationFailed": "Verifieringskontrollen slutfördes, men modellrevisionen klarade inte verifieringen. Statusen är fortfarande Verifiering krävs.",
+        "verificationFailureReason": "Orsak: {reason}",
+        "verificationFailedCapabilities": "Deklarerade förmågor som inte kunde verifieras: {capabilities}.",
+        "verificationFailedChecks": "Delkontroller som inte klarades: {checks}.",
+        "verificationFailureCategories": {
+          "adapter_failure": "Adaptern kunde inte slutföra verifieringskontraktet.",
+          "authentication_failed": "Leverantören avvisade autentiseringen.",
+          "cancelled": "Verifieringsanropet avbröts.",
+          "capability_mismatch": "Minst en deklarerad modellförmåga kunde inte observeras i verifieringssvaret.",
+          "connection_unavailable": "Leverantörsanslutningen var inte tillgänglig.",
+          "deadline_exceeded": "Verifieringen överskred sin tidsgräns.",
+          "invalid_response": "Leverantörssvaret uppfyllde inte det säkra svarskontraktet.",
+          "rate_limited": "Leverantören begränsade anropsfrekvensen.",
+          "request_rejected": "Leverantören avvisade verifieringsanropet.",
+          "unknown": "Verifieringen gav inget giltigt och närmare klassificerat resultat."
+        },
+        "verificationChecks": {
+          "adapterConformance": "adapterns säkerhets- och felkontrakt",
+          "cancellationHandled": "avbrottshantering",
+          "completed": "funktionellt modellsvar",
+          "schemaValid": "svar mot verifieringsschemat"
+        },
         "retired": "Anslutningsmodellrevisionen avslutades.",
         "retireConfirmTitle": "Avsluta modellrevisionen?",
         "retireConfirmMessage": "En avslutad modellrevision kan inte verifieras eller väljas för en ny profilrevision.",
@@ -2136,17 +2207,30 @@
         "noImpact": "Ingen körprofilrevision refererar till anslutningen just nu.",
         "blocked": "Blockerad",
         "noModel": "Ingen modell tilldelad – ofullständigt utkast",
-        "activeRevision": "En aktiv revision är tilldelad",
-        "noActiveRevision": "Ingen aktiv revision",
+        "revisionMetadata": {
+          "active": "Aktiv profilrevision: {number}",
+          "activeAndDraft": "Aktiv profilrevision: {activeNumber} · Ersättningsutkast: {draftNumber}",
+          "draft": "Utkast: profilrevision {number}"
+        },
         "capabilityPolicy": "Förmågepolicy",
         "capabilityPolicyHelp": "Ange varje förmåga som inaktiverad, tillåten eller obligatorisk för anropstypen.",
+        "selectModelForCapabilities": "Välj en verifierad modellrevision för att bara konfigurera de förmågor som revisionen faktiskt stöder.",
+        "unsupportedCapability": "Den valda verifierade modellrevisionen stöder inte förmågan. Värdet är låst till Inaktiverad.",
+        "incompatibleModel": "inte kompatibel med anropstypen",
+        "incompatibleModelHelp": "Den valda modellrevisionen saknar en förmåga som är obligatorisk för anropstypen. Välj en kompatibel revision innan du sparar.",
         "lockedMinimum": "Låst applikationsminimum – värdet kan inte försvagas för den här anropstypen.",
-        "candidateBlockers": "Ersättningsutkastet kunde inte aktiveras",
+        "candidateBlockers": "Profilrevisionen kunde inte aktiveras",
         "saveDraft": "Spara profilutkast",
         "saved": "Körprofilutkastet sparades.",
         "activated": "Körprofilrevisionen aktiverades.",
         "suspended": "Körprofilen suspenderades.",
         "recovered": "Körprofilen aktiverades igen.",
+        "effectiveStatus": {
+          "active": "Aktiv",
+          "blocked": "Blockerad",
+          "notActivated": "Ej aktiverad",
+          "suspended": "Suspenderad"
+        },
         "operational": {
           "enabled": "Aktiverad",
           "suspended": "Suspenderad"
@@ -3180,6 +3264,16 @@
       "missing": "Ingen aktiv administratörsstyrd profil är konfigurerad för den här AI-åtgärden.",
       "suspended": "Den administratörsstyrda profilen för den här AI-åtgärden är pausad."
     },
+    "providerErrors": {
+      "adapterFailure": "Den konfigurerade AI-adaptern kunde inte behandla anropet. Kontakta en administratör.",
+      "authenticationFailed": "AI-anslutningen kunde inte autentisera mot leverantören.",
+      "capabilityMismatch": "Den valda AI-modellen saknar en förmåga som krävs för den här åtgärden. Kontakta en administratör.",
+      "connectionUnavailable": "Det gick inte att nå AI-leverantören. Försök igen. Kontakta en administratör om problemet kvarstår.",
+      "deadlineExceeded": "AI-leverantören blev inte klar inom den tillåtna tiden.",
+      "invalidResponse": "AI-leverantören returnerade ett svarsformat som applikationen inte kunde behandla.",
+      "rateLimited": "AI-leverantören tar emot för många anrop just nu.",
+      "requestRejected": "AI-leverantören avvisade anropet. Kontakta en administratör för att kontrollera vald modell och anslutningspolicy."
+    },
     "requestExplanation": {
       "title": "Så byggs AI-anropet",
       "buttonHelp": "Se vilka instruktioner, formulärvärden och formatregler som skickas när kandidater skapas.",
@@ -3253,6 +3347,7 @@
     "missingSpecificationContext": "Kravunderlag saknas.",
     "invalidGeneratedJson": "Modellens svar var inte giltig JSON.",
     "generationFailed": "Genereringen misslyckades",
+    "technicalErrorCode": "Teknisk felkod: {code}.",
     "generatedJsonSchemaMismatch": "Genererad JSON matchade inte importens schema.",
     "repairedJsonSchemaMismatch": "Reparerad JSON matchade inte importens schema.",
     "inputSafetyBlocked": "AI-anropet blockerades av AI-säkerhetsfiltret: {ruleType}. Ändra behovet eller sammanhanget och försök igen.",

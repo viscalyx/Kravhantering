@@ -36,6 +36,8 @@ const routeState = vi.hoisted(() => ({
     activateSecret: vi.fn(),
     confirmSecretRevocation: vi.fn(),
     deleteSecretCandidate: vi.fn(),
+    discardAttestationDraft: vi.fn(),
+    discoverModelCapabilities: vi.fn(),
     fetchCatalog: vi.fn(),
     probeHealth: vi.fn(),
     retireModelRevision: vi.fn(),
@@ -438,6 +440,15 @@ describe('Admin AI connection routes', () => {
         },
       ],
       [
+        'discardAttestationDraft',
+        {
+          action: 'discard_attestation_draft',
+          currentAttestationRevisionToken: token,
+          draftAttestationId: modelId,
+          draftAttestationRevisionToken: token,
+        },
+      ],
+      [
         'confirmSecretRevocation',
         { action: 'confirm_secret_revocation', secretVersionId: token },
       ],
@@ -446,6 +457,15 @@ describe('Admin AI connection routes', () => {
         { action: 'delete_secret_candidate', secretVersionId: token },
       ],
       ['fetchCatalog', { action: 'fetch_catalog' }],
+      [
+        'discoverModelCapabilities',
+        {
+          action: 'discover_model_capabilities',
+          capabilities: ['streaming', 'aiAnalysis'],
+          externalModelId: 'controlled/model',
+          externalModelVersion: '1',
+        },
+      ],
       [
         'probeHealth',
         {
@@ -499,6 +519,39 @@ describe('Admin AI connection routes', () => {
       expect([200, 204]).toContain(response.status)
       expect(routeState.serviceMethods[method]).toHaveBeenCalled()
     }
+  })
+
+  it('returns bounded model-verification diagnostics to the Admin UI', async () => {
+    const modelRevisionId = '00000000-0000-4000-8000-000000000004'
+    const result = {
+      revision: { id: modelRevisionId, status: 'verification_required' },
+      verification: {
+        failedCapabilities: ['aiAnalysis'],
+        failedChecks: [],
+        failureCategory: 'capability_mismatch',
+        outcome: 'failed',
+        testSuiteVersion: 'ai-admin-functional-probe-v4',
+      },
+    }
+    routeState.serviceMethods.verifyModelRevision.mockResolvedValueOnce(result)
+
+    const response = await connectionAction(
+      new NextRequest(
+        `https://example.test/api/admin/ai-connections/${connectionId}/actions`,
+        {
+          body: JSON.stringify({
+            action: 'verify_model_revision',
+            modelRevisionId,
+            revisionToken,
+          }),
+          method: 'POST',
+        },
+      ),
+      { params: Promise.resolve({ connectionId }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual(result)
   })
 
   it('returns the error-provided safe message when connection verification is blocked', async () => {

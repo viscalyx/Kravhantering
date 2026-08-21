@@ -304,7 +304,10 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
         body: [
           'event: error',
           `data: ${JSON.stringify({
-            message: 'AI-tjänsten är tillfälligt otillgänglig.',
+            code: 'ai_provider_invalid_response',
+            message:
+              'AI-leverantören returnerade ett svarsformat som applikationen inte kunde behandla.',
+            technicalCode: 'invalid_upstream_stream_event',
           })}`,
           '',
           '',
@@ -369,7 +372,10 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     if (repairAttempts === 1) {
       await route.fulfill({
         body: JSON.stringify({
-          error: 'AI-tjänsten är tillfälligt otillgänglig.',
+          code: 'ai_provider_unavailable',
+          error:
+            'Det gick inte att nå AI-leverantören. Försök igen. Kontakta en administratör om problemet kvarstår.',
+          technicalCode: 'upstream_request_failed',
         }),
         contentType: 'application/json',
         status: 503,
@@ -466,10 +472,11 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await generateButton.click()
 
     await expect(
-      dialog
-        .getByRole('alert')
-        .filter({ hasText: 'AI-tjänsten är tillfälligt otillgänglig.' }),
-    ).toContainText('AI-tjänsten är tillfälligt otillgänglig.')
+      dialog.getByRole('alert').filter({
+        hasText:
+          'AI-leverantören returnerade ett svarsformat som applikationen inte kunde behandla.',
+      }),
+    ).toContainText('Teknisk felkod: invalid_upstream_stream_event.')
     await expect(generationFailure).toBeFocused()
     await expect(need).toHaveValue('Behöver säkra betygsunderlag.')
     await expect(dialog.getByText('diagram.png')).toBeVisible()
@@ -490,11 +497,9 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await expect(
       dialog.getByRole('alert').filter({
         hasText:
-          'Reparationen misslyckades: AI-tjänsten är tillfälligt otillgänglig.',
+          'Reparationen misslyckades: Det gick inte att nå AI-leverantören.',
       }),
-    ).toContainText(
-      'Reparationen misslyckades: AI-tjänsten är tillfälligt otillgänglig.',
-    )
+    ).toContainText('Teknisk felkod: upstream_request_failed.')
     await expect(repairButton).toBeFocused()
   })
 

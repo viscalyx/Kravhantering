@@ -54,6 +54,7 @@ export interface AiAdminStoredConnectionDetail
   agentRuntimeKey: string | null
   agentRuntimeVersion: string | null
   attestation: AiAdminAttestationRecord | null
+  attestationDraft: AiAdminAttestationRecord | null
   authenticationType:
     | 'mtls'
     | 'none'
@@ -142,6 +143,23 @@ export interface AiAdminModelVerificationResult {
   verifiedCapabilities: AiCapability
 }
 
+export type AiAdminModelVerificationCheck =
+  | 'adapterConformance'
+  | 'cancellationHandled'
+  | 'completed'
+  | 'schemaValid'
+
+export interface AiAdminModelVerificationActionResult {
+  revision: AiAdminModelRevisionRecord
+  verification: {
+    failedCapabilities: readonly (keyof AiCapability)[]
+    failedChecks: readonly AiAdminModelVerificationCheck[]
+    failureCategory: string | null
+    outcome: 'failed' | 'passed'
+    testSuiteVersion: string
+  }
+}
+
 export interface AiAdminLivePathExternalResult {
   adapterType: string
   adapterVersion: string
@@ -177,9 +195,43 @@ export interface AiAdminLivePathSelection {
 
 export interface AiAdminCatalogItem {
   capabilities: AiCapability
+  capabilitySupport?: AiAdminCapabilitySupportMap
   externalModelId: string
   externalModelVersion: string | null
+  inputPricePerMillionTokens: AiAdminCatalogPrice | null
+  modelProviderName: string | null
   name: string
+  outputPricePerMillionTokens: AiAdminCatalogPrice | null
+}
+
+export type AiAdminCapabilitySupport = 'supported' | 'unsupported' | 'unknown'
+
+export type AiAdminCapabilitySupportMap = Readonly<
+  Record<keyof AiCapability, AiAdminCapabilitySupport>
+>
+
+export interface AiAdminCapabilityDiscoveryResult {
+  assessments: Readonly<
+    Record<
+      keyof AiCapability,
+      Readonly<{
+        failureCategory: string | null
+        support: AiAdminCapabilitySupport
+      }>
+    >
+  >
+  capabilities: AiCapability
+}
+
+export interface AiAdminCapabilityDiscoveryTarget {
+  capabilities: readonly (keyof AiCapability)[]
+  externalModelId: string
+  externalModelVersion: string | null
+}
+
+export interface AiAdminCatalogPrice {
+  amount: string
+  currency: string
 }
 
 export type AiAdminAdapterAvailability =
@@ -198,7 +250,16 @@ export interface AiAdminExternalOperations {
   authorizeRunProfile(
     connection: Readonly<AiAdminConnectionDetail>,
     profileKey: AiRunProfileKey,
-  ): Promise<'authorized' | 'data_policy_blocked' | 'egress_policy_blocked'>
+  ): Promise<
+    | 'authorized'
+    | 'data_policy_blocked'
+    | 'data_policy_missing'
+    | 'egress_policy_blocked'
+  >
+  discoverModelCapabilities(
+    connection: Readonly<AiAdminConnectionDetail>,
+    target: Readonly<AiAdminCapabilityDiscoveryTarget>,
+  ): Promise<Readonly<AiAdminCapabilityDiscoveryResult>>
   fetchCatalog(
     connection: Readonly<AiAdminConnectionDetail>,
   ): Promise<readonly AiAdminCatalogItem[]>
@@ -290,6 +351,12 @@ export interface AiAdminStore {
   createConnection(
     input: CreateAiConnection,
   ): Promise<AiAdminStoredConnectionDetail>
+  discardAttestationDraft(input: {
+    connectionId: string
+    currentAttestationRevisionToken: string
+    draftAttestationId: string
+    draftAttestationRevisionToken: string
+  }): Promise<boolean>
   getActivationSnapshot(input: {
     profileKey: AiRunProfileKey
     profileRevisionId: string
@@ -366,6 +433,7 @@ export interface AiAdminAuditDetail {
     | 'activate'
     | 'create'
     | 'delete'
+    | 'discard'
     | 'probe'
     | 'retire'
     | 'rotate'
@@ -597,11 +665,25 @@ export class AiConnectionAdministrationService {
         ? connection.activeSecret
         : (resolvedAvailability ??
           (await this.#secrets.availability(connection.id)))
+    const secretMissing =
+      connection.authenticationType !== 'none' && !activeSecret.available
     const blockers = connection.blockers.filter(
-      blocker => blocker.code !== 'active_secret_missing',
+      blocker => blocker.code !== 'active_secret_missing' || secretMissing,
     )
-    if (connection.authenticationType !== 'none' && !activeSecret.available) {
-      blockers.push({ code: 'active_secret_missing' })
+    if (
+      secretMissing &&
+      !blockers.some(blocker => blocker.code === 'active_secret_missing')
+    ) {
+      const verificationIndex = blockers.findIndex(
+        blocker =>
+          blocker.code === 'connection_verification_missing' ||
+          blocker.code === 'model_revision_unverified',
+      )
+      blockers.splice(
+        verificationIndex === -1 ? blockers.length : verificationIndex,
+        0,
+        { code: 'active_secret_missing' },
+      )
     }
     return {
       ...connection,
@@ -738,6 +820,17 @@ export class AiConnectionAdministrationService {
     })
   }
 
+  async discardAttestationDraft(input: {
+    connectionId: string
+    currentAttestationRevisionToken: string
+    draftAttestationId: string
+    draftAttestationRevisionToken: string
+  }): Promise<void> {
+    if (!(await this.#store.discardAttestationDraft(input))) {
+      activationConflict()
+    }
+  }
+
   async writeSecret(
     connectionId: string,
     plaintext: string,
@@ -835,6 +928,40 @@ export class AiConnectionAdministrationService {
     return catalog
   }
 
+  async discoverModelCapabilities(input: {
+    capabilities: readonly (keyof AiCapability)[]
+    connectionId: string
+    externalModelId: string
+    externalModelVersion: string | null
+  }): Promise<AiAdminCapabilityDiscoveryResult> {
+    const connection = await this.getConnection(input.connectionId)
+    if (!connection.connectionEvidenceId) {
+      throw validationError('The AI connection must be verified first.', {
+        blockers: [{ code: 'connection_verification_missing' }],
+      })
+    }
+    await this.#assertAuthorizedTarget(connection)
+    const result = await this.#external.discoverModelCapabilities(connection, {
+      capabilities: input.capabilities,
+      externalModelId: input.externalModelId,
+      externalModelVersion: input.externalModelVersion,
+    })
+    const current = await this.getConnection(input.connectionId)
+    if (
+      current.revisionToken !== connection.revisionToken ||
+      current.configurationVersion !== connection.configurationVersion ||
+      current.connectionEvidenceId !== connection.connectionEvidenceId
+    ) {
+      activationConflict()
+    }
+    await this.#audit({
+      operation: 'probe',
+      resourceId: input.connectionId,
+      resourceType: 'ai_connection',
+    })
+    return result
+  }
+
   async probeHealth(input: {
     connectionId: string
     modelRevisionId: string
@@ -874,7 +1001,7 @@ export class AiConnectionAdministrationService {
     connectionId: string
     modelRevisionId: string
     revisionToken: string
-  }): Promise<AiAdminModelRevisionRecord> {
+  }): Promise<AiAdminModelVerificationActionResult> {
     const connection = await this.getConnection(input.connectionId)
     const modelRevision = connection.models
       .flatMap(model => model.revisions)
@@ -894,12 +1021,37 @@ export class AiConnectionAdministrationService {
       connection,
       modelRevision,
     )
-    return this.#store.recordModelVerification({
+    const revision = await this.#store.recordModelVerification({
       connection,
       connectionEvidenceId,
       modelRevision,
       result,
     })
+    const capabilityKeys = Object.keys(
+      modelRevision.declaredCapabilities,
+    ) as (keyof AiCapability)[]
+    const verificationChecks = [
+      'adapterConformance',
+      'cancellationHandled',
+      'completed',
+      'schemaValid',
+    ] as const satisfies readonly AiAdminModelVerificationCheck[]
+    return {
+      revision,
+      verification: {
+        failedCapabilities: capabilityKeys.filter(
+          capability =>
+            modelRevision.declaredCapabilities[capability] &&
+            !result.verifiedCapabilities[capability],
+        ),
+        failedChecks: verificationChecks.filter(
+          check => result.details[check] === false,
+        ),
+        failureCategory: result.failureCategory,
+        outcome: result.outcome,
+        testSuiteVersion: result.testSuiteVersion,
+      },
+    }
   }
 
   async verifyLivePath(input: {

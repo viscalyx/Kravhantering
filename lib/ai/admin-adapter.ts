@@ -15,7 +15,7 @@ import type {
 export const AI_ADMIN_PROBE_LIMITS = Object.freeze({
   maxBufferedEvents: 16,
   maxOutputBytes: 65_536,
-  maxOutputTokens: 512,
+  maxOutputTokens: 1_536,
   maxRetainedMemoryBytes: 131_072,
 }) satisfies Readonly<AiRunLimits>
 

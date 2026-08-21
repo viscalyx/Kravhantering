@@ -4,6 +4,8 @@ import type {
   AiAdminConnectionAdapterRegistration,
 } from './admin-adapter'
 import { AI_ADMIN_PROBE_LIMITS } from './admin-adapter'
+import type { AiCapability } from './admin-contracts'
+import type { AiAdminCapabilitySupportMap } from './admin-service'
 import {
   CONTROLLED_TEST_ADAPTER_TYPE,
   CONTROLLED_TEST_ADAPTER_VERSION,
@@ -20,15 +22,35 @@ import { AI_REQUEST_PRIVACY_MINIMUM } from './run-contracts'
 const ADMIN_PROBE_PROFILE_REVISION_ID =
   '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
 
+function capabilitySupport(
+  value: Readonly<AiCapability>,
+): AiAdminCapabilitySupportMap {
+  return {
+    aiAnalysis: value.aiAnalysis ? 'supported' : 'unsupported',
+    cost: value.cost ? 'supported' : 'unsupported',
+    imageInput: value.imageInput ? 'supported' : 'unsupported',
+    jsonSchemaSteering: value.jsonSchemaSteering ? 'supported' : 'unsupported',
+    streaming: value.streaming ? 'supported' : 'unsupported',
+    tokenUsage: value.tokenUsage ? 'supported' : 'unsupported',
+    validatableJson: value.validatableJson ? 'supported' : 'unsupported',
+  }
+}
+
 const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
   async fetchCatalog(context) {
     return context.connection.models.flatMap(model =>
       model.revisions.slice(0, 1).map(revision => ({
         capabilities:
           revision.discoveredCapabilities ?? revision.declaredCapabilities,
+        capabilitySupport: capabilitySupport(
+          revision.discoveredCapabilities ?? revision.declaredCapabilities,
+        ),
         externalModelId: revision.externalModelId,
         externalModelVersion: revision.externalModelVersion,
+        inputPricePerMillionTokens: null,
+        modelProviderName: 'Controlled Test',
         name: model.name,
+        outputPricePerMillionTokens: null,
       })),
     )
   },

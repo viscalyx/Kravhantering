@@ -699,6 +699,78 @@ describe('AI connection administration transactions against SQL Server', () => {
     ).toBe(1)
   })
 
+  it('loads a replacement attestation draft separately and can discard it back to the valid revision', async () => {
+    const db = appDb()
+    const store = createSqlServerAiAdminStore(db, async () => undefined)
+    const connection = await store.createConnection(
+      connectionInput('-attestation-replacement'),
+    )
+    const initialDraft = await store.saveAttestation({
+      attestation: attestationInput(),
+      connectionId: connection.id,
+      currentAttestationRevisionToken: null,
+      makeValid: false,
+    })
+    const valid = await store.saveAttestation({
+      attestation: attestationInput(initialDraft.revisionToken),
+      connectionId: connection.id,
+      currentAttestationRevisionToken: null,
+      makeValid: true,
+    })
+    const replacementIncidentReference = randomUUID()
+    const replacementDraft = await store.saveAttestation({
+      attestation: {
+        ...attestationInput(),
+        incidentResponseReference: replacementIncidentReference,
+      },
+      connectionId: connection.id,
+      currentAttestationRevisionToken: null,
+      makeValid: false,
+    })
+
+    await expect(store.getConnection(connection.id)).resolves.toMatchObject({
+      attestation: {
+        id: valid.id,
+        incidentResponseReference: valid.incidentResponseReference,
+        status: 'valid',
+      },
+      attestationDraft: {
+        id: replacementDraft.id,
+        incidentResponseReference: replacementIncidentReference.toUpperCase(),
+        status: 'draft',
+      },
+    })
+
+    await expect(
+      store.discardAttestationDraft({
+        connectionId: connection.id,
+        currentAttestationRevisionToken: valid.revisionToken,
+        draftAttestationId: replacementDraft.id,
+        draftAttestationRevisionToken: replacementDraft.revisionToken,
+      }),
+    ).resolves.toBe(true)
+    await expect(store.getConnection(connection.id)).resolves.toMatchObject({
+      attestation: { id: valid.id, status: 'valid' },
+      attestationDraft: null,
+    })
+    await expect(
+      store.discardAttestationDraft({
+        connectionId: connection.id,
+        currentAttestationRevisionToken: valid.revisionToken,
+        draftAttestationId: replacementDraft.id,
+        draftAttestationRevisionToken: replacementDraft.revisionToken,
+      }),
+    ).resolves.toBe(false)
+    expect(
+      await count(
+        db,
+        'ai_connection_attestations',
+        "[id] = @0 AND [status] = N'superseded'",
+        [replacementDraft.id],
+      ),
+    ).toBe(1)
+  })
+
   it('rejects secret activation when the connection changes during candidate verification', async () => {
     const db = appDb()
     const store = createSqlServerAiAdminStore(db, async () => undefined)

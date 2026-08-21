@@ -168,6 +168,8 @@ interface SchemaIssue {
   path: string
 }
 
+const SAFE_AI_TECHNICAL_CODE = /^[a-z][a-z0-9_.:-]{0,79}$/u
+
 async function readGenerationResponseMessage(
   response: Response,
 ): Promise<string | null> {
@@ -468,6 +470,19 @@ export default function AiRequirementGenerator({
   const profileUnavailableMessage = useCallback(
     (reason: AiAuthoringProfileUnavailableReason) =>
       t(`profileUnavailable.${reason}`),
+    [t],
+  )
+  const providerFailureMessage = useCallback(
+    (message: unknown, technicalCode: unknown, fallback: string) => {
+      const baseMessage =
+        typeof message === 'string' && message.trim().length > 0
+          ? message.trim()
+          : fallback
+      return typeof technicalCode === 'string' &&
+        SAFE_AI_TECHNICAL_CODE.test(technicalCode)
+        ? `${baseMessage} ${t('technicalErrorCode', { code: technicalCode })}`
+        : baseMessage
+    },
     [t],
   )
   const formattedRawResponse = useMemo(
@@ -969,7 +984,11 @@ export default function AiRequirementGenerator({
             flushQueuedThinking()
             throw new Error(
               importBudgetErrorMessage(payload.code, t) ??
-                String(payload.message ?? t('createError')),
+                providerFailureMessage(
+                  payload.message,
+                  payload.technicalCode,
+                  t('createError'),
+                ),
             )
           }
         }
@@ -1006,6 +1025,7 @@ export default function AiRequirementGenerator({
     cancelQueuedThinking,
     flushQueuedThinking,
     queueThinkingUpdate,
+    providerFailureMessage,
     reportTerminalFailure,
     resetGeneratedResult,
     specificationId,
@@ -1054,10 +1074,17 @@ export default function AiRequirementGenerator({
         rawContent?: string
         stats?: GenerationStats
         thinking?: string
+        technicalCode?: string
       }
       if (!response.ok || !body.payload) {
         setSchemaIssues(body.issues ?? schemaIssues)
-        throw new Error(body.error ?? t('validationErrors'))
+        throw new Error(
+          providerFailureMessage(
+            body.error,
+            body.technicalCode,
+            t('validationErrors'),
+          ),
+        )
       }
       setRawResponse(body.rawContent ?? JSON.stringify(body.payload))
       setThinking(body.thinking ?? '')
@@ -1084,6 +1111,7 @@ export default function AiRequirementGenerator({
     rawResponse,
     repairProfile,
     repairing,
+    providerFailureMessage,
     reportTerminalFailure,
     schemaIssues,
     specificationId,
@@ -1641,7 +1669,7 @@ export default function AiRequirementGenerator({
                       context: 'ai-requirement-generator',
                       name: 'error summary',
                       priority: 350,
-                      value: 'generation outcome',
+                      value: 'generation outcome and technical error details',
                     })}
                   >
                     <div className="flex items-start gap-2">

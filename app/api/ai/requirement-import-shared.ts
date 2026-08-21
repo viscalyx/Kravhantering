@@ -6,7 +6,11 @@ import {
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
 } from '@/lib/ai/requirement-prompt'
-import type { AiTaskContentPart, AiUsageMetric } from '@/lib/ai/run-contracts'
+import type {
+  AiRunFailure,
+  AiTaskContentPart,
+  AiUsageMetric,
+} from '@/lib/ai/run-contracts'
 import {
   type AiSafetyBlockedStep,
   type AiSafetyDecision,
@@ -70,6 +74,56 @@ export function aiRunProfileError(
   return {
     code: `ai_profile_${reason}`,
     message: getPromptMessage(locale, ['ai', 'profileUnavailable', reason]),
+  }
+}
+
+const SAFE_AI_TECHNICAL_CODE = /^[a-z][a-z0-9_.:-]{0,79}$/u
+
+export type AiProviderErrorCode =
+  | 'ai_provider_invalid_response'
+  | 'ai_provider_rate_limited'
+  | 'ai_provider_unavailable'
+
+export interface AiProviderPublicError {
+  code: AiProviderErrorCode
+  message: string
+  technicalCode?: string
+}
+
+const PROVIDER_ERROR_MESSAGE_KEYS = {
+  adapter_failure: 'adapterFailure',
+  authentication_failed: 'authenticationFailed',
+  capability_mismatch: 'capabilityMismatch',
+  connection_unavailable: 'connectionUnavailable',
+  deadline_exceeded: 'deadlineExceeded',
+  invalid_response: 'invalidResponse',
+  rate_limited: 'rateLimited',
+  request_rejected: 'requestRejected',
+} as const satisfies Record<AiRunFailure['category'], string>
+
+export function aiRunFailureError(
+  failure: Readonly<AiRunFailure>,
+  locale: RequirementImportLocale,
+): AiProviderPublicError {
+  const code: AiProviderErrorCode =
+    failure.category === 'rate_limited'
+      ? 'ai_provider_rate_limited'
+      : failure.category === 'invalid_response'
+        ? 'ai_provider_invalid_response'
+        : 'ai_provider_unavailable'
+  const technicalCode =
+    failure.diagnosticCode &&
+    SAFE_AI_TECHNICAL_CODE.test(failure.diagnosticCode)
+      ? failure.diagnosticCode
+      : undefined
+  return {
+    code,
+    message: getPromptMessage(locale, [
+      'ai',
+      'providerErrors',
+      PROVIDER_ERROR_MESSAGE_KEYS[failure.category],
+    ]),
+    ...(technicalCode ? { technicalCode } : {}),
   }
 }
 
@@ -424,6 +478,7 @@ export function createAiErrorStreamResponse(
       | 'ai_provider_rate_limited'
       | 'ai_provider_unavailable'
     message: string
+    technicalCode?: string
   },
   recordFailure: (statusCode: number) => void,
 ) {

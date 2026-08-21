@@ -19,6 +19,7 @@ const translate = Object.assign(
       imageErrorRead:
         'Failed to read one or more image files. Please try again.',
       generationFailed: 'Generation failed',
+      technicalErrorCode: 'Technical error code: {code}.',
       imageErrorSize: '{name} exceeds the 10 MB size limit.',
       imageErrorType: 'Unsupported file type: {name}.',
       needsReferenceProposalRows: '{count} requirement row',
@@ -169,7 +170,7 @@ function generationStreamResponse(payload: Record<string, unknown>) {
   }
 }
 
-function generationErrorStreamResponse(code: string) {
+function generationErrorStreamResponse(code: string, technicalCode?: string) {
   return {
     body: new ReadableStream({
       start(controller) {
@@ -178,6 +179,7 @@ function generationErrorStreamResponse(code: string) {
             `event: error\ndata: ${JSON.stringify({
               code,
               message: 'Untrusted server English',
+              ...(technicalCode ? { technicalCode } : {}),
             })}\n\n`,
           ),
         )
@@ -1924,6 +1926,31 @@ describe('AiRequirementGenerator', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Untrusted server English',
+    )
+  })
+
+  it('shows a safe technical code with the actionable provider error', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
+      }
+      if (url === '/api/ai/generate-requirement-import') {
+        return generationErrorStreamResponse(
+          'ai_provider_invalid_response',
+          'invalid_upstream_stream_event',
+        )
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Untrusted server English Technical error code: invalid_upstream_stream_event.',
     )
   })
 

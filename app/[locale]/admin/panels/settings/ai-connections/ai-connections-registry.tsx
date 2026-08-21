@@ -7,6 +7,7 @@ import {
   CircleAlert,
   KeyRound,
   Link2,
+  LoaderCircle,
   Plus,
   RefreshCw,
   Route,
@@ -15,23 +16,29 @@ import {
   Wrench,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import AutoDismissStatusToast from '@/components/AutoDismissStatusToast'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FormModal from '@/components/FormModal'
+import type { AiCapability } from '@/lib/ai/admin-contracts'
 import type {
   AiAdminAttestationRecord,
+  AiAdminCapabilityDiscoveryResult,
   AiAdminCatalogItem,
   AiAdminConnectionDetail,
   AiAdminModelRecord,
   AiAdminModelRevisionRecord,
   AiAdminRunProfileRecord,
+  AiAdminRunProfileRevisionRecord,
 } from '@/lib/ai/admin-service'
+import { AI_CAPABILITY_KEYS } from '@/lib/ai/capability-keys'
 import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { AttestationForm, ConnectionForm, SecretForm } from './connection-forms'
 import { ModelForm, ProfileForm } from './model-profile-forms'
 import {
   AnimatedRegistrySection,
+  attestationBlockerState,
   BlockerText,
   healthTone,
   lifecycleTone,
@@ -56,11 +63,197 @@ type DialogState =
   | { kind: 'profile'; profile: AiAdminRunProfileRecord }
   | null
 
+type CatalogStatus = 'idle' | 'loaded' | 'loading' | 'unavailable'
+type PendingModelAction = {
+  kind: 'health' | 'verification'
+  revisionId: string
+}
+
+const OPERATIONAL_HEALTH_VALUES = [
+  'degraded',
+  'healthy',
+  'unavailable',
+  'unknown',
+] as const
+const MODEL_CAPABILITY_KEYS = AI_CAPABILITY_KEYS
+const MODEL_VERIFICATION_CHECKS = [
+  'adapterConformance',
+  'cancellationHandled',
+  'completed',
+  'schemaValid',
+] as const
+const MODEL_VERIFICATION_FAILURE_CATEGORIES = [
+  'adapter_failure',
+  'authentication_failed',
+  'cancelled',
+  'capability_mismatch',
+  'connection_unavailable',
+  'deadline_exceeded',
+  'invalid_response',
+  'rate_limited',
+  'request_rejected',
+] as const
+
+interface ModelVerificationFeedback {
+  failedCapabilities: readonly (typeof MODEL_CAPABILITY_KEYS)[number][]
+  failedChecks: readonly (typeof MODEL_VERIFICATION_CHECKS)[number][]
+  failureCategory:
+    | (typeof MODEL_VERIFICATION_FAILURE_CATEGORIES)[number]
+    | 'unknown'
+  passed: boolean
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function modelVerificationPassed(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isRecord(value.revision) &&
+    value.revision.status === 'verified' &&
+    isRecord(value.verification) &&
+    value.verification.outcome === 'passed'
+  )
+}
+
+function modelVerificationFeedback(value: unknown): ModelVerificationFeedback {
+  const passed = modelVerificationPassed(value)
+  const verification =
+    isRecord(value) && isRecord(value.verification) ? value.verification : null
+  const capabilityValues = verification?.failedCapabilities
+  const checkValues = verification?.failedChecks
+  const failedCapabilities = Array.isArray(capabilityValues)
+    ? MODEL_CAPABILITY_KEYS.filter(capability =>
+        capabilityValues.includes(capability),
+      )
+    : []
+  const failedChecks = Array.isArray(checkValues)
+    ? MODEL_VERIFICATION_CHECKS.filter(check => checkValues.includes(check))
+    : []
+  const category = verification?.failureCategory
+  const failureCategory = MODEL_VERIFICATION_FAILURE_CATEGORIES.find(
+    candidate => candidate === category,
+  )
+  return {
+    failedCapabilities,
+    failedChecks,
+    failureCategory: failureCategory ?? 'unknown',
+    passed,
+  }
+}
+
+function capabilityDiscoveryResult(
+  value: unknown,
+): AiAdminCapabilityDiscoveryResult | null {
+  if (
+    !isRecord(value) ||
+    !isRecord(value.assessments) ||
+    !isRecord(value.capabilities)
+  ) {
+    return null
+  }
+  const rawAssessments = value.assessments
+  const rawCapabilities = value.capabilities
+  const capabilities = Object.fromEntries(
+    MODEL_CAPABILITY_KEYS.map(capability => [
+      capability,
+      rawCapabilities[capability],
+    ]),
+  )
+  if (
+    MODEL_CAPABILITY_KEYS.some(
+      capability => typeof capabilities[capability] !== 'boolean',
+    )
+  ) {
+    return null
+  }
+  const assessments = Object.fromEntries(
+    MODEL_CAPABILITY_KEYS.map(capability => {
+      const assessment = rawAssessments[capability]
+      if (!isRecord(assessment)) return [capability, null]
+      const support = assessment.support
+      const failureCategory = assessment.failureCategory
+      return [
+        capability,
+        (support === 'supported' ||
+          support === 'unsupported' ||
+          support === 'unknown') &&
+        (failureCategory === null || typeof failureCategory === 'string')
+          ? { failureCategory, support }
+          : null,
+      ]
+    }),
+  )
+  if (MODEL_CAPABILITY_KEYS.some(capability => !assessments[capability])) {
+    return null
+  }
+  return {
+    assessments: assessments as AiAdminCapabilityDiscoveryResult['assessments'],
+    capabilities: capabilities as AiCapability,
+  }
+}
+
+function operationalHealth(
+  value: unknown,
+): (typeof OPERATIONAL_HEALTH_VALUES)[number] {
+  if (!isRecord(value)) return 'unknown'
+  const health = value.operationalHealth
+  return (
+    OPERATIONAL_HEALTH_VALUES.find(candidate => candidate === health) ??
+    'unknown'
+  )
+}
+
 function profileName(
   t: ReturnType<typeof useTranslations>,
   key: AiRunProfileKey,
 ): string {
   return t(`profiles.${key}`)
+}
+
+function effectiveProfileStatus(profile: AiAdminRunProfileRecord): {
+  key: 'active' | 'blocked' | 'notActivated' | 'suspended'
+  tone: 'danger' | 'neutral' | 'success'
+} {
+  if (profile.operationalStatus === 'suspended') {
+    return { key: 'suspended', tone: 'danger' }
+  }
+  if (!profile.activeRevisionId) {
+    return { key: 'notActivated', tone: 'neutral' }
+  }
+  if (profile.blockers.length > 0) {
+    return { key: 'blocked', tone: 'danger' }
+  }
+  return { key: 'active', tone: 'success' }
+}
+
+function profileRevisionMetadata(
+  t: ReturnType<typeof useTranslations>,
+  profile: AiAdminRunProfileRecord,
+  revisions: readonly AiAdminRunProfileRevisionRecord[],
+): string | null {
+  const activeRevision = profile.activeRevisionId
+    ? revisions.find(revision => revision.id === profile.activeRevisionId)
+    : undefined
+  const draftRevision = profile.draftRevision
+  if (activeRevision && draftRevision) {
+    return t('profile.revisionMetadata.activeAndDraft', {
+      activeNumber: activeRevision.revisionNumber,
+      draftNumber: draftRevision.revisionNumber,
+    })
+  }
+  if (activeRevision) {
+    return t('profile.revisionMetadata.active', {
+      number: activeRevision.revisionNumber,
+    })
+  }
+  if (draftRevision) {
+    return t('profile.revisionMetadata.draft', {
+      number: draftRevision.revisionNumber,
+    })
+  }
+  return null
 }
 
 function RequestErrorAlert({
@@ -115,6 +308,8 @@ export default function AiConnectionsPanel() {
     loading,
     loadRegistry,
     message,
+    messageDetails,
+    messageTone,
     mutateAndReload,
     mutation,
     profiles,
@@ -127,9 +322,18 @@ export default function AiConnectionsPanel() {
   const [candidateId, setCandidateId] = useState<string | null>(null)
   const [savedAttestation, setSavedAttestation] =
     useState<AiAdminAttestationRecord | null>(null)
-  const [catalogByConnection, setCatalogByConnection] = useState<
+  const [dialogCatalogByConnection, setDialogCatalogByConnection] = useState<
     Readonly<Record<string, readonly AiAdminCatalogItem[]>>
   >({})
+  const [visibleCatalogByConnection, setVisibleCatalogByConnection] = useState<
+    Readonly<Record<string, readonly AiAdminCatalogItem[]>>
+  >({})
+  const [catalogStatusByConnection, setCatalogStatusByConnection] = useState<
+    Readonly<Record<string, CatalogStatus>>
+  >({})
+  const [pendingModelAction, setPendingModelAction] =
+    useState<PendingModelAction | null>(null)
+  const dismissMessage = useCallback(() => setMessage(null), [setMessage])
   function closeDialog() {
     clearError()
     setDialog(null)
@@ -143,11 +347,20 @@ export default function AiConnectionsPanel() {
   }
 
   const modelRevisions = Object.values(details).flatMap(connection =>
-    connection.models.flatMap(model =>
-      model.revisions
-        .filter(revision => revision.status !== 'retired')
-        .map(revision => ({ connection, model, revision })),
-    ),
+    connection.models.flatMap(model => {
+      const latest = model.revisions.reduce<
+        AiAdminModelRevisionRecord | undefined
+      >(
+        (selected, revision) =>
+          !selected || revision.revisionNumber > selected.revisionNumber
+            ? revision
+            : selected,
+        undefined,
+      )
+      return latest?.status === 'verified'
+        ? [{ connection, model, revision: latest }]
+        : []
+    }),
   )
 
   function profilesForConnection(connection: AiAdminConnectionDetail) {
@@ -180,22 +393,208 @@ export default function AiConnectionsPanel() {
     )
   }
 
-  async function fetchCatalog(connection: AiAdminConnectionDetail) {
+  async function verifyModelRevision(
+    connection: AiAdminConnectionDetail,
+    revision: AiAdminModelRevisionRecord,
+  ) {
+    setPendingModelAction({
+      kind: 'verification',
+      revisionId: revision.id,
+    })
+    try {
+      const response = await mutation(
+        `/api/admin/ai-connections/${connection.id}/actions`,
+        {
+          action: 'verify_model_revision',
+          modelRevisionId: revision.id,
+          revisionToken: revision.revisionToken,
+        },
+        { actionLabel: t('actions.verifyModel') },
+      )
+      if (!response) return
+      const feedback = modelVerificationFeedback(await response.json())
+      await loadRegistry()
+      if (feedback.passed) {
+        setMessage(t('model.verified'))
+      } else {
+        const details = [
+          t('model.verificationFailureReason', {
+            reason: t(
+              `model.verificationFailureCategories.${feedback.failureCategory}`,
+            ),
+          }),
+          ...(feedback.failedCapabilities.length > 0
+            ? [
+                t('model.verificationFailedCapabilities', {
+                  capabilities: feedback.failedCapabilities
+                    .map(capability => t(`capabilities.${capability}`))
+                    .join(', '),
+                }),
+              ]
+            : []),
+          ...(feedback.failedChecks.length > 0
+            ? [
+                t('model.verificationFailedChecks', {
+                  checks: feedback.failedChecks
+                    .map(check => t(`model.verificationChecks.${check}`))
+                    .join(', '),
+                }),
+              ]
+            : []),
+        ]
+        setMessage(t('model.verificationFailed'), 'warning', details)
+      }
+    } finally {
+      setPendingModelAction(null)
+    }
+  }
+
+  async function probeModelHealth(
+    connection: AiAdminConnectionDetail,
+    revision: AiAdminModelRevisionRecord,
+  ) {
+    setPendingModelAction({ kind: 'health', revisionId: revision.id })
+    try {
+      const response = await mutation(
+        `/api/admin/ai-connections/${connection.id}/actions`,
+        {
+          action: 'probe_health',
+          modelRevisionId: revision.id,
+          revisionToken: revision.revisionToken,
+        },
+        { actionLabel: t('actions.probeHealth') },
+      )
+      if (!response) return
+      const health = operationalHealth(await response.json())
+      await loadRegistry()
+      setMessage(
+        t(`health.probeResult.${health}`),
+        health === 'healthy' ? 'success' : 'warning',
+      )
+    } finally {
+      setPendingModelAction(null)
+    }
+  }
+
+  async function fetchCatalog(
+    connection: AiAdminConnectionDetail,
+    notify = true,
+  ): Promise<readonly AiAdminCatalogItem[] | null> {
+    const connectionId = connection.id.toLowerCase()
+    if (notify) {
+      setVisibleCatalogByConnection(current => ({
+        ...current,
+        [connectionId]: [],
+      }))
+    } else {
+      setDialogCatalogByConnection(current => ({
+        ...current,
+        [connectionId]: [],
+      }))
+      setCatalogStatusByConnection(current => ({
+        ...current,
+        [connectionId]: 'loading',
+      }))
+    }
     const response = await mutation(
       `/api/admin/ai-connections/${connection.id}/actions`,
       { action: 'fetch_catalog' },
       {
         actionLabel: t('actions.fetchCatalog'),
+        suppressError: !notify,
       },
     )
-    if (!response) return
-    const connectionId = connection.id.toLowerCase()
+    if (!response) {
+      if (!notify) {
+        setCatalogStatusByConnection(current => ({
+          ...current,
+          [connectionId]: 'unavailable',
+        }))
+      }
+      return null
+    }
     const items = (await response.json()) as AiAdminCatalogItem[]
-    setCatalogByConnection(current => ({
-      ...current,
-      [connectionId]: items,
-    }))
-    setMessage(t('catalog.loaded'))
+    if (notify) {
+      setVisibleCatalogByConnection(current => ({
+        ...current,
+        [connectionId]: items,
+      }))
+      setMessage(t('catalog.loaded'))
+    } else {
+      setDialogCatalogByConnection(current => ({
+        ...current,
+        [connectionId]: items,
+      }))
+      setCatalogStatusByConnection(current => ({
+        ...current,
+        [connectionId]: items.length > 0 ? 'loaded' : 'unavailable',
+      }))
+    }
+    return items
+  }
+
+  async function discoverModelCapabilities(
+    connection: AiAdminConnectionDetail,
+    input: {
+      capabilities: readonly (keyof AiCapability)[]
+      externalModelId: string
+      externalModelVersion: string | null
+    },
+  ): Promise<AiAdminCapabilityDiscoveryResult | null> {
+    const response = await mutation(
+      `/api/admin/ai-connections/${connection.id}/actions`,
+      { action: 'discover_model_capabilities', ...input },
+      { actionLabel: t('actions.checkCapabilities') },
+    )
+    if (!response) return null
+    const result = capabilityDiscoveryResult(await response.json())
+    if (!result) {
+      setMessage(t('model.capabilityCheckInvalid'), 'warning')
+      return null
+    }
+    const unknown = input.capabilities.filter(
+      capability => result.assessments[capability].support === 'unknown',
+    )
+    setMessage(
+      unknown.length > 0
+        ? t('model.capabilityCheckIncomplete')
+        : t('model.capabilitiesChecked'),
+      unknown.length > 0 ? 'warning' : 'success',
+      unknown.length > 0
+        ? unknown.map(capability => {
+            const category =
+              MODEL_VERIFICATION_FAILURE_CATEGORIES.find(
+                candidate =>
+                  candidate === result.assessments[capability].failureCategory,
+              ) ?? 'unknown'
+            return t('model.capabilityCheckUnknownReason', {
+              capability: t(`capabilities.${capability}`),
+              reason: t(`model.verificationFailureCategories.${category}`),
+            })
+          })
+        : [],
+    )
+    return result
+  }
+
+  function openModelForm(
+    connection: AiAdminConnectionDetail,
+    model: AiAdminModelRecord | null,
+  ) {
+    openDialog({ connection, kind: 'model', model })
+    const connectionId = connection.id.toLowerCase()
+    if (!connection.adapterAvailability.available) {
+      setDialogCatalogByConnection(current => ({
+        ...current,
+        [connectionId]: [],
+      }))
+      setCatalogStatusByConnection(current => ({
+        ...current,
+        [connectionId]: 'unavailable',
+      }))
+      return
+    }
+    void fetchCatalog(connection, false)
   }
 
   async function confirmRetirement(
@@ -248,7 +647,12 @@ export default function AiConnectionsPanel() {
     const target = modelRevisions.find(
       ({ revision }) => revision.id === draft.modelRevisionId,
     )
-    if (!target?.connection.adapterAvailability.available) return
+    if (
+      !target?.connection.adapterAvailability.available ||
+      target.connection.lifecycleStatus !== 'active'
+    ) {
+      return
+    }
     const activated = await mutateAndReload(
       `/api/admin/ai-run-profiles/${profile.profileKey}/actions`,
       {
@@ -311,12 +715,13 @@ export default function AiConnectionsPanel() {
       </div>
 
       {message ? (
-        <p
-          className="mx-5 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
-          role="status"
-        >
-          {message}
-        </p>
+        <AutoDismissStatusToast
+          details={messageDetails}
+          key={`${messageTone}-${message}`}
+          message={message}
+          onDismiss={dismissMessage}
+          tone={messageTone}
+        />
       ) : null}
       {error ? (
         <div className="fixed inset-x-4 bottom-4 z-80 ml-auto max-w-xl sm:left-auto sm:right-4">
@@ -351,7 +756,8 @@ export default function AiConnectionsPanel() {
         {connections.map(connection => {
           const detail = details[connection.id]
           const expanded = expandedId === connection.id
-          const catalog = catalogByConnection[connection.id.toLowerCase()] ?? []
+          const catalog =
+            visibleCatalogByConnection[connection.id.toLowerCase()] ?? []
           return (
             <article key={connection.id}>
               <button
@@ -490,7 +896,12 @@ export default function AiConnectionsPanel() {
                         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900 dark:text-amber-100">
                           {detail.blockers.map(blocker => (
                             <li key={`${blocker.code}-${blocker.field ?? ''}`}>
-                              <BlockerText blocker={blocker} />
+                              <BlockerText
+                                attestationState={attestationBlockerState(
+                                  detail,
+                                )}
+                                blocker={blocker}
+                              />
                             </li>
                           ))}
                         </ul>
@@ -561,13 +972,7 @@ export default function AiConnectionsPanel() {
                           </div>
                           <button
                             className="btn-secondary inline-flex min-h-9 items-center gap-2 px-3! py-1.5! text-sm"
-                            onClick={() =>
-                              openDialog({
-                                connection: detail,
-                                kind: 'model',
-                                model: null,
-                              })
-                            }
+                            onClick={() => openModelForm(detail, null)}
                             type="button"
                           >
                             <Plus aria-hidden="true" className="h-4 w-4" />
@@ -583,6 +988,12 @@ export default function AiConnectionsPanel() {
                           {detail.models.map(model => {
                             const latest = model.revisions.at(-1)
                             if (!latest) return null
+                            const verifying =
+                              pendingModelAction?.kind === 'verification' &&
+                              pendingModelAction.revisionId === latest.id
+                            const probingHealth =
+                              pendingModelAction?.kind === 'health' &&
+                              pendingModelAction.revisionId === latest.id
                             return (
                               <article
                                 className="rounded-xl bg-secondary-50 p-3 dark:bg-secondary-950/50"
@@ -606,83 +1017,91 @@ export default function AiConnectionsPanel() {
                                     {t(`model.status.${latest.status}`)}
                                   </StatusBadge>
                                 </div>
-                                <div className="mt-3 flex flex-wrap gap-2">
+                                <div
+                                  className="mt-3 flex flex-wrap gap-2"
+                                  {...devMarker({
+                                    context: 'AI connection model revision',
+                                    name: 'AI model verification and health actions',
+                                    priority: 310,
+                                  })}
+                                >
                                   <button
                                     className="btn-secondary px-3! py-1.5! text-xs"
                                     disabled={latest.status === 'retired'}
-                                    onClick={() =>
-                                      openDialog({
-                                        connection: detail,
-                                        kind: 'model',
-                                        model,
-                                      })
-                                    }
+                                    onClick={() => openModelForm(detail, model)}
                                     type="button"
                                   >
                                     {t('actions.editModel')}
                                   </button>
                                   <button
-                                    className="btn-secondary px-3! py-1.5! text-xs"
+                                    aria-busy={verifying}
+                                    className="btn-secondary inline-flex items-center gap-1.5 px-3! py-1.5! text-xs disabled:cursor-not-allowed disabled:opacity-50"
                                     disabled={
                                       busy ||
+                                      pendingModelAction !== null ||
                                       !detail.adapterAvailability.available ||
                                       detail.connectionEvidenceId === null ||
+                                      latest.status === 'verified' ||
                                       latest.status === 'retired'
                                     }
                                     onClick={() =>
-                                      void connectionAction(
-                                        detail,
-                                        {
-                                          action: 'verify_model_revision',
-                                          modelRevisionId: latest.id,
-                                          revisionToken: latest.revisionToken,
-                                        },
-                                        'model.verified',
-                                        {
-                                          actionLabel: t('actions.verifyModel'),
-                                        },
-                                      )
+                                      void verifyModelRevision(detail, latest)
                                     }
                                     title={
                                       !detail.adapterAvailability.available
                                         ? t('adapter.unavailableAction')
                                         : detail.connectionEvidenceId === null
                                           ? t('model.verifyConnectionFirst')
-                                          : t('model.testCost')
+                                          : latest.status === 'verified'
+                                            ? t('model.alreadyVerified')
+                                            : t('model.testCost')
                                     }
                                     type="button"
                                   >
-                                    {t('actions.verifyModel')}
+                                    {verifying ? (
+                                      <LoaderCircle
+                                        aria-hidden="true"
+                                        className="h-3.5 w-3.5 animate-spin"
+                                      />
+                                    ) : null}
+                                    {t(
+                                      verifying
+                                        ? 'actions.verifyingModel'
+                                        : 'actions.verifyModel',
+                                    )}
                                   </button>
                                   <button
-                                    className="btn-secondary px-3! py-1.5! text-xs"
+                                    aria-busy={probingHealth}
+                                    className="btn-secondary inline-flex items-center gap-1.5 px-3! py-1.5! text-xs disabled:cursor-not-allowed disabled:opacity-50"
                                     disabled={
                                       busy ||
+                                      pendingModelAction !== null ||
                                       !detail.adapterAvailability.available ||
                                       latest.status !== 'verified'
                                     }
                                     onClick={() =>
-                                      void connectionAction(
-                                        detail,
-                                        {
-                                          action: 'probe_health',
-                                          modelRevisionId: latest.id,
-                                          revisionToken: latest.revisionToken,
-                                        },
-                                        'health.probed',
-                                        {
-                                          actionLabel: t('actions.probeHealth'),
-                                        },
-                                      )
+                                      void probeModelHealth(detail, latest)
                                     }
                                     title={
-                                      detail.adapterAvailability.available
-                                        ? t('health.safeRecoveryHelp')
-                                        : t('adapter.unavailableAction')
+                                      !detail.adapterAvailability.available
+                                        ? t('adapter.unavailableAction')
+                                        : latest.status !== 'verified'
+                                          ? t('health.verifyModelFirst')
+                                          : t('health.safeRecoveryHelp')
                                     }
                                     type="button"
                                   >
-                                    {t('actions.probeHealth')}
+                                    {probingHealth ? (
+                                      <LoaderCircle
+                                        aria-hidden="true"
+                                        className="h-3.5 w-3.5 animate-spin"
+                                      />
+                                    ) : null}
+                                    {t(
+                                      probingHealth
+                                        ? 'actions.probingHealth'
+                                        : 'actions.probeHealth',
+                                    )}
                                   </button>
                                   <button
                                     className="btn-secondary px-3! py-1.5! text-xs"
@@ -701,6 +1120,12 @@ export default function AiConnectionsPanel() {
                                     {t('actions.retireModel')}
                                   </button>
                                 </div>
+                                {latest.status !== 'verified' &&
+                                latest.status !== 'retired' ? (
+                                  <p className="mt-2 text-xs text-secondary-600 dark:text-secondary-300">
+                                    {t('health.verifyModelFirst')}
+                                  </p>
+                                ) : null}
                               </article>
                             )
                           })}
@@ -717,30 +1142,22 @@ export default function AiConnectionsPanel() {
                       </p>
                       <div className="mt-3 grid gap-3 md:grid-cols-3">
                         {profilesForConnection(detail).length > 0 ? (
-                          profilesForConnection(detail).map(profile => (
-                            <div
-                              className="flex items-center justify-between gap-3 rounded-xl bg-secondary-50 p-3 dark:bg-secondary-950/50"
-                              key={profile.id}
-                            >
-                              <span className="text-sm text-secondary-700 dark:text-secondary-200">
-                                {profileName(t, profile.profileKey)}
-                              </span>
-                              <StatusBadge
-                                tone={
-                                  profile.blockers.length > 0 ||
-                                  profile.operationalStatus === 'suspended'
-                                    ? 'danger'
-                                    : 'success'
-                                }
+                          profilesForConnection(detail).map(profile => {
+                            const status = effectiveProfileStatus(profile)
+                            return (
+                              <div
+                                className="flex items-center justify-between gap-3 rounded-xl bg-secondary-50 p-3 dark:bg-secondary-950/50"
+                                key={profile.id}
                               >
-                                {profile.blockers.length > 0
-                                  ? t('profile.blocked')
-                                  : t(
-                                      `profile.operational.${profile.operationalStatus}`,
-                                    )}
-                              </StatusBadge>
-                            </div>
-                          ))
+                                <span className="text-sm text-secondary-700 dark:text-secondary-200">
+                                  {profileName(t, profile.profileKey)}
+                                </span>
+                                <StatusBadge tone={status.tone}>
+                                  {t(`profile.effectiveStatus.${status.key}`)}
+                                </StatusBadge>
+                              </div>
+                            )
+                          })
                         ) : (
                           <p className="text-sm text-secondary-600 dark:text-secondary-300">
                             {t('profile.noImpact')}
@@ -868,7 +1285,7 @@ export default function AiConnectionsPanel() {
                             </button>
                           )}
                           <button
-                            className="btn-secondary px-4! py-2! text-sm"
+                            className="btn-destructive px-4! py-2! text-sm"
                             disabled={
                               busy || detail.lifecycleStatus === 'retired'
                             }
@@ -921,6 +1338,12 @@ export default function AiConnectionsPanel() {
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {profiles.map(profile => {
+            const status = effectiveProfileStatus(profile)
+            const revisionMetadata = profileRevisionMetadata(
+              t,
+              profile,
+              profileRevisions[profile.profileKey],
+            )
             const target = profile.draftRevision?.modelRevisionId
               ? modelRevisions.find(
                   ({ revision }) =>
@@ -929,6 +1352,9 @@ export default function AiConnectionsPanel() {
               : undefined
             const adapterUnavailable =
               target?.connection.adapterAvailability.available === false
+            const connectionInactive =
+              target?.connection.lifecycleStatus !== undefined &&
+              target.connection.lifecycleStatus !== 'active'
             return (
               <article
                 className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700"
@@ -939,27 +1365,28 @@ export default function AiConnectionsPanel() {
                     <h4 className="font-semibold text-secondary-950 dark:text-secondary-50">
                       {profileName(t, profile.profileKey)}
                     </h4>
-                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                      {profile.activeRevisionId
-                        ? t('profile.activeRevision')
-                        : t('profile.noActiveRevision')}
-                    </p>
+                    {revisionMetadata ? (
+                      <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                        {revisionMetadata}
+                      </p>
+                    ) : null}
                   </div>
-                  <StatusBadge
-                    tone={
-                      profile.operationalStatus === 'enabled'
-                        ? 'success'
-                        : 'danger'
-                    }
-                  >
-                    {t(`profile.operational.${profile.operationalStatus}`)}
+                  <StatusBadge tone={status.tone}>
+                    {t(`profile.effectiveStatus.${status.key}`)}
                   </StatusBadge>
                 </div>
                 {profile.blockers.length > 0 ? (
                   <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-amber-800 dark:text-amber-200">
                     {profile.blockers.map(blocker => (
                       <li key={`${blocker.code}-${blocker.field ?? ''}`}>
-                        <BlockerText blocker={blocker} />
+                        <BlockerText
+                          attestationState={
+                            target
+                              ? attestationBlockerState(target.connection)
+                              : undefined
+                          }
+                          blocker={blocker}
+                        />
                       </li>
                     ))}
                   </ul>
@@ -972,7 +1399,14 @@ export default function AiConnectionsPanel() {
                     <ul className="mt-2 list-disc space-y-1 pl-5">
                       {candidateBlockers[profile.profileKey]?.map(blocker => (
                         <li key={`${blocker.code}-${blocker.field ?? ''}`}>
-                          <BlockerText blocker={blocker} />
+                          <BlockerText
+                            attestationState={
+                              target
+                                ? attestationBlockerState(target.connection)
+                                : undefined
+                            }
+                            blocker={blocker}
+                          />
                         </li>
                       ))}
                     </ul>
@@ -993,13 +1427,16 @@ export default function AiConnectionsPanel() {
                     disabled={
                       busy ||
                       !profile.draftRevision?.modelRevisionId ||
-                      adapterUnavailable
+                      adapterUnavailable ||
+                      connectionInactive
                     }
                     onClick={() => void activateProfile(profile)}
                     title={
                       adapterUnavailable
                         ? t('adapter.unavailableAction')
-                        : undefined
+                        : connectionInactive
+                          ? t('blockers.connection_inactive')
+                          : undefined
                     }
                     type="button"
                   >
@@ -1100,8 +1537,20 @@ export default function AiConnectionsPanel() {
         {dialog?.kind === 'model' ? (
           <ModelForm
             busy={busy}
+            catalog={
+              dialogCatalogByConnection[dialog.connection.id.toLowerCase()] ??
+              []
+            }
+            catalogStatus={
+              catalogStatusByConnection[dialog.connection.id.toLowerCase()] ??
+              'idle'
+            }
             model={dialog.model}
             onCancel={closeDialog}
+            onDiscoverCapabilities={input =>
+              discoverModelCapabilities(dialog.connection, input)
+            }
+            onRefreshCatalog={() => fetchCatalog(dialog.connection, false)}
             onSubmit={async value => {
               const success = await mutateAndReload(
                 `/api/admin/ai-connections/${dialog.connection.id}/actions`,
@@ -1199,7 +1648,7 @@ export default function AiConnectionsPanel() {
       </FormModal>
 
       <FormModal
-        closeDisabled={busy}
+        closeDisabled={busy || loading}
         developerModeValue="AI attestation form"
         maxWidthClassName="max-w-4xl"
         onClose={closeDialog}
@@ -1209,7 +1658,7 @@ export default function AiConnectionsPanel() {
       >
         {dialog?.kind === 'attestation' ? (
           <AttestationForm
-            busy={busy}
+            busy={busy || loading}
             connection={dialog.connection}
             onAttest={async (attestation, currentAttestationRevisionToken) => {
               const success = await mutateAndReload(
@@ -1225,6 +1674,33 @@ export default function AiConnectionsPanel() {
               if (success) closeDialog()
             }}
             onCancel={closeDialog}
+            onDiscard={async (
+              draft,
+              currentAttestationRevisionToken,
+              anchorEl,
+            ) => {
+              const accepted = await confirm({
+                anchorEl,
+                confirmText: t('attestation.discardDraft'),
+                icon: 'caution',
+                message: t('attestation.discardConfirmMessage'),
+                title: t('attestation.discardConfirmTitle'),
+                variant: 'danger',
+              })
+              if (!accepted) return
+              const success = await mutateAndReload(
+                `/api/admin/ai-connections/${dialog.connection.id}/actions`,
+                {
+                  action: 'discard_attestation_draft',
+                  currentAttestationRevisionToken,
+                  draftAttestationId: draft.id,
+                  draftAttestationRevisionToken: draft.revisionToken,
+                },
+                'attestation.discarded',
+                { actionLabel: t('attestation.discardDraft') },
+              )
+              if (success) closeDialog()
+            }}
             onSave={async attestation => {
               const response = await mutation(
                 `/api/admin/ai-connections/${dialog.connection.id}/actions`,
@@ -1235,6 +1711,7 @@ export default function AiConnectionsPanel() {
               const saved = (await response.json()) as AiAdminAttestationRecord
               setSavedAttestation(saved)
               setMessage(t('attestation.saved'))
+              await loadRegistry()
             }}
             savedDraft={savedAttestation}
           />

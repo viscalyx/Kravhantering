@@ -16,6 +16,12 @@ AI-assisted authoring is optional. An unavailable or unconfigured AI
 connection blocks only its dependent run profiles; it does not make
 `/api/health` or `/api/ready` fail.
 
+Authoring clients receive a localized cause for normalized provider failures
+such as authentication, rate limiting, connectivity, timeout, rejected
+requests, capability mismatch, adapter failure, or an unusable response. A
+validated content-free `technicalCode` is shown as a support reference. Raw
+provider bodies and nested exception details are never returned.
+
 ## Ownership
 
 - Product administrators register AI connections, enter and rotate provider
@@ -160,6 +166,10 @@ development may set `AI_CONNECTION_DEVELOPMENT_LOCAL_ORIGIN` to the one exact
 origin permitted to use authentication type `none`; this exception is inactive
 in test and production.
 
+For field-by-field schemas, exact environment-file examples, decision owners,
+and a first-time operator procedure, follow the
+[AI connection deployment-policy guide](./ai-connection-deployment-policies.md).
+
 The fixed authentication types are static secret, OAuth 2.0 client credentials,
 and mTLS. Production sidecars require one of these forms. The only no-auth and
 plain HTTP exception is the exact `development-local` origin supplied by the
@@ -172,7 +182,14 @@ information-class ceiling, personal-data approval, regions, subprocessors,
 training decision, and retention maximum. The deployment-owned run-type policy
 supplies the conservative requirement for each fixed run profile. Missing,
 malformed, expired, or insufficient policy blocks the run. Request data cannot
-relax either policy.
+relax either policy. Admin Center distinguishes a missing deployment-owned
+run-type policy from an attestation that does not satisfy a configured policy.
+
+Admin Center derives an editable run-profile capability policy from the exact
+selected model revision's verified capabilities. It forces unsupported optional
+capabilities to `disabled` and prevents selecting a revision that lacks a
+capability required by the fixed run profile. Runtime resolution rechecks the
+same verified capability evidence and remains fail closed.
 
 Every server-owned AI request also has an administrator-owned privacy minimum:
 provider data collection is denied and zero data retention is required. The
@@ -361,7 +378,7 @@ For `staging_live`, use `environment: "staging"` and
 complete document. `liveExecutionProof` is an array with one item per intended
 path. Each item contains all eight path fields plus `executionId`,
 `externalLiveCallMade: true`, `failureCategory: null`, `outcome: "passed"`,
-and `testSuiteVersion: "ai-admin-functional-probe-v3"`.
+and `testSuiteVersion: "ai-admin-functional-probe-v4"`.
 
 Run the gate from the unpacked bundle and retain its output with the release
 evidence:
@@ -435,7 +452,7 @@ profile revision is active, enabled, and unblocked, and that the exact
 connection and model revision are active and verified. It then runs the
 guard-compatible, non-mutating Admin `verify_live_path` action. That action
 resolves the exact active connection/model/profile path, rejects controlled
-offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v3`, and
+offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v4`, and
 then executes a fixed synthetic request through the selected active profile's
 resolver, configured secret, trust boundary, queue/retry/deadline coordinator,
 integration layer, and exact live adapter. It does not select an area or send
@@ -443,6 +460,11 @@ database-derived authoring data. The service rechecks all three revision tokens
 after execution, so a concurrent Admin change emits no proof. Its response binds
 the current execution ID, suite version, outcome, observed adapter, exact path,
 and revision tokens; the script validates every field before emitting evidence.
+The v4 capability probe no longer treats advertised reasoning request
+parameters as proof of visible AI analysis. It uses a fixed reasoning task and
+passes that capability only when the normalized terminal contains a plaintext
+or summarized analysis value; absent or encrypted-only reasoning remains
+unverified.
 Every HTTP operation has a 120-second deadline and a 1 MiB streamed response
 limit. The script prints only opaque path identifiers and outcome metadata.
 Merge that fragment into a `staging_live` deployment evidence document and run

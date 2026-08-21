@@ -215,7 +215,7 @@ describe('AiRequirementGenerator devMarker coverage', () => {
     )
     expect(summaryContainer).toHaveAttribute(
       'data-developer-mode-value',
-      'generation outcome',
+      'generation outcome and technical error details',
     )
   })
 })

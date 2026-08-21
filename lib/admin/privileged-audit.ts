@@ -23,6 +23,7 @@ export type AdminPrivilegedActionOperation =
   | 'activate'
   | 'create'
   | 'delete'
+  | 'discard'
   | 'probe'
   | 'retire'
   | 'rotate'

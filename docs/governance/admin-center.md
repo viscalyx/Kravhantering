@@ -178,16 +178,72 @@ image input, JSON repair disables streaming and AI analysis, and administrators
 may only strengthen dimensions that the profile allows. Activating a
 replacement evaluates the candidate draft and reports capability blockers with
 their affected field; blockers on the currently active revision do not prevent
-the replacement attempt. A rejected profile action returns blocker details only
-for the fixed localizable code and field enums; malformed or arbitrary details
-are omitted. Connection impact includes active and draft profile revisions, not
-superseded history.
+the replacement attempt. A missing deployment-owned run-type data policy is
+reported separately from an attestation that does not satisfy a configured
+policy. A rejected profile action returns blocker details only for the fixed
+localizable code and field enums; malformed or arbitrary details are omitted.
+Connection impact includes active and draft profile revisions, not superseded
+history.
 
 Adapter availability is derived from the server-side Admin adapter registry,
 not from adapter names in the browser. An unregistered adapter leaves ordinary
 connection, attestation, and credential administration available while model
 catalog discovery, connection and model verification, health probes, and
 activation are disabled with an explicit explanation.
+
+Catalog capabilities are adapter-owned, three-state claims: supported,
+unsupported, or unknown. While the automatically requested catalog is loading,
+the form replaces declared-capability controls with an explicit loading state
+and disables model saving so persisted values cannot be mistaken for current
+catalog claims. Explicit catalog answers then prefill the model draft and lock
+the affected capability controls. `Check capabilities` refreshes the exact
+catalog entry and uses separate bounded synthetic calls only for unknown
+functional capabilities. Authentication, timeout, and transient provider
+failures preserve the unknown state instead of being interpreted as an
+unsupported capability. A saved complete capability assessment remains visible
+when the draft is reopened and takes precedence where a refreshed catalog still
+reports an unknown value. An incomplete assessment is not persisted as a false
+unsupported claim. The administrator reviews and saves the resulting model
+draft; discovery never silently rewrites an existing verified revision. Model
+verification remains the source of truth.
+
+The model-verification action is available only for a revision whose status is
+`verification_required`. A verified revision exposes the health probe instead;
+editing the model creates a new immutable revision that requires verification.
+A transient unavailable health result preserves verification and permits a new
+health probe. A concrete model contradiction changes the revision back to
+`verification_required`, which disables health probing and makes verification
+available again. A connection-wide authentication contradiction additionally
+requires the connection to be reverified first.
+
+The run-profile revision form lists at most one revision per connection model:
+the revision with the highest revision number, and only when that revision is
+verified. It does not offer older verified revisions when a newer revision
+exists, or any draft, verification-required, or retired revision. An incomplete
+profile draft can still be saved without a model assignment. After a model is
+selected, the form derives its capability-policy controls from that exact
+revision's verified capabilities. Unsupported optional capabilities are forced
+to `disabled`; a revision that lacks an application-required capability is
+shown as incompatible and cannot be selected. Profile minima remain locked.
+
+The run-profile badge presents effective state rather than the internal
+operational gate alone. A profile is `Not activated` without an active revision,
+`Blocked` when its active revision has dependency blockers, `Suspended` when the
+operator has suspended it, and `Active` only when an unblocked active revision
+exists. The secondary line does not repeat that status. It shows concrete
+revision metadata when available: the active profile revision, the draft
+revision, or both when a replacement draft exists.
+
+The OpenRouter adapter treats streaming as an API transport capability rather
+than a per-model `supported_parameters` value. Reasoning parameters in the
+catalog mean that visible AI analysis is unknown, not supported: the bounded
+functional probe must observe a separate plaintext or summarized analysis
+field. Missing or encrypted-only reasoning does not satisfy the visible
+AI-analysis capability. A failed model verification returns only bounded,
+content-free diagnostics: its safe failure category, failed declared
+capabilities, and failed fixed checks. The Admin UI keeps this warning open
+until the administrator dismisses it; success and ordinary informational
+feedback still close automatically.
 
 The source of truth is:
 

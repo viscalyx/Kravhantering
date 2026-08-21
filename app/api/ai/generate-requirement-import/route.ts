@@ -12,7 +12,7 @@ import {
   getPromptMessage,
   parseJsonObject,
 } from '@/lib/ai/requirement-prompt'
-import type { AiRunEvent, AiRunUsage } from '@/lib/ai/run-contracts'
+import type { AiRunUsage } from '@/lib/ai/run-contracts'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getApplicationSettings } from '@/lib/dal/application-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -45,6 +45,7 @@ import {
   AI_GENERATE_SLOW_THRESHOLD_MS,
   AI_RUN_REQUEST_DEADLINE_MS,
   aiRequirementImportBaseBodySchema,
+  aiRunFailureError,
   aiRunProfileError,
   aiUsageMetricValue,
   checkAiRequirementImportThrottle,
@@ -168,14 +169,6 @@ function validatePayload(
   return validation.success
     ? { ok: true, payload: validation.data }
     : { code: 'ai_provider_invalid_response', ok: false, status: 503 }
-}
-
-function failureCode(event: Extract<AiRunEvent, { type: 'failed' }>) {
-  return event.failure.category === 'rate_limited'
-    ? ('ai_provider_rate_limited' as const)
-    : event.failure.category === 'invalid_response'
-      ? ('ai_provider_invalid_response' as const)
-      : ('ai_provider_unavailable' as const)
 }
 
 export const POST = secureMutationRoute<GenerateRequirementImportBody>({
@@ -365,10 +358,7 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
               break
             }
             if (event.type === 'failed') {
-              send('error', {
-                code: failureCode(event),
-                message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-              })
+              send('error', aiRunFailureError(event.failure, body.locale))
               recordTerminal(
                 'failure',
                 event.failure.category === 'rate_limited' ? 429 : 503,

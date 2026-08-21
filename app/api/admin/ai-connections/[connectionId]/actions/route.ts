@@ -53,8 +53,25 @@ export const POST = secureMutationRoute({
       case 'delete_secret_candidate':
         await service.deleteSecretCandidate(connectionId, body.secretVersionId)
         return new NextResponse(null, { status: 204 })
+      case 'discard_attestation_draft':
+        await service.discardAttestationDraft({
+          connectionId,
+          currentAttestationRevisionToken: body.currentAttestationRevisionToken,
+          draftAttestationId: body.draftAttestationId,
+          draftAttestationRevisionToken: body.draftAttestationRevisionToken,
+        })
+        return new NextResponse(null, { status: 204 })
       case 'fetch_catalog':
         return NextResponse.json(await service.fetchCatalog(connectionId))
+      case 'discover_model_capabilities':
+        return NextResponse.json(
+          await service.discoverModelCapabilities({
+            capabilities: body.capabilities,
+            connectionId,
+            externalModelId: body.externalModelId,
+            externalModelVersion: body.externalModelVersion,
+          }),
+        )
       case 'probe_health':
         return NextResponse.json(
           await service.probeHealth({

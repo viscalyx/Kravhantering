@@ -289,12 +289,12 @@ export function createProductionAiAdminExternalOperations(
       } catch {
         return 'egress_policy_blocked'
       }
+      const runType = PROFILE_RUN_TYPE[profileKey]
+      if (!deployment.dataPolicies[runType]) {
+        return 'data_policy_missing'
+      }
       try {
-        enforceAiDataPolicy(
-          trustConfiguration(connection),
-          PROFILE_RUN_TYPE[profileKey],
-          deployment,
-        )
+        enforceAiDataPolicy(trustConfiguration(connection), runType, deployment)
         return 'authorized'
       } catch {
         return 'data_policy_blocked'
@@ -303,6 +303,15 @@ export function createProductionAiAdminExternalOperations(
     async fetchCatalog(connection) {
       const { egress, registration } = await prepared(connection)
       return secrets().fetchCatalog(registration.adapter, connection, egress)
+    },
+    async discoverModelCapabilities(connection, target) {
+      const { egress, registration } = await prepared(connection)
+      return secrets().discoverModelCapabilities(
+        registration.adapter,
+        connection,
+        egress,
+        target,
+      )
     },
     async probeConnection(connection) {
       const { egress, registration } = await prepared(connection)

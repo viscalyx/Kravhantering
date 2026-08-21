@@ -1783,6 +1783,13 @@ an organizational unit and an incident-response process in the external
 attestation. They must never contain a person's name, email address, HSA-id, or
 other living-person identity.
 
+The current valid revision and a newer editable draft may coexist. Reads expose
+them separately so an administrator resumes the draft without replacing the
+effective approval. Approving the draft atomically supersedes the prior valid
+revision. Choosing to return to the approved attestation marks outstanding
+draft rows as `superseded`; the valid revision remains unchanged. Both actions
+use revision tokens and privileged audit in the same serializable transaction.
+
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | ------ | ---- | ----------- |
@@ -2002,11 +2009,13 @@ Five consecutive connection, deadline, or retryable adapter failures open it
 for an hourly automatic probe. One SQL lease owns each probe, expired
 half-open leases are reclaimable, and five failed probes require manual
 recovery. The lease fields are either all null or all populated. Demo seed
-creates ordinary OpenRouter and self-hosted vLLM connection drafts, one draft
-attestation template for each connection, and three model-free draft profile
-revisions. It never creates provider secrets, external model IDs, verification
-evidence, operational state, or activation. Seeded connections have no special
-runtime provenance or behavior.
+creates ordinary OpenRouter and self-hosted vLLM connection drafts, a
+realistically populated but unapproved OpenRouter attestation draft, an
+explicit absence of any vLLM attestation, and three model-free draft profile
+revisions.
+It never creates provider secrets, external model IDs, verification evidence,
+operational state, or activation. Seeded connections have no special runtime
+provenance or behavior.
 
 ### `ai_run_coordination_entries`
 

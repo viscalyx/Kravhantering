@@ -40,6 +40,7 @@ import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
   AI_RUN_REQUEST_DEADLINE_MS,
   aiRequirementImportBaseBodySchema,
+  aiRunFailureError,
   aiRunProfileError,
   aiUsageMetricValue,
   checkAiRequirementImportThrottle,
@@ -310,15 +311,16 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
         }
         if (event.type === 'failed') {
           const status = event.failure.category === 'rate_limited' ? 429 : 503
+          const providerError = aiRunFailureError(event.failure, body.locale)
           recordTerminal('failure', status)
           return applyResponseCorrelationHeaders(
             Response.json(
               {
-                code:
-                  event.failure.category === 'rate_limited'
-                    ? 'ai_provider_rate_limited'
-                    : 'ai_provider_unavailable',
-                error: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+                code: providerError.code,
+                error: providerError.message,
+                ...(providerError.technicalCode
+                  ? { technicalCode: providerError.technicalCode }
+                  : {}),
               },
               { status },
             ),

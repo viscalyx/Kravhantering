@@ -1,8 +1,8 @@
 'use client'
 
-import { KeyRound } from 'lucide-react'
+import { CheckCircle2, CircleOff, KeyRound, TriangleAlert } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import type { FormEvent } from 'react'
+import { type FormEvent, useState } from 'react'
 import type {
   CreateAiConnection,
   SaveAiAttestation,
@@ -11,6 +11,8 @@ import type {
   AiAdminAttestationRecord,
   AiAdminConnectionDetail,
 } from '@/lib/ai/admin-service'
+import { devMarker } from '@/lib/developer-mode-markers'
+import { createDirtySnapshot } from '@/lib/forms/dirty-state'
 import {
   DialogActions,
   Field,
@@ -46,6 +48,21 @@ function attestationPayload(
     reviewedAt: attestation.reviewedAt,
     revisionToken: attestation.revisionToken,
     subprocessors: attestation.subprocessors,
+  }
+}
+
+const ATTESTATION_DIRTY_OPTIONS = {
+  unorderedArrayPaths: ['processingRegions', 'subprocessors'],
+} as const
+
+function attestationContent(attestation: SaveAiAttestation) {
+  const { revisionToken: _revisionToken, ...content } = attestation
+  return {
+    ...content,
+    incidentResponseReference:
+      content.incidentResponseReference?.toLowerCase() ?? null,
+    responsibleOrganizationUnitReference:
+      content.responsibleOrganizationUnitReference?.toLowerCase() ?? null,
   }
 }
 
@@ -321,6 +338,11 @@ interface AttestationFormProps {
     currentValidRevisionToken: string | null,
   ) => Promise<void>
   onCancel: () => void
+  onDiscard: (
+    draft: AiAdminAttestationRecord,
+    currentValidRevisionToken: string,
+    anchorEl: HTMLElement,
+  ) => Promise<void>
   onSave: (value: SaveAiAttestation) => Promise<void>
   savedDraft: AiAdminAttestationRecord | null
 }
@@ -330,14 +352,21 @@ export function AttestationForm({
   connection,
   onAttest,
   onCancel,
+  onDiscard,
   onSave,
   savedDraft,
 }: AttestationFormProps) {
   const t = useTranslations('admin.aiConnections')
   const existing = connection.attestation
-  const editable = existing?.status === 'draft' ? existing : null
-  const currentValidToken =
-    existing?.status === 'valid' ? existing.revisionToken : null
+  const validAttestation = existing?.status === 'valid' ? existing : null
+  const storedDraft =
+    connection.attestationDraft ??
+    (existing?.status === 'draft' ? existing : null)
+  const approvalDraft = savedDraft ?? storedDraft
+  const currentValidToken = validAttestation?.revisionToken ?? null
+  const [currentContentSnapshot, setCurrentContentSnapshot] = useState<
+    string | null
+  >(null)
   function valueFrom(form: HTMLFormElement): SaveAiAttestation {
     const data = new FormData(form)
     const numberValue = nullable(data.get('maximumRetentionDays'))
@@ -364,8 +393,7 @@ export function AttestationForm({
       ),
       reviewDueAt: nullable(data.get('reviewDueAt')),
       reviewedAt: nullable(data.get('reviewedAt')),
-      revisionToken:
-        savedDraft?.revisionToken ?? editable?.revisionToken ?? null,
+      revisionToken: approvalDraft?.revisionToken ?? null,
       subprocessors: splitList(data.get('subprocessors')),
     }
   }
@@ -373,9 +401,91 @@ export function AttestationForm({
     event.preventDefault()
     await onSave(valueFrom(event.currentTarget))
   }
-  const defaults = savedDraft ?? editable ?? existing
+  const defaults = approvalDraft ?? existing
+  const persistedAttestation = approvalDraft ?? existing
+  const savedContentSnapshot = persistedAttestation
+    ? createDirtySnapshot(
+        attestationContent(attestationPayload(persistedAttestation)),
+        ATTESTATION_DIRTY_OPTIONS,
+      )
+    : null
+  const contentDirty =
+    persistedAttestation !== null &&
+    currentContentSnapshot !== null &&
+    currentContentSnapshot !== savedContentSnapshot
+  const saveDirty = persistedAttestation === null || contentDirty
+  const banner = contentDirty
+    ? {
+        key: approvalDraft
+          ? 'attestation.banner.unsavedChanges'
+          : existing?.status === 'valid'
+            ? 'attestation.banner.approvedChanged'
+            : 'attestation.banner.unsavedChanges',
+        tone: 'warning' as const,
+      }
+    : approvalDraft && existing?.status === 'valid'
+      ? {
+          key: 'attestation.banner.replacementDraft',
+          tone: 'warning' as const,
+        }
+      : approvalDraft
+        ? {
+            key: 'attestation.banner.draft',
+            tone: 'warning' as const,
+          }
+        : existing?.status === 'valid'
+          ? {
+              key: 'attestation.banner.valid',
+              tone: 'success' as const,
+            }
+          : existing
+            ? {
+                key: `attestation.status.${existing.status}`,
+                tone: 'danger' as const,
+              }
+            : {
+                key: 'attestation.banner.missing',
+                tone: 'warning' as const,
+              }
+  const BannerIcon =
+    banner.tone === 'success'
+      ? CheckCircle2
+      : banner.tone === 'danger'
+        ? CircleOff
+        : TriangleAlert
+  const bannerClass =
+    banner.tone === 'success'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100'
+      : banner.tone === 'danger'
+        ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100'
+        : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100'
   return (
-    <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
+    <form
+      className="grid gap-4 sm:grid-cols-2"
+      onChange={event =>
+        setCurrentContentSnapshot(
+          createDirtySnapshot(
+            attestationContent(valueFrom(event.currentTarget)),
+            ATTESTATION_DIRTY_OPTIONS,
+          ),
+        )
+      }
+      onSubmit={submit}
+    >
+      <div
+        aria-atomic="true"
+        aria-live="polite"
+        className={`flex items-start gap-2 rounded-xl border p-3 text-sm sm:col-span-2 ${bannerClass}`}
+        role="status"
+        {...devMarker({
+          context: 'AI attestation form',
+          name: 'AI attestation approval status',
+          priority: 420,
+        })}
+      >
+        <BannerIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+        <p>{t(banner.key)}</p>
+      </div>
       {[
         [
           'responsibleOrganizationUnitReference',
@@ -485,23 +595,47 @@ export function AttestationForm({
       </div>
       <div className="sm:col-span-2">
         <DialogActions
+          actions={
+            <>
+              {approvalDraft && currentValidToken ? (
+                <button
+                  className="btn-destructive px-4! py-2! text-sm"
+                  disabled={busy}
+                  onClick={event =>
+                    void onDiscard(
+                      approvalDraft,
+                      currentValidToken,
+                      event.currentTarget,
+                    )
+                  }
+                  type="button"
+                >
+                  {t('attestation.discardDraft')}
+                </button>
+              ) : null}
+              {approvalDraft ? (
+                <button
+                  className="btn-primary px-4! py-2! text-sm"
+                  disabled={busy}
+                  onClick={() =>
+                    void onAttest(
+                      attestationPayload(approvalDraft),
+                      currentValidToken,
+                    )
+                  }
+                  type="button"
+                >
+                  {t('attestation.approve')}
+                </button>
+              ) : null}
+            </>
+          }
           busy={busy}
           cancel={t('actions.cancel')}
           onCancel={onCancel}
           save={busy ? t('actions.saving') : t('attestation.saveDraft')}
+          saveDirty={saveDirty}
         />
-        {savedDraft ? (
-          <button
-            className="btn-primary mt-3 w-full px-4! py-2! text-sm"
-            disabled={busy}
-            onClick={() =>
-              void onAttest(attestationPayload(savedDraft), currentValidToken)
-            }
-            type="button"
-          >
-            {t('attestation.approve')}
-          </button>
-        ) : null}
       </div>
     </form>
   )

@@ -8,6 +8,8 @@ import type {
 } from './admin-adapter'
 import type { AiCapability } from './admin-contracts'
 import type {
+  AiAdminCapabilityDiscoveryResult,
+  AiAdminCapabilityDiscoveryTarget,
   AiAdminCatalogItem,
   AiAdminConnectionDetail,
   AiAdminConnectionVerificationResult,
@@ -15,6 +17,7 @@ import type {
   AiAdminModelRevisionRecord,
   AiAdminModelVerificationResult,
 } from './admin-service'
+import { AI_CAPABILITY_KEYS } from './capability-keys'
 import type { AiAdapterConfigurationResolver } from './profile-resolver'
 import {
   AiProviderSecretCryptoError,
@@ -42,11 +45,13 @@ import {
 } from './run-contracts'
 
 export const AI_ADMIN_FUNCTIONAL_PROBE_VERSION =
-  'ai-admin-functional-probe-v3' as const
+  'ai-admin-functional-probe-v4' as const
 const ADMIN_PROBE_TIMEOUT_MS = 30_000
+const ADMIN_CAPABILITY_DISCOVERY_TIMEOUT_MS = 60_000
 const ADMIN_CANCELLATION_GRACE_MS = 5_000
 const ADMIN_PROBE_PROFILE_REVISION_ID =
   '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
+const ADMIN_DISCOVERY_MODEL_REVISION_ID = '00000000-0000-4000-8000-000000000866'
 const ADMIN_PROBE_SCHEMA = Object.freeze({
   additionalProperties: false,
   properties: { probe: { const: 'ok', type: 'string' } },
@@ -229,7 +234,13 @@ function isNormalizedAdminProbeEvent(value: unknown): value is AiRunEvent {
     !isRunIdentity(event.identity) ||
     !hasOnlyKeys(
       event.failure,
-      new Set(['category', 'diagnosticCode', 'retryAfterSeconds', 'retryable']),
+      new Set([
+        'category',
+        'diagnosticCode',
+        'retryAfterSeconds',
+        'retryDisposition',
+        'retryable',
+      ]),
     )
   ) {
     return false
@@ -244,6 +255,10 @@ function isNormalizedAdminProbeEvent(value: unknown): value is AiRunEvent {
       (typeof failure.retryAfterSeconds === 'number' &&
         Number.isSafeInteger(failure.retryAfterSeconds) &&
         failure.retryAfterSeconds > 0)) &&
+    (failure.retryDisposition === undefined ||
+      failure.retryDisposition === 'explicit_retryable_status' ||
+      failure.retryDisposition === 'idempotent' ||
+      failure.retryDisposition === 'safe_before_acceptance') &&
     typeof failure.retryable === 'boolean'
   )
 }
@@ -287,9 +302,15 @@ function selectedCapabilities(
 }
 
 function probeTask(capabilities: AiCapability): AiTaskEnvelope {
+  const analysisProbe = capabilities.aiAnalysis
   return {
     content: [
-      { text: 'Return the required probe object.', type: 'text' },
+      {
+        text: analysisProbe
+          ? 'Determine whether 19 multiplied by 23 equals 437, then return the required probe object.'
+          : 'Return the required probe object.',
+        type: 'text',
+      },
       ...(capabilities.imageInput
         ? ([
             {
@@ -300,8 +321,9 @@ function probeTask(capabilities: AiCapability): AiTaskEnvelope {
           ] as const)
         : []),
     ],
-    instructions:
-      'This is a fixed administrative capability probe. Return exactly {"probe":"ok"}.',
+    instructions: analysisProbe
+      ? 'This is a fixed administrative capability probe. Use the provider reasoning mode for the arithmetic check. Do not put reasoning in the JSON response or expose a private chain of thought. If supported, return a concise visible analysis summary only through the provider analysis field. Return exactly {"probe":"ok"}.'
+      : 'This is a fixed administrative capability probe. Return exactly {"probe":"ok"}.',
     responseSchema: ADMIN_PROBE_SCHEMA,
   }
 }
@@ -338,9 +360,10 @@ async function runAdminFunctionalProbe(
   context: Readonly<AiAdminAdapterContext>,
   revision: Readonly<AiAdminModelRevisionRecord>,
   capabilities: AiCapability,
+  timeoutMs = ADMIN_PROBE_TIMEOUT_MS,
 ): Promise<AdminFunctionalProbeResult> {
   const controller = new AbortController()
-  const deadlineAt = new Date(Date.now() + ADMIN_PROBE_TIMEOUT_MS).toISOString()
+  const deadlineAt = new Date(Date.now() + timeoutMs).toISOString()
   const identity: AiRunIdentity = {
     aiConnectionId: context.connection.id as AiConnectionId,
     aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
@@ -348,7 +371,7 @@ async function runAdminFunctionalProbe(
   }
   let terminal: AdminProbeTerminal | undefined
   let observedOutputDelta = false
-  const timeout = setTimeout(() => controller.abort(), ADMIN_PROBE_TIMEOUT_MS)
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const stream = adapter.runFunctionalProbe(context, revision, {
       abortSignal: controller.signal,
@@ -422,6 +445,7 @@ async function runAdminCancellationProbe(
     aiRunProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
   }
   let grace: ReturnType<typeof setTimeout> | undefined
+  let handoffTimeout: ReturnType<typeof setTimeout> | undefined
   let signalObservedResolve: (() => void) | undefined
   const signalObserved = new Promise<void>(resolve => {
     signalObservedResolve = resolve
@@ -449,6 +473,12 @@ async function runAdminCancellationProbe(
     const handoff = await Promise.race([
       signalObserved.then(() => 'signal_observed' as const),
       outcome.then(() => 'terminal_observed' as const),
+      new Promise<'handoff_timeout'>(resolve => {
+        handoffTimeout = setTimeout(
+          () => resolve('handoff_timeout'),
+          ADMIN_PROBE_TIMEOUT_MS,
+        )
+      }),
     ])
     if (handoff === 'terminal_observed') return await outcome
     controller.abort()
@@ -463,6 +493,7 @@ async function runAdminCancellationProbe(
   } finally {
     controller.abort()
     if (grace) clearTimeout(grace)
+    if (handoffTimeout) clearTimeout(handoffTimeout)
   }
 }
 
@@ -1157,6 +1188,95 @@ export class AiProviderSecretAdminService {
     )
   }
 
+  discoverModelCapabilities(
+    adapter: AiAdminConnectionAdapter,
+    connection: Readonly<AiAdminConnectionDetail>,
+    egress: AiEgressTransport,
+    target: Readonly<AiAdminCapabilityDiscoveryTarget>,
+  ): Promise<Readonly<AiAdminCapabilityDiscoveryResult>> {
+    return this.#execute(connection, egress, async context => {
+      const discoveryDeadline =
+        Date.now() + ADMIN_CAPABILITY_DISCOVERY_TIMEOUT_MS
+      const assessments = Object.fromEntries(
+        AI_CAPABILITY_KEYS.map(capability => [
+          capability,
+          { failureCategory: null, support: 'unknown' as const },
+        ]),
+      ) as AiAdminCapabilityDiscoveryResult['assessments']
+      const capabilities = emptyCapabilities()
+
+      for (const capability of target.capabilities) {
+        const remainingTimeMs = discoveryDeadline - Date.now()
+        if (remainingTimeMs <= 0) {
+          ;(
+            assessments as Record<
+              keyof AiCapability,
+              {
+                failureCategory: string | null
+                support: 'supported' | 'unsupported' | 'unknown'
+              }
+            >
+          )[capability] = {
+            failureCategory: 'deadline_exceeded',
+            support: 'unknown',
+          }
+          continue
+        }
+        const selected = emptyCapabilities()
+        selected[capability] = true
+        const result = await runAdminFunctionalProbe(
+          adapter,
+          context,
+          {
+            agentRuntimeVersion: null,
+            connectionConfigurationVersion: connection.configurationVersion,
+            declaredCapabilities: selected,
+            discoveredCapabilities: null,
+            externalModelId: target.externalModelId,
+            externalModelVersion: target.externalModelVersion,
+            id: ADMIN_DISCOVERY_MODEL_REVISION_ID,
+            revisionNumber: 0,
+            revisionToken: ADMIN_DISCOVERY_MODEL_REVISION_ID,
+            status: 'draft',
+            verifiedCapabilities: null,
+          },
+          selected,
+          Math.min(ADMIN_PROBE_TIMEOUT_MS, remainingTimeMs),
+        )
+        const supported =
+          result.completed &&
+          result.schemaValid &&
+          result.capabilities[capability]
+        const concretelyUnsupported =
+          (result.completed && result.schemaValid) ||
+          result.failureCategory === 'capability_mismatch' ||
+          result.failureCategory === 'request_rejected'
+        capabilities[capability] = supported
+        ;(
+          assessments as Record<
+            keyof AiCapability,
+            {
+              failureCategory: string | null
+              support: 'supported' | 'unsupported' | 'unknown'
+            }
+          >
+        )[capability] = {
+          failureCategory: supported
+            ? null
+            : (result.failureCategory ??
+              (concretelyUnsupported ? 'capability_mismatch' : null)),
+          support: supported
+            ? 'supported'
+            : concretelyUnsupported
+              ? 'unsupported'
+              : 'unknown',
+        }
+      }
+
+      return { assessments, capabilities }
+    })
+  }
+
   probeConnection(
     adapter: AiAdminConnectionAdapter,
     connection: Readonly<AiAdminConnectionDetail>,
@@ -1325,6 +1445,7 @@ export async function reencryptAiProviderSecrets(
 ): Promise<{
   fromRootKeyVersion: string
   reencryptedCount: number
+  skippedCount: number
   toRootKeyVersion: string
 }> {
   const batchSize = input.batchSize ?? 100
@@ -1336,11 +1457,13 @@ export async function reencryptAiProviderSecrets(
     return {
       fromRootKeyVersion: input.fromRootKeyVersion,
       reencryptedCount: 0,
+      skippedCount: 0,
       toRootKeyVersion,
     }
   }
   let count = 0
   let cursor: string | null = null
+  let skippedCount = 0
   while (true) {
     const batch = await db.transaction('SERIALIZABLE', async manager => {
       const rows = await manager.query<AiProviderSecretRow[]>(
@@ -1360,6 +1483,7 @@ export async function reencryptAiProviderSecrets(
         [input.fromRootKeyVersion, cursor],
       )
       let affectedRowCount = 0
+      let batchSkippedCount = 0
       for (const row of rows) {
         const plaintext = decryptRow(keyring, row)
         const encrypted = encryptAiProviderSecret(
@@ -1387,14 +1511,17 @@ export async function reencryptAiProviderSecrets(
           ],
         )
         affectedRowCount += updatedRows.length
+        if (updatedRows.length === 0) batchSkippedCount += 1
       }
       return {
         affectedRowCount,
         cursor: rows.at(-1)?.id ?? null,
         selectedRowCount: rows.length,
+        skippedCount: batchSkippedCount,
       }
     })
     count += batch.affectedRowCount
+    skippedCount += batch.skippedCount
     if (batch.selectedRowCount === 0 || batch.cursor === null) break
     cursor = batch.cursor
     if (batch.selectedRowCount < batchSize) break
@@ -1402,6 +1529,7 @@ export async function reencryptAiProviderSecrets(
   return {
     fromRootKeyVersion: input.fromRootKeyVersion,
     reencryptedCount: count,
+    skippedCount,
     toRootKeyVersion,
   }
 }

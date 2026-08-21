@@ -55,12 +55,15 @@ function apiBlockers(value: unknown): AiAdminBlocker[] {
 
 export interface RegistryMutationFeedback {
   actionLabel: string
+  suppressError?: boolean
 }
 
 export interface RegistryRequestError {
   kind: 'load' | 'mutation'
   message: string
 }
+
+type RegistryMessageTone = 'success' | 'warning'
 
 export function useRegistryRequestState() {
   const t = useTranslations('admin.aiConnections')
@@ -79,11 +82,26 @@ export function useRegistryRequestState() {
   })
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
+  const [statusMessage, setStatusMessage] = useState<{
+    details: readonly string[]
+    message: string
+    tone: RegistryMessageTone
+  } | null>(null)
   const [error, setError] = useState<RegistryRequestError | null>(null)
   const [candidateBlockers, setCandidateBlockers] = useState<
     Partial<Record<AiRunProfileKey, readonly AiAdminBlocker[]>>
   >({})
+
+  const setMessage = useCallback(
+    (
+      message: string | null,
+      tone: RegistryMessageTone = 'success',
+      details: readonly string[] = [],
+    ): void => {
+      setStatusMessage(message ? { details, message, tone } : null)
+    },
+    [],
+  )
 
   const loadRegistry = useCallback(async () => {
     setLoading(true)
@@ -192,25 +210,29 @@ export function useRegistryRequestState() {
           profileKey && blockers.length > 0
             ? t('profile.candidateBlockers')
             : (responseMessage ?? t('mutationError'))
-        setError({
-          kind: 'mutation',
-          message: t('actionFailed', {
-            action: feedback.actionLabel,
-            error: actualError,
-          }),
-        })
+        if (!feedback.suppressError) {
+          setError({
+            kind: 'mutation',
+            message: t('actionFailed', {
+              action: feedback.actionLabel,
+              error: actualError,
+            }),
+          })
+        }
         return null
       }
       setCandidateBlockers({})
       return response
     } catch {
-      setError({
-        kind: 'mutation',
-        message: t('actionFailed', {
-          action: feedback.actionLabel,
-          error: t('mutationError'),
-        }),
-      })
+      if (!feedback.suppressError) {
+        setError({
+          kind: 'mutation',
+          message: t('actionFailed', {
+            action: feedback.actionLabel,
+            error: t('mutationError'),
+          }),
+        })
+      }
       return null
     } finally {
       setBusy(false)
@@ -240,7 +262,9 @@ export function useRegistryRequestState() {
     error,
     loading,
     loadRegistry,
-    message,
+    message: statusMessage?.message ?? null,
+    messageDetails: statusMessage?.details ?? [],
+    messageTone: statusMessage?.tone ?? 'success',
     mutateAndReload,
     mutation,
     profiles,

@@ -262,6 +262,42 @@ describe('OpenRouter AI connection adapter', () => {
     ])
   })
 
+  it('processes coalesced SSE frames without treating one transport chunk as an event queue', async () => {
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        [
+          `data: ${JSON.stringify({
+            choices: [{ delta: { content: '{"requirements":' } }],
+          })}`,
+          '',
+          `data: ${JSON.stringify({
+            choices: [{ delta: { content: '[]}' } }],
+          })}`,
+          '',
+          'data: [DONE]',
+          '',
+          '',
+        ].join('\n'),
+        { headers: { 'Content-Type': 'text/event-stream' } },
+      ),
+    )
+    const adapterRequest = enableStreaming(request())
+    adapterRequest.limits = {
+      ...adapterRequest.limits,
+      maxBufferedEvents: 1,
+    }
+
+    const events = await collectEvents(adapter().run(adapterRequest))
+
+    expect(events.at(-1)).toMatchObject({
+      rawOutput: '{"requirements":[]}',
+      type: 'completed',
+    })
+    expect(events.filter(event => event.type === 'output_delta')).toHaveLength(
+      2,
+    )
+  })
+
   it('contains OpenRouter transport details in the adapter and sends only opaque run identity', async () => {
     mockFetch.mockResolvedValueOnce(nonStreamingResponse())
     const adapterRequest = request()
@@ -542,6 +578,52 @@ describe('OpenRouter AI connection adapter', () => {
       analysis: 'first second',
       type: 'completed',
     })
+  })
+
+  it('normalizes the documented reasoning-content response alias', async () => {
+    mockFetch.mockResolvedValueOnce(
+      nonStreamingResponse({
+        choices: [
+          {
+            message: {
+              content: '{}',
+              reasoning_content: 'safe summarized analysis',
+            },
+          },
+        ],
+      }),
+    )
+
+    const events = await collectEvents(adapter().run(request()))
+
+    expect(events[0]).toMatchObject({
+      analysis: 'safe summarized analysis',
+      type: 'completed',
+    })
+  })
+
+  it('does not expose encrypted reasoning details as visible AI analysis', async () => {
+    mockFetch.mockResolvedValueOnce(
+      nonStreamingResponse({
+        choices: [
+          {
+            message: {
+              content: '{}',
+              reasoning_details: [
+                {
+                  data: 'opaque-encrypted-reasoning',
+                  type: 'reasoning.encrypted',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    )
+
+    const events = await collectEvents(adapter().run(request()))
+
+    expect(events[0]).toMatchObject({ analysis: null, type: 'completed' })
   })
 
   it.each([

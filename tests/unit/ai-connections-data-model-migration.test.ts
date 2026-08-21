@@ -216,16 +216,30 @@ describe('AI connection seed profiles', () => {
     expect(rowsFor(rows, 'ai_connection_attestations')).toEqual([
       expect.objectContaining({
         ai_connection_id: '20000000-0000-4000-8000-000000000001',
-        incident_response_reference: null,
-        responsible_organization_unit_reference: null,
+        decision_reference: 'DEMO-AI-ATTEST-OPENROUTER-001',
+        incident_response_reference: '22000000-0000-4000-8000-000000000002',
+        is_personal_data_processed: false,
+        is_training_allowed: false,
+        maximum_information_class: 'internal',
+        maximum_retention_days: 0,
+        processing_regions_json: '["EU/EES (demouppgift)"]',
+        provider_name: 'OpenRouter',
+        responsible_organization_unit_reference:
+          '22000000-0000-4000-8000-000000000001',
+        review_due_at: '2027-08-19 00:00:00',
+        reviewed_at: '2026-08-19 00:00:00',
         status: 'draft',
-      }),
-      expect.objectContaining({
-        ai_connection_id: '20000000-0000-4000-8000-000000000002',
-        provider_name: 'vLLM',
-        status: 'draft',
+        subprocessors_json:
+          '["OpenRouter, Inc.","Vald modellleverantör (demouppgift)"]',
       }),
     ])
+    expect(
+      rowsFor(rows, 'ai_connection_attestations').some(
+        attestation =>
+          attestation.ai_connection_id ===
+          '20000000-0000-4000-8000-000000000002',
+      ),
+    ).toBe(false)
     const profileRevisions = rowsFor(rows, 'ai_run_profile_revisions')
     expect(profileRevisions).toHaveLength(3)
     expect(

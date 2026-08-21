@@ -65,6 +65,25 @@ describe('AI image sanitizer', () => {
     ).resolves.toMatchObject({ height: 5, width: 3 })
   })
 
+  it('reports the encoded per-frame height for accepted animated output', async () => {
+    const animatedPixels = Buffer.from([
+      ...new Array<number>(12).fill(0),
+      ...new Array<number>(12).fill(255),
+    ])
+    const animated = await sharp(animatedPixels, {
+      raw: { channels: 3, height: 4, pageHeight: 2, width: 2 },
+    })
+      .gif({ delay: [100, 100], loop: 0 })
+      .toBuffer()
+
+    await expect(
+      sanitizeAiImage(
+        { data: animated, mediaType: 'image/gif' },
+        { ...LIMITS, maximumFrames: 2 },
+      ),
+    ).resolves.toMatchObject({ height: 2, width: 2 })
+  })
+
   it('rejects a declared MIME type that disagrees with the file signature', async () => {
     await expect(
       sanitizeAiImage(
