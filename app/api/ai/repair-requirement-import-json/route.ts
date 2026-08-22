@@ -33,6 +33,7 @@ import {
   validateImportContentBudget,
 } from '@/lib/requirements/import-budget'
 import {
+  buildRequirementsImportJsonSchema,
   buildRequirementsImportPayloadSchema,
   type ImportRequirementsPayload,
 } from '@/lib/requirements/import-schema'
@@ -243,6 +244,10 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
           body.locale,
         ),
         responseSchema: buildRequirementImportResponseFormatSchema(
+          body.locale,
+          importBudget,
+        ),
+        validationSchema: buildRequirementsImportJsonSchema(
           body.locale,
           importBudget,
         ),

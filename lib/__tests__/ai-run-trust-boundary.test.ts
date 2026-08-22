@@ -5,6 +5,7 @@ import {
   AiRunTrustBoundaryError,
   createAiRunTrustBoundary,
 } from '@/lib/ai/run-trust-boundary'
+import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
 
 const trustConfiguration: AiConnectionTrustConfiguration = {
   authenticationType: 'static_secret',
@@ -97,6 +98,7 @@ describe('AI run trust boundary', () => {
         ],
         instructions: 'app-owned instruction',
         responseSchema: { type: 'object' },
+        validationSchema: { type: 'object' },
       },
       trustConfiguration,
     })
@@ -124,6 +126,7 @@ describe('AI run trust boundary', () => {
         content: [],
         instructions: 'instruction',
         responseSchema,
+        validationSchema: responseSchema,
       },
       trustConfiguration,
     })
@@ -142,11 +145,14 @@ describe('AI run trust boundary', () => {
         analysis: null,
         quarantinedText: [],
         rawOutput: '{"unexpected":true}',
-        responseSchema: prepared.task.responseSchema,
+        validationSchema: prepared.task.validationSchema,
       }),
     ).resolves.toMatchObject({
       issues: expect.arrayContaining([
-        expect.objectContaining({ code: 'additionalProperties', path: '$' }),
+        expect.objectContaining({
+          code: 'additionalProperties',
+          path: '$/unexpected',
+        }),
       ]),
       valid: false,
     })
@@ -163,6 +169,7 @@ describe('AI run trust boundary', () => {
           responseSchema: {
             unsafeFunction: () => undefined,
           },
+          validationSchema: { type: 'object' },
         },
         trustConfiguration,
       }),
@@ -184,6 +191,7 @@ describe('AI run trust boundary', () => {
           content: [{ text: 'blocked', type: 'text' }],
           instructions: 'instruction',
           responseSchema: { type: 'object' },
+          validationSchema: { type: 'object' },
         },
         trustConfiguration,
       }),
@@ -204,6 +212,7 @@ describe('AI run trust boundary', () => {
           content: [{ text: 'secret prompt', type: 'text' }],
           instructions: 'instruction',
           responseSchema: { type: 'object' },
+          validationSchema: { type: 'object' },
         },
         trustConfiguration,
       }),
@@ -228,6 +237,7 @@ describe('AI run trust boundary', () => {
           ],
           instructions: 'instruction',
           responseSchema: { type: 'object' },
+          validationSchema: { type: 'object' },
         },
         trustConfiguration,
       }),
@@ -241,6 +251,7 @@ describe('AI run trust boundary', () => {
           content: [],
           instructions: 'instruction',
           responseSchema: { type: 'object' },
+          validationSchema: { type: 'object' },
         },
         trustConfiguration: {
           ...trustConfiguration,
@@ -264,7 +275,7 @@ describe('AI run trust boundary', () => {
         analysis: 'safe reasoning',
         quarantinedText: [],
         rawOutput: '{"requirements":[]}',
-        responseSchema,
+        validationSchema: responseSchema,
       }),
     ).resolves.toEqual({ valid: true })
     expect(screenOutput).toHaveBeenCalledWith([
@@ -277,11 +288,120 @@ describe('AI run trust boundary', () => {
         analysis: null,
         quarantinedText: [],
         rawOutput: '{"unexpected":true}',
-        responseSchema,
+        validationSchema: responseSchema,
       }),
     ).resolves.toMatchObject({
       issues: expect.arrayContaining([
-        expect.objectContaining({ code: 'required', path: '$' }),
+        expect.objectContaining({
+          code: 'required',
+          message: "Required property 'requirements' is missing.",
+          path: '$/requirements',
+        }),
+      ]),
+      valid: false,
+    })
+  })
+
+  it('validates final output against the supplied canonical schema', async () => {
+    const { boundary } = setup()
+    const validationSchema = {
+      additionalProperties: false,
+      properties: { requirements: { type: 'array' } },
+      required: ['requirements'],
+      type: 'object',
+    } as const
+
+    await expect(
+      boundary.approveCompleted({
+        analysis: null,
+        quarantinedText: [],
+        rawOutput: '{"requirements":[]}',
+        validationSchema,
+      }),
+    ).resolves.toEqual({ valid: true })
+  })
+
+  it('accepts a canonical requirement import with omitted optional fields', async () => {
+    const { boundary } = setup()
+    const validationSchema = buildRequirementsImportJsonSchema('sv')
+
+    await expect(
+      boundary.approveCompleted({
+        analysis: null,
+        quarantinedText: [],
+        rawOutput: JSON.stringify({
+          requirements: [
+            {
+              description: 'Systemet ska registrera betyg.',
+              normReferenceIds: [],
+            },
+          ],
+          schemaVersion: 'requirement-import.v4',
+        }),
+        validationSchema,
+      }),
+    ).resolves.toEqual({ valid: true })
+  })
+
+  it('returns all actionable field locations for structured-output repair', async () => {
+    const { boundary } = setup()
+    const validationSchema = {
+      additionalProperties: false,
+      properties: {
+        proposedNormReferences: { type: 'array' },
+        requirements: {
+          items: {
+            additionalProperties: false,
+            properties: {
+              acceptanceCriteria: { type: 'string' },
+              proposedNormReferenceKeys: { type: 'array' },
+            },
+            required: ['acceptanceCriteria', 'proposedNormReferenceKeys'],
+            type: 'object',
+          },
+          type: 'array',
+        },
+      },
+      required: ['proposedNormReferences', 'requirements'],
+      type: 'object',
+    } as const
+
+    await expect(
+      boundary.approveCompleted({
+        analysis: null,
+        quarantinedText: [],
+        rawOutput: JSON.stringify({
+          requirements: [
+            {
+              acceptanceCriteria: ['First criterion'],
+              proposedNormReferences: [],
+            },
+          ],
+        }),
+        validationSchema,
+      }),
+    ).resolves.toMatchObject({
+      issues: expect.arrayContaining([
+        {
+          code: 'required',
+          message: "Required property 'proposedNormReferences' is missing.",
+          path: '$/proposedNormReferences',
+        },
+        {
+          code: 'required',
+          message: "Required property 'proposedNormReferenceKeys' is missing.",
+          path: '$/requirements/0/proposedNormReferenceKeys',
+        },
+        {
+          code: 'additionalProperties',
+          message:
+            "Property 'proposedNormReferences' is not allowed at this location.",
+          path: '$/requirements/0/proposedNormReferences',
+        },
+        expect.objectContaining({
+          code: 'type',
+          path: '$/requirements/0/acceptanceCriteria',
+        }),
       ]),
       valid: false,
     })
@@ -300,7 +420,7 @@ describe('AI run trust boundary', () => {
           analysis: null,
           quarantinedText: [],
           rawOutput,
-          responseSchema: { type: 'object' },
+          validationSchema: { type: 'object' },
         }),
       ).rejects.toMatchObject({ code: 'forbidden_activation' })
     },
@@ -318,7 +438,7 @@ describe('AI run trust boundary', () => {
         analysis: null,
         quarantinedText: ['partial'],
         rawOutput: '{}',
-        responseSchema: { type: 'object' },
+        validationSchema: { type: 'object' },
       }),
     ).rejects.toMatchObject({ code: 'output_safety_blocked' })
 
@@ -328,7 +448,7 @@ describe('AI run trust boundary', () => {
         analysis: null,
         quarantinedText: [],
         rawOutput: 'not JSON',
-        responseSchema: { type: 'object' },
+        validationSchema: { type: 'object' },
       }),
     ).resolves.toEqual({
       issues: [
@@ -345,7 +465,7 @@ describe('AI run trust boundary', () => {
         analysis: null,
         quarantinedText: [],
         rawOutput: '{}',
-        responseSchema: { type: 'not-a-json-schema-type' },
+        validationSchema: { type: 'not-a-json-schema-type' },
       }),
     ).rejects.toMatchObject({ code: 'invalid_response_schema' })
   })
@@ -364,7 +484,7 @@ describe('AI run trust boundary', () => {
         analysis: null,
         quarantinedText: [],
         rawOutput: 'raw-secret-result',
-        responseSchema: { type: 'string' },
+        validationSchema: { type: 'string' },
       })
       .catch((caught: unknown) => caught)
 

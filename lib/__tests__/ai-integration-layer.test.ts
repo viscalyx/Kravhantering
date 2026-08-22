@@ -143,6 +143,7 @@ function request(abortSignal = new AbortController().signal) {
       content: [{ text: 'Generate requirements', type: 'text' as const }],
       instructions: 'Return JSON.',
       responseSchema: { type: 'object' },
+      validationSchema: { type: 'object' },
     },
     type: 'generate_without_images' as const,
   }
@@ -692,6 +693,7 @@ describe('AI integration layer', () => {
         jsonSchemaSteering: true,
         streaming: true,
         tokenUsage: true,
+        validatableJson: true,
       },
     })
     expect(JSON.stringify(received?.context)).not.toMatch(
@@ -1056,8 +1058,49 @@ describe('AI integration layer', () => {
       analysis: 'private analysis delta',
       quarantinedText: ['private analysis delta', '{"requirements":'],
       rawOutput: '{"requirements":[]}',
-      responseSchema: { type: 'object' },
+      validationSchema: { type: 'object' },
     })
+  })
+
+  it('includes the canonical schema in instructions when native schema steering is unavailable', async () => {
+    let received: AiConnectionAdapterRunRequest | undefined
+    const adapter: AIConnectionAdapter = {
+      forceClose: () => undefined,
+      async *run(adapterRequest) {
+        received = adapterRequest
+        yield completedAdapterEvent(adapterRequest)
+      },
+    }
+    const stored = profile()
+    stored.verifiedCapabilitiesJson = JSON.stringify({
+      aiAnalysis: false,
+      cost: false,
+      imageInput: false,
+      jsonSchemaSteering: false,
+      streaming: true,
+      tokenUsage: true,
+      validatableJson: true,
+    })
+    const baseRequest = request()
+    const runRequest = {
+      ...baseRequest,
+      task: {
+        ...baseRequest.task,
+        validationSchema: {
+          additionalProperties: false,
+          properties: { requirements: { type: 'array' } },
+          required: ['requirements'],
+          type: 'object',
+        },
+      },
+    }
+
+    await collect(integration(adapter, stored).run(runRequest))
+
+    expect(received?.task.instructions).toContain(
+      'The following JSON Schema is the mandatory output contract.',
+    )
+    expect(received?.task.instructions).toContain('"required":["requirements"]')
   })
 
   it('accounts for schema-invalid output as one failed coordinated terminal', async () => {

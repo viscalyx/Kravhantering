@@ -324,13 +324,26 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
           `data: ${JSON.stringify({
             issues: [
               {
-                code: 'invalid_json',
-                message: 'Modellens svar var inte giltig JSON.',
-                path: '$',
+                code: 'required',
+                message:
+                  "Required property 'proposedNormReferences' is missing.",
+                path: '$/proposedNormReferences',
+              },
+              {
+                code: 'additionalProperties',
+                message:
+                  "Property 'proposedNormReferences' is not allowed at this location.",
+                path: '$/requirements/0/proposedNormReferences',
+              },
+              {
+                code: 'type',
+                message: 'must be string',
+                path: '$/requirements/0/acceptanceCriteria',
               },
             ],
             message: 'Genererad JSON matchade inte importens schema.',
-            rawContent: '{"requirements":',
+            rawContent:
+              '{"requirements":[{"acceptanceCriteria":[],"proposedNormReferences":[]}]}',
           })}`,
           '',
           '',
@@ -365,8 +378,13 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
   let repairAttempts = 0
   await page.route('**/api/ai/repair-requirement-import-json', async route => {
     expect(route.request().postDataJSON()).toMatchObject({
-      errors: ['$: Modellens svar var inte giltig JSON.'],
-      rawJson: '{"requirements":',
+      errors: [
+        "$/proposedNormReferences: Required property 'proposedNormReferences' is missing.",
+        "$/requirements/0/proposedNormReferences: Property 'proposedNormReferences' is not allowed at this location.",
+        '$/requirements/0/acceptanceCriteria: must be string',
+      ],
+      rawJson:
+        '{"requirements":[{"acceptanceCriteria":[],"proposedNormReferences":[]}]}',
     })
     repairAttempts += 1
     if (repairAttempts === 1) {
@@ -486,6 +504,23 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await generateButton.click()
     await expect(
       dialog.getByText('Genererad JSON matchade inte importens schema.', {
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(
+      dialog.getByText(
+        "$/proposedNormReferences: Required property 'proposedNormReferences' is missing.",
+        { exact: true },
+      ),
+    ).toBeVisible()
+    await expect(
+      dialog.getByText(
+        "$/requirements/0/proposedNormReferences: Property 'proposedNormReferences' is not allowed at this location.",
+        { exact: true },
+      ),
+    ).toBeVisible()
+    await expect(
+      dialog.getByText('$/requirements/0/acceptanceCriteria: must be string', {
         exact: true,
       }),
     ).toBeVisible()

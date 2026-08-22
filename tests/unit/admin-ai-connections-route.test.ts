@@ -95,7 +95,7 @@ describe('Admin AI stable-profile and model-verification routes', () => {
         return {
           attemptId,
           saveable: true,
-          testSuiteVersion: 'ai-admin-functional-probe-v7',
+          testSuiteVersion: 'ai-admin-functional-probe-v9',
         }
       },
     )

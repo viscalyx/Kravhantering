@@ -85,7 +85,7 @@ const verification: AiAdminCandidateVerificationResult = {
     },
   },
   saveable: true,
-  testSuiteVersion: 'ai-admin-functional-probe-v7',
+  testSuiteVersion: 'ai-admin-functional-probe-v9',
 }
 
 function connection(): AiAdminStoredConnectionDetail {

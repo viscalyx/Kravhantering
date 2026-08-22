@@ -438,6 +438,7 @@ function coordinatedRun(
         content: [{ text: 'Synthetic adapter contract.', type: 'text' }],
         instructions: 'Return JSON.',
         responseSchema: { type: 'object' },
+        validationSchema: { type: 'object' },
       },
       type: execution.streaming
         ? 'generate_without_images'

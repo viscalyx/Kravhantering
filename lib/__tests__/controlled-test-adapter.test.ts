@@ -58,6 +58,7 @@ const ALL_CAPABILITIES = {
   jsonSchemaSteering: true,
   streaming: true,
   tokenUsage: true,
+  validatableJson: true,
 } as const
 
 const CONNECTION_ID = 'connection-17' as AiConnectionId
@@ -117,6 +118,7 @@ function request(
       content: [{ text: 'Generate safe JSON', type: 'text' }],
       instructions: 'Return a requirement import file.',
       responseSchema: { type: 'object' },
+      validationSchema: { type: 'object' },
     },
   }
 }

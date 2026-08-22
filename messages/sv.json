@@ -3494,6 +3494,8 @@
           "Returnera endast korrigerad JSON som matchar importschemat.",
           "Bevara kravens innehåll så långt det går.",
           "Ändra bara det som krävs för att JSON ska bli giltig och importerbar.",
+          "Behandla varje valideringssökväg som den exakta fältplatsen. Ett fält med samma namn på en annan nivå uppfyller inte ett fel om saknad egenskap.",
+          "Korrigera alla angivna valideringsfel i samma svar, inklusive fältplacering och värdetyp.",
           "Lägg inte till nya krav om det inte krävs för att reparera en trasig liststruktur.",
           "Lägg inte till nya föreslagna behovsreferenser eller nya behovsreferenskopplingar; bevara och korrigera bara befintliga behovsreferensfält."
         ],

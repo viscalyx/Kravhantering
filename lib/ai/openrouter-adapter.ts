@@ -394,6 +394,14 @@ function providerStatusFailure(
       retryable: true,
     })
   }
+  if (status === 404) {
+    return failureEvent(request, {
+      category: 'connection_unavailable',
+      diagnosticCode: 'upstream_unavailable_http_404',
+      retryDisposition: 'safe_before_acceptance',
+      retryable: true,
+    })
+  }
   if (status === 503) {
     return failureEvent(request, {
       category: 'connection_unavailable',
@@ -471,7 +479,10 @@ function requestBody(
   )
   const effort = modelConfiguration.reasoningEffort ?? 'high'
   const provider: Record<string, unknown> = {
-    allow_fallbacks: false,
+    // Keep the exact model fixed while allowing OpenRouter to select another
+    // eligible endpoint for that model. The privacy filters below still apply
+    // to every eligible endpoint.
+    allow_fallbacks: true,
     data_collection: request.privacyPolicy.allowDataCollection
       ? 'allow'
       : 'deny',

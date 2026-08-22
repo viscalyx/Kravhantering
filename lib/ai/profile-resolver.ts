@@ -231,6 +231,7 @@ function selectCapabilities(
     jsonSchemaSteering: verified.jsonSchemaSteering,
     streaming: requiresStreaming,
     tokenUsage: verified.tokenUsage,
+    validatableJson: true,
   }
 }
 
@@ -360,6 +361,7 @@ export function createAiRunProfileResolver(
         jsonSchemaSteering: verified.jsonSchemaSteering,
         streaming: verified.streaming,
         tokenUsage: verified.tokenUsage,
+        validatableJson: verified.validatableJson,
       })
       const limits = Object.freeze({
         maxBufferedEvents: profile.maximumBufferedEvents,

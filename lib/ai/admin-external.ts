@@ -61,6 +61,12 @@ const LIVE_PATH_TASK = Object.freeze({
     required: Object.freeze(['status']),
     type: 'object',
   }),
+  validationSchema: Object.freeze({
+    additionalProperties: false,
+    properties: Object.freeze({ status: Object.freeze({ const: 'ok' }) }),
+    required: Object.freeze(['status']),
+    type: 'object',
+  }),
 })
 
 export interface AiAdminExactLivePathRunner {

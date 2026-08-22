@@ -208,6 +208,7 @@ describe('AI authoring runtime', () => {
         content: [{ text: 'need', type: 'text' as const }],
         instructions: 'instructions',
         responseSchema: { type: 'object' },
+        validationSchema: { type: 'object' },
       },
       type: 'generate_without_images' as const,
     }
@@ -276,6 +277,7 @@ describe('AI authoring runtime', () => {
         content: [{ text: 'need', type: 'text' }],
         instructions: 'instructions',
         responseSchema: { type: 'object' },
+        validationSchema: { type: 'object' },
       },
       type: 'generate_without_images',
     })) {

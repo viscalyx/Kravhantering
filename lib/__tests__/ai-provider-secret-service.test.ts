@@ -235,24 +235,34 @@ describe('AI provider-secret service', () => {
           'validatableJson',
         ].map(capability => [
           capability,
-          { failureCategory: null, outcome: 'verified' },
+          {
+            diagnosticCode: null,
+            failureCategory: null,
+            outcome: 'verified',
+          },
         ]),
       ),
     )
     expect(result.profileCompatibility).toEqual({
       generation_with_images: {
+        diagnosticCode: null,
         failureCategory: null,
         missingCapabilities: [],
+        outcome: 'verified',
         supported: true,
       },
       generation_without_images: {
+        diagnosticCode: null,
         failureCategory: null,
         missingCapabilities: [],
+        outcome: 'verified',
         supported: true,
       },
       invalid_json_repair: {
+        diagnosticCode: null,
         failureCategory: null,
         missingCapabilities: [],
+        outcome: 'verified',
         supported: true,
       },
     })

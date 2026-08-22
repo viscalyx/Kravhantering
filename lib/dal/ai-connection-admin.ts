@@ -1013,11 +1013,6 @@ export function createSqlServerAiAdminStore(
         ) as AiCapability
         if (
           !input.verification.saveable ||
-          Object.values(input.verification.capabilities).some(
-            result =>
-              result.outcome === 'inconclusive' ||
-              result.outcome === 'not_checked',
-          ) ||
           !Object.values(input.verification.profileCompatibility).some(
             result => result.supported,
           )

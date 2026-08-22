@@ -65,6 +65,7 @@ function request(
         jsonSchemaSteering: true,
         streaming: false,
         tokenUsage: true,
+        validatableJson: true,
       },
     },
     privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
@@ -77,11 +78,13 @@ function request(
       jsonSchemaSteering: true,
       streaming: false,
       tokenUsage: true,
+      validatableJson: true,
     },
     task: {
       content: [{ text: 'Generate safe JSON', type: 'text' }],
       instructions: 'Return a requirement import file.',
       responseSchema: { type: 'object' },
+      validationSchema: { type: 'object' },
     },
   }
 }
@@ -373,7 +376,7 @@ describe('OpenRouter AI connection adapter', () => {
       max_tokens: 8_192,
       model: 'provider/model-v1',
       provider: {
-        allow_fallbacks: false,
+        allow_fallbacks: true,
         data_collection: 'deny',
         require_parameters: true,
         zdr: true,
@@ -446,6 +449,13 @@ describe('OpenRouter AI connection adapter', () => {
       undefined,
     ],
     [429, 'rate_limited', 'upstream_rate_limited_http_429', true, 17],
+    [
+      404,
+      'connection_unavailable',
+      'upstream_unavailable_http_404',
+      true,
+      undefined,
+    ],
     [
       400,
       'request_rejected',
@@ -544,7 +554,7 @@ describe('OpenRouter AI connection adapter', () => {
     })
   })
 
-  it('omits provider-specific controls for unselected capabilities', async () => {
+  it('does not infer a provider response format from validatable JSON', async () => {
     mockFetch.mockResolvedValueOnce(
       nonStreamingResponse({
         choices: [
@@ -567,6 +577,7 @@ describe('OpenRouter AI connection adapter', () => {
       jsonSchemaSteering: false,
       streaming: false,
       tokenUsage: false,
+      validatableJson: true,
     }
 
     const events = await collectEvents(adapter().run(adapterRequest))
@@ -590,7 +601,7 @@ describe('OpenRouter AI connection adapter', () => {
     expect(body).not.toHaveProperty('reasoning')
     expect(body).not.toHaveProperty('response_format')
     expect(body.provider).toEqual({
-      allow_fallbacks: false,
+      allow_fallbacks: true,
       data_collection: 'deny',
       zdr: true,
     })
@@ -607,6 +618,7 @@ describe('OpenRouter AI connection adapter', () => {
       jsonSchemaSteering: false,
       streaming: false,
       tokenUsage: true,
+      validatableJson: false,
     }
 
     await collectEvents(adapter().run(adapterRequest))

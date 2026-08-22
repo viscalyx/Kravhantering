@@ -13,6 +13,7 @@ import type {
   AiAdminConnectionDetail,
   AiAdminLivePathSelection,
   AiAdminModelRevisionRecord,
+  AiAdminVerificationProgress,
 } from '@/lib/ai/admin-service'
 import type { AiDeploymentTrustPolicy } from '@/lib/ai/connection-trust'
 import { controlledTestAdminAdapterRegistration } from '@/lib/ai/controlled-test-admin-adapter'
@@ -264,7 +265,7 @@ describe('AI administration provider composition', () => {
       externalLiveCallMade: false,
       failureCategory: 'controlled_adapter_forbidden',
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v7',
+      testSuiteVersion: 'ai-admin-functional-probe-v9',
     })
     await expect(
       external.verifySecretCandidate(
@@ -544,6 +545,83 @@ describe('AI administration provider composition', () => {
     expect(analysisAttempts).toBeGreaterThanOrEqual(2)
   })
 
+  it('allows saving when optional capabilities are inconclusive but every run profile is verified', async () => {
+    const base = controlledTestAdminAdapterRegistration.adapter
+    const progress: AiAdminVerificationProgress[] = []
+    const registry = createAiAdminConnectionAdapterRegistry([
+      {
+        ...controlledTestAdminAdapterRegistration,
+        adapter: {
+          ...base,
+          runFunctionalProbe(context, revision, probe) {
+            const stream = base.runFunctionalProbe(context, revision, probe)
+            if (
+              !probe.selectedCapabilities.aiAnalysis &&
+              !probe.selectedCapabilities.jsonSchemaSteering
+            ) {
+              return stream
+            }
+            return (async function* () {
+              for await (const event of stream) {
+                if (event.type === 'completed') {
+                  yield {
+                    failure: {
+                      category: 'connection_unavailable' as const,
+                      diagnosticCode: 'upstream_unavailable_http_404',
+                      retryable: true,
+                    },
+                    identity: event.identity,
+                    type: 'failed' as const,
+                  }
+                } else {
+                  yield event
+                }
+              }
+            })()
+          },
+        },
+      },
+    ])
+    const external = createProductionAiAdminExternalOperations(
+      emptyDb,
+      () => ring,
+      { deployment: deployment(), registry },
+    )
+    const current = connection()
+    const revision = current.models[0]?.revisions[0]
+    if (!revision) throw new Error('Revision missing')
+
+    const result = await external.verifyModelCandidate(
+      current,
+      {
+        externalModelId: revision.externalModelId,
+        externalModelVersion: revision.externalModelVersion,
+      },
+      {
+        onProgress: item => {
+          progress.push(item)
+        },
+        signal: new AbortController().signal,
+      },
+    )
+
+    expect(result.capabilities).toMatchObject({
+      aiAnalysis: { outcome: 'inconclusive' },
+      jsonSchemaSteering: { outcome: 'inconclusive' },
+    })
+    expect(result.profileCompatibility).toMatchObject({
+      generation_with_images: { supported: true },
+      generation_without_images: { supported: true },
+      invalid_json_repair: { supported: true },
+    })
+    expect(result.saveable).toBe(true)
+    expect(progress.at(-1)).toMatchObject({
+      check: 'summary',
+      diagnosticCode: null,
+      outcome: 'verified',
+    })
+  })
+
   it('binds a passing live proof to the exact selected runtime path', async () => {
     const current = connection({ adapterKey: 'openrouter' })
     const revision = current.models[0]?.revisions[0]
@@ -682,7 +760,7 @@ describe('AI administration provider composition', () => {
               analysis: completed.analysis,
               quarantinedText: [],
               rawOutput: completed.rawOutput,
-              responseSchema: prepared.task.responseSchema,
+              validationSchema: prepared.task.validationSchema,
             })
             yield completed
           },
@@ -918,7 +996,9 @@ describe('AI administration provider composition', () => {
         capabilities: {
           aiAnalysis: false,
           imageInput: true,
+          jsonSchemaSteering: true,
           streaming: true,
+          validatableJson: true,
         },
         capabilitySupport: {
           aiAnalysis: 'unknown',
@@ -1328,11 +1408,13 @@ describe('AI administration provider composition', () => {
           jsonSchemaSteering: false,
           streaming: false,
           tokenUsage: false,
+          validatableJson: false,
         },
         task: {
           content: [{ text: 'probe', type: 'text' }],
           instructions: 'probe',
           responseSchema: {},
+          validationSchema: {},
         },
       },
     )) {
@@ -1453,7 +1535,7 @@ describe('AI administration provider composition', () => {
       executionId: expect.any(String),
       externalLiveCallMade: true,
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v7',
+      testSuiteVersion: 'ai-admin-functional-probe-v9',
     })
     await expect(
       external.probeHealth(current, revision),

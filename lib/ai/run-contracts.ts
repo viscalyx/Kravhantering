@@ -24,7 +24,10 @@ export type AiTaskContentPart = AiImageTaskContentPart | AiTextTaskContentPart
 export interface AiTaskEnvelope {
   content: readonly AiTaskContentPart[]
   instructions: string
+  /** Provider-compatible schema used only to steer generation. */
   responseSchema: Readonly<Record<string, unknown>>
+  /** Canonical application contract used to approve completed output. */
+  validationSchema: Readonly<Record<string, unknown>>
 }
 
 export interface AiRunTechnicalContext {
@@ -59,6 +62,7 @@ export interface AiCapabilitySelection {
   jsonSchemaSteering: boolean
   streaming: boolean
   tokenUsage: boolean
+  validatableJson: boolean
 }
 
 /** Server-owned minimum. Callers and adapter configuration cannot weaken it. */
@@ -91,6 +95,7 @@ export const AI_OPTIONAL_CAPABILITIES = [
   'aiAnalysis',
   'tokenUsage',
   'cost',
+  'validatableJson',
 ] as const satisfies readonly (keyof AiCapabilitySelection)[]
 
 declare const aiStableIdBrand: unique symbol

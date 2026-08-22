@@ -344,6 +344,12 @@ describe('buildRequirementImportRepairPrompt', () => {
     expect(prompt).toContain('Repair the JSON')
     expect(prompt).toContain('Preserve the requirement content')
     expect(prompt).toContain(
+      'Treat every validation path as the exact field location',
+    )
+    expect(prompt).toContain(
+      'Correct every listed validation error in the same response',
+    )
+    expect(prompt).toContain(
       'Do not add new proposed needs references or new needs-reference links',
     )
     expect(prompt).toContain('requirements: must contain at least 1 item')

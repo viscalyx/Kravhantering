@@ -50,7 +50,7 @@ import {
 } from './run-contracts'
 
 export const AI_ADMIN_FUNCTIONAL_PROBE_VERSION =
-  'ai-admin-functional-probe-v7' as const
+  'ai-admin-functional-probe-v9' as const
 const ADMIN_PROBE_TIMEOUT_MS = 30_000
 const ADMIN_CANCELLATION_GRACE_MS = 5_000
 const ADMIN_PROBE_PROFILE_ID =
@@ -299,6 +299,7 @@ function selectedCapabilities(
     jsonSchemaSteering: capabilities.jsonSchemaSteering,
     streaming: capabilities.streaming,
     tokenUsage: capabilities.tokenUsage,
+    validatableJson: capabilities.validatableJson,
   }
 }
 
@@ -327,8 +328,16 @@ function probeTask(capabilities: AiCapability): AiTaskEnvelope {
     ],
     instructions: analysisProbe
       ? `This is a fixed administrative capability probe. Use the provider reasoning mode for the arithmetic check. Do not put reasoning in the JSON response or expose a private chain of thought. If supported, return a concise visible analysis summary only through the provider analysis field. Return exactly {"probe":"${expectedProbe}"}.`
-      : `This is a fixed administrative capability probe. Return exactly {"probe":"${expectedProbe}"}.`,
+      : capabilities.jsonSchemaSteering
+        ? `This is a fixed administrative capability probe. Return exactly {"probe":"${expectedProbe}","schemaMustRemoveThis":true}.`
+        : `This is a fixed administrative capability probe. Return exactly {"probe":"${expectedProbe}"}.`,
     responseSchema: {
+      additionalProperties: false,
+      properties: { probe: { const: expectedProbe, type: 'string' } },
+      required: ['probe'],
+      type: 'object',
+    },
+    validationSchema: {
       additionalProperties: false,
       properties: { probe: { const: expectedProbe, type: 'string' } },
       required: ['probe'],
@@ -1563,14 +1572,13 @@ export class AiProviderSecretAdminService {
         await emit(check, 'completed', assessment)
       }
 
-      const decisive = Object.values(capabilities).every(
+      const capabilityAssessmentsDecisive = Object.values(capabilities).every(
         assessment =>
           assessment.outcome === 'verified' ||
           assessment.outcome === 'not_verified',
       )
       const saveable =
         baselineAssessment.outcome === 'verified' &&
-        decisive &&
         Object.values(profileCompatibility).some(profile => profile.supported)
       const summaryDiagnosticCode = [
         baselineAssessment,
@@ -1582,10 +1590,12 @@ export class AiProviderSecretAdminService {
         failureCategory: saveable
           ? null
           : (baselineAssessment.failureCategory ??
-            (decisive ? 'capability_mismatch' : 'inconclusive_capability')),
+            (capabilityAssessmentsDecisive
+              ? 'capability_mismatch'
+              : 'inconclusive_capability')),
         outcome: saveable
           ? 'verified'
-          : decisive
+          : capabilityAssessmentsDecisive
             ? 'not_verified'
             : 'inconclusive',
       }

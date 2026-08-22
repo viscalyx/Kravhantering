@@ -36,7 +36,24 @@ const HEALTH_PROBE_TASK = Object.freeze({
     required: Object.freeze(['status']),
     type: 'object',
   }),
+  validationSchema: Object.freeze({
+    additionalProperties: false,
+    properties: Object.freeze({ status: Object.freeze({ const: 'ok' }) }),
+    required: Object.freeze(['status']),
+    type: 'object',
+  }),
 })
+
+function taskWithFallbackSchemaInstruction(
+  task: AiIntegrationRunRequest['task'],
+  jsonSchemaSteering: boolean,
+): AiIntegrationRunRequest['task'] {
+  if (jsonSchemaSteering) return task
+  return {
+    ...task,
+    instructions: `${task.instructions}\n\nThe following JSON Schema is the mandatory output contract. Return only one JSON object that validates against it.\n\n${JSON.stringify(task.validationSchema)}`,
+  }
+}
 
 export interface CreateAiIntegrationLayerOptions {
   adapterRegistry: AiConnectionAdapterRegistry
@@ -529,9 +546,13 @@ export function createAiIntegrationLayer(
       })
       let prepared: Readonly<AiPreparedRun>
       try {
+        const task = taskWithFallbackSchemaInstruction(
+          request.task,
+          profile.selectedCapabilities.jsonSchemaSteering,
+        )
         prepared = await options.trustBoundary.prepareRun({
           runType: request.type,
-          task: request.task,
+          task,
           trustConfiguration: profile.trustConfiguration,
         })
       } catch {
@@ -582,7 +603,7 @@ export function createAiIntegrationLayer(
               analysis: event.analysis,
               quarantinedText,
               rawOutput: event.rawOutput,
-              responseSchema: prepared.task.responseSchema,
+              validationSchema: prepared.task.validationSchema,
             })
             if (decisionContext.abortSignal.aborted) {
               return trustBoundaryFailure(identity, 'final_safety_gate_blocked')

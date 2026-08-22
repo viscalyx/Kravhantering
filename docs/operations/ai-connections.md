@@ -480,7 +480,7 @@ revision tokens plus the stable profile token and configuration version
 after execution, so a concurrent Admin change emits no proof. Its response binds
 the current execution ID, suite version, outcome, observed adapter, exact path,
 and revision tokens; the script validates every field before emitting evidence.
-The v7 capability probe isolates provider-facing controls by capability.
+The v9 capability probe isolates provider-facing controls by capability.
 Baseline access and validatable JSON use only the fixed prompt plus local JSON
 validation. Reasoning controls are present only for the AI-analysis check,
 JSON Schema controls only for strict schema steering, image content only for
@@ -491,6 +491,9 @@ remains unverified.
 The baseline is a gate: when it fails, later live capability and profile probes
 remain not tested. Failed rows may expose only the adapter's sanitized technical
 code and normalized HTTP status, never the provider error body.
+After the baseline passes, at least one verified fixed run profile makes the
+model saveable. An inconclusive optional capability remains unavailable for
+profile selection but does not block a separately verified run profile.
 Adapter authors must follow the capability-isolation and dialect-selection
 rules in the
 [adapter verification design contract](../development/ai-assisted-authoring-developer-workflow.md#adapter-verification-design-contract).
@@ -516,7 +519,10 @@ captured profile configuration version. A
 retry is allowed only before any analysis or output delta and when the request
 was not accepted, an upstream `429` or `503` is explicitly retryable, or the
 adapter has a verified idempotency contract. Automatic fallback to another AI
-connection is forbidden.
+connection is forbidden. An aggregate provider such as OpenRouter may still
+select another eligible endpoint for the same fixed model. Every such endpoint
+remains subject to the request's data collection, zero-data-retention, and
+required-parameter filters.
 
 Queue, concurrency leases, and circuit-breaker state are coordinated through
 SQL Server across app nodes. Adapter and client streams remain pull-driven and

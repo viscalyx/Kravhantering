@@ -3494,6 +3494,8 @@
           "Return only corrected JSON matching the import schema.",
           "Preserve the requirement content as far as possible.",
           "Change only what is needed to make the JSON valid and importable.",
+          "Treat every validation path as the exact field location. A field with the same name at another level does not satisfy a missing-property error.",
+          "Correct every listed validation error in the same response, including field placement and value type.",
           "Do not add new requirements unless required to repair a broken list structure.",
           "Do not add new proposed needs references or new needs-reference links; preserve and correct existing needs-reference fields only."
         ],

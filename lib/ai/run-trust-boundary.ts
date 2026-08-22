@@ -1,4 +1,5 @@
-import Ajv, { type ErrorObject } from 'ajv'
+import type { ErrorObject } from 'ajv'
+import Ajv2020 from 'ajv/dist/2020'
 import {
   type AiAuthorizedConnectionTarget,
   type AiConnectionTrustConfiguration,
@@ -40,7 +41,7 @@ export interface AiCompletedOutputForApproval {
   analysis: string | null
   quarantinedText: readonly string[]
   rawOutput: string
-  responseSchema: Readonly<Record<string, unknown>>
+  validationSchema: Readonly<Record<string, unknown>>
 }
 
 export type AiCompletedOutputApproval =
@@ -85,6 +86,8 @@ export interface CreateAiRunTrustBoundaryOptions {
   imageLimits: Readonly<AiImageSanitizationLimits>
   safetyFilter: AiContentSafetyFilter
 }
+
+const MAX_RESPONSE_SCHEMA_ISSUES = 25
 
 function blocked(code: AiRunTrustBoundaryErrorCode): never {
   throw new AiRunTrustBoundaryError(code)
@@ -147,7 +150,28 @@ function snapshotResponseSchema(
   }
 }
 
+function appendJsonPointer(path: string, property: string): string {
+  const escapedProperty = property.replaceAll('~', '~0').replaceAll('/', '~1')
+  return `$${path}/${escapedProperty}`
+}
+
 function schemaIssue(error: ErrorObject): AiRunValidationIssue {
+  if (error.keyword === 'required') {
+    const missingProperty = String(error.params.missingProperty)
+    return Object.freeze({
+      code: error.keyword,
+      message: `Required property '${missingProperty}' is missing.`,
+      path: appendJsonPointer(error.instancePath, missingProperty),
+    })
+  }
+  if (error.keyword === 'additionalProperties') {
+    const additionalProperty = String(error.params.additionalProperty)
+    return Object.freeze({
+      code: error.keyword,
+      message: `Property '${additionalProperty}' is not allowed at this location.`,
+      path: appendJsonPointer(error.instancePath, additionalProperty),
+    })
+  }
   return Object.freeze({
     code: error.keyword,
     message: error.message ?? 'Generated response does not match the schema.',
@@ -176,12 +200,18 @@ function validateFinalOutput(
   }
   if (containsForbiddenActivation(parsed)) blocked('forbidden_activation')
   try {
-    const ajv = new Ajv({ allErrors: false, strict: true })
+    const ajv = new Ajv2020({
+      allErrors: true,
+      strict: true,
+      strictSchema: false,
+    })
     const validate = ajv.compile(responseSchema)
     if (!validate(parsed)) {
       return {
         issues: Object.freeze(
-          (validate.errors ?? []).map(error => schemaIssue(error)),
+          (validate.errors ?? [])
+            .slice(0, MAX_RESPONSE_SCHEMA_ISSUES)
+            .map(error => schemaIssue(error)),
         ),
         valid: false,
       }
@@ -198,6 +228,7 @@ async function sanitizedTask(
   limits: Readonly<AiImageSanitizationLimits>,
 ): Promise<AiTaskEnvelope> {
   const responseSchema = snapshotResponseSchema(task.responseSchema)
+  const validationSchema = snapshotResponseSchema(task.validationSchema)
   try {
     const content = await Promise.all(
       task.content.map(async part => {
@@ -214,6 +245,7 @@ async function sanitizedTask(
       content: Object.freeze(content),
       instructions: task.instructions,
       responseSchema,
+      validationSchema,
     })
   } catch (error) {
     if (error instanceof AiImageSanitizationError) {
@@ -241,7 +273,7 @@ export function createAiRunTrustBoundary(
           ),
         'output_safety_blocked',
       )
-      return validateFinalOutput(input.rawOutput, input.responseSchema)
+      return validateFinalOutput(input.rawOutput, input.validationSchema)
     },
     async prepareRun(
       input: AiRunForPreparation,

@@ -28,7 +28,13 @@ const VERIFICATION: AiAdminCandidateVerificationResult = {
   capabilities: Object.fromEntries(
     Object.keys(CAPABILITIES).map(key => [
       key,
-      { diagnosticCode: null, failureCategory: null, outcome: 'verified' },
+      key === 'aiAnalysis' || key === 'jsonSchemaSteering'
+        ? {
+            diagnosticCode: 'upstream_unavailable_http_404',
+            failureCategory: 'connection_unavailable',
+            outcome: 'inconclusive',
+          }
+        : { diagnosticCode: null, failureCategory: null, outcome: 'verified' },
     ]),
   ) as AiAdminCandidateVerificationResult['capabilities'],
   connection: {
@@ -66,7 +72,7 @@ const VERIFICATION: AiAdminCandidateVerificationResult = {
 describe('AI connection administration transactions against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
 
-  it('atomically saves verified models and fences stable profile and destructive changes', async () => {
+  it('saves verified profiles with inconclusive optional capabilities and fences later changes', async () => {
     const db = appDb()
     const audit = vi.fn(async (_detail: AiAdminAuditDetail) => undefined)
     const store = createSqlServerAiAdminStore(db, audit)

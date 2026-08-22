@@ -862,9 +862,11 @@ fil av otillåten typ så att urvalet överskrider gränsen på tre bilder.
 Kontrollera synlig tangentbordsfokus för knappen `Ta bort bild`. Ta bort sedan
 en bifogad bild.
 Starta en generering som får ett terminalt leverantörsfel. Starta en ny
-generering som får ett valideringsfel, välj `Reparera JSON`, låt första
-reparationen misslyckas och låt nästa lyckas. Bifoga därefter två bilder med
-samma bildinnehåll men olika filnamn och filtyp och försök generera igen.
+generering som får flera valideringsfel för ett saknat toppnivåfält, samma fält
+på otillåten plats och ett värde med fel datatyp. Välj `Reparera JSON`, låt
+första reparationen misslyckas och låt nästa lyckas. Bifoga därefter två
+bilder med samma bildinnehåll men olika filnamn och filtyp och försök generera
+igen.
 Avbryt slutligen en pågående generering genom att stänga dialogen.
 
 **Förväntat resultat:** De giltiga bilder som ryms ligger kvar och bildfelet
@@ -878,7 +880,8 @@ reparation behåller fokus på åtgärdsknappen. Råresultat,
 valideringsfel, behov och bifogade bilder ligger kvar tills användaren
 ändrar dem. Råresultatet visas först efter att hela svaret har passerat
 utdatafiltret; inga ofullständiga strömningsdelar visas. Reparationen får det
-bevarade råresultatet och de visade valideringsfelen. En lyckad reparation
+bevarade råresultatet och samtliga visade valideringsfel med sökvägar som pekar
+ut saknade och otillåtna egenskapers exakta plats. En lyckad reparation
 annonserar status en gång och flyttar fokus
 till resultatets rubrik. Bilder med samma avkodade innehåll avvisas innan en ny
 kravkandidat skapas, även när filnamn och MIME-typ skiljer sig. Dialogen
