@@ -1806,6 +1806,7 @@
         "probeHealth": "Kör hälsokontroll",
         "probingHealth": "Kontrollerar…",
         "retireModel": "Avsluta modellrevision",
+        "deleteModel": "Ta bort anslutningsmodell",
         "fetchCatalog": "Läs modellkatalog",
         "checkCapabilities": "Kontrollera förmågor",
         "checkingCapabilities": "Kontrollerar…",
@@ -2168,8 +2169,14 @@
           "schemaValid": "svar mot verifieringsschemat"
         },
         "retired": "Anslutningsmodellrevisionen avslutades.",
+        "deleted": "Anslutningsmodellen togs bort.",
+        "deleteConfirmTitle": "Ta bort anslutningsmodellen?",
+        "deleteConfirmMessage": "Anslutningsmodellen och samtliga revisioner tas bort från administrationsytan. Historiska spårbarhetsreferenser bevaras. Åtgärden kan inte ångras i applikationen.",
+        "deleteRequiresRetirementHelp": "Avsluta modellrevisionen innan anslutningsmodellen tas bort.",
+        "alreadyRetiredHelp": "Modellrevisionen är redan avslutad.",
         "retireConfirmTitle": "Avsluta modellrevisionen?",
         "retireConfirmMessage": "En avslutad modellrevision kan inte verifieras eller väljas för en ny profilrevision.",
+        "usedByProfileHelp": "Modellen används av en körprofil. Ta bort den från profilen eller välj en annan modell först.",
         "status": {
           "draft": "Utkast",
           "retired": "Avslutad",

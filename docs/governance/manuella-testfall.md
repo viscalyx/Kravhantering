@@ -2155,6 +2155,9 @@ tas bort och körprofilens tidigare aktiva revision och operativa status
    `Okänd`. Ett kontrollresultat som faktiskt förblev oavgjort ska däremot
    fortsätta visas som `Okänd`; det får inte sparas som `Stöds inte`. En
    befintlig verifierad revision får inte skrivas om.
+   Öppna därefter `Lägg till modell` igen och kontrollera att katalogen inte
+   längre erbjuder `controlled/model` med samma externa version, medan andra
+   katalogmodeller och manuell inmatning fortfarande är tillgängliga.
 6. Verifiera först anslutningen och sedan modellrevisionen med testadaptern.
    Kontrollera att modellknappen under arbetet visar `Verifierar…`, är dimmad
    och inte kan aktiveras igen. När verifieringen har lyckats ska `Verifiera
@@ -2192,17 +2195,35 @@ tas bort och körprofilens tidigare aktiva revision och operativa status
    därefter ska profilens status vara `Aktiv` och den grå raden visa `Aktiv
    profilrevision: N`. Om en aktiv revision och ett ersättningsutkast finns
    samtidigt ska båda revisionsnumren visas.
+   Kontrollera att `Avsluta modellrevision` är inaktiverad på den valda
+   anslutningsmodellen och förklarar att modellen först måste tas bort eller
+   bytas i körprofilen. Kontrollera också att den textlösa röda
+   borttagningsikonen visas men är inaktiverad.
 8. Suspendera och återställ först körprofilen och därefter anslutningen.
    Kontrollera att profilens status växlar till `Suspenderad` och tillbaka till
    `Aktiv`. Kontrollera under anslutningssuspenderingen att livscykeln är
    `Suspenderad` medan den separata operativa hälsan fortfarande är `Fungerar`.
+9. Lägg till och verifiera en andra anslutningsmodell med ett annat externt
+   modell-id. Skapa och aktivera en ersättande revision av
+   `Kravgenerering utan bilder` som väljer den andra modellen. Kontrollera att
+   `Avsluta modellrevision` nu kan användas på den första modellen medan den
+   textlösa röda borttagningsikonen fortfarande är inaktiverad. Bekräfta
+   avslutet och kontrollera att avslutningsåtgärden ligger kvar men är
+   inaktiverad, samtidigt som borttagningsikonen med det tillgängliga namnet
+   `Ta bort anslutningsmodell` blir aktiv. Välj ikonen, bekräfta borttagningen
+   och kontrollera att den första
+   anslutningsmodellen och samtliga revisioner försvinner från
+   administrationsytan. Den andra modellen och den aktiva körprofilen ska vara
+   kvar.
 
 **Förväntat resultat:** Varje verifiering och aktivering slutförs via
 `controlled_test@1`; blockerare försvinner först när respektive villkor är
 uppfyllt. Den aktiva körprofilen binder exakt den verifierade modellrevisionen.
 Ingen hemlighet visas eller exporteras, ingen automatisk fallback sker och
 suspenderade resurser återställs endast genom de uttryckliga manuella
-åtgärderna.
+åtgärderna. En anslutningsmodell kan inte avslutas eller tas bort medan en
+aktiv eller utkastbaserad körprofil använder den, och samma externa modell och
+version kan inte registreras två gånger på samma AI-anslutning.
 
 ### ADMIN-21: Misslyckad AI-åtgärd visar åtgärd och serverfel i viewporten
 

@@ -4,6 +4,7 @@ import type { AiConnectionEntity } from './ai-connection'
 export interface AiConnectionModelEntity {
   connection: AiConnectionEntity
   createdAt: Date
+  deletedAt: Date | null
   description: string | null
   id: string
   name: string
@@ -30,6 +31,12 @@ export const aiConnectionModelEntity =
         type: 'nvarchar',
       },
       createdAt: { name: 'created_at', precision: 3, type: 'datetime2' },
+      deletedAt: {
+        name: 'deleted_at',
+        nullable: true,
+        precision: 3,
+        type: 'datetime2',
+      },
       updatedAt: { name: 'updated_at', precision: 3, type: 'datetime2' },
       revisionToken: {
         default: () => 'NEWID()',

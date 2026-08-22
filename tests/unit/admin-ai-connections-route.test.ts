@@ -35,6 +35,7 @@ const routeState = vi.hoisted(() => ({
     activateRunProfileRevision: vi.fn(),
     activateSecret: vi.fn(),
     confirmSecretRevocation: vi.fn(),
+    deleteConnectionModel: vi.fn(),
     deleteSecretCandidate: vi.fn(),
     discardAttestationDraft: vi.fn(),
     discoverModelCapabilities: vi.fn(),
@@ -457,6 +458,14 @@ describe('Admin AI connection routes', () => {
         { action: 'delete_secret_candidate', secretVersionId: token },
       ],
       ['fetchCatalog', { action: 'fetch_catalog' }],
+      [
+        'deleteConnectionModel',
+        {
+          action: 'delete_connection_model',
+          modelId,
+          revisionToken: token,
+        },
+      ],
       [
         'discoverModelCapabilities',
         {

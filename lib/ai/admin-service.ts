@@ -352,6 +352,11 @@ export interface AiAdminStore {
   createConnection(
     input: CreateAiConnection,
   ): Promise<AiAdminStoredConnectionDetail>
+  deleteConnectionModel(input: {
+    connectionId: string
+    modelId: string
+    revisionToken: string
+  }): Promise<boolean>
   discardAttestationDraft(input: {
     connectionId: string
     currentAttestationRevisionToken: string
@@ -1156,6 +1161,15 @@ export class AiConnectionAdministrationService {
     const result = await this.#store.retireModelRevision(input)
     if (!result) activationConflict()
     return result
+  }
+
+  async deleteConnectionModel(input: {
+    connectionId: string
+    modelId: string
+    revisionToken: string
+  }): Promise<void> {
+    const deleted = await this.#store.deleteConnectionModel(input)
+    if (!deleted) activationConflict()
   }
 
   async setConnectionLifecycle(input: {

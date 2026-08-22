@@ -2033,6 +2033,57 @@ describe('AiConnectionsPanel workflows', () => {
     ).not.toHaveProperty('inputPricePerMillionTokens')
   })
 
+  it('does not offer a catalog model already registered on the connection', async () => {
+    const user = userEvent.setup()
+    installWorkflowFetch({
+      catalog: [
+        {
+          capabilities,
+          externalModelId: 'controlled/model',
+          externalModelVersion: '1',
+          inputPricePerMillionTokens: null,
+          modelProviderName: 'Controlled Test',
+          name: 'Already registered',
+          outputPricePerMillionTokens: null,
+        },
+        {
+          capabilities,
+          externalModelId: 'controlled/other',
+          externalModelVersion: '1',
+          inputPricePerMillionTokens: null,
+          modelProviderName: 'Controlled Test',
+          name: 'Available model',
+          outputPricePerMillionTokens: null,
+        },
+      ],
+    })
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.addModel',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    const catalog = within(dialog).getByLabelText(
+      'admin.aiConnections.catalog.selectionLabel',
+    )
+    expect(
+      within(catalog).queryByRole('option', { name: /Already registered/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(catalog).getByRole('option', { name: /Available model/ }),
+    ).toBeVisible()
+    expect(
+      within(catalog).getByRole('option', {
+        name: 'admin.aiConnections.catalog.manualOption',
+      }),
+    ).toBeVisible()
+  })
+
   it('hides declared capabilities until the model catalog has loaded', async () => {
     const user = userEvent.setup()
     let resolveCatalog: ((response: Response) => void) | undefined
@@ -3100,7 +3151,7 @@ describe('AiConnectionsPanel workflows', () => {
     ).toBeVisible()
     expect(healthButton.closest('[data-developer-mode-name]')).toHaveAttribute(
       'data-developer-mode-name',
-      'AI model verification and health actions',
+      'AI model lifecycle and health actions',
     )
 
     await user.click(
@@ -3272,7 +3323,181 @@ describe('AiConnectionsPanel workflows', () => {
     ).toBeVisible()
   })
 
-  it('executes bounded verification, recovery, profile, catalog, and confirmed retirement actions', async () => {
+  it('protects connection models used by run profiles and exposes deletion only after retirement', async () => {
+    const user = userEvent.setup()
+    const verifiedConnection = withVerifiedLatestModel(connectionOne)
+    const assignedProfile = {
+      ...profile,
+      draftRevision: {
+        ...profile.draftRevision,
+        modelRevisionId: verifiedConnection.models[0].revisions[0].id,
+      },
+    }
+    installWorkflowFetch({
+      connection: verifiedConnection,
+      profiles: [assignedProfile],
+      revisions: [assignedProfile.draftRevision],
+    })
+    const { unmount } = renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    const retireButton = screen.getByRole('button', {
+      name: 'admin.aiConnections.actions.retireModel',
+    })
+    expect(retireButton).toBeDisabled()
+    expect(retireButton).toHaveAttribute(
+      'title',
+      'admin.aiConnections.model.usedByProfileHelp',
+    )
+    const assignedDeleteButton = screen.getByRole('button', {
+      name: 'admin.aiConnections.actions.deleteModel',
+    })
+    expect(assignedDeleteButton).toBeDisabled()
+    expect(assignedDeleteButton).toHaveAttribute(
+      'title',
+      'admin.aiConnections.model.usedByProfileHelp',
+    )
+
+    unmount()
+    const retiredConnection = {
+      ...verifiedConnection,
+      models: verifiedConnection.models.map(model => ({
+        ...model,
+        revisions: model.revisions.map(revision => ({
+          ...revision,
+          status: 'retired' as const,
+          verifiedCapabilities: null,
+        })),
+      })),
+    }
+    installWorkflowFetch({
+      connection: retiredConnection,
+      profiles: [assignedProfile],
+      revisions: [assignedProfile.draftRevision],
+    })
+    const retiredInUseView = renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.deleteModel',
+      }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.retireModel',
+      }),
+    ).toBeDisabled()
+
+    retiredInUseView.unmount()
+    installWorkflowFetch({ connection: retiredConnection })
+    renderPanel()
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    const deleteButton = screen.getByRole('button', {
+      name: 'admin.aiConnections.actions.deleteModel',
+    })
+    expect(deleteButton).toBeEnabled()
+    expect(deleteButton).toHaveClass('text-red-700', 'dark:text-red-300')
+    expect(deleteButton).toHaveTextContent('')
+    const retiredButton = screen.getByRole('button', {
+      name: 'admin.aiConnections.actions.retireModel',
+    })
+    expect(retiredButton).toBeDisabled()
+    expect(retiredButton).toHaveAttribute(
+      'title',
+      'admin.aiConnections.model.alreadyRetiredHelp',
+    )
+  })
+
+  it('confirms deletion of an unused retired connection model', async () => {
+    const user = userEvent.setup()
+    const retiredConnection = {
+      ...connectionOne,
+      models: connectionOne.models.map(model => ({
+        ...model,
+        revisions: model.revisions.map(revision => ({
+          ...revision,
+          status: 'retired' as const,
+        })),
+      })),
+    }
+    installWorkflowFetch({ connection: retiredConnection })
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.deleteModel',
+      }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'admin.aiConnections.actions.deleteModel',
+      }),
+    )
+
+    await waitFor(() => {
+      const request = fetchMock.mock.calls.find(([, init]) =>
+        String(init?.body).includes('delete_connection_model'),
+      )
+      expect(JSON.parse(String(request?.[1]?.body))).toEqual({
+        action: 'delete_connection_model',
+        modelId: retiredConnection.models[0].id,
+        revisionToken: retiredConnection.models[0].revisionToken,
+      })
+    })
+  })
+
+  it('confirms retirement of an unused connection model', async () => {
+    const user = userEvent.setup()
+    const connection = withVerifiedLatestModel(connectionOne)
+    installWorkflowFetch({ connection })
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    const deleteBeforeRetirement = screen.getByRole('button', {
+      name: 'admin.aiConnections.actions.deleteModel',
+    })
+    expect(deleteBeforeRetirement).toBeDisabled()
+    expect(deleteBeforeRetirement).toHaveAttribute(
+      'title',
+      'admin.aiConnections.model.deleteRequiresRetirementHelp',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.retireModel',
+      }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'admin.aiConnections.actions.retireModel',
+      }),
+    )
+
+    await waitFor(() => {
+      const request = fetchMock.mock.calls.find(([, init]) =>
+        String(init?.body).includes('retire_model_revision'),
+      )
+      expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+        action: 'retire_model_revision',
+        modelRevisionId: connection.models[0].revisions[0].id,
+      })
+    })
+  })
+
+  it('executes bounded verification, recovery, profile, and catalog actions', async () => {
     const user = userEvent.setup()
     const readyConnection = {
       ...connectionOne,
@@ -3339,23 +3564,12 @@ describe('AiConnectionsPanel workflows', () => {
         name: 'admin.aiConnections.actions.suspendProfile',
       }),
     )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'admin.aiConnections.actions.retireModel',
-      }),
-    )
-    let confirmDialog = await screen.findByRole('alertdialog')
-    await user.click(
-      within(confirmDialog).getByRole('button', {
-        name: 'admin.aiConnections.actions.retireModel',
-      }),
-    )
     const retireConnectionButton = screen.getByRole('button', {
       name: 'admin.aiConnections.actions.retireConnection',
     })
     expect(retireConnectionButton).toHaveClass('btn-destructive')
     await user.click(retireConnectionButton)
-    confirmDialog = await screen.findByRole('alertdialog')
+    const confirmDialog = await screen.findByRole('alertdialog')
     await user.click(
       within(confirmDialog).getByRole('button', {
         name: 'admin.aiConnections.actions.retireConnection',
@@ -3374,7 +3588,6 @@ describe('AiConnectionsPanel workflows', () => {
           'set_lifecycle',
           'activate_revision',
           'set_operational_status',
-          'retire_model_revision',
         ]),
       )
     })

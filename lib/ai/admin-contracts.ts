@@ -195,6 +195,13 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
       secretVersionId: aiIdentifierSchema,
     })
     .strict(),
+  z
+    .object({
+      action: z.literal('delete_connection_model'),
+      modelId: aiIdentifierSchema,
+      revisionToken: aiRevisionTokenSchema,
+    })
+    .strict(),
   z.object({ action: z.literal('fetch_catalog') }).strict(),
   z
     .object({

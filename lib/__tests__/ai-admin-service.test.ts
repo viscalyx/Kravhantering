@@ -562,6 +562,7 @@ describe('AI connection administration service', () => {
       activateConnection: vi.fn(async () => currentConnection),
       activateRunProfileRevision: vi.fn(async () => currentProfile),
       createConnection: vi.fn(async () => currentConnection),
+      deleteConnectionModel: vi.fn(async () => true),
       discardAttestationDraft: vi.fn(async () => true),
       getActivationSnapshot: vi.fn(async () => snapshot),
       getConnection: vi.fn(async () => currentConnection),
@@ -859,6 +860,13 @@ describe('AI connection administration service', () => {
       }),
     ).resolves.toMatchObject({ status: 'retired' })
     await expect(
+      service.deleteConnectionModel({
+        connectionId: currentConnection.id,
+        modelId: currentConnection.models[0].id,
+        revisionToken: currentConnection.models[0].revisionToken,
+      }),
+    ).resolves.toBeUndefined()
+    await expect(
       service.setConnectionLifecycle({
         connectionId: currentConnection.id,
         revisionToken: currentConnection.revisionToken,
@@ -1101,6 +1109,7 @@ describe('AI connection administration service', () => {
     const currentConnection = connection()
     const modelRevision = verifiedRevision(currentConnection)
     const store = {
+      deleteConnectionModel: vi.fn(async () => false),
       discardAttestationDraft: vi.fn(async () => false),
       getConnection: vi.fn(async () => null),
       retireModelRevision: vi.fn(async () => null),
@@ -1139,6 +1148,13 @@ describe('AI connection administration service', () => {
     await expect(
       service.deleteSecretCandidate(currentConnection.id, randomUUID()),
     ).rejects.toMatchObject({ code: 'not_found' })
+    await expect(
+      service.deleteConnectionModel({
+        connectionId: currentConnection.id,
+        modelId: currentConnection.models[0].id,
+        revisionToken: currentConnection.models[0].revisionToken,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
     await expect(
       service.retireModelRevision({
         connectionId: currentConnection.id,

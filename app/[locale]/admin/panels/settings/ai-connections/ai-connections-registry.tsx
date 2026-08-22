@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Route,
   ShieldCheck,
+  Trash2,
   TriangleAlert,
   Wrench,
 } from 'lucide-react'
@@ -160,6 +161,38 @@ function latestRevision(
         ? revision
         : selected,
     undefined,
+  )
+}
+
+function catalogModelKey(
+  externalModelId: string,
+  externalModelVersion: string | null,
+): string {
+  return JSON.stringify([externalModelId, externalModelVersion])
+}
+
+function availableCatalogItems(
+  connection: AiAdminConnectionDetail,
+  editedModel: AiAdminModelRecord | null,
+  catalog: readonly AiAdminCatalogItem[],
+): readonly AiAdminCatalogItem[] {
+  const registered = new Set(
+    connection.models
+      .filter(model => model.id !== editedModel?.id)
+      .flatMap(model =>
+        model.revisions.map(revision =>
+          catalogModelKey(
+            revision.externalModelId,
+            revision.externalModelVersion,
+          ),
+        ),
+      ),
+  )
+  return catalog.filter(
+    item =>
+      !registered.has(
+        catalogModelKey(item.externalModelId, item.externalModelVersion),
+      ),
   )
 }
 
@@ -387,6 +420,18 @@ export default function AiConnectionsPanel() {
         revision.modelRevisionId
           ? revisionIds.has(revision.modelRevisionId)
           : false,
+      ),
+    )
+  }
+
+  function modelUsedByProfile(model: AiAdminModelRecord): boolean {
+    const revisionIds = new Set(model.revisions.map(revision => revision.id))
+    return Object.values(profileRevisions).some(revisions =>
+      revisions.some(
+        revision =>
+          (revision.status === 'active' || revision.status === 'draft') &&
+          revision.modelRevisionId !== null &&
+          revisionIds.has(revision.modelRevisionId),
       ),
     )
   }
@@ -659,6 +704,32 @@ export default function AiConnectionsPanel() {
         : {
             actionLabel: t('actions.retireConnection'),
           },
+    )
+  }
+
+  async function confirmModelDeletion(
+    connection: AiAdminConnectionDetail,
+    model: AiAdminModelRecord,
+    anchorEl?: HTMLElement,
+  ): Promise<void> {
+    const accepted = await confirm({
+      anchorEl,
+      confirmText: t('actions.deleteModel'),
+      icon: 'caution',
+      message: t('model.deleteConfirmMessage'),
+      title: t('model.deleteConfirmTitle'),
+      variant: 'danger',
+    })
+    if (!accepted) return
+    await connectionAction(
+      connection,
+      {
+        action: 'delete_connection_model',
+        modelId: model.id,
+        revisionToken: model.revisionToken,
+      },
+      'model.deleted',
+      { actionLabel: t('actions.deleteModel') },
     )
   }
 
@@ -1009,6 +1080,7 @@ export default function AiConnectionsPanel() {
                           {detail.models.map(model => {
                             const latest = latestRevision(model)
                             if (!latest) return null
+                            const usedByProfile = modelUsedByProfile(model)
                             const verifying =
                               pendingModelAction?.kind === 'verification' &&
                               pendingModelAction.revisionId === latest.id
@@ -1042,7 +1114,7 @@ export default function AiConnectionsPanel() {
                                   className="mt-3 flex flex-wrap gap-2"
                                   {...devMarker({
                                     context: 'AI connection model revision',
-                                    name: 'AI model verification and health actions',
+                                    name: 'AI model lifecycle and health actions',
                                     priority: 310,
                                   })}
                                 >
@@ -1127,7 +1199,9 @@ export default function AiConnectionsPanel() {
                                   <button
                                     className="btn-secondary px-3! py-1.5! text-xs"
                                     disabled={
-                                      busy || latest.status === 'retired'
+                                      busy ||
+                                      usedByProfile ||
+                                      latest.status === 'retired'
                                     }
                                     onClick={event =>
                                       void confirmRetirement(
@@ -1136,9 +1210,47 @@ export default function AiConnectionsPanel() {
                                         event.currentTarget,
                                       )
                                     }
+                                    title={
+                                      usedByProfile
+                                        ? t('model.usedByProfileHelp')
+                                        : latest.status === 'retired'
+                                          ? t('model.alreadyRetiredHelp')
+                                          : undefined
+                                    }
                                     type="button"
                                   >
                                     {t('actions.retireModel')}
+                                  </button>
+                                  <button
+                                    aria-label={t('actions.deleteModel')}
+                                    className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-md border border-red-300 bg-red-50 p-1.5! text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/70"
+                                    disabled={
+                                      busy ||
+                                      usedByProfile ||
+                                      latest.status !== 'retired'
+                                    }
+                                    onClick={event =>
+                                      void confirmModelDeletion(
+                                        detail,
+                                        model,
+                                        event.currentTarget,
+                                      )
+                                    }
+                                    title={
+                                      usedByProfile
+                                        ? t('model.usedByProfileHelp')
+                                        : latest.status !== 'retired'
+                                          ? t(
+                                              'model.deleteRequiresRetirementHelp',
+                                            )
+                                          : t('actions.deleteModel')
+                                    }
+                                    type="button"
+                                  >
+                                    <Trash2
+                                      aria-hidden="true"
+                                      className="h-4 w-4"
+                                    />
                                   </button>
                                 </div>
                                 {latest.status !== 'verified' &&
@@ -1558,10 +1670,12 @@ export default function AiConnectionsPanel() {
         {dialog?.kind === 'model' ? (
           <ModelForm
             busy={busy}
-            catalog={
+            catalog={availableCatalogItems(
+              dialog.connection,
+              dialog.model,
               dialogCatalogByConnection[dialog.connection.id.toLowerCase()] ??
-              []
-            }
+                [],
+            )}
             catalogStatus={
               catalogStatusByConnection[dialog.connection.id.toLowerCase()] ??
               'idle'

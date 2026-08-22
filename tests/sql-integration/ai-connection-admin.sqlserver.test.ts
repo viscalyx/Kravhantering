@@ -969,6 +969,153 @@ describe('AI connection administration transactions against SQL Server', () => {
     ).toBe(evidenceCount)
   })
 
+  it('rejects the same external model as a second connection model', async () => {
+    const store = createSqlServerAiAdminStore(appDb(), async () => undefined)
+    const connection = await store.createConnection(
+      connectionInput('-unique-model'),
+    )
+    await store.saveModelRevision({
+      connectionId: connection.id,
+      modelRevision: {
+        declaredCapabilities: CAPABILITIES,
+        description: null,
+        discoveredCapabilities: null,
+        externalModelId: 'controlled/unique',
+        externalModelVersion: '1',
+        modelId: null,
+        modelToken: null,
+        name: 'First registration',
+      },
+    })
+
+    await expect(
+      store.saveModelRevision({
+        connectionId: connection.id,
+        modelRevision: {
+          declaredCapabilities: CAPABILITIES,
+          description: null,
+          discoveredCapabilities: null,
+          externalModelId: 'controlled/unique',
+          externalModelVersion: '1',
+          modelId: null,
+          modelToken: null,
+          name: 'Duplicate registration',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+  })
+
+  it('removes an unused retired connection model while preserving profile dependency guards', async () => {
+    const db = appDb()
+    const store = createSqlServerAiAdminStore(db, async () => undefined)
+    const connection = await store.createConnection(
+      connectionInput('-model-removal'),
+    )
+    const model = await store.saveModelRevision({
+      connectionId: connection.id,
+      modelRevision: {
+        declaredCapabilities: CAPABILITIES,
+        description: null,
+        discoveredCapabilities: null,
+        externalModelId: 'controlled/removable',
+        externalModelVersion: '1',
+        modelId: null,
+        modelToken: null,
+        name: 'Removable model',
+      },
+    })
+    const initialRevision = model.revisions[0]
+    if (!initialRevision) throw new Error('Model revision missing')
+    await db.query(
+      `UPDATE [ai_connection_model_revisions]
+       SET [status] = N'verification_required', [revision_token] = NEWID(),
+         [updated_at] = SYSUTCDATETIME()
+       WHERE [id] = @0`,
+      [initialRevision.id],
+    )
+    await db.query(
+      `INSERT INTO [ai_run_profiles] (
+         [id], [profile_key], [operational_status], [created_at], [updated_at]
+       ) VALUES (
+         NEWID(), N'generation_without_images', N'enabled',
+         SYSUTCDATETIME(), SYSUTCDATETIME()
+       )`,
+    )
+    const refreshed = await store.getConnection(connection.id)
+    const revision = refreshed?.models[0]?.revisions[0]
+    if (!revision) throw new Error('Refreshed model revision missing')
+    const profile = await store.saveRunProfileRevision({
+      profileKey: 'generation_without_images',
+      revision: {
+        capabilityPolicy: {
+          aiAnalysis: 'allowed',
+          imageInput: 'disabled',
+          jsonSchema: 'required',
+          streaming: 'required',
+          usageMetadata: 'allowed',
+          validatableJson: 'required',
+        },
+        inactivityTimeBudgetSeconds: 300,
+        modelRevisionId: revision.id,
+        queueCapacity: 2,
+        revisionToken: null,
+        totalTimeBudgetSeconds: 600,
+      },
+    })
+    const draft = profile.draftRevision
+    if (!draft) throw new Error('Profile draft missing')
+
+    await expect(
+      store.retireModelRevision({
+        connectionId: connection.id,
+        modelRevisionId: revision.id,
+        revisionToken: revision.revisionToken,
+      }),
+    ).resolves.toBeNull()
+    await expect(
+      store.deleteConnectionModel({
+        connectionId: connection.id,
+        modelId: model.id,
+        revisionToken: model.revisionToken,
+      }),
+    ).resolves.toBe(false)
+
+    const detachedProfile = await store.saveRunProfileRevision({
+      profileKey: profile.profileKey,
+      revision: {
+        ...draft,
+        modelRevisionId: null,
+      },
+    })
+    const retired = await store.retireModelRevision({
+      connectionId: connection.id,
+      modelRevisionId: revision.id,
+      revisionToken: revision.revisionToken,
+    })
+    if (!retired) throw new Error('Model revision was not retired')
+    await expect(
+      store.deleteConnectionModel({
+        connectionId: connection.id,
+        modelId: model.id,
+        revisionToken: model.revisionToken,
+      }),
+    ).resolves.toBe(true)
+    await expect(store.getConnection(connection.id)).resolves.toMatchObject({
+      models: [],
+    })
+    const detachedDraft = detachedProfile.draftRevision
+    if (!detachedDraft) throw new Error('Detached profile draft missing')
+    await expect(
+      store.saveRunProfileRevision({
+        profileKey: profile.profileKey,
+        revision: {
+          ...detachedDraft,
+          modelRevisionId: revision.id,
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' })
+  })
+
   it('atomically invalidates an active connection and profile dependencies on credential rotation', async () => {
     const db = appDb()
     const store = createSqlServerAiAdminStore(db, async () => undefined)

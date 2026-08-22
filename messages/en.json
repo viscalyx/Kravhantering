@@ -1806,6 +1806,7 @@
         "probeHealth": "Run health probe",
         "probingHealth": "Checking…",
         "retireModel": "Retire model revision",
+        "deleteModel": "Delete connection model",
         "fetchCatalog": "Read model catalog",
         "checkCapabilities": "Check capabilities",
         "checkingCapabilities": "Checking…",
@@ -2168,8 +2169,14 @@
           "schemaValid": "verification-schema response"
         },
         "retired": "The connection model revision was retired.",
+        "deleted": "The connection model was deleted.",
+        "deleteConfirmTitle": "Delete the connection model?",
+        "deleteConfirmMessage": "The connection model and all its revisions will be removed from the administration surface. Historical traceability references are retained. This action cannot be undone in the application.",
+        "deleteRequiresRetirementHelp": "Retire the model revision before deleting the connection model.",
+        "alreadyRetiredHelp": "The model revision is already retired.",
         "retireConfirmTitle": "Retire model revision?",
         "retireConfirmMessage": "A retired model revision cannot be verified or selected for a new profile revision.",
+        "usedByProfileHelp": "The model is used by a run profile. Remove it from the profile or select another model first.",
         "status": {
           "draft": "Draft",
           "retired": "Retired",

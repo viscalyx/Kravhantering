@@ -118,6 +118,17 @@ After credential activation, verify the connection again, verify each required
 model revision again, reactivate the connection, and confirm that its profiles
 have no blockers before resuming traffic.
 
+Retiring or removing a connection model requires that no active or draft run
+profile revision selects any revision of that model. Remove the selection or
+activate a replacement profile revision first. Removal is available only after
+the latest model revision is retired. The icon-only removal action remains
+visible but disabled before retirement; after retirement, the retirement action
+remains visible but disabled and removal becomes available. Removal hides the
+model and all revisions from administration and future selection while
+preserving historical run-profile references. The same external model ID and
+version cannot be registered as two
+different connection models on one active connection.
+
 A still-encrypted superseded revision may be restored only after a new
 connection test. After the old provider credential has been revoked, confirm
 revocation to erase its ciphertext, nonce, and tag while retaining lifecycle

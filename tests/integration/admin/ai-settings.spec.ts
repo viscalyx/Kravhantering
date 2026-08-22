@@ -817,6 +817,7 @@ test.describe('Admin settings', () => {
       const cleanup = await prepareAdmin20Fixture()
       const administrationName = ADMIN_20_CONNECTION_NAME
       const modelName = ADMIN_20_MODEL_NAME
+      const replacementModelName = 'Ersättningsmodell ADMIN-20'
       const incidentResponseReference = crypto.randomUUID()
       const replacementIncidentResponseReference = crypto.randomUUID()
       const reviewedAt = '2026-08-18T00:00:00.000Z'
@@ -1207,6 +1208,23 @@ test.describe('Admin settings', () => {
           await expect(catalogDialog).toHaveCount(0)
 
           await details
+            .getByRole('button', { name: 'Lägg till modell' })
+            .click()
+          const duplicateDialog = page.getByRole('dialog', {
+            name: 'Lägg till anslutningsmodell',
+          })
+          await expect(
+            duplicateDialog.getByRole('option', {
+              name: `${modelName} · controlled/model`,
+            }),
+          ).toHaveCount(0)
+          await expect(
+            duplicateDialog.getByLabel(/^Externt modell-id/),
+          ).toBeVisible()
+          await duplicateDialog.getByRole('button', { name: 'Avbryt' }).click()
+          await expect(duplicateDialog).toHaveCount(0)
+
+          await details
             .getByRole('button', { name: 'Verifiera anslutning' })
             .click()
           await expect(
@@ -1342,7 +1360,9 @@ test.describe('Admin settings', () => {
               'Driftsättningen saknar en datapolicy för anropstypen.',
             ),
           ).toHaveCount(1)
-          const activationAlert = page.getByRole('alert')
+          const activationAlert = page
+            .getByRole('region', { name: 'AI' })
+            .getByRole('alert')
           await expect(activationAlert).toContainText(
             'Profilrevisionen kunde inte aktiveras',
           )
@@ -1359,6 +1379,22 @@ test.describe('Admin settings', () => {
           await expect(
             profileCard.getByText('Aktiv', { exact: true }),
           ).toHaveCount(1)
+          const assignedModelCard = details
+            .locator('article')
+            .filter({ hasText: modelName })
+          const retireAssignedModel = assignedModelCard.getByRole('button', {
+            name: 'Avsluta modellrevision',
+          })
+          await expect(retireAssignedModel).toBeDisabled()
+          await expect(retireAssignedModel).toHaveAttribute(
+            'title',
+            'Modellen används av en körprofil. Ta bort den från profilen eller välj en annan modell först.',
+          )
+          const deleteAssignedModel = assignedModelCard.getByRole('button', {
+            name: 'Ta bort anslutningsmodell',
+          })
+          await expect(deleteAssignedModel).toBeDisabled()
+          await expect(deleteAssignedModel).toHaveText('')
         })
 
         await test.step('suspend and manually recover profile and connection', async () => {
@@ -1402,6 +1438,115 @@ test.describe('Admin settings', () => {
             details.getByRole('button', { name: 'Suspendera anslutning' }),
           ).toHaveCount(1)
           await expect(connectionRow.getByText('Aktiv')).toHaveCount(1)
+        })
+
+        await test.step('switch the profile before retiring and removing its old model', async () => {
+          await details
+            .getByRole('button', { name: 'Lägg till modell' })
+            .click()
+          const modelDialog = page.getByRole('dialog', {
+            name: 'Lägg till anslutningsmodell',
+          })
+          await modelDialog.getByLabel(/^Modellnamn/).fill(replacementModelName)
+          await modelDialog
+            .getByLabel(/^Externt modell-id/)
+            .fill('controlled/replacement')
+          for (const capability of [
+            'Styrning med JSON-schema',
+            'Strömning',
+            'Validerbar JSON',
+          ]) {
+            await modelDialog
+              .getByRole('checkbox', { name: capability })
+              .check()
+          }
+          await modelDialog
+            .getByRole('button', { name: 'Spara modellutkast' })
+            .click()
+          await expect(modelDialog).toHaveCount(0)
+
+          const replacementModelCard = details
+            .locator('article')
+            .filter({ hasText: replacementModelName })
+          const verifyReplacement = replacementModelCard.getByRole('button', {
+            name: 'Verifiera modell',
+          })
+          await expect(verifyReplacement).toBeEnabled()
+          await verifyReplacement.click()
+          await expect(
+            page.getByText('Anslutningsmodellrevisionen verifierades.'),
+          ).toHaveCount(1)
+
+          const profileCard = page.locator('article').filter({
+            has: page.getByRole('heading', {
+              exact: true,
+              name: 'Kravgenerering utan bilder',
+            }),
+          })
+          await profileCard
+            .getByRole('button', {
+              name: /Skapa profilrevision|Redigera profilutkast/,
+            })
+            .click()
+          const profileDialog = page.getByRole('dialog', {
+            name: 'Körprofilrevision',
+          })
+          const modelSelect = profileDialog.getByLabel(
+            /^Anslutningsmodellrevision/,
+          )
+          const replacementOption = modelSelect.locator('option').filter({
+            hasText: `${administrationName} · ${replacementModelName}`,
+          })
+          const replacementRevisionId =
+            await replacementOption.getAttribute('value')
+          expect(replacementRevisionId).not.toBeNull()
+          await modelSelect.selectOption(replacementRevisionId ?? '')
+          await profileDialog
+            .getByRole('button', { name: 'Spara profilutkast' })
+            .click()
+          await expect(profileDialog).toHaveCount(0)
+          const activateReplacement = profileCard.getByRole('button', {
+            name: 'Aktivera profilrevision',
+          })
+          await expect(activateReplacement).toBeEnabled()
+          await activateReplacement.click()
+          await expect(
+            page.getByText('Körprofilrevisionen aktiverades.'),
+          ).toHaveCount(1)
+
+          const oldModelCard = details
+            .locator('article')
+            .filter({ hasText: modelName })
+          const retireOldModel = oldModelCard.getByRole('button', {
+            name: 'Avsluta modellrevision',
+          })
+          await expect(retireOldModel).toBeEnabled()
+          const deleteModel = oldModelCard.getByRole('button', {
+            name: 'Ta bort anslutningsmodell',
+          })
+          await expect(deleteModel).toBeDisabled()
+          await retireOldModel.click()
+          const retireConfirmation = page.getByRole('alertdialog', {
+            name: 'Avsluta modellrevisionen?',
+          })
+          await retireConfirmation
+            .getByRole('button', { name: 'Avsluta modellrevision' })
+            .click()
+          await expect(retireConfirmation).toHaveCount(0)
+
+          await expect(retireOldModel).toBeDisabled()
+          await expect(deleteModel).toBeEnabled()
+          await expect(deleteModel).toHaveText('')
+          await deleteModel.click()
+          const deleteConfirmation = page.getByRole('alertdialog', {
+            name: 'Ta bort anslutningsmodellen?',
+          })
+          await deleteConfirmation
+            .getByRole('button', { name: 'Ta bort anslutningsmodell' })
+            .click()
+          await expect(deleteConfirmation).toHaveCount(0)
+          await expect(oldModelCard).toHaveCount(0)
+          await expect(replacementModelCard).toHaveCount(1)
         })
       } finally {
         await cleanup()

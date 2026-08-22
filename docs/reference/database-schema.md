@@ -255,6 +255,7 @@ erDiagram
         uniqueidentifier ai_connection_id FK
         text name
         text description
+        datetime2 deleted_at
         uniqueidentifier revision_token
     }
 
@@ -1847,7 +1848,10 @@ invalidating row together with connection/model lifecycle state.
 ### `ai_connection_models`
 
 Stable, reusable model identities under a connection. Display name and
-description may change without minting a model revision.
+description may change without minting a model revision. A removed model is
+soft-deleted so historical run-profile references remain intact while the
+model and all of its revisions disappear from administration and selection
+surfaces.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1858,6 +1862,7 @@ description may change without minting a model revision.
 | `description` | nvarchar(max), nullable | Administrator description |
 | `created_at` | datetime2(3) | Creation time |
 | `updated_at` | datetime2(3) | Last display-field update |
+| `deleted_at` | datetime2(3), nullable | Application removal time; non-null models and their revisions are hidden from active administration |
 | `revision_token` | uniqueidentifier | Optimistic concurrency token |
 <!-- markdownlint-enable MD013 -->
 

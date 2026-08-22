@@ -149,6 +149,7 @@ const CONNECTION_COLUMNS = `
     INNER JOIN [ai_connection_model_revisions] AS [model_revision]
       ON [model_revision].[ai_connection_model_id] = [model].[id]
     WHERE [model].[ai_connection_id] = [connection].[id]
+      AND [model].[deleted_at] IS NULL
       AND [model_revision].[status] = N'verified'
       AND [model_revision].[connection_configuration_version]
         = [connection].[configuration_version]
@@ -169,6 +170,7 @@ const CONNECTION_COLUMNS = `
     INNER JOIN [ai_connection_model_operational_states] AS [state]
       ON [state].[ai_connection_model_revision_id] = [health_revision].[id]
     WHERE [health_model].[ai_connection_id] = [connection].[id]
+      AND [health_model].[deleted_at] IS NULL
       AND [health_revision].[connection_configuration_version]
         = [connection].[configuration_version]
   ), N'unknown') AS [operationalHealth]`
@@ -429,6 +431,7 @@ async function loadConnections(
        WHERE [model].[ai_connection_id] IN (
          SELECT TRY_CONVERT(uniqueidentifier, [value]) FROM OPENJSON(@0)
        )
+         AND [model].[deleted_at] IS NULL
        ORDER BY [model].[ai_connection_id], [model].[created_at],
          [revision].[revision_number]`,
       [idsJson],
@@ -818,6 +821,7 @@ export function createSqlServerAiAdminStore(
              INNER JOIN [ai_connection_models] AS [model]
                ON [model].[id] = [revision].[ai_connection_model_id]
              WHERE [model].[ai_connection_id] = @0
+               AND [model].[deleted_at] IS NULL
                AND [revision].[status] = N'verified';
 
            SELECT @technical_changed AS [technicalChanged];`,
@@ -1017,6 +1021,33 @@ export function createSqlServerAiAdminStore(
     async saveModelRevision(input) {
       return db.transaction('SERIALIZABLE', async manager => {
         const value = input.modelRevision
+        const duplicates = await manager.query<Array<{ id: string }>>(
+          `SELECT TOP (1) [revision].[id]
+           FROM [ai_connection_model_revisions] AS [revision]
+             WITH (UPDLOCK, HOLDLOCK)
+           INNER JOIN [ai_connection_models] AS [model]
+             WITH (UPDLOCK, HOLDLOCK)
+             ON [model].[id] = [revision].[ai_connection_model_id]
+           WHERE [model].[ai_connection_id] = @0
+             AND [model].[deleted_at] IS NULL
+             AND (@3 IS NULL OR [model].[id] <> @3)
+             AND [revision].[external_model_id] = @1
+             AND (
+               [revision].[external_model_version] = @2
+               OR ([revision].[external_model_version] IS NULL AND @2 IS NULL)
+             );`,
+          [
+            input.connectionId,
+            value.externalModelId,
+            value.externalModelVersion,
+            value.modelId,
+          ],
+        )
+        if (duplicates[0]) {
+          throw conflictError(
+            'The external AI model is already registered on this connection.',
+          )
+        }
         const modelRevisionId = randomUUID()
         let technicalChanged = true
         let modelId = value.modelId
@@ -1036,7 +1067,7 @@ export function createSqlServerAiAdminStore(
                [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
              OUTPUT INSERTED.[id]
              WHERE [id] = @0 AND [ai_connection_id] = @1
-               AND [revision_token] = @4`,
+               AND [revision_token] = @4 AND [deleted_at] IS NULL`,
             [
               modelId,
               input.connectionId,
@@ -1077,6 +1108,7 @@ export function createSqlServerAiAdminStore(
              INNER JOIN [ai_connections] AS [connection]
                ON [connection].[id] = [model].[ai_connection_id]
              WHERE [model].[id] = @0 AND [model].[ai_connection_id] = @1
+               AND [model].[deleted_at] IS NULL
              ORDER BY [revision].[revision_number] DESC`,
             [modelId, input.connectionId],
           )
@@ -1195,6 +1227,7 @@ export function createSqlServerAiAdminStore(
              INNER JOIN [ai_connection_models] AS [model]
                ON [model].[id] = [revision].[ai_connection_model_id]
              WHERE [model].[ai_connection_id] = @1
+               AND [model].[deleted_at] IS NULL
                AND [revision].[status] = N'verified';
            END;`,
           [
@@ -1252,6 +1285,7 @@ export function createSqlServerAiAdminStore(
                AND [revision].[connection_configuration_version]
                  = [connection].[configuration_version]
                AND [connection].[id] = @10
+               AND [model].[deleted_at] IS NULL
                AND [connection].[configuration_version] = @11
                AND [connection].[revision_token] = @12
                AND [connection_evidence].[ai_connection_id] = [connection].[id]
@@ -1352,7 +1386,17 @@ export function createSqlServerAiAdminStore(
            WHERE [revision].[id] = @0 AND [revision].[revision_token] = @1
              AND [revision].[status]
                IN (N'verified', N'verification_required')
-             AND [model].[ai_connection_id] = @2;
+             AND [model].[ai_connection_id] = @2
+             AND [model].[deleted_at] IS NULL
+             AND NOT EXISTS (
+               SELECT 1
+               FROM [ai_run_profile_revisions] AS [profile_revision]
+               INNER JOIN [ai_connection_model_revisions] AS [used_revision]
+                 ON [used_revision].[id]
+                   = [profile_revision].[ai_connection_model_revision_id]
+               WHERE [used_revision].[ai_connection_model_id] = [model].[id]
+                 AND [profile_revision].[status] IN (N'active', N'draft')
+             );
 
            SELECT [id] FROM @updated;`,
           [input.modelRevisionId, input.revisionToken, input.connectionId],
@@ -1377,6 +1421,53 @@ export function createSqlServerAiAdminStore(
       })
     },
 
+    async deleteConnectionModel(input) {
+      return db.transaction('SERIALIZABLE', async manager => {
+        const rows = await manager.query<Array<{ id: string }>>(
+          `DECLARE @updated TABLE ([id] uniqueidentifier NOT NULL);
+
+           UPDATE [model] WITH (UPDLOCK, HOLDLOCK)
+           SET [deleted_at] = SYSUTCDATETIME(),
+             [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
+           OUTPUT INSERTED.[id] INTO @updated ([id])
+           FROM [ai_connection_models] AS [model]
+           WHERE [model].[id] = @0 AND [model].[ai_connection_id] = @1
+             AND [model].[revision_token] = @2
+             AND [model].[deleted_at] IS NULL
+             AND N'retired' = (
+               SELECT TOP (1) [revision].[status]
+               FROM [ai_connection_model_revisions] AS [revision]
+                 WITH (UPDLOCK, HOLDLOCK)
+               WHERE [revision].[ai_connection_model_id] = [model].[id]
+               ORDER BY [revision].[revision_number] DESC
+             )
+             AND NOT EXISTS (
+               SELECT 1
+               FROM [ai_run_profile_revisions] AS [profile_revision]
+                 WITH (UPDLOCK, HOLDLOCK)
+               INNER JOIN [ai_connection_model_revisions] AS [used_revision]
+                 ON [used_revision].[id]
+                   = [profile_revision].[ai_connection_model_revision_id]
+               WHERE [used_revision].[ai_connection_model_id] = [model].[id]
+                 AND [profile_revision].[status] IN (N'active', N'draft')
+             );
+
+           SELECT [id] FROM @updated;`,
+          [input.modelId, input.connectionId, input.revisionToken],
+        )
+        if (!rows[0]) return false
+        await audit(
+          {
+            operation: 'delete',
+            resourceId: input.modelId,
+            resourceType: 'ai_connection_model',
+          },
+          manager,
+        )
+        return true
+      })
+    },
+
     async recordHealth(input) {
       return db.transaction('SERIALIZABLE', async manager => {
         const rows = await manager.query<Array<{ id: string }>>(
@@ -1393,6 +1484,7 @@ export function createSqlServerAiAdminStore(
                AND [revision].[revision_token] = @2
                AND [revision].[status] = N'verified'
                AND [model].[ai_connection_id] = @0
+               AND [model].[deleted_at] IS NULL
                AND [connection].[revision_token] = @5
                AND [connection].[configuration_version] = @6
                AND [revision].[connection_configuration_version]
@@ -1462,6 +1554,7 @@ export function createSqlServerAiAdminStore(
              INNER JOIN [ai_connections] AS [connection]
                ON [connection].[id] = [model].[ai_connection_id]
              WHERE [model].[ai_connection_id] = @0
+               AND [model].[deleted_at] IS NULL
                AND [revision].[connection_configuration_version]
                  = @6
                AND [connection].[revision_token] = @5
@@ -1534,6 +1627,24 @@ export function createSqlServerAiAdminStore(
         const profileId = profiles[0]?.id
         if (!profileId) throw new Error('AI run profile does not exist.')
         const value = input.revision
+        if (value.modelRevisionId) {
+          const selectedModel = await manager.query<Array<{ id: string }>>(
+            `SELECT TOP (1) [revision].[id]
+             FROM [ai_connection_model_revisions] AS [revision]
+               WITH (UPDLOCK, HOLDLOCK)
+             INNER JOIN [ai_connection_models] AS [model]
+               WITH (UPDLOCK, HOLDLOCK)
+               ON [model].[id] = [revision].[ai_connection_model_id]
+             WHERE [revision].[id] = @0
+               AND [model].[deleted_at] IS NULL`,
+            [value.modelRevisionId],
+          )
+          if (!selectedModel[0]) {
+            throw conflictError(
+              'AI connection model revision is no longer available. Reload and try again.',
+            )
+          }
+        }
         if (value.revisionToken) {
           const rows = await manager.query<Array<{ id: string }>>(
             `DECLARE @updated TABLE ([id] uniqueidentifier NOT NULL);
@@ -1733,6 +1844,7 @@ export function createSqlServerAiAdminStore(
                  AND [revision].[connection_configuration_version]
                    = [connection].[configuration_version]
                  AND [model].[ai_connection_id] = [connection].[id]
+                 AND [model].[deleted_at] IS NULL
              )
              AND (
                [connection].[authentication_type] = N'none'
@@ -1801,6 +1913,7 @@ export function createSqlServerAiAdminStore(
              AND [candidate].[revision_token] = @1
              AND [model_revision].[revision_token] = @2
              AND [model_revision].[status] = N'verified'
+             AND [model].[deleted_at] IS NULL
              AND [connection].[revision_token] = @3
              AND [connection].[lifecycle_status] = N'active'
              AND [attestation].[revision_token] = @4

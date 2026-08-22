@@ -185,6 +185,18 @@ localizable code and field enums; malformed or arbitrary details are omitted.
 Connection impact includes active and draft profile revisions, not superseded
 history.
 
+A connection model cannot be retired or removed while an active or draft run
+profile revision selects any of its model revisions. The administrator must
+first remove that selection or activate a replacement. After the latest model
+revision is retired, the retirement action remains visible but disabled and the
+always-visible icon-only destructive action becomes enabled. It removes the
+connection model and all of its revisions from administration and selection
+surfaces. Historical profile references remain stored for traceability. Catalog
+entries
+already registered by another non-removed connection model are omitted when a
+model is added or edited, and the server rejects the same external model ID and
+version across two connection models on one connection.
+
 Adapter availability is derived from the server-side Admin adapter registry,
 not from adapter names in the browser. An unregistered adapter leaves ordinary
 connection, attestation, and credential administration available while model
