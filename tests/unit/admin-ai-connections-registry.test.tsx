@@ -298,7 +298,7 @@ function fixtures(): {
       maximumOutputBytes: 65_536,
       maximumOutputTokens: 1_536,
       maximumRetainedMemoryBytes: 131_072,
-      modelRevisionId: null,
+      modelRevisionId: verified.id,
       operationalStatus: 'enabled',
       profileKey: 'generation_without_images',
       queueCapacity: 1,
@@ -412,6 +412,7 @@ describe('AI connections registry', () => {
   })
 
   it('sends exact destructive model-revision actions after confirmation', async () => {
+    mocks.state.profiles = []
     const user = userEvent.setup()
     render(<AiConnectionsRegistry />)
     await user.click(screen.getByRole('button', { name: /Admin connection/ }))
@@ -777,6 +778,7 @@ describe('AI connections registry', () => {
 
   it('leaves destructive state unchanged when confirmations are rejected', async () => {
     mocks.confirm.mockResolvedValue(false)
+    mocks.state.profiles = []
     const user = userEvent.setup()
     render(<AiConnectionsRegistry />)
     await user.click(

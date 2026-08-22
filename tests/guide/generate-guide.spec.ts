@@ -76,6 +76,7 @@ const AI_GUIDE_AREA_OWNER_HSA_ID = 'SE5560000001-annaj'
 const AI_GUIDE_AREA_DESCRIPTION =
   'Krav för registrering, ändring, fastställande och spårbar hantering av elevers betyg.'
 const AI_GUIDE_CONNECTION_NAME = 'Godkänd AI-tjänst'
+const AI_GUIDE_DATA_POLICY_SUMMARY = 'EU-behandling utan träning'
 const AI_GUIDE_NORM_KEY = 'EDU-GRADE-TRACE-2026'
 const AI_GUIDE_NORM_NAME = 'Riktlinje för spårbar betygshantering'
 const AI_GUIDE_NEED =
@@ -444,7 +445,7 @@ async function installAiGuideMocks(page: Page): Promise<() => Promise<void>> {
     const available = {
       available: true,
       connectionName: AI_GUIDE_CONNECTION_NAME,
-      dataPolicySummary: 'EU-behandling utan träning',
+      dataPolicySummary: AI_GUIDE_DATA_POLICY_SUMMARY,
     }
     await fulfillGuideJson(route, {
       enabled: true,
@@ -1992,15 +1993,36 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await aiDialog
         .getByLabel('Kravområde', { exact: true })
         .selectOption(String(area.id))
-      await expect(aiDialog.getByText(AI_GUIDE_CONNECTION_NAME)).toBeVisible({
-        timeout: 10_000,
-      })
+      const authoringProfileStatus = aiDialog
+        .getByRole('status')
+        .filter({ hasText: AI_GUIDE_CONNECTION_NAME })
+      await expect(authoringProfileStatus).toBeVisible({ timeout: 10_000 })
+      await expect(
+        authoringProfileStatus.getByText('Administratörsstyrd AI-profil', {
+          exact: true,
+        }),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.getByText('AI-anslutning', { exact: true }),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.getByText(AI_GUIDE_CONNECTION_NAME),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.getByText('Datapolicy', { exact: true }),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.getByText(AI_GUIDE_DATA_POLICY_SUMMARY),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.locator('button, input, select, textarea'),
+      ).toHaveCount(0)
 
       await snap(
         page,
         'ai-oppna',
         'AI-assisterat författande — behov och AI-anslutning',
-        `Öppna **"AI-assisterat författande"** från kravbiblioteket. Kontrollera den administratörsstyrda AI-anslutningen och datapolicyn. Ange ett konkret behov, till exempel "${AI_GUIDE_NEED}", och välj kravområdet **${AI_GUIDE_AREA_NAME}**. Guiden mockar AI-svaret men använder applikationens riktiga importförhandsgranskning.`,
+        `Öppna **"AI-assisterat författande"** från kravbiblioteket. Kontrollera den administratörsstyrda AI-anslutningen och datapolicyn. Ange ett konkret behov, till exempel "${AI_GUIDE_NEED}", och välj kravområdet **${AI_GUIDE_AREA_NAME}**. Anslutning, modell, förmågepolicy och datapolicy kan inte väljas i dialogen. Guiden mockar AI-svaret men använder applikationens riktiga importförhandsgranskning.`,
         { fullPage: false },
       )
     })

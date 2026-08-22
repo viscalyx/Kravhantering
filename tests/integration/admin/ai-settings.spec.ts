@@ -966,7 +966,7 @@ test.describe('Admin settings', () => {
               .fill('controlled/model')
             await dialog.getByLabel(/^Extern modellversion/).fill('2026-08-22')
             await expect(
-              dialog.getByText('Inte kontrollerad', { exact: true }),
+              dialog.getByText('Inte testad', { exact: true }),
             ).toHaveCount(7)
             await expect(
               dialog.getByRole('button', { name: 'Spara modellrevision' }),
@@ -1061,7 +1061,7 @@ test.describe('Admin settings', () => {
             .fill('2026-08-22-technical-change')
           await expect(saveModelRevision).toBeDisabled()
           await expect(
-            modelDialog.getByText('Inte kontrollerad', { exact: true }),
+            modelDialog.getByText('Inte testad', { exact: true }),
           ).toHaveCount(7)
           await modelDialog
             .getByLabel(/^Extern modellversion/)

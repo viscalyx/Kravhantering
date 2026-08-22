@@ -227,6 +227,18 @@ const ACQUIRE_SQL = `
   FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK)
   WHERE [application_run_id] = @0 AND [fencing_token] = @3;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM [ai_connection_model_revisions] WITH (UPDLOCK, HOLDLOCK)
+    WHERE [id] = @model_revision_id AND [status] = N'verified'
+  ) BEGIN
+    DELETE FROM [ai_run_coordination_entries]
+    WHERE [application_run_id] = @0 AND [fencing_token] = @3
+      AND [status] IN (N'queued', N'retry_wait');
+    SELECT N'expired' AS [acquisitionStatus];
+    RETURN;
+  END;
+
   IF EXISTS (
     SELECT 1 FROM [ai_connection_model_operational_states] WITH (UPDLOCK, HOLDLOCK)
     WHERE [ai_connection_model_revision_id] = @model_revision_id

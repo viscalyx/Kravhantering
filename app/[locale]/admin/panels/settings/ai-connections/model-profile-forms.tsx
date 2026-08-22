@@ -492,7 +492,7 @@ export function ModelForm({
           {t('modelVerification.capabilities')}
         </legend>
         <p className="mb-3 text-xs leading-5 text-secondary-600 dark:text-secondary-300">
-          {t('catalog.selectionHelp')}
+          {t('modelVerification.capabilitiesHelp')}
         </p>
         <dl className="grid gap-2 sm:grid-cols-2">
           {AI_CAPABILITY_KEYS.map(capability => {

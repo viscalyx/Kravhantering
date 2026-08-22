@@ -131,6 +131,38 @@ describe('AI run coordination against SQL Server', () => {
     expect(Number(rows[0]?.rowCount ?? 0)).toBe(0)
   })
 
+  it('does not lease a queued run after its model revision loses verification', async () => {
+    const db = appDb()
+    const { identity } = await createCoordinationFixture(db)
+    const store = createSqlServerAiRunCoordinationStore(db)
+    const applicationRunId = randomUUID()
+    const fencingToken = randomUUID()
+    await expect(
+      store.enqueue({
+        applicationRunId,
+        fencingToken,
+        identity,
+        queueCapacity: 1,
+        totalDeadlineAt: new Date(Date.now() + 60_000),
+      }),
+    ).resolves.toEqual({ status: 'queued' })
+    await db.query(
+      `UPDATE [ai_connection_model_revisions]
+       SET [status] = N'new_revision_required'
+       WHERE [id] = @0`,
+      [identity.aiConnectionModelRevisionId],
+    )
+
+    await expect(
+      store.acquire({
+        applicationRunId,
+        fencingToken,
+        leaseDurationMs: 30_000,
+        leaseOwnerId: randomUUID(),
+      }),
+    ).resolves.toEqual({ status: 'expired' })
+  })
+
   it('atomically requests exact profile and connection cancellation without overwriting the first cause', async () => {
     const db = appDb()
     const { identity } = await createCoordinationFixture(db)

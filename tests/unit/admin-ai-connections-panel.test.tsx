@@ -345,6 +345,19 @@ describe('Admin AI model and stable-profile forms', () => {
         name: '',
       }),
     ).toHaveTextContent('admin.aiConnections.catalog.selectionReady')
+    expect(
+      screen.getByText(
+        'admin.aiConnections.modelVerification.capabilitiesHelp',
+      ),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.help: admin.aiConnections.catalog.selectionLabel',
+      }),
+    )
+    expect(
+      screen.getByText('admin.aiConnections.catalog.selectionHelp'),
+    ).toBeInTheDocument()
     const select = screen.getByLabelText(
       'admin.aiConnections.catalog.selectionLabel',
     )

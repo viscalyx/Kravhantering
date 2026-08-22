@@ -2168,7 +2168,7 @@
         "deleteRequiresRetirementHelp": "Retire the model revision before deleting the connection model.",
         "alreadyRetiredHelp": "The model revision is already retired.",
         "retireConfirmTitle": "Retire model revision?",
-        "retireConfirmMessage": "A retired model revision cannot be verified or selected for a new profile revision.",
+        "retireConfirmMessage": "A retired model revision cannot be verified or selected for a new run profile.",
         "usedByProfileHelp": "The model is used by a run profile. Remove it from the profile or select another model first.",
         "status": {
           "ended": "Ended",
@@ -2212,10 +2212,10 @@
         "incompatibleModel": "incompatible with this run type",
         "incompatibleModelHelp": "The selected model revision lacks a capability required by this run type. Select a compatible revision before saving.",
         "lockedMinimum": "Locked application minimum — this value cannot be weakened for this run type.",
-        "candidateBlockers": "The profile revision could not be activated",
+        "candidateBlockers": "The run profile could not be activated",
         "saveDraft": "Save profile draft",
         "saved": "The run profile was saved.",
-        "activated": "The run profile revision was activated.",
+        "activated": "The run profile was activated.",
         "suspended": "The run profile was suspended.",
         "recovered": "The run profile was enabled again.",
         "effectiveStatus": {
@@ -2232,6 +2232,7 @@
       "connections": { "title": "AI connections" },
       "modelVerification": {
         "capabilities": "Verified capabilities",
+        "capabilitiesHelp": "Verification determines which capabilities are available to run profiles. Catalog claims are not treated as proof.",
         "cancelVerification": "Cancel verification",
         "checks": {
           "baseline_model_access": "Baseline model access",
@@ -3532,7 +3533,7 @@
     "pricingOut": "out",
     "streamClosedUnexpectedly": "The response stream closed unexpectedly. Please try again.",
     "imageAttachLabel": "Attach images",
-    "imageAttachHelp": "Attach up to 3 images (PNG, JPEG, GIF or WebP, max 10 MB each) for the AI model to analyze. Image support is managed by administrators through the <strong>generate_with_images</strong> profile, which must be configured and available.",
+    "imageAttachHelp": "Attach up to 3 images (PNG, JPEG, GIF or WebP, max 10 MB each) for the AI model to analyze. Image support is managed by administrators through the <strong>generation_with_images</strong> profile, which must be configured and available.",
     "imageAttachHint": "PNG, JPEG, GIF or WebP — max 10 MB each, up to 3 images",
     "imageSelectButton": "Choose images",
     "imageDropZone": "Drop images here or click to browse",

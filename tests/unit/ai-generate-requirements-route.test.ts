@@ -56,13 +56,14 @@ const usage = {
   totalTokens: { status: 'reported', value: 20 },
 } as const
 
-function request(body: Record<string, unknown>): Request {
+function request(body: Record<string, unknown>, signal?: AbortSignal): Request {
   const value = new Request(
     'https://example.test/api/ai/generate-requirement-import',
     {
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
+      signal,
     },
   )
   attachVerifiedActor(value, {
@@ -495,12 +496,29 @@ describe('POST /api/ai/generate-requirement-import', () => {
     ])
   })
 
-  it('closes a cancelled run without emitting a terminal payload', async () => {
+  it('normalizes an application-cancelled run to one safe error', async () => {
+    routeState.events = [
+      { identity, reason: 'application_cancelled', type: 'cancelled' },
+    ]
+
+    const response = await POST(request(validBody()))
+
+    await expect(events(response)).resolves.toEqual([
+      {
+        data: expect.objectContaining({ code: 'ai_provider_unavailable' }),
+        event: 'error',
+      },
+    ])
+  })
+
+  it('keeps client-initiated cancellation silent', async () => {
+    const controller = new AbortController()
+    controller.abort()
     routeState.events = [
       { identity, reason: 'client_disconnected', type: 'cancelled' },
     ]
 
-    const response = await POST(request(validBody()))
+    const response = await POST(request(validBody(), controller.signal))
 
     await expect(events(response)).resolves.toEqual([])
   })

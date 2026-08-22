@@ -2168,7 +2168,7 @@
         "deleteRequiresRetirementHelp": "Avsluta modellrevisionen innan anslutningsmodellen tas bort.",
         "alreadyRetiredHelp": "Modellrevisionen är redan avslutad.",
         "retireConfirmTitle": "Avsluta modellrevisionen?",
-        "retireConfirmMessage": "En avslutad modellrevision kan inte verifieras eller väljas för en ny profilrevision.",
+        "retireConfirmMessage": "En avslutad modellrevision kan inte verifieras eller väljas för en ny körprofil.",
         "usedByProfileHelp": "Modellen används av en körprofil. Ta bort den från profilen eller välj en annan modell först.",
         "status": {
           "ended": "Avslutad",
@@ -2212,10 +2212,10 @@
         "incompatibleModel": "inte kompatibel med anropstypen",
         "incompatibleModelHelp": "Den valda modellrevisionen saknar en förmåga som är obligatorisk för anropstypen. Välj en kompatibel revision innan du sparar.",
         "lockedMinimum": "Låst applikationsminimum – värdet kan inte försvagas för den här anropstypen.",
-        "candidateBlockers": "Profilrevisionen kunde inte aktiveras",
+        "candidateBlockers": "Körprofilen kunde inte aktiveras",
         "saveDraft": "Spara profilutkast",
         "saved": "Körprofilen sparades.",
-        "activated": "Körprofilrevisionen aktiverades.",
+        "activated": "Körprofilen aktiverades.",
         "suspended": "Körprofilen suspenderades.",
         "recovered": "Körprofilen aktiverades igen.",
         "effectiveStatus": {
@@ -2232,6 +2232,7 @@
       "connections": { "title": "AI-anslutningar" },
       "modelVerification": {
         "capabilities": "Verifierade förmågor",
+        "capabilitiesHelp": "Verifieringen avgör vilka förmågor som är tillgängliga för körprofiler. Uppgifter i modellkatalogen räknas inte som bevis.",
         "cancelVerification": "Avbryt verifiering",
         "checks": {
           "baseline_model_access": "Grundläggande modellåtkomst",
@@ -3532,7 +3533,7 @@
     "pricingOut": "ut",
     "streamClosedUnexpectedly": "Svarsströmmen stängdes oväntat. Försök igen.",
     "imageAttachLabel": "Bifoga bilder",
-    "imageAttachHelp": "Bifoga upp till 3 bilder (PNG, JPEG, GIF eller WebP, max 10 MB styck) för AI-modellen att analysera. Bildstödet hanteras av administratörer genom profilen <strong>generate_with_images</strong>, som måste vara konfigurerad och tillgänglig.",
+    "imageAttachHelp": "Bifoga upp till 3 bilder (PNG, JPEG, GIF eller WebP, max 10 MB styck) för AI-modellen att analysera. Bildstödet hanteras av administratörer genom profilen <strong>generation_with_images</strong>, som måste vara konfigurerad och tillgänglig.",
     "imageAttachHint": "PNG, JPEG, GIF eller WebP — max 10 MB styck, upp till 3 bilder",
     "imageSelectButton": "Välj bilder",
     "imageDropZone": "Släpp bilder här eller klicka för att bläddra",

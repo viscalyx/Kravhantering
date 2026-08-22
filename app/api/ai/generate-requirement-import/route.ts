@@ -372,6 +372,12 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
               break
             }
             if (event.type === 'cancelled') {
+              if (!request.signal.aborted) {
+                send('error', {
+                  code: 'ai_provider_unavailable',
+                  message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+                })
+              }
               recordTerminal('failure', 499)
               terminal = true
               break
