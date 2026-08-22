@@ -127,17 +127,19 @@ function profileName(
 }
 
 function effectiveProfileStatus(profile: AiAdminRunProfileRecord): {
-  key: 'blocked' | 'configured' | 'unconfigured'
-  tone: 'danger' | 'neutral' | 'success'
+  key: AiAdminRunProfileRecord['administrativeStatus']
+  tone: 'danger' | 'neutral' | 'success' | 'warning'
 } {
   return {
-    key: profile.configurationStatus,
+    key: profile.administrativeStatus,
     tone:
-      profile.configurationStatus === 'configured'
+      profile.administrativeStatus === 'active'
         ? 'success'
-        : profile.configurationStatus === 'blocked'
+        : profile.administrativeStatus === 'blocked'
           ? 'danger'
-          : 'neutral',
+          : profile.administrativeStatus === 'paused'
+            ? 'warning'
+            : 'neutral',
   }
 }
 
@@ -257,6 +259,31 @@ export default function AiConnectionsPanel() {
       profile =>
         profile.modelRevisionId !== null &&
         revisionIds.has(profile.modelRevisionId),
+    )
+  }
+
+  async function pauseProfile(
+    profile: AiAdminRunProfileRecord,
+    anchorEl: HTMLElement,
+  ): Promise<void> {
+    const accepted = await confirm({
+      anchorEl,
+      cancelText: t('actions.cancel'),
+      confirmText: t('directProfile.pause'),
+      icon: 'warning',
+      message: t('directProfile.pauseConfirm.message'),
+      title: t('directProfile.pauseConfirm.title'),
+    })
+    if (!accepted) return
+    await mutateAndReload(
+      `/api/admin/ai-run-profiles/${profile.profileKey}/actions`,
+      {
+        action: 'set_operational_status',
+        revisionToken: profile.revisionToken,
+        status: 'suspended',
+      },
+      'profile.suspended',
+      { actionLabel: t('directProfile.pause') },
     )
   }
 
@@ -638,6 +665,7 @@ export default function AiConnectionsPanel() {
                       <div className="flex flex-wrap gap-2">
                         <button
                           className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
+                          disabled={busy}
                           onClick={() =>
                             openDialog({
                               connection: detail,
@@ -651,6 +679,7 @@ export default function AiConnectionsPanel() {
                         </button>
                         <button
                           className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
+                          disabled={busy}
                           onClick={() =>
                             openDialog({ connection: detail, kind: 'secret' })
                           }
@@ -661,6 +690,7 @@ export default function AiConnectionsPanel() {
                         </button>
                         <button
                           className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
+                          disabled={busy}
                           onClick={() =>
                             openDialog({
                               connection: detail,
@@ -769,6 +799,7 @@ export default function AiConnectionsPanel() {
                           </div>
                           <button
                             className="btn-secondary inline-flex min-h-9 items-center gap-2 px-3! py-1.5! text-sm"
+                            disabled={busy}
                             onClick={() => openModelForm(detail, null)}
                             type="button"
                           >
@@ -801,6 +832,7 @@ export default function AiConnectionsPanel() {
                                   </div>
                                   <button
                                     className="btn-secondary px-3! py-1.5! text-xs"
+                                    disabled={busy}
                                     onClick={() => openModelForm(detail, model)}
                                     type="button"
                                   >
@@ -973,22 +1005,15 @@ export default function AiConnectionsPanel() {
                                 <span className="text-sm text-secondary-700 dark:text-secondary-200">
                                   {profileName(t, profile.profileKey)}
                                 </span>
-                                <span className="flex flex-wrap gap-2">
+                                <span
+                                  {...devMarker({
+                                    context: 'AI run profile impact',
+                                    name: 'Derived AI run profile status',
+                                    priority: 315,
+                                  })}
+                                >
                                   <StatusBadge tone={status.tone}>
-                                    {t(
-                                      `directProfile.configurationStatus.${status.key}`,
-                                    )}
-                                  </StatusBadge>
-                                  <StatusBadge
-                                    tone={
-                                      profile.operationalStatus === 'enabled'
-                                        ? 'success'
-                                        : 'danger'
-                                    }
-                                  >
-                                    {t(
-                                      `directProfile.operationalStatus.${profile.operationalStatus}`,
-                                    )}
+                                    {t(`directProfile.status.${status.key}`)}
                                   </StatusBadge>
                                 </span>
                               </div>
@@ -1195,23 +1220,25 @@ export default function AiConnectionsPanel() {
                         : t('directProfile.noModel')}
                     </p>
                   </div>
-                  <span className="flex flex-wrap justify-end gap-2">
+                  <span
+                    {...devMarker({
+                      context: 'AI run profile card',
+                      name: 'Derived AI run profile status',
+                      priority: 320,
+                    })}
+                  >
                     <StatusBadge tone={status.tone}>
-                      {t(`directProfile.configurationStatus.${status.key}`)}
-                    </StatusBadge>
-                    <StatusBadge
-                      tone={
-                        profile.operationalStatus === 'enabled'
-                          ? 'success'
-                          : 'danger'
-                      }
-                    >
-                      {t(
-                        `directProfile.operationalStatus.${profile.operationalStatus}`,
-                      )}
+                      {t(`directProfile.status.${status.key}`)}
                     </StatusBadge>
                   </span>
                 </div>
+                {profile.administrativeStatus !== 'active' ? (
+                  <p className="mt-3 text-xs text-secondary-600 dark:text-secondary-300">
+                    {t(
+                      `directProfile.statusHelp.${profile.administrativeStatus}`,
+                    )}
+                  </p>
+                ) : null}
                 {profile.blockers.length > 0 ? (
                   <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-amber-800 dark:text-amber-200">
                     {profile.blockers.map(blocker => (
@@ -1231,43 +1258,37 @@ export default function AiConnectionsPanel() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     className="btn-secondary px-3! py-1.5! text-xs"
+                    disabled={busy}
                     onClick={() => openDialog({ kind: 'profile', profile })}
                     type="button"
                   >
                     {t('directProfile.edit')}
                   </button>
-                  <button
-                    className="btn-secondary px-3! py-1.5! text-xs"
-                    disabled={busy}
-                    onClick={() =>
-                      void mutateAndReload(
-                        `/api/admin/ai-run-profiles/${profile.profileKey}/actions`,
-                        {
-                          action: 'set_operational_status',
-                          revisionToken: profile.revisionToken,
-                          status:
-                            profile.operationalStatus === 'enabled'
-                              ? 'suspended'
-                              : 'enabled',
-                        },
-                        profile.operationalStatus === 'enabled'
-                          ? 'profile.suspended'
-                          : 'profile.recovered',
-                        {
-                          actionLabel: t(
-                            profile.operationalStatus === 'enabled'
-                              ? 'directProfile.pause'
-                              : 'directProfile.resume',
-                          ),
-                        },
-                      )
-                    }
-                    type="button"
-                  >
-                    {profile.operationalStatus === 'enabled'
-                      ? t('directProfile.pause')
-                      : t('directProfile.resume')}
-                  </button>
+                  {profile.administrativeStatus !== 'unconfigured' ? (
+                    <button
+                      className="btn-secondary px-3! py-1.5! text-xs"
+                      disabled={busy}
+                      onClick={event =>
+                        profile.administrativeStatus === 'paused'
+                          ? void mutateAndReload(
+                              `/api/admin/ai-run-profiles/${profile.profileKey}/actions`,
+                              {
+                                action: 'set_operational_status',
+                                revisionToken: profile.revisionToken,
+                                status: 'enabled',
+                              },
+                              'profile.recovered',
+                              { actionLabel: t('directProfile.resume') },
+                            )
+                          : void pauseProfile(profile, event.currentTarget)
+                      }
+                      type="button"
+                    >
+                      {profile.administrativeStatus === 'paused'
+                        ? t('directProfile.resume')
+                        : t('directProfile.pause')}
+                    </button>
+                  ) : null}
                 </div>
               </article>
             )

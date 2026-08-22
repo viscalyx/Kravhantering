@@ -4,18 +4,19 @@ import {
   aiCapabilitySchema,
   type CreateAiConnection,
 } from '@/lib/ai/admin-contracts'
-import type {
-  AiAdminActivationSnapshot,
-  AiAdminAttestationRecord,
-  AiAdminAudit,
-  AiAdminBlocker,
-  AiAdminConnectionDetail,
-  AiAdminConnectionSummary,
-  AiAdminModelRecord,
-  AiAdminModelRevisionRecord,
-  AiAdminRunProfileRecord,
-  AiAdminStore,
-  AiAdminStoredConnectionDetail,
+import {
+  type AiAdminActivationSnapshot,
+  type AiAdminAttestationRecord,
+  type AiAdminAudit,
+  type AiAdminBlocker,
+  type AiAdminConnectionDetail,
+  type AiAdminConnectionSummary,
+  type AiAdminModelRecord,
+  type AiAdminModelRevisionRecord,
+  type AiAdminRunProfileRecord,
+  type AiAdminStore,
+  type AiAdminStoredConnectionDetail,
+  deriveAiRunProfileAdministrativeStatus,
 } from '@/lib/ai/admin-service'
 import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
 import type { SqlServerDatabase, SqlServerEntityManager } from '@/lib/db'
@@ -535,7 +536,8 @@ function mapProfile(row: ProfileRow): AiAdminRunProfileRecord {
   } else {
     profileBlockers.push({ code: 'model_revision_missing' })
   }
-  return {
+  const profile: AiAdminRunProfileRecord = {
+    administrativeStatus: 'unconfigured',
     blockers: profileBlockers,
     configurationStatus: row.configurationStatus,
     configurationVersion: Number(row.configurationVersion),
@@ -552,6 +554,8 @@ function mapProfile(row: ProfileRow): AiAdminRunProfileRecord {
     revisionToken: row.profileToken,
     totalTimeBudgetSeconds: Number(row.totalTimeBudgetSeconds),
   }
+  profile.administrativeStatus = deriveAiRunProfileAdministrativeStatus(profile)
+  return profile
 }
 
 async function loadProfiles(
@@ -1531,9 +1535,13 @@ export function createSqlServerAiAdminStore(
             )
           }
         }
-        const rows = await manager.query<Array<{ id: string }>>(
+        const rows = await manager.query<
+          Array<{ id: string; previousModelRevisionId: string | null }>
+        >(
           `UPDATE [ai_run_profiles] WITH (UPDLOCK, HOLDLOCK)
            SET [ai_connection_model_revision_id] = @2,
+             [operational_status] = CASE WHEN @2 IS NULL
+               THEN N'enabled' ELSE [operational_status] END,
              [configuration_version] = [configuration_version] + 1,
              [total_time_budget_seconds] = @3,
              [inactivity_time_budget_seconds] = @4,
@@ -1543,7 +1551,8 @@ export function createSqlServerAiAdminStore(
              [maximum_retained_memory_bytes] = @8,
              [maximum_buffered_events] = @9,
              [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
-           OUTPUT INSERTED.[id]
+           OUTPUT INSERTED.[id],
+             DELETED.[ai_connection_model_revision_id] AS [previousModelRevisionId]
            WHERE [profile_key] = @0 AND [revision_token] = @1`,
           [
             input.profileKey,
@@ -1574,6 +1583,19 @@ export function createSqlServerAiAdminStore(
           },
           manager,
         )
+        if (
+          rows[0].previousModelRevisionId === null &&
+          profile.administrativeStatus === 'active'
+        ) {
+          await audit(
+            {
+              operation: 'activate',
+              resourceId: profile.id,
+              resourceType: 'ai_run_profile',
+            },
+            manager,
+          )
+        }
         return profile
       })
     },
@@ -1704,7 +1726,9 @@ export function createSqlServerAiAdminStore(
            SET [operational_status] = @2, [updated_at] = SYSUTCDATETIME(),
              [revision_token] = NEWID()
            OUTPUT INSERTED.[id]
-           WHERE [profile_key] = @0 AND [revision_token] = @1`,
+           WHERE [profile_key] = @0 AND [revision_token] = @1
+             AND (@2 = N'enabled'
+               OR [ai_connection_model_revision_id] IS NOT NULL)`,
           [input.profileKey, input.revisionToken, input.status],
         )
         if (!rows?.[0]) return null

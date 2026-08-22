@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { AiCapability } from '@/lib/ai/admin-contracts'
-import type { AiAdminCandidateVerificationResult } from '@/lib/ai/admin-service'
+import type {
+  AiAdminAuditDetail,
+  AiAdminCandidateVerificationResult,
+} from '@/lib/ai/admin-service'
 import { createSqlServerAiAdminStore } from '@/lib/dal/ai-connection-admin'
 import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
 
@@ -51,7 +54,8 @@ describe('AI connection administration transactions against SQL Server', () => {
 
   it('atomically saves verified models and fences stable profile and destructive changes', async () => {
     const db = appDb()
-    const store = createSqlServerAiAdminStore(db, async () => undefined)
+    const audit = vi.fn(async (_detail: AiAdminAuditDetail) => undefined)
+    const store = createSqlServerAiAdminStore(db, audit)
     const connection = await store.createConnection({
       adapterKey: 'controlled_test',
       adapterVersion: '1',
@@ -150,6 +154,15 @@ describe('AI connection administration transactions against SQL Server', () => {
       profileKey: 'generation_without_images',
     })
     expect(selected.configurationStatus).toBe('configured')
+    expect(selected.administrativeStatus).toBe('active')
+    expect(
+      audit.mock.calls
+        .map(([detail]) => detail)
+        .filter(detail => detail.resourceId === selected.id),
+    ).toEqual([
+      expect.objectContaining({ operation: 'save' }),
+      expect.objectContaining({ operation: 'activate' }),
+    ])
 
     const secondRevisionModel = await store.saveModelRevision({
       connection: activeConnection,
@@ -223,7 +236,14 @@ describe('AI connection administration transactions against SQL Server', () => {
       details: { profileKeys: ['generation_without_images'], runCount: 0 },
     })
 
-    await store.saveRunProfile({
+    const paused = await store.setRunProfileOperationalStatus({
+      profileKey: selected.profileKey,
+      revisionToken: selected.revisionToken,
+      status: 'suspended',
+    })
+    if (!paused) throw new Error('Paused run profile missing')
+    expect(paused.administrativeStatus).toBe('paused')
+    const disconnected = await store.saveRunProfile({
       profile: {
         inactivityTimeBudgetSeconds: selected.inactivityTimeBudgetSeconds,
         maximumBufferedEvents: selected.maximumBufferedEvents,
@@ -232,11 +252,13 @@ describe('AI connection administration transactions against SQL Server', () => {
         maximumRetainedMemoryBytes: selected.maximumRetainedMemoryBytes,
         modelRevisionId: null,
         queueCapacity: selected.queueCapacity,
-        revisionToken: selected.revisionToken,
+        revisionToken: paused.revisionToken,
         totalTimeBudgetSeconds: selected.totalTimeBudgetSeconds,
       },
-      profileKey: selected.profileKey,
+      profileKey: paused.profileKey,
     })
+    expect(disconnected.administrativeStatus).toBe('unconfigured')
+    expect(disconnected.operationalStatus).toBe('enabled')
     const ended = await store.endModelRevision({
       connectionId: connection.id,
       modelRevisionId: revision.id,

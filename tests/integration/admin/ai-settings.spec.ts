@@ -1112,9 +1112,13 @@ test.describe('Admin settings', () => {
           await expect(saveProfile).toBeEnabled()
           await saveProfile.click()
           await expect(profileDialog).toHaveCount(0)
-          await expect(
-            card.getByText('Konfigurerad', { exact: true }),
-          ).toBeVisible()
+          await expect(card.getByRole('status')).toHaveText('Aktiv')
+          await card.getByRole('button', { name: 'Redigera körprofil' }).click()
+          await expect(profileDialog).toContainText(
+            'Sparade ändringar börjar gälla direkt för nya körningar. Pågående körningar behåller konfigurationen som togs när de startade.',
+          )
+          await profileDialog.getByRole('button', { name: 'Stäng' }).click()
+          await expect(profileDialog).toHaveCount(0)
           return card
         })
 
@@ -1122,13 +1126,18 @@ test.describe('Admin settings', () => {
           await profileCard
             .getByRole('button', { name: 'Pausa körprofil' })
             .click()
-          await expect(
-            profileCard.getByText('Pausad', { exact: true }),
-          ).toBeVisible()
+          const pauseDialog = page.getByRole('alertdialog', {
+            name: 'Pausa körprofil?',
+          })
+          await expect(pauseDialog).toContainText(
+            'Pausning avbryter köade och pågående körningar för profilen. Avbrutna körningar startas inte om när profilen återupptas.',
+          )
+          await pauseDialog
+            .getByRole('button', { name: 'Pausa körprofil' })
+            .click()
+          await expect(profileCard.getByRole('status')).toHaveText('Pausad')
           await profileCard.getByRole('button', { name: 'Återuppta' }).click()
-          await expect(
-            profileCard.getByText('Aktiv', { exact: true }),
-          ).toBeVisible()
+          await expect(profileCard.getByRole('status')).toHaveText('Aktiv')
         })
 
         const modelCard = await test.step('dependency handling', async () => {
@@ -1159,6 +1168,12 @@ test.describe('Admin settings', () => {
             .click()
           await profileDialog.getByRole('button', { name: 'Spara' }).click()
           await expect(profileDialog).toHaveCount(0)
+          await expect(profileCard.getByRole('status')).toHaveText(
+            'Ej konfigurerad',
+          )
+          await expect(
+            profileCard.getByRole('button', { name: 'Pausa körprofil' }),
+          ).toHaveCount(0)
           return card
         })
 

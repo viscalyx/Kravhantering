@@ -41,6 +41,7 @@ export function StatusBadge({
   return (
     <span
       className={`inline-flex min-h-6 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${toneClasses[tone]}`}
+      role="status"
     >
       <Icon aria-hidden="true" className="h-3.5 w-3.5" />
       {children}

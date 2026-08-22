@@ -141,6 +141,8 @@ describe('AI run coordination against SQL Server', () => {
     const firstFence = randomUUID()
     const secondRun = randomUUID()
     const secondFence = randomUUID()
+    const queuedProfileRun = randomUUID()
+    const queuedProfileFence = randomUUID()
     const deadline = new Date(Date.now() + 60_000)
     await coordination.enqueue({
       applicationRunId: firstRun,
@@ -159,6 +161,13 @@ describe('AI run coordination against SQL Server', () => {
       applicationRunId: secondRun,
       fencingToken: secondFence,
       identity: sibling,
+      queueCapacity: 10,
+      totalDeadlineAt: deadline,
+    })
+    await coordination.enqueue({
+      applicationRunId: queuedProfileRun,
+      fencingToken: queuedProfileFence,
+      identity,
       queueCapacity: 10,
       totalDeadlineAt: deadline,
     })
@@ -181,16 +190,27 @@ describe('AI run coordination against SQL Server', () => {
       reason: 'profile_suspended',
       requestedAt: expect.any(Date),
     })
+    await expect(
+      coordination.cancellationRequested?.({
+        applicationRunId: queuedProfileRun,
+        fencingToken: queuedProfileFence,
+      }),
+    ).resolves.toEqual({
+      reason: 'profile_suspended',
+      requestedAt: expect.any(Date),
+    })
     const beforeConnectionSuspension = (await db.query(
       `SELECT [cancellation_reason] AS [cancellationReason]
        FROM [ai_run_coordination_entries]
-       WHERE [application_run_id] IN (@0, @1)
+       WHERE [application_run_id] IN (@0, @1, @2)
        ORDER BY [application_run_id]`,
-      [firstRun, secondRun],
+      [firstRun, secondRun, queuedProfileRun],
     )) as Array<{ cancellationReason: string | null }>
     expect(
       beforeConnectionSuspension.map(row => row.cancellationReason),
-    ).toEqual(expect.arrayContaining([null, 'profile_suspended']))
+    ).toEqual(
+      expect.arrayContaining([null, 'profile_suspended', 'profile_suspended']),
+    )
 
     const connectionRows = (await db.query(
       `SELECT [revision_token] AS [revisionToken]
@@ -206,8 +226,8 @@ describe('AI run coordination against SQL Server', () => {
       `SELECT [application_run_id] AS [applicationRunId],
          [cancellation_reason] AS [cancellationReason]
        FROM [ai_run_coordination_entries]
-       WHERE [application_run_id] IN (@0, @1)`,
-      [firstRun, secondRun],
+       WHERE [application_run_id] IN (@0, @1, @2)`,
+      [firstRun, secondRun, queuedProfileRun],
     )) as Array<{ applicationRunId: string; cancellationReason: string }>
     expect(afterConnectionSuspension).toEqual(
       expect.arrayContaining([
@@ -218,6 +238,10 @@ describe('AI run coordination against SQL Server', () => {
         expect.objectContaining({
           applicationRunId: secondRun,
           cancellationReason: 'connection_suspended',
+        }),
+        expect.objectContaining({
+          applicationRunId: queuedProfileRun,
+          cancellationReason: 'profile_suspended',
         }),
       ]),
     )

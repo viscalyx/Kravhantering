@@ -1924,7 +1924,9 @@ minimum capabilities. Administrators directly choose an exact verified model
 revision and bounded runtime budgets. Every save increments
 `configuration_version` and changes `revision_token`; already admitted runs
 retain the version and limits captured at admission. Required seed creates the
-three disconnected profiles.
+three disconnected profiles. A disconnected profile must have
+`operational_status = enabled`; disconnecting a paused profile restores this
+value in the same transaction.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1942,7 +1944,7 @@ three disconnected profiles.
 | `maximum_retained_memory_bytes` | integer | Per-run retained-memory ceiling, 1-134,217,728 bytes |
 | `maximum_buffered_events` | integer | Parsed upstream event ceiling, 1-1,024 |
 | `created_at` | datetime2(3) | Creation time |
-| `updated_at` | datetime2(3) | Operational status update time |
+| `updated_at` | datetime2(3) | Latest profile configuration or pause change |
 | `revision_token` | uniqueidentifier | Optimistic concurrency token |
 <!-- markdownlint-enable MD013 -->
 

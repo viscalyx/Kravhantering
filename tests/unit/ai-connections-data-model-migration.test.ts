@@ -85,6 +85,9 @@ describe('AI connections data model migration', () => {
     )
     expect(sql).toContain('CONSTRAINT [chk_ai_run_profiles_queue_capacity]')
     expect(sql).toContain(
+      'CONSTRAINT [chk_ai_run_profiles_unconfigured_enabled]',
+    )
+    expect(sql).toContain(
       'CREATE TRIGGER [trg_ai_connection_model_revisions_immutable]',
     )
     expect(sql).not.toContain('ai_run_profile_revisions')
@@ -193,12 +196,20 @@ describe('AI connection seed profiles', () => {
 
     expect(rowsFor(rows, 'ai_run_profiles')).toEqual([
       expect.objectContaining({
+        ai_connection_model_revision_id: null,
+        operational_status: 'enabled',
         profile_key: 'generation_without_images',
       }),
       expect.objectContaining({
+        ai_connection_model_revision_id: null,
+        operational_status: 'enabled',
         profile_key: 'generation_with_images',
       }),
-      expect.objectContaining({ profile_key: 'invalid_json_repair' }),
+      expect.objectContaining({
+        ai_connection_model_revision_id: null,
+        operational_status: 'enabled',
+        profile_key: 'invalid_json_repair',
+      }),
     ])
     expect(rowsFor(rows, 'ai_connections')).toHaveLength(0)
     expect(rowsFor(rows, 'ai_connection_models')).toHaveLength(0)

@@ -262,6 +262,43 @@ describe('AI administration model verification attempts', () => {
 })
 
 describe('AI run profile authorization', () => {
+  it('rejects pausing an unconfigured profile before persistence work', async () => {
+    const setRunProfileOperationalStatus = vi.fn()
+    const store = {
+      listRunProfiles: vi.fn(async () => [
+        {
+          administrativeStatus: 'unconfigured',
+          blockers: [{ code: 'model_revision_missing' }],
+          configurationStatus: 'unconfigured',
+          modelRevisionId: null,
+          operationalStatus: 'enabled',
+          profileKey: 'generation_without_images',
+        },
+      ]),
+      setRunProfileOperationalStatus,
+    } as unknown as AiAdminStore
+    const service = new AiConnectionAdministrationService({
+      actorKey: 'administrator-1',
+      audit: vi.fn(async () => undefined),
+      external: {} as AiAdminExternalOperations,
+      secrets: {} as AiAdminSecretOperations,
+      store,
+      verificationAttempts: createAiModelVerificationAttemptStore(),
+    })
+
+    await expect(
+      service.setRunProfileOperationalStatus({
+        profileKey: 'generation_without_images',
+        revisionToken: randomUUID(),
+        status: 'suspended',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { blockers: [{ code: 'model_revision_missing' }] },
+    })
+    expect(setRunProfileOperationalStatus).not.toHaveBeenCalled()
+  })
+
   it('authorizes the selected model connection before saving the profile', async () => {
     const selectedConnection = connection()
     const saveRunProfile = vi.fn()

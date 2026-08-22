@@ -828,6 +828,11 @@ export function ProfileForm({
 
   return (
     <form className="space-y-5" onSubmit={submit}>
+      {profile.administrativeStatus === 'active' ? (
+        <p className="rounded-xl border border-primary-200 bg-primary-50 p-3 text-sm text-primary-900 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-100">
+          {t('directProfile.activeChangeNotice')}
+        </p>
+      ) : null}
       <Field
         help={t('fields.modelRevisionId.help')}
         id="ai-profile-model"

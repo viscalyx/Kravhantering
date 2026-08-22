@@ -2096,13 +2096,18 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    rekommenderad och att applikationens förmågekrav inte kan redigeras. Välj den
    verifierade revisionen, granska ordinarie och avancerade driftbudgetar och
    töm ett budgetfält. Kontrollera att `Spara` inaktiveras. Fyll i ett giltigt
-   värde, spara och kontrollera statusarna `Konfigurerad` och `Aktiv`.
-7. Pausa profilen och kontrollera statusen `Pausad`; återuppta den och
+   värde, spara och kontrollera att exakt en statusbricka visar `Aktiv`.
+   Öppna formuläret igen och kontrollera informationen om att sparade ändringar
+   gäller direkt för nya körningar men inte ändrar pågående körningar.
+7. Pausa profilen. Kontrollera att bekräftelsen anger att köade och pågående
+   körningar avbryts och inte startas om vid återupptagning. Bekräfta och
+   kontrollera att exakt en statusbricka visar `Pausad`; återuppta profilen och
    kontrollera `Aktiv`. Modellval och budgetar ska finnas kvar.
 8. Försök avsluta den valda modellrevisionen. Kontrollera att åtgärden avvisas
    och anger den beroende profilen. Koppla bort modellen i profilformuläret och
-   spara. Avsluta därefter revisionen efter den uttryckliga bekräftelsen och
-   kontrollera statusen `Avslutad`.
+   spara. Kontrollera statusen `Ej konfigurerad` och att pausning inte erbjuds.
+   Avsluta därefter revisionen efter den uttryckliga bekräftelsen och kontrollera
+   statusen `Avslutad`.
 9. Välj den separata permanenta raderingen. Kontrollera att dialogen uttryckligen
    säger att revisionen och verifieringsbeviset raderas, att åtgärden inte kan
    ångras och att modellbehållaren också tas bort när detta är sista revisionen.
@@ -2114,7 +2119,9 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
 **Förväntat resultat:** En modellrevision kan endast sparas från ett aktuellt,
 slutfört verifieringsförsök. Den stabila profilen väljer direkt en kompatibel
 verifierad revision, och nya profiländringar påverkar inte redan startade
-körningar. Paus begär avbrott utan att radera konfigurationen. En använd
+körningar. Första giltiga konfigurationen ger statusen `Aktiv`. Paus begär
+avbrott utan att radera konfigurationen och avbrutna körningar startas inte om.
+En använd
 modellrevision kan inte avslutas eller raderas; avslut är irreversibelt och
 permanent radering kräver en separat bekräftelse. Ingen automatisk fallback
 sker.

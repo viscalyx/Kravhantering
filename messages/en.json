@@ -2288,12 +2288,8 @@
         "verify": "Verify"
       },
       "directProfile": {
+        "activeChangeNotice": "Saved changes take effect immediately for new runs. Runs already in progress keep the configuration captured when they started.",
         "advanced": "Advanced runtime budgets",
-        "configurationStatus": {
-          "blocked": "Blocked",
-          "configured": "Configured",
-          "unconfigured": "Not configured"
-        },
         "disconnect": "Disconnect model",
         "edit": "Edit run profile",
         "fields": {
@@ -2317,8 +2313,11 @@
         "model": "Model revision",
         "modelSelected": "A verified model revision is selected.",
         "noModel": "No model revision selected",
-        "operationalStatus": { "enabled": "Active", "suspended": "Paused" },
         "pause": "Pause run profile",
+        "pauseConfirm": {
+          "message": "Pausing cancels queued and running runs for this profile. Cancelled runs do not restart when the profile is resumed.",
+          "title": "Pause run profile?"
+        },
         "reasons": {
           "connectionUnavailable": "The connection is unavailable",
           "ended": "Ended",
@@ -2327,7 +2326,18 @@
           "newRevisionRequired": "New revision required"
         },
         "recommended": "Recommended",
-        "resume": "Resume"
+        "resume": "Resume",
+        "status": {
+          "active": "Active",
+          "blocked": "Blocked",
+          "paused": "Paused",
+          "unconfigured": "Not configured"
+        },
+        "statusHelp": {
+          "blocked": "Resolve the listed blockers or pause the profile to prevent automatic activation after repair.",
+          "paused": "Administratively paused. Resume the profile when it may be used again.",
+          "unconfigured": "No model revision is selected. Edit the profile to configure it."
+        }
       },
       "destructive": {
         "inUse": "The revision is used by run profiles: {profiles}. Queued or running runs: {count}.",

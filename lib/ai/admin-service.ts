@@ -116,6 +116,7 @@ export interface AiAdminModelRecord {
 }
 
 export interface AiAdminRunProfileRecord {
+  administrativeStatus: 'active' | 'blocked' | 'paused' | 'unconfigured'
   blockers: readonly AiAdminBlocker[]
   configurationStatus: 'blocked' | 'configured' | 'unconfigured'
   configurationVersion: number
@@ -131,6 +132,17 @@ export interface AiAdminRunProfileRecord {
   queueCapacity: number
   revisionToken: string
   totalTimeBudgetSeconds: number
+}
+
+export function deriveAiRunProfileAdministrativeStatus(
+  profile: Pick<
+    AiAdminRunProfileRecord,
+    'configurationStatus' | 'modelRevisionId' | 'operationalStatus'
+  >,
+): AiAdminRunProfileRecord['administrativeStatus'] {
+  if (profile.modelRevisionId === null) return 'unconfigured'
+  if (profile.operationalStatus === 'suspended') return 'paused'
+  return profile.configurationStatus === 'configured' ? 'active' : 'blocked'
 }
 
 export interface AiAdminHealthProbeResult {
@@ -1134,6 +1146,20 @@ export class AiConnectionAdministrationService {
     revisionToken: string
     status: 'enabled' | 'suspended'
   }): Promise<AiAdminRunProfileRecord> {
+    if (input.status === 'suspended') {
+      const profile = (await this.#store.listRunProfiles()).find(
+        candidate => candidate.profileKey === input.profileKey,
+      )
+      if (!profile) activationConflict()
+      if (profile.modelRevisionId === null) {
+        throw validationError(
+          'An unconfigured AI run profile cannot be paused.',
+          {
+            blockers: [{ code: 'model_revision_missing' }],
+          },
+        )
+      }
+    }
     const result = await this.#store.setRunProfileOperationalStatus(input)
     if (!result) activationConflict()
     return result

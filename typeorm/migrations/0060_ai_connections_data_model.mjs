@@ -205,6 +205,7 @@ const UP_STATEMENTS = [
     CONSTRAINT [pk_ai_run_profiles] PRIMARY KEY ([id]),
     CONSTRAINT [chk_ai_run_profiles_profile_key] CHECK ([profile_key] IN (N'generation_without_images', N'generation_with_images', N'invalid_json_repair')),
     CONSTRAINT [chk_ai_run_profiles_operational_status] CHECK ([operational_status] IN (N'enabled', N'suspended')),
+    CONSTRAINT [chk_ai_run_profiles_unconfigured_enabled] CHECK ([ai_connection_model_revision_id] IS NOT NULL OR [operational_status] = N'enabled'),
     CONSTRAINT [chk_ai_run_profiles_configuration_version] CHECK ([configuration_version] >= 1),
     CONSTRAINT [chk_ai_run_profiles_total_time_budget_seconds] CHECK ([total_time_budget_seconds] BETWEEN 300 AND 3600),
     CONSTRAINT [chk_ai_run_profiles_inactivity_time_budget_seconds] CHECK ([inactivity_time_budget_seconds] BETWEEN 300 AND [total_time_budget_seconds]),

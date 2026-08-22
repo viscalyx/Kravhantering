@@ -123,6 +123,11 @@ export const aiRunProfileEntity = new EntitySchema<AiRunProfileEntity>({
       name: 'chk_ai_run_profiles_operational_status',
     },
     {
+      expression:
+        "[ai_connection_model_revision_id] IS NOT NULL OR [operational_status] = N'enabled'",
+      name: 'chk_ai_run_profiles_unconfigured_enabled',
+    },
+    {
       expression: '[configuration_version] >= 1',
       name: 'chk_ai_run_profiles_configuration_version',
     },

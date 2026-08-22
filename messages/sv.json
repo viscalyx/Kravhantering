@@ -2288,12 +2288,8 @@
         "verify": "Verifiera"
       },
       "directProfile": {
+        "activeChangeNotice": "Sparade ändringar börjar gälla direkt för nya körningar. Pågående körningar behåller konfigurationen som togs när de startade.",
         "advanced": "Avancerade driftbudgetar",
-        "configurationStatus": {
-          "blocked": "Blockerad",
-          "configured": "Konfigurerad",
-          "unconfigured": "Ej konfigurerad"
-        },
         "disconnect": "Koppla bort modell",
         "edit": "Redigera körprofil",
         "fields": {
@@ -2317,8 +2313,11 @@
         "model": "Modellrevision",
         "modelSelected": "En verifierad modellrevision är vald.",
         "noModel": "Ingen modellrevision vald",
-        "operationalStatus": { "enabled": "Aktiv", "suspended": "Pausad" },
         "pause": "Pausa körprofil",
+        "pauseConfirm": {
+          "message": "Pausning avbryter köade och pågående körningar för profilen. Avbrutna körningar startas inte om när profilen återupptas.",
+          "title": "Pausa körprofil?"
+        },
         "reasons": {
           "connectionUnavailable": "Anslutningen är inte användbar",
           "ended": "Avslutad",
@@ -2327,7 +2326,18 @@
           "newRevisionRequired": "Ny revision krävs"
         },
         "recommended": "Rekommenderad",
-        "resume": "Återuppta"
+        "resume": "Återuppta",
+        "status": {
+          "active": "Aktiv",
+          "blocked": "Blockerad",
+          "paused": "Pausad",
+          "unconfigured": "Ej konfigurerad"
+        },
+        "statusHelp": {
+          "blocked": "Åtgärda de angivna hindren eller pausa profilen för att förhindra automatisk aktivering efter reparation.",
+          "paused": "Administrativt pausad. Återuppta profilen när den får användas igen.",
+          "unconfigured": "Ingen modellrevision är vald. Redigera profilen för att konfigurera den."
+        }
       },
       "destructive": {
         "inUse": "Revisionen används av körprofiler: {profiles}. Köade eller pågående körningar: {count}.",

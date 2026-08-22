@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -77,7 +77,7 @@ vi.mock(
     lifecycleTone: () => 'success',
     revisionTone: () => 'success',
     StatusBadge: ({ children }: { children: ReactNode }) => (
-      <span>{children}</span>
+      <span role="status">{children}</span>
     ),
   }),
 )
@@ -288,6 +288,7 @@ function fixtures(): {
   return {
     connection,
     profile: {
+      administrativeStatus: 'blocked',
       blockers: [{ code: 'model_revision_unverified' }],
       configurationStatus: 'blocked',
       configurationVersion: 1,
@@ -480,6 +481,12 @@ describe('AI connections registry', () => {
         name: 'admin.aiConnections.directProfile.pause',
       }),
     )
+    expect(mocks.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'admin.aiConnections.directProfile.pauseConfirm.message',
+        title: 'admin.aiConnections.directProfile.pauseConfirm.title',
+      }),
+    )
     expect(mocks.mutateAndReload).toHaveBeenCalledWith(
       '/api/admin/ai-connections/00000000-0000-4000-8000-000000000001/actions',
       expect.objectContaining({
@@ -495,6 +502,57 @@ describe('AI connections registry', () => {
       'profile.suspended',
       expect.any(Object),
     )
+  })
+
+  it('does not pause a profile when the run-cancellation warning is rejected', async () => {
+    mocks.confirm.mockResolvedValueOnce(false)
+    const user = userEvent.setup()
+    render(<AiConnectionsRegistry />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.directProfile.pause',
+      }),
+    )
+
+    expect(mocks.mutateAndReload).not.toHaveBeenCalled()
+  })
+
+  it('offers only editing for an unconfigured profile', () => {
+    const { connection, profile } = fixtures()
+    Object.assign(profile, {
+      administrativeStatus: 'unconfigured',
+      blockers: [{ code: 'model_revision_missing' }],
+      configurationStatus: 'unconfigured',
+      modelRevisionId: null,
+      operationalStatus: 'enabled',
+    } satisfies Partial<AiAdminRunProfileRecord>)
+    Object.assign(mocks.state, {
+      connections: [connection],
+      details: { [connection.id]: connection },
+      profiles: [profile],
+    })
+
+    render(<AiConnectionsRegistry />)
+
+    expect(
+      screen.getByText('admin.aiConnections.directProfile.status.unconfigured'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'admin.aiConnections.directProfile.statusHelp.unconfigured',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.directProfile.edit',
+      }),
+    ).toBeEnabled()
+    expect(
+      screen.queryByRole('button', {
+        name: 'admin.aiConnections.directProfile.pause',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('wires connection, secret, attestation, model, and profile dialogs', async () => {
@@ -575,15 +633,27 @@ describe('AI connections registry', () => {
     await user.click(screen.getByRole('button', { name: 'profile-complete' }))
   })
 
-  it('disables registry actions and exposes loading status while mutating', () => {
+  it('disables registry actions and dialog entry points while mutating', async () => {
     mocks.state.busy = true
+    const user = userEvent.setup()
     render(<AiConnectionsRegistry />)
-    expect(screen.getByRole('status')).toHaveTextContent('common.saving')
+    expect(screen.getByText('common.saving')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
         name: 'admin.aiConnections.actions.addConnection',
       }),
     ).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: /Admin connection/ }))
+    for (const name of [
+      'admin.aiConnections.actions.editConnection',
+      'admin.aiConnections.actions.manageSecret',
+      'admin.aiConnections.actions.manageAttestation',
+      'admin.aiConnections.actions.addModel',
+      'admin.aiConnections.actions.editModel',
+      'admin.aiConnections.directProfile.edit',
+    ]) {
+      expect(screen.getByRole('button', { name })).toBeDisabled()
+    }
   })
 
   it('renders request feedback and exposes the matching recovery action', async () => {
@@ -620,7 +690,8 @@ describe('AI connections registry', () => {
     const { connection, profile } = fixtures()
     connection.blockers = []
     connection.lifecycleStatus = 'suspended'
-    profile.configurationStatus = 'unconfigured'
+    profile.administrativeStatus = 'paused'
+    profile.configurationStatus = 'blocked'
     profile.modelRevisionId = connection.models[0]?.revisions[0]?.id ?? null
     profile.operationalStatus = 'suspended'
     const unavailable: AiAdminConnectionDetail = {
@@ -654,15 +725,16 @@ describe('AI connections registry', () => {
     })
     await user.click(suspendedRow)
     expect(
-      screen.getAllByText(
-        'admin.aiConnections.directProfile.configurationStatus.unconfigured',
-      ),
+      screen.getAllByText('admin.aiConnections.directProfile.status.paused'),
     ).toHaveLength(2)
-    expect(
-      screen.getAllByText(
-        'admin.aiConnections.directProfile.operationalStatus.suspended',
-      ),
-    ).toHaveLength(2)
+    const profileCard = screen
+      .getByRole('heading', {
+        level: 4,
+        name: 'admin.aiConnections.profiles.generation_without_images',
+      })
+      .closest('article')
+    if (!profileCard) throw new Error('Profile card missing')
+    expect(within(profileCard).getAllByRole('status')).toHaveLength(1)
     await user.click(
       screen.getByRole('button', {
         name: 'admin.aiConnections.actions.recoverConnection',

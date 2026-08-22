@@ -121,6 +121,7 @@ function stableProfile(
     revisionToken: '00000000-0000-4000-8000-000000000011',
     totalTimeBudgetSeconds: 1200,
     ...overrides,
+    administrativeStatus: overrides.administrativeStatus ?? 'active',
   }
 }
 
@@ -755,6 +756,9 @@ describe('Admin AI model and stable-profile forms', () => {
         profile={profile}
       />,
     )
+    expect(
+      screen.getByText('admin.aiConnections.directProfile.activeChangeNotice'),
+    ).toBeInTheDocument()
     const select = screen.getByLabelText(
       'admin.aiConnections.directProfile.model',
     )

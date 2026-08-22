@@ -515,6 +515,17 @@ körningar.
 _Avoid_: Användarprofil, modellfavorit, automatisk routning,
 körprofilrevision.
 
+**Körprofilens huvudstatus**:
+Den enda användarsynliga administrativa statusen för en körprofil: Ej
+konfigurerad, Pausad, Blockerad eller Aktiv. Statusen härleds från modellval,
+administrativ paus och administrativa beroenden, inte från tillfällig
+leverantörshälsa.
+
+- `en`: Run profile status
+
+_Avoid_: Konfigurationsstatus, driftstatus, flera samtidiga statusar,
+leverantörshälsa.
+
 **AI-analys**:
 Modellens stödjande resonemang som visas tillsammans med förslag i
 AI-assisterat författande. AI-analys är granskningsstöd och blir inte

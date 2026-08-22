@@ -246,9 +246,22 @@ Om en aktivering misslyckas ska du använda
 [felsökningstabellen](#vanliga-fel-och-vad-de-betyder). Vidga inte en policy
 enbart för att få ett grönt resultat.
 
-Resultat efter steget: varje avsedd körprofil visar `Konfigurerad` och `Aktiv`
-och binder direkt en exakt verifierad modellrevision till en godkänd
+Resultat efter steget: varje avsedd körprofil visar den enda huvudstatusen
+`Aktiv` och binder direkt en exakt verifierad modellrevision till en godkänd
 anslutning.
+
+Körprofilens huvudstatus har följande prioritet:
+
+1. `Ej konfigurerad` när ingen modellrevision är vald.
+2. `Pausad` när en konfigurerad profil är administrativt pausad.
+3. `Blockerad` när en vald modellrevision har ett ogiltigt administrativt
+   beroende.
+4. `Aktiv` när profilen har en vald modellrevision, inte är pausad och alla
+   administrativa beroenden är giltiga.
+
+Operativ leverantörshälsa och kretsbrytarläge är separat driftinformation.
+En reparerad blockerad profil blir automatiskt `Aktiv`. En pausad profil
+förblir `Pausad` efter reparation tills en administratör återupptar den.
 
 ### Steg 13: slutför driftsättningsgrinden
 
@@ -746,8 +759,8 @@ Genomför verifieringen i en säker test- eller stagingmiljö innan produktion.
    modellrevision.
 9. Aktivera anslutningen.
 10. Välj revisionen direkt på varje avsedd stabil körprofil.
-11. Kontrollera att profilen blir `Konfigurerad` och `Aktiv`, inte
-    `Blockerad` eller `Ej konfigurerad`.
+11. Kontrollera att profilens enda huvudstatus blir `Aktiv`, inte `Blockerad`,
+    `Pausad` eller `Ej konfigurerad`.
 12. Kontrollera brandväggs- eller proxylogg utan att logga prompt, bild,
     modellsvar eller leverantörshemlighet.
 13. Genomför driftsättningens ordinarie bevis- och releasegrind innan den

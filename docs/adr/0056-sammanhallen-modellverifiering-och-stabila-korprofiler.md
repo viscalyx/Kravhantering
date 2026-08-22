@@ -24,7 +24,16 @@ modellrevision och driftbudgetar på profilen. En ändring höjer profilens
 `configuration_version` och byter `revision_token`; den ändrar inte redan
 startade körningar. Koordinationsraden lagrar profilens stabila ID och den
 konfigurationsversion som körningen startade med. En paus begär avbrott för
-köade och pågående körningar utan att radera profilens modellval.
+köade och pågående körningar utan att radera profilens modellval. Avbrutna
+körningar startas inte om vid återupptagning.
+
+Körprofilens huvudstatus är en enda härledd status. Utan modellrevision är den
+`Ej konfigurerad`. Med modellrevision har administrativ paus företräde som
+`Pausad`, följt av `Blockerad` när ett administrativt beroende är ogiltigt och
+annars `Aktiv`. Modellval och administrativ paus bevaras som separata tekniska
+fakta. Operativ leverantörshälsa och kretsbrytarläge ingår inte i
+huvudstatusen. Bortkoppling av modellrevision återställer pausläget atomiskt,
+så nästa giltiga konfiguration blir `Aktiv`.
 
 Modellrevisioner har tillstånden `verified`, `new_revision_required` och
 `ended`. Tekniska anslutningsändringar markerar befintliga revisioner som
