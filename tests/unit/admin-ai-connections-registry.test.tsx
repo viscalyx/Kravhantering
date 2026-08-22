@@ -25,7 +25,14 @@ vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: mocks.confirm }),
 }))
 vi.mock('@/components/AutoDismissStatusToast', () => ({
-  default: ({ message }: { message: string }) => <p>{message}</p>,
+  default: ({ message, onDismiss }: { message: string; onDismiss(): void }) => (
+    <div>
+      <p>{message}</p>
+      <button onClick={onDismiss} type="button">
+        toast-dismiss
+      </button>
+    </div>
+  ),
 }))
 vi.mock('@/components/FormModal', () => ({
   default: ({
@@ -53,6 +60,15 @@ vi.mock(
 vi.mock(
   '@/app/[locale]/admin/panels/settings/ai-connections/registry-sections',
   () => ({
+    AnimatedRegistrySection: ({
+      children,
+      expanded,
+      id,
+    }: {
+      children: ReactNode
+      expanded: boolean
+      id: string
+    }) => (expanded ? <div id={id}>{children}</div> : null),
     attestationBlockerState: () => 'missing',
     BlockerText: ({ blocker }: { blocker: { code: string } }) => (
       <span>{blocker.code}</span>
@@ -126,10 +142,13 @@ vi.mock(
       onCancel(): void
       onConfirmRevocation(id: string, anchor: HTMLElement): void
       onDelete(id: string): void
-      onWrite(secret: string): void
+      onWrite(secret: string, form: { reset(): void }): void
     }) => (
       <div>
-        <button onClick={() => onWrite('secret')} type="button">
+        <button
+          onClick={() => onWrite('secret', { reset: vi.fn() })}
+          type="button"
+        >
           secret-write
         </button>
         <button onClick={() => onDelete('candidate')} type="button">
@@ -157,10 +176,12 @@ vi.mock(
     ModelForm: ({
       onCancel,
       onComplete,
+      onRefreshCatalog,
       onRegisterClose,
     }: {
       onCancel(): void
       onComplete(): void
+      onRefreshCatalog?(): void
       onRegisterClose?(handler: () => void): void
     }) => (
       <div>
@@ -172,6 +193,9 @@ vi.mock(
         </button>
         <button onClick={onComplete} type="button">
           model-complete
+        </button>
+        <button onClick={onRefreshCatalog} type="button">
+          model-refresh
         </button>
       </div>
     ),
@@ -273,7 +297,7 @@ function fixtures(): {
       maximumOutputBytes: 65_536,
       maximumOutputTokens: 1_536,
       maximumRetainedMemoryBytes: 131_072,
-      modelRevisionId: verified.id,
+      modelRevisionId: null,
       operationalStatus: 'enabled',
       profileKey: 'generation_without_images',
       queueCapacity: 1,
@@ -286,12 +310,13 @@ function fixtures(): {
 describe('AI connections registry', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.confirm.mockResolvedValue(true)
     const { connection, profile } = fixtures()
     Object.assign(mocks.state, {
       busy: false,
       candidateBlockers: {},
       clearError: vi.fn(),
-      connections: [],
+      connections: [connection],
       details: { [connection.id]: connection },
       error: null,
       loading: false,
@@ -334,6 +359,12 @@ describe('AI connections registry', () => {
 
     await user.click(
       screen.getByRole('button', {
+        name: /Admin connection/,
+      }),
+    )
+
+    await user.click(
+      screen.getByRole('button', {
         name: 'admin.aiConnections.actions.fetchCatalog',
       }),
     )
@@ -366,6 +397,16 @@ describe('AI connections registry', () => {
     )
     await user.click(
       screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.verifyConnection',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.retireConnection',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
         name: 'admin.aiConnections.directProfile.pause',
       }),
     )
@@ -373,6 +414,13 @@ describe('AI connections registry', () => {
     await user.click(
       screen.getByRole('button', {
         name: 'admin.aiConnections.actions.addConnection',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'connection-submit' }))
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.editConnection',
       }),
     )
     await user.click(screen.getByRole('button', { name: 'connection-submit' }))
@@ -391,7 +439,7 @@ describe('AI connections registry', () => {
       }),
     )
     await user.click(screen.getByRole('button', { name: 'secret-revoke' }))
-    await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(5))
 
     await user.click(
       screen.getByRole('button', {
@@ -402,11 +450,23 @@ describe('AI connections registry', () => {
     await user.click(
       screen.getByRole('button', { name: 'attestation-discard' }),
     )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.manageAttestation',
+      }),
+    )
     await user.click(screen.getByRole('button', { name: 'attestation-attest' }))
 
     await user.click(
       screen.getByRole('button', {
         name: 'admin.aiConnections.actions.addModel',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'model-refresh' }))
+    await user.click(screen.getByRole('button', { name: 'model-complete' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.editModel',
       }),
     )
     await user.click(
@@ -434,5 +494,155 @@ describe('AI connections registry', () => {
         name: 'admin.aiConnections.actions.addConnection',
       }),
     ).toBeDisabled()
+  })
+
+  it('renders request feedback and exposes the matching recovery action', async () => {
+    const user = userEvent.setup()
+    Object.assign(mocks.state, {
+      connections: [],
+      details: {},
+      error: { kind: 'load', message: 'load failed' },
+      message: 'saved',
+      profiles: [],
+    })
+    const { rerender } = render(<AiConnectionsRegistry />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('load failed')
+    expect(screen.getByText('admin.aiConnections.empty')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'toast-dismiss' }))
+    expect(mocks.state.setMessage).toHaveBeenCalledWith(null)
+    await user.click(screen.getByRole('button', { name: 'common.retry' }))
+    expect(mocks.loadRegistry).toHaveBeenCalledOnce()
+
+    mocks.state.error = { kind: 'mutation', message: 'mutation failed' }
+    rerender(<AiConnectionsRegistry />)
+    await user.click(screen.getByRole('button', { name: 'common.close' }))
+    expect(mocks.state.clearError).toHaveBeenCalled()
+
+    Object.assign(mocks.state, { error: null, loading: true, message: null })
+    rerender(<AiConnectionsRegistry />)
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'admin.aiConnections.loading',
+    )
+  })
+
+  it('renders unavailable and suspended connection states with direct profile impact', async () => {
+    const { connection, profile } = fixtures()
+    connection.blockers = []
+    connection.lifecycleStatus = 'suspended'
+    profile.configurationStatus = 'unconfigured'
+    profile.modelRevisionId = connection.models[0]?.revisions[0]?.id ?? null
+    profile.operationalStatus = 'suspended'
+    const unavailable: AiAdminConnectionDetail = {
+      ...connection,
+      adapterAvailability: {
+        available: false,
+        reason: 'adapter_not_registered',
+      },
+      administrationName: 'Unavailable connection',
+      description: 'Unavailable adapter',
+      id: '00000000-0000-4000-8000-000000000020',
+      lifecycleStatus: 'retired',
+      models: [],
+      publicName: 'Unavailable',
+      revisionToken: '00000000-0000-4000-8000-000000000021',
+    }
+    Object.assign(mocks.state, {
+      connections: [connection, unavailable],
+      details: {
+        [connection.id]: connection,
+        [unavailable.id]: unavailable,
+      },
+      profiles: [profile],
+    })
+    mocks.mutation.mockResolvedValueOnce(new Response('null'))
+    const user = userEvent.setup()
+    render(<AiConnectionsRegistry />)
+
+    const suspendedRow = screen.getByRole('button', {
+      name: /Admin connection/,
+    })
+    await user.click(suspendedRow)
+    expect(
+      screen.getAllByText(
+        'admin.aiConnections.directProfile.configurationStatus.unconfigured',
+      ),
+    ).toHaveLength(2)
+    expect(
+      screen.getAllByText(
+        'admin.aiConnections.directProfile.operationalStatus.suspended',
+      ),
+    ).toHaveLength(2)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.recoverConnection',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.probeHealth',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.retireConnection',
+      }),
+    )
+    await user.click(suspendedRow)
+    expect(suspendedRow).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(
+      screen.getByRole('button', { name: /Unavailable connection/ }),
+    )
+    expect(
+      screen.getByText(/admin\.aiConnections\.adapter\.unavailable/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('admin.aiConnections.model.empty'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.fetchCatalog',
+      }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.activateConnection',
+      }),
+    ).toBeDisabled()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.addModel',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'modal-close' }))
+  })
+
+  it('leaves destructive state unchanged when confirmations are rejected', async () => {
+    mocks.confirm.mockResolvedValue(false)
+    const user = userEvent.setup()
+    render(<AiConnectionsRegistry />)
+    await user.click(
+      screen.getByRole('button', {
+        name: /Admin connection/,
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.destructive.end.confirm',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.destructive.delete.confirm',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.retireConnection',
+      }),
+    )
+    expect(mocks.confirm).toHaveBeenCalledTimes(3)
+    expect(mocks.mutateAndReload).not.toHaveBeenCalled()
   })
 })

@@ -777,9 +777,14 @@ test.describe('Admin settings', () => {
       await expect(
         settings.locator(':scope > div[aria-busy]').first(),
       ).toHaveAttribute('aria-busy', 'false')
-      await settings
+      const connectionCard = settings
         .locator('article')
         .filter({ hasText: 'OpenRouter demo' })
+        .first()
+      await connectionCard
+        .getByRole('button', { name: /^OpenRouter demo OpenRouter/ })
+        .click()
+      await connectionCard
         .getByRole('button', { name: 'Läs modellkatalog' })
         .click()
       return settings.getByRole('alert')
@@ -861,6 +866,9 @@ test.describe('Admin settings', () => {
           .filter({ hasText: administrationName })
           .first()
         await expect(connectionCard).toBeVisible()
+        await connectionCard
+          .getByRole('button', { name: new RegExp(administrationName) })
+          .click()
         await connectionCard
           .getByRole('button', { name: 'Hantera hemlighet' })
           .click()
@@ -1042,18 +1050,15 @@ test.describe('Admin settings', () => {
           .getByRole('button', { name: 'Redigera körprofil' })
           .click()
         let profileDialog = page.getByRole('dialog', {
-          name: 'Redigera körprofil',
+          name: 'Körprofil',
         })
         const modelSelect = profileDialog.getByLabel(/^Modellrevision/)
-        const modelOptionValue = await modelSelect
-          .locator('option')
-          .filter({ hasText: modelName })
-          .getAttribute('value')
-        expect(modelOptionValue).not.toBeNull()
-        await modelSelect.selectOption(modelOptionValue as string)
+        await expect(modelSelect.locator('option')).toHaveCount(2)
+        await modelSelect.selectOption({ index: 1 })
+        const modelOptionValue = await modelSelect.inputValue()
         await expect(
           modelSelect.locator(`option[value="${modelOptionValue}"]`),
-        ).toContainText('Rekommenderad')
+        ).toContainText(`${modelName} · 1 — Rekommenderad`)
         await profileDialog.getByText('Avancerade driftbudgetar').click()
         await expect(
           profileDialog.getByLabel(/^Maximalt antal utdatatoken/),
@@ -1079,27 +1084,24 @@ test.describe('Admin settings', () => {
           .locator('section')
           .filter({ hasText: modelName })
           .first()
-        await modelCard
-          .getByRole('button', { name: 'Avsluta revision' })
-          .click()
-        let endDialog = page.getByRole('alertdialog', {
-          name: 'Avsluta modellrevision?',
+        const endRevisionButton = modelCard.getByRole('button', {
+          name: 'Avsluta revision',
         })
-        await endDialog
-          .getByRole('button', { name: 'Avsluta revision' })
-          .click()
-        const dependencyAlert = settings.getByRole('alert')
-        await expect(dependencyAlert).toContainText(
-          'Kravgenerering utan bilder',
+        await expect(endRevisionButton).toBeDisabled()
+        await expect(endRevisionButton).toHaveAttribute(
+          'title',
+          'Modellen används av en körprofil. Ta bort den från profilen eller välj en annan modell först.',
         )
-        await expect(dependencyAlert).toContainText(
-          'Köade eller pågående körningar: 0',
-        )
+        await expect(
+          connectionCard
+            .getByRole('heading', { name: 'Påverkan på körprofiler' })
+            .locator('..'),
+        ).toContainText('Kravgenerering utan bilder')
 
         await profileCard
           .getByRole('button', { name: 'Redigera körprofil' })
           .click()
-        profileDialog = page.getByRole('dialog', { name: 'Redigera körprofil' })
+        profileDialog = page.getByRole('dialog', { name: 'Körprofil' })
         await profileDialog
           .getByRole('button', { name: 'Koppla bort modell' })
           .click()
@@ -1113,7 +1115,7 @@ test.describe('Admin settings', () => {
         await modelCard
           .getByRole('button', { name: 'Avsluta revision' })
           .click()
-        endDialog = page.getByRole('alertdialog', {
+        const endDialog = page.getByRole('alertdialog', {
           name: 'Avsluta modellrevision?',
         })
         await endDialog

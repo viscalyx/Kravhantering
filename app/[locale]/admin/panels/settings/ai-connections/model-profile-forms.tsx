@@ -1,6 +1,12 @@
 'use client'
 
-import { LoaderCircle } from 'lucide-react'
+import {
+  CheckCircle2,
+  CircleHelp,
+  Info,
+  LoaderCircle,
+  XCircle,
+} from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
   type FormEvent,
@@ -16,6 +22,7 @@ import type {
 } from '@/lib/ai/admin-contracts'
 import type {
   AiAdminCandidateVerificationAttemptResult,
+  AiAdminCatalogItem,
   AiAdminConnectionDetail,
   AiAdminModelRecord,
   AiAdminRunProfileRecord,
@@ -24,6 +31,7 @@ import type {
 } from '@/lib/ai/admin-service'
 import { AI_CAPABILITY_KEYS } from '@/lib/ai/capability-keys'
 import { AI_RUN_PROFILE_KEYS } from '@/lib/ai/profile-resolver'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import {
@@ -35,11 +43,65 @@ import {
 } from './form-controls'
 
 type ModelFormProps = {
+  catalog?: readonly AiAdminCatalogItem[]
+  catalogStatus?: 'idle' | 'loaded' | 'loading' | 'unavailable'
   connection: AiAdminConnectionDetail
   model: AiAdminModelRecord | null
   onCancel(): void
   onComplete(): Promise<void> | void
+  onRefreshCatalog?(): Promise<readonly AiAdminCatalogItem[] | null>
   onRegisterClose?(handler: (() => void) | null): void
+}
+
+const CATALOG_PROVIDER_NAMES: Readonly<Record<string, string>> = {
+  anthropic: 'Anthropic',
+  cohere: 'Cohere',
+  deepseek: 'DeepSeek',
+  google: 'Google',
+  'meta-llama': 'Meta',
+  mistralai: 'Mistral',
+  openai: 'OpenAI',
+  qwen: 'Qwen',
+}
+
+function catalogItemKey(item: AiAdminCatalogItem): string {
+  return JSON.stringify([item.externalModelId, item.externalModelVersion])
+}
+
+function catalogProviderLabel(
+  item: AiAdminCatalogItem,
+  fallback: string,
+): string {
+  const provider = item.modelProviderName?.trim()
+  if (!provider) return fallback
+  return (
+    CATALOG_PROVIDER_NAMES[provider.toLowerCase()] ??
+    `${provider.charAt(0).toUpperCase()}${provider.slice(1)}`
+  )
+}
+
+function catalogPriceSuffix(
+  item: AiAdminCatalogItem,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  const prices: string[] = []
+  if (item.inputPricePerMillionTokens) {
+    prices.push(
+      t('catalog.inputPrice', {
+        amount: item.inputPricePerMillionTokens.amount,
+        currency: item.inputPricePerMillionTokens.currency,
+      }),
+    )
+  }
+  if (item.outputPricePerMillionTokens) {
+    prices.push(
+      t('catalog.outputPrice', {
+        amount: item.outputPricePerMillionTokens.amount,
+        currency: item.outputPricePerMillionTokens.currency,
+      }),
+    )
+  }
+  return prices.length > 0 ? ` · ${prices.join(' · ')}` : ''
 }
 
 const outcomeKey: Record<AiAdminVerificationOutcome, string> = {
@@ -50,10 +112,13 @@ const outcomeKey: Record<AiAdminVerificationOutcome, string> = {
 }
 
 export function ModelForm({
+  catalog = [],
+  catalogStatus = 'idle',
   connection,
   model,
   onCancel,
   onComplete,
+  onRefreshCatalog,
   onRegisterClose,
 }: ModelFormProps) {
   const t = useTranslations('admin.aiConnections')
@@ -66,12 +131,27 @@ export function ModelForm({
   const [externalModelVersion, setExternalModelVersion] = useState(
     latest?.externalModelVersion ?? '',
   )
+  const [selectedCatalogKey, setSelectedCatalogKey] = useState('')
   const [progress, setProgress] = useState<AiAdminVerificationProgress[]>([])
   const [verification, setVerification] =
     useState<AiAdminCandidateVerificationAttemptResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const verificationAbort = useRef<AbortController | null>(null)
+  const catalogGroups = useMemo(() => {
+    const groups = new Map<string, AiAdminCatalogItem[]>()
+    for (const item of [...catalog].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    )) {
+      const provider = catalogProviderLabel(item, t('catalog.otherProvider'))
+      const items = groups.get(provider) ?? []
+      items.push(item)
+      groups.set(provider, items)
+    }
+    return [...groups.entries()].sort(([left], [right]) =>
+      left.localeCompare(right),
+    )
+  }, [catalog, t])
 
   const canVerify =
     !busy &&
@@ -111,6 +191,18 @@ export function ModelForm({
     setVerification(null)
     setProgress([])
     if (attemptId) void discardAttempt(attemptId)
+  }
+
+  function selectCatalogItem(key: string): void {
+    setSelectedCatalogKey(key)
+    if (!key) return
+    const item = catalog.find(candidate => catalogItemKey(candidate) === key)
+    if (!item) return
+    technicalChange(() => {
+      setName(item.name)
+      setExternalModelId(item.externalModelId)
+      setExternalModelVersion(item.externalModelVersion ?? '')
+    })
   }
 
   async function verify(): Promise<void> {
@@ -222,6 +314,70 @@ export function ModelForm({
 
   return (
     <form className="space-y-5" onSubmit={save}>
+      <div
+        aria-atomic="true"
+        className="flex items-start justify-between gap-3 rounded-2xl border border-secondary-200 bg-secondary-50 p-4 text-sm text-secondary-700 dark:border-secondary-700 dark:bg-secondary-950/50 dark:text-secondary-200"
+        role="status"
+      >
+        <span className="flex min-w-0 items-start gap-2">
+          {catalogStatus === 'loading' ? (
+            <LoaderCircle
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0 animate-spin"
+            />
+          ) : (
+            <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+          )}
+          <span>
+            {catalogStatus === 'loading'
+              ? t('catalog.loading')
+              : catalogStatus === 'loaded' && catalog.length > 0
+                ? t('catalog.selectionReady')
+                : catalogStatus === 'unavailable'
+                  ? t('catalog.unavailableManual')
+                  : t('catalog.selectionIntro')}
+          </span>
+        </span>
+        {onRefreshCatalog ? (
+          <button
+            className="btn-secondary shrink-0 px-3! py-1.5! text-xs"
+            disabled={busy || catalogStatus === 'loading'}
+            onClick={() => void onRefreshCatalog()}
+            type="button"
+          >
+            {t('actions.fetchCatalog')}
+          </button>
+        ) : null}
+      </div>
+      {catalog.length > 0 ? (
+        <Field
+          help={t('catalog.selectionHelp')}
+          id="ai-model-catalog-selection"
+          label={t('catalog.selectionLabel')}
+        >
+          <select
+            className={inputClassName()}
+            id="ai-model-catalog-selection"
+            onChange={event => selectCatalogItem(event.target.value)}
+            value={selectedCatalogKey}
+          >
+            <option value="">{t('catalog.manualOption')}</option>
+            {catalogGroups.map(([provider, items]) => (
+              <optgroup key={provider} label={provider}>
+                {items.map(item => (
+                  <option
+                    key={catalogItemKey(item)}
+                    value={catalogItemKey(item)}
+                  >
+                    {item.name} · {item.externalModelId}
+                    {catalogPriceSuffix(item, t)}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </Field>
+      ) : null}
       <Field
         help={t('fields.name.help')}
         id="ai-model-name"
@@ -238,19 +394,6 @@ export function ModelForm({
         />
       </Field>
       <Field
-        help={t('fields.modelDescription.help')}
-        id="ai-model-description"
-        label={t('fields.modelDescription.label')}
-      >
-        <textarea
-          className={textareaClassName()}
-          id="ai-model-description"
-          maxLength={20_000}
-          onChange={event => setDescription(event.target.value)}
-          value={description}
-        />
-      </Field>
-      <Field
         help={t('fields.externalModelId.help')}
         id="ai-model-external-id"
         label={t('fields.externalModelId.label')}
@@ -260,9 +403,10 @@ export function ModelForm({
           className={inputClassName()}
           id="ai-model-external-id"
           maxLength={450}
-          onChange={event =>
+          onChange={event => {
+            setSelectedCatalogKey('')
             technicalChange(() => setExternalModelId(event.target.value))
-          }
+          }}
           required
           value={externalModelId}
         />
@@ -276,10 +420,24 @@ export function ModelForm({
           className={inputClassName()}
           id="ai-model-external-version"
           maxLength={200}
-          onChange={event =>
+          onChange={event => {
+            setSelectedCatalogKey('')
             technicalChange(() => setExternalModelVersion(event.target.value))
-          }
+          }}
           value={externalModelVersion}
+        />
+      </Field>
+      <Field
+        help={t('fields.modelDescription.help')}
+        id="ai-model-description"
+        label={t('fields.modelDescription.label')}
+      >
+        <textarea
+          className={textareaClassName()}
+          id="ai-model-description"
+          maxLength={20_000}
+          onChange={event => setDescription(event.target.value)}
+          value={description}
         />
       </Field>
 
@@ -290,45 +448,64 @@ export function ModelForm({
         </p>
       ) : null}
 
-      <section
-        aria-labelledby="model-capabilities-heading"
-        className="space-y-2"
+      <fieldset
+        className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700"
+        {...devMarker({
+          context: 'AI model form',
+          name: 'AI model capability assessment',
+          priority: 430,
+        })}
       >
-        <h3 className="font-semibold" id="model-capabilities-heading">
+        <legend className="px-1 text-sm font-semibold text-secondary-950 dark:text-secondary-50">
           {t('modelVerification.capabilities')}
-        </h3>
+        </legend>
+        <p className="mb-3 text-xs leading-5 text-secondary-600 dark:text-secondary-300">
+          {t('catalog.selectionHelp')}
+        </p>
         <dl className="grid gap-2 sm:grid-cols-2">
           {AI_CAPABILITY_KEYS.map(capability => {
             const outcome =
               verification?.capabilities[capability].outcome ?? 'not_checked'
             const failureCategory =
               verification?.capabilities[capability].failureCategory
+            const OutcomeIcon =
+              outcome === 'verified'
+                ? CheckCircle2
+                : outcome === 'not_verified'
+                  ? XCircle
+                  : CircleHelp
             return (
               <div
-                className="rounded border border-secondary-200 p-2 dark:border-secondary-700"
+                className="min-h-14 rounded-xl bg-secondary-50 px-3 py-2 dark:bg-secondary-950/50"
                 key={capability}
               >
-                <dt className="text-sm font-medium">
+                <dt className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
                   {t(`capabilities.${capability}`)}
                 </dt>
-                <dd className="text-sm">
-                  {t(`modelVerification.outcomes.${outcomeKey[outcome]}`)}
-                  {outcome === 'inconclusive' && failureCategory
-                    ? ` — ${t(`modelVerification.failureCategories.${failureCategory}`)}`
-                    : ''}
+                <dd className="mt-1 flex items-start gap-1.5 text-xs text-secondary-600 dark:text-secondary-300">
+                  <OutcomeIcon
+                    aria-hidden="true"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                  />
+                  <span>
+                    {t(`modelVerification.outcomes.${outcomeKey[outcome]}`)}
+                    {outcome === 'inconclusive' && failureCategory
+                      ? ` — ${t(`modelVerification.failureCategories.${failureCategory}`)}`
+                      : ''}
+                  </span>
                 </dd>
               </div>
             )
           })}
         </dl>
-      </section>
+      </fieldset>
 
       {busy || progress.length > 0 ? (
         <fieldset
           aria-busy={busy}
           aria-label={t('modelVerification.progress')}
           aria-live="polite"
-          className="m-0 border-0 p-0"
+          className="rounded-2xl border border-primary-200 bg-primary-50/50 p-4 dark:border-primary-900 dark:bg-primary-950/20"
         >
           <ul className="space-y-1 text-sm">
             {progress.map(item => {
@@ -361,7 +538,11 @@ export function ModelForm({
       ) : null}
 
       {verification ? (
-        <section aria-live="polite" className="space-y-2" role="status">
+        <section
+          aria-live="polite"
+          className="space-y-2 rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700"
+          role="status"
+        >
           <h3 className="font-semibold">
             {t('modelVerification.compatibility')}
           </h3>
@@ -424,7 +605,7 @@ export function ModelForm({
       ) : null}
       <div className="flex flex-wrap gap-2">
         <button
-          className="rounded bg-secondary-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-secondary-200 dark:text-secondary-900"
+          className="btn-secondary inline-flex min-h-10 items-center gap-2 px-4! py-2! text-sm"
           disabled={!busy && !canVerify}
           onClick={() => {
             if (busy) verificationAbort.current?.abort()

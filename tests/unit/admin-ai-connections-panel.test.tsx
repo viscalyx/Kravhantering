@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -6,6 +12,7 @@ import {
   ProfileForm,
 } from '@/app/[locale]/admin/panels/settings/ai-connections/model-profile-forms'
 import type {
+  AiAdminCatalogItem,
   AiAdminConnectionDetail,
   AiAdminRunProfileRecord,
 } from '@/lib/ai/admin-service'
@@ -79,6 +86,94 @@ function connection(): AiAdminConnectionDetail {
   }
 }
 
+function catalogItem(
+  overrides: Partial<AiAdminCatalogItem>,
+): AiAdminCatalogItem {
+  return {
+    capabilities: {} as never,
+    externalModelId: 'catalog/model',
+    externalModelVersion: null,
+    inputPricePerMillionTokens: null,
+    modelProviderName: null,
+    name: 'Catalog model',
+    outputPricePerMillionTokens: null,
+    ...overrides,
+  }
+}
+
+function stableProfile(
+  overrides: Partial<AiAdminRunProfileRecord> = {},
+): AiAdminRunProfileRecord {
+  return {
+    blockers: [],
+    configurationStatus: 'configured',
+    configurationVersion: 3,
+    id: '00000000-0000-4000-8000-000000000010',
+    inactivityTimeBudgetSeconds: 300,
+    maximumBufferedEvents: 32,
+    maximumOutputBytes: 4_194_304,
+    maximumOutputTokens: 8_192,
+    maximumRetainedMemoryBytes: 8_388_608,
+    modelRevisionId: null,
+    operationalStatus: 'enabled',
+    profileKey: 'generation_without_images',
+    queueCapacity: 10,
+    revisionToken: '00000000-0000-4000-8000-000000000011',
+    totalTimeBudgetSeconds: 1200,
+    ...overrides,
+  }
+}
+
+type ModelRevision =
+  AiAdminConnectionDetail['models'][number]['revisions'][number]
+
+function modelRevision(
+  id: string,
+  overrides: Partial<ModelRevision> = {},
+): ModelRevision {
+  return {
+    agentRuntimeVersion: null,
+    connectionConfigurationVersion: 1,
+    declaredCapabilities: {} as never,
+    discoveredCapabilities: null,
+    externalModelId: `controlled/${id}`,
+    externalModelVersion: null,
+    id,
+    profileCompatibility: compatibility,
+    revisionNumber: 1,
+    revisionToken: `${id}-token`,
+    status: 'verified',
+    testSuiteVersion: 'ai-admin-functional-probe-v5',
+    verifiedAt: '2026-08-22T12:00:00.000Z',
+    verifiedCapabilities: {} as never,
+    ...overrides,
+  }
+}
+
+function connectionWithRevisions(
+  id: string,
+  revisions: ModelRevision[],
+  overrides: Partial<AiAdminConnectionDetail> = {},
+): AiAdminConnectionDetail {
+  return {
+    ...connection(),
+    administrationName: id,
+    id,
+    models: [
+      {
+        description: null,
+        id: `${id}-model`,
+        name: `${id} models`,
+        revisions,
+        revisionToken: `${id}-model-token`,
+      },
+    ],
+    publicName: id,
+    revisionToken: `${id}-connection-token`,
+    ...overrides,
+  }
+}
+
 function verificationResponse(): Response {
   const result = {
     attemptExpiresAt: '2026-08-22T12:15:00.000Z',
@@ -134,6 +229,100 @@ describe('Admin AI model and stable-profile forms', () => {
     vi.clearAllMocks()
     fetchMock.mockReset()
     vi.stubGlobal('fetch', fetchMock)
+  })
+
+  it('restores catalog discovery without treating catalog claims as verification', async () => {
+    const catalog = [
+      catalogItem({
+        externalModelId: 'openai/model',
+        externalModelVersion: '2026-08',
+        inputPricePerMillionTokens: { amount: '1.25', currency: 'USD' },
+        modelProviderName: 'openai',
+        name: 'OpenAI model',
+        outputPricePerMillionTokens: { amount: '5.00', currency: 'USD' },
+      }),
+      catalogItem({
+        externalModelId: 'acme/model',
+        modelProviderName: 'acme-labs',
+        name: 'Acme model',
+      }),
+      catalogItem({
+        externalModelId: 'other/model',
+        name: 'Other model',
+      }),
+    ]
+    const refresh = vi.fn(async () => catalog)
+    const props = {
+      catalog,
+      connection: connection(),
+      model: null,
+      onCancel: vi.fn(),
+      onComplete: vi.fn(),
+      onRefreshCatalog: refresh,
+    }
+    const { rerender } = render(<ModelForm {...props} catalogStatus="loaded" />)
+    const user = userEvent.setup()
+
+    expect(
+      screen.getByRole('status', {
+        name: '',
+      }),
+    ).toHaveTextContent('admin.aiConnections.catalog.selectionReady')
+    const select = screen.getByLabelText(
+      'admin.aiConnections.catalog.selectionLabel',
+    )
+    expect(within(select).getByRole('group', { name: 'OpenAI' })).toBeDefined()
+    expect(
+      within(select).getByRole('option', { name: /OpenAI model.*1.25.*5.00/ }),
+    ).toBeInTheDocument()
+    expect(
+      within(select).getByRole('group', { name: 'Acme-labs' }),
+    ).toBeDefined()
+    expect(
+      within(select).getByRole('group', {
+        name: 'admin.aiConnections.catalog.otherProvider',
+      }),
+    ).toBeDefined()
+
+    await user.selectOptions(
+      select,
+      JSON.stringify(['openai/model', '2026-08']),
+    )
+    expect(
+      screen.getByLabelText(/^admin\.aiConnections\.fields\.name\.label/),
+    ).toHaveValue('OpenAI model')
+    expect(
+      screen.getByLabelText(
+        /^admin\.aiConnections\.fields\.externalModelId\.label/,
+      ),
+    ).toHaveValue('openai/model')
+    expect(
+      screen.getAllByText(
+        'admin.aiConnections.modelVerification.outcomes.notChecked',
+      ),
+    ).toHaveLength(7)
+    await user.selectOptions(select, '')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.fetchCatalog',
+      }),
+    )
+    expect(refresh).toHaveBeenCalledOnce()
+
+    rerender(<ModelForm {...props} catalogStatus="loading" />)
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.fetchCatalog',
+      }),
+    ).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'admin.aiConnections.catalog.loading',
+    )
+
+    rerender(<ModelForm {...props} catalog={[]} catalogStatus="unavailable" />)
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'admin.aiConnections.catalog.unavailableManual',
+    )
   })
 
   it('keeps capability truth read-only until one streamed verification is reviewed and saved', async () => {
@@ -398,6 +587,70 @@ describe('Admin AI model and stable-profile forms', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('save rejected')
   })
 
+  it('shows transport and streamed verification failures without enabling save', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response('verification rejected', { status: 503 }),
+    )
+    const first = render(
+      <ModelForm
+        connection={connection()}
+        model={null}
+        onCancel={vi.fn()}
+        onComplete={vi.fn()}
+      />,
+    )
+    const user = userEvent.setup()
+    await user.type(
+      screen.getByLabelText(
+        /^admin\.aiConnections\.fields\.externalModelId\.label/,
+      ),
+      'controlled/model',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verify',
+      }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'verification rejected',
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.saveRevision',
+      }),
+    ).toBeDisabled()
+    first.unmount()
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        `${JSON.stringify({ error: 'stream rejected', type: 'error' })}\n`,
+        { status: 200 },
+      ),
+    )
+    render(
+      <ModelForm
+        connection={connection()}
+        model={null}
+        onCancel={vi.fn()}
+        onComplete={vi.fn()}
+      />,
+    )
+    await user.type(
+      screen.getByLabelText(
+        /^admin\.aiConnections\.fields\.externalModelId\.label/,
+      ),
+      'controlled/model',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verify',
+      }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'stream rejected',
+    )
+  })
+
   it('shows incompatible revisions disabled and offers direct disconnection', async () => {
     fetchMock.mockResolvedValueOnce(new Response('{}', { status: 200 }))
     const current = connection()
@@ -447,23 +700,9 @@ describe('Admin AI model and stable-profile forms', () => {
         ],
       },
     ]
-    const profile: AiAdminRunProfileRecord = {
-      blockers: [],
-      configurationStatus: 'configured',
-      configurationVersion: 3,
-      id: '00000000-0000-4000-8000-000000000010',
-      inactivityTimeBudgetSeconds: 300,
-      maximumBufferedEvents: 32,
-      maximumOutputBytes: 4_194_304,
-      maximumOutputTokens: 8_192,
-      maximumRetainedMemoryBytes: 8_388_608,
+    const profile = stableProfile({
       modelRevisionId: '00000000-0000-4000-8000-000000000006',
-      operationalStatus: 'enabled',
-      profileKey: 'generation_without_images',
-      queueCapacity: 10,
-      revisionToken: '00000000-0000-4000-8000-000000000011',
-      totalTimeBudgetSeconds: 1200,
-    }
+    })
     const complete = vi.fn()
     render(
       <ProfileForm
@@ -493,34 +732,21 @@ describe('Admin AI model and stable-profile forms', () => {
       }),
     )
     expect(select).toHaveValue('')
-    await user.clear(
+    fireEvent.change(
       screen.getByLabelText(
         'admin.aiConnections.fields.totalTimeBudgetSeconds.label',
       ),
+      { target: { value: '900' } },
     )
-    await user.type(
-      screen.getByLabelText(
-        'admin.aiConnections.fields.totalTimeBudgetSeconds.label',
-      ),
-      '900',
-    )
-    await user.clear(
+    fireEvent.change(
       screen.getByLabelText(
         'admin.aiConnections.fields.inactivityTimeBudgetSeconds.label',
       ),
+      { target: { value: '600' } },
     )
-    await user.type(
-      screen.getByLabelText(
-        'admin.aiConnections.fields.inactivityTimeBudgetSeconds.label',
-      ),
-      '600',
-    )
-    await user.clear(
+    fireEvent.change(
       screen.getByLabelText('admin.aiConnections.fields.queueCapacity.label'),
-    )
-    await user.type(
-      screen.getByLabelText('admin.aiConnections.fields.queueCapacity.label'),
-      '8',
+      { target: { value: '8' } },
     )
     for (const key of [
       'maximumOutputTokens',
@@ -531,8 +757,7 @@ describe('Admin AI model and stable-profile forms', () => {
       const input = screen.getByLabelText(
         `admin.aiConnections.directProfile.fields.${key}.label`,
       )
-      await user.clear(input)
-      await user.type(input, '64')
+      fireEvent.change(input, { target: { value: '64' } })
     }
     await user.click(
       screen.getByRole('button', { name: 'admin.aiConnections.actions.save' }),
@@ -546,5 +771,116 @@ describe('Admin AI model and stable-profile forms', () => {
       queueCapacity: 8,
       totalTimeBudgetSeconds: 900,
     })
+  })
+
+  it('explains every direct-profile selection blocker and preserves save errors', async () => {
+    const usableOlder = modelRevision('usable-older', { revisionNumber: 1 })
+    const usableNewest = modelRevision('usable-newest', { revisionNumber: 2 })
+    const connections = [
+      connectionWithRevisions('usable', [usableOlder, usableNewest]),
+      connectionWithRevisions('ended', [
+        modelRevision('ended-revision', { status: 'ended' }),
+      ]),
+      connectionWithRevisions('new-revision', [
+        modelRevision('new-revision-required', {
+          status: 'new_revision_required',
+        }),
+      ]),
+      connectionWithRevisions(
+        'suspended',
+        [modelRevision('suspended-revision')],
+        { lifecycleStatus: 'suspended' },
+      ),
+      connectionWithRevisions('blocked', [modelRevision('blocked-revision')], {
+        blockers: [{ code: 'attestation_invalid' }],
+      }),
+      connectionWithRevisions('stale', [
+        modelRevision('stale-revision', {
+          connectionConfigurationVersion: 0,
+        }),
+      ]),
+      connectionWithRevisions('missing-capability', [
+        modelRevision('missing-capability-revision', {
+          profileCompatibility: {
+            ...compatibility,
+            generation_without_images: {
+              failureCategory: null,
+              missingCapabilities: ['streaming'],
+              supported: false,
+            },
+          } as never,
+        }),
+      ]),
+      connectionWithRevisions('incompatible', [
+        modelRevision('incompatible-revision', {
+          profileCompatibility: {
+            ...compatibility,
+            generation_without_images: {
+              failureCategory: null,
+              missingCapabilities: [],
+              supported: false,
+            },
+          },
+        }),
+      ]),
+    ]
+    fetchMock.mockResolvedValueOnce(
+      new Response('profile rejected', { status: 409 }),
+    )
+    render(
+      <ProfileForm
+        connections={connections}
+        onCancel={vi.fn()}
+        onComplete={vi.fn()}
+        profile={stableProfile()}
+      />,
+    )
+    const select = screen.getByLabelText(
+      'admin.aiConnections.directProfile.model',
+    )
+    const options = within(select).getAllByRole('option')
+
+    expect(
+      options.filter(option => !option.hasAttribute('disabled')),
+    ).toHaveLength(3)
+    expect(
+      within(select).getByRole('option', {
+        name: /directProfile\.reasons\.ended/,
+      }),
+    ).toBeDisabled()
+    expect(
+      within(select).getAllByRole('option', {
+        name: /directProfile\.reasons\.newRevisionRequired/,
+      }),
+    ).toHaveLength(2)
+    expect(
+      within(select).getByRole('option', {
+        name: /directProfile\.reasons\.connectionUnavailable/,
+      }),
+    ).toBeDisabled()
+    expect(
+      within(select).getByRole('option', {
+        name: /blockers\.attestation_invalid/,
+      }),
+    ).toBeDisabled()
+    expect(
+      within(select).getByRole('option', {
+        name: /directProfile\.reasons\.missingCapabilities/,
+      }),
+    ).toHaveTextContent('admin.aiConnections.capabilities.streaming')
+    expect(
+      within(select).getByRole('option', {
+        name: /directProfile\.reasons\.incompatible/,
+      }),
+    ).toBeDisabled()
+
+    const user = userEvent.setup()
+    await user.selectOptions(select, usableOlder.id)
+    await user.click(
+      screen.getByRole('button', { name: 'admin.aiConnections.actions.save' }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'profile rejected',
+    )
   })
 })

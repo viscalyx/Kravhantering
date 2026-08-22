@@ -1848,7 +1848,7 @@
         "editModel": "Edit connection model",
         "secret": "Provider secret",
         "attestation": "Connection attestation",
-        "profile": "Run profile revision"
+        "profile": "Run profile"
       },
       "connection": {
         "created": "The AI connection draft was created.",
@@ -2025,7 +2025,7 @@
         },
         "modelRevisionId": {
           "label": "Connection model revision",
-          "help": "Choose the latest verified revision of a connection model, or leave it unassigned to save an incomplete draft. Models whose latest revision is not verified are not shown."
+          "help": "Choose a compatible, verified model revision for the run profile."
         },
         "totalTimeBudgetSeconds": {
           "label": "Total time budget",
@@ -2139,7 +2139,7 @@
       },
       "model": {
         "title": "Connection models",
-        "description": "Each revision must be verified against the current connection configuration before activation.",
+        "description": "When you add or change a model, the new revision is verified before it is saved.",
         "empty": "No connection models have been added.",
         "revision": "revision {number}",
         "capabilities": "Declared capabilities",
@@ -2159,7 +2159,7 @@
         "verifyConnectionFirst": "Verify the current connection configuration first.",
         "alreadyVerified": "The model revision is already verified. A new or changed revision must be verified again.",
         "testCost": "This bounded conformance test may incur a small provider cost.",
-        "saved": "The connection model draft was saved.",
+        "saved": "The model revision was saved.",
         "verified": "The connection model revision passed verification.",
         "verificationFailed": "The verification probe completed, but the model revision did not pass verification. Its status remains Verification required.",
         "verificationFailureReason": "Reason: {reason}",
@@ -2224,12 +2224,12 @@
       },
       "profile": {
         "title": "Run profiles",
-        "description": "A run profile binds one run type to one verified model revision. There is no automatic fallback.",
+        "description": "Each run type has one fixed run profile that points directly to a verified model revision. There is no automatic fallback.",
         "impactTitle": "Run profile impact",
-        "impactDescription": "Profiles whose active or draft revision refers to a model in this connection are listed here.",
-        "noImpact": "No run profile revision currently refers to this connection.",
+        "impactDescription": "Run profiles that refer to a model in this connection are listed here.",
+        "noImpact": "No run profile currently refers to this connection.",
         "blocked": "Blocked",
-        "noModel": "No model assigned — incomplete draft",
+        "noModel": "No model assigned",
         "revisionMetadata": {
           "active": "Active profile revision: {number}",
           "activeAndDraft": "Active profile revision: {activeNumber} · Replacement draft: {draftNumber}",
@@ -2244,7 +2244,7 @@
         "lockedMinimum": "Locked application minimum — this value cannot be weakened for this run type.",
         "candidateBlockers": "The profile revision could not be activated",
         "saveDraft": "Save profile draft",
-        "saved": "The run profile draft was saved.",
+        "saved": "The run profile was saved.",
         "activated": "The run profile revision was activated.",
         "suspended": "The run profile was suspended.",
         "recovered": "The run profile was enabled again.",

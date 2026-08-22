@@ -1848,7 +1848,7 @@
         "editModel": "Redigera anslutningsmodell",
         "secret": "Leverantörshemlighet",
         "attestation": "Anslutningsattest",
-        "profile": "Körprofilrevision"
+        "profile": "Körprofil"
       },
       "connection": {
         "created": "Utkastet för AI-anslutningen skapades.",
@@ -2025,7 +2025,7 @@
         },
         "modelRevisionId": {
           "label": "Anslutningsmodellrevision",
-          "help": "Välj den senaste verifierade revisionen för en anslutningsmodell eller lämna utan tilldelning för att spara ett ofullständigt utkast. Modeller vars senaste revision inte är verifierad visas inte."
+          "help": "Välj en kompatibel, verifierad modellrevision för körprofilen."
         },
         "totalTimeBudgetSeconds": {
           "label": "Total tidsbudget",
@@ -2139,7 +2139,7 @@
       },
       "model": {
         "title": "Anslutningsmodeller",
-        "description": "Varje revision måste verifieras mot den aktuella anslutningskonfigurationen före aktivering.",
+        "description": "När du lägger till eller ändrar en modell verifieras den nya revisionen innan den sparas.",
         "empty": "Inga anslutningsmodeller har lagts till.",
         "revision": "revision {number}",
         "capabilities": "Deklarerade förmågor",
@@ -2159,7 +2159,7 @@
         "verifyConnectionFirst": "Verifiera den aktuella anslutningskonfigurationen först.",
         "alreadyVerified": "Modellrevisionen är redan verifierad. En ny eller ändrad revision måste verifieras på nytt.",
         "testCost": "Detta begränsade överensstämmelsetest kan medföra en liten leverantörskostnad.",
-        "saved": "Utkastet för anslutningsmodellen sparades.",
+        "saved": "Modellrevisionen sparades.",
         "verified": "Anslutningsmodellrevisionen verifierades.",
         "verificationFailed": "Verifieringskontrollen slutfördes, men modellrevisionen klarade inte verifieringen. Statusen är fortfarande Verifiering krävs.",
         "verificationFailureReason": "Orsak: {reason}",
@@ -2224,12 +2224,12 @@
       },
       "profile": {
         "title": "Körprofiler",
-        "description": "En körprofil binder en anropstyp till en verifierad modellrevision. Automatisk fallback används inte.",
+        "description": "Varje anropstyp har en fast körprofil som pekar direkt på en verifierad modellrevision. Automatisk fallback används inte.",
         "impactTitle": "Påverkan på körprofiler",
-        "impactDescription": "Profiler vars aktiva revision eller utkast refererar till en modell i anslutningen visas här.",
-        "noImpact": "Ingen körprofilrevision refererar till anslutningen just nu.",
+        "impactDescription": "Körprofiler som refererar till en modell i anslutningen visas här.",
+        "noImpact": "Ingen körprofil refererar till anslutningen just nu.",
         "blocked": "Blockerad",
-        "noModel": "Ingen modell tilldelad – ofullständigt utkast",
+        "noModel": "Ingen modell tilldelad",
         "revisionMetadata": {
           "active": "Aktiv profilrevision: {number}",
           "activeAndDraft": "Aktiv profilrevision: {activeNumber} · Ersättningsutkast: {draftNumber}",
@@ -2244,7 +2244,7 @@
         "lockedMinimum": "Låst applikationsminimum – värdet kan inte försvagas för den här anropstypen.",
         "candidateBlockers": "Profilrevisionen kunde inte aktiveras",
         "saveDraft": "Spara profilutkast",
-        "saved": "Körprofilutkastet sparades.",
+        "saved": "Körprofilen sparades.",
         "activated": "Körprofilrevisionen aktiverades.",
         "suspended": "Körprofilen suspenderades.",
         "recovered": "Körprofilen aktiverades igen.",
