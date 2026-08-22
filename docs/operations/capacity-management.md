@@ -87,8 +87,7 @@ tokens, secrets, HSA-id values, or other user identity.
 V1 measures:
 
 - AI-assisted authoring through `/api/ai/generate-requirement-import`.
-- AI metadata through `/api/ai/models` cache misses, `refresh=1`, and
-  `/api/ai/credits`.
+- AI authoring-profile availability and terminal generation outcomes.
 - Shared service operations through service logging.
 - Requirements specification item pages for the `editor-preload`, `rest`, and
   `mcp` surfaces. These events use
@@ -192,6 +191,12 @@ This solution is not distributed. In scaled production, throttling must move to
 SQL Server, Redis, or a platform rate-limiting capability.
 
 ## Recommended Alerts
+
+The provider-neutral target architecture adds distributed queue, retry, and
+circuit-breaker coordination for AI connections. Its required operator alerts
+and recovery boundary are documented in the
+[AI connections runbook](./ai-connections.md). The run-profile and adapter
+contract is [ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md).
 
 - `capacity.operation.failed` above 5 percent for AI flows over 15 minutes.
 - More than 20 `capacity.throttled` events over 10 minutes.

@@ -294,11 +294,8 @@ Create `.env.development.local` if it does not already exist:
 touch .env.development.local
 ```
 
-Add your personal OpenRouter API key:
-
-```dotenv
-OPENROUTER_API_KEY=<change_to_your_personal_openrouter_api_key>
-```
+Provider credentials do not belong in this file. Write them through Admin
+Center so the application stores encrypted provider-secret revisions.
 
 If you reuse the prod-like Keycloak instance behind the RHEL reverse
 proxy, override the issuer URL so it matches the issuer returned by

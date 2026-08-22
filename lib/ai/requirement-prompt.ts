@@ -1,27 +1,16 @@
 import type { ZodError } from 'zod'
-import type { GenerationStats } from '@/lib/ai/openrouter-client'
 import {
   DEFAULT_REQUIREMENT_IMPORT_BUDGET,
   type RequirementImportBudget,
 } from '@/lib/requirements/import-budget'
-import {
-  buildRequirementsImportJsonSchema,
-  type ImportRequirementsPayload,
-} from '@/lib/requirements/import-schema'
+import { buildRequirementsImportJsonSchema } from '@/lib/requirements/import-schema'
 import enMessages from '@/messages/en.json'
 import svMessages from '@/messages/sv.json'
 
 export const DEFAULT_REQUIREMENT_CANDIDATE_COUNT = 8
 export const MIN_REQUIREMENT_CANDIDATE_COUNT = 1
 export const MAX_REQUIREMENT_CANDIDATE_COUNT = 25
-
-export interface RequirementImportGenerationResult {
-  model: string
-  payload: ImportRequirementsPayload
-  rawContent: string
-  stats: GenerationStats
-  thinking: string
-}
+export const SAFE_AI_TECHNICAL_CODE = /^[a-z][a-z0-9_.:-]{0,79}$/u
 
 export interface FormattedSchemaIssue {
   code: string
@@ -384,5 +373,37 @@ export function formatSchemaIssues(error: ZodError): FormattedSchemaIssue[] {
 }
 
 export function parseJsonObject(rawContent: string): unknown {
-  return JSON.parse(rawContent)
+  try {
+    return JSON.parse(rawContent)
+  } catch {
+    const fenced = rawContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/iu)?.[1]
+    if (fenced) return JSON.parse(fenced)
+
+    const start = rawContent.indexOf('{')
+    let depth = 0
+    let escaped = false
+    let inString = false
+    for (
+      let index = start;
+      index >= 0 && index < rawContent.length;
+      index += 1
+    ) {
+      const character = rawContent[index]
+      if (inString) {
+        if (escaped) escaped = false
+        else if (character === '\\') escaped = true
+        else if (character === '"') inString = false
+        continue
+      }
+      if (character === '"') {
+        inString = true
+      } else if (character === '{') {
+        depth += 1
+      } else if (character === '}') {
+        depth -= 1
+        if (depth === 0) return JSON.parse(rawContent.slice(start, index + 1))
+      }
+    }
+    return JSON.parse(rawContent)
+  }
 }

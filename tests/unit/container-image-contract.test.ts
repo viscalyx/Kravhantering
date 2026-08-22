@@ -203,6 +203,9 @@ describe('container image contract', () => {
 
     expect(target).toContain('COPY --from=db-job-dependencies')
     expect(target).toContain('scripts/db-sqlserver-admin.mjs')
+    expect(target).toContain('scripts/ai-provider-secret-maintenance.mjs')
+    expect(target).toContain('scripts/ai-provider-secret-restore-cli.mjs')
+    expect(target).toContain('lib/ai/provider-secret-crypto-core.mjs')
     expect(target).toContain('typeorm/migrations')
     expect(target).toContain('typeorm/seed-required.mjs')
     expect(target).toContain('typeorm/ai-safety-seed-data.mjs')
@@ -237,6 +240,9 @@ describe('container image contract', () => {
 
     expect(target).toContain('COPY --from=db-job-dependencies')
     expect(target).toContain('scripts/db-sqlserver-admin.mjs')
+    expect(target).toContain('scripts/ai-provider-secret-maintenance.mjs')
+    expect(target).toContain('scripts/ai-provider-secret-restore-cli.mjs')
+    expect(target).toContain('lib/ai/provider-secret-crypto-core.mjs')
     expect(target).toContain('typeorm/migrations')
     expect(target).toContain('typeorm/seed-required.mjs')
     expect(target).toContain('typeorm/ai-safety-seed-data.mjs')

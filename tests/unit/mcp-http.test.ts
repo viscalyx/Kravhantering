@@ -411,6 +411,14 @@ describe('handleRequirementsMcpRequest', () => {
       )
     })
 
+    it('keeps AI provider egress client-owned by exposing no generation tool', () => {
+      expect(
+        tools
+          .map(tool => tool.name)
+          .filter(name => /(^ai_|_generate(?:_|$)|provider)/u.test(name)),
+      ).toEqual([])
+    })
+
     it('describes requirements_query_catalog filters and structured list/search output', async () => {
       const queryTool = getTool('requirements_query_catalog')
 

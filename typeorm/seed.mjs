@@ -1,5 +1,5 @@
 import { createMcpImportValidationPrincipalFingerprint } from '../lib/mcp/import-validation-fingerprint.mjs'
-import { REQUIRED_SEED_TABLES } from './seed-required.mjs'
+import { REQUIRED_SEED_TABLES, seedRequiredDatabase } from './seed-required.mjs'
 import { runSeedData, seedPositionDetail } from './seed-runner.mjs'
 
 const DEMO_MCP_PRINCIPAL_HSA_ID = 'SE5560000001-mcp1'
@@ -60,6 +60,16 @@ const TABLE_ORDER = [
   'requirement_area_co_authors',
   'requirement_categories',
   'ai_settings',
+  'ai_connections',
+  'ai_provider_secret_versions',
+  'ai_connection_attestations',
+  'ai_connection_verification_evidence',
+  'ai_connection_models',
+  'ai_connection_model_revisions',
+  'ai_connection_model_verification_evidence',
+  'ai_run_profiles',
+  'ai_run_coordination_entries',
+  'ai_connection_model_operational_states',
   'ai_forensic_capture_windows',
   'ai_forensic_evidence_events',
   'requirement_import_validation_sessions',
@@ -112,6 +122,166 @@ const TABLE_ORDER = [
 ]
 
 const SEED_DATA = {
+  ai_connections: {
+    columns: [
+      'id',
+      'administration_name',
+      'public_name',
+      'description',
+      'adapter_key',
+      'adapter_version',
+      'endpoint_url',
+      'authentication_type',
+      'tls_policy_key',
+      'egress_policy_key',
+      'agent_runtime_key',
+      'agent_runtime_version',
+      'data_policy_summary',
+      'lifecycle_status',
+      'configuration_version',
+      'maximum_concurrency',
+      'created_at',
+      'updated_at',
+    ],
+    identity: false,
+    pk: ['id'],
+    rows: [
+      [
+        '20000000-0000-4000-8000-000000000001',
+        'OpenRouter demo',
+        'OpenRouter',
+        'Overifierat demo-utkast. Ange leverantörsnyckel och slutför verifieringen före användning.',
+        'openrouter',
+        '1',
+        'https://openrouter.ai/api/v1',
+        'static_secret',
+        'public_web_pki',
+        'openrouter_api',
+        null,
+        null,
+        'Demo policy template; no data is approved for egress until attestation and verification are complete.',
+        'draft',
+        1,
+        4,
+        '2026-08-19 00:00:00',
+        '2026-08-19 00:00:00',
+      ],
+      [
+        '20000000-0000-4000-8000-000000000002',
+        'Lokalt vLLM-kluster',
+        'Organisationens AI',
+        'Overifierat utkast för en organisationsdriven vLLM-tjänst. Installera adaptern, ange anslutningsuppgifter och slutför verifieringen före användning.',
+        'vllm',
+        '1',
+        'https://vllm.demo.invalid/v1',
+        'static_secret',
+        'organization_pki',
+        'organization_ai_gateway',
+        null,
+        null,
+        'Local processing policy template; no data is approved for egress until attestation and verification are complete.',
+        'draft',
+        1,
+        2,
+        '2026-08-19 00:00:00',
+        '2026-08-19 00:00:00',
+      ],
+    ],
+  },
+  ai_provider_secret_versions: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
+  },
+  ai_connection_attestations: {
+    columns: [
+      'id',
+      'ai_connection_id',
+      'revision_number',
+      'status',
+      'responsible_organization_unit_reference',
+      'purpose',
+      'maximum_information_class',
+      'is_personal_data_processed',
+      'provider_name',
+      'subprocessors_json',
+      'processing_regions_json',
+      'is_training_allowed',
+      'maximum_retention_days',
+      'incident_response_reference',
+      'decision_reference',
+      'reviewed_at',
+      'review_due_at',
+      'created_at',
+    ],
+    identity: false,
+    pk: ['id'],
+    rows: [
+      [
+        '21000000-0000-4000-8000-000000000001',
+        '20000000-0000-4000-8000-000000000001',
+        1,
+        'draft',
+        '22000000-0000-4000-8000-000000000001',
+        'AI-stött författande och reparation av kravimportutkast i demonstrationsmiljön',
+        'internal',
+        false,
+        'OpenRouter',
+        '["OpenRouter, Inc.","Vald modellleverantör (demouppgift)"]',
+        '["EU/EES (demouppgift)"]',
+        false,
+        0,
+        '22000000-0000-4000-8000-000000000002',
+        'DEMO-AI-ATTEST-OPENROUTER-001',
+        '2026-08-19 00:00:00',
+        '2027-08-19 00:00:00',
+        '2026-08-19 00:00:00',
+      ],
+    ],
+  },
+  ai_connection_verification_evidence: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
+  },
+  ai_connection_models: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
+  },
+  ai_connection_model_revisions: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
+  },
+  ai_connection_model_verification_evidence: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
+  },
+  ai_run_profiles: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
+  },
+  ai_run_coordination_entries: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
+  },
+  ai_connection_model_operational_states: {
+    columns: ['id'],
+    identity: false,
+    pk: ['id'],
+    rows: [],
+  },
   ai_forensic_capture_windows: {
     columns: [
       'id',
@@ -14486,7 +14656,7 @@ applyPrivacyIdentitySeed()
 applyArchivingRetentionSeed()
 applyActionAuditSeed()
 
-export { REQUIRED_SEED_TABLES, seedRequiredDatabase } from './seed-required.mjs'
+export { REQUIRED_SEED_TABLES, seedRequiredDatabase }
 
 export const DEMO_SEED_TABLES = Object.freeze(
   TABLE_ORDER.filter(table => !REQUIRED_SEED_TABLES.includes(table)),
@@ -14604,6 +14774,7 @@ async function seedDemoLifecycleRow({
 }
 
 export async function seedDemoDatabase(executor) {
+  await seedRequiredDatabase(executor)
   refreshDemoMcpTransientTimestamps()
   return runSeedData(executor, SEED_DATA, TABLE_ORDER, {
     includeTables: DEMO_SEED_TABLES,

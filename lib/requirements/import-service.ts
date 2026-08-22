@@ -3353,7 +3353,6 @@ export function createRequirementsImportWorkflow({
             requirementPackages: referenceData.requirementPackages.map(
               item => ({
                 id: item.id,
-                leadDisplayName: item.leadDisplayName,
                 name: item.name,
                 purposeAndScope: item.purposeAndScope,
               }),

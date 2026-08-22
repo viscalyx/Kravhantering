@@ -73,7 +73,7 @@ describe('REST route registry coverage', () => {
     const registered = REST_OPERATIONS.map(
       operation => `${operation.method} ${operation.template}`,
     )
-    expect(Object.keys(routeModules)).toHaveLength(145)
+    expect(Object.keys(routeModules)).toHaveLength(150)
     expect(discovered.sort()).toEqual(registered.sort())
   }, 30_000)
 

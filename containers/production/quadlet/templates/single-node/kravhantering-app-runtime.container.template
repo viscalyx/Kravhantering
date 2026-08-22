@@ -20,8 +20,10 @@ Network=kravhantering-single-node-edge.network
 Network=kravhantering-single-node-database.network
 Network=kravhantering-single-node-egress.network
 PodmanArgs=--network-alias=app-runtime
+PodmanArgs=--group-add=keep-groups
 @@PUBLIC_ISSUER_HOST_MAPPING@@
 Volume=/etc/kravhantering/tls/ca.crt:/run/kravhantering/tls/ca.crt:ro
+Volume=/etc/kravhantering/secrets:/run/secrets/kravhantering:ro
 @@APP_RUNTIME_EXPORT_MOUNT@@
 Tmpfs=/tmp:rw,size=64M,mode=1777,nosuid,nodev,noexec
 

@@ -9,6 +9,13 @@ readiness checks.
 `/api/health` remains the public, dependency-free liveness check. Do not replace
 it with readiness for process supervision.
 
+AI-assisted authoring is optional. AI connection health, circuit-breaker
+state, missing provider secrets, blocked run profiles, and missing root-key
+versions do not affect either probe. Operators monitor and recover those
+conditions through the separate
+[AI connections runbook](./ai-connections.md), as required by
+[ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
+
 ## Prepare before installation or upgrade
 
 Create a separate probe-boundary file before rendering or installing any

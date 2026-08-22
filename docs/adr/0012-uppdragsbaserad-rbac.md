@@ -60,9 +60,11 @@ auktoriseringsgränsen och har ingen separat AI-behörighet i nuvarande modell.
 En användare utan `Admin` måste ange exakt ett auktoriserat
 behörighetssammanhang:
 `requirement_area` för författande i kravområde eller `specification` för
-författande i kravunderlag. Detta gäller lista över modeller,
-kreditinformation, REST-generering och MCP-generering innan någon
-OpenRouter-körväg anropas. `Admin` får utelämna behörighetssammanhang. Om
+författande i kravunderlag. Detta gäller REST- och MCP-generering innan
+AI-integrationslagret anropas. `Admin` får utelämna
+behörighetssammanhang. Användaren får inte välja AI-anslutning,
+anslutningsmodell eller datapolicy; de styrs administrativt enligt
+[ADR 0051](./0051-ai-integrationslager-med-korprofiler-och-adaptrar.md). Om
 AI-assisterat författande senare behöver en separat behörighetsmodell ska den
 beslutas som en ny uttrycklig policy med egna skäl.
 

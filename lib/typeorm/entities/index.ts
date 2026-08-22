@@ -1,8 +1,18 @@
 import { accessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
 import { accessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
 import { actionAuditEventEntity } from '@/lib/typeorm/entities/action-audit-event'
+import { aiConnectionEntity } from '@/lib/typeorm/entities/ai-connection'
+import { aiConnectionAttestationEntity } from '@/lib/typeorm/entities/ai-connection-attestation'
+import { aiConnectionModelEntity } from '@/lib/typeorm/entities/ai-connection-model'
+import { aiConnectionModelOperationalStateEntity } from '@/lib/typeorm/entities/ai-connection-model-operational-state'
+import { aiConnectionModelRevisionEntity } from '@/lib/typeorm/entities/ai-connection-model-revision'
+import { aiConnectionModelVerificationEvidenceEntity } from '@/lib/typeorm/entities/ai-connection-model-verification-evidence'
+import { aiConnectionVerificationEvidenceEntity } from '@/lib/typeorm/entities/ai-connection-verification-evidence'
 import { aiForensicCaptureWindowEntity } from '@/lib/typeorm/entities/ai-forensic-capture-window'
 import { aiForensicEvidenceEventEntity } from '@/lib/typeorm/entities/ai-forensic-evidence-event'
+import { aiProviderSecretVersionEntity } from '@/lib/typeorm/entities/ai-provider-secret-version'
+import { aiRunCoordinationEntity } from '@/lib/typeorm/entities/ai-run-coordination'
+import { aiRunProfileEntity } from '@/lib/typeorm/entities/ai-run-profile'
 import { aiSafetyRuleEntity } from '@/lib/typeorm/entities/ai-safety-rule'
 import { aiSafetyRuleTermEntity } from '@/lib/typeorm/entities/ai-safety-rule-term'
 import { aiSettingEntity } from '@/lib/typeorm/entities/ai-setting'
@@ -63,6 +73,16 @@ import { specificationRfiQuestionItemEntity } from '@/lib/typeorm/entities/speci
 
 export const sqlServerEntities = [
   actionAuditEventEntity,
+  aiConnectionEntity,
+  aiConnectionAttestationEntity,
+  aiConnectionVerificationEvidenceEntity,
+  aiConnectionModelEntity,
+  aiConnectionModelRevisionEntity,
+  aiConnectionModelVerificationEvidenceEntity,
+  aiRunProfileEntity,
+  aiRunCoordinationEntity,
+  aiConnectionModelOperationalStateEntity,
+  aiProviderSecretVersionEntity,
   aiForensicCaptureWindowEntity,
   aiForensicEvidenceEventEntity,
   aiSettingEntity,
@@ -129,8 +149,18 @@ export const sqlServerEntities = [
 export type { AccessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
 export type { AccessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
 export type { ActionAuditEventEntity } from '@/lib/typeorm/entities/action-audit-event'
+export type { AiConnectionEntity } from '@/lib/typeorm/entities/ai-connection'
+export type { AiConnectionAttestationEntity } from '@/lib/typeorm/entities/ai-connection-attestation'
+export type { AiConnectionModelEntity } from '@/lib/typeorm/entities/ai-connection-model'
+export type { AiConnectionModelOperationalStateEntity } from '@/lib/typeorm/entities/ai-connection-model-operational-state'
+export type { AiConnectionModelRevisionEntity } from '@/lib/typeorm/entities/ai-connection-model-revision'
+export type { AiConnectionModelVerificationEvidenceEntity } from '@/lib/typeorm/entities/ai-connection-model-verification-evidence'
+export type { AiConnectionVerificationEvidenceEntity } from '@/lib/typeorm/entities/ai-connection-verification-evidence'
 export type { AiForensicCaptureWindowEntity } from '@/lib/typeorm/entities/ai-forensic-capture-window'
 export type { AiForensicEvidenceEventEntity } from '@/lib/typeorm/entities/ai-forensic-evidence-event'
+export type { AiProviderSecretVersionEntity } from '@/lib/typeorm/entities/ai-provider-secret-version'
+export type { AiRunCoordinationEntity } from '@/lib/typeorm/entities/ai-run-coordination'
+export type { AiRunProfileEntity } from '@/lib/typeorm/entities/ai-run-profile'
 export type { AiSafetyRuleEntity } from '@/lib/typeorm/entities/ai-safety-rule'
 export type { AiSafetyRuleTermEntity } from '@/lib/typeorm/entities/ai-safety-rule-term'
 export type { AiSettingEntity } from '@/lib/typeorm/entities/ai-setting'
@@ -193,8 +223,16 @@ export {
   accessReviewItemEntity,
   accessReviewRunEntity,
   actionAuditEventEntity,
+  aiConnectionAttestationEntity,
+  aiConnectionEntity,
+  aiConnectionModelEntity,
+  aiConnectionModelOperationalStateEntity,
+  aiConnectionModelRevisionEntity,
+  aiConnectionModelVerificationEvidenceEntity,
+  aiConnectionVerificationEvidenceEntity,
   aiForensicCaptureWindowEntity,
   aiForensicEvidenceEventEntity,
+  aiRunProfileEntity,
   aiSafetyRuleEntity,
   aiSafetyRuleTermEntity,
   aiSettingEntity,

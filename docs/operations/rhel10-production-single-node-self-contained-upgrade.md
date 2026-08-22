@@ -57,6 +57,19 @@ configuration change.
 >from an allowed monitoring source and denial from another source after
 >rollout.
 
+When the target release enables connection-managed AI, provision and back up
+the external provider-secret root keyring before migration. Keep every version
+referenced by current rows or retained database backups, mount it read-only,
+and test database plus keyring restore as one recovery set. Follow
+[AI Connections Operations](./ai-connections.md); do not put root keys in
+`app.env` or release artifacts.
+
+The production `db-job` image carries the plain-Node provider-secret
+maintenance module. Use its bounded `provider-secret-root-rotate` command for
+root-key rotation and `provider-secret-restore-verify` for restore and old-key
+removal proof; never run the TypeScript application service as an operations
+script.
+
 1. Confirm the target release bundle, checksum and locked image identities.
    Download the target bundle and checksum from the approved release source:
 
@@ -729,7 +742,18 @@ configuration change.
     [Operational Evidence](./rhel10-production-single-node-self-contained-deploy.md#operational-evidence)
     record.
 
+    Keep `AI_REQUIREMENT_GENERATION_DISABLED=1` while normal application
+    traffic returns. Release the guard only after the
+    [AI deployment evidence gate](./ai-connections.md#deployment-evidence-gate)
+    passes for this environment and app-runtime has been recreated.
+
 ## Rollback
+
+Set `AI_REQUIREMENT_GENERATION_DISABLED=1` before starting rollback. Restore
+SQL Server and every referenced external root-key version together when the
+database is restored. Use suspension or a previously verified profile
+revision; never depend on the removed direct OpenRouter path. Repeat the AI
+deployment evidence gate before releasing the guard.
 
 Choose the rollback boundary that matches the failed step:
 

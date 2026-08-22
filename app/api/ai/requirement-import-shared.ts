@@ -1,12 +1,17 @@
 import { type RefinementCtx, z } from 'zod'
-import type { ContentPart } from '@/lib/ai/openrouter-client'
-import type { AiProviderErrorCode } from '@/lib/ai/provider-errors'
+import { AiRunProfileResolutionError } from '@/lib/ai/profile-resolver'
 import {
   DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
   getPromptMessage,
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
+  SAFE_AI_TECHNICAL_CODE,
 } from '@/lib/ai/requirement-prompt'
+import type {
+  AiRunFailure,
+  AiTaskContentPart,
+  AiUsageMetric,
+} from '@/lib/ai/run-contracts'
 import {
   type AiSafetyBlockedStep,
   type AiSafetyDecision,
@@ -42,11 +47,86 @@ export const MAX_AI_IMAGES = 3
 export const MAX_AI_IMAGE_DATA_URL_LENGTH =
   Math.ceil(MAX_AI_IMAGE_BYTES / 3) * 4 + 'data:image/jpeg;base64,'.length
 export const MAX_AI_INSTRUCTION_LENGTH = 4000
-export const MAX_AI_MODEL_LENGTH = 100
 export const MAX_AI_NEED_LENGTH = 4000
 export const AI_GENERATE_RATE_LIMIT = 5
 export const AI_GENERATE_RATE_WINDOW_MS = 60_000
 export const AI_GENERATE_SLOW_THRESHOLD_MS = 30_000
+export const AI_RUN_REQUEST_DEADLINE_MS = 5 * 60 * 1_000
+
+export function aiUsageMetricValue<T>(metric: AiUsageMetric<T>): T | null {
+  return metric.status === 'unavailable' ? null : metric.value
+}
+
+export function aiRunProfileError(
+  error: unknown,
+  locale: RequirementImportLocale,
+): {
+  code: 'ai_profile_blocked' | 'ai_profile_missing' | 'ai_profile_suspended'
+  message: string
+} | null {
+  if (!(error instanceof AiRunProfileResolutionError)) return null
+  if (error.code === 'run_type_unsupported') return null
+  const reason =
+    error.code === 'profile_missing'
+      ? 'missing'
+      : error.code === 'profile_suspended'
+        ? 'suspended'
+        : 'blocked'
+  return {
+    code: `ai_profile_${reason}`,
+    message: getPromptMessage(locale, ['ai', 'profileUnavailable', reason]),
+  }
+}
+
+export { SAFE_AI_TECHNICAL_CODE }
+
+export type AiProviderErrorCode =
+  | 'ai_provider_invalid_response'
+  | 'ai_provider_rate_limited'
+  | 'ai_provider_unavailable'
+
+export interface AiProviderPublicError {
+  code: AiProviderErrorCode
+  message: string
+  technicalCode?: string
+}
+
+const PROVIDER_ERROR_MESSAGE_KEYS = {
+  adapter_failure: 'adapterFailure',
+  authentication_failed: 'authenticationFailed',
+  capability_mismatch: 'capabilityMismatch',
+  connection_unavailable: 'connectionUnavailable',
+  deadline_exceeded: 'deadlineExceeded',
+  invalid_response: 'invalidResponse',
+  rate_limited: 'rateLimited',
+  request_rejected: 'requestRejected',
+} as const satisfies Record<AiRunFailure['category'], string>
+
+export function aiRunFailureError(
+  failure: Readonly<AiRunFailure>,
+  locale: RequirementImportLocale,
+): AiProviderPublicError {
+  const code: AiProviderErrorCode =
+    failure.category === 'rate_limited'
+      ? 'ai_provider_rate_limited'
+      : failure.category === 'invalid_response'
+        ? 'ai_provider_invalid_response'
+        : 'ai_provider_unavailable'
+  const technicalCode =
+    failure.diagnosticCode &&
+    SAFE_AI_TECHNICAL_CODE.test(failure.diagnosticCode)
+      ? failure.diagnosticCode
+      : undefined
+  return {
+    code,
+    message: getPromptMessage(locale, [
+      'ai',
+      'providerErrors',
+      PROVIDER_ERROR_MESSAGE_KEYS[failure.category],
+    ]),
+    ...(technicalCode ? { technicalCode } : {}),
+  }
+}
 
 export function formatAiSafetyBlockedMessage(
   locale: RequirementImportLocale,
@@ -63,14 +143,6 @@ export function formatAiSafetyBlockedMessage(
     ruleType,
   )
 }
-
-export const providerPreferencesSchema = z
-  .object({
-    data_collection: z.enum(['allow', 'deny']).optional(),
-    enforce_distillable_text: z.boolean().optional(),
-    zdr: z.boolean().optional(),
-  })
-  .strict()
 
 type RequirementImportLocale = z.infer<typeof localeSchema>
 
@@ -297,9 +369,6 @@ export const aiRequirementImportScopeSchema =
 export const aiRequirementImportBaseBodySchema =
   aiRequirementImportScopeBaseSchema.extend({
     locale: localeSchema.optional().default('en'),
-    model: z.string().trim().max(MAX_AI_MODEL_LENGTH).optional(),
-    providerPreferences: providerPreferencesSchema.optional(),
-    reasoningEffort: z.string().trim().max(MAX_AI_MODEL_LENGTH).optional(),
   })
 
 export function requirementImportScopeAction(body: {
@@ -401,7 +470,17 @@ export function createUnavailableAiStreamResponse(
 
 export function createAiErrorStreamResponse(
   context: RequestCorrelationIds,
-  error: { code: AiProviderErrorCode; message: string },
+  error: {
+    code:
+      | 'ai_profile_blocked'
+      | 'ai_profile_missing'
+      | 'ai_profile_suspended'
+      | 'ai_provider_invalid_response'
+      | 'ai_provider_rate_limited'
+      | 'ai_provider_unavailable'
+    message: string
+    technicalCode?: string
+  },
   recordFailure: (statusCode: number) => void,
 ) {
   const statusCode = error.code === 'ai_provider_rate_limited' ? 429 : 503
@@ -435,17 +514,23 @@ export function countImageBytes(images: Array<{ dataUrl: string }>): number {
   }, 0)
 }
 
-export function withImages(
+export function toAiTaskContent(
   text: string,
   images: Array<{ dataUrl: string }>,
-): ContentPart[] | string {
-  if (images.length === 0) return text
-
-  const parts: ContentPart[] = [{ text, type: 'text' }]
+): readonly AiTaskContentPart[] {
+  const parts: AiTaskContentPart[] = [{ text, type: 'text' }]
   for (const image of images) {
-    parts.push({ image_url: { url: image.dataUrl }, type: 'image_url' })
+    const commaIndex = image.dataUrl.indexOf(',')
+    const mediaType = image.dataUrl.slice(5, image.dataUrl.indexOf(';'))
+    parts.push({
+      data: new Uint8Array(
+        Buffer.from(image.dataUrl.slice(commaIndex + 1), 'base64'),
+      ),
+      mediaType,
+      type: 'image',
+    })
   }
-  return parts
+  return Object.freeze(parts)
 }
 
 export const requirementCandidateCountSchema = z

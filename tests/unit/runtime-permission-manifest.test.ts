@@ -13,7 +13,7 @@ function permissionFor(objectName: string) {
 
 describe('runtime permission manifest', () => {
   it('is release-versioned, stable, and explicit about protected objects', () => {
-    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.08\.14\./u)
+    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.08\.22\./u)
     expect(RUNTIME_PERMISSION_MANIFEST_DIGEST).toMatch(/^[a-f0-9]{64}$/u)
     expect(RUNTIME_PERMISSION_MANIFEST.map(entry => entry.object)).toEqual(
       [...RUNTIME_PERMISSION_MANIFEST]
@@ -40,6 +40,44 @@ describe('runtime permission manifest', () => {
     expect(permissionFor('dbo.ai_forensic_evidence_events')).toEqual({
       object: 'dbo.ai_forensic_evidence_events',
       permissions: ['SELECT', 'INSERT', 'DELETE'],
+    })
+    expect(
+      permissionFor('dbo.ai_connection_model_verification_evidence'),
+    ).toEqual({
+      object: 'dbo.ai_connection_model_verification_evidence',
+      permissions: ['SELECT', 'INSERT', 'DELETE'],
+    })
+    expect(permissionFor('dbo.ai_provider_secret_versions')).toEqual({
+      object: 'dbo.ai_provider_secret_versions',
+      permissions: ['SELECT', 'INSERT', 'DELETE'],
+      updateColumns: [
+        'status',
+        'ciphertext',
+        'nonce',
+        'authentication_tag',
+        'cipher_format_version',
+        'root_key_version',
+        'verified_at',
+        'activated_at',
+        'deactivated_at',
+        'provider_revoked_at',
+        'ciphertext_deleted_at',
+        'revision_token',
+      ],
+    })
+    expect(permissionFor('dbo.ai_run_coordination_entries')).toEqual({
+      object: 'dbo.ai_run_coordination_entries',
+      permissions: ['SELECT', 'INSERT', 'DELETE'],
+      updateColumns: [
+        'status',
+        'attempt_count',
+        'not_before',
+        'lease_owner_id',
+        'lease_expires_at',
+        'cancellation_requested_at',
+        'cancellation_reason',
+        'updated_at',
+      ],
     })
     expect(
       permissionFor('dbo.requirement_import_validation_rate_buckets'),

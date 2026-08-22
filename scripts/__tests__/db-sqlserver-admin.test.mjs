@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RUNTIME_PERMISSION_MANIFEST } from '../../typeorm/runtime-permission-manifest.mjs'
 import {
+  loadAiProviderSecretMaintenanceKeyring,
+  reencryptAiProviderSecretBatch,
+  verifyAiProviderSecretRestoreSet as verifyPackagedRestoreSet,
+} from '../ai-provider-secret-maintenance.mjs'
+import {
   assertRuntimePermissionStatus,
   bootstrapSqlServerDatabase,
   buildReadonlyBrowseConfig,
@@ -28,10 +33,12 @@ import {
   reconcileSqlServerRuntimePermissionsForConnection,
   resetDemoSqlServerData,
   resetSqlServerDatabase,
+  rotateAiProviderSecretRootForConnection,
   runSqlServerMigrations,
   seedSqlServerDatabase,
   setMigrationInstallationContext,
   stripWrappingQuotes,
+  verifyAiProviderSecretRestoreForConnection,
   waitForSqlServer,
 } from '../db-sqlserver-admin.mjs'
 
@@ -1103,6 +1110,171 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(initializeWithoutDestroy).toHaveBeenCalled()
   })
 
+  it('runs the provider-secret restore verifier against one managed SQL connection', async () => {
+    const destroy = vi.fn(async () => undefined)
+    const initialize = vi.fn(async () => undefined)
+    class FakeDataSource {
+      destroy = destroy
+      initialize = initialize
+    }
+    const keyring = { activeWriteVersion: 'root-2' }
+    const loadAiProviderSecretKeyring = vi.fn(() => keyring)
+    const verifyAiProviderSecretRestoreSet = vi.fn(async () => ({
+      checkedSecretVersionCount: 2,
+      compatible: true,
+      safeToRemoveOmittedRootKeyVersion: true,
+    }))
+
+    await expect(
+      verifyAiProviderSecretRestoreForConnection(
+        'mssql://runtime:Runtime123!@127.0.0.1:1433/restored',
+        {
+          dataSourceCtor: FakeDataSource,
+          env: { AI_PROVIDER_SECRET_KEYRING_FILE: '/run/secrets/keyring.json' },
+          omitRootKeyVersion: 'root-1',
+          providerSecretKeyringModule: { loadAiProviderSecretKeyring },
+          providerSecretServiceModule: { verifyAiProviderSecretRestoreSet },
+        },
+      ),
+    ).resolves.toMatchObject({ compatible: true })
+    expect(loadAiProviderSecretKeyring).toHaveBeenCalledOnce()
+    expect(verifyAiProviderSecretRestoreSet).toHaveBeenCalledWith(
+      expect.any(FakeDataSource),
+      keyring,
+      { omitRootKeyVersion: 'root-1' },
+    )
+    expect(initialize).toHaveBeenCalledOnce()
+    expect(destroy).toHaveBeenCalledOnce()
+  })
+
+  it('loads the plain-Node provider-secret maintenance module without TypeScript aliases', () => {
+    expect(loadAiProviderSecretMaintenanceKeyring).toBeTypeOf('function')
+    expect(reencryptAiProviderSecretBatch).toBeTypeOf('function')
+    expect(verifyPackagedRestoreSet).toBeTypeOf('function')
+  })
+
+  it('runs one bounded root-key rotation batch without exposing plaintext', async () => {
+    const consoleObj = { error: vi.fn(), log: vi.fn() }
+    const rotate = vi.fn(async () => ({
+      fromRootKeyVersion: 'root-1',
+      reencryptedCount: 25,
+      remainingCount: 4,
+      safeToRemoveFromRootKeyVersion: false,
+      toRootKeyVersion: 'root-2',
+    }))
+    const env = {
+      DATABASE_URL: 'mssql://runtime:Runtime123!@127.0.0.1:1433/restored',
+    }
+
+    await expect(
+      main(
+        [
+          'provider-secret-root-rotate',
+          '--from-root-key-version',
+          'root-1',
+          '--batch-size',
+          '25',
+        ],
+        {
+          consoleObj,
+          env,
+          rotateAiProviderSecretRootForConnectionImpl: rotate,
+        },
+      ),
+    ).resolves.toBe(0)
+    expect(rotate).toHaveBeenCalledWith(
+      env.DATABASE_URL,
+      expect.objectContaining({
+        batchSize: 25,
+        fromRootKeyVersion: 'root-1',
+      }),
+    )
+    expect(JSON.stringify(consoleObj.log.mock.calls)).not.toContain('secret')
+    expect(rotateAiProviderSecretRootForConnection).toBeTypeOf('function')
+  })
+
+  it('prints secret-free restore evidence and fails closed for an empty restore', async () => {
+    const consoleObj = { error: vi.fn(), log: vi.fn() }
+    const compatible = {
+      checkedSecretVersionCount: 2,
+      compatible: true,
+      results: [{ available: true, secretVersionId: 'opaque-version-id' }],
+      safeToRemoveOmittedRootKeyVersion: true,
+    }
+    const verify = vi.fn(async () => compatible)
+    const env = {
+      DATABASE_URL: 'mssql://runtime:Runtime123!@127.0.0.1:1433/restored',
+    }
+
+    await expect(
+      main(
+        ['provider-secret-restore-verify', '--omit-root-key-version', 'root-1'],
+        {
+          consoleObj,
+          env,
+          verifyAiProviderSecretRestoreForConnectionImpl: verify,
+        },
+      ),
+    ).resolves.toBe(0)
+    expect(verify).toHaveBeenCalledWith(
+      env.DATABASE_URL,
+      expect.objectContaining({ omitRootKeyVersion: 'root-1' }),
+    )
+    expect(consoleObj.log).toHaveBeenCalledWith(
+      JSON.stringify(compatible, null, 2),
+    )
+
+    verify.mockResolvedValue({
+      checkedSecretVersionCount: 0,
+      compatible: true,
+      results: [],
+      safeToRemoveOmittedRootKeyVersion: null,
+    })
+    await expect(
+      main(['provider-secret-restore-verify'], {
+        consoleObj,
+        env,
+        verifyAiProviderSecretRestoreForConnectionImpl: verify,
+      }),
+    ).resolves.toBe(1)
+  })
+
+  it('rejects an incomplete root-key omission and normalizes verifier errors', async () => {
+    const consoleObj = { error: vi.fn(), log: vi.fn() }
+    const env = {
+      DATABASE_URL: 'mssql://runtime:Runtime123!@127.0.0.1:1433/restored',
+    }
+
+    await expect(
+      main(['provider-secret-restore-verify', '--omit-root-key-version'], {
+        consoleObj,
+        env,
+      }),
+    ).resolves.toBe(1)
+    expect(consoleObj.error).toHaveBeenCalledWith(
+      '--omit-root-key-version requires a value.',
+    )
+
+    await expect(
+      main(['provider-secret-restore-verify'], {
+        consoleObj,
+        env,
+        verifyAiProviderSecretRestoreForConnectionImpl: vi.fn(async () => {
+          throw new Error('Password=must-not-escape')
+        }),
+      }),
+    ).resolves.toBe(1)
+    expect(consoleObj.error).toHaveBeenLastCalledWith(
+      'AI provider-secret restore verification failed. Check the restored database and external keyring.',
+    )
+    expect(
+      JSON.stringify([
+        ...consoleObj.error.mock.calls,
+        ...consoleObj.log.mock.calls,
+      ]),
+    ).not.toContain('must-not-escape')
+  })
+
   it.each(['permission-status', 'permission-reconcile'])(
     'prints JSON evidence for %s',
     async command => {
@@ -2050,7 +2222,7 @@ describe('db-sqlserver-admin.mjs', () => {
 
     expect(exitCode).toBe(1)
     expect(error).toHaveBeenCalledWith(
-      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migration-status|migrate|permission-status|permission-reconcile|seed:required|seed:demo|demo:clear|setup|browse-config>',
+      'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|bootstrap|migration-status|migrate|permission-status|permission-reconcile|provider-secret-root-rotate|provider-secret-restore-verify|seed:required|seed:demo|demo:clear|setup|browse-config>',
     )
   })
 

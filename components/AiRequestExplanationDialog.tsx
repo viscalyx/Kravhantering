@@ -15,6 +15,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalFocus } from '@/hooks/useModalFocus'
+import type { AiAuthoringProfileDescription } from '@/lib/ai/authoring-runtime'
 import {
   buildRequirementImportSystemPrompt,
   buildRequirementImportUserPrompt,
@@ -23,18 +24,16 @@ import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 interface AiRequestExplanationDialogProps {
   candidateCount: number
-  dataPolicyLabels: string[]
   imageCount: number
   importInstruction: string
   importInstructionLoading: boolean
   locale: 'en' | 'sv'
-  modelName?: string
   need: string
   needPlaceholder: string
   onClose: () => void
   onLoadImportInstruction: () => void
   open: boolean
-  reasoningEffortLabel: string
+  profile: AiAuthoringProfileDescription | null
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -152,18 +151,16 @@ function ExactFormatStep() {
 
 export default function AiRequestExplanationDialog({
   candidateCount,
-  dataPolicyLabels,
   imageCount,
   importInstruction,
   importInstructionLoading,
   locale,
-  modelName,
   need,
   needPlaceholder,
   onClose,
   onLoadImportInstruction,
   open,
-  reasoningEffortLabel,
+  profile,
 }: AiRequestExplanationDialogProps) {
   const t = useTranslations('ai')
   const tc = useTranslations('common')
@@ -311,30 +308,35 @@ export default function AiRequestExplanationDialog({
             <section className="mt-5 rounded-lg border border-secondary-200 p-4 dark:border-secondary-800">
               <h3 className="flex items-center gap-2 text-sm font-semibold text-secondary-900 dark:text-secondary-50">
                 <Settings aria-hidden className="h-4 w-4 text-primary-600" />
-                {t('requestExplanation.otherChoicesTitle')}
+                {t('requestExplanation.adminProfileTitle')}
               </h3>
-              <dl className="mt-3 grid md:grid-cols-2 xl:grid-cols-4">
+              <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300">
+                {t('requestExplanation.adminProfileHelp')}
+              </p>
+              <dl className="mt-3 grid md:grid-cols-3">
                 <HorizontalDetailItem
-                  label={t('modelLabel')}
-                  value={modelName || t('noModels')}
+                  label={t('requestExplanation.actionTypeLabel')}
+                  value={t(
+                    imageCount > 0
+                      ? 'requestExplanation.actionWithImages'
+                      : 'requestExplanation.actionWithoutImages',
+                  )}
                 />
                 <HorizontalDetailItem
-                  label={t('reasoningEffortLabel')}
-                  value={reasoningEffortLabel}
-                />
-                <HorizontalDetailItem
-                  label={t('dataPolicySettings')}
+                  label={t('authoringProfile.connection')}
                   value={
-                    dataPolicyLabels.length > 0
-                      ? dataPolicyLabels.join(', ')
-                      : t('requestExplanation.noDataPolicies')
+                    profile?.available
+                      ? profile.connectionName
+                      : t('requestExplanation.profileUnavailable')
                   }
                 />
                 <HorizontalDetailItem
-                  label={t('requestExplanation.imagesLabel')}
-                  value={t('requestExplanation.imageCount', {
-                    count: imageCount,
-                  })}
+                  label={t('authoringProfile.dataPolicy')}
+                  value={
+                    profile?.available
+                      ? profile.dataPolicySummary
+                      : t('requestExplanation.profileUnavailable')
+                  }
                 />
               </dl>
             </section>

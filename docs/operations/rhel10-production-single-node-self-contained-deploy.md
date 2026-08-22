@@ -170,15 +170,17 @@ contract with the external provider owner instead.
 | `AUTH_MCP_REQUIRED_SCOPES` | `AUTH_MCP_REQUIRED_SCOPES` in `app.env` | No default | Required when MCP is enabled; bundled Keycloak uses `kravhantering:mcp`. |
 | `AUTH_MCP_ROLES_CLAIM` | `AUTH_MCP_ROLES_CLAIM` in `app.env` | `roles` | Keep aligned with the bundled or external provider's MCP role mapper. |
 | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` | `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` in `app.env` | `300` | Integer from `60` through `900`; keep aligned with the service-client lifetime. |
+| `AI_REQUIREMENT_GENERATION_DISABLED` | Global AI release guard in `app.env` | `1` | Keep at `1` during install, restore, and verification. Set to `0` only after the bundled AI deployment evidence gate passes. |
+| `AI_STAGING_LIVE_PROBE_ENABLED` | Server-side staging live-probe opt-in in `app.env` | `0` | Keep at `0` in production. A staging operator may set `1` only for the bounded synthetic probe while the global AI guard remains active. |
+| `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT`, `KRAVHANTERING_DEPLOYMENT_ENVIRONMENT_ID` | Server-proven deployment identity in `app.env` | `production`, `production-primary` | Keep production identified as `production`; replace the opaque environment ID with the stable site value. A staging-live probe requires a distinct server value of `staging` and the exact expected ID. |
+| `AI_PROVIDER_SECRET_KEYRING_FILE` | External root keyring mounted into `app-runtime` | `/run/secrets/kravhantering/ai-provider-secret-keyring.json` | Required before enabling connection-managed AI. Provision every referenced 256-bit key version through the approved secret manager; see [AI Connections Operations](./ai-connections.md#external-root-keyring). |
+| AI connection trust maps | `AI_CONNECTION_EGRESS_POLICIES_JSON`, `AI_CONNECTION_DATA_POLICIES_JSON`, and `AI_CONNECTION_TLS_POLICIES_JSON` in `app.env` | Empty maps | Replace with reviewed deployment-owned policy maps before verifying or activating an AI connection. Follow the [step-by-step policy guide](./ai-connection-deployment-policies.md) and keep network enforcement aligned with its egress map. |
 | `MCP_CLIENT_SECRET` | Realm JSON `kravhantering-mcp` client `secret` | No default | Plan only when MCP service tokens are used; generate a secret separate from `OIDC_APP_CLIENT_SECRET`. |
 | `MCP_SERVICE_EMPLOYEE_HSA_ID` | Realm JSON MCP service-account user attribute | No default | Plan only when MCP service tokens are used; record the approved service-account `hsaId`. |
 | `redirectUris` | Realm JSON `kravhantering-app` client `redirectUris` | `https://<APP_HOST>/api/auth/callback` | Verify it stays aligned with `AUTH_OIDC_REDIRECT_URI`. |
 | `webOrigins` | Realm JSON `kravhantering-app` client `webOrigins` | `https://<APP_HOST>` | Verify it stays aligned with the browser origin. |
 | `post.logout.redirect.uris` | Realm JSON `kravhantering-app` client attribute | `https://<APP_HOST>/` | Verify it stays aligned with `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`. |
 | `INITIAL_APP_ADMIN` | Optional realm JSON `users` block or post-startup Keycloak user setup | No default | Plan before first sign-in if the site wants a pre-created app administrator; record username, email/name, real `hsaId`, one-time password and launch roles. |
-| `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation is approved. |
-| `OPENROUTER_MGMT_API_KEY` | `OPENROUTER_MGMT_API_KEY` in `app.env` | Empty | Plan only if AI requirement generation and organization credit display are approved. |
-| `NEXT_PUBLIC_DEFAULT_MODEL` | `NEXT_PUBLIC_DEFAULT_MODEL` in `app.env` | Empty | Plan only if the deployment should preselect a public default AI model. |
 <!-- markdownlint-enable MD013 -->
 
 For the full HSA person lookup transport and authentication contract, see
@@ -233,8 +235,9 @@ podman info --format '{{.Host.OCIRuntime.Name}}'
 ```
 
 The reported cgroup version must be `v2`, and the OCI runtime must be `crun`.
-The rootless nginx service uses crun supplementary-group preservation to read
-the group-restricted TLS private key without making it world-readable.
+The rootless nginx and app services use crun supplementary-group preservation
+to read the group-restricted TLS private key and provider-secret keyring
+without making either world-readable.
 
 Create a dedicated rootless service user:
 
@@ -250,6 +253,7 @@ sudo install -d -o root -g root -m 0755 /opt/kravhantering/releases
 sudo install -d -o root -g root -m 0755 /etc/kravhantering
 sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/tls
 sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/keycloak
+sudo install -d -o root -g kravhantering -m 0750 /etc/kravhantering/secrets
 ```
 
 Release files live under `/opt/kravhantering/releases/<version>`.
@@ -989,9 +993,12 @@ HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET=
 HSA_PERSON_LOOKUP_OAUTH_SCOPE=
 HSA_PERSON_LOOKUP_OAUTH_AUDIENCE=
 
-NEXT_PUBLIC_DEFAULT_MODEL=
-OPENROUTER_API_KEY=
-OPENROUTER_MGMT_API_KEY=
+AI_REQUIREMENT_GENERATION_DISABLED=1
+AI_PROVIDER_SECRET_KEYRING_FILE=/run/secrets/kravhantering/ai-provider-secret-keyring.json
+AI_CONNECTION_EGRESS_POLICIES_JSON={}
+AI_CONNECTION_DATA_POLICIES_JSON={}
+AI_CONNECTION_TLS_POLICIES_JSON={}
+
 ```
 
 For `IDENTITY_PROVIDER_MODE=external`, replace the bundled issuer and client
@@ -1085,17 +1092,15 @@ controlled DNS and routes, and upstream ACLs. These infrastructure controls
 own IP, CIDR, loopback, link-local, private-address, DNS-rebinding, and route
 allowlisting; the application does not duplicate them.
 
-Leave `NEXT_PUBLIC_DEFAULT_MODEL`, `OPENROUTER_API_KEY` and
-`OPENROUTER_MGMT_API_KEY` empty unless AI requirement generation is approved
-for the environment. To enable AI, set `OPENROUTER_API_KEY` to the approved
-OpenRouter API key. `NEXT_PUBLIC_DEFAULT_MODEL` is optional; leave it empty if
-the deployment should not preselect a site default model. The UI will use the
-cheapest available saved favorite first, then this site default if it is
-available, and otherwise the first available model. Backend calls that receive
-no model fall back to the built-in default. Set `OPENROUTER_MGMT_API_KEY` only
-if the app should display organization credit information.
-`NEXT_PUBLIC_DEFAULT_MODEL` is public client configuration; do not put secrets
-in it.
+Before enabling connection-managed AI, provision
+`/etc/kravhantering/secrets/ai-provider-secret-keyring.json` through the
+approved secret manager with owner `root:kravhantering` and mode `0640`, apply
+the container-readable SELinux label, and restart `app-runtime`. Its Quadlet
+mounts the directory read-only. Follow
+[AI Connections Operations](./ai-connections.md) for provider-secret
+activation, root-key rotation, backup, restore, and secure key deletion. A
+missing version blocks only dependent AI profiles and does not change
+application readiness.
 
 ### `/etc/kravhantering/keycloak.env`
 

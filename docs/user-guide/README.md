@@ -389,18 +389,20 @@ Importfiler får innehålla högst 8 MiB importdata. Aktuella gränser för anta
 krav, referensförslag, underposter och JSON-djup visas i det nedladdningsbara
 schemat och kan sänkas av en administratör.
 
-### AI-assisterat författande — behov och modell
+### AI-assisterat författande — behov och AI-anslutning
 
-Öppna **"AI-assisterat författande"** från kravbiblioteket. Ange ett konkret
-behov, till exempel "Behöver krav för Elevbedömning Pro, ett system där lärare
+Öppna **"AI-assisterat författande"** från kravbiblioteket. Kontrollera den
+administratörsstyrda AI-anslutningen och datapolicyn. Ange ett konkret behov,
+till exempel "Behöver krav för Elevbedömning Pro, ett system där lärare
 registrerar, ändrar och fastställer elevers betyg. Systemet ska stödja
 behörighetsstyrning, spårbar ändringshistorik, tydlig återkoppling till lärare
 och skydd av elevuppgifter. Skapa både funktionella och icke-funktionella
-krav.", välj kravområdet **Betygshantering** och använd en modell från en större
-leverantör. Guiden mockar AI-svaret men använder applikationens riktiga
+krav.", och välj kravområdet **Betygshantering**. Anslutning, modell,
+förmågepolicy och datapolicy kan inte väljas i dialogen. Guiden mockar AI-svaret
+men använder applikationens riktiga
 importförhandsgranskning.
 
-![AI-assisterat författande — behov och modell](images/036-ai-oppna.png)
+![AI-assisterat författande — behov och AI-anslutning](images/036-ai-oppna.png)
 
 ### AI-assisterat författande — kravkandidater
 

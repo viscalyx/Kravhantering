@@ -117,13 +117,28 @@ governance object types are informational taxonomy values.
 
 ## 4 — AI Requirement Generation
 
+The target architecture executes each AI request through an administrator-
+controlled AI connection. The AI integration layer resolves the run profile
+and verified AI connection model revision before a provider-specific adapter
+runs.
+[ADR 0056](../adr/0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md)
+defines unified model verification and stable run profiles. See
+[ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md)
+for the contract and
+[ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md)
+for the trust, lifecycle, and provider-secret boundaries.
+[ADR 0054](../adr/0054-global-ai-sparr-och-driftsattningsbevis.md) defines the
+release guard and deployment evidence, while
+[ADR 0055](../adr/0055-innehallsfri-ai-observerbarhet-och-syntetisk-liveverifiering.md)
+defines content-free AI observability and synthetic live verification.
+
 Sources: `app/api/ai/generate-requirement-import/route.ts`,
 `app/api/ai/repair-requirement-import-json/route.ts`,
-`lib/ai/openrouter-client.ts`, `lib/ai/openrouter-model-catalog.ts`,
-`lib/ai/requirement-prompt.ts`, and requirement import schema/prompt sources
-listed in section 5.
+`lib/ai/authoring-runtime.ts`, `lib/ai/integration-layer.ts`,
+`lib/ai/requirement-prompt.ts`, and the requirement import schema/prompt
+sources listed in section 5.
 
-Local OpenRouter setup and live-provider smoke guidance live in
+Local integration setup and live-adapter smoke guidance live in
 [ai-assisted-authoring-developer-workflow.md](../development/ai-assisted-authoring-developer-workflow.md).
 
 ### Availability Controls
@@ -139,46 +154,29 @@ The environment guard has higher precedence and is intended for security scans
 and deployment freeze windows. When either control disables generation, the
 requirements-library and kravunderlag actions remain visible but disabled, an
 already-open generator dialog disables its Generate button, and REST generation
-returns the sanitized provider-unavailable SSE error before model-catalog or
-chat-completion work starts.
+returns the sanitized provider-unavailable SSE error before adapter egress
+starts.
 
-### OpenRouter Client Contracts
+### Authoring Integration Contracts
 
-**Timeout guarantees:**
+The browser loads fixed availability descriptions for generation without
+images, generation with images, and invalid-JSON repair. Each description is
+resolved from the active administrator-managed run profile. It exposes only
+the connection's public name and data-policy summary. Model identity, adapter
+type, credentials, capability policy, provider preferences, reasoning settings,
+pricing, and credits are not browser choices or authoring request fields.
 
-<!-- markdownlint-disable MD013 -->
+Attaching an image selects the image-generation run type; it never selects a
+connection or model. A missing, suspended, or blocked profile disables only
+that action and gives the user a safe localized reason. Other application
+features and other authoring actions remain available.
 
-| Operation | Timeout | Contract |
-| --------- | ------- | -------- |
-| Chat completion | 120 s | absolute request timeout (`DEFAULT_TIMEOUT_MS`) |
-| Streaming chat | 120 s | idle timeout; long active streams may continue while the provider sends chunks |
-| Model list | 10 s | `AbortSignal.timeout()` |
-| Key info | 5 s | `AbortSignal.timeout()` |
-
-<!-- markdownlint-enable MD013 -->
-
-**Signal handling:** the caller's `AbortSignal` and the
-internal timeout are wired so that whichever fires first
-cancels the fetch.
-
-**Error format:**
-`"OpenRouter request failed (${status}): ${body}"`
-
-**Default model:**
-`process.env.NEXT_PUBLIC_DEFAULT_MODEL` or
-`'anthropic/claude-sonnet-4'`. In the UI, saved favorite models take
-precedence: the cheapest available favorite is preselected before the
-deployment default and the first available model.
-
-**Reasoning effort:** `'high'` by default; `'none'` disables
-reasoning tokens.
-
-**Format negotiation:** generation resolves the selected or default model's
-capabilities server-side from the eligible OpenRouter model catalog. When the
-resolved model supports `structured_outputs`, the request uses `json_schema`;
-otherwise it uses `json_object`. If the model catalog cannot be resolved, or
-the selected model is outside the eligible catalog, generation fails closed
-with the sanitized AI-provider-unavailable response.
+The route builds the import instruction, user prompt, response schema,
+destination, authorization request, and safety inputs. `AIIntegrationLayer`
+then resolves the exact active profile and verified model revision, coordinates
+the run budget and queue, applies the trust boundary, and invokes the exact
+registered adapter. Adapter deltas remain internal. The browser receives only
+a terminal sanitized error or a fully screened and schema-valid result.
 
 ### Prompt Contracts
 
@@ -191,18 +189,24 @@ The app-owned AI instruction adds generation-specific guidance, while the
 import instruction and schema remain mandatory and cannot be overridden by the
 user's need/context prompt.
 
-The AI request is split into a system message, a user message, and a structured
-response format. The system message contains the AI role, the non-override rule,
-and the runtime-built kravimport instruction. The user message contains the
-app-owned AI instruction, `Behov och sammanhang` / `Need and context`, and the
-requested candidate count. The JSON Schema is not inserted into the system
-message text; it is sent as the mandatory structured response format. The
-AI-assisted authoring UI exposes `Så byggs AI-anropet` / `How the AI request is
-built` as a separate explanation dialog. The dialog shows the request as
-application rules, the user's order, and the mandatory response format, with
+The AI request is split into a system message, a user message, and a mandatory
+response contract. The system message contains the AI role, the non-override
+rule, and the runtime-built kravimport instruction. The user message contains
+the app-owned AI instruction, `Behov och sammanhang` / `Need and context`, and
+the requested candidate count. When the verified model revision supports JSON
+Schema steering, the adapter sends a provider-compatible strict schema through
+the provider's native response format. Otherwise, the integration layer adds
+the canonical schema to the system instruction. A `validatableJson` result does
+not by itself activate a provider-specific response-format parameter. Completed
+output is always validated against the canonical kravimport schema, never
+against the stricter provider steering schema.
+
+The AI-assisted authoring UI exposes `Så byggs AI-anropet` / `How the AI request
+is built` as a separate explanation dialog. The dialog shows the request as
+application rules, the user's order, and the mandatory response contract, with
 exact system/user/import text available as secondary details. It does not show
-or download the full schema; schema inspection and schema download belong to the
-import views.
+or download the full schema; schema inspection and schema download belong to
+the import views.
 
 The user-facing prompt field is `Behov och sammanhang` / `Need and context`.
 There is no second free-text instruction field; later steering should be added
@@ -216,9 +220,11 @@ required seed data stored in `ai_safety_rules` and `ai_safety_rule_terms` and
 administered from the Admin Center `AI security` section. There is no
 runtime fallback list in code; if the active rule set cannot be read from the
 database, AI-assisted authoring fails closed before provider work. Input
-screening runs after AI availability is confirmed and before model-catalog or
-chat-completion work. The screen evaluates the user's need/context, repair
-`rawJson`, repair validation `errors`, and image MIME metadata. It blocks
+screening runs after AI availability is confirmed and before adapter egress.
+The screen evaluates the user's need/context, repair `rawJson`, repair
+validation `errors`, and image MIME metadata. The trust boundary also validates
+each image signature and decoded dimensions, then re-encodes accepted images
+without source metadata. The safety screen blocks
 obvious instruction override, attempts to extract non-public prompt/backend
 material, encoded smuggling tied to override terms, secret extraction, and
 harmful-generation requests. Requests to inspect the AI request text that the
@@ -273,7 +279,7 @@ Generated output is parsed as JSON and validated with
 `requirementsImportPayloadSchema`. Valid output is previewed through the same
 editable import review surface as uploaded import files. Invalid output is
 reported as schema issues, logged without raw prompt/content, and can be sent
-to the repair route together with a generated repair prompt and selected model.
+to the repair route together with a generated repair prompt.
 
 ## 5 — Requirement Import Schema and Import Instruction
 
@@ -315,6 +321,15 @@ such as functional `3.1.x` values under the functional type. Top-level
 grouping rows such as `3.1` are omitted. Taxonomy rows in the import
 instruction are localized to the requested artifact language and expose a
 single `name` field instead of both `nameEn` and `nameSv`.
+
+Requirement-package reference data crossing an AI-assistance boundary contains
+only stable ID, package name, and purpose and scope. It excludes package-lead
+display names, HSA IDs, email addresses, and other structured person
+identifiers. This minimization applies equally to built-in authoring, REST, and
+MCP consumers of the shared instruction. It does not alter ordinary package
+administration views or remove identities deliberately written by a user in
+free text.
+
 The import instruction includes concise field-selection rules for functional
 versus non-functional type choice, type-scoped quality characteristics,
 norm-reference links, priority, requirement packages and verification fields.

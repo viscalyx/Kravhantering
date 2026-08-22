@@ -85,42 +85,20 @@ function previewBody(token: string) {
   }
 }
 
-async function mockAiReferenceData(
-  page: Page,
-  options: { vision?: boolean } = {},
-) {
-  await page.route('**/api/ai/models?*', async route => {
+async function mockAiReferenceData(page: Page) {
+  await page.route('**/api/ai/authoring-profiles', async route => {
+    const available = {
+      available: true,
+      connectionName: 'Godkänd AI-tjänst',
+      dataPolicySummary: 'EU-behandling utan träning',
+    }
     await fulfillJson(route, {
-      models: [
-        {
-          contextLength: 200000,
-          id: 'anthropic/claude-sonnet-4',
-          name: 'Claude Sonnet 4',
-          pricing: {
-            completion: '0.000015',
-            prompt: '0.000003',
-            reasoning: '0.000015',
-          },
-          provider: 'anthropic',
-          supportedParameters: [
-            'reasoning',
-            'stream',
-            'response_format',
-            ...(options.vision ? ['vision'] : []),
-          ],
-        },
-      ],
-    })
-  })
-  await page.route('**/api/ai/credits', async route => {
-    await fulfillJson(route, {
-      isFreeTier: false,
-      limit: 50,
-      limitRemaining: 49,
-      managementKeyMissing: false,
-      totalCredits: 50,
-      usage: 1,
-      usageDaily: 1,
+      enabled: true,
+      profiles: {
+        generate_with_images: available,
+        generate_without_images: available,
+        repair_invalid_import_json: available,
+      },
     })
   })
 }
@@ -141,10 +119,7 @@ async function mockAiAuthoring(page: Page) {
       thinking: generatedAnalysis,
     }
     await route.fulfill({
-      body: [
-        `event: thinking\ndata: ${JSON.stringify({ thinkingSoFar: generatedAnalysis })}\n\n`,
-        `event: done\ndata: ${JSON.stringify(body)}\n\n`,
-      ].join(''),
+      body: `event: done\ndata: ${JSON.stringify(body)}\n\n`,
       contentType: 'text/event-stream',
     })
   })
@@ -175,7 +150,7 @@ async function generateCandidate(page: Page) {
     name: 'AI-assisterat författande',
   })
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Claude Sonnet 4')).toBeVisible()
+  await expect(dialog.getByText('Godkänd AI-tjänst')).toBeVisible()
   await dialog
     .getByRole('textbox', { name: 'Behov och sammanhang' })
     .fill(
@@ -314,7 +289,7 @@ test('REQ-15B: AI-assisted authoring blocks Swedish unsafe AI request before pro
 test('REQ-15C: AI-assisted authoring announces failures and supports recovery', async ({
   page,
 }) => {
-  await mockAiReferenceData(page, { vision: true })
+  await mockAiReferenceData(page)
   await mockImportPreview(
     page,
     '**/api/requirements/import/preview',
@@ -329,7 +304,10 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
         body: [
           'event: error',
           `data: ${JSON.stringify({
-            message: 'AI-tjänsten är tillfälligt otillgänglig.',
+            code: 'ai_provider_invalid_response',
+            message:
+              'AI-leverantören returnerade ett svarsformat som applikationen inte kunde behandla.',
+            technicalCode: 'invalid_upstream_stream_event',
           })}`,
           '',
           '',
@@ -346,13 +324,26 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
           `data: ${JSON.stringify({
             issues: [
               {
-                code: 'invalid_json',
-                message: 'Modellens svar var inte giltig JSON.',
-                path: '$',
+                code: 'required',
+                message:
+                  "Required property 'proposedNormReferences' is missing.",
+                path: '$/proposedNormReferences',
+              },
+              {
+                code: 'additionalProperties',
+                message:
+                  "Property 'proposedNormReferences' is not allowed at this location.",
+                path: '$/requirements/0/proposedNormReferences',
+              },
+              {
+                code: 'type',
+                message: 'must be string',
+                path: '$/requirements/0/acceptanceCriteria',
               },
             ],
             message: 'Genererad JSON matchade inte importens schema.',
-            rawContent: '{"requirements":',
+            rawContent:
+              '{"requirements":[{"acceptanceCriteria":[],"proposedNormReferences":[]}]}',
           })}`,
           '',
           '',
@@ -386,11 +377,23 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
 
   let repairAttempts = 0
   await page.route('**/api/ai/repair-requirement-import-json', async route => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      errors: [
+        "$/proposedNormReferences: Required property 'proposedNormReferences' is missing.",
+        "$/requirements/0/proposedNormReferences: Property 'proposedNormReferences' is not allowed at this location.",
+        '$/requirements/0/acceptanceCriteria: must be string',
+      ],
+      rawJson:
+        '{"requirements":[{"acceptanceCriteria":[],"proposedNormReferences":[]}]}',
+    })
     repairAttempts += 1
     if (repairAttempts === 1) {
       await route.fulfill({
         body: JSON.stringify({
-          error: 'AI-tjänsten är tillfälligt otillgänglig.',
+          code: 'ai_provider_unavailable',
+          error:
+            'Det gick inte att nå AI-leverantören. Försök igen. Kontakta en administratör om problemet kvarstår.',
+          technicalCode: 'upstream_request_failed',
         }),
         contentType: 'application/json',
         status: 503,
@@ -399,7 +402,6 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     }
 
     await fulfillJson(route, {
-      model: 'anthropic/claude-sonnet-4',
       payload: generatedPayload,
       rawContent: JSON.stringify(generatedPayload),
       stats: {
@@ -431,8 +433,6 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await dialog.getByLabel('Kravområde', { exact: true }).selectOption({
       index: 1,
     })
-    await dialog.getByLabel('Vision (bildinmatning)').check()
-
     const imageButton = dialog.getByRole('button', { name: 'Välj bilder' })
     await dialog.locator('input[type="file"]').setInputFiles([
       {
@@ -462,10 +462,12 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
       .getByRole('button', { name: 'Ta bort bild' })
       .first()
     await expect(removeImageButton).toBeVisible()
-    const removeImageBox = await removeImageButton.boundingBox()
-    expect(removeImageBox).not.toBeNull()
-    expect(removeImageBox?.width).toBeGreaterThanOrEqual(24)
-    expect(removeImageBox?.height).toBeGreaterThanOrEqual(24)
+    await expect
+      .poll(async () => (await removeImageButton.boundingBox())?.width ?? 0)
+      .toBeGreaterThanOrEqual(24)
+    await expect
+      .poll(async () => (await removeImageButton.boundingBox())?.height ?? 0)
+      .toBeGreaterThanOrEqual(24)
     await expect(imageButton).toHaveAttribute(
       'aria-describedby',
       'ai-image-validation-error',
@@ -488,10 +490,11 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await generateButton.click()
 
     await expect(
-      dialog
-        .getByRole('alert')
-        .filter({ hasText: 'AI-tjänsten är tillfälligt otillgänglig.' }),
-    ).toContainText('AI-tjänsten är tillfälligt otillgänglig.')
+      dialog.getByRole('alert').filter({
+        hasText:
+          'AI-leverantören returnerade ett svarsformat som applikationen inte kunde behandla.',
+      }),
+    ).toContainText('Teknisk felkod: invalid_upstream_stream_event.')
     await expect(generationFailure).toBeFocused()
     await expect(need).toHaveValue('Behöver säkra betygsunderlag.')
     await expect(dialog.getByText('diagram.png')).toBeVisible()
@@ -504,6 +507,23 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
         exact: true,
       }),
     ).toBeVisible()
+    await expect(
+      dialog.getByText(
+        "$/proposedNormReferences: Required property 'proposedNormReferences' is missing.",
+        { exact: true },
+      ),
+    ).toBeVisible()
+    await expect(
+      dialog.getByText(
+        "$/requirements/0/proposedNormReferences: Property 'proposedNormReferences' is not allowed at this location.",
+        { exact: true },
+      ),
+    ).toBeVisible()
+    await expect(
+      dialog.getByText('$/requirements/0/acceptanceCriteria: must be string', {
+        exact: true,
+      }),
+    ).toBeVisible()
     await expect(generateButton).toBeFocused()
   })
 
@@ -512,11 +532,9 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await expect(
       dialog.getByRole('alert').filter({
         hasText:
-          'Reparationen misslyckades: AI-tjänsten är tillfälligt otillgänglig.',
+          'Reparationen misslyckades: Det gick inte att nå AI-leverantören.',
       }),
-    ).toContainText(
-      'Reparationen misslyckades: AI-tjänsten är tillfälligt otillgänglig.',
-    )
+    ).toContainText('Teknisk felkod: upstream_request_failed.')
     await expect(repairButton).toBeFocused()
   })
 
@@ -550,6 +568,60 @@ test('REQ-15C: AI-assisted authoring announces failures and supports recovery', 
     await expect(dialog.getByText('diagram.png')).toBeVisible()
     await expect(dialog.getByText('duplicate-diagram.jpg')).toBeVisible()
   })
+})
+
+test('REQ-15D: only the authoring action with an unavailable profile is disabled', async ({
+  page,
+}) => {
+  const imageProfile = {
+    available: true,
+    connectionName: 'Godkänd bildtjänst',
+    dataPolicySummary: 'Godkänd bildbehandling inom EU',
+  }
+  await page.route('**/api/ai/authoring-profiles', async route => {
+    await fulfillJson(route, {
+      enabled: true,
+      profiles: {
+        generate_with_images: imageProfile,
+        generate_without_images: { available: false, reason: 'missing' },
+        repair_invalid_import_json: {
+          available: false,
+          reason: 'suspended',
+        },
+      },
+    })
+  })
+
+  await page.goto('/sv/requirements')
+  await page.getByRole('button', { name: 'AI-assistera' }).first().click()
+  const dialog = page.getByRole('dialog', {
+    name: 'AI-assisterat författande',
+  })
+  await dialog.getByLabel('Kravområde', { exact: true }).selectOption({
+    index: 1,
+  })
+  await dialog
+    .getByRole('textbox', { name: 'Behov och sammanhang' })
+    .fill('Tolka ett arkitekturdiagram.')
+  const generateButton = dialog.getByRole('button', {
+    name: 'Skapa kravkandidater',
+  })
+
+  await expect(generateButton).toBeDisabled()
+  await expect(generateButton).toHaveAttribute(
+    'title',
+    /Ingen aktiv administratörsstyrd profil/u,
+  )
+
+  await dialog.locator('input[type="file"]').setInputFiles({
+    buffer: Buffer.from('image'),
+    mimeType: 'image/png',
+    name: 'architecture.png',
+  })
+
+  await expect(dialog.getByText('Godkänd bildtjänst')).toBeVisible()
+  await expect(dialog.getByText('Godkänd bildbehandling inom EU')).toBeVisible()
+  await expect(generateButton).toBeEnabled()
 })
 
 test('SPEC-17: AI-assisted authoring hands kravunderlag candidates to local import review', async ({

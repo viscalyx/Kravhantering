@@ -12,22 +12,25 @@ sparar det genom applikationens ordinarie arbetsflöde.
 Genererade förslag omfattas, när de sparas, av samma taxonomivalidering,
 auktorisering, livscykel, granskning, publicering, spårbarhet, rapportering,
 dataskydd och retention som människoförfattat innehåll. AI-leverantör, prompt,
-model, images och raw generated response är integrationsindata och tillfälliga
-stöddata om inte en användare medvetet gör resultatet till persisterat
-kravinnehåll.
+modell, bilder och råresultat är integrationsindata och tillfälliga stöddata om
+inte en användare medvetet gör resultatet till persisterat kravinnehåll.
 
 Arkitekturen håller därför AI-assisterat författande frivilligt och utbytbart:
-OpenRouter och valda model providers stödjer utkastarbete, medan
+administratörsgodkända AI-anslutningar stödjer utkastarbete, medan
 kravbiblioteket och kravunderlag fortsatt styrs av Kravhanterings mänskliga
-förvaltning och livscykelbeslut.
+förvaltning och livscykelbeslut. AI-integrationslagrets adapter- och
+körprofilgräns beskrivs i
+[ADR 0051](./0051-ai-integrationslager-med-korprofiler-och-adaptrar.md), och
+dess tillitsgräns i
+[ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
 
 ## Övervägda alternativ
 
-- Persistera AI output automatiskt som krav: avvisat eftersom genererad text
+- Persistera AI-resultat automatiskt som krav: avvisat eftersom genererad text
   måste granskas och styras innan den blir auktoritativt innehåll.
-- Behandla genererat output som ett separat AI-owned requirements store:
+- Behandla genererat råresultat som ett separat AI-ägt kravlager:
   avvisat eftersom det skulle dela upp spårbarhet, livscykel, rapportering och
   retention från vanliga krav.
-- Göra AI provider auktoritativ för krav: avvisat eftersom provider
-  configuration kan ändras och applikationen måste vara användbar utan att
-  AI-assisterat författande är aktiverat.
+- Göra AI-leverantören auktoritativ för krav: avvisat eftersom
+  leverantörskonfiguration kan ändras och applikationen måste vara användbar
+  utan att AI-assisterat författande är aktiverat.

@@ -19,6 +19,7 @@ const translate = Object.assign(
       imageErrorRead:
         'Failed to read one or more image files. Please try again.',
       generationFailed: 'Generation failed',
+      technicalErrorCode: 'Technical error code: {code}.',
       imageErrorSize: '{name} exceeds the 10 MB size limit.',
       imageErrorType: 'Unsupported file type: {name}.',
       needsReferenceProposalRows: '{count} requirement row',
@@ -29,6 +30,21 @@ const translate = Object.assign(
       repairSucceeded: 'The generated JSON was repaired successfully.',
       resolvedNeedsReferenceId: 'Existing needs reference #{id}',
       thinkingPhase: 'Analyzing need…',
+      'authoringProfile.connection': 'AI connection',
+      'authoringProfile.dataPolicy': 'Data policy',
+      'authoringProfile.title': 'Administrator-managed AI profile',
+      'profileUnavailable.blocked': 'This AI action is blocked.',
+      'profileUnavailable.missing': 'No active profile is configured.',
+      'profileUnavailable.suspended': 'This AI action is suspended.',
+      'requestExplanation.actionTypeLabel': 'AI action',
+      'requestExplanation.actionWithImages':
+        'Generate requirement candidates with images',
+      'requestExplanation.actionWithoutImages':
+        'Generate requirement candidates without images',
+      'requestExplanation.adminProfileHelp':
+        'The administrator selects the connection and policy.',
+      'requestExplanation.adminProfileTitle': 'Administrator-managed execution',
+      'requestExplanation.profileUnavailable': 'Unavailable',
       'requestExplanation.aiInstructionLabel': 'AI instruction',
       'requestExplanation.aiInstructionValue':
         "The application's writing rules for requirement candidates",
@@ -118,66 +134,21 @@ function createDeferred<T>() {
   return { promise, resolve }
 }
 
-function creditResponse(overrides: Record<string, unknown> = {}) {
+function authoringProfilesResponse(overrides: Record<string, unknown> = {}) {
+  const available = {
+    available: true,
+    connectionName: 'Approved AI service',
+    dataPolicySummary: 'EU processing; no training',
+  }
   return {
     json: async () => ({
-      isFreeTier: false,
-      limit: 50,
-      limitRemaining: 37.5,
-      managementKeyMissing: false,
-      totalCredits: 50,
-      usage: 12.5,
-      usageDaily: 12.5,
+      enabled: true,
+      profiles: {
+        generate_with_images: available,
+        generate_without_images: available,
+        repair_invalid_import_json: available,
+      },
       ...overrides,
-    }),
-    ok: true,
-  }
-}
-
-function modelResponse() {
-  return {
-    json: async () => ({
-      models: [
-        {
-          contextLength: 200000,
-          id: 'anthropic/claude-sonnet-4',
-          name: 'Claude Sonnet 4',
-          pricing: {
-            completion: '0.000015',
-            prompt: '0.000003',
-            reasoning: '0.000015',
-          },
-          provider: 'anthropic',
-          supportedParameters: ['reasoning', 'stream', 'response_format'],
-        },
-      ],
-    }),
-    ok: true,
-  }
-}
-
-function visionModelResponse() {
-  return {
-    json: async () => ({
-      models: [
-        {
-          contextLength: 200000,
-          id: 'anthropic/claude-sonnet-4',
-          name: 'Claude Sonnet 4',
-          pricing: {
-            completion: '0.000015',
-            prompt: '0.000003',
-            reasoning: '0.000015',
-          },
-          provider: 'anthropic',
-          supportedParameters: [
-            'reasoning',
-            'stream',
-            'response_format',
-            'vision',
-          ],
-        },
-      ],
     }),
     ok: true,
   }
@@ -199,7 +170,7 @@ function generationStreamResponse(payload: Record<string, unknown>) {
   }
 }
 
-function generationErrorStreamResponse(code: string) {
+function generationErrorStreamResponse(code: string, technicalCode?: string) {
   return {
     body: new ReadableStream({
       start(controller) {
@@ -208,6 +179,7 @@ function generationErrorStreamResponse(code: string) {
             `event: error\ndata: ${JSON.stringify({
               code,
               message: 'Untrusted server English',
+              ...(technicalCode ? { technicalCode } : {}),
             })}\n\n`,
           ),
         )
@@ -453,15 +425,22 @@ async function renderOpenGenerator(overrides?: {
     await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
   }
 
-  await waitFor(() => {
-    const modelButton = document.getElementById('ai-model')
-    expect(modelButton).not.toBeNull()
-    if (loadModels) {
-      expect(modelButton).toHaveTextContent(
-        overrides?.expectedModelName ?? 'Claude Sonnet 4',
-      )
-    }
-  })
+  if (
+    overrides?.aiGenerationAvailability
+      ?.effectiveRequirementGenerationEnabled !== false
+  ) {
+    await waitFor(() => {
+      expect(
+        mockFetch.mock.calls.some(
+          ([url]) => url === '/api/ai/authoring-profiles',
+        ),
+      ).toBe(true)
+      expect(screen.queryByText('loading')).not.toBeInTheDocument()
+    })
+  }
+  if (loadModels) {
+    await screen.findByText('Approved AI service')
+  }
 }
 
 describe('AiRequirementGenerator', () => {
@@ -469,13 +448,10 @@ describe('AiRequirementGenerator', () => {
     vi.clearAllMocks()
     confirmState.confirm.mockResolvedValue(true)
     window.localStorage.clear()
-    // Default: models endpoint returns models, credits returns info
+    // Default: all administrator-managed authoring actions are available.
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -507,7 +483,8 @@ describe('AiRequirementGenerator', () => {
     expect(screen.getByText('generateTitle')).toBeInTheDocument()
     expect(screen.getByLabelText('topicLabel')).toBeInTheDocument()
     expect(screen.getByLabelText('areaLabel')).toBeInTheDocument()
-    expect(screen.getByLabelText('modelLabel')).toBeInTheDocument()
+    expect(screen.getByText('Administrator-managed AI profile')).toBeVisible()
+    expect(screen.getByText('Approved AI service')).toBeVisible()
   })
 
   it('does not render when closed', () => {
@@ -585,13 +562,12 @@ describe('AiRequirementGenerator', () => {
     expect(screen.queryByText('Performance')).not.toBeInTheDocument()
   })
 
-  it('loads models before a requirement area is selected', async () => {
+  it('loads the administrator-managed action profile before an area is selected', async () => {
     await renderOpenGenerator({ selectArea: false })
 
     expect(screen.getByLabelText('areaLabel')).toHaveValue('')
-    expect(document.getElementById('ai-model')).toHaveTextContent(
-      'Claude Sonnet 4',
-    )
+    expect(screen.getByText('Approved AI service')).toBeVisible()
+    expect(screen.getByText('EU processing; no training')).toBeVisible()
     expect(
       mockFetch.mock.calls.some(([url]) => String(url).includes('scopeId=')),
     ).toBe(false)
@@ -621,6 +597,110 @@ describe('AiRequirementGenerator', () => {
 
     expect(mockFetch).not.toHaveBeenCalledWith(
       '/api/ai/generate-requirement-import',
+      expect.anything(),
+    )
+  })
+
+  it('disables only the authoring action whose profile is unavailable', async () => {
+    const available = {
+      available: true,
+      connectionName: 'Vision service',
+      dataPolicySummary: 'Approved image processing',
+    }
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse({
+          profiles: {
+            generate_with_images: available,
+            generate_without_images: {
+              available: false,
+              reason: 'missing',
+            },
+            repair_invalid_import_json: available,
+          },
+        })
+      }
+      return { json: async () => ({}), ok: true }
+    })
+    await renderOpenGenerator({ loadModels: false })
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Review diagram')
+    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
+
+    const generateButton = screen.getByRole('button', {
+      name: 'generateButton',
+    })
+    expect(generateButton).toBeDisabled()
+    expect(generateButton).toHaveAttribute(
+      'title',
+      'No active profile is configured.',
+    )
+    const profileStatus = screen
+      .getByText('No active profile is configured.')
+      .closest('[role="status"]')
+    expect(profileStatus).not.toBeNull()
+    expect(
+      profileStatus?.querySelector('svg[aria-hidden="true"]'),
+    ).not.toBeNull()
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')
+    expect(input).not.toBeNull()
+    fireEvent.change(input as HTMLInputElement, {
+      target: {
+        files: [new File(['image'], 'diagram.png', { type: 'image/png' })],
+      },
+    })
+
+    await waitFor(() => expect(generateButton).toBeEnabled())
+    expect(screen.getByText('Vision service')).toBeVisible()
+  })
+
+  it('preserves validation errors and raw output when repair is unavailable', async () => {
+    const available = {
+      available: true,
+      connectionName: 'Approved AI service',
+      dataPolicySummary: 'EU processing; no training',
+    }
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse({
+          profiles: {
+            generate_with_images: available,
+            generate_without_images: available,
+            repair_invalid_import_json: {
+              available: false,
+              reason: 'suspended',
+            },
+          },
+        })
+      }
+      if (url === '/api/ai/generate-requirement-import') {
+        return validationErrorStreamResponse()
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(await screen.findByText('validationErrors')).toBeVisible()
+    expect(
+      screen.getByText('$: Generated response is not valid JSON.'),
+    ).toBeVisible()
+    expect(screen.getByText('Raw result')).toBeVisible()
+    expect(screen.getByText('{"requirements":')).toBeInTheDocument()
+
+    const repairButton = screen.getByRole('button', { name: 'repair' })
+    expect(repairButton).toBeDisabled()
+    expect(repairButton).toHaveAttribute(
+      'title',
+      'This AI action is suspended.',
+    )
+    await userEvent.click(repairButton)
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      '/api/ai/repair-requirement-import-json',
       expect.anything(),
     )
   })
@@ -699,11 +779,8 @@ describe('AiRequirementGenerator', () => {
 
   it('does not store failed import instruction responses as instruction text', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -814,11 +891,7 @@ describe('AiRequirementGenerator', () => {
     }
     const { rerender } = render(<AiRequirementGenerator {...props} open />)
 
-    await waitFor(() => {
-      expect(document.getElementById('ai-model')).toHaveTextContent(
-        'Claude Sonnet 4',
-      )
-    })
+    await screen.findByText('Approved AI service')
     await userEvent.type(screen.getByLabelText('topicLabel'), 'Old prompt')
     await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '2')
     fireEvent.change(
@@ -831,9 +904,6 @@ describe('AiRequirementGenerator', () => {
     await userEvent.click(
       screen.getByRole('button', { name: /How the AI request is built/ }),
     )
-    await userEvent.click(document.getElementById('ai-model') as HTMLElement)
-    await userEvent.type(screen.getByLabelText('modelSearchLabel'), 'claude')
-
     expect(screen.getByLabelText('topicLabel')).toHaveValue('Old prompt')
     expect(screen.getByLabelText('areaLabel')).toHaveValue('2')
     expect(
@@ -846,17 +916,11 @@ describe('AiRequirementGenerator', () => {
     expect(
       screen.getByRole('dialog', { name: 'How the AI request is built' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('listbox')).toBeInTheDocument()
-
     rerender(<AiRequirementGenerator {...props} open={false} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     rerender(<AiRequirementGenerator {...props} open />)
-    await waitFor(() => {
-      expect(document.getElementById('ai-model')).toHaveTextContent(
-        'Claude Sonnet 4',
-      )
-    })
+    await screen.findByText('Approved AI service')
     expect(screen.getByLabelText('topicLabel')).toHaveValue('')
     expect(screen.getByLabelText('areaLabel')).toHaveValue('')
     expect(
@@ -869,7 +933,6 @@ describe('AiRequirementGenerator', () => {
     expect(
       screen.queryByRole('dialog', { name: 'How the AI request is built' }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
   it('renders help buttons for form fields', async () => {
@@ -877,25 +940,11 @@ describe('AiRequirementGenerator', () => {
 
     expect(screen.getByLabelText('help: topicLabel')).toBeInTheDocument()
     expect(screen.getByLabelText('help: areaLabel')).toBeInTheDocument()
-    expect(screen.getByLabelText('help: modelLabel')).toBeInTheDocument()
-    expect(
-      screen.getByLabelText('help: reasoningEffortLabel'),
-    ).toBeInTheDocument()
+    expect(screen.getByLabelText('help: imageAttachLabel')).toBeInTheDocument()
   })
 
   it('keeps every AI form help target at the 24px policy default', async () => {
-    mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return visionModelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
     await renderOpenGenerator()
-    await userEvent.click(screen.getByLabelText('capabilityVision'))
     await screen.findByLabelText('help: imageAttachLabel')
 
     for (const helpId of [
@@ -903,8 +952,6 @@ describe('AiRequirementGenerator', () => {
       'ai-image-help',
       'ai-area-help',
       'ai-candidate-count-help',
-      'ai-model-help',
-      'ai-reasoning-help',
     ]) {
       expect(
         document.querySelector(`button[aria-controls="${helpId}"]`),
@@ -912,569 +959,26 @@ describe('AiRequirementGenerator', () => {
     }
   })
 
-  it('shows locked required capabilities and reasoning level options', async () => {
-    await renderOpenGenerator()
-
-    expect(screen.getByText('requiredCapabilities')).toBeInTheDocument()
-    expect(screen.getByText('capabilityReasoning')).toBeInTheDocument()
-    expect(screen.getByText('capabilityStreaming')).toBeInTheDocument()
-    expect(screen.getByText('capabilityResponseFormat')).toBeInTheDocument()
-    expect(screen.getByText('optionalCapabilities')).toBeInTheDocument()
-    expect(
-      screen.getByText('capabilityReasoning').closest('div'),
-    ).toHaveAttribute('title', 'capabilityReasoningTooltip')
-    expect(
-      screen.getByLabelText('capabilityStructuredOutputs').closest('label'),
-    ).toHaveAttribute('title', 'capabilityStructuredOutputsTooltip')
-
-    const reasoningSelect = screen.getByLabelText('reasoningEffortLabel')
-    expect(reasoningSelect).toHaveValue('high')
-    expect(
-      screen.getByRole('option', { name: 'effortXhigh' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('option', { name: 'effortNone' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('marks JSON output mode as upgraded when strict JSON schema is selected', async () => {
-    await renderOpenGenerator()
-
-    const jsonOutputMode = screen.getByText('capabilityResponseFormat')
-    expect(jsonOutputMode).not.toHaveClass('line-through')
-
-    await userEvent.click(screen.getByLabelText('capabilityStructuredOutputs'))
-
-    expect(jsonOutputMode).toHaveClass('line-through')
-    expect(
-      screen.getByRole('img', { name: 'capabilityUpgradedToStrict' }),
-    ).toBeInTheDocument()
-  })
-
   it('toggles help panel on help button click', async () => {
     await renderOpenGenerator()
 
-    const helpBtn = screen.getByLabelText('help: topicLabel')
-    expect(helpBtn).toHaveAttribute('aria-expanded', 'false')
+    const helpButton = screen.getByLabelText('help: topicLabel')
+    expect(helpButton).toHaveAttribute('aria-expanded', 'false')
 
-    await userEvent.click(helpBtn)
-    expect(helpBtn).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.click(helpButton)
+    expect(helpButton).toHaveAttribute('aria-expanded', 'true')
     expect(document.getElementById('ai-need-help')).toBeInTheDocument()
-
-    await userEvent.click(helpBtn)
-    expect(helpBtn).toHaveAttribute('aria-expanded', 'false')
-    expect(document.getElementById('ai-need-help')).not.toBeInTheDocument()
-  })
-
-  it('does not expose logprob confidence scoring as a model option', async () => {
-    await renderOpenGenerator()
-
-    expect(screen.queryByLabelText('confidenceScoring')).not.toBeInTheDocument()
-    expect(screen.queryByText('confidenceScoring')).not.toBeInTheDocument()
-    expect(
-      mockFetch.mock.calls.some(([url]) =>
-        String(url).includes('supported_parameters=logprobs'),
-      ),
-    ).toBe(false)
-  })
-
-  it('keeps favorite toggles inside the model dropdown separate from model selection', async () => {
-    const user = userEvent.setup()
-    const baseModels = [
-      {
-        contextLength: 200000,
-        id: 'anthropic/claude-sonnet-4',
-        name: 'Claude Sonnet 4',
-        pricing: {
-          completion: '0.000015',
-          prompt: '0.000003',
-          reasoning: '0.000015',
-        },
-        provider: 'anthropic',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-      {
-        contextLength: 128000,
-        id: 'openai/gpt-5-mini',
-        name: 'GPT-5 Mini',
-        pricing: {
-          completion: '0.000002',
-          prompt: '0.000001',
-          reasoning: '0.000002',
-        },
-        provider: 'openai',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-    ]
-    mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        const requestUrl = new URL(url, 'http://localhost')
-        const filters =
-          requestUrl.searchParams
-            .get('supported_parameters')
-            ?.split(',')
-            .filter(Boolean) ?? []
-        return {
-          json: async () => ({
-            models: baseModels.filter(model =>
-              filters.every(filter =>
-                model.supportedParameters.includes(filter),
-              ),
-            ),
-          }),
-          ok: true,
-        }
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    await renderOpenGenerator()
-
-    const modelButton = document.getElementById('ai-model')
-    expect(modelButton).not.toBeNull()
-    await user.click(modelButton as HTMLButtonElement)
-
-    const listbox = screen.getByRole('listbox')
-    let options = within(listbox).getAllByRole('option')
-    expect(options[0]).toHaveTextContent('Claude Sonnet 4')
-    expect(options[1]).toHaveTextContent('GPT-5 Mini')
-
-    await user.click(
-      within(options[1]).getByRole('button', { name: 'addFavorite' }),
-    )
-
-    expect(modelButton).toHaveTextContent('Claude Sonnet 4')
-    options = within(listbox).getAllByRole('option')
-    expect(options[0]).toHaveTextContent('Claude Sonnet 4')
-    expect(options[1]).toHaveTextContent('GPT-5 Mini')
-
-    await user.click(modelButton as HTMLButtonElement)
-    await user.click(modelButton as HTMLButtonElement)
-
-    const reopenedOptions = within(screen.getByRole('listbox')).getAllByRole(
-      'option',
-    )
-    expect(reopenedOptions[0]).toHaveTextContent('GPT-5 Mini')
-    expect(reopenedOptions[1]).toHaveTextContent('Claude Sonnet 4')
-
-    await user.click(
-      within(reopenedOptions[0]).getByRole('button', {
-        name: 'removeFavorite',
-      }),
-    )
-    expect(window.localStorage.getItem('ai-favorite-models')).toBe('[]')
-  })
-
-  it('preselects the cheapest available favorite model', async () => {
-    window.localStorage.setItem(
-      'ai-favorite-models',
-      JSON.stringify([
-        'anthropic/claude-sonnet-4',
-        'openai/gpt-5-mini',
-        'provider/unknown-price',
-      ]),
-    )
-    const baseModels = [
-      {
-        contextLength: 200000,
-        id: 'anthropic/claude-sonnet-4',
-        name: 'Claude Sonnet 4',
-        pricing: {
-          completion: '0.000015',
-          prompt: '0.000003',
-          reasoning: '0.000015',
-        },
-        provider: 'anthropic',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-      {
-        contextLength: 128000,
-        id: 'provider/unknown-price',
-        name: 'Unknown Price',
-        pricing: {
-          completion: '0',
-          prompt: 'unknown',
-          reasoning: '0',
-        },
-        provider: 'provider',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-      {
-        contextLength: 128000,
-        id: 'openai/gpt-5-mini',
-        name: 'GPT-5 Mini',
-        pricing: {
-          completion: '0.000002',
-          prompt: '0.000001',
-          reasoning: '0.000002',
-        },
-        provider: 'openai',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-    ]
-    mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return {
-          json: async () => ({ models: baseModels }),
-          ok: true,
-        }
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    await renderOpenGenerator({ expectedModelName: 'GPT-5 Mini' })
-  })
-
-  it('uses the configured default model when no favorite model is available', async () => {
-    vi.stubEnv('NEXT_PUBLIC_DEFAULT_MODEL', 'openai/gpt-5-mini')
-    window.localStorage.setItem(
-      'ai-favorite-models',
-      JSON.stringify(['missing/favorite']),
-    )
-    const baseModels = [
-      {
-        contextLength: 200000,
-        id: 'anthropic/claude-sonnet-4',
-        name: 'Claude Sonnet 4',
-        pricing: {
-          completion: '0.000015',
-          prompt: '0.000003',
-          reasoning: '0.000015',
-        },
-        provider: 'anthropic',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-      {
-        contextLength: 128000,
-        id: 'openai/gpt-5-mini',
-        name: 'GPT-5 Mini',
-        pricing: {
-          completion: '0.000002',
-          prompt: '0.000001',
-          reasoning: '0.000002',
-        },
-        provider: 'openai',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-    ]
-    mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return {
-          json: async () => ({ models: baseModels }),
-          ok: true,
-        }
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    await renderOpenGenerator({ expectedModelName: 'GPT-5 Mini' })
-  })
-
-  it('shows separate reasoning price for models that report it', async () => {
-    const user = userEvent.setup()
-    mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return {
-          json: async () => ({
-            models: [
-              {
-                contextLength: 128000,
-                id: 'openai/reasoning-priced',
-                name: 'Reasoning Priced',
-                pricing: {
-                  completion: '0.000002',
-                  prompt: '0.000001',
-                  reasoning: '0.000003',
-                },
-                provider: 'openai',
-                supportedParameters: ['reasoning', 'stream', 'response_format'],
-              },
-            ],
-          }),
-          ok: true,
-        }
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    await renderOpenGenerator({ expectedModelName: 'Reasoning Priced' })
-
-    expect(screen.getByLabelText('modelPriceLabel')).toHaveTextContent(
-      'P $1.00/M · C $2.00/M · R $3.00/M',
-    )
-
-    const modelButton = document.getElementById('ai-model')
-    expect(modelButton).not.toBeNull()
-    await user.click(modelButton as HTMLButtonElement)
-
-    const option = within(screen.getByRole('listbox')).getByRole('option')
-    expect(within(option).getByText('R $3.00/M')).toBeInTheDocument()
-  })
-
-  it('applies persisted filters and supports model, capability, and policy interactions across partial provider failures', async () => {
-    const user = userEvent.setup()
-    window.localStorage.setItem('ai-favorite-models', '{invalid json')
-    window.localStorage.setItem(
-      'ai-model-filters',
-      JSON.stringify(['vision', 'logprobs', 'response_format', '']),
-    )
-    window.localStorage.setItem('ai-data-policies', JSON.stringify([]))
-    const models = [
-      {
-        contextLength: 4096,
-        id: 'mystery/odd-model',
-        name: 'Odd Model',
-        pricing: {
-          completion: '0',
-          prompt: 'not-a-price',
-          reasoning: '0.000000001',
-        },
-        provider: 'mystery',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'vision',
-        ],
-      },
-      {
-        contextLength: 8192,
-        id: 'openai/known-model',
-        name: 'Known Model',
-        pricing: {
-          completion: '0.000002',
-          prompt: '0.000001',
-          reasoning: '0.000002',
-        },
-        provider: 'openai',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'vision',
-        ],
-      },
-    ]
-    mockFetch.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/ai/credits')) {
-        throw 'credits offline'
-      }
-      if (url.startsWith('/api/ai/models')) {
-        const parameters =
-          new URL(url, 'http://localhost').searchParams.get(
-            'supported_parameters',
-          ) ?? ''
-        if (parameters.includes('tools')) throw 'count unavailable'
-        if (parameters.includes('structured_outputs')) {
-          return { json: async () => ({}), ok: true }
-        }
-        return { json: async () => ({ models }), ok: true }
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    await renderOpenGenerator({ expectedModelName: 'Odd Model' })
-
-    expect(await screen.findByTitle('creditsUnreachable')).toBeInTheDocument()
-    expect(screen.getByLabelText('capabilityVision')).toBeChecked()
-    expect(screen.getByLabelText('capabilityTools')).not.toBeChecked()
-    expect(
-      screen.getByLabelText('capabilityStructuredOutputs'),
-    ).not.toBeChecked()
-    expect(screen.queryByText('confidenceScoring')).not.toBeInTheDocument()
-    const modelButton = screen.getByLabelText('modelLabel')
-    await user.click(modelButton)
-    await user.type(screen.getByLabelText('modelSearchLabel'), 'known')
-    const option = screen.getByRole('option', { name: /Known Model/ })
-    await user.click(
-      within(option).getByRole('button', { name: /Known Model/ }),
-    )
-    expect(modelButton).toHaveTextContent('Known Model')
-
-    await user.click(screen.getByLabelText('refreshModels'))
-    await waitFor(() => expect(modelButton).toHaveTextContent('Known Model'))
-
-    await user.click(screen.getByLabelText('capabilityVision'))
-    await user.click(screen.getByLabelText('capabilityVision'))
-    await user.click(screen.getByLabelText('capabilityTools'))
-    await user.click(screen.getByLabelText('capabilityStructuredOutputs'))
-    expect(screen.getByLabelText('capabilityVision')).toBeChecked()
-    expect(screen.getByLabelText('capabilityTools')).toBeChecked()
-    expect(screen.getByLabelText('capabilityStructuredOutputs')).toBeChecked()
-    expect(
-      JSON.parse(localStorage.getItem('ai-model-filters') ?? 'null'),
-    ).toEqual(['vision', 'tools', 'structured_outputs'])
-
-    await user.click(screen.getByLabelText('dataPolicyDenyTraining'))
-    await user.click(screen.getByLabelText('dataPolicyDenyTraining'))
-    await user.click(screen.getByLabelText('dataPolicyZdr'))
-    await user.click(screen.getByLabelText('dataPolicyDistillable'))
-    expect(screen.getByLabelText('dataPolicyDenyTraining')).not.toBeChecked()
-    expect(screen.getByLabelText('dataPolicyZdr')).toBeChecked()
-    expect(screen.getByLabelText('dataPolicyDistillable')).toBeChecked()
-    expect(
-      JSON.parse(localStorage.getItem('ai-data-policies') ?? 'null'),
-    ).toEqual(['zdr', 'enforce_distillable_text'])
-
-    await user.click(screen.getByLabelText('help: reasoningEffortLabel'))
-    expect(document.getElementById('ai-reasoning-help')).toBeInTheDocument()
-    expect(
-      mockFetch.mock.calls.some(([url]) => {
-        const parameters = new URL(
-          String(url),
-          'http://localhost',
-        ).searchParams.get('supported_parameters')
-        return parameters?.includes('vision') && parameters.includes('tools')
-      }),
-    ).toBe(true)
-  })
-
-  it('keeps the model menu open for internal pointers and closes it for outside pointers', async () => {
-    const user = userEvent.setup()
-    await renderOpenGenerator()
-    const modelButton = screen.getByLabelText('modelLabel')
-    vi.spyOn(modelButton, 'getBoundingClientRect').mockReturnValue({
-      bottom: 740,
-      height: 40,
-      left: -20,
-      right: 80,
-      toJSON: () => ({}),
-      top: 700,
-      width: 100,
-      x: -20,
-      y: 700,
-    })
-
-    await user.click(modelButton)
-    const listbox = await screen.findByRole('listbox')
-    fireEvent.pointerDown(modelButton)
-    expect(listbox).toBeInTheDocument()
-    fireEvent.pointerDown(listbox)
-    expect(listbox).toBeInTheDocument()
-    fireEvent(window, new Event('resize'))
-    expect(listbox.parentElement).toHaveStyle({ top: '52px' })
-    fireEvent.pointerDown(document.body)
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-  })
-
-  it('shows selected vision model count over the filtered model total', async () => {
-    const baseModels = [
-      {
-        contextLength: 200000,
-        id: 'anthropic/claude-sonnet-4',
-        name: 'Claude Sonnet 4',
-        pricing: {
-          completion: '0.000015',
-          prompt: '0.000003',
-          reasoning: '0.000015',
-        },
-        provider: 'anthropic',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'vision',
-        ],
-      },
-      {
-        contextLength: 128000,
-        id: 'openai/gpt-5-vision',
-        name: 'GPT-5 Vision',
-        pricing: {
-          completion: '0.000002',
-          prompt: '0.000001',
-          reasoning: '0.000002',
-        },
-        provider: 'openai',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'vision',
-        ],
-      },
-      {
-        contextLength: 128000,
-        id: 'meta/llama',
-        name: 'Llama',
-        pricing: {
-          completion: '0.000001',
-          prompt: '0.000001',
-          reasoning: '0.000001',
-        },
-        provider: 'meta',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-    ]
-    mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        const parsedUrl = new URL(url, 'http://localhost')
-        const filters =
-          parsedUrl.searchParams
-            .get('supported_parameters')
-            ?.split(',')
-            .filter(Boolean) ?? []
-        const models = baseModels.filter(model =>
-          filters.every(filter => model.supportedParameters.includes(filter)),
-        )
-        return {
-          json: async () => ({ models }),
-          ok: true,
-        }
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return {
-          json: async () => ({
-            isFreeTier: false,
-            limit: 50,
-            limitRemaining: 37.5,
-            managementKeyMissing: false,
-            totalCredits: 50,
-            usage: 12.5,
-            usageDaily: 12.5,
-          }),
-          ok: true,
-        }
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    await renderOpenGenerator()
-
-    expect(screen.getByText('(2/3)')).toBeInTheDocument()
-
-    await userEvent.click(screen.getByLabelText('capabilityVision'))
-
-    await waitFor(() => {
-      expect(screen.getByText('(2/2)')).toBeInTheDocument()
-    })
   })
 
   it('associates combined image validation feedback with the image control', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return visionModelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       return { json: async () => ({}), ok: true }
     })
 
     await renderOpenGenerator()
-    await userEvent.click(screen.getByLabelText('capabilityVision'))
 
     const imageButton = await screen.findByRole('button', {
       name: 'imageSelectButton',
@@ -1530,17 +1034,13 @@ describe('AiRequirementGenerator', () => {
 
   it('clears the image capacity error after an attached image is removed', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return visionModelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       return { json: async () => ({}), ok: true }
     })
 
     await renderOpenGenerator()
-    await userEvent.click(screen.getByLabelText('capabilityVision'))
 
     const imageButton = await screen.findByRole('button', {
       name: 'imageSelectButton',
@@ -1585,17 +1085,13 @@ describe('AiRequirementGenerator', () => {
 
   it('provides a 24px target for removing an attached image', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return visionModelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       return { json: async () => ({}), ok: true }
     })
 
     await renderOpenGenerator()
-    await userEvent.click(screen.getByLabelText('capabilityVision'))
 
     const fileInput =
       document.querySelector<HTMLInputElement>('input[type="file"]')
@@ -1628,346 +1124,6 @@ describe('AiRequirementGenerator', () => {
     expect(
       screen.queryByRole('button', { name: 'imageRemove' }),
     ).not.toBeInTheDocument()
-  })
-
-  it('shows tools model count from the filtered endpoint before selection', async () => {
-    const baseModels = [
-      {
-        contextLength: 200000,
-        id: 'anthropic/claude-sonnet-4',
-        name: 'Claude Sonnet 4',
-        pricing: {
-          completion: '0.000015',
-          prompt: '0.000003',
-          reasoning: '0.000015',
-        },
-        provider: 'anthropic',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'tools',
-        ],
-      },
-      {
-        contextLength: 128000,
-        id: 'openai/gpt-5-tools',
-        name: 'GPT-5 Tools',
-        pricing: {
-          completion: '0.000002',
-          prompt: '0.000001',
-          reasoning: '0.000002',
-        },
-        provider: 'openai',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'tools',
-        ],
-      },
-      {
-        contextLength: 128000,
-        id: 'provider/metadata-only-tools',
-        name: 'Metadata Only Tools',
-        pricing: {
-          completion: '0.000001',
-          prompt: '0.000001',
-          reasoning: '0.000001',
-        },
-        provider: 'provider',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'tools',
-        ],
-      },
-      {
-        contextLength: 128000,
-        id: 'meta/llama',
-        name: 'Llama',
-        pricing: {
-          completion: '0.000001',
-          prompt: '0.000001',
-          reasoning: '0.000001',
-        },
-        provider: 'meta',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-    ]
-    mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        const parsedUrl = new URL(url, 'http://localhost')
-        const filters =
-          parsedUrl.searchParams
-            .get('supported_parameters')
-            ?.split(',')
-            .filter(Boolean) ?? []
-        const models = filters.includes('tools')
-          ? baseModels
-              .filter(model => model.supportedParameters.includes('tools'))
-              .filter(model => model.id !== 'provider/metadata-only-tools')
-          : baseModels.filter(model =>
-              filters.every(filter =>
-                model.supportedParameters.includes(filter),
-              ),
-            )
-        return {
-          json: async () => ({ models }),
-          ok: true,
-        }
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return {
-          json: async () => ({
-            isFreeTier: false,
-            limit: 50,
-            limitRemaining: 37.5,
-            managementKeyMissing: false,
-            totalCredits: 50,
-            usage: 12.5,
-            usageDaily: 12.5,
-          }),
-          ok: true,
-        }
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    await renderOpenGenerator()
-
-    const getToolsRow = () =>
-      screen.getByLabelText('capabilityTools').closest('div')
-    expect(getToolsRow()).toHaveTextContent('(2/4)')
-
-    await userEvent.click(screen.getByLabelText('capabilityTools'))
-
-    await waitFor(() => {
-      expect(getToolsRow()).toHaveTextContent('(2/2)')
-    })
-  })
-
-  it('keeps capability counts stable while the selected filter is loading', async () => {
-    const baseModels = [
-      {
-        contextLength: 200000,
-        id: 'anthropic/claude-sonnet-4',
-        name: 'Claude Sonnet 4',
-        pricing: {
-          completion: '0.000015',
-          prompt: '0.000003',
-          reasoning: '0.000015',
-        },
-        provider: 'anthropic',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'tools',
-        ],
-      },
-      {
-        contextLength: 128000,
-        id: 'openai/gpt-5-tools',
-        name: 'GPT-5 Tools',
-        pricing: {
-          completion: '0.000002',
-          prompt: '0.000001',
-          reasoning: '0.000002',
-        },
-        provider: 'openai',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'tools',
-        ],
-      },
-      {
-        contextLength: 128000,
-        id: 'provider/metadata-only-tools',
-        name: 'Metadata Only Tools',
-        pricing: {
-          completion: '0.000001',
-          prompt: '0.000001',
-          reasoning: '0.000001',
-        },
-        provider: 'provider',
-        supportedParameters: [
-          'reasoning',
-          'stream',
-          'response_format',
-          'tools',
-        ],
-      },
-      {
-        contextLength: 128000,
-        id: 'meta/llama',
-        name: 'Llama',
-        pricing: {
-          completion: '0.000001',
-          prompt: '0.000001',
-          reasoning: '0.000001',
-        },
-        provider: 'meta',
-        supportedParameters: ['reasoning', 'stream', 'response_format'],
-      },
-    ]
-    const filteredToolsModels = baseModels
-      .filter(model => model.supportedParameters.includes('tools'))
-      .filter(model => model.id !== 'provider/metadata-only-tools')
-    const responseFor = (models: typeof baseModels) => ({
-      json: async () => ({ models }),
-      ok: true,
-    })
-    let deferSelectedTools = false
-    const pendingToolsResponse =
-      createDeferred<ReturnType<typeof responseFor>>()
-
-    mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        const parsedUrl = new URL(url, 'http://localhost')
-        const filters =
-          parsedUrl.searchParams
-            .get('supported_parameters')
-            ?.split(',')
-            .filter(Boolean) ?? []
-        if (
-          deferSelectedTools &&
-          filters.includes('response_format') &&
-          filters.includes('tools') &&
-          filters.length === 2
-        ) {
-          return pendingToolsResponse.promise
-        }
-        const models = filters.includes('tools')
-          ? filteredToolsModels
-          : baseModels.filter(model =>
-              filters.every(filter =>
-                model.supportedParameters.includes(filter),
-              ),
-            )
-        return responseFor(models)
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return {
-          json: async () => ({
-            isFreeTier: false,
-            limit: 50,
-            limitRemaining: 37.5,
-            managementKeyMissing: false,
-            totalCredits: 50,
-            usage: 12.5,
-            usageDaily: 12.5,
-          }),
-          ok: true,
-        }
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    await renderOpenGenerator()
-    const getToolsRow = () =>
-      screen.getByLabelText('capabilityTools').closest('div')
-    expect(getToolsRow()).toHaveTextContent('(2/4)')
-
-    deferSelectedTools = true
-    await userEvent.click(screen.getByLabelText('capabilityTools'))
-
-    expect(getToolsRow()).toHaveTextContent('(2/4)')
-    expect(getToolsRow()).not.toHaveTextContent('(4/4)')
-
-    pendingToolsResponse.resolve(responseFor(filteredToolsModels))
-
-    await waitFor(() => {
-      expect(getToolsRow()).toHaveTextContent('(2/2)')
-    })
-  })
-
-  it('loads credits without requirement area scope', async () => {
-    const creditUrls: string[] = []
-    mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        creditUrls.push(url)
-        return creditResponse()
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    await renderOpenGenerator({ selectArea: false })
-
-    await waitFor(() => {
-      expect(creditUrls).toHaveLength(1)
-    })
-    expect(creditUrls[0]).toBe('/api/ai/credits')
-
-    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '1')
-    await userEvent.selectOptions(screen.getByLabelText('areaLabel'), '2')
-
-    expect(creditUrls).toEqual(['/api/ai/credits'])
-  })
-
-  it('renders model and credit service failures from error and response payloads', async () => {
-    mockFetch.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/ai/models')) throw new Error('models offline')
-      if (url.startsWith('/api/ai/credits')) {
-        return {
-          json: async () => ({ error: 'credits denied' }),
-          ok: true,
-        }
-      }
-      return { json: async () => ({}), ok: true }
-    })
-
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onImportPreview={vi.fn()}
-        open
-      />,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('modelLabel')).toHaveTextContent(
-        'models offline',
-      )
-    })
-    expect(screen.getByTitle('credits denied')).toBeInTheDocument()
-    expect(screen.getByLabelText('modelLabel')).toBeDisabled()
-  })
-
-  it('shows a provider error when a successful model response has no inventory', async () => {
-    mockFetch.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/ai/models')) {
-        return {
-          json: async () => ({ error: 'No matching models' }),
-          ok: true,
-        }
-      }
-      if (url.startsWith('/api/ai/credits')) return creditResponse()
-      return { json: async () => ({}), ok: true }
-    })
-
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onImportPreview={vi.fn()}
-        open
-      />,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('modelLabel')).toHaveTextContent(
-        'No matching models',
-      )
-    })
-    expect(screen.getByLabelText('refreshModels')).not.toBeDisabled()
   })
 
   it('keeps a draft open when close confirmation is rejected and closes it when accepted', async () => {
@@ -2006,13 +1162,10 @@ describe('AiRequirementGenerator', () => {
     )
   })
 
-  it('sends the selected reasoning level when generating candidates', async () => {
+  it('sends only app-owned authoring inputs when generating candidates', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -2073,10 +1226,6 @@ describe('AiRequirementGenerator', () => {
 
     await renderOpenGenerator()
     await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
-    await userEvent.selectOptions(
-      screen.getByLabelText('reasoningEffortLabel'),
-      'xhigh',
-    )
     await userEvent.click(
       screen.getByRole('button', { name: /generateButton/i }),
     )
@@ -2087,16 +1236,20 @@ describe('AiRequirementGenerator', () => {
     const generateBody = JSON.parse(
       (generateCall?.[1] as { body: string } | undefined)?.body as string,
     ) as Record<string, unknown>
-    expect(generateBody.reasoningEffort).toBe('xhigh')
+    expect(generateBody).toEqual({
+      areaId: 1,
+      count: 8,
+      images: [],
+      locale: 'en',
+      mode: 'library',
+      need: 'Encrypt logs',
+    })
   })
 
   it('clears generated results when the area changes after generation', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -2166,11 +1319,8 @@ describe('AiRequirementGenerator', () => {
 
   it('shows proposed needs references in a tab before AI analysis', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -2244,11 +1394,8 @@ describe('AiRequirementGenerator', () => {
   it('hands the generated preview payload to the import preview callback', async () => {
     const onImportPreview = vi.fn()
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -2426,11 +1573,8 @@ describe('AiRequirementGenerator', () => {
       value: scrollIntoView,
     })
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -2526,11 +1670,8 @@ describe('AiRequirementGenerator', () => {
       value: scrollIntoView,
     })
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -2667,11 +1808,8 @@ describe('AiRequirementGenerator', () => {
 
   it('shows an error when the AI stream closes without a terminal event', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -2700,8 +1838,9 @@ describe('AiRequirementGenerator', () => {
 
   it('announces the localized request-validation issue returned before streaming', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/ai/models')) return modelResponse()
-      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
+      }
       if (url === '/api/ai/generate-requirement-import') {
         return Response.json(
           {
@@ -2749,8 +1888,9 @@ describe('AiRequirementGenerator', () => {
     ['import_row_count_cap_exceeded', 'generatedImportRowLimitExceeded'],
   ])('localizes the %s generation stream error', async (code, messageKey) => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/ai/models')) return modelResponse()
-      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
+      }
       if (url === '/api/ai/generate-requirement-import') {
         return generationErrorStreamResponse(code)
       }
@@ -2769,8 +1909,9 @@ describe('AiRequirementGenerator', () => {
 
   it('preserves the existing server message for non-budget stream errors', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/ai/models')) return modelResponse()
-      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
+      }
       if (url === '/api/ai/generate-requirement-import') {
         return generationErrorStreamResponse('ai_provider_rate_limited')
       }
@@ -2788,10 +1929,36 @@ describe('AiRequirementGenerator', () => {
     )
   })
 
+  it('shows a safe technical code with the actionable provider error', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
+      }
+      if (url === '/api/ai/generate-requirement-import') {
+        return generationErrorStreamResponse(
+          'ai_provider_invalid_response',
+          'invalid_upstream_stream_event',
+        )
+      }
+      return { json: async () => ({}), ok: true }
+    })
+
+    await renderOpenGenerator()
+    await userEvent.type(screen.getByLabelText('topicLabel'), 'Encrypt logs')
+    await userEvent.click(
+      screen.getByRole('button', { name: /generateButton/i }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Untrusted server English Technical error code: invalid_upstream_stream_event.',
+    )
+  })
+
   it('uses the localized fallback for a non-budget stream error without a message', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/ai/models')) return modelResponse()
-      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
+      }
       if (url === '/api/ai/generate-requirement-import') {
         return generationErrorStreamResponseWithoutMessage(
           'ai_provider_rate_limited',
@@ -2811,8 +1978,9 @@ describe('AiRequirementGenerator', () => {
 
   it('ignores data-less and unknown SSE blocks before handling a minimal validation error', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/ai/models')) return modelResponse()
-      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
+      }
       if (url === '/api/ai/generate-requirement-import') {
         return {
           body: new ReadableStream({
@@ -2843,8 +2011,9 @@ describe('AiRequirementGenerator', () => {
 
   it('shows empty preview states when generation returns no candidates or proposals', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (url.startsWith('/api/ai/models')) return modelResponse()
-      if (url.startsWith('/api/ai/credits')) return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
+      }
       if (url === '/api/ai/generate-requirement-import') {
         return generationStreamResponse({
           payload: { requirements: [], schemaVersion: 'requirement-import.v4' },
@@ -2890,11 +2059,8 @@ describe('AiRequirementGenerator', () => {
     const onClose = vi.fn()
     let generationSignal: AbortSignal | undefined
     mockFetch.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -2930,11 +2096,8 @@ describe('AiRequirementGenerator', () => {
   it('retains repair focus after failure and moves focus to repaired results', async () => {
     let repairAttempt = 0
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -2997,6 +2160,18 @@ describe('AiRequirementGenerator', () => {
     const repairButton = await screen.findByRole('button', { name: 'repair' })
     await userEvent.click(repairButton)
 
+    const firstRepairRequest = mockFetch.mock.calls.find(
+      ([url]) => url === '/api/ai/repair-requirement-import-json',
+    )
+    expect(firstRepairRequest).toBeDefined()
+    const firstRepairBody = JSON.parse(
+      String((firstRepairRequest?.[1] as RequestInit | undefined)?.body),
+    ) as { errors: string[]; rawJson: string }
+    expect(firstRepairBody).toMatchObject({
+      errors: ['$: Generated response is not valid JSON.'],
+      rawJson: '{"requirements":',
+    })
+
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Repair failed: Repair service unavailable.',
     )
@@ -3015,11 +2190,8 @@ describe('AiRequirementGenerator', () => {
 
   it('renders the server-resolved priority snapshot as the shared badge', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&
@@ -3103,11 +2275,8 @@ describe('AiRequirementGenerator', () => {
 
   it('shows unresolved taxonomy raw values with warning markers', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
-        return modelResponse()
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return creditResponse()
+      if (url === '/api/ai/authoring-profiles') {
+        return authoringProfilesResponse()
       }
       if (
         typeof url === 'string' &&

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -48,51 +48,34 @@ async function renderOpenGenerator() {
     />,
   )
 
-  await waitFor(() => {
-    const modelButton = document.getElementById('ai-model')
-    expect(modelButton).not.toBeNull()
-    expect(modelButton).toHaveTextContent('Claude Sonnet 4')
-  })
-  await waitFor(() => {
-    expect(screen.getByText('creditsBadgeWithOrg')).toBeInTheDocument()
-  })
+  await screen.findByText('Approved AI service')
 }
 
 describe('AiRequirementGenerator devMarker coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+      if (url === '/api/ai/authoring-profiles') {
         return {
           json: async () => ({
-            models: [
-              {
-                contextLength: 200000,
-                id: 'anthropic/claude-sonnet-4',
-                name: 'Claude Sonnet 4',
-                pricing: {
-                  completion: '0.000015',
-                  prompt: '0.000003',
-                  reasoning: '0.000015',
-                },
-                provider: 'anthropic',
-                supportedParameters: ['reasoning', 'stream'],
+            enabled: true,
+            profiles: {
+              generate_with_images: {
+                available: true,
+                connectionName: 'Approved AI service',
+                dataPolicySummary: 'EU processing',
               },
-            ],
-          }),
-          ok: true,
-        }
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return {
-          json: async () => ({
-            isFreeTier: false,
-            limit: 50,
-            limitRemaining: 37.5,
-            managementKeyMissing: false,
-            totalCredits: 50,
-            usage: 12.5,
-            usageDaily: 12.5,
+              generate_without_images: {
+                available: true,
+                connectionName: 'Approved AI service',
+                dataPolicySummary: 'EU processing',
+              },
+              repair_invalid_import_json: {
+                available: true,
+                connectionName: 'Approved AI service',
+                dataPolicySummary: 'EU processing',
+              },
+            },
           }),
           ok: true,
         }
@@ -123,19 +106,21 @@ describe('AiRequirementGenerator devMarker coverage', () => {
     expect(title).toHaveAttribute('data-developer-mode-name', 'dialog title')
   })
 
-  it('renders model selector button with devMarker attributes', async () => {
+  it('marks administrator-managed authoring profile status', async () => {
     await renderOpenGenerator()
 
-    const modelButton = document.getElementById('ai-model')
-    expect(modelButton).not.toBeNull()
-    expect(modelButton).toHaveAttribute(
+    const profileStatus = document.querySelector(
+      '[data-developer-mode-value="authoring profile"]',
+    )
+    expect(profileStatus).not.toBeNull()
+    expect(profileStatus).toHaveAttribute(
       'data-developer-mode-context',
       'ai-requirement-generator',
     )
-    expect(modelButton).toHaveAttribute('data-developer-mode-name', 'button')
-    expect(modelButton).toHaveAttribute(
+    expect(profileStatus).toHaveAttribute('data-developer-mode-name', 'status')
+    expect(profileStatus).toHaveAttribute(
       'data-developer-mode-value',
-      'model selector',
+      'authoring profile',
     )
   })
 
@@ -170,37 +155,27 @@ describe('AiRequirementGenerator devMarker coverage', () => {
 
   it('marks the visible generation error summary', async () => {
     mockFetch.mockImplementation(async (url: string) => {
-      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
+      if (url === '/api/ai/authoring-profiles') {
         return {
           json: async () => ({
-            models: [
-              {
-                contextLength: 200000,
-                id: 'anthropic/claude-sonnet-4',
-                name: 'Claude Sonnet 4',
-                pricing: {
-                  completion: '0.000015',
-                  prompt: '0.000003',
-                  reasoning: '0.000015',
-                },
-                provider: 'anthropic',
-                supportedParameters: ['reasoning', 'stream', 'response_format'],
+            enabled: true,
+            profiles: {
+              generate_with_images: {
+                available: true,
+                connectionName: 'Approved AI service',
+                dataPolicySummary: 'EU processing',
               },
-            ],
-          }),
-          ok: true,
-        }
-      }
-      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
-        return {
-          json: async () => ({
-            isFreeTier: false,
-            limit: 50,
-            limitRemaining: 37.5,
-            managementKeyMissing: false,
-            totalCredits: 50,
-            usage: 12.5,
-            usageDaily: 12.5,
+              generate_without_images: {
+                available: true,
+                connectionName: 'Approved AI service',
+                dataPolicySummary: 'EU processing',
+              },
+              repair_invalid_import_json: {
+                available: true,
+                connectionName: 'Approved AI service',
+                dataPolicySummary: 'EU processing',
+              },
+            },
           }),
           ok: true,
         }
@@ -240,7 +215,7 @@ describe('AiRequirementGenerator devMarker coverage', () => {
     )
     expect(summaryContainer).toHaveAttribute(
       'data-developer-mode-value',
-      'generation outcome',
+      'generation outcome and technical error details',
     )
   })
 })

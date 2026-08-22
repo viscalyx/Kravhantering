@@ -62,7 +62,8 @@ vi.mock('@/lib/audit/action-audit', () => ({
   recordDeniedActionAuditEvent: state.deniedAudit,
 }))
 
-vi.mock('@/lib/http/safe-errors', () => ({
+vi.mock('@/lib/http/safe-errors', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/lib/http/safe-errors')>()),
   isForeignKeyViolation: state.isForeignKeyViolation,
   logSanitizedError: state.logSanitizedError,
 }))

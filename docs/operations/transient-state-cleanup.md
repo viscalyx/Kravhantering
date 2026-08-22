@@ -5,12 +5,14 @@ traffic. Every supported production topology installs one generic systemd timer
 and one one-shot cleanup container. The timer runs every five minutes with a
 small randomized delay.
 
-The current cleanup registry includes time-limited AI forensic evidence,
-expired MCP import-validation sessions, and expired principal creation-rate
-buckets. All use the same runner and timer. The forensic target records a
-metadata-only expiry event when a cleanup run detects a row that has already
-expired according to SQL Server time, then purges evidence 72 hours after
-manual stop or expiry.
+The current cleanup registry includes expired AI run coordination rows,
+time-limited AI forensic evidence, expired MCP import-validation sessions, and
+expired principal creation-rate buckets. All use the same runner and timer.
+AI coordination rows expire at their original total deadline, or when a
+running lease is abandoned, and contain no model content. The forensic target
+records a metadata-only expiry event when a cleanup run detects a row that has
+already expired according to SQL Server time, then purges evidence 72 hours
+after manual stop or expiry.
 
 ## Work Bounds and Safety
 
@@ -98,7 +100,8 @@ Check these boundaries in order:
 2. Confirm `/etc/kravhantering/app.env` contains the runtime database connection
    and valid numeric cleanup bounds.
 3. Confirm the app runtime identity retains `SELECT` and `DELETE` access to the
-   registered transient tables, including the forensic capture/evidence tables,
+   registered transient tables, including AI run coordination and the forensic
+   capture/evidence tables,
    by running the release's normal runtime
    permission verification.
 4. For app-node topologies, verify the egress network reaches SQL Server. For

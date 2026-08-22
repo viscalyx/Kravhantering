@@ -27,6 +27,16 @@ import { createAppDataSource } from '@/lib/typeorm/data-source'
 import { tryGetSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 
 const TRANSACTIONAL_TABLES = [
+  'ai_run_coordination_entries',
+  'ai_connection_model_operational_states',
+  'ai_run_profiles',
+  'ai_connection_model_verification_evidence',
+  'ai_connection_model_revisions',
+  'ai_connection_models',
+  'ai_connection_verification_evidence',
+  'ai_connection_attestations',
+  'ai_provider_secret_versions',
+  'ai_connections',
   'ai_forensic_evidence_events',
   'ai_forensic_capture_windows',
   'requirement_import_validation_rate_buckets',
@@ -203,21 +213,26 @@ async function seedLookups(target: SqlServerDatabase): Promise<void> {
 async function clearTransactionalTables(
   target: SqlServerDatabase,
 ): Promise<void> {
+  const lifecycleDeleteGuardByTable = new Map([
+    [
+      'ai_provider_secret_versions',
+      'trg_ai_provider_secret_versions_delete_candidates_only',
+    ],
+    ['rfi_question_suggestions', 'trg_rfi_question_suggestions_lifecycle'],
+  ])
   for (const table of TRANSACTIONAL_TABLES) {
-    const hasLifecycleDeleteGuard = table === 'rfi_question_suggestions'
-    if (hasLifecycleDeleteGuard) {
+    const lifecycleDeleteGuard = lifecycleDeleteGuardByTable.get(table)
+    if (lifecycleDeleteGuard) {
       await target.query(
-        `DISABLE TRIGGER [trg_rfi_question_suggestions_lifecycle]
-         ON [rfi_question_suggestions]`,
+        `DISABLE TRIGGER [${lifecycleDeleteGuard}] ON [${table}]`,
       )
     }
     try {
       await target.query(`DELETE FROM ${table}`)
     } finally {
-      if (hasLifecycleDeleteGuard) {
+      if (lifecycleDeleteGuard) {
         await target.query(
-          `ENABLE TRIGGER [trg_rfi_question_suggestions_lifecycle]
-           ON [rfi_question_suggestions]`,
+          `ENABLE TRIGGER [${lifecycleDeleteGuard}] ON [${table}]`,
         )
       }
     }
@@ -247,8 +262,12 @@ export function useSqlIntegrationDatabase(): () => SqlServerDatabase {
 
   afterAll(async () => {
     if (db) {
-      await db.destroy()
-      db = null
+      try {
+        await clearTransactionalTables(db)
+      } finally {
+        await db.destroy()
+        db = null
+      }
     }
   })
 

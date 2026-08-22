@@ -75,7 +75,8 @@ const AI_GUIDE_AREA_PREFIX = 'BET'
 const AI_GUIDE_AREA_OWNER_HSA_ID = 'SE5560000001-annaj'
 const AI_GUIDE_AREA_DESCRIPTION =
   'Krav för registrering, ändring, fastställande och spårbar hantering av elevers betyg.'
-const AI_GUIDE_MODEL_NAME = 'GPT-5.4 Mini'
+const AI_GUIDE_CONNECTION_NAME = 'Godkänd AI-tjänst'
+const AI_GUIDE_DATA_POLICY_SUMMARY = 'EU-behandling utan träning'
 const AI_GUIDE_NORM_KEY = 'EDU-GRADE-TRACE-2026'
 const AI_GUIDE_NORM_NAME = 'Riktlinje för spårbar betygshantering'
 const AI_GUIDE_NEED =
@@ -438,36 +439,21 @@ async function browserJsonMutation<TResponse>(
 }
 
 async function installAiGuideMocks(page: Page): Promise<() => Promise<void>> {
-  const modelsPattern = '**/api/ai/models?*'
-  const creditsPattern = '**/api/ai/credits'
+  const profilesPattern = '**/api/ai/authoring-profiles'
   const generatePattern = '**/api/ai/generate-requirement-import'
-  const modelsHandler = async (route: Route) => {
+  const profilesHandler = async (route: Route) => {
+    const available = {
+      available: true,
+      connectionName: AI_GUIDE_CONNECTION_NAME,
+      dataPolicySummary: AI_GUIDE_DATA_POLICY_SUMMARY,
+    }
     await fulfillGuideJson(route, {
-      models: [
-        {
-          contextLength: 200000,
-          id: 'openai/gpt-5.4-mini',
-          name: AI_GUIDE_MODEL_NAME,
-          pricing: {
-            completion: '0.0000045',
-            prompt: '0.00000075',
-            reasoning: '0.0000045',
-          },
-          provider: 'openai',
-          supportedParameters: ['reasoning', 'stream', 'response_format'],
-        },
-      ],
-    })
-  }
-  const creditsHandler = async (route: Route) => {
-    await fulfillGuideJson(route, {
-      isFreeTier: false,
-      limit: 50,
-      limitRemaining: 49,
-      managementKeyMissing: false,
-      totalCredits: 50,
-      usage: 1,
-      usageDaily: 1,
+      enabled: true,
+      profiles: {
+        generate_with_images: available,
+        generate_without_images: available,
+        repair_invalid_import_json: available,
+      },
     })
   }
   const generateHandler = async (route: Route) => {
@@ -494,21 +480,16 @@ async function installAiGuideMocks(page: Page): Promise<() => Promise<void>> {
       ].join('\n'),
     }
     await route.fulfill({
-      body: [
-        `event: thinking\ndata: ${JSON.stringify({ thinkingSoFar: body.thinking })}\n\n`,
-        `event: done\ndata: ${JSON.stringify(body)}\n\n`,
-      ].join(''),
+      body: `event: done\ndata: ${JSON.stringify(body)}\n\n`,
       contentType: 'text/event-stream',
     })
   }
 
-  await page.route(modelsPattern, modelsHandler)
-  await page.route(creditsPattern, creditsHandler)
+  await page.route(profilesPattern, profilesHandler)
   await page.route(generatePattern, generateHandler)
 
   return async () => {
-    await page.unroute(modelsPattern, modelsHandler)
-    await page.unroute(creditsPattern, creditsHandler)
+    await page.unroute(profilesPattern, profilesHandler)
     await page.unroute(generatePattern, generateHandler)
   }
 }
@@ -2012,15 +1993,36 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await aiDialog
         .getByLabel('Kravområde', { exact: true })
         .selectOption(String(area.id))
-      await expect(aiDialog.getByText(AI_GUIDE_MODEL_NAME)).toBeVisible({
-        timeout: 10_000,
-      })
+      const authoringProfileStatus = aiDialog
+        .getByRole('status')
+        .filter({ hasText: AI_GUIDE_CONNECTION_NAME })
+      await expect(authoringProfileStatus).toBeVisible({ timeout: 10_000 })
+      await expect(
+        authoringProfileStatus.getByText('Administratörsstyrd AI-profil', {
+          exact: true,
+        }),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.getByText('AI-anslutning', { exact: true }),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.getByText(AI_GUIDE_CONNECTION_NAME),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.getByText('Datapolicy', { exact: true }),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.getByText(AI_GUIDE_DATA_POLICY_SUMMARY),
+      ).toBeVisible()
+      await expect(
+        authoringProfileStatus.locator('button, input, select, textarea'),
+      ).toHaveCount(0)
 
       await snap(
         page,
         'ai-oppna',
-        'AI-assisterat författande — behov och modell',
-        `Öppna **"AI-assisterat författande"** från kravbiblioteket. Ange ett konkret behov, till exempel "${AI_GUIDE_NEED}", välj kravområdet **${AI_GUIDE_AREA_NAME}** och använd en modell från en större leverantör. Guiden mockar AI-svaret men använder applikationens riktiga importförhandsgranskning.`,
+        'AI-assisterat författande — behov och AI-anslutning',
+        `Öppna **"AI-assisterat författande"** från kravbiblioteket. Kontrollera den administratörsstyrda AI-anslutningen och datapolicyn. Ange ett konkret behov, till exempel "${AI_GUIDE_NEED}", och välj kravområdet **${AI_GUIDE_AREA_NAME}**. Anslutning, modell, förmågepolicy och datapolicy kan inte väljas i dialogen. Guiden mockar AI-svaret men använder applikationens riktiga importförhandsgranskning.`,
         { fullPage: false },
       )
     })

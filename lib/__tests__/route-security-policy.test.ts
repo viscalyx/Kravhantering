@@ -4,6 +4,7 @@ import {
   REST_OPERATIONS,
   REST_ROUTE_REGISTRY,
   type RestOperationDeclaration,
+  resolveRestPathPolicy,
 } from '@/lib/http/route-security-policy'
 
 const validDeclaration = [
@@ -18,10 +19,17 @@ const validDeclaration = [
 
 describe('REST route security policy registry', () => {
   it('contains the complete explicit REST operation baseline', () => {
-    expect(REST_OPERATIONS).toHaveLength(209)
+    expect(REST_OPERATIONS).toHaveLength(216)
     expect(
       REST_OPERATIONS.filter(operation => operation.contract === 'openapi'),
     ).toHaveLength(29)
+    expect(
+      REST_ROUTE_REGISTRY.resolve('GET', '/api/ai/authoring-profiles'),
+    ).toMatchObject({
+      auth: 'session',
+      cache: 'no-store',
+      registered: true,
+    })
   })
 
   it('matches dynamic templates while preferring literals segment by segment', () => {
@@ -267,6 +275,43 @@ describe('REST route security policy registry', () => {
         ],
       ]),
     ).toThrow('Noncanonical REST route template')
+
+    expect(() =>
+      compileRestRouteRegistry([
+        [
+          'GET',
+          '/api/widgets',
+          'session',
+          'same-origin',
+          'authenticated',
+          'framework-default',
+          'focused',
+        ],
+      ]),
+    ).toThrow('Safe REST operation cannot require CSRF')
+
+    expect(() =>
+      compileRestRouteRegistry([
+        [
+          'POST',
+          '/api/widgets',
+          'public',
+          'same-origin',
+          'authenticated',
+          'framework-default',
+          'focused',
+        ],
+      ]),
+    ).toThrow('Only logout may combine public auth and CSRF')
+  })
+
+  it('resolves aggregate path policy through the public helper', () => {
+    expect(resolveRestPathPolicy('/api/admin/ai-connections')).toMatchObject({
+      auth: 'session',
+      cache: 'no-store',
+      csrf: 'same-origin',
+      sensitivity: 'sensitive',
+    })
   })
 
   it('resolves every registered operation through the compiled indexes', () => {

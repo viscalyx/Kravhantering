@@ -83,6 +83,7 @@ describe('prodlike standalone runtime', () => {
         '  process.env.PRODLIKE_TEST_RESULT_PATH,',
         '  JSON.stringify({',
         '    buildTarget: process.env.BUILD_TARGET,',
+        '    keyring: process.env.AI_PROVIDER_SECRET_KEYRING_FILE,',
         '    hostname: process.env.HOSTNAME,',
         '    nodeEnv: process.env.NODE_ENV,',
         '    port: process.env.PORT,',
@@ -94,6 +95,8 @@ describe('prodlike standalone runtime', () => {
 
     const originalEnvironment = {
       BUILD_TARGET: process.env.BUILD_TARGET,
+      AI_PROVIDER_SECRET_KEYRING_FILE:
+        process.env.AI_PROVIDER_SECRET_KEYRING_FILE,
       HOSTNAME: process.env.HOSTNAME,
       NODE_ENV: process.env.NODE_ENV,
       PORT: process.env.PORT,
@@ -102,6 +105,8 @@ describe('prodlike standalone runtime', () => {
     }
     process.env.PRODLIKE_TEST_PRESERVED = 'kept'
     process.env.PRODLIKE_TEST_RESULT_PATH = resultPath
+    process.env.AI_PROVIDER_SECRET_KEYRING_FILE =
+      '.local/ai-provider-secret-keyring.json'
 
     try {
       launchProdlikeStandalone(root)
@@ -117,6 +122,7 @@ describe('prodlike standalone runtime', () => {
 
     expect(JSON.parse(fs.readFileSync(resultPath, 'utf8'))).toEqual({
       buildTarget: 'local-prod',
+      keyring: path.join(root, '.local', 'ai-provider-secret-keyring.json'),
       hostname: '127.0.0.1',
       nodeEnv: 'production',
       port: '3001',

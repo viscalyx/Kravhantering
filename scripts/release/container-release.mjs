@@ -75,6 +75,9 @@ const RELEVANT_PATH_PREFIXES = [
   'scripts/build-metadata.js',
   'scripts/containers/',
   'scripts/db-sqlserver-admin.mjs',
+  'scripts/ai-provider-secret-restore-cli.mjs',
+  'scripts/ai-provider-secret-maintenance.mjs',
+  'lib/ai/provider-secret-crypto-core.mjs',
   'scripts/keycloak-demo-users.mjs',
   'scripts/prebuild.js',
   'scripts/release/',
@@ -100,6 +103,10 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   {
     source: 'docs/operations/api-docs-edge-verification.md',
     target: 'docs/operations/api-docs-edge-verification.md',
+  },
+  {
+    source: 'docs/operations/ai-connections.md',
+    target: 'docs/operations/ai-connections.md',
   },
   {
     source: 'docs/operations/rhel10-production-deploy.md',
@@ -155,6 +162,14 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   {
     source: 'scripts/keycloak-demo-users.mjs',
     target: 'scripts/keycloak-demo-users.mjs',
+  },
+  {
+    source: 'scripts/release/ai-deployment-gate.mjs',
+    target: 'scripts/ai-deployment-gate.mjs',
+  },
+  {
+    source: 'scripts/release/ai-staging-live-probe.mjs',
+    target: 'scripts/ai-staging-live-probe.mjs',
   },
 ]
 

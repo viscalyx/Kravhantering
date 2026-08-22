@@ -161,7 +161,6 @@ function extractReferenceData(instruction: string) {
     }>
     requirementPackages?: Array<{
       id: number
-      leadDisplayName: string | null
       name: string
       purposeAndScope: string | null
     }>
@@ -1885,6 +1884,28 @@ describe('requirements import service', () => {
     const instruction = await workflow.buildImportInstruction('en', {
       kind: 'requirements_library',
     })
+    const mcpInstruction = (
+      await workflow.getImportInstruction(
+        makeContext('requirements_get_import_instruction'),
+        {
+          destination: { kind: 'requirements_library' },
+          locale: 'en',
+        },
+      )
+    ).importInstruction
+    const restInstruction = (
+      await workflow.getImportInstruction(
+        {
+          ...makeContext('requirements_get_import_instruction'),
+          source: 'rest',
+          toolName: undefined,
+        },
+        {
+          destination: { kind: 'requirements_library' },
+          locale: 'en',
+        },
+      )
+    ).importInstruction
     const referenceData = extractReferenceData(instruction)
 
     expect(instruction).toContain(
@@ -1899,11 +1920,18 @@ describe('requirements import service', () => {
     expect(referenceData.requirementPackages).toEqual([
       {
         id: 3,
-        leadDisplayName: 'Paketansvarig',
         name: 'Integration med andra system',
         purposeAndScope: 'Integrationskrav.',
       },
     ])
+    for (const finalInstruction of [
+      instruction,
+      mcpInstruction,
+      restInstruction,
+    ]) {
+      expect(finalInstruction).not.toContain('Paketansvarig')
+      expect(finalInstruction).not.toContain('SE5560000001-pkg1')
+    }
   })
 
   it('adds needs-reference guidance and reference data for specification import instructions', async () => {

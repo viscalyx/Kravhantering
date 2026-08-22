@@ -9,6 +9,12 @@ AI-genererade kandidater, justera författarinstruktionen och generera om innan
 valda rader skickas till importens redigerbara granskningsyta; först där sparas
 krav genom ordinarie importflöde.
 
+AI-integrationslagret och dess adaptrar ändrar inte denna gräns. Ett
+AI-anslutningsresultat måste vara fullständigt slutscreenat och
+schemavaliderat innan det får visas eller skickas vidare till importflödet,
+enligt
+[ADR 0051](./0051-ai-integrationslager-med-korprofiler-och-adaptrar.md).
+
 Beslutet gör `Importinstruktion och schema` till den kanoniska strukturregeln
 för både extern AI-genererad import och inbyggt AI-assisterat författande. Den
 användarstyrda `AI-instruktion` får styra innehåll, omfattning, språk och stil,

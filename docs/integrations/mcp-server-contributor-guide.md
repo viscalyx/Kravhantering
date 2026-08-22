@@ -155,6 +155,15 @@ or replace the JSON Schema.
   `structuredContent.importInstruction`
 - **Grouping:** import contracts
 
+The returned requirement-package reference data is shared with REST and
+built-in AI-assisted authoring. Keep it limited to stable ID, package name, and
+purpose and scope; never add package-lead names, HSA IDs, email addresses, or
+other structured person identifiers. The MCP registry intentionally contains
+no server-hosted AI generation tool. External MCP-client provider egress is
+client-owned and is not protected by the app's AI request privacy minimum.
+Provider and model admission allowlisting remains tracked by
+[the separate allowlisting work](https://github.com/viscalyx/Kravhantering/issues/194).
+
 ### `requirements_manage_norm_reference`
 
 Lists, searches, gets, or creates Normbibliotek rows used by import, and lists

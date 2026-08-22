@@ -816,8 +816,9 @@ aktuella svaret utan att kravpaketet eller kravet tas bort från kravbiblioteket
 
 ### REQ-15: AI-kravgenerator lämnar kandidater till importgranskning
 
-**Steg:** Öppna AI-assisterat författande från kravbiblioteket, välj
-kravområde och generera en kravkandidat. Öppna fliken `AI-analys` och
+**Steg:** Öppna AI-assisterat författande från kravbiblioteket, kontrollera
+den administratörsstyrda AI-anslutningen och datapolicyn, välj kravområde och
+generera en kravkandidat. Öppna fliken `AI-analys` och
 kontrollera modellens analys. Välj sedan `Förhandsgranska krav i import`.
 
 **Förväntat resultat:** Den genererade kandidaten skickas som
@@ -828,7 +829,9 @@ Importgranskningen öppnas direkt med kandidaten synlig och utan att visa
 `Import-JSON`-formuläret. Fliken `AI-analys` visar analysen utan klickbara
 länkar, fjärrladdade bilder eller aktiv HTML. Råresultat visas fortfarande
 separat från analysen.
-När AI-assisterat författande aktiveras öppnas dialogen omedelbart med en
+Dialogen visar inga val för modell, leverantör, pris, krediter, förmågepolicy,
+datapolicy eller resonemangsnivå. När AI-assisterat författande aktiveras
+öppnas dialogen omedelbart med en
 översatt laddningsstatus tills innehållet är klart, och fokus stannar i
 dialogflödet. `Förhandsgranska krav i import` flyttar fokus direkt till
 importgranskningen utan att fokusera sidan emellan, behåller valt kravområde
@@ -854,30 +857,51 @@ stdout eller applikationslogg.
 ### REQ-15C: AI-assisterat författande annonserar och återhämtar fel
 
 **Steg:** Öppna AI-assisterat författande från kravbiblioteket med en
-skärmläsare, välj en Vision-modell och välj giltiga bilder tillsammans med en
+skärmläsare och välj giltiga bilder tillsammans med en
 fil av otillåten typ så att urvalet överskrider gränsen på tre bilder.
 Kontrollera synlig tangentbordsfokus för knappen `Ta bort bild`. Ta bort sedan
 en bifogad bild.
 Starta en generering som får ett terminalt leverantörsfel. Starta en ny
-generering som får ett valideringsfel, välj `Reparera JSON`, låt första
-reparationen misslyckas och låt nästa lyckas. Bifoga därefter två bilder med
-samma bildinnehåll men olika filnamn och filtyp och försök generera igen.
+generering som får flera valideringsfel för ett saknat toppnivåfält, samma fält
+på otillåten plats och ett värde med fel datatyp. Välj `Reparera JSON`, låt
+första reparationen misslyckas och låt nästa lyckas. Bifoga därefter två
+bilder med samma bildinnehåll men olika filnamn och filtyp och försök generera
+igen.
 Avbryt slutligen en pågående generering genom att stänga dialogen.
 
 **Förväntat resultat:** De giltiga bilder som ryms ligger kvar och bildfelet
 är knutet till `Välj bilder`; skärmläsaren annonserar en sammanfattad feltext
 som både beskriver den otillåtna filtypen och gränsen på tre bilder.
 När en bifogad bild tas bort rensas bildfelet. Vid det första terminala felet
-flyttas fokus till rubriken `Genereringen misslyckades`, medan fel vid ett nytt
-försök och reparation behåller fokus på åtgärdsknappen. Råresultat,
-valideringsfel, behov, modell och bifogade bilder ligger kvar tills användaren
-ändrar dem. En lyckad reparation annonserar status en gång och flyttar fokus
+visas en begriplig orsak, till exempel att leverantörens svarsformat inte kunde
+behandlas, tillsammans med en innehållsfri teknisk felkod. Fokus flyttas till
+rubriken `Genereringen misslyckades`, medan fel vid ett nytt försök och
+reparation behåller fokus på åtgärdsknappen. Råresultat,
+valideringsfel, behov och bifogade bilder ligger kvar tills användaren
+ändrar dem. Råresultatet visas först efter att hela svaret har passerat
+utdatafiltret; inga ofullständiga strömningsdelar visas. Reparationen får det
+bevarade råresultatet och samtliga visade valideringsfel med sökvägar som pekar
+ut saknade och otillåtna egenskapers exakta plats. En lyckad reparation
+annonserar status en gång och flyttar fokus
 till resultatets rubrik. Bilder med samma avkodade innehåll avvisas innan en ny
 kravkandidat skapas, även när filnamn och MIME-typ skiljer sig. Dialogen
 annonserar `Varje uppladdad bild måste vara unik.`, flyttar fokus till
 `Genereringen misslyckades` och behåller de bifogade bilderna. Endast sanerade
-feltexter visas eller annonseras; rått modell- eller leverantörsinnehåll visas
-inte. Att avbryta genom att stänga dialogen ger ingen felannonsering.
+felorsaker och tekniska felkoder visas eller annonseras; rått modell- eller
+leverantörsinnehåll visas inte. Att avbryta genom att stänga dialogen ger ingen
+felannonsering.
+
+### REQ-15D: profilbrist inaktiverar endast berörd AI-åtgärd
+
+**Steg:** Konfigurera en aktiv profil för generering med bilder men ingen aktiv
+profil för generering utan bilder. Öppna AI-assisterat författande, välj
+kravområde och ange ett behov. Bifoga därefter en giltig bild.
+
+**Förväntat resultat:** Genereringsknappen är först inaktiverad med en begriplig
+förklaring om den saknade profilen. Övriga delar av applikationen fungerar.
+När bilden bifogas väljs anropstypen för bildgenerering automatiskt, den
+godkända anslutningen och datapolicyn visas och genereringsknappen aktiveras.
+Ingen modell, leverantör eller profil kan väljas i dialogen.
 
 ### REQ-16: Admin Center stänger av AI-kravgenerering
 
@@ -2039,6 +2063,93 @@ efter stopp. API-svaret innehåller storleksbegränsade utdrag med
 `SE5560000001-manual1`. UI:t visar bara aggregerad metadata. Den ursprungliga
 begäraren och godkännaren kan läsa den avslutade insamlingen; andra användare
 nekas åtkomst.
+
+### ADMIN-20: Admin verifierar en modell och styr en stabil körprofil
+
+**Förutsättningar:** Kör mot en lokal engångsmiljö med aktuell migrering och
+Admin-session. Konfigurera `controlled_test@1` med utvecklingsadressen
+`https://localhost:4443`, motsvarande egress-, TLS- och datapolicyer. Använd
+bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
+återställa de tre stabila profilernas tidigare konfiguration och driftstatus.
+
+1. Öppna `Administrationscenter > Inställningar > AI`. Skapa en anslutning med
+   `controlled_test@1`, autentisering `Ingen applikationsuppgift`, testadressen
+   och de konfigurerade policynycklarna. Kontrollera att anslutningens
+   administrativa livscykel och operativa hälsa visas separat.
+2. Spara och godkänn en fullständig attest med syntetiska UUID-referenser,
+   region `SE`, informationsklass `internal`, noll dagars lagring, inga
+   personuppgifter, ingen leverantörsträning, aktuell granskningstid och ett
+   framtida granskningsdatum.
+3. Välj `Lägg till modell`. Ange namn, `controlled/model` och en fast extern
+   version. Kontrollera att samtliga sju förmågor först visas skrivskyddade som
+   `Inte kontrollerad` och att modellrevisionen inte kan sparas.
+4. Välj `Verifiera`. Kontrollera att förloppet strömmas i ordningen anslutning,
+   grundläggande modellåtkomst, varje förmåga, de tre fasta körprofilerna och
+   slutsammanfattningen. Kontrollera att `Avbryt verifiering` visas medan
+   arbetet pågår. Efter lyckat resultat ska varje förmåga ha ett tydligt utfall,
+   kompatibiliteten per körprofil visas och `Spara modellrevision` aktiveras.
+   Om en förmåga inte kan observeras i leverantörssvaret ska orsaken beskriva
+   just detta och inte påstå att leverantören uttryckligen avvisade förmågan.
+5. Ändra modellnamnet och kontrollera att resultatet finns kvar. Ändra ett
+   tekniskt fält och kontrollera att resultatet rensas och att ny verifiering
+   krävs. Verifiera igen och spara revisionen. Kontrollera statusen
+   `Verifierad` och att inget separat modellutkast eller separat
+   aktiveringssteg visas.
+6. Aktivera anslutningen. Redigera `Kravgenerering utan bilder`. Kontrollera att
+   inkompatibla, avslutade eller ersättningskrävande revisioner visas
+   inaktiverade med orsak, att den senaste användbara revisionen per modell är
+   rekommenderad och att applikationens förmågekrav inte kan redigeras. Välj den
+   verifierade revisionen, granska ordinarie och avancerade driftbudgetar och
+   töm ett budgetfält. Kontrollera att `Spara` inaktiveras. Fyll i ett giltigt
+   värde, spara och kontrollera att exakt en statusbricka visar `Aktiv`.
+   Öppna formuläret igen och kontrollera informationen om att sparade ändringar
+   gäller direkt för nya körningar men inte ändrar pågående körningar.
+7. Pausa profilen. Kontrollera att bekräftelsen anger att köade och pågående
+   körningar avbryts och inte startas om vid återupptagning. Bekräfta och
+   kontrollera att exakt en statusbricka visar `Pausad`; återuppta profilen och
+   kontrollera `Aktiv`. Modellval och budgetar ska finnas kvar.
+8. Försök avsluta den valda modellrevisionen. Kontrollera att åtgärden avvisas
+   och anger den beroende profilen. Koppla bort modellen i profilformuläret och
+   spara. Kontrollera statusen `Ej konfigurerad` och att pausning inte erbjuds.
+   Avsluta därefter revisionen efter den uttryckliga bekräftelsen och kontrollera
+   statusen `Avslutad`.
+9. Välj den separata permanenta raderingen. Kontrollera att dialogen uttryckligen
+   säger att revisionen och verifieringsbeviset raderas, att åtgärden inte kan
+   ångras och att modellbehållaren också tas bort när detta är sista revisionen.
+   Bekräfta och kontrollera att modellen försvinner.
+10. Upprepa huvudflödet vid både 1280 × 760 och 375 × 812. Kontrollera att
+    formulär, verifieringsförlopp, bekräftelser och profilkort kan användas med
+    tangentbord och ryms i aktuell viewport.
+
+**Förväntat resultat:** En modellrevision kan endast sparas från ett aktuellt,
+slutfört verifieringsförsök. Den stabila profilen väljer direkt en kompatibel
+verifierad revision, och nya profiländringar påverkar inte redan startade
+körningar. Första giltiga konfigurationen ger statusen `Aktiv`. Paus begär
+avbrott utan att radera konfigurationen och avbrutna körningar startas inte om.
+En använd
+modellrevision kan inte avslutas eller raderas; avslut är irreversibelt och
+permanent radering kräver en separat bekräftelse. Ingen automatisk fallback
+sker.
+
+### ADMIN-21: Misslyckad AI-åtgärd visar åtgärd och serverfel i viewporten
+
+**Förutsättningar:** Logga in som Admin i en testmiljö med minst en
+AI-anslutning. Konfigurera anslutningen så att dess mål blockeras av den valda
+egress- eller TLS-policyn. Spara ursprungsvärdena så att anslutningen kan
+återställas efter testet.
+
+1. Öppna `Administrationscenter > Inställningar > AI`, expandera den blockerade
+   anslutningen och scrolla tills åtgärdsknapparna syns.
+2. Välj `Läs modellkatalog`.
+3. Kontrollera felmeddelandet, stäng det och återställ sedan anslutningens
+   ursprungliga konfiguration.
+
+**Förväntat resultat:** En beständig flytande felindikering visas i den aktuella
+viewporten utan att användaren behöver scrolla. Den visar först den valda
+åtgärden och sedan serverns säkra felmeddelande, exempelvis `Åtgärden "Läs
+modellkatalog" misslyckades. Fel: The AI connection trust policy blocked the
+request.`. Det generiska meddelandet `Failed to perform AI connection action.`
+visas inte. Indikeringen ligger kvar tills användaren stänger den.
 
 ## Dataskydd och personuppgifter
 

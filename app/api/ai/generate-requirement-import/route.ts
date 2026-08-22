@@ -1,27 +1,18 @@
+import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
-  type GenerationStats,
-  generateChatStream,
-  type StreamEvent,
-} from '@/lib/ai/openrouter-client'
-import { resolveOpenRouterModelCapabilities } from '@/lib/ai/openrouter-model-catalog'
-import {
-  aiProviderStreamError,
-  normalizeAiProviderError,
-} from '@/lib/ai/provider-errors'
+  type AiAuthoringRuntime,
+  createProductionAiAuthoringRuntime,
+} from '@/lib/ai/authoring-runtime'
 import {
   buildRequirementImportResponseFormatSchema,
   buildRequirementImportSystemPrompt,
   buildRequirementImportUserPrompt,
+  getPromptMessage,
   parseJsonObject,
 } from '@/lib/ai/requirement-prompt'
-import {
-  type AiSafetyScreenPart,
-  recordAiSafetyBlock,
-  recordAiSafetyFilterFailure,
-  screenAiOutputDetailed,
-} from '@/lib/ai/safety'
+import type { AiRunUsage } from '@/lib/ai/run-contracts'
 import { getAiGenerationAvailability } from '@/lib/dal/ai-settings'
 import { getApplicationSettings } from '@/lib/dal/application-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -46,19 +37,22 @@ import {
   validateImportContentBudget,
 } from '@/lib/requirements/import-budget'
 import {
+  buildRequirementsImportJsonSchema,
   buildRequirementsImportPayloadSchema,
   type ImportRequirementsPayload,
 } from '@/lib/requirements/import-schema'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
   AI_GENERATE_SLOW_THRESHOLD_MS,
+  AI_RUN_REQUEST_DEADLINE_MS,
   aiRequirementImportBaseBodySchema,
+  aiRunFailureError,
+  aiRunProfileError,
+  aiUsageMetricValue,
   checkAiRequirementImportThrottle,
   countImageBytes,
-  createAiErrorStreamResponse,
   createAiRequirementImportThrottleResponse,
   createUnavailableAiStreamResponse,
-  formatAiSafetyBlockedMessage,
   guardAiInput,
   imageDataUrlSchema,
   MAX_AI_IMAGES,
@@ -66,27 +60,20 @@ import {
   requirementCandidateCountSchema,
   requirementImportDestination,
   requirementImportScopeAction,
+  toAiTaskContent,
   validateRequirementImportImages,
   validateRequirementImportScope,
-  withImages,
 } from '../requirement-import-shared'
 
 const AI_GENERATE_REQUIREMENT_IMPORT_OPERATION =
   'ai.generate-requirement-import'
 export const AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES = 42 * 1024 * 1024
-const STREAMED_REASONING_SAFETY_CONTEXT_CHARS = 1000
 
 const generateRequirementImportSchema = aiRequirementImportBaseBodySchema
   .extend({
     count: requirementCandidateCountSchema,
     images: z
-      .array(
-        z
-          .object({
-            dataUrl: imageDataUrlSchema,
-          })
-          .strict(),
-      )
+      .array(z.object({ dataUrl: imageDataUrlSchema }).strict())
       .max(MAX_AI_IMAGES)
       .optional()
       .default([]),
@@ -105,9 +92,7 @@ function aiRequestBytesExceededResponse(): NextResponse {
   return NextResponse.json(
     {
       code: 'ai_request_bytes_exceeded',
-      details: {
-        maxBytes: AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES,
-      },
+      details: { maxBytes: AI_GENERATE_REQUIREMENT_IMPORT_MAX_REQUEST_BYTES },
       error: 'AI generation request exceeds the allowed size.',
     },
     { status: 413 },
@@ -118,59 +103,49 @@ function createStreamRecorder(
   context: RequestCorrelationIds,
   imageBytes: number,
   imageCount: number,
-  streamStartedAt: number,
+  startedAt: number,
 ) {
-  let recordedTerminalEvent = false
-
+  let recorded = false
   return (
     outcome: 'failure' | 'success',
     statusCode: number,
-    stats?: GenerationStats,
-  ) => {
-    if (recordedTerminalEvent) return
-    recordedTerminalEvent = true
-    const durationMs = Date.now() - streamStartedAt
-    recordCapacityEvent({
+    usage?: AiRunUsage,
+  ): void => {
+    if (recorded) return
+    recorded = true
+    const durationMs = Date.now() - startedAt
+    const event = {
       correlationId: context.correlationId,
       durationMs,
-      event:
-        outcome === 'success'
-          ? 'capacity.operation.completed'
-          : 'capacity.operation.failed',
       metrics: {
-        cost: stats?.cost,
         image_bytes: imageBytes,
         image_count: imageCount,
-        token_count: stats?.totalTokens,
+        token_count: usage ? aiUsageMetricValue(usage.totalTokens) : null,
       },
       operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
       outcome,
       requestId: context.requestId,
-      source: 'rest',
+      source: 'rest' as const,
       statusCode,
+    }
+    recordCapacityEvent({
+      ...event,
+      event:
+        outcome === 'success'
+          ? 'capacity.operation.completed'
+          : 'capacity.operation.failed',
     })
     if (durationMs >= AI_GENERATE_SLOW_THRESHOLD_MS) {
       recordCapacityEvent({
-        correlationId: context.correlationId,
-        durationMs,
+        ...event,
         event: 'capacity.threshold_exceeded',
         level: 'warn',
-        metrics: {
-          image_bytes: imageBytes,
-          image_count: imageCount,
-          token_count: stats?.totalTokens,
-        },
-        operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
-        outcome,
-        requestId: context.requestId,
-        source: 'rest',
-        statusCode,
       })
     }
   }
 }
 
-function parseAndValidatePayload(
+function validatePayload(
   rawContent: string,
   budget: RequirementImportBudget,
 ):
@@ -180,11 +155,7 @@ function parseAndValidatePayload(
     new TextEncoder().encode(rawContent).byteLength >
     REQUIREMENT_IMPORT_CONTENT_MAX_BYTES
   ) {
-    return {
-      code: 'import_content_bytes_exceeded',
-      ok: false,
-      status: 413,
-    }
+    return { code: 'import_content_bytes_exceeded', ok: false, status: 413 }
   }
   let parsed: unknown
   try {
@@ -192,30 +163,13 @@ function parseAndValidatePayload(
   } catch {
     return { code: 'ai_provider_invalid_response', ok: false, status: 503 }
   }
-
   const [budgetIssue] = validateImportContentBudget(parsed, budget)
-  if (budgetIssue) {
-    return { code: budgetIssue.code, ok: false, status: 422 }
-  }
+  if (budgetIssue) return { code: budgetIssue.code, ok: false, status: 422 }
   const validation =
     buildRequirementsImportPayloadSchema(budget).safeParse(parsed)
   return validation.success
     ? { ok: true, payload: validation.data }
     : { code: 'ai_provider_invalid_response', ok: false, status: 503 }
-}
-
-function imageMetadataForSafety(
-  images: GenerateRequirementImportBody['images'],
-): readonly AiSafetyScreenPart[] {
-  return images.map((image, index) => {
-    const commaIndex = image.dataUrl.indexOf(',')
-    const header =
-      commaIndex >= 0 ? image.dataUrl.slice(0, commaIndex) : 'data-url'
-    return {
-      label: `images.${index}.metadata`,
-      text: `image ${index + 1}: ${header}`,
-    }
-  })
 }
 
 export const POST = secureMutationRoute<GenerateRequirementImportBody>({
@@ -241,38 +195,24 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
     }
   },
   handler: async ({ body, context, db: authorizationDb, request }) => {
-    const { images, locale } = body
-    const imageBytes = countImageBytes(images)
     const db = authorizationDb ?? (await getRequestSqlServerDataSource())
-    const streamStartedAt = Date.now()
-    const recordStreamEvent = createStreamRecorder(
+    const recordTerminal = createStreamRecorder(
       context,
-      imageBytes,
-      images.length,
-      streamStartedAt,
+      countImageBytes(body.images),
+      body.images.length,
+      Date.now(),
     )
-
-    function recordSafetyFilterFailure(error: unknown) {
-      logSanitizedError('AI requirement import safety filter failed', error)
-      recordAiSafetyFilterFailure({
-        context,
-        error,
-        operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
-        request,
-      })
-    }
-
     try {
       const availability = await getAiGenerationAvailability(db)
       if (!availability.effectiveRequirementGenerationEnabled) {
         return createUnavailableAiStreamResponse(context, () =>
-          recordStreamEvent('failure', 503),
+          recordTerminal('failure', 503),
         )
       }
     } catch (error) {
       logSanitizedError('AI requirement import availability failed', error)
       return createUnavailableAiStreamResponse(context, () =>
-        recordStreamEvent('failure', 503),
+        recordTerminal('failure', 503),
       )
     }
 
@@ -280,25 +220,22 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
       blockedStep: 'ai_request_input',
       context,
       db,
-      locale,
-      onBlockedInput: () => recordStreamEvent('failure', 400),
+      locale: body.locale,
+      onBlockedInput: () => recordTerminal('failure', 400),
       onSafetyFilterFailure: error => {
-        recordSafetyFilterFailure(error)
+        logSanitizedError('AI requirement import safety filter failed', error)
         return createUnavailableAiStreamResponse(context, () =>
-          recordStreamEvent('failure', 503),
+          recordTerminal('failure', 503),
         )
       },
       operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
-      parts: [
-        { label: 'need', text: body.need },
-        ...imageMetadataForSafety(images),
-      ],
+      parts: [{ label: 'need', text: body.need }],
       request,
     })
     if (inputGuardResponse) return inputGuardResponse
 
-    let importInstruction: string
     let importBudget: RequirementImportBudget
+    let importInstruction: string
     try {
       importBudget = requirementImportBudgetFromSettings(
         await getApplicationSettings(db),
@@ -306,296 +243,165 @@ export const POST = secureMutationRoute<GenerateRequirementImportBody>({
       importInstruction = await createRequirementsRuntime(
         db,
       ).service.buildImportInstruction(
-        locale,
+        body.locale,
         requirementImportDestination(body),
       )
     } catch (error) {
-      logSanitizedError(
-        'AI requirement import instruction loading failed',
-        error,
-      )
+      logSanitizedError('AI requirement import instruction failed', error)
       return createUnavailableAiStreamResponse(context, () =>
-        recordStreamEvent('failure', 503),
+        recordTerminal('failure', 503),
       )
     }
-    const systemPrompt = buildRequirementImportSystemPrompt(
-      importInstruction,
-      locale,
-    )
-    const userPrompt = buildRequirementImportUserPrompt({
-      count: Math.min(body.count, importBudget.maxRows),
-      locale,
-      need: body.need,
-    })
-    const userContent = withImages(userPrompt, images)
 
-    let modelCapabilities: Awaited<
-      ReturnType<typeof resolveOpenRouterModelCapabilities>
-    >
+    let runtime: AiAuthoringRuntime
     try {
-      modelCapabilities = await resolveOpenRouterModelCapabilities(body.model, {
-        correlationId: context.correlationId,
-        requestId: context.requestId,
-      })
+      runtime = createProductionAiAuthoringRuntime(db)
     } catch (error) {
-      const providerError = normalizeAiProviderError(error, {
-        correlationId: context.correlationId,
-        operation: 'models.list',
-        requestId: context.requestId,
-      })
-      return createAiErrorStreamResponse(
-        context,
-        aiProviderStreamError(providerError),
-        statusCode => recordStreamEvent('failure', statusCode),
+      logSanitizedError('AI authoring runtime unavailable', error)
+      return createUnavailableAiStreamResponse(context, () =>
+        recordTerminal('failure', 503),
       )
     }
-    const resolvedModel = modelCapabilities.id
-    const providerEvents = generateChatStream({
-      format: buildRequirementImportResponseFormatSchema(locale, importBudget),
-      messages: [
-        { content: systemPrompt, role: 'system' },
-        { content: userContent, role: 'user' },
-      ],
-      model: resolvedModel,
-      correlationId: context.correlationId,
-      providerPreferences: body.providerPreferences,
-      reasoningEffort:
-        typeof body.reasoningEffort === 'string'
-          ? body.reasoningEffort
-          : undefined,
-      requestId: context.requestId,
-      signal: request.signal,
-      supportedParameters: modelCapabilities.supportedParameters,
+    const applicationRunId = randomUUID()
+    const run = runtime.run({
+      context: {
+        abortSignal: request.signal,
+        applicationRunId,
+        correlationId: context.correlationId,
+        deadlineAt: new Date(
+          Date.now() + AI_RUN_REQUEST_DEADLINE_MS,
+        ).toISOString(),
+        requestId: context.requestId,
+      },
+      task: {
+        content: toAiTaskContent(
+          buildRequirementImportUserPrompt({
+            count: Math.min(body.count, importBudget.maxRows),
+            locale: body.locale,
+            need: body.need,
+          }),
+          body.images,
+        ),
+        instructions: buildRequirementImportSystemPrompt(
+          importInstruction,
+          body.locale,
+        ),
+        responseSchema: buildRequirementImportResponseFormatSchema(
+          body.locale,
+          importBudget,
+        ),
+        validationSchema: buildRequirementsImportJsonSchema(
+          body.locale,
+          importBudget,
+        ),
+      },
+      type:
+        body.images.length > 0
+          ? 'generate_with_images'
+          : 'generate_without_images',
     })
-    let firstProviderEvent: IteratorResult<StreamEvent>
-    try {
-      firstProviderEvent = await providerEvents.next()
-    } catch (error) {
-      const providerError = normalizeAiProviderError(error, {
-        correlationId: context.correlationId,
-        modelProvider: modelCapabilities.provider,
-        operation: 'chat.completions',
-        requestId: context.requestId,
-      })
-      return createAiErrorStreamResponse(
-        context,
-        aiProviderStreamError(providerError),
-        statusCode => recordStreamEvent('failure', statusCode),
-      )
-    }
-    if (firstProviderEvent.done) {
-      recordStreamEvent('failure', 499)
-      return applyResponseCorrelationHeaders(
-        new Response(null, { status: 499 }),
-        context,
-      )
-    }
-    if (firstProviderEvent.value.phase === 'error') {
-      await providerEvents.return(undefined)
-      return createAiErrorStreamResponse(
-        context,
-        firstProviderEvent.value,
-        statusCode => recordStreamEvent('failure', statusCode),
-      )
-    }
-    const firstStreamEvent: StreamEvent = firstProviderEvent.value
-
-    async function* streamProviderEvents(): AsyncGenerator<StreamEvent> {
-      yield firstStreamEvent
-      yield* providerEvents
-    }
 
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder()
-
-        function send(event: string, data: unknown) {
+        const send = (event: string, data: unknown): void => {
           controller.enqueue(
             encoder.encode(
               `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
             ),
           )
         }
-
         try {
-          let sentGeneratingProgress = false
-          let screenedThinkingLength = 0
-          let latestThinking = ''
-          for await (const event of streamProviderEvents()) {
-            switch (event.phase) {
-              case 'thinking': {
-                let progressSafetyScreening: Awaited<
-                  ReturnType<typeof screenAiOutputDetailed>
-                >
-                const thinkingText = event.thinkingSoFar || event.chunk
-                const alreadyScreenedLength = Math.min(
-                  screenedThinkingLength,
-                  thinkingText.length,
-                )
-                const safetyWindowStart = Math.max(
-                  0,
-                  alreadyScreenedLength -
-                    STREAMED_REASONING_SAFETY_CONTEXT_CHARS,
-                )
-                try {
-                  progressSafetyScreening = await screenAiOutputDetailed(db, [
-                    {
-                      label: 'thinking',
-                      text: thinkingText.slice(safetyWindowStart),
-                    },
-                  ])
-                } catch (error) {
-                  recordSafetyFilterFailure(error)
-                  send('error', {
-                    code: 'ai_provider_unavailable',
-                    message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-                  })
-                  recordStreamEvent('failure', 503)
-                  return
-                }
-                if (!progressSafetyScreening.decision.allowed) {
-                  await recordAiSafetyBlock({
-                    blockedStep: 'streamed_reasoning',
-                    context,
-                    db,
-                    direction: 'output',
-                    event: 'ai.output_safety.blocked',
-                    model: resolvedModel,
-                    operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
-                    provider: modelCapabilities.provider,
-                    request,
-                    screening: progressSafetyScreening,
-                  })
-                  send('error', {
-                    message: formatAiSafetyBlockedMessage(
-                      body.locale,
-                      'outputSafetyBlocked',
-                      progressSafetyScreening.decision,
-                    ),
-                    model: resolvedModel,
-                  })
-                  recordStreamEvent('failure', 422)
-                  return
-                }
-                screenedThinkingLength = thinkingText.length
-                latestThinking = thinkingText
-                break
-              }
-              case 'generating':
-                if (!sentGeneratingProgress) {
-                  sentGeneratingProgress = true
-                  send('generating', { chunk: '' })
-                }
-                break
-              case 'done': {
-                const safeThinking = event.thinking || latestThinking
-                const payloadValidation = parseAndValidatePayload(
-                  event.rawContent,
-                  importBudget,
-                )
-                if (!payloadValidation.ok) {
-                  if (payloadValidation.code.startsWith('import_')) {
-                    send('error', {
-                      code: payloadValidation.code,
-                      message: 'Generated import exceeds the allowed budget.',
-                    })
-                  } else {
-                    const providerError = normalizeAiProviderError(null, {
-                      code: 'ai_provider_invalid_response',
-                      correlationId: context.correlationId,
-                      modelProvider: modelCapabilities.provider,
-                      operation: 'chat.completions',
-                      requestId: context.requestId,
-                    })
-                    const streamError = aiProviderStreamError(providerError)
-                    send('error', {
-                      code: streamError.code,
-                      message: streamError.message,
-                    })
-                  }
-                  recordStreamEvent(
-                    'failure',
-                    payloadValidation.status,
-                    event.stats,
-                  )
-                  return
-                }
-                let outputSafetyScreening: Awaited<
-                  ReturnType<typeof screenAiOutputDetailed>
-                >
-                try {
-                  outputSafetyScreening = await screenAiOutputDetailed(db, [
-                    { label: 'rawContent', text: event.rawContent },
-                    { label: 'thinking', text: safeThinking },
-                  ])
-                } catch (error) {
-                  recordSafetyFilterFailure(error)
-                  send('error', {
-                    code: 'ai_provider_unavailable',
-                    message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
-                  })
-                  recordStreamEvent('failure', 503, event.stats)
-                  return
-                }
-                if (!outputSafetyScreening.decision.allowed) {
-                  await recordAiSafetyBlock({
-                    blockedStep: 'final_model_output',
-                    context,
-                    db,
-                    direction: 'output',
-                    event: 'ai.output_safety.blocked',
-                    model: resolvedModel,
-                    operation: AI_GENERATE_REQUIREMENT_IMPORT_OPERATION,
-                    provider: modelCapabilities.provider,
-                    request,
-                    screening: outputSafetyScreening,
-                  })
-                  send('error', {
-                    message: formatAiSafetyBlockedMessage(
-                      body.locale,
-                      'outputSafetyBlocked',
-                      outputSafetyScreening.decision,
-                    ),
-                    model: resolvedModel,
-                    stats: event.stats,
-                  })
-                  recordStreamEvent('failure', 422, event.stats)
-                  return
-                }
-
-                const payload = payloadValidation.payload
-                const rawContent = JSON.stringify(payload)
-                if (safeThinking) {
-                  send('thinking', { thinkingSoFar: safeThinking })
-                }
-                send('done', {
-                  model: resolvedModel,
-                  payload,
-                  rawContent,
-                  stats: event.stats,
-                  thinking: safeThinking,
+          let terminal = false
+          let sentProgress = false
+          for await (const event of run) {
+            if (event.type === 'heartbeat') {
+              if (!sentProgress) send('generating', { chunk: '' })
+              sentProgress = true
+              continue
+            }
+            if (event.type === 'completed') {
+              const validation = validatePayload(event.rawOutput, importBudget)
+              if (!validation.ok) {
+                send('error', {
+                  code: validation.code,
+                  message: validation.code.startsWith('import_')
+                    ? 'Generated import exceeds the allowed budget.'
+                    : AI_PROVIDER_UNAVAILABLE_MESSAGE,
                 })
-                recordStreamEvent('success', 200, event.stats)
-                return
+                recordTerminal('failure', validation.status, event.usage)
+              } else {
+                const rawContent = JSON.stringify(validation.payload)
+                send('done', {
+                  payload: validation.payload,
+                  rawContent,
+                  stats: {
+                    totalTokens: aiUsageMetricValue(event.usage.totalTokens),
+                  },
+                  thinking: event.analysis ?? '',
+                })
+                recordTerminal('success', 200, event.usage)
               }
-              case 'error':
-                send('error', { code: event.code, message: event.message })
-                recordStreamEvent('failure', 503)
-                return
+              terminal = true
+              break
+            }
+            if (event.type === 'invalid_output') {
+              send('validation_error', {
+                issues: event.issues,
+                message: getPromptMessage(body.locale, [
+                  'ai',
+                  'validationErrors',
+                ]),
+                rawContent: event.rawOutput,
+                stats: {
+                  totalTokens: aiUsageMetricValue(event.usage.totalTokens),
+                },
+                thinking: event.analysis ?? '',
+              })
+              recordTerminal('failure', 422, event.usage)
+              terminal = true
+              break
+            }
+            if (event.type === 'failed') {
+              send('error', aiRunFailureError(event.failure, body.locale))
+              recordTerminal(
+                'failure',
+                event.failure.category === 'rate_limited' ? 429 : 503,
+              )
+              terminal = true
+              break
+            }
+            if (event.type === 'cancelled') {
+              if (!request.signal.aborted) {
+                send('error', {
+                  code: 'ai_provider_unavailable',
+                  message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+                })
+              }
+              recordTerminal('failure', 499)
+              terminal = true
+              break
             }
           }
+          if (!terminal && !request.signal.aborted) {
+            send('error', {
+              code: 'ai_provider_unavailable',
+              message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+            })
+            recordTerminal('failure', 503)
+          }
         } catch (error) {
-          const providerError = normalizeAiProviderError(error, {
-            correlationId: context.correlationId,
-            operation: 'chat.completions',
-            requestId: context.requestId,
-          })
-          const streamError = aiProviderStreamError(providerError)
-          send('error', {
-            code: streamError.code,
-            message: streamError.message,
-          })
-          recordStreamEvent('failure', 503)
+          const profileError = aiRunProfileError(error, body.locale)
+          if (!request.signal.aborted) {
+            send('error', {
+              code: profileError?.code ?? 'ai_provider_unavailable',
+              message: profileError?.message ?? AI_PROVIDER_UNAVAILABLE_MESSAGE,
+            })
+          }
+          if (!profileError) {
+            logSanitizedError('AI requirement import run failed', error)
+          }
+          recordTerminal('failure', request.signal.aborted ? 499 : 503)
         } finally {
           controller.close()
         }

@@ -12,40 +12,35 @@ import {
 } from '@/lib/ai/generation-availability'
 import type { AdminApplicationSettings } from '@/lib/application-settings'
 import { getAiSettings, putAiSettings } from '../ai-settings-test-helpers'
+import {
+  ADMIN_20_CONNECTION_NAME,
+  ADMIN_20_MODEL_NAME,
+  prepareAdmin20Fixture,
+} from './ai-connection-test-fixture'
 
 async function mockAiDialogReferenceData(page: Page) {
-  await page.route('**/api/ai/models?*', async route => {
+  await page.route('**/api/ai/authoring-profiles', async route => {
     await route.fulfill({
       contentType: 'application/json',
       json: {
-        models: [
-          {
-            contextLength: 200000,
-            id: 'anthropic/claude-sonnet-4',
-            name: 'Claude Sonnet 4',
-            pricing: {
-              completion: '0.000015',
-              prompt: '0.000003',
-              reasoning: '0.000015',
-            },
-            provider: 'anthropic',
-            supportedParameters: ['reasoning', 'stream', 'response_format'],
+        enabled: true,
+        profiles: {
+          generate_with_images: {
+            available: true,
+            connectionName: 'Godkänd AI-tjänst',
+            dataPolicySummary: 'Behandling inom EU; ingen träning',
           },
-        ],
-      },
-    })
-  })
-  await page.route('**/api/ai/credits', async route => {
-    await route.fulfill({
-      contentType: 'application/json',
-      json: {
-        isFreeTier: false,
-        limit: 50,
-        limitRemaining: 49,
-        managementKeyMissing: false,
-        totalCredits: 50,
-        usage: 1,
-        usageDaily: 1,
+          generate_without_images: {
+            available: true,
+            connectionName: 'Godkänd AI-tjänst',
+            dataPolicySummary: 'Behandling inom EU; ingen träning',
+          },
+          repair_invalid_import_json: {
+            available: true,
+            connectionName: 'Godkänd AI-tjänst',
+            dataPolicySummary: 'Behandling inom EU; ingen träning',
+          },
+        },
       },
     })
   })
@@ -755,4 +750,468 @@ test.describe('Admin settings', () => {
       }
     }
   })
+
+  test('ADMIN-21: A failed AI action stays visible with action and server error', async ({
+    page,
+  }) => {
+    await test.step('set up the failed catalog route', async () => {
+      await page.route('**/api/admin/ai-connections/*/actions', async route => {
+        const body = route.request().postDataJSON() as { action?: unknown }
+        if (body.action === 'fetch_catalog') {
+          await route.fulfill({
+            contentType: 'application/json',
+            json: {
+              error: 'The AI connection trust policy blocked the request.',
+            },
+            status: 500,
+          })
+          return
+        }
+        await route.fallback()
+      })
+    })
+
+    const alert = await test.step('trigger the catalog action', async () => {
+      await page.goto('/sv/admin?tab=settings')
+      const settings = page.locator('#settings-panel')
+      await expect(
+        settings.locator(':scope > div[aria-busy]').first(),
+      ).toHaveAttribute('aria-busy', 'false')
+      const connectionCard = settings
+        .locator('article')
+        .filter({ hasText: 'OpenRouter demo' })
+        .first()
+      await connectionCard
+        .getByRole('button', { name: /^OpenRouter demo OpenRouter/ })
+        .click()
+      await connectionCard
+        .getByRole('button', { name: 'Läs modellkatalog' })
+        .click()
+      return settings.getByRole('alert')
+    })
+
+    await test.step('validate the action alert', async () => {
+      await expect(alert).toContainText(
+        'Åtgärden "Läs modellkatalog" misslyckades. Fel: The AI connection trust policy blocked the request.',
+      )
+      await expect(alert).toBeInViewport()
+      await expect(alert.locator('..')).toHaveCSS('position', 'fixed')
+      await expect(alert).not.toContainText(
+        'Failed to perform AI connection action.',
+      )
+    })
+
+    await test.step('dismiss the action alert', async () => {
+      await alert.getByRole('button', { name: 'Stäng' }).click()
+      await expect(alert).toHaveCount(0)
+    })
+  })
+
+  for (const viewport of [
+    { height: 760, name: 'desktop', width: 1280 },
+    { height: 812, name: 'mobile', width: 375 },
+  ] as const) {
+    test(`ADMIN-20 (${viewport.name}): Admin verifies a model and controls a stable AI profile`, async ({
+      page,
+    }) => {
+      test.setTimeout(180_000)
+      const cleanup = await prepareAdmin20Fixture()
+      const administrationName = ADMIN_20_CONNECTION_NAME
+      const modelName = ADMIN_20_MODEL_NAME
+
+      try {
+        await page.setViewportSize(viewport)
+        await page.goto('/sv/admin?tab=settings')
+        const settings = page.locator('#settings-panel')
+        await expect(
+          settings.locator(':scope > div[aria-busy]').first(),
+        ).toHaveAttribute('aria-busy', 'false')
+
+        const connectionCard =
+          await test.step('connection creation', async () => {
+            await settings
+              .getByRole('button', { name: 'Lägg till AI-anslutning' })
+              .click()
+            const connectionDialog = page.getByRole('dialog', {
+              name: 'Lägg till AI-anslutning',
+            })
+            await connectionDialog
+              .getByLabel(/^Administrationsnamn/)
+              .fill(administrationName)
+            await connectionDialog
+              .getByLabel(/^Publikt namn/)
+              .fill(administrationName)
+            await connectionDialog
+              .getByLabel(/^Adapternyckel/)
+              .fill('controlled_test')
+            await connectionDialog.getByLabel(/^Adapterversion/).fill('1')
+            await connectionDialog
+              .getByLabel(/^Anslutningsadress/)
+              .fill('https://localhost:4443')
+            await connectionDialog
+              .getByLabel(/^TLS-policy/)
+              .fill('controlled_test')
+            await connectionDialog
+              .getByLabel(/^Egress-policy/)
+              .fill('controlled_test')
+            await connectionDialog
+              .getByLabel(/^Autentisering/)
+              .selectOption('static_secret')
+            await connectionDialog
+              .getByLabel(/^Sammanfattning av datapolicy/)
+              .fill('Intern information, ingen persondata och ingen lagring.')
+            await connectionDialog
+              .getByRole('button', { name: 'Spara anslutning' })
+              .click()
+            await expect(connectionDialog).toHaveCount(0)
+
+            const card = settings
+              .locator('article')
+              .filter({ hasText: administrationName })
+              .first()
+            await expect(card).toBeVisible()
+            await card
+              .getByRole('button', { name: new RegExp(administrationName) })
+              .click()
+            return card
+          })
+
+        await test.step('secret activation', async () => {
+          await connectionCard
+            .getByRole('button', { name: 'Hantera hemlighet' })
+            .click()
+          const secretDialog = page.getByRole('dialog', {
+            name: 'Leverantörshemlighet',
+          })
+          await secretDialog
+            .getByLabel(/^Ny leverantörshemlighet/)
+            .fill('pw-admin-20-controlled-secret')
+          await secretDialog
+            .getByRole('button', { name: 'Spara ny hemlighet' })
+            .click()
+          await expect(
+            secretDialog.getByText(
+              'Den nya krypterade leverantörshemligheten är klar för verifiering och aktivering.',
+            ),
+          ).toBeVisible()
+          await secretDialog
+            .getByRole('button', {
+              name: 'Verifiera och aktivera ny hemlighet',
+            })
+            .click()
+          await expect(secretDialog).toHaveCount(0)
+        })
+
+        await test.step('attestation', async () => {
+          await connectionCard
+            .getByRole('button', { name: 'Hantera attest' })
+            .click()
+          const attestationDialog = page.getByRole('dialog', {
+            name: 'Anslutningsattest',
+          })
+          await attestationDialog
+            .getByLabel(/^Organisationsenhetens referens-id/)
+            .fill(crypto.randomUUID())
+          await attestationDialog
+            .getByLabel(/^Leverantörsnamn/)
+            .fill('Kontrollerad testadapter')
+          await attestationDialog
+            .getByLabel(/^Högsta informationsklass/)
+            .fill('internal')
+          await attestationDialog
+            .getByLabel(/^Högsta lagringstid i dagar/)
+            .fill('0')
+          await attestationDialog.getByLabel(/^Behandlingsregioner/).fill('SE')
+          await attestationDialog
+            .getByLabel(/^Incidentprocessens referens-id/)
+            .fill(crypto.randomUUID())
+          await attestationDialog
+            .getByLabel(/^Beslutsreferens/)
+            .fill('PW-ADMIN-20')
+          await attestationDialog
+            .getByLabel(/^Granskad vid/)
+            .fill('2026-08-22T00:00:00.000Z')
+          await attestationDialog
+            .getByLabel(/^Nästa granskning/)
+            .fill('2099-08-22T00:00:00.000Z')
+          await attestationDialog
+            .getByLabel(/^Behandlar personuppgifter/)
+            .selectOption('false')
+          await attestationDialog
+            .getByLabel(/^Leverantörsträning tillåten/)
+            .selectOption('false')
+          await attestationDialog
+            .getByLabel(/^Godkänt syfte/)
+            .fill('Verifiera stabila körprofiler.')
+          await attestationDialog
+            .getByRole('button', { name: 'Spara attestutkast' })
+            .click()
+          await attestationDialog
+            .getByRole('button', { name: 'Godkänn sparad attest' })
+            .click()
+          await expect(attestationDialog).toHaveCount(0)
+        })
+
+        const { modelDialog, saveModelRevision } =
+          await test.step('model verification and cancellation', async () => {
+            await connectionCard
+              .getByRole('button', { name: 'Lägg till modell' })
+              .click()
+            const dialog = page.getByRole('dialog', {
+              name: 'Lägg till anslutningsmodell',
+            })
+            await dialog.getByLabel(/^Modellnamn/).fill(modelName)
+            await dialog
+              .getByLabel(/^Externt modell-id/)
+              .fill('controlled/model')
+            await dialog.getByLabel(/^Extern modellversion/).fill('2026-08-22')
+            await expect(
+              dialog.getByText('Inte testad', { exact: true }),
+            ).toHaveCount(7)
+            await expect(
+              dialog.getByRole('button', { name: 'Spara modellrevision' }),
+            ).toBeDisabled()
+
+            const verificationRoute = '**/api/admin/ai-connections/*/actions'
+            let releaseFirstVerification: () => void = () => undefined
+            const firstVerificationRelease = new Promise<void>(resolve => {
+              releaseFirstVerification = resolve
+            })
+            let markFirstVerificationStarted: () => void = () => undefined
+            const firstVerificationStarted = new Promise<void>(resolve => {
+              markFirstVerificationStarted = resolve
+            })
+            let holdFirstVerification = true
+            const delayedVerification = async (route: Route) => {
+              const body = route.request().postDataJSON() as { action?: string }
+              if (
+                holdFirstVerification &&
+                body.action === 'verify_model_candidate'
+              ) {
+                holdFirstVerification = false
+                markFirstVerificationStarted()
+                await firstVerificationRelease
+              }
+              await route.continue().catch(() => undefined)
+            }
+            await page.route(verificationRoute, delayedVerification)
+            try {
+              await dialog.getByRole('button', { name: 'Verifiera' }).click()
+              await firstVerificationStarted
+              await expect(
+                dialog.getByRole('button', { name: 'Avbryt verifiering' }),
+              ).toBeVisible()
+              await dialog
+                .getByRole('button', { name: 'Avbryt verifiering' })
+                .click()
+            } finally {
+              releaseFirstVerification()
+              await page.unroute(verificationRoute, delayedVerification)
+            }
+            await expect(
+              dialog.getByRole('button', { name: 'Verifiera' }),
+            ).toBeVisible()
+
+            await dialog.getByRole('button', { name: 'Verifiera' }).click()
+            await expect(
+              dialog.getByText(
+                'Verifieringen är klar. Granska resultatet och spara modellrevisionen separat.',
+              ),
+            ).toBeVisible()
+            await expect(
+              dialog.getByText('Verifierad', { exact: true }),
+            ).toHaveCount(9)
+            await expect(
+              dialog.getByText('Kravgenerering utan bilder: Stöds'),
+            ).toBeVisible()
+            await expect(
+              dialog
+                .getByRole('group', { name: 'Verifieringsförlopp' })
+                .getByRole('listitem'),
+            ).toHaveText([
+              /Anslutning och autentisering — Verifierad/,
+              /Grundläggande modellåtkomst — Verifierad/,
+              /Förmåga: AI-analys — Verifierad/,
+              /Förmåga: kostnad — Verifierad/,
+              /Förmåga: bildindata — Verifierad/,
+              /Förmåga: styrning med JSON-schema — Verifierad/,
+              /Förmåga: strömning — Verifierad/,
+              /Förmåga: tokenanvändning — Verifierad/,
+              /Förmåga: validerbar JSON — Verifierad/,
+              /Körprofil: generering utan bilder — Verifierad/,
+              /Körprofil: generering med bilder — Verifierad/,
+              /Körprofil: reparation av ogiltig JSON — Verifierad/,
+              /Slutsammanfattning — Verifierad/,
+            ])
+            return {
+              modelDialog: dialog,
+              saveModelRevision: dialog.getByRole('button', {
+                name: 'Spara modellrevision',
+              }),
+            }
+          })
+        await test.step('revision saving', async () => {
+          await modelDialog
+            .getByLabel(/^Modellnamn/)
+            .fill(`${modelName} presentation`)
+          await expect(saveModelRevision).toBeEnabled()
+          await modelDialog.getByLabel(/^Modellnamn/).fill(modelName)
+          await modelDialog
+            .getByLabel(/^Extern modellversion/)
+            .fill('2026-08-22-technical-change')
+          await expect(saveModelRevision).toBeDisabled()
+          await expect(
+            modelDialog.getByText('Inte testad', { exact: true }),
+          ).toHaveCount(7)
+          await modelDialog
+            .getByLabel(/^Extern modellversion/)
+            .fill('2026-08-22')
+          await modelDialog.getByRole('button', { name: 'Verifiera' }).click()
+          await expect(saveModelRevision).toBeEnabled()
+          await saveModelRevision.click()
+          await expect(modelDialog).toHaveCount(0)
+        })
+
+        await test.step('connection activation', async () => {
+          await connectionCard
+            .getByRole('button', { name: 'Aktivera anslutning' })
+            .click()
+          await expect(
+            connectionCard.getByText('Aktiv', { exact: true }),
+          ).toBeVisible()
+        })
+
+        const profileCard = await test.step('profile editing', async () => {
+          const card = settings
+            .locator('article')
+            .filter({ hasText: 'Kravgenerering utan bilder' })
+            .last()
+          await card.getByRole('button', { name: 'Redigera körprofil' }).click()
+          const profileDialog = page.getByRole('dialog', {
+            name: 'Körprofil',
+          })
+          const modelSelect = profileDialog.getByLabel(/^Modellrevision/)
+          await expect(modelSelect.locator('option')).toHaveCount(2)
+          await modelSelect.selectOption({ index: 1 })
+          const modelOptionValue = await modelSelect.inputValue()
+          await expect(
+            modelSelect.locator(`option[value="${modelOptionValue}"]`),
+          ).toContainText(`${modelName} · 1 — Rekommenderad`)
+          await profileDialog.getByText('Avancerade driftbudgetar').click()
+          await expect(
+            profileDialog.getByLabel(/^Maximalt antal utdatatoken/),
+          ).toBeVisible()
+          const totalBudget = profileDialog.getByLabel(/^Total tidsbudget/)
+          const originalTotalBudget = await totalBudget.inputValue()
+          const saveProfile = profileDialog.getByRole('button', {
+            name: 'Spara',
+          })
+          await totalBudget.fill('')
+          await expect(saveProfile).toBeDisabled()
+          await totalBudget.fill(originalTotalBudget)
+          await expect(saveProfile).toBeEnabled()
+          await saveProfile.click()
+          await expect(profileDialog).toHaveCount(0)
+          await expect(card.getByRole('status')).toHaveText('Aktiv')
+          await card.getByRole('button', { name: 'Redigera körprofil' }).click()
+          await expect(profileDialog).toContainText(
+            'Sparade ändringar börjar gälla direkt för nya körningar. Pågående körningar behåller konfigurationen som togs när de startade.',
+          )
+          await profileDialog.getByRole('button', { name: 'Stäng' }).click()
+          await expect(profileDialog).toHaveCount(0)
+          return card
+        })
+
+        await test.step('pause and resume', async () => {
+          await profileCard
+            .getByRole('button', { name: 'Pausa körprofil' })
+            .click()
+          const pauseDialog = page.getByRole('alertdialog', {
+            name: 'Pausa körprofil?',
+          })
+          await expect(pauseDialog).toContainText(
+            'Pausning avbryter köade och pågående körningar för profilen. Avbrutna körningar startas inte om när profilen återupptas.',
+          )
+          await pauseDialog
+            .getByRole('button', { name: 'Pausa körprofil' })
+            .click()
+          await expect(profileCard.getByRole('status')).toHaveText('Pausad')
+          await profileCard.getByRole('button', { name: 'Återuppta' }).click()
+          await expect(profileCard.getByRole('status')).toHaveText('Aktiv')
+        })
+
+        const modelCard = await test.step('dependency handling', async () => {
+          const card = connectionCard
+            .locator('section')
+            .filter({ hasText: modelName })
+            .first()
+          const endRevisionButton = card.getByRole('button', {
+            name: 'Avsluta revision',
+          })
+          await expect(endRevisionButton).toBeDisabled()
+          await expect(endRevisionButton).toHaveAttribute(
+            'title',
+            'Modellen används av en körprofil. Ta bort den från profilen eller välj en annan modell först.',
+          )
+          await expect(
+            connectionCard
+              .getByRole('heading', { name: 'Påverkan på körprofiler' })
+              .locator('..'),
+          ).toContainText('Kravgenerering utan bilder')
+
+          await profileCard
+            .getByRole('button', { name: 'Redigera körprofil' })
+            .click()
+          const profileDialog = page.getByRole('dialog', { name: 'Körprofil' })
+          await profileDialog
+            .getByRole('button', { name: 'Koppla bort modell' })
+            .click()
+          await profileDialog.getByRole('button', { name: 'Spara' }).click()
+          await expect(profileDialog).toHaveCount(0)
+          await expect(profileCard.getByRole('status')).toHaveText(
+            'Ej konfigurerad',
+          )
+          await expect(
+            profileCard.getByRole('button', { name: 'Pausa körprofil' }),
+          ).toHaveCount(0)
+          return card
+        })
+
+        await test.step('revision ending', async () => {
+          await modelCard
+            .getByRole('button', { name: 'Avsluta revision' })
+            .click()
+          const endDialog = page.getByRole('alertdialog', {
+            name: 'Avsluta modellrevision?',
+          })
+          await endDialog
+            .getByRole('button', { name: 'Avsluta revision' })
+            .click()
+          await expect(
+            modelCard.getByText('Avslutad', { exact: true }),
+          ).toBeVisible()
+        })
+
+        await test.step('permanent deletion', async () => {
+          await modelCard
+            .getByRole('button', { name: 'Radera permanent' })
+            .click()
+          const deleteDialog = page.getByRole('alertdialog', {
+            name: 'Radera modellrevision permanent?',
+          })
+          await expect(deleteDialog).toContainText(
+            'Anslutningsmodellen raderas också eftersom inga revisioner återstår.',
+          )
+          await deleteDialog
+            .getByRole('button', { name: 'Radera permanent' })
+            .click()
+          await expect(
+            connectionCard.getByText(modelName, { exact: true }),
+          ).toHaveCount(0)
+        })
+      } finally {
+        await cleanup()
+      }
+    })
+  }
 })

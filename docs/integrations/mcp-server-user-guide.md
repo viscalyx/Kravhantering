@@ -42,8 +42,16 @@ agents can use it reliably.
   `{kind:"requirements_specification", specificationId}`. If the specification
   is unknown, ask the user and use `requirements_manage_import`
   `list_destinations` or `search_destinations` to resolve it before requesting
-  the instruction. This is Kravhantering guidance and does not override or
-  replace the JSON Schema.
+  instruction. This is Kravhantering guidance and does not override or replace
+  the JSON Schema.
+
+  Requirement-package reference data contains only stable ID, package name,
+  and purpose and scope. It excludes package-lead names, HSA IDs, email
+  addresses, and other structured person identifiers. The MCP server does not
+  offer AI generation or open provider egress. If an MCP client sends the
+  instruction or source material to an AI provider, that egress and its privacy
+  controls are client-owned; Kravhantering's deny-collection and zero-retention
+  minimum applies only to server-owned AI requests.
 - `requirements_manage_norm_reference`
   List, search, get, or create Normbibliotek norm references, and list the
   connected library Krav IDs for one norm reference. Use list/search to resolve

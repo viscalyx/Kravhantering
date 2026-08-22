@@ -157,6 +157,9 @@ alias.
 
 The `AI` section manages AI-assisted requirement generation. Its
 `AI assistance` subsection contains the requirement-generation toggle,
+its `AI connections and run profiles` subsection contains an administrator
+registry for provider-independent connections, model revisions,
+attestations, write-only provider secrets, and the three fixed run profiles,
 its `AI security` section contains the safety-rule cache time and editable AI
 safety-rule terms, and its
 `MCP interface` section contains the MCP request/session payload limit and MCP
@@ -165,6 +168,60 @@ successful session creations per fixed 10-minute window, and global reserved
 validation-session storage. The section has no shared Save button; controls save
 directly when changed, with per-control or per-row status. Numeric controls
 show their allowed range and step directly under the control.
+
+Demo seed provisions ordinary administrator-managed draft connections and does
+not add runtime provenance or special connection behavior. Model catalog
+results are optional hints belonging to the connection that produced them;
+they are never verification evidence. The application owns fixed capability
+minimums for exactly three stable profiles. Administrators select a compatible
+verified model revision directly and may adjust only bounded runtime budgets.
+Each save increments the stable profile's configuration version and affects
+new runs only. Pausing a profile requests cancellation of its queued and
+running work while preserving the selection.
+
+A model revision cannot be ended or deleted while a stable profile selects it
+or queued, retrying, or running work uses it. The administrator must first
+disconnect the profile or select a replacement. Ending is irreversible;
+permanent deletion is then separately confirmed and removes the model
+container when its final revision disappears. Catalog entries already
+registered by another non-removed connection model are omitted when a model is
+added or edited, and the server rejects the same external model ID and version
+across two connection models on one connection.
+
+Adapter availability is derived from the server-side Admin adapter registry,
+not from adapter names in the browser. An unregistered adapter leaves ordinary
+connection, attestation, and credential administration available while model
+catalog discovery, connection and model verification, health probes, and
+activation are disabled with an explicit explanation.
+
+The model form starts every capability as read-only `Not checked`. One
+streaming, abortable verification runs connection authentication, baseline
+model access, every capability, every stable-profile combination, and a final
+summary in fixed order. It retries a transient failure once and has one
+60-second total limit. A model revision can be saved only from a server-bound,
+15-minute verification attempt with a successful baseline, decisive capability
+outcomes, and at least one compatible profile. Changing a technical field
+invalidates the attempt; name and description remain editable. Saved revisions
+are immediately `verified`. Connection changes or concrete contradictions mark
+them `new_revision_required`; replacement requires a newly verified revision.
+
+The stable-profile form lists all model revisions but disables ended,
+replacement-required, inactive-connection, or incompatible choices with the
+exact reason. The newest usable revision per model is recommended. A profile
+may be disconnected explicitly. Its badges independently show configuration
+as `Unconfigured`, `Configured`, or `Blocked` and operation as `Active` or
+`Paused`.
+
+The OpenRouter adapter treats streaming as an API transport capability rather
+than a per-model `supported_parameters` value. Reasoning parameters in the
+catalog mean that visible AI analysis is unknown, not supported: the bounded
+functional probe must observe a separate plaintext or summarized analysis
+field. Missing or encrypted-only reasoning does not satisfy the visible
+AI-analysis capability. A failed model verification returns only bounded,
+content-free diagnostics: its safe failure category, failed declared
+capabilities, and failed fixed checks. The Admin UI keeps this warning open
+until the administrator dismisses it; success and ordinary informational
+feedback still close automatically.
 
 The source of truth is:
 
@@ -177,6 +234,14 @@ The source of truth is:
 - admin API: `PATCH/DELETE /api/admin/ai-safety-rules/terms/{id}`
 - admin API: `POST /api/admin/ai-safety-rules/terms/remove`
 - admin API: `POST /api/admin/ai-safety-rules/{ruleId}/restore-defaults`
+- connection registry API: `GET/POST /api/admin/ai-connections`
+- connection detail API: `GET/PATCH /api/admin/ai-connections/{connectionId}`
+- connection workflow API:
+  `POST /api/admin/ai-connections/{connectionId}/actions`
+- run-profile API: `GET /api/admin/ai-run-profiles`
+- stable run-profile API: `PATCH /api/admin/ai-run-profiles/{profileKey}`
+- run-profile operational workflow API:
+  `POST /api/admin/ai-run-profiles/{profileKey}/actions`
 - forensic control API: `GET/POST/PATCH /api/admin/ai-forensic-captures`
 - hard override: `AI_REQUIREMENT_GENERATION_DISABLED`
 
@@ -205,6 +270,16 @@ quota equality is accepted. Changes are audited as privileged setting changes
 and apply to new `validate` admission checks; lowering a quota does not delete
 existing sessions.
 
+The connection registry separates administrative lifecycle from operational
+health and keeps at most one connection expanded. Connection and model changes
+are draft revisions until their explicit checks pass. Activation fails closed
+on incomplete attestation, deployment egress/TLS/data-policy denial, missing
+secret where authentication requires one, missing verification evidence, or
+an incompatible run-profile capability policy. Provider secrets are entered
+and rotated through a write-only modal and are never returned to the browser.
+There is no automatic connection or model fallback. Suspending and recovering
+a connection or run profile is always an explicit administrative action.
+
 Forensic evidence capture is not an AI setting or a persistent toggle. An Admin
 creates a request through `POST /api/admin/ai-forensic-captures` with an exact
 operation, direction, and explicit expiry 5–60 minutes in the future. A
@@ -226,7 +301,7 @@ removed.
 When effective generation is disabled, the requirements-library AI action stays
 visible but disabled with an explanatory tooltip. An already-open generator
 dialog disables its Generate button. The REST generation path also fails before
-taxonomy, model-catalog, or provider calls.
+taxonomy loading or adapter egress.
 
 The MCP payload/session limit defaults to exactly `10 MiB` (`10485760` bytes).
 Admins can raise or lower it in `1 MiB` increments within the `1 MiB` to

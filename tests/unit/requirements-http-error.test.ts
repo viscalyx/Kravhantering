@@ -56,6 +56,116 @@ describe('toHttpErrorPayload', () => {
     })
   })
 
+  it('allowlists only localizable AI activation blockers', () => {
+    const result = toHttpErrorPayload(
+      validationError('The candidate profile is blocked', {
+        blockers: [
+          { code: 'capability_policy_invalid', field: 'imageInput' },
+          { code: 'data_policy_missing' },
+          { code: 'egress_policy_blocked' },
+        ],
+        httpStatus: 422,
+        providerResponse: 'must remain private',
+      }),
+      { safeDetails: 'ai_admin_blockers' },
+    )
+
+    expect(result).toEqual({
+      body: {
+        code: 'validation',
+        details: {
+          blockers: [
+            { code: 'capability_policy_invalid', field: 'imageInput' },
+            { code: 'data_policy_missing' },
+            { code: 'egress_policy_blocked' },
+          ],
+        },
+        error: 'The candidate profile is blocked',
+      },
+      status: 422,
+    })
+    expect(JSON.stringify(result)).not.toContain('providerResponse')
+    expect(JSON.stringify(result)).not.toContain('must remain private')
+  })
+
+  it.each([
+    {
+      blockers: [{ code: 'provider_secret_leaked', field: 'imageInput' }],
+    },
+    {
+      blockers: [
+        { code: 'capability_policy_invalid', field: 'providerSecret' },
+      ],
+    },
+    { blockers: ['capability_policy_invalid'] },
+    { blockers: [] },
+    {
+      blockers: Array.from({ length: 17 }, () => ({
+        code: 'connection_inactive',
+      })),
+    },
+  ])('fails closed for malformed AI blocker payload %#', ({ blockers }) => {
+    expect(
+      toHttpErrorPayload(
+        validationError('The candidate profile is blocked', { blockers }),
+        { safeDetails: 'ai_admin_blockers' },
+      ).body.details,
+    ).toBeUndefined()
+  })
+
+  it('does not expose AI blockers without an explicit route contract', () => {
+    expect(
+      toHttpErrorPayload(
+        validationError('The candidate profile is blocked', {
+          blockers: [{ code: 'connection_inactive' }],
+        }),
+      ).body.details,
+    ).toBeUndefined()
+  })
+
+  it('allowlists only bounded AI model dependency details', () => {
+    const result = toHttpErrorPayload(
+      conflictError('AI model revision is still in use.', {
+        profileKeys: ['generation_without_images', 'generation_with_images'],
+        providerResponse: 'must remain private',
+        runCount: 2,
+      }),
+      { safeDetails: 'ai_admin_model_dependencies' },
+    )
+
+    expect(result).toEqual({
+      body: {
+        code: 'conflict',
+        details: {
+          profileKeys: ['generation_without_images', 'generation_with_images'],
+          runCount: 2,
+        },
+        error: 'AI model revision is still in use.',
+      },
+      status: 409,
+    })
+    expect(JSON.stringify(result)).not.toContain('providerResponse')
+  })
+
+  it.each([
+    { profileKeys: ['unknown_profile'], runCount: 0 },
+    {
+      profileKeys: ['generation_without_images', 'generation_without_images'],
+      runCount: 1,
+    },
+    { profileKeys: [], runCount: 0 },
+    { profileKeys: ['generation_without_images'], runCount: -1 },
+    { profileKeys: ['generation_without_images'], runCount: 1.5 },
+    { profileKeys: 'generation_without_images', runCount: 0 },
+  ])('fails closed for malformed AI model dependency details %#', details => {
+    expect(
+      toHttpErrorPayload(
+        conflictError('AI model revision is still in use.', details),
+        { safeDetails: 'ai_admin_model_dependencies' },
+      ).body.details,
+    ).toBeUndefined()
+  })
+
   it('allowlists only safe stale edit conflict details', () => {
     const result = toHttpErrorPayload(
       conflictError('This requirement was updated', {

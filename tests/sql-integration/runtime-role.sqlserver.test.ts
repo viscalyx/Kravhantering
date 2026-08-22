@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   createArea,
@@ -524,6 +525,115 @@ describe('least-privilege SQL Server runtime role', () => {
     await adminDb.query('DELETE FROM access_review_runs WHERE id = @0', [
       reviewRunId,
     ])
+  })
+
+  it('permits evidence cleanup but not mutation and limits production cancellation columns', async () => {
+    const connectionId = randomUUID()
+    const modelId = randomUUID()
+    const modelRevisionId = randomUUID()
+    const profileId = randomUUID()
+    const evidenceId = randomUUID()
+    const runId = randomUUID()
+    const fence = randomUUID()
+    await adminDb.query(
+      `INSERT INTO [ai_connections] (
+         [id], [administration_name], [public_name], [adapter_key],
+         [adapter_version], [endpoint_url], [authentication_type],
+         [tls_policy_key], [egress_policy_key], [data_policy_summary],
+         [lifecycle_status], [configuration_version], [maximum_concurrency],
+         [created_at], [updated_at]
+       ) VALUES (
+         @0, N'Runtime AI evidence', N'Runtime AI evidence', N'controlled_test',
+         N'1', N'https://ai.example.test/v1', N'none', N'public_web_pki',
+         N'runtime_test', N'No production data', N'active', 1, 1,
+         SYSUTCDATETIME(), SYSUTCDATETIME()
+       );
+       INSERT INTO [ai_connection_models] (
+         [id], [ai_connection_id], [name], [created_at], [updated_at]
+       ) VALUES (@1, @0, N'Runtime model', SYSUTCDATETIME(), SYSUTCDATETIME());
+       INSERT INTO [ai_connection_model_revisions] (
+         [id], [ai_connection_model_id], [revision_number],
+         [connection_configuration_version], [status], [external_model_id],
+         [declared_capabilities_json], [created_at], [updated_at]
+       ) VALUES (@2, @1, 1, 1, N'new_revision_required', N'runtime/model', N'{}',
+         SYSUTCDATETIME(), SYSUTCDATETIME());
+       INSERT INTO [ai_run_profiles] (
+         [id], [profile_key], [ai_connection_model_revision_id],
+         [operational_status], [created_at], [updated_at]
+       ) VALUES (@3, N'generation_without_images', @2, N'enabled',
+         SYSUTCDATETIME(), SYSUTCDATETIME());`,
+      [connectionId, modelId, modelRevisionId, profileId],
+    )
+    try {
+      await expect(
+        runtimeDb.query(
+          `INSERT INTO [ai_connection_verification_evidence] (
+             [id], [ai_connection_id], [connection_configuration_version],
+             [outcome], [test_suite_version], [adapter_version],
+             [configuration_fingerprint], [failure_category], [details_json],
+             [verified_at], [expires_at]
+           ) VALUES (@0, @1, 1, N'passed', N'runtime-role-v1', N'1',
+             REPLICATE('a', 64), NULL, N'{}', SYSUTCDATETIME(),
+             DATEADD(day, 1, SYSUTCDATETIME()))`,
+          [evidenceId, connectionId],
+        ),
+      ).resolves.toBeUndefined()
+      await expect(
+        runtimeDb.query(
+          `UPDATE [ai_connection_verification_evidence]
+           SET [expires_at] = SYSUTCDATETIME() WHERE [id] = @0`,
+          [evidenceId],
+        ),
+      ).rejects.toThrow(/permission|denied/u)
+      await expect(
+        runtimeDb.query(
+          `DELETE FROM [ai_connection_verification_evidence] WHERE [id] = @0`,
+          [evidenceId],
+        ),
+      ).resolves.toBeDefined()
+
+      await adminDb.query(
+        `INSERT INTO [ai_run_coordination_entries] (
+           [application_run_id], [fencing_token], [ai_connection_id],
+           [ai_connection_model_revision_id], [ai_run_profile_id],
+           [ai_run_profile_configuration_version],
+           [status], [attempt_count], [lease_owner_id], [lease_expires_at],
+           [not_before], [total_deadline_at], [created_at], [updated_at]
+         ) VALUES (@0, @1, @2, @3, @4, 1, N'running', 1, @1,
+           DATEADD(second, 30, SYSUTCDATETIME()), SYSUTCDATETIME(),
+           DATEADD(minute, 1, SYSUTCDATETIME()), SYSUTCDATETIME(),
+           SYSUTCDATETIME())`,
+        [runId, fence, connectionId, modelRevisionId, profileId],
+      )
+      await expect(
+        runtimeDb.query(
+          `UPDATE [ai_run_coordination_entries]
+           SET [cancellation_requested_at] = SYSUTCDATETIME(),
+             [cancellation_reason] = N'connection_suspended'
+           WHERE [application_run_id] = @0 AND [fencing_token] = @1`,
+          [runId, fence],
+        ),
+      ).resolves.toBeUndefined()
+      await expect(
+        runtimeDb.query(
+          `UPDATE [ai_run_coordination_entries]
+           SET [total_deadline_at] = DATEADD(hour, 1, [total_deadline_at])
+           WHERE [application_run_id] = @0`,
+          [runId],
+        ),
+      ).rejects.toThrow(/permission|denied/u)
+    } finally {
+      await adminDb.query(
+        `DELETE FROM [ai_run_coordination_entries]
+         WHERE [application_run_id] = @0;
+         DELETE FROM [ai_connection_verification_evidence] WHERE [id] = @1;
+         DELETE FROM [ai_run_profiles] WHERE [id] = @2;
+         DELETE FROM [ai_connection_model_revisions] WHERE [id] = @3;
+         DELETE FROM [ai_connection_models] WHERE [id] = @4;
+         DELETE FROM [ai_connections] WHERE [id] = @5;`,
+        [runId, evidenceId, profileId, modelRevisionId, modelId, connectionId],
+      )
+    }
   })
 
   it('allows the migration identity and denies the runtime identity schema access', async () => {

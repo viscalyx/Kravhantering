@@ -10,6 +10,7 @@ import {
 } from '@/lib/http/response-policy'
 import {
   getErrorMessage,
+  getSafeErrorMessage,
   logSanitizedError,
   redactSensitiveText,
 } from '@/lib/http/safe-errors'
@@ -27,7 +28,10 @@ import {
   isRequirementsServiceError,
   unauthorizedError,
 } from '@/lib/requirements/errors'
-import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import {
+  type HttpErrorPayloadOptions,
+  toHttpErrorPayload,
+} from '@/lib/requirements/http-errors'
 import { recordAuthorizationDeniedAuditFailure } from '@/lib/requirements/security-audit'
 
 export type MutationRouteContext = {
@@ -96,6 +100,7 @@ export interface SecureMutationRouteOptions<TBody, TParams> {
   handler: (
     args: SecureMutationHandlerArgs<TBody, TParams>,
   ) => Promise<Response> | Response
+  handlerErrorDetails?: HttpErrorPayloadOptions['safeDetails']
   paramsSchema?: ZodType<TParams>
   policy: MutationPolicy<NoInferMutation<TBody>, NoInferMutation<TParams>>
   preParse?: (
@@ -127,13 +132,17 @@ function unexpectedErrorBody(
     ...(process.env.NODE_ENV === 'development'
       ? { debugMessage: redactSensitiveText(getErrorMessage(error)) }
       : {}),
-    error: message,
+    error: getSafeErrorMessage(error) ?? message,
   }
 }
 
-function errorResponse(message: string, error: unknown): NextResponse {
+function errorResponse(
+  message: string,
+  error: unknown,
+  safeDetails?: HttpErrorPayloadOptions['safeDetails'],
+): NextResponse {
   if (error instanceof CsrfError || isRequirementsServiceError(error)) {
-    const { body, status } = toHttpErrorPayload(error)
+    const { body, status } = toHttpErrorPayload(error, { safeDetails })
     return NextResponse.json(body, { status })
   }
 
@@ -357,7 +366,7 @@ export function secureMutationRoute<TBody = undefined, TParams = undefined>(
       return decorateErrorResponse(
         options,
         request,
-        errorResponse(errorMessage, error),
+        errorResponse(errorMessage, error, options.handlerErrorDetails),
       )
     }
   }
