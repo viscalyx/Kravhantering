@@ -59,8 +59,9 @@ describe('AI connections data model migration', () => {
       'ai_connection_model_revisions',
       'ai_connection_model_verification_evidence',
       'ai_run_profiles',
-      'ai_run_profile_revisions',
       'ai_connection_model_operational_states',
+      'ai_provider_secret_versions',
+      'ai_run_coordination_entries',
     ]) {
       expect(sql).toContain(`CREATE TABLE [${table}]`)
     }
@@ -74,34 +75,19 @@ describe('AI connections data model migration', () => {
       'CONSTRAINT [uq_ai_connection_model_revisions_model_revision] UNIQUE ([ai_connection_model_id], [revision_number])',
     )
     expect(sql).toContain(
-      'CREATE UNIQUE INDEX [uq_ai_run_profile_revisions_active_profile]',
+      'CREATE UNIQUE INDEX [uq_ai_run_profiles_profile_key]',
     )
-    expect(sql).toContain("WHERE [status] = N'active'")
-    expect(sql).toContain(
-      'CREATE UNIQUE INDEX [uq_ai_run_profile_revisions_draft_profile]',
-    )
-    expect(sql).toContain("WHERE [status] = N'draft'")
     expect(sql).toContain(
       'FOREIGN KEY ([ai_connection_model_revision_id]) REFERENCES [ai_connection_model_revisions] ([id]) ON DELETE NO ACTION ON UPDATE NO ACTION',
     )
     expect(sql).toContain(
       'CONSTRAINT [chk_ai_connection_model_revisions_declared_capabilities_json]',
     )
-    expect(sql).toContain(
-      'CONSTRAINT [chk_ai_run_profile_revisions_capability_policy_json]',
-    )
+    expect(sql).toContain('CONSTRAINT [chk_ai_run_profiles_queue_capacity]')
     expect(sql).toContain(
       'CREATE TRIGGER [trg_ai_connection_model_revisions_immutable]',
     )
-    expect(sql).toContain(
-      'CREATE TRIGGER [trg_ai_run_profile_revisions_immutable]',
-    )
-    expect(sql).toContain(
-      'CREATE TRIGGER [trg_ai_connection_model_revisions_delete_drafts_only]',
-    )
-    expect(sql).toContain(
-      'CREATE TRIGGER [trg_ai_run_profile_revisions_delete_drafts_only]',
-    )
+    expect(sql).not.toContain('ai_run_profile_revisions')
     expect(sql).toContain('[maximum_concurrency] int NOT NULL')
     expect(sql).toContain('[is_personal_data_processed] bit NULL')
     expect(sql).toContain(
@@ -112,9 +98,9 @@ describe('AI connections data model migration', () => {
     expect(sql).not.toContain('[incident_contact]')
   })
 
-  it('mirrors stable-profile migration checks in EntitySchema metadata', async () => {
+  it('mirrors consolidated AI checks in EntitySchema metadata', async () => {
     const migration = await import(
-      '@/typeorm/migrations/0066_ai_verified_models_and_stable_profiles.mjs'
+      '@/typeorm/migrations/0060_ai_connections_data_model.mjs'
     )
     const queryRunner = { query: vi.fn(async (_statement: string) => {}) }
 
@@ -136,6 +122,7 @@ describe('AI connections data model migration', () => {
       'ai_run_profiles',
       'ai_run_coordination_entries',
       'ai_connection_model_operational_states',
+      'ai_provider_secret_versions',
     ])
     const entityChecks = sqlServerEntities
       .filter(
@@ -162,17 +149,15 @@ describe('AI connections data model migration', () => {
     const statements = queryRunner.query.mock.calls.map(([statement]) =>
       String(statement),
     )
-    expect(statements[0]).toContain(
-      'DROP TABLE [ai_connection_model_operational_states]',
-    )
+    expect(statements[0]).toContain('DROP TABLE [ai_run_coordination_entries]')
     expect(statements.at(-1)).toContain('DROP TABLE [ai_connections]')
   })
 })
 
-describe('stable AI run-profile migration', () => {
-  it('moves live configuration onto fixed profiles and retires profile revisions', async () => {
+describe('consolidated stable AI run-profile schema', () => {
+  it('creates fixed profiles directly without transitional revision history', async () => {
     const migration = await import(
-      '@/typeorm/migrations/0066_ai_verified_models_and_stable_profiles.mjs'
+      '@/typeorm/migrations/0060_ai_connections_data_model.mjs'
     )
     const queryRunner = { query: vi.fn(async (_statement: string) => {}) }
 
@@ -181,11 +166,12 @@ describe('stable AI run-profile migration', () => {
     const sql = queryRunner.query.mock.calls
       .map(([statement]) => String(statement))
       .join('\n')
-    expect(sql).toContain('ALTER TABLE [ai_run_profiles] ADD')
+    expect(sql).toContain('CREATE TABLE [ai_run_profiles]')
     expect(sql).toContain('[configuration_version] int NOT NULL')
     expect(sql).toContain('[ai_connection_model_revision_id] uniqueidentifier')
     expect(sql).toContain('[ai_run_profile_configuration_version] int NOT NULL')
-    expect(sql).toContain('DROP TABLE [ai_run_profile_revisions]')
+    expect(sql).not.toContain('ai_run_profile_revisions')
+    expect(sql).not.toContain('sp_rename')
     expect(sql).toMatch(
       /\[status\]\s+IN \(N'verified', N'new_revision_required', N'ended'\)/u,
     )
@@ -194,7 +180,7 @@ describe('stable AI run-profile migration', () => {
     expect(sql).toContain('fk_ai_run_coordination_entries_ai_run_profile_id')
     expect(sql).toContain('IF NOT EXISTS (SELECT 1 FROM [inserted]) RETURN;')
     expect(sql).toContain(
-      'GRANT DELETE ON OBJECT::[dbo].[ai_connection_model_verification_evidence]',
+      'GRANT SELECT, INSERT, DELETE ON OBJECT::[dbo].[ai_connection_model_verification_evidence]',
     )
   })
 })
@@ -216,7 +202,6 @@ describe('AI connection seed profiles', () => {
     ])
     expect(rowsFor(rows, 'ai_connections')).toHaveLength(0)
     expect(rowsFor(rows, 'ai_connection_models')).toHaveLength(0)
-    expect(rowsFor(rows, 'ai_run_profile_revisions')).toHaveLength(0)
     const profileInsert = executor.query.mock.calls.find(([sql]) =>
       String(sql).includes('INSERT INTO [ai_run_profiles]'),
     )

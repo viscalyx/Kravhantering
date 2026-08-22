@@ -2000,11 +2000,9 @@ Connection retirement/suspension and profile suspension atomically add a
 content-free cancellation request to every matching queued, retrying, or
 running row. The first administrative reason is retained so a later broader
 suspension cannot rewrite the cause observed by the fenced worker.
-Migration `0064` adds nullable columns without backfilling or seeding this
-transient table: an in-flight row present during upgrade starts with both
-cancellation fields null. Required and demo seed never insert coordination
-rows, so a newly seeded database leaves this table empty until runtime
-admission.
+The consolidated AI data-model migration creates both cancellation fields as
+nullable. Required and demo seed never insert coordination rows, so a newly
+seeded database leaves this table empty until runtime admission.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |

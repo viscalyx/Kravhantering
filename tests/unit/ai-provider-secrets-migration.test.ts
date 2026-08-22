@@ -1,4 +1,4 @@
-import AiProviderSecrets from '@/typeorm/migrations/0061_ai_provider_secrets.mjs'
+import AiConnectionsDataModel from '@/typeorm/migrations/0060_ai_connections_data_model.mjs'
 
 describe('AI provider-secret migration', () => {
   it('persists only authenticated ciphertext with immutable binding metadata', async () => {
@@ -6,7 +6,7 @@ describe('AI provider-secret migration', () => {
       query: vi.fn(async (_sql: string) => undefined),
     }
 
-    await new AiProviderSecrets().up(queryRunner)
+    await new AiConnectionsDataModel().up(queryRunner)
 
     const sql = queryRunner.query.mock.calls.map(([value]) => value).join('\n')
     expect(sql).toContain('CREATE TABLE [ai_provider_secret_versions]')
@@ -38,7 +38,7 @@ describe('AI provider-secret migration', () => {
       query: vi.fn(async (_sql: string) => undefined),
     }
 
-    await new AiProviderSecrets().up(queryRunner)
+    await new AiConnectionsDataModel().up(queryRunner)
 
     const sql = queryRunner.query.mock.calls.map(([value]) => value).join('\n')
     expect(sql).toContain('[provider_revoked_at] datetime2(3) NULL')
@@ -57,16 +57,21 @@ describe('AI provider-secret migration', () => {
     )
   })
 
-  it('drops only the owned table on rollback', async () => {
+  it('drops the secret table before its parent connection table on rollback', async () => {
     const queryRunner = {
       query: vi.fn(async (_sql: string) => undefined),
     }
 
-    await new AiProviderSecrets().down(queryRunner)
+    await new AiConnectionsDataModel().down(queryRunner)
 
-    expect(queryRunner.query).toHaveBeenCalledTimes(1)
-    expect(queryRunner.query).toHaveBeenCalledWith(
+    const sql = queryRunner.query.mock.calls
+      .map(([statement]) => String(statement))
+      .join('\n')
+    expect(sql).toContain(
       "IF OBJECT_ID(N'ai_provider_secret_versions', N'U') IS NOT NULL DROP TABLE [ai_provider_secret_versions];",
     )
+    expect(
+      sql.indexOf('DROP TABLE [ai_provider_secret_versions]'),
+    ).toBeLessThan(sql.indexOf('DROP TABLE [ai_connections]'))
   })
 })

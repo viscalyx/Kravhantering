@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import AiRunAdministrativeCancellation from '@/typeorm/migrations/0064_ai_run_administrative_cancellation.mjs'
+import AiConnectionsDataModel from '@/typeorm/migrations/0060_ai_connections_data_model.mjs'
 import {
   RUNTIME_PERMISSION_MANIFEST,
   RUNTIME_PERMISSION_MANIFEST_VERSION,
@@ -9,7 +9,7 @@ describe('AI run administrative cancellation migration', () => {
   it('adds nullable transient cancellation state, its constraint and index, and only column-scoped runtime updates', async () => {
     const query = vi.fn(async (_statement: string) => undefined)
 
-    await new AiRunAdministrativeCancellation().up({ query })
+    await new AiConnectionsDataModel().up({ query })
 
     const sql = query.mock.calls.map(([statement]) => statement).join('\n')
     expect(sql).toContain('[cancellation_requested_at] datetime2(3) NULL')
@@ -22,7 +22,7 @@ describe('AI run administrative cancellation migration', () => {
       'idx_ai_run_coordination_entries_cancellation_requested_at',
     )
     expect(sql).toContain(
-      'GRANT UPDATE ([cancellation_requested_at], [cancellation_reason])',
+      '[cancellation_requested_at], [cancellation_reason], [updated_at]) ON OBJECT::[dbo].[ai_run_coordination_entries]',
     )
     expect(sql).not.toContain('GRANT UPDATE ON OBJECT')
     expect(sql).not.toMatch(
@@ -41,20 +41,15 @@ describe('AI run administrative cancellation migration', () => {
     })
   })
 
-  it('drops the filtered index and constraint before both columns', async () => {
+  it('drops the owning coordination table before its dependencies', async () => {
     const query = vi.fn(async (_statement: string) => undefined)
 
-    await new AiRunAdministrativeCancellation().down({ query })
+    await new AiConnectionsDataModel().down({ query })
 
     const sql = query.mock.calls.map(([statement]) => statement).join('\n')
-    expect(sql.indexOf('DROP INDEX')).toBeLessThan(
-      sql.indexOf('DROP CONSTRAINT'),
-    )
-    expect(sql.indexOf('DROP CONSTRAINT')).toBeLessThan(
-      sql.indexOf('DROP COLUMN'),
-    )
-    expect(sql).toContain(
-      'DROP COLUMN [cancellation_requested_at], [cancellation_reason]',
-    )
+    expect(sql).toContain('DROP TABLE [ai_run_coordination_entries]')
+    expect(
+      sql.indexOf('DROP TABLE [ai_run_coordination_entries]'),
+    ).toBeLessThan(sql.indexOf('DROP TABLE [ai_run_profiles]'))
   })
 })
