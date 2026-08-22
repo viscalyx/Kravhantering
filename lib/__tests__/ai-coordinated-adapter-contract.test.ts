@@ -24,7 +24,7 @@ const IDENTITY = Object.freeze({
   aiConnectionId: 'connection-17',
   aiConnectionModelRevisionId: 'model-revision-23',
   aiRunProfileConfigurationVersion: 1,
-  aiRunProfileId: 'profile-revision-31',
+  aiRunProfileId: 'profile-31',
 }) as AiRunIdentity
 const NO_USAGE = Object.freeze({
   analysisTokens: {

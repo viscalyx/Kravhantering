@@ -827,318 +827,364 @@ test.describe('Admin settings', () => {
           settings.locator(':scope > div[aria-busy]').first(),
         ).toHaveAttribute('aria-busy', 'false')
 
-        await settings
-          .getByRole('button', { name: 'Lägg till AI-anslutning' })
-          .click()
-        const connectionDialog = page.getByRole('dialog', {
-          name: 'Lägg till AI-anslutning',
-        })
-        await connectionDialog
-          .getByLabel(/^Administrationsnamn/)
-          .fill(administrationName)
-        await connectionDialog
-          .getByLabel(/^Publikt namn/)
-          .fill(administrationName)
-        await connectionDialog
-          .getByLabel(/^Adapternyckel/)
-          .fill('controlled_test')
-        await connectionDialog.getByLabel(/^Adapterversion/).fill('1')
-        await connectionDialog
-          .getByLabel(/^Anslutningsadress/)
-          .fill('https://localhost:4443')
-        await connectionDialog.getByLabel(/^TLS-policy/).fill('controlled_test')
-        await connectionDialog
-          .getByLabel(/^Egress-policy/)
-          .fill('controlled_test')
-        await connectionDialog
-          .getByLabel(/^Autentisering/)
-          .selectOption('static_secret')
-        await connectionDialog
-          .getByLabel(/^Sammanfattning av datapolicy/)
-          .fill('Intern information, ingen persondata och ingen lagring.')
-        await connectionDialog
-          .getByRole('button', { name: 'Spara anslutning' })
-          .click()
-        await expect(connectionDialog).toHaveCount(0)
+        const connectionCard =
+          await test.step('connection creation', async () => {
+            await settings
+              .getByRole('button', { name: 'Lägg till AI-anslutning' })
+              .click()
+            const connectionDialog = page.getByRole('dialog', {
+              name: 'Lägg till AI-anslutning',
+            })
+            await connectionDialog
+              .getByLabel(/^Administrationsnamn/)
+              .fill(administrationName)
+            await connectionDialog
+              .getByLabel(/^Publikt namn/)
+              .fill(administrationName)
+            await connectionDialog
+              .getByLabel(/^Adapternyckel/)
+              .fill('controlled_test')
+            await connectionDialog.getByLabel(/^Adapterversion/).fill('1')
+            await connectionDialog
+              .getByLabel(/^Anslutningsadress/)
+              .fill('https://localhost:4443')
+            await connectionDialog
+              .getByLabel(/^TLS-policy/)
+              .fill('controlled_test')
+            await connectionDialog
+              .getByLabel(/^Egress-policy/)
+              .fill('controlled_test')
+            await connectionDialog
+              .getByLabel(/^Autentisering/)
+              .selectOption('static_secret')
+            await connectionDialog
+              .getByLabel(/^Sammanfattning av datapolicy/)
+              .fill('Intern information, ingen persondata och ingen lagring.')
+            await connectionDialog
+              .getByRole('button', { name: 'Spara anslutning' })
+              .click()
+            await expect(connectionDialog).toHaveCount(0)
 
-        const connectionCard = settings
-          .locator('article')
-          .filter({ hasText: administrationName })
-          .first()
-        await expect(connectionCard).toBeVisible()
-        await connectionCard
-          .getByRole('button', { name: new RegExp(administrationName) })
-          .click()
-        await connectionCard
-          .getByRole('button', { name: 'Hantera hemlighet' })
-          .click()
-        const secretDialog = page.getByRole('dialog', {
-          name: 'Leverantörshemlighet',
-        })
-        await secretDialog
-          .getByLabel(/^Ny leverantörshemlighet/)
-          .fill('pw-admin-20-controlled-secret')
-        await secretDialog
-          .getByRole('button', { name: 'Spara ny hemlighet' })
-          .click()
-        await expect(
-          secretDialog.getByText(
-            'Den nya krypterade leverantörshemligheten är klar för verifiering och aktivering.',
-          ),
-        ).toBeVisible()
-        await secretDialog
-          .getByRole('button', {
-            name: 'Verifiera och aktivera ny hemlighet',
+            const card = settings
+              .locator('article')
+              .filter({ hasText: administrationName })
+              .first()
+            await expect(card).toBeVisible()
+            await card
+              .getByRole('button', { name: new RegExp(administrationName) })
+              .click()
+            return card
           })
-          .click()
-        await expect(secretDialog).toHaveCount(0)
 
-        await connectionCard
-          .getByRole('button', { name: 'Hantera attest' })
-          .click()
-        const attestationDialog = page.getByRole('dialog', {
-          name: 'Anslutningsattest',
+        await test.step('secret activation', async () => {
+          await connectionCard
+            .getByRole('button', { name: 'Hantera hemlighet' })
+            .click()
+          const secretDialog = page.getByRole('dialog', {
+            name: 'Leverantörshemlighet',
+          })
+          await secretDialog
+            .getByLabel(/^Ny leverantörshemlighet/)
+            .fill('pw-admin-20-controlled-secret')
+          await secretDialog
+            .getByRole('button', { name: 'Spara ny hemlighet' })
+            .click()
+          await expect(
+            secretDialog.getByText(
+              'Den nya krypterade leverantörshemligheten är klar för verifiering och aktivering.',
+            ),
+          ).toBeVisible()
+          await secretDialog
+            .getByRole('button', {
+              name: 'Verifiera och aktivera ny hemlighet',
+            })
+            .click()
+          await expect(secretDialog).toHaveCount(0)
         })
-        await attestationDialog
-          .getByLabel(/^Organisationsenhetens referens-id/)
-          .fill(crypto.randomUUID())
-        await attestationDialog
-          .getByLabel(/^Leverantörsnamn/)
-          .fill('Kontrollerad testadapter')
-        await attestationDialog
-          .getByLabel(/^Högsta informationsklass/)
-          .fill('internal')
-        await attestationDialog
-          .getByLabel(/^Högsta lagringstid i dagar/)
-          .fill('0')
-        await attestationDialog.getByLabel(/^Behandlingsregioner/).fill('SE')
-        await attestationDialog
-          .getByLabel(/^Incidentprocessens referens-id/)
-          .fill(crypto.randomUUID())
-        await attestationDialog
-          .getByLabel(/^Beslutsreferens/)
-          .fill('PW-ADMIN-20')
-        await attestationDialog
-          .getByLabel(/^Granskad vid/)
-          .fill('2026-08-22T00:00:00.000Z')
-        await attestationDialog
-          .getByLabel(/^Nästa granskning/)
-          .fill('2099-08-22T00:00:00.000Z')
-        await attestationDialog
-          .getByLabel(/^Behandlar personuppgifter/)
-          .selectOption('false')
-        await attestationDialog
-          .getByLabel(/^Leverantörsträning tillåten/)
-          .selectOption('false')
-        await attestationDialog
-          .getByLabel(/^Godkänt syfte/)
-          .fill('Verifiera stabila körprofiler.')
-        await attestationDialog
-          .getByRole('button', { name: 'Spara attestutkast' })
-          .click()
-        await attestationDialog
-          .getByRole('button', { name: 'Godkänn sparad attest' })
-          .click()
-        await expect(attestationDialog).toHaveCount(0)
 
-        await connectionCard
-          .getByRole('button', { name: 'Lägg till modell' })
-          .click()
-        const modelDialog = page.getByRole('dialog', {
-          name: 'Lägg till anslutningsmodell',
+        await test.step('attestation', async () => {
+          await connectionCard
+            .getByRole('button', { name: 'Hantera attest' })
+            .click()
+          const attestationDialog = page.getByRole('dialog', {
+            name: 'Anslutningsattest',
+          })
+          await attestationDialog
+            .getByLabel(/^Organisationsenhetens referens-id/)
+            .fill(crypto.randomUUID())
+          await attestationDialog
+            .getByLabel(/^Leverantörsnamn/)
+            .fill('Kontrollerad testadapter')
+          await attestationDialog
+            .getByLabel(/^Högsta informationsklass/)
+            .fill('internal')
+          await attestationDialog
+            .getByLabel(/^Högsta lagringstid i dagar/)
+            .fill('0')
+          await attestationDialog.getByLabel(/^Behandlingsregioner/).fill('SE')
+          await attestationDialog
+            .getByLabel(/^Incidentprocessens referens-id/)
+            .fill(crypto.randomUUID())
+          await attestationDialog
+            .getByLabel(/^Beslutsreferens/)
+            .fill('PW-ADMIN-20')
+          await attestationDialog
+            .getByLabel(/^Granskad vid/)
+            .fill('2026-08-22T00:00:00.000Z')
+          await attestationDialog
+            .getByLabel(/^Nästa granskning/)
+            .fill('2099-08-22T00:00:00.000Z')
+          await attestationDialog
+            .getByLabel(/^Behandlar personuppgifter/)
+            .selectOption('false')
+          await attestationDialog
+            .getByLabel(/^Leverantörsträning tillåten/)
+            .selectOption('false')
+          await attestationDialog
+            .getByLabel(/^Godkänt syfte/)
+            .fill('Verifiera stabila körprofiler.')
+          await attestationDialog
+            .getByRole('button', { name: 'Spara attestutkast' })
+            .click()
+          await attestationDialog
+            .getByRole('button', { name: 'Godkänn sparad attest' })
+            .click()
+          await expect(attestationDialog).toHaveCount(0)
         })
-        await modelDialog.getByLabel(/^Modellnamn/).fill(modelName)
-        await modelDialog
-          .getByLabel(/^Externt modell-id/)
-          .fill('controlled/model')
-        await modelDialog.getByLabel(/^Extern modellversion/).fill('2026-08-22')
-        await expect(
-          modelDialog.getByText('Inte kontrollerad', { exact: true }),
-        ).toHaveCount(7)
-        await expect(
-          modelDialog.getByRole('button', { name: 'Spara modellrevision' }),
-        ).toBeDisabled()
-        const verificationRoute = '**/api/admin/ai-connections/*/actions'
-        let delayVerification = true
-        const delayedVerification = async (route: Route) => {
-          const body = route.request().postDataJSON() as { action?: string }
-          if (delayVerification && body.action === 'verify_model_candidate') {
-            delayVerification = false
-            await new Promise(resolve => setTimeout(resolve, 800))
-          }
-          await route.continue().catch(() => undefined)
-        }
-        await page.route(verificationRoute, delayedVerification)
-        await modelDialog.getByRole('button', { name: 'Verifiera' }).click()
-        await expect(
-          modelDialog.getByRole('button', { name: 'Avbryt verifiering' }),
-        ).toBeVisible()
-        await modelDialog
-          .getByRole('button', { name: 'Avbryt verifiering' })
-          .click()
-        await expect(
-          modelDialog.getByRole('button', { name: 'Verifiera' }),
-        ).toBeVisible()
-        await page.unroute(verificationRoute, delayedVerification)
 
-        await modelDialog.getByRole('button', { name: 'Verifiera' }).click()
-        await expect(
-          modelDialog.getByText(
-            'Verifieringen är klar. Granska resultatet och spara modellrevisionen separat.',
-          ),
-        ).toBeVisible({ timeout: 70_000 })
-        await expect(
-          modelDialog.getByText('Verifierad', { exact: true }),
-        ).toHaveCount(9)
-        await expect(
-          modelDialog.getByText('Kravgenerering utan bilder: Stöds'),
-        ).toBeVisible()
-        await expect(
-          modelDialog
-            .getByRole('group', { name: 'Verifieringsförlopp' })
-            .getByRole('listitem'),
-        ).toHaveText([
-          /Anslutning och autentisering — Verifierad/,
-          /Grundläggande modellåtkomst — Verifierad/,
-          /Förmåga: AI-analys — Verifierad/,
-          /Förmåga: kostnad — Verifierad/,
-          /Förmåga: bildindata — Verifierad/,
-          /Förmåga: styrning med JSON-schema — Verifierad/,
-          /Förmåga: strömning — Verifierad/,
-          /Förmåga: tokenanvändning — Verifierad/,
-          /Förmåga: validerbar JSON — Verifierad/,
-          /Körprofil: generering utan bilder — Verifierad/,
-          /Körprofil: generering med bilder — Verifierad/,
-          /Körprofil: reparation av ogiltig JSON — Verifierad/,
-          /Slutsammanfattning — Verifierad/,
-        ])
-        const saveModelRevision = modelDialog.getByRole('button', {
-          name: 'Spara modellrevision',
+        const { modelDialog, saveModelRevision } =
+          await test.step('model verification and cancellation', async () => {
+            await connectionCard
+              .getByRole('button', { name: 'Lägg till modell' })
+              .click()
+            const dialog = page.getByRole('dialog', {
+              name: 'Lägg till anslutningsmodell',
+            })
+            await dialog.getByLabel(/^Modellnamn/).fill(modelName)
+            await dialog
+              .getByLabel(/^Externt modell-id/)
+              .fill('controlled/model')
+            await dialog.getByLabel(/^Extern modellversion/).fill('2026-08-22')
+            await expect(
+              dialog.getByText('Inte kontrollerad', { exact: true }),
+            ).toHaveCount(7)
+            await expect(
+              dialog.getByRole('button', { name: 'Spara modellrevision' }),
+            ).toBeDisabled()
+
+            const verificationRoute = '**/api/admin/ai-connections/*/actions'
+            let releaseFirstVerification: () => void = () => undefined
+            const firstVerificationRelease = new Promise<void>(resolve => {
+              releaseFirstVerification = resolve
+            })
+            let markFirstVerificationStarted: () => void = () => undefined
+            const firstVerificationStarted = new Promise<void>(resolve => {
+              markFirstVerificationStarted = resolve
+            })
+            let holdFirstVerification = true
+            const delayedVerification = async (route: Route) => {
+              const body = route.request().postDataJSON() as { action?: string }
+              if (
+                holdFirstVerification &&
+                body.action === 'verify_model_candidate'
+              ) {
+                holdFirstVerification = false
+                markFirstVerificationStarted()
+                await firstVerificationRelease
+              }
+              await route.continue().catch(() => undefined)
+            }
+            await page.route(verificationRoute, delayedVerification)
+            try {
+              await dialog.getByRole('button', { name: 'Verifiera' }).click()
+              await firstVerificationStarted
+              await expect(
+                dialog.getByRole('button', { name: 'Avbryt verifiering' }),
+              ).toBeVisible()
+              await dialog
+                .getByRole('button', { name: 'Avbryt verifiering' })
+                .click()
+            } finally {
+              releaseFirstVerification()
+              await page.unroute(verificationRoute, delayedVerification)
+            }
+            await expect(
+              dialog.getByRole('button', { name: 'Verifiera' }),
+            ).toBeVisible()
+
+            await dialog.getByRole('button', { name: 'Verifiera' }).click()
+            await expect(
+              dialog.getByText(
+                'Verifieringen är klar. Granska resultatet och spara modellrevisionen separat.',
+              ),
+            ).toBeVisible()
+            await expect(
+              dialog.getByText('Verifierad', { exact: true }),
+            ).toHaveCount(9)
+            await expect(
+              dialog.getByText('Kravgenerering utan bilder: Stöds'),
+            ).toBeVisible()
+            await expect(
+              dialog
+                .getByRole('group', { name: 'Verifieringsförlopp' })
+                .getByRole('listitem'),
+            ).toHaveText([
+              /Anslutning och autentisering — Verifierad/,
+              /Grundläggande modellåtkomst — Verifierad/,
+              /Förmåga: AI-analys — Verifierad/,
+              /Förmåga: kostnad — Verifierad/,
+              /Förmåga: bildindata — Verifierad/,
+              /Förmåga: styrning med JSON-schema — Verifierad/,
+              /Förmåga: strömning — Verifierad/,
+              /Förmåga: tokenanvändning — Verifierad/,
+              /Förmåga: validerbar JSON — Verifierad/,
+              /Körprofil: generering utan bilder — Verifierad/,
+              /Körprofil: generering med bilder — Verifierad/,
+              /Körprofil: reparation av ogiltig JSON — Verifierad/,
+              /Slutsammanfattning — Verifierad/,
+            ])
+            return {
+              modelDialog: dialog,
+              saveModelRevision: dialog.getByRole('button', {
+                name: 'Spara modellrevision',
+              }),
+            }
+          })
+        await test.step('revision saving', async () => {
+          await modelDialog
+            .getByLabel(/^Modellnamn/)
+            .fill(`${modelName} presentation`)
+          await expect(saveModelRevision).toBeEnabled()
+          await modelDialog.getByLabel(/^Modellnamn/).fill(modelName)
+          await modelDialog
+            .getByLabel(/^Extern modellversion/)
+            .fill('2026-08-22-technical-change')
+          await expect(saveModelRevision).toBeDisabled()
+          await expect(
+            modelDialog.getByText('Inte kontrollerad', { exact: true }),
+          ).toHaveCount(7)
+          await modelDialog
+            .getByLabel(/^Extern modellversion/)
+            .fill('2026-08-22')
+          await modelDialog.getByRole('button', { name: 'Verifiera' }).click()
+          await expect(saveModelRevision).toBeEnabled()
+          await saveModelRevision.click()
+          await expect(modelDialog).toHaveCount(0)
         })
-        await modelDialog
-          .getByLabel(/^Modellnamn/)
-          .fill(`${modelName} presentation`)
-        await expect(saveModelRevision).toBeEnabled()
-        await modelDialog.getByLabel(/^Modellnamn/).fill(modelName)
-        await modelDialog
-          .getByLabel(/^Extern modellversion/)
-          .fill('2026-08-22-technical-change')
-        await expect(saveModelRevision).toBeDisabled()
-        await expect(
-          modelDialog.getByText('Inte kontrollerad', { exact: true }),
-        ).toHaveCount(7)
-        await modelDialog.getByLabel(/^Extern modellversion/).fill('2026-08-22')
-        await modelDialog.getByRole('button', { name: 'Verifiera' }).click()
-        await expect(saveModelRevision).toBeEnabled({ timeout: 70_000 })
-        await modelDialog
-          .getByRole('button', { name: 'Spara modellrevision' })
-          .click()
-        await expect(modelDialog).toHaveCount(0)
 
-        await connectionCard
-          .getByRole('button', { name: 'Aktivera anslutning' })
-          .click()
-        await expect(
-          connectionCard.getByText('Aktiv', { exact: true }),
-        ).toBeVisible()
-
-        const profileCard = settings
-          .locator('article')
-          .filter({ hasText: 'Kravgenerering utan bilder' })
-          .last()
-        await profileCard
-          .getByRole('button', { name: 'Redigera körprofil' })
-          .click()
-        let profileDialog = page.getByRole('dialog', {
-          name: 'Körprofil',
+        await test.step('connection activation', async () => {
+          await connectionCard
+            .getByRole('button', { name: 'Aktivera anslutning' })
+            .click()
+          await expect(
+            connectionCard.getByText('Aktiv', { exact: true }),
+          ).toBeVisible()
         })
-        const modelSelect = profileDialog.getByLabel(/^Modellrevision/)
-        await expect(modelSelect.locator('option')).toHaveCount(2)
-        await modelSelect.selectOption({ index: 1 })
-        const modelOptionValue = await modelSelect.inputValue()
-        await expect(
-          modelSelect.locator(`option[value="${modelOptionValue}"]`),
-        ).toContainText(`${modelName} · 1 — Rekommenderad`)
-        await profileDialog.getByText('Avancerade driftbudgetar').click()
-        await expect(
-          profileDialog.getByLabel(/^Maximalt antal utdatatoken/),
-        ).toBeVisible()
-        await profileDialog.getByRole('button', { name: 'Spara' }).click()
-        await expect(profileDialog).toHaveCount(0)
-        await expect(
-          profileCard.getByText('Konfigurerad', { exact: true }),
-        ).toBeVisible()
 
-        await profileCard
-          .getByRole('button', { name: 'Pausa körprofil' })
-          .click()
-        await expect(
-          profileCard.getByText('Pausad', { exact: true }),
-        ).toBeVisible()
-        await profileCard.getByRole('button', { name: 'Återuppta' }).click()
-        await expect(
-          profileCard.getByText('Aktiv', { exact: true }),
-        ).toBeVisible()
-
-        let modelCard = connectionCard
-          .locator('section')
-          .filter({ hasText: modelName })
-          .first()
-        const endRevisionButton = modelCard.getByRole('button', {
-          name: 'Avsluta revision',
+        const profileCard = await test.step('profile editing', async () => {
+          const card = settings
+            .locator('article')
+            .filter({ hasText: 'Kravgenerering utan bilder' })
+            .last()
+          await card.getByRole('button', { name: 'Redigera körprofil' }).click()
+          const profileDialog = page.getByRole('dialog', {
+            name: 'Körprofil',
+          })
+          const modelSelect = profileDialog.getByLabel(/^Modellrevision/)
+          await expect(modelSelect.locator('option')).toHaveCount(2)
+          await modelSelect.selectOption({ index: 1 })
+          const modelOptionValue = await modelSelect.inputValue()
+          await expect(
+            modelSelect.locator(`option[value="${modelOptionValue}"]`),
+          ).toContainText(`${modelName} · 1 — Rekommenderad`)
+          await profileDialog.getByText('Avancerade driftbudgetar').click()
+          await expect(
+            profileDialog.getByLabel(/^Maximalt antal utdatatoken/),
+          ).toBeVisible()
+          await profileDialog.getByRole('button', { name: 'Spara' }).click()
+          await expect(profileDialog).toHaveCount(0)
+          await expect(
+            card.getByText('Konfigurerad', { exact: true }),
+          ).toBeVisible()
+          return card
         })
-        await expect(endRevisionButton).toBeDisabled()
-        await expect(endRevisionButton).toHaveAttribute(
-          'title',
-          'Modellen används av en körprofil. Ta bort den från profilen eller välj en annan modell först.',
-        )
-        await expect(
-          connectionCard
-            .getByRole('heading', { name: 'Påverkan på körprofiler' })
-            .locator('..'),
-        ).toContainText('Kravgenerering utan bilder')
 
-        await profileCard
-          .getByRole('button', { name: 'Redigera körprofil' })
-          .click()
-        profileDialog = page.getByRole('dialog', { name: 'Körprofil' })
-        await profileDialog
-          .getByRole('button', { name: 'Koppla bort modell' })
-          .click()
-        await profileDialog.getByRole('button', { name: 'Spara' }).click()
-        await expect(profileDialog).toHaveCount(0)
+        await test.step('pause and resume', async () => {
+          await profileCard
+            .getByRole('button', { name: 'Pausa körprofil' })
+            .click()
+          await expect(
+            profileCard.getByText('Pausad', { exact: true }),
+          ).toBeVisible()
+          await profileCard.getByRole('button', { name: 'Återuppta' }).click()
+          await expect(
+            profileCard.getByText('Aktiv', { exact: true }),
+          ).toBeVisible()
+        })
 
-        modelCard = connectionCard
-          .locator('section')
-          .filter({ hasText: modelName })
-          .first()
-        await modelCard
-          .getByRole('button', { name: 'Avsluta revision' })
-          .click()
-        const endDialog = page.getByRole('alertdialog', {
-          name: 'Avsluta modellrevision?',
+        const modelCard = await test.step('dependency handling', async () => {
+          const card = connectionCard
+            .locator('section')
+            .filter({ hasText: modelName })
+            .first()
+          const endRevisionButton = card.getByRole('button', {
+            name: 'Avsluta revision',
+          })
+          await expect(endRevisionButton).toBeDisabled()
+          await expect(endRevisionButton).toHaveAttribute(
+            'title',
+            'Modellen används av en körprofil. Ta bort den från profilen eller välj en annan modell först.',
+          )
+          await expect(
+            connectionCard
+              .getByRole('heading', { name: 'Påverkan på körprofiler' })
+              .locator('..'),
+          ).toContainText('Kravgenerering utan bilder')
+
+          await profileCard
+            .getByRole('button', { name: 'Redigera körprofil' })
+            .click()
+          const profileDialog = page.getByRole('dialog', { name: 'Körprofil' })
+          await profileDialog
+            .getByRole('button', { name: 'Koppla bort modell' })
+            .click()
+          await profileDialog.getByRole('button', { name: 'Spara' }).click()
+          await expect(profileDialog).toHaveCount(0)
+          return card
         })
-        await endDialog
-          .getByRole('button', { name: 'Avsluta revision' })
-          .click()
-        await expect(
-          modelCard.getByText('Avslutad', { exact: true }),
-        ).toBeVisible()
-        await modelCard
-          .getByRole('button', { name: 'Radera permanent' })
-          .click()
-        const deleteDialog = page.getByRole('alertdialog', {
-          name: 'Radera modellrevision permanent?',
+
+        await test.step('revision ending', async () => {
+          await modelCard
+            .getByRole('button', { name: 'Avsluta revision' })
+            .click()
+          const endDialog = page.getByRole('alertdialog', {
+            name: 'Avsluta modellrevision?',
+          })
+          await endDialog
+            .getByRole('button', { name: 'Avsluta revision' })
+            .click()
+          await expect(
+            modelCard.getByText('Avslutad', { exact: true }),
+          ).toBeVisible()
         })
-        await expect(deleteDialog).toContainText(
-          'Anslutningsmodellen raderas också eftersom inga revisioner återstår.',
-        )
-        await deleteDialog
-          .getByRole('button', { name: 'Radera permanent' })
-          .click()
-        await expect(
-          connectionCard.getByText(modelName, { exact: true }),
-        ).toHaveCount(0)
+
+        await test.step('permanent deletion', async () => {
+          await modelCard
+            .getByRole('button', { name: 'Radera permanent' })
+            .click()
+          const deleteDialog = page.getByRole('alertdialog', {
+            name: 'Radera modellrevision permanent?',
+          })
+          await expect(deleteDialog).toContainText(
+            'Anslutningsmodellen raderas också eftersom inga revisioner återstår.',
+          )
+          await deleteDialog
+            .getByRole('button', { name: 'Radera permanent' })
+            .click()
+          await expect(
+            connectionCard.getByText(modelName, { exact: true }),
+          ).toHaveCount(0)
+        })
       } finally {
         await cleanup()
       }

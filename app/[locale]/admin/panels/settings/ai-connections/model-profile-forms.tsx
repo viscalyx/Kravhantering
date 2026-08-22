@@ -53,6 +53,17 @@ type ModelFormProps = {
   onRegisterClose?(handler: (() => void) | null): void
 }
 
+type AdvancedBudgetDescriptor = readonly [
+  key:
+    | 'maximumBufferedEvents'
+    | 'maximumOutputBytes'
+    | 'maximumOutputTokens'
+    | 'maximumRetainedMemoryBytes',
+  value: number,
+  setter: (value: number) => void,
+  maximum: number,
+]
+
 const CATALOG_PROVIDER_NAMES: Readonly<Record<string, string>> = {
   anthropic: 'Anthropic',
   cohere: 'Cohere',
@@ -104,6 +115,22 @@ function catalogPriceSuffix(
   return prices.length > 0 ? ` · ${prices.join(' · ')}` : ''
 }
 
+function highestRevision(
+  revisions: AiAdminModelRecord['revisions'],
+): AiAdminModelRecord['revisions'][number] | undefined {
+  let highest: AiAdminModelRecord['revisions'][number] | undefined
+  for (const revision of revisions) {
+    if (!highest || revision.revisionNumber > highest.revisionNumber) {
+      highest = revision
+    }
+  }
+  return highest
+}
+
+function setValidNumber(setter: (value: number) => void, value: number): void {
+  if (!Number.isNaN(value)) setter(value)
+}
+
 const outcomeKey: Record<AiAdminVerificationOutcome, string> = {
   inconclusive: 'inconclusive',
   not_checked: 'notChecked',
@@ -122,7 +149,7 @@ export function ModelForm({
   onRegisterClose,
 }: ModelFormProps) {
   const t = useTranslations('admin.aiConnections')
-  const latest = model?.revisions.at(-1)
+  const latest = model ? highestRevision(model.revisions) : undefined
   const [name, setName] = useState(model?.name ?? '')
   const [description, setDescription] = useState(model?.description ?? '')
   const [externalModelId, setExternalModelId] = useState(
@@ -689,10 +716,17 @@ export function ProfileForm({
   const newestSelectableByModel = useMemo(() => {
     const result = new Set<string>()
     for (const model of connections.flatMap(connection => connection.models)) {
-      const newest = [...model.revisions].reverse().find(revision => {
+      let newest: (typeof model.revisions)[number] | undefined
+      for (const revision of model.revisions) {
         const owner = choices.find(choice => choice.revision.id === revision.id)
-        return owner ? usable(owner) : false
-      })
+        if (
+          owner &&
+          usable(owner) &&
+          (!newest || revision.revisionNumber > newest.revisionNumber)
+        ) {
+          newest = revision
+        }
+      }
       if (newest) result.add(newest.id)
     }
     return result
@@ -818,7 +852,9 @@ export function ProfileForm({
             id="ai-profile-total"
             max={3600}
             min={300}
-            onChange={event => setTotal(event.target.valueAsNumber)}
+            onChange={event =>
+              setValidNumber(setTotal, event.target.valueAsNumber)
+            }
             type="number"
             value={total}
           />
@@ -833,7 +869,9 @@ export function ProfileForm({
             id="ai-profile-inactivity"
             max={3600}
             min={300}
-            onChange={event => setInactivity(event.target.valueAsNumber)}
+            onChange={event =>
+              setValidNumber(setInactivity, event.target.valueAsNumber)
+            }
             type="number"
             value={inactivity}
           />
@@ -848,7 +886,9 @@ export function ProfileForm({
             id="ai-profile-queue"
             max={100}
             min={0}
-            onChange={event => setQueue(event.target.valueAsNumber)}
+            onChange={event =>
+              setValidNumber(setQueue, event.target.valueAsNumber)
+            }
             type="number"
             value={queue}
           />
@@ -859,35 +899,35 @@ export function ProfileForm({
           {t('directProfile.advanced')}
         </summary>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          {[
-            ['maximumOutputTokens', outputTokens, setOutputTokens, 1_000_000],
-            ['maximumOutputBytes', outputBytes, setOutputBytes, 67_108_864],
+          {(
             [
-              'maximumRetainedMemoryBytes',
-              memoryBytes,
-              setMemoryBytes,
-              134_217_728,
-            ],
-            ['maximumBufferedEvents', events, setEvents, 1024],
-          ].map(([key, value, setter, max]) => (
+              ['maximumOutputTokens', outputTokens, setOutputTokens, 1_000_000],
+              ['maximumOutputBytes', outputBytes, setOutputBytes, 67_108_864],
+              [
+                'maximumRetainedMemoryBytes',
+                memoryBytes,
+                setMemoryBytes,
+                134_217_728,
+              ],
+              ['maximumBufferedEvents', events, setEvents, 1024],
+            ] satisfies readonly AdvancedBudgetDescriptor[]
+          ).map(([key, value, setter, maximum]) => (
             <Field
-              help={t(`directProfile.fields.${String(key)}.help`)}
-              id={`ai-profile-${String(key)}`}
-              key={String(key)}
-              label={t(`directProfile.fields.${String(key)}.label`)}
+              help={t(`directProfile.fields.${key}.help`)}
+              id={`ai-profile-${key}`}
+              key={key}
+              label={t(`directProfile.fields.${key}.label`)}
             >
               <input
                 className={inputClassName()}
-                id={`ai-profile-${String(key)}`}
-                max={Number(max)}
+                id={`ai-profile-${key}`}
+                max={maximum}
                 min={1}
                 onChange={event =>
-                  (setter as (value: number) => void)(
-                    event.target.valueAsNumber,
-                  )
+                  setValidNumber(setter, event.target.valueAsNumber)
                 }
                 type="number"
-                value={Number(value)}
+                value={value}
               />
             </Field>
           ))}

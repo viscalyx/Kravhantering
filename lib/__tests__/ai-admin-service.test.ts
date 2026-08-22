@@ -76,6 +76,7 @@ function connection(): AiAdminStoredConnectionDetail {
 }
 
 function harness(saveModelRevision = vi.fn()): {
+  audit: ReturnType<typeof vi.fn>
   connection: AiAdminStoredConnectionDetail
   saveModelRevision: ReturnType<typeof vi.fn>
   service: AiConnectionAdministrationService
@@ -91,12 +92,14 @@ function harness(saveModelRevision = vi.fn()): {
     verifyModelCandidate: vi.fn(async () => verification),
   } as unknown as AiAdminExternalOperations
   const secrets = {} as AiAdminSecretOperations
+  const audit = vi.fn(async () => undefined)
   return {
+    audit,
     connection: current,
     saveModelRevision,
     service: new AiConnectionAdministrationService({
       actorKey: 'administrator-1',
-      audit: vi.fn(async () => undefined),
+      audit,
       external,
       secrets,
       store,
@@ -115,7 +118,7 @@ describe('AI administration model verification attempts', () => {
       revisionToken: randomUUID(),
     }
     const save = vi.fn(async () => savedModel)
-    const { connection: current, service } = harness(save)
+    const { audit, connection: current, service } = harness(save)
     const attempt = await service.verifyModelCandidate({
       candidate: {
         externalModelId: 'controlled/model',
@@ -134,6 +137,11 @@ describe('AI administration model verification attempts', () => {
       modelToken: null,
       name: 'Edited name',
     }
+    expect(audit).toHaveBeenCalledWith({
+      operation: 'verify',
+      resourceId: current.id,
+      resourceType: 'ai_connection',
+    })
     await expect(
       service.saveModelRevision({
         connectionId: current.id,
@@ -249,7 +257,7 @@ describe('AI run profile authorization', () => {
       verificationAttempts: createAiModelVerificationAttemptStore(),
     })
     const profile = {
-      inactivityTimeBudgetSeconds: 30,
+      inactivityTimeBudgetSeconds: 300,
       maximumBufferedEvents: 16,
       maximumOutputBytes: 65_536,
       maximumOutputTokens: 1_536,
@@ -257,7 +265,7 @@ describe('AI run profile authorization', () => {
       modelRevisionId: randomUUID(),
       queueCapacity: 10,
       revisionToken: randomUUID(),
-      totalTimeBudgetSeconds: 60,
+      totalTimeBudgetSeconds: 600,
     }
 
     await expect(

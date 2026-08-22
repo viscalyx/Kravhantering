@@ -119,6 +119,7 @@ const ENQUEUE_SQL = `
     INNER JOIN [ai_run_profiles] AS [profile]
       ON [profile].[id] = @3
     WHERE [revision].[id] = @2 AND [connection].[id] = @1
+      AND [revision].[status] = N'verified'
       AND [connection].[lifecycle_status] = N'active'
       AND [profile].[operational_status] = N'enabled'
       AND [profile].[ai_connection_model_revision_id] = @2

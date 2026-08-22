@@ -325,6 +325,49 @@ describe('Admin AI model and stable-profile forms', () => {
     )
   })
 
+  it('prefills model fields from the highest revision number', () => {
+    const current = connection()
+    const model = {
+      description: null,
+      id: 'model',
+      name: 'Model',
+      revisionToken: 'model-token',
+      revisions: [
+        modelRevision('newest', {
+          externalModelId: 'controlled/newest',
+          externalModelVersion: '3',
+          revisionNumber: 3,
+        }),
+        modelRevision('older', {
+          externalModelId: 'controlled/older',
+          externalModelVersion: '1',
+          revisionNumber: 1,
+        }),
+      ],
+    }
+    current.models = [model]
+
+    render(
+      <ModelForm
+        connection={current}
+        model={model}
+        onCancel={vi.fn()}
+        onComplete={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByLabelText(
+        /^admin\.aiConnections\.fields\.externalModelId\.label/,
+      ),
+    ).toHaveValue('controlled/newest')
+    expect(
+      screen.getByLabelText(
+        /^admin\.aiConnections\.fields\.externalModelVersion\.label/,
+      ),
+    ).toHaveValue('3')
+  })
+
   it('keeps capability truth read-only until one streamed verification is reviewed and saved', async () => {
     fetchMock
       .mockResolvedValueOnce(verificationResponse())
@@ -773,11 +816,54 @@ describe('Admin AI model and stable-profile forms', () => {
     })
   })
 
+  it('keeps profile budget state valid when numeric inputs are cleared', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('{}', { status: 200 }))
+    const profile = stableProfile()
+    render(
+      <ProfileForm
+        connections={[]}
+        onCancel={vi.fn()}
+        onComplete={vi.fn()}
+        profile={profile}
+      />,
+    )
+
+    for (const label of [
+      'admin.aiConnections.fields.totalTimeBudgetSeconds.label',
+      'admin.aiConnections.fields.inactivityTimeBudgetSeconds.label',
+      'admin.aiConnections.fields.queueCapacity.label',
+      'admin.aiConnections.directProfile.fields.maximumOutputTokens.label',
+      'admin.aiConnections.directProfile.fields.maximumOutputBytes.label',
+      'admin.aiConnections.directProfile.fields.maximumRetainedMemoryBytes.label',
+      'admin.aiConnections.directProfile.fields.maximumBufferedEvents.label',
+    ]) {
+      fireEvent.change(screen.getByLabelText(label), {
+        target: { value: '' },
+      })
+    }
+    await userEvent.click(
+      screen.getByRole('button', { name: 'admin.aiConnections.actions.save' }),
+    )
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)),
+    ).toMatchObject({
+      inactivityTimeBudgetSeconds: profile.inactivityTimeBudgetSeconds,
+      maximumBufferedEvents: profile.maximumBufferedEvents,
+      maximumOutputBytes: profile.maximumOutputBytes,
+      maximumOutputTokens: profile.maximumOutputTokens,
+      maximumRetainedMemoryBytes: profile.maximumRetainedMemoryBytes,
+      queueCapacity: profile.queueCapacity,
+      totalTimeBudgetSeconds: profile.totalTimeBudgetSeconds,
+    })
+  })
+
   it('explains every direct-profile selection blocker and preserves save errors', async () => {
     const usableOlder = modelRevision('usable-older', { revisionNumber: 1 })
     const usableNewest = modelRevision('usable-newest', { revisionNumber: 2 })
     const connections = [
-      connectionWithRevisions('usable', [usableOlder, usableNewest]),
+      connectionWithRevisions('usable', [usableNewest, usableOlder]),
       connectionWithRevisions('ended', [
         modelRevision('ended-revision', { status: 'ended' }),
       ]),
@@ -843,6 +929,9 @@ describe('Admin AI model and stable-profile forms', () => {
     expect(
       options.filter(option => !option.hasAttribute('disabled')),
     ).toHaveLength(3)
+    expect(
+      within(select).getByRole('option', { name: /usable.*2.*recommended/ }),
+    ).toBeEnabled()
     expect(
       within(select).getByRole('option', {
         name: /directProfile\.reasons\.ended/,

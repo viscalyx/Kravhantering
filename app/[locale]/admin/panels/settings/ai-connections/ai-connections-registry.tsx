@@ -197,6 +197,7 @@ export default function AiConnectionsPanel() {
     mutateAndReload,
     mutation,
     profiles,
+    setError,
     setMessage,
   } = useRegistryRequestState()
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -337,7 +338,25 @@ export default function AiConnectionsPanel() {
       }
       return null
     }
-    const items = (await response.json()) as AiAdminCatalogItem[]
+    let items: AiAdminCatalogItem[]
+    try {
+      items = (await response.json()) as AiAdminCatalogItem[]
+    } catch {
+      setError({
+        kind: 'mutation',
+        message: t('actionFailed', {
+          action: t('actions.fetchCatalog'),
+          error: t('mutationError'),
+        }),
+      })
+      if (!notify) {
+        setCatalogStatusByConnection(current => ({
+          ...current,
+          [connectionId]: 'unavailable',
+        }))
+      }
+      return null
+    }
     if (notify) {
       setVisibleCatalogByConnection(current => ({
         ...current,

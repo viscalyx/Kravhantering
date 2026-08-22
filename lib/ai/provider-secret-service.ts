@@ -53,7 +53,7 @@ export const AI_ADMIN_FUNCTIONAL_PROBE_VERSION =
   'ai-admin-functional-probe-v5' as const
 const ADMIN_PROBE_TIMEOUT_MS = 30_000
 const ADMIN_CANCELLATION_GRACE_MS = 5_000
-const ADMIN_PROBE_PROFILE_REVISION_ID =
+const ADMIN_PROBE_PROFILE_ID =
   '00000000-0000-4000-8000-000000000865' as AiRunProfileId
 const ADMIN_PROBE_IMAGE = new Uint8Array(
   Buffer.from(
@@ -380,7 +380,7 @@ async function runAdminFunctionalProbe(
     aiConnectionId: context.connection.id as AiConnectionId,
     aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
     aiRunProfileConfigurationVersion: 1,
-    aiRunProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
+    aiRunProfileId: ADMIN_PROBE_PROFILE_ID,
   }
   let terminal: AdminProbeTerminal | undefined
   let observedOutputDelta = false
@@ -457,7 +457,7 @@ async function runAdminCancellationProbe(
     aiConnectionId: context.connection.id as AiConnectionId,
     aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
     aiRunProfileConfigurationVersion: 1,
-    aiRunProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
+    aiRunProfileId: ADMIN_PROBE_PROFILE_ID,
   }
   let grace: ReturnType<typeof setTimeout> | undefined
   let handoffTimeout: ReturnType<typeof setTimeout> | undefined
@@ -530,7 +530,7 @@ async function runAdminNegativeProbes(
     aiConnectionId: context.connection.id as AiConnectionId,
     aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
     aiRunProfileConfigurationVersion: 1,
-    aiRunProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
+    aiRunProfileId: ADMIN_PROBE_PROFILE_ID,
   }
   const checkCase = async (
     negativeCase: AiAdminNegativeProbeCase,

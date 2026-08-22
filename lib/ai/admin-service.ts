@@ -17,7 +17,7 @@ import {
   AiModelVerificationAttemptError,
   type AiModelVerificationAttemptLease,
   type AiModelVerificationAttemptStore,
-  aiModelVerificationAttempts,
+  createAiModelVerificationAttemptStore,
 } from './model-verification-attempts'
 import type { AiRunProfileKey } from './profile-resolver'
 import type {
@@ -572,23 +572,26 @@ function isCurrentLivePathActivation(
   )
 }
 
+const aiModelVerificationAttempts =
+  createAiModelVerificationAttemptStore<AiAdminCandidateVerificationResult>()
+
 export class AiConnectionAdministrationService {
   readonly #actorKey: string
   readonly #audit: AiAdminAudit
   readonly #external: AiAdminExternalOperations
   readonly #secrets: AiAdminSecretOperations
   readonly #store: AiAdminStore
-  readonly #verificationAttempts: AiModelVerificationAttemptStore
+  readonly #verificationAttempts: AiModelVerificationAttemptStore<AiAdminCandidateVerificationResult>
 
   constructor(input: {
-    actorKey?: string
+    actorKey: string
     audit: AiAdminAudit
     external: AiAdminExternalOperations
     secrets: AiAdminSecretOperations
     store: AiAdminStore
-    verificationAttempts?: AiModelVerificationAttemptStore
+    verificationAttempts?: AiModelVerificationAttemptStore<AiAdminCandidateVerificationResult>
   }) {
-    this.#actorKey = input.actorKey ?? 'test-actor'
+    this.#actorKey = input.actorKey
     this.#audit = input.audit
     this.#external = input.external
     this.#secrets = input.secrets
@@ -843,7 +846,7 @@ export class AiConnectionAdministrationService {
     await this.#audit({
       operation: 'verify',
       resourceId: connection.id,
-      resourceType: 'ai_connection_model_revision',
+      resourceType: 'ai_connection',
     })
     return {
       ...result,
@@ -913,7 +916,7 @@ export class AiConnectionAdministrationService {
       },
       testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
     })
-    let lease: AiModelVerificationAttemptLease
+    let lease: AiModelVerificationAttemptLease<AiAdminCandidateVerificationResult>
     try {
       lease = this.#verificationAttempts.reserve({
         actorKey: this.#actorKey,
@@ -933,8 +936,7 @@ export class AiConnectionAdministrationService {
       throw error
     }
     try {
-      const verification = lease.attempt
-        .result as AiAdminCandidateVerificationResult
+      const verification = lease.attempt.result
       if (!verification.saveable) {
         throw validationError('The AI model verification is not saveable.')
       }

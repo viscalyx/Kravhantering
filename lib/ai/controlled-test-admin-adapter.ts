@@ -19,7 +19,7 @@ import type {
 } from './run-contracts'
 import { AI_REQUEST_PRIVACY_MINIMUM } from './run-contracts'
 
-const ADMIN_PROBE_PROFILE_REVISION_ID =
+const ADMIN_PROBE_PROFILE_ID =
   '00000000-0000-4000-8000-000000000865' as AiRunProfileId
 
 function capabilitySupport(
@@ -123,7 +123,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
       },
       privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
       runProfileConfigurationVersion: 1,
-      runProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
+      runProfileId: ADMIN_PROBE_PROFILE_ID,
       selectedCapabilities: probe.selectedCapabilities,
       task: probe.task,
     })
@@ -149,7 +149,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
       },
       privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
       runProfileConfigurationVersion: 1,
-      runProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
+      runProfileId: ADMIN_PROBE_PROFILE_ID,
       selectedCapabilities: probe.selectedCapabilities,
       task: probe.task,
     })
@@ -185,7 +185,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
       },
       privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
       runProfileConfigurationVersion: 1,
-      runProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
+      runProfileId: ADMIN_PROBE_PROFILE_ID,
       selectedCapabilities: probe.selectedCapabilities,
       task: probe.task,
     })

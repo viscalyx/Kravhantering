@@ -113,6 +113,7 @@ describe('SQL Server AI run profile source', () => {
       '[profile].[configuration_version]',
     )
     expect(query.mock.calls[0]?.[0]).toContain('[profile].[profile_key] = @0')
+    expect(query.mock.calls[0]?.[0]).toContain('[model].[deleted_at] IS NULL')
   })
 
   it('returns null when the fixed slot is unconfigured', async () => {

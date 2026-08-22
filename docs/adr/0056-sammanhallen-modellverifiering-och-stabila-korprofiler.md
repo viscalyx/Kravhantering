@@ -27,11 +27,13 @@ konfigurationsversion som körningen startade med. En paus begär avbrott för
 köade och pågående körningar utan att radera profilens modellval.
 
 Modellrevisioner har tillstånden `verified`, `new_revision_required` och
-`ended`. Tekniska anslutningsändringar gör befintliga revisioner valbara först
-efter att en ny revision verifierats. En revision får inte avslutas eller
-raderas medan en körprofil eller en köad eller pågående körning använder den.
-`ended` är irreversibelt. Permanent radering kräver först avslut och tar även
-bort den tomma modellbehållaren när sista revisionen försvinner.
+`ended`. Tekniska anslutningsändringar markerar befintliga revisioner som
+`new_revision_required` och de förblir ovalbara. Administratören måste verifiera
+och välja den nya revisionen; den ersatta revisionen blir inte valbar igen. En
+revision får inte avslutas eller raderas medan en körprofil eller en köad eller
+pågående körning använder den. `ended` är irreversibelt. Permanent radering
+kräver först avslut och tar även bort den tomma modellbehållaren när sista
+revisionen försvinner.
 
 ## Bevarade beslut och företräde
 

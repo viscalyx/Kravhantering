@@ -28,7 +28,10 @@ import {
   isRequirementsServiceError,
   unauthorizedError,
 } from '@/lib/requirements/errors'
-import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import {
+  type HttpErrorPayloadOptions,
+  toHttpErrorPayload,
+} from '@/lib/requirements/http-errors'
 import { recordAuthorizationDeniedAuditFailure } from '@/lib/requirements/security-audit'
 
 export type MutationRouteContext = {
@@ -97,7 +100,7 @@ export interface SecureMutationRouteOptions<TBody, TParams> {
   handler: (
     args: SecureMutationHandlerArgs<TBody, TParams>,
   ) => Promise<Response> | Response
-  handlerErrorDetails?: 'ai_admin_blockers' | 'ai_admin_model_dependencies'
+  handlerErrorDetails?: HttpErrorPayloadOptions['safeDetails']
   paramsSchema?: ZodType<TParams>
   policy: MutationPolicy<NoInferMutation<TBody>, NoInferMutation<TParams>>
   preParse?: (
@@ -136,7 +139,7 @@ function unexpectedErrorBody(
 function errorResponse(
   message: string,
   error: unknown,
-  safeDetails?: 'ai_admin_blockers' | 'ai_admin_model_dependencies',
+  safeDetails?: HttpErrorPayloadOptions['safeDetails'],
 ): NextResponse {
   if (error instanceof CsrfError || isRequirementsServiceError(error)) {
     const { body, status } = toHttpErrorPayload(error, { safeDetails })

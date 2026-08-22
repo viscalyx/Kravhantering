@@ -173,11 +173,12 @@ describe('AI connection administration transactions against SQL Server', () => {
       modelRevisionId: secondRevision.id,
       revisionToken: secondRevision.revisionToken,
     })
+    if (!endedSecondRevision) throw new Error('Ended second revision missing')
     expect(
       await store.deleteModelRevision({
         connectionId: connection.id,
         modelRevisionId: secondRevision.id,
-        revisionToken: endedSecondRevision?.revisionToken as string,
+        revisionToken: endedSecondRevision.revisionToken,
       }),
     ).toBe(true)
     const reusedRevisionModel = await store.saveModelRevision({
@@ -202,11 +203,12 @@ describe('AI connection administration transactions against SQL Server', () => {
       modelRevisionId: reusedRevision.id,
       revisionToken: reusedRevision.revisionToken,
     })
+    if (!endedReusedRevision) throw new Error('Ended reused revision missing')
     expect(
       await store.deleteModelRevision({
         connectionId: connection.id,
         modelRevisionId: reusedRevision.id,
-        revisionToken: endedReusedRevision?.revisionToken as string,
+        revisionToken: endedReusedRevision.revisionToken,
       }),
     ).toBe(true)
 
@@ -240,12 +242,13 @@ describe('AI connection administration transactions against SQL Server', () => {
       modelRevisionId: revision.id,
       revisionToken: revision.revisionToken,
     })
+    if (!ended) throw new Error('Ended revision missing')
     expect(ended?.status).toBe('ended')
     expect(
       await store.deleteModelRevision({
         connectionId: connection.id,
         modelRevisionId: revision.id,
-        revisionToken: ended?.revisionToken as string,
+        revisionToken: ended.revisionToken,
       }),
     ).toBe(true)
     expect((await store.getConnection(connection.id))?.models).toEqual([])

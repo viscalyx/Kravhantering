@@ -92,7 +92,11 @@ function validatePath(path, context) {
   assertExactFields(path, AI_PATH_FIELDS, context)
   for (const field of AI_PATH_FIELDS) {
     if (field === 'aiRunProfileConfigurationVersion') {
-      if (!Number.isInteger(path[field]) || path[field] < 1) {
+      if (
+        !Number.isSafeInteger(path[field]) ||
+        path[field] < 1 ||
+        path[field] > 2_147_483_647
+      ) {
         throw new Error(`${context}.${field} is invalid.`)
       }
       continue

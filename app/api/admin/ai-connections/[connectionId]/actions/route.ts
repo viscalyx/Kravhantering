@@ -115,10 +115,19 @@ export const POST = secureMutationRoute({
         )
       case 'verify_model_candidate': {
         const encoder = new TextEncoder()
+        let streamInactive = false
         const stream = new ReadableStream<Uint8Array>({
+          cancel() {
+            streamInactive = true
+          },
           async start(controller) {
             const send = (value: unknown): void => {
-              controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`))
+              if (streamInactive) return
+              try {
+                controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`))
+              } catch {
+                streamInactive = true
+              }
             }
             try {
               const result = await service.verifyModelCandidate({
@@ -137,7 +146,14 @@ export const POST = secureMutationRoute({
                 type: 'failed',
               })
             } finally {
-              controller.close()
+              if (!streamInactive) {
+                try {
+                  controller.close()
+                } catch {
+                  // The response consumer may cancel between the final send and close.
+                }
+              }
+              streamInactive = true
             }
           },
         })

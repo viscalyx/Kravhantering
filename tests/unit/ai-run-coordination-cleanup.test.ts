@@ -24,8 +24,12 @@ describe('AI run coordination cleanup', () => {
       oldestExpiredAgeMs: 60_000,
     })
     const sql = String(query.mock.calls[0]?.[0])
-    expect(sql).toContain('[total_deadline_at] <= SYSUTCDATETIME()')
-    expect(sql).toContain("[status] = N'running'")
+    expect(sql).toContain(
+      "([status] <> N'running' AND [total_deadline_at] <= SYSUTCDATETIME())",
+    )
+    expect(sql).toContain(
+      "([status] = N'running' AND [lease_expires_at] <= SYSUTCDATETIME())",
+    )
     expect(sql).not.toMatch(/prompt|image|model_output|result|content/u)
   })
 

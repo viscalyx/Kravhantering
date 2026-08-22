@@ -18,51 +18,51 @@ export class AiModelVerificationAttemptError extends Error {
   }
 }
 
-export interface AiModelVerificationAttempt {
+export interface AiModelVerificationAttempt<TResult = unknown> {
   actorKey: string
   connectionId: string
   expiresAt: string
   fingerprint: string
   id: string
-  result: unknown
+  result: TResult
 }
 
-export interface AiModelVerificationAttemptLease {
-  attempt: Readonly<AiModelVerificationAttempt>
+export interface AiModelVerificationAttemptLease<TResult = unknown> {
+  attempt: Readonly<AiModelVerificationAttempt<TResult>>
   commit(): void
   release(): void
 }
 
-interface StoredAttempt extends AiModelVerificationAttempt {
+interface StoredAttempt<TResult> extends AiModelVerificationAttempt<TResult> {
   expiresAtMs: number
   reserved: boolean
 }
 
-export interface AiModelVerificationAttemptStore {
+export interface AiModelVerificationAttemptStore<TResult = unknown> {
   create(input: {
     actorKey: string
     connectionId: string
     fingerprint: string
-    result: unknown
-  }): Readonly<AiModelVerificationAttempt>
+    result: TResult
+  }): Readonly<AiModelVerificationAttempt<TResult>>
   discard(input: { actorKey: string; attemptId: string }): boolean
   reserve(input: {
     actorKey: string
     attemptId: string
     connectionId: string
     fingerprint: string
-  }): AiModelVerificationAttemptLease
+  }): AiModelVerificationAttemptLease<TResult>
 }
 
-export function createAiModelVerificationAttemptStore(
+export function createAiModelVerificationAttemptStore<TResult = unknown>(
   options: { now?: () => number } = {},
-): AiModelVerificationAttemptStore {
+): AiModelVerificationAttemptStore<TResult> {
   const now = options.now ?? Date.now
-  const attempts = new Map<string, StoredAttempt>()
+  const attempts = new Map<string, StoredAttempt<TResult>>()
 
   const publicAttempt = (
-    attempt: StoredAttempt,
-  ): Readonly<AiModelVerificationAttempt> => ({
+    attempt: StoredAttempt<TResult>,
+  ): Readonly<AiModelVerificationAttempt<TResult>> => ({
     actorKey: attempt.actorKey,
     connectionId: attempt.connectionId,
     expiresAt: attempt.expiresAt,
@@ -83,7 +83,7 @@ export function createAiModelVerificationAttemptStore(
       }
       const id = randomUUID()
       const expiresAtMs = currentTime + ATTEMPT_TTL_MS
-      const attempt: StoredAttempt = {
+      const attempt: StoredAttempt<TResult> = {
         ...input,
         expiresAt: new Date(expiresAtMs).toISOString(),
         expiresAtMs,
@@ -137,6 +137,3 @@ export function createAiModelVerificationAttemptStore(
     },
   }
 }
-
-export const aiModelVerificationAttempts =
-  createAiModelVerificationAttemptStore()

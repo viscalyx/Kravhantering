@@ -33,10 +33,11 @@ async function createCoordinationFixture(db: SqlServerDatabase): Promise<{
     `INSERT INTO ai_connection_model_revisions (
        ai_connection_model_id, revision_number,
        connection_configuration_version, status, external_model_id,
-       declared_capabilities_json, maximum_concurrency, created_at, updated_at
+       declared_capabilities_json, verified_capabilities_json, verified_at,
+       maximum_concurrency, created_at, updated_at
      ) OUTPUT INSERTED.id AS id
-     VALUES (@0, 1, 1, N'new_revision_required', N'external/sql-model', N'{}', 1,
-       SYSUTCDATETIME(), SYSUTCDATETIME())`,
+     VALUES (@0, 1, 1, N'verified', N'external/sql-model', N'{}', N'{}',
+       SYSUTCDATETIME(), 1, SYSUTCDATETIME(), SYSUTCDATETIME())`,
     [model[0]?.id],
   )) as Array<{ id: string }>
   const profileId = randomUUID()
@@ -74,10 +75,11 @@ async function createAdditionalModelIdentity(
     `INSERT INTO ai_connection_model_revisions (
        ai_connection_model_id, revision_number,
        connection_configuration_version, status, external_model_id,
-       declared_capabilities_json, maximum_concurrency, created_at, updated_at
+       declared_capabilities_json, verified_capabilities_json, verified_at,
+       maximum_concurrency, created_at, updated_at
      ) OUTPUT INSERTED.id AS id
-     VALUES (@0, 1, 1, N'new_revision_required', N'external/additional-sql-model', N'{}', 1,
-       SYSUTCDATETIME(), SYSUTCDATETIME())`,
+     VALUES (@0, 1, 1, N'verified', N'external/additional-sql-model', N'{}', N'{}',
+       SYSUTCDATETIME(), 1, SYSUTCDATETIME(), SYSUTCDATETIME())`,
     [model[0]?.id],
   )) as Array<{ id: string }>
   const profileId = randomUUID()
@@ -99,6 +101,35 @@ async function createAdditionalModelIdentity(
 
 describe('AI run coordination against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
+
+  it('rejects queue admission for a revision requiring new verification', async () => {
+    const db = appDb()
+    const { identity } = await createCoordinationFixture(db)
+    await db.query(
+      `UPDATE [ai_connection_model_revisions]
+       SET [status] = N'new_revision_required'
+       WHERE [id] = @0`,
+      [identity.aiConnectionModelRevisionId],
+    )
+
+    await expect(
+      createSqlServerAiRunCoordinationStore(db).enqueue({
+        applicationRunId: randomUUID(),
+        fencingToken: randomUUID(),
+        identity,
+        queueCapacity: 1,
+        totalDeadlineAt: new Date(Date.now() + 60_000),
+      }),
+    ).resolves.toEqual({ retryAfterSeconds: 3600, status: 'breaker_open' })
+
+    const rows = (await db.query(
+      `SELECT COUNT(*) AS [rowCount]
+       FROM [ai_run_coordination_entries]
+       WHERE [ai_connection_model_revision_id] = @0`,
+      [identity.aiConnectionModelRevisionId],
+    )) as Array<{ rowCount: number }>
+    expect(Number(rows[0]?.rowCount ?? 0)).toBe(0)
+  })
 
   it('atomically requests exact profile and connection cancellation without overwriting the first cause', async () => {
     const db = appDb()

@@ -328,6 +328,7 @@ describe('AI connections registry', () => {
       mutation: mocks.mutation,
       profiles: [profile],
       setCandidateBlockers: vi.fn(),
+      setError: vi.fn(),
       setMessage: vi.fn(),
     })
     mocks.mutation.mockImplementation(
@@ -342,13 +343,15 @@ describe('AI connections registry', () => {
                     name: 'Catalog model',
                   },
                 ]
-              : {},
+              : (body as { action?: string }).action === 'probe_health'
+                ? { operationalHealth: 'healthy' }
+                : {},
           ),
         ),
     )
   })
 
-  it('marks the surface and drives registry actions with anchored confirmations', async () => {
+  it('marks the surface, loads the catalog, and probes model health', async () => {
     const user = userEvent.setup()
     const { container } = render(<AiConnectionsRegistry />)
     expect(
@@ -374,6 +377,43 @@ describe('AI connections registry', () => {
         name: 'admin.aiConnections.actions.probeHealth',
       }),
     )
+    expect(mocks.mutation).toHaveBeenLastCalledWith(
+      '/api/admin/ai-connections/00000000-0000-4000-8000-000000000001/actions',
+      {
+        action: 'probe_health',
+        modelRevisionId: '00000000-0000-4000-8000-000000000004',
+        revisionToken: '00000000-0000-4000-8000-000000000005',
+      },
+      { actionLabel: 'admin.aiConnections.actions.probeHealth' },
+    )
+    expect(mocks.state.setMessage).toHaveBeenCalledWith(
+      'admin.aiConnections.health.probeResult.healthy',
+      'success',
+    )
+  })
+
+  it('reports malformed catalog responses through registry error state', async () => {
+    mocks.mutation.mockResolvedValueOnce(new Response('{'))
+    const user = userEvent.setup()
+    render(<AiConnectionsRegistry />)
+    await user.click(screen.getByRole('button', { name: /Admin connection/ }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.fetchCatalog',
+      }),
+    )
+
+    expect(mocks.state.setError).toHaveBeenCalledWith({
+      kind: 'mutation',
+      message:
+        'admin.aiConnections.actionFailed admin.aiConnections.actions.fetchCatalog admin.aiConnections.mutationError',
+    })
+  })
+
+  it('sends exact destructive model-revision actions after confirmation', async () => {
+    const user = userEvent.setup()
+    render(<AiConnectionsRegistry />)
+    await user.click(screen.getByRole('button', { name: /Admin connection/ }))
     await user.click(
       screen.getByRole('button', {
         name: 'admin.aiConnections.destructive.end.confirm',
@@ -388,8 +428,38 @@ describe('AI connections registry', () => {
     expect(mocks.confirm.mock.calls[0]?.[0].anchorEl).toBeInstanceOf(
       HTMLElement,
     )
-    expect(mocks.mutateAndReload).toHaveBeenCalled()
+    expect(mocks.mutateAndReload).toHaveBeenNthCalledWith(
+      1,
+      '/api/admin/ai-connections/00000000-0000-4000-8000-000000000001/actions',
+      {
+        action: 'end_model_revision',
+        modelRevisionId: '00000000-0000-4000-8000-000000000004',
+        revisionToken: '00000000-0000-4000-8000-000000000005',
+      },
+      'messages.revisionEnded',
+      {
+        actionLabel: 'admin.aiConnections.destructive.end.confirm',
+      },
+    )
+    expect(mocks.mutateAndReload).toHaveBeenNthCalledWith(
+      2,
+      '/api/admin/ai-connections/00000000-0000-4000-8000-000000000001/actions',
+      {
+        action: 'delete_model_revision',
+        modelRevisionId: '00000000-0000-4000-8000-000000000006',
+        revisionToken: '00000000-0000-4000-8000-000000000007',
+      },
+      'messages.revisionDeleted',
+      {
+        actionLabel: 'admin.aiConnections.destructive.delete.confirm',
+      },
+    )
+  })
 
+  it('routes connection lifecycle and profile status actions', async () => {
+    const user = userEvent.setup()
+    render(<AiConnectionsRegistry />)
+    await user.click(screen.getByRole('button', { name: /Admin connection/ }))
     await user.click(
       screen.getByRole('button', {
         name: 'admin.aiConnections.actions.suspendConnection',
@@ -410,7 +480,27 @@ describe('AI connections registry', () => {
         name: 'admin.aiConnections.directProfile.pause',
       }),
     )
+    expect(mocks.mutateAndReload).toHaveBeenCalledWith(
+      '/api/admin/ai-connections/00000000-0000-4000-8000-000000000001/actions',
+      expect.objectContaining({
+        action: 'set_lifecycle',
+        status: 'suspended',
+      }),
+      'lifecycle.suspendedMessage',
+      expect.any(Object),
+    )
+    expect(mocks.mutateAndReload).toHaveBeenCalledWith(
+      '/api/admin/ai-run-profiles/generation_without_images/actions',
+      expect.objectContaining({ action: 'set_operational_status' }),
+      'profile.suspended',
+      expect.any(Object),
+    )
+  })
 
+  it('wires connection, secret, attestation, model, and profile dialogs', async () => {
+    const user = userEvent.setup()
+    render(<AiConnectionsRegistry />)
+    await user.click(screen.getByRole('button', { name: /Admin connection/ }))
     await user.click(
       screen.getByRole('button', {
         name: 'admin.aiConnections.actions.addConnection',
@@ -439,7 +529,7 @@ describe('AI connections registry', () => {
       }),
     )
     await user.click(screen.getByRole('button', { name: 'secret-revoke' }))
-    await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(5))
+    await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(2))
 
     await user.click(
       screen.getByRole('button', {

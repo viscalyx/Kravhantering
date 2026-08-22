@@ -63,7 +63,7 @@ const attemptId = '00000000-0000-4000-8000-000000000002'
 const revisionToken = '00000000-0000-4000-8000-000000000003'
 const modelRevisionId = '00000000-0000-4000-8000-000000000004'
 
-function mutationRequest(body: unknown): NextRequest {
+function mutationRequest(body: unknown, signal?: AbortSignal): NextRequest {
   return new NextRequest(
     `https://example.test/api/admin/ai-connections/${connectionId}/actions`,
     {
@@ -73,6 +73,7 @@ function mutationRequest(body: unknown): NextRequest {
         'x-requested-with': 'XMLHttpRequest',
       },
       method: 'POST',
+      signal,
     },
   )
 }
@@ -147,6 +148,41 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     )
   })
 
+  it('settles an aborted verification after the response stream is cancelled', async () => {
+    routeState.service.verifyModelCandidate.mockImplementationOnce(
+      ({ signal }: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => reject(new DOMException('Cancelled', 'AbortError')),
+            { once: true },
+          )
+        }),
+    )
+    const abortController = new AbortController()
+    const response = await connectionAction(
+      mutationRequest(
+        {
+          action: 'verify_model_candidate',
+          externalModelId: 'controlled/model',
+          externalModelVersion: null,
+        },
+        abortController.signal,
+      ),
+      { params: Promise.resolve({ connectionId }) },
+    )
+    const reader = response.body?.getReader()
+    if (!reader) throw new Error('Verification response stream missing')
+
+    await reader.cancel()
+    abortController.abort()
+    await vi.waitFor(() => {
+      const verificationCall = routeState.service.verifyModelCandidate.mock
+        .calls[0]?.[0] as { signal: AbortSignal } | undefined
+      expect(verificationCall?.signal.aborted).toBe(true)
+    })
+  })
+
   it('validates the attempt-bound save before service or database work', async () => {
     const invalid = await connectionAction(
       mutationRequest({
@@ -169,23 +205,29 @@ describe('Admin AI stable-profile and model-verification routes', () => {
   })
 
   it('routes ending, permanent deletion, and attempt discard as distinct actions', async () => {
-    for (const body of [
-      {
-        action: 'end_model_revision',
-        modelRevisionId,
-        revisionToken,
-      },
-      {
-        action: 'delete_model_revision',
-        modelRevisionId,
-        revisionToken,
-      },
-      { action: 'discard_model_verification', attemptId },
-    ]) {
+    for (const [body, expectedStatus] of [
+      [
+        {
+          action: 'end_model_revision',
+          modelRevisionId,
+          revisionToken,
+        },
+        200,
+      ],
+      [
+        {
+          action: 'delete_model_revision',
+          modelRevisionId,
+          revisionToken,
+        },
+        204,
+      ],
+      [{ action: 'discard_model_verification', attemptId }, 204],
+    ] as const) {
       const response = await connectionAction(mutationRequest(body), {
         params: Promise.resolve({ connectionId }),
       })
-      expect([200, 204]).toContain(response.status)
+      expect(response.status).toBe(expectedStatus)
     }
     expect(routeState.service.endModelRevision).toHaveBeenCalledOnce()
     expect(routeState.service.deleteModelRevision).toHaveBeenCalledOnce()

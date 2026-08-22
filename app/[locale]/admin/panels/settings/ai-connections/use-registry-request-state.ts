@@ -276,6 +276,7 @@ export function useRegistryRequestState() {
     mutation,
     profiles,
     setCandidateBlockers,
+    setError,
     setMessage,
   }
 }

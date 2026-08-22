@@ -106,6 +106,20 @@ describe('AI deployment gate', () => {
     })
   })
 
+  it.each([0, 2_147_483_648, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects invalid run-profile configuration version %s',
+    aiRunProfileConfigurationVersion => {
+      const evidence = mutateEvidence(value => {
+        value.inventory.intendedPaths[0].aiRunProfileConfigurationVersion =
+          aiRunProfileConfigurationVersion
+      })
+
+      expect(() => assessAiDeploymentGate(evidence)).toThrow(
+        'evidence.inventory.intendedPaths[0].aiRunProfileConfigurationVersion is invalid.',
+      )
+    },
+  )
+
   it('fails closed on every missing pre-deployment condition', () => {
     const result = assessAiDeploymentGate(
       verifiedEvidence({

@@ -62,13 +62,13 @@ const ALL_CAPABILITIES = {
 
 const CONNECTION_ID = 'connection-17' as AiConnectionId
 const MODEL_REVISION_ID = 'model-revision-23' as AiConnectionModelRevisionId
-const RUN_PROFILE_REVISION_ID = 'profile-revision-31' as AiRunProfileId
+const RUN_PROFILE_ID = 'profile-31' as AiRunProfileId
 
 const RUN_IDENTITY: AiRunIdentity = {
   aiConnectionId: CONNECTION_ID,
   aiConnectionModelRevisionId: MODEL_REVISION_ID,
   aiRunProfileConfigurationVersion: 1,
-  aiRunProfileId: RUN_PROFILE_REVISION_ID,
+  aiRunProfileId: RUN_PROFILE_ID,
 }
 
 function registeredAdapter(): AIConnectionAdapter {
@@ -111,7 +111,7 @@ function request(
     },
     privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
     runProfileConfigurationVersion: 1,
-    runProfileId: RUN_PROFILE_REVISION_ID,
+    runProfileId: RUN_PROFILE_ID,
     selectedCapabilities,
     task: {
       content: [{ text: 'Generate safe JSON', type: 'text' }],

@@ -129,6 +129,7 @@ describe('SQL Server AI run coordination store', () => {
     expect(sql).toContain(
       '@model_running + @waiting_for_model >= @model_maximum_concurrency',
     )
+    expect(sql).toContain("[revision].[status] = N'verified'")
     expect(sql).toContain(
       "([status] <> N'running' AND [total_deadline_at] <= @now)",
     )

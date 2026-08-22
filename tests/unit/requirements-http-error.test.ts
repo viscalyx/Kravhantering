@@ -149,6 +149,11 @@ describe('toHttpErrorPayload', () => {
 
   it.each([
     { profileKeys: ['unknown_profile'], runCount: 0 },
+    {
+      profileKeys: ['generation_without_images', 'generation_without_images'],
+      runCount: 1,
+    },
+    { profileKeys: [], runCount: 0 },
     { profileKeys: ['generation_without_images'], runCount: -1 },
     { profileKeys: ['generation_without_images'], runCount: 1.5 },
     { profileKeys: 'generation_without_images', runCount: 0 },

@@ -244,6 +244,10 @@ describe('AI run profile resolver', () => {
   it.each([
     ['model revision is not verified', { modelRevisionStatus: 'ended' }],
     [
+      'model revision requires new verification',
+      { modelRevisionStatus: 'new_revision_required' },
+    ],
+    [
       'model verification targets an older connection configuration',
       { modelRevisionConnectionConfigurationVersion: 6 },
     ],

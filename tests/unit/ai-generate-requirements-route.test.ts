@@ -46,7 +46,7 @@ const identity = {
   aiConnectionId: 'connection',
   aiConnectionModelRevisionId: 'model-revision',
   aiRunProfileConfigurationVersion: 1,
-  aiRunProfileId: 'profile-revision',
+  aiRunProfileId: 'profile',
 } as AiRunIdentity
 const usage = {
   analysisTokens: { reason: 'not_reported', status: 'unavailable' },

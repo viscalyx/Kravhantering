@@ -18,7 +18,7 @@ function nonNegative(value: number | string | null): number | null {
 }
 
 const EXPIRED_PREDICATE = `
-  [total_deadline_at] <= SYSUTCDATETIME()
+  ([status] <> N'running' AND [total_deadline_at] <= SYSUTCDATETIME())
   OR ([status] = N'running' AND [lease_expires_at] <= SYSUTCDATETIME())
 `
 
