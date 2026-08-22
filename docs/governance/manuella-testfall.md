@@ -2088,6 +2088,8 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    slutsammanfattningen. Kontrollera att `Avbryt verifiering` visas medan
    arbetet pågår. Efter lyckat resultat ska varje förmåga ha ett tydligt utfall,
    kompatibiliteten per körprofil visas och `Spara modellrevision` aktiveras.
+   Om en förmåga inte kan observeras i leverantörssvaret ska orsaken beskriva
+   just detta och inte påstå att leverantören uttryckligen avvisade förmågan.
 5. Ändra modellnamnet och kontrollera att resultatet finns kvar. Ändra ett
    tekniskt fält och kontrollera att resultatet rensas och att ny verifiering
    krävs. Verifiera igen och spara revisionen. Kontrollera statusen

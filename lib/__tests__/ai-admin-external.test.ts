@@ -1039,6 +1039,72 @@ describe('AI administration provider composition', () => {
     )
   })
 
+  it('uses high reasoning effort for the OpenRouter AI-analysis probe', async () => {
+    const adapter = openRouterAdminAdapterRegistration.adapter
+    const current = connection({
+      adapterKey: 'openrouter',
+      authenticationType: 'static_secret',
+      endpointUrl: 'https://openrouter.ai/api/v1',
+    })
+    const revision = current.models[0]?.revisions[0]
+    if (!revision) throw new Error('Revision missing')
+    const fetch = vi.fn(async (_input: string, _init: RequestInit) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: '{"probe":"ok"}',
+                  reasoning: 'Checked the arithmetic.',
+                },
+              },
+            ],
+            usage: {},
+          }),
+          { headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    )
+
+    const events: AiRunEvent[] = []
+    for await (const event of adapter.runFunctionalProbe(
+      {
+        connection: current,
+        credential: 'opaque-test-value',
+        egress: { fetch },
+      },
+      revision,
+      {
+        abortSignal: new AbortController().signal,
+        deadlineAt: new Date(Date.now() + 1_000).toISOString(),
+        selectedCapabilities: {
+          aiAnalysis: true,
+          cost: false,
+          imageInput: false,
+          jsonSchemaSteering: false,
+          streaming: false,
+          tokenUsage: false,
+          validatableJson: true,
+        },
+        task: {
+          content: [{ text: 'probe', type: 'text' }],
+          instructions: 'probe',
+          responseSchema: {},
+          validationSchema: {},
+        },
+      },
+    )) {
+      events.push(event)
+    }
+
+    expect(events).toMatchObject([
+      { analysis: 'Checked the arithmetic.', type: 'completed' },
+    ])
+    const body = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))
+    expect(body.reasoning).toEqual({ effort: 'high', exclude: false })
+  })
+
   it('fails closed for malformed and oversized provider catalogs', async () => {
     const adapter = openRouterAdminAdapterRegistration.adapter
     const current = connection({ adapterKey: 'openrouter' })

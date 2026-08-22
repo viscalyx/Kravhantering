@@ -260,7 +260,9 @@ function runOpenRouterAdminProbe(
     limits: AI_ADMIN_PROBE_LIMITS,
     modelRevision: {
       configuration: {
-        reasoningEffort: probe.selectedCapabilities.aiAnalysis ? 'low' : 'none',
+        reasoningEffort: probe.selectedCapabilities.aiAnalysis
+          ? 'high'
+          : 'none',
       },
       externalModelId: revision.externalModelId,
       id: revision.id as AiConnectionModelRevisionId,

@@ -2257,7 +2257,7 @@
           "adapter_failure": "The provider could not complete verification. Run verification again.",
           "authentication_failed": "Verification could not run because the connection has no usable secret.",
           "cancelled": "Verification was cancelled.",
-          "capability_mismatch": "The provider explicitly rejected the capability.",
+          "capability_mismatch": "The capability could not be observed in the provider response.",
           "connection_unavailable": "The result was inconclusive due to a network error. Check the connection and run verification again.",
           "deadline_exceeded": "Verification took too long. Check the connection and try again.",
           "invalid_response": "The provider returned an invalid response. Run verification again.",

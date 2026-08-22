@@ -485,7 +485,9 @@ Keep that version stable while its introducing pull request is unmerged.
 Increment it only after an earlier suite version has been released or its
 persisted evidence must remain distinguishable from a changed suite contract.
 Baseline access and validatable JSON use only the fixed prompt plus local JSON
-validation. Reasoning controls are present only for the AI-analysis check,
+validation. Reasoning controls are present only for the AI-analysis check. The
+OpenRouter adapter uses the runtime default `high` effort for that check so the
+verification exercises the same default as an ordinary generation run.
 JSON Schema controls only for strict schema steering, image content only for
 image input, and streaming only for the streaming check. Advertised parameters
 are not proof: AI analysis passes only when the normalized terminal contains a
