@@ -1674,6 +1674,19 @@ export async function confirmAiProviderSecretRevocation(
   const row = await db.transaction('SERIALIZABLE', async manager => {
     const rows = await manager.query<AiProviderSecretRow[]>(
       `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+       DECLARE @revoked TABLE (
+         [id] uniqueidentifier NOT NULL,
+         [connectionId] uniqueidentifier NOT NULL,
+         [revisionNumber] int NOT NULL,
+         [status] nvarchar(24) NOT NULL,
+         [rootKeyVersion] nvarchar(120) NOT NULL,
+         [createdAt] datetime2(3) NOT NULL,
+         [verifiedAt] datetime2(3) NULL,
+         [activatedAt] datetime2(3) NULL,
+         [providerRevokedAt] datetime2(3) NULL,
+         [ciphertextDeletedAt] datetime2(3) NULL,
+         [revisionToken] uniqueidentifier NOT NULL
+       );
        UPDATE [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
        SET [ciphertext] = NULL, [nonce] = NULL,
          [authentication_tag] = NULL, [provider_revoked_at] = @now,
@@ -1687,8 +1700,10 @@ export async function confirmAiProviderSecretRevocation(
          INSERTED.[provider_revoked_at] AS [providerRevokedAt],
          INSERTED.[ciphertext_deleted_at] AS [ciphertextDeletedAt],
          INSERTED.[revision_token] AS [revisionToken]
+       INTO @revoked
        WHERE [id] = @0 AND [ai_connection_id] = @1
-         AND [status] = N'superseded' AND [ciphertext] IS NOT NULL;`,
+         AND [status] = N'superseded' AND [ciphertext] IS NOT NULL;
+       SELECT * FROM @revoked;`,
       [input.secretVersionId, input.connectionId],
     )
     const saved = rows[0]
@@ -1710,10 +1725,12 @@ export async function deleteAiProviderSecretCandidate(
 ): Promise<boolean> {
   return db.transaction('SERIALIZABLE', async manager => {
     const rows = await manager.query<Array<{ deletedId: string }>>(
-      `DELETE FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
-       OUTPUT DELETED.[id] AS [deletedId]
+      `DECLARE @deleted TABLE ([deletedId] uniqueidentifier NOT NULL);
+       DELETE FROM [ai_provider_secret_versions] WITH (UPDLOCK, HOLDLOCK)
+       OUTPUT DELETED.[id] INTO @deleted
        WHERE [id] = @0 AND [ai_connection_id] = @1
-         AND [status] = N'candidate';`,
+         AND [status] = N'candidate';
+       SELECT [deletedId] FROM @deleted;`,
       [input.secretVersionId, input.connectionId],
     )
     const deleted = rows[0]?.deletedId === input.secretVersionId
@@ -1776,13 +1793,15 @@ export async function reencryptAiProviderSecrets(
           plaintext,
         )
         const updatedRows = await manager.query<Array<{ updatedId: string }>>(
-          `UPDATE [ai_provider_secret_versions]
+          `DECLARE @updated TABLE ([updatedId] uniqueidentifier NOT NULL);
+         UPDATE [ai_provider_secret_versions]
          SET [ciphertext] = @1, [nonce] = @2, [authentication_tag] = @3,
            [cipher_format_version] = @4, [root_key_version] = @5,
            [revision_token] = NEWID()
-         OUTPUT INSERTED.[id] AS [updatedId]
+         OUTPUT INSERTED.[id] INTO @updated
          WHERE [id] = @0 AND [revision_token] = @6
-           AND [root_key_version] = @7`,
+           AND [root_key_version] = @7;
+         SELECT [updatedId] FROM @updated;`,
           [
             row.id,
             encrypted.ciphertext,

@@ -318,6 +318,9 @@ describe('plain-Node AI provider-secret maintenance', () => {
       expect.stringContaining('UPDATE [ai_provider_secret_versions]'),
       expect.arrayContaining([row.id, 'root-2', row.revisionToken, 'root-1']),
     )
+    expect(String(update.mock.calls[0][0])).toContain(
+      'OUTPUT INSERTED.[id] INTO @updated',
+    )
 
     const missedUpdateDb = {
       query: vi.fn(async () => [{ count: 1 }]),

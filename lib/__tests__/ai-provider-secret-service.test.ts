@@ -499,6 +499,9 @@ describe('AI provider-secret service', () => {
     expect(manager.query.mock.calls[0]?.[0]).toContain(
       "AND [status] = N'candidate'",
     )
+    expect(manager.query.mock.calls[0]?.[0]).toContain(
+      'OUTPUT DELETED.[id] INTO @deleted',
+    )
   })
 
   it('keeps superseded audit metadata while deleting revoked ciphertext', async () => {
@@ -533,6 +536,7 @@ describe('AI provider-secret service', () => {
     expect(sql).toContain('[ciphertext] = NULL')
     expect(sql).toContain('[nonce] = NULL')
     expect(sql).toContain('[authentication_tag] = NULL')
+    expect(sql).toContain('INTO @revoked')
     expect(sql).not.toContain('DELETE FROM')
   })
 
@@ -610,6 +614,9 @@ describe('AI provider-secret service', () => {
       skippedCount: 0,
       toRootKeyVersion: 'root-2',
     })
+    expect(manager.query.mock.calls[1]?.[0]).toContain(
+      'OUTPUT INSERTED.[id] INTO @updated',
+    )
     const parameters = manager.query.mock.calls[1]?.[1] as unknown[]
     const rotated = {
       authenticationTag: parameters[3] as Buffer,

@@ -262,8 +262,12 @@ export function useSqlIntegrationDatabase(): () => SqlServerDatabase {
 
   afterAll(async () => {
     if (db) {
-      await db.destroy()
-      db = null
+      try {
+        await clearTransactionalTables(db)
+      } finally {
+        await db.destroy()
+        db = null
+      }
     }
   })
 

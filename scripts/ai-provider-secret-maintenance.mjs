@@ -261,13 +261,15 @@ export async function reencryptAiProviderSecretBatch(
         try {
           const encryption = encrypt(row, plaintext, keyring)
           const updatedRows = await manager.query(
-            `UPDATE [ai_provider_secret_versions]
+            `DECLARE @updated TABLE ([updatedId] uniqueidentifier NOT NULL);
+           UPDATE [ai_provider_secret_versions]
            SET [ciphertext] = @1, [nonce] = @2, [authentication_tag] = @3,
              [cipher_format_version] = 1, [root_key_version] = @4,
              [revision_token] = NEWID()
-           OUTPUT INSERTED.[id] AS [updatedId]
+           OUTPUT INSERTED.[id] INTO @updated
            WHERE [id] = @0 AND [revision_token] = @5
-             AND [root_key_version] = @6`,
+             AND [root_key_version] = @6;
+           SELECT [updatedId] FROM @updated;`,
             [
               row.id,
               encryption.ciphertext,
