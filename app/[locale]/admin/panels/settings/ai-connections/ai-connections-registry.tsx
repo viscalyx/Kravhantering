@@ -21,6 +21,7 @@ import { useCallback, useRef, useState } from 'react'
 import AutoDismissStatusToast from '@/components/AutoDismissStatusToast'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import FormModal from '@/components/FormModal'
+import type { AiConnectionAction } from '@/lib/ai/admin-contracts'
 import type {
   AiAdminAttestationRecord,
   AiAdminCatalogItem,
@@ -289,7 +290,7 @@ export default function AiConnectionsPanel() {
 
   async function connectionAction(
     connection: AiAdminConnectionDetail,
-    action: Record<string, unknown>,
+    action: AiConnectionAction,
     successKey: string,
     feedback: RegistryMutationFeedback,
   ) {
@@ -1057,30 +1058,6 @@ export default function AiConnectionsPanel() {
                           >
                             <RefreshCw aria-hidden="true" className="h-4 w-4" />
                             {t('actions.fetchCatalog')}
-                          </button>
-                          <button
-                            className="btn-secondary px-4! py-2! text-sm"
-                            disabled={
-                              busy || !detail.adapterAvailability.available
-                            }
-                            onClick={() =>
-                              void connectionAction(
-                                detail,
-                                { action: 'verify_connection' },
-                                'verification.completed',
-                                {
-                                  actionLabel: t('actions.verifyConnection'),
-                                },
-                              )
-                            }
-                            title={
-                              detail.adapterAvailability.available
-                                ? undefined
-                                : t('adapter.unavailableAction')
-                            }
-                            type="button"
-                          >
-                            {t('actions.verifyConnection')}
                           </button>
                           {detail.lifecycleStatus === 'active' ? (
                             <button

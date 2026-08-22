@@ -1815,7 +1815,6 @@
         "retireModel": "Avsluta modellrevision",
         "deleteModel": "Ta bort anslutningsmodell",
         "fetchCatalog": "Läs modellkatalog",
-        "verifyConnection": "Verifiera anslutning",
         "activateConnection": "Aktivera anslutning",
         "suspendConnection": "Suspendera anslutning",
         "recoverConnection": "Återställ anslutning",
@@ -2113,8 +2112,7 @@
       },
       "verification": {
         "title": "Verifiering och livscykel",
-        "cost": "Kontroller av anslutning, modellförmågor, modell, hemlighet, katalog och hälsa kan skicka begränsade anrop till den konfigurerade tjänsten och medföra en liten leverantörskostnad.",
-        "completed": "Den aktuella anslutningskonfigurationen verifierades."
+        "cost": "Kontroller av anslutning, modellförmågor, modell, hemlighet, katalog och hälsa kan skicka begränsade anrop till den konfigurerade tjänsten och medföra en liten leverantörskostnad."
       },
       "catalog": {
         "loaded": "Den begränsade hämtningen av modellkatalogen slutfördes.",
@@ -2272,7 +2270,7 @@
         "notSaveable": "Modellen kan inte sparas. Åtgärda oavgjorda kontroller och verifiera igen.",
         "outcomes": {
           "inconclusive": "Kunde inte avgöras",
-          "notChecked": "Inte kontrollerad",
+          "notChecked": "Inte testad",
           "notVerified": "Inte verifierad",
           "verified": "Verifierad"
         },
@@ -2284,6 +2282,7 @@
         "saveable": "Verifieringen är klar. Granska resultatet och spara modellrevisionen separat.",
         "saveRevision": "Spara modellrevision",
         "supported": "Stöds",
+        "technicalCode": "Teknisk kod: {code}",
         "unsupported": "Stöds inte – saknar {capabilities}",
         "verify": "Verifiera"
       },

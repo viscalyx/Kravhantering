@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
-const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v5'
+const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v7'
 const MAX_RESPONSE_BYTES = 1_048_576
 const REQUEST_TIMEOUT_MS = 120_000
 const SAFE_PATH_VALUE = /^[A-Za-z0-9._:-]{1,160}$/u
@@ -304,7 +304,7 @@ function assertLivePathProbeResult(value, path) {
     Array.isArray(value) ||
     Object.keys(value).sort().join('\u0000') !== fields.sort().join('\u0000')
   ) {
-    throw new Error('The fixed Admin functional probe v5 did not pass.')
+    throw new Error('The fixed Admin functional probe v7 did not pass.')
   }
   const pathMatches =
     value.adapterType === path.adapterType &&
@@ -334,7 +334,7 @@ function assertLivePathProbeResult(value, path) {
     value.outcome !== 'passed' ||
     value.testSuiteVersion !== ADMIN_FUNCTIONAL_PROBE_VERSION
   ) {
-    throw new Error('The fixed Admin functional probe v5 did not pass.')
+    throw new Error('The fixed Admin functional probe v7 did not pass.')
   }
   return value
 }

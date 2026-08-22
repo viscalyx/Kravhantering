@@ -72,6 +72,66 @@ admission allowlisting remains coordinated through
 ![Technical infographic showing AI-assisted authoring in Kravhantering. The flow illustrates how user input is checked, processed through an LLM integration layer, sent to OpenRouter, validated, and reviewed by a human before being imported into a requirements library or requirements document.](../images/ai-assisted-authoring-llm-integration-architecture.png)
 <!-- markdownlint-enable MD013 -->
 
+## Adapter Verification Design Contract
+
+New and changed provider adapters must keep provider variation behind the
+adapter seam. The central verification module owns the provider-neutral probe
+sequence, capability evidence, and decision to permit saving. Its interface
+gives the adapter a fixed task and an explicit capability selection. The adapter
+owns request construction, provider protocol variants, response parsing, and
+normalization into the shared event contract.
+
+Use the following probe sequence:
+
+1. Verify connection and authentication without assuming model capabilities.
+2. Run baseline model access with no optional provider control fields. The
+   fixed response is parsed and validated locally. A failed baseline stops the
+   suite; later capabilities and profiles remain not tested.
+3. Probe every capability independently. Include only fields and content that
+   are necessary for the selected capability. In particular, ordinary
+   validatable JSON must not require JSON Schema steering, reasoning controls
+   belong only to the AI-analysis probe, image content belongs only to image
+   input, and streaming is enabled only for the streaming probe.
+4. Run each stable profile's combined required-capability probe only after the
+   independent probes. Combined support must not turn an independently failed
+   capability into verified evidence.
+
+Catalog metadata and advertised parameters guide what can be attempted; they
+are never proof of support. A provider rejection caused by an isolated optional
+control is evidence about that capability, not about unrelated capabilities.
+Connection, authentication, trust-policy, and baseline failures remain
+connection- or model-wide failures.
+Safe adapter diagnostics, including a normalized upstream HTTP status, travel
+with failed verification results. Raw provider error bodies remain excluded.
+
+An adapter may need several request dialects for different provider or server
+versions. Keep those variants as internal adapter implementations behind the
+same interface and follow these rules:
+
+- Select a dialect from stable provider metadata, an explicit connection
+  setting, or a versioned protocol feature. Do not branch on known model IDs,
+  display names, or provider-specific model-family lists.
+- Build verification and runtime requests through the same dialect-aware
+  request builder and parse them through the same response normalizer. A
+  verification-only payload path can otherwise produce evidence that runtime
+  cannot reproduce.
+- Make dialect selection deterministic from the exact frozen connection,
+  adapter version, and model-revision inputs. If negotiation is required, bind
+  the selected dialect and its inputs to the verified model revision. Extend
+  the persisted verification contract when those inputs cannot already be
+  reconstructed; never rely on a process-local cache.
+- Require reverification when a connection setting, adapter version, provider
+  protocol version, server configuration, or other dialect input changes.
+  Introduce a new adapter version when the old and new runtime behavior cannot
+  safely share one deterministic selection rule.
+
+The adapter interface is also the test surface. Adapter tests must inspect the
+final provider request for baseline, every isolated capability, and supported
+combined profiles. Cover every implemented dialect with provider-response
+fixtures and prove that unknown model IDs follow the same metadata-driven
+rules. A model-specific fixture is acceptable as provider sample data, but its
+ID must not be a dispatch key.
+
 ## Local Adapter Setup
 
 AI-assisted authoring is available only when an administrator has activated a
@@ -227,7 +287,7 @@ authoring, quarantine, repair, cancellation, and profile availability.
 The opt-in staging-live procedure is an operator verification, not a normal
 developer or CI test. It uses only the fixed synthetic payload and prints
 content-free evidence from the non-mutating `verify_live_path` operation. The
-operation rejects `controlled_test` and binds the just-completed fixed-v5 run
+operation rejects `controlled_test` and binds the just-completed fixed-v7 run
 to its exact active connection/model revision and stable profile configuration;
 see
 [AI Connections Operations](../operations/ai-connections.md#staging-live-synthetic-probe).

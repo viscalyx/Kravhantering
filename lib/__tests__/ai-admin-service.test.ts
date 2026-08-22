@@ -11,39 +11,81 @@ import {
 import { createAiModelVerificationAttemptStore } from '@/lib/ai/model-verification-attempts'
 
 const capabilities = {
-  aiAnalysis: { failureCategory: null, outcome: 'verified' as const },
-  cost: { failureCategory: null, outcome: 'verified' as const },
-  imageInput: { failureCategory: null, outcome: 'verified' as const },
-  jsonSchemaSteering: { failureCategory: null, outcome: 'verified' as const },
-  streaming: { failureCategory: null, outcome: 'verified' as const },
-  tokenUsage: { failureCategory: null, outcome: 'verified' as const },
-  validatableJson: { failureCategory: null, outcome: 'verified' as const },
+  aiAnalysis: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified' as const,
+  },
+  cost: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified' as const,
+  },
+  imageInput: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified' as const,
+  },
+  jsonSchemaSteering: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified' as const,
+  },
+  streaming: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified' as const,
+  },
+  tokenUsage: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified' as const,
+  },
+  validatableJson: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified' as const,
+  },
 }
 
 const verification: AiAdminCandidateVerificationResult = {
-  baseline: { failureCategory: null, outcome: 'verified' },
+  baseline: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified',
+  },
   canonicalExternalModelVersion: '2026-08-22',
   capabilities,
-  connection: { failureCategory: null, outcome: 'verified' },
+  connection: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified',
+  },
   profileCompatibility: {
     generation_with_images: {
+      diagnosticCode: null,
       failureCategory: null,
       missingCapabilities: [],
+      outcome: 'verified',
       supported: true,
     },
     generation_without_images: {
+      diagnosticCode: null,
       failureCategory: null,
       missingCapabilities: [],
+      outcome: 'verified',
       supported: true,
     },
     invalid_json_repair: {
+      diagnosticCode: null,
       failureCategory: null,
       missingCapabilities: [],
+      outcome: 'verified',
       supported: true,
     },
   },
   saveable: true,
-  testSuiteVersion: 'ai-admin-functional-probe-v5',
+  testSuiteVersion: 'ai-admin-functional-probe-v7',
 }
 
 function connection(): AiAdminStoredConnectionDetail {

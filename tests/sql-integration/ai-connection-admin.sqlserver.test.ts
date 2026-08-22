@@ -19,29 +19,43 @@ const CAPABILITIES: AiCapability = {
 }
 
 const VERIFICATION: AiAdminCandidateVerificationResult = {
-  baseline: { failureCategory: null, outcome: 'verified' },
+  baseline: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified',
+  },
   canonicalExternalModelVersion: '2026-08-22',
   capabilities: Object.fromEntries(
     Object.keys(CAPABILITIES).map(key => [
       key,
-      { failureCategory: null, outcome: 'verified' },
+      { diagnosticCode: null, failureCategory: null, outcome: 'verified' },
     ]),
   ) as AiAdminCandidateVerificationResult['capabilities'],
-  connection: { failureCategory: null, outcome: 'verified' },
+  connection: {
+    diagnosticCode: null,
+    failureCategory: null,
+    outcome: 'verified',
+  },
   profileCompatibility: {
     generation_with_images: {
+      diagnosticCode: null,
       failureCategory: null,
       missingCapabilities: [],
+      outcome: 'verified',
       supported: true,
     },
     generation_without_images: {
+      diagnosticCode: null,
       failureCategory: null,
       missingCapabilities: [],
+      outcome: 'verified',
       supported: true,
     },
     invalid_json_repair: {
+      diagnosticCode: null,
       failureCategory: null,
       missingCapabilities: [],
+      outcome: 'verified',
       supported: true,
     },
   },

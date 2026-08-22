@@ -393,7 +393,7 @@ For `staging_live`, use `environment: "staging"` and
 complete document. `liveExecutionProof` is an array with one item per intended
 path. Each item contains all nine path fields plus `executionId`,
 `externalLiveCallMade: true`, `failureCategory: null`, `outcome: "passed"`,
-and `testSuiteVersion: "ai-admin-functional-probe-v5"`.
+and `testSuiteVersion: "ai-admin-functional-probe-v7"`.
 
 Run the gate from the unpacked bundle and retain its output with the release
 evidence:
@@ -471,7 +471,7 @@ version, and that the exact
 connection and model revision are active and verified. It then runs the
 guard-compatible, non-mutating Admin `verify_live_path` action. That action
 resolves the exact active connection/model/profile path, rejects controlled
-offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v5`, and
+offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v7`, and
 then executes a fixed synthetic request through the selected active profile's
 resolver, configured secret, trust boundary, queue/retry/deadline coordinator,
 integration layer, and exact live adapter. It does not select an area or send
@@ -480,11 +480,20 @@ revision tokens plus the stable profile token and configuration version
 after execution, so a concurrent Admin change emits no proof. Its response binds
 the current execution ID, suite version, outcome, observed adapter, exact path,
 and revision tokens; the script validates every field before emitting evidence.
-The v5 capability probe no longer treats advertised reasoning request
-parameters as proof of visible AI analysis. It uses a fixed reasoning task and
-passes that capability only when the normalized terminal contains a plaintext
-or summarized analysis value; absent or encrypted-only reasoning remains
-unverified.
+The v7 capability probe isolates provider-facing controls by capability.
+Baseline access and validatable JSON use only the fixed prompt plus local JSON
+validation. Reasoning controls are present only for the AI-analysis check,
+JSON Schema controls only for strict schema steering, image content only for
+image input, and streaming only for the streaming check. Advertised parameters
+are not proof: AI analysis passes only when the normalized terminal contains a
+plaintext or summarized analysis value; absent or encrypted-only reasoning
+remains unverified.
+The baseline is a gate: when it fails, later live capability and profile probes
+remain not tested. Failed rows may expose only the adapter's sanitized technical
+code and normalized HTTP status, never the provider error body.
+Adapter authors must follow the capability-isolation and dialect-selection
+rules in the
+[adapter verification design contract](../development/ai-assisted-authoring-developer-workflow.md#adapter-verification-design-contract).
 Every HTTP operation has a 120-second deadline and a 1 MiB streamed response
 limit. The script prints only opaque path identifiers and outcome metadata.
 Merge that fragment into a `staging_live` deployment evidence document and run

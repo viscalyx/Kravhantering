@@ -50,7 +50,7 @@ import {
 } from './run-contracts'
 
 export const AI_ADMIN_FUNCTIONAL_PROBE_VERSION =
-  'ai-admin-functional-probe-v5' as const
+  'ai-admin-functional-probe-v7' as const
 const ADMIN_PROBE_TIMEOUT_MS = 30_000
 const ADMIN_CANCELLATION_GRACE_MS = 5_000
 const ADMIN_PROBE_PROFILE_ID =
@@ -70,6 +70,7 @@ type AdminProbeTerminal = Extract<
 interface AdminFunctionalProbeResult {
   capabilities: AiCapability
   completed: boolean
+  diagnosticCode: string | null
   failureCategory: string | null
   schemaValid: boolean
 }
@@ -412,6 +413,10 @@ async function runAdminFunctionalProbe(
     return {
       capabilities: emptyCapabilities(),
       completed: false,
+      diagnosticCode:
+        terminal?.type === 'failed'
+          ? (terminal.failure.diagnosticCode ?? null)
+          : null,
       failureCategory:
         terminal?.type === 'failed'
           ? terminal.failure.category
@@ -437,6 +442,7 @@ async function runAdminFunctionalProbe(
   return {
     capabilities: verified,
     completed: true,
+    diagnosticCode: null,
     failureCategory: schemaValid ? null : 'invalid_response',
     schemaValid,
   }
@@ -621,7 +627,11 @@ function capabilityAssessment(
     result.schemaValid &&
     result.capabilities[capability]
   ) {
-    return { failureCategory: null, outcome: 'verified' }
+    return {
+      diagnosticCode: null,
+      failureCategory: null,
+      outcome: 'verified',
+    }
   }
   if (
     (result.completed && result.schemaValid) ||
@@ -629,11 +639,13 @@ function capabilityAssessment(
     result.failureCategory === 'request_rejected'
   ) {
     return {
+      diagnosticCode: result.diagnosticCode,
       failureCategory: result.failureCategory ?? 'capability_mismatch',
       outcome: 'not_verified',
     }
   }
   return {
+    diagnosticCode: result.diagnosticCode,
     failureCategory: result.failureCategory ?? 'invalid_response',
     outcome: 'inconclusive',
   }
@@ -642,9 +654,16 @@ function capabilityAssessment(
 function verificationAssessment(
   passed: boolean,
   failureCategory: string | null,
+  diagnosticCode: string | null = null,
 ): AiAdminCapabilityVerification {
-  if (passed) return { failureCategory: null, outcome: 'verified' }
+  if (passed)
+    return {
+      diagnosticCode: null,
+      failureCategory: null,
+      outcome: 'verified',
+    }
   return {
+    diagnosticCode,
     failureCategory: failureCategory ?? 'invalid_response',
     outcome:
       failureCategory === 'authentication_failed' ||
@@ -1305,6 +1324,7 @@ export class AiProviderSecretAdminService {
         check: AiAdminVerificationProgress['check'],
         state: AiAdminVerificationProgress['state'],
         assessment: AiAdminCapabilityVerification = {
+          diagnosticCode: null,
           failureCategory: null,
           outcome: 'not_checked',
         },
@@ -1351,6 +1371,7 @@ export class AiProviderSecretAdminService {
             return {
               capabilities: emptyCapabilities(),
               completed: false,
+              diagnosticCode: 'admin_probe_deadline_exceeded',
               failureCategory: 'deadline_exceeded',
               schemaValid: false,
             }
@@ -1375,15 +1396,21 @@ export class AiProviderSecretAdminService {
       const unknownCapabilities = Object.fromEntries(
         AI_CAPABILITY_KEYS.map(capability => [
           capability,
-          { failureCategory: null, outcome: 'not_checked' as const },
+          {
+            diagnosticCode: null,
+            failureCategory: null,
+            outcome: 'not_checked' as const,
+          },
         ]),
       ) as Record<keyof AiCapability, AiAdminCapabilityVerification>
-      const unsupportedProfiles = Object.fromEntries(
+      const uncheckedProfiles = Object.fromEntries(
         AI_RUN_PROFILE_KEYS.map(profileKey => [
           profileKey,
           {
+            diagnosticCode: null,
             failureCategory: null,
             missingCapabilities: FIXED_PROFILE_CAPABILITIES[profileKey],
+            outcome: 'not_checked' as const,
             supported: false,
           },
         ]),
@@ -1409,6 +1436,7 @@ export class AiProviderSecretAdminService {
       const connectionAssessment = verificationAssessment(
         connectionResult.outcome === 'passed',
         connectionResult.failureCategory,
+        connectionResult.diagnosticCode,
       )
       await emit('connection_authentication', 'completed', connectionAssessment)
       if (connectionAssessment.outcome !== 'verified') {
@@ -1416,13 +1444,14 @@ export class AiProviderSecretAdminService {
         await emit('summary', 'completed', connectionAssessment)
         return {
           baseline: {
+            diagnosticCode: null,
             failureCategory: null,
             outcome: 'not_checked',
           },
           canonicalExternalModelVersion: candidate.externalModelVersion,
           capabilities: unknownCapabilities,
           connection: connectionAssessment,
-          profileCompatibility: unsupportedProfiles,
+          profileCompatibility: uncheckedProfiles,
           saveable: false,
           testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
         }
@@ -1430,36 +1459,51 @@ export class AiProviderSecretAdminService {
 
       await emit('baseline_model_access', 'running')
       const baselineResult = await runProbe(emptyCapabilities())
-      const baselineRevision = revision(emptyCapabilities())
-      const [cancellationHandled, negativeCasesPassed] = await Promise.all([
-        runAdminCancellationProbe(
-          adapter,
-          context,
-          baselineRevision,
-          suiteSignal,
-          deadline,
-        ),
-        runAdminNegativeProbes(
-          adapter,
-          context,
-          baselineRevision,
-          suiteSignal,
-          deadline,
-        ),
-      ])
-      const baselinePassed =
-        baselineResult.completed &&
-        baselineResult.schemaValid &&
-        cancellationHandled &&
-        negativeCasesPassed
-      const baselineAssessment = verificationAssessment(
-        baselinePassed,
-        baselineResult.failureCategory ??
-          (cancellationHandled && negativeCasesPassed
-            ? null
-            : 'adapter_failure'),
+      let baselineAssessment = verificationAssessment(
+        baselineResult.completed && baselineResult.schemaValid,
+        baselineResult.failureCategory,
+        baselineResult.diagnosticCode,
       )
+      if (baselineAssessment.outcome === 'verified') {
+        const baselineRevision = revision(emptyCapabilities())
+        const [cancellationHandled, negativeCasesPassed] = await Promise.all([
+          runAdminCancellationProbe(
+            adapter,
+            context,
+            baselineRevision,
+            suiteSignal,
+            deadline,
+          ),
+          runAdminNegativeProbes(
+            adapter,
+            context,
+            baselineRevision,
+            suiteSignal,
+            deadline,
+          ),
+        ])
+        baselineAssessment = verificationAssessment(
+          cancellationHandled && negativeCasesPassed,
+          cancellationHandled && negativeCasesPassed ? null : 'adapter_failure',
+          cancellationHandled && negativeCasesPassed
+            ? null
+            : 'admin_adapter_contract_failed',
+        )
+      }
       await emit('baseline_model_access', 'completed', baselineAssessment)
+      if (baselineAssessment.outcome !== 'verified') {
+        await emit('summary', 'running')
+        await emit('summary', 'completed', baselineAssessment)
+        return {
+          baseline: baselineAssessment,
+          canonicalExternalModelVersion: candidate.externalModelVersion,
+          capabilities: unknownCapabilities,
+          connection: connectionAssessment,
+          profileCompatibility: uncheckedProfiles,
+          saveable: false,
+          testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
+        }
+      }
 
       const capabilities = { ...unknownCapabilities }
       for (const capability of AI_CAPABILITY_KEYS) {
@@ -1507,10 +1551,13 @@ export class AiProviderSecretAdminService {
           combinedPassed,
           result.failureCategory ??
             (missingCapabilities.length > 0 ? 'capability_mismatch' : null),
+          result.diagnosticCode,
         )
         profileCompatibility[profileKey] = {
+          diagnosticCode: assessment.diagnosticCode,
           failureCategory: assessment.failureCategory,
           missingCapabilities,
+          outcome: assessment.outcome,
           supported: combinedPassed,
         }
         await emit(check, 'completed', assessment)
@@ -1525,7 +1572,13 @@ export class AiProviderSecretAdminService {
         baselineAssessment.outcome === 'verified' &&
         decisive &&
         Object.values(profileCompatibility).some(profile => profile.supported)
+      const summaryDiagnosticCode = [
+        baselineAssessment,
+        ...Object.values(capabilities),
+        ...Object.values(profileCompatibility),
+      ].find(assessment => assessment.diagnosticCode)?.diagnosticCode
       const summaryAssessment: AiAdminCapabilityVerification = {
+        diagnosticCode: saveable ? null : (summaryDiagnosticCode ?? null),
         failureCategory: saveable
           ? null
           : (baselineAssessment.failureCategory ??

@@ -524,6 +524,12 @@ export function ModelForm({
                     {outcome === 'inconclusive' && failureCategory
                       ? ` — ${t(`modelVerification.failureCategories.${failureCategory}`)}`
                       : ''}
+                    {verification?.capabilities[capability].diagnosticCode
+                      ? ` — ${t('modelVerification.technicalCode', {
+                          code: verification.capabilities[capability]
+                            .diagnosticCode,
+                        })}`
+                      : ''}
                   </span>
                 </dd>
               </div>
@@ -562,6 +568,11 @@ export function ModelForm({
                   {failureCategory
                     ? ` — ${t(`modelVerification.failureCategories.${failureCategory}`)}`
                     : ''}
+                  {item.diagnosticCode
+                    ? ` — ${t('modelVerification.technicalCode', {
+                        code: item.diagnosticCode,
+                      })}`
+                    : ''}
                 </li>
               )
             })}
@@ -597,6 +608,11 @@ export function ModelForm({
                     {assessment.failureCategory
                       ? ` — ${t(`modelVerification.failureCategories.${assessment.failureCategory}`)}`
                       : ''}
+                    {assessment.diagnosticCode
+                      ? ` — ${t('modelVerification.technicalCode', {
+                          code: assessment.diagnosticCode,
+                        })}`
+                      : ''}
                   </dd>
                 </div>
               )
@@ -605,18 +621,28 @@ export function ModelForm({
           <ul className="space-y-1 text-sm">
             {AI_RUN_PROFILE_KEYS.map(key => {
               const result = verification.profileCompatibility[key]
+              const profileOutcome =
+                result.outcome ??
+                (result.supported ? 'verified' : 'not_verified')
               return (
                 <li key={key}>
                   {t(`profiles.${key}`)}:{' '}
-                  {result.supported
-                    ? t('modelVerification.supported')
-                    : t('modelVerification.unsupported', {
-                        capabilities: result.missingCapabilities
-                          .map(capability => t(`capabilities.${capability}`))
-                          .join(', '),
-                      })}
+                  {profileOutcome === 'not_checked'
+                    ? t('modelVerification.outcomes.notChecked')
+                    : result.supported
+                      ? t('modelVerification.supported')
+                      : t('modelVerification.unsupported', {
+                          capabilities: result.missingCapabilities
+                            .map(capability => t(`capabilities.${capability}`))
+                            .join(', '),
+                        })}
                   {!result.supported && result.failureCategory
                     ? ` — ${t(`modelVerification.failureCategories.${result.failureCategory}`)}`
+                    : ''}
+                  {result.diagnosticCode
+                    ? ` — ${t('modelVerification.technicalCode', {
+                        code: result.diagnosticCode,
+                      })}`
                     : ''}
                 </li>
               )

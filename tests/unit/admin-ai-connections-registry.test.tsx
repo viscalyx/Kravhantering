@@ -468,11 +468,6 @@ describe('AI connections registry', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: 'admin.aiConnections.actions.verifyConnection',
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', {
         name: 'admin.aiConnections.actions.retireConnection',
       }),
     )

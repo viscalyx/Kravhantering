@@ -72,6 +72,7 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
   async probeConnection() {
     return {
       details: { adapterReachable: true },
+      diagnosticCode: null,
       failureCategory: null,
       outcome: 'passed',
       testSuiteVersion: 'controlled-test-admin-v1',

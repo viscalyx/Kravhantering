@@ -6,7 +6,7 @@ import {
   stagingLiveProbeConfiguration,
 } from '../release/ai-staging-live-probe.mjs'
 
-const ADMIN_PROBE_VERSION = 'ai-admin-functional-probe-v5'
+const ADMIN_PROBE_VERSION = 'ai-admin-functional-probe-v7'
 const PATH = Object.freeze({
   adapterType: 'openrouter',
   aiConnectionId: '10000000-0000-4000-8000-000000000001',
@@ -248,7 +248,7 @@ describe('staging-live synthetic AI probe', () => {
     ).toEqual({ status: 'skipped' })
   })
 
-  it('uses only the guarded-compatible fixed Admin v5 verification actions', async () => {
+  it('uses only the guarded-compatible fixed Admin v7 verification actions', async () => {
     const fetchImpl = successfulFetch()
 
     const result = await runAiStagingLiveSyntheticProbe(configuration(), {
@@ -624,7 +624,7 @@ describe('staging-live synthetic AI probe', () => {
       runAiStagingLiveSyntheticProbe(configuration(), {
         fetchImpl: wrongSuite,
       }),
-    ).rejects.toThrow('fixed Admin functional probe v5')
+    ).rejects.toThrow('fixed Admin functional probe v7')
   })
 
   it.each([
@@ -647,7 +647,7 @@ describe('staging-live synthetic AI probe', () => {
 
     await expect(
       runAiStagingLiveSyntheticProbe(configuration(), { fetchImpl }),
-    ).rejects.toThrow('fixed Admin functional probe v5')
+    ).rejects.toThrow('fixed Admin functional probe v7')
   })
 
   it('bounds every request deadline and response size', async () => {

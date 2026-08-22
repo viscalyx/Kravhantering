@@ -57,7 +57,7 @@ const LIVE_EXECUTION_PROOF_FIELDS = Object.freeze([
   'outcome',
   'testSuiteVersion',
 ])
-const FIXED_LIVE_SUITE_VERSION = 'ai-admin-functional-probe-v5'
+const FIXED_LIVE_SUITE_VERSION = 'ai-admin-functional-probe-v7'
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

@@ -158,6 +158,7 @@ export type AiAdminVerificationOutcome =
   | 'verified'
 
 export interface AiAdminCapabilityVerification {
+  diagnosticCode: string | null
   failureCategory: string | null
   outcome: AiAdminVerificationOutcome
 }
@@ -168,8 +169,10 @@ export interface AiAdminModelVerificationCandidate {
 }
 
 export interface AiAdminProfileCompatibility {
+  diagnosticCode: string | null
   failureCategory: string | null
   missingCapabilities: readonly (keyof AiCapability)[]
+  outcome: AiAdminVerificationOutcome
   supported: boolean
 }
 
@@ -202,6 +205,7 @@ export type AiAdminVerificationCheck =
 
 export interface AiAdminVerificationProgress {
   check: AiAdminVerificationCheck
+  diagnosticCode: string | null
   failureCategory: string | null
   outcome: AiAdminVerificationOutcome
   state: 'completed' | 'running'

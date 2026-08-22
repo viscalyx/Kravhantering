@@ -370,15 +370,15 @@ describe('OpenRouter AI connection adapter', () => {
     )
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>
     expect(body).toMatchObject({
-      include_reasoning: true,
       max_tokens: 8_192,
       model: 'provider/model-v1',
       provider: {
         allow_fallbacks: false,
         data_collection: 'deny',
+        require_parameters: true,
         zdr: true,
       },
-      reasoning: { effort: 'high' },
+      reasoning: { effort: 'high', exclude: false },
       response_format: {
         json_schema: {
           name: 'requirement_import',
@@ -388,8 +388,8 @@ describe('OpenRouter AI connection adapter', () => {
         type: 'json_schema',
       },
       stream: false,
-      user: adapterRequest.context.externalRunId,
     })
+    expect(body).not.toHaveProperty('user')
     expect(body.messages).toEqual([
       {
         content: 'Return a requirement import file.',
@@ -431,16 +431,52 @@ describe('OpenRouter AI connection adapter', () => {
   })
 
   it.each([
-    [401, 'authentication_failed', false, undefined],
-    [403, 'authentication_failed', false, undefined],
-    [429, 'rate_limited', true, 17],
-    [400, 'request_rejected', false, undefined],
-    [408, 'deadline_exceeded', true, undefined],
-    [500, 'connection_unavailable', true, undefined],
-    [504, 'deadline_exceeded', true, undefined],
+    [
+      401,
+      'authentication_failed',
+      'upstream_authentication_failed_http_401',
+      false,
+      undefined,
+    ],
+    [
+      403,
+      'authentication_failed',
+      'upstream_authentication_failed_http_403',
+      false,
+      undefined,
+    ],
+    [429, 'rate_limited', 'upstream_rate_limited_http_429', true, 17],
+    [
+      400,
+      'request_rejected',
+      'upstream_request_rejected_http_400',
+      false,
+      undefined,
+    ],
+    [
+      408,
+      'deadline_exceeded',
+      'upstream_deadline_exceeded_http_408',
+      true,
+      undefined,
+    ],
+    [
+      500,
+      'connection_unavailable',
+      'upstream_unavailable_http_500',
+      true,
+      undefined,
+    ],
+    [
+      504,
+      'deadline_exceeded',
+      'upstream_deadline_exceeded_http_504',
+      true,
+      undefined,
+    ],
   ] as const)(
     'normalizes HTTP %s without exposing the provider response',
-    async (status, category, retryable, retryAfterSeconds) => {
+    async (status, category, diagnosticCode, retryable, retryAfterSeconds) => {
       mockFetch.mockResolvedValueOnce(
         new Response('secret provider details', {
           headers: { 'Retry-After': '17' },
@@ -454,6 +490,7 @@ describe('OpenRouter AI connection adapter', () => {
       expect(events[0]).toMatchObject({
         failure: {
           category,
+          diagnosticCode,
           retryable,
           ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
         },
@@ -507,7 +544,7 @@ describe('OpenRouter AI connection adapter', () => {
     })
   })
 
-  it('maps disabled optional capabilities to unavailable and always forbids provider fallback', async () => {
+  it('omits provider-specific controls for unselected capabilities', async () => {
     mockFetch.mockResolvedValueOnce(
       nonStreamingResponse({
         choices: [
@@ -549,16 +586,35 @@ describe('OpenRouter AI connection adapter', () => {
       'https://openrouter.ai/api/v1/chat/completions',
     )
     const body = JSON.parse(String(mockFetch.mock.calls[0][1]?.body))
-    expect(body).toMatchObject({
-      include_reasoning: false,
-      reasoning: { enabled: false },
-      response_format: { type: 'json_object' },
-    })
+    expect(body).not.toHaveProperty('include_reasoning')
+    expect(body).not.toHaveProperty('reasoning')
+    expect(body).not.toHaveProperty('response_format')
     expect(body.provider).toEqual({
       allow_fallbacks: false,
       data_collection: 'deny',
       zdr: true,
     })
+    expect(body).not.toHaveProperty('user')
+  })
+
+  it('does not require provider parameters for usage-only capabilities', async () => {
+    mockFetch.mockResolvedValueOnce(nonStreamingResponse())
+    const adapterRequest = request()
+    adapterRequest.selectedCapabilities = {
+      aiAnalysis: false,
+      cost: true,
+      imageInput: false,
+      jsonSchemaSteering: false,
+      streaming: false,
+      tokenUsage: true,
+    }
+
+    await collectEvents(adapter().run(adapterRequest))
+
+    const body = JSON.parse(String(mockFetch.mock.calls[0][1]?.body))
+    expect(body.provider).not.toHaveProperty('require_parameters')
+    expect(body).not.toHaveProperty('reasoning')
+    expect(body).not.toHaveProperty('response_format')
   })
 
   it.each([

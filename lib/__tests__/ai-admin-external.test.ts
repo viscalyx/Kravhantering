@@ -264,7 +264,7 @@ describe('AI administration provider composition', () => {
       externalLiveCallMade: false,
       failureCategory: 'controlled_adapter_forbidden',
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v5',
+      testSuiteVersion: 'ai-admin-functional-probe-v7',
     })
     await expect(
       external.verifySecretCandidate(
@@ -343,6 +343,110 @@ describe('AI administration provider composition', () => {
     // cancellation being verified without cancelling the whole suite.
     expect(observedSignals.size).toBe(2)
     expect(observedDeadlines.size).toBe(1)
+  })
+
+  it('stops after a rejected baseline and preserves safe diagnostics', async () => {
+    const base = controlledTestAdminAdapterRegistration.adapter
+    const runActivationCancellationProbe = vi.fn(
+      base.runActivationCancellationProbe,
+    )
+    const runActivationNegativeProbe = vi.fn(base.runActivationNegativeProbe)
+    const runFunctionalProbe = vi.fn(async function* (
+      context: Parameters<typeof base.runFunctionalProbe>[0],
+      revision: Parameters<typeof base.runFunctionalProbe>[1],
+    ): AsyncIterable<AiRunEvent> {
+      yield {
+        failure: {
+          category: 'request_rejected',
+          diagnosticCode: 'upstream_request_rejected_http_400',
+          retryable: false,
+        },
+        identity: {
+          aiConnectionId: context.connection
+            .id as AiRunIdentity['aiConnectionId'],
+          aiConnectionModelRevisionId:
+            revision.id as AiRunIdentity['aiConnectionModelRevisionId'],
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId:
+            '00000000-0000-4000-8000-000000000865' as AiRunIdentity['aiRunProfileId'],
+        },
+        type: 'failed',
+      }
+    })
+    const registry = createAiAdminConnectionAdapterRegistry([
+      {
+        ...controlledTestAdminAdapterRegistration,
+        adapter: {
+          ...base,
+          runActivationCancellationProbe,
+          runActivationNegativeProbe,
+          runFunctionalProbe,
+        },
+      },
+    ])
+    const external = createProductionAiAdminExternalOperations(
+      emptyDb,
+      () => ring,
+      { deployment: deployment(), registry },
+    )
+    const current = connection()
+    const revision = current.models[0]?.revisions[0]
+    if (!revision) throw new Error('Revision missing')
+    const progress: Array<{
+      check: string
+      diagnosticCode: string | null
+      outcome: string
+      state: string
+    }> = []
+
+    const result = await external.verifyModelCandidate(
+      current,
+      {
+        externalModelId: revision.externalModelId,
+        externalModelVersion: revision.externalModelVersion,
+      },
+      {
+        onProgress: item => {
+          progress.push(item)
+        },
+        signal: new AbortController().signal,
+      },
+    )
+
+    expect(runFunctionalProbe).toHaveBeenCalledOnce()
+    expect(runActivationCancellationProbe).not.toHaveBeenCalled()
+    expect(runActivationNegativeProbe).not.toHaveBeenCalled()
+    expect(result.baseline).toEqual({
+      diagnosticCode: 'upstream_request_rejected_http_400',
+      failureCategory: 'request_rejected',
+      outcome: 'not_verified',
+    })
+    expect(Object.values(result.capabilities)).toEqual(
+      expect.arrayContaining([
+        {
+          diagnosticCode: null,
+          failureCategory: null,
+          outcome: 'not_checked',
+        },
+      ]),
+    )
+    expect(Object.values(result.profileCompatibility)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ outcome: 'not_checked', supported: false }),
+      ]),
+    )
+    expect(progress.map(item => item.check)).toEqual([
+      'connection_authentication',
+      'connection_authentication',
+      'baseline_model_access',
+      'baseline_model_access',
+      'summary',
+      'summary',
+    ])
+    expect(progress.at(-1)).toMatchObject({
+      diagnosticCode: 'upstream_request_rejected_http_400',
+      outcome: 'not_verified',
+    })
   })
 
   it('does not verify image input when the adapter ignores the image', async () => {
@@ -929,19 +1033,23 @@ describe('AI administration provider composition', () => {
 
     await expect(adapter.probeConnection(context)).resolves.toMatchObject({
       details: { catalogReachable: false },
+      diagnosticCode: 'openrouter_admin_models_http_503',
       failureCategory: 'provider_unavailable',
       outcome: 'failed',
     })
     await expect(adapter.probeConnection(context)).resolves.toMatchObject({
       details: { catalogReachable: false },
+      diagnosticCode: 'openrouter_admin_models_http_401',
       failureCategory: 'authentication_failed',
       outcome: 'failed',
     })
     await expect(adapter.probeConnection(context)).resolves.toMatchObject({
+      diagnosticCode: 'openrouter_admin_models_http_408',
       failureCategory: 'deadline_exceeded',
       outcome: 'failed',
     })
     await expect(adapter.probeConnection(context)).resolves.toMatchObject({
+      diagnosticCode: 'openrouter_admin_models_http_429',
       failureCategory: 'rate_limited',
       outcome: 'failed',
     })
@@ -1345,7 +1453,7 @@ describe('AI administration provider composition', () => {
       executionId: expect.any(String),
       externalLiveCallMade: true,
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v5',
+      testSuiteVersion: 'ai-admin-functional-probe-v7',
     })
     await expect(
       external.probeHealth(current, revision),

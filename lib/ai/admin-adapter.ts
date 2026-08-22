@@ -33,6 +33,7 @@ export interface AiAdminFunctionalProbe {
 
 export interface AiAdminConnectionProbeResult {
   details: Readonly<Record<string, boolean>>
+  diagnosticCode: string | null
   failureCategory: string | null
   outcome: 'failed' | 'passed'
   testSuiteVersion: string

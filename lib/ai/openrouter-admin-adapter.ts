@@ -45,14 +45,17 @@ const CATALOG_PRICE_PATTERN = /^(?:0|[1-9]\d{0,11})(?:\.\d{1,24})?$/u
 
 class OpenRouterAdminRequestError extends Error {
   readonly category: string
+  readonly diagnosticCode: string
 
   constructor(
     category: string,
+    diagnosticCode: string,
     message = 'The AI provider administration request failed.',
   ) {
     super(message)
     this.name = 'OpenRouterAdminRequestError'
     this.category = category
+    this.diagnosticCode = diagnosticCode
   }
 }
 
@@ -76,12 +79,14 @@ async function readCatalog(
             : response.status >= 500
               ? 'provider_unavailable'
               : 'request_rejected',
+      `openrouter_admin_models_http_${response.status}`,
     )
   }
   const declaredLength = Number(response.headers.get('content-length') ?? 0)
   if (declaredLength > MAX_CATALOG_BYTES) {
     throw new OpenRouterAdminRequestError(
       'invalid_response',
+      'openrouter_admin_catalog_too_large',
       'The AI provider catalog exceeded its size limit.',
     )
   }
@@ -98,6 +103,7 @@ async function readCatalog(
           await reader.cancel().catch(() => undefined)
           throw new OpenRouterAdminRequestError(
             'invalid_response',
+            'openrouter_admin_catalog_too_large',
             'The AI provider catalog exceeded its size limit.',
           )
         }
@@ -119,6 +125,7 @@ async function readCatalog(
   } catch {
     throw new OpenRouterAdminRequestError(
       'invalid_response',
+      'openrouter_admin_catalog_invalid_json',
       'The AI provider returned an invalid catalog.',
     )
   }
@@ -129,6 +136,7 @@ async function readCatalog(
   ) {
     throw new OpenRouterAdminRequestError(
       'invalid_response',
+      'openrouter_admin_catalog_invalid_shape',
       'The AI provider returned an invalid catalog.',
     )
   }
@@ -169,6 +177,9 @@ async function fetchModels(
     if (error instanceof OpenRouterAdminRequestError) throw error
     throw new OpenRouterAdminRequestError(
       controller.signal.aborted ? 'deadline_exceeded' : 'provider_unavailable',
+      controller.signal.aborted
+        ? 'openrouter_admin_deadline_exceeded'
+        : 'openrouter_admin_request_failed',
     )
   } finally {
     clearTimeout(timeout)
@@ -362,6 +373,7 @@ const openRouterAdminAdapter: AiAdminConnectionAdapter = {
       await fetchModels(context, probe)
       return {
         details: { catalogReachable: true },
+        diagnosticCode: null,
         failureCategory: null,
         outcome: 'passed',
         testSuiteVersion: 'openrouter-admin-v1',
@@ -369,6 +381,10 @@ const openRouterAdminAdapter: AiAdminConnectionAdapter = {
     } catch (error) {
       return {
         details: { catalogReachable: false },
+        diagnosticCode:
+          error instanceof OpenRouterAdminRequestError
+            ? error.diagnosticCode
+            : 'openrouter_admin_request_failed',
         failureCategory:
           error instanceof OpenRouterAdminRequestError
             ? error.category

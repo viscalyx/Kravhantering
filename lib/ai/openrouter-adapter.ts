@@ -381,14 +381,14 @@ function providerStatusFailure(
   if (status === 401 || status === 403) {
     return failureEvent(request, {
       category: 'authentication_failed',
-      diagnosticCode: 'upstream_authentication_failed',
+      diagnosticCode: `upstream_authentication_failed_http_${status}`,
       retryable: false,
     })
   }
   if (status === 429) {
     return failureEvent(request, {
       category: 'rate_limited',
-      diagnosticCode: 'upstream_rate_limited',
+      diagnosticCode: 'upstream_rate_limited_http_429',
       retryAfterSeconds: retryAfter,
       retryDisposition: 'explicit_retryable_status',
       retryable: true,
@@ -397,7 +397,7 @@ function providerStatusFailure(
   if (status === 503) {
     return failureEvent(request, {
       category: 'connection_unavailable',
-      diagnosticCode: 'upstream_unavailable',
+      diagnosticCode: 'upstream_unavailable_http_503',
       retryAfterSeconds: retryAfter,
       retryDisposition: 'explicit_retryable_status',
       retryable: true,
@@ -406,20 +406,20 @@ function providerStatusFailure(
   if (status === 408 || status === 504) {
     return failureEvent(request, {
       category: 'deadline_exceeded',
-      diagnosticCode: 'upstream_deadline_exceeded',
+      diagnosticCode: `upstream_deadline_exceeded_http_${status}`,
       retryable: true,
     })
   }
   if (status >= 400 && status < 500) {
     return failureEvent(request, {
       category: 'request_rejected',
-      diagnosticCode: 'upstream_request_rejected',
+      diagnosticCode: `upstream_request_rejected_http_${status}`,
       retryable: false,
     })
   }
   return failureEvent(request, {
     category: 'connection_unavailable',
-    diagnosticCode: 'upstream_unavailable',
+    diagnosticCode: `upstream_unavailable_http_${status}`,
     retryable: true,
   })
 }
@@ -469,37 +469,42 @@ function requestBody(
           type: 'image_url',
         },
   )
-  const effort = request.selectedCapabilities.aiAnalysis
-    ? (modelConfiguration.reasoningEffort ?? 'high')
-    : 'none'
+  const effort = modelConfiguration.reasoningEffort ?? 'high'
+  const provider: Record<string, unknown> = {
+    allow_fallbacks: false,
+    data_collection: request.privacyPolicy.allowDataCollection
+      ? 'allow'
+      : 'deny',
+    zdr: request.privacyPolicy.requireZeroDataRetention,
+  }
   const body: Record<string, unknown> = {
-    include_reasoning: request.selectedCapabilities.aiAnalysis,
     messages: [
       { content: request.task.instructions, role: 'system' },
       { content, role: 'user' },
     ],
     model: request.modelRevision.externalModelId,
     max_tokens: request.limits.maxOutputTokens,
-    reasoning: effort === 'none' ? { enabled: false } : { effort },
-    response_format: request.selectedCapabilities.jsonSchemaSteering
-      ? {
-          json_schema: {
-            name: 'requirement_import',
-            schema: request.task.responseSchema,
-            strict: true,
-          },
-          type: 'json_schema',
-        }
-      : { type: 'json_object' },
     stream: request.selectedCapabilities.streaming,
-    user: request.context.externalRunId,
-    provider: {
-      allow_fallbacks: false,
-      data_collection: request.privacyPolicy.allowDataCollection
-        ? 'allow'
-        : 'deny',
-      zdr: request.privacyPolicy.requireZeroDataRetention,
-    },
+    provider,
+  }
+  if (
+    request.selectedCapabilities.aiAnalysis ||
+    request.selectedCapabilities.jsonSchemaSteering
+  ) {
+    provider.require_parameters = true
+  }
+  if (request.selectedCapabilities.aiAnalysis) {
+    body.reasoning = { effort, exclude: false }
+  }
+  if (request.selectedCapabilities.jsonSchemaSteering) {
+    body.response_format = {
+      json_schema: {
+        name: 'requirement_import',
+        schema: request.task.responseSchema,
+        strict: true,
+      },
+      type: 'json_schema',
+    }
   }
   return body
 }

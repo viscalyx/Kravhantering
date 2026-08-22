@@ -35,26 +35,35 @@ const verifiedCapabilities = Object.fromEntries(
     'streaming',
     'tokenUsage',
     'validatableJson',
-  ].map(key => [key, { failureCategory: null, outcome: 'verified' }]),
+  ].map(key => [
+    key,
+    { diagnosticCode: null, failureCategory: null, outcome: 'verified' },
+  ]),
 )
 
 const compatibility = {
   generation_with_images: {
+    diagnosticCode: null,
     failureCategory: null,
     missingCapabilities: [],
+    outcome: 'verified',
     supported: true,
   },
   generation_without_images: {
+    diagnosticCode: null,
     failureCategory: null,
     missingCapabilities: [],
+    outcome: 'verified',
     supported: true,
   },
   invalid_json_repair: {
+    diagnosticCode: null,
     failureCategory: null,
     missingCapabilities: [],
+    outcome: 'verified',
     supported: true,
   },
-}
+} as const
 
 function connection(): AiAdminConnectionDetail {
   return {
@@ -144,7 +153,7 @@ function modelRevision(
     revisionNumber: 1,
     revisionToken: `${id}-token`,
     status: 'verified',
-    testSuiteVersion: 'ai-admin-functional-probe-v5',
+    testSuiteVersion: 'ai-admin-functional-probe-v7',
     verifiedAt: '2026-08-22T12:00:00.000Z',
     verifiedCapabilities: {} as never,
     ...overrides,
@@ -179,18 +188,27 @@ function verificationResponse(): Response {
   const result = {
     attemptExpiresAt: '2026-08-22T12:15:00.000Z',
     attemptId,
-    baseline: { failureCategory: null, outcome: 'verified' },
+    baseline: {
+      diagnosticCode: null,
+      failureCategory: null,
+      outcome: 'verified',
+    },
     canonicalExternalModelVersion: null,
     capabilities: verifiedCapabilities,
-    connection: { failureCategory: null, outcome: 'verified' },
+    connection: {
+      diagnosticCode: null,
+      failureCategory: null,
+      outcome: 'verified',
+    },
     profileCompatibility: compatibility,
     saveable: true,
-    testSuiteVersion: 'ai-admin-functional-probe-v5',
+    testSuiteVersion: 'ai-admin-functional-probe-v7',
   }
   const messages = [
     {
       progress: {
         check: 'connection_authentication',
+        diagnosticCode: null,
         failureCategory: null,
         outcome: 'not_checked',
         state: 'running',
@@ -200,6 +218,7 @@ function verificationResponse(): Response {
     {
       progress: {
         check: 'connection_authentication',
+        diagnosticCode: null,
         failureCategory: null,
         outcome: 'verified',
         state: 'completed',
@@ -209,6 +228,7 @@ function verificationResponse(): Response {
     {
       progress: {
         check: 'baseline_model_access',
+        diagnosticCode: 'upstream_rate_limited_http_429',
         failureCategory: 'rate_limited',
         outcome: 'inconclusive',
         state: 'completed',
@@ -222,6 +242,62 @@ function verificationResponse(): Response {
     {
       status: 200,
     },
+  )
+}
+
+function rejectedBaselineVerificationResponse(): Response {
+  const notCheckedCapabilities = Object.fromEntries(
+    Object.keys(verifiedCapabilities).map(key => [
+      key,
+      {
+        diagnosticCode: null,
+        failureCategory: null,
+        outcome: 'not_checked',
+      },
+    ]),
+  )
+  const notCheckedProfiles = Object.fromEntries(
+    Object.keys(compatibility).map(key => [
+      key,
+      {
+        diagnosticCode: null,
+        failureCategory: null,
+        missingCapabilities: [],
+        outcome: 'not_checked',
+        supported: false,
+      },
+    ]),
+  )
+  const baseline = {
+    diagnosticCode: 'upstream_request_rejected_http_400',
+    failureCategory: 'request_rejected',
+    outcome: 'not_verified',
+  }
+  const result = {
+    attemptExpiresAt: null,
+    attemptId: null,
+    baseline,
+    canonicalExternalModelVersion: null,
+    capabilities: notCheckedCapabilities,
+    connection: {
+      diagnosticCode: null,
+      failureCategory: null,
+      outcome: 'verified',
+    },
+    profileCompatibility: notCheckedProfiles,
+    saveable: false,
+    testSuiteVersion: 'ai-admin-functional-probe-v7',
+  }
+  return new Response(
+    `${JSON.stringify({
+      progress: {
+        check: 'baseline_model_access',
+        state: 'completed',
+        ...baseline,
+      },
+      type: 'progress',
+    })}\n${JSON.stringify({ result, type: 'completed' })}\n`,
+    { status: 200 },
   )
 }
 
@@ -422,6 +498,9 @@ describe('Admin AI model and stable-profile forms', () => {
     expect(progress).toHaveTextContent(
       'admin.aiConnections.modelVerification.failureCategories.rate_limited',
     )
+    expect(progress).toHaveTextContent(
+      'admin.aiConnections.modelVerification.technicalCode upstream_rate_limited_http_429',
+    )
     expect(screen.getByText(/resultLabels\.connection/)).toBeInTheDocument()
     expect(screen.getByText(/resultLabels\.baseline/)).toBeInTheDocument()
     const save = screen.getByRole('button', {
@@ -508,6 +587,48 @@ describe('Admin AI model and stable-profile forms', () => {
     registeredClose.at(-1)?.()
     expect(cancel).toHaveBeenCalledOnce()
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
+  })
+
+  it('shows gated capabilities and profiles as not tested with a safe code', async () => {
+    fetchMock.mockResolvedValueOnce(rejectedBaselineVerificationResponse())
+    render(
+      <ModelForm
+        connection={connection()}
+        model={null}
+        onCancel={vi.fn()}
+        onComplete={vi.fn()}
+      />,
+    )
+    const user = userEvent.setup()
+    await user.type(
+      screen.getByLabelText(
+        /^admin\.aiConnections\.fields\.externalModelId\.label/,
+      ),
+      'controlled/model',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.modelVerification.verify',
+      }),
+    )
+
+    const resultHeading = await screen.findByRole('heading', {
+      name: 'admin.aiConnections.modelVerification.compatibility',
+    })
+    const result = resultHeading.closest('section')
+    if (!result) throw new Error('Verification result section missing.')
+    expect(
+      within(result).getAllByText(
+        'admin.aiConnections.modelVerification.outcomes.notChecked',
+        { exact: false },
+      ),
+    ).toHaveLength(3)
+    expect(result).not.toHaveTextContent(
+      'admin.aiConnections.modelVerification.unsupported',
+    )
+    expect(result).toHaveTextContent(
+      'admin.aiConnections.modelVerification.technicalCode upstream_request_rejected_http_400',
+    )
   })
 
   it('cancels a verification in flight', async () => {
@@ -719,7 +840,7 @@ describe('Admin AI model and stable-profile forms', () => {
             revisionNumber: 1,
             revisionToken: '00000000-0000-4000-8000-000000000007',
             status: 'verified',
-            testSuiteVersion: 'ai-admin-functional-probe-v5',
+            testSuiteVersion: 'ai-admin-functional-probe-v7',
             verifiedAt: '2026-08-22T12:00:00.000Z',
             verifiedCapabilities: Object.fromEntries(
               Object.keys(verifiedCapabilities).map(key => [key, true]),
@@ -737,7 +858,7 @@ describe('Admin AI model and stable-profile forms', () => {
             revisionNumber: 2,
             revisionToken: '00000000-0000-4000-8000-000000000009',
             status: 'ended',
-            testSuiteVersion: 'ai-admin-functional-probe-v5',
+            testSuiteVersion: 'ai-admin-functional-probe-v7',
             verifiedAt: '2026-08-22T12:00:00.000Z',
             verifiedCapabilities: {} as never,
           },
@@ -885,8 +1006,10 @@ describe('Admin AI model and stable-profile forms', () => {
           profileCompatibility: {
             ...compatibility,
             generation_without_images: {
+              diagnosticCode: null,
               failureCategory: null,
               missingCapabilities: ['streaming'],
+              outcome: 'not_verified',
               supported: false,
             },
           } as never,
@@ -897,8 +1020,10 @@ describe('Admin AI model and stable-profile forms', () => {
           profileCompatibility: {
             ...compatibility,
             generation_without_images: {
+              diagnosticCode: null,
               failureCategory: null,
               missingCapabilities: [],
+              outcome: 'not_verified',
               supported: false,
             },
           },

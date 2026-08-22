@@ -1815,7 +1815,6 @@
         "retireModel": "Retire model revision",
         "deleteModel": "Delete connection model",
         "fetchCatalog": "Read model catalog",
-        "verifyConnection": "Verify connection",
         "activateConnection": "Activate connection",
         "suspendConnection": "Suspend connection",
         "recoverConnection": "Recover connection",
@@ -2113,8 +2112,7 @@
       },
       "verification": {
         "title": "Verification and lifecycle",
-        "cost": "Connection, model-capability, model, secret, catalog, and health checks can send bounded requests to the configured service and may incur a small provider cost.",
-        "completed": "The current connection configuration passed verification."
+        "cost": "Connection, model-capability, model, secret, catalog, and health checks can send bounded requests to the configured service and may incur a small provider cost."
       },
       "catalog": {
         "loaded": "The bounded model catalog request completed.",
@@ -2272,7 +2270,7 @@
         "notSaveable": "The model cannot be saved. Resolve inconclusive checks and verify again.",
         "outcomes": {
           "inconclusive": "Could not determine",
-          "notChecked": "Not checked",
+          "notChecked": "Not tested",
           "notVerified": "Not verified",
           "verified": "Verified"
         },
@@ -2284,6 +2282,7 @@
         "saveable": "Verification is complete. Review the result and save the model revision separately.",
         "saveRevision": "Save model revision",
         "supported": "Supported",
+        "technicalCode": "Technical code: {code}",
         "unsupported": "Unsupported – missing {capabilities}",
         "verify": "Verify"
       },
