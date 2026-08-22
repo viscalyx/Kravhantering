@@ -1,7 +1,6 @@
 import type {
   AiAdminCatalogItem,
   AiAdminConnectionDetail,
-  AiAdminConnectionVerificationResult,
   AiAdminModelRevisionRecord,
 } from './admin-service'
 import type {
@@ -32,6 +31,18 @@ export interface AiAdminFunctionalProbe {
   task: Readonly<AiTaskEnvelope>
 }
 
+export interface AiAdminConnectionProbeResult {
+  details: Readonly<Record<string, boolean>>
+  failureCategory: string | null
+  outcome: 'failed' | 'passed'
+  testSuiteVersion: string
+}
+
+export interface AiAdminConnectionProbe {
+  abortSignal: AbortSignal
+  deadlineAt: string
+}
+
 export type AiAdminNegativeProbeCase =
   | 'prohibited_callback'
   | 'prohibited_function_call'
@@ -44,7 +55,8 @@ export interface AiAdminConnectionAdapter {
   ): Promise<readonly AiAdminCatalogItem[]>
   probeConnection(
     context: Readonly<AiAdminAdapterContext>,
-  ): Promise<Readonly<AiAdminConnectionVerificationResult>>
+    probe?: Readonly<AiAdminConnectionProbe>,
+  ): Promise<Readonly<AiAdminConnectionProbeResult>>
   runActivationCancellationProbe(
     context: Readonly<AiAdminAdapterContext>,
     revision: Readonly<AiAdminModelRevisionRecord>,

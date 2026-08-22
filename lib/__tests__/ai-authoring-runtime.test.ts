@@ -179,7 +179,8 @@ describe('AI authoring runtime', () => {
       identity: {
         aiConnectionId: 'connection',
         aiConnectionModelRevisionId: 'model-revision',
-        aiRunProfileRevisionId: 'profile-revision',
+        aiRunProfileConfigurationVersion: 1,
+        aiRunProfileId: 'profile-revision',
       } as AiRunIdentity,
       rawOutput: '{"requirements":[]}',
       type: 'completed',
@@ -227,7 +228,8 @@ describe('AI authoring runtime', () => {
       identity: {
         aiConnectionId: 'connection',
         aiConnectionModelRevisionId: 'model-revision',
-        aiRunProfileRevisionId: 'profile-revision',
+        aiRunProfileConfigurationVersion: 1,
+        aiRunProfileId: 'profile-revision',
       } as AiRunIdentity,
       type: 'failed',
     } as const satisfies AiRunEvent

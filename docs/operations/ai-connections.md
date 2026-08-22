@@ -11,6 +11,8 @@ The release gate and verification modes are defined by
 [ADR 0054](../adr/0054-global-ai-sparr-och-driftsattningsbevis.md), and the
 content-free telemetry and synthetic live-evidence contract by
 [ADR 0055](../adr/0055-innehallsfri-ai-observerbarhet-och-syntetisk-liveverifiering.md).
+The unified verification and stable-profile decision is
+[ADR 0056](../adr/0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
 
 AI-assisted authoring is optional. An unavailable or unconfigured AI
 connection blocks only its dependent run profiles; it does not make
@@ -26,7 +28,7 @@ provider bodies and nested exception details are never returned.
 
 - Product administrators register AI connections, enter and rotate provider
   secrets, record attestations, verify AI connection models, and activate run
-  profile revisions.
+  stable run profiles.
 - Operations owns the external versioned root keyring, distribution to every
   app node, egress enforcement, backup and restore, dashboards, and alerts.
 - Security and data-protection owners approve information class, geography,
@@ -112,22 +114,19 @@ deleted.
 
 Activating a new or restored credential increments the affected connection's
 configuration version, moves a non-draft connection to
-`verification_required`, and clears verification from its verified model
-revisions. Its active run-profile revisions remain recorded but are blocked.
-After credential activation, verify the connection again, verify each required
-model revision again, reactivate the connection, and confirm that its profiles
+`verification_required`, and marks its verified model revisions
+`new_revision_required`. Existing stable profile selections remain recorded but
+are blocked. After credential activation, run the unified model verification to
+create each required replacement revision, reactivate the connection, select
+the replacement revisions on affected profiles, and confirm that the profiles
 have no blockers before resuming traffic.
 
-Retiring or removing a connection model requires that no active or draft run
-profile revision selects any revision of that model. Remove the selection or
-activate a replacement profile revision first. Removal is available only after
-the latest model revision is retired. The icon-only removal action remains
-visible but disabled before retirement; after retirement, the retirement action
-remains visible but disabled and removal becomes available. Removal hides the
-model and all revisions from administration and future selection while
-preserving historical run-profile references. The same external model ID and
-version cannot be registered as two
-different connection models on one active connection.
+Ending or deleting a model revision requires that no stable profile selects it
+and that no queued, retrying, or running coordination row uses it. Disconnect
+the profile or select a replacement first. Ending is irreversible. Permanent
+deletion is available only after ending and also deletes the model container
+when its final revision is removed. The same external model ID and version
+cannot be registered as two different connection models on one connection.
 
 A still-encrypted superseded revision may be restored only after a new
 connection test. After the old provider credential has been revoked, confirm
@@ -262,8 +261,9 @@ releasing it, verify all of the following for the environment:
    `active` lifecycle state.
 6. Each selected AI connection model revision has passed the required
    capability tests.
-7. Each intended run profile revision is active, unblocked, and references
-   exactly the verified dependencies reviewed for the rollout.
+7. Each intended stable run profile is enabled, unblocked, and references
+   exactly the verified dependencies reviewed for the rollout; record its
+   current configuration version.
 8. Alerts for authentication failure, an opened circuit breaker, and a
    blocked active run profile reach the on-call channel.
 
@@ -288,7 +288,8 @@ Use exactly one verification mode:
 - `prodlike` proves the production-like test suite used `controlled_test`,
   made no external live AI call, and used only synthetic data.
 - `staging_live` proves the opt-in staging probe used synthetic data through
-  the exact intended adapter, connection, model revision, and profile revision.
+  the exact intended adapter, connection, model revision, stable profile, and
+  profile configuration version.
 - `production` records that no live authoring probe ran in production. The
   connection and model activation tests, restoration evidence, alert bindings,
   and exact intended active path remain mandatory.
@@ -299,7 +300,7 @@ The evidence shape is:
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "environment": "production",
   "verificationMode": "production",
   "guardActive": true,
@@ -322,20 +323,22 @@ The evidence shape is:
       "adapterVersion": "1",
       "aiConnectionId": "<opaque-id>",
       "aiConnectionModelRevisionId": "<opaque-id>",
-      "aiRunProfileRevisionId": "<opaque-id>",
+      "aiRunProfileId": "<opaque-id>",
+      "aiRunProfileConfigurationVersion": 1,
       "connectionRevisionToken": "<opaque-token>",
       "modelRevisionToken": "<opaque-token>",
-      "profileRevisionToken": "<opaque-token>"
+      "profileToken": "<opaque-token>"
     }],
     "verifiedPaths": [{
       "adapterType": "openrouter",
       "adapterVersion": "1",
       "aiConnectionId": "<same-opaque-id>",
       "aiConnectionModelRevisionId": "<same-opaque-id>",
-      "aiRunProfileRevisionId": "<same-opaque-id>",
+      "aiRunProfileId": "<same-opaque-id>",
+      "aiRunProfileConfigurationVersion": 1,
       "connectionRevisionToken": "<same-opaque-token>",
       "modelRevisionToken": "<same-opaque-token>",
-      "profileRevisionToken": "<same-opaque-token>"
+      "profileToken": "<same-opaque-token>"
     }]
   },
   "liveExecutionProof": null,
@@ -363,13 +366,14 @@ The evidence shape is:
     "adapterVersion": "1",
     "aiConnectionId": "<same-opaque-id>",
     "aiConnectionModelRevisionId": "<same-opaque-id>",
-    "aiRunProfileRevisionId": "<same-opaque-id>",
+    "aiRunProfileId": "<same-opaque-id>",
+    "aiRunProfileConfigurationVersion": 1,
     "connectionRevisionToken": "<same-opaque-token>",
     "externalLiveCallMade": false,
     "modelRevisionToken": "<same-opaque-token>",
     "outcome": "not_run",
     "payloadClassification": "none",
-    "profileRevisionToken": "<same-opaque-token>"
+    "profileToken": "<same-opaque-token>"
   }
 }
 ```
@@ -378,8 +382,8 @@ The evidence shape is:
 
 For `prodlike`, use `environment: "prodlike"`,
 `verificationMode: "prodlike"`, and `liveExecutionProof: null`. Every
-inventory and synthetic-probe path still contains all eight identity and
-revision fields shown above. The synthetic probe uses `adapterType:
+inventory and synthetic-probe path still contains all nine identity and
+configuration fields shown above. The synthetic probe uses `adapterType:
 "controlled_test"`, `externalLiveCallMade: false`, `outcome: "completed"`,
 and `payloadClassification: "synthetic"`.
 
@@ -387,9 +391,9 @@ For `staging_live`, use `environment: "staging"` and
 `verificationMode: "staging_live"`. Merge the probe's `inventory`,
 `syntheticProbe`, and `liveExecutionProof` fields directly into the otherwise
 complete document. `liveExecutionProof` is an array with one item per intended
-path. Each item contains all eight path fields plus `executionId`,
+path. Each item contains all nine path fields plus `executionId`,
 `externalLiveCallMade: true`, `failureCategory: null`, `outcome: "passed"`,
-and `testSuiteVersion: "ai-admin-functional-probe-v4"`.
+and `testSuiteVersion: "ai-admin-functional-probe-v5"`.
 
 Run the gate from the unpacked bundle and retain its output with the release
 evidence:
@@ -424,21 +428,24 @@ the tuples may use different adapters, connections, and models:
     "adapterType": "openrouter",
     "aiConnectionId": "<opaque-id-1>",
     "aiConnectionModelRevisionId": "<opaque-id-1>",
-    "aiRunProfileRevisionId": "<opaque-id-1>"
+    "aiRunProfileId": "<opaque-id-1>",
+    "aiRunProfileConfigurationVersion": 1
   },
   {
     "profileKey": "generation_with_images",
     "adapterType": "openrouter",
     "aiConnectionId": "<opaque-id-2>",
     "aiConnectionModelRevisionId": "<opaque-id-2>",
-    "aiRunProfileRevisionId": "<opaque-id-2>"
+    "aiRunProfileId": "<opaque-id-2>",
+    "aiRunProfileConfigurationVersion": 1
   },
   {
     "profileKey": "invalid_json_repair",
     "adapterType": "openrouter",
     "aiConnectionId": "<opaque-id-3>",
     "aiConnectionModelRevisionId": "<opaque-id-3>",
-    "aiRunProfileRevisionId": "<opaque-id-3>"
+    "aiRunProfileId": "<opaque-id-3>",
+    "aiRunProfileConfigurationVersion": 1
   }
 ]
 ```
@@ -459,19 +466,21 @@ The script first requires server-proven `staging` identity, the exact expected
 environment ID, the server-side live-probe opt-in, and an active global guard.
 Production ships with `AI_STAGING_LIVE_PROBE_ENABLED=0`; never enable it there.
 It proves that every configured
-profile revision is active, enabled, and unblocked, and that the exact
+stable profile is enabled and unblocked at the requested configuration
+version, and that the exact
 connection and model revision are active and verified. It then runs the
 guard-compatible, non-mutating Admin `verify_live_path` action. That action
 resolves the exact active connection/model/profile path, rejects controlled
-offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v4`, and
+offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v5`, and
 then executes a fixed synthetic request through the selected active profile's
 resolver, configured secret, trust boundary, queue/retry/deadline coordinator,
 integration layer, and exact live adapter. It does not select an area or send
-database-derived authoring data. The service rechecks all three revision tokens
+database-derived authoring data. The service rechecks the connection and model
+revision tokens plus the stable profile token and configuration version
 after execution, so a concurrent Admin change emits no proof. Its response binds
 the current execution ID, suite version, outcome, observed adapter, exact path,
 and revision tokens; the script validates every field before emitting evidence.
-The v4 capability probe no longer treats advertised reasoning request
+The v5 capability probe no longer treats advertised reasoning request
 parameters as proof of visible AI analysis. It uses a fixed reasoning task and
 passes that capability only when the normalized terminal contains a plaintext
 or summarized analysis value; absent or encrypted-only reasoning remains
@@ -484,7 +493,7 @@ release evidence.
 
 ## Runtime Capacity and Failure Contract
 
-Each run profile revision owns a total budget of 5–60 minutes, an inactivity
+Each stable run-profile configuration owns a total budget of 5–60 minutes, an inactivity
 limit of at least 5 minutes and no longer than the total budget, and a bounded
 FIFO queue of 0–100 requests. The defaults are 20 minutes total, 5 minutes of
 inactivity, and 10 queued requests. Queue time, the first attempt, retry delay,
@@ -493,7 +502,8 @@ concurrency is 1–100 with a default of 4; any lower verified AI connection
 model limit takes precedence.
 
 The AI integration layer may make at most one automatic retry against the
-same AI connection, AI connection model revision, and run profile revision. A
+same AI connection, AI connection model revision, stable run profile, and
+captured profile configuration version. A
 retry is allowed only before any analysis or output delta and when the request
 was not accepted, an upstream `429` or `503` is explicitly retryable, or the
 adapter has a verified idempotency contract. Automatic fallback to another AI
@@ -619,7 +629,7 @@ failure.
 
 ## Runtime Limits, Leases, and Recovery
 
-Each immutable run profile revision owns a total budget of 5-60 minutes, an
+Each stable run-profile configuration owns a total budget of 5-60 minutes, an
 inactivity budget of at least 5 minutes and no greater than the total, a FIFO
 queue capacity of 0-100, and explicit output-token, output-byte,
 retained-memory, and parsed-event limits. Defaults are 20 minutes total, 5
@@ -639,7 +649,8 @@ only runs that fit the currently reserved execution capacity. Expired deadlines
 and abandoned leases are reclaimed transactionally.
 
 The integration layer may retry at most once and only against the same
-connection, model revision, and run profile revision, before any analysis or
+connection, model revision, stable run profile, and captured configuration
+version, before any analysis or
 output delta. Safe pre-acceptance failures use a randomized 1-3 second delay.
 Explicit retryable `429` or `503` outcomes may honor `Retry-After` only when at
 least five minutes remain after the delay. No automatic fallback is allowed.

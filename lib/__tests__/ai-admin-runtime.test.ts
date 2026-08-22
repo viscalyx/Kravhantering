@@ -18,12 +18,11 @@ const runtimeState = vi.hoisted(() => {
       adapterAvailability: vi.fn(() => ({ available: true as const })),
       authorizeConnectionTarget: vi.fn(async () => true),
       authorizeRunProfile: vi.fn(async () => 'authorized' as const),
-      discoverModelCapabilities: vi.fn(),
       fetchCatalog: vi.fn(async () => []),
       probeConnection: vi.fn(),
       probeHealth: vi.fn(),
       verifyLivePath: vi.fn(),
-      verifyModelRevision: vi.fn(),
+      verifyModelCandidate: vi.fn(),
       verifySecretCandidate: vi.fn(async () => undefined),
     },
     KeyringError,
@@ -240,9 +239,9 @@ describe('AI administration runtime composition', () => {
     )
   })
 
-  it('uses bulk secret availability and shapes missing bulk keyrings', async () => {
+  it('lists the three stable profiles directly from the administration store', async () => {
     const store = {
-      listRunProfileActivationEntries: vi.fn(async () => []),
+      listRunProfiles: vi.fn(async () => []),
     } as unknown as AiAdminStore
     runtimeState.storeFactory.mockReturnValue(store)
     const service = createAiConnectionAdministrationRuntime(db, context, {
@@ -250,25 +249,21 @@ describe('AI administration runtime composition', () => {
     })
 
     await expect(service.listRunProfiles()).resolves.toEqual([])
-    expect(runtimeState.availabilities).toHaveBeenCalledWith(
-      db,
-      expect.anything(),
-      [],
-    )
-    runtimeState.availabilities.mockRejectedValueOnce(
-      new runtimeState.KeyringError('missing'),
-    )
-    await expect(service.listRunProfiles()).resolves.toEqual([])
+    expect(store.listRunProfiles).toHaveBeenCalledOnce()
+    expect(runtimeState.availabilities).not.toHaveBeenCalled()
   })
 
-  it('rethrows unexpected bulk secret availability failures', async () => {
+  it('rethrows unexpected stable-profile store failures', async () => {
     runtimeState.storeFactory.mockReturnValue({
-      listRunProfileActivationEntries: vi.fn(async () => []),
+      listRunProfiles: vi.fn(async () => {
+        throw new Error('profile store down')
+      }),
     } as unknown as AiAdminStore)
-    runtimeState.availabilities.mockRejectedValueOnce(new Error('bulk down'))
     const service = createAiConnectionAdministrationRuntime(db, context, {
       external: runtimeState.external,
     })
-    await expect(service.listRunProfiles()).rejects.toThrow('bulk down')
+    await expect(service.listRunProfiles()).rejects.toThrow(
+      'profile store down',
+    )
   })
 })

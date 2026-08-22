@@ -26,10 +26,11 @@ const CONTROLLED_PATH = {
   adapterVersion: '1',
   aiConnectionId: '10000000-0000-4000-8000-000000000001',
   aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000001',
-  aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000001',
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: '30000000-0000-4000-8000-000000000001',
   connectionRevisionToken: '40000000-0000-4000-8000-000000000001',
   modelRevisionToken: '50000000-0000-4000-8000-000000000001',
-  profileRevisionToken: '60000000-0000-4000-8000-000000000001',
+  profileToken: '60000000-0000-4000-8000-000000000001',
 }
 
 function checkEvidence(axis) {
@@ -43,7 +44,7 @@ function checkEvidence(axis) {
 
 function verifiedEvidence(overrides = {}) {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     environment: 'prodlike',
     verificationMode: 'prodlike',
     guardActive: true,
@@ -101,7 +102,7 @@ describe('AI deployment gate', () => {
     expect(assessAiDeploymentGate(verifiedEvidence())).toEqual({
       blockers: [],
       readyToRelease: true,
-      schemaVersion: 2,
+      schemaVersion: 3,
     })
   })
 
@@ -119,7 +120,8 @@ describe('AI deployment gate', () => {
             CONTROLLED_PATH,
             {
               ...CONTROLLED_PATH,
-              aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000002',
+              aiRunProfileConfigurationVersion: 1,
+              aiRunProfileId: '30000000-0000-4000-8000-000000000002',
             },
           ],
           verifiedPaths: [CONTROLLED_PATH],
@@ -161,10 +163,11 @@ describe('AI deployment gate', () => {
       adapterVersion: '1',
       aiConnectionId: '10000000-0000-4000-8000-000000000002',
       aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000002',
-      aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000002',
+      aiRunProfileConfigurationVersion: 1,
+      aiRunProfileId: '30000000-0000-4000-8000-000000000002',
       connectionRevisionToken: '40000000-0000-4000-8000-000000000002',
       modelRevisionToken: '50000000-0000-4000-8000-000000000002',
-      profileRevisionToken: '60000000-0000-4000-8000-000000000002',
+      profileToken: '60000000-0000-4000-8000-000000000002',
     }
     const result = assessAiDeploymentGate(
       verifiedEvidence({
@@ -180,7 +183,7 @@ describe('AI deployment gate', () => {
             externalLiveCallMade: true,
             failureCategory: null,
             outcome: 'passed',
-            testSuiteVersion: 'ai-admin-functional-probe-v4',
+            testSuiteVersion: 'ai-admin-functional-probe-v5',
           },
         ],
         syntheticProbe: {
@@ -220,7 +223,7 @@ describe('AI deployment gate', () => {
         externalLiveCallMade: true,
         failureCategory: null,
         outcome: 'passed',
-        testSuiteVersion: 'ai-admin-functional-probe-v4',
+        testSuiteVersion: 'ai-admin-functional-probe-v5',
       },
     ]
     expect(assessAiDeploymentGate(staging).blockers).toEqual(
@@ -272,7 +275,8 @@ describe('AI deployment gate', () => {
           adapterType: 'openrouter',
           aiConnectionId: '10000000-0000-4000-8000-000000000999',
           aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000999',
-          aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000999',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: '30000000-0000-4000-8000-000000000999',
           externalLiveCallMade: true,
           outcome: 'completed',
           payloadClassification: 'none',
@@ -327,7 +331,8 @@ describe('AI deployment gate', () => {
       evidence => {
         evidence.inventory.verifiedPaths.push({
           ...CONTROLLED_PATH,
-          aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000099',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: '30000000-0000-4000-8000-000000000099',
         })
       },
     ],
@@ -514,8 +519,9 @@ describe('AI deployment gate', () => {
     const paths = Array.from({ length: 3 }, (_, index) => ({
       ...CONTROLLED_PATH,
       adapterType: 'openrouter',
-      aiRunProfileRevisionId: `30000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-      profileRevisionToken: `60000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      aiRunProfileConfigurationVersion: 1,
+      aiRunProfileId: `30000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      profileToken: `60000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
     }))
     const evidence = verifiedEvidence({
       environment: 'staging',
@@ -526,7 +532,7 @@ describe('AI deployment gate', () => {
         externalLiveCallMade: true,
         failureCategory: null,
         outcome: 'passed',
-        testSuiteVersion: 'ai-admin-functional-probe-v4',
+        testSuiteVersion: 'ai-admin-functional-probe-v5',
       })),
       syntheticProbe: {
         ...paths[0],
@@ -552,8 +558,9 @@ describe('AI deployment gate', () => {
     const fourth = {
       ...CONTROLLED_PATH,
       adapterType: 'openrouter',
-      aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000004',
-      profileRevisionToken: '60000000-0000-4000-8000-000000000004',
+      aiRunProfileConfigurationVersion: 1,
+      aiRunProfileId: '30000000-0000-4000-8000-000000000004',
+      profileToken: '60000000-0000-4000-8000-000000000004',
     }
     expect(() =>
       assessAiDeploymentGate(

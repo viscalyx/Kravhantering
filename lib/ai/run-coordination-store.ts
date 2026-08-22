@@ -16,7 +16,8 @@ interface CoordinationRow {
   admissionStatus?: AiRunAdmissionResult['status']
   aiConnectionId?: string
   aiConnectionModelRevisionId?: string
-  aiRunProfileRevisionId?: string
+  aiRunProfileConfigurationVersion?: number | string
+  aiRunProfileId?: string
   breakerOpened?: boolean | number
   breakerStatus?: AiOperationalStateTransition['breakerStatus']
   cancellationReason?:
@@ -115,13 +116,13 @@ const ENQUEUE_SQL = `
       ON [model].[id] = [revision].[ai_connection_model_id]
     INNER JOIN [ai_connections] AS [connection]
       ON [connection].[id] = [model].[ai_connection_id]
-    INNER JOIN [ai_run_profile_revisions] AS [profile_revision]
-      ON [profile_revision].[id] = @3
     INNER JOIN [ai_run_profiles] AS [profile]
-      ON [profile].[id] = [profile_revision].[ai_run_profile_id]
+      ON [profile].[id] = @3
     WHERE [revision].[id] = @2 AND [connection].[id] = @1
       AND [connection].[lifecycle_status] = N'active'
       AND [profile].[operational_status] = N'enabled'
+      AND [profile].[ai_connection_model_revision_id] = @2
+      AND [profile].[configuration_version] = @7
   )
   BEGIN
     SELECT N'breaker_open' AS [admissionStatus];
@@ -146,7 +147,7 @@ const ENQUEUE_SQL = `
   );
   DECLARE @waiting int = (
     SELECT COUNT(*) FROM [ai_run_coordination_entries] WITH (UPDLOCK, HOLDLOCK)
-    WHERE [ai_run_profile_revision_id] = @3
+    WHERE [ai_run_profile_id] = @3
       AND [status] IN (N'queued', N'retry_wait')
   );
   DECLARE @waiting_for_connection int = (
@@ -187,9 +188,10 @@ const ENQUEUE_SQL = `
 
   INSERT INTO [ai_run_coordination_entries] (
     [application_run_id], [fencing_token], [ai_connection_id],
-    [ai_connection_model_revision_id], [ai_run_profile_revision_id],
+    [ai_connection_model_revision_id], [ai_run_profile_id],
+    [ai_run_profile_configuration_version],
     [status], [not_before], [total_deadline_at], [created_at], [updated_at]
-  ) VALUES (@0, @6, @1, @2, @3, N'queued', @now, @4, @now, @now);
+  ) VALUES (@0, @6, @1, @2, @3, @7, N'queued', @now, @4, @now, @now);
   SELECT N'queued' AS [admissionStatus];`
 
 const ACQUIRE_SQL = `
@@ -428,11 +430,12 @@ export function createSqlServerAiRunCoordinationStore(
            IF EXISTS (SELECT 1 FROM @acquired)
              INSERT INTO [ai_run_coordination_entries] (
                [application_run_id], [fencing_token], [ai_connection_id],
-               [ai_connection_model_revision_id], [ai_run_profile_revision_id],
+               [ai_connection_model_revision_id], [ai_run_profile_id],
+               [ai_run_profile_configuration_version],
                [status], [attempt_count], [lease_owner_id], [lease_expires_at],
                [not_before], [total_deadline_at], [created_at], [updated_at]
              ) VALUES (
-               @2, @2, @4, @0, @5, N'running', 1, @1,
+               @2, @2, @4, @0, @5, @6, N'running', 1, @1,
                DATEADD(millisecond, @3, @now), @now,
                DATEADD(millisecond, @3, @now), @now, @now
              );
@@ -444,7 +447,8 @@ export function createSqlServerAiRunCoordinationStore(
             input.probeRunId,
             input.leaseDurationMs,
             input.identity.aiConnectionId,
-            input.identity.aiRunProfileRevisionId,
+            input.identity.aiRunProfileId,
+            input.identity.aiRunProfileConfigurationVersion,
           ],
         ),
       )
@@ -490,10 +494,11 @@ export function createSqlServerAiRunCoordinationStore(
           input.applicationRunId,
           input.identity.aiConnectionId,
           input.identity.aiConnectionModelRevisionId,
-          input.identity.aiRunProfileRevisionId,
+          input.identity.aiRunProfileId,
           input.totalDeadlineAt,
           input.queueCapacity,
           input.fencingToken,
+          input.identity.aiRunProfileConfigurationVersion,
         ]),
       )
       return admission(rows[0])
@@ -570,7 +575,8 @@ export function createSqlServerAiRunCoordinationStore(
         `SELECT TOP (@0)
            [connection].[id] AS [aiConnectionId],
            [state].[ai_connection_model_revision_id] AS [aiConnectionModelRevisionId],
-           [profile_revision].[id] AS [aiRunProfileRevisionId],
+           [profile].[id] AS [aiRunProfileId],
+           [profile].[configuration_version] AS [aiRunProfileConfigurationVersion],
            [connection].[adapter_version] AS [adapterVersion],
            [connection].[adapter_key] AS [adapterType],
            CASE [profile].[profile_key]
@@ -578,8 +584,8 @@ export function createSqlServerAiRunCoordinationStore(
              WHEN N'generation_with_images' THEN N'generate_with_images'
              WHEN N'invalid_json_repair' THEN N'repair_invalid_import_json'
            END AS [runType],
-           [profile_revision].[total_time_budget_seconds] * 1000 AS [totalTimeBudgetMs],
-           [profile_revision].[inactivity_time_budget_seconds] * 1000 AS [inactivityTimeBudgetMs]
+           [profile].[total_time_budget_seconds] * 1000 AS [totalTimeBudgetMs],
+           [profile].[inactivity_time_budget_seconds] * 1000 AS [inactivityTimeBudgetMs]
          FROM [ai_connection_model_operational_states] AS [state]
          INNER JOIN [ai_connection_model_revisions] AS [model_revision]
            ON [model_revision].[id] = [state].[ai_connection_model_revision_id]
@@ -587,18 +593,8 @@ export function createSqlServerAiRunCoordinationStore(
            ON [model].[id] = [model_revision].[ai_connection_model_id]
          INNER JOIN [ai_connections] AS [connection]
            ON [connection].[id] = [model].[ai_connection_id]
-         CROSS APPLY (
-           SELECT TOP (1) [candidate].*
-           FROM [ai_run_profile_revisions] AS [candidate]
-           INNER JOIN [ai_run_profiles] AS [candidate_profile]
-             ON [candidate_profile].[id] = [candidate].[ai_run_profile_id]
-           WHERE [candidate].[ai_connection_model_revision_id] = [state].[ai_connection_model_revision_id]
-             AND [candidate].[status] = N'active'
-             AND [candidate_profile].[operational_status] = N'enabled'
-           ORDER BY [candidate].[id]
-         ) AS [profile_revision]
          INNER JOIN [ai_run_profiles] AS [profile]
-           ON [profile].[id] = [profile_revision].[ai_run_profile_id]
+           ON [profile].[ai_connection_model_revision_id] = [state].[ai_connection_model_revision_id]
          WHERE [state].[circuit_breaker_status] = N'open'
            AND [state].[next_recovery_at] <= SYSUTCDATETIME()
            AND [state].[automatic_recovery_attempt_count] < 5
@@ -607,6 +603,7 @@ export function createSqlServerAiRunCoordinationStore(
              (N'connection_unavailable', N'deadline_exceeded', N'adapter_failure')
            AND [connection].[lifecycle_status] = N'active'
            AND [model_revision].[status] = N'verified'
+           AND [profile].[operational_status] = N'enabled'
          ORDER BY [state].[next_recovery_at],
                   [state].[ai_connection_model_revision_id]`,
         [boundedLimit],
@@ -616,7 +613,8 @@ export function createSqlServerAiRunCoordinationStore(
         row.adapterVersion &&
         row.aiConnectionId &&
         row.aiConnectionModelRevisionId &&
-        row.aiRunProfileRevisionId &&
+        row.aiRunProfileConfigurationVersion !== undefined &&
+        row.aiRunProfileId &&
         row.runType &&
         row.inactivityTimeBudgetMs !== undefined &&
         row.totalTimeBudgetMs !== undefined
@@ -627,7 +625,10 @@ export function createSqlServerAiRunCoordinationStore(
                 identity: {
                   aiConnectionId: row.aiConnectionId,
                   aiConnectionModelRevisionId: row.aiConnectionModelRevisionId,
-                  aiRunProfileRevisionId: row.aiRunProfileRevisionId,
+                  aiRunProfileConfigurationVersion: Number(
+                    row.aiRunProfileConfigurationVersion,
+                  ),
+                  aiRunProfileId: row.aiRunProfileId,
                 },
                 inactivityTimeBudgetMs: Number(row.inactivityTimeBudgetMs),
                 runType: row.runType,
@@ -702,11 +703,12 @@ export function createSqlServerAiRunCoordinationStore(
            IF EXISTS (SELECT 1 FROM @acquired)
              INSERT INTO [ai_run_coordination_entries] (
                [application_run_id], [fencing_token], [ai_connection_id],
-               [ai_connection_model_revision_id], [ai_run_profile_revision_id],
+               [ai_connection_model_revision_id], [ai_run_profile_id],
+               [ai_run_profile_configuration_version],
                [status], [attempt_count], [lease_owner_id], [lease_expires_at],
                [not_before], [total_deadline_at], [created_at], [updated_at]
              ) VALUES (
-               @2, @2, @4, @0, @5, N'running', 1, @1,
+               @2, @2, @4, @0, @5, @6, N'running', 1, @1,
                DATEADD(millisecond, @3, @now), @now,
                DATEADD(millisecond, @3, @now), @now, @now
              );
@@ -717,7 +719,8 @@ export function createSqlServerAiRunCoordinationStore(
             input.probeRunId,
             input.leaseDurationMs,
             input.identity.aiConnectionId,
-            input.identity.aiRunProfileRevisionId,
+            input.identity.aiRunProfileId,
+            input.identity.aiRunProfileConfigurationVersion,
           ],
         ),
       )

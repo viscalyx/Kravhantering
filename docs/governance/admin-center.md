@@ -157,8 +157,8 @@ alias.
 
 The `AI` section manages AI-assisted requirement generation. Its
 `AI assistance` subsection contains the requirement-generation toggle,
-its `AI connections and run profiles` subsection contains a collapsed
-administrator registry for provider-independent connections, model revisions,
+its `AI connections and run profiles` subsection contains an administrator
+registry for provider-independent connections, model revisions,
 attestations, write-only provider secrets, and the three fixed run profiles,
 its `AI security` section contains the safety-rule cache time and editable AI
 safety-rule terms, and its
@@ -171,31 +171,22 @@ show their allowed range and step directly under the control.
 
 Demo seed provisions ordinary administrator-managed draft connections and does
 not add runtime provenance or special connection behavior. Model catalog
-results belong to the connection that produced them and are never reused under
-another expanded row. Fixed run-profile drafts expose their locked
-capability minimums as non-configurable controls: generation with images requires
-image input, JSON repair disables streaming and AI analysis, and administrators
-may only strengthen dimensions that the profile allows. Activating a
-replacement evaluates the candidate draft and reports capability blockers with
-their affected field; blockers on the currently active revision do not prevent
-the replacement attempt. A missing deployment-owned run-type data policy is
-reported separately from an attestation that does not satisfy a configured
-policy. A rejected profile action returns blocker details only for the fixed
-localizable code and field enums; malformed or arbitrary details are omitted.
-Connection impact includes active and draft profile revisions, not superseded
-history.
+results are optional hints belonging to the connection that produced them;
+they are never verification evidence. The application owns fixed capability
+minimums for exactly three stable profiles. Administrators select a compatible
+verified model revision directly and may adjust only bounded runtime budgets.
+Each save increments the stable profile's configuration version and affects
+new runs only. Pausing a profile requests cancellation of its queued and
+running work while preserving the selection.
 
-A connection model cannot be retired or removed while an active or draft run
-profile revision selects any of its model revisions. The administrator must
-first remove that selection or activate a replacement. After the latest model
-revision is retired, the retirement action remains visible but disabled and the
-always-visible icon-only destructive action becomes enabled. It removes the
-connection model and all of its revisions from administration and selection
-surfaces. Historical profile references remain stored for traceability. Catalog
-entries
-already registered by another non-removed connection model are omitted when a
-model is added or edited, and the server rejects the same external model ID and
-version across two connection models on one connection.
+A model revision cannot be ended or deleted while a stable profile selects it
+or queued, retrying, or running work uses it. The administrator must first
+disconnect the profile or select a replacement. Ending is irreversible;
+permanent deletion is then separately confirmed and removes the model
+container when its final revision disappears. Catalog entries already
+registered by another non-removed connection model are omitted when a model is
+added or edited, and the server rejects the same external model ID and version
+across two connection models on one connection.
 
 Adapter availability is derived from the server-side Admin adapter registry,
 not from adapter names in the browser. An unregistered adapter leaves ordinary
@@ -203,48 +194,23 @@ connection, attestation, and credential administration available while model
 catalog discovery, connection and model verification, health probes, and
 activation are disabled with an explicit explanation.
 
-Catalog capabilities are adapter-owned, three-state claims: supported,
-unsupported, or unknown. While the automatically requested catalog is loading,
-the form replaces declared-capability controls with an explicit loading state
-and disables model saving so persisted values cannot be mistaken for current
-catalog claims. Explicit catalog answers then prefill the model draft and lock
-the affected capability controls. `Check capabilities` refreshes the exact
-catalog entry and uses separate bounded synthetic calls only for unknown
-functional capabilities. Authentication, timeout, and transient provider
-failures preserve the unknown state instead of being interpreted as an
-unsupported capability. A saved complete capability assessment remains visible
-when the draft is reopened and takes precedence where a refreshed catalog still
-reports an unknown value. An incomplete assessment is not persisted as a false
-unsupported claim. The administrator reviews and saves the resulting model
-draft; discovery never silently rewrites an existing verified revision. Model
-verification remains the source of truth.
+The model form starts every capability as read-only `Not checked`. One
+streaming, abortable verification runs connection authentication, baseline
+model access, every capability, every stable-profile combination, and a final
+summary in fixed order. It retries a transient failure once and has one
+60-second total limit. A model revision can be saved only from a server-bound,
+15-minute verification attempt with a successful baseline, decisive capability
+outcomes, and at least one compatible profile. Changing a technical field
+invalidates the attempt; name and description remain editable. Saved revisions
+are immediately `verified`. Connection changes or concrete contradictions mark
+them `new_revision_required`; replacement requires a newly verified revision.
 
-The model-verification action is available only for a revision whose status is
-`verification_required`. A verified revision exposes the health probe instead;
-editing the model creates a new immutable revision that requires verification.
-A transient unavailable health result preserves verification and permits a new
-health probe. A concrete model contradiction changes the revision back to
-`verification_required`, which disables health probing and makes verification
-available again. A connection-wide authentication contradiction additionally
-requires the connection to be reverified first.
-
-The run-profile revision form lists at most one revision per connection model:
-the revision with the highest revision number, and only when that revision is
-verified. It does not offer older verified revisions when a newer revision
-exists, or any draft, verification-required, or retired revision. An incomplete
-profile draft can still be saved without a model assignment. After a model is
-selected, the form derives its capability-policy controls from that exact
-revision's verified capabilities. Unsupported optional capabilities are forced
-to `disabled`; a revision that lacks an application-required capability is
-shown as incompatible and cannot be selected. Profile minima remain locked.
-
-The run-profile badge presents effective state rather than the internal
-operational gate alone. A profile is `Not activated` without an active revision,
-`Blocked` when its active revision has dependency blockers, `Suspended` when the
-operator has suspended it, and `Active` only when an unblocked active revision
-exists. The secondary line does not repeat that status. It shows concrete
-revision metadata when available: the active profile revision, the draft
-revision, or both when a replacement draft exists.
+The stable-profile form lists all model revisions but disables ended,
+replacement-required, inactive-connection, or incompatible choices with the
+exact reason. The newest usable revision per model is recommended. A profile
+may be disconnected explicitly. Its badges independently show configuration
+as `Unconfigured`, `Configured`, or `Blocked` and operation as `Active` or
+`Paused`.
 
 The OpenRouter adapter treats streaming as an API transport capability rather
 than a per-model `supported_parameters` value. Reasoning parameters in the
@@ -273,8 +239,9 @@ The source of truth is:
 - connection workflow API:
   `POST /api/admin/ai-connections/{connectionId}/actions`
 - run-profile API: `GET /api/admin/ai-run-profiles`
-- run-profile revision and workflow APIs under
-  `/api/admin/ai-run-profiles/{profileKey}`
+- stable run-profile API: `PATCH /api/admin/ai-run-profiles/{profileKey}`
+- run-profile operational workflow API:
+  `POST /api/admin/ai-run-profiles/{profileKey}/actions`
 - forensic control API: `GET/POST/PATCH /api/admin/ai-forensic-captures`
 - hard override: `AI_REQUIREMENT_GENERATION_DISABLED`
 

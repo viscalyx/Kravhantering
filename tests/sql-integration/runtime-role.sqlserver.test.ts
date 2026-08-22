@@ -527,12 +527,11 @@ describe('least-privilege SQL Server runtime role', () => {
     ])
   })
 
-  it('enforces append-only AI evidence and only the production cancellation columns', async () => {
+  it('permits evidence cleanup but not mutation and limits production cancellation columns', async () => {
     const connectionId = randomUUID()
     const modelId = randomUUID()
     const modelRevisionId = randomUUID()
     const profileId = randomUUID()
-    const profileRevisionId = randomUUID()
     const evidenceId = randomUUID()
     const runId = randomUUID()
     const fence = randomUUID()
@@ -556,20 +555,14 @@ describe('least-privilege SQL Server runtime role', () => {
          [id], [ai_connection_model_id], [revision_number],
          [connection_configuration_version], [status], [external_model_id],
          [declared_capabilities_json], [created_at], [updated_at]
-       ) VALUES (@2, @1, 1, 1, N'draft', N'runtime/model', N'{}',
+       ) VALUES (@2, @1, 1, 1, N'new_revision_required', N'runtime/model', N'{}',
          SYSUTCDATETIME(), SYSUTCDATETIME());
        INSERT INTO [ai_run_profiles] (
-         [id], [profile_key], [operational_status], [created_at], [updated_at]
-       ) VALUES (@3, N'generation_without_images', N'enabled',
-         SYSUTCDATETIME(), SYSUTCDATETIME());
-       INSERT INTO [ai_run_profile_revisions] (
-         [id], [ai_run_profile_id], [ai_connection_model_revision_id],
-         [revision_number], [status], [capability_policy_json],
-         [total_time_budget_seconds], [inactivity_time_budget_seconds],
-         [queue_capacity], [created_at]
-       ) VALUES (@4, @3, @2, 1, N'draft', N'{}', 1200, 300, 10,
-         SYSUTCDATETIME());`,
-      [connectionId, modelId, modelRevisionId, profileId, profileRevisionId],
+         [id], [profile_key], [ai_connection_model_revision_id],
+         [operational_status], [created_at], [updated_at]
+       ) VALUES (@3, N'generation_without_images', @2, N'enabled',
+         SYSUTCDATETIME(), SYSUTCDATETIME());`,
+      [connectionId, modelId, modelRevisionId, profileId],
     )
     try {
       await expect(
@@ -592,18 +585,25 @@ describe('least-privilege SQL Server runtime role', () => {
           [evidenceId],
         ),
       ).rejects.toThrow(/permission|denied/u)
+      await expect(
+        runtimeDb.query(
+          `DELETE FROM [ai_connection_verification_evidence] WHERE [id] = @0`,
+          [evidenceId],
+        ),
+      ).resolves.toBeDefined()
 
       await adminDb.query(
         `INSERT INTO [ai_run_coordination_entries] (
            [application_run_id], [fencing_token], [ai_connection_id],
-           [ai_connection_model_revision_id], [ai_run_profile_revision_id],
+           [ai_connection_model_revision_id], [ai_run_profile_id],
+           [ai_run_profile_configuration_version],
            [status], [attempt_count], [lease_owner_id], [lease_expires_at],
            [not_before], [total_deadline_at], [created_at], [updated_at]
-         ) VALUES (@0, @1, @2, @3, @4, N'running', 1, @1,
+         ) VALUES (@0, @1, @2, @3, @4, 1, N'running', 1, @1,
            DATEADD(second, 30, SYSUTCDATETIME()), SYSUTCDATETIME(),
            DATEADD(minute, 1, SYSUTCDATETIME()), SYSUTCDATETIME(),
            SYSUTCDATETIME())`,
-        [runId, fence, connectionId, modelRevisionId, profileRevisionId],
+        [runId, fence, connectionId, modelRevisionId, profileId],
       )
       await expect(
         runtimeDb.query(
@@ -627,20 +627,11 @@ describe('least-privilege SQL Server runtime role', () => {
         `DELETE FROM [ai_run_coordination_entries]
          WHERE [application_run_id] = @0;
          DELETE FROM [ai_connection_verification_evidence] WHERE [id] = @1;
-         DELETE FROM [ai_run_profile_revisions] WHERE [id] = @2;
-         DELETE FROM [ai_run_profiles] WHERE [id] = @3;
-         DELETE FROM [ai_connection_model_revisions] WHERE [id] = @4;
-         DELETE FROM [ai_connection_models] WHERE [id] = @5;
-         DELETE FROM [ai_connections] WHERE [id] = @6;`,
-        [
-          runId,
-          evidenceId,
-          profileRevisionId,
-          profileId,
-          modelRevisionId,
-          modelId,
-          connectionId,
-        ],
+         DELETE FROM [ai_run_profiles] WHERE [id] = @2;
+         DELETE FROM [ai_connection_model_revisions] WHERE [id] = @3;
+         DELETE FROM [ai_connection_models] WHERE [id] = @4;
+         DELETE FROM [ai_connections] WHERE [id] = @5;`,
+        [runId, evidenceId, profileId, modelRevisionId, modelId, connectionId],
       )
     }
   })

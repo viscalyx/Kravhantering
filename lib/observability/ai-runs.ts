@@ -66,10 +66,12 @@ export function recordAiRunTelemetryEvent(
         event.aiConnectionModelRevisionId,
         'AI connection model revision identifier',
       ),
-      ai_run_profile_revision_id: safeIdentifier(
-        event.aiRunProfileRevisionId,
-        'AI run profile revision identifier',
+      ai_run_profile_id: safeIdentifier(
+        event.aiRunProfileId,
+        'AI run profile identifier',
       ),
+      ai_run_profile_configuration_version:
+        event.aiRunProfileConfigurationVersion,
       application_run_id: safeIdentifier(
         event.applicationRunId,
         'application run identifier',

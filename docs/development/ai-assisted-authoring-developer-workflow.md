@@ -14,15 +14,13 @@ verified AI connection model revision before the adapter runs. Application
 routes and business services do not select providers, models, transports, or
 provider configuration.
 
-The runtime resolver reads the active revision for exactly one of the three
-fixed profile slots in a single SQL Server query. It rejects missing,
-suspended, or derived-blocked profiles before resolving transient adapter
-configuration. The exact connection, model revision, profile revision, adapter
-version, and capability selection are frozen for the run. `disabled`
-capabilities are never selected, `allowed` capabilities are selected only when
-the model revision verifies them, and missing `required` capabilities block the
-profile. Verified validatable JSON remains mandatory independently of optional
-strict JSON Schema steering.
+The runtime resolver reads exactly one of the three stable profiles in a single
+SQL Server query. It rejects disconnected, paused, or derived-blocked profiles
+before resolving transient adapter configuration. The exact connection, model
+revision, stable profile ID, profile configuration version, adapter version,
+and application-owned capability selection are frozen for the run. Missing
+fixed minimum capabilities block the profile. Verified validatable JSON
+remains mandatory independently of optional strict JSON Schema steering.
 
 Adapter-ready connection and model configuration exists only inside the
 resolver's opaque configuration callback; it is not returned on the resolved
@@ -89,10 +87,11 @@ secret, verification, and profile workflow as production.
 2. Configure the deployment-owned egress, data, and TLS policy maps described in
    [AI Connections Operations](../operations/ai-connections.md).
 3. In Admin Center under `AI`, register a connection, write its provider secret,
-   run the connection checks, verify an immutable model revision, and activate
-   the connection.
-4. Activate separate run-profile revisions for generation without images,
-   generation with images, and invalid-import repair as needed.
+   attest it, run the unified model verification, save the verified model
+   revision, and activate the connection.
+4. Select that compatible revision directly on the stable profiles for
+   generation without images, generation with images, and invalid-import repair
+   as needed.
 5. Confirm the authoring dialog shows only the connection's public name and
    data-policy summary. Missing, suspended, or blocked profiles disable only
    their corresponding action.
@@ -228,6 +227,7 @@ authoring, quarantine, repair, cancellation, and profile availability.
 The opt-in staging-live procedure is an operator verification, not a normal
 developer or CI test. It uses only the fixed synthetic payload and prints
 content-free evidence from the non-mutating `verify_live_path` operation. The
-operation rejects `controlled_test` and binds the just-completed fixed-v4 run
-to its exact active connection/model/profile revisions; see
+operation rejects `controlled_test` and binds the just-completed fixed-v5 run
+to its exact active connection/model revision and stable profile configuration;
+see
 [AI Connections Operations](../operations/ai-connections.md#staging-live-synthetic-probe).

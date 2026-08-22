@@ -10,31 +10,24 @@ export const ADMIN_20_CONNECTION_NAME = 'PW ADMIN-20 kontrollerad anslutning'
 export const ADMIN_20_MODEL_NAME = 'PW ADMIN-20 kontrollerad modell'
 
 interface ProfileRow {
-  createdAt: Date
-  id: string
-  operationalStatus: 'enabled' | 'suspended'
-  revisionToken: string
-  updatedAt: Date
-}
-
-interface ProfileRevisionRow {
-  activatedAt: Date | null
-  capabilityPolicyJson: string
+  configurationVersion: number
   createdAt: Date
   id: string
   inactivityTimeBudgetSeconds: number
+  maximumBufferedEvents: number
+  maximumOutputBytes: number
+  maximumOutputTokens: number
+  maximumRetainedMemoryBytes: number
   modelRevisionId: string | null
+  operationalStatus: 'enabled' | 'suspended'
   queueCapacity: number
-  revisionNumber: number
   revisionToken: string
-  status: 'active' | 'draft' | 'superseded'
-  supersededAt: Date | null
   totalTimeBudgetSeconds: number
+  updatedAt: Date
 }
 
 interface ProfileSnapshot {
   profile: ProfileRow
-  revisions: ProfileRevisionRow[]
 }
 
 function readEnvFile(path: string): Record<string, string> {
@@ -91,7 +84,17 @@ async function openDatabase(): Promise<DataSource> {
 
 async function profileSnapshot(db: DataSource): Promise<ProfileSnapshot> {
   const profiles = (await db.query(
-    `SELECT [id], [operational_status] AS [operationalStatus],
+    `SELECT [id],
+       [ai_connection_model_revision_id] AS [modelRevisionId],
+       [configuration_version] AS [configurationVersion],
+       [operational_status] AS [operationalStatus],
+       [total_time_budget_seconds] AS [totalTimeBudgetSeconds],
+       [inactivity_time_budget_seconds] AS [inactivityTimeBudgetSeconds],
+       [queue_capacity] AS [queueCapacity],
+       [maximum_output_tokens] AS [maximumOutputTokens],
+       [maximum_output_bytes] AS [maximumOutputBytes],
+       [maximum_retained_memory_bytes] AS [maximumRetainedMemoryBytes],
+       [maximum_buffered_events] AS [maximumBufferedEvents],
        [created_at] AS [createdAt], [updated_at] AS [updatedAt],
        [revision_token] AS [revisionToken]
      FROM [ai_run_profiles]
@@ -99,43 +102,7 @@ async function profileSnapshot(db: DataSource): Promise<ProfileSnapshot> {
   )) as ProfileRow[]
   const profile = profiles[0]
   if (!profile) throw new Error('ADMIN-20 fixed run profile is missing.')
-  const revisions = (await db.query(
-    `SELECT [id],
-       [ai_connection_model_revision_id] AS [modelRevisionId],
-       [revision_number] AS [revisionNumber], [status],
-       [capability_policy_json] AS [capabilityPolicyJson],
-       [total_time_budget_seconds] AS [totalTimeBudgetSeconds],
-       [inactivity_time_budget_seconds] AS [inactivityTimeBudgetSeconds],
-       [queue_capacity] AS [queueCapacity], [created_at] AS [createdAt],
-       [activated_at] AS [activatedAt], [superseded_at] AS [supersededAt],
-       [revision_token] AS [revisionToken]
-     FROM [ai_run_profile_revisions]
-     WHERE [ai_run_profile_id] = @0`,
-    [profile.id],
-  )) as ProfileRevisionRow[]
-  return { profile, revisions }
-}
-
-async function withProfileTriggersDisabled(
-  db: DataSource,
-  operation: () => Promise<void>,
-) {
-  try {
-    await db.query(
-      'DISABLE TRIGGER [trg_ai_run_profile_revisions_immutable] ON [ai_run_profile_revisions]',
-    )
-    await db.query(
-      'DISABLE TRIGGER [trg_ai_run_profile_revisions_delete_drafts_only] ON [ai_run_profile_revisions]',
-    )
-    await operation()
-  } finally {
-    await db.query(
-      'ENABLE TRIGGER [trg_ai_run_profile_revisions_immutable] ON [ai_run_profile_revisions]',
-    )
-    await db.query(
-      'ENABLE TRIGGER [trg_ai_run_profile_revisions_delete_drafts_only] ON [ai_run_profile_revisions]',
-    )
-  }
+  return { profile }
 }
 
 async function removeFixtureConnections(db: DataSource) {
@@ -145,60 +112,19 @@ async function removeFixtureConnections(db: DataSource) {
     [ADMIN_20_CONNECTION_NAME],
   )) as Array<{ id: string }>
   for (const { id } of connectionRows) {
-    await withProfileTriggersDisabled(db, async () => {
-      const activeFixtureRows = (await db.query(
-        `SELECT [revision].[ai_run_profile_id] AS [profileId]
-         FROM [ai_run_profile_revisions] AS [revision]
-         INNER JOIN [ai_connection_model_revisions] AS [model_revision]
-           ON [model_revision].[id] = [revision].[ai_connection_model_revision_id]
-         INNER JOIN [ai_connection_models] AS [model]
-           ON [model].[id] = [model_revision].[ai_connection_model_id]
-         WHERE [model].[ai_connection_id] = @0
-           AND [revision].[status] = N'active'`,
-        [id],
-      )) as Array<{ profileId: string }>
-      for (const { profileId } of activeFixtureRows) {
-        await db.query(
-          `UPDATE [ai_run_profile_revisions]
-           SET [status] = N'superseded',
-             [activated_at] = COALESCE([activated_at], SYSUTCDATETIME()),
-             [superseded_at] = COALESCE([superseded_at], SYSUTCDATETIME())
-           WHERE [ai_run_profile_id] = @0 AND [status] = N'active'`,
-          [profileId],
-        )
-        const replacements = (await db.query(
-          `SELECT TOP (1) [revision].[id]
-           FROM [ai_run_profile_revisions] AS [revision]
-           LEFT JOIN [ai_connection_model_revisions] AS [model_revision]
-             ON [model_revision].[id] = [revision].[ai_connection_model_revision_id]
-           LEFT JOIN [ai_connection_models] AS [model]
-             ON [model].[id] = [model_revision].[ai_connection_model_id]
-           WHERE [revision].[ai_run_profile_id] = @0
-             AND [revision].[status] = N'superseded'
-             AND ([model].[ai_connection_id] IS NULL OR [model].[ai_connection_id] <> @1)
-           ORDER BY [revision].[revision_number] DESC`,
-          [profileId, id],
-        )) as Array<{ id: string }>
-        if (replacements[0]) {
-          await db.query(
-            `UPDATE [ai_run_profile_revisions]
-             SET [status] = N'active', [superseded_at] = NULL
-             WHERE [id] = @0`,
-            [replacements[0].id],
-          )
-        }
-      }
-      await db.query(
-        `DELETE [revision]
-         FROM [ai_run_profile_revisions] AS [revision]
-         INNER JOIN [ai_connection_model_revisions] AS [model_revision]
-           ON [model_revision].[id] = [revision].[ai_connection_model_revision_id]
-         INNER JOIN [ai_connection_models] AS [model]
-           ON [model].[id] = [model_revision].[ai_connection_model_id]
-         WHERE [model].[ai_connection_id] = @0`,
-        [id],
-      )
-    })
+    await db.query(
+      `UPDATE [profile]
+       SET [ai_connection_model_revision_id] = NULL,
+         [configuration_version] = [configuration_version] + 1,
+         [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
+       FROM [ai_run_profiles] AS [profile]
+       INNER JOIN [ai_connection_model_revisions] AS [revision]
+         ON [revision].[id] = [profile].[ai_connection_model_revision_id]
+       INNER JOIN [ai_connection_models] AS [model]
+         ON [model].[id] = [revision].[ai_connection_model_id]
+       WHERE [model].[ai_connection_id] = @0`,
+      [id],
+    )
 
     await db.query(
       `DELETE [entry] FROM [ai_run_coordination_entries] AS [entry]
@@ -226,22 +152,13 @@ async function removeFixtureConnections(db: DataSource) {
       [id],
     )
     await db.query(
-      'DISABLE TRIGGER [trg_ai_connection_model_revisions_delete_drafts_only] ON [ai_connection_model_revisions]',
+      `DELETE [revision]
+       FROM [ai_connection_model_revisions] AS [revision]
+       INNER JOIN [ai_connection_models] AS [model]
+         ON [model].[id] = [revision].[ai_connection_model_id]
+       WHERE [model].[ai_connection_id] = @0`,
+      [id],
     )
-    try {
-      await db.query(
-        `DELETE [revision]
-         FROM [ai_connection_model_revisions] AS [revision]
-         INNER JOIN [ai_connection_models] AS [model]
-           ON [model].[id] = [revision].[ai_connection_model_id]
-         WHERE [model].[ai_connection_id] = @0`,
-        [id],
-      )
-    } finally {
-      await db.query(
-        'ENABLE TRIGGER [trg_ai_connection_model_revisions_delete_drafts_only] ON [ai_connection_model_revisions]',
-      )
-    }
     await db.query(
       'DISABLE TRIGGER [trg_ai_provider_secret_versions_delete_candidates_only] ON [ai_provider_secret_versions]',
     )
@@ -269,65 +186,35 @@ async function removeFixtureConnections(db: DataSource) {
 }
 
 async function restoreProfile(db: DataSource, snapshot: ProfileSnapshot) {
-  await withProfileTriggersDisabled(db, async () => {
-    const ids = JSON.stringify(snapshot.revisions.map(revision => revision.id))
-    await db.query(
-      `DELETE FROM [ai_run_profile_revisions]
-       WHERE [ai_run_profile_id] = @0
-         AND [id] NOT IN (
-           SELECT TRY_CONVERT(uniqueidentifier, [value]) FROM OPENJSON(@1)
-         )`,
-      [snapshot.profile.id, ids],
-    )
-    await db.query(
-      `UPDATE [ai_run_profile_revisions]
-       SET [status] = N'superseded',
-         [activated_at] = COALESCE([activated_at], SYSUTCDATETIME()),
-         [superseded_at] = COALESCE([superseded_at], SYSUTCDATETIME())
-       WHERE [ai_run_profile_id] = @0
-         AND [ai_connection_model_revision_id] IS NOT NULL`,
-      [snapshot.profile.id],
-    )
-    for (const revision of snapshot.revisions) {
-      await db.query(
-        `UPDATE [ai_run_profile_revisions]
-         SET [ai_connection_model_revision_id] = @1, [revision_number] = @2,
-           [status] = @3, [capability_policy_json] = @4,
-           [total_time_budget_seconds] = @5,
-           [inactivity_time_budget_seconds] = @6, [queue_capacity] = @7,
-           [created_at] = @8, [activated_at] = @9, [superseded_at] = @10,
-           [revision_token] = @11
-         WHERE [id] = @0`,
-        [
-          revision.id,
-          revision.modelRevisionId,
-          revision.revisionNumber,
-          revision.status,
-          revision.capabilityPolicyJson,
-          revision.totalTimeBudgetSeconds,
-          revision.inactivityTimeBudgetSeconds,
-          revision.queueCapacity,
-          revision.createdAt,
-          revision.activatedAt,
-          revision.supersededAt,
-          revision.revisionToken,
-        ],
-      )
-    }
-    await db.query(
-      `UPDATE [ai_run_profiles]
-       SET [operational_status] = @1, [created_at] = @2, [updated_at] = @3,
-         [revision_token] = @4
-       WHERE [id] = @0`,
-      [
-        snapshot.profile.id,
-        snapshot.profile.operationalStatus,
-        snapshot.profile.createdAt,
-        snapshot.profile.updatedAt,
-        snapshot.profile.revisionToken,
-      ],
-    )
-  })
+  const profile = snapshot.profile
+  await db.query(
+    `UPDATE [ai_run_profiles]
+     SET [ai_connection_model_revision_id] = @1,
+       [configuration_version] = @2, [operational_status] = @3,
+       [total_time_budget_seconds] = @4,
+       [inactivity_time_budget_seconds] = @5, [queue_capacity] = @6,
+       [maximum_output_tokens] = @7, [maximum_output_bytes] = @8,
+       [maximum_retained_memory_bytes] = @9,
+       [maximum_buffered_events] = @10, [created_at] = @11,
+       [updated_at] = @12, [revision_token] = @13
+     WHERE [id] = @0`,
+    [
+      profile.id,
+      profile.modelRevisionId,
+      profile.configurationVersion,
+      profile.operationalStatus,
+      profile.totalTimeBudgetSeconds,
+      profile.inactivityTimeBudgetSeconds,
+      profile.queueCapacity,
+      profile.maximumOutputTokens,
+      profile.maximumOutputBytes,
+      profile.maximumRetainedMemoryBytes,
+      profile.maximumBufferedEvents,
+      profile.createdAt,
+      profile.updatedAt,
+      profile.revisionToken,
+    ],
+  )
 }
 
 export async function prepareAdmin20Fixture(): Promise<() => Promise<void>> {

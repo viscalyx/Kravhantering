@@ -8,17 +8,21 @@ import type {
 } from './admin-adapter'
 import type { AiCapability } from './admin-contracts'
 import type {
-  AiAdminCapabilityDiscoveryResult,
-  AiAdminCapabilityDiscoveryTarget,
+  AiAdminCandidateVerificationResult,
+  AiAdminCapabilityVerification,
   AiAdminCatalogItem,
   AiAdminConnectionDetail,
-  AiAdminConnectionVerificationResult,
   AiAdminHealthProbeResult,
   AiAdminModelRevisionRecord,
-  AiAdminModelVerificationResult,
+  AiAdminModelVerificationCandidate,
+  AiAdminVerificationProgress,
 } from './admin-service'
 import { AI_CAPABILITY_KEYS } from './capability-keys'
-import type { AiAdapterConfigurationResolver } from './profile-resolver'
+import {
+  AI_RUN_PROFILE_KEYS,
+  type AiAdapterConfigurationResolver,
+  type AiRunProfileKey,
+} from './profile-resolver'
 import {
   AiProviderSecretCryptoError,
   type AiProviderSecretEnvelope,
@@ -40,25 +44,17 @@ import {
   type AiEgressTransport,
   type AiRunEvent,
   type AiRunIdentity,
-  type AiRunProfileRevisionId,
+  type AiRunProfileId,
   type AiTaskEnvelope,
   guardAiRunEventStream,
 } from './run-contracts'
 
 export const AI_ADMIN_FUNCTIONAL_PROBE_VERSION =
-  'ai-admin-functional-probe-v4' as const
+  'ai-admin-functional-probe-v5' as const
 const ADMIN_PROBE_TIMEOUT_MS = 30_000
-const ADMIN_CAPABILITY_DISCOVERY_TIMEOUT_MS = 60_000
 const ADMIN_CANCELLATION_GRACE_MS = 5_000
 const ADMIN_PROBE_PROFILE_REVISION_ID =
-  '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
-const ADMIN_DISCOVERY_MODEL_REVISION_ID = '00000000-0000-4000-8000-000000000866'
-const ADMIN_PROBE_SCHEMA = Object.freeze({
-  additionalProperties: false,
-  properties: { probe: { const: 'ok', type: 'string' } },
-  required: ['probe'],
-  type: 'object',
-})
+  '00000000-0000-4000-8000-000000000865' as AiRunProfileId
 const ADMIN_PROBE_IMAGE = new Uint8Array(
   Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -129,12 +125,15 @@ function isRunIdentity(value: unknown): boolean {
       new Set([
         'aiConnectionId',
         'aiConnectionModelRevisionId',
-        'aiRunProfileRevisionId',
+        'aiRunProfileConfigurationVersion',
+        'aiRunProfileId',
       ]),
     ) &&
     typeof value.aiConnectionId === 'string' &&
     typeof value.aiConnectionModelRevisionId === 'string' &&
-    typeof value.aiRunProfileRevisionId === 'string'
+    typeof value.aiRunProfileConfigurationVersion === 'number' &&
+    Number.isInteger(value.aiRunProfileConfigurationVersion) &&
+    typeof value.aiRunProfileId === 'string'
   )
 }
 
@@ -304,12 +303,15 @@ function selectedCapabilities(
 
 function probeTask(capabilities: AiCapability): AiTaskEnvelope {
   const analysisProbe = capabilities.aiAnalysis
+  const expectedProbe = capabilities.imageInput ? 'black-pixel' : 'ok'
   return {
     content: [
       {
         text: analysisProbe
           ? 'Determine whether 19 multiplied by 23 equals 437, then return the required probe object.'
-          : 'Return the required probe object.',
+          : capabilities.imageInput
+            ? 'Inspect the attached one-pixel image. Return the image result only if you observed the black pixel.'
+            : 'Return the required probe object.',
         type: 'text',
       },
       ...(capabilities.imageInput
@@ -323,13 +325,21 @@ function probeTask(capabilities: AiCapability): AiTaskEnvelope {
         : []),
     ],
     instructions: analysisProbe
-      ? 'This is a fixed administrative capability probe. Use the provider reasoning mode for the arithmetic check. Do not put reasoning in the JSON response or expose a private chain of thought. If supported, return a concise visible analysis summary only through the provider analysis field. Return exactly {"probe":"ok"}.'
-      : 'This is a fixed administrative capability probe. Return exactly {"probe":"ok"}.',
-    responseSchema: ADMIN_PROBE_SCHEMA,
+      ? `This is a fixed administrative capability probe. Use the provider reasoning mode for the arithmetic check. Do not put reasoning in the JSON response or expose a private chain of thought. If supported, return a concise visible analysis summary only through the provider analysis field. Return exactly {"probe":"${expectedProbe}"}.`
+      : `This is a fixed administrative capability probe. Return exactly {"probe":"${expectedProbe}"}.`,
+    responseSchema: {
+      additionalProperties: false,
+      properties: { probe: { const: expectedProbe, type: 'string' } },
+      required: ['probe'],
+      type: 'object',
+    },
   }
 }
 
-function validProbeOutput(rawOutput: string): boolean {
+function validProbeOutput(
+  rawOutput: string,
+  capabilities: Readonly<AiCapability>,
+): boolean {
   try {
     const parsed: unknown = JSON.parse(rawOutput)
     return (
@@ -337,7 +347,8 @@ function validProbeOutput(rawOutput: string): boolean {
       parsed !== null &&
       !Array.isArray(parsed) &&
       Object.keys(parsed).length === 1 &&
-      (parsed as { probe?: unknown }).probe === 'ok'
+      (parsed as { probe?: unknown }).probe ===
+        (capabilities.imageInput ? 'black-pixel' : 'ok')
     )
   } catch {
     return false
@@ -361,21 +372,21 @@ async function runAdminFunctionalProbe(
   context: Readonly<AiAdminAdapterContext>,
   revision: Readonly<AiAdminModelRevisionRecord>,
   capabilities: AiCapability,
-  timeoutMs = ADMIN_PROBE_TIMEOUT_MS,
+  deadline: number,
+  parentSignal: AbortSignal,
 ): Promise<AdminFunctionalProbeResult> {
-  const controller = new AbortController()
-  const deadlineAt = new Date(Date.now() + timeoutMs).toISOString()
+  const deadlineAt = new Date(deadline).toISOString()
   const identity: AiRunIdentity = {
     aiConnectionId: context.connection.id as AiConnectionId,
     aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
-    aiRunProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+    aiRunProfileConfigurationVersion: 1,
+    aiRunProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
   }
   let terminal: AdminProbeTerminal | undefined
   let observedOutputDelta = false
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const stream = adapter.runFunctionalProbe(context, revision, {
-      abortSignal: controller.signal,
+      abortSignal: parentSignal,
       deadlineAt,
       selectedCapabilities: selectedCapabilities(capabilities),
       task: probeTask(capabilities),
@@ -395,9 +406,6 @@ async function runAdminFunctionalProbe(
     }
   } catch {
     terminal = undefined
-  } finally {
-    clearTimeout(timeout)
-    controller.abort()
   }
 
   if (terminal?.type !== 'completed') {
@@ -414,7 +422,7 @@ async function runAdminFunctionalProbe(
     }
   }
 
-  const schemaValid = validProbeOutput(terminal.rawOutput)
+  const schemaValid = validProbeOutput(terminal.rawOutput, capabilities)
   const verified: AiCapability = {
     aiAnalysis: capabilities.aiAnalysis && terminal.analysis !== null,
     cost: capabilities.cost && terminal.usage.cost.status !== 'unavailable',
@@ -438,12 +446,18 @@ async function runAdminCancellationProbe(
   adapter: AiAdminConnectionAdapter,
   context: Readonly<AiAdminAdapterContext>,
   revision: Readonly<AiAdminModelRevisionRecord>,
+  parentSignal: AbortSignal,
+  deadline: number,
 ): Promise<boolean> {
   const controller = new AbortController()
+  const abortFromParent = (): void => controller.abort()
+  if (parentSignal.aborted) controller.abort()
+  else parentSignal.addEventListener('abort', abortFromParent, { once: true })
   const identity: AiRunIdentity = {
     aiConnectionId: context.connection.id as AiConnectionId,
     aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
-    aiRunProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+    aiRunProfileConfigurationVersion: 1,
+    aiRunProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
   }
   let grace: ReturnType<typeof setTimeout> | undefined
   let handoffTimeout: ReturnType<typeof setTimeout> | undefined
@@ -457,7 +471,7 @@ async function runAdminCancellationProbe(
         signalObservedResolve?.()
         return controller.signal
       },
-      deadlineAt: new Date(Date.now() + ADMIN_PROBE_TIMEOUT_MS).toISOString(),
+      deadlineAt: new Date(deadline).toISOString(),
       selectedCapabilities: selectedCapabilities(emptyCapabilities()),
       task: probeTask(emptyCapabilities()),
     })
@@ -477,7 +491,7 @@ async function runAdminCancellationProbe(
       new Promise<'handoff_timeout'>(resolve => {
         handoffTimeout = setTimeout(
           () => resolve('handoff_timeout'),
-          ADMIN_PROBE_TIMEOUT_MS,
+          Math.max(0, deadline - Date.now()),
         )
       }),
     ])
@@ -486,13 +500,20 @@ async function runAdminCancellationProbe(
     return await Promise.race([
       outcome,
       new Promise<boolean>(resolve => {
-        grace = setTimeout(() => resolve(false), ADMIN_CANCELLATION_GRACE_MS)
+        grace = setTimeout(
+          () => resolve(false),
+          Math.min(
+            ADMIN_CANCELLATION_GRACE_MS,
+            Math.max(0, deadline - Date.now()),
+          ),
+        )
       }),
     ])
   } catch {
     return false
   } finally {
     controller.abort()
+    parentSignal.removeEventListener('abort', abortFromParent)
     if (grace) clearTimeout(grace)
     if (handoffTimeout) clearTimeout(handoffTimeout)
   }
@@ -502,25 +523,26 @@ async function runAdminNegativeProbes(
   adapter: AiAdminConnectionAdapter,
   context: Readonly<AiAdminAdapterContext>,
   revision: Readonly<AiAdminModelRevisionRecord>,
+  signal: AbortSignal,
+  deadline: number,
 ): Promise<boolean> {
   const identity: AiRunIdentity = {
     aiConnectionId: context.connection.id as AiConnectionId,
     aiConnectionModelRevisionId: revision.id as AiConnectionModelRevisionId,
-    aiRunProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+    aiRunProfileConfigurationVersion: 1,
+    aiRunProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
   }
-  for (const negativeCase of ADMIN_NEGATIVE_PROBE_CASES) {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), ADMIN_PROBE_TIMEOUT_MS)
+  const checkCase = async (
+    negativeCase: AiAdminNegativeProbeCase,
+  ): Promise<boolean> => {
     let terminal: AdminProbeTerminal | undefined
     try {
       const stream = adapter.runActivationNegativeProbe(
         context,
         revision,
         {
-          abortSignal: controller.signal,
-          deadlineAt: new Date(
-            Date.now() + ADMIN_PROBE_TIMEOUT_MS,
-          ).toISOString(),
+          abortSignal: signal,
+          deadlineAt: new Date(deadline).toISOString(),
           selectedCapabilities: selectedCapabilities(emptyCapabilities()),
           task: probeTask(emptyCapabilities()),
         },
@@ -540,9 +562,6 @@ async function runAdminNegativeProbes(
       }
     } catch {
       return false
-    } finally {
-      clearTimeout(timeout)
-      controller.abort()
     }
     const expectedCategory =
       negativeCase === 'safe_provider_error'
@@ -554,8 +573,11 @@ async function runAdminNegativeProbes(
     ) {
       return false
     }
+    return true
   }
-  return true
+  return (await Promise.all(ADMIN_NEGATIVE_PROBE_CASES.map(checkCase))).every(
+    Boolean,
+  )
 }
 
 function satisfiesDeclaredCapabilities(
@@ -565,6 +587,79 @@ function satisfiesDeclaredCapabilities(
   return (Object.keys(declared) as (keyof AiCapability)[]).every(
     capability => !declared[capability] || verified[capability],
   )
+}
+
+const ADMIN_VERIFICATION_TOTAL_BUDGET_MS = 60_000
+const TRANSIENT_ADMIN_FAILURES = new Set([
+  'connection_unavailable',
+  'deadline_exceeded',
+  'provider_unavailable',
+  'rate_limited',
+])
+
+const FIXED_PROFILE_CAPABILITIES: Readonly<
+  Record<AiRunProfileKey, readonly (keyof AiCapability)[]>
+> = Object.freeze({
+  generation_with_images: Object.freeze([
+    'imageInput' as const,
+    'streaming' as const,
+    'validatableJson' as const,
+  ]),
+  generation_without_images: Object.freeze([
+    'streaming' as const,
+    'validatableJson' as const,
+  ]),
+  invalid_json_repair: Object.freeze(['validatableJson' as const]),
+})
+
+function capabilityAssessment(
+  result: Readonly<AdminFunctionalProbeResult>,
+  capability: keyof AiCapability,
+): AiAdminCapabilityVerification {
+  if (
+    result.completed &&
+    result.schemaValid &&
+    result.capabilities[capability]
+  ) {
+    return { failureCategory: null, outcome: 'verified' }
+  }
+  if (
+    (result.completed && result.schemaValid) ||
+    result.failureCategory === 'capability_mismatch' ||
+    result.failureCategory === 'request_rejected'
+  ) {
+    return {
+      failureCategory: result.failureCategory ?? 'capability_mismatch',
+      outcome: 'not_verified',
+    }
+  }
+  return {
+    failureCategory: result.failureCategory ?? 'invalid_response',
+    outcome: 'inconclusive',
+  }
+}
+
+function verificationAssessment(
+  passed: boolean,
+  failureCategory: string | null,
+): AiAdminCapabilityVerification {
+  if (passed) return { failureCategory: null, outcome: 'verified' }
+  return {
+    failureCategory: failureCategory ?? 'invalid_response',
+    outcome:
+      failureCategory === 'authentication_failed' ||
+      failureCategory === 'request_rejected'
+        ? 'not_verified'
+        : 'inconclusive',
+  }
+}
+
+function selectedCapabilitySet(
+  capabilities: readonly (keyof AiCapability)[],
+): AiCapability {
+  const selected = emptyCapabilities()
+  for (const capability of capabilities) selected[capability] = true
+  return selected
 }
 
 export interface AiProviderSecretMutationExecutor {
@@ -1073,8 +1168,7 @@ async function activateAiProviderSecretVersion(
          AND [revision_token] = @4;
 
        UPDATE [revision]
-       SET [status] = N'verification_required',
-         [verified_capabilities_json] = NULL, [verified_at] = NULL,
+       SET [status] = N'new_revision_required',
          [updated_at] = @now, [revision_token] = NEWID()
        FROM [ai_connection_model_revisions] AS [revision]
        INNER JOIN [ai_connection_models] AS [model]
@@ -1189,90 +1283,271 @@ export class AiProviderSecretAdminService {
     )
   }
 
-  discoverModelCapabilities(
+  verifyModelCandidate(
     adapter: AiAdminConnectionAdapter,
     connection: Readonly<AiAdminConnectionDetail>,
     egress: AiEgressTransport,
-    target: Readonly<AiAdminCapabilityDiscoveryTarget>,
-  ): Promise<Readonly<AiAdminCapabilityDiscoveryResult>> {
+    candidate: Readonly<AiAdminModelVerificationCandidate>,
+    options: Readonly<{
+      onProgress?: (
+        progress: Readonly<AiAdminVerificationProgress>,
+      ) => Promise<void> | void
+      signal: AbortSignal
+    }>,
+  ): Promise<Readonly<AiAdminCandidateVerificationResult>> {
     return this.#execute(connection, egress, async context => {
-      const discoveryDeadline =
-        Date.now() + ADMIN_CAPABILITY_DISCOVERY_TIMEOUT_MS
-      const assessments = Object.fromEntries(
+      const deadline = Date.now() + ADMIN_VERIFICATION_TOTAL_BUDGET_MS
+      const suiteSignal = AbortSignal.any([
+        options.signal,
+        AbortSignal.timeout(ADMIN_VERIFICATION_TOTAL_BUDGET_MS),
+      ])
+      const emit = async (
+        check: AiAdminVerificationProgress['check'],
+        state: AiAdminVerificationProgress['state'],
+        assessment: AiAdminCapabilityVerification = {
+          failureCategory: null,
+          outcome: 'not_checked',
+        },
+      ): Promise<void> => {
+        await options.onProgress?.({ check, state, ...assessment })
+      }
+      const assertActive = (): void => {
+        if (suiteSignal.aborted) {
+          throw new DOMException('Verification cancelled.', 'AbortError')
+        }
+        if (Date.now() >= deadline) {
+          throw new DOMException(
+            'Verification deadline exceeded.',
+            'TimeoutError',
+          )
+        }
+      }
+      const revision = (
+        selected: AiCapability,
+      ): AiAdminModelRevisionRecord => ({
+        agentRuntimeVersion: connection.agentRuntimeVersion,
+        connectionConfigurationVersion: connection.configurationVersion,
+        declaredCapabilities: selected,
+        discoveredCapabilities: null,
+        externalModelId: candidate.externalModelId,
+        externalModelVersion: candidate.externalModelVersion,
+        id: randomUUID(),
+        profileCompatibility: null,
+        revisionNumber: 0,
+        revisionToken: randomUUID(),
+        status: 'verified',
+        testSuiteVersion: null,
+        verifiedAt: null,
+        verifiedCapabilities: null,
+      })
+      const runProbe = async (
+        selected: AiCapability,
+      ): Promise<AdminFunctionalProbeResult> => {
+        let result: AdminFunctionalProbeResult | undefined
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          assertActive()
+          const remaining = deadline - Date.now()
+          if (remaining <= 0) {
+            return {
+              capabilities: emptyCapabilities(),
+              completed: false,
+              failureCategory: 'deadline_exceeded',
+              schemaValid: false,
+            }
+          }
+          result = await runAdminFunctionalProbe(
+            adapter,
+            context,
+            revision(selected),
+            selected,
+            deadline,
+            suiteSignal,
+          )
+          if (
+            !result.failureCategory ||
+            !TRANSIENT_ADMIN_FAILURES.has(result.failureCategory)
+          ) {
+            return result
+          }
+        }
+        return result as AdminFunctionalProbeResult
+      }
+      const unknownCapabilities = Object.fromEntries(
         AI_CAPABILITY_KEYS.map(capability => [
           capability,
-          { failureCategory: null, support: 'unknown' as const },
+          { failureCategory: null, outcome: 'not_checked' as const },
         ]),
-      ) as Record<
-        keyof AiCapability,
-        AiAdminCapabilityDiscoveryResult['assessments'][keyof AiCapability]
-      >
-      const capabilities = emptyCapabilities()
-
-      for (const capability of target.capabilities) {
-        const remainingTimeMs = discoveryDeadline - Date.now()
-        if (remainingTimeMs <= 0) {
-          assessments[capability] = {
-            failureCategory: 'deadline_exceeded',
-            support: 'unknown',
-          }
-          continue
-        }
-        const selected = emptyCapabilities()
-        selected[capability] = true
-        const result = await runAdminFunctionalProbe(
-          adapter,
-          context,
+      ) as Record<keyof AiCapability, AiAdminCapabilityVerification>
+      const unsupportedProfiles = Object.fromEntries(
+        AI_RUN_PROFILE_KEYS.map(profileKey => [
+          profileKey,
           {
-            agentRuntimeVersion: null,
-            connectionConfigurationVersion: connection.configurationVersion,
-            declaredCapabilities: selected,
-            discoveredCapabilities: null,
-            externalModelId: target.externalModelId,
-            externalModelVersion: target.externalModelVersion,
-            id: ADMIN_DISCOVERY_MODEL_REVISION_ID,
-            revisionNumber: 0,
-            revisionToken: ADMIN_DISCOVERY_MODEL_REVISION_ID,
-            status: 'draft',
-            verifiedCapabilities: null,
+            failureCategory: null,
+            missingCapabilities: FIXED_PROFILE_CAPABILITIES[profileKey],
+            supported: false,
           },
-          selected,
-          Math.min(ADMIN_PROBE_TIMEOUT_MS, remainingTimeMs),
-        )
-        const supported =
-          result.completed &&
-          result.schemaValid &&
-          result.capabilities[capability]
-        const concretelyUnsupported =
-          (result.completed && result.schemaValid) ||
-          result.failureCategory === 'capability_mismatch' ||
-          result.failureCategory === 'request_rejected'
-        capabilities[capability] = supported
-        assessments[capability] = {
-          failureCategory: supported
-            ? null
-            : (result.failureCategory ??
-              (concretelyUnsupported ? 'capability_mismatch' : null)),
-          support: supported
-            ? 'supported'
-            : concretelyUnsupported
-              ? 'unsupported'
-              : 'unknown',
+        ]),
+      ) as AiAdminCandidateVerificationResult['profileCompatibility']
+
+      await emit('connection_authentication', 'running')
+      assertActive()
+      let connectionResult = await adapter.probeConnection(context, {
+        abortSignal: suiteSignal,
+        deadlineAt: new Date(deadline).toISOString(),
+      })
+      if (
+        connectionResult.outcome === 'failed' &&
+        connectionResult.failureCategory &&
+        TRANSIENT_ADMIN_FAILURES.has(connectionResult.failureCategory)
+      ) {
+        assertActive()
+        connectionResult = await adapter.probeConnection(context, {
+          abortSignal: suiteSignal,
+          deadlineAt: new Date(deadline).toISOString(),
+        })
+      }
+      const connectionAssessment = verificationAssessment(
+        connectionResult.outcome === 'passed',
+        connectionResult.failureCategory,
+      )
+      await emit('connection_authentication', 'completed', connectionAssessment)
+      if (connectionAssessment.outcome !== 'verified') {
+        await emit('summary', 'running')
+        await emit('summary', 'completed', connectionAssessment)
+        return {
+          baseline: {
+            failureCategory: null,
+            outcome: 'not_checked',
+          },
+          canonicalExternalModelVersion: candidate.externalModelVersion,
+          capabilities: unknownCapabilities,
+          connection: connectionAssessment,
+          profileCompatibility: unsupportedProfiles,
+          saveable: false,
+          testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
         }
       }
 
-      return { assessments, capabilities }
-    })
-  }
+      await emit('baseline_model_access', 'running')
+      const baselineResult = await runProbe(emptyCapabilities())
+      const baselineRevision = revision(emptyCapabilities())
+      const [cancellationHandled, negativeCasesPassed] = await Promise.all([
+        runAdminCancellationProbe(
+          adapter,
+          context,
+          baselineRevision,
+          suiteSignal,
+          deadline,
+        ),
+        runAdminNegativeProbes(
+          adapter,
+          context,
+          baselineRevision,
+          suiteSignal,
+          deadline,
+        ),
+      ])
+      const baselinePassed =
+        baselineResult.completed &&
+        baselineResult.schemaValid &&
+        cancellationHandled &&
+        negativeCasesPassed
+      const baselineAssessment = verificationAssessment(
+        baselinePassed,
+        baselineResult.failureCategory ??
+          (cancellationHandled && negativeCasesPassed
+            ? null
+            : 'adapter_failure'),
+      )
+      await emit('baseline_model_access', 'completed', baselineAssessment)
 
-  probeConnection(
-    adapter: AiAdminConnectionAdapter,
-    connection: Readonly<AiAdminConnectionDetail>,
-    egress: AiEgressTransport,
-  ): Promise<Readonly<AiAdminConnectionVerificationResult>> {
-    return this.#execute(connection, egress, context =>
-      adapter.probeConnection(context),
-    )
+      const capabilities = { ...unknownCapabilities }
+      for (const capability of AI_CAPABILITY_KEYS) {
+        const check = `capability:${capability}` as const
+        await emit(check, 'running')
+        const selected = selectedCapabilitySet([capability])
+        let result = await runProbe(selected)
+        let assessment = capabilityAssessment(result, capability)
+        if (
+          (capability === 'aiAnalysis' ||
+            capability === 'cost' ||
+            capability === 'tokenUsage') &&
+          assessment.outcome === 'not_verified' &&
+          result.completed &&
+          result.schemaValid
+        ) {
+          result = await runProbe(selected)
+          assessment = capabilityAssessment(result, capability)
+        }
+        capabilities[capability] = assessment
+        await emit(check, 'completed', assessment)
+      }
+
+      const profileCompatibility = {} as Record<
+        AiRunProfileKey,
+        AiAdminCandidateVerificationResult['profileCompatibility'][AiRunProfileKey]
+      >
+      for (const profileKey of AI_RUN_PROFILE_KEYS) {
+        const check = `profile:${profileKey}` as const
+        await emit(check, 'running')
+        const required = FIXED_PROFILE_CAPABILITIES[profileKey]
+        const missingCapabilities = required.filter(
+          capability => capabilities[capability].outcome !== 'verified',
+        )
+        const result = await runProbe(selectedCapabilitySet(required))
+        const combinedPassed =
+          result.completed &&
+          result.schemaValid &&
+          missingCapabilities.length === 0 &&
+          satisfiesDeclaredCapabilities(
+            selectedCapabilitySet(required),
+            result.capabilities,
+          )
+        const assessment = verificationAssessment(
+          combinedPassed,
+          result.failureCategory ??
+            (missingCapabilities.length > 0 ? 'capability_mismatch' : null),
+        )
+        profileCompatibility[profileKey] = {
+          failureCategory: assessment.failureCategory,
+          missingCapabilities,
+          supported: combinedPassed,
+        }
+        await emit(check, 'completed', assessment)
+      }
+
+      const decisive = Object.values(capabilities).every(
+        assessment =>
+          assessment.outcome === 'verified' ||
+          assessment.outcome === 'not_verified',
+      )
+      const saveable =
+        baselineAssessment.outcome === 'verified' &&
+        decisive &&
+        Object.values(profileCompatibility).some(profile => profile.supported)
+      const summaryAssessment: AiAdminCapabilityVerification = {
+        failureCategory: saveable
+          ? null
+          : (baselineAssessment.failureCategory ??
+            (decisive ? 'capability_mismatch' : 'inconclusive_capability')),
+        outcome: saveable
+          ? 'verified'
+          : decisive
+            ? 'not_verified'
+            : 'inconclusive',
+      }
+      await emit('summary', 'running')
+      await emit('summary', 'completed', summaryAssessment)
+      return {
+        baseline: baselineAssessment,
+        canonicalExternalModelVersion: candidate.externalModelVersion,
+        capabilities,
+        connection: connectionAssessment,
+        profileCompatibility,
+        saveable,
+        testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
+      }
+    })
   }
 
   async probeHealth(
@@ -1283,8 +1558,16 @@ export class AiProviderSecretAdminService {
   ): Promise<Readonly<AiAdminHealthProbeResult>> {
     const expectedCapabilities =
       revision.verifiedCapabilities ?? revision.declaredCapabilities
+    const deadline = Date.now() + ADMIN_PROBE_TIMEOUT_MS
     const result = await this.#execute(connection, egress, context =>
-      runAdminFunctionalProbe(adapter, context, revision, expectedCapabilities),
+      runAdminFunctionalProbe(
+        adapter,
+        context,
+        revision,
+        expectedCapabilities,
+        deadline,
+        AbortSignal.timeout(ADMIN_PROBE_TIMEOUT_MS),
+      ),
     )
     const healthy =
       result.completed &&
@@ -1303,56 +1586,6 @@ export class AiProviderSecretAdminService {
       failureCategory,
       health: invalidationScope === 'none' ? 'unavailable' : 'degraded',
       invalidationScope,
-    }
-  }
-
-  async verifyModelRevision(
-    adapter: AiAdminConnectionAdapter,
-    connection: Readonly<AiAdminConnectionDetail>,
-    egress: AiEgressTransport,
-    revision: Readonly<AiAdminModelRevisionRecord>,
-  ): Promise<Readonly<AiAdminModelVerificationResult>> {
-    const result = await this.#execute(connection, egress, async context => ({
-      cancellationHandled: await runAdminCancellationProbe(
-        adapter,
-        context,
-        revision,
-      ),
-      negativeCasesPassed: await runAdminNegativeProbes(
-        adapter,
-        context,
-        revision,
-      ),
-      functional: await runAdminFunctionalProbe(
-        adapter,
-        context,
-        revision,
-        revision.declaredCapabilities,
-      ),
-    }))
-    const functional = result.functional
-    const passed =
-      result.cancellationHandled &&
-      result.negativeCasesPassed &&
-      functional.completed &&
-      functional.schemaValid &&
-      satisfiesDeclaredCapabilities(
-        revision.declaredCapabilities,
-        functional.capabilities,
-      )
-    return {
-      details: {
-        adapterConformance: result.negativeCasesPassed,
-        cancellationHandled: result.cancellationHandled,
-        completed: functional.completed,
-        schemaValid: functional.schemaValid,
-      },
-      failureCategory: passed
-        ? null
-        : (functional.failureCategory ?? 'capability_mismatch'),
-      outcome: passed ? 'passed' : 'failed',
-      testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
-      verifiedCapabilities: functional.capabilities,
     }
   }
 

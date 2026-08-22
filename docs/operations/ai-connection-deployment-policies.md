@@ -234,28 +234,28 @@ driften har driftsatt.
 Utför åtgärderna i denna ordning:
 
 1. verifiera och aktivera leverantörshemligheten om autentisering kräver den;
-2. verifiera den aktuella anslutningskonfigurationen;
-3. registrera en anslutningsmodellrevision;
-4. verifiera modellrevisionen;
+2. öppna modellformuläret och kör den sammanhållna verifieringen;
+3. granska alla förmågor och körprofilskompatibiliteter;
+4. spara den verifierade modellrevisionen;
 5. aktivera AI-anslutningen;
-6. skapa en körprofilrevision för en avsedd anropstyp;
-7. välj den verifierade modellrevisionen och spara profilutkastet;
-8. aktivera profilrevisionen;
-9. upprepa punkt 6–8 för övriga avsedda anropstyper.
+6. välj den verifierade modellrevisionen direkt på en stabil körprofil;
+7. granska driftbudgetarna och spara profilen;
+8. upprepa punkt 6–7 för övriga avsedda anropstyper.
 
 Om en aktivering misslyckas ska du använda
 [felsökningstabellen](#vanliga-fel-och-vad-de-betyder). Vidga inte en policy
 enbart för att få ett grönt resultat.
 
-Resultat efter steget: varje avsedd körprofil visar `Aktiv` och binder en exakt
-verifierad modellrevision till en godkänd anslutning.
+Resultat efter steget: varje avsedd körprofil visar `Konfigurerad` och `Aktiv`
+och binder direkt en exakt verifierad modellrevision till en godkänd
+anslutning.
 
 ### Steg 13: slutför driftsättningsgrinden
 
 Genomför checklistan i den här guiden och den fullständiga
 [driftsättningsgrinden](./ai-connections.md#pre-deployment-gate). Kontrollera
 att larm, egresskontroll, root-keyring, attest, verifieringsbevis och samtliga
-avsedda körprofilrevisioner är godkända.
+avsedda stabila körprofiler är godkända.
 
 Släpp den globala AI-spärren först efter det formella beslutet.
 
@@ -271,7 +271,7 @@ En AI-anslutning blir användbar först när tre olika lager stämmer överens.
 | --- | --- | --- |
 | Driftsättningspolicy | Drift, nätverk, PKI, informationssäkerhet och dataskydd | Vilka destinationer, TLS-källor och behandlingsvillkor som miljön tillåter. |
 | AI-anslutning och attest | Produktadministratör och attestansvarig i Admin Center | Vilken adress och vilka policynycklar anslutningen använder samt vad leverantören är godkänd för. |
-| Körprofilrevision | Produktadministratör i Admin Center | Vilken verifierad anslutningsmodell som används för en bestämd anropstyp. |
+| Stabil körprofil | Produktadministratör i Admin Center | Vilken verifierad anslutningsmodell och vilka driftbudgetar som används för en bestämd anropstyp. |
 <!-- markdownlint-enable MD013 -->
 
 Kopplingen ser ut så här:
@@ -742,11 +742,12 @@ Genomför verifieringen i en säker test- eller stagingmiljö innan produktion.
    aktuell.
 7. Registrera leverantörshemligheten genom Admin Center. Lägg den aldrig i
    någon av de tre JSON-variablerna.
-8. Verifiera anslutningen.
-9. Registrera och verifiera exakt avsedd modellrevision.
-10. Skapa och aktivera en körprofilrevision för varje avsedd anropstyp.
-11. Kontrollera att profilen blir `Aktiv`, inte `Blockerad` eller
-    `Ej aktiverad`.
+8. Kör den sammanhållna modellverifieringen och spara exakt avsedd
+   modellrevision.
+9. Aktivera anslutningen.
+10. Välj revisionen direkt på varje avsedd stabil körprofil.
+11. Kontrollera att profilen blir `Konfigurerad` och `Aktiv`, inte
+    `Blockerad` eller `Ej konfigurerad`.
 12. Kontrollera brandväggs- eller proxylogg utan att logga prompt, bild,
     modellsvar eller leverantörshemlighet.
 13. Genomför driftsättningens ordinarie bevis- och releasegrind innan den
@@ -779,7 +780,8 @@ Behandla en policyändring som en driftsättnings- och säkerhetsändring:
 4. Uppdatera samtliga appnoder atomiskt eller inom ett kontrollerat
    underhållsfönster.
 5. Starta om app-runtime så att variablerna läses in på nytt.
-6. Verifiera anslutning, modellrevisioner och avsedda körprofilrevisioner igen.
+6. Verifiera nya modellrevisioner, välj dem på avsedda stabila körprofiler och
+   kontrollera profilernas nya konfigurationsversioner.
 7. Kontrollera att driftsättningsbevis och larm är godkända innan AI-spärren
    släpps.
 
@@ -821,8 +823,8 @@ ska utredas.
 - [ ] Personuppgiftsinställningen motsvarar det faktiska användningsfallet.
 - [ ] JSON-syntaxen är validerad och varje variabel ligger på en rad.
 - [ ] Samtliga appnoder har samma granskade konfiguration och har startats om.
-- [ ] Anslutning, modellrevision och varje avsedd körprofilrevision är
-      verifierad.
+- [ ] Anslutning, modellrevision och varje avsedd stabil körprofil är
+      verifierad och konfigurerad.
 - [ ] Den globala AI-spärren släpps endast efter godkänd driftsättningsgrind.
 
 ## Teknisk auktoritet och vidare läsning

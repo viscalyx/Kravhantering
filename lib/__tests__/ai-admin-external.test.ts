@@ -93,9 +93,12 @@ function connection(
             externalModelId: 'controlled/model',
             externalModelVersion: null,
             id: crypto.randomUUID(),
+            profileCompatibility: null,
             revisionNumber: 1,
             revisionToken: crypto.randomUUID(),
-            status: 'draft',
+            status: 'verified',
+            testSuiteVersion: null,
+            verifiedAt: null,
             verifiedCapabilities: null,
           },
         ],
@@ -150,12 +153,13 @@ function liveSelection(
     adapterVersion: current.adapterVersion,
     aiConnectionId: current.id,
     aiConnectionModelRevisionId: revision.id,
-    aiRunProfileRevisionId: crypto.randomUUID(),
+    aiRunProfileConfigurationVersion: 1,
+    aiRunProfileId: crypto.randomUUID(),
     connectionRevisionToken: current.revisionToken,
     expectedEnvironmentId: 'staging-admin-external-test',
     modelRevisionToken: revision.revisionToken,
     profileKey: 'generation_without_images',
-    profileRevisionToken: crypto.randomUUID(),
+    profileToken: crypto.randomUUID(),
   }
 }
 
@@ -232,27 +236,21 @@ describe('AI administration provider composition', () => {
     ).resolves.toBe('authorized')
     await expect(external.fetchCatalog(current)).resolves.toHaveLength(1)
     await expect(
-      external.discoverModelCapabilities(current, {
-        capabilities: ['streaming'],
-        externalModelId: revision.externalModelId,
-        externalModelVersion: revision.externalModelVersion,
-      }),
-    ).resolves.toMatchObject({
-      assessments: { streaming: { support: 'supported' } },
-      capabilities: { streaming: true },
-    })
-    await expect(external.probeConnection(current)).resolves.toMatchObject({
-      outcome: 'passed',
-    })
-    await expect(
       external.probeHealth(current, revision),
     ).resolves.toMatchObject({
       health: 'healthy',
       invalidationScope: 'none',
     })
     await expect(
-      external.verifyModelRevision(current, revision),
-    ).resolves.toMatchObject({ outcome: 'passed' })
+      external.verifyModelCandidate(
+        current,
+        {
+          externalModelId: revision.externalModelId,
+          externalModelVersion: revision.externalModelVersion,
+        },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({ saveable: true })
     await expect(
       external.verifyLivePath(
         current,
@@ -266,7 +264,7 @@ describe('AI administration provider composition', () => {
       externalLiveCallMade: false,
       failureCategory: 'controlled_adapter_forbidden',
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v4',
+      testSuiteVersion: 'ai-admin-functional-probe-v5',
     })
     await expect(
       external.verifySecretCandidate(
@@ -275,6 +273,171 @@ describe('AI administration provider composition', () => {
         'candidate',
       ),
     ).resolves.toBeUndefined()
+  })
+
+  it('uses one deadline and abort signal for every model-verification check', async () => {
+    const observedSignals = new Set<AbortSignal>()
+    const observedDeadlines = new Set<string>()
+    const base = controlledTestAdminAdapterRegistration.adapter
+    const observe = <
+      T extends { abortSignal: AbortSignal; deadlineAt: string },
+    >(
+      probe: T,
+    ): T => {
+      observedSignals.add(probe.abortSignal)
+      observedDeadlines.add(probe.deadlineAt)
+      return probe
+    }
+    const registry = createAiAdminConnectionAdapterRegistry([
+      {
+        ...controlledTestAdminAdapterRegistration,
+        adapter: {
+          ...base,
+          probeConnection(context, probe) {
+            if (!probe) throw new Error('Missing shared probe deadline.')
+            observe(probe)
+            return base.probeConnection(context, probe)
+          },
+          runActivationCancellationProbe(context, revision, probe) {
+            return base.runActivationCancellationProbe(
+              context,
+              revision,
+              observe(probe),
+            )
+          },
+          runActivationNegativeProbe(context, revision, probe, negativeCase) {
+            return base.runActivationNegativeProbe(
+              context,
+              revision,
+              observe(probe),
+              negativeCase,
+            )
+          },
+          runFunctionalProbe(context, revision, probe) {
+            return base.runFunctionalProbe(context, revision, observe(probe))
+          },
+        },
+      },
+    ])
+    const external = createProductionAiAdminExternalOperations(
+      emptyDb,
+      () => ring,
+      { deployment: deployment(), registry },
+    )
+    const current = connection()
+    const revision = current.models[0]?.revisions[0]
+    if (!revision) throw new Error('Revision missing')
+
+    await expect(
+      external.verifyModelCandidate(
+        current,
+        {
+          externalModelId: revision.externalModelId,
+          externalModelVersion: revision.externalModelVersion,
+        },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({ saveable: true })
+
+    // The cancellation proof has one linked child signal so it can trigger the
+    // cancellation being verified without cancelling the whole suite.
+    expect(observedSignals.size).toBe(2)
+    expect(observedDeadlines.size).toBe(1)
+  })
+
+  it('does not verify image input when the adapter ignores the image', async () => {
+    const base = controlledTestAdminAdapterRegistration.adapter
+    const registry = createAiAdminConnectionAdapterRegistry([
+      {
+        ...controlledTestAdminAdapterRegistration,
+        adapter: {
+          ...base,
+          runFunctionalProbe(context, revision, probe) {
+            return base.runFunctionalProbe(context, revision, {
+              ...probe,
+              selectedCapabilities: {
+                ...probe.selectedCapabilities,
+                imageInput: false,
+              },
+            })
+          },
+        },
+      },
+    ])
+    const external = createProductionAiAdminExternalOperations(
+      emptyDb,
+      () => ring,
+      { deployment: deployment(), registry },
+    )
+    const current = connection()
+    const revision = current.models[0]?.revisions[0]
+    if (!revision) throw new Error('Revision missing')
+
+    const result = await external.verifyModelCandidate(
+      current,
+      {
+        externalModelId: revision.externalModelId,
+        externalModelVersion: revision.externalModelVersion,
+      },
+      { signal: new AbortController().signal },
+    )
+    expect(result).toMatchObject({
+      profileCompatibility: {
+        generation_with_images: { supported: false },
+      },
+    })
+    expect(result.capabilities.imageInput.outcome).not.toBe('verified')
+  })
+
+  it('repeats an inconclusive analysis probe before deciding support', async () => {
+    const base = controlledTestAdminAdapterRegistration.adapter
+    let analysisAttempts = 0
+    const registry = createAiAdminConnectionAdapterRegistry([
+      {
+        ...controlledTestAdminAdapterRegistration,
+        adapter: {
+          ...base,
+          runFunctionalProbe(context, revision, probe) {
+            if (probe.selectedCapabilities.aiAnalysis) analysisAttempts += 1
+            return base.runFunctionalProbe(
+              context,
+              revision,
+              analysisAttempts === 1 && probe.selectedCapabilities.aiAnalysis
+                ? {
+                    ...probe,
+                    selectedCapabilities: {
+                      ...probe.selectedCapabilities,
+                      aiAnalysis: false,
+                    },
+                  }
+                : probe,
+            )
+          },
+        },
+      },
+    ])
+    const external = createProductionAiAdminExternalOperations(
+      emptyDb,
+      () => ring,
+      { deployment: deployment(), registry },
+    )
+    const current = connection()
+    const revision = current.models[0]?.revisions[0]
+    if (!revision) throw new Error('Revision missing')
+
+    await expect(
+      external.verifyModelCandidate(
+        current,
+        {
+          externalModelId: revision.externalModelId,
+          externalModelVersion: revision.externalModelVersion,
+        },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toMatchObject({
+      capabilities: { aiAnalysis: { outcome: 'verified' } },
+    })
+    expect(analysisAttempts).toBeGreaterThanOrEqual(2)
   })
 
   it('binds a passing live proof to the exact selected runtime path', async () => {
@@ -321,7 +484,8 @@ describe('AI administration provider composition', () => {
       identity: {
         aiConnectionId: selection.aiConnectionId,
         aiConnectionModelRevisionId: selection.aiConnectionModelRevisionId,
-        aiRunProfileRevisionId: selection.aiRunProfileRevisionId,
+        aiRunProfileConfigurationVersion: 1,
+        aiRunProfileId: selection.aiRunProfileId,
       } as AiRunIdentity,
       rawOutput: '{"status":"ok"}',
       type: 'completed' as const,
@@ -351,14 +515,6 @@ describe('AI administration provider composition', () => {
     const persisted = {
       adapterType: selection.adapterType,
       adapterVersion: selection.adapterVersion,
-      capabilityPolicyJson: JSON.stringify({
-        aiAnalysis: 'disabled',
-        imageInput: 'disabled',
-        jsonSchema: 'allowed',
-        streaming: 'required',
-        usageMetadata: 'allowed',
-        validatableJson: 'required',
-      }),
       connectionAgentRuntimeVersion: null,
       connectionConfiguration: { authenticationType: 'none' },
       connectionConfigurationVersion: 1,
@@ -380,8 +536,8 @@ describe('AI administration provider composition', () => {
       modelRevisionMaximumConcurrency: null,
       modelRevisionStatus: 'verified',
       operationalStatus: 'enabled',
-      profileRevisionId: selection.aiRunProfileRevisionId,
-      profileRevisionStatus: 'active',
+      profileConfigurationVersion: 1,
+      profileId: selection.aiRunProfileId,
       queueCapacity: 1,
       totalTimeBudgetSeconds: 300,
       trustConfiguration: {
@@ -429,7 +585,7 @@ describe('AI administration provider composition', () => {
           takeSafeInvalidOutput: () => undefined,
         })),
         createProfileSource: vi.fn(() => ({
-          findActiveRevision: vi.fn(async () => persisted),
+          findProfile: vi.fn(async () => persisted),
         })),
         screenInput: vi.fn(async () => ({
           allowed: true,
@@ -466,7 +622,7 @@ describe('AI administration provider composition', () => {
       deployment(),
       {
         createProfileSource: vi.fn(() => ({
-          findActiveRevision: vi.fn(async () => null),
+          findProfile: vi.fn(async () => null),
         })),
       },
     )
@@ -495,7 +651,7 @@ describe('AI administration provider composition', () => {
           takeSafeInvalidOutput: () => undefined,
         })),
         createProfileSource: vi.fn(() => ({
-          findActiveRevision: vi.fn(async () => persisted),
+          findProfile: vi.fn(async () => persisted),
         })),
       },
     )
@@ -516,7 +672,7 @@ describe('AI administration provider composition', () => {
           takeSafeInvalidOutput: () => undefined,
         })),
         createProfileSource: vi.fn(() => ({
-          findActiveRevision: vi.fn(async () => persisted),
+          findProfile: vi.fn(async () => persisted),
         })),
       },
     )
@@ -1147,7 +1303,6 @@ describe('AI administration provider composition', () => {
       ]),
       transaction: vi.fn(),
     } as unknown as SqlServerDatabase
-    let functionalRequestCount = 0
     const providerFetch = vi.fn(async (request: { init: RequestInit }) => {
       if (request.init.method === 'GET') {
         return new Response(
@@ -1156,20 +1311,8 @@ describe('AI administration provider composition', () => {
           }),
         )
       }
-      functionalRequestCount += 1
-      if (functionalRequestCount === 1) {
-        expect(request.init.signal?.aborted).toBe(false)
-        return new Promise<Response>((_resolve, reject) => {
-          request.init.signal?.addEventListener(
-            'abort',
-            () => reject(new Error('raw provider cancellation detail')),
-            { once: true },
-          )
-        })
-      }
-      return new Response('run failed', {
-        status: functionalRequestCount === 4 ? 404 : 503,
-      })
+      expect(request.init.signal?.aborted).toBe(false)
+      return new Response('run failed', { status: 503 })
     })
     const basePolicy = deployment()
     const policy: AiDeploymentTrustPolicy = {
@@ -1202,20 +1345,13 @@ describe('AI administration provider composition', () => {
       executionId: expect.any(String),
       externalLiveCallMade: true,
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v4',
+      testSuiteVersion: 'ai-admin-functional-probe-v5',
     })
     await expect(
       external.probeHealth(current, revision),
     ).resolves.toMatchObject({
       health: 'unavailable',
       invalidationScope: 'none',
-    })
-    await expect(
-      external.probeHealth(current, revision),
-    ).resolves.toMatchObject({
-      failureCategory: 'request_rejected',
-      health: 'degraded',
-      invalidationScope: 'model',
     })
     expect(
       providerFetch.mock.calls.some(

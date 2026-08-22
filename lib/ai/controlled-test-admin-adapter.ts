@@ -15,12 +15,12 @@ import type {
   AiConnectionId,
   AiConnectionModelRevisionId,
   AiExternalRunId,
-  AiRunProfileRevisionId,
+  AiRunProfileId,
 } from './run-contracts'
 import { AI_REQUEST_PRIVACY_MINIMUM } from './run-contracts'
 
 const ADMIN_PROBE_PROFILE_REVISION_ID =
-  '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
+  '00000000-0000-4000-8000-000000000865' as AiRunProfileId
 
 function capabilitySupport(
   value: Readonly<AiCapability>,
@@ -85,9 +85,13 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
             analysis: probe.selectedCapabilities.aiAnalysis
               ? 'Probe analysis'
               : null,
-            output: '{"probe":"ok"}',
+            output: probe.selectedCapabilities.imageInput
+              ? '{"probe":"black-pixel"}'
+              : '{"probe":"ok"}',
             outputDeltas: probe.selectedCapabilities.streaming
-              ? ['{"probe":', '"ok"}']
+              ? probe.selectedCapabilities.imageInput
+                ? ['{"probe":', '"black-pixel"}']
+                : ['{"probe":', '"ok"}']
               : undefined,
             type: 'completed',
             usage: {
@@ -118,7 +122,8 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
         verifiedCapabilities: revision.declaredCapabilities,
       },
       privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
-      runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+      runProfileConfigurationVersion: 1,
+      runProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
       selectedCapabilities: probe.selectedCapabilities,
       task: probe.task,
     })
@@ -143,7 +148,8 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
         verifiedCapabilities: revision.declaredCapabilities,
       },
       privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
-      runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+      runProfileConfigurationVersion: 1,
+      runProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
       selectedCapabilities: probe.selectedCapabilities,
       task: probe.task,
     })
@@ -178,7 +184,8 @@ const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
         verifiedCapabilities: revision.declaredCapabilities,
       },
       privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
-      runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+      runProfileConfigurationVersion: 1,
+      runProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
       selectedCapabilities: probe.selectedCapabilities,
       task: probe.task,
     })

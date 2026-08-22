@@ -1693,6 +1693,15 @@
       "status": "Status",
       "notAvailable": "Saknas",
       "actions": {
+        "activateSecret": "Aktivera hemlighet",
+        "attest": "Godkänn attest",
+        "createConnection": "Lägg till AI-anslutning",
+        "createModel": "Lägg till anslutningsmodell",
+        "newRevision": "Skapa ny modellrevision",
+        "retry": "Försök igen",
+        "revokeSecret": "Återkalla hemlighet",
+        "save": "Spara",
+        "saveSecret": "Spara hemlighet",
         "switch": "Byt",
         "anonymize": "Anonymisera",
         "delete": "Ta bort",
@@ -1821,6 +1830,13 @@
         "suspendProfile": "Suspendera profil",
         "recoverProfile": "Återställ profil",
         "saveConnection": "Spara anslutning",
+        "save": "Spara",
+        "attest": "Godkänn attest",
+        "activateSecret": "Verifiera och aktivera hemlighet",
+        "saveSecret": "Spara hemlighet",
+        "revokeSecret": "Bekräfta återkallelse",
+        "delete": "Ta bort",
+        "retry": "Försök igen",
         "saveModel": "Spara modellutkast",
         "saving": "Sparar…",
         "cancel": "Avbryt"
@@ -2178,9 +2194,8 @@
         "retireConfirmMessage": "En avslutad modellrevision kan inte verifieras eller väljas för en ny profilrevision.",
         "usedByProfileHelp": "Modellen används av en körprofil. Ta bort den från profilen eller välj en annan modell först.",
         "status": {
-          "draft": "Utkast",
-          "retired": "Avslutad",
-          "verification_required": "Verifiering krävs",
+          "ended": "Avslutad",
+          "new_revision_required": "Ny revision krävs",
           "verified": "Verifierad"
         }
       },
@@ -2243,6 +2258,123 @@
           "enabled": "Aktiverad",
           "suspended": "Suspenderad"
         }
+      },
+      "connections": { "title": "AI-anslutningar" },
+      "modelVerification": {
+        "capabilities": "Verifierade förmågor",
+        "cancelVerification": "Avbryt verifiering",
+        "checks": {
+          "baseline_model_access": "Grundläggande modellåtkomst",
+          "capability": {
+            "aiAnalysis": "Förmåga: AI-analys",
+            "cost": "Förmåga: kostnad",
+            "imageInput": "Förmåga: bildindata",
+            "jsonSchemaSteering": "Förmåga: styrning med JSON-schema",
+            "streaming": "Förmåga: strömning",
+            "tokenUsage": "Förmåga: tokenanvändning",
+            "validatableJson": "Förmåga: validerbar JSON"
+          },
+          "connection_authentication": "Anslutning och autentisering",
+          "profile": {
+            "generation_with_images": "Körprofil: generering med bilder",
+            "generation_without_images": "Körprofil: generering utan bilder",
+            "invalid_json_repair": "Körprofil: reparation av ogiltig JSON"
+          },
+          "summary": "Slutsammanfattning"
+        },
+        "compatibility": "Kompatibilitet med körprofiler",
+        "failureCategories": {
+          "adapter_failure": "Leverantören kunde inte slutföra verifieringen. Kör verifieringen igen.",
+          "authentication_failed": "Kunde inte verifieras eftersom anslutningen saknar en användbar hemlighet.",
+          "cancelled": "Verifieringen avbröts.",
+          "capability_mismatch": "Leverantören avvisade förmågan uttryckligen.",
+          "connection_unavailable": "Kunde inte avgöras på grund av ett nätverksfel. Kontrollera anslutningen och kör verifieringen igen.",
+          "deadline_exceeded": "Verifieringen tog för lång tid. Kontrollera anslutningen och försök igen.",
+          "invalid_response": "Leverantören gav ett ogiltigt svar. Kör verifieringen igen.",
+          "inconclusive_capability": "En eller flera förmågor kunde inte avgöras. Kör verifieringen igen.",
+          "provider_unavailable": "Leverantören var inte tillgänglig. Kontrollera anslutningen och kör verifieringen igen.",
+          "rate_limited": "Leverantören begränsade verifieringen. Vänta och kör verifieringen igen.",
+          "request_rejected": "Leverantören avvisade verifieringsanropet."
+        },
+        "missingSecret": "Kunde inte verifieras eftersom anslutningen saknar en användbar hemlighet.",
+        "notSaveable": "Modellen kan inte sparas. Åtgärda oavgjorda kontroller och verifiera igen.",
+        "outcomes": {
+          "inconclusive": "Kunde inte avgöras",
+          "notChecked": "Inte kontrollerad",
+          "notVerified": "Inte verifierad",
+          "verified": "Verifierad"
+        },
+        "progress": "Verifieringsförlopp",
+        "resultLabels": {
+          "baseline": "Grundläggande modellåtkomst",
+          "connection": "Anslutning och autentisering"
+        },
+        "saveable": "Verifieringen är klar. Granska resultatet och spara modellrevisionen separat.",
+        "saveRevision": "Spara modellrevision",
+        "supported": "Stöds",
+        "unsupported": "Stöds inte – saknar {capabilities}",
+        "verify": "Verifiera"
+      },
+      "directProfile": {
+        "advanced": "Avancerade driftbudgetar",
+        "configurationStatus": {
+          "blocked": "Blockerad",
+          "configured": "Konfigurerad",
+          "unconfigured": "Ej konfigurerad"
+        },
+        "disconnect": "Koppla bort modell",
+        "edit": "Redigera körprofil",
+        "fields": {
+          "maximumBufferedEvents": {
+            "label": "Maximalt antal buffrade händelser",
+            "help": "Begränsar hur många strömningshändelser som får vänta i minnet för en körning."
+          },
+          "maximumOutputBytes": {
+            "label": "Maximal utdatastorlek i byte",
+            "help": "Begränsar den sammanlagda storleken på modellens utdata i byte."
+          },
+          "maximumOutputTokens": {
+            "label": "Maximalt antal utdatatoken",
+            "help": "Begränsar hur många token modellen får returnera för en körning."
+          },
+          "maximumRetainedMemoryBytes": {
+            "label": "Maximalt kvarhållet minne i byte",
+            "help": "Begränsar hur mycket körningsdata som får behållas i arbetsminnet."
+          }
+        },
+        "model": "Modellrevision",
+        "modelSelected": "En verifierad modellrevision är vald.",
+        "noModel": "Ingen modellrevision vald",
+        "operationalStatus": { "enabled": "Aktiv", "suspended": "Pausad" },
+        "pause": "Pausa körprofil",
+        "reasons": {
+          "connectionUnavailable": "Anslutningen är inte användbar",
+          "ended": "Avslutad",
+          "incompatible": "Modellrevisionen uppfyller inte profilens krav",
+          "missingCapabilities": "Saknar {capabilities}",
+          "newRevisionRequired": "Ny revision krävs"
+        },
+        "recommended": "Rekommenderad",
+        "resume": "Återuppta"
+      },
+      "destructive": {
+        "inUse": "Revisionen används av körprofiler: {profiles}. Köade eller pågående körningar: {count}.",
+        "noProfiles": "inga",
+        "delete": {
+          "confirm": "Radera permanent",
+          "finalModel": "Anslutningsmodellen raderas också eftersom inga revisioner återstår.",
+          "message": "Revision {number} och dess verifieringsbevis raderas permanent. Åtgärden kan inte ångras.",
+          "title": "Radera modellrevision permanent?"
+        },
+        "end": {
+          "confirm": "Avsluta revision",
+          "message": "Revisionen kan inte användas för nya körprofiler efter att den har avslutats. Åtgärden kan inte ångras.",
+          "title": "Avsluta modellrevision?"
+        }
+      },
+      "messages": {
+        "revisionDeleted": "Modellrevisionen och dess verifieringsbevis raderades permanent.",
+        "revisionEnded": "Modellrevisionen avslutades."
       },
       "policy": {
         "modes": {

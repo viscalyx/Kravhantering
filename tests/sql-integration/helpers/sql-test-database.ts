@@ -29,7 +29,6 @@ import { tryGetSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 const TRANSACTIONAL_TABLES = [
   'ai_run_coordination_entries',
   'ai_connection_model_operational_states',
-  'ai_run_profile_revisions',
   'ai_run_profiles',
   'ai_connection_model_verification_evidence',
   'ai_connection_model_revisions',
@@ -218,14 +217,6 @@ async function clearTransactionalTables(
     [
       'ai_provider_secret_versions',
       'trg_ai_provider_secret_versions_delete_candidates_only',
-    ],
-    [
-      'ai_connection_model_revisions',
-      'trg_ai_connection_model_revisions_delete_drafts_only',
-    ],
-    [
-      'ai_run_profile_revisions',
-      'trg_ai_run_profile_revisions_delete_drafts_only',
     ],
     ['rfi_question_suggestions', 'trg_rfi_question_suggestions_lifecycle'],
   ])

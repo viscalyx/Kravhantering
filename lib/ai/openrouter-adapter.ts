@@ -203,7 +203,8 @@ function identity(request: AiConnectionAdapterRunRequest): AiRunIdentity {
   return {
     aiConnectionId: request.connection.id,
     aiConnectionModelRevisionId: request.modelRevision.id,
-    aiRunProfileRevisionId: request.runProfileRevisionId,
+    aiRunProfileConfigurationVersion: request.runProfileConfigurationVersion,
+    aiRunProfileId: request.runProfileId,
   }
 }
 

@@ -2,6 +2,9 @@
 
 Status: Antagen 2026-08-19.
 
+Körprofilrevisioner och verifieringssvit v4 i detta beslut ersätts av
+[ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
+
 AI-integrationslagret publicerar en gemensam strukturerad och innehållsfri
 drifttelemetri för alla adaptrar. Routes och verksamhetslager får inte lägga
 till leverantörsspecifik mätning. Varje telemetrihändelse använder opaka

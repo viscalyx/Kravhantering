@@ -11,7 +11,6 @@ import type {
   AiAdminConnectionDetail,
   AiAdminConnectionSummary,
   AiAdminRunProfileRecord,
-  AiAdminRunProfileRevisionRecord,
 } from '@/lib/ai/admin-service'
 import {
   AI_RUN_PROFILE_KEYS,
@@ -53,6 +52,34 @@ function apiBlockers(value: unknown): AiAdminBlocker[] {
   return safeBlockers
 }
 
+function modelDependencies(value: unknown): {
+  profileKeys: AiRunProfileKey[]
+  runCount: number
+} | null {
+  if (!value || typeof value !== 'object') return null
+  const details = (value as { details?: unknown }).details
+  if (!details || typeof details !== 'object') return null
+  const profileKeys = (details as { profileKeys?: unknown }).profileKeys
+  const runCount = (details as { runCount?: unknown }).runCount
+  if (
+    !Array.isArray(profileKeys) ||
+    profileKeys.length > AI_RUN_PROFILE_KEYS.length ||
+    !profileKeys.every(
+      key =>
+        typeof key === 'string' &&
+        AI_RUN_PROFILE_KEYS.includes(key as AiRunProfileKey),
+    ) ||
+    !Number.isInteger(runCount) ||
+    Number(runCount) < 0
+  ) {
+    return null
+  }
+  return {
+    profileKeys: profileKeys as AiRunProfileKey[],
+    runCount: Number(runCount),
+  }
+}
+
 export interface RegistryMutationFeedback {
   actionLabel: string
   suppressError?: boolean
@@ -73,13 +100,6 @@ export function useRegistryRequestState() {
     Record<string, AiAdminConnectionDetail>
   >({})
   const [profiles, setProfiles] = useState<AiAdminRunProfileRecord[]>([])
-  const [profileRevisions, setProfileRevisions] = useState<
-    Record<AiRunProfileKey, readonly AiAdminRunProfileRevisionRecord[]>
-  >({
-    generation_with_images: [],
-    generation_without_images: [],
-    invalid_json_repair: [],
-  })
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [statusMessage, setStatusMessage] = useState<{
@@ -107,19 +127,11 @@ export function useRegistryRequestState() {
     setLoading(true)
     setError(null)
     try {
-      const [connectionResponse, profileResponse, ...revisionResponses] =
-        await Promise.all([
-          apiFetch('/api/admin/ai-connections'),
-          apiFetch('/api/admin/ai-run-profiles'),
-          ...AI_RUN_PROFILE_KEYS.map(key =>
-            apiFetch(`/api/admin/ai-run-profiles/${key}/revisions`),
-          ),
-        ])
-      if (
-        !connectionResponse.ok ||
-        !profileResponse.ok ||
-        revisionResponses.some(response => !response.ok)
-      ) {
+      const [connectionResponse, profileResponse] = await Promise.all([
+        apiFetch('/api/admin/ai-connections'),
+        apiFetch('/api/admin/ai-run-profiles'),
+      ])
+      if (!connectionResponse.ok || !profileResponse.ok) {
         throw new Error(loadErrorMessage)
       }
       const summaries =
@@ -139,26 +151,9 @@ export function useRegistryRequestState() {
       )
       const loadedProfiles =
         (await profileResponse.json()) as AiAdminRunProfileRecord[]
-      const revisions = await Promise.all(
-        revisionResponses.map(
-          response =>
-            response.json() as Promise<AiAdminRunProfileRevisionRecord[]>,
-        ),
-      )
       setConnections(summaries)
       setDetails(Object.fromEntries(loadedDetails.map(item => [item.id, item])))
       setProfiles(loadedProfiles)
-      setProfileRevisions(
-        Object.fromEntries(
-          AI_RUN_PROFILE_KEYS.map((key, index) => [
-            key,
-            revisions[index] ?? [],
-          ]),
-        ) as unknown as Record<
-          AiRunProfileKey,
-          readonly AiAdminRunProfileRevisionRecord[]
-        >,
-      )
       setCandidateBlockers({})
     } catch (loadError) {
       setError({
@@ -199,6 +194,7 @@ export function useRegistryRequestState() {
           url.includes(`/ai-run-profiles/${key}/actions`),
         )
         const blockers = apiBlockers(responseBody)
+        const dependencies = modelDependencies(responseBody)
         const responseMessage = await readResponseMessage(response)
         if (profileKey) {
           setCandidateBlockers(current => ({
@@ -206,8 +202,17 @@ export function useRegistryRequestState() {
             [profileKey]: blockers,
           }))
         }
-        const actualError =
-          profileKey && blockers.length > 0
+        const actualError = dependencies
+          ? t('destructive.inUse', {
+              count: dependencies.runCount,
+              profiles:
+                dependencies.profileKeys.length > 0
+                  ? dependencies.profileKeys
+                      .map(key => t(`profiles.${key}`))
+                      .join(', ')
+                  : t('destructive.noProfiles'),
+            })
+          : profileKey && blockers.length > 0
             ? t('profile.candidateBlockers')
             : (responseMessage ?? t('mutationError'))
         if (!feedback.suppressError) {
@@ -270,7 +275,6 @@ export function useRegistryRequestState() {
     mutateAndReload,
     mutation,
     profiles,
-    profileRevisions,
     setCandidateBlockers,
     setMessage,
   }

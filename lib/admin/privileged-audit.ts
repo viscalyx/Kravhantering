@@ -43,7 +43,6 @@ export type AdminPrivilegedResourceType =
   | 'ai_connection_model_revision'
   | 'ai_provider_secret'
   | 'ai_run_profile'
-  | 'ai_run_profile_revision'
   | 'hsa_id_prefix'
   | 'norm_reference'
   | 'owner'

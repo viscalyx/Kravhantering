@@ -63,7 +63,6 @@ export const DEMO_RESET_TABLES = Object.freeze([
   'ai_forensic_capture_windows',
   'ai_connection_model_operational_states',
   'ai_run_coordination_entries',
-  'ai_run_profile_revisions',
   'ai_connection_model_verification_evidence',
   'ai_connection_model_revisions',
   'ai_connection_models',

@@ -32,7 +32,8 @@ export async function inspectExpiredAiRunCoordinationEntries(
         DATALENGTH([fencing_token]) +
         DATALENGTH([ai_connection_id]) +
         DATALENGTH([ai_connection_model_revision_id]) +
-        DATALENGTH([ai_run_profile_revision_id]) +
+        DATALENGTH([ai_run_profile_id]) +
+        DATALENGTH([ai_run_profile_configuration_version]) +
         DATALENGTH([queue_sequence]) + DATALENGTH([status]) +
         DATALENGTH([attempt_count]) + DATALENGTH([not_before]) +
         DATALENGTH([total_deadline_at]) +

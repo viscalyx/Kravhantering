@@ -6,7 +6,7 @@ import {
   type AiConnectionModelRevisionId,
   type AiRunEvent,
   type AiRunIdentity,
-  type AiRunProfileRevisionId,
+  type AiRunProfileId,
   createAiAdapterRunContext,
   guardAiRunEventStream,
 } from '@/lib/ai/run-contracts'
@@ -15,7 +15,8 @@ const RUN_IDENTITY: AiRunIdentity = {
   aiConnectionId: 'connection-17' as AiConnectionId,
   aiConnectionModelRevisionId:
     'model-revision-23' as AiConnectionModelRevisionId,
-  aiRunProfileRevisionId: 'profile-revision-31' as AiRunProfileRevisionId,
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: 'profile-revision-31' as AiRunProfileId,
 }
 
 async function collectEvents(
@@ -48,8 +49,8 @@ describe('AI run contracts', () => {
 
   it('keeps stable connection, model revision, and profile revision IDs distinct', () => {
     expectTypeOf<AiConnectionId>().not.toEqualTypeOf<AiConnectionModelRevisionId>()
-    expectTypeOf<AiConnectionId>().not.toEqualTypeOf<AiRunProfileRevisionId>()
-    expectTypeOf<AiConnectionModelRevisionId>().not.toEqualTypeOf<AiRunProfileRevisionId>()
+    expectTypeOf<AiConnectionId>().not.toEqualTypeOf<AiRunProfileId>()
+    expectTypeOf<AiConnectionModelRevisionId>().not.toEqualTypeOf<AiRunProfileId>()
   })
 
   it('replaces internal trace identifiers with a unique opaque adapter run identifier', () => {

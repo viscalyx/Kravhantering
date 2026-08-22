@@ -62,7 +62,8 @@ export function describeAiConnectionAdapterContract(
           identity: {
             aiConnectionId: 'connection-17',
             aiConnectionModelRevisionId: 'model-revision-23',
-            aiRunProfileRevisionId: 'profile-revision-31',
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: 'profile-revision-31',
           },
           rawOutput: '{"requirements":[]}',
           type: 'completed',
@@ -87,7 +88,8 @@ export function describeAiConnectionAdapterContract(
           identity: {
             aiConnectionId: 'connection-17',
             aiConnectionModelRevisionId: 'model-revision-23',
-            aiRunProfileRevisionId: 'profile-revision-31',
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: 'profile-revision-31',
           },
           reason: 'application_cancelled',
           type: 'cancelled',
@@ -108,7 +110,8 @@ export function describeAiConnectionAdapterContract(
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
-          aiRunProfileRevisionId: 'profile-revision-31',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile-revision-31',
         },
         type: 'failed',
       })

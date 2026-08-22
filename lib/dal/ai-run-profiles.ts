@@ -2,7 +2,6 @@ import type {
   AiPersistedConnectionLifecycleStatus,
   AiPersistedModelRevisionStatus,
   AiPersistedRunProfile,
-  AiPersistedRunProfileRevisionStatus,
   AiRunProfileKey,
   AiRunProfileOperationalStatus,
   AiRunProfileSource,
@@ -20,7 +19,6 @@ interface AiRunProfileRow {
   attestationProcessingRegionsJson: string
   attestationSubprocessorsJson: string
   authenticationType: string
-  capabilityPolicyJson: string
   connectionAgentRuntimeVersion: string | null
   connectionConfigurationVersion: number
   connectionId: string
@@ -43,27 +41,27 @@ interface AiRunProfileRow {
   modelRevisionMaximumConcurrency: number | null
   modelRevisionStatus: AiPersistedModelRevisionStatus
   operationalStatus: AiRunProfileOperationalStatus
-  profileRevisionId: string
-  profileRevisionStatus: AiPersistedRunProfileRevisionStatus
+  profileConfigurationVersion: number
+  profileId: string
   queueCapacity: number
   tlsPolicyKey: string
   totalTimeBudgetSeconds: number
   verifiedCapabilitiesJson: string | null
 }
 
-const ACTIVE_RUN_PROFILE_QUERY = `
+const RUN_PROFILE_QUERY = `
   SELECT TOP (1)
+    [profile].[id] AS [profileId],
+    [profile].[configuration_version] AS [profileConfigurationVersion],
     [profile].[operational_status] AS [operationalStatus],
-    [revision].[id] AS [profileRevisionId],
-    [revision].[status] AS [profileRevisionStatus],
-    [revision].[capability_policy_json] AS [capabilityPolicyJson],
-    [revision].[total_time_budget_seconds] AS [totalTimeBudgetSeconds],
-    [revision].[inactivity_time_budget_seconds] AS [inactivityTimeBudgetSeconds],
-    [revision].[queue_capacity] AS [queueCapacity],
-    [revision].[maximum_output_tokens] AS [maximumOutputTokens],
-    [revision].[maximum_output_bytes] AS [maximumOutputBytes],
-    [revision].[maximum_retained_memory_bytes] AS [maximumRetainedMemoryBytes],
-    [revision].[maximum_buffered_events] AS [maximumBufferedEvents],
+    [profile].[total_time_budget_seconds] AS [totalTimeBudgetSeconds],
+    [profile].[inactivity_time_budget_seconds]
+      AS [inactivityTimeBudgetSeconds],
+    [profile].[queue_capacity] AS [queueCapacity],
+    [profile].[maximum_output_tokens] AS [maximumOutputTokens],
+    [profile].[maximum_output_bytes] AS [maximumOutputBytes],
+    [profile].[maximum_retained_memory_bytes] AS [maximumRetainedMemoryBytes],
+    [profile].[maximum_buffered_events] AS [maximumBufferedEvents],
     [model_revision].[id] AS [modelRevisionId],
     [model_revision].[maximum_concurrency] AS [modelRevisionMaximumConcurrency],
     [model_revision].[status] AS [modelRevisionStatus],
@@ -73,8 +71,7 @@ const ACTIVE_RUN_PROFILE_QUERY = `
     [model_revision].[external_model_version] AS [externalModelVersion],
     [model_revision].[agent_runtime_version]
       AS [modelRevisionAgentRuntimeVersion],
-    [model_revision].[verified_capabilities_json]
-      AS [verifiedCapabilitiesJson],
+    [model_revision].[verified_capabilities_json] AS [verifiedCapabilitiesJson],
     [connection].[id] AS [connectionId],
     [connection].[lifecycle_status] AS [connectionLifecycleStatus],
     [connection].[configuration_version] AS [connectionConfigurationVersion],
@@ -88,24 +85,23 @@ const ACTIVE_RUN_PROFILE_QUERY = `
     [connection].[egress_policy_key] AS [egressPolicyKey],
     [connection].[agent_runtime_key] AS [agentRuntimeKey],
     [connection].[agent_runtime_version] AS [connectionAgentRuntimeVersion],
-    [connection].[data_policy_summary] AS [dataPolicySummary]
-    ,[attestation].[maximum_information_class]
-      AS [attestationMaximumInformationClass]
-    ,[attestation].[is_personal_data_processed]
-      AS [attestationIsPersonalDataProcessed]
-    ,[attestation].[subprocessors_json] AS [attestationSubprocessorsJson]
-    ,[attestation].[processing_regions_json]
-      AS [attestationProcessingRegionsJson]
-    ,[attestation].[is_training_allowed] AS [attestationIsTrainingAllowed]
-    ,[attestation].[maximum_retention_days]
+    [connection].[data_policy_summary] AS [dataPolicySummary],
+    [attestation].[maximum_information_class]
+      AS [attestationMaximumInformationClass],
+    [attestation].[is_personal_data_processed]
+      AS [attestationIsPersonalDataProcessed],
+    [attestation].[subprocessors_json] AS [attestationSubprocessorsJson],
+    [attestation].[processing_regions_json]
+      AS [attestationProcessingRegionsJson],
+    [attestation].[is_training_allowed] AS [attestationIsTrainingAllowed],
+    [attestation].[maximum_retention_days]
       AS [attestationMaximumRetentionDays]
   FROM [ai_run_profiles] AS [profile]
-  INNER JOIN [ai_run_profile_revisions] AS [revision]
-    ON [revision].[ai_run_profile_id] = [profile].[id]
   INNER JOIN [ai_connection_model_revisions] AS [model_revision]
-    ON [model_revision].[id] = [revision].[ai_connection_model_revision_id]
+    ON [model_revision].[id] = [profile].[ai_connection_model_revision_id]
   INNER JOIN [ai_connection_models] AS [model]
     ON [model].[id] = [model_revision].[ai_connection_model_id]
+    AND [model].[deleted_at] IS NULL
   INNER JOIN [ai_connections] AS [connection]
     ON [connection].[id] = [model].[ai_connection_id]
   INNER JOIN [ai_connection_attestations] AS [attestation]
@@ -114,7 +110,6 @@ const ACTIVE_RUN_PROFILE_QUERY = `
     AND ([attestation].[review_due_at] IS NULL
       OR [attestation].[review_due_at] > SYSUTCDATETIME())
   WHERE [profile].[profile_key] = @0
-    AND [revision].[status] = N'active'
 `
 
 function stringArray(value: string): readonly string[] | null {
@@ -135,7 +130,6 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
   return {
     adapterType: row.adapterType,
     adapterVersion: row.adapterVersion,
-    capabilityPolicyJson: row.capabilityPolicyJson,
     connectionAgentRuntimeVersion: row.connectionAgentRuntimeVersion,
     connectionConfiguration: Object.freeze({
       agentRuntimeKey: row.agentRuntimeKey,
@@ -147,12 +141,17 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
       tlsPolicyKey: row.tlsPolicyKey,
     }),
     connectionConfigurationVersion: Number(row.connectionConfigurationVersion),
+    connectionDataPolicySummary: row.dataPolicySummary,
     connectionId: row.connectionId,
     connectionLifecycleStatus: row.connectionLifecycleStatus,
     connectionMaximumConcurrency: Number(row.connectionMaximumConcurrency),
     connectionPublicName: row.connectionPublicName,
-    connectionDataPolicySummary: row.dataPolicySummary,
     externalModelId: row.externalModelId,
+    inactivityTimeBudgetSeconds: Number(row.inactivityTimeBudgetSeconds),
+    maximumBufferedEvents: Number(row.maximumBufferedEvents),
+    maximumOutputBytes: Number(row.maximumOutputBytes),
+    maximumOutputTokens: Number(row.maximumOutputTokens),
+    maximumRetainedMemoryBytes: Number(row.maximumRetainedMemoryBytes),
     modelRevisionAgentRuntimeVersion: row.modelRevisionAgentRuntimeVersion,
     modelRevisionConfiguration: Object.freeze({
       externalModelVersion: row.externalModelVersion,
@@ -167,13 +166,10 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
         : Number(row.modelRevisionMaximumConcurrency),
     modelRevisionStatus: row.modelRevisionStatus,
     operationalStatus: row.operationalStatus,
-    inactivityTimeBudgetSeconds: Number(row.inactivityTimeBudgetSeconds),
-    maximumBufferedEvents: Number(row.maximumBufferedEvents),
-    maximumOutputBytes: Number(row.maximumOutputBytes),
-    maximumOutputTokens: Number(row.maximumOutputTokens),
-    maximumRetainedMemoryBytes: Number(row.maximumRetainedMemoryBytes),
-    profileRevisionId: row.profileRevisionId,
-    profileRevisionStatus: row.profileRevisionStatus,
+    profileConfigurationVersion: Number(row.profileConfigurationVersion),
+    profileId: row.profileId,
+    queueCapacity: Number(row.queueCapacity),
+    totalTimeBudgetSeconds: Number(row.totalTimeBudgetSeconds),
     trustConfiguration:
       processingRegions && subprocessors
         ? Object.freeze({
@@ -197,8 +193,6 @@ function mapRow(row: AiRunProfileRow): AiPersistedRunProfile {
             tlsPolicyKey: row.tlsPolicyKey,
           })
         : null,
-    queueCapacity: Number(row.queueCapacity),
-    totalTimeBudgetSeconds: Number(row.totalTimeBudgetSeconds),
     verifiedCapabilitiesJson: row.verifiedCapabilitiesJson,
   }
 }
@@ -207,10 +201,10 @@ export function createSqlServerAiRunProfileSource(
   db: SqlServerDatabase,
 ): AiRunProfileSource {
   return {
-    async findActiveRevision(
+    async findProfile(
       profileKey: AiRunProfileKey,
     ): Promise<AiPersistedRunProfile | null> {
-      const rows = (await db.query(ACTIVE_RUN_PROFILE_QUERY, [
+      const rows = (await db.query(RUN_PROFILE_QUERY, [
         profileKey,
       ])) as AiRunProfileRow[]
       return rows[0] ? mapRow(rows[0]) : null

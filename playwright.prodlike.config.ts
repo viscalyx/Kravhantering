@@ -44,6 +44,29 @@ function deriveOrigin(input: string): string {
 }
 const originHeader = deriveOrigin(baseUrl)
 
+const controlledTestDataPolicy = {
+  allowedProcessingRegions: ['SE'],
+  informationClassOrder: ['public', 'internal', 'confidential'],
+  maximumInformationClass: 'internal',
+  maximumRetentionDays: 0,
+  personalDataAllowed: false,
+  requireTrainingProhibited: true,
+}
+
+const controlledTestDataPolicies = JSON.stringify({
+  generate_with_images: controlledTestDataPolicy,
+  generate_without_images: controlledTestDataPolicy,
+  repair_invalid_import_json: controlledTestDataPolicy,
+})
+
+const controlledTestEgressPolicies = JSON.stringify({
+  controlled_test: {
+    allowedOrigins: [],
+    privateSidecarAddresses: ['127.0.0.1', '::1'],
+    privateSidecarOrigins: ['https://localhost:4443'],
+  },
+})
+
 export default defineConfig({
   testDir: './tests/integration',
   // Developer Mode is aliased to no-op entrypoints in non-dev builds (see
@@ -110,6 +133,11 @@ export default defineConfig({
           reuseExistingServer: !process.env.CI,
           env: {
             ...process.env,
+            AI_CONNECTION_DATA_POLICIES_JSON: controlledTestDataPolicies,
+            AI_CONNECTION_EGRESS_POLICIES_JSON: controlledTestEgressPolicies,
+            AI_CONNECTION_TLS_POLICIES_JSON: JSON.stringify({
+              controlled_test: 'public_web_pki',
+            }),
             ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1',
             NODE_ENV: 'production',
           },

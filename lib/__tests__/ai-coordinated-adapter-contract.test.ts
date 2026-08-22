@@ -23,7 +23,8 @@ import {
 const IDENTITY = Object.freeze({
   aiConnectionId: 'connection-17',
   aiConnectionModelRevisionId: 'model-revision-23',
-  aiRunProfileRevisionId: 'profile-revision-31',
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: 'profile-revision-31',
 }) as AiRunIdentity
 const NO_USAGE = Object.freeze({
   analysisTokens: {
@@ -273,20 +274,11 @@ function coordinationStore(): AiRunCoordinationStore {
 
 function profile(
   harness: CoordinatedAdapterHarness,
-  execution: ScenarioExecution,
   limits: AiRunLimits,
 ): AiPersistedRunProfile {
   return {
     adapterType: harness.registration.adapterType,
     adapterVersion: harness.registration.adapterVersion,
-    capabilityPolicyJson: JSON.stringify({
-      aiAnalysis: execution.streaming ? 'allowed' : 'disabled',
-      imageInput: 'disabled',
-      jsonSchema: 'allowed',
-      streaming: execution.streaming ? 'required' : 'disabled',
-      usageMetadata: 'allowed',
-      validatableJson: 'required',
-    }),
     connectionAgentRuntimeVersion: null,
     connectionConfigurationVersion: 1,
     connectionDataPolicySummary: 'Synthetic contract data.',
@@ -306,8 +298,8 @@ function profile(
     modelRevisionMaximumConcurrency: null,
     modelRevisionStatus: 'verified',
     operationalStatus: 'enabled',
-    profileRevisionId: IDENTITY.aiRunProfileRevisionId,
-    profileRevisionStatus: 'active',
+    profileConfigurationVersion: IDENTITY.aiRunProfileConfigurationVersion,
+    profileId: IDENTITY.aiRunProfileId,
     queueCapacity: 2,
     totalTimeBudgetSeconds: 300,
     trustConfiguration: {
@@ -400,8 +392,8 @@ function coordinatedRun(
   }
   const resolver = createAiRunProfileResolver({
     profileSource: {
-      findActiveRevision: async () =>
-        profile(harness, execution, options.limits ?? DEFAULT_LIMITS),
+      findProfile: async () =>
+        profile(harness, options.limits ?? DEFAULT_LIMITS),
     },
     resolveAdapterConfiguration: async (_stored, use) => {
       await use({

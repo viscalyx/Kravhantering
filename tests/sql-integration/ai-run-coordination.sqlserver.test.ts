@@ -35,33 +35,25 @@ async function createCoordinationFixture(db: SqlServerDatabase): Promise<{
        connection_configuration_version, status, external_model_id,
        declared_capabilities_json, maximum_concurrency, created_at, updated_at
      ) OUTPUT INSERTED.id AS id
-     VALUES (@0, 1, 1, N'draft', N'external/sql-model', N'{}', 1,
+     VALUES (@0, 1, 1, N'new_revision_required', N'external/sql-model', N'{}', 1,
        SYSUTCDATETIME(), SYSUTCDATETIME())`,
     [model[0]?.id],
   )) as Array<{ id: string }>
   const profileId = randomUUID()
   await db.query(
     `INSERT INTO ai_run_profiles (
-       id, profile_key, operational_status, created_at, updated_at
-     ) VALUES (@0, N'generation_without_images', N'enabled',
-       SYSUTCDATETIME(), SYSUTCDATETIME())`,
-    [profileId],
-  )
-  const profileRevision = (await db.query(
-    `INSERT INTO ai_run_profile_revisions (
-       ai_run_profile_id, ai_connection_model_revision_id, revision_number,
-       status, capability_policy_json, total_time_budget_seconds,
-       inactivity_time_budget_seconds, queue_capacity, created_at, activated_at
-     ) OUTPUT INSERTED.id AS id
-     VALUES (@0, @1, 1, N'active', N'{}', 1200, 300, 10,
+       id, profile_key, ai_connection_model_revision_id,
+       operational_status, created_at, updated_at
+     ) VALUES (@0, N'generation_without_images', @1, N'enabled',
        SYSUTCDATETIME(), SYSUTCDATETIME())`,
     [profileId, modelRevision[0]?.id],
-  )) as Array<{ id: string }>
+  )
   return {
     identity: {
       aiConnectionId: connection[0]?.id,
       aiConnectionModelRevisionId: modelRevision[0]?.id,
-      aiRunProfileRevisionId: profileRevision[0]?.id,
+      aiRunProfileConfigurationVersion: 1,
+      aiRunProfileId: profileId,
     } as AiRunIdentity,
   }
 }
@@ -84,32 +76,24 @@ async function createAdditionalModelIdentity(
        connection_configuration_version, status, external_model_id,
        declared_capabilities_json, maximum_concurrency, created_at, updated_at
      ) OUTPUT INSERTED.id AS id
-     VALUES (@0, 1, 1, N'draft', N'external/additional-sql-model', N'{}', 1,
+     VALUES (@0, 1, 1, N'new_revision_required', N'external/additional-sql-model', N'{}', 1,
        SYSUTCDATETIME(), SYSUTCDATETIME())`,
     [model[0]?.id],
   )) as Array<{ id: string }>
   const profileId = randomUUID()
   await db.query(
     `INSERT INTO ai_run_profiles (
-       id, profile_key, operational_status, created_at, updated_at
-     ) VALUES (@0, N'invalid_json_repair', N'enabled',
-       SYSUTCDATETIME(), SYSUTCDATETIME())`,
-    [profileId],
-  )
-  const profileRevision = (await db.query(
-    `INSERT INTO ai_run_profile_revisions (
-       ai_run_profile_id, ai_connection_model_revision_id, revision_number,
-       status, capability_policy_json, total_time_budget_seconds,
-       inactivity_time_budget_seconds, queue_capacity, created_at, activated_at
-     ) OUTPUT INSERTED.id AS id
-     VALUES (@0, @1, 1, N'active', N'{}', 1200, 300, 10,
+       id, profile_key, ai_connection_model_revision_id,
+       operational_status, created_at, updated_at
+     ) VALUES (@0, N'invalid_json_repair', @1, N'enabled',
        SYSUTCDATETIME(), SYSUTCDATETIME())`,
     [profileId, modelRevision[0]?.id],
-  )) as Array<{ id: string }>
+  )
   return {
     aiConnectionId: base.aiConnectionId,
     aiConnectionModelRevisionId: modelRevision[0]?.id,
-    aiRunProfileRevisionId: profileRevision[0]?.id,
+    aiRunProfileConfigurationVersion: 1,
+    aiRunProfileId: profileId,
   } as AiRunIdentity
 }
 

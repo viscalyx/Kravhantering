@@ -18,7 +18,7 @@ import {
   type AiConnectionModelRevisionId,
   type AiRunEvent,
   type AiRunIdentity,
-  type AiRunProfileRevisionId,
+  type AiRunProfileId,
   type AiRunUsage,
   createAiAdapterRunContext,
   guardAiRunEventStream,
@@ -62,12 +62,13 @@ const ALL_CAPABILITIES = {
 
 const CONNECTION_ID = 'connection-17' as AiConnectionId
 const MODEL_REVISION_ID = 'model-revision-23' as AiConnectionModelRevisionId
-const RUN_PROFILE_REVISION_ID = 'profile-revision-31' as AiRunProfileRevisionId
+const RUN_PROFILE_REVISION_ID = 'profile-revision-31' as AiRunProfileId
 
 const RUN_IDENTITY: AiRunIdentity = {
   aiConnectionId: CONNECTION_ID,
   aiConnectionModelRevisionId: MODEL_REVISION_ID,
-  aiRunProfileRevisionId: RUN_PROFILE_REVISION_ID,
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: RUN_PROFILE_REVISION_ID,
 }
 
 function registeredAdapter(): AIConnectionAdapter {
@@ -109,7 +110,8 @@ function request(
       verifiedCapabilities,
     },
     privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
-    runProfileRevisionId: RUN_PROFILE_REVISION_ID,
+    runProfileConfigurationVersion: 1,
+    runProfileId: RUN_PROFILE_REVISION_ID,
     selectedCapabilities,
     task: {
       content: [{ text: 'Generate safe JSON', type: 'text' }],
@@ -337,7 +339,8 @@ describe('controlled AI connection test adapter', () => {
     const identity = {
       aiConnectionId: adapterRequest.connection.id,
       aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-      aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+      aiRunProfileConfigurationVersion: 1,
+      aiRunProfileId: adapterRequest.runProfileId,
     }
 
     await expect(collectEvents(adapter.run(adapterRequest))).resolves.toEqual(

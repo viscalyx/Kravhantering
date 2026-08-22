@@ -6,7 +6,8 @@ import type { SqlServerDatabase } from '@/lib/db'
 const IDENTITY = {
   aiConnectionId: '10000000-0000-4000-8000-000000000001',
   aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000001',
-  aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000001',
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: '30000000-0000-4000-8000-000000000001',
 } as AiRunIdentity
 
 function database(results: unknown[][]) {
@@ -367,14 +368,16 @@ describe('SQL Server AI run coordination store', () => {
           adapterVersion: '1',
           aiConnectionId: 'connection',
           aiConnectionModelRevisionId: 'model',
-          aiRunProfileRevisionId: 'profile',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile',
         },
         {
           adapterType: 'controlled_test',
           adapterVersion: '1',
           aiConnectionId: 'connection',
           aiConnectionModelRevisionId: 'model',
-          aiRunProfileRevisionId: 'profile',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile',
           runType: 'generate_without_images',
         },
       ],
@@ -438,7 +441,7 @@ describe('SQL Server AI run coordination store', () => {
     expect(sql).toContain('[probe_connection].[maximum_concurrency]')
     expect(sql).toContain('[probe_revision].[maximum_concurrency]')
     expect(sql).toContain('INSERT INTO [ai_run_coordination_entries]')
-    expect(sql).toContain("@2, @2, @4, @0, @5, N'running'")
+    expect(sql).toContain("@2, @2, @4, @0, @5, @6, N'running'")
   })
 
   it('lists only bounded due open recovery targets with active dependencies', async () => {
@@ -449,7 +452,8 @@ describe('SQL Server AI run coordination store', () => {
           adapterVersion: '1',
           aiConnectionId: IDENTITY.aiConnectionId,
           aiConnectionModelRevisionId: IDENTITY.aiConnectionModelRevisionId,
-          aiRunProfileRevisionId: IDENTITY.aiRunProfileRevisionId,
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: IDENTITY.aiRunProfileId,
           inactivityTimeBudgetMs: 3_000,
           runType: 'generate_without_images',
           totalTimeBudgetMs: 10_000,

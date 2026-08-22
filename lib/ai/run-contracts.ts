@@ -101,7 +101,7 @@ type AiStableId<Kind extends string> = string & {
 export type AiConnectionId = AiStableId<'ai_connection'>
 export type AiConnectionModelRevisionId =
   AiStableId<'ai_connection_model_revision'>
-export type AiRunProfileRevisionId = AiStableId<'ai_run_profile_revision'>
+export type AiRunProfileId = AiStableId<'ai_run_profile'>
 
 export interface AiResolvedConnection {
   /** Adapter-owned, versioned configuration interpreted only by that adapter. */
@@ -120,7 +120,8 @@ export interface AiResolvedConnectionModelRevision {
 export interface AiRunIdentity {
   aiConnectionId: AiConnectionId
   aiConnectionModelRevisionId: AiConnectionModelRevisionId
-  aiRunProfileRevisionId: AiRunProfileRevisionId
+  aiRunProfileConfigurationVersion: number
+  aiRunProfileId: AiRunProfileId
 }
 
 export interface AiConnectionAdapterRunRequest {
@@ -130,7 +131,8 @@ export interface AiConnectionAdapterRunRequest {
   modelRevision: AiResolvedConnectionModelRevision
   /** Map exactly at the provider boundary; reject before egress if unsupported. */
   privacyPolicy: Readonly<AiRequestPrivacyPolicy>
-  runProfileRevisionId: AiRunProfileRevisionId
+  runProfileConfigurationVersion: number
+  runProfileId: AiRunProfileId
   selectedCapabilities: Readonly<AiCapabilitySelection>
   task: AiTaskEnvelope
 }
@@ -276,7 +278,9 @@ function hasRunIdentity(
     actual.aiConnectionId === expected.aiConnectionId &&
     actual.aiConnectionModelRevisionId ===
       expected.aiConnectionModelRevisionId &&
-    actual.aiRunProfileRevisionId === expected.aiRunProfileRevisionId
+    actual.aiRunProfileId === expected.aiRunProfileId &&
+    actual.aiRunProfileConfigurationVersion ===
+      expected.aiRunProfileConfigurationVersion
   )
 }
 

@@ -12,7 +12,7 @@ import {
   type AiConnectionId,
   type AiConnectionModelRevisionId,
   type AiRunEvent,
-  type AiRunProfileRevisionId,
+  type AiRunProfileId,
   createAiAdapterRunContext,
 } from '@/lib/ai/run-contracts'
 
@@ -68,7 +68,8 @@ function request(
       },
     },
     privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
-    runProfileRevisionId: 'profile-revision-31' as AiRunProfileRevisionId,
+    runProfileConfigurationVersion: 1,
+    runProfileId: 'profile-revision-31' as AiRunProfileId,
     selectedCapabilities: {
       aiAnalysis: true,
       cost: true,
@@ -244,7 +245,8 @@ describe('OpenRouter AI connection adapter', () => {
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
-          aiRunProfileRevisionId: 'profile-revision-31',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile-revision-31',
         },
         rawOutput: '{"requirements":[]}',
         type: 'completed',
@@ -695,7 +697,8 @@ describe('OpenRouter AI connection adapter', () => {
           identity: {
             aiConnectionId: 'connection-17',
             aiConnectionModelRevisionId: 'model-revision-23',
-            aiRunProfileRevisionId: 'profile-revision-31',
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: 'profile-revision-31',
           },
           type: 'failed',
         },
@@ -793,7 +796,8 @@ describe('OpenRouter AI connection adapter', () => {
           identity: {
             aiConnectionId: 'connection-17',
             aiConnectionModelRevisionId: 'model-revision-23',
-            aiRunProfileRevisionId: 'profile-revision-31',
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: 'profile-revision-31',
           },
           type: 'failed',
         },
@@ -813,7 +817,8 @@ describe('OpenRouter AI connection adapter', () => {
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
-          aiRunProfileRevisionId: 'profile-revision-31',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile-revision-31',
         },
         reason: 'application_cancelled',
         type: 'cancelled',
@@ -1266,7 +1271,8 @@ describe('OpenRouter AI connection adapter', () => {
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
-          aiRunProfileRevisionId: 'profile-revision-31',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile-revision-31',
         },
         type: 'failed',
       },

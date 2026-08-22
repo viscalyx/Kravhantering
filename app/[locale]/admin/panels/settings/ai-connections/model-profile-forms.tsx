@@ -1,33 +1,31 @@
 'use client'
 
-import {
-  CheckCircle2,
-  CircleHelp,
-  Info,
-  LoaderCircle,
-  XCircle,
-} from 'lucide-react'
+import { LoaderCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type {
-  AiCapability,
-  AiCapabilityPolicy,
   SaveAiModelRevision,
-  SaveAiRunProfileRevision,
+  SaveAiRunProfile,
 } from '@/lib/ai/admin-contracts'
 import type {
-  AiAdminCapabilityDiscoveryResult,
-  AiAdminCapabilitySupportMap,
-  AiAdminCatalogItem,
+  AiAdminCandidateVerificationAttemptResult,
   AiAdminConnectionDetail,
   AiAdminModelRecord,
-  AiAdminModelRevisionRecord,
   AiAdminRunProfileRecord,
+  AiAdminVerificationOutcome,
+  AiAdminVerificationProgress,
 } from '@/lib/ai/admin-service'
 import { AI_CAPABILITY_KEYS } from '@/lib/ai/capability-keys'
-import type { AiRunProfileKey } from '@/lib/ai/profile-resolver'
-import { devMarker } from '@/lib/developer-mode-markers'
+import { AI_RUN_PROFILE_KEYS } from '@/lib/ai/profile-resolver'
+import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import {
   DialogActions,
   Field,
@@ -36,539 +34,209 @@ import {
   textareaClassName,
 } from './form-controls'
 
-const CAPABILITIES = AI_CAPABILITY_KEYS
-
-const POLICY_CAPABILITIES = [
-  'aiAnalysis',
-  'imageInput',
-  'jsonSchema',
-  'streaming',
-  'usageMetadata',
-  'validatableJson',
-] as const satisfies readonly (keyof AiCapabilityPolicy)[]
-
-type PolicyCapability = (typeof POLICY_CAPABILITIES)[number]
-type PolicyMode = AiCapabilityPolicy[PolicyCapability]
-type ProfileModelRevision = {
+type ModelFormProps = {
   connection: AiAdminConnectionDetail
-  model: AiAdminModelRecord
-  revision: AiAdminModelRevisionRecord
+  model: AiAdminModelRecord | null
+  onCancel(): void
+  onComplete(): Promise<void> | void
+  onRegisterClose?(handler: (() => void) | null): void
 }
 
-const EMPTY_CAPABILITIES: AiCapability = {
-  aiAnalysis: false,
-  cost: false,
-  imageInput: false,
-  jsonSchemaSteering: false,
-  streaming: false,
-  tokenUsage: false,
-  validatableJson: false,
-}
-
-const CATALOG_PROVIDER_NAMES: Readonly<Record<string, string>> = {
-  anthropic: 'Anthropic',
-  cohere: 'Cohere',
-  deepseek: 'DeepSeek',
-  google: 'Google',
-  'meta-llama': 'Meta',
-  mistralai: 'Mistral',
-  openai: 'OpenAI',
-  qwen: 'Qwen',
-}
-
-function normalizePolicyMode(
-  capability: PolicyCapability,
-  mode: PolicyMode,
-): PolicyMode {
-  return capability === 'usageMetadata' && mode === 'required'
-    ? 'allowed'
-    : mode
-}
-
-function catalogItemKey(item: AiAdminCatalogItem): string {
-  return JSON.stringify([item.externalModelId, item.externalModelVersion])
-}
-
-function catalogCapabilitySupport(
-  item: Readonly<AiAdminCatalogItem>,
-): AiAdminCapabilitySupportMap {
-  if (item.capabilitySupport) return item.capabilitySupport
-  return Object.fromEntries(
-    CAPABILITIES.map(capability => [
-      capability,
-      item.capabilities[capability] ? 'supported' : 'unsupported',
-    ]),
-  ) as AiAdminCapabilitySupportMap
-}
-
-function resolvedCapabilitySupport(
-  capabilities: Readonly<AiCapability>,
-): AiAdminCapabilitySupportMap {
-  return Object.fromEntries(
-    CAPABILITIES.map(capability => [
-      capability,
-      capabilities[capability] ? 'supported' : 'unsupported',
-    ]),
-  ) as AiAdminCapabilitySupportMap
-}
-
-function completelyAssessedCapabilities(
-  capabilities: Readonly<AiCapability>,
-  support: Readonly<AiAdminCapabilitySupportMap>,
-): AiCapability | null {
-  return CAPABILITIES.some(capability => support[capability] === 'unknown')
-    ? null
-    : { ...capabilities }
-}
-
-function matchingCatalogItem(
-  catalog: readonly AiAdminCatalogItem[],
-  externalModelId: string,
-  externalModelVersion: string,
-): AiAdminCatalogItem | undefined {
-  const version = externalModelVersion.trim() || null
-  return catalog.find(
-    item =>
-      item.externalModelId === externalModelId.trim() &&
-      item.externalModelVersion === version,
-  )
-}
-
-function catalogProviderLabel(
-  item: AiAdminCatalogItem,
-  fallback: string,
-): string {
-  const provider = item.modelProviderName?.trim()
-  if (!provider) return fallback
-  return (
-    CATALOG_PROVIDER_NAMES[provider.toLowerCase()] ??
-    `${provider.charAt(0).toUpperCase()}${provider.slice(1)}`
-  )
-}
-
-function catalogPriceSuffix(
-  item: AiAdminCatalogItem,
-  t: ReturnType<typeof useTranslations>,
-): string {
-  const prices: string[] = []
-  if (item.inputPricePerMillionTokens) {
-    prices.push(
-      t('catalog.inputPrice', {
-        amount: item.inputPricePerMillionTokens.amount,
-        currency: item.inputPricePerMillionTokens.currency,
-      }),
-    )
-  }
-  if (item.outputPricePerMillionTokens) {
-    prices.push(
-      t('catalog.outputPrice', {
-        amount: item.outputPricePerMillionTokens.amount,
-        currency: item.outputPricePerMillionTokens.currency,
-      }),
-    )
-  }
-  return prices.length > 0 ? ` · ${prices.join(' · ')}` : ''
-}
-
-const DEFAULT_POLICY: AiCapabilityPolicy = {
-  aiAnalysis: 'allowed',
-  imageInput: 'disabled',
-  jsonSchema: 'required',
-  streaming: 'required',
-  usageMetadata: 'allowed',
-  validatableJson: 'required',
-}
-
-const LOCKED_PROFILE_POLICY: Record<
-  AiRunProfileKey,
-  Partial<AiCapabilityPolicy>
-> = {
-  generation_with_images: {
-    imageInput: 'required',
-    streaming: 'required',
-    validatableJson: 'required',
-  },
-  generation_without_images: {
-    imageInput: 'disabled',
-    streaming: 'required',
-    validatableJson: 'required',
-  },
-  invalid_json_repair: {
-    aiAnalysis: 'disabled',
-    imageInput: 'disabled',
-    streaming: 'disabled',
-    validatableJson: 'required',
-  },
-}
-
-function profilePolicy(profile: AiAdminRunProfileRecord): AiCapabilityPolicy {
-  const policy = {
-    ...DEFAULT_POLICY,
-    ...profile.draftRevision?.capabilityPolicy,
-    ...LOCKED_PROFILE_POLICY[profile.profileKey],
-  }
-  return {
-    ...policy,
-    usageMetadata: normalizePolicyMode('usageMetadata', policy.usageMetadata),
-  }
-}
-
-function supportsPolicyCapability(
-  revision: Readonly<AiAdminModelRevisionRecord>,
-  capability: PolicyCapability,
-): boolean {
-  const verified = revision.verifiedCapabilities
-  if (!verified) return false
-  if (capability === 'jsonSchema') return verified.jsonSchemaSteering
-  if (capability === 'usageMetadata') {
-    return verified.cost || verified.tokenUsage
-  }
-  return verified[capability]
-}
-
-function missingRequiredProfileCapabilities(
-  profileKey: AiRunProfileKey,
-  revision: Readonly<AiAdminModelRevisionRecord>,
-): readonly PolicyCapability[] {
-  return POLICY_CAPABILITIES.filter(
-    capability =>
-      LOCKED_PROFILE_POLICY[profileKey][capability] === 'required' &&
-      !supportsPolicyCapability(revision, capability),
-  )
-}
-
-function normalizePolicyForRevision(
-  policy: Readonly<AiCapabilityPolicy>,
-  profileKey: AiRunProfileKey,
-  revision?: Readonly<AiAdminModelRevisionRecord>,
-): AiCapabilityPolicy {
-  return Object.fromEntries(
-    POLICY_CAPABILITIES.map(capability => {
-      const lockedMode = LOCKED_PROFILE_POLICY[profileKey][capability]
-      if (lockedMode !== undefined) return [capability, lockedMode]
-      if (revision && !supportsPolicyCapability(revision, capability)) {
-        return [capability, 'disabled']
-      }
-      return [capability, normalizePolicyMode(capability, policy[capability])]
-    }),
-  ) as AiCapabilityPolicy
+const outcomeKey: Record<AiAdminVerificationOutcome, string> = {
+  inconclusive: 'inconclusive',
+  not_checked: 'notChecked',
+  not_verified: 'notVerified',
+  verified: 'verified',
 }
 
 export function ModelForm({
-  busy,
-  catalog,
-  catalogStatus,
+  connection,
   model,
   onCancel,
-  onDiscoverCapabilities,
-  onRefreshCatalog,
-  onSubmit,
-}: {
-  busy: boolean
-  catalog: readonly AiAdminCatalogItem[]
-  catalogStatus: 'idle' | 'loaded' | 'loading' | 'unavailable'
-  model: AiAdminModelRecord | null
-  onCancel: () => void
-  onDiscoverCapabilities: (input: {
-    capabilities: readonly (keyof AiCapability)[]
-    externalModelId: string
-    externalModelVersion: string | null
-  }) => Promise<AiAdminCapabilityDiscoveryResult | null>
-  onRefreshCatalog: () => Promise<readonly AiAdminCatalogItem[] | null>
-  onSubmit: (value: SaveAiModelRevision) => Promise<void>
-}) {
+  onComplete,
+  onRegisterClose,
+}: ModelFormProps) {
   const t = useTranslations('admin.aiConnections')
-  const draft = model?.revisions.find(revision => revision.status === 'draft')
-  const latest = draft ?? model?.revisions.at(-1)
-  const [modelName, setModelName] = useState(model?.name ?? '')
+  const latest = model?.revisions.at(-1)
+  const [name, setName] = useState(model?.name ?? '')
+  const [description, setDescription] = useState(model?.description ?? '')
   const [externalModelId, setExternalModelId] = useState(
     latest?.externalModelId ?? '',
   )
   const [externalModelVersion, setExternalModelVersion] = useState(
     latest?.externalModelVersion ?? '',
   )
-  const [declaredCapabilities, setDeclaredCapabilities] =
-    useState<AiCapability>(
-      latest?.declaredCapabilities ?? { ...EMPTY_CAPABILITIES },
-    )
-  const [discoveredCapabilities, setDiscoveredCapabilities] =
-    useState<AiCapability | null>(latest?.discoveredCapabilities ?? null)
-  const [selectedCatalogKey, setSelectedCatalogKey] = useState('')
-  const [capabilitySupport, setCapabilitySupport] =
-    useState<AiAdminCapabilitySupportMap | null>(() =>
-      latest?.discoveredCapabilities
-        ? resolvedCapabilitySupport(latest.discoveredCapabilities)
-        : null,
-    )
-  const [checkingCapabilities, setCheckingCapabilities] = useState(false)
-  const [capabilityCheckCompleted, setCapabilityCheckCompleted] =
-    useState(false)
-  const capabilitiesLoading =
-    catalogStatus === 'idle' || catalogStatus === 'loading'
-  const catalogGroups = useMemo(() => {
-    const groups = new Map<string, AiAdminCatalogItem[]>()
-    for (const item of [...catalog].sort((left, right) =>
-      left.name.localeCompare(right.name),
-    )) {
-      const provider = catalogProviderLabel(item, t('catalog.otherProvider'))
-      const items = groups.get(provider) ?? []
-      items.push(item)
-      groups.set(provider, items)
-    }
-    return [...groups.entries()].sort(([left], [right]) =>
-      left.localeCompare(right),
-    )
-  }, [catalog, t])
+  const [progress, setProgress] = useState<AiAdminVerificationProgress[]>([])
+  const [verification, setVerification] =
+    useState<AiAdminCandidateVerificationAttemptResult | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const verificationAbort = useRef<AbortController | null>(null)
+
+  const canVerify =
+    !busy &&
+    externalModelId.trim().length > 0 &&
+    (connection.authenticationType === 'none' ||
+      connection.activeSecret.available)
+
+  const discardAttempt = useCallback(
+    async (attemptId?: string | null): Promise<void> => {
+      if (!attemptId) return
+      await apiFetch(`/api/admin/ai-connections/${connection.id}/actions`, {
+        body: JSON.stringify({
+          action: 'discard_model_verification',
+          attemptId,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      })
+    },
+    [connection.id],
+  )
+
+  const cancelAndClose = useCallback((): void => {
+    verificationAbort.current?.abort()
+    if (verification?.attemptId) void discardAttempt(verification.attemptId)
+    onCancel()
+  }, [discardAttempt, onCancel, verification?.attemptId])
+
   useEffect(() => {
-    if (catalogStatus !== 'loaded') return
-    const item = matchingCatalogItem(
-      catalog,
-      externalModelId,
-      externalModelVersion,
-    )
-    if (!item) {
-      setSelectedCatalogKey('')
-      setCapabilitySupport(null)
-      return
-    }
-    const itemKey = catalogItemKey(item)
-    if (selectedCatalogKey === itemKey) return
-    setSelectedCatalogKey(itemKey)
-    const catalogSupport = catalogCapabilitySupport(item)
-    const persistedDiscovery =
-      latest?.externalModelId === externalModelId.trim() &&
-      latest.externalModelVersion === (externalModelVersion.trim() || null)
-        ? latest.discoveredCapabilities
-        : null
-    if (persistedDiscovery) {
-      const persistedSupport = resolvedCapabilitySupport(persistedDiscovery)
-      const mergedSupport = Object.fromEntries(
-        CAPABILITIES.map(capability => [
-          capability,
-          catalogSupport[capability] === 'unknown'
-            ? persistedSupport[capability]
-            : catalogSupport[capability],
-        ]),
-      ) as AiAdminCapabilitySupportMap
-      const mergedCapabilities = Object.fromEntries(
-        CAPABILITIES.map(capability => [
-          capability,
-          mergedSupport[capability] === 'supported',
-        ]),
-      ) as AiCapability
-      setCapabilitySupport(mergedSupport)
-      setDeclaredCapabilities(mergedCapabilities)
-      setDiscoveredCapabilities(mergedCapabilities)
-      return
-    }
-    setDeclaredCapabilities({ ...item.capabilities })
-    setDiscoveredCapabilities(
-      completelyAssessedCapabilities(item.capabilities, catalogSupport),
-    )
-    setCapabilitySupport(catalogSupport)
-  }, [
-    catalog,
-    catalogStatus,
-    externalModelId,
-    externalModelVersion,
-    latest?.discoveredCapabilities,
-    latest?.externalModelId,
-    latest?.externalModelVersion,
-    selectedCatalogKey,
-  ])
-  function selectCatalogItem(key: string) {
-    setSelectedCatalogKey(key)
-    if (!key) {
-      setCapabilitySupport(null)
-      return
-    }
-    const item = catalog.find(candidate => catalogItemKey(candidate) === key)
-    if (!item) return
-    setModelName(item.name)
-    setExternalModelId(item.externalModelId)
-    setExternalModelVersion(item.externalModelVersion ?? '')
-    setDeclaredCapabilities({ ...item.capabilities })
-    const support = catalogCapabilitySupport(item)
-    setDiscoveredCapabilities(
-      completelyAssessedCapabilities(item.capabilities, support),
-    )
-    setCapabilitySupport(support)
+    onRegisterClose?.(cancelAndClose)
+    return () => onRegisterClose?.(null)
+  }, [cancelAndClose, onRegisterClose])
+
+  function technicalChange(update: () => void): void {
+    const attemptId = verification?.attemptId
+    update()
+    setVerification(null)
+    setProgress([])
+    if (attemptId) void discardAttempt(attemptId)
   }
-  async function checkCapabilities(): Promise<void> {
-    if (!externalModelId.trim()) return
-    setCheckingCapabilities(true)
-    setCapabilityCheckCompleted(false)
+
+  async function verify(): Promise<void> {
+    const abortController = new AbortController()
+    verificationAbort.current = abortController
+    setBusy(true)
+    setError(null)
+    setProgress([])
+    setVerification(null)
     try {
-      const refreshedCatalog = await onRefreshCatalog()
-      const item = matchingCatalogItem(
-        refreshedCatalog ?? catalog,
-        externalModelId,
-        externalModelVersion,
+      const response = await apiFetch(
+        `/api/admin/ai-connections/${connection.id}/actions`,
+        {
+          body: JSON.stringify({
+            action: 'verify_model_candidate',
+            externalModelId: externalModelId.trim(),
+            externalModelVersion: nullable(externalModelVersion),
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          signal: AbortSignal.any([
+            abortController.signal,
+            AbortSignal.timeout(70_000),
+          ]),
+        },
       )
-      let nextSupport = item
-        ? catalogCapabilitySupport(item)
-        : capabilitySupport
-      let nextCapabilities = item
-        ? { ...item.capabilities }
-        : { ...declaredCapabilities }
-      let assessed = Boolean(item)
-      if (item) setSelectedCatalogKey(catalogItemKey(item))
-      const unknownCapabilities = nextSupport
-        ? CAPABILITIES.filter(
-            capability => nextSupport?.[capability] === 'unknown',
-          )
-        : [...CAPABILITIES]
-      if (unknownCapabilities.length > 0) {
-        const discovery = await onDiscoverCapabilities({
-          capabilities: unknownCapabilities,
-          externalModelId: externalModelId.trim(),
-          externalModelVersion: externalModelVersion.trim() || null,
-        })
-        if (discovery) {
-          assessed = true
-          nextSupport = Object.fromEntries(
-            CAPABILITIES.map(capability => [
-              capability,
-              nextSupport?.[capability] === 'unknown' || !nextSupport
-                ? discovery.assessments[capability].support
-                : nextSupport[capability],
-            ]),
-          ) as AiAdminCapabilitySupportMap
-          nextCapabilities = Object.fromEntries(
-            CAPABILITIES.map(capability => [
-              capability,
-              nextSupport?.[capability] === 'supported'
-                ? true
-                : nextSupport?.[capability] === 'unsupported'
-                  ? false
-                  : nextCapabilities[capability],
-            ]),
-          ) as AiCapability
-        }
-      }
-      setCapabilitySupport(nextSupport)
-      setDeclaredCapabilities(nextCapabilities)
-      if (assessed && nextSupport) {
-        setDiscoveredCapabilities(
-          completelyAssessedCapabilities(nextCapabilities, nextSupport),
+      if (!response.ok || !response.body) {
+        throw new Error(
+          (await readResponseMessage(response)) ?? t('mutationError'),
         )
       }
-      setCapabilityCheckCompleted(nextSupport !== null)
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      while (true) {
+        const chunk = await reader.read()
+        buffer += decoder.decode(chunk.value, { stream: !chunk.done })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line) continue
+          const message = JSON.parse(line) as {
+            error?: string
+            progress?: AiAdminVerificationProgress
+            result?: AiAdminCandidateVerificationAttemptResult
+            type: string
+          }
+          if (message.progress) {
+            setProgress(current => [
+              ...current.filter(item => item.check !== message.progress?.check),
+              message.progress as AiAdminVerificationProgress,
+            ])
+          }
+          if (message.result) setVerification(message.result)
+          if (message.error) throw new Error(message.error)
+        }
+        if (chunk.done) break
+      }
+    } catch (cause) {
+      if (!abortController.signal.aborted) {
+        setError(cause instanceof Error ? cause.message : t('mutationError'))
+      }
     } finally {
-      setCheckingCapabilities(false)
+      if (verificationAbort.current === abortController) {
+        verificationAbort.current = null
+      }
+      setBusy(false)
     }
   }
-  async function submit(event: FormEvent<HTMLFormElement>) {
+
+  async function save(event: FormEvent): Promise<void> {
     event.preventDefault()
-    const data = new FormData(event.currentTarget)
-    await onSubmit({
-      declaredCapabilities,
-      description: nullable(data.get('description')),
-      discoveredCapabilities,
-      externalModelId,
-      externalModelVersion: externalModelVersion.trim() || null,
+    if (!verification?.attemptId || !verification.saveable) return
+    setBusy(true)
+    setError(null)
+    const modelRevision: SaveAiModelRevision = {
+      attemptId: verification.attemptId,
+      description: nullable(description),
+      externalModelId: externalModelId.trim(),
+      externalModelVersion: nullable(externalModelVersion),
       modelId: model?.id ?? null,
       modelToken: model?.revisionToken ?? null,
-      name: modelName,
-    })
-  }
-  return (
-    <form className="grid gap-4" onSubmit={submit}>
-      <div
-        aria-atomic="true"
-        className="flex items-start gap-2 rounded-2xl border border-secondary-200 bg-secondary-50 p-4 text-sm text-secondary-700 dark:border-secondary-700 dark:bg-secondary-950/50 dark:text-secondary-200"
-        role="status"
-        {...devMarker({
-          context: 'AI model form',
-          name: 'AI model catalog availability',
-          priority: 425,
-        })}
-      >
-        {catalogStatus === 'loading' ? (
-          <LoaderCircle
-            aria-hidden="true"
-            className="mt-0.5 h-4 w-4 shrink-0 animate-spin"
-          />
-        ) : (
-          <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-        )}
-        <p>
-          {catalogStatus === 'loading'
-            ? t('catalog.loading')
-            : catalogStatus === 'loaded' && catalog.length > 0
-              ? t('catalog.selectionReady')
-              : catalogStatus === 'unavailable'
-                ? t('catalog.unavailableManual')
-                : t('catalog.selectionIntro')}
-        </p>
-      </div>
-      {catalog.length > 0 ? (
-        <Field
-          help={t('catalog.selectionHelp')}
-          id="ai-model-catalog-selection"
-          label={t('catalog.selectionLabel')}
-        >
-          <select
-            className={inputClassName()}
-            id="ai-model-catalog-selection"
-            onChange={event => selectCatalogItem(event.target.value)}
-            value={selectedCatalogKey}
-          >
-            <option value="">{t('catalog.manualOption')}</option>
-            {catalogGroups.map(([provider, items]) => (
-              <optgroup key={provider} label={provider}>
-                {items.map(item => (
-                  <option
-                    key={catalogItemKey(item)}
-                    value={catalogItemKey(item)}
-                  >
-                    {item.name} · {item.externalModelId}
-                    {catalogPriceSuffix(item, t)}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </Field>
-      ) : null}
-      {[
-        ['name', modelName, true, setModelName],
-        ['externalModelId', externalModelId, true, setExternalModelId],
-        [
-          'externalModelVersion',
-          externalModelVersion,
-          false,
-          setExternalModelVersion,
-        ],
-      ].map(([name, value, required, setValue]) => {
-        const id = `ai-model-${name}`
-        return (
-          <Field
-            help={t(`fields.${name}.help`)}
-            id={id}
-            key={String(name)}
-            label={t(`fields.${name}.label`)}
-            required={Boolean(required)}
-          >
-            <input
-              className={inputClassName()}
-              id={id}
-              name={String(name)}
-              onChange={event => {
-                ;(setValue as (next: string) => void)(event.target.value)
-                if (name !== 'name') {
-                  setSelectedCatalogKey('')
-                  setCapabilitySupport(null)
-                  setDiscoveredCapabilities(null)
-                  setCapabilityCheckCompleted(false)
-                }
-              }}
-              required={Boolean(required)}
-              value={String(value)}
-            />
-          </Field>
+      name: name.trim(),
+    }
+    try {
+      const response = await apiFetch(
+        `/api/admin/ai-connections/${connection.id}/actions`,
+        {
+          body: JSON.stringify({
+            action: 'save_model_revision',
+            modelRevision,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      )
+      if (!response.ok) {
+        throw new Error(
+          (await readResponseMessage(response)) ?? t('mutationError'),
         )
-      })}
+      }
+      await onComplete()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('mutationError'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={save}>
+      <Field
+        help={t('fields.name.help')}
+        id="ai-model-name"
+        label={t('fields.name.label')}
+        required
+      >
+        <input
+          className={inputClassName()}
+          id="ai-model-name"
+          maxLength={300}
+          onChange={event => setName(event.target.value)}
+          required
+          value={name}
+        />
+      </Field>
       <Field
         help={t('fields.modelDescription.help')}
         id="ai-model-description"
@@ -576,382 +244,484 @@ export function ModelForm({
       >
         <textarea
           className={textareaClassName()}
-          defaultValue={model?.description ?? ''}
           id="ai-model-description"
-          name="description"
+          maxLength={20_000}
+          onChange={event => setDescription(event.target.value)}
+          value={description}
         />
       </Field>
-      <fieldset
-        aria-busy={capabilitiesLoading}
-        className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700"
-        {...devMarker({
-          context: 'AI model form',
-          name: 'AI model capability assessment',
-          priority: 430,
-        })}
+      <Field
+        help={t('fields.externalModelId.help')}
+        id="ai-model-external-id"
+        label={t('fields.externalModelId.label')}
+        required
       >
-        <legend className="px-1 text-sm font-semibold text-secondary-950 dark:text-secondary-50">
-          {t('model.capabilities')}
-        </legend>
-        {capabilitiesLoading ? (
-          <div
-            aria-atomic="true"
-            aria-live="polite"
-            className="flex min-h-20 items-center gap-2 rounded-xl bg-secondary-50 px-3 py-4 text-sm text-secondary-600 dark:bg-secondary-950/50 dark:text-secondary-300"
-            role="status"
-          >
-            <LoaderCircle
-              aria-hidden="true"
-              className="h-4 w-4 shrink-0 animate-spin"
-            />
-            <p>{t('model.capabilitiesLoading')}</p>
-          </div>
-        ) : null}
-        {!capabilitiesLoading ? (
-          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-            <p className="max-w-2xl text-xs text-secondary-600 dark:text-secondary-300">
-              {capabilitySupport
-                ? t('model.capabilitiesManagedHelp')
-                : t('model.capabilitiesHelp')}
-            </p>
-            <button
-              className="btn-secondary px-3! py-2! text-sm"
-              disabled={busy || checkingCapabilities || !externalModelId.trim()}
-              onClick={() => void checkCapabilities()}
-              type="button"
-            >
-              {checkingCapabilities ? (
-                <LoaderCircle
-                  aria-hidden="true"
-                  className="mr-2 inline h-4 w-4 animate-spin"
-                />
-              ) : null}
-              {checkingCapabilities
-                ? t('actions.checkingCapabilities')
-                : t('actions.checkCapabilities')}
-            </button>
-          </div>
-        ) : null}
-        {!capabilitiesLoading && capabilityCheckCompleted ? (
-          <p
-            className="mb-3 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300"
-            role="status"
-          >
-            <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-            {t('model.capabilitiesCheckedInline')}
-          </p>
-        ) : null}
-        {!capabilitiesLoading ? (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {CAPABILITIES.map(capability => {
-              const id = `ai-model-capability-${capability}`
-              const support = capabilitySupport?.[capability]
-              const catalogManaged = selectedCatalogKey.length > 0
-              const locked =
-                checkingCapabilities ||
-                (support !== undefined &&
-                  (catalogManaged || support !== 'unknown'))
-              const SupportIcon =
-                support === 'supported'
-                  ? CheckCircle2
-                  : support === 'unsupported'
-                    ? XCircle
-                    : CircleHelp
+        <input
+          className={inputClassName()}
+          id="ai-model-external-id"
+          maxLength={450}
+          onChange={event =>
+            technicalChange(() => setExternalModelId(event.target.value))
+          }
+          required
+          value={externalModelId}
+        />
+      </Field>
+      <Field
+        help={t('fields.externalModelVersion.help')}
+        id="ai-model-external-version"
+        label={t('fields.externalModelVersion.label')}
+      >
+        <input
+          className={inputClassName()}
+          id="ai-model-external-version"
+          maxLength={200}
+          onChange={event =>
+            technicalChange(() => setExternalModelVersion(event.target.value))
+          }
+          value={externalModelVersion}
+        />
+      </Field>
+
+      {!connection.activeSecret.available &&
+      connection.authenticationType !== 'none' ? (
+        <p className="text-sm text-amber-800 dark:text-amber-200">
+          {t('modelVerification.missingSecret')}
+        </p>
+      ) : null}
+
+      <section
+        aria-labelledby="model-capabilities-heading"
+        className="space-y-2"
+      >
+        <h3 className="font-semibold" id="model-capabilities-heading">
+          {t('modelVerification.capabilities')}
+        </h3>
+        <dl className="grid gap-2 sm:grid-cols-2">
+          {AI_CAPABILITY_KEYS.map(capability => {
+            const outcome =
+              verification?.capabilities[capability].outcome ?? 'not_checked'
+            const failureCategory =
+              verification?.capabilities[capability].failureCategory
+            return (
+              <div
+                className="rounded border border-secondary-200 p-2 dark:border-secondary-700"
+                key={capability}
+              >
+                <dt className="text-sm font-medium">
+                  {t(`capabilities.${capability}`)}
+                </dt>
+                <dd className="text-sm">
+                  {t(`modelVerification.outcomes.${outcomeKey[outcome]}`)}
+                  {outcome === 'inconclusive' && failureCategory
+                    ? ` — ${t(`modelVerification.failureCategories.${failureCategory}`)}`
+                    : ''}
+                </dd>
+              </div>
+            )
+          })}
+        </dl>
+      </section>
+
+      {busy || progress.length > 0 ? (
+        <fieldset
+          aria-busy={busy}
+          aria-label={t('modelVerification.progress')}
+          aria-live="polite"
+          className="m-0 border-0 p-0"
+        >
+          <ul className="space-y-1 text-sm">
+            {progress.map(item => {
+              const failureCategory = item.failureCategory
               return (
-                <div
-                  className="min-h-11 rounded-xl bg-secondary-50 px-3 py-2 dark:bg-secondary-950/50"
-                  key={capability}
+                <li
+                  aria-current={item.state === 'running' ? 'step' : undefined}
+                  key={item.check}
                 >
-                  <FieldLabelWithHelp
-                    help={t(`capabilityHelp.${capability}`)}
-                    htmlFor={id}
-                    label={t(`capabilities.${capability}`)}
-                  />
-                  <input
-                    checked={declaredCapabilities[capability]}
-                    disabled={locked}
-                    id={id}
-                    name={`capability-${capability}`}
-                    onChange={event =>
-                      setDeclaredCapabilities(current => ({
-                        ...current,
-                        [capability]: event.target.checked,
-                      }))
-                    }
-                    type="checkbox"
-                  />
-                  {support ? (
-                    <span
-                      className="ml-2 inline-flex items-center gap-1 text-xs text-secondary-600 dark:text-secondary-300"
-                      role="status"
-                    >
-                      <SupportIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                      {t(`model.capabilitySupport.${support}`)}
-                    </span>
+                  {item.state === 'running' ? (
+                    <LoaderCircle
+                      aria-hidden="true"
+                      className="mr-1 inline h-4 w-4 animate-spin"
+                    />
                   ) : null}
+                  {t(
+                    `modelVerification.checks.${item.check.replace(':', '.')}`,
+                  )}
+                  {item.state === 'completed'
+                    ? ` — ${t(`modelVerification.outcomes.${outcomeKey[item.outcome]}`)}`
+                    : ''}
+                  {failureCategory
+                    ? ` — ${t(`modelVerification.failureCategories.${failureCategory}`)}`
+                    : ''}
+                </li>
+              )
+            })}
+          </ul>
+        </fieldset>
+      ) : null}
+
+      {verification ? (
+        <section aria-live="polite" className="space-y-2" role="status">
+          <h3 className="font-semibold">
+            {t('modelVerification.compatibility')}
+          </h3>
+          <dl className="space-y-1 text-sm">
+            {[
+              ['connection', verification.connection],
+              ['baseline', verification.baseline],
+            ].map(([key, assessment]) => {
+              if (typeof key !== 'string' || typeof assessment === 'string')
+                return null
+              return (
+                <div key={key}>
+                  <dt className="inline font-medium">
+                    {t(`modelVerification.resultLabels.${key}`)}:{' '}
+                  </dt>
+                  <dd className="inline">
+                    {t(
+                      `modelVerification.outcomes.${outcomeKey[assessment.outcome]}`,
+                    )}
+                    {assessment.failureCategory
+                      ? ` — ${t(`modelVerification.failureCategories.${assessment.failureCategory}`)}`
+                      : ''}
+                  </dd>
                 </div>
               )
             })}
-          </div>
-        ) : null}
-      </fieldset>
+          </dl>
+          <ul className="space-y-1 text-sm">
+            {AI_RUN_PROFILE_KEYS.map(key => {
+              const result = verification.profileCompatibility[key]
+              return (
+                <li key={key}>
+                  {t(`profiles.${key}`)}:{' '}
+                  {result.supported
+                    ? t('modelVerification.supported')
+                    : t('modelVerification.unsupported', {
+                        capabilities: result.missingCapabilities
+                          .map(capability => t(`capabilities.${capability}`))
+                          .join(', '),
+                      })}
+                  {!result.supported && result.failureCategory
+                    ? ` — ${t(`modelVerification.failureCategories.${result.failureCategory}`)}`
+                    : ''}
+                </li>
+              )
+            })}
+          </ul>
+          <p className="font-medium">
+            {verification.saveable
+              ? t('modelVerification.saveable')
+              : t('modelVerification.notSaveable')}
+          </p>
+        </section>
+      ) : null}
+
+      {error ? (
+        <p className="text-sm text-red-700 dark:text-red-300" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <button
+          className="rounded bg-secondary-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-secondary-200 dark:text-secondary-900"
+          disabled={!busy && !canVerify}
+          onClick={() => {
+            if (busy) verificationAbort.current?.abort()
+            else void verify()
+          }}
+          type="button"
+        >
+          {busy
+            ? t('modelVerification.cancelVerification')
+            : t('modelVerification.verify')}
+        </button>
+      </div>
       <DialogActions
         busy={busy}
         cancel={t('actions.cancel')}
-        onCancel={onCancel}
-        save={busy ? t('actions.saving') : t('actions.saveModel')}
-        saveDisabled={capabilitiesLoading}
+        onCancel={cancelAndClose}
+        save={t('modelVerification.saveRevision')}
+        saveDisabled={!verification?.saveable}
       />
     </form>
   )
 }
 
-export function ProfileForm({
-  busy,
-  modelRevisions,
-  onCancel,
-  onSubmit,
-  profile,
-}: {
-  busy: boolean
-  modelRevisions: readonly ProfileModelRevision[]
-  onCancel: () => void
-  onSubmit: (value: SaveAiRunProfileRevision) => Promise<void>
+type ProfileFormProps = {
+  connections: readonly AiAdminConnectionDetail[]
+  onCancel(): void
+  onComplete(): Promise<void> | void
   profile: AiAdminRunProfileRecord
-}) {
+}
+
+export function ProfileForm({
+  connections,
+  onCancel,
+  onComplete,
+  profile,
+}: ProfileFormProps) {
   const t = useTranslations('admin.aiConnections')
-  const current = profile.draftRevision
-  const initialModelRevisionId = modelRevisions.some(
-    ({ revision }) => revision.id === current?.modelRevisionId,
-  )
-    ? (current?.modelRevisionId ?? '')
-    : ''
-  const initialRevision = modelRevisions.find(
-    ({ revision }) => revision.id === initialModelRevisionId,
-  )?.revision
-  const [modelRevisionId, setModelRevisionId] = useState(initialModelRevisionId)
-  const [capabilityPolicy, setCapabilityPolicy] = useState(() =>
-    normalizePolicyForRevision(
-      profilePolicy(profile),
-      profile.profileKey,
-      initialRevision,
-    ),
-  )
-  const selectedModelRevision = modelRevisions.find(
-    ({ revision }) => revision.id === modelRevisionId,
-  )?.revision
-  const selectedModelIncompatible = selectedModelRevision
-    ? missingRequiredProfileCapabilities(
-        profile.profileKey,
-        selectedModelRevision,
-      ).length > 0
-    : false
-
-  function selectModelRevision(nextModelRevisionId: string): void {
-    const revision = modelRevisions.find(
-      candidate => candidate.revision.id === nextModelRevisionId,
-    )?.revision
-    setModelRevisionId(nextModelRevisionId)
-    setCapabilityPolicy(currentPolicy =>
-      normalizePolicyForRevision(currentPolicy, profile.profileKey, revision),
-    )
-  }
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const data = new FormData(event.currentTarget)
-    const submittedCapabilityPolicy = Object.fromEntries(
-      POLICY_CAPABILITIES.map(capability => [
-        capability,
-        String(data.get(`policy-${capability}`)),
-      ]),
-    ) as unknown as AiCapabilityPolicy
-    await onSubmit({
-      capabilityPolicy: submittedCapabilityPolicy,
-      inactivityTimeBudgetSeconds: Number(
-        data.get('inactivityTimeBudgetSeconds'),
+  const choices = useMemo(
+    () =>
+      connections.flatMap(connection =>
+        connection.models.flatMap(model =>
+          model.revisions.map(revision => ({
+            connection,
+            label: `${connection.publicName} · ${model.name} · ${revision.revisionNumber}`,
+            model,
+            revision,
+          })),
+        ),
       ),
-      modelRevisionId: nullable(data.get('modelRevisionId')),
-      queueCapacity: Number(data.get('queueCapacity')),
-      revisionToken: current?.revisionToken ?? null,
-      totalTimeBudgetSeconds: Number(data.get('totalTimeBudgetSeconds')),
-    })
+    [connections],
+  )
+  const [modelRevisionId, setModelRevisionId] = useState(
+    profile.modelRevisionId ?? '',
+  )
+  const [total, setTotal] = useState(profile.totalTimeBudgetSeconds)
+  const [inactivity, setInactivity] = useState(
+    profile.inactivityTimeBudgetSeconds,
+  )
+  const [queue, setQueue] = useState(profile.queueCapacity)
+  const [outputTokens, setOutputTokens] = useState(profile.maximumOutputTokens)
+  const [outputBytes, setOutputBytes] = useState(profile.maximumOutputBytes)
+  const [memoryBytes, setMemoryBytes] = useState(
+    profile.maximumRetainedMemoryBytes,
+  )
+  const [events, setEvents] = useState(profile.maximumBufferedEvents)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const usable = useCallback(
+    (choice: (typeof choices)[number]): boolean =>
+      choice.revision.status === 'verified' &&
+      choice.connection.lifecycleStatus === 'active' &&
+      choice.connection.blockers.length === 0 &&
+      choice.revision.connectionConfigurationVersion ===
+        choice.connection.configurationVersion &&
+      choice.revision.profileCompatibility?.[profile.profileKey]?.supported ===
+        true,
+    [profile.profileKey],
+  )
+
+  const newestSelectableByModel = useMemo(() => {
+    const result = new Set<string>()
+    for (const model of connections.flatMap(connection => connection.models)) {
+      const newest = [...model.revisions].reverse().find(revision => {
+        const owner = choices.find(choice => choice.revision.id === revision.id)
+        return owner ? usable(owner) : false
+      })
+      if (newest) result.add(newest.id)
+    }
+    return result
+  }, [choices, connections, usable])
+
+  function unusableReason(choice: (typeof choices)[number]): string {
+    if (choice.revision.status === 'ended') {
+      return t('directProfile.reasons.ended')
+    }
+    if (choice.revision.status === 'new_revision_required') {
+      return t('directProfile.reasons.newRevisionRequired')
+    }
+    if (choice.connection.lifecycleStatus !== 'active') {
+      return t('directProfile.reasons.connectionUnavailable')
+    }
+    if (choice.connection.blockers.length > 0) {
+      return choice.connection.blockers
+        .map(blocker => t(`blockers.${blocker.code}`))
+        .join(' ')
+    }
+    if (
+      choice.revision.connectionConfigurationVersion !==
+      choice.connection.configurationVersion
+    ) {
+      return t('directProfile.reasons.newRevisionRequired')
+    }
+    const missing =
+      choice.revision.profileCompatibility?.[profile.profileKey]
+        ?.missingCapabilities ?? []
+    if (missing.length > 0) {
+      return t('directProfile.reasons.missingCapabilities', {
+        capabilities: missing
+          .map(capability => t(`capabilities.${capability}`))
+          .join(', '),
+      })
+    }
+    return t('directProfile.reasons.incompatible')
   }
+
+  async function submit(event: FormEvent): Promise<void> {
+    event.preventDefault()
+    setBusy(true)
+    setError(null)
+    const value: SaveAiRunProfile = {
+      inactivityTimeBudgetSeconds: inactivity,
+      maximumBufferedEvents: events,
+      maximumOutputBytes: outputBytes,
+      maximumOutputTokens: outputTokens,
+      maximumRetainedMemoryBytes: memoryBytes,
+      modelRevisionId: modelRevisionId || null,
+      queueCapacity: queue,
+      revisionToken: profile.revisionToken,
+      totalTimeBudgetSeconds: total,
+    }
+    try {
+      const response = await apiFetch(
+        `/api/admin/ai-run-profiles/${profile.profileKey}`,
+        {
+          body: JSON.stringify(value),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH',
+        },
+      )
+      if (!response.ok)
+        throw new Error(
+          (await readResponseMessage(response)) ?? t('mutationError'),
+        )
+      await onComplete()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('mutationError'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
-    <form className="grid gap-4" onSubmit={submit}>
+    <form className="space-y-5" onSubmit={submit}>
       <Field
         help={t('fields.modelRevisionId.help')}
-        id="ai-profile-modelRevisionId"
-        label={t('fields.modelRevisionId.label')}
+        id="ai-profile-model"
+        label={t('directProfile.model')}
       >
         <select
           className={inputClassName()}
-          id="ai-profile-modelRevisionId"
-          name="modelRevisionId"
-          onChange={event => selectModelRevision(event.target.value)}
+          id="ai-profile-model"
+          onChange={event => setModelRevisionId(event.target.value)}
           value={modelRevisionId}
         >
-          <option value="">{t('profile.noModel')}</option>
-          {modelRevisions.map(({ connection, model, revision }) => {
-            const incompatible =
-              missingRequiredProfileCapabilities(profile.profileKey, revision)
-                .length > 0
-            return (
-              <option
-                disabled={incompatible}
-                key={revision.id}
-                value={revision.id}
-              >
-                {connection.administrationName} · {model.name} ·{' '}
-                {t('model.revision', { number: revision.revisionNumber })}
-                {incompatible ? ` · ${t('profile.incompatibleModel')}` : ''}
-              </option>
-            )
-          })}
+          <option value="">{t('directProfile.noModel')}</option>
+          {choices.map(choice => (
+            <option
+              disabled={!usable(choice)}
+              key={choice.revision.id}
+              value={choice.revision.id}
+            >
+              {choice.label}
+              {usable(choice) && newestSelectableByModel.has(choice.revision.id)
+                ? ` — ${t('directProfile.recommended')}`
+                : usable(choice)
+                  ? ''
+                  : ` — ${unusableReason(choice)}`}
+            </option>
+          ))}
         </select>
-        {selectedModelIncompatible ? (
-          <p
-            className="mt-1 text-xs text-red-700 dark:text-red-300"
-            role="status"
-          >
-            {t('profile.incompatibleModelHelp')}
-          </p>
-        ) : null}
       </Field>
+      {modelRevisionId ? (
+        <button
+          className="rounded border border-secondary-300 px-3 py-2 text-sm font-semibold dark:border-secondary-600"
+          onClick={() => setModelRevisionId('')}
+          type="button"
+        >
+          {t('directProfile.disconnect')}
+        </button>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          [
-            'totalTimeBudgetSeconds',
-            current?.totalTimeBudgetSeconds ?? 1200,
-            300,
-            3600,
-          ],
-          [
-            'inactivityTimeBudgetSeconds',
-            current?.inactivityTimeBudgetSeconds ?? 300,
-            300,
-            3600,
-          ],
-          ['queueCapacity', current?.queueCapacity ?? 10, 0, 100],
-        ].map(([name, value, min, max]) => {
-          const id = `ai-profile-${name}`
-          return (
+        <Field
+          help={t('fields.totalTimeBudgetSeconds.help')}
+          id="ai-profile-total"
+          label={t('fields.totalTimeBudgetSeconds.label')}
+        >
+          <input
+            className={inputClassName()}
+            id="ai-profile-total"
+            max={3600}
+            min={300}
+            onChange={event => setTotal(event.target.valueAsNumber)}
+            type="number"
+            value={total}
+          />
+        </Field>
+        <Field
+          help={t('fields.inactivityTimeBudgetSeconds.help')}
+          id="ai-profile-inactivity"
+          label={t('fields.inactivityTimeBudgetSeconds.label')}
+        >
+          <input
+            className={inputClassName()}
+            id="ai-profile-inactivity"
+            max={3600}
+            min={300}
+            onChange={event => setInactivity(event.target.valueAsNumber)}
+            type="number"
+            value={inactivity}
+          />
+        </Field>
+        <Field
+          help={t('fields.queueCapacity.help')}
+          id="ai-profile-queue"
+          label={t('fields.queueCapacity.label')}
+        >
+          <input
+            className={inputClassName()}
+            id="ai-profile-queue"
+            max={100}
+            min={0}
+            onChange={event => setQueue(event.target.valueAsNumber)}
+            type="number"
+            value={queue}
+          />
+        </Field>
+      </div>
+      <details>
+        <summary className="cursor-pointer font-semibold">
+          {t('directProfile.advanced')}
+        </summary>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          {[
+            ['maximumOutputTokens', outputTokens, setOutputTokens, 1_000_000],
+            ['maximumOutputBytes', outputBytes, setOutputBytes, 67_108_864],
+            [
+              'maximumRetainedMemoryBytes',
+              memoryBytes,
+              setMemoryBytes,
+              134_217_728,
+            ],
+            ['maximumBufferedEvents', events, setEvents, 1024],
+          ].map(([key, value, setter, max]) => (
             <Field
-              help={t(`fields.${String(name)}.help`)}
-              id={id}
-              key={String(name)}
-              label={t(`fields.${String(name)}.label`)}
-              required
+              help={t(`directProfile.fields.${String(key)}.help`)}
+              id={`ai-profile-${String(key)}`}
+              key={String(key)}
+              label={t(`directProfile.fields.${String(key)}.label`)}
             >
               <input
                 className={inputClassName()}
-                defaultValue={Number(value)}
-                id={id}
+                id={`ai-profile-${String(key)}`}
                 max={Number(max)}
-                min={Number(min)}
-                name={String(name)}
-                required
+                min={1}
+                onChange={event =>
+                  (setter as (value: number) => void)(
+                    event.target.valueAsNumber,
+                  )
+                }
                 type="number"
+                value={Number(value)}
               />
             </Field>
-          )
-        })}
-      </div>
-      <fieldset
-        className="rounded-2xl border border-secondary-200 p-4 dark:border-secondary-700"
-        {...devMarker({
-          context: 'AI run profile revision form',
-          name: 'Verified model capability policy',
-          priority: 320,
-        })}
-      >
-        <legend className="px-1 text-sm font-semibold text-secondary-950 dark:text-secondary-50">
-          {t('profile.capabilityPolicy')}
-        </legend>
-        <p className="mb-3 text-xs text-secondary-600 dark:text-secondary-300">
-          {t('profile.capabilityPolicyHelp')}
-        </p>
-        {!selectedModelRevision ? (
-          <p className="mb-3 text-xs text-amber-800 dark:text-amber-200">
-            {t('profile.selectModelForCapabilities')}
-          </p>
-        ) : null}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {POLICY_CAPABILITIES.map(capability => {
-            const id = `ai-profile-policy-${capability}`
-            const lockedMode =
-              LOCKED_PROFILE_POLICY[profile.profileKey][capability]
-            const supported = selectedModelRevision
-              ? supportsPolicyCapability(selectedModelRevision, capability)
-              : false
-            const unsupportedOptionalCapability =
-              selectedModelRevision !== undefined &&
-              lockedMode === undefined &&
-              !supported
-            const controlDisabled =
-              selectedModelRevision === undefined ||
-              lockedMode !== undefined ||
-              unsupportedOptionalCapability
-            const policyMode = normalizePolicyMode(
-              capability,
-              capabilityPolicy[capability],
-            )
-            return (
-              <Field
-                help={t(`policy.${capability}.help`)}
-                id={id}
-                key={capability}
-                label={t(`policy.${capability}.label`)}
-              >
-                <select
-                  className={inputClassName()}
-                  disabled={controlDisabled}
-                  id={id}
-                  name={`policy-${capability}`}
-                  onChange={event =>
-                    setCapabilityPolicy(currentPolicy => ({
-                      ...currentPolicy,
-                      [capability]: event.target.value as PolicyMode,
-                    }))
-                  }
-                  value={policyMode}
-                >
-                  {(capability === 'usageMetadata'
-                    ? ['disabled', 'allowed']
-                    : ['disabled', 'allowed', 'required']
-                  ).map(mode => (
-                    <option key={mode} value={mode}>
-                      {t(`policy.modes.${mode}`)}
-                    </option>
-                  ))}
-                </select>
-                {controlDisabled ? (
-                  <input
-                    name={`policy-${capability}`}
-                    type="hidden"
-                    value={policyMode}
-                  />
-                ) : null}
-                {lockedMode !== undefined ? (
-                  <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('profile.lockedMinimum')}
-                  </p>
-                ) : unsupportedOptionalCapability ? (
-                  <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">
-                    {t('profile.unsupportedCapability')}
-                  </p>
-                ) : null}
-              </Field>
-            )
-          })}
+          ))}
         </div>
-      </fieldset>
+      </details>
+      {error ? (
+        <p className="text-sm text-red-700 dark:text-red-300" role="alert">
+          {error}
+        </p>
+      ) : null}
       <DialogActions
         busy={busy}
         cancel={t('actions.cancel')}
         onCancel={onCancel}
-        save={busy ? t('actions.saving') : t('profile.saveDraft')}
-        saveDisabled={selectedModelIncompatible}
+        save={t('actions.save')}
       />
     </form>
   )

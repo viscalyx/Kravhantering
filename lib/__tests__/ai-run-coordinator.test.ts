@@ -11,7 +11,8 @@ import {
 const IDENTITY = {
   aiConnectionId: 'connection-1',
   aiConnectionModelRevisionId: 'model-revision-1',
-  aiRunProfileRevisionId: 'profile-revision-1',
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: 'profile-revision-1',
 } as AiRunIdentity
 
 const MANUAL_PROBE_ACQUISITION = {

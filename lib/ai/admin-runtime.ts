@@ -44,6 +44,7 @@ export function createAiConnectionAdministrationRuntime(
   ): Promise<void> =>
     recordAdminPrivilegedActionSucceeded(context, detail, executor)
   return new AiConnectionAdministrationService({
+    actorKey: context.actor.hsaId ?? context.actor.id ?? context.requestId,
     audit,
     external,
     secrets: {

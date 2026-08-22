@@ -174,7 +174,8 @@ export interface AiRunTelemetryEvent {
   adapterVersion: string
   aiConnectionId: string
   aiConnectionModelRevisionId: string
-  aiRunProfileRevisionId: string
+  aiRunProfileConfigurationVersion: number
+  aiRunProfileId: string
   applicationRunId: string
   attempt?: number
   breakerStatus?: AiOperationalStateTransition['breakerStatus']
@@ -488,7 +489,9 @@ export function createAiRunCoordinator(
           aiConnectionId: target.identity.aiConnectionId,
           aiConnectionModelRevisionId:
             target.identity.aiConnectionModelRevisionId,
-          aiRunProfileRevisionId: target.identity.aiRunProfileRevisionId,
+          aiRunProfileConfigurationVersion:
+            target.identity.aiRunProfileConfigurationVersion,
+          aiRunProfileId: target.identity.aiRunProfileId,
           applicationRunId: probeRunId,
           correlationId: probeRunId,
           probeKind: 'automatic' as const,
@@ -585,7 +588,9 @@ export function createAiRunCoordinator(
       adapterVersion: target.adapterVersion,
       aiConnectionId: target.identity.aiConnectionId,
       aiConnectionModelRevisionId: target.identity.aiConnectionModelRevisionId,
-      aiRunProfileRevisionId: target.identity.aiRunProfileRevisionId,
+      aiRunProfileConfigurationVersion:
+        target.identity.aiRunProfileConfigurationVersion,
+      aiRunProfileId: target.identity.aiRunProfileId,
       applicationRunId: probeRunId,
       correlationId: probeRunId,
       probeKind: 'manual' as const,
@@ -680,7 +685,9 @@ export function createAiRunCoordinator(
         aiConnectionId: request.identity.aiConnectionId,
         aiConnectionModelRevisionId:
           request.identity.aiConnectionModelRevisionId,
-        aiRunProfileRevisionId: request.identity.aiRunProfileRevisionId,
+        aiRunProfileConfigurationVersion:
+          request.identity.aiRunProfileConfigurationVersion,
+        aiRunProfileId: request.identity.aiRunProfileId,
         applicationRunId: request.applicationRunId,
         correlationId: request.correlationId,
         requestId: request.requestId,

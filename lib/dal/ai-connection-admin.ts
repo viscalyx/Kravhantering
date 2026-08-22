@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto'
 import {
   type AiCapability,
-  aiCapabilityPolicySchema,
   aiCapabilitySchema,
   type CreateAiConnection,
 } from '@/lib/ai/admin-contracts'
 import type {
+  AiAdminActivationSnapshot,
   AiAdminAttestationRecord,
   AiAdminAudit,
   AiAdminBlocker,
@@ -13,10 +13,7 @@ import type {
   AiAdminConnectionSummary,
   AiAdminModelRecord,
   AiAdminModelRevisionRecord,
-  AiAdminModelVerificationResult,
-  AiAdminProfileActivationEntry,
   AiAdminRunProfileRecord,
-  AiAdminRunProfileRevisionRecord,
   AiAdminStore,
   AiAdminStoredConnectionDetail,
 } from '@/lib/ai/admin-service'
@@ -84,40 +81,36 @@ interface ModelRow {
   modelName: string
   modelRevisionToken: string
   modelToken: string
+  profileCompatibilityJson: string | null
   revisionId: string
   revisionNumber: number | string
   status: AiAdminModelRevisionRecord['status']
+  testSuiteVersion: string | null
+  verifiedAt: Date | string | null
   verifiedCapabilitiesJson: string | null
 }
 
 interface ProfileRow {
-  activeRevisionId: string | null
-  capabilityPolicyJson: string | null
-  draftRevisionId: string | null
-  inactivityTimeBudgetSeconds: number | string | null
+  activeSecretAvailable: boolean
+  authenticationType: AiAdminStoredConnectionDetail['authenticationType'] | null
+  configurationStatus: AiAdminRunProfileRecord['configurationStatus']
+  configurationVersion: number | string
+  connectionActive: boolean
+  connectionEvidenceAvailable: boolean
+  inactivityTimeBudgetSeconds: number | string
+  maximumBufferedEvents: number | string
+  maximumOutputBytes: number | string
+  maximumOutputTokens: number | string
+  maximumRetainedMemoryBytes: number | string
   modelRevisionId: string | null
+  modelRevisionVerified: boolean
   operationalStatus: AiAdminRunProfileRecord['operationalStatus']
   profileId: string
   profileKey: AiRunProfileKey
-  profileRevisionNumber: number | string | null
-  profileRevisionToken: string | null
   profileToken: string
-  queueCapacity: number | string | null
-  totalTimeBudgetSeconds: number | string | null
-}
-
-interface ProfileRevisionRow {
-  capabilityPolicyJson: string
-  connectionId?: string
-  id: string
-  inactivityTimeBudgetSeconds: number | string
-  modelRevisionId: string | null
-  profileKey?: AiRunProfileKey
   queueCapacity: number | string
-  revisionNumber: number | string
-  revisionToken: string
-  status: AiAdminRunProfileRevisionRecord['status']
   totalTimeBudgetSeconds: number | string
+  validAttestation: boolean
 }
 
 const CONNECTION_COLUMNS = `
@@ -338,9 +331,16 @@ function models(rows: readonly ModelRow[]): AiAdminModelRecord[] {
       externalModelId: row.externalModelId,
       externalModelVersion: row.externalModelVersion,
       id: row.revisionId,
+      profileCompatibility: row.profileCompatibilityJson
+        ? (JSON.parse(
+            row.profileCompatibilityJson,
+          ) as AiAdminModelRevisionRecord['profileCompatibility'])
+        : null,
       revisionNumber: Number(row.revisionNumber),
       revisionToken: row.modelRevisionToken,
       status: row.status,
+      testSuiteVersion: row.testSuiteVersion,
+      verifiedAt: iso(row.verifiedAt),
       verifiedCapabilities: jsonCapability(row.verifiedCapabilitiesJson),
     })
   }
@@ -425,9 +425,20 @@ async function loadConnections(
          [revision].[verified_capabilities_json]
            AS [verifiedCapabilitiesJson],
          [revision].[revision_token] AS [modelRevisionToken]
+         , [model_evidence].[profile_compatibility_json]
+             AS [profileCompatibilityJson]
+         , [model_evidence].[test_suite_version] AS [testSuiteVersion]
+         , [model_evidence].[verified_at] AS [verifiedAt]
        FROM [ai_connection_models] AS [model]
        INNER JOIN [ai_connection_model_revisions] AS [revision]
          ON [revision].[ai_connection_model_id] = [model].[id]
+       OUTER APPLY (
+         SELECT TOP (1) [candidate].[profile_compatibility_json],
+           [candidate].[test_suite_version], [candidate].[verified_at]
+         FROM [ai_connection_model_verification_evidence] AS [candidate]
+         WHERE [candidate].[ai_connection_model_revision_id] = [revision].[id]
+         ORDER BY [candidate].[verified_at] DESC, [candidate].[id] DESC
+       ) AS [model_evidence]
        WHERE [model].[ai_connection_id] IN (
          SELECT TRY_CONVERT(uniqueidentifier, [value]) FROM OPENJSON(@0)
        )
@@ -500,109 +511,47 @@ function connectionParameters(input: CreateAiConnection): unknown[] {
 }
 
 function mapProfile(row: ProfileRow): AiAdminRunProfileRecord {
-  let draftRevision: AiAdminRunProfileRevisionRecord | null = null
-  if (
-    row.draftRevisionId &&
-    row.capabilityPolicyJson &&
-    row.profileRevisionToken &&
-    row.profileRevisionNumber !== null &&
-    row.totalTimeBudgetSeconds !== null &&
-    row.inactivityTimeBudgetSeconds !== null &&
-    row.queueCapacity !== null
-  ) {
-    let rawPolicy: unknown
-    try {
-      rawPolicy = JSON.parse(row.capabilityPolicyJson) as unknown
-    } catch {
-      rawPolicy = null
+  const profileBlockers: AiAdminBlocker[] = []
+  if (row.modelRevisionId) {
+    if (!row.connectionActive) {
+      profileBlockers.push({ code: 'connection_inactive' })
     }
-    const parsed = aiCapabilityPolicySchema.safeParse(rawPolicy)
-    if (parsed.success) {
-      draftRevision = {
-        capabilityPolicy: parsed.data,
-        id: row.draftRevisionId,
-        inactivityTimeBudgetSeconds: Number(row.inactivityTimeBudgetSeconds),
-        modelRevisionId: row.modelRevisionId,
-        queueCapacity: Number(row.queueCapacity),
-        revisionNumber: Number(row.profileRevisionNumber),
-        revisionToken: row.profileRevisionToken,
-        status: 'draft',
-        totalTimeBudgetSeconds: Number(row.totalTimeBudgetSeconds),
-      }
+    if (!row.validAttestation) {
+      profileBlockers.push({ code: 'attestation_invalid' })
     }
+    if (
+      row.authenticationType !== null &&
+      row.authenticationType !== 'none' &&
+      !row.activeSecretAvailable
+    ) {
+      profileBlockers.push({ code: 'active_secret_missing' })
+    }
+    if (!row.connectionEvidenceAvailable) {
+      profileBlockers.push({ code: 'connection_verification_missing' })
+    }
+    if (!row.modelRevisionVerified) {
+      profileBlockers.push({ code: 'model_revision_unverified' })
+    }
+  } else {
+    profileBlockers.push({ code: 'model_revision_missing' })
   }
-  const profile: AiAdminRunProfileRecord = {
-    activeRevisionId: row.activeRevisionId,
-    blockers: [],
-    draftRevision,
+  return {
+    blockers: profileBlockers,
+    configurationStatus: row.configurationStatus,
+    configurationVersion: Number(row.configurationVersion),
     id: row.profileId,
+    inactivityTimeBudgetSeconds: Number(row.inactivityTimeBudgetSeconds),
+    maximumBufferedEvents: Number(row.maximumBufferedEvents),
+    maximumOutputBytes: Number(row.maximumOutputBytes),
+    maximumOutputTokens: Number(row.maximumOutputTokens),
+    maximumRetainedMemoryBytes: Number(row.maximumRetainedMemoryBytes),
+    modelRevisionId: row.modelRevisionId,
     operationalStatus: row.operationalStatus,
     profileKey: row.profileKey,
+    queueCapacity: Number(row.queueCapacity),
     revisionToken: row.profileToken,
+    totalTimeBudgetSeconds: Number(row.totalTimeBudgetSeconds),
   }
-  return profile
-}
-
-async function loadProfileRevisions(
-  executor: SqlServerDatabase | SqlServerEntityManager,
-  profileKey: AiRunProfileKey,
-  revisionId: string | null = null,
-): Promise<AiAdminRunProfileRevisionRecord[]> {
-  const rows = await executor.query<ProfileRevisionRow[]>(
-    `SELECT [revision].[id], [revision].[revision_number] AS [revisionNumber],
-       [revision].[status],
-       [revision].[ai_connection_model_revision_id] AS [modelRevisionId],
-       [revision].[capability_policy_json] AS [capabilityPolicyJson],
-       [revision].[total_time_budget_seconds] AS [totalTimeBudgetSeconds],
-       [revision].[inactivity_time_budget_seconds]
-         AS [inactivityTimeBudgetSeconds],
-       [revision].[queue_capacity] AS [queueCapacity],
-       [revision].[revision_token] AS [revisionToken]
-     FROM [ai_run_profile_revisions] AS [revision]
-     INNER JOIN [ai_run_profiles] AS [profile]
-       ON [profile].[id] = [revision].[ai_run_profile_id]
-     WHERE (@0 IS NULL OR [revision].[id] = @0)
-       AND [profile].[profile_key] = @1
-     ORDER BY [revision].[revision_number] DESC`,
-    [revisionId, profileKey],
-  )
-  return rows.flatMap(mapProfileRevisionRow)
-}
-
-function mapProfileRevisionRow(
-  row: ProfileRevisionRow,
-): AiAdminRunProfileRevisionRecord[] {
-  let rawPolicy: unknown
-  try {
-    rawPolicy = JSON.parse(row.capabilityPolicyJson) as unknown
-  } catch {
-    return []
-  }
-  const policy = aiCapabilityPolicySchema.safeParse(rawPolicy)
-  if (!policy.success) return []
-  return [
-    {
-      capabilityPolicy: policy.data,
-      id: row.id,
-      inactivityTimeBudgetSeconds: Number(row.inactivityTimeBudgetSeconds),
-      modelRevisionId: row.modelRevisionId,
-      queueCapacity: Number(row.queueCapacity),
-      revisionNumber: Number(row.revisionNumber),
-      revisionToken: row.revisionToken,
-      status: row.status,
-      totalTimeBudgetSeconds: Number(row.totalTimeBudgetSeconds),
-    },
-  ]
-}
-
-async function loadProfileRevision(
-  executor: SqlServerDatabase | SqlServerEntityManager,
-  profileKey: AiRunProfileKey,
-  revisionId: string,
-): Promise<AiAdminRunProfileRevisionRecord | null> {
-  return (
-    (await loadProfileRevisions(executor, profileKey, revisionId))[0] ?? null
-  )
 }
 
 async function loadProfiles(
@@ -614,22 +563,90 @@ async function loadProfiles(
        [profile].[profile_key] AS [profileKey],
        [profile].[operational_status] AS [operationalStatus],
        [profile].[revision_token] AS [profileToken],
-       [draft].[id] AS [draftRevisionId],
-       [draft].[revision_number] AS [profileRevisionNumber],
-       [draft].[ai_connection_model_revision_id] AS [modelRevisionId],
-       [draft].[capability_policy_json] AS [capabilityPolicyJson],
-       [draft].[total_time_budget_seconds] AS [totalTimeBudgetSeconds],
-       [draft].[inactivity_time_budget_seconds] AS [inactivityTimeBudgetSeconds],
-       [draft].[queue_capacity] AS [queueCapacity],
-       [draft].[revision_token] AS [profileRevisionToken],
-       [active].[id] AS [activeRevisionId]
+       [profile].[configuration_version] AS [configurationVersion],
+       [profile].[ai_connection_model_revision_id] AS [modelRevisionId],
+       [profile].[total_time_budget_seconds] AS [totalTimeBudgetSeconds],
+       [profile].[inactivity_time_budget_seconds] AS [inactivityTimeBudgetSeconds],
+       [profile].[queue_capacity] AS [queueCapacity],
+       [profile].[maximum_output_tokens] AS [maximumOutputTokens],
+       [profile].[maximum_output_bytes] AS [maximumOutputBytes],
+       [profile].[maximum_retained_memory_bytes] AS [maximumRetainedMemoryBytes],
+       [profile].[maximum_buffered_events] AS [maximumBufferedEvents],
+       [connection].[authentication_type] AS [authenticationType],
+       CAST(CASE WHEN [connection].[lifecycle_status] = N'active'
+         THEN 1 ELSE 0 END AS bit) AS [connectionActive],
+       CAST(CASE WHEN [attestation].[id] IS NOT NULL
+         THEN 1 ELSE 0 END AS bit) AS [validAttestation],
+       CAST(CASE WHEN [secret].[id] IS NOT NULL
+         THEN 1 ELSE 0 END AS bit) AS [activeSecretAvailable],
+       CAST(CASE WHEN [connection_evidence].[id] IS NOT NULL
+         THEN 1 ELSE 0 END AS bit) AS [connectionEvidenceAvailable],
+       CAST(CASE WHEN [revision].[status] = N'verified'
+         AND [revision].[connection_configuration_version]
+           = [connection].[configuration_version]
+         AND [model].[deleted_at] IS NULL
+         AND [model_evidence].[id] IS NOT NULL
+         THEN 1 ELSE 0 END AS bit) AS [modelRevisionVerified],
+       CASE
+         WHEN [profile].[ai_connection_model_revision_id] IS NULL
+           THEN N'unconfigured'
+         WHEN [revision].[status] = N'verified'
+           AND [revision].[connection_configuration_version]
+             = [connection].[configuration_version]
+           AND [model].[deleted_at] IS NULL
+           AND [connection].[lifecycle_status] = N'active'
+           AND [attestation].[id] IS NOT NULL
+           AND ([connection].[authentication_type] = N'none'
+             OR [secret].[id] IS NOT NULL)
+           AND [connection_evidence].[id] IS NOT NULL
+           AND [model_evidence].[id] IS NOT NULL THEN N'configured'
+         ELSE N'blocked'
+       END AS [configurationStatus]
      FROM [ai_run_profiles] AS [profile]
-     LEFT JOIN [ai_run_profile_revisions] AS [draft]
-       ON [draft].[ai_run_profile_id] = [profile].[id]
-       AND [draft].[status] = N'draft'
-     LEFT JOIN [ai_run_profile_revisions] AS [active]
-       ON [active].[ai_run_profile_id] = [profile].[id]
-       AND [active].[status] = N'active'
+     LEFT JOIN [ai_connection_model_revisions] AS [revision]
+       ON [revision].[id] = [profile].[ai_connection_model_revision_id]
+     LEFT JOIN [ai_connection_models] AS [model]
+       ON [model].[id] = [revision].[ai_connection_model_id]
+     LEFT JOIN [ai_connections] AS [connection]
+       ON [connection].[id] = [model].[ai_connection_id]
+     OUTER APPLY (
+       SELECT TOP (1) [candidate].[id]
+       FROM [ai_connection_attestations] AS [candidate]
+       WHERE [candidate].[ai_connection_id] = [connection].[id]
+         AND [candidate].[status] = N'valid'
+         AND [candidate].[reviewed_at] <= SYSUTCDATETIME()
+         AND ([candidate].[review_due_at] IS NULL
+           OR [candidate].[review_due_at] > SYSUTCDATETIME())
+       ORDER BY [candidate].[revision_number] DESC
+     ) AS [attestation]
+     OUTER APPLY (
+       SELECT TOP (1) [candidate].[id]
+       FROM [ai_provider_secret_versions] AS [candidate]
+       WHERE [candidate].[ai_connection_id] = [connection].[id]
+         AND [candidate].[status] = N'active'
+         AND [candidate].[ciphertext] IS NOT NULL
+         AND [candidate].[provider_revoked_at] IS NULL
+     ) AS [secret]
+     OUTER APPLY (
+       SELECT TOP (1) [candidate].[id]
+       FROM [ai_connection_verification_evidence] AS [candidate]
+       WHERE [candidate].[ai_connection_id] = [connection].[id]
+         AND [candidate].[connection_configuration_version]
+           = [connection].[configuration_version]
+         AND [candidate].[outcome] = N'passed'
+         AND ([candidate].[expires_at] IS NULL
+           OR [candidate].[expires_at] > SYSUTCDATETIME())
+       ORDER BY [candidate].[verified_at] DESC
+     ) AS [connection_evidence]
+     OUTER APPLY (
+       SELECT TOP (1) [candidate].[id]
+       FROM [ai_connection_model_verification_evidence] AS [candidate]
+       WHERE [candidate].[ai_connection_model_revision_id] = [revision].[id]
+         AND [candidate].[outcome] = N'passed'
+         AND JSON_VALUE([candidate].[profile_compatibility_json],
+           CONCAT('$.', [profile].[profile_key], '.supported')) = N'true'
+       ORDER BY [candidate].[verified_at] DESC
+     ) AS [model_evidence]
      WHERE (@0 IS NULL OR [profile].[profile_key] = @0)
      ORDER BY [profile].[profile_key]`,
     [profileKey ?? null],
@@ -637,76 +654,41 @@ async function loadProfiles(
   return rows.map(mapProfile)
 }
 
-async function loadProfileActivationEntries(
+async function loadRunProfileSnapshot(
   executor: SqlServerDatabase | SqlServerEntityManager,
-): Promise<AiAdminProfileActivationEntry[]> {
-  const profiles = await loadProfiles(executor)
-  const rows = await executor.query<ProfileRevisionRow[]>(
-    `SELECT [profile].[profile_key] AS [profileKey],
-       [revision].[id], [revision].[revision_number] AS [revisionNumber],
-       [revision].[status],
-       [revision].[ai_connection_model_revision_id] AS [modelRevisionId],
-       [revision].[capability_policy_json] AS [capabilityPolicyJson],
-       [revision].[total_time_budget_seconds] AS [totalTimeBudgetSeconds],
-       [revision].[inactivity_time_budget_seconds]
-         AS [inactivityTimeBudgetSeconds],
-       [revision].[queue_capacity] AS [queueCapacity],
-       [revision].[revision_token] AS [revisionToken],
-       [model].[ai_connection_id] AS [connectionId]
-     FROM [ai_run_profiles] AS [profile]
-     INNER JOIN [ai_run_profile_revisions] AS [revision]
-       ON [revision].[id] = COALESCE(
-         (SELECT TOP (1) [active].[id]
-          FROM [ai_run_profile_revisions] AS [active]
-          WHERE [active].[ai_run_profile_id] = [profile].[id]
-            AND [active].[status] = N'active'),
-         (SELECT TOP (1) [draft].[id]
-          FROM [ai_run_profile_revisions] AS [draft]
-          WHERE [draft].[ai_run_profile_id] = [profile].[id]
-            AND [draft].[status] = N'draft'
-          ORDER BY [draft].[revision_number] DESC)
-       )
-     INNER JOIN [ai_connection_model_revisions] AS [model_revision]
-       ON [model_revision].[id] = [revision].[ai_connection_model_revision_id]
+  profileKey: AiRunProfileKey,
+): Promise<AiAdminActivationSnapshot | null> {
+  const profile = (await loadProfiles(executor, profileKey))[0]
+  if (!profile?.modelRevisionId) return null
+  const rows = await executor.query<Array<{ connectionId: string }>>(
+    `SELECT [model].[ai_connection_id] AS [connectionId]
+     FROM [ai_connection_model_revisions] AS [revision]
      INNER JOIN [ai_connection_models] AS [model]
-       ON [model].[id] = [model_revision].[ai_connection_model_id]`,
+       ON [model].[id] = [revision].[ai_connection_model_id]
+     WHERE [revision].[id] = @0`,
+    [profile.modelRevisionId],
   )
-  const connections = await loadConnections(
-    executor,
-    rows.flatMap(row => (row.connectionId ? [row.connectionId] : [])),
-  )
-  return profiles.map(profile => {
-    const row = rows.find(
-      candidate => candidate.profileKey === profile.profileKey,
-    )
-    const profileRevision = row ? mapProfileRevisionRow(row)[0] : undefined
-    const connection = connections.find(candidate =>
-      sameId(candidate.id, row?.connectionId),
-    )
-    const modelRevision = connection?.models
+  const connectionId = rows[0]?.connectionId
+  if (!connectionId) return null
+  const connection = await loadConnection(executor, connectionId)
+  if (!connection) return null
+  const modelRevision =
+    connection.models
       .flatMap(model => model.revisions)
-      .find(revision => sameId(revision.id, profileRevision?.modelRevisionId))
-    if (!profileRevision || !connection || !modelRevision) {
-      return { profile, snapshot: null }
-    }
-    return {
-      profile,
-      snapshot: {
-        attestationRevisionToken:
-          connection.attestation?.status === 'valid'
-            ? connection.attestation.revisionToken
-            : null,
-        connection,
-        connectionEvidenceId: connection.connectionEvidenceId,
-        modelRevision,
-        profile,
-        profileRevision,
-        secretVersionId: connection.activeSecret.available
-          ? connection.activeSecret.secretVersionId
-          : null,
-      },
-    }
-  })
+      .find(revision => sameId(revision.id, profile.modelRevisionId)) ?? null
+  return {
+    attestationRevisionToken:
+      connection.attestation?.status === 'valid'
+        ? connection.attestation.revisionToken
+        : null,
+    connection,
+    connectionEvidenceId: connection.connectionEvidenceId,
+    modelRevision,
+    profile,
+    secretVersionId: connection.activeSecret.available
+      ? connection.activeSecret.secretVersionId
+      : null,
+  }
 }
 
 function configurationFingerprint(
@@ -814,8 +796,7 @@ export function createSqlServerAiAdminStore(
 
            IF @technical_changed = 1
              UPDATE [revision]
-             SET [status] = N'verification_required',
-               [verified_capabilities_json] = NULL, [verified_at] = NULL,
+             SET [status] = N'new_revision_required',
                [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
              FROM [ai_connection_model_revisions] AS [revision]
              INNER JOIN [ai_connection_models] AS [model]
@@ -1021,6 +1002,24 @@ export function createSqlServerAiAdminStore(
     async saveModelRevision(input) {
       return db.transaction('SERIALIZABLE', async manager => {
         const value = input.modelRevision
+        const verifiedCapabilities = Object.fromEntries(
+          Object.entries(input.verification.capabilities).map(
+            ([key, result]) => [key, result.outcome === 'verified'],
+          ),
+        ) as AiCapability
+        if (
+          !input.verification.saveable ||
+          Object.values(input.verification.capabilities).some(
+            result =>
+              result.outcome === 'inconclusive' ||
+              result.outcome === 'not_checked',
+          ) ||
+          !Object.values(input.verification.profileCompatibility).some(
+            result => result.supported,
+          )
+        ) {
+          throw conflictError('AI model verification is incomplete.')
+        }
         const duplicates = await manager.query<Array<{ id: string }>>(
           `SELECT TOP (1) [revision].[id]
            FROM [ai_connection_model_revisions] AS [revision]
@@ -1049,7 +1048,6 @@ export function createSqlServerAiAdminStore(
           )
         }
         const modelRevisionId = randomUUID()
-        let technicalChanged = true
         let modelId = value.modelId
         if (!modelId) {
           modelId = randomUUID()
@@ -1081,88 +1079,100 @@ export function createSqlServerAiAdminStore(
               'AI connection model changed. Reload and try again.',
             )
           }
-          const currentRows = await manager.query<
-            Array<{
-              agentRuntimeVersion: string | null
-              currentAgentRuntimeVersion: string | null
-              declaredCapabilitiesJson: string
-              discoveredCapabilitiesJson: string | null
-              externalModelId: string
-              externalModelVersion: string | null
-            }>
-          >(
-            `SELECT TOP (1)
-               [revision].[external_model_id] AS [externalModelId],
-               [revision].[external_model_version] AS [externalModelVersion],
-               [revision].[agent_runtime_version] AS [agentRuntimeVersion],
-               [connection].[agent_runtime_version]
-                 AS [currentAgentRuntimeVersion],
-               [revision].[declared_capabilities_json]
-                 AS [declaredCapabilitiesJson],
-               [revision].[discovered_capabilities_json]
-                 AS [discoveredCapabilitiesJson]
-             FROM [ai_connection_model_revisions] AS [revision]
-               WITH (UPDLOCK, HOLDLOCK)
-             INNER JOIN [ai_connection_models] AS [model]
-               ON [model].[id] = [revision].[ai_connection_model_id]
-             INNER JOIN [ai_connections] AS [connection]
-               ON [connection].[id] = [model].[ai_connection_id]
-             WHERE [model].[id] = @0 AND [model].[ai_connection_id] = @1
-               AND [model].[deleted_at] IS NULL
-             ORDER BY [revision].[revision_number] DESC`,
-            [modelId, input.connectionId],
-          )
-          const current = currentRows[0]
-          technicalChanged =
-            !current ||
-            current.externalModelId !== value.externalModelId ||
-            current.externalModelVersion !== value.externalModelVersion ||
-            current.agentRuntimeVersion !==
-              current.currentAgentRuntimeVersion ||
-            current.declaredCapabilitiesJson !==
-              JSON.stringify(value.declaredCapabilities) ||
-            current.discoveredCapabilitiesJson !==
-              (value.discoveredCapabilities === null
-                ? null
-                : JSON.stringify(value.discoveredCapabilities))
         }
-        if (technicalChanged) {
-          await manager.query(
-            `DECLARE @configuration_version int = (
-               SELECT [configuration_version]
-               FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
-               WHERE [id] = @0
-             );
-             DECLARE @revision_number int = (
-               SELECT COALESCE(MAX([revision_number]), 0) + 1
-               FROM [ai_connection_model_revisions] WITH (UPDLOCK, HOLDLOCK)
-               WHERE [ai_connection_model_id] = @1
-             );
-             INSERT INTO [ai_connection_model_revisions] (
-               [id], [ai_connection_model_id], [revision_number],
-               [connection_configuration_version], [status],
-               [external_model_id], [external_model_version],
-               [agent_runtime_version], [declared_capabilities_json],
-               [discovered_capabilities_json], [created_at], [updated_at]
-             )
-             SELECT @2, @1, @revision_number, [configuration_version], N'draft',
-               @3, @4, [agent_runtime_version], @5, @6,
-               SYSUTCDATETIME(), SYSUTCDATETIME()
-             FROM [ai_connections]
-             WHERE [id] = @0;`,
-            [
-              input.connectionId,
-              modelId,
-              modelRevisionId,
-              value.externalModelId,
-              value.externalModelVersion,
-              JSON.stringify(value.declaredCapabilities),
-              value.discoveredCapabilities === null
-                ? null
-                : JSON.stringify(value.discoveredCapabilities),
-            ],
+        const capabilitiesJson = JSON.stringify(verifiedCapabilities)
+        const connectionEvidenceId = randomUUID()
+        const compatibilityJson = JSON.stringify(
+          input.verification.profileCompatibility,
+        )
+        const detailsJson = JSON.stringify({
+          baseline: input.verification.baseline,
+          capabilities: input.verification.capabilities,
+          connection: input.verification.connection,
+        })
+        const evidenceFingerprint = createHash('sha256')
+          .update(
+            JSON.stringify({
+              capabilities: verifiedCapabilities,
+              compatibility: input.verification.profileCompatibility,
+              connectionConfigurationVersion:
+                input.connection.configurationVersion,
+              externalModelId: value.externalModelId,
+              externalModelVersion: value.externalModelVersion,
+              suite: input.verification.testSuiteVersion,
+            }),
           )
-        }
+          .digest('hex')
+        await manager.query(
+          `DECLARE @configuration_version int;
+           SELECT @configuration_version = [configuration_version]
+           FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
+           WHERE [id] = @0
+             AND [configuration_version] = @7
+             AND [revision_token] = @8;
+           IF @configuration_version IS NULL
+             THROW 51230, 'AI connection changed before model save.', 1;
+           INSERT INTO [ai_connection_verification_evidence] (
+             [id], [ai_connection_id], [connection_configuration_version],
+             [outcome], [test_suite_version], [adapter_version],
+             [agent_runtime_version], [configuration_fingerprint],
+             [failure_category], [details_json], [verified_at], [expires_at]
+           ) VALUES (
+             @9, @0, @configuration_version, N'passed', @10, @11, @12,
+             @13, NULL, @14, SYSUTCDATETIME(), NULL
+           );
+           DECLARE @revision_number int = (
+             SELECT COALESCE(MAX([revision_number]), 0) + 1
+             FROM [ai_connection_model_revisions] WITH (UPDLOCK, HOLDLOCK)
+             WHERE [ai_connection_model_id] = @1
+           );
+           INSERT INTO [ai_connection_model_revisions] (
+             [id], [ai_connection_model_id], [revision_number],
+             [connection_configuration_version], [status],
+             [external_model_id], [external_model_version],
+             [agent_runtime_version], [declared_capabilities_json],
+             [discovered_capabilities_json], [verified_capabilities_json],
+             [verified_at], [created_at], [updated_at]
+           )
+           SELECT @2, @1, @revision_number, @configuration_version,
+             N'verified', @3, COALESCE(@5, @4), [agent_runtime_version],
+             @6, NULL, @6, SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME()
+           FROM [ai_connections] WHERE [id] = @0;
+           INSERT INTO [ai_connection_model_verification_evidence] (
+             [id], [ai_connection_model_revision_id],
+             [ai_connection_verification_evidence_id], [outcome],
+             [test_suite_version], [verified_capabilities_json],
+             [profile_compatibility_json], [evidence_fingerprint],
+             [failure_category], [details_json], [verified_at]
+           ) VALUES (
+             @15, @2, @9, N'passed', @10, @6, @16, @17, NULL, @18,
+             SYSUTCDATETIME()
+           );
+           INSERT INTO [ai_connection_model_operational_states] (
+             [ai_connection_model_revision_id], [updated_at]
+           ) VALUES (@2, SYSUTCDATETIME());`,
+          [
+            input.connectionId,
+            modelId,
+            modelRevisionId,
+            value.externalModelId,
+            value.externalModelVersion,
+            input.verification.canonicalExternalModelVersion,
+            capabilitiesJson,
+            input.connection.configurationVersion,
+            input.connection.revisionToken,
+            connectionEvidenceId,
+            input.verification.testSuiteVersion,
+            input.connection.adapterVersion,
+            input.connection.agentRuntimeVersion,
+            configurationFingerprint(input.connection),
+            JSON.stringify({ baseline: input.verification.baseline }),
+            randomUUID(),
+            compatibilityJson,
+            evidenceFingerprint,
+            detailsJson,
+          ],
+        )
         const loaded = await loadConnection(manager, input.connectionId)
         const model = loaded?.models.find(candidate =>
           sameId(candidate.id, modelId),
@@ -1170,16 +1180,15 @@ export function createSqlServerAiAdminStore(
         if (!model) throw new Error('AI connection model was not saved.')
         await audit(
           {
-            changedFields: technicalChanged
-              ? Object.keys(input.modelRevision).filter(
-                  field => !field.toLowerCase().includes('token'),
-                )
-              : ['name', 'description'],
+            changedFields: [
+              'name',
+              'description',
+              'externalModelId',
+              'externalModelVersion',
+            ],
             operation: 'save',
-            resourceId: technicalChanged ? modelRevisionId : modelId,
-            resourceType: technicalChanged
-              ? 'ai_connection_model_revision'
-              : 'ai_connection_model',
+            resourceId: modelRevisionId,
+            resourceType: 'ai_connection_model_revision',
           },
           manager,
         )
@@ -1187,196 +1196,38 @@ export function createSqlServerAiAdminStore(
       })
     },
 
-    async recordConnectionVerification({ connection, result }) {
-      const evidenceId = randomUUID()
+    async endModelRevision(input) {
       return db.transaction('SERIALIZABLE', async manager => {
-        await manager.query(
-          `IF NOT EXISTS (
-             SELECT 1 FROM [ai_connections] WITH (UPDLOCK, HOLDLOCK)
-             WHERE [id] = @1 AND [configuration_version] = @2
-               AND [revision_token] = @10
-           )
-             THROW 51120, 'AI connection changed during verification.', 1;
-
-           INSERT INTO [ai_connection_verification_evidence] (
-             [id], [ai_connection_id], [connection_configuration_version],
-             [outcome], [test_suite_version], [adapter_version],
-             [agent_runtime_version], [configuration_fingerprint],
-             [failure_category], [details_json], [verified_at], [expires_at]
-           ) VALUES (
-             @0, @1, @2, @3, @4, @5, @6, @7, @8, @9,
-             SYSUTCDATETIME(), DATEADD(day, 30, SYSUTCDATETIME())
-           );
-           IF @3 = N'failed' AND @8 = N'authentication_failed'
-           BEGIN
-             UPDATE [ai_connections]
-             SET [lifecycle_status] = CASE
-                 WHEN [lifecycle_status] = N'draft' THEN N'draft'
-                 WHEN [lifecycle_status] = N'retired' THEN N'retired'
-                 ELSE N'verification_required'
-               END,
-               [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
-             WHERE [id] = @1 AND [configuration_version] = @2
-               AND [revision_token] = @10;
-
-             UPDATE [revision]
-             SET [status] = N'verification_required',
-               [verified_capabilities_json] = NULL, [verified_at] = NULL,
-               [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
-             FROM [ai_connection_model_revisions] AS [revision]
-             INNER JOIN [ai_connection_models] AS [model]
-               ON [model].[id] = [revision].[ai_connection_model_id]
-             WHERE [model].[ai_connection_id] = @1
-               AND [model].[deleted_at] IS NULL
-               AND [revision].[status] = N'verified';
-           END;`,
-          [
-            evidenceId,
-            connection.id,
-            connection.configurationVersion,
-            result.outcome,
-            result.testSuiteVersion,
-            connection.adapterVersion,
-            connection.agentRuntimeVersion,
-            configurationFingerprint(connection),
-            result.failureCategory,
-            JSON.stringify(result.details),
-            connection.revisionToken,
-          ],
-        )
-        const updated = requireLoaded(
-          await loadConnection(manager, connection.id),
-          'AI connection verification was not recorded.',
-        )
-        await audit(
-          {
-            operation: 'verify',
-            resourceId: connection.id,
-            resourceType: 'ai_connection',
-          },
-          manager,
-        )
-        return updated
-      })
-    },
-
-    async recordModelVerification(input) {
-      const result = input.result
-      const evidenceId = randomUUID()
-      return db.transaction('SERIALIZABLE', async manager => {
-        const rows = await manager.query<Array<{ id: string }>>(
-          `DECLARE @updated TABLE ([id] uniqueidentifier NOT NULL);
-
-           IF NOT EXISTS (
-             SELECT 1
-             FROM [ai_connection_model_revisions] AS [revision]
-               WITH (UPDLOCK, HOLDLOCK)
-             INNER JOIN [ai_connection_models] AS [model]
-               ON [model].[id] = [revision].[ai_connection_model_id]
-             INNER JOIN [ai_connections] AS [connection]
-               WITH (UPDLOCK, HOLDLOCK)
-               ON [connection].[id] = [model].[ai_connection_id]
-             INNER JOIN [ai_connection_verification_evidence] AS [connection_evidence]
-               WITH (UPDLOCK, HOLDLOCK)
-               ON [connection_evidence].[id] = @2
-             WHERE [revision].[id] = @1
-               AND [revision].[revision_token] = @9
-               AND [revision].[status] IN (N'draft', N'verification_required')
-               AND [revision].[connection_configuration_version]
-                 = [connection].[configuration_version]
-               AND [connection].[id] = @10
-               AND [model].[deleted_at] IS NULL
-               AND [connection].[configuration_version] = @11
-               AND [connection].[revision_token] = @12
-               AND [connection_evidence].[ai_connection_id] = [connection].[id]
-               AND [connection_evidence].[connection_configuration_version]
-                 = [connection].[configuration_version]
-               AND [connection_evidence].[outcome] = N'passed'
-               AND ([connection_evidence].[expires_at] IS NULL
-                 OR [connection_evidence].[expires_at] > SYSUTCDATETIME())
-           ) RETURN;
-
-           INSERT INTO [ai_connection_model_verification_evidence] (
-             [id], [ai_connection_model_revision_id],
-             [ai_connection_verification_evidence_id], [outcome],
-             [test_suite_version], [verified_capabilities_json],
-             [evidence_fingerprint], [failure_category], [details_json],
-             [verified_at]
-           ) VALUES (
-             @0, @1, @2, @3, @4, @5, @6, @7, @8, SYSUTCDATETIME()
-           );
-           UPDATE [ai_connection_model_revisions] WITH (UPDLOCK, HOLDLOCK)
-           SET [status] = CASE WHEN @3 = N'passed' THEN N'verified'
-               ELSE N'verification_required' END,
-             [verified_capabilities_json] = CASE WHEN @3 = N'passed' THEN @5
-               ELSE NULL END,
-             [verified_at] = CASE WHEN @3 = N'passed' THEN SYSUTCDATETIME()
-               ELSE NULL END,
-             [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
-           OUTPUT INSERTED.[id] INTO @updated ([id])
-           WHERE [id] = @1 AND [revision_token] = @9
-             AND [status] IN (N'draft', N'verification_required');
-
-           SELECT [id] FROM @updated;`,
-          [
-            evidenceId,
-            input.modelRevision.id,
-            input.connectionEvidenceId,
-            result.outcome,
-            result.testSuiteVersion,
-            JSON.stringify(result.verifiedCapabilities),
-            configurationFingerprintForModel(input.modelRevision, result),
-            result.failureCategory,
-            JSON.stringify(result.details),
-            input.modelRevision.revisionToken,
-            input.connection.id,
-            input.connection.configurationVersion,
-            input.connection.revisionToken,
-          ],
-        )
-        if (!rows?.[0]) {
-          throw conflictError(
-            'AI model revision changed. Reload and try again.',
-          )
-        }
-        const connectionRows = await manager.query<
-          Array<{ connectionId: string }>
+        const dependencies = await manager.query<
+          Array<{ profileKey: string | null; runCount: number | string }>
         >(
-          `SELECT [model].[ai_connection_id] AS [connectionId]
+          `SELECT [profile].[profile_key] AS [profileKey],
+             (SELECT COUNT(*) FROM [ai_run_coordination_entries] AS [entry]
+              WHERE [entry].[ai_connection_model_revision_id] = @0
+                AND [entry].[status] IN (N'queued', N'retry_wait', N'running'))
+               AS [runCount]
            FROM [ai_connection_model_revisions] AS [revision]
-           INNER JOIN [ai_connection_models] AS [model]
-             ON [model].[id] = [revision].[ai_connection_model_id]
-           WHERE [revision].[id] = @0`,
-          [input.modelRevision.id],
+             WITH (UPDLOCK, HOLDLOCK)
+           LEFT JOIN [ai_run_profiles] AS [profile] WITH (UPDLOCK, HOLDLOCK)
+             ON [profile].[ai_connection_model_revision_id] = [revision].[id]
+           WHERE [revision].[id] = @0;`,
+          [input.modelRevisionId],
         )
-        const loaded = connectionRows[0]
-          ? await loadConnection(manager, connectionRows[0].connectionId)
-          : null
-        const revision = loaded?.models
-          .flatMap(model => model.revisions)
-          .find(candidate => sameId(candidate.id, input.modelRevision.id))
-        if (!revision)
-          throw new Error('AI model verification was not recorded.')
-        await audit(
-          {
-            operation: 'verify',
-            resourceId: revision.id,
-            resourceType: 'ai_connection_model_revision',
-          },
-          manager,
+        const profileKeys = dependencies.flatMap(row =>
+          row.profileKey ? [row.profileKey] : [],
         )
-        return revision
-      })
-    },
-
-    async retireModelRevision(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
+        const runCount = Number(dependencies[0]?.runCount ?? 0)
+        if (profileKeys.length > 0 || runCount > 0) {
+          throw conflictError('AI model revision is still in use.', {
+            profileKeys,
+            runCount,
+          })
+        }
         const rows = await manager.query<Array<{ id: string }>>(
           `DECLARE @updated TABLE ([id] uniqueidentifier NOT NULL);
 
            UPDATE [revision] WITH (UPDLOCK, HOLDLOCK)
-           SET [status] = N'retired', [verified_capabilities_json] = NULL,
-             [verified_at] = NULL, [retired_at] = SYSUTCDATETIME(),
+           SET [status] = N'ended', [ended_at] = SYSUTCDATETIME(),
              [updated_at] = SYSUTCDATETIME(),
              [revision_token] = NEWID()
            OUTPUT INSERTED.[id] INTO @updated ([id])
@@ -1385,18 +1236,14 @@ export function createSqlServerAiAdminStore(
              ON [model].[id] = [revision].[ai_connection_model_id]
            WHERE [revision].[id] = @0 AND [revision].[revision_token] = @1
              AND [revision].[status]
-               IN (N'verified', N'verification_required')
+               IN (N'verified', N'new_revision_required')
              AND [model].[ai_connection_id] = @2
              AND [model].[deleted_at] IS NULL
-             AND NOT EXISTS (
-               SELECT 1
-               FROM [ai_run_profile_revisions] AS [profile_revision]
-               INNER JOIN [ai_connection_model_revisions] AS [used_revision]
-                 ON [used_revision].[id]
-                   = [profile_revision].[ai_connection_model_revision_id]
-               WHERE [used_revision].[ai_connection_model_id] = [model].[id]
-                 AND [profile_revision].[status] IN (N'active', N'draft')
-             );
+             AND NOT EXISTS (SELECT 1 FROM [ai_run_profiles] AS [profile]
+               WHERE [profile].[ai_connection_model_revision_id] = [revision].[id])
+             AND NOT EXISTS (SELECT 1 FROM [ai_run_coordination_entries] AS [entry]
+               WHERE [entry].[ai_connection_model_revision_id] = [revision].[id]
+                 AND [entry].[status] IN (N'queued', N'retry_wait', N'running'));
 
            SELECT [id] FROM @updated;`,
           [input.modelRevisionId, input.revisionToken, input.connectionId],
@@ -1421,46 +1268,57 @@ export function createSqlServerAiAdminStore(
       })
     },
 
-    async deleteConnectionModel(input) {
+    async deleteModelRevision(input) {
       return db.transaction('SERIALIZABLE', async manager => {
-        const rows = await manager.query<Array<{ id: string }>>(
-          `DECLARE @updated TABLE ([id] uniqueidentifier NOT NULL);
-
-           UPDATE [model] WITH (UPDLOCK, HOLDLOCK)
-           SET [deleted_at] = SYSUTCDATETIME(),
-             [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
-           OUTPUT INSERTED.[id] INTO @updated ([id])
-           FROM [ai_connection_models] AS [model]
-           WHERE [model].[id] = @0 AND [model].[ai_connection_id] = @1
-             AND [model].[revision_token] = @2
-             AND [model].[deleted_at] IS NULL
-             AND N'retired' = (
-               SELECT TOP (1) [revision].[status]
-               FROM [ai_connection_model_revisions] AS [revision]
-                 WITH (UPDLOCK, HOLDLOCK)
-               WHERE [revision].[ai_connection_model_id] = [model].[id]
-               ORDER BY [revision].[revision_number] DESC
-             )
-             AND NOT EXISTS (
-               SELECT 1
-               FROM [ai_run_profile_revisions] AS [profile_revision]
-                 WITH (UPDLOCK, HOLDLOCK)
-               INNER JOIN [ai_connection_model_revisions] AS [used_revision]
-                 ON [used_revision].[id]
-                   = [profile_revision].[ai_connection_model_revision_id]
-               WHERE [used_revision].[ai_connection_model_id] = [model].[id]
-                 AND [profile_revision].[status] IN (N'active', N'draft')
-             );
-
-           SELECT [id] FROM @updated;`,
-          [input.modelId, input.connectionId, input.revisionToken],
+        const rows = await manager.query<Array<{ modelId: string }>>(
+          `SELECT [model].[id] AS [modelId]
+           FROM [ai_connection_model_revisions] AS [revision]
+             WITH (UPDLOCK, HOLDLOCK)
+           INNER JOIN [ai_connection_models] AS [model] WITH (UPDLOCK, HOLDLOCK)
+             ON [model].[id] = [revision].[ai_connection_model_id]
+           WHERE [revision].[id] = @0 AND [revision].[revision_token] = @1
+             AND [revision].[status] = N'ended'
+             AND [model].[ai_connection_id] = @2
+             AND NOT EXISTS (SELECT 1 FROM [ai_run_profiles] AS [profile]
+               WHERE [profile].[ai_connection_model_revision_id] = [revision].[id])
+             AND NOT EXISTS (SELECT 1 FROM [ai_run_coordination_entries] AS [entry]
+               WHERE [entry].[ai_connection_model_revision_id] = [revision].[id]
+                 AND [entry].[status] IN (N'queued', N'retry_wait', N'running'));`,
+          [input.modelRevisionId, input.revisionToken, input.connectionId],
         )
         if (!rows[0]) return false
+        await manager.query(
+          `DECLARE @connection_evidence TABLE ([id] uniqueidentifier PRIMARY KEY);
+           DELETE FROM [ai_run_coordination_entries]
+           WHERE [ai_connection_model_revision_id] = @0;
+           DELETE FROM [ai_connection_model_verification_evidence]
+           OUTPUT DELETED.[ai_connection_verification_evidence_id]
+             INTO @connection_evidence ([id])
+           WHERE [ai_connection_model_revision_id] = @0;
+           DELETE FROM [connection_evidence]
+           FROM [ai_connection_verification_evidence] AS [connection_evidence]
+           INNER JOIN @connection_evidence AS [deleted_evidence]
+             ON [deleted_evidence].[id] = [connection_evidence].[id]
+           WHERE NOT EXISTS (
+             SELECT 1 FROM [ai_connection_model_verification_evidence] AS [model_evidence]
+             WHERE [model_evidence].[ai_connection_verification_evidence_id]
+               = [connection_evidence].[id]
+           );
+           DELETE FROM [ai_connection_model_operational_states]
+           WHERE [ai_connection_model_revision_id] = @0;
+           DELETE FROM [ai_connection_model_revisions] WHERE [id] = @0;
+           DELETE FROM [ai_connection_models]
+           WHERE [id] = @1 AND NOT EXISTS (
+             SELECT 1 FROM [ai_connection_model_revisions]
+             WHERE [ai_connection_model_id] = @1
+           );`,
+          [input.modelRevisionId, rows[0].modelId],
+        )
         await audit(
           {
             operation: 'delete',
-            resourceId: input.modelId,
-            resourceType: 'ai_connection_model',
+            resourceId: input.modelRevisionId,
+            resourceType: 'ai_connection_model_revision',
           },
           manager,
         )
@@ -1511,8 +1369,7 @@ export function createSqlServerAiAdminStore(
            IF @4 = N'model'
            BEGIN
              UPDATE [ai_connection_model_revisions]
-             SET [status] = N'verification_required',
-               [verified_capabilities_json] = NULL, [verified_at] = NULL,
+             SET [status] = N'new_revision_required',
                [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
              WHERE [id] = @1 AND [revision_token] = @2
                AND [status] = N'verified';
@@ -1545,8 +1402,7 @@ export function createSqlServerAiAdminStore(
              ORDER BY [evidence].[verified_at] DESC, [evidence].[id] DESC;
 
              UPDATE [revision]
-             SET [status] = N'verification_required',
-               [verified_capabilities_json] = NULL, [verified_at] = NULL,
+             SET [status] = N'new_revision_required',
                [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
              FROM [ai_connection_model_revisions] AS [revision]
              INNER JOIN [ai_connection_models] AS [model]
@@ -1609,24 +1465,25 @@ export function createSqlServerAiAdminStore(
       return loadProfiles(db)
     },
 
-    listRunProfileActivationEntries() {
-      return loadProfileActivationEntries(db)
+    getRunProfileSnapshot(profileKey) {
+      return loadRunProfileSnapshot(db, profileKey)
     },
 
-    listRunProfileRevisions(profileKey) {
-      return loadProfileRevisions(db, profileKey)
+    async getModelRevisionConnection(modelRevisionId) {
+      const rows = await db.query<Array<{ connectionId: string }>>(
+        `SELECT TOP (1) [model].[ai_connection_id] AS [connectionId]
+         FROM [ai_connection_model_revisions] AS [revision]
+         INNER JOIN [ai_connection_models] AS [model]
+           ON [model].[id] = [revision].[ai_connection_model_id]
+         WHERE [revision].[id] = @0 AND [model].[deleted_at] IS NULL`,
+        [modelRevisionId],
+      )
+      return rows[0] ? loadConnection(db, rows[0].connectionId) : null
     },
 
-    async saveRunProfileRevision(input) {
+    async saveRunProfile(input) {
       return db.transaction('SERIALIZABLE', async manager => {
-        const profiles = await manager.query<Array<{ id: string }>>(
-          `SELECT [id] FROM [ai_run_profiles] WITH (UPDLOCK, HOLDLOCK)
-           WHERE [profile_key] = @0`,
-          [input.profileKey],
-        )
-        const profileId = profiles[0]?.id
-        if (!profileId) throw new Error('AI run profile does not exist.')
-        const value = input.revision
+        const value = input.profile
         if (value.modelRevisionId) {
           const selectedModel = await manager.query<Array<{ id: string }>>(
             `SELECT TOP (1) [revision].[id]
@@ -1635,9 +1492,38 @@ export function createSqlServerAiAdminStore(
              INNER JOIN [ai_connection_models] AS [model]
                WITH (UPDLOCK, HOLDLOCK)
                ON [model].[id] = [revision].[ai_connection_model_id]
-             WHERE [revision].[id] = @0
-               AND [model].[deleted_at] IS NULL`,
-            [value.modelRevisionId],
+             INNER JOIN [ai_connections] AS [connection] WITH (UPDLOCK, HOLDLOCK)
+               ON [connection].[id] = [model].[ai_connection_id]
+             WHERE [revision].[id] = @0 AND [revision].[status] = N'verified'
+               AND [model].[deleted_at] IS NULL
+               AND [connection].[lifecycle_status] = N'active'
+               AND EXISTS (
+                 SELECT 1 FROM [ai_connection_model_verification_evidence] AS [evidence]
+                 WHERE [evidence].[ai_connection_model_revision_id] = [revision].[id]
+                   AND [evidence].[outcome] = N'passed'
+                   AND JSON_VALUE([evidence].[profile_compatibility_json], @1) = N'true'
+               )
+               AND EXISTS (
+                 SELECT 1 FROM [ai_connection_verification_evidence] AS [connection_evidence]
+                 WHERE [connection_evidence].[ai_connection_id] = [connection].[id]
+                   AND [connection_evidence].[connection_configuration_version]
+                     = [connection].[configuration_version]
+                   AND [connection_evidence].[outcome] = N'passed'
+               )
+               AND EXISTS (
+                 SELECT 1 FROM [ai_connection_attestations] AS [attestation]
+                 WHERE [attestation].[ai_connection_id] = [connection].[id]
+                   AND [attestation].[status] = N'valid'
+                   AND ([attestation].[review_due_at] IS NULL
+                     OR [attestation].[review_due_at] > SYSUTCDATETIME())
+               )
+               AND ([connection].[authentication_type] = N'none' OR EXISTS (
+                 SELECT 1 FROM [ai_provider_secret_versions] AS [secret]
+                 WHERE [secret].[ai_connection_id] = [connection].[id]
+                   AND [secret].[status] = N'active'
+                   AND [secret].[ciphertext] IS NOT NULL
+               ))`,
+            [value.modelRevisionId, `$.${input.profileKey}.supported`],
           )
           if (!selectedModel[0]) {
             throw conflictError(
@@ -1645,122 +1531,51 @@ export function createSqlServerAiAdminStore(
             )
           }
         }
-        if (value.revisionToken) {
-          const rows = await manager.query<Array<{ id: string }>>(
-            `DECLARE @updated TABLE ([id] uniqueidentifier NOT NULL);
-
-             UPDATE [ai_run_profile_revisions]
-             SET [ai_connection_model_revision_id] = @2,
-               [capability_policy_json] = @3,
-               [total_time_budget_seconds] = @4,
-               [inactivity_time_budget_seconds] = @5,
-               [queue_capacity] = @6, [revision_token] = NEWID()
-             OUTPUT INSERTED.[id] INTO @updated ([id])
-             WHERE [ai_run_profile_id] = @0 AND [revision_token] = @1
-               AND [status] = N'draft';
-
-             SELECT [id] FROM @updated;`,
-            [
-              profileId,
-              value.revisionToken,
-              value.modelRevisionId,
-              JSON.stringify(value.capabilityPolicy),
-              value.totalTimeBudgetSeconds,
-              value.inactivityTimeBudgetSeconds,
-              value.queueCapacity,
-            ],
-          )
-          if (!rows?.[0]) {
-            throw conflictError(
-              'AI run profile revision changed. Reload and try again.',
-            )
-          }
-        } else {
-          await manager.query(
-            `DECLARE @revision_number int = (
-               SELECT COALESCE(MAX([revision_number]), 0) + 1
-               FROM [ai_run_profile_revisions] WITH (UPDLOCK, HOLDLOCK)
-               WHERE [ai_run_profile_id] = @0
-             );
-             INSERT INTO [ai_run_profile_revisions] (
-               [id], [ai_run_profile_id], [ai_connection_model_revision_id],
-               [revision_number], [status], [capability_policy_json],
-               [total_time_budget_seconds], [inactivity_time_budget_seconds],
-               [queue_capacity], [created_at]
-             ) VALUES (
-               @1, @0, @2, @revision_number, N'draft', @3, @4, @5, @6,
-               SYSUTCDATETIME()
-             );`,
-            [
-              profileId,
-              randomUUID(),
-              value.modelRevisionId,
-              JSON.stringify(value.capabilityPolicy),
-              value.totalTimeBudgetSeconds,
-              value.inactivityTimeBudgetSeconds,
-              value.queueCapacity,
-            ],
-          )
+        const rows = await manager.query<Array<{ id: string }>>(
+          `UPDATE [ai_run_profiles] WITH (UPDLOCK, HOLDLOCK)
+           SET [ai_connection_model_revision_id] = @2,
+             [configuration_version] = [configuration_version] + 1,
+             [total_time_budget_seconds] = @3,
+             [inactivity_time_budget_seconds] = @4,
+             [queue_capacity] = @5,
+             [maximum_output_tokens] = @6,
+             [maximum_output_bytes] = @7,
+             [maximum_retained_memory_bytes] = @8,
+             [maximum_buffered_events] = @9,
+             [updated_at] = SYSUTCDATETIME(), [revision_token] = NEWID()
+           OUTPUT INSERTED.[id]
+           WHERE [profile_key] = @0 AND [revision_token] = @1`,
+          [
+            input.profileKey,
+            value.revisionToken,
+            value.modelRevisionId,
+            value.totalTimeBudgetSeconds,
+            value.inactivityTimeBudgetSeconds,
+            value.queueCapacity,
+            value.maximumOutputTokens,
+            value.maximumOutputBytes,
+            value.maximumRetainedMemoryBytes,
+            value.maximumBufferedEvents,
+          ],
+        )
+        if (!rows[0]) {
+          throw conflictError('AI run profile changed. Reload and try again.')
         }
         const profile = (await loadProfiles(manager, input.profileKey))[0]
-        if (!profile) throw new Error('AI run profile revision was not saved.')
+        if (!profile) throw new Error('AI run profile was not saved.')
         await audit(
           {
-            changedFields: Object.keys(input.revision).filter(
+            changedFields: Object.keys(input.profile).filter(
               field => field !== 'revisionToken',
             ),
             operation: 'save',
-            resourceId: profile.draftRevision?.id ?? profile.id,
-            resourceType: 'ai_run_profile_revision',
+            resourceId: profile.id,
+            resourceType: 'ai_run_profile',
           },
           manager,
         )
         return profile
       })
-    },
-
-    async getActivationSnapshot(input) {
-      const profiles = await loadProfiles(db, input.profileKey)
-      const profile = profiles[0]
-      if (!profile) return null
-      const profileRevision = await loadProfileRevision(
-        db,
-        input.profileKey,
-        input.profileRevisionId,
-      )
-      if (!profileRevision) return null
-      const rows = await db.query<Array<{ connectionId: string }>>(
-        `SELECT [model].[ai_connection_id] AS [connectionId]
-         FROM [ai_connection_model_revisions] AS [revision]
-         INNER JOIN [ai_connection_models] AS [model]
-           ON [model].[id] = [revision].[ai_connection_model_id]
-         WHERE [revision].[id] = @0`,
-        [profileRevision.modelRevisionId],
-      )
-      const connectionId = rows?.[0]?.connectionId
-      if (!connectionId) return null
-      const connection = await loadConnection(db, connectionId)
-      if (!connection) return null
-      const modelRevision =
-        connection.models
-          .flatMap(model => model.revisions)
-          .find(revision =>
-            sameId(revision.id, profileRevision.modelRevisionId),
-          ) ?? null
-      return {
-        attestationRevisionToken:
-          connection.attestation?.status === 'valid'
-            ? connection.attestation.revisionToken
-            : null,
-        connection,
-        connectionEvidenceId: connection.connectionEvidenceId,
-        modelRevision,
-        profile,
-        profileRevision,
-        secretVersionId: connection.activeSecret.available
-          ? connection.activeSecret.secretVersionId
-          : null,
-      }
     },
 
     async setConnectionLifecycle(input) {
@@ -1882,105 +1697,6 @@ export function createSqlServerAiAdminStore(
       })
     },
 
-    async activateRunProfileRevision(input) {
-      return db.transaction('SERIALIZABLE', async manager => {
-        const rows = await manager.query<
-          Array<{ profileKey: AiRunProfileKey }>
-        >(
-          `DECLARE @now datetime2(3) = SYSUTCDATETIME();
-           DECLARE @profile_id uniqueidentifier;
-
-           SELECT @profile_id = [profile].[id]
-           FROM [ai_run_profile_revisions] AS [candidate] WITH (UPDLOCK, HOLDLOCK)
-           INNER JOIN [ai_run_profiles] AS [profile] WITH (UPDLOCK, HOLDLOCK)
-             ON [profile].[id] = [candidate].[ai_run_profile_id]
-           INNER JOIN [ai_connection_model_revisions] AS [model_revision] WITH (UPDLOCK, HOLDLOCK)
-             ON [model_revision].[id]
-               = [candidate].[ai_connection_model_revision_id]
-           INNER JOIN [ai_connection_models] AS [model] WITH (UPDLOCK, HOLDLOCK)
-             ON [model].[id] = [model_revision].[ai_connection_model_id]
-           INNER JOIN [ai_connections] AS [connection] WITH (UPDLOCK, HOLDLOCK)
-             ON [connection].[id] = [model].[ai_connection_id]
-           INNER JOIN [ai_connection_attestations] AS [attestation] WITH (UPDLOCK, HOLDLOCK)
-             ON [attestation].[ai_connection_id] = [connection].[id]
-             AND [attestation].[status] = N'valid'
-           INNER JOIN [ai_connection_verification_evidence] AS [evidence] WITH (UPDLOCK, HOLDLOCK)
-             ON [evidence].[id] = @5
-             AND [evidence].[ai_connection_id] = [connection].[id]
-           WHERE [candidate].[id] = @0
-             AND [candidate].[status] IN (N'draft', N'superseded')
-             AND [profile].[revision_token] = @7
-             AND [candidate].[revision_token] = @1
-             AND [model_revision].[revision_token] = @2
-             AND [model_revision].[status] = N'verified'
-             AND [model].[deleted_at] IS NULL
-             AND [connection].[revision_token] = @3
-             AND [connection].[lifecycle_status] = N'active'
-             AND [attestation].[revision_token] = @4
-             AND ([attestation].[review_due_at] IS NULL
-               OR [attestation].[review_due_at] > @now)
-             AND [evidence].[connection_configuration_version]
-               = [connection].[configuration_version]
-             AND [evidence].[outcome] = N'passed'
-             AND ([evidence].[expires_at] IS NULL OR [evidence].[expires_at] > @now)
-             AND [model_revision].[connection_configuration_version]
-               = [connection].[configuration_version]
-             AND (
-               [connection].[authentication_type] = N'none'
-               OR EXISTS (
-                 SELECT 1 FROM [ai_provider_secret_versions] AS [secret]
-                 WHERE [secret].[id] = @6
-                   AND [secret].[ai_connection_id] = [connection].[id]
-                   AND [secret].[status] = N'active'
-                   AND [secret].[ciphertext] IS NOT NULL
-               )
-             );
-
-           IF @profile_id IS NULL RETURN;
-
-           UPDATE [ai_run_profile_revisions]
-           SET [status] = N'superseded', [superseded_at] = @now,
-             [revision_token] = NEWID()
-           WHERE [ai_run_profile_id] = @profile_id AND [status] = N'active';
-
-           UPDATE [ai_run_profile_revisions]
-           SET [status] = N'active', [activated_at] = @now,
-             [superseded_at] = NULL, [revision_token] = NEWID()
-           WHERE [id] = @0 AND [status] IN (N'draft', N'superseded');
-
-           UPDATE [ai_run_profiles]
-           SET [updated_at] = @now, [revision_token] = NEWID()
-           WHERE [id] = @profile_id AND [revision_token] = @7;
-
-           SELECT [profile_key] AS [profileKey]
-           FROM [ai_run_profiles] WHERE [id] = @profile_id;`,
-          [
-            input.profileRevisionId,
-            input.profileRevisionToken,
-            input.modelRevisionToken,
-            input.connectionRevisionToken,
-            input.attestationRevisionToken,
-            input.connectionEvidenceId,
-            input.secretVersionId,
-            input.profileToken,
-          ],
-        )
-        const profileKey = rows?.[0]?.profileKey
-        if (!profileKey) return null
-        const profile = (await loadProfiles(manager, profileKey))[0] ?? null
-        if (!profile) return null
-        await audit(
-          {
-            operation: 'activate',
-            resourceId: input.profileRevisionId,
-            resourceType: 'ai_run_profile_revision',
-          },
-          manager,
-        )
-        return profile
-      })
-    },
-
     async setRunProfileOperationalStatus(input) {
       return db.transaction('SERIALIZABLE', async manager => {
         const rows = await manager.query<Array<{ id: string }>>(
@@ -1999,10 +1715,8 @@ export function createSqlServerAiAdminStore(
                [cancellation_reason] = N'profile_suspended',
                [updated_at] = SYSUTCDATETIME()
              FROM [ai_run_coordination_entries] AS [entry]
-             INNER JOIN [ai_run_profile_revisions] AS [revision]
-               ON [revision].[id] = [entry].[ai_run_profile_revision_id]
              INNER JOIN [ai_run_profiles] AS [profile]
-               ON [profile].[id] = [revision].[ai_run_profile_id]
+               ON [profile].[id] = [entry].[ai_run_profile_id]
              WHERE [profile].[profile_key] = @0
                AND [entry].[status] IN (N'queued', N'retry_wait', N'running')
                AND [entry].[cancellation_requested_at] IS NULL`,
@@ -2024,23 +1738,6 @@ export function createSqlServerAiAdminStore(
       })
     },
   }
-}
-
-function configurationFingerprintForModel(
-  revision: AiAdminModelRevisionRecord,
-  result: AiAdminModelVerificationResult,
-): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify({
-        connectionConfigurationVersion: revision.connectionConfigurationVersion,
-        declaredCapabilities: revision.declaredCapabilities,
-        externalModelId: revision.externalModelId,
-        externalModelVersion: revision.externalModelVersion,
-        result: result.verifiedCapabilities,
-      }),
-    )
-    .digest('hex')
 }
 
 function summaryFromDetail(
@@ -2068,7 +1765,6 @@ export const __testing = {
   jsonArray,
   jsonCapability,
   mapProfile,
-  mapProfileRevisionRow,
   models,
   requireLoaded,
   sameId,

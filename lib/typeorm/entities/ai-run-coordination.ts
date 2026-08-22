@@ -1,7 +1,7 @@
 import { EntitySchema } from 'typeorm'
 import type { AiConnectionEntity } from './ai-connection'
 import type { AiConnectionModelRevisionEntity } from './ai-connection-model-revision'
-import type { AiRunProfileRevisionEntity } from './ai-run-profile-revision'
+import type { AiRunProfileEntity } from './ai-run-profile'
 
 export type AiRunCoordinationStatus = 'queued' | 'retry_wait' | 'running'
 
@@ -22,7 +22,8 @@ export interface AiRunCoordinationEntity {
   leaseOwnerId: string | null
   modelRevision: AiConnectionModelRevisionEntity
   notBefore: Date
-  profileRevision: AiRunProfileRevisionEntity
+  profile: AiRunProfileEntity
+  profileConfigurationVersion: number
   queueSequence: string
   status: AiRunCoordinationStatus
   totalDeadlineAt: Date
@@ -56,6 +57,10 @@ export const aiRunCoordinationEntity =
       },
       status: { length: 24, name: 'status', type: 'nvarchar' },
       attemptCount: { default: 0, name: 'attempt_count', type: 'tinyint' },
+      profileConfigurationVersion: {
+        name: 'ai_run_profile_configuration_version',
+        type: 'int',
+      },
       cancellationRequestedAt: {
         name: 'cancellation_requested_at',
         nullable: true,
@@ -115,17 +120,17 @@ export const aiRunCoordinationEntity =
         target: 'AiConnectionModelRevision',
         type: 'many-to-one',
       },
-      profileRevision: {
+      profile: {
         joinColumn: {
           foreignKeyConstraintName:
-            'fk_ai_run_coordination_entries_ai_run_profile_revision_id',
-          name: 'ai_run_profile_revision_id',
+            'fk_ai_run_coordination_entries_ai_run_profile_id',
+          name: 'ai_run_profile_id',
           referencedColumnName: 'id',
         },
         nullable: false,
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
-        target: 'AiRunProfileRevision',
+        target: 'AiRunProfile',
         type: 'many-to-one',
       },
     },
@@ -155,6 +160,10 @@ export const aiRunCoordinationEntity =
         name: 'idx_ai_run_coordination_entries_cancellation_requested_at',
         where: '[cancellation_requested_at] IS NOT NULL',
       },
+      {
+        columns: ['profile', 'profileConfigurationVersion'],
+        name: 'idx_ai_run_coordination_entries_ai_run_profile_id_ai_run_profile_configuration_version',
+      },
     ],
     checks: [
       {
@@ -178,6 +187,10 @@ export const aiRunCoordinationEntity =
         expression:
           "([cancellation_requested_at] IS NULL AND [cancellation_reason] IS NULL) OR ([cancellation_requested_at] IS NOT NULL AND [cancellation_reason] IN (N'connection_suspended', N'connection_retired', N'profile_suspended'))",
         name: 'chk_ai_run_coordination_entries_cancellation',
+      },
+      {
+        expression: '[ai_run_profile_configuration_version] >= 1',
+        name: 'chk_ai_run_coordination_entries_profile_configuration_version',
       },
     ],
   })

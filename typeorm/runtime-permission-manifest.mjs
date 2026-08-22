@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 export const SQL_SERVER_RUNTIME_ROLE = 'kravhantering_runtime'
-export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.20.1'
+export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.22.2'
 
 const CRUD = Object.freeze(['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
 const READ_CREATE = Object.freeze(['SELECT', 'INSERT'])
@@ -223,7 +223,7 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
         }),
         Object.freeze({
           object: 'dbo.ai_connection_model_verification_evidence',
-          permissions: READ_CREATE,
+          permissions: READ_CREATE_DELETE,
         }),
         Object.freeze({
           object: 'dbo.ai_connection_models',
@@ -231,7 +231,7 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
         }),
         Object.freeze({
           object: 'dbo.ai_connection_verification_evidence',
-          permissions: READ_CREATE,
+          permissions: READ_CREATE_DELETE,
         }),
         Object.freeze({
           object: 'dbo.ai_connections',
@@ -276,10 +276,6 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
             'cancellation_reason',
             'updated_at',
           ]),
-        }),
-        Object.freeze({
-          object: 'dbo.ai_run_profile_revisions',
-          permissions: CRUD,
         }),
         Object.freeze({
           object: 'dbo.ai_run_profiles',

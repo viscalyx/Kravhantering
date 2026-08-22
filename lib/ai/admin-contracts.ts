@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { AI_CAPABILITY_KEYS } from './capability-keys'
 import { AI_CONNECTION_AUTHENTICATION_TYPES } from './connection-trust'
 import { AI_RUN_PROFILE_KEYS } from './profile-resolver'
 
@@ -20,25 +19,6 @@ export const aiCapabilitySchema = z
     streaming: z.boolean(),
     tokenUsage: z.boolean(),
     validatableJson: z.boolean(),
-  })
-  .strict()
-
-export const aiCapabilityKeySchema = z.enum(AI_CAPABILITY_KEYS)
-
-export const aiCapabilityPolicyModeSchema = z.enum([
-  'allowed',
-  'disabled',
-  'required',
-])
-
-export const aiCapabilityPolicySchema = z
-  .object({
-    aiAnalysis: aiCapabilityPolicyModeSchema,
-    imageInput: aiCapabilityPolicyModeSchema,
-    jsonSchema: aiCapabilityPolicyModeSchema,
-    streaming: aiCapabilityPolicyModeSchema,
-    usageMetadata: aiCapabilityPolicyModeSchema,
-    validatableJson: aiCapabilityPolicyModeSchema,
   })
   .strict()
 
@@ -120,12 +100,8 @@ export const saveAiAttestationSchema = z
 
 export const saveAiModelRevisionSchema = z
   .object({
-    declaredCapabilities: aiCapabilitySchema,
+    attemptId: aiIdentifierSchema,
     description: optionalText(20_000).optional().default(null),
-    discoveredCapabilities: aiCapabilitySchema
-      .nullable()
-      .optional()
-      .default(null),
     externalModelId: boundedText(450),
     externalModelVersion: optionalText(200).optional().default(null),
     modelId: aiIdentifierSchema.nullable().optional().default(null),
@@ -144,13 +120,16 @@ export const saveAiModelRevisionSchema = z
     }
   })
 
-export const saveAiRunProfileRevisionSchema = z
+export const saveAiRunProfileSchema = z
   .object({
-    capabilityPolicy: aiCapabilityPolicySchema,
     inactivityTimeBudgetSeconds: z.number().int().min(300).max(3600),
+    maximumBufferedEvents: z.number().int().min(1).max(1024),
+    maximumOutputBytes: z.number().int().min(1).max(67_108_864),
+    maximumOutputTokens: z.number().int().min(1).max(1_000_000),
+    maximumRetainedMemoryBytes: z.number().int().min(1).max(134_217_728),
     modelRevisionId: aiIdentifierSchema.nullable(),
     queueCapacity: z.number().int().min(0).max(100),
-    revisionToken: aiRevisionTokenSchema.nullable().optional().default(null),
+    revisionToken: aiRevisionTokenSchema,
     totalTimeBudgetSeconds: z.number().int().min(300).max(3600),
   })
   .strict()
@@ -197,24 +176,16 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
     .strict(),
   z
     .object({
-      action: z.literal('delete_connection_model'),
-      modelId: aiIdentifierSchema,
+      action: z.literal('delete_model_revision'),
+      modelRevisionId: aiIdentifierSchema,
       revisionToken: aiRevisionTokenSchema,
     })
     .strict(),
   z.object({ action: z.literal('fetch_catalog') }).strict(),
   z
     .object({
-      action: z.literal('discover_model_capabilities'),
-      capabilities: z
-        .array(aiCapabilityKeySchema)
-        .min(1)
-        .max(AI_CAPABILITY_KEYS.length)
-        .refine(value => new Set(value).size === value.length, {
-          message: 'Capability discovery entries must be unique.',
-        }),
-      externalModelId: boundedText(450),
-      externalModelVersion: optionalText(200),
+      action: z.literal('discard_model_verification'),
+      attemptId: aiIdentifierSchema,
     })
     .strict(),
   z
@@ -247,7 +218,7 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
     .strict(),
   z
     .object({
-      action: z.literal('retire_model_revision'),
+      action: z.literal('end_model_revision'),
       modelRevisionId: aiIdentifierSchema,
       revisionToken: aiRevisionTokenSchema,
     })
@@ -259,20 +230,19 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
     })
     .strict(),
   connectionLifecycleActionSchema,
-  z.object({ action: z.literal('verify_connection') }).strict(),
+  z
+    .object({
+      action: z.literal('verify_model_candidate'),
+      externalModelId: boundedText(450),
+      externalModelVersion: optionalText(200),
+    })
+    .strict(),
   z
     .object({
       action: z.literal('verify_live_path'),
       expectedEnvironmentId: boundedText(160).regex(/^[A-Za-z0-9._:-]+$/u),
       modelRevisionId: aiIdentifierSchema,
-      profileRevisionId: aiIdentifierSchema,
-    })
-    .strict(),
-  z
-    .object({
-      action: z.literal('verify_model_revision'),
-      modelRevisionId: aiIdentifierSchema,
-      revisionToken: aiRevisionTokenSchema,
+      profileKey: z.enum(AI_RUN_PROFILE_KEYS),
     })
     .strict(),
   z
@@ -286,16 +256,6 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
 export const aiRunProfileActionSchema = z.discriminatedUnion('action', [
   z
     .object({
-      action: z.literal('activate_revision'),
-      connectionRevisionToken: aiRevisionTokenSchema,
-      modelRevisionToken: aiRevisionTokenSchema,
-      profileRevisionId: aiIdentifierSchema,
-      profileRevisionToken: aiRevisionTokenSchema,
-      profileToken: aiRevisionTokenSchema,
-    })
-    .strict(),
-  z
-    .object({
       action: z.literal('set_operational_status'),
       revisionToken: aiRevisionTokenSchema,
       status: z.enum(['enabled', 'suspended']),
@@ -304,11 +264,8 @@ export const aiRunProfileActionSchema = z.discriminatedUnion('action', [
 ])
 
 export type AiCapability = z.infer<typeof aiCapabilitySchema>
-export type AiCapabilityPolicy = z.infer<typeof aiCapabilityPolicySchema>
 export type AiConnectionAction = z.infer<typeof aiConnectionActionSchema>
 export type CreateAiConnection = z.infer<typeof createAiConnectionSchema>
 export type SaveAiAttestation = z.infer<typeof saveAiAttestationSchema>
 export type SaveAiModelRevision = z.infer<typeof saveAiModelRevisionSchema>
-export type SaveAiRunProfileRevision = z.infer<
-  typeof saveAiRunProfileRevisionSchema
->
+export type SaveAiRunProfile = z.infer<typeof saveAiRunProfileSchema>

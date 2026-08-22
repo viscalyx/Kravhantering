@@ -112,9 +112,9 @@ describe('AI connections data model migration', () => {
     expect(sql).not.toContain('[incident_contact]')
   })
 
-  it('mirrors every migration check in the new EntitySchema metadata', async () => {
+  it('mirrors stable-profile migration checks in EntitySchema metadata', async () => {
     const migration = await import(
-      '@/typeorm/migrations/0060_ai_connections_data_model.mjs'
+      '@/typeorm/migrations/0066_ai_verified_models_and_stable_profiles.mjs'
     )
     const queryRunner = { query: vi.fn(async (_statement: string) => {}) }
 
@@ -134,7 +134,7 @@ describe('AI connections data model migration', () => {
       'ai_connection_model_revisions',
       'ai_connection_model_verification_evidence',
       'ai_run_profiles',
-      'ai_run_profile_revisions',
+      'ai_run_coordination_entries',
       'ai_connection_model_operational_states',
     ])
     const entityChecks = sqlServerEntities
@@ -166,6 +166,36 @@ describe('AI connections data model migration', () => {
       'DROP TABLE [ai_connection_model_operational_states]',
     )
     expect(statements.at(-1)).toContain('DROP TABLE [ai_connections]')
+  })
+})
+
+describe('stable AI run-profile migration', () => {
+  it('moves live configuration onto fixed profiles and retires profile revisions', async () => {
+    const migration = await import(
+      '@/typeorm/migrations/0066_ai_verified_models_and_stable_profiles.mjs'
+    )
+    const queryRunner = { query: vi.fn(async (_statement: string) => {}) }
+
+    await new migration.default().up(queryRunner)
+
+    const sql = queryRunner.query.mock.calls
+      .map(([statement]) => String(statement))
+      .join('\n')
+    expect(sql).toContain('ALTER TABLE [ai_run_profiles] ADD')
+    expect(sql).toContain('[configuration_version] int NOT NULL')
+    expect(sql).toContain('[ai_connection_model_revision_id] uniqueidentifier')
+    expect(sql).toContain('[ai_run_profile_configuration_version] int NOT NULL')
+    expect(sql).toContain('DROP TABLE [ai_run_profile_revisions]')
+    expect(sql).toMatch(
+      /\[status\]\s+IN \(N'verified', N'new_revision_required', N'ended'\)/u,
+    )
+    expect(sql).toContain('[profile_compatibility_json] nvarchar(max)')
+    expect(sql).toContain('fk_ai_run_profiles_ai_connection_model_revision_id')
+    expect(sql).toContain('fk_ai_run_coordination_entries_ai_run_profile_id')
+    expect(sql).toContain('IF NOT EXISTS (SELECT 1 FROM [inserted]) RETURN;')
+    expect(sql).toContain(
+      'GRANT DELETE ON OBJECT::[dbo].[ai_connection_model_verification_evidence]',
+    )
   })
 })
 
@@ -201,11 +231,7 @@ describe('AI connection seed profiles', () => {
     const profileInsertIndex = executor.query.mock.calls.findIndex(([sql]) =>
       String(sql).includes('INSERT INTO [ai_run_profiles]'),
     )
-    const profileRevisionInsertIndex = executor.query.mock.calls.findIndex(
-      ([sql]) => String(sql).includes('INSERT INTO [ai_run_profile_revisions]'),
-    )
     expect(profileInsertIndex).toBeGreaterThanOrEqual(0)
-    expect(profileRevisionInsertIndex).toBeGreaterThan(profileInsertIndex)
 
     expect(rowsFor(rows, 'ai_connections')).toEqual([
       expect.objectContaining({
@@ -248,15 +274,14 @@ describe('AI connection seed profiles', () => {
           '20000000-0000-4000-8000-000000000002',
       ),
     ).toBe(false)
-    const profileRevisions = rowsFor(rows, 'ai_run_profile_revisions')
-    expect(profileRevisions).toHaveLength(3)
-    expect(
-      profileRevisions.every(
-        revision =>
-          revision.status === 'draft' &&
-          revision.ai_connection_model_revision_id == null,
-      ),
-    ).toBe(true)
+    expect(rowsFor(rows, 'ai_run_profiles')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ai_connection_model_revision_id: null,
+          configuration_version: 1,
+        }),
+      ]),
+    )
     expect(rowsFor(rows, 'ai_connection_models')).toHaveLength(0)
     expect(rowsFor(rows, 'ai_connection_model_revisions')).toHaveLength(0)
     expect(rowsFor(rows, 'ai_connection_verification_evidence')).toHaveLength(0)
@@ -274,7 +299,7 @@ describe('AI connection seed profiles', () => {
 })
 
 describe('AI connection runtime permissions', () => {
-  it('keeps evidence append-only and lets guarded draft revisions be deleted', () => {
+  it('allows model-container deletion and direct profile updates', () => {
     const permissions = new Map(
       RUNTIME_PERMISSION_MANIFEST.map(entry => [
         entry.object,
@@ -285,21 +310,21 @@ describe('AI connection runtime permissions', () => {
     expect(permissions.get('dbo.ai_connection_verification_evidence')).toEqual([
       'SELECT',
       'INSERT',
+      'DELETE',
     ])
     expect(
       permissions.get('dbo.ai_connection_model_verification_evidence'),
-    ).toEqual(['SELECT', 'INSERT'])
+    ).toEqual(['SELECT', 'INSERT', 'DELETE'])
     expect(permissions.get('dbo.ai_connection_model_revisions')).toEqual([
       'SELECT',
       'INSERT',
       'UPDATE',
       'DELETE',
     ])
-    expect(permissions.get('dbo.ai_run_profile_revisions')).toEqual([
+    expect(permissions.get('dbo.ai_run_profiles')).toEqual([
       'SELECT',
       'INSERT',
       'UPDATE',
-      'DELETE',
     ])
   })
 })

@@ -70,8 +70,8 @@ export function revisionTone(
   status: AiAdminModelRevisionRecord['status'],
 ): Tone {
   if (status === 'verified') return 'success'
-  if (status === 'retired') return 'neutral'
-  return status === 'verification_required' ? 'warning' : 'neutral'
+  if (status === 'ended') return 'neutral'
+  return 'warning'
 }
 
 export type AttestationBlockerState = 'draft' | 'invalid' | 'missing'

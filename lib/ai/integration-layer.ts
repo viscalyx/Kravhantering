@@ -196,7 +196,8 @@ async function* runInAdapterConfigurationScope(
           limits: profile.limits,
           modelRevision: configuredProfile.modelRevision,
           privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
-          runProfileRevisionId: profile.profileRevisionId,
+          runProfileConfigurationVersion: profile.profileConfigurationVersion,
+          runProfileId: profile.profileId,
           selectedCapabilities: profile.selectedCapabilities,
           task: prepared.task,
         })
@@ -285,7 +286,9 @@ export function createAiIntegrationLayer(
         profile.connectionId !== target.identity.aiConnectionId ||
         profile.modelRevisionId !==
           target.identity.aiConnectionModelRevisionId ||
-        profile.profileRevisionId !== target.identity.aiRunProfileRevisionId
+        profile.profileId !== target.identity.aiRunProfileId ||
+        profile.profileConfigurationVersion !==
+          target.identity.aiRunProfileConfigurationVersion
       ) {
         return {
           failure: {
@@ -521,7 +524,8 @@ export function createAiIntegrationLayer(
       const identity: AiRunIdentity = Object.freeze({
         aiConnectionId: profile.connectionId,
         aiConnectionModelRevisionId: profile.modelRevisionId,
-        aiRunProfileRevisionId: profile.profileRevisionId,
+        aiRunProfileConfigurationVersion: profile.profileConfigurationVersion,
+        aiRunProfileId: profile.profileId,
       })
       let prepared: Readonly<AiPreparedRun>
       try {

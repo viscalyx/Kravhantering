@@ -2,6 +2,10 @@
 
 Status: Antagen 2026-08-19.
 
+Bevisets profilbindning i detta beslut ersätts av stabilt profil-ID och
+konfigurationsversion enligt
+[ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
+
 Varje ny eller uppgraderad produktionsmiljö startar med den globala
 AI-spärren aktiv. AI-assisterat författande är valfritt och spärren får därför
 inte påverka applikationens health eller readiness. Driften släpper spärren

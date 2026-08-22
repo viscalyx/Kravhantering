@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import {
-  aiRunProfileActionSchema,
   aiRunProfileParamsSchema,
+  saveAiRunProfileSchema,
 } from '@/lib/ai/admin-contracts'
 import { createAiConnectionAdministrationRuntime } from '@/lib/ai/admin-runtime'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -10,9 +10,9 @@ import {
   secureMutationRoute,
 } from '@/lib/http/secure-mutation-route'
 
-export const POST = secureMutationRoute({
-  bodySchema: aiRunProfileActionSchema,
-  errorMessage: 'Failed to perform AI run profile action.',
+export const PATCH = secureMutationRoute({
+  bodySchema: saveAiRunProfileSchema,
+  errorMessage: 'Failed to save AI run profile.',
   handlerErrorDetails: 'ai_admin_blockers',
   paramsSchema: aiRunProfileParamsSchema,
   policy: adminMutationPolicy(),
@@ -20,10 +20,9 @@ export const POST = secureMutationRoute({
     const db = await getRequestSqlServerDataSource()
     const service = createAiConnectionAdministrationRuntime(db, context)
     return NextResponse.json(
-      await service.setRunProfileOperationalStatus({
+      await service.saveRunProfile({
+        profile: body,
         profileKey: params.profileKey,
-        revisionToken: body.revisionToken,
-        status: body.status,
       }),
     )
   },

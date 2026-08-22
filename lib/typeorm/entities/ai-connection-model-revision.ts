@@ -2,9 +2,8 @@ import { EntitySchema } from 'typeorm'
 import type { AiConnectionModelEntity } from './ai-connection-model'
 
 export type AiConnectionModelRevisionStatus =
-  | 'draft'
-  | 'retired'
-  | 'verification_required'
+  | 'ended'
+  | 'new_revision_required'
   | 'verified'
 
 export interface AiConnectionModelRevisionEntity {
@@ -13,12 +12,12 @@ export interface AiConnectionModelRevisionEntity {
   createdAt: Date
   declaredCapabilitiesJson: string
   discoveredCapabilitiesJson: string | null
+  endedAt: Date | null
   externalModelId: string
   externalModelVersion: string | null
   id: string
   maximumConcurrency: number | null
   model: AiConnectionModelEntity
-  retiredAt: Date | null
   revisionNumber: number
   revisionToken: string
   status: AiConnectionModelRevisionStatus
@@ -89,8 +88,8 @@ export const aiConnectionModelRevisionEntity =
         precision: 3,
         type: 'datetime2',
       },
-      retiredAt: {
-        name: 'retired_at',
+      endedAt: {
+        name: 'ended_at',
         nullable: true,
         precision: 3,
         type: 'datetime2',
@@ -146,7 +145,7 @@ export const aiConnectionModelRevisionEntity =
       },
       {
         expression:
-          "[status] IN (N'draft', N'verification_required', N'verified', N'retired')",
+          "[status] IN (N'verified', N'new_revision_required', N'ended')",
         name: 'chk_ai_connection_model_revisions_status',
       },
       {
@@ -170,8 +169,8 @@ export const aiConnectionModelRevisionEntity =
       },
       {
         expression:
-          "([status] = N'retired' AND [retired_at] IS NOT NULL) OR ([status] <> N'retired' AND [retired_at] IS NULL)",
-        name: 'chk_ai_connection_model_revisions_retired_at',
+          "([status] = N'ended' AND [ended_at] IS NOT NULL) OR ([status] <> N'ended' AND [ended_at] IS NULL)",
+        name: 'chk_ai_connection_model_revisions_ended_at',
       },
     ],
   })

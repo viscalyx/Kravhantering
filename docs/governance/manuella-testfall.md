@@ -2061,169 +2061,62 @@ efter stopp. API-svaret innehåller storleksbegränsade utdrag med
 begäraren och godkännaren kan läsa den avslutade insamlingen; andra användare
 nekas åtkomst.
 
-### ADMIN-20: Admin aktiverar och återställer en kontrollerad AI-anslutning
+### ADMIN-20: Admin verifierar en modell och styr en stabil körprofil
 
 **Förutsättningar:** Kör mot en lokal engångsmiljö med aktuell migrering och
-Admin-session. Konfigurera `controlled_test@1` med exakt utvecklingsadress
-`https://localhost:4443`, motsvarande egress- och TLS-policy samt datapolicy för
-de tre fasta körprofilerna. Använd bara syntetiska värden och inga
-produktionshemligheter. Använd den fasta engångsfixturen
-`PW ADMIN-20 kontrollerad anslutning`; före och efter varje körning ska fixturen
-tas bort och körprofilens tidigare aktiva revision och operativa status
-återställas, även om ett steg misslyckas.
+Admin-session. Konfigurera `controlled_test@1` med utvecklingsadressen
+`https://localhost:4443`, motsvarande egress-, TLS- och datapolicyer. Använd
+bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
+återställa de tre stabila profilernas tidigare konfiguration och driftstatus.
 
-1. Öppna `Administrationscenter > Inställningar > AI`. Kontrollera att
-   anslutningsregistret är kollapsat, att texten förbjuder automatisk fallback
-   och att livscykel och operativ hälsa visas var för sig. Expandera den seedade
-   raden `Lokalt vLLM-kluster`. Kontrollera att den beter sig som ett vanligt
-   administratörshanterat utkast utan märkning som demonstrationsdata, att
-   `vllm@1` uttryckligen visas som inte installerad och att redigering,
-   attesthantering och hemlighetshantering är tillgängliga. Kontrollera att
-   modellkatalog, verifiering, hälsokontroll och aktivering är inaktiverade med
-   en begriplig förklaring. Fäll ihop raden igen.
-2. Välj `Lägg till AI-anslutning`. Skapa ett utkast med adaptern
-   `controlled_test`, version `1`, adressen `https://localhost:4443`, de
-   konfigurerade policyerna, autentisering `Statisk leverantörshemlighet` och
-   en datapolicy utan personuppgifter, träning eller lagring. Öppna den nya
-   raden och kontrollera att den inte märks som demonstrationsdata. Kontrollera
-   att aktiveringshindren visas i åtgärdsordning: attest, leverantörshemlighet,
-   anslutningsverifiering och modellverifiering.
-3. Öppna hjälpen för organisationsenhetens och incidentprocessens referens-id.
-   Kontrollera att den anger organisationens styrningssystem som källa, säger
-   att administratören inte ska skapa ett nytt UUID och anger relevant
-   kontaktväg när referensen saknas. Spara och godkänn sedan en fullständig
-   attest med syntetiska UUID-referenser, region `SE`, informationsklass
-   `internal`, noll dagars lagring, inga personuppgifter, ingen
-   leverantörsträning, aktuell granskningstid och ett framtida
-   granskningsdatum. Stäng attestdialogen efter att utkastet sparats, öppna den
-   igen och kontrollera att `Godkänn sparad attest` visas för det persistenta
-   utkastet innan du godkänner det. Kontrollera att `Spara attestutkast` är
-   nedtonad och inaktiverad när formuläret motsvarar det sparade utkastet, blir
-   aktiv efter en ändring och inaktiveras igen om ändringen återställs.
-   Kontrollera också att texten om aktiveringshindret före godkännandet
-   förklarar att ett ifyllt utkast fortfarande måste godkännas. Kontrollera att
-   sparbekräftelsen visas som en stängbar toast och försvinner automatiskt.
-   Öppna dialogen efter godkännandet och kontrollera att en banner anger att
-   attesten är godkänd och aktuell och att Spara-knappen är inaktiverad.
-   Ändra ett fält och kontrollera att bannern i stället säger att ändringarna
-   ännu inte är sparade eller godkända, medan den tidigare godkända revisionen
-   fortsätter att gälla tills ersättningsutkastet godkänns. Spara ändringen,
-   stäng och öppna dialogen igen och kontrollera att det nya utkastsvärdet visas
-   i stället för det tidigare godkända värdet. Kontrollera att `Avbryt`, `Spara
-   attestutkast`, `Återgå till godkänd attest` och `Godkänn sparad attest` ligger
-   i samma åtgärdsrad. Välj återgång, bekräfta åtgärden och kontrollera att det
-   sparade utkastet försvinner och att den tidigare godkända attesten visas och
-   fortsätter att gälla.
-4. Öppna `Hantera hemlighet`. Kontrollera att fältet är tomt och maskerat och
-   att texten säger att hemligheter bara kan anges, aldrig läsas eller
-   exporteras. Skriv och spara en syntetisk ny leverantörshemlighet.
-   Kontrollera att texten förklarar att åtgärden verifierar den nya
-   leverantörshemligheten och gör den aktiv, men att
-   anslutningskonfigurationen sedan måste verifieras separat. Välj `Verifiera
-   och aktivera ny hemlighet`. Kontrollera att fältet töms och att klartexten
-   aldrig visas igen.
-5. Välj `Lägg till modell` och kontrollera att formuläret automatiskt försöker
-   läsa modellkatalogen utan en separat katalogknapp i dialogen. Medan den
-   läses ska kryssrutorna för förmågor vara ersatta av `Deklarerade förmågor
-   läses in…` och modellens Spara-knapp vara inaktiverad. Om adaptern returnerar
-   modeller ska de visas grupperade efter modelltillverkare och ett val ska
-   fylla modellnamn, externt modell-id, version och annonserade förmågor. När
-   adaptern rapporterar pris ska alternativet även visa in- och utpris per en
-   miljon token; saknade priser ska utelämnas. Kontrollera att
-   alternativet `Skriv in manuellt` finns kvar och att den automatiska
-   hämtningen inte visar katalogresultatet i anslutningskortet bakom dialogen.
-   Om ingen lista kan hämtas ska en informationsruta förklara att uppgifterna
-   måste anges manuellt och de manuella fälten ska förbli tillgängliga. Lägg
-   till modellen `controlled/model`, deklarera minst styrning med JSON-schema,
-   strömning och validerbar JSON och spara modellutkastet. Läs därefter
-   modellkatalogen uttryckligen från anslutningsraden, öppna modellen för
-   redigering och kontrollera att den kan väljas under sin grupperade
-   modelltillverkare utan att det externa modell-id:t behöver skrivas om.
-   Kontrollera att katalogens uttryckliga `Stöds` och `Stöds inte` visas med
-   text och ikon och att motsvarande kryssrutor är låsta. Välj `Kontrollera
-   förmågor`: den exakta katalogposten ska läsas om och endast förmågor med
-   status `Okänd` får skickas till begränsade syntetiska funktionsprov. Ett
-   tillfälligt fel ska lämna förmågan som `Okänd`, inte avmarkera den som
-   ostödd. För en OpenRouter-modell som annonserar reasoning ska AI-analys visas
-   som `Okänd` och inte vara förvald enbart på grund av kataloguppgiften. Det
-   separata funktionsprovet får markera förmågan som stödd endast om ett
-   klartext- eller sammanfattningsfält för synlig analys faktiskt observeras;
-   saknad eller enbart krypterad reasoning räcker inte. Resultatet ska stanna i
-   formuläret tills administratören väljer att spara modellutkastet. Spara och
-   öppna utkastet igen. Kontrollera att tidigare fastställda `Stöds` och `Stöds
-   inte` ligger kvar även där den uppdaterade katalogen fortfarande anger
-   `Okänd`. Ett kontrollresultat som faktiskt förblev oavgjort ska däremot
-   fortsätta visas som `Okänd`; det får inte sparas som `Stöds inte`. En
-   befintlig verifierad revision får inte skrivas om.
-   Öppna därefter `Lägg till modell` igen och kontrollera att katalogen inte
-   längre erbjuder `controlled/model` med samma externa version, medan andra
-   katalogmodeller och manuell inmatning fortfarande är tillgängliga.
-6. Verifiera först anslutningen och sedan modellrevisionen med testadaptern.
-   Kontrollera att modellknappen under arbetet visar `Verifierar…`, är dimmad
-   och inte kan aktiveras igen. När verifieringen har lyckats ska `Verifiera
-   modell` förbli nedtonad med en förklaring att revisionen redan är verifierad.
-   En ny eller redigerad revision ska åter få status `Verifiering krävs` och en
-   aktiv verifieringsknapp. Innan modellrevisionen är verifierad ska
-   `Kör hälsokontroll` vara inaktiverad och förklara att modellen måste
-   verifieras först. Kör därefter den begränsade hälsokontrollen och kontrollera
-   motsvarande `Kontrollerar…`-läge samt att resultatet visas i en toast.
-   Om en verifiering inte klaras ska toasten ange den säkra felorsaken samt
-   berörda deklarerade förmågor eller delkontroller. Varningen och den öppna
-   anslutningsvyn ska vara kvar tills administratören själv stänger varningen.
-   Kontrollera även informationen om möjlig testkostnad och att säker
-   återhämtning är manuell utan reservmodell.
-7. Aktivera anslutningen. Redigera den fasta körprofilen
-   `Kravgenerering utan bilder`. Kontrollera att väljaren visar högst en
-   revision per anslutningsmodell: endast modellens senaste revision och endast
-   om den är verifierad. Äldre verifierade revisioner samt revisioner med
-   `Verifiering krävs` eller `Avslutad` får inte visas. Välj den verifierade
-   modellrevisionen. Kontrollera att förmågepolicyn omedelbart styrs av
-   revisionens verifierade förmågor: AI-analys och användningsmetadata, som inte
-   deklarerades för testmodellen, ska vara `Inaktiverad` och låsta, medan den
-   stödda styrningen med JSON-schema fortfarande kan väljas. En modellrevision
-   som saknar en förmåga som är obligatorisk för anropstypen ska visas som
-   inkompatibel och inte kunna väljas. Spara utkastet. Suspendera anslutningen
-   och kontrollera att profilens status fortfarande är `Ej aktiverad`, inte
-   `Aktiv`, och att den grå revisionsraden visar `Utkast: profilrevision N` i
-   stället för att upprepa statusen. `Aktivera profilrevision` ska vara
-   inaktiverad med förklaringen att anslutningen inte är aktiv. Återställ
-   anslutningen och kontrollera att knappen åter blir aktiv. Låt först
-   aktiveringen avvisas med aktiveringshindret för en saknad driftsättningspolicy
-   för anropstypen och kontrollera att rubriken är `Profilrevisionen kunde inte
-   aktiveras` och att orsaken är `Driftsättningen saknar en datapolicy för
-   anropstypen.`. Återställ policyn och aktivera profilrevisionen. Först
-   därefter ska profilens status vara `Aktiv` och den grå raden visa `Aktiv
-   profilrevision: N`. Om en aktiv revision och ett ersättningsutkast finns
-   samtidigt ska båda revisionsnumren visas.
-   Kontrollera att `Avsluta modellrevision` är inaktiverad på den valda
-   anslutningsmodellen och förklarar att modellen först måste tas bort eller
-   bytas i körprofilen. Kontrollera också att den textlösa röda
-   borttagningsikonen visas men är inaktiverad.
-8. Suspendera och återställ först körprofilen och därefter anslutningen.
-   Kontrollera att profilens status växlar till `Suspenderad` och tillbaka till
-   `Aktiv`. Kontrollera under anslutningssuspenderingen att livscykeln är
-   `Suspenderad` medan den separata operativa hälsan fortfarande är `Fungerar`.
-9. Lägg till och verifiera en andra anslutningsmodell med ett annat externt
-   modell-id. Skapa och aktivera en ersättande revision av
-   `Kravgenerering utan bilder` som väljer den andra modellen. Kontrollera att
-   `Avsluta modellrevision` nu kan användas på den första modellen medan den
-   textlösa röda borttagningsikonen fortfarande är inaktiverad. Bekräfta
-   avslutet och kontrollera att avslutningsåtgärden ligger kvar men är
-   inaktiverad, samtidigt som borttagningsikonen med det tillgängliga namnet
-   `Ta bort anslutningsmodell` blir aktiv. Välj ikonen, bekräfta borttagningen
-   och kontrollera att den första
-   anslutningsmodellen och samtliga revisioner försvinner från
-   administrationsytan. Den andra modellen och den aktiva körprofilen ska vara
-   kvar.
+1. Öppna `Administrationscenter > Inställningar > AI`. Skapa en anslutning med
+   `controlled_test@1`, autentisering `Ingen applikationsuppgift`, testadressen
+   och de konfigurerade policynycklarna. Kontrollera att anslutningens
+   administrativa livscykel och operativa hälsa visas separat.
+2. Spara och godkänn en fullständig attest med syntetiska UUID-referenser,
+   region `SE`, informationsklass `internal`, noll dagars lagring, inga
+   personuppgifter, ingen leverantörsträning, aktuell granskningstid och ett
+   framtida granskningsdatum.
+3. Välj `Lägg till modell`. Ange namn, `controlled/model` och en fast extern
+   version. Kontrollera att samtliga sju förmågor först visas skrivskyddade som
+   `Inte kontrollerad` och att modellrevisionen inte kan sparas.
+4. Välj `Verifiera`. Kontrollera att förloppet strömmas i ordningen anslutning,
+   grundläggande modellåtkomst, varje förmåga, de tre fasta körprofilerna och
+   slutsammanfattningen. Kontrollera att `Avbryt verifiering` visas medan
+   arbetet pågår. Efter lyckat resultat ska varje förmåga ha ett tydligt utfall,
+   kompatibiliteten per körprofil visas och `Spara modellrevision` aktiveras.
+5. Ändra modellnamnet och kontrollera att resultatet finns kvar. Ändra ett
+   tekniskt fält och kontrollera att resultatet rensas och att ny verifiering
+   krävs. Verifiera igen och spara revisionen. Kontrollera statusen
+   `Verifierad` och att inget separat modellutkast eller separat
+   aktiveringssteg visas.
+6. Aktivera anslutningen. Redigera `Kravgenerering utan bilder`. Kontrollera att
+   inkompatibla, avslutade eller ersättningskrävande revisioner visas
+   inaktiverade med orsak, att den senaste användbara revisionen per modell är
+   rekommenderad och att applikationens förmågekrav inte kan redigeras. Välj den
+   verifierade revisionen, granska ordinarie och avancerade driftbudgetar och
+   spara. Kontrollera statusarna `Konfigurerad` och `Aktiv`.
+7. Pausa profilen och kontrollera statusen `Pausad`; återuppta den och
+   kontrollera `Aktiv`. Modellval och budgetar ska finnas kvar.
+8. Försök avsluta den valda modellrevisionen. Kontrollera att åtgärden avvisas
+   och anger den beroende profilen. Koppla bort modellen i profilformuläret och
+   spara. Avsluta därefter revisionen efter den uttryckliga bekräftelsen och
+   kontrollera statusen `Avslutad`.
+9. Välj den separata permanenta raderingen. Kontrollera att dialogen uttryckligen
+   säger att revisionen och verifieringsbeviset raderas, att åtgärden inte kan
+   ångras och att modellbehållaren också tas bort när detta är sista revisionen.
+   Bekräfta och kontrollera att modellen försvinner.
+10. Upprepa huvudflödet vid både 1280 × 760 och 375 × 812. Kontrollera att
+    formulär, verifieringsförlopp, bekräftelser och profilkort kan användas med
+    tangentbord och ryms i aktuell viewport.
 
-**Förväntat resultat:** Varje verifiering och aktivering slutförs via
-`controlled_test@1`; blockerare försvinner först när respektive villkor är
-uppfyllt. Den aktiva körprofilen binder exakt den verifierade modellrevisionen.
-Ingen hemlighet visas eller exporteras, ingen automatisk fallback sker och
-suspenderade resurser återställs endast genom de uttryckliga manuella
-åtgärderna. En anslutningsmodell kan inte avslutas eller tas bort medan en
-aktiv eller utkastbaserad körprofil använder den, och samma externa modell och
-version kan inte registreras två gånger på samma AI-anslutning.
+**Förväntat resultat:** En modellrevision kan endast sparas från ett aktuellt,
+slutfört verifieringsförsök. Den stabila profilen väljer direkt en kompatibel
+verifierad revision, och nya profiländringar påverkar inte redan startade
+körningar. Paus begär avbrott utan att radera konfigurationen. En använd
+modellrevision kan inte avslutas eller raderas; avslut är irreversibelt och
+permanent radering kräver en separat bekräftelse. Ingen automatisk fallback
+sker.
 
 ### ADMIN-21: Misslyckad AI-åtgärd visar åtgärd och serverfel i viewporten
 

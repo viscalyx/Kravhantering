@@ -42,7 +42,8 @@ vi.mock('@/lib/ai/authoring-runtime', () => ({
 const identity = {
   aiConnectionId: 'connection',
   aiConnectionModelRevisionId: 'model-revision',
-  aiRunProfileRevisionId: 'profile-revision',
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: 'profile-revision',
 } as AiRunIdentity
 const usage = {
   analysisTokens: { reason: 'not_reported', status: 'unavailable' },

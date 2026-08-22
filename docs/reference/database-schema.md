@@ -280,6 +280,7 @@ erDiagram
         uniqueidentifier ai_connection_verification_evidence_id FK
         text outcome
         text verified_capabilities_json
+        text profile_compatibility_json
         text evidence_fingerprint
         datetime2 verified_at
     }
@@ -288,16 +289,8 @@ erDiagram
         uniqueidentifier id PK
         text profile_key UK
         text operational_status
-        uniqueidentifier revision_token
-    }
-
-    ai_run_profile_revisions {
-        uniqueidentifier id PK
-        uniqueidentifier ai_run_profile_id FK
         uniqueidentifier ai_connection_model_revision_id FK
-        integer revision_number UK
-        text status
-        text capability_policy_json
+        integer configuration_version
         integer total_time_budget_seconds
         integer inactivity_time_budget_seconds
         integer queue_capacity
@@ -328,7 +321,8 @@ erDiagram
         uniqueidentifier fencing_token
         uniqueidentifier ai_connection_id FK
         uniqueidentifier ai_connection_model_revision_id FK
-        uniqueidentifier ai_run_profile_revision_id FK
+        uniqueidentifier ai_run_profile_id FK
+        integer ai_run_profile_configuration_version
         bigint queue_sequence UK
         text status
         integer attempt_count
@@ -859,12 +853,11 @@ erDiagram
     ai_connection_models ||--o{ ai_connection_model_revisions : "has immutable revisions"
     ai_connection_model_revisions ||--o{ ai_connection_model_verification_evidence : "has capability evidence"
     ai_connection_verification_evidence ||--o{ ai_connection_model_verification_evidence : "anchors connection verification"
-    ai_run_profiles ||--o{ ai_run_profile_revisions : "has revisions"
-    ai_connection_model_revisions ||--o{ ai_run_profile_revisions : "selected by profiles"
+    ai_connection_model_revisions ||--o{ ai_run_profiles : "selected by stable profiles"
     ai_connection_model_revisions ||--o| ai_connection_model_operational_states : "has operational state"
     ai_connections ||--o{ ai_run_coordination_entries : "coordinates capacity"
     ai_connection_model_revisions ||--o{ ai_run_coordination_entries : "coordinates model limit"
-    ai_run_profile_revisions ||--o{ ai_run_coordination_entries : "owns queue policy"
+    ai_run_profiles ||--o{ ai_run_coordination_entries : "owns versioned queue policy"
     requirement_responsibility_people ||--o{ requirement_areas : "owns areas"
     requirement_responsibility_people ||--o{ requirement_area_co_authors : "assigned to areas"
     requirement_responsibility_people ||--o{ requirements_specifications : "leads specifications"
@@ -1868,11 +1861,10 @@ surfaces.
 
 ### `ai_connection_model_revisions`
 
-Model revisions have immutable technical configuration: changing the external
-model ID, external version, agent runtime version, or declared or discovered
-capabilities requires a new row. Verified capabilities are lifecycle-owned
-output derived from exact verification evidence; verification, invalidation,
-and retirement may set or clear them on that same revision. The trigger
+Model revisions are created only after the unified functional verification has
+succeeded. Their technical configuration and verified capabilities are
+immutable. Changing the external model identity or connection configuration
+requires a newly verified row. The trigger
 `trg_ai_connection_model_revisions_immutable` enforces the technical boundary
 while allowing those evidence-fenced lifecycle transitions.
 
@@ -1883,7 +1875,7 @@ while allowing those evidence-fenced lifecycle transitions.
 | `ai_connection_model_id` | uniqueidentifier FK | Stable connection model |
 | `revision_number` | integer | Per-model sequence |
 | `connection_configuration_version` | integer | Connection configuration version used by this revision |
-| `status` | nvarchar(40) | `draft`, `verification_required`, `verified`, or `retired` |
+| `status` | nvarchar(40) | `verified`, `new_revision_required`, or irreversible `ended` |
 | `external_model_id` | nvarchar(450) | Adapter-facing model identifier; never an internal key |
 | `external_model_version` | nvarchar(200), nullable | Adapter-facing model version |
 | `agent_runtime_version` | nvarchar(100), nullable | Exact agent runtime version |
@@ -1892,18 +1884,17 @@ while allowing those evidence-fenced lifecycle transitions.
 | `verified_capabilities_json` | nvarchar(max), nullable | Capabilities proven by the model test |
 | `maximum_concurrency` | integer, nullable | Optional model-specific concurrency ceiling, 1-100; the connection ceiling still applies |
 | `verified_at` | datetime2(3), nullable | Successful verification time |
-| `retired_at` | datetime2(3), nullable | Retirement time |
+| `ended_at` | datetime2(3), nullable | Irreversible end time |
 | `created_at` | datetime2(3) | Revision creation time |
 | `updated_at` | datetime2(3) | Lifecycle update time |
 | `revision_token` | uniqueidentifier | Optimistic concurrency token |
 <!-- markdownlint-enable MD013 -->
 
 **Constraints:** `(ai_connection_model_id, revision_number)` is unique. JSON
-checks protect all capability documents; verified and retired lifecycle dates
-must match their status. An unused draft may be deleted. The database rejects
-deletion of non-draft history, while foreign keys protect any draft already
-referenced by evidence or a run profile. Once a revision leaves `draft`, a
-trigger prevents it from returning to `draft` and laundering immutable history.
+checks protect all capability documents and the ended lifecycle date. Ending
+or deleting is rejected while a stable profile or queued/running coordination
+row references the revision. An ended revision cannot be restored. Permanent
+deletion also removes an empty model container.
 
 ### `ai_connection_model_verification_evidence`
 
@@ -1919,6 +1910,7 @@ connection verification record.
 | `outcome` | nvarchar(24) | `passed` or `failed` |
 | `test_suite_version` | nvarchar(100) | Versioned capability-test suite |
 | `verified_capabilities_json` | nvarchar(max) | Capabilities observed by the test |
+| `profile_compatibility_json` | nvarchar(max) | Functional compatibility result for every fixed stable profile |
 | `evidence_fingerprint` | char(64) | Lowercase hexadecimal evidence fingerprint |
 | `failure_category` | nvarchar(80), nullable | Sanitized failure category |
 | `details_json` | nvarchar(max) | Content-free structured evidence summary |
@@ -1927,9 +1919,12 @@ connection verification record.
 
 ### `ai_run_profiles`
 
-The three required system profile slots. `operational_status` is independent
-of configuration revision status. Required seed creates these empty slots but
-no connection, model, or active profile revision.
+The three required stable system profiles. The application owns their fixed
+minimum capabilities. Administrators directly choose an exact verified model
+revision and bounded runtime budgets. Every save increments
+`configuration_version` and changes `revision_token`; already admitted runs
+retain the version and limits captured at admission. Required seed creates the
+three disconnected profiles.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1937,48 +1932,19 @@ no connection, model, or active profile revision.
 | `id` | uniqueidentifier PK | Opaque stable profile identity |
 | `profile_key` | nvarchar(80) UK | `generation_without_images`, `generation_with_images`, or `invalid_json_repair` |
 | `operational_status` | nvarchar(24) | `enabled` or `suspended` |
+| `ai_connection_model_revision_id` | uniqueidentifier FK, nullable | Directly selected exact verified model revision |
+| `configuration_version` | integer | Monotonic configuration fence, starting at 1 |
+| `total_time_budget_seconds` | integer | Total queue and execution budget, 300-3,600 seconds |
+| `inactivity_time_budget_seconds` | integer | Inactivity budget, at least 300 seconds and no greater than total |
+| `queue_capacity` | integer | FIFO queue capacity, 0-100 |
+| `maximum_output_tokens` | integer | Provider output-token ceiling, 1-1,000,000 |
+| `maximum_output_bytes` | integer | Complete output ceiling, 1-67,108,864 bytes |
+| `maximum_retained_memory_bytes` | integer | Per-run retained-memory ceiling, 1-134,217,728 bytes |
+| `maximum_buffered_events` | integer | Parsed upstream event ceiling, 1-1,024 |
 | `created_at` | datetime2(3) | Creation time |
 | `updated_at` | datetime2(3) | Operational status update time |
 | `revision_token` | uniqueidentifier | Optimistic concurrency token |
 <!-- markdownlint-enable MD013 -->
-
-### `ai_run_profile_revisions`
-
-Configuration revisions bind a fixed profile slot to one exact model revision
-and one versioned capability policy. An incomplete draft may temporarily have
-no model, and its model binding, policy, and budgets may be edited under
-optimistic concurrency. Active and superseded revision content is immutable.
-Filtered unique indexes enforce at most one draft and one active revision per
-slot, enabling transactional revision swaps.
-
-<!-- markdownlint-disable MD013 -->
-| Column | Type | Description |
-| ------ | ---- | ----------- |
-| `id` | uniqueidentifier PK | Opaque profile revision identity |
-| `ai_run_profile_id` | uniqueidentifier FK | Fixed profile slot |
-| `ai_connection_model_revision_id` | uniqueidentifier FK, nullable | Exact selected model revision; required outside draft |
-| `revision_number` | integer | Per-profile sequence |
-| `status` | nvarchar(24) | `draft`, `active`, or `superseded` |
-| `capability_policy_json` | nvarchar(max) | Versioned `disabled` / `allowed` / `required` policy |
-| `total_time_budget_seconds` | integer | Total queue and execution budget, 300-3600 seconds |
-| `inactivity_time_budget_seconds` | integer | Inactivity budget, at least 300 seconds and no greater than total |
-| `queue_capacity` | integer | FIFO queue capacity, 0-100 |
-| `maximum_output_tokens` | integer | Provider output-token ceiling, 1-1,000,000 |
-| `maximum_output_bytes` | integer | Complete model-output ceiling, 1-67,108,864 bytes |
-| `maximum_retained_memory_bytes` | integer | Per-run adapter/coordinator retained-memory ceiling, 1-134,217,728 bytes |
-| `maximum_buffered_events` | integer | Maximum parsed upstream events held at once, 1-1,024 |
-| `created_at` | datetime2(3) | Revision creation time |
-| `activated_at` | datetime2(3), nullable | Activation time |
-| `superseded_at` | datetime2(3), nullable | Replacement time |
-| `revision_token` | uniqueidentifier | Optimistic concurrency token |
-<!-- markdownlint-enable MD013 -->
-
-The trigger `trg_ai_run_profile_revisions_immutable` keeps the profile identity
-and sequence immutable, permits content edits only while both old and new
-status are `draft`, and prevents changes to active or superseded content.
-Once a revision leaves `draft`, it cannot return. Drafts may be deleted and
-replaced. Activation only changes lifecycle fields and must occur
-transactionally after validating all dependencies.
 
 ### `ai_connection_model_operational_states`
 
@@ -2016,8 +1982,8 @@ half-open leases are reclaimable, and five failed probes require manual
 recovery. The lease fields are either all null or all populated. Demo seed
 creates ordinary OpenRouter and self-hosted vLLM connection drafts, a
 realistically populated but unapproved OpenRouter attestation draft, an
-explicit absence of any vLLM attestation, and three model-free draft profile
-revisions.
+explicit absence of any vLLM attestation, and three disconnected stable
+profiles.
 It never creates provider secrets, external model IDs, verification evidence,
 operational state, or activation. Seeded connections have no special runtime
 provenance or behavior.
@@ -2048,7 +2014,8 @@ admission.
 | `fencing_token` | uniqueidentifier | Per-invocation token preventing stale or duplicate workers from mutating a newer lease |
 | `ai_connection_id` | uniqueidentifier FK | Connection whose distributed concurrency is consumed |
 | `ai_connection_model_revision_id` | uniqueidentifier FK | Exact model revision and optional lower concurrency ceiling |
-| `ai_run_profile_revision_id` | uniqueidentifier FK | Exact profile revision and queue policy |
+| `ai_run_profile_id` | uniqueidentifier FK | Stable profile identity |
+| `ai_run_profile_configuration_version` | integer | Exact profile configuration used at admission |
 | `queue_sequence` | bigint identity, UK | Monotonic FIFO order |
 | `status` | nvarchar(24) | `queued`, `running`, or `retry_wait` |
 | `attempt_count` | tinyint | Acquired attempts, 0-2 |
@@ -3240,9 +3207,6 @@ its purpose and the table/column(s) it covers.
 | `uq_ai_connection_attestations_valid_connection` | `ai_connection_attestations` | `ai_connection_id` where `status = 'valid'` | Permits at most one valid attestation per connection |
 | `uq_ai_connection_model_revisions_model_revision` | `ai_connection_model_revisions` | `(ai_connection_model_id, revision_number)` | Preserves ordered immutable model revision history |
 | `uq_ai_run_profiles_profile_key` | `ai_run_profiles` | `profile_key` | Ensures exactly one slot per fixed request type |
-| `uq_ai_run_profile_revisions_profile_revision` | `ai_run_profile_revisions` | `(ai_run_profile_id, revision_number)` | Preserves ordered immutable profile revision history |
-| `uq_ai_run_profile_revisions_active_profile` | `ai_run_profile_revisions` | `ai_run_profile_id` where `status = 'active'` | Enforces at most one active revision per profile slot |
-| `uq_ai_run_profile_revisions_draft_profile` | `ai_run_profile_revisions` | `ai_run_profile_id` where `status = 'draft'` | Enforces at most one draft revision per profile slot |
 | `uq_ai_connection_model_operational_states_revision` | `ai_connection_model_operational_states` | `ai_connection_model_revision_id` | Keeps operational state bound one-to-one to an exact model revision |
 | `uq_ai_run_coordination_entries_application_run_id` | `ai_run_coordination_entries` | `application_run_id` | Prevents one application run from occupying multiple queue or lease rows |
 | `uq_ai_run_coordination_entries_queue_sequence` | `ai_run_coordination_entries` | `queue_sequence` | Preserves a global monotonic FIFO tiebreaker across app nodes |
@@ -3334,7 +3298,8 @@ its purpose and the table/column(s) it covers.
 | `idx_ai_connection_models_ai_connection_id` | `ai_connection_models` | `ai_connection_id` | List stable models under a connection |
 | `idx_ai_connection_model_revisions_status` | `ai_connection_model_revisions` | `status` | Filter model revisions by lifecycle |
 | `idx_ai_connection_model_verification_evidence_revision` | `ai_connection_model_verification_evidence` | `(ai_connection_model_revision_id, verified_at)` | Resolve latest capability evidence for an exact revision |
-| `idx_ai_run_profile_revisions_model_revision` | `ai_run_profile_revisions` | `ai_connection_model_revision_id` | Find profiles blocked by a changed model revision |
+| `idx_ai_run_profiles_ai_connection_model_revision_id` | `ai_run_profiles` | `ai_connection_model_revision_id` | Find stable profiles that select a model revision |
+| `idx_ai_run_coordination_entries_ai_run_profile_id_ai_run_profile_configuration_version` | `ai_run_coordination_entries` | `(ai_run_profile_id, ai_run_profile_configuration_version)` | Resolve runs by stable profile and captured configuration |
 | `idx_ai_connection_model_operational_states_recovery` | `ai_connection_model_operational_states` | `(circuit_breaker_status, next_recovery_at)` | Coordinate due circuit-breaker recovery attempts |
 | `idx_ai_connection_model_operational_states_lease_expires_at` | `ai_connection_model_operational_states` | `lease_expires_at` | Reclaim expired cross-node recovery leases |
 | `idx_ai_run_coordination_entries_fifo` | `ai_run_coordination_entries` | `(ai_connection_id, status, not_before, queue_sequence)` | Acquire the eligible FIFO head under a serializable SQL transaction |
@@ -3383,12 +3348,11 @@ The following table lists every named FK constraint:
 | `fk_ai_connection_model_revisions_ai_connection_model_id` | `ai_connection_model_revisions` | `ai_connection_model_id` | `ai_connection_models.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_model_verification_evidence_ai_connection_model_revision_id` | `ai_connection_model_verification_evidence` | `ai_connection_model_revision_id` | `ai_connection_model_revisions.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_model_verification_evidence_ai_connection_verification_evidence_id` | `ai_connection_model_verification_evidence` | `ai_connection_verification_evidence_id` | `ai_connection_verification_evidence.id` | NO ACTION | NO ACTION |
-| `fk_ai_run_profile_revisions_ai_run_profile_id` | `ai_run_profile_revisions` | `ai_run_profile_id` | `ai_run_profiles.id` | NO ACTION | NO ACTION |
-| `fk_ai_run_profile_revisions_ai_connection_model_revision_id` | `ai_run_profile_revisions` | `ai_connection_model_revision_id` | `ai_connection_model_revisions.id` | NO ACTION | NO ACTION |
+| `fk_ai_run_profiles_ai_connection_model_revision_id` | `ai_run_profiles` | `ai_connection_model_revision_id` | `ai_connection_model_revisions.id` | NO ACTION | NO ACTION |
 | `fk_ai_connection_model_operational_states_ai_connection_model_revision_id` | `ai_connection_model_operational_states` | `ai_connection_model_revision_id` | `ai_connection_model_revisions.id` | CASCADE | NO ACTION |
 | `fk_ai_run_coordination_entries_ai_connection_id` | `ai_run_coordination_entries` | `ai_connection_id` | `ai_connections.id` | NO ACTION | NO ACTION |
 | `fk_ai_run_coordination_entries_ai_connection_model_revision_id` | `ai_run_coordination_entries` | `ai_connection_model_revision_id` | `ai_connection_model_revisions.id` | NO ACTION | NO ACTION |
-| `fk_ai_run_coordination_entries_ai_run_profile_revision_id` | `ai_run_coordination_entries` | `ai_run_profile_revision_id` | `ai_run_profile_revisions.id` | NO ACTION | NO ACTION |
+| `fk_ai_run_coordination_entries_ai_run_profile_id` | `ai_run_coordination_entries` | `ai_run_profile_id` | `ai_run_profiles.id` | NO ACTION | NO ACTION |
 | `fk_ai_forensic_evidence_events_ai_forensic_capture_window_id` | `ai_forensic_evidence_events` | `ai_forensic_capture_window_id` | `ai_forensic_capture_windows.id` | CASCADE | NO ACTION |
 | `fk_requirement_area_co_authors_area_id` | `requirement_area_co_authors` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
 | `fk_requirement_area_co_authors_hsa_id` | `requirement_area_co_authors` | `hsa_id` | `requirement_responsibility_people.hsa_id` | NO ACTION | NO ACTION |
@@ -3493,7 +3457,6 @@ graph LR
         AICMR[ai_connection_model_revisions]
         AICMVE[ai_connection_model_verification_evidence]
         AIRP[ai_run_profiles]
-        AIRPR[ai_run_profile_revisions]
         AICMOS[ai_connection_model_operational_states]
         AIRCE[ai_run_coordination_entries]
     end
@@ -3579,13 +3542,13 @@ graph LR
     AICMVE -- "FK model_revision_id" --> AICMR
     AICMVE -- "FK connection_evidence_id" --> AICVE
     AIRP -- "uq_..._profile_key\n(profile_key)" --> AIRP
-    AIRPR -- "FK ai_run_profile_id" --> AIRP
-    AIRPR -- "FK model_revision_id" --> AICMR
-    AIRPR -- "uq_..._active_profile\n(profile_id WHERE active)" --> AIRP
+    AIRP -- "FK model_revision_id" --> AICMR
+    AIRP -- "idx_..._model_revision\n(model_revision_id)" --> AICMR
     AICMOS -- "FK/UK model_revision_id" --> AICMR
     AIRCE -- "FK connection_id" --> AIC
     AIRCE -- "FK model_revision_id" --> AICMR
-    AIRCE -- "FK profile_revision_id" --> AIRPR
+    AIRCE -- "FK profile_id" --> AIRP
+    AIRCE -- "idx_..._profile\n(profile_id, configuration_version)" --> AIRP
     AIRCE -- "uq_..._application_run_id\n(application_run_id)" --> AIRCE
     AIRCE -- "uq_..._queue_sequence\n(queue_sequence)" --> AIRCE
     AIRCE -- "idx_..._fifo\n(connection_id, status, not_before, queue_sequence)" --> AIRCE
@@ -3770,11 +3733,11 @@ Through `kravhantering_runtime`, `dbo.migrations` is `SELECT`-only.
 retention evidence tables have similarly explicit workflow/privacy columns and
 no unsupported deletion. `ai_forensic_capture_windows` has explicit lifecycle
 CRUD, while `ai_forensic_evidence_events` permits only `SELECT`, `INSERT`, and
-`DELETE` so stored evidence cannot be edited in place. AI connection and
-model and profile revision drafts permit guarded runtime deletion; database
-triggers reject deletion of non-draft history, while foreign keys reject
-deletion of referenced model drafts. Both connection and model verification
-evidence tables are append-only through `SELECT` and `INSERT`.
+`DELETE` so stored evidence cannot be edited in place. AI connection model
+revisions use guarded end and permanent-delete workflows; stable profile and
+coordination references reject deletion while the revision is in use. Both
+connection and model verification evidence tables are append-only during the
+ordinary verification workflow.
 Runtime has no DDL,
 ownership, role-administration, or stored-procedure execution grant.
 

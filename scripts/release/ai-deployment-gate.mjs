@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
-export const AI_DEPLOYMENT_EVIDENCE_SCHEMA_VERSION = 2
+export const AI_DEPLOYMENT_EVIDENCE_SCHEMA_VERSION = 3
 
 export const AI_DEPLOYMENT_REQUIRED_CHECK_AXES = Object.freeze([
   'adapter_contract',
@@ -43,10 +43,11 @@ const AI_PATH_FIELDS = Object.freeze([
   'adapterVersion',
   'aiConnectionId',
   'aiConnectionModelRevisionId',
-  'aiRunProfileRevisionId',
+  'aiRunProfileConfigurationVersion',
+  'aiRunProfileId',
   'connectionRevisionToken',
   'modelRevisionToken',
-  'profileRevisionToken',
+  'profileToken',
 ])
 const LIVE_EXECUTION_PROOF_FIELDS = Object.freeze([
   ...AI_PATH_FIELDS,
@@ -56,7 +57,7 @@ const LIVE_EXECUTION_PROOF_FIELDS = Object.freeze([
   'outcome',
   'testSuiteVersion',
 ])
-const FIXED_LIVE_SUITE_VERSION = 'ai-admin-functional-probe-v4'
+const FIXED_LIVE_SUITE_VERSION = 'ai-admin-functional-probe-v5'
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -90,6 +91,12 @@ function pathKey(path) {
 function validatePath(path, context) {
   assertExactFields(path, AI_PATH_FIELDS, context)
   for (const field of AI_PATH_FIELDS) {
+    if (field === 'aiRunProfileConfigurationVersion') {
+      if (!Number.isInteger(path[field]) || path[field] < 1) {
+        throw new Error(`${context}.${field} is invalid.`)
+      }
+      continue
+    }
     if (
       typeof path[field] !== 'string' ||
       !/^[A-Za-z0-9._:-]{1,160}$/u.test(path[field])
@@ -329,14 +336,12 @@ function validateEvidence(evidence) {
     ],
     'evidence.syntheticProbe',
   )
-  for (const field of AI_PATH_FIELDS) {
-    if (
-      typeof evidence.syntheticProbe[field] !== 'string' ||
-      !/^[A-Za-z0-9._:-]{1,160}$/u.test(evidence.syntheticProbe[field])
-    ) {
-      throw new Error(`evidence.syntheticProbe.${field} is invalid.`)
-    }
-  }
+  validatePath(
+    Object.fromEntries(
+      AI_PATH_FIELDS.map(field => [field, evidence.syntheticProbe[field]]),
+    ),
+    'evidence.syntheticProbe',
+  )
   assertBoolean(
     evidence.syntheticProbe.externalLiveCallMade,
     'evidence.syntheticProbe.externalLiveCallMade',

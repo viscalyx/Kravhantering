@@ -2,6 +2,9 @@
 
 Status: Antagen 2026-08-19.
 
+Modellverifierings- och körprofilflödet i detta beslut preciseras och ersätts
+av [ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
+
 Varje AI-anslutning ligger utanför Kravhanterings tillitsgräns, även när en
 ansluten agentmiljö körs som sidecar i samma nätverk. Adaptern är betrodd kod i
 AI-integrationslagret, medan AI-leverantören eller agentmiljön är en separat

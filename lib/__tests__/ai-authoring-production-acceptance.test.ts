@@ -74,7 +74,7 @@ vi.mock('@/lib/ai/safety', async importOriginal => ({
 
 const CONNECTION_ID = '10000000-0000-4000-8000-000000000867'
 const MODEL_REVISION_ID = '20000000-0000-4000-8000-000000000867'
-const PROFILE_REVISION_ID = '30000000-0000-4000-8000-000000000867'
+const PROFILE_ID = '30000000-0000-4000-8000-000000000867'
 const SECRET_VERSION_ID = '40000000-0000-4000-8000-000000000867'
 const ROOT_KEY = Buffer.alloc(32, 7).toString('base64')
 const KEYRING_DOCUMENT = JSON.stringify({
@@ -105,14 +105,6 @@ function persistedProfileRow() {
     attestationProcessingRegionsJson: '["SE"]',
     attestationSubprocessorsJson: '[]',
     authenticationType: 'static_secret',
-    capabilityPolicyJson: JSON.stringify({
-      aiAnalysis: 'allowed',
-      imageInput: 'disabled',
-      jsonSchema: 'required',
-      streaming: 'required',
-      usageMetadata: 'allowed',
-      validatableJson: 'required',
-    }),
     connectionAgentRuntimeVersion: null,
     connectionConfigurationVersion: 1,
     connectionId: CONNECTION_ID,
@@ -135,8 +127,8 @@ function persistedProfileRow() {
     modelRevisionMaximumConcurrency: 2,
     modelRevisionStatus: 'verified',
     operationalStatus: 'enabled',
-    profileRevisionId: PROFILE_REVISION_ID,
-    profileRevisionStatus: 'active',
+    profileConfigurationVersion: 1,
+    profileId: PROFILE_ID,
     queueCapacity: 2,
     tlsPolicyKey: 'acceptance-pki',
     totalTimeBudgetSeconds: 600,

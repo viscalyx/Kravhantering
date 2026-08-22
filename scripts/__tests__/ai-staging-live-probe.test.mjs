@@ -6,12 +6,13 @@ import {
   stagingLiveProbeConfiguration,
 } from '../release/ai-staging-live-probe.mjs'
 
-const ADMIN_PROBE_VERSION = 'ai-admin-functional-probe-v4'
+const ADMIN_PROBE_VERSION = 'ai-admin-functional-probe-v5'
 const PATH = Object.freeze({
   adapterType: 'openrouter',
   aiConnectionId: '10000000-0000-4000-8000-000000000001',
   aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000001',
-  aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000001',
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: '30000000-0000-4000-8000-000000000001',
 })
 const SECOND_PROFILE_REVISION_ID = '30000000-0000-4000-8000-000000000002'
 const CONFIGURED_PATHS = Object.freeze([
@@ -20,14 +21,16 @@ const CONFIGURED_PATHS = Object.freeze([
     adapterType: 'openrouter',
     aiConnectionId: '10000000-0000-4000-8000-000000000002',
     aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000002',
-    aiRunProfileRevisionId: SECOND_PROFILE_REVISION_ID,
+    aiRunProfileConfigurationVersion: 1,
+    aiRunProfileId: SECOND_PROFILE_REVISION_ID,
     profileKey: 'generation_with_images',
   }),
   Object.freeze({
     adapterType: 'openrouter',
     aiConnectionId: '10000000-0000-4000-8000-000000000003',
     aiConnectionModelRevisionId: '20000000-0000-4000-8000-000000000003',
-    aiRunProfileRevisionId: '30000000-0000-4000-8000-000000000003',
+    aiRunProfileConfigurationVersion: 1,
+    aiRunProfileId: '30000000-0000-4000-8000-000000000003',
     profileKey: 'invalid_json_repair',
   }),
 ])
@@ -50,14 +53,15 @@ const LIVE_PROOF = Object.freeze({
   adapterVersion: '1',
   aiConnectionId: PATH.aiConnectionId,
   aiConnectionModelRevisionId: PATH.aiConnectionModelRevisionId,
-  aiRunProfileRevisionId: PATH.aiRunProfileRevisionId,
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: PATH.aiRunProfileId,
   connectionRevisionToken: '40000000-0000-4000-8000-000000000001',
   executionId: '50000000-0000-4000-8000-000000000001',
   externalLiveCallMade: true,
   failureCategory: null,
   modelRevisionToken: '60000000-0000-4000-8000-000000000001',
   outcome: 'passed',
-  profileRevisionToken: '70000000-0000-4000-8000-000000000001',
+  profileToken: '70000000-0000-4000-8000-000000000001',
   testSuiteVersion: ADMIN_PROBE_VERSION,
 })
 const VERIFIED_PATH = Object.freeze({
@@ -65,10 +69,11 @@ const VERIFIED_PATH = Object.freeze({
   adapterVersion: LIVE_PROOF.adapterVersion,
   aiConnectionId: LIVE_PROOF.aiConnectionId,
   aiConnectionModelRevisionId: LIVE_PROOF.aiConnectionModelRevisionId,
-  aiRunProfileRevisionId: LIVE_PROOF.aiRunProfileRevisionId,
+  aiRunProfileConfigurationVersion: 1,
+  aiRunProfileId: LIVE_PROOF.aiRunProfileId,
   connectionRevisionToken: LIVE_PROOF.connectionRevisionToken,
   modelRevisionToken: LIVE_PROOF.modelRevisionToken,
-  profileRevisionToken: LIVE_PROOF.profileRevisionToken,
+  profileToken: LIVE_PROOF.profileToken,
 })
 
 function configuration(overrides = {}) {
@@ -121,14 +126,17 @@ const identityHeaders = Object.freeze({
   'x-kravhantering-deployment-environment-id': 'staging-eu-test',
 })
 
-function successfulFetch(profileRevisionIds = [PATH.aiRunProfileRevisionId]) {
+function successfulFetch(profileIds = [PATH.aiRunProfileId]) {
   return vi.fn(async (input, init = {}) => {
     const url = new URL(String(input))
     if (url.pathname === '/api/admin/ai-run-profiles') {
       return jsonResponse(
-        profileRevisionIds.map(activeRevisionId => ({
-          activeRevisionId,
+        profileIds.map(id => ({
           blockers: [],
+          configurationStatus: 'configured',
+          configurationVersion: 1,
+          id,
+          modelRevisionId: PATH.aiConnectionModelRevisionId,
           operationalStatus: 'enabled',
           profileKey: 'generation_without_images',
         })),
@@ -158,12 +166,13 @@ function successfulFetch(profileRevisionIds = [PATH.aiRunProfileRevisionId]) {
     ) {
       const body = JSON.parse(String(init.body))
       if (body.action === 'verify_live_path') {
-        const index = profileRevisionIds.indexOf(body.profileRevisionId)
+        const index = profileIds.indexOf(PATH.aiRunProfileId)
         return jsonResponse({
           ...LIVE_PROOF,
-          aiRunProfileRevisionId: body.profileRevisionId,
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: PATH.aiRunProfileId,
           executionId: `50000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-          profileRevisionToken: `70000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+          profileToken: `70000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
         })
       }
     }
@@ -172,13 +181,16 @@ function successfulFetch(profileRevisionIds = [PATH.aiRunProfileRevisionId]) {
 }
 
 function successfulDistinctPathsFetch(paths = CONFIGURED_PATHS) {
-  return vi.fn(async (input, init = {}) => {
+  return vi.fn(async (input, _init = {}) => {
     const url = new URL(String(input))
     if (url.pathname === '/api/admin/ai-run-profiles') {
       return jsonResponse(
         paths.map(path => ({
-          activeRevisionId: path.aiRunProfileRevisionId,
           blockers: [],
+          configurationStatus: 'configured',
+          configurationVersion: path.aiRunProfileConfigurationVersion,
+          id: path.aiRunProfileId,
+          modelRevisionId: path.aiConnectionModelRevisionId,
           operationalStatus: 'enabled',
           profileKey: path.profileKey,
         })),
@@ -192,18 +204,18 @@ function successfulDistinctPathsFetch(paths = CONFIGURED_PATHS) {
     )
     if (!path) throw new Error(`Unexpected URL: ${url}`)
     if (url.pathname.endsWith('/actions')) {
-      const body = JSON.parse(String(init.body))
       const index = paths.indexOf(path) + 1
       return jsonResponse({
         ...LIVE_PROOF,
         adapterType: path.adapterType,
         aiConnectionId: path.aiConnectionId,
         aiConnectionModelRevisionId: path.aiConnectionModelRevisionId,
-        aiRunProfileRevisionId: body.profileRevisionId,
+        aiRunProfileConfigurationVersion: 1,
+        aiRunProfileId: path.aiRunProfileId,
         connectionRevisionToken: `40000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
         executionId: `50000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
         modelRevisionToken: `60000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
-        profileRevisionToken: `70000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+        profileToken: `70000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
       })
     }
     return jsonResponse({
@@ -236,7 +248,7 @@ describe('staging-live synthetic AI probe', () => {
     ).toEqual({ status: 'skipped' })
   })
 
-  it('uses only the guarded-compatible fixed Admin v4 verification actions', async () => {
+  it('uses only the guarded-compatible fixed Admin v5 verification actions', async () => {
     const fetchImpl = successfulFetch()
 
     const result = await runAiStagingLiveSyntheticProbe(configuration(), {
@@ -271,7 +283,7 @@ describe('staging-live synthetic AI probe', () => {
           action: 'verify_live_path',
           expectedEnvironmentId: 'staging-eu-test',
           modelRevisionId: PATH.aiConnectionModelRevisionId,
-          profileRevisionId: PATH.aiRunProfileRevisionId,
+          profileKey: 'generation_without_images',
         },
         path: `/api/admin/ai-connections/${PATH.aiConnectionId}/actions`,
       },
@@ -283,7 +295,7 @@ describe('staging-live synthetic AI probe', () => {
     )
   })
 
-  it('emits a fragment that composes directly into strict gate v2 evidence', async () => {
+  it('emits a fragment that composes directly into strict gate v3 evidence', async () => {
     const fragment = await runAiStagingLiveSyntheticProbe(
       configuration({ intendedPaths: CONFIGURED_PATHS }),
       { fetchImpl: successfulDistinctPathsFetch() },
@@ -313,7 +325,7 @@ describe('staging-live synthetic AI probe', () => {
           databaseAndKeyringRestoredTogether: true,
           providerSecretsAuthenticated: true,
         },
-        schemaVersion: 2,
+        schemaVersion: 3,
         secureDefaults: {
           contentGatesVerified: true,
           privacyFloorVerified: true,
@@ -349,7 +361,7 @@ describe('staging-live synthetic AI probe', () => {
           databaseAndKeyringRestoredTogether: true,
           providerSecretsAuthenticated: true,
         },
-        schemaVersion: 2,
+        schemaVersion: 3,
         secureDefaults: {
           contentGatesVerified: true,
           privacyFloorVerified: true,
@@ -386,7 +398,7 @@ describe('staging-live synthetic AI probe', () => {
           databaseAndKeyringRestoredTogether: true,
           providerSecretsAuthenticated: true,
         },
-        schemaVersion: 2,
+        schemaVersion: 3,
         secureDefaults: {
           contentGatesVerified: true,
           privacyFloorVerified: true,
@@ -558,14 +570,17 @@ describe('staging-live synthetic AI probe', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
-  it('preflights every configured profile revision before live actions', async () => {
+  it('preflights every configured stable profile before live actions', async () => {
     const fetchImpl = successfulDistinctPathsFetch()
     fetchImpl.mockImplementationOnce(async () =>
       jsonResponse(
         [
           {
-            activeRevisionId: PATH.aiRunProfileRevisionId,
             blockers: [],
+            configurationStatus: 'configured',
+            configurationVersion: 1,
+            id: PATH.aiRunProfileId,
+            modelRevisionId: PATH.aiConnectionModelRevisionId,
             operationalStatus: 'enabled',
             profileKey: 'generation_without_images',
           },
@@ -581,7 +596,9 @@ describe('staging-live synthetic AI probe', () => {
         }),
         { fetchImpl },
       ),
-    ).rejects.toThrow('Every intended profile revision must be active')
+    ).rejects.toThrow(
+      'Every intended profile must be configured, enabled, and unblocked',
+    )
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
@@ -607,7 +624,7 @@ describe('staging-live synthetic AI probe', () => {
       runAiStagingLiveSyntheticProbe(configuration(), {
         fetchImpl: wrongSuite,
       }),
-    ).rejects.toThrow('fixed Admin functional probe v4')
+    ).rejects.toThrow('fixed Admin functional probe v5')
   })
 
   it.each([
@@ -630,7 +647,7 @@ describe('staging-live synthetic AI probe', () => {
 
     await expect(
       runAiStagingLiveSyntheticProbe(configuration(), { fetchImpl }),
-    ).rejects.toThrow('fixed Admin functional probe v4')
+    ).rejects.toThrow('fixed Admin functional probe v5')
   })
 
   it('bounds every request deadline and response size', async () => {

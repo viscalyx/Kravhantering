@@ -14,9 +14,10 @@ import {
 export const POST = secureMutationRoute({
   bodySchema: aiConnectionActionSchema,
   errorMessage: 'Failed to perform AI connection action.',
+  handlerErrorDetails: 'ai_admin_model_dependencies',
   paramsSchema: aiConnectionParamsSchema,
   policy: adminMutationPolicy(),
-  handler: async ({ body, context, params }) => {
+  handler: async ({ body, context, params, request }) => {
     if (body.action === 'verify_live_path') {
       assertAiStagingLiveVerificationAllowed(body.expectedEnvironmentId)
     }
@@ -53,12 +54,15 @@ export const POST = secureMutationRoute({
       case 'delete_secret_candidate':
         await service.deleteSecretCandidate(connectionId, body.secretVersionId)
         return new NextResponse(null, { status: 204 })
-      case 'delete_connection_model':
-        await service.deleteConnectionModel({
+      case 'delete_model_revision':
+        await service.deleteModelRevision({
           connectionId,
-          modelId: body.modelId,
+          modelRevisionId: body.modelRevisionId,
           revisionToken: body.revisionToken,
         })
+        return new NextResponse(null, { status: 204 })
+      case 'discard_model_verification':
+        service.discardModelVerification(body.attemptId)
         return new NextResponse(null, { status: 204 })
       case 'discard_attestation_draft':
         await service.discardAttestationDraft({
@@ -70,15 +74,6 @@ export const POST = secureMutationRoute({
         return new NextResponse(null, { status: 204 })
       case 'fetch_catalog':
         return NextResponse.json(await service.fetchCatalog(connectionId))
-      case 'discover_model_capabilities':
-        return NextResponse.json(
-          await service.discoverModelCapabilities({
-            capabilities: body.capabilities,
-            connectionId,
-            externalModelId: body.externalModelId,
-            externalModelVersion: body.externalModelVersion,
-          }),
-        )
       case 'probe_health':
         return NextResponse.json(
           await service.probeHealth({
@@ -102,9 +97,9 @@ export const POST = secureMutationRoute({
             modelRevision: body.modelRevision,
           }),
         )
-      case 'retire_model_revision':
+      case 'end_model_revision':
         return NextResponse.json(
-          await service.retireModelRevision({
+          await service.endModelRevision({
             connectionId,
             modelRevisionId: body.modelRevisionId,
             revisionToken: body.revisionToken,
@@ -118,23 +113,47 @@ export const POST = secureMutationRoute({
             status: body.status,
           }),
         )
-      case 'verify_connection':
-        return NextResponse.json(await service.verifyConnection(connectionId))
+      case 'verify_model_candidate': {
+        const encoder = new TextEncoder()
+        const stream = new ReadableStream<Uint8Array>({
+          async start(controller) {
+            const send = (value: unknown): void => {
+              controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`))
+            }
+            try {
+              const result = await service.verifyModelCandidate({
+                candidate: {
+                  externalModelId: body.externalModelId,
+                  externalModelVersion: body.externalModelVersion,
+                },
+                connectionId,
+                onProgress: progress => send({ progress, type: 'progress' }),
+                signal: request.signal,
+              })
+              send({ result, type: 'completed' })
+            } catch {
+              send({
+                error: 'Model verification could not be completed.',
+                type: 'failed',
+              })
+            } finally {
+              controller.close()
+            }
+          },
+        })
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'application/x-ndjson; charset=utf-8',
+          },
+        })
+      }
       case 'verify_live_path':
         return NextResponse.json(
           await service.verifyLivePath({
             connectionId,
             expectedEnvironmentId: body.expectedEnvironmentId,
             modelRevisionId: body.modelRevisionId,
-            profileRevisionId: body.profileRevisionId,
-          }),
-        )
-      case 'verify_model_revision':
-        return NextResponse.json(
-          await service.verifyModelRevision({
-            connectionId,
-            modelRevisionId: body.modelRevisionId,
-            revisionToken: body.revisionToken,
+            profileKey: body.profileKey,
           }),
         )
       case 'write_secret':

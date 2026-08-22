@@ -23,14 +23,14 @@ import type {
   AiConnectionModelRevisionId,
   AiExternalRunId,
   AiRunEvent,
-  AiRunProfileRevisionId,
+  AiRunProfileId,
 } from './run-contracts'
 import { AI_REQUEST_PRIVACY_MINIMUM } from './run-contracts'
 
 const MAX_CATALOG_BYTES = 4 * 1024 * 1024
 const ADMIN_GET_TIMEOUT_MS = 15_000
 const ADMIN_PROBE_PROFILE_REVISION_ID =
-  '00000000-0000-4000-8000-000000000865' as AiRunProfileRevisionId
+  '00000000-0000-4000-8000-000000000865' as AiRunProfileId
 
 interface CatalogModel {
   architecture?: { modality?: unknown }
@@ -137,9 +137,20 @@ async function readCatalog(
 
 async function fetchModels(
   context: Readonly<AiAdminAdapterContext>,
+  probe?: Readonly<{ abortSignal: AbortSignal; deadlineAt: string }>,
 ): Promise<readonly CatalogModel[]> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), ADMIN_GET_TIMEOUT_MS)
+  const abortFromProbe = (): void => controller.abort()
+  if (probe?.abortSignal.aborted) controller.abort()
+  else
+    probe?.abortSignal.addEventListener('abort', abortFromProbe, { once: true })
+  const remaining = probe
+    ? Math.max(0, new Date(probe.deadlineAt).getTime() - Date.now())
+    : ADMIN_GET_TIMEOUT_MS
+  const timeout = setTimeout(
+    () => controller.abort(),
+    Math.min(ADMIN_GET_TIMEOUT_MS, remaining),
+  )
   const headers = new Headers({ accept: 'application/json' })
   if (context.credential)
     headers.set('authorization', `Bearer ${context.credential}`)
@@ -161,6 +172,7 @@ async function fetchModels(
     )
   } finally {
     clearTimeout(timeout)
+    probe?.abortSignal.removeEventListener('abort', abortFromProbe)
     controller.abort()
   }
 }
@@ -244,7 +256,8 @@ function runOpenRouterAdminProbe(
       verifiedCapabilities: revision.declaredCapabilities,
     },
     privacyPolicy: AI_REQUEST_PRIVACY_MINIMUM,
-    runProfileRevisionId: ADMIN_PROBE_PROFILE_REVISION_ID,
+    runProfileConfigurationVersion: 1,
+    runProfileId: ADMIN_PROBE_PROFILE_REVISION_ID,
     selectedCapabilities: probe.selectedCapabilities,
     task: probe.task,
   })
@@ -344,9 +357,9 @@ const openRouterAdminAdapter: AiAdminConnectionAdapter = {
       return item ? [item] : []
     })
   },
-  async probeConnection(context) {
+  async probeConnection(context, probe) {
     try {
-      await fetchModels(context)
+      await fetchModels(context, probe)
       return {
         details: { catalogReachable: true },
         failureCategory: null,

@@ -469,7 +469,8 @@ _Avoid_: AI-leverantör, AI-anslutning, OpenRouter-integration.
 Ett maskinverifierbart och innehållsfritt bevis på att en bestämd miljös
 keyring, egress, säkra standarder, attest, anslutning, modellförmågor,
 körprofiler och driftlarm uppfyller villkoren för att släppa den globala
-AI-spärren. Beviset binder exakta avsedda och verifierade revisionstupler samt
+AI-spärren. Beviset binder varje stabil körprofils identitet och
+konfigurationsversion till exakt anslutnings- och modellrevision samt
 versionerade kontrollaxlar; antal eller en representativ väg räcker inte.
 
 - `en`: AI deployment evidence
@@ -478,7 +479,7 @@ _Avoid_: AI-hälsa, readiness, fritextintyg, staging-liveprov.
 
 **Staging-liveprov för AI**:
 Ett explicit aktiverat prov som kräver serverbevisad stagingidentitet och aktiv
-global AI-spärr, förhandskontrollerar samtliga avsedda körprofilrevisioner och
+global AI-spärr, förhandskontrollerar samtliga avsedda stabila körprofiler och
 använder den fasta syntetiska Admin-verifieringssviten för den avsedda
 live-adaptern.
 
@@ -504,21 +505,15 @@ måste vara verifierade för att modellen ska kunna väljas av en körprofil.
 _Avoid_: Modellval, fristående modell, leverantörsmodell.
 
 **Körprofil**:
-Administratörens styrning av vilken anslutningsmodell och vilka tillåtna eller
-krävda förmågor som gäller för en bestämd typ av AI-anrop.
+En av tre stabila, applikationsägda anropstyper med fasta minimiförmågor.
+Administratören väljer en verifierad anslutningsmodellrevision och
+driftbudgetar; varje ändring höjer konfigurationsversionen och gäller nya
+körningar.
 
 - `en`: Run profile
 
-_Avoid_: Användarprofil, modellfavorit, automatisk routning.
-
-**Körprofilrevision**:
-En bestämd version av en körprofil som binder en anropstyp till en verifierad
-anslutningsmodell och en beslutad förmågepolicy.
-
-- `en`: Run profile revision
-
-_Avoid_: Körprofil när en bestämd version av styrningen avses,
-modellrevision.
+_Avoid_: Användarprofil, modellfavorit, automatisk routning,
+körprofilrevision.
 
 **AI-analys**:
 Modellens stödjande resonemang som visas tillsammans med förslag i

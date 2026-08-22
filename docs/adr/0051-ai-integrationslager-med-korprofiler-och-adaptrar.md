@@ -2,6 +2,9 @@
 
 Status: Antagen 2026-08-19.
 
+Körprofilrevisioner och det separata modellutkastflödet i detta beslut ersätts
+av [ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
+
 Kravhantering utför AI-anrop genom ett applikationsägt AI-integrationslager
 med två kontraktsnivåer. `AIIntegrationLayer.run(...)` tar anropstyp,
 uppgiftskuvert och teknisk körkontext, väljer den administratörsstyrda

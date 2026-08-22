@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import type { AiAdminConnectionAdapter } from '@/lib/ai/admin-adapter'
 import type { AiAdminConnectionDetail } from '@/lib/ai/admin-service'
-import { openRouterAdminAdapterRegistration } from '@/lib/ai/openrouter-admin-adapter'
+import { controlledTestAdminAdapterRegistration } from '@/lib/ai/controlled-test-admin-adapter'
 import {
   decryptAiProviderSecret,
   encryptAiProviderSecret,
@@ -180,741 +180,97 @@ describe('AI provider-secret service', () => {
     expect(adapter.fetchCatalog).not.toHaveBeenCalled()
   })
 
-  it('requires a complete schema-valid functional terminal and never overstates capabilities', async () => {
-    const connectionId = randomUUID()
-    const revisionId = randomUUID()
-    const capabilities = {
-      aiAnalysis: true,
-      cost: true,
-      imageInput: true,
-      jsonSchemaSteering: true,
-      streaming: true,
-      tokenUsage: true,
-      validatableJson: true,
+  it('verifies every capability and fixed run-profile contract before a model can be saved', async () => {
+    const progress: string[] = []
+    const cancellationProbe = vi.fn(
+      controlledTestAdminAdapterRegistration.adapter
+        .runActivationCancellationProbe,
+    )
+    const negativeProbe = vi.fn(
+      controlledTestAdminAdapterRegistration.adapter.runActivationNegativeProbe,
+    )
+    const adapter: AiAdminConnectionAdapter = {
+      ...controlledTestAdminAdapterRegistration.adapter,
+      runActivationCancellationProbe: cancellationProbe,
+      runActivationNegativeProbe: negativeProbe,
     }
-    let run = 0
-    const negativeCases: string[] = []
-    const adapter = {
-      async *runActivationNegativeProbe(
-        _context: unknown,
-        _revision: unknown,
-        _probe: unknown,
-        negativeCase: string,
-      ) {
-        negativeCases.push(negativeCase)
-        yield {
-          failure: {
-            category:
-              negativeCase === 'safe_provider_error'
-                ? 'connection_unavailable'
-                : 'invalid_response',
-            diagnosticCode: 'normalized_conformance_failure',
-            retryable: false,
-          },
-          identity: {
-            aiConnectionId: connectionId,
-            aiConnectionModelRevisionId: revisionId,
-            aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-          },
-          type: 'failed',
-        }
-      },
-      async *runActivationCancellationProbe(
-        _context: unknown,
-        _revision: unknown,
-        probe: { abortSignal: AbortSignal },
-      ) {
-        expect(probe.abortSignal.aborted).toBe(false)
-        await new Promise<void>(resolve =>
-          probe.abortSignal.addEventListener('abort', () => resolve(), {
-            once: true,
-          }),
-        )
-        yield {
-          identity: {
-            aiConnectionId: connectionId,
-            aiConnectionModelRevisionId: revisionId,
-            aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-          },
-          reason: 'application_cancelled',
-          type: 'cancelled',
-        }
-      },
-      async *runFunctionalProbe(
-        _context: unknown,
-        _revision: unknown,
-        probe: {
-          abortSignal: AbortSignal
-          selectedCapabilities: typeof capabilities
-          task: { content: readonly { type: string }[] }
-        },
-      ) {
-        run += 1
-        expect(probe.task.content.some(part => part.type === 'image')).toBe(
-          probe.selectedCapabilities.imageInput,
-        )
-        if (probe.selectedCapabilities.streaming && run !== 4) {
-          yield {
-            delta: '{"probe":',
-            type: 'output_delta',
-            visibility: 'internal',
-          }
-        }
-        yield {
-          analysis: probe.selectedCapabilities.aiAnalysis ? 'analysis' : null,
-          identity: {
-            aiConnectionId: connectionId,
-            aiConnectionModelRevisionId: revisionId,
-            aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-          },
-          rawOutput: run <= 2 ? '{"probe":"wrong"}' : '{"probe":"ok"}',
-          type: 'completed',
-          usage: {
-            analysisTokens: { reason: 'not_supported', status: 'unavailable' },
-            cost: { reason: 'not_supported', status: 'unavailable' },
-            inputTokens: { reason: 'not_supported', status: 'unavailable' },
-            outputTokens: { reason: 'not_supported', status: 'unavailable' },
-            totalTokens: { reason: 'not_supported', status: 'unavailable' },
-          },
-        }
-      },
-    } as unknown as AiAdminConnectionAdapter
-    const connection = {
-      authenticationType: 'none',
-      id: connectionId,
-    } as AiAdminConnectionDetail
-    const revision = {
-      declaredCapabilities: capabilities,
-      id: revisionId,
-      verifiedCapabilities: capabilities,
-    } as AiAdminConnectionDetail['models'][number]['revisions'][number]
     const service = new AiProviderSecretAdminService(
       database(vi.fn()).db,
       keyring('root-1', { 'root-1': randomBytes(32) }),
     )
-    const egress = { fetch: vi.fn() } as AiEgressTransport
 
-    await expect(
-      service.verifyModelRevision(adapter, connection, egress, revision),
-    ).resolves.toMatchObject({ outcome: 'failed' })
-    await expect(
-      service.probeHealth(adapter, connection, egress, revision),
-    ).resolves.toMatchObject({
-      health: 'degraded',
-      invalidationScope: 'model',
-    })
-    const noCapabilities = Object.fromEntries(
-      Object.keys(capabilities).map(capability => [capability, false]),
-    ) as typeof capabilities
-    await expect(
-      service.verifyModelRevision(adapter, connection, egress, {
-        ...revision,
-        declaredCapabilities: noCapabilities,
-      }),
-    ).resolves.toMatchObject({
-      outcome: 'passed',
-      testSuiteVersion: 'ai-admin-functional-probe-v4',
-      verifiedCapabilities: noCapabilities,
-    })
-    expect(negativeCases).toEqual(
-      expect.arrayContaining([
-        'prohibited_callback',
-        'prohibited_function_call',
-        'prohibited_tool_calls',
-        'safe_provider_error',
-      ]),
-    )
-    await expect(
-      service.probeHealth(adapter, connection, egress, {
-        ...revision,
-        verifiedCapabilities: {
-          ...noCapabilities,
-          streaming: true,
-          tokenUsage: true,
+    const result = await service.verifyModelCandidate(
+      adapter,
+      {
+        authenticationType: 'none',
+        configurationVersion: 3,
+        id: randomUUID(),
+        models: [],
+      } as unknown as AiAdminConnectionDetail,
+      { fetch: vi.fn() } as AiEgressTransport,
+      {
+        externalModelId: 'controlled/verified-model',
+        externalModelVersion: '2026-08-22',
+      },
+      {
+        onProgress: event => {
+          if (event.state === 'completed') progress.push(event.check)
         },
-      }),
-    ).resolves.toMatchObject({
-      failureCategory: 'capability_mismatch',
-      health: 'degraded',
-      invalidationScope: 'model',
-    })
-  })
+        signal: new AbortController().signal,
+      },
+    )
 
-  it('accepts the real OpenRouter negative-probe retry classification', async () => {
-    const connectionId = randomUUID()
-    const revisionId = randomUUID()
-    const secretVersionId = randomUUID()
-    const ring = keyring('root-1', { 'root-1': randomBytes(32) })
-    const service = new AiProviderSecretAdminService(
-      database(
-        vi.fn(async () => [
-          persistedRow(
-            connectionId,
-            secretVersionId,
-            'opaque-openrouter-secret',
-            ring,
-          ),
+    expect(result.saveable).toBe(true)
+    expect(cancellationProbe).toHaveBeenCalledOnce()
+    expect(negativeProbe).toHaveBeenCalledTimes(4)
+    expect(result.capabilities).toEqual(
+      Object.fromEntries(
+        [
+          'aiAnalysis',
+          'cost',
+          'imageInput',
+          'jsonSchemaSteering',
+          'streaming',
+          'tokenUsage',
+          'validatableJson',
+        ].map(capability => [
+          capability,
+          { failureCategory: null, outcome: 'verified' },
         ]),
-      ).db,
-      ring,
-    )
-    let fetchCount = 0
-    let functionalRequestBody: Record<string, unknown> | undefined
-    const egress = {
-      fetch: vi.fn(async (_url: string, init: RequestInit) => {
-        fetchCount += 1
-        if (fetchCount === 1) {
-          return await new Promise<Response>((_resolve, reject) => {
-            init.signal?.addEventListener(
-              'abort',
-              () => reject(new DOMException('Aborted', 'AbortError')),
-              { once: true },
-            )
-          })
-        }
-        functionalRequestBody = JSON.parse(String(init.body)) as Record<
-          string,
-          unknown
-        >
-        return new Response(
-          JSON.stringify({
-            choices: [
-              {
-                message: {
-                  content: '{"probe":"ok"}',
-                  reasoning: 'bounded probe analysis',
-                },
-              },
-            ],
-            usage: {},
-          }),
-          { headers: { 'content-type': 'application/json' } },
-        )
-      }),
-    } as AiEgressTransport
-    const capabilities = {
-      aiAnalysis: true,
-      cost: false,
-      imageInput: false,
-      jsonSchemaSteering: false,
-      streaming: false,
-      tokenUsage: false,
-      validatableJson: false,
-    }
-
-    await expect(
-      service.verifyModelRevision(
-        openRouterAdminAdapterRegistration.adapter,
-        {
-          authenticationType: 'static_secret',
-          endpointUrl: 'https://openrouter.ai/api/v1',
-          id: connectionId,
-        } as AiAdminConnectionDetail,
-        egress,
-        {
-          declaredCapabilities: capabilities,
-          externalModelId: 'openai/example-model',
-          id: revisionId,
-        } as AiAdminConnectionDetail['models'][number]['revisions'][number],
       ),
-    ).resolves.toMatchObject({
-      details: { adapterConformance: true },
-      outcome: 'passed',
-    })
-    expect(functionalRequestBody).toMatchObject({
-      include_reasoning: true,
-      max_tokens: 1_536,
-      messages: expect.arrayContaining([
-        expect.objectContaining({
-          content: expect.stringContaining('concise visible analysis summary'),
-          role: 'system',
-        }),
-      ]),
-      reasoning: { effort: 'low' },
-    })
-  })
-
-  it('fails activation evidence for incomplete adapter conformance', async () => {
-    const connectionId = randomUUID()
-    const revisionId = randomUUID()
-    const terminal = (extra: Record<string, unknown> = {}) => ({
-      analysis: null,
-      identity: {
-        aiConnectionId: connectionId,
-        aiConnectionModelRevisionId: revisionId,
-        aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-      },
-      rawOutput: '{"probe":"ok"}',
-      type: 'completed',
-      usage: {
-        analysisTokens: { reason: 'not_supported', status: 'unavailable' },
-        cost: { reason: 'not_supported', status: 'unavailable' },
-        inputTokens: { reason: 'not_supported', status: 'unavailable' },
-        outputTokens: { reason: 'not_supported', status: 'unavailable' },
-        totalTokens: { reason: 'not_supported', status: 'unavailable' },
-      },
-      ...extra,
-    })
-    const adapter = {
-      async *runActivationNegativeProbe() {
-        yield terminal({ providerRawError: 'raw credential detail' }) as never
-      },
-      async *runActivationCancellationProbe() {
-        yield terminal()
-      },
-      async *runFunctionalProbe() {
-        yield terminal()
-      },
-    } as unknown as AiAdminConnectionAdapter
-    const service = new AiProviderSecretAdminService(
-      database(vi.fn()).db,
-      keyring('root-1', { 'root-1': randomBytes(32) }),
     )
-    const connection = {
-      authenticationType: 'none',
-      id: connectionId,
-    } as AiAdminConnectionDetail
-    const revision = {
-      declaredCapabilities: {
-        aiAnalysis: false,
-        cost: false,
-        imageInput: false,
-        jsonSchemaSteering: false,
-        streaming: false,
-        tokenUsage: false,
-        validatableJson: false,
+    expect(result.profileCompatibility).toEqual({
+      generation_with_images: {
+        failureCategory: null,
+        missingCapabilities: [],
+        supported: true,
       },
-      id: revisionId,
-    } as AiAdminConnectionDetail['models'][number]['revisions'][number]
-    const egress = { fetch: vi.fn() } as AiEgressTransport
-
-    await expect(
-      service.verifyModelRevision(adapter, connection, egress, revision),
-    ).resolves.toMatchObject({ outcome: 'failed' })
-
-    adapter.runActivationCancellationProbe = async function* (
-      context,
-      model,
-      probe,
-    ) {
-      expect(probe.abortSignal.aborted).toBe(false)
-      await new Promise<void>(resolve =>
-        probe.abortSignal.addEventListener('abort', () => resolve(), {
-          once: true,
-        }),
-      )
-      yield {
-        identity: {
-          aiConnectionId: context.connection.id,
-          aiConnectionModelRevisionId: model.id,
-          aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-        },
-        reason: 'application_cancelled',
-        type: 'cancelled',
-      } as never
-    }
-    await expect(
-      service.verifyModelRevision(adapter, connection, egress, revision),
-    ).resolves.toMatchObject({ outcome: 'failed' })
-
-    adapter.runActivationNegativeProbe = async function* () {
-      yield terminal({ tool_calls: [{ id: 'forbidden' }] }) as never
-    }
-    await expect(
-      service.verifyModelRevision(adapter, connection, egress, revision),
-    ).resolves.toMatchObject({ outcome: 'failed' })
-  })
-
-  it('bounds a cancellation probe that never observes the signal or emits events', async () => {
-    vi.useFakeTimers()
-    try {
-      const connectionId = randomUUID()
-      const revisionId = randomUUID()
-      const capabilities = {
-        aiAnalysis: false,
-        cost: false,
-        imageInput: false,
-        jsonSchemaSteering: false,
-        streaming: false,
-        tokenUsage: false,
-        validatableJson: false,
-      }
-      const identity = {
-        aiConnectionId: connectionId,
-        aiConnectionModelRevisionId: revisionId,
-        aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-      }
-      const adapter = {
-        async *runActivationCancellationProbe() {
-          await new Promise<void>(() => undefined)
-        },
-        async *runActivationNegativeProbe(
-          _context: unknown,
-          _revision: unknown,
-          _probe: unknown,
-          negativeCase: string,
-        ) {
-          yield {
-            failure: {
-              category:
-                negativeCase === 'safe_provider_error'
-                  ? 'connection_unavailable'
-                  : 'invalid_response',
-              diagnosticCode: 'normalized_conformance_failure',
-              retryable: false,
-            },
-            identity,
-            type: 'failed',
-          }
-        },
-        async *runFunctionalProbe() {
-          yield {
-            analysis: null,
-            identity,
-            rawOutput: '{"probe":"ok"}',
-            type: 'completed',
-            usage: {
-              analysisTokens: {
-                reason: 'not_supported',
-                status: 'unavailable',
-              },
-              cost: { reason: 'not_supported', status: 'unavailable' },
-              inputTokens: {
-                reason: 'not_supported',
-                status: 'unavailable',
-              },
-              outputTokens: {
-                reason: 'not_supported',
-                status: 'unavailable',
-              },
-              totalTokens: {
-                reason: 'not_supported',
-                status: 'unavailable',
-              },
-            },
-          }
-        },
-      } as unknown as AiAdminConnectionAdapter
-      const service = new AiProviderSecretAdminService(
-        database(vi.fn()).db,
-        keyring('root-1', { 'root-1': randomBytes(32) }),
-      )
-      const verification = service.verifyModelRevision(
-        adapter,
-        {
-          authenticationType: 'none',
-          id: connectionId,
-        } as AiAdminConnectionDetail,
-        { fetch: vi.fn() } as AiEgressTransport,
-        {
-          declaredCapabilities: capabilities,
-          id: revisionId,
-        } as AiAdminConnectionDetail['models'][number]['revisions'][number],
-      )
-
-      await vi.advanceTimersByTimeAsync(30_000)
-      await vi.advanceTimersByTimeAsync(5_000)
-
-      await expect(verification).resolves.toMatchObject({
-        details: { cancellationHandled: false },
-        outcome: 'failed',
-      })
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
-  it('classifies credential contradictions as connection-wide health invalidation', async () => {
-    const connectionId = randomUUID()
-    const revisionId = randomUUID()
-    const adapter = {
-      async *runFunctionalProbe() {
-        yield {
-          failure: {
-            category: 'authentication_failed',
-            diagnosticCode: 'upstream_authentication_failed',
-            retryable: false,
-          },
-          identity: {
-            aiConnectionId: connectionId,
-            aiConnectionModelRevisionId: revisionId,
-            aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-          },
-          type: 'failed',
-        }
+      generation_without_images: {
+        failureCategory: null,
+        missingCapabilities: [],
+        supported: true,
       },
-    } as unknown as AiAdminConnectionAdapter
-    const service = new AiProviderSecretAdminService(
-      database(vi.fn()).db,
-      keyring('root-1', { 'root-1': randomBytes(32) }),
-    )
-
-    await expect(
-      service.probeHealth(
-        adapter,
-        {
-          authenticationType: 'none',
-          id: connectionId,
-        } as AiAdminConnectionDetail,
-        { fetch: vi.fn() } as AiEgressTransport,
-        {
-          declaredCapabilities: {},
-          id: revisionId,
-          verifiedCapabilities: {},
-        } as AiAdminConnectionDetail['models'][number]['revisions'][number],
-      ),
-    ).resolves.toMatchObject({
-      failureCategory: 'authentication_failed',
-      health: 'degraded',
-      invalidationScope: 'connection',
-    })
-  })
-
-  it('accepts reported and calculated usage while exercising admin passthrough operations', async () => {
-    const connectionId = randomUUID()
-    const revisionId = randomUUID()
-    const identity = {
-      aiConnectionId: connectionId,
-      aiConnectionModelRevisionId: revisionId,
-      aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-    }
-    const adapter = {
-      fetchCatalog: vi.fn(async () => []),
-      probeConnection: vi.fn(async () => ({ outcome: 'passed' })),
-      async *runFunctionalProbe() {
-        yield { delta: 'thinking', type: 'analysis_delta' }
-        yield {
-          delta: '{"probe":',
-          type: 'output_delta',
-          visibility: 'internal',
-        }
-        yield {
-          analysis: 'done',
-          identity,
-          rawOutput: '{"probe":"ok"}',
-          type: 'completed',
-          usage: {
-            analysisTokens: {
-              calculatedAt: '2026-08-20T00:00:00.000Z',
-              status: 'calculated',
-              value: 1,
-            },
-            cost: {
-              status: 'reported',
-              value: { amount: '0.01', currency: 'USD' },
-            },
-            inputTokens: { status: 'reported', value: 2 },
-            outputTokens: {
-              calculatedAt: '2026-08-20T00:00:00.000Z',
-              status: 'calculated',
-              value: 3,
-            },
-            totalTokens: { status: 'reported', value: 5 },
-          },
-        }
-      },
-      verifySecretCandidate: vi.fn(async () => undefined),
-    } as unknown as AiAdminConnectionAdapter
-    const service = new AiProviderSecretAdminService(
-      database(vi.fn()).db,
-      keyring('root-1', { 'root-1': randomBytes(32) }),
-    )
-    const connection = {
-      authenticationType: 'none',
-      id: connectionId,
-    } as AiAdminConnectionDetail
-    const egress = { fetch: vi.fn() } as AiEgressTransport
-    const revision = {
-      declaredCapabilities: {
-        aiAnalysis: true,
-        cost: true,
-        imageInput: false,
-        jsonSchemaSteering: true,
-        streaming: true,
-        tokenUsage: true,
-        validatableJson: true,
-      },
-      id: revisionId,
-    } as AiAdminConnectionDetail['models'][number]['revisions'][number]
-
-    await expect(
-      service.fetchCatalog(adapter, connection, egress),
-    ).resolves.toEqual([])
-    await expect(
-      service.probeConnection(adapter, connection, egress),
-    ).resolves.toEqual({
-      outcome: 'passed',
-    })
-    await expect(
-      service.probeHealth(adapter, connection, egress, revision),
-    ).resolves.toMatchObject({ health: 'healthy', invalidationScope: 'none' })
-    await expect(
-      service.verifySecretCandidate(adapter, connection, egress, 'candidate'),
-    ).resolves.toBeUndefined()
-  })
-
-  it('discovers only requested capabilities and preserves transient failures as unknown', async () => {
-    const connectionId = randomUUID()
-    const observedCapabilities: string[] = []
-    const adapter = {
-      async *runFunctionalProbe(
-        _context: unknown,
-        revision: { id: string },
-        probe: { selectedCapabilities: Record<string, boolean> },
-      ) {
-        const selected = Object.entries(probe.selectedCapabilities).find(
-          ([, enabled]) => enabled,
-        )?.[0]
-        if (!selected) throw new Error('Expected one selected capability')
-        observedCapabilities.push(selected)
-        const identity = {
-          aiConnectionId: connectionId,
-          aiConnectionModelRevisionId: revision.id,
-          aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-        }
-        if (selected === 'tokenUsage') {
-          yield {
-            failure: {
-              category: 'connection_unavailable',
-              diagnosticCode: 'temporary_provider_failure',
-              retryable: true,
-            },
-            identity,
-            type: 'failed',
-          }
-          return
-        }
-        if (selected === 'streaming') {
-          yield {
-            delta: '{"probe":',
-            type: 'output_delta',
-            visibility: 'internal',
-          }
-        }
-        yield {
-          analysis: null,
-          identity,
-          rawOutput: '{"probe":"ok"}',
-          type: 'completed',
-          usage: {
-            analysisTokens: { reason: 'not_supported', status: 'unavailable' },
-            cost: { reason: 'not_supported', status: 'unavailable' },
-            inputTokens: { status: 'reported', value: 1 },
-            outputTokens: { status: 'reported', value: 1 },
-            totalTokens: { status: 'reported', value: 2 },
-          },
-        }
-      },
-    } as unknown as AiAdminConnectionAdapter
-    const service = new AiProviderSecretAdminService(
-      database(vi.fn()).db,
-      keyring('root-1', { 'root-1': randomBytes(32) }),
-    )
-
-    await expect(
-      service.discoverModelCapabilities(
-        adapter,
-        {
-          authenticationType: 'none',
-          configurationVersion: 4,
-          id: connectionId,
-        } as AiAdminConnectionDetail,
-        { fetch: vi.fn() } as AiEgressTransport,
-        {
-          capabilities: ['streaming', 'aiAnalysis', 'tokenUsage'],
-          externalModelId: 'provider/model',
-          externalModelVersion: null,
-        },
-      ),
-    ).resolves.toMatchObject({
-      assessments: {
-        aiAnalysis: {
-          failureCategory: 'capability_mismatch',
-          support: 'unsupported',
-        },
-        streaming: { failureCategory: null, support: 'supported' },
-        tokenUsage: {
-          failureCategory: 'connection_unavailable',
-          support: 'unknown',
-        },
-      },
-      capabilities: {
-        aiAnalysis: false,
-        streaming: true,
-        tokenUsage: false,
+      invalid_json_repair: {
+        failureCategory: null,
+        missingCapabilities: [],
+        supported: true,
       },
     })
-    expect(observedCapabilities).toEqual([
-      'streaming',
-      'aiAnalysis',
-      'tokenUsage',
+    expect(progress).toEqual([
+      'connection_authentication',
+      'baseline_model_access',
+      'capability:aiAnalysis',
+      'capability:cost',
+      'capability:imageInput',
+      'capability:jsonSchemaSteering',
+      'capability:streaming',
+      'capability:tokenUsage',
+      'capability:validatableJson',
+      'profile:generation_without_images',
+      'profile:generation_with_images',
+      'profile:invalid_json_repair',
+      'summary',
     ])
-  })
-
-  it('bounds the complete multi-capability discovery suite to one shared minute', async () => {
-    vi.useFakeTimers()
-    try {
-      const connectionId = randomUUID()
-      let runs = 0
-      const adapter = {
-        async *runFunctionalProbe(
-          _context: unknown,
-          revision: { id: string },
-          probe: { abortSignal: AbortSignal },
-        ) {
-          runs += 1
-          await new Promise<void>(resolve =>
-            probe.abortSignal.addEventListener('abort', () => resolve(), {
-              once: true,
-            }),
-          )
-          yield {
-            identity: {
-              aiConnectionId: connectionId,
-              aiConnectionModelRevisionId: revision.id,
-              aiRunProfileRevisionId: '00000000-0000-4000-8000-000000000865',
-            },
-            reason: 'application_cancelled',
-            type: 'cancelled',
-          }
-        },
-      } as unknown as AiAdminConnectionAdapter
-      const service = new AiProviderSecretAdminService(
-        database(vi.fn()).db,
-        keyring('root-1', { 'root-1': randomBytes(32) }),
-      )
-      const discovery = service.discoverModelCapabilities(
-        adapter,
-        {
-          authenticationType: 'none',
-          configurationVersion: 1,
-          id: connectionId,
-        } as AiAdminConnectionDetail,
-        { fetch: vi.fn() } as AiEgressTransport,
-        {
-          capabilities: ['streaming', 'aiAnalysis', 'tokenUsage'],
-          externalModelId: 'provider/model',
-          externalModelVersion: null,
-        },
-      )
-
-      await vi.advanceTimersByTimeAsync(30_000)
-      await vi.advanceTimersByTimeAsync(30_000)
-
-      await expect(discovery).resolves.toMatchObject({
-        assessments: {
-          aiAnalysis: { support: 'unknown' },
-          streaming: { support: 'unknown' },
-          tokenUsage: {
-            failureCategory: 'deadline_exceeded',
-            support: 'unknown',
-          },
-        },
-      })
-      expect(runs).toBe(2)
-    } finally {
-      vi.useRealTimers()
-    }
   })
 
   it('encrypts before candidate persistence and never sends plaintext to SQL', async () => {
@@ -1002,6 +358,11 @@ describe('AI provider-secret service', () => {
     )?.[0]
     expect(activationSql).toContain("SET [status] = N'superseded'")
     expect(activationSql).toContain("SET [status] = N'active'")
+    expect(activationSql).toContain("SET [status] = N'new_revision_required'")
+    expect(activationSql).not.toContain(
+      "SET [status] = N'verification_required'",
+    )
+    expect(activationSql).not.toContain('[verified_capabilities_json] = NULL')
   })
 
   it('keeps the caller-facing activation request and result opaque', async () => {

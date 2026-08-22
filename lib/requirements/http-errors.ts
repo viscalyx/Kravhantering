@@ -6,6 +6,10 @@ import {
   type AiAdminBlockerField,
 } from '@/lib/ai/admin-blockers'
 import {
+  AI_RUN_PROFILE_KEYS,
+  type AiRunProfileKey,
+} from '@/lib/ai/profile-resolver'
+import {
   internalError,
   isRequirementsServiceError,
   type RequirementsErrorCode,
@@ -21,7 +25,7 @@ export interface HttpErrorPayload {
 }
 
 export interface HttpErrorPayloadOptions {
-  safeDetails?: 'ai_admin_blockers'
+  safeDetails?: 'ai_admin_blockers' | 'ai_admin_model_dependencies'
 }
 
 interface SafeStaleEditHttpDetails {
@@ -34,6 +38,11 @@ interface SafeStaleEditHttpDetails {
 
 interface SafeAiAdminBlockerHttpDetails {
   blockers: AiAdminBlocker[]
+}
+
+interface SafeAiAdminModelDependencyHttpDetails {
+  profileKeys: AiRunProfileKey[]
+  runCount: number
 }
 
 const SAFE_NORM_REFERENCE_ID_CONFLICT_REASONS = [
@@ -94,6 +103,7 @@ interface SafePrivacyErasureHttpDetails {
 
 type SafeHttpErrorDetails =
   | SafeAiAdminBlockerHttpDetails
+  | SafeAiAdminModelDependencyHttpDetails
   | SafeImprovementSuggestionConflictHttpDetails
   | SafeNormReferenceIdConflictHttpDetails
   | SafePrivacyErasureHttpDetails
@@ -124,6 +134,34 @@ function toSafeAiAdminBlockers(value: unknown): AiAdminBlocker[] | null {
     })
   }
   return blockers
+}
+
+function toSafeAiAdminModelDependencies(
+  details: Record<string, unknown> | undefined,
+): SafeAiAdminModelDependencyHttpDetails | null {
+  if (
+    !Array.isArray(details?.profileKeys) ||
+    details.profileKeys.length > AI_RUN_PROFILE_KEYS.length ||
+    !Number.isSafeInteger(details.runCount) ||
+    (details.runCount as number) < 0
+  ) {
+    return null
+  }
+
+  const profileKeys = details.profileKeys.filter(
+    (profileKey): profileKey is AiRunProfileKey =>
+      typeof profileKey === 'string' &&
+      AI_RUN_PROFILE_KEYS.includes(profileKey as AiRunProfileKey),
+  )
+  if (
+    profileKeys.length !== details.profileKeys.length ||
+    new Set(profileKeys).size !== profileKeys.length ||
+    (profileKeys.length === 0 && details.runCount === 0)
+  ) {
+    return null
+  }
+
+  return { profileKeys, runCount: details.runCount as number }
 }
 
 function isStatusError(error: unknown): error is Error & {
@@ -177,6 +215,10 @@ function toSafeHttpErrorDetails(
   if (code === 'validation' && safeDetails === 'ai_admin_blockers') {
     const blockers = toSafeAiAdminBlockers(details?.blockers)
     if (blockers) return { blockers }
+  }
+
+  if (code === 'conflict' && safeDetails === 'ai_admin_model_dependencies') {
+    return toSafeAiAdminModelDependencies(details) ?? undefined
   }
 
   if (code === 'conflict' && details?.reason === 'stale_requirement_edit') {

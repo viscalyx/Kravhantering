@@ -8,17 +8,23 @@ import {
 import type { AiAdminBlocker } from './admin-blockers'
 import type {
   AiCapability,
-  AiCapabilityPolicy,
   CreateAiConnection,
   SaveAiAttestation,
   SaveAiModelRevision,
-  SaveAiRunProfileRevision,
+  SaveAiRunProfile,
 } from './admin-contracts'
+import {
+  AiModelVerificationAttemptError,
+  type AiModelVerificationAttemptLease,
+  type AiModelVerificationAttemptStore,
+  aiModelVerificationAttempts,
+} from './model-verification-attempts'
 import type { AiRunProfileKey } from './profile-resolver'
 import type {
   AiProviderSecretAvailability,
   AiProviderSecretVersionMetadata,
 } from './provider-secret-service'
+import { AI_ADMIN_FUNCTIONAL_PROBE_VERSION } from './provider-secret-service'
 import { assertAiStagingLiveVerificationAllowed } from './staging-live-policy'
 
 export type {
@@ -90,9 +96,14 @@ export interface AiAdminModelRevisionRecord {
   externalModelId: string
   externalModelVersion: string | null
   id: string
+  profileCompatibility: Readonly<
+    Record<AiRunProfileKey, AiAdminProfileCompatibility>
+  > | null
   revisionNumber: number
   revisionToken: string
-  status: 'draft' | 'retired' | 'verification_required' | 'verified'
+  status: 'ended' | 'new_revision_required' | 'verified'
+  testSuiteVersion: string | null
+  verifiedAt: string | null
   verifiedCapabilities: AiCapability | null
 }
 
@@ -105,28 +116,21 @@ export interface AiAdminModelRecord {
 }
 
 export interface AiAdminRunProfileRecord {
-  activeRevisionId: string | null
   blockers: readonly AiAdminBlocker[]
-  draftRevision: AiAdminRunProfileRevisionRecord | null
+  configurationStatus: 'blocked' | 'configured' | 'unconfigured'
+  configurationVersion: number
   id: string
+  inactivityTimeBudgetSeconds: number
+  maximumBufferedEvents: number
+  maximumOutputBytes: number
+  maximumOutputTokens: number
+  maximumRetainedMemoryBytes: number
+  modelRevisionId: string | null
   operationalStatus: 'enabled' | 'suspended'
   profileKey: AiRunProfileKey
+  queueCapacity: number
   revisionToken: string
-}
-
-export interface AiAdminRunProfileRevisionRecord
-  extends SaveAiRunProfileRevision {
-  id: string
-  revisionNumber: number
-  revisionToken: string
-  status: 'active' | 'draft' | 'superseded'
-}
-
-export interface AiAdminConnectionVerificationResult {
-  details: Readonly<Record<string, boolean | number | string>>
-  failureCategory: string | null
-  outcome: 'failed' | 'passed'
-  testSuiteVersion: string
+  totalTimeBudgetSeconds: number
 }
 
 export interface AiAdminHealthProbeResult {
@@ -135,30 +139,60 @@ export interface AiAdminHealthProbeResult {
   invalidationScope: 'connection' | 'model' | 'none'
 }
 
-export interface AiAdminModelVerificationResult {
-  details: Readonly<Record<string, boolean | number | string>>
+export type AiAdminVerificationOutcome =
+  | 'inconclusive'
+  | 'not_checked'
+  | 'not_verified'
+  | 'verified'
+
+export interface AiAdminCapabilityVerification {
   failureCategory: string | null
-  outcome: 'failed' | 'passed'
-  testSuiteVersion: string
-  verifiedCapabilities: AiCapability
+  outcome: AiAdminVerificationOutcome
 }
 
-export type AiAdminModelVerificationCheck =
-  | 'adapterConformance'
-  | 'cancellationHandled'
-  | 'completed'
-  | 'schemaValid'
+export interface AiAdminModelVerificationCandidate {
+  externalModelId: string
+  externalModelVersion: string | null
+}
 
-export interface AiAdminModelVerificationActionResult {
-  revision: AiAdminModelRevisionRecord
-  verification: {
-    failedCapabilities: readonly (keyof AiCapability)[]
-    failedChecks: readonly AiAdminModelVerificationCheck[]
-    failureCategory: string | null
-    outcome: 'failed' | 'passed'
-    testSuiteVersion: string
-    unevaluatedCapabilities: readonly (keyof AiCapability)[]
-  }
+export interface AiAdminProfileCompatibility {
+  failureCategory: string | null
+  missingCapabilities: readonly (keyof AiCapability)[]
+  supported: boolean
+}
+
+export interface AiAdminCandidateVerificationResult {
+  baseline: AiAdminCapabilityVerification
+  canonicalExternalModelVersion: string | null
+  capabilities: Readonly<
+    Record<keyof AiCapability, AiAdminCapabilityVerification>
+  >
+  connection: AiAdminCapabilityVerification
+  profileCompatibility: Readonly<
+    Record<AiRunProfileKey, AiAdminProfileCompatibility>
+  >
+  saveable: boolean
+  testSuiteVersion: string
+}
+
+export interface AiAdminCandidateVerificationAttemptResult
+  extends AiAdminCandidateVerificationResult {
+  attemptExpiresAt: string | null
+  attemptId: string | null
+}
+
+export type AiAdminVerificationCheck =
+  | 'baseline_model_access'
+  | 'connection_authentication'
+  | 'summary'
+  | `capability:${keyof AiCapability}`
+  | `profile:${AiRunProfileKey}`
+
+export interface AiAdminVerificationProgress {
+  check: AiAdminVerificationCheck
+  failureCategory: string | null
+  outcome: AiAdminVerificationOutcome
+  state: 'completed' | 'running'
 }
 
 export interface AiAdminLivePathExternalResult {
@@ -175,10 +209,11 @@ export interface AiAdminLivePathVerificationResult
   extends AiAdminLivePathExternalResult {
   aiConnectionId: string
   aiConnectionModelRevisionId: string
-  aiRunProfileRevisionId: string
+  aiRunProfileConfigurationVersion: number
+  aiRunProfileId: string
   connectionRevisionToken: string
   modelRevisionToken: string
-  profileRevisionToken: string
+  profileToken: string
 }
 
 export interface AiAdminLivePathSelection {
@@ -186,12 +221,13 @@ export interface AiAdminLivePathSelection {
   adapterVersion: string
   aiConnectionId: string
   aiConnectionModelRevisionId: string
-  aiRunProfileRevisionId: string
+  aiRunProfileConfigurationVersion: number
+  aiRunProfileId: string
   connectionRevisionToken: string
   expectedEnvironmentId: string
   modelRevisionToken: string
   profileKey: AiRunProfileKey
-  profileRevisionToken: string
+  profileToken: string
 }
 
 export interface AiAdminCatalogItem {
@@ -210,25 +246,6 @@ export type AiAdminCapabilitySupport = 'supported' | 'unsupported' | 'unknown'
 export type AiAdminCapabilitySupportMap = Readonly<
   Record<keyof AiCapability, AiAdminCapabilitySupport>
 >
-
-export interface AiAdminCapabilityDiscoveryResult {
-  assessments: Readonly<
-    Record<
-      keyof AiCapability,
-      Readonly<{
-        failureCategory: string | null
-        support: AiAdminCapabilitySupport
-      }>
-    >
-  >
-  capabilities: AiCapability
-}
-
-export interface AiAdminCapabilityDiscoveryTarget {
-  capabilities: readonly (keyof AiCapability)[]
-  externalModelId: string
-  externalModelVersion: string | null
-}
 
 export interface AiAdminCatalogPrice {
   amount: string
@@ -257,16 +274,9 @@ export interface AiAdminExternalOperations {
     | 'data_policy_missing'
     | 'egress_policy_blocked'
   >
-  discoverModelCapabilities(
-    connection: Readonly<AiAdminConnectionDetail>,
-    target: Readonly<AiAdminCapabilityDiscoveryTarget>,
-  ): Promise<Readonly<AiAdminCapabilityDiscoveryResult>>
   fetchCatalog(
     connection: Readonly<AiAdminConnectionDetail>,
   ): Promise<readonly AiAdminCatalogItem[]>
-  probeConnection(
-    connection: Readonly<AiAdminConnectionDetail>,
-  ): Promise<Readonly<AiAdminConnectionVerificationResult>>
   probeHealth(
     connection: Readonly<AiAdminConnectionDetail>,
     revision: Readonly<AiAdminModelRevisionRecord>,
@@ -276,10 +286,16 @@ export interface AiAdminExternalOperations {
     revision: Readonly<AiAdminModelRevisionRecord>,
     selection: Readonly<AiAdminLivePathSelection>,
   ): Promise<Readonly<AiAdminLivePathExternalResult>>
-  verifyModelRevision(
+  verifyModelCandidate(
     connection: Readonly<AiAdminConnectionDetail>,
-    revision: Readonly<AiAdminModelRevisionRecord>,
-  ): Promise<Readonly<AiAdminModelVerificationResult>>
+    candidate: Readonly<AiAdminModelVerificationCandidate>,
+    options: Readonly<{
+      onProgress?: (
+        progress: Readonly<AiAdminVerificationProgress>,
+      ) => Promise<void> | void
+      signal: AbortSignal
+    }>,
+  ): Promise<Readonly<AiAdminCandidateVerificationResult>>
   verifySecretCandidate(
     connection: Readonly<AiAdminConnectionDetail>,
     context: Readonly<{ connectionId: string; secretVersionId: string }>,
@@ -319,13 +335,7 @@ export interface AiAdminActivationSnapshot {
   connectionEvidenceId: string | null
   modelRevision: AiAdminModelRevisionRecord | null
   profile: AiAdminRunProfileRecord
-  profileRevision: AiAdminRunProfileRevisionRecord
   secretVersionId: string | null
-}
-
-export interface AiAdminProfileActivationEntry {
-  profile: AiAdminRunProfileRecord
-  snapshot: AiAdminActivationSnapshot | null
 }
 
 export interface AiAdminStore {
@@ -339,22 +349,12 @@ export interface AiAdminStore {
     modelRevisionToken: string
     secretVersionId: string | null
   }): Promise<AiAdminConnectionSummary | null>
-  activateRunProfileRevision(input: {
-    attestationRevisionToken: string
-    connectionEvidenceId: string
-    connectionRevisionToken: string
-    modelRevisionToken: string
-    profileRevisionId: string
-    profileRevisionToken: string
-    profileToken: string
-    secretVersionId: string | null
-  }): Promise<AiAdminRunProfileRecord | null>
   createConnection(
     input: CreateAiConnection,
   ): Promise<AiAdminStoredConnectionDetail>
-  deleteConnectionModel(input: {
+  deleteModelRevision(input: {
     connectionId: string
-    modelId: string
+    modelRevisionId: string
     revisionToken: string
   }): Promise<boolean>
   discardAttestationDraft(input: {
@@ -363,25 +363,22 @@ export interface AiAdminStore {
     draftAttestationId: string
     draftAttestationRevisionToken: string
   }): Promise<boolean>
-  getActivationSnapshot(input: {
-    profileKey: AiRunProfileKey
-    profileRevisionId: string
-  }): Promise<AiAdminActivationSnapshot | null>
+  endModelRevision(input: {
+    connectionId: string
+    modelRevisionId: string
+    revisionToken: string
+  }): Promise<AiAdminModelRevisionRecord | null>
   getConnection(
     connectionId: string,
   ): Promise<AiAdminStoredConnectionDetail | null>
-  listConnections(): Promise<readonly AiAdminConnectionSummary[]>
-  listRunProfileActivationEntries(): Promise<
-    readonly AiAdminProfileActivationEntry[]
-  >
-  listRunProfileRevisions(
+  getModelRevisionConnection(
+    modelRevisionId: string,
+  ): Promise<AiAdminStoredConnectionDetail | null>
+  getRunProfileSnapshot(
     profileKey: AiRunProfileKey,
-  ): Promise<readonly AiAdminRunProfileRevisionRecord[]>
+  ): Promise<AiAdminActivationSnapshot | null>
+  listConnections(): Promise<readonly AiAdminConnectionSummary[]>
   listRunProfiles(): Promise<readonly AiAdminRunProfileRecord[]>
-  recordConnectionVerification(input: {
-    connection: AiAdminStoredConnectionDetail
-    result: Readonly<AiAdminConnectionVerificationResult>
-  }): Promise<AiAdminStoredConnectionDetail>
   recordHealth(input: {
     connectionConfigurationVersion: number
     connectionId: string
@@ -391,17 +388,6 @@ export interface AiAdminStore {
     modelRevisionId: string
     modelRevisionToken: string
   }): Promise<AiAdminStoredConnectionDetail>
-  recordModelVerification(input: {
-    connection: AiAdminStoredConnectionDetail
-    connectionEvidenceId: string
-    modelRevision: AiAdminModelRevisionRecord
-    result: Readonly<AiAdminModelVerificationResult>
-  }): Promise<AiAdminModelRevisionRecord>
-  retireModelRevision(input: {
-    connectionId: string
-    modelRevisionId: string
-    revisionToken: string
-  }): Promise<AiAdminModelRevisionRecord | null>
   saveAttestation(input: {
     attestation: SaveAiAttestation
     connectionId: string
@@ -409,12 +395,14 @@ export interface AiAdminStore {
     makeValid: boolean
   }): Promise<AiAdminAttestationRecord>
   saveModelRevision(input: {
+    connection: AiAdminStoredConnectionDetail
     connectionId: string
     modelRevision: SaveAiModelRevision
+    verification: Readonly<AiAdminCandidateVerificationResult>
   }): Promise<AiAdminModelRecord>
-  saveRunProfileRevision(input: {
+  saveRunProfile(input: {
     profileKey: AiRunProfileKey
-    revision: SaveAiRunProfileRevision
+    profile: SaveAiRunProfile
   }): Promise<AiAdminRunProfileRecord>
   setConnectionLifecycle(input: {
     connectionId: string
@@ -455,7 +443,6 @@ export interface AiAdminAuditDetail {
     | 'ai_connection_model_revision'
     | 'ai_provider_secret'
     | 'ai_run_profile'
-    | 'ai_run_profile_revision'
 }
 
 export type AiAdminAudit = (
@@ -496,51 +483,6 @@ function currentAttestation(attestation: SaveAiAttestation): boolean {
   )
 }
 
-function capabilityPolicyBlockers(
-  profileKey: AiRunProfileKey,
-  policy: AiCapabilityPolicy,
-  verified: AiCapability | null,
-): AiAdminBlocker[] {
-  const blockers: AiAdminBlocker[] = []
-  const requireMode = (
-    field: keyof AiCapabilityPolicy,
-    mode: 'disabled' | 'required',
-  ): void => {
-    if (policy[field] !== mode) {
-      blockers.push({ code: 'capability_policy_invalid', field })
-    }
-  }
-  requireMode('validatableJson', 'required')
-  if (profileKey === 'invalid_json_repair') {
-    requireMode('streaming', 'disabled')
-    requireMode('imageInput', 'disabled')
-    requireMode('aiAnalysis', 'disabled')
-  } else {
-    requireMode('streaming', 'required')
-    requireMode(
-      'imageInput',
-      profileKey === 'generation_with_images' ? 'required' : 'disabled',
-    )
-  }
-  if (!verified) {
-    blockers.push({ code: 'model_revision_unverified' })
-    return blockers
-  }
-  const supported = (field: keyof AiCapabilityPolicy): boolean => {
-    if (field === 'jsonSchema') return verified.jsonSchemaSteering
-    if (field === 'usageMetadata') return verified.cost || verified.tokenUsage
-    return verified[field]
-  }
-  for (const [field, mode] of Object.entries(policy) as Array<
-    [keyof AiCapabilityPolicy, AiCapabilityPolicy[keyof AiCapabilityPolicy]]
-  >) {
-    if (mode === 'required' && !supported(field)) {
-      blockers.push({ code: 'capability_policy_invalid', field })
-    }
-  }
-  return blockers
-}
-
 function connectionBlockers(
   connection: AiAdminStoredConnectionDetail,
 ): AiAdminBlocker[] {
@@ -548,7 +490,6 @@ function connectionBlockers(
 }
 
 function profileActivationBlockers(
-  profileKey: AiRunProfileKey,
   snapshot: AiAdminActivationSnapshot,
 ): AiAdminBlocker[] {
   return [
@@ -556,13 +497,10 @@ function profileActivationBlockers(
     ...(snapshot.connection.lifecycleStatus === 'active'
       ? []
       : [{ code: 'connection_inactive' as const }]),
-    ...(snapshot.modelRevision
-      ? capabilityPolicyBlockers(
-          profileKey,
-          snapshot.profileRevision.capabilityPolicy,
-          snapshot.modelRevision.verifiedCapabilities,
-        )
-      : [{ code: 'model_revision_missing' as const }]),
+    ...(snapshot.modelRevision?.status === 'verified'
+      ? []
+      : [{ code: 'model_revision_unverified' as const }]),
+    ...snapshot.profile.blockers,
   ]
 }
 
@@ -614,15 +552,7 @@ function livePathActivationFence(snapshot: AiAdminActivationSnapshot): string {
     },
     connectionEvidenceId: snapshot.connectionEvidenceId,
     modelRevision,
-    profile: {
-      activeRevisionId: snapshot.profile.activeRevisionId,
-      blockers: snapshot.profile.blockers,
-      id: snapshot.profile.id,
-      operationalStatus: snapshot.profile.operationalStatus,
-      profileKey: snapshot.profile.profileKey,
-      revisionToken: snapshot.profile.revisionToken,
-    },
-    profileRevision: snapshot.profileRevision,
+    profile: snapshot.profile,
     secretVersionId: snapshot.secretVersionId,
   })
 }
@@ -635,31 +565,36 @@ function isCurrentLivePathActivation(
     current.connection.lifecycleStatus === 'active' &&
     current.modelRevision?.status === 'verified' &&
     current.profile.operationalStatus === 'enabled' &&
-    current.profile.activeRevisionId === current.profileRevision.id &&
+    current.profile.configurationStatus === 'configured' &&
     current.profile.blockers.length === 0 &&
-    current.profileRevision.status === 'active' &&
-    profileActivationBlockers(current.profile.profileKey, current).length ===
-      0 &&
+    profileActivationBlockers(current).length === 0 &&
     livePathActivationFence(current) === livePathActivationFence(expected)
   )
 }
 
 export class AiConnectionAdministrationService {
+  readonly #actorKey: string
   readonly #audit: AiAdminAudit
   readonly #external: AiAdminExternalOperations
   readonly #secrets: AiAdminSecretOperations
   readonly #store: AiAdminStore
+  readonly #verificationAttempts: AiModelVerificationAttemptStore
 
   constructor(input: {
+    actorKey?: string
     audit: AiAdminAudit
     external: AiAdminExternalOperations
     secrets: AiAdminSecretOperations
     store: AiAdminStore
+    verificationAttempts?: AiModelVerificationAttemptStore
   }) {
+    this.#actorKey = input.actorKey ?? 'test-actor'
     this.#audit = input.audit
     this.#external = input.external
     this.#secrets = input.secrets
     this.#store = input.store
+    this.#verificationAttempts =
+      input.verificationAttempts ?? aiModelVerificationAttempts
   }
 
   async #withSecretAvailability(
@@ -732,46 +667,7 @@ export class AiConnectionAdministrationService {
   }
 
   async listRunProfiles(): Promise<readonly AiAdminRunProfileRecord[]> {
-    const entries = await this.#store.listRunProfileActivationEntries()
-    const authenticatedConnectionIds = [
-      ...new Set(
-        entries.flatMap(({ snapshot }) =>
-          snapshot && snapshot.connection.authenticationType !== 'none'
-            ? [snapshot.connection.id.toLowerCase()]
-            : [],
-        ),
-      ),
-    ]
-    const availabilities = await this.#secrets.availabilities(
-      authenticatedConnectionIds,
-    )
-    return Promise.all(
-      entries.map(async ({ profile, snapshot: storedSnapshot }) => {
-        if (!storedSnapshot) {
-          return {
-            ...profile,
-            blockers: [{ code: 'model_revision_missing' as const }],
-          }
-        }
-        const snapshot = {
-          ...storedSnapshot,
-          connection: await this.#withSecretAvailability(
-            storedSnapshot.connection,
-            availabilities.get(storedSnapshot.connection.id.toLowerCase()),
-          ),
-        }
-        return {
-          ...profile,
-          blockers: profileActivationBlockers(profile.profileKey, snapshot),
-        }
-      }),
-    )
-  }
-
-  listRunProfileRevisions(
-    profileKey: AiRunProfileKey,
-  ): Promise<readonly AiAdminRunProfileRevisionRecord[]> {
-    return this.#store.listRunProfileRevisions(profileKey)
+    return this.#store.listRunProfiles()
   }
 
   async getConnection(connectionId: string): Promise<AiAdminConnectionDetail> {
@@ -892,34 +788,6 @@ export class AiConnectionAdministrationService {
     }
   }
 
-  async verifyConnection(
-    connectionId: string,
-  ): Promise<AiAdminConnectionDetail> {
-    const connection = await this.getConnection(connectionId)
-    await this.#assertAuthorizedTarget(connection)
-    const result = await this.#external.probeConnection(connection)
-    return this.#withSecretAvailability(
-      await this.#store.recordConnectionVerification({
-        connection,
-        result: {
-          ...result,
-          details: {
-            ...result.details,
-            configurationFingerprint: fingerprint({
-              adapterKey: connection.adapterKey,
-              adapterVersion: connection.adapterVersion,
-              agentRuntimeVersion: connection.agentRuntimeVersion,
-              authenticationType: connection.authenticationType,
-              egressPolicyKey: connection.egressPolicyKey,
-              endpointUrl: connection.endpointUrl,
-              tlsPolicyKey: connection.tlsPolicyKey,
-            }),
-          },
-        },
-      }),
-    )
-  }
-
   async fetchCatalog(
     connectionId: string,
   ): Promise<readonly AiAdminCatalogItem[]> {
@@ -934,38 +802,61 @@ export class AiConnectionAdministrationService {
     return catalog
   }
 
-  async discoverModelCapabilities(input: {
-    capabilities: readonly (keyof AiCapability)[]
+  async verifyModelCandidate(input: {
+    candidate: AiAdminModelVerificationCandidate
     connectionId: string
-    externalModelId: string
-    externalModelVersion: string | null
-  }): Promise<AiAdminCapabilityDiscoveryResult> {
+    onProgress?: (
+      progress: Readonly<AiAdminVerificationProgress>,
+    ) => Promise<void> | void
+    signal: AbortSignal
+  }): Promise<AiAdminCandidateVerificationAttemptResult> {
     const connection = await this.getConnection(input.connectionId)
-    if (!connection.connectionEvidenceId) {
-      throw validationError('The AI connection must be verified first.', {
-        blockers: [{ code: 'connection_verification_missing' }],
-      })
-    }
     await this.#assertAuthorizedTarget(connection)
-    const result = await this.#external.discoverModelCapabilities(connection, {
-      capabilities: input.capabilities,
-      externalModelId: input.externalModelId,
-      externalModelVersion: input.externalModelVersion,
+    const result = await this.#external.verifyModelCandidate(
+      connection,
+      input.candidate,
+      { onProgress: input.onProgress, signal: input.signal },
+    )
+    const verificationFingerprint = fingerprint({
+      connection: {
+        adapterKey: connection.adapterKey,
+        adapterVersion: connection.adapterVersion,
+        agentRuntimeKey: connection.agentRuntimeKey,
+        agentRuntimeVersion: connection.agentRuntimeVersion,
+        authenticationType: connection.authenticationType,
+        configurationVersion: connection.configurationVersion,
+        egressPolicyKey: connection.egressPolicyKey,
+        endpointUrl: connection.endpointUrl,
+        tlsPolicyKey: connection.tlsPolicyKey,
+      },
+      model: input.candidate,
+      testSuiteVersion: result.testSuiteVersion,
     })
-    const current = await this.getConnection(input.connectionId)
-    if (
-      current.revisionToken !== connection.revisionToken ||
-      current.configurationVersion !== connection.configurationVersion ||
-      current.connectionEvidenceId !== connection.connectionEvidenceId
-    ) {
-      activationConflict()
-    }
+    const attempt = result.saveable
+      ? this.#verificationAttempts.create({
+          actorKey: this.#actorKey,
+          connectionId: connection.id,
+          fingerprint: verificationFingerprint,
+          result,
+        })
+      : null
     await this.#audit({
-      operation: 'probe',
-      resourceId: input.connectionId,
-      resourceType: 'ai_connection',
+      operation: 'verify',
+      resourceId: connection.id,
+      resourceType: 'ai_connection_model_revision',
     })
-    return result
+    return {
+      ...result,
+      attemptExpiresAt: attempt?.expiresAt ?? null,
+      attemptId: attempt?.id ?? null,
+    }
+  }
+
+  discardModelVerification(attemptId: string): void {
+    this.#verificationAttempts.discard({
+      actorKey: this.#actorKey,
+      attemptId,
+    })
   }
 
   async probeHealth(input: {
@@ -1000,71 +891,64 @@ export class AiConnectionAdministrationService {
     connectionId: string
     modelRevision: SaveAiModelRevision
   }): Promise<AiAdminModelRecord> {
-    return this.#store.saveModelRevision(input)
-  }
-
-  async verifyModelRevision(input: {
-    connectionId: string
-    modelRevisionId: string
-    revisionToken: string
-  }): Promise<AiAdminModelVerificationActionResult> {
-    const connection = await this.getConnection(input.connectionId)
-    const modelRevision = connection.models
-      .flatMap(model => model.revisions)
-      .find(revision => revision.id === input.modelRevisionId)
-    if (!modelRevision)
-      throw notFoundError('AI connection model revision not found.')
-    if (modelRevision.revisionToken !== input.revisionToken)
-      activationConflict()
-    const connectionEvidenceId = connection.connectionEvidenceId
-    if (!connectionEvidenceId) {
-      throw validationError('The AI connection must be verified first.', {
-        blockers: [{ code: 'connection_verification_missing' }],
-      })
+    if (!input.modelRevision.attemptId) {
+      throw validationError('Verify the AI model before saving it.')
     }
-    await this.#assertAuthorizedTarget(connection)
-    const result = await this.#external.verifyModelRevision(
-      connection,
-      modelRevision,
-    )
-    const revision = await this.#store.recordModelVerification({
-      connection,
-      connectionEvidenceId,
-      modelRevision,
-      result,
-    })
-    const capabilityKeys = Object.keys(
-      modelRevision.declaredCapabilities,
-    ) as (keyof AiCapability)[]
-    const declaredCapabilityKeys = capabilityKeys.filter(
-      capability => modelRevision.declaredCapabilities[capability],
-    )
-    const capabilitiesEvaluated =
-      result.outcome === 'passed' || result.details.completed === true
-    const verificationChecks = [
-      'adapterConformance',
-      'cancellationHandled',
-      'completed',
-      'schemaValid',
-    ] as const satisfies readonly AiAdminModelVerificationCheck[]
-    return {
-      revision,
-      verification: {
-        failedCapabilities: capabilitiesEvaluated
-          ? declaredCapabilityKeys.filter(
-              capability => !result.verifiedCapabilities[capability],
-            )
-          : [],
-        failedChecks: verificationChecks.filter(
-          check => result.details[check] === false,
-        ),
-        failureCategory: result.failureCategory,
-        outcome: result.outcome,
-        testSuiteVersion: result.testSuiteVersion,
-        unevaluatedCapabilities: capabilitiesEvaluated
-          ? []
-          : declaredCapabilityKeys,
+    const connection = await this.getConnection(input.connectionId)
+    const verificationFingerprint = fingerprint({
+      connection: {
+        adapterKey: connection.adapterKey,
+        adapterVersion: connection.adapterVersion,
+        agentRuntimeKey: connection.agentRuntimeKey,
+        agentRuntimeVersion: connection.agentRuntimeVersion,
+        authenticationType: connection.authenticationType,
+        configurationVersion: connection.configurationVersion,
+        egressPolicyKey: connection.egressPolicyKey,
+        endpointUrl: connection.endpointUrl,
+        tlsPolicyKey: connection.tlsPolicyKey,
       },
+      model: {
+        externalModelId: input.modelRevision.externalModelId,
+        externalModelVersion: input.modelRevision.externalModelVersion,
+      },
+      testSuiteVersion: AI_ADMIN_FUNCTIONAL_PROBE_VERSION,
+    })
+    let lease: AiModelVerificationAttemptLease
+    try {
+      lease = this.#verificationAttempts.reserve({
+        actorKey: this.#actorKey,
+        attemptId: input.modelRevision.attemptId,
+        connectionId: connection.id,
+        fingerprint: verificationFingerprint,
+      })
+    } catch (error) {
+      if (error instanceof AiModelVerificationAttemptError) {
+        throw conflictError(
+          error.code === 'attempt_expired'
+            ? 'The model verification attempt expired. Verify again.'
+            : 'The connection or model configuration changed. Verify again.',
+          { blocker: error.code },
+        )
+      }
+      throw error
+    }
+    try {
+      const verification = lease.attempt
+        .result as AiAdminCandidateVerificationResult
+      if (!verification.saveable) {
+        throw validationError('The AI model verification is not saveable.')
+      }
+      const saved = await this.#store.saveModelRevision({
+        connection,
+        connectionId: input.connectionId,
+        modelRevision: input.modelRevision,
+        verification,
+      })
+      lease.commit()
+      return saved
+    } catch (error) {
+      lease.release()
+      throw error
     }
   }
 
@@ -1072,53 +956,48 @@ export class AiConnectionAdministrationService {
     connectionId: string
     expectedEnvironmentId: string
     modelRevisionId: string
-    profileRevisionId: string
+    profileKey: AiRunProfileKey
   }): Promise<AiAdminLivePathVerificationResult> {
     assertAiStagingLiveVerificationAllowed(input.expectedEnvironmentId)
     const connection = await this.getConnection(input.connectionId)
     const modelRevision = connection.models
       .flatMap(model => model.revisions)
       .find(revision => revision.id === input.modelRevisionId)
-    const entry = (await this.#store.listRunProfileActivationEntries()).find(
-      candidate =>
-        candidate.profile.activeRevisionId === input.profileRevisionId,
-    )
-    const snapshot = entry?.snapshot
-    if (!modelRevision || !entry || !snapshot) {
+    const snapshot = await this.#store.getRunProfileSnapshot(input.profileKey)
+    if (!modelRevision || !snapshot) {
       throw notFoundError('The exact active AI path was not found.')
     }
     const exactSnapshot = {
       ...snapshot,
       connection,
       modelRevision,
-      profile: entry.profile,
+      profile: snapshot.profile,
     }
     if (
       connection.lifecycleStatus !== 'active' ||
       modelRevision.status !== 'verified' ||
-      entry.profile.operationalStatus !== 'enabled' ||
+      snapshot.profile.operationalStatus !== 'enabled' ||
+      snapshot.profile.configurationStatus !== 'configured' ||
       snapshot.connection.id !== connection.id ||
       snapshot.modelRevision?.id !== modelRevision.id ||
-      snapshot.profileRevision.id !== input.profileRevisionId ||
-      snapshot.profileRevision.status !== 'active'
+      snapshot.profile.modelRevisionId !== input.modelRevisionId
     ) {
       throw validationError('The exact AI path is not active and verified.')
     }
-    assertNoBlockers(
-      profileActivationBlockers(entry.profile.profileKey, exactSnapshot),
-    )
-    await this.#assertAuthorizedProfile(connection, entry.profile.profileKey)
+    assertNoBlockers(profileActivationBlockers(exactSnapshot))
+    await this.#assertAuthorizedProfile(connection, snapshot.profile.profileKey)
     const selection = Object.freeze({
       adapterType: connection.adapterKey,
       adapterVersion: connection.adapterVersion,
       aiConnectionId: connection.id,
       aiConnectionModelRevisionId: modelRevision.id,
-      aiRunProfileRevisionId: snapshot.profileRevision.id,
+      aiRunProfileConfigurationVersion: snapshot.profile.configurationVersion,
+      aiRunProfileId: snapshot.profile.id,
       connectionRevisionToken: connection.revisionToken,
       expectedEnvironmentId: input.expectedEnvironmentId,
       modelRevisionToken: modelRevision.revisionToken,
-      profileKey: entry.profile.profileKey,
-      profileRevisionToken: snapshot.profileRevision.revisionToken,
+      profileKey: snapshot.profile.profileKey,
+      profileToken: snapshot.profile.revisionToken,
     })
     assertAiStagingLiveVerificationAllowed(input.expectedEnvironmentId)
     const result = await this.#external.verifyLivePath(
@@ -1127,10 +1006,9 @@ export class AiConnectionAdministrationService {
       selection,
     )
     assertAiStagingLiveVerificationAllowed(input.expectedEnvironmentId)
-    const referenced = await this.#store.getActivationSnapshot({
-      profileKey: entry.profile.profileKey,
-      profileRevisionId: snapshot.profileRevision.id,
-    })
+    const referenced = await this.#store.getRunProfileSnapshot(
+      snapshot.profile.profileKey,
+    )
     if (
       !referenced ||
       !isCurrentLivePathActivation(exactSnapshot, referenced)
@@ -1139,36 +1017,38 @@ export class AiConnectionAdministrationService {
     }
     await this.#audit({
       operation: 'verify',
-      resourceId: input.profileRevisionId,
-      resourceType: 'ai_run_profile_revision',
+      resourceId: snapshot.profile.id,
+      resourceType: 'ai_run_profile',
     })
     return {
       ...result,
       aiConnectionId: selection.aiConnectionId,
       aiConnectionModelRevisionId: selection.aiConnectionModelRevisionId,
-      aiRunProfileRevisionId: selection.aiRunProfileRevisionId,
+      aiRunProfileConfigurationVersion:
+        selection.aiRunProfileConfigurationVersion,
+      aiRunProfileId: selection.aiRunProfileId,
       connectionRevisionToken: selection.connectionRevisionToken,
       modelRevisionToken: selection.modelRevisionToken,
-      profileRevisionToken: selection.profileRevisionToken,
+      profileToken: selection.profileToken,
     }
   }
 
-  async retireModelRevision(input: {
+  async endModelRevision(input: {
     connectionId: string
     modelRevisionId: string
     revisionToken: string
   }): Promise<AiAdminModelRevisionRecord> {
-    const result = await this.#store.retireModelRevision(input)
+    const result = await this.#store.endModelRevision(input)
     if (!result) activationConflict()
     return result
   }
 
-  async deleteConnectionModel(input: {
+  async deleteModelRevision(input: {
     connectionId: string
-    modelId: string
+    modelRevisionId: string
     revisionToken: string
   }): Promise<void> {
-    const deleted = await this.#store.deleteConnectionModel(input)
+    const deleted = await this.#store.deleteModelRevision(input)
     if (!deleted) activationConflict()
   }
 
@@ -1224,61 +1104,26 @@ export class AiConnectionAdministrationService {
     return updated
   }
 
-  async saveRunProfileRevision(input: {
+  async saveRunProfile(input: {
     profileKey: AiRunProfileKey
-    revision: SaveAiRunProfileRevision
+    profile: SaveAiRunProfile
   }): Promise<AiAdminRunProfileRecord> {
-    return this.#store.saveRunProfileRevision(input)
-  }
-
-  async activateRunProfileRevision(input: {
-    connectionRevisionToken: string
-    modelRevisionToken: string
-    profileKey: AiRunProfileKey
-    profileRevisionId: string
-    profileRevisionToken: string
-    profileToken: string
-  }): Promise<AiAdminRunProfileRecord> {
-    const storedSnapshot = await this.#store.getActivationSnapshot(input)
-    if (!storedSnapshot)
-      throw notFoundError('AI run profile revision not found.')
-    const connection = await this.#withSecretAvailability(
-      storedSnapshot.connection,
-    )
-    const snapshot = { ...storedSnapshot, connection }
-    if (snapshot.profileRevision.status === 'active') {
-      throw validationError('The AI run profile revision is already active.')
+    if (input.profile.modelRevisionId) {
+      const connection = await this.#store.getModelRevisionConnection(
+        input.profile.modelRevisionId,
+      )
+      if (!connection) {
+        throw validationError(
+          'AI connection model revision is no longer available.',
+          { blockers: [{ code: 'model_revision_unverified' }] },
+        )
+      }
+      await this.#assertAuthorizedProfile(
+        await this.#withSecretAvailability(connection),
+        input.profileKey,
+      )
     }
-    if (
-      snapshot.connection.revisionToken !== input.connectionRevisionToken ||
-      snapshot.modelRevision?.revisionToken !== input.modelRevisionToken ||
-      snapshot.profile.revisionToken !== input.profileToken ||
-      snapshot.profileRevision.revisionToken !== input.profileRevisionToken
-    ) {
-      activationConflict()
-    }
-    const blockers = profileActivationBlockers(input.profileKey, snapshot)
-    assertNoBlockers(blockers)
-    await this.#assertAuthorizedProfile(snapshot.connection, input.profileKey)
-    if (!snapshot.attestationRevisionToken || !snapshot.connectionEvidenceId) {
-      throw validationError('AI run profile dependencies are incomplete.', {
-        blockers: [{ code: 'attestation_invalid' }],
-      })
-    }
-    const updated = await this.#store.activateRunProfileRevision({
-      attestationRevisionToken: snapshot.attestationRevisionToken,
-      connectionEvidenceId: snapshot.connectionEvidenceId,
-      connectionRevisionToken: input.connectionRevisionToken,
-      modelRevisionToken: input.modelRevisionToken,
-      profileRevisionId: input.profileRevisionId,
-      profileRevisionToken: input.profileRevisionToken,
-      profileToken: input.profileToken,
-      secretVersionId: snapshot.connection.activeSecret.available
-        ? snapshot.connection.activeSecret.secretVersionId
-        : null,
-    })
-    if (!updated) activationConflict()
-    return updated
+    return this.#store.saveRunProfile(input)
   }
 
   async setRunProfileOperationalStatus(input: {
@@ -1293,7 +1138,6 @@ export class AiConnectionAdministrationService {
 }
 
 export const __testing = {
-  capabilityPolicyBlockers,
   completeAttestation,
   currentAttestation,
   profileActivationBlockers,

@@ -49,14 +49,6 @@ function profile(
   return {
     adapterType,
     adapterVersion,
-    capabilityPolicyJson: JSON.stringify({
-      aiAnalysis: 'allowed',
-      imageInput: 'disabled',
-      jsonSchema: 'allowed',
-      streaming: 'required',
-      usageMetadata: 'allowed',
-      validatableJson: 'required',
-    }),
     connectionAgentRuntimeVersion: null,
     connectionConfigurationVersion: 4,
     connectionId: 'connection-17',
@@ -76,8 +68,8 @@ function profile(
     maximumOutputBytes: 4_194_304,
     maximumOutputTokens: 8_192,
     maximumRetainedMemoryBytes: 8_388_608,
-    profileRevisionId: 'profile-revision-31',
-    profileRevisionStatus: 'active',
+    profileConfigurationVersion: 1,
+    profileId: 'profile-31',
     trustConfiguration: {
       authenticationType: 'static_secret',
       dataPolicy: {
@@ -165,7 +157,8 @@ function recoveryTarget(
     identity: {
       aiConnectionId: 'connection-17',
       aiConnectionModelRevisionId: 'model-revision-23',
-      aiRunProfileRevisionId: 'profile-revision-31',
+      aiRunProfileConfigurationVersion: 1,
+      aiRunProfileId: 'profile-31',
     } as AiRunIdentity,
     inactivityTimeBudgetMs: 1_000,
     runType: 'generate_without_images',
@@ -182,7 +175,8 @@ function completedAdapterEvent(
     identity: {
       aiConnectionId: adapterRequest.connection.id,
       aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-      aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+      aiRunProfileConfigurationVersion: 1,
+      aiRunProfileId: adapterRequest.runProfileId,
     },
     rawOutput: '{"status":"ok"}',
     type: 'completed',
@@ -205,7 +199,7 @@ function integration(
   runCoordinator: AiRunCoordinator = RUN_COORDINATOR,
 ): AiIntegrationLayerWithSafeInvalidOutput {
   const resolver = createAiRunProfileResolver({
-    profileSource: { findActiveRevision: async () => stored },
+    profileSource: { findProfile: async () => stored },
     resolveAdapterConfiguration: async (_profile, use) => {
       await use({
         connection: { opaque: 'connection-configuration' },
@@ -260,16 +254,6 @@ describe('AI integration layer', () => {
       }
 
       const stored = profile()
-      stored.capabilityPolicyJson = JSON.stringify({
-        aiAnalysis:
-          type === 'repair_invalid_import_json' ? 'disabled' : 'allowed',
-        imageInput: type === 'generate_with_images' ? 'required' : 'disabled',
-        jsonSchema: 'allowed',
-        streaming:
-          type === 'repair_invalid_import_json' ? 'disabled' : 'required',
-        usageMetadata: 'allowed',
-        validatableJson: 'required',
-      })
       stored.verifiedCapabilitiesJson = JSON.stringify({
         aiAnalysis: true,
         cost: false,
@@ -308,7 +292,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           rawOutput: '{"status":"ok"}',
           type: 'completed',
@@ -651,7 +636,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           rawOutput: '{"requirements":[]}',
           type: 'completed',
@@ -668,7 +654,8 @@ describe('AI integration layer', () => {
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
-          aiRunProfileRevisionId: 'profile-revision-31',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile-31',
         },
         rawOutput: '{"requirements":[]}',
         type: 'completed',
@@ -696,7 +683,8 @@ describe('AI integration layer', () => {
         externalModelId: 'external-model-v1',
         id: 'model-revision-23',
       },
-      runProfileRevisionId: 'profile-revision-31',
+      runProfileConfigurationVersion: 1,
+      runProfileId: 'profile-31',
       selectedCapabilities: {
         aiAnalysis: false,
         cost: false,
@@ -741,7 +729,7 @@ describe('AI integration layer', () => {
       },
     }
     const resolver = createAiRunProfileResolver({
-      profileSource: { findActiveRevision: async () => profile() },
+      profileSource: { findProfile: async () => profile() },
       resolveAdapterConfiguration: async () => {
         throw new Error('provider secret must stay private')
       },
@@ -770,14 +758,14 @@ describe('AI integration layer', () => {
 
   it('emits a content-free blocked-profile alarm without replacing the safe error', async () => {
     const blocked = profile()
-    blocked.modelRevisionStatus = 'verification_required'
+    blocked.modelRevisionStatus = 'new_revision_required'
     const emit = vi.fn(async () => {
       throw new Error('telemetry unavailable')
     })
     const layer = createAiIntegrationLayer({
       adapterRegistry: createAiConnectionAdapterRegistry([]),
       profileResolver: createAiRunProfileResolver({
-        profileSource: { findActiveRevision: async () => blocked },
+        profileSource: { findProfile: async () => blocked },
         resolveAdapterConfiguration: async () => undefined,
       }),
       runCoordinator: RUN_COORDINATOR,
@@ -793,7 +781,8 @@ describe('AI integration layer', () => {
       adapterVersion: '3',
       aiConnectionId: 'connection-17',
       aiConnectionModelRevisionId: 'model-revision-23',
-      aiRunProfileRevisionId: 'profile-revision-31',
+      aiRunProfileConfigurationVersion: 1,
+      aiRunProfileId: 'profile-31',
       applicationRunId: 'app-run-private',
       correlationId: 'correlation-private',
       name: 'ai_alarm_active_profile_blocked',
@@ -815,7 +804,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           type: 'failed',
         }
@@ -829,7 +819,7 @@ describe('AI integration layer', () => {
       },
     }
     const resolver = createAiRunProfileResolver({
-      profileSource: { findActiveRevision: async () => profile() },
+      profileSource: { findProfile: async () => profile() },
       resolveAdapterConfiguration: async (_profile, use) => {
         await use({ connection: {}, modelRevision: {} })
       },
@@ -872,7 +862,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: 'connection-17',
             aiConnectionModelRevisionId: 'model-revision-23',
-            aiRunProfileRevisionId: 'profile-revision-31',
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: 'profile-31',
           },
           type: 'failed',
         },
@@ -883,7 +874,7 @@ describe('AI integration layer', () => {
   it('keeps transient adapter configuration scoped through stream consumption', async () => {
     let scopeActive = false
     const resolver = createAiRunProfileResolver({
-      profileSource: { findActiveRevision: async () => profile() },
+      profileSource: { findProfile: async () => profile() },
       resolveAdapterConfiguration: async (_stored, use) => {
         scopeActive = true
         try {
@@ -908,7 +899,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           rawOutput: '{"requirements":[]}',
           type: 'completed',
@@ -934,7 +926,7 @@ describe('AI integration layer', () => {
 
   it('replaces a completed terminal when configuration teardown fails', async () => {
     const resolver = createAiRunProfileResolver({
-      profileSource: { findActiveRevision: async () => profile() },
+      profileSource: { findProfile: async () => profile() },
       resolveAdapterConfiguration: async (_stored, use) => {
         await use({ connection: {}, modelRevision: {} })
         throw new Error('secret cleanup details must stay private')
@@ -948,7 +940,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           rawOutput: '{"requirements":[]}',
           type: 'completed',
@@ -975,7 +968,8 @@ describe('AI integration layer', () => {
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
-          aiRunProfileRevisionId: 'profile-revision-31',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile-31',
         },
         type: 'failed',
       },
@@ -1010,7 +1004,8 @@ describe('AI integration layer', () => {
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
-          aiRunProfileRevisionId: 'profile-revision-31',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile-31',
         },
         type: 'failed',
       },
@@ -1038,7 +1033,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           rawOutput: '{"requirements":[]}',
           type: 'completed',
@@ -1091,7 +1087,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           rawOutput: '{"schemaVersion":"wrong"}',
           type: 'completed',
@@ -1128,7 +1125,8 @@ describe('AI integration layer', () => {
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
-          aiRunProfileRevisionId: 'profile-revision-31',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile-31',
         },
         type: 'failed',
       },
@@ -1182,7 +1180,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           rawOutput: '{"schemaVersion":"wrong"}',
           type: 'completed',
@@ -1246,7 +1245,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           rawOutput: '{"schemaVersion":"wrong"}',
           type: 'completed',
@@ -1272,7 +1272,8 @@ describe('AI integration layer', () => {
         identity: {
           aiConnectionId: 'connection-17',
           aiConnectionModelRevisionId: 'model-revision-23',
-          aiRunProfileRevisionId: 'profile-revision-31',
+          aiRunProfileConfigurationVersion: 1,
+          aiRunProfileId: 'profile-31',
         },
         reason: 'application_cancelled',
         type: 'cancelled',
@@ -1309,7 +1310,8 @@ describe('AI integration layer', () => {
             identity: {
               aiConnectionId: adapterRequest.connection.id,
               aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-              aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+              aiRunProfileConfigurationVersion: 1,
+              aiRunProfileId: adapterRequest.runProfileId,
             },
             rawOutput: '{"schemaVersion":"wrong"}',
             type: 'completed',
@@ -1331,7 +1333,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: 'connection-17',
             aiConnectionModelRevisionId: 'model-revision-23',
-            aiRunProfileRevisionId: 'profile-revision-31',
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: 'profile-31',
           },
           reason: 'application_cancelled',
           type: 'cancelled',
@@ -1363,7 +1366,8 @@ describe('AI integration layer', () => {
           identity: {
             aiConnectionId: adapterRequest.connection.id,
             aiConnectionModelRevisionId: adapterRequest.modelRevision.id,
-            aiRunProfileRevisionId: adapterRequest.runProfileRevisionId,
+            aiRunProfileConfigurationVersion: 1,
+            aiRunProfileId: adapterRequest.runProfileId,
           },
           rawOutput: '{"secret":"must-not-escape"}',
           type: 'completed',

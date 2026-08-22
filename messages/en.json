@@ -1693,6 +1693,15 @@
       "status": "Status",
       "notAvailable": "Not available",
       "actions": {
+        "activateSecret": "Activate secret",
+        "attest": "Approve attestation",
+        "createConnection": "Add AI connection",
+        "createModel": "Add connection model",
+        "newRevision": "Create new model revision",
+        "retry": "Try again",
+        "revokeSecret": "Revoke secret",
+        "save": "Save",
+        "saveSecret": "Save secret",
         "switch": "Switch",
         "anonymize": "Anonymize",
         "delete": "Delete",
@@ -1821,6 +1830,13 @@
         "suspendProfile": "Suspend profile",
         "recoverProfile": "Recover profile",
         "saveConnection": "Save connection",
+        "save": "Save",
+        "attest": "Approve attestation",
+        "activateSecret": "Verify and activate secret",
+        "saveSecret": "Save secret",
+        "revokeSecret": "Confirm revocation",
+        "delete": "Delete",
+        "retry": "Try again",
         "saveModel": "Save model draft",
         "saving": "Saving…",
         "cancel": "Cancel"
@@ -2178,9 +2194,8 @@
         "retireConfirmMessage": "A retired model revision cannot be verified or selected for a new profile revision.",
         "usedByProfileHelp": "The model is used by a run profile. Remove it from the profile or select another model first.",
         "status": {
-          "draft": "Draft",
-          "retired": "Retired",
-          "verification_required": "Verification required",
+          "ended": "Ended",
+          "new_revision_required": "New revision required",
           "verified": "Verified"
         }
       },
@@ -2243,6 +2258,123 @@
           "enabled": "Enabled",
           "suspended": "Suspended"
         }
+      },
+      "connections": { "title": "AI connections" },
+      "modelVerification": {
+        "capabilities": "Verified capabilities",
+        "cancelVerification": "Cancel verification",
+        "checks": {
+          "baseline_model_access": "Baseline model access",
+          "capability": {
+            "aiAnalysis": "Capability: AI analysis",
+            "cost": "Capability: cost",
+            "imageInput": "Capability: image input",
+            "jsonSchemaSteering": "Capability: JSON Schema steering",
+            "streaming": "Capability: streaming",
+            "tokenUsage": "Capability: token usage",
+            "validatableJson": "Capability: validatable JSON"
+          },
+          "connection_authentication": "Connection and authentication",
+          "profile": {
+            "generation_with_images": "Run profile: generation with images",
+            "generation_without_images": "Run profile: generation without images",
+            "invalid_json_repair": "Run profile: invalid JSON repair"
+          },
+          "summary": "Final summary"
+        },
+        "compatibility": "Run-profile compatibility",
+        "failureCategories": {
+          "adapter_failure": "The provider could not complete verification. Run verification again.",
+          "authentication_failed": "Verification could not run because the connection has no usable secret.",
+          "cancelled": "Verification was cancelled.",
+          "capability_mismatch": "The provider explicitly rejected the capability.",
+          "connection_unavailable": "The result was inconclusive due to a network error. Check the connection and run verification again.",
+          "deadline_exceeded": "Verification took too long. Check the connection and try again.",
+          "invalid_response": "The provider returned an invalid response. Run verification again.",
+          "inconclusive_capability": "One or more capability checks were inconclusive. Run verification again.",
+          "provider_unavailable": "The provider was unavailable. Check the connection and run verification again.",
+          "rate_limited": "The provider rate-limited verification. Wait and run verification again.",
+          "request_rejected": "The provider rejected the verification request."
+        },
+        "missingSecret": "Verification could not run because the connection has no usable secret.",
+        "notSaveable": "The model cannot be saved. Resolve inconclusive checks and verify again.",
+        "outcomes": {
+          "inconclusive": "Could not determine",
+          "notChecked": "Not checked",
+          "notVerified": "Not verified",
+          "verified": "Verified"
+        },
+        "progress": "Verification progress",
+        "resultLabels": {
+          "baseline": "Baseline model access",
+          "connection": "Connection and authentication"
+        },
+        "saveable": "Verification is complete. Review the result and save the model revision separately.",
+        "saveRevision": "Save model revision",
+        "supported": "Supported",
+        "unsupported": "Unsupported – missing {capabilities}",
+        "verify": "Verify"
+      },
+      "directProfile": {
+        "advanced": "Advanced runtime budgets",
+        "configurationStatus": {
+          "blocked": "Blocked",
+          "configured": "Configured",
+          "unconfigured": "Not configured"
+        },
+        "disconnect": "Disconnect model",
+        "edit": "Edit run profile",
+        "fields": {
+          "maximumBufferedEvents": {
+            "label": "Maximum buffered events",
+            "help": "Limits how many streaming events may wait in memory for one run."
+          },
+          "maximumOutputBytes": {
+            "label": "Maximum output bytes",
+            "help": "Limits the total size of model output in bytes."
+          },
+          "maximumOutputTokens": {
+            "label": "Maximum output tokens",
+            "help": "Limits how many tokens the model may return for one run."
+          },
+          "maximumRetainedMemoryBytes": {
+            "label": "Maximum retained memory bytes",
+            "help": "Limits how much run data may be retained in working memory."
+          }
+        },
+        "model": "Model revision",
+        "modelSelected": "A verified model revision is selected.",
+        "noModel": "No model revision selected",
+        "operationalStatus": { "enabled": "Active", "suspended": "Paused" },
+        "pause": "Pause run profile",
+        "reasons": {
+          "connectionUnavailable": "The connection is unavailable",
+          "ended": "Ended",
+          "incompatible": "The model revision does not satisfy this profile",
+          "missingCapabilities": "Missing {capabilities}",
+          "newRevisionRequired": "New revision required"
+        },
+        "recommended": "Recommended",
+        "resume": "Resume"
+      },
+      "destructive": {
+        "inUse": "The revision is used by run profiles: {profiles}. Queued or running runs: {count}.",
+        "noProfiles": "none",
+        "delete": {
+          "confirm": "Delete permanently",
+          "finalModel": "The connection model will also be deleted because no revisions remain.",
+          "message": "Revision {number} and its verification evidence will be permanently deleted. This action cannot be undone.",
+          "title": "Permanently delete model revision?"
+        },
+        "end": {
+          "confirm": "End revision",
+          "message": "The revision cannot be used by new run profiles after it is ended. This action cannot be undone.",
+          "title": "End model revision?"
+        }
+      },
+      "messages": {
+        "revisionDeleted": "The model revision and its verification evidence were permanently deleted.",
+        "revisionEnded": "The model revision was ended."
       },
       "policy": {
         "modes": {

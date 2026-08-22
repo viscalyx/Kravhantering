@@ -13,6 +13,7 @@ export interface AiConnectionModelVerificationEvidenceEntity {
   id: string
   modelRevision: AiConnectionModelRevisionEntity
   outcome: AiVerificationOutcome
+  profileCompatibilityJson: string
   testSuiteVersion: string
   verifiedAt: Date
   verifiedCapabilitiesJson: string
@@ -38,6 +39,11 @@ export const aiConnectionModelVerificationEvidenceEntity =
       verifiedCapabilitiesJson: {
         length: 'MAX',
         name: 'verified_capabilities_json',
+        type: 'nvarchar',
+      },
+      profileCompatibilityJson: {
+        length: 'MAX',
+        name: 'profile_compatibility_json',
         type: 'nvarchar',
       },
       evidenceFingerprint: {
@@ -108,6 +114,10 @@ export const aiConnectionModelVerificationEvidenceEntity =
       {
         expression: 'ISJSON([details_json]) = 1',
         name: 'chk_ai_connection_model_verification_evidence_details_json',
+      },
+      {
+        expression: 'ISJSON([profile_compatibility_json]) = 1',
+        name: 'chk_ai_connection_model_verification_evidence_profile_compatibility_json',
       },
     ],
   })

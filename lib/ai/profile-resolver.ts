@@ -5,7 +5,7 @@ import type {
   AiConnectionModelRevisionId,
   AiResolvedConnection,
   AiResolvedConnectionModelRevision,
-  AiRunProfileRevisionId,
+  AiRunProfileId,
   AiRunType,
 } from './run-contracts'
 
@@ -17,10 +17,6 @@ export const AI_RUN_PROFILE_KEYS = [
 
 export type AiRunProfileKey = (typeof AI_RUN_PROFILE_KEYS)[number]
 export type AiRunProfileOperationalStatus = 'enabled' | 'suspended'
-export type AiPersistedRunProfileRevisionStatus =
-  | 'active'
-  | 'draft'
-  | 'superseded'
 export type AiPersistedConnectionLifecycleStatus =
   | 'active'
   | 'draft'
@@ -28,15 +24,13 @@ export type AiPersistedConnectionLifecycleStatus =
   | 'suspended'
   | 'verification_required'
 export type AiPersistedModelRevisionStatus =
-  | 'draft'
-  | 'retired'
-  | 'verification_required'
+  | 'ended'
+  | 'new_revision_required'
   | 'verified'
 
 export interface AiPersistedRunProfile {
   adapterType: string
   adapterVersion: string
-  capabilityPolicyJson: string
   connectionAgentRuntimeVersion: string | null
   connectionConfiguration?: Readonly<Record<string, unknown>>
   connectionConfigurationVersion: number
@@ -58,8 +52,8 @@ export interface AiPersistedRunProfile {
   modelRevisionMaximumConcurrency: number | null
   modelRevisionStatus: AiPersistedModelRevisionStatus
   operationalStatus: AiRunProfileOperationalStatus
-  profileRevisionId: string
-  profileRevisionStatus: AiPersistedRunProfileRevisionStatus
+  profileConfigurationVersion: number
+  profileId: string
   queueCapacity: number
   totalTimeBudgetSeconds: number
   trustConfiguration: Readonly<AiConnectionTrustConfiguration> | null
@@ -67,7 +61,7 @@ export interface AiPersistedRunProfile {
 }
 
 export interface AiRunProfileSource {
-  findActiveRevision(
+  findProfile(
     profileKey: AiRunProfileKey,
   ): Promise<AiPersistedRunProfile | null>
 }
@@ -100,7 +94,8 @@ export interface AiResolvedRunProfile {
     maxRetainedMemoryBytes: number
   }>
   modelRevisionId: AiConnectionModelRevisionId
-  profileRevisionId: AiRunProfileRevisionId
+  profileConfigurationVersion: number
+  profileId: AiRunProfileId
   publicMetadata: Readonly<{
     connectionName: string
     dataPolicySummary: string
@@ -148,7 +143,8 @@ export class AiRunProfileResolutionError extends Error {
   readonly identity?: {
     aiConnectionId: string
     aiConnectionModelRevisionId: string
-    aiRunProfileRevisionId: string
+    aiRunProfileConfigurationVersion: number
+    aiRunProfileId: string
   }
 
   constructor(
@@ -167,29 +163,9 @@ export class AiRunProfileResolutionError extends Error {
   }
 }
 
-type AiCapabilityPolicyMode = 'allowed' | 'disabled' | 'required'
-
-interface AiRunProfileCapabilityPolicy {
-  aiAnalysis: AiCapabilityPolicyMode
-  imageInput: AiCapabilityPolicyMode
-  jsonSchema: AiCapabilityPolicyMode
-  streaming: AiCapabilityPolicyMode
-  usageMetadata: AiCapabilityPolicyMode
-  validatableJson: AiCapabilityPolicyMode
-}
-
 interface AiVerifiedCapabilities extends AiCapabilitySelection {
   validatableJson: boolean
 }
-
-const POLICY_KEYS = [
-  'aiAnalysis',
-  'imageInput',
-  'jsonSchema',
-  'streaming',
-  'usageMetadata',
-  'validatableJson',
-] as const satisfies readonly (keyof AiRunProfileCapabilityPolicy)[]
 
 const VERIFIED_CAPABILITY_KEYS = [
   'aiAnalysis',
@@ -221,24 +197,6 @@ function parseJsonRecord(value: string | null): Record<string, unknown> | null {
   }
 }
 
-function isPolicyMode(value: unknown): value is AiCapabilityPolicyMode {
-  return value === 'allowed' || value === 'disabled' || value === 'required'
-}
-
-function readCapabilityPolicy(
-  value: string,
-): AiRunProfileCapabilityPolicy | null {
-  const parsed = parseJsonRecord(value)
-  if (
-    !parsed ||
-    Object.keys(parsed).length !== POLICY_KEYS.length ||
-    !POLICY_KEYS.every(key => isPolicyMode(parsed[key]))
-  ) {
-    return null
-  }
-  return parsed as unknown as AiRunProfileCapabilityPolicy
-}
-
 function readVerifiedCapabilities(
   value: string | null,
 ): AiVerifiedCapabilities | null {
@@ -252,76 +210,32 @@ function readVerifiedCapabilities(
   return parsed as unknown as AiVerifiedCapabilities
 }
 
-function satisfiesLockedPolicy(
-  type: AiRunType,
-  policy: AiRunProfileCapabilityPolicy,
-): boolean {
-  if (
-    policy.validatableJson !== 'required' ||
-    policy.usageMetadata === 'required'
-  ) {
-    return false
-  }
-  if (type === 'repair_invalid_import_json') {
-    return (
-      policy.streaming === 'disabled' &&
-      policy.imageInput === 'disabled' &&
-      policy.aiAnalysis === 'disabled'
-    )
-  }
-  return (
-    policy.streaming === 'required' &&
-    policy.imageInput ===
-      (type === 'generate_with_images' ? 'required' : 'disabled')
-  )
-}
-
-function selectCapability(
-  mode: AiCapabilityPolicyMode,
-  isVerified: boolean,
-): boolean | null {
-  if (mode === 'disabled') return false
-  if (mode === 'allowed') return isVerified
-  return isVerified ? true : null
-}
-
 function selectCapabilities(
-  policy: AiRunProfileCapabilityPolicy,
+  type: AiRunType,
   verified: AiVerifiedCapabilities,
 ): AiCapabilitySelection | null {
-  const aiAnalysis = selectCapability(policy.aiAnalysis, verified.aiAnalysis)
-  const imageInput = selectCapability(policy.imageInput, verified.imageInput)
-  const jsonSchemaSteering = selectCapability(
-    policy.jsonSchema,
-    verified.jsonSchemaSteering,
-  )
-  const streaming = selectCapability(policy.streaming, verified.streaming)
-  const cost = selectCapability(policy.usageMetadata, verified.cost)
-  const tokenUsage = selectCapability(policy.usageMetadata, verified.tokenUsage)
+  const requiresImages = type === 'generate_with_images'
+  const requiresStreaming = type !== 'repair_invalid_import_json'
   if (
-    aiAnalysis === null ||
-    imageInput === null ||
-    jsonSchemaSteering === null ||
-    streaming === null ||
-    cost === null ||
-    tokenUsage === null ||
-    !verified.validatableJson
+    !verified.validatableJson ||
+    (requiresImages && !verified.imageInput) ||
+    (requiresStreaming && !verified.streaming)
   ) {
     return null
   }
   return {
-    aiAnalysis,
-    cost,
-    imageInput,
-    jsonSchemaSteering,
-    streaming,
-    tokenUsage,
+    aiAnalysis:
+      type === 'repair_invalid_import_json' ? false : verified.aiAnalysis,
+    cost: verified.cost,
+    imageInput: requiresImages,
+    jsonSchemaSteering: verified.jsonSchemaSteering,
+    streaming: requiresStreaming,
+    tokenUsage: verified.tokenUsage,
   }
 }
 
 function hasValidDependencies(profile: AiPersistedRunProfile): boolean {
   return (
-    profile.profileRevisionStatus === 'active' &&
     profile.connectionLifecycleStatus === 'active' &&
     profile.modelRevisionStatus === 'verified' &&
     profile.modelRevisionConnectionConfigurationVersion ===
@@ -372,7 +286,8 @@ function blocked(profile?: AiPersistedRunProfile): AiRunProfileResolutionError {
       ? {
           aiConnectionId: profile.connectionId,
           aiConnectionModelRevisionId: profile.modelRevisionId,
-          aiRunProfileRevisionId: profile.profileRevisionId,
+          aiRunProfileConfigurationVersion: profile.profileConfigurationVersion,
+          aiRunProfileId: profile.profileId,
         }
       : undefined,
     profile?.adapterVersion,
@@ -411,7 +326,7 @@ export function createAiRunProfileResolver(
 
       let profile: AiPersistedRunProfile | null
       try {
-        profile = await options.profileSource.findActiveRevision(profileKey)
+        profile = await options.profileSource.findProfile(profileKey)
       } catch {
         throw blocked()
       }
@@ -425,14 +340,11 @@ export function createAiRunProfileResolver(
         throw blocked(profile)
       }
 
-      const policy = readCapabilityPolicy(profile.capabilityPolicyJson)
       const verified = readVerifiedCapabilities(
         profile.verifiedCapabilitiesJson,
       )
-      if (!policy || !verified || !satisfiesLockedPolicy(type, policy)) {
-        throw blocked(profile)
-      }
-      const selectedCapabilities = selectCapabilities(policy, verified)
+      if (!verified) throw blocked(profile)
+      const selectedCapabilities = selectCapabilities(type, verified)
       if (!selectedCapabilities) throw blocked(profile)
 
       const connectionId = profile.connectionId as AiConnectionId
@@ -503,7 +415,8 @@ export function createAiRunProfileResolver(
         connectionId,
         limits,
         modelRevisionId,
-        profileRevisionId: profile.profileRevisionId as AiRunProfileRevisionId,
+        profileConfigurationVersion: profile.profileConfigurationVersion,
+        profileId: profile.profileId as AiRunProfileId,
         publicMetadata: Object.freeze({
           connectionName: profile.connectionPublicName,
           dataPolicySummary: profile.connectionDataPolicySummary,

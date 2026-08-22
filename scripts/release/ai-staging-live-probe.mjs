@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
-const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v4'
+const ADMIN_FUNCTIONAL_PROBE_VERSION = 'ai-admin-functional-probe-v5'
 const MAX_RESPONSE_BYTES = 1_048_576
 const REQUEST_TIMEOUT_MS = 120_000
 const SAFE_PATH_VALUE = /^[A-Za-z0-9._:-]{1,160}$/u
@@ -18,7 +18,8 @@ const CONFIGURED_PATH_FIELDS = Object.freeze([
   'adapterType',
   'aiConnectionId',
   'aiConnectionModelRevisionId',
-  'aiRunProfileRevisionId',
+  'aiRunProfileConfigurationVersion',
+  'aiRunProfileId',
   'profileKey',
 ])
 
@@ -30,6 +31,13 @@ function requiredEnv(env, name) {
 
 function safePathValue(value, name) {
   if (!SAFE_PATH_VALUE.test(value)) throw new Error(`${name} is invalid.`)
+  return value
+}
+
+function positiveInteger(value, name) {
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`${name} is invalid.`)
+  }
   return value
 }
 
@@ -84,17 +92,17 @@ function configuredPathsFile(env, fsImpl) {
         path.aiConnectionModelRevisionId,
         'aiConnectionModelRevisionId',
       ),
-      aiRunProfileRevisionId: safePathValue(
-        path.aiRunProfileRevisionId,
-        'aiRunProfileRevisionId',
+      aiRunProfileConfigurationVersion: positiveInteger(
+        path.aiRunProfileConfigurationVersion,
+        'aiRunProfileConfigurationVersion',
       ),
+      aiRunProfileId: safePathValue(path.aiRunProfileId, 'aiRunProfileId'),
       profileKey,
     })
   })
   if (
     new Set(paths.map(path => path.profileKey)).size !== PROFILE_KEYS.length ||
-    new Set(paths.map(path => path.aiRunProfileRevisionId)).size !==
-      paths.length
+    new Set(paths.map(path => path.aiRunProfileId)).size !== paths.length
   ) {
     throw new Error(
       'AI staging-live paths must bind each fixed profile exactly once.',
@@ -227,22 +235,24 @@ function assertServerEnvironment(configuration, headers) {
 }
 
 function preflightProfiles(paths, profiles) {
-  const byRevision = new Map()
+  const byId = new Map()
   for (const profile of requireArray(profiles, 'Run-profile preflight')) {
-    if (typeof profile?.activeRevisionId === 'string') {
-      byRevision.set(profile.activeRevisionId, profile)
+    if (typeof profile?.id === 'string') {
+      byId.set(profile.id, profile)
     }
   }
   for (const path of paths) {
-    const profile = byRevision.get(path.aiRunProfileRevisionId)
+    const profile = byId.get(path.aiRunProfileId)
     if (
       profile?.operationalStatus !== 'enabled' ||
+      profile.configurationStatus !== 'configured' ||
+      profile.configurationVersion !== path.aiRunProfileConfigurationVersion ||
       !Array.isArray(profile.blockers) ||
       profile.blockers.length !== 0 ||
       profile.profileKey !== path.profileKey
     ) {
       throw new Error(
-        'Every intended profile revision must be active, enabled, and unblocked.',
+        'Every intended profile must be configured, enabled, and unblocked.',
       )
     }
   }
@@ -277,14 +287,15 @@ function assertLivePathProbeResult(value, path) {
     'adapterVersion',
     'aiConnectionId',
     'aiConnectionModelRevisionId',
-    'aiRunProfileRevisionId',
+    'aiRunProfileConfigurationVersion',
+    'aiRunProfileId',
     'connectionRevisionToken',
     'executionId',
     'externalLiveCallMade',
     'failureCategory',
     'modelRevisionToken',
     'outcome',
-    'profileRevisionToken',
+    'profileToken',
     'testSuiteVersion',
   ]
   if (
@@ -293,25 +304,29 @@ function assertLivePathProbeResult(value, path) {
     Array.isArray(value) ||
     Object.keys(value).sort().join('\u0000') !== fields.sort().join('\u0000')
   ) {
-    throw new Error('The fixed Admin functional probe v4 did not pass.')
+    throw new Error('The fixed Admin functional probe v5 did not pass.')
   }
   const pathMatches =
     value.adapterType === path.adapterType &&
     value.aiConnectionId === path.aiConnectionId &&
     value.aiConnectionModelRevisionId === path.aiConnectionModelRevisionId &&
-    value.aiRunProfileRevisionId === path.aiRunProfileRevisionId
+    value.aiRunProfileId === path.aiRunProfileId &&
+    value.aiRunProfileConfigurationVersion ===
+      path.aiRunProfileConfigurationVersion
   const safeProofValues = [
     value.adapterVersion,
     value.connectionRevisionToken,
     value.executionId,
     value.modelRevisionToken,
-    value.profileRevisionToken,
+    value.profileToken,
   ].every(
     candidate =>
       typeof candidate === 'string' && SAFE_PATH_VALUE.test(candidate),
   )
   if (
     !pathMatches ||
+    !Number.isInteger(value.aiRunProfileConfigurationVersion) ||
+    value.aiRunProfileConfigurationVersion < 1 ||
     !safeProofValues ||
     value.adapterType === 'controlled_test' ||
     value.externalLiveCallMade !== true ||
@@ -319,7 +334,7 @@ function assertLivePathProbeResult(value, path) {
     value.outcome !== 'passed' ||
     value.testSuiteVersion !== ADMIN_FUNCTIONAL_PROBE_VERSION
   ) {
-    throw new Error('The fixed Admin functional probe v4 did not pass.')
+    throw new Error('The fixed Admin functional probe v5 did not pass.')
   }
   return value
 }
@@ -367,7 +382,7 @@ export async function runAiStagingLiveSyntheticProbe(
             action: 'verify_live_path',
             expectedEnvironmentId: configuration.expectedEnvironmentId,
             modelRevisionId: path.aiConnectionModelRevisionId,
-            profileRevisionId: path.aiRunProfileRevisionId,
+            profileKey: path.profileKey,
           }),
           headers: mutationHeaders,
           method: 'POST',
@@ -387,10 +402,11 @@ export async function runAiStagingLiveSyntheticProbe(
       adapterVersion: proof.adapterVersion,
       aiConnectionId: proof.aiConnectionId,
       aiConnectionModelRevisionId: proof.aiConnectionModelRevisionId,
-      aiRunProfileRevisionId: proof.aiRunProfileRevisionId,
+      aiRunProfileConfigurationVersion: proof.aiRunProfileConfigurationVersion,
+      aiRunProfileId: proof.aiRunProfileId,
       connectionRevisionToken: proof.connectionRevisionToken,
       modelRevisionToken: proof.modelRevisionToken,
-      profileRevisionToken: proof.profileRevisionToken,
+      profileToken: proof.profileToken,
     }),
   )
   return {
@@ -403,9 +419,7 @@ export async function runAiStagingLiveSyntheticProbe(
     ),
     syntheticProbe: Object.freeze({
       ...verifiedPaths.find(
-        path =>
-          path.aiRunProfileRevisionId ===
-          representativeProof.aiRunProfileRevisionId,
+        path => path.aiRunProfileId === representativeProof.aiRunProfileId,
       ),
       externalLiveCallMade: representativeProof.externalLiveCallMade,
       outcome:

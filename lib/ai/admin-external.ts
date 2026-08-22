@@ -82,16 +82,16 @@ export function createExactLivePathRunner(
   return {
     async run(selection) {
       assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
-      const persisted = await persistedSource.findActiveRevision(
-        selection.profileKey,
-      )
+      const persisted = await persistedSource.findProfile(selection.profileKey)
       if (
         !persisted ||
         persisted.adapterType !== selection.adapterType ||
         persisted.adapterVersion !== selection.adapterVersion ||
         persisted.connectionId !== selection.aiConnectionId ||
         persisted.modelRevisionId !== selection.aiConnectionModelRevisionId ||
-        persisted.profileRevisionId !== selection.aiRunProfileRevisionId
+        persisted.profileId !== selection.aiRunProfileId ||
+        persisted.profileConfigurationVersion !==
+          selection.aiRunProfileConfigurationVersion
       ) {
         return { failureCategory: 'exact_profile_changed', outcome: 'failed' }
       }
@@ -102,7 +102,7 @@ export function createExactLivePathRunner(
         keyring: keyring(),
         overrides,
         profileSource: {
-          async findActiveRevision(profileKey) {
+          async findProfile(profileKey) {
             return profileKey === selection.profileKey ? persisted : null
           },
         },
@@ -136,8 +136,9 @@ export function createExactLivePathRunner(
           terminal.identity.aiConnectionId === selection.aiConnectionId &&
           terminal.identity.aiConnectionModelRevisionId ===
             selection.aiConnectionModelRevisionId &&
-          terminal.identity.aiRunProfileRevisionId ===
-            selection.aiRunProfileRevisionId
+          terminal.identity.aiRunProfileId === selection.aiRunProfileId &&
+          terminal.identity.aiRunProfileConfigurationVersion ===
+            selection.aiRunProfileConfigurationVersion
           ? { failureCategory: null, outcome: 'passed' }
           : {
               failureCategory:
@@ -304,19 +305,6 @@ export function createProductionAiAdminExternalOperations(
       const { egress, registration } = await prepared(connection)
       return secrets().fetchCatalog(registration.adapter, connection, egress)
     },
-    async discoverModelCapabilities(connection, target) {
-      const { egress, registration } = await prepared(connection)
-      return secrets().discoverModelCapabilities(
-        registration.adapter,
-        connection,
-        egress,
-        target,
-      )
-    },
-    async probeConnection(connection) {
-      const { egress, registration } = await prepared(connection)
-      return secrets().probeConnection(registration.adapter, connection, egress)
-    },
     async probeHealth(connection, revision) {
       const { egress, registration } = await prepared(connection)
       return secrets().probeHealth(
@@ -349,17 +337,28 @@ export function createProductionAiAdminExternalOperations(
         },
       }
       assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
-      const result = await secrets().verifyModelRevision(
+      const result = await secrets().verifyModelCandidate(
         registration.adapter,
         connection,
         observedEgress,
-        revision,
+        {
+          externalModelId: revision.externalModelId,
+          externalModelVersion: revision.externalModelVersion,
+        },
+        {
+          signal: AbortSignal.timeout(60_000),
+        },
       )
       assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
-      const exactResult =
-        result.outcome === 'passed'
-          ? await exactLivePathRunner.run(selection)
-          : { failureCategory: result.failureCategory, outcome: result.outcome }
+      const exactResult = result.saveable
+        ? await exactLivePathRunner.run(selection)
+        : {
+            failureCategory:
+              result.baseline.failureCategory ??
+              result.connection.failureCategory ??
+              'capability_mismatch',
+            outcome: 'failed' as const,
+          }
       return {
         adapterType: registration.adapterType,
         adapterVersion: registration.adapterVersion,
@@ -370,13 +369,14 @@ export function createProductionAiAdminExternalOperations(
         testSuiteVersion: result.testSuiteVersion,
       } satisfies AiAdminLivePathExternalResult
     },
-    async verifyModelRevision(connection, revision) {
+    async verifyModelCandidate(connection, candidate, verificationOptions) {
       const { egress, registration } = await prepared(connection)
-      return secrets().verifyModelRevision(
+      return secrets().verifyModelCandidate(
         registration.adapter,
         connection,
         egress,
-        revision,
+        candidate,
+        verificationOptions,
       )
     },
     async verifySecretCandidate(connection, _context, plaintext) {
