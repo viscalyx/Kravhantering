@@ -75,7 +75,10 @@ function connection(): AiAdminStoredConnectionDetail {
   }
 }
 
-function harness(saveModelRevision = vi.fn()): {
+function harness(
+  saveModelRevision = vi.fn(),
+  verifyModelCandidate = vi.fn(async () => verification),
+): {
   audit: ReturnType<typeof vi.fn>
   connection: AiAdminStoredConnectionDetail
   saveModelRevision: ReturnType<typeof vi.fn>
@@ -89,7 +92,7 @@ function harness(saveModelRevision = vi.fn()): {
   const external = {
     adapterAvailability: vi.fn(() => ({ available: true })),
     authorizeConnectionTarget: vi.fn(async () => true),
-    verifyModelCandidate: vi.fn(async () => verification),
+    verifyModelCandidate,
   } as unknown as AiAdminExternalOperations
   const secrets = {} as AiAdminSecretOperations
   const audit = vi.fn(async () => undefined)
@@ -109,6 +112,31 @@ function harness(saveModelRevision = vi.fn()): {
 }
 
 describe('AI administration model verification attempts', () => {
+  it('does not persist a successful result returned after cancellation', async () => {
+    const abortController = new AbortController()
+    const verifyModelCandidate = vi.fn(async () => {
+      abortController.abort()
+      return verification
+    })
+    const {
+      audit,
+      connection: current,
+      service,
+    } = harness(vi.fn(), verifyModelCandidate)
+
+    await expect(
+      service.verifyModelCandidate({
+        candidate: {
+          externalModelId: 'controlled/model',
+          externalModelVersion: null,
+        },
+        connectionId: current.id,
+        signal: abortController.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(audit).not.toHaveBeenCalled()
+  })
+
   it('binds technical fields but permits name and description edits before the save commit', async () => {
     const savedModel = {
       description: 'Edited description',

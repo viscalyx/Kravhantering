@@ -1101,7 +1101,16 @@ test.describe('Admin settings', () => {
           await expect(
             profileDialog.getByLabel(/^Maximalt antal utdatatoken/),
           ).toBeVisible()
-          await profileDialog.getByRole('button', { name: 'Spara' }).click()
+          const totalBudget = profileDialog.getByLabel(/^Total tidsbudget/)
+          const originalTotalBudget = await totalBudget.inputValue()
+          const saveProfile = profileDialog.getByRole('button', {
+            name: 'Spara',
+          })
+          await totalBudget.fill('')
+          await expect(saveProfile).toBeDisabled()
+          await totalBudget.fill(originalTotalBudget)
+          await expect(saveProfile).toBeEnabled()
+          await saveProfile.click()
           await expect(profileDialog).toHaveCount(0)
           await expect(
             card.getByText('Konfigurerad', { exact: true }),

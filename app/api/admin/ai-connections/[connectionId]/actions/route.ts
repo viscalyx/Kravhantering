@@ -115,10 +115,18 @@ export const POST = secureMutationRoute({
         )
       case 'verify_model_candidate': {
         const encoder = new TextEncoder()
+        const verificationAbort = new AbortController()
+        const abortVerification = (): void => verificationAbort.abort()
+        if (request.signal.aborted) abortVerification()
+        else
+          request.signal.addEventListener('abort', abortVerification, {
+            once: true,
+          })
         let streamInactive = false
         const stream = new ReadableStream<Uint8Array>({
           cancel() {
             streamInactive = true
+            abortVerification()
           },
           async start(controller) {
             const send = (value: unknown): void => {
@@ -127,6 +135,7 @@ export const POST = secureMutationRoute({
                 controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`))
               } catch {
                 streamInactive = true
+                abortVerification()
               }
             }
             try {
@@ -137,7 +146,7 @@ export const POST = secureMutationRoute({
                 },
                 connectionId,
                 onProgress: progress => send({ progress, type: 'progress' }),
-                signal: request.signal,
+                signal: verificationAbort.signal,
               })
               send({ result, type: 'completed' })
             } catch {
@@ -146,6 +155,7 @@ export const POST = secureMutationRoute({
                 type: 'failed',
               })
             } finally {
+              request.signal.removeEventListener('abort', abortVerification)
               if (!streamInactive) {
                 try {
                   controller.close()

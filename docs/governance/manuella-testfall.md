@@ -2095,7 +2095,8 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    inaktiverade med orsak, att den senaste användbara revisionen per modell är
    rekommenderad och att applikationens förmågekrav inte kan redigeras. Välj den
    verifierade revisionen, granska ordinarie och avancerade driftbudgetar och
-   spara. Kontrollera statusarna `Konfigurerad` och `Aktiv`.
+   töm ett budgetfält. Kontrollera att `Spara` inaktiveras. Fyll i ett giltigt
+   värde, spara och kontrollera statusarna `Konfigurerad` och `Aktiv`.
 7. Pausa profilen och kontrollera statusen `Pausad`; återuppta den och
    kontrollera `Aktiv`. Modellval och budgetar ska finnas kvar.
 8. Försök avsluta den valda modellrevisionen. Kontrollera att åtgärden avvisas

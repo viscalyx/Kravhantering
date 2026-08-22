@@ -816,19 +816,17 @@ describe('Admin AI model and stable-profile forms', () => {
     })
   })
 
-  it('keeps profile budget state valid when numeric inputs are cleared', async () => {
-    fetchMock.mockResolvedValueOnce(new Response('{}', { status: 200 }))
-    const profile = stableProfile()
+  it('blocks profile saving while required numeric inputs are empty', async () => {
     render(
       <ProfileForm
         connections={[]}
         onCancel={vi.fn()}
         onComplete={vi.fn()}
-        profile={profile}
+        profile={stableProfile()}
       />,
     )
 
-    for (const label of [
+    const inputs = [
       'admin.aiConnections.fields.totalTimeBudgetSeconds.label',
       'admin.aiConnections.fields.inactivityTimeBudgetSeconds.label',
       'admin.aiConnections.fields.queueCapacity.label',
@@ -836,27 +834,20 @@ describe('Admin AI model and stable-profile forms', () => {
       'admin.aiConnections.directProfile.fields.maximumOutputBytes.label',
       'admin.aiConnections.directProfile.fields.maximumRetainedMemoryBytes.label',
       'admin.aiConnections.directProfile.fields.maximumBufferedEvents.label',
-    ]) {
-      fireEvent.change(screen.getByLabelText(label), {
+    ].map(label => screen.getByLabelText(label))
+    for (const input of inputs) {
+      fireEvent.change(input, {
         target: { value: '' },
       })
     }
-    await userEvent.click(
-      screen.getByRole('button', { name: 'admin.aiConnections.actions.save' }),
-    )
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    for (const input of inputs) expect(input).toBeInvalid()
     expect(
-      JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)),
-    ).toMatchObject({
-      inactivityTimeBudgetSeconds: profile.inactivityTimeBudgetSeconds,
-      maximumBufferedEvents: profile.maximumBufferedEvents,
-      maximumOutputBytes: profile.maximumOutputBytes,
-      maximumOutputTokens: profile.maximumOutputTokens,
-      maximumRetainedMemoryBytes: profile.maximumRetainedMemoryBytes,
-      queueCapacity: profile.queueCapacity,
-      totalTimeBudgetSeconds: profile.totalTimeBudgetSeconds,
-    })
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.save',
+      }),
+    ).toBeDisabled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('explains every direct-profile selection blocker and preserves save errors', async () => {

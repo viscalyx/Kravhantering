@@ -820,6 +820,7 @@ export class AiConnectionAdministrationService {
       input.candidate,
       { onProgress: input.onProgress, signal: input.signal },
     )
+    input.signal.throwIfAborted()
     const verificationFingerprint = fingerprint({
       connection: {
         adapterKey: connection.adapterKey,

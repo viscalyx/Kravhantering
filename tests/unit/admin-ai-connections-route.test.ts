@@ -148,39 +148,41 @@ describe('Admin AI stable-profile and model-verification routes', () => {
     )
   })
 
-  it('settles an aborted verification after the response stream is cancelled', async () => {
+  it('aborts and settles verification when the response stream is cancelled', async () => {
+    let verificationSettled = false
     routeState.service.verifyModelCandidate.mockImplementationOnce(
-      ({ signal }: { signal: AbortSignal }) =>
-        new Promise((_resolve, reject) => {
-          signal.addEventListener(
-            'abort',
-            () => reject(new DOMException('Cancelled', 'AbortError')),
-            { once: true },
-          )
-        }),
+      async ({ signal }: { signal: AbortSignal }) => {
+        try {
+          await new Promise((_resolve, reject) => {
+            signal.addEventListener(
+              'abort',
+              () => reject(new DOMException('Cancelled', 'AbortError')),
+              { once: true },
+            )
+          })
+        } finally {
+          verificationSettled = true
+        }
+      },
     )
-    const abortController = new AbortController()
     const response = await connectionAction(
-      mutationRequest(
-        {
-          action: 'verify_model_candidate',
-          externalModelId: 'controlled/model',
-          externalModelVersion: null,
-        },
-        abortController.signal,
-      ),
+      mutationRequest({
+        action: 'verify_model_candidate',
+        externalModelId: 'controlled/model',
+        externalModelVersion: null,
+      }),
       { params: Promise.resolve({ connectionId }) },
     )
     const reader = response.body?.getReader()
     if (!reader) throw new Error('Verification response stream missing')
 
     await reader.cancel()
-    abortController.abort()
     await vi.waitFor(() => {
       const verificationCall = routeState.service.verifyModelCandidate.mock
         .calls[0]?.[0] as { signal: AbortSignal } | undefined
       expect(verificationCall?.signal.aborted).toBe(true)
     })
+    await vi.waitFor(() => expect(verificationSettled).toBe(true))
   })
 
   it('validates the attempt-bound save before service or database work', async () => {

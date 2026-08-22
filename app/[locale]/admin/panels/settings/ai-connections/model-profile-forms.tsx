@@ -53,14 +53,16 @@ type ModelFormProps = {
   onRegisterClose?(handler: (() => void) | null): void
 }
 
+type NumericInputValue = number | ''
+
 type AdvancedBudgetDescriptor = readonly [
   key:
     | 'maximumBufferedEvents'
     | 'maximumOutputBytes'
     | 'maximumOutputTokens'
     | 'maximumRetainedMemoryBytes',
-  value: number,
-  setter: (value: number) => void,
+  value: NumericInputValue,
+  setter: (value: NumericInputValue) => void,
   maximum: number,
 ]
 
@@ -127,8 +129,11 @@ function highestRevision(
   return highest
 }
 
-function setValidNumber(setter: (value: number) => void, value: number): void {
-  if (!Number.isNaN(value)) setter(value)
+function setNumericInput(
+  setter: (value: NumericInputValue) => void,
+  value: number,
+): void {
+  setter(Number.isNaN(value) ? '' : value)
 }
 
 const outcomeKey: Record<AiAdminVerificationOutcome, string> = {
@@ -687,17 +692,25 @@ export function ProfileForm({
   const [modelRevisionId, setModelRevisionId] = useState(
     profile.modelRevisionId ?? '',
   )
-  const [total, setTotal] = useState(profile.totalTimeBudgetSeconds)
-  const [inactivity, setInactivity] = useState(
+  const [total, setTotal] = useState<NumericInputValue>(
+    profile.totalTimeBudgetSeconds,
+  )
+  const [inactivity, setInactivity] = useState<NumericInputValue>(
     profile.inactivityTimeBudgetSeconds,
   )
-  const [queue, setQueue] = useState(profile.queueCapacity)
-  const [outputTokens, setOutputTokens] = useState(profile.maximumOutputTokens)
-  const [outputBytes, setOutputBytes] = useState(profile.maximumOutputBytes)
-  const [memoryBytes, setMemoryBytes] = useState(
+  const [queue, setQueue] = useState<NumericInputValue>(profile.queueCapacity)
+  const [outputTokens, setOutputTokens] = useState<NumericInputValue>(
+    profile.maximumOutputTokens,
+  )
+  const [outputBytes, setOutputBytes] = useState<NumericInputValue>(
+    profile.maximumOutputBytes,
+  )
+  const [memoryBytes, setMemoryBytes] = useState<NumericInputValue>(
     profile.maximumRetainedMemoryBytes,
   )
-  const [events, setEvents] = useState(profile.maximumBufferedEvents)
+  const [events, setEvents] = useState<NumericInputValue>(
+    profile.maximumBufferedEvents,
+  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -768,6 +781,17 @@ export function ProfileForm({
 
   async function submit(event: FormEvent): Promise<void> {
     event.preventDefault()
+    if (
+      total === '' ||
+      inactivity === '' ||
+      queue === '' ||
+      outputTokens === '' ||
+      outputBytes === '' ||
+      memoryBytes === '' ||
+      events === ''
+    ) {
+      return
+    }
     setBusy(true)
     setError(null)
     const value: SaveAiRunProfile = {
@@ -853,8 +877,9 @@ export function ProfileForm({
             max={3600}
             min={300}
             onChange={event =>
-              setValidNumber(setTotal, event.target.valueAsNumber)
+              setNumericInput(setTotal, event.target.valueAsNumber)
             }
+            required
             type="number"
             value={total}
           />
@@ -870,8 +895,9 @@ export function ProfileForm({
             max={3600}
             min={300}
             onChange={event =>
-              setValidNumber(setInactivity, event.target.valueAsNumber)
+              setNumericInput(setInactivity, event.target.valueAsNumber)
             }
+            required
             type="number"
             value={inactivity}
           />
@@ -887,8 +913,9 @@ export function ProfileForm({
             max={100}
             min={0}
             onChange={event =>
-              setValidNumber(setQueue, event.target.valueAsNumber)
+              setNumericInput(setQueue, event.target.valueAsNumber)
             }
+            required
             type="number"
             value={queue}
           />
@@ -924,8 +951,9 @@ export function ProfileForm({
                 max={maximum}
                 min={1}
                 onChange={event =>
-                  setValidNumber(setter, event.target.valueAsNumber)
+                  setNumericInput(setter, event.target.valueAsNumber)
                 }
+                required
                 type="number"
                 value={value}
               />
@@ -943,6 +971,15 @@ export function ProfileForm({
         cancel={t('actions.cancel')}
         onCancel={onCancel}
         save={t('actions.save')}
+        saveDisabled={
+          total === '' ||
+          inactivity === '' ||
+          queue === '' ||
+          outputTokens === '' ||
+          outputBytes === '' ||
+          memoryBytes === '' ||
+          events === ''
+        }
       />
     </form>
   )
