@@ -401,7 +401,6 @@ export function AttestationForm({
     event.preventDefault()
     await onSave(valueFrom(event.currentTarget))
   }
-  const defaults = approvalDraft ?? existing
   const persistedAttestation = approvalDraft ?? existing
   const savedContentSnapshot = persistedAttestation
     ? createDirtySnapshot(
@@ -489,44 +488,54 @@ export function AttestationForm({
       {[
         [
           'responsibleOrganizationUnitReference',
-          defaults?.responsibleOrganizationUnitReference ?? '',
+          persistedAttestation?.responsibleOrganizationUnitReference ?? '',
           true,
           'text',
         ],
-        ['providerName', defaults?.providerName ?? '', true, 'text'],
+        [
+          'providerName',
+          persistedAttestation?.providerName ?? '',
+          true,
+          'text',
+        ],
         [
           'maximumInformationClass',
-          defaults?.maximumInformationClass ?? '',
+          persistedAttestation?.maximumInformationClass ?? '',
           true,
           'text',
         ],
         [
           'maximumRetentionDays',
-          defaults?.maximumRetentionDays ?? '',
+          persistedAttestation?.maximumRetentionDays ?? '',
           true,
           'number',
         ],
         [
           'processingRegions',
-          defaults?.processingRegions?.join(', ') ?? '',
+          persistedAttestation?.processingRegions?.join(', ') ?? '',
           true,
           'text',
         ],
         [
           'subprocessors',
-          defaults?.subprocessors?.join(', ') ?? '',
+          persistedAttestation?.subprocessors?.join(', ') ?? '',
           false,
           'text',
         ],
         [
           'incidentResponseReference',
-          defaults?.incidentResponseReference ?? '',
+          persistedAttestation?.incidentResponseReference ?? '',
           true,
           'text',
         ],
-        ['decisionReference', defaults?.decisionReference ?? '', true, 'text'],
-        ['reviewedAt', defaults?.reviewedAt ?? '', true, 'text'],
-        ['reviewDueAt', defaults?.reviewDueAt ?? '', false, 'text'],
+        [
+          'decisionReference',
+          persistedAttestation?.decisionReference ?? '',
+          true,
+          'text',
+        ],
+        ['reviewedAt', persistedAttestation?.reviewedAt ?? '', true, 'text'],
+        ['reviewDueAt', persistedAttestation?.reviewDueAt ?? '', false, 'text'],
       ].map(([name, value, required, type]) => {
         const id = `ai-attestation-${name}`
         return (
@@ -562,9 +571,10 @@ export function AttestationForm({
             <select
               className={inputClassName()}
               defaultValue={
-                defaults?.[name] === null || defaults?.[name] === undefined
+                persistedAttestation?.[name] === null ||
+                persistedAttestation?.[name] === undefined
                   ? ''
-                  : String(defaults[name])
+                  : String(persistedAttestation[name])
               }
               id={id}
               name={name}
@@ -586,7 +596,7 @@ export function AttestationForm({
         >
           <textarea
             className={textareaClassName()}
-            defaultValue={defaults?.purpose ?? ''}
+            defaultValue={persistedAttestation?.purpose ?? ''}
             id="ai-attestation-purpose"
             name="purpose"
             required

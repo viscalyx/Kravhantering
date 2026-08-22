@@ -531,6 +531,7 @@ describe('Admin AI connection routes', () => {
         failureCategory: 'capability_mismatch',
         outcome: 'failed',
         testSuiteVersion: 'ai-admin-functional-probe-v4',
+        unevaluatedCapabilities: [],
       },
     }
     routeState.serviceMethods.verifyModelRevision.mockResolvedValueOnce(result)

@@ -429,8 +429,7 @@ export function enforceAiDataPolicy(
     denied('data_policy_not_satisfied')
   }
   if (
-    required.personalDataAllowed &&
-    !connectionPolicy.isPersonalDataProcessed
+    required.personalDataAllowed !== connectionPolicy.isPersonalDataProcessed
   ) {
     denied('data_policy_not_satisfied')
   }

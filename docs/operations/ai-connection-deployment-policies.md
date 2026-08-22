@@ -537,7 +537,7 @@ Strukturen är:
 | `informationClassOrder` | Ordnad lista med strängar | Lista organisationens klasser från lägst till högst skyddsbehov. | Både policyklass och attestklass måste finnas i listan. Attestens godkända tak måste ligga på samma eller en högre nivå än anropstypens krav. |
 | `maximumInformationClass` | Sträng | Den högsta informationsklass som anropstypen kan innehålla enligt granskat beslut. | Värdet slås upp i `informationClassOrder` och jämförs med attestens klass. |
 | `maximumRetentionDays` | Icke-negativt heltal | Högsta tillåtna lagringstid hos behandlingsparten. | Attestens lagringstid får inte vara högre. Nuvarande applikationsminimum kräver dessutom alltid `0`. |
-| `personalDataAllowed` | Booleskt värde | Om anropstypen är godkänd och avsedd för en anslutning som behandlar personuppgifter. | När värdet är `true` måste attesten ange att personuppgifter behandlas. När värdet är `false` gör den nuvarande kontrollen ingen jämförelse av personuppgiftsfältet. |
+| `personalDataAllowed` | Booleskt värde | Om anropstypen är godkänd och avsedd för en anslutning som behandlar personuppgifter. | Värdet måste vara identiskt med attestfältet: `true` kräver att attesten anger personuppgiftsbehandling och `false` kräver att attesten anger att personuppgifter inte behandlas. |
 | `requireTrainingProhibited` | Booleskt värde | Om leverantörsträning ska vara förbjuden. | När värdet är `true` måste attesten förbjuda träning. Nuvarande applikationsminimum förbjuder alltid träning. |
 <!-- markdownlint-enable MD013 -->
 
@@ -615,12 +615,12 @@ andra regionnamn eller informationsklasser. Exakta strängar måste stämma
 
 ### Personuppgifter och bilder
 
-> **Viktigt:** `personalDataAllowed: false` är i nuläget inte en teknisk spärr
-> mot personuppgifter. Kontrollen blockerar när värdet är `true` och attesten
-> felaktigt säger att personuppgifter inte behandlas, men den blockerar inte
-> den omvända kombinationen. Ett `false`-värde måste därför upprätthållas med
-> den faktiska användningsavgränsningen, information till användarna,
-> dataskyddsbeslutet och övriga kontroller.
+> **Viktigt:** `personalDataAllowed` och attestfältet för
+> personuppgiftsbehandling måste ha samma booleska värde. Kontrollen blockerar
+> både en policy som tillåter personuppgifter när attesten säger nej och en
+> policy som förbjuder personuppgifter när attesten säger ja. Den tekniska
+> jämförelsen ersätter inte den faktiska användningsavgränsningen, information
+> till användarna, dataskyddsbeslutet eller övriga kontroller.
 
 Att en körprofil tar emot bilder betyder inte automatiskt att personuppgifter
 är godkända. Om bilder kan innehålla identifierbara personer eller annan
@@ -629,9 +629,11 @@ profilen med en policy och attest som säger `false` om det faktiska
 användningsfallet innehåller personuppgifter.
 
 När `personalDataAllowed` är `true` kräver den tekniska kontrollen att
-attesten också anger personuppgiftsbehandling. Värdet är ingen generell
-fullmakt att skicka personuppgifter och ersätter inte ändamål,
-informationsklass, region, underbiträden eller andra skyddsåtgärder.
+attesten också anger personuppgiftsbehandling. När värdet är `false` kräver
+kontrollen att attesten anger att personuppgifter inte behandlas. Ett
+`true`-värde är ingen generell fullmakt att skicka personuppgifter och ersätter
+inte ändamål, informationsklass, region, underbiträden eller andra
+skyddsåtgärder.
 
 ## Ett komplett samordnat exempel
 
@@ -664,7 +666,7 @@ AI_CONNECTION_TLS_POLICIES_JSON={"public_web_pki":"public_web_pki"}
 | Attestens informationsklass | `internal` eller en högre klass i samma ordningslista | Uppfyller anropstypernas klasskrav. |
 | Attestens maximala lagringstid | `0` | Uppfyller applikationens integritetsminimum. |
 | Attestens leverantörsträning | Nej | Uppfyller applikationens integritetsminimum. |
-| Attestens personuppgiftsbehandling | Nej | Beskriver exemplets avsedda användning. `personalDataAllowed: false` verkställer inte detta som en teknisk spärr; kontrollera användningen separat. |
+| Attestens personuppgiftsbehandling | Nej | Matchar `personalDataAllowed: false`; den tekniska kontrollen blockerar om attesten i stället anger Ja. Kontrollera även den faktiska användningen separat. |
 <!-- markdownlint-enable MD013 -->
 
 ## Så tar du fram värdena

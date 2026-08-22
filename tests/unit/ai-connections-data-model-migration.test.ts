@@ -196,8 +196,16 @@ describe('AI connection seed profiles', () => {
   it('creates ordinary unverified OpenRouter and vLLM drafts in demo seed', async () => {
     const { executor, rows } = collectSeedRows()
 
-    await seedRequiredDatabase(executor)
     await seedDemoDatabase(executor)
+
+    const profileInsertIndex = executor.query.mock.calls.findIndex(([sql]) =>
+      String(sql).includes('INSERT INTO [ai_run_profiles]'),
+    )
+    const profileRevisionInsertIndex = executor.query.mock.calls.findIndex(
+      ([sql]) => String(sql).includes('INSERT INTO [ai_run_profile_revisions]'),
+    )
+    expect(profileInsertIndex).toBeGreaterThanOrEqual(0)
+    expect(profileRevisionInsertIndex).toBeGreaterThan(profileInsertIndex)
 
     expect(rowsFor(rows, 'ai_connections')).toEqual([
       expect.objectContaining({

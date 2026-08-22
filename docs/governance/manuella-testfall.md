@@ -2125,7 +2125,7 @@ tas bort och körprofilens tidigare aktiva revision och operativa status
 5. Välj `Lägg till modell` och kontrollera att formuläret automatiskt försöker
    läsa modellkatalogen utan en separat katalogknapp i dialogen. Medan den
    läses ska kryssrutorna för förmågor vara ersatta av `Deklarerade förmågor
-   läses in …` och modellens Spara-knapp vara inaktiverad. Om adaptern returnerar
+   läses in…` och modellens Spara-knapp vara inaktiverad. Om adaptern returnerar
    modeller ska de visas grupperade efter modelltillverkare och ett val ska
    fylla modellnamn, externt modell-id, version och annonserade förmågor. När
    adaptern rapporterar pris ska alternativet även visa in- och utpris per en

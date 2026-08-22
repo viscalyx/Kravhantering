@@ -2148,6 +2148,7 @@
         "verificationFailureReason": "Reason: {reason}",
         "verificationFailedCapabilities": "Declared capabilities that could not be verified: {capabilities}.",
         "verificationFailedChecks": "Checks that did not pass: {checks}.",
+        "verificationUnevaluatedCapabilities": "Declared capabilities not evaluated because the functional probe did not complete: {capabilities}.",
         "verificationFailureCategories": {
           "adapter_failure": "The adapter could not complete the verification contract.",
           "authentication_failed": "The provider rejected authentication.",
@@ -3409,7 +3410,7 @@
     "pricingOut": "out",
     "streamClosedUnexpectedly": "The response stream closed unexpectedly. Please try again.",
     "imageAttachLabel": "Attach images",
-    "imageAttachHelp": "Attach up to 3 images (PNG, JPEG, GIF or WebP, max 10 MB each) for the AI model to analyze. The selected model must support <strong>Vision</strong>. Images can consume 1,000+ tokens each, which increases generation cost.",
+    "imageAttachHelp": "Attach up to 3 images (PNG, JPEG, GIF or WebP, max 10 MB each) for the AI model to analyze. Image support is managed by administrators through the <strong>generate_with_images</strong> profile, which must be configured and available.",
     "imageAttachHint": "PNG, JPEG, GIF or WebP — max 10 MB each, up to 3 images",
     "imageSelectButton": "Choose images",
     "imageDropZone": "Drop images here or click to browse",

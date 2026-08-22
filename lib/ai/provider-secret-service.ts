@@ -29,6 +29,7 @@ import {
   type AiProviderSecretKeyring,
   AiProviderSecretKeyringError,
 } from './provider-secret-keyring.ts'
+import { SAFE_AI_TECHNICAL_CODE } from './requirement-prompt'
 import {
   AI_RUN_CANCELLATION_REASONS,
   AI_RUN_FAILURE_CATEGORIES,
@@ -250,7 +251,7 @@ function isNormalizedAdminProbeEvent(value: unknown): value is AiRunEvent {
     AI_RUN_FAILURE_CATEGORIES.some(category => category === failure.category) &&
     (failure.diagnosticCode === undefined ||
       (typeof failure.diagnosticCode === 'string' &&
-        /^[a-z][a-z0-9_.:-]{0,79}$/u.test(failure.diagnosticCode))) &&
+        SAFE_AI_TECHNICAL_CODE.test(failure.diagnosticCode))) &&
     (failure.retryAfterSeconds === undefined ||
       (typeof failure.retryAfterSeconds === 'number' &&
         Number.isSafeInteger(failure.retryAfterSeconds) &&
@@ -1202,21 +1203,16 @@ export class AiProviderSecretAdminService {
           capability,
           { failureCategory: null, support: 'unknown' as const },
         ]),
-      ) as AiAdminCapabilityDiscoveryResult['assessments']
+      ) as Record<
+        keyof AiCapability,
+        AiAdminCapabilityDiscoveryResult['assessments'][keyof AiCapability]
+      >
       const capabilities = emptyCapabilities()
 
       for (const capability of target.capabilities) {
         const remainingTimeMs = discoveryDeadline - Date.now()
         if (remainingTimeMs <= 0) {
-          ;(
-            assessments as Record<
-              keyof AiCapability,
-              {
-                failureCategory: string | null
-                support: 'supported' | 'unsupported' | 'unknown'
-              }
-            >
-          )[capability] = {
+          assessments[capability] = {
             failureCategory: 'deadline_exceeded',
             support: 'unknown',
           }
@@ -1252,15 +1248,7 @@ export class AiProviderSecretAdminService {
           result.failureCategory === 'capability_mismatch' ||
           result.failureCategory === 'request_rejected'
         capabilities[capability] = supported
-        ;(
-          assessments as Record<
-            keyof AiCapability,
-            {
-              failureCategory: string | null
-              support: 'supported' | 'unsupported' | 'unknown'
-            }
-          >
-        )[capability] = {
+        assessments[capability] = {
           failureCategory: supported
             ? null
             : (result.failureCategory ??

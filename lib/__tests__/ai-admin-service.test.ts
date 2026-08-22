@@ -782,6 +782,7 @@ describe('AI connection administration service', () => {
         failureCategory: null,
         outcome: 'passed',
         testSuiteVersion: 'test-v1',
+        unevaluatedCapabilities: [],
       },
     })
     external.verifyModelRevision.mockResolvedValueOnce({
@@ -814,6 +815,40 @@ describe('AI connection administration service', () => {
         failureCategory: 'capability_mismatch',
         outcome: 'failed',
         testSuiteVersion: 'test-v1',
+        unevaluatedCapabilities: [],
+      },
+    })
+    external.verifyModelRevision.mockResolvedValueOnce({
+      details: {
+        adapterConformance: true,
+        cancellationHandled: true,
+        completed: false,
+        schemaValid: false,
+      },
+      failureCategory: 'deadline_exceeded',
+      outcome: 'failed',
+      testSuiteVersion: 'test-v1',
+      verifiedCapabilities: {
+        ...capability,
+        streaming: false,
+        validatableJson: false,
+      },
+    })
+    await expect(
+      service.verifyModelRevision({
+        connectionId: currentConnection.id,
+        modelRevisionId: modelRevision.id,
+        revisionToken: modelRevision.revisionToken,
+      }),
+    ).resolves.toEqual({
+      revision: modelRevision,
+      verification: {
+        failedCapabilities: [],
+        failedChecks: ['completed', 'schemaValid'],
+        failureCategory: 'deadline_exceeded',
+        outcome: 'failed',
+        testSuiteVersion: 'test-v1',
+        unevaluatedCapabilities: ['streaming', 'validatableJson'],
       },
     })
     await expect(

@@ -39,7 +39,7 @@ vi.mock('next-intl', () => ({
         (key === 'catalog.inputPrice' || key === 'catalog.outputPrice')
       ) {
         const direction = key === 'catalog.inputPrice' ? 'in' : 'ut'
-        return `${direction} ${String(values?.amount)} ${String(values?.currency)}/1 mn token`
+        return `${direction} ${String(values?.amount)} ${String(values?.currency)}/1 milj. token`
       }
       if (
         namespace === 'admin.aiConnections' &&
@@ -52,6 +52,12 @@ vi.mock('next-intl', () => ({
         key === 'model.verificationFailedCapabilities'
       ) {
         return `Deklarerade förmågor som inte kunde verifieras: ${String(values?.capabilities)}.`
+      }
+      if (
+        namespace === 'admin.aiConnections' &&
+        key === 'model.verificationUnevaluatedCapabilities'
+      ) {
+        return `Deklarerade förmågor som inte utvärderades: ${String(values?.capabilities)}.`
       }
       if (
         namespace === 'admin.aiConnections' &&
@@ -1169,6 +1175,55 @@ describe('AiConnectionsPanel workflows', () => {
     })
   })
 
+  it('normalizes a stored required usage-metadata policy to allowed', async () => {
+    const user = userEvent.setup()
+    const verifiedConnection = withVerifiedLatestModel(connectionOne)
+    const requiredUsageProfile = {
+      ...profile,
+      draftRevision: {
+        ...profile.draftRevision,
+        capabilityPolicy: {
+          ...profile.draftRevision.capabilityPolicy,
+          usageMetadata: 'required' as const,
+        },
+      },
+    }
+    installWorkflowFetch({
+      connection: verifiedConnection,
+      profiles: [requiredUsageProfile],
+      revisions: [requiredUsageProfile.draftRevision],
+    })
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'admin.aiConnections.actions.editProfile',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByLabelText(
+        'admin.aiConnections.policy.usageMetadata.label',
+        { selector: 'select' },
+      ),
+    ).toHaveValue('allowed')
+
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'admin.aiConnections.profile.saveDraft',
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    const profileRequest = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).includes('/api/admin/ai-run-profiles/') &&
+        init?.method === 'POST',
+    )
+    expect(JSON.parse(String(profileRequest?.[1]?.body))).toMatchObject({
+      capabilityPolicy: { usageMetadata: 'allowed' },
+    })
+  })
+
   it('prevents selecting a verified model that lacks a required profile capability', async () => {
     const user = userEvent.setup()
     const verifiedConnection = withVerifiedLatestModel(connectionOne)
@@ -1331,6 +1386,19 @@ describe('AiConnectionsPanel workflows', () => {
       revisions: [{ ...profile.draftRevision, modelRevisionId: null }],
     })
     renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', { name: /Controlled one/ }),
+    )
+    const pendingModelCard = screen
+      .getByRole('heading', { name: 'Model with pending latest revision' })
+      .closest('article')
+    expect(pendingModelCard).not.toBeNull()
+    expect(
+      within(pendingModelCard as HTMLElement).getByText(
+        'admin.aiConnections.model.status.verification_required',
+      ),
+    ).toBeVisible()
 
     await user.click(
       await screen.findByRole('button', {
@@ -1541,6 +1609,12 @@ describe('AiConnectionsPanel workflows', () => {
             ),
           )
         }
+        if (
+          init?.method === 'POST' &&
+          String(init.body).includes('fetch_catalog')
+        ) {
+          return Promise.resolve(okJson([]))
+        }
         return successfulFetch?.(input, init)
       },
     )
@@ -1565,6 +1639,27 @@ describe('AiConnectionsPanel workflows', () => {
           ) === true,
       ),
     ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /Controlled one/ }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'admin.aiConnections.actions.addModel',
+      }),
+    )
+    const modelDialog = await screen.findByRole('dialog')
+    await within(modelDialog).findByText(
+      'admin.aiConnections.catalog.unavailableManual',
+    )
+    expect(
+      screen.getByText('admin.aiConnections.profile.candidateBlockers', {
+        selector: 'p',
+      }),
+    ).toBeVisible()
+    await user.click(
+      within(modelDialog).getByRole('button', {
+        name: 'admin.aiConnections.actions.cancel',
+      }),
+    )
 
     const profileArticle = screen
       .getByRole('heading', {
@@ -1892,7 +1987,7 @@ describe('AiConnectionsPanel workflows', () => {
     await user.selectOptions(
       catalogSelect,
       within(catalogSelect).getByRole('option', {
-        name: /Claude Catalog · anthropic\/claude-catalog · in 3 USD\/1 mn token · ut 15 USD\/1 mn token/,
+        name: /Claude Catalog · anthropic\/claude-catalog · in 3 USD\/1 milj\. token · ut 15 USD\/1 milj\. token/,
       }),
     )
     expect(field(dialog, 'name')).toHaveValue('Claude Catalog')
@@ -3033,6 +3128,7 @@ describe('AiConnectionsPanel workflows', () => {
           failureCategory: 'capability_mismatch',
           outcome: 'failed',
           testSuiteVersion: 'ai-admin-functional-probe-v4',
+          unevaluatedCapabilities: ['streaming'],
         },
       }),
     )
@@ -3048,6 +3144,11 @@ describe('AiConnectionsPanel workflows', () => {
     expect(
       screen.getByText(
         'Deklarerade förmågor som inte kunde verifieras: admin.aiConnections.capabilities.aiAnalysis.',
+      ),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        'Deklarerade förmågor som inte utvärderades: admin.aiConnections.capabilities.streaming.',
       ),
     ).toBeVisible()
     expect(warning.closest('[role="status"]')).toHaveTextContent(
@@ -3080,6 +3181,7 @@ describe('AiConnectionsPanel workflows', () => {
                   failureCategory: null,
                   outcome: 'passed',
                   testSuiteVersion: 'ai-admin-functional-probe-v4',
+                  unevaluatedCapabilities: [],
                 },
               }),
             )

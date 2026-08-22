@@ -41,6 +41,7 @@ import {
   DEFAULT_REQUIREMENT_CANDIDATE_COUNT,
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
+  SAFE_AI_TECHNICAL_CODE,
 } from '@/lib/ai/requirement-prompt'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -167,8 +168,6 @@ interface SchemaIssue {
   message: string
   path: string
 }
-
-const SAFE_AI_TECHNICAL_CODE = /^[a-z][a-z0-9_.:-]{0,79}$/u
 
 async function readGenerationResponseMessage(
   response: Response,

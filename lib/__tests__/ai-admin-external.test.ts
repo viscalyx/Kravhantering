@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   type AiAdminAdapterContext,
@@ -997,6 +997,28 @@ describe('AI administration provider composition', () => {
         },
       ])
     }
+    const unsortedCatalogConnection = connection()
+    const catalogModel = unsortedCatalogConnection.models[0]
+    const olderRevision = catalogModel?.revisions[0]
+    if (!catalogModel || !olderRevision) {
+      throw new Error('Catalog model revision missing')
+    }
+    catalogModel.revisions = [
+      olderRevision,
+      {
+        ...olderRevision,
+        externalModelId: 'controlled/newest',
+        id: randomUUID(),
+        revisionNumber: olderRevision.revisionNumber + 1,
+      },
+    ]
+    await expect(
+      adapter.fetchCatalog({
+        connection: unsortedCatalogConnection,
+        credential: null,
+        egress: { fetch: vi.fn() },
+      }),
+    ).resolves.toMatchObject([{ externalModelId: 'controlled/newest' }])
     const authenticated = connection({ authenticationType: 'static_secret' })
     await expect(
       adapter.verifySecretCandidate({

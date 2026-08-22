@@ -157,6 +157,7 @@ export interface AiAdminModelVerificationActionResult {
     failureCategory: string | null
     outcome: 'failed' | 'passed'
     testSuiteVersion: string
+    unevaluatedCapabilities: readonly (keyof AiCapability)[]
   }
 }
 
@@ -1030,6 +1031,11 @@ export class AiConnectionAdministrationService {
     const capabilityKeys = Object.keys(
       modelRevision.declaredCapabilities,
     ) as (keyof AiCapability)[]
+    const declaredCapabilityKeys = capabilityKeys.filter(
+      capability => modelRevision.declaredCapabilities[capability],
+    )
+    const capabilitiesEvaluated =
+      result.outcome === 'passed' || result.details.completed === true
     const verificationChecks = [
       'adapterConformance',
       'cancellationHandled',
@@ -1039,17 +1045,20 @@ export class AiConnectionAdministrationService {
     return {
       revision,
       verification: {
-        failedCapabilities: capabilityKeys.filter(
-          capability =>
-            modelRevision.declaredCapabilities[capability] &&
-            !result.verifiedCapabilities[capability],
-        ),
+        failedCapabilities: capabilitiesEvaluated
+          ? declaredCapabilityKeys.filter(
+              capability => !result.verifiedCapabilities[capability],
+            )
+          : [],
         failedChecks: verificationChecks.filter(
           check => result.details[check] === false,
         ),
         failureCategory: result.failureCategory,
         outcome: result.outcome,
         testSuiteVersion: result.testSuiteVersion,
+        unevaluatedCapabilities: capabilitiesEvaluated
+          ? []
+          : declaredCapabilityKeys,
       },
     }
   }

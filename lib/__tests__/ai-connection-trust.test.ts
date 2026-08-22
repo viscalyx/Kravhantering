@@ -463,6 +463,7 @@ describe('AI connection trust boundary', () => {
   it.each([
     [{ maximumInformationClass: 'public' }, {}],
     [{ isPersonalDataProcessed: false }, { personalDataAllowed: true }],
+    [{ isPersonalDataProcessed: true }, { personalDataAllowed: false }],
     [{ maximumRetentionDays: 1 }, {}],
     [{ processingRegions: ['US'] }, {}],
   ])(

@@ -5,6 +5,7 @@ import {
   getPromptMessage,
   MAX_REQUIREMENT_CANDIDATE_COUNT,
   MIN_REQUIREMENT_CANDIDATE_COUNT,
+  SAFE_AI_TECHNICAL_CODE,
 } from '@/lib/ai/requirement-prompt'
 import type {
   AiRunFailure,
@@ -77,7 +78,7 @@ export function aiRunProfileError(
   }
 }
 
-const SAFE_AI_TECHNICAL_CODE = /^[a-z][a-z0-9_.:-]{0,79}$/u
+export { SAFE_AI_TECHNICAL_CODE }
 
 export type AiProviderErrorCode =
   | 'ai_provider_invalid_response'

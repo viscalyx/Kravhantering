@@ -38,21 +38,36 @@ function capabilitySupport(
 
 const controlledTestAdminAdapter: AiAdminConnectionAdapter = {
   async fetchCatalog(context) {
-    return context.connection.models.flatMap(model =>
-      model.revisions.slice(0, 1).map(revision => ({
-        capabilities:
-          revision.discoveredCapabilities ?? revision.declaredCapabilities,
-        capabilitySupport: capabilitySupport(
-          revision.discoveredCapabilities ?? revision.declaredCapabilities,
-        ),
-        externalModelId: revision.externalModelId,
-        externalModelVersion: revision.externalModelVersion,
-        inputPricePerMillionTokens: null,
-        modelProviderName: 'Controlled Test',
-        name: model.name,
-        outputPricePerMillionTokens: null,
-      })),
-    )
+    return context.connection.models.flatMap(model => {
+      const revision = model.revisions.reduce<
+        (typeof model.revisions)[number] | undefined
+      >(
+        (selected, candidate) =>
+          !selected || candidate.revisionNumber > selected.revisionNumber
+            ? candidate
+            : selected,
+        undefined,
+      )
+      return revision
+        ? [
+            {
+              capabilities:
+                revision.discoveredCapabilities ??
+                revision.declaredCapabilities,
+              capabilitySupport: capabilitySupport(
+                revision.discoveredCapabilities ??
+                  revision.declaredCapabilities,
+              ),
+              externalModelId: revision.externalModelId,
+              externalModelVersion: revision.externalModelVersion,
+              inputPricePerMillionTokens: null,
+              modelProviderName: 'Controlled Test',
+              name: model.name,
+              outputPricePerMillionTokens: null,
+            },
+          ]
+        : []
+    })
   },
   async probeConnection() {
     return {

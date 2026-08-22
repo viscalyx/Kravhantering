@@ -10,6 +10,7 @@ import svMessages from '@/messages/sv.json'
 export const DEFAULT_REQUIREMENT_CANDIDATE_COUNT = 8
 export const MIN_REQUIREMENT_CANDIDATE_COUNT = 1
 export const MAX_REQUIREMENT_CANDIDATE_COUNT = 25
+export const SAFE_AI_TECHNICAL_CODE = /^[a-z][a-z0-9_.:-]{0,79}$/u
 
 export interface FormattedSchemaIssue {
   code: string

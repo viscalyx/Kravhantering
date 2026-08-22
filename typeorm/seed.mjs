@@ -1,5 +1,5 @@
 import { createMcpImportValidationPrincipalFingerprint } from '../lib/mcp/import-validation-fingerprint.mjs'
-import { REQUIRED_SEED_TABLES } from './seed-required.mjs'
+import { REQUIRED_SEED_TABLES, seedRequiredDatabase } from './seed-required.mjs'
 import { runSeedData, seedPositionDetail } from './seed-runner.mjs'
 
 const DEMO_MCP_PRINCIPAL_HSA_ID = 'SE5560000001-mcp1'
@@ -14719,7 +14719,7 @@ applyPrivacyIdentitySeed()
 applyArchivingRetentionSeed()
 applyActionAuditSeed()
 
-export { REQUIRED_SEED_TABLES, seedRequiredDatabase } from './seed-required.mjs'
+export { REQUIRED_SEED_TABLES, seedRequiredDatabase }
 
 export const DEMO_SEED_TABLES = Object.freeze(
   TABLE_ORDER.filter(table => !REQUIRED_SEED_TABLES.includes(table)),
@@ -14837,6 +14837,7 @@ async function seedDemoLifecycleRow({
 }
 
 export async function seedDemoDatabase(executor) {
+  await seedRequiredDatabase(executor)
   refreshDemoMcpTransientTimestamps()
   return runSeedData(executor, SEED_DATA, TABLE_ORDER, {
     includeTables: DEMO_SEED_TABLES,

@@ -76,6 +76,15 @@ const CATALOG_PROVIDER_NAMES: Readonly<Record<string, string>> = {
   qwen: 'Qwen',
 }
 
+function normalizePolicyMode(
+  capability: PolicyCapability,
+  mode: PolicyMode,
+): PolicyMode {
+  return capability === 'usageMetadata' && mode === 'required'
+    ? 'allowed'
+    : mode
+}
+
 function catalogItemKey(item: AiAdminCatalogItem): string {
   return JSON.stringify([item.externalModelId, item.externalModelVersion])
 }
@@ -193,10 +202,14 @@ const LOCKED_PROFILE_POLICY: Record<
 }
 
 function profilePolicy(profile: AiAdminRunProfileRecord): AiCapabilityPolicy {
-  return {
+  const policy = {
     ...DEFAULT_POLICY,
     ...profile.draftRevision?.capabilityPolicy,
     ...LOCKED_PROFILE_POLICY[profile.profileKey],
+  }
+  return {
+    ...policy,
+    usageMetadata: normalizePolicyMode('usageMetadata', policy.usageMetadata),
   }
 }
 
@@ -236,7 +249,7 @@ function normalizePolicyForRevision(
       if (revision && !supportsPolicyCapability(revision, capability)) {
         return [capability, 'disabled']
       }
-      return [capability, policy[capability]]
+      return [capability, normalizePolicyMode(capability, policy[capability])]
     }),
   ) as AiCapabilityPolicy
 }
@@ -879,6 +892,10 @@ export function ProfileForm({
               selectedModelRevision === undefined ||
               lockedMode !== undefined ||
               unsupportedOptionalCapability
+            const policyMode = normalizePolicyMode(
+              capability,
+              capabilityPolicy[capability],
+            )
             return (
               <Field
                 help={t(`policy.${capability}.help`)}
@@ -897,7 +914,7 @@ export function ProfileForm({
                       [capability]: event.target.value as PolicyMode,
                     }))
                   }
-                  value={capabilityPolicy[capability]}
+                  value={policyMode}
                 >
                   {(capability === 'usageMetadata'
                     ? ['disabled', 'allowed']
@@ -912,7 +929,7 @@ export function ProfileForm({
                   <input
                     name={`policy-${capability}`}
                     type="hidden"
-                    value={capabilityPolicy[capability]}
+                    value={policyMode}
                   />
                 ) : null}
                 {lockedMode !== undefined ? (

@@ -202,7 +202,7 @@ export const aiConnectionActionSchema = z.discriminatedUnion('action', [
       capabilities: z
         .array(aiCapabilityKeySchema)
         .min(1)
-        .max(7)
+        .max(AI_CAPABILITY_KEYS.length)
         .refine(value => new Set(value).size === value.length, {
           message: 'Capability discovery entries must be unique.',
         }),

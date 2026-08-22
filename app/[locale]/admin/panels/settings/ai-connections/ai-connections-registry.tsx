@@ -101,6 +101,7 @@ interface ModelVerificationFeedback {
     | (typeof MODEL_VERIFICATION_FAILURE_CATEGORIES)[number]
     | 'unknown'
   passed: boolean
+  unevaluatedCapabilities: readonly (typeof MODEL_CAPABILITY_KEYS)[number][]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -123,6 +124,7 @@ function modelVerificationFeedback(value: unknown): ModelVerificationFeedback {
     isRecord(value) && isRecord(value.verification) ? value.verification : null
   const capabilityValues = verification?.failedCapabilities
   const checkValues = verification?.failedChecks
+  const unevaluatedCapabilityValues = verification?.unevaluatedCapabilities
   const failedCapabilities = Array.isArray(capabilityValues)
     ? MODEL_CAPABILITY_KEYS.filter(capability =>
         capabilityValues.includes(capability),
@@ -130,6 +132,11 @@ function modelVerificationFeedback(value: unknown): ModelVerificationFeedback {
     : []
   const failedChecks = Array.isArray(checkValues)
     ? MODEL_VERIFICATION_CHECKS.filter(check => checkValues.includes(check))
+    : []
+  const unevaluatedCapabilities = Array.isArray(unevaluatedCapabilityValues)
+    ? MODEL_CAPABILITY_KEYS.filter(capability =>
+        unevaluatedCapabilityValues.includes(capability),
+      )
     : []
   const category = verification?.failureCategory
   const failureCategory = MODEL_VERIFICATION_FAILURE_CATEGORIES.find(
@@ -140,7 +147,20 @@ function modelVerificationFeedback(value: unknown): ModelVerificationFeedback {
     failedChecks,
     failureCategory: failureCategory ?? 'unknown',
     passed,
+    unevaluatedCapabilities,
   }
+}
+
+function latestRevision(
+  model: Readonly<AiAdminModelRecord>,
+): AiAdminModelRevisionRecord | undefined {
+  return model.revisions.reduce<AiAdminModelRevisionRecord | undefined>(
+    (selected, revision) =>
+      !selected || revision.revisionNumber > selected.revisionNumber
+        ? revision
+        : selected,
+    undefined,
+  )
 }
 
 function capabilityDiscoveryResult(
@@ -348,15 +368,7 @@ export default function AiConnectionsPanel() {
 
   const modelRevisions = Object.values(details).flatMap(connection =>
     connection.models.flatMap(model => {
-      const latest = model.revisions.reduce<
-        AiAdminModelRevisionRecord | undefined
-      >(
-        (selected, revision) =>
-          !selected || revision.revisionNumber > selected.revisionNumber
-            ? revision
-            : selected,
-        undefined,
-      )
+      const latest = latestRevision(model)
       return latest?.status === 'verified'
         ? [{ connection, model, revision: latest }]
         : []
@@ -417,7 +429,7 @@ export default function AiConnectionsPanel() {
       if (feedback.passed) {
         setMessage(t('model.verified'))
       } else {
-        const details = [
+        const failureDetails = [
           t('model.verificationFailureReason', {
             reason: t(
               `model.verificationFailureCategories.${feedback.failureCategory}`,
@@ -441,8 +453,17 @@ export default function AiConnectionsPanel() {
                 }),
               ]
             : []),
+          ...(feedback.unevaluatedCapabilities.length > 0
+            ? [
+                t('model.verificationUnevaluatedCapabilities', {
+                  capabilities: feedback.unevaluatedCapabilities
+                    .map(capability => t(`capabilities.${capability}`))
+                    .join(', '),
+                }),
+              ]
+            : []),
         ]
-        setMessage(t('model.verificationFailed'), 'warning', details)
+        setMessage(t('model.verificationFailed'), 'warning', failureDetails)
       }
     } finally {
       setPendingModelAction(null)
@@ -986,7 +1007,7 @@ export default function AiConnectionsPanel() {
                             </p>
                           ) : null}
                           {detail.models.map(model => {
-                            const latest = model.revisions.at(-1)
+                            const latest = latestRevision(model)
                             if (!latest) return null
                             const verifying =
                               pendingModelAction?.kind === 'verification' &&

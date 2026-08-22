@@ -353,6 +353,7 @@ ${JSON.stringify({
           failure: {
             category,
             diagnosticCode: technicalCode,
+            ...(category === 'rate_limited' ? { retryAfterSeconds: 17 } : {}),
             retryable: false,
           },
           identity,
@@ -363,6 +364,9 @@ ${JSON.stringify({
       const response = await POST(request(validBody()))
 
       expect(response.status).toBe(status)
+      expect(response.headers.get('Retry-After')).toBe(
+        category === 'rate_limited' ? '17' : null,
+      )
       await expect(response.json()).resolves.toMatchObject({
         code,
         error,

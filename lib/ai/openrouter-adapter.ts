@@ -638,16 +638,8 @@ function readStreamDelta(value: unknown): {
 function streamFrameBoundary(
   buffer: string,
 ): { index: number; separatorLength: number } | null {
-  const lineFeedIndex = buffer.indexOf('\n\n')
-  const carriageReturnIndex = buffer.indexOf('\r\n\r\n')
-  if (lineFeedIndex === -1 && carriageReturnIndex === -1) return null
-  if (
-    carriageReturnIndex !== -1 &&
-    (lineFeedIndex === -1 || carriageReturnIndex < lineFeedIndex)
-  ) {
-    return { index: carriageReturnIndex, separatorLength: 4 }
-  }
-  return { index: lineFeedIndex, separatorLength: 2 }
+  const match = /\r?\n\r?\n/u.exec(buffer)
+  return match ? { index: match.index, separatorLength: match[0].length } : null
 }
 
 async function* runStreaming(

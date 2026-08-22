@@ -50,7 +50,10 @@ describe('AutoDismissStatusToast', () => {
     const onDismiss = vi.fn()
     render(
       <AutoDismissStatusToast
-        details={['AI analysis was not observed.']}
+        details={[
+          'AI analysis was not observed.',
+          'AI analysis was not observed.',
+        ]}
         message="The verification did not pass."
         onDismiss={onDismiss}
         tone="warning"
@@ -60,9 +63,7 @@ describe('AutoDismissStatusToast', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'The verification did not pass.',
     )
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'AI analysis was not observed.',
-    )
+    expect(screen.getAllByText('AI analysis was not observed.')).toHaveLength(2)
     expect(screen.getByRole('status')).toHaveClass('border-amber-200')
     act(() => vi.advanceTimersByTime(STATUS_TOAST_DURATION_MS * 2))
     expect(onDismiss).not.toHaveBeenCalled()

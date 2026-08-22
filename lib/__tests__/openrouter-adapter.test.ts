@@ -298,6 +298,37 @@ describe('OpenRouter AI connection adapter', () => {
     )
   })
 
+  it('consumes mixed SSE frame endings and recognizes a clean done event', async () => {
+    const first = `data: ${JSON.stringify({
+      choices: [{ delta: { content: '{"requirements":' } }],
+    })}`
+    const second = `data: ${JSON.stringify({
+      choices: [{ delta: { content: '[]}' } }],
+    })}`
+    mockFetch.mockResolvedValueOnce(
+      new Response(`${first}\r\n\n${second}\n\r\ndata: [DONE]\r\n\n`, {
+        headers: { 'Content-Type': 'text/event-stream' },
+      }),
+    )
+
+    const events = await collectEvents(
+      adapter().run(enableStreaming(request())),
+    )
+
+    expect(events.at(-1)).toMatchObject({
+      rawOutput: '{"requirements":[]}',
+      type: 'completed',
+    })
+    expect(events).not.toContainEqual(
+      expect.objectContaining({
+        failure: expect.objectContaining({
+          diagnosticCode: 'invalid_upstream_stream_event',
+        }),
+        type: 'failed',
+      }),
+    )
+  })
+
   it('contains OpenRouter transport details in the adapter and sends only opaque run identity', async () => {
     mockFetch.mockResolvedValueOnce(nonStreamingResponse())
     const adapterRequest = request()

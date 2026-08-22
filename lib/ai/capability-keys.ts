@@ -1,3 +1,5 @@
+import type { AiCapability } from './admin-contracts'
+
 export const AI_CAPABILITY_KEYS = [
   'aiAnalysis',
   'cost',
@@ -6,6 +8,12 @@ export const AI_CAPABILITY_KEYS = [
   'streaming',
   'tokenUsage',
   'validatableJson',
-] as const
+] as const satisfies readonly (keyof AiCapability)[]
 
 export type AiCapabilityKey = (typeof AI_CAPABILITY_KEYS)[number]
+
+type Assert<T extends true> = T
+
+export type AiCapabilityKeysAreComplete = Assert<
+  keyof AiCapability extends AiCapabilityKey ? true : false
+>

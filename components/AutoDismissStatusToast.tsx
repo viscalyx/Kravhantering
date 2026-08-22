@@ -28,6 +28,12 @@ export default function AutoDismissStatusToast({
     tone === 'warning'
       ? 'text-amber-800 hover:bg-amber-100 focus-visible:ring-amber-600 dark:text-amber-200 dark:hover:bg-amber-900'
       : 'text-emerald-700 hover:bg-emerald-100 focus-visible:ring-emerald-600 dark:text-emerald-200 dark:hover:bg-emerald-900'
+  const detailOccurrences = new Map<string, number>()
+  const keyedDetails = details.map(detail => {
+    const occurrence = (detailOccurrences.get(detail) ?? 0) + 1
+    detailOccurrences.set(detail, occurrence)
+    return { detail, key: JSON.stringify([detail, occurrence]) }
+  })
 
   useEffect(() => {
     if (tone === 'warning') return
@@ -53,8 +59,8 @@ export default function AutoDismissStatusToast({
           <p>{message}</p>
           {details.length > 0 ? (
             <ul className="mt-2 list-disc space-y-1 pl-5">
-              {details.map(detail => (
-                <li key={detail}>{detail}</li>
+              {keyedDetails.map(({ detail, key }) => (
+                <li key={key}>{detail}</li>
               ))}
             </ul>
           ) : null}

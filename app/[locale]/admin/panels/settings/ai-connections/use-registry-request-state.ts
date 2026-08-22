@@ -221,7 +221,9 @@ export function useRegistryRequestState() {
         }
         return null
       }
-      setCandidateBlockers({})
+      if (!feedback.suppressError) {
+        setCandidateBlockers({})
+      }
       return response
     } catch {
       if (!feedback.suppressError) {

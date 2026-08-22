@@ -312,6 +312,7 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
         if (event.type === 'failed') {
           const status = event.failure.category === 'rate_limited' ? 429 : 503
           const providerError = aiRunFailureError(event.failure, body.locale)
+          const retryAfterSeconds = event.failure.retryAfterSeconds
           recordTerminal('failure', status)
           return applyResponseCorrelationHeaders(
             Response.json(
@@ -322,7 +323,16 @@ export const POST = secureMutationRoute<RepairRequirementImportJsonBody>({
                   ? { technicalCode: providerError.technicalCode }
                   : {}),
               },
-              { status },
+              {
+                ...(status === 429 && retryAfterSeconds !== undefined
+                  ? {
+                      headers: {
+                        'Retry-After': String(retryAfterSeconds),
+                      },
+                    }
+                  : {}),
+                status,
+              },
             ),
             context,
           )

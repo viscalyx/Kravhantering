@@ -1,3 +1,4 @@
+import { SAFE_AI_TECHNICAL_CODE } from './requirement-prompt'
 import type {
   AIConnectionAdapter,
   AiConnectionAdapterRegistration,
@@ -109,7 +110,7 @@ function isRunUsage(value: unknown): value is AiRunUsage {
 function isSafeDiagnosticCode(value: unknown): boolean {
   return (
     value === undefined ||
-    (typeof value === 'string' && /^[a-z][a-z0-9_.:-]{0,79}$/u.test(value))
+    (typeof value === 'string' && SAFE_AI_TECHNICAL_CODE.test(value))
   )
 }
 
