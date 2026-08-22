@@ -393,7 +393,7 @@ For `staging_live`, use `environment: "staging"` and
 complete document. `liveExecutionProof` is an array with one item per intended
 path. Each item contains all nine path fields plus `executionId`,
 `externalLiveCallMade: true`, `failureCategory: null`, `outcome: "passed"`,
-and `testSuiteVersion: "ai-admin-functional-probe-v7"`.
+and `testSuiteVersion: "ai-admin-functional-probe-v1"`.
 
 Run the gate from the unpacked bundle and retain its output with the release
 evidence:
@@ -471,7 +471,7 @@ version, and that the exact
 connection and model revision are active and verified. It then runs the
 guard-compatible, non-mutating Admin `verify_live_path` action. That action
 resolves the exact active connection/model/profile path, rejects controlled
-offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v7`, and
+offline adapters, runs the fixed synthetic `ai-admin-functional-probe-v1`, and
 then executes a fixed synthetic request through the selected active profile's
 resolver, configured secret, trust boundary, queue/retry/deadline coordinator,
 integration layer, and exact live adapter. It does not select an area or send
@@ -480,7 +480,10 @@ revision tokens plus the stable profile token and configuration version
 after execution, so a concurrent Admin change emits no proof. Its response binds
 the current execution ID, suite version, outcome, observed adapter, exact path,
 and revision tokens; the script validates every field before emitting evidence.
-The v9 capability probe isolates provider-facing controls by capability.
+The v1 capability probe isolates provider-facing controls by capability.
+Keep that version stable while its introducing pull request is unmerged.
+Increment it only after an earlier suite version has been released or its
+persisted evidence must remain distinguishable from a changed suite contract.
 Baseline access and validatable JSON use only the fixed prompt plus local JSON
 validation. Reasoning controls are present only for the AI-analysis check,
 JSON Schema controls only for strict schema steering, image content only for

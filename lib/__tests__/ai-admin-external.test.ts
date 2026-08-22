@@ -265,7 +265,7 @@ describe('AI administration provider composition', () => {
       externalLiveCallMade: false,
       failureCategory: 'controlled_adapter_forbidden',
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v9',
+      testSuiteVersion: 'ai-admin-functional-probe-v1',
     })
     await expect(
       external.verifySecretCandidate(
@@ -1535,7 +1535,7 @@ describe('AI administration provider composition', () => {
       executionId: expect.any(String),
       externalLiveCallMade: true,
       outcome: 'failed',
-      testSuiteVersion: 'ai-admin-functional-probe-v9',
+      testSuiteVersion: 'ai-admin-functional-probe-v1',
     })
     await expect(
       external.probeHealth(current, revision),

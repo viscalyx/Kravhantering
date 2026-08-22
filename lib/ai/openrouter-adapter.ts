@@ -498,10 +498,7 @@ function requestBody(
     stream: request.selectedCapabilities.streaming,
     provider,
   }
-  if (
-    request.selectedCapabilities.aiAnalysis ||
-    request.selectedCapabilities.jsonSchemaSteering
-  ) {
+  if (request.selectedCapabilities.jsonSchemaSteering) {
     provider.require_parameters = true
   }
   if (request.selectedCapabilities.aiAnalysis) {

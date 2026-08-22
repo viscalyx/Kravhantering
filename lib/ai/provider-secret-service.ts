@@ -50,7 +50,7 @@ import {
 } from './run-contracts'
 
 export const AI_ADMIN_FUNCTIONAL_PROBE_VERSION =
-  'ai-admin-functional-probe-v9' as const
+  'ai-admin-functional-probe-v1' as const
 const ADMIN_PROBE_TIMEOUT_MS = 30_000
 const ADMIN_CANCELLATION_GRACE_MS = 5_000
 const ADMIN_PROBE_PROFILE_ID =

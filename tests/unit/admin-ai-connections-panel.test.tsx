@@ -153,7 +153,7 @@ function modelRevision(
     revisionNumber: 1,
     revisionToken: `${id}-token`,
     status: 'verified',
-    testSuiteVersion: 'ai-admin-functional-probe-v9',
+    testSuiteVersion: 'ai-admin-functional-probe-v1',
     verifiedAt: '2026-08-22T12:00:00.000Z',
     verifiedCapabilities: {} as never,
     ...overrides,
@@ -202,7 +202,7 @@ function verificationResponse(): Response {
     },
     profileCompatibility: compatibility,
     saveable: true,
-    testSuiteVersion: 'ai-admin-functional-probe-v9',
+    testSuiteVersion: 'ai-admin-functional-probe-v1',
   }
   const messages = [
     {
@@ -286,7 +286,7 @@ function rejectedBaselineVerificationResponse(): Response {
     },
     profileCompatibility: notCheckedProfiles,
     saveable: false,
-    testSuiteVersion: 'ai-admin-functional-probe-v9',
+    testSuiteVersion: 'ai-admin-functional-probe-v1',
   }
   return new Response(
     `${JSON.stringify({
@@ -840,7 +840,7 @@ describe('Admin AI model and stable-profile forms', () => {
             revisionNumber: 1,
             revisionToken: '00000000-0000-4000-8000-000000000007',
             status: 'verified',
-            testSuiteVersion: 'ai-admin-functional-probe-v9',
+            testSuiteVersion: 'ai-admin-functional-probe-v1',
             verifiedAt: '2026-08-22T12:00:00.000Z',
             verifiedCapabilities: Object.fromEntries(
               Object.keys(verifiedCapabilities).map(key => [key, true]),
@@ -858,7 +858,7 @@ describe('Admin AI model and stable-profile forms', () => {
             revisionNumber: 2,
             revisionToken: '00000000-0000-4000-8000-000000000009',
             status: 'ended',
-            testSuiteVersion: 'ai-admin-functional-probe-v9',
+            testSuiteVersion: 'ai-admin-functional-probe-v1',
             verifiedAt: '2026-08-22T12:00:00.000Z',
             verifiedCapabilities: {} as never,
           },

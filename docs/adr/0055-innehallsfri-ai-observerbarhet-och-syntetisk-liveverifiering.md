@@ -2,7 +2,7 @@
 
 Status: Antagen 2026-08-19.
 
-Körprofilrevisioner och verifieringssvit v4 i detta beslut ersätts av
+Körprofilrevisioner och verifieringssviten i detta beslut ersätts av
 [ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
 
 AI-integrationslagret publicerar en gemensam strukturerad och innehållsfri
@@ -41,7 +41,7 @@ samt varje exakt avsedd adapter, anslutning och modellrevision. Därefter använ
 det den spärrkompatibla och icke-muterande
 Admin-åtgärden `verify_live_path`. Åtgärden avvisar kontrollerade offlineadaptrar
 och kör först den fasta syntetiska adaptersviten
-`ai-admin-functional-probe-v4`. Därefter laddar den den valda aktiva
+`ai-admin-functional-probe-v1`. Därefter laddar den den valda aktiva
 körprofilen och kör ett fast syntetiskt anrop genom dess resolver, hemlighet,
 tillitsgräns, kö-, retry- och deadlinekoordinator, integrationslager och exakta
 adapter. Inga sentinelprofiler, områdesval eller databasbaserade

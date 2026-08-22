@@ -629,6 +629,31 @@ describe('OpenRouter AI connection adapter', () => {
     expect(body).not.toHaveProperty('response_format')
   })
 
+  it('requests analysis without requiring endpoint-native parameter support', async () => {
+    mockFetch.mockResolvedValueOnce(nonStreamingResponse())
+    const adapterRequest = request()
+    adapterRequest.selectedCapabilities = {
+      aiAnalysis: true,
+      cost: false,
+      imageInput: false,
+      jsonSchemaSteering: false,
+      streaming: false,
+      tokenUsage: false,
+      validatableJson: false,
+    }
+
+    const events = await collectEvents(adapter().run(adapterRequest))
+
+    expect(events[0]).toMatchObject({
+      analysis: 'complete analysis',
+      type: 'completed',
+    })
+    const body = JSON.parse(String(mockFetch.mock.calls[0][1]?.body))
+    expect(body.reasoning).toEqual({ effort: 'high', exclude: false })
+    expect(body.provider).not.toHaveProperty('require_parameters')
+    expect(body).not.toHaveProperty('response_format')
+  })
+
   it.each([
     undefined,
     { allowDataCollection: true, requireZeroDataRetention: true },
