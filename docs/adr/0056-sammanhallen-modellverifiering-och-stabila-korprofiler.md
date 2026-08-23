@@ -44,17 +44,17 @@ pågående körning använder den. `ended` är irreversibelt. Permanent radering
 kräver först avslut och tar även bort den tomma modellbehållaren när sista
 revisionen försvinner.
 
-## Bevarade beslut och företräde
+## Samband med andra beslut
 
-Beslutet ersätter körprofilrevisioner och de separata stegen för upptäckt,
-modellutkast och aktivering i
-[ADR 0051](./0051-ai-integrationslager-med-korprofiler-och-adaptrar.md),
-[ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md),
-[ADR 0054](./0054-global-ai-sparr-och-driftsattningsbevis.md) och
+Adaptergränsen följer
+[ADR 0051](./0051-ai-integrationslager-med-korprofiler-och-adaptrar.md) och
+tillitsgränsen följer
+[ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
+Den globala AI-spärren och driftsättningsbeviset följer
+[ADR 0054](./0054-global-ai-sparr-och-driftsattningsbevis.md).
+Drifttelemetri och staging-liveprovet för AI följer
 [ADR 0055](./0055-innehallsfri-ai-observerbarhet-och-syntetisk-liveverifiering.md).
-Deras tillitsgräns, globala spärr, innehållsfria telemetri och exakta
-liveverifiering gäller fortsatt, men binds nu till stabilt profil-ID och
-konfigurationsversion.
+Alla dessa beslut använder stabilt körprofil-ID och konfigurationsversion.
 
 ## Övervägda alternativ
 

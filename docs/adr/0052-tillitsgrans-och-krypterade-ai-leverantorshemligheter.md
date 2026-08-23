@@ -2,9 +2,6 @@
 
 Status: Antagen 2026-08-19.
 
-Modellverifierings- och körprofilflödet i detta beslut preciseras och ersätts
-av [ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
-
 Varje AI-anslutning ligger utanför Kravhanterings tillitsgräns, även när en
 ansluten agentmiljö körs som sidecar i samma nätverk. Adaptern är betrodd kod i
 AI-integrationslagret, medan AI-leverantören eller agentmiljön är en separat
@@ -96,9 +93,10 @@ readiness.
 
 Den globala AI-spärren får inte släppas i en miljö innan root-keyring, egress,
 säkra standarder, attest, anslutningsprov, modell- och förmågeprov samt avsedda
-aktiva körprofilrevisioner är verifierade. Rollback använder spärren,
-suspendering eller en tidigare fortfarande giltig körprofil- och
-hemlighetsrevision. Den gamla direkta OpenRouter-vägen är ingen reserv.
+stabila körprofiler och deras konfigurationsversioner är verifierade. Rollback
+använder spärren, suspendering eller en uttrycklig omkonfiguration till en
+fortfarande giltig anslutningsmodellrevision och hemlighetsrevision. Den
+direkta OpenRouter-vägen är ingen reserv.
 
 ## Bevarade beslut och företräde
 
