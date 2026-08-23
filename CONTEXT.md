@@ -442,8 +442,9 @@ _Avoid_: Användarens integritetsinställning, leverantörspreferens,
 datapolicysammanfattning.
 
 **AI-anslutning**:
-En administratörsgodkänd koppling som låter Kravhantering göra avgränsade
-AI-anrop till en AI-leverantör eller agentmiljö enligt beslutad datapolicy.
+En administratörsförvaltad koppling mellan Kravhantering och en AI-leverantör
+eller agentmiljö. Endast en godkänd och aktiv AI-anslutning får användas för
+AI-anrop enligt beslutad datapolicy.
 
 - `en`: AI connection
 
@@ -457,31 +458,27 @@ Kravhantering genom en avgränsad AI-anslutning.
 
 _Avoid_: AI-leverantör, agentsession, MCP-klient.
 
-**AI-integrationslager**:
-Kravhanterings gemensamma gräns för att välja körprofil och utföra AI-anrop
-oberoende av vilken AI-leverantör eller agentmiljö som används.
+**Global AI-spärr**:
+En miljöomfattande spärr som hindrar nya AI-anrop utan att göra
+Kravhantering otillgängligt. Spärren släpps först när miljöns
+AI-driftsättningsbevis har godkänts.
 
-- `en`: AI integration layer
+- `en`: Global AI guard
 
-_Avoid_: AI-leverantör, AI-anslutning, OpenRouter-integration.
+_Avoid_: Readiness, anslutningspaus, körprofilspaus.
 
 **AI-driftsättningsbevis**:
-Ett maskinverifierbart och innehållsfritt bevis på att en bestämd miljös
-keyring, egress, säkra standarder, attest, anslutning, modellförmågor,
-körprofiler och driftlarm uppfyller villkoren för att släppa den globala
-AI-spärren. Beviset binder varje stabil körprofils identitet och
-konfigurationsversion till exakt anslutnings- och modellrevision samt
-versionerade kontrollaxlar; antal eller en representativ väg räcker inte.
+Ett maskinverifierbart och innehållsfritt underlag som visar att en bestämd
+miljö och dess avsedda AI-anropsvägar uppfyller villkoren för att den globala
+AI-spärren ska få släppas.
 
 - `en`: AI deployment evidence
 
 _Avoid_: AI-hälsa, readiness, fritextintyg, staging-liveprov.
 
 **Staging-liveprov för AI**:
-Ett explicit aktiverat prov som kräver serverbevisad stagingidentitet och aktiv
-global AI-spärr, förhandskontrollerar samtliga avsedda stabila körprofiler och
-använder den fasta syntetiska Admin-verifieringssviten för den avsedda
-live-adaptern.
+Ett uttryckligen aktiverat, syntetiskt prov av avsedda AI-anropsvägar i en
+identifierad stagingmiljö medan den globala AI-spärren är aktiv.
 
 - `en`: AI staging live test
 
@@ -497,18 +494,26 @@ _Avoid_: AI-anslutning när den administrerade kopplingen avses,
 modelleverantör.
 
 **Anslutningsmodell**:
-En administratörsgodkänd modell inom en viss AI-anslutning, med förmågor som
-måste vara verifierade för att modellen ska kunna väljas av en körprofil.
+En administratörsförvaltad modell som hör till en viss AI-anslutning och vars
+förändringar representeras av anslutningsmodellrevisioner.
 
 - `en`: AI connection model
 
 _Avoid_: Modellval, fristående modell, leverantörsmodell.
 
+**Anslutningsmodellrevision**:
+En bestämd version av en anslutningsmodell med de förmågor som verifierats för
+versionen. En körprofil väljer en kompatibel, verifierad
+anslutningsmodellrevision.
+
+- `en`: AI connection model revision
+
+_Avoid_: Anslutningsmodell när en bestämd revision avses, leverantörsmodell.
+
 **Körprofil**:
-En av tre stabila, applikationsägda anropstyper med fasta minimiförmågor.
-Administratören väljer en verifierad anslutningsmodellrevision och
-driftbudgetar; varje ändring höjer konfigurationsversionen och gäller nya
-körningar.
+En stabil, applikationsägd konfiguration som anger vilken
+anslutningsmodellrevision och vilka driftbudgetar som gäller för en bestämd
+anropstyp.
 
 - `en`: Run profile
 
