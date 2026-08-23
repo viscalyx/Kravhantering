@@ -8,6 +8,7 @@ import {
   createInvalidRuntimeCertificateFixture,
   createRuntimeCertificateFixture,
 } from '@/containers/hsa-mtls-provisioner/test/runtime-fixture.mjs'
+import { loadStrictCertificateMaterial } from '@/lib/hsa/strict-certificate-validation.mjs'
 import {
   getStrictHsaPersonLookupSnapshot,
   loadStrictHsaPersonLookupSnapshot,
@@ -20,6 +21,7 @@ import {
   loadStrictTlsSnapshot,
   readStrictTlsFile,
   StrictTlsMaterialError,
+  strictCertificateAuthorityRawValues,
 } from '@/lib/hsa/strict-tls'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
@@ -720,5 +722,70 @@ describe('strict HSA person lookup startup snapshot', () => {
         role: 'client',
       }),
     ).rejects.toMatchObject({ diagnostic: 'tls_key_invalid' })
+  })
+
+  it('maps the shared subject-field policy without weakening exact identity', async () => {
+    const diagnostics = {
+      caInvalid: 'ca',
+      certificateExpired: 'expired',
+      certificateInvalid: 'certificate',
+      certificateNotYetValid: 'not-yet-valid',
+      chainUntrusted: 'chain',
+      fileInvalid: 'file',
+      filePathInvalid: 'path',
+      keyInvalid: 'key',
+      keyMismatch: 'key-mismatch',
+      leafRoleInvalid: 'role',
+      peerIdentityInvalid: 'identity',
+      tlsContextInvalid: 'context',
+    }
+    const fail = (category: string, message: string): never => {
+      throw Object.assign(new Error(message), { category })
+    }
+    const base = {
+      caPath: fixture.bundle('mock', 'adapter-client-ca.crt'),
+      certPath: fixture.bundle('adapter', 'adapter-client.crt'),
+      diagnostics,
+      fail,
+      keyPath: fixture.bundle('adapter', 'adapter-client.key'),
+      role: 'client' as const,
+    }
+
+    await expect(
+      loadStrictCertificateMaterial({
+        ...base,
+        identity: {
+          field: 'serialNumber',
+          type: 'subject-field',
+          value: 'SE5560000000-MOCK001',
+        },
+      }),
+    ).resolves.toEqual({
+      ca: expect.any(Buffer),
+      cert: expect.any(Buffer),
+      key: expect.any(Buffer),
+    })
+    await expect(
+      loadStrictCertificateMaterial({
+        ...base,
+        identity: {
+          field: 'serialNumber',
+          type: 'subject-field',
+          value: 'SE5560000000-WRONG',
+        },
+      }),
+    ).rejects.toMatchObject({ category: 'identity' })
+  })
+
+  it('rejects trailing non-certificate data in a trust bundle', async () => {
+    const certificate = await readFile(
+      fixture.bundle('kong', 'app-client-ca.crt'),
+    )
+
+    expect(() =>
+      strictCertificateAuthorityRawValues(
+        Buffer.concat([certificate, Buffer.from('\ninvalid')]),
+      ),
+    ).toThrow(expect.objectContaining({ diagnostic: 'tls_ca_invalid' }))
   })
 })

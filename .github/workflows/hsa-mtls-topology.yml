@@ -43,11 +43,11 @@ jobs:
           docker buildx build --provenance=false \
             --tag localhost/kravhantering/hsa-person-lookup-adapter:topology \
             --output type=oci,dest=/tmp/hsa-oci/adapter.tar \
-            containers/hsa-person-lookup-adapter
+            --file containers/hsa-person-lookup-adapter/Dockerfile .
           docker buildx build --provenance=false \
             --tag localhost/kravhantering/hsa-directory-mock:topology \
             --output type=oci,dest=/tmp/hsa-oci/mock.tar \
-            containers/hsa-directory-mock
+            --file containers/hsa-directory-mock/Dockerfile .
       - name: Upload exact OCI candidates
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
