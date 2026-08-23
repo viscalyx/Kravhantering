@@ -125,21 +125,25 @@ function userFixture(options: FixtureOptions = {}) {
     ].join('\n'),
     { mode: 0o755 },
   )
-  if (options.fakeOwner) {
-    writeFileSync(
-      path.join(fakeBin, 'id'),
-      [
-        '#!/usr/bin/env bash',
-        'case "$1" in',
-        "  -u) printf '4242\\n' ;;",
-        "  -g) printf '4242\\n' ;;",
-        '  *) exec /usr/bin/id "$@" ;;',
-        'esac',
-        '',
-      ].join('\n'),
-      { mode: 0o755 },
-    )
-  }
+  const fixtureUid = options.fakeOwner
+    ? '4242'
+    : spawnSync('/usr/bin/id', ['-u'], { encoding: 'utf8' }).stdout.trim()
+  const fixtureGid = options.fakeOwner
+    ? '4242'
+    : spawnSync('/usr/bin/id', ['-g'], { encoding: 'utf8' }).stdout.trim()
+  writeFileSync(
+    path.join(fakeBin, 'id'),
+    [
+      '#!/usr/bin/env bash',
+      'case "$1:$2" in',
+      `  -u:vscode) printf '${fixtureUid}\\n' ;;`,
+      `  -g:vscode) printf '${fixtureGid}\\n' ;;`,
+      '  *) exec /usr/bin/id "$@" ;;',
+      'esac',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  )
 
   const mismatchVersion =
     options.failure === 'version-mismatch' ? '9.9.9' : targetVersion
