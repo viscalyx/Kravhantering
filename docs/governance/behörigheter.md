@@ -57,6 +57,11 @@ Innan ett nytt HSA-id kan sparas i ett sådant uppdrag måste användaren hämta
 eller återanvända en lokal kravansvarsperson. HSA-personuppslaget är
 behörighetsstyrt per syfte:
 
+Den autentiserade kapacitetskontrollen avgör om gränssnittet erbjuder ett nytt
+direktuppslag. När den strikta lokala transportkonfigurationen saknas eller är
+ogiltig inaktiveras direktuppslaget med lokaliserad vägledning, men redan
+sparade kravansvarspersoner kan fortfarande återanvändas i tillåtna uppdrag.
+
 - kravområdesägare får verifieras av `Admin` vid skapande av kravområde, eller
   av aktuell kravområdesägare eller `Admin` vid överlämning av ett befintligt
   kravområde

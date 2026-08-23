@@ -225,7 +225,7 @@ describe('devcontainer HSA mock helper', () => {
     )
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining(
-        'node scripts/devcontainer/hsa-mock.mjs <config|build|up|recreate|status|verify|logs|restart|down>',
+        'node scripts/devcontainer/hsa-mock.mjs <config|build|up|recreate|status|ensure|inspect|verify|rotate|rollback-verify|logs|restart|down>',
       ),
     )
   })
@@ -237,8 +237,37 @@ describe('devcontainer HSA mock helper', () => {
 
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining(
-        'node scripts/devcontainer/hsa-mock.mjs <config|build|up|recreate|status|verify|logs|restart|down>',
+        'node scripts/devcontainer/hsa-mock.mjs <config|build|up|recreate|status|ensure|inspect|verify|rotate|rollback-verify|logs|restart|down>',
       ),
+    )
+  })
+
+  it('rotates and finalizes only after verification', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('test-host')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const spawnSync = mockSpawnSync((_command, args) => {
+      if (args.join(' ').includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'test-host-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      return {}
+    })
+
+    await expect(main(['rotate', 'app-to-kong'])).resolves.toBe(0)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    expect(calls).toContainEqual(
+      expect.stringContaining(
+        'run --rm hsa-mtls-provisioner rotate app-to-kong',
+      ),
+    )
+    expect(calls.at(-1)).toContain('run --rm hsa-mtls-provisioner finalize')
+    expect(calls.findIndex(call => call.includes('stop app'))).toBeLessThan(
+      calls.findIndex(call => call.includes('stop kong')),
     )
   })
 })

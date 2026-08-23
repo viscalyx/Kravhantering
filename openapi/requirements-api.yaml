@@ -38,6 +38,26 @@ paths:
                   - $ref: '#/components/schemas/AnonymousSession'
                   - $ref: '#/components/schemas/AuthenticatedSession'
 
+  /api/hsa-person-lookup-capability:
+    get:
+      x-auth: session
+      x-csrf: none
+      x-cache: no-store
+      tags: [requirements]
+      operationId: getHsaPersonLookupCapability
+      summary: Return bounded live HSA lookup availability.
+      responses:
+        '200':
+          description: Process-local strict HSA lookup capability.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HsaPersonLookupCapability'
+        '401': { $ref: '#/components/responses/NoStoreUnauthorized' }
+
   /api/privacy/erasure-preview:
     post:
       x-auth: session
@@ -1264,6 +1284,12 @@ components:
         detail: { type: string }
         details: {}
         error: { type: string }
+    HsaPersonLookupCapability:
+      type: object
+      required: [available]
+      additionalProperties: false
+      properties:
+        available: { type: boolean }
     AnonymousSession:
       type: object
       required: [authenticated]

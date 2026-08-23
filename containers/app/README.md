@@ -119,10 +119,6 @@ Required application values:
 - Production startup rejects public development, prodlike, smoke-test, and
   template placeholder values for the OIDC client secret and session-cookie
   password.
-- `HSA_PERSON_LOOKUP_URL` must use HTTPS in production and point to the
-  server-side Kong or integration-platform REST facade approved by the
-  environment's egress policy for HSA person lookup.
-
 Optional application values:
 
 - `BUILD_VERSION`, `BUILD_COMMIT_SHA`, `BUILD_TIME`, and `BUILD_IMAGE_TAG`
@@ -137,10 +133,15 @@ Optional application values:
 - `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_SCOPES`,
   `AUTH_SESSION_COOKIE_NAME`, and `AUTH_SESSION_TTL_SECONDS` override
   defaults.
+- `HSA_PERSON_LOOKUP_URL` enables live lookup. It must use HTTPS in production
+  and point to the server-side Kong or integration-platform REST facade
+  approved by the environment's egress policy. Leave it unset by default;
+  liveness and readiness remain available while live lookup is unavailable.
 - `HSA_PERSON_LOOKUP_TIMEOUT_MS` overrides the HSA lookup timeout.
 - `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`,
   `HSA_PERSON_LOOKUP_CA_PATH`, and `HSA_PERSON_LOOKUP_TLS_SERVER_NAME`
-  enable optional mTLS from the app to an external integrationsplattform.
+  are all mandatory when lookup is enabled. Mount the role-specific private
+  material read-only and use the exact approved server identity.
 - `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL`,
   `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`,
   `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`,
@@ -151,7 +152,7 @@ Optional application values:
   discovery. Production OAuth URLs must use HTTPS. Discovery must return the
   configured issuer and a token endpoint on the same origin; configure an
   explicit HTTPS token URL when the approved token service uses another
-  origin.
+  origin. OAuth is additive to strict mTLS and never replaces it.
 - `AI_PROVIDER_SECRET_KEYRING_FILE` and the `AI_CONNECTION_*_POLICIES_JSON`
   maps establish the deployment-owned boundary for optional AI connections.
   Provider credentials and run profiles are administered in the application.

@@ -2264,6 +2264,31 @@ describe('trusted container release helpers', () => {
     ).toThrow('already points at different-sha')
   })
 
+  it('keeps matching tags and creates missing release tags', () => {
+    const plan = createTestReleasePlan({
+      changedFiles: ['app/[locale]/page.tsx'],
+      env: env(),
+      gitVersion,
+    })
+    expect(
+      ensureGitTag(plan, {
+        execFileSync: () => `${plan.commitSha}\n`,
+        spawnSync: vi.fn(),
+      }),
+    ).toBe('exists')
+
+    const spawnSync = vi.fn(() => ({ status: 0 }))
+    expect(
+      ensureGitTag(plan, {
+        execFileSync: () => {
+          throw new Error('missing')
+        },
+        spawnSync,
+      }),
+    ).toBe('created')
+    expect(spawnSync).toHaveBeenCalledTimes(2)
+  })
+
   it('configures generated release note categories with a catch-all', () => {
     const releaseConfig = readWorkspaceFile('.github/release.yml')
 

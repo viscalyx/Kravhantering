@@ -3,10 +3,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  assertHsaIntegrationSupportLockSchema,
   checkHsaIntegrationSupportVendorLocks,
   createHsaIntegrationSupportLockFromCliOptions,
   formatHsaIntegrationSupportLockJson,
   main,
+  parseArgs,
   readHsaIntegrationVendorLocks,
 } from '../containers/generate-hsa-integration-support-lock.mjs'
 
@@ -216,5 +218,94 @@ describe('container HSA integration support lock generation', () => {
     expect(messages).toContain(
       'log:Checked container-hsa-integration-support.lock.json',
     )
+  })
+
+  it('covers bounded schema, argument, fallback, and CLI failures', async () => {
+    const cwd = makeProject()
+    const vendorLocks = readHsaIntegrationVendorLocks({ cwd })
+    const adapter = service(
+      'hsa-person-lookup-adapter',
+      'hsa-person-lookup-adapter',
+      'example.test/adapter',
+      'local',
+      'sha256:adapter-manifest',
+      'sha256:adapter-image',
+    )
+    const provisioner = service(
+      'hsa-mtls-provisioner',
+      'hsa-mtls-provisioner',
+      'example.test/provisioner',
+      'local',
+      'sha256:provisioner-manifest',
+      'sha256:provisioner-image',
+    )
+
+    expect(() =>
+      assertHsaIntegrationSupportLockSchema(null, 'fixture'),
+    ).toThrow('fixture must use schemaVersion 1')
+    expect(() => parseArgs(['generate', 'value'])).toThrow(
+      'Unexpected argument',
+    )
+    expect(() => parseArgs(['generate', '--output'])).toThrow('Missing value')
+    expect(() =>
+      checkHsaIntegrationSupportVendorLocks(
+        { schemaVersion: 1, services: null },
+        vendorLocks,
+      ),
+    ).toThrow('must contain services[]')
+    expect(() =>
+      checkHsaIntegrationSupportVendorLocks(
+        {
+          schemaVersion: 1,
+          services: [{ ...vendorLocks[0], unexpected: true }],
+        },
+        vendorLocks,
+      ),
+    ).toThrow('fields that do not match')
+    expect(() =>
+      checkHsaIntegrationSupportVendorLocks(
+        { schemaVersion: 1, services: [...vendorLocks, adapter] },
+        vendorLocks,
+      ),
+    ).toThrow('missing "hsa-mtls-provisioner"')
+    expect(() =>
+      checkHsaIntegrationSupportVendorLocks(
+        {
+          schemaVersion: 1,
+          services: [...vendorLocks, { ...adapter, image: '' }, provisioner],
+        },
+        vendorLocks,
+      ),
+    ).toThrow()
+
+    const envLock = createHsaIntegrationSupportLockFromCliOptions({
+      cwd,
+      env: {
+        BUILD_COMMIT_SHA: 'env-commit',
+        BUILD_VERSION: '2.0.0',
+        HSA_MTLS_PROVISIONER_IMAGE_ID: 'sha256:provisioner-image',
+        HSA_MTLS_PROVISIONER_MANIFEST_DIGEST: 'sha256:provisioner-manifest',
+        HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID: 'sha256:adapter-image',
+        HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST: 'sha256:adapter-manifest',
+      },
+    })
+    expect(envLock).toMatchObject({
+      commitSha: 'env-commit',
+      releaseVersion: '2.0.0',
+    })
+
+    const errors = []
+    const consoleObj = { error: value => errors.push(String(value)), log() {} }
+    await expect(main(['unknown'], { consoleObj, cwd, env: {} })).resolves.toBe(
+      1,
+    )
+    await expect(
+      main(['check', '--lock-file', 'missing.json'], {
+        consoleObj,
+        cwd,
+        env: {},
+      }),
+    ).resolves.toBe(1)
+    expect(errors.length).toBe(2)
   })
 })

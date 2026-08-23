@@ -42,6 +42,16 @@ every app node, and test database plus keyring restore as one recovery set.
 Follow [AI Connections Operations](./ai-connections.md); do not place root keys
 in `app.env` or release artifacts.
 
+If the site enables HSA person lookup, review `app.env` before the cutover.
+`HSA_PERSON_LOOKUP_URL` is now accepted only with the complete strict mTLS
+tuple: a private CA, role-specific client certificate and key, and the exact
+TLS server name, all on deployment-owned read-only mounts. Plaintext,
+certificate-validation bypasses, and OAuth without mTLS are no longer
+supported. Leave the URL unset when live lookup is not configured; the App
+remains ready and reports lookup unavailable. Verify this local readiness and
+the authenticated capability operation before restoring traffic. Rollback
+must restore the prior App image and its matching strict material as one unit.
+
 Set `AI_REQUIREMENT_GENERATION_DISABLED=1` on every app node before draining
 traffic, even when AI is already suspended in Admin Center. Keep it active
 through migration, required seeding, startup, restore testing, and application

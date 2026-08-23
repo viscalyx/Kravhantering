@@ -431,6 +431,37 @@ start_hsa_mtls_endpoints() {
   service_systemctl start kravhantering-app-runtime.service
 }
 
+verify_hsa_correlated_lookup() {
+  if [[ "${HSA_MTLS_FORCE_VERIFY_FAILURE:-0}" == 1 ]]; then
+    return 1
+  fi
+  CI=true npm run test:release-smoke -- \
+    --grep 'verifies HSA person lookup through Kong and the HSA mock'
+}
+
+verify_hsa_runtime_isolation() {
+  local container destination
+  while read -r container destination; do
+    as_service podman inspect "$container" | jq -e --arg destination "$destination" '
+      any(.[0].Mounts[]; .Destination == $destination and .RW == false) and
+      all(.[0].Mounts[]; (.Destination | contains("hsa-mtls-issuer") | not) and (.Destination | contains("/var/lib/kravhantering/hsa-mtls") | not))
+    ' >/dev/null || fail "$container did not mount only selected HSA material read-only"
+    if as_service podman exec "$container" sh -c \
+      "find '$destination' -type f \( -name '*ca*.key' -o -name '*ca-key*' \) -print -quit" | \
+      grep -q .; then
+      fail "$container exposes HSA CA signing material"
+    fi
+  done <<'CONTAINERS'
+kravhantering-app-runtime /run/secrets/kravhantering
+kravhantering-ci-kong /run/kravhantering/hsa-mtls
+kravhantering-ci-hsa-person-lookup-adapter /run/kravhantering/hsa-mtls
+kravhantering-ci-hsa-directory-mock /run/kravhantering/hsa-mtls
+CONTAINERS
+  printf '%s\n' 'role-specific-read-only-bundles=passed' \
+    'runtime-ca-signing-keys-absent=passed' \
+    >"$EVIDENCE_DIR/hsa-mtls-runtime-isolation.txt"
+}
+
 verify_hsa_mtls_rotation_and_rollback() {
   local domain before after restored
   : >"$EVIDENCE_DIR/hsa-mtls-rotation.txt"
@@ -442,10 +473,22 @@ verify_hsa_mtls_rotation_and_rollback() {
     start_hsa_mtls_endpoints
     wait_for_url https://kravhantering.test/api/ready \
       "application readiness after $domain HSA mTLS rotation"
+    verify_hsa_correlated_lookup || \
+      fail "$domain HSA mTLS authenticated verification failed"
     after="$(run_hsa_mtls_provisioner inspect | jq -er '.result.selection.current')"
     [[ "$after" != "$before" ]] || \
       fail "$domain HSA mTLS rotation did not select a new generation"
+    run_hsa_mtls_provisioner finalize >/dev/null
+    [[ "$(run_hsa_mtls_provisioner inspect | jq -r '.result.selection.previous')" == null ]] || \
+      fail "$domain HSA mTLS successful rotation retained prior selection"
 
+    stop_hsa_mtls_endpoints
+    run_hsa_mtls_provisioner rotate "$domain" >/dev/null
+    run_hsa_mtls_provisioner deploy >/dev/null
+    start_hsa_mtls_endpoints
+    if HSA_MTLS_FORCE_VERIFY_FAILURE=1 verify_hsa_correlated_lookup; then
+      fail "$domain HSA mTLS injected verification failure unexpectedly passed"
+    fi
     stop_hsa_mtls_endpoints
     run_hsa_mtls_provisioner rollback >/dev/null
     run_hsa_mtls_provisioner deploy >/dev/null
@@ -453,16 +496,20 @@ verify_hsa_mtls_rotation_and_rollback() {
     wait_for_url https://kravhantering.test/api/ready \
       "application readiness after $domain HSA mTLS rollback"
     restored="$(run_hsa_mtls_provisioner inspect | jq -er '.result.selection.current')"
-    [[ "$restored" == "$before" ]] || \
-      fail "$domain HSA mTLS rollback did not restore the prior generation"
+    [[ "$restored" == "$after" ]] || \
+      fail "$domain HSA mTLS rollback did not restore the verified generation"
+    verify_hsa_correlated_lookup || \
+      fail "$domain HSA mTLS rollback verification failed"
     printf '%s\n' \
       "domain=$domain" \
       "before-generation=$before" \
       "rotated-generation=$after" \
       "restored-generation=$restored" \
       'client-stop-server-start-order=passed' \
-      'authenticated-readiness-after-rotation=passed' \
-      'authenticated-readiness-after-rollback=passed' \
+      'authenticated-lookup-after-rotation=passed' \
+      'successful-finalization=passed' \
+      'injected-failure-rollback=passed' \
+      'authenticated-lookup-after-rollback=passed' \
       >>"$EVIDENCE_DIR/hsa-mtls-rotation.txt"
   done
 }
@@ -1358,6 +1405,8 @@ up() {
     'initial application process health'
   wait_for_url https://kravhantering.test/api/ready \
     'initial full-stack readiness'
+  bash .devcontainer/trust-container-ca.sh
+  verify_hsa_runtime_isolation
   verify_hsa_mtls_rotation_and_rollback
   verify_containment
   service_systemctl restart kravhantering-app-runtime.service

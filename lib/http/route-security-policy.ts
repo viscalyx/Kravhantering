@@ -477,7 +477,7 @@ export const REST_OPERATION_DECLARATIONS = [
     'none',
     'authenticated',
     'no-store',
-    'focused',
+    'openapi',
   ],
   [
     'GET',

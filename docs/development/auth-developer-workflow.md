@@ -154,7 +154,18 @@ unexpectedly:
 npm run devcontainer:kong:status
 npm run devcontainer:hsa-mock:status
 npm run devcontainer:hsa-mock:verify
+npm run devcontainer:hsa-mock:ensure
+npm run devcontainer:hsa-mock:inspect
+npm run devcontainer:hsa-mock:rotate -- app-to-kong
+npm run devcontainer:hsa-mock:rollback-verify -- app-to-kong
 ```
+
+The same lifecycle is available as a persistent local demo with
+`npm run hsa:mtls:ensure`, `npm run hsa:mtls:verify`,
+`npm run hsa:mtls:inspect`, `npm run hsa:mtls:rotate -- <trust-domain>`, and
+`npm run hsa:mtls:rollback-verify -- <trust-domain>`. Rotation authenticates
+the complete chain before finalization; rollback verification injects a failed
+post-promotion check, restores the prior generation, and authenticates it.
 
 Host-based development with only `npm run idp:up` starts Keycloak but not
 Kong, the adapter or the HSA directory mock. To test responsibility-assignment

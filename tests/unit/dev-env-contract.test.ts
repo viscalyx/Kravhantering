@@ -789,9 +789,7 @@ describe('development environment contract', () => {
     expect(containerAppExampleEnv).toContain(
       'HSA_PERSON_LOOKUP_TIMEOUT_MS=5000',
     )
-    expect(containerAppExampleEnv).toContain(
-      'HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup',
-    )
+    expect(containerAppExampleEnv).toMatch(/^HSA_PERSON_LOOKUP_URL=$/m)
 
     expectEnvVars(releaseAppEnv, hsaPersonLookupEnvVars)
     expectEnvVars(containerAppExampleEnv, hsaPersonLookupEnvVars)

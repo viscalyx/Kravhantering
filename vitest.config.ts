@@ -83,6 +83,10 @@ export default defineConfig({
         // Side-effect-only local Docker/systemd orchestration. Its deterministic
         // argument and artifact contract lives in the covered companion module.
         'scripts/containers/production-smoke-debug.mjs',
+        // Local Compose orchestration; argument contracts are covered without
+        // treating subprocess branches as deterministic production logic.
+        'scripts/devcontainer/hsa-mock.mjs',
+        'scripts/devcontainer/kong.mjs',
       ],
       thresholds: {
         branches: 85,

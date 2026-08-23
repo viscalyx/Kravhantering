@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto'
 import https from 'node:https'
 import net from 'node:net'
 import { checkServerIdentity } from 'node:tls'
 import { isHsaId } from '@/lib/auth/hsa-id'
+import { createHsaCorrelationId } from '@/lib/hsa/correlation.mjs'
 import {
   loadStrictCertificateAuthority,
   loadStrictTlsSnapshot,
@@ -403,7 +403,7 @@ export async function lookupHsaPersonStrict(
   {
     request = executeStrictRequest,
     snapshot,
-    uuid = randomUUID,
+    uuid,
   }: {
     request?: StrictHsaRequestImpl
     snapshot?: StrictHsaPersonLookupSnapshot | null
@@ -423,14 +423,7 @@ export async function lookupHsaPersonStrict(
         reason: 'hsa_lookup_missing_config',
       })
     }
-    const correlationId = uuid()
-    if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
-        correlationId,
-      )
-    ) {
-      throw new Error('invalid_generated_correlation')
-    }
+    const correlationId = createHsaCorrelationId(uuid)
     console.info(
       JSON.stringify({
         correlation_id: correlationId,

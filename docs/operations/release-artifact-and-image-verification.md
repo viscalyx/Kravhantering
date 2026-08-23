@@ -203,6 +203,13 @@ gh attestation verify \
   --repo <owner>/<repo> \
   --signer-workflow <owner>/<repo>/.github/workflows/container-release.yml
 ```
+
+Release/demo support also publishes the HSA person lookup Adapter, directory
+mock, and one-shot mTLS provisioner with separate provenance and SPDX
+attestations. Verify their exact manifest references with the same command
+before mirroring or disconnected export. These images are not dependencies of
+the supported production topology; production deployments leave the HSA URL
+unset or supply site-owned strict material for an approved external facade.
 <!-- markdownlint-enable MD013 -->
 
 Use the corresponding `db-job` manifest digest reference from the release notes

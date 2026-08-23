@@ -168,24 +168,6 @@ After deployment, verify responsibility assignment workflows for areas, packages
 Update any automation that calls these internal verification and assignment endpoints to forward the returned evidence. Verification is now rate limited, and audit records use target fingerprints and outcomes instead of raw target HSA IDs or personal data. Brief support and privacy teams on the protected-person handling guidance shown in the assignment workflow.
 <!-- operator-upgrade:source pr-990 end -->
 
-<!-- operator-upgrade:source issue-886 start -->
-Repository-owned HSA development, demo, CI, disconnected-validation, and
-release-smoke paths now activate strict mTLS atomically on App-to-Kong,
-Kong-to-Adapter, and Adapter-to-HSA. Remove old shared certificate volumes,
-plaintext listeners, runtime certificate generators, and TLS bypass settings
-before starting the upgraded support topology. Every participant must receive
-only its role-specific read-only bundle.
-
-The supported production Compose topology remains independent of Kong,
-Adapter, mock, and repository test PKI, and leaves `HSA_PERSON_LOOKUP_URL`
-unset by default. Sites that enable external production HSA lookup must supply
-the complete App mTLS tuple and exact DNS server identity; OAuth remains
-optional and additive. Recreate affected endpoints during rotation in
-client-stop/server-start order and validate `/api/ready`, the authenticated
-capability route, and a responsibility-person workflow before finalizing. Use
-the documented rollback selection if validation fails.
-<!-- operator-upgrade:source issue-886 end -->
-
 <!-- operator-upgrade:source pr-993 start -->
 After upgrade, every synchronous PDF report and export shares the configured
 per-node PDF concurrency, timeout, and item limits. Requests above the item

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
+import http from 'node:http'
 import https from 'node:https'
 
 const LOOKUP_PATH = '/hsa/person-records/lookup'
@@ -67,20 +68,42 @@ async function eventually(action) {
   throw lastError
 }
 
-const success = await eventually(() =>
-  request({
-    cert: '/runtime/app/app-client.crt',
-    key: '/runtime/app/app-client.key',
-  }),
-)
-const person = JSON.parse(success.body)
-if (
-  success.status !== 200 ||
-  person.hsaId !== EXPECTED_HSA_ID ||
-  person.givenName !== 'Maria'
-) {
-  throw new Error('Authenticated strict topology lookup failed')
+if (process.env.HSA_MTLS_FORCE_VERIFY_FAILURE === 'true') {
+  throw new Error('Injected post-rotation verification failure')
 }
+
+function appLookup() {
+  return new Promise((resolve, reject) => {
+    const call = http.request(
+      { host: 'app', method: 'POST', path: '/lookup', port: 8081 },
+      response => {
+        const chunks = []
+        response.on('data', chunk => chunks.push(chunk))
+        response.on('end', () =>
+          resolve({
+            body: Buffer.concat(chunks).toString('utf8'),
+            status: response.statusCode,
+          }),
+        )
+      },
+    )
+    call.on('error', reject)
+    call.end()
+  })
+}
+
+const appResult = await eventually(async () => {
+  const response = await appLookup()
+  const result = JSON.parse(response.body)
+  if (
+    response.status !== 200 ||
+    result.person?.hsaId !== EXPECTED_HSA_ID ||
+    result.person?.givenName !== 'Maria'
+  ) {
+    throw new Error('Authenticated strict topology lookup failed')
+  }
+  return result
+})
 
 for (const credentials of [
   {},
@@ -97,6 +120,71 @@ for (const credentials of [
     rejected = true
   }
   if (!rejected) throw new Error('Unauthenticated or cross-leg request passed')
+}
+
+for (const probe of [
+  {
+    ca: '/runtime/probe/adapter-server-ca.crt',
+    host: 'adapter',
+    name: 'kong-to-adapter unauthenticated',
+    servername: 'hsa-person-lookup-adapter',
+  },
+  {
+    ca: '/runtime/probe/hsa-server-ca.crt',
+    host: 'mock',
+    name: 'adapter-to-hsa unauthenticated',
+    path: '/svr-hsaws2/hsaws',
+    servername: 'hsa-directory-mock',
+  },
+  {
+    ca: '/runtime/probe/adapter-server-ca.crt',
+    cert: '/runtime/app/app-client.crt',
+    host: 'adapter',
+    key: '/runtime/app/app-client.key',
+    name: 'app-to-kong credential on kong-to-adapter',
+    servername: 'hsa-person-lookup-adapter',
+  },
+  {
+    ca: '/runtime/probe/kong-server-ca.crt',
+    cert: '/runtime/kong/kong-client.crt',
+    key: '/runtime/kong/kong-client.key',
+    name: 'kong-to-adapter credential on app-to-kong',
+  },
+  {
+    ca: '/runtime/probe/adapter-server-ca.crt',
+    cert: '/runtime/adapter/adapter-client.crt',
+    host: 'adapter',
+    key: '/runtime/adapter/adapter-client.key',
+    name: 'adapter-to-hsa credential on kong-to-adapter',
+    servername: 'hsa-person-lookup-adapter',
+  },
+  {
+    ca: '/runtime/probe/hsa-server-ca.crt',
+    cert: '/runtime/kong/kong-client.crt',
+    host: 'mock',
+    key: '/runtime/kong/kong-client.key',
+    name: 'kong-to-adapter credential on adapter-to-hsa',
+    path: '/svr-hsaws2/hsaws',
+    servername: 'hsa-directory-mock',
+  },
+  {
+    ca: '/runtime/probe/hsa-server-ca.crt',
+    cert: '/runtime/app/app-client.crt',
+    host: 'mock',
+    key: '/runtime/app/app-client.key',
+    name: 'app-to-kong credential on adapter-to-hsa',
+    path: '/svr-hsaws2/hsaws',
+    servername: 'hsa-directory-mock',
+  },
+]) {
+  let rejected = false
+  try {
+    const response = await request(probe)
+    rejected = response.status !== 200
+  } catch {
+    rejected = true
+  }
+  if (!rejected) throw new Error(`${probe.name} was accepted`)
 }
 
 for (const probe of [
@@ -136,9 +224,10 @@ for (const probe of [
 
 console.log(
   JSON.stringify({
-    correlation_id: success.correlationId,
+    correlation_id: appResult.correlationId,
     event: 'hsa_topology_verified',
     handling_count: 1,
+    negative_rejections: 9,
     wrong_identity_rejections: 3,
   }),
 )

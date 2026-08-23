@@ -90,6 +90,11 @@ För lokala HSA-id-uppslag i devcontainer används `HSA_PERSON_LOOKUP_URL`
 mot Kong, som skickar vidare till `hsa-person-lookup-adapter` och
 slutpunkten `GetHsaPerson` i HSA-katalogmocken.
 
+Alla tre länkar använder separata privata CA:er, rollspecifika certifikat och
+exakt identitetskontroll. Devcontainer-kommandona provisionerar isolerade
+skrivskyddade rollpaket innan tjänsterna startar. Klartext, delade certifikat
+och valideringsbypass stöds inte.
+
 Detaljerade felsökningskommandon för personuppslag och Kong-routning finns i
 [auth-developer-workflow.md][auth-hsa-lookup].
 

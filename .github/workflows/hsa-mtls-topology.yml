@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  topology:
-    name: Authenticated topology and isolation
+  build:
+    name: Build current-commit OCI candidates
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -20,16 +20,61 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+      - name: Build shared OCI candidates
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hsa-oci
+          docker buildx build --provenance=false \
+            --tag localhost/kravhantering/hsa-app-probe:topology \
+            --output type=oci,dest=/tmp/hsa-oci/app-probe.tar \
+            --file containers/hsa-mtls-topology/Dockerfile .
+          docker buildx build --provenance=false \
+            --tag localhost/kravhantering/hsa-mtls-provisioner:topology \
+            --output type=oci,dest=/tmp/hsa-oci/provisioner.tar \
+            --file containers/hsa-mtls-provisioner/Dockerfile .
+          docker buildx build --provenance=false \
+            --tag localhost/kravhantering/hsa-person-lookup-adapter:topology \
+            --output type=oci,dest=/tmp/hsa-oci/adapter.tar \
+            containers/hsa-person-lookup-adapter
+          docker buildx build --provenance=false \
+            --tag localhost/kravhantering/hsa-directory-mock:topology \
+            --output type=oci,dest=/tmp/hsa-oci/mock.tar \
+            containers/hsa-directory-mock
+      - name: Upload exact OCI candidates
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: hsa-mtls-current-commit-oci
+          path: /tmp/hsa-oci
+          retention-days: 1
+
+  topology:
+    name: Authenticated topology and isolation
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out current commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Download exact OCI candidates
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: hsa-mtls-current-commit-oci
+          path: /tmp/hsa-oci
+      - name: Load exact OCI candidates
+        run: for archive in /tmp/hsa-oci/*.tar; do docker load --input "$archive"; done
       - name: Build current-commit candidates and verify strict topology
         run: |
           docker compose \
             -f containers/hsa-mtls-topology/compose.yml \
-            up --build --abort-on-container-exit --exit-code-from test test | tee /tmp/hsa-topology.log
+            up --no-build --abort-on-container-exit --exit-code-from test test | tee /tmp/hsa-topology.log
       - name: Verify correlation continuity and exactly-once terminal handling
         run: |
           correlation="$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}' /tmp/hsa-topology.log | tail -1)"
           test -n "$correlation"
-          docker compose -f containers/hsa-mtls-topology/compose.yml logs --no-color kong adapter mock > /tmp/hsa-runtime.log
+          docker compose -f containers/hsa-mtls-topology/compose.yml logs --no-color app kong adapter mock > /tmp/hsa-runtime.log
+          test "$(grep -Ec "app.*(hsa_app_lookup_started.*$correlation|$correlation.*hsa_app_lookup_started)" /tmp/hsa-runtime.log)" -eq 1
           test "$(grep -c "kong.*$correlation" /tmp/hsa-runtime.log)" -eq 1
           test "$(grep -Ec "adapter.*(hsa_adapter_lookup_forwarded.*$correlation|$correlation.*hsa_adapter_lookup_forwarded)" /tmp/hsa-runtime.log)" -eq 1
           test "$(grep -Ec "mock.*(hsa_mock_lookup_handled.*$correlation|$correlation.*hsa_mock_lookup_handled)" /tmp/hsa-runtime.log)" -eq 1
@@ -39,12 +84,15 @@ jobs:
           docker compose -f containers/hsa-mtls-topology/compose.yml config > /tmp/hsa-compose.txt
           ! grep -E '(:rw|ca-signing|HSA_MOCK_AUTH_MODE|NODE_TLS_REJECT_UNAUTHORIZED)' /tmp/hsa-compose.txt
           docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner inspect
+      - name: Reject foreign material in every runtime leaf role
+        run: containers/hsa-mtls-topology/runtime-substitution-test.sh
       - name: Remove ephemeral PKI material
         if: always()
         run: docker compose -f containers/hsa-mtls-topology/compose.yml down --volumes --remove-orphans
 
   rotation:
     name: Rotation and rollback (${{ matrix.trust-domain }})
+    needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -56,35 +104,65 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+      - name: Download exact OCI candidates
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: hsa-mtls-current-commit-oci
+          path: /tmp/hsa-oci
+      - name: Load exact OCI candidates
+        run: for archive in /tmp/hsa-oci/*.tar; do docker load --input "$archive"; done
       - name: Start and verify current generation
         run: |
           docker compose -f containers/hsa-mtls-topology/compose.yml \
-            up --build --abort-on-container-exit --exit-code-from test test
-      - name: Rotate with stopped runtime snapshots
+            up --no-build --abort-on-container-exit --exit-code-from test test
+      - name: Rotate, authenticate, and finalize successful generation
         run: |
-          docker compose -f containers/hsa-mtls-topology/compose.yml stop test
-          docker compose -f containers/hsa-mtls-topology/compose.yml stop kong
-          docker compose -f containers/hsa-mtls-topology/compose.yml stop adapter
-          docker compose -f containers/hsa-mtls-topology/compose.yml stop mock
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 test
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 app
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 kong
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 adapter
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 mock
           docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner \
             rotate '${{ matrix.trust-domain }}' --lifetime ephemeral
           docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner deploy
-          docker compose -f containers/hsa-mtls-topology/compose.yml up -d --wait mock
-          docker compose -f containers/hsa-mtls-topology/compose.yml up -d --wait adapter
-          docker compose -f containers/hsa-mtls-topology/compose.yml up -d --wait kong
-          docker compose -f containers/hsa-mtls-topology/compose.yml run --rm test
-      - name: Roll back and verify the prior generation
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait mock
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait adapter
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait kong
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait app
+          docker compose -f containers/hsa-mtls-topology/compose.yml run --rm --no-deps test
+          docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner finalize
+          test "$(docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner inspect | jq -r '.result.selection.previous')" = null
+      - name: Inject failure, roll back, and authenticate prior generation
         run: |
-          docker compose -f containers/hsa-mtls-topology/compose.yml stop test
-          docker compose -f containers/hsa-mtls-topology/compose.yml stop kong
-          docker compose -f containers/hsa-mtls-topology/compose.yml stop adapter
-          docker compose -f containers/hsa-mtls-topology/compose.yml stop mock
+          prior="$(docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner inspect | jq -er '.result.selection.current')"
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 test
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 app
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 kong
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 adapter
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 mock
+          docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner rotate '${{ matrix.trust-domain }}' --lifetime ephemeral
+          docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner deploy
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait mock
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait adapter
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait kong
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait app
+          if docker compose -f containers/hsa-mtls-topology/compose.yml run --rm --no-deps -e HSA_MTLS_FORCE_VERIFY_FAILURE=true test; then
+            echo 'Injected verification failure unexpectedly passed' >&2
+            exit 1
+          fi
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 test
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 app
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 kong
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 adapter
+          docker compose -f containers/hsa-mtls-topology/compose.yml stop --timeout 1 mock
           docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner rollback
           docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner deploy
-          docker compose -f containers/hsa-mtls-topology/compose.yml up -d --wait mock
-          docker compose -f containers/hsa-mtls-topology/compose.yml up -d --wait adapter
-          docker compose -f containers/hsa-mtls-topology/compose.yml up -d --wait kong
-          docker compose -f containers/hsa-mtls-topology/compose.yml run --rm test
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait mock
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait adapter
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait kong
+          docker compose -f containers/hsa-mtls-topology/compose.yml up --no-deps -d --wait app
+          docker compose -f containers/hsa-mtls-topology/compose.yml run --rm --no-deps test
+          test "$(docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner inspect | jq -er '.result.selection.current')" = "$prior"
       - name: Remove ephemeral PKI material
         if: always()
         run: docker compose -f containers/hsa-mtls-topology/compose.yml down --volumes --remove-orphans
@@ -92,13 +170,15 @@ jobs:
   required:
     name: HSA mTLS topology required
     if: always()
-    needs: [topology, rotation]
+    needs: [build, topology, rotation]
     runs-on: ubuntu-24.04
     steps:
       - name: Report stable required result
         env:
           ROTATION_RESULT: ${{ needs.rotation.result }}
           TOPOLOGY_RESULT: ${{ needs.topology.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
         run: |
+          test "$BUILD_RESULT" = success
           test "$TOPOLOGY_RESULT" = success
           test "$ROTATION_RESULT" = success

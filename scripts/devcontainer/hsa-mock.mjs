@@ -24,7 +24,7 @@ const PROFILES = [
 ]
 
 const USAGE = `Usage:
-  node scripts/devcontainer/hsa-mock.mjs <config|build|up|recreate|status|verify|logs|restart|down> [docker compose args]`
+  node scripts/devcontainer/hsa-mock.mjs <config|build|up|recreate|status|ensure|inspect|verify|rotate|rollback-verify|logs|restart|down> [trust-domain|docker compose args]`
 
 function run(command, args, options = {}) {
   const spawnSync = options.spawnSync ?? childProcess.spawnSync
@@ -211,15 +211,17 @@ function runStatus(profile, options) {
   )
 }
 
-function runVerify(profile, options) {
-  assertSuccess(
-    runCompose(
-      profile,
-      ['up', '--build', '-d', '--force-recreate', ...HSA_SERVICES],
-      options,
-    ),
-    'docker compose recreate HSA lookup services',
-  )
+function runVerify(profile, options, { recreate = true } = {}) {
+  if (recreate) {
+    assertSuccess(
+      runCompose(
+        profile,
+        ['up', '--build', '-d', '--force-recreate', ...HSA_SERVICES],
+        options,
+      ),
+      'docker compose recreate HSA lookup services',
+    )
+  }
 
   const verifyScript = `
     const fs = await import('node:fs')
@@ -285,6 +287,76 @@ function runVerify(profile, options) {
   console.log('Kong HSA verification completed.')
 }
 
+function provision(profile, options, ...args) {
+  assertSuccess(
+    runCompose(profile, ['run', '--rm', CERT_SERVICE_NAME, ...args], options),
+    `HSA mTLS provisioner ${args[0]}`,
+  )
+}
+
+function stopEndpoints(profile, options) {
+  for (const service of [
+    APP_SERVICE_NAME,
+    KONG_SERVICE_NAME,
+    ADAPTER_SERVICE_NAME,
+    SERVICE_NAME,
+  ]) {
+    assertSuccess(
+      runCompose(profile, ['stop', service], options),
+      `docker compose stop ${service}`,
+    )
+  }
+}
+
+function startEndpoints(profile, options) {
+  for (const service of [
+    SERVICE_NAME,
+    ADAPTER_SERVICE_NAME,
+    KONG_SERVICE_NAME,
+    APP_SERVICE_NAME,
+  ]) {
+    assertSuccess(
+      runCompose(profile, ['up', '-d', '--wait', service], options),
+      `docker compose start ${service}`,
+    )
+  }
+}
+
+function requireTrustDomain(value) {
+  if (!['app-to-kong', 'kong-to-adapter', 'adapter-to-hsa'].includes(value)) {
+    throw new Error('Expected one HSA mTLS trust domain')
+  }
+  return value
+}
+
+function runRotation(profile, options, trustDomain) {
+  stopEndpoints(profile, options)
+  provision(profile, options, 'rotate', requireTrustDomain(trustDomain))
+  provision(profile, options, 'deploy')
+  startEndpoints(profile, options)
+  try {
+    runVerify(profile, options, { recreate: false })
+    provision(profile, options, 'finalize')
+  } catch (error) {
+    stopEndpoints(profile, options)
+    provision(profile, options, 'rollback')
+    provision(profile, options, 'deploy')
+    startEndpoints(profile, options)
+    runVerify(profile, options, { recreate: false })
+    throw error
+  }
+}
+
+function runRollbackVerification(profile, options, trustDomain) {
+  stopEndpoints(profile, options)
+  provision(profile, options, 'rotate', requireTrustDomain(trustDomain))
+  provision(profile, options, 'deploy')
+  provision(profile, options, 'rollback')
+  provision(profile, options, 'deploy')
+  startEndpoints(profile, options)
+  runVerify(profile, options, { recreate: false })
+}
+
 function runAction(action, extraArgs, profile) {
   printProfile(profile)
   const options = composeRunOptions(profile)
@@ -327,7 +399,24 @@ function runAction(action, extraArgs, profile) {
 
   if (action === 'status') return runStatus(profile, options)
 
+  if (action === 'ensure') {
+    provision(profile, options, 'ensure')
+    provision(profile, options, 'deploy')
+    startEndpoints(profile, options)
+    return runVerify(profile, options, { recreate: false })
+  }
+
+  if (action === 'inspect') return provision(profile, options, 'inspect')
+
   if (action === 'verify') return runVerify(profile, options)
+
+  if (action === 'rotate') {
+    return runRotation(profile, options, extraArgs[0])
+  }
+
+  if (action === 'rollback-verify') {
+    return runRollbackVerification(profile, options, extraArgs[0])
+  }
 
   if (action === 'logs') {
     return assertSuccess(
