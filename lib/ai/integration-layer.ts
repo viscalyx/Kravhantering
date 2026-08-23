@@ -286,6 +286,18 @@ export function createAiIntegrationLayer(
   >()
   options.runCoordinator.startAutomaticRecovery(
     async (target, probeRunId, abortSignal) => {
+      try {
+        await options.trustBoundary.preflightSafetyRules()
+      } catch {
+        return {
+          failure: {
+            category: 'request_rejected',
+            diagnosticCode: 'health_probe_trust_boundary_blocked',
+            retryable: false,
+          },
+          succeeded: false,
+        }
+      }
       let profile: Readonly<AiResolvedRunProfile>
       try {
         profile = await options.profileResolver.resolve(target.runType)
@@ -506,6 +518,7 @@ export function createAiIntegrationLayer(
       return output
     },
     async *run(request: AiIntegrationRunRequest): AsyncIterable<AiRunEvent> {
+      await options.trustBoundary.preflightSafetyRules()
       let profile: Readonly<AiResolvedRunProfile>
       try {
         profile = await options.profileResolver.resolve(request.type)

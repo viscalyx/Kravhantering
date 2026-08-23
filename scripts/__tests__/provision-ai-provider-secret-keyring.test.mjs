@@ -1,4 +1,12 @@
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import {
+  chmod,
+  mkdtemp,
+  open,
+  readFile,
+  rm,
+  stat,
+  symlink,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -7,6 +15,7 @@ import {
   defaultAiProviderSecretKeyringPath,
   provisionAiProviderSecretKeyring,
   runAiProviderSecretKeyringProvisioning,
+  validateExistingAiProviderSecretKeyring,
 } from '../provision-ai-provider-secret-keyring.mjs'
 
 const temporaryDirectories = []
@@ -39,7 +48,7 @@ describe('local AI provider-secret keyring provisioning', () => {
     expect((await stat(path)).mode & 0o777).toBe(0o600)
   })
 
-  it('is idempotent and never reads, overwrites, or returns an existing keyring', async () => {
+  it('validates but never overwrites or returns an existing keyring', async () => {
     const path = await temporaryKeyringPath()
     await provisionAiProviderSecretKeyring({ path })
     const before = await readFile(path)
@@ -49,6 +58,85 @@ describe('local AI provider-secret keyring provisioning', () => {
     expect(result).toEqual({ created: false, path })
     expect(await readFile(path)).toEqual(before)
     expect(JSON.stringify(result)).not.toContain(before.toString('base64'))
+  })
+
+  it('rejects an existing keyring with insecure file permissions', async () => {
+    const path = await temporaryKeyringPath()
+    await provisionAiProviderSecretKeyring({ path })
+    await chmod(path, 0o644)
+
+    await expect(provisionAiProviderSecretKeyring({ path })).rejects.toThrow(
+      'keyring file must have mode 600',
+    )
+  })
+
+  it('rejects an existing keyring in an insecure directory', async () => {
+    const path = await temporaryKeyringPath()
+    await provisionAiProviderSecretKeyring({ path })
+    await chmod(join(path, '..'), 0o755)
+
+    await expect(provisionAiProviderSecretKeyring({ path })).rejects.toThrow(
+      'keyring directory must have mode 700',
+    )
+  })
+
+  it('rejects an existing keyring owned by another user', async () => {
+    const path = await temporaryKeyringPath()
+    await provisionAiProviderSecretKeyring({ path })
+    const ownerUid = (process.getuid?.() ?? 0) + 1
+
+    await expect(
+      provisionAiProviderSecretKeyring(
+        { path },
+        {
+          inspectPath: async () => ({
+            isDirectory: () => true,
+            mode: 0o700,
+            uid: ownerUid,
+          }),
+          ownerUid,
+        },
+      ),
+    ).rejects.toThrow('keyring file has an unexpected owner')
+  })
+
+  it('rejects an existing keyring that cannot be opened for reading', async () => {
+    const path = await temporaryKeyringPath()
+    await provisionAiProviderSecretKeyring({ path })
+
+    await expect(
+      validateExistingAiProviderSecretKeyring(path, {
+        openFile: async () => {
+          throw Object.assign(new Error('permission denied'), {
+            code: 'EACCES',
+          })
+        },
+      }),
+    ).rejects.toThrow('permission denied')
+  })
+
+  it('rejects a malformed existing keyring', async () => {
+    const path = await temporaryKeyringPath()
+    await provisionAiProviderSecretKeyring({ path })
+    const handle = await open(path, 'w', 0o600)
+    try {
+      await handle.writeFile('{}', { encoding: 'utf8' })
+    } finally {
+      await handle.close()
+    }
+
+    await expect(provisionAiProviderSecretKeyring({ path })).rejects.toThrow(
+      'keyring format version must be 1',
+    )
+  })
+
+  it('rejects a symbolic link instead of following it', async () => {
+    const target = await temporaryKeyringPath()
+    await provisionAiProviderSecretKeyring({ path: target })
+    const path = join(target, '..', 'linked-keyring.json')
+    await symlink(target, path)
+
+    await expect(provisionAiProviderSecretKeyring({ path })).rejects.toThrow()
   })
 
   it('uses exclusive creation under concurrent provisioning', async () => {
@@ -147,6 +235,7 @@ describe('local AI provider-secret keyring provisioning', () => {
 
   it('does not mask an existing destination when temporary cleanup also fails', async () => {
     const path = await temporaryKeyringPath()
+    await provisionAiProviderSecretKeyring({ path })
 
     await expect(
       provisionAiProviderSecretKeyring(

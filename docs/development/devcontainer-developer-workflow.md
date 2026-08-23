@@ -50,8 +50,10 @@ stores encrypted provider-secret revisions.
 Both devcontainer profiles provision the ignored, external AI provider-secret
 root keyring at `.local/ai-provider-secret-keyring.json` during container
 creation. The helper is idempotent: rebuilding or reopening a container never
-reads, prints, or overwrites an existing keyring. The Azure development host
-bootstrap performs the same step on its persistent workspace data disk. See
+prints or overwrites an existing keyring. It validates the owner, private file
+and directory modes, readability, and keyring format before accepting it. The
+Azure development host bootstrap performs the same step on its persistent
+workspace data disk. See
 [AI Connections Operations](../operations/ai-connections.md#external-root-keyring)
 for the file contract and rotation boundary.
 

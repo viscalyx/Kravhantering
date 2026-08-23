@@ -17,6 +17,45 @@ användas och vilken behandling som får ske. Tomma objekt, `{}`, är det säkra
 standardvärdet och blockerar AI-aktivering tills driften har lagt in granskade
 policyer.
 
+## Kort förklaring av variablerna
+
+När Kravhantering använder en extern AI-tjänst lämnar information
+applikationen. De här tre variablerna fungerar därför som tre kontrollfrågor
+som alla måste få ett godkänt svar:
+
+- `AI_CONNECTION_EGRESS_POLICIES_JSON`: **Vart får informationen skickas?**
+  Här listas de exakta AI-tjänster som applikationen får ansluta till.
+- `AI_CONNECTION_TLS_POLICIES_JSON`: **Hur kontrollerar vi att vi ansluter
+  till rätt tjänst?** Här anges vilken typ av certifikatkontroll som ska
+  användas. Variabeln innehåller inte certifikat eller privata nycklar.
+- `AI_CONNECTION_DATA_POLICIES_JSON`: **Vilken information får behandlas och
+  under vilka villkor?** Här anges exempelvis tillåtna länder eller regioner,
+  högsta informationsklass, om personuppgifter får behandlas och om
+  AI-leverantören får lagra information eller använda den för träning.
+
+I Admin Center beskriver administratören vad en viss AI-anslutning ska använda
+och vad leverantören har lovat. Variablerna ovan beskriver vad organisationens
+drift, informationssäkerhet och dataskydd faktiskt tillåter. Applikationen gör
+AI-anropet endast när båda beskrivningarna stämmer överens.
+
+## Varför policyerna ligger utanför applikationsdatabasen
+
+Databasen innehåller inställningarna för varje AI-anslutning. Om även de
+yttersta säkerhetsreglerna låg där skulle samma administrationsväg kunna ändra
+både anslutningen och reglerna som ska begränsa den.
+
+Därför ligger säkerhetsreglerna i en separat konfiguration som ägs av driften.
+Administratören kan välja en regel som driften redan har godkänt, men kan inte
+via Admin Center lägga till en ny AI-tjänst eller tillåta en ny typ av
+databehandling. Det kan jämföras med att administratören väljer en dörr, medan
+driften bestämmer vilka dörrar som över huvud taget får låsas upp.
+
+Det är separationen som är viktig, inte just en `.env`-fil. Den inbyggda
+lösningen använder miljövariabler, men en annan driftkontrollerad och
+skrivskyddad konfigurationskälla kan också användas. Om en regel saknas
+blockeras AI-anropet. En vanlig databastabell som applikationen själv kan ändra
+ger däremot inte samma oberoende skydd.
+
 ## Steg för steg: från beslut till aktiv körprofil
 
 Följ stegen i ordning. Referensdelarna längre ned förklarar varje JSON-fält

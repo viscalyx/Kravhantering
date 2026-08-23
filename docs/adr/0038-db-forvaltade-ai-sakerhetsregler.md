@@ -6,9 +6,13 @@ AI-säkerhetsregler för AI-assisterat författande ska förvaltas i databasen m
 required seed-data som källa för standardregler och standardord. Runtime ska
 läsa den aktiva regeluppsättningen från databasen och lagra den i cache under
 en Admin Center-styrd TTL. Om regeluppsättningen inte kan läsas ska
-AI-assisterat författande stoppas innan en körprofil löses, AI-anropet byggs
-eller någon AI-anslutning nås. Samma applikationsägda regler screenar indata
-före egress och det fullständiga resultatet innan klient eller import enligt
+integrationslagrets säkerhetsregelpreflight stoppa AI-assisterat författande.
+Preflighten ska köras före profilupplösning, adapterkonfiguration och varje
+försök till egress, även vid direkta anrop genom `integration.run()`.
+Misslyckad regelläsning ska stoppa flödet innan något av dessa steg. Samma
+applikationsägda regler screenar indata före egress och det fullständiga
+resultatet, inklusive råutdata och karantänlagda deltan, innan klient eller
+import enligt
 [ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
 
 Standardord lagras som rader märkta som standard och aktiva. Administratörer

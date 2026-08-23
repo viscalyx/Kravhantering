@@ -58,6 +58,7 @@ export interface AiRunTrustBoundary {
   approveCompleted(
     input: AiCompletedOutputForApproval,
   ): Promise<AiCompletedOutputApproval>
+  preflightSafetyRules(): Promise<void>
   prepareRun(input: AiRunForPreparation): Promise<Readonly<AiPreparedRun>>
 }
 
@@ -274,6 +275,12 @@ export function createAiRunTrustBoundary(
         'output_safety_blocked',
       )
       return validateFinalOutput(input.rawOutput, input.validationSchema)
+    },
+    async preflightSafetyRules(): Promise<void> {
+      await screen(
+        () => options.safetyFilter.screenInput([]),
+        'input_safety_blocked',
+      )
     },
     async prepareRun(
       input: AiRunForPreparation,

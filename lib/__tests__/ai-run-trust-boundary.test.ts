@@ -76,6 +76,23 @@ function setup(overrides: Record<string, unknown> = {}) {
 }
 
 describe('AI run trust boundary', () => {
+  it('loads safety rules during preflight and fails closed on read errors', async () => {
+    const screenInput = vi.fn(async () => {
+      throw new Error('rule store unavailable')
+    })
+    const { boundary } = setup({
+      safetyFilter: {
+        screenInput,
+        screenOutput: vi.fn(async () => ({ allowed: true })),
+      },
+    })
+
+    await expect(boundary.preflightSafetyRules()).rejects.toMatchObject({
+      code: 'safety_filter_failed',
+    })
+    expect(screenInput).toHaveBeenCalledWith([])
+  })
+
   it('screens all text and replaces images with sanitized PNG before egress', async () => {
     const { boundary, screenInput } = setup()
     const jpeg = await sharp({

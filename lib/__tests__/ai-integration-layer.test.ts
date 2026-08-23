@@ -36,6 +36,7 @@ const USAGE: AiRunUsage = {
 const TEST_EGRESS = { fetch: vi.fn() }
 const PASSING_TRUST_BOUNDARY: AiRunTrustBoundary = {
   approveCompleted: vi.fn(async () => ({ valid: true }) as const),
+  preflightSafetyRules: vi.fn(async () => undefined),
   prepareRun: vi.fn(async input => ({
     egress: TEST_EGRESS,
     task: input.task,
@@ -238,6 +239,31 @@ function coordinationStore(): AiRunCoordinationStore {
 }
 
 describe('AI integration layer', () => {
+  it('stops on a safety-rule preflight failure before profile resolution', async () => {
+    const resolve = vi.fn(async () => {
+      throw new Error('profile resolution must not run')
+    })
+    const prepareRun = vi.fn()
+    const layer = createAiIntegrationLayer({
+      adapterRegistry: createAiConnectionAdapterRegistry([]),
+      profileResolver: { resolve },
+      runCoordinator: RUN_COORDINATOR,
+      trustBoundary: {
+        approveCompleted: vi.fn(async () => ({ valid: true }) as const),
+        preflightSafetyRules: vi.fn(async () => {
+          throw new Error('safety-rule read failed')
+        }),
+        prepareRun,
+      },
+    })
+
+    await expect(collect(layer.run(request()))).rejects.toThrow(
+      'safety-rule read failed',
+    )
+    expect(resolve).not.toHaveBeenCalled()
+    expect(prepareRun).not.toHaveBeenCalled()
+  })
+
   it.each([
     'generate_without_images',
     'generate_with_images',
@@ -989,6 +1015,7 @@ describe('AI integration layer', () => {
     }
     const trustBoundary: AiRunTrustBoundary = {
       approveCompleted: async () => ({ valid: true }),
+      preflightSafetyRules: async () => undefined,
       prepareRun: async () => {
         throw new Error('raw prompt and endpoint must stay private')
       },
@@ -1019,6 +1046,7 @@ describe('AI integration layer', () => {
     const approveCompleted = vi.fn(async () => ({ valid: true }) as const)
     const trustBoundary: AiRunTrustBoundary = {
       approveCompleted,
+      preflightSafetyRules: async () => undefined,
       prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
     }
     const adapter: AIConnectionAdapter = {
@@ -1115,6 +1143,7 @@ describe('AI integration layer', () => {
         ],
         valid: false as const,
       })),
+      preflightSafetyRules: async () => undefined,
       prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
     }
     const adapter: AIConnectionAdapter = {
@@ -1213,6 +1242,7 @@ describe('AI integration layer', () => {
         ],
         valid: false as const,
       })),
+      preflightSafetyRules: async () => undefined,
       prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
     }
     const adapter: AIConnectionAdapter = {
@@ -1278,6 +1308,7 @@ describe('AI integration layer', () => {
         markApprovalStarted()
         return approval
       }),
+      preflightSafetyRules: async () => undefined,
       prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
     }
     const adapter: AIConnectionAdapter = {
@@ -1343,6 +1374,7 @@ describe('AI integration layer', () => {
           controller.abort()
           return new Promise<never>(() => undefined)
         }),
+        preflightSafetyRules: async () => undefined,
         prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
       }
       const adapter: AIConnectionAdapter = {
@@ -1399,6 +1431,7 @@ describe('AI integration layer', () => {
       approveCompleted: async () => {
         throw new Error('unsafe raw output')
       },
+      preflightSafetyRules: async () => undefined,
       prepareRun: async input => ({ egress: TEST_EGRESS, task: input.task }),
     }
     const adapter: AIConnectionAdapter = {

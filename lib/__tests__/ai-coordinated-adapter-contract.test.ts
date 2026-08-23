@@ -415,6 +415,7 @@ function coordinatedRun(
     runCoordinator: coordinator,
     trustBoundary: {
       approveCompleted: async () => ({ valid: true }),
+      preflightSafetyRules: async () => undefined,
       prepareRun: async input => ({
         egress: execution.egress,
         task: input.task,
