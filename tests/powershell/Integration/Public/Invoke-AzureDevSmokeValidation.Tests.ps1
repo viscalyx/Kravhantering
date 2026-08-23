@@ -19,10 +19,6 @@ Describe `
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
       (Join-Path $PSScriptRoot '../../../..')
     )
-    $PSDefaultParameterValues = @{
-      'Mock:ModuleName' = $script:moduleName
-      'Should-Invoke:ModuleName' = $script:moduleName
-    }
     Import-Module (
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Logging.psm1'
     ) -Force -ErrorAction Stop
@@ -35,14 +31,20 @@ Describe `
     Import-Module (
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Validation.psm1'
     ) -Force -ErrorAction Stop
+  }
 
-    Mock -CommandName Assert-AzureDevSshHostTrust
-    Mock -CommandName Invoke-AzureDevNativeCommand -MockWith {
-      return [System.Management.Automation.PSObject]@{
-        ExitCode = 0
-        Text = ''
-      }
-    }
+  BeforeEach {
+    $script:originalPath = $env:PATH
+    $fakeSshPath = Join-Path $TestDrive 'ssh'
+    $null = New-Item `
+      -ItemType SymbolicLink `
+      -Path $fakeSshPath `
+      -Target '/bin/false'
+    $env:PATH = "$TestDrive$([System.IO.Path]::PathSeparator)$env:PATH"
+  }
+
+  AfterEach {
+    $env:PATH = $script:originalPath
   }
 
   AfterAll {
@@ -52,8 +54,8 @@ Describe `
     Get-Module 'AzureDev.Logging' -All | Remove-Module -Force
   }
 
-  Context 'When smoke validation receives the bootstrap target' {
-    It 'Should complete through the isolated remote boundary' {
+  Context 'When the isolated remote boundary fails' {
+    It 'Should report the native failure through the public command' {
       $context = [System.Management.Automation.PSObject]@{
         SshHostTrustEstablished = $true
         Config = [System.Management.Automation.PSObject]@{
@@ -65,18 +67,13 @@ Describe `
         }
       }
 
-      $null = Invoke-AzureDevSmokeValidation `
-        -Context $context `
-        -ExpectedCodexVersion '1.2.3'
-
-      Should-Invoke `
-        -CommandName Invoke-AzureDevNativeCommand `
-        -ParameterFilter {
-          $FilePath -eq 'ssh'
-        } `
-        -Exactly `
-        -Times 1 `
-        -Scope It
+      {
+        Invoke-AzureDevSmokeValidation `
+          -Context $context `
+          -ExpectedCodexVersion '1.2.3'
+      } | Should-Throw -ExceptionMessage (
+        '*Azure VM smoke validation failed*'
+      )
     }
   }
 }

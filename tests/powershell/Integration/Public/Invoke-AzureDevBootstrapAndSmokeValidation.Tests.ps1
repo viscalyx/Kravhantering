@@ -20,7 +20,7 @@ Describe `
       (Join-Path $PSScriptRoot '../../../..')
     )
     $PSDefaultParameterValues = @{
-      'Mock:ModuleName' = $script:moduleName
+      'Mock:ModuleName' = 'AzureDev.Bootstrap'
       'Should-Invoke:ModuleName' = $script:moduleName
     }
     Import-Module (
@@ -36,7 +36,19 @@ Describe `
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Validation.psm1'
     ) -Force -ErrorAction Stop
 
-    Mock -CommandName Invoke-AzureDevBootstrap -MockWith { return '1.2.3' }
+    Mock -CommandName Test-AzureDevGitIdentity
+    Mock -CommandName Copy-AzureDevBootstrapFile
+    Mock -CommandName Copy-AzureDevQuadletFiles
+    Mock -CommandName Copy-AzureDevZshTemplate
+    Mock -CommandName Copy-AzureDevDevelopmentToolFiles
+    Mock -CommandName Copy-AzureDevServiceEnvironmentFiles
+    Mock -CommandName Invoke-AzureDevRemoteCommand -MockWith {
+      return @'
+[krav-azure-bootstrap] host bootstrap completed
+KRAV_AZURE_CODEX_RESULT={"schemaVersion":1,"targetVersion":"1.2.3"}
+'@
+    }
+    $PSDefaultParameterValues['Mock:ModuleName'] = $script:moduleName
     Mock -CommandName Invoke-AzureDevSmokeValidation
   }
 
@@ -48,9 +60,20 @@ Describe `
   }
 
   Context 'When bootstrap and smoke run through the setup orchestration seam' {
-    It 'Should preserve the machine-readable target across both public commands' {
+    It 'Should carry the parsed target through both public command boundaries' {
       $context = [System.Management.Automation.PSObject]@{
+        SshHostTrustEstablished = $true
         SkipSmokeValidation = $false
+        BootstrapPath = Join-Path (
+          Join-Path $script:repositoryRoot 'scripts/azure-dev/templates'
+        ) 'bootstrap-host.sh'
+        Config = [System.Management.Automation.PSObject]@{
+          SshHostAlias = 'krav-test'
+          SshHostKeyArguments = [System.Object[]]@()
+          GitUserName = 'Ada Admin'
+          GitUserEmail = 'ada@example.test'
+          GitSshSigningPublicKey = ''
+        }
       }
 
       $result = Invoke-AzureDevBootstrapAndSmokeValidation -Context $context

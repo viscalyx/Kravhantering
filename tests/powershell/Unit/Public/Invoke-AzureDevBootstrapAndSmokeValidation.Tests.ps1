@@ -41,6 +41,9 @@ Describe 'Invoke-AzureDevBootstrapAndSmokeValidation' -Tag 'Unit' {
     It 'Should pass the bootstrap target unchanged to smoke validation' {
       $context = [System.Management.Automation.PSObject]@{
         SkipSmokeValidation = $false
+        Config = [System.Management.Automation.PSObject]@{
+          SshHostAlias = 'krav-test'
+        }
       }
 
       $result = Invoke-AzureDevBootstrapAndSmokeValidation -Context $context
@@ -61,11 +64,35 @@ Describe 'Invoke-AzureDevBootstrapAndSmokeValidation' -Tag 'Unit' {
     It 'Should complete bootstrap without invoking smoke validation' {
       $context = [System.Management.Automation.PSObject]@{
         SkipSmokeValidation = $true
+        Config = [System.Management.Automation.PSObject]@{
+          SshHostAlias = 'krav-test'
+        }
       }
 
       $result = Invoke-AzureDevBootstrapAndSmokeValidation -Context $context
 
       $result | Should-BeString -Expected 'skipped'
+      Should-NotInvoke `
+        -CommandName Invoke-AzureDevSmokeValidation `
+        -Scope It
+    }
+  }
+
+  Context 'When WhatIf is requested' {
+    It 'Should not start bootstrap or smoke validation' {
+      $context = [System.Management.Automation.PSObject]@{
+        SkipSmokeValidation = $false
+        Config = [System.Management.Automation.PSObject]@{
+          SshHostAlias = 'krav-test'
+        }
+      }
+
+      $result = Invoke-AzureDevBootstrapAndSmokeValidation `
+        -Context $context `
+        -WhatIf
+
+      $result | Should-BeNull
+      Should-NotInvoke -CommandName Invoke-AzureDevBootstrap -Scope It
       Should-NotInvoke `
         -CommandName Invoke-AzureDevSmokeValidation `
         -Scope It

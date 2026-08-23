@@ -544,21 +544,28 @@ run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modu
 }
 
 function Invoke-AzureDevBootstrapAndSmokeValidation {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Context
   )
 
-  $codexTargetVersion = Invoke-AzureDevBootstrap -Context $Context
-  if ($Context.SkipSmokeValidation) {
-    return 'skipped'
-  }
+  if (
+    $PSCmdlet.ShouldProcess(
+      $Context.Config.SshHostAlias,
+      'Bootstrap and smoke validate Azure development host'
+    )
+  ) {
+    $codexTargetVersion = Invoke-AzureDevBootstrap -Context $Context
+    if ($Context.SkipSmokeValidation) {
+      return 'skipped'
+    }
 
-  Invoke-AzureDevSmokeValidation `
-    -Context $Context `
-    -ExpectedCodexVersion $codexTargetVersion
-  return 'passed'
+    Invoke-AzureDevSmokeValidation `
+      -Context $Context `
+      -ExpectedCodexVersion $codexTargetVersion
+    return 'passed'
+  }
 }
 
 function Get-AzureDevValidationStatus {

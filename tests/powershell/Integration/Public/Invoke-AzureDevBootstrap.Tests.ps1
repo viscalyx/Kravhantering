@@ -38,7 +38,7 @@ Describe `
     Mock -CommandName Invoke-AzureDevRemoteCommand -MockWith {
       return @'
 [krav-azure-bootstrap] host bootstrap completed
-KRAV_AZURE_CODEX_RESULT={"schemaVersion":1,"targetVersion":"1.2.3"}
+KRAV_AZURE_CODEX_RESULT={"targetVersion":"1.2.3","schemaVersion":1}
 '@
     }
   }
@@ -48,8 +48,8 @@ KRAV_AZURE_CODEX_RESULT={"schemaVersion":1,"targetVersion":"1.2.3"}
     Get-Module 'AzureDev.Ssh' -All | Remove-Module -Force
   }
 
-  Context 'When host bootstrap returns one canonical Codex result' {
-    It 'Should carry the validated target through the public boundary' {
+  Context 'When host bootstrap returns a noncanonical Codex result' {
+    It 'Should reject the target at the public boundary' {
       $context = [System.Management.Automation.PSObject]@{
         SshHostTrustEstablished = $true
         BootstrapPath = Join-Path (
@@ -64,9 +64,11 @@ KRAV_AZURE_CODEX_RESULT={"schemaVersion":1,"targetVersion":"1.2.3"}
         }
       }
 
-      $result = Invoke-AzureDevBootstrap -Context $context
-
-      $result | Should-BeString -Expected '1.2.3'
+      {
+        Invoke-AzureDevBootstrap -Context $context
+      } | Should-Throw -ExceptionMessage (
+        '*Azure host bootstrap returned a noncanonical Codex result*'
+      )
     }
   }
 }
