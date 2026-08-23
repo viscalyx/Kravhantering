@@ -747,8 +747,9 @@ change application readiness.
 Fresh production configuration keeps
 `AI_REQUIREMENT_GENERATION_DISABLED=1`. After required seeding, connection and
 model activation tests, keyring/database recovery verification, egress
-enforcement, alert binding, and intended profile activation, create and run the
-strict [AI deployment evidence gate](./ai-connections.md#deployment-evidence-gate).
+enforcement, alert binding, and intended stable-profile configuration, create
+and run the strict
+[AI deployment evidence gate](./ai-connections.md#deployment-evidence-gate).
 Recreate every app-runtime node only after the gate passes. Do not enable AI as
 part of the initial service start.
 

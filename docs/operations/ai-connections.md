@@ -1,9 +1,9 @@
 # AI Connections Operations
 
-This runbook describes the target operating contract for provider-neutral AI
-connections. Use it when the AI integration layer from
-[ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md)
-is deployed. The trust, lifecycle, and provider-secret decision is
+This runbook describes the operating contract for provider-neutral AI
+connections implemented by the AI integration layer in
+[ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md).
+The trust, lifecycle, and provider-secret decision is
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
 The fixed privacy floor is
 [ADR 0053](../adr/0053-integritetsminimum-for-ai-anrop.md).
@@ -27,8 +27,8 @@ provider bodies and nested exception details are never returned.
 ## Ownership
 
 - Product administrators register AI connections, enter and rotate provider
-  secrets, record attestations, verify AI connection models, and activate run
-  stable run profiles.
+  secrets, record attestations, verify AI connection models, activate
+  connections, and configure stable run profiles.
 - Operations owns the external versioned root keyring, distribution to every
   app node, egress enforcement, backup and restore, dashboards, and alerts.
 - Security and data-protection owners approve information class, geography,
@@ -195,11 +195,12 @@ malformed, expired, or insufficient policy blocks the run. Request data cannot
 relax either policy. Admin Center distinguishes a missing deployment-owned
 run-type policy from an attestation that does not satisfy a configured policy.
 
-Admin Center derives an editable run-profile capability policy from the exact
-selected model revision's verified capabilities. It forces unsupported optional
-capabilities to `disabled` and prevents selecting a revision that lacks a
-capability required by the fixed run profile. Runtime resolution rechecks the
-same verified capability evidence and remains fail closed.
+The application derives each run profile's capability selection from its fixed
+requirements and the exact selected model revision's verified capabilities.
+Administrators cannot edit this policy. Unsupported optional capabilities are
+forced to `disabled`, and a revision that lacks a required capability cannot be
+selected. Runtime resolution rechecks the same verified capability evidence and
+remains fail closed.
 
 Every server-owned AI request also has an administrator-owned privacy minimum:
 provider data collection is denied and zero data retention is required. The
@@ -268,7 +269,8 @@ releasing it, verify all of the following for the environment:
    blocked active run profile reach the on-call channel.
 
 Required seed leaves AI unconfigured. Demo seed may create only unverified
-drafts and must never create verification evidence or activate a run profile.
+connection drafts and must never create verification evidence or configure a
+run profile.
 
 Connection verification evidence is append-only. An authentication failure or
 runtime contradiction records a new failed evidence row and moves current
@@ -643,9 +645,9 @@ rotation batch. Keep the old key while any retained backup references it.
 If a required root-key version is missing, keep the global AI guard active and
 block affected run profiles. Restore the key version from the approved backup.
 If it cannot be recovered, a product administrator must enter new provider
-secrets and repeat connection, model-capability, and run-profile activation
-checks. Do not weaken application health or readiness to signal this AI-only
-failure.
+secrets and repeat connection activation, model verification, and stable-profile
+configuration checks. Do not weaken application health or readiness to signal
+this AI-only failure.
 
 ## Runtime Limits, Leases, and Recovery
 
@@ -714,12 +716,12 @@ Maintain environment-specific baselines for failure rate, p95 duration, queue
 saturation, active concurrency, attempt and retry counts, time to first
 analysis/output delta, cancellation reasons, token use, and cost. Operational
 events include run type, adapter type and version, outcome/failure category,
-and opaque
-application-run, connection, profile-revision, and model-revision IDs. They
-also carry request and correlation IDs; queue-full terminals carry the observed
-queue depth and active concurrency. Events never include prompts, images, model
-output, endpoints, provider secrets,
-secret references, or provider error bodies. Alert rules must bind the emitted
+and opaque application-run, connection, stable-profile, and model-revision IDs.
+They also carry the stable profile's captured configuration version plus
+request and correlation IDs; queue-full terminals carry the observed queue
+depth and active concurrency. Events never include prompts, images, model
+output, endpoints, provider secrets, secret references, or provider error
+bodies. Alert rules must bind the emitted
 authentication-failure, breaker-opened, and active-profile-blocked alarm events
 to the on-call channel before AI is enabled.
 
@@ -737,8 +739,9 @@ The three binding alarm events use error severity:
 <!-- markdownlint-enable MD013 -->
 
 Deduplicate only by event name plus opaque connection, model-revision, and
-profile-revision IDs. Do not add an endpoint, public connection name, model
-name, prompt excerpt, response excerpt, or secret reference to a notification.
+stable-profile IDs and the captured profile configuration version. Do not add
+an endpoint, public connection name, model name, prompt excerpt, response
+excerpt, or secret reference to a notification.
 
 Build the operator-configurable dashboard from the same channel with these
 minimum panels: outcomes and failure category by run type, adapter type, and
@@ -747,9 +750,10 @@ p50/p95 duration and time to first delta; queue depth, wait, saturation, and
 active concurrency; attempts and retry count; cancellation reason; circuit and
 health transitions; token totals; and reported cost by currency. Filters may
 use time range, environment, run type, adapter type, adapter version, outcome,
-failure category, and opaque connection/profile/model revision IDs. Alert routing,
-thresholds beyond the three binding alarms, panel layout, refresh rate, and
-retention remain environment-specific operator configuration.
+failure category, and opaque connection, stable-profile,
+profile-configuration, and model-revision identities. Alert routing, thresholds
+beyond the three binding alarms, panel layout, refresh rate, and retention
+remain environment-specific operator configuration.
 
 For an incident, activate the global AI guard or suspend the affected AI
 connection or run profile. This stops new requests and attempts to cancel
@@ -767,8 +771,8 @@ run profile dependencies are valid again.
 
 ## Rollback
 
-Prefer the global AI guard, suspension, or explicit activation of a previously
-verified run profile and provider-secret revision. No automatic fallback or
-legacy direct OpenRouter path exists. A release rollback that restores the
-database must restore the matching external root-key versions at the same
-time, then repeat the pre-deployment gate before AI is enabled.
+Prefer the global AI guard, suspension, selecting a still-usable verified model
+revision on a stable profile, or restoring a verified provider-secret revision.
+No automatic fallback or direct OpenRouter path exists. A release rollback that
+restores the database must restore the matching external root-key versions at
+the same time, then repeat the pre-deployment gate before AI is enabled.

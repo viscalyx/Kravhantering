@@ -511,11 +511,10 @@ place.
 
 Set `AI_REQUIREMENT_GENERATION_DISABLED=1` in the restored app configuration
 before starting either release. Rollback may suspend an affected connection or
-profile or reactivate a previously verified revision. It must never restore or
-depend on the removed direct OpenRouter route. When a database restore is
-required, restore its matching external root-key versions before any AI
-verification and repeat the deployment evidence gate before releasing the
-guard.
+profile, or select a still-usable verified model revision on the stable profile.
+The direct OpenRouter route does not exist. When a database restore is required,
+restore its matching external root-key versions before any AI verification and
+repeat the deployment evidence gate before releasing the guard.
 
 Choose the rollback boundary that matches the failed step:
 

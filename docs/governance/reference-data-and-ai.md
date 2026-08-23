@@ -117,10 +117,9 @@ governance object types are informational taxonomy values.
 
 ## 4 — AI Requirement Generation
 
-The target architecture executes each AI request through an administrator-
-controlled AI connection. The AI integration layer resolves the run profile
-and verified AI connection model revision before a provider-specific adapter
-runs.
+Each AI request runs through an administrator-controlled AI connection. The AI
+integration layer resolves the run profile and verified AI connection model
+revision before a provider-specific adapter runs.
 [ADR 0056](../adr/0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md)
 defines unified model verification and stable run profiles. See
 [ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adaptrar.md)

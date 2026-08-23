@@ -195,7 +195,7 @@ uses its separately documented SQL-coordinated admission model.
 
 ## Recommended Alerts
 
-The provider-neutral target architecture adds distributed queue, retry, and
+The provider-neutral AI integration uses distributed queue, retry, and
 circuit-breaker coordination for AI connections. Its required operator alerts
 and recovery boundary are documented in the
 [AI connections runbook](./ai-connections.md). The run-profile and adapter

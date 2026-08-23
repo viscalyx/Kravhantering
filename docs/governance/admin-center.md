@@ -194,23 +194,25 @@ connection, attestation, and credential administration available while model
 catalog discovery, connection and model verification, health probes, and
 activation are disabled with an explicit explanation.
 
-The model form starts every capability as read-only `Not checked`. One
+The model form starts every capability as read-only `Not tested`. One
 streaming, abortable verification runs connection authentication, baseline
 model access, every capability, every stable-profile combination, and a final
 summary in fixed order. It retries a transient failure once and has one
 60-second total limit. A model revision can be saved only from a server-bound,
-15-minute verification attempt with a successful baseline, decisive capability
-outcomes, and at least one compatible profile. Changing a technical field
-invalidates the attempt; name and description remain editable. Saved revisions
-are immediately `verified`. Connection changes or concrete contradictions mark
-them `new_revision_required`; replacement requires a newly verified revision.
+15-minute verification attempt with a successful baseline and at least one
+compatible profile. An inconclusive optional capability remains unavailable,
+but does not block saving when a separately verified combined-profile probe
+establishes compatibility. Changing a technical field invalidates the attempt;
+name and description remain editable. Saved revisions are immediately
+`verified`. Connection changes or concrete contradictions mark them
+`new_revision_required`; replacement requires a newly verified revision.
 
 The stable-profile form lists all model revisions but disables ended,
 replacement-required, inactive-connection, or incompatible choices with the
 exact reason. The newest usable revision per model is recommended. A profile
-may be disconnected explicitly. Its badges independently show configuration
-as `Unconfigured`, `Configured`, or `Blocked` and operation as `Active` or
-`Paused`.
+may be disconnected explicitly. One derived headline badge shows
+`Not configured`, `Paused`, `Blocked`, or `Active`; transient provider health is
+shown separately from that administrative profile status.
 
 The OpenRouter adapter treats streaming as an API transport capability rather
 than a per-model `supported_parameters` value. Reasoning parameters in the

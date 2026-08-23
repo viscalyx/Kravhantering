@@ -202,12 +202,21 @@ erDiagram
         uniqueidentifier id PK
         text administration_name UK
         text public_name
+        text description
         text adapter_key
         text adapter_version
         text endpoint_url
+        text authentication_type
+        text tls_policy_key
+        text egress_policy_key
+        text agent_runtime_key
+        text agent_runtime_version
+        text data_policy_summary
         text lifecycle_status
         integer configuration_version
         integer maximum_concurrency
+        datetime2 created_at
+        datetime2 updated_at
         uniqueidentifier revision_token
     }
 
@@ -221,7 +230,10 @@ erDiagram
         binary authentication_tag
         integer cipher_format_version
         text root_key_version
+        datetime2 created_at
+        datetime2 verified_at
         datetime2 activated_at
+        datetime2 deactivated_at
         datetime2 provider_revoked_at
         datetime2 ciphertext_deleted_at
         uniqueidentifier revision_token
@@ -233,11 +245,19 @@ erDiagram
         integer revision_number UK
         text status
         uniqueidentifier responsible_organization_unit_reference
+        text purpose
         text maximum_information_class
         bit is_personal_data_processed
+        text provider_name
+        text subprocessors_json
+        text processing_regions_json
+        bit is_training_allowed
+        integer maximum_retention_days
         uniqueidentifier incident_response_reference
+        text decision_reference
         datetime2 reviewed_at
         datetime2 review_due_at
+        datetime2 created_at
         uniqueidentifier revision_token
     }
 
@@ -246,8 +266,14 @@ erDiagram
         uniqueidentifier ai_connection_id FK
         integer connection_configuration_version
         text outcome
+        text test_suite_version
+        text adapter_version
+        text agent_runtime_version
         text configuration_fingerprint
+        text failure_category
+        text details_json
         datetime2 verified_at
+        datetime2 expires_at
     }
 
     ai_connection_models {
@@ -255,7 +281,9 @@ erDiagram
         uniqueidentifier ai_connection_id FK
         text name
         text description
+        datetime2 created_at
         datetime2 deleted_at
+        datetime2 updated_at
         uniqueidentifier revision_token
     }
 
@@ -267,10 +295,15 @@ erDiagram
         text status
         text external_model_id
         text external_model_version
+        integer maximum_concurrency
+        text agent_runtime_version
         text declared_capabilities_json
         text discovered_capabilities_json
         text verified_capabilities_json
-        integer maximum_concurrency
+        datetime2 verified_at
+        datetime2 ended_at
+        datetime2 created_at
+        datetime2 updated_at
         uniqueidentifier revision_token
     }
 
@@ -279,9 +312,12 @@ erDiagram
         uniqueidentifier ai_connection_model_revision_id FK
         uniqueidentifier ai_connection_verification_evidence_id FK
         text outcome
+        text test_suite_version
         text verified_capabilities_json
         text profile_compatibility_json
         text evidence_fingerprint
+        text failure_category
+        text details_json
         datetime2 verified_at
     }
 
@@ -298,6 +334,8 @@ erDiagram
         integer maximum_output_bytes
         integer maximum_retained_memory_bytes
         integer maximum_buffered_events
+        datetime2 created_at
+        datetime2 updated_at
         uniqueidentifier revision_token
     }
 
@@ -310,8 +348,13 @@ erDiagram
         integer consecutive_failure_count
         integer automatic_recovery_attempt_count
         bit is_manual_recovery_required
+        datetime2 last_health_evidence_at
+        datetime2 circuit_opened_at
         datetime2 next_recovery_at
+        uniqueidentifier lease_owner_id
+        uniqueidentifier lease_run_id
         datetime2 lease_expires_at
+        datetime2 updated_at
         uniqueidentifier revision_token
     }
 
@@ -332,6 +375,8 @@ erDiagram
         datetime2 lease_expires_at
         datetime2 cancellation_requested_at
         text cancellation_reason
+        datetime2 created_at
+        datetime2 updated_at
     }
 
     ai_forensic_capture_windows {
@@ -1812,6 +1857,10 @@ use revision tokens and privileged audit in the same serializable transaction.
 unique index permits at most one valid attestation per connection. Valid rows
 must contain all decision fields.
 
+**Indexes:** `uq_ai_connection_attestations_connection_revision`,
+`uq_ai_connection_attestations_valid_connection`,
+`idx_ai_connection_attestations_review_due_at`.
+
 ### `ai_connection_verification_evidence`
 
 Append-only technical connection-test evidence bound to an exact connection
@@ -1838,13 +1887,16 @@ invalidating row together with connection/model lifecycle state.
 | `expires_at` | datetime2(3), nullable | Optional evidence expiry |
 <!-- markdownlint-enable MD013 -->
 
+**Index:** `idx_ai_connection_verification_evidence_connection_version`.
+
 ### `ai_connection_models`
 
 Stable, reusable model identities under a connection. Display name and
-description may change without minting a model revision. A removed model is
-soft-deleted so historical run-profile references remain intact while the
-model and all of its revisions disappear from administration and selection
-surfaces.
+description may change without minting a model revision. The current
+administrative deletion removes one ended revision and hard-deletes the model
+container only when no revisions remain. Reads defensively exclude a row whose
+nullable `deleted_at` value is non-null, but the current mutation service does
+not set that field.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1858,6 +1910,8 @@ surfaces.
 | `deleted_at` | datetime2(3), nullable | Application removal time; non-null models and their revisions are hidden from active administration |
 | `revision_token` | uniqueidentifier | Optimistic concurrency token |
 <!-- markdownlint-enable MD013 -->
+
+**Index:** `idx_ai_connection_models_ai_connection_id`.
 
 ### `ai_connection_model_revisions`
 
@@ -1896,6 +1950,9 @@ or deleting is rejected while a stable profile or queued/running coordination
 row references the revision. An ended revision cannot be restored. Permanent
 deletion also removes an empty model container.
 
+**Indexes:** `uq_ai_connection_model_revisions_model_revision`,
+`idx_ai_connection_model_revisions_status`.
+
 ### `ai_connection_model_verification_evidence`
 
 Append-only capability evidence for one exact model revision and one exact
@@ -1916,6 +1973,8 @@ connection verification record.
 | `details_json` | nvarchar(max) | Content-free structured evidence summary |
 | `verified_at` | datetime2(3) | Test completion time |
 <!-- markdownlint-enable MD013 -->
+
+**Index:** `idx_ai_connection_model_verification_evidence_revision`.
 
 ### `ai_run_profiles`
 
@@ -1947,6 +2006,9 @@ value in the same transaction.
 | `updated_at` | datetime2(3) | Latest profile configuration or pause change |
 | `revision_token` | uniqueidentifier | Optimistic concurrency token |
 <!-- markdownlint-enable MD013 -->
+
+**Indexes:** `uq_ai_run_profiles_profile_key`,
+`idx_ai_run_profiles_ai_connection_model_revision_id`.
 
 ### `ai_connection_model_operational_states`
 
@@ -1990,6 +2052,10 @@ It never creates provider secrets, external model IDs, verification evidence,
 operational state, or activation. Seeded connections have no special runtime
 provenance or behavior.
 
+**Indexes:** `uq_ai_connection_model_operational_states_revision`,
+`idx_ai_connection_model_operational_states_recovery`,
+`idx_ai_connection_model_operational_states_lease_expires_at`.
+
 ### `ai_run_coordination_entries`
 
 Short-lived, content-free SQL coordination for FIFO admission, connection and
@@ -2028,6 +2094,13 @@ seeded database leaves this table empty until runtime admission.
 | `created_at` | datetime2(3) | Admission time |
 | `updated_at` | datetime2(3) | Last coordination transition |
 <!-- markdownlint-enable MD013 -->
+
+**Indexes:** `uq_ai_run_coordination_entries_application_run_id`,
+`uq_ai_run_coordination_entries_queue_sequence`,
+`idx_ai_run_coordination_entries_fifo`,
+`idx_ai_run_coordination_entries_lease_expires_at`,
+`idx_ai_run_coordination_entries_cancellation_requested_at`,
+`idx_ai_run_coordination_entries_ai_run_profile_id_ai_run_profile_configuration_version`.
 
 ## UI Settings Tables
 
@@ -3529,22 +3602,32 @@ graph LR
     AIRT -- "uq_..._rule_type_normalized\n(rule_id, term_type, normalized_term)" --> AIRT
 
     AIC -- "uq_..._administration_name\n(administration_name)" --> AIC
+    AIC -- "idx_..._lifecycle_status\n(lifecycle_status)" --> AIC
     AIPSV -- "FK ai_connection_id" --> AIC
     AIPSV -- "uq_..._connection_revision\n(ai_connection_id, revision_number)" --> AIC
     AIPSV -- "uq_..._active_connection\n(ai_connection_id WHERE active)" --> AIC
     AIPSV -- "idx_..._root_key_version\n(root_key_version WHERE encrypted)" --> AIPSV
     AICA -- "FK ai_connection_id" --> AIC
     AICA -- "uq_..._connection_revision\n(ai_connection_id, revision_number)" --> AIC
+    AICA -- "uq_..._valid_connection\n(ai_connection_id WHERE valid)" --> AIC
+    AICA -- "idx_..._review_due_at\n(review_due_at)" --> AICA
     AICVE -- "FK ai_connection_id" --> AIC
+    AICVE -- "idx_..._connection_version\n(connection_id, version, verified_at)" --> AIC
     AICM -- "FK ai_connection_id" --> AIC
+    AICM -- "idx_..._connection_id\n(ai_connection_id)" --> AIC
     AICMR -- "FK ai_connection_model_id" --> AICM
     AICMR -- "uq_..._model_revision\n(ai_connection_model_id, revision_number)" --> AICM
+    AICMR -- "idx_..._status\n(status)" --> AICMR
     AICMVE -- "FK model_revision_id" --> AICMR
     AICMVE -- "FK connection_evidence_id" --> AICVE
+    AICMVE -- "idx_..._revision\n(model_revision_id, verified_at)" --> AICMR
     AIRP -- "uq_..._profile_key\n(profile_key)" --> AIRP
     AIRP -- "FK model_revision_id" --> AICMR
     AIRP -- "idx_..._model_revision\n(model_revision_id)" --> AICMR
-    AICMOS -- "FK/UK model_revision_id" --> AICMR
+    AICMOS -- "FK model_revision_id" --> AICMR
+    AICMOS -- "uq_..._revision\n(model_revision_id)" --> AICMR
+    AICMOS -- "idx_..._recovery\n(breaker_status, next_recovery_at)" --> AICMOS
+    AICMOS -- "idx_..._lease_expires_at\n(lease_expires_at)" --> AICMOS
     AIRCE -- "FK connection_id" --> AIC
     AIRCE -- "FK model_revision_id" --> AICMR
     AIRCE -- "FK profile_id" --> AIRP
@@ -3553,6 +3636,7 @@ graph LR
     AIRCE -- "uq_..._queue_sequence\n(queue_sequence)" --> AIRCE
     AIRCE -- "idx_..._fifo\n(connection_id, status, not_before, queue_sequence)" --> AIRCE
     AIRCE -- "idx_..._lease_expires_at\n(lease_expires_at WHERE non-null)" --> AIRCE
+    AIRCE -- "idx_..._cancellation_requested_at\n(cancellation_requested_at WHERE non-null)" --> AIRCE
 
     AFCW -- "uq_..._is_open\n(is_open WHERE is_open = 1)" --> AFCW
     AFCW -- "idx_..._expires_at\n(expires_at)" --> AFCW

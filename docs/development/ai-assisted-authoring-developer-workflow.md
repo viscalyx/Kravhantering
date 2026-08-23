@@ -120,8 +120,9 @@ same interface and follow these rules:
   the selected dialect and its inputs to the verified model revision. Extend
   the persisted verification contract when those inputs cannot already be
   reconstructed; never rely on a process-local cache.
-- Require reverification when a connection setting, adapter version, provider
-  protocol version, server configuration, or other dialect input changes.
+- Require a newly verified model revision when a connection setting, adapter
+  version, provider protocol version, server configuration, or other dialect
+  input changes.
   Introduce a new adapter version when the old and new runtime behavior cannot
   safely share one deterministic selection rule.
 
@@ -134,9 +135,9 @@ ID must not be a dispatch key.
 
 ## Local Adapter Setup
 
-AI-assisted authoring is available only when an administrator has activated a
-valid profile for that exact action. Local development uses the same connection,
-secret, verification, and profile workflow as production.
+AI-assisted authoring is available only when an administrator has configured
+and enabled a valid profile for that exact action. Local development uses the
+same connection, secret, verification, and profile workflow as production.
 
 1. Provision the ignored local provider-secret root keyring:
 
@@ -281,8 +282,8 @@ npm test -- --run \
 
 Production-like Playwright uses the controlled adapter and must not make an
 external live AI call. The existing lockstep manual/Playwright cases are
-`ADMIN-20` for activation and safe recovery and `REQ-15` through `REQ-15D` for
-authoring, quarantine, repair, cancellation, and profile availability.
+`ADMIN-20` for configuration and safe recovery and `REQ-15` through `REQ-15D`
+for authoring, quarantine, repair, cancellation, and profile availability.
 
 The opt-in staging-live procedure is an operator verification, not a normal
 developer or CI test. It uses only the fixed synthetic payload and prints

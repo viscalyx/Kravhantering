@@ -751,9 +751,9 @@ script.
 
 Set `AI_REQUIREMENT_GENERATION_DISABLED=1` before starting rollback. Restore
 SQL Server and every referenced external root-key version together when the
-database is restored. Use suspension or a previously verified profile
-revision; never depend on the removed direct OpenRouter path. Repeat the AI
-deployment evidence gate before releasing the guard.
+database is restored. Use suspension or select a still-usable verified model
+revision on the stable profile; the direct OpenRouter path does not exist.
+Repeat the AI deployment evidence gate before releasing the guard.
 
 Choose the rollback boundary that matches the failed step:
 

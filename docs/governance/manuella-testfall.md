@@ -2070,7 +2070,7 @@ nekas åtkomst.
 Admin-session. Konfigurera `controlled_test@1` med utvecklingsadressen
 `https://localhost:4443`, motsvarande egress-, TLS- och datapolicyer. Använd
 bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
-återställa de tre stabila profilernas tidigare konfiguration och driftstatus.
+återställa de tre stabila profilernas tidigare konfiguration och pausläge.
 
 1. Öppna `Administrationscenter > Inställningar > AI`. Skapa en anslutning med
    `controlled_test@1`, autentisering `Ingen applikationsuppgift`, testadressen
@@ -2082,7 +2082,7 @@ bara syntetiska värden. Fixturen `PW ADMIN-20 kontrollerad anslutning` ska
    framtida granskningsdatum.
 3. Välj `Lägg till modell`. Ange namn, `controlled/model` och en fast extern
    version. Kontrollera att samtliga sju förmågor först visas skrivskyddade som
-   `Inte kontrollerad` och att modellrevisionen inte kan sparas.
+   `Inte testad` och att modellrevisionen inte kan sparas.
 4. Välj `Verifiera`. Kontrollera att förloppet strömmas i ordningen anslutning,
    grundläggande modellåtkomst, varje förmåga, de tre fasta körprofilerna och
    slutsammanfattningen. Kontrollera att `Avbryt verifiering` visas medan
