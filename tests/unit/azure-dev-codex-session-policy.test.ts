@@ -17,11 +17,16 @@ const policyPath = path.join(
   'scripts/azure-dev/templates/install-azure-codex-session-policy.sh',
 )
 const temporaryDirectories: string[] = []
-const canRunRootOwnedPolicyFixture =
-  spawnSync('docker', ['image', 'inspect', 'ubuntu:24.04'], {
-    stdio: 'ignore',
-  }).status === 0
-const rootOwnedPolicyIt = canRunRootOwnedPolicyFixture ? it : it.skip
+const rootPolicyFixtureImage = readFileSync(
+  path.join(
+    process.cwd(),
+    'scripts/containers/production-smoke-debug.Containerfile',
+  ),
+  'utf8',
+).match(/^FROM (ubuntu:[^\s]+@sha256:[a-f0-9]{64})$/m)?.[1]
+if (!rootPolicyFixtureImage) {
+  throw new Error('Pinned Ubuntu policy-fixture image reference is missing')
+}
 const candidateZshExpression = '$' + '{MANAGED_ZSHRC:-$' + '{ZDOTDIR}/.zshrc}'
 
 function fixture(
@@ -217,10 +222,8 @@ describe('Azure Codex session policy', () => {
     expect(readFileSync(target.zshDestination, 'utf8')).toBe(originals.zsh)
   })
 
-  rootOwnedPolicyIt(
-    'keeps validated candidates and rollback bytes outside vscode control',
-    () => {
-      const fixtureScript = String.raw`
+  it('keeps validated candidates and rollback bytes outside vscode control', () => {
+    const fixtureScript = String.raw`
 set -euo pipefail
 useradd --create-home --uid 2000 --shell /bin/bash vscode
 install -d -o vscode -g vscode -m 0700 /case/home/vscode/.local/bin
@@ -232,9 +235,15 @@ printf '# original SSH policy\n' > /case/etc/ssh/policy.conf
 printf '# original Bash policy\n' > /case/etc/profile.d/codex.sh
 printf '# original Zsh profile\n' > /case/home/vscode/.zshrc
 chown vscode:vscode /case/home/vscode/.zshrc
+chmod 0640 /case/etc/ssh/policy.conf
+chmod 0600 /case/etc/profile.d/codex.sh
+chmod 0644 /case/home/vscode/.zshrc
 cp /case/etc/ssh/policy.conf /case/expected-ssh
 cp /case/etc/profile.d/codex.sh /case/expected-bash
 cp /case/home/vscode/.zshrc /case/expected-zsh
+stat -c '%u:%g %a' /case/etc/ssh/policy.conf > /case/expected-ssh-metadata
+stat -c '%u:%g %a' /case/etc/profile.d/codex.sh > /case/expected-bash-metadata
+stat -c '%u:%g %a' /case/home/vscode/.zshrc > /case/expected-zsh-metadata
 printf 'export CUSTOM_VALUE=preserved\n' > /case/zshrc.template
 install -o vscode -g vscode -m 0600 /dev/null /case/candidate-directory
 
@@ -299,37 +308,95 @@ AZURE_DEV_ZSH_BIN=/case/bin/zsh \
 policy_status=$?
 set -e
 
-test "$policy_status" -ne 0
-test "$(wc -l < /case/candidate-metadata)" -eq 3
-test "$(sort -u /case/candidate-metadata)" = '0:0 644'
-test ! -e /case/candidate-writable
-test "$(wc -l < /case/backup-metadata)" -eq 3
-test "$(sort -u /case/backup-metadata)" = '0:0 600'
-test ! -e /case/backup-writable
-cmp /case/expected-ssh /case/etc/ssh/policy.conf
-cmp /case/expected-bash /case/etc/profile.d/codex.sh
-cmp /case/expected-zsh /case/home/vscode/.zshrc
-`
-      const result = spawnSync(
-        'docker',
-        [
-          'run',
-          '--rm',
-          '--network=none',
-          '--tmpfs',
-          '/case:rw,exec,nosuid,nodev,size=32m',
-          '--mount',
-          `type=bind,source=${policyPath},target=/policy.sh,readonly`,
-          'ubuntu:24.04',
-          'bash',
-          '-c',
-          fixtureScript,
-        ],
-        { encoding: 'utf8' },
-      )
+emit_observation() {
+  printf 'KRAV_POLICY_SECURITY_%s=%s\n' "$1" "$2"
+}
+file_hash() {
+  sha256sum "$1" | cut -d' ' -f1
+}
+presence() {
+  if [ -e "$1" ]; then printf 'true\n'; else printf 'false\n'; fi
+}
 
-      expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
-    },
-    15_000,
-  )
+emit_observation policyStatus "$policy_status"
+emit_observation candidateCount "$(wc -l < /case/candidate-metadata)"
+emit_observation candidateMetadata "$(sort -u /case/candidate-metadata)"
+emit_observation candidateWritable "$(presence /case/candidate-writable)"
+emit_observation backupCount "$(wc -l < /case/backup-metadata)"
+emit_observation backupMetadata "$(sort -u /case/backup-metadata)"
+emit_observation backupWritable "$(presence /case/backup-writable)"
+for policy_name in ssh bash zsh; do
+  case "$policy_name" in
+    ssh) restored_path=/case/etc/ssh/policy.conf ;;
+    bash) restored_path=/case/etc/profile.d/codex.sh ;;
+    zsh) restored_path=/case/home/vscode/.zshrc ;;
+  esac
+  emit_observation "$policy_name"ExpectedHash "$(file_hash "/case/expected-$policy_name")"
+  emit_observation "$policy_name"ActualHash "$(file_hash "$restored_path")"
+  emit_observation "$policy_name"ExpectedMetadata "$(cat "/case/expected-$policy_name-metadata")"
+  emit_observation "$policy_name"ActualMetadata "$(stat -c '%u:%g %a' "$restored_path")"
+done
+`
+    const imageAvailability = spawnSync(
+      'docker',
+      ['image', 'inspect', rootPolicyFixtureImage],
+      { encoding: 'utf8' },
+    )
+    expect(
+      imageAvailability.status,
+      `Provision the pinned policy fixture first: docker pull '${rootPolicyFixtureImage}'`,
+    ).toBe(0)
+    const result = spawnSync(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '--network=none',
+        '--pull=never',
+        '--tmpfs',
+        '/case:rw,exec,nosuid,nodev,size=32m',
+        '--mount',
+        `type=bind,source=${policyPath},target=/policy.sh,readonly`,
+        rootPolicyFixtureImage,
+        'bash',
+        '-c',
+        fixtureScript,
+      ],
+      { encoding: 'utf8' },
+    )
+
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
+    const observations = Object.fromEntries(
+      result.stdout
+        .split('\n')
+        .filter(line => line.startsWith('KRAV_POLICY_SECURITY_'))
+        .map(line => {
+          const separator = line.indexOf('=')
+          return [
+            line.slice('KRAV_POLICY_SECURITY_'.length, separator),
+            line.slice(separator + 1),
+          ]
+        }),
+    )
+    expect(observations).toMatchObject({
+      backupCount: '3',
+      backupMetadata: '0:0 600',
+      backupWritable: 'false',
+      candidateCount: '3',
+      candidateMetadata: '0:0 644',
+      candidateWritable: 'false',
+      policyStatus: '1',
+    })
+    for (const policyName of ['ssh', 'bash', 'zsh']) {
+      expect(observations[`${policyName}ActualHash`]).toBe(
+        observations[`${policyName}ExpectedHash`],
+      )
+      expect(observations[`${policyName}ActualMetadata`]).toBe(
+        observations[`${policyName}ExpectedMetadata`],
+      )
+    }
+    expect(observations.sshExpectedMetadata).toBe('0:0 640')
+    expect(observations.bashExpectedMetadata).toBe('0:0 600')
+    expect(observations.zshExpectedMetadata).toMatch(/^2000:\d+ 644$/)
+  }, 15_000)
 })

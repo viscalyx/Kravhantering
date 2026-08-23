@@ -135,6 +135,15 @@ jobs:
       - name: Run HSA support package tests
         run: npm run test:hsa-support
 
+      - name: Provision Azure Codex policy test fixture
+        run: |
+          fixture_image="$(
+            sed -n 's/^FROM \(ubuntu:[^ ]*@sha256:[a-f0-9]\{64\}\)$/\1/p' \
+              scripts/containers/production-smoke-debug.Containerfile
+          )"
+          test -n "${fixture_image}"
+          docker pull "${fixture_image}"
+
       - name: Run tests and combined coverage
         run: npm run test:coverage
 
