@@ -102,7 +102,11 @@ function Invoke-AzureDevSmokeValidation {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+$')]
+    [string]$ExpectedCodexVersion
   )
 
   Assert-AzureDevSshHostTrust -Context $Context
@@ -112,6 +116,12 @@ set -euo pipefail
 expected_git_user_name="$1"
 expected_git_user_email="$2"
 expected_git_ssh_signing_public_key="$3"
+expected_codex_version="$4"
+managed_codex_launcher=/home/vscode/.local/bin/codex
+managed_codex_bin=/home/vscode/.local/bin
+managed_codex_release_root=/home/vscode/.codex/packages/standalone/releases
+managed_codex_path=/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+legacy_codex_launcher=/usr/local/bin/codex
 export HOME=/home/vscode
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_DATA_HOME="${HOME}/.local/share"
@@ -328,6 +338,18 @@ if ! {
   dump_smoke_diagnostics
   exit 1
 fi
+effective_ssh_path() {
+  sudo -n /usr/sbin/sshd -T \
+    -C "user=$1,host=localhost,addr=127.0.0.1" |
+    awk '$1 == "setenv" { for (i = 2; i <= NF; i++) if ($i ~ /^PATH=/) { sub(/^PATH=/, "", $i); print $i } }'
+}
+test "$(effective_ssh_path vscode)" = "${managed_codex_path}"
+for privileged_account in root nobody; do
+  if [[ ":$(effective_ssh_path "${privileged_account}"):" == *":${managed_codex_bin}:"* ]]; then
+    printf 'SSH command path for %s exposes the vscode-managed directory.\n' "${privileged_account}"
+    exit 1
+  fi
+done
 findmnt /mnt/krav-azure-dev-data >/dev/null
 findmnt /workspace >/dev/null
 findmnt /var/lib/krav-azure-dev >/dev/null
@@ -413,7 +435,42 @@ if [ -n "${expected_git_ssh_signing_public_key}" ]; then
 fi
 gh --version >/dev/null 2>&1
 btop --version >/dev/null 2>&1
-codex --version >/dev/null 2>&1
+test "${PATH}" = "${managed_codex_path}"
+test ! -e "${legacy_codex_launcher}" && test ! -L "${legacy_codex_launcher}" || {
+  printf 'A legacy Codex launcher exists at %s; replacement-only setup is required.\n' "${legacy_codex_launcher}"
+  exit 1
+}
+test -L "${managed_codex_launcher}"
+managed_codex_target="$(readlink -f -- "${managed_codex_launcher}")"
+case "${managed_codex_target}" in
+  "${managed_codex_release_root}"/*) ;;
+  *)
+    printf 'Managed Codex launcher resolves outside the private standalone release root.\n'
+    exit 1
+    ;;
+esac
+test -f "${managed_codex_target}"
+test "$(stat -c '%U:%G' "${managed_codex_target}")" = 'vscode:vscode'
+test "$(stat -c '%a' /home/vscode/.local)" = '700'
+test "$(stat -c '%U:%G' /home/vscode/.local)" = 'vscode:vscode'
+test "$(stat -c '%a' "${managed_codex_bin}")" = '700'
+test "$(stat -c '%U:%G' "${managed_codex_bin}")" = 'vscode:vscode'
+test "$(stat -c '%a' /home/vscode/.codex)" = '700'
+test "$(stat -c '%U:%G' /home/vscode/.codex)" = 'vscode:vscode'
+test "$(stat -c '%a' /home/vscode/.codex/config.toml)" = '600'
+test "$(stat -c '%U:%G' /home/vscode/.codex/config.toml)" = 'vscode:vscode'
+test -x "${managed_codex_target}"
+test "$("${managed_codex_target}" --version)" = "codex-cli ${expected_codex_version}"
+test "$(bash --login -c 'command -v codex')" = "${managed_codex_launcher}"
+test "$(bash --login -c 'type -t codex')" = 'file'
+test "$(zsh -ic 'whence -p codex')" = "${managed_codex_launcher}"
+zsh -ic '(( ! $+aliases[codex] && ! $+functions[codex] ))'
+for isolated_account in root nobody; do
+  isolated_home="$(getent passwd "${isolated_account}" | cut -d: -f6)"
+  sudo -n -u "${isolated_account}" env HOME="${isolated_home}" \
+    bash --login -c \
+    'case ":${PATH}:" in *:/home/vscode/.local/bin:*) exit 1 ;; esac'
+done
 copilot --version >/dev/null 2>&1
 docker --version >/dev/null 2>&1
 docker compose version >/dev/null 2>&1
@@ -515,7 +572,7 @@ run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modu
   $command = (
     "bash -lc $remoteScriptLiteral -- " +
     "$gitUserNameLiteral $gitUserEmailLiteral " +
-    $gitSshSigningPublicKeyLiteral
+    "$gitSshSigningPublicKeyLiteral $ExpectedCodexVersion"
   )
 
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Run smoke validation')) {
@@ -539,6 +596,32 @@ run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modu
   }
 }
 
+function Invoke-AzureDevBootstrapAndSmokeValidation {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  [OutputType([string])]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context
+  )
+
+  if (
+    $PSCmdlet.ShouldProcess(
+      $Context.Config.SshHostAlias,
+      'Bootstrap and smoke validate Azure development host'
+    )
+  ) {
+    $codexTargetVersion = Invoke-AzureDevBootstrap -Context $Context
+    if ($Context.SkipSmokeValidation) {
+      return 'skipped'
+    }
+
+    Invoke-AzureDevSmokeValidation `
+      -Context $Context `
+      -ExpectedCodexVersion $codexTargetVersion
+    return 'passed'
+  }
+}
+
 function Get-AzureDevValidationStatus {
   [CmdletBinding()]
   param(
@@ -555,5 +638,6 @@ function Get-AzureDevValidationStatus {
 Export-ModuleMember -Function `
   Assert-AzureDevTerminalFontInstalled, `
   Get-AzureDevValidationStatus, `
+  Invoke-AzureDevBootstrapAndSmokeValidation, `
   Invoke-AzureDevSmokeValidation, `
   Test-AzureDevTerminalFontInstalled

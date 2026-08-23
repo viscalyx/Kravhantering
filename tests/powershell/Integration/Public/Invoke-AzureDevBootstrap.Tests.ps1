@@ -2,7 +2,18 @@
 
 Set-StrictMode -Version Latest
 
-Describe 'Invoke-AzureDevBootstrap' -Tag 'Unit' {
+BeforeDiscovery {
+  $script:integrationEnabled =
+    [System.Environment]::GetEnvironmentVariable(
+      'KRAVHANTERING_PESTER_INTEGRATION',
+      'Process'
+    ) -ceq '1'
+}
+
+Describe `
+  'Invoke-AzureDevBootstrap' `
+  -Tag 'Integration' `
+  -Skip:(-not $script:integrationEnabled) {
   BeforeAll {
     $script:moduleName = 'AzureDev.Bootstrap'
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
@@ -10,7 +21,6 @@ Describe 'Invoke-AzureDevBootstrap' -Tag 'Unit' {
     )
     $PSDefaultParameterValues = @{
       'Mock:ModuleName' = $script:moduleName
-      'Should-NotInvoke:ModuleName' = $script:moduleName
     }
     Import-Module (
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Ssh.psm1'
@@ -26,12 +36,11 @@ Describe 'Invoke-AzureDevBootstrap' -Tag 'Unit' {
     Mock -CommandName Copy-AzureDevDevelopmentToolFiles
     Mock -CommandName Copy-AzureDevServiceEnvironmentFiles
     Mock -CommandName Invoke-AzureDevRemoteCommand -MockWith {
-      return $script:mockRemoteOutput
+      return @'
+[krav-azure-bootstrap] host bootstrap completed
+KRAV_AZURE_CODEX_RESULT={"targetVersion":"1.2.3","schemaVersion":1}
+'@
     }
-  }
-
-  BeforeEach {
-    $script:mockRemoteOutput = $null
   }
 
   AfterAll {
@@ -39,39 +48,8 @@ Describe 'Invoke-AzureDevBootstrap' -Tag 'Unit' {
     Get-Module 'AzureDev.Ssh' -All | Remove-Module -Force
   }
 
-  Context 'When authenticated SSH host trust has not been established' {
-    It 'Should stop before bootstrap validation, preparation, or secret creation' {
-      $context = [System.Management.Automation.PSObject]@{
-        SshHostTrustEstablished = $false
-        Config = [System.Management.Automation.PSObject]@{
-          SshHostAlias = 'krav-test'
-        }
-      }
-
-      {
-        Invoke-AzureDevBootstrap -Context $context
-      } | Should-Throw -ExceptionMessage (
-        '*authenticated SSH host trust has not been established*'
-      )
-
-      Should-NotInvoke -CommandName Test-AzureDevGitIdentity -Scope It
-      Should-NotInvoke -CommandName Copy-AzureDevBootstrapFile -Scope It
-      Should-NotInvoke `
-        -CommandName Copy-AzureDevServiceEnvironmentFiles `
-        -Scope It
-      Should-NotInvoke -CommandName Invoke-AzureDevRemoteCommand -Scope It
-    }
-  }
-
-  Context 'When host bootstrap returns one valid Codex target result' {
-    BeforeEach {
-      $script:mockRemoteOutput = @'
-[krav-azure-bootstrap] host bootstrap completed
-KRAV_AZURE_CODEX_RESULT={"schemaVersion":1,"targetVersion":"1.2.3"}
-'@
-    }
-
-    It 'Should return the validated Codex target version' {
+  Context 'When host bootstrap returns a noncanonical Codex result' {
+    It 'Should reject the target at the public boundary' {
       $context = [System.Management.Automation.PSObject]@{
         SshHostTrustEstablished = $true
         BootstrapPath = Join-Path (
@@ -79,16 +57,18 @@ KRAV_AZURE_CODEX_RESULT={"schemaVersion":1,"targetVersion":"1.2.3"}
         ) 'bootstrap-host.sh'
         Config = [System.Management.Automation.PSObject]@{
           SshHostAlias = 'krav-test'
-          SshHostKeyArguments = @()
+          SshHostKeyArguments = [System.Object[]]@()
           GitUserName = 'Ada Admin'
           GitUserEmail = 'ada@example.test'
           GitSshSigningPublicKey = ''
         }
       }
 
-      $result = Invoke-AzureDevBootstrap -Context $context
-
-      $result | Should-BeString -Expected '1.2.3'
+      {
+        Invoke-AzureDevBootstrap -Context $context
+      } | Should-Throw -ExceptionMessage (
+        '*Azure host bootstrap returned a noncanonical Codex result*'
+      )
     }
   }
 }

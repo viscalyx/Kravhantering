@@ -816,6 +816,12 @@ signing, reruns the VM bootstrap, and runs smoke validation.
 If the VM already exists but was deallocated by `stop` or auto-shutdown, `setup`
 starts it before waiting for SSH.
 
+If setup fails after creating resources, it preserves the VM, both disks, and
+all resources already created. When Codex convergence can roll back, it restores
+the previously active release. Use the failure output to diagnose the host and
+rerun `setup`; setup does not tear down the failed VM. Use `remove` only when
+deliberate replacement is required.
+
 ### SSH host trust
 
 Setup and start establish host trust before their first network SSH
@@ -896,12 +902,15 @@ environments also use a temporary worktree root outside the repository checkout.
 
 ### Codex and GitHub Copilot CLIs in Remote SSH
 
-Setup installs the current stable Codex CLI and GitHub Copilot CLI releases
-system-wide and verifies that the `codex` and `copilot` commands start. The
-Codex installer requires and verifies the upstream SHA-256 release-asset digest
-before execution; missing or mismatched evidence stops setup. The rolling
-`@github/copilot` channel relies on npm registry SRI metadata and npm's package-
-integrity verification under ADR 0045.
+Setup installs the current stable Codex CLI as a user-managed installation owned
+by `vscode`. Its launcher is `/home/vscode/.local/bin/codex`; Codex packages and
+state remain under `/home/vscode/.codex`. The verified installer runs as
+`vscode`, requires the upstream SHA-256 release-asset digest before execution,
+and validates the absolute launcher against the exact release resolved by the
+same setup transaction. Missing or mismatched evidence stops setup. GitHub
+Copilot CLI remains system-wide; its rolling `@github/copilot` channel relies on
+npm registry SRI metadata and npm's package-integrity verification under ADR
+0045.
 
 To update the managed tools on an existing VM, run setup again from the
 workstation repository root:
@@ -910,22 +919,28 @@ workstation repository root:
 ./scripts/azure-dev.ps1 setup -Yes
 ```
 
-Setup uploads the current verified installer helper and installs the latest
-stable Codex CLI release. To refresh only Codex from an SSH session on the VM,
-run the same helper directly:
+Setup uploads the current verified installer helper and converges the latest
+stable Codex CLI release. Between setup runs, the supported upstream self-update
+path is available without `sudo`:
 
 ```sh
-cd /workspace
-sudo env \
-  CODEX_HOME=/usr/local/lib/codex \
-  CODEX_INSTALL_DIR=/usr/local/bin \
-  CODEX_NON_INTERACTIVE=1 \
-  bash scripts/azure-dev/templates/install-codex.sh
+codex update
 command -v codex
 codex --version
 ```
 
-The expected command path is `/usr/local/bin/codex`.
+The expected command path is `/home/vscode/.local/bin/codex`. New SSH sessions,
+Bash login shells, interactive Zsh shells, VS Code Remote SSH server processes,
+and extension-host children receive that user-first path. Root and other users
+do not receive `/home/vscode/.local/bin`. The Codex IDE extension continues to
+use its bundled executable; setup does not configure an extension executable
+override.
+
+Setup applies a managed path footer after either the tracked Zsh template or the
+operator-provided `zshrc.template`. The footer moves the managed binary
+directory to the front once while preserving other custom path entries and
+unrelated template customization. An alias or function named `codex` blocks
+setup because it masks the managed external command.
 
 > [!WARNING]
 > Avoid using npm to install or update Codex CLI on the Azure development VM.
@@ -970,9 +985,29 @@ to the loopback addresses used by host-side development and the Podman support
 services. The devcontainer profile in `.devcontainer/codex-config.toml` is
 separate and is not installed on the Azure VM.
 
-After setup repairs Codex configuration on an already connected VM, reload the
-VS Code Remote SSH window and start a new Codex session so the extension reads
-the updated profile.
+Setup does not restart existing terminals or the VS Code Server. After setup
+changes command-path policy or repairs Codex configuration, close existing SSH
+terminals, reconnect, reload the VS Code Remote SSH window, and start a new
+Codex session. Existing processes retain the environment they inherited when
+they started.
+
+#### Replacement-only rollout from a legacy VM
+
+Any object at the legacy global launcher `/usr/local/bin/codex` blocks setup.
+Setup never deletes, migrates, redirects, or tolerates that launcher. The only
+supported rollout is replacement:
+
+1. Preserve all remote-only work and required home state outside the VM.
+2. Run `./scripts/azure-dev.ps1 remove` from the workstation. This deletes the
+   VM, its OS disk, and its data disk.
+3. Run `./scripts/azure-dev.ps1 setup -Yes`.
+4. Reconnect with a fresh SSH or VS Code Remote SSH session.
+5. Run `codex login` in the replacement environment.
+
+Workstation-local SSH keys are preserved by `remove` unless `-CleanupKeys` is
+explicitly supplied. Codex authentication is environment-local and is not
+copied from the workstation or deleted VM. There is no supported in-place
+migration, automated backup, or legacy fallback installation.
 
 For administration tasks, use the generated regular SSH command:
 
@@ -1493,7 +1528,8 @@ VM device from the Tailscale admin console.
 
 Default smoke validation checks SSH, the data-disk bind mounts, `/workspace`,
 write access to the standard `vscode` user directories, major tool versions
-including `btop`, Codex CLI, GitHub Copilot CLI, and Lychee, the configured
+including `btop`, the exact user-managed Codex launcher and bootstrap target,
+GitHub Copilot CLI, and Lychee, the configured
 global Git identity and SSH signing behavior, rootless Podman units,
 loopback-only support ports, HSA lookup through Kong, `npm run db:setup`,
 `npm run db:health`, and Playwright browser availability.
@@ -1540,8 +1576,9 @@ Delete managed Azure resources and owned local state:
 ./scripts/azure-dev.ps1 remove
 ```
 
-`remove` deletes the managed resources and is the full managed-resource cost
-stop.
+`remove` deletes the VM and both of its managed disks together with the other
+selected resources. It is the full managed-resource cost stop. Preserve any
+remote-only work before running it; neither disk is a backup boundary.
 
 SSH private and public key files are preserved by default. Use `-CleanupKeys`
 only when you intentionally want to remove the generated key pair.

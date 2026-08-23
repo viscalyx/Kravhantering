@@ -18,7 +18,9 @@ function Invoke-AzureDevRemoteCommand {
     [Parameter(Mandatory = $true)]
     [string]$Command,
 
-    [string]$Description = 'Run remote command'
+    [string]$Description = 'Run remote command',
+
+    [switch]$PassThru
   )
 
   Assert-AzureDevSshHostTrust -Context $Context
@@ -40,7 +42,53 @@ function Invoke-AzureDevRemoteCommand {
     if ($result.ExitCode -ne 0) {
       throw "Remote command failed with exit code $($result.ExitCode): $Description`n$($result.Text.Trim())"
     }
+    if ($PassThru) {
+      return $result.Text
+    }
   }
+}
+
+function ConvertFrom-AzureDevCodexBootstrapResult {
+  [CmdletBinding()]
+  [OutputType([string])]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Output
+  )
+
+  $prefix = 'KRAV_AZURE_CODEX_RESULT='
+  $resultLines = @(
+    $Output -split "`r?`n" | Where-Object { $_.StartsWith($prefix) }
+  )
+  if ($resultLines.Count -ne 1) {
+    throw 'Azure host bootstrap returned an invalid number of Codex results.'
+  }
+
+  try {
+    $result = $resultLines[0].Substring($prefix.Length) | ConvertFrom-Json
+  } catch {
+    throw 'Azure host bootstrap returned malformed Codex result JSON.'
+  }
+  $propertyNames = @($result.PSObject.Properties.Name | Sort-Object)
+  if (
+    $propertyNames.Count -ne 2 -or
+    $propertyNames[0] -ne 'schemaVersion' -or
+    $propertyNames[1] -ne 'targetVersion' -or
+    $result.schemaVersion -ne 1 -or
+    $result.targetVersion -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$'
+  ) {
+    throw 'Azure host bootstrap returned an invalid Codex result.'
+  }
+  $canonicalResult = (
+    '{"schemaVersion":1,"targetVersion":"' +
+    [string]$result.targetVersion +
+    '"}'
+  )
+  if ($resultLines[0].Substring($prefix.Length) -cne $canonicalResult) {
+    throw 'Azure host bootstrap returned a noncanonical Codex result.'
+  }
+
+  return [string]$result.targetVersion
 }
 
 function Copy-AzureDevBootstrapFile {
@@ -203,6 +251,8 @@ function Copy-AzureDevDevelopmentToolFiles {
     (Join-Path $templatesPath 'codex-config.toml'),
     (Join-Path $templatesPath 'merge-codex-config.py'),
     (Join-Path $templatesPath 'install-codex.sh'),
+    (Join-Path $templatesPath 'install-azure-codex.sh'),
+    (Join-Path $templatesPath 'install-azure-codex-session-policy.sh'),
     (Join-Path $templatesPath 'install-dotenv-linter.sh'),
     (Join-Path $templatesPath 'install-rolling-git-source.sh'),
     (Join-Path $templatesPath 'storage-report.sh'),
@@ -484,6 +534,9 @@ function Invoke-AzureDevBootstrap {
       "AZURE_DEV_CODEX_CONFIG_SOURCE=$remoteToolingPath/codex-config.toml " +
       "AZURE_DEV_CODEX_CONFIG_MERGER=$remoteToolingPath/merge-codex-config.py " +
       "AZURE_DEV_CODEX_INSTALLER=$remoteToolingPath/install-codex.sh " +
+      "AZURE_DEV_CODEX_ORCHESTRATOR=$remoteToolingPath/install-azure-codex.sh " +
+      "AZURE_DEV_CODEX_SESSION_POLICY=$remoteToolingPath/install-azure-codex-session-policy.sh " +
+      'AZURE_DEV_CODEX_MODE=user-managed ' +
       "AZURE_DEV_DOTENV_LINTER_INSTALLER=$remoteToolingPath/install-dotenv-linter.sh " +
       "AZURE_DEV_ROLLING_GIT_INSTALLER=$remoteToolingPath/install-rolling-git-source.sh " +
       "AZURE_DEV_STORAGE_REPORT_SOURCE=$remoteToolingPath/storage-report.sh " +
@@ -497,10 +550,12 @@ function Invoke-AzureDevBootstrap {
     )
   ) -join ' && '
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Run host bootstrap')) {
-    Invoke-AzureDevRemoteCommand `
+    $bootstrapOutput = Invoke-AzureDevRemoteCommand `
       -Context $Context `
       -Command $command `
-      -Description 'Run host bootstrap'
+      -Description 'Run host bootstrap' `
+      -PassThru
+    return ConvertFrom-AzureDevCodexBootstrapResult -Output $bootstrapOutput
   }
 }
 
