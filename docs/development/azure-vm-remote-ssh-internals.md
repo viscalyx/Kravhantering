@@ -566,6 +566,10 @@ each channel. The object is not pinned in the repository; a later new
 installation resolves the then-current branch again. The rolling-source tests
 exercise the shared fail-closed resolution and checkout control.
 
+Bootstrap prepends the managed storage environment to the installed profile
+before Powerlevel10k's instant-prompt preamble. VS Code injects shell integration
+when it starts the terminal, so the profile does not source that integration.
+
 Bootstrap installs Bubblewrap and the Ubuntu 24.04
 `bwrap-userns-restrict` AppArmor profile, then proves that the `vscode` user
 can create the user, PID, and network namespaces Codex requires. It does not

@@ -100,8 +100,9 @@ describe('storage-report', () => {
       'Storage warning: root filesystem is 80% used with 20G available.',
     )
     expect(result.stdout).toContain(
-      'Run storage-report for read-only diagnostics and cleanup suggestions.',
+      'Run this command in the terminal for read-only diagnostics and cleanup suggestions:',
     )
+    expect(result.stdout).toContain('\n  storage-report\n')
   })
 
   it('uses an urgent warning at 90 percent without failing the shell', () => {

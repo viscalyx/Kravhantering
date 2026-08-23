@@ -802,6 +802,8 @@ configure_npm_caches() {
 }
 
 install_storage_tools() {
+  local zshrc_with_storage
+
   if [ ! -f "${STORAGE_REPORT_SOURCE}" ]; then
     log "Storage report helper is missing: ${STORAGE_REPORT_SOURCE}"
     return 1
@@ -825,11 +827,17 @@ EOF
   chown "${VSCODE_USER}:${VSCODE_USER}" "${STORAGE_SHELL_ENV}"
   chmod 0600 "${STORAGE_SHELL_ENV}"
 
-  cat >> "${VSCODE_HOME}/.zshrc" <<EOF
-
+  zshrc_with_storage="$(mktemp)"
+  cat > "${zshrc_with_storage}" <<EOF
 # Managed Azure development storage environment.
 source "${STORAGE_SHELL_ENV}"
+
 EOF
+  cat "${VSCODE_HOME}/.zshrc" >> "${zshrc_with_storage}"
+  install -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0644 \
+    "${zshrc_with_storage}" \
+    "${VSCODE_HOME}/.zshrc"
+  rm -f "${zshrc_with_storage}"
 }
 
 configure_codex_home() {

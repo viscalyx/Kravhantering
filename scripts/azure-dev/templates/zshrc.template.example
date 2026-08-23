@@ -54,10 +54,6 @@ else
   (( ! $+functions[p10k] )) || p10k reload
 fi
 
-if [[ "$TERM_PROGRAM" == "vscode" ]] && command -v code >/dev/null 2>&1; then
-  source "$(code --locate-shell-integration-path zsh)"
-fi
-
 # Start interactive login shells in the repository workspace.
 if [[ "$PWD" == "$HOME" && -d /workspace ]]; then
   cd /workspace

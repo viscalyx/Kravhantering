@@ -698,7 +698,10 @@ cp scripts/azure-dev/templates/zshrc.template.example \
 `setup` installs `zshrc.template` when it exists. Otherwise, it installs
 `zshrc.template.example`. Each setup run reapplies the selected profile to
 `/home/vscode/.zshrc`. Keep credentials out of both files; load secrets through
-the environment or an external secret manager instead.
+the environment or an external secret manager instead. Bootstrap prepends its
+managed storage environment before the Powerlevel10k instant-prompt preamble so
+filesystem warnings do not trigger Powerlevel10k's initialization warning. VS
+Code injects its shell integration; do not source it manually in the profile.
 
 ## Step 6: Run Setup
 

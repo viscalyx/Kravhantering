@@ -676,6 +676,25 @@ describe('development environment contract', () => {
     expect(startDockerIndex).toBeGreaterThan(stopDockerIndex)
   })
 
+  it('runs managed shell output before Powerlevel10k initialization', () => {
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+    const zshTemplate = readWorkspaceFile(
+      'scripts/azure-dev/templates/zshrc.template.example',
+    )
+    const managedEnvironmentIndex = hostBootstrap.indexOf(
+      '# Managed Azure development storage environment.',
+    )
+    const profileAppendIndex = hostBootstrap.indexOf(
+      'cat "${VSCODE_HOME}/.zshrc" >> "${zshrc_with_storage}"',
+    )
+
+    expect(managedEnvironmentIndex).toBeGreaterThanOrEqual(0)
+    expect(profileAppendIndex).toBeGreaterThan(managedEnvironmentIndex)
+    expect(zshTemplate).not.toContain('locate-shell-integration-path')
+  })
+
   it('repairs disposable Podman build state without pruning named volumes', () => {
     const hostBootstrap = readWorkspaceFile(
       'scripts/azure-dev/templates/bootstrap-host.sh',

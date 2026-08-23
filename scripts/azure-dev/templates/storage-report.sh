@@ -48,7 +48,8 @@ check_filesystems() {
   fi
 
   if [ "${warned}" -eq 1 ]; then
-    printf 'Run storage-report for read-only diagnostics and cleanup suggestions.\n'
+    printf 'Run this command in the terminal for read-only diagnostics and cleanup suggestions:\n'
+    printf '  storage-report\n'
   fi
 }
 
