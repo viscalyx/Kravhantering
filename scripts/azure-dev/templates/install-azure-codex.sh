@@ -368,20 +368,34 @@ rollback_links() {
   rm -f -- "${CODEX_TRANSACTION}"
 }
 
+is_recognized_run_scratch_name() {
+  [[ "$1" =~ ^run\.[A-Za-z0-9]+$ ]]
+}
+
+remove_managed_scratch_directory() {
+  local path="$1" description="$2" missing_policy="$3"
+
+  if [ ! -e "${path}" ] && [ ! -L "${path}" ]; then
+    if [ "${missing_policy}" = 'allow' ]; then
+      return
+    fi
+    log "Refusing missing ${description} at ${path}"
+    return 1
+  fi
+  if [ -L "${path}" ] || [ ! -d "${path}" ] ||
+    [ "$(stat -c '%u:%g' -- "${path}")" != "${CODEX_UID}:${CODEX_GID}" ]; then
+    log "Refusing unsafe ${description} at ${path}"
+    return 1
+  fi
+  rm -rf -- "${path}"
+}
+
 cleanup_run_temp() {
   if [ -z "${run_temp_dir}" ]; then
     return
   fi
-  if [ ! -e "${run_temp_dir}" ] && [ ! -L "${run_temp_dir}" ]; then
-    run_temp_dir=''
-    return
-  fi
-  if [ -L "${run_temp_dir}" ] || [ ! -d "${run_temp_dir}" ] ||
-    [ "$(stat -c '%u:%g' -- "${run_temp_dir}")" != "${CODEX_UID}:${CODEX_GID}" ]; then
-    log "Refusing unsafe Azure Codex scratch cleanup at ${run_temp_dir}"
-    return 1
-  fi
-  rm -rf -- "${run_temp_dir}"
+  remove_managed_scratch_directory \
+    "${run_temp_dir}" 'Azure Codex scratch cleanup' allow || return 1
   run_temp_dir=''
 }
 
@@ -390,13 +404,9 @@ cleanup_stale_scratch() {
 
   while IFS= read -r -d '' entry; do
     name="${entry##*/}"
-    [[ "${name}" =~ ^run\.[A-Za-z0-9]+$ ]] || continue
-    if [ -L "${entry}" ] || [ ! -d "${entry}" ] ||
-      [ "$(stat -c '%u:%g' -- "${entry}")" != "${CODEX_UID}:${CODEX_GID}" ]; then
-      log "Refusing unsafe stale Azure Codex scratch at ${entry}"
-      return 1
-    fi
-    rm -rf -- "${entry}"
+    is_recognized_run_scratch_name "${name}" || continue
+    remove_managed_scratch_directory \
+      "${entry}" 'stale Azure Codex scratch' reject || return 1
   done < <(find "${CODEX_TEMP_ROOT}" -mindepth 1 -maxdepth 1 -name 'run.*' -print0)
 }
 
@@ -510,8 +520,7 @@ recover_interrupted_transaction() {
       return 1
       ;;
   esac
-  if [[ "${recovered_scratch##*/}" != run.* ]] ||
-    [[ ! "${recovered_scratch##*/}" =~ ^run\.[A-Za-z0-9]+$ ]]; then
+  if ! is_recognized_run_scratch_name "${recovered_scratch##*/}"; then
     fail_unsafe_object "${CODEX_TRANSACTION}" 'unrecognized Azure scratch path'
     return 1
   fi
