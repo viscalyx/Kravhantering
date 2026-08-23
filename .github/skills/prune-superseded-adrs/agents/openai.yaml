@@ -1,0 +1,6 @@
+interface:
+  display_name: "Prune Superseded ADRs"
+  short_description: "Keep ADRs limited to current decisions"
+  default_prompt: "Use $prune-superseded-adrs to audit every ADR, inspect code only where ADRs contradict, accept a unique code match as authoritative, and ask me only when code matches neither decision or is ambiguous."
+policy:
+  allow_implicit_invocation: false
