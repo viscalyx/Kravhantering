@@ -14,6 +14,7 @@ import {
 import { tmpdir, userInfo } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { createLinkedWorktreeFixture } from '@/tests/support/git-worktree-fixture'
 
 const workspaceRoot = path.resolve(import.meta.dirname, '../..')
 const worktreeStorage = path.join(
@@ -87,34 +88,10 @@ describe('Azure worktree storage contract', () => {
   it('preserves registered external worktrees and their contents on reruns', () => {
     const fixture = createFixture()
     expect(runContract('prepare', fixture).status).toBe(0)
-    execFileSync('git', ['init', '-q', fixture.workspace])
-    execFileSync('git', [
-      '-C',
-      fixture.workspace,
-      'config',
-      'user.name',
-      'Test',
-    ])
-    execFileSync('git', [
-      '-C',
-      fixture.workspace,
-      'config',
-      'user.email',
-      'test@example.invalid',
-    ])
-    writeFileSync(path.join(fixture.workspace, 'README.md'), 'primary\n')
-    execFileSync('git', ['-C', fixture.workspace, 'add', 'README.md'])
-    execFileSync('git', ['-C', fixture.workspace, 'commit', '-qm', 'initial'])
-    const linkedWorktree = path.join(fixture.worktreeRoot, 'issue-1032')
-    execFileSync('git', [
-      '-C',
-      fixture.workspace,
-      'worktree',
-      'add',
-      '-qb',
-      'test/issue-1032',
-      linkedWorktree,
-    ])
+    const linkedWorktree = createLinkedWorktreeFixture({
+      workspace: fixture.workspace,
+      worktreeRoot: fixture.worktreeRoot,
+    })
     const marker = path.join(linkedWorktree, 'preserve-me.txt')
     writeFileSync(marker, 'uncommitted work\n')
     const registrationsBefore = execFileSync(

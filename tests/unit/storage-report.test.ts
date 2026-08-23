@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import {
   chmodSync,
   mkdirSync,
@@ -9,6 +9,7 @@ import {
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { createLinkedWorktreeFixture } from '@/tests/support/git-worktree-fixture'
 
 const workspaceRoot = path.resolve(import.meta.dirname, '../..')
 const storageReport = path.join(
@@ -175,28 +176,10 @@ describe('storage-report', () => {
   it('reports registered external worktrees by their actual paths', () => {
     let linkedWorktree = ''
     const { result } = runReport(({ workspace, worktreeRoot }) => {
-      execFileSync('git', ['init', '-q', workspace])
-      execFileSync('git', ['-C', workspace, 'config', 'user.name', 'Test'])
-      execFileSync('git', [
-        '-C',
+      linkedWorktree = createLinkedWorktreeFixture({
         workspace,
-        'config',
-        'user.email',
-        'test@example.invalid',
-      ])
-      writeFileSync(path.join(workspace, 'README.md'), 'primary\n')
-      execFileSync('git', ['-C', workspace, 'add', 'README.md'])
-      execFileSync('git', ['-C', workspace, 'commit', '-qm', 'initial'])
-      linkedWorktree = path.join(worktreeRoot, 'issue-1032')
-      execFileSync('git', [
-        '-C',
-        workspace,
-        'worktree',
-        'add',
-        '-qb',
-        'test/issue-1032',
-        linkedWorktree,
-      ])
+        worktreeRoot,
+      })
     })
 
     expect(result.status).toBe(0)
