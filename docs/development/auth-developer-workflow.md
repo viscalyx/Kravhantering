@@ -156,8 +156,14 @@ npm run devcontainer:hsa-mock:status
 npm run devcontainer:hsa-mock:verify
 npm run devcontainer:hsa-mock:ensure
 npm run devcontainer:hsa-mock:inspect
-npm run devcontainer:hsa-mock:rotate -- app-to-kong
-npm run devcontainer:hsa-mock:rollback-verify -- app-to-kong
+```
+
+Rotation recreates the `app` service and must therefore be launched from a
+host terminal in the same checkout, not from the devcontainer that it stops:
+
+```sh
+node scripts/devcontainer/hsa-mock.mjs rotate app-to-kong
+node scripts/devcontainer/hsa-mock.mjs rollback-verify app-to-kong
 ```
 
 The same lifecycle is available as a persistent local demo with

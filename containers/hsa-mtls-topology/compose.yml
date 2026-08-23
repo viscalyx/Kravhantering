@@ -87,12 +87,11 @@ services:
       timeout: 3s
       retries: 30
 
-  app:
-    image: localhost/kravhantering/hsa-app-probe:topology
+  test:
+    image: localhost/kravhantering/hsa-transport-contract-test:topology
     build:
       context: ../..
       dockerfile: containers/hsa-mtls-topology/Dockerfile
-    command: ["node", "app-probe.mjs"]
     depends_on:
       kong:
         condition: service_healthy
@@ -102,22 +101,7 @@ services:
       HSA_PERSON_LOOKUP_CLIENT_KEY_PATH: /runtime/app/app-client.key
       HSA_PERSON_LOOKUP_TLS_SERVER_NAME: kong
       HSA_PERSON_LOOKUP_URL: https://kong:8443/hsa/person-records/lookup
-    volumes:
-      - app-material:/runtime/app:ro
-    healthcheck:
-      test: ["CMD", "node", "--input-type=module", "-e", "const r=await fetch('http://127.0.0.1:8081/health');if(!r.ok)process.exit(1)"]
-      interval: 1s
-      timeout: 3s
-      retries: 30
-
-  test:
-    image: localhost/kravhantering/hsa-app-probe:topology
-    build:
-      context: ../..
-      dockerfile: containers/hsa-mtls-topology/Dockerfile
-    depends_on:
-      app:
-        condition: service_healthy
+    user: "0:0"
     volumes:
       - app-material:/runtime/app:ro
       - adapter-material:/runtime/adapter:ro

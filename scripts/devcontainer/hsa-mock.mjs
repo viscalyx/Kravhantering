@@ -211,7 +211,11 @@ function runStatus(profile, options) {
   )
 }
 
-function runVerify(profile, options, { recreate = true } = {}) {
+function runVerify(
+  profile,
+  options,
+  { forceFailure = false, recreate = true } = {},
+) {
   if (recreate) {
     assertSuccess(
       runCompose(
@@ -224,6 +228,7 @@ function runVerify(profile, options, { recreate = true } = {}) {
   }
 
   const verifyScript = `
+    if (process.env.HSA_MTLS_FORCE_VERIFY_FAILURE === 'true') throw new Error('injected post-promotion verification failure')
     const fs = await import('node:fs')
     const https = await import('node:https')
     const crypto = await import('node:crypto')
@@ -274,6 +279,7 @@ function runVerify(profile, options, { recreate = true } = {}) {
       [
         'exec',
         '-T',
+        ...(forceFailure ? ['-e', 'HSA_MTLS_FORCE_VERIFY_FAILURE=true'] : []),
         APP_SERVICE_NAME,
         'node',
         '--input-type=module',
@@ -285,6 +291,16 @@ function runVerify(profile, options, { recreate = true } = {}) {
     'Kong HSA REST verification',
   )
   console.log('Kong HSA verification completed.')
+}
+
+function assertExternalLifecycleRunner(profile) {
+  const app = runningService(profile, APP_SERVICE_NAME)
+  const id = String(app?.ID ?? app?.Id ?? app?.id ?? '')
+  if (id?.startsWith(os.hostname())) {
+    throw new Error(
+      'Rotation must be launched from the host checkout because it recreates the devcontainer app service',
+    )
+  }
 }
 
 function provision(profile, options, ...args) {
@@ -351,6 +367,17 @@ function runRollbackVerification(profile, options, trustDomain) {
   stopEndpoints(profile, options)
   provision(profile, options, 'rotate', requireTrustDomain(trustDomain))
   provision(profile, options, 'deploy')
+  startEndpoints(profile, options)
+  let injectedFailureObserved = false
+  try {
+    runVerify(profile, options, { forceFailure: true, recreate: false })
+  } catch {
+    injectedFailureObserved = true
+  }
+  if (!injectedFailureObserved) {
+    throw new Error('Injected post-promotion verification unexpectedly passed')
+  }
+  stopEndpoints(profile, options)
   provision(profile, options, 'rollback')
   provision(profile, options, 'deploy')
   startEndpoints(profile, options)
@@ -411,10 +438,12 @@ function runAction(action, extraArgs, profile) {
   if (action === 'verify') return runVerify(profile, options)
 
   if (action === 'rotate') {
+    assertExternalLifecycleRunner(profile)
     return runRotation(profile, options, extraArgs[0])
   }
 
   if (action === 'rollback-verify') {
+    assertExternalLifecycleRunner(profile)
     return runRollbackVerification(profile, options, extraArgs[0])
   }
 

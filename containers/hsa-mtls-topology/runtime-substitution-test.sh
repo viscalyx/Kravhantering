@@ -8,7 +8,7 @@ compose() { "${COMPOSE[@]}" "$@"; }
 provision() { compose run --rm provisioner "$@"; }
 
 stop_endpoints() {
-  for service in test app kong adapter mock; do
+  for service in test kong adapter mock; do
     compose stop --timeout 1 "$service"
   done
 }
@@ -17,7 +17,6 @@ start_endpoints() {
   compose up --no-deps -d --wait mock
   compose up --no-deps -d --wait adapter
   compose up --no-deps -d --wait kong
-  compose up --no-deps -d --wait app
 }
 
 substitute() {

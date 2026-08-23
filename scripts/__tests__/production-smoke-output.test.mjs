@@ -231,6 +231,20 @@ function renderHsaSmokeConfiguration() {
 }
 
 describe('production smoke output', () => {
+  it('keeps correlated HSA runtime and rotation evidence mandatory', () => {
+    const source = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
+
+    expect(source).toContain('hsa_app_lookup_started')
+    expect(source).toContain('hsa_adapter_lookup_forwarded')
+    expect(source).toContain('hsa_mock_lookup_handled')
+    expect(source).toContain('mock-exactly-once=passed')
+    expect(source).toContain('runtime-file-modes-and-ownership=passed')
+    expect(source).toContain('kong-admin-loopback-only=passed')
+    expect(source).toContain('verify_hsa_rotation_metadata')
+    expect(source).toContain('verify_hsa_stale_rejection')
+    expect(source).toContain('ca-and-both-leaves-changed=passed')
+  })
+
   it('renders the CI-only HSA route with verified HTTPS', () => {
     const { appEnv, kongUnit, result } = renderHsaSmokeConfiguration()
 

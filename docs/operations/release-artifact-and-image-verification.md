@@ -235,6 +235,12 @@ PR and release smoke validation installs the same production archive on Ubuntu
 inspection, database lifecycle, and restart/reinstall/removal evidence. This is
 an archive-parity gate, not a replacement for RHEL qualification of SELinux,
 firewalld, the supported RHEL Podman build, or persistence over a host reboot.
+Its CI-only HSA overlay drives the authenticated production App route and
+records the App-generated correlation identifier across App, Kong, Adapter,
+and exactly one mock handling event. It also records role-specific read-only
+mounts, file modes and ownership, listener reachability, the loopback-only Kong
+Admin API, CA-and-leaf rotation metadata, stale-material rejection, finalization,
+and injected-failure rollback for all three trust domains.
 
 Third-party upstream tags can move after release. Production sites should
 prefer release-specific internal mirror tags and treat the lock file as the

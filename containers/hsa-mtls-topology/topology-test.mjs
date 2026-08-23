@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import http from 'node:http'
 import https from 'node:https'
+import {
+  loadStrictHsaPersonLookupSnapshot,
+  lookupHsaPersonStrict,
+} from './strict-person-lookup.mjs'
 
 const LOOKUP_PATH = '/hsa/person-records/lookup'
 const EXPECTED_HSA_ID = 'SE5560000001-marias'
@@ -13,6 +17,8 @@ function request({
   contentType = 'application/json',
   host = 'kong',
   key,
+  maxVersion,
+  minVersion = 'TLSv1.2',
   path = LOOKUP_PATH,
   port = 8443,
   servername = 'kong',
@@ -32,7 +38,8 @@ function request({
         host,
         key: key ? fs.readFileSync(key) : undefined,
         method: 'POST',
-        minVersion: 'TLSv1.2',
+        ...(maxVersion ? { maxVersion } : {}),
+        minVersion,
         path,
         port,
         rejectUnauthorized: true,
@@ -55,6 +62,17 @@ function request({
   })
 }
 
+function plainRequest({ host, port }) {
+  return new Promise((resolve, reject) => {
+    const call = http.request(
+      { host, method: 'GET', path: '/health', port },
+      resolve,
+    )
+    call.on('error', reject)
+    call.end()
+  })
+}
+
 async function eventually(action) {
   let lastError
   for (let attempt = 0; attempt < 45; attempt += 1) {
@@ -72,37 +90,19 @@ if (process.env.HSA_MTLS_FORCE_VERIFY_FAILURE === 'true') {
   throw new Error('Injected post-rotation verification failure')
 }
 
-function appLookup() {
-  return new Promise((resolve, reject) => {
-    const call = http.request(
-      { host: 'app', method: 'POST', path: '/lookup', port: 8081 },
-      response => {
-        const chunks = []
-        response.on('data', chunk => chunks.push(chunk))
-        response.on('end', () =>
-          resolve({
-            body: Buffer.concat(chunks).toString('utf8'),
-            status: response.statusCode,
-          }),
-        )
-      },
-    )
-    call.on('error', reject)
-    call.end()
-  })
-}
-
+const snapshot = await loadStrictHsaPersonLookupSnapshot()
+if (!snapshot)
+  throw new Error('Strict App transport contract is not configured')
 const appResult = await eventually(async () => {
-  const response = await appLookup()
-  const result = JSON.parse(response.body)
-  if (
-    response.status !== 200 ||
-    result.person?.hsaId !== EXPECTED_HSA_ID ||
-    result.person?.givenName !== 'Maria'
-  ) {
+  const correlationId = randomUUID()
+  const person = await lookupHsaPersonStrict(EXPECTED_HSA_ID, {
+    snapshot,
+    uuid: () => correlationId,
+  })
+  if (person.hsaId !== EXPECTED_HSA_ID || person.givenName !== 'Maria') {
     throw new Error('Authenticated strict topology lookup failed')
   }
-  return result
+  return { correlationId, person }
 })
 
 for (const credentials of [
@@ -187,6 +187,64 @@ for (const probe of [
   if (!rejected) throw new Error(`${probe.name} was accepted`)
 }
 
+const authenticatedLegs = [
+  {
+    ca: '/runtime/app/kong-server-ca.crt',
+    cert: '/runtime/app/app-client.crt',
+    key: '/runtime/app/app-client.key',
+    name: 'app-to-kong',
+  },
+  {
+    ca: '/runtime/kong/adapter-server-ca.crt',
+    cert: '/runtime/kong/kong-client.crt',
+    host: 'adapter',
+    key: '/runtime/kong/kong-client.key',
+    name: 'kong-to-adapter',
+    servername: 'hsa-person-lookup-adapter',
+  },
+  {
+    body: '<not-a-business-request/>',
+    ca: '/runtime/adapter/hsa-server-ca.crt',
+    cert: '/runtime/adapter/adapter-client.crt',
+    contentType: 'text/xml; charset=utf-8',
+    host: 'mock',
+    key: '/runtime/adapter/adapter-client.key',
+    name: 'adapter-to-hsa',
+    path: '/svr-hsaws2/hsaws',
+    servername: 'hsa-directory-mock',
+  },
+]
+
+for (const probe of authenticatedLegs) {
+  await request({ ...probe, maxVersion: 'TLSv1.2' })
+  let obsoleteRejected = false
+  try {
+    await request({ ...probe, maxVersion: 'TLSv1.1', minVersion: 'TLSv1.1' })
+  } catch {
+    obsoleteRejected = true
+  }
+  if (!obsoleteRejected)
+    throw new Error(`TLS 1.1 was accepted on ${probe.name}`)
+}
+
+for (const endpoint of [
+  { host: 'adapter', port: 8081 },
+  { host: 'mock', port: 8081 },
+  { host: 'kong', port: 8001 },
+]) {
+  let externallyRejected = false
+  try {
+    await plainRequest(endpoint)
+  } catch {
+    externallyRejected = true
+  }
+  if (!externallyRejected) {
+    throw new Error(
+      `Loopback or admin listener was externally reachable on ${endpoint.host}:${endpoint.port}`,
+    )
+  }
+}
+
 for (const probe of [
   {
     ca: '/runtime/probe/kong-server-ca.crt',
@@ -228,6 +286,9 @@ console.log(
     event: 'hsa_topology_verified',
     handling_count: 1,
     negative_rejections: 9,
+    tls_1_2_authenticated_legs: 3,
+    tls_1_1_rejections: 3,
+    loopback_listener_rejections: 3,
     wrong_identity_rejections: 3,
   }),
 )

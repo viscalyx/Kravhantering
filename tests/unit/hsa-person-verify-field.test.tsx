@@ -52,6 +52,48 @@ describe('HsaPersonVerifyField', () => {
     vi.unstubAllGlobals()
   })
 
+  it('marks the unavailable lookup status for Developer Mode', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input) === '/api/hsa-person-lookup-capability'
+          ? okJson({ available: false })
+          : okJson({ prefixes: [] }),
+      ),
+    )
+
+    render(
+      <HsaPersonVerifyField
+        emailLabel="Email"
+        errorFallback="Could not verify"
+        fetchingLabel="Fetching"
+        fetchLabel="Fetch"
+        hsaId=""
+        inputClassName="input"
+        inputId="hsa-id"
+        nameLabel="Name"
+        onHsaIdChange={vi.fn()}
+        purpose="requirement_package_co_author"
+        unavailableText="Unavailable"
+      />,
+    )
+
+    const unavailableStatus = await screen.findByRole('status')
+    expect(unavailableStatus).toHaveTextContent('common.hsaLookupUnavailable')
+    expect(unavailableStatus).toHaveAttribute(
+      'data-developer-mode-context',
+      'hsa person verification',
+    )
+    expect(unavailableStatus).toHaveAttribute(
+      'data-developer-mode-name',
+      'lookup unavailable status',
+    )
+    expect(unavailableStatus).toHaveAttribute(
+      'data-developer-mode-value',
+      'requirement_package_co_author',
+    )
+  })
+
   it('does not render stale verification errors after the HSA-id changes', async () => {
     const request = deferredResponse()
     const fetchMock = vi.fn((input: RequestInfo | URL) => {

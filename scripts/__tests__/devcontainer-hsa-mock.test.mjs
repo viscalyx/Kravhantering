@@ -74,7 +74,7 @@ describe('devcontainer HSA mock helper', () => {
       if (text.includes('ps --format json app')) {
         return {
           stdout: JSON.stringify([
-            { ID: 'test-host-abc', Name: 'app', State: 'running' },
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
           ]),
         }
       }
@@ -249,7 +249,7 @@ describe('devcontainer HSA mock helper', () => {
       if (args.join(' ').includes('ps --format json app')) {
         return {
           stdout: JSON.stringify([
-            { ID: 'test-host-abc', Name: 'app', State: 'running' },
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
           ]),
         }
       }
@@ -269,5 +269,58 @@ describe('devcontainer HSA mock helper', () => {
     expect(calls.findIndex(call => call.includes('stop app'))).toBeLessThan(
       calls.findIndex(call => call.includes('stop kong')),
     )
+  })
+
+  it('requires rotation to be launched outside the app container', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('current-app')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockSpawnSync((_command, args) => {
+      if (args.join(' ').includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'current-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      return {}
+    })
+
+    await expect(main(['rotate', 'app-to-kong'])).resolves.toBe(1)
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining('must be launched from the host checkout'),
+    )
+  })
+
+  it('observes an injected post-promotion failure before rollback', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('host-shell')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('HSA_MTLS_FORCE_VERIFY_FAILURE=true')) {
+        return { status: 1 }
+      }
+      return {}
+    })
+
+    await expect(main(['rollback-verify', 'kong-to-adapter'])).resolves.toBe(0)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    const failureIndex = calls.findIndex(call =>
+      call.includes('HSA_MTLS_FORCE_VERIFY_FAILURE=true'),
+    )
+    const rollbackIndex = calls.findIndex(call =>
+      call.includes('run --rm hsa-mtls-provisioner rollback'),
+    )
+    expect(failureIndex).toBeGreaterThan(-1)
+    expect(rollbackIndex).toBeGreaterThan(failureIndex)
   })
 })

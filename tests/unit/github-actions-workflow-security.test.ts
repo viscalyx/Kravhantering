@@ -30,10 +30,12 @@ type WorkflowDocument = {
 type WorkflowJob = {
   if?: unknown
   name?: unknown
+  needs?: unknown
   permissions?: Record<string, unknown>
   'runs-on'?: unknown
   steps?: WorkflowStep[]
   strategy?: unknown
+  uses?: unknown
 }
 
 type WorkflowStep = {
@@ -635,6 +637,34 @@ describe('GitHub Actions workflow security', () => {
         '}}',
       ].join(' '),
     )
+  })
+
+  it('makes the real production App topology part of the stable HSA gate', () => {
+    const workflow = readWorkflowYaml('hsa-mtls-topology.yml')
+    const productionApp = workflow.jobs?.production_app
+    const topology = workflow.jobs?.topology
+    const rotation = workflow.jobs?.rotation
+    const required = workflow.jobs?.required
+
+    expect(productionApp?.uses).toBe(
+      './.github/workflows/container-pr-smoke.yml',
+    )
+    expect(required?.needs).toContain('production_app')
+    expect(stepRunText(topology, 'Inspect runtime isolation')).toContain(
+      'runtime-inspection.sh',
+    )
+    expect(
+      stepRunText(
+        rotation,
+        'Rotate, authenticate, and finalize successful generation',
+      ),
+    ).toContain('lifecycle.sh rotate')
+    expect(
+      stepRunText(
+        rotation,
+        'Inject failure, roll back, and authenticate prior generation',
+      ),
+    ).toContain('lifecycle.sh rollback-verification')
   })
 
   it('rescans verified SBOMs for supported releases and safely synchronizes findings', () => {
