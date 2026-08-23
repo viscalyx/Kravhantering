@@ -101,6 +101,11 @@ printf '4.0K\\t%s\\n' "$measured_path"
 `,
   )
   chmodSync(fakeDu, 0o755)
+  for (const command of ['docker', 'podman']) {
+    const fakeCommand = path.join(bin, command)
+    writeFileSync(fakeCommand, '#!/bin/sh\nexit 0\n')
+    chmodSync(fakeCommand, 0o755)
+  }
   configureFixture?.({ workspace, worktreeRoot })
 
   return {
