@@ -96,6 +96,13 @@ arbitrary readable bytes. Every OAuth root must be independent. Startup fails
 closed if the path, a copied certificate, or any certificate later in the
 bundle reuses the App-to-Kong trust root.
 
+The client certificate file contains the leaf followed by any presented PEM
+intermediates. Startup builds one bounded, cryptographically verified path
+through every presented intermediate to a self-signed root in the CA bundle.
+Incomplete, ambiguous, duplicate, cyclic, and extraneous chains fail closed.
+Every intermediate is current, is a CA, and has the exact certificate-signing
+and CRL-signing key usages.
+
 Repository-owned topologies provision three independent trust domains before
 startup and mount only one role-specific bundle into each runtime participant.
 Private keys use mode `0400`; leaves and trust roots use `0444`; CA signing

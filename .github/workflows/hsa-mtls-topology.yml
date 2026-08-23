@@ -72,7 +72,7 @@ jobs:
           path: /tmp/hsa-oci
       - name: Load exact OCI candidates
         run: for archive in /tmp/hsa-oci/*.tar; do docker load --input "$archive"; done
-      - name: Build current-commit candidates and verify strict topology
+      - name: Start loaded candidates and verify strict topology
         run: |
           docker compose \
             -f containers/hsa-mtls-topology/compose.yml \

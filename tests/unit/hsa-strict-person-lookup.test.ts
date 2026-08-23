@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
+  createCertificateChainFixture,
   createInvalidRuntimeCertificateFixture,
   createRuntimeCertificateFixture,
 } from '@/containers/hsa-mtls-provisioner/test/runtime-fixture.mjs'
@@ -39,16 +40,22 @@ interface InvalidRuntimeFixture {
 
 let fixture: RuntimeFixture
 let invalidFixture: InvalidRuntimeFixture
+let chainFixture: Awaited<ReturnType<typeof createCertificateChainFixture>>
 
 beforeAll(async () => {
-  ;[fixture, invalidFixture] = await Promise.all([
+  ;[fixture, invalidFixture, chainFixture] = await Promise.all([
     createRuntimeCertificateFixture(),
     createInvalidRuntimeCertificateFixture(),
+    createCertificateChainFixture(),
   ])
 }, 30_000)
 
 afterAll(async () => {
-  await Promise.all([fixture?.cleanup(), invalidFixture?.cleanup()])
+  await Promise.all([
+    fixture?.cleanup(),
+    invalidFixture?.cleanup(),
+    chainFixture?.cleanup(),
+  ])
 })
 
 describe('strict HSA person lookup startup snapshot', () => {
@@ -775,6 +782,157 @@ describe('strict HSA person lookup startup snapshot', () => {
         },
       }),
     ).rejects.toMatchObject({ category: 'identity' })
+  })
+
+  it('accepts complete and rejects incomplete intermediate chains for both leaf roles', async () => {
+    const diagnostics = {
+      caInvalid: 'ca',
+      certificateExpired: 'expired',
+      certificateInvalid: 'certificate',
+      certificateNotYetValid: 'not-yet-valid',
+      chainUntrusted: 'chain',
+      fileInvalid: 'file',
+      filePathInvalid: 'path',
+      keyInvalid: 'key',
+      keyMismatch: 'key-mismatch',
+      leafRoleInvalid: 'role',
+      peerIdentityInvalid: 'identity',
+      tlsContextInvalid: 'context',
+    }
+    const fail = (category: string, message: string): never => {
+      throw Object.assign(new Error(message), { category })
+    }
+    const cases = [
+      {
+        identity: { type: 'subject' as const, value: 'CN=kravhantering-app' },
+        material: chainFixture.client,
+        role: 'client' as const,
+      },
+      {
+        identity: {
+          type: 'dns' as const,
+          value: 'hsa-person-lookup-adapter',
+        },
+        material: chainFixture.server,
+        role: 'server' as const,
+      },
+    ]
+
+    for (const testCase of cases) {
+      const options = {
+        caPath: chainFixture.rootCertificate,
+        diagnostics,
+        fail,
+        identity: testCase.identity,
+        keyPath: testCase.material.key,
+        role: testCase.role,
+      }
+      await expect(
+        loadStrictCertificateMaterial({
+          ...options,
+          certPath: testCase.material.complete,
+        }),
+      ).resolves.toEqual({
+        ca: expect.any(Buffer),
+        cert: expect.any(Buffer),
+        key: expect.any(Buffer),
+      })
+      await expect(
+        loadStrictCertificateMaterial({
+          ...options,
+          allowCaBundle: true,
+          caPath: chainFixture.authorityBundle,
+          certPath: testCase.material.leaf,
+        }),
+      ).resolves.toEqual({
+        ca: expect.any(Buffer),
+        cert: expect.any(Buffer),
+        key: expect.any(Buffer),
+      })
+      await expect(
+        loadStrictCertificateMaterial({
+          ...options,
+          certPath: testCase.material.leaf,
+        }),
+      ).rejects.toMatchObject({ category: 'chain' })
+      await expect(
+        loadStrictCertificateMaterial({
+          ...options,
+          allowCaBundle: true,
+          caPath: chainFixture.intermediateCertificate,
+          certPath: testCase.material.leaf,
+        }),
+      ).rejects.toMatchObject({ category: 'ca' })
+    }
+
+    const clientOptions = {
+      diagnostics,
+      fail,
+      identity: { type: 'subject' as const, value: 'CN=kravhantering-app' },
+      keyPath: chainFixture.client.key,
+      role: 'client' as const,
+    }
+    await expect(
+      loadStrictCertificateMaterial({
+        ...clientOptions,
+        caPath: chainFixture.rootCertificate,
+        certPath: chainFixture.client.extraneous,
+      }),
+    ).rejects.toMatchObject({ category: 'chain' })
+    await expect(
+      loadStrictCertificateMaterial({
+        ...clientOptions,
+        caPath: chainFixture.rootCertificate,
+        certPath: chainFixture.client.oversized,
+      }),
+    ).rejects.toMatchObject({ category: 'certificate' })
+    await expect(
+      loadStrictCertificateMaterial({
+        ...clientOptions,
+        allowCaBundle: true,
+        caPath: chainFixture.duplicateRootBundle,
+        certPath: chainFixture.client.complete,
+      }),
+    ).rejects.toMatchObject({ category: 'chain' })
+    await expect(
+      loadStrictCertificateMaterial({
+        ...clientOptions,
+        allowCaBundle: true,
+        caPath: chainFixture.oversizedAuthorityBundle,
+        certPath: chainFixture.client.complete,
+      }),
+    ).rejects.toMatchObject({ category: 'ca' })
+    await expect(
+      loadStrictCertificateMaterial({
+        ...clientOptions,
+        caPath: chainFixture.authorityBundle,
+        certPath: chainFixture.client.leaf,
+      }),
+    ).rejects.toMatchObject({ category: 'ca' })
+    await expect(
+      loadStrictCertificateMaterial({
+        ...clientOptions,
+        allowCaBundle: true,
+        caPath: chainFixture.orphanIntermediateBundle,
+        certPath: chainFixture.client.complete,
+      }),
+    ).rejects.toMatchObject({ category: 'ca' })
+    await expect(
+      loadStrictCertificateMaterial({
+        ...clientOptions,
+        caPath: chainFixture.rootCertificate,
+        certPath: chainFixture.nonCaChain,
+        keyPath: chainFixture.nonCaLeafKey,
+      }),
+    ).rejects.toMatchObject({ category: 'chain' })
+    await expect(
+      loadStrictCertificateMaterial({
+        ...clientOptions,
+        caPath: chainFixture.derRootCertificate,
+        certPath: chainFixture.derClientCertificate,
+        keyPath: chainFixture.derClientKey,
+      }),
+    ).rejects.toMatchObject({ category: 'context' })
   })
 
   it('rejects trailing non-certificate data in a trust bundle', async () => {

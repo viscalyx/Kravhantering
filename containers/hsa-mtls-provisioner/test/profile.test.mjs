@@ -27,6 +27,7 @@ describe('certificate profile', () => {
           {
             client: domain.client.authorization,
             server: domain.server.authorization,
+            wrongServer: domain.wrongServer.authorization,
           },
         ]),
       ),
@@ -42,6 +43,12 @@ describe('certificate profile', () => {
             type: 'dns-san',
             value: 'kong',
           },
+          wrongServer: {
+            allowCommonNameFallback: false,
+            allowWildcard: false,
+            type: 'dns-san',
+            value: 'kong-wrong',
+          },
         },
         'kong-to-adapter': {
           client: {
@@ -53,6 +60,12 @@ describe('certificate profile', () => {
             allowWildcard: false,
             type: 'dns-san',
             value: 'hsa-person-lookup-adapter',
+          },
+          wrongServer: {
+            allowCommonNameFallback: false,
+            allowWildcard: false,
+            type: 'dns-san',
+            value: 'hsa-person-lookup-adapter-wrong',
           },
         },
         'adapter-to-hsa': {
@@ -66,6 +79,12 @@ describe('certificate profile', () => {
             allowWildcard: false,
             type: 'dns-san',
             value: 'hsa-directory-mock',
+          },
+          wrongServer: {
+            allowCommonNameFallback: false,
+            allowWildcard: false,
+            type: 'dns-san',
+            value: 'hsa-directory-mock-wrong',
           },
         },
       },

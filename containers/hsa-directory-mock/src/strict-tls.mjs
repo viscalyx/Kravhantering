@@ -36,6 +36,7 @@ export async function loadStrictTlsMaterial({
   role,
 }) {
   return loadStrictCertificateMaterial({
+    allowCaBundle: true,
     caPath,
     certPath,
     diagnostics: DIAGNOSTICS,

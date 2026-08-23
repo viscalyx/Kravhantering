@@ -297,7 +297,56 @@ function runHsaRotationEvidenceHarness() {
   return { result, temporaryDirectory }
 }
 
+function runHsaPkiCleanup(exitStatus) {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kh-hsa-pki-cleanup-'),
+  )
+  temporaryDirectories.push(temporaryDirectory)
+  const pkiDirectory = path.join(temporaryDirectory, 'config/secrets/hsa-mtls')
+  fs.mkdirSync(path.join(pkiDirectory, '.staging'), { recursive: true })
+  fs.writeFileSync(path.join(pkiDirectory, 'app-client.crt'), 'certificate')
+  fs.writeFileSync(path.join(pkiDirectory, 'app-client.key'), 'private key')
+  fs.writeFileSync(path.join(pkiDirectory, '.staging/pending'), 'staged')
+
+  const shell = `
+    source "$1"
+    sudo() { "$@"; }
+    trap cleanup_config_temp EXIT
+    exit "$2"
+  `
+  const result = childProcess.spawnSync(
+    'bash',
+    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH, String(exitStatus)],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PRODUCTION_SMOKE_CONFIG_ROOT: path.join(temporaryDirectory, 'config'),
+        PRODUCTION_SMOKE_SERVICE_USER: 'hsa-cleanup-user-does-not-exist',
+      },
+    },
+  )
+  return { pkiDirectory, result }
+}
+
 describe('production smoke output', () => {
+  it.each([
+    { exitStatus: 0, lifecycle: 'success' },
+    { exitStatus: 23, lifecycle: 'failure' },
+  ])(
+    'removes host-mounted ephemeral App PKI after release-smoke $lifecycle',
+    ({ exitStatus }) => {
+      const { pkiDirectory, result } = runHsaPkiCleanup(exitStatus)
+
+      expect(result.status).toBe(exitStatus)
+      expect(fs.existsSync(pkiDirectory)).toBe(false)
+      expect(fs.existsSync(path.join(pkiDirectory, 'app-client.key'))).toBe(
+        false,
+      )
+      expect(fs.existsSync(path.join(pkiDirectory, '.staging'))).toBe(false)
+    },
+  )
+
   it('emits mandatory evidence after successful rotations and recovered failures', () => {
     const { result, temporaryDirectory } = runHsaRotationEvidenceHarness()
 

@@ -220,6 +220,13 @@ function validateProfile(profile) {
       materialIds,
       `${location}.wrongClient`,
     )
+    assertLeaf(
+      domain.wrongServer,
+      'server',
+      roles,
+      materialIds,
+      `${location}.wrongServer`,
+    )
     materialOwners.set(
       domain.server.certificateMaterialId,
       domain.server.runtimeRole,
@@ -243,6 +250,14 @@ function validateProfile(profile) {
     materialOwners.set(
       domain.wrongClient.privateKeyMaterialId,
       domain.wrongClient.runtimeRole,
+    )
+    materialOwners.set(
+      domain.wrongServer.certificateMaterialId,
+      domain.wrongServer.runtimeRole,
+    )
+    materialOwners.set(
+      domain.wrongServer.privateKeyMaterialId,
+      domain.wrongServer.runtimeRole,
     )
   }
 

@@ -86,6 +86,54 @@ async function eventually(action) {
   throw lastError
 }
 
+async function rejectsSameCaWrongServerIdentity({
+  ca,
+  cert,
+  expectedServerName,
+  key,
+  name,
+}) {
+  const server = https.createServer(
+    {
+      cert: fs.readFileSync(cert),
+      key: fs.readFileSync(key),
+      minVersion: 'TLSv1.2',
+    },
+    (_request, response) => {
+      response.writeHead(200, { 'Content-Type': 'application/json' })
+      response.end('{}')
+    },
+  )
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  const address = server.address()
+  if (!address || typeof address === 'string') {
+    throw new Error(`Wrong-server probe did not listen for ${name}`)
+  }
+  let rejected = false
+  try {
+    await request({
+      ca,
+      host: '127.0.0.1',
+      port: address.port,
+      servername: expectedServerName,
+    })
+  } catch {
+    rejected = true
+  } finally {
+    await new Promise((resolve, reject) =>
+      server.close(error => (error ? reject(error) : resolve())),
+    )
+  }
+  if (!rejected) {
+    throw new Error(
+      `Correct-CA wrong exact server identity was accepted on ${name}`,
+    )
+  }
+}
+
 if (process.env.HSA_MTLS_FORCE_VERIFY_FAILURE === 'true') {
   throw new Error('Injected post-rotation verification failure')
 }
@@ -280,6 +328,32 @@ for (const probe of [
   }
 }
 
+for (const probe of [
+  {
+    ca: '/runtime/probe/kong-server-ca.crt',
+    cert: '/runtime/probe/wrong-kong-server.crt',
+    expectedServerName: 'kong',
+    key: '/runtime/probe/wrong-kong-server.key',
+    name: 'app-to-kong',
+  },
+  {
+    ca: '/runtime/probe/adapter-server-ca.crt',
+    cert: '/runtime/probe/wrong-adapter-server.crt',
+    expectedServerName: 'hsa-person-lookup-adapter',
+    key: '/runtime/probe/wrong-adapter-server.key',
+    name: 'kong-to-adapter',
+  },
+  {
+    ca: '/runtime/probe/hsa-server-ca.crt',
+    cert: '/runtime/probe/wrong-mock-server.crt',
+    expectedServerName: 'hsa-directory-mock',
+    key: '/runtime/probe/wrong-mock-server.key',
+    name: 'adapter-to-hsa',
+  },
+]) {
+  await rejectsSameCaWrongServerIdentity(probe)
+}
+
 console.log(
   JSON.stringify({
     correlation_id: appResult.correlationId,
@@ -290,5 +364,6 @@ console.log(
     tls_1_1_rejections: 3,
     loopback_listener_rejections: 3,
     wrong_identity_rejections: 3,
+    wrong_server_identity_rejections: 3,
   }),
 )

@@ -29,9 +29,8 @@ cleanup_config_temp() {
   if [[ -n "$HSA_STALE_TEMP_DIR" ]]; then
     as_service rm -rf -- "$HSA_STALE_TEMP_DIR" >/dev/null 2>&1 || true
   fi
+  sudo rm -rf -- "$CONFIG_ROOT/secrets/hsa-mtls"
 }
-
-trap cleanup_config_temp EXIT
 
 fail() {
   printf 'production-smoke: %s\n' "$*" >&2
@@ -1895,5 +1894,6 @@ main() {
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  trap cleanup_config_temp EXIT
   main "$@"
 fi

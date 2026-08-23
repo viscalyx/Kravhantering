@@ -59,10 +59,16 @@ const expectedFiles = {
     'kong-server-ca.crt',
     'wrong-adapter-client.crt',
     'wrong-adapter-client.key',
+    'wrong-adapter-server.crt',
+    'wrong-adapter-server.key',
     'wrong-app-client.crt',
     'wrong-app-client.key',
     'wrong-kong-client.crt',
     'wrong-kong-client.key',
+    'wrong-kong-server.crt',
+    'wrong-kong-server.key',
+    'wrong-mock-server.crt',
+    'wrong-mock-server.key',
   ],
 }
 
@@ -316,6 +322,10 @@ describe('certificate generation lifecycle', () => {
         assert.notEqual(
           afterDomain.wrongClient.digestSha256,
           beforeDomain.wrongClient.digestSha256,
+        )
+        assert.notEqual(
+          afterDomain.wrongServer.digestSha256,
+          beforeDomain.wrongServer.digestSha256,
         )
       } else {
         assert.deepEqual(afterDomain, beforeDomain)

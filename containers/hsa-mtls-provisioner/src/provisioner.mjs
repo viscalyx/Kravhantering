@@ -259,6 +259,15 @@ async function issueTrustDomain({
       profile,
       workspace,
     })
+    const wrongServer = await issueLeaf({
+      caCertificate,
+      caPrivateKey,
+      days: validity.leafDays,
+      leaf: domain.wrongServer,
+      name: 'wrong-server',
+      profile,
+      workspace,
+    })
     return {
       material: new Map([
         [domain.ca.materialId, await readFile(caCertificate)],
@@ -279,6 +288,14 @@ async function issueTrustDomain({
         [
           domain.wrongClient.privateKeyMaterialId,
           await readFile(wrongClient.privateKey),
+        ],
+        [
+          domain.wrongServer.certificateMaterialId,
+          await readFile(wrongServer.certificate),
+        ],
+        [
+          domain.wrongServer.privateKeyMaterialId,
+          await readFile(wrongServer.privateKey),
         ],
       ]),
     }
@@ -742,6 +759,14 @@ async function buildMetadata({
           domain.wrongClient.certificateMaterialId,
         ),
       ),
+      wrongServer: await certificateMetadata(
+        domain.wrongServer.certificateMaterialId,
+        firstMaterialFile(
+          generationDir,
+          profile,
+          domain.wrongServer.certificateMaterialId,
+        ),
+      ),
     }
   }
   return {
@@ -829,6 +854,7 @@ export async function verifyGenerationDirectory({
       ['server', domain.server],
       ['client', domain.client],
       ['client', domain.wrongClient],
+      ['server', domain.wrongServer],
     ]) {
       await validateLeaf({
         caPath,

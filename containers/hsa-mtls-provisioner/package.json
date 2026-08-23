@@ -15,7 +15,7 @@
     }
   },
   "scripts": {
-    "test": "node --test --experimental-test-coverage --test-coverage-exclude=src/cli.mjs --test-coverage-lines=85 --test-coverage-functions=85 --test-coverage-branches=85"
+    "test": "node --test --experimental-test-coverage --test-coverage-exclude=src/cli.mjs --test-coverage-exclude=test/runtime-fixture.mjs --test-coverage-lines=85 --test-coverage-functions=85 --test-coverage-branches=85"
   },
   "allowScripts": {}
 }

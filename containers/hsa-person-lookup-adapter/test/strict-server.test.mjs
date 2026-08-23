@@ -5,6 +5,7 @@ import https from 'node:https'
 import path from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import {
+  createCertificateChainFixture,
   createInvalidRuntimeCertificateFixture,
   createRuntimeCertificateFixture,
 } from '../../hsa-mtls-provisioner/test/runtime-fixture.mjs'
@@ -198,13 +199,15 @@ async function strictRequest(port, fixture, options = {}) {
 
 describe('strict HSA adapter network boundary', () => {
   let fixture
+  let chainFixture
   let invalidFixture
   let snapshot
 
   before(async () => {
-    ;[fixture, invalidFixture] = await Promise.all([
+    ;[fixture, invalidFixture, chainFixture] = await Promise.all([
       createRuntimeCertificateFixture(),
       createInvalidRuntimeCertificateFixture(),
+      createCertificateChainFixture(),
     ])
     snapshot = await loadStrictAdapterSnapshot(
       readStrictAdapterConfig({
@@ -237,7 +240,13 @@ describe('strict HSA adapter network boundary', () => {
     )
   })
 
-  after(async () => Promise.all([fixture.cleanup(), invalidFixture.cleanup()]))
+  after(async () =>
+    Promise.all([
+      fixture.cleanup(),
+      invalidFixture.cleanup(),
+      chainFixture.cleanup(),
+    ]),
+  )
 
   it('requires a trusted exact client and maps correlation to MessageID', async () => {
     let soapRequest = ''
@@ -490,6 +499,33 @@ describe('strict HSA adapter network boundary', () => {
             error.category === 'LEAF_ROLE_INVALID',
         )
       }
+    }
+  })
+
+  it('accepts complete CA-bundle chains and rejects missing intermediates for both roles', async () => {
+    for (const role of ['client', 'server']) {
+      const material = chainFixture[role]
+      const input = {
+        caPath: chainFixture.authorityBundle,
+        certPath: material.leaf,
+        expectedIdentity:
+          role === 'client'
+            ? { type: 'subject', value: 'CN=kravhantering-app' }
+            : { type: 'dns', value: 'hsa-person-lookup-adapter' },
+        keyPath: material.key,
+        role,
+      }
+      await assert.doesNotReject(() => loadStrictTlsMaterial(input))
+      await assert.rejects(
+        () =>
+          loadStrictTlsMaterial({
+            ...input,
+            caPath: chainFixture.rootCertificate,
+          }),
+        error =>
+          error instanceof StrictTlsError &&
+          error.category === 'CHAIN_UNTRUSTED',
+      )
     }
   })
 

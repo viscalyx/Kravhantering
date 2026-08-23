@@ -337,7 +337,6 @@ describe('container image contract', () => {
       ...Object.values(packageJson.scripts),
       ...workflowRunCommands('.github/workflows/container-pr-smoke.yml'),
       ...workflowRunCommands('.github/workflows/container-release.yml'),
-      ...workflowRunCommands('.github/workflows/hsa-mtls-topology.yml'),
     ].filter(command => command.includes('docker buildx build'))
     expect(productionBuildCommands.length).toBeGreaterThan(0)
     for (const command of productionBuildCommands) {

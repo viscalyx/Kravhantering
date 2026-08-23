@@ -272,7 +272,7 @@ async function executeStrictRequest(
   const serverName = input.tls.serverName
   return await new Promise((resolve, reject) => {
     let settled = false
-    const finish = (action: () => void) => {
+    const finish = (action: () => void): void => {
       if (settled) return
       settled = true
       action()
