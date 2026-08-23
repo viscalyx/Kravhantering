@@ -597,13 +597,21 @@ types without recursively taking ownership of the Codex state tree. It rejects
 legacy global launchers with replacement-only guidance, symlinked or
 unrecognized managed roots, unsafe parents, and unrecognized package entries.
 It records only recognized `current` and launcher targets, bounds the complete
-upstream invocation and lock wait to 15 minutes, verifies the exact target
-through the absolute launcher, and restores the recorded links after ordinary
-failure, timeout, termination, or version mismatch. A private transaction
-record lets the next setup recover recognized links and scratch state after an
-uncatchable interruption. Authentication, sessions, plugins, skills,
-databases, history, attachments, caches, and unrelated configuration remain
-outside this installation boundary.
+upstream invocation and lock wait to 15 minutes, and holds upstream's own
+`install.lock` across recovery, link capture, installation, validation, and
+commit. The verified installer passes that held lock through the upstream
+installer's normal `flock` boundary, so a concurrent `codex update` completes
+before Azure snapshots state or waits until Azure finishes. The boundary
+verifies the exact target through the absolute launcher and restores the
+recorded links after ordinary failure, timeout, termination, or version
+mismatch. It reports whether convergence installed, repaired, revalidated,
+upgraded, or downgraded the active release. A private transaction record lets
+the next setup recover recognized links and scratch state after an uncatchable
+interruption; owner-controlled orphaned `run.*` directories from the smaller
+pre-journal interruption window are removed under the same lock without
+following symlinks. Authentication, sessions, plugins, skills, databases,
+history, attachments, caches, and unrelated configuration remain outside this
+installation boundary.
 
 Guest bootstrap parses the target in memory, validates the absolute launcher
 against it, and emits the same result for the workstation bootstrap module.

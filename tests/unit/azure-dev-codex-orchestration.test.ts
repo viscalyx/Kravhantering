@@ -227,6 +227,7 @@ function userFixture(options: FixtureOptions = {}) {
     installDir,
     launcher,
     legacyLauncher,
+    fakeBin,
     releasesDir,
     root,
     runnerCapture,
@@ -314,16 +315,17 @@ describe('Azure Codex installation orchestration', () => {
     expect(environment).toContain(`EFFECTIVE_UID=${effectiveUid}\n`)
     expect(environment).toContain(`EFFECTIVE_GID=${effectiveGid}\n`)
     expect(environment).toContain('TOKEN_PRESENT=yes\n')
+    expect(result.stderr).toContain('previousState=missing action=install')
   })
 
   it.each([
-    ['current', '1.2.3'],
-    ['older', '1.1.0'],
-    ['newer stable', '2.0.0'],
-    ['newer prerelease', '2.0.0-beta.1'],
+    ['current', '1.2.3', 'revalidate'],
+    ['older', '1.1.0', 'upgrade'],
+    ['newer stable', '2.0.0', 'downgrade'],
+    ['newer prerelease', '2.0.0-beta.1', 'downgrade'],
   ])(
     'converges a complete %s installation to the exact stable target',
-    (_name, version) => {
+    (_name, version, action) => {
       const fixture = userFixture({ previousVersion: version })
 
       const result = runFixture(fixture)
@@ -336,6 +338,7 @@ describe('Azure Codex installation orchestration', () => {
       expect(result.stderr).toContain('targetVersion=1.2.3')
       expect(result.stderr).toContain('finalVersion=1.2.3')
       expect(result.stderr).toContain(`previousState=${version}`)
+      expect(result.stderr).toContain(`action=${action}`)
     },
   )
 
@@ -350,6 +353,7 @@ describe('Azure Codex installation orchestration', () => {
     expect(readlinkSync(fixture.launcher)).toBe(
       `${fixture.currentLink}/bin/codex`,
     )
+    expect(result.stderr).toContain('previousState=missing action=repair')
   })
 
   it('reinstalls an incomplete target release', () => {
@@ -390,6 +394,7 @@ describe('Azure Codex installation orchestration', () => {
     expect(existsSync(fixture.currentLink)).toBe(false)
     expect(existsSync(fixture.launcher)).toBe(false)
     expect(result.stderr).toContain('previousState=incomplete')
+    expect(result.stderr).toContain('action=repair')
   })
 
   it.each([
@@ -438,6 +443,23 @@ describe('Azure Codex installation orchestration', () => {
     })
 
     await waitForFile(transaction)
+    const contenderMarker = path.join(fixture.root, 'contender-acquired')
+    const contender = spawn(
+      'bash',
+      [
+        '-c',
+        'exec 9>"$1"; /usr/bin/flock 9; printf acquired >"$2"',
+        'bash',
+        path.join(fixture.standaloneRoot, 'install.lock'),
+        contenderMarker,
+      ],
+      { stdio: 'ignore' },
+    )
+    const contenderCompletion = new Promise<void>(resolve =>
+      contender.once('exit', () => resolve()),
+    )
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(existsSync(contenderMarker)).toBe(false)
     expect(child.kill('SIGTERM')).toBe(true)
     const completion = await new Promise<{
       code: number | null
@@ -445,8 +467,10 @@ describe('Azure Codex installation orchestration', () => {
     }>(resolve => {
       child.once('exit', (code, signal) => resolve({ code, signal }))
     })
+    await contenderCompletion
 
     expect(completion).toEqual({ code: 143, signal: null })
+    expect(readFileSync(contenderMarker, 'utf8')).toBe('acquired')
     expect(stderr).toContain('rollback=signal TERM')
     expect(readlinkSync(fixture.currentLink)).toBe(previousTarget)
     expect(readlinkSync(fixture.launcher)).toBe(
@@ -500,18 +524,71 @@ describe('Azure Codex installation orchestration', () => {
     expect(existsSync(interruptedScratch)).toBe(false)
   })
 
-  it('bounds live-lock waiting without removing the upstream lock', () => {
+  it('bounds live-lock waiting without removing the upstream lock', async () => {
     const fixture = userFixture({
-      failure: 'timeout',
       previousVersion: '1.1.0',
+      timeoutSeconds: '1',
     })
     const lock = path.join(fixture.standaloneRoot, 'install.lock')
-    writeFileSync(lock, 'live-lock-sentinel\n')
+    const marker = path.join(fixture.root, 'lock-held')
+    const holder = spawn(
+      'bash',
+      [
+        '-c',
+        'exec 9>"$1"; /usr/bin/flock 9; printf live-lock >&9; printf held >"$2"; sleep 2',
+        'bash',
+        lock,
+        marker,
+      ],
+      { stdio: 'ignore' },
+    )
+    await waitForFile(marker)
 
     const result = runFixture(fixture)
 
     expect(result.status).not.toBe(0)
-    expect(readFileSync(lock, 'utf8')).toBe('live-lock-sentinel\n')
+    expect(result.stderr).toContain(
+      'Timed out waiting for the Codex install lock',
+    )
+    expect(holder.exitCode).toBeNull()
+    expect(existsSync(lock)).toBe(true)
+    expect(readFileSync(lock, 'utf8')).toBe('live-lock')
+    await new Promise<void>(resolve => holder.once('exit', () => resolve()))
+  }, 4_000)
+
+  it('snapshots a concurrent completed update only after acquiring the upstream lock', async () => {
+    const fixture = userFixture({
+      failure: 'before-activation',
+      previousVersion: '1.1.0',
+      timeoutSeconds: '3',
+    })
+    const concurrentTarget = fixture.createCompleteRelease('2.0.0')
+    const lock = path.join(fixture.standaloneRoot, 'install.lock')
+    const marker = path.join(fixture.root, 'lock-held')
+    const holder = spawn(
+      'bash',
+      [
+        '-c',
+        'exec 9>"$1"; /usr/bin/flock 9; printf held >"$2"; sleep 0.2; ln -sfn "$3" "$4"',
+        'bash',
+        lock,
+        marker,
+        concurrentTarget,
+        fixture.currentLink,
+      ],
+      { stdio: 'ignore' },
+    )
+    await waitForFile(marker)
+
+    const result = runFixture(fixture)
+    await new Promise<void>(resolve => holder.once('exit', () => resolve()))
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('previousState=2.0.0 action=resolve')
+    expect(readlinkSync(fixture.currentLink)).toBe(concurrentTarget)
+    expect(readlinkSync(fixture.launcher)).toBe(
+      `${fixture.currentLink}/bin/codex`,
+    )
   })
 
   it('rejects an invocation bound longer than 15 minutes', () => {
@@ -584,6 +661,59 @@ describe('Azure Codex installation orchestration', () => {
     expect(readlinkSync(fixture.currentLink)).toBe(previousTarget)
   })
 
+  it('removes only recognized owner-controlled stale scratch directories', () => {
+    const fixture = userFixture()
+    const staleScratch = path.join(fixture.scratchRoot, 'run.Abc123')
+    const unrelatedScratch = path.join(fixture.scratchRoot, 'operator-note')
+    mkdirSync(staleScratch)
+    writeFileSync(path.join(staleScratch, 'partial'), 'stale\n')
+    writeFileSync(unrelatedScratch, 'preserve\n')
+
+    const result = runFixture(fixture)
+
+    expect(result.status).toBe(0)
+    expect(existsSync(staleScratch)).toBe(false)
+    expect(readFileSync(unrelatedScratch, 'utf8')).toBe('preserve\n')
+  })
+
+  it.each([
+    ['symlink', 'symlink'],
+    ['regular file', 'file'],
+    ['unexpected owner', 'owner'],
+  ])('rejects recognized stale scratch with unsafe %s', (_name, scenario) => {
+    const fixture = userFixture()
+    const sentinel = path.join(fixture.root, 'sentinel')
+    const staleScratch = path.join(fixture.scratchRoot, 'run.Unsafe1')
+    writeFileSync(sentinel, 'preserve\n')
+    if (scenario === 'symlink') {
+      symlinkSync(fixture.root, staleScratch)
+    } else if (scenario === 'file') {
+      writeFileSync(staleScratch, 'unsafe object\n')
+    } else {
+      mkdirSync(staleScratch)
+      writeFileSync(
+        path.join(fixture.fakeBin, 'stat'),
+        [
+          '#!/usr/bin/env bash',
+          `if [ "\${*: -1}" = ${shellLiteral(staleScratch)} ] && [ "\${1-}" = -c ] && [ "\${2-}" = %u:%g ]; then`,
+          "  printf '4242:4242\\n'",
+          '  exit 0',
+          'fi',
+          'exec /usr/bin/stat "$@"',
+          '',
+        ].join('\n'),
+        { mode: 0o755 },
+      )
+    }
+
+    const result = runFixture(fixture)
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('Refusing unsafe stale Azure Codex scratch')
+    expect(readFileSync(sentinel, 'utf8')).toBe('preserve\n')
+    expect(existsSync(staleScratch)).toBe(true)
+  })
+
   it('preserves unrelated user state and scratch content', () => {
     const fixture = userFixture({ previousVersion: '1.1.0' })
     const sentinels = [
@@ -616,6 +746,23 @@ describe('Azure Codex installation orchestration', () => {
     expect(readFileSync(unrelatedScratch, 'utf8')).toBe('preserve scratch\n')
   })
 
+  it('accepts only the recognized staging envelope without changing its contents', () => {
+    const fixture = userFixture()
+    const staging = path.join(
+      fixture.releasesDir,
+      '.staging.1.2.3-beta.1-x86_64-unknown-linux-musl.123',
+    )
+    mkdirSync(staging)
+    writeFileSync(path.join(staging, 'partial'), 'recognized staging\n')
+
+    const result = runFixture(fixture)
+
+    expect(result.status).toBe(0)
+    expect(readFileSync(path.join(staging, 'partial'), 'utf8')).toBe(
+      'recognized staging\n',
+    )
+  })
+
   it('applies private managed modes while retaining package execution modes', () => {
     const fixture = userFixture()
     const config = path.join(fixture.codexHome, 'config.toml')
@@ -639,6 +786,9 @@ describe('Azure Codex installation orchestration', () => {
     }
     expect(lstatSync(config).mode & 0o777).toBe(0o600)
     expect(
+      lstatSync(path.join(fixture.standaloneRoot, 'install.lock')).mode & 0o777,
+    ).toBe(0o600)
+    expect(
       lstatSync(path.join(fixture.targetRelease, 'bin', 'codex')).mode & 0o777,
     ).toBe(0o755)
   })
@@ -647,6 +797,7 @@ describe('Azure Codex installation orchestration', () => {
     ['managed-root symlink', 'symlink'],
     ['unexpected managed-root object', 'unexpected'],
     ['unsafe parent ownership', 'owner'],
+    ['malformed staging entry', 'invalid-staging'],
     ['unrecognized release symlink', 'release-symlink'],
   ])('fails with remediation for %s', (_name, scenario) => {
     const fixture = userFixture({ fakeOwner: scenario === 'owner' })
@@ -655,6 +806,13 @@ describe('Azure Codex installation orchestration', () => {
       symlinkSync(fixture.root, fixture.standaloneRoot)
     } else if (scenario === 'unexpected') {
       writeFileSync(path.join(fixture.standaloneRoot, 'mystery'), 'unsafe\n')
+    } else if (scenario === 'invalid-staging') {
+      mkdirSync(
+        path.join(
+          fixture.releasesDir,
+          '.staging.1.2.3-x86_64-unknown-linux-musl.not-a-pid',
+        ),
+      )
     } else if (scenario === 'release-symlink') {
       symlinkSync(
         fixture.root,

@@ -83,10 +83,38 @@ case "${CODEX_MANAGED_DIRECTORY_MODE}" in
     ;;
 esac
 install -d -m "${CODEX_MANAGED_DIRECTORY_MODE}" "${CODEX_HOME}" "${CODEX_INSTALL_DIR}"
+codex_upstream_path="${PATH}"
+if [ -n "${CODEX_INSTALL_LOCK_FD:-}" ]; then
+  case "${CODEX_INSTALL_LOCK_FD}" in
+    *[!0-9]* | '')
+      log 'Invalid inherited Codex install lock descriptor'
+      exit 1
+      ;;
+  esac
+  codex_lock_file="${CODEX_HOME}/packages/standalone/install.lock"
+  if [ "$(readlink -- "/proc/self/fd/${CODEX_INSTALL_LOCK_FD}" 2>/dev/null)" != "${codex_lock_file}" ] ||
+    ! /usr/bin/flock --nonblock "${CODEX_INSTALL_LOCK_FD}"; then
+    log 'Inherited Codex install lock is invalid or not held'
+    exit 1
+  fi
+  codex_lock_bin="${codex_temp_dir}/lock-bin"
+  install -d -m 0700 "${codex_lock_bin}"
+  cat > "${codex_lock_bin}/flock" <<'LOCK_SHIM'
+#!/bin/sh
+set -eu
+if [ "$#" -eq 1 ] && [ "$1" = 9 ] && [ -n "${CODEX_INSTALL_LOCK_FD:-}" ]; then
+  exec /usr/bin/flock --nonblock "${CODEX_INSTALL_LOCK_FD}"
+fi
+exec /usr/bin/flock "$@"
+LOCK_SHIM
+  chmod 0700 "${codex_lock_bin}/flock"
+  codex_upstream_path="${codex_lock_bin}:${codex_upstream_path}"
+fi
 CODEX_HOME="${CODEX_HOME}" \
   CODEX_INSTALL_DIR="${CODEX_INSTALL_DIR}" \
   CODEX_NON_INTERACTIVE="${CODEX_NON_INTERACTIVE}" \
   CODEX_RELEASE="${codex_version}" \
+  PATH="${codex_upstream_path}" \
   sh "${codex_installer}" >&2
 
 jq -cn \

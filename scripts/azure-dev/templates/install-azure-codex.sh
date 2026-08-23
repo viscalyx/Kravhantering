@@ -15,14 +15,17 @@ CODEX_RELEASES_DIR="${CODEX_STANDALONE_ROOT}/releases"
 CODEX_CURRENT_LINK="${CODEX_STANDALONE_ROOT}/current"
 CODEX_LAUNCHER="${CODEX_INSTALL_DIR}/codex"
 CODEX_TRANSACTION="${CODEX_STANDALONE_ROOT}/.krav-azure-transaction.json"
+CODEX_LOCK_FILE="${CODEX_STANDALONE_ROOT}/install.lock"
 CODEX_UID=''
 CODEX_GID=''
 CODEX_TRUSTED_ROOT_UID=''
+CODEX_LOCK_FD=''
 transaction_active=0
 previous_current_target=''
 previous_launcher_target=''
 run_temp_dir=''
 user_managed_result=''
+had_release_state=0
 
 log() {
   printf '[azure-codex-orchestration] %s\n' "$*" >&2
@@ -143,7 +146,16 @@ is_recognized_release_name() {
 }
 
 is_recognized_staging_name() {
-  [[ "$1" =~ ^\.staging\.[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+){0,2})?-(x86_64|aarch64)-unknown-linux-musl\.[0-9]+$ ]]
+  local candidate suffix
+
+  case "$1" in
+    .staging.*.*) candidate="${1#.staging.}" ;;
+    *) return 1 ;;
+  esac
+  suffix="${candidate##*.}"
+  [[ "${suffix}" =~ ^[0-9]+$ ]] || return 1
+  candidate="${candidate%.*}"
+  is_recognized_release_name "${candidate}"
 }
 
 is_recognized_release_target() {
@@ -168,6 +180,47 @@ release_version_from_target() {
     *-x86_64-unknown-linux-musl) printf '%s\n' "${name%-x86_64-unknown-linux-musl}" ;;
     *-aarch64-unknown-linux-musl) printf '%s\n' "${name%-aarch64-unknown-linux-musl}" ;;
     *) return 1 ;;
+  esac
+}
+
+version_core_is_greater() {
+  local left="${1%%-*}" right="${2%%-*}"
+  local left_major left_minor left_patch right_major right_minor right_patch
+
+  IFS=. read -r left_major left_minor left_patch <<< "${left}"
+  IFS=. read -r right_major right_minor right_patch <<< "${right}"
+  if ((10#${left_major} != 10#${right_major})); then
+    ((10#${left_major} > 10#${right_major}))
+  elif ((10#${left_minor} != 10#${right_minor})); then
+    ((10#${left_minor} > 10#${right_minor}))
+  else
+    ((10#${left_patch} > 10#${right_patch}))
+  fi
+}
+
+select_convergence_action() {
+  local previous_version="$1" target_version="$2"
+
+  case "${previous_version}" in
+    missing)
+      if [ "${had_release_state}" -eq 1 ]; then
+        printf 'repair\n'
+      else
+        printf 'install\n'
+      fi
+      ;;
+    incomplete) printf 'repair\n' ;;
+    *)
+      if [ -z "${target_version}" ]; then
+        printf 'resolve\n'
+      elif [ "${previous_version}" = "${target_version}" ]; then
+        printf 'revalidate\n'
+      elif version_core_is_greater "${previous_version}" "${target_version}"; then
+        printf 'downgrade\n'
+      else
+        printf 'upgrade\n'
+      fi
+      ;;
   esac
 }
 
@@ -330,6 +383,51 @@ cleanup_run_temp() {
   fi
   rm -rf -- "${run_temp_dir}"
   run_temp_dir=''
+}
+
+cleanup_stale_scratch() {
+  local entry name
+
+  while IFS= read -r -d '' entry; do
+    name="${entry##*/}"
+    [[ "${name}" =~ ^run\.[A-Za-z0-9]+$ ]] || continue
+    if [ -L "${entry}" ] || [ ! -d "${entry}" ] ||
+      [ "$(stat -c '%u:%g' -- "${entry}")" != "${CODEX_UID}:${CODEX_GID}" ]; then
+      log "Refusing unsafe stale Azure Codex scratch at ${entry}"
+      return 1
+    fi
+    rm -rf -- "${entry}"
+  done < <(find "${CODEX_TEMP_ROOT}" -mindepth 1 -maxdepth 1 -name 'run.*' -print0)
+}
+
+acquire_install_lock() {
+  if [ ! -e "${CODEX_LOCK_FILE}" ] && [ ! -L "${CODEX_LOCK_FILE}" ]; then
+    runuser -u "${CODEX_USER}" -- \
+      /usr/bin/env -i PATH=/usr/bin:/bin \
+      /bin/bash -c 'umask 077; set -o noclobber; : > "$1"' bash \
+      "${CODEX_LOCK_FILE}" 2>/dev/null || true
+  fi
+  validate_managed_file "${CODEX_LOCK_FILE}" || return 1
+  chmod 0600 "${CODEX_LOCK_FILE}"
+  exec {CODEX_LOCK_FD}<> "${CODEX_LOCK_FILE}"
+  if [ "$(readlink -- "/proc/self/fd/${CODEX_LOCK_FD}" 2>/dev/null)" != "${CODEX_LOCK_FILE}" ] ||
+    [ ! -f "/proc/self/fd/${CODEX_LOCK_FD}" ] ||
+    [ "$(stat -c '%u:%g' -- "/proc/self/fd/${CODEX_LOCK_FD}")" != "${CODEX_UID}:${CODEX_GID}" ]; then
+    log 'Codex install lock changed during validation'
+    exec {CODEX_LOCK_FD}>&-
+    return 1
+  fi
+  if ! /usr/bin/flock --timeout "${CODEX_TIMEOUT_SECONDS}" "${CODEX_LOCK_FD}"; then
+    log 'Timed out waiting for the Codex install lock'
+    exec {CODEX_LOCK_FD}>&-
+    return 1
+  fi
+}
+
+release_install_lock() {
+  if [ -n "${CODEX_LOCK_FD}" ]; then
+    exec {CODEX_LOCK_FD}>&-
+  fi
 }
 
 handle_failure() {
@@ -506,8 +604,11 @@ prepare_user_managed_roots() {
   require_managed_directory "${CODEX_HOME}" 0700 || return 1
   require_managed_directory "${packages_root}" 0700 || return 1
   require_managed_directory "${CODEX_STANDALONE_ROOT}" 0700 || return 1
-  require_managed_directory "${CODEX_RELEASES_DIR}" 0700 || return 1
   require_managed_directory "${CODEX_TEMP_ROOT}" 0700 || return 1
+}
+
+prepare_locked_managed_state() {
+  require_managed_directory "${CODEX_RELEASES_DIR}" 0700 || return 1
   if [ -e "${CODEX_HOME}/config.toml" ] || [ -L "${CODEX_HOME}/config.toml" ]; then
     validate_managed_file "${CODEX_HOME}/config.toml" || return 1
     chmod 0600 "${CODEX_HOME}/config.toml"
@@ -518,6 +619,8 @@ prepare_user_managed_roots() {
 
 run_user_managed() {
   local installer_result canonical_result target_version previous_version='missing'
+  local convergence_action='resolve' install_started_at_ns remaining_nanoseconds
+  local remaining_seconds
 
   case "${CODEX_TIMEOUT_SECONDS}" in
     '' | *[!0-9]* | 0)
@@ -535,7 +638,15 @@ run_user_managed() {
     return 1
   fi
   prepare_user_managed_roots || return 1
+  install_started_at_ns="$(/usr/bin/date +%s%N)"
+  acquire_install_lock || return 1
+  prepare_locked_managed_state || return 1
   recover_interrupted_transaction || return 1
+  cleanup_stale_scratch || return 1
+  if find "${CODEX_RELEASES_DIR}" -mindepth 1 -maxdepth 1 -type d -print -quit |
+    grep -q .; then
+    had_release_state=1
+  fi
   previous_current_target="$(read_recognized_link "${CODEX_CURRENT_LINK}" current)" || return 1
   previous_launcher_target="$(read_recognized_link "${CODEX_LAUNCHER}" launcher)" || return 1
   if [ -n "${previous_current_target}" ] &&
@@ -552,7 +663,8 @@ run_user_managed() {
   elif [ -n "${previous_current_target}" ]; then
     previous_version="$(release_version_from_target "${previous_current_target}")" || return 1
   fi
-  log "previousState=${previous_version} action=converge"
+  convergence_action="$(select_convergence_action "${previous_version}" '')"
+  log "previousState=${previous_version} action=${convergence_action}"
   run_temp_dir="$(mktemp -d "${CODEX_TEMP_ROOT}/run.XXXXXX")"
   chown "${CODEX_USER}:${CODEX_USER}" "${run_temp_dir}"
   chmod 0700 "${run_temp_dir}"
@@ -562,9 +674,21 @@ run_user_managed() {
   trap 'handle_signal INT 130' INT
   trap 'handle_signal TERM 143' TERM
 
+  remaining_nanoseconds=$((
+    CODEX_TIMEOUT_SECONDS * 1000000000 -
+      ($(/usr/bin/date +%s%N) - install_started_at_ns)
+  ))
+  if [ "${remaining_nanoseconds}" -le 0 ]; then
+    log 'Codex install lock consumed the complete installer timeout'
+    return 1
+  fi
+  printf -v remaining_seconds '%d.%09d' \
+    "$((remaining_nanoseconds / 1000000000))" \
+    "$((remaining_nanoseconds % 1000000000))"
+
   if ! installer_result="$(
     timeout --signal=KILL \
-      "${CODEX_TIMEOUT_SECONDS}" \
+      "${remaining_seconds}" \
       runuser -u "${CODEX_USER}" -- \
       /bin/bash -c '
         github_token=${GH_TOKEN-}
@@ -578,6 +702,7 @@ run_user_managed() {
         export TMPDIR="$4" TMP="$4" TEMP="$4"
         export CODEX_NON_INTERACTIVE=1
         export CODEX_MANAGED_DIRECTORY_MODE=0700
+        export CODEX_INSTALL_LOCK_FD="$9"
         export PATH="$3:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         export USER="$5" LOGNAME="$5" GH_TOKEN="$github_token"
         export COPILOT_GITHUB_TOKEN="$copilot_token"
@@ -591,18 +716,21 @@ run_user_managed() {
       "${CODEX_USER}" \
       "${CODEX_INSTALLER}" \
       "${CODEX_UID}" \
-      "${CODEX_GID}"
+      "${CODEX_GID}" \
+      "${CODEX_LOCK_FD}"
   )"; then
     return 1
   fi
   canonical_result="$(validate_result "${installer_result}")" || return 1
   target_version="$(printf '%s\n' "${canonical_result}" | jq -r '.targetVersion')"
-  log "targetVersion=${target_version} previousState=${previous_version} action=converge"
+  convergence_action="$(select_convergence_action "${previous_version}" "${target_version}")"
+  log "targetVersion=${target_version} previousState=${previous_version} action=${convergence_action}"
   validate_final_installation "${target_version}" || return 1
   cleanup_run_temp || return 1
   rm -f -- "${CODEX_TRANSACTION}"
   transaction_active=0
   trap - EXIT INT TERM
+  release_install_lock
   user_managed_result="${canonical_result}"
 }
 

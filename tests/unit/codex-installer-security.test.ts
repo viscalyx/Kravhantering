@@ -25,6 +25,7 @@ function fixture(
     draft?: boolean
     duplicateInstaller?: boolean
     prerelease?: boolean
+    simulatesUpstreamLock?: boolean
   } = {},
 ) {
   const root = mkdtempSync(path.join(tmpdir(), 'codex-installer-test-'))
@@ -49,6 +50,13 @@ function fixture(
     [
       '#!/bin/sh',
       'set -eu',
+      ...(options.simulatesUpstreamLock
+        ? [
+            'mkdir -p "$CODEX_HOME/packages/standalone"',
+            'exec 9>"$CODEX_HOME/packages/standalone/install.lock"',
+            'flock 9',
+          ]
+        : []),
       "printf '%s\\n' \"$" + '{CODEX_RELEASE}" > "$' + '{FAKE_CODEX_CAPTURE}"',
       '',
     ].join('\n'),
@@ -201,6 +209,52 @@ describe('Codex installer integrity contract', () => {
     expect(result.status).toBe(0)
     expect(statSync(testFixture.codexHome).mode & 0o777).toBe(0o700)
     expect(statSync(testFixture.installDir).mode & 0o777).toBe(0o700)
+  })
+
+  it('hands an inherited upstream lock through the verified installer boundary', () => {
+    const testFixture = fixture({ simulatesUpstreamLock: true })
+    const lockFile = path.join(
+      testFixture.codexHome,
+      'packages',
+      'standalone',
+      'install.lock',
+    )
+    mkdirSync(path.dirname(lockFile), { recursive: true })
+    const result = spawnSync(
+      'bash',
+      [
+        '-c',
+        'exec 8>"$1"; /usr/bin/flock 8; export CODEX_INSTALL_LOCK_FD=8; exec /bin/bash "$2"',
+        'bash',
+        lockFile,
+        installerPath,
+      ],
+      {
+        encoding: 'utf8',
+        env: testFixture.env,
+        timeout: 2_000,
+      },
+    )
+
+    expect(result.error).toBeUndefined()
+    expect(result.status).toBe(0)
+    expect(readFileSync(testFixture.capturePath, 'utf8')).toBe('1.2.3\n')
+  })
+
+  it('rejects an inherited descriptor that does not hold the upstream lock', () => {
+    const testFixture = fixture({ simulatesUpstreamLock: true })
+    testFixture.env.CODEX_INSTALL_LOCK_FD = '8'
+
+    const result = spawnSync('bash', [installerPath], {
+      encoding: 'utf8',
+      env: testFixture.env,
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'Inherited Codex install lock is invalid or not held',
+    )
+    expect(existsSync(testFixture.capturePath)).toBe(false)
   })
 
   it('rejects a forwarded token containing a header-injection newline', () => {
