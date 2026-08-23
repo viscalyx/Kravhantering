@@ -7,6 +7,8 @@ target version.
 
 ## Unreleased
 
+## v0.5.0 - 2026-08-23
+
 <!-- operator-upgrade:source issue-477 start -->
 ### Select and configure the client-IP trust boundary before upgrade
 
@@ -327,6 +329,7 @@ After upgrade, only users with the Admin role can inspect which specification it
 <!-- operator-upgrade:source pr-1089 start -->
 Before upgrade, verify that MCP clients remove no more than 200 unique requirements in one request. Requests with duplicate requirement IDs or more than 200 IDs now fail validation. Split larger removals into batches of 200 or fewer.
 <!-- operator-upgrade:source pr-1089 end -->
+
 ## v0.4.0 - 2026-08-02
 
 ### Invalid priority colors are reset during upgrade
