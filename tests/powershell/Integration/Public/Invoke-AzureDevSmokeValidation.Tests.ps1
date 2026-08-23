@@ -2,7 +2,18 @@
 
 Set-StrictMode -Version Latest
 
-Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
+BeforeDiscovery {
+  $script:integrationEnabled =
+    [System.Environment]::GetEnvironmentVariable(
+      'KRAVHANTERING_PESTER_INTEGRATION',
+      'Process'
+    ) -ceq '1'
+}
+
+Describe `
+  'Invoke-AzureDevSmokeValidation' `
+  -Tag 'Integration' `
+  -Skip:(-not $script:integrationEnabled) {
   BeforeAll {
     $script:moduleName = 'AzureDev.Validation'
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
@@ -42,12 +53,12 @@ Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
   }
 
   Context 'When smoke validation receives the bootstrap target' {
-    It 'Should run the remote validation successfully' {
+    It 'Should complete through the isolated remote boundary' {
       $context = [System.Management.Automation.PSObject]@{
         SshHostTrustEstablished = $true
         Config = [System.Management.Automation.PSObject]@{
           SshHostAlias = 'krav-test'
-          SshHostKeyArguments = @()
+          SshHostKeyArguments = [System.Object[]]@()
           GitUserName = 'Ada Admin'
           GitUserEmail = 'ada@example.test'
           GitSshSigningPublicKey = ''

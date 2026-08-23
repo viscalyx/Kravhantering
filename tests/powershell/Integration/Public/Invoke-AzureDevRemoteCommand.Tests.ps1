@@ -2,15 +2,25 @@
 
 Set-StrictMode -Version Latest
 
-Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
+BeforeDiscovery {
+  $script:integrationEnabled =
+    [System.Environment]::GetEnvironmentVariable(
+      'KRAVHANTERING_PESTER_INTEGRATION',
+      'Process'
+    ) -ceq '1'
+}
+
+Describe `
+  'Invoke-AzureDevRemoteCommand' `
+  -Tag 'Integration' `
+  -Skip:(-not $script:integrationEnabled) {
   BeforeAll {
-    $script:moduleName = 'AzureDev.Validation'
+    $script:moduleName = 'AzureDev.Bootstrap'
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
       (Join-Path $PSScriptRoot '../../../..')
     )
     $PSDefaultParameterValues = @{
       'Mock:ModuleName' = $script:moduleName
-      'Should-Invoke:ModuleName' = $script:moduleName
     }
     Import-Module (
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Logging.psm1'
@@ -21,51 +31,37 @@ Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
     Import-Module (
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Bootstrap.psm1'
     ) -Force -ErrorAction Stop
-    Import-Module (
-      Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Validation.psm1'
-    ) -Force -ErrorAction Stop
 
     Mock -CommandName Assert-AzureDevSshHostTrust
     Mock -CommandName Invoke-AzureDevNativeCommand -MockWith {
       return [System.Management.Automation.PSObject]@{
         ExitCode = 0
-        Text = ''
+        Text = "first line`nsecond line`n"
       }
     }
   }
 
   AfterAll {
     Get-Module $script:moduleName -All | Remove-Module -Force
-    Get-Module 'AzureDev.Bootstrap' -All | Remove-Module -Force
     Get-Module 'AzureDev.Ssh' -All | Remove-Module -Force
     Get-Module 'AzureDev.Logging' -All | Remove-Module -Force
   }
 
-  Context 'When smoke validation receives the bootstrap target' {
-    It 'Should run the remote validation successfully' {
+  Context 'When the remote boundary returns multiline output' {
+    It 'Should preserve the complete output for the caller' {
       $context = [System.Management.Automation.PSObject]@{
-        SshHostTrustEstablished = $true
         Config = [System.Management.Automation.PSObject]@{
           SshHostAlias = 'krav-test'
-          SshHostKeyArguments = @()
-          GitUserName = 'Ada Admin'
-          GitUserEmail = 'ada@example.test'
-          GitSshSigningPublicKey = ''
+          SshHostKeyArguments = [System.Object[]]@()
         }
       }
 
-      $null = Invoke-AzureDevSmokeValidation `
+      $result = Invoke-AzureDevRemoteCommand `
         -Context $context `
-        -ExpectedCodexVersion '1.2.3'
+        -Command 'bootstrap-command' `
+        -PassThru
 
-      Should-Invoke `
-        -CommandName Invoke-AzureDevNativeCommand `
-        -ParameterFilter {
-          $FilePath -eq 'ssh'
-        } `
-        -Exactly `
-        -Times 1 `
-        -Scope It
+      $result | Should-BeString -Expected "first line`nsecond line`n"
     }
   }
 }

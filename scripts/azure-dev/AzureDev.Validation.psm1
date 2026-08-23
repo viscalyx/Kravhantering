@@ -543,6 +543,24 @@ run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modu
   }
 }
 
+function Invoke-AzureDevBootstrapAndSmokeValidation {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Context
+  )
+
+  $codexTargetVersion = Invoke-AzureDevBootstrap -Context $Context
+  if ($Context.SkipSmokeValidation) {
+    return 'skipped'
+  }
+
+  Invoke-AzureDevSmokeValidation `
+    -Context $Context `
+    -ExpectedCodexVersion $codexTargetVersion
+  return 'passed'
+}
+
 function Get-AzureDevValidationStatus {
   [CmdletBinding()]
   param(
@@ -559,5 +577,6 @@ function Get-AzureDevValidationStatus {
 Export-ModuleMember -Function `
   Assert-AzureDevTerminalFontInstalled, `
   Get-AzureDevValidationStatus, `
+  Invoke-AzureDevBootstrapAndSmokeValidation, `
   Invoke-AzureDevSmokeValidation, `
   Test-AzureDevTerminalFontInstalled

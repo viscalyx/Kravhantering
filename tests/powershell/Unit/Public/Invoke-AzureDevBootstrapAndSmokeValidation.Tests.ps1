@@ -2,7 +2,7 @@
 
 Set-StrictMode -Version Latest
 
-Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
+Describe 'Invoke-AzureDevBootstrapAndSmokeValidation' -Tag 'Unit' {
   BeforeAll {
     $script:moduleName = 'AzureDev.Validation'
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
@@ -11,6 +11,7 @@ Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
     $PSDefaultParameterValues = @{
       'Mock:ModuleName' = $script:moduleName
       'Should-Invoke:ModuleName' = $script:moduleName
+      'Should-NotInvoke:ModuleName' = $script:moduleName
     }
     Import-Module (
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Logging.psm1'
@@ -25,13 +26,8 @@ Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Validation.psm1'
     ) -Force -ErrorAction Stop
 
-    Mock -CommandName Assert-AzureDevSshHostTrust
-    Mock -CommandName Invoke-AzureDevNativeCommand -MockWith {
-      return [System.Management.Automation.PSObject]@{
-        ExitCode = 0
-        Text = ''
-      }
-    }
+    Mock -CommandName Invoke-AzureDevBootstrap -MockWith { return '1.2.3' }
+    Mock -CommandName Invoke-AzureDevSmokeValidation
   }
 
   AfterAll {
@@ -41,30 +37,37 @@ Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
     Get-Module 'AzureDev.Logging' -All | Remove-Module -Force
   }
 
-  Context 'When smoke validation receives the bootstrap target' {
-    It 'Should run the remote validation successfully' {
+  Context 'When smoke validation is enabled' {
+    It 'Should pass the bootstrap target unchanged to smoke validation' {
       $context = [System.Management.Automation.PSObject]@{
-        SshHostTrustEstablished = $true
-        Config = [System.Management.Automation.PSObject]@{
-          SshHostAlias = 'krav-test'
-          SshHostKeyArguments = @()
-          GitUserName = 'Ada Admin'
-          GitUserEmail = 'ada@example.test'
-          GitSshSigningPublicKey = ''
-        }
+        SkipSmokeValidation = $false
       }
 
-      $null = Invoke-AzureDevSmokeValidation `
-        -Context $context `
-        -ExpectedCodexVersion '1.2.3'
+      $result = Invoke-AzureDevBootstrapAndSmokeValidation -Context $context
 
+      $result | Should-BeString -Expected 'passed'
       Should-Invoke `
-        -CommandName Invoke-AzureDevNativeCommand `
+        -CommandName Invoke-AzureDevSmokeValidation `
         -ParameterFilter {
-          $FilePath -eq 'ssh'
+          $Context -eq $context -and $ExpectedCodexVersion -ceq '1.2.3'
         } `
         -Exactly `
         -Times 1 `
+        -Scope It
+    }
+  }
+
+  Context 'When smoke validation is skipped' {
+    It 'Should complete bootstrap without invoking smoke validation' {
+      $context = [System.Management.Automation.PSObject]@{
+        SkipSmokeValidation = $true
+      }
+
+      $result = Invoke-AzureDevBootstrapAndSmokeValidation -Context $context
+
+      $result | Should-BeString -Expected 'skipped'
+      Should-NotInvoke `
+        -CommandName Invoke-AzureDevSmokeValidation `
         -Scope It
     }
   }

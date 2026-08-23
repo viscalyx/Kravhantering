@@ -586,6 +586,9 @@ unstable target results stop setup.
 
 Guest bootstrap parses the target in memory, validates the absolute launcher
 against it, and emits the same result for the workstation bootstrap module.
+`Invoke-AzureDevBootstrapAndSmokeValidation` carries that validated target
+unchanged from bootstrap into smoke validation; the setup entry point uses this
+single PowerShell orchestration seam instead of reconstructing the version.
 The PowerShell setup flow validates that one result and passes its version
 directly to smoke validation. Smoke does not resolve release metadata or write
 a version marker. Forwarded GitHub tokens remain subprocess environment/input
