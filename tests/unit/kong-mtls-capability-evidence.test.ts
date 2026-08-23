@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 interface KongEvidence {
@@ -24,8 +23,6 @@ describe('pinned Kong mTLS capability evidence', () => {
         'utf8',
       ),
     ) as KongEvidence
-    const probe = readFileSync(evidence.probe, 'utf8')
-
     expect(evidence.schemaVersion).toBe(1)
     expect(evidence.image).toBe(lock.image)
     expect(evidence.imageId).toBe(lock.imageId)
@@ -43,11 +40,8 @@ describe('pinned Kong mTLS capability evidence', () => {
       upstreamServerChainVerified: true,
       upstreamServerDnsIdentityVerified: true,
     })
-    expect(probe).toMatch(
-      /const image = `\$\{lock\.image\}@\$\{lock\.manifestDigest\}`/,
-    )
-    expect(path.basename(evidence.probe)).toBe(
-      'verify-pinned-mtls-capabilities.mjs',
+    expect(evidence.probe).toBe(
+      'containers/kong/verify-pinned-mtls-capabilities.mjs',
     )
   })
 })

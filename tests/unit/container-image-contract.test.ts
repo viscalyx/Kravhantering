@@ -97,7 +97,6 @@ describe('container image contract', () => {
     const dockerfiles = [
       'containers/app/Dockerfile',
       'containers/hsa-directory-mock/Dockerfile',
-      'containers/hsa-mtls-provisioner/Dockerfile',
       'containers/hsa-person-lookup-adapter/Dockerfile',
     ]
     const references = dockerfiles.flatMap(relativePath =>

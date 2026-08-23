@@ -402,6 +402,29 @@ async function readExtension(certificatePath, extension) {
   return stdout
 }
 
+function assertExactCriticalKeyUsage(extension, expectedValues, subject) {
+  const [heading, ...valueLines] = extension
+    .trim()
+    .split(/\r?\n/u)
+    .map(line => line.trim())
+  assert(
+    heading === 'X509v3 Key Usage: critical',
+    'KEY_USAGE_INVALID',
+    `${subject} key usage is not critical`,
+  )
+  const actualValues = valueLines
+    .join(' ')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+    .sort()
+  assert(
+    JSON.stringify(actualValues) === JSON.stringify([...expectedValues].sort()),
+    'KEY_USAGE_INVALID',
+    `${subject} key usage does not exactly match the profile`,
+  )
+}
+
 function assertCertificateTime(certificate, now) {
   assert(
     certificate.validFromDate <= now,
@@ -466,20 +489,11 @@ async function validateCa({ caPath, domain, now, profile }) {
     'CA path length is invalid',
   )
   const usage = await readExtension(caPath, 'keyUsage')
-  assert(
-    /X509v3 Key Usage: critical/.test(usage),
-    'KEY_USAGE_INVALID',
-    'CA key usage is not critical',
+  assertExactCriticalKeyUsage(
+    usage,
+    domain.ca.keyUsage.values.map(value => OPENSSL_KEY_USAGE_NAMES[value]),
+    'CA',
   )
-  for (const expected of domain.ca.keyUsage.values.map(
-    value => OPENSSL_KEY_USAGE_NAMES[value],
-  )) {
-    assert(
-      usage.includes(expected),
-      'KEY_USAGE_INVALID',
-      'CA key usage is invalid',
-    )
-  }
 }
 
 async function validateLeaf({
@@ -543,30 +557,10 @@ async function validateLeaf({
     'Leaf EKU is not single-purpose',
   )
   const keyUsage = await readExtension(certificatePath, 'keyUsage')
-  assert(
-    /X509v3 Key Usage: critical/.test(keyUsage),
-    'KEY_USAGE_INVALID',
-    'Leaf key usage is not critical',
-  )
   const expectedKeyUsages = leaf.keyUsage.values.map(
     value => OPENSSL_KEY_USAGE_NAMES[value],
   )
-  for (const expected of expectedKeyUsages) {
-    assert(
-      keyUsage.includes(expected),
-      'KEY_USAGE_INVALID',
-      'Leaf key usage is invalid',
-    )
-  }
-  for (const forbidden of Object.values(OPENSSL_KEY_USAGE_NAMES).filter(
-    value => !expectedKeyUsages.includes(value),
-  )) {
-    assert(
-      !keyUsage.includes(forbidden),
-      'KEY_USAGE_INVALID',
-      'Leaf has an additional key usage',
-    )
-  }
+  assertExactCriticalKeyUsage(keyUsage, expectedKeyUsages, 'Leaf')
   const constraints = await readExtension(certificatePath, 'basicConstraints')
   assert(
     /X509v3 Basic Constraints: critical/.test(constraints) &&
@@ -628,6 +622,11 @@ async function validateLeaf({
 
 export async function validateCertificateMaterial(options) {
   await validateLeaf(options)
+  return { valid: true }
+}
+
+export async function validateCertificateAuthorityMaterial(options) {
+  await validateCa(options)
   return { valid: true }
 }
 
