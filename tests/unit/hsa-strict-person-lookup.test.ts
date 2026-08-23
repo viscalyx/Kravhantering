@@ -1,6 +1,7 @@
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import type { ServerResponse } from 'node:http'
 import https from 'node:https'
+import os from 'node:os'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -179,8 +180,8 @@ describe('strict HSA person lookup startup snapshot', () => {
     const env = {
       ...completeEnv(),
       HSA_PERSON_LOOKUP_OAUTH_CA_PATH: fixture.bundle(
-        'app',
-        'kong-server-ca.crt',
+        'adapter',
+        'hsa-server-ca.crt',
       ),
       HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'lookup-client',
       HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'lookup-secret',
@@ -225,6 +226,58 @@ describe('strict HSA person lookup startup snapshot', () => {
     expect(JSON.parse(requests[1]?.body ?? '{}')).toEqual({
       hsaId: 'SE5560000001-kalle1',
     })
+  })
+
+  it('fails closed when OAuth reuses App-to-Kong trust by path or certificate', async () => {
+    for (const oauthCaPath of [
+      fixture.bundle('app', 'kong-server-ca.crt'),
+      fixture.bundle('kong', 'app-client-ca.crt'),
+    ]) {
+      await expect(
+        loadStrictHsaPersonLookupSnapshot({
+          ...completeEnv(),
+          HSA_PERSON_LOOKUP_OAUTH_CA_PATH: oauthCaPath,
+          HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'lookup-client',
+          HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'lookup-secret',
+          HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL: 'https://identity.example/token',
+        }),
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          strictHsaPersonLookupDiagnostic(error) ===
+          'hsa_strict_oauth_trust_reused',
+      )
+    }
+  })
+
+  it('rejects App-to-Kong trust hidden later in an OAuth CA bundle', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'hsa-oauth-ca-'))
+    const oauthCaPath = path.join(directory, 'oauth-ca-bundle.crt')
+    try {
+      await writeFile(
+        oauthCaPath,
+        Buffer.concat([
+          await readFile(fixture.bundle('adapter', 'hsa-server-ca.crt')),
+          Buffer.from('\n'),
+          await readFile(fixture.bundle('app', 'kong-server-ca.crt')),
+        ]),
+      )
+
+      await expect(
+        loadStrictHsaPersonLookupSnapshot({
+          ...completeEnv(),
+          HSA_PERSON_LOOKUP_OAUTH_CA_PATH: oauthCaPath,
+          HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'lookup-client',
+          HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'lookup-secret',
+          HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL: 'https://identity.example/token',
+        }),
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          strictHsaPersonLookupDiagnostic(error) ===
+          'hsa_strict_oauth_trust_reused',
+      )
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
   })
 
   it('validates an additive OAuth trust file as a CA at startup', async () => {

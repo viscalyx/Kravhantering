@@ -214,8 +214,8 @@ services:
 
   hsa-person-lookup-adapter:
     build:
-      context: ${WORKSPACE_BUILD_ROOT:-../..}/containers/hsa-person-lookup-adapter
-      dockerfile: Dockerfile
+      context: ${WORKSPACE_BUILD_ROOT:-../..}
+      dockerfile: containers/hsa-person-lookup-adapter/Dockerfile
     depends_on:
       hsa-directory-mock:
         condition: service_healthy
@@ -250,8 +250,8 @@ services:
 
   hsa-directory-mock:
     build:
-      context: ${WORKSPACE_BUILD_ROOT:-../..}/containers/hsa-directory-mock
-      dockerfile: Dockerfile
+      context: ${WORKSPACE_BUILD_ROOT:-../..}
+      dockerfile: containers/hsa-directory-mock/Dockerfile
     depends_on:
       hsa-mtls-provisioner:
         condition: service_completed_successfully

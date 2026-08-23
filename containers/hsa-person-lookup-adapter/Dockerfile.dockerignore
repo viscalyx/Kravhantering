@@ -1,8 +1,10 @@
 .auth/
 .codex/
+.git/
 .ssh/
-node_modules/
-
+.worktrees/
 .env
 .env.*
+node_modules/
 npm-debug.log*
+test-results/

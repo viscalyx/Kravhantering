@@ -785,6 +785,12 @@ selected generation. The SQL Server volume uses Podman's `U` volume option and
 directory. Kong uses `KONG_PREFIX=/tmp/kong` so rootless runtime state is
 writable.
 
+Persistent HSA startup also reconciles automatic renewal promotions. A pending
+prior generation is deleted only after the new chain authenticates. Failed
+authentication stops clients before servers, rolls back and deletes the failed
+generation, deploys the prior selection, starts mock, Adapter, and Kong, and
+requires recovery authentication.
+
 Kong uses the checked-out repository file
 `/workspace/containers/kong/kong.strict.yml`. The route, both proxy legs, and
 the SOAP leg are HTTPS-only and require the expected role identity.

@@ -6,6 +6,7 @@ import { createHsaCorrelationId } from '@/lib/hsa/correlation.mjs'
 import {
   loadStrictCertificateAuthority,
   loadStrictTlsSnapshot,
+  strictCertificateAuthorityRawValues,
 } from '@/lib/hsa/strict-tls'
 import {
   conflictError,
@@ -23,6 +24,7 @@ export type StrictHsaPersonLookupDiagnostic =
   | 'hsa_strict_auth_requires_url'
   | 'hsa_strict_mtls_incomplete'
   | 'hsa_strict_oauth_incomplete'
+  | 'hsa_strict_oauth_trust_reused'
   | 'hsa_strict_oauth_url_invalid'
   | 'hsa_strict_server_identity_invalid'
   | 'hsa_strict_timeout_invalid'
@@ -44,14 +46,14 @@ export function strictHsaPersonLookupDiagnostic(
   return error instanceof StrictHsaPersonLookupError ? error.diagnostic : null
 }
 
-function envValue(env: NodeJS.ProcessEnv, name: string) {
+function envValue(env: NodeJS.ProcessEnv, name: string): string | undefined {
   return env[name]?.trim() || undefined
 }
 
 function requiredHttpsUrl(
   value: string,
   diagnostic: StrictHsaPersonLookupDiagnostic,
-) {
+): string {
   try {
     const url = new URL(value)
     if (
@@ -69,7 +71,7 @@ function requiredHttpsUrl(
   }
 }
 
-function validateServerName(value: string) {
+function validateServerName(value: string): void {
   if (
     value === 'localhost' ||
     value.includes('*') ||
@@ -83,7 +85,7 @@ function validateServerName(value: string) {
   }
 }
 
-function timeoutFromEnv(env: NodeJS.ProcessEnv) {
+function timeoutFromEnv(env: NodeJS.ProcessEnv): number {
   const value = envValue(env, 'HSA_PERSON_LOOKUP_TIMEOUT_MS')
   if (!value) return DEFAULT_TIMEOUT_MS
   const parsed = Number(value)
@@ -177,11 +179,24 @@ export async function loadStrictHsaPersonLookupSnapshot(
         'Strict HSA OAuth requires client credentials and a token or issuer URL.',
       )
     }
+    const oauthCa = oauthCaPath
+      ? await loadStrictCertificateAuthority({ caPath: oauthCaPath })
+      : undefined
+    const appTrustRoots = strictCertificateAuthorityRawValues(tls.ca)
+    if (
+      oauthCa &&
+      strictCertificateAuthorityRawValues(oauthCa).some(oauthRoot =>
+        appTrustRoots.some(appRoot => appRoot.equals(oauthRoot)),
+      )
+    ) {
+      throw new StrictHsaPersonLookupError(
+        'hsa_strict_oauth_trust_reused',
+        'Strict HSA OAuth trust must be independent from App-to-Kong trust.',
+      )
+    }
     oauth = {
       ...(oauthAudience ? { audience: oauthAudience } : {}),
-      ...(oauthCaPath
-        ? { ca: await loadStrictCertificateAuthority({ caPath: oauthCaPath }) }
-        : {}),
+      ...(oauthCa ? { ca: oauthCa } : {}),
       clientId: oauthClientId,
       clientSecret: oauthClientSecret,
       ...(oauthIssuerUrl
@@ -339,14 +354,14 @@ function parseJson(response: StrictResponse): unknown {
   }
 }
 
-function textField(value: unknown) {
+function textField(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
 async function oauthToken(
   snapshot: StrictHsaPersonLookupSnapshot,
   request: StrictHsaRequestImpl,
-) {
+): Promise<string | null> {
   if (!snapshot.oauth) return null
   let tokenUrl = snapshot.oauth.tokenUrl
   if (!tokenUrl && snapshot.oauth.issuerUrl) {

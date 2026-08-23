@@ -230,19 +230,109 @@ function renderHsaSmokeConfiguration() {
   }
 }
 
-describe('production smoke output', () => {
-  it('keeps correlated HSA runtime and rotation evidence mandatory', () => {
-    const source = fs.readFileSync(PRODUCTION_SMOKE_PATH, 'utf8')
+function runHsaRotationEvidenceHarness() {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kh-hsa-rotation-evidence-'),
+  )
+  temporaryDirectories.push(temporaryDirectory)
+  const shell = String.raw`
+    set -euo pipefail
+    source "$1"
+    EVIDENCE_DIR="$2"
+    current=initial-generation
+    previous=null
+    rotation=0
+    HSA_MTLS_FORCE_VERIFY_FAILURE=0
+    mkdir -p "$EVIDENCE_DIR"
+    as_service() { "$@"; }
+    capture_hsa_stale_probe() { mkdir -p "$2"; }
+    stop_hsa_mtls_endpoints() { printf '%s\n' stop >>"$EVIDENCE_DIR/order.txt"; }
+    start_hsa_mtls_endpoints() { printf '%s\n' start >>"$EVIDENCE_DIR/order.txt"; }
+    wait_for_url() { :; }
+    verify_hsa_stale_rejection() { return 0; }
+    verify_hsa_correlated_lookup() {
+      [[ "$HSA_MTLS_FORCE_VERIFY_FAILURE" != 1 ]] || return 1
+      printf '%s\n' \
+        'correlation-id=10000000-0000-4000-8000-000000000001' \
+        'app-correlation=passed' \
+        'kong-correlation=passed' \
+        'adapter-correlation=passed' \
+        'mock-exactly-once=passed' \
+        >>"$EVIDENCE_DIR/hsa-mtls-correlation.txt"
+    }
+    run_hsa_mtls_provisioner() {
+      local command="$1" domain='' before
+      [[ $# -lt 2 ]] || domain="$2"
+      case "$command" in
+        inspect)
+          jq -n \
+            --arg current "$current" \
+            --argjson previous "$( [[ "$previous" == null ]] && printf null || jq -Rn --arg value "$previous" '$value' )" \
+            --arg digest "$current" \
+            '{result:{selection:{current:$current,previous:$previous},current:{trustDomains:{"app-to-kong":{ca:{digestSha256:$digest,subjectRfc2253:"ca"},client:{digestSha256:$digest,subjectRfc2253:"client"},server:{digestSha256:$digest,subjectRfc2253:"server"}},"kong-to-adapter":{ca:{digestSha256:$digest,subjectRfc2253:"ca"},client:{digestSha256:$digest,subjectRfc2253:"client"},server:{digestSha256:$digest,subjectRfc2253:"server"}},"adapter-to-hsa":{ca:{digestSha256:$digest,subjectRfc2253:"ca"},client:{digestSha256:$digest,subjectRfc2253:"client"},server:{digestSha256:$digest,subjectRfc2253:"server"}}}}}}'
+          ;;
+        rotate)
+          before="$current"
+          rotation=$((rotation + 1))
+          current="$domain-generation-$rotation"
+          previous="$before"
+          ;;
+        finalize) previous=null ;;
+        rollback)
+          before="$current"
+          current="$previous"
+          previous=null
+          printf 'deleted=%s\n' "$before" >>"$EVIDENCE_DIR/rollback.txt"
+          ;;
+        deploy) : ;;
+      esac
+    }
+    verify_hsa_mtls_rotation_and_rollback
+  `
+  const result = childProcess.spawnSync(
+    'bash',
+    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH, temporaryDirectory],
+    { encoding: 'utf8' },
+  )
+  return { result, temporaryDirectory }
+}
 
-    expect(source).toContain('hsa_app_lookup_started')
-    expect(source).toContain('hsa_adapter_lookup_forwarded')
-    expect(source).toContain('hsa_mock_lookup_handled')
-    expect(source).toContain('mock-exactly-once=passed')
-    expect(source).toContain('runtime-file-modes-and-ownership=passed')
-    expect(source).toContain('kong-admin-loopback-only=passed')
-    expect(source).toContain('verify_hsa_rotation_metadata')
-    expect(source).toContain('verify_hsa_stale_rejection')
-    expect(source).toContain('ca-and-both-leaves-changed=passed')
+describe('production smoke output', () => {
+  it('emits mandatory evidence after successful rotations and recovered failures', () => {
+    const { result, temporaryDirectory } = runHsaRotationEvidenceHarness()
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stderr).toBe('')
+    const rotationEvidence = fs.readFileSync(
+      path.join(temporaryDirectory, 'hsa-mtls-rotation.txt'),
+      'utf8',
+    )
+    expect(
+      rotationEvidence.match(/authenticated-lookup-after-rotation=passed/gu),
+    ).toHaveLength(3)
+    expect(
+      rotationEvidence.match(/ca-and-both-leaves-changed=passed/gu),
+    ).toHaveLength(3)
+    expect(
+      rotationEvidence.match(/stale-material-rejected=passed/gu),
+    ).toHaveLength(3)
+    expect(
+      rotationEvidence.match(/injected-failure-rollback=passed/gu),
+    ).toHaveLength(3)
+    expect(
+      rotationEvidence.match(/authenticated-lookup-after-rollback=passed/gu),
+    ).toHaveLength(3)
+    expect(
+      fs
+        .readFileSync(
+          path.join(temporaryDirectory, 'hsa-mtls-correlation.txt'),
+          'utf8',
+        )
+        .match(/mock-exactly-once=passed/gu),
+    ).toHaveLength(6)
+    expect(
+      fs.readFileSync(path.join(temporaryDirectory, 'rollback.txt'), 'utf8'),
+    ).toContain('deleted=')
   })
 
   it('renders the CI-only HSA route with verified HTTPS', () => {

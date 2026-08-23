@@ -254,6 +254,30 @@ describe('certificate generation lifecycle', () => {
     )
   })
 
+  it('automatically promotes near-threshold persistent material for authenticated reconciliation', async () => {
+    const previousGenerationId = currentGenerationId
+    const result = await ensureGeneration({
+      issuerRoot,
+      lifetime: 'persistent',
+      profile,
+      rootDir: testRoot,
+    })
+    currentGenerationId = result.generationId
+    const inspection = await inspectGeneration({ profile, rootDir: testRoot })
+
+    assert.equal(result.action, 'promoted')
+    assert.equal(result.previousGenerationId, previousGenerationId)
+    assert.equal(inspection.selection.current, currentGenerationId)
+    assert.equal(inspection.selection.previous, previousGenerationId)
+
+    await finalizeGeneration({ profile, rootDir: testRoot })
+    assert.equal(
+      (await inspectGeneration({ profile, rootDir: testRoot })).selection
+        .previous,
+      null,
+    )
+  })
+
   it('replaces only the selected CA and its expected and decoy leaves during rotation', async () => {
     const beforeInspect = await inspectGeneration({
       profile,

@@ -59,3 +59,10 @@ The image entry point supports these commands:
 Persistent material uses the 425-day CA and 397-day leaf policy with renewal
 inside 30 days. CI and release-smoke use `--lifetime ephemeral` for fresh
 seven-day material.
+
+`activate` leaves a preserved prior selection when automatic renewal promotes
+a replacement. Repository-owned devcontainer and Azure startup reconciliation
+must authenticate the full chain before `finalize`; on failure they run
+`rollback`, deploy the prior selection, restart server-first, and authenticate
+recovery. An initial generation has no prior selection, so ordinary first
+startup does not wait for this reconciliation.

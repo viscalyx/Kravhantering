@@ -91,8 +91,10 @@ means the live capability is unavailable while the App remains ready and local
 sent to the token endpoint when configured. OAuth is additive and its ordinary
 strict HTTPS calls never reuse the HSA client certificate or trust root. When
 `HSA_PERSON_LOOKUP_OAUTH_CA_PATH` is set, startup validates that file as a
-current, self-signed CA with exact CA key usage rather than accepting arbitrary
-readable bytes.
+current self-signed CA bundle with exact CA key usage rather than accepting
+arbitrary readable bytes. Every OAuth root must be independent. Startup fails
+closed if the path, a copied certificate, or any certificate later in the
+bundle reuses the App-to-Kong trust root.
 
 Repository-owned topologies provision three independent trust domains before
 startup and mount only one role-specific bundle into each runtime participant.

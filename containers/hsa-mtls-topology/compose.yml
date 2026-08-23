@@ -23,7 +23,8 @@ services:
   mock:
     image: localhost/kravhantering/hsa-directory-mock:topology
     build:
-      context: ../hsa-directory-mock
+      context: ../..
+      dockerfile: containers/hsa-directory-mock/Dockerfile
     depends_on:
       provisioner:
         condition: service_completed_successfully
@@ -46,7 +47,8 @@ services:
   adapter:
     image: localhost/kravhantering/hsa-person-lookup-adapter:topology
     build:
-      context: ../hsa-person-lookup-adapter
+      context: ../..
+      dockerfile: containers/hsa-person-lookup-adapter/Dockerfile
     depends_on:
       mock:
         condition: service_healthy

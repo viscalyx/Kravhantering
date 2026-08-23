@@ -289,8 +289,8 @@ describe('container image contract', () => {
   it('excludes developer credentials and SSH state from production build contexts', () => {
     for (const relativePath of [
       'containers/app/Dockerfile.dockerignore',
-      'containers/hsa-directory-mock/.dockerignore',
-      'containers/hsa-person-lookup-adapter/.dockerignore',
+      'containers/hsa-directory-mock/Dockerfile.dockerignore',
+      'containers/hsa-person-lookup-adapter/Dockerfile.dockerignore',
     ]) {
       const patterns = dockerignorePatterns(readWorkspaceFile(relativePath))
 
@@ -460,12 +460,12 @@ describe('container image contract', () => {
       'docker buildx build --no-cache --file containers/app/Dockerfile --target demo-seed --tag localhost/kravhantering/demo-seed:local --load .',
     )
     expect(packageJson.scripts['container:build:hsa-directory-mock']).toBe(
-      'docker buildx build --file containers/hsa-directory-mock/Dockerfile --tag localhost/kravhantering/hsa-directory-mock:local --load containers/hsa-directory-mock',
+      'docker buildx build --file containers/hsa-directory-mock/Dockerfile --tag localhost/kravhantering/hsa-directory-mock:local --load .',
     )
     expect(
       packageJson.scripts['container:build:hsa-person-lookup-adapter'],
     ).toBe(
-      'docker buildx build --file containers/hsa-person-lookup-adapter/Dockerfile --tag localhost/kravhantering/hsa-person-lookup-adapter:local --load containers/hsa-person-lookup-adapter',
+      'docker buildx build --file containers/hsa-person-lookup-adapter/Dockerfile --tag localhost/kravhantering/hsa-person-lookup-adapter:local --load .',
     )
     expect(packageJson.scripts['container:build:hsa-mtls-provisioner']).toBe(
       'docker buildx build --file containers/hsa-mtls-provisioner/Dockerfile --tag localhost/kravhantering/hsa-mtls-provisioner:local --load .',

@@ -144,6 +144,7 @@ Optional application values:
   material read-only and use the exact approved server identity.
 - `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL`,
   `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`,
+  `HSA_PERSON_LOOKUP_OAUTH_CA_PATH`,
   `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`,
   `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`,
   `HSA_PERSON_LOOKUP_OAUTH_SCOPE`, and
@@ -152,7 +153,9 @@ Optional application values:
   discovery. Production OAuth URLs must use HTTPS. Discovery must return the
   configured issuer and a token endpoint on the same origin; configure an
   explicit HTTPS token URL when the approved token service uses another
-  origin. OAuth is additive to strict mTLS and never replaces it.
+  origin. OAuth is additive to strict mTLS and never replaces it. Its CA bundle
+  must not contain the App-to-Kong trust root; startup rejects path aliases,
+  copies, and later bundle entries that reuse that root.
 - `AI_PROVIDER_SECRET_KEYRING_FILE` and the `AI_CONNECTION_*_POLICIES_JSON`
   maps establish the deployment-owned boundary for optional AI connections.
   Provider credentials and run profiles are administered in the application.

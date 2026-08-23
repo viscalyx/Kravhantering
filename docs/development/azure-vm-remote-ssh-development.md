@@ -1491,6 +1491,12 @@ The VM bootstrap writes a managed block to `/workspace/.env.development.local`
 so HSA lookup uses strict mTLS through Kong on `127.0.0.1:18443` with the
 role-specific App bundle under `/workspace/.hsa-mtls/app`.
 
+Bootstrap automatically renews persistent HSA material inside the 30-day
+threshold. It authenticates a promoted generation before deleting its prior
+generation. If that authentication fails, bootstrap restores and deploys the
+prior generation, restarts mock, Adapter, and Kong in server-first order, and
+requires recovery authentication to succeed.
+
 ## Tailscale
 
 Set `AZURE_DEV_VM_CONNECTIVITY_MODE=tailscale` only when the Tailscale account,

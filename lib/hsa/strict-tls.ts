@@ -2,10 +2,10 @@ import { createPrivateKey, createPublicKey, X509Certificate } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { createSecureContext } from 'node:tls'
+import { assertExactCertificateKeyUsage } from '@/lib/hsa/strict-certificate-validation.mjs'
 
 const CLIENT_AUTH_OID = '1.3.6.1.5.5.7.3.2'
 const SERVER_AUTH_OID = '1.3.6.1.5.5.7.3.1'
-const KEY_USAGE_OID = '2.5.29.15'
 
 export type StrictTlsMaterialDiagnostic =
   | 'tls_ca_invalid'
@@ -49,7 +49,10 @@ export async function readStrictTlsFile(filePath: string): Promise<Buffer> {
   }
 }
 
-function certificateFrom(contents: Buffer, kind: 'ca' | 'leaf') {
+function certificateFrom(
+  contents: Buffer,
+  kind: 'ca' | 'leaf',
+): X509Certificate {
   try {
     return new X509Certificate(contents)
   } catch {
@@ -60,7 +63,23 @@ function certificateFrom(contents: Buffer, kind: 'ca' | 'leaf') {
   }
 }
 
-function assertCurrent(certificate: X509Certificate, now: Date) {
+function certificateAuthoritiesFrom(contents: Buffer): X509Certificate[] {
+  const text = contents.toString('utf8')
+  const blocks = text.match(
+    /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/gu,
+  )
+  if (!blocks) return [certificateFrom(contents, 'ca')]
+  const remainder = blocks.reduce(
+    (value, block) => value.replace(block, ''),
+    text,
+  )
+  if (remainder.trim()) {
+    fail('tls_ca_invalid', 'TLS CA bundle contains malformed material.')
+  }
+  return blocks.map(block => certificateFrom(Buffer.from(block), 'ca'))
+}
+
+function assertCurrent(certificate: X509Certificate, now: Date): void {
   if (certificate.validFromDate > now) {
     fail('tls_certificate_not_yet_valid', 'TLS certificate is not yet valid.')
   }
@@ -69,128 +88,23 @@ function assertCurrent(certificate: X509Certificate, now: Date) {
   }
 }
 
-interface DerNode {
-  end: number
-  start: number
-  tag: number
-}
-
-function readDerNode(contents: Buffer, offset: number): DerNode {
-  const tag = contents[offset]
-  const firstLength = contents[offset + 1]
-  if (tag === undefined || firstLength === undefined) {
-    fail('tls_certificate_invalid', 'TLS certificate DER is truncated.')
-  }
-  let length = firstLength
-  let headerLength = 2
-  if ((firstLength & 0x80) !== 0) {
-    const lengthBytes = firstLength & 0x7f
-    if (lengthBytes < 1 || lengthBytes > 4) {
-      fail('tls_certificate_invalid', 'TLS certificate DER length is invalid.')
-    }
-    length = 0
-    headerLength += lengthBytes
-    for (let index = 0; index < lengthBytes; index += 1) {
-      const value = contents[offset + 2 + index]
-      if (value === undefined) {
-        fail('tls_certificate_invalid', 'TLS certificate DER is truncated.')
-      }
-      length = length * 256 + value
-    }
-  }
-  const start = offset + headerLength
-  const end = start + length
-  if (end > contents.length) {
-    fail('tls_certificate_invalid', 'TLS certificate DER length is invalid.')
-  }
-  return { end, start, tag }
-}
-
-function derChildren(contents: Buffer, parent: DerNode): DerNode[] {
-  const children: DerNode[] = []
-  let offset = parent.start
-  while (offset < parent.end) {
-    const child = readDerNode(contents, offset)
-    children.push(child)
-    offset = child.end
-  }
-  if (offset !== parent.end) {
-    fail('tls_certificate_invalid', 'TLS certificate DER is malformed.')
-  }
-  return children
-}
-
-function decodeOid(contents: Buffer, node: DerNode): string {
-  const bytes = contents.subarray(node.start, node.end)
-  if (node.tag !== 0x06 || bytes.length === 0) {
-    fail('tls_certificate_invalid', 'TLS certificate extension OID is invalid.')
-  }
-  const values = [Math.floor(bytes[0] / 40), bytes[0] % 40]
-  let value = 0
-  for (const byte of bytes.subarray(1)) {
-    value = value * 128 + (byte & 0x7f)
-    if ((byte & 0x80) === 0) {
-      values.push(value)
-      value = 0
-    }
-  }
-  if (value !== 0) {
-    fail('tls_certificate_invalid', 'TLS certificate extension OID is invalid.')
-  }
-  return values.join('.')
-}
-
-function certificateExtension(
-  certificate: X509Certificate,
-  diagnostic: StrictTlsMaterialDiagnostic,
-  oid: string,
-): { critical: boolean; value: Buffer } {
-  const contents = certificate.raw
-  const certificateNode = readDerNode(contents, 0)
-  const [tbs] = derChildren(contents, certificateNode)
-  const extensions = derChildren(contents, tbs).find(node => node.tag === 0xa3)
-  if (!extensions) {
-    fail(diagnostic, 'TLS certificate extensions are missing.')
-  }
-  const [extensionSequence] = derChildren(contents, extensions)
-  for (const extension of derChildren(contents, extensionSequence)) {
-    const fields = derChildren(contents, extension)
-    if (decodeOid(contents, fields[0]) !== oid) continue
-    const critical = fields[1]?.tag === 0x01
-    const valueNode = fields[critical ? 2 : 1]
-    if (valueNode?.tag !== 0x04) {
-      fail('tls_certificate_invalid', 'TLS certificate extension is malformed.')
-    }
-    return {
-      critical,
-      value: contents.subarray(valueNode.start, valueNode.end),
-    }
-  }
-  fail(diagnostic, 'TLS certificate key usage is missing.')
-}
-
 function assertExactKeyUsage(
   certificate: X509Certificate,
   diagnostic: StrictTlsMaterialDiagnostic,
   expectedBits: number[],
-) {
-  const extension = certificateExtension(certificate, diagnostic, KEY_USAGE_OID)
-  const bitString = readDerNode(extension.value, 0)
-  if (!extension.critical || bitString.tag !== 0x03) {
-    fail(diagnostic, 'TLS certificate key usage is invalid.')
-  }
-  const bytes = extension.value.subarray(bitString.start + 1, bitString.end)
-  const actualBits: number[] = []
-  for (let byteIndex = 0; byteIndex < bytes.length; byteIndex += 1) {
-    for (let bitIndex = 0; bitIndex < 8; bitIndex += 1) {
-      if ((bytes[byteIndex] & (0x80 >> bitIndex)) !== 0) {
-        actualBits.push(byteIndex * 8 + bitIndex)
-      }
-    }
-  }
-  if (JSON.stringify(actualBits) !== JSON.stringify(expectedBits)) {
-    fail(diagnostic, 'TLS certificate key usage is invalid.')
-  }
+): void {
+  assertExactCertificateKeyUsage(
+    certificate,
+    diagnostic,
+    expectedBits,
+    (category, message) =>
+      fail(
+        category === 'CERTIFICATE_INVALID'
+          ? 'tls_certificate_invalid'
+          : diagnostic,
+        message,
+      ),
+  )
 }
 
 export interface StrictTlsSnapshot {
@@ -207,17 +121,24 @@ export async function loadStrictCertificateAuthority({
   now?: Date
 }): Promise<Buffer> {
   const ca = await readStrictTlsFile(caPath)
-  const authority = certificateFrom(ca, 'ca')
-  assertCurrent(authority, now)
-  if (
-    !authority.ca ||
-    !authority.checkIssued(authority) ||
-    !authority.verify(authority.publicKey)
-  ) {
-    fail('tls_ca_invalid', 'TLS trust root is not a self-signed CA.')
+  for (const authority of certificateAuthoritiesFrom(ca)) {
+    assertCurrent(authority, now)
+    if (
+      !authority.ca ||
+      !authority.checkIssued(authority) ||
+      !authority.verify(authority.publicKey)
+    ) {
+      fail('tls_ca_invalid', 'TLS trust root is not a self-signed CA.')
+    }
+    assertExactKeyUsage(authority, 'tls_ca_invalid', [5, 6])
   }
-  assertExactKeyUsage(authority, 'tls_ca_invalid', [5, 6])
   return ca
+}
+
+export function strictCertificateAuthorityRawValues(
+  contents: Buffer,
+): Buffer[] {
+  return certificateAuthoritiesFrom(contents).map(authority => authority.raw)
 }
 
 export async function loadStrictTlsSnapshot({
@@ -240,7 +161,7 @@ export async function loadStrictTlsSnapshot({
     readStrictTlsFile(certPath),
     readStrictTlsFile(keyPath),
   ])
-  const authority = certificateFrom(ca, 'ca')
+  const authorities = certificateAuthoritiesFrom(ca)
   const leaf = certificateFrom(cert, 'leaf')
   assertCurrent(leaf, now)
   if (leaf.ca) {
@@ -253,7 +174,12 @@ export async function loadStrictTlsSnapshot({
       `TLS leaf certificate must be limited to ${role}Auth.`,
     )
   }
-  if (!leaf.checkIssued(authority) || !leaf.verify(authority.publicKey)) {
+  if (
+    !authorities.some(
+      authority =>
+        leaf.checkIssued(authority) && leaf.verify(authority.publicKey),
+    )
+  ) {
     fail('tls_chain_untrusted', 'TLS leaf certificate is not trusted.')
   }
   let privateKey: ReturnType<typeof createPrivateKey>

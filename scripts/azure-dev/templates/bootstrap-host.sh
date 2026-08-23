@@ -1079,10 +1079,10 @@ build_hsa_images_once() {
   fi
 
   run_as_vscode \
-    "cd '${WORKSPACE_DIR}' && podman build ${no_cache_option}--tag localhost/kravhantering/hsa-person-lookup-adapter:local --file containers/hsa-person-lookup-adapter/Dockerfile containers/hsa-person-lookup-adapter" ||
+    "cd '${WORKSPACE_DIR}' && podman build ${no_cache_option}--tag localhost/kravhantering/hsa-person-lookup-adapter:local --file containers/hsa-person-lookup-adapter/Dockerfile ." ||
     return
   run_as_vscode \
-    "cd '${WORKSPACE_DIR}' && podman build ${no_cache_option}--tag localhost/kravhantering/hsa-directory-mock:local --file containers/hsa-directory-mock/Dockerfile containers/hsa-directory-mock" ||
+    "cd '${WORKSPACE_DIR}' && podman build ${no_cache_option}--tag localhost/kravhantering/hsa-directory-mock:local --file containers/hsa-directory-mock/Dockerfile ." ||
     return
   run_as_vscode \
     "cd '${WORKSPACE_DIR}' && podman build ${no_cache_option}--tag localhost/kravhantering/hsa-mtls-provisioner:local --file containers/hsa-mtls-provisioner/Dockerfile ."
@@ -1348,6 +1348,88 @@ start_user_quadlets() {
       krav-kong.service
 }
 
+run_persistent_hsa_provisioner() {
+  local uid="$1"
+  shift
+  run_user_podman "${uid}" run --rm --pull=never --user 0:0 \
+    --network none \
+    --tmpfs /run/kravhantering/hsa-mtls-issuer:rw,size=64m,mode=0700,nosuid,nodev,noexec \
+    --volume krav-hsa-mtls-state:/var/lib/kravhantering/hsa-mtls:Z \
+    --volume "${WORKSPACE_DIR}/.hsa-mtls/app:/run/kravhantering/hsa-mtls-runtime/app:Z" \
+    --volume krav-hsa-mtls-kong:/run/kravhantering/hsa-mtls-runtime/kong:Z \
+    --volume krav-hsa-mtls-adapter:/run/kravhantering/hsa-mtls-runtime/adapter:Z \
+    --volume krav-hsa-mtls-mock:/run/kravhantering/hsa-mtls-runtime/mock:Z \
+    localhost/kravhantering/hsa-mtls-provisioner:local "$@"
+}
+
+reconcile_persistent_hsa_renewal() {
+  local uid
+  uid="$(id -u "${VSCODE_USER}")"
+  # shellcheck source=../hsa-persistent-renewal.sh
+  source "${WORKSPACE_DIR}/scripts/azure-dev/hsa-persistent-renewal.sh"
+
+  hsa_renewal_inspect() {
+    run_persistent_hsa_provisioner "${uid}" inspect
+  }
+  hsa_renewal_verify() {
+    local attempt response status
+    response="$(mktemp)"
+    for attempt in $(seq 1 30); do
+      status='000'
+      if status="$(curl -sS --resolve kong:18443:127.0.0.1 \
+        --cacert "${WORKSPACE_DIR}/.hsa-mtls/app/kong-server-ca.crt" \
+        --cert "${WORKSPACE_DIR}/.hsa-mtls/app/app-client.crt" \
+        --key "${WORKSPACE_DIR}/.hsa-mtls/app/app-client.key" \
+        -o "${response}" -w '%{http_code}' -X POST \
+        https://kong:18443/hsa/person-records/lookup \
+        -H 'Accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -H "X-Kravhantering-HSA-Correlation-ID: $(cat /proc/sys/kernel/random/uuid)" \
+        --data '{"hsaId":"SE5560000001-manualarea1"}')" && \
+        [[ "${status}" == 200 ]] && jq -e \
+          '.hsaId == "SE5560000001-manualarea1" and (.givenName | type == "string")' \
+          "${response}" >/dev/null; then
+        rm -f "${response}"
+        return 0
+      fi
+      sleep 1
+    done
+    rm -f "${response}"
+    return 1
+  }
+  hsa_renewal_finalize() {
+    run_persistent_hsa_provisioner "${uid}" finalize >/dev/null
+  }
+  hsa_renewal_stop_endpoints() {
+    run_user_systemctl_or_diagnose "${uid}" \
+      'stop Kong for HSA mTLS renewal rollback' stop krav-kong.service
+    run_user_systemctl_or_diagnose "${uid}" \
+      'stop HSA Adapter for mTLS renewal rollback' stop \
+      krav-hsa-person-lookup-adapter.service
+    run_user_systemctl_or_diagnose "${uid}" \
+      'stop HSA mock for mTLS renewal rollback' stop \
+      krav-hsa-directory-mock.service
+  }
+  hsa_renewal_rollback() {
+    run_persistent_hsa_provisioner "${uid}" rollback >/dev/null
+  }
+  hsa_renewal_deploy() {
+    run_persistent_hsa_provisioner "${uid}" deploy >/dev/null
+  }
+  hsa_renewal_start_endpoints() {
+    run_user_systemctl_or_diagnose "${uid}" \
+      'restart HSA mock after mTLS renewal rollback' restart \
+      krav-hsa-directory-mock.service
+    run_user_systemctl_or_diagnose "${uid}" \
+      'restart HSA Adapter after mTLS renewal rollback' restart \
+      krav-hsa-person-lookup-adapter.service
+    run_user_systemctl_or_diagnose "${uid}" \
+      'restart Kong after HSA mTLS renewal rollback' restart krav-kong.service
+  }
+
+  hsa_reconcile_persistent_renewal
+}
+
 install_optional_tailscale() {
   if command -v tailscale >/dev/null 2>&1; then
     return
@@ -1480,6 +1562,7 @@ main() {
   install_quadlet_units
   build_hsa_images
   start_user_quadlets
+  reconcile_persistent_hsa_renewal
   install_optional_tailscale
   validate_loopback_ports
   log "host bootstrap completed"

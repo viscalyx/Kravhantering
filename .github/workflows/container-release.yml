@@ -210,7 +210,7 @@ jobs:
             --provenance=false \
             --tag "${HSA_DIRECTORY_MOCK_CANDIDATE_REF}" \
             --output "type=oci,dest=${HSA_DIRECTORY_MOCK_CANDIDATE_ARTIFACT}" \
-            containers/hsa-directory-mock
+            .
 
       - name: Build HSA person lookup adapter candidate OCI artifact
         run: |
@@ -227,7 +227,7 @@ jobs:
             --provenance=false \
             --tag "${HSA_PERSON_LOOKUP_ADAPTER_CANDIDATE_REF}" \
             --output "type=oci,dest=${HSA_PERSON_LOOKUP_ADAPTER_CANDIDATE_ARTIFACT}" \
-            containers/hsa-person-lookup-adapter
+            .
 
       - name: Build HSA mTLS provisioner candidate OCI artifact
         run: |

@@ -24,7 +24,7 @@ const PROFILES = [
 ]
 
 const USAGE = `Usage:
-  node scripts/devcontainer/hsa-mock.mjs <config|build|up|recreate|status|ensure|inspect|verify|rotate|rollback-verify|logs|restart|down> [trust-domain|docker compose args]`
+  node scripts/devcontainer/hsa-mock.mjs <config|build|up|recreate|status|ensure|inspect|verify|renew-startup|rotate|rollback-verify|logs|restart|down> [trust-domain|docker compose args]`
 
 function run(command, args, options = {}) {
   const spawnSync = options.spawnSync ?? childProcess.spawnSync
@@ -310,6 +310,17 @@ function provision(profile, options, ...args) {
   )
 }
 
+function inspectSelection(profile, options) {
+  const result = runCompose(
+    profile,
+    ['run', '--rm', CERT_SERVICE_NAME, 'inspect'],
+    { ...options, stdio: ['ignore', 'pipe', 'pipe'] },
+  )
+  assertSuccess(result, 'HSA mTLS provisioner inspect')
+  const payload = JSON.parse(result.stdout)
+  return payload.result.selection
+}
+
 function stopEndpoints(profile, options) {
   for (const service of [
     APP_SERVICE_NAME,
@@ -334,6 +345,55 @@ function startEndpoints(profile, options) {
     assertSuccess(
       runCompose(profile, ['up', '-d', '--wait', service], options),
       `docker compose start ${service}`,
+    )
+  }
+}
+
+function stopTransportEndpoints(profile, options) {
+  for (const service of [
+    KONG_SERVICE_NAME,
+    ADAPTER_SERVICE_NAME,
+    SERVICE_NAME,
+  ]) {
+    assertSuccess(
+      runCompose(profile, ['stop', service], options),
+      `docker compose stop ${service}`,
+    )
+  }
+}
+
+function startTransportEndpoints(profile, options) {
+  for (const service of [
+    SERVICE_NAME,
+    ADAPTER_SERVICE_NAME,
+    KONG_SERVICE_NAME,
+  ]) {
+    assertSuccess(
+      runCompose(profile, ['up', '-d', '--wait', service], options),
+      `docker compose start ${service}`,
+    )
+  }
+}
+
+function runStartupRenewal(profile, options) {
+  const selection = inspectSelection(profile, options)
+  if (!selection.previous) {
+    console.log('HSA mTLS startup renewal: current generation reused.')
+    return
+  }
+
+  try {
+    runVerify(profile, options, { recreate: false })
+    provision(profile, options, 'finalize')
+    console.log('HSA mTLS startup renewal authenticated and finalized.')
+  } catch (promotionError) {
+    stopTransportEndpoints(profile, options)
+    provision(profile, options, 'rollback')
+    provision(profile, options, 'deploy')
+    startTransportEndpoints(profile, options)
+    runVerify(profile, options, { recreate: false })
+    console.warn(
+      `HSA mTLS startup renewal failed and the prior generation was restored: ${promotionError.message}`,
     )
   }
 }
@@ -404,6 +464,10 @@ function runAction(action, extraArgs, profile) {
       ),
       'docker compose build HSA lookup services',
     )
+  }
+
+  if (action === 'renew-startup') {
+    return runStartupRenewal(profile, options)
   }
 
   if (action === 'up') {

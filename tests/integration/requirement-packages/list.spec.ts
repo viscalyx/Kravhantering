@@ -343,90 +343,94 @@ for (const viewport of viewports) {
   })
 }
 
-test.describe('HSA lookup capability', () => {
-  test.use({ viewport: { height: 720, width: 1280 } })
+for (const viewport of viewports) {
+  test.describe(`HSA lookup capability — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
+    test.use({
+      viewport: { height: viewport.height, width: viewport.width },
+    })
 
-  test('REQ-14a: keeps local responsibility data visible when external lookup is unavailable', async ({
-    page,
-  }) => {
-    const localReuseRequests: Record<string, unknown>[] = []
-    await page.route('**/api/hsa-person-lookup-capability', route =>
-      route.fulfill({
-        body: JSON.stringify({ available: false }),
-        contentType: 'application/json',
-        status: 200,
-      }),
-    )
-    await page.route(
-      '**/api/requirement-responsibility-people/verify',
-      async route => {
-        const payload = route.request().postDataJSON() as Record<
-          string,
-          unknown
-        >
-        localReuseRequests.push(payload)
-        await route.fulfill({
-          body: JSON.stringify({
-            evidence: 'local-reuse-evidence',
-            expiresAt: '2099-01-01T00:00:00.000Z',
-            person: {
-              displayName: 'Lokal Kravansvarsperson',
-              email: 'local.person@example.test',
-              givenName: 'Lokal',
-              hasProtectedPersonalData: false,
-              hsaId: 'SE5560000001-local1',
-              middleName: null,
-              surname: 'Kravansvarsperson',
-            },
-          }),
+    test('REQ-14a: keeps local responsibility data visible when external lookup is unavailable', async ({
+      page,
+    }) => {
+      const localReuseRequests: Record<string, unknown>[] = []
+      await page.route('**/api/hsa-person-lookup-capability', route =>
+        route.fulfill({
+          body: JSON.stringify({ available: false }),
           contentType: 'application/json',
           status: 200,
-        })
-      },
-    )
-    await page.goto('/sv/requirements/stewardship?tab=packages')
-    const row = page.getByRole('row', { name: /Mobil användning/ })
-    await expect(row).toContainText('Anna Johansson')
-    await row.getByRole('button', { name: 'Redigera' }).click()
-    const editDialog = page.getByRole('dialog', {
-      name: 'Redigera kravpaket',
-    })
-    await expect(editDialog.getByText(/Anna Johansson/)).toBeVisible()
-    await editDialog
-      .getByRole('button', { name: 'Byt kravpaketsansvarig' })
-      .click()
-    const changeDialog = page.getByRole('dialog', {
-      name: 'Byt kravpaketsansvarig',
-    })
+        }),
+      )
+      await page.route(
+        '**/api/requirement-responsibility-people/verify',
+        async route => {
+          const payload = route.request().postDataJSON() as Record<
+            string,
+            unknown
+          >
+          localReuseRequests.push(payload)
+          await route.fulfill({
+            body: JSON.stringify({
+              evidence: 'local-reuse-evidence',
+              expiresAt: '2099-01-01T00:00:00.000Z',
+              person: {
+                displayName: 'Lokal Kravansvarsperson',
+                email: 'local.person@example.test',
+                givenName: 'Lokal',
+                hasProtectedPersonalData: false,
+                hsaId: 'SE5560000001-local1',
+                middleName: null,
+                surname: 'Kravansvarsperson',
+              },
+            }),
+            contentType: 'application/json',
+            status: 200,
+          })
+        },
+      )
+      await page.goto('/sv/requirements/stewardship?tab=packages')
+      const row = page.getByRole('row', { name: /Mobil användning/ })
+      await expect(row).toContainText('Anna Johansson')
+      await row.getByRole('button', { name: 'Redigera' }).click()
+      const editDialog = page.getByRole('dialog', {
+        name: 'Redigera kravpaket',
+      })
+      await expect(editDialog.getByText(/Anna Johansson/)).toBeVisible()
+      await editDialog
+        .getByRole('button', { name: 'Byt kravpaketsansvarig' })
+        .click()
+      const changeDialog = page.getByRole('dialog', {
+        name: 'Byt kravpaketsansvarig',
+      })
 
-    await expect(
-      changeDialog.getByRole('status').filter({
-        hasText: 'Direktuppslag i HSA är inte tillgängligt',
-      }),
-    ).toBeVisible()
-    await expect(
-      changeDialog.getByRole('button', { name: 'Hämta' }),
-    ).toBeDisabled()
-    await fillEditableHsaId(
-      changeDialog,
-      'Nya kravpaketsansvarigs HSA-id',
-      'SE5560000001-local1',
-    )
-    await changeDialog
-      .getByRole('textbox', { name: 'Nya kravpaketsansvarigs HSA-id' })
-      .press('Tab')
-    await expect(
-      changeDialog.getByText(
-        'Lokal Kravansvarsperson (local.person@example.test)',
-      ),
-    ).toBeVisible()
-    expect(localReuseRequests).toContainEqual(
-      expect.objectContaining({
-        hsaId: 'SE5560000001-local1',
-        mode: 'reuse_local',
-        purpose: 'requirement_package_lead',
-        scopeId: 1,
-      }),
-    )
+      await expect(
+        changeDialog.getByRole('status').filter({
+          hasText: 'Direktuppslag i HSA är inte tillgängligt',
+        }),
+      ).toBeVisible()
+      await expect(
+        changeDialog.getByRole('button', { name: 'Hämta' }),
+      ).toBeDisabled()
+      await fillEditableHsaId(
+        changeDialog,
+        'Nya kravpaketsansvarigs HSA-id',
+        'SE5560000001-local1',
+      )
+      await changeDialog
+        .getByRole('textbox', { name: 'Nya kravpaketsansvarigs HSA-id' })
+        .press('Tab')
+      await expect(
+        changeDialog.getByText(
+          'Lokal Kravansvarsperson (local.person@example.test)',
+        ),
+      ).toBeVisible()
+      expect(localReuseRequests).toContainEqual(
+        expect.objectContaining({
+          hsaId: 'SE5560000001-local1',
+          mode: 'reuse_local',
+          purpose: 'requirement_package_lead',
+          scopeId: 1,
+        }),
+      )
+    })
   })
-})
+}
