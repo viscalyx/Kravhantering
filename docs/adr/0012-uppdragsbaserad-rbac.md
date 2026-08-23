@@ -60,7 +60,7 @@ auktoriseringsgränsen och har ingen separat AI-behörighet i nuvarande modell.
 En användare utan `Admin` måste ange exakt ett auktoriserat
 behörighetssammanhang:
 `requirement_area` för författande i kravområde eller `specification` för
-författande i kravunderlag. Detta gäller REST- och MCP-generering innan
+författande i kravunderlag. Detta gäller REST-generering innan
 AI-integrationslagret anropas. `Admin` får utelämna
 behörighetssammanhang. Användaren får inte välja AI-anslutning,
 anslutningsmodell eller datapolicy; de styrs administrativt enligt
