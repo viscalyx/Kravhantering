@@ -1,5 +1,6 @@
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import {
+  chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -44,6 +45,8 @@ interface FixtureOptions {
     | 'signal-int'
     | 'signal-term'
     | 'timeout'
+    | 'unsafe-post-activation'
+    | 'unsafe-scratch'
     | 'version-mismatch'
   fakeOwner?: boolean
   incompleteTarget?: boolean
@@ -51,6 +54,7 @@ interface FixtureOptions {
   previousVersion?: string
   result?: string
   targetVersion?: string
+  timeoutSeconds?: string
 }
 
 function userFixture(options: FixtureOptions = {}) {
@@ -86,10 +90,12 @@ function userFixture(options: FixtureOptions = {}) {
     const release = path.join(releasesDir, `${version}-${targetTriple}`)
     mkdirSync(path.join(release, 'bin'), { recursive: true })
     mkdirSync(path.join(release, 'codex-path'), { recursive: true })
+    mkdirSync(path.join(release, 'codex-resources'), { recursive: true })
     writeFileSync(path.join(release, 'codex-package.json'), '{}\n')
     executable(path.join(release, 'bin', 'codex'), version)
     executable(path.join(release, 'bin', 'codex-code-mode-host'), version)
     executable(path.join(release, 'codex-path', 'rg'), version)
+    executable(path.join(release, 'codex-resources', 'bwrap'), version)
     symlinkSync('bin/codex', path.join(release, 'codex'))
     return release
   }
@@ -165,23 +171,30 @@ function userFixture(options: FixtureOptions = {}) {
     [
       '#!/usr/bin/env bash',
       'set -euo pipefail',
-      `printf 'HOME=%s\\nCODEX_HOME=%s\\nCODEX_INSTALL_DIR=%s\\nCODEX_NON_INTERACTIVE=%s\\nPATH=%s\\nTMPDIR=%s\\nTMP=%s\\nTEMP=%s\\nUSER=%s\\nTOKEN_PRESENT=%s\\n' "$HOME" "$CODEX_HOME" "$CODEX_INSTALL_DIR" "$CODEX_NON_INTERACTIVE" "$PATH" "$TMPDIR" "$TMP" "$TEMP" "$USER" "\${GH_TOKEN:+yes}" > ${shellLiteral(environmentCapture)}`,
+      `printf 'HOME=%s\\nCODEX_HOME=%s\\nCODEX_INSTALL_DIR=%s\\nCODEX_NON_INTERACTIVE=%s\\nCODEX_MANAGED_DIRECTORY_MODE=%s\\nPATH=%s\\nTMPDIR=%s\\nTMP=%s\\nTEMP=%s\\nUSER=%s\\nEFFECTIVE_UID=%s\\nEFFECTIVE_GID=%s\\nTOKEN_PRESENT=%s\\n' "$HOME" "$CODEX_HOME" "$CODEX_INSTALL_DIR" "$CODEX_NON_INTERACTIVE" "$CODEX_MANAGED_DIRECTORY_MODE" "$PATH" "$TMPDIR" "$TMP" "$TEMP" "$USER" "$(/usr/bin/id -u)" "$(/usr/bin/id -g)" "\${GH_TOKEN:+yes}" > ${shellLiteral(environmentCapture)}`,
       `release="$CODEX_HOME/packages/standalone/releases/${targetVersion}-${targetTriple}"`,
       failureAction,
-      'if [ ! -f "$release/codex-package.json" ] || [ ! -x "$release/bin/codex" ]; then',
+      'if [ ! -f "$release/codex-package.json" ] || [ ! -x "$release/bin/codex" ] || [ ! -x "$release/codex-resources/bwrap" ]; then',
       `  printf 'download\\n' >> ${shellLiteral(downloadCapture)}`,
       '  rm -rf "$release"',
-      '  mkdir -p "$release/bin" "$release/codex-path"',
+      '  mkdir -p "$release/bin" "$release/codex-path" "$release/codex-resources"',
       '  printf \'{}\\n\' > "$release/codex-package.json"',
       `  printf '#!/usr/bin/env bash\\nprintf "codex-cli ${mismatchVersion}\\\\n"\\n' > "$release/bin/codex"`,
       '  cp "$release/bin/codex" "$release/bin/codex-code-mode-host"',
       '  cp "$release/bin/codex" "$release/codex-path/rg"',
-      '  chmod 0755 "$release/bin/codex" "$release/bin/codex-code-mode-host" "$release/codex-path/rg"',
+      '  cp "$release/bin/codex" "$release/codex-resources/bwrap"',
+      '  chmod 0755 "$release/bin/codex" "$release/bin/codex-code-mode-host" "$release/codex-path/rg" "$release/codex-resources/bwrap"',
       '  ln -s bin/codex "$release/codex"',
       'fi',
       'ln -sfn "$release" "$CODEX_HOME/packages/standalone/current"',
       'ln -sfn "$CODEX_HOME/packages/standalone/current/bin/codex" "$CODEX_INSTALL_DIR/codex"',
       options.failure === 'post-activation' ? 'exit 46' : ':',
+      options.failure === 'unsafe-post-activation'
+        ? 'rm "$CODEX_INSTALL_DIR/codex"; printf \'unsafe\\n\' > "$CODEX_INSTALL_DIR/codex"; exit 47'
+        : ':',
+      options.failure === 'unsafe-scratch'
+        ? 'rm -rf "$TMPDIR"; ln -s "$CODEX_HOME" "$TMPDIR"'
+        : ':',
       `printf '%s' ${shellLiteral(result)}`,
       '',
     ].join('\n'),
@@ -195,7 +208,7 @@ function userFixture(options: FixtureOptions = {}) {
     AZURE_DEV_CODEX_MODE: 'user-managed',
     AZURE_DEV_CODEX_TEMP_ROOT: scratchRoot,
     AZURE_DEV_CODEX_TIMEOUT_SECONDS:
-      options.failure === 'timeout' ? '1' : '900',
+      options.timeoutSeconds ?? (options.failure === 'timeout' ? '1' : '900'),
     AZURE_DEV_CODEX_USER: 'vscode',
     AZURE_DEV_CODEX_USER_HOME: userHome,
     CODEX_HOME: codexHome,
@@ -229,6 +242,15 @@ function runFixture(fixture: ReturnType<typeof userFixture>) {
     encoding: 'utf8',
     env: fixture.env,
   })
+}
+
+async function waitForFile(pathname: string) {
+  const deadline = Date.now() + 2_000
+  while (Date.now() < deadline) {
+    if (existsSync(pathname)) return
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  throw new Error(`Timed out waiting for ${pathname}`)
 }
 
 afterEach(() => {
@@ -271,17 +293,27 @@ describe('Azure Codex installation orchestration', () => {
     expect(runner).toContain('RUN\n-u\nRUN\nvscode\nRUN\n--\n')
     expect(runner).toContain('RUN\n/bin/bash\nRUN\n-c\n')
     const environment = readFileSync(fixture.environmentCapture, 'utf8')
+    const effectiveUid = spawnSync('/usr/bin/id', ['-u'], {
+      encoding: 'utf8',
+    }).stdout.trim()
+    const effectiveGid = spawnSync('/usr/bin/id', ['-g'], {
+      encoding: 'utf8',
+    }).stdout.trim()
     expect(environment).toContain(`HOME=${fixture.userHome}\n`)
     expect(environment).toContain(`CODEX_HOME=${fixture.codexHome}\n`)
     expect(environment).toContain(`CODEX_INSTALL_DIR=${fixture.installDir}\n`)
     expect(environment).toContain('CODEX_NON_INTERACTIVE=1\n')
+    expect(environment).toContain('CODEX_MANAGED_DIRECTORY_MODE=0700\n')
     expect(environment).toContain(
       `PATH=${fixture.installDir}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n`,
     )
     expect(environment).toMatch(
       new RegExp(`TMPDIR=${fixture.scratchRoot}/run\\.[^\\n]+\\n`),
     )
-    expect(environment).toContain('USER=vscode\nTOKEN_PRESENT=yes\n')
+    expect(environment).toContain('USER=vscode\n')
+    expect(environment).toContain(`EFFECTIVE_UID=${effectiveUid}\n`)
+    expect(environment).toContain(`EFFECTIVE_GID=${effectiveGid}\n`)
+    expect(environment).toContain('TOKEN_PRESENT=yes\n')
   })
 
   it.each([
@@ -303,6 +335,7 @@ describe('Azure Codex installation orchestration', () => {
       )
       expect(result.stderr).toContain('targetVersion=1.2.3')
       expect(result.stderr).toContain('finalVersion=1.2.3')
+      expect(result.stderr).toContain(`previousState=${version}`)
     },
   )
 
@@ -327,6 +360,20 @@ describe('Azure Codex installation orchestration', () => {
     expect(result.status).toBe(0)
     expect(readFileSync(fixture.downloadCapture, 'utf8')).toBe('download\n')
     expect(existsSync(path.join(fixture.targetRelease, 'partial'))).toBe(false)
+  })
+
+  it('reinstalls a current package that is missing a required executable', () => {
+    const fixture = userFixture({ installedVersion: '1.2.3' })
+    rmSync(path.join(fixture.targetRelease, 'codex-resources', 'bwrap'))
+
+    const result = runFixture(fixture)
+
+    expect(result.status).toBe(0)
+    expect(readFileSync(fixture.downloadCapture, 'utf8')).toBe('download\n')
+    expect(
+      lstatSync(path.join(fixture.targetRelease, 'codex-resources', 'bwrap'))
+        .mode & 0o777,
+    ).toBe(0o755)
   })
 
   it('deactivates an incomplete managed target before attempting repair', () => {
@@ -368,6 +415,45 @@ describe('Azure Codex installation orchestration', () => {
     )
     expect(result.stderr).toContain('rollback=')
   })
+
+  it('restores the previous release when the orchestration wrapper receives TERM', async () => {
+    const fixture = userFixture({
+      failure: 'timeout',
+      previousVersion: '1.1.0',
+      timeoutSeconds: '30',
+    })
+    const previousTarget = readlinkSync(fixture.currentLink)
+    const transaction = path.join(
+      fixture.standaloneRoot,
+      '.krav-azure-transaction.json',
+    )
+    const child = spawn('bash', [orchestrationPath], {
+      env: fixture.env,
+      stdio: ['ignore', 'ignore', 'pipe'],
+    })
+    let stderr = ''
+    child.stderr.setEncoding('utf8')
+    child.stderr.on('data', chunk => {
+      stderr += chunk
+    })
+
+    await waitForFile(transaction)
+    expect(child.kill('SIGTERM')).toBe(true)
+    const completion = await new Promise<{
+      code: number | null
+      signal: NodeJS.Signals | null
+    }>(resolve => {
+      child.once('exit', (code, signal) => resolve({ code, signal }))
+    })
+
+    expect(completion).toEqual({ code: 143, signal: null })
+    expect(stderr).toContain('rollback=signal TERM')
+    expect(readlinkSync(fixture.currentLink)).toBe(previousTarget)
+    expect(readlinkSync(fixture.launcher)).toBe(
+      `${fixture.currentLink}/bin/codex`,
+    )
+    expect(existsSync(transaction)).toBe(false)
+  }, 10_000)
 
   it('removes links created by a failed first installation', () => {
     const fixture = userFixture({ failure: 'post-activation' })
@@ -428,6 +514,76 @@ describe('Azure Codex installation orchestration', () => {
     expect(readFileSync(lock, 'utf8')).toBe('live-lock-sentinel\n')
   })
 
+  it('rejects an invocation bound longer than 15 minutes', () => {
+    const fixture = userFixture({ timeoutSeconds: '901' })
+
+    const result = runFixture(fixture)
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('at most 900 seconds')
+    expect(existsSync(fixture.environmentCapture)).toBe(false)
+  })
+
+  it.each([
+    ['symbolic parent', 'symlink'],
+    ['non-directory parent', 'file'],
+    ['world-writable parent', 'writable'],
+  ])('rejects an unsafe scratch %s', (_name, scenario) => {
+    const fixture = userFixture()
+    const scratchParent = path.join(fixture.root, 'scratch-parent')
+    const actualParent = path.join(fixture.root, 'actual-scratch-parent')
+    mkdirSync(actualParent)
+    if (scenario === 'symlink') {
+      symlinkSync(actualParent, scratchParent)
+    } else if (scenario === 'file') {
+      writeFileSync(scratchParent, 'not a directory\n')
+    } else {
+      mkdirSync(scratchParent)
+      chmodSync(scratchParent, 0o777)
+    }
+    fixture.env.AZURE_DEV_CODEX_TEMP_ROOT = path.join(scratchParent, 'codex')
+
+    const result = runFixture(fixture)
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('Unsafe Codex managed object')
+    expect(result.stderr).toContain('parent')
+    expect(existsSync(fixture.environmentCapture)).toBe(false)
+  })
+
+  it('retains recovery evidence if an unexpected object blocks rollback', () => {
+    const fixture = userFixture({
+      failure: 'unsafe-post-activation',
+      previousVersion: '1.1.0',
+    })
+
+    const result = runFixture(fixture)
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('recovery record retained')
+    expect(
+      existsSync(
+        path.join(fixture.standaloneRoot, '.krav-azure-transaction.json'),
+      ),
+    ).toBe(true)
+  })
+
+  it('rolls back activation if private scratch cleanup becomes unsafe', () => {
+    const fixture = userFixture({
+      failure: 'unsafe-scratch',
+      previousVersion: '1.1.0',
+    })
+    const previousTarget = readlinkSync(fixture.currentLink)
+
+    const result = runFixture(fixture)
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'Refusing unsafe Azure Codex scratch cleanup',
+    )
+    expect(readlinkSync(fixture.currentLink)).toBe(previousTarget)
+  })
+
   it('preserves unrelated user state and scratch content', () => {
     const fixture = userFixture({ previousVersion: '1.1.0' })
     const sentinels = [
@@ -476,6 +632,8 @@ describe('Azure Codex installation orchestration', () => {
       fixture.standaloneRoot,
       fixture.releasesDir,
       fixture.scratchRoot,
+      fixture.targetRelease,
+      path.join(fixture.targetRelease, 'bin'),
     ]) {
       expect(lstatSync(directory).mode & 0o777).toBe(0o700)
     }

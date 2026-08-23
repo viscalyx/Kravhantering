@@ -4,6 +4,7 @@ set -euo pipefail
 CODEX_HOME="${CODEX_HOME:-/usr/local/lib/codex}"
 CODEX_INSTALL_DIR="${CODEX_INSTALL_DIR:-/usr/local/bin}"
 CODEX_NON_INTERACTIVE="${CODEX_NON_INTERACTIVE:-1}"
+CODEX_MANAGED_DIRECTORY_MODE="${CODEX_MANAGED_DIRECTORY_MODE:-0755}"
 
 log() {
   printf '[codex-installer] %s\n' "$*" >&2
@@ -74,7 +75,14 @@ if ! printf '%s  %s\n' "${codex_installer_sha256}" "${codex_installer}" |
   exit 1
 fi
 
-install -d -m 0755 "${CODEX_HOME}" "${CODEX_INSTALL_DIR}"
+case "${CODEX_MANAGED_DIRECTORY_MODE}" in
+  0700 | 0755) ;;
+  *)
+    log 'Unsupported Codex managed-directory mode'
+    exit 1
+    ;;
+esac
+install -d -m "${CODEX_MANAGED_DIRECTORY_MODE}" "${CODEX_HOME}" "${CODEX_INSTALL_DIR}"
 CODEX_HOME="${CODEX_HOME}" \
   CODEX_INSTALL_DIR="${CODEX_INSTALL_DIR}" \
   CODEX_NON_INTERACTIVE="${CODEX_NON_INTERACTIVE}" \

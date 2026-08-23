@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -32,6 +33,8 @@ function fixture(
   const releaseJson = path.join(root, 'release.json')
   const upstreamInstaller = path.join(root, 'upstream-install.sh')
   const capturePath = path.join(root, 'installed-version.txt')
+  const codexHome = path.join(root, 'codex-home')
+  const installDir = path.join(root, 'install-bin')
   const privateTemp = path.join(root, 'private-temp')
   const curlCapturePath = path.join(root, 'curl-arguments.txt')
   const curlAuthenticationCapturePath = path.join(
@@ -103,8 +106,8 @@ function fixture(
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     ALL_PROXY: undefined,
-    CODEX_HOME: path.join(root, 'codex-home'),
-    CODEX_INSTALL_DIR: path.join(root, 'install-bin'),
+    CODEX_HOME: codexHome,
+    CODEX_INSTALL_DIR: installDir,
     CODEX_NON_INTERACTIVE: '1',
     CODEX_RELEASE: undefined,
     FAKE_CODEX_CAPTURE: capturePath,
@@ -126,9 +129,11 @@ function fixture(
 
   return {
     capturePath,
+    codexHome,
     curlAuthenticationCapturePath,
     curlCapturePath,
     env,
+    installDir,
     privateTemp,
   }
 }
@@ -182,6 +187,20 @@ describe('Codex installer integrity contract', () => {
     )
     expect(result.stdout).not.toContain('fixture-github-token')
     expect(result.stderr).not.toContain('fixture-github-token')
+  })
+
+  it('retains private managed-directory modes for user-managed invocation', () => {
+    const testFixture = fixture()
+    testFixture.env.CODEX_MANAGED_DIRECTORY_MODE = '0700'
+
+    const result = spawnSync('bash', [installerPath], {
+      encoding: 'utf8',
+      env: testFixture.env,
+    })
+
+    expect(result.status).toBe(0)
+    expect(statSync(testFixture.codexHome).mode & 0o777).toBe(0o700)
+    expect(statSync(testFixture.installDir).mode & 0o777).toBe(0o700)
   })
 
   it('rejects a forwarded token containing a header-injection newline', () => {

@@ -17,6 +17,7 @@ CODEX_LAUNCHER="${CODEX_INSTALL_DIR}/codex"
 CODEX_TRANSACTION="${CODEX_STANDALONE_ROOT}/.krav-azure-transaction.json"
 CODEX_UID=''
 CODEX_GID=''
+CODEX_TRUSTED_ROOT_UID=''
 transaction_active=0
 previous_current_target=''
 previous_launcher_target=''
@@ -104,9 +105,70 @@ validate_managed_file() {
   fi
 }
 
+validate_safe_parent_chain() {
+  local path="$1" parent owner mode mode_value
+
+  parent="$(dirname -- "${path}")"
+  while [ "${parent}" != '/' ]; do
+    if [ -L "${parent}" ]; then
+      fail_unsafe_object "${parent}" 'parent symbolic links are not allowed'
+      return 1
+    fi
+    if [ -e "${parent}" ] && [ ! -d "${parent}" ]; then
+      fail_unsafe_object "${parent}" 'parent must be a directory'
+      return 1
+    fi
+    if [ ! -d "${parent}" ]; then
+      parent="$(dirname -- "${parent}")"
+      continue
+    fi
+    owner="$(stat -c '%u' -- "${parent}")"
+    mode="$(stat -c '%a' -- "${parent}")"
+    mode_value=$((8#${mode}))
+    if [ "${owner}" != "${CODEX_TRUSTED_ROOT_UID}" ] &&
+      [ "${owner}" != "${CODEX_UID}" ]; then
+      fail_unsafe_object "${parent}" 'parent is owned by an unexpected account'
+      return 1
+    fi
+    if (( (mode_value & 8#022) != 0 && (mode_value & 8#1000) == 0 )); then
+      fail_unsafe_object "${parent}" 'parent is writable by an untrusted group or account'
+      return 1
+    fi
+    parent="$(dirname -- "${parent}")"
+  done
+}
+
+is_recognized_release_name() {
+  [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+){0,2})?-(x86_64|aarch64)-unknown-linux-musl$ ]]
+}
+
+is_recognized_staging_name() {
+  [[ "$1" =~ ^\.staging\.[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+){0,2})?-(x86_64|aarch64)-unknown-linux-musl\.[0-9]+$ ]]
+}
+
 is_recognized_release_target() {
-  local target="$1"
-  [[ "${target}" =~ ^${CODEX_RELEASES_DIR}/[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+){0,2})?-(x86_64|aarch64)-unknown-linux-musl$ ]]
+  local target="$1" name
+
+  case "${target}" in
+    "${CODEX_RELEASES_DIR}"/*) name="${target#"${CODEX_RELEASES_DIR}/"}" ;;
+    *) return 1 ;;
+  esac
+  [[ "${name}" != */* ]] && is_recognized_release_name "${name}"
+}
+
+is_recognized_launcher_target() {
+  [ "$1" = "${CODEX_CURRENT_LINK}/bin/codex" ] ||
+    [ "$1" = "${CODEX_CURRENT_LINK}/codex" ]
+}
+
+release_version_from_target() {
+  local name="${1##*/}"
+
+  case "${name}" in
+    *-x86_64-unknown-linux-musl) printf '%s\n' "${name%-x86_64-unknown-linux-musl}" ;;
+    *-aarch64-unknown-linux-musl) printf '%s\n' "${name%-aarch64-unknown-linux-musl}" ;;
+    *) return 1 ;;
+  esac
 }
 
 validate_release_objects() {
@@ -125,8 +187,8 @@ validate_release_objects() {
       fail_unsafe_object "${entry}" 'release entries must be directories'
       return 1
     fi
-    if [[ ! "${name}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+){0,2})?-(x86_64|aarch64)-unknown-linux-musl$ ]] &&
-      [[ ! "${name}" =~ ^\.staging\.[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+){0,2})?-(x86_64|aarch64)-unknown-linux-musl\.[0-9]+$ ]]; then
+    if ! is_recognized_release_name "${name}" &&
+      ! is_recognized_staging_name "${name}"; then
       fail_unsafe_object "${entry}" 'unrecognized release entry'
       return 1
     fi
@@ -134,6 +196,12 @@ validate_release_objects() {
       fail_unsafe_object "${entry}" "expected ownership ${CODEX_USER}:${CODEX_USER}"
       return 1
     fi
+    if find "${entry}" -xdev \( ! -uid "${CODEX_UID}" -o ! -gid "${CODEX_GID}" \) \
+      -print -quit | grep -q .; then
+      fail_unsafe_object "${entry}" "package content must be owned by ${CODEX_USER}:${CODEX_USER}"
+      return 1
+    fi
+    find "${entry}" -xdev -type d -exec chmod 0700 {} +
   done < <(find "${CODEX_RELEASES_DIR}" -mindepth 1 -maxdepth 1 -print0)
 }
 
@@ -202,8 +270,7 @@ read_recognized_link() {
       }
       ;;
     launcher)
-      if [ "${target}" != "${CODEX_CURRENT_LINK}/bin/codex" ] &&
-        [ "${target}" != "${CODEX_CURRENT_LINK}/codex" ]; then
+      if ! is_recognized_launcher_target "${target}"; then
         fail_unsafe_object "${path}" "unrecognized launcher target ${target}"
         return 1
       fi
@@ -232,20 +299,28 @@ restore_link() {
 }
 
 rollback_links() {
-  local reason="$1"
+  local reason="$1" rollback_failed=0
 
   if [ "${transaction_active}" -ne 1 ]; then
     return
   fi
   log "rollback=${reason}"
-  restore_link "${CODEX_CURRENT_LINK}" "${previous_current_target}" current || true
-  restore_link "${CODEX_LAUNCHER}" "${previous_launcher_target}" launcher || true
-  rm -f -- "${CODEX_TRANSACTION}"
+  restore_link "${CODEX_CURRENT_LINK}" "${previous_current_target}" current || rollback_failed=1
+  restore_link "${CODEX_LAUNCHER}" "${previous_launcher_target}" launcher || rollback_failed=1
   transaction_active=0
+  if [ "${rollback_failed}" -ne 0 ]; then
+    log "Rollback could not safely restore every managed link; recovery record retained at ${CODEX_TRANSACTION}"
+    return 1
+  fi
+  rm -f -- "${CODEX_TRANSACTION}"
 }
 
 cleanup_run_temp() {
   if [ -z "${run_temp_dir}" ]; then
+    return
+  fi
+  if [ ! -e "${run_temp_dir}" ] && [ ! -L "${run_temp_dir}" ]; then
+    run_temp_dir=''
     return
   fi
   if [ -L "${run_temp_dir}" ] || [ ! -d "${run_temp_dir}" ] ||
@@ -326,12 +401,19 @@ recover_interrupted_transaction() {
     return 1
   fi
   if [ -n "${recovered_launcher}" ] &&
-    [ "${recovered_launcher}" != "${CODEX_CURRENT_LINK}/bin/codex" ] &&
-    [ "${recovered_launcher}" != "${CODEX_CURRENT_LINK}/codex" ]; then
+    ! is_recognized_launcher_target "${recovered_launcher}"; then
     fail_unsafe_object "${CODEX_TRANSACTION}" 'unrecognized previous launcher target'
     return 1
   fi
-  if [[ ! "${recovered_scratch}" =~ ^${CODEX_TEMP_ROOT}/run\.[A-Za-z0-9]+$ ]]; then
+  case "${recovered_scratch}" in
+    "${CODEX_TEMP_ROOT}"/run.*) ;;
+    *)
+      fail_unsafe_object "${CODEX_TRANSACTION}" 'unrecognized Azure scratch path'
+      return 1
+      ;;
+  esac
+  if [[ "${recovered_scratch##*/}" != run.* ]] ||
+    [[ ! "${recovered_scratch##*/}" =~ ^run\.[A-Za-z0-9]+$ ]]; then
     fail_unsafe_object "${CODEX_TRANSACTION}" 'unrecognized Azure scratch path'
     return 1
   fi
@@ -357,22 +439,21 @@ run_launcher_version() {
 }
 
 release_target_is_complete() {
-  local release="$1" name version binary reported_version
+  local release="$1" version binary reported_version
 
   [ ! -L "${release}" ] && [ -d "${release}" ] || return 1
-  name="${release##*/}"
-  case "${name}" in
-    *-x86_64-unknown-linux-musl) version="${name%-x86_64-unknown-linux-musl}" ;;
-    *-aarch64-unknown-linux-musl) version="${name%-aarch64-unknown-linux-musl}" ;;
-    *) return 1 ;;
-  esac
+  version="$(release_version_from_target "${release}")" || return 1
   if [ -f "${release}/codex-package.json" ]; then
     [ -x "${release}/bin/codex" ] &&
       [ -x "${release}/bin/codex-code-mode-host" ] &&
-      [ -x "${release}/codex-path/rg" ] || return 1
+      [ -x "${release}/codex-path/rg" ] &&
+      [ -x "${release}/codex-resources/bwrap" ] &&
+      [ -x "${release}/codex" ] || return 1
     binary="${release}/bin/codex"
   else
-    [ -x "${release}/codex" ] && [ -x "${release}/codex-resources/rg" ] || return 1
+    [ -x "${release}/codex" ] &&
+      [ -x "${release}/codex-resources/rg" ] &&
+      [ -x "${release}/codex-resources/bwrap" ] || return 1
     binary="${release}/codex"
   fi
   reported_version="$(
@@ -416,6 +497,9 @@ prepare_user_managed_roots() {
   fi
   CODEX_UID="$(id -u "${CODEX_USER}")"
   CODEX_GID="$(id -g "${CODEX_USER}")"
+  CODEX_TRUSTED_ROOT_UID="$(stat -c '%u' /)"
+  validate_safe_parent_chain "${CODEX_USER_HOME}" || return 1
+  validate_safe_parent_chain "${CODEX_TEMP_ROOT}" || return 1
   require_managed_directory "${CODEX_USER_HOME}" 0750 || return 1
   require_managed_directory "${local_root}" 0700 || return 1
   require_managed_directory "${CODEX_INSTALL_DIR}" 0700 || return 1
@@ -441,6 +525,10 @@ run_user_managed() {
       return 1
       ;;
   esac
+  if [ "${CODEX_TIMEOUT_SECONDS}" -gt 900 ]; then
+    log 'Codex installer timeout must be at most 900 seconds'
+    return 1
+  fi
 
   if [ -e "${CODEX_LEGACY_LAUNCHER}" ] || [ -L "${CODEX_LEGACY_LAUNCHER}" ]; then
     log "Legacy global Codex launcher detected at ${CODEX_LEGACY_LAUNCHER}. In-place migration is unsupported; preserve remote-only work, run remove, then setup -Yes on a replacement VM."
@@ -462,8 +550,7 @@ run_user_managed() {
     restore_link "${CODEX_LAUNCHER}" '' launcher || return 1
     previous_launcher_target=''
   elif [ -n "${previous_current_target}" ]; then
-    previous_version="${previous_current_target##*/}"
-    previous_version="${previous_version%%-*}"
+    previous_version="$(release_version_from_target "${previous_current_target}")" || return 1
   fi
   log "previousState=${previous_version} action=converge"
   run_temp_dir="$(mktemp -d "${CODEX_TEMP_ROOT}/run.XXXXXX")"
@@ -476,16 +563,21 @@ run_user_managed() {
   trap 'handle_signal TERM 143' TERM
 
   if ! installer_result="$(
-    timeout --signal=TERM --kill-after=10s \
+    timeout --signal=KILL \
       "${CODEX_TIMEOUT_SECONDS}" \
       runuser -u "${CODEX_USER}" -- \
       /bin/bash -c '
         github_token=${GH_TOKEN-}
         copilot_token=${COPILOT_GITHUB_TOKEN-}
         for variable in $(compgen -e); do unset "$variable"; done
+        if [ "$(/usr/bin/id -u)" != "$7" ] || [ "$(/usr/bin/id -g)" != "$8" ]; then
+          printf "[azure-codex-orchestration] Codex installer identity mismatch\n" >&2
+          exit 1
+        fi
         export HOME="$1" CODEX_HOME="$2" CODEX_INSTALL_DIR="$3"
         export TMPDIR="$4" TMP="$4" TEMP="$4"
         export CODEX_NON_INTERACTIVE=1
+        export CODEX_MANAGED_DIRECTORY_MODE=0700
         export PATH="$3:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         export USER="$5" LOGNAME="$5" GH_TOKEN="$github_token"
         export COPILOT_GITHUB_TOKEN="$copilot_token"
@@ -497,7 +589,9 @@ run_user_managed() {
       "${CODEX_INSTALL_DIR}" \
       "${run_temp_dir}" \
       "${CODEX_USER}" \
-      "${CODEX_INSTALLER}"
+      "${CODEX_INSTALLER}" \
+      "${CODEX_UID}" \
+      "${CODEX_GID}"
   )"; then
     return 1
   fi
@@ -505,9 +599,9 @@ run_user_managed() {
   target_version="$(printf '%s\n' "${canonical_result}" | jq -r '.targetVersion')"
   log "targetVersion=${target_version} previousState=${previous_version} action=converge"
   validate_final_installation "${target_version}" || return 1
+  cleanup_run_temp || return 1
   rm -f -- "${CODEX_TRANSACTION}"
   transaction_active=0
-  cleanup_run_temp || return 1
   trap - EXIT INT TERM
   user_managed_result="${canonical_result}"
 }
