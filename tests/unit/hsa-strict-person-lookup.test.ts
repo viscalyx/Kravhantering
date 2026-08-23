@@ -924,7 +924,10 @@ describe('strict HSA person lookup startup snapshot', () => {
         certPath: chainFixture.nonCaChain,
         keyPath: chainFixture.nonCaLeafKey,
       }),
-    ).rejects.toMatchObject({ category: 'chain' })
+    ).rejects.toMatchObject({
+      category: 'chain',
+      message: 'TLS presented chain contains a non-CA issuer.',
+    })
     await expect(
       loadStrictCertificateMaterial({
         ...clientOptions,

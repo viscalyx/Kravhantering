@@ -234,7 +234,7 @@ export async function createCertificateChainFixture() {
     certificate: nonCaIssuerCertificate,
     extensions: [
       'basicConstraints=critical,CA:FALSE',
-      'keyUsage=critical,digitalSignature',
+      'keyUsage=critical,keyCertSign,cRLSign',
     ],
     issuerCertificate: rootCertificate,
     issuerKey: rootKey,

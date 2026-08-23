@@ -29,6 +29,9 @@ cleanup_config_temp() {
   if [[ -n "$HSA_STALE_TEMP_DIR" ]]; then
     as_service rm -rf -- "$HSA_STALE_TEMP_DIR" >/dev/null 2>&1 || true
   fi
+}
+
+cleanup_hsa_app_pki() {
   sudo rm -rf -- "$CONFIG_ROOT/secrets/hsa-mtls"
 }
 
@@ -1829,6 +1832,7 @@ verify() {
 down() {
   local helper="$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh"
   local network purpose uid user_search_path volume volume_status
+  cleanup_hsa_app_pki
   id "$SERVICE_USER" >/dev/null 2>&1 || return 0
   mkdir -p "$EVIDENCE_DIR"
   service_systemctl disable --now kravhantering-single-node.target || true

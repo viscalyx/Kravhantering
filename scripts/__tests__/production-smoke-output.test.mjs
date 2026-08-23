@@ -297,7 +297,7 @@ function runHsaRotationEvidenceHarness() {
   return { result, temporaryDirectory }
 }
 
-function runHsaPkiCleanup(exitStatus) {
+function runHsaPkiLifecycle(operation, exitStatus) {
   const temporaryDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'kh-hsa-pki-cleanup-'),
   )
@@ -311,12 +311,15 @@ function runHsaPkiCleanup(exitStatus) {
   const shell = `
     source "$1"
     sudo() { "$@"; }
-    trap cleanup_config_temp EXIT
-    exit "$2"
+    case "$2" in
+      up|verify) cleanup_config_temp ;;
+      down) down ;;
+    esac
+    exit "$3"
   `
   const result = childProcess.spawnSync(
     'bash',
-    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH, String(exitStatus)],
+    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH, operation, String(exitStatus)],
     {
       encoding: 'utf8',
       env: {
@@ -326,24 +329,52 @@ function runHsaPkiCleanup(exitStatus) {
       },
     },
   )
-  return { pkiDirectory, result }
+  return { pkiDirectory, result, temporaryDirectory }
 }
 
 describe('production smoke output', () => {
+  it.each(['up', 'verify'])(
+    'preserves host-mounted App PKI after successful release-smoke %s cleanup',
+    command => {
+      const { pkiDirectory, result, temporaryDirectory } = runHsaPkiLifecycle(
+        command,
+        0,
+      )
+
+      try {
+        expect(result.status).toBe(0)
+        expect(fs.existsSync(pkiDirectory)).toBe(true)
+        expect(fs.existsSync(path.join(pkiDirectory, 'app-client.key'))).toBe(
+          true,
+        )
+        expect(fs.existsSync(path.join(pkiDirectory, '.staging'))).toBe(true)
+      } finally {
+        fs.rmSync(temporaryDirectory, { force: true, recursive: true })
+      }
+    },
+  )
+
   it.each([
     { exitStatus: 0, lifecycle: 'success' },
     { exitStatus: 23, lifecycle: 'failure' },
   ])(
-    'removes host-mounted ephemeral App PKI after release-smoke $lifecycle',
+    'removes host-mounted ephemeral App PKI from down on $lifecycle',
     ({ exitStatus }) => {
-      const { pkiDirectory, result } = runHsaPkiCleanup(exitStatus)
-
-      expect(result.status).toBe(exitStatus)
-      expect(fs.existsSync(pkiDirectory)).toBe(false)
-      expect(fs.existsSync(path.join(pkiDirectory, 'app-client.key'))).toBe(
-        false,
+      const { pkiDirectory, result, temporaryDirectory } = runHsaPkiLifecycle(
+        'down',
+        exitStatus,
       )
-      expect(fs.existsSync(path.join(pkiDirectory, '.staging'))).toBe(false)
+
+      try {
+        expect(result.status).toBe(exitStatus)
+        expect(fs.existsSync(pkiDirectory)).toBe(false)
+        expect(fs.existsSync(path.join(pkiDirectory, 'app-client.key'))).toBe(
+          false,
+        )
+        expect(fs.existsSync(path.join(pkiDirectory, '.staging'))).toBe(false)
+      } finally {
+        fs.rmSync(temporaryDirectory, { force: true, recursive: true })
+      }
     },
   )
 
