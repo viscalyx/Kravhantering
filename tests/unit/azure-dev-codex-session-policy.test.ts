@@ -17,6 +17,12 @@ const policyPath = path.join(
   'scripts/azure-dev/templates/install-azure-codex-session-policy.sh',
 )
 const temporaryDirectories: string[] = []
+const canRunRootOwnedPolicyFixture =
+  spawnSync('docker', ['image', 'inspect', 'ubuntu:24.04'], {
+    stdio: 'ignore',
+  }).status === 0
+const rootOwnedPolicyIt = canRunRootOwnedPolicyFixture ? it : it.skip
+const candidateZshExpression = '$' + '{MANAGED_ZSHRC:-$' + '{ZDOTDIR}/.zshrc}'
 
 function fixture(
   zshTemplate = [
@@ -210,4 +216,120 @@ describe('Azure Codex session policy', () => {
     expect(readFileSync(target.bashProfile, 'utf8')).toBe(originals.bash)
     expect(readFileSync(target.zshDestination, 'utf8')).toBe(originals.zsh)
   })
+
+  rootOwnedPolicyIt(
+    'keeps validated candidates and rollback bytes outside vscode control',
+    () => {
+      const fixtureScript = String.raw`
+set -euo pipefail
+useradd --create-home --uid 2000 --shell /bin/bash vscode
+install -d -o vscode -g vscode -m 0700 /case/home/vscode/.local/bin
+printf '#!/usr/bin/env bash\nprintf "codex-cli 1.2.3\\n"\n' > /case/home/vscode/.local/bin/codex
+chown vscode:vscode /case/home/vscode/.local/bin/codex
+chmod 0755 /case/home/vscode/.local/bin/codex
+install -d -m 0755 /case/bin /case/etc/ssh /case/etc/profile.d
+printf '# original SSH policy\n' > /case/etc/ssh/policy.conf
+printf '# original Bash policy\n' > /case/etc/profile.d/codex.sh
+printf '# original Zsh profile\n' > /case/home/vscode/.zshrc
+chown vscode:vscode /case/home/vscode/.zshrc
+cp /case/etc/ssh/policy.conf /case/expected-ssh
+cp /case/etc/profile.d/codex.sh /case/expected-bash
+cp /case/home/vscode/.zshrc /case/expected-zsh
+printf 'export CUSTOM_VALUE=preserved\n' > /case/zshrc.template
+install -o vscode -g vscode -m 0600 /dev/null /case/candidate-directory
+
+cat > /case/bin/sshd <<'FAKE_SSHD'
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "$1" = -t ]; then exit 0; fi
+user=''
+for argument in "$@"; do
+  case "$argument" in user=*) user="$(printf '%s' "$argument" | cut -d= -f2 | cut -d, -f1)" ;; esac
+done
+if [ "$user" = vscode ]; then
+  printf 'setenv PATH=%s\n' "$EXPECTED_MANAGED_PATH"
+fi
+FAKE_SSHD
+
+cat > /case/bin/zsh <<'FAKE_ZSH'
+#!/usr/bin/env bash
+set -euo pipefail
+candidate="${candidateZshExpression}"
+dirname -- "$candidate" > /case/candidate-directory
+: > /case/candidate-metadata
+for staged_candidate in \
+  "$(dirname -- "$candidate")/sshd-policy.conf" \
+  "$(dirname -- "$candidate")/bash-policy.sh" \
+  "$candidate"; do
+  stat -c '%u:%g %a' "$staged_candidate" >> /case/candidate-metadata
+  if printf '# vscode candidate tamper\n' >> "$staged_candidate" 2>/dev/null; then
+    touch /case/candidate-writable
+  fi
+done
+FAKE_ZSH
+
+cat > /case/bin/systemctl <<'FAKE_SYSTEMCTL'
+#!/usr/bin/env bash
+set -euo pipefail
+staging="$(cat /case/candidate-directory)"
+: > /case/backup-metadata
+for backup in "$staging"/rollback-*/content; do
+  stat -c '%u:%g %a' "$backup" >> /case/backup-metadata
+  if runuser -u vscode -- sh -c 'printf "# vscode backup tamper\n" >> "$1"' sh "$backup" 2>/dev/null; then
+    touch /case/backup-writable
+  fi
+done
+exit 1
+FAKE_SYSTEMCTL
+chmod 0755 /case/bin/*
+install -m 0755 /case/bin/zsh /usr/local/bin/zsh
+
+set +e
+EXPECTED_MANAGED_PATH=/case/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+AZURE_DEV_CODEX_USER=vscode \
+AZURE_DEV_CODEX_USER_HOME=/case/home/vscode \
+AZURE_DEV_ZSHRC_SOURCE=/case/zshrc.template \
+AZURE_DEV_ZSHRC_DESTINATION=/case/home/vscode/.zshrc \
+AZURE_DEV_SSHD_ENVIRONMENT_CONFIG=/case/etc/ssh/policy.conf \
+AZURE_DEV_BASH_CODEX_PATH_PROFILE=/case/etc/profile.d/codex.sh \
+AZURE_DEV_SSHD_BIN=/case/bin/sshd \
+AZURE_DEV_SYSTEMCTL_BIN=/case/bin/systemctl \
+AZURE_DEV_ZSH_BIN=/case/bin/zsh \
+  bash /policy.sh
+policy_status=$?
+set -e
+
+test "$policy_status" -ne 0
+test "$(wc -l < /case/candidate-metadata)" -eq 3
+test "$(sort -u /case/candidate-metadata)" = '0:0 644'
+test ! -e /case/candidate-writable
+test "$(wc -l < /case/backup-metadata)" -eq 3
+test "$(sort -u /case/backup-metadata)" = '0:0 600'
+test ! -e /case/backup-writable
+cmp /case/expected-ssh /case/etc/ssh/policy.conf
+cmp /case/expected-bash /case/etc/profile.d/codex.sh
+cmp /case/expected-zsh /case/home/vscode/.zshrc
+`
+      const result = spawnSync(
+        'docker',
+        [
+          'run',
+          '--rm',
+          '--network=none',
+          '--tmpfs',
+          '/case:rw,exec,nosuid,nodev,size=32m',
+          '--mount',
+          `type=bind,source=${policyPath},target=/policy.sh,readonly`,
+          'ubuntu:24.04',
+          'bash',
+          '-c',
+          fixtureScript,
+        ],
+        { encoding: 'utf8' },
+      )
+
+      expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0)
+    },
+    15_000,
+  )
 })

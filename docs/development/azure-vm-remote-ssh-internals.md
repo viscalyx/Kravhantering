@@ -626,7 +626,10 @@ It writes the `vscode` Bash-login policy and appends a managed Zsh footer after
 the selected default or custom template. The footer unique-prepends the managed
 binary directory without discarding other custom path entries, and rejects
 alias or function masking. Candidate SSH, Bash, and Zsh policy is validated
-before activation; a later activation failure restores all three prior files.
+before activation. Candidate and rollback bytes remain root-owned and
+non-writable by `vscode`; an interactive no-RC Zsh process explicitly sources
+the readable candidate as `vscode`. A later activation failure restores all
+three prior files from the trusted rollback copies.
 The effective SSH path is exact and user-first for `vscode`; root and other
 accounts never inherit the user-writable directory. This policy covers new SSH
 processes, the VS Code Remote SSH server, and its extension-host children. It

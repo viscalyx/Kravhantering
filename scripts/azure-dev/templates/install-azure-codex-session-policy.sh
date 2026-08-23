@@ -12,6 +12,7 @@ SSHD_CONFIG="${AZURE_DEV_SSHD_ENVIRONMENT_CONFIG:-/etc/ssh/sshd_config.d/01-krav
 BASH_PROFILE="${AZURE_DEV_BASH_CODEX_PATH_PROFILE:-/etc/profile.d/krav-azure-codex-path.sh}"
 SSHD_BIN="${AZURE_DEV_SSHD_BIN:-/usr/sbin/sshd}"
 SYSTEMCTL_BIN="${AZURE_DEV_SYSTEMCTL_BIN:-systemctl}"
+ZSH_BIN="${AZURE_DEV_ZSH_BIN:-zsh}"
 
 log() {
   printf '[azure-codex-session-policy] %s\n' "$*" >&2
@@ -41,7 +42,7 @@ policy_install_started=0
 policy_committed=0
 
 finish() {
-  local status=$? destination previous_state
+  local status=$? destination previous_state previous_uid previous_gid previous_mode
 
   trap - EXIT
   if [ "${policy_install_started}" -eq 1 ] && [ "${policy_committed}" -eq 0 ]; then
@@ -49,8 +50,14 @@ finish() {
     for destination in "${policy_destinations[@]}"; do
       previous_state="${policy_previous_state["${destination}"]}"
       if [ "${previous_state}" != "${absent_policy_sentinel}" ]; then
+        read -r previous_uid previous_gid previous_mode < "${previous_state}/metadata"
         rm -f -- "${destination}"
-        cp -a -- "${previous_state}" "${destination}"
+        install \
+          -o "${previous_uid}" \
+          -g "${previous_gid}" \
+          -m "${previous_mode}" \
+          "${previous_state}/content" \
+          "${destination}"
       else
         rm -f -- "${destination}"
       fi
@@ -89,8 +96,7 @@ path=("${CODEX_BIN}" "\${path[@]}")
 export PATH
 # END managed Azure Codex command path
 EOF
-chown -R "${CODEX_USER}:${CODEX_USER}" "${policy_temp_dir}"
-chmod 0700 "${policy_temp_dir}"
+chmod 0755 "${policy_temp_dir}"
 chmod 0644 "${sshd_candidate}" "${bash_candidate}"
 chmod 0644 "${zshrc_candidate}"
 
@@ -139,9 +145,10 @@ if ! run_as_codex_user \
 fi
 if ! run_as_codex_user \
   HOME="${CODEX_USER_HOME}" \
-  ZDOTDIR="${policy_temp_dir}" \
   EXPECTED_CODEX_LAUNCHER="${CODEX_LAUNCHER}" \
-  zsh -ic '
+  MANAGED_ZSHRC="${zshrc_candidate}" \
+  "${ZSH_BIN}" -dfi -c '
+    . "${MANAGED_ZSHRC}" &&
     (( ! $+aliases[codex] && ! $+functions[codex] )) &&
       test "$(whence -p codex)" = "${EXPECTED_CODEX_LAUNCHER}"
   '; then
@@ -155,8 +162,11 @@ for destination in "${policy_destinations[@]}"; do
     exit 1
   fi
   if [ -e "${destination}" ]; then
-    backup_path="${policy_temp_dir}/backup-${#policy_previous_state[@]}"
-    cp -a -- "${destination}" "${backup_path}"
+    backup_path="${policy_temp_dir}/rollback-${#policy_previous_state[@]}"
+    install -d -m 0700 "${backup_path}"
+    stat -c '%u %g %a' -- "${destination}" > "${backup_path}/metadata"
+    chmod 0600 "${backup_path}/metadata"
+    install -m 0600 "${destination}" "${backup_path}/content"
     policy_previous_state["${destination}"]="${backup_path}"
   else
     policy_previous_state["${destination}"]="${absent_policy_sentinel}"
