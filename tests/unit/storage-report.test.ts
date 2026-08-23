@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import {
   chmodSync,
   mkdirSync,
@@ -76,6 +76,47 @@ function runCheck(rootUsed: number, dataUsed: number) {
   })
 }
 
+function runReport(
+  configureFixture?: (fixture: {
+    workspace: string
+    worktreeRoot: string
+  }) => void,
+) {
+  const { bin, data } = fakeCommandPath()
+  const workspace = path.join(data, 'workspace')
+  const worktreeRoot = path.join(data, '.worktrees')
+  mkdirSync(workspace)
+  mkdirSync(worktreeRoot)
+  const fakeDu = path.join(bin, 'du')
+  writeFileSync(
+    fakeDu,
+    `#!/bin/sh
+for argument in "$@"; do
+  if [ "\${argument#-}" = "$argument" ]; then
+    measured_path="$argument"
+  fi
+done
+printf '4.0K\\t%s\\n' "$measured_path"
+`,
+  )
+  chmodSync(fakeDu, 0o755)
+  configureFixture?.({ workspace, worktreeRoot })
+
+  return {
+    result: spawnSync('bash', [storageReport], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        KRAV_STORAGE_DATA_MOUNT: data,
+        KRAV_STORAGE_WORKSPACE: workspace,
+        PATH: `${bin}:${process.env.PATH}`,
+      },
+    }),
+    workspace,
+    worktreeRoot,
+  }
+}
+
 afterEach(() => {
   for (const root of fixtureRoots) {
     rmSync(root, { force: true, recursive: true })
@@ -121,5 +162,46 @@ describe('storage-report', () => {
 
     expect(result.status).toBe(2)
     expect(result.stderr).toContain('Usage: storage-report [--check]')
+  })
+
+  it('sizes the dedicated Azure worktree root outside the workspace', () => {
+    const { result, workspace, worktreeRoot } = runReport()
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain(`4.0K\t${worktreeRoot}`)
+    expect(result.stdout).not.toContain(`${workspace}/.worktrees`)
+  })
+
+  it('reports registered external worktrees by their actual paths', () => {
+    let linkedWorktree = ''
+    const { result } = runReport(({ workspace, worktreeRoot }) => {
+      execFileSync('git', ['init', '-q', workspace])
+      execFileSync('git', ['-C', workspace, 'config', 'user.name', 'Test'])
+      execFileSync('git', [
+        '-C',
+        workspace,
+        'config',
+        'user.email',
+        'test@example.invalid',
+      ])
+      writeFileSync(path.join(workspace, 'README.md'), 'primary\n')
+      execFileSync('git', ['-C', workspace, 'add', 'README.md'])
+      execFileSync('git', ['-C', workspace, 'commit', '-qm', 'initial'])
+      linkedWorktree = path.join(worktreeRoot, 'issue-1032')
+      execFileSync('git', [
+        '-C',
+        workspace,
+        'worktree',
+        'add',
+        '-qb',
+        'test/issue-1032',
+        linkedWorktree,
+      ])
+    })
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain(
+      `${linkedWorktree} (4.0K): clean; commits remain on test/issue-1032`,
+    )
   })
 })

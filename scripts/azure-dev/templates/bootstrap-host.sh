@@ -7,6 +7,7 @@ DATA_DEVICE="/dev/disk/azure/scsi1/lun0"
 DATA_FSTYPE="ext4"
 DATA_MOUNT_DIR="/mnt/krav-azure-dev-data"
 DATA_WORKSPACE_DIR="${DATA_MOUNT_DIR}/workspace"
+DATA_WORKTREE_DIR="${DATA_MOUNT_DIR}/.worktrees"
 DATA_HOST_STATE_DIR="${DATA_MOUNT_DIR}/host-state"
 VSCODE_USER="vscode"
 VSCODE_HOME="/home/${VSCODE_USER}"
@@ -40,6 +41,7 @@ DOTENV_LINTER_INSTALLER="${AZURE_DEV_DOTENV_LINTER_INSTALLER:-${WORKSPACE_DIR}/s
 APT_KEY_VERIFIER="${AZURE_DEV_APT_KEY_VERIFIER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/verify-apt-key.sh}"
 ROLLING_GIT_INSTALLER="${AZURE_DEV_ROLLING_GIT_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-rolling-git-source.sh}"
 STORAGE_REPORT_SOURCE="${AZURE_DEV_STORAGE_REPORT_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/storage-report.sh}"
+WORKTREE_STORAGE_SOURCE="${AZURE_DEV_WORKTREE_STORAGE_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/worktree-storage.sh}"
 GIT_USER_NAME="${AZURE_DEV_GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${AZURE_DEV_GIT_USER_EMAIL:-}"
 GIT_SSH_SIGNING_PUBLIC_KEY="${AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY:-}"
@@ -447,6 +449,21 @@ append_data_bind_mount() {
     >> /etc/fstab
 }
 
+prepare_worktree_storage() {
+  if [ ! -f "${WORKTREE_STORAGE_SOURCE}" ]; then
+    log "Worktree storage helper is missing: ${WORKTREE_STORAGE_SOURCE}"
+    return 1
+  fi
+
+  KRAV_AZURE_DATA_MOUNT="${DATA_MOUNT_DIR}" \
+    KRAV_AZURE_DATA_WORKSPACE="${DATA_WORKSPACE_DIR}" \
+    KRAV_AZURE_WORKTREE_ROOT="${DATA_WORKTREE_DIR}" \
+    KRAV_AZURE_LEGACY_WORKTREE_PATH="${WORKSPACE_DIR}/.worktrees" \
+    KRAV_AZURE_WORKTREE_OWNER="${VSCODE_USER}" \
+    KRAV_AZURE_WORKTREE_GROUP="${VSCODE_USER}" \
+    bash "${WORKTREE_STORAGE_SOURCE}" prepare
+}
+
 mount_data_disk() {
   install -d -m 0755 \
     "${DATA_MOUNT_DIR}" \
@@ -539,6 +556,8 @@ mount_data_disk() {
     mount "${DATA_MOUNT_DIR}"
   fi
 
+  prepare_worktree_storage
+
   prepare_data_bind_directory \
     "${DATA_WORKSPACE_DIR}" "${WORKSPACE_DIR}" \
     "${VSCODE_USER}" "${VSCODE_USER}" 0755
@@ -593,6 +612,7 @@ mount_data_disk() {
     "${DOCKER_DIR}/lost+found" \
     "${CONTAINERD_DIR}/lost+found"
   chown "${VSCODE_USER}:${VSCODE_USER}" \
+    "${DATA_WORKTREE_DIR}" \
     "${DATA_WORKSPACE_DIR}" \
     "${DATA_HOST_STATE_DIR}" \
     "${DATA_PODMAN_STORAGE_DIR}" \
@@ -808,10 +828,15 @@ install_storage_tools() {
     log "Storage report helper is missing: ${STORAGE_REPORT_SOURCE}"
     return 1
   fi
+  if [ ! -f "${WORKTREE_STORAGE_SOURCE}" ]; then
+    log "Worktree storage helper is missing: ${WORKTREE_STORAGE_SOURCE}"
+    return 1
+  fi
 
-  install -o root -g root -m 0755 \
-    "${STORAGE_REPORT_SOURCE}" \
+  install -o root -g root -m 0755 "${STORAGE_REPORT_SOURCE}" \
     /usr/local/bin/storage-report
+  install -o root -g root -m 0755 "${WORKTREE_STORAGE_SOURCE}" \
+    /usr/local/bin/worktree-storage
   install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
     "${KRAV_CONFIG_DIR}"
   cat > "${STORAGE_SHELL_ENV}" <<EOF

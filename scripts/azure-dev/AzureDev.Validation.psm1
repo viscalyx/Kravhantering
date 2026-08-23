@@ -343,6 +343,7 @@ data_mount_source="$(findmnt -n -o SOURCE /mnt/krav-azure-dev-data)"
 data_mount_real="$(readlink -f "${data_mount_source}")"
 test "${data_mount_real}" = "${data_device_real}"
 data_device_number="$(stat -c '%d' /mnt/krav-azure-dev-data)"
+worktree-storage validate
 test "$(stat -c '%d' /workspace)" = "${data_device_number}"
 test "$(stat -c '%d' /var/lib/krav-azure-dev)" = "${data_device_number}"
 test "$(stat -c '%d' /home/vscode/.local/share/containers/storage)" = "${data_device_number}"
