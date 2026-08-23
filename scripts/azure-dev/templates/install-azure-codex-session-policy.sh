@@ -35,22 +35,22 @@ sshd_candidate="${policy_temp_dir}/sshd-policy.conf"
 bash_candidate="${policy_temp_dir}/bash-policy.sh"
 zshrc_candidate="${policy_temp_dir}/.zshrc"
 policy_destinations=("${SSHD_CONFIG}" "${BASH_PROFILE}" "${ZSHRC_DESTINATION}")
-policy_backups=()
-policy_had_original=()
+declare -A policy_previous_state=()
+absent_policy_sentinel='krav-policy-destination-was-absent'
 policy_install_started=0
 policy_committed=0
 
 finish() {
-  local status=$? index destination
+  local status=$? destination previous_state
 
   trap - EXIT
   if [ "${policy_install_started}" -eq 1 ] && [ "${policy_committed}" -eq 0 ]; then
     set +e
-    for index in "${!policy_destinations[@]}"; do
-      destination="${policy_destinations[${index}]}"
-      if [ "${policy_had_original[${index}]}" -eq 1 ]; then
+    for destination in "${policy_destinations[@]}"; do
+      previous_state="${policy_previous_state["${destination}"]}"
+      if [ "${previous_state}" != "${absent_policy_sentinel}" ]; then
         rm -f -- "${destination}"
-        cp -a -- "${policy_backups[${index}]}" "${destination}"
+        cp -a -- "${previous_state}" "${destination}"
       else
         rm -f -- "${destination}"
       fi
@@ -106,17 +106,23 @@ effective_ssh_path() {
     awk '$1 == "setenv" { for (i = 2; i <= NF; i++) if ($i ~ /^PATH=/) { sub(/^PATH=/, "", $i); print $i } }'
 }
 
-"${SSHD_BIN}" -t -f "${sshd_candidate}"
-if [ "$(effective_ssh_path "${CODEX_USER}" "${sshd_candidate}")" != "${MANAGED_PATH}" ]; then
-  log "effective SSH command path for ${CODEX_USER} is not the managed path"
-  exit 1
-fi
-for account in root nobody; do
-  if [[ ":$(effective_ssh_path "${account}" "${sshd_candidate}"):" == *":${CODEX_BIN}:"* ]]; then
-    log "effective SSH command path for ${account} exposes the user-managed directory"
-    exit 1
+validate_ssh_policy() {
+  local config_path="$1" phase="$2" account
+
+  if [ "$(effective_ssh_path "${CODEX_USER}" "${config_path}")" != "${MANAGED_PATH}" ]; then
+    log "${phase} SSH command path for ${CODEX_USER} is not the managed path"
+    return 1
   fi
-done
+  for account in root nobody; do
+    if [[ ":$(effective_ssh_path "${account}" "${config_path}"):" == *":${CODEX_BIN}:"* ]]; then
+      log "${phase} SSH command path for ${account} exposes the user-managed directory"
+      return 1
+    fi
+  done
+}
+
+"${SSHD_BIN}" -t -f "${sshd_candidate}"
+validate_ssh_policy "${sshd_candidate}" 'candidate'
 
 if ! run_as_codex_user \
   HOME="${CODEX_USER_HOME}" \
@@ -143,19 +149,17 @@ if ! run_as_codex_user \
   exit 1
 fi
 
-for index in "${!policy_destinations[@]}"; do
-  destination="${policy_destinations[${index}]}"
+for destination in "${policy_destinations[@]}"; do
   if [ -L "${destination}" ] || { [ -e "${destination}" ] && [ ! -f "${destination}" ]; }; then
     log "session-policy destination must be a regular file or absent: ${destination}"
     exit 1
   fi
   if [ -e "${destination}" ]; then
-    policy_had_original+=(1)
-    policy_backups+=("${policy_temp_dir}/backup-${index}")
-    cp -a -- "${destination}" "${policy_backups[${index}]}"
+    backup_path="${policy_temp_dir}/backup-${#policy_previous_state[@]}"
+    cp -a -- "${destination}" "${backup_path}"
+    policy_previous_state["${destination}"]="${backup_path}"
   else
-    policy_had_original+=(0)
-    policy_backups+=('')
+    policy_previous_state["${destination}"]="${absent_policy_sentinel}"
   fi
 done
 
@@ -167,16 +171,7 @@ install -o "${CODEX_USER}" -g "${CODEX_USER}" -m 0644 \
   "${zshrc_candidate}" "${ZSHRC_DESTINATION}"
 
 "${SSHD_BIN}" -t
-if [ "$(effective_ssh_path "${CODEX_USER}")" != "${MANAGED_PATH}" ]; then
-  log "installed SSH command path for ${CODEX_USER} is not the managed path"
-  exit 1
-fi
-for account in root nobody; do
-  if [[ ":$(effective_ssh_path "${account}"):" == *":${CODEX_BIN}:"* ]]; then
-    log "installed SSH command path for ${account} exposes the user-managed directory"
-    exit 1
-  fi
-done
+validate_ssh_policy '' 'installed'
 "${SYSTEMCTL_BIN}" reload ssh.service
 policy_committed=1
 
