@@ -38,7 +38,7 @@ arkivexport.
 
 ## Övervägda alternativ
 
-- Den tidigare separata stdout-kanalen avvisas eftersom rått innehåll då
+- En separat stdout-kanal avvisas eftersom rått innehåll då
   redan har nått processloggen innan plattformen kan styra det vidare, och
   applikationen kan inte garantera åtkomst, utgång eller gallring.
 - Ett externt evidenslager kan senare ersätta SQL-lagret bakom samma

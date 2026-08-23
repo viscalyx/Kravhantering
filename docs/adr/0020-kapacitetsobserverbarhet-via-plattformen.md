@@ -14,9 +14,11 @@ som duration, item counts, token counts, cost och retry-after seconds, men får
 inte innehålla prompts, kravtext, images, raw query strings, tokens,
 hemligheter eller HSA-id-värden.
 
-V1 throttling är process-local och in-memory. Det duger som application
-guardrail och kapacitetssignal, men skalad throttling i produktion måste flytta
-till SQL Server, Redis eller en platform rate-limiting capability.
+Aktörs- och målbaserad request throttling är process-local och in-memory. Den
+är en guardrail och kapacitetssignal per process, inte en cross-node quota.
+Skalade driftsättningar dimensionerar därför gränser per instans och kan lägga
+till plattformens rate limiting när en gemensam request quota behövs.
+Arbetslastspecifik kapacitetsstyrning kan ha en annan samordningsgräns.
 
 [ADR 0042](./0042-begransade-synkrona-exporter-och-rapporter.md) tillämpar
 denna modell på kravbibliotekets CSV-export och stora kravliste-PDF med slutna

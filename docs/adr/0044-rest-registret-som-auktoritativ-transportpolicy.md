@@ -24,7 +24,7 @@ och den avgränsade OpenAPI-mängden. Okända REST-operationer får en konservat
 policy med session, CSRF för mutationer och `no-store`, men skickas vidare till
 Next.js så att okända URL:er fortfarande kan ge `404`.
 
-Migreringen saknar äldre läge, partiellt register och fallback-flagga.
-Atomär auktoritet undviker att två policykällor kan ge olika beslut under en
-övergång. Route-lokala cachedeklarationer ersätts först när proxy och wrappers
-tillämpar motsvarande registerpolicy på alla svarsvägar.
+Registret är den enda transportpolicyn; något äldre läge, partiellt register
+eller någon fallback-flagga finns inte. Proxy och wrappers tillämpar
+registerpolicyn på alla svarsvägar, och route-lokala cachedeklarationer är inte
+en alternativ policykälla.

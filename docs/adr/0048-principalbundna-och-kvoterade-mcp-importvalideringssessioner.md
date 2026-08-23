@@ -28,9 +28,9 @@ obruten användbarhet för kortlivade valideringstoken.
 
 ## Övervägda alternativ
 
-- JWT-subjekt eller klient-id som beständig principalidentitet avvisades
+- JWT-subjekt eller klient-id som beständig principalidentitet: avvisat
   eftersom samma person kan byta klient eller få ändrad tokenrepresentation.
-- Bakåtkompatibla obundna sessioner avvisades eftersom tokeninnehav då fortsatt
-  skulle kunna överföra sessionen mellan principaler.
-- Kvotundantag för administratörer avvisades eftersom kapacitets- och
-  ägarskapsskyddet ska gälla oberoende av destinationsroll.
+- Bakåtkompatibla obundna sessioner: avvisat eftersom tokeninnehav då kan
+  överföra sessionen mellan principaler.
+- Kvotundantag för administratörer: avvisat eftersom kapacitets- och
+  ägarskapsskyddet gäller oberoende av destinationsroll.

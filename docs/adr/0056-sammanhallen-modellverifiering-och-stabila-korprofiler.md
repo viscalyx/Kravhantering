@@ -59,7 +59,7 @@ Alla dessa beslut använder stabilt körprofil-ID och konfigurationsversion.
 ## Övervägda alternativ
 
 - Behålla utkast och separata verifieringsknappar: avvisat eftersom ett
-  icke-verifierat mellanläge kunde sparas och gjorde beviskedjan svårbegriplig.
+  icke-verifierat mellanläge kan sparas och gör beviskedjan svårbegriplig.
 - Behålla körprofilrevisionstabellen: avvisat eftersom stabil identitet plus
   konfigurationsversion ger samma fäktning med mindre livscykelkomplexitet.
 - Låta katalogmetadata avgöra stöd: avvisat eftersom katalogen bara är ett

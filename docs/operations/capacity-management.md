@@ -187,8 +187,11 @@ worker failures return stable `503` error codes. Client cancellation stops
 cancellation-aware upstream work, keeps any non-cancellable direct render
 admitted until it settles, and exposes no response body.
 
-This solution is not distributed. In scaled production, throttling must move to
-SQL Server, Redis, or a platform rate-limiting capability.
+Actor- and target-based request throttles are process-local guardrails, not
+cross-node quotas. Scaled deployments account for their limits per instance
+and can add platform rate limiting when a shared request quota is required.
+Generated-output admission remains deliberately per node, while AI execution
+uses its separately documented SQL-coordinated admission model.
 
 ## Recommended Alerts
 

@@ -42,27 +42,18 @@ AI-analys, normaliserad användningsmetadata och identiteten för exakt
 AI-anslutning, anslutningsmodellrevision samt stabilt körprofil-ID och
 konfigurationsversion.
 
-## Körprofiler och förmågor
+## Körprofilgräns
 
-Applikationen har tre stabila körprofiler, en för varje anropstyp. Varje profil
-väljer direkt en verifierad anslutningsmodellrevision och driftbudgetar. En
-AI-körning behåller den konfiguration som AI-integrationslagret fryser vid
-mottagningen. Användaren väljer varken AI-anslutning, anslutningsmodell eller
-förmågekrav. Den sammanhållna modellverifieringen och körprofilernas aktuella
-livscykel beskrivs i
+AI-integrationslagret använder de stabila körprofiler, fasta förmågekrav och
+verifierade anslutningsmodellrevisioner som ägs av
 [ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
+När ett AI-anrop tas emot fryser lagret profilens identitet,
+konfigurationsversion, modellrevision, förmågeval och driftbudgetar för
+körningen. Användaren väljer inte dessa värden.
 
-AI-integrationslagret härleder valda förmågor från profilens fasta krav och
-de funktionellt verifierade förmågorna för anslutningsmodellrevisionen.
-Adaptern verkställer valet men avgör inte produktbeteendet. Validerbar JSON
-krävs alltid. Generering kräver strömning, generering med bilder kräver
-bildindata och JSON-reparation använder inte strömning eller bildindata. Strikt
-JSON Schema-styrning används endast när funktionell verifiering visar stöd.
-
-En körprofil kan endast användas när dess AI-anslutning, attest, datapolicy,
-leverantörshemlighet, anslutningsmodellrevision och fasta förmågekrav är
-giltiga. Det administrativa valet bevaras om ett beroende blir ogiltigt, men
-nya AI-anrop blockeras och ingen automatisk fallback sker.
+Adaptern verkställer det upplösta förmågevalet men avgör inte
+produktbeteendet. Ett ogiltigt administrativt beroende blockerar nya anrop;
+det finns ingen automatisk fallback till en annan anslutning eller modell.
 
 OpenRouter är den första ordinarie adaptern och en fullt registrerbar
 kontrollerad testadapter bevisar utbytbarheten. De ska passera samma kontrakt
@@ -82,9 +73,9 @@ säkerhetsgrindar, validering och mänskligt beslut.
 
 AI-integrationslagret är den enda produktionsvägen för OpenRouter och andra
 AI-anslutningar. Modellkataloger är vägledande administrativt stöd, inte
-runtime-sanning. Lagret har ingen automatisk fallback, beständig agentsession,
-callback eller verktygsanrop. Tillitsgräns, anslutningslivscykel och
-leverantörshemligheter styrs av
+runtime-sanning. Lagret har ingen beständig agentsession, callback eller
+verktygsanrop. Tillitsgräns, anslutningslivscykel och leverantörshemligheter
+styrs av
 [ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
 
 ## Övervägda alternativ

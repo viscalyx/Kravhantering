@@ -15,6 +15,9 @@ Keep the active ADR corpus as a current decision index. Git stores chronology.
 Give each current decision one authoritative explanation; other ADRs may name
 the relationship without restating that decision.
 
+Make the audit idempotent: unchanged decisions written in present tense and
+correct domain language produce no diff on a later run.
+
 ## Workflow
 
 1. Discover the complete scope.
@@ -31,6 +34,8 @@ the relationship without restating that decision.
      inbound links.
    - Compare ADRs with overlapping subjects even when they lack explicit
      supersession language.
+   - Identify past-tense decision, constraint, consequence, and rationale
+     clauses that narrate what applied instead of stating what applies.
    - Classify every claim as current, superseded, relationship context,
      rejected alternative, or uncertain.
 3. Resolve contradictory ADRs before editing.
@@ -60,14 +65,23 @@ the relationship without restating that decision.
      contradiction is resolved by a unique code match, the user, or a reported
      blocker.
 4. Prune the graph into current-state ADRs.
+   - Limit edits to supersession resolution, contradiction resolution, required
+     link retargeting, present-tense decision language, and corrections to
+     canonical domain language.
+   - Preserve existing grammar, wording, tone, headings, section order, list
+     structure, and line wrapping everywhere else. Leave style and formatting
+     normalization outside this skill's scope.
    - Choose one canonical ADR for each current decision.
    - For partial supersession, rewrite the ADR around its remaining current
      decisions and remove the obsolete model, examples, migration narrative,
      and rationale.
    - For full supersession, delete the ADR and retarget its inbound repository
      links to the canonical ADR.
-   - Rewrite the canonical ADR in present tense with the glossary's canonical
-     terms and enough current rationale to prevent accidental reversal.
+   - Express every retained decision, constraint, consequence, and rationale in
+     present tense. Rewrite a past-tense clause when its meaning remains
+     current; remove it when it only narrates history.
+   - Limit each rewrite to the affected passage and retain enough current
+     rationale to prevent accidental reversal.
    - Keep a rejected alternative only when it remains plausible, its premises
      remain true, and its rejection still explains the current decision.
    - Keep cross-ADR links only when they clarify current boundaries or
@@ -79,14 +93,21 @@ the relationship without restating that decision.
 5. Verify the entire corpus again.
    - Re-read every remaining ADR, not only edited files.
    - Search for supersession markers, retired terminology, duplicated decision
-     definitions, stale examples, and dangling links. Inspect every match;
-     search terms are candidates, not findings.
+     definitions, past-tense architectural narrative, stale examples, and
+     dangling links. Inspect every match; search terms are candidates, not
+     findings.
    - Confirm every current decision has one canonical owner and every
      relationship points directly to current ADRs.
-   - Run repository-provided Markdown, spelling, and link checks plus
-     `git diff --check`.
-   - Finish only when all current claims agree with the established model and
-     all checks pass.
+   - Review the diff line by line and remove edits whose only effect is grammar,
+     wording, style, formatting, or wrapping, except the required conversion of
+     decision content to present tense.
+   - Run repository-provided Markdown, spelling, and link checks without
+     automatic fixes, plus `git diff --check`. Correct only failures introduced
+     by this audit; report unrelated failures without changing their files.
+   - Finish only when all current claims agree with the established model, no
+     decision content remains in past tense, all audit-introduced check failures
+     are fixed, and a repeat audit against unchanged inputs would produce no
+     diff.
 6. Report the result.
    - List rewritten and deleted ADRs, their canonical decision owners, and the
      evidence used for material corrections.
@@ -103,6 +124,14 @@ the relationship without restating that decision.
 - A migration or rollback rule is current only while that path remains
   supported.
 - A later ADR does not win merely because it is later.
+- Grammar, spelling, wording, style, formatting, and wrapping alone are not
+  findings. A glossary mismatch confirmed through domain modeling is a
+  finding.
+- Past-tense decision content is a decision finding, not a cosmetic grammar
+  finding. Preserve its current meaning in present tense or remove historical
+  narration that no longer constrains the decision.
+- Wording that expresses a different architectural decision is decision
+  content, not a grammar finding.
 - Code, tests, and configuration become evidence only after ADRs contradict
   one another. A unique code match makes that ADR decision authoritative; an
   absent or ambiguous match requires a user decision.

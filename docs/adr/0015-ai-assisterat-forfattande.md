@@ -14,6 +14,9 @@ auktorisering, livscykel, granskning, publicering, spårbarhet, rapportering,
 dataskydd och retention som människoförfattat innehåll. AI-leverantör, prompt,
 modell, bilder och råresultat är integrationsindata och tillfälliga stöddata om
 inte en användare medvetet gör resultatet till persisterat kravinnehåll.
+Det avgränsade undantaget för incidentutredning är tidsbegränsad
+AI-forensisk evidensinsamling enligt
+[ADR 0050](./0050-tidsbegransat-sql-lager-for-ai-forensisk-evidens.md).
 
 Arkitekturen håller därför AI-assisterat författande frivilligt och utbytbart:
 administratörsgodkända AI-anslutningar stödjer utkastarbete, medan

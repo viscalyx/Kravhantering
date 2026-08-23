@@ -56,7 +56,7 @@ påhittad bevisning eller ett produktionsanrop.
 
 ## Samband med andra beslut
 
-Beslutet operationaliserar frisläppningsvillkoret i
+Beslutet använder AI-anslutningarnas tillits- och hemlighetsgräns i
 [ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md)
 och integritetsminimumet i
 [ADR 0053](./0053-integritetsminimum-for-ai-anrop.md). AI-integrationslagrets
@@ -74,5 +74,5 @@ de stabila körprofilerna följer
   keyring, egress, attest, livekonfiguration och larm är miljöbundna kontroller.
 - Acceptera en operatörs fria text som enda bevis: avvisat eftersom
   kontrolluppsättningen då varken är fullständig eller maskinverifierbar.
-- Använda den gamla direkta OpenRouter-vägen vid rollback: avvisat eftersom den
+- Använda den direkta OpenRouter-vägen vid rollback: avvisat eftersom den
   kringgår det gemensamma kontraktet och de administratörsstyrda grindarna.

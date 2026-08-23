@@ -4,8 +4,8 @@ Status: Antagen 2026-06-05.
 
 Kravhantering äger den `Referensdata` som formar kravarbete i applikationen.
 Det omfattar taxonomi som kravområden, kategorier, typer,
-kvalitetsegenskaper, risknivåer, styrningsobjektstyper och
-implementationstyper, samt statusar och arbetsflöden som
+kvalitetsegenskaper, prioriteter, styrningsobjektstyper och
+genomförandeformer, samt statusar och arbetsflöden som
 kravversionsstatusar, användningsstatusar och livscykelstatusar för
 kravunderlag. Normreferensposter hör till normbiblioteket även när krav pekar
 på dem.

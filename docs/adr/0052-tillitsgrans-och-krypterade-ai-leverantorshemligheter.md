@@ -77,26 +77,21 @@ ett fullständigt, schemavaliderat slutresultat får nå klient eller import.
 AI-leverantörens filter är endast kompletterande. AI-säkerhetsfiltrets fel
 stoppar anropet.
 
-Åtgärdsloggen registrerar anslutningens administrativa livscykel.
-Säkerhetsloggen registrerar anslutnings-, autentiserings-, policy- och
-säkerhetsutfall. Drifttelemetri registrerar innehållsfria mått och
-terminalutfall. Ingen av dessa kanaler innehåller prompt, bild,
-modellresultat, endpoint, leverantörshemlighet eller hemlighetsreferens.
-Kontrollerad AI-forensisk evidensinsamling följer sitt separata beslut i
+Åtgärdsloggen registrerar anslutningens administrativa livscykel enligt
+[ADR 0013](./0013-separation-mellan-atgardslogg-och-plattformens-sakerhetslogg.md).
+Innehållsfri drifttelemetri och bindande larm ägs av
+[ADR 0055](./0055-innehallsfri-ai-observerbarhet-och-syntetisk-liveverifiering.md),
+medan kontrollerad AI-forensisk evidensinsamling ägs av
 [ADR 0050](./0050-tidsbegransat-sql-lager-for-ai-forensisk-evidens.md).
+De ordinarie beviskanalerna lagrar inte prompt, bild, modellresultat, endpoint,
+leverantörshemlighet eller hemlighetsreferens.
 
-En global miljöspärr samt suspendering per AI-anslutning och körprofil stoppar
-nya anrop och försöker avbryta pågående anrop. Bindande driftlarm gäller
-autentiseringsfel, öppnad circuit breaker och blockerad aktiv körprofil. AI är
-valfritt och dess operativa hälsa påverkar inte applikationens health eller
-readiness.
-
-Den globala AI-spärren får inte släppas i en miljö innan root-keyring, egress,
-säkra standarder, attest, anslutningsprov, modell- och förmågeprov samt avsedda
-stabila körprofiler och deras konfigurationsversioner är verifierade. Rollback
-använder spärren, suspendering eller en uttrycklig omkonfiguration till en
-fortfarande giltig anslutningsmodellrevision och hemlighetsrevision. Den
-direkta OpenRouter-vägen är ingen reserv.
+Suspendering av en AI-anslutning stoppar nya anrop via anslutningen och
+försöker avbryta pågående anrop. Den globala AI-spärren och dess
+driftsättningsbevis ägs av
+[ADR 0054](./0054-global-ai-sparr-och-driftsattningsbevis.md), och
+körprofilernas paus och huvudstatus ägs av
+[ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).
 
 ## Samband med andra beslut
 
