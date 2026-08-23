@@ -1,0 +1,22 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: hsa-person-lookup-adapter
+    protocol: https
+    host: hsa-person-lookup-adapter
+    port: 8443
+    tls_verify: true
+    tls_verify_depth: 1
+    routes:
+      - name: hsa-directory-person-lookup-rest
+        protocols:
+          - https
+        paths:
+          - /hsa/person-records/lookup
+        methods:
+          - POST
+        strip_path: false
+
+plugins: []
+upstreams: []

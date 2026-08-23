@@ -98,7 +98,7 @@ function requiredChild(node, uri, local, message) {
   return candidate
 }
 
-function extractRequest(xml) {
+export function extractRequest(xml) {
   const envelope = parseXmlDocument(xml)
   if (envelope.uri !== SOAP_NS || envelope.local !== 'Envelope') {
     throw new SoapFault(3, 'Expected a SOAP 1.1 Envelope.')
@@ -157,6 +157,7 @@ function extractRequest(xml) {
 
   return {
     hsaIdentity,
+    messageId,
     personalIdentityNumber,
     searchBase,
   }
@@ -202,7 +203,7 @@ function soapEnvelope(body) {
   ].join('')
 }
 
-function successResponse(records) {
+export function successResponse(records) {
   const people = records.map(userInformationXml).join('')
   return soapEnvelope(
     [
@@ -215,7 +216,7 @@ function successResponse(records) {
   )
 }
 
-function faultResponse(code, message) {
+export function faultResponse(code, message) {
   return soapEnvelope(
     [
       '<soap:Fault>',
@@ -242,7 +243,7 @@ export async function loadFixtures(fixturesUrl = FIXTURE_URL) {
   }
 }
 
-function findRecords(fixtures, request) {
+export function findRecords(fixtures, request) {
   if (request.hsaIdentity) {
     if (fixtures.notFoundIdentities.has(request.hsaIdentity)) return []
     return fixtures.hsaPersonRecords.filter(record => {
@@ -255,7 +256,7 @@ function findRecords(fixtures, request) {
   })
 }
 
-function xmlResponse(res, statusCode, body) {
+export function xmlResponse(res, statusCode, body) {
   res.writeHead(statusCode, {
     'Cache-Control': 'no-store',
     'Content-Type': 'text/xml; charset=utf-8',
@@ -263,7 +264,7 @@ function xmlResponse(res, statusCode, body) {
   res.end(body)
 }
 
-function jsonResponse(res, statusCode, body) {
+export function jsonResponse(res, statusCode, body) {
   res.writeHead(statusCode, {
     'Cache-Control': 'no-store',
     'Content-Type': 'application/json; charset=utf-8',
@@ -271,7 +272,7 @@ function jsonResponse(res, statusCode, body) {
   res.end(JSON.stringify(body))
 }
 
-async function readBody(req) {
+export async function readBody(req) {
   const chunks = []
   let totalBytes = 0
 
