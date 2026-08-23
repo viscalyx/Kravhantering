@@ -759,11 +759,13 @@ function Invoke-AzureDevSetup {
         -Context $Context `
         -HostName $hostName `
         -CurrentSshCidr $allowedCidr | Out-Null
-      Invoke-AzureDevBootstrap -Context $Context
+      $codexTargetVersion = Invoke-AzureDevBootstrap -Context $Context
 
       $validationStatus = 'skipped'
       if (-not $Context.SkipSmokeValidation) {
-        Invoke-AzureDevSmokeValidation -Context $Context
+        Invoke-AzureDevSmokeValidation `
+          -Context $Context `
+          -ExpectedCodexVersion $codexTargetVersion
         $validationStatus = 'passed'
       }
 

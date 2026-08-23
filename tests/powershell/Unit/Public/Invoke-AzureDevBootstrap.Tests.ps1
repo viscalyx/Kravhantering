@@ -25,7 +25,13 @@ Describe 'Invoke-AzureDevBootstrap' -Tag 'Unit' {
     Mock -CommandName Copy-AzureDevZshTemplate
     Mock -CommandName Copy-AzureDevDevelopmentToolFiles
     Mock -CommandName Copy-AzureDevServiceEnvironmentFiles
-    Mock -CommandName Invoke-AzureDevRemoteCommand
+    Mock -CommandName Invoke-AzureDevRemoteCommand -MockWith {
+      return $script:mockRemoteOutput
+    }
+  }
+
+  BeforeEach {
+    $script:mockRemoteOutput = $null
   }
 
   AfterAll {
@@ -54,6 +60,35 @@ Describe 'Invoke-AzureDevBootstrap' -Tag 'Unit' {
         -CommandName Copy-AzureDevServiceEnvironmentFiles `
         -Scope It
       Should-NotInvoke -CommandName Invoke-AzureDevRemoteCommand -Scope It
+    }
+  }
+
+  Context 'When host bootstrap returns one valid Codex target result' {
+    BeforeEach {
+      $script:mockRemoteOutput = @'
+[krav-azure-bootstrap] host bootstrap completed
+KRAV_AZURE_CODEX_RESULT={"schemaVersion":1,"targetVersion":"1.2.3"}
+'@
+    }
+
+    It 'Should return the validated Codex target version' {
+      $context = [System.Management.Automation.PSObject]@{
+        SshHostTrustEstablished = $true
+        BootstrapPath = Join-Path (
+          Join-Path $script:repositoryRoot 'scripts/azure-dev/templates'
+        ) 'bootstrap-host.sh'
+        Config = [System.Management.Automation.PSObject]@{
+          SshHostAlias = 'krav-test'
+          SshHostKeyArguments = @()
+          GitUserName = 'Ada Admin'
+          GitUserEmail = 'ada@example.test'
+          GitSshSigningPublicKey = ''
+        }
+      }
+
+      $result = Invoke-AzureDevBootstrap -Context $context
+
+      $result | Should-BeString -Expected '1.2.3'
     }
   }
 }

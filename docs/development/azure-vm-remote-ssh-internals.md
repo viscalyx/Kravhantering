@@ -540,7 +540,7 @@ waits for cloud-init when available, and runs:
 <!-- markdownlint-disable MD013 -->
 
 ```text
-sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/tooling/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/tooling/merge-codex-config.py AZURE_DEV_CODEX_INSTALLER=/tmp/krav-azure-dev/tooling/install-codex.sh AZURE_DEV_DOTENV_LINTER_INSTALLER=/tmp/krav-azure-dev/tooling/install-dotenv-linter.sh AZURE_DEV_ROLLING_GIT_INSTALLER=/tmp/krav-azure-dev/tooling/install-rolling-git-source.sh AZURE_DEV_APT_KEY_VERIFIER=/tmp/krav-azure-dev/tooling/verify-apt-key.sh AZURE_DEV_GIT_USER_NAME='<full-name>' AZURE_DEV_GIT_USER_EMAIL='<email-address>' AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY='<public-key>' bash /tmp/krav-bootstrap-host.sh
+sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/tooling/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/tooling/merge-codex-config.py AZURE_DEV_CODEX_INSTALLER=/tmp/krav-azure-dev/tooling/install-codex.sh AZURE_DEV_CODEX_ORCHESTRATOR=/tmp/krav-azure-dev/tooling/install-azure-codex.sh AZURE_DEV_DOTENV_LINTER_INSTALLER=/tmp/krav-azure-dev/tooling/install-dotenv-linter.sh AZURE_DEV_ROLLING_GIT_INSTALLER=/tmp/krav-azure-dev/tooling/install-rolling-git-source.sh AZURE_DEV_APT_KEY_VERIFIER=/tmp/krav-azure-dev/tooling/verify-apt-key.sh AZURE_DEV_GIT_USER_NAME='<full-name>' AZURE_DEV_GIT_USER_EMAIL='<email-address>' AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY='<public-key>' bash /tmp/krav-bootstrap-host.sh
 ```
 
 <!-- markdownlint-enable MD013 -->
@@ -575,18 +575,29 @@ Bootstrap installs Bubblewrap and the Ubuntu 24.04
 can create the user, PID, and network namespaces Codex requires. It does not
 disable `kernel.apparmor_restrict_unprivileged_userns` globally.
 
-Bootstrap installs Codex CLI with OpenAI's non-interactive standalone installer
-under `/usr/local/lib/codex` and exposes `codex` through `/usr/local/bin`. It
-resolves the current release metadata and verifies the upstream SHA-256 digest
-for `install.sh` before execution. Missing or mismatched integrity evidence
-stops bootstrap. The devcontainer build uses the same verified installer
-helper. The shared dotenv-linter helper applies the same fail-closed release-
-asset digest contract. Bootstrap configures NodeSource and Tailscale directly
-as signed APT repositories instead of executing their setup scripts. It
-verifies the NodeSource, Docker, GitHub CLI, and Tailscale trust roots against
-reviewed primary fingerprints before APT uses them. Bootstrap installs GitHub
-Copilot CLI globally from the `@github/copilot` npm package. This rolling
-channel relies on the npm registry's SRI metadata and npm's package-integrity
+Bootstrap routes system-managed Codex installation through
+`install-azure-codex.sh`. This Azure-only orchestration boundary invokes the
+shared verified installer, requires exactly one schema-versioned stable target
+result, and installs under `/usr/local/lib/codex` with the launcher at
+`/usr/local/bin/codex`. The shared installer resolves current release metadata,
+verifies the upstream SHA-256 digest for `install.sh`, and remains the direct
+devcontainer build boundary. Missing, malformed, duplicate, conflicting, or
+unstable target results stop setup.
+
+Guest bootstrap parses the target in memory, validates the absolute launcher
+against it, and emits the same result for the workstation bootstrap module.
+The PowerShell setup flow validates that one result and passes its version
+directly to smoke validation. Smoke does not resolve release metadata or write
+a version marker. Forwarded GitHub tokens remain subprocess environment/input
+only and do not appear in result records or command arguments.
+
+The shared dotenv-linter helper applies the same fail-closed release-asset
+digest contract. Bootstrap configures NodeSource and Tailscale directly as
+signed APT repositories instead of executing their setup scripts. It verifies
+the NodeSource, Docker, GitHub CLI, and Tailscale trust roots against reviewed
+primary fingerprints before APT uses them. Bootstrap installs GitHub Copilot
+CLI globally from the `@github/copilot` npm package. This rolling channel
+relies on the npm registry's SRI metadata and npm's package-integrity
 verification, as approved by ADR 0045. Both installers converge to their
 current stable releases on every setup run.
 
@@ -793,7 +804,8 @@ Validation must prove these implementation contracts:
 - when SSH signing is configured, the forwarded agent contains the selected
   key and Git can create a temporary signed commit.
 - expected major tools are installed: Node 24, npm, .NET 8.0, Git, GitHub CLI,
-  `btop`, Codex CLI, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
+  `btop`, the absolute system-managed Codex launcher at the exact bootstrap
+  target, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
   `podman-compose`, Python, `dotenv-linter`, Lychee, and Playwright.
 - user lingering is enabled.
 - managed Quadlet services are active.

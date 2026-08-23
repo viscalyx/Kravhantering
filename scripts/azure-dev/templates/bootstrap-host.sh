@@ -36,6 +36,7 @@ SERVICE_ENV_SOURCE_DIR="${AZURE_DEV_SERVICE_ENV_SOURCE:-}"
 CODEX_CONFIG_SOURCE="${AZURE_DEV_CODEX_CONFIG_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/codex-config.toml}"
 CODEX_CONFIG_MERGER="${AZURE_DEV_CODEX_CONFIG_MERGER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/merge-codex-config.py}"
 CODEX_INSTALLER="${AZURE_DEV_CODEX_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-codex.sh}"
+CODEX_ORCHESTRATOR="${AZURE_DEV_CODEX_ORCHESTRATOR:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-azure-codex.sh}"
 DOTENV_LINTER_INSTALLER="${AZURE_DEV_DOTENV_LINTER_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-dotenv-linter.sh}"
 APT_KEY_VERIFIER="${AZURE_DEV_APT_KEY_VERIFIER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/verify-apt-key.sh}"
 ROLLING_GIT_INSTALLER="${AZURE_DEV_ROLLING_GIT_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-rolling-git-source.sh}"
@@ -274,17 +275,56 @@ install_host_packages() {
     bash "${DOTENV_LINTER_INSTALLER}"
 }
 
-install_ai_tools() {
-  if [ ! -f "${CODEX_INSTALLER}" ]; then
-    log "Codex installer helper is missing: ${CODEX_INSTALLER}"
+install_codex() {
+  if [ ! -f "${CODEX_ORCHESTRATOR}" ]; then
+    log "Azure Codex orchestration helper is missing: ${CODEX_ORCHESTRATOR}"
     return 1
   fi
-  if ! CODEX_HOME="${CODEX_INSTALL_HOME}" \
+  if ! codex_install_result="$(
+    AZURE_DEV_CODEX_INSTALLER="${CODEX_INSTALLER}" \
+    CODEX_HOME="${CODEX_INSTALL_HOME}" \
     CODEX_INSTALL_DIR=/usr/local/bin \
     CODEX_NON_INTERACTIVE=1 \
-    bash "${CODEX_INSTALLER}"; then
+      bash "${CODEX_ORCHESTRATOR}"
+  )"; then
     return 1
   fi
+  if ! codex_target_version="$(
+    printf '%s\n' "${codex_install_result}" |
+      sed -n 's/^KRAV_AZURE_CODEX_RESULT=//p' |
+      jq -er '
+        if type == "object" and
+          keys == ["schemaVersion", "targetVersion"] and
+          .schemaVersion == 1 and
+          (.targetVersion | type == "string") and
+          (.targetVersion | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
+        then .targetVersion
+        else error("invalid Azure Codex result")
+        end
+      '
+  )" || [ "$(printf '%s\n' "${codex_install_result}" | wc -l)" -ne 1 ]; then
+    log 'Azure Codex orchestration result is invalid'
+    return 1
+  fi
+
+  local expected_codex_result
+  expected_codex_result="KRAV_AZURE_CODEX_RESULT=$(
+    jq -cn \
+      --arg targetVersion "${codex_target_version}" \
+      '{schemaVersion: 1, targetVersion: $targetVersion}'
+  )"
+  if [ "${codex_install_result}" != "${expected_codex_result}" ]; then
+    log 'Azure Codex orchestration result is invalid'
+    return 1
+  fi
+
+  if [ "$(/usr/local/bin/codex --version)" != "codex-cli ${codex_target_version}" ]; then
+    log "Codex target ${codex_target_version} did not pass exact-version validation"
+    return 1
+  fi
+}
+
+install_other_ai_tools() {
 
   npm_config_ignore_scripts=false \
     npm install --global @github/copilot@latest
@@ -298,7 +338,6 @@ install_ai_tools() {
   fi
   export COPILOT_AUTO_UPDATE=false
 
-  codex --version
   copilot --version
 }
 
@@ -1425,7 +1464,8 @@ main() {
   mount_data_disk
   start_docker_services_after_storage_change
   configure_npm_caches
-  install_ai_tools
+  install_codex
+  install_other_ai_tools
   configure_codex_sandbox
   configure_podman_storage
   clone_or_update_repo
@@ -1441,6 +1481,7 @@ main() {
   install_optional_tailscale
   validate_loopback_ports
   log "host bootstrap completed"
+  printf '%s\n' "${codex_install_result}"
 }
 
 main "$@"

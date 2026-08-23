@@ -28,12 +28,20 @@ codex_curl_options=(
   --retry-delay 2
   --retry-all-errors
 )
-codex_auth_options=()
-if [ -n "${GH_TOKEN:-}" ]; then
-  codex_auth_options=(--header "Authorization: Bearer ${GH_TOKEN}")
-fi
+codex_curl() {
+  if [ -n "${GH_TOKEN:-}" ]; then
+    if [[ "${GH_TOKEN}" == *$'\n'* || "${GH_TOKEN}" == *$'\r'* ]]; then
+      log 'GitHub token contains invalid characters'
+      return 1
+    fi
+    printf 'Authorization: Bearer %s\n' "${GH_TOKEN}" |
+      curl "${codex_curl_options[@]}" --header @- "$@"
+    return
+  fi
+  curl "${codex_curl_options[@]}" "$@"
+}
 
-curl "${codex_curl_options[@]}" "${codex_auth_options[@]}" \
+codex_curl \
   --output "${codex_release_json}" \
   https://api.github.com/repos/openai/codex/releases/latest
 
@@ -55,7 +63,7 @@ if ! codex_release_tag="$(
 fi
 codex_version="${codex_release_tag#rust-v}"
 
-curl "${codex_curl_options[@]}" "${codex_auth_options[@]}" \
+codex_curl \
   --output "${codex_installer}" \
   "https://github.com/openai/codex/releases/download/${codex_release_tag}/install.sh"
 
@@ -70,4 +78,8 @@ CODEX_HOME="${CODEX_HOME}" \
   CODEX_INSTALL_DIR="${CODEX_INSTALL_DIR}" \
   CODEX_NON_INTERACTIVE="${CODEX_NON_INTERACTIVE}" \
   CODEX_RELEASE="${codex_version}" \
-  sh "${codex_installer}"
+  sh "${codex_installer}" >&2
+
+jq -cn \
+  --arg targetVersion "${codex_version}" \
+  '{schemaVersion: 1, targetVersion: $targetVersion}'

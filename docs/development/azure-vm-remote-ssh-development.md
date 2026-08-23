@@ -895,10 +895,11 @@ run the same helper directly:
 ```sh
 cd /workspace
 sudo env \
+  AZURE_DEV_CODEX_INSTALLER=scripts/azure-dev/templates/install-codex.sh \
   CODEX_HOME=/usr/local/lib/codex \
   CODEX_INSTALL_DIR=/usr/local/bin \
   CODEX_NON_INTERACTIVE=1 \
-  bash scripts/azure-dev/templates/install-codex.sh
+  bash scripts/azure-dev/templates/install-azure-codex.sh
 command -v codex
 codex --version
 ```

@@ -102,7 +102,11 @@ function Invoke-AzureDevSmokeValidation {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context
+    [pscustomobject]$Context,
+
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+$')]
+    [string]$ExpectedCodexVersion
   )
 
   Assert-AzureDevSshHostTrust -Context $Context
@@ -112,6 +116,7 @@ set -euo pipefail
 expected_git_user_name="$1"
 expected_git_user_email="$2"
 expected_git_ssh_signing_public_key="$3"
+expected_codex_version="$4"
 export HOME=/home/vscode
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_DATA_HOME="${HOME}/.local/share"
@@ -412,7 +417,7 @@ if [ -n "${expected_git_ssh_signing_public_key}" ]; then
 fi
 gh --version >/dev/null 2>&1
 btop --version >/dev/null 2>&1
-codex --version >/dev/null 2>&1
+test "$(/usr/local/bin/codex --version)" = "codex-cli ${expected_codex_version}"
 copilot --version >/dev/null 2>&1
 docker --version >/dev/null 2>&1
 docker compose version >/dev/null 2>&1
@@ -514,7 +519,7 @@ run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modu
   $command = (
     "bash -lc $remoteScriptLiteral -- " +
     "$gitUserNameLiteral $gitUserEmailLiteral " +
-    $gitSshSigningPublicKeyLiteral
+    "$gitSshSigningPublicKeyLiteral $ExpectedCodexVersion"
   )
 
   if ($PSCmdlet.ShouldProcess($Context.Config.SshHostAlias, 'Run smoke validation')) {

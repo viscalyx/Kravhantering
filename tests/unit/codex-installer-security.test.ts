@@ -26,6 +26,10 @@ function fixture(options: { digest?: string | null } = {}) {
   const upstreamInstaller = path.join(root, 'upstream-install.sh')
   const capturePath = path.join(root, 'installed-version.txt')
   const curlCapturePath = path.join(root, 'curl-arguments.txt')
+  const curlAuthenticationCapturePath = path.join(
+    root,
+    'curl-authentication.txt',
+  )
   mkdirSync(fakeBin)
 
   writeFileSync(
@@ -60,6 +64,12 @@ function fixture(options: { digest?: string | null } = {}) {
       '#!/usr/bin/env bash',
       'set -euo pipefail',
       'printf \'%s\\n\' "$@" >> "$FAKE_CURL_CAPTURE"',
+      'if [[ " $* " == *" --header @- "* ]]; then',
+      '  read -r authorization_header',
+      '  if [[ "$authorization_header" == "Authorization: Bearer $GH_TOKEN" ]]; then',
+      '    printf \'authenticated\\n\' >> "$FAKE_CURL_AUTHENTICATION_CAPTURE"',
+      '  fi',
+      'fi',
       'output=""',
       'url=""',
       'while [ "$#" -gt 0 ]; do',
@@ -88,6 +98,7 @@ function fixture(options: { digest?: string | null } = {}) {
     FAKE_CODEX_CAPTURE: capturePath,
     FAKE_CODEX_INSTALLER: upstreamInstaller,
     FAKE_CURL_CAPTURE: curlCapturePath,
+    FAKE_CURL_AUTHENTICATION_CAPTURE: curlAuthenticationCapturePath,
     FAKE_RELEASE_JSON: releaseJson,
     GH_TOKEN: undefined,
     HTTPS_PROXY: undefined,
@@ -102,6 +113,7 @@ function fixture(options: { digest?: string | null } = {}) {
 
   return {
     capturePath,
+    curlAuthenticationCapturePath,
     curlCapturePath,
     env,
   }
@@ -123,6 +135,7 @@ describe('Codex installer integrity contract', () => {
     })
 
     expect(result.status).toBe(0)
+    expect(result.stdout).toBe('{"schemaVersion":1,"targetVersion":"1.2.3"}\n')
     expect(readFileSync(testFixture.capturePath, 'utf8')).toBe('1.2.3\n')
     const curlArguments = readFileSync(testFixture.curlCapturePath, 'utf8')
     expect(curlArguments).toContain('--connect-timeout\n10')
@@ -141,9 +154,29 @@ describe('Codex installer integrity contract', () => {
     })
 
     expect(result.status).toBe(0)
-    expect(readFileSync(testFixture.curlCapturePath, 'utf8')).toContain(
-      'Authorization: Bearer fixture-github-token',
+    expect(
+      readFileSync(testFixture.curlAuthenticationCapturePath, 'utf8'),
+    ).toBe('authenticated\nauthenticated\n')
+    expect(readFileSync(testFixture.curlCapturePath, 'utf8')).not.toContain(
+      'fixture-github-token',
     )
+    expect(result.stdout).not.toContain('fixture-github-token')
+    expect(result.stderr).not.toContain('fixture-github-token')
+  })
+
+  it('rejects a forwarded token containing a header-injection newline', () => {
+    const testFixture = fixture()
+    testFixture.env.GH_TOKEN = 'fixture-token\nInjected: value'
+
+    const result = spawnSync('bash', [installerPath], {
+      encoding: 'utf8',
+      env: testFixture.env,
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stdout).toBe('')
+    expect(result.stderr).toContain('GitHub token contains invalid characters')
+    expect(result.stderr).not.toContain('fixture-token')
   })
 
   it('fails closed without executing an installer whose digest mismatches', () => {
