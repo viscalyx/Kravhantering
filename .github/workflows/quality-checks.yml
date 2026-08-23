@@ -137,12 +137,12 @@ jobs:
 
       - name: Provision Azure Codex policy test fixture
         run: |
-          fixture_image="$(
+          mapfile -t fixture_images < <(
             sed -n 's/^FROM \(ubuntu:[^ ]*@sha256:[a-f0-9]\{64\}\)$/\1/p' \
               scripts/containers/production-smoke-debug.Containerfile
-          )"
-          test -n "${fixture_image}"
-          docker pull "${fixture_image}"
+          )
+          test "${#fixture_images[@]}" -eq 1
+          docker pull "${fixture_images[0]}"
 
       - name: Run tests and combined coverage
         run: npm run test:coverage

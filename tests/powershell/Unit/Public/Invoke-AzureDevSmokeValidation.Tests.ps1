@@ -61,7 +61,8 @@ Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
       Should-Invoke `
         -CommandName Invoke-AzureDevNativeCommand `
         -ParameterFilter {
-          $FilePath -eq 'ssh'
+          $FilePath -eq 'ssh' -and
+          $Arguments[-1] -match ' 1\.2\.3$'
         } `
         -Exactly `
         -Times 1 `

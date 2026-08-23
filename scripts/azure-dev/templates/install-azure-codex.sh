@@ -528,8 +528,8 @@ recover_interrupted_transaction() {
   previous_launcher_target="${recovered_launcher}"
   transaction_active=1
   log 'rollback=recovering interrupted prior installation'
-  restore_link "${CODEX_CURRENT_LINK}" "${previous_current_target}" current
-  restore_link "${CODEX_LAUNCHER}" "${previous_launcher_target}" launcher
+  restore_link "${CODEX_CURRENT_LINK}" "${previous_current_target}" current || return 1
+  restore_link "${CODEX_LAUNCHER}" "${previous_launcher_target}" launcher || return 1
   run_temp_dir="${recovered_scratch}"
   cleanup_run_temp || return 1
   rm -f -- "${CODEX_TRANSACTION}"

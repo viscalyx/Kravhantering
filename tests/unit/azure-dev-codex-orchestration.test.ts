@@ -528,6 +528,45 @@ describe('Azure Codex installation orchestration', () => {
     expect(existsSync(interruptedScratch)).toBe(false)
   })
 
+  it('retains interrupted recovery evidence if link restoration fails', () => {
+    const fixture = userFixture({ previousVersion: '1.1.0' })
+    const interruptedScratch = path.join(fixture.scratchRoot, 'run.interrupted')
+    const transaction = path.join(
+      fixture.standaloneRoot,
+      '.krav-azure-transaction.json',
+    )
+    mkdirSync(interruptedScratch)
+    writeFileSync(path.join(interruptedScratch, 'installer.tmp'), 'private\n')
+    writeFileSync(
+      transaction,
+      `${JSON.stringify({
+        previousCurrentTarget: readlinkSync(fixture.currentLink),
+        previousLauncherTarget: `${fixture.currentLink}/bin/codex`,
+        schemaVersion: 1,
+        scratchPath: interruptedScratch,
+      })}\n`,
+      { mode: 0o600 },
+    )
+    writeFileSync(
+      path.join(fixture.fakeBin, 'mv'),
+      [
+        '#!/usr/bin/env bash',
+        `if [ "\${!#}" = ${shellLiteral(fixture.currentLink)} ]; then`,
+        '  exit 73',
+        'fi',
+        'exec /usr/bin/mv "$@"',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runFixture(fixture)
+
+    expect(result.status).not.toBe(0)
+    expect(existsSync(transaction)).toBe(true)
+    expect(existsSync(interruptedScratch)).toBe(true)
+  })
+
   it('bounds live-lock waiting without removing the upstream lock', async () => {
     const fixture = userFixture({
       previousVersion: '1.1.0',

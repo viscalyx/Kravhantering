@@ -50,6 +50,7 @@ function Invoke-AzureDevRemoteCommand {
 
 function ConvertFrom-AzureDevCodexBootstrapResult {
   [CmdletBinding()]
+  [OutputType([string])]
   param(
     [Parameter(Mandatory = $true)]
     [string]$Output

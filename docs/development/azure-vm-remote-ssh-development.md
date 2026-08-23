@@ -816,9 +816,10 @@ If the VM already exists but was deallocated by `stop` or auto-shutdown, `setup`
 starts it before waiting for SSH.
 
 If setup fails after creating resources, it preserves the VM, both disks, and
-all resources already created. Use the failure output to diagnose the host and
-rerun `setup`; setup does not tear down the failed VM or restore an older Codex
-installation. Use `remove` only when deliberate replacement is required.
+all resources already created. When Codex convergence can roll back, it restores
+the previously active release. Use the failure output to diagnose the host and
+rerun `setup`; setup does not tear down the failed VM. Use `remove` only when
+deliberate replacement is required.
 
 ### SSH host trust
 

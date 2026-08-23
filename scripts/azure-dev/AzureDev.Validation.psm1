@@ -587,6 +587,7 @@ run_workspace_command_or_diagnose 'Playwright dry-run install check' ./node_modu
 
 function Invoke-AzureDevBootstrapAndSmokeValidation {
   [CmdletBinding(SupportsShouldProcess = $true)]
+  [OutputType([string])]
   param(
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Context
