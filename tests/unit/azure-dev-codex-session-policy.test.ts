@@ -18,7 +18,13 @@ const policyPath = path.join(
 )
 const temporaryDirectories: string[] = []
 
-function fixture(zshTemplate = 'export OPERATOR_CUSTOMIZATION=preserved\n') {
+function fixture(
+  zshTemplate = [
+    'export OPERATOR_CUSTOMIZATION=preserved',
+    `export PATH="/operator/custom/bin:\${PATH}"`,
+    '',
+  ].join('\n'),
+) {
   const root = mkdtempSync(path.join(tmpdir(), 'azure-codex-policy-'))
   temporaryDirectories.push(root)
   const userHome = path.join(root, 'home', 'vscode')
@@ -86,6 +92,7 @@ function fixture(zshTemplate = 'export OPERATOR_CUSTOMIZATION=preserved\n') {
     launcher,
     managedPath,
     sshdConfig,
+    systemctl,
     systemctlCapture,
     userHome,
     zshDestination,
@@ -147,6 +154,15 @@ describe('Azure Codex session policy', () => {
     })
     expect(zshResolution.status).toBe(0)
     expect(zshResolution.stdout.trim()).toBe(target.launcher)
+    const zshPath = spawnSync('zsh', ['-ic', `print -r -- "\${PATH}"`], {
+      encoding: 'utf8',
+      env: { ...process.env, HOME: target.userHome, ZDOTDIR: target.userHome },
+    })
+    expect(zshPath.status).toBe(0)
+    expect(zshPath.stdout.trim().split(':')[0]).toBe(
+      path.dirname(target.launcher),
+    )
+    expect(zshPath.stdout.trim().split(':')).toContain('/operator/custom/bin')
   })
 
   it.each(['alias codex=true\n', 'codex() { true; }\n'])(
@@ -162,6 +178,36 @@ describe('Azure Codex session policy', () => {
       expect(result.status).not.toBe(0)
       expect(result.stderr).toContain('alias or function named codex')
       expect(existsSync(target.zshDestination)).toBe(false)
+      expect(existsSync(target.sshdConfig)).toBe(false)
+      expect(existsSync(target.bashProfile)).toBe(false)
+      expect(existsSync(target.systemctlCapture)).toBe(false)
     },
   )
+
+  it('restores every prior policy file when activation fails', () => {
+    const target = fixture()
+    const originals = {
+      bash: '# prior Bash policy\n',
+      ssh: '# prior SSH policy\n',
+      zsh: '# prior Zsh profile\n',
+    }
+    mkdirSync(path.dirname(target.sshdConfig), { recursive: true })
+    mkdirSync(path.dirname(target.bashProfile), { recursive: true })
+    writeFileSync(target.sshdConfig, originals.ssh)
+    writeFileSync(target.bashProfile, originals.bash)
+    writeFileSync(target.zshDestination, originals.zsh)
+    writeFileSync(target.systemctl, '#!/usr/bin/env bash\nexit 1\n', {
+      mode: 0o755,
+    })
+
+    const result = spawnSync('bash', [policyPath], {
+      encoding: 'utf8',
+      env: target.env,
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(readFileSync(target.sshdConfig, 'utf8')).toBe(originals.ssh)
+    expect(readFileSync(target.bashProfile, 'utf8')).toBe(originals.bash)
+    expect(readFileSync(target.zshDestination, 'utf8')).toBe(originals.zsh)
+  })
 })

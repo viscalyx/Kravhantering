@@ -454,8 +454,12 @@ test "$(bash --login -c 'command -v codex')" = "${managed_codex_launcher}"
 test "$(bash --login -c 'type -t codex')" = 'file'
 test "$(zsh -ic 'whence -p codex')" = "${managed_codex_launcher}"
 zsh -ic '(( ! $+aliases[codex] && ! $+functions[codex] ))'
-sudo -n env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-  sh -c 'case ":${PATH}:" in *:/home/vscode/.local/bin:*) exit 1 ;; esac'
+for isolated_account in root nobody; do
+  isolated_home="$(getent passwd "${isolated_account}" | cut -d: -f6)"
+  sudo -n -u "${isolated_account}" env HOME="${isolated_home}" \
+    bash --login -c \
+    'case ":${PATH}:" in *:/home/vscode/.local/bin:*) exit 1 ;; esac'
+done
 copilot --version >/dev/null 2>&1
 docker --version >/dev/null 2>&1
 docker compose version >/dev/null 2>&1

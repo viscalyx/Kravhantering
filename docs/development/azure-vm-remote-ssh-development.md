@@ -914,9 +914,10 @@ use its bundled executable; setup does not configure an extension executable
 override.
 
 Setup applies a managed path footer after either the tracked Zsh template or the
-operator-provided `zshrc.template`. Other template customization is preserved.
-An alias or function named `codex` blocks setup because it masks the managed
-external command.
+operator-provided `zshrc.template`. The footer moves the managed binary
+directory to the front once while preserving other custom path entries and
+unrelated template customization. An alias or function named `codex` blocks
+setup because it masks the managed external command.
 
 > [!WARNING]
 > Avoid using npm to install or update Codex CLI on the Azure development VM.

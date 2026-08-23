@@ -305,17 +305,43 @@ install_codex() {
     return 1
   fi
 
-  if [ "$("${VSCODE_HOME}/.local/bin/codex" --version)" != "codex-cli ${codex_target_version}" ]; then
+  local validated_codex_version
+  validated_codex_version="$(
+    runuser -u "${VSCODE_USER}" -- env -i \
+      HOME="${VSCODE_HOME}" \
+      USER="${VSCODE_USER}" \
+      LOGNAME="${VSCODE_USER}" \
+      CODEX_HOME="${CODEX_HOME_DIR}" \
+      PATH="${CODEX_MANAGED_PATH}" \
+      "${CODEX_MANAGED_LAUNCHER}" --version
+  )"
+  if [ "${validated_codex_version}" != "codex-cli ${codex_target_version}" ]; then
     log "Codex target ${codex_target_version} did not pass exact-version validation"
     return 1
   fi
 }
 
 prepare_codex_user_roots() {
-  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+  local managed_root
+
+  for managed_root in \
     "${CODEX_HOME_DIR}" \
     "${VSCODE_HOME}/.local" \
-    "${VSCODE_HOME}/.local/bin"
+    "${CODEX_MANAGED_BIN_DIR}"; do
+    if [ -L "${managed_root}" ] || { [ -e "${managed_root}" ] && [ ! -d "${managed_root}" ]; }; then
+      log "unsafe Codex user root at ${managed_root}: expected a directory, not a link or other object"
+      return 1
+    fi
+    if [ -d "${managed_root}" ]; then
+      if [ "$(stat -c '%U:%G' -- "${managed_root}")" != "${VSCODE_USER}:${VSCODE_USER}" ]; then
+        log "unsafe Codex user root at ${managed_root}: expected ownership ${VSCODE_USER}:${VSCODE_USER}"
+        return 1
+      fi
+      continue
+    fi
+    install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+      "${managed_root}"
+  done
 }
 
 install_other_ai_tools() {
@@ -786,7 +812,7 @@ else:
 PY
 }
 
-install_zsh_profile() {
+configure_codex_session_policy() {
   if [ ! -f "${ROLLING_GIT_INSTALLER}" ]; then
     log "Rolling Git installer helper is missing: ${ROLLING_GIT_INSTALLER}"
     return 1
@@ -1470,7 +1496,7 @@ main() {
   configure_podman_storage
   clone_or_update_repo
   ensure_kong_route_protocols
-  install_zsh_profile
+  configure_codex_session_policy
   install_storage_tools
   configure_codex_home
   run_repository_setup

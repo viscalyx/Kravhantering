@@ -623,7 +623,10 @@ only and do not appear in result records or command arguments.
 `install-azure-codex-session-policy.sh` writes the accepted token-variable and
 `vscode`-only SSH path rule, then returns to the global OpenSSH match context.
 It writes the `vscode` Bash-login policy and appends a managed Zsh footer after
-the selected default or custom template. It rejects alias or function masking.
+the selected default or custom template. The footer unique-prepends the managed
+binary directory without discarding other custom path entries, and rejects
+alias or function masking. Candidate SSH, Bash, and Zsh policy is validated
+before activation; a later activation failure restores all three prior files.
 The effective SSH path is exact and user-first for `vscode`; root and other
 accounts never inherit the user-writable directory. This policy covers new SSH
 processes, the VS Code Remote SSH server, and its extension-host children. It
