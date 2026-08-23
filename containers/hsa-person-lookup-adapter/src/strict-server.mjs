@@ -8,7 +8,7 @@ import {
   parseGetHsaPersonResponse,
   soapRequestXml,
 } from './server.mjs'
-import { loadStrictTlsMaterial } from './strict-tls.mjs'
+import { loadStrictTlsMaterial, StrictTlsError } from './strict-tls.mjs'
 
 const CORRELATION_HEADER = 'x-kravhantering-hsa-correlation-id'
 const HEALTH_HOST = '127.0.0.1'
@@ -31,6 +31,12 @@ export class StrictAdapterError extends Error {
 
 export function strictAdapterDiagnostic(error) {
   return error instanceof StrictAdapterError ? error.diagnostic : null
+}
+
+export function strictAdapterStartupDiagnostic(error) {
+  if (error instanceof StrictAdapterError) return error.diagnostic
+  if (error instanceof StrictTlsError) return error.category
+  return 'STARTUP_FAILED'
 }
 
 function envValue(env, name) {
@@ -369,4 +375,16 @@ export async function startStrictAdapterServers({ snapshot } = {}) {
     throw error
   }
   return { businessServer, healthServer }
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startStrictAdapterServers().catch(error => {
+    console.error(
+      JSON.stringify({
+        diagnostic: strictAdapterStartupDiagnostic(error),
+        event: 'hsa_adapter_strict_startup_failed',
+      }),
+    )
+    process.exitCode = 1
+  })
 }

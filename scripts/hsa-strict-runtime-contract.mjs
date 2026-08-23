@@ -1,0 +1,135 @@
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+
+import { parse } from 'yaml'
+
+const DEPLOYMENT_SELECTORS = [
+  '.devcontainer/docker-compose.yml',
+  '.devcontainer/elevated/docker-compose.yml',
+  'containers/hsa-directory-mock/Dockerfile',
+  'containers/hsa-person-lookup-adapter/Dockerfile',
+  'containers/compose/container-stack.template.yml',
+  'scripts/azure-dev/templates/quadlet/krav-hsa-directory-mock.container',
+  'scripts/azure-dev/templates/quadlet/krav-hsa-person-lookup-adapter.container',
+  'scripts/azure-dev/templates/quadlet/krav-kong.container',
+]
+
+const DORMANT_SELECTORS = [
+  'strict-server.mjs',
+  'kong.strict.yml',
+  'strict-runtime.env',
+  'HSA_ADAPTER_INGRESS_CA_PATH',
+  'HSA_MOCK_TLS_EXPECTED_CLIENT_SERIAL_NUMBER',
+]
+
+function invariant(value, message) {
+  if (!value) throw new Error(message)
+}
+
+function parseEnvironment(contents) {
+  return Object.fromEntries(
+    contents
+      .trim()
+      .split('\n')
+      .map(line => line.split(/=(.*)/u).slice(0, 2)),
+  )
+}
+
+export function validateDormantHsaDeployments(deployments) {
+  for (const deployment of deployments) {
+    for (const selector of DORMANT_SELECTORS) {
+      invariant(
+        !deployment.contents.includes(selector),
+        `Dormant strict HSA selector is active in ${deployment.path}.`,
+      )
+    }
+  }
+  return Object.freeze({ deploymentCount: deployments.length })
+}
+
+export function validateStrictKongRuntime({
+  authorizationInclude,
+  declarativeConfiguration,
+  environment,
+}) {
+  const config = parse(declarativeConfiguration)
+  const [service] = config.services ?? []
+  const [route] = service?.routes ?? []
+  invariant(
+    config.services?.length === 1 &&
+      service.name === 'hsa-person-lookup-adapter' &&
+      service.host === 'hsa-person-lookup-adapter' &&
+      service.port === 8443 &&
+      service.protocol === 'https' &&
+      service.tls_verify === true &&
+      service.tls_verify_depth === 1 &&
+      service.tls_sans === undefined,
+    'Strict Kong Adapter service contract is invalid.',
+  )
+  invariant(
+    service.routes.length === 1 &&
+      JSON.stringify(route.protocols) === JSON.stringify(['https']) &&
+      JSON.stringify(route.methods) === JSON.stringify(['POST']) &&
+      JSON.stringify(route.paths) ===
+        JSON.stringify(['/hsa/person-records/lookup']),
+    'Strict Kong HTTPS route contract is invalid.',
+  )
+  const env = parseEnvironment(environment)
+  const expectedEnvironment = {
+    KONG_ADMIN_LISTEN: '127.0.0.1:8001',
+    KONG_CLIENT_SSL: 'on',
+    KONG_CLIENT_SSL_CERT: '/run/kravhantering/hsa-mtls/kong-client.crt',
+    KONG_CLIENT_SSL_CERT_KEY: '/run/kravhantering/hsa-mtls/kong-client.key',
+    KONG_NGINX_PROXY_PROXY_SSL_TRUSTED_CERTIFICATE:
+      '/run/kravhantering/hsa-mtls/adapter-server-ca.crt',
+    KONG_NGINX_PROXY_SSL_CLIENT_CERTIFICATE:
+      '/run/kravhantering/hsa-mtls/app-client-ca.crt',
+    KONG_NGINX_PROXY_SSL_VERIFY_CLIENT: 'on',
+    KONG_PROXY_LISTEN: '0.0.0.0:8443 ssl',
+    KONG_SSL_CERT: '/run/kravhantering/hsa-mtls/kong-server.crt',
+    KONG_SSL_CERT_KEY: '/run/kravhantering/hsa-mtls/kong-server.key',
+    KONG_SSL_PROTOCOLS: 'TLSv1.2 TLSv1.3',
+    KONG_TLS_CERTIFICATE_VERIFY: 'on',
+  }
+  for (const [name, value] of Object.entries(expectedEnvironment)) {
+    invariant(env[name] === value, `Strict Kong setting ${name} is invalid.`)
+  }
+  const authorization = authorizationInclude.match(
+    /^if \(\$ssl_client_s_dn != "([^"]+)"\) \{ return 403; \}\s*$/u,
+  )
+  invariant(
+    authorization?.[1] === 'CN=kravhantering-app',
+    'Strict Kong App client authorization is invalid.',
+  )
+  return Object.freeze({
+    adapterIdentity: service.host,
+    appIdentity: authorization[1],
+    routePath: route.paths[0],
+  })
+}
+
+export async function loadHsaStrictRuntimeContract(root = process.cwd()) {
+  const deployments = await Promise.all(
+    DEPLOYMENT_SELECTORS.map(async deploymentPath => ({
+      contents: await readFile(path.join(root, deploymentPath), 'utf8'),
+      path: deploymentPath,
+    })),
+  )
+  const [declarativeConfiguration, environment, authorizationInclude] =
+    await Promise.all([
+      readFile(path.join(root, 'containers/kong/kong.strict.yml'), 'utf8'),
+      readFile(path.join(root, 'containers/kong/strict-runtime.env'), 'utf8'),
+      readFile(
+        path.join(root, 'containers/kong/strict-app-client-subject.conf'),
+        'utf8',
+      ),
+    ])
+  return Object.freeze({
+    deployments: validateDormantHsaDeployments(deployments),
+    kong: validateStrictKongRuntime({
+      authorizationInclude,
+      declarativeConfiguration,
+      environment,
+    }),
+  })
+}

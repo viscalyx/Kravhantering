@@ -4,7 +4,10 @@ import https from 'node:https'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createRuntimeCertificateFixture } from '@/containers/hsa-mtls-provisioner/test/runtime-fixture.mjs'
+import {
+  createInvalidRuntimeCertificateFixture,
+  createRuntimeCertificateFixture,
+} from '@/containers/hsa-mtls-provisioner/test/runtime-fixture.mjs'
 import { generateCertificates } from '@/containers/hsa-person-lookup-adapter/src/generate-certs.mjs'
 import {
   loadStrictHsaPersonLookupSnapshot,
@@ -25,14 +28,24 @@ interface RuntimeFixture {
   generationDir: string
 }
 
+interface InvalidRuntimeFixture {
+  caCertificate: string
+  cleanup(): Promise<void>
+  entry(name: string): { certificate: string; key: string }
+}
+
 let fixture: RuntimeFixture
+let invalidFixture: InvalidRuntimeFixture
 
 beforeAll(async () => {
-  fixture = await createRuntimeCertificateFixture()
+  ;[fixture, invalidFixture] = await Promise.all([
+    createRuntimeCertificateFixture(),
+    createInvalidRuntimeCertificateFixture(),
+  ])
 }, 30_000)
 
 afterAll(async () => {
-  await fixture?.cleanup()
+  await Promise.all([fixture?.cleanup(), invalidFixture?.cleanup()])
 })
 
 describe('strict HSA person lookup startup snapshot', () => {
@@ -238,6 +251,13 @@ describe('strict HSA person lookup startup snapshot', () => {
           HSA_PERSON_LOOKUP_URL: 'http://kong/hsa/person-records/lookup',
         },
       },
+      {
+        diagnostic: 'hsa_strict_url_invalid',
+        env: {
+          ...completeEnv(),
+          HSA_PERSON_LOOKUP_URL: 'https://kong:0/hsa/person-records/lookup',
+        },
+      },
       ...['localhost', '*.example.test', '127.0.0.1', 'not a dns name'].map(
         serverName => ({
           diagnostic: 'hsa_strict_server_identity_invalid',
@@ -268,6 +288,15 @@ describe('strict HSA person lookup startup snapshot', () => {
           HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'client-id',
           HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'client-secret',
           HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL: 'http://identity.example/token',
+        },
+      },
+      {
+        diagnostic: 'hsa_strict_oauth_url_invalid',
+        env: {
+          ...completeEnv(),
+          HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'client-id',
+          HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'client-secret',
+          HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL: 'https://identity.example:0/token',
         },
       },
     ]
@@ -408,8 +437,9 @@ describe('strict HSA person lookup startup snapshot', () => {
       'https://identity.example/.well-known/openid-configuration',
     )
     expect(requests[1]?.url).toBe('https://identity.example/oauth/token')
-    expect(requests[1]?.body).toContain('scope=lookup%3Aperson')
-    expect(requests[1]?.body).toContain('audience=hsa-api')
+    const tokenForm = new URLSearchParams(requests[1]?.body)
+    expect(tokenForm.get('scope')).toBe('lookup:person')
+    expect(tokenForm.get('audience')).toBe('hsa-api')
   })
 
   it('bounds invalid identifiers, correlation, response, and remote statuses', async () => {
@@ -578,24 +608,55 @@ describe('strict HSA person lookup startup snapshot', () => {
     ).rejects.toMatchObject({ diagnostic: 'tls_certificate_invalid' })
   })
 
-  it('rejects legacy trust roots that omit exact critical key usage', async () => {
-    const legacyDir = await mkdtemp(path.join(tmpdir(), 'hsa-legacy-tls-'))
-    try {
-      const legacy = await generateCertificates({
-        fileOwnerGid: process.getgid?.() ?? 1000,
-        fileOwnerUid: process.getuid?.() ?? 1000,
-        outputDir: legacyDir,
-      })
+  it(
+    'rejects legacy trust roots that omit exact critical key usage',
+    async () => {
+      const legacyDir = await mkdtemp(path.join(tmpdir(), 'hsa-legacy-tls-'))
+      try {
+        const legacy = await generateCertificates({
+          fileOwnerGid: process.getgid?.() ?? 1000,
+          fileOwnerUid: process.getuid?.() ?? 1000,
+          outputDir: legacyDir,
+        })
+        await expect(
+          loadStrictTlsSnapshot({
+            caPath: legacy.caCert,
+            certPath: legacy.clientCert,
+            keyPath: legacy.clientKey,
+            role: 'client',
+          }),
+        ).rejects.toMatchObject({ diagnostic: 'tls_ca_invalid' })
+      } finally {
+        await rm(legacyDir, { force: true, recursive: true })
+      }
+    },
+    15_000,
+  )
+
+  it('rejects dual-purpose and wrong-key-usage client leaves', async () => {
+    for (const name of [
+      'client-dual-eku',
+      'client-missing-key-usage',
+      'client-noncritical-key-usage',
+      'client-wrong-key-usage',
+    ]) {
+      const invalid = invalidFixture.entry(name)
       await expect(
         loadStrictTlsSnapshot({
-          caPath: legacy.caCert,
-          certPath: legacy.clientCert,
-          keyPath: legacy.clientKey,
+          caPath: invalidFixture.caCertificate,
+          certPath: invalid.certificate,
+          keyPath: invalid.key,
           role: 'client',
         }),
-      ).rejects.toMatchObject({ diagnostic: 'tls_ca_invalid' })
-    } finally {
-      await rm(legacyDir, { force: true, recursive: true })
+      ).rejects.toMatchObject({ diagnostic: 'tls_leaf_role_invalid' })
     }
+    await expect(
+      loadStrictTlsSnapshot({
+        caPath: fixture.bundle('kong', 'app-client-ca.crt'),
+        certPath: fixture.bundle('app', 'app-client.crt'),
+        keyPath: path.resolve('package.json'),
+        role: 'client',
+      }),
+    ).rejects.toMatchObject({ diagnostic: 'tls_key_invalid' })
   })
 })

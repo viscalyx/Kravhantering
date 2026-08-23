@@ -8,10 +8,11 @@ import {
   jsonResponse,
   loadFixtures,
   readBody,
+  SoapFault,
   successResponse,
   xmlResponse,
 } from './server.mjs'
-import { loadStrictTlsMaterial } from './strict-tls.mjs'
+import { loadStrictTlsMaterial, StrictTlsError } from './strict-tls.mjs'
 
 const BUSINESS_HOST = '0.0.0.0'
 const BUSINESS_PORT = 8443
@@ -31,6 +32,12 @@ export class StrictMockError extends Error {
 
 export function strictMockDiagnostic(error) {
   return error instanceof StrictMockError ? error.diagnostic : null
+}
+
+export function strictMockStartupDiagnostic(error) {
+  if (error instanceof StrictMockError) return error.diagnostic
+  if (error instanceof StrictTlsError) return error.category
+  return 'STARTUP_FAILED'
 }
 
 function envValue(env, name) {
@@ -150,11 +157,12 @@ export function createStrictMockBusinessServer(
         }
         recorder.record(request.messageId)
         xmlResponse(res, 200, successResponse(findRecords(fixtures, request)))
-      } catch {
+      } catch (error) {
+        const code = error instanceof SoapFault ? error.code : 6
         xmlResponse(
           res,
           500,
-          faultResponse(6, 'Unexpected HSA directory mock error.'),
+          faultResponse(code, 'Invalid HSA directory request.'),
         )
       }
     },
@@ -199,4 +207,16 @@ export async function startStrictMockServers({ fixtures, snapshot } = {}) {
     throw error
   }
   return { businessServer, healthServer }
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startStrictMockServers().catch(error => {
+    console.error(
+      JSON.stringify({
+        diagnostic: strictMockStartupDiagnostic(error),
+        event: 'hsa_mock_strict_startup_failed',
+      }),
+    )
+    process.exitCode = 1
+  })
 }

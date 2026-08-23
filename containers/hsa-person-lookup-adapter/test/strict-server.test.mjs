@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import https from 'node:https'
 import path from 'node:path'
 import { after, before, describe, it } from 'node:test'
-import { createRuntimeCertificateFixture } from '../../hsa-mtls-provisioner/test/runtime-fixture.mjs'
+import {
+  createInvalidRuntimeCertificateFixture,
+  createRuntimeCertificateFixture,
+} from '../../hsa-mtls-provisioner/test/runtime-fixture.mjs'
 import {
   createStrictAdapterBusinessServer,
   createStrictAdapterHealthServer,
@@ -13,6 +17,7 @@ import {
   readStrictAdapterConfig,
   startStrictAdapterServers,
   strictAdapterDiagnostic,
+  strictAdapterStartupDiagnostic,
 } from '../src/strict-server.mjs'
 import { loadStrictTlsMaterial, StrictTlsError } from '../src/strict-tls.mjs'
 
@@ -40,10 +45,11 @@ describe('strict HSA adapter configuration', () => {
     }
   })
 
-  it('rejects plaintext SOAP egress', () => {
+  it('rejects plaintext and invalid-port SOAP egress', () => {
     for (const endpointUrl of [
       'not-a-url',
       'http://hsa-directory-mock:8080/svr-hsaws2/hsaws',
+      'https://hsa-directory-mock:0/svr-hsaws2/hsaws',
     ]) {
       assert.throws(
         () =>
@@ -54,6 +60,42 @@ describe('strict HSA adapter configuration', () => {
         error => strictAdapterDiagnostic(error) === 'adapter_endpoint_invalid',
       )
     }
+  })
+
+  it('is an executable fail-closed dormant entrypoint', () => {
+    const malformed = path.resolve('src/strict-server.mjs')
+    for (const [env, diagnostic] of [
+      [{ PATH: process.env.PATH }, 'adapter_config_incomplete'],
+      [
+        {
+          ...COMPLETE_ENV,
+          HSA_ADAPTER_INGRESS_CA_PATH: malformed,
+          HSA_ADAPTER_INGRESS_CERT_PATH: malformed,
+          HSA_ADAPTER_INGRESS_KEY_PATH: malformed,
+          HSA_SOAP_CA_PATH: malformed,
+          HSA_SOAP_CLIENT_CERT_PATH: malformed,
+          HSA_SOAP_CLIENT_KEY_PATH: malformed,
+          PATH: process.env.PATH,
+        },
+        'CA_INVALID',
+      ],
+    ]) {
+      const result = spawnSync(process.execPath, ['src/strict-server.mjs'], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env,
+      })
+
+      assert.equal(result.status, 1)
+      assert.deepEqual(JSON.parse(result.stderr), {
+        diagnostic,
+        event: 'hsa_adapter_strict_startup_failed',
+      })
+    }
+    assert.equal(
+      strictAdapterStartupDiagnostic(new Error('internal')),
+      'STARTUP_FAILED',
+    )
   })
 })
 
@@ -156,10 +198,14 @@ async function strictRequest(port, fixture, options = {}) {
 
 describe('strict HSA adapter network boundary', () => {
   let fixture
+  let invalidFixture
   let snapshot
 
   before(async () => {
-    fixture = await createRuntimeCertificateFixture()
+    ;[fixture, invalidFixture] = await Promise.all([
+      createRuntimeCertificateFixture(),
+      createInvalidRuntimeCertificateFixture(),
+    ])
     snapshot = await loadStrictAdapterSnapshot(
       readStrictAdapterConfig({
         HSA_ADAPTER_INGRESS_CA_PATH: fixture.bundle(
@@ -191,7 +237,7 @@ describe('strict HSA adapter network boundary', () => {
     )
   })
 
-  after(async () => fixture.cleanup())
+  after(async () => Promise.all([fixture.cleanup(), invalidFixture.cleanup()]))
 
   it('requires a trusted exact client and maps correlation to MessageID', async () => {
     let soapRequest = ''
@@ -333,8 +379,16 @@ describe('strict HSA adapter network boundary', () => {
         input: { ...base, caPath: path.resolve('missing-ca.crt') },
       },
       {
+        category: 'FILE_INVALID',
+        input: { ...base, caPath: path.resolve('.') },
+      },
+      {
         category: 'CA_INVALID',
         input: { ...base, caPath: sourceFile },
+      },
+      {
+        category: 'CERTIFICATE_INVALID',
+        input: { ...base, certPath: sourceFile },
       },
       {
         category: 'CERTIFICATE_NOT_YET_VALID',
@@ -349,6 +403,13 @@ describe('strict HSA adapter network boundary', () => {
         input: {
           ...base,
           caPath: fixture.bundle('adapter', 'adapter-server.crt'),
+        },
+      },
+      {
+        category: 'LEAF_ROLE_INVALID',
+        input: {
+          ...base,
+          certPath: fixture.bundle('adapter', 'kong-client-ca.crt'),
         },
       },
       {
@@ -404,6 +465,31 @@ describe('strict HSA adapter network boundary', () => {
           error instanceof StrictTlsError &&
           error.category === testCase.category,
       )
+    }
+  })
+
+  it('rejects dual-purpose and wrong-key-usage leaves for both roles', async () => {
+    for (const role of ['client', 'server']) {
+      for (const suffix of [
+        'dual-eku',
+        'missing-key-usage',
+        'noncritical-key-usage',
+        'wrong-key-usage',
+      ]) {
+        const material = invalidFixture.entry(`${role}-${suffix}`)
+        await assert.rejects(
+          () =>
+            loadStrictTlsMaterial({
+              caPath: invalidFixture.caCertificate,
+              certPath: material.certificate,
+              keyPath: material.key,
+              role,
+            }),
+          error =>
+            error instanceof StrictTlsError &&
+            error.category === 'LEAF_ROLE_INVALID',
+        )
+      }
     }
   })
 

@@ -20,7 +20,7 @@ const DEFAULT_TLS_CERT_PATH = '/run/hsa-mtls/server.crt'
 const DEFAULT_TLS_KEY_PATH = '/run/hsa-mtls/server.key'
 const DEFAULT_TLS_CA_PATH = '/run/hsa-mtls/ca.crt'
 
-class SoapFault extends Error {
+export class SoapFault extends Error {
   constructor(code, message) {
     super(message)
     this.name = 'SoapFault'

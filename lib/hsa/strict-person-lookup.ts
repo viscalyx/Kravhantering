@@ -51,7 +51,12 @@ function requiredHttpsUrl(
 ) {
   try {
     const url = new URL(value)
-    if (url.protocol !== 'https:') throw new Error('protocol')
+    if (
+      url.protocol !== 'https:' ||
+      (url.port !== '' && Number(url.port) < 1)
+    ) {
+      throw new Error('url')
+    }
     return url.toString()
   } catch {
     throw new StrictHsaPersonLookupError(

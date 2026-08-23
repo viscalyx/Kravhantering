@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import http from 'node:http'
 import https from 'node:https'
 import path from 'node:path'
 import { after, before, describe, it } from 'node:test'
-import { createRuntimeCertificateFixture } from '../../hsa-mtls-provisioner/test/runtime-fixture.mjs'
+import {
+  createInvalidRuntimeCertificateFixture,
+  createRuntimeCertificateFixture,
+} from '../../hsa-mtls-provisioner/test/runtime-fixture.mjs'
 import { loadFixtures } from '../src/server.mjs'
 import {
   createStrictMockBusinessServer,
@@ -15,6 +19,7 @@ import {
   StrictCorrelationRecorder,
   startStrictMockServers,
   strictMockDiagnostic,
+  strictMockStartupDiagnostic,
 } from '../src/strict-server.mjs'
 import { loadStrictTlsMaterial, StrictTlsError } from '../src/strict-tls.mjs'
 
@@ -68,6 +73,39 @@ describe('strict HSA directory mock configuration', () => {
       },
     ])
     assert.doesNotMatch(JSON.stringify(events), /hsaId|givenName|person/u)
+  })
+
+  it('is an executable fail-closed dormant entrypoint', () => {
+    const malformed = path.resolve('src/strict-server.mjs')
+    for (const [env, diagnostic] of [
+      [{ PATH: process.env.PATH }, 'mock_config_incomplete'],
+      [
+        {
+          HSA_MOCK_TLS_CA_PATH: malformed,
+          HSA_MOCK_TLS_CERT_PATH: malformed,
+          HSA_MOCK_TLS_EXPECTED_CLIENT_SERIAL_NUMBER: 'SE5560000000-MOCK001',
+          HSA_MOCK_TLS_KEY_PATH: malformed,
+          PATH: process.env.PATH,
+        },
+        'CA_INVALID',
+      ],
+    ]) {
+      const result = spawnSync(process.execPath, ['src/strict-server.mjs'], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env,
+      })
+
+      assert.equal(result.status, 1)
+      assert.deepEqual(JSON.parse(result.stderr), {
+        diagnostic,
+        event: 'hsa_mock_strict_startup_failed',
+      })
+    }
+    assert.equal(
+      strictMockStartupDiagnostic(new Error('internal')),
+      'STARTUP_FAILED',
+    )
   })
 })
 
@@ -155,10 +193,14 @@ async function soapRequest(
 describe('strict HSA directory mock network boundary', () => {
   let fixture
   let fixtures
+  let invalidFixture
   let snapshot
 
   before(async () => {
-    fixture = await createRuntimeCertificateFixture()
+    ;[fixture, invalidFixture] = await Promise.all([
+      createRuntimeCertificateFixture(),
+      createInvalidRuntimeCertificateFixture(),
+    ])
     fixtures = await loadFixtures()
     snapshot = await loadStrictMockSnapshot(
       readStrictMockConfig({
@@ -170,7 +212,7 @@ describe('strict HSA directory mock network boundary', () => {
     )
   })
 
-  after(async () => fixture.cleanup())
+  after(async () => Promise.all([fixture.cleanup(), invalidFixture.cleanup()]))
 
   it('requires mTLS and records one sanitized event for one lookup', async () => {
     const events = []
@@ -266,6 +308,9 @@ describe('strict HSA directory mock network boundary', () => {
       role: 'server',
     }
     const sourceFile = path.resolve('src/strict-server.mjs')
+    await assert.doesNotReject(() =>
+      loadStrictTlsMaterial({ ...base, expectedDnsIdentity: undefined }),
+    )
     const cases = [
       {
         category: 'FILE_PATH_INVALID',
@@ -276,8 +321,16 @@ describe('strict HSA directory mock network boundary', () => {
         input: { ...base, caPath: path.resolve('missing-ca.crt') },
       },
       {
+        category: 'FILE_INVALID',
+        input: { ...base, caPath: path.resolve('.') },
+      },
+      {
         category: 'CA_INVALID',
         input: { ...base, caPath: sourceFile },
+      },
+      {
+        category: 'CERTIFICATE_INVALID',
+        input: { ...base, certPath: sourceFile },
       },
       {
         category: 'CERTIFICATE_NOT_YET_VALID',
@@ -290,6 +343,13 @@ describe('strict HSA directory mock network boundary', () => {
       {
         category: 'CA_INVALID',
         input: { ...base, caPath: fixture.bundle('mock', 'mock-server.crt') },
+      },
+      {
+        category: 'LEAF_ROLE_INVALID',
+        input: {
+          ...base,
+          certPath: fixture.bundle('mock', 'adapter-client-ca.crt'),
+        },
       },
       {
         category: 'KEY_INVALID',
@@ -313,6 +373,29 @@ describe('strict HSA directory mock network boundary', () => {
         error =>
           error instanceof StrictTlsError &&
           error.category === testCase.category,
+      )
+    }
+  })
+
+  it('rejects dual-purpose and wrong-key-usage server leaves', async () => {
+    for (const suffix of [
+      'dual-eku',
+      'missing-key-usage',
+      'noncritical-key-usage',
+      'wrong-key-usage',
+    ]) {
+      const material = invalidFixture.entry(`server-${suffix}`)
+      await assert.rejects(
+        () =>
+          loadStrictTlsMaterial({
+            caPath: invalidFixture.caCertificate,
+            certPath: material.certificate,
+            keyPath: material.key,
+            role: 'server',
+          }),
+        error =>
+          error instanceof StrictTlsError &&
+          error.category === 'LEAF_ROLE_INVALID',
       )
     }
   })
@@ -359,7 +442,16 @@ describe('strict HSA directory mock network boundary', () => {
       )
       const malformed = await soapRequest(port, fixture, { body: '<secret>' })
       assert.equal(malformed.status, 500)
+      assert.match(malformed.body, /<hsa:code>3<\/hsa:code>/u)
       assert.doesNotMatch(malformed.body, /secret|Malformed XML/u)
+      const unsupportedSearchBase = await soapRequest(port, fixture, {
+        body: envelope().replace(
+          '</urn:GetHsaPerson>',
+          '<urn:searchBase>ou=wrong</urn:searchBase></urn:GetHsaPerson>',
+        ),
+      })
+      assert.equal(unsupportedSearchBase.status, 500)
+      assert.match(unsupportedSearchBase.body, /<hsa:code>6<\/hsa:code>/u)
     } finally {
       await close(server)
     }
