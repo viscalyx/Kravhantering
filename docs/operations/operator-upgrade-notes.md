@@ -7,6 +7,11 @@ target version.
 
 ## Unreleased
 
+<!-- operator-upgrade:source pr-1094 start -->
+- Before upgrade, keep AI-assisted authoring blocked and verify that every application host uses the required container runtime. Provision the versioned provider-secret root keyring on every application node. Configure approved egress, TLS, and data policies. The previous direct OpenRouter configuration does not migrate.
+- Apply the database migration and required seed. An Administrator must then register AI connections, enter provider secrets, record attestations, verify models, and configure each intended run profile. Configure the new AI alerts and complete the AI deployment evidence gate before you enable AI-assisted authoring. Update clients and support procedures because users no longer select models, and the model-catalog and credit endpoints are removed.
+- Treat each database backup and its required root-key versions as one recovery set. Test their combined restore and retain old root-key versions while any database row or retained backup needs them. During rollback or restore, block AI-assisted authoring, restore the matching keyring, run transient-state cleanup, and repeat the deployment evidence gate. There is no legacy OpenRouter fallback.
+<!-- operator-upgrade:source pr-1094 end -->
 ## v0.5.0 - 2026-08-23
 
 <!-- operator-upgrade:source issue-477 start -->
