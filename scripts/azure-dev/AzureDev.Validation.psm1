@@ -119,6 +119,7 @@ expected_git_ssh_signing_public_key="$3"
 expected_codex_version="$4"
 managed_codex_launcher=/home/vscode/.local/bin/codex
 managed_codex_bin=/home/vscode/.local/bin
+managed_codex_release_root=/home/vscode/.codex/packages/standalone/releases
 managed_codex_path=/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 legacy_codex_launcher=/usr/local/bin/codex
 export HOME=/home/vscode
@@ -439,7 +440,16 @@ test ! -e "${legacy_codex_launcher}" && test ! -L "${legacy_codex_launcher}" || 
   exit 1
 }
 test -L "${managed_codex_launcher}"
-test "$(stat -c '%U:%G' "${managed_codex_launcher}")" = 'vscode:vscode'
+managed_codex_target="$(readlink -f -- "${managed_codex_launcher}")"
+case "${managed_codex_target}" in
+  "${managed_codex_release_root}"/*) ;;
+  *)
+    printf 'Managed Codex launcher resolves outside the private standalone release root.\n'
+    exit 1
+    ;;
+esac
+test -f "${managed_codex_target}"
+test "$(stat -c '%U:%G' "${managed_codex_target}")" = 'vscode:vscode'
 test "$(stat -c '%a' /home/vscode/.local)" = '700'
 test "$(stat -c '%U:%G' /home/vscode/.local)" = 'vscode:vscode'
 test "$(stat -c '%a' "${managed_codex_bin}")" = '700'
@@ -448,8 +458,8 @@ test "$(stat -c '%a' /home/vscode/.codex)" = '700'
 test "$(stat -c '%U:%G' /home/vscode/.codex)" = 'vscode:vscode'
 test "$(stat -c '%a' /home/vscode/.codex/config.toml)" = '600'
 test "$(stat -c '%U:%G' /home/vscode/.codex/config.toml)" = 'vscode:vscode'
-test -x "${managed_codex_launcher}"
-test "$("${managed_codex_launcher}" --version)" = "codex-cli ${expected_codex_version}"
+test -x "${managed_codex_target}"
+test "$("${managed_codex_target}" --version)" = "codex-cli ${expected_codex_version}"
 test "$(bash --login -c 'command -v codex')" = "${managed_codex_launcher}"
 test "$(bash --login -c 'type -t codex')" = 'file'
 test "$(zsh -ic 'whence -p codex')" = "${managed_codex_launcher}"

@@ -144,6 +144,19 @@ function userFixture(options: FixtureOptions = {}) {
     ].join('\n'),
     { mode: 0o755 },
   )
+  writeFileSync(
+    path.join(fakeBin, 'chown'),
+    [
+      '#!/usr/bin/env bash',
+      'if [ "$1" = vscode:vscode ]; then',
+      '  shift',
+      `  exec /usr/bin/chown '${fixtureUid}:${fixtureGid}' "$@"`,
+      'fi',
+      'exec /usr/bin/chown "$@"',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  )
 
   const mismatchVersion =
     options.failure === 'version-mismatch' ? '9.9.9' : targetVersion
