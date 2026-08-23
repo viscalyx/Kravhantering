@@ -1,6 +1,6 @@
 # Gränser för applikationsägd referensdata
 
-Status: Antagen 2026-06-05. Uppdaterad 2026-06-13.
+Status: Antagen 2026-06-05.
 
 Kravhantering äger den `Referensdata` som formar kravarbete i applikationen.
 Det omfattar taxonomi som kravområden, kategorier, typer,

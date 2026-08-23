@@ -47,7 +47,7 @@ arkivexport.
 
 ## Konsekvenser
 
-Den globala inställningen och stdout-skrivaren för forensisk AI-loggning tas
-bort. Alla styråtgärder, läsningar, fel och gallringar ger endast avgränsade
-metadatahändelser. Fel i maskering, lagring eller retention ger ingen
-reservväg för innehåll utan faller tillbaka till enbart metadata.
+Det finns ingen global inställning eller stdout-skrivare för forensisk
+AI-loggning. Alla styråtgärder, läsningar, fel och gallringar ger endast
+avgränsade metadatahändelser. Fel i maskering, lagring eller retention ger
+ingen reservväg för innehåll utan faller tillbaka till enbart metadata.

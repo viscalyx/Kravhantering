@@ -98,20 +98,14 @@ använder spärren, suspendering eller en uttrycklig omkonfiguration till en
 fortfarande giltig anslutningsmodellrevision och hemlighetsrevision. Den
 direkta OpenRouter-vägen är ingen reserv.
 
-## Bevarade beslut och företräde
+## Samband med andra beslut
 
-Detta beslut tillämpar regeln om uttrycklig extern behandling i
+AI-anslutningens behandling följer regeln om uttrycklig extern behandling i
 [ADR 0021](./0021-uttrycklig-extern-behandling-av-produktionsdata.md) och
-bevarar de applikationsägda AI-säkerhetsreglerna i
-[ADR 0038](./0038-db-forvaltade-ai-sakerhetsregler.md). Det kompletterar
-adapter- och körprofilgränsen i
+de applikationsägda AI-säkerhetsreglerna i
+[ADR 0038](./0038-db-forvaltade-ai-sakerhetsregler.md). Adapter- och
+körprofilgränsen följer
 [ADR 0051](./0051-ai-integrationslager-med-korprofiler-och-adaptrar.md).
-
-När äldre beslut eller dokument anger att statiska leverantörshemligheter
-endast ska vara externa hemlighetsreferenser har detta beslut företräde:
-leverantörshemligheter lagras AES-256-GCM-krypterade i SQL Server och
-root-keyringen hålls utanför databasen. Övriga beslut om extern behandling,
-AI-säkerhet, mänsklig granskning och kravimport gäller fortsatt.
 
 ## Övervägda alternativ
 

@@ -56,11 +56,11 @@ den exakta konfigurationen, de säkra grindarna, larmkopplingarna och tidigare
 godkänd miljöbevisning innan den globala AI-spärren kan släppas enligt
 [ADR 0054](./0054-global-ai-sparr-och-driftsattningsbevis.md).
 
-## Bevarade beslut och företräde
+## Samband med andra beslut
 
-Beslutet preciserar den innehållsfria drifttelemetrin i
+Beslutet avgränsar den innehållsfria drifttelemetrin tillsammans med
 [ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md)
-och bevarar det gemensamma adapterkontraktet i
+och använder det gemensamma adapterkontraktet i
 [ADR 0051](./0051-ai-integrationslager-med-korprofiler-och-adaptrar.md).
 Modellverifieringen och de stabila körprofilerna följer
 [ADR 0056](./0056-sammanhallen-modellverifiering-och-stabila-korprofiler.md).

@@ -69,22 +69,22 @@ kontrollerad testadapter bevisar utbytbarheten. De ska passera samma kontrakt
 genom körprofiler, säkerhetsgrindar, routes och terminalutfall. En ny adapter
 får inte kräva leverantörsspecifik logik utanför adaptergränsen.
 
-## Bevarade beslut och företräde
+## Samband med andra beslut
 
-Detta beslut ändrar inte att AI-assisterat författande är frivilligt,
-icke-auktoritativt och underställt mänsklig granskning enligt
-[ADR 0015](./0015-ai-assisterat-forfattande.md). Det bevarar även flödet från
-behov via generering och eventuell JSON-reparation till redigerbar granskning
-och import genom `Kravimportfil` enligt
+AI-assisterat författande är frivilligt, icke-auktoritativt och underställt
+mänsklig granskning enligt
+[ADR 0015](./0015-ai-assisterat-forfattande.md). Flödet från behov via
+generering och eventuell JSON-reparation till redigerbar granskning och import
+genom `Kravimportfil` följer
 [ADR 0034](./0034-ai-assisterat-forfattande-anvander-kravimportkontraktet.md).
 Kravhantering äger fortsatt instruktion, schema, destination, behörighet,
 säkerhetsgrindar, validering och mänskligt beslut.
 
-När äldre dokument beskriver direkt OpenRouter-anrop, användarstyrt modellval,
-modellfavoriter, kreditstyrning eller modellkatalog som runtime-sanning har
-detta beslut företräde. Det inför ingen automatisk fallback, beständig
-agentsession, callback, tool-anrop eller ny AI-funktionalitet. Tillitsgräns,
-anslutningslivscykel och leverantörshemligheter styrs av
+AI-integrationslagret är den enda produktionsvägen för OpenRouter och andra
+AI-anslutningar. Modellkataloger är vägledande administrativt stöd, inte
+runtime-sanning. Lagret har ingen automatisk fallback, beständig agentsession,
+callback eller verktygsanrop. Tillitsgräns, anslutningslivscykel och
+leverantörshemligheter styrs av
 [ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
 
 ## Övervägda alternativ

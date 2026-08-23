@@ -1,6 +1,6 @@
 # Rullande utvecklingsberoenden och utvecklarautentisering
 
-Status: Antagen 2026-07-31. Uppdaterad 2026-08-02.
+Status: Antagen 2026-07-31.
 
 Utvecklingsmiljöerna ska vara aktuella och snabba att använda utan löpande
 manuell uppdatering av varje verktyg. Projektet accepterar därför att en

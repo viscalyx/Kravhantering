@@ -44,10 +44,9 @@ till ett krav med publicerad version.
 Arkiverade paket och krav som inte längre har en publicerad version tas
 automatiskt bort från svar och återställs inte automatiskt om de blir möjliga
 att använda igen. Berörda svar som inte är `Utan kravurval` visas som
-`Saknar kravurval`. Kravurvalsfrågor är alltid frivilliga i den första
-implementationen: det finns ingen required-question state, ingen
-required-answer validation och progress visar bara besvarat/totalt för aktiva
-frågor.
+`Saknar kravurval`. Kravurvalsfrågor är frivilliga: det finns inget
+obligatoriskt frågetillstånd, ingen validering som kräver svar och förloppet
+visar bara besvarat/totalt för aktiva frågor.
 
 Sparade kravurvalssvar bevarar kravurvalssammanhang, men de får inte
 automatiskt tillbaka filtereffekt när en arkiverad eller inaktiv
@@ -74,12 +73,12 @@ kvar som sparat sammanhang tills användaren väljer att filtrera.
 - Automatiskt filtrera tillgängliga krav vid varje sparat svar: avvisat
   eftersom ett nytt besök i ett kravunderlag ska hålla `Available requirements`
   komplett tills användaren väljer kravurvalsfiltret.
-- Spara ögonblicksbild av fråga och svarstext i varje kravunderlag: avvisat för
-  första versionen; sparade svar behåller identitet men visar aktuell förvaltad
-  fråga och svarstext.
+- Spara ögonblicksbild av fråga och svarstext i varje kravunderlag: avvisat
+  eftersom sparade svar behåller identitet men visar aktuell förvaltad fråga
+  och svarstext.
 - Införa full livscykel med utkast/granskning/publicerad för frågor: avvisat
-  för första versionen till förmån för aktiv/arkiverad plus hälsoindikatorer.
-- Obligatoriska kravurvalsfrågor: avvisat för första versionen eftersom
-  kravurvalssvar ska vägleda filtrering, inte bli en färdigställandegrind.
-- Språkparad kravpaketstext: avvisat när kravpaket flyttades från referensdata
-  till författat innehåll i kravbiblioteksförvaltningen.
+  eftersom aktiv/arkiverad plus hälsoindikatorer räcker för förvaltningen.
+- Obligatoriska kravurvalsfrågor: avvisat eftersom kravurvalssvar ska vägleda
+  filtrering, inte bli en färdigställandegrind.
+- Språkparad kravpaketstext: avvisat eftersom kravpaket är författat innehåll i
+  kravbiblioteksförvaltningen, inte språkparad referensdata.

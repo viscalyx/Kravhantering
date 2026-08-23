@@ -56,8 +56,8 @@ beslut gör inte målet WCAG-konformt och får inte märkas som ett normativt
 undantag. Strängare krav i lag, avtal eller upphandling, liksom krav från den
 ansvariga operatören, har alltid företräde framför produktens grundregel.
 
-Det normativa underlaget och bedömningen av svensk rätt dokumenterades i
-analysen (i issue 542) som låg till grund för detta beslut.
+Det normativa underlaget och bedömningen av svensk rätt finns i analysen i
+issue 542.
 
 ## Övervägda alternativ
 

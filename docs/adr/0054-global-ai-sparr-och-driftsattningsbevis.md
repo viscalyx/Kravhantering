@@ -54,7 +54,7 @@ Ett resultat från ett läge kan inte räknas som ett annat. Saknad tillgång ti
 en stagingmiljö lämnar staging-liveprovet ej kört; den får aldrig ersättas med
 påhittad bevisning eller ett produktionsanrop.
 
-## Bevarade beslut och företräde
+## Samband med andra beslut
 
 Beslutet operationaliserar frisläppningsvillkoret i
 [ADR 0052](./0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md)

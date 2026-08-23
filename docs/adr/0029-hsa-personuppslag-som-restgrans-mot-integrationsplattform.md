@@ -1,6 +1,6 @@
 # HSA-personuppslag som REST-gräns mot integrationsplattform
 
-Status: Antagen 2026-06-14. Uppdaterad 2026-08-11.
+Status: Antagen 2026-06-14.
 
 Kravhantering behåller en stabil appnära gräns för HSA-personuppslag:
 `POST /hsa/person-records/lookup` med REST/JSON och ett kontrakt som
@@ -44,13 +44,13 @@ adaptern låses separat i `container-hsa-integration-support.lock.json`.
 HSA-katalogmocken är fortsatt test- och demo-stöd.
 
 Kong-topologin som projektet stödjer publicerar bara
-`/hsa/person-records/lookup` och dirigerar den till adaptern. Den tidigare
-REST-fasaden i mocken och Kong-SOAP-sökvägen ska inte längre beskrivas som
-nuvarande kontrakt. Release-smoke använder en separat CI-only Quadlet-overlay
-med samma adapter- och mTLS-väg. `single-node-demo` är endast ett val för
-frånkopplad transport av stödavbildningarna, inte en runtime-topologi. Lokala
-och pipeline-baserade testcertifikat kan genereras, men operatörer kan montera
-egna självsignerade testcertifikat för demo.
+`/hsa/person-records/lookup` och dirigerar den till adaptern. Katalogmocken
+exponerar SOAP endast mot adaptern; Kong exponerar ingen SOAP-sökväg och mocken
+har ingen REST-fasad. Release-smoke använder en separat CI-only
+Quadlet-overlay med samma adapter- och mTLS-väg. `single-node-demo` är endast
+ett val för frånkopplad transport av stödavbildningarna, inte en
+runtime-topologi. Lokala och pipeline-baserade testcertifikat kan genereras,
+men operatörer kan montera egna självsignerade testcertifikat för demo.
 
 REST-kontraktet använder stabila felkoder. Framgång ger `200` med `hsaId`,
 `givenName`, `middleName`, `surname`, `email` och
@@ -71,12 +71,12 @@ identitetsintygsutfärdaren intygar, på de ställen där uppgifterna behövs ä
 om personen har skyddade personuppgifter. Skyddsflaggan ska därför inte ensam
 leda till generell maskering av namn eller HSA-id i obligatoriska arbetsflöden.
 
-Särskild hantering av HSA-personpost med skyddade personuppgifter ska i
-stället utgå från ändamål, vy, behörighet och regional riskbedömning:
-uppgifterna ska bara visas där de behövs för ansvar, spårbarhet, uppdrag eller
-behörighetsprövning, och export, loggning, hjälptext och eventuell
-skyddsmarkering styrs av policybeslutet i GitHub issue
-[#326](https://github.com/viscalyx/Kravhantering/issues/326).
+Särskild hantering av HSA-personpost med skyddade personuppgifter utgår i
+stället från ändamål, vy, behörighet och regional riskbedömning. Uppgifterna
+visas bara där de behövs för ansvar, spårbarhet, uppdrag eller
+behörighetsprövning. Export och loggning minimerar personfält och hjälptext
+förklarar att skyddsflaggan kräver behovsstyrd hantering men inte blockerar en
+kravansvarstilldelning.
 
 Verifieringsanropet är läsande och lagrar inte HSA-svaret. Det returnerar i
 stället kortlivat, signerat bevis bundet till aktör, målidentitet, ändamål och

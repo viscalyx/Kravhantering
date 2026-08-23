@@ -1,6 +1,6 @@
 # Kravansvarsperson för HSA-uppslag
 
-Status: Antagen 2026-06-08. Uppdaterad 2026-06-13.
+Status: Antagen 2026-06-08.
 
 Kravhantering inför Kravansvarsperson som en lokal, HSA-id-nycklad personrad
 för aktuella eller påbörjade kravansvarstilldelningar. Levande tilldelningar
@@ -9,16 +9,21 @@ namnkomponenter och e-post sparas på personraden efter
 behörighetskontrollerade serveruppslag mot HSA-katalogen.
 
 Beslutet begränsar åtkomsten till personuppgifter: läsvyer gör inga
-HSA-uppslag, och appen får ingen generell browser-nåbar personuppgiftssök.
+HSA-uppslag, och appen har ingen generell webbläsarnåbar personuppgiftssökning.
 Redigeringsytor får däremot en tilldelningsbunden verifiering via servern.
-När användaren lämnar ett HSA-id-fält återanvänds befintlig lokal
-Kravansvarsperson om den finns; annars gör servern ett HSA-uppslag och sparar
-personraden. Den manuella hämta-ikonen gör alltid ett nytt HSA-uppslag och
-uppdaterar personraden. Sparande gör inget HSA-uppslag, utan kräver att lokal
-Kravansvarsperson finns för HSA-id:t och läser om kort om verifieringen nyss
-slutfördes. En Kravansvarsperson tas bort när ingen levande
-kravansvarstilldelning längre pekar på HSA-id:t efter en sparad ändring;
-historiska audit- och beslutssnapshots behåller sina egna punkt-i-tid-värden.
+När användaren lämnar ett HSA-id-fält återanvänds en befintlig lokal
+Kravansvarsperson om den finns; annars gör servern ett HSA-uppslag. Den
+manuella hämtningsåtgärden gör alltid ett nytt HSA-uppslag. Verifieringen
+sparar aldrig personraden utan returnerar ett kortlivat signerat bevis bundet
+till aktör, HSA-id, ändamål och behörighetssammanhang.
+
+Den slutliga tilldelningsmutationen verifierar beviset och sparar
+Kravansvarsperson och kravansvarstilldelning atomärt. Efter en sparad ändring
+rensar tilldelningsflödet en person som inte längre pekas ut av någon levande
+kravansvarstilldelning. En kvarvarande Kravansvarsperson utan
+kravansvarstilldelning kan återanvändas vid en senare verifiering eller
+kvalificera för gallring. Historiska bevis behåller sina egna
+ögonblicksvärden.
 
 Efter en lyckad auktoriserad mutationsförfrågan får servern också starta en
 asynkron best-effort-uppdatering av den inloggade aktörens levande personrad.

@@ -2,13 +2,13 @@
 
 Status: Antagen 2026-08-22.
 
-Admin Center sparar inte längre modellutkast som verifieras i ett senare steg.
-Administratören anger modellens tekniska identitet och kör en enda avbrytbar,
-strömmande verifieringssvit. Sviten kontrollerar i fast ordning anslutning och
-autentisering, grundläggande modellåtkomst, varje känd förmåga, kompatibilitet
-med var och en av de tre fasta körprofilerna och en slutsammanfattning. Den
-behåller adapterns säkerhets-, fel- och avbrottskontrakt, gör högst ett omförsök
-vid övergående fel och har en gemensam tidsgräns på 60 sekunder.
+Admin Center sparar en anslutningsmodell först efter en enda avbrytbar,
+strömmande verifieringssvit. Administratören anger modellens tekniska
+identitet, och sviten kontrollerar i fast ordning anslutning och autentisering,
+grundläggande modellåtkomst, varje känd förmåga, kompatibilitet med var och en
+av de tre fasta körprofilerna och en slutsammanfattning. Den behåller adapterns
+säkerhets-, fel- och avbrottskontrakt, gör högst ett omförsök vid övergående
+fel och har en gemensam tidsgräns på 60 sekunder.
 
 Resultatet binds server-side i högst 15 minuter till aktör, anslutning och ett
 fingeravtryck över tekniska fält. Namn och beskrivning får ändras utan ny

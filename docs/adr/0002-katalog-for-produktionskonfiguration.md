@@ -1,7 +1,6 @@
 # Katalog för produktionskonfiguration
 
-Status: Antagen 2026-05-26. Uppföljning spåras i
-[issue #251](https://github.com/viscalyx/Kravhantering/issues/251).
+Status: Antagen 2026-05-26.
 
 Produktionskonfiguration är host-wide configuration som ägs av drift/root, inte
 rootless Podman user configuration. Vi behåller `/etc/kravhantering` som
