@@ -147,7 +147,7 @@ describe('container image contract', () => {
     )
   })
 
-  it('runs the HSA certificate generator without runtime npm', () => {
+  it('runs the isolated HSA test-PKI provisioner without runtime npm', () => {
     for (const relativePath of [
       '.devcontainer/docker-compose.yml',
       '.devcontainer/elevated/docker-compose.yml',
@@ -156,16 +156,17 @@ describe('container image contract', () => {
         services?: Record<string, { command?: string[] }>
       }
 
-      expect(compose.services?.['hsa-mtls-cert-generator']?.command).toEqual([
-        'node',
-        'src/generate-certs.mjs',
+      expect(compose.services?.['hsa-mtls-provisioner']?.command).toEqual([
+        'activate',
+        '--lifetime',
+        'persistent',
       ])
     }
 
     const azureQuadlet = readWorkspaceFile(
-      'scripts/azure-dev/templates/quadlet/krav-hsa-mtls-cert-generator.container',
+      'scripts/azure-dev/templates/quadlet/krav-hsa-mtls-provisioner.container',
     )
-    expect(azureQuadlet).toContain('Exec=node src/generate-certs.mjs')
+    expect(azureQuadlet).toContain('Exec=activate --lifetime persistent')
     expect(azureQuadlet).not.toContain('Exec=npm')
   })
 

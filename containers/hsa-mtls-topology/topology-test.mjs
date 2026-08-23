@@ -1,0 +1,144 @@
+import { randomUUID } from 'node:crypto'
+import fs from 'node:fs'
+import https from 'node:https'
+
+const LOOKUP_PATH = '/hsa/person-records/lookup'
+const EXPECTED_HSA_ID = 'SE5560000001-marias'
+
+function request({
+  body = JSON.stringify({ hsaId: EXPECTED_HSA_ID }),
+  ca = '/runtime/app/kong-server-ca.crt',
+  cert,
+  contentType = 'application/json',
+  host = 'kong',
+  key,
+  path = LOOKUP_PATH,
+  port = 8443,
+  servername = 'kong',
+} = {}) {
+  const correlationId = randomUUID()
+  return new Promise((resolve, reject) => {
+    const call = https.request(
+      {
+        ca: fs.readFileSync(ca),
+        ...(cert ? { cert: fs.readFileSync(cert) } : {}),
+        headers: {
+          Accept: 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          'Content-Type': contentType,
+          'X-Kravhantering-HSA-Correlation-ID': correlationId,
+        },
+        host,
+        key: key ? fs.readFileSync(key) : undefined,
+        method: 'POST',
+        minVersion: 'TLSv1.2',
+        path,
+        port,
+        rejectUnauthorized: true,
+        servername,
+      },
+      response => {
+        const chunks = []
+        response.on('data', chunk => chunks.push(chunk))
+        response.on('end', () =>
+          resolve({
+            body: Buffer.concat(chunks).toString('utf8'),
+            correlationId,
+            status: response.statusCode,
+          }),
+        )
+      },
+    )
+    call.on('error', reject)
+    call.end(body)
+  })
+}
+
+async function eventually(action) {
+  let lastError
+  for (let attempt = 0; attempt < 45; attempt += 1) {
+    try {
+      return await action()
+    } catch (error) {
+      lastError = error
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+  }
+  throw lastError
+}
+
+const success = await eventually(() =>
+  request({
+    cert: '/runtime/app/app-client.crt',
+    key: '/runtime/app/app-client.key',
+  }),
+)
+const person = JSON.parse(success.body)
+if (
+  success.status !== 200 ||
+  person.hsaId !== EXPECTED_HSA_ID ||
+  person.givenName !== 'Maria'
+) {
+  throw new Error('Authenticated strict topology lookup failed')
+}
+
+for (const credentials of [
+  {},
+  {
+    cert: '/runtime/adapter/adapter-client.crt',
+    key: '/runtime/adapter/adapter-client.key',
+  },
+]) {
+  let rejected = false
+  try {
+    const response = await request(credentials)
+    rejected = response.status !== 200
+  } catch {
+    rejected = true
+  }
+  if (!rejected) throw new Error('Unauthenticated or cross-leg request passed')
+}
+
+for (const probe of [
+  {
+    ca: '/runtime/probe/kong-server-ca.crt',
+    cert: '/runtime/probe/wrong-app-client.crt',
+    key: '/runtime/probe/wrong-app-client.key',
+    name: 'app-to-kong',
+  },
+  {
+    ca: '/runtime/probe/adapter-server-ca.crt',
+    cert: '/runtime/probe/wrong-kong-client.crt',
+    host: 'adapter',
+    key: '/runtime/probe/wrong-kong-client.key',
+    name: 'kong-to-adapter',
+    servername: 'hsa-person-lookup-adapter',
+  },
+  {
+    body: '<not-reached/>',
+    ca: '/runtime/probe/hsa-server-ca.crt',
+    cert: '/runtime/probe/wrong-adapter-client.crt',
+    contentType: 'text/xml; charset=utf-8',
+    host: 'mock',
+    key: '/runtime/probe/wrong-adapter-client.key',
+    name: 'adapter-to-hsa',
+    path: '/svr-hsaws2/hsaws',
+    servername: 'hsa-directory-mock',
+  },
+]) {
+  const response = await request(probe)
+  if (response.status !== 403) {
+    throw new Error(
+      `Correct-CA wrong stable identity was not rejected on ${probe.name}`,
+    )
+  }
+}
+
+console.log(
+  JSON.stringify({
+    correlation_id: success.correlationId,
+    event: 'hsa_topology_verified',
+    handling_count: 1,
+    wrong_identity_rejections: 3,
+  }),
+)

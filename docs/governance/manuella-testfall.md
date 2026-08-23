@@ -771,6 +771,9 @@ på paketnamn, syfte och avgränsning och rensa sökningen. Öppna dialogen
 starta byte av kravpaketsansvarig med HSA-id. Kontrollera även att listans
 skrivskyddade medförfattarkolumn visar namn utan HSA-id eller e-postadress. Gör
 uppslaget mot en testperson markerad med skyddade personuppgifter.
+Stäng därefter av HSA-topologin och öppna dialogen för byte av
+kravpaketsansvarig igen. Ange HSA-id för en redan lokalt sparad
+Kravansvarsperson och lämna fältet.
 
 **Förväntat resultat:** Paketlistan filtreras och återställs korrekt. Den som
 skapar kravpaketet visas som kravpaketsansvarig utan redigerbart ansvarsfält.
@@ -780,6 +783,10 @@ kravpaketsansvarig verifierar HSA-id och visar namn och e-post som text.
 Den skyddade identiteten förblir synlig i det behöriga arbetsflödet och en
 tydlig vägledning begränsar användningen till uppdraget, uppmanar till minskad
 spridning och hänvisar till regionens dataskydds-, säkerhets- eller HR-funktion.
+När HSA-topologin är avstängd visas lokaliserad vägledning om att uppslag är
+tillfälligt otillgängligt och Hämta är inaktiverad. Den nuvarande sparade
+personen förblir synlig och den angivna lokalt sparade Kravansvarspersonens
+namn och e-post visas utan ett externt uppslag.
 
 ### REQ-14b: kravurvalsfrågor behåller flik och kan ordnas
 

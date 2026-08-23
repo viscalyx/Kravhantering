@@ -199,6 +199,27 @@ export interface StrictTlsSnapshot {
   key: Buffer
 }
 
+export async function loadStrictCertificateAuthority({
+  caPath,
+  now = new Date(),
+}: {
+  caPath: string
+  now?: Date
+}): Promise<Buffer> {
+  const ca = await readStrictTlsFile(caPath)
+  const authority = certificateFrom(ca, 'ca')
+  assertCurrent(authority, now)
+  if (
+    !authority.ca ||
+    !authority.checkIssued(authority) ||
+    !authority.verify(authority.publicKey)
+  ) {
+    fail('tls_ca_invalid', 'TLS trust root is not a self-signed CA.')
+  }
+  assertExactKeyUsage(authority, 'tls_ca_invalid', [5, 6])
+  return ca
+}
+
 export async function loadStrictTlsSnapshot({
   caPath,
   certPath,
@@ -215,22 +236,13 @@ export async function loadStrictTlsSnapshot({
   role: 'client' | 'server'
 }): Promise<StrictTlsSnapshot> {
   const [ca, cert, key] = await Promise.all([
-    readStrictTlsFile(caPath),
+    loadStrictCertificateAuthority({ caPath, now }),
     readStrictTlsFile(certPath),
     readStrictTlsFile(keyPath),
   ])
   const authority = certificateFrom(ca, 'ca')
   const leaf = certificateFrom(cert, 'leaf')
-  assertCurrent(authority, now)
   assertCurrent(leaf, now)
-  if (
-    !authority.ca ||
-    !authority.checkIssued(authority) ||
-    !authority.verify(authority.publicKey)
-  ) {
-    fail('tls_ca_invalid', 'TLS trust root is not a self-signed CA.')
-  }
-  assertExactKeyUsage(authority, 'tls_ca_invalid', [5, 6])
   if (leaf.ca) {
     fail('tls_leaf_role_invalid', 'TLS leaf certificate must not be a CA.')
   }

@@ -8,13 +8,12 @@ const DEPLOYMENT_SELECTORS = [
   '.devcontainer/elevated/docker-compose.yml',
   'containers/hsa-directory-mock/Dockerfile',
   'containers/hsa-person-lookup-adapter/Dockerfile',
-  'containers/compose/container-stack.template.yml',
   'scripts/azure-dev/templates/quadlet/krav-hsa-directory-mock.container',
   'scripts/azure-dev/templates/quadlet/krav-hsa-person-lookup-adapter.container',
   'scripts/azure-dev/templates/quadlet/krav-kong.container',
 ]
 
-const DORMANT_SELECTORS = [
+const ACTIVE_SELECTORS = [
   'strict-server.mjs',
   'kong.strict.yml',
   'strict-runtime.env',
@@ -35,14 +34,18 @@ function parseEnvironment(contents) {
   )
 }
 
-export function validateDormantHsaDeployments(deployments) {
+export function validateActiveHsaDeployments(deployments) {
   for (const deployment of deployments) {
-    for (const selector of DORMANT_SELECTORS) {
-      invariant(
-        !deployment.contents.includes(selector),
-        `Dormant strict HSA selector is active in ${deployment.path}.`,
-      )
-    }
+    invariant(
+      ACTIVE_SELECTORS.some(selector => deployment.contents.includes(selector)),
+      `Strict HSA runtime is not selected in ${deployment.path}.`,
+    )
+    invariant(
+      !deployment.contents.includes('HSA_MOCK_AUTH_MODE') &&
+        !deployment.contents.includes('NODE_TLS_REJECT_UNAUTHORIZED') &&
+        !deployment.contents.includes('hsa-mtls-cert-generator'),
+      `Legacy HSA runtime selector remains in ${deployment.path}.`,
+    )
   }
   return Object.freeze({ deploymentCount: deployments.length })
 }
@@ -125,7 +128,7 @@ export async function loadHsaStrictRuntimeContract(root = process.cwd()) {
       ),
     ])
   return Object.freeze({
-    deployments: validateDormantHsaDeployments(deployments),
+    deployments: validateActiveHsaDeployments(deployments),
     kong: validateStrictKongRuntime({
       authorizationInclude,
       declarativeConfiguration,

@@ -7,10 +7,13 @@ function Get-AzureDevQuadletUnitNames {
   return @(
     'krav-support.network',
     'krav-sqlserver.volume',
-    'krav-hsa-mtls-certs.volume',
+    'krav-hsa-mtls-state.volume',
+    'krav-hsa-mtls-kong.volume',
+    'krav-hsa-mtls-adapter.volume',
+    'krav-hsa-mtls-mock.volume',
     'krav-db.container',
     'krav-idp.container',
-    'krav-hsa-mtls-cert-generator.container',
+    'krav-hsa-mtls-provisioner.container',
     'krav-hsa-directory-mock.container',
     'krav-hsa-person-lookup-adapter.container',
     'krav-kong.container'
@@ -24,7 +27,7 @@ function Get-AzureDevSupportPorts {
   return [ordered]@{
     sqlServer = '127.0.0.1:1433'
     keycloak = '127.0.0.1:8080'
-    kongProxy = '127.0.0.1:18000'
+    kongProxy = '127.0.0.1:18443'
   }
 }
 

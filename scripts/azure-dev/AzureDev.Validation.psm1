@@ -240,29 +240,6 @@ run_workspace_command_or_diagnose() {
 
 python3 - <<'PY'
 from pathlib import Path
-import sys
-
-import yaml
-
-path = Path('/workspace/containers/kong/kong.yml')
-data = yaml.safe_load(path.read_text(encoding='utf-8')) or {}
-expected = {'http', 'https'}
-
-for service in data.get('services') or []:
-    for route in service.get('routes') or []:
-        if route.get('name') == 'hsa-directory-person-lookup-rest':
-            protocols = route.get('protocols')
-            if isinstance(protocols, list) and expected.issubset(set(protocols)):
-                sys.exit(0)
-            print('Kong HSA route must allow both http and https protocols')
-            sys.exit(1)
-
-print('Kong HSA route hsa-directory-person-lookup-rest not found')
-sys.exit(1)
-PY
-
-python3 - <<'PY'
-from pathlib import Path
 import tomllib
 
 config = tomllib.loads(
@@ -504,8 +481,8 @@ check_user_service krav-hsa-directory-mock.service hsa-directory-mock
 check_user_service krav-hsa-person-lookup-adapter.service hsa-person-lookup-adapter
 require_loopback_port 'SQL Server' 1433
 require_loopback_port 'Keycloak' 8080
-require_loopback_port 'Kong HSA proxy' 18000
-if ! grep -Fq 'HSA_PERSON_LOOKUP_URL=http://127.0.0.1:18000/hsa/person-records/lookup' /workspace/.env.development.local; then
+require_loopback_port 'Kong HSA proxy' 18443
+if ! grep -Fq 'HSA_PERSON_LOOKUP_URL=https://127.0.0.1:18443/hsa/person-records/lookup' /workspace/.env.development.local; then
   printf 'Missing managed HSA_PERSON_LOOKUP_URL in /workspace/.env.development.local\n'
   dump_smoke_diagnostics
   exit 1
@@ -519,7 +496,11 @@ for attempt in $(seq 1 24); do
   : > "${hsa_response}"
   : > "${hsa_headers}"
   set +e
-  hsa_status="$(curl -s -o "${hsa_response}" -D "${hsa_headers}" -w '%{http_code}' -X POST http://127.0.0.1:18000/hsa/person-records/lookup \
+  hsa_status="$(curl -s --resolve kong:18443:127.0.0.1 \
+    --cacert /workspace/.hsa-mtls/app/kong-server-ca.crt \
+    --cert /workspace/.hsa-mtls/app/app-client.crt \
+    --key /workspace/.hsa-mtls/app/app-client.key \
+    -o "${hsa_response}" -D "${hsa_headers}" -w '%{http_code}' -X POST https://kong:18443/hsa/person-records/lookup \
     -H 'content-type: application/json' \
     --data '{"hsaId":"SE5560000001-manualarea1"}')"
   hsa_exit=$?
@@ -540,8 +521,12 @@ if [ "${hsa_succeeded}" != "true" ]; then
   cat "${hsa_response}" || true
   printf '\nKong health:\n'
   podman exec kong kong health || true
-  printf '\nKong root HTTP probe:\n'
-  curl -sv http://127.0.0.1:18000/ >/dev/null || true
+  printf '\nKong root HTTPS probe:\n'
+  curl -sv --resolve kong:18443:127.0.0.1 \
+    --cacert /workspace/.hsa-mtls/app/kong-server-ca.crt \
+    --cert /workspace/.hsa-mtls/app/app-client.crt \
+    --key /workspace/.hsa-mtls/app/app-client.key \
+    https://kong:18443/ >/dev/null || true
   dump_smoke_diagnostics
   rm -f "${hsa_response}" "${hsa_headers}"
   exit 1

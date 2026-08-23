@@ -20,6 +20,7 @@ export const DEMO_SEED_PACKAGE = 'kravhantering-demo-seed'
 export const HSA_DIRECTORY_MOCK_PACKAGE = 'kravhantering-hsa-directory-mock'
 export const HSA_PERSON_LOOKUP_ADAPTER_PACKAGE =
   'kravhantering-hsa-person-lookup-adapter'
+export const HSA_MTLS_PROVISIONER_PACKAGE = 'kravhantering-hsa-mtls-provisioner'
 export const DEFAULT_RELEASE_OUTPUT_DIR = 'tmp/container-release-artifacts'
 export const DEFAULT_OPERATOR_UPGRADE_NOTES_PATH =
   'docs/operations/operator-upgrade-notes.md'
@@ -34,10 +35,12 @@ export const HSA_DIRECTORY_MOCK_DESCRIPTION =
   'Test-only HSA directory mock image for the single-node-demo release support topology.'
 export const HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION =
   'REST to SOAP GetHsaPerson adapter image for optional HSA integration support.'
+export const HSA_MTLS_PROVISIONER_DESCRIPTION =
+  'One-shot test-PKI provisioner for strict repository-owned HSA support topologies.'
 
 const USAGE = `Usage:
   node scripts/release/container-release.mjs plan --gitversion-json <path> --output <path> [--github-env <path>] [--changed-files <path>]
-  node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --app-artifact <path> --db-job-metadata <path> --db-job-artifact <path> [--hsa-directory-mock-metadata <path> --hsa-directory-mock-artifact <path>] [--hsa-person-lookup-adapter-metadata <path> --hsa-person-lookup-adapter-artifact <path>] [--demo-seed-metadata <path> --demo-seed-artifact <path>] --output <path> [--github-env <path>]
+  node scripts/release/container-release.mjs identities --plan <path> --app-metadata <path> --app-artifact <path> --db-job-metadata <path> --db-job-artifact <path> [--hsa-directory-mock-metadata <path> --hsa-directory-mock-artifact <path>] [--hsa-person-lookup-adapter-metadata <path> --hsa-person-lookup-adapter-artifact <path>] [--hsa-mtls-provisioner-metadata <path> --hsa-mtls-provisioner-artifact <path>] [--demo-seed-metadata <path> --demo-seed-artifact <path>] --output <path> [--github-env <path>]
   node scripts/release/container-release.mjs notes --plan <path> --metadata <path> --hashes <path> --output <path> [--operator-notes <path>]
   node scripts/release/container-release.mjs bundle --plan <path> --metadata <path> --stack-lock <path> --output-dir <path> [--hsa-integration-support-lock <path>] [--test-support-lock <path>] [--build-json <path>] [--hashes <path>] [--sbom-dir <path>]
   node scripts/release/container-release.mjs ensure-tag --plan <path>`
@@ -150,7 +153,11 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
   },
   { source: 'containers/production/env', target: 'env' },
   { source: 'containers/production/keycloak', target: 'keycloak' },
-  { source: 'containers/kong/kong.yml', target: 'kong/kong.yml' },
+  { source: 'containers/kong/kong.strict.yml', target: 'kong/kong.strict.yml' },
+  {
+    source: 'containers/kong/strict-app-client-subject.conf',
+    target: 'kong/strict-app-client-subject.conf',
+  },
   { source: 'containers/production/nginx', target: 'nginx' },
   { source: 'containers/production/sqlserver', target: 'sqlserver' },
   { source: 'containers/production/quadlet', target: 'quadlet' },
@@ -407,6 +414,7 @@ export function createReleasePlan(input = {}) {
   const demoSeedImage = `ghcr.io/${owner}/${DEMO_SEED_PACKAGE}`
   const hsaDirectoryMockImage = `ghcr.io/${owner}/${HSA_DIRECTORY_MOCK_PACKAGE}`
   const hsaPersonLookupAdapterImage = `ghcr.io/${owner}/${HSA_PERSON_LOOKUP_ADAPTER_PACKAGE}`
+  const hsaMtlsProvisionerImage = `ghcr.io/${owner}/${HSA_MTLS_PROVISIONER_PACKAGE}`
   const commitTags = [`main-${shortSha}`, `sha-${sha}`]
   const tags = isStableRelease
     ? [version]
@@ -425,6 +433,11 @@ export function createReleasePlan(input = {}) {
     hsaPersonLookupAdapter: createCandidatePlan(
       HSA_PERSON_LOOKUP_ADAPTER_PACKAGE,
       'hsa-person-lookup-adapter',
+      sha,
+    ),
+    hsaMtlsProvisioner: createCandidatePlan(
+      HSA_MTLS_PROVISIONER_PACKAGE,
+      'hsa-mtls-provisioner',
       sha,
     ),
   }
@@ -454,6 +467,11 @@ export function createReleasePlan(input = {}) {
     hsaPersonLookupAdapterPackage: HSA_PERSON_LOOKUP_ADAPTER_PACKAGE,
     hsaPersonLookupAdapterTags: tags.map(
       tag => `${hsaPersonLookupAdapterImage}:${tag}`,
+    ),
+    hsaMtlsProvisionerImage,
+    hsaMtlsProvisionerPackage: HSA_MTLS_PROVISIONER_PACKAGE,
+    hsaMtlsProvisionerTags: tags.map(
+      tag => `${hsaMtlsProvisionerImage}:${tag}`,
     ),
     isMain,
     isStableRelease,
@@ -528,6 +546,16 @@ export function releasePlanEnv(plan) {
     HSA_PERSON_LOOKUP_ADAPTER_PRIMARY_TAG: plan.hsaPersonLookupAdapterTags[0],
     HSA_PERSON_LOOKUP_ADAPTER_PRIMARY_TAG_NAME: plan.tags[0],
     HSA_PERSON_LOOKUP_ADAPTER_TAGS_CSV: csv(plan.hsaPersonLookupAdapterTags),
+    HSA_MTLS_PROVISIONER_CANDIDATE_ARTIFACT:
+      plan.candidates.hsaMtlsProvisioner.artifactPath,
+    HSA_MTLS_PROVISIONER_CANDIDATE_REF:
+      plan.candidates.hsaMtlsProvisioner.localRef,
+    HSA_MTLS_PROVISIONER_DESCRIPTION,
+    HSA_MTLS_PROVISIONER_IMAGE: plan.hsaMtlsProvisionerImage,
+    HSA_MTLS_PROVISIONER_PACKAGE: plan.hsaMtlsProvisionerPackage,
+    HSA_MTLS_PROVISIONER_PRIMARY_TAG: plan.hsaMtlsProvisionerTags[0],
+    HSA_MTLS_PROVISIONER_PRIMARY_TAG_NAME: plan.tags[0],
+    HSA_MTLS_PROVISIONER_TAGS_CSV: csv(plan.hsaMtlsProvisionerTags),
     RELEASE_CREATE_GITHUB_RELEASE: String(plan.createGitHubRelease),
     RELEASE_IS_STABLE: String(plan.isStableRelease),
     RELEASE_MAKE_LATEST: String(plan.makeLatest),
@@ -719,6 +747,7 @@ export function createReleaseMetadata(
   hsaPersonLookupAdapterBuildxMetadata,
   demoSeedBuildxMetadata,
   candidateIdentities = {},
+  hsaMtlsProvisionerBuildxMetadata,
 ) {
   const testSupport = hsaDirectoryMockBuildxMetadata
     ? {
@@ -738,6 +767,16 @@ export function createReleaseMetadata(
           hsaPersonLookupAdapterBuildxMetadata,
           candidateIdentities.hsaPersonLookupAdapter,
         ),
+        ...(hsaMtlsProvisionerBuildxMetadata
+          ? {
+              hsaMtlsProvisioner: createImageMetadata(
+                plan.hsaMtlsProvisionerImage,
+                plan.hsaMtlsProvisionerTags,
+                hsaMtlsProvisionerBuildxMetadata,
+                candidateIdentities.hsaMtlsProvisioner,
+              ),
+            }
+          : {}),
       }
     : undefined
   return {
@@ -798,6 +837,14 @@ export function releaseMetadataEnv(metadata) {
       hsaPersonLookupAdapter.manifestDigest
     values.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST_REF =
       hsaPersonLookupAdapter.manifestRef
+  }
+  const hsaMtlsProvisioner = metadata.hsaIntegrationSupport?.hsaMtlsProvisioner
+  if (hsaMtlsProvisioner) {
+    values.HSA_MTLS_PROVISIONER_IMAGE_ID = hsaMtlsProvisioner.imageId
+    values.HSA_MTLS_PROVISIONER_MANIFEST_DIGEST =
+      hsaMtlsProvisioner.manifestDigest
+    values.HSA_MTLS_PROVISIONER_MANIFEST_DIGEST_REF =
+      hsaMtlsProvisioner.manifestRef
   }
   const demoSeed = metadata.demoSeed
   if (demoSeed) {
@@ -866,6 +913,10 @@ export function createDeploymentBundleManifest({
     : undefined
   const hsaIntegrationSupportServices = hsaIntegrationSupportLock
     ? {
+        hsaMtlsProvisioner: serviceByName(
+          hsaIntegrationSupportLock,
+          'hsa-mtls-provisioner',
+        ),
         hsaPersonLookupAdapter: serviceByName(
           hsaIntegrationSupportLock,
           'hsa-person-lookup-adapter',
@@ -921,6 +972,9 @@ export function createDeploymentBundleManifest({
     ...(hsaIntegrationSupportServices
       ? {
           hsaIntegrationSupportImages: {
+            hsaMtlsProvisioner:
+              metadata.hsaIntegrationSupport?.hsaMtlsProvisioner?.manifestRef ??
+              manifestRef(hsaIntegrationSupportServices.hsaMtlsProvisioner),
             hsaPersonLookupAdapter:
               metadata.hsaIntegrationSupport?.hsaPersonLookupAdapter
                 ?.manifestRef ??
@@ -928,6 +982,9 @@ export function createDeploymentBundleManifest({
             kong: manifestRef(hsaIntegrationSupportServices.kong),
           },
           hsaIntegrationSupportImageIds: {
+            hsaMtlsProvisioner:
+              metadata.hsaIntegrationSupport?.hsaMtlsProvisioner?.imageId ??
+              imageId(hsaIntegrationSupportServices.hsaMtlsProvisioner),
             hsaPersonLookupAdapter:
               metadata.hsaIntegrationSupport?.hsaPersonLookupAdapter?.imageId ??
               imageId(hsaIntegrationSupportServices.hsaPersonLookupAdapter),
@@ -1133,6 +1190,10 @@ export function stageProductionDeploymentBundle(options = {}) {
       ],
       [path.join(sbomDir, 'db-job.spdx.json'), 'sbom/db-job.spdx.json'],
       [
+        path.join(sbomDir, 'hsa-mtls-provisioner.spdx.json'),
+        'sbom/hsa-mtls-provisioner.spdx.json',
+      ],
+      [
         path.join(sbomDir, 'hsa-person-lookup-adapter.spdx.json'),
         'sbom/hsa-person-lookup-adapter.spdx.json',
       ],
@@ -1309,6 +1370,8 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
     plan.hsaDirectoryMockPackage ?? HSA_DIRECTORY_MOCK_PACKAGE
   const hsaPersonLookupAdapterPackage =
     plan.hsaPersonLookupAdapterPackage ?? HSA_PERSON_LOOKUP_ADAPTER_PACKAGE
+  const hsaMtlsProvisionerPackage =
+    plan.hsaMtlsProvisionerPackage ?? HSA_MTLS_PROVISIONER_PACKAGE
   const appRuntimeTagUrls = resolvePackageTagUrls(
     plan,
     appRuntimePackage,
@@ -1338,6 +1401,10 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
         rawTags,
         options,
       )
+    : {}
+  const hsaMtlsProvisioner = metadata.hsaIntegrationSupport?.hsaMtlsProvisioner
+  const hsaMtlsProvisionerTagUrls = hsaMtlsProvisioner
+    ? resolvePackageTagUrls(plan, hsaMtlsProvisionerPackage, rawTags, options)
     : {}
   return {
     ...metadata,
@@ -1380,6 +1447,18 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
       ? {
           hsaIntegrationSupport: {
             ...metadata.hsaIntegrationSupport,
+            ...(hsaMtlsProvisioner
+              ? {
+                  hsaMtlsProvisioner: {
+                    ...hsaMtlsProvisioner,
+                    tagUrls: imageTagUrls(
+                      hsaMtlsProvisioner.tags,
+                      rawTags,
+                      hsaMtlsProvisionerTagUrls,
+                    ),
+                  },
+                }
+              : {}),
             hsaPersonLookupAdapter: {
               ...hsaPersonLookupAdapter,
               tagUrls: imageTagUrls(
@@ -1596,6 +1675,13 @@ function renderHsaIntegrationSupportContainerImagesSection(plan, metadata) {
     '',
     'These images support optional Kong plus adapter HSA person lookup topology and are not part of the required production runtime topology.',
     '',
+    ...(metadata.hsaIntegrationSupport?.hsaMtlsProvisioner
+      ? renderContainerImageBlock(
+          plan.hsaMtlsProvisionerPackage ?? HSA_MTLS_PROVISIONER_PACKAGE,
+          HSA_MTLS_PROVISIONER_DESCRIPTION,
+          metadata.hsaIntegrationSupport.hsaMtlsProvisioner,
+        )
+      : []),
     ...renderContainerImageBlock(
       plan.hsaPersonLookupAdapterPackage ?? HSA_PERSON_LOOKUP_ADAPTER_PACKAGE,
       HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION,
@@ -1744,6 +1830,11 @@ export async function main(args, dependencies = {}) {
       ]
         ? readJsonFile(options['hsa-person-lookup-adapter-metadata'], fsImpl)
         : undefined
+      const hsaMtlsProvisionerBuildxMetadata = options[
+        'hsa-mtls-provisioner-metadata'
+      ]
+        ? readJsonFile(options['hsa-mtls-provisioner-metadata'], fsImpl)
+        : undefined
       const demoSeedBuildxMetadata = options['demo-seed-metadata']
         ? readJsonFile(options['demo-seed-metadata'], fsImpl)
         : undefined
@@ -1781,6 +1872,16 @@ export async function main(args, dependencies = {}) {
           options['hsa-person-lookup-adapter-artifact'],
           candidateOptions,
         ),
+        ...(options['hsa-mtls-provisioner-artifact']
+          ? {
+              hsaMtlsProvisioner: readCandidateIdentity(
+                plan,
+                'hsaMtlsProvisioner',
+                options['hsa-mtls-provisioner-artifact'],
+                candidateOptions,
+              ),
+            }
+          : {}),
       }
       const metadata = createReleaseMetadata(
         plan,
@@ -1790,6 +1891,7 @@ export async function main(args, dependencies = {}) {
         hsaPersonLookupAdapterBuildxMetadata,
         demoSeedBuildxMetadata,
         candidateIdentities,
+        hsaMtlsProvisionerBuildxMetadata,
       )
       writeJsonFile(options.output, metadata, fsImpl)
       appendGithubEnv(

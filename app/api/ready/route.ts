@@ -7,10 +7,14 @@ import {
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { probeGeneratedOutputTempDirectory } from '@/lib/generated-output/spool'
 import {
-  getHsaPersonLookupConfig,
-  type HsaPersonLookupConfigDiagnostic,
-  hsaPersonLookupConfigDiagnostic,
-} from '@/lib/hsa/person-lookup'
+  getStrictHsaPersonLookupSnapshot,
+  type StrictHsaPersonLookupDiagnostic,
+  strictHsaPersonLookupDiagnostic,
+} from '@/lib/hsa/strict-person-lookup'
+import {
+  type StrictTlsMaterialDiagnostic,
+  StrictTlsMaterialError,
+} from '@/lib/hsa/strict-tls'
 import { withRestResponsePolicy } from '@/lib/http/response-policy'
 import { resolveRequestCorrelationIds } from '@/lib/observability/request-ids'
 import {
@@ -93,11 +97,13 @@ function readinessDiagnostic(
   error: unknown,
 ):
   | 'check_failed'
-  | HsaPersonLookupConfigDiagnostic
+  | StrictHsaPersonLookupDiagnostic
+  | StrictTlsMaterialDiagnostic
   | 'sql_server_driver_unavailable' {
   if (check === 'runtime_config') {
-    const hsaDiagnostic = hsaPersonLookupConfigDiagnostic(error)
+    const hsaDiagnostic = strictHsaPersonLookupDiagnostic(error)
     if (hsaDiagnostic) return hsaDiagnostic
+    if (error instanceof StrictTlsMaterialError) return error.diagnostic
   }
   if (
     check === 'sql_server' &&
@@ -121,7 +127,7 @@ async function checkRuntimeConfig() {
   assertSiteUrlConfigured()
   getAuthConfig()
   getMcpAuthConfig()
-  getHsaPersonLookupConfig()
+  await getStrictHsaPersonLookupSnapshot()
   getSqlServerDatabaseUrl(process.env, false)
 }
 

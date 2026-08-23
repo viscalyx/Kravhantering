@@ -3,7 +3,10 @@ import https from 'node:https'
 import net from 'node:net'
 import { checkServerIdentity } from 'node:tls'
 import { isHsaId } from '@/lib/auth/hsa-id'
-import { loadStrictTlsSnapshot, readStrictTlsFile } from '@/lib/hsa/strict-tls'
+import {
+  loadStrictCertificateAuthority,
+  loadStrictTlsSnapshot,
+} from '@/lib/hsa/strict-tls'
 import {
   conflictError,
   isRequirementsServiceError,
@@ -176,7 +179,9 @@ export async function loadStrictHsaPersonLookupSnapshot(
     }
     oauth = {
       ...(oauthAudience ? { audience: oauthAudience } : {}),
-      ...(oauthCaPath ? { ca: await readStrictTlsFile(oauthCaPath) } : {}),
+      ...(oauthCaPath
+        ? { ca: await loadStrictCertificateAuthority({ caPath: oauthCaPath }) }
+        : {}),
       clientId: oauthClientId,
       clientSecret: oauthClientSecret,
       ...(oauthIssuerUrl
@@ -204,6 +209,23 @@ export async function loadStrictHsaPersonLookupSnapshot(
     timeoutMs: timeoutFromEnv(env),
     tls: Object.freeze({ ...tls, serverName }),
   })
+}
+
+let startupSnapshot: Promise<StrictHsaPersonLookupSnapshot | null> | null = null
+
+/**
+ * Return the process-wide, immutable HSA transport snapshot. Certificate
+ * rotation therefore requires recreating the App instead of replacing files
+ * underneath a running process.
+ */
+export function getStrictHsaPersonLookupSnapshot(): Promise<StrictHsaPersonLookupSnapshot | null> {
+  startupSnapshot ??= loadStrictHsaPersonLookupSnapshot()
+  return startupSnapshot
+}
+
+export function resetStrictHsaPersonLookupSnapshotForTests(): void {
+  if (process.env.NODE_ENV !== 'test') return
+  startupSnapshot = null
 }
 
 interface StrictRequest {
@@ -394,7 +416,7 @@ export async function lookupHsaPersonStrict(
   try {
     const resolved =
       snapshot === undefined
-        ? await loadStrictHsaPersonLookupSnapshot()
+        ? await getStrictHsaPersonLookupSnapshot()
         : snapshot
     if (!resolved) {
       throw serviceUnavailableError('HSA lookup URL is not configured', {
@@ -409,6 +431,12 @@ export async function lookupHsaPersonStrict(
     ) {
       throw new Error('invalid_generated_correlation')
     }
+    console.info(
+      JSON.stringify({
+        correlation_id: correlationId,
+        event: 'hsa_app_lookup_started',
+      }),
+    )
     const token = await oauthToken(resolved, request)
     const response = await request({
       body: JSON.stringify({ hsaId }),
@@ -449,6 +477,12 @@ export async function lookupHsaPersonStrict(
         reason: 'hsa_lookup_conflict',
       })
     }
+    console.info(
+      JSON.stringify({
+        correlation_id: correlationId,
+        event: 'hsa_app_lookup_completed',
+      }),
+    )
     return {
       email: textField(payload.email),
       givenName,

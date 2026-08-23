@@ -64,6 +64,7 @@ service_env_prefix() {
     keycloak) printf 'KEYCLOAK\n' ;;
     kong) printf 'KONG\n' ;;
     hsa-directory-mock) printf 'HSA_DIRECTORY_MOCK\n' ;;
+    hsa-mtls-provisioner) printf 'HSA_MTLS_PROVISIONER\n' ;;
     hsa-person-lookup-adapter) printf 'HSA_PERSON_LOOKUP_ADAPTER\n' ;;
     *) fail "Unsupported service: $1" ;;
   esac
@@ -79,7 +80,7 @@ services_for_topology() {
       ;;
     all) printf '%s\n' app-runtime db-job nginx sqlserver keycloak ;;
     single-node-demo)
-      printf '%s\n' app-runtime db-job nginx sqlserver keycloak kong hsa-person-lookup-adapter hsa-directory-mock
+      printf '%s\n' app-runtime db-job nginx sqlserver keycloak kong hsa-mtls-provisioner hsa-person-lookup-adapter hsa-directory-mock
       ;;
     *) fail "Unsupported topology: $1" ;;
   esac
@@ -87,7 +88,7 @@ services_for_topology() {
 
 service_lock_file() {
   case "$1" in
-    kong | hsa-person-lookup-adapter) printf '%s\n' "$HSA_INTEGRATION_LOCK_FILE" ;;
+    kong | hsa-mtls-provisioner | hsa-person-lookup-adapter) printf '%s\n' "$HSA_INTEGRATION_LOCK_FILE" ;;
     hsa-directory-mock) printf '%s\n' "$TEST_LOCK_FILE" ;;
     *) printf '%s\n' "$LOCK_FILE" ;;
   esac
@@ -95,7 +96,7 @@ service_lock_file() {
 
 service_lock_schema_version() {
   case "$1" in
-    kong | hsa-person-lookup-adapter | hsa-directory-mock) printf '1\n' ;;
+    kong | hsa-mtls-provisioner | hsa-person-lookup-adapter | hsa-directory-mock) printf '1\n' ;;
     *) printf '2\n' ;;
   esac
 }

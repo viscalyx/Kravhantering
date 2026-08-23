@@ -1,23 +1,37 @@
 [Unit]
 Description=Kravhantering Kong HSA proxy
-Requires=krav-support-network.service krav-hsa-person-lookup-adapter.service
+Requires=krav-support-network.service krav-hsa-mtls-provisioner.service krav-hsa-person-lookup-adapter.service
 After=krav-support-network.service krav-hsa-person-lookup-adapter.service
 
 [Container]
 ContainerName=kong
 Image=docker.io/kong/kong-gateway:3.15.0.2-20260721-ubuntu
 Network=krav-support.network
-PublishPort=127.0.0.1:18000:8000
-Volume=/workspace/containers/kong/kong.yml:/kong/declarative/kong.yml:ro
-Environment=KONG_ADMIN_ACCESS_LOG=/dev/stdout
-Environment=KONG_ADMIN_ERROR_LOG=/dev/stderr
+PublishPort=127.0.0.1:18443:8443
+Volume=/workspace/containers/kong/kong.strict.yml:/kong/declarative/kong.strict.yml:ro
+Volume=/workspace/containers/kong/strict-app-client-subject.conf:/kong/includes/strict-app-client-subject.conf:ro
+Volume=krav-hsa-mtls-kong.volume:/run/kravhantering/hsa-mtls:ro,Z
 Environment=KONG_ADMIN_LISTEN=127.0.0.1:8001
 Environment=KONG_DATABASE=off
-Environment=KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml
+Environment=KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.strict.yml
+Environment=KONG_CLIENT_SSL=on
+Environment=KONG_CLIENT_SSL_CERT=/run/kravhantering/hsa-mtls/kong-client.crt
+Environment=KONG_CLIENT_SSL_CERT_KEY=/run/kravhantering/hsa-mtls/kong-client.key
+Environment=KONG_NGINX_PROXY_INCLUDE=/kong/includes/strict-app-client-subject.conf
+Environment="KONG_NGINX_HTTP_LOG_FORMAT=hsa_correlation '$http_x_kravhantering_hsa_correlation_id'"
+Environment="KONG_NGINX_PROXY_PROXY_SSL_PROTOCOLS=TLSv1.2 TLSv1.3"
+Environment=KONG_NGINX_PROXY_PROXY_SSL_TRUSTED_CERTIFICATE=/run/kravhantering/hsa-mtls/adapter-server-ca.crt
+Environment=KONG_NGINX_PROXY_SSL_CLIENT_CERTIFICATE=/run/kravhantering/hsa-mtls/app-client-ca.crt
+Environment=KONG_NGINX_PROXY_SSL_VERIFY_CLIENT=on
+Environment=KONG_NGINX_PROXY_SSL_VERIFY_DEPTH=1
 Environment=KONG_PREFIX=/tmp/kong
-Environment=KONG_PROXY_ACCESS_LOG=/dev/stdout
+Environment="KONG_PROXY_ACCESS_LOG=/dev/stdout hsa_correlation"
 Environment=KONG_PROXY_ERROR_LOG=/dev/stderr
-Environment=KONG_PROXY_LISTEN=0.0.0.0:8000
+Environment="KONG_PROXY_LISTEN=0.0.0.0:8443 ssl"
+Environment=KONG_SSL_CERT=/run/kravhantering/hsa-mtls/kong-server.crt
+Environment=KONG_SSL_CERT_KEY=/run/kravhantering/hsa-mtls/kong-server.key
+Environment="KONG_SSL_PROTOCOLS=TLSv1.2 TLSv1.3"
+Environment=KONG_TLS_CERTIFICATE_VERIFY=on
 HealthCmd=kong health
 HealthInterval=10s
 HealthRetries=12

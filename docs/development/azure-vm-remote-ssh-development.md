@@ -175,7 +175,7 @@ Data disk
     |   |-- .env.development.local    -> managed Azure VM block
     |   |-- containers/
     |   |   `-- kong/
-    |   |       `-- kong.yml
+    |   |       `-- kong.strict.yml
     |   |-- node_modules/
     |   `-- ...
     |
@@ -1488,7 +1488,8 @@ journalctl --user -u krav-kong.service -n 100
 ```
 
 The VM bootstrap writes a managed block to `/workspace/.env.development.local`
-so HSA lookup uses Kong on `127.0.0.1:18000`.
+so HSA lookup uses strict mTLS through Kong on `127.0.0.1:18443` with the
+role-specific App bundle under `/workspace/.hsa-mtls/app`.
 
 ## Tailscale
 

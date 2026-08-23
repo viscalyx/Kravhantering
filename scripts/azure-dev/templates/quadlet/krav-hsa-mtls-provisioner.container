@@ -1,0 +1,31 @@
+[Unit]
+Description=Kravhantering HSA test-PKI provisioner
+Requires=krav-hsa-mtls-state-volume.service krav-hsa-mtls-kong-volume.service krav-hsa-mtls-adapter-volume.service krav-hsa-mtls-mock-volume.service
+After=krav-hsa-mtls-state-volume.service krav-hsa-mtls-kong-volume.service krav-hsa-mtls-adapter-volume.service krav-hsa-mtls-mock-volume.service
+Before=krav-hsa-directory-mock.service
+
+[Container]
+ContainerName=hsa-mtls-provisioner
+Image=localhost/kravhantering/hsa-mtls-provisioner:local
+User=0:0
+Tmpfs=/run/kravhantering/hsa-mtls-issuer:rw,size=64M,mode=0700,nosuid,nodev,noexec
+Volume=krav-hsa-mtls-state.volume:/var/lib/kravhantering/hsa-mtls:Z
+Volume=/workspace/.hsa-mtls/app:/run/kravhantering/hsa-mtls-runtime/app:Z
+Volume=krav-hsa-mtls-kong.volume:/run/kravhantering/hsa-mtls-runtime/kong:Z
+Volume=krav-hsa-mtls-adapter.volume:/run/kravhantering/hsa-mtls-runtime/adapter:Z
+Volume=krav-hsa-mtls-mock.volume:/run/kravhantering/hsa-mtls-runtime/mock:Z
+Exec=activate --lifetime persistent
+
+[Service]
+Environment=HOME=%h
+Environment=XDG_CONFIG_HOME=%h/.config
+Environment=XDG_DATA_HOME=%h/.local/share
+Environment=XDG_RUNTIME_DIR=%t
+Environment=CONTAINERS_CONF=%h/.config/containers/containers.conf
+Environment=CONTAINERS_STORAGE_CONF=%h/.config/containers/storage.conf
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

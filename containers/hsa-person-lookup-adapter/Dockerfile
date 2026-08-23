@@ -15,18 +15,12 @@ RUN rm -rf /usr/local/lib/node_modules/npm \
   && rm -f /usr/local/bin/npm /usr/local/bin/npx
 
 ENV NODE_ENV=production
-ENV PORT=8080
-
 WORKDIR /app
-
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl \
-  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node package.json ./
 COPY --chown=node:node src ./src
 
 USER node
-EXPOSE 8080
-CMD ["node", "src/server.mjs"]
+EXPOSE 8443
+CMD ["node", "src/strict-server.mjs"]

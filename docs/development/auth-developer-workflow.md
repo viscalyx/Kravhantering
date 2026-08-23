@@ -141,10 +141,11 @@ uses the server-side person lookup flow in
 [hsa-person-lookup-integration.md](../integrations/hsa-person-lookup-integration.md).
 
 In the devcontainer, the `app` service receives
-`HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup`. The app
+`HSA_PERSON_LOOKUP_URL=https://kong:8443/hsa/person-records/lookup` plus its
+role-specific client certificate, key, CA, and `kong` server name. The app
 posts to the internal Kong route, Kong routes to
 `hsa-person-lookup-adapter`, and the adapter calls the HSA directory mock SOAP
-`GetHsaPerson` endpoint with mTLS. No Kong ports are forwarded to the host.
+`GetHsaPerson` endpoint with strict mTLS. No Kong ports are forwarded to the host.
 
 Use these checks from the workspace when HSA-id verification behaves
 unexpectedly:

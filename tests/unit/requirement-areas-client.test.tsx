@@ -133,6 +133,8 @@ describe('RequirementAreasClient', () => {
       if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       return okJson({})
     })
   })
@@ -238,6 +240,8 @@ describe('RequirementAreasClient', () => {
       if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (url === '/api/requirement-responsibility-people/verify')
         return verificationResponse('SE5560000001-new1')
       return okJson({})
@@ -361,6 +365,8 @@ describe('RequirementAreasClient', () => {
         })
       }
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (url === '/api/requirement-areas/1/co-authors') {
         if (init?.method === 'PUT') {
           assignmentSaved = true
@@ -432,6 +438,8 @@ describe('RequirementAreasClient', () => {
       if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (url === '/api/requirement-areas/1/co-authors') {
         if (init?.method === 'PUT')
           return errJson(
@@ -484,6 +492,8 @@ describe('RequirementAreasClient', () => {
       if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (url === '/api/requirement-areas/1/co-authors') {
         if (init?.method === 'PUT') return okJson({ ok: true })
         return okJson({
@@ -541,6 +551,8 @@ describe('RequirementAreasClient', () => {
       if (url === '/api/requirement-area-stewardship')
         return okJson({ areas: sampleAreas })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (url === '/api/requirement-areas/1/co-authors') {
         if (init?.method === 'PUT')
           return errJson(
@@ -649,6 +661,8 @@ describe('RequirementAreasClient', () => {
           ],
         })
       if (url === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+      if (url === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (url === '/api/requirement-responsibility-people/verify')
         return verificationResponse('NO5560000001-next1')
       return okJson({})

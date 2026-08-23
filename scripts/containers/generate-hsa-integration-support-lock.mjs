@@ -34,7 +34,12 @@ Generate options:
   --hsa-person-lookup-adapter-manifest-digest <digest>
                                                    Adapter registry manifest digest
   --hsa-person-lookup-adapter-image-id <id>        Adapter image ID
-  --hsa-person-lookup-adapter-source <source>      Adapter image source metadata`
+  --hsa-person-lookup-adapter-source <source>      Adapter image source metadata
+  --hsa-mtls-provisioner-image <image>             Provisioner image name
+  --hsa-mtls-provisioner-tag <tag>                 Provisioner image tag metadata
+  --hsa-mtls-provisioner-manifest-digest <digest>  Provisioner registry manifest digest
+  --hsa-mtls-provisioner-image-id <id>             Provisioner image ID
+  --hsa-mtls-provisioner-source <source>           Provisioner image source metadata`
 
 function readNonEmpty(value) {
   if (typeof value !== 'string') return undefined
@@ -127,6 +132,13 @@ export function checkHsaIntegrationSupportVendorLocks(lock, vendorLocks) {
     )
   }
   normalizeServiceRecord(adapter, 'hsa-person-lookup-adapter')
+  const provisioner = findService(lock, 'hsa-mtls-provisioner')
+  if (!provisioner) {
+    throw new Error(
+      `${DEFAULT_HSA_INTEGRATION_SUPPORT_LOCK_PATH} is missing "hsa-mtls-provisioner".`,
+    )
+  }
+  normalizeServiceRecord(provisioner, 'hsa-mtls-provisioner')
 
   return true
 }
@@ -214,6 +226,11 @@ export function createHsaIntegrationSupportLock(options) {
         'hsa-person-lookup-adapter',
         options.hsaPersonLookupAdapter,
       ),
+      createProjectService(
+        'hsa-mtls-provisioner',
+        'hsa-mtls-provisioner',
+        options.hsaMtlsProvisioner,
+      ),
     ],
   }
 }
@@ -268,6 +285,16 @@ export function createHsaIntegrationSupportLockFromCliOptions(options = {}) {
       env,
       {
         image: 'localhost/kravhantering/hsa-person-lookup-adapter',
+        tag: 'local',
+        source: 'local-build',
+      },
+    ),
+    hsaMtlsProvisioner: projectServiceOptions(
+      'hsa-mtls-provisioner',
+      cliOptions,
+      env,
+      {
+        image: 'localhost/kravhantering/hsa-mtls-provisioner',
         tag: 'local',
         source: 'local-build',
       },

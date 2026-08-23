@@ -272,9 +272,6 @@ jobs:
       - name: Start and wait for local IdP service
         run: npm run idp:up
 
-      - name: Start local HSA lookup fixture
-        run: bash scripts/ci-hsa-person-lookup-fixture.sh start "prodlike-pruned"
-
       # Build with the full devDependency tree so Tailwind can resolve
       # `@import "@viscalyx/developer-mode-react/safelist.css"` from
       # `app/globals.css`. The published `safelist.css` artifact has no
@@ -375,10 +372,6 @@ jobs:
           if [ -f test-results/prodlike-pruned/server.pid ]; then
             kill "$(cat test-results/prodlike-pruned/server.pid)" || true
           fi
-
-      - name: Stop local HSA lookup fixture
-        if: always()
-        run: bash scripts/ci-hsa-person-lookup-fixture.sh stop "prodlike-pruned"
 
       - name: Upload pruned server log
         if: always()

@@ -30,6 +30,7 @@
     "hsaSuffixLabel": "HSA-id suffix",
     "hsaSuffixPlaceholder": "Suffix",
     "hsaVerifyUnavailable": "Not fetched",
+    "hsaLookupUnavailable": "Live HSA lookup is unavailable. Locally stored person details can still be reused.",
     "clearSearch": "Clear search",
     "filter": "Filter",
     "filterBy": "Filter by {label}",

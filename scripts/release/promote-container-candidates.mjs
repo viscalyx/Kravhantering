@@ -8,6 +8,7 @@ const IMAGE_PATHS = [
   ['dbJob', 'db-job'],
   ['demoSeed', 'demo-seed'],
   ['testSupport.hsaDirectoryMock', 'hsa-directory-mock'],
+  ['hsaIntegrationSupport.hsaMtlsProvisioner', 'hsa-mtls-provisioner'],
   ['hsaIntegrationSupport.hsaPersonLookupAdapter', 'hsa-person-lookup-adapter'],
 ]
 const USAGE = `Usage:

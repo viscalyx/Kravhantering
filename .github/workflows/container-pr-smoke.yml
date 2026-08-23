@@ -26,6 +26,8 @@ jobs:
       DEMO_SEED_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/demo-seed.oci.tar
       HSA_DIRECTORY_MOCK_IMAGE: localhost/kravhantering/hsa-directory-mock
       HSA_DIRECTORY_MOCK_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-directory-mock.oci.tar
+      HSA_MTLS_PROVISIONER_IMAGE: localhost/kravhantering/hsa-mtls-provisioner
+      HSA_MTLS_PROVISIONER_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-mtls-provisioner.oci.tar
       HSA_PERSON_LOOKUP_ADAPTER_IMAGE: localhost/kravhantering/hsa-person-lookup-adapter
       HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-person-lookup-adapter.oci.tar
       KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.1-0
@@ -209,6 +211,8 @@ jobs:
             echo "HSA_DIRECTORY_MOCK_SOURCE=pr-build"
             echo "HSA_DIRECTORY_MOCK_TAG=${image_tag}"
             echo "HSA_DIRECTORY_MOCK_IMAGE_REF=${HSA_DIRECTORY_MOCK_IMAGE}:${image_tag}"
+            echo "HSA_MTLS_PROVISIONER_TAG=${image_tag}"
+            echo "HSA_MTLS_PROVISIONER_IMAGE_REF=${HSA_MTLS_PROVISIONER_IMAGE}:${image_tag}"
             echo "HSA_PERSON_LOOKUP_ADAPTER_SOURCE=pr-build"
             echo "HSA_PERSON_LOOKUP_ADAPTER_TAG=${image_tag}"
             echo "HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF=${HSA_PERSON_LOOKUP_ADAPTER_IMAGE}:${image_tag}"
@@ -286,6 +290,18 @@ jobs:
             --output "type=oci,dest=${HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE}" \
             containers/hsa-person-lookup-adapter
 
+      - name: Build HSA mTLS provisioner candidate OCI artifact
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --file containers/hsa-mtls-provisioner/Dockerfile \
+            --platform linux/amd64 \
+            --metadata-file tmp/container-pr-artifacts/oci/hsa-mtls-provisioner-buildx.json \
+            --tag "${HSA_MTLS_PROVISIONER_IMAGE}:${HSA_MTLS_PROVISIONER_TAG}" \
+            --provenance=false \
+            --output "type=oci,dest=${HSA_MTLS_PROVISIONER_OCI_ARCHIVE}" \
+            .
+
       - name: Gate PR images against release vulnerability policy
         uses: ./.github/actions/container-vulnerability-gate
         with:
@@ -294,6 +310,7 @@ jobs:
           db-job: oci-archive:${{ env.DB_JOB_OCI_ARCHIVE }}
           demo-seed: oci-archive:${{ env.DEMO_SEED_OCI_ARCHIVE }}
           hsa-directory-mock: oci-archive:${{ env.HSA_DIRECTORY_MOCK_OCI_ARCHIVE }}
+          hsa-mtls-provisioner: oci-archive:${{ env.HSA_MTLS_PROVISIONER_OCI_ARCHIVE }}
           hsa-person-lookup-adapter: oci-archive:${{ env.HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE }}
 
       - name: Create per-container local env files
@@ -312,6 +329,7 @@ jobs:
           db_job_manifest_digest="$(jq -er '."containerimage.digest"' tmp/container-pr-artifacts/oci/db-job-buildx.json)"
           demo_seed_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/demo-seed-buildx.json)"
           hsa_directory_mock_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/hsa-directory-mock-buildx.json)"
+          hsa_mtls_provisioner_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/hsa-mtls-provisioner-buildx.json)"
           hsa_adapter_image_id="$(jq -er '."containerimage.config.digest"' tmp/container-pr-artifacts/oci/hsa-person-lookup-adapter-buildx.json)"
           node scripts/containers/generate-stack-lock.mjs generate \
             --app-image "${APP_RUNTIME_IMAGE}" \
@@ -331,6 +349,7 @@ jobs:
             echo "DB_JOB_IMAGE_ID=${db_job_image_id}"
             echo "DEMO_SEED_IMAGE_ID=${demo_seed_image_id}"
             echo "HSA_DIRECTORY_MOCK_IMAGE_ID=${hsa_directory_mock_image_id}"
+            echo "HSA_MTLS_PROVISIONER_IMAGE_ID=${hsa_mtls_provisioner_image_id}"
             echo "HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID=${hsa_adapter_image_id}"
           } >> "${GITHUB_ENV}"
 

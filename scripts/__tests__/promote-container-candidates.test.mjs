@@ -22,6 +22,7 @@ function metadata() {
     dbJob: image('db-job'),
     demoSeed: image('demo-seed'),
     hsaIntegrationSupport: {
+      hsaMtlsProvisioner: image('hsa-mtls-provisioner'),
       hsaPersonLookupAdapter: image('hsa-person-lookup-adapter'),
     },
     testSupport: {
@@ -67,16 +68,19 @@ describe('container candidate promotion', () => {
       }),
     })
 
-    expect(result.staged).toHaveLength(5)
-    expect(result.promoted).toHaveLength(5)
-    expect(commands).toHaveLength(10)
+    expect(result.staged).toHaveLength(6)
+    expect(result.promoted).toHaveLength(6)
+    expect(commands).toHaveLength(12)
     expect(commands[0]).toContain(
       'skopeo copy --all --preserve-digests --retry-times 3 oci-archive:candidates/app-runtime.oci.tar docker://ghcr.io/viscalyx/app-runtime:candidate-sha256-app-runtime',
     )
     expect(commands[4]).toContain(
-      'oci-archive:candidates/hsa-person-lookup-adapter.oci.tar docker://ghcr.io/viscalyx/hsa-person-lookup-adapter:candidate-sha256-hsa-person-lookup-adapter',
+      'oci-archive:candidates/hsa-mtls-provisioner.oci.tar docker://ghcr.io/viscalyx/hsa-mtls-provisioner:candidate-sha256-hsa-mtls-provisioner',
     )
     expect(commands[5]).toContain(
+      'oci-archive:candidates/hsa-person-lookup-adapter.oci.tar docker://ghcr.io/viscalyx/hsa-person-lookup-adapter:candidate-sha256-hsa-person-lookup-adapter',
+    )
+    expect(commands[6]).toContain(
       'docker://ghcr.io/viscalyx/app-runtime:candidate-sha256-app-runtime docker://ghcr.io/viscalyx/app-runtime:1.2.3',
     )
   })
@@ -115,7 +119,7 @@ describe('container candidate promotion', () => {
         spawnSync,
       }),
     ).toThrow('Published digest mismatch')
-    expect(spawnSync).toHaveBeenCalledTimes(6)
+    expect(spawnSync).toHaveBeenCalledTimes(7)
   })
 
   it('rejects metadata whose candidate and release digests differ', () => {

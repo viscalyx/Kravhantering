@@ -142,6 +142,8 @@ describe('HsaPersonChangeModal', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url === '/api/hsa-id-prefixes') return okJson(prefixPayload())
+      if (url === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       return okJson(verifiedPersonResponse())
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -186,6 +188,9 @@ describe('HsaPersonChangeModal', () => {
       vi.fn(async (input: RequestInfo | URL) => {
         if (String(input) === '/api/hsa-id-prefixes') {
           return okJson(prefixPayload())
+        }
+        if (String(input) === '/api/hsa-person-lookup-capability') {
+          return okJson({ available: true })
         }
         return okJson(verifiedPersonResponse())
       }),

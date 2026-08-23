@@ -56,6 +56,9 @@ describe('HsaPersonVerifyField', () => {
     const request = deferredResponse()
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = String(input)
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(
           new Response(
@@ -82,6 +85,9 @@ describe('HsaPersonVerifyField', () => {
       expect(fetchMock).toHaveBeenCalledWith('/api/hsa-id-prefixes')
     })
 
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Fetch' })).toBeEnabled(),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Fetch' }))
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Fetching' })).toBeDisabled()
@@ -108,15 +114,24 @@ describe('HsaPersonVerifyField', () => {
   })
 
   it('reports prefix loading and empty verification response failures', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('prefix service offline'))
-      .mockResolvedValueOnce(okJson({}))
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.reject(new Error('prefix service offline'))
+      }
+      return Promise.resolve(okJson({}))
+    })
     vi.stubGlobal('fetch', fetchMock)
     render(<ControlledHsaPersonVerifyField />)
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith('/api/hsa-id-prefixes'),
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Fetch' })).toBeEnabled(),
     )
     fireEvent.click(screen.getByRole('button', { name: 'Fetch' }))
     expect(await screen.findByText('Could not verify')).toBeVisible()
@@ -125,6 +140,9 @@ describe('HsaPersonVerifyField', () => {
   it('composes selected prefix and suffix before verification', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(
           new Response(
@@ -235,6 +253,9 @@ describe('HsaPersonVerifyField', () => {
   it('refreshes person details when tabbing from the suffix field', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(
           new Response(
@@ -321,7 +342,7 @@ describe('HsaPersonVerifyField', () => {
       expect(JSON.parse(verifyRequest.body)).toEqual(
         expect.objectContaining({
           hsaId: 'SE5560000001-new1',
-          mode: 'refresh',
+          mode: 'reuse_local',
         }),
       )
       expect(
@@ -417,27 +438,28 @@ describe('HsaPersonVerifyField', () => {
   })
 
   it('keeps read-only HSA-id fields verifiable', async () => {
-    const fetchMock = vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            evidence: 'signed-evidence',
-            expiresAt: futureExpiresAt(),
-            person: {
-              displayName: 'Ada Admin',
-              email: 'ada.admin@example.test',
-              givenName: 'Ada',
-              hasProtectedPersonalData: false,
-              hsaId: 'SE5560000001-admin1',
-              middleName: null,
-              surname: 'Admin',
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+      String(input) === '/api/hsa-person-lookup-capability'
+        ? okJson({ available: true })
+        : new Response(
+            JSON.stringify({
+              evidence: 'signed-evidence',
+              expiresAt: futureExpiresAt(),
+              person: {
+                displayName: 'Ada Admin',
+                email: 'ada.admin@example.test',
+                givenName: 'Ada',
+                hasProtectedPersonalData: false,
+                hsaId: 'SE5560000001-admin1',
+                middleName: null,
+                surname: 'Admin',
+              },
+            }),
+            {
+              headers: { 'Content-Type': 'application/json' },
+              status: 200,
             },
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-          },
-        ),
+          ),
     )
     vi.stubGlobal('fetch', fetchMock)
 
@@ -465,6 +487,9 @@ describe('HsaPersonVerifyField', () => {
     expect(input.className).toContain('read-only:bg-secondary-100')
     expect(input.className).toContain('read-only:text-secondary-500')
 
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Fetch' })).toBeEnabled(),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Fetch' }))
 
     await waitFor(() => {
@@ -519,20 +544,22 @@ describe('HsaPersonVerifyField', () => {
   it('shows protection guidance only after a protected person is verified', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        okJson({
-          evidence: 'signed-evidence',
-          expiresAt: futureExpiresAt(),
-          person: {
-            displayName: 'Protected Person',
-            email: 'protected@example.test',
-            givenName: 'Protected',
-            hasProtectedPersonalData: true,
-            hsaId: 'SE5560000001-protected1',
-            middleName: null,
-            surname: 'Person',
-          },
-        }),
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input) === '/api/hsa-person-lookup-capability'
+          ? okJson({ available: true })
+          : okJson({
+              evidence: 'signed-evidence',
+              expiresAt: futureExpiresAt(),
+              person: {
+                displayName: 'Protected Person',
+                email: 'protected@example.test',
+                givenName: 'Protected',
+                hasProtectedPersonalData: true,
+                hsaId: 'SE5560000001-protected1',
+                middleName: null,
+                surname: 'Person',
+              },
+            }),
       ),
     )
 
@@ -556,6 +583,9 @@ describe('HsaPersonVerifyField', () => {
     expect(
       screen.queryByText('common.hsaProtectedPersonGuidance'),
     ).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Fetch' })).toBeEnabled(),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Fetch' }))
     expect(
       await screen.findByText('common.hsaProtectedPersonGuidance'),

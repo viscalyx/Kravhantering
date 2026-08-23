@@ -9,7 +9,7 @@
     "kong",
     "hsa-person-lookup-adapter",
     "hsa-directory-mock",
-    "hsa-mtls-cert-generator"
+    "hsa-mtls-provisioner"
   ],
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",

@@ -186,6 +186,13 @@ service user, Quadlet generator, systemd lifecycle, network boundaries,
 resource limits, HTTPS route, Keycloak realm, SQL Server setup, HSA test
 overlay, Playwright suite, and disposable boundary probes as CI.
 
+The HSA overlay is strict-only. The provisioner selects isolated App, Kong,
+Adapter, and mock bundles into separate named volumes; every runtime mount is
+read-only. Smoke verification authenticates readiness, rotates one trust
+domain by stopping clients before servers and restarting servers before
+clients, and then repeats that lifecycle after rollback. A failed generation
+change, readiness check, or restored-generation check fails the smoke run.
+
 It is not an exact copy of the hosted runner itself. Docker supplies the outer
 kernel and cgroup hierarchy, and the checked-out scripts may be newer than the
 selected run. Use the workflow job as the final acceptance gate after the local

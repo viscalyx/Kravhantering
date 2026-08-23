@@ -2097,7 +2097,8 @@ describe('trusted container release helpers', () => {
       expect(result.files).toContain(
         'nginx/templates/api-docs-security-headers.conf',
       )
-      expect(result.files).toContain('kong/kong.yml')
+      expect(result.files).toContain('kong/kong.strict.yml')
+      expect(result.files).toContain('kong/strict-app-client-subject.conf')
       expect(result.files).toContain('bin/kravhantering-images.sh')
       expect(result.files).toContain('bin/kravhantering-quadlet.sh')
       expect(result.files).toContain('sqlserver/mssql.conf')

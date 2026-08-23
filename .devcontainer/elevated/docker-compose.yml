@@ -47,6 +47,7 @@ services:
 
       # Keep runtime temp wrappers container-local
       - codex-tmp:/home/vscode/.codex/tmp
+      - hsa-mtls-app:/run/kravhantering/hsa-mtls:ro
     # Keep container running
     command: sleep infinity
     env_file:
@@ -57,7 +58,11 @@ services:
       DATABASE_READONLY_PASSWORD_ENV: ${DATABASE_READONLY_PASSWORD_ENV:-DATABASE_READONLY_PASSWORD}
       DB_TRUST_SERVER_CERTIFICATE: ${DB_TRUST_SERVER_CERTIFICATE:-true}
       HSA_PERSON_LOOKUP_TIMEOUT_MS: ${HSA_PERSON_LOOKUP_TIMEOUT_MS:-5000}
-      HSA_PERSON_LOOKUP_URL: ${HSA_PERSON_LOOKUP_URL:-http://kong:8000/hsa/person-records/lookup}
+      HSA_PERSON_LOOKUP_URL: ${HSA_PERSON_LOOKUP_URL:-https://kong:8443/hsa/person-records/lookup}
+      HSA_PERSON_LOOKUP_CA_PATH: /run/kravhantering/hsa-mtls/kong-server-ca.crt
+      HSA_PERSON_LOOKUP_CLIENT_CERT_PATH: /run/kravhantering/hsa-mtls/app-client.crt
+      HSA_PERSON_LOOKUP_CLIENT_KEY_PATH: /run/kravhantering/hsa-mtls/app-client.key
+      HSA_PERSON_LOOKUP_TLS_SERVER_NAME: kong
       NODE_ENV: ${NODE_ENV:-development}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
       DOTNET_CLI_TELEMETRY_OPTOUT: ${DOTNET_CLI_TELEMETRY_OPTOUT:-1}
@@ -154,37 +159,58 @@ services:
       start_period: 10s
       timeout: 5s
 
+  hsa-mtls-provisioner:
+    build:
+      context: ${WORKSPACE_BUILD_ROOT:-../..}
+      dockerfile: containers/hsa-mtls-provisioner/Dockerfile
+    command: ["activate", "--lifetime", "persistent"]
+    user: "0:0"
+    tmpfs:
+      - /run/kravhantering/hsa-mtls-issuer:mode=0700
+    volumes:
+      - hsa-mtls-state:/var/lib/kravhantering/hsa-mtls
+      - hsa-mtls-app:/run/kravhantering/hsa-mtls-runtime/app
+      - hsa-mtls-kong:/run/kravhantering/hsa-mtls-runtime/kong
+      - hsa-mtls-adapter:/run/kravhantering/hsa-mtls-runtime/adapter
+      - hsa-mtls-mock:/run/kravhantering/hsa-mtls-runtime/mock
+
   kong:
     image: docker.io/kong/kong-gateway:3.15.0.2-20260721-ubuntu
     depends_on:
       hsa-person-lookup-adapter:
         condition: service_healthy
+      hsa-mtls-provisioner:
+        condition: service_completed_successfully
     environment:
-      KONG_ADMIN_ACCESS_LOG: /dev/stdout
-      KONG_ADMIN_ERROR_LOG: /dev/stderr
-      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_LISTEN: 127.0.0.1:8001
+      KONG_CLIENT_SSL: "on"
+      KONG_CLIENT_SSL_CERT: /run/kravhantering/hsa-mtls/kong-client.crt
+      KONG_CLIENT_SSL_CERT_KEY: /run/kravhantering/hsa-mtls/kong-client.key
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.strict.yml
+      KONG_NGINX_PROXY_INCLUDE: /kong/includes/strict-app-client-subject.conf
+      KONG_NGINX_PROXY_PROXY_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      KONG_NGINX_PROXY_PROXY_SSL_TRUSTED_CERTIFICATE: /run/kravhantering/hsa-mtls/adapter-server-ca.crt
+      KONG_NGINX_PROXY_SSL_CLIENT_CERTIFICATE: /run/kravhantering/hsa-mtls/app-client-ca.crt
+      KONG_NGINX_PROXY_SSL_VERIFY_CLIENT: "on"
+      KONG_NGINX_PROXY_SSL_VERIFY_DEPTH: "1"
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
-      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_PROXY_LISTEN: 0.0.0.0:8443 ssl
+      KONG_SSL_CERT: /run/kravhantering/hsa-mtls/kong-server.crt
+      KONG_SSL_CERT_KEY: /run/kravhantering/hsa-mtls/kong-server.key
+      KONG_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      KONG_TLS_CERTIFICATE_VERIFY: "on"
     volumes:
-      - ${WORKSPACE_HOST_ROOT:-../..}/containers/kong/kong.yml:/kong/declarative/kong.yml:ro
+      - ${WORKSPACE_HOST_ROOT:-../..}/containers/kong/kong.strict.yml:/kong/declarative/kong.strict.yml:ro
+      - ${WORKSPACE_HOST_ROOT:-../..}/containers/kong/strict-app-client-subject.conf:/kong/includes/strict-app-client-subject.conf:ro
+      - hsa-mtls-kong:/run/kravhantering/hsa-mtls:ro
     healthcheck:
       test: ["CMD", "kong", "health"]
       interval: 10s
       retries: 12
       start_period: 10s
       timeout: 5s
-
-  hsa-mtls-cert-generator:
-    build:
-      context: ${WORKSPACE_BUILD_ROOT:-../..}/containers/hsa-person-lookup-adapter
-      dockerfile: Dockerfile
-    command: ["node", "src/generate-certs.mjs"]
-    user: "0:0"
-    volumes:
-      - hsa-mtls-certs:/run/hsa-mtls
 
   hsa-person-lookup-adapter:
     build:
@@ -193,14 +219,21 @@ services:
     depends_on:
       hsa-directory-mock:
         condition: service_healthy
-      hsa-mtls-cert-generator:
+      hsa-mtls-provisioner:
         condition: service_completed_successfully
     environment:
+      HSA_ADAPTER_INGRESS_CA_PATH: /run/kravhantering/hsa-mtls/kong-client-ca.crt
+      HSA_ADAPTER_INGRESS_CERT_PATH: /run/kravhantering/hsa-mtls/adapter-server.crt
+      HSA_ADAPTER_INGRESS_EXPECTED_CLIENT_SUBJECT: CN=kravhantering-kong
+      HSA_ADAPTER_INGRESS_KEY_PATH: /run/kravhantering/hsa-mtls/adapter-server.key
+      HSA_SOAP_CA_PATH: /run/kravhantering/hsa-mtls/hsa-server-ca.crt
+      HSA_SOAP_CLIENT_CERT_PATH: /run/kravhantering/hsa-mtls/adapter-client.crt
+      HSA_SOAP_CLIENT_KEY_PATH: /run/kravhantering/hsa-mtls/adapter-client.key
       HSA_SOAP_ENDPOINT_URL: https://hsa-directory-mock:8443/svr-hsaws2/hsaws
+      HSA_SOAP_TLS_SERVER_NAME: hsa-directory-mock
       HSA_SOAP_TIMEOUT_MS: 5000
-      PORT: 8080
     volumes:
-      - hsa-mtls-certs:/run/hsa-mtls:ro
+      - hsa-mtls-adapter:/run/kravhantering/hsa-mtls:ro
     healthcheck:
       test:
         [
@@ -208,7 +241,7 @@ services:
           "node",
           "--input-type=module",
           "-e",
-          "const response = await fetch('http://127.0.0.1:8080/health'); if (!response.ok) process.exit(1);"
+          "const response = await fetch('http://127.0.0.1:8081/health'); if (!response.ok) process.exit(1);"
         ]
       interval: 10s
       retries: 12
@@ -220,12 +253,15 @@ services:
       context: ${WORKSPACE_BUILD_ROOT:-../..}/containers/hsa-directory-mock
       dockerfile: Dockerfile
     depends_on:
-      hsa-mtls-cert-generator:
+      hsa-mtls-provisioner:
         condition: service_completed_successfully
     environment:
-      PORT: 8443
+      HSA_MOCK_TLS_CA_PATH: /run/kravhantering/hsa-mtls/adapter-client-ca.crt
+      HSA_MOCK_TLS_CERT_PATH: /run/kravhantering/hsa-mtls/mock-server.crt
+      HSA_MOCK_TLS_EXPECTED_CLIENT_SERIAL_NUMBER: SE5560000000-MOCK001
+      HSA_MOCK_TLS_KEY_PATH: /run/kravhantering/hsa-mtls/mock-server.key
     volumes:
-      - hsa-mtls-certs:/run/hsa-mtls:ro
+      - hsa-mtls-mock:/run/kravhantering/hsa-mtls:ro
     healthcheck:
       test:
         [
@@ -233,7 +269,7 @@ services:
           "node",
           "--input-type=module",
           "-e",
-          "process.env.NODE_TLS_REJECT_UNAUTHORIZED='0'; const response = await fetch('https://127.0.0.1:8443/health'); if (!response.ok) process.exit(1);"
+          "const response = await fetch('http://127.0.0.1:8081/health'); if (!response.ok) process.exit(1);"
         ]
       interval: 10s
       retries: 12
@@ -244,4 +280,8 @@ volumes:
   sqlserver-elevated-devcontainer-data:
   codex-tmp:
   codex-state:
-  hsa-mtls-certs:
+  hsa-mtls-state:
+  hsa-mtls-app:
+  hsa-mtls-kong:
+  hsa-mtls-adapter:
+  hsa-mtls-mock:

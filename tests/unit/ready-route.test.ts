@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const routeState = vi.hoisted(() => ({
   getAuthConfig: vi.fn(),
   getMcpAuthConfig: vi.fn(),
-  getHsaPersonLookupConfig: vi.fn(),
+  getStrictHsaPersonLookupSnapshot: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   getSqlServerDatabaseUrl: vi.fn(),
-  hsaPersonLookupConfigDiagnostic: vi.fn(),
+  strictHsaPersonLookupDiagnostic: vi.fn(),
   probeGeneratedOutputTempDirectory: vi.fn(),
   readBuildMetadata: vi.fn(),
 }))
@@ -20,9 +20,9 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
-vi.mock('@/lib/hsa/person-lookup', () => ({
-  getHsaPersonLookupConfig: routeState.getHsaPersonLookupConfig,
-  hsaPersonLookupConfigDiagnostic: routeState.hsaPersonLookupConfigDiagnostic,
+vi.mock('@/lib/hsa/strict-person-lookup', () => ({
+  getStrictHsaPersonLookupSnapshot: routeState.getStrictHsaPersonLookupSnapshot,
+  strictHsaPersonLookupDiagnostic: routeState.strictHsaPersonLookupDiagnostic,
 }))
 
 vi.mock('@/lib/build-metadata', () => ({
@@ -62,8 +62,8 @@ function setReadyDefaults() {
     issuerUrl: 'https://issuer.example.com/realms/test',
   })
   routeState.getMcpAuthConfig.mockReturnValue(null)
-  routeState.getHsaPersonLookupConfig.mockReturnValue(null)
-  routeState.hsaPersonLookupConfigDiagnostic.mockReturnValue(null)
+  routeState.getStrictHsaPersonLookupSnapshot.mockReturnValue(null)
+  routeState.strictHsaPersonLookupDiagnostic.mockReturnValue(null)
   routeState.readBuildMetadata.mockReturnValue({
     builtAt: '2026-05-21T19:00:00.000Z',
     commitSha: 'abc123',
@@ -205,11 +205,11 @@ describe('GET /api/ready', () => {
     const configError = new Error(
       'HSA_PERSON_LOOKUP_URL=https://private.example contains a private endpoint',
     )
-    routeState.getHsaPersonLookupConfig.mockImplementation(() => {
+    routeState.getStrictHsaPersonLookupSnapshot.mockImplementation(() => {
       throw configError
     })
-    routeState.hsaPersonLookupConfigDiagnostic.mockReturnValue(
-      'hsa_lookup_url_https_required',
+    routeState.strictHsaPersonLookupDiagnostic.mockReturnValue(
+      'hsa_strict_url_invalid',
     )
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
@@ -225,10 +225,10 @@ describe('GET /api/ready', () => {
       '[readiness] check failed',
       expect.objectContaining({
         check: 'runtime_config',
-        diagnostic: 'hsa_lookup_url_https_required',
+        diagnostic: 'hsa_strict_url_invalid',
       }),
     )
-    expect(routeState.hsaPersonLookupConfigDiagnostic).toHaveBeenCalledWith(
+    expect(routeState.strictHsaPersonLookupDiagnostic).toHaveBeenCalledWith(
       configError,
     )
     expect(JSON.stringify(warn.mock.calls)).not.toContain('private.example')

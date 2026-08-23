@@ -84,6 +84,20 @@
           "type": "subject-rfc2253",
           "value": "CN=kravhantering-app"
         }
+      },
+      "wrongClient": {
+        "runtimeRole": "probe",
+        "certificateMaterialId": "wrong-app-client-certificate",
+        "privateKeyMaterialId": "wrong-app-client-private-key",
+        "subjectRfc2253": "CN=kravhantering-app-wrong",
+        "dnsSans": [],
+        "basicConstraints": { "critical": true, "ca": false },
+        "keyUsage": { "critical": true, "values": ["digitalSignature"] },
+        "extendedKeyUsage": ["clientAuth"],
+        "authorization": {
+          "type": "subject-rfc2253",
+          "value": "CN=kravhantering-app-wrong"
+        }
       }
     },
     "kong-to-adapter": {
@@ -140,6 +154,20 @@
         "authorization": {
           "type": "subject-rfc2253",
           "value": "CN=kravhantering-kong"
+        }
+      },
+      "wrongClient": {
+        "runtimeRole": "probe",
+        "certificateMaterialId": "wrong-kong-client-certificate",
+        "privateKeyMaterialId": "wrong-kong-client-private-key",
+        "subjectRfc2253": "CN=kravhantering-kong-wrong",
+        "dnsSans": [],
+        "basicConstraints": { "critical": true, "ca": false },
+        "keyUsage": { "critical": true, "values": ["digitalSignature"] },
+        "extendedKeyUsage": ["clientAuth"],
+        "authorization": {
+          "type": "subject-rfc2253",
+          "value": "CN=kravhantering-kong-wrong"
         }
       }
     },
@@ -199,6 +227,21 @@
           "field": "serialNumber",
           "value": "SE5560000000-MOCK001"
         }
+      },
+      "wrongClient": {
+        "runtimeRole": "probe",
+        "certificateMaterialId": "wrong-adapter-client-certificate",
+        "privateKeyMaterialId": "wrong-adapter-client-private-key",
+        "subjectRfc2253": "serialNumber=SE5560000000-WRONG,CN=Kravhantering HSA Person Lookup Adapter Wrong",
+        "dnsSans": [],
+        "basicConstraints": { "critical": true, "ca": false },
+        "keyUsage": { "critical": true, "values": ["digitalSignature"] },
+        "extendedKeyUsage": ["clientAuth"],
+        "authorization": {
+          "type": "subject-field",
+          "field": "serialNumber",
+          "value": "SE5560000000-WRONG"
+        }
       }
     }
   },
@@ -251,6 +294,23 @@
         "mock-server.crt": "mock-server-certificate",
         "mock-server.key": "mock-server-private-key",
         "adapter-client-ca.crt": "adapter-to-hsa-ca"
+      }
+    },
+    "probe": {
+      "owner": {
+        "uid": 1000,
+        "gid": 1000
+      },
+      "files": {
+        "kong-server-ca.crt": "app-to-kong-ca",
+        "wrong-app-client.crt": "wrong-app-client-certificate",
+        "wrong-app-client.key": "wrong-app-client-private-key",
+        "adapter-server-ca.crt": "kong-to-adapter-ca",
+        "wrong-kong-client.crt": "wrong-kong-client-certificate",
+        "wrong-kong-client.key": "wrong-kong-client-private-key",
+        "hsa-server-ca.crt": "adapter-to-hsa-ca",
+        "wrong-adapter-client.crt": "wrong-adapter-client-certificate",
+        "wrong-adapter-client.key": "wrong-adapter-client-private-key"
       }
     }
   },

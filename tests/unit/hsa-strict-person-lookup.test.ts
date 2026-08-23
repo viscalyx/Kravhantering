@@ -1,17 +1,17 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import type { ServerResponse } from 'node:http'
 import https from 'node:https'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   createInvalidRuntimeCertificateFixture,
   createRuntimeCertificateFixture,
 } from '@/containers/hsa-mtls-provisioner/test/runtime-fixture.mjs'
-import { generateCertificates } from '@/containers/hsa-person-lookup-adapter/src/generate-certs.mjs'
 import {
+  getStrictHsaPersonLookupSnapshot,
   loadStrictHsaPersonLookupSnapshot,
   lookupHsaPersonStrict,
+  resetStrictHsaPersonLookupSnapshotForTests,
   type StrictHsaRequest,
   strictHsaPersonLookupDiagnostic,
 } from '@/lib/hsa/strict-person-lookup'
@@ -49,6 +49,22 @@ afterAll(async () => {
 })
 
 describe('strict HSA person lookup startup snapshot', () => {
+  it('caches unavailable startup state until the process is recreated', async () => {
+    resetStrictHsaPersonLookupSnapshotForTests()
+    const previous = process.env.HSA_PERSON_LOOKUP_URL
+    delete process.env.HSA_PERSON_LOOKUP_URL
+    try {
+      const first = getStrictHsaPersonLookupSnapshot()
+      const second = getStrictHsaPersonLookupSnapshot()
+      expect(second).toBe(first)
+      await expect(first).resolves.toBeNull()
+    } finally {
+      if (previous === undefined) delete process.env.HSA_PERSON_LOOKUP_URL
+      else process.env.HSA_PERSON_LOOKUP_URL = previous
+      resetStrictHsaPersonLookupSnapshotForTests()
+    }
+  })
+
   it('is unavailable when no integration setting is present', async () => {
     await expect(
       loadStrictHsaPersonLookupSnapshot({} as NodeJS.ProcessEnv),
@@ -209,6 +225,24 @@ describe('strict HSA person lookup startup snapshot', () => {
     expect(JSON.parse(requests[1]?.body ?? '{}')).toEqual({
       hsaId: 'SE5560000001-kalle1',
     })
+  })
+
+  it('validates an additive OAuth trust file as a CA at startup', async () => {
+    await expect(
+      loadStrictHsaPersonLookupSnapshot({
+        ...completeEnv(),
+        HSA_PERSON_LOOKUP_OAUTH_CA_PATH: path.resolve(
+          'lib/hsa/strict-person-lookup.ts',
+        ),
+        HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'lookup-client',
+        HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'lookup-secret',
+        HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL: 'https://identity.example/token',
+      }),
+    ).rejects.toSatisfy(
+      (error: unknown) =>
+        error instanceof StrictTlsMaterialError &&
+        error.diagnostic === 'tls_ca_invalid',
+    )
   })
 
   it('maps raw remote TLS failures to one bounded unavailable outcome', async () => {
@@ -607,31 +641,6 @@ describe('strict HSA person lookup startup snapshot', () => {
       }),
     ).rejects.toMatchObject({ diagnostic: 'tls_certificate_invalid' })
   })
-
-  it(
-    'rejects legacy trust roots that omit exact critical key usage',
-    async () => {
-      const legacyDir = await mkdtemp(path.join(tmpdir(), 'hsa-legacy-tls-'))
-      try {
-        const legacy = await generateCertificates({
-          fileOwnerGid: process.getgid?.() ?? 1000,
-          fileOwnerUid: process.getuid?.() ?? 1000,
-          outputDir: legacyDir,
-        })
-        await expect(
-          loadStrictTlsSnapshot({
-            caPath: legacy.caCert,
-            certPath: legacy.clientCert,
-            keyPath: legacy.clientKey,
-            role: 'client',
-          }),
-        ).rejects.toMatchObject({ diagnostic: 'tls_ca_invalid' })
-      } finally {
-        await rm(legacyDir, { force: true, recursive: true })
-      }
-    },
-    15_000,
-  )
 
   it('rejects dual-purpose and wrong-key-usage client leaves', async () => {
     for (const name of [

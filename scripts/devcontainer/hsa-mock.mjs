@@ -3,7 +3,7 @@ import os from 'node:os'
 
 const SERVICE_NAME = 'hsa-directory-mock'
 const ADAPTER_SERVICE_NAME = 'hsa-person-lookup-adapter'
-const CERT_SERVICE_NAME = 'hsa-mtls-cert-generator'
+const CERT_SERVICE_NAME = 'hsa-mtls-provisioner'
 const KONG_SERVICE_NAME = 'kong'
 const APP_SERVICE_NAME = 'app'
 const HSA_SERVICES = [
@@ -171,19 +171,9 @@ function runStatus(profile, options) {
   )
 
   const statusScript = `
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-    const checks = [
-      ['HSA directory mock', 'https://127.0.0.1:8443/health'],
-      ['HSA person lookup adapter', 'http://hsa-person-lookup-adapter:8080/health'],
-    ]
-    for (const [name, url] of checks) {
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(\`\${name} returned \${response.status}\`)
-      }
-      const body = await response.json()
-      console.log(JSON.stringify({ name, ...body }, null, 2))
-    }
+    const response = await fetch('http://127.0.0.1:8081/health')
+    if (!response.ok) throw new Error(\`health returned \${response.status}\`)
+    console.log(JSON.stringify(await response.json()))
   `
 
   console.log('Verifying HSA directory mock and adapter health...')
@@ -203,6 +193,22 @@ function runStatus(profile, options) {
     ),
     'HSA directory mock health check',
   )
+  assertSuccess(
+    runCompose(
+      profile,
+      [
+        'exec',
+        '-T',
+        ADAPTER_SERVICE_NAME,
+        'node',
+        '--input-type=module',
+        '-e',
+        statusScript,
+      ],
+      options,
+    ),
+    'HSA person lookup adapter health check',
+  )
 }
 
 function runVerify(profile, options) {
@@ -216,27 +222,36 @@ function runVerify(profile, options) {
   )
 
   const verifyScript = `
+    const fs = await import('node:fs')
+    const https = await import('node:https')
+    const crypto = await import('node:crypto')
     async function postRest() {
-      const response = await fetch('http://kong:8000/hsa/person-records/lookup', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ hsaId: 'SE5560000001-marias' })
+      const body = JSON.stringify({ hsaId: 'SE5560000001-marias' })
+      return await new Promise((resolve, reject) => {
+        const request = https.request({
+          host: 'kong', port: 8443, path: '/hsa/person-records/lookup', method: 'POST', servername: 'kong',
+          ca: fs.readFileSync('/run/kravhantering/hsa-mtls/kong-server-ca.crt'),
+          cert: fs.readFileSync('/run/kravhantering/hsa-mtls/app-client.crt'),
+          key: fs.readFileSync('/run/kravhantering/hsa-mtls/app-client.key'),
+          minVersion: 'TLSv1.2', rejectUnauthorized: true,
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Kravhantering-HSA-Correlation-ID': crypto.randomUUID() },
+        }, response => {
+          const chunks = []
+          response.on('data', chunk => chunks.push(chunk))
+          response.on('end', () => resolve({ status: response.statusCode, body: JSON.parse(Buffer.concat(chunks).toString('utf8')) }))
+        })
+        request.on('error', reject)
+        request.end(body)
       })
-      const body = await response.json()
-      if (!response.ok || body.hsaId !== 'SE5560000001-marias' || body.givenName !== 'Maria' || body.surname !== 'Svensson') {
-        throw new Error(\`Kong HSA REST verification failed with \${response.status}: \${JSON.stringify(body).slice(0, 300)}\`)
-      }
-      return body
     }
 
     let lastError
     let verified = false
     for (let attempt = 1; attempt <= 30; attempt += 1) {
       try {
-        const restPerson = await postRest()
+        const result = await postRest()
+        const restPerson = result.body
+        if (result.status !== 200 || restPerson.hsaId !== 'SE5560000001-marias' || restPerson.givenName !== 'Maria' || restPerson.surname !== 'Svensson') throw new Error('bounded verification failure')
         console.log(
           \`REST HSA lookup OK: \${restPerson.hsaId} \${restPerson.givenName} \${restPerson.surname}\`,
         )
@@ -257,7 +272,7 @@ function runVerify(profile, options) {
       [
         'exec',
         '-T',
-        SERVICE_NAME,
+        APP_SERVICE_NAME,
         'node',
         '--input-type=module',
         '-e',

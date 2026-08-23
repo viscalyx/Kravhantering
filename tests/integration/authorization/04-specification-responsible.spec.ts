@@ -40,6 +40,9 @@ test('AUTHZ-04/AUTH-10/AUTH-11: specification responsible users can manage assig
 
   try {
     await seedAuthorizationResponsibilityPeople()
+    await page.route('**/api/hsa-person-lookup-capability', route =>
+      route.fulfill({ body: '{"available":true}', status: 200 }),
+    )
     await page.route(
       '**/api/requirement-responsibility-people/verify',
       async route => {

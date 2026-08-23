@@ -32,7 +32,7 @@ const routeState = vi.hoisted(() => {
 })
 
 const hsaLookupState = vi.hoisted(() => ({
-  lookupHsaPerson: vi.fn(async (hsaId: string) => ({
+  lookupHsaPersonStrict: vi.fn(async (hsaId: string) => ({
     email: `${hsaId.toLowerCase()}@example.test`,
     givenName: 'Test',
     hsaId,
@@ -143,8 +143,8 @@ vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
-vi.mock('@/lib/hsa/person-lookup', () => ({
-  lookupHsaPerson: hsaLookupState.lookupHsaPerson,
+vi.mock('@/lib/hsa/strict-person-lookup', () => ({
+  lookupHsaPersonStrict: hsaLookupState.lookupHsaPersonStrict,
 }))
 
 vi.mock('@/lib/dal/requirement-responsibility-people', () => ({
@@ -762,7 +762,7 @@ describe('requirement responsibility person verify route', () => {
         hsaId: 'SE5560000001-owner1',
       }),
     })
-    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledWith(
+    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledWith(
       'SE5560000001-owner1',
     )
     expect(
@@ -800,7 +800,7 @@ describe('requirement responsibility person verify route', () => {
         hsaId: 'SE5560000001-owner1',
       }),
     })
-    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
     expect(
       responsibilityPersonState.upsertRequirementResponsibilityPerson,
     ).not.toHaveBeenCalled()
@@ -831,10 +831,10 @@ describe('requirement responsibility person verify route', () => {
       error: 'Too many HSA verification requests.',
       retryAfterSeconds: expect.any(Number),
     })
-    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledTimes(10)
+    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledTimes(10)
 
     clearInMemoryThrottleForTests()
-    hsaLookupState.lookupHsaPerson.mockClear()
+    hsaLookupState.lookupHsaPersonStrict.mockClear()
     for (let index = 0; index < 50; index += 1) {
       expect(
         (await requestVerification(`SE5560000001-cycle${index}`)).status,
@@ -851,7 +851,7 @@ describe('requirement responsibility person verify route', () => {
       ...targetBody,
       retryAfterSeconds: expect.any(Number),
     })
-    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledTimes(50)
+    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledTimes(50)
     expect(getInMemoryThrottleBucketCountForTests()).toBe(
       bucketCountBeforeDenial,
     )
@@ -892,7 +892,7 @@ describe('requirement responsibility person verify route', () => {
     const response = await requestVerification('SE5560000001-target1')
 
     expect(response.status).toBe(429)
-    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledTimes(10)
+    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledTimes(10)
   })
 
   it.each([
@@ -925,7 +925,7 @@ describe('requirement responsibility person verify route', () => {
     authState.context.actor.hsaId = 'SE5560000001-sensitive1'
     authState.context.actor.id = 'SE5560000001-sensitive1'
     if (testCase.error) {
-      hsaLookupState.lookupHsaPerson.mockRejectedValueOnce(testCase.error)
+      hsaLookupState.lookupHsaPersonStrict.mockRejectedValueOnce(testCase.error)
     }
 
     const response = await postRequirementResponsibilityPersonVerify(
@@ -1008,7 +1008,7 @@ describe('requirement responsibility person verify route', () => {
     )
 
     expect(r.status).toBe(403)
-    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
   })
 
   it('allows current requirement area owner to verify a new owner for handover', async () => {
@@ -1030,7 +1030,7 @@ describe('requirement responsibility person verify route', () => {
     expect(
       requirementAreaPermissionState.canManageAreaCoAuthors,
     ).toHaveBeenCalledWith(expect.anything(), 7, 'SE5560000001-route', false)
-    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledWith(
+    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledWith(
       'SE5560000001-owner2',
     )
   })
@@ -1048,7 +1048,7 @@ describe('requirement responsibility person verify route', () => {
     expect(
       requirementAreaPermissionState.canManageAreaCoAuthors,
     ).not.toHaveBeenCalled()
-    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
   })
 
   it('checks requirement area manager permission before co-author verification lookup', async () => {
@@ -1069,7 +1069,7 @@ describe('requirement responsibility person verify route', () => {
     expect(
       requirementAreaPermissionState.canManageAreaCoAuthors,
     ).toHaveBeenCalledWith(expect.anything(), 7, 'SE5560000001-route', false)
-    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledWith(
+    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledWith(
       'SE5560000001-coa1',
     )
   })
@@ -1089,7 +1089,7 @@ describe('requirement responsibility person verify route', () => {
     )
 
     expect(r.status).toBe(403)
-    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
   })
 
   it('requires scope for requirement package co-author verification', async () => {
@@ -1102,7 +1102,7 @@ describe('requirement responsibility person verify route', () => {
     )
 
     expect(response.status).toBe(403)
-    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
   })
 
   it('only allows an unscoped package lead verification for the actor', async () => {
@@ -1114,7 +1114,7 @@ describe('requirement responsibility person verify route', () => {
       }),
     )
     expect(denied.status).toBe(403)
-    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
 
     const allowed = await postRequirementResponsibilityPersonVerify(
       jsonReq('POST', {
@@ -1124,7 +1124,7 @@ describe('requirement responsibility person verify route', () => {
       }),
     )
     expect(allowed.status).toBe(200)
-    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledWith(
+    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledWith(
       'SE5560000001-route',
     )
   })
@@ -1147,7 +1147,7 @@ describe('requirement responsibility person verify route', () => {
     expect(
       specificationPermissionState.canManageSpecificationAssignments,
     ).toHaveBeenCalledWith(expect.anything(), 9, 'SE5560000001-route', false)
-    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
   })
 
   it('allows specification responsibility verification without scope for the actor on create', async () => {
@@ -1163,7 +1163,7 @@ describe('requirement responsibility person verify route', () => {
     expect(
       specificationPermissionState.canManageSpecificationAssignments,
     ).not.toHaveBeenCalled()
-    expect(hsaLookupState.lookupHsaPerson).toHaveBeenCalledWith(
+    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledWith(
       'SE5560000001-route',
     )
   })
@@ -1181,7 +1181,7 @@ describe('requirement responsibility person verify route', () => {
     expect(
       specificationPermissionState.canManageSpecificationAssignments,
     ).not.toHaveBeenCalled()
-    expect(hsaLookupState.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
   })
 })
 

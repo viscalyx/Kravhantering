@@ -96,6 +96,9 @@ export default function HsaPersonVerifyField({
     useState<HsaPersonVerification | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [liveLookupAvailable, setLiveLookupAvailable] = useState<
+    boolean | null
+  >(null)
   const prefixLoadErrorMessage = tc('hsaPrefixLoadError')
   const trimmedHsaId = hsaId.trim()
   const hsaIdParts = splitHsaId(trimmedHsaId)
@@ -183,6 +186,24 @@ export default function HsaPersonVerifyField({
   }, [prefixLoadErrorMessage, readOnly])
 
   useEffect(() => {
+    let cancelled = false
+    apiFetch('/api/hsa-person-lookup-capability')
+      .then(async response => {
+        if (!response.ok) throw new Error('capability_unavailable')
+        return response.json() as Promise<{ available?: boolean }>
+      })
+      .then(payload => {
+        if (!cancelled) setLiveLookupAvailable(payload.available === true)
+      })
+      .catch(() => {
+        if (!cancelled) setLiveLookupAvailable(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     currentHsaIdRef.current = trimmedHsaId
     setError(null)
     setLoading(false)
@@ -191,6 +212,7 @@ export default function HsaPersonVerifyField({
 
   const verifyPerson = async (mode: 'refresh' | 'reuse_local') => {
     if (!isHsaId(trimmedHsaId) || loading) return
+    if (mode === 'refresh' && liveLookupAvailable !== true) return
     const requestedHsaId = trimmedHsaId
     setLoading(true)
     setError(null)
@@ -311,7 +333,7 @@ export default function HsaPersonVerifyField({
               skipBlurVerifyForRefreshPointerRef.current
             skipBlurVerifyForRefreshPointerRef.current = false
             if (skipBlurVerify) return
-            void verifyPerson('refresh')
+            void verifyPerson('reuse_local')
           }}
           onChange={event => {
             setError(null)
@@ -334,7 +356,12 @@ export default function HsaPersonVerifyField({
         <button
           aria-label={loading ? fetchingLabel : fetchLabel}
           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:text-secondary-200 dark:hover:bg-secondary-800"
-          disabled={disabled || loading || !isHsaId(trimmedHsaId)}
+          disabled={
+            disabled ||
+            loading ||
+            liveLookupAvailable !== true ||
+            !isHsaId(trimmedHsaId)
+          }
           onClick={() => {
             void verifyPerson('refresh')
           }}
@@ -342,7 +369,13 @@ export default function HsaPersonVerifyField({
             skipBlurVerifyForRefreshPointerRef.current = true
           }}
           ref={refreshButtonRef}
-          title={loading ? fetchingLabel : fetchLabel}
+          title={
+            liveLookupAvailable === false
+              ? tc('hsaLookupUnavailable')
+              : loading
+                ? fetchingLabel
+                : fetchLabel
+          }
           type="button"
         >
           <RefreshCw
@@ -351,6 +384,14 @@ export default function HsaPersonVerifyField({
           />
         </button>
       </div>
+      {liveLookupAvailable === false ? (
+        <p
+          className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+          role="status"
+        >
+          {tc('hsaLookupUnavailable')}
+        </p>
+      ) : null}
       {!readOnly && !selectedPrefix && prefixesLoaded ? (
         <p className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
           {prefixLoadError ?? tc('hsaPrefixMissing')}

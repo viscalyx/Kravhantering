@@ -22,6 +22,15 @@
       "manifestDigest": "sha256:hsa-person-lookup-adapter-local",
       "imageId": "sha256:hsa-person-lookup-adapter-local",
       "source": "local-build"
+    },
+    {
+      "name": "hsa-mtls-provisioner",
+      "role": "hsa-mtls-provisioner",
+      "image": "localhost/kravhantering/hsa-mtls-provisioner",
+      "tag": "local",
+      "manifestDigest": "sha256:hsa-mtls-provisioner-local",
+      "imageId": "sha256:hsa-mtls-provisioner-local",
+      "source": "local-build"
     }
   ]
 }

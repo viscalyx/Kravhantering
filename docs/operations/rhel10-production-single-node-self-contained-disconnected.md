@@ -189,7 +189,8 @@ custom repository layout. Edit the five `*_IMAGE_REF` values in
 
 #### Optional Test Support Refs For `single-node-demo`
 
-Use this only when `TOPOLOGY=single-node-demo`. Kong and the adapter refs come
+Use this only when `TOPOLOGY=single-node-demo`. Kong, adapter, and one-shot
+strict-PKI provisioner refs come
 from `container-hsa-integration-support.lock.json`; the HSA directory mock ref
 comes from `container-test-support.lock.json`. They are not part of the
 production `single-node` topology.
@@ -220,14 +221,16 @@ if [ "$TOPOLOGY" = "single-node-demo" ]; then
     "$(support_service_ref "$HSA_LOCK_FILE" kong)"
   update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
     "$(support_service_ref "$HSA_LOCK_FILE" hsa-person-lookup-adapter)"
+  update_ref HSA_MTLS_PROVISIONER_IMAGE_REF \
+    "$(support_service_ref "$HSA_LOCK_FILE" hsa-mtls-provisioner)"
   update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
     "$(support_service_ref "$TEST_LOCK_FILE" hsa-directory-mock)"
 fi
 ```
 
 For Alternative C, manually edit `KONG_IMAGE_REF`,
-`HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` and `HSA_DIRECTORY_MOCK_IMAGE_REF` as
-well.
+`HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF`, `HSA_MTLS_PROVISIONER_IMAGE_REF`, and
+`HSA_DIRECTORY_MOCK_IMAGE_REF` as well.
 
 #### Optional Demo Seed Image
 
@@ -278,6 +281,7 @@ SUPPORT_LOCK_ARGS=()
 if [ "$TOPOLOGY" = "single-node-demo" ]; then
   podman pull "$KONG_IMAGE_REF"
   podman pull "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF"
+  podman pull "$HSA_MTLS_PROVISIONER_IMAGE_REF"
   podman pull "$HSA_DIRECTORY_MOCK_IMAGE_REF"
   SUPPORT_LOCK_ARGS=(
     --hsa-integration-lock-file \
@@ -332,6 +336,8 @@ jq -n \
   --arg sqlserver "$SQLSERVER_IMAGE_REF" \
   --arg keycloak "$KEYCLOAK_IMAGE_REF" \
   --arg kong "${KONG_IMAGE_REF:-}" \
+  --arg hsaPersonLookupAdapter "${HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF:-}" \
+  --arg hsaMtlsProvisioner "${HSA_MTLS_PROVISIONER_IMAGE_REF:-}" \
   --arg hsaDirectoryMock "${HSA_DIRECTORY_MOCK_IMAGE_REF:-}" \
   --arg demoSeed "$DEMO_SEED_MANIFEST_REF" \
   --arg demoSeedArchive "$DEMO_SEED_ARCHIVE_PATH" \
@@ -358,6 +364,8 @@ jq -n \
       keycloak: $keycloak
     } + (if $topology == "single-node-demo" then {
       kong: $kong,
+      "hsa-person-lookup-adapter": $hsaPersonLookupAdapter,
+      "hsa-mtls-provisioner": $hsaMtlsProvisioner,
       "hsa-directory-mock": $hsaDirectoryMock
     } else {} end)) +
     (if $demoSeed != "" then {
@@ -526,6 +534,8 @@ target_ref() {
     printf 'KONG_IMAGE_REF=%s\n' "$(target_ref kong)"
     printf 'HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF=%s\n' \
       "$(target_ref hsa-person-lookup-adapter)"
+    printf 'HSA_MTLS_PROVISIONER_IMAGE_REF=%s\n' \
+      "$(target_ref hsa-mtls-provisioner)"
     printf 'HSA_DIRECTORY_MOCK_IMAGE_REF=%s\n' \
       "$(target_ref hsa-directory-mock)"
   fi
@@ -708,6 +718,8 @@ target_ref() {
     printf 'KONG_IMAGE_REF=%s\n' "$(target_ref kong)"
     printf 'HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF=%s\n' \
       "$(target_ref hsa-person-lookup-adapter)"
+    printf 'HSA_MTLS_PROVISIONER_IMAGE_REF=%s\n' \
+      "$(target_ref hsa-mtls-provisioner)"
     printf 'HSA_DIRECTORY_MOCK_IMAGE_REF=%s\n' \
       "$(target_ref hsa-directory-mock)"
   fi

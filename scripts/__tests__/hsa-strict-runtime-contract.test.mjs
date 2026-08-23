@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   loadHsaStrictRuntimeContract,
-  validateDormantHsaDeployments,
+  validateActiveHsaDeployments,
   validateStrictKongRuntime,
 } from '../hsa-strict-runtime-contract.mjs'
 
@@ -17,10 +17,10 @@ async function kongInputs() {
   return { authorizationInclude, declarativeConfiguration, environment }
 }
 
-describe('dormant strict HSA runtime configuration checker', () => {
-  it('validates the dormant deployment and strict Kong contracts', async () => {
+describe('active strict HSA runtime configuration checker', () => {
+  it('validates the selected deployment and strict Kong contracts', async () => {
     expect(await loadHsaStrictRuntimeContract()).toEqual({
-      deployments: { deploymentCount: 8 },
+      deployments: { deploymentCount: 7 },
       kong: {
         adapterIdentity: 'hsa-person-lookup-adapter',
         appIdentity: 'CN=kravhantering-app',
@@ -29,16 +29,15 @@ describe('dormant strict HSA runtime configuration checker', () => {
     })
   })
 
-  it('rejects every dormant selector when a deployment selects it', () => {
+  it('rejects missing strict activation and every legacy selector', () => {
     for (const contents of [
-      'strict-server.mjs',
-      'kong.strict.yml',
-      'strict-runtime.env',
-      'HSA_ADAPTER_INGRESS_CA_PATH',
-      'HSA_MOCK_TLS_EXPECTED_CLIENT_SERIAL_NUMBER',
+      'unrelated deployment',
+      'strict-server.mjs HSA_MOCK_AUTH_MODE=disabled',
+      'kong.strict.yml NODE_TLS_REJECT_UNAUTHORIZED=0',
+      'strict-runtime.env hsa-mtls-cert-generator',
     ]) {
       expect(() =>
-        validateDormantHsaDeployments([{ contents, path: 'deployment' }]),
+        validateActiveHsaDeployments([{ contents, path: 'deployment' }]),
       ).toThrow()
     }
   })

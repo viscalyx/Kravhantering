@@ -36,6 +36,9 @@ test('AUTHZ-06/AUTH-10/AUTH-11: requirement package leads can update packages bu
 
   try {
     await seedAuthorizationResponsibilityPeople()
+    await page.route('**/api/hsa-person-lookup-capability', route =>
+      route.fulfill({ body: '{"available":true}', status: 200 }),
+    )
     await page.route(
       '**/api/requirement-responsibility-people/verify',
       async route => {

@@ -30,6 +30,7 @@
     "hsaSuffixLabel": "HSA-id-suffix",
     "hsaSuffixPlaceholder": "Suffix",
     "hsaVerifyUnavailable": "Inte hämtat",
+    "hsaLookupUnavailable": "Direktuppslag i HSA är inte tillgängligt. Lokalt sparade personuppgifter kan fortfarande återanvändas.",
     "clearSearch": "Rensa sökning",
     "filter": "Filtrera",
     "filterBy": "Filtrera efter {label}",

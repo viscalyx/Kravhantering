@@ -130,13 +130,14 @@ contract with the external provider owner instead.
 | `APP_HOST` | `PUBLIC_HOSTNAME`, app URLs, `KC_HOSTNAME`, realm redirect/logout settings, realm web origins, TLS certificate SANs and smoke checks | No default | Always record the public DNS name without `https://`, for example `kravhantering.example.internal`. |
 | `NEXT_PUBLIC_SITE_URL` | `NEXT_PUBLIC_SITE_URL` in `app.env` | `https://<APP_HOST>` | Verify after choosing `APP_HOST`; plan only if the public URL cannot use the normal scheme and host. |
 | `KRAVHANTERING_EXPORT_TEMP_DIR` | Optional absolute spool root in `app.env` | Unset/blank (OS temporary directory) | Set only when generated CSV/PDF files need a dedicated filesystem. Use an existing private directory that grants only the non-root operating-system account running Node.js read/write/search access (for example, app-owned mode `0700`). Whether set or unset, verify the directory from inside `app-runtime` and size it for configured CSV/PDF concurrency times maximum file sizes plus headroom. When unset or blank, this verification of the container operating-system temporary directory is mandatory. |
-| `HSA_PERSON_LOOKUP_URL` | `HSA_PERSON_LOOKUP_URL` in `app.env` | No default | Always record the approved server-side HSA person lookup endpoint, normally the environment's Kong or integration-platform REST facade. |
+| `HSA_PERSON_LOOKUP_URL` | `HSA_PERSON_LOOKUP_URL` in `app.env` | Unset | Leave unset to keep live lookup unavailable. Set only with the complete strict mTLS tuple for an approved external integration-platform REST facade. |
 | `HSA_PERSON_LOOKUP_TIMEOUT_MS` | `HSA_PERSON_LOOKUP_TIMEOUT_MS` in `app.env` | `5000` | Plan only if the HSA integration path needs another timeout. |
-| `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` | Optional mTLS client credential paths in `app.env` | Blank | Set both when the approved external integration platform requires app-to-platform mTLS. |
-| `HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_TLS_SERVER_NAME` | Optional mTLS trust and TLS server-name values in `app.env` | Blank | Set only when the approved mTLS route requires a custom CA bundle or TLS server name. |
+| `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`, `HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` | Mandatory client identity when lookup is enabled | Blank | Set both to absolute paths on deployment-owned read-only mounts. The certificate must be valid only for this client role. |
+| `HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_TLS_SERVER_NAME` | Mandatory private trust root and exact server identity when lookup is enabled | Blank | Set both. The CA file must contain the single current private CA and the server name must match the approved DNS identity. |
 | `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL`, `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, `HSA_PERSON_LOOKUP_OAUTH_SCOPE`, `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` | Optional OAuth2 client credentials values in `app.env` | Blank | Set client id, client secret and either token URL or issuer URL when the approved external integration platform requires OAuth2. Add scope or audience only when the token endpoint requires them. |
 | `KONG_IMAGE_REF` | `KONG_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose a tag-style ref from `container-hsa-integration-support.lock.json` when using the demo overlay. |
 | `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` | `HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA lookup adapter image when using the demo overlay. |
+| `HSA_MTLS_PROVISIONER_IMAGE_REF` | `HSA_MTLS_PROVISIONER_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the one-shot strict-PKI provisioner image. The provisioner exits after writing isolated bundles and never joins the supported production topology. |
 | `HSA_DIRECTORY_MOCK_IMAGE_REF` | `HSA_DIRECTORY_MOCK_IMAGE_REF` in `release.env` | No production default | Test-only for `single-node-demo`; choose the release tag for the project-owned HSA mock image when using the demo overlay. |
 | `DEMO_SEED_IMAGE_REF` | One-shot shell variable, not `release.env` | No production default | Test and development only; choose the optional `kravhantering-demo-seed` release tag or internal mirror only when running destructive demo seed in a disposable database. |
 | `KC_HOSTNAME` | `KC_HOSTNAME` in `keycloak.env`; bundled profiles only | `https://<APP_HOST>/auth` | Verify after choosing `APP_HOST`; plan only if Keycloak is deliberately exposed at another public URL. |
@@ -570,6 +571,8 @@ if [ "$TOPOLOGY" = "single-node-demo" ]; then
   update_ref KONG_IMAGE_REF "$(target_ref kong)"
   update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
     "$(target_ref hsa-person-lookup-adapter)"
+  update_ref HSA_MTLS_PROVISIONER_IMAGE_REF \
+    "$(target_ref hsa-mtls-provisioner)"
   update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
     "$(target_ref hsa-directory-mock)"
 fi
@@ -717,7 +720,7 @@ If you used [Disconnected Imported Refs](#disconnected-imported-refs) with
 verification already set and verify the support image refs from
 `offline-manifest.json`.
 
-Set Kong and the adapter refs from
+Set Kong, adapter, and strict-PKI provisioner refs from
 `container-hsa-integration-support.lock.json`, and set the HSA directory mock
 ref from `container-test-support.lock.json` after the five production refs are
 selected:
@@ -747,6 +750,8 @@ update_ref KONG_IMAGE_REF \
   "$(support_service_ref "$HSA_LOCK_FILE" kong)"
 update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
   "$(support_service_ref "$HSA_LOCK_FILE" hsa-person-lookup-adapter)"
+update_ref HSA_MTLS_PROVISIONER_IMAGE_REF \
+  "$(support_service_ref "$HSA_LOCK_FILE" hsa-mtls-provisioner)"
 update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
   "$(support_service_ref "$TEST_LOCK_FILE" hsa-directory-mock)"
 ```
@@ -762,6 +767,7 @@ set +a
 
 podman pull "$KONG_IMAGE_REF"
 podman pull "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF"
+podman pull "$HSA_MTLS_PROVISIONER_IMAGE_REF"
 podman pull "$HSA_DIRECTORY_MOCK_IMAGE_REF"
 
 bin/kravhantering-images.sh --topology single-node-demo \
@@ -981,11 +987,11 @@ AUTH_MCP_REQUIRED_SCOPES=kravhantering:mcp
 AUTH_MCP_ROLES_CLAIM=roles
 AUTH_MCP_TOKEN_MAX_AGE_SECONDS=300
 HSA_PERSON_LOOKUP_TIMEOUT_MS=5000
-HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup
-HSA_PERSON_LOOKUP_CA_PATH=
-HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=
-HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=
-HSA_PERSON_LOOKUP_TLS_SERVER_NAME=
+# HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup
+# HSA_PERSON_LOOKUP_CA_PATH=/run/secrets/hsa/kong-server-ca.crt
+# HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=/run/secrets/hsa/app-client.crt
+# HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=/run/secrets/hsa/app-client.key
+# HSA_PERSON_LOOKUP_TLS_SERVER_NAME=kong.example.internal
 HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL=
 HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL=
 HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID=
@@ -1062,28 +1068,25 @@ the bundled realm JSON or external provider contract. Tokens use
 protected-header `typ: at+jwt` and a lifetime no greater than
 `AUTH_MCP_TOKEN_MAX_AGE_SECONDS` (for example, `300` seconds).
 
-Set `HSA_PERSON_LOOKUP_URL` to the environment-specific server-side HSA
-lookup endpoint. The browser must not call the HSA integration directly; the
-app calls this internal Kong or integration-platform REST facade only when an
-editable HSA-id needs lookup or refresh. Keep
+Live HSA lookup is unavailable when `HSA_PERSON_LOOKUP_URL` is unset. To enable
+it, set the URL and the complete CA, client-certificate, client-key, and exact
+TLS server-name tuple together. The browser never calls HSA directly; the App
+calls the approved external integration-platform REST facade. Keep
 `HSA_PERSON_LOOKUP_TIMEOUT_MS=5000` unless the approved integration path needs
 another timeout. Production lookup, OAuth issuer, and explicit token URLs must
 use HTTPS. OIDC discovery accepts only the configured issuer and a token
 endpoint on the same origin; use an explicit approved HTTPS token URL when the
 token service uses another origin.
 
-Leave the optional `HSA_PERSON_LOOKUP_*` authentication values blank for an
-internal same-stack route. When the approved external route requires mTLS, set
-both `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH` and
-`HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`, plus `HSA_PERSON_LOOKUP_CA_PATH` or
-`HSA_PERSON_LOOKUP_TLS_SERVER_NAME` only when required by the platform. When it
-requires OAuth2 client credentials, set
+Do not configure an internal plaintext or same-stack exception. Mount the
+App role bundle read-only and set all four mandatory mTLS values. When the
+approved route also requires OAuth2 client credentials, set
 `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`, `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`
 and either `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
 `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL`; add
 `HSA_PERSON_LOOKUP_OAUTH_SCOPE` or `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` only
-when the token endpoint requires them. Supplying both mTLS and OAuth2 enables
-mixed mode. The canonical flow is described in
+when the token endpoint requires them. OAuth is additive and never replaces
+mTLS. The canonical flow is described in
 [HSA person lookup integration](../integrations/hsa-person-lookup-integration.md).
 
 Before rollout, allow only the approved lookup, issuer, explicit token, and

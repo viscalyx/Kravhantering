@@ -126,6 +126,13 @@ function writeHsaIntegrationLockFile(dir) {
         'sha256:hsa-adapter-manifest',
         'sha256:hsa-adapter-image',
       ),
+      service(
+        'hsa-mtls-provisioner',
+        'registry.example/hsa-mtls-provisioner',
+        '1.2.3',
+        'sha256:hsa-provisioner-manifest',
+        'sha256:hsa-provisioner-image',
+      ),
     ],
   })
   return lockPath
@@ -138,6 +145,8 @@ function writeEnvFile(dir, overrides = {}) {
     HSA_DIRECTORY_MOCK_IMAGE_REF: 'registry.example/hsa-directory-mock:1.2.3',
     HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF:
       'registry.example/hsa-person-lookup-adapter:1.2.3',
+    HSA_MTLS_PROVISIONER_IMAGE_REF:
+      'registry.example/hsa-mtls-provisioner:1.2.3',
     KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.7.1-0',
     KONG_IMAGE_REF: 'registry.example/kong:3.15.0.0-20260702-ubuntu',
     NGINX_IMAGE_REF: 'registry.example/nginx:1.31.3-alpine',
@@ -179,6 +188,7 @@ if [[ "$1 $2" == "image inspect" ]]; then
       *keycloak*) printf '%s\\n' 'registry.example/keycloak@sha256:keycloak-manifest' ;;
       *kong*) printf '%s\\n' 'registry.example/kong@sha256:kong-manifest' ;;
       *hsa-person-lookup-adapter*) printf '%s\\n' 'registry.example/hsa-person-lookup-adapter@sha256:hsa-adapter-manifest' ;;
+      *hsa-mtls-provisioner*) printf '%s\\n' 'registry.example/hsa-mtls-provisioner@sha256:hsa-provisioner-manifest' ;;
       *hsa-directory-mock*) printf '%s\\n' 'registry.example/hsa-directory-mock@sha256:hsa-manifest' ;;
       *) printf '%s\\n' '<none>' ;;
     esac
@@ -192,6 +202,7 @@ if [[ "$1 $2" == "image inspect" ]]; then
     *keycloak*|sha256:keycloak-image) printf '%s\\n' 'sha256:keycloak-image' ;;
     *kong*|sha256:kong-image) printf '%s\\n' 'sha256:kong-image' ;;
     *hsa-person-lookup-adapter*|sha256:hsa-adapter-image) printf '%s\\n' 'sha256:hsa-adapter-image' ;;
+    *hsa-mtls-provisioner*|sha256:hsa-provisioner-image) printf '%s\\n' 'sha256:hsa-provisioner-image' ;;
     *hsa-directory-mock*|sha256:hsa-image) printf '%s\\n' 'sha256:hsa-image' ;;
     *) printf '%s\\n' 'sha256:unknown' ;;
   esac
@@ -330,6 +341,7 @@ describe('production image helper', () => {
     expect(result.stdout).toContain('Verified keycloak')
     expect(result.stdout).toContain('Verified kong')
     expect(result.stdout).toContain('Verified hsa-person-lookup-adapter')
+    expect(result.stdout).toContain('Verified hsa-mtls-provisioner')
     expect(result.stdout).toContain('Verified hsa-directory-mock')
     expect(result.log).toContain(
       'image inspect registry.example/kong:3.15.0.0-20260702-ubuntu --format {{.Id}}',
@@ -339,6 +351,9 @@ describe('production image helper', () => {
     )
     expect(result.log).toContain(
       'image inspect registry.example/hsa-person-lookup-adapter:1.2.3 --format {{.Id}}',
+    )
+    expect(result.log).toContain(
+      'image inspect registry.example/hsa-mtls-provisioner:1.2.3 --format {{.Id}}',
     )
   })
 

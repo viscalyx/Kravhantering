@@ -26,22 +26,22 @@ person as a local `Kravansvarsperson` row and creates or updates the assignment.
 The devcontainer includes Kong Gateway as the internal `kong` service for
 API-management verification, an `hsa-person-lookup-adapter`, and an HSA
 directory mock as `hsa-directory-mock`. Kong runs DB-less with
-source-controlled configuration from
-[containers/kong/kong.yml](../../containers/kong/kong.yml). Its proxy and Admin
-API are available only on the compose network at `kong:8000` and `kong:8001`;
-no Kong ports are forwarded to the host.
+source-controlled strict configuration from
+[containers/kong/kong.strict.yml](../../containers/kong/kong.strict.yml). Its
+HTTPS proxy is available only on the Compose network at `kong:8443`; its Admin
+API is loopback-bound and no Kong port is forwarded to the host.
 
 The HSA directory mock is also internal-only. It exposes SOAP
 `GetHsaPerson` over HTTPS with mTLS on `hsa-directory-mock:8443`. The adapter
-exposes the app-facing REST contract on `hsa-person-lookup-adapter:8080` and
-uses generated local test certificates to call the mock SOAP endpoint. Kong
+exposes the app-facing REST contract with strict mTLS on
+`hsa-person-lookup-adapter:8443`. Kong
 exposes only `/hsa/person-records/lookup` and routes it to the adapter.
 
-Use `npm run devcontainer:kong:status` from the workspace to verify that the
-devcontainer `app` service can reach the internal Admin API. Use
+Use `npm run devcontainer:kong:status` from the workspace to run Kong's
+container-local health command. Use
 `npm run devcontainer:hsa-mock:status` to check the mock and adapter directly,
 or `npm run devcontainer:hsa-mock:verify` to post the REST person lookup
-through Kong at `http://kong:8000/hsa/person-records/lookup`.
+through Kong at `https://kong:8443/hsa/person-records/lookup`.
 
 Local Compose and devcontainer flows provide the test services for developers.
 PR and release smoke instead install the production archive and attach a
@@ -49,7 +49,11 @@ separately named CI-only Quadlet overlay for Kong, the adapter, and the HSA
 directory mock. That overlay is not part of the production deployment bundle
 or the required production HSA integration path.
 
-![HSA person lookup integration paths](../images/hsa-person-lookup_integration-paths.png)
+The strict flow diagrams in [Technical API and authentication
+flows](#technical-api-and-authentication-flows) are the authoritative diagram
+source for every repository-owned topology. The older static overview image is
+not authoritative because it cannot express isolated role bundles, stable
+identity rejection, rotation, and rollback.
 
 ## Runtime configuration
 
@@ -60,9 +64,8 @@ Production environments should point at the approved environment-specific
 Kong route or integration-platform REST facade. The browser must never receive
 this endpoint or call it directly.
 
-Production lookup, OAuth issuer, explicit token, and adapter SOAP endpoints
-must use HTTPS. Explicit HTTP fixtures remain available only outside
-production. Application readiness validates configured HSA settings without
+All deployed HSA business endpoints use TLS 1.2 or newer and strict mutual
+authentication. Application readiness validates configured HSA settings without
 contacting lookup, discovery, token, or SOAP services; absent optional app HSA
 configuration remains ready. The app and adapter repeat endpoint validation
 immediately before outbound requests. Invalid static configuration therefore
@@ -73,20 +76,31 @@ can be used.
 unless the approved integration path for an environment requires a different
 timeout.
 
-The devcontainer and CI smoke routes are internal to their respective test
-networks and do not configure app-to-Kong mTLS or OAuth2. If
-`HSA_PERSON_LOOKUP_URL` points to an external Kong route or
-integrationsplattform, the app can add app-to-platform authentication without
-changing the URL knob. Set `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH` and
-`HSA_PERSON_LOOKUP_CLIENT_KEY_PATH` for mTLS, optionally with
-`HSA_PERSON_LOOKUP_CA_PATH` and `HSA_PERSON_LOOKUP_TLS_SERVER_NAME`. Set
+When `HSA_PERSON_LOOKUP_URL` is present, it must be HTTPS and the complete
+`HSA_PERSON_LOOKUP_CA_PATH`, `HSA_PERSON_LOOKUP_CLIENT_CERT_PATH`,
+`HSA_PERSON_LOOKUP_CLIENT_KEY_PATH`, and
+`HSA_PERSON_LOOKUP_TLS_SERVER_NAME` tuple is mandatory. Paths are absolute,
+read-only mounts and the server name is one exact DNS identity. An unset URL
+means the live capability is unavailable while the App remains ready and local
+`Kravansvarsperson` reuse continues. Set
 `HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID`,
 `HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET`, and either
 `HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL` or
 `HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL` for OAuth2 client credentials. Optional
 `HSA_PERSON_LOOKUP_OAUTH_SCOPE` and `HSA_PERSON_LOOKUP_OAUTH_AUDIENCE` are
-sent to the token endpoint when configured. Supplying both mTLS and OAuth2
-enables mixed mode.
+sent to the token endpoint when configured. OAuth is additive and its ordinary
+strict HTTPS calls never reuse the HSA client certificate or trust root. When
+`HSA_PERSON_LOOKUP_OAUTH_CA_PATH` is set, startup validates that file as a
+current, self-signed CA with exact CA key usage rather than accepting arbitrary
+readable bytes.
+
+Repository-owned topologies provision three independent trust domains before
+startup and mount only one role-specific bundle into each runtime participant.
+Private keys use mode `0400`; leaves and trust roots use `0444`; CA signing
+keys, staging generations, and previous generations are never runtime-visible.
+Production Compose remains independent of Kong, Adapter, mock, and repository
+test PKI. External deployment owners supply and rotate their own mounted
+material and exact identities.
 
 OIDC discovery must return an issuer equal to the normalized configured issuer
 and a token endpoint on that issuer's origin. If the approved token service is
@@ -145,14 +159,16 @@ These diagrams start after the app verify route has decided that a live HSA
 lookup is needed. They do not replace the browser OIDC login diagrams in
 [auth-how-it-works.md](../security-privacy/auth-how-it-works.md).
 
-![HSA person lookup authentication and transport](../images/hsa-person-lookup_authentication-and-transport.png)
+The Mermaid blocks below are the maintained authoritative diagram source. They
+must change in the same commit as any transport, authentication, or participant
+ordering change.
 
 ### Application to Kong or integration platform
 
 The app authenticates the editor and authorizes the assignment purpose before
 this outbound call. The devcontainer path then posts directly to the internal
-Kong route. External environments can require mTLS, OAuth2 client credentials,
-or both before accepting the same REST request.
+Kong route. External environments always require mTLS and can additionally
+require OAuth2 client credentials before accepting the same REST request.
 
 <!-- markdownlint-disable MD013 -->
 ```mermaid
@@ -174,10 +190,8 @@ sequenceDiagram
         Token-->>Client: access_token
     end
 
-    opt mTLS configured
-        Client->>Kong: TLS handshake with client certificate
-        Kong-->>Client: TLS accepted
-    end
+    Client->>Kong: TLS handshake with exact client certificate
+    Kong-->>Client: TLS and client identity accepted
 
     alt OAuth2 token is present
         Client->>Kong: POST HSA_PERSON_LOOKUP_URL { hsaId } + Bearer token
@@ -193,7 +207,7 @@ sequenceDiagram
 ### Kong, adapter and HSA directory
 
 The repository-supported devcontainer and CI-only Quadlet overlay keep Kong
-DB-less and plain. Kong exposes only `POST /hsa/person-records/lookup` and
+DB-less and strict. Kong exposes only HTTPS `POST /hsa/person-records/lookup` and
 routes that request to `hsa-person-lookup-adapter`. The adapter owns the
 REST-to-SOAP transformation and authenticates to the HSA directory with an
 HSAWS client certificate. In dev and release smoke the directory is
@@ -207,7 +221,7 @@ sequenceDiagram
     participant Adapter as hsa-person-lookup-adapter
     participant HSA as HSA-katalog<br/>(mock or production)
 
-    Kong->>Adapter: POST /hsa/person-records/lookup { hsaId }
+    Kong->>Adapter: mTLS + POST /hsa/person-records/lookup { hsaId }
     Adapter->>Adapter: Validate JSON and build SOAP request
     Adapter->>HSA: mTLS handshake with HSAWS client certificate
     HSA-->>Adapter: Client certificate accepted
@@ -223,9 +237,12 @@ sequenceDiagram
     else Conflicting HSA person records
         HSA-->>Adapter: SOAP 200 conflicting userInformation records
         Adapter-->>Kong: 409 { code: "conflict" }
-    else SOAP fault, auth failure or timeout
+    else SOAP fault or auth failure
         HSA-->>Adapter: SOAP fault, 401, 403 or no response
         Adapter-->>Kong: 503 { code: "service_unavailable" }
+    else SOAP timeout
+        HSA-->>Adapter: no response before the bounded deadline
+        Adapter-->>Kong: 504 { code: "timeout" }
     end
 ```
 <!-- markdownlint-enable MD013 -->
@@ -288,6 +305,23 @@ persistence: it validates the signed evidence, then upserts
 transaction. Any failure rolls back both changes, preventing orphan person
 rows and partial assignments. Removing an assignment does not require new
 evidence; every newly added identity does.
+
+## Rotation and rollback
+
+Repository-owned topologies rotate one trust domain at a time. Stop clients
+before servers (`App`, Kong, Adapter, mock), run `rotate <trust-domain>` and
+`deploy` with the provisioner, then start servers before clients (mock,
+Adapter, Kong, App). Recreate every affected process because TLS snapshots are
+loaded once at startup. Validate authenticated readiness and a real lookup
+before `finalize`. If validation fails, repeat the stop order, run `rollback`
+and `deploy`, restart in server-first order, and validate the restored
+generation. Supported domains are `app-to-kong`, `kong-to-adapter`, and
+`adapter-to-hsa`; do not rotate multiple domains in one promotion.
+
+The required `HSA mTLS topology` workflow exercises every domain against
+current-commit images. Container release smoke performs the same endpoint
+ordering for App-to-Kong and verifies both the promoted and restored
+generation through authenticated application readiness.
 
 ## Related decisions
 

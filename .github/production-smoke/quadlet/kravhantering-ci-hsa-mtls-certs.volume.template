@@ -1,5 +1,0 @@
-[Unit]
-Description=Kravhantering CI-only HSA mTLS certificate volume
-
-[Volume]
-VolumeName=kravhantering-ci-hsa-mtls-certs

@@ -11,7 +11,8 @@ servers:
     description: Environment-specific Kong or integrationsplattform endpoint
 security:
   - mtlsClientCertificate: []
-  - oauthClientCredentials: []
+  - mtlsClientCertificate: []
+    oauthClientCredentials: []
 paths:
   /hsa/person-records/lookup:
     post:
@@ -47,13 +48,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationError'
         '401':
-          description: Optional app-to-platform authentication failed.
+          description: Mandatory mTLS or optional additive OAuth authentication failed.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthError'
         '403':
-          description: Optional app-to-platform authorization failed.
+          description: Certificate identity or optional additive OAuth authorization failed.
           content:
             application/json:
               schema:
@@ -87,13 +88,14 @@ components:
     mtlsClientCertificate:
       type: mutualTLS
       description: >
-        Client certificate authentication used when the integration platform
-        protects the facade with app-to-platform mTLS.
+        Mandatory client certificate authentication. The peer validates the
+        issuing trust domain, single-purpose certificate and exact stable
+        client identity.
     oauthClientCredentials:
       type: oauth2
       description: >
-        OAuth2 client credentials used when the integration platform protects
-        the facade with bearer-token authentication.
+        Optional OAuth2 client credentials used only in addition to mandatory
+        mTLS; OAuth never replaces certificate authentication.
       flows:
         clientCredentials:
           tokenUrl: https://idp.example.test/oauth2/token

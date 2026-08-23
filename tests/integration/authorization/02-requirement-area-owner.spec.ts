@@ -37,6 +37,9 @@ test('AUTHZ-02/AUTH-10/AUTH-11/ADMIN-13: requirement area owners can manage thei
 
   try {
     await seedAuthorizationResponsibilityPeople()
+    await page.route('**/api/hsa-person-lookup-capability', route =>
+      route.fulfill({ body: '{"available":true}', status: 200 }),
+    )
     await page.route(
       '**/api/requirement-responsibility-people/verify',
       async route => {

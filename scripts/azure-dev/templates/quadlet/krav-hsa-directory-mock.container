@@ -1,15 +1,18 @@
 [Unit]
 Description=Kravhantering HSA directory SOAP mock
-Requires=krav-support-network.service krav-hsa-mtls-certs-volume.service krav-hsa-mtls-cert-generator.service
-After=krav-support-network.service krav-hsa-mtls-cert-generator.service
+Requires=krav-support-network.service krav-hsa-mtls-provisioner.service
+After=krav-support-network.service krav-hsa-mtls-provisioner.service
 
 [Container]
 ContainerName=hsa-directory-mock
 Image=localhost/kravhantering/hsa-directory-mock:local
 Network=krav-support.network
-Volume=krav-hsa-mtls-certs.volume:/run/hsa-mtls:ro,Z
-Environment=PORT=8443
-HealthCmd=node --input-type=module -e "process.env.NODE_TLS_REJECT_UNAUTHORIZED='0'; const response = await fetch('https://127.0.0.1:8443/health'); if (!response.ok) process.exit(1);"
+Volume=krav-hsa-mtls-mock.volume:/run/kravhantering/hsa-mtls:ro,Z
+Environment=HSA_MOCK_TLS_CA_PATH=/run/kravhantering/hsa-mtls/adapter-client-ca.crt
+Environment=HSA_MOCK_TLS_CERT_PATH=/run/kravhantering/hsa-mtls/mock-server.crt
+Environment=HSA_MOCK_TLS_EXPECTED_CLIENT_SERIAL_NUMBER=SE5560000000-MOCK001
+Environment=HSA_MOCK_TLS_KEY_PATH=/run/kravhantering/hsa-mtls/mock-server.key
+HealthCmd=node --input-type=module -e "const response = await fetch('http://127.0.0.1:8081/health'); if (!response.ok) process.exit(1);"
 HealthInterval=10s
 HealthRetries=12
 HealthStartPeriod=10s

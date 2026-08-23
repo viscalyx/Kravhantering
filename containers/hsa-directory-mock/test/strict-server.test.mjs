@@ -9,7 +9,7 @@ import {
   createInvalidRuntimeCertificateFixture,
   createRuntimeCertificateFixture,
 } from '../../hsa-mtls-provisioner/test/runtime-fixture.mjs'
-import { loadFixtures } from '../src/server.mjs'
+import { loadFixtures } from '../src/soap-fixture.mjs'
 import {
   createStrictMockBusinessServer,
   createStrictMockHealthServer,
@@ -75,7 +75,7 @@ describe('strict HSA directory mock configuration', () => {
     assert.doesNotMatch(JSON.stringify(events), /hsaId|givenName|person/u)
   })
 
-  it('is an executable fail-closed dormant entrypoint', () => {
+  it('is an executable fail-closed runtime entrypoint', () => {
     const malformed = path.resolve('src/strict-server.mjs')
     for (const [env, diagnostic] of [
       [{ PATH: process.env.PATH }, 'mock_config_incomplete'],

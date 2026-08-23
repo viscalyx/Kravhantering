@@ -7,7 +7,7 @@ import {
   mapSoapPeopleToRest,
   parseGetHsaPersonResponse,
   soapRequestXml,
-} from './server.mjs'
+} from './soap-contract.mjs'
 import { loadStrictTlsMaterial, StrictTlsError } from './strict-tls.mjs'
 
 const CORRELATION_HEADER = 'x-kravhantering-hsa-correlation-id'
@@ -294,13 +294,25 @@ export function createStrictAdapterBusinessServer(
           jsonResponse(res, 400, { code: 'invalid_correlation' })
           return
         }
-        const payload = JSON.parse(await readBody(req))
+        let payload
+        try {
+          payload = JSON.parse(await readBody(req))
+        } catch {
+          jsonResponse(res, 400, { code: 'validation' })
+          return
+        }
         const hsaId =
           typeof payload?.hsaId === 'string' ? payload.hsaId.trim() : ''
         if (!hsaId) {
           jsonResponse(res, 400, { code: 'validation' })
           return
         }
+        console.log(
+          JSON.stringify({
+            correlation_id: correlation,
+            event: 'hsa_adapter_lookup_forwarded',
+          }),
+        )
         const response = await postSoap(
           soapRequestXml(hsaId, {
             messageId: correlation,
@@ -331,7 +343,14 @@ export function createStrictAdapterBusinessServer(
           }
           throw error
         }
-      } catch {
+      } catch (error) {
+        if (error?.message === 'soap_timeout') {
+          jsonResponse(res, 504, {
+            code: 'timeout',
+            error: 'HSA person lookup timed out.',
+          })
+          return
+        }
         jsonResponse(res, 503, {
           code: 'service_unavailable',
           error: 'HSA person lookup adapter is unavailable.',

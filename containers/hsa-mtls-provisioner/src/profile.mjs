@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { fail } from './errors.mjs'
 
 const TRUST_DOMAIN_NAMES = ['app-to-kong', 'kong-to-adapter', 'adapter-to-hsa']
-const RUNTIME_ROLES = ['app', 'kong', 'adapter', 'mock']
+const RUNTIME_ROLES = ['app', 'kong', 'adapter', 'mock', 'probe']
 const PRIVATE_KEY_PATTERN = /-private-key$/
 const CERTIFICATE_PATTERN = /-(?:certificate|ca)$/
 
@@ -213,6 +213,13 @@ function validateProfile(profile) {
       materialIds,
       `${location}.client`,
     )
+    assertLeaf(
+      domain.wrongClient,
+      'client',
+      roles,
+      materialIds,
+      `${location}.wrongClient`,
+    )
     materialOwners.set(
       domain.server.certificateMaterialId,
       domain.server.runtimeRole,
@@ -228,6 +235,14 @@ function validateProfile(profile) {
     materialOwners.set(
       domain.client.privateKeyMaterialId,
       domain.client.runtimeRole,
+    )
+    materialOwners.set(
+      domain.wrongClient.certificateMaterialId,
+      domain.wrongClient.runtimeRole,
+    )
+    materialOwners.set(
+      domain.wrongClient.privateKeyMaterialId,
+      domain.wrongClient.runtimeRole,
     )
   }
 

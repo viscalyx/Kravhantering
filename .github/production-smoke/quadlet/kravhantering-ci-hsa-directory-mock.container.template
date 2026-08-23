@@ -1,18 +1,25 @@
 [Unit]
 Description=Kravhantering CI-only HSA directory mock
-Requires=kravhantering-ci-hsa-mtls-cert-generator.service
-After=kravhantering-ci-hsa-mtls-cert-generator.service
+Requires=kravhantering-ci-hsa-mtls-provisioner.service
+After=kravhantering-ci-hsa-mtls-provisioner.service
 Before=kravhantering-ci-hsa-person-lookup-adapter.service
 
 [Container]
 ContainerName=kravhantering-ci-hsa-directory-mock
 Image=@@HSA_DIRECTORY_MOCK_IMAGE_REF@@
-Environment=PORT=8443
+Environment=HSA_MOCK_TLS_CA_PATH=/run/kravhantering/hsa-mtls/adapter-client-ca.crt
+Environment=HSA_MOCK_TLS_CERT_PATH=/run/kravhantering/hsa-mtls/mock-server.crt
+Environment=HSA_MOCK_TLS_EXPECTED_CLIENT_SERIAL_NUMBER=SE5560000000-MOCK001
+Environment=HSA_MOCK_TLS_KEY_PATH=/run/kravhantering/hsa-mtls/mock-server.key
 Network=kravhantering-single-node-egress.network
 PodmanArgs=--network-alias=hsa-directory-mock
-Volume=kravhantering-ci-hsa-mtls-certs.volume:/run/hsa-mtls:ro
+Volume=kravhantering-ci-hsa-mtls-mock.volume:/run/kravhantering/hsa-mtls:ro,Z
 NoNewPrivileges=true
 DropCapability=all
+HealthCmd=node --input-type=module -e "const response = await fetch('http://127.0.0.1:8081/health'); if (!response.ok) process.exit(1);"
+HealthInterval=5s
+HealthRetries=24
+HealthTimeout=3s
 
 [Service]
 Restart=on-failure

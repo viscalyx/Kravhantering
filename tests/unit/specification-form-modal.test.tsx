@@ -169,6 +169,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return new Promise(() => undefined)
       }
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
       if (url.endsWith('/co-authors')) {
         return new Promise(() => undefined)
       }
@@ -448,6 +451,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
       if (url === '/api/requirement-responsibility-people/verify') {
         return Promise.resolve(verificationResponse('SE5560000001-rita1'))
       }
@@ -643,6 +649,9 @@ describe('SpecificationFormModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
       if (url === '/api/requirement-responsibility-people/verify') {
         return Promise.resolve(verificationResponse('SE5560000001-rita1'))
       }
@@ -724,6 +733,9 @@ describe('SpecificationFormModal', () => {
       }
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
       }
       if (url === '/api/requirement-responsibility-people/verify') {
         return Promise.resolve(verificationResponse('SE5560000001-rita1'))
@@ -871,6 +883,9 @@ describe('SpecificationFormModal', () => {
       }
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
       }
       if (url === '/api/requirement-responsibility-people/verify') {
         return Promise.resolve(verificationResponse('SE5560000001-rita1'))

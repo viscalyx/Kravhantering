@@ -1,0 +1,96 @@
+name: kravhantering-hsa-mtls-topology
+
+services:
+  provisioner:
+    build:
+      context: ../..
+      dockerfile: containers/hsa-mtls-provisioner/Dockerfile
+    command: ["activate", "--lifetime", "ephemeral"]
+    environment:
+      HSA_MTLS_INCLUDE_PROBES: "true"
+    user: "0:0"
+    tmpfs:
+      - /run/kravhantering/hsa-mtls-issuer:mode=0700
+    volumes:
+      - state:/var/lib/kravhantering/hsa-mtls
+      - app-material:/run/kravhantering/hsa-mtls-runtime/app
+      - kong-material:/run/kravhantering/hsa-mtls-runtime/kong
+      - adapter-material:/run/kravhantering/hsa-mtls-runtime/adapter
+      - mock-material:/run/kravhantering/hsa-mtls-runtime/mock
+      - probe-material:/run/kravhantering/hsa-mtls-runtime/probe
+
+  mock:
+    build:
+      context: ../hsa-directory-mock
+    depends_on:
+      provisioner:
+        condition: service_completed_successfully
+    environment:
+      HSA_MOCK_TLS_CA_PATH: /run/kravhantering/hsa-mtls/adapter-client-ca.crt
+      HSA_MOCK_TLS_CERT_PATH: /run/kravhantering/hsa-mtls/mock-server.crt
+      HSA_MOCK_TLS_EXPECTED_CLIENT_SERIAL_NUMBER: SE5560000000-MOCK001
+      HSA_MOCK_TLS_KEY_PATH: /run/kravhantering/hsa-mtls/mock-server.key
+    networks:
+      default:
+        aliases: [hsa-directory-mock]
+    volumes:
+      - mock-material:/run/kravhantering/hsa-mtls:ro
+    healthcheck:
+      test: ["CMD", "node", "--input-type=module", "-e", "const r=await fetch('http://127.0.0.1:8081/health');if(!r.ok)process.exit(1)"]
+
+  adapter:
+    build:
+      context: ../hsa-person-lookup-adapter
+    depends_on:
+      mock:
+        condition: service_healthy
+    environment:
+      HSA_ADAPTER_INGRESS_CA_PATH: /run/kravhantering/hsa-mtls/kong-client-ca.crt
+      HSA_ADAPTER_INGRESS_CERT_PATH: /run/kravhantering/hsa-mtls/adapter-server.crt
+      HSA_ADAPTER_INGRESS_EXPECTED_CLIENT_SUBJECT: CN=kravhantering-kong
+      HSA_ADAPTER_INGRESS_KEY_PATH: /run/kravhantering/hsa-mtls/adapter-server.key
+      HSA_SOAP_CA_PATH: /run/kravhantering/hsa-mtls/hsa-server-ca.crt
+      HSA_SOAP_CLIENT_CERT_PATH: /run/kravhantering/hsa-mtls/adapter-client.crt
+      HSA_SOAP_CLIENT_KEY_PATH: /run/kravhantering/hsa-mtls/adapter-client.key
+      HSA_SOAP_ENDPOINT_URL: https://mock:8443/svr-hsaws2/hsaws
+      HSA_SOAP_TLS_SERVER_NAME: hsa-directory-mock
+    networks:
+      default:
+        aliases: [hsa-person-lookup-adapter]
+    volumes:
+      - adapter-material:/run/kravhantering/hsa-mtls:ro
+    healthcheck:
+      test: ["CMD", "node", "--input-type=module", "-e", "const r=await fetch('http://127.0.0.1:8081/health');if(!r.ok)process.exit(1)"]
+
+  kong:
+    image: docker.io/kong/kong-gateway:3.15.0.2-20260721-ubuntu
+    depends_on:
+      adapter:
+        condition: service_healthy
+    env_file: ../kong/strict-runtime.env
+    volumes:
+      - ../kong/kong.strict.yml:/kong/declarative/kong.strict.yml:ro
+      - ../kong/strict-app-client-subject.conf:/kong/includes/strict-app-client-subject.conf:ro
+      - kong-material:/run/kravhantering/hsa-mtls:ro
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+
+  test:
+    build:
+      context: ../..
+      dockerfile: containers/hsa-mtls-topology/Dockerfile
+    depends_on:
+      kong:
+        condition: service_healthy
+    volumes:
+      - app-material:/runtime/app:ro
+      - adapter-material:/runtime/adapter:ro
+      - probe-material:/runtime/probe:ro
+
+volumes:
+  state:
+  app-material:
+  kong-material:
+  adapter-material:
+  mock-material:
+  probe-material:

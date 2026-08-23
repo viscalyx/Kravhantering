@@ -87,9 +87,11 @@ async function verifyLeadIn(
   dialog: HTMLElement,
   displayName = 'Verified Lead',
 ) {
-  fireEvent.click(
-    within(dialog).getByRole('button', { name: /common\.fetchHsaPerson/ }),
-  )
+  const verifyButton = within(dialog).getByRole('button', {
+    name: /common\.fetchHsaPerson/,
+  })
+  await waitFor(() => expect(verifyButton).toBeEnabled())
+  fireEvent.click(verifyButton)
   await within(dialog).findByText(new RegExp(displayName))
 }
 
@@ -148,6 +150,8 @@ function setupRequirementPackageMocks(
     const urlString = requestUrl(url)
     if (urlString === '/api/auth/me') return okJson(currentAuthMe)
     if (urlString === '/api/hsa-id-prefixes') return okJson(hsaIdPrefixPayload)
+    if (urlString === '/api/hsa-person-lookup-capability')
+      return okJson({ available: true })
     if (urlString.startsWith('/api/requirement-packages?')) {
       return okJson({ requirementPackages: sampleRequirementPackages })
     }
@@ -180,6 +184,8 @@ describe('RequirementPackagesClient', () => {
       if (urlString === '/api/auth/me') return okJson(currentAuthMe)
       if (urlString === '/api/hsa-id-prefixes')
         return okJson(hsaIdPrefixPayload)
+      if (urlString === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (urlString.startsWith('/api/requirement-packages?')) {
         return okJson({ requirementPackages: sampleRequirementPackages })
       }
@@ -907,6 +913,8 @@ describe('RequirementPackagesClient', () => {
       if (urlString === '/api/auth/me') return okJson(currentAuthMe)
       if (urlString === '/api/hsa-id-prefixes')
         return okJson(hsaIdPrefixPayload)
+      if (urlString === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (urlString === '/api/requirement-responsibility-people/verify')
         return verificationResponse('SE5560000001-new1', 'New Lead')
       if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
@@ -985,6 +993,8 @@ describe('RequirementPackagesClient', () => {
       if (urlString === '/api/auth/me') return okJson(currentAuthMe)
       if (urlString === '/api/hsa-id-prefixes')
         return okJson(hsaIdPrefixPayload)
+      if (urlString === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (urlString === '/api/requirement-responsibility-people/verify')
         return verificationResponse('SE5560000001-new1')
       if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')
@@ -1027,6 +1037,8 @@ describe('RequirementPackagesClient', () => {
       if (urlString === '/api/auth/me') return okJson(nonAdminAuthMe)
       if (urlString === '/api/hsa-id-prefixes')
         return okJson(hsaIdPrefixPayload)
+      if (urlString === '/api/hsa-person-lookup-capability')
+        return okJson({ available: true })
       if (urlString === '/api/requirement-responsibility-people/verify')
         return verificationResponse('SE5560000001-next1')
       if (urlString === '/api/requirement-packages/1' && init?.method === 'PUT')

@@ -62,7 +62,7 @@ describe('strict HSA adapter configuration', () => {
     }
   })
 
-  it('is an executable fail-closed dormant entrypoint', () => {
+  it('is an executable fail-closed runtime entrypoint', () => {
     const malformed = path.resolve('src/strict-server.mjs')
     for (const [env, diagnostic] of [
       [{ PATH: process.env.PATH }, 'adapter_config_incomplete'],
@@ -620,7 +620,7 @@ describe('strict HSA adapter network boundary', () => {
       )
       assert.equal(
         (await strictRequest(port, fixture, { body: '{' })).status,
-        503,
+        400,
       )
       const unavailable = await strictRequest(port, fixture)
       assert.equal(unavailable.status, 503)
@@ -629,6 +629,25 @@ describe('strict HSA adapter network boundary', () => {
         error: 'HSA person lookup adapter is unavailable.',
       })
       assert.doesNotMatch(unavailable.body, /SSL routines/u)
+    } finally {
+      await close(server)
+    }
+  })
+
+  it('maps an upstream timeout to the bounded OpenAPI 504 outcome', async () => {
+    const server = createStrictAdapterBusinessServer(snapshot, {
+      postSoap: async () => {
+        throw new Error('soap_timeout')
+      },
+    })
+    const port = await listen(server)
+    try {
+      const response = await strictRequest(port, fixture)
+      assert.equal(response.status, 504)
+      assert.deepEqual(JSON.parse(response.body), {
+        code: 'timeout',
+        error: 'HSA person lookup timed out.',
+      })
     } finally {
       await close(server)
     }

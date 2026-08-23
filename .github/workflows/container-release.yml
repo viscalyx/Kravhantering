@@ -28,6 +28,8 @@ jobs:
     env:
       KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.1-0
       KONG_IMAGE_REF: docker.io/kong/kong-gateway:3.15.0.2-20260721-ubuntu
+      HSA_MTLS_PROVISIONER_IMAGE: localhost/kravhantering/hsa-mtls-provisioner
+      HSA_MTLS_PROVISIONER_CANDIDATE_ARTIFACT: tmp/container-release-artifacts/candidates/hsa-mtls-provisioner.oci.tar
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       NGINX_IMAGE_REF: docker.io/library/nginx:1.31.3-alpine
       SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU7-ubuntu-24.04
@@ -80,6 +82,10 @@ jobs:
             --gitversion-json tmp/container-release-artifacts/metadata/gitversion.json \
             --output tmp/container-release-artifacts/metadata/release-plan.json \
             --github-env "${GITHUB_ENV}"
+
+      - name: Compute HSA mTLS provisioner candidate reference
+        run: |
+          echo "HSA_MTLS_PROVISIONER_CANDIDATE_REF=${HSA_MTLS_PROVISIONER_IMAGE}:${RELEASE_VERSION}" >> "${GITHUB_ENV}"
 
       - name: Sync merged PR operator upgrade notes
         if: env.RELEASE_CREATE_GITHUB_RELEASE == 'true' && env.RELEASE_PRERELEASE == 'true'
@@ -223,6 +229,23 @@ jobs:
             --output "type=oci,dest=${HSA_PERSON_LOOKUP_ADAPTER_CANDIDATE_ARTIFACT}" \
             containers/hsa-person-lookup-adapter
 
+      - name: Build HSA mTLS provisioner candidate OCI artifact
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --file containers/hsa-mtls-provisioner/Dockerfile \
+            --platform linux/amd64 \
+            --metadata-file tmp/container-release-artifacts/metadata/hsa-mtls-provisioner-buildx.json \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.description=Kravhantering HSA test-PKI provisioner" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+            --provenance=false \
+            --tag "${HSA_MTLS_PROVISIONER_CANDIDATE_REF}" \
+            --output "type=oci,dest=${HSA_MTLS_PROVISIONER_CANDIDATE_ARTIFACT}" \
+            .
+          echo "HSA_MTLS_PROVISIONER_IMAGE_ID=$(jq -er '.\"containerimage.config.digest\"' tmp/container-release-artifacts/metadata/hsa-mtls-provisioner-buildx.json)" >> "${GITHUB_ENV}"
+
       - name: Record exact candidate image identities
         run: |
           node scripts/release/container-release.mjs identities \
@@ -237,6 +260,8 @@ jobs:
             --hsa-directory-mock-artifact "${HSA_DIRECTORY_MOCK_CANDIDATE_ARTIFACT}" \
             --hsa-person-lookup-adapter-metadata tmp/container-release-artifacts/metadata/hsa-person-lookup-adapter-buildx.json \
             --hsa-person-lookup-adapter-artifact "${HSA_PERSON_LOOKUP_ADAPTER_CANDIDATE_ARTIFACT}" \
+            --hsa-mtls-provisioner-metadata tmp/container-release-artifacts/metadata/hsa-mtls-provisioner-buildx.json \
+            --hsa-mtls-provisioner-artifact "${HSA_MTLS_PROVISIONER_CANDIDATE_ARTIFACT}" \
             --output tmp/container-release-artifacts/metadata/release-metadata.json \
             --github-env "${GITHUB_ENV}"
 
@@ -266,7 +291,12 @@ jobs:
             --hsa-person-lookup-adapter-tag "${HSA_PERSON_LOOKUP_ADAPTER_PRIMARY_TAG_NAME}" \
             --hsa-person-lookup-adapter-manifest-digest "${HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST}" \
             --hsa-person-lookup-adapter-image-id "${HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID}" \
-            --hsa-person-lookup-adapter-source ghcr-release
+            --hsa-person-lookup-adapter-source ghcr-release \
+            --hsa-mtls-provisioner-image "${HSA_MTLS_PROVISIONER_IMAGE}" \
+            --hsa-mtls-provisioner-tag "${HSA_MTLS_PROVISIONER_PRIMARY_TAG_NAME}" \
+            --hsa-mtls-provisioner-manifest-digest "${HSA_MTLS_PROVISIONER_MANIFEST_DIGEST}" \
+            --hsa-mtls-provisioner-image-id "${HSA_MTLS_PROVISIONER_IMAGE_ID}" \
+            --hsa-mtls-provisioner-source ghcr-release
           node scripts/containers/generate-hsa-integration-support-lock.mjs check
 
       - name: Generate release test support lock
@@ -289,6 +319,7 @@ jobs:
           db-job: oci-archive:${{ env.DB_JOB_CANDIDATE_ARTIFACT }}
           demo-seed: oci-archive:${{ env.DEMO_SEED_CANDIDATE_ARTIFACT }}
           hsa-directory-mock: oci-archive:${{ env.HSA_DIRECTORY_MOCK_CANDIDATE_ARTIFACT }}
+          hsa-mtls-provisioner: oci-archive:${{ env.HSA_MTLS_PROVISIONER_CANDIDATE_ARTIFACT }}
           hsa-person-lookup-adapter: oci-archive:${{ env.HSA_PERSON_LOOKUP_ADAPTER_CANDIDATE_ARTIFACT }}
           metadata: tmp/container-release-artifacts/metadata/release-metadata.json
 
@@ -328,6 +359,8 @@ jobs:
           DEMO_SEED_OCI_ARCHIVE: ${{ env.DEMO_SEED_CANDIDATE_ARTIFACT }}
           HSA_DIRECTORY_MOCK_IMAGE_REF: ${{ env.HSA_DIRECTORY_MOCK_CANDIDATE_REF }}
           HSA_DIRECTORY_MOCK_OCI_ARCHIVE: ${{ env.HSA_DIRECTORY_MOCK_CANDIDATE_ARTIFACT }}
+          HSA_MTLS_PROVISIONER_IMAGE_REF: ${{ env.HSA_MTLS_PROVISIONER_CANDIDATE_REF }}
+          HSA_MTLS_PROVISIONER_OCI_ARCHIVE: ${{ env.HSA_MTLS_PROVISIONER_CANDIDATE_ARTIFACT }}
           HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_CANDIDATE_REF }}
           HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_CANDIDATE_ARTIFACT }}
         run: |
@@ -409,6 +442,14 @@ jobs:
           subject-digest: ${{ env.HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST }}
           push-to-registry: false
 
+      - name: Attest HSA mTLS provisioner provenance
+        if: success()
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.HSA_MTLS_PROVISIONER_IMAGE }}
+          subject-digest: ${{ env.HSA_MTLS_PROVISIONER_MANIFEST_DIGEST }}
+          push-to-registry: false
+
       - name: Attest app-runtime SBOM
         if: success()
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -454,13 +495,22 @@ jobs:
           sbom-path: tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json
           push-to-registry: false
 
+      - name: Attest HSA mTLS provisioner SBOM
+        if: success()
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.HSA_MTLS_PROVISIONER_IMAGE }}
+          subject-digest: ${{ env.HSA_MTLS_PROVISIONER_MANIFEST_DIGEST }}
+          sbom-path: tmp/container-release-artifacts/sbom/hsa-mtls-provisioner.spdx.json
+          push-to-registry: false
+
       - name: Verify final artifact attestations
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for ref in "${APP_RUNTIME_MANIFEST_DIGEST_REF}" "${DB_JOB_MANIFEST_DIGEST_REF}" "${DEMO_SEED_MANIFEST_DIGEST_REF}" "${HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF}" "${HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST_REF}"; do
+          for ref in "${APP_RUNTIME_MANIFEST_DIGEST_REF}" "${DB_JOB_MANIFEST_DIGEST_REF}" "${DEMO_SEED_MANIFEST_DIGEST_REF}" "${HSA_DIRECTORY_MOCK_MANIFEST_DIGEST_REF}" "${HSA_MTLS_PROVISIONER_MANIFEST_DIGEST_REF}" "${HSA_PERSON_LOOKUP_ADAPTER_MANIFEST_DIGEST_REF}"; do
             gh attestation verify "oci://${ref}" \
               --repo "${GITHUB_REPOSITORY}" \
               --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/container-release.yml"
@@ -489,10 +539,12 @@ jobs:
             tmp/container-release-artifacts/reports/db-job.json \
             tmp/container-release-artifacts/reports/demo-seed.json \
             tmp/container-release-artifacts/reports/hsa-directory-mock.json \
+            tmp/container-release-artifacts/reports/hsa-mtls-provisioner.json \
             tmp/container-release-artifacts/reports/hsa-person-lookup-adapter.json \
             tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
             tmp/container-release-artifacts/sbom/db-job.spdx.json \
             tmp/container-release-artifacts/sbom/demo-seed.spdx.json \
+            tmp/container-release-artifacts/sbom/hsa-mtls-provisioner.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json || true
 
@@ -755,10 +807,12 @@ jobs:
             tmp/container-release-artifacts/reports/db-job.json \
             tmp/container-release-artifacts/reports/demo-seed.json \
             tmp/container-release-artifacts/reports/hsa-directory-mock.json \
+            tmp/container-release-artifacts/reports/hsa-mtls-provisioner.json \
             tmp/container-release-artifacts/reports/hsa-person-lookup-adapter.json \
             tmp/container-release-artifacts/sbom/app-runtime.spdx.json \
             tmp/container-release-artifacts/sbom/db-job.spdx.json \
             tmp/container-release-artifacts/sbom/demo-seed.spdx.json \
+            tmp/container-release-artifacts/sbom/hsa-mtls-provisioner.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-person-lookup-adapter.spdx.json \
             tmp/container-release-artifacts/sbom/hsa-directory-mock.spdx.json \
             tmp/container-release-artifacts/kravhantering-production-deploy-${RELEASE_VERSION}.tar.gz \

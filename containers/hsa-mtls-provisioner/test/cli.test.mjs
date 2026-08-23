@@ -25,12 +25,21 @@ describe('provisioner CLI', () => {
       args: ['app-to-kong'],
       command: 'rotate',
       options: {
+        includeProbes: false,
         issuerRoot: '/run/issuer',
         lifetime: 'ephemeral',
         profilePath: '/profile.json',
         rootDir: '/runtime/generations',
+        runtimeRoot: '/run/kravhantering/hsa-mtls-runtime',
       },
     })
+  })
+
+  it('requires an explicit test-only switch before materializing probes', () => {
+    assert.equal(
+      parseCli(['deploy', '--include-probes'], {}).options.includeProbes,
+      true,
+    )
   })
 
   it('rejects options without values using a stable category', () => {

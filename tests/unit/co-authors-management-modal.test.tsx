@@ -100,6 +100,9 @@ describe('CoAuthorsManagementModal', () => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
       }
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
       if (url === '/api/requirements-specifications/1/co-authors') {
         return coAuthorsRequest.promise
       }
@@ -130,6 +133,9 @@ describe('CoAuthorsManagementModal', () => {
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
       }
       if (url === '/api/requirements-specifications/1/co-authors') {
         if (opts?.method === 'PUT') return Promise.resolve(okJson({ ok: true }))
@@ -216,6 +222,9 @@ describe('CoAuthorsManagementModal', () => {
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
       }
       if (url === '/api/requirements-specifications/1/co-authors') {
         if (opts?.method === 'PUT') {

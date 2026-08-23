@@ -770,24 +770,24 @@ only to loopback:
 ```text
 127.0.0.1:1433   SQL Server
 127.0.0.1:8080   Keycloak
-127.0.0.1:18000  Kong HSA proxy
+127.0.0.1:18443  Kong HSA mTLS proxy
 ```
 
 Do not add Azure NSG rules for support ports. Workstation access goes through
 OpenSSH or VS Code Remote SSH port forwarding.
 
-SQL Server data and generated HSA mTLS certificates live in named Podman
-volumes. Bootstrap may remove and recreate containers while preserving those
-volumes. The SQL Server volume uses Podman's `U` volume option and
+SQL Server data, HSA generation state, and each role-specific HSA runtime
+bundle live in separate Podman volumes; the App role bundle is materialized in
+the ignored workspace state used by the host App process. Issuer workspaces are
+tmpfs-only. Bootstrap may remove and recreate containers while preserving the
+selected generation. The SQL Server volume uses Podman's `U` volume option and
 `HOME=/var/opt/mssql` so the image user has a writable home and system
 directory. Kong uses `KONG_PREFIX=/tmp/kong` so rootless runtime state is
 writable.
 
 Kong uses the checked-out repository file
-`/workspace/containers/kong/kong.yml`. Bootstrap verifies route
-`hsa-directory-person-lookup-rest` and adds `protocols: [http, https]` only
-when missing. This keeps older workspaces repairable without uploading a local
-copy of `kong.yml` from the operator machine.
+`/workspace/containers/kong/kong.strict.yml`. The route, both proxy legs, and
+the SOAP leg are HTTPS-only and require the expected role identity.
 
 ## Managed App Environment
 
@@ -796,7 +796,8 @@ writes only a managed block for Azure VM support-service overrides. The required
 HSA lookup value is:
 
 ```env
-HSA_PERSON_LOOKUP_URL=http://127.0.0.1:18000/hsa/person-records/lookup
+HSA_PERSON_LOOKUP_URL=https://127.0.0.1:18443/hsa/person-records/lookup
+HSA_PERSON_LOOKUP_TLS_SERVER_NAME=kong
 ```
 
 Do not replace the whole file. Contributors adding VM-specific variables must

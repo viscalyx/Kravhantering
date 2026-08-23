@@ -195,6 +195,7 @@ function renderHsaSmokeConfiguration() {
     CONFIG_ROOT="$3"
     INSTALL_ROOT=/opt/kravhantering
     HSA_DIRECTORY_MOCK_IMAGE_REF=test/hsa-directory-mock:latest
+    HSA_MTLS_PROVISIONER_IMAGE_REF=test/hsa-mtls-provisioner:latest
     HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF=test/hsa-person-lookup-adapter:latest
     KONG_IMAGE_REF=test/kong:latest
     configure_smoke_app_env \
@@ -231,8 +232,7 @@ function renderHsaSmokeConfiguration() {
 
 describe('production smoke output', () => {
   it('renders the CI-only HSA route with verified HTTPS', () => {
-    const { appEnv, configRoot, kongUnit, result } =
-      renderHsaSmokeConfiguration()
+    const { appEnv, kongUnit, result } = renderHsaSmokeConfiguration()
 
     expect(result.stderr).toBe('')
     expect(result.status).toBe(0)
@@ -247,10 +247,13 @@ describe('production smoke output', () => {
       'Environment="KONG_PROXY_LISTEN=0.0.0.0:8443 ssl"',
     )
     expect(kongUnit).toContain(
-      'Environment=KONG_SSL_CERT=/run/kong-tls/server.crt',
+      'Environment=KONG_SSL_CERT=/run/kravhantering/hsa-mtls/kong-server.crt',
     )
     expect(kongUnit).toContain(
-      `Volume=${configRoot}/kong-tls/kong.crt:/run/kong-tls/server.crt:ro`,
+      'Volume=kravhantering-ci-hsa-mtls-kong.volume:/run/kravhantering/hsa-mtls:ro,Z',
+    )
+    expect(appEnv).toContain(
+      `HSA_PERSON_LOOKUP_CA_PATH=/run/secrets/kravhantering/hsa-mtls/kong-server-ca.crt`,
     )
     expect(kongUnit).toContain('Environment=KONG_PREFIX=/tmp/kong')
     expect(kongUnit).toContain('PodmanArgs=--group-add=keep-groups')

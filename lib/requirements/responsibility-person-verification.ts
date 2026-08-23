@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { getAuthConfig } from '@/lib/auth/config'
 import { HSA_ID_MAX_LENGTH, isHsaId } from '@/lib/auth/hsa-id'
 import { getRequirementResponsibilityPerson } from '@/lib/dal/requirement-responsibility-people'
-import { lookupHsaPerson } from '@/lib/hsa/person-lookup'
+import { lookupHsaPersonStrict } from '@/lib/hsa/strict-person-lookup'
 import type { ActorContext } from '@/lib/requirements/auth'
 import { validationError } from '@/lib/requirements/errors'
 import {
@@ -309,7 +309,7 @@ export async function verifyRequirementResponsibilityPerson(
     if (existing) return existing
   }
 
-  return lookupHsaPerson(normalizedHsaId)
+  return lookupHsaPersonStrict(normalizedHsaId)
 }
 
 export function requirementResponsibilityPersonFromActor(

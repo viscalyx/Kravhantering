@@ -250,6 +250,15 @@ async function issueTrustDomain({
       profile,
       workspace,
     })
+    const wrongClient = await issueLeaf({
+      caCertificate,
+      caPrivateKey,
+      days: validity.leafDays,
+      leaf: domain.wrongClient,
+      name: 'wrong-client',
+      profile,
+      workspace,
+    })
     return {
       material: new Map([
         [domain.ca.materialId, await readFile(caCertificate)],
@@ -263,6 +272,14 @@ async function issueTrustDomain({
           await readFile(client.certificate),
         ],
         [domain.client.privateKeyMaterialId, await readFile(client.privateKey)],
+        [
+          domain.wrongClient.certificateMaterialId,
+          await readFile(wrongClient.certificate),
+        ],
+        [
+          domain.wrongClient.privateKeyMaterialId,
+          await readFile(wrongClient.privateKey),
+        ],
       ]),
     }
   } finally {
@@ -717,6 +734,14 @@ async function buildMetadata({
           domain.server.certificateMaterialId,
         ),
       ),
+      wrongClient: await certificateMetadata(
+        domain.wrongClient.certificateMaterialId,
+        firstMaterialFile(
+          generationDir,
+          profile,
+          domain.wrongClient.certificateMaterialId,
+        ),
+      ),
     }
   }
   return {
@@ -803,6 +828,7 @@ export async function verifyGenerationDirectory({
     for (const [kind, leaf] of [
       ['server', domain.server],
       ['client', domain.client],
+      ['client', domain.wrongClient],
     ]) {
       await validateLeaf({
         caPath,
@@ -981,6 +1007,57 @@ export async function inspectGeneration({ profile, rootDir }) {
     result[key] = metadata
   }
   return result
+}
+
+/**
+ * Copy the selected immutable generation into four separately mounted runtime
+ * volumes. Orchestration must stop affected services before calling this for
+ * rotation; runtime containers mount only one role directory read-only.
+ */
+export async function materializeSelectedGeneration({
+  includeProbes = false,
+  profile,
+  rootDir,
+  runtimeRoot,
+}) {
+  assert(
+    path.isAbsolute(runtimeRoot),
+    'RUNTIME_ROOT_INVALID',
+    'Runtime material root must be absolute',
+  )
+  const selection = await readSelection(rootDir)
+  assert(
+    typeof selection.current === 'string' && selection.current.length > 0,
+    'SELECTION_INVALID',
+    'No generation was selected',
+  )
+  const generationDir = generationPath(
+    rootDir,
+    'generations',
+    selection.current,
+  )
+  await verifyGenerationDirectory({ generationDir, profile })
+  const roles = Object.keys(profile.runtimeBundles).filter(
+    role => role !== 'probe' || includeProbes,
+  )
+  for (const role of roles) {
+    const target = path.join(runtimeRoot, role)
+    await mkdir(target, { mode: 0o700, recursive: true })
+    for (const existing of await readdir(target)) {
+      await rm(path.join(target, existing), { force: true, recursive: true })
+    }
+    for (const filename of Object.keys(profile.runtimeBundles[role].files)) {
+      await cp(
+        path.join(generationDir, 'bundles', role, filename),
+        path.join(target, filename),
+        { force: false },
+      )
+    }
+  }
+  return {
+    generationId: selection.current,
+    roles,
+  }
 }
 
 export function generationNeedsRenewal(metadata, profile, lifetime, now) {

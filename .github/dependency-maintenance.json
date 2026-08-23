@@ -91,7 +91,8 @@
         "containers/app/Dockerfile",
         "containers/hsa-directory-mock/Dockerfile",
         "containers/hsa-person-lookup-adapter/Dockerfile",
-        "containers/hsa-mtls-provisioner/Dockerfile"
+        "containers/hsa-mtls-provisioner/Dockerfile",
+        "containers/hsa-mtls-topology/Dockerfile"
       ]
     },
     {

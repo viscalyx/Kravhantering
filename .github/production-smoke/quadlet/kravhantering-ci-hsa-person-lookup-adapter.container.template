@@ -7,14 +7,25 @@ Before=kravhantering-ci-kong.service
 [Container]
 ContainerName=kravhantering-ci-hsa-person-lookup-adapter
 Image=@@HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF@@
-Environment=PORT=8080
+Environment=HSA_ADAPTER_INGRESS_CA_PATH=/run/kravhantering/hsa-mtls/kong-client-ca.crt
+Environment=HSA_ADAPTER_INGRESS_CERT_PATH=/run/kravhantering/hsa-mtls/adapter-server.crt
+Environment=HSA_ADAPTER_INGRESS_EXPECTED_CLIENT_SUBJECT=CN=kravhantering-kong
+Environment=HSA_ADAPTER_INGRESS_KEY_PATH=/run/kravhantering/hsa-mtls/adapter-server.key
+Environment=HSA_SOAP_CA_PATH=/run/kravhantering/hsa-mtls/hsa-server-ca.crt
+Environment=HSA_SOAP_CLIENT_CERT_PATH=/run/kravhantering/hsa-mtls/adapter-client.crt
+Environment=HSA_SOAP_CLIENT_KEY_PATH=/run/kravhantering/hsa-mtls/adapter-client.key
 Environment=HSA_SOAP_ENDPOINT_URL=https://hsa-directory-mock:8443/svr-hsaws2/hsaws
 Environment=HSA_SOAP_TIMEOUT_MS=5000
+Environment=HSA_SOAP_TLS_SERVER_NAME=hsa-directory-mock
 Network=kravhantering-single-node-egress.network
 PodmanArgs=--network-alias=hsa-person-lookup-adapter
-Volume=kravhantering-ci-hsa-mtls-certs.volume:/run/hsa-mtls:ro
+Volume=kravhantering-ci-hsa-mtls-adapter.volume:/run/kravhantering/hsa-mtls:ro,Z
 NoNewPrivileges=true
 DropCapability=all
+HealthCmd=node --input-type=module -e "const response = await fetch('http://127.0.0.1:8081/health'); if (!response.ok) process.exit(1);"
+HealthInterval=5s
+HealthRetries=24
+HealthTimeout=3s
 
 [Service]
 Restart=on-failure

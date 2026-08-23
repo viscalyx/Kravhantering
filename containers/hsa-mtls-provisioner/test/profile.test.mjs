@@ -82,6 +82,7 @@ describe('certificate profile', () => {
         { gid: 1001, uid: 1001 },
         { gid: 1000, uid: 1000 },
         { gid: 1000, uid: 1000 },
+        { gid: 1000, uid: 1000 },
       ],
     )
   })

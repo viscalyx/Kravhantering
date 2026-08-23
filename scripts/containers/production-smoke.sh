@@ -177,13 +177,27 @@ configure_smoke_app_env() {
     -e "s#^AUTH_OIDC_CLIENT_SECRET=.*#AUTH_OIDC_CLIENT_SECRET=$client_secret#" \
     -e "s#^AUTH_SESSION_COOKIE_PASSWORD=.*#AUTH_SESSION_COOKIE_PASSWORD=$cookie_password#" \
     "$app_env"
+  sed -i \
+    -e '/^HSA_PERSON_LOOKUP_CA_PATH=/d' \
+    -e '/^HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=/d' \
+    -e '/^HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=/d' \
+    -e '/^HSA_PERSON_LOOKUP_TLS_SERVER_NAME=/d' \
+    "$app_env"
+  printf '%s\n' \
+    'HSA_PERSON_LOOKUP_CA_PATH=/run/secrets/kravhantering/hsa-mtls/kong-server-ca.crt' \
+    'HSA_PERSON_LOOKUP_CLIENT_CERT_PATH=/run/secrets/kravhantering/hsa-mtls/app-client.crt' \
+    'HSA_PERSON_LOOKUP_CLIENT_KEY_PATH=/run/secrets/kravhantering/hsa-mtls/app-client.key' \
+    'HSA_PERSON_LOOKUP_TLS_SERVER_NAME=kong' \
+    >>"$app_env"
 }
 
 install_runtime_config_directories() {
   sudo install -d -o root -g "$SERVICE_USER" -m 0750 \
     "$CONFIG_ROOT" "$CONFIG_ROOT/keycloak" "$CONFIG_ROOT/sqlserver-tls" \
     "$CONFIG_ROOT/tls" "$CONFIG_ROOT/keycloak-management-tls" \
-    "$CONFIG_ROOT/kong-tls" "$CONFIG_ROOT/secrets"
+    "$CONFIG_ROOT/secrets"
+  sudo install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0700 \
+    "$CONFIG_ROOT/secrets/hsa-mtls"
 }
 
 render_runtime_configuration() {
@@ -283,12 +297,6 @@ NODE
     'allow ::1/128;' \
     >"$CONFIG_TEMP_DIR/nginx-readiness-probes.conf"
 
-  node scripts/containers/generate-tls.mjs \
-    --hostname kong \
-    --output-dir "$CONFIG_TEMP_DIR/kong-tls" \
-    --ca-cert tmp/container-tls/ca.crt \
-    --ca-key tmp/container-tls/ca.key
-
   install_runtime_config_directories
   for file in app.env db-job.env keycloak.env release.env sqlserver.env; do
     sudo install -o root -g "$SERVICE_USER" -m 0640 \
@@ -306,10 +314,6 @@ NODE
     tmp/container-tls/kravhantering.test.key "$CONFIG_ROOT/tls/privkey.pem"
   sudo install -o root -g "$SERVICE_USER" -m 0644 \
     tmp/container-tls/ca.crt "$CONFIG_ROOT/tls/ca.crt"
-  sudo install -o root -g "$SERVICE_USER" -m 0644 \
-    "$CONFIG_TEMP_DIR/kong-tls/kong.crt" "$CONFIG_ROOT/kong-tls/kong.crt"
-  sudo install -o root -g "$SERVICE_USER" -m 0640 \
-    "$CONFIG_TEMP_DIR/kong-tls/kong.key" "$CONFIG_ROOT/kong-tls/kong.key"
   sudo install -o root -g "$SERVICE_USER" -m 0644 \
     tmp/container-tls/sqlserver.crt \
     "$CONFIG_ROOT/sqlserver-tls/server.crt"
@@ -347,6 +351,8 @@ prepare_images() {
   load_project_image "$DEMO_SEED_IMAGE_REF" "${DEMO_SEED_OCI_ARCHIVE-}"
   load_project_image "$HSA_DIRECTORY_MOCK_IMAGE_REF" \
     "${HSA_DIRECTORY_MOCK_OCI_ARCHIVE-}"
+  load_project_image "$HSA_MTLS_PROVISIONER_IMAGE_REF" \
+    "${HSA_MTLS_PROVISIONER_OCI_ARCHIVE-}"
   load_project_image "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF" \
     "${HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE-}"
   as_service podman pull "$NGINX_IMAGE_REF"
@@ -358,6 +364,8 @@ prepare_images() {
   verify_project_image_id "$DEMO_SEED_IMAGE_REF" "$DEMO_SEED_IMAGE_ID"
   verify_project_image_id \
     "$HSA_DIRECTORY_MOCK_IMAGE_REF" "$HSA_DIRECTORY_MOCK_IMAGE_ID"
+  verify_project_image_id \
+    "$HSA_MTLS_PROVISIONER_IMAGE_REF" "$HSA_MTLS_PROVISIONER_IMAGE_ID"
   verify_project_image_id \
     "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF" \
     "$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID"
@@ -390,9 +398,72 @@ render_ci_overlay() {
       -e "s#@@BUNDLE_ROOT@@#$INSTALL_ROOT/current#g" \
       -e "s#@@CONFIG_ROOT@@#$CONFIG_ROOT#g" \
       -e "s#@@HSA_DIRECTORY_MOCK_IMAGE_REF@@#$HSA_DIRECTORY_MOCK_IMAGE_REF#g" \
+      -e "s#@@HSA_MTLS_PROVISIONER_IMAGE_REF@@#$HSA_MTLS_PROVISIONER_IMAGE_REF#g" \
       -e "s#@@HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF@@#$HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF#g" \
       -e "s#@@KONG_IMAGE_REF@@#$KONG_IMAGE_REF#g" \
       "$template" | as_service tee "$output" >/dev/null
+  done
+}
+
+run_hsa_mtls_provisioner() {
+  as_service podman run --rm --pull=never --user 0:0 \
+    --network none \
+    --tmpfs /run/kravhantering/hsa-mtls-issuer:rw,size=64m,mode=0700,nosuid,nodev,noexec \
+    --volume kravhantering-ci-hsa-mtls-state:/var/lib/kravhantering/hsa-mtls:Z \
+    --volume "$CONFIG_ROOT/secrets/hsa-mtls:/run/kravhantering/hsa-mtls-runtime/app:Z" \
+    --volume kravhantering-ci-hsa-mtls-kong:/run/kravhantering/hsa-mtls-runtime/kong:Z \
+    --volume kravhantering-ci-hsa-mtls-adapter:/run/kravhantering/hsa-mtls-runtime/adapter:Z \
+    --volume kravhantering-ci-hsa-mtls-mock:/run/kravhantering/hsa-mtls-runtime/mock:Z \
+    "$HSA_MTLS_PROVISIONER_IMAGE_REF" "$@"
+}
+
+stop_hsa_mtls_endpoints() {
+  service_systemctl stop kravhantering-app-runtime.service
+  service_systemctl stop kravhantering-ci-kong.service
+  service_systemctl stop kravhantering-ci-hsa-person-lookup-adapter.service
+  service_systemctl stop kravhantering-ci-hsa-directory-mock.service
+}
+
+start_hsa_mtls_endpoints() {
+  service_systemctl start kravhantering-ci-hsa-directory-mock.service
+  service_systemctl start kravhantering-ci-hsa-person-lookup-adapter.service
+  service_systemctl start kravhantering-ci-kong.service
+  service_systemctl start kravhantering-app-runtime.service
+}
+
+verify_hsa_mtls_rotation_and_rollback() {
+  local domain before after restored
+  : >"$EVIDENCE_DIR/hsa-mtls-rotation.txt"
+  for domain in app-to-kong kong-to-adapter adapter-to-hsa; do
+    before="$(run_hsa_mtls_provisioner inspect | jq -er '.result.selection.current')"
+    stop_hsa_mtls_endpoints
+    run_hsa_mtls_provisioner rotate "$domain" >/dev/null
+    run_hsa_mtls_provisioner deploy >/dev/null
+    start_hsa_mtls_endpoints
+    wait_for_url https://kravhantering.test/api/ready \
+      "application readiness after $domain HSA mTLS rotation"
+    after="$(run_hsa_mtls_provisioner inspect | jq -er '.result.selection.current')"
+    [[ "$after" != "$before" ]] || \
+      fail "$domain HSA mTLS rotation did not select a new generation"
+
+    stop_hsa_mtls_endpoints
+    run_hsa_mtls_provisioner rollback >/dev/null
+    run_hsa_mtls_provisioner deploy >/dev/null
+    start_hsa_mtls_endpoints
+    wait_for_url https://kravhantering.test/api/ready \
+      "application readiness after $domain HSA mTLS rollback"
+    restored="$(run_hsa_mtls_provisioner inspect | jq -er '.result.selection.current')"
+    [[ "$restored" == "$before" ]] || \
+      fail "$domain HSA mTLS rollback did not restore the prior generation"
+    printf '%s\n' \
+      "domain=$domain" \
+      "before-generation=$before" \
+      "rotated-generation=$after" \
+      "restored-generation=$restored" \
+      'client-stop-server-start-order=passed' \
+      'authenticated-readiness-after-rotation=passed' \
+      'authenticated-readiness-after-rollback=passed' \
+      >>"$EVIDENCE_DIR/hsa-mtls-rotation.txt"
   done
 }
 
@@ -1243,9 +1314,10 @@ assert_service_property() {
 up() {
   local archive="$1"
   required_env DEMO_SEED_IMAGE_REF HSA_DIRECTORY_MOCK_IMAGE_REF \
-    HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF KONG_IMAGE_REF \
+    HSA_MTLS_PROVISIONER_IMAGE_REF HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF KONG_IMAGE_REF \
     APP_RUNTIME_IMAGE_ID DB_JOB_IMAGE_ID DEMO_SEED_IMAGE_ID \
-    HSA_DIRECTORY_MOCK_IMAGE_ID HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID
+    HSA_DIRECTORY_MOCK_IMAGE_ID HSA_MTLS_PROVISIONER_IMAGE_ID \
+    HSA_PERSON_LOOKUP_ADAPTER_IMAGE_ID
   prepare_service_user
   install_archive "$archive"
   render_runtime_configuration
@@ -1286,6 +1358,7 @@ up() {
     'initial application process health'
   wait_for_url https://kravhantering.test/api/ready \
     'initial full-stack readiness'
+  verify_hsa_mtls_rotation_and_rollback
   verify_containment
   service_systemctl restart kravhantering-app-runtime.service
   wait_for_url https://kravhantering.test/api/ready \
@@ -1559,7 +1632,9 @@ down() {
   fi
   service_systemctl daemon-reload || true
   as_service podman rm --all --force || true
-  as_service podman volume rm kravhantering-ci-hsa-mtls-certs \
+  as_service podman volume rm kravhantering-ci-hsa-mtls-state \
+    kravhantering-ci-hsa-mtls-kong kravhantering-ci-hsa-mtls-adapter \
+    kravhantering-ci-hsa-mtls-mock \
     kravhantering-sqlserver-data kravhantering-keycloak-data || true
   for purpose in edge identity database egress; do
     network="$(as_service "$helper" \

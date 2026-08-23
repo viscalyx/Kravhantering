@@ -1,0 +1,24 @@
+[Unit]
+Description=Kravhantering CI-only HSA test-PKI provisioner
+Requires=kravhantering-single-node-egress-network.service kravhantering-ci-hsa-mtls-state-volume.service kravhantering-ci-hsa-mtls-kong-volume.service kravhantering-ci-hsa-mtls-adapter-volume.service kravhantering-ci-hsa-mtls-mock-volume.service
+After=kravhantering-single-node-egress-network.service kravhantering-ci-hsa-mtls-state-volume.service kravhantering-ci-hsa-mtls-kong-volume.service kravhantering-ci-hsa-mtls-adapter-volume.service kravhantering-ci-hsa-mtls-mock-volume.service
+Before=kravhantering-ci-hsa-directory-mock.service
+
+[Container]
+ContainerName=kravhantering-ci-hsa-mtls-provisioner
+Image=@@HSA_MTLS_PROVISIONER_IMAGE_REF@@
+User=0:0
+Network=kravhantering-single-node-egress.network
+Tmpfs=/run/kravhantering/hsa-mtls-issuer:rw,size=64M,mode=0700,nosuid,nodev,noexec
+Volume=kravhantering-ci-hsa-mtls-state.volume:/var/lib/kravhantering/hsa-mtls:Z
+Volume=@@CONFIG_ROOT@@/secrets/hsa-mtls:/run/kravhantering/hsa-mtls-runtime/app:Z
+Volume=kravhantering-ci-hsa-mtls-kong.volume:/run/kravhantering/hsa-mtls-runtime/kong:Z
+Volume=kravhantering-ci-hsa-mtls-adapter.volume:/run/kravhantering/hsa-mtls-runtime/adapter:Z
+Volume=kravhantering-ci-hsa-mtls-mock.volume:/run/kravhantering/hsa-mtls-runtime/mock:Z
+Exec=activate --lifetime ephemeral
+NoNewPrivileges=true
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=180

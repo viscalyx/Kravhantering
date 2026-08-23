@@ -18,7 +18,7 @@ Accept: text/xml
 ```
 
 The mock does not expose REST. In devcontainer and `single-node-demo` use,
-Kong exposes `http://kong:8000/hsa/person-records/lookup` and routes it to
+Kong exposes `https://kong:8443/hsa/person-records/lookup` and routes it to
 `hsa-person-lookup-adapter`; the adapter transforms the REST request into
 SOAP `GetHsaPerson` and calls `https://hsa-directory-mock:8443/svr-hsaws2/hsaws`
 with mTLS.
@@ -28,13 +28,14 @@ Kong.
 
 ## Authentication and Authorization
 
-Runtime mode defaults to `HSA_MOCK_AUTH_MODE=realistic-mtls`. The mock requires
-a client certificate trusted by `HSA_MOCK_TLS_CA_PATH`, extracts caller HSA-id
+The only runtime mode is strict mTLS. The mock requires a client certificate
+trusted by `HSA_MOCK_TLS_CA_PATH`, extracts caller HSA-id
 from `subject.serialNumber`, checks that the caller system fixture is active,
 and requires both `hsaws2` and `GetHsaPerson` entitlement. The devcontainer
-and release-smoke paths generate ignored local test certificates with
-`hsa-mtls-cert-generator`; demo operators may mount their own self-signed test
-certificate material at `/run/hsa-mtls`.
+and release-smoke paths use the repository test-PKI provisioner. Each runtime
+receives its role-specific allowlisted bundle at
+`/run/kravhantering/hsa-mtls`; issuer material remains ephemeral and is never
+mounted into a runtime.
 
 ## Namespaces
 
@@ -205,11 +206,12 @@ npm run devcontainer:hsa-mock:down
 ```
 
 `status` starts the mock and adapter if they are not already running and checks
-`https://127.0.0.1:8443/health` from inside the mock container.
+their loopback-only `http://127.0.0.1:8081/health` endpoints from inside each
+container.
 
-`verify` starts the certificate generator, mock, adapter and Kong if needed,
-then posts a REST lookup through
-`http://kong:8000/hsa/person-records/lookup`.
+`verify` activates the provisioner, recreates mock, adapter and Kong, then
+posts an authenticated REST lookup through
+`https://kong:8443/hsa/person-records/lookup` with the App role bundle.
 
 Run the mock's non-Docker SOAP contract tests with:
 

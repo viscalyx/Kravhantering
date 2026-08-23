@@ -21,6 +21,7 @@ import {
   finalizeGeneration,
   generationNeedsRenewal,
   inspectGeneration,
+  materializeSelectedGeneration,
   promoteGeneration,
   rollbackGeneration,
   rotateTrustDomain,
@@ -52,6 +53,17 @@ const expectedFiles = {
     'kong-server.key',
   ],
   mock: ['adapter-client-ca.crt', 'mock-server.crt', 'mock-server.key'],
+  probe: [
+    'adapter-server-ca.crt',
+    'hsa-server-ca.crt',
+    'kong-server-ca.crt',
+    'wrong-adapter-client.crt',
+    'wrong-adapter-client.key',
+    'wrong-app-client.crt',
+    'wrong-app-client.key',
+    'wrong-kong-client.crt',
+    'wrong-kong-client.key',
+  ],
 }
 
 let profile
@@ -157,6 +169,42 @@ describe('certificate generation lifecycle', () => {
     assert.match(serialized, /digestSha256/)
   })
 
+  it('materializes only the selected role allowlists and removes stale runtime files', async t => {
+    const runtimeRoot = await mkdtemp(
+      path.join(os.tmpdir(), 'hsa-mtls-runtime-'),
+    )
+    t.after(() => rm(runtimeRoot, { force: true, recursive: true }))
+    for (const role of Object.keys(expectedFiles)) {
+      await cp(
+        path.join(
+          testRoot,
+          'generations',
+          currentGenerationId,
+          'bundles',
+          role,
+        ),
+        path.join(runtimeRoot, role),
+        { recursive: true },
+      )
+      await writeFile(path.join(runtimeRoot, role, 'stale.key'), 'stale')
+    }
+
+    const result = await materializeSelectedGeneration({
+      includeProbes: true,
+      profile,
+      rootDir: testRoot,
+      runtimeRoot,
+    })
+
+    assert.equal(result.generationId, currentGenerationId)
+    for (const [role, expected] of Object.entries(expectedFiles)) {
+      assert.deepEqual(
+        (await readdir(path.join(runtimeRoot, role))).sort(),
+        expected,
+      )
+    }
+  })
+
   it('reuses a valid generation without replacing material', async () => {
     const beforeMetadata = await readFile(
       path.join(testRoot, 'generations', currentGenerationId, 'metadata.json'),
@@ -206,7 +254,7 @@ describe('certificate generation lifecycle', () => {
     )
   })
 
-  it('replaces only the selected CA and its two leaves during rotation', async () => {
+  it('replaces only the selected CA and its expected and decoy leaves during rotation', async () => {
     const beforeInspect = await inspectGeneration({
       profile,
       rootDir: testRoot,
@@ -240,6 +288,10 @@ describe('certificate generation lifecycle', () => {
         assert.notEqual(
           afterDomain.client.digestSha256,
           beforeDomain.client.digestSha256,
+        )
+        assert.notEqual(
+          afterDomain.wrongClient.digestSha256,
+          beforeDomain.wrongClient.digestSha256,
         )
       } else {
         assert.deepEqual(afterDomain, beforeDomain)
@@ -322,6 +374,10 @@ describe('certificate generation lifecycle', () => {
           await cp(
             path.join(directory, 'bundles/adapter/hsa-server-ca.crt'),
             path.join(directory, 'bundles/kong/adapter-server-ca.crt'),
+          )
+          await cp(
+            path.join(directory, 'bundles/adapter/hsa-server-ca.crt'),
+            path.join(directory, 'bundles/probe/adapter-server-ca.crt'),
           )
         },
         name: 'a trust root from another leg',

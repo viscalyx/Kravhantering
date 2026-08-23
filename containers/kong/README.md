@@ -9,7 +9,7 @@ release topology. It is not part of the production runtime topology.
 ## Owned Configuration
 
 - The vendor image lock in `image.lock.json`.
-- The DB-less declarative configuration in `kong.yml`.
+- The DB-less strict declarative configuration in `kong.strict.yml`.
 - Documentation for the devcontainer-only lifecycle scripts.
 - The synchronized devcontainer Compose and Azure VM Quadlet image references.
 
@@ -22,15 +22,14 @@ runtime code.
 The devcontainer Compose service runs Kong with:
 
 - `KONG_DATABASE=off`
-- `KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.yml`
-- proxy listener on the internal compose network at `kong:8000`
-- Admin API listener on the internal compose network at `kong:8001`
+- `KONG_DECLARATIVE_CONFIG=/kong/declarative/kong.strict.yml`
+- HTTPS-only proxy listener on the internal Compose network at `kong:8443`
+- loopback-only Admin API listener at `127.0.0.1:8001`
 
-No Kong ports are published to the host. The Admin API has no local dev token
-in this phase because it is reachable only from containers on the same
-devcontainer Compose network.
+No Kong ports are published to the host in a devcontainer. The Admin API is
+only used by `kong health` inside the Kong container.
 
-`kong.yml` contains one HSA route: `POST /hsa/person-records/lookup`.
+`kong.strict.yml` contains one HTTPS HSA route: `POST /hsa/person-records/lookup`.
 Kong proxies that app-facing REST contract to
 `hsa-person-lookup-adapter` on the internal Compose network. The adapter calls
 the HSA directory mock SOAP `GetHsaPerson` endpoint over mTLS. Kong does not
@@ -55,9 +54,7 @@ The wrapper auto-detects whether the default or elevated devcontainer Compose
 profile is active and controls only the `kong` service. If no devcontainer is
 running, it falls back to the default profile.
 
-`status` verifies Kong from inside the devcontainer `app` service by calling
-`http://kong:8001/status`. If the `app` service is not running, start or attach
-the devcontainer before using `status`.
+`status` invokes `kong health` inside the Kong container.
 
 Pass additional `docker compose logs` options after `--`, for example:
 
@@ -65,7 +62,7 @@ Pass additional `docker compose logs` options after `--`, for example:
 npm run devcontainer:kong:logs -- --follow
 ```
 
-After changing `kong.yml`, recreate Kong so the DB-less config is reloaded:
+After changing `kong.strict.yml`, recreate Kong so the DB-less config is reloaded:
 
 ```sh
 npm run devcontainer:kong:recreate
@@ -118,7 +115,7 @@ policy:
 
 - Keep Kong DB-less and file-configured for the devcontainer.
 - Keep the Admin API internal to the active Compose network.
-- Keep the HSA route plain and DB-less. The current REST route is a proxy to
+- Keep the HSA route HTTPS-only and DB-less. The current REST route is a proxy to
   `hsa-person-lookup-adapter`; do not reintroduce a direct SOAP route or a
   mock-owned JSON facade in Kong.
 - Do not add Kong to the required production runtime topology. Its release use is

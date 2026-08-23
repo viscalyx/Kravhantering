@@ -233,6 +233,8 @@ script.
      update_ref KONG_IMAGE_REF "$(target_ref kong)"
      update_ref HSA_PERSON_LOOKUP_ADAPTER_IMAGE_REF \
        "$(target_ref hsa-person-lookup-adapter)"
+     update_ref HSA_MTLS_PROVISIONER_IMAGE_REF \
+       "$(target_ref hsa-mtls-provisioner)"
      update_ref HSA_DIRECTORY_MOCK_IMAGE_REF \
        "$(target_ref hsa-directory-mock)"
    fi

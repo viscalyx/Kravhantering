@@ -96,7 +96,7 @@ describe('devcontainer HSA mock helper', () => {
         '-f',
         '.devcontainer/docker-compose.yml',
         'config',
-        'hsa-mtls-cert-generator',
+        'hsa-mtls-provisioner',
         'hsa-directory-mock',
         'hsa-person-lookup-adapter',
         'kong',
@@ -148,7 +148,7 @@ describe('devcontainer HSA mock helper', () => {
         'up',
         '--build',
         '-d',
-        'hsa-mtls-cert-generator',
+        'hsa-mtls-provisioner',
         'hsa-directory-mock',
         'hsa-person-lookup-adapter',
         'kong',
@@ -191,7 +191,7 @@ describe('devcontainer HSA mock helper', () => {
       calls.some(
         call =>
           call.includes('exec -T hsa-directory-mock') &&
-          call.includes('http://hsa-person-lookup-adapter:8080/health'),
+          call.includes('http://127.0.0.1:8081/health'),
       ),
     ).toBe(true)
   })

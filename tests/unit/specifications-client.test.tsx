@@ -138,6 +138,8 @@ function mockApi(
       return Promise.resolve(okJson(sampleCurrentUser))
     if (url === '/api/hsa-id-prefixes')
       return Promise.resolve(okJson(hsaIdPrefixPayload))
+    if (url === '/api/hsa-person-lookup-capability')
+      return Promise.resolve(okJson({ available: true }))
     return handler(url, opts)
   })
 }
@@ -501,6 +503,9 @@ describe('RequirementsSpecificationsClient', () => {
       }
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(okJson(hsaIdPrefixPayload))
+      }
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
       }
       return Promise.resolve(okJson({}))
     })
@@ -1494,6 +1499,8 @@ describe('RequirementsSpecificationsClient', () => {
         )
       if (url === '/api/hsa-id-prefixes')
         return Promise.resolve(okJson(hsaIdPrefixPayload))
+      if (url === '/api/hsa-person-lookup-capability')
+        return Promise.resolve(okJson({ available: true }))
       if (
         url === '/api/requirement-responsibility-people/verify' &&
         opts?.method === 'POST'

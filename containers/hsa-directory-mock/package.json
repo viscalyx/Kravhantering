@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "start": "node src/server.mjs",
+    "start": "node src/strict-server.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {

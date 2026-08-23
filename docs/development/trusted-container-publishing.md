@@ -8,7 +8,8 @@ release workflow.
 
 The workflow builds the production `app-runtime` and `db-job` images, the
 optional `kravhantering-demo-seed` image, the HSA person lookup adapter and the
-test-only `hsa-directory-mock` image once each as local OCI candidate archives.
+one-shot strict-PKI provisioner, and the test-only `hsa-directory-mock` image
+once each as local OCI candidate archives.
 Buildx metadata and the OCI layout must agree on the candidate manifest digest.
 Release metadata also records every platform manifest represented by an OCI
 index.
@@ -119,7 +120,7 @@ newest preview release. Change those bounded counts through normal review when
 the product support policy changes.
 
 For each supported release, the monitor downloads `release-metadata.json` and
-all five project-owned SPDX assets. It verifies every GitHub Release asset
+all six project-owned SPDX assets. It verifies every GitHub Release asset
 against the SHA-256 digest returned by the GitHub Releases API, requires the
 metadata to name the expected `ghcr.io/viscalyx` image and immutable manifest
 digest, and verifies the SBOM attestation against the trusted container release
@@ -174,13 +175,16 @@ production runtime topology. Dependency maintenance also requires
 every active devcontainer and Azure VM Kong runtime reference to match the
 lock's exact tag and Linux AMD64 manifest digest.
 
-The HSA person lookup adapter and HSA directory mock are project-owned support
-images. The container release workflow builds and publishes
+The HSA person lookup adapter, one-shot strict-PKI provisioner, and HSA
+directory mock are project-owned support images. The container release
+workflow builds and publishes
 `kravhantering-hsa-person-lookup-adapter` and
+`kravhantering-hsa-mtls-provisioner` and
 `kravhantering-hsa-directory-mock` to GHCR with the same release tags as
 `app-runtime` and `db-job`. The adapter is recorded in
-`container-hsa-integration-support.lock.json`; the mock is recorded in
-`container-test-support.lock.json`. Both images get SBOM and provenance
+`container-hsa-integration-support.lock.json` together with the provisioner;
+the mock is recorded in
+`container-test-support.lock.json`. All three images get SBOM and provenance
 attestations. Their npm dependencies use native Dependabot lanes, while their
 shared production Node base image uses coordinated drift detection.
 
@@ -323,7 +327,7 @@ Each trusted run also writes runtime evidence:
   nginx, SQL Server and Keycloak.
 - `container-hsa-integration-support.lock.json` lists the exact image name,
   tag, `manifestDigest`, `imageId`, source and role for Kong and the HSA
-  person lookup adapter.
+  person lookup adapter and strict-PKI provisioner.
 - `container-test-support.lock.json` lists the exact image name, tag,
   `manifestDigest`, `imageId`, source and role for the test-only HSA directory
   mock support image.
@@ -428,6 +432,8 @@ artifacts anonymously:
 - `ghcr.io/<owner>/kravhantering-db-job`
 - `ghcr.io/<owner>/kravhantering-hsa-person-lookup-adapter` for optional HSA
   integration support
+- `ghcr.io/<owner>/kravhantering-hsa-mtls-provisioner` for one-shot test-only
+  strict-PKI provisioning
 - `ghcr.io/<owner>/kravhantering-hsa-directory-mock` for test-only CI and
   developer support
 <!-- cSpell:ignore opencontainers -->

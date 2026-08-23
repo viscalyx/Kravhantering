@@ -762,8 +762,9 @@ describe('development environment contract', () => {
 
     expect(env).toContain('HSA_PERSON_LOOKUP_TIMEOUT_MS=5000')
     expect(env).toContain(
-      'HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup',
+      'HSA_PERSON_LOOKUP_URL=https://kong:8443/hsa/person-records/lookup',
     )
+    expect(env).toContain('HSA_PERSON_LOOKUP_TLS_SERVER_NAME=kong')
   })
 
   it('documents the HSA lookup settings in the local env example', () => {
@@ -772,7 +773,7 @@ describe('development environment contract', () => {
     expectEnvVars(envExample, hsaPersonLookupEnvVars)
   })
 
-  it('ships HSA lookup settings in prod-like and release app envs', () => {
+  it('keeps standalone production disabled and documents strict deployment settings', () => {
     const prodlikeEnv = readWorkspaceFile('.env.prodlike')
     const releaseAppEnv = readWorkspaceFile(
       'containers/production/env/app.env.template',
@@ -782,13 +783,9 @@ describe('development environment contract', () => {
     )
 
     expect(prodlikeEnv).toContain('HSA_PERSON_LOOKUP_TIMEOUT_MS=5000')
-    expect(prodlikeEnv).toContain(
-      'HSA_PERSON_LOOKUP_URL=http://kong:8000/hsa/person-records/lookup',
-    )
+    expect(prodlikeEnv).not.toMatch(/^HSA_PERSON_LOOKUP_URL=/m)
     expect(releaseAppEnv).toContain('HSA_PERSON_LOOKUP_TIMEOUT_MS=5000')
-    expect(releaseAppEnv).toContain(
-      'HSA_PERSON_LOOKUP_URL=https://kong.example.internal/hsa/person-records/lookup',
-    )
+    expect(releaseAppEnv).not.toMatch(/^HSA_PERSON_LOOKUP_URL=/m)
     expect(containerAppExampleEnv).toContain(
       'HSA_PERSON_LOOKUP_TIMEOUT_MS=5000',
     )

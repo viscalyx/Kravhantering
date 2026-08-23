@@ -8,10 +8,11 @@ Kravhantering äger. Applikationen konfigureras fortsatt med
 `HSA_PERSON_LOOKUP_URL`; SOAP `GetHsaPerson`, HSAWS mTLS och transformationen
 från REST till SOAP ska ligga bakom integrationsplattformens gräns.
 
-För miljöer där Kong används mellan Kravhantering och den riktiga
-HSA-katalogen kan appen komplettera `HSA_PERSON_LOOKUP_URL` med valfri
-app-till-integrationsplattform-autentisering: ingen autentisering, mTLS,
-OAuth2 client credentials eller mTLS och OAuth2 tillsammans. OAuth2 kan använda
+När `HSA_PERSON_LOOKUP_URL` är satt kräver appen strikt mTLS med en komplett
+uppsättning av CA, klientcertifikat, klientnyckel och exakt serveridentitet.
+Det finns
+ingen anonym, klartext- eller enbart OAuth-baserad transport. OAuth2 client
+credentials är valfritt och endast additivt till mTLS. OAuth2 kan använda
 en explicit token-URL eller OIDC discovery via issuer-URL. Hemligheter,
 privata nycklar, SITHS-certifikat och verkliga HSA-uppgifter ska aldrig
 checkas in eller ingå i releaseartefakter.
@@ -49,15 +50,18 @@ exponerar SOAP endast mot adaptern; Kong exponerar ingen SOAP-sökväg och mocke
 har ingen REST-fasad. Release-smoke använder en separat CI-only
 Quadlet-overlay med samma adapter- och mTLS-väg. `single-node-demo` är endast
 ett val för frånkopplad transport av stödavbildningarna, inte en
-runtime-topologi. Lokala och pipeline-baserade testcertifikat kan genereras,
-men operatörer kan montera egna självsignerade testcertifikat för demo.
+runtime-topologi. Repository-ägda testmiljöer använder tre separata
+test-PKI-domäner och rollspecifika skrivskyddade runtime-buntar.
+Produktionsoperatörer tillhandahåller själva motsvarande absoluta monterade
+sökvägar; projektet utfärdar inga produktionscertifikat och orkestrerar inte
+extern Kong eller HSA-plattform.
 
 REST-kontraktet använder stabila felkoder. Framgång ger `200` med `hsaId`,
 `givenName`, `middleName`, `surname`, `email` och
 `hasProtectedPersonalData`. Tomt SOAP `userInformations` ger `404
 { code: "not_found" }`; konflikt mellan normaliserade SOAP-poster ger `409
 { code: "conflict" }`; valideringsfel ger `400 { code: "validation" }`;
-plattformens valfria autentisering kan ge `401` eller `403`; SOAP-fel och
+certifikatidentitet eller additiv OAuth kan ge `401` eller `403`; SOAP-fel och
 otillgänglighet ger `503 { code: "service_unavailable" }`; timeout ger
 `504 { code: "timeout" }`. Kravhanterings användarflöden skiljer fortsatt bara
 ut saknad HSA-id och konflikt; andra uppslagsfel visas som otillgänglig tjänst.

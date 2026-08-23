@@ -9,6 +9,7 @@ import {
   ensureGeneration,
   finalizeGeneration,
   inspectGeneration,
+  materializeSelectedGeneration,
   promoteGeneration,
   rollbackGeneration,
   rotateTrustDomain,
@@ -36,7 +37,11 @@ function readOption(args, name, fallback) {
 export function parseCli(argv, env = process.env) {
   const args = [...argv]
   const command = args.shift()
+  const includeProbes = args.includes('--include-probes')
+  if (includeProbes) args.splice(args.indexOf('--include-probes'), 1)
   const options = {
+    includeProbes:
+      includeProbes || env.HSA_MTLS_INCLUDE_PROBES?.trim() === 'true',
     issuerRoot: readOption(
       args,
       '--issuer-root',
@@ -57,6 +62,11 @@ export function parseCli(argv, env = process.env) {
       '--root',
       env.HSA_MTLS_GENERATIONS_ROOT ?? '/var/lib/kravhantering/hsa-mtls',
     ),
+    runtimeRoot: readOption(
+      args,
+      '--runtime-root',
+      env.HSA_MTLS_RUNTIME_ROOT ?? '/run/kravhantering/hsa-mtls-runtime',
+    ),
   }
   return { args, command, options }
 }
@@ -66,6 +76,13 @@ async function run(argv = process.argv.slice(2)) {
   const profile = await loadCertificateProfile(options.profilePath)
   let result
   switch (command) {
+    case 'activate':
+      await ensureGeneration({ ...options, profile })
+      result = await materializeSelectedGeneration({ ...options, profile })
+      break
+    case 'deploy':
+      result = await materializeSelectedGeneration({ ...options, profile })
+      break
     case 'ensure':
       result = await ensureGeneration({ ...options, profile })
       break
@@ -123,7 +140,7 @@ async function run(argv = process.argv.slice(2)) {
     default:
       throw new ProvisionerError(
         'ARGUMENT_INVALID',
-        'Command must be ensure, inspect, verify, stage, promote, rotate, rollback, or finalize',
+        'Command must be activate, deploy, ensure, inspect, verify, stage, promote, rotate, rollback, or finalize',
       )
   }
   if (args.length > 0)

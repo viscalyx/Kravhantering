@@ -472,6 +472,15 @@ export const REST_OPERATION_DECLARATIONS = [
   ['GET', '/api/auth/me', 'public', 'none', 'sensitive', 'no-store', 'openapi'],
   [
     'GET',
+    '/api/hsa-person-lookup-capability',
+    'session',
+    'none',
+    'authenticated',
+    'no-store',
+    'focused',
+  ],
+  [
+    'GET',
     '/api/catalog/specification-item-statuses/[id]',
     'session',
     'none',

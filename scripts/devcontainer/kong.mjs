@@ -148,37 +148,13 @@ function runStatus(profile, options) {
     'docker compose ps kong',
   )
 
-  const app = runningService(profile, APP_SERVICE_NAME)
-  if (!app) {
-    throw new Error(
-      'Cannot verify http://kong:8001/status because the app service is not running.',
-    )
-  }
-
-  const statusScript = `
-    const response = await fetch('http://kong:8001/status')
-    if (!response.ok) {
-      throw new Error(\`Kong Admin API returned \${response.status}\`)
-    }
-    const body = await response.json()
-    console.log(JSON.stringify(body, null, 2))
-  `
-
   assertSuccess(
     runCompose(
       profile,
-      [
-        'exec',
-        '-T',
-        APP_SERVICE_NAME,
-        'node',
-        '--input-type=module',
-        '-e',
-        statusScript,
-      ],
+      ['exec', '-T', SERVICE_NAME, 'kong', 'health'],
       options,
     ),
-    'Kong Admin API status check',
+    'Kong native health check',
   )
 }
 

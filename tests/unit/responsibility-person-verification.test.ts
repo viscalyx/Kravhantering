@@ -3,7 +3,7 @@ import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 const mocks = vi.hoisted(() => ({
   getRequirementResponsibilityPerson: vi.fn(),
-  lookupHsaPerson: vi.fn(),
+  lookupHsaPersonStrict: vi.fn(),
   upsertRequirementResponsibilityPerson: vi.fn(),
 }))
 
@@ -13,8 +13,8 @@ vi.mock('@/lib/dal/requirement-responsibility-people', () => ({
     mocks.upsertRequirementResponsibilityPerson,
 }))
 
-vi.mock('@/lib/hsa/person-lookup', () => ({
-  lookupHsaPerson: mocks.lookupHsaPerson,
+vi.mock('@/lib/hsa/strict-person-lookup', () => ({
+  lookupHsaPersonStrict: mocks.lookupHsaPersonStrict,
 }))
 
 import {
@@ -57,10 +57,10 @@ const EVIDENCE_SECRET = 'test-verification-secret-at-least-32-characters'
 describe('responsibility person verification', () => {
   beforeEach(() => {
     mocks.getRequirementResponsibilityPerson.mockReset()
-    mocks.lookupHsaPerson.mockReset()
+    mocks.lookupHsaPersonStrict.mockReset()
     mocks.upsertRequirementResponsibilityPerson.mockReset()
     mocks.getRequirementResponsibilityPerson.mockResolvedValue(null)
-    mocks.lookupHsaPerson.mockResolvedValue(LOOKUP_PERSON)
+    mocks.lookupHsaPersonStrict.mockResolvedValue(LOOKUP_PERSON)
     mocks.upsertRequirementResponsibilityPerson.mockResolvedValue(undefined)
   })
 
@@ -75,7 +75,7 @@ describe('responsibility person verification', () => {
       ),
     ).resolves.toEqual(LOCAL_PERSON)
 
-    expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(mocks.lookupHsaPersonStrict).not.toHaveBeenCalled()
     expect(mocks.upsertRequirementResponsibilityPerson).not.toHaveBeenCalled()
   })
 
@@ -88,7 +88,9 @@ describe('responsibility person verification', () => {
       ),
     ).resolves.toEqual(LOOKUP_PERSON)
 
-    expect(mocks.lookupHsaPerson).toHaveBeenCalledWith('SE5560000001-sara1')
+    expect(mocks.lookupHsaPersonStrict).toHaveBeenCalledWith(
+      'SE5560000001-sara1',
+    )
     expect(mocks.upsertRequirementResponsibilityPerson).not.toHaveBeenCalled()
   })
 
@@ -104,7 +106,9 @@ describe('responsibility person verification', () => {
     ).resolves.toEqual(LOOKUP_PERSON)
 
     expect(mocks.getRequirementResponsibilityPerson).not.toHaveBeenCalled()
-    expect(mocks.lookupHsaPerson).toHaveBeenCalledWith('SE5560000001-sara1')
+    expect(mocks.lookupHsaPersonStrict).toHaveBeenCalledWith(
+      'SE5560000001-sara1',
+    )
     expect(mocks.upsertRequirementResponsibilityPerson).not.toHaveBeenCalled()
   })
 
@@ -487,7 +491,7 @@ describe('responsibility person verification', () => {
         'refresh',
       ),
     ).rejects.toSatisfy(error => isRequirementsServiceError(error))
-    expect(mocks.lookupHsaPerson).not.toHaveBeenCalled()
+    expect(mocks.lookupHsaPersonStrict).not.toHaveBeenCalled()
   })
 
   it('builds a server-trusted person from the authenticated actor', () => {

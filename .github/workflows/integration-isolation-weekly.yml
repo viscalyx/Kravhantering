@@ -99,23 +99,12 @@ jobs:
       - name: Start and wait for local IdP service
         run: npm run idp:up
 
-      - name: Start local HSA lookup fixture
-        run: >
-          bash scripts/ci-hsa-person-lookup-fixture.sh
-          start weekly-isolation
-
       - name: Run isolated prodlike chunk
         run: >
           npm run test:integration:prodlike --
           --chunk "${{ matrix.chunk }}"
         env:
           CI: true
-
-      - name: Stop local HSA lookup fixture
-        if: always()
-        run: >
-          bash scripts/ci-hsa-person-lookup-fixture.sh
-          stop weekly-isolation
 
       - name: Stop local IdP service
         if: always()

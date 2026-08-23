@@ -11,7 +11,7 @@ import {
   SoapFault,
   successResponse,
   xmlResponse,
-} from './server.mjs'
+} from './soap-fixture.mjs'
 import { loadStrictTlsMaterial, StrictTlsError } from './strict-tls.mjs'
 
 const BUSINESS_HOST = '0.0.0.0'
