@@ -179,6 +179,13 @@ configure_smoke_app_env() {
     "$app_env"
 }
 
+install_runtime_config_directories() {
+  sudo install -d -o root -g "$SERVICE_USER" -m 0750 \
+    "$CONFIG_ROOT" "$CONFIG_ROOT/keycloak" "$CONFIG_ROOT/sqlserver-tls" \
+    "$CONFIG_ROOT/tls" "$CONFIG_ROOT/keycloak-management-tls" \
+    "$CONFIG_ROOT/kong-tls" "$CONFIG_ROOT/secrets"
+}
+
 render_runtime_configuration() {
   local app_client_secret cookie_password keycloak_admin_password
   local mcp_client_secret
@@ -282,10 +289,7 @@ NODE
     --ca-cert tmp/container-tls/ca.crt \
     --ca-key tmp/container-tls/ca.key
 
-  sudo install -d -o root -g "$SERVICE_USER" -m 0750 \
-    "$CONFIG_ROOT" "$CONFIG_ROOT/keycloak" "$CONFIG_ROOT/sqlserver-tls" \
-    "$CONFIG_ROOT/tls" "$CONFIG_ROOT/keycloak-management-tls" \
-    "$CONFIG_ROOT/kong-tls"
+  install_runtime_config_directories
   for file in app.env db-job.env keycloak.env release.env sqlserver.env; do
     sudo install -o root -g "$SERVICE_USER" -m 0640 \
       "$CONFIG_TEMP_DIR/$file" "$CONFIG_ROOT/$file"

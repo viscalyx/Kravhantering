@@ -2125,7 +2125,7 @@
         "selectionHelp": "Välj en modell som adaptern rapporterar för att fylla i namn, externt modell-id, version och annonserade förmågor. In- och utpris per en miljon token visas när katalogen tillhandahåller uppgifterna; priset är vägledande och sparas inte som modellkonfiguration. Kontrollera uppgifterna innan du sparar; katalogen ersätter inte den funktionella verifieringen. Välj Skriv in manuellt om modellen saknas.",
         "selectionIntro": "Ingen modellista har lästs in för den här redigeringen. Du kan ange modelluppgifterna manuellt.",
         "selectionLabel": "Modell från katalog",
-        "selectionReady": "Välj en modell från kataloglistan eller mata in modelluppgifterna manuellt i fälten.",
+        "selectionReady": "Välj en modell i kataloglistan eller mata in modelluppgifterna manuellt i fälten.",
         "unavailableManual": "AI-anslutningens gränssnitt kunde inte tillhandahålla någon modellista. Ange modelluppgifterna manuellt."
       },
       "model": {

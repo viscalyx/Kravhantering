@@ -2125,7 +2125,7 @@
         "selectionHelp": "Select a model reported by the adapter to fill in its name, external model ID, version, and advertised capabilities. Input and output prices per million tokens are shown when the catalog supplies them; prices are indicative and are not saved as model configuration. Review the values before saving; the catalog does not replace functional verification. Select Enter manually when the model is missing.",
         "selectionIntro": "No model list was loaded for this edit. You can enter the model details manually.",
         "selectionLabel": "Model from catalog",
-        "selectionReady": "Select a model from the catalog list or enter the model details manually in the fields.",
+        "selectionReady": "Choose a model in the catalog list or enter the model details manually in the fields.",
         "unavailableManual": "The AI connection interface could not provide a model list. Enter the model details manually."
       },
       "model": {

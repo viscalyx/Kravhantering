@@ -1358,6 +1358,49 @@ expect_database_tls_failure 'identity probe' 'certificate.*identity'
     )
   })
 
+  it('creates the provider-secret mount source with the runtime configuration', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-smoke-config-'))
+    temporaryDirectories.push(root)
+    const configDir = path.join(root, 'config')
+
+    const result = childProcess.spawnSync(
+      'bash',
+      [
+        '-c',
+        `source "$1"
+CONFIG_ROOT="$2"
+SERVICE_USER=kravhantering
+sudo() {
+  [[ "$1" == install ]]
+  shift
+  local -a arguments=()
+  while (( "$#" )); do
+    case "$1" in
+      -o|-g) shift 2 ;;
+      *) arguments+=("$1"); shift ;;
+    esac
+  done
+  install "\${arguments[@]}"
+}
+install_runtime_config_directories
+`,
+        'production-smoke-test',
+        PRODUCTION_SMOKE_PATH,
+        configDir,
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' },
+    )
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    expect(fs.statSync(path.join(configDir, 'secrets')).isDirectory()).toBe(
+      true,
+    )
+    expect(fs.statSync(path.join(configDir, 'secrets')).mode & 0o777).toBe(
+      0o750,
+    )
+  })
+
   it('transitions persisted clients from legacy trust to verified TLS', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kh-smoke-upgrade-'))
     temporaryDirectories.push(root)
