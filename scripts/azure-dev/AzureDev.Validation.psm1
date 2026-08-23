@@ -117,6 +117,10 @@ expected_git_user_name="$1"
 expected_git_user_email="$2"
 expected_git_ssh_signing_public_key="$3"
 expected_codex_version="$4"
+managed_codex_launcher=/home/vscode/.local/bin/codex
+managed_codex_bin=/home/vscode/.local/bin
+managed_codex_path=/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+legacy_codex_launcher=/usr/local/bin/codex
 export HOME=/home/vscode
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_DATA_HOME="${HOME}/.local/share"
@@ -333,6 +337,18 @@ if ! {
   dump_smoke_diagnostics
   exit 1
 fi
+effective_ssh_path() {
+  sudo -n /usr/sbin/sshd -T \
+    -C "user=$1,host=localhost,addr=127.0.0.1" |
+    awk '$1 == "setenv" { for (i = 2; i <= NF; i++) if ($i ~ /^PATH=/) { sub(/^PATH=/, "", $i); print $i } }'
+}
+test "$(effective_ssh_path vscode)" = "${managed_codex_path}"
+for privileged_account in root nobody; do
+  if [[ ":$(effective_ssh_path "${privileged_account}"):" == *":${managed_codex_bin}:"* ]]; then
+    printf 'SSH command path for %s exposes the vscode-managed directory.\n' "${privileged_account}"
+    exit 1
+  fi
+done
 findmnt /mnt/krav-azure-dev-data >/dev/null
 findmnt /workspace >/dev/null
 findmnt /var/lib/krav-azure-dev >/dev/null
@@ -417,7 +433,29 @@ if [ -n "${expected_git_ssh_signing_public_key}" ]; then
 fi
 gh --version >/dev/null 2>&1
 btop --version >/dev/null 2>&1
-test "$(/usr/local/bin/codex --version)" = "codex-cli ${expected_codex_version}"
+test "${PATH}" = "${managed_codex_path}"
+test ! -e "${legacy_codex_launcher}" && test ! -L "${legacy_codex_launcher}" || {
+  printf 'A legacy Codex launcher exists at %s; replacement-only setup is required.\n' "${legacy_codex_launcher}"
+  exit 1
+}
+test -L "${managed_codex_launcher}"
+test "$(stat -c '%U:%G' "${managed_codex_launcher}")" = 'vscode:vscode'
+test "$(stat -c '%a' /home/vscode/.local)" = '700'
+test "$(stat -c '%U:%G' /home/vscode/.local)" = 'vscode:vscode'
+test "$(stat -c '%a' "${managed_codex_bin}")" = '700'
+test "$(stat -c '%U:%G' "${managed_codex_bin}")" = 'vscode:vscode'
+test "$(stat -c '%a' /home/vscode/.codex)" = '700'
+test "$(stat -c '%U:%G' /home/vscode/.codex)" = 'vscode:vscode'
+test "$(stat -c '%a' /home/vscode/.codex/config.toml)" = '600'
+test "$(stat -c '%U:%G' /home/vscode/.codex/config.toml)" = 'vscode:vscode'
+test -x "${managed_codex_launcher}"
+test "$("${managed_codex_launcher}" --version)" = "codex-cli ${expected_codex_version}"
+test "$(bash --login -c 'command -v codex')" = "${managed_codex_launcher}"
+test "$(bash --login -c 'type -t codex')" = 'file'
+test "$(zsh -ic 'whence -p codex')" = "${managed_codex_launcher}"
+zsh -ic '(( ! $+aliases[codex] && ! $+functions[codex] ))'
+sudo -n env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  sh -c 'case ":${PATH}:" in *:/home/vscode/.local/bin:*) exit 1 ;; esac'
 copilot --version >/dev/null 2>&1
 docker --version >/dev/null 2>&1
 docker compose version >/dev/null 2>&1

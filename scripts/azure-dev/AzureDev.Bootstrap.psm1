@@ -251,6 +251,7 @@ function Copy-AzureDevDevelopmentToolFiles {
     (Join-Path $templatesPath 'merge-codex-config.py'),
     (Join-Path $templatesPath 'install-codex.sh'),
     (Join-Path $templatesPath 'install-azure-codex.sh'),
+    (Join-Path $templatesPath 'install-azure-codex-session-policy.sh'),
     (Join-Path $templatesPath 'install-dotenv-linter.sh'),
     (Join-Path $templatesPath 'install-rolling-git-source.sh'),
     (Join-Path $templatesPath 'storage-report.sh'),
@@ -532,6 +533,8 @@ function Invoke-AzureDevBootstrap {
       "AZURE_DEV_CODEX_CONFIG_MERGER=$remoteToolingPath/merge-codex-config.py " +
       "AZURE_DEV_CODEX_INSTALLER=$remoteToolingPath/install-codex.sh " +
       "AZURE_DEV_CODEX_ORCHESTRATOR=$remoteToolingPath/install-azure-codex.sh " +
+      "AZURE_DEV_CODEX_SESSION_POLICY=$remoteToolingPath/install-azure-codex-session-policy.sh " +
+      'AZURE_DEV_CODEX_MODE=user-managed ' +
       "AZURE_DEV_DOTENV_LINTER_INSTALLER=$remoteToolingPath/install-dotenv-linter.sh " +
       "AZURE_DEV_ROLLING_GIT_INSTALLER=$remoteToolingPath/install-rolling-git-source.sh " +
       "AZURE_DEV_STORAGE_REPORT_SOURCE=$remoteToolingPath/storage-report.sh " +

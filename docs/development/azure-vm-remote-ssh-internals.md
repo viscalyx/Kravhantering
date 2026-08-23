@@ -575,22 +575,19 @@ Bootstrap installs Bubblewrap and the Ubuntu 24.04
 can create the user, PID, and network namespaces Codex requires. It does not
 disable `kernel.apparmor_restrict_unprivileged_userns` globally.
 
-Bootstrap routes system-managed Codex installation through
-`install-azure-codex.sh`. This Azure-only orchestration boundary invokes the
-shared verified installer, requires exactly one schema-versioned stable target
-result, and installs under `/usr/local/lib/codex` with the launcher at
-`/usr/local/bin/codex`. The shared installer resolves current release metadata,
-verifies the upstream SHA-256 digest for `install.sh`, and remains the direct
-devcontainer build boundary. Missing, malformed, duplicate, conflicting, or
-unstable target results stop setup.
-
-The orchestration boundary also contains a dormant `user-managed` mode for the
-replacement-only rollout. Ordinary Azure bootstrap explicitly selects
-`system-managed`; do not activate the user-managed path until the replacement
-workflow and command-path policy are delivered together. In user-managed mode,
-the verified shared wrapper and upstream installer run as `vscode` with the
-upstream standalone layout under `/home/vscode/.codex`, a private per-run
+Bootstrap explicitly selects the `user-managed` mode in
+`install-azure-codex.sh`. The `vscode` account, private Codex root, and private
+user-local binary root exist before orchestration starts. The Azure-only
+boundary invokes the shared verified installer, requires exactly one
+schema-versioned stable target result, and runs both wrappers as `vscode` with
+the upstream standalone layout under `/home/vscode/.codex`, a private per-run
 temporary directory, and the launcher under `/home/vscode/.local/bin`.
+
+The shared installer still resolves current release metadata and verifies the
+upstream SHA-256 digest for `install.sh`. It remains the direct system-managed
+devcontainer build boundary; Azure ownership and session policy do not enter
+either devcontainer profile. Missing, malformed, duplicate, conflicting, or
+unstable target results stop setup.
 
 Before invoking upstream, the Azure boundary validates ownership and object
 types without recursively taking ownership of the Codex state tree. It rejects
@@ -622,6 +619,25 @@ The PowerShell setup flow validates that one result and passes its version
 directly to smoke validation. Smoke does not resolve release metadata or write
 a version marker. Forwarded GitHub tokens remain subprocess environment/input
 only and do not appear in result records or command arguments.
+
+`install-azure-codex-session-policy.sh` writes the accepted token-variable and
+`vscode`-only SSH path rule, then returns to the global OpenSSH match context.
+It writes the `vscode` Bash-login policy and appends a managed Zsh footer after
+the selected default or custom template. It rejects alias or function masking.
+The effective SSH path is exact and user-first for `vscode`; root and other
+accounts never inherit the user-writable directory. This policy covers new SSH
+processes, the VS Code Remote SSH server, and its extension-host children. It
+does not set a Codex IDE extension executable override. Setup reloads OpenSSH
+configuration but does not restart open terminals or the VS Code Server, so a
+reconnect is the convergence boundary.
+
+Any object at `/usr/local/bin/codex` is a blocking legacy collision. Setup does
+not remove, migrate, tolerate, or redirect it. Operators preserve remote-only
+work, run `remove`, run `setup -Yes`, reconnect, and complete a fresh
+environment-local `codex login`. `remove` preserves workstation SSH keys by
+default but deletes both VM disks. A failed replacement setup preserves the VM,
+both disks, and created Azure resources for diagnosis and retry; it never
+recreates the legacy installation.
 
 The shared dotenv-linter helper applies the same fail-closed release-asset
 digest contract. Bootstrap configures NodeSource and Tailscale directly as
@@ -823,7 +839,8 @@ Validation must prove these implementation contracts:
 - SSH reaches the generated host alias as `vscode`.
 - the effective root-specific OpenSSH policy is `PermitRootLogin no`.
 - the effective OpenSSH environment policy accepts `GH_TOKEN` and
-  `COPILOT_GITHUB_TOKEN`.
+  `COPILOT_GITHUB_TOKEN`, gives only `vscode` the exact managed command path,
+  and returns root and other users to system-only paths.
 - Bubblewrap can create the unprivileged network namespace used by Codex.
 - `/home/vscode/.codex/config.toml` selects the managed
   `kravhantering-azure-dev` profile while preserving unrelated user settings.
@@ -836,9 +853,12 @@ Validation must prove these implementation contracts:
 - when SSH signing is configured, the forwarded agent contains the selected
   key and Git can create a temporary signed commit.
 - expected major tools are installed: Node 24, npm, .NET 8.0, Git, GitHub CLI,
-  `btop`, the absolute system-managed Codex launcher at the exact bootstrap
-  target, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
+  `btop`, the owned and executable absolute user-managed Codex launcher at the
+  exact bootstrap target, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
   `podman-compose`, Python, `dotenv-linter`, Lychee, and Playwright.
+- fresh Bash-login and interactive-Zsh processes resolve bare `codex` to the
+  managed launcher without alias or function masking, and the legacy launcher
+  is absent.
 - user lingering is enabled.
 - managed Quadlet services are active.
 - support ports are bound only to loopback.

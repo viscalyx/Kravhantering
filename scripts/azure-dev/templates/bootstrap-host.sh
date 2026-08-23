@@ -37,6 +37,7 @@ CODEX_CONFIG_SOURCE="${AZURE_DEV_CODEX_CONFIG_SOURCE:-${WORKSPACE_DIR}/scripts/a
 CODEX_CONFIG_MERGER="${AZURE_DEV_CODEX_CONFIG_MERGER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/merge-codex-config.py}"
 CODEX_INSTALLER="${AZURE_DEV_CODEX_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-codex.sh}"
 CODEX_ORCHESTRATOR="${AZURE_DEV_CODEX_ORCHESTRATOR:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-azure-codex.sh}"
+CODEX_SESSION_POLICY="${AZURE_DEV_CODEX_SESSION_POLICY:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-azure-codex-session-policy.sh}"
 DOTENV_LINTER_INSTALLER="${AZURE_DEV_DOTENV_LINTER_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-dotenv-linter.sh}"
 APT_KEY_VERIFIER="${AZURE_DEV_APT_KEY_VERIFIER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/verify-apt-key.sh}"
 ROLLING_GIT_INSTALLER="${AZURE_DEV_ROLLING_GIT_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-rolling-git-source.sh}"
@@ -44,9 +45,10 @@ STORAGE_REPORT_SOURCE="${AZURE_DEV_STORAGE_REPORT_SOURCE:-${WORKSPACE_DIR}/scrip
 GIT_USER_NAME="${AZURE_DEV_GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${AZURE_DEV_GIT_USER_EMAIL:-}"
 GIT_SSH_SIGNING_PUBLIC_KEY="${AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY:-}"
-CODEX_INSTALL_HOME="/usr/local/lib/codex"
+CODEX_MANAGED_BIN_DIR="${VSCODE_HOME}/.local/bin"
+CODEX_MANAGED_LAUNCHER="${CODEX_MANAGED_BIN_DIR}/codex"
+CODEX_MANAGED_PATH="${CODEX_MANAGED_BIN_DIR}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 SSHD_ROOT_LOGIN_CONFIG="/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf"
-SSHD_ENVIRONMENT_CONFIG="/etc/ssh/sshd_config.d/01-kravhantering-environment.conf"
 LYCHEE_VERSION="v0.24.2"
 
 log() {
@@ -130,19 +132,13 @@ configure_git_identity() {
 }
 
 configure_ssh_access() {
-  log "configuring SSH root-login and environment policies"
+  log "configuring SSH root-login policy"
   install -d -m 0755 /etc/ssh/sshd_config.d
   printf '%s\n' \
     '# Managed by Kravhantering Azure development setup.' \
     'PermitRootLogin no' \
     > "${SSHD_ROOT_LOGIN_CONFIG}"
   chmod 0644 "${SSHD_ROOT_LOGIN_CONFIG}"
-  printf '%s\n' \
-    '# Managed by Kravhantering Azure development setup.' \
-    'AcceptEnv GH_TOKEN COPILOT_GITHUB_TOKEN' \
-    > "${SSHD_ENVIRONMENT_CONFIG}"
-  chmod 0644 "${SSHD_ENVIRONMENT_CONFIG}"
-
   /usr/sbin/sshd -t
   systemctl reload ssh.service
 
@@ -156,19 +152,7 @@ configure_ssh_access() {
     log "effective SSH root-login policy is ${root_login_policy:-unset}; expected no"
     return 1
   fi
-  if ! /usr/sbin/sshd -T \
-    -C user=vscode,host=localhost,addr=127.0.0.1 \
-    | grep -E '^acceptenv (.* )?GH_TOKEN( |$)' >/dev/null; then
-    log "effective SSH environment policy does not accept GH_TOKEN"
-    return 1
-  fi
-  if ! /usr/sbin/sshd -T \
-    -C user=vscode,host=localhost,addr=127.0.0.1 \
-    | grep -E '^acceptenv (.* )?COPILOT_GITHUB_TOKEN( |$)' >/dev/null; then
-    log "effective SSH environment policy does not accept COPILOT_GITHUB_TOKEN"
-    return 1
-  fi
-  log "SSH root-login and environment policies configured and validated"
+  log "SSH root-login policy configured and validated"
 }
 
 configure_repositories() {
@@ -282,9 +266,11 @@ install_codex() {
   fi
   if ! codex_install_result="$(
     AZURE_DEV_CODEX_INSTALLER="${CODEX_INSTALLER}" \
-    AZURE_DEV_CODEX_MODE=system-managed \
-    CODEX_HOME="${CODEX_INSTALL_HOME}" \
-    CODEX_INSTALL_DIR=/usr/local/bin \
+    AZURE_DEV_CODEX_MODE="${AZURE_DEV_CODEX_MODE:-user-managed}" \
+    AZURE_DEV_CODEX_USER="${VSCODE_USER}" \
+    AZURE_DEV_CODEX_USER_HOME="${VSCODE_HOME}" \
+    CODEX_HOME="${CODEX_HOME_DIR}" \
+    CODEX_INSTALL_DIR="${VSCODE_HOME}/.local/bin" \
     CODEX_NON_INTERACTIVE=1 \
       bash "${CODEX_ORCHESTRATOR}"
   )"; then
@@ -319,10 +305,17 @@ install_codex() {
     return 1
   fi
 
-  if [ "$(/usr/local/bin/codex --version)" != "codex-cli ${codex_target_version}" ]; then
+  if [ "$("${VSCODE_HOME}/.local/bin/codex" --version)" != "codex-cli ${codex_target_version}" ]; then
     log "Codex target ${codex_target_version} did not pass exact-version validation"
     return 1
   fi
+}
+
+prepare_codex_user_roots() {
+  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+    "${CODEX_HOME_DIR}" \
+    "${VSCODE_HOME}/.local" \
+    "${VSCODE_HOME}/.local/bin"
 }
 
 install_other_ai_tools() {
@@ -823,9 +816,14 @@ install_zsh_profile() {
     log "Zsh template not found: ${ZSHRC_SOURCE}"
     return 1
   fi
-  install -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0644 \
-    "${ZSHRC_SOURCE}" \
-    "${VSCODE_HOME}/.zshrc"
+  if [ ! -f "${CODEX_SESSION_POLICY}" ]; then
+    log "Azure Codex session-policy helper is missing: ${CODEX_SESSION_POLICY}"
+    return 1
+  fi
+  AZURE_DEV_CODEX_USER="${VSCODE_USER}" \
+  AZURE_DEV_CODEX_USER_HOME="${VSCODE_HOME}" \
+  AZURE_DEV_ZSHRC_SOURCE="${ZSHRC_SOURCE}" \
+    bash "${CODEX_SESSION_POLICY}"
 }
 
 configure_npm_caches() {
@@ -1465,6 +1463,7 @@ main() {
   mount_data_disk
   start_docker_services_after_storage_change
   configure_npm_caches
+  prepare_codex_user_roots
   install_codex
   install_other_ai_tools
   configure_codex_sandbox

@@ -261,7 +261,7 @@ afterEach(() => {
 })
 
 describe('Azure Codex installation orchestration', () => {
-  it('keeps ordinary Azure setup on the system-managed mode', () => {
+  it('retains the explicit system-managed boundary for the devcontainer', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'azure-codex-system-'))
     temporaryDirectories.push(root)
     const installer = path.join(root, 'installer.sh')
@@ -274,7 +274,11 @@ describe('Azure Codex installation orchestration', () => {
 
     const result = spawnSync('bash', [orchestrationPath], {
       encoding: 'utf8',
-      env: { ...process.env, AZURE_DEV_CODEX_INSTALLER: installer },
+      env: {
+        ...process.env,
+        AZURE_DEV_CODEX_INSTALLER: installer,
+        AZURE_DEV_CODEX_MODE: 'system-managed',
+      },
     })
 
     expect(result.status).toBe(0)
