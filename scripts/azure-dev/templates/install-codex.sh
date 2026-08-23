@@ -9,7 +9,7 @@ log() {
   printf '[codex-installer] %s\n' "$*" >&2
 }
 
-codex_temp_dir="$(mktemp -d /tmp/krav-codex-installer.XXXXXX)"
+codex_temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/krav-codex-installer.XXXXXX")"
 cleanup() {
   rm -rf "${codex_temp_dir}"
 }
@@ -47,13 +47,14 @@ codex_curl \
 
 if ! codex_release_tag="$(
   jq -er \
-    '.tag_name | select(test("^rust-v[0-9]+\\.[0-9]+\\.[0-9]+$"))' \
+    'select(.draft == false and .prerelease == false) |
+      .tag_name | select(test("^rust-v[0-9]+\\.[0-9]+\\.[0-9]+$"))' \
     "${codex_release_json}"
 )" ||
   ! codex_installer_sha256="$(
     jq -er \
       '[.assets[] | select(.name == "install.sh") | .digest |
-        select(startswith("sha256:"))] |
+        select(test("^sha256:[0-9a-fA-F]{64}$"))] |
         if length == 1 then .[0] | sub("^sha256:"; "")
         else error("missing unique install.sh SHA-256 digest") end' \
       "${codex_release_json}"

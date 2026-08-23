@@ -18,19 +18,28 @@ const installerPath = path.join(
   'scripts/azure-dev/templates/install-codex.sh',
 )
 
-function fixture(options: { digest?: string | null } = {}) {
+function fixture(
+  options: {
+    digest?: string | null
+    draft?: boolean
+    duplicateInstaller?: boolean
+    prerelease?: boolean
+  } = {},
+) {
   const root = mkdtempSync(path.join(tmpdir(), 'codex-installer-test-'))
   temporaryDirectories.push(root)
   const fakeBin = path.join(root, 'bin')
   const releaseJson = path.join(root, 'release.json')
   const upstreamInstaller = path.join(root, 'upstream-install.sh')
   const capturePath = path.join(root, 'installed-version.txt')
+  const privateTemp = path.join(root, 'private-temp')
   const curlCapturePath = path.join(root, 'curl-arguments.txt')
   const curlAuthenticationCapturePath = path.join(
     root,
     'curl-authentication.txt',
   )
   mkdirSync(fakeBin)
+  mkdirSync(privateTemp, { mode: 0o700 })
 
   writeFileSync(
     upstreamInstaller,
@@ -54,7 +63,10 @@ function fixture(options: { digest?: string | null } = {}) {
           ...(digest === null ? {} : { digest }),
           name: 'install.sh',
         },
+        ...(options.duplicateInstaller ? [{ digest, name: 'install.sh' }] : []),
       ],
+      draft: options.draft ?? false,
+      prerelease: options.prerelease ?? false,
       tag_name: 'rust-v1.2.3',
     })}\n`,
   )
@@ -105,6 +117,7 @@ function fixture(options: { digest?: string | null } = {}) {
     HTTP_PROXY: undefined,
     NO_PROXY: undefined,
     PATH: `${fakeBin}:${process.env.PATH ?? ''}`,
+    TMPDIR: privateTemp,
     all_proxy: undefined,
     http_proxy: undefined,
     https_proxy: undefined,
@@ -116,6 +129,7 @@ function fixture(options: { digest?: string | null } = {}) {
     curlAuthenticationCapturePath,
     curlCapturePath,
     env,
+    privateTemp,
   }
 }
 
@@ -142,6 +156,12 @@ describe('Codex installer integrity contract', () => {
     expect(curlArguments).toContain('--max-time\n120')
     expect(curlArguments).toContain('--retry\n3')
     expect(curlArguments).not.toContain('Authorization: Bearer')
+    expect(curlArguments).toContain(
+      `${testFixture.privateTemp}/krav-codex-installer.`,
+    )
+    expect(curlArguments).toContain(
+      'https://github.com/openai/codex/releases/download/rust-v1.2.3/install.sh',
+    )
   })
 
   it('authenticates GitHub requests when a controlled token is present', () => {
@@ -194,6 +214,25 @@ describe('Codex installer integrity contract', () => {
 
   it('fails closed when the release omits installer integrity evidence', () => {
     const testFixture = fixture({ digest: null })
+
+    const result = spawnSync('bash', [installerPath], {
+      encoding: 'utf8',
+      env: testFixture.env,
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'Could not resolve the latest Codex installer and digest',
+    )
+    expect(existsSync(testFixture.capturePath)).toBe(false)
+  })
+
+  it.each([
+    ['draft', { draft: true }],
+    ['prerelease', { prerelease: true }],
+    ['ambiguous installer', { duplicateInstaller: true }],
+  ])('fails closed for %s release metadata', (_name, options) => {
+    const testFixture = fixture(options)
 
     const result = spawnSync('bash', [installerPath], {
       encoding: 'utf8',

@@ -584,6 +584,27 @@ verifies the upstream SHA-256 digest for `install.sh`, and remains the direct
 devcontainer build boundary. Missing, malformed, duplicate, conflicting, or
 unstable target results stop setup.
 
+The orchestration boundary also contains a dormant `user-managed` mode for the
+replacement-only rollout. Ordinary Azure bootstrap explicitly selects
+`system-managed`; do not activate the user-managed path until the replacement
+workflow and command-path policy are delivered together. In user-managed mode,
+the verified shared wrapper and upstream installer run as `vscode` with the
+upstream standalone layout under `/home/vscode/.codex`, a private per-run
+temporary directory, and the launcher under `/home/vscode/.local/bin`.
+
+Before invoking upstream, the Azure boundary validates ownership and object
+types without recursively taking ownership of the Codex state tree. It rejects
+legacy global launchers with replacement-only guidance, symlinked or
+unrecognized managed roots, unsafe parents, and unrecognized package entries.
+It records only recognized `current` and launcher targets, bounds the complete
+upstream invocation and lock wait to 15 minutes, verifies the exact target
+through the absolute launcher, and restores the recorded links after ordinary
+failure, timeout, termination, or version mismatch. A private transaction
+record lets the next setup recover recognized links and scratch state after an
+uncatchable interruption. Authentication, sessions, plugins, skills,
+databases, history, attachments, caches, and unrelated configuration remain
+outside this installation boundary.
+
 Guest bootstrap parses the target in memory, validates the absolute launcher
 against it, and emits the same result for the workstation bootstrap module.
 `Invoke-AzureDevBootstrapAndSmokeValidation` carries that validated target

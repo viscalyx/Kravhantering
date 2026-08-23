@@ -676,6 +676,16 @@ describe('development environment contract', () => {
     expect(startDockerIndex).toBeGreaterThan(stopDockerIndex)
   })
 
+  it('keeps ordinary Azure bootstrap on system-managed Codex installation', () => {
+    const hostBootstrap = readWorkspaceFile(
+      'scripts/azure-dev/templates/bootstrap-host.sh',
+    )
+
+    expect(hostBootstrap).toContain('AZURE_DEV_CODEX_MODE=system-managed')
+    expect(hostBootstrap).toContain('CODEX_HOME="${CODEX_INSTALL_HOME}"')
+    expect(hostBootstrap).toContain('CODEX_INSTALL_DIR=/usr/local/bin')
+  })
+
   it('runs managed shell output before Powerlevel10k initialization', () => {
     const hostBootstrap = readWorkspaceFile(
       'scripts/azure-dev/templates/bootstrap-host.sh',

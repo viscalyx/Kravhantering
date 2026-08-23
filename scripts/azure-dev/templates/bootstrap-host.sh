@@ -282,6 +282,7 @@ install_codex() {
   fi
   if ! codex_install_result="$(
     AZURE_DEV_CODEX_INSTALLER="${CODEX_INSTALLER}" \
+    AZURE_DEV_CODEX_MODE=system-managed \
     CODEX_HOME="${CODEX_INSTALL_HOME}" \
     CODEX_INSTALL_DIR=/usr/local/bin \
     CODEX_NON_INTERACTIVE=1 \
