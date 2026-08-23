@@ -110,6 +110,7 @@ describe('dependency maintenance discovery', () => {
     expect(discoverPackageProjects(process.cwd())).toEqual([
       '.',
       'containers/hsa-directory-mock',
+      'containers/hsa-mtls-provisioner',
       'containers/hsa-person-lookup-adapter',
     ])
     expect(discoverDockerfileInputs(process.cwd())).toEqual(

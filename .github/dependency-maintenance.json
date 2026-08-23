@@ -28,6 +28,14 @@
       "directory": "/containers/hsa-person-lookup-adapter"
     },
     {
+      "id": "npm-hsa-mtls-provisioner",
+      "kind": "npm-package",
+      "path": "containers/hsa-mtls-provisioner",
+      "lane": "dependabot",
+      "ecosystem": "npm",
+      "directory": "/containers/hsa-mtls-provisioner"
+    },
+    {
       "id": "npm-toolchain",
       "kind": "npm-toolchain",
       "lane": "issue",
@@ -82,7 +90,8 @@
       "paths": [
         "containers/app/Dockerfile",
         "containers/hsa-directory-mock/Dockerfile",
-        "containers/hsa-person-lookup-adapter/Dockerfile"
+        "containers/hsa-person-lookup-adapter/Dockerfile",
+        "containers/hsa-mtls-provisioner/Dockerfile"
       ]
     },
     {

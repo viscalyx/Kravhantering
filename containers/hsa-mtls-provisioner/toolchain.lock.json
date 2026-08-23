@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "baseImage": "docker.io/library/node",
+  "baseTag": "24-trixie-slim",
+  "baseDigest": "sha256:f2925910482dc53394bc0034c5f4abffcd01de400794c050ca343fe0d733b486",
+  "nodeVersion": "24",
+  "opensslPackageVersion": "3.5.6-1~deb13u2",
+  "caCertificatesPackageVersion": "20250419"
+}

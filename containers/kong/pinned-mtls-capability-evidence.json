@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-08-23",
+  "probe": "containers/kong/verify-pinned-mtls-capabilities.mjs",
+  "image": "docker.io/kong/kong-gateway",
+  "version": "3.15.0.2",
+  "manifestDigest": "sha256:a4eb1fece17f5289d844c499af41c9e5b24919ddda02a89bcdae63efe6e390b4",
+  "imageId": "sha256:a76bbb6001f058da7052fb7a8475e9e6e17cd75c4d15e306d9f7a0004e83038c",
+  "results": {
+    "listenerDirectiveInjection": true,
+    "downstreamClientChainRequired": true,
+    "downstreamExactRfc2253SubjectRequired": true,
+    "declarativeServiceTlsFields": ["tls_verify", "tls_verify_depth"],
+    "generatedUpstreamClientCertificate": true,
+    "generatedUpstreamTrustAnchor": true,
+    "generatedUpstreamServerName": "$upstream_host",
+    "upstreamClientCertificatePresented": true,
+    "upstreamServerChainVerified": true,
+    "upstreamServerDnsIdentityVerified": true,
+    "adminApiReachability": "loopback-only",
+    "adminApiPostConfigStatus": 403
+  }
+}

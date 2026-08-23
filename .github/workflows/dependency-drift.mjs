@@ -71,6 +71,7 @@ export const IMAGE_CONFIGS = {
       'containers/app/Dockerfile',
       'containers/hsa-directory-mock/Dockerfile',
       'containers/hsa-person-lookup-adapter/Dockerfile',
+      'containers/hsa-mtls-provisioner/Dockerfile',
     ],
     registryHost: 'registry-1.docker.io',
     registryRepository: 'library/node',

@@ -75,6 +75,14 @@ npm run devcontainer:kong:recreate
 
 `image.lock.json` pins the upstream image by tag, manifest digest and image ID.
 
+The strict-mTLS Foundation A capability probe is
+`verify-pinned-mtls-capabilities.mjs`. It builds temporary trusted and
+trusted-but-wrong identity fixtures, runs the immutable locked manifest, and
+proves listener directive injection, declarative upstream TLS fields, generated
+verification behavior, and loopback-only Admin API behavior. Its safe result is
+recorded in `pinned-mtls-capability-evidence.json`. This evidence does not
+select the future role-specific bundles or change the deployed topology.
+
 The normal detection path is `.github/workflows/dependency-drift.yml`. It runs
 weekly from `main` and can also be started manually with `workflow_dispatch`.
 The detector opens or refreshes a dependency-drift issue for the Kong Gateway

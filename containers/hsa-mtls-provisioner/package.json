@@ -1,0 +1,21 @@
+{
+  "name": "@kravhantering/hsa-mtls-provisioner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@12.0.2",
+  "engines": {
+    "node": "24"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": "12.0.2",
+      "onFail": "error"
+    }
+  },
+  "scripts": {
+    "test": "node --test --experimental-test-coverage --test-coverage-exclude=src/cli.mjs --test-coverage-lines=85 --test-coverage-functions=85 --test-coverage-branches=85"
+  },
+  "allowScripts": {}
+}

@@ -97,6 +97,7 @@ describe('container image contract', () => {
     const dockerfiles = [
       'containers/app/Dockerfile',
       'containers/hsa-directory-mock/Dockerfile',
+      'containers/hsa-mtls-provisioner/Dockerfile',
       'containers/hsa-person-lookup-adapter/Dockerfile',
     ]
     const references = dockerfiles.flatMap(relativePath =>
@@ -465,6 +466,9 @@ describe('container image contract', () => {
       packageJson.scripts['container:build:hsa-person-lookup-adapter'],
     ).toBe(
       'docker buildx build --file containers/hsa-person-lookup-adapter/Dockerfile --tag localhost/kravhantering/hsa-person-lookup-adapter:local --load containers/hsa-person-lookup-adapter',
+    )
+    expect(packageJson.scripts['container:build:hsa-mtls-provisioner']).toBe(
+      'docker buildx build --file containers/hsa-mtls-provisioner/Dockerfile --tag localhost/kravhantering/hsa-mtls-provisioner:local --load .',
     )
   })
 

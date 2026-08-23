@@ -22,6 +22,7 @@ export default defineConfig({
     // node:test contract suites, local worktrees, node_modules, and .git.
     exclude: [
       'containers/hsa-directory-mock/test/**',
+      'containers/hsa-mtls-provisioner/test/**',
       'containers/hsa-person-lookup-adapter/test/**',
       '**/tests/integration/**',
       '**/tests/sql-integration/**',
