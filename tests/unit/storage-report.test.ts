@@ -85,7 +85,7 @@ function runReport(
 ) {
   const { bin, data } = fakeCommandPath()
   const workspace = path.join(data, 'workspace')
-  const worktreeRoot = path.join(data, '.worktrees')
+  const worktreeRoot = path.join(data, 'configured-worktrees')
   mkdirSync(workspace)
   mkdirSync(worktreeRoot)
   const fakeDu = path.join(bin, 'du')
@@ -108,6 +108,7 @@ printf '4.0K\\t%s\\n' "$measured_path"
       encoding: 'utf8',
       env: {
         ...process.env,
+        KRAV_AZURE_WORKTREE_ROOT: worktreeRoot,
         KRAV_STORAGE_DATA_MOUNT: data,
         KRAV_STORAGE_WORKSPACE: workspace,
         PATH: `${bin}:${process.env.PATH}`,
@@ -165,7 +166,7 @@ describe('storage-report', () => {
     expect(result.stderr).toContain('Usage: storage-report [--check]')
   })
 
-  it('sizes the dedicated Azure worktree root outside the workspace', () => {
+  it('sizes the configured non-default Azure worktree root', () => {
     const { result, workspace, worktreeRoot } = runReport()
 
     expect(result.status).toBe(0)
