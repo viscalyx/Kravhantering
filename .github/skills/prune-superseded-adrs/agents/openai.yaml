@@ -1,6 +1,6 @@
 interface:
   display_name: "Prune Superseded ADRs"
   short_description: "Keep ADRs limited to current decisions"
-  default_prompt: "Use $prune-superseded-adrs to audit every ADR, change only superseded decisions or incorrect domain language, inspect code only where ADRs contradict, and keep all other wording and formatting unchanged."
+  default_prompt: "Use $prune-superseded-adrs to audit every ADR, keep all decisions in present tense, change only superseded decisions or incorrect domain language, inspect code only where ADRs contradict, and preserve unrelated wording and formatting."
 policy:
   allow_implicit_invocation: false
