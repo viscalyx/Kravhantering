@@ -540,7 +540,7 @@ waits for cloud-init when available, and runs:
 <!-- markdownlint-disable MD013 -->
 
 ```text
-sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/tooling/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/tooling/merge-codex-config.py AZURE_DEV_CODEX_INSTALLER=/tmp/krav-azure-dev/tooling/install-codex.sh AZURE_DEV_DOTENV_LINTER_INSTALLER=/tmp/krav-azure-dev/tooling/install-dotenv-linter.sh AZURE_DEV_ROLLING_GIT_INSTALLER=/tmp/krav-azure-dev/tooling/install-rolling-git-source.sh AZURE_DEV_APT_KEY_VERIFIER=/tmp/krav-azure-dev/tooling/verify-apt-key.sh AZURE_DEV_GIT_USER_NAME='<full-name>' AZURE_DEV_GIT_USER_EMAIL='<email-address>' AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY='<public-key>' bash /tmp/krav-bootstrap-host.sh
+sudo env AZURE_DEV_QUADLET_SOURCE=/tmp/krav-azure-dev/quadlet AZURE_DEV_ZSHRC_SOURCE=/tmp/krav-azure-dev/zshrc AZURE_DEV_CODEX_CONFIG_SOURCE=/tmp/krav-azure-dev/tooling/codex-config.toml AZURE_DEV_CODEX_CONFIG_MERGER=/tmp/krav-azure-dev/tooling/merge-codex-config.py AZURE_DEV_CODEX_INSTALLER=/tmp/krav-azure-dev/tooling/install-codex.sh AZURE_DEV_CODEX_ORCHESTRATOR=/tmp/krav-azure-dev/tooling/install-azure-codex.sh AZURE_DEV_DOTENV_LINTER_INSTALLER=/tmp/krav-azure-dev/tooling/install-dotenv-linter.sh AZURE_DEV_ROLLING_GIT_INSTALLER=/tmp/krav-azure-dev/tooling/install-rolling-git-source.sh AZURE_DEV_APT_KEY_VERIFIER=/tmp/krav-azure-dev/tooling/verify-apt-key.sh AZURE_DEV_GIT_USER_NAME='<full-name>' AZURE_DEV_GIT_USER_EMAIL='<email-address>' AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY='<public-key>' bash /tmp/krav-bootstrap-host.sh
 ```
 
 <!-- markdownlint-enable MD013 -->
@@ -575,18 +575,83 @@ Bootstrap installs Bubblewrap and the Ubuntu 24.04
 can create the user, PID, and network namespaces Codex requires. It does not
 disable `kernel.apparmor_restrict_unprivileged_userns` globally.
 
-Bootstrap installs Codex CLI with OpenAI's non-interactive standalone installer
-under `/usr/local/lib/codex` and exposes `codex` through `/usr/local/bin`. It
-resolves the current release metadata and verifies the upstream SHA-256 digest
-for `install.sh` before execution. Missing or mismatched integrity evidence
-stops bootstrap. The devcontainer build uses the same verified installer
-helper. The shared dotenv-linter helper applies the same fail-closed release-
-asset digest contract. Bootstrap configures NodeSource and Tailscale directly
-as signed APT repositories instead of executing their setup scripts. It
-verifies the NodeSource, Docker, GitHub CLI, and Tailscale trust roots against
-reviewed primary fingerprints before APT uses them. Bootstrap installs GitHub
-Copilot CLI globally from the `@github/copilot` npm package. This rolling
-channel relies on the npm registry's SRI metadata and npm's package-integrity
+Bootstrap explicitly selects the `user-managed` mode in
+`install-azure-codex.sh`. The `vscode` account, private Codex root, and private
+user-local binary root exist before orchestration starts. The Azure-only
+boundary invokes the shared verified installer, requires exactly one
+schema-versioned stable target result, and runs both wrappers as `vscode` with
+the upstream standalone layout under `/home/vscode/.codex`, a private per-run
+temporary directory, and the launcher under `/home/vscode/.local/bin`.
+
+The shared installer still resolves current release metadata and verifies the
+upstream SHA-256 digest for `install.sh`. It remains the direct system-managed
+devcontainer build boundary; Azure ownership and session policy do not enter
+either devcontainer profile. Missing, malformed, duplicate, conflicting, or
+unstable target results stop setup.
+
+Before invoking upstream, the Azure boundary validates ownership and object
+types without recursively taking ownership of the Codex state tree. It rejects
+legacy global launchers with replacement-only guidance, symlinked or
+unrecognized managed roots, unsafe parents, and unrecognized package entries.
+It records only recognized `current` and launcher targets, bounds the complete
+upstream invocation and lock wait to 15 minutes, and holds upstream's own
+`install.lock` across recovery, link capture, installation, validation, and
+commit. The verified installer passes that held lock through the upstream
+installer's normal `flock` boundary, so a concurrent `codex update` completes
+before Azure snapshots state or waits until Azure finishes. The boundary
+verifies the exact target through the absolute launcher and restores the
+recorded links after ordinary failure, timeout, termination, or version
+mismatch. It reports whether convergence installed, repaired, revalidated,
+upgraded, or downgraded the active release. A private transaction record lets
+the next setup recover recognized links and scratch state after an uncatchable
+interruption; owner-controlled orphaned `run.*` directories from the smaller
+pre-journal interruption window are removed under the same lock without
+following symlinks. Authentication, sessions, plugins, skills, databases,
+history, attachments, caches, and unrelated configuration remain outside this
+installation boundary.
+
+Guest bootstrap parses the target in memory, validates the absolute launcher
+against it, and emits the same result for the workstation bootstrap module.
+`Invoke-AzureDevBootstrapAndSmokeValidation` carries that validated target
+unchanged from bootstrap into smoke validation; the setup entry point uses this
+single PowerShell orchestration seam instead of reconstructing the version.
+The PowerShell setup flow validates that one result and passes its version
+directly to smoke validation. Smoke does not resolve release metadata or write
+a version marker. Forwarded GitHub tokens remain subprocess environment/input
+only and do not appear in result records or command arguments.
+
+`install-azure-codex-session-policy.sh` writes the accepted token-variable and
+`vscode`-only SSH path rule, then returns to the global OpenSSH match context.
+It writes the `vscode` Bash-login policy and appends a managed Zsh footer after
+the selected default or custom template. The footer unique-prepends the managed
+binary directory without discarding other custom path entries, and rejects
+alias or function masking. Candidate SSH, Bash, and Zsh policy is validated
+before activation. Candidate and rollback bytes remain root-owned and
+non-writable by `vscode`; an interactive no-RC Zsh process explicitly sources
+the readable candidate as `vscode`. A later activation failure restores all
+three prior files from the trusted rollback copies.
+The effective SSH path is exact and user-first for `vscode`; root and other
+accounts never inherit the user-writable directory. This policy covers new SSH
+processes, the VS Code Remote SSH server, and its extension-host children. It
+does not set a Codex IDE extension executable override. Setup reloads OpenSSH
+configuration but does not restart open terminals or the VS Code Server, so a
+reconnect is the convergence boundary.
+
+Any object at `/usr/local/bin/codex` is a blocking legacy collision. Setup does
+not remove, migrate, tolerate, or redirect it. Operators preserve remote-only
+work, run `remove`, run `setup -Yes`, reconnect, and complete a fresh
+environment-local `codex login`. `remove` preserves workstation SSH keys by
+default but deletes both VM disks. A failed replacement setup preserves the VM,
+both disks, and created Azure resources for diagnosis and retry; it never
+recreates the legacy installation.
+
+The shared dotenv-linter helper applies the same fail-closed release-asset
+digest contract. Bootstrap configures NodeSource and Tailscale directly as
+signed APT repositories instead of executing their setup scripts. It verifies
+the NodeSource, Docker, GitHub CLI, and Tailscale trust roots against reviewed
+primary fingerprints before APT uses them. Bootstrap installs GitHub Copilot
+CLI globally from the `@github/copilot` npm package. This rolling channel
+relies on the npm registry's SRI metadata and npm's package-integrity
 verification, as approved by ADR 0045. Both installers converge to their
 current stable releases on every setup run.
 
@@ -623,6 +688,8 @@ The development guide contains the human-readable disk tree. The contributor
 contract is:
 
 - `/mnt/krav-azure-dev-data` is the Azure data disk mount.
+- `/mnt/krav-azure-dev-data/.worktrees` is a real directory owned and writable
+  by `vscode` for linked Git worktrees.
 - `/workspace` is a bind mount to the data disk and contains the repository.
 - `/var/lib/krav-azure-dev` is a bind mount to the data disk and contains host
   state owned by this feature.
@@ -643,6 +710,11 @@ entries. Before adding a new bind mount, bootstrap stops the affected container
 services and moves existing target contents only when the data-disk source is
 empty. Conflicting non-empty source and target directories fail setup. It
 removes `lost+found` from the exposed roots and restores directory ownership.
+
+After the data disk is mounted, bootstrap creates its `.worktrees` root before
+preparing the workspace bind mount. Reruns set the root ownership and mode
+without traversing or changing existing linked worktrees. Repository-local
+`.worktrees` storage fails with rebuild guidance and remains unchanged.
 
 Rootless Podman is configured with:
 
@@ -671,8 +743,10 @@ released HSA artifacts.
 When changing storage behavior, update bootstrap and smoke validation together.
 Validation must prove that the data mount source is the Azure data disk and
 that every managed bind mount and npm cache is on the same device as the
-data-disk mount. It also verifies the managed npm cache and storage-report
-commands through the `vscode` environment.
+data-disk mount. It also proves the external worktree root is a real directory
+owned and writable by `vscode`, resides on that device, and remains separated
+from `/workspace`. The managed npm cache and storage-report commands are
+verified through the `vscode` environment.
 
 ## Podman Support Stack
 
@@ -780,7 +854,8 @@ Validation must prove these implementation contracts:
 - SSH reaches the generated host alias as `vscode`.
 - the effective root-specific OpenSSH policy is `PermitRootLogin no`.
 - the effective OpenSSH environment policy accepts `GH_TOKEN` and
-  `COPILOT_GITHUB_TOKEN`.
+  `COPILOT_GITHUB_TOKEN`, gives only `vscode` the exact managed command path,
+  and returns root and other users to system-only paths.
 - Bubblewrap can create the unprivileged network namespace used by Codex.
 - `/home/vscode/.codex/config.toml` selects the managed
   `kravhantering-azure-dev` profile while preserving unrelated user settings.
@@ -793,8 +868,12 @@ Validation must prove these implementation contracts:
 - when SSH signing is configured, the forwarded agent contains the selected
   key and Git can create a temporary signed commit.
 - expected major tools are installed: Node 24, npm, .NET 8.0, Git, GitHub CLI,
-  `btop`, Codex CLI, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
+  `btop`, the owned and executable absolute user-managed Codex launcher at the
+  exact bootstrap target, GitHub Copilot CLI, Docker CLI, Compose, Buildx, Podman,
   `podman-compose`, Python, `dotenv-linter`, Lychee, and Playwright.
+- fresh Bash-login and interactive-Zsh processes resolve bare `codex` to the
+  managed launcher without alias or function masking, and the legacy launcher
+  is absent.
 - user lingering is enabled.
 - managed Quadlet services are active.
 - support ports are bound only to loopback.

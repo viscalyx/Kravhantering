@@ -759,13 +759,8 @@ function Invoke-AzureDevSetup {
         -Context $Context `
         -HostName $hostName `
         -CurrentSshCidr $allowedCidr | Out-Null
-      Invoke-AzureDevBootstrap -Context $Context
-
-      $validationStatus = 'skipped'
-      if (-not $Context.SkipSmokeValidation) {
-        Invoke-AzureDevSmokeValidation -Context $Context
-        $validationStatus = 'passed'
-      }
+      $validationStatus = Invoke-AzureDevBootstrapAndSmokeValidation `
+        -Context $Context
 
       Set-AzureDevSetupState `
         -Context $Context `
@@ -779,8 +774,21 @@ function Invoke-AzureDevSetup {
         -TargetName $Context.Config.VmName `
         -TargetType 'Microsoft.Compute/virtualMachines' `
         -Result 'success'
+      Write-Host (
+        'Codex command-path policy is applied to new processes. Existing ' +
+        'terminals and the VS Code Server were not restarted. Reconnect SSH ' +
+        'and reload the VS Code Remote SSH window before using Codex.'
+      )
       Write-AzureDevSshInstructions -Context $Context
     }
+  } catch {
+    Write-Warning (
+      'Setup failed. The VM, both disks, and all Azure resources already ' +
+      'created by this attempt are preserved for diagnosis and retry. Fix the ' +
+      'reported cause and rerun setup. Use remove only after preserving any ' +
+      'remote-only work when deliberate replacement is required.'
+    )
+    throw
   } finally {
     if (-not $WhatIfPreference) {
       Remove-AzureDevLock -Context $Context -Force

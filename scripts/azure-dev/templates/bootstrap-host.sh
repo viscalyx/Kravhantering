@@ -7,6 +7,7 @@ DATA_DEVICE="/dev/disk/azure/scsi1/lun0"
 DATA_FSTYPE="ext4"
 DATA_MOUNT_DIR="/mnt/krav-azure-dev-data"
 DATA_WORKSPACE_DIR="${DATA_MOUNT_DIR}/workspace"
+DATA_WORKTREE_DIR="${DATA_MOUNT_DIR}/.worktrees"
 DATA_HOST_STATE_DIR="${DATA_MOUNT_DIR}/host-state"
 VSCODE_USER="vscode"
 VSCODE_HOME="/home/${VSCODE_USER}"
@@ -36,16 +37,20 @@ SERVICE_ENV_SOURCE_DIR="${AZURE_DEV_SERVICE_ENV_SOURCE:-}"
 CODEX_CONFIG_SOURCE="${AZURE_DEV_CODEX_CONFIG_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/codex-config.toml}"
 CODEX_CONFIG_MERGER="${AZURE_DEV_CODEX_CONFIG_MERGER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/merge-codex-config.py}"
 CODEX_INSTALLER="${AZURE_DEV_CODEX_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-codex.sh}"
+CODEX_ORCHESTRATOR="${AZURE_DEV_CODEX_ORCHESTRATOR:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-azure-codex.sh}"
+CODEX_SESSION_POLICY="${AZURE_DEV_CODEX_SESSION_POLICY:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-azure-codex-session-policy.sh}"
 DOTENV_LINTER_INSTALLER="${AZURE_DEV_DOTENV_LINTER_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-dotenv-linter.sh}"
 APT_KEY_VERIFIER="${AZURE_DEV_APT_KEY_VERIFIER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/verify-apt-key.sh}"
 ROLLING_GIT_INSTALLER="${AZURE_DEV_ROLLING_GIT_INSTALLER:-${WORKSPACE_DIR}/scripts/azure-dev/templates/install-rolling-git-source.sh}"
 STORAGE_REPORT_SOURCE="${AZURE_DEV_STORAGE_REPORT_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/storage-report.sh}"
+WORKTREE_STORAGE_SOURCE="${AZURE_DEV_WORKTREE_STORAGE_SOURCE:-${WORKSPACE_DIR}/scripts/azure-dev/templates/worktree-storage.sh}"
 GIT_USER_NAME="${AZURE_DEV_GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${AZURE_DEV_GIT_USER_EMAIL:-}"
 GIT_SSH_SIGNING_PUBLIC_KEY="${AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY:-}"
-CODEX_INSTALL_HOME="/usr/local/lib/codex"
+CODEX_MANAGED_BIN_DIR="${VSCODE_HOME}/.local/bin"
+CODEX_MANAGED_LAUNCHER="${CODEX_MANAGED_BIN_DIR}/codex"
+CODEX_MANAGED_PATH="${CODEX_MANAGED_BIN_DIR}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 SSHD_ROOT_LOGIN_CONFIG="/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf"
-SSHD_ENVIRONMENT_CONFIG="/etc/ssh/sshd_config.d/01-kravhantering-environment.conf"
 LYCHEE_VERSION="v0.24.2"
 
 log() {
@@ -129,19 +134,13 @@ configure_git_identity() {
 }
 
 configure_ssh_access() {
-  log "configuring SSH root-login and environment policies"
+  log "configuring SSH root-login policy"
   install -d -m 0755 /etc/ssh/sshd_config.d
   printf '%s\n' \
     '# Managed by Kravhantering Azure development setup.' \
     'PermitRootLogin no' \
     > "${SSHD_ROOT_LOGIN_CONFIG}"
   chmod 0644 "${SSHD_ROOT_LOGIN_CONFIG}"
-  printf '%s\n' \
-    '# Managed by Kravhantering Azure development setup.' \
-    'AcceptEnv GH_TOKEN COPILOT_GITHUB_TOKEN' \
-    > "${SSHD_ENVIRONMENT_CONFIG}"
-  chmod 0644 "${SSHD_ENVIRONMENT_CONFIG}"
-
   /usr/sbin/sshd -t
   systemctl reload ssh.service
 
@@ -155,19 +154,7 @@ configure_ssh_access() {
     log "effective SSH root-login policy is ${root_login_policy:-unset}; expected no"
     return 1
   fi
-  if ! /usr/sbin/sshd -T \
-    -C user=vscode,host=localhost,addr=127.0.0.1 \
-    | grep -E '^acceptenv (.* )?GH_TOKEN( |$)' >/dev/null; then
-    log "effective SSH environment policy does not accept GH_TOKEN"
-    return 1
-  fi
-  if ! /usr/sbin/sshd -T \
-    -C user=vscode,host=localhost,addr=127.0.0.1 \
-    | grep -E '^acceptenv (.* )?COPILOT_GITHUB_TOKEN( |$)' >/dev/null; then
-    log "effective SSH environment policy does not accept COPILOT_GITHUB_TOKEN"
-    return 1
-  fi
-  log "SSH root-login and environment policies configured and validated"
+  log "SSH root-login policy configured and validated"
 }
 
 configure_repositories() {
@@ -274,17 +261,92 @@ install_host_packages() {
     bash "${DOTENV_LINTER_INSTALLER}"
 }
 
-install_ai_tools() {
-  if [ ! -f "${CODEX_INSTALLER}" ]; then
-    log "Codex installer helper is missing: ${CODEX_INSTALLER}"
+install_codex() {
+  if [ ! -f "${CODEX_ORCHESTRATOR}" ]; then
+    log "Azure Codex orchestration helper is missing: ${CODEX_ORCHESTRATOR}"
     return 1
   fi
-  if ! CODEX_HOME="${CODEX_INSTALL_HOME}" \
-    CODEX_INSTALL_DIR=/usr/local/bin \
+  if ! codex_install_result="$(
+    AZURE_DEV_CODEX_INSTALLER="${CODEX_INSTALLER}" \
+    AZURE_DEV_CODEX_MODE="${AZURE_DEV_CODEX_MODE:-user-managed}" \
+    AZURE_DEV_CODEX_USER="${VSCODE_USER}" \
+    AZURE_DEV_CODEX_USER_HOME="${VSCODE_HOME}" \
+    CODEX_HOME="${CODEX_HOME_DIR}" \
+    CODEX_INSTALL_DIR="${VSCODE_HOME}/.local/bin" \
     CODEX_NON_INTERACTIVE=1 \
-    bash "${CODEX_INSTALLER}"; then
+      bash "${CODEX_ORCHESTRATOR}"
+  )"; then
     return 1
   fi
+  if ! codex_target_version="$(
+    printf '%s\n' "${codex_install_result}" |
+      sed -n 's/^KRAV_AZURE_CODEX_RESULT=//p' |
+      jq -er '
+        if type == "object" and
+          keys == ["schemaVersion", "targetVersion"] and
+          .schemaVersion == 1 and
+          (.targetVersion | type == "string") and
+          (.targetVersion | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
+        then .targetVersion
+        else error("invalid Azure Codex result")
+        end
+      '
+  )" || [ "$(printf '%s\n' "${codex_install_result}" | wc -l)" -ne 1 ]; then
+    log 'Azure Codex orchestration result is invalid'
+    return 1
+  fi
+
+  local expected_codex_result
+  expected_codex_result="KRAV_AZURE_CODEX_RESULT=$(
+    jq -cn \
+      --arg targetVersion "${codex_target_version}" \
+      '{schemaVersion: 1, targetVersion: $targetVersion}'
+  )"
+  if [ "${codex_install_result}" != "${expected_codex_result}" ]; then
+    log 'Azure Codex orchestration result is invalid'
+    return 1
+  fi
+
+  local validated_codex_version
+  validated_codex_version="$(
+    runuser -u "${VSCODE_USER}" -- env -i \
+      HOME="${VSCODE_HOME}" \
+      USER="${VSCODE_USER}" \
+      LOGNAME="${VSCODE_USER}" \
+      CODEX_HOME="${CODEX_HOME_DIR}" \
+      PATH="${CODEX_MANAGED_PATH}" \
+      "${CODEX_MANAGED_LAUNCHER}" --version
+  )"
+  if [ "${validated_codex_version}" != "codex-cli ${codex_target_version}" ]; then
+    log "Codex target ${codex_target_version} did not pass exact-version validation"
+    return 1
+  fi
+}
+
+prepare_codex_user_roots() {
+  local managed_root
+
+  for managed_root in \
+    "${CODEX_HOME_DIR}" \
+    "${VSCODE_HOME}/.local" \
+    "${CODEX_MANAGED_BIN_DIR}"; do
+    if [ -L "${managed_root}" ] || { [ -e "${managed_root}" ] && [ ! -d "${managed_root}" ]; }; then
+      log "unsafe Codex user root at ${managed_root}: expected a directory, not a link or other object"
+      return 1
+    fi
+    if [ -d "${managed_root}" ]; then
+      if [ "$(stat -c '%U:%G' -- "${managed_root}")" != "${VSCODE_USER}:${VSCODE_USER}" ]; then
+        log "unsafe Codex user root at ${managed_root}: expected ownership ${VSCODE_USER}:${VSCODE_USER}"
+        return 1
+      fi
+      continue
+    fi
+    install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+      "${managed_root}"
+  done
+}
+
+install_other_ai_tools() {
 
   npm_config_ignore_scripts=false \
     npm install --global @github/copilot@latest
@@ -298,7 +360,6 @@ install_ai_tools() {
   fi
   export COPILOT_AUTO_UPDATE=false
 
-  codex --version
   copilot --version
 }
 
@@ -447,6 +508,21 @@ append_data_bind_mount() {
     >> /etc/fstab
 }
 
+prepare_worktree_storage() {
+  if [ ! -f "${WORKTREE_STORAGE_SOURCE}" ]; then
+    log "Worktree storage helper is missing: ${WORKTREE_STORAGE_SOURCE}"
+    return 1
+  fi
+
+  KRAV_AZURE_DATA_MOUNT="${DATA_MOUNT_DIR}" \
+    KRAV_AZURE_DATA_WORKSPACE="${DATA_WORKSPACE_DIR}" \
+    KRAV_AZURE_WORKTREE_ROOT="${DATA_WORKTREE_DIR}" \
+    KRAV_AZURE_LEGACY_WORKTREE_PATH="${WORKSPACE_DIR}/.worktrees" \
+    KRAV_AZURE_WORKTREE_OWNER="${VSCODE_USER}" \
+    KRAV_AZURE_WORKTREE_GROUP="${VSCODE_USER}" \
+    bash "${WORKTREE_STORAGE_SOURCE}" prepare
+}
+
 mount_data_disk() {
   install -d -m 0755 \
     "${DATA_MOUNT_DIR}" \
@@ -539,6 +615,8 @@ mount_data_disk() {
     mount "${DATA_MOUNT_DIR}"
   fi
 
+  prepare_worktree_storage
+
   prepare_data_bind_directory \
     "${DATA_WORKSPACE_DIR}" "${WORKSPACE_DIR}" \
     "${VSCODE_USER}" "${VSCODE_USER}" 0755
@@ -593,6 +671,7 @@ mount_data_disk() {
     "${DOCKER_DIR}/lost+found" \
     "${CONTAINERD_DIR}/lost+found"
   chown "${VSCODE_USER}:${VSCODE_USER}" \
+    "${DATA_WORKTREE_DIR}" \
     "${DATA_WORKSPACE_DIR}" \
     "${DATA_HOST_STATE_DIR}" \
     "${DATA_PODMAN_STORAGE_DIR}" \
@@ -753,7 +832,7 @@ else:
 PY
 }
 
-install_zsh_profile() {
+configure_codex_session_policy() {
   if [ ! -f "${ROLLING_GIT_INSTALLER}" ]; then
     log "Rolling Git installer helper is missing: ${ROLLING_GIT_INSTALLER}"
     return 1
@@ -783,9 +862,14 @@ install_zsh_profile() {
     log "Zsh template not found: ${ZSHRC_SOURCE}"
     return 1
   fi
-  install -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0644 \
-    "${ZSHRC_SOURCE}" \
-    "${VSCODE_HOME}/.zshrc"
+  if [ ! -f "${CODEX_SESSION_POLICY}" ]; then
+    log "Azure Codex session-policy helper is missing: ${CODEX_SESSION_POLICY}"
+    return 1
+  fi
+  AZURE_DEV_CODEX_USER="${VSCODE_USER}" \
+  AZURE_DEV_CODEX_USER_HOME="${VSCODE_HOME}" \
+  AZURE_DEV_ZSHRC_SOURCE="${ZSHRC_SOURCE}" \
+    bash "${CODEX_SESSION_POLICY}"
 }
 
 configure_npm_caches() {
@@ -808,10 +892,15 @@ install_storage_tools() {
     log "Storage report helper is missing: ${STORAGE_REPORT_SOURCE}"
     return 1
   fi
+  if [ ! -f "${WORKTREE_STORAGE_SOURCE}" ]; then
+    log "Worktree storage helper is missing: ${WORKTREE_STORAGE_SOURCE}"
+    return 1
+  fi
 
-  install -o root -g root -m 0755 \
-    "${STORAGE_REPORT_SOURCE}" \
+  install -o root -g root -m 0755 "${STORAGE_REPORT_SOURCE}" \
     /usr/local/bin/storage-report
+  install -o root -g root -m 0755 "${WORKTREE_STORAGE_SOURCE}" \
+    /usr/local/bin/worktree-storage
   install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
     "${KRAV_CONFIG_DIR}"
   cat > "${STORAGE_SHELL_ENV}" <<EOF
@@ -1425,12 +1514,14 @@ main() {
   mount_data_disk
   start_docker_services_after_storage_change
   configure_npm_caches
-  install_ai_tools
+  prepare_codex_user_roots
+  install_codex
+  install_other_ai_tools
   configure_codex_sandbox
   configure_podman_storage
   clone_or_update_repo
   ensure_kong_route_protocols
-  install_zsh_profile
+  configure_codex_session_policy
   install_storage_tools
   configure_codex_home
   run_repository_setup
@@ -1441,6 +1532,7 @@ main() {
   install_optional_tailscale
   validate_loopback_ports
   log "host bootstrap completed"
+  printf '%s\n' "${codex_install_result}"
 }
 
 main "$@"
