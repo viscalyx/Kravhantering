@@ -372,6 +372,16 @@ describe('container image contract', () => {
     }
   })
 
+  it('exports HSA topology candidates as archives Docker can load', () => {
+    const workflow = readWorkspaceFile(
+      '.github/workflows/hsa-mtls-topology.yml',
+    )
+
+    expect(workflow.match(/--output type=docker,dest=/gu)).toHaveLength(4)
+    expect(workflow).not.toContain('--output type=oci,dest=')
+    expect(workflow.match(/docker load --input/gu)).toHaveLength(2)
+  })
+
   it('shares Codex project defaults across development environments', () => {
     const codexConfig = readWorkspaceFile('.codex/config.toml')
 

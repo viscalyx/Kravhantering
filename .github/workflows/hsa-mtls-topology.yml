@@ -40,19 +40,19 @@ jobs:
           mkdir -p /tmp/hsa-oci
           docker buildx build --provenance=false \
             --tag localhost/kravhantering/hsa-transport-contract-test:topology \
-            --output type=oci,dest=/tmp/hsa-oci/transport-test.tar \
+            --output type=docker,dest=/tmp/hsa-oci/transport-test.tar \
             --file containers/hsa-mtls-topology/Dockerfile .
           docker buildx build --provenance=false \
             --tag localhost/kravhantering/hsa-mtls-provisioner:topology \
-            --output type=oci,dest=/tmp/hsa-oci/provisioner.tar \
+            --output type=docker,dest=/tmp/hsa-oci/provisioner.tar \
             --file containers/hsa-mtls-provisioner/Dockerfile .
           docker buildx build --provenance=false \
             --tag localhost/kravhantering/hsa-person-lookup-adapter:topology \
-            --output type=oci,dest=/tmp/hsa-oci/adapter.tar \
+            --output type=docker,dest=/tmp/hsa-oci/adapter.tar \
             --file containers/hsa-person-lookup-adapter/Dockerfile .
           docker buildx build --provenance=false \
             --tag localhost/kravhantering/hsa-directory-mock:topology \
-            --output type=oci,dest=/tmp/hsa-oci/mock.tar \
+            --output type=docker,dest=/tmp/hsa-oci/mock.tar \
             --file containers/hsa-directory-mock/Dockerfile .
       - name: Upload exact OCI candidates
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
