@@ -171,6 +171,7 @@ OS disk
 
 Data disk
 `-- /mnt/krav-azure-dev-data/
+    |-- .worktrees/                   -> linked Git worktrees
     |-- workspace/                    -> repository checkout
     |   |-- .env.development.local    -> managed Azure VM block
     |   |-- containers/
@@ -849,10 +850,11 @@ disk at `/mnt/krav-azure-dev-data`, bind-mounts
 `/mnt/krav-azure-dev-data/workspace` to `/workspace`, bind-mounts
 `/mnt/krav-azure-dev-data/host-state` to `/var/lib/krav-azure-dev`, and
 bind-mounts the data-disk-backed Podman storage directory to
-`/home/vscode/.local/share/containers/storage`. It also bind-mounts Docker,
-containerd, VS Code Server, Codex data, user caches, and the `vscode` temporary
-directory to the data disk. It clones the repo to `/workspace`, configures
-rootless Podman to use its normal home storage path, runs `npm install`,
+`/home/vscode/.local/share/containers/storage`. It creates the dedicated
+worktree root at `/mnt/krav-azure-dev-data/.worktrees`. It also bind-mounts
+Docker, containerd, VS Code Server, Codex data, user caches, and the `vscode`
+temporary directory to the data disk. It clones the repo to `/workspace`,
+configures rootless Podman to use its normal home storage path, runs `npm install`,
 restores .NET tools, installs Codex CLI, GitHub Copilot CLI, the rolling
 verified dotenv-linter, the pinned Lychee link checker, and Playwright
 browsers, verifies the checked-out Kong config, builds HSA support images with
@@ -873,10 +875,30 @@ storage-report
 ```
 
 The report shows filesystem, directory, Docker, Podman, and Git worktree use.
-It classifies worktrees with uncommitted or unverified detached work as needing
-review and prints candidate removal commands only for clean worktrees whose
-commits remain on a branch. Cleanup stays manual. Never prune container volumes;
-they may contain the active development database.
+Directory sizing includes `/mnt/krav-azure-dev-data/.worktrees`, and registered
+worktrees are reported by their actual paths. The report classifies worktrees
+with uncommitted or unverified detached work as needing review and prints
+candidate removal commands only for clean worktrees whose commits remain on a
+branch. Cleanup stays manual. Never prune container volumes; they may contain
+the active development database.
+
+### Git worktrees
+
+Create Azure development worktrees directly under the data-disk-root directory:
+
+```sh
+git -C /workspace worktree add -b <branch> \
+  /mnt/krav-azure-dev-data/.worktrees/<name>
+```
+
+Use normal `git -C /workspace worktree list`, `remove`, and `prune` commands.
+Git keeps linked-worktree administrative metadata in `/workspace/.git`; only
+the linked checkout belongs under the external worktree root.
+
+Setup preserves correctly placed external worktrees on reruns. Repository-local
+worktree storage stops setup without moving or deleting content and requires a
+rebuild of the disposable environment. Local devcontainers and other non-Azure
+environments also use a temporary worktree root outside the repository checkout.
 
 ### Codex and GitHub Copilot CLIs in Remote SSH
 

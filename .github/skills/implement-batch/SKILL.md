@@ -41,7 +41,8 @@ blockers, and the current frontier is explicit.
 For each frontier sub-issue:
 
 1. Assign it to the authenticated tracker user.
-2. Start one new background agent in its own worktree under `.worktrees/`, based on
+2. Start one new background agent in its own worktree under the environment's
+   designated temporary worktree root outside the primary checkout, based on
    the current integration `HEAD`.
 3. Give the agent both the **Spec** and sub-issue references. Require it to call the
    Skill tool with "implement", commit its work, and return its branch, commit range,
@@ -84,7 +85,8 @@ passed verification.
 - Call the Skill tool with "code-review" with the recorded starting commit as the fixed point
   and the **Spec** as the spec source.
 - For each actionable finding, dispatch a repair agent from the current
-  integration `HEAD` in a fresh `.worktrees/` worktree. Give it the finding and
+  integration `HEAD` in a fresh worktree under the environment's designated
+  temporary worktree root outside the primary checkout. Give it the finding and
   relevant issue context, require call the Skill tool with "implement", then
   integrate and verify its commit.
 - Repeat the full checks and call the Skill tool with "code-review" after each

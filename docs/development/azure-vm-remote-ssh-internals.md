@@ -688,6 +688,8 @@ The development guide contains the human-readable disk tree. The contributor
 contract is:
 
 - `/mnt/krav-azure-dev-data` is the Azure data disk mount.
+- `/mnt/krav-azure-dev-data/.worktrees` is a real directory owned and writable
+  by `vscode` for linked Git worktrees.
 - `/workspace` is a bind mount to the data disk and contains the repository.
 - `/var/lib/krav-azure-dev` is a bind mount to the data disk and contains host
   state owned by this feature.
@@ -708,6 +710,11 @@ entries. Before adding a new bind mount, bootstrap stops the affected container
 services and moves existing target contents only when the data-disk source is
 empty. Conflicting non-empty source and target directories fail setup. It
 removes `lost+found` from the exposed roots and restores directory ownership.
+
+After the data disk is mounted, bootstrap creates its `.worktrees` root before
+preparing the workspace bind mount. Reruns set the root ownership and mode
+without traversing or changing existing linked worktrees. Repository-local
+`.worktrees` storage fails with rebuild guidance and remains unchanged.
 
 Rootless Podman is configured with:
 
@@ -736,8 +743,10 @@ released HSA artifacts.
 When changing storage behavior, update bootstrap and smoke validation together.
 Validation must prove that the data mount source is the Azure data disk and
 that every managed bind mount and npm cache is on the same device as the
-data-disk mount. It also verifies the managed npm cache and storage-report
-commands through the `vscode` environment.
+data-disk mount. It also proves the external worktree root is a real directory
+owned and writable by `vscode`, resides on that device, and remains separated
+from `/workspace`. The managed npm cache and storage-report commands are
+verified through the `vscode` environment.
 
 ## Podman Support Stack
 

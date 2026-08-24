@@ -9,6 +9,7 @@ import {
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { createLinkedWorktreeFixture } from '@/tests/support/git-worktree-fixture'
 
 const workspaceRoot = path.resolve(import.meta.dirname, '../..')
 const storageReport = path.join(
@@ -76,6 +77,53 @@ function runCheck(rootUsed: number, dataUsed: number) {
   })
 }
 
+function runReport(
+  configureFixture?: (fixture: {
+    workspace: string
+    worktreeRoot: string
+  }) => void,
+) {
+  const { bin, data } = fakeCommandPath()
+  const workspace = path.join(data, 'workspace')
+  const worktreeRoot = path.join(data, 'configured-worktrees')
+  mkdirSync(workspace)
+  mkdirSync(worktreeRoot)
+  const fakeDu = path.join(bin, 'du')
+  writeFileSync(
+    fakeDu,
+    `#!/bin/sh
+for argument in "$@"; do
+  if [ "\${argument#-}" = "$argument" ]; then
+    measured_path="$argument"
+  fi
+done
+printf '4.0K\\t%s\\n' "$measured_path"
+`,
+  )
+  chmodSync(fakeDu, 0o755)
+  for (const command of ['docker', 'podman']) {
+    const fakeCommand = path.join(bin, command)
+    writeFileSync(fakeCommand, '#!/bin/sh\nexit 0\n')
+    chmodSync(fakeCommand, 0o755)
+  }
+  configureFixture?.({ workspace, worktreeRoot })
+
+  return {
+    result: spawnSync('bash', [storageReport], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        KRAV_AZURE_WORKTREE_ROOT: worktreeRoot,
+        KRAV_STORAGE_DATA_MOUNT: data,
+        KRAV_STORAGE_WORKSPACE: workspace,
+        PATH: `${bin}:${process.env.PATH}`,
+      },
+    }),
+    workspace,
+    worktreeRoot,
+  }
+}
+
 afterEach(() => {
   for (const root of fixtureRoots) {
     rmSync(root, { force: true, recursive: true })
@@ -121,5 +169,28 @@ describe('storage-report', () => {
 
     expect(result.status).toBe(2)
     expect(result.stderr).toContain('Usage: storage-report [--check]')
+  })
+
+  it('sizes the configured non-default Azure worktree root', () => {
+    const { result, workspace, worktreeRoot } = runReport()
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain(`4.0K\t${worktreeRoot}`)
+    expect(result.stdout).not.toContain(`${workspace}/.worktrees`)
+  })
+
+  it('reports registered external worktrees by their actual paths', () => {
+    let linkedWorktree = ''
+    const { result } = runReport(({ workspace, worktreeRoot }) => {
+      linkedWorktree = createLinkedWorktreeFixture({
+        workspace,
+        worktreeRoot,
+      })
+    })
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain(
+      `${linkedWorktree} (4.0K): clean; commits remain on test/issue-1032`,
+    )
   })
 })

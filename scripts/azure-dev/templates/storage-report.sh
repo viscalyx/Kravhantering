@@ -3,6 +3,7 @@ set -euo pipefail
 
 DATA_MOUNT_DIR="${KRAV_STORAGE_DATA_MOUNT:-/mnt/krav-azure-dev-data}"
 WORKSPACE_DIR="${KRAV_STORAGE_WORKSPACE:-/workspace}"
+WORKTREE_ROOT="${KRAV_AZURE_WORKTREE_ROOT:-${DATA_MOUNT_DIR}/.worktrees}"
 WARNING_USED_PERCENT="${KRAV_STORAGE_WARNING_USED_PERCENT:-80}"
 URGENT_USED_PERCENT="${KRAV_STORAGE_URGENT_USED_PERCENT:-90}"
 
@@ -63,7 +64,7 @@ directory_sizes() {
     /home/vscode/.codex
     /home/vscode/.cache
     /home/vscode/.npm
-    "${WORKSPACE_DIR}/.worktrees"
+    "${WORKTREE_ROOT}"
   )
 
   printf '\nLargest managed or developer-created directories\n'

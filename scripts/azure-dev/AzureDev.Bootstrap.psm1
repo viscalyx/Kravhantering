@@ -256,6 +256,7 @@ function Copy-AzureDevDevelopmentToolFiles {
     (Join-Path $templatesPath 'install-dotenv-linter.sh'),
     (Join-Path $templatesPath 'install-rolling-git-source.sh'),
     (Join-Path $templatesPath 'storage-report.sh'),
+    (Join-Path $templatesPath 'worktree-storage.sh'),
     (Join-Path $templatesPath 'verify-apt-key.sh')
   )
   foreach ($sourcePath in $sourcePaths) {
@@ -539,6 +540,7 @@ function Invoke-AzureDevBootstrap {
       "AZURE_DEV_DOTENV_LINTER_INSTALLER=$remoteToolingPath/install-dotenv-linter.sh " +
       "AZURE_DEV_ROLLING_GIT_INSTALLER=$remoteToolingPath/install-rolling-git-source.sh " +
       "AZURE_DEV_STORAGE_REPORT_SOURCE=$remoteToolingPath/storage-report.sh " +
+      "AZURE_DEV_WORKTREE_STORAGE_SOURCE=$remoteToolingPath/worktree-storage.sh " +
       "AZURE_DEV_APT_KEY_VERIFIER=$remoteToolingPath/verify-apt-key.sh " +
       "AZURE_DEV_SERVICE_ENV_SOURCE=$remoteServiceEnvironmentPath " +
       "AZURE_DEV_GIT_USER_NAME=$gitUserNameLiteral " +
