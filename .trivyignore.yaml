@@ -5,3 +5,10 @@ misconfigurations:
     statement: >-
       This disposable, privileged debug host must boot systemd as root so the
       smoke test can create and exercise the dedicated rootless service user.
+  - id: AVD-DS-0002
+    paths:
+      - containers/hsa-mtls-provisioner/Dockerfile
+    statement: >-
+      This one-shot certificate provisioner must run as container root to
+      assign pinned, role-specific UID and GID ownership to isolated runtime
+      bundles; it does not run a network service.

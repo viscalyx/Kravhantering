@@ -28,6 +28,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+      - name: Prepare Docker Buildx builder
+        run: |
+          set -euo pipefail
+          docker buildx create --name kravhantering-hsa-topology-builder --use ||
+            docker buildx use kravhantering-hsa-topology-builder
+          docker buildx inspect --bootstrap
       - name: Build shared OCI candidates
         run: |
           set -euo pipefail

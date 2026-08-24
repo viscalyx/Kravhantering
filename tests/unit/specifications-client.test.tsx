@@ -150,6 +150,11 @@ async function openCreateSpecificationForm() {
   })
   await waitFor(() => expect(createButton).not.toBeDisabled())
   fireEvent.click(createButton)
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'common.fetchHsaPerson' }),
+    ).not.toBeDisabled(),
+  )
 }
 
 function selectLifecycleStatus(value = '1') {

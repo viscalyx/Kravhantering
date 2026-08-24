@@ -576,7 +576,10 @@ describe('CI container runtime', () => {
     )
   })
 
-  it('extracts secret-safe runner metadata from job logs with escape sequences', () => {
+  it.each([
+    'Build and Smoke Test Container Stack',
+    'Production App authenticated topology / Build and Smoke Test Container Stack',
+  ])('extracts secret-safe runner metadata from completed job %s', jobName => {
     const fixture = createToolchainFixture()
     const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
     const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
@@ -588,7 +591,7 @@ describe('CI container runtime', () => {
         "  printf '%s\\n' '      --allow-escape-sequences   Allow printing terminal escape sequences'",
         "  for _ in {1..10000}; do printf '%s\\n' 'additional help text'; done",
         'elif [[ "$*" == *"/jobs?filter=latest"* ]]; then',
-        '  printf \'%s\\n\' \'{"jobs":[{"id":123,"name":"Build and Smoke Test Container Stack","status":"completed"}]}\'',
+        `  printf '%s\\n' '${JSON.stringify({ jobs: [{ id: 123, name: jobName, status: 'completed' }] })}'`,
         'elif [[ "$*" != *"--allow-escape-sequences"* ]]; then',
         "  printf '%s\\n' 'the response contains terminal escape sequences' >&2",
         '  exit 1',
@@ -627,6 +630,49 @@ describe('CI container runtime', () => {
     expect(metadata).toContain('Version: 20260810.271')
     expect(metadata).toContain('Image: ubuntu-24.04')
     expect(metadata).not.toContain('UNRELATED_SECRET')
+  })
+
+  it('fails closed when multiple reusable jobs share the target suffix', () => {
+    const fixture = createToolchainFixture()
+    const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
+    const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+    fs.writeFileSync(
+      ghPath,
+      [
+        '#!/usr/bin/env bash',
+        'if [[ "$*" == *"/jobs?filter=latest"* ]]; then',
+        `  printf '%s\\n' '${JSON.stringify({
+          jobs: [
+            {
+              id: 123,
+              name: 'First caller / Build and Smoke Test Container Stack',
+              status: 'completed',
+            },
+            {
+              id: 456,
+              name: 'Second caller / Build and Smoke Test Container Stack',
+              status: 'completed',
+            },
+          ],
+        })}'`,
+        'else',
+        '  exit 99',
+        'fi',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runRuntimeScript(['collect-runner-metadata'], fixture, {
+      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+      CI_RUNTIME_TARGET_JOB: 'Build and Smoke Test Container Stack',
+      GH_TOKEN: 'test-token',
+      GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+      GITHUB_RUN_ID: '12345',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('GitHub target job metadata unavailable')
   })
 
   it('collects runner metadata with GitHub CLI versions before escape filtering', () => {

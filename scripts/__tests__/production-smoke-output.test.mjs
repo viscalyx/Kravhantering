@@ -368,6 +368,21 @@ function runHsaRotationEvidenceHarness({
   return { result, temporaryDirectory }
 }
 
+function runHsaEndpointRestartHarness() {
+  const shell = String.raw`
+    set -euo pipefail
+    source "$1"
+    service_systemctl() { printf '%s\n' "$*"; }
+    stop_hsa_mtls_endpoints
+    start_hsa_mtls_endpoints
+  `
+  return childProcess.spawnSync(
+    'bash',
+    ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH],
+    { encoding: 'utf8' },
+  )
+}
+
 function runHsaPkiLifecycle(operation, exitStatus) {
   const temporaryDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'kh-hsa-pki-cleanup-'),
@@ -404,6 +419,23 @@ function runHsaPkiLifecycle(operation, exitStatus) {
 }
 
 describe('production smoke output', () => {
+  it('reactivates the full single-node target after rotating HSA endpoints', () => {
+    const result = runHsaEndpointRestartHarness()
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stdout.trim().split('\n')).toEqual([
+      'stop kravhantering-app-runtime.service',
+      'stop kravhantering-ci-kong.service',
+      'stop kravhantering-ci-hsa-person-lookup-adapter.service',
+      'stop kravhantering-ci-hsa-directory-mock.service',
+      'start kravhantering-ci-hsa-directory-mock.service',
+      'start kravhantering-ci-hsa-person-lookup-adapter.service',
+      'start kravhantering-ci-kong.service',
+      'start kravhantering-app-runtime.service',
+      'start kravhantering-single-node.target',
+    ])
+  })
+
   it.each(['up', 'verify'])(
     'preserves host-mounted App PKI after successful release-smoke %s cleanup',
     command => {

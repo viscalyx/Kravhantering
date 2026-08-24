@@ -435,6 +435,7 @@ start_hsa_mtls_endpoints() {
   service_systemctl start kravhantering-ci-hsa-person-lookup-adapter.service
   service_systemctl start kravhantering-ci-kong.service
   service_systemctl start kravhantering-app-runtime.service
+  service_systemctl start kravhantering-single-node.target
 }
 
 verify_hsa_correlated_lookup() {

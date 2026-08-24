@@ -324,7 +324,25 @@ collect_github_runner_metadata() {
   if [[ -n "$target_job" ]]; then
     job_id="$(
       jq -r --arg target "$target_job" \
-        '[.jobs[] | select(.name == $target and .status == "completed")] | last | .id // empty' \
+        '
+          [.jobs[] | select(.name == $target and .status == "completed")] as $exact
+          | if ($exact | length) > 0 then
+              $exact | last | .id
+            else
+              [
+                .jobs[]
+                | select(
+                    .status == "completed"
+                    and (.name | endswith(" / " + $target))
+                  )
+              ] as $reusable
+              | if ($reusable | length) == 1 then
+                  $reusable[0].id
+                else
+                  empty
+                end
+            end
+        ' \
         "$jobs_file"
     )"
   else
