@@ -32,6 +32,8 @@ const EXPECTED_KONG_ENVIRONMENT = {
   KONG_CLIENT_SSL: 'on',
   KONG_CLIENT_SSL_CERT: '/run/kravhantering/hsa-mtls/kong-client.crt',
   KONG_CLIENT_SSL_CERT_KEY: '/run/kravhantering/hsa-mtls/kong-client.key',
+  KONG_DATABASE: 'off',
+  KONG_DECLARATIVE_CONFIG: '/kong/declarative/kong.strict.yml',
   KONG_NGINX_PROXY_PROXY_SSL_TRUSTED_CERTIFICATE:
     '/run/kravhantering/hsa-mtls/adapter-server-ca.crt',
   KONG_NGINX_PROXY_SSL_CLIENT_CERTIFICATE:

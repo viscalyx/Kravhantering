@@ -8,6 +8,7 @@ import {
   readdir,
   readFile,
   rm,
+  stat,
   writeFile,
 } from 'node:fs/promises'
 import os from 'node:os'
@@ -146,6 +147,8 @@ async function runNodeRequest({ certificate, key, network, expectedStatus }) {
     '--rm',
     '--network',
     network,
+    '--user',
+    probeState.fixtureUser,
     '--mount',
     `type=bind,src=${probeState.fixtureDir},dst=/fixture,readonly`,
     '--entrypoint',
@@ -165,7 +168,7 @@ async function runNodeRequest({ certificate, key, network, expectedStatus }) {
   await command('docker', args)
 }
 
-const probeState = { dockerConfig: '', fixtureDir: '' }
+const probeState = { dockerConfig: '', fixtureDir: '', fixtureUser: '' }
 
 async function main() {
   const lock = JSON.parse(await readFile(lockPath, 'utf8'))
@@ -195,6 +198,8 @@ async function main() {
     fixtureDir = await mkdtemp(path.join(os.tmpdir(), 'hsa-kong-capability-'))
     await chmod(fixtureDir, 0o700)
     probeState.fixtureDir = fixtureDir
+    const fixtureStat = await stat(fixtureDir)
+    probeState.fixtureUser = `${fixtureStat.uid}:${fixtureStat.gid}`
     await command('docker', ['pull', image])
     await command('docker', ['image', 'inspect', image, '--format', '{{.Id}}'])
     await command('docker', [
@@ -318,6 +323,8 @@ async function main() {
         network,
         '--network-alias',
         'hsa-person-lookup-adapter',
+        '--user',
+        probeState.fixtureUser,
         '--mount',
         `type=bind,src=${fixtureDir},dst=/fixture,readonly`,
         '--entrypoint',
@@ -349,6 +356,8 @@ async function main() {
         network,
         '--network-alias',
         'kong',
+        '--user',
+        probeState.fixtureUser,
         '--mount',
         `type=bind,src=${fixtureDir},dst=/fixture,readonly`,
         '-e',

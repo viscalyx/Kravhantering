@@ -117,6 +117,12 @@ describe('active strict HSA runtime configuration checker', () => {
   })
 
   it.each([
+    ['KONG_DATABASE', 'off', 'postgres'],
+    [
+      'KONG_DECLARATIVE_CONFIG',
+      '/kong/declarative/kong.strict.yml',
+      '/tmp/kong.yml',
+    ],
     ['KONG_NGINX_PROXY_SSL_VERIFY_CLIENT', 'on', 'off'],
     ['KONG_TLS_CERTIFICATE_VERIFY', 'on', 'off'],
     [
@@ -125,7 +131,7 @@ describe('active strict HSA runtime configuration checker', () => {
       '/tmp/kong-server.crt',
     ],
   ])(
-    'rejects insecure %s in every Kong deployment',
+    'rejects invalid %s in every Kong deployment',
     async (name, secure, insecure) => {
       for (const deploymentPath of [
         '.devcontainer/docker-compose.yml',

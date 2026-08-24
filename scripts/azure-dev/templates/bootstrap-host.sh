@@ -1551,7 +1551,11 @@ validate_loopback_ports() {
         --cacert "${WORKSPACE_DIR}/.hsa-mtls/app/kong-server-ca.crt" \
         --cert "${WORKSPACE_DIR}/.hsa-mtls/app/app-client.crt" \
         --key "${WORKSPACE_DIR}/.hsa-mtls/app/app-client.key" \
-        -o /dev/null https://kong:18443/hsa/person-records/lookup; then
+        -o /dev/null -X POST \
+        https://kong:18443/hsa/person-records/lookup \
+        -H 'Content-Type: application/json' \
+        -H "X-Kravhantering-HSA-Correlation-ID: $(cat /proc/sys/kernel/random/uuid)" \
+        --data '{"hsaId":"SE5560000001-manualarea1"}'; then
       return
     fi
     sleep 5
