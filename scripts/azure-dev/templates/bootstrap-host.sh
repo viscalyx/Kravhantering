@@ -1543,23 +1543,32 @@ dump_support_stack_diagnostics() {
 }
 
 validate_loopback_ports() {
+  local response status
+  response="$(mktemp)"
   for _ in $(seq 1 90); do
+    status='000'
     if ss -ltn | grep '127.0.0.1:1433' >/dev/null &&
       ss -ltn | grep '127.0.0.1:8080' >/dev/null &&
       ss -ltn | grep '127.0.0.1:18443' >/dev/null &&
-      curl -fs --resolve kong:18443:127.0.0.1 \
+      status="$(curl -sS --resolve kong:18443:127.0.0.1 \
         --cacert "${WORKSPACE_DIR}/.hsa-mtls/app/kong-server-ca.crt" \
         --cert "${WORKSPACE_DIR}/.hsa-mtls/app/app-client.crt" \
         --key "${WORKSPACE_DIR}/.hsa-mtls/app/app-client.key" \
-        -o /dev/null -X POST \
+        -o "${response}" -w '%{http_code}' -X POST \
         https://kong:18443/hsa/person-records/lookup \
+        -H 'Accept: application/json' \
         -H 'Content-Type: application/json' \
         -H "X-Kravhantering-HSA-Correlation-ID: $(cat /proc/sys/kernel/random/uuid)" \
-        --data '{"hsaId":"SE5560000001-manualarea1"}'; then
+        --data '{"hsaId":"SE5560000001-manualarea1"}')" &&
+      [[ "${status}" == 200 ]] && jq -e \
+        '.hsaId == "SE5560000001-manualarea1" and (.givenName | type == "string")' \
+        "${response}" >/dev/null; then
+      rm -f "${response}"
       return
     fi
     sleep 5
   done
+  rm -f "${response}"
   log 'timed out waiting for support stack loopback ports'
   dump_support_stack_diagnostics
   return 1
