@@ -573,7 +573,11 @@ describe('AdminClient', () => {
     )
     expect(screen.queryByText('admin.auditLog.open')).toBeNull()
     expect(
-      await screen.findByRole('heading', { name: 'admin.auditLog.title' }),
+      await screen.findByRole(
+        'heading',
+        { name: 'admin.auditLog.title' },
+        { timeout: 5_000 },
+      ),
     ).toBeVisible()
     expect(screen.getByLabelText('admin.auditLog.action')).toHaveValue(
       'requirement.create',

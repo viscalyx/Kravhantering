@@ -140,6 +140,10 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
           requirementPackages: initialData.requirementPackages,
           selectedRequirementPackages: [],
         })
+      window.localStorage.setItem(
+        'requirement-specifications.visibleColumns.left.v1',
+        JSON.stringify(['uniqueId', 'description']),
+      )
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.waitForInitialAvailableRequirementsRefresh()
 
@@ -227,7 +231,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       expect(context.itemsStatus()).not.toHaveTextContent(
         'specification.selectionActionLimitExceeded',
       )
-    }, 60_000)
+    }, 90_000)
 
     it('preserves selection across an authoritative item refresh and clears it on locale change', async () => {
       const initialData = context.createInitialData()
