@@ -292,11 +292,24 @@ describe('HsaPersonVerifyField', () => {
     })
   })
 
-  it('refreshes person details when tabbing from the suffix field', async () => {
+  it.each([
+    {
+      available: true,
+      description:
+        'refreshes live person details when tabbing from the suffix field',
+      expectedMode: 'refresh',
+    },
+    {
+      available: false,
+      description:
+        'reuses local person details on suffix blur when live lookup is unavailable',
+      expectedMode: 'reuse_local',
+    },
+  ])('$description', async ({ available, expectedMode }) => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/hsa-person-lookup-capability') {
-        return Promise.resolve(okJson({ available: true }))
+        return Promise.resolve(okJson({ available }))
       }
       if (url === '/api/hsa-id-prefixes') {
         return Promise.resolve(
@@ -368,6 +381,12 @@ describe('HsaPersonVerifyField', () => {
     expect(hsaIdInput).not.toBeNull()
     const fetchButton = screen.getByRole('button', { name: 'Fetch' })
     fireEvent.change(hsaIdInput as Element, { target: { value: 'new1' } })
+    if (available) {
+      await waitFor(() => expect(fetchButton).toBeEnabled())
+    } else {
+      await screen.findByText('common.hsaLookupUnavailable')
+      expect(fetchButton).toBeDisabled()
+    }
     fireEvent.blur(hsaIdInput as Element, { relatedTarget: fetchButton })
 
     await waitFor(() => {
@@ -384,12 +403,69 @@ describe('HsaPersonVerifyField', () => {
       expect(JSON.parse(verifyRequest.body)).toEqual(
         expect.objectContaining({
           hsaId: 'SE5560000001-new1',
-          mode: 'reuse_local',
+          mode: expectedMode,
         }),
       )
       expect(
         screen.getByText('Nora New (nora.new@example.test)'),
       ).toBeInTheDocument()
+    })
+  })
+
+  it('sends one live refresh when the refresh button receives the suffix pointer', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(
+          okJson({
+            prefixes: [
+              {
+                id: 1,
+                isDefault: true,
+                label: null,
+                prefix: 'SE5560000001',
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(
+        okJson({
+          evidence: 'signed-evidence',
+          expiresAt: futureExpiresAt(),
+          person: {
+            displayName: 'Nora New',
+            email: null,
+            givenName: 'Nora',
+            hasProtectedPersonalData: false,
+            hsaId: 'SE5560000001-old1',
+            middleName: null,
+            surname: 'New',
+          },
+        }),
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { container } = render(<ControlledHsaPersonVerifyField />)
+    const fetchButton = screen.getByRole('button', { name: 'Fetch' })
+    await waitFor(() => expect(fetchButton).toBeEnabled())
+    const hsaIdInput = container.querySelector('#hsa-id')
+    expect(hsaIdInput).not.toBeNull()
+
+    fireEvent.pointerDown(fetchButton)
+    fireEvent.blur(hsaIdInput as Element, { relatedTarget: fetchButton })
+    fireEvent.click(fetchButton)
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(
+          ([url]) => url === '/api/requirement-responsibility-people/verify',
+        ),
+      ).toHaveLength(1)
     })
   })
 
@@ -512,6 +588,8 @@ describe('HsaPersonVerifyField', () => {
         fetchingLabel="Fetching"
         fetchLabel="Fetch"
         hsaId="SE5560000001-admin1"
+        initialDisplayName="Initial Admin"
+        initialEmail="initial.admin@example.test"
         inputClassName="input"
         inputId="hsa-id"
         nameLabel="Name"
@@ -528,6 +606,9 @@ describe('HsaPersonVerifyField', () => {
     expect(input).not.toBeDisabled()
     expect(input.className).toContain('read-only:bg-secondary-100')
     expect(input.className).toContain('read-only:text-secondary-500')
+    expect(
+      screen.getByText('Initial Admin (initial.admin@example.test)'),
+    ).toBeVisible()
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Fetch' })).toBeEnabled(),

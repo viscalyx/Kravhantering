@@ -360,6 +360,32 @@ export async function createCertificateChainFixture() {
     return { certificate, key }
   }
 
+  async function createCustomBasicConstraintsRoot(name, key, contents) {
+    const certificate = path.join(rootDir, `${name}.crt`)
+    const encodedContents = [...contents]
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join(':')
+    await openssl([
+      'req',
+      '-x509',
+      '-new',
+      '-key',
+      key,
+      '-sha256',
+      '-days',
+      '7',
+      '-subj',
+      `/CN=${name}`,
+      '-addext',
+      `2.5.29.19=critical,DER:${encodedContents}`,
+      '-addext',
+      'keyUsage=critical,keyCertSign,cRLSign',
+      '-out',
+      certificate,
+    ])
+    return certificate
+  }
+
   async function createIntermediateAuthority({ issuer, name, pathLength }) {
     const certificate = path.join(rootDir, `${name}.crt`)
     const key = path.join(rootDir, `${name}.key`)
@@ -470,6 +496,59 @@ export async function createCertificateChainFixture() {
       }
     }),
   )
+  const malformedDerLengthRoots = await Promise.all(
+    [
+      {
+        contents: Buffer.from('3081060101ff020100', 'hex'),
+        name: 'non-minimal-long-form-short-length',
+      },
+      {
+        contents: Buffer.from('308200060101ff020100', 'hex'),
+        name: 'leading-zero-long-form-length',
+      },
+      {
+        contents: Buffer.from('30800101ff0201000000', 'hex'),
+        name: 'indefinite-length',
+      },
+      {
+        contents: Buffer.from('30ff060101ff020100', 'hex'),
+        name: 'reserved-length',
+      },
+      {
+        contents: Buffer.from('30850100000000060101ff020100', 'hex'),
+        name: 'excess-length-octets',
+      },
+    ].map(async fixture => ({
+      certificate: await createCustomBasicConstraintsRoot(
+        `Malformed DER ${fixture.name}`,
+        zeroRoot.key,
+        fixture.contents,
+      ),
+      expectedCategory: 'certificate',
+      expectedMessage: 'TLS certificate DER length is invalid.',
+    })),
+  )
+  const canonicalDerBoundaryRoots = await Promise.all(
+    [127, 128].map(async valueLength => {
+      const integerLength = valueLength - 5
+      const contents = Buffer.concat([
+        Buffer.from(
+          valueLength < 128 ? [0x30, valueLength] : [0x30, 0x81, valueLength],
+        ),
+        Buffer.from([0x01, 0x01, 0xff, 0x02, integerLength, 0x01]),
+        Buffer.alloc(integerLength - 1),
+      ])
+      return {
+        certificate: await createCustomBasicConstraintsRoot(
+          `Canonical DER ${valueLength}`,
+          zeroRoot.key,
+          contents,
+        ),
+        expectedCategory: 'ca',
+        expectedMessage: 'TLS certificate path length constraint is invalid.',
+      }
+    }),
+  )
 
   const depthTwoRoot = await createRootAuthority('Path Length Two Root', 2)
   const depthTwoUpper = await createIntermediateAuthority({
@@ -560,7 +639,12 @@ export async function createCertificateChainFixture() {
         key: zeroRootClient.key,
         root: zeroRoot.certificate,
       },
-      malformedRoots: [...malformedPathLengthRoots, ...malformedCriticalRoots],
+      malformedRoots: [
+        ...malformedPathLengthRoots,
+        ...malformedCriticalRoots,
+        ...malformedDerLengthRoots,
+        ...canonicalDerBoundaryRoots,
+      ],
       unlimited: {
         cert: unlimitedClient.complete,
         key: unlimitedClient.key,

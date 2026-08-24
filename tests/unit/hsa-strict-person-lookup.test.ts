@@ -1006,7 +1006,12 @@ describe('strict HSA person lookup startup snapshot', () => {
           certPath: chainFixture.pathLength.rootZeroViolation.cert,
           keyPath: chainFixture.pathLength.rootZeroViolation.key,
         }),
-      ).rejects.toMatchObject({ category: malformedRoot.expectedCategory })
+      ).rejects.toMatchObject({
+        category: malformedRoot.expectedCategory,
+        ...('expectedMessage' in malformedRoot
+          ? { message: malformedRoot.expectedMessage }
+          : {}),
+      })
     }
   })
 

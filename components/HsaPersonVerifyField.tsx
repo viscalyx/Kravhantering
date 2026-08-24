@@ -333,7 +333,9 @@ export default function HsaPersonVerifyField({
               skipBlurVerifyForRefreshPointerRef.current
             skipBlurVerifyForRefreshPointerRef.current = false
             if (skipBlurVerify) return
-            void verifyPerson('reuse_local')
+            void verifyPerson(
+              liveLookupAvailable === true ? 'refresh' : 'reuse_local',
+            )
           }}
           onChange={event => {
             setError(null)
