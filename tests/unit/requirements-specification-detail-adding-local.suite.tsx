@@ -344,6 +344,17 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
         expect(context.requirementSearchInput('items')).toHaveValue(
           'DOES-NOT-MATCH',
         )
+        expect(
+          fetchMock.mock.calls.some(([input]) => {
+            const url =
+              typeof input === 'string' ? input : (input as Request).url
+            return (
+              url.startsWith(`${specificationApiPath('/items')}?`) &&
+              searchParamsFromPath(url).get('uniqueIdSearch') ===
+                'DOES-NOT-MATCH'
+            )
+          }),
+        ).toBe(true)
       })
 
       fireEvent.click(context.requirementRowCheckbox('available', 'IAM0202'))
