@@ -92,10 +92,10 @@ jobs:
           test -n "$correlation"
           docker compose -f containers/hsa-mtls-topology/compose.yml logs --no-color kong adapter mock > /tmp/hsa-runtime.log
           test "$(grep -Ec "hsa_app_lookup_started.*$correlation|$correlation.*hsa_app_lookup_started" /tmp/hsa-topology.log)" -eq 1
-          test "$(grep -c "kong.*$correlation" /tmp/hsa-runtime.log)" -eq 1
-          test "$(grep -Ec "adapter.*(hsa_adapter_lookup_forwarded.*$correlation|$correlation.*hsa_adapter_lookup_forwarded)" /tmp/hsa-runtime.log)" -eq 1
-          test "$(grep -Ec "mock.*(hsa_mock_lookup_handled.*$correlation|$correlation.*hsa_mock_lookup_handled)" /tmp/hsa-runtime.log)" -eq 1
-          grep "mock.*$correlation" /tmp/hsa-runtime.log | grep '"handling_count":1'
+          test "$(grep -ac "kong.*$correlation" /tmp/hsa-runtime.log)" -eq 1
+          test "$(grep -aEc "adapter.*(hsa_adapter_lookup_forwarded.*$correlation|$correlation.*hsa_adapter_lookup_forwarded)" /tmp/hsa-runtime.log)" -eq 1
+          test "$(grep -aEc "mock.*(hsa_mock_lookup_handled.*$correlation|$correlation.*hsa_mock_lookup_handled)" /tmp/hsa-runtime.log)" -eq 1
+          grep -a "mock.*$correlation" /tmp/hsa-runtime.log | grep '"handling_count":1'
       - name: Inspect runtime isolation
         run: |
           set -euo pipefail

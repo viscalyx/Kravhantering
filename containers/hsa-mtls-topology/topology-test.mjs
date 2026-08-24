@@ -256,10 +256,13 @@ for (const probe of authenticatedLegs) {
   try {
     await request({ ...probe, maxVersion: 'TLSv1.1', minVersion: 'TLSv1.1' })
   } catch (error) {
-    if (
-      error?.code !== 'EPROTO' ||
-      !/tlsv1 alert protocol version/iu.test(error.message)
-    ) {
+    const rejectedByPeer =
+      error?.code === 'EPROTO' &&
+      /tlsv1 alert protocol version/iu.test(error.message)
+    const unavailableInClient =
+      error?.code === 'ERR_SSL_NO_PROTOCOLS_AVAILABLE' &&
+      /no protocols available/iu.test(error.message)
+    if (!rejectedByPeer && !unavailableInClient) {
       throw error
     }
     obsoleteRejected = true
