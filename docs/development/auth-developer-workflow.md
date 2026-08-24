@@ -154,17 +154,24 @@ unexpectedly:
 npm run devcontainer:kong:status
 npm run devcontainer:hsa-mock:status
 npm run devcontainer:hsa-mock:verify
-npm run devcontainer:hsa-mock:ensure
 npm run devcontainer:hsa-mock:inspect
 ```
 
-Rotation recreates the `app` service and must therefore be launched from a
-host terminal in the same checkout, not from the devcontainer that it stops:
+Ensure and rotation recreate the `app` service when certificate material
+changes. Launch these lifecycle actions from a host terminal in the same
+checkout, not from the devcontainer that they stop:
 
 ```sh
+node scripts/devcontainer/hsa-mock.mjs ensure
 node scripts/devcontainer/hsa-mock.mjs rotate app-to-kong
 node scripts/devcontainer/hsa-mock.mjs rollback-verify app-to-kong
 ```
+
+Ensure stops the endpoint processes before inspecting the persistent
+generation. It restarts and authenticates reusable material without copying it.
+For automatic renewal it deploys the promoted generation, force-recreates the
+endpoints, authenticates the complete chain, and finalizes. A failed
+authentication restores and authenticates the prior generation.
 
 The same lifecycle is available as a persistent local demo with
 `npm run hsa:mtls:ensure`, `npm run hsa:mtls:verify`,

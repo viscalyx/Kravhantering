@@ -298,7 +298,7 @@ function assertExternalLifecycleRunner(profile) {
   const id = String(app?.ID ?? app?.Id ?? app?.id ?? '')
   if (id?.startsWith(os.hostname())) {
     throw new Error(
-      'Rotation must be launched from the host checkout because it recreates the devcontainer app service',
+      'HSA certificate lifecycle changes must be launched from the host checkout because they recreate the devcontainer app service',
     )
   }
 }
@@ -308,6 +308,20 @@ function provision(profile, options, ...args) {
     runCompose(profile, ['run', '--rm', CERT_SERVICE_NAME, ...args], options),
     `HSA mTLS provisioner ${args[0]}`,
   )
+}
+
+function provisionResult(profile, options, ...args) {
+  const result = runCompose(
+    profile,
+    ['run', '--rm', CERT_SERVICE_NAME, ...args],
+    { ...options, stdio: ['ignore', 'pipe', 'inherit'] },
+  )
+  assertSuccess(result, `HSA mTLS provisioner ${args[0]}`)
+  const payload = JSON.parse(String(result.stdout))
+  if (payload.ok !== true || !payload.result) {
+    throw new Error(`HSA mTLS provisioner ${args[0]} returned invalid output`)
+  }
+  return payload.result
 }
 
 function inspectSelection(profile, options) {
@@ -335,7 +349,7 @@ function stopEndpoints(profile, options) {
   }
 }
 
-function startEndpoints(profile, options) {
+function startEndpoints(profile, options, { recreate = false } = {}) {
   for (const service of [
     SERVICE_NAME,
     ADAPTER_SERVICE_NAME,
@@ -343,7 +357,17 @@ function startEndpoints(profile, options) {
     APP_SERVICE_NAME,
   ]) {
     assertSuccess(
-      runCompose(profile, ['up', '-d', '--wait', service], options),
+      runCompose(
+        profile,
+        [
+          'up',
+          '-d',
+          '--wait',
+          ...(recreate ? ['--force-recreate'] : []),
+          service,
+        ],
+        options,
+      ),
       `docker compose start ${service}`,
     )
   }
@@ -395,6 +419,44 @@ function runStartupRenewal(profile, options) {
     console.warn(
       `HSA mTLS startup renewal failed and the prior generation was restored: ${promotionError.message}`,
     )
+  }
+}
+
+function runEnsure(profile, options) {
+  assertExternalLifecycleRunner(profile)
+  stopEndpoints(profile, options)
+
+  let ensured
+  try {
+    ensured = provisionResult(profile, options, 'ensure')
+  } catch (error) {
+    startEndpoints(profile, options)
+    throw error
+  }
+
+  if (ensured.action === 'reused') {
+    startEndpoints(profile, options)
+    runVerify(profile, options, { recreate: false })
+    return
+  }
+  if (ensured.action !== 'promoted') {
+    startEndpoints(profile, options)
+    throw new Error('HSA mTLS provisioner ensure returned an unknown action')
+  }
+
+  try {
+    provision(profile, options, 'deploy')
+    startEndpoints(profile, options, { recreate: true })
+    runVerify(profile, options, { recreate: false })
+    provision(profile, options, 'finalize')
+  } catch (promotionError) {
+    stopEndpoints(profile, options)
+    if (!ensured.previousGenerationId) throw promotionError
+    provision(profile, options, 'rollback')
+    provision(profile, options, 'deploy')
+    startEndpoints(profile, options, { recreate: true })
+    runVerify(profile, options, { recreate: false })
+    throw promotionError
   }
 }
 
@@ -491,10 +553,7 @@ function runAction(action, extraArgs, profile) {
   if (action === 'status') return runStatus(profile, options)
 
   if (action === 'ensure') {
-    provision(profile, options, 'ensure')
-    provision(profile, options, 'deploy')
-    startEndpoints(profile, options)
-    return runVerify(profile, options, { recreate: false })
+    return runEnsure(profile, options)
   }
 
   if (action === 'inspect') return provision(profile, options, 'inspect')

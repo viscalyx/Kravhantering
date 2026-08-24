@@ -271,6 +271,156 @@ describe('devcontainer HSA mock helper', () => {
     )
   })
 
+  it('reuses ensured material without deployment or recreation', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('host-shell')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('run --rm hsa-mtls-provisioner ensure')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: { action: 'reused', generationId: 'generation-1' },
+          }),
+        }
+      }
+      return {}
+    })
+
+    await expect(main(['ensure'])).resolves.toBe(0)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    const stopped = calls.findIndex(call => call.includes('stop app'))
+    const ensured = calls.findIndex(call =>
+      call.includes('run --rm hsa-mtls-provisioner ensure'),
+    )
+    const started = calls.findIndex(call =>
+      call.includes('up -d --wait hsa-directory-mock'),
+    )
+    expect(stopped).toBeGreaterThan(-1)
+    expect(ensured).toBeGreaterThan(stopped)
+    expect(started).toBeGreaterThan(ensured)
+    expect(calls).not.toContainEqual(expect.stringContaining('deploy'))
+    expect(calls).not.toContainEqual(expect.stringContaining('finalize'))
+    expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
+    expect(calls).not.toContainEqual(
+      expect.stringContaining('--force-recreate'),
+    )
+    expect(calls).toContainEqual(expect.stringContaining('exec -T app node'))
+  })
+
+  it('switches, recreates, authenticates, and finalizes automatic renewal', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('host-shell')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('run --rm hsa-mtls-provisioner ensure')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              action: 'promoted',
+              generationId: 'generation-2',
+              previousGenerationId: 'generation-1',
+            },
+          }),
+        }
+      }
+      return {}
+    })
+
+    await expect(main(['ensure'])).resolves.toBe(0)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    const stopped = calls.findIndex(call => call.includes('stop app'))
+    const ensured = calls.findIndex(call =>
+      call.includes('run --rm hsa-mtls-provisioner ensure'),
+    )
+    const deployed = calls.findIndex(call =>
+      call.includes('run --rm hsa-mtls-provisioner deploy'),
+    )
+    const recreated = calls.findIndex(call =>
+      call.includes('up -d --wait --force-recreate hsa-directory-mock'),
+    )
+    const verified = calls.findIndex(call => call.includes('exec -T app node'))
+    const finalized = calls.findIndex(call =>
+      call.includes('run --rm hsa-mtls-provisioner finalize'),
+    )
+    expect(ensured).toBeGreaterThan(stopped)
+    expect(deployed).toBeGreaterThan(ensured)
+    expect(recreated).toBeGreaterThan(deployed)
+    expect(verified).toBeGreaterThan(recreated)
+    expect(finalized).toBeGreaterThan(verified)
+  })
+
+  it('rolls back and authenticates the prior generation after ensure verification fails', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('host-shell')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let verificationCount = 0
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('run --rm hsa-mtls-provisioner ensure')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              action: 'promoted',
+              generationId: 'generation-2',
+              previousGenerationId: 'generation-1',
+            },
+          }),
+        }
+      }
+      if (text.includes('exec -T app node')) {
+        verificationCount += 1
+        return { status: verificationCount === 1 ? 1 : 0 }
+      }
+      return {}
+    })
+
+    await expect(main(['ensure'])).resolves.toBe(1)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    const firstVerification = calls.findIndex(call =>
+      call.includes('exec -T app node'),
+    )
+    const rollback = calls.findIndex(call =>
+      call.includes('run --rm hsa-mtls-provisioner rollback'),
+    )
+    const recoveryVerification = calls.findLastIndex(call =>
+      call.includes('exec -T app node'),
+    )
+    expect(rollback).toBeGreaterThan(firstVerification)
+    expect(recoveryVerification).toBeGreaterThan(rollback)
+    expect(verificationCount).toBe(2)
+    expect(calls).not.toContainEqual(expect.stringContaining('finalize'))
+  })
+
   it('keeps ordinary startup renewal non-blocking when no promotion is pending', async () => {
     vi.spyOn(os, 'hostname').mockReturnValue('current-app')
     vi.spyOn(console, 'log').mockImplementation(() => {})

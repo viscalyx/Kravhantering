@@ -412,6 +412,81 @@ describe('HsaPersonVerifyField', () => {
     })
   })
 
+  it('waits for pending live capability before verifying a blurred suffix', async () => {
+    const capability = deferredResponse()
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/hsa-person-lookup-capability') {
+        return capability.promise
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(
+          okJson({
+            prefixes: [
+              {
+                id: 1,
+                isDefault: true,
+                label: null,
+                prefix: 'SE5560000001',
+              },
+            ],
+          }),
+        )
+      }
+      if (url === '/api/requirement-responsibility-people/verify') {
+        return Promise.resolve(
+          okJson({
+            evidence: 'signed-evidence',
+            expiresAt: futureExpiresAt(),
+            person: {
+              displayName: 'Nora New',
+              email: null,
+              givenName: 'Nora',
+              hasProtectedPersonalData: false,
+              hsaId: 'SE5560000001-new1',
+              middleName: null,
+              surname: 'New',
+            },
+          }),
+        )
+      }
+      throw new Error(`Unexpected fetch ${url} ${init?.method ?? 'GET'}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { container } = render(<ControlledHsaPersonVerifyField />)
+    await screen.findByRole('combobox', {
+      name: 'common.hsaPrefixLabel',
+    })
+    const hsaIdInput = container.querySelector('#hsa-id')
+    expect(hsaIdInput).not.toBeNull()
+    fireEvent.change(hsaIdInput as Element, { target: { value: 'new1' } })
+    fireEvent.focus(hsaIdInput as Element)
+    fireEvent.blur(hsaIdInput as Element)
+
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/requirement-responsibility-people/verify',
+      ),
+    ).toHaveLength(0)
+
+    await act(async () => {
+      capability.resolve(okJson({ available: true }))
+      await capability.promise
+    })
+
+    await waitFor(() => {
+      const verifyCalls = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/requirement-responsibility-people/verify',
+      )
+      expect(verifyCalls).toHaveLength(1)
+      expect(JSON.parse(String(verifyCalls[0]?.[1]?.body))).toMatchObject({
+        hsaId: 'SE5560000001-new1',
+        mode: 'refresh',
+      })
+    })
+  })
+
   it('sends one live refresh when the refresh button receives the suffix pointer', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = String(input)

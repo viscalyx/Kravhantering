@@ -17,19 +17,27 @@ stop_endpoints() {
 }
 
 start_endpoints() {
-  compose up --no-deps -d --wait mock
-  compose up --no-deps -d --wait adapter
-  compose up --no-deps -d --wait kong
+  local -a recreate=()
+  if [[ "${1:-}" == force-recreate ]]; then
+    recreate=(--force-recreate)
+  fi
+  compose up --no-deps -d --wait "${recreate[@]}" mock || return 1
+  compose up --no-deps -d --wait "${recreate[@]}" adapter || return 1
+  compose up --no-deps -d --wait "${recreate[@]}" kong || return 1
 }
 
-verify() {
-  start_endpoints
-  compose run --rm --no-deps test
+authenticate() {
+  compose run --rm --no-deps test || return 1
   if compose config | grep -Eq '(:rw|ca-signing|HSA_MOCK_AUTH_MODE|NODE_TLS_REJECT_UNAUTHORIZED)'; then
     echo 'Unsafe HSA topology configuration detected' >&2
     return 1
   fi
-  provision inspect
+  provision inspect || return 1
+}
+
+verify() {
+  start_endpoints
+  authenticate
 }
 
 require_domain() {
@@ -40,10 +48,42 @@ require_domain() {
 }
 
 ensure() {
+  local action ensured previous
   compose build provisioner mock adapter test
-  provision ensure --lifetime "$LIFETIME"
+  stop_endpoints
+  if ! ensured="$(provision ensure --lifetime "$LIFETIME")"; then
+    start_endpoints
+    authenticate
+    return 1
+  fi
+  action="$(jq -er '.result.action' <<<"$ensured")"
+  if [[ "$action" == reused ]]; then
+    start_endpoints
+    authenticate
+    return
+  fi
+  if [[ "$action" != promoted ]]; then
+    echo 'HSA mTLS provisioner ensure returned an unknown action' >&2
+    start_endpoints
+    authenticate
+    return 1
+  fi
+
+  previous="$(jq -r '.result.previousGenerationId // empty' <<<"$ensured")"
+  if provision deploy && start_endpoints force-recreate && authenticate; then
+    provision finalize
+    return
+  fi
+
+  stop_endpoints
+  if [[ -z "$previous" ]]; then
+    return 1
+  fi
+  provision rollback
   provision deploy
-  verify
+  start_endpoints force-recreate
+  authenticate
+  return 1
 }
 
 capture_stale_probe() {

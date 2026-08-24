@@ -136,6 +136,10 @@ export default function HsaPersonVerifyField({
   const refreshButtonRef = useRef<HTMLButtonElement>(null)
   const suffixInputRef = useRef<HTMLInputElement>(null)
   const skipBlurVerifyForRefreshPointerRef = useRef(false)
+  const pendingBlurVerificationHsaIdRef = useRef<string | null>(null)
+  const verifyPersonRef = useRef<
+    ((mode: 'refresh' | 'reuse_local') => Promise<void>) | null
+  >(null)
   const activeVerification =
     verification?.hsaId === trimmedHsaId ? verification : null
   const resolvedPersonSummaryMode =
@@ -267,6 +271,18 @@ export default function HsaPersonVerifyField({
     }
   }
 
+  verifyPersonRef.current = verifyPerson
+  useEffect(() => {
+    if (liveLookupAvailable === null) return
+    const pendingHsaId = pendingBlurVerificationHsaIdRef.current
+    if (!pendingHsaId) return
+    pendingBlurVerificationHsaIdRef.current = null
+    if (pendingHsaId !== trimmedHsaId) return
+    void verifyPersonRef.current?.(
+      liveLookupAvailable ? 'refresh' : 'reuse_local',
+    )
+  }, [liveLookupAvailable, trimmedHsaId])
+
   const renderHsaIdInput = () => {
     if (readOnly) {
       return (
@@ -334,9 +350,12 @@ export default function HsaPersonVerifyField({
               skipBlurVerifyForRefreshPointerRef.current
             skipBlurVerifyForRefreshPointerRef.current = false
             if (skipBlurVerify) return
-            void verifyPerson(
-              liveLookupAvailable === true ? 'refresh' : 'reuse_local',
-            )
+            if (liveLookupAvailable === null) {
+              pendingBlurVerificationHsaIdRef.current = trimmedHsaId
+              return
+            }
+            pendingBlurVerificationHsaIdRef.current = null
+            void verifyPerson(liveLookupAvailable ? 'refresh' : 'reuse_local')
           }}
           onChange={event => {
             setError(null)
@@ -368,6 +387,7 @@ export default function HsaPersonVerifyField({
           }
           onClick={() => {
             skipBlurVerifyForRefreshPointerRef.current = false
+            pendingBlurVerificationHsaIdRef.current = null
             void verifyPerson('refresh')
           }}
           onPointerCancel={() => {

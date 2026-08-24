@@ -70,3 +70,10 @@ must authenticate the full chain before `finalize`; on failure they run
 `rollback`, deploy the prior selection, restart server-first, and authenticate
 recovery. An initial generation has no prior selection, so ordinary first
 startup does not wait for this reconciliation.
+
+Repository-owned explicit `ensure` orchestration stops endpoint processes
+before checking the generation. A reused generation restarts and authenticates
+without copying unchanged material. A promoted generation is deployed into the
+stopped runtime volumes, force-recreates every startup-snapshot endpoint, and
+is authenticated before `finalize`; failure restores, deploys, recreates, and
+authenticates the preserved prior generation.
