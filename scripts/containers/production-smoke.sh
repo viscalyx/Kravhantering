@@ -638,16 +638,27 @@ verify_hsa_rotation_metadata() {
 
 inspect_hsa_finalization_previous() {
   local expected_generation_id="$1" domain="$2"
-  local finalization_inspection finalization_previous selected_generation_id
+  local finalization_inspection finalization_previous selected_generation_id selection
   finalization_inspection="$(run_hsa_mtls_provisioner inspect)" || \
     fail "$domain HSA mTLS finalization state could not be inspected"
-  selected_generation_id="$(
-    jq -er '.result.selection.current | strings | select(length > 0)' \
-      <<<"$finalization_inspection"
-  )" || \
+  selection="$(
+    jq -cer '
+      .result.selection |
+      if type == "object" and
+        has("current") and
+        ((.current | type) == "string" and (.current | length) > 0) and
+        has("previous") and
+        (.previous == null or
+          ((.previous | type) == "string" and (.previous | length) > 0))
+      then .
+      else error("invalid HSA mTLS selection")
+      end
+    ' <<<"$finalization_inspection"
+  )" || fail "$domain HSA mTLS finalization returned invalid selection"
+  selected_generation_id="$(jq -r '.current' <<<"$selection")" || \
     fail "$domain HSA mTLS finalization returned invalid current selection"
   finalization_previous="$(
-    jq -er '.result.selection.previous // ""' <<<"$finalization_inspection"
+    jq -r 'if .previous == null then "" else .previous end' <<<"$selection"
   )" || \
     fail "$domain HSA mTLS finalization returned invalid prior selection"
   [[ "$selected_generation_id" == "$expected_generation_id" ]] || \

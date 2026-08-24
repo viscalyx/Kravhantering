@@ -41,7 +41,10 @@ inspect_finalization_previous() {
     echo 'HSA mTLS finalization state could not be inspected' >&2
     return 1
   fi
-  current="$(jq -er '.result.selection.current' <<<"$inspection")"
+  current="$(
+    jq -er '.result.selection.current | strings | select(length > 0)' \
+      <<<"$inspection"
+  )"
   if [[ "$current" != "$expected_generation" ]]; then
     echo 'HSA mTLS selection changed while reconciling finalization' >&2
     return 1
@@ -51,7 +54,7 @@ inspect_finalization_previous() {
     if has("previous") and
       (.previous == null or
         ((.previous | type) == "string" and (.previous | length) > 0))
-    then (.previous // "")
+    then if .previous == null then "" else .previous end
     else error("invalid selection")
     end
   ' <<<"$inspection"

@@ -230,7 +230,10 @@ function renderHsaSmokeConfiguration() {
   }
 }
 
-function runHsaRotationEvidenceHarness({ finalizeMode = 'success' } = {}) {
+function runHsaRotationEvidenceHarness({
+  finalizeMode = 'success',
+  selectionMode = 'valid',
+} = {}) {
   const temporaryDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'kh-hsa-rotation-evidence-'),
   )
@@ -266,6 +269,48 @@ function runHsaRotationEvidenceHarness({ finalizeMode = 'success' } = {}) {
       [[ $# -lt 2 ]] || domain="$2"
       case "$command" in
         inspect)
+          if [[ "$finalize_attempt" -gt 0 && "$HSA_TEST_SELECTION_MODE" != valid ]]; then
+            case "$HSA_TEST_SELECTION_MODE" in
+              missing-previous)
+                jq -n --arg current "$current" '{result:{selection:{current:$current}}}'
+                ;;
+              false-previous)
+                jq -n --arg current "$current" '{result:{selection:{current:$current,previous:false}}}'
+                ;;
+              empty-previous)
+                jq -n --arg current "$current" '{result:{selection:{current:$current,previous:""}}}'
+                ;;
+              number-previous)
+                jq -n --arg current "$current" '{result:{selection:{current:$current,previous:42}}}'
+                ;;
+              object-previous)
+                jq -n --arg current "$current" '{result:{selection:{current:$current,previous:{}}}}'
+                ;;
+              array-previous)
+                jq -n --arg current "$current" '{result:{selection:{current:$current,previous:[]}}}'
+                ;;
+              missing-current)
+                jq -n --arg previous "$previous" '{result:{selection:{previous:$previous}}}'
+                ;;
+              false-current)
+                jq -n --arg previous "$previous" '{result:{selection:{current:false,previous:$previous}}}'
+                ;;
+              empty-current)
+                jq -n --arg previous "$previous" '{result:{selection:{current:"",previous:$previous}}}'
+                ;;
+              number-current)
+                jq -n --arg previous "$previous" '{result:{selection:{current:42,previous:$previous}}}'
+                ;;
+              object-current)
+                jq -n --arg previous "$previous" '{result:{selection:{current:{},previous:$previous}}}'
+                ;;
+              array-current)
+                jq -n --arg previous "$previous" '{result:{selection:{current:[],previous:$previous}}}'
+                ;;
+              *) return 2 ;;
+            esac
+            return
+          fi
           jq -n \
             --arg current "$current" \
             --argjson previous "$( [[ "$previous" == null ]] && printf null || jq -Rn --arg value "$previous" '$value' )" \
@@ -316,6 +361,7 @@ function runHsaRotationEvidenceHarness({ finalizeMode = 'success' } = {}) {
       env: {
         ...process.env,
         HSA_TEST_FINALIZE_MODE: finalizeMode,
+        HSA_TEST_SELECTION_MODE: selectionMode,
       },
     },
   )
@@ -503,6 +549,26 @@ describe('production smoke output', () => {
         .trim()
         .split('\n'),
     ).toHaveLength(2)
+  })
+
+  it.each([
+    'missing-previous',
+    'false-previous',
+    'empty-previous',
+    'number-previous',
+    'object-previous',
+    'array-previous',
+    'missing-current',
+    'false-current',
+    'empty-current',
+    'number-current',
+    'object-current',
+    'array-current',
+  ])('fails release smoke for malformed %s selection state', selectionMode => {
+    const { result } = runHsaRotationEvidenceHarness({ selectionMode })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('invalid HSA mTLS selection')
   })
 
   it('renders the CI-only HSA route with verified HTTPS', () => {

@@ -10,6 +10,7 @@ const RECONCILER_PATH = path.resolve(
 function runReconciler({
   finalizeMode = 'success',
   pending,
+  selectionMode = 'valid',
   verificationResults = [],
 }) {
   const shell = String.raw`
@@ -24,8 +25,49 @@ function runReconciler({
       if [[ -n "$calls" ]]; then calls="$calls,$1"; else calls="$1"; fi
     }
     hsa_renewal_inspect() {
-      jq -n --arg current "$current" --arg previous "$previous" \
-        '{result:{selection:{current:$current,previous:(if $previous == "" then null else $previous end)}}}'
+      case "$SELECTION_MODE" in
+        valid)
+          jq -n --arg current "$current" --arg previous "$previous" \
+            '{result:{selection:{current:$current,previous:(if $previous == "" then null else $previous end)}}}'
+          ;;
+        missing-previous)
+          jq -n --arg current "$current" '{result:{selection:{current:$current}}}'
+          ;;
+        false-previous)
+          jq -n --arg current "$current" '{result:{selection:{current:$current,previous:false}}}'
+          ;;
+        empty-previous)
+          jq -n --arg current "$current" '{result:{selection:{current:$current,previous:""}}}'
+          ;;
+        number-previous)
+          jq -n --arg current "$current" '{result:{selection:{current:$current,previous:42}}}'
+          ;;
+        object-previous)
+          jq -n --arg current "$current" '{result:{selection:{current:$current,previous:{}}}}'
+          ;;
+        array-previous)
+          jq -n --arg current "$current" '{result:{selection:{current:$current,previous:[]}}}'
+          ;;
+        missing-current)
+          jq -n '{result:{selection:{previous:null}}}'
+          ;;
+        false-current)
+          jq -n '{result:{selection:{current:false,previous:null}}}'
+          ;;
+        empty-current)
+          jq -n '{result:{selection:{current:"",previous:null}}}'
+          ;;
+        number-current)
+          jq -n '{result:{selection:{current:42,previous:null}}}'
+          ;;
+        object-current)
+          jq -n '{result:{selection:{current:{},previous:null}}}'
+          ;;
+        array-current)
+          jq -n '{result:{selection:{current:[],previous:null}}}'
+          ;;
+        *) return 2 ;;
+      esac
     }
     hsa_renewal_verify() {
       record verify
@@ -72,6 +114,7 @@ function runReconciler({
         ...process.env,
         FINALIZE_MODE: finalizeMode,
         PENDING_GENERATION: pending ?? '',
+        SELECTION_MODE: selectionMode,
         VERIFY_RESULTS: verificationResults.join(','),
       },
     },
@@ -84,6 +127,27 @@ describe('Azure persistent HSA mTLS startup renewal', () => {
 
     expect(result.status, result.stderr).toBe(0)
     expect(result.stdout).toContain('current generation reused')
+    expect(result.stdout).toContain('CALLS=')
+  })
+
+  it.each([
+    'missing-previous',
+    'false-previous',
+    'empty-previous',
+    'number-previous',
+    'object-previous',
+    'array-previous',
+    'missing-current',
+    'false-current',
+    'empty-current',
+    'number-current',
+    'object-current',
+    'array-current',
+  ])('fails closed for malformed %s selection state', selectionMode => {
+    const result = runReconciler({ selectionMode })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('invalid HSA mTLS selection')
     expect(result.stdout).toContain('CALLS=')
   })
 

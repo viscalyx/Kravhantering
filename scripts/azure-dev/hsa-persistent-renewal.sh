@@ -3,21 +3,34 @@
 # Reconcile a provisioner promotion after callers have started the HSA chain.
 # Callers provide the environment-specific operations as hsa_renewal_* shell
 # functions so this state machine remains behaviorally testable without Podman.
+hsa_renewal_valid_selection() {
+  jq -cer '
+    .result.selection |
+    if type == "object" and
+      has("current") and
+      ((.current | type) == "string" and (.current | length) > 0) and
+      has("previous") and
+      (.previous == null or
+        ((.previous | type) == "string" and (.previous | length) > 0))
+    then .
+    else error("invalid HSA mTLS selection")
+    end
+  ' <<<"$1"
+}
+
 hsa_renewal_finalization_previous() {
   local authenticated_generation_id="$1"
-  local finalization_inspection finalization_previous selected_generation_id
+  local finalization_inspection finalization_previous selected_generation_id selection
   finalization_inspection="$(hsa_renewal_inspect)" || {
     printf '%s\n' \
       'HSA mTLS startup renewal finalization state could not be inspected.' \
       >&2
     return 1
   }
-  selected_generation_id="$(
-    jq -er '.result.selection.current | strings | select(length > 0)' \
-      <<<"$finalization_inspection"
-  )" || return
+  selection="$(hsa_renewal_valid_selection "$finalization_inspection")" || return
+  selected_generation_id="$(jq -r '.current' <<<"$selection")" || return
   finalization_previous="$(
-    jq -er '.result.selection.previous // ""' <<<"$finalization_inspection"
+    jq -r 'if .previous == null then "" else .previous end' <<<"$selection"
   )" || return
   if [[ "$selected_generation_id" != "$authenticated_generation_id" ]]; then
     printf '%s\n' \
@@ -52,10 +65,13 @@ hsa_finalize_authenticated_renewal() {
 }
 
 hsa_reconcile_persistent_renewal() {
-  local authenticated_current inspection prior_generation_id
+  local authenticated_current inspection prior_generation_id selection
   inspection="$(hsa_renewal_inspect)" || return
-  authenticated_current="$(jq -er '.result.selection.current | strings | select(length > 0)' <<<"$inspection")" || return
-  prior_generation_id="$(jq -er '.result.selection.previous // ""' <<<"$inspection")" || return
+  selection="$(hsa_renewal_valid_selection "$inspection")" || return
+  authenticated_current="$(jq -r '.current' <<<"$selection")" || return
+  prior_generation_id="$(
+    jq -r 'if .previous == null then "" else .previous end' <<<"$selection"
+  )" || return
   if [[ -z "$prior_generation_id" ]]; then
     printf '%s\n' 'HSA mTLS startup renewal: current generation reused.'
     return 0
