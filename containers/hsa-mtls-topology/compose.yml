@@ -1,5 +1,16 @@
 name: kravhantering-hsa-mtls-topology
 
+x-wrong-server-decoy: &wrong-server-decoy
+  image: localhost/kravhantering/hsa-transport-contract-test:topology
+  command: ["node", "wrong-server-decoy.mjs"]
+  profiles: ["wrong-server-probes"]
+  user: "0:0"
+  healthcheck:
+    test: ["CMD", "node", "--input-type=module", "-e", "const r=await fetch('http://127.0.0.1:8081/health');if(!r.ok)process.exit(1)"]
+    interval: 1s
+    timeout: 3s
+    retries: 15
+
 services:
   provisioner:
     image: localhost/kravhantering/hsa-mtls-provisioner:topology
@@ -109,6 +120,45 @@ services:
       - adapter-material:/runtime/adapter:ro
       - kong-material:/runtime/kong:ro
       - probe-material:/runtime/probe:ro
+
+  decoy-kong:
+    <<: *wrong-server-decoy
+    environment:
+      HSA_WRONG_SERVER_CLIENT_CA_PATH: /runtime/server/app-client-ca.crt
+      HSA_WRONG_SERVER_CERT_PATH: /runtime/server/kong-server.crt
+      HSA_WRONG_SERVER_KEY_PATH: /runtime/server/kong-server.key
+      HSA_WRONG_SERVER_ROLE: app-to-kong
+    networks:
+      default:
+        aliases: [kong]
+    volumes:
+      - kong-material:/runtime/server:ro
+
+  decoy-adapter:
+    <<: *wrong-server-decoy
+    environment:
+      HSA_WRONG_SERVER_CLIENT_CA_PATH: /runtime/server/kong-client-ca.crt
+      HSA_WRONG_SERVER_CERT_PATH: /runtime/server/adapter-server.crt
+      HSA_WRONG_SERVER_KEY_PATH: /runtime/server/adapter-server.key
+      HSA_WRONG_SERVER_ROLE: kong-to-adapter
+    networks:
+      default:
+        aliases: [adapter, hsa-person-lookup-adapter]
+    volumes:
+      - adapter-material:/runtime/server:ro
+
+  decoy-mock:
+    <<: *wrong-server-decoy
+    environment:
+      HSA_WRONG_SERVER_CLIENT_CA_PATH: /runtime/server/adapter-client-ca.crt
+      HSA_WRONG_SERVER_CERT_PATH: /runtime/server/mock-server.crt
+      HSA_WRONG_SERVER_KEY_PATH: /runtime/server/mock-server.key
+      HSA_WRONG_SERVER_ROLE: adapter-to-hsa
+    networks:
+      default:
+        aliases: [mock, hsa-directory-mock]
+    volumes:
+      - mock-material:/runtime/server:ro
 
 volumes:
   state:

@@ -17,6 +17,7 @@ RUN rm -rf /usr/local/lib/node_modules/npm \
 
 WORKDIR /test
 COPY containers/hsa-mtls-topology/topology-test.mjs ./topology-test.mjs
+COPY containers/hsa-mtls-topology/wrong-server-decoy.mjs ./wrong-server-decoy.mjs
 COPY --from=builder /tmp/strict-person-lookup.mjs ./strict-person-lookup.mjs
 USER node
 CMD ["node", "topology-test.mjs"]

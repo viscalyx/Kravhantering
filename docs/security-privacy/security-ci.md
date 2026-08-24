@@ -512,12 +512,16 @@ route through the production Quadlet smoke topology. The subordinate transport
 jobs build the provisioner, mock, Adapter, and exact App transport contract
 from the tested commit. They reject unauthenticated clients, cross-leg
 credentials, and a same-CA leaf with the wrong stable identity on App-to-Kong,
-Kong-to-Adapter, and Adapter-to-HSA. The rotation matrix stops clients before
-servers, restarts servers before clients, compares the CA and both leaves,
-rejects stale material, verifies authenticated capability, and proves rollback
-restores the selected generation. Semantic running-container isolation,
-listener, protocol, correlation, and exactly-once checks fail closed; test-only
-probe credentials are not mounted into participant containers.
+Kong-to-Adapter, and Adapter-to-HSA. Same-domain wrong server leaves are
+installed one runtime bundle at a time and rejected by the corresponding
+deployed client; the full topology is restored and authenticated after every
+case. Runtime services remain active through mount and process inspection. The
+rotation matrix stops clients before servers, restarts servers before clients,
+compares the CA and both leaves, rejects stale material, verifies authenticated
+capability, and proves rollback restores the selected generation. Semantic
+running-container isolation, listener, protocol, correlation, and exactly-once
+checks fail closed; test-only probe credentials are not mounted into
+participant containers.
 
 ## Out of scope (for the PR workflow)
 

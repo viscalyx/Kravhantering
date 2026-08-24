@@ -938,6 +938,78 @@ describe('strict HSA person lookup startup snapshot', () => {
     ).rejects.toMatchObject({ category: 'context' })
   })
 
+  it('enforces root and intermediate Basic Constraints path lengths', async () => {
+    const diagnostics = {
+      caInvalid: 'ca',
+      certificateExpired: 'expired',
+      certificateInvalid: 'certificate',
+      certificateNotYetValid: 'not-yet-valid',
+      chainUntrusted: 'chain',
+      fileInvalid: 'file',
+      filePathInvalid: 'path',
+      keyInvalid: 'key',
+      keyMismatch: 'key-mismatch',
+      leafRoleInvalid: 'role',
+      peerIdentityInvalid: 'identity',
+      tlsContextInvalid: 'context',
+    }
+    const fail = (category: string, message: string): never => {
+      throw Object.assign(new Error(message), { category })
+    }
+    const base = {
+      diagnostics,
+      fail,
+      identity: { type: 'subject' as const, value: 'CN=kravhantering-app' },
+      role: 'client' as const,
+    }
+
+    for (const material of [
+      chainFixture.pathLength.depthTwo,
+      chainFixture.pathLength.unlimited,
+    ]) {
+      await expect(
+        loadStrictCertificateMaterial({
+          ...base,
+          caPath: material.root,
+          certPath: material.cert,
+          keyPath: material.key,
+        }),
+      ).resolves.toEqual({
+        ca: expect.any(Buffer),
+        cert: expect.any(Buffer),
+        key: expect.any(Buffer),
+      })
+    }
+
+    for (const material of [
+      chainFixture.pathLength.rootZeroViolation,
+      chainFixture.pathLength.upperZeroViolation,
+    ]) {
+      await expect(
+        loadStrictCertificateMaterial({
+          ...base,
+          caPath: material.root,
+          certPath: material.cert,
+          keyPath: material.key,
+        }),
+      ).rejects.toMatchObject({
+        category: 'chain',
+        message: 'TLS certificate chain violates a CA path length constraint.',
+      })
+    }
+
+    for (const malformedRoot of chainFixture.pathLength.malformedRoots) {
+      await expect(
+        loadStrictCertificateMaterial({
+          ...base,
+          caPath: malformedRoot.certificate,
+          certPath: chainFixture.pathLength.rootZeroViolation.cert,
+          keyPath: chainFixture.pathLength.rootZeroViolation.key,
+        }),
+      ).rejects.toMatchObject({ category: malformedRoot.expectedCategory })
+    }
+  })
+
   it('rejects trailing non-certificate data in a trust bundle', async () => {
     const certificate = await readFile(
       fixture.bundle('kong', 'app-client-ca.crt'),

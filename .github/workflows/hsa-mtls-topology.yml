@@ -74,9 +74,11 @@ jobs:
         run: for archive in /tmp/hsa-oci/*.tar; do docker load --input "$archive"; done
       - name: Start loaded candidates and verify strict topology
         run: |
-          docker compose \
-            -f containers/hsa-mtls-topology/compose.yml \
-            up --no-build --abort-on-container-exit --exit-code-from test test | tee /tmp/hsa-topology.log
+          set -euo pipefail
+          compose=(docker compose -f containers/hsa-mtls-topology/compose.yml)
+          "${compose[@]}" up --no-build provisioner
+          "${compose[@]}" up --no-build -d --wait mock adapter kong
+          "${compose[@]}" run --rm --no-deps test | tee /tmp/hsa-topology.log
       - name: Verify correlation continuity and exactly-once terminal handling
         run: |
           correlation="$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}' /tmp/hsa-topology.log | tail -1)"
@@ -95,6 +97,8 @@ jobs:
           docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner inspect
       - name: Reject foreign material in every runtime leaf role
         run: containers/hsa-mtls-topology/runtime-substitution-test.sh
+      - name: Reject same-domain wrong servers through deployed clients
+        run: containers/hsa-mtls-topology/runtime-wrong-server-test.sh
       - name: Remove ephemeral PKI material
         if: always()
         run: docker compose -f containers/hsa-mtls-topology/compose.yml down --volumes --remove-orphans
@@ -122,8 +126,11 @@ jobs:
         run: for archive in /tmp/hsa-oci/*.tar; do docker load --input "$archive"; done
       - name: Start and verify current generation
         run: |
-          docker compose -f containers/hsa-mtls-topology/compose.yml \
-            up --no-build --abort-on-container-exit --exit-code-from test test
+          set -euo pipefail
+          compose=(docker compose -f containers/hsa-mtls-topology/compose.yml)
+          "${compose[@]}" up --no-build provisioner
+          "${compose[@]}" up --no-build -d --wait mock adapter kong
+          "${compose[@]}" run --rm --no-deps test
       - name: Rotate, authenticate, and finalize successful generation
         env:
           HSA_MTLS_LIFETIME: ephemeral

@@ -328,9 +328,12 @@ generation. Supported domains are `app-to-kong`, `kong-to-adapter`, and
 `adapter-to-hsa`; do not rotate multiple domains in one promotion.
 
 The required `HSA mTLS topology` workflow exercises every domain against
-current-commit images. Container release smoke performs the same endpoint
-ordering for App-to-Kong and verifies both the promoted and restored
-generation through authenticated application readiness.
+current-commit images. For each same-domain wrong-server check, it installs the
+wrong leaf in the affected runtime bundle, starts a bounded decoy endpoint,
+and proves rejection through the deployed App, Kong, or Adapter client before
+restoring and authenticating the complete topology. Container release smoke
+performs the same endpoint ordering for App-to-Kong and verifies both the
+promoted and restored generation through authenticated application readiness.
 
 ## Related decisions
 
