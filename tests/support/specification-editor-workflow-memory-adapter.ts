@@ -121,6 +121,7 @@ export class InMemorySpecificationEditorAdapter
               itemRef: item.itemRef,
               kind: item.kind ?? 'library',
               needsReference: item.needsReference ?? null,
+              needsReferenceId: item.needsReferenceId ?? null,
               uniqueId: item.uniqueId,
             },
           ]

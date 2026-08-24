@@ -248,6 +248,7 @@ describe('specification editor workflow', () => {
         itemRef: 'lib:1',
         kind: 'library',
         needsReference: null,
+        needsReferenceId: null,
         uniqueId: 'FIRST',
       },
     ])
@@ -308,6 +309,58 @@ describe('specification editor workflow', () => {
     })
   })
 
+  it('completes a bulk action when a newer query supersedes its refresh', async () => {
+    const first = item(1, 'lib:1', 'FIRST')
+    let releaseRefresh: ((value: ReturnType<typeof page>) => void) | undefined
+    let markRefreshStarted: (() => void) | undefined
+    const pendingRefresh = new Promise<ReturnType<typeof page>>(resolve => {
+      releaseRefresh = resolve
+    })
+    const refreshStarted = new Promise<void>(resolve => {
+      markRefreshStarted = resolve
+    })
+    let loadCount = 0
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items: [first],
+      loadItems: () => {
+        loadCount += 1
+        if (loadCount === 1) {
+          markRefreshStarted?.()
+          return pendingRefresh
+        }
+        return Promise.resolve(page([item(1, 'lib:1', 'FILTERED')]))
+      },
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([first]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1]))
+
+    const mutation = workflow.actions.assignNeedsReference(81)
+    await refreshStarted
+    await workflow.actions.setQuery({
+      ...defaultQuery,
+      filters: { uniqueIdSearch: 'filtered' },
+    })
+    releaseRefresh?.(page([{ ...first, needsReferenceId: 81 }]))
+
+    await expect(mutation).resolves.toEqual({
+      failedUniqueIds: [],
+      succeededCount: 1,
+    })
+    expect(workflow.getState()).toMatchObject({
+      bulkAction: {
+        failedUniqueIds: [],
+        operation: 'assign-needs-reference',
+        phase: 'complete',
+      },
+      items: [expect.objectContaining({ uniqueId: 'FILTERED' })],
+    })
+  })
+
   it('keeps a committed single-item update when its refresh fails', async () => {
     const first = item(1, 'lib:1', 'FIRST')
     const adapter = new InMemorySpecificationEditorAdapter({
@@ -338,6 +391,47 @@ describe('specification editor workflow', () => {
       ],
       itemsError: 'Refresh failed',
     })
+  })
+
+  it('uses authoritative needs-reference identity for bulk assignment', async () => {
+    const first = {
+      ...item(1, 'lib:1', 'FIRST'),
+      needsReference: 'Shared text',
+      needsReferenceId: 81,
+    }
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items: [first],
+      resolveItems: () =>
+        Promise.resolve([
+          {
+            itemRef: 'lib:1',
+            kind: 'library',
+            needsReference: 'Shared text',
+            needsReferenceId: 82,
+            uniqueId: 'FIRST',
+          },
+        ]),
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([first]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1]))
+
+    const resolved = await workflow.actions.prepareBulkAction(
+      'assign-needs-reference',
+    )
+    expect(resolved[0]).toMatchObject({ needsReferenceId: 82 })
+
+    await expect(workflow.actions.assignNeedsReference(81)).resolves.toEqual({
+      failedUniqueIds: [],
+      succeededCount: 1,
+    })
+    expect(adapter.needsReferenceAssignments).toEqual([
+      { itemRefs: ['lib:1'], needsReferenceId: 81 },
+    ])
   })
 
   it('traverses requirement packages and reconciles selected package filters', async () => {

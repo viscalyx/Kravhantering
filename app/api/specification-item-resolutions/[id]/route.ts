@@ -83,6 +83,7 @@ export async function GET(
         itemRef: item.itemRef,
         kind: item.kind,
         needsReference: item.needsReference,
+        needsReferenceId: item.needsReferenceId,
         uniqueId: item.uniqueId,
       })),
     })

@@ -47,6 +47,7 @@ export interface ResolvedSpecificationEditorItem {
   itemRef: string
   kind: 'library' | 'specificationLocal'
   needsReference: string | null
+  needsReferenceId: number | null
   uniqueId: string
 }
 
@@ -134,6 +135,8 @@ interface SpecificationEditorWorkflowInternalState
   extends SpecificationEditorWorkflowState {
   itemsNextCursor: string | null
 }
+
+type SpecificationEditorItemLoadOutcome = 'failed' | 'loaded' | 'superseded'
 
 interface SpecificationEditorWorkflowOptions {
   adapter: SpecificationEditorWorkflowAdapter
@@ -256,10 +259,10 @@ export function createSpecificationEditorWorkflow({
     for (const listener of listeners) listener()
   }
 
-  const loadFirstPage = async (
+  const loadFirstPageOutcome = async (
     nextQuery: SpecificationEditorWorkflowQuery,
     options: { recoveringInvalidCursor?: boolean } = {},
-  ): Promise<boolean> => {
+  ): Promise<SpecificationEditorItemLoadOutcome> => {
     const localeChanged = currentQuery.locale !== nextQuery.locale
     const nextSelectedRequirementPackageIds = new Set(
       nextQuery.filters.requirementPackageIds ?? [],
@@ -291,7 +294,7 @@ export function createSpecificationEditorWorkflow({
         signal: controller.signal,
       })
       if (controller.signal.aborted || generation !== requestGeneration) {
-        return false
+        return 'superseded'
       }
       rememberItems(page.items ?? [])
       publish({
@@ -303,10 +306,10 @@ export function createSpecificationEditorWorkflow({
         itemsHasMore: page.pagination?.hasMore ?? false,
         itemsNextCursor: page.pagination?.nextCursor ?? null,
       })
-      return true
+      return 'loaded'
     } catch (error) {
       if (controller.signal.aborted || generation !== requestGeneration) {
-        return false
+        return 'superseded'
       }
       if (options.recoveringInvalidCursor) {
         publish({ itemsContinuationError: 'recovery' })
@@ -315,7 +318,7 @@ export function createSpecificationEditorWorkflow({
           itemsError: error instanceof Error ? error.message : 'Unknown error',
         })
       }
-      return false
+      return 'failed'
     } finally {
       if (generation === requestGeneration) {
         publish({ itemsLoading: false })
@@ -323,6 +326,12 @@ export function createSpecificationEditorWorkflow({
       }
     }
   }
+
+  const loadFirstPage = async (
+    nextQuery: SpecificationEditorWorkflowQuery,
+    options: { recoveringInvalidCursor?: boolean } = {},
+  ): Promise<boolean> =>
+    (await loadFirstPageOutcome(nextQuery, options)) === 'loaded'
 
   const loadMoreItems = async (): Promise<boolean> => {
     if (
@@ -466,6 +475,7 @@ export function createSpecificationEditorWorkflow({
           itemRef: item.itemRef,
           kind: item.kind,
           needsReference: item.needsReference,
+          needsReferenceId: item.needsReferenceId,
           uniqueId: item.uniqueId,
         }
         knownItemsByRef.set(item.itemRef, refreshed)
@@ -742,8 +752,8 @@ export function createSpecificationEditorWorkflow({
         })
 
   const refreshItemsOrThrow = async (): Promise<void> => {
-    const refreshed = await loadFirstPage(currentQuery)
-    if (!refreshed) {
+    const outcome = await loadFirstPageOutcome(currentQuery)
+    if (outcome === 'failed') {
       throw new Error(state.itemsError ?? 'Specification items refresh failed')
     }
   }

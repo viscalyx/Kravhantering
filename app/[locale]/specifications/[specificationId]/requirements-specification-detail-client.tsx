@@ -1112,10 +1112,12 @@ export default function KravunderlagDetailClient({
     availableRequirementsKeyRef.current = availableRequirementsParams
   }, [availableRequirementsParams])
 
-  workflowRefreshRef.current = {
-    availableRequirements: () => availableRequirementsResource.reload(),
-    needsReferences: () => needsReferencesResource.reload(),
-  }
+  useEffect(() => {
+    workflowRefreshRef.current = {
+      availableRequirements: () => availableRequirementsResource.reload(),
+      needsReferences: () => needsReferencesResource.reload(),
+    }
+  }, [availableRequirementsResource.reload, needsReferencesResource.reload])
 
   const specificationItemsQueryKeyRef = useRef<string | null>(null)
   useEffect(() => {

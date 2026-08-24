@@ -54,6 +54,7 @@ export interface TraceabilityReportItem {
   itemRef: SpecificationItemRef
   kind: SpecificationItemKind
   needsReference: string | null
+  needsReferenceId: number | null
   note: string | null
   priorityLevelCode: string | null
   priorityLevelColor: string | null
@@ -313,6 +314,7 @@ function mapTraceabilityReportRow(
         : createSpecificationLocalItemRef(itemId),
     kind,
     needsReference: toStr(row.needsReference),
+    needsReferenceId: toNum(row.needsReferenceId),
     note: toStr(row.note),
     verifiable: toBool(row.verifiable),
     priorityLevelCode: toStr(row.priorityLevelCode),
@@ -368,6 +370,7 @@ export async function listSpecificationTraceabilityItems(
           priority_level.icon_name AS priorityLevelIconName,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
+          specification_item.needs_reference_id AS needsReferenceId,
           needs_reference.text AS needsReference,
           specification_item.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,
@@ -434,6 +437,7 @@ export async function listSpecificationTraceabilityItems(
           priority_level.icon_name AS priorityLevelIconName,
           priority_level.name_en AS priorityLevelNameEn,
           priority_level.name_sv AS priorityLevelNameSv,
+          local_requirement.needs_reference_id AS needsReferenceId,
           needs_reference.text AS needsReference,
           local_requirement.specification_item_status_id AS specificationItemStatusId,
           specification_item_status.name_en AS specificationItemStatusNameEn,

@@ -1314,6 +1314,21 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .getByRole('button')
       .first()
     const libraryRow = libraryButton.locator('xpath=ancestor::tr[1]')
+    const reloadAndWaitForSpecificationItems = async () => {
+      const itemsResponse = page.waitForResponse(response => {
+        const url = new URL(response.url())
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname ===
+            `/api/requirements-specifications/${specificationId}/items`
+        )
+      })
+      await page.reload()
+      await itemsResponse
+      await expect(leftPanel.locator('tbody').first()).not.toHaveClass(
+        /pointer-events-none/u,
+      )
+    }
 
     await test.step('pointer hover cancels short intent and reuses held prefetches', async () => {
       await expect(localMarker).toBeVisible()
@@ -1369,7 +1384,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await test.step('keyboard focus prefetches each supported detail resource', async () => {
       libraryDetailRequests.reset()
       localDetailRequests.reset()
-      await page.reload()
+      await reloadAndWaitForSpecificationItems()
 
       const heldLocalRequest = localDetailRequests.holdNext()
       await localButton.focus()
@@ -1408,7 +1423,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await test.step('immediate clicks load each detail once without delayed duplicates', async () => {
       libraryDetailRequests.reset()
       localDetailRequests.reset()
-      await page.reload()
+      await reloadAndWaitForSpecificationItems()
 
       await localButton.click()
       await expect(

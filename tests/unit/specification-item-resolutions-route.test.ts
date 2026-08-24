@@ -38,6 +38,7 @@ describe('specification item resolution route', () => {
         itemRef: 'lib:31',
         kind: 'library',
         needsReference: 'IAM-42',
+        needsReferenceId: 77,
         uniqueId: 'BEH0001',
       },
     ])
@@ -61,6 +62,7 @@ describe('specification item resolution route', () => {
           itemRef: 'lib:31',
           kind: 'library',
           needsReference: 'IAM-42',
+          needsReferenceId: 77,
           uniqueId: 'BEH0001',
         },
       ],

@@ -2060,6 +2060,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           deviationTotal: 3,
           itemId: 31,
           needsReference: 'IAM-42',
+          needsReferenceId: 77,
           note: 'Library note',
           verifiable: 1,
           priorityLevelCode: 'P1',
@@ -2085,6 +2086,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           deviationTotal: 0,
           itemId: 41,
           needsReference: null,
+          needsReferenceId: null,
           note: 'Local note',
           verifiable: 0,
           priorityLevelCode: null,
@@ -2123,14 +2125,21 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
     expect(query.mock.calls[0]?.[0]).toContain(
       'WHERE deviation.specification_item_id IN (@3)',
     )
+    expect(query.mock.calls[0]?.[0]).toContain(
+      'specification_item.needs_reference_id AS needsReferenceId',
+    )
     expect(query.mock.calls[1]?.[0]).toContain(
       'WHERE deviation.specification_local_requirement_id IN (@3)',
+    )
+    expect(query.mock.calls[1]?.[0]).toContain(
+      'local_requirement.needs_reference_id AS needsReferenceId',
     )
     expect(result).toEqual([
       expect.objectContaining({
         deviationCounts: { approved: 0, pending: 0, rejected: 0, total: 0 },
         itemRef: 'local:41',
         kind: 'specificationLocal',
+        needsReferenceId: null,
         note: 'Local note',
         verifiable: false,
         statusUpdatedAt: '2026-06-04T10:00:00.000Z',
@@ -2142,6 +2151,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         itemRef: 'lib:31',
         kind: 'library',
         needsReference: 'IAM-42',
+        needsReferenceId: 77,
         priorityLevelCode: 'P1',
         priorityLevelColor: '#1e3a8a',
         priorityLevelIconName: 'CircleAlert',
