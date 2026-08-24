@@ -35,41 +35,53 @@ authenticate() {
   provision inspect || return 1
 }
 
-finalize_authenticated_promotion() {
-  local expected_generation="$1" inspection current previous
-  if provision finalize; then
-    return
-  fi
+inspect_finalization_previous() {
+  local expected_generation="$1" inspection current
   if ! inspection="$(provision inspect)"; then
-    echo 'HSA mTLS finalization failed and its selection state could not be inspected' >&2
+    echo 'HSA mTLS finalization state could not be inspected' >&2
     return 1
   fi
   current="$(jq -er '.result.selection.current' <<<"$inspection")"
-  previous="$(jq -r '.result.selection.previous // empty' <<<"$inspection")"
   if [[ "$current" != "$expected_generation" ]]; then
     echo 'HSA mTLS selection changed while reconciling finalization' >&2
     return 1
   fi
-  if [[ -z "$previous" ]]; then
-    echo 'HSA mTLS finalization reported failure after the promotion was reconciled' >&2
+  jq -r '
+    .result.selection |
+    if has("previous") and
+      (.previous == null or
+        ((.previous | type) == "string" and (.previous | length) > 0))
+    then (.previous // "")
+    else error("invalid selection")
+    end
+  ' <<<"$inspection"
+}
+
+finalize_authenticated_promotion() {
+  local expected_generation="$1" previous finalize_failed=false inspect_ok=false retry_failed=false
+  if ! provision finalize "$expected_generation"; then
+    finalize_failed=true
+  fi
+  if previous="$(inspect_finalization_previous "$expected_generation")"; then
+    inspect_ok=true
+  fi
+  if [[ "$inspect_ok" == true && -z "$previous" ]]; then
+    if [[ "$finalize_failed" == true ]]; then
+      echo 'HSA mTLS finalization reported failure after the promotion was reconciled' >&2
+    fi
     return
   fi
 
-  if provision finalize; then
-    return
+  if ! provision finalize "$expected_generation"; then
+    retry_failed=true
   fi
-  if ! inspection="$(provision inspect)"; then
-    echo 'HSA mTLS finalization retry failed and its selection state could not be inspected' >&2
-    return 1
-  fi
-  current="$(jq -er '.result.selection.current' <<<"$inspection")"
-  previous="$(jq -r '.result.selection.previous // empty' <<<"$inspection")"
-  if [[ "$current" != "$expected_generation" ]]; then
-    echo 'HSA mTLS selection changed while reconciling finalization' >&2
+  if ! previous="$(inspect_finalization_previous "$expected_generation")"; then
     return 1
   fi
   if [[ -z "$previous" ]]; then
-    echo 'HSA mTLS finalization retry reported failure after the promotion was reconciled' >&2
+    if [[ "$retry_failed" == true ]]; then
+      echo 'HSA mTLS finalization retry reported failure after the promotion was reconciled' >&2
+    fi
     return
   fi
   echo 'HSA mTLS promotion remains pending after finalization retry' >&2

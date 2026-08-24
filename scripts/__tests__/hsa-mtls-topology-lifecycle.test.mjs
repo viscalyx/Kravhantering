@@ -181,4 +181,25 @@ describe('HSA mTLS topology ensure lifecycle', () => {
     )
     expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
   })
+
+  it('retries cleanup while deletion failure retains the prior generation identity', async () => {
+    const { calls, result } = await runEnsure(
+      {
+        action: 'promoted',
+        generationId: 'generation-2',
+        previousGenerationId: 'generation-1',
+      },
+      { finalizeFailures: 1 },
+    )
+
+    expect(result.status).toBe(0)
+    const finalized = calls
+      .map((call, index) => ({ call, index }))
+      .filter(({ call }) => call.includes('provisioner finalize'))
+    expect(finalized).toHaveLength(2)
+    expect(
+      calls.findLastIndex(call => call.includes('provisioner inspect')),
+    ).toBeGreaterThan(finalized[1]?.index ?? -1)
+    expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
+  })
 })

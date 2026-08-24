@@ -135,7 +135,11 @@ async function run(argv = process.argv.slice(2)) {
       result = await rollbackGeneration({ profile, rootDir: options.rootDir })
       break
     case 'finalize':
-      result = await finalizeGeneration({ profile, rootDir: options.rootDir })
+      result = await finalizeGeneration({
+        expectedGenerationId: args.shift(),
+        profile,
+        rootDir: options.rootDir,
+      })
       break
     default:
       throw new ProvisionerError(

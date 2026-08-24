@@ -16,9 +16,24 @@ function spawnResult(overrides = {}) {
 function mockSpawnSync(handler) {
   return vi
     .spyOn(childProcess, 'spawnSync')
-    .mockImplementation((command, args, options) =>
-      spawnResult(handler(command, args, options)),
-    )
+    .mockImplementation((command, args, options) => {
+      const result = handler(command, args, options)
+      if (
+        result?.stdout === undefined &&
+        args.join(' ').includes('run --rm hsa-mtls-provisioner inspect')
+      ) {
+        return spawnResult({
+          ...result,
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              selection: { current: 'generation-2', previous: null },
+            },
+          }),
+        })
+      }
+      return spawnResult(result)
+    })
 }
 
 describe('devcontainer HSA mock helper', () => {
@@ -254,6 +269,17 @@ describe('devcontainer HSA mock helper', () => {
         }
       }
       if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (args.join(' ').includes('hsa-mtls-provisioner rotate')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              generationId: 'generation-2',
+              previousGenerationId: 'generation-1',
+            },
+          }),
+        }
+      }
       return {}
     })
 
@@ -265,10 +291,124 @@ describe('devcontainer HSA mock helper', () => {
         'run --rm hsa-mtls-provisioner rotate app-to-kong',
       ),
     )
-    expect(calls.at(-1)).toContain('run --rm hsa-mtls-provisioner finalize')
+    expect(calls.at(-2)).toContain('run --rm hsa-mtls-provisioner finalize')
+    expect(calls.at(-1)).toContain('run --rm hsa-mtls-provisioner inspect')
     expect(calls.findIndex(call => call.includes('stop app'))).toBeLessThan(
       calls.findIndex(call => call.includes('stop kong')),
     )
+  })
+
+  it('rejects an ambiguous rotation finalization against a different current generation', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('test-host')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let finalizeCount = 0
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('hsa-mtls-provisioner rotate')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              generationId: 'generation-2',
+              previousGenerationId: 'generation-1',
+            },
+          }),
+        }
+      }
+      if (text.includes('hsa-mtls-provisioner finalize')) {
+        finalizeCount += 1
+        return { status: 1 }
+      }
+      if (text.includes('hsa-mtls-provisioner inspect')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              selection: { current: 'generation-3', previous: null },
+            },
+          }),
+        }
+      }
+      return {}
+    })
+
+    await expect(main(['rotate', 'app-to-kong'])).resolves.toBe(1)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    const verified = calls.findIndex(call => call.includes('exec -T app node'))
+    expect(finalizeCount).toBe(1)
+    expect(consoleError).toHaveBeenCalledWith(
+      'HSA mTLS selection changed while reconciling finalization',
+    )
+    expect(calls.slice(verified + 1)).not.toContainEqual(
+      expect.stringContaining('stop app'),
+    )
+    expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
+  })
+
+  it('accepts a reconciled rotation after an ambiguous finalization retry failure', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('test-host')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let finalizeCount = 0
+    let inspectCount = 0
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('hsa-mtls-provisioner rotate')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              generationId: 'generation-2',
+              previousGenerationId: 'generation-1',
+            },
+          }),
+        }
+      }
+      if (text.includes('hsa-mtls-provisioner finalize')) {
+        finalizeCount += 1
+        return { status: 1 }
+      }
+      if (text.includes('hsa-mtls-provisioner inspect')) {
+        inspectCount += 1
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              selection: {
+                current: 'generation-2',
+                previous: inspectCount === 1 ? 'generation-1' : null,
+              },
+            },
+          }),
+        }
+      }
+      return {}
+    })
+
+    await expect(main(['rotate', 'app-to-kong'])).resolves.toBe(0)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    expect(finalizeCount).toBe(2)
+    expect(inspectCount).toBe(2)
+    expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
   })
 
   it('reuses ensured material without deployment or recreation', async () => {
@@ -430,7 +570,7 @@ describe('devcontainer HSA mock helper', () => {
     expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
   })
 
-  it('retries finalization without rolling back an authenticated pending renewal', async () => {
+  it('retries finalization when deletion failure retains the prior cleanup identity', async () => {
     vi.spyOn(os, 'hostname').mockReturnValue('host-shell')
     vi.spyOn(console, 'log').mockImplementation(() => {})
     let finalizeCount = 0
@@ -467,7 +607,7 @@ describe('devcontainer HSA mock helper', () => {
             result: {
               selection: {
                 current: 'generation-2',
-                previous: 'generation-1',
+                previous: finalizeCount >= 2 ? null : 'generation-1',
               },
             },
           }),
@@ -480,6 +620,9 @@ describe('devcontainer HSA mock helper', () => {
 
     const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
     expect(finalizeCount).toBe(2)
+    expect(
+      calls.filter(call => call.includes('hsa-mtls-provisioner inspect')),
+    ).toHaveLength(2)
     expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
   })
 
@@ -570,6 +713,7 @@ describe('devcontainer HSA mock helper', () => {
   it('authenticates a pending startup renewal before finalization', async () => {
     vi.spyOn(os, 'hostname').mockReturnValue('current-app')
     vi.spyOn(console, 'log').mockImplementation(() => {})
+    let finalized = false
     const spawnSync = mockSpawnSync((_command, args) => {
       const text = args.join(' ')
       if (text.includes('ps --format json app')) {
@@ -580,13 +724,17 @@ describe('devcontainer HSA mock helper', () => {
         }
       }
       if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('run --rm hsa-mtls-provisioner finalize')) {
+        finalized = true
+        return {}
+      }
       if (text.includes('run --rm hsa-mtls-provisioner inspect')) {
         return {
           stdout: JSON.stringify({
             result: {
               selection: {
                 current: 'renewed-generation',
-                previous: 'verified-generation',
+                previous: finalized ? null : 'verified-generation',
               },
             },
           }),

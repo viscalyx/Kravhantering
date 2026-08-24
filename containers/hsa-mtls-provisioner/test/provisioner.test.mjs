@@ -372,6 +372,56 @@ describe('certificate generation lifecycle', () => {
     )
   })
 
+  it('retains the prior cleanup identity until generation deletion succeeds', async () => {
+    const rotated = await rotateTrustDomain({
+      issuerRoot,
+      lifetime: 'ephemeral',
+      profile,
+      rootDir: testRoot,
+      trustDomain: 'app-to-kong',
+    })
+    currentGenerationId = rotated.generationId
+    await assert.rejects(
+      finalizeGeneration({
+        expectedGenerationId: 'different-generation',
+        profile,
+        rootDir: testRoot,
+      }),
+      error => error.category === 'SELECTION_INVALID',
+    )
+    const generationsDir = path.join(testRoot, 'generations')
+    await chmod(generationsDir, 0o500)
+    try {
+      await assert.rejects(
+        finalizeGeneration({
+          expectedGenerationId: rotated.generationId,
+          profile,
+          rootDir: testRoot,
+        }),
+        /permission denied|operation not permitted/i,
+      )
+      assert.equal(
+        (await inspectGeneration({ profile, rootDir: testRoot })).selection
+          .previous,
+        rotated.previousGenerationId,
+      )
+    } finally {
+      await chmod(generationsDir, 0o700)
+    }
+
+    const finalized = await finalizeGeneration({
+      expectedGenerationId: rotated.generationId,
+      profile,
+      rootDir: testRoot,
+    })
+    assert.equal(finalized.deletedGenerationId, rotated.previousGenerationId)
+    assert.equal(
+      (await inspectGeneration({ profile, rootDir: testRoot })).selection
+        .previous,
+      null,
+    )
+  })
+
   it('fails closed for bundle drift, mismatched keys, wrong trust, and permissions', async t => {
     const source = path.join(testRoot, 'generations', currentGenerationId)
     const negativeRoot = await mkdtemp(

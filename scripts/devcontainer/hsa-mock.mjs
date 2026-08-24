@@ -335,55 +335,77 @@ function inspectSelection(profile, options) {
   return payload.result.selection
 }
 
+function finalizationIsPending(selection, expectedGenerationId, cause) {
+  if (selection.current !== expectedGenerationId) {
+    throw new Error(
+      'HSA mTLS selection changed while reconciling finalization',
+      { cause },
+    )
+  }
+  if (selection.previous === null) return false
+  if (typeof selection.previous === 'string' && selection.previous.length > 0) {
+    return true
+  }
+  throw new Error('HSA mTLS provisioner inspect returned invalid selection')
+}
+
 function finalizeAuthenticatedPromotion(
   profile,
   options,
   expectedGenerationId,
 ) {
-  let finalizeError
+  if (
+    typeof expectedGenerationId !== 'string' ||
+    expectedGenerationId.length === 0
+  ) {
+    throw new Error(
+      'Expected the authenticated HSA mTLS generation for finalization',
+    )
+  }
+  let finalizeError = null
   try {
-    provision(profile, options, 'finalize')
-    return
+    provision(profile, options, 'finalize', expectedGenerationId)
   } catch (error) {
     finalizeError = error
   }
 
-  let selection = inspectSelection(profile, options)
-  if (expectedGenerationId && selection.current !== expectedGenerationId) {
-    throw new Error(
-      'HSA mTLS selection changed while reconciling finalization',
-      { cause: finalizeError },
-    )
+  let selection = null
+  try {
+    selection = inspectSelection(profile, options)
+  } catch (inspectionError) {
+    finalizeError ??= inspectionError
   }
-  if (!selection.previous) {
-    console.warn(
-      'HSA mTLS finalization reported failure after the promotion was reconciled.',
-    )
+  if (
+    selection &&
+    !finalizationIsPending(selection, expectedGenerationId, finalizeError)
+  ) {
+    if (finalizeError) {
+      console.warn(
+        'HSA mTLS finalization reported failure after the promotion was reconciled.',
+      )
+    }
     return
   }
 
+  let retryError = null
   try {
-    provision(profile, options, 'finalize')
-    return
-  } catch (retryError) {
-    selection = inspectSelection(profile, options)
-    if (expectedGenerationId && selection.current !== expectedGenerationId) {
-      throw new Error(
-        'HSA mTLS selection changed while reconciling finalization',
-        { cause: retryError },
-      )
-    }
-    if (!selection.previous) {
+    provision(profile, options, 'finalize', expectedGenerationId)
+  } catch (error) {
+    retryError = error
+  }
+  selection = inspectSelection(profile, options)
+  if (!finalizationIsPending(selection, expectedGenerationId, retryError)) {
+    if (retryError) {
       console.warn(
         'HSA mTLS finalization retry reported failure after the promotion was reconciled.',
       )
-      return
     }
-    throw new Error(
-      'HSA mTLS promotion remains pending after finalization retry',
-      { cause: retryError },
-    )
+    return
   }
+  throw new Error(
+    'HSA mTLS promotion remains pending after finalization retry',
+    { cause: retryError ?? finalizeError ?? undefined },
+  )
 }
 
 function stopEndpoints(profile, options) {
@@ -521,7 +543,12 @@ function requireTrustDomain(value) {
 
 function runRotation(profile, options, trustDomain) {
   stopEndpoints(profile, options)
-  provision(profile, options, 'rotate', requireTrustDomain(trustDomain))
+  const rotated = provisionResult(
+    profile,
+    options,
+    'rotate',
+    requireTrustDomain(trustDomain),
+  )
   provision(profile, options, 'deploy')
   startEndpoints(profile, options)
   try {
@@ -534,7 +561,7 @@ function runRotation(profile, options, trustDomain) {
     runVerify(profile, options, { recreate: false })
     throw error
   }
-  finalizeAuthenticatedPromotion(profile, options)
+  finalizeAuthenticatedPromotion(profile, options, rotated.generationId)
 }
 
 function runRollbackVerification(profile, options, trustDomain) {

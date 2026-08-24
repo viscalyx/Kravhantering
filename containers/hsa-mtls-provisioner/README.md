@@ -58,7 +58,9 @@ The image entry point supports these commands:
   exactly one trust domain.
 - `rollback` restores the prior selection and removes the failed generation.
 - `finalize` verifies the selected generation and removes its preserved prior
-  generation after external authenticated verification succeeds.
+  generation after external authenticated verification succeeds. The prior
+  selection is retained until its directory is deleted, so `previous: null`
+  proves cleanup completed and an interrupted deletion remains retryable.
 
 Persistent material uses the 425-day CA and 397-day leaf policy with renewal
 inside 30 days. CI and release-smoke use `--lifetime ephemeral` for fresh
