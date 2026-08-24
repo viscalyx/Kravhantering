@@ -383,6 +383,61 @@ function runHsaEndpointRestartHarness() {
   )
 }
 
+function runHsaCorrelationEvidenceHarness() {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kh-hsa-correlation-evidence-'),
+  )
+  temporaryDirectories.push(temporaryDirectory)
+  const correlationId = '10000000-0000-4000-8000-000000000001'
+  const shell = String.raw`
+    set -euo pipefail
+    source "$1"
+    EVIDENCE_DIR="$2"
+    HSA_TEST_CORRELATION_ID="$3"
+    mkdir -p "$EVIDENCE_DIR"
+    date() { printf '%s\n' '2026-08-24T10:17:41+00:00'; }
+    npm() { :; }
+    as_service() {
+      local last_arg
+      printf '%s\n' "$*" >>"$EVIDENCE_DIR/log-sources.txt"
+      if [[ "$1" == podman && "$2" == logs ]]; then
+        printf '%s\n' "$HSA_TEST_CORRELATION_ID"
+        return
+      fi
+      for last_arg in "$@"; do :; done
+      case "$last_arg" in
+        kravhantering-app-runtime.service)
+          printf '{"correlation_id":"%s","event":"hsa_app_lookup_started"}\n' "$HSA_TEST_CORRELATION_ID"
+          ;;
+        kravhantering-ci-kong.service)
+          printf '%s\n' 'detached-container-id-without-correlation-evidence'
+          ;;
+        kravhantering-ci-hsa-person-lookup-adapter.service)
+          printf '{"correlation_id":"%s","event":"hsa_adapter_lookup_forwarded"}\n' "$HSA_TEST_CORRELATION_ID"
+          ;;
+        kravhantering-ci-hsa-directory-mock.service)
+          printf '{"correlation_id":"%s","event":"hsa_mock_lookup_handled","handling_count":1}\n' "$HSA_TEST_CORRELATION_ID"
+          ;;
+        *) return 2 ;;
+      esac
+    }
+    verify_hsa_correlated_lookup
+  `
+  const result = childProcess.spawnSync(
+    'bash',
+    [
+      '-c',
+      shell,
+      'bash',
+      PRODUCTION_SMOKE_PATH,
+      temporaryDirectory,
+      correlationId,
+    ],
+    { encoding: 'utf8' },
+  )
+  return { result, temporaryDirectory }
+}
+
 function runHsaPkiLifecycle(operation, exitStatus) {
   const temporaryDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'kh-hsa-pki-cleanup-'),
@@ -434,6 +489,23 @@ describe('production smoke output', () => {
       'start kravhantering-app-runtime.service',
       'start kravhantering-single-node.target',
     ])
+  })
+
+  it('reads Kong correlation evidence from the detached container logs', () => {
+    const { result, temporaryDirectory } = runHsaCorrelationEvidenceHarness()
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(
+      fs.readFileSync(
+        path.join(temporaryDirectory, 'hsa-mtls-correlation.txt'),
+        'utf8',
+      ),
+    ).toContain('kong-correlation=passed')
+    expect(
+      fs.readFileSync(path.join(temporaryDirectory, 'log-sources.txt'), 'utf8'),
+    ).toContain(
+      'podman logs --since 2026-08-24T10:17:41+00:00 kravhantering-ci-kong',
+    )
   })
 
   it.each(['up', 'verify'])(

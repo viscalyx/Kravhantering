@@ -449,8 +449,8 @@ verify_hsa_correlated_lookup() {
   runtime_log="$(mktemp -d)"
   as_service journalctl --user --since "$journal_since" --output cat \
     -u kravhantering-app-runtime.service >"$runtime_log/app.log"
-  as_service journalctl --user --since "$journal_since" --output cat \
-    -u kravhantering-ci-kong.service >"$runtime_log/kong.log"
+  as_service podman logs --since "$journal_since" \
+    kravhantering-ci-kong >"$runtime_log/kong.log" 2>&1
   as_service journalctl --user --since "$journal_since" --output cat \
     -u kravhantering-ci-hsa-person-lookup-adapter.service >"$runtime_log/adapter.log"
   as_service journalctl --user --since "$journal_since" --output cat \
