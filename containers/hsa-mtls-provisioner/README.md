@@ -6,7 +6,11 @@ receive a CA signing key.
 
 The source-of-truth profile is
 `containers/hsa-mtls/certificate-profile.json`. The independently pinned build
-toolchain is recorded in `toolchain.lock.json` and enforced by package tests.
+toolchain is recorded in `toolchain.lock.json`. Every image build verifies the
+selected base image, tag, digest, Node major, and Debian package versions plus
+the Node, OpenSSL, and CA certificate versions installed inside the image. A
+selection or installed-version mismatch fails the build. Package tests cover
+the same verifier contract without inspecting Dockerfile or workflow source.
 
 ## Storage contract
 

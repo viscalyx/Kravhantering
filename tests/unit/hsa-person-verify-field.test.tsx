@@ -456,6 +456,7 @@ describe('HsaPersonVerifyField', () => {
     const hsaIdInput = container.querySelector('#hsa-id')
     expect(hsaIdInput).not.toBeNull()
 
+    fireEvent.focus(hsaIdInput as Element)
     fireEvent.pointerDown(fetchButton)
     fireEvent.blur(hsaIdInput as Element, { relatedTarget: fetchButton })
     fireEvent.click(fetchButton)
@@ -466,6 +467,76 @@ describe('HsaPersonVerifyField', () => {
           ([url]) => url === '/api/requirement-responsibility-people/verify',
         ),
       ).toHaveLength(1)
+    })
+  })
+
+  it('does not suppress a later edited suffix blur after an unrelated refresh click', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/hsa-person-lookup-capability') {
+        return Promise.resolve(okJson({ available: true }))
+      }
+      if (url === '/api/hsa-id-prefixes') {
+        return Promise.resolve(
+          okJson({
+            prefixes: [
+              {
+                id: 1,
+                isDefault: true,
+                label: null,
+                prefix: 'SE5560000001',
+              },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(
+        okJson({
+          evidence: 'signed-evidence',
+          expiresAt: futureExpiresAt(),
+          person: {
+            displayName: 'Nora New',
+            email: null,
+            givenName: 'Nora',
+            hasProtectedPersonalData: false,
+            hsaId: 'SE5560000001-new1',
+            middleName: null,
+            surname: 'New',
+          },
+        }),
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { container } = render(<ControlledHsaPersonVerifyField />)
+    const fetchButton = screen.getByRole('button', { name: 'Fetch' })
+    await waitFor(() => expect(fetchButton).toBeEnabled())
+    const hsaIdInput = container.querySelector('#hsa-id')
+    expect(hsaIdInput).not.toBeNull()
+
+    fireEvent.pointerDown(fetchButton)
+    fireEvent.click(fetchButton)
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(
+          ([url]) => url === '/api/requirement-responsibility-people/verify',
+        ),
+      ).toHaveLength(1)
+    })
+
+    fireEvent.change(hsaIdInput as Element, { target: { value: 'new2' } })
+    fireEvent.focus(hsaIdInput as Element)
+    fireEvent.blur(hsaIdInput as Element)
+
+    await waitFor(() => {
+      const verifyCalls = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/requirement-responsibility-people/verify',
+      )
+      expect(verifyCalls).toHaveLength(2)
+      expect(JSON.parse(String(verifyCalls[1]?.[1]?.body))).toMatchObject({
+        hsaId: 'SE5560000001-new2',
+        mode: 'refresh',
+      })
     })
   })
 

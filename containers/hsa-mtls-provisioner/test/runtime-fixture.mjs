@@ -663,11 +663,13 @@ export async function createCertificateChainFixture() {
 }
 
 async function issueInvalidRoleFixture({
+  basicConstraints = 'critical,CA:FALSE',
   caCertificate,
   caKey,
   extendedKeyUsage,
   keyUsage,
   keyUsageCritical = true,
+  keyUsageDer,
   name,
   rootDir,
   role,
@@ -679,7 +681,10 @@ async function issueInvalidRoleFixture({
   await writeFile(
     extensions,
     [
-      'basicConstraints=critical,CA:FALSE',
+      ...(basicConstraints === null
+        ? []
+        : [`basicConstraints=${basicConstraints}`]),
+      ...(keyUsageDer ? [`2.5.29.15=critical,DER:${keyUsageDer}`] : []),
       ...(keyUsage
         ? [`keyUsage=${keyUsageCritical ? 'critical,' : ''}${keyUsage}`]
         : []),
@@ -767,6 +772,75 @@ export async function createInvalidRuntimeCertificateFixture() {
   const entries = Object.fromEntries(
     await Promise.all(
       [
+        ...['client', 'server'].flatMap(role => {
+          const extendedKeyUsage = `${role}Auth`
+          const keyUsage =
+            role === 'client'
+              ? 'digitalSignature'
+              : 'digitalSignature,keyEncipherment'
+          return [
+            {
+              basicConstraints: null,
+              extendedKeyUsage,
+              keyUsage,
+              name: `${role}-basic-constraints-missing`,
+              role,
+            },
+            {
+              basicConstraints: 'CA:FALSE',
+              extendedKeyUsage,
+              keyUsage,
+              name: `${role}-basic-constraints-noncritical`,
+              role,
+            },
+            {
+              basicConstraints: 'critical,CA:TRUE',
+              extendedKeyUsage,
+              keyUsage,
+              name: `${role}-basic-constraints-ca-true`,
+              role,
+            },
+            {
+              basicConstraints: 'critical,DER:30:03:02:01:00',
+              extendedKeyUsage,
+              keyUsage,
+              name: `${role}-basic-constraints-path-length`,
+              role,
+            },
+            {
+              basicConstraints: 'critical,DER:30:03:01:01:00',
+              extendedKeyUsage,
+              keyUsage,
+              name: `${role}-basic-constraints-explicit-false`,
+              role,
+            },
+          ]
+        }),
+        {
+          extendedKeyUsage: 'clientAuth',
+          keyUsageDer: '03:02:07:80',
+          name: 'client-canonical-key-usage',
+          role: 'client',
+        },
+        {
+          extendedKeyUsage: 'serverAuth',
+          keyUsageDer: '03:02:05:A0',
+          name: 'server-canonical-key-usage',
+          role: 'server',
+        },
+        ...[
+          ['unused-bits-overflow', '03:02:09:80'],
+          ['nonzero-padding', '03:02:07:81'],
+          ['trailing-der', '03:02:07:80:05:00'],
+          ['truncated', '03:03:07:80'],
+          ['empty', '03:01:00'],
+          ['noncanonical-padding', '03:02:00:80'],
+        ].map(([suffix, keyUsageDer]) => ({
+          extendedKeyUsage: 'clientAuth',
+          keyUsageDer,
+          name: `client-key-usage-${suffix}`,
+          role: 'client',
+        })),
         {
           extendedKeyUsage: 'clientAuth,serverAuth',
           keyUsage: 'digitalSignature',

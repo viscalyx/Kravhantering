@@ -134,6 +134,7 @@ export default function HsaPersonVerifyField({
   )
   const currentHsaIdRef = useRef(trimmedHsaId)
   const refreshButtonRef = useRef<HTMLButtonElement>(null)
+  const suffixInputRef = useRef<HTMLInputElement>(null)
   const skipBlurVerifyForRefreshPointerRef = useRef(false)
   const activeVerification =
     verification?.hsaId === trimmedHsaId ? verification : null
@@ -344,6 +345,7 @@ export default function HsaPersonVerifyField({
           }}
           pattern="[A-Za-z0-9]+"
           placeholder={tc('hsaSuffixPlaceholder')}
+          ref={suffixInputRef}
           required={required}
           value={suffixValue}
         />
@@ -365,10 +367,15 @@ export default function HsaPersonVerifyField({
             !isHsaId(trimmedHsaId)
           }
           onClick={() => {
+            skipBlurVerifyForRefreshPointerRef.current = false
             void verifyPerson('refresh')
           }}
+          onPointerCancel={() => {
+            skipBlurVerifyForRefreshPointerRef.current = false
+          }}
           onPointerDown={() => {
-            skipBlurVerifyForRefreshPointerRef.current = true
+            skipBlurVerifyForRefreshPointerRef.current =
+              document.activeElement === suffixInputRef.current
           }}
           ref={refreshButtonRef}
           title={

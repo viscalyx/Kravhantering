@@ -1,3 +1,4 @@
+import { X509Certificate } from 'node:crypto'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import type { ServerResponse } from 'node:http'
 import https from 'node:https'
@@ -9,7 +10,10 @@ import {
   createInvalidRuntimeCertificateFixture,
   createRuntimeCertificateFixture,
 } from '@/containers/hsa-mtls-provisioner/test/runtime-fixture.mjs'
-import { loadStrictCertificateMaterial } from '@/lib/hsa/strict-certificate-validation.mjs'
+import {
+  assertExactCertificateKeyUsage,
+  loadStrictCertificateMaterial,
+} from '@/lib/hsa/strict-certificate-validation.mjs'
 import {
   getStrictHsaPersonLookupSnapshot,
   loadStrictHsaPersonLookupSnapshot,
@@ -729,6 +733,90 @@ describe('strict HSA person lookup startup snapshot', () => {
         role: 'client',
       }),
     ).rejects.toMatchObject({ diagnostic: 'tls_key_invalid' })
+  })
+
+  it('requires canonical critical Basic Constraints on client and server leaves', async () => {
+    const diagnostics = {
+      caInvalid: 'ca',
+      certificateExpired: 'expired',
+      certificateInvalid: 'certificate',
+      certificateNotYetValid: 'not-yet-valid',
+      chainUntrusted: 'chain',
+      fileInvalid: 'file',
+      filePathInvalid: 'path',
+      keyInvalid: 'key',
+      keyMismatch: 'key-mismatch',
+      leafRoleInvalid: 'role',
+      peerIdentityInvalid: 'identity',
+      tlsContextInvalid: 'context',
+    }
+    const fail = (category: string, message: string): never => {
+      throw Object.assign(new Error(message), { category })
+    }
+
+    for (const role of ['client', 'server'] as const) {
+      for (const suffix of [
+        'missing',
+        'noncritical',
+        'ca-true',
+        'path-length',
+        'explicit-false',
+      ]) {
+        const invalid = invalidFixture.entry(
+          `${role}-basic-constraints-${suffix}`,
+        )
+        await expect(
+          loadStrictCertificateMaterial({
+            caPath: invalidFixture.caCertificate,
+            certPath: invalid.certificate,
+            diagnostics,
+            fail,
+            keyPath: invalid.key,
+            role,
+          }),
+        ).rejects.toMatchObject({ category: 'role' })
+      }
+    }
+  })
+
+  it('accepts canonical and rejects malformed exact key usage DER', async () => {
+    const fail = (category: string, message: string): never => {
+      throw Object.assign(new Error(message), { category })
+    }
+    for (const valid of [
+      { bits: [0], name: 'client-canonical-key-usage' },
+      { bits: [0, 2], name: 'server-canonical-key-usage' },
+    ]) {
+      const material = invalidFixture.entry(valid.name)
+      const certificate = new X509Certificate(
+        await readFile(material.certificate),
+      )
+      expect(() =>
+        assertExactCertificateKeyUsage(certificate, 'role', valid.bits, fail),
+      ).not.toThrow()
+    }
+
+    for (const suffix of [
+      'unused-bits-overflow',
+      'nonzero-padding',
+      'trailing-der',
+      'truncated',
+      'empty',
+      'noncanonical-padding',
+    ]) {
+      const material = invalidFixture.entry(`client-key-usage-${suffix}`)
+      const certificate = new X509Certificate(
+        await readFile(material.certificate),
+      )
+      expect(() =>
+        assertExactCertificateKeyUsage(certificate, 'role', [0], fail),
+      ).toThrow(
+        expect.objectContaining({
+          category: 'role',
+          message: 'TLS certificate key usage is invalid.',
+        }),
+      )
+    }
   })
 
   it('maps the shared subject-field policy without weakening exact identity', async () => {
