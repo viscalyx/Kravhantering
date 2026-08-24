@@ -828,6 +828,52 @@ describe('trusted container release helpers', () => {
     expect(productionDeploymentMetadata(undefined)).toEqual({})
   })
 
+  it('preserves provisioner-only metadata through package links and release notes', () => {
+    const plan = createTestReleasePlan({ env: env(), gitVersion })
+    const metadata = createReleaseMetadata(
+      plan,
+      buildxMetadata('sha256:app', 'sha256:app-config'),
+      buildxMetadata('sha256:db', 'sha256:db-config'),
+      undefined,
+      undefined,
+      undefined,
+      {},
+      buildxMetadata('sha256:provisioner', 'sha256:provisioner-config'),
+    )
+
+    expect(metadata.hsaIntegrationSupport).toEqual({
+      hsaMtlsProvisioner: expect.objectContaining({
+        imageId: 'sha256:provisioner-config',
+        manifestDigest: 'sha256:provisioner',
+      }),
+    })
+    expect(releaseMetadataEnv(metadata)).toMatchObject({
+      HSA_MTLS_PROVISIONER_IMAGE_ID: 'sha256:provisioner-config',
+      HSA_MTLS_PROVISIONER_MANIFEST_DIGEST: 'sha256:provisioner',
+    })
+
+    const linked = withReleasePackageUrls(plan, metadata, {
+      execFileSync: vi.fn(() =>
+        JSON.stringify([
+          { id: 123, metadata: { container: { tags: plan.tags } } },
+        ]),
+      ),
+    })
+    const provisioner = linked.hsaIntegrationSupport.hsaMtlsProvisioner
+    expect(provisioner.tagUrls[provisioner.tags[0]]).toContain(
+      '/kravhantering-hsa-mtls-provisioner/123?',
+    )
+
+    const notes = renderReleaseNotes(plan, linked, '', {
+      commits: [],
+      generatedNotes: '',
+      previousTagName: undefined,
+    })
+    expect(notes).toContain('## HSA Integration Support Container Images')
+    expect(notes).toContain('### kravhantering-hsa-mtls-provisioner')
+    expect(notes).not.toContain('### kravhantering-hsa-person-lookup-adapter')
+  })
+
   it('builds a deployment manifest from lock fallbacks without optional support', () => {
     const plan = createTestReleasePlan({
       env: env({

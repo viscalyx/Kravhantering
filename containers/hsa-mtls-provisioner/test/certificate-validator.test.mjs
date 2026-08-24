@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { randomUUID, X509Certificate } from 'node:crypto'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -84,7 +85,7 @@ async function issueClient({
 describe('certificate material validation', () => {
   before(async () => {
     profile = await loadCertificateProfile(profilePath)
-    fixtureDir = await mkdtemp('/dev/shm/hsa-validator-')
+    fixtureDir = await mkdtemp(path.join(os.tmpdir(), 'hsa-validator-'))
     caKey = path.join(fixtureDir, 'ca.key')
     caCertificate = path.join(fixtureDir, 'ca.crt')
     await openssl([

@@ -255,7 +255,13 @@ for (const probe of authenticatedLegs) {
   let obsoleteRejected = false
   try {
     await request({ ...probe, maxVersion: 'TLSv1.1', minVersion: 'TLSv1.1' })
-  } catch {
+  } catch (error) {
+    if (
+      error?.code !== 'EPROTO' ||
+      !/tlsv1 alert protocol version/iu.test(error.message)
+    ) {
+      throw error
+    }
     obsoleteRejected = true
   }
   if (!obsoleteRejected)

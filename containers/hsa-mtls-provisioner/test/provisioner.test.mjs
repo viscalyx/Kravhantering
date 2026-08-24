@@ -204,10 +204,23 @@ describe('certificate generation lifecycle', () => {
 
     assert.equal(result.generationId, currentGenerationId)
     for (const [role, expected] of Object.entries(expectedFiles)) {
+      const roleDirectory = await stat(path.join(runtimeRoot, role))
+      assert.equal(roleDirectory.mode & 0o777, 0o700)
+      assert.equal(roleDirectory.uid, profile.runtimeBundles[role].owner.uid)
+      assert.equal(roleDirectory.gid, profile.runtimeBundles[role].owner.gid)
       assert.deepEqual(
         (await readdir(path.join(runtimeRoot, role))).sort(),
         expected,
       )
+      for (const filename of expected) {
+        const runtimeFile = await stat(path.join(runtimeRoot, role, filename))
+        assert.equal(
+          runtimeFile.mode & 0o777,
+          filename.endsWith('.key') ? 0o400 : 0o444,
+        )
+        assert.equal(runtimeFile.uid, profile.runtimeBundles[role].owner.uid)
+        assert.equal(runtimeFile.gid, profile.runtimeBundles[role].owner.gid)
+      }
     }
   })
 

@@ -7,10 +7,10 @@ request to SOAP `GetHsaPerson`.
 The only business listener is HTTPS on `8443`. Startup requires the complete
 strict tuple for both legs:
 
-- `HSA_ADAPTER_SERVER_CERT_PATH`, `HSA_ADAPTER_SERVER_KEY_PATH`,
-  `HSA_ADAPTER_CLIENT_CA_PATH`, and the exact
-  `HSA_ADAPTER_ALLOWED_CLIENT_SUBJECT` for Kong-to-Adapter ingress;
-- `HSA_SOAP_URL`, `HSA_SOAP_CLIENT_CERT_PATH`,
+- `HSA_ADAPTER_INGRESS_CERT_PATH`, `HSA_ADAPTER_INGRESS_KEY_PATH`,
+  `HSA_ADAPTER_INGRESS_CA_PATH`, and the exact
+  `HSA_ADAPTER_INGRESS_EXPECTED_CLIENT_SUBJECT` for Kong-to-Adapter ingress;
+- `HSA_SOAP_ENDPOINT_URL`, `HSA_SOAP_CLIENT_CERT_PATH`,
   `HSA_SOAP_CLIENT_KEY_PATH`, `HSA_SOAP_CA_PATH`, and the exact
   `HSA_SOAP_TLS_SERVER_NAME` for Adapter-to-HSA egress.
 

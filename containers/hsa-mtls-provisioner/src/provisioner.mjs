@@ -138,6 +138,19 @@ async function setRuntimeFileSecurity(file, filename, owner, profile) {
   )
 }
 
+async function setRuntimeDirectorySecurity(directory, owner) {
+  await chmod(directory, 0o700)
+  if (process.getuid?.() === 0) {
+    await chown(directory, owner.uid, owner.gid)
+    return
+  }
+  assert(
+    owner.uid === process.getuid() && owner.gid === process.getgid(),
+    'OWNERSHIP_UNAVAILABLE',
+    'Provisioner must run as root to assign pinned runtime ownership',
+  )
+}
+
 async function issueLeaf({
   caCertificate,
   caPrivateKey,
@@ -364,11 +377,10 @@ async function secureBundles(generationDir, profile) {
         profile,
       )
     }
-    const directory = path.join(generationDir, 'bundles', role)
-    await chmod(directory, 0o700)
-    if (process.getuid?.() === 0) {
-      await chown(directory, bundle.owner.uid, bundle.owner.gid)
-    }
+    await setRuntimeDirectorySecurity(
+      path.join(generationDir, 'bundles', role),
+      bundle.owner,
+    )
   }
 }
 
@@ -1069,14 +1081,25 @@ export async function materializeSelectedGeneration({
   for (const role of roles) {
     const target = path.join(runtimeRoot, role)
     await mkdir(target, { mode: 0o700, recursive: true })
+    await setRuntimeDirectorySecurity(
+      target,
+      profile.runtimeBundles[role].owner,
+    )
     for (const existing of await readdir(target)) {
       await rm(path.join(target, existing), { force: true, recursive: true })
     }
     for (const filename of Object.keys(profile.runtimeBundles[role].files)) {
+      const runtimeFile = path.join(target, filename)
       await cp(
         path.join(generationDir, 'bundles', role, filename),
-        path.join(target, filename),
+        runtimeFile,
         { force: false },
+      )
+      await setRuntimeFileSecurity(
+        runtimeFile,
+        filename,
+        profile.runtimeBundles[role].owner,
+        profile,
       )
     }
   }

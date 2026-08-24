@@ -48,7 +48,11 @@ assert_bundle mock 1000 1000 \
 
 for service in kong adapter mock; do
   id="$(container_id "$service")"
-  ! docker inspect "$id" | jq -e '.[0].Mounts[] | select(.Destination | contains("issuer"))' >/dev/null
+  if docker inspect "$id" |
+    jq -e '.[0].Mounts[] | select(.Destination | contains("issuer"))' >/dev/null; then
+    echo "Issuer material is mounted into $service" >&2
+    exit 1
+  fi
 done
 
 printf '%s\n' '{"event":"hsa_runtime_inspection_verified","read_only_role_bundles":3,"file_modes_verified":15,"ca_signing_keys":0}'

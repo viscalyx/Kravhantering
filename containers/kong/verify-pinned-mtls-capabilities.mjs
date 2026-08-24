@@ -4,7 +4,6 @@ import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import {
   chmod,
-  mkdir,
   mkdtemp,
   readdir,
   readFile,
@@ -24,16 +23,12 @@ const repositoryRoot = path.resolve(
 const lockPath = path.join(repositoryRoot, 'containers/kong/image.lock.json')
 const probeImage =
   'localhost/kravhantering/hsa-mtls-provisioner:kong-capability-probe'
-const dockerConfig = path.join(
-  os.tmpdir(),
-  'kravhantering-hsa-kong-probe-docker',
-)
 
 async function command(program, args, options = {}) {
   return execFileAsync(program, args, {
     cwd: repositoryRoot,
     encoding: 'utf8',
-    env: { ...process.env, DOCKER_CONFIG: dockerConfig },
+    env: { ...process.env, DOCKER_CONFIG: probeState.dockerConfig },
     maxBuffer: 4 * 1024 * 1024,
     ...options,
   })
@@ -121,7 +116,7 @@ async function issueLeaf({ ca, directory, eku, keyUsage, name, san, subject }) {
 }
 
 async function waitForKong(name) {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
+  for (let attempt = 0; attempt < 240; attempt += 1) {
     const result = await command('docker', [
       'exec',
       name,
@@ -170,7 +165,7 @@ async function runNodeRequest({ certificate, key, network, expectedStatus }) {
   await command('docker', args)
 }
 
-const probeState = { fixtureDir: '' }
+const probeState = { dockerConfig: '', fixtureDir: '' }
 
 async function main() {
   const lock = JSON.parse(await readFile(lockPath, 'utf8'))
@@ -179,23 +174,27 @@ async function main() {
   const network = `hsa-kong-capability-${suffix}`
   const kongName = `hsa-kong-${suffix}`
   const adapterName = `hsa-adapter-${suffix}`
-  const fixtureDir = await mkdtemp(
-    path.join(os.tmpdir(), 'hsa-kong-capability-'),
+  const dockerConfig = await mkdtemp(
+    path.join(os.tmpdir(), 'kravhantering-hsa-kong-probe-docker-'),
   )
-  await chmod(fixtureDir, 0o755)
-  probeState.fixtureDir = fixtureDir
+  await chmod(dockerConfig, 0o700)
+  probeState.dockerConfig = dockerConfig
+  let fixtureDir = ''
   const cleanup = async () => {
     await command('docker', ['rm', '-f', kongName, adapterName]).catch(
       () => undefined,
     )
     await command('docker', ['network', 'rm', network]).catch(() => undefined)
-    await rm(fixtureDir, { force: true, recursive: true })
+    if (fixtureDir) await rm(fixtureDir, { force: true, recursive: true })
+    await rm(dockerConfig, { force: true, recursive: true })
   }
   process.on('SIGINT', () => {
     cleanup().finally(() => process.exit(130))
   })
   try {
-    await mkdir(dockerConfig, { recursive: true, mode: 0o700 })
+    fixtureDir = await mkdtemp(path.join(os.tmpdir(), 'hsa-kong-capability-'))
+    await chmod(fixtureDir, 0o700)
+    probeState.fixtureDir = fixtureDir
     await command('docker', ['pull', image])
     await command('docker', ['image', 'inspect', image, '--format', '{{.Id}}'])
     await command('docker', [
@@ -275,7 +274,10 @@ async function main() {
     )
     await Promise.all(
       (await readdir(fixtureDir)).map(name =>
-        chmod(path.join(fixtureDir, name), 0o444),
+        chmod(
+          path.join(fixtureDir, name),
+          name.endsWith('.key') ? 0o400 : 0o444,
+        ),
       ),
     )
     await writeFile(
@@ -461,7 +463,7 @@ async function main() {
           upstreamClientCertificatePresented: true,
           upstreamServerChainVerified: true,
           upstreamServerDnsIdentityVerified: true,
-          version: '3.15.0.2',
+          version: lock.tag.split('-', 1)[0],
         },
         null,
         2,

@@ -19,6 +19,7 @@ const BUSINESS_PORT = 8443
 const HEALTH_HOST = '127.0.0.1'
 const HEALTH_PORT = 8081
 const SOAP_PATH = '/svr-hsaws2/hsaws'
+export const STRICT_CORRELATION_CAPACITY = 10_000
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
 
@@ -88,6 +89,12 @@ export class StrictCorrelationRecorder {
 
   record(correlationId) {
     const handlingCount = this.count(correlationId) + 1
+    if (
+      !this.#counts.has(correlationId) &&
+      this.#counts.size >= STRICT_CORRELATION_CAPACITY
+    ) {
+      this.#counts.delete(this.#counts.keys().next().value)
+    }
     this.#counts.set(correlationId, handlingCount)
     this.#write({
       correlation_id: correlationId,

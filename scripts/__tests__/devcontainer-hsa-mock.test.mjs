@@ -678,6 +678,51 @@ describe('devcontainer HSA mock helper', () => {
     expect(calls).not.toContainEqual(expect.stringContaining('finalize'))
   })
 
+  it('restarts an initial promoted generation before reporting verification failure', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('host-shell')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('run --rm hsa-mtls-provisioner ensure')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              action: 'promoted',
+              generationId: 'generation-1',
+            },
+          }),
+        }
+      }
+      if (text.includes('exec -T app node')) return { status: 1 }
+      return {}
+    })
+
+    await expect(main(['ensure'])).resolves.toBe(1)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    const failedVerification = calls.findIndex(call =>
+      call.includes('exec -T app node'),
+    )
+    const recoveryStart = calls.findLastIndex(call =>
+      call.includes('up -d --wait --force-recreate app'),
+    )
+    expect(recoveryStart).toBeGreaterThan(failedVerification)
+    expect(
+      calls.filter(call => call.includes('hsa-mtls-provisioner deploy')),
+    ).toHaveLength(2)
+    expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
+  })
+
   it('keeps ordinary startup renewal non-blocking when no promotion is pending', async () => {
     vi.spyOn(os, 'hostname').mockReturnValue('current-app')
     vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -694,6 +739,7 @@ describe('devcontainer HSA mock helper', () => {
       if (text.includes('run --rm hsa-mtls-provisioner inspect')) {
         return {
           stdout: JSON.stringify({
+            ok: true,
             result: { selection: { current: 'generation-1', previous: null } },
           }),
         }
@@ -731,6 +777,7 @@ describe('devcontainer HSA mock helper', () => {
       if (text.includes('run --rm hsa-mtls-provisioner inspect')) {
         return {
           stdout: JSON.stringify({
+            ok: true,
             result: {
               selection: {
                 current: 'renewed-generation',
@@ -772,6 +819,7 @@ describe('devcontainer HSA mock helper', () => {
       if (text.includes('run --rm hsa-mtls-provisioner inspect')) {
         return {
           stdout: JSON.stringify({
+            ok: true,
             result: {
               selection: {
                 current: 'failed-generation',
@@ -799,8 +847,41 @@ describe('devcontainer HSA mock helper', () => {
     expect(calls.findIndex(call => call.includes('deploy'))).toBeGreaterThan(
       rollback,
     )
+    const recreatedApp = calls.findIndex(
+      (call, index) =>
+        call.includes('up -d --wait --force-recreate app') && index > rollback,
+    )
+    expect(recreatedApp).toBeGreaterThan(rollback)
+    expect(
+      calls.findLastIndex(call => call.includes('exec -T app node')),
+    ).toBeGreaterThan(recreatedApp)
     expect(verificationCount).toBe(2)
     expect(calls).not.toContainEqual(expect.stringContaining('stop app'))
+  })
+
+  it('rejects an unsuccessful inspect envelope before reading selection', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('current-app')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'current-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('run --rm hsa-mtls-provisioner inspect')) {
+        return { stdout: JSON.stringify({ ok: false }) }
+      }
+      return {}
+    })
+
+    await expect(main(['renew-startup'])).resolves.toBe(1)
+    expect(consoleError).toHaveBeenCalledWith(
+      'HSA mTLS provisioner inspect returned invalid output',
+    )
   })
 
   it('requires rotation to be launched outside the app container', async () => {

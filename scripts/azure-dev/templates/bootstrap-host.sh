@@ -1547,11 +1547,11 @@ validate_loopback_ports() {
     if ss -ltn | grep '127.0.0.1:1433' >/dev/null &&
       ss -ltn | grep '127.0.0.1:8080' >/dev/null &&
       ss -ltn | grep '127.0.0.1:18443' >/dev/null &&
-      curl -s --resolve kong:18443:127.0.0.1 \
+      curl -fs --resolve kong:18443:127.0.0.1 \
         --cacert "${WORKSPACE_DIR}/.hsa-mtls/app/kong-server-ca.crt" \
         --cert "${WORKSPACE_DIR}/.hsa-mtls/app/app-client.crt" \
         --key "${WORKSPACE_DIR}/.hsa-mtls/app/app-client.key" \
-        -o /dev/null https://kong:18443/; then
+        -o /dev/null https://kong:18443/hsa/person-records/lookup; then
       return
     fi
     sleep 5

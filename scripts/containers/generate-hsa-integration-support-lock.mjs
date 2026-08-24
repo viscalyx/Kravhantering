@@ -21,7 +21,7 @@ export const HSA_INTEGRATION_VENDOR_LOCKS = [
 ]
 
 const USAGE = `Usage:
-  node scripts/containers/generate-hsa-integration-support-lock.mjs generate --hsa-person-lookup-adapter-manifest-digest <digest> --hsa-person-lookup-adapter-image-id <id> [options]
+  node scripts/containers/generate-hsa-integration-support-lock.mjs generate --hsa-person-lookup-adapter-manifest-digest <digest> --hsa-person-lookup-adapter-image-id <id> --hsa-mtls-provisioner-manifest-digest <digest> --hsa-mtls-provisioner-image-id <id> [options]
   node scripts/containers/generate-hsa-integration-support-lock.mjs check [--lock-file container-hsa-integration-support.lock.json]
 
 Generate options:

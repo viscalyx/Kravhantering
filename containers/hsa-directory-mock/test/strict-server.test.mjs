@@ -16,6 +16,7 @@ import {
   isStrictMockPeerAuthorized,
   loadStrictMockSnapshot,
   readStrictMockConfig,
+  STRICT_CORRELATION_CAPACITY,
   StrictCorrelationRecorder,
   startStrictMockServers,
   strictMockDiagnostic,
@@ -73,6 +74,23 @@ describe('strict HSA directory mock configuration', () => {
       },
     ])
     assert.doesNotMatch(JSON.stringify(events), /hsaId|givenName|person/u)
+  })
+
+  it('evicts the oldest correlation after reaching fixed capacity', () => {
+    const recorder = new StrictCorrelationRecorder(() => {})
+    const oldest = '00000000-0000-4000-8000-000000000000'
+
+    recorder.record(oldest)
+    recorder.record(oldest)
+    for (let index = 1; index <= STRICT_CORRELATION_CAPACITY; index += 1) {
+      recorder.record(
+        `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      )
+    }
+
+    assert.equal(recorder.count(oldest), 0)
+    recorder.record(oldest)
+    assert.equal(recorder.count(oldest), 1)
   })
 
   it('is an executable fail-closed runtime entrypoint', () => {

@@ -271,7 +271,9 @@ export default function HsaPersonVerifyField({
     }
   }
 
-  verifyPersonRef.current = verifyPerson
+  useEffect(() => {
+    verifyPersonRef.current = verifyPerson
+  })
   useEffect(() => {
     if (liveLookupAvailable === null) return
     const pendingHsaId = pendingBlurVerificationHsaIdRef.current

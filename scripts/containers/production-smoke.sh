@@ -619,7 +619,22 @@ verify_hsa_stale_rejection() {
         servername: process.env.STALE_SERVER_NAME,
       })
       request.on("response", () => process.exit(1))
-      request.on("error", () => process.exit(0))
+      request.on("error", error => {
+        const certificateRejections = new Set([
+          "CERT_HAS_EXPIRED",
+          "CERT_NOT_YET_VALID",
+          "DEPTH_ZERO_SELF_SIGNED_CERT",
+          "SELF_SIGNED_CERT_IN_CHAIN",
+          "UNABLE_TO_GET_ISSUER_CERT",
+          "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+          "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+        ])
+        const code = String(error.code || "")
+        const protocolRejection =
+          code.startsWith("ERR_SSL_") ||
+          (code === "EPROTO" && /SSL routines|TLS|alert/i.test(error.message))
+        process.exit(certificateRejections.has(code) || protocolRejection ? 0 : 1)
+      })
       request.end("{}")
     '
 }

@@ -759,26 +759,31 @@ export function createReleaseMetadata(
         ),
       }
     : undefined
-  const hsaIntegrationSupport = hsaPersonLookupAdapterBuildxMetadata
-    ? {
-        hsaPersonLookupAdapter: createImageMetadata(
-          plan.hsaPersonLookupAdapterImage,
-          plan.hsaPersonLookupAdapterTags,
-          hsaPersonLookupAdapterBuildxMetadata,
-          candidateIdentities.hsaPersonLookupAdapter,
-        ),
-        ...(hsaMtlsProvisionerBuildxMetadata
-          ? {
-              hsaMtlsProvisioner: createImageMetadata(
-                plan.hsaMtlsProvisionerImage,
-                plan.hsaMtlsProvisionerTags,
-                hsaMtlsProvisionerBuildxMetadata,
-                candidateIdentities.hsaMtlsProvisioner,
-              ),
-            }
-          : {}),
-      }
-    : undefined
+  const hsaIntegrationSupport =
+    hsaPersonLookupAdapterBuildxMetadata || hsaMtlsProvisionerBuildxMetadata
+      ? {
+          ...(hsaPersonLookupAdapterBuildxMetadata
+            ? {
+                hsaPersonLookupAdapter: createImageMetadata(
+                  plan.hsaPersonLookupAdapterImage,
+                  plan.hsaPersonLookupAdapterTags,
+                  hsaPersonLookupAdapterBuildxMetadata,
+                  candidateIdentities.hsaPersonLookupAdapter,
+                ),
+              }
+            : {}),
+          ...(hsaMtlsProvisionerBuildxMetadata
+            ? {
+                hsaMtlsProvisioner: createImageMetadata(
+                  plan.hsaMtlsProvisionerImage,
+                  plan.hsaMtlsProvisionerTags,
+                  hsaMtlsProvisionerBuildxMetadata,
+                  candidateIdentities.hsaMtlsProvisioner,
+                ),
+              }
+            : {}),
+        }
+      : undefined
   return {
     appRuntime: createImageMetadata(
       plan.appRuntimeImage,
@@ -1443,7 +1448,7 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
           },
         }
       : {}),
-    ...(hsaPersonLookupAdapter
+    ...(hsaPersonLookupAdapter || hsaMtlsProvisioner
       ? {
           hsaIntegrationSupport: {
             ...metadata.hsaIntegrationSupport,
@@ -1459,14 +1464,18 @@ export function withReleasePackageUrls(plan, metadata, options = {}) {
                   },
                 }
               : {}),
-            hsaPersonLookupAdapter: {
-              ...hsaPersonLookupAdapter,
-              tagUrls: imageTagUrls(
-                hsaPersonLookupAdapter.tags,
-                rawTags,
-                hsaPersonLookupAdapterTagUrls,
-              ),
-            },
+            ...(hsaPersonLookupAdapter
+              ? {
+                  hsaPersonLookupAdapter: {
+                    ...hsaPersonLookupAdapter,
+                    tagUrls: imageTagUrls(
+                      hsaPersonLookupAdapter.tags,
+                      rawTags,
+                      hsaPersonLookupAdapterTagUrls,
+                    ),
+                  },
+                }
+              : {}),
           },
         }
       : {}),
@@ -1667,7 +1676,8 @@ function renderTestSupportContainerImagesSection(plan, metadata) {
 function renderHsaIntegrationSupportContainerImagesSection(plan, metadata) {
   const hsaPersonLookupAdapter =
     metadata.hsaIntegrationSupport?.hsaPersonLookupAdapter
-  if (!hsaPersonLookupAdapter) return []
+  const hsaMtlsProvisioner = metadata.hsaIntegrationSupport?.hsaMtlsProvisioner
+  if (!hsaPersonLookupAdapter && !hsaMtlsProvisioner) return []
 
   return [
     '',
@@ -1675,18 +1685,21 @@ function renderHsaIntegrationSupportContainerImagesSection(plan, metadata) {
     '',
     'These images support optional Kong plus adapter HSA person lookup topology and are not part of the required production runtime topology.',
     '',
-    ...(metadata.hsaIntegrationSupport?.hsaMtlsProvisioner
+    ...(hsaMtlsProvisioner
       ? renderContainerImageBlock(
           plan.hsaMtlsProvisionerPackage ?? HSA_MTLS_PROVISIONER_PACKAGE,
           HSA_MTLS_PROVISIONER_DESCRIPTION,
-          metadata.hsaIntegrationSupport.hsaMtlsProvisioner,
+          hsaMtlsProvisioner,
         )
       : []),
-    ...renderContainerImageBlock(
-      plan.hsaPersonLookupAdapterPackage ?? HSA_PERSON_LOOKUP_ADAPTER_PACKAGE,
-      HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION,
-      hsaPersonLookupAdapter,
-    ),
+    ...(hsaPersonLookupAdapter
+      ? renderContainerImageBlock(
+          plan.hsaPersonLookupAdapterPackage ??
+            HSA_PERSON_LOOKUP_ADAPTER_PACKAGE,
+          HSA_PERSON_LOOKUP_ADAPTER_DESCRIPTION,
+          hsaPersonLookupAdapter,
+        )
+      : []),
   ]
 }
 

@@ -331,7 +331,10 @@ function inspectSelection(profile, options) {
     { ...options, stdio: ['ignore', 'pipe', 'pipe'] },
   )
   assertSuccess(result, 'HSA mTLS provisioner inspect')
-  const payload = JSON.parse(result.stdout)
+  const payload = JSON.parse(String(result.stdout))
+  if (payload.ok !== true || !payload.result) {
+    throw new Error('HSA mTLS provisioner inspect returned invalid output')
+  }
   return payload.result.selection
 }
 
@@ -459,19 +462,6 @@ function stopTransportEndpoints(profile, options) {
   }
 }
 
-function startTransportEndpoints(profile, options) {
-  for (const service of [
-    SERVICE_NAME,
-    ADAPTER_SERVICE_NAME,
-    KONG_SERVICE_NAME,
-  ]) {
-    assertSuccess(
-      runCompose(profile, ['up', '-d', '--wait', service], options),
-      `docker compose start ${service}`,
-    )
-  }
-}
-
 function runStartupRenewal(profile, options) {
   const selection = inspectSelection(profile, options)
   if (!selection.previous) {
@@ -485,7 +475,7 @@ function runStartupRenewal(profile, options) {
     stopTransportEndpoints(profile, options)
     provision(profile, options, 'rollback')
     provision(profile, options, 'deploy')
-    startTransportEndpoints(profile, options)
+    startEndpoints(profile, options, { recreate: true })
     runVerify(profile, options, { recreate: false })
     console.warn(
       `HSA mTLS startup renewal failed and the prior generation was restored: ${promotionError.message}`,
@@ -524,7 +514,15 @@ function runEnsure(profile, options) {
     runVerify(profile, options, { recreate: false })
   } catch (promotionError) {
     stopEndpoints(profile, options)
-    if (!ensured.previousGenerationId) throw promotionError
+    if (!ensured.previousGenerationId) {
+      try {
+        provision(profile, options, 'deploy')
+        startEndpoints(profile, options, { recreate: true })
+      } catch {
+        // The original promotion failure remains the actionable lifecycle error.
+      }
+      throw promotionError
+    }
     provision(profile, options, 'rollback')
     provision(profile, options, 'deploy')
     startEndpoints(profile, options, { recreate: true })

@@ -29,7 +29,8 @@ The devcontainer Compose service runs Kong with:
 No Kong ports are published to the host in a devcontainer. The Admin API is
 only used by `kong health` inside the Kong container.
 
-`kong.strict.yml` contains one HTTPS HSA route: `POST /hsa/person-records/lookup`.
+`kong.strict.yml` contains one HTTPS HSA route:
+`POST /hsa/person-records/lookup`.
 Kong proxies that app-facing REST contract to
 `hsa-person-lookup-adapter` on the internal Compose network. The adapter calls
 the HSA directory mock SOAP `GetHsaPerson` endpoint over mTLS. Kong does not
@@ -62,7 +63,8 @@ Pass additional `docker compose logs` options after `--`, for example:
 npm run devcontainer:kong:logs -- --follow
 ```
 
-After changing `kong.strict.yml`, recreate Kong so the DB-less config is reloaded:
+After changing `kong.strict.yml`, recreate Kong so the DB-less config is
+reloaded:
 
 ```sh
 npm run devcontainer:kong:recreate
@@ -115,8 +117,8 @@ policy:
 
 - Keep Kong DB-less and file-configured for the devcontainer.
 - Keep the Admin API internal to the active Compose network.
-- Keep the HSA route HTTPS-only and DB-less. The current REST route is a proxy to
-  `hsa-person-lookup-adapter`; do not reintroduce a direct SOAP route or a
+- Keep the HSA route HTTPS-only and DB-less. The current REST route is a proxy
+  to `hsa-person-lookup-adapter`; do not reintroduce a direct SOAP route or a
   mock-owned JSON facade in Kong.
-- Do not add Kong to the required production runtime topology. Its release use is
-  limited to `single-node-demo` test support.
+- Do not add Kong to the required production runtime topology. Its release use
+  is limited to `single-node-demo` test support.

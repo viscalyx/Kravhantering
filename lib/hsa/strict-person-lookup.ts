@@ -392,11 +392,16 @@ async function oauthToken(
   const form = new URLSearchParams({ grant_type: 'client_credentials' })
   if (snapshot.oauth.scope) form.set('scope', snapshot.oauth.scope)
   if (snapshot.oauth.audience) form.set('audience', snapshot.oauth.audience)
+  const encodeCredential = (value: string): string => {
+    const encoded = new URLSearchParams({ '': value }).toString()
+    return encoded.slice(1)
+  }
+  const encodedCredentials = `${encodeCredential(snapshot.oauth.clientId)}:${encodeCredential(snapshot.oauth.clientSecret)}`
   const response = await request({
     body: form.toString(),
     headers: {
       Accept: 'application/json',
-      Authorization: `Basic ${Buffer.from(`${snapshot.oauth.clientId}:${snapshot.oauth.clientSecret}`).toString('base64')}`,
+      Authorization: `Basic ${Buffer.from(encodedCredentials).toString('base64')}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     maxResponseBytes: MAX_RESPONSE_BYTES,

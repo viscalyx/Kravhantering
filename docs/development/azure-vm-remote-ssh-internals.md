@@ -884,7 +884,7 @@ Validation must prove these implementation contracts:
 - user lingering is enabled.
 - managed Quadlet services are active.
 - support ports are bound only to loopback.
-- the Kong HSA route allows both HTTP and HTTPS.
+- the Kong HSA route requires HTTPS.
 - the HSA lookup route succeeds through Kong.
 - `npm run db:setup`, `npm run db:health`, and the Playwright dry-run browser
   install check complete.

@@ -30,10 +30,10 @@ Kong.
 
 The only runtime mode is strict mTLS. The mock requires a client certificate
 trusted by `HSA_MOCK_TLS_CA_PATH`, extracts caller HSA-id
-from `subject.serialNumber`, checks that the caller system fixture is active,
-and requires both `hsaws2` and `GetHsaPerson` entitlement. The devcontainer
-and release-smoke paths use the repository test-PKI provisioner. Each runtime
-receives its role-specific allowlisted bundle at
+from `subject.serialNumber`, and requires it to match
+`HSA_MOCK_TLS_EXPECTED_CLIENT_SERIAL_NUMBER`. The devcontainer and release-smoke
+paths use the repository test-PKI provisioner. Each runtime receives its
+role-specific allowlisted bundle at
 `/run/kravhantering/hsa-mtls`; issuer material remains ephemeral and is never
 mounted into a runtime.
 

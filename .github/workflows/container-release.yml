@@ -244,8 +244,6 @@ jobs:
             --tag "${HSA_MTLS_PROVISIONER_CANDIDATE_REF}" \
             --output "type=oci,dest=${HSA_MTLS_PROVISIONER_CANDIDATE_ARTIFACT}" \
             .
-          echo "HSA_MTLS_PROVISIONER_IMAGE_ID=$(jq -er '.\"containerimage.config.digest\"' tmp/container-release-artifacts/metadata/hsa-mtls-provisioner-buildx.json)" >> "${GITHUB_ENV}"
-
       - name: Record exact candidate image identities
         run: |
           node scripts/release/container-release.mjs identities \

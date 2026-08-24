@@ -27,9 +27,26 @@ start_endpoints() {
 }
 
 authenticate() {
+  local normalized_config rendered_config writable_material_count
   compose run --rm --no-deps test || return 1
-  if compose config | grep -Eq '(:rw|ca-signing|HSA_MOCK_AUTH_MODE|NODE_TLS_REJECT_UNAUTHORIZED)'; then
+  rendered_config="$(compose config)" || return 1
+  if grep -Eq '(:rw|ca-signing|HSA_MOCK_AUTH_MODE|NODE_TLS_REJECT_UNAUTHORIZED)' \
+    <<<"$rendered_config"; then
     echo 'Unsafe HSA topology configuration detected' >&2
+    return 1
+  fi
+  normalized_config="$(compose --profile '*' config --format json)" || return 1
+  writable_material_count="$(jq -er '
+    [
+      .services | to_entries[] |
+      select(.key != "provisioner") |
+      .value.volumes[]? |
+      select((.source // "") | endswith("-material")) |
+      select(.read_only != true)
+    ] | length
+  ' <<<"$normalized_config")" || return 1
+  if (( writable_material_count > 0 )); then
+    echo 'Writable HSA runtime material mount detected' >&2
     return 1
   fi
   provision inspect || return 1
@@ -159,7 +176,7 @@ capture_stale_probe() {
       files=(adapter-client.crt adapter-client.key hsa-server-ca.crt)
       ;;
   esac
-  compose run --rm --no-deps test tar -C "$source" -cf - "${files[@]}" |
+  compose run --rm --no-TTY --no-deps test tar -C "$source" -cf - "${files[@]}" |
     tar -C "$target" -xf -
 }
 

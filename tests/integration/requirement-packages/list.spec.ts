@@ -408,11 +408,9 @@ for (const viewport of viewports) {
       })
 
       await test.step('show that direct HSA lookup is unavailable', async () => {
-        await expect(
-          changeDialog.getByRole('status').filter({
-            hasText: 'Direktuppslag i HSA är inte tillgängligt',
-          }),
-        ).toBeVisible()
+        await expect(changeDialog.getByRole('status')).toContainText(
+          'Direktuppslag i HSA är inte tillgängligt',
+        )
         await expect(
           changeDialog.getByRole('button', { name: 'Hämta' }),
         ).toBeDisabled()
@@ -427,11 +425,9 @@ for (const viewport of viewports) {
         await changeDialog
           .getByRole('textbox', { name: 'Nya kravpaketsansvarigs HSA-id' })
           .press('Tab')
-        await expect(
-          changeDialog.getByText(
-            'Lokal Kravansvarsperson (local.person@example.test)',
-          ),
-        ).toBeVisible()
+        await expect(changeDialog).toContainText(
+          'Lokal Kravansvarsperson (local.person@example.test)',
+        )
         expect(localReuseRequests).toContainEqual(
           expect.objectContaining({
             hsaId: 'SE5560000001-local1',

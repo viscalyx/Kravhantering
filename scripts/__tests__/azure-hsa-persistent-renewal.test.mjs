@@ -127,7 +127,7 @@ describe('Azure persistent HSA mTLS startup renewal', () => {
 
     expect(result.status, result.stderr).toBe(0)
     expect(result.stdout).toContain('current generation reused')
-    expect(result.stdout).toContain('CALLS=')
+    expect(result.stdout).toContain('CALLS=\n')
   })
 
   it.each([
@@ -148,7 +148,7 @@ describe('Azure persistent HSA mTLS startup renewal', () => {
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain('invalid HSA mTLS selection')
-    expect(result.stdout).toContain('CALLS=')
+    expect(result.stdout).toContain('CALLS=\n')
   })
 
   it('finalizes only after the promoted generation authenticates', () => {

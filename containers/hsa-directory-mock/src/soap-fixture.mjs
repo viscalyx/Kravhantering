@@ -58,9 +58,9 @@ export function parseXmlDocument(xml) {
   parser.on('closetag', () => stack.pop())
   parser.on('error', () => {
     invalid = true
-    parser.close()
   })
-  parser.write(xml).close()
+  parser.write(xml)
+  if (!invalid) parser.close()
   if (invalid || root.children.length !== 1) {
     throw new SoapFault(3, 'Invalid HSA directory request.')
   }

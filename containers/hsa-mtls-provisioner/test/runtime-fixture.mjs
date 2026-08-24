@@ -3,6 +3,7 @@ import { randomUUID, X509Certificate } from 'node:crypto'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
 import { loadCertificateProfile } from '../src/profile.mjs'
@@ -10,17 +11,34 @@ import { stageGeneration } from '../src/provisioner.mjs'
 
 const execFileAsync = promisify(execFile)
 
-const PROFILE_PATH = path.resolve(
-  process.cwd(),
-  process.cwd().endsWith('hsa-person-lookup-adapter') ||
-    process.cwd().endsWith('hsa-directory-mock')
-    ? '../hsa-mtls/certificate-profile.json'
-    : 'containers/hsa-mtls/certificate-profile.json',
+const profileUrl = new URL(
+  '../../hsa-mtls/certificate-profile.json',
+  import.meta.url,
 )
+const PROFILE_PATH =
+  profileUrl.protocol === 'file:'
+    ? fileURLToPath(profileUrl)
+    : path.resolve(
+        import.meta.dirname,
+        '../../hsa-mtls/certificate-profile.json',
+      )
 
 export async function createRuntimeCertificateFixture() {
   const rootDir = await mkdtemp(path.join(tmpdir(), 'hsa-runtime-fixture-'))
-  const issuerRoot = await mkdtemp('/dev/shm/hsa-runtime-issuer-')
+  let issuerRoot
+  try {
+    issuerRoot = await mkdtemp('/dev/shm/hsa-runtime-issuer-')
+    return await populateRuntimeCertificateFixture(rootDir, issuerRoot)
+  } catch (error) {
+    await Promise.all([
+      rm(rootDir, { force: true, recursive: true }),
+      ...(issuerRoot ? [rm(issuerRoot, { force: true, recursive: true })] : []),
+    ])
+    throw error
+  }
+}
+
+async function populateRuntimeCertificateFixture(rootDir, issuerRoot) {
   const profile = await loadCertificateProfile(PROFILE_PATH)
   const uid = process.getuid?.() ?? 1000
   const gid = process.getgid?.() ?? 1000
@@ -97,6 +115,15 @@ async function issueWithIssuer({
 
 export async function createCertificateChainFixture() {
   const rootDir = await mkdtemp(path.join(tmpdir(), 'hsa-chain-fixture-'))
+  try {
+    return await populateCertificateChainFixture(rootDir)
+  } catch (error) {
+    await rm(rootDir, { force: true, recursive: true })
+    throw error
+  }
+}
+
+async function populateCertificateChainFixture(rootDir) {
   const rootKey = path.join(rootDir, 'root.key')
   const rootCertificate = path.join(rootDir, 'root.crt')
   await openssl([

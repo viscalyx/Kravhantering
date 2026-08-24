@@ -58,9 +58,10 @@ extern Kong eller HSA-plattform.
 
 REST-kontraktet använder stabila felkoder. Framgång ger `200` med `hsaId`,
 `givenName`, `middleName`, `surname`, `email` och
-`hasProtectedPersonalData`. Tomt SOAP `userInformations` ger `404
-{ code: "not_found" }`; konflikt mellan normaliserade SOAP-poster ger `409
-{ code: "conflict" }`; valideringsfel ger `400 { code: "validation" }`;
+`hasProtectedPersonalData`. Tomt SOAP `userInformations` ger
+`404 { code: "not_found" }`; konflikt mellan normaliserade SOAP-poster ger
+`409 { code: "conflict" }`; valideringsfel ger
+`400 { code: "validation" }`;
 certifikatidentitet eller additiv OAuth kan ge `401` eller `403`; SOAP-fel och
 otillgänglighet ger `503 { code: "service_unavailable" }`; timeout ger
 `504 { code: "timeout" }`. Kravhanterings användarflöden skiljer fortsatt bara

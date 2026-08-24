@@ -81,6 +81,7 @@ jobs:
           "${compose[@]}" run --rm --no-deps test | tee /tmp/hsa-topology.log
       - name: Verify correlation continuity and exactly-once terminal handling
         run: |
+          set -euo pipefail
           correlation="$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}' /tmp/hsa-topology.log | tail -1)"
           test -n "$correlation"
           docker compose -f containers/hsa-mtls-topology/compose.yml logs --no-color kong adapter mock > /tmp/hsa-runtime.log
@@ -91,8 +92,11 @@ jobs:
           grep "mock.*$correlation" /tmp/hsa-runtime.log | grep '"handling_count":1'
       - name: Inspect runtime isolation
         run: |
+          set -euo pipefail
           docker compose -f containers/hsa-mtls-topology/compose.yml config > /tmp/hsa-compose.txt
-          ! grep -E '(:rw|ca-signing|HSA_MOCK_AUTH_MODE|NODE_TLS_REJECT_UNAUTHORIZED)' /tmp/hsa-compose.txt
+          if grep -E '(:rw|ca-signing|HSA_MOCK_AUTH_MODE|NODE_TLS_REJECT_UNAUTHORIZED)' /tmp/hsa-compose.txt; then
+            exit 1
+          fi
           containers/hsa-mtls-topology/runtime-inspection.sh
           docker compose -f containers/hsa-mtls-topology/compose.yml run --rm provisioner inspect
       - name: Reject foreign material in every runtime leaf role

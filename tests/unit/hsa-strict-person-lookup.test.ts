@@ -196,8 +196,8 @@ describe('strict HSA person lookup startup snapshot', () => {
         'adapter',
         'hsa-server-ca.crt',
       ),
-      HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'lookup-client',
-      HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'lookup-secret',
+      HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'lookup client+',
+      HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'lookup/secret:',
       HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL: 'https://identity.example/token',
     }
     const snapshot = await loadStrictHsaPersonLookupSnapshot(env)
@@ -492,8 +492,8 @@ describe('strict HSA person lookup startup snapshot', () => {
     const snapshot = await loadStrictHsaPersonLookupSnapshot({
       ...completeEnv(),
       HSA_PERSON_LOOKUP_OAUTH_AUDIENCE: 'hsa-api',
-      HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'lookup-client',
-      HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'lookup-secret',
+      HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID: 'lookup client+',
+      HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET: 'lookup/secret:',
       HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL: 'https://identity.example/',
       HSA_PERSON_LOOKUP_OAUTH_SCOPE: 'lookup:person',
     })
@@ -537,6 +537,19 @@ describe('strict HSA person lookup startup snapshot', () => {
       'https://identity.example/.well-known/openid-configuration',
     )
     expect(requests[1]?.url).toBe('https://identity.example/oauth/token')
+    const expectedClientId = new URLSearchParams({
+      clientId: 'lookup client+',
+    })
+      .toString()
+      .slice('clientId='.length)
+    const expectedClientSecret = new URLSearchParams({
+      clientSecret: 'lookup/secret:',
+    })
+      .toString()
+      .slice('clientSecret='.length)
+    expect(requests[1]?.headers.Authorization).toBe(
+      `Basic ${Buffer.from(`${expectedClientId}:${expectedClientSecret}`).toString('base64')}`,
+    )
     const tokenForm = new URLSearchParams(requests[1]?.body)
     expect(tokenForm.get('scope')).toBe('lookup:person')
     expect(tokenForm.get('audience')).toBe('hsa-api')

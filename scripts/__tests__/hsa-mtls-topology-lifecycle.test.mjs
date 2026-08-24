@@ -36,6 +36,8 @@ if (command.includes('run --rm provisioner ensure')) {
   const count = existsSync(state) ? Number(readFileSync(state, 'utf8')) : 0
   writeFileSync(state, String(count + 1))
   if (count < Number(process.env.HSA_TEST_VERIFY_FAILURES || '0')) process.exit(1)
+} else if (command.includes("--profile * config --format json")) {
+  process.stdout.write(process.env.HSA_TEST_NORMALIZED_CONFIG + '\\n')
 }
 `,
   )
@@ -48,7 +50,12 @@ afterEach(async () => {
 
 async function runEnsure(
   ensureResult,
-  { finalizeAmbiguous = false, finalizeFailures = 0, verifyFailures = 0 } = {},
+  {
+    finalizeAmbiguous = false,
+    finalizeFailures = 0,
+    normalizedConfig = { services: {} },
+    verifyFailures = 0,
+  } = {},
 ) {
   const callsPath = path.join(testRoot, 'calls.log')
   const finalizeCount = path.join(testRoot, 'finalize-count')
@@ -70,14 +77,57 @@ async function runEnsure(
       HSA_TEST_FINALIZE_COUNT: finalizeCount,
       HSA_TEST_FINALIZE_FAILURES: String(finalizeFailures),
       HSA_TEST_FINALIZE_STATE: finalizeState,
+      HSA_TEST_NORMALIZED_CONFIG: JSON.stringify(normalizedConfig),
       PATH: `${testRoot}:${process.env.PATH}`,
     },
   })
-  const calls = (await readFile(callsPath, 'utf8')).trim().split('\n')
+  let calls = []
+  try {
+    const contents = (await readFile(callsPath, 'utf8')).trim()
+    calls = contents ? contents.split('\n') : []
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
   return { calls, result }
 }
 
 describe('HSA mTLS topology ensure lifecycle', () => {
+  it('rejects writable material mounts on runtime leaf services', async () => {
+    const { calls, result } = await runEnsure(
+      { action: 'reused', generationId: 'generation-1' },
+      {
+        normalizedConfig: {
+          services: {
+            kong: {
+              volumes: [
+                {
+                  read_only: false,
+                  source: 'kong-material',
+                  target: '/run/kravhantering/hsa-mtls',
+                },
+              ],
+            },
+            provisioner: {
+              volumes: [
+                {
+                  read_only: false,
+                  source: 'app-material',
+                  target: '/run/kravhantering/hsa-mtls-runtime/app',
+                },
+              ],
+            },
+          },
+        },
+      },
+    )
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('Writable HSA runtime material mount')
+    expect(calls).not.toContainEqual(
+      expect.stringContaining('provisioner inspect'),
+    )
+  })
+
   it('restarts and authenticates reused material without switching it', async () => {
     const { calls, result } = await runEnsure({
       action: 'reused',

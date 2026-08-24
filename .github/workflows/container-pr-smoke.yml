@@ -419,6 +419,7 @@ jobs:
             "${DB_JOB_OCI_ARCHIVE}" \
             "${DEMO_SEED_OCI_ARCHIVE}" \
             "${HSA_DIRECTORY_MOCK_OCI_ARCHIVE}" \
+            "${HSA_MTLS_PROVISIONER_OCI_ARCHIVE}" \
             "${HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE}" || true
 
       - name: Stage runtime artifacts
