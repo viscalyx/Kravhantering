@@ -12,6 +12,11 @@ target version.
 - Apply the database migration and required seed. An Administrator must then register AI connections, enter provider secrets, record attestations, verify models, and configure each intended run profile. Configure the new AI alerts and complete the AI deployment evidence gate before you enable AI-assisted authoring. Update clients and support procedures because users no longer select models, and the model-catalog and credit endpoints are removed.
 - Treat each database backup and its required root-key versions as one recovery set. Test their combined restore and retain old root-key versions while any database row or retained backup needs them. During rollback or restore, block AI-assisted authoring, restore the matching keyring, run transient-state cleanup, and repeat the deployment evidence gate. There is no legacy OpenRouter fallback.
 <!-- operator-upgrade:source pr-1094 end -->
+
+<!-- operator-upgrade:source pr-1109 start -->
+For deployments that enable HSA person lookup, provide the complete read-only CA, client certificate, and client key mounts and configure the exact TLS server identity before upgrade. Leave HSA person lookup unset when live lookup is not configured; the application remains ready and reports lookup as unavailable.
+During certificate rotation, stop clients before servers, restart servers before clients, and authenticate the promoted generation before finalization. If verification fails, restore and authenticate the prior generation. The production topology does not add Kong, the Adapter, the HSA directory mock, or test PKI services; external integration owners continue to supply them.
+<!-- operator-upgrade:source pr-1109 end -->
 ## v0.5.0 - 2026-08-23
 
 <!-- operator-upgrade:source issue-477 start -->
