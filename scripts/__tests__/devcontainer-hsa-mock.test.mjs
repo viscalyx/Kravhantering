@@ -369,6 +369,120 @@ describe('devcontainer HSA mock helper', () => {
     expect(finalized).toBeGreaterThan(verified)
   })
 
+  it('keeps authenticated renewal running when finalization already reconciled despite a command failure', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('host-shell')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let finalizeCount = 0
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('run --rm hsa-mtls-provisioner ensure')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              action: 'promoted',
+              generationId: 'generation-2',
+              previousGenerationId: 'generation-1',
+            },
+          }),
+        }
+      }
+      if (text.includes('run --rm hsa-mtls-provisioner finalize')) {
+        finalizeCount += 1
+        return { status: 1 }
+      }
+      if (text.includes('run --rm hsa-mtls-provisioner inspect')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              selection: { current: 'generation-2', previous: null },
+            },
+          }),
+        }
+      }
+      return {}
+    })
+
+    await expect(main(['ensure'])).resolves.toBe(0)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    const verified = calls.findIndex(call => call.includes('exec -T app node'))
+    const finalized = calls.findIndex(call => call.includes('finalize'))
+    const reconciled = calls.findIndex(call =>
+      call.includes('hsa-mtls-provisioner inspect'),
+    )
+    expect(finalized).toBeGreaterThan(verified)
+    expect(reconciled).toBeGreaterThan(finalized)
+    expect(finalizeCount).toBe(1)
+    expect(calls.slice(verified + 1)).not.toContainEqual(
+      expect.stringContaining('stop app'),
+    )
+    expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
+  })
+
+  it('retries finalization without rolling back an authenticated pending renewal', async () => {
+    vi.spyOn(os, 'hostname').mockReturnValue('host-shell')
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    let finalizeCount = 0
+    const spawnSync = mockSpawnSync((_command, args) => {
+      const text = args.join(' ')
+      if (text.includes('ps --format json app')) {
+        return {
+          stdout: JSON.stringify([
+            { ID: 'remote-app-abc', Name: 'app', State: 'running' },
+          ]),
+        }
+      }
+      if (args[0] === 'inspect') return { stdout: '/workspace-host\n' }
+      if (text.includes('run --rm hsa-mtls-provisioner ensure')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              action: 'promoted',
+              generationId: 'generation-2',
+              previousGenerationId: 'generation-1',
+            },
+          }),
+        }
+      }
+      if (text.includes('run --rm hsa-mtls-provisioner finalize')) {
+        finalizeCount += 1
+        return { status: finalizeCount === 1 ? 1 : 0 }
+      }
+      if (text.includes('run --rm hsa-mtls-provisioner inspect')) {
+        return {
+          stdout: JSON.stringify({
+            ok: true,
+            result: {
+              selection: {
+                current: 'generation-2',
+                previous: 'generation-1',
+              },
+            },
+          }),
+        }
+      }
+      return {}
+    })
+
+    await expect(main(['ensure'])).resolves.toBe(0)
+
+    const calls = spawnSync.mock.calls.map(([, args]) => args.join(' '))
+    expect(finalizeCount).toBe(2)
+    expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
+  })
+
   it('rolls back and authenticates the prior generation after ensure verification fails', async () => {
     vi.spyOn(os, 'hostname').mockReturnValue('host-shell')
     vi.spyOn(console, 'log').mockImplementation(() => {})

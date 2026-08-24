@@ -20,7 +20,17 @@ appendFileSync(process.env.HSA_TEST_CALLS, command + '\\n')
 if (command.includes('run --rm provisioner ensure')) {
   process.stdout.write(process.env.HSA_TEST_ENSURE_RESULT + '\\n')
 } else if (command.includes('run --rm provisioner inspect')) {
-  process.stdout.write(JSON.stringify({ ok: true, result: { selection: { current: 'generation-2', previous: null } } }) + '\\n')
+  const reconciled = existsSync(process.env.HSA_TEST_FINALIZE_STATE)
+  process.stdout.write(JSON.stringify({ ok: true, result: { selection: { current: 'generation-2', previous: reconciled ? null : 'generation-1' } } }) + '\\n')
+} else if (command.includes('run --rm provisioner finalize')) {
+  const state = process.env.HSA_TEST_FINALIZE_COUNT
+  const count = existsSync(state) ? Number(readFileSync(state, 'utf8')) : 0
+  writeFileSync(state, String(count + 1))
+  if (count < Number(process.env.HSA_TEST_FINALIZE_FAILURES || '0')) {
+    if (process.env.HSA_TEST_FINALIZE_AMBIGUOUS === 'true') writeFileSync(process.env.HSA_TEST_FINALIZE_STATE, 'reconciled')
+    process.exit(1)
+  }
+  writeFileSync(process.env.HSA_TEST_FINALIZE_STATE, 'reconciled')
 } else if (command.includes('run --rm --no-deps test')) {
   const state = process.env.HSA_TEST_VERIFY_STATE
   const count = existsSync(state) ? Number(readFileSync(state, 'utf8')) : 0
@@ -36,8 +46,13 @@ afterEach(async () => {
   await rm(testRoot, { force: true, recursive: true })
 })
 
-async function runEnsure(ensureResult, verifyFailures = 0) {
+async function runEnsure(
+  ensureResult,
+  { finalizeAmbiguous = false, finalizeFailures = 0, verifyFailures = 0 } = {},
+) {
   const callsPath = path.join(testRoot, 'calls.log')
+  const finalizeCount = path.join(testRoot, 'finalize-count')
+  const finalizeState = path.join(testRoot, 'finalize-state')
   const verifyState = path.join(testRoot, 'verify-state')
   const result = spawnSync(LIFECYCLE, ['ensure'], {
     encoding: 'utf8',
@@ -51,6 +66,10 @@ async function runEnsure(ensureResult, verifyFailures = 0) {
       }),
       HSA_TEST_VERIFY_FAILURES: String(verifyFailures),
       HSA_TEST_VERIFY_STATE: verifyState,
+      HSA_TEST_FINALIZE_AMBIGUOUS: String(finalizeAmbiguous),
+      HSA_TEST_FINALIZE_COUNT: finalizeCount,
+      HSA_TEST_FINALIZE_FAILURES: String(finalizeFailures),
+      HSA_TEST_FINALIZE_STATE: finalizeState,
       PATH: `${testRoot}:${process.env.PATH}`,
     },
   })
@@ -117,7 +136,7 @@ describe('HSA mTLS topology ensure lifecycle', () => {
         generationId: 'generation-2',
         previousGenerationId: 'generation-1',
       },
-      1,
+      { verifyFailures: 1 },
     )
 
     expect(result.status).toBe(1)
@@ -133,5 +152,33 @@ describe('HSA mTLS topology ensure lifecycle', () => {
     expect(rollback).toBeGreaterThan(firstAuthentication)
     expect(recoveryAuthentication).toBeGreaterThan(rollback)
     expect(calls).not.toContainEqual(expect.stringContaining('finalize'))
+  })
+
+  it('keeps authenticated endpoints running after an ambiguous finalization failure', async () => {
+    const { calls, result } = await runEnsure(
+      {
+        action: 'promoted',
+        generationId: 'generation-2',
+        previousGenerationId: 'generation-1',
+      },
+      { finalizeAmbiguous: true, finalizeFailures: 1 },
+    )
+
+    expect(result.status).toBe(0)
+    const authenticated = calls.findIndex(call =>
+      call.includes('run --rm --no-deps test'),
+    )
+    const finalized = calls.findIndex(call =>
+      call.includes('provisioner finalize'),
+    )
+    const reconciled = calls.findLastIndex(call =>
+      call.includes('provisioner inspect'),
+    )
+    expect(finalized).toBeGreaterThan(authenticated)
+    expect(reconciled).toBeGreaterThan(finalized)
+    expect(calls.slice(authenticated + 1)).not.toContainEqual(
+      expect.stringContaining('stop --timeout 1'),
+    )
+    expect(calls).not.toContainEqual(expect.stringContaining('rollback'))
   })
 })

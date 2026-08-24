@@ -35,6 +35,47 @@ authenticate() {
   provision inspect || return 1
 }
 
+finalize_authenticated_promotion() {
+  local expected_generation="$1" inspection current previous
+  if provision finalize; then
+    return
+  fi
+  if ! inspection="$(provision inspect)"; then
+    echo 'HSA mTLS finalization failed and its selection state could not be inspected' >&2
+    return 1
+  fi
+  current="$(jq -er '.result.selection.current' <<<"$inspection")"
+  previous="$(jq -r '.result.selection.previous // empty' <<<"$inspection")"
+  if [[ "$current" != "$expected_generation" ]]; then
+    echo 'HSA mTLS selection changed while reconciling finalization' >&2
+    return 1
+  fi
+  if [[ -z "$previous" ]]; then
+    echo 'HSA mTLS finalization reported failure after the promotion was reconciled' >&2
+    return
+  fi
+
+  if provision finalize; then
+    return
+  fi
+  if ! inspection="$(provision inspect)"; then
+    echo 'HSA mTLS finalization retry failed and its selection state could not be inspected' >&2
+    return 1
+  fi
+  current="$(jq -er '.result.selection.current' <<<"$inspection")"
+  previous="$(jq -r '.result.selection.previous // empty' <<<"$inspection")"
+  if [[ "$current" != "$expected_generation" ]]; then
+    echo 'HSA mTLS selection changed while reconciling finalization' >&2
+    return 1
+  fi
+  if [[ -z "$previous" ]]; then
+    echo 'HSA mTLS finalization retry reported failure after the promotion was reconciled' >&2
+    return
+  fi
+  echo 'HSA mTLS promotion remains pending after finalization retry' >&2
+  return 1
+}
+
 verify() {
   start_endpoints
   authenticate
@@ -71,7 +112,7 @@ ensure() {
 
   previous="$(jq -r '.result.previousGenerationId // empty' <<<"$ensured")"
   if provision deploy && start_endpoints force-recreate && authenticate; then
-    provision finalize
+    finalize_authenticated_promotion "$(jq -er '.result.generationId' <<<"$ensured")"
     return
   fi
 
@@ -177,7 +218,8 @@ rotate() {
     after="$(provision inspect)"
     assert_rotation_metadata "$before" "$after"
     reject_stale_probe "$stale"
-    provision finalize
+    finalize_authenticated_promotion \
+      "$(jq -er '.result.selection.current' <<<"$after")"
     after="$(provision inspect)"
     [[ "$(jq -r '.result.selection.previous' <<<"$after")" == null ]]
     printf '%s\n' \

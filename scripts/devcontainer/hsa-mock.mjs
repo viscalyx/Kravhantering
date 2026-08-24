@@ -335,6 +335,57 @@ function inspectSelection(profile, options) {
   return payload.result.selection
 }
 
+function finalizeAuthenticatedPromotion(
+  profile,
+  options,
+  expectedGenerationId,
+) {
+  let finalizeError
+  try {
+    provision(profile, options, 'finalize')
+    return
+  } catch (error) {
+    finalizeError = error
+  }
+
+  let selection = inspectSelection(profile, options)
+  if (expectedGenerationId && selection.current !== expectedGenerationId) {
+    throw new Error(
+      'HSA mTLS selection changed while reconciling finalization',
+      { cause: finalizeError },
+    )
+  }
+  if (!selection.previous) {
+    console.warn(
+      'HSA mTLS finalization reported failure after the promotion was reconciled.',
+    )
+    return
+  }
+
+  try {
+    provision(profile, options, 'finalize')
+    return
+  } catch (retryError) {
+    selection = inspectSelection(profile, options)
+    if (expectedGenerationId && selection.current !== expectedGenerationId) {
+      throw new Error(
+        'HSA mTLS selection changed while reconciling finalization',
+        { cause: retryError },
+      )
+    }
+    if (!selection.previous) {
+      console.warn(
+        'HSA mTLS finalization retry reported failure after the promotion was reconciled.',
+      )
+      return
+    }
+    throw new Error(
+      'HSA mTLS promotion remains pending after finalization retry',
+      { cause: retryError },
+    )
+  }
+}
+
 function stopEndpoints(profile, options) {
   for (const service of [
     APP_SERVICE_NAME,
@@ -408,8 +459,6 @@ function runStartupRenewal(profile, options) {
 
   try {
     runVerify(profile, options, { recreate: false })
-    provision(profile, options, 'finalize')
-    console.log('HSA mTLS startup renewal authenticated and finalized.')
   } catch (promotionError) {
     stopTransportEndpoints(profile, options)
     provision(profile, options, 'rollback')
@@ -419,7 +468,10 @@ function runStartupRenewal(profile, options) {
     console.warn(
       `HSA mTLS startup renewal failed and the prior generation was restored: ${promotionError.message}`,
     )
+    return
   }
+  finalizeAuthenticatedPromotion(profile, options, selection.current)
+  console.log('HSA mTLS startup renewal authenticated and finalized.')
 }
 
 function runEnsure(profile, options) {
@@ -448,7 +500,6 @@ function runEnsure(profile, options) {
     provision(profile, options, 'deploy')
     startEndpoints(profile, options, { recreate: true })
     runVerify(profile, options, { recreate: false })
-    provision(profile, options, 'finalize')
   } catch (promotionError) {
     stopEndpoints(profile, options)
     if (!ensured.previousGenerationId) throw promotionError
@@ -458,6 +509,7 @@ function runEnsure(profile, options) {
     runVerify(profile, options, { recreate: false })
     throw promotionError
   }
+  finalizeAuthenticatedPromotion(profile, options, ensured.generationId)
 }
 
 function requireTrustDomain(value) {
@@ -474,7 +526,6 @@ function runRotation(profile, options, trustDomain) {
   startEndpoints(profile, options)
   try {
     runVerify(profile, options, { recreate: false })
-    provision(profile, options, 'finalize')
   } catch (error) {
     stopEndpoints(profile, options)
     provision(profile, options, 'rollback')
@@ -483,6 +534,7 @@ function runRotation(profile, options, trustDomain) {
     runVerify(profile, options, { recreate: false })
     throw error
   }
+  finalizeAuthenticatedPromotion(profile, options)
 }
 
 function runRollbackVerification(profile, options, trustDomain) {
