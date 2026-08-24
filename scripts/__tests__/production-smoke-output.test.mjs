@@ -230,7 +230,7 @@ function renderHsaSmokeConfiguration() {
   }
 }
 
-function runHsaRotationEvidenceHarness() {
+function runHsaRotationEvidenceHarness({ finalizeMismatch = false } = {}) {
   const temporaryDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'kh-hsa-rotation-evidence-'),
   )
@@ -277,7 +277,15 @@ function runHsaRotationEvidenceHarness() {
           current="$domain-generation-$rotation"
           previous="$before"
           ;;
-        finalize) previous=null ;;
+        finalize)
+          if [[ "$HSA_TEST_FINALIZE_MISMATCH" == true ]]; then
+            current=concurrent-generation
+          fi
+          printf 'expected=%s current=%s\n' "$domain" "$current" \
+            >>"$EVIDENCE_DIR/finalize.txt"
+          [[ "$domain" == "$current" ]] || return 1
+          previous=null
+          ;;
         rollback)
           before="$current"
           current="$previous"
@@ -292,7 +300,13 @@ function runHsaRotationEvidenceHarness() {
   const result = childProcess.spawnSync(
     'bash',
     ['-c', shell, 'bash', PRODUCTION_SMOKE_PATH, temporaryDirectory],
-    { encoding: 'utf8' },
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        HSA_TEST_FINALIZE_MISMATCH: String(finalizeMismatch),
+      },
+    },
   )
   return { result, temporaryDirectory }
 }
@@ -413,6 +427,28 @@ describe('production smoke output', () => {
     expect(
       fs.readFileSync(path.join(temporaryDirectory, 'rollback.txt'), 'utf8'),
     ).toContain('deleted=')
+    const finalizationEvidence = fs.readFileSync(
+      path.join(temporaryDirectory, 'finalize.txt'),
+      'utf8',
+    )
+    expect(finalizationEvidence.match(/expected=.* current=.*/gu)).toHaveLength(
+      3,
+    )
+    for (const line of finalizationEvidence.trim().split('\n')) {
+      const match = /^expected=(\S+) current=(\S+)$/u.exec(line)
+      expect(match?.[1]).toBe(match?.[2])
+    }
+  })
+
+  it('rejects release-smoke finalization after the selected generation changes', () => {
+    const { result, temporaryDirectory } = runHsaRotationEvidenceHarness({
+      finalizeMismatch: true,
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(
+      fs.readFileSync(path.join(temporaryDirectory, 'finalize.txt'), 'utf8'),
+    ).toContain('current=concurrent-generation')
   })
 
   it('renders the CI-only HSA route with verified HTTPS', () => {

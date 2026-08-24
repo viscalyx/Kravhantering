@@ -1398,7 +1398,9 @@ reconcile_persistent_hsa_renewal() {
     return 1
   }
   hsa_renewal_finalize() {
-    run_persistent_hsa_provisioner "${uid}" finalize >/dev/null
+    local authenticated_generation_id="$1"
+    run_persistent_hsa_provisioner "${uid}" finalize \
+      "${authenticated_generation_id}" >/dev/null
   }
   hsa_renewal_stop_endpoints() {
     run_user_systemctl_or_diagnose "${uid}" \

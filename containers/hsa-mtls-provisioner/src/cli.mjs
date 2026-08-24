@@ -73,6 +73,16 @@ export function parseCli(argv, env = process.env) {
 
 async function run(argv = process.argv.slice(2)) {
   const { args, command, options } = parseCli(argv)
+  const finalizeGenerationId = command === 'finalize' ? args.shift() : undefined
+  if (
+    command === 'finalize' &&
+    (!finalizeGenerationId || finalizeGenerationId.startsWith('--'))
+  ) {
+    throw new ProvisionerError(
+      'ARGUMENT_INVALID',
+      'finalize requires the authenticated generation ID',
+    )
+  }
   const profile = await loadCertificateProfile(options.profilePath)
   let result
   switch (command) {
@@ -136,7 +146,7 @@ async function run(argv = process.argv.slice(2)) {
       break
     case 'finalize':
       result = await finalizeGeneration({
-        expectedGenerationId: args.shift(),
+        expectedGenerationId: finalizeGenerationId,
         profile,
         rootDir: options.rootDir,
       })

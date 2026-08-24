@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import path from 'node:path'
 import { describe, it } from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 import { parseCli } from '../src/cli.mjs'
+
+const cliPath = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../src/cli.mjs',
+)
 
 describe('provisioner CLI', () => {
   it('exposes explicit lifecycle paths without secret-bearing options', () => {
@@ -47,5 +55,21 @@ describe('provisioner CLI', () => {
       () => parseCli(['ensure', '--root'], {}),
       error => error.category === 'ARGUMENT_INVALID',
     )
+  })
+
+  it('requires the authenticated generation ID for finalize', () => {
+    const result = spawnSync(process.execPath, [cliPath, 'finalize'], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        HSA_MTLS_PROFILE_PATH: '/missing/profile.json',
+      },
+    })
+
+    assert.equal(result.status, 1)
+    assert.deepEqual(JSON.parse(result.stderr), {
+      category: 'ARGUMENT_INVALID',
+      ok: false,
+    })
   })
 })

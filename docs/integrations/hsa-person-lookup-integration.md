@@ -321,11 +321,13 @@ Repository-owned topologies rotate one trust domain at a time. Stop clients
 before servers (`App`, Kong, Adapter, mock), run `rotate <trust-domain>` and
 `deploy` with the provisioner, then start servers before clients (mock,
 Adapter, Kong, App). Recreate every affected process because TLS snapshots are
-loaded once at startup. Validate authenticated readiness and a real lookup
-before `finalize`. If validation fails, repeat the stop order, run `rollback`
-and `deploy`, restart in server-first order, and validate the restored
-generation. Supported domains are `app-to-kong`, `kong-to-adapter`, and
-`adapter-to-hsa`; do not rotate multiple domains in one promotion.
+loaded once at startup. Validate authenticated readiness and a real lookup,
+then pass that exact selected generation to
+`finalize <authenticated-generation-id>`. If validation fails, repeat the stop
+order, run `rollback` and `deploy`, restart in server-first order, and validate
+the restored generation. Supported domains are `app-to-kong`,
+`kong-to-adapter`, and `adapter-to-hsa`; do not rotate multiple domains in one
+promotion.
 
 The required `HSA mTLS topology` workflow exercises every domain against
 current-commit images. For each same-domain wrong-server check, it installs the

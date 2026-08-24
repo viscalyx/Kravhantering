@@ -276,7 +276,11 @@ describe('certificate generation lifecycle', () => {
     assert.equal(inspection.selection.current, currentGenerationId)
     assert.equal(inspection.selection.previous, previousGenerationId)
 
-    await finalizeGeneration({ profile, rootDir: testRoot })
+    await finalizeGeneration({
+      expectedGenerationId: currentGenerationId,
+      profile,
+      rootDir: testRoot,
+    })
     assert.equal(
       (await inspectGeneration({ profile, rootDir: testRoot })).selection
         .previous,
@@ -360,7 +364,11 @@ describe('certificate generation lifecycle', () => {
       trustDomain: 'app-to-kong',
     })
     currentGenerationId = rotated.generationId
-    const result = await finalizeGeneration({ profile, rootDir: testRoot })
+    const result = await finalizeGeneration({
+      expectedGenerationId: currentGenerationId,
+      profile,
+      rootDir: testRoot,
+    })
 
     assert.deepEqual(result, {
       deletedGenerationId: rotated.previousGenerationId,
@@ -381,6 +389,10 @@ describe('certificate generation lifecycle', () => {
       trustDomain: 'app-to-kong',
     })
     currentGenerationId = rotated.generationId
+    await assert.rejects(
+      finalizeGeneration({ profile, rootDir: testRoot }),
+      error => error.category === 'ARGUMENT_INVALID',
+    )
     await assert.rejects(
       finalizeGeneration({
         expectedGenerationId: 'different-generation',

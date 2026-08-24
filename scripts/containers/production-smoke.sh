@@ -662,7 +662,7 @@ verify_hsa_mtls_rotation_and_rollback() {
       fail "$domain accepted stale pre-rotation material"
     as_service rm -rf -- "$stale_dir"
     HSA_STALE_TEMP_DIR=''
-    run_hsa_mtls_provisioner finalize >/dev/null
+    run_hsa_mtls_provisioner finalize "$after" >/dev/null
     [[ "$(run_hsa_mtls_provisioner inspect | jq -r '.result.selection.previous')" == null ]] || \
       fail "$domain HSA mTLS successful rotation retained prior selection"
 

@@ -1209,19 +1209,22 @@ export async function finalizeGeneration({
   profile,
   rootDir,
 }) {
+  assert(
+    typeof expectedGenerationId === 'string' && expectedGenerationId.length > 0,
+    'ARGUMENT_INVALID',
+    'Authenticated generation ID is required for finalization',
+  )
   const selection = await readSelection(rootDir)
   assert(
     selection.current,
     'SELECTION_INVALID',
     'No current generation is selected',
   )
-  if (expectedGenerationId !== undefined) {
-    assert(
-      selection.current === expectedGenerationId,
-      'SELECTION_INVALID',
-      'Selected generation does not match the authenticated generation',
-    )
-  }
+  assert(
+    selection.current === expectedGenerationId,
+    'SELECTION_INVALID',
+    'Selected generation does not match the authenticated generation',
+  )
   await verifyGenerationDirectory({
     generationDir: generationPath(rootDir, 'generations', selection.current),
     profile,
