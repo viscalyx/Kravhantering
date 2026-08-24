@@ -401,7 +401,19 @@ function runHsaCorrelationEvidenceHarness() {
       local last_arg
       printf '%s\n' "$*" >>"$EVIDENCE_DIR/log-sources.txt"
       if [[ "$1" == podman && "$2" == logs ]]; then
-        printf '%s\n' "$HSA_TEST_CORRELATION_ID"
+        for last_arg in "$@"; do :; done
+        case "$last_arg" in
+          kravhantering-ci-kong)
+            printf '%s\n' "$HSA_TEST_CORRELATION_ID"
+            ;;
+          kravhantering-ci-hsa-person-lookup-adapter)
+            printf '{"correlation_id":"%s","event":"hsa_adapter_lookup_forwarded"}\n' "$HSA_TEST_CORRELATION_ID"
+            ;;
+          kravhantering-ci-hsa-directory-mock)
+            printf '{"correlation_id":"%s","event":"hsa_mock_lookup_handled","handling_count":1}\n' "$HSA_TEST_CORRELATION_ID"
+            ;;
+          *) return 2 ;;
+        esac
         return
       fi
       for last_arg in "$@"; do :; done
@@ -413,10 +425,10 @@ function runHsaCorrelationEvidenceHarness() {
           printf '%s\n' 'detached-container-id-without-correlation-evidence'
           ;;
         kravhantering-ci-hsa-person-lookup-adapter.service)
-          printf '{"correlation_id":"%s","event":"hsa_adapter_lookup_forwarded"}\n' "$HSA_TEST_CORRELATION_ID"
+          printf '%s\n' 'detached-adapter-container-id-without-correlation-evidence'
           ;;
         kravhantering-ci-hsa-directory-mock.service)
-          printf '{"correlation_id":"%s","event":"hsa_mock_lookup_handled","handling_count":1}\n' "$HSA_TEST_CORRELATION_ID"
+          printf '%s\n' 'detached-mock-container-id-without-correlation-evidence'
           ;;
         *) return 2 ;;
       esac
@@ -491,7 +503,7 @@ describe('production smoke output', () => {
     ])
   })
 
-  it('reads Kong correlation evidence from the detached container logs', () => {
+  it('reads HSA sidecar correlation evidence from detached container logs', () => {
     const { result, temporaryDirectory } = runHsaCorrelationEvidenceHarness()
 
     expect(result.status, result.stderr).toBe(0)
@@ -505,6 +517,16 @@ describe('production smoke output', () => {
       fs.readFileSync(path.join(temporaryDirectory, 'log-sources.txt'), 'utf8'),
     ).toContain(
       'podman logs --since 2026-08-24T10:17:41+00:00 kravhantering-ci-kong',
+    )
+    expect(
+      fs.readFileSync(path.join(temporaryDirectory, 'log-sources.txt'), 'utf8'),
+    ).toContain(
+      'podman logs --since 2026-08-24T10:17:41+00:00 kravhantering-ci-hsa-person-lookup-adapter',
+    )
+    expect(
+      fs.readFileSync(path.join(temporaryDirectory, 'log-sources.txt'), 'utf8'),
+    ).toContain(
+      'podman logs --since 2026-08-24T10:17:41+00:00 kravhantering-ci-hsa-directory-mock',
     )
   })
 

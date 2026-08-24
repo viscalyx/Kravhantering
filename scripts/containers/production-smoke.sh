@@ -451,10 +451,10 @@ verify_hsa_correlated_lookup() {
     -u kravhantering-app-runtime.service >"$runtime_log/app.log"
   as_service podman logs --since "$journal_since" \
     kravhantering-ci-kong >"$runtime_log/kong.log" 2>&1
-  as_service journalctl --user --since "$journal_since" --output cat \
-    -u kravhantering-ci-hsa-person-lookup-adapter.service >"$runtime_log/adapter.log"
-  as_service journalctl --user --since "$journal_since" --output cat \
-    -u kravhantering-ci-hsa-directory-mock.service >"$runtime_log/mock.log"
+  as_service podman logs --since "$journal_since" \
+    kravhantering-ci-hsa-person-lookup-adapter >"$runtime_log/adapter.log" 2>&1
+  as_service podman logs --since "$journal_since" \
+    kravhantering-ci-hsa-directory-mock >"$runtime_log/mock.log" 2>&1
   correlation_id="$(
     grep -F '"event":"hsa_app_lookup_started"' "$runtime_log/app.log" |
       grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}' |
