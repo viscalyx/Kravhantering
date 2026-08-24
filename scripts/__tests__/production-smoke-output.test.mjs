@@ -230,7 +230,7 @@ function renderHsaSmokeConfiguration() {
   }
 }
 
-function runHsaRotationEvidenceHarness({ finalizeMismatch = false } = {}) {
+function runHsaRotationEvidenceHarness({ finalizeMode = 'success' } = {}) {
   const temporaryDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'kh-hsa-rotation-evidence-'),
   )
@@ -242,6 +242,7 @@ function runHsaRotationEvidenceHarness({ finalizeMismatch = false } = {}) {
     current=initial-generation
     previous=null
     rotation=0
+    finalize_attempt=0
     HSA_MTLS_FORCE_VERIFY_FAILURE=0
     mkdir -p "$EVIDENCE_DIR"
     as_service() { "$@"; }
@@ -274,17 +275,27 @@ function runHsaRotationEvidenceHarness({ finalizeMismatch = false } = {}) {
         rotate)
           before="$current"
           rotation=$((rotation + 1))
+          finalize_attempt=0
           current="$domain-generation-$rotation"
           previous="$before"
           ;;
         finalize)
-          if [[ "$HSA_TEST_FINALIZE_MISMATCH" == true ]]; then
-            current=concurrent-generation
-          fi
+          finalize_attempt=$((finalize_attempt + 1))
+          [[ "$HSA_TEST_FINALIZE_MODE" != mismatch ]] || current=concurrent-generation
           printf 'expected=%s current=%s\n' "$domain" "$current" \
             >>"$EVIDENCE_DIR/finalize.txt"
           [[ "$domain" == "$current" ]] || return 1
-          previous=null
+          case "$HSA_TEST_FINALIZE_MODE" in
+            success) previous=null; return 0 ;;
+            ambiguous-complete) previous=null; return 1 ;;
+            retry-success)
+              if [[ "$finalize_attempt" -eq 1 ]]; then return 1; fi
+              previous=null
+              return 0
+              ;;
+            persistent-failure) return 1 ;;
+            *) return 2 ;;
+          esac
           ;;
         rollback)
           before="$current"
@@ -304,7 +315,7 @@ function runHsaRotationEvidenceHarness({ finalizeMismatch = false } = {}) {
       encoding: 'utf8',
       env: {
         ...process.env,
-        HSA_TEST_FINALIZE_MISMATCH: String(finalizeMismatch),
+        HSA_TEST_FINALIZE_MODE: finalizeMode,
       },
     },
   )
@@ -442,13 +453,56 @@ describe('production smoke output', () => {
 
   it('rejects release-smoke finalization after the selected generation changes', () => {
     const { result, temporaryDirectory } = runHsaRotationEvidenceHarness({
-      finalizeMismatch: true,
+      finalizeMode: 'mismatch',
     })
 
     expect(result.status).not.toBe(0)
     expect(
       fs.readFileSync(path.join(temporaryDirectory, 'finalize.txt'), 'utf8'),
     ).toContain('current=concurrent-generation')
+  })
+
+  it('accepts release-smoke cleanup completed behind a failed finalize command', () => {
+    const { result, temporaryDirectory } = runHsaRotationEvidenceHarness({
+      finalizeMode: 'ambiguous-complete',
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(
+      fs
+        .readFileSync(path.join(temporaryDirectory, 'finalize.txt'), 'utf8')
+        .trim()
+        .split('\n'),
+    ).toHaveLength(3)
+  })
+
+  it('retries release-smoke pending cleanup and accepts a completed retry', () => {
+    const { result, temporaryDirectory } = runHsaRotationEvidenceHarness({
+      finalizeMode: 'retry-success',
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(
+      fs
+        .readFileSync(path.join(temporaryDirectory, 'finalize.txt'), 'utf8')
+        .trim()
+        .split('\n'),
+    ).toHaveLength(6)
+  })
+
+  it('fails release smoke after one retry leaves prior cleanup pending', () => {
+    const { result, temporaryDirectory } = runHsaRotationEvidenceHarness({
+      finalizeMode: 'persistent-failure',
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('remains pending after finalization retry')
+    expect(
+      fs
+        .readFileSync(path.join(temporaryDirectory, 'finalize.txt'), 'utf8')
+        .trim()
+        .split('\n'),
+    ).toHaveLength(2)
   })
 
   it('renders the CI-only HSA route with verified HTTPS', () => {

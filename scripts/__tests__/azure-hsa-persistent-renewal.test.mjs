@@ -8,7 +8,7 @@ const RECONCILER_PATH = path.resolve(
 )
 
 function runReconciler({
-  finalizedCurrent = null,
+  finalizeMode = 'success',
   pending,
   verificationResults = [],
 }) {
@@ -18,6 +18,7 @@ function runReconciler({
     calls=''
     current='current-generation'
     previous="$PENDING_GENERATION"
+    finalize_count=0
     verify_count=0
     record() {
       if [[ -n "$calls" ]]; then calls="$calls,$1"; else calls="$1"; fi
@@ -35,17 +36,32 @@ function runReconciler({
       esac
     }
     hsa_renewal_finalize() {
+      finalize_count=$((finalize_count + 1))
       record "finalize:$1"
       [[ "$1" == "$current" ]] || return 1
-      previous=''
-      if [[ -n "$FINALIZED_CURRENT" ]]; then current="$FINALIZED_CURRENT"; fi
+      case "$FINALIZE_MODE" in
+        success) previous=''; return 0 ;;
+        ambiguous-complete) previous=''; return 1 ;;
+        retry-success)
+          if [[ "$finalize_count" -eq 1 ]]; then return 1; fi
+          previous=''
+          return 0
+          ;;
+        persistent-failure) return 1 ;;
+        mismatch) current='concurrent-generation'; return 1 ;;
+        *) return 2 ;;
+      esac
     }
     hsa_renewal_stop_endpoints() { record stop-kong-adapter-mock; }
     hsa_renewal_rollback() { record rollback-delete-failed; }
     hsa_renewal_deploy() { record deploy-previous; }
     hsa_renewal_start_endpoints() { record start-mock-adapter-kong; }
+    set +e
     hsa_reconcile_persistent_renewal
+    status=$?
+    set -e
     printf 'CALLS=%s\n' "$calls"
+    exit "$status"
   `
   return childProcess.spawnSync(
     'bash',
@@ -54,7 +70,7 @@ function runReconciler({
       encoding: 'utf8',
       env: {
         ...process.env,
-        FINALIZED_CURRENT: finalizedCurrent ?? '',
+        FINALIZE_MODE: finalizeMode,
         PENDING_GENERATION: pending ?? '',
         VERIFY_RESULTS: verificationResults.join(','),
       },
@@ -81,17 +97,54 @@ describe('Azure persistent HSA mTLS startup renewal', () => {
     expect(result.stdout).toContain('CALLS=verify,finalize:current-generation')
   })
 
-  it('rejects finalization that no longer selects the authenticated generation', () => {
+  it('accepts a failed finalize command after inspection proves cleanup completed', () => {
     const result = runReconciler({
-      finalizedCurrent: 'concurrent-generation',
+      finalizeMode: 'ambiguous-complete',
+      pending: 'verified-generation',
+      verificationResults: ['pass'],
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stdout).toContain('CALLS=verify,finalize:current-generation')
+  })
+
+  it('retries exact-current pending cleanup and accepts the completed retry', () => {
+    const result = runReconciler({
+      finalizeMode: 'retry-success',
+      pending: 'verified-generation',
+      verificationResults: ['pass'],
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stdout).toContain(
+      'CALLS=verify,finalize:current-generation,finalize:current-generation',
+    )
+  })
+
+  it('fails after one retry leaves exact-current prior cleanup pending', () => {
+    const result = runReconciler({
+      finalizeMode: 'persistent-failure',
       pending: 'verified-generation',
       verificationResults: ['pass'],
     })
 
     expect(result.status).not.toBe(0)
-    expect(result.stderr).toContain(
-      'did not preserve the authenticated generation',
+    expect(result.stdout).toContain(
+      'CALLS=verify,finalize:current-generation,finalize:current-generation',
     )
+    expect(result.stderr).toContain('remains pending after finalization retry')
+  })
+
+  it('rejects finalization that no longer selects the authenticated generation', () => {
+    const result = runReconciler({
+      finalizeMode: 'mismatch',
+      pending: 'verified-generation',
+      verificationResults: ['pass'],
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stdout).toContain('CALLS=verify,finalize:current-generation')
+    expect(result.stderr).toContain('other than the authenticated generation')
   })
 
   it('restores, restarts in server-first order, and verifies after failure', () => {

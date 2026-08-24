@@ -636,6 +636,48 @@ verify_hsa_rotation_metadata() {
   done
 }
 
+inspect_hsa_finalization_previous() {
+  local expected_generation_id="$1" domain="$2"
+  local finalization_inspection finalization_previous selected_generation_id
+  finalization_inspection="$(run_hsa_mtls_provisioner inspect)" || \
+    fail "$domain HSA mTLS finalization state could not be inspected"
+  selected_generation_id="$(
+    jq -er '.result.selection.current | strings | select(length > 0)' \
+      <<<"$finalization_inspection"
+  )" || \
+    fail "$domain HSA mTLS finalization returned invalid current selection"
+  finalization_previous="$(
+    jq -er '.result.selection.previous // ""' <<<"$finalization_inspection"
+  )" || \
+    fail "$domain HSA mTLS finalization returned invalid prior selection"
+  [[ "$selected_generation_id" == "$expected_generation_id" ]] || \
+    fail "$domain HSA mTLS finalization selected a generation other than the authenticated generation"
+  printf '%s\n' "$finalization_previous"
+}
+
+finalize_hsa_authenticated_generation() {
+  local expected_generation_id="$1" domain="$2" finalization_previous
+  # Finalize may complete state changes before its command outcome is observed.
+  run_hsa_mtls_provisioner finalize "$expected_generation_id" >/dev/null || true
+  if ! finalization_previous="$(
+    inspect_hsa_finalization_previous "$expected_generation_id" "$domain"
+  )"; then
+    fail "$domain HSA mTLS finalization state could not be reconciled"
+  fi
+  if [[ -z "$finalization_previous" ]]; then
+    return
+  fi
+
+  run_hsa_mtls_provisioner finalize "$expected_generation_id" >/dev/null || true
+  if ! finalization_previous="$(
+    inspect_hsa_finalization_previous "$expected_generation_id" "$domain"
+  )"; then
+    fail "$domain HSA mTLS finalization retry state could not be reconciled"
+  fi
+  [[ -z "$finalization_previous" ]] || \
+    fail "$domain HSA mTLS prior cleanup remains pending after finalization retry"
+}
+
 verify_hsa_mtls_rotation_and_rollback() {
   local after after_inspect before before_inspect domain restored stale_dir
   : >"$EVIDENCE_DIR/hsa-mtls-rotation.txt"
@@ -662,9 +704,7 @@ verify_hsa_mtls_rotation_and_rollback() {
       fail "$domain accepted stale pre-rotation material"
     as_service rm -rf -- "$stale_dir"
     HSA_STALE_TEMP_DIR=''
-    run_hsa_mtls_provisioner finalize "$after" >/dev/null
-    [[ "$(run_hsa_mtls_provisioner inspect | jq -r '.result.selection.previous')" == null ]] || \
-      fail "$domain HSA mTLS successful rotation retained prior selection"
+    finalize_hsa_authenticated_generation "$after" "$domain"
 
     stop_hsa_mtls_endpoints
     run_hsa_mtls_provisioner rotate "$domain" >/dev/null
