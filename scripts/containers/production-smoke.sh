@@ -602,6 +602,7 @@ verify_hsa_stale_rejection() {
   network="$(as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" \
     print-network --topology single-node --purpose egress)"
   as_service podman run --rm --pull=never --network "$network" \
+    --user 0 \
     --volume "$source:/runtime/stale:ro,Z" \
     -e STALE_HOST="$host" -e STALE_SERVER_NAME="$servername" \
     -e STALE_PATH="$path" "$APP_RUNTIME_IMAGE_REF" node --input-type=module -e '

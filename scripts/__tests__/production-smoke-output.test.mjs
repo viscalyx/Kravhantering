@@ -450,6 +450,51 @@ function runHsaCorrelationEvidenceHarness() {
   return { result, temporaryDirectory }
 }
 
+function runHsaStaleProbeHarness() {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'kh-hsa-stale-probe-'),
+  )
+  temporaryDirectories.push(temporaryDirectory)
+  const argumentsPath = path.join(temporaryDirectory, 'podman-arguments.txt')
+  const shell = String.raw`
+    set -euo pipefail
+    source "$1"
+    INSTALL_ROOT=/opt/kravhantering
+    APP_RUNTIME_IMAGE_REF=test/app-runtime:latest
+    HSA_TEST_ARGUMENTS_PATH="$3"
+    as_service() {
+      local argument previous=''
+      if [[ "$1" == "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" ]]; then
+        printf '%s\n' kravhantering-egress
+        return
+      fi
+      printf '%s\n' "$*" >"$HSA_TEST_ARGUMENTS_PATH"
+      for argument in "$@"; do
+        if [[ "$previous" == --user && "$argument" == 0 ]]; then
+          return
+        fi
+        previous="$argument"
+      done
+      printf '%s\n' 'EACCES: permission denied, open /runtime/stale/ca.crt' >&2
+      return 13
+    }
+    verify_hsa_stale_rejection app-to-kong "$2"
+  `
+  const result = childProcess.spawnSync(
+    'bash',
+    [
+      '-c',
+      shell,
+      'bash',
+      PRODUCTION_SMOKE_PATH,
+      temporaryDirectory,
+      argumentsPath,
+    ],
+    { encoding: 'utf8' },
+  )
+  return { argumentsPath, result }
+}
+
 function runHsaPkiLifecycle(operation, exitStatus) {
   const temporaryDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'kh-hsa-pki-cleanup-'),
@@ -527,6 +572,15 @@ describe('production smoke output', () => {
       fs.readFileSync(path.join(temporaryDirectory, 'log-sources.txt'), 'utf8'),
     ).toContain(
       'podman logs --since 2026-08-24T10:17:41+00:00 kravhantering-ci-hsa-directory-mock',
+    )
+  })
+
+  it('reads service-owned stale HSA material as root in the rootless probe', () => {
+    const { argumentsPath, result } = runHsaStaleProbeHarness()
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(fs.readFileSync(argumentsPath, 'utf8')).toContain(
+      'podman run --rm --pull=never --network kravhantering-egress --user 0',
     )
   })
 
