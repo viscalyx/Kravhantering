@@ -1,5 +1,5 @@
 # Shared Codex defaults for every Kravhantering development environment.
-# Codex automatically layers the settings on top of the user configuration in ~/.codex/config.tom.
+# Codex automatically layers the settings on top of the user configuration in ~/.codex/config.toml.
 
 default_permissions = "kravhantering-development"
 
