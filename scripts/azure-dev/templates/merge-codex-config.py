@@ -69,7 +69,26 @@ def is_managed_profile_section(section: str | None) -> bool:
     )
 
 
-def clean_existing_config(content: str, trust_level: str) -> tuple[list[str], bool]:
+def is_managed_plugin_section(
+    section: str | None,
+    managed_plugin_names: list[str],
+) -> bool:
+    if section is None:
+        return False
+    return any(
+        section == f"plugins.{name}"
+        or section.startswith(f"plugins.{name}.")
+        or section == f"plugins.{toml_string(name)}"
+        or section.startswith(f"plugins.{toml_string(name)}.")
+        for name in managed_plugin_names
+    )
+
+
+def clean_existing_config(
+    content: str,
+    trust_level: str,
+    managed_plugin_names: list[str],
+) -> tuple[list[str], bool]:
     result: list[str] = []
     section: str | None = None
     workspace_found = False
@@ -78,7 +97,10 @@ def clean_existing_config(content: str, trust_level: str) -> tuple[list[str], bo
         match = SECTION_PATTERN.match(line)
         if match:
             section = match.group(1)
-            if is_managed_profile_section(section):
+            if is_managed_profile_section(section) or is_managed_plugin_section(
+                section,
+                managed_plugin_names,
+            ):
                 continue
             result.append(line)
             if section == WORKSPACE_SECTION:
@@ -86,7 +108,10 @@ def clean_existing_config(content: str, trust_level: str) -> tuple[list[str], bo
                 result.append(f"trust_level = {toml_string(trust_level)}")
             continue
 
-        if is_managed_profile_section(section):
+        if is_managed_profile_section(section) or is_managed_plugin_section(
+            section,
+            managed_plugin_names,
+        ):
             continue
         if section is None and ROOT_SETTING_PATTERN.match(line):
             continue
@@ -111,6 +136,40 @@ def require_table(value: Any, name: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"{name} must be a table")
     return cast(dict[str, Any], value)
+
+
+def require_disabled_plugins(managed: dict[str, Any]) -> list[str]:
+    plugins = require_table(managed.get("plugins"), "plugins")
+    if not plugins:
+        raise ValueError("plugins must be a non-empty table")
+
+    names: list[str] = []
+    for name, value in plugins.items():
+        plugin_name = require_string(name, "plugin name")
+        plugin = require_table(value, f"plugins.{plugin_name}")
+        if plugin.get("enabled") is not False:
+            raise ValueError(f"plugins.{plugin_name}.enabled must be false")
+        names.append(plugin_name)
+    return names
+
+
+def require_disabled_skills(managed: dict[str, Any]) -> list[str]:
+    skills = require_table(managed.get("skills"), "skills")
+    config = skills.get("config")
+    if not isinstance(config, list) or not config:
+        raise ValueError("skills.config must be a non-empty array")
+    skill_config = cast(list[Any], config)
+
+    paths: list[str] = []
+    for index, entry in enumerate(skill_config):
+        skill = require_table(entry, f"skills.config.{index}")
+        path = require_string(skill.get("path"), f"skills.config.{index}.path")
+        if skill.get("enabled") is not False:
+            raise ValueError(f"skills.config.{index}.enabled must be false")
+        if path in paths:
+            raise ValueError(f"duplicate disabled skill path: {path}")
+        paths.append(path)
+    return paths
 
 
 def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
@@ -164,6 +223,8 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
     domains = require_table(network.get("domains"), "permission network domains")
     if not domains:
         raise ValueError("permission network domains must be a non-empty table")
+    disabled_plugin_names = require_disabled_plugins(managed)
+    disabled_skill_paths = require_disabled_skills(managed)
 
     root = [
         ROOT_START,
@@ -197,16 +258,35 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
             f"{toml_string(require_string(domain, 'domain'))} = "
             f"{toml_string(require_string(decision, f'domain {domain} decision'))}",
         )
+    for plugin_name in disabled_plugin_names:
+        profile_lines.extend(
+            [
+                "",
+                f"[plugins.{toml_string(plugin_name)}]",
+                "enabled = false",
+            ],
+        )
+    for path in disabled_skill_paths:
+        profile_lines.extend(
+            [
+                "",
+                "[[skills.config]]",
+                f"path = {toml_string(path)}",
+                "enabled = false",
+            ],
+        )
     profile_lines.append(PROFILE_END)
     return root + [""], trust_level, profile_lines
 
 
 def merge_config(existing_content: str, managed_content: str) -> str:
     managed = tomllib.loads(managed_content)
+    managed_plugin_names = require_disabled_plugins(managed)
     root_lines, trust_level, profile_lines = render_profile(managed)
     existing_lines, workspace_found = clean_existing_config(
         existing_content,
         trust_level,
+        managed_plugin_names,
     )
 
     merged = list(root_lines)
@@ -230,6 +310,21 @@ def merge_config(existing_content: str, managed_content: str) -> str:
         raise ValueError("merged default permission profile is incorrect")
     if parsed["projects"]["/workspace"].get("trust_level") != trust_level:
         raise ValueError("merged workspace trust level is incorrect")
+    parsed_plugins = parsed.get("plugins", {})
+    if not all(
+        isinstance(parsed_plugins.get(name), dict)
+        and parsed_plugins[name].get("enabled") is False
+        for name in managed_plugin_names
+    ):
+        raise ValueError("merged disabled plugin configuration is incorrect")
+    expected_disabled_skills = require_disabled_skills(managed)
+    merged_disabled_skills = [
+        entry.get("path")
+        for entry in parsed.get("skills", {}).get("config", [])
+        if entry.get("enabled") is False
+    ]
+    if not all(path in merged_disabled_skills for path in expected_disabled_skills):
+        raise ValueError("merged disabled skill configuration is incorrect")
     return merged_content
 
 

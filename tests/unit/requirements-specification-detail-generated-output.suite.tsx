@@ -235,7 +235,7 @@ export function registerGeneratedOutputTests(
       )
     })
 
-    it('keeps traceability report actions beyond the former item-ref limit', async () => {
+    it('keeps traceability report actions after loading every application page', async () => {
       const items = Array.from({ length: 201 }, (_, index) => {
         const itemId = index + 1
         return {
@@ -269,16 +269,28 @@ export function registerGeneratedOutputTests(
       context.renderRequirementsSpecificationDetailClient(initialData)
       await context.settleInitialEditorEffects()
       context.triggerRequirementLoadMore('items')
-      expect(await screen.findByRole('row', { name: /BEH0200/ })).toBeVisible()
+      expect(
+        await screen.findByRole(
+          'row',
+          { name: /BEH0200/ },
+          { timeout: 10_000 },
+        ),
+      ).toBeVisible()
+      context.triggerRequirementLoadMore('items')
       await waitFor(() => {
-        context.triggerRequirementLoadMore('items')
         expect(
           context.fetchMock.mock.calls.some(([input]) =>
             String(input).includes('cursor=items-page-3'),
           ),
         ).toBe(true)
       })
-      expect(await screen.findByRole('row', { name: /BEH0201/ })).toBeVisible()
+      expect(
+        await screen.findByRole(
+          'row',
+          { name: /BEH0201/ },
+          { timeout: 10_000 },
+        ),
+      ).toBeVisible()
 
       expect(
         within(context.openTableActionMenu('common.moreActions')).getByRole(

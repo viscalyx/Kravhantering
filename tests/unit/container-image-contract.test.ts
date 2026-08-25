@@ -4,6 +4,14 @@ import { describe, expect, it } from 'vitest'
 import { parse as parseYaml } from 'yaml'
 import { parseJsonc } from './test-helpers'
 
+const disabledSystemSkillPaths = [
+  '/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md',
+  '/home/vscode/.codex/skills/.system/review-agent/SKILL.md',
+  '/home/vscode/.codex/skills/.system/skill-creator/SKILL.md',
+  '/home/vscode/.codex/skills/.system/skill-installer/SKILL.md',
+]
+const disabledPluginNames = ['openai-templates', 'plugin-management']
+
 function readWorkspaceFile(relativePath: string) {
   return readFileSync(path.join(process.cwd(), relativePath), 'utf8')
 }
@@ -59,6 +67,22 @@ function workflowRunCommands(relativePath: string) {
   return Object.values(workflow.jobs ?? {}).flatMap(job =>
     (job.steps ?? []).flatMap(step => (step.run ? [step.run] : [])),
   )
+}
+
+function expectDisabledSystemSkills(content: string) {
+  for (const pluginName of disabledPluginNames) {
+    expect(content).toMatch(
+      new RegExp(
+        `\\[plugins\\.(?:"${pluginName}"|${pluginName})\\]\\nenabled = false`,
+        'u',
+      ),
+    )
+  }
+  expect(content).not.toContain('/plugins/cache/')
+  expect(content.match(/\[\[skills\.config\]\]/gu)).toHaveLength(4)
+  for (const skillPath of disabledSystemSkillPaths) {
+    expect(content).toContain(`path = "${skillPath}"`)
+  }
 }
 
 function dockerfileTarget(name: string) {
@@ -406,6 +430,7 @@ describe('container image contract', () => {
       'status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]',
     )
     expect(codexConfig).toContain('status_line_use_colors = true')
+    expectDisabledSystemSkills(codexConfig)
   })
 
   it('keeps Codex devcontainer permissions in the user config template', () => {
@@ -431,6 +456,7 @@ describe('container image contract', () => {
     )
     expect(codexConfig).not.toContain('[mcp_servers.playwright]')
     expect(codexConfig).not.toContain('[tui]')
+    expectDisabledSystemSkills(codexConfig)
 
     for (const relativePath of [
       '.devcontainer/devcontainer.json',

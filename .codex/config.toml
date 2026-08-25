@@ -74,3 +74,25 @@ approval_mode = "approve"
 terminal_title = ["activity", "app-name"]
 status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]
 status_line_use_colors = true
+
+[plugins.openai-templates]
+enabled = false
+
+[plugins.plugin-management]
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/review-agent/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/skill-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/skill-installer/SKILL.md"
+enabled = false

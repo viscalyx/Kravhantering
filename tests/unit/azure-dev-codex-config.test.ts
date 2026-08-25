@@ -6,7 +6,26 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 const mergerPath = 'scripts/azure-dev/templates/merge-codex-config.py'
 const managedConfigPath = 'scripts/azure-dev/templates/codex-config.toml'
+const devcontainerConfigPath = '.devcontainer/codex-config.toml'
 const temporaryDirectories: string[] = []
+const disabledSystemSkillPaths = [
+  '/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md',
+  '/home/vscode/.codex/skills/.system/review-agent/SKILL.md',
+  '/home/vscode/.codex/skills/.system/skill-creator/SKILL.md',
+  '/home/vscode/.codex/skills/.system/skill-installer/SKILL.md',
+]
+const disabledPluginNames = ['openai-templates', 'plugin-management']
+
+function expectDisabledPlugins(content: string) {
+  for (const pluginName of disabledPluginNames) {
+    expect(content).toMatch(
+      new RegExp(
+        `\\[plugins\\.(?:"${pluginName}"|${pluginName})\\]\\nenabled = false`,
+        'u',
+      ),
+    )
+  }
+}
 
 function createTemporaryConfig(content: string) {
   const directory = mkdtempSync(join(tmpdir(), 'krav-codex-config-'))
@@ -16,8 +35,8 @@ function createTemporaryConfig(content: string) {
   return configPath
 }
 
-function mergeConfig(configPath: string) {
-  execFileSync('python3', [mergerPath, managedConfigPath, configPath])
+function mergeConfig(configPath: string, sourceConfigPath = managedConfigPath) {
+  execFileSync('python3', [mergerPath, sourceConfigPath, configPath])
   return readFileSync(configPath, 'utf8')
 }
 
@@ -34,6 +53,9 @@ model = "gpt-existing"
 
 [mcp_servers.example]
 command = "example"
+
+[plugins.openai-templates]
+enabled = true
 
 [projects."/workspace"]
 trust_level = "untrusted"
@@ -61,8 +83,27 @@ trust_level = "untrusted"
     expect(firstMerge).toContain('"127.0.0.1" = "allow"')
     expect(firstMerge.match(/\[projects\."\/workspace"\]/g)).toHaveLength(1)
     expect(firstMerge).toContain('trust_level = "trusted"')
+    expectDisabledPlugins(firstMerge)
+    expect(firstMerge).not.toContain('/plugins/cache/')
+    expect(firstMerge.match(/\[\[skills\.config\]\]/g)).toHaveLength(4)
+    for (const path of disabledSystemSkillPaths) {
+      expect(firstMerge).toContain(`path = "${path}"`)
+    }
 
     expect(mergeConfig(configPath)).toBe(firstMerge)
+  })
+
+  it('merges the same disabled plugins and system skills for devcontainers', () => {
+    const configPath = createTemporaryConfig('personality = "pragmatic"\n')
+
+    const merged = mergeConfig(configPath, devcontainerConfigPath)
+
+    expectDisabledPlugins(merged)
+    expect(merged).not.toContain('/plugins/cache/')
+    expect(merged.match(/\[\[skills\.config\]\]/g)).toHaveLength(4)
+    for (const path of disabledSystemSkillPaths) {
+      expect(merged).toContain(`path = "${path}"`)
+    }
   })
 
   it('migrates a previously copied devcontainer profile', () => {
