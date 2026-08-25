@@ -256,6 +256,9 @@ export async function queryRequirementList(
             )
           : {}
 
+    const requirementIds = normalizeIds(input.requirementIds)
+    const hasExplicitEmptyRequirementIds =
+      input.requirementIds !== undefined && requirementIds === undefined
     const query: ListRequirementsOptions = {
       areaIds: normalizeIds(filters.areaIds),
       categoryIds: normalizeIds(filters.categoryIds),
@@ -268,7 +271,7 @@ export async function queryRequirementList(
       priorityLevelIds: normalizeIds(filters.priorityLevelIds),
       ...visibility,
       qualityCharacteristicIds: normalizeIds(filters.qualityCharacteristicIds),
-      requirementIds: normalizeIds(input.requirementIds),
+      requirementIds: hasExplicitEmptyRequirementIds ? [] : requirementIds,
       requirementPackageIds: normalizeIds(filters.requirementPackageIds),
       search: normalizeText(input.search),
       sortBy: sort.by,
@@ -287,7 +290,9 @@ export async function queryRequirementList(
       query.after = cursor.boundary
     }
 
-    const rows = await listRequirements(db, query)
+    const rows = hasExplicitEmptyRequirementIds
+      ? []
+      : await listRequirements(db, query)
     const hasMore = rows.length > limit
     const pageRows = hasMore ? rows.slice(0, limit) : rows
     const requirements = pageRows.map(row => {

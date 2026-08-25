@@ -32,9 +32,14 @@ import {
   type RequirementsImportPreview,
 } from '@/lib/requirements/import-service'
 import type {
+  RequirementListPageItem,
+  RequirementListPagination,
+} from '@/lib/requirements/list-query'
+import type {
   FilterValues,
   RequirementSortDirection,
   RequirementSortField,
+  RequirementSortState,
   SpecificationItemRequirementRow,
 } from '@/lib/requirements/list-view'
 import {
@@ -304,6 +309,41 @@ export interface GetSpecificationItemsOutput {
   specificationId: number
 }
 
+export type AvailableSpecificationRequirementFilters = Omit<
+  FilterValues,
+  'needsReferenceIds' | 'specificationItemStatusIds' | 'statuses'
+>
+
+export interface GetAvailableSpecificationRequirementsInput
+  extends SpecificationRefInput {
+  applyRequirementSelectionFilter?: boolean
+  capacitySurface?: 'editor-preload' | 'mcp' | 'rest'
+  cursor?: string
+  filters?: AvailableSpecificationRequirementFilters
+  limit?: number
+  locale?: ResponseLocale
+  sort?: RequirementSortState
+}
+
+export interface GetAvailableSpecificationRequirementsOutput {
+  pagination: RequirementListPagination
+  requirements: RequirementListPageItem[]
+  selectionFilter: {
+    applied: boolean
+    hasCurrentAnswers: boolean
+    hasNoRequirementSelection: boolean
+    hasRequirementSelection: boolean
+    requirementIds: number[]
+  }
+}
+
+export interface AvailableSpecificationRequirementsService {
+  getAvailableSpecificationRequirements(
+    context: RequestContext,
+    input: GetAvailableSpecificationRequirementsInput,
+  ): Promise<GetAvailableSpecificationRequirementsOutput>
+}
+
 export interface AddToSpecificationOutput {
   addedCount: number
   message: string
@@ -557,7 +597,7 @@ export function createRequirementsService(
     authorization?: AuthorizationService
     logger?: RequirementsLogger
   } = {},
-): RequirementsService {
+): RequirementsService & AvailableSpecificationRequirementsService {
   return {
     ...createRequirementsImportWorkflow({
       authorization,

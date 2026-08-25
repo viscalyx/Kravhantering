@@ -975,15 +975,16 @@ Setup also uploads `scripts/azure-dev/templates/codex-config.toml` and merges
 its Azure-specific settings into `/home/vscode/.codex/config.toml`. The merge
 preserves existing personal settings such as the selected model and MCP
 servers. It manages the default permission profile, `/workspace` trust, and
-the `kravhantering-azure-dev` profile on every setup run, even when the user
+the `kravhantering-development` profile on every setup run, even when the user
 configuration already exists.
 
 The profile grants workspace access, including write access to `.git` so Codex
-can stage and commit changes. The inherited workspace protections for
-`.codex` and `.agents` remain read-only. The profile also grants network access
-to the loopback addresses used by host-side development and the Podman support
-services. The devcontainer profile in `.devcontainer/codex-config.toml` is
-separate and is not installed on the Azure VM.
+can stage and commit changes and to `.codex` so it can maintain repository-local
+configuration. The inherited workspace protection for `.agents` remains
+read-only. The profile also grants network access to the loopback addresses
+used by host-side development and the Podman support services. The devcontainer
+config in `.devcontainer/codex-config.toml` selects the same profile name with
+devcontainer-specific service domains; it is not installed on the Azure VM.
 
 Setup does not restart existing terminals or the VS Code Server. After setup
 changes command-path policy or repairs Codex configuration, close existing SSH

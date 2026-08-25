@@ -13,7 +13,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
     requirementRowNames,
     searchParamsFromPath,
     specificationApiPath,
-    waitForInitialAvailableRequirementsRefresh,
+    settleInitialEditorEffects,
   } = context
 
   describe('adding, importing, and creating requirement applications', () => {
@@ -335,7 +335,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       }
 
       renderRequirementsSpecificationDetailClient()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       fireEvent.change(context.requirementSearchInput('items'), {
         target: { value: 'DOES-NOT-MATCH' },
@@ -414,7 +414,7 @@ export function registerAddingLocalTests(context: SpecDetailWorkflowContext) {
       }
 
       renderRequirementsSpecificationDetailClient()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       fireEvent.change(context.requirementSearchInput('items'), {
         target: { value: 'IAM' },

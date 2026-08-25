@@ -865,7 +865,7 @@ Validation must prove these implementation contracts:
   and returns root and other users to system-only paths.
 - Bubblewrap can create the unprivileged network namespace used by Codex.
 - `/home/vscode/.codex/config.toml` selects the managed
-  `kravhantering-azure-dev` profile while preserving unrelated user settings.
+  `kravhantering-development` profile while preserving unrelated user settings.
 - `/workspace` exists, is owned by `vscode`, and contains the repo.
 - the data disk, `/workspace`, host state, and rootless Podman storage are
   mounted as described in the storage invariants.

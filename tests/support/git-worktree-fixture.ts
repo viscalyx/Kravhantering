@@ -20,6 +20,7 @@ export function createLinkedWorktreeFixture({
     'user.email',
     'test@example.invalid',
   ])
+  execFileSync('git', ['-C', workspace, 'config', 'commit.gpgsign', 'false'])
   writeFileSync(path.join(workspace, 'README.md'), 'primary\n')
   execFileSync('git', ['-C', workspace, 'add', 'README.md'])
   execFileSync('git', ['-C', workspace, 'commit', '-qm', 'initial'])

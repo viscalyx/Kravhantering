@@ -173,10 +173,11 @@ normal development. For detailed database and auth workflows, use:
 
 The devcontainer initializes `/home/vscode/.codex/config.toml` from
 `.devcontainer/codex-config.toml`. The template trusts `/workspace` and selects
-a devcontainer-specific permission profile. It keeps filesystem access scoped
-to the workspace, but enables network access to the local Compose service names
-used by development checks, including `db`, `idp`, `kong`, the HSA mock, and
-loopback.
+the `kravhantering-development` permission profile. It keeps filesystem access
+scoped to the workspace, grants write access to the repository's `.codex`
+configuration and Git metadata, and enables network access to the local Compose
+service names used by development checks, including `db`, `idp`, `kong`, the
+HSA mock, and loopback.
 
 This is required because the default Codex `workspace-write` sandbox blocks
 network access. Without the devcontainer profile, Codex commands cannot resolve

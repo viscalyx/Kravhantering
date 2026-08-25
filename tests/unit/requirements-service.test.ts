@@ -24,8 +24,10 @@ const mocks = vi.hoisted(() => ({
   editRequirement: vi.fn(),
   findSpecificationIdentity: vi.fn(),
   getAreaById: vi.fn(),
+  getExistingSpecificationRequirementIds: vi.fn(),
   getRequirementById: vi.fn(),
   getRequirementByUniqueId: vi.fn(),
+  getRequirementSelectionFilterForSpecification: vi.fn(),
   getSpecificationLocalRequirementDetail: vi.fn(),
   getVersionHistory: vi.fn(),
   graduateSpecificationLocalRequirementToLibrary: vi.fn(),
@@ -78,6 +80,20 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
 vi.mock('@/lib/dal/requirement-categories', () => ({
   listCategories: mocks.listCategories,
 }))
+
+vi.mock('@/lib/dal/requirement-selection-questions', async importOriginal => {
+  const actual =
+    await importOriginal<
+      typeof import('@/lib/dal/requirement-selection-questions')
+    >()
+  return {
+    ...actual,
+    getExistingSpecificationRequirementIds:
+      mocks.getExistingSpecificationRequirementIds,
+    getRequirementSelectionFilterForSpecification:
+      mocks.getRequirementSelectionFilterForSpecification,
+  }
+})
 
 vi.mock('@/lib/dal/deviations', () => ({
   countDeviationsBySpecification: mocks.countDeviationsBySpecification,
@@ -344,6 +360,13 @@ describe('createRequirementsService', () => {
     mocks.countRequirements.mockResolvedValue(0)
     mocks.getRequirementById.mockResolvedValue(makeRequirementRecord())
     mocks.getRequirementByUniqueId.mockResolvedValue(makeRequirementRecord())
+    mocks.getExistingSpecificationRequirementIds.mockResolvedValue([])
+    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
+      hasCurrentAnswers: false,
+      hasNoRequirementSelection: false,
+      hasRequirementSelection: false,
+      requirementIds: [],
+    })
     mocks.getVersionHistory.mockResolvedValue([])
     mocks.getAreaById.mockResolvedValue({
       id: 1,
@@ -1552,6 +1575,166 @@ describe('createRequirementsService', () => {
     })
     expect(mocks.querySpecificationItemPage).not.toHaveBeenCalled()
     expect(mocks.listDeviationsForSpecification).not.toHaveBeenCalled()
+  })
+
+  it('lists only published unlinked requirements and applies selection filtering only when requested', async () => {
+    mocks.getExistingSpecificationRequirementIds.mockResolvedValue([
+      11, 12, 13, 14,
+    ])
+    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
+      hasCurrentAnswers: true,
+      hasNoRequirementSelection: false,
+      hasRequirementSelection: true,
+      requirementIds: [21, 22],
+    })
+    const rows = [11, 21, 31].map(id => ({
+      cursorBoundary: {
+        nullRank: 0,
+        requirementId: id,
+        sortValue: `REQ-${id}`,
+      },
+      id,
+      isArchived: false,
+      maxVersion: 1,
+      normReferenceIds: null,
+      normReferenceUris: null,
+      requirementPackages: [],
+      status: 3,
+      suggestionCount: 0,
+      uniqueId: `REQ-${id}`,
+      versionNumber: 1,
+    }))
+    mocks.listRequirements.mockImplementation(
+      async (
+        _db,
+        options: {
+          excludeRequirementIds?: number[]
+          requirementIds?: number[]
+        },
+      ) =>
+        rows.filter(
+          row =>
+            !options.excludeRequirementIds?.includes(row.id) &&
+            (!options.requirementIds ||
+              options.requirementIds.includes(row.id)),
+        ),
+    )
+    const service = createTestRequirementsService()
+
+    const unfiltered = await service.getAvailableSpecificationRequirements(
+      makeContext(),
+      { specificationId: 7 },
+    )
+    const filtered = await service.getAvailableSpecificationRequirements(
+      makeContext(),
+      { applyRequirementSelectionFilter: true, specificationId: 7 },
+    )
+
+    expect(unfiltered.requirements.map(row => row.id)).toEqual([21, 31])
+    expect(unfiltered.selectionFilter).toMatchObject({ applied: false })
+    expect(filtered.requirements.map(row => row.id)).toEqual([21])
+    expect(filtered.selectionFilter).toMatchObject({
+      applied: true,
+      requirementIds: [21, 22],
+    })
+  })
+
+  it('validates cursors even when an applied requirement selection is empty', async () => {
+    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
+      hasCurrentAnswers: true,
+      hasNoRequirementSelection: false,
+      hasRequirementSelection: true,
+      requirementIds: [],
+    })
+    const service = createTestRequirementsService()
+
+    await expect(
+      service.getAvailableSpecificationRequirements(makeContext(), {
+        applyRequirementSelectionFilter: true,
+        cursor: 'not-a-valid-cursor',
+        specificationId: 7,
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_cursor' })
+    await expect(
+      service.getAvailableSpecificationRequirements(makeContext(), {
+        applyRequirementSelectionFilter: true,
+        specificationId: 7,
+      }),
+    ).resolves.toMatchObject({
+      pagination: { count: 0, hasMore: false, nextCursor: null },
+      requirements: [],
+      selectionFilter: { applied: true, requirementIds: [] },
+    })
+    expect(mocks.listRequirements).not.toHaveBeenCalled()
+  })
+
+  it('continues available requirements with an ADR-0041 forward cursor', async () => {
+    const rows = [31, 32, 33].map(id => ({
+      cursorBoundary: {
+        nullRank: 0,
+        requirementId: id,
+        sortValue: `REQ-${id}`,
+      },
+      id,
+      isArchived: false,
+      maxVersion: 1,
+      normReferenceIds: null,
+      normReferenceUris: null,
+      requirementPackages: [],
+      status: 3,
+      suggestionCount: 0,
+      uniqueId: `REQ-${id}`,
+      versionNumber: 1,
+    }))
+    mocks.listRequirements.mockImplementation(
+      async (
+        _db,
+        options: {
+          after?: { requirementId: number }
+          limit?: number
+        },
+      ) =>
+        rows
+          .filter(row => row.id > (options.after?.requirementId ?? 0))
+          .slice(0, options.limit),
+    )
+    const service = createTestRequirementsService()
+
+    const first = await service.getAvailableSpecificationRequirements(
+      makeContext(),
+      { limit: 1, specificationId: 7 },
+    )
+    const second = await service.getAvailableSpecificationRequirements(
+      makeContext(),
+      {
+        cursor: first.pagination.nextCursor ?? undefined,
+        limit: 1,
+        specificationId: 7,
+      },
+    )
+
+    expect(first.requirements.map(row => row.id)).toEqual([31])
+    expect(first.pagination).toMatchObject({ hasMore: true })
+    expect(second.requirements.map(row => row.id)).toEqual([32])
+  })
+
+  it('denies available requirements before loading selection data', async () => {
+    const denied = forbiddenError('Specification read denied')
+    const service = createRequirementsService({} as never, {
+      authorization: {
+        assertAuthorized: vi.fn(async () => Promise.reject(denied)),
+      },
+      logger,
+    })
+
+    await expect(
+      service.getAvailableSpecificationRequirements(makeContext(), {
+        specificationId: 7,
+      }),
+    ).rejects.toBe(denied)
+    expect(
+      mocks.getRequirementSelectionFilterForSpecification,
+    ).not.toHaveBeenCalled()
   })
 
   it('returns a bounded requirement application page from the shared query', async () => {

@@ -45,7 +45,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
           selectedRequirementPackages: [],
         })
       context.renderRequirementsSpecificationDetailClient(initialData)
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
 
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(context.requirementSortButton('items', 'description'))
@@ -85,7 +85,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
 
     it('renders selected-item actions as icon buttons with translated tooltips', async () => {
       context.renderRequirementsSpecificationDetailClient()
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
 
       for (const name of [
@@ -145,7 +145,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
         JSON.stringify(['uniqueId', 'description']),
       )
       context.renderRequirementsSpecificationDetailClient(initialData)
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
 
       fireEvent.click(
         context.requirementPackageButton('items', 'Shown package'),
@@ -367,7 +367,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
             (init as RequestInit | undefined)?.method === 'PATCH',
         ),
       ).toBe(false)
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
     })
 
     it('reports a selected-item resolution failure before bulk assignment', async () => {
@@ -447,7 +447,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       }
       context.specificationItemsGetItems = initialData.specificationItems.items
       context.renderRequirementsSpecificationDetailClient(initialData)
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
       context.selectRequirementRows(
         initialData.specificationItems.items.map(item => item.id),
       )
@@ -1024,7 +1024,7 @@ export function registerSelectionTests(context: SpecDetailWorkflowContext) {
       expect(
         within(dialog).getByText('specification.assignNeedsReferenceHelp'),
       ).toBeInTheDocument()
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
     })
 
     it('shows bulk needs reference response failures next to the bulk controls', async () => {

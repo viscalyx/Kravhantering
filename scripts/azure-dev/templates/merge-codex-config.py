@@ -19,6 +19,7 @@ PROFILE_START = "# >>> kravhantering azure dev managed profile"
 PROFILE_END = "# <<< kravhantering azure dev managed profile"
 WORKSPACE_SECTION = 'projects."/workspace"'
 MANAGED_PROFILE_NAMES = (
+    "permissions.kravhantering-development",
     "permissions.kravhantering-azure-dev",
     "permissions.kravhantering-devcontainer",
 )
@@ -138,12 +139,16 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
         filesystem.get(":workspace_roots"),
         "permission filesystem workspace roots",
     )
-    git_access = require_string(
-        workspace_roots.get(".git"),
-        "permission .git access",
-    )
-    if git_access != "write":
-        raise ValueError("permission .git access must be write")
+    workspace_root_access = {
+        path: require_string(
+            workspace_roots.get(path),
+            f"permission {path} access",
+        )
+        for path in (".codex", ".git")
+    }
+    for path, access in workspace_root_access.items():
+        if access != "write":
+            raise ValueError(f"permission {path} access must be write")
     network = require_table(profile.get("network"), "permission network")
     enabled = network.get("enabled")
     allow_local_binding = network.get("allow_local_binding")
@@ -166,7 +171,10 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
         f"extends = {toml_string(extends)}",
         "",
         f'[permissions.{default_permissions}.filesystem.":workspace_roots"]',
-        f'{toml_string(".git")} = {toml_string(git_access)}',
+        *(
+            f"{toml_string(path)} = {toml_string(access)}"
+            for path, access in workspace_root_access.items()
+        ),
         "",
         f"[permissions.{default_permissions}.network]",
         f"enabled = {str(enabled).lower()}",

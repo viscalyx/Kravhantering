@@ -246,11 +246,12 @@ config = tomllib.loads(
     Path('/home/vscode/.codex/config.toml').read_text(encoding='utf-8')
 )
 assert config['approval_policy'] == 'never'
-assert config['default_permissions'] == 'kravhantering-azure-dev'
+assert config['default_permissions'] == 'kravhantering-development'
 assert config['projects']['/workspace']['trust_level'] == 'trusted'
-profile = config['permissions']['kravhantering-azure-dev']
+profile = config['permissions']['kravhantering-development']
 assert profile['extends'] == ':workspace'
 assert profile['filesystem'][':workspace_roots'] == {
+    '.codex': 'write',
     '.git': 'write',
 }
 assert profile['network']['enabled'] is True

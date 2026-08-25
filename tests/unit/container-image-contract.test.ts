@@ -386,6 +386,14 @@ describe('container image contract', () => {
     const codexConfig = readWorkspaceFile('.codex/config.toml')
 
     expect(codexConfig).toContain('model = "gpt-5.6-sol"')
+    expect(codexConfig).toContain(
+      'default_permissions = "kravhantering-development"',
+    )
+    expect(codexConfig).toContain(
+      '[permissions.kravhantering-development.filesystem.":workspace_roots"]',
+    )
+    expect(codexConfig).toContain('".codex" = "write"')
+    expect(codexConfig).toContain('".git" = "write"')
     expect(codexConfig).toContain('[mcp_servers.playwright]')
     expect(codexConfig).toContain('[mcp_servers.github]')
     expect(codexConfig).toContain('[tui]')
@@ -394,7 +402,6 @@ describe('container image contract', () => {
       'status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]',
     )
     expect(codexConfig).toContain('status_line_use_colors = true')
-    expect(codexConfig).not.toContain('kravhantering-devcontainer')
   })
 
   it('keeps Codex devcontainer permissions in the user config template', () => {
@@ -402,12 +409,17 @@ describe('container image contract', () => {
 
     expect(codexConfig).toContain('approval_policy = "never"')
     expect(codexConfig).toContain(
-      'default_permissions = "kravhantering-devcontainer"',
+      'default_permissions = "kravhantering-development"',
     )
     expect(codexConfig).toContain('[projects."/workspace"]')
     expect(codexConfig).toContain('trust_level = "trusted"')
     expect(codexConfig).toContain(
-      '[permissions.kravhantering-devcontainer.network.domains]',
+      '[permissions.kravhantering-development.filesystem.":workspace_roots"]',
+    )
+    expect(codexConfig).toContain('".codex" = "write"')
+    expect(codexConfig).toContain('".git" = "write"')
+    expect(codexConfig).toContain(
+      '[permissions.kravhantering-development.network.domains]',
     )
     expect(codexConfig).not.toContain('[mcp_servers.playwright]')
     expect(codexConfig).not.toContain('[tui]')

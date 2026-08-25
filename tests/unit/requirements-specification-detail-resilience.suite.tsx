@@ -17,7 +17,8 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
     renderRequirementsSpecificationDetailClient,
     searchParamsFromPath,
     specificationApiPath,
-    waitForInitialAvailableRequirementsRefresh,
+    settleInitialEditorEffects,
+    waitForRequirementLoadMore,
   } = context
 
   describe('refresh failures and focused regression coverage', () => {
@@ -90,6 +91,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
         ],
       })
 
+      fireEvent.click(context.requirementSortButton('available', 'description'))
       expect(
         await screen.findByText('Available requirements offline'),
       ).toHaveAttribute('role', 'status')
@@ -115,6 +117,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
       }
       renderRequirementsSpecificationDetailClient()
 
+      fireEvent.click(context.requirementSortButton('available', 'description'))
       expect(
         await screen.findByText(
           'specification.loadAvailableRequirementsFailed',
@@ -235,7 +238,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
           name: 'specification.removeSelectedFromSpecification',
         }),
       ).toBeNull()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
     })
 
     it('renders English needs-reference fallbacks for sparse usage metadata', async () => {
@@ -298,7 +301,7 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
           specificationLifecycleStatusId: 4,
         },
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
       const menu = context.openTableActionMenu('common.moreActions')
       const managementReport = within(menu).getByRole('menuitem', {
         name: 'specification.downloadProfileReportPdf.specification.reportProfiles.management',
@@ -375,6 +378,14 @@ export function registerResilienceTests(context: SpecDetailWorkflowContext) {
         name: 'specification.filterWithRequirementSelectionQuestions',
       })
       fireEvent.click(toggle)
+      await waitFor(() => {
+        expect(
+          availableRequirementsFetchUrls().some(url =>
+            url.includes('applyRequirementSelectionFilter=true'),
+          ),
+        ).toBe(true)
+      })
+      await waitForRequirementLoadMore('available')
       context.triggerRequirementLoadMore('available')
 
       await waitFor(() => {

@@ -1,10 +1,20 @@
 # Shared Codex defaults for every Kravhantering development environment.
 # Codex automatically layers the settings on top of the user configuration in ~/.codex/config.tom.
 
+default_permissions = "kravhantering-development"
+
 personality = "pragmatic"
 
 model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
+
+[permissions.kravhantering-development]
+description = "Workspace access including Git metadata."
+extends = ":workspace"
+
+[permissions.kravhantering-development.filesystem.":workspace_roots"]
+".git" = "write"
+".codex" = "write"
 
 [mcp_servers.playwright]
 args = ["@playwright/mcp@latest"]

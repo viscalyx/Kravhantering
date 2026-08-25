@@ -45,12 +45,13 @@ trust_level = "untrusted"
     expect(firstMerge).toContain('model = "gpt-existing"')
     expect(firstMerge).toContain('[mcp_servers.example]')
     expect(firstMerge).toContain(
-      'default_permissions = "kravhantering-azure-dev"',
+      'default_permissions = "kravhantering-development"',
     )
-    expect(firstMerge).toContain('[permissions.kravhantering-azure-dev]')
+    expect(firstMerge).toContain('[permissions.kravhantering-development]')
     expect(firstMerge).toContain(
-      '[permissions.kravhantering-azure-dev.filesystem.":workspace_roots"]',
+      '[permissions.kravhantering-development.filesystem.":workspace_roots"]',
     )
+    expect(firstMerge).toContain('".codex" = "write"')
     expect(firstMerge).toContain('".git" = "write"')
     expect(firstMerge).toContain('allow_local_binding = true')
     expect(firstMerge).toContain('"127.0.0.1" = "allow"')
@@ -81,7 +82,9 @@ command = "example"
     const merged = mergeConfig(configPath)
 
     expect(merged).not.toContain('kravhantering-devcontainer')
-    expect(merged).toContain('default_permissions = "kravhantering-azure-dev"')
+    expect(merged).toContain(
+      'default_permissions = "kravhantering-development"',
+    )
     expect(merged).toContain('[mcp_servers.example]')
   })
 })
