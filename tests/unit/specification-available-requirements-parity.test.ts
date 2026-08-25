@@ -2,6 +2,10 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockDb = {}
+const availableRequirementsSort = {
+  by: 'uniqueId',
+  direction: 'asc',
+} as const
 const mocks = vi.hoisted(() => ({
   createRequirementsRestRuntime: vi.fn(),
   createRequirementsRuntime: vi.fn(),
@@ -207,7 +211,7 @@ describe('available requirement adapter parity', () => {
     })
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/42/available-requirements?limit=200&locale=en&sortBy=uniqueId&sortDirection=asc',
+        `http://localhost/api/requirements-specifications/42/available-requirements?limit=200&locale=en&sortBy=${availableRequirementsSort.by}&sortDirection=${availableRequirementsSort.direction}`,
       ),
       { params: Promise.resolve({ id: '42' }) },
     )
@@ -223,5 +227,21 @@ describe('available requirement adapter parity', () => {
     expect(refresh.requirements.map((row: { id: number }) => row.id)).toEqual([
       21, 31,
     ])
+    expect(mocks.listRequirements).toHaveBeenNthCalledWith(
+      1,
+      mockDb,
+      expect.objectContaining({
+        sortBy: availableRequirementsSort.by,
+        sortDirection: availableRequirementsSort.direction,
+      }),
+    )
+    expect(mocks.listRequirements).toHaveBeenNthCalledWith(
+      2,
+      mockDb,
+      expect.objectContaining({
+        sortBy: availableRequirementsSort.by,
+        sortDirection: availableRequirementsSort.direction,
+      }),
+    )
   })
 })

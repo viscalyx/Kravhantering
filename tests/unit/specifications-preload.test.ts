@@ -360,6 +360,8 @@ describe('specifications preload', () => {
       responsible: { displayName: 'Owner' },
       specification: { name: 'Specification', specificationCode: 'SPEC-42' },
     })
+    expect(mocks.listAreas).toHaveBeenCalled()
+    expect(data.areas).toEqual([])
   })
 
   it('returns a forbidden shell without disclosing missing summary data', async () => {

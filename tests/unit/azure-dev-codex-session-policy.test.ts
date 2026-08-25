@@ -26,7 +26,7 @@ const workspaceHostRootResult = spawnSync(
   ],
   { encoding: 'utf8' },
 )
-const workspaceHostRoot = workspaceHostRootResult.stdout.trim()
+const workspaceHostRoot = workspaceHostRootResult.stdout?.trim() ?? ''
 const dockerPolicyPath =
   workspaceHostRootResult.status === 0 && workspaceHostRoot
     ? path.join(

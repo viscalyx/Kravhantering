@@ -114,6 +114,30 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
         requirementIds: [201],
       },
     })
+    expect(mocks.getAvailableSpecificationRequirements).toHaveBeenCalledWith(
+      mockContext,
+      {
+        applyRequirementSelectionFilter: false,
+        capacitySurface: 'rest',
+        cursor: 'next',
+        filters: {
+          areaIds: [1],
+          categoryIds: [2],
+          descriptionSearch: 'access',
+          normReferenceIds: [3],
+          priorityLevelIds: [6],
+          qualityCharacteristicIds: [4],
+          requirementPackageIds: [5],
+          typeIds: [7],
+          uniqueIdSearch: 'IAM',
+          verifiable: ['true'],
+        },
+        limit: 25,
+        locale: 'sv',
+        sort: { by: 'description', direction: 'desc' },
+        specificationId: 6,
+      },
+    )
   })
 
   it('applies requirement-selection filtering only as an explicit opt-in', async () => {

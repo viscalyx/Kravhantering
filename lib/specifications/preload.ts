@@ -234,54 +234,13 @@ export async function loadRequirementsSpecificationDetailInitialData({
     )
   }
 
-  let availableRequirements: CaptureResult<
-    RequirementsSpecificationDetailInitialData['availableRequirements']
-  >
-  try {
-    availableRequirements = {
-      value: await loadAvailableRequirements(
-        locale,
-        specResult.value.id,
-        service,
-        context,
-      ),
-    }
-  } catch (error) {
-    if (
-      isRequirementsServiceError(error) &&
-      (error.status === 401 || error.status === 403)
-    ) {
-      const summary = await getSpecificationForbiddenSummaryById(
-        db,
-        specResult.value.id,
-      )
-      return emptyDetailInitialData(
-        null,
-        specResult.error ? [specResult.error] : [],
-        {
-          forbidden: summary
-            ? {
-                responsible: summary.responsible,
-                specification: {
-                  name: summary.name,
-                  specificationCode: summary.specificationCode,
-                },
-              }
-            : undefined,
-        },
-      )
-    }
-    logSanitizedError('Failed to preload specification data', error, {
-      resourceKey: 'available requirements',
-    })
-    availableRequirements = {
-      error: {
-        key: 'available requirements',
-        message: partialDataErrorMessage,
-      },
-      value: { hasMore: false, nextCursor: null, rows: [] },
-    }
-  }
+  const availableRequirementsPromise = loadAvailableRequirements(
+    locale,
+    specResult.value.id,
+    service,
+    context,
+  )
+  void availableRequirementsPromise.catch(() => undefined)
 
   const coAuthorHsaIds = await listSpecificationCoAuthorHsaIds(
     db,
@@ -403,6 +362,50 @@ export async function loadRequirementsSpecificationDetailInitialData({
       listLinkedNormReferenceOptions(db, [3]),
     ),
   ])
+
+  let availableRequirements: CaptureResult<
+    RequirementsSpecificationDetailInitialData['availableRequirements']
+  >
+  try {
+    availableRequirements = {
+      value: await availableRequirementsPromise,
+    }
+  } catch (error) {
+    if (
+      isRequirementsServiceError(error) &&
+      (error.status === 401 || error.status === 403)
+    ) {
+      const summary = await getSpecificationForbiddenSummaryById(
+        db,
+        specResult.value.id,
+      )
+      return emptyDetailInitialData(
+        null,
+        specResult.error ? [specResult.error] : [],
+        {
+          forbidden: summary
+            ? {
+                responsible: summary.responsible,
+                specification: {
+                  name: summary.name,
+                  specificationCode: summary.specificationCode,
+                },
+              }
+            : undefined,
+        },
+      )
+    }
+    logSanitizedError('Failed to preload specification data', error, {
+      resourceKey: 'available requirements',
+    })
+    availableRequirements = {
+      error: {
+        key: 'available requirements',
+        message: partialDataErrorMessage,
+      },
+      value: { hasMore: false, nextCursor: null, rows: [] },
+    }
+  }
 
   return {
     aiGenerationAvailability: aiGenerationAvailability.value,

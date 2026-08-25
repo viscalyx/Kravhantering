@@ -577,60 +577,68 @@ describe('CI container runtime', () => {
   })
 
   it.each([
-    'Build and Smoke Test Container Stack',
-    'Production App authenticated topology / Build and Smoke Test Container Stack',
-  ])('extracts secret-safe runner metadata from completed job %s', jobName => {
-    const fixture = createToolchainFixture()
-    const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
-    const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
-    fs.writeFileSync(
-      ghPath,
-      [
-        '#!/usr/bin/env bash',
-        'if [[ "$*" == "api --help" ]]; then',
-        "  printf '%s\\n' '      --allow-escape-sequences   Allow printing terminal escape sequences'",
-        "  for _ in {1..10000}; do printf '%s\\n' 'additional help text'; done",
-        'elif [[ "$*" == *"/jobs?filter=latest"* ]]; then',
-        `  printf '%s\\n' '${JSON.stringify({ jobs: [{ id: 123, name: jobName, status: 'completed' }] })}'`,
-        'elif [[ "$*" != *"--allow-escape-sequences"* ]]; then',
-        "  printf '%s\\n' 'the response contains terminal escape sequences' >&2",
-        '  exit 1',
-        'else',
-        "  printf '\\033[36;1m%s\\033[0m\\n' 'colored job command'",
-        "  printf '%s\\n' 'Current runner version: 2.999.0'",
-        "  printf '%s\\n' 'Runner Image Provisioner'",
-        "  printf '%s\\n' 'Hosted Compute Agent'",
-        "  printf '%s\\n' 'Version: 20260810.271'",
-        "  printf '%s\\n' 'Commit: 0123456789abcdef0123456789abcdef01234567'",
-        "  printf '%s\\n' 'Build Date: 2026-08-10T10:11:12Z'",
-        "  printf '%s\\n' 'Runner Image'",
-        "  printf '%s\\n' 'Image: ubuntu-24.04'",
-        "  printf '%s\\n' 'Version: 20260810.271.1'",
-        "  printf '%s\\n' 'UNRELATED_SECRET=2.0.999.1'",
-        'fi',
-        '',
-      ].join('\n'),
-      { mode: 0o755 },
-    )
+    ['Build and Smoke Test Container Stack', '20260810.271', '20260811.271.1'],
+    [
+      'Production App authenticated topology / Build and Smoke Test Container Stack',
+      '20260707',
+      '20260708',
+    ],
+  ])(
+    'extracts secret-safe runner metadata from completed job %s',
+    (jobName, provisionerVersion, imageVersion) => {
+      const fixture = createToolchainFixture()
+      const evidenceDirectory = path.join(fixture.root, 'runner-evidence')
+      const ghPath = path.join(fixture.root, 'usr', 'bin', 'gh')
+      fs.writeFileSync(
+        ghPath,
+        [
+          '#!/usr/bin/env bash',
+          'if [[ "$*" == "api --help" ]]; then',
+          "  printf '%s\\n' '      --allow-escape-sequences   Allow printing terminal escape sequences'",
+          "  for _ in {1..10000}; do printf '%s\\n' 'additional help text'; done",
+          'elif [[ "$*" == *"/jobs?filter=latest"* ]]; then',
+          `  printf '%s\\n' '${JSON.stringify({ jobs: [{ id: 123, name: jobName, status: 'completed' }] })}'`,
+          'elif [[ "$*" != *"--allow-escape-sequences"* ]]; then',
+          "  printf '%s\\n' 'the response contains terminal escape sequences' >&2",
+          '  exit 1',
+          'else',
+          "  printf '\\033[36;1m%s\\033[0m\\n' 'colored job command'",
+          "  printf '%s\\n' 'Current runner version: 2.999.0'",
+          "  printf '%s\\n' 'Runner Image Provisioner'",
+          "  printf '%s\\n' 'Hosted Compute Agent'",
+          `  printf '%s\\n' 'Version: ${provisionerVersion}'`,
+          "  printf '%s\\n' 'Commit: 0123456789abcdef0123456789abcdef01234567'",
+          "  printf '%s\\n' 'Build Date: 2026-08-10T10:11:12Z'",
+          "  printf '%s\\n' 'Runner Image'",
+          "  printf '%s\\n' 'Image: ubuntu-24.04'",
+          `  printf '%s\\n' 'Version: ${imageVersion}'`,
+          "  printf '%s\\n' 'UNRELATED_SECRET=2.0.999.1'",
+          'fi',
+          '',
+        ].join('\n'),
+        { mode: 0o755 },
+      )
 
-    const result = runRuntimeScript(['collect-runner-metadata'], fixture, {
-      CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
-      CI_RUNTIME_TARGET_JOB: 'Build and Smoke Test Container Stack',
-      GH_TOKEN: 'test-token',
-      GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
-      GITHUB_RUN_ID: '12345',
-    })
+      const result = runRuntimeScript(['collect-runner-metadata'], fixture, {
+        CI_RUNTIME_EVIDENCE_DIR: evidenceDirectory,
+        CI_RUNTIME_TARGET_JOB: 'Build and Smoke Test Container Stack',
+        GH_TOKEN: 'test-token',
+        GITHUB_REPOSITORY: 'viscalyx/Kravhantering',
+        GITHUB_RUN_ID: '12345',
+      })
 
-    expect(result.status).toBe(0)
-    const metadata = fs.readFileSync(
-      path.join(evidenceDirectory, 'github-runner-metadata.txt'),
-      'utf8',
-    )
-    expect(metadata).toContain('Hosted Compute Agent')
-    expect(metadata).toContain('Version: 20260810.271')
-    expect(metadata).toContain('Image: ubuntu-24.04')
-    expect(metadata).not.toContain('UNRELATED_SECRET')
-  })
+      expect(result.status).toBe(0)
+      const metadata = fs.readFileSync(
+        path.join(evidenceDirectory, 'github-runner-metadata.txt'),
+        'utf8',
+      )
+      expect(metadata).toContain('Hosted Compute Agent')
+      expect(metadata).toContain(`Version: ${provisionerVersion}`)
+      expect(metadata).toContain('Image: ubuntu-24.04')
+      expect(metadata).toContain(`Version: ${imageVersion}`)
+      expect(metadata).not.toContain('UNRELATED_SECRET')
+    },
+  )
 
   it('fails closed when multiple reusable jobs share the target suffix', () => {
     const fixture = createToolchainFixture()
