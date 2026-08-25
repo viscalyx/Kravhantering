@@ -18,6 +18,7 @@ ROOT_END = "# <<< kravhantering azure dev managed root"
 PROFILE_START = "# >>> kravhantering azure dev managed profile"
 PROFILE_END = "# <<< kravhantering azure dev managed profile"
 WORKSPACE_SECTION = 'projects."/workspace"'
+CODEX_SKILLS_PATH = "~/.codex/skills"
 MANAGED_PROFILE_NAMES = (
     "permissions.kravhantering-development",
     "permissions.kravhantering-azure-dev",
@@ -135,6 +136,12 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
     description = require_string(profile.get("description"), "permission description")
     extends = require_string(profile.get("extends"), "permission extends")
     filesystem = require_table(profile.get("filesystem"), "permission filesystem")
+    codex_skills_access = require_string(
+        filesystem.get(CODEX_SKILLS_PATH),
+        f"permission {CODEX_SKILLS_PATH} access",
+    )
+    if codex_skills_access != "write":
+        raise ValueError(f"permission {CODEX_SKILLS_PATH} access must be write")
     workspace_roots = require_table(
         filesystem.get(":workspace_roots"),
         "permission filesystem workspace roots",
@@ -169,6 +176,9 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
         f"[permissions.{default_permissions}]",
         f"description = {toml_string(description)}",
         f"extends = {toml_string(extends)}",
+        "",
+        f"[permissions.{default_permissions}.filesystem]",
+        f"{toml_string(CODEX_SKILLS_PATH)} = {toml_string(codex_skills_access)}",
         "",
         f'[permissions.{default_permissions}.filesystem.":workspace_roots"]',
         *(

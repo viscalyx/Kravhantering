@@ -390,6 +390,10 @@ describe('container image contract', () => {
       'default_permissions = "kravhantering-development"',
     )
     expect(codexConfig).toContain(
+      '[permissions.kravhantering-development.filesystem]',
+    )
+    expect(codexConfig).toContain('"~/.codex/skills" = "write"')
+    expect(codexConfig).toContain(
       '[permissions.kravhantering-development.filesystem.":workspace_roots"]',
     )
     expect(codexConfig).toContain('".codex" = "write"')
@@ -414,6 +418,10 @@ describe('container image contract', () => {
     expect(codexConfig).toContain('[projects."/workspace"]')
     expect(codexConfig).toContain('trust_level = "trusted"')
     expect(codexConfig).toContain(
+      '[permissions.kravhantering-development.filesystem]',
+    )
+    expect(codexConfig).toContain('"~/.codex/skills" = "write"')
+    expect(codexConfig).toContain(
       '[permissions.kravhantering-development.filesystem.":workspace_roots"]',
     )
     expect(codexConfig).toContain('".codex" = "write"')
@@ -430,6 +438,25 @@ describe('container image contract', () => {
     ]) {
       expect(readWorkspaceFile(relativePath)).toContain(
         'cp .devcontainer/codex-config.toml /home/vscode/.codex/config.toml',
+      )
+    }
+  })
+
+  it('starts the shared Codex app-server before devcontainer terminals are used', () => {
+    const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
+
+    expect(dockerfile).toContain('CODEX_HOME=/home/vscode/.codex')
+
+    for (const relativePath of [
+      '.devcontainer/devcontainer.json',
+      '.devcontainer/elevated/devcontainer.json',
+    ]) {
+      const devcontainer = parseJsonc(readWorkspaceFile(relativePath)) as {
+        postStartCommand: string
+      }
+
+      expect(devcontainer.postStartCommand).toMatch(
+        /^bash -lc 'codex app-server daemon start \|\| \{ echo "Codex shared app-server daemon failed to start\." >&2; exit 1; \};/u,
       )
     }
   })

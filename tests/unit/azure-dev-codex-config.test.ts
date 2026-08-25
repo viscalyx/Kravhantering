@@ -49,6 +49,10 @@ trust_level = "untrusted"
     )
     expect(firstMerge).toContain('[permissions.kravhantering-development]')
     expect(firstMerge).toContain(
+      '[permissions.kravhantering-development.filesystem]',
+    )
+    expect(firstMerge).toContain('"~/.codex/skills" = "write"')
+    expect(firstMerge).toContain(
       '[permissions.kravhantering-development.filesystem.":workspace_roots"]',
     )
     expect(firstMerge).toContain('".codex" = "write"')

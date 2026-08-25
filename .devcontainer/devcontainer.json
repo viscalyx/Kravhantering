@@ -251,7 +251,7 @@
   // fail with ECONNREFUSED 127.0.0.1:8080 because Keycloak runs in a
   // separate container reachable only as `idp:8080`. The script is
   // idempotent and runs the forwarder fully detached.
-  "postStartCommand": "bash -lc 'git config --global --unset gpg.ssh.program || true; npm run devcontainer:hsa-mock:renew-startup; bash .devcontainer/start-keycloak-forwarder.sh || true; npm run db:setup || { echo \"Automatic db:setup failed; retrying once after 10 seconds...\" >&2; sleep 10; npm run db:setup || echo \"Automatic db:setup still failed. If SQL Server failures persist, look at the database container logs to see what failed.\" >&2; }'",
+  "postStartCommand": "bash -lc 'codex app-server daemon start || { echo \"Codex shared app-server daemon failed to start.\" >&2; exit 1; }; git config --global --unset gpg.ssh.program || true; npm run devcontainer:hsa-mock:renew-startup; bash .devcontainer/start-keycloak-forwarder.sh || true; npm run db:setup || { echo \"Automatic db:setup failed; retrying once after 10 seconds...\" >&2; sleep 10; npm run db:setup || echo \"Automatic db:setup still failed. If SQL Server failures persist, look at the database container logs to see what failed.\" >&2; }'",
 
   // Configure remote user
   "remoteUser": "vscode"

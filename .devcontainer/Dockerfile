@@ -49,10 +49,12 @@ RUN mkdir -p /home/vscode/.config/containers && \
 # the matching upstream GitHub release. The same installer contract is used by
 # the personal Azure development environment.
 COPY scripts/azure-dev/templates/install-codex.sh /usr/local/share/kravhantering/install-codex.sh
-RUN CODEX_HOME=/usr/local/lib/codex \
+RUN install -d -o vscode -g vscode -m 0755 /home/vscode/.codex && \
+    CODEX_HOME=/home/vscode/.codex \
     CODEX_INSTALL_DIR=/usr/local/bin \
     CODEX_NON_INTERACTIVE=1 \
     bash /usr/local/share/kravhantering/install-codex.sh && \
+    chown -R vscode:vscode /home/vscode/.codex && \
     codex --version
 
 FROM codex-ready AS development

@@ -50,6 +50,9 @@ GIT_SSH_SIGNING_PUBLIC_KEY="${AZURE_DEV_GIT_SSH_SIGNING_PUBLIC_KEY:-}"
 CODEX_MANAGED_BIN_DIR="${VSCODE_HOME}/.local/bin"
 CODEX_MANAGED_LAUNCHER="${CODEX_MANAGED_BIN_DIR}/codex"
 CODEX_MANAGED_PATH="${CODEX_MANAGED_BIN_DIR}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+CODEX_APP_SERVER_UNIT_NAME="krav-codex-app-server.service"
+CODEX_APP_SERVER_UNIT_DIR="${VSCODE_HOME}/.config/systemd/user"
+CODEX_APP_SERVER_UNIT_PATH="${CODEX_APP_SERVER_UNIT_DIR}/${CODEX_APP_SERVER_UNIT_NAME}"
 SSHD_ROOT_LOGIN_CONFIG="/etc/ssh/sshd_config.d/00-kravhantering-root-login.conf"
 LYCHEE_VERSION="v0.24.2"
 
@@ -1148,6 +1151,84 @@ run_user_systemctl() {
     systemctl --user "$@"
 }
 
+run_codex_as_vscode() {
+  local uid="$1"
+  shift
+  runuser -u "${VSCODE_USER}" -- env -i \
+    HOME="${VSCODE_HOME}" \
+    USER="${VSCODE_USER}" \
+    LOGNAME="${VSCODE_USER}" \
+    CODEX_HOME="${CODEX_HOME_DIR}" \
+    PATH="${CODEX_MANAGED_PATH}" \
+    XDG_CONFIG_HOME="${VSCODE_HOME}/.config" \
+    XDG_DATA_HOME="${VSCODE_HOME}/.local/share" \
+    XDG_RUNTIME_DIR="/run/user/${uid}" \
+    DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${uid}/bus" \
+    TMPDIR="${VSCODE_TEMP_DIR}" \
+    TMP="${VSCODE_TEMP_DIR}" \
+    TEMP="${VSCODE_TEMP_DIR}" \
+    "${CODEX_MANAGED_LAUNCHER}" "$@"
+}
+
+configure_codex_app_server() {
+  local uid version_result expected_socket
+  uid="$(id -u "${VSCODE_USER}")"
+  expected_socket="${CODEX_HOME_DIR}/app-server-control/app-server-control.sock"
+
+  install -d -o "${VSCODE_USER}" -g "${VSCODE_USER}" -m 0700 \
+    "${CODEX_APP_SERVER_UNIT_DIR}"
+  cat > "${CODEX_APP_SERVER_UNIT_PATH}" <<EOF
+[Unit]
+Description=Kravhantering shared Codex app-server daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=HOME=${VSCODE_HOME}
+Environment=CODEX_HOME=${CODEX_HOME_DIR}
+Environment=PATH=${CODEX_MANAGED_PATH}
+Environment=TMPDIR=${VSCODE_TEMP_DIR}
+Environment=TMP=${VSCODE_TEMP_DIR}
+Environment=TEMP=${VSCODE_TEMP_DIR}
+ExecStart=${CODEX_MANAGED_LAUNCHER} app-server daemon bootstrap
+ExecStop=${CODEX_MANAGED_LAUNCHER} app-server daemon stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target
+EOF
+  chown "${VSCODE_USER}:${VSCODE_USER}" "${CODEX_APP_SERVER_UNIT_PATH}"
+  chmod 0600 "${CODEX_APP_SERVER_UNIT_PATH}"
+
+  run_user_systemctl "${uid}" daemon-reload
+  run_user_systemctl "${uid}" enable "${CODEX_APP_SERVER_UNIT_NAME}"
+  run_user_systemctl_or_diagnose "${uid}" \
+    'restart shared Codex app-server bootstrap service' restart \
+    "${CODEX_APP_SERVER_UNIT_NAME}"
+
+  if ! version_result="$(
+    run_codex_as_vscode "${uid}" app-server daemon version
+  )"; then
+    log 'shared Codex app-server daemon did not become reachable'
+    return 1
+  fi
+  if ! printf '%s\n' "${version_result}" | jq -e \
+    --arg expectedVersion "${codex_target_version}" \
+    --arg expectedSocket "${expected_socket}" \
+    '(.status == "running") and
+      .backend == "pid" and
+      .managedCodexVersion == $expectedVersion and
+      .cliVersion == $expectedVersion and
+      .appServerVersion == $expectedVersion and
+      .socketPath == $expectedSocket' >/dev/null; then
+    log 'shared Codex app-server daemon failed readiness validation'
+    return 1
+  fi
+
+  log 'shared Codex app-server daemon bootstrapped and ready'
+}
+
 run_user_podman() {
   local uid="$1"
   shift
@@ -1497,6 +1578,7 @@ dump_support_stack_diagnostics() {
   run_user_systemctl "${uid}" --no-pager --failed || true
 
   local units=(
+    krav-codex-app-server.service
     krav-support-network.service
     krav-sqlserver-volume.service
     krav-hsa-mtls-state-volume.service
@@ -1602,6 +1684,7 @@ main() {
   install_quadlet_units
   build_hsa_images
   start_user_quadlets
+  configure_codex_app_server
   reconcile_persistent_hsa_renewal
   install_optional_tailscale
   validate_loopback_ports

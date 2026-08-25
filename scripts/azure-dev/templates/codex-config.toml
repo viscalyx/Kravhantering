@@ -10,6 +10,9 @@ trust_level = "trusted"
 description = "Workspace access with Kravhantering Azure VM service network."
 extends = ":workspace"
 
+[permissions.kravhantering-development.filesystem]
+"~/.codex/skills" = "write"
+
 [permissions.kravhantering-development.filesystem.":workspace_roots"]
 ".codex" = "write"
 ".git" = "write"
