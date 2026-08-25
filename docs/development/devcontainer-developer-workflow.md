@@ -100,11 +100,13 @@ codex app-server daemon version
 
 The command is available to the `vscode` user in both profiles. Codex keeps
 configuration, authentication, sessions, skills, and plugins under
-`/home/vscode/.codex`. On first creation, both profiles initialize
-`config.toml` from `.devcontainer/codex-config.toml` with the trust and
-permission settings required inside the devcontainer. Shared project defaults,
-including the model, MCP servers, status line, and terminal title, live in
-`.codex/config.toml` and apply in every trusted development environment.
+`/home/vscode/.codex`. On every creation or rebuild, both profiles merge
+`.devcontainer/codex-config.toml` into `config.toml` with the trust and
+permission settings required inside the devcontainer. The merge preserves
+unrelated personal settings and migrates obsolete managed profiles. Shared
+project defaults, including the model, MCP servers, status line, and terminal
+title, live in `.codex/config.toml` and apply in every trusted development
+environment.
 
 Every container start runs `codex app-server daemon start` before the other
 post-start reconciliation. The command is idempotent and waits until the local

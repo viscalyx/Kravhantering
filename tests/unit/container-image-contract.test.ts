@@ -437,7 +437,10 @@ describe('container image contract', () => {
       '.devcontainer/elevated/devcontainer.json',
     ]) {
       expect(readWorkspaceFile(relativePath)).toContain(
-        'cp .devcontainer/codex-config.toml /home/vscode/.codex/config.toml',
+        'python3 scripts/azure-dev/templates/merge-codex-config.py .devcontainer/codex-config.toml /home/vscode/.codex/config.toml',
+      )
+      expect(readWorkspaceFile(relativePath)).not.toContain(
+        'if [ ! -f /home/vscode/.codex/config.toml ]',
       )
     }
   })
