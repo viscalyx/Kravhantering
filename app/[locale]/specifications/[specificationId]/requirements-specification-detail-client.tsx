@@ -1891,11 +1891,12 @@ export default function KravunderlagDetailClient({
         const confirmed = await confirm({
           anchorEl,
           confirmText: t('clearNeedsReferenceAction'),
-          icon: 'warning',
+          icon: 'caution',
           message: t('clearNeedsReferenceConfirm', {
             ids: items.map(item => item.uniqueId).join(', '),
           }),
           title: t('clearNeedsReferenceTitle'),
+          variant: 'danger',
         })
         if (!confirmed) {
           editorWorkflow.actions.cancelBulkAction()

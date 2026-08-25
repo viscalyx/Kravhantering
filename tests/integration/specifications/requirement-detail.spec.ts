@@ -1324,7 +1324,8 @@ test.describe('Requirements specification deterministic manual cases', () => {
         )
       })
       await page.reload()
-      await itemsResponse
+      const response = await itemsResponse
+      expect(response.ok()).toBe(true)
       await expect(leftPanel.locator('tbody').first()).not.toHaveClass(
         /pointer-events-none/u,
       )

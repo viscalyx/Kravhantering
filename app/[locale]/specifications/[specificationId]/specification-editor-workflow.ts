@@ -485,19 +485,24 @@ export function createSpecificationEditorWorkflow({
     const disappearedRefs = [...itemRefs].filter(
       itemRef => !resolvedByRef.has(itemRef),
     )
-    if (disappearedRefs.length > 0) {
-      const nextSelected = new Set(state.selectedItemRefs)
-      for (const itemRef of disappearedRefs) nextSelected.delete(itemRef)
-      publish({
-        selectedItemRefs: nextSelected,
-        selectionNotice: {
-          kind: 'items-disappeared',
-          uniqueIds: disappearedRefs.map(
-            itemRef => knownItemsByRef.get(itemRef)?.uniqueId ?? itemRef,
-          ),
-        },
-      })
-    }
+    const nextSelected = new Set(state.selectedItemRefs)
+    for (const itemRef of disappearedRefs) nextSelected.delete(itemRef)
+    publish({
+      items: state.items.map(item =>
+        item.itemRef ? (resolvedByRef.get(item.itemRef) ?? item) : item,
+      ),
+      selectedItemRefs: nextSelected,
+      ...(disappearedRefs.length > 0
+        ? {
+            selectionNotice: {
+              kind: 'items-disappeared' as const,
+              uniqueIds: disappearedRefs.map(
+                itemRef => knownItemsByRef.get(itemRef)?.uniqueId ?? itemRef,
+              ),
+            },
+          }
+        : {}),
+    })
     return [...itemRefs].flatMap(itemRef => {
       const item = resolvedByRef.get(itemRef)
       return item ? [item] : []

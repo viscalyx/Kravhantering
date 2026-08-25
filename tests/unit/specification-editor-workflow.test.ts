@@ -434,6 +434,55 @@ describe('specification editor workflow', () => {
     ])
   })
 
+  it('refreshes selected state when the authoritative assignment is already applied', async () => {
+    const first = {
+      ...item(1, 'lib:1', 'FIRST'),
+      needsReference: 'Stale text',
+      needsReferenceId: 81,
+    }
+    const adapter = new InMemorySpecificationEditorAdapter({
+      items: [first],
+      resolveItems: () =>
+        Promise.resolve([
+          {
+            itemRef: 'lib:1',
+            kind: 'library',
+            needsReference: 'Authoritative text',
+            needsReferenceId: 82,
+            uniqueId: 'FIRST',
+          },
+        ]),
+    })
+    const workflow = createSpecificationEditorWorkflow({
+      adapter,
+      initialItems: page([first]),
+      initialPackageCatalog: emptyPackageCatalog(),
+      query: defaultQuery,
+    })
+    workflow.actions.selectLoadedItems(new Set([1]))
+
+    await expect(workflow.actions.assignNeedsReference(82)).resolves.toEqual({
+      failedUniqueIds: [],
+      succeededCount: 0,
+    })
+
+    expect(adapter.needsReferenceAssignments).toEqual([])
+    expect(workflow.getState()).toMatchObject({
+      items: [
+        expect.objectContaining({
+          needsReference: 'Authoritative text',
+          needsReferenceId: 82,
+        }),
+      ],
+      selectedItems: [
+        expect.objectContaining({
+          needsReference: 'Authoritative text',
+          needsReferenceId: 82,
+        }),
+      ],
+    })
+  })
+
   it('traverses requirement packages and reconciles selected package filters', async () => {
     const adapter = new InMemorySpecificationEditorAdapter({
       loadRequirementPackages: request => {
