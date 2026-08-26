@@ -1,9 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  getExistingSpecificationRequirementIds,
-  getRequirementSelectionFilterForSpecification,
-} from '@/lib/dal/requirement-selection-questions'
 import { getSpecificationById } from '@/lib/dal/requirements-specifications'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
@@ -15,15 +11,12 @@ import {
   positiveIntegerStringSchema,
   queryBooleanStringSchema,
 } from '@/lib/http/validation'
-import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
   DEFAULT_REQUIREMENT_SORT,
   REQUIREMENT_SORT_FIELDS,
 } from '@/lib/requirements/list-view'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 import { toHttpErrorPayload } from '@/lib/requirements/service'
-import { authorize } from '@/lib/requirements/service-shared'
-import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 type Params = Promise<{ id: string }>
 
@@ -71,52 +64,16 @@ export async function GET(
   if (!parsedQuery.ok) return parsedQuery.response
 
   try {
-    const { authorization, context, db } =
+    const { context, db, service } =
       await createRequirementsRestRuntime(request)
     const specification = await getSpecificationById(db, parsedParams.data.id)
     if (!specification) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const specificationId = specification.id
-    await authorize(
-      authorization,
-      {
-        kind: 'get_specification_items',
-        specificationId,
-      },
-      context,
-    )
-
-    const [selectionFilter, existingRequirementIds] = await Promise.all([
-      getRequirementSelectionFilterForSpecification(db, specificationId),
-      getExistingSpecificationRequirementIds(db, specificationId),
-    ])
-
-    const shouldApplyRequirementSelectionFilter =
-      parsedQuery.data.applyRequirementSelectionFilter === 'true' &&
-      selectionFilter.hasRequirementSelection
-    const responseSelectionFilter = {
-      ...selectionFilter,
-      applied: shouldApplyRequirementSelectionFilter,
-    }
-
-    if (
-      shouldApplyRequirementSelectionFilter &&
-      selectionFilter.requirementIds.length === 0
-    ) {
-      return NextResponse.json({
-        pagination: {
-          count: 0,
-          hasMore: false,
-          limit: parsedQuery.data.limit ?? 200,
-          nextCursor: null,
-        },
-        requirements: [],
-        selectionFilter: responseSelectionFilter,
-      })
-    }
 
     const {
+      applyRequirementSelectionFilter,
       areaIds = [],
       categoryIds = [],
       descriptionSearch,
@@ -134,11 +91,13 @@ export async function GET(
       uniqueIdSearch,
     } = parsedQuery.data
 
-    const result = await queryRequirementList(
-      db,
+    const result = await service.getAvailableSpecificationRequirements(
+      context,
       {
+        applyRequirementSelectionFilter:
+          applyRequirementSelectionFilter === 'true',
         capacitySurface: 'rest',
-        excludeRequirementIds: existingRequirementIds,
+        cursor,
         filters: {
           areaIds: areaIds.length > 0 ? areaIds : undefined,
           categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
@@ -156,28 +115,20 @@ export async function GET(
           verifiable: verifiable.length > 0 ? verifiable : undefined,
           priorityLevelIds:
             priorityLevelIds.length > 0 ? priorityLevelIds : undefined,
-          statuses: [STATUS_PUBLISHED],
           typeIds: typeIds.length > 0 ? typeIds : undefined,
           uniqueIdSearch,
         },
         limit,
         locale,
-        cursor,
-        ...(shouldApplyRequirementSelectionFilter
-          ? { requirementIds: selectionFilter.requirementIds }
-          : {}),
         sort: {
           by: sortBy ?? DEFAULT_REQUIREMENT_SORT.by,
           direction: sortDirection ?? DEFAULT_REQUIREMENT_SORT.direction,
         },
+        specificationId,
       },
-      { authorization, context },
     )
 
-    return NextResponse.json({
-      ...result,
-      selectionFilter: responseSelectionFilter,
-    })
+    return NextResponse.json(result)
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)
     if (status >= 500) {

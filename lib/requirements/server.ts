@@ -10,6 +10,7 @@ import {
   type RequirementsLogger,
 } from '@/lib/requirements/logging'
 import {
+  type AvailableSpecificationRequirementsService,
   createRequirementsService,
   type RequirementsService,
 } from '@/lib/requirements/service'
@@ -18,7 +19,7 @@ export interface RequirementsRuntime {
   authorization: AuthorizationService
   db: SqlServerDatabase
   logger: RequirementsLogger
-  service: RequirementsService
+  service: RequirementsService & AvailableSpecificationRequirementsService
 }
 
 export interface RequirementsRestRuntime extends RequirementsRuntime {

@@ -1,10 +1,23 @@
 # Shared Codex defaults for every Kravhantering development environment.
-# Codex automatically layers the settings on top of the user configuration in ~/.codex/config.tom.
+# Codex automatically layers the settings on top of the user configuration in ~/.codex/config.toml.
+
+default_permissions = "kravhantering-development"
 
 personality = "pragmatic"
 
 model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
+
+[permissions.kravhantering-development]
+description = "Workspace access including Git metadata."
+extends = ":workspace"
+
+[permissions.kravhantering-development.filesystem]
+"~/.codex/skills" = "write"
+
+[permissions.kravhantering-development.filesystem.":workspace_roots"]
+".git" = "write"
+".codex" = "write"
 
 [mcp_servers.playwright]
 args = ["@playwright/mcp@latest"]
@@ -61,3 +74,25 @@ approval_mode = "approve"
 terminal_title = ["activity", "app-name"]
 status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]
 status_line_use_colors = true
+
+[plugins.openai-templates]
+enabled = false
+
+[plugins.plugin-management]
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/review-agent/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/skill-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/skill-installer/SKILL.md"
+enabled = false

@@ -13,21 +13,19 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
     renderRequirementsSpecificationDetailClient,
     searchParamsFromPath,
     specificationApiPath,
-    waitForInitialAvailableRequirementsRefresh,
+    settleInitialEditorEffects,
   } = context
 
   describe('available requirement pagination and selection filtering', () => {
-    it('loads available requirements without sending the fixed status filter', async () => {
+    it('uses preloaded available requirements without an immediate reconciliation refresh', async () => {
       renderRequirementsSpecificationDetailClient()
 
-      await waitFor(() => {
-        expect(availableRequirementsFetchUrls().length).toBeGreaterThan(0)
-      })
+      await Promise.resolve()
 
-      const initialUrl = availableRequirementsFetchUrls()[0] ?? ''
-      const params = searchParamsFromPath(initialUrl)
-      expect(params.get('locale')).toBe('en')
-      expect(params.has('statuses')).toBe(false)
+      expect(availableRequirementsFetchUrls()).toEqual([])
+      expect(context.requirementsTable('available')).toHaveTextContent(
+        'IAM0202',
+      )
     })
 
     it('treats omitted optional list payload fields as an empty page', async () => {
@@ -44,6 +42,7 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
         ],
       })
 
+      fireEvent.click(context.requirementSortButton('available', 'description'))
       await waitFor(() => {
         expect(
           within(context.requirementsTable('available')).getByRole('status'),
@@ -247,6 +246,17 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
     })
 
     it('loads more available requirements without sending the fixed status filter', async () => {
+      context.availableRequirementsGetHandler = async () =>
+        okJson({
+          pagination: { hasMore: false, nextCursor: null },
+          requirements: [
+            {
+              ...initialAvailableRequirement,
+              id: 203,
+              uniqueId: 'IAM0203',
+            },
+          ],
+        })
       renderRequirementsSpecificationDetailClient({
         ...createInitialData(),
         availableRequirements: {
@@ -283,7 +293,7 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
           rows: [initialAvailableRequirement],
         },
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
       const requestCountBeforeLoadMore = availableRequirementsFetchUrls().length
       fetchMock.mockImplementationOnce(() =>
         Promise.resolve({
@@ -331,7 +341,7 @@ export function registerAvailabilityTests(context: SpecDetailWorkflowContext) {
         },
         requirementPackages: [{ id: 1, name: 'Mobile use' }],
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
       let resolveStaleLoadMore: ((response: Response) => void) | undefined
       fetchMock.mockImplementationOnce(
         () =>

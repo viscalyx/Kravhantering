@@ -3,20 +3,27 @@
 # Then Codex automatically layers the project’s .codex/config.toml on top of it.
 
 approval_policy = "never"
-default_permissions = "kravhantering-devcontainer"
+default_permissions = "kravhantering-development"
 
 [projects."/workspace"]
 trust_level = "trusted"
 
-[permissions.kravhantering-devcontainer]
+[permissions.kravhantering-development]
 description = "Workspace access with Kravhantering devcontainer service network."
 extends = ":workspace"
 
-[permissions.kravhantering-devcontainer.network]
+[permissions.kravhantering-development.filesystem]
+"~/.codex/skills" = "write"
+
+[permissions.kravhantering-development.filesystem.":workspace_roots"]
+".codex" = "write"
+".git" = "write"
+
+[permissions.kravhantering-development.network]
 enabled = true
 allow_local_binding = true
 
-[permissions.kravhantering-devcontainer.network.domains]
+[permissions.kravhantering-development.network.domains]
 "db" = "allow"
 "idp" = "allow"
 "kong" = "allow"
@@ -25,3 +32,25 @@ allow_local_binding = true
 "localhost" = "allow"
 "127.0.0.1" = "allow"
 "::1" = "allow"
+
+[plugins.openai-templates]
+enabled = false
+
+[plugins.plugin-management]
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/review-agent/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/skill-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/skill-installer/SKILL.md"
+enabled = false

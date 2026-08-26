@@ -23,8 +23,7 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import { positiveIntegerStringSchema } from '@/lib/http/validation'
-import { forbiddenError } from '@/lib/requirements/errors'
-import { queryRequirementList } from '@/lib/requirements/list-query'
+import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import {
   type AreaOption,
   DEFAULT_REQUIREMENT_SORT,
@@ -32,7 +31,6 @@ import {
   type RequirementRow,
   type SpecificationItemStatusOption,
 } from '@/lib/requirements/list-view'
-import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 import { createServerComponentRequestContext } from '@/lib/requirements/server-component-context'
 import { DEFAULT_SPECIFICATION_ITEM_PAGE_LIMIT } from '@/lib/requirements/specification-item-page'
@@ -44,7 +42,6 @@ import { DEVIATED_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-
 import {
   canCreateSpecification,
   canReadAllSpecifications,
-  canReadSpecification,
   specificationPermissions,
 } from '@/lib/specifications/permissions'
 import {
@@ -134,26 +131,28 @@ async function listSpecificationItemStatusOptions(
 }
 
 async function loadAvailableRequirements(
-  db: SqlServerDatabase,
   locale: 'en' | 'sv',
+  specificationId: number,
+  service: Pick<
+    ReturnType<typeof createRequirementsRuntime>['service'],
+    'getAvailableSpecificationRequirements'
+  >,
+  context: Awaited<ReturnType<typeof createServerComponentRequestContext>>,
 ): Promise<
   RequirementsSpecificationDetailInitialData['availableRequirements']
 > {
-  const result = await queryRequirementList(
-    db,
-    {
-      capacitySurface: 'editor-preload',
-      filters: { statuses: [3] },
-      limit: PAGE_SIZE,
-      locale,
-      sort: DEFAULT_REQUIREMENT_SORT,
-    },
-    { allowUnauthenticated: true },
-  )
+  const result = await service.getAvailableSpecificationRequirements(context, {
+    capacitySurface: 'editor-preload',
+    limit: PAGE_SIZE,
+    locale,
+    sort: DEFAULT_REQUIREMENT_SORT,
+    specificationId,
+  })
   return {
     hasMore: result.pagination.hasMore,
     nextCursor: result.pagination.nextCursor,
     rows: result.requirements as RequirementRow[],
+    selectionFilter: result.selectionFilter,
   }
 }
 
@@ -209,9 +208,11 @@ export async function loadRequirementsSpecificationDetailInitialData({
   locale: 'en' | 'sv'
   specificationId: number
 }): Promise<RequirementsSpecificationDetailInitialData> {
-  const capture = createCapture(await specificationPreloadErrorMessage(locale))
+  const partialDataErrorMessage = await specificationPreloadErrorMessage(locale)
+  const capture = createCapture(partialDataErrorMessage)
   const db = await getRequestSqlServerDataSource()
-  const { service } = createRequirementsRuntime(db)
+  const runtime = createRequirementsRuntime(db)
+  const { service } = runtime
   const context = await createServerComponentRequestContext({
     path: `/specifications/${specificationId}`,
   })
@@ -232,49 +233,19 @@ export async function loadRequirementsSpecificationDetailInitialData({
       { notFound: true },
     )
   }
+
+  const availableRequirementsPromise = loadAvailableRequirements(
+    locale,
+    specResult.value.id,
+    service,
+    context,
+  )
+  void availableRequirementsPromise.catch(() => undefined)
+
   const coAuthorHsaIds = await listSpecificationCoAuthorHsaIds(
     db,
     specResult.value.id,
   )
-
-  if (
-    !canReadSpecification(context, {
-      coAuthorHsaIds,
-      responsibleHsaId: specResult.value.responsibleHsaId,
-    })
-  ) {
-    const denied = forbiddenError('Specification assignment is required', {
-      reason: 'specification_assignment_required',
-      specificationId: specResult.value.id,
-    })
-    await recordAuthorizationDenied(
-      context,
-      {
-        kind: 'get_specification_items',
-        specificationId: specResult.value.id,
-      },
-      denied,
-    )
-    const summary = await getSpecificationForbiddenSummaryById(
-      db,
-      specResult.value.id,
-    )
-    return emptyDetailInitialData(
-      null,
-      specResult.error ? [specResult.error] : [],
-      {
-        forbidden: summary
-          ? {
-              responsible: summary.responsible,
-              specification: {
-                name: summary.name,
-                specificationCode: summary.specificationCode,
-              },
-            }
-          : undefined,
-      },
-    )
-  }
 
   const spec: SpecificationMeta = {
     ...specResult.value,
@@ -294,7 +265,6 @@ export async function loadRequirementsSpecificationDetailInitialData({
     specificationLifecycleStatuses,
     specificationItemStatuses,
     specificationItems,
-    availableRequirements,
     leftRequirementPackageCatalog,
     leftNormReferenceOptions,
     rightNormReferenceOptions,
@@ -366,13 +336,6 @@ export async function loadRequirementsSpecificationDetailInitialData({
       },
     ),
     capture<
-      RequirementsSpecificationDetailInitialData['availableRequirements']
-    >(
-      'available requirements',
-      { hasMore: false, nextCursor: null, rows: [] },
-      () => loadAvailableRequirements(db, locale),
-    ),
-    capture<
       RequirementsSpecificationDetailInitialData['leftRequirementPackageCatalog']
     >(
       SPECIFICATION_PRELOAD_ERROR_KEYS.specificationRequirementPackages,
@@ -399,6 +362,50 @@ export async function loadRequirementsSpecificationDetailInitialData({
       listLinkedNormReferenceOptions(db, [3]),
     ),
   ])
+
+  let availableRequirements: CaptureResult<
+    RequirementsSpecificationDetailInitialData['availableRequirements']
+  >
+  try {
+    availableRequirements = {
+      value: await availableRequirementsPromise,
+    }
+  } catch (error) {
+    if (
+      isRequirementsServiceError(error) &&
+      (error.status === 401 || error.status === 403)
+    ) {
+      const summary = await getSpecificationForbiddenSummaryById(
+        db,
+        specResult.value.id,
+      )
+      return emptyDetailInitialData(
+        null,
+        specResult.error ? [specResult.error] : [],
+        {
+          forbidden: summary
+            ? {
+                responsible: summary.responsible,
+                specification: {
+                  name: summary.name,
+                  specificationCode: summary.specificationCode,
+                },
+              }
+            : undefined,
+        },
+      )
+    }
+    logSanitizedError('Failed to preload specification data', error, {
+      resourceKey: 'available requirements',
+    })
+    availableRequirements = {
+      error: {
+        key: 'available requirements',
+        message: partialDataErrorMessage,
+      },
+      value: { hasMore: false, nextCursor: null, rows: [] },
+    }
+  }
 
   return {
     aiGenerationAvailability: aiGenerationAvailability.value,

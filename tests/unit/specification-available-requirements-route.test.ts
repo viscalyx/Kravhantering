@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { forbiddenError } from '@/lib/requirements/errors'
 
 const mockDb = {}
 const mockAuthorization = { assertAuthorized: vi.fn() }
@@ -17,52 +18,27 @@ const mockContext = {
   source: 'rest',
 }
 
-const mocks = {
-  authorize: vi.fn(),
+const mocks = vi.hoisted(() => ({
   createRequirementsRestRuntime: vi.fn(),
-  getExistingSpecificationRequirementIds: vi.fn(),
+  getAvailableSpecificationRequirements: vi.fn(),
   getSpecificationById: vi.fn(),
-  getRequirementSelectionFilterForSpecification: vi.fn(),
   logSanitizedError: vi.fn(),
-  queryRequirementList: vi.fn(),
-}
-
-vi.mock('@/lib/dal/requirement-selection-questions', () => ({
-  getExistingSpecificationRequirementIds: (...args: unknown[]) =>
-    mocks.getExistingSpecificationRequirementIds(...args),
-  getRequirementSelectionFilterForSpecification: (...args: unknown[]) =>
-    mocks.getRequirementSelectionFilterForSpecification(...args),
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
-  getSpecificationById: (...args: unknown[]) =>
-    mocks.getSpecificationById(...args),
+  getSpecificationById: mocks.getSpecificationById,
 }))
 
 vi.mock('@/lib/http/safe-errors', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/http/safe-errors')>()
-  return {
-    ...actual,
-    logSanitizedError: (...args: unknown[]) => mocks.logSanitizedError(...args),
-  }
+  return { ...actual, logSanitizedError: mocks.logSanitizedError }
 })
 
-vi.mock('@/lib/requirements/list-query', () => ({
-  queryRequirementList: (...args: unknown[]) =>
-    mocks.queryRequirementList(...args),
-}))
-
 vi.mock('@/lib/requirements/server', () => ({
-  createRequirementsRestRuntime: (...args: unknown[]) =>
-    mocks.createRequirementsRestRuntime(...args),
-}))
-
-vi.mock('@/lib/requirements/service-shared', () => ({
-  authorize: (...args: unknown[]) => mocks.authorize(...args),
+  createRequirementsRestRuntime: mocks.createRequirementsRestRuntime,
 }))
 
 import { GET } from '@/app/api/requirements-specifications/[id]/available-requirements/route'
-import { forbiddenError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -75,144 +51,76 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
       authorization: mockAuthorization,
       context: mockContext,
       db: mockDb,
-    })
-    mocks.getExistingSpecificationRequirementIds.mockResolvedValue([101, 102])
-    mocks.getSpecificationById.mockResolvedValue({ id: 6 })
-    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
-      hasCurrentAnswers: false,
-      hasRequirementSelection: false,
-      hasNoRequirementSelection: false,
-      requirementIds: [],
-    })
-    mocks.queryRequirementList.mockResolvedValue({
-      pagination: { hasMore: false, total: 1 },
-      requirements: [{ id: 201, uniqueId: 'IAM0201' }],
-    })
-    mockAuthorization.assertAuthorized.mockResolvedValue(undefined)
-    mocks.authorize.mockResolvedValue(undefined)
-  })
-
-  it('rejects status query params because available requirements are always published-only', async () => {
-    const response = await GET(
-      new NextRequest(
-        'http://localhost/api/requirements-specifications/6/available-requirements?limit=15&locale=sv&sortBy=uniqueId&sortDirection=asc&statuses=3',
-      ),
-      makeParams('6'),
-    )
-
-    expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toMatchObject({
-      error: 'Invalid request',
-      issues: [
-        {
-          code: 'unrecognized_keys',
-          path: '$',
-        },
-      ],
-    })
-    expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
-    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
-  })
-
-  it('applies requirement-selection ids only when explicitly requested', async () => {
-    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
-      hasCurrentAnswers: true,
-      hasRequirementSelection: true,
-      hasNoRequirementSelection: false,
-      requirementIds: [301, 302],
-    })
-
-    const response = await GET(
-      new NextRequest(
-        'http://localhost/api/requirements-specifications/6/available-requirements?applyRequirementSelectionFilter=true',
-      ),
-      makeParams('6'),
-    )
-
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
-      pagination: { hasMore: false, total: 1 },
-      requirements: [{ id: 201, uniqueId: 'IAM0201' }],
-      selectionFilter: {
-        applied: true,
-        hasCurrentAnswers: true,
-        hasRequirementSelection: true,
-        hasNoRequirementSelection: false,
-        requirementIds: [301, 302],
+      service: {
+        getAvailableSpecificationRequirements:
+          mocks.getAvailableSpecificationRequirements,
       },
     })
-    expect(mocks.queryRequirementList).toHaveBeenCalledWith(
-      mockDb,
-      expect.objectContaining({
-        requirementIds: [301, 302],
-      }),
-      { authorization: mockAuthorization, context: mockContext },
-    )
-  })
-
-  it('does not apply requirement-selection ids when the opt-in query param is absent', async () => {
-    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
-      hasCurrentAnswers: true,
-      hasRequirementSelection: true,
-      hasNoRequirementSelection: false,
-      requirementIds: [301, 302],
-    })
-
-    const response = await GET(
-      new NextRequest(
-        'http://localhost/api/requirements-specifications/6/available-requirements',
-      ),
-      makeParams('6'),
-    )
-
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
-      pagination: { hasMore: false, total: 1 },
+    mocks.getSpecificationById.mockResolvedValue({ id: 6 })
+    mocks.getAvailableSpecificationRequirements.mockResolvedValue({
+      pagination: {
+        count: 1,
+        hasMore: false,
+        limit: 25,
+        nextCursor: null,
+      },
       requirements: [{ id: 201, uniqueId: 'IAM0201' }],
       selectionFilter: {
         applied: false,
         hasCurrentAnswers: true,
         hasRequirementSelection: true,
         hasNoRequirementSelection: false,
-        requirementIds: [301, 302],
+        requirementIds: [201],
       },
     })
-    expect(mocks.queryRequirementList.mock.calls[0]?.[1]).not.toHaveProperty(
-      'requirementIds',
-    )
   })
 
-  it('does not apply an explicitly requested filter when no selection exists', async () => {
+  it('rejects status query params because available requirements are always published-only', async () => {
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/6/available-requirements?applyRequirementSelectionFilter=true',
+        'http://localhost/api/requirements-specifications/6/available-requirements?statuses=3',
       ),
       makeParams('6'),
     )
 
-    expect(response.status).toBe(200)
-    expect(mocks.queryRequirementList.mock.calls[0]?.[1]).not.toHaveProperty(
-      'requirementIds',
-    )
-    await expect(response.json()).resolves.toMatchObject({
-      selectionFilter: { applied: false },
-    })
+    expect(response.status).toBe(400)
+    expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
+    expect(mocks.getAvailableSpecificationRequirements).not.toHaveBeenCalled()
   })
 
-  it('passes the complete supported filter and cursor state to the list query', async () => {
+  it('returns the shared domain page for supported refresh filters', async () => {
     const response = await GET(
       new NextRequest(
         'http://localhost/api/requirements-specifications/6/available-requirements?areaIds=1&categoryIds=2&descriptionSearch=access&limit=25&locale=sv&normReferenceIds=3&cursor=next&qualityCharacteristicIds=4&requirementPackageIds=5&verifiable=true&priorityLevelIds=6&sortBy=description&sortDirection=desc&typeIds=7&uniqueIdSearch=IAM',
       ),
       makeParams('6'),
     )
+    const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(mocks.queryRequirementList).toHaveBeenCalledWith(
-      mockDb,
-      expect.objectContaining({
+    expect(body).toEqual({
+      pagination: {
+        count: 1,
+        hasMore: false,
+        limit: 25,
+        nextCursor: null,
+      },
+      requirements: [{ id: 201, uniqueId: 'IAM0201' }],
+      selectionFilter: {
+        applied: false,
+        hasCurrentAnswers: true,
+        hasRequirementSelection: true,
+        hasNoRequirementSelection: false,
+        requirementIds: [201],
+      },
+    })
+    expect(mocks.getAvailableSpecificationRequirements).toHaveBeenCalledWith(
+      mockContext,
+      {
+        applyRequirementSelectionFilter: false,
+        capacitySurface: 'rest',
         cursor: 'next',
-        filters: expect.objectContaining({
+        filters: {
           areaIds: [1],
           categoryIds: [2],
           descriptionSearch: 'access',
@@ -223,51 +131,48 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
           typeIds: [7],
           uniqueIdSearch: 'IAM',
           verifiable: ['true'],
-        }),
+        },
         limit: 25,
         locale: 'sv',
         sort: { by: 'description', direction: 'desc' },
-      }),
-      { authorization: mockAuthorization, context: mockContext },
+        specificationId: 6,
+      },
     )
   })
 
-  it('returns an empty list when an explicitly applied selection has no published matches', async () => {
-    mocks.getRequirementSelectionFilterForSpecification.mockResolvedValue({
-      hasCurrentAnswers: true,
-      hasRequirementSelection: true,
-      hasNoRequirementSelection: false,
-      requirementIds: [],
-    })
+  it('applies requirement-selection filtering only as an explicit opt-in', async () => {
+    mocks.getAvailableSpecificationRequirements.mockImplementationOnce(
+      async (_context, input) => ({
+        pagination: {
+          count: 1,
+          hasMore: false,
+          limit: 25,
+          nextCursor: null,
+        },
+        requirements: [{ id: 201, uniqueId: 'IAM0201' }],
+        selectionFilter: {
+          applied: input.applyRequirementSelectionFilter,
+          hasCurrentAnswers: true,
+          hasRequirementSelection: true,
+          hasNoRequirementSelection: false,
+          requirementIds: [201],
+        },
+      }),
+    )
 
     const response = await GET(
       new NextRequest(
-        'http://localhost/api/requirements-specifications/6/available-requirements?applyRequirementSelectionFilter=true&limit=15',
+        'http://localhost/api/requirements-specifications/6/available-requirements?applyRequirementSelectionFilter=true',
       ),
       makeParams('6'),
     )
 
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
-      pagination: {
-        count: 0,
-        hasMore: false,
-        limit: 15,
-        nextCursor: null,
-      },
-      requirements: [],
-      selectionFilter: {
-        applied: true,
-        hasCurrentAnswers: true,
-        hasRequirementSelection: true,
-        hasNoRequirementSelection: false,
-        requirementIds: [],
-      },
+    await expect(response.json()).resolves.toMatchObject({
+      selectionFilter: { applied: true },
     })
-    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
   })
 
-  it('rejects needs-reference filters because the available list does not use them', async () => {
+  it('rejects unsupported needs-reference filters at the adapter boundary', async () => {
     const response = await GET(
       new NextRequest(
         'http://localhost/api/requirements-specifications/6/available-requirements?needsReferenceIds=1',
@@ -277,32 +182,6 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
 
     expect(response.status).toBe(400)
     expect(mocks.createRequirementsRestRuntime).not.toHaveBeenCalled()
-    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
-  })
-
-  it('logs internal failures before returning the safe HTTP error', async () => {
-    const error = new Error(
-      "Invalid object name 'specification_requirement_selection_answers'.",
-    )
-    mocks.queryRequirementList.mockRejectedValue(error)
-
-    const response = await GET(
-      new NextRequest(
-        'http://localhost/api/requirements-specifications/6/available-requirements?limit=15&locale=sv',
-      ),
-      makeParams('6'),
-    )
-
-    expect(response.status).toBe(500)
-    await expect(response.json()).resolves.toEqual({
-      code: 'internal',
-      error: 'An internal error occurred',
-    })
-    expect(mocks.logSanitizedError).toHaveBeenCalledWith(
-      '[API] Failed to list available requirements for specification',
-      error,
-      { specificationId: 6 },
-    )
   })
 
   it('rejects invalid or missing specification scopes before listing', async () => {
@@ -322,11 +201,34 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
 
     expect(invalid.status).toBe(400)
     expect(missing.status).toBe(404)
-    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
+    expect(mocks.getAvailableSpecificationRequirements).not.toHaveBeenCalled()
   })
 
-  it('does not log expected authorization failures', async () => {
-    mocks.authorize.mockRejectedValueOnce(
+  it('logs internal shared-read failures before returning the safe HTTP error', async () => {
+    const error = new Error("Invalid object name 'requirement_versions'.")
+    mocks.getAvailableSpecificationRequirements.mockRejectedValueOnce(error)
+
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/requirements-specifications/6/available-requirements',
+      ),
+      makeParams('6'),
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      code: 'internal',
+      error: 'An internal error occurred',
+    })
+    expect(mocks.logSanitizedError).toHaveBeenCalledWith(
+      '[API] Failed to list available requirements for specification',
+      error,
+      { specificationId: 6 },
+    )
+  })
+
+  it('does not log expected assignment failures from the shared read', async () => {
+    mocks.getAvailableSpecificationRequirements.mockRejectedValueOnce(
       forbiddenError('Specification read denied'),
     )
 
@@ -339,6 +241,5 @@ describe('requirements-specifications/[id]/available-requirements route', () => 
 
     expect(response.status).toBe(403)
     expect(mocks.logSanitizedError).not.toHaveBeenCalled()
-    expect(mocks.queryRequirementList).not.toHaveBeenCalled()
   })
 })

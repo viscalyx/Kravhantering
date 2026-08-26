@@ -16,6 +16,24 @@ const policyPath = path.join(
   process.cwd(),
   'scripts/azure-dev/templates/install-azure-codex-session-policy.sh',
 )
+const workspaceHostRootResult = spawnSync(
+  'docker',
+  [
+    'inspect',
+    '--format',
+    '{{range .Mounts}}{{if eq .Destination "/workspace"}}{{.Source}}{{end}}{{end}}',
+    process.env.HOSTNAME ?? '',
+  ],
+  { encoding: 'utf8' },
+)
+const workspaceHostRoot = workspaceHostRootResult.stdout?.trim() ?? ''
+const dockerPolicyPath =
+  workspaceHostRootResult.status === 0 && workspaceHostRoot
+    ? path.join(
+        workspaceHostRoot,
+        'scripts/azure-dev/templates/install-azure-codex-session-policy.sh',
+      )
+    : policyPath
 const temporaryDirectories: string[] = []
 const rootPolicyFixtureImage = readFileSync(
   path.join(
@@ -356,7 +374,7 @@ done
         '--tmpfs',
         '/case:rw,exec,nosuid,nodev,size=32m',
         '--mount',
-        `type=bind,source=${policyPath},target=/policy.sh,readonly`,
+        `type=bind,source=${dockerPolicyPath},target=/policy.sh,readonly`,
         rootPolicyFixtureImage,
         'bash',
         '-c',

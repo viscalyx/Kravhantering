@@ -3,6 +3,10 @@ import {
   getAreaById,
   listAreasActorCanAuthor,
 } from '@/lib/dal/requirement-areas'
+import {
+  getExistingSpecificationRequirementIds,
+  getRequirementSelectionFilterForSpecification,
+} from '@/lib/dal/requirement-selection-questions'
 import { getRequirementById } from '@/lib/dal/requirements'
 import {
   getPublishedVersionIdForRequirement,
@@ -27,6 +31,7 @@ import {
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
+import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
@@ -39,6 +44,8 @@ import {
 } from '@/lib/requirements/security-audit'
 import type {
   AddToSpecificationInput,
+  AvailableSpecificationRequirementsService,
+  GetAvailableSpecificationRequirementsInput,
   GetSpecificationItemsInput,
   GraduateSpecificationLocalRequirementInput,
   ListGraduationTargetAreasInput,
@@ -62,6 +69,7 @@ import {
   withLogging,
 } from '@/lib/requirements/service-shared'
 import { querySpecificationItemPage } from '@/lib/requirements/specification-item-page'
+import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 import {
   canReadAllSpecifications,
   specificationPermissions,
@@ -180,8 +188,9 @@ export function createSpecificationWorkflow({
   db,
   logger,
 }: SpecificationWorkflowDependencies): Pick<
-  RequirementsService,
+  RequirementsService & AvailableSpecificationRequirementsService,
   | 'addToSpecification'
+  | 'getAvailableSpecificationRequirements'
   | 'getSpecificationItems'
   | 'graduateSpecificationLocalRequirement'
   | 'listGraduationTargetAreas'
@@ -325,6 +334,69 @@ export function createSpecificationWorkflow({
               responseFormat,
             ),
             specifications: outputSpecifications,
+          }
+        },
+      )
+    },
+
+    async getAvailableSpecificationRequirements(
+      context,
+      input: GetAvailableSpecificationRequirementsInput,
+    ) {
+      await authorize(
+        authorization,
+        {
+          kind: 'get_specification_items',
+          specificationId: input.specificationId,
+        },
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.get_available_specification_requirements',
+        {
+          capacity_surface: input.capacitySurface ?? context.source,
+          requirement_selection_filter_requested:
+            input.applyRequirementSelectionFilter === true,
+          specification_id: input.specificationId,
+        },
+        async () => {
+          const [selectionFilter, existingRequirementIds] = await Promise.all([
+            getRequirementSelectionFilterForSpecification(
+              db,
+              input.specificationId,
+            ),
+            getExistingSpecificationRequirementIds(db, input.specificationId),
+          ])
+          const applied =
+            input.applyRequirementSelectionFilter === true &&
+            selectionFilter.hasRequirementSelection
+
+          const page = await queryRequirementList(
+            db,
+            {
+              capacitySurface: input.capacitySurface,
+              cursor: input.cursor,
+              excludeRequirementIds: existingRequirementIds,
+              filters: {
+                ...input.filters,
+                statuses: [STATUS_PUBLISHED],
+              },
+              limit: input.limit,
+              locale: input.locale,
+              ...(applied
+                ? { requirementIds: selectionFilter.requirementIds }
+                : {}),
+              sort: input.sort,
+            },
+            { authorization, context },
+          )
+
+          return {
+            ...page,
+            selectionFilter: { ...selectionFilter, applied },
           }
         },
       )

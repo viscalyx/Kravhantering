@@ -1,23 +1,49 @@
 # Codex settings managed on the Kravhantering Azure development VM.
 
 approval_policy = "never"
-default_permissions = "kravhantering-azure-dev"
+default_permissions = "kravhantering-development"
 
 [projects."/workspace"]
 trust_level = "trusted"
 
-[permissions.kravhantering-azure-dev]
+[permissions.kravhantering-development]
 description = "Workspace access with Kravhantering Azure VM service network."
 extends = ":workspace"
 
-[permissions.kravhantering-azure-dev.filesystem.":workspace_roots"]
+[permissions.kravhantering-development.filesystem]
+"~/.codex/skills" = "write"
+
+[permissions.kravhantering-development.filesystem.":workspace_roots"]
+".codex" = "write"
 ".git" = "write"
 
-[permissions.kravhantering-azure-dev.network]
+[permissions.kravhantering-development.network]
 enabled = true
 allow_local_binding = true
 
-[permissions.kravhantering-azure-dev.network.domains]
+[permissions.kravhantering-development.network.domains]
 "localhost" = "allow"
 "127.0.0.1" = "allow"
 "::1" = "allow"
+
+[plugins.openai-templates]
+enabled = false
+
+[plugins.plugin-management]
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/review-agent/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/skill-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/home/vscode/.codex/skills/.system/skill-installer/SKILL.md"
+enabled = false

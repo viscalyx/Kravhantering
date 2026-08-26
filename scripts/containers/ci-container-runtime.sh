@@ -381,17 +381,17 @@ collect_github_runner_metadata() {
         sub(/^##\[group\]/, "")
       }
       $0 == "##[endgroup]" { section = ""; next }
-      /^Current runner version: '\''?[0-9]+(\.[0-9]+){2}'\''?$/ { print; next }
+      /^Current runner version: '\''?[0-9]+\.[0-9]+\.[0-9]+'\''?$/ { print; next }
       $0 == "Runner Image Provisioner" { section = "provisioner"; print; next }
       $0 == "Runner Image" { section = "image"; print; next }
       section == "provisioner" && /^Hosted Compute Agent$/ { print; next }
       section == "provisioner" && /^2\.0\.[0-9]+(\.[0-9]+)?$/ { print; next }
-      section == "provisioner" && /^Version: 20[0-9]{6}(\.[0-9]+)+$/ { print; next }
+      section == "provisioner" && /^Version: 20[0-9][0-9][0-9][0-9][0-9][0-9](\.[0-9]+)*$/ { print; next }
       section == "provisioner" && /^Commit: [a-f0-9]{40}$/ { print; next }
       section == "provisioner" && /^Build Date: [0-9TZ:.+-]+$/ { print; next }
       section == "provisioner" && /^Azure Region: [-A-Za-z0-9 ]+$/ { print; next }
       section == "image" && /^Image: ubuntu-24\.04$/ { print; next }
-      section == "image" && /^Version: 20[0-9]{6}(\.[0-9]+)+$/ { print; next }
+      section == "image" && /^Version: 20[0-9][0-9][0-9][0-9][0-9][0-9](\.[0-9]+)*$/ { print; next }
       section == "image" && /^Included Software: https:\/\/github\.com\/actions\/runner-images\/[-A-Za-z0-9._~:/?#%]+$/ { print; next }
       section == "image" && /^Image Release: https:\/\/github\.com\/actions\/runner-images\/[-A-Za-z0-9._~:/?#%]+$/ { print; next }
     ' >"$output"

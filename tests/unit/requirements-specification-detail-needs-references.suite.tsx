@@ -60,7 +60,7 @@ export function registerNeedsReferenceTests(
 
       expect(await screen.findByText('BEH0001')).toBeInTheDocument()
       expect(screen.getByText('RBAC should be enforced.')).toBeInTheDocument()
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
     })
 
     it('navigates all split-panel tabs and closes the needs-reference form by button and Escape', async () => {
@@ -158,7 +158,7 @@ export function registerNeedsReferenceTests(
       expect(dialog).toBeInTheDocument()
       fireEvent.keyDown(dialog, { key: 'Escape' })
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
     })
 
     it('honors an area and left-panel tab selected in the page URL', async () => {
@@ -198,7 +198,7 @@ export function registerNeedsReferenceTests(
       expect(
         screen.getByRole('tab', { name: /specification\.needsReferences/ }),
       ).toHaveAttribute('aria-selected', 'true')
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
     })
 
     it('loads every needs-reference usage page independently of the visible item page', async () => {
@@ -669,7 +669,7 @@ export function registerNeedsReferenceTests(
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(context.fadeMotion).toHaveBeenCalledWith(true)
       expect(context.dialogPanelMotion).toHaveBeenCalledWith(true)
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
     })
 
     it('updates a single item needs reference inline from the requirements table', async () => {

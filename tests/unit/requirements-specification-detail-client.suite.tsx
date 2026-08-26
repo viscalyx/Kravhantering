@@ -432,6 +432,7 @@ function createInitialData(): RequirementsSpecificationDetailInitialData {
       hasMore: false,
       nextCursor: null,
       rows: [initialAvailableRequirement],
+      selectionFilter: availableRequirementsSelectionFilter,
     },
     errors: [] as SpecificationPreloadError[],
     leftRequirementPackageCatalog: createRequirementPackageCatalogPage([]),
@@ -741,6 +742,19 @@ function triggerRequirementLoadMore(tableKind: RequirementTableKind) {
   })
 }
 
+async function waitForRequirementLoadMore(
+  tableKind: RequirementTableKind,
+): Promise<void> {
+  await waitFor(() => {
+    const table = requirementsTable(tableKind)
+    expect(
+      Array.from(intersectionObserverCallbacks).some(([target]) =>
+        target.parentElement?.contains(table),
+      ),
+    ).toBe(true)
+  })
+}
+
 function itemsStatus(): HTMLElement {
   const availablePanel = availableRequirementsPanel()
   const statuses = screen
@@ -767,9 +781,9 @@ function availableRequirementsFetchUrls(): string[] {
     )
 }
 
-async function waitForInitialAvailableRequirementsRefresh() {
-  await waitFor(() => {
-    expect(availableRequirementsFetchUrls().length).toBeGreaterThan(0)
+async function settleInitialEditorEffects() {
+  await act(async () => {
+    await Promise.resolve()
   })
 }
 
@@ -989,13 +1003,14 @@ const workflowContext = {
   set specificationRequirementPackagesGetHandler(value) {
     specificationRequirementPackagesGetHandler = value
   },
-  waitForInitialAvailableRequirementsRefresh,
+  settleInitialEditorEffects,
   itemsStatus,
   openTableActionMenu,
   queryRequirementPackageButton,
   toggleRequirementColumn,
   toggleSpecificationItemStatusFilter,
   triggerRequirementLoadMore,
+  waitForRequirementLoadMore,
   useReducedMotion,
 }
 
@@ -1507,7 +1522,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     expect(
       screen.getByText('specification.partialDataLoadWarning'),
     ).toHaveAttribute('role', 'status')
-    await waitForInitialAvailableRequirementsRefresh()
+    await settleInitialEditorEffects()
   })
 
   registerGeneratedOutputTests(workflowContext)

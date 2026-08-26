@@ -927,6 +927,7 @@ path is available without `sudo`:
 codex update
 command -v codex
 codex --version
+codex app-server daemon version
 ```
 
 The expected command path is `/home/vscode/.local/bin/codex`. New SSH sessions,
@@ -935,6 +936,15 @@ and extension-host children receive that user-first path. Root and other users
 do not receive `/home/vscode/.local/bin`. The Codex IDE extension continues to
 use its bundled executable; setup does not configure an extension executable
 override.
+
+Setup also runs `codex app-server daemon bootstrap` as `vscode` after the user
+systemd session and lingering are active. The resulting user service starts the
+shared Codex background server on VM boot and exposes its control socket under
+`/home/vscode/.codex/app-server-control`. Setup and smoke validation require the
+user service to be enabled and active, the Codex PID daemon to be reachable,
+and the CLI and app-server versions to match. A Codex CLI session started after
+setup can therefore use `/agents` immediately without a manual server start or
+CLI restart.
 
 Setup applies a managed path footer after either the tracked Zsh template or the
 operator-provided `zshrc.template`. The footer moves the managed binary
@@ -975,15 +985,19 @@ Setup also uploads `scripts/azure-dev/templates/codex-config.toml` and merges
 its Azure-specific settings into `/home/vscode/.codex/config.toml`. The merge
 preserves existing personal settings such as the selected model and MCP
 servers. It manages the default permission profile, `/workspace` trust, and
-the `kravhantering-azure-dev` profile on every setup run, even when the user
+the `kravhantering-development` profile on every setup run, even when the user
 configuration already exists.
 
 The profile grants workspace access, including write access to `.git` so Codex
-can stage and commit changes. The inherited workspace protections for
-`.codex` and `.agents` remain read-only. The profile also grants network access
-to the loopback addresses used by host-side development and the Podman support
-services. The devcontainer profile in `.devcontainer/codex-config.toml` is
-separate and is not installed on the Azure VM.
+can stage and commit changes and to `.codex` so it can maintain repository-local
+configuration. It also grants write access specifically to `~/.codex/skills`
+so repository skills can be synchronized without opening the rest of the
+user-level Codex state. The inherited workspace protection for `.agents`
+remains read-only. The profile also grants network access to the loopback
+addresses used by host-side development and the Podman support services. The
+devcontainer config in `.devcontainer/codex-config.toml` selects the same
+profile name with devcontainer-specific service domains; it is not installed
+on the Azure VM.
 
 Setup does not restart existing terminals or the VS Code Server. After setup
 changes command-path policy or repairs Codex configuration, close existing SSH

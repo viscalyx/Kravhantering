@@ -135,6 +135,7 @@ export CONTAINERS_CONF="${HOME}/.config/containers/containers.conf"
 export CONTAINERS_STORAGE_CONF="${HOME}/.config/containers/storage.conf"
 
 managed_units=(
+  krav-codex-app-server.service
   krav-db.service
   krav-idp.service
   krav-kong.service
@@ -155,6 +156,8 @@ dump_smoke_diagnostics() {
   ss -ltn || true
   printf '\nUser systemd environment:\n'
   systemctl --user show-environment || true
+  printf '\nCodex app-server daemon:\n'
+  "${managed_codex_launcher}" app-server daemon version || true
   printf '\nFailed user services:\n'
   systemctl --user --failed --no-pager || true
 
@@ -246,11 +249,13 @@ config = tomllib.loads(
     Path('/home/vscode/.codex/config.toml').read_text(encoding='utf-8')
 )
 assert config['approval_policy'] == 'never'
-assert config['default_permissions'] == 'kravhantering-azure-dev'
+assert config['default_permissions'] == 'kravhantering-development'
 assert config['projects']['/workspace']['trust_level'] == 'trusted'
-profile = config['permissions']['kravhantering-azure-dev']
+profile = config['permissions']['kravhantering-development']
 assert profile['extends'] == ':workspace'
+assert profile['filesystem']['~/.codex/skills'] == 'write'
 assert profile['filesystem'][':workspace_roots'] == {
+    '.codex': 'write',
     '.git': 'write',
 }
 assert profile['network']['enabled'] is True
@@ -442,6 +447,23 @@ test "$(bash --login -c 'command -v codex')" = "${managed_codex_launcher}"
 test "$(bash --login -c 'type -t codex')" = 'file'
 test "$(zsh -ic 'whence -p codex')" = "${managed_codex_launcher}"
 zsh -ic '(( ! $+aliases[codex] && ! $+functions[codex] ))'
+systemctl --user is-enabled --quiet krav-codex-app-server.service
+systemctl --user is-active --quiet krav-codex-app-server.service
+if ! codex_daemon_version="$(
+  "${managed_codex_launcher}" app-server daemon version
+)" || ! printf '%s\n' "${codex_daemon_version}" | jq -e \
+  --arg expectedVersion "${expected_codex_version}" \
+  --arg expectedSocket '/home/vscode/.codex/app-server-control/app-server-control.sock' \
+  '(.status == "running") and
+    .backend == "pid" and
+    .managedCodexVersion == $expectedVersion and
+    .cliVersion == $expectedVersion and
+    .appServerVersion == $expectedVersion and
+    .socketPath == $expectedSocket' >/dev/null; then
+  printf 'Shared Codex app-server daemon is not ready.\n'
+  dump_smoke_diagnostics
+  exit 1
+fi
 for isolated_account in root nobody; do
   isolated_home="$(getent passwd "${isolated_account}" | cut -d: -f6)"
   sudo -n -u "${isolated_account}" env HOME="${isolated_home}" \

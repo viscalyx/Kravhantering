@@ -4,6 +4,14 @@ import { describe, expect, it } from 'vitest'
 import { parse as parseYaml } from 'yaml'
 import { parseJsonc } from './test-helpers'
 
+const disabledSystemSkillPaths = [
+  '/home/vscode/.codex/skills/.system/plugin-creator/SKILL.md',
+  '/home/vscode/.codex/skills/.system/review-agent/SKILL.md',
+  '/home/vscode/.codex/skills/.system/skill-creator/SKILL.md',
+  '/home/vscode/.codex/skills/.system/skill-installer/SKILL.md',
+]
+const disabledPluginNames = ['openai-templates', 'plugin-management']
+
 function readWorkspaceFile(relativePath: string) {
   return readFileSync(path.join(process.cwd(), relativePath), 'utf8')
 }
@@ -59,6 +67,22 @@ function workflowRunCommands(relativePath: string) {
   return Object.values(workflow.jobs ?? {}).flatMap(job =>
     (job.steps ?? []).flatMap(step => (step.run ? [step.run] : [])),
   )
+}
+
+function expectDisabledSystemSkills(content: string) {
+  for (const pluginName of disabledPluginNames) {
+    expect(content).toMatch(
+      new RegExp(
+        `\\[plugins\\.(?:"${pluginName}"|${pluginName})\\]\\nenabled = false`,
+        'u',
+      ),
+    )
+  }
+  expect(content).not.toContain('/plugins/cache/')
+  expect(content.match(/\[\[skills\.config\]\]/gu)).toHaveLength(4)
+  for (const skillPath of disabledSystemSkillPaths) {
+    expect(content).toContain(`path = "${skillPath}"`)
+  }
 }
 
 function dockerfileTarget(name: string) {
@@ -386,6 +410,18 @@ describe('container image contract', () => {
     const codexConfig = readWorkspaceFile('.codex/config.toml')
 
     expect(codexConfig).toContain('model = "gpt-5.6-sol"')
+    expect(codexConfig).toContain(
+      'default_permissions = "kravhantering-development"',
+    )
+    expect(codexConfig).toContain(
+      '[permissions.kravhantering-development.filesystem]',
+    )
+    expect(codexConfig).toContain('"~/.codex/skills" = "write"')
+    expect(codexConfig).toContain(
+      '[permissions.kravhantering-development.filesystem.":workspace_roots"]',
+    )
+    expect(codexConfig).toContain('".codex" = "write"')
+    expect(codexConfig).toContain('".git" = "write"')
     expect(codexConfig).toContain('[mcp_servers.playwright]')
     expect(codexConfig).toContain('[mcp_servers.github]')
     expect(codexConfig).toContain('[tui]')
@@ -394,7 +430,7 @@ describe('container image contract', () => {
       'status_line = ["model-with-reasoning", "context-used", "context-window-size", "fast-mode", "permissions", "thread-title"]',
     )
     expect(codexConfig).toContain('status_line_use_colors = true')
-    expect(codexConfig).not.toContain('kravhantering-devcontainer')
+    expectDisabledSystemSkills(codexConfig)
   })
 
   it('keeps Codex devcontainer permissions in the user config template', () => {
@@ -402,22 +438,54 @@ describe('container image contract', () => {
 
     expect(codexConfig).toContain('approval_policy = "never"')
     expect(codexConfig).toContain(
-      'default_permissions = "kravhantering-devcontainer"',
+      'default_permissions = "kravhantering-development"',
     )
     expect(codexConfig).toContain('[projects."/workspace"]')
     expect(codexConfig).toContain('trust_level = "trusted"')
     expect(codexConfig).toContain(
-      '[permissions.kravhantering-devcontainer.network.domains]',
+      '[permissions.kravhantering-development.filesystem]',
+    )
+    expect(codexConfig).toContain('"~/.codex/skills" = "write"')
+    expect(codexConfig).toContain(
+      '[permissions.kravhantering-development.filesystem.":workspace_roots"]',
+    )
+    expect(codexConfig).toContain('".codex" = "write"')
+    expect(codexConfig).toContain('".git" = "write"')
+    expect(codexConfig).toContain(
+      '[permissions.kravhantering-development.network.domains]',
     )
     expect(codexConfig).not.toContain('[mcp_servers.playwright]')
     expect(codexConfig).not.toContain('[tui]')
+    expectDisabledSystemSkills(codexConfig)
 
     for (const relativePath of [
       '.devcontainer/devcontainer.json',
       '.devcontainer/elevated/devcontainer.json',
     ]) {
       expect(readWorkspaceFile(relativePath)).toContain(
-        'cp .devcontainer/codex-config.toml /home/vscode/.codex/config.toml',
+        'python3 scripts/azure-dev/templates/merge-codex-config.py .devcontainer/codex-config.toml /home/vscode/.codex/config.toml',
+      )
+      expect(readWorkspaceFile(relativePath)).not.toContain(
+        'if [ ! -f /home/vscode/.codex/config.toml ]',
+      )
+    }
+  })
+
+  it('starts the shared Codex app-server before devcontainer terminals are used', () => {
+    const dockerfile = readWorkspaceFile('.devcontainer/Dockerfile')
+
+    expect(dockerfile).toContain('CODEX_HOME=/home/vscode/.codex')
+
+    for (const relativePath of [
+      '.devcontainer/devcontainer.json',
+      '.devcontainer/elevated/devcontainer.json',
+    ]) {
+      const devcontainer = parseJsonc(readWorkspaceFile(relativePath)) as {
+        postStartCommand: string
+      }
+
+      expect(devcontainer.postStartCommand).toMatch(
+        /^bash -lc 'codex app-server daemon start \|\| \{ echo "Codex shared app-server daemon failed to start\." >&2; exit 1; \};/u,
       )
     }
   })

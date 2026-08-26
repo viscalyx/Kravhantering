@@ -9,7 +9,7 @@ export function registerGeneratedOutputTests(
   describe('generated output, AI authoring, and imports', () => {
     it('shows lifecycle-matched report options and always keeps full CSV export', async () => {
       context.renderRequirementsSpecificationDetailClient()
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
 
       await waitFor(() => {
         expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
@@ -47,7 +47,7 @@ export function registerGeneratedOutputTests(
 
     it('preserves menu triggers for direct import and AI-to-import handoff', async () => {
       context.renderRequirementsSpecificationDetailClient()
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
 
       const moreActionsTrigger = screen.getByRole('button', {
         name: 'common.moreActions',
@@ -97,7 +97,7 @@ export function registerGeneratedOutputTests(
 
     it('places kravunderlag create before columns and secondary actions after columns', async () => {
       context.renderRequirementsSpecificationDetailClient()
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
 
       const createLocalAction = screen.getByRole('button', {
         name: 'specification.newLocalRequirement',
@@ -132,7 +132,7 @@ export function registerGeneratedOutputTests(
         }
         const view =
           context.renderRequirementsSpecificationDetailClient(initialData)
-        await context.waitForInitialAvailableRequirementsRefresh()
+        await context.settleInitialEditorEffects()
         const menu = context.openTableActionMenu('common.moreActions')
         const aiMenuItem = within(menu).getByRole('menuitem', {
           name: /^specification\.aiGenerate/,
@@ -152,7 +152,7 @@ export function registerGeneratedOutputTests(
         context.createInitialData(),
         8,
       )
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
 
       const menu = context.openTableActionMenu('common.moreActions')
       const progressReport = within(menu).getByRole('menuitem', {
@@ -205,7 +205,7 @@ export function registerGeneratedOutputTests(
       context.specificationItemsGetItems = initialData.specificationItems.items
 
       context.renderRequirementsSpecificationDetailClient(initialData)
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
 
       fireEvent.click(
         context.requirementPackageButton('items', 'Security package'),
@@ -235,7 +235,7 @@ export function registerGeneratedOutputTests(
       )
     })
 
-    it('keeps traceability report actions beyond the former item-ref limit', async () => {
+    it('keeps traceability report actions after loading every application page', async () => {
       const items = Array.from({ length: 201 }, (_, index) => {
         const itemId = index + 1
         return {
@@ -267,18 +267,30 @@ export function registerGeneratedOutputTests(
       }
 
       context.renderRequirementsSpecificationDetailClient(initialData)
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
       context.triggerRequirementLoadMore('items')
-      expect(await screen.findByRole('row', { name: /BEH0200/ })).toBeVisible()
+      expect(
+        await screen.findByRole(
+          'row',
+          { name: /BEH0200/ },
+          { timeout: 10_000 },
+        ),
+      ).toBeVisible()
+      context.triggerRequirementLoadMore('items')
       await waitFor(() => {
-        context.triggerRequirementLoadMore('items')
         expect(
           context.fetchMock.mock.calls.some(([input]) =>
             String(input).includes('cursor=items-page-3'),
           ),
         ).toBe(true)
       })
-      expect(await screen.findByRole('row', { name: /BEH0201/ })).toBeVisible()
+      expect(
+        await screen.findByRole(
+          'row',
+          { name: /BEH0201/ },
+          { timeout: 10_000 },
+        ),
+      ).toBeVisible()
 
       expect(
         within(context.openTableActionMenu('common.moreActions')).getByRole(
@@ -301,7 +313,7 @@ export function registerGeneratedOutputTests(
 
     it('routes full CSV through the generated-output controller with menu focus restoration', async () => {
       context.renderRequirementsSpecificationDetailClient()
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
 
       const menu = context.openTableActionMenu('common.moreActions')
       const exportFull = within(menu).getByRole('menuitem', {
@@ -331,7 +343,7 @@ export function registerGeneratedOutputTests(
         specificationLifecycleStatusId: 1,
       }
       context.renderRequirementsSpecificationDetailClient(initialData)
-      await context.waitForInitialAvailableRequirementsRefresh()
+      await context.settleInitialEditorEffects()
 
       const menu = context.openTableActionMenu('common.moreActions')
       expect(

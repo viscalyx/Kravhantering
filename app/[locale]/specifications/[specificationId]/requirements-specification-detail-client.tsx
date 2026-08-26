@@ -980,7 +980,7 @@ export default function KravunderlagDetailClient({
           : t('loadAvailableRequirementsFailed'),
       initialData: initialData.availableRequirements,
       key: `available-requirements:${availableRequirementsParams}`,
-      loadOnMount: true,
+      loadOnMount: false,
     })
 
   const needsReferencesResource = useAsyncResource<

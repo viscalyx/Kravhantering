@@ -17,7 +17,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
     requirementRowNames,
     searchParamsFromPath,
     specificationApiPath,
-    waitForInitialAvailableRequirementsRefresh,
+    settleInitialEditorEffects,
   } = context
   const includedStatus = {
     color: '#22c55e',
@@ -297,7 +297,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           name: 'specification.newNeedsReference',
         }),
       ).toBeNull()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
     })
 
     it('shows the not-found state with a partial-data warning when specification metadata is absent', async () => {
@@ -318,7 +318,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           name: /specification\.backToSpecifications/,
         }),
       ).toHaveAttribute('href', '/specifications')
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
     })
 
     it('does not show a read-only notice for assignment-only managers', async () => {
@@ -365,7 +365,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           },
         },
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       expect(
         within(context.requirementRow('items', 'BEH0001')).queryByRole(
@@ -451,7 +451,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       expect(
         screen.queryByRole('button', { name: 'common.moreActions' }),
       ).toBeNull()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
     })
 
     it('ignores stale and invalid stored detail column ids', async () => {
@@ -465,7 +465,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       )
 
       renderRequirementsSpecificationDetailClient()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       context.changeRequirementColumns('items')
       await waitFor(() => {
@@ -480,7 +480,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
 
     it('passes context-specific reset defaults to the detail tables', async () => {
       renderRequirementsSpecificationDetailClient()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       context.changeRequirementColumns('items')
       context.changeRequirementColumns('available')
@@ -514,7 +514,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           },
         ],
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       fireEvent.click(context.requirementRow('items', 'BEH0001'))
       expect(
@@ -603,7 +603,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
 
     it('ignores a usage-status choice that is not in the specification catalog', async () => {
       renderRequirementsSpecificationDetailClient()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
       context.toggleRequirementColumn('items', 'specificationItemStatus')
       const statusSelect = within(
         context.requirementRow('items', 'BEH0001'),
@@ -704,7 +704,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       expect(
         screen.queryByText('Requirement detail 101'),
       ).not.toBeInTheDocument()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
     })
 
     it('loads persisted detail columns after the hydration-safe default render', async () => {
@@ -732,7 +732,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       )
 
       renderRequirementsSpecificationDetailClient()
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
       expect(context.requirementsTable('items')).toHaveTextContent('BEH0001')
       expect(context.requirementsTable('available')).toHaveTextContent(
         'IAM0202',
@@ -752,7 +752,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
     it('uses inline top rails and embeds the split panel tabs in sticky headers', async () => {
       renderRequirementsSpecificationDetailClient()
 
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       expect(
         screen.queryByRole('heading', {
@@ -886,7 +886,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         ...createInitialData(),
         specificationItemStatuses: [includedStatus],
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
       context.toggleSpecificationItemStatusFilter('items', 'Included')
 
       await waitFor(() => {
@@ -906,7 +906,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         ...createInitialData(),
         specificationItemStatuses: [includedStatus],
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
       context.toggleSpecificationItemStatusFilter('items', 'Included')
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -926,7 +926,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
           { id: 2, name: 'Specification package' },
         ],
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       expect(
         context.requirementPackageButton('items', 'Specification package'),
@@ -1016,7 +1016,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
       ]
 
       renderRequirementsSpecificationDetailClient(initialData)
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       expect(
         screen.getByText('specification.partialDataLoadWarning'),
@@ -1167,7 +1167,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         requirementPackages: [packageOption],
         specificationItems: createSpecificationItemsPage([item, remainingItem]),
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       fireEvent.click(
         context.requirementPackageButton('items', packageOption.name),
@@ -1274,7 +1274,7 @@ export function registerMetadataTableTests(context: SpecDetailWorkflowContext) {
         requirementPackages: [packageOption],
         specificationItems: createSpecificationItemsPage([item, remainingItem]),
       })
-      await waitForInitialAvailableRequirementsRefresh()
+      await settleInitialEditorEffects()
 
       fireEvent.click(context.requirementRowCheckbox('items', 'BEH0001'))
       fireEvent.click(

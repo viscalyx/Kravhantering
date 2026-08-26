@@ -84,24 +84,36 @@ finalization. A failed promotion rolls back and deletes the failed generation,
 restarts mock, Adapter, and Kong in server-first order, and authenticates the
 restored generation before development continues.
 
-Both devcontainer profiles install the Codex CLI system-wide from OpenAI's
-current standalone release. The build resolves the release metadata, requires
-the upstream SHA-256 digest for `install.sh`, and verifies the downloaded file
-before execution. A missing or mismatched digest fails the devcontainer build.
-Rebuild the devcontainer after changing branches or pulling this setup, then
-verify the installation inside the container:
+Both devcontainer profiles expose the Codex CLI system-wide from OpenAI's
+current standalone release. The managed package root remains under
+`/home/vscode/.codex`, where Codex can start and update its shared app-server
+daemon. The build resolves the release metadata, requires the upstream SHA-256
+digest for `install.sh`, and verifies the downloaded file before execution. A
+missing or mismatched digest fails the devcontainer build. Rebuild the
+devcontainer after changing branches or pulling this setup, then verify the
+installation inside the container:
 
 ```bash
 codex --version
+codex app-server daemon version
 ```
 
 The command is available to the `vscode` user in both profiles. Codex keeps
 configuration, authentication, sessions, skills, and plugins under
-`/home/vscode/.codex`. On first creation, both profiles initialize
-`config.toml` from `.devcontainer/codex-config.toml` with the trust and
-permission settings required inside the devcontainer. Shared project defaults,
-including the model, MCP servers, status line, and terminal title, live in
-`.codex/config.toml` and apply in every trusted development environment.
+`/home/vscode/.codex`. On every creation or rebuild, both profiles merge
+`.devcontainer/codex-config.toml` into `config.toml` with the trust and
+permission settings required inside the devcontainer. The merge preserves
+unrelated personal settings and migrates obsolete managed profiles. Shared
+project defaults, including the model, MCP servers, status line, and terminal
+title, live in `.codex/config.toml` and apply in every trusted development
+environment.
+
+Every container start runs `codex app-server daemon start` before the other
+post-start reconciliation. The command is idempotent and waits until the local
+control socket is ready. New Codex CLI sessions therefore connect to the shared
+background server immediately, and `/agents` works without restarting Codex.
+If the daemon cannot start, the devcontainer post-start command fails visibly
+instead of leaving a partially initialized Codex environment.
 
 The image also resolves the current dotenv-linter release and verifies the
 matching GitHub release-asset digest before installing it. Neither installer
@@ -173,10 +185,12 @@ normal development. For detailed database and auth workflows, use:
 
 The devcontainer initializes `/home/vscode/.codex/config.toml` from
 `.devcontainer/codex-config.toml`. The template trusts `/workspace` and selects
-a devcontainer-specific permission profile. It keeps filesystem access scoped
-to the workspace, but enables network access to the local Compose service names
-used by development checks, including `db`, `idp`, `kong`, the HSA mock, and
-loopback.
+the `kravhantering-development` permission profile. It grants write access to
+the repository's `.codex` configuration and Git metadata, plus the user-level
+`~/.codex/skills` directory so repository skills can be synchronized without
+opening the rest of the user-level Codex state. It also enables network access
+to the local Compose service names used by development checks, including `db`,
+`idp`, `kong`, the HSA mock, and loopback.
 
 This is required because the default Codex `workspace-write` sandbox blocks
 network access. Without the devcontainer profile, Codex commands cannot resolve

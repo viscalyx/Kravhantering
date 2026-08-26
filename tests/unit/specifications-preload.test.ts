@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { forbiddenError } from '@/lib/requirements/errors'
 
 const mockDb = {}
 const mocks = vi.hoisted(() => ({
   countLinkedRequirements: vi.fn(),
   createRequirementsRuntime: vi.fn(),
   createServerComponentRequestContext: vi.fn(),
+  getAvailableSpecificationRequirements: vi.fn(),
   getAiGenerationAvailability: vi.fn(),
   getSpecificationItems: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
@@ -21,9 +23,7 @@ const mocks = vi.hoisted(() => ({
   listSpecificationLifecycleStatuses: vi.fn(),
   listSpecificationNeedsReferences: vi.fn(),
   listSpecificationsForActorCatalog: vi.fn(),
-  queryRequirementList: vi.fn(),
   querySpecificationRequirementPackagePage: vi.fn(),
-  recordAuthorizationDenied: vi.fn(),
 }))
 
 vi.mock('next-intl/server', () => ({
@@ -92,14 +92,6 @@ vi.mock('@/lib/dal/specification-lifecycle-statuses', () => ({
   listSpecificationLifecycleStatuses: mocks.listSpecificationLifecycleStatuses,
 }))
 
-vi.mock('@/lib/requirements/list-query', () => ({
-  queryRequirementList: mocks.queryRequirementList,
-}))
-
-vi.mock('@/lib/requirements/security-audit', () => ({
-  recordAuthorizationDenied: mocks.recordAuthorizationDenied,
-}))
-
 vi.mock('@/lib/requirements/server', () => ({
   createRequirementsRuntime: mocks.createRequirementsRuntime,
 }))
@@ -138,7 +130,10 @@ describe('specifications preload', () => {
       source: 'rest',
     })
     mocks.createRequirementsRuntime.mockReturnValue({
+      authorization: { assertAuthorized: vi.fn() },
       service: {
+        getAvailableSpecificationRequirements:
+          mocks.getAvailableSpecificationRequirements,
         getSpecificationItems: mocks.getSpecificationItems,
       },
     })
@@ -170,9 +165,21 @@ describe('specifications preload', () => {
       { id: 1, nameEn: 'Active', nameSv: 'Aktiv' },
       { id: 5, nameEn: 'Deviated', nameSv: 'Avviken' },
     ])
-    mocks.queryRequirementList.mockResolvedValue({
-      pagination: { hasMore: true, nextCursor: 'next' },
+    mocks.getAvailableSpecificationRequirements.mockResolvedValue({
+      pagination: {
+        count: 1,
+        hasMore: true,
+        limit: 200,
+        nextCursor: 'next',
+      },
       requirements: [{ id: 7, uniqueId: 'REQ-7' }],
+      selectionFilter: {
+        applied: false,
+        hasCurrentAnswers: true,
+        hasNoRequirementSelection: false,
+        hasRequirementSelection: true,
+        requirementIds: [7],
+      },
     })
     mocks.querySpecificationRequirementPackagePage.mockResolvedValue({
       pagination: { count: 1, hasMore: false, limit: 50, nextCursor: null },
@@ -269,6 +276,13 @@ describe('specifications preload', () => {
       hasMore: true,
       nextCursor: 'next',
       rows: [{ id: 7, uniqueId: 'REQ-7' }],
+      selectionFilter: {
+        applied: false,
+        hasCurrentAnswers: true,
+        hasNoRequirementSelection: false,
+        hasRequirementSelection: true,
+        requirementIds: [7],
+      },
     })
     expect(data.leftNormReferenceOptions).toEqual([
       { id: 8, name: 'ISO 1', normReferenceId: 'ISO-1' },
@@ -322,7 +336,7 @@ describe('specifications preload', () => {
     }
   })
 
-  it('returns assignment guidance and audits a forbidden preload', async () => {
+  it('returns assignment guidance when the shared read denies preload access', async () => {
     mocks.getSpecificationById.mockResolvedValueOnce({
       id: 42,
       name: 'Specification',
@@ -333,6 +347,9 @@ describe('specifications preload', () => {
       responsible: { displayName: 'Owner' },
       specificationCode: 'SPEC-42',
     })
+    mocks.getAvailableSpecificationRequirements.mockRejectedValueOnce(
+      forbiddenError('Specification read denied'),
+    )
 
     const data = await loadRequirementsSpecificationDetailInitialData({
       locale: 'en',
@@ -343,11 +360,8 @@ describe('specifications preload', () => {
       responsible: { displayName: 'Owner' },
       specification: { name: 'Specification', specificationCode: 'SPEC-42' },
     })
-    expect(mocks.recordAuthorizationDenied).toHaveBeenCalledWith(
-      expect.anything(),
-      { kind: 'get_specification_items', specificationId: 42 },
-      expect.objectContaining({ status: 403 }),
-    )
+    expect(mocks.listAreas).toHaveBeenCalled()
+    expect(data.areas).toEqual([])
   })
 
   it('returns a forbidden shell without disclosing missing summary data', async () => {
@@ -356,6 +370,9 @@ describe('specifications preload', () => {
       name: 'Specification',
       responsibleHsaId: 'SE5560000001-other',
     })
+    mocks.getAvailableSpecificationRequirements.mockRejectedValueOnce(
+      forbiddenError('Specification read denied'),
+    )
 
     const data = await loadRequirementsSpecificationDetailInitialData({
       locale: 'en',
@@ -364,7 +381,6 @@ describe('specifications preload', () => {
 
     expect(data.forbidden).toBeUndefined()
     expect(data.spec).toBeNull()
-    expect(mocks.recordAuthorizationDenied).toHaveBeenCalledOnce()
   })
 
   it('keeps the detail shell usable when independently loaded resources fail', async () => {
@@ -398,7 +414,7 @@ describe('specifications preload', () => {
     mocks.getSpecificationItems.mockRejectedValueOnce(
       new Error('raw-items-failure'),
     )
-    mocks.queryRequirementList.mockRejectedValueOnce(
+    mocks.getAvailableSpecificationRequirements.mockRejectedValueOnce(
       new Error('raw-available-failure'),
     )
     mocks.querySpecificationRequirementPackagePage.mockRejectedValueOnce(

@@ -4,7 +4,7 @@ import type { ServerResponse } from 'node:http'
 import https from 'node:https'
 import os from 'node:os'
 import path from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   createCertificateChainFixture,
   createInvalidRuntimeCertificateFixture,
@@ -42,6 +42,22 @@ interface InvalidRuntimeFixture {
   entry(name: string): { certificate: string; key: string }
 }
 
+const hsaPersonLookupSettingNames = [
+  'HSA_PERSON_LOOKUP_URL',
+  'HSA_PERSON_LOOKUP_CA_PATH',
+  'HSA_PERSON_LOOKUP_CLIENT_CERT_PATH',
+  'HSA_PERSON_LOOKUP_CLIENT_KEY_PATH',
+  'HSA_PERSON_LOOKUP_TLS_SERVER_NAME',
+  'HSA_PERSON_LOOKUP_TIMEOUT_MS',
+  'HSA_PERSON_LOOKUP_OAUTH_CA_PATH',
+  'HSA_PERSON_LOOKUP_OAUTH_TOKEN_URL',
+  'HSA_PERSON_LOOKUP_OAUTH_ISSUER_URL',
+  'HSA_PERSON_LOOKUP_OAUTH_CLIENT_ID',
+  'HSA_PERSON_LOOKUP_OAUTH_CLIENT_SECRET',
+  'HSA_PERSON_LOOKUP_OAUTH_AUDIENCE',
+  'HSA_PERSON_LOOKUP_OAUTH_SCOPE',
+] as const
+
 let fixture: RuntimeFixture
 let invalidFixture: InvalidRuntimeFixture
 let chainFixture: Awaited<ReturnType<typeof createCertificateChainFixture>>
@@ -65,16 +81,16 @@ afterAll(async () => {
 describe('strict HSA person lookup startup snapshot', () => {
   it('caches unavailable startup state until the process is recreated', async () => {
     resetStrictHsaPersonLookupSnapshotForTests()
-    const previous = process.env.HSA_PERSON_LOOKUP_URL
-    delete process.env.HSA_PERSON_LOOKUP_URL
+    for (const settingName of hsaPersonLookupSettingNames) {
+      vi.stubEnv(settingName, '')
+    }
     try {
       const first = getStrictHsaPersonLookupSnapshot()
       const second = getStrictHsaPersonLookupSnapshot()
       expect(second).toBe(first)
       await expect(first).resolves.toBeNull()
     } finally {
-      if (previous === undefined) delete process.env.HSA_PERSON_LOOKUP_URL
-      else process.env.HSA_PERSON_LOOKUP_URL = previous
+      vi.unstubAllEnvs()
       resetStrictHsaPersonLookupSnapshotForTests()
     }
   })

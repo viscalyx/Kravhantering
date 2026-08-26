@@ -620,6 +620,16 @@ directly to smoke validation. Smoke does not resolve release metadata or write
 a version marker. Forwarded GitHub tokens remain subprocess environment/input
 only and do not appear in result records or command arguments.
 
+After user lingering, the user systemd manager, and the managed environment are
+active, bootstrap runs `codex app-server daemon bootstrap` as `vscode`. It
+installs and enables `krav-codex-app-server.service` as the boot-persistent
+user-systemd entry point for that command. The Codex daemon itself uses its
+supported PID backend. It must use the expected control socket below
+`/home/vscode/.codex` and report the exact Codex target for the CLI, managed
+package, and app server. A follow-up daemon version query must report `running`
+before bootstrap continues. This provides boot-persistent shared-agent support
+without depending on an interactive SSH shell.
+
 `install-azure-codex-session-policy.sh` writes the accepted token-variable and
 `vscode`-only SSH path rule, then returns to the global OpenSSH match context.
 It writes the `vscode` Bash-login policy and appends a managed Zsh footer after
@@ -660,7 +670,8 @@ The tracked Azure Codex template is separate from the devcontainer template.
 preserves unrelated user keys and tables, replaces Azure-owned root settings,
 updates `/workspace` trust, removes a legacy devcontainer profile if one was
 previously copied onto the VM, and writes the managed Azure permission profile.
-Repeated merges produce the same configuration.
+That profile limits user-level writes to `~/.codex/skills` while retaining the
+workspace grants. Repeated merges produce the same configuration.
 
 Do not move bootstrap into Azure `customData`. Azure does not allow changing
 `customData` on an existing VM, while this workflow must be able to rerun the
@@ -865,7 +876,7 @@ Validation must prove these implementation contracts:
   and returns root and other users to system-only paths.
 - Bubblewrap can create the unprivileged network namespace used by Codex.
 - `/home/vscode/.codex/config.toml` selects the managed
-  `kravhantering-azure-dev` profile while preserving unrelated user settings.
+  `kravhantering-development` profile while preserving unrelated user settings.
 - `/workspace` exists, is owned by `vscode`, and contains the repo.
 - the data disk, `/workspace`, host state, and rootless Podman storage are
   mounted as described in the storage invariants.
@@ -881,6 +892,9 @@ Validation must prove these implementation contracts:
 - fresh Bash-login and interactive-Zsh processes resolve bare `codex` to the
   managed launcher without alias or function masking, and the legacy launcher
   is absent.
+- the shared Codex app-server bootstrap service is enabled and active, while
+  the Codex PID daemon is running on its expected user control socket and
+  matches the validated Codex version.
 - user lingering is enabled.
 - managed Quadlet services are active.
 - support ports are bound only to loopback.
