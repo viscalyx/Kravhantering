@@ -1315,17 +1315,10 @@ test.describe('Requirements specification deterministic manual cases', () => {
       .first()
     const libraryRow = libraryButton.locator('xpath=ancestor::tr[1]')
     const reloadAndWaitForSpecificationItems = async () => {
-      const itemsResponse = page.waitForResponse(response => {
-        const url = new URL(response.url())
-        return (
-          response.request().method() === 'GET' &&
-          url.pathname ===
-            `/api/requirements-specifications/${specificationId}/items`
-        )
-      })
       await page.reload()
-      const response = await itemsResponse
-      expect(response.ok()).toBe(true)
+      await expect(localMarker).toBeVisible()
+      await expect(leftLibraryButton).toBeVisible()
+      await expect(libraryButton).toBeVisible()
       await expect(leftPanel.locator('tbody').first()).not.toHaveClass(
         /pointer-events-none/u,
       )
@@ -1625,9 +1618,35 @@ test.describe('Requirements specification deterministic manual cases', () => {
       'PWT-PAGE-3',
       'PWT restarted first page.',
     )
+    const firstPageItems = [
+      firstItem,
+      ...Array.from({ length: 11 }, (_, index) =>
+        item(
+          980010 + index,
+          `lib:${980010 + index}`,
+          `PWT-PAGE-A${String(index + 1).padStart(2, '0')}`,
+          `PWT first-page filler ${index + 1}.`,
+        ),
+      ),
+    ]
+    const secondPageItems = [
+      secondItem,
+      ...Array.from({ length: 11 }, (_, index) =>
+        item(
+          980030 + index,
+          `lib:${980030 + index}`,
+          `PWT-PAGE-B${String(index + 1).padStart(2, '0')}`,
+          `PWT continuation-page filler ${index + 1}.`,
+        ),
+      ),
+    ]
     let invalidCursorObserved = false
     let recoveryFirstPageRequests = 0
+    let markInvalidCursorStarted: (() => void) | undefined
     let releaseInvalidCursor: (() => void) | undefined
+    const invalidCursorStarted = new Promise<void>(resolve => {
+      markInvalidCursorStarted = resolve
+    })
     const invalidCursorGate = new Promise<void>(resolve => {
       releaseInvalidCursor = resolve
     })
@@ -1640,9 +1659,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
           await route.fulfill({
             contentType: 'application/json',
             json: {
-              items: [secondItem],
+              items: secondPageItems,
               pagination: {
-                count: 1,
+                count: secondPageItems.length,
                 hasMore: true,
                 limit: 50,
                 nextCursor: 'cursor-2',
@@ -1653,6 +1672,7 @@ test.describe('Requirements specification deterministic manual cases', () => {
         }
         if (cursor === 'cursor-2') {
           invalidCursorObserved = true
+          markInvalidCursorStarted?.()
           await invalidCursorGate
           await route.fulfill({
             contentType: 'application/json',
@@ -1666,9 +1686,9 @@ test.describe('Requirements specification deterministic manual cases', () => {
           await route.fulfill({
             contentType: 'application/json',
             json: {
-              items: [firstItem],
+              items: firstPageItems,
               pagination: {
-                count: 1,
+                count: firstPageItems.length,
                 hasMore: true,
                 limit: 50,
                 nextCursor: 'cursor-1',
@@ -1711,9 +1731,26 @@ test.describe('Requirements specification deterministic manual cases', () => {
     await expect(
       specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-1\b/u }),
     ).toHaveCount(1)
+    await specificationItemsPanel.evaluate(element => {
+      element.scrollTop = element.scrollHeight
+    })
     await expect(
       specificationItemsPanel.getByRole('button', { name: /^PWT-PAGE-2\b/u }),
     ).toHaveCount(1)
+    await specificationItemsPanel.evaluate(element => {
+      element.scrollTop = element.scrollHeight
+    })
+    await invalidCursorStarted
+    const loadingSentinel = specificationItemsPanel
+      .locator('.animate-spin')
+      .locator('..')
+    await expect(loadingSentinel).toHaveCount(1)
+    await loadingSentinel.evaluate(element => {
+      element.setAttribute('hidden', '')
+    })
+    await specificationItemsPanel.evaluate(element => {
+      element.scrollTop = 0
+    })
     await expect(
       specificationItemsPanel.getByRole('button', {
         name: 'Läs in fler krav',
