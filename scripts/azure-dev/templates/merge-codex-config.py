@@ -25,6 +25,7 @@ MANAGED_PROFILE_NAMES = (
     "permissions.kravhantering-devcontainer",
 )
 SECTION_PATTERN = re.compile(r"^\s*\[([^][]+)]\s*(?:#.*)?$")
+ARRAY_SECTION_PATTERN = re.compile(r"^\s*\[\[([^][]+)]]\s*(?:#.*)?$")
 ROOT_SETTING_PATTERN = re.compile(
     r"^\s*(approval_policy|default_permissions)\s*=",
 )
@@ -84,19 +85,63 @@ def is_managed_plugin_section(
     )
 
 
+def without_managed_skill_configs(
+    lines: list[str],
+    managed_skill_paths: list[str],
+) -> list[str]:
+    result: list[str] = []
+    skill_config: list[str] | None = None
+
+    def flush_skill_config() -> None:
+        nonlocal skill_config
+        if skill_config is None:
+            return
+        parsed = tomllib.loads("\n".join(skill_config))
+        entries = parsed.get("skills", {}).get("config", [])
+        path = entries[0].get("path") if entries else None
+        if path not in managed_skill_paths:
+            result.extend(skill_config)
+        skill_config = None
+
+    for line in lines:
+        array_match = ARRAY_SECTION_PATTERN.match(line)
+        section_match = SECTION_PATTERN.match(line)
+        section = (array_match or section_match)
+        section_name = section.group(1).strip() if section else None
+
+        if skill_config is not None:
+            if section_name is None or section_name.startswith("skills.config."):
+                skill_config.append(line)
+                continue
+            flush_skill_config()
+
+        if array_match and section_name == "skills.config":
+            skill_config = [line]
+        else:
+            result.append(line)
+
+    flush_skill_config()
+    return result
+
+
 def clean_existing_config(
     content: str,
     trust_level: str,
     managed_plugin_names: list[str],
+    managed_skill_paths: list[str],
 ) -> tuple[list[str], bool]:
     result: list[str] = []
     section: str | None = None
     workspace_found = False
 
-    for line in without_marked_blocks(content):
-        match = SECTION_PATTERN.match(line)
+    existing_lines = without_managed_skill_configs(
+        without_marked_blocks(content),
+        managed_skill_paths,
+    )
+    for line in existing_lines:
+        match = SECTION_PATTERN.match(line) or ARRAY_SECTION_PATTERN.match(line)
         if match:
-            section = match.group(1)
+            section = match.group(1).strip()
             if is_managed_profile_section(section) or is_managed_plugin_section(
                 section,
                 managed_plugin_names,
@@ -282,11 +327,13 @@ def render_profile(managed: dict[str, Any]) -> tuple[list[str], str, list[str]]:
 def merge_config(existing_content: str, managed_content: str) -> str:
     managed = tomllib.loads(managed_content)
     managed_plugin_names = require_disabled_plugins(managed)
+    managed_skill_paths = require_disabled_skills(managed)
     root_lines, trust_level, profile_lines = render_profile(managed)
     existing_lines, workspace_found = clean_existing_config(
         existing_content,
         trust_level,
         managed_plugin_names,
+        managed_skill_paths,
     )
 
     merged = list(root_lines)
@@ -304,8 +351,18 @@ def merge_config(existing_content: str, managed_content: str) -> str:
     merged.extend(profile_lines)
     merged_content = "\n".join(merged).rstrip() + "\n"
 
+    validate_merged_config(merged_content, managed)
+    return merged_content
+
+
+def validate_merged_config(
+    merged_content: str,
+    managed: dict[str, Any],
+) -> None:
     parsed = tomllib.loads(merged_content)
     default_permissions = managed["default_permissions"]
+    trust_level = managed["projects"]["/workspace"]["trust_level"]
+    managed_plugin_names = require_disabled_plugins(managed)
     if parsed.get("default_permissions") != default_permissions:
         raise ValueError("merged default permission profile is incorrect")
     if parsed["projects"]["/workspace"].get("trust_level") != trust_level:
@@ -317,15 +374,23 @@ def merge_config(existing_content: str, managed_content: str) -> str:
         for name in managed_plugin_names
     ):
         raise ValueError("merged disabled plugin configuration is incorrect")
-    expected_disabled_skills = require_disabled_skills(managed)
-    merged_disabled_skills = [
-        entry.get("path")
-        for entry in parsed.get("skills", {}).get("config", [])
-        if entry.get("enabled") is False
+    merged_skills_value = parsed.get("skills", {}).get("config", [])
+    if not isinstance(merged_skills_value, list):
+        raise ValueError("merged skills.config must be an array")
+    merged_skills = [
+        require_table(entry, f"merged skills.config.{index}")
+        for index, entry in enumerate(cast(list[Any], merged_skills_value))
     ]
-    if not all(path in merged_disabled_skills for path in expected_disabled_skills):
-        raise ValueError("merged disabled skill configuration is incorrect")
-    return merged_content
+    for path in require_disabled_skills(managed):
+        matching_skills = [
+            entry
+            for entry in merged_skills
+            if entry.get("path") == path
+        ]
+        if len(matching_skills) != 1 or matching_skills[0].get("enabled") is not False:
+            raise ValueError(
+                f"merged disabled skill configuration is incorrect for {path}",
+            )
 
 
 def write_atomic(path: Path, content: str) -> None:

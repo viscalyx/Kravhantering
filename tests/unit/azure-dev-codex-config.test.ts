@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -15,6 +15,18 @@ const disabledSystemSkillPaths = [
   '/home/vscode/.codex/skills/.system/skill-installer/SKILL.md',
 ]
 const disabledPluginNames = ['openai-templates', 'plugin-management']
+const validateMergedConfigScript = `
+import importlib.util
+from pathlib import Path
+import sys
+import tomllib
+
+spec = importlib.util.spec_from_file_location("merge_codex_config", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+managed = tomllib.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+module.validate_merged_config(sys.stdin.read(), managed)
+`
 
 function expectDisabledPlugins(content: string) {
   for (const pluginName of disabledPluginNames) {
@@ -131,5 +143,48 @@ command = "example"
       'default_permissions = "kravhantering-development"',
     )
     expect(merged).toContain('[mcp_servers.example]')
+  })
+
+  it('replaces an enabled managed skill without changing unmanaged skills', () => {
+    const managedSkillPath = disabledSystemSkillPaths[0]
+    const unmanagedSkillPath = '/home/vscode/.codex/skills/example/SKILL.md'
+    const configPath = createTemporaryConfig(`[plugins.openai-templates]
+enabled = true
+
+[[skills.config]]
+path = "${managedSkillPath}"
+enabled = true
+
+[[skills.config]]
+path = "${unmanagedSkillPath}"
+enabled = true
+`)
+
+    const merged = mergeConfig(configPath)
+
+    expect(merged.split(`path = "${managedSkillPath}"`)).toHaveLength(2)
+    expect(merged).toContain(`path = "${managedSkillPath}"\nenabled = false`)
+    expect(merged).toContain(`path = "${unmanagedSkillPath}"\nenabled = true`)
+  })
+
+  it('rejects duplicate managed skill paths during post-merge validation', () => {
+    const configPath = createTemporaryConfig('personality = "pragmatic"\n')
+    const managedSkillPath = disabledSystemSkillPaths[0]
+    const duplicateConfig = `${mergeConfig(configPath)}
+[[skills.config]]
+path = "${managedSkillPath}"
+enabled = true
+`
+
+    const validation = spawnSync(
+      'python3',
+      ['-c', validateMergedConfigScript, mergerPath, managedConfigPath],
+      { encoding: 'utf8', input: duplicateConfig },
+    )
+
+    expect(validation.status).toBe(1)
+    expect(validation.stderr).toContain(
+      `merged disabled skill configuration is incorrect for ${managedSkillPath}`,
+    )
   })
 })
