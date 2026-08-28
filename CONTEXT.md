@@ -1426,6 +1426,92 @@ sammanhanget tydligt visar att en dokumenterad guide följs.
 _Avoid_: Driftsättningsverifiering när sammanhanget inte visar att en
 dokumenterad guide följs.
 
+**Driftsättningsmodell**:
+Den auktoritativa och versionerade beskrivningen av stödda
+driftsättningsförlopp, topologier, villkor och verifierbara eftervillkor.
+Guider och maskinläsbara körunderlag är projektioner från modellen.
+
+- `en`: Deployment model
+
+_Avoid_: Driftsättningsguide när den auktoritativa modellen avses,
+verifieringsplan.
+
+**Driftsättningsprojektion**:
+Ett deterministiskt genererat underlag från en bestämd driftsättningsmodell,
+exempelvis en guide, körplan, ett manifest eller en källkarta. Projektionen
+identifierar modellen som den härleds från men ersätter den inte som
+auktoritativ källa.
+
+- `en`: Deployment projection
+
+_Avoid_: Driftsättningsmodell, godtyckligt genererat dokument.
+
+**Driftsättningsförlopp**:
+En stabilt identifierad och uttryckligen ordnad sammansättning av
+guidekontraktssteg för ett livscykelfall, exempelvis förstagångsinstallation
+eller uppgradering under planerat driftstopp.
+
+- `en`: Deployment journey
+
+_Avoid_: Driftsättningsscenario, driftsättningsguide.
+
+**Driftsättningsscenario**:
+Ett konkret urval av driftsättningsförlopp, topologi, anslutningssätt,
+beroendeprofiler och eventuell releaseövergång som avgör vilka delar av en
+driftsättningsmodell som ska projiceras och verifieras.
+
+- `en`: Deployment scenario
+
+_Avoid_: Topologi när hela urvalet avses, verifieringsmiljö.
+
+**Scenarioegenskap**:
+Ett typat värde som ett driftsättningsscenario tillhandahåller och som
+kompilatorn använder för begränsade val av semantiska
+driftsättningsoperationer, exempelvis databasens provisioneringssätt eller
+tillgänglig nätverksanslutning.
+
+- `en`: Scenario property
+
+_Avoid_: Fritt villkor, scenariokapabilitet när värdet beskriver ett faktum.
+
+**Driftsättningsmiljöklass**:
+En obligatorisk klassificering av ett driftsättningsscenario som produktion,
+utveckling eller test och som styr vilka miljöavgränsade uppgifter modellen
+får referera till.
+
+- `en`: Deployment environment class
+
+_Avoid_: Driftsättningsscenario när endast miljöns säkerhetsklass avses,
+miljötyp utan driftsättningssammanhang.
+
+**Semantisk driftsättningsoperation**:
+En typad, stabilt identifierad operation ur kompilatorns slutna vokabulär som
+beskriver avsedd driftsättningsverkan utan att bädda in exekverbara kommandon
+eller styrlogik.
+
+- `en`: Semantic deployment operation
+
+_Avoid_: Godtyckligt kommando, skriptsteg, guidekontraktssteg.
+
+**Offentlig testautentiseringsuppgift**:
+En avsiktligt offentlig autentiseringsuppgift som är avgränsad till
+utvecklings- och testmiljöer och som aldrig får användas i produktion. Värdet
+kan dokumenteras eller versionshanteras eftersom det inte är en hemlighet.
+
+- `en`: Public test credential
+
+_Avoid_: Välkänd hemlighet, produktionshemlighet, standardlösenord.
+
+**Guidekontraktssteg**:
+En stabilt identifierad exekveringsenhet som en driftsättningsmodell
+projicerar till ett kommandoblock i en guide och motsvarande maskinläsbara
+körunderlag. Identitet, körkontext, tillämplighet och eftervillkor ska vara
+samstämmiga mellan projektionerna.
+
+- `en`: Guide contract step
+
+_Avoid_: Verifieringssteg, PowerShell-steg, godtyckligt radintervall.
+
 **Topologispecifik verifieringsmiljö**:
 En avgränsad miljö för verifiering av driftsättning enligt guide som
 representerar exakt en vald driftsättningstopologi från en ren
