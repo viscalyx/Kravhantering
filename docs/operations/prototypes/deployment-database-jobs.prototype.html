@@ -1,0 +1,1337 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prototype — database jobs deployment projection</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172033;
+        --muted: #586174;
+        --line: #d7dce6;
+        --surface: #ffffff;
+        --wash: #f4f6fa;
+        --accent: #3156d3;
+        --accent-soft: #e9edff;
+        --danger: #a42d2d;
+        --danger-soft: #fff0f0;
+        --ok: #17623c;
+        --ok-soft: #eaf8f0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--wash);
+        color: var(--ink);
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 40px 0 72px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 900px;
+        margin-bottom: 12px;
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        line-height: 1.04;
+        letter-spacing: -0.045em;
+      }
+
+      h2 {
+        margin-bottom: 14px;
+        font-size: 1.25rem;
+      }
+
+      h3 {
+        margin-bottom: 8px;
+        font-size: 1rem;
+      }
+
+      code,
+      pre {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      }
+
+      .eyebrow {
+        margin-bottom: 10px;
+        color: var(--accent);
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .lede {
+        max-width: 850px;
+        margin-bottom: 14px;
+        color: var(--muted);
+        font-size: 1.08rem;
+        line-height: 1.65;
+      }
+
+      .question {
+        max-width: 920px;
+        margin: 22px 0 30px;
+        padding: 18px 20px;
+        border-left: 4px solid var(--accent);
+        background: var(--accent-soft);
+        line-height: 1.55;
+      }
+
+      .panel {
+        margin-top: 20px;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: 0 8px 24px rgb(28 42 78 / 6%);
+      }
+
+      .panel-heading {
+        display: flex;
+        gap: 16px;
+        align-items: start;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .panel-heading p {
+        max-width: 680px;
+        margin-bottom: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .state-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .state-field,
+      .command-card,
+      .diagnostic {
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--wash);
+      }
+
+      .state-field span,
+      .command-card span {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--muted);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .state-field strong {
+        overflow-wrap: anywhere;
+        font-size: 0.94rem;
+      }
+
+      .button-row,
+      .tabs,
+      .scenario-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      button {
+        min-height: 38px;
+        padding: 8px 12px;
+        border: 1px solid #b9c1d0;
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        font: inherit;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover,
+      button:focus-visible {
+        border-color: var(--accent);
+        outline: 2px solid transparent;
+        background: var(--accent-soft);
+      }
+
+      button.active,
+      button.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #fff;
+      }
+
+      button.danger {
+        border-color: #e2b5b5;
+        color: var(--danger);
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+
+      .status.ok {
+        background: var(--ok-soft);
+        color: var(--ok);
+      }
+
+      .status.error {
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+
+      .source-view,
+      .projection-view {
+        overflow: auto;
+        max-height: 560px;
+        margin: 0;
+        padding: 16px;
+        border-radius: 10px;
+        background: #111827;
+        color: #e7eaf0;
+        font-size: 0.8rem;
+        line-height: 1.55;
+        white-space: pre-wrap;
+      }
+
+      .commands {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .command-card {
+        display: grid;
+        grid-template-columns: minmax(150px, 0.8fr) minmax(160px, 1fr) 1fr;
+        gap: 12px;
+        align-items: start;
+      }
+
+      .command-card code {
+        overflow-wrap: anywhere;
+        font-size: 0.82rem;
+      }
+
+      .diagnostics {
+        display: grid;
+        gap: 9px;
+      }
+
+      .diagnostic {
+        border-color: #e6bbbb;
+        background: var(--danger-soft);
+      }
+
+      .diagnostic strong,
+      .diagnostic code,
+      .diagnostic p {
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      .diagnostic p {
+        color: #6f3434;
+        line-height: 1.45;
+      }
+
+      .walkthrough-copy {
+        max-width: 780px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .walkthrough-step {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-top: 10px;
+      }
+
+      .walkthrough-step .step-number {
+        display: grid;
+        flex: 0 0 28px;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 800;
+      }
+
+      .walkthrough-step.done {
+        opacity: 0.55;
+      }
+
+      .walkthrough-step.current button {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-soft);
+      }
+
+      .note {
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 820px) {
+        .grid,
+        .state-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .command-card {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 560px) {
+        main {
+          width: min(100% - 20px, 1180px);
+          padding-top: 24px;
+        }
+
+        .grid,
+        .state-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .panel {
+          padding: 16px;
+        }
+
+        .panel-heading {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Throwaway logic prototype</p>
+      <h1>Author one database operation. Inspect every projection.</h1>
+      <p class="lede">
+        This prototype models the required database jobs as one guide contract
+        step. The step contains ordered commands with stable identities. A pure,
+        deterministic compiler projects the step for one deployment scenario.
+      </p>
+      <div class="question">
+        <strong>Question under test:</strong> Is a fixed, typed guide contract
+        step expressive enough for first installation and planned-downtime
+        upgrade across <code>single-node</code>, <code>app-node-tls</code>, and
+        <code>app-node-http</code>, while still rejecting a general-purpose
+        condition or shell language?
+      </div>
+
+      <section class="panel" aria-labelledby="current-state-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="current-state-heading">Current compiler state</h2>
+            <p>
+              Every action compiles the complete current source again. The
+              fields below show the selected deployment scenario and the result.
+            </p>
+          </div>
+          <span id="compile-status" class="status ok">Valid</span>
+        </div>
+        <div id="state-fields" class="state-grid"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="free-play-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="free-play-heading">Free play</h2>
+            <p>
+              Select any scenario, introduce a model defect, restore the source,
+              or test whether the execution plan is immutable.
+            </p>
+          </div>
+        </div>
+        <h3>Deployment scenario</h3>
+        <div id="scenario-buttons" class="scenario-row"></div>
+        <h3 style="margin-top: 18px">Model actions</h3>
+        <div class="button-row">
+          <button data-action="RESET" class="primary">Restore valid source</button>
+          <button data-action="BOOTSTRAP_ALWAYS" class="danger">
+            Make bootstrap run during upgrade
+          </button>
+          <button data-action="REMOVE_POSTCONDITION" class="danger">
+            Remove permission postcondition
+          </button>
+          <button data-action="ADD_RAW_SHELL" class="danger">
+            Add arbitrary shell
+          </button>
+          <button data-action="TRY_MUTATE_PLAN">Try to change compiled plan</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="source-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="source-heading">Author view: deployment model source</h2>
+            <p>
+              This format is illustrative, not a file-format decision. It shows
+              the knowledge an author must supply. The compiler owns command
+              rendering and scenario selection.
+            </p>
+          </div>
+        </div>
+        <div class="grid">
+          <pre id="source-view" class="source-view"></pre>
+          <div>
+            <h3>Ordered commands</h3>
+            <div id="command-cards" class="commands"></div>
+            <p class="note" style="margin-top: 14px">
+              Fixed command kinds and applicability values are the anti-DSL
+              boundary. Authors cannot add shell text, loops, variables, or
+              expressions.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="diagnostics-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="diagnostics-heading">Compiler diagnostics</h2>
+            <p>
+              A diagnostic names the rule, the exact source path, the selected
+              deployment scenario, and the repair.
+            </p>
+          </div>
+        </div>
+        <div id="diagnostics" class="diagnostics"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="projection-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="projection-heading">Deployment projections</h2>
+            <p>
+              All projections come from the same compiled result. Invalid source
+              produces no partial projection.
+            </p>
+          </div>
+        </div>
+        <div id="projection-tabs" class="tabs"></div>
+        <pre id="projection-view" class="projection-view" style="margin-top: 12px"></pre>
+      </section>
+
+      <section class="panel" aria-labelledby="walkthrough-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="walkthrough-heading">Guided walkthroughs</h2>
+            <p>
+              Start a walkthrough, then press each numbered action. Watch the
+              complete compiler state and projections change above.
+            </p>
+          </div>
+        </div>
+        <div id="walkthrough-tabs" class="tabs"></div>
+        <div id="walkthrough" style="margin-top: 16px"></div>
+      </section>
+    </main>
+
+    <script>
+      "use strict";
+
+      const DeploymentPrototype = (() => {
+        const scenarioDefinitions = Object.freeze({
+          "first-install/single-node": Object.freeze({
+            id: "first-install/single-node",
+            journey: "first-install",
+            topology: "single-node",
+            databaseAccess: "local-network-with-ca",
+          }),
+          "first-install/app-node-tls": Object.freeze({
+            id: "first-install/app-node-tls",
+            journey: "first-install",
+            topology: "app-node-tls",
+            databaseAccess: "external-env",
+          }),
+          "first-install/app-node-http": Object.freeze({
+            id: "first-install/app-node-http",
+            journey: "first-install",
+            topology: "app-node-http",
+            databaseAccess: "external-env",
+          }),
+          "planned-upgrade/single-node": Object.freeze({
+            id: "planned-upgrade/single-node",
+            journey: "planned-upgrade",
+            topology: "single-node",
+            databaseAccess: "local-network-with-ca",
+          }),
+          "planned-upgrade/app-node-tls": Object.freeze({
+            id: "planned-upgrade/app-node-tls",
+            journey: "planned-upgrade",
+            topology: "app-node-tls",
+            databaseAccess: "external-env",
+          }),
+          "planned-upgrade/app-node-http": Object.freeze({
+            id: "planned-upgrade/app-node-http",
+            journey: "planned-upgrade",
+            topology: "app-node-http",
+            databaseAccess: "external-env",
+          }),
+        });
+
+        const allowedCommandKinds = new Set([
+          "database.wait",
+          "database.bootstrap",
+          "database.migration-status-before",
+          "database.migrate",
+          "database.migration-status-after",
+          "database.permission-status",
+          "database.seed-required",
+        ]);
+
+        const cleanModel = Object.freeze({
+          schemaVersion: "prototype-1",
+          modelVersion: "2026-08-28.example.1",
+          operations: [
+            {
+              id: "database.apply-required-state",
+              kind: "database.required-state",
+              title: "Apply required database state",
+              purpose:
+                "Make the database compatible with the selected release and verify runtime permissions.",
+              prose: {
+                introduction: "prose.database.required-state.introduction",
+                upgradeWarning: "prose.database.required-state.upgrade-warning",
+              },
+              commands: [
+                {
+                  id: "wait",
+                  kind: "database.wait",
+                  appliesTo: "all-journeys",
+                },
+                {
+                  id: "bootstrap",
+                  kind: "database.bootstrap",
+                  appliesTo: "first-install-only",
+                },
+                {
+                  id: "status-before",
+                  kind: "database.migration-status-before",
+                  appliesTo: "all-journeys",
+                  evidence: "migration-status-before",
+                },
+                {
+                  id: "migrate",
+                  kind: "database.migrate",
+                  appliesTo: "all-journeys",
+                  evidence: "migration-run",
+                },
+                {
+                  id: "status-after",
+                  kind: "database.migration-status-after",
+                  appliesTo: "all-journeys",
+                  evidence: "migration-status-after",
+                },
+                {
+                  id: "permission-status",
+                  kind: "database.permission-status",
+                  appliesTo: "all-journeys",
+                  evidence: "runtime-permissions",
+                },
+                {
+                  id: "seed-required",
+                  kind: "database.seed-required",
+                  appliesTo: "all-journeys",
+                },
+              ],
+              postconditions: [
+                {
+                  id: "permissions-compatible",
+                  fact: "database.runtime-permissions-compatible",
+                },
+                {
+                  id: "required-seed-current",
+                  fact: "database.required-seed-current",
+                },
+              ],
+            },
+          ],
+          proseFragments: {
+            "prose.database.required-state.introduction":
+              "Run the database jobs once for the selected release.",
+            "prose.database.required-state.upgrade-warning":
+              "Review the Operator Upgrade Notes before migration. Do not bootstrap during a normal upgrade.",
+          },
+        });
+
+        function clone(value) {
+          return JSON.parse(JSON.stringify(value));
+        }
+
+        function stableStringify(value) {
+          if (Array.isArray(value)) {
+            return `[${value.map(stableStringify).join(",")}]`;
+          }
+          if (value && typeof value === "object") {
+            return `{${Object.keys(value)
+              .sort()
+              .map(
+                (key) =>
+                  `${JSON.stringify(key)}:${stableStringify(value[key])}`,
+              )
+              .join(",")}}`;
+          }
+          return JSON.stringify(value);
+        }
+
+        function illustrativeDigest(value) {
+          const input = stableStringify(value);
+          let hash = 0x811c9dc5;
+          for (let index = 0; index < input.length; index += 1) {
+            hash ^= input.charCodeAt(index);
+            hash = Math.imul(hash, 0x01000193);
+          }
+          return `prototype-fnv1a-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+        }
+
+        function deepFreeze(value) {
+          if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+            return value;
+          }
+          Object.freeze(value);
+          Object.values(value).forEach(deepFreeze);
+          return value;
+        }
+
+        function diagnostic(code, sourcePath, scenarioId, message, repair) {
+          return { code, sourcePath, scenarioId, message, repair };
+        }
+
+        function validate(model, scenario) {
+          const diagnostics = [];
+          const operation = model.operations[0];
+          const operationPath = "operations[database.apply-required-state]";
+
+          if (model.rawShell) {
+            diagnostics.push(
+              diagnostic(
+                "DEPLOY_MODEL_FORBIDS_RAW_SHELL",
+                "rawShell",
+                scenario.id,
+                "The deployment model contains arbitrary shell text. The compiler cannot prove its effects or project it coherently.",
+                "Use a supported command kind, or extend the compiler with one reviewed semantic command kind.",
+              ),
+            );
+          }
+
+          if (!operation) {
+            diagnostics.push(
+              diagnostic(
+                "DEPLOY_MODEL_OPERATION_REQUIRED",
+                "operations",
+                scenario.id,
+                "The required database operation is missing.",
+                "Restore operation database.apply-required-state.",
+              ),
+            );
+            return diagnostics;
+          }
+
+          operation.commands.forEach((command) => {
+            const path = `${operationPath}.commands[${command.id}]`;
+            if (!allowedCommandKinds.has(command.kind)) {
+              diagnostics.push(
+                diagnostic(
+                  "DEPLOY_MODEL_COMMAND_KIND_UNKNOWN",
+                  `${path}.kind`,
+                  scenario.id,
+                  `Command kind ${command.kind} is not supported.`,
+                  "Choose a fixed command kind from the deployment model interface.",
+                ),
+              );
+            }
+            if (command.when || command.script || command.shell) {
+              diagnostics.push(
+                diagnostic(
+                  "DEPLOY_MODEL_FORBIDS_EXPRESSIONS",
+                  path,
+                  scenario.id,
+                  "A command contains an expression or shell body.",
+                  "Use a fixed appliesTo value and a supported command kind.",
+                ),
+              );
+            }
+          });
+
+          const bootstrap = operation.commands.find(
+            (command) => command.kind === "database.bootstrap",
+          );
+          if (
+            scenario.journey === "planned-upgrade" &&
+            bootstrap &&
+            bootstrap.appliesTo !== "first-install-only"
+          ) {
+            diagnostics.push(
+              diagnostic(
+                "DEPLOY_MODEL_BOOTSTRAP_IN_UPGRADE",
+                `${operationPath}.commands[bootstrap].appliesTo`,
+                scenario.id,
+                "Bootstrap would run during a planned-downtime upgrade.",
+                "Set appliesTo to first-install-only.",
+              ),
+            );
+          }
+
+          const hasPermissionPostcondition = operation.postconditions.some(
+            (postcondition) =>
+              postcondition.fact === "database.runtime-permissions-compatible",
+          );
+          if (!hasPermissionPostcondition) {
+            diagnostics.push(
+              diagnostic(
+                "DEPLOY_MODEL_POSTCONDITION_REQUIRED",
+                `${operationPath}.postconditions`,
+                scenario.id,
+                "The operation does not require compatible runtime permissions after execution.",
+                "Restore postcondition database.runtime-permissions-compatible.",
+              ),
+            );
+          }
+
+          return diagnostics;
+        }
+
+        function commandApplies(command, scenario) {
+          return (
+            command.appliesTo === "all-journeys" ||
+            (command.appliesTo === "first-install-only" &&
+              scenario.journey === "first-install")
+          );
+        }
+
+        function commandArguments(command, scenario, evidenceDirectory) {
+          const args = ["run", "--rm"];
+          if (scenario.databaseAccess === "local-network-with-ca") {
+            args.push(
+              "--network",
+              "$STACK_NETWORK",
+              "--env-file",
+              "/etc/kravhantering/db-job.env",
+              "--volume",
+              "${DB_CA_SOURCE}:${DB_CA_TARGET}:ro",
+            );
+          } else {
+            args.push("--env-file", "/etc/kravhantering/db-job.env");
+          }
+          args.push("$DB_JOB_IMAGE_REF");
+
+          const subcommands = {
+            "database.wait": ["wait"],
+            "database.bootstrap": ["bootstrap"],
+            "database.migration-status-before": ["migration-status"],
+            "database.migrate": ["migrate", "--json"],
+            "database.migration-status-after": ["migration-status"],
+            "database.permission-status": ["permission-status"],
+            "database.seed-required": ["seed:required"],
+          };
+          args.push(...subcommands[command.kind]);
+
+          const redirect = command.evidence
+            ? `${evidenceDirectory}/${command.evidence}-\${VERSION}.json`
+            : null;
+          return { args, redirect };
+        }
+
+        function shellQuote(argument) {
+          if (argument.startsWith("$") || argument.startsWith("${")) {
+            return `"${argument}"`;
+          }
+          if (/^[a-zA-Z0-9_./:=\-]+$/.test(argument)) {
+            return argument;
+          }
+          return `'${argument.replaceAll("'", "'\\''")}'`;
+        }
+
+        function renderCommand(planCommand) {
+          const rendered = [planCommand.executable, ...planCommand.args]
+            .map(shellQuote)
+            .join(" ");
+          return planCommand.redirect
+            ? `${rendered} > "${planCommand.redirect}"`
+            : rendered;
+        }
+
+        function compile(model, scenarioId) {
+          const scenario = scenarioDefinitions[scenarioId];
+          const diagnostics = validate(model, scenario);
+          const modelDigest = illustrativeDigest(model);
+          if (diagnostics.length > 0) {
+            return {
+              ok: false,
+              modelDigest,
+              scenario,
+              diagnostics,
+              projections: null,
+            };
+          }
+
+          const operation = model.operations[0];
+          const journeyName =
+            scenario.journey === "first-install" ? "deploy" : "upgrade";
+          const evidenceDirectory =
+            `/var/tmp/kravhantering-${journeyName}-\${VERSION}-evidence`;
+          const planCommands = operation.commands
+            .filter((command) => commandApplies(command, scenario))
+            .map((command) => {
+              const rendered = commandArguments(
+                command,
+                scenario,
+                evidenceDirectory,
+              );
+              return {
+                id: `${operation.id}/${command.id}`,
+                semanticKind: command.kind,
+                runAs: "kravhantering",
+                executable: "podman",
+                args: rendered.args,
+                redirect: rendered.redirect,
+                sourcePath:
+                  `operations[${operation.id}].commands[${command.id}]`,
+              };
+            });
+
+          const guideLines = [
+            `## ${operation.title}`,
+            "",
+            model.proseFragments[operation.prose.introduction],
+          ];
+          if (scenario.journey === "planned-upgrade") {
+            guideLines.push(
+              "",
+              model.proseFragments[operation.prose.upgradeWarning],
+            );
+          }
+          guideLines.push(
+            "",
+            `Deployment scenario: \`${scenario.id}\`.`,
+            "",
+            "```bash",
+            "sudo -iu kravhantering",
+            "cd /opt/kravhantering/current",
+            "set -a",
+            ". /etc/kravhantering/release.env",
+            "set +a",
+          );
+          if (scenario.databaseAccess === "local-network-with-ca") {
+            guideLines.push(
+              'STACK_NETWORK="$(bin/kravhantering-quadlet.sh print-network --topology single-node --purpose database)"',
+              "DB_CA_SOURCE=/etc/kravhantering/tls/ca.crt",
+              "DB_CA_TARGET=/run/kravhantering/sqlserver-ca.crt",
+            );
+          }
+          guideLines.push(
+            `EVIDENCE_DIR="${evidenceDirectory}"`,
+            'mkdir -p "$EVIDENCE_DIR"',
+            "",
+          );
+
+          const sourceMapEntries = [];
+          planCommands.forEach((command, index) => {
+            const lineStart = guideLines.length + 1;
+            guideLines.push(renderCommand(command));
+            sourceMapEntries.push({
+              sourcePath: command.sourcePath,
+              guide: {
+                projection: `${scenario.id}.md`,
+                lineStart,
+                lineEnd: lineStart,
+              },
+              executionPlan: `/operations/0/commands/${index}`,
+              manifest: `/operationCommandIds/${index}`,
+            });
+          });
+          guideLines.push("", "exit", "```");
+
+          const executionPlan = deepFreeze({
+            format: "deployment-execution-plan/prototype-1",
+            modelVersion: model.modelVersion,
+            modelDigest,
+            scenario: scenario.id,
+            operations: [
+              {
+                id: operation.id,
+                purpose: operation.purpose,
+                commands: planCommands,
+                postconditions: clone(operation.postconditions),
+              },
+            ],
+          });
+          const manifest = {
+            format: "deployment-projection-manifest/prototype-1",
+            modelVersion: model.modelVersion,
+            modelDigest,
+            scenario: scenario.id,
+            projections: {
+              guide: `${scenario.id}.md`,
+              executionPlan: `${scenario.id}.plan.json`,
+              sourceMap: `${scenario.id}.map.json`,
+            },
+            operationCommandIds: planCommands.map((command) => command.id),
+          };
+          const sourceMap = {
+            format: "deployment-source-map/prototype-1",
+            modelVersion: model.modelVersion,
+            modelDigest,
+            scenario: scenario.id,
+            entries: sourceMapEntries,
+          };
+
+          return {
+            ok: true,
+            modelDigest,
+            scenario,
+            diagnostics: [],
+            projections: {
+              guide: guideLines.join("\n"),
+              plan: executionPlan,
+              manifest,
+              sourceMap,
+            },
+          };
+        }
+
+        function initialState() {
+          const model = clone(cleanModel);
+          const scenarioId = "first-install/single-node";
+          return {
+            model,
+            scenarioId,
+            result: compile(model, scenarioId),
+            lastAction: "Loaded the valid example source.",
+            planMutationResult: "Not attempted",
+          };
+        }
+
+        function reduce(previousState, action) {
+          if (action.type === "RESET") {
+            return initialState();
+          }
+
+          const state = {
+            ...previousState,
+            model: clone(previousState.model),
+          };
+          if (action.type === "SELECT_SCENARIO") {
+            state.scenarioId = action.scenarioId;
+            state.lastAction = `Selected ${action.scenarioId}.`;
+          }
+          if (action.type === "BOOTSTRAP_ALWAYS") {
+            const bootstrap = state.model.operations[0].commands.find(
+              (command) => command.id === "bootstrap",
+            );
+            bootstrap.appliesTo = "all-journeys";
+            state.lastAction = "Changed bootstrap applicability to all journeys.";
+          }
+          if (action.type === "REMOVE_POSTCONDITION") {
+            state.model.operations[0].postconditions =
+              state.model.operations[0].postconditions.filter(
+                (postcondition) =>
+                  postcondition.fact !==
+                  "database.runtime-permissions-compatible",
+              );
+            state.lastAction = "Removed the runtime-permission postcondition.";
+          }
+          if (action.type === "ADD_RAW_SHELL") {
+            state.model.rawShell = "for host in $HOSTS; do run-anything; done";
+            state.lastAction = "Added arbitrary shell to the model source.";
+          }
+
+          state.result = compile(state.model, state.scenarioId);
+          if (action.type === "TRY_MUTATE_PLAN") {
+            if (!state.result.ok) {
+              state.planMutationResult =
+                "No plan exists because the current model is invalid.";
+            } else {
+              try {
+                state.result.projections.plan.scenario = "changed-after-compile";
+                state.planMutationResult = "Mutation unexpectedly succeeded.";
+              } catch (error) {
+                state.planMutationResult =
+                  "Blocked: the compiled execution plan is deeply frozen.";
+              }
+            }
+            state.lastAction = "Tried to change the compiled execution plan.";
+          }
+          return state;
+        }
+
+        return {
+          initialState,
+          reduce,
+          scenarioDefinitions,
+        };
+      })();
+    </script>
+
+    <script>
+      "use strict";
+
+      const projectionLabels = {
+        guide: "Operator guide",
+        plan: "Execution plan",
+        manifest: "Manifest",
+        sourceMap: "Source map",
+      };
+      const walkthroughs = [
+        {
+          id: "install",
+          title: "First installation",
+          description:
+            "Compile the single-node first-install scenario. Watch bootstrap appear and the local database network and CA mount enter the command adapter.",
+          steps: [
+            {
+              label: "Restore the valid source",
+              action: { type: "RESET" },
+            },
+            {
+              label: "Select first-install / single-node",
+              action: {
+                type: "SELECT_SCENARIO",
+                scenarioId: "first-install/single-node",
+              },
+            },
+          ],
+        },
+        {
+          id: "shared",
+          title: "Shared app-node operation",
+          description:
+            "Compile TLS and HTTP app-node scenarios. This database operation uses the same external-database capability in both. The scenario identity remains distinct in every projection.",
+          steps: [
+            {
+              label: "Restore the valid source",
+              action: { type: "RESET" },
+            },
+            {
+              label: "Select first-install / app-node-tls",
+              action: {
+                type: "SELECT_SCENARIO",
+                scenarioId: "first-install/app-node-tls",
+              },
+            },
+            {
+              label: "Select first-install / app-node-http",
+              action: {
+                type: "SELECT_SCENARIO",
+                scenarioId: "first-install/app-node-http",
+              },
+            },
+          ],
+        },
+        {
+          id: "invalid-upgrade",
+          title: "Unsafe upgrade",
+          description:
+            "Make bootstrap apply to every journey, then select an upgrade. The compiler must identify the exact source field and produce no projection.",
+          steps: [
+            {
+              label: "Restore the valid source",
+              action: { type: "RESET" },
+            },
+            {
+              label: "Make bootstrap apply to all journeys",
+              action: { type: "BOOTSTRAP_ALWAYS" },
+            },
+            {
+              label: "Select planned-upgrade / single-node",
+              action: {
+                type: "SELECT_SCENARIO",
+                scenarioId: "planned-upgrade/single-node",
+              },
+            },
+          ],
+        },
+        {
+          id: "anti-dsl",
+          title: "Anti-DSL boundary",
+          description:
+            "Add a shell loop to the source. The compiler rejects it and directs the author to a reviewed semantic command kind.",
+          steps: [
+            {
+              label: "Restore the valid source",
+              action: { type: "RESET" },
+            },
+            {
+              label: "Add arbitrary shell",
+              action: { type: "ADD_RAW_SHELL" },
+            },
+          ],
+        },
+      ];
+
+      let state = DeploymentPrototype.initialState();
+      let activeProjection = "guide";
+      let activeWalkthrough = 0;
+      let walkthroughStep = 0;
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function sourceText(model) {
+        const operation = model.operations[0];
+        const commands = operation.commands
+          .map((command) => {
+            const lines = [
+              `      - id: ${command.id}`,
+              `        kind: ${command.kind}`,
+              `        appliesTo: ${command.appliesTo}`,
+            ];
+            if (command.evidence) {
+              lines.push(`        evidence: ${command.evidence}`);
+            }
+            return lines.join("\n");
+          })
+          .join("\n");
+        const postconditions = operation.postconditions
+          .map(
+            (postcondition) =>
+              `      - ${postcondition.id}: ${postcondition.fact}`,
+          )
+          .join("\n");
+        return [
+          `schemaVersion: ${model.schemaVersion}`,
+          `modelVersion: ${model.modelVersion}`,
+          "operations:",
+          `  - id: ${operation.id}`,
+          `    kind: ${operation.kind}`,
+          `    purpose: ${operation.purpose}`,
+          "    prose:",
+          `      introduction: ${operation.prose.introduction}`,
+          `      upgradeWarning: ${operation.prose.upgradeWarning}`,
+          "    commands:",
+          commands,
+          "    postconditions:",
+          postconditions || "      []",
+          model.rawShell ? `rawShell: ${model.rawShell}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+      }
+
+      function field(label, value) {
+        return `<div class="state-field"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+      }
+
+      function renderState() {
+        const result = state.result;
+        const status = document.getElementById("compile-status");
+        status.textContent = result.ok ? "Valid — projections produced" : "Invalid — no projections";
+        status.className = `status ${result.ok ? "ok" : "error"}`;
+        document.getElementById("state-fields").innerHTML = [
+          field("Journey", result.scenario.journey),
+          field("Topology", result.scenario.topology),
+          field("Database access", result.scenario.databaseAccess),
+          field("Model digest", result.modelDigest),
+          field("Last action", state.lastAction),
+          field("Diagnostics", result.diagnostics.length),
+          field(
+            "Plan commands",
+            result.ok
+              ? result.projections.plan.operations[0].commands.length
+              : "No plan",
+          ),
+          field("Plan mutation", state.planMutationResult),
+        ].join("");
+      }
+
+      function renderScenarioButtons() {
+        document.getElementById("scenario-buttons").innerHTML = Object.values(
+          DeploymentPrototype.scenarioDefinitions,
+        )
+          .map(
+            (scenario) =>
+              `<button class="${scenario.id === state.scenarioId ? "active" : ""}" data-scenario="${escapeHtml(scenario.id)}">${escapeHtml(scenario.id)}</button>`,
+          )
+          .join("");
+      }
+
+      function renderSource() {
+        document.getElementById("source-view").textContent = sourceText(
+          state.model,
+        );
+        const operation = state.model.operations[0];
+        document.getElementById("command-cards").innerHTML = operation.commands
+          .map(
+            (command, index) => `
+              <div class="command-card">
+                <div><span>${index + 1}. Stable identity</span><code>${escapeHtml(command.id)}</code></div>
+                <div><span>Semantic command kind</span><code>${escapeHtml(command.kind)}</code></div>
+                <div><span>Applicability</span><code>${escapeHtml(command.appliesTo)}</code></div>
+              </div>`,
+          )
+          .join("");
+      }
+
+      function renderDiagnostics() {
+        const diagnostics = state.result.diagnostics;
+        document.getElementById("diagnostics").innerHTML = diagnostics.length
+          ? diagnostics
+              .map(
+                (item) => `
+                  <article class="diagnostic">
+                    <strong>${escapeHtml(item.code)}</strong>
+                    <code>${escapeHtml(item.sourcePath)}</code>
+                    <p>${escapeHtml(item.message)}</p>
+                    <small><strong>Repair:</strong> ${escapeHtml(item.repair)}</small>
+                  </article>`,
+              )
+              .join("")
+          : '<div class="state-field"><strong>No diagnostics.</strong><p class="note" style="margin: 6px 0 0">The selected scenario compiles as one coherent set of projections.</p></div>';
+      }
+
+      function renderProjection() {
+        const result = state.result;
+        document.getElementById("projection-tabs").innerHTML = Object.entries(
+          projectionLabels,
+        )
+          .map(
+            ([id, label]) =>
+              `<button class="${id === activeProjection ? "active" : ""}" data-projection="${id}">${label}</button>`,
+          )
+          .join("");
+        const view = document.getElementById("projection-view");
+        if (!result.ok) {
+          view.textContent =
+            "No projection was produced. Repair every compiler diagnostic first.";
+          return;
+        }
+        const projection = result.projections[activeProjection];
+        view.textContent =
+          typeof projection === "string"
+            ? projection
+            : JSON.stringify(projection, null, 2);
+      }
+
+      function renderWalkthrough() {
+        document.getElementById("walkthrough-tabs").innerHTML = walkthroughs
+          .map(
+            (walkthrough, index) =>
+              `<button class="${index === activeWalkthrough ? "active" : ""}" data-walkthrough="${index}">${escapeHtml(walkthrough.title)}</button>`,
+          )
+          .join("");
+        const walkthrough = walkthroughs[activeWalkthrough];
+        document.getElementById("walkthrough").innerHTML = `
+          <p class="walkthrough-copy">${escapeHtml(walkthrough.description)}</p>
+          ${walkthrough.steps
+            .map((step, index) => {
+              const className =
+                index < walkthroughStep
+                  ? "done"
+                  : index === walkthroughStep
+                    ? "current"
+                    : "";
+              return `<div class="walkthrough-step ${className}">
+                <span class="step-number">${index + 1}</span>
+                <button data-walkthrough-step="${index}">${escapeHtml(step.label)}</button>
+              </div>`;
+            })
+            .join("")}`;
+      }
+
+      function render() {
+        renderState();
+        renderScenarioButtons();
+        renderSource();
+        renderDiagnostics();
+        renderProjection();
+        renderWalkthrough();
+      }
+
+      function dispatch(action) {
+        state = DeploymentPrototype.reduce(state, action);
+        render();
+      }
+
+      document.addEventListener("click", (event) => {
+        const actionButton = event.target.closest("[data-action]");
+        if (actionButton) {
+          dispatch({ type: actionButton.dataset.action });
+          return;
+        }
+        const scenarioButton = event.target.closest("[data-scenario]");
+        if (scenarioButton) {
+          dispatch({
+            type: "SELECT_SCENARIO",
+            scenarioId: scenarioButton.dataset.scenario,
+          });
+          return;
+        }
+        const projectionButton = event.target.closest("[data-projection]");
+        if (projectionButton) {
+          activeProjection = projectionButton.dataset.projection;
+          renderProjection();
+          return;
+        }
+        const walkthroughButton = event.target.closest("[data-walkthrough]");
+        if (walkthroughButton) {
+          activeWalkthrough = Number(walkthroughButton.dataset.walkthrough);
+          walkthroughStep = 0;
+          state = DeploymentPrototype.initialState();
+          render();
+          return;
+        }
+        const stepButton = event.target.closest("[data-walkthrough-step]");
+        if (stepButton) {
+          const index = Number(stepButton.dataset.walkthroughStep);
+          const step = walkthroughs[activeWalkthrough].steps[index];
+          dispatch(step.action);
+          walkthroughStep = Math.min(
+            index + 1,
+            walkthroughs[activeWalkthrough].steps.length,
+          );
+          renderWalkthrough();
+        }
+      });
+
+      render();
+    </script>
+  </body>
+</html>
