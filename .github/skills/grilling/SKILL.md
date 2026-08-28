@@ -7,6 +7,10 @@ Interview the user relentlessly until you reach a shared understanding. Map this
 
 Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled: the questions you can ask _now_ without guessing at answers you haven't heard yet. Ask the whole frontier in one round: number each question and give your recommended answer. Then wait for the user's answers before the next round.
 
+Each round should start with a little bit of context.
+
+Text should use ASD-STE100 Simplified Technical English, and the ubiquitous language from `CONTEXT.md`.
+
 Each question should be formatted like so:
 
 ```
