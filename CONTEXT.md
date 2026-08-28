@@ -1464,6 +1464,40 @@ driftsättningsmodell som ska projiceras och verifieras.
 
 _Avoid_: Topologi när hela urvalet avses, verifieringsmiljö.
 
+**Releaseövergång**:
+En uttryckligen stödd relation mellan en autentiserad källrelease och en
+autentiserad målrelease inom samma topologi och identitetsprofil för enkelnod.
+
+- `en`: Release transition
+
+_Avoid_: Versionsintervall, implicit migrationskedja, byte av topologi eller
+identitetsprofil.
+
+**Återgångskontrollpunkt**:
+Ett verifierat tillstånd under en releaseövergång som avgör vilken
+återgångsväg som gäller om övergången inte kan slutföras.
+
+- `en`: Rollback checkpoint
+
+_Avoid_: Misslyckat steg, stegnummer, obekräftat tillstånd.
+
+**Beständig mutationsgräns**:
+Den tidigaste punkt i en releaseövergång där målreleasen kan göra beständigt
+tillstånd inkompatibelt med källreleasen.
+
+- `en`: Persistent-mutation boundary
+
+_Avoid_: Databasmigreringsstart när en tidigare beständig verkan kan passera
+gränsen.
+
+**Konfigurationsdisposition**:
+En uttrycklig klassning av om en berörd konfigurationsmängd ska behållas,
+ersättas, omformas eller tas ur bruk under en releaseövergång.
+
+- `en`: Configuration disposition
+
+_Avoid_: Implicit konfigurationsbevarande, konfigurationsändring utan klassning.
+
 **Scenarioegenskap**:
 Ett typat värde som ett driftsättningsscenario tillhandahåller och som
 kompilatorn använder för begränsade val av semantiska
