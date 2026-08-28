@@ -1492,11 +1492,20 @@ gränsen.
 
 **Konfigurationsdisposition**:
 En uttrycklig klassning av om en berörd konfigurationsmängd ska behållas,
-ersättas, omformas eller tas ur bruk under en releaseövergång.
+införas, ersättas, omformas eller tas ur bruk under en releaseövergång.
 
 - `en`: Configuration disposition
 
 _Avoid_: Implicit konfigurationsbevarande, konfigurationsändring utan klassning.
+
+**Källreleasebevis**:
+Ett underlag som visar att en installerad driftsättning motsvarar den exakta
+källrelease, topologi, identitetsprofil, databasversion och konfiguration som en
+releaseövergång kräver.
+
+- `en`: Source-release evidence
+
+_Avoid_: Operatörsangivet versionsnummer, enbart databasversion.
 
 **Återställningsmängd**:
 En namngiven samling av källreleaseartefakter, konfiguration, beständigt
@@ -1532,6 +1541,14 @@ En uttryckligen ordnad sammansättning av guidekontraktssteg som från en
 - `en`: Rollback route
 
 _Avoid_: Omvänd uppgraderingsordning, automatisk nedmigrering.
+
+**Driftöverlämning för releaseövergång**:
+Det bekräftade slutet på en releaseövergång där målreleasen har godtagits och
+normal skrivande trafik har återupptagits.
+
+- `en`: Release-transition operational handoff
+
+_Avoid_: Enbart trafiköppning, återgångskontrollpunkt.
 
 **Scenarioegenskap**:
 Ett typat värde som ett driftsättningsscenario tillhandahåller och som
