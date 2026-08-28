@@ -9,7 +9,7 @@ Work the tree in **rounds**. The **frontier** is every decision whose prerequisi
 
 Before the first round, read CONTEXT.md. Write every round in ASD-STE100 Simplified Technical English and use its domain terms.
 
-Start each round with a one- or two-sentence summary of the decisions on the current frontier.
+Start each round with a one- or two-sentence summary of the decisions on the current frontier. Then state the round’s topic and purpose in one sentence.
 
 Each question should be formatted like so:
 
