@@ -1474,6 +1474,15 @@ tillgänglig nätverksanslutning.
 
 _Avoid_: Fritt villkor, scenariokapabilitet när värdet beskriver ett faktum.
 
+**Identitetsprofil för enkelnod**:
+En avgränsad profil för enkelnodstopologin som anger om
+identitetsleverantören är extern eller medlevererad och om den medlevererade
+lösningen är härdad.
+
+- `en`: Single-node identity profile
+
+_Avoid_: Identitetsläge, Keycloak-profil.
+
 **Driftsättningsmiljöklass**:
 En obligatorisk klassificering av ett driftsättningsscenario som produktion,
 utveckling eller test och som styr vilka miljöavgränsade uppgifter modellen
