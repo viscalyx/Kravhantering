@@ -1498,6 +1498,41 @@ ersättas, omformas eller tas ur bruk under en releaseövergång.
 
 _Avoid_: Implicit konfigurationsbevarande, konfigurationsändring utan klassning.
 
+**Återställningsmängd**:
+En namngiven samling av källreleaseartefakter, konfiguration, beständigt
+tillstånd och nyckelmaterial som måste bevaras, provas och vid behov
+återställas tillsammans under en releaseövergång.
+
+- `en`: Recovery set
+
+_Avoid_: Säkerhetskopia när flera samordnade tillgångar avses, fristående
+återställningspunkt.
+
+**Vilolägeskontrakt för releaseövergång**:
+Den uttryckliga beskrivningen av vilka ingångar och tillståndsskapande
+arbetsbelastningar som måste vara blockerade eller avslutade innan en
+releaseövergång får ändra beständigt tillstånd.
+
+- `en`: Release-transition quiescence contract
+
+_Avoid_: Trafikdränering när även bakgrundsarbete eller andra ingångar avses.
+
+**Oåterkallelig driftsättningsverkan**:
+En beständig verkan under en releaseövergång som ingen angiven
+återställningsmängd kan återställa fullständigt.
+
+- `en`: Irreversible deployment effect
+
+_Avoid_: Återställningsbar verkan, fullständig återgång.
+
+**Återgångsväg**:
+En uttryckligen ordnad sammansättning av guidekontraktssteg som från en
+återgångskontrollpunkt återupprättar källreleasens angivna tillstånd.
+
+- `en`: Rollback route
+
+_Avoid_: Omvänd uppgraderingsordning, automatisk nedmigrering.
+
 **Scenarioegenskap**:
 Ett typat värde som ett driftsättningsscenario tillhandahåller och som
 kompilatorn använder för begränsade val av semantiska
