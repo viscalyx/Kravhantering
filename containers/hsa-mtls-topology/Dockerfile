@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24-trixie-slim@sha256:f2925910482dc53394bc0034c5f4abffcd01de400794c050ca343fe0d733b486 AS builder
+FROM node:24-trixie-slim@sha256:a747ad80c8a161b650d79a6da9c422005b91148b18b8d2c669eb5a0b7c07e600 AS builder
 
 WORKDIR /build
 COPY package.json package-lock.json .npmrc ./
@@ -10,7 +10,7 @@ COPY lib ./lib
 RUN npx esbuild lib/hsa/strict-person-lookup.ts --bundle --format=esm --platform=node \
   --target=node24 --alias:@=/build --outfile=/tmp/strict-person-lookup.mjs
 
-FROM node:24-trixie-slim@sha256:f2925910482dc53394bc0034c5f4abffcd01de400794c050ca343fe0d733b486
+FROM node:24-trixie-slim@sha256:a747ad80c8a161b650d79a6da9c422005b91148b18b8d2c669eb5a0b7c07e600
 
 RUN rm -rf /usr/local/lib/node_modules/npm \
   && rm -f /usr/local/bin/npm /usr/local/bin/npx

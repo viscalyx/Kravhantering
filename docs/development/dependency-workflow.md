@@ -170,8 +170,10 @@ the expected Dockerfile reference from the lock rather than storing its version.
 The HSA support Dockerfiles are shared by development and release builds. Their
 Node base references retain the production tag-and-digest identity in both
 contexts so local HSA support uses the same build inputs as release artifacts.
-The Node drift detector requires the app and both HSA Dockerfiles to use one
-coordinated identity.
+The Node drift detector requires the app and every registered HSA support and
+topology Dockerfile to use one coordinated identity. Its detector-supported
+surface list must remain aligned with the dynamically validated maintenance
+registry.
 
 ## Rolling Development Tool Integrity
 

@@ -73,6 +73,7 @@ export const IMAGE_CONFIGS = {
       'containers/hsa-directory-mock/Dockerfile',
       'containers/hsa-person-lookup-adapter/Dockerfile',
       'containers/hsa-mtls-provisioner/Dockerfile',
+      'containers/hsa-mtls-topology/Dockerfile',
     ],
     registryHost: 'registry-1.docker.io',
     registryRepository: 'library/node',
@@ -512,6 +513,21 @@ export function readNodeCurrent(config, root = process.cwd()) {
   return { ...states[0], imageId: null }
 }
 
+function nodeDetectorConfig(config, unit) {
+  const registeredPaths = Array.isArray(unit.paths) ? unit.paths : []
+  const supportedPaths = config.paths
+  if (
+    registeredPaths.length !== supportedPaths.length ||
+    new Set(registeredPaths).size !== registeredPaths.length ||
+    registeredPaths.some(relativePath => !supportedPaths.includes(relativePath))
+  ) {
+    throw new Error(
+      'Production Node registry paths do not match the detector-supported surfaces.',
+    )
+  }
+  return { ...config, paths: registeredPaths }
+}
+
 function readLockCurrent(config, root) {
   const current = readJson(path.join(root, config.lockPath))
   if (current.image !== config.image) {
@@ -539,7 +555,7 @@ export async function detectImageDrift(
     dependencies.resolveImageIdentity ?? resolveImageIdentity
   const current =
     config.name === 'node'
-      ? readNodeCurrent(config, root)
+      ? readNodeCurrent(nodeDetectorConfig(config, unit), root)
       : readLockCurrent(config, root)
   const tags = await listTags()
   const sameLaneVersion = selectAvailableVersion(config, tags, current.tag, {

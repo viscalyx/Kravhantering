@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24-trixie-slim@sha256:f2925910482dc53394bc0034c5f4abffcd01de400794c050ca343fe0d733b486 AS dependencies
+FROM node:24-trixie-slim@sha256:a747ad80c8a161b650d79a6da9c422005b91148b18b8d2c669eb5a0b7c07e600 AS dependencies
 
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /workspace
@@ -38,17 +38,7 @@ ENV NODE_ENV=production
 COPY . .
 RUN npm run build
 
-FROM node:24-trixie-slim@sha256:f2925910482dc53394bc0034c5f4abffcd01de400794c050ca343fe0d733b486 AS production-runtime-base
-
-ARG OPENSSL_PACKAGE_VERSION=3.5.7-1~deb13u2
-
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-    "libssl3t64=${OPENSSL_PACKAGE_VERSION}" \
-    "openssl-provider-legacy=${OPENSSL_PACKAGE_VERSION}" \
-  && rm -rf /var/lib/apt/lists/*
-
-FROM production-runtime-base AS db-job-dependencies
+FROM node:24-trixie-slim@sha256:a747ad80c8a161b650d79a6da9c422005b91148b18b8d2c669eb5a0b7c07e600 AS db-job-dependencies
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
@@ -78,12 +68,10 @@ NODE
 npm ci --omit=dev --omit=optional --ignore-scripts --no-audit --no-fund
 EOF
 
-FROM production-runtime-base AS production-runtime
+FROM node:24-trixie-slim@sha256:a747ad80c8a161b650d79a6da9c422005b91148b18b8d2c669eb5a0b7c07e600 AS app-runtime
 
 RUN rm -rf /usr/local/lib/node_modules/npm \
   && rm -f /usr/local/bin/npm /usr/local/bin/npx
-
-FROM production-runtime AS app-runtime
 
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -101,7 +89,10 @@ USER node
 EXPOSE 3000
 CMD ["node", "start-runtime.mjs"]
 
-FROM production-runtime AS db-job
+FROM node:24-trixie-slim@sha256:a747ad80c8a161b650d79a6da9c422005b91148b18b8d2c669eb5a0b7c07e600 AS db-job
+
+RUN rm -rf /usr/local/lib/node_modules/npm \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
@@ -126,7 +117,10 @@ USER node
 ENTRYPOINT ["node", "scripts/db-sqlserver-admin.mjs"]
 CMD ["health"]
 
-FROM production-runtime AS demo-seed
+FROM node:24-trixie-slim@sha256:a747ad80c8a161b650d79a6da9c422005b91148b18b8d2c669eb5a0b7c07e600 AS demo-seed
+
+RUN rm -rf /usr/local/lib/node_modules/npm \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production

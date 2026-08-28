@@ -5,7 +5,7 @@ import { verifyToolchainLock } from '../toolchain/toolchain-lock.mjs'
 
 const lock = Object.freeze({
   baseDigest:
-    'sha256:f2925910482dc53394bc0034c5f4abffcd01de400794c050ca343fe0d733b486',
+    'sha256:a747ad80c8a161b650d79a6da9c422005b91148b18b8d2c669eb5a0b7c07e600',
   baseImage: 'docker.io/library/node',
   baseTag: '24-trixie-slim',
   caCertificatesPackageVersion: '20250419',

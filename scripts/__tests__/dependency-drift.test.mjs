@@ -346,6 +346,7 @@ describe('drift detection', () => {
       {
         detector: 'node',
         id: 'production-node',
+        paths: IMAGE_CONFIGS.node.paths,
         skill: 'resolve-dependency-drift',
       },
       root,
@@ -360,6 +361,29 @@ describe('drift detection', () => {
 
     expect(result.drift).toBe(true)
     expect(result.available.manifestDigest).toBe(digest('b'))
+  })
+
+  it('rejects production Node registry paths unsupported by the detector', async () => {
+    const root = temporaryDirectory()
+
+    await expect(
+      detectImageDrift(
+        {
+          detector: 'node',
+          id: 'production-node',
+          paths: IMAGE_CONFIGS.node.paths.slice(0, -1),
+          skill: 'resolve-dependency-drift',
+        },
+        root,
+        {
+          listTags: async () => ['24-trixie-slim'],
+          resolveImageIdentity: async () => ({
+            imageId: digest('c'),
+            manifestDigest: digest('b'),
+          }),
+        },
+      ),
+    ).rejects.toThrow('registry paths do not match')
   })
 
   it('reports same-lane image maintenance before a newer major', async () => {
