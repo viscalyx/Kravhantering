@@ -9,10 +9,15 @@ Work the tree in **rounds**. The **frontier** is every decision whose prerequisi
 
 Write every round in ASD-STE100 Simplified Technical English.
 
-Start every round with both fields in this order:
+Start every round with these fields in this order:
 
 ```
-**Topic recap:** <In one or two complete sentences, restate the plan, decision, or idea being grilled and summarize the understanding established so far.>
+**Topic recap:** <In one or two complete sentences, restate the original plan,
+decision, or idea, its intended outcome, and any fixed scope or constraints. Keep
+this stable across rounds; put newly established understanding in the Grilling
+recap.>
+
+**Grilling recap:** <In one or two complete sentences, restate the plan, decision, or idea being grilled and summarize the understanding established so far.>
 
 **Round focus:** <In one sentence, state what the questions in this round will resolve.>
 ```

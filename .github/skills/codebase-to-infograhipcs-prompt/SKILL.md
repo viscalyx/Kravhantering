@@ -12,7 +12,7 @@ description: >-
 
 This skill helps an AI analyze a complete software codebase and produce a high-quality prompt for another AI system that will generate a professional infographic.
 
-Use domain language from CONTEXT.md where relevant.
+Use `CONTEXT-MAP.md` if it exists to select the ubiquitous language relevant to the infographic, otherwise use the ubiquitous language from CONTEXT.md.
 
 The skill has two phases:
 

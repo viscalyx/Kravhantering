@@ -87,8 +87,7 @@ operator-visible behavior change.
   managers, or support staff.
 - State what needs attention before upgrade, during rollout, or soon after
   upgrade.
-- Write in ASD-STE100 Simplified Technical English, and use the ubiquitous
-  language from `CONTEXT.md`.
+- Write in ASD-STE100 Simplified Technical English, and use `CONTEXT-MAP.md` if it exists to select the ubiquitous language, otherwise use ubiquitous language from CONTEXT.md.
 - Keep notes independent of implementation. Omit file paths, code symbols,
   migration numbers, table or column names, tests, commits, PRs, and issues.
 - Omit detailed commands, SQL, configuration-variable lists, and code

@@ -1,6 +1,8 @@
 # Agent Instructions
 
-Check [./CONTEXT.md](./CONTEXT.md) for terminology questions.
+For terminology, read [./CONTEXT-MAP.md](./CONTEXT-MAP.md) and load only the
+glossary that applies to the work. Load both glossaries when work crosses their
+boundary.
 
 Follow the rules in `.github/copilot-instructions.md` and the instructions in `.github/instructions/*.md`
 
