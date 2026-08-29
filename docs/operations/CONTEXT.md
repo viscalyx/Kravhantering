@@ -68,6 +68,16 @@ driftsättning enligt guide.
 _Avoid_: Föränderlig lokal sökväg, publicerad release när ursprunget är
 lokalt.
 
+**Körbegäran för driftsättningsverifiering**:
+En versionerad och hemlighetsfri post som fryser operatörens validerade val av
+ursprung, genererade driftsättningsunderlag, typade bindningar och källa till
+förväntat resultat innan en driftsättningsverifiering påbörjas.
+
+- `en`: Deployment-verification run request
+
+_Avoid_: Verifieringsindata för driftsättning, kommandoradsargument,
+verifieringsresultat.
+
 **Evidenspaket för driftsättningsverifiering**:
 En versionsbunden och integritetsskyddad samling av de hemlighetsfria underlag
 som ligger till grund för en driftsättningsverifierings slutliga status.
