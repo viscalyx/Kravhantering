@@ -500,6 +500,16 @@ verifieringsmiljöer.
 _Avoid_: Topologikörning när miljön avses, topologi när den avgränsade miljön
 avses.
 
+**Beroendebindningspost för driftsättningsverifiering**:
+En versionerad och hemlighetsfri post som binder en topologispecifik
+verifieringsmiljö till dess förberedda externa beroenden och till de publika
+referenser som ett genererat driftsättningsunderlag får använda.
+
+- `en`: Deployment-verification dependency binding record
+
+_Avoid_: Hemlighetsfil, körbegäran för driftsättningsverifiering,
+genererat driftsättningsunderlag.
+
 **Delat beroendeplan för driftsättningsverifiering**:
 En gemensam plattform av externa stödtjänster som betjänar flera
 topologispecifika verifieringsmiljöer i samma driftsättningsverifiering.
