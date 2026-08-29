@@ -59,6 +59,25 @@ driftsättning enligt guide.
 _Avoid_: Föränderlig lokal sökväg, publicerad release när ursprunget är
 lokalt.
 
+**Evidenspaket för driftsättningsverifiering**:
+En versionsbunden och integritetsskyddad samling av de hemlighetsfria underlag
+som ligger till grund för en driftsättningsverifierings slutliga status.
+Paketet förseglas när statusen fastställs och ändras inte av senare diagnostik.
+
+- `en`: Deployment-verification evidence bundle
+
+_Avoid_: Verifieringsindata för driftsättning, föränderlig loggkatalog,
+hemlighetsarkiv.
+
+**Diagnostisk efterinsamling för driftsättningsverifiering**:
+En skrivskyddat tillagd insamling av diagnostiska underlag efter att en
+driftsättningsverifiering har fått sin slutliga status. Insamlingen binds till
+det förseglade evidenspaketet men kan inte ändra dess status.
+
+- `en`: Deployment-verification post-run diagnostic capture
+
+_Avoid_: Omkörning, ändring av evidenspaket, reparation till godkänt resultat.
+
 **Källa till förväntat resultat**:
 Ett versionerat och självständigt författat kontrakt som anger vilket
 observerbart resultat en driftsättningskontroll förväntar sig. Det härleds
@@ -472,6 +491,42 @@ logiska data, identiteter och hemligheter.
 
 _Avoid_: Delad verifieringsmiljö när beroendeplanet avses, gemensam databas,
 gemensam identitet.
+
+**Publikt tjänstenamn för driftsättningsverifiering**:
+Ett körspecifikt DNS-namn som identifierar samma verifieringstjänst för
+webbläsare, kontrollklienter och interna klienter även när namnet ger olika
+adresser beroende på var klienten finns.
+
+- `en`: Deployment-verification public service name
+
+_Avoid_: Publik IP-adress när tjänsteidentiteten avses, internt alias.
+
+**Privat tjänstenamn för driftsättningsverifiering**:
+Ett körspecifikt DNS-namn för en verifieringstjänst som endast ska kunna nås
+från det avgränsade beroende- eller administrationsnätet.
+
+- `en`: Deployment-verification private service name
+
+_Avoid_: Publikt tjänstenamn, värdnamn utan åtkomstomfång.
+
+**Kör-PKI för driftsättningsverifiering**:
+En körspecifik samling av skilda tillitsdomäner och certifikatmaterial som
+endast ger de deltagande verifieringstjänsterna sina fastställda identiteter
+och behörigheter.
+
+- `en`: Deployment-verification run PKI
+
+_Avoid_: Gemensam test-CA, universell kör-CA, produktions-PKI.
+
+**TLS-termineringspunkt för driftsättningsverifiering**:
+Den publika ingång som avslutar TLS för en topologispecifik verifieringsmiljö
+med `app-node-http` och vidarebefordrar HTTP endast till miljöns privata
+lyssnare.
+
+- `en`: Deployment-verification TLS edge
+
+_Avoid_: Application Gateway när rollen avses, lastbalanserare när den exakta
+rollen inte framgår.
 
 **Frånkopplad produktionsmiljö**:
 En produktionsmiljö som har intern nätverksanslutning men saknar internetåtkomst
