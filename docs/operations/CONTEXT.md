@@ -49,6 +49,15 @@ sammanhanget tydligt visar att en dokumenterad guide följs.
 _Avoid_: Driftsättningsverifiering när sammanhanget inte visar att en
 dokumenterad guide följs.
 
+**Driftsättningsverifieringsoperatör**:
+Den person som är tilldelad en administratörsskapad resursgrupp för
+driftsättningsverifiering, manuellt startar dess körningar och godtar ansvaret
+för kostnader från kvarhållna resurser.
+
+- `en`: Deployment-verification operator
+
+_Avoid_: Initierare av en körning, Git-författare, resursgruppsägare.
+
 **Verifieringsindata för driftsättning**:
 En körspecifik och oföränderlig överlämning av ett reproducerat
 driftsättningsarkiv och dess kontrollerade ursprung till verifiering av
