@@ -1429,22 +1429,35 @@ dokumenterad guide följs.
 **Driftsättningsmodell**:
 Den auktoritativa och versionerade beskrivningen av stödda
 driftsättningsförlopp, topologier, villkor och verifierbara eftervillkor.
-Guider och maskinläsbara körunderlag är projektioner från modellen.
+Genererade driftsättningsunderlag härleds från modellen och är aldrig
+självständiga kommandokällor.
 
 - `en`: Deployment model
 
 _Avoid_: Driftsättningsguide när den auktoritativa modellen avses,
 verifieringsplan.
 
-**Driftsättningsprojektion**:
-Ett deterministiskt genererat underlag från en bestämd driftsättningsmodell,
-exempelvis en guide, körplan, ett manifest eller en källkarta. Projektionen
-identifierar modellen som den härleds från men ersätter den inte som
-auktoritativ källa.
+**Genererat driftsättningsunderlag**:
+En deterministiskt framtagen och sammanhållen uppsättning av en guide, en
+maskinläsbar körplan, ett manifest och en källkarta för exakt ett
+driftsättningsförlopp och driftsättningsscenario. Vid en releaseövergång
+identifierar underlaget även exakt käll- och målrelease; det härleds från
+driftsättningsmodellen utan att ersätta den som auktoritativ källa.
 
-- `en`: Deployment projection
+- `en`: Generated deployment set
 
-_Avoid_: Driftsättningsmodell, godtyckligt genererat dokument.
+_Avoid_: Driftsättningsprojektion, enskild genererad guide,
+driftsättningsmodell.
+
+**Genererad driftsättningssamling**:
+Den atomiskt framställda samlingen av samtliga genererade
+driftsättningsunderlag som en release kräver. Samlingen är antingen komplett
+eller saknas; ett urval av underlagen är inte en genererad
+driftsättningssamling.
+
+- `en`: Generated deployment collection
+
+_Avoid_: Releasearkiv, enskilt genererat driftsättningsunderlag.
 
 **Driftsättningsförlopp**:
 En stabilt identifierad och uttryckligen ordnad sammansättning av
@@ -1458,7 +1471,8 @@ _Avoid_: Driftsättningsscenario, driftsättningsguide.
 **Driftsättningsscenario**:
 Ett konkret urval av driftsättningsförlopp, topologi, anslutningssätt,
 beroendeprofiler och eventuell releaseövergång som avgör vilka delar av en
-driftsättningsmodell som ska projiceras och verifieras.
+driftsättningsmodell som ska ingå i ett genererat driftsättningsunderlag och
+verifieras.
 
 - `en`: Deployment scenario
 
@@ -1552,9 +1566,9 @@ _Avoid_: Enbart trafiköppning, återgångskontrollpunkt.
 
 **Scenarioegenskap**:
 Ett typat värde som ett driftsättningsscenario tillhandahåller och som
-kompilatorn använder för begränsade val av semantiska
-driftsättningsoperationer, exempelvis databasens provisioneringssätt eller
-tillgänglig nätverksanslutning.
+används för begränsade val av semantiska driftsättningsoperationer när ett
+genererat driftsättningsunderlag sätts samman, exempelvis databasens
+provisioneringssätt eller tillgänglig nätverksanslutning.
 
 - `en`: Scenario property
 
@@ -1580,9 +1594,9 @@ _Avoid_: Driftsättningsscenario när endast miljöns säkerhetsklass avses,
 miljötyp utan driftsättningssammanhang.
 
 **Semantisk driftsättningsoperation**:
-En typad, stabilt identifierad operation ur kompilatorns slutna vokabulär som
-beskriver avsedd driftsättningsverkan utan att bädda in exekverbara kommandon
-eller styrlogik.
+En typad, stabilt identifierad operation ur den slutna vokabulären för
+genererade driftsättningsunderlag. Den beskriver avsedd driftsättningsverkan
+utan att bädda in exekverbara kommandon eller styrlogik.
 
 - `en`: Semantic deployment operation
 
@@ -1599,9 +1613,10 @@ _Avoid_: Välkänd hemlighet, produktionshemlighet, standardlösenord.
 
 **Guidekontraktssteg**:
 En stabilt identifierad exekveringsenhet som en driftsättningsmodell
-projicerar till ett kommandoblock i en guide och motsvarande maskinläsbara
-körunderlag. Identitet, körkontext, tillämplighet och eftervillkor ska vara
-samstämmiga mellan projektionerna.
+återger som ett kommandoblock i guiden och en motsvarande del i den
+maskinläsbara körplanen inom samma genererade driftsättningsunderlag. Identitet,
+körkontext, tillämplighet och eftervillkor ska vara samstämmiga mellan
+underlagets genererade material.
 
 - `en`: Guide contract step
 
