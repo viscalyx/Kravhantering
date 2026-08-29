@@ -1068,7 +1068,7 @@ const DOGFOOD_KRAV = [
   {
     area: ID.area.KVA,
     desc: 'Vitest ska användas för enhets- och integrationstester under tests/unit och tests/integration.',
-    ac: 'vitest.config.ts inkluderar relevanta mappar; npm run test producerar grön körning vid ren checkout.',
+    ac: 'vitest.config.mts inkluderar relevanta mappar; npm run test producerar grön körning vid ren checkout.',
     vm: 'CI-körning av npm run test plus täckningsrapport.',
     cat: ID.cat.it,
     type: ID.type.funk,

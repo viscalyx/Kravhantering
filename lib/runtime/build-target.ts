@@ -10,7 +10,7 @@
  *   - BUILD_TARGET=local-prod   → build-target.local-prod.ts
  *   - BUILD_TARGET=prod         → build-target.prod.ts
  *
- * Vitest always resolves to this file (see vitest.config.ts alias).
+ * Vitest always resolves to this file (see vitest.config.mts alias).
  * Never import the concrete `.dev.ts` / `.local-prod.ts` / `.prod.ts` files
  * directly — always import from `@/lib/runtime/build-target`.
  */

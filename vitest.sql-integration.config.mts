@@ -4,9 +4,9 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      '@': path.resolve(import.meta.dirname, '.'),
       '@/lib/runtime/build-target': path.resolve(
-        __dirname,
+        import.meta.dirname,
         'lib/runtime/build-target.ts',
       ),
     },

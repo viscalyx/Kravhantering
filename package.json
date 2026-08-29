@@ -92,7 +92,7 @@
     "dependency-maintenance:check": "node scripts/dependency-maintenance.mjs",
     "test": "cross-env NODE_ENV=test vitest run",
     "test:nginx-client-ip": "cross-env KRAVHANTERING_NGINX_INTEGRATION=1 vitest run tests/container-integration/nginx-client-ip.test.mjs",
-    "test:sql-integration": "dotenv -e .env.sqlserver -- cross-env NODE_ENV=test vitest run --config vitest.sql-integration.config.ts",
+    "test:sql-integration": "dotenv -e .env.sqlserver -- cross-env NODE_ENV=test vitest run --config vitest.sql-integration.config.mts",
     "test:hsa-mock": "cross-env-shell NODE_ENV=test \"npm --prefix containers/hsa-directory-mock ci && npm --prefix containers/hsa-directory-mock test\"",
     "test:hsa-adapter": "cross-env-shell NODE_ENV=test \"npm --prefix containers/hsa-person-lookup-adapter ci && npm --prefix containers/hsa-person-lookup-adapter test\"",
     "test:hsa-provisioner": "cross-env-shell NODE_ENV=test \"npm --prefix containers/hsa-mtls-provisioner ci && npm --prefix containers/hsa-mtls-provisioner test\"",
