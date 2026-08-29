@@ -1565,14 +1565,23 @@ normal skrivande trafik har återupptagits.
 _Avoid_: Enbart trafiköppning, återgångskontrollpunkt.
 
 **Scenarioegenskap**:
-Ett typat värde som ett driftsättningsscenario tillhandahåller och som
-används för begränsade val av semantiska driftsättningsoperationer när ett
-genererat driftsättningsunderlag sätts samman, exempelvis databasens
-provisioneringssätt eller tillgänglig nätverksanslutning.
+Ett typat och auktoritativt faktum som ingår i ett driftsättningsscenario och
+som används för begränsade val när ett genererat driftsättningsunderlag sätts
+samman, exempelvis driftsättningsförlopp, topologi eller miljöklass.
 
 - `en`: Scenario property
 
-_Avoid_: Fritt villkor, scenariokapabilitet när värdet beskriver ett faktum.
+_Avoid_: Fritt villkor, redundant egenskap som kan härledas från andra
+scenarioegenskaper.
+
+**Härledd scenariokapabilitet**:
+En Composer-ägd egenskap som härleds entydigt från ett driftsättningsscenarios
+auktoritativa fakta, exempelvis databasens anslutningssätt eller scenariots
+uppsättning av tjänster, avbilder, enheter och nätverk.
+
+- `en`: Derived scenario capability
+
+_Avoid_: Självständigt författad scenarioegenskap, operatörsval.
 
 **Identitetsprofil för enkelnod**:
 En avgränsad profil för enkelnodstopologin som anger om
@@ -1601,6 +1610,16 @@ utan att bädda in exekverbara kommandon eller styrlogik.
 - `en`: Semantic deployment operation
 
 _Avoid_: Godtyckligt kommando, skriptsteg, guidekontraktssteg.
+
+**Operationsutdata**:
+Ett typat värde som en semantisk driftsättningsoperation producerar under
+exekvering och som en senare operation kan använda genom en uttrycklig bindning.
+Värdet är skilt från den evidens som visar hur det togs fram.
+
+- `en`: Operation output
+
+_Avoid_: Evidens när värdet ska återanvändas, fritt skriptvärde,
+modellförfattad variabel.
 
 **Offentlig testautentiseringsuppgift**:
 En avsiktligt offentlig autentiseringsuppgift som är avgränsad till
