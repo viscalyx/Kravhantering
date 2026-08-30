@@ -7,6 +7,14 @@ target version.
 
 ## Unreleased
 
+<!-- operator-upgrade:source pr-1240 start -->
+Before the upgrade, back up the Keycloak database. If a custom realm uses the
+deprecated client-initiated account-linking endpoint, migrate the integration
+to Application Initiated Actions. Keycloak 26.7.2 disables the legacy endpoint
+by default.
+If rollback is required after Keycloak updates its database, restore the prior
+database backup. Do not expect Keycloak database changes to roll back in place.
+<!-- operator-upgrade:source pr-1240 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
