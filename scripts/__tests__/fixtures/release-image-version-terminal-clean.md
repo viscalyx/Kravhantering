@@ -20,5 +20,7 @@ image version. This does not establish its current vulnerability status.
 
 ## Lifecycle
 
+This stable release left the supported and monitored release window.
+
 This terminal body is frozen. Automation no longer scans or updates this
 release image version. Put any later human analysis in comments.
