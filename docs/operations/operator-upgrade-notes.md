@@ -15,6 +15,11 @@ by default.
 If rollback is required after Keycloak updates its database, restore the prior
 database backup. Do not expect Keycloak database changes to roll back in place.
 <!-- operator-upgrade:source pr-1240 end -->
+
+<!-- operator-upgrade:source pr-1242 start -->
+- Before rollout, make the SQL Server 2025 CU8 image available in the deployment registry or disconnected bundle. Preserve the existing database volume when the container is replaced.
+- After rollout, verify that SQL Server reports build 17.0.4075.5. Complete the database health, backup, and recovery checks, and review the CU8 known issues before production rollout.
+<!-- operator-upgrade:source pr-1242 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
