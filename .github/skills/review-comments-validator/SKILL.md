@@ -20,8 +20,9 @@ in a finding. Establish current behavior before editing.
    conventions. Gather enough evidence to assign exactly one status. Split
    mixed findings when their parts require different statuses.
 3. **Assessment gate:** Before modifying files, present the assessment and edit
-   plan defined below. Continue without waiting unless a user decision or new
-   authorization is required.
+   plan defined below. If the assessment contains zero `valid` findings, end
+   immediately with the no-valid completion defined below. Otherwise, continue
+   without waiting unless a user decision or new authorization is required.
 4. **Implementation:** Apply only the planned `valid` fixes. Add or update tests
    for changed behavior and follow instructions governing the touched files.
 5. **Verification:** Run focused checks and `npm run check`. Investigate every
@@ -84,6 +85,14 @@ Before the first edit, present a `Finding assessment` table with columns
 
 The gate passes only when every finding has one row and every `valid` finding
 has an edit and verification plan.
+
+### No-valid completion
+
+When the assessment contains zero `valid` findings, the assessment completes
+the workflow. Make no edits and run no tests, linters, builds, or other
+verification commands. State that no code was modified, then report only
+unresolved `unclear` blockers and the detailed `plan-first` table when either
+applies.
 
 ## Completion Report
 
