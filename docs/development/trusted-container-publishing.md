@@ -113,13 +113,22 @@ final image or SBOM attestation, or publish a GitHub Release.
 ## Continuous Published-Release Scanning
 
 `.github/workflows/container-vulnerability-monitor.yml` runs daily from
-`main` and supports manual dispatch. The committed
+`main` in the canonical repository and supports manual dispatch as an earlier
+retry. Both triggers perform the same complete reconciliation. There is no
+release-publication, targeted, cross-workflow, or payload-driven path. One
+fixed, non-cancelling concurrency group lets an active run finish and accepts
+GitHub's normal coalescing of pending full-state runs.
+
+The committed
 `.github/container-release-support.json` selector defines the supported
 release channels. The current policy scans the newest stable release and the
-newest preview release. Change those bounded counts through normal review when
-the product support policy changes.
+newest preview release. Stable means supported and monitored. Preview means
+monitored, not supported. Change those bounded counts through normal review
+when the product support policy changes.
 
-For each supported release, the monitor downloads `release-metadata.json` and
+### Trusted Input And Public Classification
+
+For each selected release, the monitor downloads `release-metadata.json` and
 every project-owned SPDX asset declared by that release. Releases predating the
 strict-PKI provisioner declare five images; newer releases declare six. The
 monitor requires the metadata and release assets to declare the same image set.
@@ -136,27 +145,88 @@ together through `container-vulnerability-policy.mjs` and the same committed
 exception file used by pull-request and release gates. The scheduled monitor
 records both excepted and unexcepted fixable High or Critical findings.
 
-Public dependency findings use one ordinary issue per stable fingerprint of
-vulnerability ID, release-image role and package. The issue carries `security`
-and `automation:container-vulnerability`, lists all affected supported release
-digests and installed and fixed versions, and closes only when no supported
-release remains affected. A later scan reopens and updates the same issue.
+Classification happens independently for every observation before
+aggregation. Public observations are limited to version-guarded Debian DSA or
+CVE evidence for `deb` packages and GitHub GHSA evidence for `npm` packages.
+The namespace, match type, identifier, and exact canonical source must agree.
+Public URLs are reconstructed from the validated identifier without fetching
+advisory content. Generic URLs, aliases, CPE matches, unknown authorities,
+malformed producer or database metadata, and public-looking siblings do not
+qualify.
+
+### Identity, Current State, And Journal
+
+Public tracking uses one issue for each release image version: one exact image
+role plus one immutable published release tag. Automation owns this identity
+only while the issue carries `automation:container-vulnerability-release` and
+one valid versioned identity marker. Titles are display text. Removing the
+label relinquishes ownership. The separate legacy
+`automation:container-vulnerability` namespace is never used for lifecycle
+state or mutated by this reconciliation.
+
+The issue body is the complete current trusted public state. It includes the
+role, release tag, immutable manifest digest, reconciliation time, and public
+observations grouped by vulnerability. Human analysis belongs in ordinary
+comments. A material change first receives one immutable reconciliation
+journal with Added, Changed, and Removed sections, then the current state is
+activated. Initial creation has no journal, and a timestamp-only refresh does
+not create one. A journal root links the canonical workflow run and names the
+restricted evidence artifact and its 30-day retention without copying any
+restricted content.
+
+The body and every automation comment are bounded to both 60,000 UTF-8 bytes
+and 60,000 Unicode characters. Oversized current state uses at most ten parts
+in one verified active A/B continuation bank. Oversized journals use at most
+ten immutable linked parts. Splits occur only between complete vulnerability
+groups, package rows, or journal entries. Automation stages, links, rereads,
+and hash-verifies an inactive bank before activating the body last. It never
+truncates an atomic item or depends on deleting comments.
+
+### Lifecycle And Recovery
+
+An issue is created only after the first public affected observation. While the
+identity remains monitored, a trusted zero-finding state replaces the body and
+closes the issue as completed. A later recurrence activates the affected state
+before reopening the same issue.
+
+When a complete trusted replacement window advances, each leaving identity is
+terminalized once. The issue receives `monitoring-ended`, preserves its last
+trusted state, and freezes. An open issue closes as not planned; an issue
+already closed as completed stays completed. Last-known affected observations
+are explicitly not confirmed fixed and may still affect users. A last-known
+clean scan does not establish current safety after monitoring ends.
+
+The monitor rereads complete tracker state and converges committed partial work
+on retry. Journal publication precedes body, label, issue-state, and duplicate
+changes. Failure before body cutover leaves the previous state active. Failure
+after cutover during cleanup preserves the new state and is retried. One
+identity failure does not roll back successful identities; the run collects
+sanitized errors, attempts every independent identity, uploads evidence, and
+then fails. The next daily run is automatic recovery, and manual dispatch is
+the earlier operator recovery path.
+
+### Private Reporting, Permissions, And Evidence
 
 A finding without an authoritative public advisory URL is confidential. The
 monitor never creates a public fallback issue or prints its identifying
 details. When private vulnerability reporting is enabled, configure
 `CONTAINER_VULNERABILITY_ADVISORY_TOKEN` as a narrowly scoped GitHub App or
 fine-grained token with only Repository security advisories write access. The
-monitor creates or updates a draft private repository security advisory.
+credential is available only to the synchronization step. The monitor creates
+or updates a draft private repository security advisory.
 Published or otherwise human-resolved advisories remain under human control.
 Without that configuration, the workflow reports only the count of skipped
-confidential findings.
+confidential findings in restricted workflow output. Automated public issues
+are not a vulnerability-reporting channel.
 
 The normal workflow token has only `contents: read`, `packages: read`,
 `attestations: read` and `issues: write`. Complete selection metadata, verified
 attestation output, SBOMs, current database status, unfiltered Grype reports and
-the policy result are retained for 30 days with `if: always()`. Policy or issue
-synchronization failures are reported only after evidence upload.
+classification and policy results are retained together with the
+reconciliation plan, tracker reads and operations, sanitized errors, and step
+outcomes. The restricted artifact is uploaded on success or failure and kept
+for 30 days. The workflow's only final failing step runs after the upload
+attempt, so normal GitHub failed-run status and notifications remain the alert.
 
 ## Dependency Drift Detection
 

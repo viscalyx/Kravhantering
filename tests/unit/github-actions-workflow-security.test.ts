@@ -22,6 +22,7 @@ const AZURE_HOST_BOOTSTRAP = path.join(
   'bootstrap-host.sh',
 )
 type WorkflowDocument = {
+  concurrency?: Record<string, unknown>
   jobs?: Record<string, WorkflowJob>
   on?: Record<string, unknown>
   permissions?: Record<string, unknown>
@@ -92,9 +93,6 @@ describe('GitHub Actions workflow security', () => {
     for (const { fileName, workflow } of scheduledWorkflows) {
       for (const [jobId, job] of Object.entries(workflow.jobs ?? {})) {
         const condition = String(job.if ?? '')
-        expect(condition, `${fileName}:${jobId}`).toContain(
-          "github.event_name != 'schedule'",
-        )
         expect(condition, `${fileName}:${jobId}`).toContain(
           "github.repository == 'viscalyx/Kravhantering'",
         )
@@ -639,15 +637,23 @@ describe('GitHub Actions workflow security', () => {
     )
   })
 
-  it('rescans verified SBOMs for supported releases and safely synchronizes findings', () => {
+  it('reconciles release image versions with bounded evidence and recovery controls', () => {
     const workflow = readWorkflowYaml('container-vulnerability-monitor.yml')
     const job = workflow.jobs?.['container-vulnerability-monitor']
     const steps = job?.steps ?? []
     const step = (name: string) =>
       steps.find(candidate => candidate.name === name)
 
-    expect(workflow.on).toHaveProperty('schedule')
-    expect(workflow.on).toHaveProperty('workflow_dispatch')
+    expect(Object.keys(workflow.on ?? {}).sort()).toEqual([
+      'schedule',
+      'workflow_dispatch',
+    ])
+    expect(workflow.on?.workflow_dispatch).toBeNull()
+    expect(workflow.on?.schedule).toEqual([{ cron: '43 4 * * *' }])
+    expect(workflow.concurrency).toEqual({
+      'cancel-in-progress': false,
+      group: 'container-vulnerability-monitor-main',
+    })
     expect(workflow.permissions).toEqual({
       attestations: 'read',
       contents: 'read',
@@ -655,10 +661,20 @@ describe('GitHub Actions workflow security', () => {
       packages: 'read',
     })
     expect(job?.if).toContain("github.ref == 'refs/heads/main'")
-    expect(job?.if).toContain("github.event_name != 'schedule'")
     expect(job?.if).toContain("github.repository == 'viscalyx/Kravhantering'")
 
-    expect(step('Select supported published releases')).toBeDefined()
+    const checkout = step('Checkout code')
+    expect(checkout?.uses).toMatch(/^actions\/checkout@[a-f\d]{40}$/u)
+    expect(checkout?.with?.['persist-credentials']).toBe(false)
+
+    const initialize = step('Initialize restricted evidence')
+    expect(initialize).toBeDefined()
+    expect(initialize?.env).toBeUndefined()
+    expect(initialize?.run).toContain('workflow-context.json')
+
+    const selection = step('Select supported published releases')
+    expect(selection?.id).toBe('selection')
+    expect(selection?.['continue-on-error']).toBe(true)
     expect(step('Log in to GHCR for digest verification')).toMatchObject({
       uses: './.github/actions/ghcr-credential-helper',
       with: {
@@ -693,10 +709,56 @@ describe('GitHub Actions workflow security', () => {
       ].join(' '),
     })
     expect(synchronize?.env).not.toHaveProperty('GITHUB_TOKEN')
+    expect(String(synchronize?.run)).toContain('--workflow-run-url')
+    expect(String(synchronize?.run)).toContain('--artifact-name')
+    expect(String(synchronize?.run)).toContain('--retention-days 30')
+    expect(String(synchronize?.run)).toContain(
+      '--tracker-evidence "' + '$' + '{EVIDENCE_ROOT}/tracker-evidence.json"',
+    )
+    expect(String(synchronize?.run)).toContain(
+      '--output "' + '$' + '{EVIDENCE_ROOT}/reconciliation-result.json"',
+    )
+
+    for (const candidate of steps.filter(item => item !== synchronize)) {
+      expect(candidate.env ?? {}).not.toHaveProperty(
+        'CONTAINER_VULNERABILITY_ADVISORY_TOKEN',
+      )
+    }
+
+    const ledger = step('Finalize restricted evidence ledger')
+    expect(ledger?.if).toBe('always()')
+    expect(String(evaluate?.run)).toContain('reconciliation-plan.json')
+    for (const category of [
+      'selection',
+      'attestation',
+      'sbom',
+      'grype',
+      'database',
+      'classification',
+      'policy',
+      'reconciliation-plan',
+      'tracker',
+      'errors',
+    ]) {
+      expect(String(ledger?.run)).toContain(category)
+    }
 
     const upload = step('Retain complete vulnerability evidence')
     expect(upload?.if).toBe('always()')
+    expect(upload?.uses).toMatch(/^actions\/upload-artifact@[a-f\d]{40}$/u)
     expect(upload?.with?.path).toContain('tmp/container-vulnerability-monitor/')
-    expect(step('Fail after retaining evidence')?.if).toBe('always()')
+    expect(upload?.with?.['if-no-files-found']).toBe('error')
+    expect(upload?.with?.['retention-days']).toBe(30)
+    const fail = step('Fail after retaining evidence')
+    expect(fail?.if).toBe('always()')
+    expect(steps.indexOf(ledger as WorkflowStep)).toBeLessThan(
+      steps.indexOf(upload as WorkflowStep),
+    )
+    expect(steps.indexOf(upload as WorkflowStep)).toBeLessThan(
+      steps.indexOf(fail as WorkflowStep),
+    )
+    expect(fail?.env?.UPLOAD_OUTCOME).toBe(
+      ['${{', 'steps.upload.outcome', '}}'].join(' '),
+    )
   })
 })

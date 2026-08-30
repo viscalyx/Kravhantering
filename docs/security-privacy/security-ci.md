@@ -142,14 +142,40 @@ reports remain unfiltered in workflow artifacts.
 
 The scheduled and manually dispatched
 `.github/workflows/container-vulnerability-monitor.yml` rescans the supported
-published stable and preview releases selected by
+published stable release and monitored preview release selected by
 `.github/container-release-support.json`. It verifies release-asset digests and
 the trusted release workflow's digest-bound SPDX attestations before scanning;
-it never rebuilds the published images. Public dependency findings create or
-update deduplicated `security` issues. Findings without authoritative public
-advisory links use draft private repository security advisories only when
-private reporting and the narrow advisory token are available, with no public
-fallback. See
+it never rebuilds the published images.
+
+Public tracking has one automation-owned `security` issue per exact image role
+and published release tag. Only closed, version-guarded Debian and GitHub npm
+authority classifications enter the issue. Its body and verified continuation
+bank contain the complete current public state; immutable journals record
+material changes. A clean monitored identity closes as completed and can
+reopen on recurrence. An identity that leaves the forward-only window receives
+`monitoring-ended`, preserves its last trusted state, and is never rescanned.
+Last-known affected content is not proof of a fix, and last-known clean content
+is not proof of current safety.
+
+Oversized bodies and journals use bounded, hash-verified continuation parts and
+never truncate an observation. Retry resumes staged or committed work in safe
+order. The daily run is the automatic recovery path; manual dispatch performs
+the same full reconciliation as an earlier retry. No publication or targeted
+trigger exists.
+
+Findings without authoritative public advisory links use draft private
+repository security advisories only when private reporting and the narrow
+step-scoped advisory token are available, with no public fallback. Public
+issues cannot reveal confidential identifiers, package facts, URLs, counts, or
+existence. The normal token has exactly attestation, content, and package read
+plus issue write access.
+
+Restricted selection, attestation, SBOM, scanner database, unfiltered scan,
+classification, policy, reconciliation-plan, tracker, and error evidence is
+uploaded on success or failure for 30 days. Public journal roots identify only
+the workflow run, artifact name, and retention period. Final failure occurs
+after the upload attempt, and ordinary GitHub failed-run notifications remain
+the alert. See
 [Trusted Container Publishing](../development/trusted-container-publishing.md#continuous-published-release-scanning)
 for the support, tracking, permission and evidence-retention contracts.
 

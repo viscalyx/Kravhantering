@@ -215,6 +215,56 @@ unset or supply site-owned strict material for an approved external facade.
 Use the corresponding `db-job` manifest digest reference from the release notes
 to verify the `db-job` image.
 
+## Interpret Container Vulnerability Tracking
+
+The daily container vulnerability monitor creates one public `security` issue
+for an affected release image version: an exact image role plus an immutable
+published release tag. A stable tag is supported and monitored. A preview tag
+is monitored for early visibility but is not supported. The issue title is not
+its identity; the automation label and versioned marker are authoritative.
+
+Only already-public Debian or GitHub npm advisory facts that pass the closed
+authority classification appear in these issues. Use private vulnerability
+reporting for a newly discovered or sensitive vulnerability. Do not place
+confidential scanner observations in the public issue.
+
+Interpret the lifecycle as follows:
+
+- **Open and affected:** the issue body and active continuation bank are the
+  complete latest trusted public scan state. Review every observation and the
+  immutable manifest digest. A fixed version listed by an advisory does not
+  change the immutable published image; users need a later release that no
+  longer contains the affected package version.
+- **Closed as completed:** the release image version remains monitored and its
+  latest trusted scan has zero public observations. The issue can reopen if a
+  later database or classification exposes a public recurrence. Completion is
+  not a promise that a tagged image is rebuilt or backported.
+- **`monitoring-ended`:** the release image version has left the forward-only
+  monitored window after a complete replacement window reconciles. Automation
+  preserves the last trusted state and never scans this identity again. An
+  affected last-known state is not confirmed fixed and may still affect users.
+  A clean last-known state does not establish current safety after monitoring
+  ends.
+
+Material changes appear in immutable reconciliation journal comments before
+the body changes. Added, Changed, and Removed sections describe changes in
+trusted public facts; removal does not by itself claim a fix. Large current
+state and journals use linked continuation parts. Follow the body-linked active
+bank in order. Minimized inactive banks are retained recovery structure, not
+current state. Human comments remain separate analysis.
+
+Each root journal links the canonical workflow run and names a restricted
+artifact retained for 30 days. The public link provides provenance and
+lifecycle context only. Access to the artifact follows repository permissions,
+and its unfiltered SBOM, Grype, classification, policy, tracker, and error
+evidence must not be copied into the public issue.
+
+A failed run uses ordinary GitHub Actions status and notifications. Inspect the
+restricted artifact and the final step outcomes. The next daily run rereads the
+complete state and is the automatic recovery path; manually dispatch the same
+workflow for an earlier full retry. Do not target one release or issue, edit
+automation markers, or create a publication-triggered workaround.
+
 ## Verify Runtime Image IDs
 
 Production runtime verification is separate from attestation verification. After

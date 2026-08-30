@@ -23,6 +23,11 @@ version 2.1 or later. No security-fixed version of 2.0 is published.
 | Older tagged releases | Unsupported; no fixes or backports are provided. |
 <!-- markdownlint-enable MD013 -->
 
+The automated container monitor also observes the newest preview release.
+Preview monitoring provides early dependency visibility but does not make the
+preview supported. A preview issue must not be interpreted as a support or
+backport commitment.
+
 ## Reporting a Vulnerability
 
 We take the security of Kravhantering seriously. If you discover a security
@@ -41,6 +46,27 @@ reporting feature:
 
 This method ensures that vulnerability details remain private until we've had a
 chance to assess and address them.
+
+### Automated Public Container Tracking Is Not Reporting
+
+The repository's container monitor creates public issues only for
+already-public dependency advisories that pass its closed Debian or GitHub npm
+authority classification. One issue represents one exact release image role
+and published tag. Its current body, optional bounded continuation parts, and
+immutable material-change journals are automation-owned public tracking.
+
+Use private reporting above for newly discovered, sensitive, unpublished, or
+uncertain vulnerability information. Do not disclose confidential identifiers,
+packages, versions, URLs, scanner facts, or their existence in an automated
+public issue. Nonqualifying scanner observations have no public fallback and
+remain in the private advisory path when the narrow credential is configured.
+
+A monitored clean issue can close as completed and reopen on recurrence. An
+issue marked `monitoring-ended` preserves only its last trusted state: affected
+content is not confirmed fixed, and clean content is not proof of current
+safety. The public journal links only the workflow run, restricted artifact
+name, and 30-day retention. Full scanner and reconciliation evidence remains a
+permission-restricted workflow artifact.
 
 ### Alternative Reporting Methods
 
@@ -183,7 +209,5 @@ We would like to thank the following security researchers who have responsibly
 disclosed vulnerabilities:
 
 _No vulnerabilities have been reported yet._
-
----
 
 Thank you for helping keep Kravhantering and our community safe!
