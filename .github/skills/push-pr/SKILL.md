@@ -8,9 +8,10 @@ disable-model-invocation: true
 # Push PR
 
 Publication-only workflow. Treat the current committed branch as the artifact
-to publish. Limit execution to the Git/GitHub operations and read-only
-inspection required by the steps below. Do not run tests, linters, type checks,
-builds, or project verification commands.
+to publish. Limit execution to the steps below: Git/GitHub operations, read-only
+inspection, and generating or writing the pull request template body for Step
+3. Do not run tests, linters, type checks, builds, or project verification
+commands.
 
 1. Resolve the current branch, both remote repositories, and `origin`'s default
    branch. Stop on a detached HEAD or the default branch.
