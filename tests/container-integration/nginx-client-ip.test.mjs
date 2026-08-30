@@ -5,7 +5,7 @@ import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const enabled = process.env.KRAVHANTERING_NGINX_INTEGRATION === '1'
-const nginxImage = 'nginx:1.31.3-alpine'
+const nginxImage = 'nginx:1.31.4-alpine'
 const workspace = process.cwd()
 const runId = `kh-client-ip-${process.pid}`
 const networkName = `${runId}-network`

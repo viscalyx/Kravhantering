@@ -34,7 +34,7 @@ jobs:
       KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.2-2
       KONG_IMAGE_REF: docker.io/kong/kong-gateway:3.15.0.5-20260824-ubuntu
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
-      NGINX_IMAGE_REF: docker.io/library/nginx:1.31.3-alpine
+      NGINX_IMAGE_REF: docker.io/library/nginx:1.31.4-alpine
       SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04
       CI_RUNTIME_EVIDENCE_DIR: tmp/container-pr-artifacts/runtime-diagnostics
       CI_RUNTIME_RELATED_EVIDENCE_DIR: tmp/production-smoke-evidence

@@ -67,7 +67,7 @@ function writeLockFile(dir) {
       service(
         'nginx',
         'registry.example/nginx',
-        '1.31.3-alpine',
+        '1.31.4-alpine',
         'sha256:nginx-manifest',
         'sha256:nginx-image',
       ),
@@ -149,7 +149,7 @@ function writeEnvFile(dir, overrides = {}) {
       'registry.example/hsa-mtls-provisioner:1.2.3',
     KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.7.2-2',
     KONG_IMAGE_REF: 'registry.example/kong:3.15.0.0-20260702-ubuntu',
-    NGINX_IMAGE_REF: 'registry.example/nginx:1.31.3-alpine',
+    NGINX_IMAGE_REF: 'registry.example/nginx:1.31.4-alpine',
     SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU8-ubuntu-24.04',
     ...overrides,
   }
@@ -381,7 +381,7 @@ describe('production image helper', () => {
       'nginx image ID sha256:wrong-nginx does not match locked sha256:nginx-image',
     )
     expect(result.stderr).toContain(
-      'pull the locked manifest registry.example/nginx:1.31.3-alpine@sha256:nginx-manifest',
+      'pull the locked manifest registry.example/nginx:1.31.4-alpine@sha256:nginx-manifest',
     )
     expect(result.stderr).toContain('set NGINX_IMAGE_REF to a site mirror tag')
   })
