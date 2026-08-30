@@ -116,6 +116,16 @@ frysta verifieringsindata.
 _Avoid_: Broker, godtycklig fjärrexekverare, driftsättningsverifiering när hela
 arbetsflödet avses.
 
+**Gästförberedelse för driftsättningsverifiering**:
+En betrodd och körbunden förberedelse av en Rocky Linux-gäst med de värd- och
+stödruntimeförutsättningar som driftsättningsverifieringen äger utanför
+genererade guidekontraktssteg.
+
+- `en`: Deployment-verification guest preparation
+
+_Avoid_: Gästbootstrap, värdprovisionering, databasbootstrap,
+Keycloak-bootstrap.
+
 **Driftsättningsmodell**:
 Den auktoritativa och versionerade beskrivningen av stödda
 driftsättningsförlopp, topologier, villkor och verifierbara eftervillkor.
