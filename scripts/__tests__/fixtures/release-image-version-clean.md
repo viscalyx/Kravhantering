@@ -1,6 +1,7 @@
 <!-- markdownlint-disable MD013 MD041 -->
 <!-- container-vulnerability-release:v1 role=app-runtime release=v1.2.3 -->
 <!-- container-vulnerability-release-context:v1 channel=stable -->
+<!-- container-vulnerability-current-state:v1 generation=2c6d5adb0559982ebc4e4d375d679f9494ead20c00267903393f1690b23476a7 bank=none parts=0 status=active -->
 <!-- markdownlint-enable MD013 -->
 
 Release image `app-runtime` for published release `v1.2.3` has no public
