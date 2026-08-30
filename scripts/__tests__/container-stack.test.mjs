@@ -111,7 +111,7 @@ describe('container stack helpers', () => {
             'keycloak',
             'identity-provider',
             'quay.io/keycloak/keycloak',
-            '26.7.1-0',
+            '26.7.2-2',
             'sha256:keycloak',
             'sha256:keycloak-image',
           ),

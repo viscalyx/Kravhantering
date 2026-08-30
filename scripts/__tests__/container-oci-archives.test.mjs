@@ -69,7 +69,7 @@ function stackLock() {
       service(
         'keycloak',
         'quay.io/keycloak/keycloak',
-        '26.7.1-0',
+        '26.7.2-2',
         'sha256:keycloak',
       ),
     ],

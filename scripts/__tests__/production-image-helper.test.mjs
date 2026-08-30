@@ -81,7 +81,7 @@ function writeLockFile(dir) {
       service(
         'keycloak',
         'registry.example/keycloak',
-        '26.7.1-0',
+        '26.7.2-2',
         'sha256:keycloak-manifest',
         'sha256:keycloak-image',
       ),
@@ -147,7 +147,7 @@ function writeEnvFile(dir, overrides = {}) {
       'registry.example/hsa-person-lookup-adapter:1.2.3',
     HSA_MTLS_PROVISIONER_IMAGE_REF:
       'registry.example/hsa-mtls-provisioner:1.2.3',
-    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.7.1-0',
+    KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:26.7.2-2',
     KONG_IMAGE_REF: 'registry.example/kong:3.15.0.0-20260702-ubuntu',
     NGINX_IMAGE_REF: 'registry.example/nginx:1.31.3-alpine',
     SQLSERVER_IMAGE_REF: 'registry.example/sqlserver:2025-CU7-ubuntu-24.04',
