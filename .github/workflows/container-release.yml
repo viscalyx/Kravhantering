@@ -32,7 +32,7 @@ jobs:
       HSA_MTLS_PROVISIONER_CANDIDATE_ARTIFACT: tmp/container-release-artifacts/candidates/hsa-mtls-provisioner.oci.tar
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       NGINX_IMAGE_REF: docker.io/library/nginx:1.31.3-alpine
-      SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU7-ubuntu-24.04
+      SQLSERVER_IMAGE_REF: mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04
       CI_RUNTIME_EVIDENCE_DIR: tmp/container-release-artifacts/runtime-diagnostics
       CI_RUNTIME_RELATED_EVIDENCE_DIR: tmp/production-smoke-evidence
 

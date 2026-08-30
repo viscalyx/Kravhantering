@@ -63,7 +63,7 @@ function stackLock() {
       service(
         'sqlserver',
         'mcr.microsoft.com/mssql/server',
-        '2025-CU7-ubuntu-24.04',
+        '2025-CU8-ubuntu-24.04',
         'sha256:sqlserver',
       ),
       service(

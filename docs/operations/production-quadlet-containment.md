@@ -64,7 +64,7 @@ SQL Server writes databases, transaction logs, backups, dumps, secrets, and
 its own logs below `/var/opt/mssql`; the existing named volume preserves those
 semantics. The 4 GiB cgroup default stays above Microsoft's 2 GiB startup
 minimum. The pinned
-`mcr.microsoft.com/mssql/server:2025-CU7-ubuntu-24.04` image has
+`mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04` image has
 `cap_net_bind_service=ep` on `/opt/mssql/bin/sqlservr`. With all capabilities
 absent from the bounding set, `NoNewPrivileges` makes the kernel reject that
 binary with exit 126 and `Operation not permitted`. Adding only
@@ -92,7 +92,7 @@ tag alone.
 <!-- markdownlint-disable MD013 -->
 | Service | Tag | Manifest digest |
 | --- | --- | --- |
-| SQL Server | `mcr.microsoft.com/mssql/server:2025-CU7-ubuntu-24.04` | `sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a` |
+| SQL Server | `mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04` | `sha256:4bab24f36c1ecd48e85f7d37df26e6bf301641d84c3fe652f9a0dcc947d512e1` |
 | Keycloak | `quay.io/keycloak/keycloak:26.7.2-2` | `sha256:c2a17fe407e892196d0b7cf9cef54e60952d6c372a9205f661a9efa0911463b0` |
 <!-- markdownlint-enable MD013 -->
 
