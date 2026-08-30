@@ -5,7 +5,7 @@ After=krav-support-network.service krav-sqlserver-volume.service
 
 [Container]
 ContainerName=db
-Image=mcr.microsoft.com/mssql/server:2025-CU7-ubuntu-24.04
+Image=mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04
 Network=krav-support.network
 Volume=krav-sqlserver.volume:/var/opt/mssql:Z,U
 PublishPort=127.0.0.1:1433:1433

@@ -2,8 +2,8 @@
   "name": "sqlserver",
   "role": "database",
   "image": "mcr.microsoft.com/mssql/server",
-  "tag": "2025-CU7-ubuntu-24.04",
-  "manifestDigest": "sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a",
-  "imageId": "sha256:59556dff70a0ba34676cc08cd92701ef6dd78dde890a88458b7107f71377aeb0",
+  "tag": "2025-CU8-ubuntu-24.04",
+  "manifestDigest": "sha256:4bab24f36c1ecd48e85f7d37df26e6bf301641d84c3fe652f9a0dcc947d512e1",
+  "imageId": "sha256:03f9c5d3599eb86eba05fa68becaed8d86b1048600ce4960d4782e383eaf66c3",
   "source": "https://mcr.microsoft.com/en-us/artifact/mar/mssql/server/about"
 }
