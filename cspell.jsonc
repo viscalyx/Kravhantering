@@ -251,6 +251,8 @@
     "OIDs",
     "OPENJSON",
     "PERFSP",
+    "SERVERPROPERTY",
+    "SQLCMDPASSWORD",
     "detaljvyns",
     "gränstupeln",
     "kollation",
