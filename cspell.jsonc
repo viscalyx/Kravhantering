@@ -8,6 +8,7 @@
     "anonymization",
     "allowlisting",
     "anchore",
+    "cpes",
     "rubygems",
     "requiredness",
     "reencrypted",

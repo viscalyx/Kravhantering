@@ -1,0 +1,114 @@
+{
+  "matches": [
+    {
+      "vulnerability": {
+        "id": "CVE-2026-12345",
+        "dataSource": "https://security-tracker.debian.org/tracker/CVE-2026-12345",
+        "namespace": "debian:distro:debian:13",
+        "severity": "High",
+        "urls": ["https://example.invalid/secondary/CVE-2026-12345"],
+        "description": "Redacted public vulnerability description.",
+        "fix": {
+          "versions": ["1.2.3-2"],
+          "state": "fixed"
+        },
+        "advisories": [],
+        "risk": 23.4
+      },
+      "relatedVulnerabilities": [
+        {
+          "id": "CVE-2026-54321",
+          "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-54321",
+          "namespace": "nvd:cpe",
+          "severity": "High",
+          "urls": []
+        }
+      ],
+      "matchDetails": [
+        {
+          "type": "exact-direct-match",
+          "matcher": "dpkg-matcher",
+          "searchedBy": {
+            "distro": {
+              "type": "debian",
+              "version": "13"
+            },
+            "package": {
+              "name": "redacted",
+              "version": "1.2.3-1"
+            },
+            "namespace": "debian:distro:debian:13"
+          },
+          "found": {
+            "vulnerabilityID": "CVE-2026-12345",
+            "versionConstraint": "< 1.2.3-2"
+          },
+          "fix": {
+            "suggestedVersion": "1.2.3-2"
+          }
+        }
+      ],
+      "artifact": {
+        "id": "Package-deb-redacted-redacted",
+        "name": "redacted",
+        "version": "1.2.3-1",
+        "type": "deb",
+        "locations": null,
+        "language": "",
+        "licenses": ["MIT"],
+        "cpes": ["cpe:2.3:a:redacted:redacted:1.2.3-1:*:*:*:*:*:*:*"],
+        "purl": "pkg:deb/debian/redacted@1.2.3-1?arch=amd64&distro=debian-13",
+        "upstreams": []
+      }
+    }
+  ],
+  "source": {
+    "type": "sbom",
+    "target": "redacted.spdx.json"
+  },
+  "distro": {
+    "name": "debian",
+    "version": "13",
+    "idLike": []
+  },
+  "descriptor": {
+    "name": "grype",
+    "version": "0.110.0",
+    "configuration": {
+      "output": ["json"],
+      "add-cpes-if-none": false,
+      "only-fixed": false,
+      "by-cve": false,
+      "match": {
+        "javascript": {
+          "using-cpes": false
+        },
+        "dpkg": {
+          "using-cpes": false,
+          "missing-epoch-strategy": "zero",
+          "use-cpes-for-eol": false
+        }
+      }
+    },
+    "db": {
+      "status": {
+        "schemaVersion": "v6.1.9",
+        "from": "https://grype.anchore.io/databases/v6/redacted.tar.zst?checksum=sha256%3Aredacted",
+        "built": "2026-08-30T06:27:52Z",
+        "path": "/redacted/grype/db/6/vulnerability.db",
+        "valid": true
+      },
+      "providers": {
+        "debian": {
+          "captured": "2026-08-30T00:36:13Z",
+          "input": "xxh64:redacted"
+        },
+        "github": {
+          "captured": "2026-08-30T00:36:16Z",
+          "input": "xxh64:redacted"
+        }
+      }
+    },
+    "timestamp": "2026-08-30T10:05:09Z"
+  }
+}
