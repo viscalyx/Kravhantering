@@ -1,5 +1,6 @@
 <!-- markdownlint-disable MD013 MD041 -->
 <!-- container-vulnerability-release:v1 role=app-runtime release=v1.2.3 -->
+<!-- container-vulnerability-release-context:v1 channel=stable -->
 <!-- markdownlint-enable MD013 -->
 
 Release image `app-runtime` for published release `v1.2.3` has 3 public
@@ -25,6 +26,8 @@ Last reconciled `2026-08-29T12:34:56Z`.
 <!-- markdownlint-enable MD013 -->
 
 ## Lifecycle
+
+This stable release is supported and monitored.
 
 Automation replaces this complete issue body with the latest trusted public
 state while this exact release remains monitored. Put human analysis in
