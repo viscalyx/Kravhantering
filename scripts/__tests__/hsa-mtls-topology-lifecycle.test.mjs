@@ -17,12 +17,30 @@ beforeEach(async () => {
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 const command = process.argv.slice(2).join(' ')
 appendFileSync(process.env.HSA_TEST_CALLS, command + '\\n')
-if (command.includes('run --rm provisioner ensure')) {
-  process.stdout.write(process.env.HSA_TEST_ENSURE_RESULT + '\\n')
-} else if (command.includes('run --rm provisioner inspect')) {
+if (command.startsWith('inspect --format') && process.env.HSA_TEST_WORKSPACE_HOST_ROOT) {
+  process.stdout.write(process.env.HSA_TEST_WORKSPACE_HOST_ROOT + '\\n')
+} else if (
+  command.startsWith('compose ') &&
+  process.env.HSA_TEST_WORKSPACE_HOST_ROOT &&
+  process.env.WORKSPACE_HOST_ROOT !== process.env.HSA_TEST_WORKSPACE_HOST_ROOT
+) {
+  process.stderr.write('compose did not receive the host-visible workspace root\\n')
+  process.exit(1)
+} else if (command.startsWith('logs ') && existsSync(process.env.HSA_TEST_PROVISION_LOG)) {
+  process.stdout.write(readFileSync(process.env.HSA_TEST_PROVISION_LOG, 'utf8'))
+} else if (command.includes('provisioner ensure')) {
+  writeFileSync(process.env.HSA_TEST_PROVISION_LOG, process.env.HSA_TEST_ENSURE_RESULT + '\\n')
+  if (process.env.HSA_TEST_DETACHED_PROVISION_OUTPUT !== 'true') {
+    process.stdout.write(process.env.HSA_TEST_ENSURE_RESULT + '\\n')
+  }
+} else if (command.includes('provisioner inspect')) {
   const reconciled = existsSync(process.env.HSA_TEST_FINALIZE_STATE)
-  process.stdout.write(JSON.stringify({ ok: true, result: { selection: { current: 'generation-2', previous: reconciled ? null : 'generation-1' } } }) + '\\n')
-} else if (command.includes('run --rm provisioner finalize')) {
+  const output = JSON.stringify({ ok: true, result: { selection: { current: 'generation-2', previous: reconciled ? null : 'generation-1' } } }) + '\\n'
+  writeFileSync(process.env.HSA_TEST_PROVISION_LOG, output)
+  if (process.env.HSA_TEST_DETACHED_PROVISION_OUTPUT !== 'true') {
+    process.stdout.write(output)
+  }
+} else if (command.includes('provisioner finalize')) {
   const state = process.env.HSA_TEST_FINALIZE_COUNT
   const count = existsSync(state) ? Number(readFileSync(state, 'utf8')) : 0
   writeFileSync(state, String(count + 1))
@@ -54,12 +72,15 @@ async function runEnsure(
     finalizeAmbiguous = false,
     finalizeFailures = 0,
     normalizedConfig = { services: {} },
+    detachedProvisionOutput = false,
     verifyFailures = 0,
+    workspaceHostRoot,
   } = {},
 ) {
   const callsPath = path.join(testRoot, 'calls.log')
   const finalizeCount = path.join(testRoot, 'finalize-count')
   const finalizeState = path.join(testRoot, 'finalize-state')
+  const provisionLog = path.join(testRoot, 'provision.log')
   const verifyState = path.join(testRoot, 'verify-state')
   const result = spawnSync(LIFECYCLE, ['ensure'], {
     encoding: 'utf8',
@@ -78,6 +99,11 @@ async function runEnsure(
       HSA_TEST_FINALIZE_FAILURES: String(finalizeFailures),
       HSA_TEST_FINALIZE_STATE: finalizeState,
       HSA_TEST_NORMALIZED_CONFIG: JSON.stringify(normalizedConfig),
+      HSA_TEST_DETACHED_PROVISION_OUTPUT: String(detachedProvisionOutput),
+      HSA_TEST_PROVISION_LOG: provisionLog,
+      ...(workspaceHostRoot
+        ? { HSA_TEST_WORKSPACE_HOST_ROOT: workspaceHostRoot }
+        : {}),
       PATH: `${testRoot}:${process.env.PATH}`,
     },
   })
@@ -92,6 +118,26 @@ async function runEnsure(
 }
 
 describe('HSA mTLS topology ensure lifecycle', () => {
+  it('uses the daemon-visible workspace root from a devcontainer', async () => {
+    const { result } = await runEnsure(
+      { action: 'reused', generationId: 'generation-1' },
+      {
+        workspaceHostRoot: '/host_mnt/Users/developer/source/Kravhantering',
+      },
+    )
+
+    expect(result.status).toBe(0)
+  })
+
+  it('reads successful provisioner JSON when Compose attachment output is empty', async () => {
+    const { result } = await runEnsure(
+      { action: 'reused', generationId: 'generation-1' },
+      { detachedProvisionOutput: true },
+    )
+
+    expect(result.status).toBe(0)
+  })
+
   it('rejects writable material mounts on runtime leaf services', async () => {
     const { calls, result } = await runEnsure(
       { action: 'reused', generationId: 'generation-1' },
@@ -137,7 +183,7 @@ describe('HSA mTLS topology ensure lifecycle', () => {
     expect(result.status).toBe(0)
     const stopped = calls.findIndex(call => call.includes('stop --timeout 1'))
     const ensured = calls.findIndex(call =>
-      call.includes('run --rm provisioner ensure --lifetime persistent'),
+      call.includes('provisioner ensure --lifetime persistent'),
     )
     const authenticated = calls.findIndex(call =>
       call.includes('run --rm --no-deps test'),

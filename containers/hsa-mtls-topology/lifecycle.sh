@@ -7,8 +7,41 @@ DOMAIN="${2:-}"
 LIFETIME="${HSA_MTLS_LIFETIME:-persistent}"
 PROFILE="$ROOT/../hsa-mtls/certificate-profile.json"
 
+workspace_host_root() {
+  docker inspect --format \
+    '{{range .Mounts}}{{if eq .Destination "/workspace"}}{{.Source}}{{end}}{{end}}' \
+    "$(hostname)" 2>/dev/null || true
+}
+
+if [[ -z "${WORKSPACE_HOST_ROOT:-}" ]]; then
+  detected_workspace_host_root="$(workspace_host_root)"
+  if [[ -n "$detected_workspace_host_root" ]]; then
+    export WORKSPACE_HOST_ROOT="$detected_workspace_host_root"
+  fi
+fi
+
 compose() { "${COMPOSE[@]}" "$@"; }
 provision() { compose run --rm provisioner "$@"; }
+
+provision_result() {
+  local container_name output
+  local logs_status=0 remove_status=0 run_status=0
+  container_name="kravhantering-hsa-mtls-result-${BASHPID}-${RANDOM}"
+
+  compose run --name "$container_name" --no-TTY provisioner "$@" >/dev/null ||
+    run_status=$?
+  output="$(docker logs "$container_name")" || logs_status=$?
+  docker container rm "$container_name" >/dev/null || remove_status=$?
+
+  if (( run_status != 0 )); then
+    [[ -z "$output" ]] || printf '%s\n' "$output" >&2
+    return "$run_status"
+  fi
+  if (( logs_status != 0 || remove_status != 0 )); then
+    return 1
+  fi
+  printf '%s\n' "$output"
+}
 
 stop_endpoints() {
   for service in test kong adapter mock; do
@@ -49,12 +82,12 @@ authenticate() {
     echo 'Writable HSA runtime material mount detected' >&2
     return 1
   fi
-  provision inspect || return 1
+  provision_result inspect || return 1
 }
 
 inspect_finalization_previous() {
   local expected_generation="$1" inspection current
-  if ! inspection="$(provision inspect)"; then
+  if ! inspection="$(provision_result inspect)"; then
     echo 'HSA mTLS finalization state could not be inspected' >&2
     return 1
   fi
@@ -124,7 +157,7 @@ ensure() {
   local action ensured previous
   compose build provisioner mock adapter test
   stop_endpoints
-  if ! ensured="$(provision ensure --lifetime "$LIFETIME")"; then
+  if ! ensured="$(provision_result ensure --lifetime "$LIFETIME")"; then
     start_endpoints
     authenticate
     return 1
@@ -239,7 +272,7 @@ assert_rotation_metadata() {
 rotate() {
   local before after stale
   require_domain
-  before="$(provision inspect)"
+  before="$(provision_result inspect)"
   stale="$(mktemp -d)"
   trap 'rm -rf -- "$stale"' RETURN
   capture_stale_probe "$stale"
@@ -247,12 +280,12 @@ rotate() {
   provision rotate "$DOMAIN" --lifetime "$LIFETIME"
   provision deploy
   if start_endpoints && compose run --rm --no-deps test; then
-    after="$(provision inspect)"
+    after="$(provision_result inspect)"
     assert_rotation_metadata "$before" "$after"
     reject_stale_probe "$stale"
     finalize_authenticated_promotion \
       "$(jq -er '.result.selection.current' <<<"$after")"
-    after="$(provision inspect)"
+    after="$(provision_result inspect)"
     [[ "$(jq -r '.result.selection.previous' <<<"$after")" == null ]]
     printf '%s\n' \
       "{\"event\":\"hsa_rotation_verified\",\"trust_domain\":\"$DOMAIN\",\"ca_and_both_leaves_changed\":true,\"stable_identities_preserved\":true,\"stale_material_rejected\":true,\"prior_deleted\":true}"
@@ -268,22 +301,22 @@ rotate() {
 rollback_verify() {
   require_domain
   local failed prior restored rollback
-  prior="$(provision inspect | jq -er '.result.selection.current')"
+  prior="$(provision_result inspect | jq -er '.result.selection.current')"
   stop_endpoints
   provision rotate "$DOMAIN" --lifetime "$LIFETIME"
   provision deploy
-  failed="$(provision inspect | jq -er '.result.selection.current')"
+  failed="$(provision_result inspect | jq -er '.result.selection.current')"
   start_endpoints
   if compose run --rm --no-deps -e HSA_MTLS_FORCE_VERIFY_FAILURE=true test; then
     echo 'Injected verification failure unexpectedly passed' >&2
     exit 1
   fi
   stop_endpoints
-  rollback="$(provision rollback)"
+  rollback="$(provision_result rollback)"
   [[ "$(jq -r '.result.deletedGenerationId' <<<"$rollback")" == "$failed" ]]
   provision deploy
   verify
-  restored="$(provision inspect | jq -er '.result.selection.current')"
+  restored="$(provision_result inspect | jq -er '.result.selection.current')"
   [[ "$restored" == "$prior" ]]
   printf '%s\n' \
     "{\"event\":\"hsa_rollback_verified\",\"trust_domain\":\"$DOMAIN\",\"failed_generation_deleted\":true,\"prior_authenticated\":true}"
@@ -292,7 +325,7 @@ rollback_verify() {
 case "${1:-}" in
   ensure) ensure ;;
   verify) verify ;;
-  inspect) provision inspect ;;
+  inspect) provision_result inspect ;;
   rotate) rotate ;;
   rollback-verification) rollback_verify ;;
   *)

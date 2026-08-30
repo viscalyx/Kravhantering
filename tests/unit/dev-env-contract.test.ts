@@ -120,6 +120,30 @@ describe('development environment contract', () => {
     }
   })
 
+  it('keeps every Kong test-support tag aligned with its canonical lock', () => {
+    const lock = JSON.parse(
+      readWorkspaceFile('containers/kong/image.lock.json'),
+    ) as { image: string; tag: string }
+    const expectedReference = `${lock.image}:${lock.tag}`
+    const synchronizedPaths = [
+      '.devcontainer/docker-compose.yml',
+      '.devcontainer/elevated/docker-compose.yml',
+      '.github/workflows/container-pr-smoke.yml',
+      '.github/workflows/container-release.yml',
+      'containers/hsa-mtls-topology/compose.yml',
+      'containers/production/env/release.env.template',
+      'scripts/azure-dev/templates/quadlet/krav-kong.container',
+    ] as const
+
+    for (const relativePath of synchronizedPaths) {
+      const references =
+        readWorkspaceFile(relativePath).match(
+          /docker\.io\/kong\/kong-gateway:[A-Za-z0-9_.-]+/gu,
+        ) ?? []
+      expect(references, relativePath).toEqual([expectedReference])
+    }
+  })
+
   it('keeps the exact devcontainer base tag aligned with its image lock', () => {
     const lock = JSON.parse(
       readWorkspaceFile('containers/devcontainer-base/image.lock.json'),

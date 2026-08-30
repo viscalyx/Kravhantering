@@ -72,7 +72,9 @@ npm run devcontainer:kong:recreate
 
 ## Image Lock Updates
 
-`image.lock.json` pins the upstream image by tag, manifest digest and image ID.
+`image.lock.json` pins the upstream image by tag, Linux AMD64 platform manifest
+digest, and AMD64 image config ID. The tag's multi-platform index is verified
+during maintenance but is not stored in this lane's lock.
 
 The strict-mTLS Foundation A capability probe is
 `verify-pinned-mtls-capabilities.mjs`. It builds temporary trusted and
@@ -99,13 +101,13 @@ policy:
 
 1. Choose the new official Kong Gateway tag. Prefer a version-specific LTS tag
    and do not use `latest`.
-2. Resolve the manifest digest with
+2. Resolve the multi-platform index and Linux AMD64 platform manifest with
    `docker buildx imagetools inspect kong/kong-gateway:<tag>`.
-3. Resolve the platform image config digest with
-   `docker manifest inspect --verbose kong/kong-gateway:<tag>`.
-4. Update `tag`, `manifestDigest` and `imageId` together in the lock. Repeat the
-   new tag without a digest in both devcontainer Compose files and the Azure VM
-   Quadlet.
+3. Resolve the AMD64 platform image config digest from the selected platform
+   manifest.
+4. Update `tag`, the AMD64 platform `manifestDigest`, and the AMD64 config
+   `imageId` together in the lock. Repeat the new tag without a digest in all
+   synchronized development, test-support, CI, and release-example surfaces.
 5. Run `npm run devcontainer:kong:pull`, `npm run devcontainer:kong:up` and
    `npm run devcontainer:kong:status`.
 6. Run `npm run dependency-maintenance:check` and verify that

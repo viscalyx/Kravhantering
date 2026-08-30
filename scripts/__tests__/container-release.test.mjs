@@ -1856,7 +1856,7 @@ describe('trusted container release helpers', () => {
       'KEYCLOAK_IMAGE_REF=quay.io/keycloak/keycloak:26.7.1-0',
     )
     expect(releaseEnv).toContain(
-      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.2-20260721-ubuntu',
+      'KONG_IMAGE_REF=docker.io/kong/kong-gateway:3.15.0.5-20260824-ubuntu',
     )
     expect(releaseEnv).toContain(
       'HSA_DIRECTORY_MOCK_IMAGE_REF=ghcr.io/viscalyx/kravhantering-hsa-directory-mock:replace-with-release-tag',
