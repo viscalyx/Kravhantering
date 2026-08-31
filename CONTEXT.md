@@ -187,7 +187,7 @@ publicering, återremiss, godkänd arkivering eller avbruten arkivering.
 _Avoid_: Ersättningsarkivering, misslyckat ändringsförsök, tekniskt resultat.
 
 **Ersättningsarkivering**:
-Den automatiska arkivering av en tidigare publicerad kravversion som sker när
+Den automatiska arkiveringen av en tidigare publicerad kravversion som sker när
 en ny kravversion publiceras. Den är en följd av publicering och inte ett
 utfall i arkiveringsgranskningskön.
 
