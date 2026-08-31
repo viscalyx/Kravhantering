@@ -661,4 +661,43 @@ describe('GitHub Actions workflow security', () => {
       expect(reference).toMatch(/^[^@\s]+@[a-f\d]{40}$/u)
     }
   })
+
+  it('keeps vulnerability evaluation fail closed and retains its evidence', () => {
+    const workflow = readWorkflowYaml('container-vulnerability-monitor.yml')
+    const steps =
+      workflow.jobs?.['container-vulnerability-monitor']?.steps ?? []
+    const evaluate = steps.find(step => step.id === 'evaluate')
+    const upload = steps.find(step => step.id === 'upload')
+    const stepOutcome = (stepId: string) =>
+      ['${{', `steps.${stepId}.outcome`, '}}'].join(' ')
+
+    expect(evaluate).toMatchObject({
+      env: {
+        ATTESTATION_OUTCOME: stepOutcome('attestation'),
+        CHECKOUT_OUTCOME: stepOutcome('checkout'),
+        GHCR_LOGIN_OUTCOME: stepOutcome('ghcr-login'),
+        GRYPE_OUTCOME: stepOutcome('grype'),
+        SCAN_OUTCOME: stepOutcome('scan'),
+        SELECTION_OUTCOME: stepOutcome('selection'),
+        SETUP_NODE_OUTCOME: stepOutcome('setup-node'),
+        TRACKER_PREFLIGHT_OUTCOME: stepOutcome('tracker-preflight'),
+      },
+      id: 'evaluate',
+      if: 'always()',
+    })
+    for (const outcome of Object.keys(evaluate?.env ?? {})) {
+      expect(evaluate?.run).toContain(`"\${${outcome}}"`)
+    }
+    expect(evaluate?.run).toContain('grep -qvx success')
+
+    expect(upload).toMatchObject({
+      id: 'upload',
+      if: 'always()',
+      with: {
+        'if-no-files-found': 'error',
+        path: 'tmp/container-vulnerability-monitor/',
+        'retention-days': 30,
+      },
+    })
+  })
 })
