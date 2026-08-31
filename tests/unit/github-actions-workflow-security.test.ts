@@ -696,6 +696,19 @@ describe('GitHub Actions workflow security', () => {
     const evaluate = step('Evaluate shared vulnerability policy')
     expect(evaluate?.id).toBe('evaluate')
     expect(evaluate?.['continue-on-error']).toBe(true)
+    expect(String(evaluate?.run)).toContain('--attestation-verification')
+    expect(String(evaluate?.run)).toContain('grep -qvx success')
+    for (const outcome of [
+      'ATTESTATION_OUTCOME',
+      'CHECKOUT_OUTCOME',
+      'GHCR_LOGIN_OUTCOME',
+      'GRYPE_OUTCOME',
+      'SCAN_OUTCOME',
+      'SELECTION_OUTCOME',
+      'SETUP_NODE_OUTCOME',
+    ]) {
+      expect(evaluate?.env).toHaveProperty(outcome)
+    }
 
     const synchronize = step('Synchronize vulnerability tracking')
     expect(synchronize?.id).toBe('synchronize')
@@ -713,6 +726,11 @@ describe('GitHub Actions workflow security', () => {
     expect(String(synchronize?.run)).toContain('--artifact-name')
     expect(String(synchronize?.run)).toContain('--retention-days 30')
     expect(String(synchronize?.run)).toContain(
+      '--reconciliation-plan "' +
+        '$' +
+        '{EVIDENCE_ROOT}/reconciliation-plan.json"',
+    )
+    expect(String(synchronize?.run)).toContain(
       '--tracker-evidence "' + '$' + '{EVIDENCE_ROOT}/tracker-evidence.json"',
     )
     expect(String(synchronize?.run)).toContain(
@@ -727,7 +745,6 @@ describe('GitHub Actions workflow security', () => {
 
     const ledger = step('Finalize restricted evidence ledger')
     expect(ledger?.if).toBe('always()')
-    expect(String(evaluate?.run)).toContain('reconciliation-plan.json')
     for (const category of [
       'selection',
       'attestation',
