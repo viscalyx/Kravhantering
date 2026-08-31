@@ -141,15 +141,6 @@ Begreppet hör hemma i rapportering och statistik om kravens användning.
 
 _Avoid_: Kravhistorik, teknisk audit.
 
-**Tillämpningsstatistik**:
-Sammanställningar som visar hur krav används i kravunderlag, till exempel antal
-kravtillämpningar, mest använda krav, avsteg per kravområde eller prioritet i
-kravunderlag.
-
-- `en`: Requirement application statistics
-
-_Avoid_: Tillämpningsspårbarhet när enskild spårbarhet avses.
-
 **Verksamhetsövergång**:
 En verksamhetsmässigt betydelsefull förändring där ett objekt får ett nytt
 giltigt tillstånd eller där en giltig relation börjar eller upphör.
@@ -160,33 +151,6 @@ utan verksamhetsbetydelse är inte verksamhetsövergångar.
 - `en`: Business transition
 
 _Avoid_: Teknisk händelse, knapptryckning, ändringsförsök.
-
-**Statistikhändelse**:
-En beständig och tidsatt registrering av en verksamhetsövergång som gör det
-möjligt att beräkna historiskt bestånd, flöde, ledtid eller omtag.
-Statistikhändelsen anger både när övergången blev giltig och när den
-registrerades. Den är inte en post i Åtgärdsloggen eller Säkerhetsloggen.
-
-- `en`: Statistics event
-
-_Avoid_: Åtgärdsloggspost, säkerhetshändelse, teknisk logghändelse.
-
-**Kontextskyddat användningsaggregat**:
-Ett exakt mått över hur krav används som får omfatta kravunderlag som
-mottagaren inte får läsa, men som inte visar kravunderlagens identitet,
-personer eller innehåll.
-
-- `en`: Context-protected usage aggregate
-
-_Avoid_: Anonym statistik, kravunderlagsdetalj, ungefärligt användningstal.
-
-**Aktörsgrupperad statistik**:
-Tillämpningsstatistik som grupperas per identifierad person inom ett tillåtet
-behörighetssammanhang och visar personens fullständiga visningsnamn och HSA-id.
-
-- `en`: Actor-grouped statistics
-
-_Avoid_: Personstatistik, topplista, statistik per namn utan stabil identitet.
 
 **Publiceringsgranskningskö**:
 De kravversioner som befinner sig i granskning inför publicering och väntar på
@@ -203,42 +167,6 @@ att godkänna eller avbryta arkiveringen.
 - `en`: Archiving review queue
 
 _Avoid_: Publiceringsgranskningskö, alla arkiverade kravversioner.
-
-**Statusålder**:
-Antalet hela kalenderdagar i verksamhetstidszonen sedan en kravversion gick in
-i sitt aktuella livscykelläge. För arkiveringsgranskning räknas tiden sedan
-arkiveringen påbörjades; måttet anger inte i sig försening eller risk.
-
-- `en`: Status age
-
-_Avoid_: Kravålder, senaste redigering, automatisk försening.
-
-**Verksamhetstidszon**:
-Den tidszon som avgränsar användarsynliga kalenderdagar, ISO-veckor och
-kalendermånader i verksamhetsstatistik. För Kravhantering är den
-`Europe/Stockholm`.
-
-- `en`: Business time zone
-
-_Avoid_: Lokal webbläsartidszon, UTC när verksamhetsperioden avses.
-
-**Påverkansomfattning**:
-Mått på hur många aktuella kravtillämpningar och distinkta kravunderlag som kan
-beröras av ett publicerings- eller arkiveringsbeslut. Måttet beskriver
-omfattning, inte sannolikhet, konsekvens eller samlad risk.
-
-- `en`: Impact scope
-
-_Avoid_: Risk, risknivå, prioritet.
-
-**Granskningsgenomströmning**:
-Antalet avslutade granskningsbeslut under en period, uppdelat efter utfall. Det
-är inte förändringen i köns storlek och omfattar inte automatisk arkivering som
-följer av en ny publicering.
-
-- `en`: Review throughput
-
-_Avoid_: Köminskning, antal publiceringar utan övriga granskningsutfall.
 
 **Granskningsköinträde**:
 Den verksamhetsövergång där en kravversion går in i en
@@ -257,42 +185,6 @@ publicering, återremiss, godkänd arkivering eller avbruten arkivering.
 - `en`: Review outcome
 
 _Avoid_: Ersättningsarkivering, misslyckat ändringsförsök, tekniskt resultat.
-
-**Granskningsköernas nettoflöde**:
-Antalet granskningsköinträden minus antalet granskningsbeslut under samma
-period. Måttet visar om köerna samlar eller minskar arbete men är inte ett
-kvalitets- eller prestationsbetyg.
-
-- `en`: Review queue net flow
-
-_Avoid_: Granskningsgenomströmning, aktuellt köbestånd, produktivitet.
-
-**Granskningsomtag**:
-Ett förlopp där en kravversion återremitteras från granskning till utkast och
-sedan skickas till granskning på nytt.
-
-- `en`: Review rework cycle
-
-_Avoid_: Återremiss när bara den första övergången avses, vanlig redigering.
-
-**Granskningstid**:
-Tiden från att en kravversion går in i en publicerings- eller
-arkiveringsgranskningskö tills den lämnar samma kö genom ett granskningsbeslut.
-Varje granskningsomtag ger en ny granskningstid.
-
-- `en`: Review time
-
-_Avoid_: Skapande till publicering, total tid i utkast, kravversionens ålder.
-
-**Statistikbaslinje**:
-En daterad ögonblicksbild omedelbart före den första produktionsanvändningen
-som omfattar alla då befintliga objekt. Den anger startpunkten från vilken
-historiskt bestånd, flöde och genomströmning är tillförlitliga.
-
-- `en`: Statistics baseline
-
-_Avoid_: Återskapad historik före baslinjen, driftsättningsdatum utan
-statistiksammanhang.
 
 **Ersättningsarkivering**:
 Den automatiska arkivering av en tidigare publicerad kravversion som sker när
@@ -1065,6 +957,28 @@ aktiva urval.
 
 _Avoid_: Kravfilter, kravurvalsfilter.
 
+**Kravpaketsbidrag**:
+En sparad relation som anger att ett kravpaket var en aktiv urvalskälla när en
+kravtillämpning skapades. Relationen bevarar de urvalssätt som styrker
+bidraget. Samma kravpaket har högst ett kravpaketsbidrag till en
+kravtillämpning, men flera kravpaket kan bidra till samma kravtillämpning.
+Bidraget finns kvar så länge kravtillämpningen finns, även om kravet senare
+lämnar paketet.
+
+- `en`: Requirements package contribution
+
+_Avoid_: Kravpaketsanvändning, personers arbetsinsats, kravtillämpning utan
+angiven urvalskälla.
+
+**Kravpaketets nästa granskningsdatum**:
+Det datum då kravpaketets syfte, avgränsning, sammanhållning och relevans nästa
+gång ska granskas. Ett kravpaket utan nästa granskningsdatum har ingen planerad
+granskning och är inte därför automatiskt inaktuellt.
+
+- `en`: Requirements package next review date
+
+_Avoid_: Senaste redigering, automatiskt inaktualitetsdatum.
+
 **Kravpaketsansvarig**:
 Den person eller funktion som har huvudansvar för ett kravpakets syfte,
 sammanhållning och relevans över kravområden.
@@ -1203,6 +1117,32 @@ markerat som utan kravurval.
 
 _Avoid_: Utan kravurval när avsiktligt nollbidrag avses.
 
+**Tomt kravurval**:
+Ett kravurvalssammanhang där aktuella kravurvalssvar ska ge ett kravurval men
+deras samlade urval inte innehåller något publicerat bibliotekskrav.
+
+- `en`: Empty requirement selection
+
+_Avoid_: Utan kravurval, Saknar kravurval, fullt tillämpat kravurval.
+
+**Fullt tillämpat kravurval**:
+Ett kravurvalssammanhang där samtliga publicerade bibliotekskrav i urvalet
+redan används genom kravtillämpningar i samma kravunderlag. Jämförelsen gäller
+kravens stabila identitet, oavsett vilken kravversion kravtillämpningen har
+låst.
+
+- `en`: Fully applied requirement selection
+
+_Avoid_: Tomt kravurval, färdigställt kravunderlag, obligatoriskt kravurval.
+
+**Filterorsakad nollträff**:
+Ett visningsläge där vanliga tabellfilter döljer alla krav i ett annars
+icke-tomt kravurval.
+
+- `en`: Filter-caused zero result
+
+_Avoid_: Tomt kravurval, Saknar kravurval.
+
 **Kravurvalsfilter**:
 Ett användaraktiverat styrt grundurval av bibliotekskrav som bildas av valda
 kravurvalssvar inför att krav läggs till i ett kravunderlag. Valda
@@ -1213,6 +1153,23 @@ aktivt.
 
 _Avoid_: Vanligt tabellfilter, kravpaket, sparade kravurvalssvar när de bara
 dokumenterar urvalskontext.
+
+**Kravurvalssammanhang**:
+Ett kravunderlags aktuella, sparade kravurvalssvar som beskriver sammanhanget
+för urval av bibliotekskrav. Historiska svar ingår inte.
+
+- `en`: Requirement selection context
+
+_Avoid_: Kravurvalsfilter, slutfört guidat urval, historiska kravurvalssvar.
+
+**Kravurvalsväg**:
+Den del av kravurvalsfrågehierarkin som ett kravunderlags synliga frågor och
+aktuella kravurvalssvar bildar. Vägen kan innehålla flera grenar och är inte
+nödvändigtvis en linjär följd.
+
+- `en`: Requirement selection path
+
+_Avoid_: Kravurvalsfrågehierarki, sorteringsordning, slutfört guidat urval.
 
 **Synlighetsvillkor**:
 Ett villkor som avgör när en kravurvalsfråga hör till det aktuella
@@ -1319,6 +1276,16 @@ från Ingår i RFI, som anger om frågan över huvud taget ingår i RFI-listan.
 
 _Avoid_: Kravstatus, kravurvalsfilter, leverantörssvar.
 
+**Fullständigt relevansbedömd RFI-frågelista**:
+En låst RFI-frågelista med minst en inkluderad RFI-fråga där varje inkluderad
+fråga har RFI-relevans. Tillståndet beskriver inte att hela RFI-arbetet är
+slutfört.
+
+- `en`: Fully relevance-assessed RFI question list
+
+_Avoid_: Färdig RFI, låst RFI-frågelista utan inkluderade frågor, låst lista
+utan fullständig relevansbedömning.
+
 **RFI-frågeförslag**:
 Ett förslag om ny eller ändrad RFI-fråga riktat till ett kravområde, ofta
 skapat från ett kravunderlag. Förslaget kan gälla en specifik befintlig
@@ -1331,6 +1298,41 @@ förbättringsförslag.
 - `en`: RFI question suggestion
 
 _Avoid_: Förbättringsförslag, avsteg, kravunderlagskommentar.
+
+**RFI-frågeförslagsutkast**:
+Ett RFI-frågeförslag som ännu inte har överlämnats för beslut genom en begäran
+om granskning.
+
+- `en`: RFI question suggestion draft
+
+_Avoid_: Förslagsutkast utan RFI-sammanhang, väntande RFI-frågeförslag,
+inskickat RFI-frågeförslag.
+
+**Beslutsarbetskö för RFI-frågeförslag**:
+De RFI-frågeförslag där granskning har begärts men inget utfall har
+registrerats. RFI-frågeförslagsutkast ingår inte.
+
+- `en`: RFI question suggestion decision queue
+
+_Avoid_: Alla öppna RFI-frågeförslag, väntande RFI-frågeförslag,
+granskningskö utan RFI-sammanhang.
+
+**RFI-frågeförslagsutfall**:
+Det registrerade beslutet Hanterad eller Avfärdad för ett RFI-frågeförslag.
+Hanterad betyder inte i sig att en RFI-fråga har skapats eller ändrats.
+
+- `en`: RFI question suggestion outcome
+
+_Avoid_: Acceptans, genomförd ändring, förbättringsförslagsutfall.
+
+**Nyare RFI-frågeversion finns**:
+Ett härlett tillstånd där en RFI-frågelista bevarar en RFI-frågeversion och
+RFI-frågan samtidigt har en nyare aktiv version. Tillståndet betyder inte att
+den bevarade versionen är felaktig eller inaktuell.
+
+- `en`: Newer RFI question version available
+
+_Avoid_: Inaktuell RFI-frågeversion, felaktig RFI-frågeversion.
 
 **Kravtillämpning**:
 Att en publicerad kravversion från kravbiblioteket används i ett visst
@@ -1362,24 +1364,38 @@ verifierat inom just den tillämpningen.
 
 _Avoid_: Kravstatus, kravversionsstatus.
 
-**Användningsstatusålder**:
-Antalet hela kalenderdagar i verksamhetstidszonen sedan en kravtillämpning
-eller ett kravunderlagslokalt krav fick sin aktuella användningsstatus. Måttet
-är beskrivande och anger inte i sig försening eller risk.
-
-- `en`: Usage status age
-
-_Avoid_: Statusålder utan användningssammanhang, senaste redigering,
-automatisk försening.
-
 **Avsteg**:
-Ett underlagsspecifikt undantag från att följa en kravtillämpning fullt ut.
-Avsteget hör till kravtillämpningen i ett kravunderlag och ändrar inte kravet i
-kravbiblioteket.
+Ett underlagsspecifikt undantag från att följa ett krav i underlaget fullt ut.
+Avsteget hör till exakt en kravtillämpning eller ett kravunderlagslokalt krav
+och ändrar inte ett bibliotekskrav.
 
 - `en`: Deviation
 
-_Avoid_: Ändring av bibliotekskrav, kravändring.
+_Avoid_: Avvikelse, ändring av bibliotekskrav, kravändring.
+
+**Avstegsutkast**:
+Ett aktivt avsteg som ännu inte har överlämnats för beslut genom en begäran
+om granskning.
+
+- `en`: Deviation draft
+
+_Avoid_: Väntande avsteg, beslutsarbetskö.
+
+**Avstegsbeslutsarbetskö**:
+De aktiva avsteg där granskning har begärts men inget beslut har registrerats.
+Avstegsutkast ingår inte.
+
+- `en`: Deviation decision queue
+
+_Avoid_: Alla obeslutade avsteg, avstegsutkast, väntande avsteg.
+
+**Aktivt avsteg**:
+Ett avsteg utan registrerat beslut som är ett avstegsutkast eller ingår i
+avstegsbeslutsarbetskön. Ett krav i underlaget får ha högst ett aktivt avsteg.
+
+- `en`: Active deviation
+
+_Avoid_: Tidigare beslutat avsteg, alla historiska avsteg.
 
 **Förbättringsförslag**:
 Återkoppling om att ett krav i kravbiblioteket kan förbättras, förtydligas
@@ -1408,44 +1424,6 @@ beslut.
 
 _Avoid_: Alla öppna förbättringsförslag, väntande förbättringsförslag,
 granskningskö utan förbättringsförslagssammanhang.
-
-**Beslutsålder för förbättringsförslag**:
-Antalet hela kalenderdagar i verksamhetstidszonen sedan den senaste giltiga
-begäran om granskning för ett förslag i beslutsarbetskön. Måttet anger inte i
-sig försening eller risk.
-
-- `en`: Improvement suggestion decision age
-
-_Avoid_: Förslagets skapandeålder, senaste redigering, automatisk försening,
-statusålder utan förbättringsförslagssammanhang.
-
-**Beslutstid för förbättringsförslag**:
-Tiden från en giltig begäran om granskning till ett registrerat utfall för
-samma granskningsvarv. Ett varv som återgår till förslagsutkast ingår inte.
-
-- `en`: Improvement suggestion decision time
-
-_Avoid_: Skapande till beslut, total förslagsålder, tid för avbrutet
-granskningsvarv.
-
-**Förslagsomtag**:
-Ett förlopp där ett förbättringsförslag återgår från beslutsarbetskön till
-förslagsutkast och senare skickas för granskning på nytt.
-
-- `en`: Improvement suggestion rework cycle
-
-_Avoid_: Vanlig redigering av förslagsutkast, avvisat förslag, ny fristående
-begäran om granskning.
-
-**Beslutsarbetsköns nettoflöde**:
-Antalet giltiga köinträden minus registrerade beslut och återgångar till
-förslagsutkast under samma period. Måttet beskriver köns förändring, inte
-produktivitet eller kvalitet.
-
-- `en`: Improvement suggestion decision queue net flow
-
-_Avoid_: Begäranden om granskning minus beslut, beslutsgenomströmning,
-köbestånd.
 
 **Granskningsrapport**:
 Rapport som stödjer granskning och publiceringsbeslut för en kravversion.
