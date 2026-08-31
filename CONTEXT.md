@@ -973,7 +973,7 @@ angiven urvalskälla.
 **Kravpaketets nästa granskningsdatum**:
 Det datum då kravpaketets syfte, avgränsning, sammanhållning och relevans nästa
 gång ska granskas. Ett kravpaket utan nästa granskningsdatum har ingen planerad
-granskning och är inte därför automatiskt inaktuellt.
+granskning och är därför inte automatiskt inaktuellt.
 
 - `en`: Requirements package next review date
 
