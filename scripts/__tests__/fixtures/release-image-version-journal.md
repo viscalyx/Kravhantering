@@ -15,12 +15,13 @@ The trusted public state for release image `app-runtime` in published release
 
 ### Changed · 1
 
-- `CVE-2026-1234` · `alpha` (`deb`) · severity High → Critical;
+- `CVE-2026-1234` · `alpha` (`deb`) · installed `3.0.1-1` · severity High → Critical;
   exception state Unexcepted → Excepted;
   fixed version `3.0.1-2` → `3.0.2-1`;
   all other public fields are unchanged.
 
 ### Removed · 1
 
-- `CVE-2026-9999` · `removed-package` (`deb`) · no longer present in the
+- `CVE-2026-9999` · `removed-package` (`deb`) · installed
+  `3.0.1-1` · no longer present in the
   trusted public state. This does not claim that the finding is fixed.
