@@ -970,6 +970,15 @@ förvaltning eller annat användningssammanhang.
 
 _Avoid_: Kravspecifikation som huvudterm.
 
+**Krav i underlaget**:
+Presentationsnamn för den gemensamma mängden kravtillämpningar och
+kravunderlagslokala krav som ingår i ett kravunderlag.
+
+- `en`: Requirements in the specification
+
+_Avoid_: Kravtillämpningar som samlingsnamn när kravunderlagslokala krav
+också ingår, kravunderlagskrav.
+
 **Kravunderlagskod**:
 Den verksamhetsnära koden som identifierar ett kravunderlag på ett sätt som
 människor kan känna igen, söka efter och hänvisa till.
