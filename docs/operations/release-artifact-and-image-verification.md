@@ -246,6 +246,12 @@ Interpret the lifecycle as follows:
   A clean last-known state does not establish current safety after monitoring
   ends.
 
+The workflow validates the complete automation-owned tracker before selecting
+release assets. If tracker state is ambiguous, malformed, or incomplete, or a
+selected release intersects a trusted `monitoring-ended` identity, the run
+stops before attestation and Grype scanning. Treat that failure as a tracker
+integrity incident; do not remove lifecycle markers to force a rescan.
+
 Material changes appear in immutable reconciliation journal comments before
 the body changes. Added, Changed, and Removed sections describe changes in
 trusted public facts; removal does not by itself claim a fix. Large current

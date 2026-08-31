@@ -147,6 +147,13 @@ published stable release and monitored preview release selected by
 the trusted release workflow's digest-bound SPDX attestations before scanning;
 it never rebuilds the published images.
 
+Before release selection, the monitor reads and validates every
+automation-owned tracker issue and records its trusted terminal identities. A
+selected tag that intersects that terminal boundary fails before attestation
+or Grype execution. Ambiguous, malformed, or incomplete tracker state also
+blocks scanning, so a disappeared newer release cannot make an older terminal
+identity eligible again.
+
 Public tracking has one automation-owned `security` issue per exact image role
 and published release tag. Only closed, version-guarded Debian and GitHub npm
 authority classifications enter the issue. Its body and verified continuation
