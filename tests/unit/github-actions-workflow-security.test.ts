@@ -22,7 +22,6 @@ const AZURE_HOST_BOOTSTRAP = path.join(
   'bootstrap-host.sh',
 )
 type WorkflowDocument = {
-  concurrency?: Record<string, unknown>
   jobs?: Record<string, WorkflowJob>
   on?: Record<string, unknown>
   permissions?: Record<string, unknown>
