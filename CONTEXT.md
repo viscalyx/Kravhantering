@@ -150,6 +150,159 @@ kravunderlag.
 
 _Avoid_: Tillämpningsspårbarhet när enskild spårbarhet avses.
 
+**Verksamhetsövergång**:
+En verksamhetsmässigt betydelsefull förändring där ett objekt får ett nytt
+giltigt tillstånd eller där en giltig relation börjar eller upphör.
+Övergången sker när förändringen har sparats och blivit giltig i
+Kravhantering. Läsningar, misslyckade ändringsförsök och tekniska händelser
+utan verksamhetsbetydelse är inte verksamhetsövergångar.
+
+- `en`: Business transition
+
+_Avoid_: Teknisk händelse, knapptryckning, ändringsförsök.
+
+**Statistikhändelse**:
+En beständig och tidsatt registrering av en verksamhetsövergång som gör det
+möjligt att beräkna historiskt bestånd, flöde, ledtid eller omtag.
+Statistikhändelsen anger både när övergången blev giltig och när den
+registrerades. Den är inte en post i Åtgärdsloggen eller Säkerhetsloggen.
+
+- `en`: Statistics event
+
+_Avoid_: Åtgärdsloggspost, säkerhetshändelse, teknisk logghändelse.
+
+**Kontextskyddat användningsaggregat**:
+Ett exakt mått över hur krav används som får omfatta kravunderlag som
+mottagaren inte får läsa, men som inte visar kravunderlagens identitet,
+personer eller innehåll.
+
+- `en`: Context-protected usage aggregate
+
+_Avoid_: Anonym statistik, kravunderlagsdetalj, ungefärligt användningstal.
+
+**Aktörsgrupperad statistik**:
+Tillämpningsstatistik som grupperas per identifierad person inom ett tillåtet
+behörighetssammanhang och visar personens fullständiga visningsnamn och HSA-id.
+
+- `en`: Actor-grouped statistics
+
+_Avoid_: Personstatistik, topplista, statistik per namn utan stabil identitet.
+
+**Publiceringsgranskningskö**:
+De kravversioner som befinner sig i granskning inför publicering och väntar på
+beslut att publiceras eller återremitteras.
+
+- `en`: Publication review queue
+
+_Avoid_: Granskningskö när arkiveringsgranskning kan avses, alla utkast.
+
+**Arkiveringsgranskningskö**:
+De kravversioner som befinner sig i arkiveringsgranskning och väntar på beslut
+att godkänna eller avbryta arkiveringen.
+
+- `en`: Archiving review queue
+
+_Avoid_: Publiceringsgranskningskö, alla arkiverade kravversioner.
+
+**Statusålder**:
+Antalet hela kalenderdagar i verksamhetstidszonen sedan en kravversion gick in
+i sitt aktuella livscykelläge. För arkiveringsgranskning räknas tiden sedan
+arkiveringen påbörjades; måttet anger inte i sig försening eller risk.
+
+- `en`: Status age
+
+_Avoid_: Kravålder, senaste redigering, automatisk försening.
+
+**Verksamhetstidszon**:
+Den tidszon som avgränsar användarsynliga kalenderdagar, ISO-veckor och
+kalendermånader i verksamhetsstatistik. För Kravhantering är den
+`Europe/Stockholm`.
+
+- `en`: Business time zone
+
+_Avoid_: Lokal webbläsartidszon, UTC när verksamhetsperioden avses.
+
+**Påverkansomfattning**:
+Mått på hur många aktuella kravtillämpningar och distinkta kravunderlag som kan
+beröras av ett publicerings- eller arkiveringsbeslut. Måttet beskriver
+omfattning, inte sannolikhet, konsekvens eller samlad risk.
+
+- `en`: Impact scope
+
+_Avoid_: Risk, risknivå, prioritet.
+
+**Granskningsgenomströmning**:
+Antalet avslutade granskningsbeslut under en period, uppdelat efter utfall. Det
+är inte förändringen i köns storlek och omfattar inte automatisk arkivering som
+följer av en ny publicering.
+
+- `en`: Review throughput
+
+_Avoid_: Köminskning, antal publiceringar utan övriga granskningsutfall.
+
+**Granskningsköinträde**:
+Den verksamhetsövergång där en kravversion går in i en
+publiceringsgranskningskö eller arkiveringsgranskningskö. Varje nytt inträde
+startar en ny granskningstid.
+
+- `en`: Review queue entry
+
+_Avoid_: Kravversionens skapandetid, vanlig redigering, återinträde utan nytt
+köinträde.
+
+**Granskningsutfall**:
+Det beslut som avslutar den aktuella granskningstiden för en kravversion:
+publicering, återremiss, godkänd arkivering eller avbruten arkivering.
+
+- `en`: Review outcome
+
+_Avoid_: Ersättningsarkivering, misslyckat ändringsförsök, tekniskt resultat.
+
+**Granskningsköernas nettoflöde**:
+Antalet granskningsköinträden minus antalet granskningsbeslut under samma
+period. Måttet visar om köerna samlar eller minskar arbete men är inte ett
+kvalitets- eller prestationsbetyg.
+
+- `en`: Review queue net flow
+
+_Avoid_: Granskningsgenomströmning, aktuellt köbestånd, produktivitet.
+
+**Granskningsomtag**:
+Ett förlopp där en kravversion återremitteras från granskning till utkast och
+sedan skickas till granskning på nytt.
+
+- `en`: Review rework cycle
+
+_Avoid_: Återremiss när bara den första övergången avses, vanlig redigering.
+
+**Granskningstid**:
+Tiden från att en kravversion går in i en publicerings- eller
+arkiveringsgranskningskö tills den lämnar samma kö genom ett granskningsbeslut.
+Varje granskningsomtag ger en ny granskningstid.
+
+- `en`: Review time
+
+_Avoid_: Skapande till publicering, total tid i utkast, kravversionens ålder.
+
+**Statistikbaslinje**:
+En daterad ögonblicksbild omedelbart före den första produktionsanvändningen
+som omfattar alla då befintliga objekt. Den anger startpunkten från vilken
+historiskt bestånd, flöde och genomströmning är tillförlitliga.
+
+- `en`: Statistics baseline
+
+_Avoid_: Återskapad historik före baslinjen, driftsättningsdatum utan
+statistiksammanhang.
+
+**Ersättningsarkivering**:
+Den automatiska arkivering av en tidigare publicerad kravversion som sker när
+en ny kravversion publiceras. Den är en följd av publicering och inte ett
+utfall i arkiveringsgranskningskön.
+
+- `en`: Replacement archiving
+
+_Avoid_: Godkänd arkivering, arkiveringsgranskningsbeslut.
+
 **Åtgärdslogg**:
 Spår av viktiga användar- och systemåtgärder i applikationen, till exempel
 ändringar och nekade behörighetsförsök.
@@ -410,6 +563,16 @@ eller användning av krav och kravunderlag.
 - `en`: Statuses and workflows
 
 _Avoid_: Taxonomi, kravstatus som övergripande term.
+
+**Konfigurationsavvikelse**:
+Ett aktuellt tillstånd i förvaltad referensdata som bryter mot en uttrycklig
+katalog-, hierarki- eller arbetsflödesregel och därför kan kräva en
+administrativ rättelse. Låg användning, liten population eller ovanlig
+sammansättning är inte i sig en konfigurationsavvikelse.
+
+- `en`: Configuration rule violation
+
+_Avoid_: Kvalitetsmått, låg användning, ovanlig sammansättning.
 
 **AI-assisterat författande**:
 Ett stödflöde där en användare får förslag till krav baserat på ämne,
@@ -1190,6 +1353,16 @@ verifierat inom just den tillämpningen.
 
 _Avoid_: Kravstatus, kravversionsstatus.
 
+**Användningsstatusålder**:
+Antalet hela kalenderdagar i verksamhetstidszonen sedan en kravtillämpning
+eller ett kravunderlagslokalt krav fick sin aktuella användningsstatus. Måttet
+är beskrivande och anger inte i sig försening eller risk.
+
+- `en`: Usage status age
+
+_Avoid_: Statusålder utan användningssammanhang, senaste redigering,
+automatisk försening.
+
 **Avsteg**:
 Ett underlagsspecifikt undantag från att följa en kravtillämpning fullt ut.
 Avsteget hör till kravtillämpningen i ett kravunderlag och ändrar inte kravet i
@@ -1207,6 +1380,63 @@ inte till ett enskilt avsteg i ett kravunderlag.
 - `en`: Improvement suggestion
 
 _Avoid_: Avsteg, felanmälan, RFI-frågeförslag.
+
+**Förslagsutkast**:
+Ett förbättringsförslag som ännu inte har överlämnats för beslut genom en
+begäran om granskning.
+
+- `en`: Improvement suggestion draft
+
+_Avoid_: Utkast utan förbättringsförslagssammanhang, väntande
+förbättringsförslag, inskickat förbättringsförslag.
+
+**Beslutsarbetskö för förbättringsförslag**:
+De förbättringsförslag där granskning har begärts men inget utfall har
+registrerats. Förslagsutkast ingår inte eftersom de inte har överlämnats för
+beslut.
+
+- `en`: Improvement suggestion decision queue
+
+_Avoid_: Alla öppna förbättringsförslag, väntande förbättringsförslag,
+granskningskö utan förbättringsförslagssammanhang.
+
+**Beslutsålder för förbättringsförslag**:
+Antalet hela kalenderdagar i verksamhetstidszonen sedan den senaste giltiga
+begäran om granskning för ett förslag i beslutsarbetskön. Måttet anger inte i
+sig försening eller risk.
+
+- `en`: Improvement suggestion decision age
+
+_Avoid_: Förslagets skapandeålder, senaste redigering, automatisk försening,
+statusålder utan förbättringsförslagssammanhang.
+
+**Beslutstid för förbättringsförslag**:
+Tiden från en giltig begäran om granskning till ett registrerat utfall för
+samma granskningsvarv. Ett varv som återgår till förslagsutkast ingår inte.
+
+- `en`: Improvement suggestion decision time
+
+_Avoid_: Skapande till beslut, total förslagsålder, tid för avbrutet
+granskningsvarv.
+
+**Förslagsomtag**:
+Ett förlopp där ett förbättringsförslag återgår från beslutsarbetskön till
+förslagsutkast och senare skickas för granskning på nytt.
+
+- `en`: Improvement suggestion rework cycle
+
+_Avoid_: Vanlig redigering av förslagsutkast, avvisat förslag, ny fristående
+begäran om granskning.
+
+**Beslutsarbetsköns nettoflöde**:
+Antalet giltiga köinträden minus registrerade beslut och återgångar till
+förslagsutkast under samma period. Måttet beskriver köns förändring, inte
+produktivitet eller kvalitet.
+
+- `en`: Improvement suggestion decision queue net flow
+
+_Avoid_: Begäranden om granskning minus beslut, beslutsgenomströmning,
+köbestånd.
 
 **Granskningsrapport**:
 Rapport som stödjer granskning och publiceringsbeslut för en kravversion.
