@@ -93,6 +93,38 @@ Describe 'Get-AzureDevOpenSshVersion' -Tag 'Unit' {
     }
   }
 
+  Context 'When multiple non-Windows SSH applications are discoverable' {
+    It 'Should inspect the first application resolved from PATH' {
+      $script:mockSshCommand = @(
+        [System.Management.Automation.PSObject]@{
+          Source = '/opt/homebrew/bin/ssh'
+          Version = [System.Version]::new(9, 9)
+        },
+        [System.Management.Automation.PSObject]@{
+          Source = '/usr/bin/ssh'
+          Version = [System.Version]::new(9, 6)
+        }
+      )
+
+      $version = InModuleScope -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        Get-AzureDevOpenSshVersion -Platform 'macos'
+      }
+
+      $version | Should-Be ([System.Version]::new(9, 6))
+      Should-Invoke `
+        -CommandName Invoke-AzureDevNativeCommand `
+        -Exactly `
+        -Times 1 `
+        -Scope It `
+        -ParameterFilter {
+          $FilePath -eq '/opt/homebrew/bin/ssh' -and
+          $Arguments.Count -eq 1 -and
+          $Arguments[0] -eq '-V'
+        }
+    }
+  }
+
   Context 'When Linux reports its OpenSSH version' {
     It 'Should parse the upstream major and minor version' {
       $script:mockSshVersionResult.Text = (

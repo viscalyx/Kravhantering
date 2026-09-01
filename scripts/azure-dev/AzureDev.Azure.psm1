@@ -80,7 +80,8 @@ function Get-AzureDevOpenSshVersion {
     [string]$Platform
   )
 
-  $sshCommand = Get-Command ssh -CommandType Application -ErrorAction Stop
+  $sshCommand = Get-Command ssh -CommandType Application -ErrorAction Stop |
+    Select-Object -First 1
   if ($Platform -eq 'windows') {
     if ($sshCommand.Version -eq [System.Version]::new(0, 0, 0, 0)) {
       throw 'Could not determine the Windows OpenSSH client version.'
