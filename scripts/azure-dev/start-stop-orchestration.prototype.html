@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prototype — minimal Azure Dev lifecycle orchestration</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17202a;
+        --muted: #586574;
+        --line: #d7dde4;
+        --paper: #ffffff;
+        --wash: #f4f7f9;
+        --accent: #2856a7;
+        --accent-soft: #e8effb;
+        --danger: #9b2c2c;
+        --success: #216e4e;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--wash);
+        color: var(--ink);
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 32px auto 64px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 820px;
+        margin-bottom: 10px;
+        font-size: clamp(1.8rem, 4vw, 3rem);
+        line-height: 1.08;
+      }
+
+      h2 {
+        margin-bottom: 14px;
+        font-size: 1.2rem;
+      }
+
+      h3 {
+        margin-bottom: 8px;
+        font-size: 1rem;
+      }
+
+      .eyebrow {
+        margin-bottom: 10px;
+        color: var(--accent);
+        font-size: 0.78rem;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .lede {
+        max-width: 900px;
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
+      }
+
+      .notice,
+      section {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--paper);
+      }
+
+      .notice {
+        margin: 22px 0;
+        padding: 16px 18px;
+        border-left: 5px solid var(--accent);
+        line-height: 1.5;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.7fr) minmax(420px, 1.3fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      section {
+        margin-top: 18px;
+        padding: 20px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 0.84rem;
+        font-weight: 650;
+      }
+
+      select,
+      button {
+        min-height: 40px;
+        border: 1px solid #aeb8c4;
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--ink);
+        font: inherit;
+      }
+
+      select {
+        width: 100%;
+        padding: 8px 10px;
+      }
+
+      button {
+        padding: 8px 13px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      button:hover {
+        border-color: var(--accent);
+      }
+
+      button:focus-visible,
+      select:focus-visible {
+        outline: 3px solid #8fb2ef;
+        outline-offset: 2px;
+      }
+
+      button.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: white;
+      }
+
+      button[aria-selected="true"] {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: #173d7d;
+      }
+
+      .controls {
+        display: grid;
+        gap: 13px;
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .state-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .state-card {
+        min-height: 72px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #fbfcfd;
+      }
+
+      .state-card dt {
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+
+      .state-card dd {
+        margin: 7px 0 0;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
+      .terminal {
+        margin-top: 12px;
+        padding: 14px;
+        border-radius: 9px;
+        background: #101822;
+        color: #edf2f7;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.82rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .timeline li {
+        display: grid;
+        grid-template-columns: 116px 1fr;
+        gap: 14px;
+        padding: 13px 14px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+      }
+
+      .kind {
+        color: var(--accent);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .timeline code {
+        display: block;
+        margin-top: 7px;
+        color: #334155;
+        font-size: 0.78rem;
+        overflow-wrap: anywhere;
+      }
+
+      .timeline .failure {
+        border-color: #e0aaaa;
+        background: #fff6f6;
+      }
+
+      .timeline .failure .kind {
+        color: var(--danger);
+      }
+
+      .timeline .result {
+        border-color: #abd6c6;
+        background: #f3fbf7;
+      }
+
+      .timeline .result .kind {
+        color: var(--success);
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+      }
+
+      .walkthrough {
+        min-height: 170px;
+        margin-top: 14px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fbfcfd;
+      }
+
+      .walkthrough p {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .step-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .step-list button {
+        width: 100%;
+        text-align: left;
+      }
+
+      .legend {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding-left: 20px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      @media (max-width: 820px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .timeline li {
+          grid-template-columns: 1fr;
+          gap: 5px;
+        }
+      }
+
+      @media (max-width: 500px) {
+        main {
+          width: min(100% - 20px, 1180px);
+          margin-top: 20px;
+        }
+
+        .state-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Throwaway logic prototype</p>
+      <h1>Minimal Azure Dev <code>start</code> and <code>stop</code></h1>
+      <p class="lede">
+        This demo asks whether the smallest concrete orchestration feels right:
+        exact targeted Azure CLI calls, a short local lock, visible progress,
+        stable results, and explicit failure boundaries—without SSH readiness or
+        trust repair in the lifecycle commands.
+      </p>
+
+      <div class="notice">
+        <strong>Assumptions held fixed:</strong> configuration has already been
+        parsed and validated; the configured SSH alias already exists;
+        <code>setup</code> repairs changed SSH trust. The separate configuration
+        boundary, final <code>-WhatIf</code> contract, and strictness of the local
+        audit-log write remain decisions to make after reacting to this flow.
+      </div>
+
+      <div class="grid">
+        <section aria-labelledby="free-play-title">
+          <h2 id="free-play-title">Free play</h2>
+          <div class="controls">
+            <label>
+              Command
+              <select id="command">
+                <option value="start">start</option>
+                <option value="stop">stop</option>
+              </select>
+            </label>
+            <label>
+              Initial Azure VM state
+              <select id="initial-state">
+                <option value="deallocated">deallocated</option>
+                <option value="running">running</option>
+                <option value="starting">starting</option>
+                <option value="stopping">stopping</option>
+                <option value="stopped-allocated">stopped, still allocated</option>
+                <option value="deallocating">deallocating</option>
+                <option value="state-unavailable">state unavailable</option>
+                <option value="not-found">VM not found</option>
+                <option value="creating">creating</option>
+                <option value="unrecognized">unrecognized state</option>
+              </select>
+            </label>
+            <label>
+              Azure CLI session
+              <select id="auth">
+                <option value="reuse">matching, usable session</option>
+                <option value="login">stale or mismatched; login succeeds</option>
+                <option value="fail">no usable session; login fails</option>
+              </select>
+            </label>
+            <label>
+              Local lock
+              <select id="lock">
+                <option value="free">available immediately</option>
+                <option value="wait">brief contention, then available</option>
+                <option value="fail">contention exceeds bounded wait</option>
+              </select>
+            </label>
+            <label>
+              Azure mutation
+              <select id="mutation">
+                <option value="accept">accepted</option>
+                <option value="fail">rejected or command fails</option>
+              </select>
+            </label>
+            <label>
+              Start transition after submit or join
+              <select id="transition">
+                <option value="running">reaches running</option>
+                <option value="interference">turns downward</option>
+                <option value="timeout">never reaches running</option>
+              </select>
+            </label>
+            <div class="button-row">
+              <button class="primary" id="run">Run orchestration</button>
+              <button id="reset">Reset</button>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="state-title">
+          <h2 id="state-title">Full resulting state</h2>
+          <dl class="state-grid" id="state-grid"></dl>
+          <div class="terminal" id="terminal" aria-live="polite"></div>
+        </section>
+      </div>
+
+      <section aria-labelledby="trace-title">
+        <h2 id="trace-title">Ordered boundary trace</h2>
+        <ol class="timeline" id="timeline"></ol>
+      </section>
+
+      <section aria-labelledby="walkthrough-title">
+        <h2 id="walkthrough-title">Guided walkthroughs</h2>
+        <div class="tabs" role="tablist" aria-label="Lifecycle scenarios"></div>
+        <div class="walkthrough" id="walkthrough"></div>
+      </section>
+
+      <section aria-labelledby="candidate-title">
+        <h2 id="candidate-title">What this candidate is asserting</h2>
+        <ul class="legend">
+          <li>
+            The lock covers only session repair, the decisive state read, and
+            mutation submission. Polling happens without the lock.
+          </li>
+          <li>
+            Every Azure operation names subscription, resource group, and VM;
+            there is no <code>az account set</code> or subscription enumeration.
+          </li>
+          <li>
+            <code>start</code> waits only for Azure to report
+            <code>PowerState/running</code>, then prints existing SSH and VS Code
+            entry points. It does not touch SSH files or test SSH.
+          </li>
+          <li>
+            <code>stop</code> returns as soon as asynchronous deallocation is
+            accepted. It never waits for the VM to become deallocated.
+          </li>
+          <li>
+            One terminal local log record is shown as a candidate boundary after
+            lock release. Whether its failure is fatal or warning-only is not
+            settled by this prototype.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script>
+      // Portable logic module. It has no DOM dependency and can be lifted out.
+      const LifecycleOrchestration = (() => {
+        const target = Object.freeze({
+          subscription: "<subscription-id>",
+          tenant: "<tenant-id>",
+          client: "<client-id>",
+          resourceGroup: "<resource-group>",
+          vm: "<vm-name>",
+          sshAlias: "kravhantering-azure-dev",
+        });
+
+        const azTarget =
+          `--subscription ${target.subscription} ` +
+          `--resource-group ${target.resourceGroup} --name ${target.vm}`;
+
+        const commands = Object.freeze({
+          profile:
+            `az account show --subscription ${target.subscription} ` +
+            "--output json --only-show-errors",
+          token:
+            `az account get-access-token --subscription ${target.subscription} ` +
+            `--tenant ${target.tenant} --output none --only-show-errors`,
+          login:
+            `az login --service-principal --username ${target.client} ` +
+            `--password=[redacted] --tenant ${target.tenant} ` +
+            `--skip-subscription-discovery --subscription ${target.subscription} ` +
+            "--output none --only-show-errors",
+          state:
+            `az vm get-instance-view ${azTarget} ` +
+            `--query "instanceView.statuses[?starts_with(code, 'PowerState/')].code | [0]" ` +
+            "--output tsv --only-show-errors",
+          start:
+            `az vm start ${azTarget} --no-wait --only-show-errors`,
+          stop:
+            `az vm deallocate ${azTarget} --no-wait --only-show-errors`,
+        });
+
+        const knownPowerStates = new Set([
+          "starting",
+          "running",
+          "stopping",
+          "stopped-allocated",
+          "deallocating",
+          "deallocated",
+        ]);
+
+        const terminal = (result, message) => ({
+          status: result === "failed" ? "failed" : "complete",
+          result,
+          message,
+        });
+
+        const makeRun = (input) => ({
+          command: input.command,
+          initialState: input.initialState,
+          observedState: input.initialState,
+          finalAzureState: input.initialState,
+          lock: "not acquired",
+          session: "not checked",
+          mutation: "none",
+          status: "running",
+          result: "pending",
+          message: "",
+          trace: [],
+          output: [],
+        });
+
+        const add = (run, kind, title, detail, command = "") => {
+          run.trace.push({ kind, title, detail, command });
+        };
+
+        const say = (run, text) => {
+          run.output.push(text);
+          add(run, "progress", "User-visible output", text);
+        };
+
+        const fail = (run, boundary, message) => {
+          add(run, "failure", boundary, message);
+          run.output.push(`ERROR: ${message}`);
+          Object.assign(run, terminal("failed", message));
+          return run;
+        };
+
+        const release = (run) => {
+          if (run.lock === "held") {
+            add(
+              run,
+              "local write",
+              "Release atomic environment lock",
+              "Owner-safe removal; another process's lock is never removed.",
+            );
+            run.lock = "released";
+          }
+        };
+
+        const audit = (run) => {
+          add(
+            run,
+            "local write",
+            "Append one terminal lifecycle record (candidate)",
+            `Record command=${run.command}, result=${run.result}, target=${target.vm}. ` +
+              "The unresolved policy question is whether a write failure is fatal or a warning.",
+          );
+        };
+
+        const acquire = (run, input, reacquire = false) => {
+          if (input.lock === "fail") {
+            add(
+              run,
+              "failure",
+              reacquire ? "Reacquire local lock" : "Acquire local lock",
+              "Bounded wait expired. Report owner, age, and safe recovery guidance; do not call Azure.",
+            );
+            run.output.push(
+              "ERROR: Another Azure Dev lifecycle command still holds the local environment lock.",
+            );
+            Object.assign(
+              run,
+              terminal(
+                "failed",
+                "Local lock contention exceeded the bounded wait.",
+              ),
+            );
+            return false;
+          }
+          if (input.lock === "wait") {
+            say(run, "Waiting briefly for another local lifecycle command to finish...");
+          }
+          add(
+            run,
+            "local write",
+            reacquire ? "Reacquire atomic environment lock" : "Acquire atomic environment lock",
+            "Create the environment-specific lock atomically and record owner metadata.",
+          );
+          run.lock = "held";
+          return true;
+        };
+
+        const authenticate = (run, input) => {
+          say(run, "Checking the targeted Azure CLI session...");
+          add(
+            run,
+            "Azure read",
+            "Read cached profile identity",
+            "Require exact subscription, tenant, client/application ID, and user.type=servicePrincipal.",
+            commands.profile,
+          );
+          add(
+            run,
+            "Azure read",
+            "Acquire an ARM token silently",
+            "A successful exit proves the CLI can currently supply a token; token contents are never printed.",
+            commands.token,
+          );
+          if (input.auth === "reuse") {
+            run.session = "matching session reused";
+            return true;
+          }
+          add(
+            run,
+            "Azure write",
+            "Repair Azure CLI session",
+            "Use single-subscription service-principal login and keep the secret redacted.",
+            commands.login,
+          );
+          if (input.auth === "fail") {
+            fail(
+              run,
+              "Authentication",
+              "No usable targeted Azure CLI session, and service-principal login failed. No VM mutation was attempted.",
+            );
+            return false;
+          }
+          add(
+            run,
+            "Azure read",
+            "Verify repaired profile identity",
+            "Repeat the exact cached identity check after login.",
+            commands.profile,
+          );
+          run.session = "service-principal login repaired session";
+          return true;
+        };
+
+        const readState = (run, state, purpose = "Read decisive VM state") => {
+          add(
+            run,
+            "Azure read",
+            purpose,
+            `Normalize the returned PowerState code. Observed: ${state}.`,
+            commands.state,
+          );
+          run.observedState = state;
+        };
+
+        const guidance = (run) => {
+          say(run, `SSH: ssh ${target.sshAlias}`);
+          say(
+            run,
+            `VS Code: code --remote ssh-remote+${target.sshAlias} /workspace`,
+          );
+          add(
+            run,
+            "boundary",
+            "No SSH preparation",
+            "Do not resolve a public IP, rewrite SSH config or known_hosts, retrieve host keys, or poll port 22. Rerun setup to repair trust.",
+          );
+        };
+
+        const finish = (run, result, message) => {
+          release(run);
+          run.result = result;
+          run.message = message;
+          add(run, "result", "Stable command result", message);
+          audit(run);
+          Object.assign(run, terminal(result, message));
+          return run;
+        };
+
+        const waitForRunning = (run, input) => {
+          say(run, `Waiting for Azure to report the VM running (current: ${run.observedState})...`);
+          add(
+            run,
+            "Azure read",
+            "Poll VM power state outside the lock",
+            "Repeat the targeted instance-view read with bounded backoff; do not test SSH.",
+            commands.state,
+          );
+          if (input.transition === "interference") {
+            run.finalAzureState = "deallocating";
+            return fail(
+              run,
+              "Upward transition polling",
+              "The VM moved downward after start was submitted or joined. Treat this as outside interference; do not submit start again.",
+            );
+          }
+          if (input.transition === "timeout") {
+            run.finalAzureState = "starting";
+            return fail(
+              run,
+              "Upward transition polling",
+              "The bounded Azure-running wait expired. The accepted start operation may still be progressing; do not roll it back.",
+            );
+          }
+          run.finalAzureState = "running";
+          run.observedState = "running";
+          say(run, "Azure VM is running.");
+          guidance(run);
+          return finish(run, "running", "VM reached running.");
+        };
+
+        const start = (run, input) => {
+          const state = input.initialState;
+          readState(run, state);
+
+          if (["not-found", "state-unavailable", "creating", "unrecognized"].includes(state)) {
+            release(run);
+            return fail(
+              run,
+              "Initial start decision",
+              `Cannot safely start from ${state}. No start mutation was attempted.`,
+            );
+          }
+          if (state === "running") {
+            release(run);
+            say(run, "Azure VM is already running.");
+            guidance(run);
+            return finish(run, "already-running", "VM was already running.");
+          }
+          if (state === "starting") {
+            release(run);
+            run.mutation = "joined existing start";
+            return waitForRunning(run, input);
+          }
+          if (["stopping", "deallocating"].includes(state)) {
+            release(run);
+            say(run, `Waiting for Azure to finish ${state} before starting...`);
+            add(
+              run,
+              "Azure read",
+              "Wait for a stable stopped state outside the lock",
+              "Poll until stopped-allocated or deallocated, or fail on a bounded wait/read error.",
+              commands.state,
+            );
+            run.observedState = "deallocated";
+            if (!acquire(run, input, true)) return run;
+            if (!authenticate(run, input)) {
+              release(run);
+              return run;
+            }
+            readState(run, "deallocated", "Reread VM state after reacquiring lock");
+          }
+
+          say(run, "Submitting Azure VM start...");
+          add(
+            run,
+            "Azure write",
+            "Submit asynchronous start",
+            "The CLI returning success means Azure accepted the request, not that the VM is running.",
+            commands.start,
+          );
+          if (input.mutation === "fail") {
+            release(run);
+            return fail(
+              run,
+              "Start submission",
+              "Azure rejected or failed the targeted start request.",
+            );
+          }
+          run.mutation = "start accepted";
+          run.observedState = "starting";
+          release(run);
+          return waitForRunning(run, input);
+        };
+
+        const stop = (run, input) => {
+          const state = input.initialState;
+          readState(run, state);
+          if (state === "not-found") {
+            release(run);
+            return fail(
+              run,
+              "Initial stop decision",
+              "The targeted VM definitely does not exist. No deallocation request was submitted.",
+            );
+          }
+          if (state === "deallocated") {
+            release(run);
+            say(run, "Azure VM is already deallocated.");
+            return finish(
+              run,
+              "already-deallocated",
+              "No deallocation request was needed.",
+            );
+          }
+          if (state === "deallocating") {
+            release(run);
+            say(run, "Azure VM deallocation is already requested.");
+            return finish(
+              run,
+              "already-requested",
+              "An existing deallocation is in progress.",
+            );
+          }
+          if (!knownPowerStates.has(state)) {
+            add(
+              run,
+              "boundary",
+              "Cost-control fallback",
+              "State is unreadable or unrecognized, so stop still submits an explicitly targeted deallocation. Only definite not-found suppresses it.",
+            );
+          }
+          say(run, "Requesting Azure VM deallocation...");
+          add(
+            run,
+            "Azure write",
+            "Submit asynchronous deallocation",
+            "Do not wait for PowerState/deallocated after Azure accepts the request.",
+            commands.stop,
+          );
+          if (input.mutation === "fail") {
+            release(run);
+            return fail(
+              run,
+              "Deallocation submission",
+              "Azure rejected or failed the targeted deallocation request.",
+            );
+          }
+          run.mutation = "deallocation accepted";
+          run.finalAzureState = "deallocating";
+          release(run);
+          say(run, "Deallocation requested. Use azure-dev.ps1 status to observe completion.");
+          return finish(
+            run,
+            "requested",
+            "Azure accepted asynchronous deallocation.",
+          );
+        };
+
+        const simulate = (input) => {
+          const run = makeRun(input);
+          add(
+            run,
+            "local read",
+            "Use validated lifecycle context",
+            "Read the already-parsed environment target and SSH alias. Configuration validation is a separate decision.",
+          );
+          if (!acquire(run, input)) return run;
+          if (!authenticate(run, input)) {
+            release(run);
+            return run;
+          }
+          return input.command === "start" ? start(run, input) : stop(run, input);
+        };
+
+        return Object.freeze({ simulate });
+      })();
+
+      const scenarios = [
+        {
+          name: "Normal start",
+          description:
+            "A deallocated VM starts normally. Watch the lock end before polling and note that running—not SSH readiness—is the terminal condition.",
+          steps: [
+            ["Load deallocated VM", { command: "start", initialState: "deallocated" }],
+            ["Run start through running", {}],
+          ],
+        },
+        {
+          name: "Rapid stop → start",
+          description:
+            "Start first observes deallocation in progress. It releases the lock while waiting, then reacquires and rereads before submitting start.",
+          steps: [
+            ["Load deallocating VM", { command: "start", initialState: "deallocating" }],
+            ["Run convergent start", {}],
+          ],
+        },
+        {
+          name: "Asynchronous stop",
+          description:
+            "A running VM receives one no-wait deallocation request. The command reports requested without polling for completion.",
+          steps: [
+            ["Load running VM", { command: "stop", initialState: "running" }],
+            ["Submit deallocation", {}],
+          ],
+        },
+        {
+          name: "Idempotent repeats",
+          description:
+            "Repeated lifecycle calls avoid mutation: start on running prints guidance; stop on deallocated reports the stable result.",
+          steps: [
+            ["Run start on running", { command: "start", initialState: "running", run: true }],
+            ["Run stop on deallocated", { command: "stop", initialState: "deallocated", run: true }],
+          ],
+        },
+        {
+          name: "Outside interference",
+          description:
+            "After joining or submitting an upward transition, a downward state fails the command. It never fights another actor by submitting start again.",
+          steps: [
+            ["Load a VM already starting", { command: "start", initialState: "starting" }],
+            ["Inject downward transition", { transition: "interference", run: true }],
+          ],
+        },
+        {
+          name: "Cost-control fallback",
+          description:
+            "Stop cannot read instance state. It still sends an explicitly targeted deallocation request; definite not-found is the only suppressing result.",
+          steps: [
+            ["Load unreadable VM state", { command: "stop", initialState: "state-unavailable" }],
+            ["Submit cost-control stop", {}],
+          ],
+        },
+      ];
+
+      const inputs = {
+        command: document.querySelector("#command"),
+        initialState: document.querySelector("#initial-state"),
+        auth: document.querySelector("#auth"),
+        lock: document.querySelector("#lock"),
+        mutation: document.querySelector("#mutation"),
+        transition: document.querySelector("#transition"),
+      };
+
+      const defaultInput = Object.freeze({
+        command: "start",
+        initialState: "deallocated",
+        auth: "reuse",
+        lock: "free",
+        mutation: "accept",
+        transition: "running",
+      });
+
+      let activeScenario = 0;
+      let completedSteps = 0;
+
+      const readInput = () =>
+        Object.fromEntries(
+          Object.entries(inputs).map(([name, element]) => [name, element.value]),
+        );
+
+      const setInput = (patch) => {
+        for (const [name, value] of Object.entries(patch)) {
+          if (inputs[name] && value !== undefined) inputs[name].value = value;
+        }
+      };
+
+      const escapeHtml = (value) =>
+        String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+
+      const render = (run) => {
+        const fields = [
+          ["Command", run.command],
+          ["Run status", run.status],
+          ["Initial Azure state", run.initialState],
+          ["Last observed state", run.observedState],
+          ["Resulting Azure state", run.finalAzureState],
+          ["Local lock", run.lock],
+          ["Azure CLI session", run.session],
+          ["Mutation", run.mutation],
+          ["Stable result", run.result],
+          ["Failure / result detail", run.message || "none"],
+        ];
+        document.querySelector("#state-grid").innerHTML = fields
+          .map(
+            ([name, value]) =>
+              `<div class="state-card"><dt>${escapeHtml(name)}</dt><dd>${escapeHtml(value)}</dd></div>`,
+          )
+          .join("");
+        document.querySelector("#terminal").textContent =
+          run.output.length > 0 ? run.output.join("\n") : "No command run yet.";
+        document.querySelector("#timeline").innerHTML = run.trace
+          .map(
+            (item) => `
+              <li class="${escapeHtml(item.kind.replace(" ", "-"))}">
+                <span class="kind">${escapeHtml(item.kind)}</span>
+                <div>
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <div>${escapeHtml(item.detail)}</div>
+                  ${item.command ? `<code>${escapeHtml(item.command)}</code>` : ""}
+                </div>
+              </li>`,
+          )
+          .join("");
+      };
+
+      const run = () => render(LifecycleOrchestration.simulate(readInput()));
+
+      const reset = () => {
+        setInput(defaultInput);
+        render({
+          command: "none",
+          initialState: "not selected",
+          observedState: "not read",
+          finalAzureState: "unchanged",
+          lock: "not acquired",
+          session: "not checked",
+          mutation: "none",
+          status: "idle",
+          result: "none",
+          message: "none",
+          trace: [],
+          output: [],
+        });
+      };
+
+      const renderWalkthrough = () => {
+        document.querySelector(".tabs").innerHTML = scenarios
+          .map(
+            (scenario, index) =>
+              `<button role="tab" aria-selected="${index === activeScenario}" data-tab="${index}">${escapeHtml(scenario.name)}</button>`,
+          )
+          .join("");
+        const scenario = scenarios[activeScenario];
+        document.querySelector("#walkthrough").innerHTML = `
+          <h3>${escapeHtml(scenario.name)}</h3>
+          <p>${escapeHtml(scenario.description)}</p>
+          <div class="step-list">
+            ${scenario.steps
+              .map(
+                ([label], index) =>
+                  `<button data-step="${index}" ${index > completedSteps ? "disabled" : ""}>${index + 1}. ${escapeHtml(label)}</button>`,
+              )
+              .join("")}
+          </div>`;
+        document.querySelectorAll("[data-tab]").forEach((button) => {
+          button.addEventListener("click", () => {
+            activeScenario = Number(button.dataset.tab);
+            completedSteps = 0;
+            reset();
+            renderWalkthrough();
+          });
+        });
+        document.querySelectorAll("[data-step]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const stepIndex = Number(button.dataset.step);
+            const patch = scenarios[activeScenario].steps[stepIndex][1];
+            setInput(patch);
+            if (patch.run || stepIndex === scenarios[activeScenario].steps.length - 1) {
+              run();
+            } else {
+              render(LifecycleOrchestration.simulate(readInput()));
+            }
+            completedSteps = Math.max(completedSteps, stepIndex + 1);
+            renderWalkthrough();
+          });
+        });
+      };
+
+      document.querySelector("#run").addEventListener("click", run);
+      document.querySelector("#reset").addEventListener("click", reset);
+      reset();
+      renderWalkthrough();
+    </script>
+  </body>
+</html>
