@@ -54,7 +54,7 @@ function Invoke-AzCli {
       $stderrText = ''
       $exitCode = $jobResult.ExitCode
     } else {
-      $stderrPath = [System.IO.Path]::GetTempFileName()
+      $stderrPath = (New-TemporaryFile).FullName
       $output = & az @Arguments 2> $stderrPath
       $exitCode = $LASTEXITCODE
       $stdoutText = $output | Out-String

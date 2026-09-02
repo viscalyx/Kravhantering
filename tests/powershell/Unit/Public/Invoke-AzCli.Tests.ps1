@@ -138,6 +138,14 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
   Context 'When the caller uses the default native execution path' {
     BeforeEach {
       $script:mockOriginalLastExitCode = $global:LASTEXITCODE
+      $script:mockStderrPath = Join-Path $TestDrive 'az-stderr.txt'
+      $null = New-Item -ItemType File -Path $script:mockStderrPath
+      $script:mockTempFile = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{ FullName = $script:mockStderrPath }
+      Mock -CommandName New-TemporaryFile -MockWith {
+        return $script:mockTempFile
+      }
       Mock -CommandName az -MockWith {
         $global:LASTEXITCODE = 0
         return '{"status":"usable"}'
@@ -154,6 +162,12 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
         -Json
 
       $result.status | Should-Be 'usable'
+      Test-Path -LiteralPath $script:mockStderrPath | Should-BeFalse
+      Should-Invoke `
+        -CommandName New-TemporaryFile `
+        -Exactly `
+        -Times 1 `
+        -Scope It
       Should-Invoke -CommandName az -Exactly -Times 1 -Scope It
       Should-NotInvoke -CommandName Start-ThreadJob -Scope It
     }
