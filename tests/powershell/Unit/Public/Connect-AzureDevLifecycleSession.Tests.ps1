@@ -120,7 +120,7 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
   }
 
   Context 'When the configured service-principal token is stale' {
-    It 'Should perform one targeted noninteractive repair and recheck identity' {
+    BeforeEach {
       Mock -CommandName Invoke-AzCli -MockWith {
         $script:mockCall++
         if (
@@ -137,7 +137,9 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
         }
         return $null
       }
+    }
 
+    It 'Should perform one targeted noninteractive repair and recheck identity' {
       $null = Connect-AzureDevLifecycleSession `
         -Config $script:servicePrincipalConfig
 
@@ -208,15 +210,7 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
       )
     }
 
-    It 'Should repair an exact <Name> mismatch without using its token' `
-      -ForEach $profileMismatchCases {
-      switch ($Field) {
-        'id' { $script:mockProfile.id = $Value }
-        'tenantId' { $script:mockProfile.tenantId = $Value }
-        'clientId' { $script:mockProfile.user.name = $Value }
-        'accountType' { $script:mockProfile.user.type = $Value }
-      }
-      $script:mockProfileReads = 0
+    BeforeEach {
       Mock -CommandName Invoke-AzCli -MockWith {
         if ($Arguments[0] -eq 'version') {
           return '2.86.0'
@@ -233,6 +227,17 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
         }
         return $null
       }
+    }
+
+    It 'Should repair an exact <Name> mismatch without using its token' `
+      -ForEach $profileMismatchCases {
+      switch ($Field) {
+        'id' { $script:mockProfile.id = $Value }
+        'tenantId' { $script:mockProfile.tenantId = $Value }
+        'clientId' { $script:mockProfile.user.name = $Value }
+        'accountType' { $script:mockProfile.user.type = $Value }
+      }
+      $script:mockProfileReads = 0
 
       $null = Connect-AzureDevLifecycleSession `
         -Config $script:servicePrincipalConfig
@@ -254,7 +259,7 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
   }
 
   Context 'When Azure CLI is older than the lifecycle minimum' {
-    It 'Should reject repair before any login attempt' {
+    BeforeEach {
       $script:mockProfile = $null
       Mock -CommandName Invoke-AzCli -MockWith {
         if ($Arguments[0] -eq 'version') {
@@ -262,7 +267,9 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
         }
         return $script:mockProfile
       }
+    }
 
+    It 'Should reject repair before any login attempt' {
       {
         Connect-AzureDevLifecycleSession `
           -Config $script:servicePrincipalConfig
@@ -278,7 +285,7 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
   }
 
   Context 'When a matching user session has a stale token' {
-    It 'Should reject it without starting interactive or service-principal login' {
+    BeforeEach {
       $script:mockProfile = [pscustomobject]@{
         id = $script:subscriptionId
         tenantId = '66666666-6666-6666-6666-666666666666'
@@ -296,7 +303,9 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
         }
         return $script:mockProfile
       }
+    }
 
+    It 'Should reject it without starting interactive or service-principal login' {
       {
         Connect-AzureDevLifecycleSession -Config $script:userConfig
       } | Should-Throw -ExceptionMessage (
@@ -312,7 +321,7 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
   }
 
   Context 'When repaired identity does not match the configured target' {
-    It 'Should fail after one login without exposing the client secret' {
+    BeforeEach {
       $script:mockProfile = $null
       Mock -CommandName Invoke-AzCli -MockWith {
         if ($Arguments[0] -eq 'version') {
@@ -330,7 +339,9 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
           }
         }
       }
+    }
 
+    It 'Should fail after one login without exposing the client secret' {
       $message = $null
       try {
         $null = Connect-AzureDevLifecycleSession `
@@ -417,13 +428,15 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
   }
 
   Context 'When an Azure CLI call reaches its deadline' {
-    It 'Should attribute the timeout to authentication without raw output' {
+    BeforeEach {
       Mock -CommandName Invoke-AzCli -MockWith {
         throw [System.TimeoutException]::new(
           'secret-token raw command output timed out'
         )
       }
+    }
 
+    It 'Should attribute the timeout to authentication without raw output' {
       $message = $null
       try {
         $null = Connect-AzureDevLifecycleSession `
