@@ -179,6 +179,22 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
         -ParameterFilter {
           $Arguments[0] -eq 'account' -and $Arguments[1] -eq 'show'
         }
+      Should-Invoke `
+        -CommandName Invoke-AzCli `
+        -Exactly `
+        -Times 1 `
+        -Scope It `
+        -ParameterFilter {
+          $TimeoutSeconds -eq 120 -and
+          $SuppressOutputDetails -and
+          $Arguments.Count -eq 6 -and
+          $Arguments[0] -eq 'version' -and
+          $Arguments[1] -eq '--query' -and
+          $Arguments[2] -eq '"azure-cli"' -and
+          $Arguments[3] -eq '--output' -and
+          $Arguments[4] -eq 'tsv' -and
+          $Arguments[5] -eq '--only-show-errors'
+        }
       Should-NotInvoke `
         -CommandName Invoke-AzCli `
         -Scope It `
