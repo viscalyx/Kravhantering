@@ -12,9 +12,19 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
       Join-Path $script:repositoryRoot `
         'scripts/azure-dev/AzureDev.LifecycleLock.psm1'
     ) -Force -ErrorAction Stop
+    $PSDefaultParameterValues = @{
+      'Mock:ModuleName' = $script:moduleName
+    }
   }
 
   BeforeEach {
+    Mock New-AzureDevLifecycleMutex {
+      New-Object -TypeName System.Management.Automation.PSObject -Property @{
+        Identifier = [System.Guid]::NewGuid().ToString('N')
+      }
+    }
+    Mock Enter-AzureDevLifecycleMutex { $true }
+    Mock Close-AzureDevLifecycleMutex {}
     $script:snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
       RepoRoot = $TestDrive
       SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'

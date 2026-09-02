@@ -13,7 +13,6 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
         'scripts/azure-dev/AzureDev.LifecycleLock.psm1'
     ) -Force -ErrorAction Stop
     $PSDefaultParameterValues = @{
-      'InModuleScope:ModuleName' = $script:moduleName
       'Mock:ModuleName' = $script:moduleName
       'Should-Invoke:ModuleName' = $script:moduleName
     }
@@ -21,6 +20,13 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
 
   BeforeEach {
     $script:ownedLocks = @()
+    Mock New-AzureDevLifecycleMutex {
+      New-Object -TypeName System.Management.Automation.PSObject -Property @{
+        Identifier = [System.Guid]::NewGuid().ToString('N')
+      }
+    }
+    Mock Enter-AzureDevLifecycleMutex { $true }
+    Mock Close-AzureDevLifecycleMutex {}
   }
 
   AfterEach {
@@ -161,25 +167,21 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
         ResourceGroup = 'target-rg'
         VmName = 'target-vm'
       }
-      $identity = InModuleScope `
-        -Parameters @{ Snapshot = $snapshot } `
-        -ScriptBlock {
-          Set-StrictMode -Version 1.0
-          Get-AzureDevLifecycleLockIdentity `
-            -ConfigurationSnapshot $Snapshot
-        }
-      $null = [System.IO.Directory]::CreateDirectory(
-        (Split-Path -Parent $identity.Path)
-      )
+      $seed = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $snapshot `
+        -CommandName start
+      $script:ownedLocks += $seed
+      $null = Exit-AzureDevLifecycleLock -Lock $seed
       Set-Content `
-        -LiteralPath $identity.Path `
+        -LiteralPath $seed.Path `
         -Value '{"ownerId":"stale-owner","host":"foreign-host"}'
 
       $recovered = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $snapshot `
         -CommandName stop
       $script:ownedLocks += $recovered
-      $record = Get-Content -LiteralPath $identity.Path -Raw | ConvertFrom-Json
+      $record = Get-Content -LiteralPath $recovered.Path -Raw |
+        ConvertFrom-Json
 
       $record.ownerId | Should-Be $recovered.OwnerId
       $record.command | Should-Be 'stop'
@@ -260,8 +262,18 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
 
   Context 'When owner-record writing fails' {
     BeforeEach {
+      $script:writeFailureEnabled = $true
       $script:writeCurrentOwnerBeforeFailure = $false
+      $script:capturedRecordPath = $null
       Mock Write-AzureDevLifecycleLockRecord {
+        $script:capturedRecordPath = $Path
+        if (-not $script:writeFailureEnabled) {
+          [System.IO.File]::WriteAllText(
+            $Path,
+            ($Record | ConvertTo-Json -Compress)
+          )
+          return
+        }
         if ($script:writeCurrentOwnerBeforeFailure) {
           [System.IO.File]::WriteAllText(
             $Path,
@@ -279,44 +291,31 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
         ResourceGroup = 'target-rg'
         VmName = 'target-vm'
       }
-      $identity = InModuleScope `
-        -Parameters @{ Snapshot = $snapshot } `
-        -ScriptBlock {
-          Set-StrictMode -Version 1.0
-          Get-AzureDevLifecycleLockIdentity `
-            -ConfigurationSnapshot $Snapshot
-        }
-      $null = [System.IO.Directory]::CreateDirectory(
-        (Split-Path -Parent $identity.Path)
-      )
+      $script:writeFailureEnabled = $false
+      $seed = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $snapshot `
+        -CommandName start
+      $script:ownedLocks += $seed
+      $null = Exit-AzureDevLifecycleLock -Lock $seed
       Set-Content `
-        -LiteralPath $identity.Path `
+        -LiteralPath $seed.Path `
         -Value '{"ownerId":"prior-owner"}'
+      $script:writeFailureEnabled = $true
 
       {
         $null = Enter-AzureDevLifecycleLock `
           -ConfigurationSnapshot $snapshot `
           -CommandName start
       } | Should-Throw -ExceptionMessage '*record write failed*'
-      $record = Get-Content -LiteralPath $identity.Path -Raw | ConvertFrom-Json
-      $mutexAvailable = InModuleScope `
-        -Parameters @{ MutexName = $identity.MutexName } `
-        -ScriptBlock {
-          Set-StrictMode -Version 1.0
-          $probe = [System.Threading.Mutex]::new($false, $MutexName)
-          try {
-            $owned = $probe.WaitOne(0)
-            if ($owned) {
-              $probe.ReleaseMutex()
-            }
-            $owned
-          } finally {
-            $probe.Dispose()
-          }
-        }
+      $record = Get-Content -LiteralPath $seed.Path -Raw |
+        ConvertFrom-Json
 
       $record.ownerId | Should-Be 'prior-owner'
-      $mutexAvailable | Should-BeTrue
+      Should-Invoke `
+        -CommandName Close-AzureDevLifecycleMutex `
+        -Exactly `
+        -Times 2 `
+        -Scope It
     }
 
     It 'Should remove its partial current-owner diagnostics' {
@@ -335,21 +334,22 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
           -ConfigurationSnapshot $snapshot `
           -CommandName start
       } | Should-Throw -ExceptionMessage '*record write failed*'
-      $identity = InModuleScope `
-        -Parameters @{ Snapshot = $snapshot } `
-        -ScriptBlock {
-          Set-StrictMode -Version 1.0
-          Get-AzureDevLifecycleLockIdentity `
-            -ConfigurationSnapshot $Snapshot
-        }
 
-      (Test-Path -LiteralPath $identity.Path) | Should-BeFalse
+      (Test-Path -LiteralPath $script:capturedRecordPath) |
+        Should-BeFalse
+      Should-Invoke `
+        -CommandName Close-AzureDevLifecycleMutex `
+        -Exactly `
+        -Times 1 `
+        -Scope It
     }
   }
 
   Context 'When owner-record writing is interrupted' {
     BeforeEach {
+      $script:capturedRecordPath = $null
       Mock Write-AzureDevLifecycleLockRecord {
+        $script:capturedRecordPath = $Path
         [System.IO.File]::WriteAllText(
           $Path,
           ($Record | ConvertTo-Json -Compress)
@@ -371,15 +371,14 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
           -ConfigurationSnapshot $snapshot `
           -CommandName start
       } | Should-Throw -ExceptionMessage '*interrupted*'
-      $identity = InModuleScope `
-        -Parameters @{ Snapshot = $snapshot } `
-        -ScriptBlock {
-          Set-StrictMode -Version 1.0
-          Get-AzureDevLifecycleLockIdentity `
-            -ConfigurationSnapshot $Snapshot
-        }
 
-      (Test-Path -LiteralPath $identity.Path) | Should-BeFalse
+      (Test-Path -LiteralPath $script:capturedRecordPath) |
+        Should-BeFalse
+      Should-Invoke `
+        -CommandName Close-AzureDevLifecycleMutex `
+        -Exactly `
+        -Times 1 `
+        -Scope It
     }
   }
 }

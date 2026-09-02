@@ -68,6 +68,48 @@ function Get-AzureDevLifecycleMonotonicTimestamp {
   return [System.Diagnostics.Stopwatch]::GetTimestamp()
 }
 
+function New-AzureDevLifecycleMutex {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Name
+  )
+
+  return [System.Threading.Mutex]::new($false, $Name)
+}
+
+function Enter-AzureDevLifecycleMutex {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Object]$Mutex
+  )
+
+  try {
+    return $Mutex.WaitOne(0)
+  } catch [System.Threading.AbandonedMutexException] {
+    return $true
+  }
+}
+
+function Close-AzureDevLifecycleMutex {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Object]$Mutex,
+
+    [switch]$Owned
+  )
+
+  try {
+    if ($Owned) {
+      $Mutex.ReleaseMutex()
+    }
+  } finally {
+    $Mutex.Dispose()
+  }
+}
+
 function Wait-AzureDevLifecycleLockRetry {
   [CmdletBinding()]
   param(
@@ -167,7 +209,11 @@ function ConvertTo-AzureDevLifecycleOwnerText {
     if ([string]::IsNullOrWhiteSpace($text)) {
       return 'unknown'
     }
-    $text = [regex]::Replace($text, '[\p{C}]', '?')
+    $text = [System.Text.RegularExpressions.Regex]::Replace(
+      $text,
+      '[\p{C}]',
+      '?'
+    )
     if ($text.Length -gt 128) {
       return $text.Substring(0, 128)
     }
@@ -220,12 +266,8 @@ function Enter-AzureDevLifecycleLock {
     $mutexOwned = $false
     $activeLease = $script:activeLifecycleLocks[$identity.MutexName]
     if ($null -eq $activeLease) {
-      $mutex = [System.Threading.Mutex]::new($false, $identity.MutexName)
-      try {
-        $mutexOwned = $mutex.WaitOne(0)
-      } catch [System.Threading.AbandonedMutexException] {
-        $mutexOwned = $true
-      }
+      $mutex = New-AzureDevLifecycleMutex -Name $identity.MutexName
+      $mutexOwned = Enter-AzureDevLifecycleMutex -Mutex $mutex
     }
 
     if ($mutexOwned) {
@@ -250,7 +292,6 @@ function Enter-AzureDevLifecycleLock {
           MutexName = $identity.MutexName
           OwnerId = $ownerId
           Mutex = $mutex
-          ConfigurationSnapshot = $ConfigurationSnapshot
           Released = $false
         }
         $script:activeLifecycleLocks[$identity.MutexName] = $lease
@@ -275,18 +316,14 @@ function Enter-AzureDevLifecycleLock {
             }
           }
         } finally {
-          try {
-            $mutex.ReleaseMutex()
-          } finally {
-            $mutex.Dispose()
-          }
+          Close-AzureDevLifecycleMutex -Mutex $mutex -Owned
         }
         throw
       }
     }
 
     if ($null -ne $mutex) {
-      $mutex.Dispose()
+      Close-AzureDevLifecycleMutex -Mutex $mutex
     }
     $lastOwner = Read-AzureDevLifecycleLockRecord -Path $identity.Path
     $now = Get-AzureDevLifecycleMonotonicTimestamp
@@ -355,9 +392,8 @@ function Exit-AzureDevLifecycleLock {
       -OwnerId ([string]$Lock.OwnerId)
   } finally {
     try {
-      $Lock.Mutex.ReleaseMutex()
+      Close-AzureDevLifecycleMutex -Mutex $Lock.Mutex -Owned
     } finally {
-      $Lock.Mutex.Dispose()
       $Lock.Released = $true
       $script:activeLifecycleLocks.Remove([string]$Lock.MutexName)
     }

@@ -29,7 +29,10 @@ Describe 'Write-AzureDevLifecycleLockRecord' -Tag 'Unit' {
     Remove-Item `
       -LiteralPath $script:recordPath `
       -Force `
+      -Recurse `
       -ErrorAction SilentlyContinue
+    Get-ChildItem -LiteralPath $TestDrive -Filter '*.tmp' -Recurse |
+      Remove-Item -Force -ErrorAction SilentlyContinue
   }
 
   Context 'When writing owner metadata' {
@@ -50,6 +53,46 @@ Describe 'Write-AzureDevLifecycleLockRecord' -Tag 'Unit' {
       $text | Should-MatchString '"ownerId":"owner-one"'
       @(Get-ChildItem -LiteralPath $TestDrive -Filter '*.tmp').Count |
         Should-Be 0
+    }
+
+    It 'Should leave no temporary record after a real write failure' {
+      $missingPath = Join-Path $TestDrive 'missing/target.lock'
+      $record = [ordered]@{ ownerId = 'owner-write'; command = 'start' }
+
+      {
+        $null = InModuleScope `
+          -Parameters @{ Path = $missingPath; Record = $record } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Write-AzureDevLifecycleLockRecord -Path $Path -Record $Record
+          }
+      } | Should-Throw
+
+      @(
+        Get-ChildItem -LiteralPath $TestDrive -Filter '*.tmp' -Recurse
+      ).Count | Should-Be 0
+    }
+
+    It 'Should leave no temporary record after a real move failure' {
+      $null = New-Item `
+        -ItemType Directory `
+        -Path $script:recordPath
+      $record = [ordered]@{ ownerId = 'owner-move'; command = 'stop' }
+
+      {
+        $null = InModuleScope `
+          -Parameters @{ Path = $script:recordPath; Record = $record } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Write-AzureDevLifecycleLockRecord -Path $Path -Record $Record
+          }
+      } | Should-Throw
+
+      (Test-Path -LiteralPath $script:recordPath -PathType Container) |
+        Should-BeTrue
+      @(
+        Get-ChildItem -LiteralPath $TestDrive -Filter '*.tmp' -Recurse
+      ).Count | Should-Be 0
     }
   }
 }

@@ -12,10 +12,26 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
       Join-Path $script:repositoryRoot `
         'scripts/azure-dev/AzureDev.LifecycleLock.psm1'
     ) -Force -ErrorAction Stop
+    $PSDefaultParameterValues = @{
+      'Mock:ModuleName' = $script:moduleName
+      'Should-Invoke:ModuleName' = $script:moduleName
+    }
   }
 
   BeforeEach {
     $script:ownedLocks = @()
+    $script:mutexReleaseFailure = $false
+    Mock New-AzureDevLifecycleMutex {
+      New-Object -TypeName System.Management.Automation.PSObject -Property @{
+        Identifier = [System.Guid]::NewGuid().ToString('N')
+      }
+    }
+    Mock Enter-AzureDevLifecycleMutex { $true }
+    Mock Close-AzureDevLifecycleMutex {
+      if ($script:mutexReleaseFailure) {
+        throw 'mutex release failed'
+      }
+    }
     $script:snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
       RepoRoot = $TestDrive
       SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -25,6 +41,7 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
   }
 
   AfterEach {
+    $script:mutexReleaseFailure = $false
     foreach ($ownedLock in $script:ownedLocks) {
       if (-not $ownedLock.Released) {
         $null = Exit-AzureDevLifecycleLock -Lock $ownedLock
@@ -109,7 +126,9 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
       $owner.Released | Should-BeTrue
       if ($null -ne $Content) {
         (Get-Content -LiteralPath $owner.Path -Raw) |
-          Should-MatchString ([regex]::Escape($Content))
+          Should-MatchString (
+            [System.Text.RegularExpressions.Regex]::Escape($Content)
+          )
       }
     }
   }
@@ -131,6 +150,66 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
       $released | Should-BeFalse
       $owner.Released | Should-BeFalse
       (Test-Path -LiteralPath $owner.Path) | Should-BeTrue
+    }
+  }
+
+  Context 'When release cleanup fails' {
+    It 'Should clear nested ownership after record removal throws' {
+      $script:recordRemovalFailure = $false
+      Mock Remove-AzureDevLifecycleLockRecord {
+        if ($script:recordRemovalFailure) {
+          throw 'record removal failed'
+        }
+        [System.IO.File]::Delete($Path)
+        return $true
+      }
+      $owner = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $script:snapshot `
+        -CommandName start
+      $script:ownedLocks += $owner
+      $script:recordRemovalFailure = $true
+
+      {
+        $null = Exit-AzureDevLifecycleLock -Lock $owner
+      } | Should-Throw -ExceptionMessage '*record removal failed*'
+      $script:recordRemovalFailure = $false
+      $replacement = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $script:snapshot `
+        -CommandName stop
+      $script:ownedLocks += $replacement
+
+      $owner.Released | Should-BeTrue
+      $replacement.Released | Should-BeFalse
+      Should-Invoke `
+        -CommandName Close-AzureDevLifecycleMutex `
+        -Exactly `
+        -Times 1 `
+        -Scope It
+    }
+
+    It 'Should clear nested ownership after mutex release throws' {
+      $owner = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $script:snapshot `
+        -CommandName start
+      $script:ownedLocks += $owner
+      $script:mutexReleaseFailure = $true
+
+      {
+        $null = Exit-AzureDevLifecycleLock -Lock $owner
+      } | Should-Throw -ExceptionMessage '*mutex release failed*'
+      $script:mutexReleaseFailure = $false
+      $replacement = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $script:snapshot `
+        -CommandName stop
+      $script:ownedLocks += $replacement
+
+      $owner.Released | Should-BeTrue
+      $replacement.Released | Should-BeFalse
+      Should-Invoke `
+        -CommandName Close-AzureDevLifecycleMutex `
+        -Exactly `
+        -Times 1 `
+        -Scope It
     }
   }
 }
