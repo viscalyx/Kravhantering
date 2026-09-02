@@ -7,6 +7,26 @@ driftsätts, uppgraderas, verifieras och överlämnas till drift.
 
 Primärt ordlistespråk: `sv`
 
+### Azure-utvecklingsmiljöns livscykel
+
+**Livscykelresultat för Azure-utvecklingsmiljö**:
+Ett typat terminalt utfall som anger vad ett start- eller stoppkommando
+uppnådde eller begärde för en bestämd Azure-utvecklingsmiljö. Det är skilt
+från förloppsmeddelanden och lokala diagnostiska loggposter.
+
+- `en`: Azure development-environment lifecycle result
+
+_Avoid_: Operationsutdata, förloppsmeddelande, livscykelloggpost.
+
+**Livscykelloggpost för Azure-utvecklingsmiljö**:
+Ett hemlighetsfritt lokalt diagnosunderlag om ett avslutat start- eller
+stoppförsök. Posten är inte auktoritativ för miljöns tillstånd och avgör inte
+dess livscykelresultat.
+
+- `en`: Azure development-environment lifecycle log record
+
+_Avoid_: Livscykelresultat, Azure-aktivitetslogg, auktoritativ tillståndspost.
+
 ### AI-drift
 
 **AI-driftsättningsbevis**:
