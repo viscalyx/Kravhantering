@@ -19,7 +19,7 @@ Describe 'Format-AzureDevCommand' -Tag 'Unit' {
 
   Context 'When Azure CLI uses a combined password argument' {
     It 'Should redact the complete secret before formatting command text' {
-      $secret = 'contains spaces and --tenant decoy-value'
+      $secret = "first secret line`n--tenant decoy-value`r`nlast secret line`n"
 
       $formatted = Format-AzureDevCommand `
         -FilePath 'az' `
@@ -35,6 +35,8 @@ Describe 'Format-AzureDevCommand' -Tag 'Unit' {
       $formatted | Should-NotMatchString (
         [System.Text.RegularExpressions.Regex]::Escape($secret)
       )
+      $formatted | Should-NotMatchString 'first secret line'
+      $formatted | Should-NotMatchString 'last secret line'
       $formatted | Should-NotMatchString 'decoy-value'
     }
   }

@@ -22,48 +22,37 @@ function Invoke-AzCli {
 
   $callerWhatIfPreference = $WhatIfPreference
   $stderrPath = $null
-  $process = $null
+  $azureCliJob = $null
   try {
     $WhatIfPreference = $false
     if ($TimeoutSeconds -gt 0) {
-      $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-      $startInfo.FileName = [System.Environment]::ProcessPath
-      $startInfo.UseShellExecute = $false
-      $startInfo.RedirectStandardOutput = $true
-      $startInfo.RedirectStandardError = $true
-      foreach ($powerShellArgument in @(
-          '-NoLogo',
-          '-NoProfile',
-          '-NonInteractive',
-          '-CommandWithArgs',
-          '& az @args; exit $LASTEXITCODE'
-        )) {
-        $startInfo.ArgumentList.Add($powerShellArgument)
-      }
-      foreach ($argument in $Arguments) {
-        $startInfo.ArgumentList.Add($argument)
-      }
+      $azureCliJob = Start-ThreadJob `
+        -ScriptBlock {
+          param(
+            [Parameter(Mandatory = $true)]
+            [string[]]$NativeArguments
+          )
 
-      $process = [System.Diagnostics.Process]::new()
-      $process.StartInfo = $startInfo
-      $null = $process.Start()
-      $standardOutput = $process.StandardOutput.ReadToEndAsync()
-      $standardError = $process.StandardError.ReadToEndAsync()
-      if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
-        try {
-          $process.Kill($true)
-          $process.WaitForExit()
-        } catch {
-          # Preserve the timeout as the primary failure if the process exits
-          # between the deadline check and termination.
-        }
+          $nativeOutput = & az @NativeArguments 2>&1
+          return [pscustomobject]@{
+            ExitCode = $LASTEXITCODE
+            Text = $nativeOutput | Out-String
+          }
+        } `
+        -ArgumentList (, $Arguments)
+      $completedJob = Wait-Job `
+        -Job $azureCliJob `
+        -Timeout $TimeoutSeconds
+      if ($null -eq $completedJob) {
+        Stop-Job -Job $azureCliJob
         throw [System.TimeoutException]::new(
           "$commandLine timed out after $TimeoutSeconds seconds."
         )
       }
-      $stdoutText = $standardOutput.GetAwaiter().GetResult()
-      $stderrText = $standardError.GetAwaiter().GetResult()
-      $exitCode = $process.ExitCode
+      $jobResult = Receive-Job -Job $azureCliJob -Wait
+      $stdoutText = $jobResult.Text
+      $stderrText = ''
+      $exitCode = $jobResult.ExitCode
     } else {
       $stderrPath = [System.IO.Path]::GetTempFileName()
       $output = & az @Arguments 2> $stderrPath
@@ -110,8 +99,8 @@ function Invoke-AzCli {
     return $text
   } finally {
     $WhatIfPreference = $callerWhatIfPreference
-    if ($null -ne $process) {
-      $process.Dispose()
+    if ($null -ne $azureCliJob) {
+      Remove-Job -Job $azureCliJob -Force
     }
     if ($null -ne $stderrPath) {
       [System.IO.File]::Delete($stderrPath)

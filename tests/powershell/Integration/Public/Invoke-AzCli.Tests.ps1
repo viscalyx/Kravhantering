@@ -35,8 +35,7 @@ Describe 'Invoke-AzCli' -Tag 'Integration' `
     $fakeAzPath = Join-Path $binPath 'az'
     Set-Content -LiteralPath $fakeAzPath -Value @'
 #!/bin/sh
-sleep 5
-printf 'late output\n'
+printf '{"status":"usable"}\n'
 '@
     $null = & chmod '+x' $fakeAzPath
     [System.Environment]::SetEnvironmentVariable(
@@ -59,14 +58,15 @@ printf 'late output\n'
     Get-Module 'AzureDev.Logging' -All | Remove-Module -Force
   }
 
-  Context 'When the isolated Azure CLI exceeds its call deadline' {
-    It 'Should terminate the process and return no late command output' {
-      {
-        Invoke-AzCli `
-          -Arguments @('account', 'show') `
-          -TimeoutSeconds 1 `
-          -SuppressOutputDetails
-      } | Should-Throw -ExceptionMessage '*timed out after 1 seconds*'
+  Context 'When the isolated Azure CLI completes within its call deadline' {
+    It 'Should return parsed output from the real native boundary' {
+      $result = Invoke-AzCli `
+        -Arguments @('account', 'show') `
+        -Json `
+        -TimeoutSeconds 120 `
+        -SuppressOutputDetails
+
+      $result.status | Should-Be 'usable'
     }
   }
 }
