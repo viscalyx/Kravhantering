@@ -430,15 +430,16 @@ function Get-AzureDevLifecycleConfig {
       [string]$TypeName
     )
 
-    $result = [pscustomobject]@{}
+    $dictionary = [System.Collections.Generic.Dictionary[string, object]]::new(
+      [System.StringComparer]::Ordinal
+    )
     foreach ($property in $Properties.GetEnumerator()) {
-      $capturedValue = $property.Value
-      $getter = { $capturedValue }.GetNewClosure()
-      $result | Add-Member `
-        -MemberType ScriptProperty `
-        -Name $property.Key `
-        -Value $getter
+      $dictionary.Add([string]$property.Key, $property.Value)
     }
+    $result = [System.Collections.ObjectModel.ReadOnlyDictionary[
+      string,
+      object
+    ]]::new($dictionary)
     $result.PSObject.TypeNames.Insert(0, $TypeName)
     return $result
   }
@@ -692,10 +693,7 @@ function Get-AzureDevLifecycleConfig {
   }
 
   $snapshotProperties = [ordered]@{
-    CommandName = $CommandName
     RepoRoot = $repositoryPath
-    EnvironmentFilePath = $primaryPath
-    LocalEnvironmentFilePath = $localPath
   }
   foreach ($field in $fieldSpecifications.GetEnumerator()) {
     $snapshotProperties[$field.Value.Property] = $resolvedFields[$field.Key].Value

@@ -54,7 +54,7 @@ AZURE_DEV_VM_NAME=integration-vm
         Should-Be 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
       $snapshot.ResourceGroup | Should-Be 'integration-rg'
       $snapshot.VmName | Should-Be 'integration-vm'
-      @($snapshot.PSObject.Properties.Name) |
+      @($snapshot.Keys) |
         Should-NotContainCollection 'SshHostAlias'
     }
   }
