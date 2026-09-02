@@ -16,9 +16,6 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
       'Mock:ModuleName' = $script:moduleName
       'Should-NotInvoke:ModuleName' = $script:moduleName
     }
-  }
-
-  BeforeEach {
     Mock New-AzureDevLifecycleMutex {
       New-Object -TypeName System.Management.Automation.PSObject -Property @{
         Identifier = [System.Guid]::NewGuid().ToString('N')
@@ -26,6 +23,9 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
     }
     Mock Enter-AzureDevLifecycleMutex { $true }
     Mock Close-AzureDevLifecycleMutex {}
+  }
+
+  BeforeEach {
     $script:snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
       RepoRoot = $TestDrive
       SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'

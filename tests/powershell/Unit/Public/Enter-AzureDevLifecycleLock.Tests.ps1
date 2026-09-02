@@ -17,10 +17,6 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
       'Should-Invoke:ModuleName' = $script:moduleName
       'Should-NotInvoke:ModuleName' = $script:moduleName
     }
-  }
-
-  BeforeEach {
-    $script:ownedLocks = @()
     Mock New-AzureDevLifecycleMutex {
       New-Object -TypeName System.Management.Automation.PSObject -Property @{
         Identifier = [System.Guid]::NewGuid().ToString('N')
@@ -28,6 +24,10 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
     }
     Mock Enter-AzureDevLifecycleMutex { $true }
     Mock Close-AzureDevLifecycleMutex {}
+  }
+
+  BeforeEach {
+    $script:ownedLocks = @()
   }
 
   AfterEach {
@@ -128,8 +128,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
   }
 
   Context 'When another invocation owns the target mutex' {
-    BeforeEach {
-      $script:mockTimestamp = [System.Int64]0
+    BeforeAll {
       Mock Get-AzureDevLifecycleMonotonicTimestamp {
         $script:mockTimestamp
       }
@@ -139,6 +138,10 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
           [System.Diagnostics.Stopwatch]::Frequency
         )
       }
+    }
+
+    BeforeEach {
+      $script:mockTimestamp = [System.Int64]0
     }
 
     It 'Should wait exactly 15 virtual monotonic seconds with safe owner guidance' {
@@ -285,10 +288,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
   }
 
   Context 'When owner-record writing fails' {
-    BeforeEach {
-      $script:mockWriteFailureEnabled = $true
-      $script:mockWriteCurrentOwnerBeforeFailure = $false
-      $script:mockCapturedRecordPath = $null
+    BeforeAll {
       Mock Write-AzureDevLifecycleLockRecord {
         $script:mockCapturedRecordPath = $Path
         if (-not $script:mockWriteFailureEnabled) {
@@ -306,6 +306,12 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
         }
         throw 'record write failed'
       }
+    }
+
+    BeforeEach {
+      $script:mockWriteFailureEnabled = $true
+      $script:mockWriteCurrentOwnerBeforeFailure = $false
+      $script:mockCapturedRecordPath = $null
     }
 
     It 'Should release the mutex and preserve unrelated stale diagnostics' {
@@ -370,8 +376,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
   }
 
   Context 'When owner-record writing is interrupted' {
-    BeforeEach {
-      $script:mockCapturedRecordPath = $null
+    BeforeAll {
       Mock Write-AzureDevLifecycleLockRecord {
         $script:mockCapturedRecordPath = $Path
         [System.IO.File]::WriteAllText(
@@ -380,6 +385,10 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
         )
         throw [System.OperationCanceledException]::new('interrupted')
       }
+    }
+
+    BeforeEach {
+      $script:mockCapturedRecordPath = $null
     }
 
     It 'Should release the acquired mutex without leaving diagnostics' {

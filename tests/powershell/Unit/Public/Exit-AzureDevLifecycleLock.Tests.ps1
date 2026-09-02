@@ -17,11 +17,6 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
       'Should-Invoke:ModuleName' = $script:moduleName
       'Should-NotInvoke:ModuleName' = $script:moduleName
     }
-  }
-
-  BeforeEach {
-    $script:ownedLocks = @()
-    $script:mockMutexReleaseFailure = $false
     Mock New-AzureDevLifecycleMutex {
       New-Object -TypeName System.Management.Automation.PSObject -Property @{
         Identifier = [System.Guid]::NewGuid().ToString('N')
@@ -33,6 +28,11 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
         throw 'mutex release failed'
       }
     }
+  }
+
+  BeforeEach {
+    $script:ownedLocks = @()
+    $script:mockMutexReleaseFailure = $false
     $script:snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
       RepoRoot = $TestDrive
       SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -174,8 +174,7 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
   }
 
   Context 'When release cleanup fails' {
-    It 'Should clear nested ownership after record removal throws' {
-      $script:mockRecordRemovalFailure = $false
+    BeforeAll {
       Mock Remove-AzureDevLifecycleLockRecord {
         if ($script:mockRecordRemovalFailure) {
           throw 'record removal failed'
@@ -183,6 +182,13 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
         [System.IO.File]::Delete($Path)
         return $true
       }
+    }
+
+    BeforeEach {
+      $script:mockRecordRemovalFailure = $false
+    }
+
+    It 'Should clear nested ownership after record removal throws' {
       $owner = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $script:snapshot `
         -CommandName start
