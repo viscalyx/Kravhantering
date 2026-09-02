@@ -9,34 +9,89 @@ function Invoke-AzCli {
     [Parameter(Mandatory = $true)]
     [string[]]$Arguments,
 
-    [switch]$Json
+    [switch]$Json,
+
+    [ValidateRange(0, 2147483)]
+    [int]$TimeoutSeconds = 0,
+
+    [switch]$SuppressOutputDetails
   )
 
   $commandLine = Format-AzureDevCommand -FilePath 'az' -Arguments $Arguments
   Write-Verbose "Running $commandLine"
 
-  $stderrPath = [System.IO.Path]::GetTempFileName()
   $callerWhatIfPreference = $WhatIfPreference
+  $stderrPath = $null
+  $process = $null
   try {
     $WhatIfPreference = $false
-    $output = & az @Arguments 2> $stderrPath
-    $exitCode = $LASTEXITCODE
-    $stdoutText = $output | Out-String
-    $stderrText = if ((Get-Item -LiteralPath $stderrPath).Length -gt 0) {
-      Get-Content -LiteralPath $stderrPath -Raw
+    if ($TimeoutSeconds -gt 0) {
+      $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+      $startInfo.FileName = [System.Environment]::ProcessPath
+      $startInfo.UseShellExecute = $false
+      $startInfo.RedirectStandardOutput = $true
+      $startInfo.RedirectStandardError = $true
+      foreach ($powerShellArgument in @(
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-CommandWithArgs',
+          '& az @args; exit $LASTEXITCODE'
+        )) {
+        $startInfo.ArgumentList.Add($powerShellArgument)
+      }
+      foreach ($argument in $Arguments) {
+        $startInfo.ArgumentList.Add($argument)
+      }
+
+      $process = [System.Diagnostics.Process]::new()
+      $process.StartInfo = $startInfo
+      $null = $process.Start()
+      $standardOutput = $process.StandardOutput.ReadToEndAsync()
+      $standardError = $process.StandardError.ReadToEndAsync()
+      if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        try {
+          $process.Kill($true)
+          $process.WaitForExit()
+        } catch {
+          # Preserve the timeout as the primary failure if the process exits
+          # between the deadline check and termination.
+        }
+        throw [System.TimeoutException]::new(
+          "$commandLine timed out after $TimeoutSeconds seconds."
+        )
+      }
+      $stdoutText = $standardOutput.GetAwaiter().GetResult()
+      $stderrText = $standardError.GetAwaiter().GetResult()
+      $exitCode = $process.ExitCode
     } else {
-      ''
+      $stderrPath = [System.IO.Path]::GetTempFileName()
+      $output = & az @Arguments 2> $stderrPath
+      $exitCode = $LASTEXITCODE
+      $stdoutText = $output | Out-String
+      $stderrText = if ((Get-Item -LiteralPath $stderrPath).Length -gt 0) {
+        Get-Content -LiteralPath $stderrPath -Raw
+      } else {
+        ''
+      }
     }
 
-    Write-Debug (
-      "Output from $commandLine`:$([Environment]::NewLine)" +
-      "stdout:$([Environment]::NewLine)$stdoutText" +
-      "stderr:$([Environment]::NewLine)$stderrText"
-    )
+    if ($SuppressOutputDetails) {
+      Write-Debug "$commandLine completed with exit code $exitCode."
+    } else {
+      Write-Debug (
+        "Output from $commandLine`:$([Environment]::NewLine)" +
+        "stdout:$([Environment]::NewLine)$stdoutText" +
+        "stderr:$([Environment]::NewLine)$stderrText"
+      )
+    }
 
     $text = $stdoutText.Trim()
     $errorText = "$stdoutText$stderrText".Trim()
     if ($exitCode -ne 0) {
+      if ($SuppressOutputDetails) {
+        throw "$commandLine failed with exit code $exitCode."
+      }
       throw "$commandLine failed: $errorText"
     }
     if ($Json) {
@@ -46,13 +101,267 @@ function Invoke-AzCli {
       try {
         return $text | ConvertFrom-Json
       } catch {
+        if ($SuppressOutputDetails) {
+          throw "$commandLine did not return valid JSON."
+        }
         throw "$commandLine did not return valid JSON: $text"
       }
     }
     return $text
   } finally {
     $WhatIfPreference = $callerWhatIfPreference
-    [System.IO.File]::Delete($stderrPath)
+    if ($null -ne $process) {
+      $process.Dispose()
+    }
+    if ($null -ne $stderrPath) {
+      [System.IO.File]::Delete($stderrPath)
+    }
+  }
+}
+
+function Connect-AzureDevLifecycleSession {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Config
+  )
+
+  $timeoutSeconds = 120
+  $phase = 'authentication'
+  $invokeLifecycleAz = {
+    param(
+      [Parameter(Mandatory = $true)]
+      [string[]]$Arguments,
+
+      [switch]$Json
+    )
+
+    try {
+      return Invoke-AzCli `
+        -Arguments $Arguments `
+        -Json:$Json `
+        -TimeoutSeconds $timeoutSeconds `
+        -SuppressOutputDetails
+    } catch [System.TimeoutException] {
+      throw [System.TimeoutException]::new(
+        "Azure CLI call in lifecycle phase '$phase' timed out after " +
+        "$timeoutSeconds seconds."
+      )
+    }
+  }
+  $normalizeUuid = {
+    param(
+      [AllowNull()]
+      [object]$Value
+    )
+
+    try {
+      return [System.Guid]::Parse([string]$Value).ToString('D')
+    } catch {
+      return $null
+    }
+  }
+  $getProfile = {
+    try {
+      return & $invokeLifecycleAz `
+        -Arguments @(
+          'account',
+          'show',
+          '--subscription',
+          $Config.SubscriptionId,
+          '--output',
+          'json',
+          '--only-show-errors'
+        ) `
+        -Json
+    } catch [System.TimeoutException] {
+      throw
+    } catch {
+      return $null
+    }
+  }
+  $profileMatches = {
+    param(
+      [AllowNull()]
+      [object]$AccountProfile,
+
+      [Parameter(Mandatory = $true)]
+      [ValidateSet('servicePrincipal', 'user')]
+      [string]$AccountType
+    )
+
+    if ($null -eq $AccountProfile) {
+      return $false
+    }
+    $profileSubscriptionRaw = Get-AzureDevJsonProperty `
+      -InputObject $AccountProfile `
+      -Name 'id'
+    $profileSubscriptionId = & $normalizeUuid `
+      -Value $profileSubscriptionRaw
+    if ($profileSubscriptionId -cne $Config.SubscriptionId) {
+      return $false
+    }
+    $profileUser = Get-AzureDevJsonProperty `
+      -InputObject $AccountProfile `
+      -Name 'user'
+    $profileType = [string](Get-AzureDevJsonProperty `
+        -InputObject $profileUser `
+        -Name 'type')
+    if ($profileType -cne $AccountType) {
+      return $false
+    }
+    if ($AccountType -eq 'user') {
+      return $true
+    }
+    $profileTenantId = & $normalizeUuid -Value (
+      Get-AzureDevJsonProperty -InputObject $AccountProfile -Name 'tenantId'
+    )
+    $profileClientId = & $normalizeUuid -Value (
+      Get-AzureDevJsonProperty -InputObject $profileUser -Name 'name'
+    )
+    return (
+      $profileTenantId -ceq $Config.TenantId -and
+      $profileClientId -ceq $Config.ClientId
+    )
+  }
+  $testToken = {
+    param(
+      [switch]$IncludeTenant
+    )
+
+    $arguments = [System.Collections.Generic.List[string]]::new()
+    foreach ($argument in @(
+        'account',
+        'get-access-token',
+        '--subscription',
+        $Config.SubscriptionId
+      )) {
+      $arguments.Add($argument)
+    }
+    if ($IncludeTenant) {
+      $arguments.Add('--tenant')
+      $arguments.Add($Config.TenantId)
+    }
+    foreach ($argument in @('--output', 'none', '--only-show-errors')) {
+      $arguments.Add($argument)
+    }
+
+    try {
+      $null = & $invokeLifecycleAz -Arguments $arguments.ToArray()
+      return $true
+    } catch [System.TimeoutException] {
+      throw
+    } catch {
+      return $false
+    }
+  }
+
+  $hasServicePrincipal = -not [string]::IsNullOrWhiteSpace($Config.ClientId)
+  $profile = & $getProfile
+  if (-not $hasServicePrincipal) {
+    if (-not (& $profileMatches `
+          -AccountProfile $profile `
+          -AccountType 'user')) {
+      throw (
+        'Lifecycle authentication requires a matching Azure CLI user session ' +
+        "for subscription $($Config.SubscriptionId). Log in before retrying; " +
+        'the lifecycle command never starts interactive login.'
+      )
+    }
+    if ($WhatIfPreference) {
+      return
+    }
+    if (-not (& $testToken)) {
+      throw (
+        'Lifecycle authentication requires a matching Azure CLI user session ' +
+        "with a usable ARM token for subscription $($Config.SubscriptionId). " +
+        'Log in before retrying; the lifecycle command never starts ' +
+        'interactive login.'
+      )
+    }
+    return
+  }
+
+  $profileIsExact = & $profileMatches `
+    -AccountProfile $profile `
+    -AccountType 'servicePrincipal'
+  if ($profileIsExact -and $WhatIfPreference) {
+    return
+  }
+  if ($profileIsExact -and (& $testToken -IncludeTenant)) {
+    return
+  }
+
+  $loginTarget = (
+    "service principal $($Config.ClientId) for subscription " +
+    $Config.SubscriptionId
+  )
+  if (-not $PSCmdlet.ShouldProcess(
+      $loginTarget,
+      'Repair Azure CLI lifecycle authentication'
+    )) {
+    return
+  }
+
+  $versionText = try {
+    & $invokeLifecycleAz -Arguments @(
+      'version',
+      '--query',
+      '"azure-cli"',
+      '--output',
+      'tsv',
+      '--only-show-errors'
+    )
+  } catch [System.TimeoutException] {
+    throw
+  } catch {
+    throw 'Could not verify the Azure CLI version during authentication.'
+  }
+  $azureCliVersion = $null
+  if (-not [System.Version]::TryParse(
+      ([string]$versionText).Trim(),
+      [ref]$azureCliVersion
+    )) {
+    throw 'Could not parse the Azure CLI version during authentication.'
+  }
+  $minimumVersion = [System.Version]::new(2, 86, 0)
+  if ($azureCliVersion -lt $minimumVersion) {
+    throw (
+      "Azure CLI $minimumVersion or later is required to repair lifecycle " +
+      "authentication. Detected $azureCliVersion."
+    )
+  }
+
+  try {
+    $null = & $invokeLifecycleAz -Arguments @(
+      'login',
+      '--service-principal',
+      '--username',
+      $Config.ClientId,
+      "--password=$($Config.ClientSecret)",
+      '--tenant',
+      $Config.TenantId,
+      '--skip-subscription-discovery',
+      '--subscription',
+      $Config.SubscriptionId,
+      '--output',
+      'none',
+      '--only-show-errors'
+    )
+  } catch [System.TimeoutException] {
+    throw
+  } catch {
+    throw 'Targeted service-principal login failed during authentication.'
+  }
+
+  $recheckedProfile = & $getProfile
+  if (-not (& $profileMatches `
+        -AccountProfile $recheckedProfile `
+        -AccountType 'servicePrincipal')) {
+    throw (
+      'Targeted service-principal login did not establish the configured ' +
+      'identity during authentication.'
+    )
   }
 }
 
@@ -2359,6 +2668,7 @@ function Get-AzureDevDeploymentOutputs {
 }
 
 Export-ModuleMember -Function `
+  Connect-AzureDevLifecycleSession, `
   Connect-AzureDevServicePrincipal, `
   ConvertTo-AzureDevAccessName, `
   Get-AzureDevAccount, `

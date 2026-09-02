@@ -130,7 +130,7 @@ function Format-AzureDevCommand {
     }
 
     $displayArgument = if (
-      $argument -match '(?i)^(password|clientSecret|client_secret|secret|token|authKey|auth_key)='
+      $argument -match '(?i)^(?:--?)?(password|clientSecret|client_secret|secret|token|authKey|auth_key)='
     ) {
       ($argument -replace '=.*$', '=[redacted]')
     } else {
