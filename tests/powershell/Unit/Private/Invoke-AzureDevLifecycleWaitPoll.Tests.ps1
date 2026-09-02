@@ -24,14 +24,14 @@ Describe 'Invoke-AzureDevLifecycleWaitPoll' -Tag 'Unit' {
     It 'Should poll every five seconds and heartbeat every thirty seconds' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
-        $script:virtualMilliseconds = [long]0
-        $script:delays = [System.Collections.Generic.List[long]]::new()
+        $script:virtualMilliseconds = [System.Int64]0
+        $script:delays = [System.Collections.Generic.List[System.Int64]]::new()
         $timing = New-AzureDevLifecycleTiming `
           -GetMonotonicMilliseconds {
             return $script:virtualMilliseconds
           } `
           -DelayMilliseconds {
-            param([long]$Milliseconds)
+            param([System.Int64]$Milliseconds)
             $script:delays.Add($Milliseconds)
             $script:virtualMilliseconds += $Milliseconds
           }
@@ -46,6 +46,7 @@ Describe 'Invoke-AzureDevLifecycleWaitPoll' -Tag 'Unit' {
 
         $polls = @(
           1..120 | ForEach-Object {
+            Set-StrictMode -Version 1.0
             Invoke-AzureDevLifecycleWaitPoll `
               -Wait $wait `
               -InformationVariable +information
@@ -68,13 +69,13 @@ Describe 'Invoke-AzureDevLifecycleWaitPoll' -Tag 'Unit' {
     It 'Should report current elapsed time once and advance the next boundary' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
-        $script:virtualMilliseconds = [long]0
+        $script:virtualMilliseconds = [System.Int64]0
         $timing = New-AzureDevLifecycleTiming `
           -GetMonotonicMilliseconds {
             return $script:virtualMilliseconds
           } `
           -DelayMilliseconds {
-            param([long]$Milliseconds)
+            param([System.Int64]$Milliseconds)
             $script:virtualMilliseconds += 65000
           }
         $wait = New-AzureDevLifecycleWait `
@@ -86,6 +87,7 @@ Describe 'Invoke-AzureDevLifecycleWaitPoll' -Tag 'Unit' {
           -ObservedState stopping
         $information = @()
 
+        Set-StrictMode -Version 1.0
         $poll = Invoke-AzureDevLifecycleWaitPoll `
           -Wait $wait `
           -InformationVariable information
@@ -94,6 +96,18 @@ Describe 'Invoke-AzureDevLifecycleWaitPoll' -Tag 'Unit' {
         $information[0].MessageData.ElapsedMilliseconds | Should-Be 65000
         $wait.NextHeartbeatAt | Should-Be 90000
         $poll.DeadlineExpired | Should-BeFalse
+      }
+    }
+  }
+
+  Context 'When the wait is not a lifecycle wait contract' {
+    It 'Should reject the poll before delaying' {
+      InModuleScope -ScriptBlock {
+        {
+          Set-StrictMode -Version 1.0
+          $null = Invoke-AzureDevLifecycleWaitPoll `
+            -Wait ([System.Management.Automation.PSObject]@{})
+        } | Should-Throw -ExceptionMessage '*lifecycle wait contract*'
       }
     }
   }

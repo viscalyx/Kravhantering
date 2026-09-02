@@ -24,7 +24,7 @@ Describe 'ConvertTo-AzureDevLifecycleLogJson' -Tag 'Unit' {
     It 'Should serialize only the allowlisted schema as one compact JSON line' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
-        $configuration = [pscustomobject]@{
+        $configuration = [System.Management.Automation.PSObject]@{
           SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
           ResourceGroup = 'krav-dev-rg'
           VmName = 'krav-dev-vm'
@@ -58,6 +58,7 @@ Describe 'ConvertTo-AzureDevLifecycleLogJson' -Tag 'Unit' {
           -NotePropertyName CommandOutput `
           -NotePropertyValue 'raw-native-output'
 
+        Set-StrictMode -Version 1.0
         $json = ConvertTo-AzureDevLifecycleLogJson -Record $record
         $parsed = $json | ConvertFrom-Json
 
@@ -80,6 +81,20 @@ Describe 'ConvertTo-AzureDevLifecycleLogJson' -Tag 'Unit' {
           'mutationAccepted',
           'elapsedMilliseconds'
         )
+      }
+    }
+  }
+
+  Context 'When the value is not a lifecycle log record' {
+    It 'Should reject the value before serialization' {
+      InModuleScope -ScriptBlock {
+        {
+          Set-StrictMode -Version 1.0
+          $null = ConvertTo-AzureDevLifecycleLogJson `
+            -Record ([System.Management.Automation.PSObject]@{
+              command = 'start'
+            })
+        } | Should-Throw -ExceptionMessage '*lifecycle log record*'
       }
     }
   }

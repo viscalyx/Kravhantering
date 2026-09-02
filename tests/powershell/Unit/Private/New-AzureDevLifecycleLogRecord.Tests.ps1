@@ -24,7 +24,7 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
     It 'Should construct one versioned self-identifying terminal record' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
-        $configuration = [pscustomobject]@{
+        $configuration = [System.Management.Automation.PSObject]@{
           SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
           ResourceGroup = 'krav-dev-rg'
           VmName = 'krav-dev-vm'
@@ -41,6 +41,7 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
           -ObservedState unavailable `
           -Action deallocation-requested
 
+        Set-StrictMode -Version 1.0
         $record = New-AzureDevLifecycleLogRecord `
           -Configuration $configuration `
           -LifecycleResult $result `
@@ -104,7 +105,7 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
       -ForEach $failurePhases {
       InModuleScope -Parameters @{ FailurePhase = $_ } -ScriptBlock {
         Set-StrictMode -Version 1.0
-        $configuration = [pscustomobject]@{
+        $configuration = [System.Management.Automation.PSObject]@{
           SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
           ResourceGroup = 'krav-dev-rg'
           VmName = 'krav-dev-vm'
@@ -117,6 +118,7 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
           -Phase $FailurePhase `
           -Message 'Primary lifecycle error.'
 
+        Set-StrictMode -Version 1.0
         $record = New-AzureDevLifecycleLogRecord `
           -Configuration $configuration `
           -Command start `
@@ -129,6 +131,42 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
 
         $record.terminalResult | Should-BeNull
         $record.failurePhase | Should-Be $FailurePhase
+      }
+    }
+
+    It 'Should encode absent pre-state facts as null for <FailurePhase>' `
+      -ForEach @(
+        @{ FailurePhase = 'configuration' },
+        @{ FailurePhase = 'authentication' }
+      ) {
+      InModuleScope -Parameters $_ -ScriptBlock {
+        $configuration = [System.Management.Automation.PSObject]@{
+          SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+          ResourceGroup = 'krav-dev-rg'
+          VmName = 'krav-dev-vm'
+        }
+        $configuration.PSObject.TypeNames.Insert(
+          0,
+          'AzureDev.LifecycleConfigurationSnapshot'
+        )
+        $failure = New-AzureDevLifecycleErrorRecord `
+          -Phase $FailurePhase `
+          -Message 'Lifecycle failed before state observation.'
+
+        Set-StrictMode -Version 1.0
+        $record = New-AzureDevLifecycleLogRecord `
+          -Configuration $configuration `
+          -Command start `
+          -Failure $failure `
+          -MutationAccepted $false `
+          -ElapsedMilliseconds 25
+        $parsed = ConvertTo-AzureDevLifecycleLogJson -Record $record |
+          ConvertFrom-Json
+
+        $null -eq $record.observedState | Should-BeTrue
+        $null -eq $record.action | Should-BeTrue
+        $null -eq $parsed.observedState | Should-BeTrue
+        $null -eq $parsed.action | Should-BeTrue
       }
     }
   }
@@ -145,8 +183,9 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
           -Action none
 
         {
+          Set-StrictMode -Version 1.0
           $null = New-AzureDevLifecycleLogRecord `
-            -Configuration ([pscustomobject]@{
+            -Configuration ([System.Management.Automation.PSObject]@{
               SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
               ResourceGroup = 'krav-dev-rg'
               VmName = 'krav-dev-vm'
@@ -161,7 +200,7 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
     It 'Should reject mutation acceptance that contradicts the result action' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
-        $configuration = [pscustomobject]@{
+        $configuration = [System.Management.Automation.PSObject]@{
           SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
           ResourceGroup = 'krav-dev-rg'
           VmName = 'krav-dev-vm'
@@ -178,6 +217,7 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
           -Action deallocation-requested
 
         {
+          Set-StrictMode -Version 1.0
           $null = New-AzureDevLifecycleLogRecord `
             -Configuration $configuration `
             -LifecycleResult $result `

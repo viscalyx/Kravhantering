@@ -24,7 +24,7 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
       RepositoryRoot = $TestDrive
     } -ScriptBlock {
       Set-StrictMode -Version 1.0
-      $configuration = [pscustomobject]@{
+      $configuration = [System.Management.Automation.PSObject]@{
         RepoRoot = $RepositoryRoot
         SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         ResourceGroup = 'krav-dev-rg'
@@ -59,9 +59,8 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
         Record = $script:record
         RepositoryRoot = $TestDrive
       } -ScriptBlock {
-        Set-StrictMode -Version 1.0
-
         $success = @(
+          Set-StrictMode -Version 1.0
           Write-AzureDevLifecycleLogRecord `
             -RepositoryRoot $RepositoryRoot `
             -Record $Record
@@ -85,7 +84,6 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
         RepositoryRoot = $TestDrive
       } -ScriptBlock {
         Set-StrictMode -Version 1.0
-
         $null = Write-AzureDevLifecycleLogRecord `
           -RepositoryRoot $RepositoryRoot `
           -Record $Record `
@@ -98,18 +96,20 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
   }
 
   Context 'When appending a lifecycle record fails' {
-    It 'Should emit one warning and no success output' {
+    BeforeAll {
       Mock -CommandName Add-Content -MockWith {
         throw 'simulated diagnostic disk failure'
       }
       Mock -CommandName Write-Warning
+    }
 
+    It 'Should emit one warning and no success output' {
       $success = InModuleScope -Parameters @{
         Record = $script:record
         RepositoryRoot = $TestDrive
       } -ScriptBlock {
-        Set-StrictMode -Version 1.0
         return @(
+          Set-StrictMode -Version 1.0
           Write-AzureDevLifecycleLogRecord `
             -RepositoryRoot $RepositoryRoot `
             -Record $Record
@@ -126,6 +126,50 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
         -ParameterFilter {
           $Message -like '*lifecycle log record could not be written*'
         }
+    }
+  }
+
+  Context 'When directory creation reports a non-terminating filesystem error' {
+    It 'Should convert it to one warning without an error-stream record' {
+      $blockingPath = Join-Path $TestDrive '.azure'
+      Set-Content -LiteralPath $blockingPath -Value 'not a directory'
+
+      $output = InModuleScope -Parameters @{
+        Record = $script:record
+        RepositoryRoot = $TestDrive
+      } -ScriptBlock {
+        return @(
+          Set-StrictMode -Version 1.0
+          Write-AzureDevLifecycleLogRecord `
+            -RepositoryRoot $RepositoryRoot `
+            -Record $Record 3>&1
+        )
+      }
+
+      @(
+        $output | Where-Object {
+          $_ -is [System.Management.Automation.WarningRecord]
+        }
+      ).Count | Should-Be 1
+      @(
+        $output | Where-Object {
+          $_ -is [System.Management.Automation.ErrorRecord]
+        }
+      ).Count | Should-Be 0
+      Test-Path -LiteralPath "$blockingPath/logs" | Should-BeFalse
+    }
+  }
+
+  Context 'When the value is not a lifecycle log record' {
+    It 'Should reject the value before attempting filesystem access' {
+      InModuleScope -Parameters @{ RepositoryRoot = $TestDrive } -ScriptBlock {
+        {
+          Set-StrictMode -Version 1.0
+          Write-AzureDevLifecycleLogRecord `
+            -RepositoryRoot $RepositoryRoot `
+            -Record ([System.Management.Automation.PSObject]@{})
+        } | Should-Throw -ExceptionMessage '*lifecycle log record*'
+      }
     }
   }
 }

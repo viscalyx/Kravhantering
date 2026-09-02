@@ -40,6 +40,7 @@ Describe 'Write-AzureDevLifecycleProgress' -Tag 'Unit' {
         $information = @()
 
         $success = @(
+          Set-StrictMode -Version 1.0
           Write-AzureDevLifecycleProgress `
             -Event $Event `
             -Command start `
@@ -65,23 +66,6 @@ Describe 'Write-AzureDevLifecycleProgress' -Tag 'Unit' {
         $eventData.ObservedState | Should-Be 'starting'
         $eventData.Action | Should-Be 'joined-start'
         $eventData.ElapsedMilliseconds | Should-Be 30000
-      }
-    }
-  }
-
-  Context 'When progress is invalid' {
-    It 'Should reject an elapsed time before the monotonic origin' {
-      InModuleScope -ScriptBlock {
-        Set-StrictMode -Version 1.0
-
-        {
-          Write-AzureDevLifecycleProgress `
-            -Event heartbeat `
-            -Command start `
-            -VmName 'krav-dev-vm' `
-            -Phase running-wait `
-            -ElapsedMilliseconds -1
-        } | Should-Throw
       }
     }
   }

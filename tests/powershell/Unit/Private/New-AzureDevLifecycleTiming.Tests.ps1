@@ -25,12 +25,13 @@ Describe 'New-AzureDevLifecycleTiming' -Tag 'Unit' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
         $script:virtualMilliseconds = 125
+        Set-StrictMode -Version 1.0
         $timing = New-AzureDevLifecycleTiming `
           -GetMonotonicMilliseconds {
             return $script:virtualMilliseconds
           } `
           -DelayMilliseconds {
-            param([long]$Milliseconds)
+            param([System.Int64]$Milliseconds)
             $script:virtualMilliseconds += $Milliseconds
           }
 
@@ -58,7 +59,7 @@ Describe 'New-AzureDevLifecycleTiming' -Tag 'Unit' {
         $first = & $timing.GetMonotonicMilliseconds
         $second = & $timing.GetMonotonicMilliseconds
 
-        ($first -is [long]) | Should-BeTrue
+        ($first -is [System.Int64]) | Should-BeTrue
         ($second -ge $first) | Should-BeTrue
       }
     }

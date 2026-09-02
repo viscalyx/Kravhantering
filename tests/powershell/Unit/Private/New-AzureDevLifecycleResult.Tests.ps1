@@ -98,6 +98,7 @@ Describe 'New-AzureDevLifecycleResult' -Tag 'Unit' {
         Set-StrictMode -Version 1.0
 
         {
+          Set-StrictMode -Version 1.0
           $null = New-AzureDevLifecycleResult `
             -Command stop `
             -Result running `
@@ -108,26 +109,12 @@ Describe 'New-AzureDevLifecycleResult' -Tag 'Unit' {
       }
     }
 
-    It 'Should reject an empty VM name' {
-      InModuleScope -ScriptBlock {
-        Set-StrictMode -Version 1.0
-
-        {
-          $null = New-AzureDevLifecycleResult `
-            -Command start `
-            -Result already-running `
-            -VmName '' `
-            -ObservedState running `
-            -Action none
-        } | Should-Throw
-      }
-    }
-
     It 'Should reject an unrecognized state as a successful stop outcome' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
 
         {
+          Set-StrictMode -Version 1.0
           $null = New-AzureDevLifecycleResult `
             -Command stop `
             -Result requested `

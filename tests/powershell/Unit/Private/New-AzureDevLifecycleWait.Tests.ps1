@@ -25,9 +25,10 @@ Describe 'New-AzureDevLifecycleWait' -Tag 'Unit' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
         $timing = New-AzureDevLifecycleTiming `
-          -GetMonotonicMilliseconds { return [long]7500 } `
-          -DelayMilliseconds { param([long]$Milliseconds) }
+          -GetMonotonicMilliseconds { return [System.Int64]7500 } `
+          -DelayMilliseconds { param([System.Int64]$Milliseconds) }
 
+        Set-StrictMode -Version 1.0
         $wait = New-AzureDevLifecycleWait `
           -Timing $timing `
           -Command start `
@@ -40,6 +41,23 @@ Describe 'New-AzureDevLifecycleWait' -Tag 'Unit' {
         $wait.StartedAt | Should-Be 7500
         $wait.DeadlineAt | Should-Be 607500
         $wait.NextHeartbeatAt | Should-Be 37500
+      }
+    }
+  }
+
+  Context 'When timing is not a lifecycle timing contract' {
+    It 'Should reject the wait before reading monotonic time' {
+      InModuleScope -ScriptBlock {
+        {
+          Set-StrictMode -Version 1.0
+          $null = New-AzureDevLifecycleWait `
+            -Timing ([System.Management.Automation.PSObject]@{}) `
+            -Command start `
+            -VmName 'krav-dev-vm' `
+            -Phase running-wait `
+            -DeadlineMilliseconds 600000 `
+            -ObservedState starting
+        } | Should-Throw -ExceptionMessage '*lifecycle timing contract*'
       }
     }
   }

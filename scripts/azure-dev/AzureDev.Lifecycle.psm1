@@ -409,8 +409,18 @@ function New-AzureDevLifecycleLogRecord {
     $effectiveCommand = $Command
     $terminalResult = $null
     $failurePhase = $Failure.TargetObject.Phase
-    $effectiveObservedState = $ObservedState
-    $effectiveAction = $Action
+    $effectiveObservedState = if (
+      $PSBoundParameters.ContainsKey('ObservedState')
+    ) {
+      $ObservedState
+    } else {
+      $null
+    }
+    $effectiveAction = if ($PSBoundParameters.ContainsKey('Action')) {
+      $Action
+    } else {
+      $null
+    }
   }
 
   $record = [pscustomobject][ordered]@{
@@ -489,10 +499,18 @@ function Write-AzureDevLifecycleLogRecord {
 
   try {
     if (-not (Test-Path -LiteralPath $logsDirectory -PathType Container)) {
-      New-Item -ItemType Directory -Path $logsDirectory -Force | Out-Null
+      New-Item `
+        -ItemType Directory `
+        -Path $logsDirectory `
+        -Force `
+        -ErrorAction Stop | Out-Null
     }
     $json = ConvertTo-AzureDevLifecycleLogJson -Record $Record
-    Add-Content -LiteralPath $path -Value $json -Encoding UTF8
+    Add-Content `
+      -LiteralPath $path `
+      -Value $json `
+      -Encoding UTF8 `
+      -ErrorAction Stop
   } catch {
     Write-Warning (
       'The Azure development-environment lifecycle log record could not be ' +
