@@ -15,6 +15,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
     $PSDefaultParameterValues = @{
       'Mock:ModuleName' = $script:moduleName
       'Should-Invoke:ModuleName' = $script:moduleName
+      'Should-NotInvoke:ModuleName' = $script:moduleName
     }
   }
 
@@ -100,6 +101,29 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
       $otherTarget.MutexName | Should-NotBe $firstMutexName
       $otherTarget.Path | Should-NotBe $firstPath
       $firstMutexName | Should-MatchString '^[0-9a-f]{64}$'
+    }
+  }
+
+  Context 'When acquisition is previewed' {
+    It 'Should return no lease and create no lock artifacts' {
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
+        RepoRoot = $TestDrive
+        SubscriptionId = '19191919-1919-1919-1919-191919191919'
+        ResourceGroup = 'preview-rg'
+        VmName = 'preview-vm'
+      }
+
+      $result = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $snapshot `
+        -CommandName start `
+        -WhatIf
+
+      $result | Should-BeNull
+      (Test-Path -LiteralPath (Join-Path $TestDrive '.azure')) |
+        Should-BeFalse
+      Should-NotInvoke `
+        -CommandName New-AzureDevLifecycleMutex `
+        -Scope It
     }
   }
 

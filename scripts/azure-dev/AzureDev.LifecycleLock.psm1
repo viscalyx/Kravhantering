@@ -69,45 +69,79 @@ function Get-AzureDevLifecycleMonotonicTimestamp {
 }
 
 function New-AzureDevLifecycleMutex {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
-    [string]$Name
+    [string]$Name,
+
+    [scriptblock]$Factory = {
+      param([string]$MutexName)
+      [System.Threading.Mutex]::new($false, $MutexName)
+    }
   )
 
-  return [System.Threading.Mutex]::new($false, $Name)
+  if (-not $PSCmdlet.ShouldProcess($Name, 'Create lifecycle mutex')) {
+    return $null
+  }
+
+  return & $Factory $Name
 }
 
 function Enter-AzureDevLifecycleMutex {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
-    [System.Object]$Mutex
+    [System.Object]$Mutex,
+
+    [scriptblock]$WaitAdapter = {
+      param([System.Object]$MutexValue)
+      $MutexValue.WaitOne(0)
+    }
   )
 
+  if (-not $PSCmdlet.ShouldProcess('lifecycle mutex', 'Acquire mutex')) {
+    return $false
+  }
+
   try {
-    return $Mutex.WaitOne(0)
+    return & $WaitAdapter $Mutex
   } catch [System.Threading.AbandonedMutexException] {
     return $true
   }
 }
 
 function Close-AzureDevLifecycleMutex {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
     [System.Object]$Mutex,
 
-    [switch]$Owned
+    [switch]$Owned,
+
+    [scriptblock]$ReleaseAdapter = {
+      param([System.Object]$MutexValue)
+      $MutexValue.ReleaseMutex()
+    },
+
+    [scriptblock]$DisposeAdapter = {
+      param([System.Object]$MutexValue)
+      $MutexValue.Dispose()
+    }
   )
+
+  if (-not $PSCmdlet.ShouldProcess('lifecycle mutex', 'Close mutex')) {
+    return $false
+  }
 
   try {
     if ($Owned) {
-      $Mutex.ReleaseMutex()
+      & $ReleaseAdapter $Mutex
     }
   } finally {
-    $Mutex.Dispose()
+    & $DisposeAdapter $Mutex
   }
+
+  return $true
 }
 
 function Wait-AzureDevLifecycleLockRetry {
@@ -121,7 +155,7 @@ function Wait-AzureDevLifecycleLockRetry {
 }
 
 function Write-AzureDevLifecycleLockRecord {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
     [string]$Path,
@@ -129,6 +163,10 @@ function Write-AzureDevLifecycleLockRecord {
     [Parameter(Mandatory = $true)]
     [System.Collections.IDictionary]$Record
   )
+
+  if (-not $PSCmdlet.ShouldProcess($Path, 'Write lifecycle lock record')) {
+    return
+  }
 
   $temporaryPath = "$Path.$($Record.ownerId).tmp"
   try {
@@ -161,7 +199,7 @@ function Read-AzureDevLifecycleLockRecord {
 }
 
 function Remove-AzureDevLifecycleLockRecord {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
     [string]$Path,
@@ -181,6 +219,10 @@ function Remove-AzureDevLifecycleLockRecord {
     [string]::IsNullOrWhiteSpace([string]$ownerProperty.Value) -or
     [string]$ownerProperty.Value -cne $OwnerId
   ) {
+    return $false
+  }
+
+  if (-not $PSCmdlet.ShouldProcess($Path, 'Remove lifecycle lock record')) {
     return $false
   }
 
@@ -238,7 +280,7 @@ function ConvertTo-AzureDevLifecycleOwnerText {
 }
 
 function Enter-AzureDevLifecycleLock {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
     [pscustomobject]$ConfigurationSnapshot,
@@ -253,6 +295,12 @@ function Enter-AzureDevLifecycleLock {
 
   $identity = Get-AzureDevLifecycleLockIdentity `
     -ConfigurationSnapshot $ConfigurationSnapshot
+  if (-not $PSCmdlet.ShouldProcess(
+      $identity.Path,
+      "Acquire $CommandName lifecycle lock"
+    )) {
+    return $null
+  }
   $lockDirectory = Split-Path -Parent $identity.Path
   $null = [System.IO.Directory]::CreateDirectory($lockDirectory)
   $startedAt = Get-AzureDevLifecycleMonotonicTimestamp
@@ -266,8 +314,14 @@ function Enter-AzureDevLifecycleLock {
     $mutexOwned = $false
     $activeLease = $script:activeLifecycleLocks[$identity.MutexName]
     if ($null -eq $activeLease) {
-      $mutex = New-AzureDevLifecycleMutex -Name $identity.MutexName
-      $mutexOwned = Enter-AzureDevLifecycleMutex -Mutex $mutex
+      $mutex = New-AzureDevLifecycleMutex `
+        -Name $identity.MutexName `
+        -WhatIf:$false `
+        -Confirm:$false
+      $mutexOwned = Enter-AzureDevLifecycleMutex `
+        -Mutex $mutex `
+        -WhatIf:$false `
+        -Confirm:$false
     }
 
     if ($mutexOwned) {
@@ -285,7 +339,9 @@ function Enter-AzureDevLifecycleLock {
         }
         Write-AzureDevLifecycleLockRecord `
           -Path $identity.Path `
-          -Record $record
+          -Record $record `
+          -WhatIf:$false `
+          -Confirm:$false
         $lease = [pscustomobject]@{
           PSTypeName = 'AzureDev.LifecycleLockLease'
           Path = $identity.Path
@@ -310,20 +366,29 @@ function Enter-AzureDevLifecycleLock {
             try {
               $null = Remove-AzureDevLifecycleLockRecord `
                 -Path $identity.Path `
-                -OwnerId $ownerId
+                -OwnerId $ownerId `
+                -WhatIf:$false `
+                -Confirm:$false
             } catch {
               # Diagnostic cleanup must not prevent mutex release.
             }
           }
         } finally {
-          Close-AzureDevLifecycleMutex -Mutex $mutex -Owned
+          $null = Close-AzureDevLifecycleMutex `
+            -Mutex $mutex `
+            -Owned `
+            -WhatIf:$false `
+            -Confirm:$false
         }
         throw
       }
     }
 
     if ($null -ne $mutex) {
-      Close-AzureDevLifecycleMutex -Mutex $mutex
+      $null = Close-AzureDevLifecycleMutex `
+        -Mutex $mutex `
+        -WhatIf:$false `
+        -Confirm:$false
     }
     $lastOwner = Read-AzureDevLifecycleLockRecord -Path $identity.Path
     $now = Get-AzureDevLifecycleMonotonicTimestamp
@@ -355,7 +420,7 @@ function Enter-AzureDevLifecycleLock {
 }
 
 function Exit-AzureDevLifecycleLock {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
     [pscustomobject]$Lock
@@ -385,14 +450,27 @@ function Exit-AzureDevLifecycleLock {
     return $false
   }
 
+  if (-not $PSCmdlet.ShouldProcess(
+      [string]$Lock.Path,
+      'Release lifecycle lock'
+    )) {
+    return $false
+  }
+
   $removedOwnerRecord = $false
   try {
     $removedOwnerRecord = Remove-AzureDevLifecycleLockRecord `
       -Path ([string]$Lock.Path) `
-      -OwnerId ([string]$Lock.OwnerId)
+      -OwnerId ([string]$Lock.OwnerId) `
+      -WhatIf:$false `
+      -Confirm:$false
   } finally {
     try {
-      Close-AzureDevLifecycleMutex -Mutex $Lock.Mutex -Owned
+      $null = Close-AzureDevLifecycleMutex `
+        -Mutex $Lock.Mutex `
+        -Owned `
+        -WhatIf:$false `
+        -Confirm:$false
     } finally {
       $Lock.Released = $true
       $script:activeLifecycleLocks.Remove([string]$Lock.MutexName)
@@ -403,7 +481,7 @@ function Exit-AzureDevLifecycleLock {
 }
 
 function Invoke-AzureDevLifecycleLock {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
     [pscustomobject]$ConfigurationSnapshot,
@@ -419,14 +497,28 @@ function Invoke-AzureDevLifecycleLock {
     [int]$TimeoutSeconds = 15
   )
 
+  $identity = Get-AzureDevLifecycleLockIdentity `
+    -ConfigurationSnapshot $ConfigurationSnapshot
+  if (-not $PSCmdlet.ShouldProcess(
+      $identity.Path,
+      "Invoke guarded $CommandName lifecycle work"
+    )) {
+    return $null
+  }
+
   $lock = Enter-AzureDevLifecycleLock `
     -ConfigurationSnapshot $ConfigurationSnapshot `
     -CommandName $CommandName `
-    -TimeoutSeconds $TimeoutSeconds
+    -TimeoutSeconds $TimeoutSeconds `
+    -WhatIf:$false `
+    -Confirm:$false
   try {
     return & $ScriptBlock $lock $ConfigurationSnapshot
   } finally {
-    $null = Exit-AzureDevLifecycleLock -Lock $lock
+    $null = Exit-AzureDevLifecycleLock `
+      -Lock $lock `
+      -WhatIf:$false `
+      -Confirm:$false
   }
 }
 

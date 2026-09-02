@@ -50,7 +50,7 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Integration' `
           -ConfigurationSnapshot $snapshot `
           -CommandName start `
           -ScriptBlock {
-            param($Lock, $ConfigurationSnapshot)
+            param($Lock)
             $script:lockPath = $Lock.Path
             throw 'integration failure'
           }

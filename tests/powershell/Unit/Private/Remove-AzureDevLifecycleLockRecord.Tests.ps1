@@ -50,6 +50,25 @@ Describe 'Remove-AzureDevLifecycleLockRecord' -Tag 'Unit' {
       $removed | Should-BeTrue
       (Test-Path -LiteralPath $script:recordPath) | Should-BeFalse
     }
+
+    It 'Should preserve it during preview' {
+      Set-Content `
+        -LiteralPath $script:recordPath `
+        -Value '{"ownerId":"owner-one"}'
+
+      $removed = InModuleScope `
+        -Parameters @{ Path = $script:recordPath } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Remove-AzureDevLifecycleLockRecord `
+            -Path $Path `
+            -OwnerId 'owner-one' `
+            -WhatIf
+        }
+
+      $removed | Should-BeFalse
+      (Test-Path -LiteralPath $script:recordPath) | Should-BeTrue
+    }
   }
 
   Context 'When ownership is missing, malformed, or different' {

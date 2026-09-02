@@ -55,6 +55,24 @@ Describe 'Write-AzureDevLifecycleLockRecord' -Tag 'Unit' {
         Should-Be 0
     }
 
+    It 'Should write no record or temporary file during preview' {
+      $record = [ordered]@{ ownerId = 'owner-preview'; command = 'start' }
+
+      $null = InModuleScope `
+        -Parameters @{ Path = $script:recordPath; Record = $record } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Write-AzureDevLifecycleLockRecord `
+            -Path $Path `
+            -Record $Record `
+            -WhatIf
+        }
+
+      (Test-Path -LiteralPath $script:recordPath) | Should-BeFalse
+      @(Get-ChildItem -LiteralPath $TestDrive -Filter '*.tmp').Count |
+        Should-Be 0
+    }
+
     It 'Should leave no temporary record after a real write failure' {
       $missingPath = Join-Path $TestDrive 'missing/target.lock'
       $record = [ordered]@{ ownerId = 'owner-write'; command = 'start' }

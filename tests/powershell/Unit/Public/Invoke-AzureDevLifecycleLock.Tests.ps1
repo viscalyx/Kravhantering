@@ -14,6 +14,7 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
     ) -Force -ErrorAction Stop
     $PSDefaultParameterValues = @{
       'Mock:ModuleName' = $script:moduleName
+      'Should-NotInvoke:ModuleName' = $script:moduleName
     }
   }
 
@@ -56,7 +57,7 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
           -ConfigurationSnapshot $script:snapshot `
           -CommandName start `
           -ScriptBlock {
-            param($Lock, $ConfigurationSnapshot)
+            param($Lock)
             $script:observedLockPaths += $Lock.Path
             $script:mutationCount++
             throw [System.OperationCanceledException]::new('interrupted')
@@ -66,6 +67,27 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
       $script:mutationCount | Should-Be 1
       (Test-Path -LiteralPath $script:observedLockPaths[0]) |
         Should-BeFalse
+    }
+  }
+
+
+  Context 'When guarded work is previewed' {
+    It 'Should return no lease and invoke no work or lock mutation' {
+      $script:mutationCount = 0
+
+      $result = Invoke-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $script:snapshot `
+        -CommandName start `
+        -ScriptBlock { $script:mutationCount++ } `
+        -WhatIf
+
+      $result | Should-BeNull
+      $script:mutationCount | Should-Be 0
+      (Test-Path -LiteralPath (Join-Path $TestDrive '.azure')) |
+        Should-BeFalse
+      Should-NotInvoke `
+        -CommandName New-AzureDevLifecycleMutex `
+        -Scope It
     }
   }
 

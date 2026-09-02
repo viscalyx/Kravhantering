@@ -15,6 +15,7 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
     $PSDefaultParameterValues = @{
       'Mock:ModuleName' = $script:moduleName
       'Should-Invoke:ModuleName' = $script:moduleName
+      'Should-NotInvoke:ModuleName' = $script:moduleName
     }
   }
 
@@ -66,6 +67,25 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
       $released | Should-BeTrue
       $releasedAgain | Should-BeFalse
       (Test-Path -LiteralPath $lock.Path) | Should-BeFalse
+    }
+  }
+
+  Context 'When release is previewed' {
+    It 'Should preserve the active lease and its record' {
+      $owner = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $script:snapshot `
+        -CommandName start
+      $script:ownedLocks += $owner
+
+      $released = Exit-AzureDevLifecycleLock -Lock $owner -WhatIf
+
+      $released | Should-BeFalse
+      $owner.Released | Should-BeFalse
+      (Test-Path -LiteralPath $owner.Path -PathType Leaf) |
+        Should-BeTrue
+      Should-NotInvoke `
+        -CommandName Close-AzureDevLifecycleMutex `
+        -Scope It
     }
   }
 
