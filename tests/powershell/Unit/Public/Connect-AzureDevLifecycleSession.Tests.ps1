@@ -43,7 +43,6 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
   }
 
   BeforeEach {
-    $script:mockCall = 0
     $mockProfileUser = New-Object `
       -TypeName System.Management.Automation.PSObject `
       -Property @{
@@ -58,7 +57,6 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
         user = $mockProfileUser
       }
     Mock -CommandName Invoke-AzCli -MockWith {
-      $script:mockCall++
       if ($Arguments[0] -eq 'account') {
         return $script:mockProfile
       }
@@ -127,7 +125,6 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
   Context 'When the configured service-principal token is stale' {
     BeforeEach {
       Mock -CommandName Invoke-AzCli -MockWith {
-        $script:mockCall++
         if (
           $Arguments[0] -eq 'account' -and
           $Arguments[1] -eq 'get-access-token'
@@ -302,6 +299,96 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
         -CommandName Invoke-AzCli `
         -Scope It `
         -ParameterFilter { $Arguments[0] -eq 'login' }
+    }
+  }
+
+  Context 'When the Azure CLI version query fails' {
+    BeforeEach {
+      $script:mockProfile = $null
+      Mock -CommandName Invoke-AzCli -MockWith {
+        if ($Arguments[0] -eq 'version') {
+          throw 'raw version-query output'
+        }
+        return $script:mockProfile
+      }
+    }
+
+    It 'Should report a targeted failure before login' {
+      {
+        Connect-AzureDevLifecycleSession `
+          -Config $script:servicePrincipalConfig
+      } | Should-Throw -ExceptionMessage (
+        '*Could not verify the Azure CLI version during authentication*'
+      )
+
+      Should-NotInvoke `
+        -CommandName Invoke-AzCli `
+        -Scope It `
+        -ParameterFilter { $Arguments[0] -eq 'login' }
+    }
+  }
+
+  Context 'When the Azure CLI version cannot be parsed' {
+    BeforeEach {
+      $script:mockProfile = $null
+      Mock -CommandName Invoke-AzCli -MockWith {
+        if ($Arguments[0] -eq 'version') {
+          return 'not-a-version'
+        }
+        return $script:mockProfile
+      }
+    }
+
+    It 'Should report a targeted failure before login' {
+      {
+        Connect-AzureDevLifecycleSession `
+          -Config $script:servicePrincipalConfig
+      } | Should-Throw -ExceptionMessage (
+        '*Could not parse the Azure CLI version during authentication*'
+      )
+
+      Should-NotInvoke `
+        -CommandName Invoke-AzCli `
+        -Scope It `
+        -ParameterFilter { $Arguments[0] -eq 'login' }
+    }
+  }
+
+  Context 'When targeted service-principal login fails' {
+    BeforeEach {
+      $script:mockProfile = $null
+      Mock -CommandName Invoke-AzCli -MockWith {
+        if ($Arguments[0] -eq 'version') {
+          return '2.86.0'
+        }
+        if ($Arguments[0] -eq 'login') {
+          throw 'raw login output containing credential material'
+        }
+        return $script:mockProfile
+      }
+    }
+
+    It 'Should report a targeted failure without rechecking the profile' {
+      $message = $null
+      try {
+        $null = Connect-AzureDevLifecycleSession `
+          -Config $script:servicePrincipalConfig
+      } catch {
+        $message = $_.Exception.Message
+      }
+
+      $message | Should-BeString `
+        -Expected (
+          'Targeted service-principal login failed during authentication.'
+        )
+      $message | Should-NotMatchString 'raw login output'
+      $message | Should-NotMatchString 'credential material'
+      Should-Invoke `
+        -CommandName Invoke-AzCli `
+        -Exactly `
+        -Times 1 `
+        -Scope It `
+        -ParameterFilter { $Arguments[0] -eq 'account' }
     }
   }
 

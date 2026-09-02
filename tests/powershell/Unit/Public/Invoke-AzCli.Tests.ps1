@@ -134,4 +134,52 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
       Should-NotInvoke -CommandName Stop-Job -Scope It
     }
   }
+
+  Context 'When the caller uses the default native execution path' {
+    BeforeEach {
+      $script:mockOriginalLastExitCode = $global:LASTEXITCODE
+      Mock -CommandName az -MockWith {
+        $global:LASTEXITCODE = 0
+        return '{"status":"usable"}'
+      }
+    }
+
+    AfterEach {
+      $global:LASTEXITCODE = $script:mockOriginalLastExitCode
+    }
+
+    It 'Should parse output through the temporary stderr-file path' {
+      $result = Invoke-AzCli `
+        -Arguments @('account', 'show') `
+        -Json
+
+      $result.status | Should-Be 'usable'
+      Should-Invoke -CommandName az -Exactly -Times 1 -Scope It
+      Should-NotInvoke -CommandName Start-ThreadJob -Scope It
+    }
+  }
+
+  Context 'When a successful Azure CLI call returns invalid JSON' {
+    BeforeEach {
+      $script:mockJobResult.Text = 'raw token and malformed JSON'
+    }
+
+    It 'Should suppress the invalid output from the parsing failure' {
+      $message = $null
+      try {
+        $null = Invoke-AzCli `
+          -Arguments @('account', 'show') `
+          -Json `
+          -TimeoutSeconds 120 `
+          -SuppressOutputDetails
+      } catch {
+        $message = $_.Exception.Message
+      }
+
+      $message | Should-BeString `
+        -Expected 'az account show did not return valid JSON.'
+      $message | Should-NotMatchString 'raw token'
+      $message | Should-NotMatchString 'malformed JSON'
+    }
+  }
 }
