@@ -116,7 +116,7 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
   }
 
   Context 'When diagnostic persistence fails' {
-    It 'Should preserve success when caller warnings terminate' {
+    It 'Should preserve success under terminating caller warnings' {
       $output = InModuleScope -Parameters @{
         Contracts = $script:completionContracts
         RepositoryRoot = $TestDrive
@@ -141,7 +141,7 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
         }).Count | Should-Be 1
     }
 
-    It 'Should preserve the primary error when caller warnings terminate' {
+    It 'Should preserve the primary error under terminating caller warnings' {
       {
         InModuleScope -Parameters @{
           Contracts = $script:completionContracts

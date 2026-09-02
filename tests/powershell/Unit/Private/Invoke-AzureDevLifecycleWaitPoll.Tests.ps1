@@ -145,7 +145,7 @@ Describe 'Invoke-AzureDevLifecycleWaitPoll' -Tag 'Unit' {
       }
     }
 
-    It 'Should not delay when the monotonic deadline has already expired' {
+    It 'Should not delay after the monotonic deadline has expired' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
         $script:virtualMilliseconds = [System.Int64]0

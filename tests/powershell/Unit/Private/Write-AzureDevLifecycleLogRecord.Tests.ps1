@@ -102,7 +102,7 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
       }
     }
 
-    It 'Should preserve warning-only output when caller warnings terminate' {
+    It 'Should preserve warning-only output under terminating caller warnings' {
       $output = InModuleScope -Parameters @{
         Record = $script:record
         RepositoryRoot = $TestDrive
