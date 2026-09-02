@@ -262,19 +262,19 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
 
   Context 'When owner-record writing fails' {
     BeforeEach {
-      $script:writeFailureEnabled = $true
-      $script:writeCurrentOwnerBeforeFailure = $false
-      $script:capturedRecordPath = $null
+      $script:mockWriteFailureEnabled = $true
+      $script:mockWriteCurrentOwnerBeforeFailure = $false
+      $script:mockCapturedRecordPath = $null
       Mock Write-AzureDevLifecycleLockRecord {
-        $script:capturedRecordPath = $Path
-        if (-not $script:writeFailureEnabled) {
+        $script:mockCapturedRecordPath = $Path
+        if (-not $script:mockWriteFailureEnabled) {
           [System.IO.File]::WriteAllText(
             $Path,
             ($Record | ConvertTo-Json -Compress)
           )
           return
         }
-        if ($script:writeCurrentOwnerBeforeFailure) {
+        if ($script:mockWriteCurrentOwnerBeforeFailure) {
           [System.IO.File]::WriteAllText(
             $Path,
             ($Record | ConvertTo-Json -Compress)
@@ -291,7 +291,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
         ResourceGroup = 'target-rg'
         VmName = 'target-vm'
       }
-      $script:writeFailureEnabled = $false
+      $script:mockWriteFailureEnabled = $false
       $seed = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $snapshot `
         -CommandName start
@@ -300,7 +300,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
       Set-Content `
         -LiteralPath $seed.Path `
         -Value '{"ownerId":"prior-owner"}'
-      $script:writeFailureEnabled = $true
+      $script:mockWriteFailureEnabled = $true
 
       {
         $null = Enter-AzureDevLifecycleLock `
@@ -319,7 +319,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
     }
 
     It 'Should remove its partial current-owner diagnostics' {
-      $script:writeCurrentOwnerBeforeFailure = $true
+      $script:mockWriteCurrentOwnerBeforeFailure = $true
       $snapshot = New-Object `
         -TypeName System.Management.Automation.PSObject `
         -Property @{
@@ -335,7 +335,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
           -CommandName start
       } | Should-Throw -ExceptionMessage '*record write failed*'
 
-      (Test-Path -LiteralPath $script:capturedRecordPath) |
+      (Test-Path -LiteralPath $script:mockCapturedRecordPath) |
         Should-BeFalse
       Should-Invoke `
         -CommandName Close-AzureDevLifecycleMutex `
@@ -347,9 +347,9 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
 
   Context 'When owner-record writing is interrupted' {
     BeforeEach {
-      $script:capturedRecordPath = $null
+      $script:mockCapturedRecordPath = $null
       Mock Write-AzureDevLifecycleLockRecord {
-        $script:capturedRecordPath = $Path
+        $script:mockCapturedRecordPath = $Path
         [System.IO.File]::WriteAllText(
           $Path,
           ($Record | ConvertTo-Json -Compress)
@@ -372,7 +372,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
           -CommandName start
       } | Should-Throw -ExceptionMessage '*interrupted*'
 
-      (Test-Path -LiteralPath $script:capturedRecordPath) |
+      (Test-Path -LiteralPath $script:mockCapturedRecordPath) |
         Should-BeFalse
       Should-Invoke `
         -CommandName Close-AzureDevLifecycleMutex `

@@ -20,7 +20,7 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
 
   BeforeEach {
     $script:ownedLocks = @()
-    $script:mutexReleaseFailure = $false
+    $script:mockMutexReleaseFailure = $false
     Mock New-AzureDevLifecycleMutex {
       New-Object -TypeName System.Management.Automation.PSObject -Property @{
         Identifier = [System.Guid]::NewGuid().ToString('N')
@@ -28,7 +28,7 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
     }
     Mock Enter-AzureDevLifecycleMutex { $true }
     Mock Close-AzureDevLifecycleMutex {
-      if ($script:mutexReleaseFailure) {
+      if ($script:mockMutexReleaseFailure) {
         throw 'mutex release failed'
       }
     }
@@ -41,7 +41,7 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
   }
 
   AfterEach {
-    $script:mutexReleaseFailure = $false
+    $script:mockMutexReleaseFailure = $false
     foreach ($ownedLock in $script:ownedLocks) {
       if (-not $ownedLock.Released) {
         $null = Exit-AzureDevLifecycleLock -Lock $ownedLock
@@ -155,9 +155,9 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
 
   Context 'When release cleanup fails' {
     It 'Should clear nested ownership after record removal throws' {
-      $script:recordRemovalFailure = $false
+      $script:mockRecordRemovalFailure = $false
       Mock Remove-AzureDevLifecycleLockRecord {
-        if ($script:recordRemovalFailure) {
+        if ($script:mockRecordRemovalFailure) {
           throw 'record removal failed'
         }
         [System.IO.File]::Delete($Path)
@@ -167,12 +167,12 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
         -ConfigurationSnapshot $script:snapshot `
         -CommandName start
       $script:ownedLocks += $owner
-      $script:recordRemovalFailure = $true
+      $script:mockRecordRemovalFailure = $true
 
       {
         $null = Exit-AzureDevLifecycleLock -Lock $owner
       } | Should-Throw -ExceptionMessage '*record removal failed*'
-      $script:recordRemovalFailure = $false
+      $script:mockRecordRemovalFailure = $false
       $replacement = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $script:snapshot `
         -CommandName stop
@@ -192,12 +192,12 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
         -ConfigurationSnapshot $script:snapshot `
         -CommandName start
       $script:ownedLocks += $owner
-      $script:mutexReleaseFailure = $true
+      $script:mockMutexReleaseFailure = $true
 
       {
         $null = Exit-AzureDevLifecycleLock -Lock $owner
       } | Should-Throw -ExceptionMessage '*mutex release failed*'
-      $script:mutexReleaseFailure = $false
+      $script:mockMutexReleaseFailure = $false
       $replacement = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $script:snapshot `
         -CommandName stop
