@@ -449,7 +449,7 @@ function Get-AzureDevLifecycleConfig {
       [string]$Kind,
 
       [AllowNull()]
-      [string]$Path,
+      [object]$Path,
 
       [AllowNull()]
       [System.Nullable[int]]$Line

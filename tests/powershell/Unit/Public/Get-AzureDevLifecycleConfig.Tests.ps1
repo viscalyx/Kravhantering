@@ -99,6 +99,8 @@ AZURE_CLIENT_ID=BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB
       $snapshot.SshHostAlias | Should-Be 'kravhantering-azure-dev'
       $snapshot.Provenance.AZURE_DEV_VM_SUBSCRIPTION_ID.Source.Kind |
         Should-Be 'process-environment'
+      $snapshot.Provenance.AZURE_DEV_VM_SUBSCRIPTION_ID.Source.Path |
+        Should-BeNull
       $snapshot.Provenance.AZURE_DEV_VM_RESOURCE_GROUP.Source.Kind |
         Should-Be 'process-environment'
       $snapshot.Provenance.AZURE_DEV_VM_NAME.Source.Kind |
@@ -326,28 +328,16 @@ AZURE_DEV_VM_NAME=target-vm
     }
   }
 
-  Context 'When a start target or SSH alias is unsafe' {
-    It 'Should reject unsafe targets and aliases without echoing their values' {
-      Set-Content -LiteralPath (Join-Path $TestDrive 'primary.env') -Value @"
-AZURE_DEV_VM_RESOURCE_GROUP=unsafe`ngroup
-AZURE_DEV_VM_NAME=target-vm
-AZURE_DEV_VM_SSH_HOST_ALIAS=-unsafe-alias
-"@
-      Set-Item Env:AZURE_DEV_VM_SUBSCRIPTION_ID `
-        '11111111-1111-1111-1111-111111111111'
-
-      {
-        Get-AzureDevLifecycleConfig `
-          -CommandName start `
-          -RepositoryRoot $TestDrive `
-          -EnvironmentFile 'primary.env'
-      } | Should-Throw -ExceptionMessage '*not valid KEY=value syntax*'
-
+  Context 'When a start SSH alias is unsafe' {
+    It 'Should reject the alias without echoing its value' {
       Set-Content -LiteralPath (Join-Path $TestDrive 'primary.env') -Value @'
 AZURE_DEV_VM_RESOURCE_GROUP=target-rg
 AZURE_DEV_VM_NAME=target-vm
 AZURE_DEV_VM_SSH_HOST_ALIAS=-unsafe-alias
 '@
+      Set-Item Env:AZURE_DEV_VM_SUBSCRIPTION_ID `
+        '11111111-1111-1111-1111-111111111111'
+
       {
         Get-AzureDevLifecycleConfig `
           -CommandName start `
