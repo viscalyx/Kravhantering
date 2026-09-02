@@ -20,13 +20,25 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Integration' `
     ) -Force -ErrorAction Stop
   }
 
+  BeforeEach {
+    $script:ownedLocks = @()
+  }
+
+  AfterEach {
+    foreach ($ownedLock in $script:ownedLocks) {
+      if (-not $ownedLock.Released) {
+        $null = Exit-AzureDevLifecycleLock -Lock $ownedLock
+      }
+    }
+  }
+
   AfterAll {
     Get-Module $script:moduleName -All | Remove-Module -Force
   }
 
   Context 'When releasing the acquired checkout-local lock' {
     It 'Should remove only the owned target record' {
-      $snapshot = [pscustomobject]@{
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         RepoRoot = $TestDrive
         SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         ResourceGroup = 'integration-rg'
@@ -35,6 +47,7 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Integration' `
       $lock = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $snapshot `
         -CommandName stop
+      $script:ownedLocks += $lock
 
       $released = Exit-AzureDevLifecycleLock -Lock $lock
 

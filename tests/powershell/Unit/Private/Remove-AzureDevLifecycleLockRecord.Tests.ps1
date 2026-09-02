@@ -2,7 +2,7 @@
 
 Set-StrictMode -Version Latest
 
-Describe 'Read-AzureDevLifecycleLockRecord' -Tag 'Unit' {
+Describe 'Remove-AzureDevLifecycleLockRecord' -Tag 'Unit' {
   BeforeAll {
     $script:moduleName = 'AzureDev.LifecycleLock'
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
@@ -28,52 +28,54 @@ Describe 'Read-AzureDevLifecycleLockRecord' -Tag 'Unit' {
   AfterEach {
     Remove-Item `
       -LiteralPath $script:recordPath `
-      -Recurse `
       -Force `
       -ErrorAction SilentlyContinue
   }
 
-  Context 'When the owner record is readable JSON' {
-    It 'Should return its metadata without retaining a file handle' {
+  Context 'When the record belongs to the invocation' {
+    It 'Should remove it' {
       Set-Content `
         -LiteralPath $script:recordPath `
         -Value '{"ownerId":"owner-one"}'
 
-      $record = InModuleScope `
-        -Parameters @{ Path = $script:recordPath } `
-        -ScriptBlock {
-        Set-StrictMode -Version 1.0
-        Read-AzureDevLifecycleLockRecord -Path $Path
-      }
-
-      $record.ownerId | Should-Be 'owner-one'
-    }
-  }
-
-  Context 'When the owner record cannot provide diagnostics' {
-    BeforeDiscovery {
-      $recordCases = @(
-        @{ Name = 'missing'; Kind = 'missing' },
-        @{ Name = 'malformed'; Kind = 'malformed' },
-        @{ Name = 'inaccessible'; Kind = 'directory' }
-      )
-    }
-
-    It 'Should return null for <Name> owner evidence' -ForEach $recordCases {
-      if ($Kind -eq 'malformed') {
-        Set-Content -LiteralPath $script:recordPath -Value '{'
-      } elseif ($Kind -eq 'directory') {
-        $null = New-Item -ItemType Directory -Path $script:recordPath
-      }
-
-      $record = InModuleScope `
+      $removed = InModuleScope `
         -Parameters @{ Path = $script:recordPath } `
         -ScriptBlock {
           Set-StrictMode -Version 1.0
-          Read-AzureDevLifecycleLockRecord -Path $Path
+          Remove-AzureDevLifecycleLockRecord `
+            -Path $Path `
+            -OwnerId 'owner-one'
         }
 
-      $record | Should-BeNull
+      $removed | Should-BeTrue
+      (Test-Path -LiteralPath $script:recordPath) | Should-BeFalse
+    }
+  }
+
+  Context 'When ownership is missing, malformed, or different' {
+    BeforeDiscovery {
+      $ownerCases = @(
+        @{ Name = 'missing'; Json = '{}' },
+        @{ Name = 'blank'; Json = '{"ownerId":""}' },
+        @{ Name = 'malformed'; Json = '{' },
+        @{ Name = 'different'; Json = '{"ownerId":"owner-two"}' }
+      )
+    }
+
+    It 'Should preserve the <Name> record' -ForEach $ownerCases {
+      Set-Content -LiteralPath $script:recordPath -Value $Json
+
+      $removed = InModuleScope `
+        -Parameters @{ Path = $script:recordPath } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Remove-AzureDevLifecycleLockRecord `
+            -Path $Path `
+            -OwnerId 'owner-one'
+        }
+
+      $removed | Should-BeFalse
+      (Test-Path -LiteralPath $script:recordPath) | Should-BeTrue
     }
   }
 }

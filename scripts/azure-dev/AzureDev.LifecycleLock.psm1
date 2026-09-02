@@ -2,7 +2,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:activeLifecycleLocks = @{}
 
-function Get-AzureDevLifecycleLockPath {
+function Get-AzureDevLifecycleLockIdentity {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
@@ -25,147 +25,77 @@ function Get-AzureDevLifecycleLockPath {
   }
 
   $canonicalParts = @(
-    'azure-dev-lifecycle-lock-v1',
+    'azure-dev-lifecycle-lock-v2',
     ([string]$ConfigurationSnapshot.SubscriptionId).ToLowerInvariant(),
     ([string]$ConfigurationSnapshot.ResourceGroup).ToLowerInvariant(),
     ([string]$ConfigurationSnapshot.VmName).ToLowerInvariant()
   )
-  $identity = @(
+  $targetText = @(
     $canonicalParts | ForEach-Object { "$($_.Length):$_" }
   ) -join '|'
-  $identityBytes = [System.Text.Encoding]::UTF8.GetBytes($identity)
-  $hashBytes = [System.Security.Cryptography.SHA256]::HashData($identityBytes)
-  $hash = [System.Convert]::ToHexString($hashBytes).ToLowerInvariant()
+  $targetBytes = [System.Text.Encoding]::UTF8.GetBytes($targetText)
+  $targetHashBytes = [System.Security.Cryptography.SHA256]::HashData(
+    $targetBytes
+  )
+  $targetHash = [System.Convert]::ToHexString(
+    $targetHashBytes
+  ).ToLowerInvariant()
   $repositoryPath = [System.IO.Path]::GetFullPath(
     [string]$ConfigurationSnapshot.RepoRoot
   )
   $lockDirectory = Join-Path $repositoryPath '.azure/lifecycle-locks'
+  $path = Join-Path $lockDirectory "lifecycle-$targetHash.lock"
+  $mutexPath = [System.IO.Path]::GetFullPath($path)
+  if ([System.OperatingSystem]::IsWindows()) {
+    $mutexPath = $mutexPath.ToLowerInvariant()
+  }
+  $mutexBytes = [System.Text.Encoding]::UTF8.GetBytes($mutexPath)
+  $mutexHashBytes = [System.Security.Cryptography.SHA256]::HashData($mutexBytes)
+  $mutexHash = [System.Convert]::ToHexString(
+    $mutexHashBytes
+  ).ToLowerInvariant()
 
-  return Join-Path $lockDirectory "lifecycle-$hash.lock"
+  return [pscustomobject]@{
+    Path = $path
+    MutexName = $mutexHash
+  }
 }
 
-function Open-AzureDevLifecycleLockStream {
+function Get-AzureDevLifecycleMonotonicTimestamp {
+  [CmdletBinding()]
+  param()
+
+  return [System.Diagnostics.Stopwatch]::GetTimestamp()
+}
+
+function Wait-AzureDevLifecycleLockRetry {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [string]$Path
+    [timespan]$Duration
   )
 
-  $fileShare = [System.IO.FileShare]::Read -bor [System.IO.FileShare]::Delete
-  try {
-    $stream = [System.IO.File]::Open(
-      $Path,
-      [System.IO.FileMode]::CreateNew,
-      [System.IO.FileAccess]::ReadWrite,
-      $fileShare
-    )
-    return [pscustomobject]@{
-      Stream = $stream
-      RecoveredStaleLock = $false
-    }
-  } catch [System.IO.IOException] {
-    if (-not [System.IO.File]::Exists($Path)) {
-      return $null
-    }
-  }
-
-  return $null
-}
-
-function Test-AzureDevLifecycleLockOwnerActive {
-  [CmdletBinding()]
-  param(
-    [AllowNull()]
-    [pscustomobject]$Record
-  )
-
-  if ($null -eq $Record) {
-    return $true
-  }
-  $hostProperty = $Record.PSObject.Properties['host']
-  $processProperty = $Record.PSObject.Properties['processId']
-  if (
-    $null -eq $hostProperty -or
-    [string]::IsNullOrWhiteSpace([string]$hostProperty.Value) -or
-    [string]$hostProperty.Value -cne [System.Net.Dns]::GetHostName()
-  ) {
-    return $true
-  }
-
-  $ownerProcessId = 0
-  if (
-    $null -eq $processProperty -or
-    -not [int]::TryParse(
-      [string]$processProperty.Value,
-      [ref]$ownerProcessId
-    ) -or
-    $ownerProcessId -lt 1
-  ) {
-    return $true
-  }
-
-  return $null -ne (
-    Get-Process -Id $ownerProcessId -ErrorAction SilentlyContinue
-  )
-}
-
-function Move-AzureDevStaleLifecycleLock {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory = $true)]
-    [string]$Path,
-
-    [AllowNull()]
-    [pscustomobject]$Record
-  )
-
-  if (Test-AzureDevLifecycleLockOwnerActive -Record $Record) {
-    return $false
-  }
-
-  $quarantinePath = "$Path.stale-$([guid]::NewGuid().ToString('N'))"
-  try {
-    # The same-directory rename is the compare-and-claim operation. Only one
-    # contender can move this exact abandoned directory entry.
-    [System.IO.File]::Move($Path, $quarantinePath)
-  } catch [System.IO.IOException] {
-    return $false
-  }
-
-  try {
-    return $true
-  } finally {
-    [System.IO.File]::Delete($quarantinePath)
-  }
+  Start-Sleep -Duration $Duration
 }
 
 function Write-AzureDevLifecycleLockRecord {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [System.IO.FileStream]$Stream,
+    [string]$Path,
 
     [Parameter(Mandatory = $true)]
     [System.Collections.IDictionary]$Record
   )
 
-  $json = $Record | ConvertTo-Json -Compress
-  $encoding = [System.Text.UTF8Encoding]::new($false)
-  $writer = [System.IO.StreamWriter]::new(
-    $Stream,
-    $encoding,
-    1024,
-    $true
-  )
+  $temporaryPath = "$Path.$($Record.ownerId).tmp"
   try {
-    $Stream.SetLength(0)
-    $Stream.Position = 0
-    $writer.Write($json)
-    $writer.Flush()
-    $Stream.Flush($true)
-    $Stream.Position = 0
+    $encoding = [System.Text.UTF8Encoding]::new($false)
+    $json = $Record | ConvertTo-Json -Compress
+    [System.IO.File]::WriteAllText($temporaryPath, $json, $encoding)
+    [System.IO.File]::Move($temporaryPath, $Path, $true)
   } finally {
-    $writer.Dispose()
+    [System.IO.File]::Delete($temporaryPath)
   }
 }
 
@@ -177,25 +107,8 @@ function Read-AzureDevLifecycleLockRecord {
   )
 
   try {
-    $stream = [System.IO.File]::Open(
-      $Path,
-      [System.IO.FileMode]::Open,
-      [System.IO.FileAccess]::Read,
-      (
-        [System.IO.FileShare]::ReadWrite -bor
-        [System.IO.FileShare]::Delete
-      )
-    )
-    try {
-      $reader = [System.IO.StreamReader]::new($stream)
-      try {
-        return $reader.ReadToEnd() | ConvertFrom-Json -ErrorAction Stop
-      } finally {
-        $reader.Dispose()
-      }
-    } finally {
-      $stream.Dispose()
-    }
+    $text = [System.IO.File]::ReadAllText($Path)
+    return $text | ConvertFrom-Json -ErrorAction Stop
   } catch [System.IO.IOException] {
     return $null
   } catch [System.UnauthorizedAccessException] {
@@ -203,6 +116,34 @@ function Read-AzureDevLifecycleLockRecord {
   } catch [System.ArgumentException] {
     return $null
   }
+}
+
+function Remove-AzureDevLifecycleLockRecord {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path,
+
+    [Parameter(Mandatory = $true)]
+    [string]$OwnerId
+  )
+
+  $record = Read-AzureDevLifecycleLockRecord -Path $Path
+  $ownerProperty = if ($null -eq $record) {
+    $null
+  } else {
+    $record.PSObject.Properties['ownerId']
+  }
+  if (
+    $null -eq $ownerProperty -or
+    [string]::IsNullOrWhiteSpace([string]$ownerProperty.Value) -or
+    [string]$ownerProperty.Value -cne $OwnerId
+  ) {
+    return $false
+  }
+
+  [System.IO.File]::Delete($Path)
+  return $true
 }
 
 function ConvertTo-AzureDevLifecycleOwnerText {
@@ -232,7 +173,6 @@ function ConvertTo-AzureDevLifecycleOwnerText {
     }
     return $text
   }
-
   $recordValue = {
     param([string]$Name)
     $property = $Record.PSObject.Properties[$Name]
@@ -262,112 +202,118 @@ function Enter-AzureDevLifecycleLock {
     [string]$CommandName,
 
     [ValidateRange(0, 15)]
-    [int]$TimeoutSeconds = 15,
-
-    [ValidateRange(1, 1000)]
-    [int]$RetryIntervalMilliseconds = 250,
-
-    [scriptblock]$UtcNowProvider = { [datetimeoffset]::UtcNow },
-
-    [scriptblock]$DelayProvider = {
-      param([timespan]$Duration)
-      Start-Sleep -Duration $Duration
-    },
-
-    [ValidateRange(1, [int]::MaxValue)]
-    [int]$OwnerProcessId = $PID,
-
-    [string]$OwnerHost = [System.Net.Dns]::GetHostName(),
-
-    [string]$OwnerUser = [System.Environment]::UserName,
-
-    [string]$OwnerId = ([guid]::NewGuid().ToString('N'))
+    [int]$TimeoutSeconds = 15
   )
 
-  $lockPath = Get-AzureDevLifecycleLockPath `
+  $identity = Get-AzureDevLifecycleLockIdentity `
     -ConfigurationSnapshot $ConfigurationSnapshot
-  $lockDirectory = Split-Path -Parent $lockPath
+  $lockDirectory = Split-Path -Parent $identity.Path
   $null = [System.IO.Directory]::CreateDirectory($lockDirectory)
-  $startedAt = & $UtcNowProvider
-  $deadline = $startedAt.AddSeconds($TimeoutSeconds)
+  $startedAt = Get-AzureDevLifecycleMonotonicTimestamp
+  $timeoutTicks = [long](
+    $TimeoutSeconds * [System.Diagnostics.Stopwatch]::Frequency
+  )
   $lastOwner = $null
-  $recoveredStaleLock = $false
 
   while ($true) {
-    $now = & $UtcNowProvider
-    if ($now -lt $deadline -or $now -eq $startedAt) {
-      $activeLease = $script:activeLifecycleLocks[$lockPath]
-      if ($null -ne $activeLease -and -not $activeLease.Stream.CanRead) {
-        $script:activeLifecycleLocks.Remove($lockPath)
-        $activeLease = $null
-      }
-      $opened = if ($null -eq $activeLease) {
-        Open-AzureDevLifecycleLockStream -Path $lockPath
-      } else {
-        $null
-      }
-      if ($null -ne $opened) {
-        $record = [ordered]@{
-          schemaVersion = 1
-          ownerId = $OwnerId
-          command = $CommandName
-          processId = $OwnerProcessId
-          host = $OwnerHost
-          user = $OwnerUser
-          startedAt = $now.ToUniversalTime().ToString('o')
-        }
-        try {
-          Write-AzureDevLifecycleLockRecord `
-            -Stream $opened.Stream `
-            -Record $record
-        } catch {
-          $opened.Stream.Dispose()
-          throw
-        }
-
-        $lease = [pscustomobject]@{
-          PSTypeName = 'AzureDev.LifecycleLockLease'
-          Path = $lockPath
-          OwnerId = $OwnerId
-          Stream = $opened.Stream
-          RecoveredStaleLock = $recoveredStaleLock
-          ConfigurationSnapshot = $ConfigurationSnapshot
-          Released = $false
-        }
-        $script:activeLifecycleLocks[$lockPath] = $lease
-        return $lease
-      }
-      $lastOwner = Read-AzureDevLifecycleLockRecord -Path $lockPath
-      if (
-        $null -eq $activeLease -and
-        (Move-AzureDevStaleLifecycleLock -Path $lockPath -Record $lastOwner)
-      ) {
-        $recoveredStaleLock = $true
-        continue
+    $mutex = $null
+    $mutexOwned = $false
+    $activeLease = $script:activeLifecycleLocks[$identity.MutexName]
+    if ($null -eq $activeLease) {
+      $mutex = [System.Threading.Mutex]::new($false, $identity.MutexName)
+      try {
+        $mutexOwned = $mutex.WaitOne(0)
+      } catch [System.Threading.AbandonedMutexException] {
+        $mutexOwned = $true
       }
     }
 
-    $now = & $UtcNowProvider
-    if ($now -ge $deadline) {
+    if ($mutexOwned) {
+      $ownerId = ''
+      try {
+        $ownerId = [guid]::NewGuid().ToString('N')
+        $record = [ordered]@{
+          schemaVersion = 1
+          ownerId = $ownerId
+          command = $CommandName
+          processId = $PID
+          host = [System.Net.Dns]::GetHostName()
+          user = [System.Environment]::UserName
+          startedAt = [datetimeoffset]::UtcNow.ToString('o')
+        }
+        Write-AzureDevLifecycleLockRecord `
+          -Path $identity.Path `
+          -Record $record
+        $lease = [pscustomobject]@{
+          PSTypeName = 'AzureDev.LifecycleLockLease'
+          Path = $identity.Path
+          MutexName = $identity.MutexName
+          OwnerId = $ownerId
+          Mutex = $mutex
+          ConfigurationSnapshot = $ConfigurationSnapshot
+          Released = $false
+        }
+        $script:activeLifecycleLocks[$identity.MutexName] = $lease
+        return $lease
+      } catch {
+        try {
+          $registeredLease =
+            $script:activeLifecycleLocks[$identity.MutexName]
+          if (
+            $null -ne $registeredLease -and
+            [string]$registeredLease.OwnerId -ceq $ownerId
+          ) {
+            $script:activeLifecycleLocks.Remove($identity.MutexName)
+          }
+          if (-not [string]::IsNullOrWhiteSpace($ownerId)) {
+            try {
+              $null = Remove-AzureDevLifecycleLockRecord `
+                -Path $identity.Path `
+                -OwnerId $ownerId
+            } catch {
+              # Diagnostic cleanup must not prevent mutex release.
+            }
+          }
+        } finally {
+          try {
+            $mutex.ReleaseMutex()
+          } finally {
+            $mutex.Dispose()
+          }
+        }
+        throw
+      }
+    }
+
+    if ($null -ne $mutex) {
+      $mutex.Dispose()
+    }
+    $lastOwner = Read-AzureDevLifecycleLockRecord -Path $identity.Path
+    $now = Get-AzureDevLifecycleMonotonicTimestamp
+    $elapsedTicks = $now - $startedAt
+    if ($elapsedTicks -ge $timeoutTicks) {
       $ownerText = ConvertTo-AzureDevLifecycleOwnerText -Record $lastOwner
       throw (
         "Azure Dev lifecycle lock timed out after waiting $TimeoutSeconds " +
         "seconds. Owner: $ownerText. Wait for the owner to finish and retry. " +
-        'Abandoned lock records are recovered automatically. If contention ' +
-        "persists, inspect '$lockPath' and remove it only after confirming " +
-        'that no Azure Dev lifecycle command is active in this checkout. No ' +
-        'Azure mutation was submitted by this invocation.'
+        'Abandoned locks are recovered automatically by the operating system. ' +
+        'If a live owner is stuck, interrupt that invocation and retry. ' +
+        "Inspect '$($identity.Path)' only after confirming that no Azure Dev " +
+        'lifecycle command is active in this checkout; the file is diagnostic ' +
+        'only, and deleting it cannot release the mutex. No Azure mutation was ' +
+        'submitted by this invocation.'
       )
     }
 
-    $remaining = $deadline - $now
-    $retryDelay = [timespan]::FromMilliseconds($RetryIntervalMilliseconds)
-    $delay = if ($remaining -lt $retryDelay) {
-      $remaining
-    } else {
-      $retryDelay
-    }
-    $null = & $DelayProvider $delay
+    $remainingTicks = $timeoutTicks - $elapsedTicks
+    $retryTicks = [long](
+      0.25 * [System.Diagnostics.Stopwatch]::Frequency
+    )
+    $delayTicks = [math]::Min($remainingTicks, $retryTicks)
+    $delay = [timespan]::FromSeconds(
+      $delayTicks / [double][System.Diagnostics.Stopwatch]::Frequency
+    )
+    Wait-AzureDevLifecycleLockRetry -Duration $delay
   }
 }
 
@@ -385,41 +331,39 @@ function Exit-AzureDevLifecycleLock {
     return $false
   }
   if (
-    $Lock.PSObject.Properties['Stream'] -eq $null -or
-    $null -eq $Lock.Stream -or
+    $Lock.PSObject.Properties['Mutex'] -eq $null -or
+    $null -eq $Lock.Mutex -or
+    $Lock.PSObject.Properties['MutexName'] -eq $null -or
     $Lock.PSObject.Properties['OwnerId'] -eq $null
   ) {
     return $false
   }
 
-  try {
-    $record = Read-AzureDevLifecycleLockRecord -Path ([string]$Lock.Path)
-    $ownerProperty = if ($null -eq $record) {
-      $null
-    } else {
-      $record.PSObject.Properties['ownerId']
-    }
-    if (
-      $null -eq $ownerProperty -or
-      [string]::IsNullOrWhiteSpace([string]$ownerProperty.Value) -or
-      [string]$ownerProperty.Value -cne [string]$Lock.OwnerId
-    ) {
-      return $false
-    }
+  $activeLease = $script:activeLifecycleLocks[[string]$Lock.MutexName]
+  if (
+    $null -eq $activeLease -or
+    -not [object]::ReferenceEquals($activeLease.Mutex, $Lock.Mutex) -or
+    [string]$activeLease.OwnerId -cne [string]$Lock.OwnerId
+  ) {
+    return $false
+  }
 
-    [System.IO.File]::Delete([string]$Lock.Path)
-    return $true
+  $removedOwnerRecord = $false
+  try {
+    $removedOwnerRecord = Remove-AzureDevLifecycleLockRecord `
+      -Path ([string]$Lock.Path) `
+      -OwnerId ([string]$Lock.OwnerId)
   } finally {
-    $Lock.Stream.Dispose()
-    $Lock.Released = $true
-    $activeLease = $script:activeLifecycleLocks[[string]$Lock.Path]
-    if (
-      $null -ne $activeLease -and
-      [string]$activeLease.OwnerId -ceq [string]$Lock.OwnerId
-    ) {
-      $script:activeLifecycleLocks.Remove([string]$Lock.Path)
+    try {
+      $Lock.Mutex.ReleaseMutex()
+    } finally {
+      $Lock.Mutex.Dispose()
+      $Lock.Released = $true
+      $script:activeLifecycleLocks.Remove([string]$Lock.MutexName)
     }
   }
+
+  return $removedOwnerRecord
 }
 
 function Invoke-AzureDevLifecycleLock {
@@ -436,22 +380,13 @@ function Invoke-AzureDevLifecycleLock {
     [scriptblock]$ScriptBlock,
 
     [ValidateRange(0, 15)]
-    [int]$TimeoutSeconds = 15,
-
-    [scriptblock]$UtcNowProvider = { [datetimeoffset]::UtcNow },
-
-    [scriptblock]$DelayProvider = {
-      param([timespan]$Duration)
-      Start-Sleep -Duration $Duration
-    }
+    [int]$TimeoutSeconds = 15
   )
 
   $lock = Enter-AzureDevLifecycleLock `
     -ConfigurationSnapshot $ConfigurationSnapshot `
     -CommandName $CommandName `
-    -TimeoutSeconds $TimeoutSeconds `
-    -UtcNowProvider $UtcNowProvider `
-    -DelayProvider $DelayProvider
+    -TimeoutSeconds $TimeoutSeconds
   try {
     return & $ScriptBlock $lock $ConfigurationSnapshot
   } finally {

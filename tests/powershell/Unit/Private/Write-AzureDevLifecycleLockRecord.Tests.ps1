@@ -21,29 +21,35 @@ Describe 'Write-AzureDevLifecycleLockRecord' -Tag 'Unit' {
     Get-Module $script:moduleName -All | Remove-Module -Force
   }
 
+  BeforeEach {
+    $script:recordPath = Join-Path $TestDrive 'target.lock'
+  }
+
+  AfterEach {
+    Remove-Item `
+      -LiteralPath $script:recordPath `
+      -Force `
+      -ErrorAction SilentlyContinue
+  }
+
   Context 'When writing owner metadata' {
-    It 'Should replace the record and preserve the owner stream' {
-      $path = Join-Path $TestDrive 'target.lock'
-      $stream = [System.IO.File]::Open(
-        $path,
-        [System.IO.FileMode]::CreateNew,
-        [System.IO.FileAccess]::ReadWrite,
-        [System.IO.FileShare]::Read
-      )
+    It 'Should atomically replace the prior diagnostic record' {
+      Set-Content `
+        -LiteralPath $script:recordPath `
+        -Value '{"ownerId":"stale-owner"}'
       $record = [ordered]@{ ownerId = 'owner-one'; command = 'start' }
 
       $null = InModuleScope `
-        -Parameters @{ Stream = $stream; Record = $record } `
+        -Parameters @{ Path = $script:recordPath; Record = $record } `
         -ScriptBlock {
           Set-StrictMode -Version 1.0
-          Write-AzureDevLifecycleLockRecord -Stream $Stream -Record $Record
+          Write-AzureDevLifecycleLockRecord -Path $Path -Record $Record
         }
-      $text = Get-Content -LiteralPath $path -Raw
+      $text = Get-Content -LiteralPath $script:recordPath -Raw
 
-      $stream.CanWrite | Should-BeTrue
       $text | Should-MatchString '"ownerId":"owner-one"'
-
-      $stream.Dispose()
+      @(Get-ChildItem -LiteralPath $TestDrive -Filter '*.tmp').Count |
+        Should-Be 0
     }
   }
 }

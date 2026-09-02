@@ -20,20 +20,31 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Integration' `
     ) -Force -ErrorAction Stop
   }
 
+  BeforeEach {
+    $script:lockPath = $null
+  }
+
+  AfterEach {
+    if (-not [System.String]::IsNullOrWhiteSpace($script:lockPath)) {
+      Remove-Item `
+        -LiteralPath $script:lockPath `
+        -Force `
+        -ErrorAction SilentlyContinue
+    }
+  }
+
   AfterAll {
     Get-Module $script:moduleName -All | Remove-Module -Force
   }
 
   Context 'When guarded lifecycle work fails' {
     It 'Should leave no owned lock record in the isolated checkout' {
-      $snapshot = [pscustomobject]@{
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         RepoRoot = $TestDrive
         SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         ResourceGroup = 'integration-rg'
         VmName = 'integration-vm'
       }
-      $script:lockPath = $null
-
       {
         $null = Invoke-AzureDevLifecycleLock `
           -ConfigurationSnapshot $snapshot `

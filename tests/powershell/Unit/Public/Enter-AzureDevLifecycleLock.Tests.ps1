@@ -12,6 +12,23 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
       Join-Path $script:repositoryRoot `
         'scripts/azure-dev/AzureDev.LifecycleLock.psm1'
     ) -Force -ErrorAction Stop
+    $PSDefaultParameterValues = @{
+      'InModuleScope:ModuleName' = $script:moduleName
+      'Mock:ModuleName' = $script:moduleName
+      'Should-Invoke:ModuleName' = $script:moduleName
+    }
+  }
+
+  BeforeEach {
+    $script:ownedLocks = @()
+  }
+
+  AfterEach {
+    foreach ($ownedLock in $script:ownedLocks) {
+      if (-not $ownedLock.Released) {
+        $null = Exit-AzureDevLifecycleLock -Lock $ownedLock
+      }
+    }
   }
 
   AfterAll {
@@ -20,55 +37,82 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
 
   Context 'When canonical target values identify a lifecycle lock' {
     It 'Should derive one stable checkout-local identity without environment ID' {
-      $firstSnapshot = [pscustomobject]@{
+      $firstSnapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         RepoRoot = Join-Path $TestDrive 'checkout-one'
         SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         ResourceGroup = 'Target-RG'
         VmName = 'Target-VM'
       }
-      $sameTargetSnapshot = [pscustomobject]@{
-        RepoRoot = Join-Path $TestDrive 'checkout-one'
-        SubscriptionId = 'AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA'
-        ResourceGroup = 'target-rg'
-        VmName = 'target-vm'
-      }
-      $otherCheckoutSnapshot = [pscustomobject]@{
-        RepoRoot = Join-Path $TestDrive 'checkout-two'
-        SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-        ResourceGroup = 'target-rg'
-        VmName = 'target-vm'
-      }
+      $sameTargetSnapshot = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          RepoRoot = Join-Path $TestDrive 'checkout-one'
+          SubscriptionId = 'AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA'
+          ResourceGroup = 'target-rg'
+          VmName = 'target-vm'
+        }
+      $otherCheckoutSnapshot = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          RepoRoot = Join-Path $TestDrive 'checkout-two'
+          SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+          ResourceGroup = 'target-rg'
+          VmName = 'target-vm'
+        }
+      $otherTargetSnapshot = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          RepoRoot = Join-Path $TestDrive 'checkout-one'
+          SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+          ResourceGroup = 'target-rg'
+          VmName = 'other-vm'
+        }
 
       $first = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $firstSnapshot `
         -CommandName start
+      $script:ownedLocks += $first
       $firstPath = $first.Path
+      $firstMutexName = $first.MutexName
       $null = Exit-AzureDevLifecycleLock -Lock $first
       $sameTarget = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $sameTargetSnapshot `
         -CommandName stop
-      $sameTargetPath = $sameTarget.Path
-      $null = Exit-AzureDevLifecycleLock -Lock $sameTarget
+      $script:ownedLocks += $sameTarget
       $otherCheckout = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $otherCheckoutSnapshot `
         -CommandName start
+      $script:ownedLocks += $otherCheckout
+      $otherTarget = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $otherTargetSnapshot `
+        -CommandName start
+      $script:ownedLocks += $otherTarget
 
-      $firstPath | Should-Be $sameTargetPath
-      $otherCheckout.Path | Should-NotBe $firstPath
-      Split-Path -Leaf $firstPath |
-        Should-BeLikeString 'lifecycle-*.lock'
-      (Split-Path -Leaf $firstPath).Length | Should-Be 79
-      $firstPath | Should-BeLikeString (
-        (Join-Path $firstSnapshot.RepoRoot '.azure/lifecycle-locks/*')
-      )
-
-      $null = Exit-AzureDevLifecycleLock -Lock $otherCheckout
+      $sameTarget.Path | Should-Be $firstPath
+      $sameTarget.MutexName | Should-Be $firstMutexName
+      $otherCheckout.MutexName | Should-NotBe $firstMutexName
+      $otherTarget.MutexName | Should-NotBe $firstMutexName
+      $otherTarget.Path | Should-NotBe $firstPath
+      $firstMutexName | Should-MatchString '^[0-9a-f]{64}$'
     }
   }
 
-  Context 'When another invocation owns the target lock' {
-    It 'Should wait at most 15 virtual seconds and report safe recovery guidance' {
-      $snapshot = [pscustomobject]@{
+  Context 'When another invocation owns the target mutex' {
+    BeforeEach {
+      $script:mockTimestamp = [System.Int64]0
+      Mock Get-AzureDevLifecycleMonotonicTimestamp {
+        $script:mockTimestamp
+      }
+      Mock Wait-AzureDevLifecycleLockRetry {
+        $script:mockTimestamp += [System.Int64](
+          $Duration.TotalSeconds *
+          [System.Diagnostics.Stopwatch]::Frequency
+        )
+      }
+    }
+
+    It 'Should wait exactly 15 virtual monotonic seconds with safe owner guidance' {
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         RepoRoot = $TestDrive
         SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         ResourceGroup = 'target-rg'
@@ -77,118 +121,265 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
       }
       $owner = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $snapshot `
-        -CommandName start `
-        -OwnerProcessId $PID `
-        -OwnerHost ([System.Net.Dns]::GetHostName()) `
-        -OwnerUser 'test-user' `
-        -OwnerId 'owner-one'
-      $clock = [pscustomobject]@{
-        Now = [datetimeoffset]'2026-09-02T08:00:00Z'
-      }
-      $mockClock = { $clock.Now }.GetNewClosure()
-      $mockDelay = {
-        param([timespan]$Duration)
-        $clock.Now = $clock.Now.Add($Duration)
-      }.GetNewClosure()
+        -CommandName start
+      $script:ownedLocks += $owner
 
       $caught = $null
       try {
         $null = Enter-AzureDevLifecycleLock `
           -ConfigurationSnapshot $snapshot `
-          -CommandName stop `
-          -UtcNowProvider $mockClock `
-          -DelayProvider $mockDelay
+          -CommandName stop
       } catch {
         $caught = $_
       }
 
       $caught | Should-NotBeNull
-      $caught.Exception.Message | Should-BeLikeString '*waiting 15 seconds*'
-      $caught.Exception.Message | Should-BeLikeString '*command=start*'
+      $caught.Exception.Message | Should-MatchString 'waiting 15 seconds'
+      $caught.Exception.Message | Should-MatchString 'command=start'
+      $caught.Exception.Message | Should-MatchString "processId=$PID"
       $caught.Exception.Message |
-        Should-BeLikeString "*processId=$PID*"
-      $caught.Exception.Message |
-        Should-BeLikeString "*host=$([System.Net.Dns]::GetHostName())*"
-      $caught.Exception.Message | Should-BeLikeString '*user=test-user*'
-      $caught.Exception.Message | Should-BeLikeString '*retry*'
-      $caught.Exception.Message |
-        Should-BeLikeString '*only after confirming*'
-      $caught.Exception.Message |
-        Should-NotBeLikeString '*must-never-appear*'
-      $clock.Now |
-        Should-Be ([datetimeoffset]'2026-09-02T08:00:15Z')
-      (Test-Path -LiteralPath $owner.Path -PathType Leaf) | Should-BeTrue
-
-      $null = Exit-AzureDevLifecycleLock -Lock $owner
+        Should-MatchString "host=$([System.Net.Dns]::GetHostName())"
+      $caught.Exception.Message | Should-MatchString 'retry'
+      $caught.Exception.Message | Should-MatchString 'only after confirming'
+      $caught.Exception.Message | Should-NotMatchString 'must-never-appear'
+      $script:mockTimestamp | Should-Be (
+        [System.Int64](15 * [System.Diagnostics.Stopwatch]::Frequency)
+      )
+      Should-Invoke `
+        -CommandName Wait-AzureDevLifecycleLockRetry `
+        -Exactly `
+        -Times 60 `
+        -Scope It
     }
   }
 
-  Context 'When an abandoned record has no active owner handle' {
-    It 'Should recover the stale lock atomically' {
-      $snapshot = [pscustomobject]@{
+  Context 'When stale diagnostics remain without an owned mutex' {
+    It 'Should atomically replace them before returning the new lease' {
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         RepoRoot = $TestDrive
         SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         ResourceGroup = 'target-rg'
         VmName = 'target-vm'
       }
-      $seed = Enter-AzureDevLifecycleLock `
-        -ConfigurationSnapshot $snapshot `
-        -CommandName start `
-        -OwnerProcessId ([int]::MaxValue) `
-        -OwnerId 'stale-owner'
-      $lockPath = $seed.Path
-      $seed.Stream.Dispose()
+      $identity = InModuleScope `
+        -Parameters @{ Snapshot = $snapshot } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Get-AzureDevLifecycleLockIdentity `
+            -ConfigurationSnapshot $Snapshot
+        }
+      $null = [System.IO.Directory]::CreateDirectory(
+        (Split-Path -Parent $identity.Path)
+      )
+      Set-Content `
+        -LiteralPath $identity.Path `
+        -Value '{"ownerId":"stale-owner","host":"foreign-host"}'
 
       $recovered = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $snapshot `
-        -CommandName stop `
-        -OwnerId 'new-owner'
-      $record = Get-Content -LiteralPath $lockPath -Raw | ConvertFrom-Json
+        -CommandName stop
+      $script:ownedLocks += $recovered
+      $record = Get-Content -LiteralPath $identity.Path -Raw | ConvertFrom-Json
 
-      $recovered.RecoveredStaleLock | Should-BeTrue
-      $record.ownerId | Should-Be 'new-owner'
+      $record.ownerId | Should-Be $recovered.OwnerId
       $record.command | Should-Be 'stop'
-
-      $null = Exit-AzureDevLifecycleLock -Lock $recovered
+      $recovered.PSObject.Properties.Name |
+        Should-NotContainCollection 'RecoveredStaleLock'
     }
-  }
 
-  Context 'When an existing record has no safe stale-owner evidence' {
-    It 'Should preserve it and provide manual recovery guidance' {
-      $snapshot = [pscustomobject]@{
+    It 'Should preserve a live replacement from a second contender' {
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         RepoRoot = $TestDrive
-        SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        SubscriptionId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
         ResourceGroup = 'target-rg'
         VmName = 'target-vm'
       }
-      $seed = Enter-AzureDevLifecycleLock `
+      $first = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $snapshot `
         -CommandName start
-      $lockPath = $seed.Path
-      $seed.Stream.Dispose()
-      Set-Content -LiteralPath $lockPath -Value '{"unexpected":"record"}'
-      $clock = [pscustomobject]@{
-        Now = [datetimeoffset]'2026-09-02T08:00:00Z'
-      }
-      $mockClock = { $clock.Now }.GetNewClosure()
-      $mockDelay = {
-        param([timespan]$Duration)
-        $clock.Now = $clock.Now.Add($Duration)
-      }.GetNewClosure()
+      $script:ownedLocks += $first
+      $before = Get-Content -LiteralPath $first.Path -Raw
 
       {
         $null = Enter-AzureDevLifecycleLock `
           -ConfigurationSnapshot $snapshot `
           -CommandName stop `
-          -TimeoutSeconds 1 `
-          -UtcNowProvider $mockClock `
-          -DelayProvider $mockDelay
-      } | Should-Throw -ExceptionMessage (
-        '*Owner: command=unknown; processId=unknown; host=unknown*' +
-        '*only after confirming*'
-      )
+          -TimeoutSeconds 0
+      } | Should-Throw -ExceptionMessage '*timed out*'
 
-      (Test-Path -LiteralPath $lockPath -PathType Leaf) | Should-BeTrue
+      (Get-Content -LiteralPath $first.Path -Raw) | Should-Be $before
+    }
+  }
+
+  Context 'When owner diagnostics are unavailable or foreign' {
+    BeforeDiscovery {
+      $ownerCases = @(
+        @{
+          Name = 'missing'
+          Content = $null
+          Expected = 'owner information unavailable'
+        },
+        @{
+          Name = 'malformed'
+          Content = '{'
+          Expected = 'owner information unavailable'
+        },
+        @{
+          Name = 'foreign'
+          Content = '{"command":"stop","processId":7,"host":"other-host"}'
+          Expected = 'command=stop; processId=7; host=other-host'
+        }
+      )
+    }
+
+    It 'Should retain safe guidance for <Name> evidence' -ForEach $ownerCases {
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
+        RepoRoot = $TestDrive
+        SubscriptionId = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+        ResourceGroup = $Name
+        VmName = 'target-vm'
+      }
+      $owner = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $snapshot `
+        -CommandName start
+      $script:ownedLocks += $owner
+      if ($null -eq $Content) {
+        Remove-Item -LiteralPath $owner.Path -Force
+      } else {
+        Set-Content -LiteralPath $owner.Path -Value $Content
+      }
+
+      {
+        $null = Enter-AzureDevLifecycleLock `
+          -ConfigurationSnapshot $snapshot `
+          -CommandName stop `
+          -TimeoutSeconds 0
+      } | Should-Throw -ExceptionMessage "*$Expected*"
+    }
+  }
+
+  Context 'When owner-record writing fails' {
+    BeforeEach {
+      $script:writeCurrentOwnerBeforeFailure = $false
+      Mock Write-AzureDevLifecycleLockRecord {
+        if ($script:writeCurrentOwnerBeforeFailure) {
+          [System.IO.File]::WriteAllText(
+            $Path,
+            ($Record | ConvertTo-Json -Compress)
+          )
+        }
+        throw 'record write failed'
+      }
+    }
+
+    It 'Should release the mutex and preserve unrelated stale diagnostics' {
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
+        RepoRoot = $TestDrive
+        SubscriptionId = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+        ResourceGroup = 'target-rg'
+        VmName = 'target-vm'
+      }
+      $identity = InModuleScope `
+        -Parameters @{ Snapshot = $snapshot } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Get-AzureDevLifecycleLockIdentity `
+            -ConfigurationSnapshot $Snapshot
+        }
+      $null = [System.IO.Directory]::CreateDirectory(
+        (Split-Path -Parent $identity.Path)
+      )
+      Set-Content `
+        -LiteralPath $identity.Path `
+        -Value '{"ownerId":"prior-owner"}'
+
+      {
+        $null = Enter-AzureDevLifecycleLock `
+          -ConfigurationSnapshot $snapshot `
+          -CommandName start
+      } | Should-Throw -ExceptionMessage '*record write failed*'
+      $record = Get-Content -LiteralPath $identity.Path -Raw | ConvertFrom-Json
+      $mutexAvailable = InModuleScope `
+        -Parameters @{ MutexName = $identity.MutexName } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          $probe = [System.Threading.Mutex]::new($false, $MutexName)
+          try {
+            $owned = $probe.WaitOne(0)
+            if ($owned) {
+              $probe.ReleaseMutex()
+            }
+            $owned
+          } finally {
+            $probe.Dispose()
+          }
+        }
+
+      $record.ownerId | Should-Be 'prior-owner'
+      $mutexAvailable | Should-BeTrue
+    }
+
+    It 'Should remove its partial current-owner diagnostics' {
+      $script:writeCurrentOwnerBeforeFailure = $true
+      $snapshot = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          RepoRoot = $TestDrive
+          SubscriptionId = '12121212-1212-1212-1212-121212121212'
+          ResourceGroup = 'target-rg'
+          VmName = 'target-vm'
+        }
+
+      {
+        $null = Enter-AzureDevLifecycleLock `
+          -ConfigurationSnapshot $snapshot `
+          -CommandName start
+      } | Should-Throw -ExceptionMessage '*record write failed*'
+      $identity = InModuleScope `
+        -Parameters @{ Snapshot = $snapshot } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Get-AzureDevLifecycleLockIdentity `
+            -ConfigurationSnapshot $Snapshot
+        }
+
+      (Test-Path -LiteralPath $identity.Path) | Should-BeFalse
+    }
+  }
+
+  Context 'When owner-record writing is interrupted' {
+    BeforeEach {
+      Mock Write-AzureDevLifecycleLockRecord {
+        [System.IO.File]::WriteAllText(
+          $Path,
+          ($Record | ConvertTo-Json -Compress)
+        )
+        throw [System.OperationCanceledException]::new('interrupted')
+      }
+    }
+
+    It 'Should release the acquired mutex without leaving diagnostics' {
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
+        RepoRoot = $TestDrive
+        SubscriptionId = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+        ResourceGroup = 'target-rg'
+        VmName = 'target-vm'
+      }
+
+      {
+        $null = Enter-AzureDevLifecycleLock `
+          -ConfigurationSnapshot $snapshot `
+          -CommandName start
+      } | Should-Throw -ExceptionMessage '*interrupted*'
+      $identity = InModuleScope `
+        -Parameters @{ Snapshot = $snapshot } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Get-AzureDevLifecycleLockIdentity `
+            -ConfigurationSnapshot $Snapshot
+        }
+
+      (Test-Path -LiteralPath $identity.Path) | Should-BeFalse
     }
   }
 }

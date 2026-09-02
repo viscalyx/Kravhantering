@@ -14,21 +14,34 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
     ) -Force -ErrorAction Stop
   }
 
+  BeforeEach {
+    $script:ownedLocks = @()
+    $script:snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
+      RepoRoot = $TestDrive
+      SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      ResourceGroup = 'target-rg'
+      VmName = 'target-vm'
+    }
+  }
+
+  AfterEach {
+    foreach ($ownedLock in $script:ownedLocks) {
+      if (-not $ownedLock.Released) {
+        $null = Exit-AzureDevLifecycleLock -Lock $ownedLock
+      }
+    }
+  }
+
   AfterAll {
     Get-Module $script:moduleName -All | Remove-Module -Force
   }
 
   Context 'When the current invocation owns the lock' {
     It 'Should remove its record and make a repeated release harmless' {
-      $snapshot = [pscustomobject]@{
-        RepoRoot = $TestDrive
-        SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-        ResourceGroup = 'target-rg'
-        VmName = 'target-vm'
-      }
       $lock = Enter-AzureDevLifecycleLock `
-        -ConfigurationSnapshot $snapshot `
+        -ConfigurationSnapshot $script:snapshot `
         -CommandName start
+      $script:ownedLocks += $lock
 
       $released = Exit-AzureDevLifecycleLock -Lock $lock
       $releasedAgain = Exit-AzureDevLifecycleLock -Lock $lock
@@ -40,22 +53,17 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
   }
 
   Context 'When a different invocation is represented by the lease' {
-    It 'Should preserve the owned lock record' {
-      $snapshot = [pscustomobject]@{
-        RepoRoot = $TestDrive
-        SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-        ResourceGroup = 'target-rg'
-        VmName = 'target-vm'
-      }
+    It 'Should preserve the owned lock record and mutex' {
       $owner = Enter-AzureDevLifecycleLock `
-        -ConfigurationSnapshot $snapshot `
-        -CommandName start `
-        -OwnerId 'actual-owner'
-      $nonOwner = [pscustomobject]@{
+        -ConfigurationSnapshot $script:snapshot `
+        -CommandName start
+      $script:ownedLocks += $owner
+      $nonOwner = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         PSTypeName = 'AzureDev.LifecycleLockLease'
         Path = $owner.Path
+        MutexName = $owner.MutexName
         OwnerId = 'different-owner'
-        Stream = $null
+        Mutex = $owner.Mutex
         Released = $false
       }
 
@@ -63,34 +71,66 @@ Describe 'Exit-AzureDevLifecycleLock' -Tag 'Unit' {
 
       $released | Should-BeFalse
       (Test-Path -LiteralPath $owner.Path -PathType Leaf) | Should-BeTrue
-
-      $null = Exit-AzureDevLifecycleLock -Lock $owner
+      $owner.Released | Should-BeFalse
     }
   }
 
-  Context 'When the path is replaced before its old owner releases' {
-    It 'Should preserve the replacement owner record' {
-      $snapshot = [pscustomobject]@{
+  Context 'When owner diagnostics no longer prove ownership' {
+    BeforeDiscovery {
+      $releaseCases = @(
+        @{ Name = 'missing'; Content = $null },
+        @{ Name = 'malformed'; Content = '{' },
+        @{ Name = 'blank'; Content = '{"ownerId":""}' },
+        @{ Name = 'replacement'; Content = '{"ownerId":"replacement"}' }
+      )
+    }
+
+    It 'Should preserve <Name> diagnostics while releasing the mutex' `
+      -ForEach $releaseCases {
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         RepoRoot = $TestDrive
-        SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-        ResourceGroup = 'target-rg'
+        SubscriptionId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+        ResourceGroup = $Name
         VmName = 'target-vm'
       }
-      $oldOwner = Enter-AzureDevLifecycleLock `
+      $owner = Enter-AzureDevLifecycleLock `
         -ConfigurationSnapshot $snapshot `
-        -CommandName start `
-        -OwnerId 'old-owner'
-      [System.IO.File]::Delete($oldOwner.Path)
-      Set-Content `
-        -LiteralPath $oldOwner.Path `
-        -Value '{"ownerId":"replacement-owner"}'
+        -CommandName stop
+      $script:ownedLocks += $owner
+      if ($null -eq $Content) {
+        Remove-Item -LiteralPath $owner.Path -Force
+      } else {
+        Set-Content -LiteralPath $owner.Path -Value $Content
+      }
 
-      $released = Exit-AzureDevLifecycleLock -Lock $oldOwner
-      $replacement = Get-Content -LiteralPath $oldOwner.Path -Raw |
-        ConvertFrom-Json
+      $released = Exit-AzureDevLifecycleLock -Lock $owner
 
       $released | Should-BeFalse
-      $replacement.ownerId | Should-Be 'replacement-owner'
+      $owner.Released | Should-BeTrue
+      if ($null -ne $Content) {
+        (Get-Content -LiteralPath $owner.Path -Raw) |
+          Should-MatchString ([regex]::Escape($Content))
+      }
+    }
+  }
+
+  Context 'When the lease omits mutex ownership' {
+    It 'Should leave the current invocation untouched' {
+      $owner = Enter-AzureDevLifecycleLock `
+        -ConfigurationSnapshot $script:snapshot `
+        -CommandName start
+      $script:ownedLocks += $owner
+      $malformedLease = New-Object -TypeName System.Management.Automation.PSObject -Property @{
+        Path = $owner.Path
+        OwnerId = $owner.OwnerId
+        Released = $false
+      }
+
+      $released = Exit-AzureDevLifecycleLock -Lock $malformedLease
+
+      $released | Should-BeFalse
+      $owner.Released | Should-BeFalse
+      (Test-Path -LiteralPath $owner.Path) | Should-BeTrue
     }
   }
 }

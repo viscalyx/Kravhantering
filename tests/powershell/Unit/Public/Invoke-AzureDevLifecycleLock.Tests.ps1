@@ -14,23 +14,32 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
     ) -Force -ErrorAction Stop
   }
 
-  AfterAll {
-    Get-Module $script:moduleName -All | Remove-Module -Force
-  }
-
   BeforeEach {
-    $script:snapshot = [pscustomobject]@{
+    $script:snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
       RepoRoot = $TestDrive
       SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
       ResourceGroup = 'target-rg'
       VmName = 'target-vm'
     }
+    $script:observedLockPaths = @()
+  }
+
+  AfterEach {
+    foreach ($observedPath in $script:observedLockPaths) {
+      Remove-Item `
+        -LiteralPath $observedPath `
+        -Force `
+        -ErrorAction SilentlyContinue
+    }
+  }
+
+  AfterAll {
+    Get-Module $script:moduleName -All | Remove-Module -Force
   }
 
   Context 'When work ends with a terminating interruption' {
     It 'Should release the owned lock through finally without compensation' {
       $script:mutationCount = 0
-      $script:lockPath = $null
 
       {
         $null = Invoke-AzureDevLifecycleLock `
@@ -38,22 +47,20 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
           -CommandName start `
           -ScriptBlock {
             param($Lock, $ConfigurationSnapshot)
-            $script:lockPath = $Lock.Path
+            $script:observedLockPaths += $Lock.Path
             $script:mutationCount++
-            throw [System.OperationCanceledException]::new(
-              'interrupted'
-            )
+            throw [System.OperationCanceledException]::new('interrupted')
           }
       } | Should-Throw -ExceptionMessage '*interrupted*'
 
       $script:mutationCount | Should-Be 1
-      (Test-Path -LiteralPath $script:lockPath) | Should-BeFalse
+      (Test-Path -LiteralPath $script:observedLockPaths[0]) |
+        Should-BeFalse
     }
   }
 
   Context 'When polling separates two decisive windows' {
     It 'Should reacquire the same target lock with the unchanged snapshot' {
-      $script:observedPaths = @()
       $script:observedSnapshots = @()
 
       $first = Invoke-AzureDevLifecycleLock `
@@ -61,29 +68,31 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
         -CommandName start `
         -ScriptBlock {
           param($Lock, $ConfigurationSnapshot)
-          $script:observedPaths += $Lock.Path
+          $script:observedLockPaths += $Lock.Path
           $script:observedSnapshots += $ConfigurationSnapshot
           'poll-outside-lock'
         }
-      (Test-Path -LiteralPath $script:observedPaths[0]) | Should-BeFalse
+      (Test-Path -LiteralPath $script:observedLockPaths[0]) | Should-BeFalse
       $second = Invoke-AzureDevLifecycleLock `
         -ConfigurationSnapshot $script:snapshot `
         -CommandName start `
         -ScriptBlock {
           param($Lock, $ConfigurationSnapshot)
-          $script:observedPaths += $Lock.Path
+          $script:observedLockPaths += $Lock.Path
           $script:observedSnapshots += $ConfigurationSnapshot
           'later-mutation-decision'
         }
 
       $first | Should-Be 'poll-outside-lock'
       $second | Should-Be 'later-mutation-decision'
-      $script:observedPaths[1] | Should-Be $script:observedPaths[0]
-      [object]::ReferenceEquals(
+      $script:observedLockPaths[1] |
+        Should-Be $script:observedLockPaths[0]
+      [System.Object]::ReferenceEquals(
         $script:observedSnapshots[0],
         $script:observedSnapshots[1]
       ) | Should-BeTrue
-      (Test-Path -LiteralPath $script:observedPaths[1]) | Should-BeFalse
+      (Test-Path -LiteralPath $script:observedLockPaths[1]) |
+        Should-BeFalse
     }
   }
 }

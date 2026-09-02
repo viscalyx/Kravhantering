@@ -2,7 +2,7 @@
 
 Set-StrictMode -Version Latest
 
-Describe 'Get-AzureDevLifecycleLockPath' -Tag 'Unit' {
+Describe 'Get-AzureDevLifecycleLockIdentity' -Tag 'Unit' {
   BeforeAll {
     $script:moduleName = 'AzureDev.LifecycleLock'
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
@@ -22,22 +22,27 @@ Describe 'Get-AzureDevLifecycleLockPath' -Tag 'Unit' {
   }
 
   Context 'When the immutable snapshot contains the target' {
-    It 'Should derive a canonical checkout-local hash path' {
-      $snapshot = [pscustomobject]@{
+    It 'Should derive portable hash identities for the target and checkout' {
+      $snapshot = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         RepoRoot = $TestDrive
         SubscriptionId = 'AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA'
         ResourceGroup = 'Target-RG'
         VmName = 'Target-VM'
       }
 
-      $path = InModuleScope -Parameters @{ Snapshot = $snapshot } -ScriptBlock {
-        Set-StrictMode -Version 1.0
-        Get-AzureDevLifecycleLockPath -ConfigurationSnapshot $Snapshot
-      }
+      $identity = InModuleScope `
+        -Parameters @{ Snapshot = $snapshot } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Get-AzureDevLifecycleLockIdentity `
+            -ConfigurationSnapshot $Snapshot
+        }
 
-      $path | Should-BeLikeString (
+      $identity.Path | Should-BeLikeString (
         (Join-Path $TestDrive '.azure/lifecycle-locks/lifecycle-*.lock')
       )
+      $identity.MutexName | Should-MatchString '^[0-9a-f]{64}$'
+      $identity.MutexName | Should-NotMatchString 'Target-RG|Target-VM'
     }
   }
 }
