@@ -157,7 +157,8 @@ contention, two-minute Azure calls, and separate ten-minute stable-stop and
 running deadlines. Tests replace both timing seams and never wait on wall-clock
 time.
 
-Lifecycle failures use one `ErrorRecord` with a stable phase. A versioned,
+Lifecycle failures use one `ErrorRecord` with a stable phase and canonical
+command, VM, state, action, and mutation-acceptance facts. A versioned,
 self-identifying lifecycle record serializes only its allowlisted fields. State
 and action are JSON `null` when a failure occurs before either fact exists.
 Credentials, tokens, native-command output, and properties attached after
@@ -169,7 +170,9 @@ uses `ShouldProcess`, so preview writes no record and returns no lifecycle
 result. Real completion appends one daily JSONL record. Directory or append
 failure emits a warning with explicit continue behavior, even when the caller
 uses terminating warning preferences, and cannot replace the primary result or
-terminating lifecycle error.
+terminating lifecycle error. Before writing, completion correlates the record's
+command, VM, terminal outcome or failure phase, state, action, and mutation
+acceptance with the primary result or failure.
 
 `setup -WhatIf` must remain read-only. It may inspect local tools, Azure login,
 subscription visibility, SKU availability, resource-group tags, SSH CIDR, and

@@ -116,16 +116,17 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
         )
         $failure = New-AzureDevLifecycleErrorRecord `
           -Phase $FailurePhase `
-          -Message 'Primary lifecycle error.'
+          -Message 'Primary lifecycle error.' `
+          -Command start `
+          -VmName 'krav-dev-vm' `
+          -ObservedState starting `
+          -Action joined-start `
+          -MutationAccepted $true
 
         Set-StrictMode -Version 1.0
         $record = New-AzureDevLifecycleLogRecord `
           -Configuration $configuration `
-          -Command start `
           -Failure $failure `
-          -ObservedState starting `
-          -Action joined-start `
-          -MutationAccepted $true `
           -Timestamp ([System.DateTimeOffset]::Parse('2026-09-02T18:30:00Z')) `
           -ElapsedMilliseconds 600000
 
@@ -151,14 +152,14 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
         )
         $failure = New-AzureDevLifecycleErrorRecord `
           -Phase $FailurePhase `
-          -Message 'Lifecycle failed before state observation.'
+          -Message 'Lifecycle failed before state observation.' `
+          -Command start `
+          -VmName 'krav-dev-vm'
 
         Set-StrictMode -Version 1.0
         $record = New-AzureDevLifecycleLogRecord `
           -Configuration $configuration `
-          -Command start `
           -Failure $failure `
-          -MutationAccepted $false `
           -ElapsedMilliseconds 25
         $parsed = ConvertTo-AzureDevLifecycleLogJson -Record $record |
           ConvertFrom-Json
@@ -167,6 +168,39 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
         $null -eq $record.action | Should-BeTrue
         $null -eq $parsed.observedState | Should-BeTrue
         $null -eq $parsed.action | Should-BeTrue
+      }
+    }
+
+    It 'Should preserve canonical discriminators from an uppercase failure input' {
+      InModuleScope -ScriptBlock {
+        $configuration = [System.Management.Automation.PSObject]@{
+          SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+          ResourceGroup = 'krav-dev-rg'
+          VmName = 'Krav-Dev-VM'
+        }
+        $configuration.PSObject.TypeNames.Insert(
+          0,
+          'AzureDev.LifecycleConfigurationSnapshot'
+        )
+        $failure = New-AzureDevLifecycleErrorRecord `
+          -Phase RUNNING-WAIT `
+          -Message 'Lifecycle failed.' `
+          -Command START `
+          -VmName 'Krav-Dev-VM' `
+          -ObservedState STARTING `
+          -Action JOINED-START `
+          -MutationAccepted $false
+
+        Set-StrictMode -Version 1.0
+        $record = New-AzureDevLifecycleLogRecord `
+          -Configuration $configuration `
+          -Failure $failure `
+          -ElapsedMilliseconds 10
+
+        $record.command | Should-Be 'start'
+        $record.failurePhase | Should-Be 'running-wait'
+        $record.observedState | Should-Be 'starting'
+        $record.action | Should-Be 'joined-start'
       }
     }
   }
@@ -275,9 +309,7 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
           Set-StrictMode -Version 1.0
           $null = New-AzureDevLifecycleLogRecord `
             -Configuration $configuration `
-            -Command start `
             -Failure $failure `
-            -MutationAccepted $false `
             -ElapsedMilliseconds 1
         } | Should-Throw -ExceptionMessage '*lifecycle failure*'
       }
@@ -305,9 +337,7 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
           Set-StrictMode -Version 1.0
           $null = New-AzureDevLifecycleLogRecord `
             -Configuration $configuration `
-            -Command start `
             -Failure $failure `
-            -MutationAccepted $false `
             -ElapsedMilliseconds 1
         } | Should-Throw -ExceptionMessage '*lifecycle failure*'
       }

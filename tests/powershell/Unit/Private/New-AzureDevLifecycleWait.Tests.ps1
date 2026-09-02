@@ -61,4 +61,29 @@ Describe 'New-AzureDevLifecycleWait' -Tag 'Unit' {
       }
     }
   }
+
+  Context 'When wait discriminators use noncanonical casing' {
+    It 'Should normalize command, phase, and observed state to lowercase' {
+      InModuleScope -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        $timing = New-AzureDevLifecycleTiming `
+          -GetMonotonicMilliseconds { return [System.Int64]0 } `
+          -DelayMilliseconds { param([System.Int64]$Milliseconds) }
+
+        Set-StrictMode -Version 1.0
+        $wait = New-AzureDevLifecycleWait `
+          -Timing $timing `
+          -Command START `
+          -VmName 'Krav-Dev-VM' `
+          -Phase RUNNING-WAIT `
+          -DeadlineMilliseconds 600000 `
+          -ObservedState STARTING
+
+        $wait.Command | Should-Be 'start'
+        $wait.VmName | Should-Be 'Krav-Dev-VM'
+        $wait.Phase | Should-Be 'running-wait'
+        $wait.ObservedState | Should-Be 'starting'
+      }
+    }
+  }
 }

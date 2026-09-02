@@ -46,6 +46,10 @@ function New-AzureDevLifecycleResult {
     [string]$Action
   )
 
+  $Command = $Command.ToLowerInvariant()
+  $Result = $Result.ToLowerInvariant()
+  $ObservedState = $ObservedState.ToLowerInvariant()
+  $Action = $Action.ToLowerInvariant()
   $permittedOutcomes = @{
     start = @(
       'running|running|joined-start',
@@ -142,6 +146,15 @@ function Write-AzureDevLifecycleProgress {
     [long]$ElapsedMilliseconds = 0
   )
 
+  $Event = $Event.ToLowerInvariant()
+  $Command = $Command.ToLowerInvariant()
+  $Phase = $Phase.ToLowerInvariant()
+  if (-not [string]::IsNullOrEmpty($ObservedState)) {
+    $ObservedState = $ObservedState.ToLowerInvariant()
+  }
+  if (-not [string]::IsNullOrEmpty($Action)) {
+    $Action = $Action.ToLowerInvariant()
+  }
   $progressEvent = [pscustomobject][ordered]@{
     Event = $Event
     Command = $Command
@@ -233,6 +246,9 @@ function New-AzureDevLifecycleWait {
   if ($Timing.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleTiming') {
     throw 'Timing must be an Azure development-environment lifecycle timing contract.'
   }
+  $Command = $Command.ToLowerInvariant()
+  $Phase = $Phase.ToLowerInvariant()
+  $ObservedState = $ObservedState.ToLowerInvariant()
   $getMonotonicMilliseconds = $Timing.GetMonotonicMilliseconds
   $startedAt = [long](& $getMonotonicMilliseconds)
   $wait = [pscustomobject][ordered]@{
@@ -259,10 +275,18 @@ function Invoke-AzureDevLifecycleWaitPoll {
   if ($Wait.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleWait') {
     throw 'Wait must be an Azure development-environment lifecycle wait contract.'
   }
-  $delayMilliseconds = $Wait.Timing.DelayMilliseconds
-  $null = & $delayMilliseconds $Wait.Timing.PollIntervalMilliseconds
   $getMonotonicMilliseconds = $Wait.Timing.GetMonotonicMilliseconds
   $now = [long](& $getMonotonicMilliseconds)
+  if ($now -lt $Wait.DeadlineAt) {
+    $remainingMilliseconds = $Wait.DeadlineAt - $now
+    $currentDelayMilliseconds = [Math]::Min(
+      $Wait.Timing.PollIntervalMilliseconds,
+      $remainingMilliseconds
+    )
+    $delayMilliseconds = $Wait.Timing.DelayMilliseconds
+    $null = & $delayMilliseconds $currentDelayMilliseconds
+    $now = [long](& $getMonotonicMilliseconds)
+  }
   $elapsedMilliseconds = [Math]::Max([long]0, $now - $Wait.StartedAt)
   if ($now -ge $Wait.NextHeartbeatAt) {
     Write-AzureDevLifecycleProgress `
@@ -305,11 +329,70 @@ function New-AzureDevLifecycleErrorRecord {
 
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string]$Message
+    [string]$Message,
+
+    [AllowNull()]
+    [ValidateSet('start', 'stop')]
+    [string]$Command,
+
+    [AllowNull()]
+    [string]$VmName,
+
+    [AllowNull()]
+    [ValidateSet(
+      'starting',
+      'running',
+      'stopping',
+      'stopped-allocated',
+      'deallocating',
+      'deallocated',
+      'creating',
+      'unavailable',
+      'not-found',
+      'unrecognized'
+    )]
+    [string]$ObservedState,
+
+    [AllowNull()]
+    [ValidateSet(
+      'none',
+      'joined-start',
+      'start-requested',
+      'deallocation-requested'
+    )]
+    [string]$Action,
+
+    [bool]$MutationAccepted = $false
   )
 
+  $Phase = $Phase.ToLowerInvariant()
+  if ([string]::IsNullOrEmpty($Command)) {
+    $effectiveCommand = $null
+  } else {
+    $effectiveCommand = $Command.ToLowerInvariant()
+  }
+  if ([string]::IsNullOrEmpty($VmName)) {
+    $effectiveVmName = $null
+  } else {
+    $effectiveVmName = $VmName
+  }
+  if ([string]::IsNullOrEmpty($ObservedState)) {
+    $effectiveObservedState = $null
+  } else {
+    $effectiveObservedState = $ObservedState.ToLowerInvariant()
+  }
+  if ([string]::IsNullOrEmpty($Action)) {
+    $effectiveAction = $null
+  } else {
+    $effectiveAction = $Action.ToLowerInvariant()
+  }
   $failure = [pscustomobject][ordered]@{
     Phase = $Phase
+    Command = $effectiveCommand
+    VmName = $effectiveVmName
+    ObservedState = $effectiveObservedState
+    Action = $effectiveAction
+    MutationAccepted = $MutationAccepted
   }
   $failure.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleFailure')
   $exception = [System.InvalidOperationException]::new($Message)
@@ -331,39 +414,9 @@ function New-AzureDevLifecycleLogRecord {
     [pscustomobject]$LifecycleResult,
 
     [Parameter(Mandatory = $true, ParameterSetName = 'Failure')]
-    [ValidateSet('start', 'stop')]
-    [string]$Command,
-
-    [Parameter(Mandatory = $true, ParameterSetName = 'Failure')]
     [System.Management.Automation.ErrorRecord]$Failure,
 
-    [Parameter(ParameterSetName = 'Failure')]
-    [AllowNull()]
-    [ValidateSet(
-      'starting',
-      'running',
-      'stopping',
-      'stopped-allocated',
-      'deallocating',
-      'deallocated',
-      'creating',
-      'unavailable',
-      'not-found',
-      'unrecognized'
-    )]
-    [string]$ObservedState,
-
-    [Parameter(ParameterSetName = 'Failure')]
-    [AllowNull()]
-    [ValidateSet(
-      'none',
-      'joined-start',
-      'start-requested',
-      'deallocation-requested'
-    )]
-    [string]$Action,
-
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Success')]
     [bool]$MutationAccepted,
 
     [System.DateTimeOffset]$Timestamp = [System.DateTimeOffset]::UtcNow,
@@ -386,11 +439,11 @@ function New-AzureDevLifecycleLogRecord {
     if ($LifecycleResult.VmName -cne $Configuration.VmName) {
       throw 'Lifecycle result and configuration snapshot target different VMs.'
     }
-    $effectiveCommand = $LifecycleResult.Command
-    $terminalResult = $LifecycleResult.Result
+    $effectiveCommand = $LifecycleResult.Command.ToLowerInvariant()
+    $terminalResult = $LifecycleResult.Result.ToLowerInvariant()
     $failurePhase = $null
-    $effectiveObservedState = $LifecycleResult.ObservedState
-    $effectiveAction = $LifecycleResult.Action
+    $effectiveObservedState = $LifecycleResult.ObservedState.ToLowerInvariant()
+    $effectiveAction = $LifecycleResult.Action.ToLowerInvariant()
     $expectedMutationAccepted = $effectiveAction -in @(
       'start-requested',
       'deallocation-requested'
@@ -406,21 +459,47 @@ function New-AzureDevLifecycleLogRecord {
     ) {
       throw 'Failure must be an Azure development-environment lifecycle failure.'
     }
-    $effectiveCommand = $Command
-    $terminalResult = $null
-    $failurePhase = $Failure.TargetObject.Phase
-    $effectiveObservedState = if (
-      $PSBoundParameters.ContainsKey('ObservedState')
+    $failureProperties = @(
+      'Phase',
+      'Command',
+      'VmName',
+      'ObservedState',
+      'Action',
+      'MutationAccepted'
+    )
+    $missingFailureProperties = @(
+      $failureProperties | Where-Object {
+        $_ -notin $Failure.TargetObject.PSObject.Properties.Name
+      }
+    )
+    if ($missingFailureProperties.Count -gt 0) {
+      throw 'Lifecycle failure contract is missing terminal diagnostic facts.'
+    }
+    if (
+      [string]::IsNullOrWhiteSpace($Failure.TargetObject.Command) -or
+      [string]::IsNullOrWhiteSpace($Failure.TargetObject.VmName)
     ) {
-      $ObservedState
-    } else {
-      $null
+      throw 'Lifecycle failure must identify its command and VM for logging.'
     }
-    $effectiveAction = if ($PSBoundParameters.ContainsKey('Action')) {
-      $Action
-    } else {
-      $null
+    if ($Failure.TargetObject.VmName -cne $Configuration.VmName) {
+      throw 'Lifecycle failure and configuration snapshot target different VMs.'
     }
+    $effectiveCommand = $Failure.TargetObject.Command.ToLowerInvariant()
+    $terminalResult = $null
+    $failurePhase = $Failure.TargetObject.Phase.ToLowerInvariant()
+    $effectiveObservedState = $Failure.TargetObject.ObservedState
+    $effectiveAction = $Failure.TargetObject.Action
+    if ([string]::IsNullOrEmpty($effectiveObservedState)) {
+      $effectiveObservedState = $null
+    } else {
+      $effectiveObservedState = $effectiveObservedState.ToLowerInvariant()
+    }
+    if ([string]::IsNullOrEmpty($effectiveAction)) {
+      $effectiveAction = $null
+    } else {
+      $effectiveAction = $effectiveAction.ToLowerInvariant()
+    }
+    $MutationAccepted = $Failure.TargetObject.MutationAccepted
   }
 
   $record = [pscustomobject][ordered]@{
@@ -548,19 +627,54 @@ function Complete-AzureDevLifecycleAttempt {
     if ($LifecycleResult.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleResult') {
       throw 'LifecycleResult must be an Azure development-environment lifecycle result.'
     }
+    $expectedMutationAccepted = $LifecycleResult.Action -in @(
+      'start-requested',
+      'deallocation-requested'
+    )
     if (
-      $Record.failurePhase -or
-      $Record.terminalResult -cne $LifecycleResult.Result
+      $null -ne $Record.failurePhase -or
+      $Record.terminalResult -cne $LifecycleResult.Result -or
+      $Record.command -cne $LifecycleResult.Command -or
+      $Record.vmName -cne $LifecycleResult.VmName -or
+      $Record.observedState -cne $LifecycleResult.ObservedState -or
+      $Record.action -cne $LifecycleResult.Action -or
+      $Record.mutationAccepted -ne $expectedMutationAccepted
     ) {
       throw 'The success record does not match the lifecycle result.'
     }
-  } elseif (
-    $null -eq $Failure.TargetObject -or
-    $Failure.TargetObject.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleFailure' -or
-    $Record.terminalResult -or
-    $Record.failurePhase -cne $Failure.TargetObject.Phase
-  ) {
-    throw 'The failure record does not match the lifecycle failure.'
+  } else {
+    $requiredFailureProperties = @(
+      'Phase',
+      'Command',
+      'VmName',
+      'ObservedState',
+      'Action',
+      'MutationAccepted'
+    )
+    $failureContractMalformed = (
+      $null -eq $Failure.TargetObject -or
+      $Failure.TargetObject.PSObject.TypeNames[0] -ne
+      'AzureDev.LifecycleFailure'
+    )
+    if (-not $failureContractMalformed) {
+      $failureContractMalformed = @(
+        $requiredFailureProperties | Where-Object {
+          $_ -notin $Failure.TargetObject.PSObject.Properties.Name
+        }
+      ).Count -gt 0
+    }
+    if (
+      $failureContractMalformed -or
+      $null -ne $Record.terminalResult -or
+      $Record.failurePhase -cne $Failure.TargetObject.Phase -or
+      $Record.command -cne $Failure.TargetObject.Command -or
+      $Record.vmName -cne $Failure.TargetObject.VmName -or
+      $Record.observedState -cne $Failure.TargetObject.ObservedState -or
+      $Record.action -cne $Failure.TargetObject.Action -or
+      $Record.mutationAccepted -ne $Failure.TargetObject.MutationAccepted
+    ) {
+      throw 'The failure record does not match the lifecycle failure.'
+    }
   }
 
   if (

@@ -46,6 +46,14 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
         -VmName 'krav-dev-vm' `
         -ObservedState running `
         -Action joined-start
+      $failure = New-AzureDevLifecycleErrorRecord `
+        -Phase running-wait `
+        -Message 'The VM did not reach running before the deadline.' `
+        -Command start `
+        -VmName 'krav-dev-vm' `
+        -ObservedState starting `
+        -Action joined-start `
+        -MutationAccepted $false
       return [System.Management.Automation.PSObject]@{
         Result = $result
         SuccessRecord = New-AzureDevLifecycleLogRecord `
@@ -53,18 +61,10 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
           -LifecycleResult $result `
           -MutationAccepted $false `
           -ElapsedMilliseconds 30000
-        Failure = New-AzureDevLifecycleErrorRecord `
-          -Phase running-wait `
-          -Message 'The VM did not reach running before the deadline.'
+        Failure = $failure
         FailureRecord = New-AzureDevLifecycleLogRecord `
           -Configuration $configuration `
-          -Command start `
-          -Failure (New-AzureDevLifecycleErrorRecord `
-            -Phase running-wait `
-            -Message 'The VM did not reach running before the deadline.') `
-          -ObservedState starting `
-          -Action joined-start `
-          -MutationAccepted $false `
+          -Failure $failure `
           -ElapsedMilliseconds 600000
       }
     }
@@ -186,6 +186,25 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
   }
 
   Context 'When the completion contracts disagree' {
+    BeforeDiscovery {
+      $successMismatchCases = @(
+        @{ Field = 'terminalResult'; Value = 'already-running' },
+        @{ Field = 'command'; Value = 'stop' },
+        @{ Field = 'vmName'; Value = 'other-vm' },
+        @{ Field = 'observedState'; Value = 'starting' },
+        @{ Field = 'action'; Value = 'start-requested' },
+        @{ Field = 'mutationAccepted'; Value = $true }
+      )
+      $failureMismatchCases = @(
+        @{ Field = 'failurePhase'; Value = 'outside-interference' },
+        @{ Field = 'command'; Value = 'stop' },
+        @{ Field = 'vmName'; Value = 'other-vm' },
+        @{ Field = 'observedState'; Value = 'running' },
+        @{ Field = 'action'; Value = 'start-requested' },
+        @{ Field = 'mutationAccepted'; Value = $true }
+      )
+    }
+
     It 'Should reject an untyped record' {
       InModuleScope -Parameters @{
         Contracts = $script:completionContracts
@@ -218,43 +237,42 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
       }
     }
 
-    It 'Should reject a success record for another terminal result' {
+    It 'Should reject a success record with mismatched <Field>' `
+      -ForEach $successMismatchCases {
       InModuleScope -Parameters @{
         Contracts = $script:completionContracts
         RepositoryRoot = $TestDrive
+        Field = $Field
+        Value = $Value
       } -ScriptBlock {
-        $otherResult = New-AzureDevLifecycleResult `
-          -Command start `
-          -Result already-running `
-          -VmName 'krav-dev-vm' `
-          -ObservedState running `
-          -Action none
+        $Contracts.SuccessRecord.$Field = $Value
 
         {
           Set-StrictMode -Version 1.0
           Complete-AzureDevLifecycleAttempt `
             -RepositoryRoot $RepositoryRoot `
             -Record $Contracts.SuccessRecord `
-            -LifecycleResult $otherResult
+            -LifecycleResult $Contracts.Result
         } | Should-Throw -ExceptionMessage '*does not match*'
       }
     }
 
-    It 'Should reject a failure record for another phase' {
+    It 'Should reject a failure record with mismatched <Field>' `
+      -ForEach $failureMismatchCases {
       InModuleScope -Parameters @{
         Contracts = $script:completionContracts
         RepositoryRoot = $TestDrive
+        Field = $Field
+        Value = $Value
       } -ScriptBlock {
-        $otherFailure = New-AzureDevLifecycleErrorRecord `
-          -Phase outside-interference `
-          -Message 'Another actor changed the VM state.'
+        $Contracts.FailureRecord.$Field = $Value
 
         {
           Set-StrictMode -Version 1.0
           Complete-AzureDevLifecycleAttempt `
             -RepositoryRoot $RepositoryRoot `
             -Record $Contracts.FailureRecord `
-            -Failure $otherFailure
+            -Failure $Contracts.Failure
         } | Should-Throw -ExceptionMessage '*does not match*'
       }
     }

@@ -57,7 +57,41 @@ Describe 'New-AzureDevLifecycleErrorRecord' -Tag 'Unit' {
           Should-Be 'AzureDev.LifecycleFailure'
         $errorRecord.TargetObject.Phase | Should-Be $FailurePhase
         @($errorRecord.TargetObject.PSObject.Properties.Name) |
-          Should-BeCollection @('Phase')
+          Should-BeCollection @(
+            'Phase',
+            'Command',
+            'VmName',
+            'ObservedState',
+            'Action',
+            'MutationAccepted'
+          )
+        $errorRecord.TargetObject.Command | Should-BeNull
+        $errorRecord.TargetObject.VmName | Should-BeNull
+        $errorRecord.TargetObject.ObservedState | Should-BeNull
+        $errorRecord.TargetObject.Action | Should-BeNull
+        $errorRecord.TargetObject.MutationAccepted | Should-BeFalse
+      }
+    }
+  }
+
+  Context 'When contract values use noncanonical casing' {
+    It 'Should normalize every lifecycle discriminator to lowercase' {
+      InModuleScope -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        $errorRecord = New-AzureDevLifecycleErrorRecord `
+          -Phase RUNNING-WAIT `
+          -Message 'Lifecycle failed.' `
+          -Command START `
+          -VmName 'Krav-Dev-VM' `
+          -ObservedState STARTING `
+          -Action JOINED-START `
+          -MutationAccepted $false
+
+        $errorRecord.TargetObject.Phase | Should-Be 'running-wait'
+        $errorRecord.TargetObject.Command | Should-Be 'start'
+        $errorRecord.TargetObject.VmName | Should-Be 'Krav-Dev-VM'
+        $errorRecord.TargetObject.ObservedState | Should-Be 'starting'
+        $errorRecord.TargetObject.Action | Should-Be 'joined-start'
       }
     }
   }

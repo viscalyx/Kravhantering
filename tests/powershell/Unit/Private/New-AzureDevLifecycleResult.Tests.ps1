@@ -125,4 +125,24 @@ Describe 'New-AzureDevLifecycleResult' -Tag 'Unit' {
       }
     }
   }
+
+  Context 'When discriminators use noncanonical casing' {
+    It 'Should normalize command, result, state, and action to lowercase' {
+      InModuleScope -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        $result = New-AzureDevLifecycleResult `
+          -Command START `
+          -Result RUNNING `
+          -VmName 'Krav-Dev-VM' `
+          -ObservedState RUNNING `
+          -Action JOINED-START
+
+        $result.Command | Should-Be 'start'
+        $result.Result | Should-Be 'running'
+        $result.VmName | Should-Be 'Krav-Dev-VM'
+        $result.ObservedState | Should-Be 'running'
+        $result.Action | Should-Be 'joined-start'
+      }
+    }
+  }
 }

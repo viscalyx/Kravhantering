@@ -69,4 +69,32 @@ Describe 'Write-AzureDevLifecycleProgress' -Tag 'Unit' {
       }
     }
   }
+
+  Context 'When progress discriminators use noncanonical casing' {
+    It 'Should emit canonical lowercase information data and tags' {
+      InModuleScope -ScriptBlock {
+        $information = @()
+
+        Set-StrictMode -Version 1.0
+        Write-AzureDevLifecycleProgress `
+          -Event STATE-CHANGE `
+          -Command START `
+          -VmName 'Krav-Dev-VM' `
+          -Phase RUNNING-WAIT `
+          -ObservedState RUNNING `
+          -Action JOINED-START `
+          -InformationVariable information
+
+        $information[0].Tags |
+          Should-BeCollection @('AzureDevLifecycleProgress', 'state-change')
+        $eventData = $information[0].MessageData
+        $eventData.Event | Should-Be 'state-change'
+        $eventData.Command | Should-Be 'start'
+        $eventData.VmName | Should-Be 'Krav-Dev-VM'
+        $eventData.Phase | Should-Be 'running-wait'
+        $eventData.ObservedState | Should-Be 'running'
+        $eventData.Action | Should-Be 'joined-start'
+      }
+    }
+  }
 }

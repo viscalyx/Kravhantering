@@ -26,6 +26,8 @@ Describe 'Invoke-AzureDevLifecycleWaitPoll' -Tag 'Unit' {
         Set-StrictMode -Version 1.0
         $script:virtualMilliseconds = [System.Int64]0
         $script:delays = [System.Collections.Generic.List[System.Int64]]::new()
+
+        Set-StrictMode -Version 1.0
         $timing = New-AzureDevLifecycleTiming `
           -GetMonotonicMilliseconds {
             return $script:virtualMilliseconds
@@ -35,6 +37,8 @@ Describe 'Invoke-AzureDevLifecycleWaitPoll' -Tag 'Unit' {
             $script:delays.Add($Milliseconds)
             $script:virtualMilliseconds += $Milliseconds
           }
+
+        Set-StrictMode -Version 1.0
         $wait = New-AzureDevLifecycleWait `
           -Timing $timing `
           -Command start `
@@ -96,6 +100,83 @@ Describe 'Invoke-AzureDevLifecycleWaitPoll' -Tag 'Unit' {
         $information[0].MessageData.ElapsedMilliseconds | Should-Be 65000
         $wait.NextHeartbeatAt | Should-Be 90000
         $poll.DeadlineExpired | Should-BeFalse
+      }
+    }
+  }
+
+  Context 'When the deadline is not aligned with the poll interval' {
+    It 'Should cap the final delay to the remaining monotonic time' {
+      InModuleScope -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        $script:virtualMilliseconds = [System.Int64]0
+        $script:delays = [System.Collections.Generic.List[System.Int64]]::new()
+
+        Set-StrictMode -Version 1.0
+        $timing = New-AzureDevLifecycleTiming `
+          -GetMonotonicMilliseconds {
+            return $script:virtualMilliseconds
+          } `
+          -DelayMilliseconds {
+            param([System.Int64]$Milliseconds)
+            $script:delays.Add($Milliseconds)
+            $script:virtualMilliseconds += $Milliseconds
+          }
+
+        Set-StrictMode -Version 1.0
+        $wait = New-AzureDevLifecycleWait `
+          -Timing $timing `
+          -Command start `
+          -VmName 'krav-dev-vm' `
+          -Phase running-wait `
+          -DeadlineMilliseconds 12001 `
+          -ObservedState starting
+
+        $polls = @(
+          1..3 | ForEach-Object {
+            Set-StrictMode -Version 1.0
+            Invoke-AzureDevLifecycleWaitPoll -Wait $wait
+          }
+        )
+
+        $script:delays | Should-BeCollection @(5000, 5000, 2001)
+        $script:virtualMilliseconds | Should-Be 12001
+        $polls[-1].ElapsedMilliseconds | Should-Be 12001
+        $polls[-1].DeadlineExpired | Should-BeTrue
+      }
+    }
+
+    It 'Should not delay when the monotonic deadline has already expired' {
+      InModuleScope -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        $script:virtualMilliseconds = [System.Int64]0
+        $script:delays = [System.Collections.Generic.List[System.Int64]]::new()
+
+        Set-StrictMode -Version 1.0
+        $timing = New-AzureDevLifecycleTiming `
+          -GetMonotonicMilliseconds {
+            return $script:virtualMilliseconds
+          } `
+          -DelayMilliseconds {
+            param([System.Int64]$Milliseconds)
+            $script:delays.Add($Milliseconds)
+          }
+
+        Set-StrictMode -Version 1.0
+        $wait = New-AzureDevLifecycleWait `
+          -Timing $timing `
+          -Command start `
+          -VmName 'krav-dev-vm' `
+          -Phase running-wait `
+          -DeadlineMilliseconds 4999 `
+          -ObservedState starting
+        $script:virtualMilliseconds = [System.Int64]5000
+
+        Set-StrictMode -Version 1.0
+        $poll = Invoke-AzureDevLifecycleWaitPoll -Wait $wait
+
+        $script:delays.Count | Should-Be 0
+        $poll.ElapsedMilliseconds | Should-Be 5000
+        $poll.DeadlineExpired | Should-BeTrue
       }
     }
   }
