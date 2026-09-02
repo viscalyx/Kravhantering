@@ -44,14 +44,19 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
 
   BeforeEach {
     $script:mockCall = 0
-    $script:mockProfile = [pscustomobject]@{
-      id = $script:subscriptionId.ToUpperInvariant()
-      tenantId = $script:tenantId.ToUpperInvariant()
-      user = [pscustomobject]@{
+    $mockProfileUser = New-Object `
+      -TypeName System.Management.Automation.PSObject `
+      -Property @{
         name = $script:clientId.ToUpperInvariant()
         type = 'servicePrincipal'
       }
-    }
+    $script:mockProfile = New-Object `
+      -TypeName System.Management.Automation.PSObject `
+      -Property @{
+        id = $script:subscriptionId.ToUpperInvariant()
+        tenantId = $script:tenantId.ToUpperInvariant()
+        user = $mockProfileUser
+      }
     Mock -CommandName Invoke-AzCli -MockWith {
       $script:mockCall++
       if ($Arguments[0] -eq 'account') {
@@ -286,14 +291,19 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
 
   Context 'When a matching user session has a stale token' {
     BeforeEach {
-      $script:mockProfile = [pscustomobject]@{
-        id = $script:subscriptionId
-        tenantId = '66666666-6666-6666-6666-666666666666'
-        user = [pscustomobject]@{
+      $mockProfileUser = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
           name = 'operator@example.test'
           type = 'user'
         }
-      }
+      $script:mockProfile = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          id = $script:subscriptionId
+          tenantId = '66666666-6666-6666-6666-666666666666'
+          user = $mockProfileUser
+        }
       Mock -CommandName Invoke-AzCli -MockWith {
         if (
           $Arguments[0] -eq 'account' -and
@@ -323,6 +333,19 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
   Context 'When repaired identity does not match the configured target' {
     BeforeEach {
       $script:mockProfile = $null
+      $mockRecheckedUser = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          name = '55555555-5555-5555-5555-555555555555'
+          type = 'servicePrincipal'
+        }
+      $script:mockRecheckedProfile = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          id = $script:subscriptionId
+          tenantId = $script:tenantId
+          user = $mockRecheckedUser
+        }
       Mock -CommandName Invoke-AzCli -MockWith {
         if ($Arguments[0] -eq 'version') {
           return '2.86.0'
@@ -330,14 +353,7 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
         if ($Arguments[0] -eq 'login') {
           return $null
         }
-        return [pscustomobject]@{
-          id = $script:subscriptionId
-          tenantId = $script:tenantId
-          user = [pscustomobject]@{
-            name = '55555555-5555-5555-5555-555555555555'
-            type = 'servicePrincipal'
-          }
-        }
+        return $script:mockRecheckedProfile
       }
     }
 
@@ -364,14 +380,19 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
 
   Context 'When a cached user session matches and has a usable token' {
     It 'Should reuse it without any login or subscription mutation' {
-      $script:mockProfile = [pscustomobject]@{
-        id = $script:subscriptionId.ToUpperInvariant()
-        tenantId = '66666666-6666-6666-6666-666666666666'
-        user = [pscustomobject]@{
+      $mockProfileUser = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
           name = 'operator@example.test'
           type = 'user'
         }
-      }
+      $script:mockProfile = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          id = $script:subscriptionId.ToUpperInvariant()
+          tenantId = '66666666-6666-6666-6666-666666666666'
+          user = $mockProfileUser
+        }
 
       $null = Connect-AzureDevLifecycleSession -Config $script:userConfig
 
