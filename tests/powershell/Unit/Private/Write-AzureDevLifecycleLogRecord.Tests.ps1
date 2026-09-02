@@ -100,11 +100,10 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
       Mock -CommandName Add-Content -MockWith {
         throw 'simulated diagnostic disk failure'
       }
-      Mock -CommandName Write-Warning
     }
 
-    It 'Should emit one warning and no success output' {
-      $success = InModuleScope -Parameters @{
+    It 'Should preserve warning-only output when caller warnings terminate' {
+      $output = InModuleScope -Parameters @{
         Record = $script:record
         RepositoryRoot = $TestDrive
       } -ScriptBlock {
@@ -112,20 +111,22 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
           Set-StrictMode -Version 1.0
           Write-AzureDevLifecycleLogRecord `
             -RepositoryRoot $RepositoryRoot `
-            -Record $Record
+            -Record $Record `
+            -WarningAction Stop 3>&1
         )
       }
 
-      $success.Count | Should-Be 0
       Should-Invoke -CommandName Add-Content -Exactly -Times 1 -Scope It
-      Should-Invoke `
-        -CommandName Write-Warning `
-        -Exactly `
-        -Times 1 `
-        -Scope It `
-        -ParameterFilter {
-          $Message -like '*lifecycle log record could not be written*'
+      @(
+        $output | Where-Object {
+          $_ -is [System.Management.Automation.WarningRecord]
         }
+      ).Count | Should-Be 1
+      @(
+        $output | Where-Object {
+          $_ -isnot [System.Management.Automation.WarningRecord]
+        }
+      ).Count | Should-Be 0
     }
   }
 
@@ -142,7 +143,8 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
           Set-StrictMode -Version 1.0
           Write-AzureDevLifecycleLogRecord `
             -RepositoryRoot $RepositoryRoot `
-            -Record $Record 3>&1
+            -Record $Record `
+            -WarningAction Stop 3>&1
         )
       }
 

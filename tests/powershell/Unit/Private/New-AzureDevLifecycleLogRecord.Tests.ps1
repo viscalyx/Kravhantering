@@ -197,6 +197,122 @@ Describe 'New-AzureDevLifecycleLogRecord' -Tag 'Unit' {
       }
     }
 
+    It 'Should reject an untyped lifecycle result' {
+      InModuleScope -ScriptBlock {
+        $configuration = [System.Management.Automation.PSObject]@{
+          SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+          ResourceGroup = 'krav-dev-rg'
+          VmName = 'krav-dev-vm'
+        }
+        $configuration.PSObject.TypeNames.Insert(
+          0,
+          'AzureDev.LifecycleConfigurationSnapshot'
+        )
+
+        {
+          Set-StrictMode -Version 1.0
+          $null = New-AzureDevLifecycleLogRecord `
+            -Configuration $configuration `
+            -LifecycleResult ([System.Management.Automation.PSObject]@{
+              Command = 'start'
+              Result = 'already-running'
+              VmName = 'krav-dev-vm'
+            }) `
+            -MutationAccepted $false `
+            -ElapsedMilliseconds 1
+        } | Should-Throw -ExceptionMessage '*lifecycle result*'
+      }
+    }
+
+    It 'Should reject a lifecycle result for another VM' {
+      InModuleScope -ScriptBlock {
+        $configuration = [System.Management.Automation.PSObject]@{
+          SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+          ResourceGroup = 'krav-dev-rg'
+          VmName = 'krav-dev-vm'
+        }
+        $configuration.PSObject.TypeNames.Insert(
+          0,
+          'AzureDev.LifecycleConfigurationSnapshot'
+        )
+        $result = New-AzureDevLifecycleResult `
+          -Command start `
+          -Result already-running `
+          -VmName 'other-vm' `
+          -ObservedState running `
+          -Action none
+
+        {
+          Set-StrictMode -Version 1.0
+          $null = New-AzureDevLifecycleLogRecord `
+            -Configuration $configuration `
+            -LifecycleResult $result `
+            -MutationAccepted $false `
+            -ElapsedMilliseconds 1
+        } | Should-Throw -ExceptionMessage '*different VMs*'
+      }
+    }
+
+    It 'Should reject an untyped lifecycle failure target' {
+      InModuleScope -ScriptBlock {
+        $configuration = [System.Management.Automation.PSObject]@{
+          SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+          ResourceGroup = 'krav-dev-rg'
+          VmName = 'krav-dev-vm'
+        }
+        $configuration.PSObject.TypeNames.Insert(
+          0,
+          'AzureDev.LifecycleConfigurationSnapshot'
+        )
+        $failure = [System.Management.Automation.ErrorRecord]::new(
+          [System.InvalidOperationException]::new('failure'),
+          'UntypedFailure',
+          [System.Management.Automation.ErrorCategory]::OperationStopped,
+          [System.Management.Automation.PSObject]@{ Phase = 'lock' }
+        )
+
+        {
+          Set-StrictMode -Version 1.0
+          $null = New-AzureDevLifecycleLogRecord `
+            -Configuration $configuration `
+            -Command start `
+            -Failure $failure `
+            -MutationAccepted $false `
+            -ElapsedMilliseconds 1
+        } | Should-Throw -ExceptionMessage '*lifecycle failure*'
+      }
+    }
+
+    It 'Should reject a lifecycle failure without a target contract' {
+      InModuleScope -ScriptBlock {
+        $configuration = [System.Management.Automation.PSObject]@{
+          SubscriptionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+          ResourceGroup = 'krav-dev-rg'
+          VmName = 'krav-dev-vm'
+        }
+        $configuration.PSObject.TypeNames.Insert(
+          0,
+          'AzureDev.LifecycleConfigurationSnapshot'
+        )
+        $failure = [System.Management.Automation.ErrorRecord]::new(
+          [System.InvalidOperationException]::new('failure'),
+          'MalformedFailure',
+          [System.Management.Automation.ErrorCategory]::OperationStopped,
+          $null
+        )
+
+        {
+          Set-StrictMode -Version 1.0
+          $null = New-AzureDevLifecycleLogRecord `
+            -Configuration $configuration `
+            -Command start `
+            -Failure $failure `
+            -MutationAccepted $false `
+            -ElapsedMilliseconds 1
+        } | Should-Throw -ExceptionMessage '*lifecycle failure*'
+      }
+    }
+
     It 'Should reject mutation acceptance that contradicts the result action' {
       InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0

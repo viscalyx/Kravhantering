@@ -512,15 +512,20 @@ function Write-AzureDevLifecycleLogRecord {
       -Encoding UTF8 `
       -ErrorAction Stop
   } catch {
-    Write-Warning (
-      'The Azure development-environment lifecycle log record could not be ' +
-      'written. The primary lifecycle outcome is unchanged.'
-    )
+    Write-Warning `
+      -Message (
+        'The Azure development-environment lifecycle log record could not be ' +
+        'written. The primary lifecycle outcome is unchanged.'
+      ) `
+      -WarningAction Continue
   }
 }
 
 function Complete-AzureDevLifecycleAttempt {
-  [CmdletBinding(DefaultParameterSetName = 'Success')]
+  [CmdletBinding(
+    DefaultParameterSetName = 'Success',
+    SupportsShouldProcess = $true
+  )]
   param(
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
@@ -550,6 +555,7 @@ function Complete-AzureDevLifecycleAttempt {
       throw 'The success record does not match the lifecycle result.'
     }
   } elseif (
+    $null -eq $Failure.TargetObject -or
     $Failure.TargetObject.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleFailure' -or
     $Record.terminalResult -or
     $Record.failurePhase -cne $Failure.TargetObject.Phase
@@ -557,15 +563,28 @@ function Complete-AzureDevLifecycleAttempt {
     throw 'The failure record does not match the lifecycle failure.'
   }
 
+  if (
+    -not $PSCmdlet.ShouldProcess(
+      "$($Record.command)/$($Record.vmName)",
+      'Write terminal lifecycle log record'
+    )
+  ) {
+    return
+  }
+
   try {
     Write-AzureDevLifecycleLogRecord `
       -RepositoryRoot $RepositoryRoot `
-      -Record $Record
+      -Record $Record `
+      -Confirm:$false `
+      -WarningAction Continue
   } catch {
-    Write-Warning (
-      'The Azure development-environment lifecycle log record could not be ' +
-      'written. The primary lifecycle outcome is unchanged.'
-    )
+    Write-Warning `
+      -Message (
+        'The Azure development-environment lifecycle log record could not be ' +
+        'written. The primary lifecycle outcome is unchanged.'
+      ) `
+      -WarningAction Continue
   }
   if ($PSCmdlet.ParameterSetName -eq 'Failure') {
     $PSCmdlet.ThrowTerminatingError($Failure)

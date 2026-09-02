@@ -53,6 +53,7 @@ Module responsibilities:
 | --- | --- |
 | `AzureDev.Config.psm1` | Strict dotenv parsing, defaults, precedence, config validation, and context creation. |
 | `AzureDev.Logging.psm1` | Local state, locks, JSONL logs, redaction, and native command execution helpers. |
+| `AzureDev.Lifecycle.psm1` | Typed lifecycle results, information-stream progress, monotonic timing, stable failures, and best-effort lifecycle records. |
 | `AzureDev.Azure.psm1` | Azure CLI calls, authentication checks, SKU and image lookup, resource-group ownership, deployment, power operations, CIDR updates, and tag-based deletion. |
 | `AzureDev.Ssh.psm1` | Public IPv4 detection, CIDR validation, SSH key generation, managed OpenSSH config blocks, Azure control-plane host-key authentication, SSH wait loop, and VS Code command formatting. |
 | `AzureDev.Bootstrap.psm1` | Uploads `bootstrap-host.sh`, Quadlet templates, and the selected Zsh profile with `scp`, then invokes bootstrap over SSH with port forwarding disabled. |
@@ -140,6 +141,35 @@ Every mutating function must be an advanced PowerShell function and must use
 `SupportsShouldProcess`. `-WhatIf` relies on `$WhatIfPreference`; do not
 special-case it by writing parallel dry-run code that diverges from the real
 path.
+
+### Lifecycle Contract Primitives
+
+`AzureDev.Lifecycle.psm1` owns private contracts that lifecycle orchestration
+uses without mixing automation output with human diagnostics. It exports no
+public command. A successful real attempt produces one
+`AzureDev.LifecycleResult` on the success stream with exactly `Command`,
+`Result`, `VmName`, `ObservedState`, and `Action`. Progress is a tagged
+`AzureDev.LifecycleProgressEvent` on the information stream.
+
+The timing contract uses monotonic milliseconds and an injectable delay. Its
+fixed values are five-second polling, 30-second heartbeats, 15-second lock
+contention, two-minute Azure calls, and separate ten-minute stable-stop and
+running deadlines. Tests replace both timing seams and never wait on wall-clock
+time.
+
+Lifecycle failures use one `ErrorRecord` with a stable phase. A versioned,
+self-identifying lifecycle record serializes only its allowlisted fields. State
+and action are JSON `null` when a failure occurs before either fact exists.
+Credentials, tokens, native-command output, and properties attached after
+record construction are not serialized.
+
+`Complete-AzureDevLifecycleAttempt` is the mutation boundary for the terminal
+record. Call it only after valid lifecycle configuration and lock release. It
+uses `ShouldProcess`, so preview writes no record and returns no lifecycle
+result. Real completion appends one daily JSONL record. Directory or append
+failure emits a warning with explicit continue behavior, even when the caller
+uses terminating warning preferences, and cannot replace the primary result or
+terminating lifecycle error.
 
 `setup -WhatIf` must remain read-only. It may inspect local tools, Azure login,
 subscription visibility, SKU availability, resource-group tags, SSH CIDR, and

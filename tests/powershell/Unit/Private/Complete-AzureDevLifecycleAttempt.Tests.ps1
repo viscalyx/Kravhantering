@@ -15,13 +15,13 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
       'InModuleScope:ModuleName' = $script:moduleName
       'Mock:ModuleName' = $script:moduleName
       'Should-Invoke:ModuleName' = $script:moduleName
+      'Should-NotInvoke:ModuleName' = $script:moduleName
     }
     Mock -CommandName Add-Content -MockWith {
       if ($script:lockHeld) {
         throw 'record attempted while the lifecycle lock was held'
       }
     }
-    Mock -CommandName Write-Warning
   }
 
   BeforeEach {
@@ -116,24 +116,32 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
   }
 
   Context 'When diagnostic persistence fails' {
-    It 'Should preserve the successful result and emit one warning' {
-      $result = InModuleScope -Parameters @{
+    It 'Should preserve success when caller warnings terminate' {
+      $output = InModuleScope -Parameters @{
         Contracts = $script:completionContracts
         RepositoryRoot = $TestDrive
       } -ScriptBlock {
-        Set-StrictMode -Version 1.0
-        Complete-AzureDevLifecycleAttempt `
-          -RepositoryRoot $RepositoryRoot `
-          -Record $Contracts.SuccessRecord `
-          -LifecycleResult $Contracts.Result
+        return @(
+          Set-StrictMode -Version 1.0
+          Complete-AzureDevLifecycleAttempt `
+            -RepositoryRoot $RepositoryRoot `
+            -Record $Contracts.SuccessRecord `
+            -LifecycleResult $Contracts.Result `
+            -WarningAction Stop 3>&1
+        )
       }
 
+      $result = @($output | Where-Object {
+          $_.PSObject.TypeNames[0] -eq 'AzureDev.LifecycleResult'
+        })
       @($result).Count | Should-Be 1
       $result.Result | Should-Be 'running'
-      Should-Invoke -CommandName Write-Warning -Exactly -Times 1 -Scope It
+      @($output | Where-Object {
+          $_ -is [System.Management.Automation.WarningRecord]
+        }).Count | Should-Be 1
     }
 
-    It 'Should preserve the primary error and emit one warning' {
+    It 'Should preserve the primary error when caller warnings terminate' {
       {
         InModuleScope -Parameters @{
           Contracts = $script:completionContracts
@@ -143,10 +151,37 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
           Complete-AzureDevLifecycleAttempt `
             -RepositoryRoot $RepositoryRoot `
             -Record $Contracts.FailureRecord `
-            -Failure $Contracts.Failure
+            -Failure $Contracts.Failure `
+            -WarningAction Stop
         }
       } | Should-Throw -ExceptionMessage '*did not reach running*'
-      Should-Invoke -CommandName Write-Warning -Exactly -Times 1 -Scope It
+    }
+  }
+
+  Context 'When completion is previewed' {
+    BeforeAll {
+      Mock -CommandName Write-AzureDevLifecycleLogRecord
+    }
+
+    It 'Should return no result and perform no lifecycle-log write' {
+      $result = InModuleScope -Parameters @{
+        Contracts = $script:completionContracts
+        RepositoryRoot = $TestDrive
+      } -ScriptBlock {
+        return @(
+          Set-StrictMode -Version 1.0
+          Complete-AzureDevLifecycleAttempt `
+            -RepositoryRoot $RepositoryRoot `
+            -Record $Contracts.SuccessRecord `
+            -LifecycleResult $Contracts.Result `
+            -WhatIf
+        )
+      }
+
+      $result.Count | Should-Be 0
+      Should-NotInvoke `
+        -CommandName Write-AzureDevLifecycleLogRecord `
+        -Scope It
     }
   }
 
@@ -223,6 +258,50 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
         } | Should-Throw -ExceptionMessage '*does not match*'
       }
     }
+
+    It 'Should reject an untyped failure target' {
+      InModuleScope -Parameters @{
+        Contracts = $script:completionContracts
+        RepositoryRoot = $TestDrive
+      } -ScriptBlock {
+        $failure = [System.Management.Automation.ErrorRecord]::new(
+          [System.InvalidOperationException]::new('failure'),
+          'UntypedFailure',
+          [System.Management.Automation.ErrorCategory]::OperationStopped,
+          [System.Management.Automation.PSObject]@{ Phase = 'running-wait' }
+        )
+
+        {
+          Set-StrictMode -Version 1.0
+          Complete-AzureDevLifecycleAttempt `
+            -RepositoryRoot $RepositoryRoot `
+            -Record $Contracts.FailureRecord `
+            -Failure $failure
+        } | Should-Throw -ExceptionMessage '*does not match*'
+      }
+    }
+
+    It 'Should reject a failure without a target contract' {
+      InModuleScope -Parameters @{
+        Contracts = $script:completionContracts
+        RepositoryRoot = $TestDrive
+      } -ScriptBlock {
+        $failure = [System.Management.Automation.ErrorRecord]::new(
+          [System.InvalidOperationException]::new('failure'),
+          'MalformedFailure',
+          [System.Management.Automation.ErrorCategory]::OperationStopped,
+          $null
+        )
+
+        {
+          Set-StrictMode -Version 1.0
+          Complete-AzureDevLifecycleAttempt `
+            -RepositoryRoot $RepositoryRoot `
+            -Record $Contracts.FailureRecord `
+            -Failure $failure
+        } | Should-Throw -ExceptionMessage '*does not match*'
+      }
+    }
   }
 
   Context 'When the diagnostic helper unexpectedly terminates' {
@@ -232,22 +311,46 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
       }
     }
 
-    It 'Should preserve the successful result and downgrade the helper error' {
+    It 'Should preserve success under terminating-warning preference' {
       $script:lockHeld = $false
 
-      $result = InModuleScope -Parameters @{
+      $output = InModuleScope -Parameters @{
         Contracts = $script:completionContracts
         RepositoryRoot = $TestDrive
       } -ScriptBlock {
-        Set-StrictMode -Version 1.0
-        Complete-AzureDevLifecycleAttempt `
-          -RepositoryRoot $RepositoryRoot `
-          -Record $Contracts.SuccessRecord `
-          -LifecycleResult $Contracts.Result
+        return @(
+          Set-StrictMode -Version 1.0
+          Complete-AzureDevLifecycleAttempt `
+            -RepositoryRoot $RepositoryRoot `
+            -Record $Contracts.SuccessRecord `
+            -LifecycleResult $Contracts.Result `
+            -WarningAction Stop 3>&1
+        )
       }
 
+      $result = @($output | Where-Object {
+          $_.PSObject.TypeNames[0] -eq 'AzureDev.LifecycleResult'
+        })
       $result.Result | Should-Be 'running'
-      Should-Invoke -CommandName Write-Warning -Exactly -Times 1 -Scope It
+      @($output | Where-Object {
+          $_ -is [System.Management.Automation.WarningRecord]
+        }).Count | Should-Be 1
+    }
+
+    It 'Should rethrow the primary error under terminating-warning preference' {
+      {
+        InModuleScope -Parameters @{
+          Contracts = $script:completionContracts
+          RepositoryRoot = $TestDrive
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Complete-AzureDevLifecycleAttempt `
+            -RepositoryRoot $RepositoryRoot `
+            -Record $Contracts.FailureRecord `
+            -Failure $Contracts.Failure `
+            -WarningAction Stop
+        }
+      } | Should-Throw -ExceptionMessage '*did not reach running*'
     }
   }
 }
