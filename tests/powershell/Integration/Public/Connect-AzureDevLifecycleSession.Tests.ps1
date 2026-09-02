@@ -196,7 +196,7 @@ exit 99
       @($calls | Where-Object { $_ -like "CALL`tlogin`t*" }).Count |
         Should-Be 1
       $allCalls | Should-MatchString (
-        [regex]::Escape(
+        [System.Text.RegularExpressions.Regex]::Escape(
           "--username`t$($script:clientId)" +
           "`t--password=$($script:clientSecret)" +
           "`t--tenant`t$($script:tenantId)" +

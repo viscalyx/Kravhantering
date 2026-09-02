@@ -32,7 +32,9 @@ Describe 'Format-AzureDevCommand' -Tag 'Unit' {
         )
 
       $formatted | Should-MatchString '--password=\[redacted\]'
-      $formatted | Should-NotMatchString ([regex]::Escape($secret))
+      $formatted | Should-NotMatchString (
+        [System.Text.RegularExpressions.Regex]::Escape($secret)
+      )
       $formatted | Should-NotMatchString 'decoy-value'
     }
   }

@@ -384,7 +384,11 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
 
       $message | Should-MatchString 'authentication'
       $message | Should-MatchString 'did not establish the configured identity'
-      $message | Should-NotMatchString ([regex]::Escape($script:clientSecret))
+      $message | Should-NotMatchString (
+        [System.Text.RegularExpressions.Regex]::Escape(
+          $script:clientSecret
+        )
+      )
       Should-Invoke `
         -CommandName Invoke-AzCli `
         -Exactly `
