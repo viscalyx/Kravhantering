@@ -1433,6 +1433,26 @@ function Invoke-AzureDevLifecycleCommand {
       -Action none
     & $completeStartFailure $timeoutFailure $ElapsedMilliseconds
   }
+  $completeRunningWaitTimeout = {
+    param(
+      [string]$ObservedState,
+      [long]$ElapsedMilliseconds
+    )
+
+    $timeoutFailure = New-AzureDevLifecycleErrorRecord `
+      -Phase running-wait `
+      -Message (
+        'The Azure VM did not reach running within ten minutes. Azure ' +
+        'can still complete the earlier start operation; no rollback or ' +
+        'second start was submitted.'
+      ) `
+      -Command start `
+      -VmName $configuration.VmName `
+      -ObservedState $ObservedState `
+      -Action $operation.Plan.Action `
+      -MutationAccepted $operation.MutationAccepted
+    & $completeStartFailure $timeoutFailure $ElapsedMilliseconds
+  }
   $completeStartLockFailure = {
     param([System.Management.Automation.ErrorRecord]$Caught)
 
@@ -1704,20 +1724,8 @@ function Invoke-AzureDevLifecycleCommand {
     while ($terminalState -ne 'running') {
       $poll = Invoke-AzureDevLifecycleWaitPoll -Wait $wait
       if ($poll.DeadlineExpired) {
-        $timeoutFailure = New-AzureDevLifecycleErrorRecord `
-          -Phase running-wait `
-          -Message (
-            'The Azure VM did not reach running within ten minutes. Azure ' +
-            'can still complete the earlier start operation; no rollback or ' +
-            'second start was submitted.'
-          ) `
-          -Command start `
-          -VmName $configuration.VmName `
-          -ObservedState $terminalState `
-          -Action $operation.Plan.Action `
-          -MutationAccepted $operation.MutationAccepted
-        & $completeStartFailure `
-          $timeoutFailure `
+        & $completeRunningWaitTimeout `
+          $terminalState `
           ([Math]::Max(
             [long]0,
             [long](& $getMonotonicMilliseconds) - $attemptStartedAt
@@ -1745,20 +1753,8 @@ function Invoke-AzureDevLifecycleCommand {
           -ElapsedMilliseconds $stateElapsedMilliseconds
       }
       if ($stateObservedAt -ge $wait.DeadlineAt) {
-        $lateStateFailure = New-AzureDevLifecycleErrorRecord `
-          -Phase running-wait `
-          -Message (
-            'The Azure VM did not reach running within ten minutes. Azure ' +
-            'can still complete the earlier start operation; no rollback or ' +
-            'second start was submitted.'
-          ) `
-          -Command start `
-          -VmName $configuration.VmName `
-          -ObservedState $terminalState `
-          -Action $operation.Plan.Action `
-          -MutationAccepted $operation.MutationAccepted
-        & $completeStartFailure `
-          $lateStateFailure `
+        & $completeRunningWaitTimeout `
+          $terminalState `
           ([Math]::Max([long]0, $stateObservedAt - $attemptStartedAt))
       }
       if ($terminalState -in @(

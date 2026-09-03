@@ -351,7 +351,7 @@ Describe `
       $allCalls | Should-NotMatchString "login`t--use-device-code"
     }
 
-    It 'Should return one authentication failure when targeted repair fails' {
+    It 'Should return one authentication failure after targeted repair fails' {
       [System.Environment]::SetEnvironmentVariable(
         'FAKE_AZ_PROFILE_MODE',
         'mismatch',
@@ -695,7 +695,7 @@ Describe `
         }).Count | Should-Be 1
     }
 
-    It 'Should exit zero when only lifecycle logging fails' {
+    It 'Should exit zero if only lifecycle logging fails' {
       $azurePath = Join-Path $script:fixture.RepositoryRoot '.azure'
       New-Item -ItemType Directory -Path $azurePath -Force | Out-Null
       Set-Content -LiteralPath (Join-Path $azurePath 'logs') -Value 'blocked'

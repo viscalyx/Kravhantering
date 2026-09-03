@@ -703,7 +703,7 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
         -Exactly -Times 0 -Scope It
     }
 
-    It 'Should release an owned lock when authentication is interrupted' {
+    It 'Should release an owned lock after authentication is interrupted' {
       $script:mockInterruptAuthentication = $true
       $timing = & $script:newLifecycleTiming
 
