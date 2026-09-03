@@ -365,11 +365,11 @@ Describe `
           -Fixture $script:fixture)
       $records = @(Get-AzureDevLifecyclePublicCommandRecords `
           -Fixture $script:fixture)
-      $record = $records[0]
 
       $caught | Should-NotBeNull
       $result.Count | Should-Be 0
       $records.Count | Should-Be 1
+      $record = $records[0]
       $record.failurePhase | Should-Be 'authentication'
       $record.observedState | Should-BeNull
       $record.action | Should-BeNull
@@ -382,7 +382,7 @@ Describe `
     }
   }
 
-  Context 'When lifecycle configuration or locking fails' {
+  Context 'When lifecycle configuration is incomplete' {
     It 'Should fail incomplete configuration before invoking Azure' {
       $incompleteRoot = Join-Path $TestDrive 'incomplete-repository'
       New-Item -ItemType Directory -Path $incompleteRoot | Out-Null
@@ -396,7 +396,9 @@ Describe `
       Test-Path -LiteralPath (Join-Path $incompleteRoot '.azure') |
         Should-BeFalse
     }
+  }
 
+  Context 'When lifecycle lock acquisition fails' {
     It 'Should record lock failure before authentication or mutation' {
       $azurePath = Join-Path $script:fixture.RepositoryRoot '.azure'
       New-Item -ItemType Directory -Path $azurePath | Out-Null
@@ -414,10 +416,10 @@ Describe `
           -Fixture $script:fixture)
       $records = @(Get-AzureDevLifecyclePublicCommandRecords `
           -Fixture $script:fixture)
-      $record = $records[0]
 
       $calls.Count | Should-Be 0
       $records.Count | Should-Be 1
+      $record = $records[0]
       $record.failurePhase | Should-Be 'lock'
       $record.mutationAccepted | Should-BeFalse
     }
@@ -555,13 +557,30 @@ Describe `
       $output = & $script:powerShellPath `
         -NoLogo `
         -NoProfile `
-        -File $script:entryPoint `
-        stop `
+        -File $script:fixture.ResultProbePath `
+        -EntryPoint $script:entryPoint `
+        -CommandName stop `
         -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
       $exitCode = $LASTEXITCODE
+      $outputLines = @($output | ForEach-Object { "$_" })
+      $contract = $outputLines[0] | ConvertFrom-Json
 
       $exitCode | Should-Be 0
-      @($output).Count | Should-BeGreaterThan 0
+      $outputLines.Count | Should-Be 1
+      $contract.Count | Should-Be 1
+      $contract.TypeName | Should-Be 'AzureDev.LifecycleResult'
+      @($contract.PropertyNames) | Should-BeCollection @(
+        'Command',
+        'Result',
+        'VmName',
+        'ObservedState',
+        'Action'
+      )
+      $contract.Command | Should-Be 'stop'
+      $contract.Result | Should-Be 'requested'
+      $contract.VmName | Should-Be 'isolated-vm'
+      $contract.ObservedState | Should-Be 'running'
+      $contract.Action | Should-Be 'deallocation-requested'
       @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture | Where-Object {
           $_ -match "^CALL`tvm`tdeallocate`t"
@@ -594,8 +613,8 @@ Describe `
         Should-Be 0
       $records = @(Get-AzureDevLifecyclePublicCommandRecords `
           -Fixture $script:fixture)
-      $record = $records[0]
       $records.Count | Should-Be 1
+      $record = $records[0]
       $record.failurePhase | Should-Be 'not-found'
       $record.terminalResult | Should-BeNull
     }
@@ -617,11 +636,11 @@ Describe `
           -Fixture $script:fixture)
       $records = @(Get-AzureDevLifecyclePublicCommandRecords `
           -Fixture $script:fixture)
-      $record = $records[0]
 
       @($calls | Where-Object { $_ -match "CALL`tvm`tdeallocate`t" }).Count |
         Should-Be 0
       $records.Count | Should-Be 1
+      $record = $records[0]
       $record.failurePhase | Should-Be 'state-read'
       $record.observedState | Should-Be 'unrecognized'
     }
@@ -655,8 +674,8 @@ Describe `
         Should-Be 1
       $records = @(Get-AzureDevLifecyclePublicCommandRecords `
           -Fixture $script:fixture)
-      $record = $records[0]
       $records.Count | Should-Be 1
+      $record = $records[0]
       $record.failurePhase | Should-Be 'deallocation-submission'
       $record.mutationAccepted | Should-BeFalse
     }
@@ -745,14 +764,25 @@ Describe `
         -LiteralPath $setupStatePath `
         -Value '{malformed-setup-state-sentinel' `
         -NoNewline
+      $unreadAccessTime = [datetime]::UnixEpoch
+      [System.IO.File]::SetLastAccessTimeUtc(
+        $setupStatePath,
+        $unreadAccessTime
+      )
       $information = @()
+      $commandDiscoveryPath = Join-Path $TestDrive 'command-discovery.log'
 
       $result = @(
-        & $script:entryPoint `
-          start `
-          -RepositoryRoot $script:fixture.RepositoryRoot `
-          -LifecycleTiming $script:lifecycleTiming `
-          -InformationVariable information
+        Trace-Command `
+          -Name CommandDiscovery `
+          -FilePath $commandDiscoveryPath `
+          -Expression {
+            & $script:entryPoint `
+              start `
+              -RepositoryRoot $script:fixture.RepositoryRoot `
+              -LifecycleTiming $script:lifecycleTiming `
+              -InformationVariable information
+          }
       )
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)
@@ -788,8 +818,19 @@ Describe `
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
       Test-Path -LiteralPath (Join-Path $script:fixture.HomePath '.ssh') |
         Should-BeFalse
+      (Get-Item -LiteralPath $setupStatePath).LastAccessTimeUtc |
+        Should-Be $unreadAccessTime
       Get-Content -LiteralPath $setupStatePath -Raw |
         Should-Be '{malformed-setup-state-sentinel'
+      $commandDiscovery = Get-Content -LiteralPath $commandDiscoveryPath -Raw
+      foreach ($commandName in $script:fixture.ForbiddenCommandNames) {
+        $escapedCommandName = [regex]::Escape($commandName)
+        $commandDiscovery |
+          Should-NotMatchString (
+            "Looking (?:up command:|for) $escapedCommandName" +
+            '(?:\.ps1)?(?:\s|$)'
+          )
+      }
       @(Get-ChildItem -LiteralPath (
             Join-Path $script:fixture.RepositoryRoot '.azure/lifecycle-locks'
           ) -File).Count | Should-Be 0
@@ -821,6 +862,36 @@ Describe `
       $logRecord.mutationAccepted | Should-BeFalse
       (Get-Content -LiteralPath $logFile.FullName -Raw) |
         Should-NotMatchString 'fake-harness-secret|token|setup-state-sentinel'
+    }
+
+    It 'Should exit zero with exactly one running child-process result' {
+      $output = & $script:powerShellPath `
+        -NoLogo `
+        -NoProfile `
+        -File $script:fixture.ResultProbePath `
+        -EntryPoint $script:entryPoint `
+        -CommandName start `
+        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
+      $exitCode = $LASTEXITCODE
+      $outputLines = @($output | ForEach-Object { "$_" })
+      $contract = $outputLines[0] | ConvertFrom-Json
+
+      $exitCode | Should-Be 0
+      $outputLines.Count | Should-Be 1
+      $contract.Count | Should-Be 1
+      $contract.TypeName | Should-Be 'AzureDev.LifecycleResult'
+      @($contract.PropertyNames) | Should-BeCollection @(
+        'Command',
+        'Result',
+        'VmName',
+        'ObservedState',
+        'Action'
+      )
+      $contract.Command | Should-Be 'start'
+      $contract.Result | Should-Be 'already-running'
+      $contract.VmName | Should-Be 'isolated-vm'
+      $contract.ObservedState | Should-Be 'running'
+      $contract.Action | Should-Be 'none'
     }
   }
 
@@ -986,51 +1057,65 @@ Describe `
           ) -File).Count | Should-Be 0
     }
 
-    It 'Should exit nonzero and release its lock after Ctrl+C' {
+    It 'Should exit nonzero without residue after a real SIGINT' {
       [System.Environment]::SetEnvironmentVariable(
         'FAKE_AZ_VM_STATE',
         'PowerState/deallocating',
         'Process'
       )
-      $interruptEntryPoint = Join-Path $TestDrive 'interrupt-start.ps1'
-      Set-Content -LiteralPath $interruptEntryPoint -Value @'
-param(
-  [string]$EntryPoint,
-  [string]$RepositoryRoot
-)
-$timing = [pscustomobject]@{
-  PollIntervalMilliseconds = [long]5000
-  HeartbeatIntervalMilliseconds = [long]30000
-  LockDeadlineMilliseconds = [long]15000
-  AzureCallDeadlineMilliseconds = [long]120000
-  StableStopDeadlineMilliseconds = [long]600000
-  RunningDeadlineMilliseconds = [long]600000
-  GetMonotonicMilliseconds = { return [long]0 }
-  DelayMilliseconds = {
-    throw [System.OperationCanceledException]::new('interrupted')
-  }
-}
-$timing.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleTiming')
-& $EntryPoint start `
-  -RepositoryRoot $RepositoryRoot `
-  -LifecycleTiming $timing
-'@
+      $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+      $startInfo.FileName = $script:powerShellPath
+      $startInfo.UseShellExecute = $false
+      $startInfo.RedirectStandardOutput = $true
+      $startInfo.RedirectStandardError = $true
+      foreach ($argument in @(
+          '-NoLogo',
+          '-NoProfile',
+          '-File',
+          $script:entryPoint,
+          'start',
+          '-RepositoryRoot',
+          $script:fixture.RepositoryRoot
+        )) {
+        $startInfo.ArgumentList.Add($argument)
+      }
+      $process = [System.Diagnostics.Process]::new()
+      $process.StartInfo = $startInfo
 
-      $output = & $script:powerShellPath `
-        -NoLogo `
-        -NoProfile `
-        -File $interruptEntryPoint `
-        -EntryPoint $script:entryPoint `
-        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
-      $exitCode = $LASTEXITCODE
+      try {
+        $process.Start() | Should-BeTrue
+        $readyDeadline = [System.Diagnostics.Stopwatch]::StartNew()
+        while (
+          -not (Test-Path `
+            -LiteralPath $script:fixture.VmStateReadCountFile) -and
+          -not $process.HasExited -and
+          $readyDeadline.ElapsedMilliseconds -lt 5000
+        ) {
+          Start-Sleep -Milliseconds 10
+        }
+        Test-Path -LiteralPath $script:fixture.VmStateReadCountFile |
+          Should-BeTrue
+
+        & /bin/kill -INT $process.Id
+        $LASTEXITCODE | Should-Be 0
+        $process.WaitForExit(5000) | Should-BeTrue
+        $exitCode = $process.ExitCode
+        $output = @(
+          $process.StandardOutput.ReadToEnd(),
+          $process.StandardError.ReadToEnd()
+        ) -join [System.Environment]::NewLine
+      } finally {
+        if (-not $process.HasExited) {
+          $process.Kill($true)
+          $process.WaitForExit()
+        }
+        $process.Dispose()
+      }
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)
 
-      $exitCode | Should-NotBe 0
-      @($output | Where-Object {
-          $_ -isnot [System.String] -and
-          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
-        }).Count | Should-Be 0
+      $exitCode | Should-Be 130
+      $output | Should-NotMatchString 'AzureDev.LifecycleResult'
       @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
         Should-Be 0
       Test-Path -LiteralPath (
@@ -1168,11 +1253,11 @@ $timing.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleTiming')
           -Fixture $script:fixture)
       $records = @(Get-AzureDevLifecyclePublicCommandRecords `
           -Fixture $script:fixture)
-      $record = $records[0]
 
       @($calls | Where-Object { $_ -match "CALL`tvm`tstart`t" }).Count |
         Should-Be 1
       $records.Count | Should-Be 1
+      $record = $records[0]
       $record.failurePhase | Should-Be 'start-submission'
       $record.action | Should-Be 'start-requested'
       $record.mutationAccepted | Should-BeFalse

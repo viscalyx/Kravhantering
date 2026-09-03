@@ -1147,8 +1147,11 @@ every Azure call. It holds the target-specific local lock only while it checks
 authentication, reads a decisive state, and optionally submits one start:
 
 - `running` returns `already-running` with action `none`.
-- `starting` joins the Azure transition without another mutation.
-- `stopped-allocated` or `deallocated` submits one asynchronous start request.
+- `starting` joins the Azure transition without another mutation, then returns
+  result `running` with action `joined-start` when the VM reaches `running`.
+- `stopped-allocated` or `deallocated` submits one asynchronous start request,
+  then returns result `running` with action `start-requested` when the VM
+  reaches `running`.
 - `stopping` or `deallocating` releases the local lock and waits for
   Azure to leave the downward transition outside the lock. It normally sees
   `stopped-allocated` or `deallocated`; if another actor starts the VM between
@@ -1175,9 +1178,9 @@ Azure may still complete the earlier operation. A timeout has the same
 no-rollback, no-repeat rule.
 
 Pressing Ctrl+C stops local polling promptly. Any owned local lock is released,
-and the interruption exits nonzero without a lifecycle result or terminal
-lifecycle record. The command does not submit a compensating stop or start;
-an operation Azure already accepted may still complete.
+and the interruption exits with code `130` without a lifecycle result or
+terminal lifecycle record. The command does not submit a compensating stop or
+start; an operation Azure already accepted may still complete.
 
 Success returns one typed lifecycle result and prints only these entry points,
 using the configured alias:

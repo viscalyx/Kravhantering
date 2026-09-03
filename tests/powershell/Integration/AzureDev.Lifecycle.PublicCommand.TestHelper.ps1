@@ -46,6 +46,40 @@ AZURE_CLIENT_SECRET=fake-harness-secret
   $vmStateFile = Join-Path $fixtureRoot 'vm-state'
   $vmStateReadCountFile = Join-Path $fixtureRoot 'vm-state-read-count'
   $repairMarker = Join-Path $fixtureRoot 'repaired-session'
+  $resultProbePath = Join-Path $fixtureRoot 'result-probe.ps1'
+  Set-Content -LiteralPath $resultProbePath -Value @'
+param(
+  [string]$EntryPoint,
+  [string]$CommandName,
+  [string]$RepositoryRoot
+)
+$result = @(& $EntryPoint `
+    $CommandName `
+    -RepositoryRoot $RepositoryRoot `
+    6>$null)
+[pscustomobject]@{
+  Count = $result.Count
+  TypeName = if ($result.Count -eq 1) {
+    $result[0].PSObject.TypeNames[0]
+  } else {
+    $null
+  }
+  PropertyNames = if ($result.Count -eq 1) {
+    @($result[0].PSObject.Properties.Name)
+  } else {
+    @()
+  }
+  Command = if ($result.Count -eq 1) { $result[0].Command } else { $null }
+  Result = if ($result.Count -eq 1) { $result[0].Result } else { $null }
+  VmName = if ($result.Count -eq 1) { $result[0].VmName } else { $null }
+  ObservedState = if ($result.Count -eq 1) {
+    $result[0].ObservedState
+  } else {
+    $null
+  }
+  Action = if ($result.Count -eq 1) { $result[0].Action } else { $null }
+} | ConvertTo-Json -Compress
+'@
   $fakeAzPath = Join-Path $binPath 'az'
   Set-Content -LiteralPath $fakeAzPath -Value @'
 #!/bin/sh
@@ -185,7 +219,7 @@ exit 99
 '@
   $null = & /bin/chmod '+x' $fakeAzPath
 
-  foreach ($commandName in @(
+  $forbiddenCommandNames = @(
       'code',
       'curl',
       'getent',
@@ -200,7 +234,8 @@ exit 99
       'ssh-keygen',
       'ssh-keyscan',
       'wget'
-    )) {
+    )
+  foreach ($commandName in $forbiddenCommandNames) {
     $path = Join-Path $binPath $commandName
     Set-Content -LiteralPath $path -Value @"
 #!/bin/sh
@@ -217,9 +252,11 @@ exit 97
     AzureCliHome = $azureCliHome
     ArgumentLog = $argumentLog
     ForbiddenLog = $forbiddenLog
+    ForbiddenCommandNames = $forbiddenCommandNames
     VmStateFile = $vmStateFile
     VmStateReadCountFile = $vmStateReadCountFile
     RepairMarker = $repairMarker
+    ResultProbePath = $resultProbePath
     SubscriptionId = $subscriptionId
     TenantId = $tenantId
     ClientId = $clientId

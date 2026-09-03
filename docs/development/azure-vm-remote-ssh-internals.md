@@ -156,6 +156,22 @@ human diagnostics. A successful real attempt produces one
 `Result`, `VmName`, `ObservedState`, and `Action`. Progress is a tagged
 `AzureDev.LifecycleProgressEvent` on the information stream.
 
+Lifecycle configuration is one immutable snapshot. Each value uses current
+process environment first, then `.env.azure.development.local`, then
+`.env.azure.development`; later stages never reread those sources.
+
+<!-- markdownlint-disable MD013 -->
+| Snapshot field | Environment variable | Requirement and restriction |
+| --- | --- | --- |
+| Subscription | `AZURE_DEV_VM_SUBSCRIPTION_ID` | Required nonempty explicit Azure target; never replaced by global CLI selection |
+| Resource group | `AZURE_DEV_VM_RESOURCE_GROUP` | Required nonempty explicit Azure target |
+| VM name | `AZURE_DEV_VM_NAME` | Required nonempty explicit Azure target |
+| SSH alias | `AZURE_DEV_VM_SSH_HOST_ALIAS` | Required nonempty guidance value; never used to discover the Azure target |
+| Tenant | `AZURE_TENANT_ID` | Optional only as part of the complete service-principal triple |
+| Client | `AZURE_CLIENT_ID` | Optional only as part of the complete service-principal triple |
+| Secret | `AZURE_CLIENT_SECRET` | Optional only as part of the complete service-principal triple; never serialized or echoed |
+<!-- markdownlint-enable MD013 -->
+
 The timing contract uses monotonic milliseconds and an injectable delay. Its
 fixed values are five-second polling, 30-second heartbeats, 15-second lock
 contention, two-minute Azure calls, and separate ten-minute stable-stop and
@@ -168,6 +184,36 @@ self-identifying lifecycle record serializes only its allowlisted fields. State
 and action are JSON `null` when a failure occurs before either fact exists.
 Credentials, tokens, native-command output, and properties attached after
 record construction are not serialized.
+
+The JSONL schema is fixed and deliberately non-authoritative:
+
+| Field | Type and meaning |
+| --- | --- |
+| `schemaVersion` | Integer `1` |
+| `recordType` | `azure-development-environment-lifecycle` |
+| `timestamp` | UTC terminal-record time |
+| `command` | Canonical `start` or `stop` |
+| `subscriptionId` | Configured explicit subscription |
+| `resourceGroup` | Configured explicit resource group |
+| `vmName` | Configured explicit VM name |
+| `terminalResult` | Successful result, otherwise JSON `null` |
+| `failurePhase` | Stable failure phase, otherwise JSON `null` |
+| `observedState` | Last normalized state, or JSON `null` if none exists |
+| `action` | Planned action, or JSON `null` if none exists |
+| `mutationAccepted` | Whether this invocation's Azure mutation was accepted |
+| `elapsedMilliseconds` | Monotonic elapsed time at completion |
+
+Primary stream and process contracts are independent of that record:
+
+<!-- markdownlint-disable MD013 -->
+| Outcome | Success stream | Error stream | Process exit |
+| --- | --- | --- | --- |
+| Real success | Exactly one lifecycle result | None | Zero |
+| Preview | No lifecycle result | None | Zero |
+| Lifecycle failure | No lifecycle result | One terminating lifecycle error | Nonzero |
+| Interruption | No lifecycle result or terminal record | Interruption propagates | `130` for Ctrl+C/SIGINT |
+| Record-write failure | Primary result or error unchanged | Unchanged; one warning is emitted | Primary exit unchanged |
+<!-- markdownlint-enable MD013 -->
 
 `Complete-AzureDevLifecycleAttempt` is the mutation boundary for the terminal
 record. Call it only after valid lifecycle configuration and lock release. It
@@ -192,10 +238,11 @@ The public entry point preserves these ordered stages:
 6. After the terminal outcome and lock release, construct the result or error,
    attempt the diagnostic record, and emit exactly one primary outcome.
 
-Configuration failure stops before an Azure call or local lifecycle artifact.
-Later failures use the stable phases `authentication`, `lock`, `state-read`,
-`not-found`, `start-submission`, `deallocation-submission`,
-`stable-stop-wait`, `running-wait`, and `outside-interference`.
+Configuration failure uses phase `configuration` and stops before an Azure
+call or local lifecycle artifact. Later failures use the stable phases
+`authentication`, `lock`, `state-read`, `not-found`, `start-submission`,
+`deallocation-submission`, `stable-stop-wait`, `running-wait`, and
+`outside-interference`.
 
 ### Lifecycle Preview And Status
 
