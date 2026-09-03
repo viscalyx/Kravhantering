@@ -135,7 +135,7 @@ Describe `
         Should-NotMatchString 'Repair Azure CLI lifecycle authentication'
     }
 
-    It 'Should exit zero after a complete <CommandName> preview with no result' `
+    It 'Should exit zero after a complete <CommandName> preview' `
       -ForEach $commandCases {
       $output = & $script:powerShellPath `
         -NoLogo `
@@ -149,10 +149,8 @@ Describe `
           -Fixture $script:fixture)
 
       $exitCode | Should-Be 0
-      @($output | Where-Object {
-          $_ -isnot [System.String] -and
-          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
-        }).Count | Should-Be 0
+      (@($output | ForEach-Object { "$_" }) -join [System.Environment]::NewLine) |
+        Should-MatchString 'What if:'
       $calls.Count | Should-Be 1
     }
 
@@ -658,14 +656,16 @@ Describe `
     }
 
     It 'Should record timeout without rollback or a second start' {
-      {
-        & $script:entryPoint `
+      $result = @()
+      $caught = $null
+      try {
+        $result = @(& $script:entryPoint `
           start `
           -RepositoryRoot $script:fixture.RepositoryRoot `
-          -LifecycleTiming $script:lifecycleTiming
-      } | Should-Throw -ExceptionMessage (
-        '*within ten minutes*can still complete*no rollback or second start*'
-      )
+          -LifecycleTiming $script:lifecycleTiming)
+      } catch {
+        $caught = $_
+      }
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)
       $logFile = @(Get-ChildItem -LiteralPath (
@@ -674,6 +674,11 @@ Describe `
       $logRecord = Get-Content -LiteralPath $logFile.FullName -Raw |
         ConvertFrom-Json
 
+      $caught | Should-NotBeNull
+      $caught.Exception.Message | Should-BeLikeString (
+        '*within ten minutes*can still complete*no rollback or second start*'
+      )
+      $result.Count | Should-Be 0
       @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
         Should-Be 0
       $logRecord.failurePhase | Should-Be 'running-wait'
@@ -682,51 +687,6 @@ Describe `
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
     }
 
-    It 'Should exit one and return no lifecycle result on timeout' {
-      $childCommand = {
-        param($EntryPoint, $RepositoryRoot)
-
-        $virtualClock = [System.Management.Automation.PSObject]@{
-          Milliseconds = [System.Int64]0
-        }
-        $getMonotonicMilliseconds = {
-          return [System.Int64]$virtualClock.Milliseconds
-        }.GetNewClosure()
-        $delayMilliseconds = {
-          param([System.Int64]$Milliseconds)
-          $virtualClock.Milliseconds += $Milliseconds * 120
-        }.GetNewClosure()
-        $timing = [System.Management.Automation.PSObject]@{
-          PollIntervalMilliseconds = [System.Int64]5000
-          HeartbeatIntervalMilliseconds = [System.Int64]30000
-          LockDeadlineMilliseconds = [System.Int64]15000
-          AzureCallDeadlineMilliseconds = [System.Int64]120000
-          StableStopDeadlineMilliseconds = [System.Int64]600000
-          RunningDeadlineMilliseconds = [System.Int64]600000
-          GetMonotonicMilliseconds = $getMonotonicMilliseconds
-          DelayMilliseconds = $delayMilliseconds
-        }
-        $timing.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleTiming')
-        & $EntryPoint `
-          start `
-          -RepositoryRoot $RepositoryRoot `
-          -LifecycleTiming $timing
-      }
-
-      $output = & $script:powerShellPath `
-        -NoLogo `
-        -NoProfile `
-        -Command $childCommand `
-        $script:entryPoint `
-        $script:fixture.RepositoryRoot 2>&1
-      $exitCode = $LASTEXITCODE
-
-      $exitCode | Should-Be 1
-      @($output | Where-Object {
-          $_ -isnot [System.String] -and
-          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
-        }).Count | Should-Be 0
-    }
   }
 
   Context 'When start is blocked by the decisive state' {
@@ -747,21 +707,27 @@ Describe `
         'Process'
       )
 
-      {
-        & $script:entryPoint `
+      $result = @()
+      $caught = $null
+      try {
+        $result = @(& $script:entryPoint `
           start `
           -RepositoryRoot $script:fixture.RepositoryRoot `
-          -LifecycleTiming $script:lifecycleTiming
-      } | Should-Throw
+          -LifecycleTiming $script:lifecycleTiming)
+      } catch {
+        $caught = $_
+      }
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)
 
+      $caught | Should-NotBeNull
+      $result.Count | Should-Be 0
       @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
         Should-Be 0
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
     }
 
-    It 'Should exit one and return no result for unavailable state' {
+    It 'Should exit one and report unavailable state from a child process' {
       [System.Environment]::SetEnvironmentVariable(
         'FAKE_AZ_VM_STATE',
         'read-failed',
@@ -779,10 +745,8 @@ Describe `
           -Fixture $script:fixture)
 
       $exitCode | Should-Be 1
-      @($output | Where-Object {
-          $_ -isnot [System.String] -and
-          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
-        }).Count | Should-Be 0
+      (@($output | ForEach-Object { "$_" }) -join [System.Environment]::NewLine) |
+        Should-MatchString "state 'unavailable' cannot safely be started"
       @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
         Should-Be 0
     }

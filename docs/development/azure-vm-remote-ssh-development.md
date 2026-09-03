@@ -1118,6 +1118,9 @@ authentication, reads the decisive state, and optionally submits one start:
 - `running` returns `already-running` with action `none`.
 - `starting` joins the Azure transition without another mutation.
 - `stopped-allocated` or `deallocated` submits one asynchronous start request.
+- `stopping` or `deallocating` reports that stable-stop convergence is required
+  and fails without a mutation. Downward-transition convergence is not yet
+  executed by `start`.
 - `not-found`, `unavailable`, `creating`, or `unrecognized` fails without a
   mutation.
 
@@ -1735,8 +1738,6 @@ the authenticated Azure control plane:
 
 ```powershell
 ./scripts/azure-dev.ps1 setup -Yes
-# Or, when no setup convergence is needed:
-./scripts/azure-dev.ps1 start -Yes
 ```
 
 Do not run `ssh-keygen -R` and accept the next network-presented key. If the

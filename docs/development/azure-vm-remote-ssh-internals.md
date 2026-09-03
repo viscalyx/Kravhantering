@@ -248,10 +248,16 @@ The pure start planner maps one decisive normalized observation to an action:
 | `starting` | Wait for `running` | None | `running` / `joined-start` |
 | `stopped-allocated` | Submit/wait | Start | `running` / `start-requested` |
 | `deallocated` | Submit and wait | Start | `running` / `start-requested` |
+| `stopping` | Require stable stop | None | Failure phase `stable-stop-wait` |
+| `deallocating` | Require stable stop | None | Failure phase `stable-stop-wait` |
 | `not-found` | Fail | None | Failure phase `not-found` |
 | `unavailable` | Fail | None | Failure phase `state-read` |
 | `creating` | Fail | None | Failure phase `state-read` |
 | `unrecognized` | Fail | None | Failure phase `state-read` |
+
+This increment records the downward states as planner decisions but does not
+yet execute downward-transition convergence. A later increment owns waiting
+for a stable stopped state and reacquiring the lock before reconsidering.
 
 The dispatcher acquires the target-derived lock, validates the Azure session,
 reads the decisive state, calls the planner, and submits at most one mutation:
