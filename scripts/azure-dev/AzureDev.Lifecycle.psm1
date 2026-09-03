@@ -818,8 +818,9 @@ function Invoke-AzureDevLifecycleCommand {
   } else {
     (
       'Conditionally do nothing from deallocated or deallocating, ' +
-      'deallocate from another supported power state or unavailable state, ' +
-      'and fail without mutation from not-found, creating, or unrecognized'
+      'deallocate from another supported power state, creating, or ' +
+      'unavailable state, and fail without mutation from not-found or ' +
+      'unrecognized'
     )
   }
   $null = $PSCmdlet.ShouldProcess($target, $action)
