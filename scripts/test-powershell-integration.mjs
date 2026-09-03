@@ -90,7 +90,7 @@ export function createPesterTestArgs({
     '--security-opt=no-new-privileges',
     '--pids-limit=256',
     '--tmpfs',
-    '/tmp:rw,nosuid,nodev,size=512m',
+    '/tmp:rw,exec,nosuid,nodev,size=512m',
     ...containerUserArgs(),
     ...bindMount(repositoryRoot, '/workspace', true),
     ...bindMount(moduleCache, '/pester-modules', true),

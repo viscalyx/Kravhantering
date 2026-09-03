@@ -14,6 +14,11 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
     Import-Module (
       Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Azure.psm1'
     ) -Force -ErrorAction Stop
+    & (Get-Module $script:moduleName) {
+      function script:az {
+        throw 'The Azure CLI test boundary must be mocked.'
+      }
+    }
     $PSDefaultParameterValues = @{
       'Mock:ModuleName' = $script:moduleName
       'Should-Invoke:ModuleName' = $script:moduleName

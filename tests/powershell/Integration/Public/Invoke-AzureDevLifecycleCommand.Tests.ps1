@@ -1133,9 +1133,21 @@ Describe `
 
       $script:interruptProcess.Start() | Should-BeTrue
       $readyDeadline = [System.Diagnostics.Stopwatch]::StartNew()
+      $lockDirectory = Join-Path `
+        $script:fixture.RepositoryRoot `
+        '.azure/lifecycle-locks'
       while (
-        -not (Test-Path `
-          -LiteralPath $script:fixture.VmStateReadCountFile) -and
+        (
+          -not (Test-Path `
+            -LiteralPath $script:fixture.VmStateReadCountFile) -or
+          @(
+            Get-ChildItem `
+              -LiteralPath $lockDirectory `
+              -Filter 'lifecycle-*.lock' `
+              -File `
+              -ErrorAction SilentlyContinue
+          ).Count -gt 0
+        ) -and
         -not $script:interruptProcess.HasExited -and
         $readyDeadline.ElapsedMilliseconds -lt 5000
       ) {
@@ -1143,6 +1155,13 @@ Describe `
       }
       Test-Path -LiteralPath $script:fixture.VmStateReadCountFile |
         Should-BeTrue
+      @(
+        Get-ChildItem `
+          -LiteralPath $lockDirectory `
+          -Filter 'lifecycle-*.lock' `
+          -File `
+          -ErrorAction SilentlyContinue
+      ).Count | Should-Be 0
 
       & /bin/kill -INT $script:interruptProcess.Id
       $LASTEXITCODE | Should-Be 0
@@ -1162,9 +1181,13 @@ Describe `
       Test-Path -LiteralPath (
         Join-Path $script:fixture.RepositoryRoot '.azure/logs'
       ) | Should-BeFalse
-      @(Get-ChildItem -LiteralPath (
-            Join-Path $script:fixture.RepositoryRoot '.azure/lifecycle-locks'
-          ) -File).Count | Should-Be 0
+      @(
+        Get-ChildItem `
+          -LiteralPath $lockDirectory `
+          -Filter 'lifecycle-*.lock' `
+          -File `
+          -ErrorAction SilentlyContinue
+      ).Count | Should-Be 0
     }
   }
 

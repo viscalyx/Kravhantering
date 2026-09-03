@@ -207,6 +207,19 @@ UNRELATED_SETUP_KEY=ignored
   }
 
   Context 'When an empty process value masks a nonempty local value' {
+    BeforeEach {
+      Mock -CommandName Get-Item -MockWith {
+        return Microsoft.PowerShell.Management\Get-Item `
+          -LiteralPath $LiteralPath `
+          -ErrorAction SilentlyContinue
+      }
+      Mock -CommandName Get-Item -MockWith {
+        return [System.Management.Automation.PSObject]@{ Value = '' }
+      } -ParameterFilter {
+        $LiteralPath -eq 'Env:AZURE_DEV_VM_RESOURCE_GROUP'
+      }
+    }
+
     It 'Should diagnose an empty winner and its masked source without values' {
       Set-Content -LiteralPath (Join-Path $TestDrive 'primary.env') -Value @'
 AZURE_DEV_VM_RESOURCE_GROUP=primary-rg
@@ -218,8 +231,6 @@ AZURE_DEV_VM_NAME=target-vm
 AZURE_DEV_VM_SUBSCRIPTION_ID=11111111-1111-1111-1111-111111111111
 AZURE_DEV_VM_RESOURCE_GROUP=lower-secret-rg
 '@
-      Set-Item Env:AZURE_DEV_VM_RESOURCE_GROUP ''
-
       $message = $null
       try {
         $null = Get-AzureDevLifecycleConfig `
@@ -272,6 +283,19 @@ AZURE_DEV_VM_NAME=target-vm
   }
 
   Context 'When service-principal fields are incomplete across sources' {
+    BeforeEach {
+      Mock -CommandName Get-Item -MockWith {
+        return Microsoft.PowerShell.Management\Get-Item `
+          -LiteralPath $LiteralPath `
+          -ErrorAction SilentlyContinue
+      }
+      Mock -CommandName Get-Item -MockWith {
+        return [System.Management.Automation.PSObject]@{ Value = '' }
+      } -ParameterFilter {
+        $LiteralPath -eq 'Env:AZURE_CLIENT_SECRET'
+      }
+    }
+
     It 'Should report every incomplete service-principal field without values' {
       Set-Content -LiteralPath (Join-Path $TestDrive 'primary.env') -Value @'
 AZURE_DEV_VM_RESOURCE_GROUP=target-rg
@@ -284,8 +308,6 @@ AZURE_DEV_VM_SUBSCRIPTION_ID=11111111-1111-1111-1111-111111111111
 AZURE_TENANT_ID=22222222-2222-2222-2222-222222222222
 AZURE_CLIENT_SECRET=lower-client-secret
 '@
-      Set-Item Env:AZURE_CLIENT_SECRET ''
-
       $message = $null
       try {
         $null = Get-AzureDevLifecycleConfig `

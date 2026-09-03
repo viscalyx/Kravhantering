@@ -41,7 +41,10 @@ Describe `
     $null = New-Item `
       -ItemType SymbolicLink `
       -Path $fakeSshPath `
-      -Target (Get-Command false -CommandType Application).Source
+      -Target (
+        Get-Command false -CommandType Application |
+          Select-Object -First 1
+      ).Source
     $env:PATH = "$TestDrive$([System.IO.Path]::PathSeparator)$env:PATH"
   }
 
