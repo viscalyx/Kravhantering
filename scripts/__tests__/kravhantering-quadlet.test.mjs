@@ -627,7 +627,7 @@ describe('kravhantering Quadlet helper', () => {
     expect(fs.existsSync(fixture.outputDir)).toBe(false)
   })
 
-  it('renders single-node services, volumes and the public issuer host route', () => {
+  it('renders single-node services with the SQL Server image launcher and public issuer host route', () => {
     const fixture = createFixture(releaseEnv())
     const units = render('single-node', fixture)
     const allContent = units.map(unit => unit.content).join('\n')
@@ -672,6 +672,9 @@ describe('kravhantering Quadlet helper', () => {
     expect(sqlserver).toContain(
       'Volume=kravhantering-sqlserver-data.volume:/var/opt/mssql:U',
     )
+    expect(sqlserver).toContain('Environment=HOME=/var/opt/mssql')
+    expect(sqlserver).not.toContain('PodmanArgs=--entrypoint=')
+    expect(sqlserver).not.toContain('\nExec=')
     expect(sqlserver).toContain(
       'Volume=/etc/kravhantering/sqlserver-tls:/etc/kravhantering/sqlserver-tls:ro',
     )

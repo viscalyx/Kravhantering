@@ -290,8 +290,9 @@ används behöver motsvarande pipelines finnas där.
   `app-runtime` och `db-job`, skapar SBOM, attesterar artefakter och kör
   release-smoke.
 - `Container PR Smoke` (`.github/workflows/container-pr-smoke.yml`) körs på
-  pull requests. Den bygger containerstacken, verifierar OCI-arkiv och kör
-  release-smoke innan ändringen slås ihop.
+  pull requests. Den bygger containerstacken, installerar produktionsarkivet
+  med rootless Quadlet och verifierar produktionsstacken innan ändringen slås
+  ihop.
 - `Dependency Drift` (`.github/workflows/dependency-drift.yml`) körs
   schemalagt och manuellt. Den kontrollerar npm-verktygskedjan och samordnade
   produktionsavbildningar och underhåller åtgärdsärenden.

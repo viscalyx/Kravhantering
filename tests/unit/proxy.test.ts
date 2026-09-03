@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { unstable_doesMiddlewareMatch as unstable_doesProxyMatch } from 'next/experimental/testing/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { describe, expect, it, vi } from 'vitest'

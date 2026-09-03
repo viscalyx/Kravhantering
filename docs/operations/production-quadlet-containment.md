@@ -60,10 +60,12 @@ root-owned image files out of those scratch mounts. TLS topologies require the
 crun OCI runtime so nginx can also preserve the rootless service user's group
 access to the host's `0640` private key.
 
-SQL Server writes databases, transaction logs, backups, dumps, secrets, and
-its own logs below `/var/opt/mssql`; the existing named volume preserves those
-semantics. The 4 GiB cgroup default stays above Microsoft's 2 GiB startup
-minimum. The pinned
+SQL Server writes databases, transaction logs, backups, dumps, secrets, its
+`.system` directory, and its own logs below `/var/opt/mssql`; the existing
+named volume preserves those semantics. The Quadlet sets `HOME` to that
+directory and preserves the image's launcher, which performs the image's
+startup checks before starting the database engine. The 4 GiB cgroup default
+stays above Microsoft's 2 GiB startup minimum. The pinned
 `mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04` image has
 `cap_net_bind_service=ep` on `/opt/mssql/bin/sqlservr`. With all capabilities
 absent from the bounding set, `NoNewPrivileges` makes the kernel reject that
@@ -72,7 +74,7 @@ binary with exit 126 and `Operation not permitted`. Adding only
 `CapEff=0`, `NoNewPrivs=1`, and no other bounding capability for both
 `sqlservr` processes. SQL Server does not publish port 1433 to the host.
 
-The pinned `quay.io/keycloak/keycloak:26.7.2-2` image augments Quarkus during
+The pinned `quay.io/keycloak/keycloak:26.7.3-0` image augments Quarkus during
 stock-image startup. A read-only root without an exception fails while
 replacing `/opt/keycloak/lib/quarkus/transformed-bytecode.jar`. That image
 directory is about 5 MiB. The 64 MiB tmpfs relies on Podman's default
@@ -93,7 +95,7 @@ tag alone.
 | Service | Tag | Manifest digest |
 | --- | --- | --- |
 | SQL Server | `mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04` | `sha256:4bab24f36c1ecd48e85f7d37df26e6bf301641d84c3fe652f9a0dcc947d512e1` |
-| Keycloak | `quay.io/keycloak/keycloak:26.7.2-2` | `sha256:c2a17fe407e892196d0b7cf9cef54e60952d6c372a9205f661a9efa0911463b0` |
+| Keycloak | `quay.io/keycloak/keycloak:26.7.3-0` | `sha256:88943b6ad06d6293a239f0dfca5acec64218c9b3ab327bf9c936acf408a6ae3b` |
 <!-- markdownlint-enable MD013 -->
 
 Repeat the failure/success probes whenever either digest changes. Microsoft

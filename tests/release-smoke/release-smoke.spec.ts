@@ -348,8 +348,12 @@ test.describe('Release smoke container flow', () => {
           },
         },
       )
-      expect(verifyResponse.ok()).toBe(true)
-      const payload = (await verifyResponse.json()) as HsaVerificationResponse
+      const responseBody = await verifyResponse.text()
+      expect(
+        verifyResponse.ok(),
+        `HSA verification returned HTTP ${verifyResponse.status()}: ${responseBody}`,
+      ).toBe(true)
+      const payload = JSON.parse(responseBody) as HsaVerificationResponse
 
       expect(payload.person).toMatchObject({
         displayName: 'Maja ManualArea',

@@ -19,25 +19,74 @@ kravunderlag.
 
 _Avoid_: Tillämpningsspårbarhet när enskild spårbarhet avses.
 
+**Statistikkontrakt**:
+En normativ definition av ett statistiskt mått som anger persona,
+användarfråga, analysenhet, population, täljare och nämnare, gruppering,
+filter, tidsbetydelse, datakälla, behörighetsregel, presentation, exakta
+tabellvärden, drill-down, datatillstånd och leveransetapp.
+
+- `en`: Statistics contract
+
+_Avoid_: Diagramkontrakt, tekniskt API-kontrakt, mått utan angiven population.
+
 **Statistikhändelse**:
-En beständig och tidsatt registrering av en verksamhetsövergång som gör det
-möjligt att beräkna historiskt bestånd, flöde, ledtid eller omtag.
-Statistikhändelsen anger både när övergången blev giltig och när den
-registrerades. Den är inte en post i Åtgärdsloggen eller Säkerhetsloggen.
+En beständig och tidsatt registrering av exakt en verksamhetsövergång som gör
+det möjligt att beräkna historiskt bestånd, flöde, ledtid eller omtag och anger
+både när övergången blev giltig och när den registrerades. Flera
+statistikhändelser kan höra till samma atomiskt sparade förändring; ingen av
+dem är en post i Åtgärdsloggen eller Säkerhetsloggen.
 
 - `en`: Statistics event
 
 _Avoid_: Åtgärdsloggspost, säkerhetshändelse, teknisk logghändelse.
 
+**Statistiksubjekt**:
+Det verksamhetsobjekt eller den giltiga relation som en eller flera
+statistikhändelser följer över tid. Statistiksubjektets identitet kan bevaras
+för sammanräkning utan att källobjektets identitet eller innehåll lämnas ut.
+
+- `en`: Statistics subject
+
+_Avoid_: Aktör, användare, fritt analysobjekt.
+
+**Statistikhändelserättelse**:
+En beständig markering som ogiltigförklarar eller ersätter en felaktigt
+registrerad statistikhändelse utan att skriva om den ursprungliga
+verksamhetshistoriken.
+
+- `en`: Statistics event correction
+
+_Avoid_: Redigering av statistikhändelse, radering av historik,
+personuppgiftsanonymisering.
+
+**Statistikhändelsefamilj**:
+En sammanhållen grupp statistikhändelsetyper som delar omfattning,
+statistikbaslinje, aktivering och lagringstid. En händelsetyp hör till exakt en
+statistikhändelsefamilj.
+
+- `en`: Statistics event family
+
+_Avoid_: Funktionsområde, enskild statistikhändelsetyp, teknisk loggkanal.
+
 **Statistikbaslinje**:
-En daterad ögonblicksbild omedelbart före den första produktionsanvändningen
-som omfattar alla då befintliga objekt. Den anger startpunkten från vilken
-historiskt bestånd, flöde och genomströmning är tillförlitliga.
+En daterad ögonblicksbild, skild från statistikhändelserna, som omfattar alla
+då befintliga objekt inom en angiven omfattning. Den tas omedelbart före den
+första produktionsanvändningen av omfattningen och anger startpunkten från
+vilken historiskt bestånd, flöde och genomströmning är tillförlitliga.
 
 - `en`: Statistics baseline
 
-_Avoid_: Återskapad historik före baslinjen, driftsättningsdatum utan
-statistiksammanhang.
+_Avoid_: Syntetiska verksamhetsövergångar, återskapad historik före baslinjen,
+driftsättningsdatum utan statistiksammanhang.
+
+**Statistisk kontrollpunkt**:
+Ett härlett bestånd vid en bestämd tidpunkt som gör att senare historik kan
+beräknas efter att äldre statistikhändelser har gallrats. Kontrollpunkten kan
+återskapas och är inte en statistikhändelse eller fristående sanningskälla.
+
+- `en`: Statistics checkpoint
+
+_Avoid_: Statistikbaslinje, permanent aggregat, syntetisk statistikhändelse.
 
 **Verksamhetstidszon**:
 Den tidszon som avgränsar användarsynliga kalenderdagar, ISO-veckor och
@@ -66,6 +115,53 @@ behörighetssammanhang och visar personens fullständiga visningsnamn och HSA-id
 - `en`: Actor-grouped statistics
 
 _Avoid_: Personstatistik, topplista, statistik per namn utan stabil identitet.
+
+**Normreferensens kravräckvidd**:
+Antalet distinkta krav i en uttryckligen angiven krav- och
+kravversionspopulation som har en koppling till en viss normreferens. Måttet
+beskriver observerade kopplingar och anger inte normtäckning, tillämplighet,
+efterlevnad eller att en saknad koppling är en brist.
+
+- `en`: Norm reference requirement reach
+
+_Avoid_: Normtäckning, efterlevnadsgrad, antal krav utan angiven population.
+
+**Normreferensanvändning**:
+Att en normreferens är kopplad till den låsta kravversionen i en aktuell
+kravtillämpning eller direkt till ett aktuellt kravunderlagslokalt krav.
+Koppling till en kravversion i kravbiblioteket är kravräckvidd, inte i sig
+normreferensanvändning.
+
+- `en`: Norm reference usage
+
+_Avoid_: Visning av normreferensen, antal kopplingsåtgärder,
+normreferensens kravräckvidd.
+
+**Normreferensgranskning snart**:
+Ett granskningsläge där en aktiv normreferens nästa granskningsdatum är
+beräkningsdatumet eller någon av de följande 30 kalenderdagarna i
+verksamhetstidszonen. Läget anger planeringsbehov, inte normkällans giltighet.
+
+- `en`: Norm reference review due soon
+
+_Avoid_: Snart utgången normreferens, risk, senaste redigering.
+
+**Normreferens med passerat granskningsdatum**:
+Ett granskningsläge där en aktiv normreferens nästa granskningsdatum ligger
+före beräkningsdatumet i verksamhetstidszonen. Läget anger inte i sig att
+normkällan är inaktuell eller ogiltig.
+
+- `en`: Norm reference with overdue review date
+
+_Avoid_: Inaktuell normreferens, ogiltig normreferens, risk.
+
+**Normreferensgranskning inte planerad**:
+Ett granskningsläge där en aktiv normreferens saknar nästa granskningsdatum.
+Läget anger inte i sig att normreferensen är inaktuell.
+
+- `en`: Norm reference review not scheduled
+
+_Avoid_: Inaktuell normreferens, passerat granskningsdatum.
 
 ## Kö-, tids- och flödesmått
 

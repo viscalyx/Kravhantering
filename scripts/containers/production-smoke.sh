@@ -438,6 +438,11 @@ start_hsa_mtls_endpoints() {
   service_systemctl start kravhantering-single-node.target
 }
 
+restart_hsa_mtls_endpoints() {
+  stop_hsa_mtls_endpoints
+  start_hsa_mtls_endpoints
+}
+
 verify_hsa_correlated_lookup() {
   local correlation_id journal_since runtime_log
   if [[ "${HSA_MTLS_FORCE_VERIFY_FAILURE:-0}" == 1 ]]; then
@@ -1698,6 +1703,10 @@ up() {
   verify_default_bundled_keycloak_login
   enable_hardened_keycloak_profile
   verify_hardened_keycloak_ingress
+  restart_hsa_mtls_endpoints
+  wait_for_url https://kravhantering.test/api/ready \
+    'application readiness after reconciling HSA support services'
+  verify_hsa_correlated_lookup
   printf '%s\n' \
     'app-runtime-restart=passed' \
     'sqlserver-restart-and-persistence=passed' \
@@ -1711,6 +1720,7 @@ up() {
     'target-stop-start=passed' \
     'transient-cleanup-schedule-and-manual-run=passed' \
     'keycloak-hardened-profile-transition=passed' \
+    'hsa-support-services-reconciled=passed' \
     >"$EVIDENCE_DIR/lifecycle.txt"
 }
 

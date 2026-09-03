@@ -66,6 +66,107 @@ Describe 'Get-AzureDevVmSshHostKeyEvidence' -Tag 'Unit' {
     }
   }
 
+  Context 'When Run Command returns combined provisioning output' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        return [System.Management.Automation.PSObject]@{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = 'ProvisioningState/succeeded'
+              message = (
+                "Enable succeeded: `n[stdout]`n" +
+                'ssh-ed25519 ' +
+                'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda' +
+                " guest-comment`n[stderr]`n"
+              )
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should extract and normalize authenticated key material' {
+      $result = InModuleScope `
+        -Parameters @{ Context = $script:context } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Get-AzureDevVmSshHostKeyEvidence -Context $Context
+        }
+
+      $result | Should-BeString -Expected (
+        'ssh-ed25519 ' +
+        'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
+      ) -CaseSensitive
+    }
+  }
+
+  Context 'When combined provisioning output contains guest errors' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        return [System.Management.Automation.PSObject]@{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = 'ProvisioningState/succeeded'
+              message = (
+                "Enable succeeded: `n[stdout]`n" +
+                'ssh-ed25519 ' +
+                'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda' +
+                "`n[stderr]`n" +
+                'host keys unavailable' +
+                "`n"
+              )
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should fail closed before accepting combined output' {
+      {
+        InModuleScope `
+          -Parameters @{ Context = $script:context } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Get-AzureDevVmSshHostKeyEvidence -Context $Context
+          }
+      } | Should-Throw -ExceptionMessage (
+        '*control-plane SSH host-key retrieval returned guest errors*'
+      )
+    }
+  }
+
+  Context 'When combined provisioning output omits its stderr marker' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        return [System.Management.Automation.PSObject]@{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = 'ProvisioningState/succeeded'
+              message = (
+                "Enable succeeded: `n[stdout]`n" +
+                'ssh-ed25519 ' +
+                'AAAAC3NzaC1lZDI1NTE5AAAAIK4Gak3xSoCDBBTD/UDsPazk1sN3TfGiZttuZXbTgQda'
+              )
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should reject the malformed combined response' {
+      {
+        InModuleScope `
+          -Parameters @{ Context = $script:context } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Get-AzureDevVmSshHostKeyEvidence -Context $Context
+          }
+      } | Should-Throw -ExceptionMessage (
+        '*control-plane SSH host-key evidence was malformed*'
+      )
+    }
+  }
+
   Context 'When Run Command is unavailable' {
     BeforeAll {
       Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
@@ -149,6 +250,95 @@ Describe 'Get-AzureDevVmSshHostKeyEvidence' -Tag 'Unit' {
           value = @(
             New-Object -TypeName System.Management.Automation.PSObject -Property @{
               message = 'unexpected output'
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should report malformed evidence explicitly' {
+      {
+        InModuleScope `
+          -Parameters @{ Context = $script:context } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Get-AzureDevVmSshHostKeyEvidence -Context $Context
+          }
+      } | Should-Throw -ExceptionMessage (
+        '*control-plane SSH host-key evidence was malformed*'
+      )
+    }
+  }
+
+  Context 'When a Run Command result omits its message' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        return New-Object `
+          -TypeName System.Management.Automation.PSObject `
+          -Property @{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = 'ProvisioningState/succeeded'
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should report malformed evidence explicitly' {
+      {
+        InModuleScope `
+          -Parameters @{ Context = $script:context } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Get-AzureDevVmSshHostKeyEvidence -Context $Context
+          }
+      } | Should-Throw -ExceptionMessage (
+        '*control-plane SSH host-key evidence was malformed*'
+      )
+    }
+  }
+
+  Context 'When a Run Command result has a null code' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        return New-Object `
+          -TypeName System.Management.Automation.PSObject `
+          -Property @{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = $null
+              message = 'unexpected output'
+            }
+          )
+        }
+      }
+    }
+
+    It 'Should report malformed evidence explicitly' {
+      {
+        InModuleScope `
+          -Parameters @{ Context = $script:context } `
+          -ScriptBlock {
+            Set-StrictMode -Version 1.0
+            Get-AzureDevVmSshHostKeyEvidence -Context $Context
+          }
+      } | Should-Throw -ExceptionMessage (
+        '*control-plane SSH host-key evidence was malformed*'
+      )
+    }
+  }
+
+  Context 'When a Run Command result has a null message' {
+    BeforeAll {
+      Mock -CommandName Invoke-AzureDevHostKeyRunCommand -MockWith {
+        return New-Object `
+          -TypeName System.Management.Automation.PSObject `
+          -Property @{
+          value = @(
+            New-Object -TypeName System.Management.Automation.PSObject -Property @{
+              code = 'ProvisioningState/succeeded'
+              message = $null
             }
           )
         }

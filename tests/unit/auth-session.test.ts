@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { sealData } from 'iron-session'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resetAuthConfigForTests } from '@/lib/auth/config'

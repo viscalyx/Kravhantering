@@ -26,7 +26,7 @@ jobs:
       packages: write
 
     env:
-      KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.2-2
+      KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.3-0
       KONG_IMAGE_REF: docker.io/kong/kong-gateway:3.15.0.5-20260824-ubuntu
       HSA_MTLS_PROVISIONER_IMAGE: localhost/kravhantering/hsa-mtls-provisioner
       HSA_MTLS_PROVISIONER_CANDIDATE_ARTIFACT: tmp/container-release-artifacts/candidates/hsa-mtls-provisioner.oci.tar

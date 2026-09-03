@@ -366,7 +366,10 @@ function Get-AzureDevVmSshHostKeyEvidence {
   foreach ($runCommandResult in $runCommandResults) {
     if (
       $null -eq $runCommandResult -or
-      $null -eq $runCommandResult.PSObject.Properties['code']
+      $null -eq $runCommandResult.PSObject.Properties['code'] -or
+      $null -eq $runCommandResult.PSObject.Properties['code'].Value -or
+      $null -eq $runCommandResult.PSObject.Properties['message'] -or
+      $null -eq $runCommandResult.PSObject.Properties['message'].Value
     ) {
       throw (
         'Azure control-plane SSH host-key evidence was malformed. No SSH ' +
@@ -375,14 +378,75 @@ function Get-AzureDevVmSshHostKeyEvidence {
     }
   }
 
-  $stderr = @(
-    $runCommandResults |
-      Where-Object {
-        $_.PSObject.Properties['code'].Value -match '/StdErr/'
-      } |
-      ForEach-Object { [string]$_.message } |
-      Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-  )
+  $stderr = [System.Collections.Generic.List[string]]::new()
+  $lines = [System.Collections.Generic.List[string]]::new()
+  foreach ($runCommandResult in $runCommandResults) {
+    $code = [string]$runCommandResult.PSObject.Properties['code'].Value
+    $message = [string]$runCommandResult.message
+    if ($code -match '/StdErr/') {
+      if (-not [string]::IsNullOrWhiteSpace($message)) {
+        $stderr.Add($message)
+      }
+      continue
+    }
+    if ($code -match '/StdOut/') {
+      foreach ($line in @($message -split '\r?\n')) {
+        $trimmedLine = $line.Trim()
+        if (-not [string]::IsNullOrWhiteSpace($trimmedLine)) {
+          $lines.Add($trimmedLine)
+        }
+      }
+      continue
+    }
+    if ($code -cne 'ProvisioningState/succeeded') {
+      continue
+    }
+
+    $messageLines = @($message -split '\r?\n')
+    $stdoutMarkers = @(
+      for ($index = 0; $index -lt $messageLines.Count; $index++) {
+        if ($messageLines[$index].Trim() -ceq '[stdout]') {
+          $index
+        }
+      }
+    )
+    $stderrMarkers = @(
+      for ($index = 0; $index -lt $messageLines.Count; $index++) {
+        if ($messageLines[$index].Trim() -ceq '[stderr]') {
+          $index
+        }
+      }
+    )
+    if (
+      $stdoutMarkers.Count -ne 1 -or
+      $stderrMarkers.Count -ne 1 -or
+      $stderrMarkers[0] -le $stdoutMarkers[0]
+    ) {
+      throw (
+        'Azure control-plane SSH host-key evidence was malformed. No SSH ' +
+        'connection was attempted.'
+      )
+    }
+
+    $stdoutStart = $stdoutMarkers[0] + 1
+    $stderrStart = $stderrMarkers[0] + 1
+    if ($stdoutStart -lt $stderrMarkers[0]) {
+      foreach ($index in $stdoutStart..($stderrMarkers[0] - 1)) {
+        $trimmedLine = $messageLines[$index].Trim()
+        if (-not [string]::IsNullOrWhiteSpace($trimmedLine)) {
+          $lines.Add($trimmedLine)
+        }
+      }
+    }
+    if ($stderrStart -lt $messageLines.Count) {
+      foreach ($index in $stderrStart..($messageLines.Count - 1)) {
+        $trimmedLine = $messageLines[$index].Trim()
+        if (-not [string]::IsNullOrWhiteSpace($trimmedLine)) {
+          $stderr.Add($trimmedLine)
+        }
+      }
+    }
+  }
   if ($stderr.Count -gt 0) {
     throw (
       'Azure control-plane SSH host-key retrieval returned guest errors. No ' +
@@ -390,15 +454,6 @@ function Get-AzureDevVmSshHostKeyEvidence {
     )
   }
 
-  $lines = @(
-    $runCommandResults |
-      Where-Object {
-        $_.PSObject.Properties['code'].Value -match '/StdOut/'
-      } |
-      ForEach-Object { [string]$_.message -split '\r?\n' } |
-      ForEach-Object { $_.Trim() } |
-      Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-  )
   if ($lines.Count -eq 0) {
     throw (
       'Azure control-plane SSH host-key evidence was empty. No SSH connection ' +

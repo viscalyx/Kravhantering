@@ -309,7 +309,7 @@ describe('requirement workflow bundle contract', () => {
     write(
       root,
       '.next/static/chunks/library-ai.js',
-      deterministicBytes(260_000),
+      deterministicBytes(290_000),
     )
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
     const errorSpy = vi

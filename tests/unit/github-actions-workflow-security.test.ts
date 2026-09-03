@@ -588,6 +588,28 @@ describe('GitHub Actions workflow security', () => {
     }
   })
 
+  it('uses the production deployment as the PR container acceptance boundary', () => {
+    const workflow = readWorkflowYaml('container-pr-smoke.yml')
+    const steps = workflow.jobs?.['container-smoke']?.steps ?? []
+    const stepNames = steps.map(step => step.name)
+
+    expect(stepNames).not.toContain('Verify OCI archives')
+    expect(
+      steps.some(
+        step =>
+          typeof step.run === 'string' &&
+          step.run.includes('container:oci:verify'),
+      ),
+    ).toBe(false)
+    expect(stepNames).toContain(
+      'Install production archive with rootless Quadlet',
+    )
+    expect(stepNames).toContain('Verify production stack')
+    expect(
+      stepNames.indexOf('Install production archive with rootless Quadlet'),
+    ).toBeLessThan(stepNames.indexOf('Verify production stack'))
+  })
+
   it('keeps container runtime diagnostics bounded and cancellation-safe', () => {
     const cases = [
       {

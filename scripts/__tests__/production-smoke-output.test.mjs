@@ -373,8 +373,7 @@ function runHsaEndpointRestartHarness() {
     set -euo pipefail
     source "$1"
     service_systemctl() { printf '%s\n' "$*"; }
-    stop_hsa_mtls_endpoints
-    start_hsa_mtls_endpoints
+    restart_hsa_mtls_endpoints
   `
   return childProcess.spawnSync(
     'bash',
@@ -531,7 +530,7 @@ function runHsaPkiLifecycle(operation, exitStatus) {
 }
 
 describe('production smoke output', () => {
-  it('reactivates the full single-node target after rotating HSA endpoints', () => {
+  it('reconciles HSA support services in dependency order after a topology transition', () => {
     const result = runHsaEndpointRestartHarness()
 
     expect(result.status, result.stderr).toBe(0)

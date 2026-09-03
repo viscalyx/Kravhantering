@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import type { IronSession } from 'iron-session'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetAuthConfigForTests } from '@/lib/auth/config'

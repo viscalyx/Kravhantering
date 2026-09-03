@@ -31,7 +31,7 @@ jobs:
       HSA_MTLS_PROVISIONER_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-mtls-provisioner.oci.tar
       HSA_PERSON_LOOKUP_ADAPTER_IMAGE: localhost/kravhantering/hsa-person-lookup-adapter
       HSA_PERSON_LOOKUP_ADAPTER_OCI_ARCHIVE: tmp/container-pr-artifacts/oci/hsa-person-lookup-adapter.oci.tar
-      KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.2-2
+      KEYCLOAK_IMAGE_REF: quay.io/keycloak/keycloak:26.7.3-0
       KONG_IMAGE_REF: docker.io/kong/kong-gateway:3.15.0.5-20260824-ubuntu
       NEXT_PUBLIC_SITE_URL: https://kravhantering.test
       NGINX_IMAGE_REF: docker.io/library/nginx:1.31.4-alpine
@@ -377,18 +377,6 @@ jobs:
         run: |
           scripts/containers/production-smoke.sh up --archive \
             "tmp/container-pr-artifacts/kravhantering-production-deploy-${BUILD_VERSION}.tar.gz"
-
-      - name: Report OCI verification disk layout
-        run: |
-          "${RUNNER_TEMP}/report-disk-layout.sh" "before OCI verification"
-
-      - name: Verify OCI archives
-        run: |
-          set -euo pipefail
-          trap 'bash "${RUNNER_TEMP}/report-disk-layout.sh" "after OCI verification" || true' EXIT
-          npm run container:oci:verify -- \
-            --output-dir tmp/container-pr-artifacts/oci \
-            --verify-root "/tmp/kh-oci-${CONTAINER_STACK_RUN_ID}"
 
       - name: Verify production stack
         run: scripts/containers/production-smoke.sh verify

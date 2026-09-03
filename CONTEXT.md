@@ -420,6 +420,15 @@ Normbibliotek avser ytan eller samlingen, inte den enskilda normreferensen.
 
 _Avoid_: Referensdata, normreferens när en enskild normkälla avses.
 
+**Normreferensens nästa granskningsdatum**:
+Det datum då normreferensens uppgifter och fortsatta relevans nästa gång ska
+granskas. Datumet anger ett granskningsbehov, inte normkällans giltighet,
+utgångstid eller efterlevnad.
+
+- `en`: Norm reference next review date
+
+_Avoid_: Giltig till, utgångsdatum, senaste redigering.
+
 **Referens**:
 Stödjande material eller hänvisning som kan hjälpa läsaren att förstå ett krav
 men som inte nödvändigtvis är normerande.
@@ -1568,6 +1577,17 @@ kravlivscykelns arkivering eller radering av personuppgifter.
 - `en`: Retention disposal
 
 _Avoid_: Arkivering, radering av personuppgifter, vanlig radering.
+
+**Gallringsobjekt**:
+Ett verksamhetsmässigt avgränsat objekt som prövas och får ett enda utfall i
+en gallringspolicy. Gallringsobjektet identifieras inom policyn av källgrupp,
+objekttyp och objektidentitet och räknas en gång även när gallringen berör
+flera databasrader.
+
+- `en`: Retention subject
+
+_Avoid_: Databasrad, gallringskandidat när objektet ännu inte har prövats mot
+alla villkor, informationsmängd.
 
 **Arkivexport**:
 Ett bevarandeunderlag som tas fram innan information gallras när
