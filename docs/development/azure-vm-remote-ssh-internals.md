@@ -179,7 +179,47 @@ terminating lifecycle error. Before writing, completion correlates the record's
 command, VM, terminal outcome or failure phase, state, action, and mutation
 acceptance with the primary result or failure.
 
+The public entry point preserves these ordered stages:
+
+1. Load and validate one immutable lifecycle configuration snapshot.
+2. For preview, inspect only cached identity and emit `ShouldProcess` plans.
+3. For status, authenticate and read the exact target without taking a lock.
+4. For a real mutation, acquire the target-derived lock, authenticate, read
+   the exact target, plan from the normalized state, and submit at most one
+   asynchronous mutation while the lock is held.
+5. Release the lock before either transition wait. A downward start can
+   reacquire it to re-authenticate and make one fresh guarded decision.
+6. After the terminal outcome and lock release, construct the result or error,
+   attempt the diagnostic record, and emit exactly one primary outcome.
+
+Configuration failure stops before an Azure call or local lifecycle artifact.
+Later failures use the stable phases `authentication`, `lock`, `state-read`,
+`not-found`, `start-submission`, `deallocation-submission`,
+`stable-stop-wait`, `running-wait`, and `outside-interference`.
+
 ### Lifecycle Preview And Status
+
+Real lifecycle authentication probes the exact cached identity and ARM token:
+
+```text
+az account show --subscription <subscription-id> --output json \
+  --only-show-errors
+az account get-access-token --subscription <subscription-id> \
+  [--tenant <tenant-id>] --output none --only-show-errors
+```
+
+Configured service-principal repair first checks Azure CLI 2.86.0 or later and
+then uses exactly one targeted, non-interactive login:
+
+```text
+az login --service-principal --username <client-id> --password=<secret> \
+  --tenant <tenant-id> --skip-subscription-discovery \
+  --subscription <subscription-id> --output none --only-show-errors
+```
+
+The lifecycle path never uses `az account list`, `az account set`, device-code
+login, or another interactive login. Each authentication command suppresses
+native output details and uses the two-minute Azure-call deadline.
 
 Lifecycle preview uses normal `ShouldProcess` decisions. It validates the
 immutable lifecycle snapshot and makes only the cache-only profile-identity
@@ -217,12 +257,24 @@ target-derived lock, authenticates, observes state, plans, and submits any
 mutation inside that lock. It releases the lock before constructing the
 terminal record and returning one result or rethrowing one lifecycle error.
 
-The pure plan maps `deallocated` to `already-deallocated/none` and
-`deallocating` to `already-requested/none`. It maps `starting`, `running`,
-`stopping`, `stopped-allocated`, `creating`, and `unavailable` to
-`requested/deallocation-requested`. The unreadable-state fallback deliberately
-prefers cost control. `not-found` uses the `not-found` failure phase;
-`unrecognized` uses `state-read`. Neither submits a mutation.
+The pure stop plan is the complete normalized-state table:
+
+<!-- markdownlint-disable MD013 -->
+| Observation | Result or failure | Action | Mutation |
+| --- | --- | --- | --- |
+| `starting` | `requested` | `deallocation-requested` | Submit |
+| `running` | `requested` | `deallocation-requested` | Submit |
+| `stopping` | `requested` | `deallocation-requested` | Submit |
+| `stopped-allocated` | `requested` | `deallocation-requested` | Submit |
+| `deallocating` | `already-requested` | `none` | None |
+| `deallocated` | `already-deallocated` | `none` | None |
+| `creating` | `requested` | `deallocation-requested` | Submit |
+| `unavailable` | `requested` | `deallocation-requested` | Submit |
+| `not-found` | Failure phase `not-found` | `none` | None |
+| `unrecognized` | Failure phase `state-read` | `none` | None |
+<!-- markdownlint-enable MD013 -->
+
+The unreadable-state fallback deliberately prefers cost control.
 
 The only stop mutation is:
 
@@ -311,11 +363,40 @@ VS Code tools; inspect or change SSH configuration or trust; resolve a host; or
 probe SSH readiness. Connection preparation and trust repair remain owned by
 `setup`.
 
-The opt-in Pester public-command harness invokes the entry point with a
+### Offline Lifecycle Acceptance Boundary
+
+The opt-in Pester public-command harness invokes `scripts/azure-dev.ps1` with a
 temporary repository root, isolated home and Azure CLI directory, scripted
-fake `az`, and an argument log. Stubs fail if lifecycle commands invoke SSH,
-Git, VS Code, or network tools. The harness supplies no real credentials,
-Azure access, SSH state, or real home directory.
+fake `az`, and an argument log. It supplies no real credentials, Azure access,
+SSH state, or real home directory. The fake exposes cached-identity, token,
+targeted-login, state-sequence, mutation-acceptance, and mutation-rejection
+modes. Every recorded argument array is available for exact assertions.
+
+The public suite covers both previews, all ten normalized status observations,
+the complete start and stop transition tables, idempotent outcomes, targeted
+authentication repair, configuration and lock failures, rejected mutations,
+both transition timeouts, progress, diagnostic-write warning, outside
+interference, and interruption. Child-process cases verify exit behavior;
+in-process cases verify typed results, terminating errors, stream separation,
+and the lifecycle record schema.
+
+The injected monotonic clock and delay advance the waits without sleeping.
+Together with focused unit coverage, the suite fixes the timing contract at
+five-second polls, 30-second heartbeats, a 15-second lock deadline, independent
+ten-minute stable-stop and running deadlines, and a two-minute deadline for
+each Azure CLI call. The state-sequence log also proves the lock is released
+during polling and reacquired before a refreshed decision.
+
+Stubs for SSH, key, transfer, Git, host-resolution, download, and VS Code tools
+fail and record evidence if invoked. The isolated `PATH`, untouched malformed
+setup-state sentinel, absent SSH home, exact Azure argument log, and empty job
+set prove the lifecycle path performs no SSH preparation, trust refresh,
+readiness polling, setup-state read, unrelated discovery, interactive login,
+subscription enumeration, or global subscription selection. Result and log
+assertions prove
+that progress and exact connection guidance stay outside the success stream,
+and that best-effort lifecycle records remain allowlisted, secret-free,
+self-identifying, and non-authoritative.
 
 `setup -WhatIf` must remain read-only. It may inspect local tools, Azure login,
 subscription visibility, SKU availability, resource-group tags, SSH CIDR, and

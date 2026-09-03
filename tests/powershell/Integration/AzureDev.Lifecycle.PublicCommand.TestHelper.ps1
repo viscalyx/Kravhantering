@@ -45,6 +45,7 @@ AZURE_CLIENT_SECRET=fake-harness-secret
   $forbiddenLog = Join-Path $fixtureRoot 'forbidden-commands.log'
   $vmStateFile = Join-Path $fixtureRoot 'vm-state'
   $vmStateReadCountFile = Join-Path $fixtureRoot 'vm-state-read-count'
+  $repairMarker = Join-Path $fixtureRoot 'repaired-session'
   $fakeAzPath = Join-Path $binPath 'az'
   Set-Content -LiteralPath $fakeAzPath -Value @'
 #!/bin/sh
@@ -60,7 +61,8 @@ if [ "$1" = 'account' ] && [ "$2" = 'show' ]; then
     exit 1
   fi
   client_id="$FAKE_AZ_CLIENT_ID"
-  if [ "$FAKE_AZ_PROFILE_MODE" = 'mismatch' ]; then
+  if [ "$FAKE_AZ_PROFILE_MODE" = 'mismatch' ] &&
+    [ ! -f "$FAKE_AZ_REPAIR_MARKER" ]; then
     client_id='44444444-4444-4444-4444-444444444444'
   fi
   printf '{"id":"%s","tenantId":"%s","user":{"name":"%s","type":"servicePrincipal"}}\n' \
@@ -69,6 +71,23 @@ if [ "$1" = 'account' ] && [ "$2" = 'show' ]; then
 fi
 
 if [ "$1" = 'account' ] && [ "$2" = 'get-access-token' ]; then
+  if [ "$FAKE_AZ_TOKEN_MODE" = 'stale' ] &&
+    [ ! -f "$FAKE_AZ_REPAIR_MARKER" ]; then
+    exit 1
+  fi
+  exit 0
+fi
+
+if [ "$1" = 'version' ]; then
+  printf '%s\n' '2.86.0'
+  exit 0
+fi
+
+if [ "$1" = 'login' ]; then
+  if [ "$FAKE_AZ_LOGIN_MODE" = 'reject' ]; then
+    exit 1
+  fi
+  : > "$FAKE_AZ_REPAIR_MARKER"
   exit 0
 fi
 
@@ -148,6 +167,9 @@ if [ "$1" = 'vm' ] && [ "$2" = 'get-instance-view' ]; then
 fi
 
 if [ "$1" = 'vm' ] && [ "$2" = 'start' ]; then
+  if [ "$FAKE_AZ_START_MODE" = 'reject' ]; then
+    exit 1
+  fi
   exit 0
 fi
 
@@ -197,6 +219,7 @@ exit 97
     ForbiddenLog = $forbiddenLog
     VmStateFile = $vmStateFile
     VmStateReadCountFile = $vmStateReadCountFile
+    RepairMarker = $repairMarker
     SubscriptionId = $subscriptionId
     TenantId = $tenantId
     ClientId = $clientId
@@ -230,8 +253,12 @@ function Enter-AzureDevLifecyclePublicCommandFixture {
     FAKE_AZ_TENANT_ID = $Fixture.TenantId
     FAKE_AZ_CLIENT_ID = $Fixture.ClientId
     FAKE_AZ_PROFILE_MODE = 'exact'
+    FAKE_AZ_TOKEN_MODE = 'usable'
+    FAKE_AZ_LOGIN_MODE = 'accept'
+    FAKE_AZ_REPAIR_MARKER = $Fixture.RepairMarker
     FAKE_AZ_VM_STATE = 'PowerState/running'
     FAKE_AZ_DEALLOCATE_MODE = 'accept'
+    FAKE_AZ_START_MODE = 'accept'
     FAKE_AZ_VM_STATE_AFTER_READ = $null
     FAKE_AZ_STATE_CHANGE_AFTER_READS = $null
     FAKE_AZ_VM_STATE_SEQUENCE = $null
@@ -289,7 +316,8 @@ function Clear-AzureDevLifecyclePublicCommandEvidence {
       $Fixture.ArgumentLog,
       $Fixture.ForbiddenLog,
       $Fixture.VmStateFile,
-      $Fixture.VmStateReadCountFile
+      $Fixture.VmStateReadCountFile,
+      $Fixture.RepairMarker
     ) `
     -Force `
     -ErrorAction SilentlyContinue

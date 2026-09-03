@@ -38,12 +38,27 @@ Describe `
       'Process'
     )
     [System.Environment]::SetEnvironmentVariable(
+      'FAKE_AZ_TOKEN_MODE',
+      'usable',
+      'Process'
+    )
+    [System.Environment]::SetEnvironmentVariable(
+      'FAKE_AZ_LOGIN_MODE',
+      'accept',
+      'Process'
+    )
+    [System.Environment]::SetEnvironmentVariable(
       'FAKE_AZ_VM_STATE',
       'PowerState/running',
       'Process'
     )
     [System.Environment]::SetEnvironmentVariable(
       'FAKE_AZ_DEALLOCATE_MODE',
+      'accept',
+      'Process'
+    )
+    [System.Environment]::SetEnvironmentVariable(
+      'FAKE_AZ_START_MODE',
       'accept',
       'Process'
     )
@@ -189,7 +204,12 @@ Describe `
   Context 'When lifecycle status is requested' {
     BeforeDiscovery {
       $statusCases = @(
+        @{ Raw = 'PowerState/starting'; Expected = 'starting' },
+        @{ Raw = 'PowerState/running'; Expected = 'running' },
+        @{ Raw = 'PowerState/stopping'; Expected = 'stopping' },
         @{ Raw = 'PowerState/stopped'; Expected = 'stopped-allocated' },
+        @{ Raw = 'PowerState/deallocating'; Expected = 'deallocating' },
+        @{ Raw = 'PowerState/deallocated'; Expected = 'deallocated' },
         @{ Raw = 'PowerState/creating'; Expected = 'creating' },
         @{ Raw = 'PowerState/unknown'; Expected = 'unrecognized' },
         @{ Raw = 'not-found'; Expected = 'not-found' },
@@ -218,10 +238,26 @@ Describe `
       @($information.MessageData.Message) |
         Should-ContainCollection "Power state: $Expected"
       $calls.Count | Should-Be 3
-      $calls[2] | Should-MatchString (
-        "CALL`tvm`tget-instance-view`t--subscription" +
-        "`t$($script:fixture.SubscriptionId)`t--resource-group" +
-        "`tisolated-rg`t--name`tisolated-vm"
+      $calls | Should-BeCollection @(
+        (
+          "CALL`taccount`tshow`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--output`tjson" +
+          "`t--only-show-errors"
+        ),
+        (
+          "CALL`taccount`tget-access-token`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--tenant" +
+          "`t$($script:fixture.TenantId)`t--output`tnone" +
+          "`t--only-show-errors"
+        ),
+        (
+          "CALL`tvm`tget-instance-view`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--resource-group" +
+          "`tisolated-rg`t--name`tisolated-vm`t--query" +
+          "`tinstanceView.statuses[?starts_with(code, " +
+          "'PowerState/')].code | [0]`t--output`ttsv" +
+          "`t--only-show-errors"
+        )
       )
       Test-Path `
         -LiteralPath (Join-Path $script:fixture.RepositoryRoot '.azure') |
@@ -231,9 +267,161 @@ Describe `
     }
   }
 
+  Context 'When lifecycle authentication requires targeted repair' {
+    It 'Should repair the configured service principal without global selection' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_PROFILE_MODE',
+        'mismatch',
+        'Process'
+      )
+
+      $result = @(
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
+      )
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $allCalls = $calls -join [System.Environment]::NewLine
+
+      $result.Count | Should-Be 1
+      $calls | Should-BeCollection @(
+        (
+          "CALL`taccount`tshow`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--output`tjson" +
+          "`t--only-show-errors"
+        ),
+        (
+          "CALL`tversion`t--query`t`"azure-cli`"`t--output`ttsv" +
+          "`t--only-show-errors"
+        ),
+        (
+          "CALL`tlogin`t" +
+          "--service-principal`t--username`t$($script:fixture.ClientId)" +
+          "`t--password=fake-harness-secret" +
+          "`t--tenant`t$($script:fixture.TenantId)" +
+          "`t--skip-subscription-discovery`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--output`tnone" +
+          "`t--only-show-errors"
+        ),
+        (
+          "CALL`taccount`tshow`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--output`tjson" +
+          "`t--only-show-errors"
+        ),
+        (
+          "CALL`tvm`tget-instance-view`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--resource-group" +
+          "`tisolated-rg`t--name`tisolated-vm`t--query" +
+          "`tinstanceView.statuses[?starts_with(code, " +
+          "'PowerState/')].code | [0]`t--output`ttsv" +
+          "`t--only-show-errors"
+        )
+      )
+      $allCalls | Should-NotMatchString "account`tlist"
+      $allCalls | Should-NotMatchString "account`tset"
+      $allCalls | Should-NotMatchString "login`t--use-device-code"
+    }
+
+    It 'Should return one authentication failure when targeted repair fails' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_PROFILE_MODE',
+        'mismatch',
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_LOGIN_MODE',
+        'reject',
+        'Process'
+      )
+
+      $result = @()
+      $caught = $null
+      try {
+        $result = @(& $script:entryPoint `
+          stop `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming)
+      } catch {
+        $caught = $_
+      }
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $recordPath = @(Get-ChildItem `
+          -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+          ) `
+          -Filter '*.jsonl' `
+          -File)[0].FullName
+      $recordText = Get-Content -LiteralPath $recordPath -Raw
+      $record = $recordText | ConvertFrom-Json
+
+      $caught | Should-NotBeNull
+      $result.Count | Should-Be 0
+      $record.failurePhase | Should-Be 'authentication'
+      $record.observedState | Should-BeNull
+      $record.action | Should-BeNull
+      $recordText | Should-NotMatchString 'fake-harness-secret'
+      @($calls | Where-Object { $_ -match "CALL`tvm`t" }).Count |
+        Should-Be 0
+      @($calls | Where-Object { $_ -match "CALL`tlogin`t" }).Count |
+        Should-Be 1
+    }
+  }
+
+  Context 'When lifecycle configuration or locking fails' {
+    It 'Should fail incomplete configuration before invoking Azure' {
+      $incompleteRoot = Join-Path $TestDrive 'incomplete-repository'
+      New-Item -ItemType Directory -Path $incompleteRoot | Out-Null
+
+      {
+        & $script:entryPoint stop -RepositoryRoot $incompleteRoot
+      } | Should-Throw
+
+      @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture).Count | Should-Be 0
+      Test-Path -LiteralPath (Join-Path $incompleteRoot '.azure') |
+        Should-BeFalse
+    }
+
+    It 'Should record lock failure before authentication or mutation' {
+      $azurePath = Join-Path $script:fixture.RepositoryRoot '.azure'
+      New-Item -ItemType Directory -Path $azurePath | Out-Null
+      Set-Content `
+        -LiteralPath (Join-Path $azurePath 'lifecycle-locks') `
+        -Value 'blocks lock directory creation'
+
+      {
+        & $script:entryPoint `
+          stop `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
+      } | Should-Throw
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $recordPath = @(Get-ChildItem `
+          -LiteralPath (Join-Path $azurePath 'logs') `
+          -Filter '*.jsonl' `
+          -File)[0].FullName
+      $record = Get-Content -LiteralPath $recordPath | ConvertFrom-Json
+
+      $calls.Count | Should-Be 0
+      $record.failurePhase | Should-Be 'lock'
+      $record.mutationAccepted | Should-BeFalse
+    }
+  }
+
   Context 'When stop is requested' {
     BeforeDiscovery {
       $stopCases = @(
+        @{
+          Raw = 'PowerState/starting'
+          Observed = 'starting'
+          Result = 'requested'
+          Action = 'deallocation-requested'
+          MutationCount = 1
+        },
         @{
           Raw = 'PowerState/running'
           Observed = 'running'
@@ -242,8 +430,29 @@ Describe `
           MutationCount = 1
         },
         @{
+          Raw = 'PowerState/stopping'
+          Observed = 'stopping'
+          Result = 'requested'
+          Action = 'deallocation-requested'
+          MutationCount = 1
+        },
+        @{
+          Raw = 'PowerState/stopped'
+          Observed = 'stopped-allocated'
+          Result = 'requested'
+          Action = 'deallocation-requested'
+          MutationCount = 1
+        },
+        @{
           Raw = 'read-failed'
           Observed = 'unavailable'
+          Result = 'requested'
+          Action = 'deallocation-requested'
+          MutationCount = 1
+        },
+        @{
+          Raw = 'PowerState/creating'
+          Observed = 'creating'
           Result = 'requested'
           Action = 'deallocation-requested'
           MutationCount = 1
@@ -388,6 +597,35 @@ Describe `
       $record.terminalResult | Should-BeNull
     }
 
+    It 'Should fail an unrecognized state without deallocation' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'PowerState/unknown',
+        'Process'
+      )
+
+      {
+        & $script:entryPoint `
+          stop `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
+      } | Should-Throw -ExceptionMessage '*unrecognized*'
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $recordPath = @(Get-ChildItem `
+          -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+          ) `
+          -Filter '*.jsonl' `
+          -File)[0].FullName
+      $record = Get-Content -LiteralPath $recordPath | ConvertFrom-Json
+
+      @($calls | Where-Object { $_ -match "CALL`tvm`tdeallocate`t" }).Count |
+        Should-Be 0
+      $record.failurePhase | Should-Be 'state-read'
+      $record.observedState | Should-Be 'unrecognized'
+    }
+
     It 'Should fail a rejected submission with one error and one failure record' {
       [System.Environment]::SetEnvironmentVariable(
         'FAKE_AZ_DEALLOCATE_MODE',
@@ -448,6 +686,13 @@ Describe `
 
   Context 'When start is already running' {
     It 'Should return one typed result and only the two connection entry points' {
+      $azurePath = Join-Path $script:fixture.RepositoryRoot '.azure'
+      $setupStatePath = Join-Path $azurePath 'development.state.json'
+      New-Item -ItemType Directory -Path $azurePath | Out-Null
+      Set-Content `
+        -LiteralPath $setupStatePath `
+        -Value '{malformed-setup-state-sentinel' `
+        -NoNewline
       $information = @()
 
       $result = @(
@@ -465,9 +710,27 @@ Describe `
       $result[0].Result | Should-Be 'already-running'
       $result[0].ObservedState | Should-Be 'running'
       $result[0].Action | Should-Be 'none'
-      $calls.Count | Should-Be 3
-      @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
-        Should-Be 0
+      $calls | Should-BeCollection @(
+        (
+          "CALL`taccount`tshow`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--output`tjson" +
+          "`t--only-show-errors"
+        ),
+        (
+          "CALL`taccount`tget-access-token`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--tenant" +
+          "`t$($script:fixture.TenantId)`t--output`tnone" +
+          "`t--only-show-errors"
+        ),
+        (
+          "CALL`tvm`tget-instance-view`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--resource-group" +
+          "`tisolated-rg`t--name`tisolated-vm`t--query" +
+          "`tinstanceView.statuses[?starts_with(code, " +
+          "'PowerState/')].code | [0]`t--output`ttsv" +
+          "`t--only-show-errors"
+        )
+      )
       $guidance = @(
         $information |
           Where-Object {
@@ -483,6 +746,8 @@ Describe `
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
       Test-Path -LiteralPath (Join-Path $script:fixture.HomePath '.ssh') |
         Should-BeFalse
+      Get-Content -LiteralPath $setupStatePath -Raw |
+        Should-Be '{malformed-setup-state-sentinel'
       @(Get-ChildItem -LiteralPath (
             Join-Path $script:fixture.RepositoryRoot '.azure/lifecycle-locks'
           ) -File).Count | Should-Be 0
@@ -491,9 +756,29 @@ Describe `
         ) -File)[0]
       $logRecord = Get-Content -LiteralPath $logFile.FullName -Raw |
         ConvertFrom-Json
+      @($logRecord.PSObject.Properties.Name) | Should-BeCollection @(
+        'schemaVersion',
+        'recordType',
+        'timestamp',
+        'command',
+        'subscriptionId',
+        'resourceGroup',
+        'vmName',
+        'terminalResult',
+        'failurePhase',
+        'observedState',
+        'action',
+        'mutationAccepted',
+        'elapsedMilliseconds'
+      )
+      $logRecord.schemaVersion | Should-Be 1
+      $logRecord.recordType |
+        Should-Be 'azure-development-environment-lifecycle'
       $logRecord.terminalResult | Should-Be 'already-running'
       $logRecord.action | Should-Be 'none'
       $logRecord.mutationAccepted | Should-BeFalse
+      (Get-Content -LiteralPath $logFile.FullName -Raw) |
+        Should-NotMatchString 'fake-harness-secret|token|setup-state-sentinel'
     }
   }
 
@@ -816,6 +1101,42 @@ $timing.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleTiming')
           $_.Event -eq 'state-change' -and
           $_.ObservedState -eq 'running'
         }).Count | Should-Be 1
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+    }
+
+    It 'Should record one rejected start without retrying the mutation' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'PowerState/deallocated',
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_START_MODE',
+        'reject',
+        'Process'
+      )
+
+      {
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
+      } | Should-Throw -ExceptionMessage '*did not accept*'
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $recordPath = @(Get-ChildItem `
+          -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+          ) `
+          -Filter '*.jsonl' `
+          -File)[0].FullName
+      $record = Get-Content -LiteralPath $recordPath | ConvertFrom-Json
+
+      @($calls | Where-Object { $_ -match "CALL`tvm`tstart`t" }).Count |
+        Should-Be 1
+      $record.failurePhase | Should-Be 'start-submission'
+      $record.action | Should-Be 'start-requested'
+      $record.mutationAccepted | Should-BeFalse
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
     }
   }

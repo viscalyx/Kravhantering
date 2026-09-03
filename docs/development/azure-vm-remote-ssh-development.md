@@ -1105,6 +1105,31 @@ The app runs directly on the VM host. Containers run only the support services.
 
 ## Step 8: Manage the Environment
 
+The lifecycle commands read a narrow, immutable snapshot of the configured
+subscription, resource group, VM name, SSH alias, and optional complete
+service-principal credential triple. Values follow the configuration
+precedence documented in Steps 4 and 5: the current PowerShell session wins,
+then `.env.azure.development.local`, then `.env.azure.development`. Every Azure
+read and mutation names the configured subscription, resource group, and VM;
+the commands do not enumerate subscriptions or change the Azure CLI global
+subscription.
+
+A matching cached Azure CLI identity is reused after a silent token check. A
+stale or mismatched configured service principal is repaired with one targeted,
+non-interactive login. Without service-principal configuration, lifecycle
+commands reuse only a matching Azure CLI user session and tell you to log in if
+it is unusable; they never initiate interactive login. Each Azure CLI call has
+a two-minute deadline.
+
+Real `start` and `stop` attempts return exactly one structured result on
+success. Progress and connection guidance are separate terminal information,
+not result objects. A failure returns no result and exits nonzero with one
+terminating lifecycle error. After lock release, a completed real attempt also
+tries to append one self-identifying JSONL record under `.azure/logs/`. That
+local record is secret-free diagnostic evidence, not an authoritative Azure
+state or billing record. A logging warning never replaces the primary success
+or failure.
+
 Start the VM:
 
 ```powershell
