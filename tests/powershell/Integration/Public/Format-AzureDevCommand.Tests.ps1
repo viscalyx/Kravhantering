@@ -51,5 +51,46 @@ Describe 'Format-AzureDevCommand' -Tag 'Integration' `
       $formatted | Should-NotMatchString 'client first line'
       $formatted | Should-NotMatchString 'auth first line'
     }
+
+
+    It 'Should redact every split and assignment spelling across lines' {
+      $splitSecret = "split first line`nsplit second line"
+      $assignedSecret = "assigned first line`r`nassigned second line"
+
+      $formatted = Format-AzureDevCommand `
+        -FilePath 'az' `
+        -Arguments @(
+          'login',
+          '--client_secret', $splitSecret,
+          '--clientSecret', $splitSecret,
+          '--CLIENT-SECRET', $splitSecret,
+          '--auth_key', $splitSecret,
+          '--authKey', $splitSecret,
+          '--AUTH-KEY', $splitSecret,
+          "--client_secret=$assignedSecret",
+          "--clientSecret=$assignedSecret",
+          "--CLIENT-SECRET=$assignedSecret",
+          "--auth_key=$assignedSecret",
+          "--authKey=$assignedSecret",
+          "--AUTH-KEY=$assignedSecret"
+        )
+
+      $formatted | Should-MatchString '--client_secret \[redacted\]'
+      $formatted | Should-MatchString '--clientSecret \[redacted\]'
+      $formatted | Should-MatchString '--CLIENT-SECRET \[redacted\]'
+      $formatted | Should-MatchString '--auth_key \[redacted\]'
+      $formatted | Should-MatchString '--authKey \[redacted\]'
+      $formatted | Should-MatchString '--AUTH-KEY \[redacted\]'
+      $formatted | Should-MatchString '--client_secret=\[redacted\]'
+      $formatted | Should-MatchString '--clientSecret=\[redacted\]'
+      $formatted | Should-MatchString '--CLIENT-SECRET=\[redacted\]'
+      $formatted | Should-MatchString '--auth_key=\[redacted\]'
+      $formatted | Should-MatchString '--authKey=\[redacted\]'
+      $formatted | Should-MatchString '--AUTH-KEY=\[redacted\]'
+      $formatted | Should-NotMatchString 'split first line'
+      $formatted | Should-NotMatchString 'split second line'
+      $formatted | Should-NotMatchString 'assigned first line'
+      $formatted | Should-NotMatchString 'assigned second line'
+    }
   }
 }

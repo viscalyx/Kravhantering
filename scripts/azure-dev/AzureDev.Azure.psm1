@@ -3,32 +3,6 @@ Set-StrictMode -Version Latest
 $script:AzureDevWhatIfDocumentationUrl = 'https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-what-if'
 $script:AzureDevTrustedLaunchSkuSupportCache = @{}
 
-function Test-AzureDevAzureLifecycleInterruption {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory = $true)]
-    [object]$ErrorObject
-  )
-
-  $exception = if (
-    $ErrorObject -is [System.Management.Automation.ErrorRecord]
-  ) {
-    $ErrorObject.Exception
-  } else {
-    $ErrorObject
-  }
-  while ($null -ne $exception) {
-    if (
-      $exception -is [System.OperationCanceledException] -or
-      $exception -is [System.Management.Automation.PipelineStoppedException]
-    ) {
-      return $true
-    }
-    $exception = $exception.InnerException
-  }
-  return $false
-}
-
 function Invoke-AzCli {
   [CmdletBinding()]
   param(
@@ -47,10 +21,12 @@ function Invoke-AzCli {
   Write-Verbose "Running $commandLine"
 
   $callerWhatIfPreference = $WhatIfPreference
+  $callerConfirmPreference = $ConfirmPreference
   $stderrPath = $null
   $azureCliJob = $null
   try {
     $WhatIfPreference = $false
+    $ConfirmPreference = 'None'
     if ($TimeoutSeconds -gt 0) {
       $azureCliJob = Start-ThreadJob `
         -ScriptBlock {
@@ -120,6 +96,9 @@ function Invoke-AzCli {
       try {
         return $text | ConvertFrom-Json
       } catch {
+        if (Test-AzureDevInterruption -ErrorObject $_) {
+          throw
+        }
         if ($SuppressOutputDetails) {
           throw "$commandLine did not return valid JSON."
         }
@@ -138,6 +117,7 @@ function Invoke-AzCli {
       }
     } finally {
       $WhatIfPreference = $callerWhatIfPreference
+      $ConfirmPreference = $callerConfirmPreference
     }
   }
 }
@@ -202,7 +182,7 @@ function Connect-AzureDevLifecycleSession {
     } catch [System.TimeoutException] {
       throw
     } catch {
-      if (Test-AzureDevAzureLifecycleInterruption -ErrorObject $_) {
+      if (Test-AzureDevInterruption -ErrorObject $_) {
         throw
       }
       return $null
@@ -280,7 +260,7 @@ function Connect-AzureDevLifecycleSession {
     } catch [System.TimeoutException] {
       throw
     } catch {
-      if (Test-AzureDevAzureLifecycleInterruption -ErrorObject $_) {
+      if (Test-AzureDevInterruption -ErrorObject $_) {
         throw
       }
       return $false
@@ -346,7 +326,7 @@ function Connect-AzureDevLifecycleSession {
   } catch [System.TimeoutException] {
     throw
   } catch {
-    if (Test-AzureDevAzureLifecycleInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     throw 'Could not verify the Azure CLI version during authentication.'
@@ -385,7 +365,7 @@ function Connect-AzureDevLifecycleSession {
   } catch [System.TimeoutException] {
     throw
   } catch {
-    if (Test-AzureDevAzureLifecycleInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     throw 'Targeted service-principal login failed during authentication.'

@@ -10,6 +10,10 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
     )
     Import-Module (
       Join-Path $script:repositoryRoot `
+        'scripts/azure-dev/AzureDev.Logging.psm1'
+    ) -Force -ErrorAction Stop
+    Import-Module (
+      Join-Path $script:repositoryRoot `
         'scripts/azure-dev/AzureDev.LifecycleLock.psm1'
     ) -Force -ErrorAction Stop
     $PSDefaultParameterValues = @{
@@ -22,7 +26,7 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
       }
     }
     Mock Enter-AzureDevLifecycleMutex { $true }
-    Mock Close-AzureDevLifecycleMutex {}
+    Mock Close-AzureDevLifecycleMutex
   }
 
   BeforeEach {
@@ -46,6 +50,7 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
 
   AfterAll {
     Get-Module $script:moduleName -All | Remove-Module -Force
+    Get-Module 'AzureDev.Logging' -All | Remove-Module -Force
   }
 
   Context 'When work ends with a terminating interruption' {

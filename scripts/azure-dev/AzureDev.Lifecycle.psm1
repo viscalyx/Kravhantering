@@ -1,31 +1,5 @@
 Set-StrictMode -Version Latest
 
-function Test-AzureDevOrchestrationInterruption {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory = $true)]
-    [object]$ErrorObject
-  )
-
-  $exception = if (
-    $ErrorObject -is [System.Management.Automation.ErrorRecord]
-  ) {
-    $ErrorObject.Exception
-  } else {
-    $ErrorObject
-  }
-  while ($null -ne $exception) {
-    if (
-      $exception -is [System.OperationCanceledException] -or
-      $exception -is [System.Management.Automation.PipelineStoppedException]
-    ) {
-      return $true
-    }
-    $exception = $exception.InnerException
-  }
-  return $false
-}
-
 function ConvertTo-AzureDevLifecycleTimeoutSeconds {
   [CmdletBinding()]
   param(
@@ -639,7 +613,7 @@ function Write-AzureDevLifecycleLogRecord {
       -Encoding UTF8 `
       -ErrorAction Stop
   } catch {
-    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     Write-Warning `
@@ -744,7 +718,7 @@ function Complete-AzureDevLifecycleAttempt {
       -Confirm:$false `
       -WarningAction Continue
   } catch {
-    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     Write-Warning `
@@ -794,7 +768,7 @@ function Get-AzureDevLifecycleState {
       -TimeoutSeconds $TimeoutSeconds `
       -SuppressOutputDetails
   } catch {
-    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     if (
@@ -943,7 +917,7 @@ function Invoke-AzureDevStopLifecycle {
       -Config $Configuration `
       -TimeoutSeconds $AzureCallTimeoutSeconds
   } catch {
-    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     $failure = New-AzureDevLifecycleErrorRecord `
@@ -962,7 +936,7 @@ function Invoke-AzureDevStopLifecycle {
       -Configuration $Configuration `
       -TimeoutSeconds $AzureCallTimeoutSeconds
   } catch {
-    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     $failure = New-AzureDevLifecycleErrorRecord `
@@ -1043,7 +1017,7 @@ function Invoke-AzureDevStopLifecycle {
         -TimeoutSeconds $AzureCallTimeoutSeconds `
         -SuppressOutputDetails
     } catch {
-      if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+      if (Test-AzureDevInterruption -ErrorObject $_) {
         throw
       }
       $failure = New-AzureDevLifecycleErrorRecord `
@@ -1130,7 +1104,7 @@ function Invoke-AzureDevStopCommand {
       } `
       -Confirm:$false
   } catch {
-    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     $caught = $_
@@ -1312,7 +1286,7 @@ function Invoke-AzureDevLifecycleCommand {
       -RepositoryRoot $RepositoryRoot `
       -EnvironmentFile $EnvironmentFile
   } catch {
-    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     $configurationFailure = New-AzureDevLifecycleErrorRecord `
@@ -1402,12 +1376,17 @@ function Invoke-AzureDevLifecycleCommand {
   }
 
   if ($CommandName -eq 'stop') {
-    return Invoke-AzureDevStopCommand `
-      -Configuration $configuration `
-      -Timing $Timing `
-      -Confirm:$false
+    $stopParameters = @{
+      Configuration = $configuration
+      Timing = $Timing
+    }
+    if ($PSBoundParameters.ContainsKey('Confirm')) {
+      $stopParameters.Confirm = $PSBoundParameters['Confirm']
+    }
+    return Invoke-AzureDevStopCommand @stopParameters
   }
 
+  $lifecycleShouldProcess = $PSCmdlet
   $getMonotonicMilliseconds = $Timing.GetMonotonicMilliseconds
   $attemptStartedAt = [long](& $getMonotonicMilliseconds)
   $completeStartFailure = {
@@ -1479,7 +1458,7 @@ function Invoke-AzureDevLifecycleCommand {
         -Config $ConfigurationSnapshot `
         -TimeoutSeconds $azureCallTimeoutSeconds
     } catch {
-      if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+      if (Test-AzureDevInterruption -ErrorObject $_) {
         throw
       }
       $authenticationFailure = New-AzureDevLifecycleErrorRecord `
@@ -1512,6 +1491,23 @@ function Invoke-AzureDevLifecycleCommand {
     }
 
     if ($plan.SubmitMutation) {
+      $mutationTarget = (
+        "$($ConfigurationSnapshot.SubscriptionId)/" +
+        "$($ConfigurationSnapshot.ResourceGroup)/" +
+        $ConfigurationSnapshot.VmName
+      )
+      if (-not $lifecycleShouldProcess.ShouldProcess(
+          $mutationTarget,
+          'Submit asynchronous Azure VM start'
+        )) {
+        return [pscustomobject]@{
+          Plan = $plan
+          InitialState = $observedState
+          MutationAccepted = $false
+          MutationDeclined = $true
+        }
+      }
+
       Write-AzureDevLifecycleProgress `
         -Event submission `
         -Command start `
@@ -1538,7 +1534,7 @@ function Invoke-AzureDevLifecycleCommand {
           -TimeoutSeconds $azureCallTimeoutSeconds `
           -SuppressOutputDetails
       } catch {
-        if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+        if (Test-AzureDevInterruption -ErrorObject $_) {
           throw
         }
         $submissionFailure = New-AzureDevLifecycleErrorRecord `
@@ -1559,6 +1555,7 @@ function Invoke-AzureDevLifecycleCommand {
       Plan = $plan
       InitialState = $observedState
       MutationAccepted = [bool]$plan.SubmitMutation
+      MutationDeclined = $false
     }
   }
   $contentionProgress = {
@@ -1575,12 +1572,17 @@ function Invoke-AzureDevLifecycleCommand {
       -CommandName start `
       -TimeoutSeconds $lockTimeoutSeconds `
       -OnContention $contentionProgress `
-      -ScriptBlock $lockedDecision
+      -ScriptBlock $lockedDecision `
+      -Confirm:$false
   } catch {
-    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+    if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
     & $completeStartLockFailure $_
+  }
+
+  if ($operation.MutationDeclined) {
+    return
   }
 
   if ($operation.Plan.Decision -eq 'wait-stable-stop') {
@@ -1648,12 +1650,16 @@ function Invoke-AzureDevLifecycleCommand {
           -CommandName start `
           -TimeoutSeconds $lockTimeoutSeconds `
           -OnContention $contentionProgress `
-          -ScriptBlock $lockedDecision
+          -ScriptBlock $lockedDecision `
+          -Confirm:$false
       } catch {
-        if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+        if (Test-AzureDevInterruption -ErrorObject $_) {
           throw
         }
         & $completeStartLockFailure $_
+      }
+      if ($operation.MutationDeclined) {
+        return
       }
       $stableState = $operation.InitialState
       $stableWait.ObservedState = $stableState

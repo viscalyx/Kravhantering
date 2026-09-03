@@ -10,6 +10,10 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
     )
     Import-Module (
       Join-Path $script:repositoryRoot `
+        'scripts/azure-dev/AzureDev.Logging.psm1'
+    ) -Force -ErrorAction Stop
+    Import-Module (
+      Join-Path $script:repositoryRoot `
         'scripts/azure-dev/AzureDev.LifecycleLock.psm1'
     ) -Force -ErrorAction Stop
     $PSDefaultParameterValues = @{
@@ -23,7 +27,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
       }
     }
     Mock Enter-AzureDevLifecycleMutex { $true }
-    Mock Close-AzureDevLifecycleMutex {}
+    Mock Close-AzureDevLifecycleMutex
   }
 
   BeforeEach {
@@ -40,6 +44,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
 
   AfterAll {
     Get-Module $script:moduleName -All | Remove-Module -Force
+    Get-Module 'AzureDev.Logging' -All | Remove-Module -Force
   }
 
   Context 'When canonical target values identify a lifecycle lock' {
@@ -417,6 +422,47 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
         -Exactly `
         -Times 1 `
         -Scope It
+    }
+  }
+
+  Context 'When diagnostic cleanup is interrupted' {
+    BeforeAll {
+      Mock Write-AzureDevLifecycleLockRecord -MockWith {
+        throw [System.InvalidOperationException]::new('record write failed')
+      }
+      Mock Remove-AzureDevLifecycleLockRecord -MockWith {
+        $interruption = [System.OperationCanceledException]::new('interrupted')
+        throw [System.InvalidOperationException]::new(
+          'cleanup interrupted',
+          $interruption
+        )
+      }
+    }
+
+    It 'Should propagate cleanup cancellation after releasing the mutex' {
+      $snapshot = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          RepoRoot = $TestDrive
+          SubscriptionId = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+          ResourceGroup = 'target-rg'
+          VmName = 'target-vm'
+        }
+
+      $captured = $null
+      try {
+        $null = Enter-AzureDevLifecycleLock `
+          -ConfigurationSnapshot $snapshot `
+          -CommandName start
+      } catch {
+        $captured = $_
+      }
+
+      $captured.Exception.Message | Should-Be 'cleanup interrupted'
+      $captured.Exception.InnerException.GetType().FullName |
+        Should-Be 'System.OperationCanceledException'
+      Should-Invoke Close-AzureDevLifecycleMutex `
+        -Exactly -Times 1 -Scope It
     }
   }
 }

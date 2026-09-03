@@ -381,7 +381,10 @@ function Enter-AzureDevLifecycleLock {
                 -WhatIf:$false `
                 -Confirm:$false
             } catch {
-              # Diagnostic cleanup must not prevent mutex release.
+              if (Test-AzureDevInterruption -ErrorObject $_) {
+                throw
+              }
+              # Non-interrupting diagnostic cleanup must not prevent release.
             }
           }
         } finally {

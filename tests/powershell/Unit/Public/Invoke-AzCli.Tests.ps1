@@ -199,4 +199,35 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
       $message | Should-NotMatchString 'malformed JSON'
     }
   }
+
+  Context 'When JSON parsing is interrupted' {
+    BeforeEach {
+      Mock ConvertFrom-Json -MockWith {
+        $interruption = [System.OperationCanceledException]::new('interrupted')
+        throw [System.InvalidOperationException]::new(
+          'parsing interrupted',
+          $interruption
+        )
+      }
+    }
+
+    It 'Should preserve cancellation instead of translating it as invalid JSON' {
+      $captured = $null
+      try {
+        $null = Invoke-AzCli `
+          -Arguments @('account', 'show') `
+          -Json `
+          -TimeoutSeconds 120 `
+          -SuppressOutputDetails
+      } catch {
+        $captured = $_
+      }
+
+      $captured.Exception.Message | Should-Be 'parsing interrupted'
+      $captured.Exception.InnerException.GetType().FullName |
+        Should-Be 'System.OperationCanceledException'
+      $captured.Exception.Message |
+        Should-NotMatchString 'did not return valid JSON'
+    }
+  }
 }

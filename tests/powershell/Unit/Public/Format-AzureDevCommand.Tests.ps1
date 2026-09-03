@@ -62,5 +62,43 @@ Describe 'Format-AzureDevCommand' -Tag 'Unit' {
       $formatted | Should-NotMatchString 'auth first line'
       $formatted | Should-NotMatchString 'auth last line'
     }
+
+    It 'Should redact every supported split and assignment spelling' {
+      $secret = "split first line`nsplit last line"
+      $assignmentSecret = "assigned first line`r`nassigned last line"
+
+      $formatted = Format-AzureDevCommand `
+        -FilePath 'az' `
+        -Arguments @(
+          'login',
+          '--client_secret', $secret,
+          '--CLIENTSecret', $secret,
+          '--client-secret', $secret,
+          '--auth_key', $secret,
+          '--AUTHKey', $secret,
+          '--auth-key', $secret,
+          "--client_secret=$assignmentSecret",
+          "--CLIENTSecret=$assignmentSecret",
+          "--client-secret=$assignmentSecret",
+          "--auth_key=$assignmentSecret",
+          "--AUTHKey=$assignmentSecret",
+          "--auth-key=$assignmentSecret"
+        )
+
+      $formatted | Should-BeString `
+        -CaseSensitive `
+        -Expected (
+          'az login --client_secret [redacted] --CLIENTSecret [redacted] ' +
+          '--client-secret [redacted] --auth_key [redacted] ' +
+          '--AUTHKey [redacted] --auth-key [redacted] ' +
+          '--client_secret=[redacted] --CLIENTSecret=[redacted] ' +
+          '--client-secret=[redacted] --auth_key=[redacted] ' +
+          '--AUTHKey=[redacted] --auth-key=[redacted]'
+        )
+      $formatted | Should-NotMatchString 'split first line'
+      $formatted | Should-NotMatchString 'split last line'
+      $formatted | Should-NotMatchString 'assigned first line'
+      $formatted | Should-NotMatchString 'assigned last line'
+    }
   }
 }

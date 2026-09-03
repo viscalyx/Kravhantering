@@ -1282,6 +1282,145 @@ Describe `
     }
   }
 
+  Context 'When real start confirmation reaches the public script boundary' {
+    BeforeDiscovery {
+      $confirmationCases = @(
+        @{
+          Response = 'Y'
+          MutationCount = 1
+          RecordCount = 1
+          ExpectedResult = 'running'
+        },
+        @{
+          Response = 'N'
+          MutationCount = 0
+          RecordCount = 0
+          ExpectedResult = $null
+        }
+      )
+    }
+
+    BeforeEach {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'PowerState/deallocated',
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE_AFTER_READ',
+        'PowerState/running',
+        'Process'
+      )
+    }
+
+    It 'Should honor a <Response> answer at the exact start mutation boundary' `
+      -ForEach $confirmationCases {
+      $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+      $startInfo.FileName = $script:powerShellPath
+      $startInfo.UseShellExecute = $false
+      $startInfo.RedirectStandardInput = $true
+      $startInfo.RedirectStandardOutput = $true
+      $startInfo.RedirectStandardError = $true
+      foreach ($argument in @(
+          '-NoLogo',
+          '-NoProfile',
+          '-File',
+          $script:entryPoint,
+          'start',
+          '-RepositoryRoot',
+          $script:fixture.RepositoryRoot,
+          '-Confirm'
+        )) {
+        $startInfo.ArgumentList.Add($argument)
+      }
+      $process = [System.Diagnostics.Process]::new()
+      $process.StartInfo = $startInfo
+      $script:interruptProcess = $process
+
+      $process.Start() | Should-BeTrue
+      $process.StandardInput.WriteLine($Response)
+      $process.StandardInput.Close()
+      $process.WaitForExit(10000) | Should-BeTrue
+      $output = @(
+        $process.StandardOutput.ReadToEnd(),
+        $process.StandardError.ReadToEnd()
+      ) -join [System.Environment]::NewLine
+      $exitCode = $process.ExitCode
+      $process.Dispose()
+      $script:interruptProcess = $null
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $records = [object[]]@()
+      if ($RecordCount -ne 0) {
+        $records = [object[]]@(
+          Get-AzureDevLifecyclePublicCommandRecords -Fixture $script:fixture
+        )
+      }
+
+      $exitCode | Should-Be 0 -Because $output
+      $output | Should-MatchString 'Submit asynchronous Azure VM start'
+      @($calls | Where-Object { $_ -match "CALL`tvm`tstart`t" }).Count |
+        Should-Be $MutationCount
+      $records.Count | Should-Be $RecordCount
+      if ($null -ne $ExpectedResult) {
+        $records[0].terminalResult | Should-Be $ExpectedResult
+        $records[0].mutationAccepted | Should-BeTrue
+      } else {
+        $output | Should-NotMatchString 'SSH:'
+        $output | Should-NotMatchString 'VS Code:'
+      }
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+      @(Get-ChildItem -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/lifecycle-locks'
+          ) -File).Count | Should-Be 0
+    }
+
+    It 'Should preserve stop confirmation before any real execution' {
+      $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+      $startInfo.FileName = $script:powerShellPath
+      $startInfo.UseShellExecute = $false
+      $startInfo.RedirectStandardInput = $true
+      $startInfo.RedirectStandardOutput = $true
+      $startInfo.RedirectStandardError = $true
+      foreach ($argument in @(
+          '-NoLogo',
+          '-NoProfile',
+          '-File',
+          $script:entryPoint,
+          'stop',
+          '-RepositoryRoot',
+          $script:fixture.RepositoryRoot,
+          '-Confirm'
+        )) {
+        $startInfo.ArgumentList.Add($argument)
+      }
+      $process = [System.Diagnostics.Process]::new()
+      $process.StartInfo = $startInfo
+      $script:interruptProcess = $process
+
+      $process.Start() | Should-BeTrue
+      $process.StandardInput.WriteLine('N')
+      $process.StandardInput.Close()
+      $process.WaitForExit(10000) | Should-BeTrue
+      $output = @(
+        $process.StandardOutput.ReadToEnd(),
+        $process.StandardError.ReadToEnd()
+      ) -join [System.Environment]::NewLine
+      $exitCode = $process.ExitCode
+      $process.Dispose()
+      $script:interruptProcess = $null
+
+      $exitCode | Should-Be 0
+      $output |
+        Should-MatchString 'Execute the normalized stop plan'
+      @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture).Count | Should-Be 0
+      Test-Path -LiteralPath (
+        Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+      ) | Should-BeFalse
+    }
+  }
+
   Context 'When an upward transition fails after the lock is released' {
     BeforeDiscovery {
       $waitFailureCases = @(

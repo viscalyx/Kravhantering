@@ -996,6 +996,12 @@ if ($Command -in @('start', 'stop', 'status')) {
   if ($null -ne $LifecycleTiming) {
     $lifecycleParameters.Timing = $LifecycleTiming
   }
+  if (
+    $Command -in @('start', 'stop') -and
+    $PSBoundParameters.ContainsKey('Confirm')
+  ) {
+    $lifecycleParameters.Confirm = $PSBoundParameters['Confirm']
+  }
   Invoke-AzureDevLifecycleCommand @lifecycleParameters
   return
 }

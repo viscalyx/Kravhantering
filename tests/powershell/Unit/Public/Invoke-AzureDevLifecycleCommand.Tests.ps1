@@ -270,6 +270,35 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
     }
   }
 
+  Context 'When stop state parsing is cancelled at the Azure CLI boundary' {
+    BeforeEach {
+      Mock Get-AzureDevLifecycleState -MockWith {
+        $interruption = [System.OperationCanceledException]::new('interrupted')
+        throw [System.InvalidOperationException]::new(
+          'JSON parsing interrupted',
+          $interruption
+        )
+      }
+    }
+
+    It 'Should propagate cancellation without submitting deallocation' {
+      $captured = $null
+      try {
+        $null = Invoke-AzureDevLifecycleCommand `
+          -CommandName stop `
+          -RepositoryRoot $TestDrive
+      } catch {
+        $captured = $_
+      }
+
+      $captured.Exception.Message | Should-Be 'JSON parsing interrupted'
+      $captured.Exception.InnerException.GetType().FullName |
+        Should-Be 'System.OperationCanceledException'
+      Should-NotInvoke Invoke-AzCli -Scope It
+      Should-NotInvoke Complete-AzureDevLifecycleAttempt -Scope It
+    }
+  }
+
   Context 'When custom deadlines and lock contention reach orchestration' {
     BeforeDiscovery {
       $deadlineCases = @(
