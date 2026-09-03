@@ -24,16 +24,18 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       'Should-Invoke:ModuleName' = $script:moduleName
       'Should-NotInvoke:ModuleName' = $script:moduleName
     }
-    $script:configuration = [pscustomobject]@{
-      RepoRoot = $TestDrive
-      SubscriptionId = '11111111-1111-1111-1111-111111111111'
-      ResourceGroup = 'integration-rg'
-      VmName = 'integration-vm'
-      TenantId = '22222222-2222-2222-2222-222222222222'
-      ClientId = '33333333-3333-3333-3333-333333333333'
-      ClientSecret = 'test-only-secret'
-      SshHostAlias = 'integration-alias'
-    }
+    $script:configuration = New-Object `
+      -TypeName System.Management.Automation.PSObject `
+      -Property @{
+        RepoRoot = $TestDrive
+        SubscriptionId = '11111111-1111-1111-1111-111111111111'
+        ResourceGroup = 'integration-rg'
+        VmName = 'integration-vm'
+        TenantId = '22222222-2222-2222-2222-222222222222'
+        ClientId = '33333333-3333-3333-3333-333333333333'
+        ClientSecret = 'test-only-secret'
+        SshHostAlias = 'integration-alias'
+      }
     $script:configuration.PSObject.TypeNames.Insert(
       0,
       'AzureDev.LifecycleConfigurationSnapshot'

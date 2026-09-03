@@ -78,10 +78,14 @@ function Invoke-AzCli {
     $text = $stdoutText.Trim()
     $errorText = "$stdoutText$stderrText".Trim()
     if ($exitCode -ne 0) {
-      if ($SuppressOutputDetails) {
-        throw "$commandLine failed with exit code $exitCode."
+      $message = if ($SuppressOutputDetails) {
+        "$commandLine failed with exit code $exitCode."
+      } else {
+        "$commandLine failed: $errorText"
       }
-      throw "$commandLine failed: $errorText"
+      $exception = [System.InvalidOperationException]::new($message)
+      $exception.Data['AzureDevCliExitCode'] = [int]$exitCode
+      throw $exception
     }
     if ($Json) {
       if ([string]::IsNullOrWhiteSpace($text)) {

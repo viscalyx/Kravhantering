@@ -823,8 +823,9 @@ deliberate replacement is required.
 
 ### SSH host trust
 
-Setup and start establish host trust before their first network SSH
-connection. Through the authenticated Azure control plane, Azure Run Command
+Setup establishes host trust before its first network SSH connection. Lifecycle
+commands do not change SSH trust; rerun `setup` when trust needs repair. Through
+the authenticated Azure control plane, Azure Run Command
 reads the VM's `/etc/ssh/ssh_host_*_key.pub` files. The local workflow validates
 the returned public-key wire blobs, then atomically replaces only the managed
 alias and resolved-host entries in `~/.ssh/known_hosts`. Other entries,

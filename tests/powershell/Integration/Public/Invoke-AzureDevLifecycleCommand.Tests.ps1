@@ -90,12 +90,13 @@ Describe `
         Should-NotMatchString 'Repair Azure CLI lifecycle authentication'
     }
 
-    It 'Should exit zero after a complete preview with no result object' {
+    It 'Should exit zero after a complete <CommandName> preview with no result' `
+      -ForEach $commandCases {
       $output = & $script:powerShellPath `
         -NoLogo `
         -NoProfile `
         -File $script:entryPoint `
-        start `
+        $CommandName `
         -RepositoryRoot $script:fixture.RepositoryRoot `
         -WhatIf 2>&1
       $exitCode = $LASTEXITCODE
@@ -104,7 +105,7 @@ Describe `
 
       $exitCode | Should-Be 0
       @($output | Where-Object {
-          $_ -isnot [string] -and
+          $_ -isnot [System.String] -and
           $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
         }).Count | Should-Be 0
       $calls.Count | Should-Be 1

@@ -22,11 +22,13 @@ Describe 'Get-AzureDevLifecycleState' -Tag 'Unit' {
       'Mock:ModuleName' = $script:moduleName
       'Should-Invoke:ModuleName' = $script:moduleName
     }
-    $script:configuration = [pscustomobject]@{
-      SubscriptionId = '11111111-1111-1111-1111-111111111111'
-      ResourceGroup = 'integration-rg'
-      VmName = 'integration-vm'
-    }
+    $script:configuration = New-Object `
+      -TypeName System.Management.Automation.PSObject `
+      -Property @{
+        SubscriptionId = '11111111-1111-1111-1111-111111111111'
+        ResourceGroup = 'integration-rg'
+        VmName = 'integration-vm'
+      }
   }
 
   AfterAll {
@@ -48,36 +50,40 @@ Describe 'Get-AzureDevLifecycleState' -Tag 'Unit' {
       )
     }
 
-    It 'Should normalize <Raw> as <Expected>' -ForEach $stateCases {
-      Mock Invoke-AzCli -MockWith { return $Raw }
-
-      InModuleScope -Parameters @{
-        Configuration = $script:configuration
-        Expected = $Expected
-      } -ScriptBlock {
-        Set-StrictMode -Version 1.0
-        $state = Get-AzureDevLifecycleState -Configuration $Configuration
-
-        $state | Should-Be $Expected
+    Context 'When Azure returns <Raw>' -ForEach $stateCases {
+      BeforeAll {
+        Mock Invoke-AzCli -MockWith { return $Raw }
       }
-      Should-Invoke Invoke-AzCli -Exactly -Times 1 -Scope It `
-        -ParameterFilter {
-          $TimeoutSeconds -eq 120 -and
-          $SuppressOutputDetails -and
-          $Arguments.Count -eq 13 -and
-          $Arguments[0] -ceq 'vm' -and
-          $Arguments[1] -ceq 'get-instance-view' -and
-          $Arguments[3] -ceq $script:configuration.SubscriptionId -and
-          $Arguments[5] -ceq $script:configuration.ResourceGroup -and
-          $Arguments[7] -ceq $script:configuration.VmName -and
-          $Arguments[9] -ceq (
-            "instanceView.statuses[?starts_with(code, 'PowerState/')]" +
-            '.code | [0]'
-          ) -and
-          $Arguments[10] -ceq '--output' -and
-          $Arguments[11] -ceq 'tsv' -and
-          $Arguments[12] -ceq '--only-show-errors'
+
+      It 'Should normalize the power-state code as <Expected>' {
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+          Expected = $Expected
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          $state = Get-AzureDevLifecycleState -Configuration $Configuration
+
+          $state | Should-Be $Expected
         }
+        Should-Invoke Invoke-AzCli -Exactly -Times 1 -Scope It `
+          -ParameterFilter {
+            $TimeoutSeconds -eq 120 -and
+            $SuppressOutputDetails -and
+            $Arguments.Count -eq 13 -and
+            $Arguments[0] -ceq 'vm' -and
+            $Arguments[1] -ceq 'get-instance-view' -and
+            $Arguments[3] -ceq $script:configuration.SubscriptionId -and
+            $Arguments[5] -ceq $script:configuration.ResourceGroup -and
+            $Arguments[7] -ceq $script:configuration.VmName -and
+            $Arguments[9] -ceq (
+              "instanceView.statuses[?starts_with(code, 'PowerState/')]" +
+              '.code | [0]'
+            ) -and
+            $Arguments[10] -ceq '--output' -and
+            $Arguments[11] -ceq 'tsv' -and
+            $Arguments[12] -ceq '--only-show-errors'
+          }
+      }
     }
   }
 
@@ -91,50 +97,69 @@ Describe 'Get-AzureDevLifecycleState' -Tag 'Unit' {
       )
     }
 
-    It 'Should preserve the distinct <Expected> observation' `
-      -ForEach $stateCases {
-      Mock Invoke-AzCli -MockWith { return $Raw }
+    Context 'When Azure returns <Raw>' -ForEach $stateCases {
+      BeforeAll {
+        Mock Invoke-AzCli -MockWith { return $Raw }
+      }
 
-      InModuleScope -Parameters @{
-        Configuration = $script:configuration
-        Expected = $Expected
-      } -ScriptBlock {
-        Set-StrictMode -Version 1.0
-        $state = Get-AzureDevLifecycleState -Configuration $Configuration
+      It 'Should preserve the distinct <Expected> observation' {
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+          Expected = $Expected
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          $state = Get-AzureDevLifecycleState -Configuration $Configuration
 
-        $state | Should-Be $Expected
+          $state | Should-Be $Expected
+        }
       }
     }
   }
 
   Context 'When the targeted state read fails' {
-    It 'Should preserve definite absence separately from an unavailable read' {
-      Mock Invoke-AzCli -MockWith {
-        throw 'az vm get-instance-view failed with exit code 3.'
+    Context 'When Azure reports that the target is absent' {
+      BeforeAll {
+        Mock Invoke-AzCli -MockWith {
+          $mockException = [System.InvalidOperationException]::new(
+            'The targeted VM was not found.'
+          )
+          $mockException.Data['AzureDevCliExitCode'] = 3
+          throw $mockException
+        }
       }
 
-      InModuleScope -Parameters @{
-        Configuration = $script:configuration
-      } -ScriptBlock {
-        Set-StrictMode -Version 1.0
-        $state = Get-AzureDevLifecycleState -Configuration $Configuration
+      It 'Should preserve definite absence separately from an unavailable read' {
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          $state = Get-AzureDevLifecycleState -Configuration $Configuration
 
-        $state | Should-Be 'not-found'
+          $state | Should-Be 'not-found'
+        }
       }
     }
 
-    It 'Should report other state-read failures as unavailable' {
-      Mock Invoke-AzCli -MockWith {
-        throw 'az vm get-instance-view failed with exit code 1.'
+    Context 'When Azure reports another state-read failure' {
+      BeforeAll {
+        Mock Invoke-AzCli -MockWith {
+          $mockException = [System.InvalidOperationException]::new(
+            'The targeted state read failed.'
+          )
+          $mockException.Data['AzureDevCliExitCode'] = 1
+          throw $mockException
+        }
       }
 
-      InModuleScope -Parameters @{
-        Configuration = $script:configuration
-      } -ScriptBlock {
-        Set-StrictMode -Version 1.0
-        $state = Get-AzureDevLifecycleState -Configuration $Configuration
+      It 'Should report the state-read failure as unavailable' {
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          $state = Get-AzureDevLifecycleState -Configuration $Configuration
 
-        $state | Should-Be 'unavailable'
+          $state | Should-Be 'unavailable'
+        }
       }
     }
   }

@@ -737,7 +737,10 @@ function Get-AzureDevLifecycleState {
       -TimeoutSeconds 120 `
       -SuppressOutputDetails
   } catch {
-    if ($_.Exception.Message -match 'failed with exit code 3\.$') {
+    if (
+      $_.Exception.Data.Contains('AzureDevCliExitCode') -and
+      $_.Exception.Data['AzureDevCliExitCode'] -eq 3
+    ) {
       return 'not-found'
     }
     return 'unavailable'
@@ -807,14 +810,16 @@ function Invoke-AzureDevLifecycleCommand {
   )
   $action = if ($CommandName -eq 'start') {
     (
-      'Conditionally start only from stopped-allocated or deallocated; ' +
-      'join starting, wait through downward transitions, and otherwise do ' +
-      'not mutate'
+      'Conditionally do nothing from running, join starting, start from ' +
+      'stopped-allocated or deallocated, wait through stopping or ' +
+      'deallocating then reconsider, and fail without mutation from ' +
+      'not-found, unavailable, creating, or unrecognized'
     )
   } else {
     (
-      'Conditionally deallocate unless definitely absent, deallocated, or ' +
-      'already deallocating; unavailable state uses the cost-control action'
+      'Conditionally do nothing from deallocated or deallocating, ' +
+      'deallocate from another supported power state or unavailable state, ' +
+      'and fail without mutation from not-found, creating, or unrecognized'
     )
   }
   $null = $PSCmdlet.ShouldProcess($target, $action)

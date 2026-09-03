@@ -105,6 +105,7 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
 
     It 'Should suppress the output while retaining the targeted command' {
       $message = $null
+      $mockExitCode = $null
       try {
         $null = Invoke-AzCli `
           -Arguments @(
@@ -119,8 +120,10 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
           -SuppressOutputDetails
       } catch {
         $message = $_.Exception.Message
+        $mockExitCode = $_.Exception.Data['AzureDevCliExitCode']
       }
 
+      $mockExitCode | Should-Be 7
       $message | Should-MatchString 'az account get-access-token'
       $message | Should-MatchString 'exit code 7'
       $message | Should-NotMatchString 'raw token'

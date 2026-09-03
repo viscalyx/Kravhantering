@@ -46,7 +46,10 @@ Describe 'Get-AzureDevLifecycleLockIdentity' -Tag 'Unit' {
     }
 
     It 'Should accept the read-only dictionary returned by lifecycle config' {
-      $properties = [System.Collections.Generic.Dictionary[string, object]]::new()
+      $properties = [System.Collections.Generic.Dictionary[
+        System.String,
+        System.Object
+      ]]::new()
       $properties.Add('RepoRoot', $TestDrive)
       $properties.Add(
         'SubscriptionId',
@@ -55,8 +58,8 @@ Describe 'Get-AzureDevLifecycleLockIdentity' -Tag 'Unit' {
       $properties.Add('ResourceGroup', 'Target-RG')
       $properties.Add('VmName', 'Target-VM')
       $snapshot = [System.Collections.ObjectModel.ReadOnlyDictionary[
-        string,
-        object
+        System.String,
+        System.Object
       ]]::new($properties)
 
       $identity = InModuleScope `
