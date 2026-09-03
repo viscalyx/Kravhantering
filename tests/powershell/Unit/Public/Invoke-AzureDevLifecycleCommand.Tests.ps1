@@ -40,9 +40,6 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       0,
       'AzureDev.LifecycleConfigurationSnapshot'
     )
-  }
-
-  BeforeEach {
     Mock Get-AzureDevLifecycleConfig -MockWith {
       return $script:configuration
     }

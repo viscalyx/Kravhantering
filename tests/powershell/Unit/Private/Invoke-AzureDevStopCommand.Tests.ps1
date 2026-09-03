@@ -33,13 +33,8 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       0,
       'AzureDev.LifecycleConfigurationSnapshot'
     )
-  }
-
-  BeforeEach {
-    $script:lockHeld = $false
-    $script:lockHeldAtLogWrite = $null
-    $script:capturedRecord = $null
     Mock Invoke-AzureDevLifecycleLock -MockWith {
+      $script:lockInvocationCount++
       $script:lockHeld = $true
       try {
         return & $ScriptBlock $null $ConfigurationSnapshot
@@ -48,6 +43,7 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       }
     }
     Mock Invoke-AzureDevStopLifecycle -MockWith {
+      $script:stopLifecycleInvocationCount++
       $result = [System.Management.Automation.PSObject][ordered]@{
         Command = 'stop'
         Result = 'requested'
@@ -59,9 +55,19 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       return $result
     }
     Mock Write-AzureDevLifecycleLogRecord -MockWith {
+      $script:logWriteInvocationCount++
       $script:lockHeldAtLogWrite = $script:lockHeld
       $script:capturedRecord = $Record
     }
+  }
+
+  BeforeEach {
+    $script:lockHeld = $false
+    $script:lockHeldAtLogWrite = $null
+    $script:capturedRecord = $null
+    $script:lockInvocationCount = 0
+    $script:stopLifecycleInvocationCount = 0
+    $script:logWriteInvocationCount = 0
   }
 
   AfterAll {
@@ -110,6 +116,26 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
         }
       Should-Invoke Write-AzureDevLifecycleLogRecord `
         -Exactly -Times 1 -Scope It
+    }
+  }
+
+  Context 'When the outer stop operation is denied' {
+    It 'Should not acquire a lock, execute stop work, log, or return a result' {
+      $result = @(
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Invoke-AzureDevStopCommand `
+            -Configuration $Configuration `
+            -WhatIf
+        }
+      )
+
+      $result.Count | Should-Be 0
+      $script:lockInvocationCount | Should-Be 0
+      $script:stopLifecycleInvocationCount | Should-Be 0
+      $script:logWriteInvocationCount | Should-Be 0
     }
   }
 

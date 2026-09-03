@@ -834,6 +834,35 @@ function Get-AzureDevStopPlan {
   return $plan
 }
 
+function Get-AzureDevStopPreviewAction {
+  [CmdletBinding()]
+  param()
+
+  $states = @(
+    'starting',
+    'running',
+    'stopping',
+    'stopped-allocated',
+    'deallocating',
+    'deallocated',
+    'creating',
+    'unavailable',
+    'not-found',
+    'unrecognized'
+  )
+  $rules = foreach ($state in $states) {
+    $plan = Get-AzureDevStopPlan -ObservedState $state
+    if ($null -ne $plan.FailurePhase) {
+      "$state => fail:$($plan.FailurePhase)"
+    } elseif ($plan.SubmitDeallocation) {
+      "$state => $($plan.Result):$($plan.Action)"
+    } else {
+      "$state => $($plan.Result):none"
+    }
+  }
+  return 'Apply the normalized stop plan: ' + ($rules -join '; ')
+}
+
 function Invoke-AzureDevStopLifecycle {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -853,7 +882,7 @@ function Invoke-AzureDevStopLifecycle {
       -Phase authentication `
       -Message (
         'Azure lifecycle authentication failed for the explicitly targeted ' +
-        "VM '$($Configuration.VmName)'."
+        "VM '$($Configuration.VmName)': $($_.Exception.Message)"
       ) `
       -Command stop `
       -VmName $Configuration.VmName
@@ -965,13 +994,24 @@ function Invoke-AzureDevStopLifecycle {
 }
 
 function Invoke-AzureDevStopCommand {
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
     [psobject]$Configuration,
 
     [pscustomobject]$Timing = (New-AzureDevLifecycleTiming)
   )
+
+  $target = (
+    "$($Configuration.SubscriptionId)/" +
+    "$($Configuration.ResourceGroup)/$($Configuration.VmName)"
+  )
+  if (-not $PSCmdlet.ShouldProcess(
+      $target,
+      'Execute the normalized stop plan and record its terminal outcome'
+    )) {
+    return
+  }
 
   $getMonotonicMilliseconds = $Timing.GetMonotonicMilliseconds
   $startedAt = [long](& $getMonotonicMilliseconds)
@@ -1097,12 +1137,7 @@ function Invoke-AzureDevLifecycleCommand {
       'not-found, unavailable, creating, or unrecognized'
     )
   } else {
-    (
-      'Conditionally do nothing from deallocated or deallocating, ' +
-      'deallocate from another supported power state, creating, or ' +
-      'unavailable state, and fail without mutation from not-found or ' +
-      'unrecognized'
-    )
+    Get-AzureDevStopPreviewAction
   }
   $null = $PSCmdlet.ShouldProcess($target, $action)
 

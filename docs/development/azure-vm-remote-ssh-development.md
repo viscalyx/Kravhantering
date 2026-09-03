@@ -1117,10 +1117,12 @@ Stop compute charges:
 ./scripts/azure-dev.ps1 stop
 ```
 
-`stop` is an asynchronous cost-control command. It authenticates, acquires the
-target-specific lifecycle lock, reads the exact VM state, and requests
-deallocation with `--no-wait`. It returns as soon as Azure accepts the request;
-it does not wait for the VM to become `deallocated`.
+`stop` is an asynchronous cost-control command. It acquires the target-specific
+lifecycle lock, then authenticates and reads the exact VM state inside that
+lock. It returns an idempotent outcome without submission when Azure already
+reports `deallocated` or `deallocating`. Otherwise it requests deallocation
+with `--no-wait` and returns as soon as Azure accepts the request; it does not
+wait for the VM to become `deallocated`.
 
 The command returns one structured lifecycle result:
 

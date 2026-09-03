@@ -32,9 +32,6 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
       0,
       'AzureDev.LifecycleConfigurationSnapshot'
     )
-  }
-
-  BeforeEach {
     Mock Connect-AzureDevLifecycleSession
     Mock Get-AzureDevLifecycleState -MockWith { return 'running' }
     Mock Invoke-AzCli
@@ -134,6 +131,28 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
           $Arguments[10] -ceq 'none' -and
           $Arguments[11] -ceq '--only-show-errors'
         }
+    }
+  }
+
+  Context 'When the deallocation mutation is denied' {
+    It 'Should authenticate and observe but submit nothing and return no result' {
+      $result = @(
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Invoke-AzureDevStopLifecycle `
+            -Configuration $Configuration `
+            -WhatIf
+        }
+      )
+
+      $result.Count | Should-Be 0
+      Should-Invoke Connect-AzureDevLifecycleSession `
+        -Exactly -Times 1 -Scope It
+      Should-Invoke Get-AzureDevLifecycleState `
+        -Exactly -Times 1 -Scope It
+      Should-NotInvoke Invoke-AzCli -Scope It
     }
   }
 

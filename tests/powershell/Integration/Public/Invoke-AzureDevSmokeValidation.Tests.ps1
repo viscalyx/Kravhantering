@@ -36,6 +36,8 @@ Describe `
   BeforeEach {
     $script:originalPath = $env:PATH
     $fakeSshPath = Join-Path $TestDrive 'ssh'
+    # Resolve the platform's false executable so this harness runs on macOS
+    # and in the Linux integration container.
     $null = New-Item `
       -ItemType SymbolicLink `
       -Path $fakeSshPath `
