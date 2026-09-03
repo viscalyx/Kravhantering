@@ -786,14 +786,13 @@ and
 `setup -WhatIf` performs Azure platform readiness discovery and reports the
 planned deallocation/security update; it never performs it. It skips the live
 SSH guest-readiness probe and explicitly reports that the preview assumes those
-checks will pass during real setup. `status` prints the live Hyper-V generation,
-security type, Secure Boot state, and vTPM state.
+checks will pass during real setup.
 
-Both `setup` and `status` query the existing VM's exact Marketplace image
+`setup` queries the existing VM's exact Marketplace image
 version. Active images produce no deprecation warning. A scheduled or
 non-active image produces a non-blocking warning with the scheduled enforcement
 date when Azure provides it. If Marketplace metadata is no longer available,
-the commands warn that status could not be verified and continue using the
+setup warns that image status could not be verified and continues using the
 existing VM and OS disk.
 
 When preflight is clean, run setup to create or repair the environment:
@@ -824,15 +823,16 @@ deliberate replacement is required.
 
 ### SSH host trust
 
-Setup and start establish host trust before their first network SSH
-connection. Through the authenticated Azure control plane, Azure Run Command
+Setup establishes host trust before its first network SSH connection. Lifecycle
+commands do not change SSH trust; rerun `setup` when trust needs repair. Through
+the authenticated Azure control plane, Azure Run Command
 reads the VM's `/etc/ssh/ssh_host_*_key.pub` files. The local workflow validates
 the returned public-key wire blobs, then atomically replaces only the managed
 alias and resolved-host entries in `~/.ssh/known_hosts`. Other entries,
 including hashed entries for unrelated hosts, remain intact.
 
-The first SSH probe and all later setup, bootstrap, validation, start, and
-maintenance SSH or SCP operations use `StrictHostKeyChecking=yes`, the pinned
+The first SSH probe and all later setup, bootstrap, validation, and maintenance
+SSH or SCP operations use `StrictHostKeyChecking=yes`, the pinned
 user `known_hosts` file, no global known-host file, and
 `KnownHostsCommand=none`, `VerifyHostKeyDNS=no`, and `UpdateHostKeys=no`.
 Missing, malformed, or unavailable Azure evidence stops the workflow before
@@ -840,10 +840,10 @@ SSH. A network-presented mismatch stops immediately before remote preparation,
 local bootstrap credential-file generation, or upload.
 
 When Azure legitimately recreates the VM or rotates its host keys, rerun
-`setup -Yes` or `start -Yes`. The command obtains fresh keys independently
-through Azure Run Command and replaces only the entries authenticated by that
-evidence. If Azure Run Command cannot return valid keys, do not remove
-`known_hosts` entries manually; restore VM Agent/control-plane access and retry.
+`setup -Yes`. Setup obtains fresh keys independently through Azure Run Command
+and replaces only the entries authenticated by that evidence. If Azure Run
+Command cannot return valid keys, do not remove `known_hosts` entries manually;
+restore VM Agent/control-plane access and retry.
 
 The first setup can take a while. It installs host packages, mounts the data
 disk at `/mnt/krav-azure-dev-data`, bind-mounts
@@ -1056,7 +1056,7 @@ environment variables in addition to its standard OpenSSH environment policy.
 Before running either generated connection command, set both variables in the
 workstation environment as described in
 [Prepare GitHub authentication](#prepare-github-authentication). Setup prints
-the same reminder after a successful setup or start operation.
+the same reminder after a successful setup operation.
 
 To start a development environment, use the generated VS Code command:
 
@@ -1105,11 +1105,98 @@ The app runs directly on the VM host. Containers run only the support services.
 
 ## Step 8: Manage the Environment
 
+Every lifecycle command reads a narrow, immutable snapshot of the configured
+subscription, resource group, VM name, and optional complete service-principal
+credential triple. Those three Azure target fields are mandatory and have no
+lifecycle defaults. `start` alone also resolves and validates the SSH alias,
+using `kravhantering-azure-dev` when no source sets it; `stop` and `status` do
+not read the alias. Values otherwise follow the configuration precedence
+documented in Steps 4 and 5: the current PowerShell session wins, then
+`.env.azure.development.local`, then `.env.azure.development`. Every Azure read
+and mutation names the configured subscription, resource group, and VM; the
+commands do not enumerate subscriptions or change the Azure CLI global
+subscription.
+
+A matching cached Azure CLI identity is reused after a silent token check. A
+stale or mismatched configured service principal is repaired with one targeted,
+non-interactive login. Without service-principal configuration, lifecycle
+commands reuse only a matching Azure CLI user session and tell you to log in if
+it is unusable; they never initiate interactive login. Each Azure CLI call has
+a two-minute deadline.
+
+A lifecycle command waits at most 15 seconds for another local lifecycle
+command that owns the same target lock. On timeout it reports the recorded
+owner and submits no Azure mutation. Interrupt a stuck live owner and retry;
+the operating system recovers an abandoned mutex automatically. Deleting the
+diagnostic lock file cannot release a live mutex.
+
+Real `start` and `stop` attempts return exactly one structured result on
+success. Progress and connection guidance are separate terminal information,
+not result objects. A failure returns no result and exits with code `1` and one
+terminating lifecycle error. After lock release, a completed real attempt also
+tries to append one self-identifying JSONL record under `.azure/logs/`. That
+local record is secret-free diagnostic evidence, not an authoritative Azure
+state or billing record. A logging warning never replaces the primary success
+or failure.
+
 Start the VM:
 
 ```powershell
 ./scripts/azure-dev.ps1 start
 ```
+
+`start` uses the configured subscription, resource group, and VM name for
+every Azure call. It holds the target-specific local lock only while it checks
+authentication, reads a decisive state, and optionally submits one start:
+
+- `running` returns `already-running` with action `none`.
+- `starting` joins the Azure transition without another mutation, then returns
+  result `running` with action `joined-start` when the VM reaches `running`.
+- `stopped-allocated` or `deallocated` submits one asynchronous start request,
+  then returns result `running` with action `start-requested` when the VM
+  reaches `running`.
+- `stopping` or `deallocating` releases the local lock and waits for
+  Azure to leave the downward transition outside the lock. It normally sees
+  `stopped-allocated` or `deallocated`; if another actor starts the VM between
+  polls, it can instead see an upward state. It then reacquires the target
+  lock, revalidates Azure CLI authentication, and rereads the exact VM before
+  choosing an action.
+- `not-found`, `unavailable`, `creating`, or `unrecognized` fails without a
+  mutation.
+
+This makes a rapid `stop` followed by `start` safe: the start invocation waits
+up to ten minutes for Azure to leave the downward transition, then makes its
+decision from a fresh guarded observation. If another checkout, workstation,
+or Azure actor has already moved the VM to `starting` or `running`, the command
+joins or completes that state without submitting another start. The local lock
+coordinates only processes that use the same repository checkout; Azure
+rereads provide cross-workstation convergence.
+
+After joining or submitting an upward transition, the command releases the
+lock and uses a separate ten-minute deadline to wait for `running`. Both waits
+poll every five seconds, report state changes, and emit a heartbeat every 30
+seconds. Any later downward state—`stopping`, `stopped-allocated`,
+`deallocating`, or `deallocated`—is outside interference: the command fails
+without a second mutation and explains that Azure may still complete the
+earlier operation. A timeout has the same no-rollback, no-repeat rule.
+
+Pressing Ctrl+C stops local polling promptly. Any owned local lock is released,
+and the interruption exits with code `130` without a lifecycle result or
+terminal lifecycle record. The command does not submit a compensating stop or
+start; an operation Azure already accepted may still complete.
+
+Success returns one typed lifecycle result and prints only these entry points,
+using the configured alias:
+
+```text
+SSH: ssh kravhantering-azure-dev
+VS Code: code --remote ssh-remote+kravhantering-azure-dev /workspace
+```
+
+The VS Code command is printed even when `code` is not installed locally.
+`start` does not inspect or change SSH configuration, keys, host trust, or
+connection details, and it does not invoke SSH or wait for SSH readiness. Run
+`setup` again to repair changed trust or connection preparation.
 
 Stop compute charges:
 
@@ -1117,7 +1204,32 @@ Stop compute charges:
 ./scripts/azure-dev.ps1 stop
 ```
 
-`stop` deallocates the VM and stops compute charges. Disks and public IP
+`stop` is an asynchronous cost-control command. It acquires the target-specific
+lifecycle lock, then authenticates and reads the exact VM state inside that
+lock. It returns an idempotent outcome without submission when Azure already
+reports `deallocated` or `deallocating`. Otherwise it requests deallocation
+with `--no-wait` and returns as soon as Azure accepts the request; it does not
+wait for the VM to become `deallocated`.
+
+The command returns one structured lifecycle result:
+
+- `requested` with action `deallocation-requested` means Azure accepted one
+  request. This applies to `starting`, `running`, `stopping`,
+  `stopped-allocated`, and `creating`.
+- `already-requested` with action `none` means Azure already reports
+  `deallocating`; no duplicate request is sent.
+- `already-deallocated` with action `none` means Azure already reports
+  `deallocated`; no request is sent.
+
+If the state read is unavailable, `stop` still requests deallocation because
+stopping compute charges is the safer outcome. A definite `not-found` result or
+an unrecognized state fails without mutation. Authentication, lock, state, and
+submission failures return no lifecycle result and exit nonzero. A local
+lifecycle-log warning does not change an accepted result or primary failure.
+
+An accepted request does not prove deallocation is complete. Use `status` to
+observe convergence. Compute charges stop when Azure reaches `deallocated`;
+managed disks, public IP resources, network traffic, and other retained
 resources can still bill.
 
 Show current state:
@@ -1125,6 +1237,26 @@ Show current state:
 ```powershell
 ./scripts/azure-dev.ps1 status
 ```
+
+`status` reports the exact VM's normalized Azure power state immediately. It
+does not acquire a lifecycle lock, wait, read setup state, or infer a target.
+It distinguishes `starting`, `running`, `stopping`, `stopped-allocated`,
+`deallocating`, `deallocated`, `creating`, `not-found`, `unavailable`, and
+`unrecognized`.
+
+Preview lifecycle plans without reading live VM state:
+
+```powershell
+./scripts/azure-dev.ps1 start -WhatIf
+./scripts/azure-dev.ps1 stop -WhatIf
+```
+
+A preview validates lifecycle configuration and may inspect the cached Azure
+CLI profile identity. It does not acquire a token, repair login, read live VM
+state, operate a lock, mutate or poll the VM, write a lifecycle record, or
+return a lifecycle-result object. Normal `What if:` output describes the
+conditional lock, login-repair, VM-action, and record plans. A matching cached
+identity does not imply login repair merely because token usability is unknown.
 
 Refresh only the SSH source CIDR after your public IP changes:
 
@@ -1662,8 +1794,6 @@ the authenticated Azure control plane:
 
 ```powershell
 ./scripts/azure-dev.ps1 setup -Yes
-# Or, when no setup convergence is needed:
-./scripts/azure-dev.ps1 start -Yes
 ```
 
 Do not run `ssh-keygen -R` and accept the next network-presented key. If the

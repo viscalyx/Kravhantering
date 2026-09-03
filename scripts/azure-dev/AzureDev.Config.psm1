@@ -309,7 +309,9 @@ function Import-AzureDevEnvFile {
     [Parameter(Mandatory = $true)]
     [string]$Path,
 
-    [switch]$Optional
+    [switch]$Optional,
+
+    [switch]$IncludeProvenance
   )
 
   if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
@@ -355,10 +357,354 @@ function Import-AzureDevEnvFile {
       throw "$Path line $lineNumber contains variable expansion syntax."
     }
 
-    $result[$key] = $rawValue
+    $result[$key] = if ($IncludeProvenance) {
+      [pscustomobject]@{
+        Value = $rawValue
+        Line = $lineNumber
+      }
+    } else {
+      $rawValue
+    }
   }
 
   return $result
+}
+
+function Get-AzureDevLifecycleConfig {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('start', 'stop', 'status')]
+    [string]$CommandName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RepositoryRoot,
+
+    [string]$EnvironmentFile = '.env.azure.development'
+  )
+
+  $repositoryPath = [System.IO.Path]::GetFullPath($RepositoryRoot)
+  $primaryPath = if ([System.IO.Path]::IsPathRooted($EnvironmentFile)) {
+    [System.IO.Path]::GetFullPath($EnvironmentFile)
+  } else {
+    Join-Path $repositoryPath $EnvironmentFile
+  }
+  $localPath = Join-Path $repositoryPath '.env.azure.development.local'
+  $primaryValues = Import-AzureDevEnvFile `
+    -Path $primaryPath `
+    -Optional `
+    -IncludeProvenance
+  $localValues = Import-AzureDevEnvFile `
+    -Path $localPath `
+    -Optional `
+    -IncludeProvenance
+
+  $restrictedPrimaryKeys = @(
+    'AZURE_DEV_VM_SUBSCRIPTION_ID',
+    'AZURE_TENANT_ID',
+    'AZURE_CLIENT_ID',
+    'AZURE_CLIENT_SECRET'
+  )
+  $restrictedPrimaryFields = @(
+    foreach ($key in $restrictedPrimaryKeys) {
+      if ($primaryValues.ContainsKey($key)) {
+        "$key at $primaryPath line $($primaryValues[$key].Line)"
+      }
+    }
+  )
+  if ($restrictedPrimaryFields.Count -gt 0) {
+    throw (
+      'The primary dotenv file contains restricted lifecycle identity fields: ' +
+      ($restrictedPrimaryFields -join '; ') +
+      '. Move them to the process environment or the local Azure-development ' +
+      'dotenv file.'
+    )
+  }
+
+  $newReadOnlyObject = {
+    param(
+      [Parameter(Mandatory = $true)]
+      [System.Collections.IDictionary]$Properties,
+
+      [Parameter(Mandatory = $true)]
+      [string]$TypeName
+    )
+
+    $dictionary = [System.Collections.Generic.Dictionary[string, object]]::new(
+      [System.StringComparer]::Ordinal
+    )
+    foreach ($property in $Properties.GetEnumerator()) {
+      $dictionary.Add([string]$property.Key, $property.Value)
+    }
+    $result = [System.Collections.ObjectModel.ReadOnlyDictionary[
+      string,
+      object
+    ]]::new($dictionary)
+    $result.PSObject.TypeNames.Insert(0, $TypeName)
+    return $result
+  }
+  $newSource = {
+    param(
+      [Parameter(Mandatory = $true)]
+      [string]$Kind,
+
+      [AllowNull()]
+      [object]$Path,
+
+      [AllowNull()]
+      [System.Nullable[int]]$Line
+    )
+
+    return & $newReadOnlyObject `
+      -Properties ([ordered]@{
+          Kind = $Kind
+          Path = $Path
+          Line = $Line
+        }) `
+      -TypeName 'AzureDev.LifecycleConfigurationSource'
+  }
+  $formatSource = {
+    param(
+      [AllowNull()]
+      [psobject]$Source
+    )
+
+    if ($null -eq $Source) {
+      return 'all permitted sources'
+    }
+    switch ($Source.Kind) {
+      'process-environment' { return 'the process environment' }
+      'local-dotenv' { return "$($Source.Path) line $($Source.Line)" }
+      'primary-dotenv' { return "$($Source.Path) line $($Source.Line)" }
+      'lifecycle-default' { return 'the lifecycle default' }
+      default { throw "Unknown lifecycle configuration source: $($Source.Kind)" }
+    }
+  }
+
+  $fieldSpecifications = [ordered]@{
+    AZURE_DEV_VM_SUBSCRIPTION_ID = [pscustomobject]@{
+      Property = 'SubscriptionId'
+      HasDefault = $false
+      Default = $null
+    }
+    AZURE_DEV_VM_RESOURCE_GROUP = [pscustomobject]@{
+      Property = 'ResourceGroup'
+      HasDefault = $false
+      Default = $null
+    }
+    AZURE_DEV_VM_NAME = [pscustomobject]@{
+      Property = 'VmName'
+      HasDefault = $false
+      Default = $null
+    }
+    AZURE_TENANT_ID = [pscustomobject]@{
+      Property = 'TenantId'
+      HasDefault = $false
+      Default = $null
+    }
+    AZURE_CLIENT_ID = [pscustomobject]@{
+      Property = 'ClientId'
+      HasDefault = $false
+      Default = $null
+    }
+    AZURE_CLIENT_SECRET = [pscustomobject]@{
+      Property = 'ClientSecret'
+      HasDefault = $false
+      Default = $null
+    }
+  }
+  if ($CommandName -eq 'start') {
+    $fieldSpecifications.AZURE_DEV_VM_SSH_HOST_ALIAS = [pscustomobject]@{
+      Property = 'SshHostAlias'
+      HasDefault = $true
+      Default = 'kravhantering-azure-dev'
+    }
+  }
+
+  $resolvedFields = [ordered]@{}
+  $provenanceProperties = [ordered]@{}
+  foreach ($field in $fieldSpecifications.GetEnumerator()) {
+    $key = $field.Key
+    $candidates = @()
+    $processValue = Get-Item `
+      -LiteralPath "Env:$key" `
+      -ErrorAction SilentlyContinue
+    if ($null -ne $processValue) {
+      $candidates += [pscustomobject]@{
+        Value = $processValue.Value
+        Source = & $newSource `
+          -Kind 'process-environment' `
+          -Path $null `
+          -Line $null
+      }
+    }
+    if ($localValues.ContainsKey($key)) {
+      $candidates += [pscustomobject]@{
+        Value = $localValues[$key].Value
+        Source = & $newSource `
+          -Kind 'local-dotenv' `
+          -Path $localPath `
+          -Line $localValues[$key].Line
+      }
+    }
+    if ($primaryValues.ContainsKey($key)) {
+      $candidates += [pscustomobject]@{
+        Value = $primaryValues[$key].Value
+        Source = & $newSource `
+          -Kind 'primary-dotenv' `
+          -Path $primaryPath `
+          -Line $primaryValues[$key].Line
+      }
+    }
+    if ($field.Value.HasDefault) {
+      $candidates += [pscustomobject]@{
+        Value = $field.Value.Default
+        Source = & $newSource `
+          -Kind 'lifecycle-default' `
+          -Path $null `
+          -Line $null
+      }
+    }
+
+    $winner = if ($candidates.Count -eq 0) {
+      $null
+    } else {
+      $candidates[0]
+    }
+    $maskedNonEmptySource = $null
+    if (
+      $null -ne $winner -and
+      [string]::IsNullOrWhiteSpace([string]$winner.Value)
+    ) {
+      foreach ($candidate in @($candidates | Select-Object -Skip 1)) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$candidate.Value)) {
+          $maskedNonEmptySource = $candidate.Source
+          break
+        }
+      }
+    }
+    $resolvedFields[$key] = [pscustomobject]@{
+      Property = $field.Value.Property
+      Value = if ($null -eq $winner) { $null } else { $winner.Value }
+      Source = if ($null -eq $winner) { $null } else { $winner.Source }
+      MaskedNonEmptySource = $maskedNonEmptySource
+    }
+    $provenanceProperties[$key] = & $newReadOnlyObject `
+      -Properties ([ordered]@{
+          Key = $key
+          Source = $resolvedFields[$key].Source
+          MaskedNonEmptySource = $maskedNonEmptySource
+        }) `
+      -TypeName 'AzureDev.LifecycleConfigurationProvenance'
+  }
+
+  $requiredKeys = @(
+    'AZURE_DEV_VM_SUBSCRIPTION_ID',
+    'AZURE_DEV_VM_RESOURCE_GROUP',
+    'AZURE_DEV_VM_NAME'
+  )
+  if ($CommandName -eq 'start') {
+    $requiredKeys += 'AZURE_DEV_VM_SSH_HOST_ALIAS'
+  }
+  $requiredErrors = @()
+  foreach ($key in $requiredKeys) {
+    $field = $resolvedFields[$key]
+    if (-not [string]::IsNullOrWhiteSpace([string]$field.Value)) {
+      continue
+    }
+    if ($null -eq $field.Source) {
+      $requiredErrors += "$key is required but is absent from all permitted sources."
+      continue
+    }
+    $message = "$key is required but the winning value from $(& $formatSource $field.Source) is empty"
+    if ($null -ne $field.MaskedNonEmptySource) {
+      $message += (
+        '; it masks a nonempty value from ' +
+        (& $formatSource $field.MaskedNonEmptySource)
+      )
+    }
+    $requiredErrors += "$message."
+  }
+  if ($requiredErrors.Count -gt 0) {
+    throw ($requiredErrors -join ' ')
+  }
+
+  foreach ($key in @('AZURE_DEV_VM_RESOURCE_GROUP', 'AZURE_DEV_VM_NAME')) {
+    if ([string]$resolvedFields[$key].Value -match '[\p{Cc}]') {
+      throw "$key contains unsupported control characters."
+    }
+  }
+
+  $servicePrincipalKeys = @(
+    'AZURE_TENANT_ID',
+    'AZURE_CLIENT_ID',
+    'AZURE_CLIENT_SECRET'
+  )
+  $servicePrincipalPresent = @(
+    $servicePrincipalKeys | Where-Object {
+      $null -ne $resolvedFields[$_].Source
+    }
+  ).Count -gt 0
+  if ($servicePrincipalPresent) {
+    $servicePrincipalErrors = @()
+    foreach ($key in $servicePrincipalKeys) {
+      $field = $resolvedFields[$key]
+      if ($null -eq $field.Source) {
+        $servicePrincipalErrors += "$key is absent."
+      } elseif ([string]::IsNullOrWhiteSpace([string]$field.Value)) {
+        $message = "$key is empty in $(& $formatSource $field.Source)"
+        if ($null -ne $field.MaskedNonEmptySource) {
+          $message += (
+            '; it masks a nonempty value from ' +
+            (& $formatSource $field.MaskedNonEmptySource)
+          )
+        }
+        $servicePrincipalErrors += "$message."
+      }
+    }
+    if ($servicePrincipalErrors.Count -gt 0) {
+      throw (
+        'Service-principal configuration must be complete and nonempty: ' +
+        ($servicePrincipalErrors -join ' ')
+      )
+    }
+  }
+
+  $uuidKeys = @('AZURE_DEV_VM_SUBSCRIPTION_ID')
+  if ($servicePrincipalPresent) {
+    $uuidKeys += @('AZURE_TENANT_ID', 'AZURE_CLIENT_ID')
+  }
+  foreach ($key in $uuidKeys) {
+    $parsedUuid = [guid]::Empty
+    if (-not [guid]::TryParse([string]$resolvedFields[$key].Value, [ref]$parsedUuid)) {
+      throw (
+        "$key from $(& $formatSource $resolvedFields[$key].Source) " +
+        'must be a valid UUID.'
+      )
+    }
+    $resolvedFields[$key].Value = $parsedUuid.ToString('D').ToLowerInvariant()
+  }
+
+  if ($CommandName -eq 'start') {
+    $sshAlias = [string]$resolvedFields.AZURE_DEV_VM_SSH_HOST_ALIAS.Value
+    if ($sshAlias -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') {
+      throw 'AZURE_DEV_VM_SSH_HOST_ALIAS contains unsupported characters.'
+    }
+  }
+
+  $snapshotProperties = [ordered]@{
+    RepoRoot = $repositoryPath
+  }
+  foreach ($field in $fieldSpecifications.GetEnumerator()) {
+    $snapshotProperties[$field.Value.Property] = $resolvedFields[$field.Key].Value
+  }
+  $snapshotProperties.Provenance = & $newReadOnlyObject `
+    -Properties $provenanceProperties `
+    -TypeName 'AzureDev.LifecycleConfigurationProvenanceSet'
+
+  return & $newReadOnlyObject `
+    -Properties $snapshotProperties `
+    -TypeName 'AzureDev.LifecycleConfigurationSnapshot'
 }
 
 function ConvertTo-AzureDevBoolean {
@@ -761,6 +1107,7 @@ Export-ModuleMember -Function `
   ConvertTo-AzureDevBoolean, `
   Get-AzureDevConfig, `
   Get-AzureDevDefaultConfig, `
+  Get-AzureDevLifecycleConfig, `
   Get-AzureDevLocalGitConfigValue, `
   Get-AzureDevTags, `
   Import-AzureDevEnvFile, `

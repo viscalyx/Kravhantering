@@ -44,6 +44,8 @@ AzureDev.Ssh.psm1
 AzureDev.Bootstrap.psm1
 AzureDev.Validation.psm1
 AzureDev.Podman.psm1
+AzureDev.LifecycleLock.psm1
+AzureDev.Lifecycle.psm1
 ```
 
 Module responsibilities:
@@ -53,6 +55,8 @@ Module responsibilities:
 | --- | --- |
 | `AzureDev.Config.psm1` | Strict dotenv parsing, defaults, precedence, config validation, and context creation. |
 | `AzureDev.Logging.psm1` | Local state, locks, JSONL logs, redaction, and native command execution helpers. |
+| `AzureDev.Lifecycle.psm1` | Lifecycle orchestration, state normalization, previews, status, typed results, progress, timing, failures, and best-effort lifecycle records. |
+| `AzureDev.LifecycleLock.psm1` | Target-derived atomic locking, bounded contention, recovery diagnostics, and owner-safe release. |
 | `AzureDev.Azure.psm1` | Azure CLI calls, authentication checks, SKU and image lookup, resource-group ownership, deployment, power operations, CIDR updates, and tag-based deletion. |
 | `AzureDev.Ssh.psm1` | Public IPv4 detection, CIDR validation, SSH key generation, managed OpenSSH config blocks, Azure control-plane host-key authentication, SSH wait loop, and VS Code command formatting. |
 | `AzureDev.Bootstrap.psm1` | Uploads `bootstrap-host.sh`, Quadlet templates, and the selected Zsh profile with `scp`, then invokes bootstrap over SSH with port forwarding disabled. |
@@ -66,9 +70,11 @@ practical.
 
 ## Command Model
 
-The entry point validates the command name with PowerShell's `ValidateSet` and
-then builds one context object. The context contains the resolved config,
-operator switches, and derived local paths:
+The entry point validates the command name with PowerShell's `ValidateSet`.
+`start`, `stop`, and lifecycle `status` delegate their command name, repository
+root, and selected environment file to the lifecycle module, which loads one
+narrow immutable snapshot. Other commands build the broader context object
+with resolved config, operator switches, and derived local paths:
 
 ```text
 .azure/development.state.json
@@ -109,15 +115,14 @@ The command flow is intentionally narrow:
   rejects an unchanged VM, setup warns, omits the Bicep security profile, and
   continues mutable repair. A successful Gen1 conversion is irreversible and
   Azure reimage must not be used because the retained source reference is Gen1.
-- `setup` and `status` query the existing exact image version's Marketplace
+- `setup` queries the existing exact image version's Marketplace
   deprecation state. Scheduled, non-active, missing, or unavailable metadata
   produces a non-blocking warning; active metadata remains quiet.
-- `start` starts the VM, refreshes SSH config, waits for SSH, and prints
-  connection instructions.
-- `stop` deallocates the VM.
-- `status` reads Azure state plus local state and prints a compact status.
-  The Azure portion includes image, Hyper-V generation, security type, Secure
-  Boot, and vTPM.
+- Lifecycle `start` and `stop` use the dedicated lifecycle module rather than
+  setup prerequisites or connection preparation.
+- Lifecycle `status` reads and normalizes the exact VM power state immediately.
+  It does not inspect setup state or image and network metadata, lock, wait, or
+  infer desired state.
 - `add-cidr`, `set-cidr`, `list-cidrs`, and `remove-cidr` manage named,
   Azure-visible SSH sources without replacing another workstation's rules.
 - `new-workstation-request` creates a destination-local key and a signed,
@@ -140,6 +145,306 @@ Every mutating function must be an advanced PowerShell function and must use
 `SupportsShouldProcess`. `-WhatIf` relies on `$WhatIfPreference`; do not
 special-case it by writing parallel dry-run code that diverges from the real
 path.
+
+### Lifecycle Contract Primitives
+
+`AzureDev.Lifecycle.psm1` exports the single
+`Invoke-AzureDevLifecycleCommand` interface used by the entry point. It owns
+orchestration and private contracts without mixing automation output with
+human diagnostics. A successful real attempt produces one
+`AzureDev.LifecycleResult` on the success stream with exactly `Command`,
+`Result`, `VmName`, `ObservedState`, and `Action`. Progress is a tagged
+`AzureDev.LifecycleProgressEvent` on the information stream.
+
+Lifecycle configuration is one immutable snapshot. Each value uses current
+process environment first, then `.env.azure.development.local`, then
+`.env.azure.development`; later stages never reread those sources.
+
+<!-- markdownlint-disable MD013 -->
+| Snapshot field | Environment variable | Requirement and restriction |
+| --- | --- | --- |
+| Subscription | `AZURE_DEV_VM_SUBSCRIPTION_ID` | Required nonempty explicit Azure target; never replaced by global CLI selection |
+| Resource group | `AZURE_DEV_VM_RESOURCE_GROUP` | Required nonempty explicit Azure target |
+| VM name | `AZURE_DEV_VM_NAME` | Required nonempty explicit Azure target |
+| SSH alias | `AZURE_DEV_VM_SSH_HOST_ALIAS` | Resolved and validated only for `start`; defaults to `kravhantering-azure-dev`; never read by `stop` or `status` and never used to discover the Azure target |
+| Tenant | `AZURE_TENANT_ID` | Optional only as part of the complete service-principal triple |
+| Client | `AZURE_CLIENT_ID` | Optional only as part of the complete service-principal triple |
+| Secret | `AZURE_CLIENT_SECRET` | Optional only as part of the complete service-principal triple; never serialized or echoed |
+<!-- markdownlint-enable MD013 -->
+
+The timing contract uses monotonic milliseconds and an injectable delay. Its
+fixed values are five-second polling, 30-second heartbeats, 15-second lock
+contention, two-minute Azure calls, and separate ten-minute stable-stop and
+running deadlines. Tests replace both timing seams and never wait on wall-clock
+time.
+
+Lifecycle failures use one `ErrorRecord` with a stable phase and canonical
+command, VM, state, action, and mutation-acceptance facts. A versioned,
+self-identifying lifecycle record serializes only its allowlisted fields. State
+and action are JSON `null` when a failure occurs before either fact exists.
+Credentials, tokens, native-command output, and properties attached after
+record construction are not serialized.
+
+The JSONL schema is fixed and deliberately non-authoritative:
+
+| Field | Type and meaning |
+| --- | --- |
+| `schemaVersion` | Integer `1` |
+| `recordType` | `azure-development-environment-lifecycle` |
+| `timestamp` | UTC terminal-record time |
+| `command` | Canonical `start` or `stop` |
+| `subscriptionId` | Configured explicit subscription |
+| `resourceGroup` | Configured explicit resource group |
+| `vmName` | Configured explicit VM name |
+| `terminalResult` | Successful result, otherwise JSON `null` |
+| `failurePhase` | Stable failure phase, otherwise JSON `null` |
+| `observedState` | Last normalized state, or JSON `null` if none exists |
+| `action` | Planned action, or JSON `null` if none exists |
+| `mutationAccepted` | Whether this invocation's Azure mutation was accepted |
+| `elapsedMilliseconds` | Monotonic elapsed time at completion |
+
+Primary stream and process contracts are independent of that record:
+
+<!-- markdownlint-disable MD013 -->
+| Outcome | Success stream | Error stream | Process exit |
+| --- | --- | --- | --- |
+| Real success | Exactly one lifecycle result | None | Zero |
+| Preview | No lifecycle result | None | Zero |
+| Lifecycle failure | No lifecycle result | One terminating lifecycle error | `1` |
+| Interruption | No lifecycle result or terminal record | Interruption propagates | `130` for Ctrl+C/SIGINT |
+| Record-write failure | Primary result or error unchanged | Unchanged; one warning is emitted | Primary exit unchanged |
+<!-- markdownlint-enable MD013 -->
+
+`Complete-AzureDevLifecycleAttempt` is the mutation boundary for the terminal
+record. Call it only after valid lifecycle configuration and lock release. It
+uses `ShouldProcess`, so preview writes no record and returns no lifecycle
+result. Real completion appends one daily JSONL record. Directory or append
+failure emits a warning with explicit continue behavior, even when the caller
+uses terminating warning preferences, and cannot replace the primary result or
+terminating lifecycle error. Before writing, completion correlates the record's
+command, VM, terminal outcome or failure phase, state, action, and mutation
+acceptance with the primary result or failure.
+
+The public entry point preserves these ordered stages:
+
+1. Load and validate one immutable lifecycle configuration snapshot.
+2. For preview, inspect only cached identity and emit `ShouldProcess` plans.
+3. For status, authenticate and read the exact target without taking a lock.
+4. For a real mutation, acquire the target-derived lock, authenticate, read
+   the exact target, plan from the normalized state, and submit at most one
+   asynchronous mutation while the lock is held.
+5. Release the lock before either transition wait. A downward start can
+   reacquire it to re-authenticate and make one fresh guarded decision.
+6. After the terminal outcome and lock release, construct the result or error,
+   attempt the diagnostic record, and emit exactly one primary outcome.
+
+Configuration failure uses phase `configuration` and stops before an Azure
+call or local lifecycle artifact. Later failures use the stable phases
+`authentication`, `lock`, `state-read`, `not-found`, `start-submission`,
+`deallocation-submission`, `stable-stop-wait`, `running-wait`, and
+`outside-interference`.
+
+### Lifecycle Preview And Status
+
+Real lifecycle authentication probes the exact cached identity and ARM token:
+
+```text
+az account show --subscription <subscription-id> --output json \
+  --only-show-errors
+az account get-access-token --subscription <subscription-id> \
+  [--tenant <tenant-id>] --output none --only-show-errors
+```
+
+Configured service-principal repair first checks Azure CLI 2.86.0 or later and
+then uses exactly one targeted, non-interactive login:
+
+```text
+az login --service-principal --username <client-id> --password=<secret> \
+  --tenant <tenant-id> --skip-subscription-discovery \
+  --subscription <subscription-id> --output none --only-show-errors
+```
+
+The lifecycle path never uses `az account list`, `az account set`, device-code
+login, or another interactive login. Each authentication command suppresses
+native output details and uses the two-minute Azure-call deadline.
+
+Lifecycle preview uses normal `ShouldProcess` decisions. It validates the
+immutable lifecycle snapshot and makes only the cache-only profile-identity
+read. A matching identity does not produce a login-repair plan merely because
+token usability is unknown. An absent or mismatched service-principal identity
+routes possible targeted login repair through `ShouldProcess`.
+
+Preview also routes the possible target-derived lock, conditional VM action,
+and terminal lifecycle record through `ShouldProcess`. It deliberately omits a
+live state read, so the VM plan states the rules that select a real action. It
+acquires no token or lock, performs no repair, VM mutation, polling, or log
+write, and returns no lifecycle result.
+
+Status authenticates, then reads the exact target with:
+
+```text
+az vm get-instance-view --subscription <subscription-id> \
+  --resource-group <resource-group> --name <vm-name> \
+  --query \
+  "instanceView.statuses[?starts_with(code, 'PowerState/')].code | [0]" \
+  --output tsv --only-show-errors
+```
+
+The supported codes normalize to `starting`, `running`, `stopping`,
+`stopped-allocated`, `deallocating`, and `deallocated`.
+`PowerState/creating` remains `creating`; exit code 3 remains `not-found`; an
+empty or failed read remains `unavailable`; and other codes remain
+`unrecognized`. Status prints this observation immediately without a lock,
+wait, or inferred target.
+
+### Lifecycle Stop
+
+Real `stop` loads one immutable configuration snapshot, acquires the
+target-derived lock, authenticates, observes state, plans, and submits any
+mutation inside that lock. It releases the lock before constructing the
+terminal record and returning one result or rethrowing one lifecycle error.
+
+The pure stop plan is the complete normalized-state table:
+
+<!-- markdownlint-disable MD013 -->
+| Observation | Result or failure | Action | Mutation |
+| --- | --- | --- | --- |
+| `starting` | `requested` | `deallocation-requested` | Submit |
+| `running` | `requested` | `deallocation-requested` | Submit |
+| `stopping` | `requested` | `deallocation-requested` | Submit |
+| `stopped-allocated` | `requested` | `deallocation-requested` | Submit |
+| `deallocating` | `already-requested` | `none` | None |
+| `deallocated` | `already-deallocated` | `none` | None |
+| `creating` | `requested` | `deallocation-requested` | Submit |
+| `unavailable` | `requested` | `deallocation-requested` | Submit |
+| `not-found` | Failure phase `not-found` | `none` | None |
+| `unrecognized` | Failure phase `state-read` | `none` | None |
+<!-- markdownlint-enable MD013 -->
+
+The unreadable-state fallback deliberately prefers cost control.
+
+The only stop mutation is:
+
+```text
+az vm deallocate --subscription <subscription-id> \
+  --resource-group <resource-group> --name <vm-name> --no-wait \
+  --output none --only-show-errors
+```
+
+The Azure call has a two-minute deadline and returns when Azure CLI accepts the
+request. Stop has no polling loop or deallocation deadline. Submission
+rejection uses `deallocation-submission` and records
+`mutationAccepted=false`. Best-effort record failure only emits a warning and
+cannot replace the accepted result or primary error.
+
+### Stable And Upward Start Orchestration
+
+The pure start planner maps one decisive normalized observation to an action:
+
+| Observation | Decision | Mutation | Terminal result and action |
+| --- | --- | --- | --- |
+| `running` | Complete | None | `already-running` / `none` |
+| `starting` | Wait for `running` | None | `running` / `joined-start` |
+| `stopped-allocated` | Submit/wait | Start | `running` / `start-requested` |
+| `deallocated` | Submit and wait | Start | `running` / `start-requested` |
+| `stopping` | Wait for stable stop | None | Reread under a reacquired lock |
+| `deallocating` | Wait for stable stop | None | Reread under reacquired lock |
+| `not-found` | Fail | None | Failure phase `not-found` |
+| `unavailable` | Fail | None | Failure phase `state-read` |
+| `creating` | Fail | None | Failure phase `state-read` |
+| `unrecognized` | Fail | None | Failure phase `state-read` |
+
+For a downward decision, orchestration releases the local target lock and
+starts the stable-stop deadline. It polls outside the lock until Azure leaves
+`stopping` or `deallocating`. The usual next state is `stopped-allocated` or
+`deallocated`, but a cross-workstation start can already have produced an
+upward state. Orchestration then reacquires the target lock, revalidates
+authentication, and rereads the exact target. A refreshed
+`running` completes with `already-running/none`; refreshed `starting` joins
+with `running/joined-start`; and a refreshed stable stopped state submits the
+single permitted start mutation. If the guarded reread is downward again, the
+lock is released and stable-stop polling continues under the original
+stable-stop deadline.
+
+The local lock is intentionally not a distributed lock. It serializes one
+checkout, while the guarded Azure reread lets invocations from other checkouts
+or workstations converge without duplicate mutations. The immutable
+configuration snapshot keeps every reread and mutation on the original
+subscription, resource group, and VM.
+
+After a start is submitted or an existing `starting` state is joined, the
+local lock is released and the independent running deadline begins. Any later
+downward state—`stopping`, `stopped-allocated`, `deallocating`, or
+`deallocated`—is classified as `outside-interference` and terminates the local
+attempt without rollback or a second start. The failure records whether this
+invocation's mutation was accepted and explains that Azure may still complete
+the earlier operation.
+
+Both waits use five-second polls, state-change progress, and 30-second
+heartbeats. Each has its own ten-minute monotonic deadline; time spent waiting
+for stable stop does not consume the running deadline. Ctrl+C propagates as a
+normal nonzero interruption. Lock ownership is released by the lock module's
+`finally` path, no compensating Azure action runs, and an interrupted attempt
+returns no lifecycle result or terminal lifecycle record.
+
+The dispatcher acquires the target-derived lock, validates the Azure session,
+reads the decisive state, calls the planner, and submits at most one mutation:
+
+```text
+az vm start --subscription <subscription-id> \
+  --resource-group <resource-group> --name <vm-name> \
+  --no-wait --output none --only-show-errors
+```
+
+The lock is released before polling. The running wait uses the lifecycle timing
+contract: five-second polls, 30-second heartbeats, and a ten-minute deadline.
+During the wait, only state changes and heartbeats reach the information
+stream. A timeout uses failure phase `running-wait`, states that Azure can still
+complete the earlier operation, and submits neither rollback nor a second
+start.
+
+After `running`, the command returns exactly one `AzureDev.LifecycleResult` on
+the success stream. It writes only `SSH: ssh <alias>` and
+`VS Code: code --remote ssh-remote+<alias> /workspace` as human guidance. It
+does not discover or invoke local SSH, key, transfer, Git, host-resolution, or
+VS Code tools; inspect or change SSH configuration or trust; resolve a host; or
+probe SSH readiness. Connection preparation and trust repair remain owned by
+`setup`.
+
+### Offline Lifecycle Acceptance Boundary
+
+The opt-in Pester public-command harness invokes `scripts/azure-dev.ps1` with a
+temporary repository root, isolated home and Azure CLI directory, scripted
+fake `az`, and an argument log. It supplies no real credentials, Azure access,
+SSH state, or real home directory. The fake exposes cached-identity, token,
+targeted-login, state-sequence, mutation-acceptance, and mutation-rejection
+modes. Every recorded argument array is available for exact assertions.
+
+The public suite covers both previews, all ten normalized status observations,
+the complete start and stop transition tables, idempotent outcomes, targeted
+authentication repair, configuration and lock failures, rejected mutations,
+both transition timeouts, progress, diagnostic-write warning, outside
+interference, and interruption. Child-process cases verify exit behavior;
+in-process cases verify typed results, terminating errors, stream separation,
+and the lifecycle record schema.
+
+The injected monotonic clock and delay advance the waits without sleeping.
+Together with focused unit coverage, the suite fixes the timing contract at
+five-second polls, 30-second heartbeats, a 15-second lock deadline, independent
+ten-minute stable-stop and running deadlines, and a two-minute deadline for
+each Azure CLI call. The state-sequence log also proves the lock is released
+during polling and reacquired before a refreshed decision.
+
+Stubs for SSH, key, transfer, Git, host-resolution, download, and VS Code tools
+fail and record evidence if invoked. The isolated `PATH`, untouched malformed
+setup-state sentinel, absent SSH home, exact Azure argument log, and empty job
+set prove the lifecycle path performs no SSH preparation, trust refresh,
+readiness polling, setup-state read, unrelated discovery, interactive login,
+subscription enumeration, or global subscription selection. Result and log
+assertions prove
+that progress and exact connection guidance stay outside the success stream,
+and that best-effort lifecycle records remain allowlisted, secret-free,
+self-identifying, and non-authoritative.
 
 `setup -WhatIf` must remain read-only. It may inspect local tools, Azure login,
 subscription visibility, SKU availability, resource-group tags, SSH CIDR, and
@@ -323,7 +628,7 @@ process. It does not inspect Zsh, Bash, or other shell startup files. Missing
 tokens are acceptable when another shell that contains them starts the VS Code
 Remote SSH session.
 
-The setup and start connection output explains that `GH_TOKEN` and
+The setup connection output explains that `GH_TOKEN` and
 `COPILOT_GITHUB_TOKEN` must exist in the workstation environment that launches
 VS Code. It must never read the values, include them in terminal or log output,
 or store them.
@@ -332,13 +637,13 @@ Forwarded values are readable by processes in the destination `vscode` user's
 Remote SSH process tree. The workflow must require trusted VMs and workspaces
 and short-lived, least-privilege tokens.
 
-The setup and start connection output must present both supported extension
+The setup connection output must present both supported extension
 installation choices. It points to `.vscode/extensions.json` as the source for
 `remote.SSH.defaultExtensions`, warns that the setting applies to every Remote
 SSH host, and gives the workspace-only Command Palette alternative. Do not
 silently change the developer's application-wide VS Code settings.
 
-Before the first network SSH connection, setup and start invoke
+Before the first network SSH connection, setup invokes
 `RunShellScript` through the authenticated Azure control plane. The guest
 script reads `/etc/ssh/ssh_host_*_key.pub`; it does not create or transmit any
 bootstrap credential. The workstation validates every returned SSH public-key
@@ -352,8 +657,8 @@ keys are appended for both names and the file is moved into place. Unrelated
 entries remain unchanged. This gives a recreated VM a replacement path without
 trusting the network-presented key.
 
-The first SSH probe and every setup, bootstrap, validation, start, and
-maintenance SSH or SCP operation use:
+The first SSH probe and every setup, bootstrap, validation, and maintenance SSH
+or SCP operation use:
 
 ```text
 BatchMode=yes

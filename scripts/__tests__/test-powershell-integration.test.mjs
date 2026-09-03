@@ -36,6 +36,7 @@ describe('isolated PowerShell integration-test runner', () => {
     expect(args).toContain('--network=none')
     expect(args).toContain('--read-only')
     expect(args).toContain('--cap-drop=ALL')
+    expect(command).toContain('/tmp:rw,exec,nosuid,nodev,size=512m')
     expect(command).toContain('source=/repo,target=/workspace,readonly')
     expect(command).toContain(
       'source=/tmp/pester-modules,target=/pester-modules,readonly',

@@ -28,6 +28,9 @@ param(
 
   [string]$EnvironmentFile = '.env.azure.development',
 
+  [Parameter(DontShow)]
+  [pscustomobject]$LifecycleTiming,
+
   [string]$WorkstationName,
 
   [ValidateSet('connect-only', 'manage-environment')]
@@ -68,6 +71,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+trap [System.Management.Automation.PipelineStoppedException] {
+  exit 130
+}
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
@@ -82,7 +88,9 @@ foreach ($module in @(
   'AzureDev.Bootstrap.psm1',
   'AzureDev.Validation.psm1',
   'AzureDev.Podman.psm1',
-  'AzureDev.Workstation.psm1'
+  'AzureDev.Workstation.psm1',
+  'AzureDev.LifecycleLock.psm1',
+  'AzureDev.Lifecycle.psm1'
 )) {
   Import-Module (Join-Path $moduleRoot $module) -Force -Verbose:$false
 }
@@ -796,178 +804,6 @@ function Invoke-AzureDevSetup {
   }
 }
 
-function Start-AzureDevEnvironment {
-  [CmdletBinding(SupportsShouldProcess = $true)]
-  param(
-    [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context
-  )
-
-  if (-not $WhatIfPreference) {
-    New-AzureDevLock -Context $Context -CommandName 'start'
-  }
-  try {
-    Test-AzureDevPrerequisites `
-      -Context $Context `
-      -WhatIf:$WhatIfPreference
-    Start-AzureDevAzureVm `
-      -Context $Context `
-      -WhatIf:$WhatIfPreference
-    if (-not $WhatIfPreference) {
-      $hostName = Get-AzureDevHostName -Context $Context
-      Set-AzureDevManagedSshConfig `
-        -Context $Context `
-        -HostName $hostName | Out-Null
-      Wait-AzureDevSsh `
-        -Context $Context `
-        -HostName $hostName | Out-Null
-      Write-AzureDevSshInstructions -Context $Context
-      Write-AzureDevLog `
-        -Context $Context `
-        -CommandName 'start' `
-        -ActionCategory 'vm-lifecycle' `
-        -TargetName $Context.Config.VmName `
-        -TargetType 'Microsoft.Compute/virtualMachines' `
-        -Result 'success'
-    }
-  } finally {
-    if (-not $WhatIfPreference) {
-      Remove-AzureDevLock -Context $Context -Force
-    }
-  }
-}
-
-function Stop-AzureDevEnvironment {
-  [CmdletBinding(SupportsShouldProcess = $true)]
-  param(
-    [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context
-  )
-
-  if (-not $WhatIfPreference) {
-    New-AzureDevLock -Context $Context -CommandName 'stop'
-  }
-  try {
-    Test-AzureDevPrerequisites `
-      -Context $Context `
-      -WhatIf:$WhatIfPreference
-    Stop-AzureDevAzureVm `
-      -Context $Context `
-      -WhatIf:$WhatIfPreference
-    if (-not $WhatIfPreference) {
-      Write-AzureDevLog `
-        -Context $Context `
-        -CommandName 'stop' `
-        -ActionCategory 'vm-lifecycle' `
-        -TargetName $Context.Config.VmName `
-        -TargetType 'Microsoft.Compute/virtualMachines' `
-        -Result 'success'
-    }
-  } finally {
-    if (-not $WhatIfPreference) {
-      Remove-AzureDevLock -Context $Context -Force
-    }
-  }
-}
-
-function Get-AzureDevStatus {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory = $true)]
-    [pscustomobject]$Context
-  )
-
-  Test-AzureDevPrerequisites `
-    -Context $Context `
-    -WhatIf:$WhatIfPreference
-  $state = Get-AzureDevState -Context $Context
-  $publicIp = Get-AzureDevPublicIpAddress -Config $Context.Config
-  $powerState = Get-AzureDevVmPowerState -Config $Context.Config
-  $securityState = Get-AzureDevVmSecurityState -Config $Context.Config
-  $hasMarketplaceImage = (
-    $null -ne $securityState -and
-    $securityState.Exists -and
-    -not [string]::IsNullOrWhiteSpace("$($securityState.ImagePublisher)") -and
-    -not [string]::IsNullOrWhiteSpace("$($securityState.ImageOffer)") -and
-    -not [string]::IsNullOrWhiteSpace("$($securityState.ImageSku)") -and
-    -not [string]::IsNullOrWhiteSpace("$($securityState.ImageVersion)")
-  )
-  $image = if ($hasMarketplaceImage) {
-    [pscustomobject]@{
-      publisher = $securityState.ImagePublisher
-      offer = $securityState.ImageOffer
-      sku = $securityState.ImageSku
-      version = $securityState.ImageVersion
-      urn = (
-        "$($securityState.ImagePublisher):$($securityState.ImageOffer):" +
-        "$($securityState.ImageSku):$($securityState.ImageVersion)"
-      )
-      plan = $null
-    }
-  } else {
-    Get-AzureDevVmImage -Config $Context.Config
-  }
-  if ($null -ne $image) {
-    Write-AzureDevImageDeprecationWarning `
-      -Config $Context.Config `
-      -Image $image
-  }
-  $sshAccessRules = @(
-    Get-AzureDevSshAccessRules -Config $Context.Config
-  )
-  $validation = Get-AzureDevValidationStatus -State $state
-  $generationText = if ($null -ne $securityState -and $securityState.Exists) {
-    $securityState.HyperVGeneration
-  } else {
-    '<not found>'
-  }
-  $securityTypeText = if ($null -ne $securityState -and $securityState.Exists) {
-    $securityState.SecurityType
-  } else {
-    '<not found>'
-  }
-  $secureBootText = if (
-    $null -ne $securityState -and
-    $securityState.Exists -and
-    $null -ne $securityState.SecureBootEnabled
-  ) {
-    $securityState.SecureBootEnabled
-  } else {
-    '<not found>'
-  }
-  $vTpmText = if (
-    $null -ne $securityState -and
-    $securityState.Exists -and
-    $null -ne $securityState.VTpmEnabled
-  ) {
-    $securityState.VTpmEnabled
-  } else {
-    '<not found>'
-  }
-
-  Write-Host "Resource group: $($Context.Config.ResourceGroup)"
-  Write-Host "VM: $($Context.Config.VmName)"
-  Write-Host "Image: $(if ($null -eq $image) { '<not found>' } else { $image.urn })"
-  Write-Host "Hyper-V generation: $generationText"
-  Write-Host "Security type: $securityTypeText"
-  Write-Host "Secure Boot: $secureBootText"
-  Write-Host "vTPM: $vTpmText"
-  Write-Host "Power state: $powerState"
-  Write-Host "Connectivity mode: $($Context.Config.ConnectivityMode)"
-  Write-Host "Public IP: $publicIp"
-  Write-Host 'Allowed SSH CIDRs:'
-  if ($sshAccessRules.Count -eq 0) {
-    Write-Host '  <none>'
-  } else {
-    foreach ($rule in $sshAccessRules) {
-      $owner = "$($rule.workstation)/$($rule.access)"
-      Write-Host "  $owner $($rule.cidr) (priority $($rule.priority))"
-    }
-  }
-  Write-Host "SSH alias: $($Context.Config.SshHostAlias)"
-  Write-Host "Last validation: $validation"
-}
-
 function Get-AzureDevSshConfig {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -1145,12 +981,29 @@ function Invoke-AzureDevCommand {
         -WorkstationName $effectiveWorkstationName `
         -AllowNetworkCidr:$AllowNetworkCidr
     }
-    'start' { Start-AzureDevEnvironment -Context $Context }
-    'stop' { Stop-AzureDevEnvironment -Context $Context }
-    'status' { Get-AzureDevStatus -Context $Context }
     'ssh-config' { Get-AzureDevSshConfig -Context $Context }
     'remove' { Remove-AzureDevEnvironment -Context $Context }
   }
+}
+
+if ($Command -in @('start', 'stop', 'status')) {
+  $lifecycleParameters = @{
+    CommandName = $Command
+    RepositoryRoot = $RepositoryRoot
+    EnvironmentFile = $EnvironmentFile
+    WhatIf = $WhatIfPreference
+  }
+  if ($null -ne $LifecycleTiming) {
+    $lifecycleParameters.Timing = $LifecycleTiming
+  }
+  if (
+    $Command -in @('start', 'stop') -and
+    $PSBoundParameters.ContainsKey('Confirm')
+  ) {
+    $lifecycleParameters.Confirm = $PSBoundParameters['Confirm']
+  }
+  Invoke-AzureDevLifecycleCommand @lifecycleParameters
+  return
 }
 
 $requireEnv = $Command -in @('approve-workstation', 'setup')

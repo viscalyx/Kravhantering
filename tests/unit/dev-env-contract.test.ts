@@ -234,8 +234,7 @@ describe('development environment contract', () => {
     expect(resolver).toContain('return $existingImage')
   })
 
-  it('checks exact existing image deprecation during setup and status', () => {
-    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
+  it('checks exact existing image deprecation during setup', () => {
     const azureModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Azure.psm1',
     )
@@ -260,36 +259,6 @@ describe('development environment contract', () => {
     expect(warningFunction).toContain(`"yyyy-MM-dd HH:mm:ss 'UTC'"`)
     expect(warningFunction).toContain(
       "'continue using the existing VM and OS disk. Check Azure Advisor",
-    )
-    const statusStart = entryScript.indexOf('function Get-AzureDevStatus')
-    const statusEnd = entryScript.indexOf(
-      '\nfunction Get-AzureDevSshConfig',
-      statusStart,
-    )
-    const statusFunction = entryScript.slice(statusStart, statusEnd)
-
-    expect(statusStart).toBeGreaterThanOrEqual(0)
-    expect(statusEnd).toBeGreaterThan(statusStart)
-    expect(statusFunction.indexOf('$securityState =')).toBeLessThan(
-      statusFunction.indexOf('$image ='),
-    )
-    expect(statusFunction).toContain('$hasMarketplaceImage = (')
-    expect(statusFunction).toContain(
-      '"$($securityState.ImagePublisher):$($securityState.ImageOffer):" +',
-    )
-    expect(statusFunction).toContain(
-      '"$($securityState.ImageSku):$($securityState.ImageVersion)"',
-    )
-    expect(statusFunction).toContain(
-      'Get-AzureDevVmImage -Config $Context.Config',
-    )
-    expect(statusFunction).toContain(
-      'Write-AzureDevImageDeprecationWarning `\n' +
-        '      -Config $Context.Config `\n' +
-        '      -Image $image',
-    )
-    expect(statusFunction).toContain(
-      'Write-Host "Image: $(if ($null -eq $image)',
     )
   })
 
@@ -539,14 +508,6 @@ describe('development environment contract', () => {
     expect(entryScript).toContain(
       'if ($WhatIfPreference) {\n        Write-Host (',
     )
-    expect(entryScript).toContain(
-      'Write-Host "Hyper-V generation: $generationText"',
-    )
-    expect(entryScript).toContain(
-      'Write-Host "Security type: $securityTypeText"',
-    )
-    expect(entryScript).toContain('Write-Host "Secure Boot: $secureBootText"')
-    expect(entryScript).toContain('Write-Host "vTPM: $vTpmText"')
   })
 
   it('cleans up Azure CLI stderr capture during WhatIf', () => {

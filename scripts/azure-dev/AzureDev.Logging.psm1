@@ -1,5 +1,34 @@
 Set-StrictMode -Version Latest
 
+$script:AzureDevSecretOptionNamePattern =
+  '(?:password|client[-_]?secret|secret|token|auth[-_]?key)'
+
+function Test-AzureDevInterruption {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$ErrorObject
+  )
+
+  $exception = if (
+    $ErrorObject -is [System.Management.Automation.ErrorRecord]
+  ) {
+    $ErrorObject.Exception
+  } else {
+    $ErrorObject
+  }
+  while ($null -ne $exception) {
+    if (
+      $exception -is [System.OperationCanceledException] -or
+      $exception -is [System.Management.Automation.PipelineStoppedException]
+    ) {
+      return $true
+    }
+    $exception = $exception.InnerException
+  }
+  return $false
+}
+
 $script:AzureDevEmailPattern = '(?i)(?<![A-Z0-9._%+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+(?![A-Z0-9._%+-])'
 
 function New-AzureDevDirectory {
@@ -122,6 +151,15 @@ function Format-AzureDevCommand {
 
   $redactedArguments = New-Object System.Collections.Generic.List[string]
   $redactNext = $false
+  $secretNamePrefixPattern = '(?:[a-z0-9]+[-_])*'
+  $secretAssignmentPattern = (
+    '(?i)^(?:--?)?' + $secretNamePrefixPattern +
+      $script:AzureDevSecretOptionNamePattern + '='
+  )
+  $secretOptionPattern = (
+    '(?i)^--?' + $secretNamePrefixPattern +
+      $script:AzureDevSecretOptionNamePattern + '$'
+  )
   foreach ($argument in $Arguments) {
     if ($redactNext) {
       $redactedArguments.Add('[redacted]')
@@ -129,17 +167,15 @@ function Format-AzureDevCommand {
       continue
     }
 
-    $displayArgument = if (
-      $argument -match '(?i)^(password|clientSecret|client_secret|secret|token|authKey|auth_key)='
-    ) {
-      ($argument -replace '=.*$', '=[redacted]')
+    $displayArgument = if ($argument -match $secretAssignmentPattern) {
+      ($argument -replace '(?s)=.*\z', '=[redacted]')
     } else {
       $argument
     }
     $displayArgument = ConvertTo-AzureDevPiiSafeText -Value $displayArgument
 
     $redactedArguments.Add($displayArgument)
-    if ($argument -match '(?i)^--?(password|client-secret|secret|token|auth-key)$') {
+    if ($argument -match $secretOptionPattern) {
       $redactNext = $true
     }
   }
@@ -337,6 +373,7 @@ function Remove-AzureDevLocalState {
 }
 
 Export-ModuleMember -Function `
+  Test-AzureDevInterruption, `
   ConvertTo-AzureDevPiiSafeText, `
   ConvertTo-AzureDevRedactedValue, `
   Format-AzureDevCommand, `
