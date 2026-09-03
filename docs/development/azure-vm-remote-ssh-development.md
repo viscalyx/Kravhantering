@@ -1105,13 +1105,16 @@ The app runs directly on the VM host. Containers run only the support services.
 
 ## Step 8: Manage the Environment
 
-The lifecycle commands read a narrow, immutable snapshot of the configured
-subscription, resource group, VM name, SSH alias, and optional complete
-service-principal credential triple. Values follow the configuration
-precedence documented in Steps 4 and 5: the current PowerShell session wins,
-then `.env.azure.development.local`, then `.env.azure.development`. Every Azure
-read and mutation names the configured subscription, resource group, and VM;
-the commands do not enumerate subscriptions or change the Azure CLI global
+Every lifecycle command reads a narrow, immutable snapshot of the configured
+subscription, resource group, VM name, and optional complete service-principal
+credential triple. Those three Azure target fields are mandatory and have no
+lifecycle defaults. `start` alone also resolves and validates the SSH alias,
+using `kravhantering-azure-dev` when no source sets it; `stop` and `status` do
+not read the alias. Values otherwise follow the configuration precedence
+documented in Steps 4 and 5: the current PowerShell session wins, then
+`.env.azure.development.local`, then `.env.azure.development`. Every Azure read
+and mutation names the configured subscription, resource group, and VM; the
+commands do not enumerate subscriptions or change the Azure CLI global
 subscription.
 
 A matching cached Azure CLI identity is reused after a silent token check. A
@@ -1129,7 +1132,7 @@ diagnostic lock file cannot release a live mutex.
 
 Real `start` and `stop` attempts return exactly one structured result on
 success. Progress and connection guidance are separate terminal information,
-not result objects. A failure returns no result and exits nonzero with one
+not result objects. A failure returns no result and exits with code `1` and one
 terminating lifecycle error. After lock release, a completed real attempt also
 tries to append one self-identifying JSONL record under `.azure/logs/`. That
 local record is secret-free diagnostic evidence, not an authoritative Azure

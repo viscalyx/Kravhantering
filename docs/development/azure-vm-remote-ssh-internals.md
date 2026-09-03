@@ -166,7 +166,7 @@ process environment first, then `.env.azure.development.local`, then
 | Subscription | `AZURE_DEV_VM_SUBSCRIPTION_ID` | Required nonempty explicit Azure target; never replaced by global CLI selection |
 | Resource group | `AZURE_DEV_VM_RESOURCE_GROUP` | Required nonempty explicit Azure target |
 | VM name | `AZURE_DEV_VM_NAME` | Required nonempty explicit Azure target |
-| SSH alias | `AZURE_DEV_VM_SSH_HOST_ALIAS` | Required nonempty guidance value; never used to discover the Azure target |
+| SSH alias | `AZURE_DEV_VM_SSH_HOST_ALIAS` | Resolved and validated only for `start`; defaults to `kravhantering-azure-dev`; never read by `stop` or `status` and never used to discover the Azure target |
 | Tenant | `AZURE_TENANT_ID` | Optional only as part of the complete service-principal triple |
 | Client | `AZURE_CLIENT_ID` | Optional only as part of the complete service-principal triple |
 | Secret | `AZURE_CLIENT_SECRET` | Optional only as part of the complete service-principal triple; never serialized or echoed |
@@ -210,7 +210,7 @@ Primary stream and process contracts are independent of that record:
 | --- | --- | --- | --- |
 | Real success | Exactly one lifecycle result | None | Zero |
 | Preview | No lifecycle result | None | Zero |
-| Lifecycle failure | No lifecycle result | One terminating lifecycle error | Nonzero |
+| Lifecycle failure | No lifecycle result | One terminating lifecycle error | `1` |
 | Interruption | No lifecycle result or terminal record | Interruption propagates | `130` for Ctrl+C/SIGINT |
 | Record-write failure | Primary result or error unchanged | Unchanged; one warning is emitted | Primary exit unchanged |
 <!-- markdownlint-enable MD013 -->

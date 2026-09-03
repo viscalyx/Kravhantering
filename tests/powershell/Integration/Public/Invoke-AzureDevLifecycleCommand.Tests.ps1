@@ -31,6 +31,7 @@ Describe `
   }
 
   BeforeEach {
+    $script:interruptProcess = $null
     Clear-AzureDevLifecyclePublicCommandEvidence -Fixture $script:fixture
     [System.Environment]::SetEnvironmentVariable(
       'FAKE_AZ_PROFILE_MODE',
@@ -112,6 +113,17 @@ Describe `
       0,
       'AzureDev.LifecycleTiming'
     )
+  }
+
+  AfterEach {
+    if ($null -ne $script:interruptProcess) {
+      if (-not $script:interruptProcess.HasExited) {
+        $script:interruptProcess.Kill($true)
+        $script:interruptProcess.WaitForExit()
+      }
+      $script:interruptProcess.Dispose()
+      $script:interruptProcess = $null
+    }
   }
 
   AfterAll {
@@ -553,40 +565,6 @@ Describe `
         Should-Be ($expectedMutationCount -eq 1)
     }
 
-    It 'Should exit zero with one result after Azure accepts deallocation' {
-      $output = & $script:powerShellPath `
-        -NoLogo `
-        -NoProfile `
-        -File $script:fixture.ResultProbePath `
-        -EntryPoint $script:entryPoint `
-        -CommandName stop `
-        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
-      $exitCode = $LASTEXITCODE
-      $outputLines = @($output | ForEach-Object { "$_" })
-      $contract = $outputLines[0] | ConvertFrom-Json
-
-      $exitCode | Should-Be 0
-      $outputLines.Count | Should-Be 1
-      $contract.Count | Should-Be 1
-      $contract.TypeName | Should-Be 'AzureDev.LifecycleResult'
-      @($contract.PropertyNames) | Should-BeCollection @(
-        'Command',
-        'Result',
-        'VmName',
-        'ObservedState',
-        'Action'
-      )
-      $contract.Command | Should-Be 'stop'
-      $contract.Result | Should-Be 'requested'
-      $contract.VmName | Should-Be 'isolated-vm'
-      $contract.ObservedState | Should-Be 'running'
-      $contract.Action | Should-Be 'deallocation-requested'
-      @(Get-AzureDevLifecyclePublicCommandCalls `
-          -Fixture $script:fixture | Where-Object {
-          $_ -match "^CALL`tvm`tdeallocate`t"
-        }).Count | Should-Be 1
-    }
-
     It 'Should fail not-found with no mutation or lifecycle result' {
       [System.Environment]::SetEnvironmentVariable(
         'FAKE_AZ_VM_STATE',
@@ -755,6 +733,62 @@ Describe `
     }
   }
 
+  Context 'When a successful lifecycle command runs in a child process' {
+    BeforeDiscovery {
+      $successCases = @(
+        @{
+          CommandName = 'start'
+          Result = 'already-running'
+          Action = 'none'
+          MutationVerb = 'start'
+          MutationCount = 0
+        },
+        @{
+          CommandName = 'stop'
+          Result = 'requested'
+          Action = 'deallocation-requested'
+          MutationVerb = 'deallocate'
+          MutationCount = 1
+        }
+      )
+    }
+
+    It 'Should exit zero with exactly one <CommandName> result' `
+      -ForEach $successCases {
+      $output = & $script:powerShellPath `
+        -NoLogo `
+        -NoProfile `
+        -File $script:fixture.ResultProbePath `
+        -EntryPoint $script:entryPoint `
+        -CommandName $CommandName `
+        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
+      $exitCode = $LASTEXITCODE
+      $outputLines = @($output | ForEach-Object { "$_" })
+
+      $exitCode | Should-Be 0
+      $outputLines.Count | Should-Be 1
+      $contract = $outputLines[0] | ConvertFrom-Json
+      $contract.Count | Should-Be 1
+      $contract.TypeName | Should-Be 'AzureDev.LifecycleResult'
+      @($contract.PropertyNames) | Should-BeCollection @(
+        'Command',
+        'Result',
+        'VmName',
+        'ObservedState',
+        'Action'
+      )
+      $contract.Command | Should-Be $CommandName
+      $contract.Result | Should-Be $Result
+      $contract.VmName | Should-Be 'isolated-vm'
+      $contract.ObservedState | Should-Be 'running'
+      $contract.Action | Should-Be $Action
+      @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture | Where-Object {
+          $_ -match "^CALL`tvm`t$MutationVerb`t"
+        }).Count | Should-Be $MutationCount
+    }
+  }
+
   Context 'When start is already running' {
     It 'Should return one typed result and only the two connection entry points' {
       $azurePath = Join-Path $script:fixture.RepositoryRoot '.azure'
@@ -764,7 +798,7 @@ Describe `
         -LiteralPath $setupStatePath `
         -Value '{malformed-setup-state-sentinel' `
         -NoNewline
-      $unreadAccessTime = [datetime]::UnixEpoch
+      $unreadAccessTime = [System.DateTime]::UnixEpoch
       [System.IO.File]::SetLastAccessTimeUtc(
         $setupStatePath,
         $unreadAccessTime
@@ -824,7 +858,9 @@ Describe `
         Should-Be '{malformed-setup-state-sentinel'
       $commandDiscovery = Get-Content -LiteralPath $commandDiscoveryPath -Raw
       foreach ($commandName in $script:fixture.ForbiddenCommandNames) {
-        $escapedCommandName = [regex]::Escape($commandName)
+        $escapedCommandName = [System.Text.RegularExpressions.Regex]::Escape(
+          $commandName
+        )
         $commandDiscovery |
           Should-NotMatchString (
             "Looking (?:up command:|for) $escapedCommandName" +
@@ -864,35 +900,6 @@ Describe `
         Should-NotMatchString 'fake-harness-secret|token|setup-state-sentinel'
     }
 
-    It 'Should exit zero with exactly one running child-process result' {
-      $output = & $script:powerShellPath `
-        -NoLogo `
-        -NoProfile `
-        -File $script:fixture.ResultProbePath `
-        -EntryPoint $script:entryPoint `
-        -CommandName start `
-        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
-      $exitCode = $LASTEXITCODE
-      $outputLines = @($output | ForEach-Object { "$_" })
-      $contract = $outputLines[0] | ConvertFrom-Json
-
-      $exitCode | Should-Be 0
-      $outputLines.Count | Should-Be 1
-      $contract.Count | Should-Be 1
-      $contract.TypeName | Should-Be 'AzureDev.LifecycleResult'
-      @($contract.PropertyNames) | Should-BeCollection @(
-        'Command',
-        'Result',
-        'VmName',
-        'ObservedState',
-        'Action'
-      )
-      $contract.Command | Should-Be 'start'
-      $contract.Result | Should-Be 'already-running'
-      $contract.VmName | Should-Be 'isolated-vm'
-      $contract.ObservedState | Should-Be 'running'
-      $contract.Action | Should-Be 'none'
-    }
   }
 
   Context 'When start first observes a downward transition' {
@@ -1057,7 +1064,7 @@ Describe `
           ) -File).Count | Should-Be 0
     }
 
-    It 'Should exit nonzero without residue after a real SIGINT' {
+    It 'Should exit 130 without residue after a real SIGINT' {
       [System.Environment]::SetEnvironmentVariable(
         'FAKE_AZ_VM_STATE',
         'PowerState/deallocating',
@@ -1079,38 +1086,30 @@ Describe `
         )) {
         $startInfo.ArgumentList.Add($argument)
       }
-      $process = [System.Diagnostics.Process]::new()
-      $process.StartInfo = $startInfo
+      $script:interruptProcess = [System.Diagnostics.Process]::new()
+      $script:interruptProcess.StartInfo = $startInfo
 
-      try {
-        $process.Start() | Should-BeTrue
-        $readyDeadline = [System.Diagnostics.Stopwatch]::StartNew()
-        while (
-          -not (Test-Path `
-            -LiteralPath $script:fixture.VmStateReadCountFile) -and
-          -not $process.HasExited -and
-          $readyDeadline.ElapsedMilliseconds -lt 5000
-        ) {
-          Start-Sleep -Milliseconds 10
-        }
-        Test-Path -LiteralPath $script:fixture.VmStateReadCountFile |
-          Should-BeTrue
-
-        & /bin/kill -INT $process.Id
-        $LASTEXITCODE | Should-Be 0
-        $process.WaitForExit(5000) | Should-BeTrue
-        $exitCode = $process.ExitCode
-        $output = @(
-          $process.StandardOutput.ReadToEnd(),
-          $process.StandardError.ReadToEnd()
-        ) -join [System.Environment]::NewLine
-      } finally {
-        if (-not $process.HasExited) {
-          $process.Kill($true)
-          $process.WaitForExit()
-        }
-        $process.Dispose()
+      $script:interruptProcess.Start() | Should-BeTrue
+      $readyDeadline = [System.Diagnostics.Stopwatch]::StartNew()
+      while (
+        -not (Test-Path `
+          -LiteralPath $script:fixture.VmStateReadCountFile) -and
+        -not $script:interruptProcess.HasExited -and
+        $readyDeadline.ElapsedMilliseconds -lt 5000
+      ) {
+        Start-Sleep -Milliseconds 10
       }
+      Test-Path -LiteralPath $script:fixture.VmStateReadCountFile |
+        Should-BeTrue
+
+      & /bin/kill -INT $script:interruptProcess.Id
+      $LASTEXITCODE | Should-Be 0
+      $script:interruptProcess.WaitForExit(5000) | Should-BeTrue
+      $exitCode = $script:interruptProcess.ExitCode
+      $output = @(
+        $script:interruptProcess.StandardOutput.ReadToEnd(),
+        $script:interruptProcess.StandardError.ReadToEnd()
+      ) -join [System.Environment]::NewLine
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)
 
