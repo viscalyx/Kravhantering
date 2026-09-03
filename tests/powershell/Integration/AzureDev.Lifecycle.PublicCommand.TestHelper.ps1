@@ -4,7 +4,7 @@ function New-AzureDevLifecyclePublicCommandFixture {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [string]$Root
+    [System.String]$Root
   )
 
   $fixtureRoot = Join-Path $Root 'azure-dev-lifecycle-public-command'
@@ -49,15 +49,15 @@ AZURE_CLIENT_SECRET=fake-harness-secret
   $resultProbePath = Join-Path $fixtureRoot 'result-probe.ps1'
   Set-Content -LiteralPath $resultProbePath -Value @'
 param(
-  [string]$EntryPoint,
-  [string]$CommandName,
-  [string]$RepositoryRoot
+  [System.String]$EntryPoint,
+  [System.String]$CommandName,
+  [System.String]$RepositoryRoot
 )
 $result = @(& $EntryPoint `
     $CommandName `
     -RepositoryRoot $RepositoryRoot `
     6>$null)
-[pscustomobject]@{
+[System.Management.Automation.PSObject]@{
   Count = $result.Count
   TypeName = if ($result.Count -eq 1) {
     $result[0].PSObject.TypeNames[0]
@@ -245,7 +245,7 @@ exit 97
     $null = & /bin/chmod '+x' $path
   }
 
-  return [pscustomobject]@{
+  return [System.Management.Automation.PSObject]@{
     RepositoryRoot = $repositoryRoot
     BinPath = $binPath
     HomePath = $homePath
@@ -268,7 +268,7 @@ function Enter-AzureDevLifecyclePublicCommandFixture {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Fixture
+    [System.Management.Automation.PSObject]$Fixture
   )
 
   $environment = [ordered]@{
@@ -308,7 +308,8 @@ function Enter-AzureDevLifecyclePublicCommandFixture {
     $existing = Get-Item `
       -LiteralPath "Env:$($entry.Key)" `
       -ErrorAction SilentlyContinue
-    $Fixture.OriginalEnvironment[$entry.Key] = [pscustomobject]@{
+    $Fixture.OriginalEnvironment[$entry.Key] =
+      [System.Management.Automation.PSObject]@{
       Present = $null -ne $existing
       Value = if ($null -eq $existing) { $null } else { $existing.Value }
     }
@@ -326,7 +327,7 @@ function Exit-AzureDevLifecyclePublicCommandFixture {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Fixture
+    [System.Management.Automation.PSObject]$Fixture
   )
 
   foreach ($entry in $Fixture.OriginalEnvironment.GetEnumerator()) {
@@ -345,7 +346,7 @@ function Clear-AzureDevLifecyclePublicCommandEvidence {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Fixture
+    [System.Management.Automation.PSObject]$Fixture
   )
 
   Remove-Item `
@@ -369,7 +370,7 @@ function Get-AzureDevLifecyclePublicCommandCalls {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Fixture
+    [System.Management.Automation.PSObject]$Fixture
   )
 
   if (-not (Test-Path -LiteralPath $Fixture.ArgumentLog -PathType Leaf)) {
@@ -382,7 +383,7 @@ function Get-AzureDevLifecycleExpectedIdentityCall {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Fixture
+    [System.Management.Automation.PSObject]$Fixture
   )
 
   return (
@@ -395,7 +396,7 @@ function Get-AzureDevLifecycleExpectedTokenCall {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Fixture
+    [System.Management.Automation.PSObject]$Fixture
   )
 
   return (
@@ -419,7 +420,7 @@ function Get-AzureDevLifecycleExpectedLoginCall {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Fixture
+    [System.Management.Automation.PSObject]$Fixture
   )
 
   return (
@@ -434,7 +435,7 @@ function Get-AzureDevLifecycleExpectedStateCall {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Fixture
+    [System.Management.Automation.PSObject]$Fixture
   )
 
   return (
@@ -450,7 +451,7 @@ function Get-AzureDevLifecyclePublicCommandRecords {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Fixture
+    [System.Management.Automation.PSObject]$Fixture
   )
 
   $recordPaths = @(Get-ChildItem `

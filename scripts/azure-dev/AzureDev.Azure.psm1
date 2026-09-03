@@ -280,7 +280,7 @@ function Connect-AzureDevLifecycleSession {
       )
     }
     if ($WhatIfPreference) {
-      return
+      return $true
     }
     if (-not (& $testToken)) {
       throw (
@@ -290,17 +290,17 @@ function Connect-AzureDevLifecycleSession {
         'interactive login.'
       )
     }
-    return
+    return $true
   }
 
   $profileIsExact = & $profileMatches `
     -AccountProfile $profile `
     -AccountType 'servicePrincipal'
   if ($profileIsExact -and $WhatIfPreference) {
-    return
+    return $true
   }
   if ($profileIsExact -and (& $testToken -IncludeTenant)) {
-    return
+    return $true
   }
 
   $loginTarget = (
@@ -311,7 +311,7 @@ function Connect-AzureDevLifecycleSession {
       $loginTarget,
       'Repair Azure CLI lifecycle authentication'
     )) {
-    return
+    return $false
   }
 
   $versionText = try {
@@ -380,6 +380,7 @@ function Connect-AzureDevLifecycleSession {
       'identity during authentication.'
     )
   }
+  return $true
 }
 
 function Test-AzureDevLocalTool {

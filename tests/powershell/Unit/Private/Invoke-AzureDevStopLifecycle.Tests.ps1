@@ -36,6 +36,7 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
       if ($null -ne $script:mockAuthenticationFailure) {
         throw $script:mockAuthenticationFailure
       }
+      return $true
     }
     Mock Get-AzureDevLifecycleState -MockWith {
       if ($null -ne $script:mockStateReadFailure) {
@@ -171,6 +172,27 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
         -Exactly -Times 1 -Scope It
       Should-Invoke Get-AzureDevLifecycleState `
         -Exactly -Times 1 -Scope It
+      Should-NotInvoke Invoke-AzCli -Scope It
+    }
+  }
+
+  Context 'When authentication repair is declined' {
+    BeforeEach {
+      Mock Connect-AzureDevLifecycleSession -MockWith { return $false }
+    }
+
+    It 'Should return no result without reading state or submitting deallocation' {
+      $result = @(
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Invoke-AzureDevStopLifecycle -Configuration $Configuration
+        }
+      )
+
+      $result.Count | Should-Be 0
+      Should-NotInvoke Get-AzureDevLifecycleState -Scope It
       Should-NotInvoke Invoke-AzCli -Scope It
     }
   }

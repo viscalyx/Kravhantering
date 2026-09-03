@@ -166,7 +166,7 @@ exit 99
       $result = @(Connect-AzureDevLifecycleSession -Config $script:config)
       $calls = @(Get-Content -LiteralPath $script:argumentLog)
 
-      $result.Count | Should-Be 0
+      $result | Should-BeCollection @($true)
       $calls.Count | Should-Be 2
       $calls[0] | Should-BeString -CaseSensitive -Expected (
         "CALL`taccount`tshow`t--subscription`t$($script:subscriptionId)" +
@@ -192,7 +192,7 @@ exit 99
       $calls = @(Get-Content -LiteralPath $script:argumentLog)
       $allCalls = $calls -join [System.Environment]::NewLine
 
-      $result.Count | Should-Be 0
+      $result | Should-BeCollection @($true)
       @($calls | Where-Object { $_ -like "CALL`tlogin`t*" }).Count |
         Should-Be 1
       $allCalls | Should-MatchString (

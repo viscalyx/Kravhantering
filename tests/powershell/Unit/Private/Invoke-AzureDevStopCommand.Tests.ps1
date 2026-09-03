@@ -96,7 +96,7 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       $timing = InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
         New-AzureDevLifecycleTiming -GetMonotonicMilliseconds {
-          return [long]100
+          return [System.Int64]100
         }
       }
 
@@ -211,10 +211,10 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       $timing = InModuleScope -ScriptBlock {
         Set-StrictMode -Version 1.0
         $contract = New-AzureDevLifecycleTiming -GetMonotonicMilliseconds {
-          return [long]100
+          return [System.Int64]100
         }
-        $contract.LockDeadlineMilliseconds = [long]2301
-        $contract.AzureCallDeadlineMilliseconds = [long]7001
+        $contract.LockDeadlineMilliseconds = [System.Int64]2301
+        $contract.AzureCallDeadlineMilliseconds = [System.Int64]7001
         return $contract
       }
 

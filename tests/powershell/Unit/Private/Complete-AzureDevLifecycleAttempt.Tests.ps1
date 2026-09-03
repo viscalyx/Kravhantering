@@ -8,9 +8,14 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
       (Join-Path $PSScriptRoot '../../../..')
     )
-    Import-Module (
-      Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Lifecycle.psm1'
-    ) -Force -ErrorAction Stop
+    foreach ($module in @(
+        'AzureDev.Logging.psm1',
+        'AzureDev.Lifecycle.psm1'
+      )) {
+      Import-Module (
+        Join-Path $script:repositoryRoot "scripts/azure-dev/$module"
+      ) -Force -ErrorAction Stop
+    }
     $PSDefaultParameterValues = @{
       'InModuleScope:ModuleName' = $script:moduleName
       'Mock:ModuleName' = $script:moduleName
@@ -18,14 +23,14 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
       'Should-NotInvoke:ModuleName' = $script:moduleName
     }
     Mock -CommandName Add-Content -MockWith {
-      if ($script:lockHeld) {
+      if ($script:mockLockHeld) {
         throw 'record attempted while the lifecycle lock was held'
       }
     }
   }
 
   BeforeEach {
-    $script:lockHeld = $true
+    $script:mockLockHeld = $true
     $script:completionContracts = InModuleScope -Parameters @{
       RepositoryRoot = $TestDrive
     } -ScriptBlock {
@@ -72,11 +77,12 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
 
   AfterAll {
     Get-Module $script:moduleName -All | Remove-Module -Force
+    Get-Module 'AzureDev.Logging' -All | Remove-Module -Force
   }
 
   Context 'When a successful attempt completes after lock release' {
     It 'Should write once and preserve exactly one typed result' {
-      $script:lockHeld = $false
+      $script:mockLockHeld = $false
 
       $result = InModuleScope -Parameters @{
         Contracts = $script:completionContracts
@@ -97,7 +103,7 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
 
   Context 'When a failed attempt completes after lock release' {
     It 'Should write once and rethrow the one primary terminating error' {
-      $script:lockHeld = $false
+      $script:mockLockHeld = $false
 
       {
         InModuleScope -Parameters @{
@@ -330,7 +336,7 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
     }
 
     It 'Should preserve success under terminating-warning preference' {
-      $script:lockHeld = $false
+      $script:mockLockHeld = $false
 
       $output = InModuleScope -Parameters @{
         Contracts = $script:completionContracts

@@ -8,9 +8,14 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
     $script:repositoryRoot = [System.IO.Path]::GetFullPath(
       (Join-Path $PSScriptRoot '../../../..')
     )
-    Import-Module (
-      Join-Path $script:repositoryRoot 'scripts/azure-dev/AzureDev.Lifecycle.psm1'
-    ) -Force -ErrorAction Stop
+    foreach ($module in @(
+        'AzureDev.Logging.psm1',
+        'AzureDev.Lifecycle.psm1'
+      )) {
+      Import-Module (
+        Join-Path $script:repositoryRoot "scripts/azure-dev/$module"
+      ) -Force -ErrorAction Stop
+    }
     $PSDefaultParameterValues = @{
       'InModuleScope:ModuleName' = $script:moduleName
       'Mock:ModuleName' = $script:moduleName
@@ -51,6 +56,7 @@ Describe 'Write-AzureDevLifecycleLogRecord' -Tag 'Unit' {
 
   AfterAll {
     Get-Module $script:moduleName -All | Remove-Module -Force
+    Get-Module 'AzureDev.Logging' -All | Remove-Module -Force
   }
 
   Context 'When a completed real attempt is eligible for diagnosis' {

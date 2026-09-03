@@ -142,9 +142,10 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
     }
 
     It 'Should perform one targeted noninteractive repair and recheck identity' {
-      $null = Connect-AzureDevLifecycleSession `
+      $authenticated = Connect-AzureDevLifecycleSession `
         -Config $script:servicePrincipalConfig
 
+      $authenticated | Should-BeTrue
       Should-Invoke `
         -CommandName Invoke-AzCli `
         -Exactly `
@@ -200,6 +201,7 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
           ($Arguments[0] -eq 'account' -and $Arguments[1] -eq 'set')
         }
     }
+
   }
 
   Context 'When the cached service-principal identity is mismatched' {
@@ -664,10 +666,11 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
     It 'Should preview repair without version, token, or login calls' {
       $script:mockProfile.user.name = '44444444-4444-4444-4444-444444444444'
 
-      $null = Connect-AzureDevLifecycleSession `
+      $authenticated = Connect-AzureDevLifecycleSession `
         -Config $script:servicePrincipalConfig `
         -WhatIf
 
+      $authenticated | Should-BeFalse
       Should-Invoke `
         -CommandName Invoke-AzCli `
         -Exactly `

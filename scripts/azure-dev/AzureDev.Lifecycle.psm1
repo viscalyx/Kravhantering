@@ -913,7 +913,7 @@ function Invoke-AzureDevStopLifecycle {
     -VmName $Configuration.VmName `
     -Phase authentication
   try {
-    $null = Connect-AzureDevLifecycleSession `
+    $authenticated = Connect-AzureDevLifecycleSession `
       -Config $Configuration `
       -TimeoutSeconds $AzureCallTimeoutSeconds
   } catch {
@@ -929,6 +929,9 @@ function Invoke-AzureDevStopLifecycle {
       -Command stop `
       -VmName $Configuration.VmName
     $PSCmdlet.ThrowTerminatingError($failure)
+  }
+  if (-not $authenticated) {
+    return
   }
 
   try {
@@ -1137,6 +1140,10 @@ function Invoke-AzureDevStopCommand {
     return
   }
 
+  if ($null -eq $lifecycleResult) {
+    return
+  }
+
   $finishedAt = [long](& $getMonotonicMilliseconds)
   $record = New-AzureDevLifecycleLogRecord `
     -Configuration $Configuration `
@@ -1314,9 +1321,12 @@ function Invoke-AzureDevLifecycleCommand {
     -MaximumSeconds 2147483
 
   if ($CommandName -eq 'status') {
-    Connect-AzureDevLifecycleSession `
+    $authenticated = Connect-AzureDevLifecycleSession `
       -Config $configuration `
       -TimeoutSeconds $azureCallTimeoutSeconds
+    if (-not $authenticated) {
+      return
+    }
     $state = Get-AzureDevLifecycleState `
       -Configuration $configuration `
       -TimeoutSeconds $azureCallTimeoutSeconds
@@ -1325,7 +1335,7 @@ function Invoke-AzureDevLifecycleCommand {
   }
 
   if ($WhatIfPreference) {
-    Connect-AzureDevLifecycleSession `
+    $null = Connect-AzureDevLifecycleSession `
       -Config $configuration `
       -TimeoutSeconds $azureCallTimeoutSeconds `
       -WhatIf
@@ -1454,7 +1464,7 @@ function Invoke-AzureDevLifecycleCommand {
       -VmName $ConfigurationSnapshot.VmName `
       -Phase authentication
     try {
-      Connect-AzureDevLifecycleSession `
+      $authenticated = Connect-AzureDevLifecycleSession `
         -Config $ConfigurationSnapshot `
         -TimeoutSeconds $azureCallTimeoutSeconds
     } catch {
@@ -1467,6 +1477,12 @@ function Invoke-AzureDevLifecycleCommand {
         -Command start `
         -VmName $ConfigurationSnapshot.VmName
       throw $authenticationFailure
+    }
+    if (-not $authenticated) {
+      return [pscustomobject]@{
+        AuthenticationDeclined = $true
+        MutationDeclined = $false
+      }
     }
 
     $observedState = Get-AzureDevLifecycleState `
@@ -1503,6 +1519,7 @@ function Invoke-AzureDevLifecycleCommand {
         return [pscustomobject]@{
           Plan = $plan
           InitialState = $observedState
+          AuthenticationDeclined = $false
           MutationAccepted = $false
           MutationDeclined = $true
         }
@@ -1554,6 +1571,7 @@ function Invoke-AzureDevLifecycleCommand {
     return [pscustomobject]@{
       Plan = $plan
       InitialState = $observedState
+      AuthenticationDeclined = $false
       MutationAccepted = [bool]$plan.SubmitMutation
       MutationDeclined = $false
     }
@@ -1581,7 +1599,7 @@ function Invoke-AzureDevLifecycleCommand {
     & $completeStartLockFailure $_
   }
 
-  if ($operation.MutationDeclined) {
+  if ($operation.AuthenticationDeclined -or $operation.MutationDeclined) {
     return
   }
 
@@ -1658,7 +1676,7 @@ function Invoke-AzureDevLifecycleCommand {
         }
         & $completeStartLockFailure $_
       }
-      if ($operation.MutationDeclined) {
+      if ($operation.AuthenticationDeclined -or $operation.MutationDeclined) {
         return
       }
       $stableState = $operation.InitialState
@@ -1743,7 +1761,12 @@ function Invoke-AzureDevLifecycleCommand {
           $lateStateFailure `
           ([Math]::Max([long]0, $stateObservedAt - $attemptStartedAt))
       }
-      if ($terminalState -in @('stopping', 'deallocating')) {
+      if ($terminalState -in @(
+          'stopping',
+          'deallocating',
+          'stopped-allocated',
+          'deallocated'
+        )) {
         $interferenceFailure = New-AzureDevLifecycleErrorRecord `
           -Phase outside-interference `
           -Message (

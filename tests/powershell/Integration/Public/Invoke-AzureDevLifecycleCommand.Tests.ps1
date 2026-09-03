@@ -1350,9 +1350,9 @@ Describe `
       $script:interruptProcess = $null
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)
-      $records = [object[]]@()
+      $records = [System.Object[]]@()
       if ($RecordCount -ne 0) {
-        $records = [object[]]@(
+        $records = [System.Object[]]@(
           Get-AzureDevLifecyclePublicCommandRecords -Fixture $script:fixture
         )
       }
@@ -1473,10 +1473,44 @@ Describe `
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
     }
 
-    It 'Should expose outside interference without a second start' {
+    BeforeDiscovery {
+      $outsideInterferenceCases = @(
+        @{
+          InitialState = 'PowerState/deallocated'
+          DownwardState = 'PowerState/stopping'
+          MutationCount = 1
+          Action = 'start-requested'
+          MutationAccepted = $true
+        },
+        @{
+          InitialState = 'PowerState/deallocated'
+          DownwardState = 'PowerState/deallocating'
+          MutationCount = 1
+          Action = 'start-requested'
+          MutationAccepted = $true
+        },
+        @{
+          InitialState = 'PowerState/starting'
+          DownwardState = 'PowerState/stopped'
+          MutationCount = 0
+          Action = 'joined-start'
+          MutationAccepted = $false
+        },
+        @{
+          InitialState = 'PowerState/starting'
+          DownwardState = 'PowerState/deallocated'
+          MutationCount = 0
+          Action = 'joined-start'
+          MutationAccepted = $false
+        }
+      )
+    }
+
+    It 'Should expose <DownwardState> interference without a second start' `
+      -ForEach $outsideInterferenceCases {
       [System.Environment]::SetEnvironmentVariable(
         'FAKE_AZ_VM_STATE_SEQUENCE',
-        'PowerState/deallocated,PowerState/stopping',
+        "$InitialState,$DownwardState",
         'Process'
       )
       [System.Environment]::SetEnvironmentVariable(
@@ -1502,10 +1536,10 @@ Describe `
         ConvertFrom-Json
 
       @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
-        Should-Be 1
+        Should-Be $MutationCount
       $logRecord.failurePhase | Should-Be 'outside-interference'
-      $logRecord.action | Should-Be 'start-requested'
-      $logRecord.mutationAccepted | Should-BeTrue
+      $logRecord.action | Should-Be $Action
+      $logRecord.mutationAccepted | Should-Be $MutationAccepted
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
     }
   }

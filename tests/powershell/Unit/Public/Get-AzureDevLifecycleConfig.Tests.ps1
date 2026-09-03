@@ -495,7 +495,7 @@ AZURE_DEV_VM_NAME=target-vm
         throw 'Local tool availability must not be read.'
       }
       Mock Test-Path {
-        if ($LiteralPath -notin $script:allowedLifecyclePaths) {
+        if ($LiteralPath -notin $script:mockAllowedLifecyclePaths) {
           throw "Unexpected lifecycle file read: $LiteralPath"
         }
         return Microsoft.PowerShell.Management\Test-Path `
@@ -503,7 +503,7 @@ AZURE_DEV_VM_NAME=target-vm
           -PathType $PathType
       }
       Mock Get-Content {
-        if ($LiteralPath -notin $script:allowedLifecyclePaths) {
+        if ($LiteralPath -notin $script:mockAllowedLifecyclePaths) {
           throw "Unexpected lifecycle file read: $LiteralPath"
         }
         return Microsoft.PowerShell.Management\Get-Content `
@@ -514,7 +514,7 @@ AZURE_DEV_VM_NAME=target-vm
     It 'Should avoid setup, Git, SSH, cache, workspace, and tool discovery reads' {
       $primaryPath = Join-Path $TestDrive 'primary.env'
       $localPath = Join-Path $TestDrive '.env.azure.development.local'
-      $script:allowedLifecyclePaths = @($primaryPath, $localPath)
+      $script:mockAllowedLifecyclePaths = @($primaryPath, $localPath)
       Set-Content -LiteralPath $primaryPath -Value @'
 AZURE_DEV_VM_RESOURCE_GROUP=target-rg
 AZURE_DEV_VM_NAME=target-vm
