@@ -47,4 +47,11 @@ Describe 'Test-AzureDevInterruption' -Tag 'Unit' {
       Test-AzureDevInterruption -ErrorObject $failure | Should-BeFalse
     }
   }
+
+  Context 'When the input is not an exception' {
+    It 'Should reject the input' {
+      Test-AzureDevInterruption -ErrorObject 'not-an-exception' |
+        Should-BeFalse
+    }
+  }
 }

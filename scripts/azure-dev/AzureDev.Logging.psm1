@@ -17,6 +17,9 @@ function Test-AzureDevInterruption {
   } else {
     $ErrorObject
   }
+  if ($exception -isnot [System.Exception]) {
+    return $false
+  }
   while ($null -ne $exception) {
     if (
       $exception -is [System.OperationCanceledException] -or
