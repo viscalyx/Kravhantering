@@ -6,7 +6,7 @@ function Get-AzureDevLifecycleLockIdentity {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$ConfigurationSnapshot
+    [psobject]$ConfigurationSnapshot
   )
 
   foreach ($propertyName in @(
@@ -15,11 +15,19 @@ function Get-AzureDevLifecycleLockIdentity {
       'ResourceGroup',
       'VmName'
     )) {
-    $property = $ConfigurationSnapshot.PSObject.Properties[$propertyName]
-    if (
-      $null -eq $property -or
-      [string]::IsNullOrWhiteSpace([string]$property.Value)
+    $propertyValue = if (
+      $ConfigurationSnapshot -is [System.Collections.Generic.IReadOnlyDictionary[
+        string,
+        object
+      ]] -and
+      $ConfigurationSnapshot.ContainsKey($propertyName)
     ) {
+      $ConfigurationSnapshot[$propertyName]
+    } else {
+      $property = $ConfigurationSnapshot.PSObject.Properties[$propertyName]
+      if ($null -eq $property) { $null } else { $property.Value }
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$propertyValue)) {
       throw "Lifecycle configuration snapshot is missing $propertyName."
     }
   }
@@ -283,7 +291,7 @@ function Enter-AzureDevLifecycleLock {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$ConfigurationSnapshot,
+    [psobject]$ConfigurationSnapshot,
 
     [Parameter(Mandatory = $true)]
     [ValidateSet('start', 'stop')]
@@ -484,7 +492,7 @@ function Invoke-AzureDevLifecycleLock {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$ConfigurationSnapshot,
+    [psobject]$ConfigurationSnapshot,
 
     [Parameter(Mandatory = $true)]
     [ValidateSet('start', 'stop')]

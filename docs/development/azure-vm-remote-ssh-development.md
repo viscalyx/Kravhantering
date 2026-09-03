@@ -786,14 +786,13 @@ and
 `setup -WhatIf` performs Azure platform readiness discovery and reports the
 planned deallocation/security update; it never performs it. It skips the live
 SSH guest-readiness probe and explicitly reports that the preview assumes those
-checks will pass during real setup. `status` prints the live Hyper-V generation,
-security type, Secure Boot state, and vTPM state.
+checks will pass during real setup.
 
-Both `setup` and `status` query the existing VM's exact Marketplace image
+`setup` queries the existing VM's exact Marketplace image
 version. Active images produce no deprecation warning. A scheduled or
 non-active image produces a non-blocking warning with the scheduled enforcement
 date when Azure provides it. If Marketplace metadata is no longer available,
-the commands warn that status could not be verified and continue using the
+setup warns that image status could not be verified and continues using the
 existing VM and OS disk.
 
 When preflight is clean, run setup to create or repair the environment:
@@ -1125,6 +1124,26 @@ Show current state:
 ```powershell
 ./scripts/azure-dev.ps1 status
 ```
+
+`status` reports the exact VM's normalized Azure power state immediately. It
+does not acquire a lifecycle lock, wait, read setup state, or infer a target.
+It distinguishes `starting`, `running`, `stopping`, `stopped-allocated`,
+`deallocating`, `deallocated`, `creating`, `not-found`, `unavailable`, and
+`unrecognized`.
+
+Preview lifecycle plans without reading live VM state:
+
+```powershell
+./scripts/azure-dev.ps1 start -WhatIf
+./scripts/azure-dev.ps1 stop -WhatIf
+```
+
+A preview validates lifecycle configuration and may inspect the cached Azure
+CLI profile identity. It does not acquire a token, repair login, read live VM
+state, operate a lock, mutate or poll the VM, write a lifecycle record, or
+return a lifecycle-result object. Normal `What if:` output describes the
+conditional lock, login-repair, VM-action, and record plans. A matching cached
+identity does not imply login repair merely because token usability is unknown.
 
 Refresh only the SSH source CIDR after your public IP changes:
 

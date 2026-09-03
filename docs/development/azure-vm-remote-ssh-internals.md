@@ -44,6 +44,8 @@ AzureDev.Ssh.psm1
 AzureDev.Bootstrap.psm1
 AzureDev.Validation.psm1
 AzureDev.Podman.psm1
+AzureDev.LifecycleLock.psm1
+AzureDev.Lifecycle.psm1
 ```
 
 Module responsibilities:
@@ -53,7 +55,8 @@ Module responsibilities:
 | --- | --- |
 | `AzureDev.Config.psm1` | Strict dotenv parsing, defaults, precedence, config validation, and context creation. |
 | `AzureDev.Logging.psm1` | Local state, locks, JSONL logs, redaction, and native command execution helpers. |
-| `AzureDev.Lifecycle.psm1` | Typed lifecycle results, information-stream progress, monotonic timing, stable failures, and best-effort lifecycle records. |
+| `AzureDev.Lifecycle.psm1` | Lifecycle orchestration, state normalization, previews, status, typed results, progress, timing, failures, and best-effort lifecycle records. |
+| `AzureDev.LifecycleLock.psm1` | Target-derived atomic locking, bounded contention, recovery diagnostics, and owner-safe release. |
 | `AzureDev.Azure.psm1` | Azure CLI calls, authentication checks, SKU and image lookup, resource-group ownership, deployment, power operations, CIDR updates, and tag-based deletion. |
 | `AzureDev.Ssh.psm1` | Public IPv4 detection, CIDR validation, SSH key generation, managed OpenSSH config blocks, Azure control-plane host-key authentication, SSH wait loop, and VS Code command formatting. |
 | `AzureDev.Bootstrap.psm1` | Uploads `bootstrap-host.sh`, Quadlet templates, and the selected Zsh profile with `scp`, then invokes bootstrap over SSH with port forwarding disabled. |
@@ -67,9 +70,11 @@ practical.
 
 ## Command Model
 
-The entry point validates the command name with PowerShell's `ValidateSet` and
-then builds one context object. The context contains the resolved config,
-operator switches, and derived local paths:
+The entry point validates the command name with PowerShell's `ValidateSet`.
+`start`, `stop`, and lifecycle `status` delegate their command name, repository
+root, and selected environment file to the lifecycle module, which loads one
+narrow immutable snapshot. Other commands build the broader context object
+with resolved config, operator switches, and derived local paths:
 
 ```text
 .azure/development.state.json
@@ -110,15 +115,14 @@ The command flow is intentionally narrow:
   rejects an unchanged VM, setup warns, omits the Bicep security profile, and
   continues mutable repair. A successful Gen1 conversion is irreversible and
   Azure reimage must not be used because the retained source reference is Gen1.
-- `setup` and `status` query the existing exact image version's Marketplace
+- `setup` queries the existing exact image version's Marketplace
   deprecation state. Scheduled, non-active, missing, or unavailable metadata
   produces a non-blocking warning; active metadata remains quiet.
-- `start` starts the VM, refreshes SSH config, waits for SSH, and prints
-  connection instructions.
-- `stop` deallocates the VM.
-- `status` reads Azure state plus local state and prints a compact status.
-  The Azure portion includes image, Hyper-V generation, security type, Secure
-  Boot, and vTPM.
+- Lifecycle `start` and `stop` use the dedicated lifecycle module rather than
+  setup prerequisites or connection preparation.
+- Lifecycle `status` reads and normalizes the exact VM power state immediately.
+  It does not inspect setup state or image and network metadata, lock, wait, or
+  infer desired state.
 - `add-cidr`, `set-cidr`, `list-cidrs`, and `remove-cidr` manage named,
   Azure-visible SSH sources without replacing another workstation's rules.
 - `new-workstation-request` creates a destination-local key and a signed,
@@ -144,9 +148,10 @@ path.
 
 ### Lifecycle Contract Primitives
 
-`AzureDev.Lifecycle.psm1` owns private contracts that lifecycle orchestration
-uses without mixing automation output with human diagnostics. It exports no
-public command. A successful real attempt produces one
+`AzureDev.Lifecycle.psm1` exports the single
+`Invoke-AzureDevLifecycleCommand` interface used by the entry point. It owns
+orchestration and private contracts without mixing automation output with
+human diagnostics. A successful real attempt produces one
 `AzureDev.LifecycleResult` on the success stream with exactly `Command`,
 `Result`, `VmName`, `ObservedState`, and `Action`. Progress is a tagged
 `AzureDev.LifecycleProgressEvent` on the information stream.
@@ -173,6 +178,43 @@ uses terminating warning preferences, and cannot replace the primary result or
 terminating lifecycle error. Before writing, completion correlates the record's
 command, VM, terminal outcome or failure phase, state, action, and mutation
 acceptance with the primary result or failure.
+
+### Lifecycle Preview And Status
+
+Lifecycle preview uses normal `ShouldProcess` decisions. It validates the
+immutable lifecycle snapshot and makes only the cache-only profile-identity
+read. A matching identity does not produce a login-repair plan merely because
+token usability is unknown. An absent or mismatched service-principal identity
+routes possible targeted login repair through `ShouldProcess`.
+
+Preview also routes the possible target-derived lock, conditional VM action,
+and terminal lifecycle record through `ShouldProcess`. It deliberately omits a
+live state read, so the VM plan states the rules that select a real action. It
+acquires no token or lock, performs no repair, VM mutation, polling, or log
+write, and returns no lifecycle result.
+
+Status authenticates, then reads the exact target with:
+
+```text
+az vm get-instance-view --subscription <subscription-id> \
+  --resource-group <resource-group> --name <vm-name> \
+  --query \
+  "instanceView.statuses[?starts_with(code, 'PowerState/')].code | [0]" \
+  --output tsv --only-show-errors
+```
+
+The supported codes normalize to `starting`, `running`, `stopping`,
+`stopped-allocated`, `deallocating`, and `deallocated`.
+`PowerState/creating` remains `creating`; exit code 3 remains `not-found`; an
+empty or failed read remains `unavailable`; and other codes remain
+`unrecognized`. Status prints this observation immediately without a lock,
+wait, or inferred target.
+
+The opt-in Pester public-command harness invokes the entry point with a
+temporary repository root, isolated home and Azure CLI directory, scripted
+fake `az`, and an argument log. Stubs fail if lifecycle commands invoke SSH,
+Git, VS Code, or network tools. The harness supplies no real credentials,
+Azure access, SSH state, or real home directory.
 
 `setup -WhatIf` must remain read-only. It may inspect local tools, Azure login,
 subscription visibility, SKU availability, resource-group tags, SSH CIDR, and

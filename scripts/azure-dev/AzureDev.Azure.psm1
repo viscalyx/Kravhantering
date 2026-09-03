@@ -98,12 +98,16 @@ function Invoke-AzCli {
     }
     return $text
   } finally {
-    $WhatIfPreference = $callerWhatIfPreference
-    if ($null -ne $azureCliJob) {
-      Remove-Job -Job $azureCliJob -Force
-    }
-    if ($null -ne $stderrPath) {
-      [System.IO.File]::Delete($stderrPath)
+    try {
+      $WhatIfPreference = $false
+      if ($null -ne $azureCliJob) {
+        Remove-Job -Job $azureCliJob -Force
+      }
+      if ($null -ne $stderrPath) {
+        [System.IO.File]::Delete($stderrPath)
+      }
+    } finally {
+      $WhatIfPreference = $callerWhatIfPreference
     }
   }
 }

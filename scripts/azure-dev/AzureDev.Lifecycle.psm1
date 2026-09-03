@@ -706,4 +706,124 @@ function Complete-AzureDevLifecycleAttempt {
   return $LifecycleResult
 }
 
-Export-ModuleMember -Function @()
+function Get-AzureDevLifecycleState {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [psobject]$Configuration
+  )
+
+  $query = (
+    "instanceView.statuses[?starts_with(code, 'PowerState/')]" +
+    '.code | [0]'
+  )
+  try {
+    $rawState = Invoke-AzCli `
+      -Arguments @(
+        'vm',
+        'get-instance-view',
+        '--subscription',
+        $Configuration.SubscriptionId,
+        '--resource-group',
+        $Configuration.ResourceGroup,
+        '--name',
+        $Configuration.VmName,
+        '--query',
+        $query,
+        '--output',
+        'tsv',
+        '--only-show-errors'
+      ) `
+      -TimeoutSeconds 120 `
+      -SuppressOutputDetails
+  } catch {
+    if ($_.Exception.Message -match 'failed with exit code 3\.$') {
+      return 'not-found'
+    }
+    return 'unavailable'
+  }
+
+  if ([string]::IsNullOrWhiteSpace([string]$rawState)) {
+    return 'unavailable'
+  }
+  switch ([string]$rawState) {
+    'PowerState/starting' { return 'starting' }
+    'PowerState/running' { return 'running' }
+    'PowerState/stopping' { return 'stopping' }
+    'PowerState/stopped' { return 'stopped-allocated' }
+    'PowerState/deallocating' { return 'deallocating' }
+    'PowerState/deallocated' { return 'deallocated' }
+    'PowerState/creating' { return 'creating' }
+    default { return 'unrecognized' }
+  }
+}
+
+function Invoke-AzureDevLifecycleCommand {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('start', 'stop', 'status')]
+    [string]$CommandName,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string]$RepositoryRoot,
+
+    [string]$EnvironmentFile = '.env.azure.development'
+  )
+
+  $configuration = Get-AzureDevLifecycleConfig `
+    -CommandName $CommandName `
+    -RepositoryRoot $RepositoryRoot `
+    -EnvironmentFile $EnvironmentFile
+
+  if ($CommandName -eq 'status') {
+    Connect-AzureDevLifecycleSession -Config $configuration
+    $state = Get-AzureDevLifecycleState -Configuration $configuration
+    Write-Host "Power state: $state"
+    return
+  }
+
+  if (-not $WhatIfPreference) {
+    throw [System.NotSupportedException]::new(
+      "Real '$CommandName' lifecycle orchestration is not available yet."
+    )
+  }
+
+  Connect-AzureDevLifecycleSession `
+    -Config $configuration `
+    -WhatIf
+  $null = Invoke-AzureDevLifecycleLock `
+    -ConfigurationSnapshot $configuration `
+    -CommandName $CommandName `
+    -ScriptBlock {
+      throw 'Preview must not invoke guarded lifecycle work.'
+    } `
+    -WhatIf
+
+  $target = (
+    "$($configuration.SubscriptionId)/" +
+    "$($configuration.ResourceGroup)/$($configuration.VmName)"
+  )
+  $action = if ($CommandName -eq 'start') {
+    (
+      'Conditionally start only from stopped-allocated or deallocated; ' +
+      'join starting, wait through downward transitions, and otherwise do ' +
+      'not mutate'
+    )
+  } else {
+    (
+      'Conditionally deallocate unless definitely absent, deallocated, or ' +
+      'already deallocating; unavailable state uses the cost-control action'
+    )
+  }
+  $null = $PSCmdlet.ShouldProcess($target, $action)
+
+  $logsDirectory = Join-Path $configuration.RepoRoot '.azure/logs'
+  $null = $PSCmdlet.ShouldProcess(
+    $logsDirectory,
+    'Append one terminal lifecycle record after a completed real attempt'
+  )
+}
+
+Export-ModuleMember -Function Invoke-AzureDevLifecycleCommand

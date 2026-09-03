@@ -44,5 +44,32 @@ Describe 'Get-AzureDevLifecycleLockIdentity' -Tag 'Unit' {
       $identity.MutexName | Should-MatchString '^[0-9a-f]{64}$'
       $identity.MutexName | Should-NotMatchString 'Target-RG|Target-VM'
     }
+
+    It 'Should accept the read-only dictionary returned by lifecycle config' {
+      $properties = [System.Collections.Generic.Dictionary[string, object]]::new()
+      $properties.Add('RepoRoot', $TestDrive)
+      $properties.Add(
+        'SubscriptionId',
+        'AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA'
+      )
+      $properties.Add('ResourceGroup', 'Target-RG')
+      $properties.Add('VmName', 'Target-VM')
+      $snapshot = [System.Collections.ObjectModel.ReadOnlyDictionary[
+        string,
+        object
+      ]]::new($properties)
+
+      $identity = InModuleScope `
+        -Parameters @{ Snapshot = $snapshot } `
+        -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Get-AzureDevLifecycleLockIdentity `
+            -ConfigurationSnapshot $Snapshot
+        }
+
+      $identity.Path | Should-BeLikeString (
+        (Join-Path $TestDrive '.azure/lifecycle-locks/lifecycle-*.lock')
+      )
+    }
   }
 }
