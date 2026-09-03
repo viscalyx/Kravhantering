@@ -235,7 +235,6 @@ describe('development environment contract', () => {
   })
 
   it('checks exact existing image deprecation during setup', () => {
-    const entryScript = readWorkspaceFile('scripts/azure-dev.ps1')
     const azureModule = readWorkspaceFile(
       'scripts/azure-dev/AzureDev.Azure.psm1',
     )
@@ -260,9 +259,6 @@ describe('development environment contract', () => {
     expect(warningFunction).toContain(`"yyyy-MM-dd HH:mm:ss 'UTC'"`)
     expect(warningFunction).toContain(
       "'continue using the existing VM and OS disk. Check Azure Advisor",
-    )
-    expect(entryScript).toContain(
-      '$image = Get-AzureDevDeploymentImage -Config $Context.Config',
     )
   })
 

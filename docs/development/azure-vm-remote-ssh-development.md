@@ -1121,6 +1121,12 @@ commands reuse only a matching Azure CLI user session and tell you to log in if
 it is unusable; they never initiate interactive login. Each Azure CLI call has
 a two-minute deadline.
 
+A lifecycle command waits at most 15 seconds for another local lifecycle
+command that owns the same target lock. On timeout it reports the recorded
+owner and submits no Azure mutation. Interrupt a stuck live owner and retry;
+the operating system recovers an abandoned mutex automatically. Deleting the
+diagnostic lock file cannot release a live mutex.
+
 Real `start` and `stop` attempts return exactly one structured result on
 success. Progress and connection guidance are separate terminal information,
 not result objects. A failure returns no result and exits nonzero with one

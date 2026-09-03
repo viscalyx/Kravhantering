@@ -340,3 +340,87 @@ function Get-AzureDevLifecyclePublicCommandCalls {
   }
   return @(Get-Content -LiteralPath $Fixture.ArgumentLog)
 }
+
+function Get-AzureDevLifecycleExpectedIdentityCall {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Fixture
+  )
+
+  return (
+    "CALL`taccount`tshow`t--subscription" +
+    "`t$($Fixture.SubscriptionId)`t--output`tjson`t--only-show-errors"
+  )
+}
+
+function Get-AzureDevLifecycleExpectedTokenCall {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Fixture
+  )
+
+  return (
+    "CALL`taccount`tget-access-token`t--subscription" +
+    "`t$($Fixture.SubscriptionId)`t--tenant`t$($Fixture.TenantId)" +
+    "`t--output`tnone`t--only-show-errors"
+  )
+}
+
+function Get-AzureDevLifecycleExpectedVersionCall {
+  [CmdletBinding()]
+  param()
+
+  return (
+    "CALL`tversion`t--query`t`"azure-cli`"`t--output`ttsv" +
+    "`t--only-show-errors"
+  )
+}
+
+function Get-AzureDevLifecycleExpectedLoginCall {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Fixture
+  )
+
+  return (
+    "CALL`tlogin`t--service-principal`t--username`t$($Fixture.ClientId)" +
+    "`t--password=fake-harness-secret`t--tenant`t$($Fixture.TenantId)" +
+    "`t--skip-subscription-discovery`t--subscription" +
+    "`t$($Fixture.SubscriptionId)`t--output`tnone`t--only-show-errors"
+  )
+}
+
+function Get-AzureDevLifecycleExpectedStateCall {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Fixture
+  )
+
+  return (
+    "CALL`tvm`tget-instance-view`t--subscription" +
+    "`t$($Fixture.SubscriptionId)`t--resource-group" +
+    "`tisolated-rg`t--name`tisolated-vm`t--query" +
+    "`tinstanceView.statuses[?starts_with(code, 'PowerState/')].code | [0]" +
+    "`t--output`ttsv`t--only-show-errors"
+  )
+}
+
+function Get-AzureDevLifecyclePublicCommandRecords {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Fixture
+  )
+
+  $recordPaths = @(Get-ChildItem `
+      -LiteralPath (Join-Path $Fixture.RepositoryRoot '.azure/logs') `
+      -Filter '*.jsonl' `
+      -File).FullName
+  return @($recordPaths | ForEach-Object {
+      Get-Content -LiteralPath $_ -Raw | ConvertFrom-Json
+    })
+}
