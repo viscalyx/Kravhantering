@@ -15,6 +15,7 @@
     "epss",
     "govulndb",
     "libc",
+    "livscykelloggpost",
     "minimos",
     "notfixed",
     "rubygems",
