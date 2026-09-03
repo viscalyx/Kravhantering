@@ -34,19 +34,19 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       'AzureDev.LifecycleConfigurationSnapshot'
     )
     Mock Invoke-AzureDevLifecycleLock -MockWith {
-      $script:lockInvocationCount++
-      if ($null -ne $script:lockFailure) {
-        throw $script:lockFailure
+      $script:mockLockInvocationCount++
+      if ($null -ne $script:mockLockFailure) {
+        throw $script:mockLockFailure
       }
-      $script:lockHeld = $true
+      $script:mockLockHeld = $true
       try {
         return & $ScriptBlock $null $ConfigurationSnapshot
       } finally {
-        $script:lockHeld = $false
+        $script:mockLockHeld = $false
       }
     }
     Mock Invoke-AzureDevStopLifecycle -MockWith {
-      $script:stopLifecycleInvocationCount++
+      $script:mockStopLifecycleInvocationCount++
       $result = [System.Management.Automation.PSObject][ordered]@{
         Command = 'stop'
         Result = 'requested'
@@ -58,20 +58,20 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       return $result
     }
     Mock Write-AzureDevLifecycleLogRecord -MockWith {
-      $script:logWriteInvocationCount++
-      $script:lockHeldAtLogWrite = $script:lockHeld
-      $script:capturedRecord = $Record
+      $script:mockLogWriteInvocationCount++
+      $script:mockLockHeldAtLogWrite = $script:mockLockHeld
+      $script:mockCapturedRecord = $Record
     }
   }
 
   BeforeEach {
-    $script:lockHeld = $false
-    $script:lockHeldAtLogWrite = $null
-    $script:capturedRecord = $null
-    $script:lockInvocationCount = 0
-    $script:stopLifecycleInvocationCount = 0
-    $script:logWriteInvocationCount = 0
-    $script:lockFailure = $null
+    $script:mockLockHeld = $false
+    $script:mockLockHeldAtLogWrite = $null
+    $script:mockCapturedRecord = $null
+    $script:mockLockInvocationCount = 0
+    $script:mockStopLifecycleInvocationCount = 0
+    $script:mockLogWriteInvocationCount = 0
+    $script:mockLockFailure = $null
   }
 
   AfterAll {
@@ -107,11 +107,11 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       @($result).Count | Should-Be 1
       $result.PSObject.TypeNames[0] | Should-Be 'AzureDev.LifecycleResult'
       $result.Result | Should-Be 'requested'
-      $script:lockHeldAtLogWrite | Should-BeFalse
-      $script:capturedRecord.command | Should-Be 'stop'
-      $script:capturedRecord.terminalResult | Should-Be 'requested'
-      $script:capturedRecord.mutationAccepted | Should-BeTrue
-      $script:capturedRecord.elapsedMilliseconds | Should-Be 0
+      $script:mockLockHeldAtLogWrite | Should-BeFalse
+      $script:mockCapturedRecord.command | Should-Be 'stop'
+      $script:mockCapturedRecord.terminalResult | Should-Be 'requested'
+      $script:mockCapturedRecord.mutationAccepted | Should-BeTrue
+      $script:mockCapturedRecord.elapsedMilliseconds | Should-Be 0
       Should-Invoke Invoke-AzureDevLifecycleLock `
         -Exactly -Times 1 -Scope It `
         -ParameterFilter {
@@ -137,15 +137,15 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       )
 
       $result.Count | Should-Be 0
-      $script:lockInvocationCount | Should-Be 0
-      $script:stopLifecycleInvocationCount | Should-Be 0
-      $script:logWriteInvocationCount | Should-Be 0
+      $script:mockLockInvocationCount | Should-Be 0
+      $script:mockStopLifecycleInvocationCount | Should-Be 0
+      $script:mockLogWriteInvocationCount | Should-Be 0
     }
   }
 
   Context 'When guarded stop work reports a lifecycle failure' {
     It 'Should classify lock failure and retain owner recovery guidance' {
-      $script:lockFailure = (
+      $script:mockLockFailure = (
         'lock held by pid 123; inspect the owner before recovery'
       )
 
@@ -163,8 +163,8 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
 
       $captured.TargetObject.Phase | Should-Be 'lock'
       $captured.Exception.Message | Should-MatchString 'pid 123'
-      $script:lockHeldAtLogWrite | Should-BeFalse
-      $script:capturedRecord.failurePhase | Should-Be 'lock'
+      $script:mockLockHeldAtLogWrite | Should-BeFalse
+      $script:mockCapturedRecord.failurePhase | Should-Be 'lock'
       Should-Invoke Write-AzureDevLifecycleLogRecord `
         -Exactly -Times 1 -Scope It
     }

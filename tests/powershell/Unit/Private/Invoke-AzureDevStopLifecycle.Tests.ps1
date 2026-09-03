@@ -33,28 +33,28 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
       'AzureDev.LifecycleConfigurationSnapshot'
     )
     Mock Connect-AzureDevLifecycleSession -MockWith {
-      if ($null -ne $script:authenticationFailure) {
-        throw $script:authenticationFailure
+      if ($null -ne $script:mockAuthenticationFailure) {
+        throw $script:mockAuthenticationFailure
       }
     }
     Mock Get-AzureDevLifecycleState -MockWith {
-      if ($null -ne $script:stateReadFailure) {
-        throw $script:stateReadFailure
+      if ($null -ne $script:mockStateReadFailure) {
+        throw $script:mockStateReadFailure
       }
-      return $script:observedStopState
+      return $script:mockObservedStopState
     }
     Mock Invoke-AzCli -MockWith {
-      if ($null -ne $script:submissionFailure) {
-        throw $script:submissionFailure
+      if ($null -ne $script:mockSubmissionFailure) {
+        throw $script:mockSubmissionFailure
       }
     }
   }
 
   BeforeEach {
-    $script:authenticationFailure = $null
-    $script:stateReadFailure = $null
-    $script:observedStopState = 'running'
-    $script:submissionFailure = $null
+    $script:mockAuthenticationFailure = $null
+    $script:mockStateReadFailure = $null
+    $script:mockObservedStopState = 'running'
+    $script:mockSubmissionFailure = $null
   }
 
   AfterAll {
@@ -78,7 +78,7 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
     It 'Should return <Result> from <State> without mutation' `
       -ForEach $idempotentCases {
       $expectedResult = $Result
-      $script:observedStopState = $State
+      $script:mockObservedStopState = $State
 
       $information = @()
       $result = InModuleScope -Parameters @{
@@ -118,7 +118,7 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
 
     It 'Should submit exactly one targeted asynchronous deallocation from <State>' `
       -ForEach $mutationCases {
-      $script:observedStopState = $State
+      $script:mockObservedStopState = $State
 
       $result = InModuleScope -Parameters @{
         Configuration = $script:configuration
@@ -177,7 +177,7 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
 
   Context 'When a decisive stop stage fails' {
     It 'Should classify authentication failure without reading state or mutating' {
-      $script:authenticationFailure = 'authentication rejected'
+      $script:mockAuthenticationFailure = 'authentication rejected'
 
       $captured = $null
       try {
@@ -199,7 +199,7 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
     }
 
     It 'Should classify an unexpected state-read failure without mutation' {
-      $script:stateReadFailure = 'state boundary failed'
+      $script:mockStateReadFailure = 'state boundary failed'
 
       $captured = $null
       try {
@@ -218,7 +218,7 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
     }
 
     It 'Should classify definite absence without mutation' {
-      $script:observedStopState = 'not-found'
+      $script:mockObservedStopState = 'not-found'
 
       $captured = $null
       try {
@@ -239,7 +239,7 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
     }
 
     It 'Should classify unrecognized state as a state-read failure' {
-      $script:observedStopState = 'unrecognized'
+      $script:mockObservedStopState = 'unrecognized'
 
       $captured = $null
       try {
@@ -259,7 +259,7 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
     }
 
     It 'Should classify a rejected submission and expose no result' {
-      $script:submissionFailure = 'deallocation rejected'
+      $script:mockSubmissionFailure = 'deallocation rejected'
 
       $captured = $null
       $result = @()
