@@ -1119,19 +1119,21 @@ authentication, reads a decisive state, and optionally submits one start:
 - `starting` joins the Azure transition without another mutation.
 - `stopped-allocated` or `deallocated` submits one asynchronous start request.
 - `stopping` or `deallocating` releases the local lock and waits for
-  `stopped-allocated` or `deallocated` outside the lock. After that stable
-  observation, it reacquires the target lock, revalidates Azure CLI
-  authentication, and rereads the exact VM before choosing an action.
+  Azure to leave the downward transition outside the lock. It normally sees
+  `stopped-allocated` or `deallocated`; if another actor starts the VM between
+  polls, it can instead see an upward state. It then reacquires the target
+  lock, revalidates Azure CLI authentication, and rereads the exact VM before
+  choosing an action.
 - `not-found`, `unavailable`, `creating`, or `unrecognized` fails without a
   mutation.
 
 This makes a rapid `stop` followed by `start` safe: the start invocation waits
-up to ten minutes for the downward transition, then makes its decision from a
-fresh guarded observation. If another checkout, workstation, or Azure actor
-has already moved the VM to `starting` or `running` by the guarded reread, the
-command joins or completes that state without submitting another start. The
-local lock coordinates only processes that use the same repository checkout;
-Azure rereads provide cross-workstation convergence.
+up to ten minutes for Azure to leave the downward transition, then makes its
+decision from a fresh guarded observation. If another checkout, workstation,
+or Azure actor has already moved the VM to `starting` or `running`, the command
+joins or completes that state without submitting another start. The local lock
+coordinates only processes that use the same repository checkout; Azure
+rereads provide cross-workstation convergence.
 
 After joining or submitting an upward transition, the command releases the
 lock and uses a separate ten-minute deadline to wait for `running`. Both waits

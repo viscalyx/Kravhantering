@@ -529,6 +529,16 @@ Describe `
           MutationCount = 0
           Result = 'already-running'
           LockSequence = 'locked,unlocked,locked'
+        },
+        @{
+          Sequence = (
+            'PowerState/deallocating,PowerState/starting,' +
+            'PowerState/starting,PowerState/running'
+          )
+          Action = 'joined-start'
+          MutationCount = 0
+          Result = 'running'
+          LockSequence = 'locked,unlocked,locked,unlocked'
         }
       )
     }
@@ -641,6 +651,61 @@ Describe `
       $caught.Exception.GetType().FullName |
         Should-Be 'System.OperationCanceledException'
       $result.Count | Should-Be 0
+      Test-Path -LiteralPath (
+        Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+      ) | Should-BeFalse
+      @(Get-ChildItem -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/lifecycle-locks'
+          ) -File).Count | Should-Be 0
+    }
+
+    It 'Should exit nonzero and release its lock after Ctrl+C' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'PowerState/deallocating',
+        'Process'
+      )
+      $interruptEntryPoint = Join-Path $TestDrive 'interrupt-start.ps1'
+      Set-Content -LiteralPath $interruptEntryPoint -Value @'
+param(
+  [string]$EntryPoint,
+  [string]$RepositoryRoot
+)
+$timing = [pscustomobject]@{
+  PollIntervalMilliseconds = [long]5000
+  HeartbeatIntervalMilliseconds = [long]30000
+  LockDeadlineMilliseconds = [long]15000
+  AzureCallDeadlineMilliseconds = [long]120000
+  StableStopDeadlineMilliseconds = [long]600000
+  RunningDeadlineMilliseconds = [long]600000
+  GetMonotonicMilliseconds = { return [long]0 }
+  DelayMilliseconds = {
+    throw [System.OperationCanceledException]::new('interrupted')
+  }
+}
+$timing.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleTiming')
+& $EntryPoint start `
+  -RepositoryRoot $RepositoryRoot `
+  -LifecycleTiming $timing
+'@
+
+      $output = & $script:powerShellPath `
+        -NoLogo `
+        -NoProfile `
+        -File $interruptEntryPoint `
+        -EntryPoint $script:entryPoint `
+        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
+      $exitCode = $LASTEXITCODE
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+
+      $exitCode | Should-NotBe 0
+      @($output | Where-Object {
+          $_ -isnot [System.String] -and
+          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
+        }).Count | Should-Be 0
+      @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
+        Should-Be 0
       Test-Path -LiteralPath (
         Join-Path $script:fixture.RepositoryRoot '.azure/logs'
       ) | Should-BeFalse

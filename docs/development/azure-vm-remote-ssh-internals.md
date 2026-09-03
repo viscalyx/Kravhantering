@@ -249,16 +249,18 @@ The pure start planner maps one decisive normalized observation to an action:
 | `stopped-allocated` | Submit/wait | Start | `running` / `start-requested` |
 | `deallocated` | Submit and wait | Start | `running` / `start-requested` |
 | `stopping` | Wait for stable stop | None | Reread under a reacquired lock |
-| `deallocating` | Wait for stable stop | None | Reread under a reacquired lock |
+| `deallocating` | Wait for stable stop | None | Reread under reacquired lock |
 | `not-found` | Fail | None | Failure phase `not-found` |
 | `unavailable` | Fail | None | Failure phase `state-read` |
 | `creating` | Fail | None | Failure phase `state-read` |
 | `unrecognized` | Fail | None | Failure phase `state-read` |
 
 For a downward decision, orchestration releases the local target lock and
-starts the stable-stop deadline. It polls outside the lock until Azure reports
-`stopped-allocated` or `deallocated`. It then reacquires the target lock,
-revalidates authentication, and rereads the exact target. A refreshed
+starts the stable-stop deadline. It polls outside the lock until Azure leaves
+`stopping` or `deallocating`. The usual next state is `stopped-allocated` or
+`deallocated`, but a cross-workstation start can already have produced an
+upward state. Orchestration then reacquires the target lock, revalidates
+authentication, and rereads the exact target. A refreshed
 `running` completes with `already-running/none`; refreshed `starting` joins
 with `running/joined-start`; and a refreshed stable stopped state submits the
 single permitted start mutation. If the guarded reread is downward again, the

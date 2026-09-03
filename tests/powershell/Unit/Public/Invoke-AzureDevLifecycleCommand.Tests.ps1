@@ -282,39 +282,51 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
 
   Context 'When start first observes a downward transition' {
     BeforeEach {
-      $script:states = [System.Collections.Generic.Queue[System.String]]::new()
-      $script:lockCalls = 0
-      $script:lockHeld = $false
-      $script:interruptOnLockCall = 0
-      $script:repeatLastState = $false
-      $script:constantState = $null
-      $script:throwCompletionFailure = $false
-      $script:stateReadLockFacts = [System.Collections.Generic.List[bool]]::new()
+      $script:mockStates =
+        [System.Collections.Generic.Queue[System.String]]::new()
+      $script:mockLockCalls = 0
+      $script:mockLockHeld = $false
+      $script:mockInterruptOnLockCall = 0
+      $script:mockRepeatLastState = $false
+      $script:mockConstantState = $null
+      $script:mockThrowCompletionFailure = $false
+      $script:mockInterruptAuthentication = $false
+      $script:mockStateReadLockFacts =
+        [System.Collections.Generic.List[bool]]::new()
       Mock Invoke-AzureDevLifecycleLock -ParameterFilter { -not $WhatIf } `
         -MockWith {
-          $script:lockCalls++
-          if ($script:lockCalls -eq $script:interruptOnLockCall) {
+          $script:mockLockCalls++
+          if (
+            $script:mockLockCalls -eq $script:mockInterruptOnLockCall
+          ) {
             throw [System.OperationCanceledException]::new('interrupted')
           }
-          $script:lockHeld = $true
+          $script:mockLockHeld = $true
           try {
             return & $ScriptBlock $null $ConfigurationSnapshot
           } finally {
-            $script:lockHeld = $false
+            $script:mockLockHeld = $false
           }
         }
       Mock Get-AzureDevLifecycleState -MockWith {
-        $script:stateReadLockFacts.Add($script:lockHeld)
-        if ($null -ne $script:constantState) {
-          return $script:constantState
+        $script:mockStateReadLockFacts.Add($script:mockLockHeld)
+        if ($null -ne $script:mockConstantState) {
+          return $script:mockConstantState
         }
-        if ($script:repeatLastState -and $script:states.Count -eq 1) {
-          return $script:states.Peek()
+        if (
+          $script:mockRepeatLastState -and $script:mockStates.Count -eq 1
+        ) {
+          return $script:mockStates.Peek()
         }
-        return $script:states.Dequeue()
+        return $script:mockStates.Dequeue()
+      }
+      Mock Connect-AzureDevLifecycleSession -MockWith {
+        if ($script:mockInterruptAuthentication) {
+          throw [System.OperationCanceledException]::new('interrupted')
+        }
       }
       Mock Complete-AzureDevLifecycleAttempt -MockWith {
-        if ($script:throwCompletionFailure) {
+        if ($script:mockThrowCompletionFailure) {
           throw $Failure
         }
         return $LifecycleResult
@@ -325,7 +337,7 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
 
     It 'Should wait unlocked, reacquire, reread, and submit one start' {
       @('stopping', 'deallocating', 'deallocated', 'deallocated', 'running') |
-        ForEach-Object { $script:states.Enqueue($_) }
+        ForEach-Object { $script:mockStates.Enqueue($_) }
       $timing = & $script:newLifecycleTiming
 
       $resultObject = Invoke-AzureDevLifecycleCommand `
@@ -335,7 +347,7 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
 
       $resultObject.Result | Should-Be 'running'
       $resultObject.Action | Should-Be 'start-requested'
-      $script:stateReadLockFacts | Should-BeCollection `
+      $script:mockStateReadLockFacts | Should-BeCollection `
         $true, $false, $false, $true, $false
       Should-Invoke Invoke-AzureDevLifecycleLock `
         -Exactly -Times 2 -Scope It
@@ -346,7 +358,7 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
 
     It 'Should join a refreshed starting state without a mutation' {
       @('deallocating', 'deallocated', 'starting', 'running') |
-        ForEach-Object { $script:states.Enqueue($_) }
+        ForEach-Object { $script:mockStates.Enqueue($_) }
       $timing = & $script:newLifecycleTiming
 
       $resultObject = Invoke-AzureDevLifecycleCommand `
@@ -359,9 +371,26 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       Should-Invoke Invoke-AzCli -Exactly -Times 0 -Scope It
     }
 
+    It 'Should converge after another workstation starts between polls' {
+      @('deallocating', 'starting', 'starting', 'running') |
+        ForEach-Object { $script:mockStates.Enqueue($_) }
+      $timing = & $script:newLifecycleTiming
+
+      $resultObject = Invoke-AzureDevLifecycleCommand `
+        -CommandName start `
+        -RepositoryRoot $TestDrive `
+        -Timing $timing
+
+      $resultObject.Result | Should-Be 'running'
+      $resultObject.Action | Should-Be 'joined-start'
+      $script:mockStateReadLockFacts | Should-BeCollection `
+        $true, $false, $true, $false
+      Should-Invoke Invoke-AzCli -Exactly -Times 0 -Scope It
+    }
+
     It 'Should accept a refreshed running state without a mutation' {
       @('stopping', 'stopped-allocated', 'running') |
-        ForEach-Object { $script:states.Enqueue($_) }
+        ForEach-Object { $script:mockStates.Enqueue($_) }
       $timing = & $script:newLifecycleTiming
 
       $resultObject = Invoke-AzureDevLifecycleCommand `
@@ -376,9 +405,9 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
 
     It 'Should use a stable-stop deadline independent of the running deadline' {
       @('stopping', 'deallocating', 'deallocating') |
-        ForEach-Object { $script:states.Enqueue($_) }
-      $script:repeatLastState = $true
-      $script:throwCompletionFailure = $true
+        ForEach-Object { $script:mockStates.Enqueue($_) }
+      $script:mockRepeatLastState = $true
+      $script:mockThrowCompletionFailure = $true
       $timing = & $script:newLifecycleTiming `
         -StableStopDeadlineMilliseconds 10000 `
         -RunningDeadlineMilliseconds 90000
@@ -403,7 +432,7 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
     }
 
     It 'Should propagate interruption without a result or terminal record' {
-      @('stopping') | ForEach-Object { $script:states.Enqueue($_) }
+      @('stopping') | ForEach-Object { $script:mockStates.Enqueue($_) }
       $timing = & $script:newLifecycleTiming
       $timing.DelayMilliseconds = {
         throw [System.OperationCanceledException]::new('interrupted')
@@ -416,7 +445,7 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
           -Timing $timing
       } | Should-Throw -ExceptionMessage '*interrupted*'
 
-      $script:lockHeld | Should-BeFalse
+      $script:mockLockHeld | Should-BeFalse
       Should-Invoke Invoke-AzureDevLifecycleLock `
         -Exactly -Times 1 -Scope It
       Should-Invoke Invoke-AzCli -Exactly -Times 0 -Scope It
@@ -424,10 +453,30 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
         -Exactly -Times 0 -Scope It
     }
 
+    It 'Should release an owned lock when authentication is interrupted' {
+      $script:mockInterruptAuthentication = $true
+      $timing = & $script:newLifecycleTiming
+
+      {
+        Invoke-AzureDevLifecycleCommand `
+          -CommandName start `
+          -RepositoryRoot $TestDrive `
+          -Timing $timing
+      } | Should-Throw -ExceptionMessage '*interrupted*'
+
+      $script:mockLockHeld | Should-BeFalse
+      Should-Invoke Invoke-AzureDevLifecycleLock `
+        -Exactly -Times 1 -Scope It
+      Should-Invoke Get-AzureDevLifecycleState `
+        -Exactly -Times 0 -Scope It
+      Should-Invoke Complete-AzureDevLifecycleAttempt `
+        -Exactly -Times 0 -Scope It
+    }
+
     It 'Should propagate interruption while reacquiring without a terminal record' {
       @('stopping', 'deallocated') |
-        ForEach-Object { $script:states.Enqueue($_) }
-      $script:interruptOnLockCall = 2
+        ForEach-Object { $script:mockStates.Enqueue($_) }
+      $script:mockInterruptOnLockCall = 2
       $timing = & $script:newLifecycleTiming
 
       {
@@ -445,8 +494,8 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
     }
 
     It 'Should report stable-stop heartbeats on virtual 30-second boundaries' {
-      $script:constantState = 'stopping'
-      $script:throwCompletionFailure = $true
+      $script:mockConstantState = 'stopping'
+      $script:mockThrowCompletionFailure = $true
       $timing = & $script:newLifecycleTiming `
         -StableStopDeadlineMilliseconds 60000
 
@@ -470,21 +519,35 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
   }
 
   Context 'When an upward transition is externally reversed' {
+    BeforeDiscovery {
+      $interferenceCases = @(
+        @{
+          InitialState = 'deallocated'
+          DownwardState = 'stopping'
+          Mutations = 1
+        },
+        @{
+          InitialState = 'starting'
+          DownwardState = 'deallocating'
+          Mutations = 0
+        }
+      )
+    }
+
     BeforeEach {
-      $script:states = [System.Collections.Generic.Queue[System.String]]::new()
+      $script:mockStates =
+        [System.Collections.Generic.Queue[System.String]]::new()
       Mock Get-AzureDevLifecycleState -MockWith {
-        return $script:states.Dequeue()
+        return $script:mockStates.Dequeue()
       }
       Mock Complete-AzureDevLifecycleAttempt -MockWith { throw $Failure }
       $script:now = [System.Int64]0
     }
 
-    It 'Should fail a later <DownwardState> without a second start' -ForEach @(
-      @{ InitialState = 'deallocated'; DownwardState = 'stopping'; Mutations = 1 },
-      @{ InitialState = 'starting'; DownwardState = 'deallocating'; Mutations = 0 }
-    ) {
-      $script:states.Enqueue($InitialState)
-      $script:states.Enqueue($DownwardState)
+    It 'Should fail a later <DownwardState> without a second start' `
+      -ForEach $interferenceCases {
+      $script:mockStates.Enqueue($InitialState)
+      $script:mockStates.Enqueue($DownwardState)
       $timing = & $script:newLifecycleTiming
 
       {

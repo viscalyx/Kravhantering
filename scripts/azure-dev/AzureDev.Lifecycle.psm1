@@ -1281,9 +1281,65 @@ function Invoke-AzureDevLifecycleCommand {
   }
   $getMonotonicMilliseconds = $Timing.GetMonotonicMilliseconds
   $attemptStartedAt = [long](& $getMonotonicMilliseconds)
+  $completeStartFailure = {
+    param(
+      [System.Management.Automation.ErrorRecord]$Failure,
+      [long]$ElapsedMilliseconds
+    )
+
+    $failureRecord = New-AzureDevLifecycleLogRecord `
+      -Configuration $configuration `
+      -Failure $Failure `
+      -ElapsedMilliseconds $ElapsedMilliseconds
+    Complete-AzureDevLifecycleAttempt `
+      -RepositoryRoot $configuration.RepoRoot `
+      -Record $failureRecord `
+      -Failure $Failure `
+      -Confirm:$false
+  }
+  $completeStableStopTimeout = {
+    param(
+      [string]$ObservedState,
+      [long]$ElapsedMilliseconds
+    )
+
+    $timeoutFailure = New-AzureDevLifecycleErrorRecord `
+      -Phase stable-stop-wait `
+      -Message (
+        'The Azure VM did not reach a stable stopped state within ten ' +
+        'minutes. No start mutation was submitted.'
+      ) `
+      -Command start `
+      -VmName $configuration.VmName `
+      -ObservedState $ObservedState `
+      -Action none
+    & $completeStartFailure $timeoutFailure $ElapsedMilliseconds
+  }
+  $completeStartLockFailure = {
+    param([System.Management.Automation.ErrorRecord]$Caught)
+
+    $lockFailure = if (
+      $null -ne $Caught.TargetObject -and
+      $Caught.TargetObject.PSObject.TypeNames[0] -eq
+        'AzureDev.LifecycleFailure'
+    ) {
+      $Caught
+    } else {
+      New-AzureDevLifecycleErrorRecord `
+        -Phase lock `
+        -Message $Caught.Exception.Message `
+        -Command start `
+        -VmName $configuration.VmName
+    }
+    $failedAt = [long](& $getMonotonicMilliseconds)
+    & $completeStartFailure `
+      $lockFailure `
+      ([Math]::Max([long]0, $failedAt - $attemptStartedAt))
+  }
   $lockedDecision = {
     param($Lock, $ConfigurationSnapshot)
 
+    $null = $Lock
     Write-AzureDevLifecycleProgress `
       -Event authentication `
       -Command start `
@@ -1395,27 +1451,7 @@ function Invoke-AzureDevLifecycleCommand {
     ) {
       throw
     }
-    $failure = $_
-    if (
-      $null -eq $failure.TargetObject -or
-      $failure.TargetObject.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleFailure'
-    ) {
-      $failure = New-AzureDevLifecycleErrorRecord `
-        -Phase lock `
-        -Message $failure.Exception.Message `
-        -Command start `
-        -VmName $configuration.VmName
-    }
-    $now = [long](& $getMonotonicMilliseconds)
-    $failureRecord = New-AzureDevLifecycleLogRecord `
-      -Configuration $configuration `
-      -Failure $failure `
-      -ElapsedMilliseconds ([Math]::Max([long]0, $now - $attemptStartedAt))
-    Complete-AzureDevLifecycleAttempt `
-      -RepositoryRoot $configuration.RepoRoot `
-      -Record $failureRecord `
-      -Failure $failure `
-      -Confirm:$false
+    & $completeStartLockFailure $_
   }
 
   if ($operation.Plan.Decision -eq 'wait-stable-stop') {
@@ -1436,33 +1472,15 @@ function Invoke-AzureDevLifecycleCommand {
       -ObservedState $stableState
 
     while ($operation.Plan.Decision -eq 'wait-stable-stop') {
-      while ($stableState -notin @('stopped-allocated', 'deallocated')) {
+      while ($stableState -in @('stopping', 'deallocating')) {
         $stablePoll = Invoke-AzureDevLifecycleWaitPoll -Wait $stableWait
         if ($stablePoll.DeadlineExpired) {
-          $stableTimeoutFailure = New-AzureDevLifecycleErrorRecord `
-            -Phase stable-stop-wait `
-            -Message (
-              'The Azure VM did not reach a stable stopped state within ten ' +
-              'minutes. No start mutation was submitted.'
-            ) `
-            -Command start `
-            -VmName $configuration.VmName `
-            -ObservedState $stableState `
-            -Action none
-          $stableTimeoutRecord = New-AzureDevLifecycleLogRecord `
-            -Configuration $configuration `
-            -Failure $stableTimeoutFailure `
-            -ElapsedMilliseconds (
-              [Math]::Max(
-                [long]0,
-                [long](& $getMonotonicMilliseconds) - $attemptStartedAt
-              )
-            )
-          Complete-AzureDevLifecycleAttempt `
-            -RepositoryRoot $configuration.RepoRoot `
-            -Record $stableTimeoutRecord `
-            -Failure $stableTimeoutFailure `
-            -Confirm:$false
+          & $completeStableStopTimeout `
+            $stableState `
+            ([Math]::Max(
+              [long]0,
+              [long](& $getMonotonicMilliseconds) - $attemptStartedAt
+            ))
         }
 
         $nextStableState = Get-AzureDevLifecycleState `
@@ -1485,30 +1503,12 @@ function Invoke-AzureDevLifecycleCommand {
             -ElapsedMilliseconds $stableElapsedMilliseconds
         }
         if ($stableStateObservedAt -ge $stableWait.DeadlineAt) {
-          $stableLateFailure = New-AzureDevLifecycleErrorRecord `
-            -Phase stable-stop-wait `
-            -Message (
-              'The Azure VM did not reach a stable stopped state within ten ' +
-              'minutes. No start mutation was submitted.'
-            ) `
-            -Command start `
-            -VmName $configuration.VmName `
-            -ObservedState $stableState `
-            -Action none
-          $stableLateRecord = New-AzureDevLifecycleLogRecord `
-            -Configuration $configuration `
-            -Failure $stableLateFailure `
-            -ElapsedMilliseconds (
-              [Math]::Max(
-                [long]0,
-                $stableStateObservedAt - $attemptStartedAt
-              )
-            )
-          Complete-AzureDevLifecycleAttempt `
-            -RepositoryRoot $configuration.RepoRoot `
-            -Record $stableLateRecord `
-            -Failure $stableLateFailure `
-            -Confirm:$false
+          & $completeStableStopTimeout `
+            $stableState `
+            ([Math]::Max(
+              [long]0,
+              $stableStateObservedAt - $attemptStartedAt
+            ))
         }
       }
 
@@ -1526,30 +1526,7 @@ function Invoke-AzureDevLifecycleCommand {
         ) {
           throw
         }
-        $reacquisitionFailure = $_
-        if (
-          $null -eq $reacquisitionFailure.TargetObject -or
-          $reacquisitionFailure.TargetObject.PSObject.TypeNames[0] -ne
-            'AzureDev.LifecycleFailure'
-        ) {
-          $reacquisitionFailure = New-AzureDevLifecycleErrorRecord `
-            -Phase lock `
-            -Message $reacquisitionFailure.Exception.Message `
-            -Command start `
-            -VmName $configuration.VmName
-        }
-        $reacquisitionAt = [long](& $getMonotonicMilliseconds)
-        $reacquisitionRecord = New-AzureDevLifecycleLogRecord `
-          -Configuration $configuration `
-          -Failure $reacquisitionFailure `
-          -ElapsedMilliseconds (
-            [Math]::Max([long]0, $reacquisitionAt - $attemptStartedAt)
-          )
-        Complete-AzureDevLifecycleAttempt `
-          -RepositoryRoot $configuration.RepoRoot `
-          -Record $reacquisitionRecord `
-          -Failure $reacquisitionFailure `
-          -Confirm:$false
+        & $completeStartLockFailure $_
       }
       $stableState = $operation.InitialState
       $stableWait.ObservedState = $stableState
