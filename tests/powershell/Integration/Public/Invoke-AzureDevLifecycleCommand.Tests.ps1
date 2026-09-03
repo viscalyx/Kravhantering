@@ -57,6 +57,16 @@ Describe `
       $null,
       'Process'
     )
+    [System.Environment]::SetEnvironmentVariable(
+      'FAKE_AZ_VM_STATE_SEQUENCE',
+      $null,
+      'Process'
+    )
+    [System.Environment]::SetEnvironmentVariable(
+      'FAKE_AZ_EXPECTED_LOCK_STATE_SEQUENCE',
+      $null,
+      'Process'
+    )
     $virtualClock = [System.Management.Automation.PSObject]@{
       Milliseconds = [System.Int64]0
       DelayMultiplier = [System.Int64]1
@@ -487,6 +497,159 @@ Describe `
     }
   }
 
+  Context 'When start first observes a downward transition' {
+    BeforeDiscovery {
+      $downwardCases = @(
+        @{
+          Sequence = (
+            'PowerState/stopping,PowerState/deallocating,' +
+            'PowerState/deallocated,PowerState/deallocated,' +
+            'PowerState/running'
+          )
+          Action = 'start-requested'
+          MutationCount = 1
+          Result = 'running'
+          LockSequence = 'locked,unlocked,unlocked,locked,unlocked'
+        },
+        @{
+          Sequence = (
+            'PowerState/deallocating,PowerState/stopped,' +
+            'PowerState/starting,PowerState/running'
+          )
+          Action = 'joined-start'
+          MutationCount = 0
+          Result = 'running'
+          LockSequence = 'locked,unlocked,locked,unlocked'
+        },
+        @{
+          Sequence = (
+            'PowerState/stopping,PowerState/stopped,PowerState/running'
+          )
+          Action = 'none'
+          MutationCount = 0
+          Result = 'already-running'
+          LockSequence = 'locked,unlocked,locked'
+        }
+      )
+    }
+
+    It 'Should converge a downward sequence as <Action>' `
+      -ForEach $downwardCases {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE_SEQUENCE',
+        $Sequence,
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_EXPECTED_LOCK_STATE_SEQUENCE',
+        $LockSequence,
+        'Process'
+      )
+      $expectedResult = $Result
+      $expectedAction = $Action
+      $expectedMutationCount = $MutationCount
+
+      $resultObjects = @(
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
+      )
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $startCalls = @($calls | Where-Object { $_ -match "CALL`tvm`tstart" })
+      $profileReads = @($calls | Where-Object {
+          $_ -match "CALL`taccount`tshow"
+        })
+
+      $resultObjects.Count | Should-Be 1
+      $resultObjects[0].Result | Should-Be $expectedResult
+      $resultObjects[0].Action | Should-Be $expectedAction
+      $startCalls.Count | Should-Be $expectedMutationCount
+      $profileReads.Count | Should-Be 2
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+      @(Get-ChildItem -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/lifecycle-locks'
+          ) -File).Count | Should-Be 0
+      $logFile = @(Get-ChildItem -LiteralPath (
+          Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+        ) -File)[0]
+      $logRecord = Get-Content -LiteralPath $logFile.FullName -Raw |
+        ConvertFrom-Json
+      $logRecord.terminalResult | Should-Be $expectedResult
+      $logRecord.action | Should-Be $expectedAction
+      $logRecord.mutationAccepted |
+        Should-Be ($expectedMutationCount -eq 1)
+    }
+
+    It 'Should time out the stable-stop wait without a mutation' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'PowerState/stopping',
+        'Process'
+      )
+      $script:virtualClock.DelayMultiplier = [System.Int64]120
+
+      $result = @()
+      $caught = $null
+      try {
+        $result = @(& $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming)
+      } catch {
+        $caught = $_
+      }
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $logFile = @(Get-ChildItem -LiteralPath (
+          Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+        ) -File)[0]
+      $logRecord = Get-Content -LiteralPath $logFile.FullName -Raw |
+        ConvertFrom-Json
+
+      $caught.Exception.Message | Should-BeLikeString '*stable stopped state*'
+      $result.Count | Should-Be 0
+      @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
+        Should-Be 0
+      $logRecord.failurePhase | Should-Be 'stable-stop-wait'
+      $logRecord.elapsedMilliseconds | Should-Be 600000
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+    }
+
+    It 'Should propagate interruption without a result or lifecycle record' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'PowerState/deallocating',
+        'Process'
+      )
+      $script:lifecycleTiming.DelayMilliseconds = {
+        throw [System.OperationCanceledException]::new('interrupted')
+      }
+
+      $result = @()
+      $caught = $null
+      try {
+        $result = @(& $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming)
+      } catch {
+        $caught = $_
+      }
+
+      $caught.Exception.GetType().FullName |
+        Should-Be 'System.OperationCanceledException'
+      $result.Count | Should-Be 0
+      Test-Path -LiteralPath (
+        Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+      ) | Should-BeFalse
+      @(Get-ChildItem -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/lifecycle-locks'
+          ) -File).Count | Should-Be 0
+    }
+  }
+
   Context 'When start joins or submits an upward transition' {
     BeforeDiscovery {
       $startCases = @(
@@ -641,6 +804,42 @@ Describe `
       $logRecord.failurePhase | Should-Be 'running-wait'
       $logRecord.action | Should-Be $Action
       $logRecord.mutationAccepted | Should-Be $MutationAccepted
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+    }
+
+    It 'Should expose outside interference without a second start' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE_SEQUENCE',
+        'PowerState/deallocated,PowerState/stopping',
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_EXPECTED_LOCK_STATE_SEQUENCE',
+        'locked,unlocked',
+        'Process'
+      )
+
+      {
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
+      } | Should-Throw -ExceptionMessage (
+        '*outside interference*Azure may still complete the earlier operation*'
+      )
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $logFile = @(Get-ChildItem -LiteralPath (
+          Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+        ) -File)[0]
+      $logRecord = Get-Content -LiteralPath $logFile.FullName -Raw |
+        ConvertFrom-Json
+
+      @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
+        Should-Be 1
+      $logRecord.failurePhase | Should-Be 'outside-interference'
+      $logRecord.action | Should-Be 'start-requested'
+      $logRecord.mutationAccepted | Should-BeTrue
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
     }
   }

@@ -1113,21 +1113,38 @@ Start the VM:
 
 `start` uses the configured subscription, resource group, and VM name for
 every Azure call. It holds the target-specific local lock only while it checks
-authentication, reads the decisive state, and optionally submits one start:
+authentication, reads a decisive state, and optionally submits one start:
 
 - `running` returns `already-running` with action `none`.
 - `starting` joins the Azure transition without another mutation.
 - `stopped-allocated` or `deallocated` submits one asynchronous start request.
-- `stopping` or `deallocating` reports that stable-stop convergence is required
-  and fails without a mutation. Downward-transition convergence is not yet
-  executed by `start`.
+- `stopping` or `deallocating` releases the local lock and waits for
+  `stopped-allocated` or `deallocated` outside the lock. After that stable
+  observation, it reacquires the target lock, revalidates Azure CLI
+  authentication, and rereads the exact VM before choosing an action.
 - `not-found`, `unavailable`, `creating`, or `unrecognized` fails without a
   mutation.
 
-After joining or submitting a start, the command releases the lock and polls
-Azure power state every five seconds for at most ten minutes. It reports state
-changes and a heartbeat every 30 seconds. A timeout does not roll back or
-repeat the accepted operation; Azure can still complete it.
+This makes a rapid `stop` followed by `start` safe: the start invocation waits
+up to ten minutes for the downward transition, then makes its decision from a
+fresh guarded observation. If another checkout, workstation, or Azure actor
+has already moved the VM to `starting` or `running` by the guarded reread, the
+command joins or completes that state without submitting another start. The
+local lock coordinates only processes that use the same repository checkout;
+Azure rereads provide cross-workstation convergence.
+
+After joining or submitting an upward transition, the command releases the
+lock and uses a separate ten-minute deadline to wait for `running`. Both waits
+poll every five seconds, report state changes, and emit a heartbeat every 30
+seconds. A later `stopping` or `deallocating` observation is outside
+interference: the command fails without a second mutation and explains that
+Azure may still complete the earlier operation. A timeout has the same
+no-rollback, no-repeat rule.
+
+Pressing Ctrl+C stops local polling promptly. Any owned local lock is released,
+and the interruption exits nonzero without a lifecycle result or terminal
+lifecycle record. The command does not submit a compensating stop or start;
+an operation Azure already accepted may still complete.
 
 Success returns one typed lifecycle result and prints only these entry points,
 using the configured alias:

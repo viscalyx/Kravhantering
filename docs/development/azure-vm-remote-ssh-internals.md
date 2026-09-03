@@ -248,16 +248,42 @@ The pure start planner maps one decisive normalized observation to an action:
 | `starting` | Wait for `running` | None | `running` / `joined-start` |
 | `stopped-allocated` | Submit/wait | Start | `running` / `start-requested` |
 | `deallocated` | Submit and wait | Start | `running` / `start-requested` |
-| `stopping` | Require stable stop | None | Failure phase `stable-stop-wait` |
-| `deallocating` | Require stable stop | None | Failure phase `stable-stop-wait` |
+| `stopping` | Wait for stable stop | None | Reread under a reacquired lock |
+| `deallocating` | Wait for stable stop | None | Reread under a reacquired lock |
 | `not-found` | Fail | None | Failure phase `not-found` |
 | `unavailable` | Fail | None | Failure phase `state-read` |
 | `creating` | Fail | None | Failure phase `state-read` |
 | `unrecognized` | Fail | None | Failure phase `state-read` |
 
-This increment records the downward states as planner decisions but does not
-yet execute downward-transition convergence. A later increment owns waiting
-for a stable stopped state and reacquiring the lock before reconsidering.
+For a downward decision, orchestration releases the local target lock and
+starts the stable-stop deadline. It polls outside the lock until Azure reports
+`stopped-allocated` or `deallocated`. It then reacquires the target lock,
+revalidates authentication, and rereads the exact target. A refreshed
+`running` completes with `already-running/none`; refreshed `starting` joins
+with `running/joined-start`; and a refreshed stable stopped state submits the
+single permitted start mutation. If the guarded reread is downward again, the
+lock is released and stable-stop polling continues under the original
+stable-stop deadline.
+
+The local lock is intentionally not a distributed lock. It serializes one
+checkout, while the guarded Azure reread lets invocations from other checkouts
+or workstations converge without duplicate mutations. The immutable
+configuration snapshot keeps every reread and mutation on the original
+subscription, resource group, and VM.
+
+After a start is submitted or an existing `starting` state is joined, the
+local lock is released and the independent running deadline begins. A later
+`stopping` or `deallocating` state is classified as `outside-interference` and
+terminates the local attempt without rollback or a second start. The failure
+records whether this invocation's mutation was accepted and explains that
+Azure may still complete the earlier operation.
+
+Both waits use five-second polls, state-change progress, and 30-second
+heartbeats. Each has its own ten-minute monotonic deadline; time spent waiting
+for stable stop does not consume the running deadline. Ctrl+C propagates as a
+normal nonzero interruption. Lock ownership is released by the lock module's
+`finally` path, no compensating Azure action runs, and an interrupted attempt
+returns no lifecycle result or terminal lifecycle record.
 
 The dispatcher acquires the target-derived lock, validates the Azure session,
 reads the decisive state, calls the planner, and submits at most one mutation:

@@ -1281,112 +1281,120 @@ function Invoke-AzureDevLifecycleCommand {
   }
   $getMonotonicMilliseconds = $Timing.GetMonotonicMilliseconds
   $attemptStartedAt = [long](& $getMonotonicMilliseconds)
+  $lockedDecision = {
+    param($Lock, $ConfigurationSnapshot)
+
+    Write-AzureDevLifecycleProgress `
+      -Event authentication `
+      -Command start `
+      -VmName $ConfigurationSnapshot.VmName `
+      -Phase authentication
+    try {
+      Connect-AzureDevLifecycleSession -Config $ConfigurationSnapshot
+    } catch {
+      if (
+        $_.Exception -is [System.OperationCanceledException] -or
+        $_.Exception -is
+          [System.Management.Automation.PipelineStoppedException]
+      ) {
+        throw
+      }
+      $authenticationFailure = New-AzureDevLifecycleErrorRecord `
+        -Phase authentication `
+        -Message $_.Exception.Message `
+        -Command start `
+        -VmName $ConfigurationSnapshot.VmName
+      throw $authenticationFailure
+    }
+
+    $observedState = Get-AzureDevLifecycleState `
+      -Configuration $ConfigurationSnapshot
+    Write-AzureDevLifecycleProgress `
+      -Event observed-state `
+      -Command start `
+      -VmName $ConfigurationSnapshot.VmName `
+      -Phase state-read `
+      -ObservedState $observedState
+    $plan = New-AzureDevStartPlan -ObservedState $observedState
+    if ($plan.Decision -eq 'fail') {
+      $stateFailure = New-AzureDevLifecycleErrorRecord `
+        -Phase $plan.FailurePhase `
+        -Message $plan.FailureMessage `
+        -Command start `
+        -VmName $ConfigurationSnapshot.VmName `
+        -ObservedState $observedState `
+        -Action none
+      throw $stateFailure
+    }
+
+    if ($plan.SubmitMutation) {
+      Write-AzureDevLifecycleProgress `
+        -Event submission `
+        -Command start `
+        -VmName $ConfigurationSnapshot.VmName `
+        -Phase start-submission `
+        -ObservedState $observedState `
+        -Action start-requested
+      try {
+        $null = Invoke-AzCli `
+          -Arguments @(
+            'vm',
+            'start',
+            '--subscription',
+            $ConfigurationSnapshot.SubscriptionId,
+            '--resource-group',
+            $ConfigurationSnapshot.ResourceGroup,
+            '--name',
+            $ConfigurationSnapshot.VmName,
+            '--no-wait',
+            '--output',
+            'none',
+            '--only-show-errors'
+          ) `
+          -TimeoutSeconds 120 `
+          -SuppressOutputDetails
+      } catch {
+        if (
+          $_.Exception -is [System.OperationCanceledException] -or
+          $_.Exception -is
+            [System.Management.Automation.PipelineStoppedException]
+        ) {
+          throw
+        }
+        $submissionFailure = New-AzureDevLifecycleErrorRecord `
+          -Phase start-submission `
+          -Message (
+            'Azure did not accept the targeted start request. ' +
+            $_.Exception.Message
+          ) `
+          -Command start `
+          -VmName $ConfigurationSnapshot.VmName `
+          -ObservedState $observedState `
+          -Action start-requested
+        throw $submissionFailure
+      }
+    }
+
+    return [pscustomobject]@{
+      Plan = $plan
+      InitialState = $observedState
+      MutationAccepted = [bool]$plan.SubmitMutation
+    }
+  }
   $operation = $null
   try {
     $operation = Invoke-AzureDevLifecycleLock `
       -ConfigurationSnapshot $configuration `
       -CommandName start `
       -TimeoutSeconds 15 `
-      -ScriptBlock {
-        param($Lock, $ConfigurationSnapshot)
-
-        Write-AzureDevLifecycleProgress `
-          -Event authentication `
-          -Command start `
-          -VmName $ConfigurationSnapshot.VmName `
-          -Phase authentication
-        try {
-          Connect-AzureDevLifecycleSession -Config $ConfigurationSnapshot
-        } catch {
-          $authenticationFailure = New-AzureDevLifecycleErrorRecord `
-            -Phase authentication `
-            -Message $_.Exception.Message `
-            -Command start `
-            -VmName $ConfigurationSnapshot.VmName
-          throw $authenticationFailure
-        }
-
-        $observedState = Get-AzureDevLifecycleState `
-          -Configuration $ConfigurationSnapshot
-        Write-AzureDevLifecycleProgress `
-          -Event observed-state `
-          -Command start `
-          -VmName $ConfigurationSnapshot.VmName `
-          -Phase state-read `
-          -ObservedState $observedState
-        $plan = New-AzureDevStartPlan -ObservedState $observedState
-        if ($plan.Decision -eq 'fail') {
-          $stateFailure = New-AzureDevLifecycleErrorRecord `
-            -Phase $plan.FailurePhase `
-            -Message $plan.FailureMessage `
-            -Command start `
-            -VmName $ConfigurationSnapshot.VmName `
-            -ObservedState $observedState `
-            -Action none
-          throw $stateFailure
-        }
-        if ($plan.Decision -eq 'wait-stable-stop') {
-          $deferredFailure = New-AzureDevLifecycleErrorRecord `
-            -Phase stable-stop-wait `
-            -Message (
-              "Azure VM state '$observedState' requires stable-stop " +
-              'convergence before start. No start mutation was submitted.'
-            ) `
-            -Command start `
-            -VmName $ConfigurationSnapshot.VmName `
-            -ObservedState $observedState `
-            -Action none
-          throw $deferredFailure
-        }
-
-        if ($plan.SubmitMutation) {
-          Write-AzureDevLifecycleProgress `
-            -Event submission `
-            -Command start `
-            -VmName $ConfigurationSnapshot.VmName `
-            -Phase start-submission `
-            -ObservedState $observedState `
-            -Action start-requested
-          try {
-            $null = Invoke-AzCli `
-              -Arguments @(
-                'vm',
-                'start',
-                '--subscription',
-                $ConfigurationSnapshot.SubscriptionId,
-                '--resource-group',
-                $ConfigurationSnapshot.ResourceGroup,
-                '--name',
-                $ConfigurationSnapshot.VmName,
-                '--no-wait',
-                '--output',
-                'none',
-                '--only-show-errors'
-              ) `
-              -TimeoutSeconds 120 `
-              -SuppressOutputDetails
-          } catch {
-            $submissionFailure = New-AzureDevLifecycleErrorRecord `
-              -Phase start-submission `
-              -Message (
-                'Azure did not accept the targeted start request. ' +
-                $_.Exception.Message
-              ) `
-              -Command start `
-              -VmName $ConfigurationSnapshot.VmName `
-              -ObservedState $observedState `
-              -Action start-requested
-            throw $submissionFailure
-          }
-        }
-
-        return [pscustomobject]@{
-          Plan = $plan
-          InitialState = $observedState
-          MutationAccepted = [bool]$plan.SubmitMutation
-        }
-      }
+      -ScriptBlock $lockedDecision
   } catch {
+    if (
+      $_.Exception -is [System.OperationCanceledException] -or
+      $_.Exception -is [System.Management.Automation.PipelineStoppedException]
+    ) {
+      throw
+    }
     $failure = $_
     if (
       $null -eq $failure.TargetObject -or
@@ -1408,6 +1416,144 @@ function Invoke-AzureDevLifecycleCommand {
       -Record $failureRecord `
       -Failure $failure `
       -Confirm:$false
+  }
+
+  if ($operation.Plan.Decision -eq 'wait-stable-stop') {
+    $stableState = $operation.InitialState
+    Write-AzureDevLifecycleProgress `
+      -Event wait-start `
+      -Command start `
+      -VmName $configuration.VmName `
+      -Phase stable-stop-wait `
+      -ObservedState $stableState `
+      -Action none
+    $stableWait = New-AzureDevLifecycleWait `
+      -Timing $Timing `
+      -Command start `
+      -VmName $configuration.VmName `
+      -Phase stable-stop-wait `
+      -DeadlineMilliseconds $Timing.StableStopDeadlineMilliseconds `
+      -ObservedState $stableState
+
+    while ($operation.Plan.Decision -eq 'wait-stable-stop') {
+      while ($stableState -notin @('stopped-allocated', 'deallocated')) {
+        $stablePoll = Invoke-AzureDevLifecycleWaitPoll -Wait $stableWait
+        if ($stablePoll.DeadlineExpired) {
+          $stableTimeoutFailure = New-AzureDevLifecycleErrorRecord `
+            -Phase stable-stop-wait `
+            -Message (
+              'The Azure VM did not reach a stable stopped state within ten ' +
+              'minutes. No start mutation was submitted.'
+            ) `
+            -Command start `
+            -VmName $configuration.VmName `
+            -ObservedState $stableState `
+            -Action none
+          $stableTimeoutRecord = New-AzureDevLifecycleLogRecord `
+            -Configuration $configuration `
+            -Failure $stableTimeoutFailure `
+            -ElapsedMilliseconds (
+              [Math]::Max(
+                [long]0,
+                [long](& $getMonotonicMilliseconds) - $attemptStartedAt
+              )
+            )
+          Complete-AzureDevLifecycleAttempt `
+            -RepositoryRoot $configuration.RepoRoot `
+            -Record $stableTimeoutRecord `
+            -Failure $stableTimeoutFailure `
+            -Confirm:$false
+        }
+
+        $nextStableState = Get-AzureDevLifecycleState `
+          -Configuration $configuration
+        $stableStateObservedAt = [long](& $getMonotonicMilliseconds)
+        $stableElapsedMilliseconds = [Math]::Max(
+          [long]0,
+          $stableStateObservedAt - $stableWait.StartedAt
+        )
+        if ($nextStableState -ne $stableState) {
+          $stableState = $nextStableState
+          $stableWait.ObservedState = $stableState
+          Write-AzureDevLifecycleProgress `
+            -Event state-change `
+            -Command start `
+            -VmName $configuration.VmName `
+            -Phase stable-stop-wait `
+            -ObservedState $stableState `
+            -Action none `
+            -ElapsedMilliseconds $stableElapsedMilliseconds
+        }
+        if ($stableStateObservedAt -ge $stableWait.DeadlineAt) {
+          $stableLateFailure = New-AzureDevLifecycleErrorRecord `
+            -Phase stable-stop-wait `
+            -Message (
+              'The Azure VM did not reach a stable stopped state within ten ' +
+              'minutes. No start mutation was submitted.'
+            ) `
+            -Command start `
+            -VmName $configuration.VmName `
+            -ObservedState $stableState `
+            -Action none
+          $stableLateRecord = New-AzureDevLifecycleLogRecord `
+            -Configuration $configuration `
+            -Failure $stableLateFailure `
+            -ElapsedMilliseconds (
+              [Math]::Max(
+                [long]0,
+                $stableStateObservedAt - $attemptStartedAt
+              )
+            )
+          Complete-AzureDevLifecycleAttempt `
+            -RepositoryRoot $configuration.RepoRoot `
+            -Record $stableLateRecord `
+            -Failure $stableLateFailure `
+            -Confirm:$false
+        }
+      }
+
+      try {
+        $operation = Invoke-AzureDevLifecycleLock `
+          -ConfigurationSnapshot $configuration `
+          -CommandName start `
+          -TimeoutSeconds 15 `
+          -ScriptBlock $lockedDecision
+      } catch {
+        if (
+          $_.Exception -is [System.OperationCanceledException] -or
+          $_.Exception -is
+            [System.Management.Automation.PipelineStoppedException]
+        ) {
+          throw
+        }
+        $reacquisitionFailure = $_
+        if (
+          $null -eq $reacquisitionFailure.TargetObject -or
+          $reacquisitionFailure.TargetObject.PSObject.TypeNames[0] -ne
+            'AzureDev.LifecycleFailure'
+        ) {
+          $reacquisitionFailure = New-AzureDevLifecycleErrorRecord `
+            -Phase lock `
+            -Message $reacquisitionFailure.Exception.Message `
+            -Command start `
+            -VmName $configuration.VmName
+        }
+        $reacquisitionAt = [long](& $getMonotonicMilliseconds)
+        $reacquisitionRecord = New-AzureDevLifecycleLogRecord `
+          -Configuration $configuration `
+          -Failure $reacquisitionFailure `
+          -ElapsedMilliseconds (
+            [Math]::Max([long]0, $reacquisitionAt - $attemptStartedAt)
+          )
+        Complete-AzureDevLifecycleAttempt `
+          -RepositoryRoot $configuration.RepoRoot `
+          -Record $reacquisitionRecord `
+          -Failure $reacquisitionFailure `
+          -Confirm:$false
+      }
+      $stableState = $operation.InitialState
+      $stableWait.ObservedState = $stableState
+    }
   }
 
   $terminalState = $operation.InitialState
@@ -1499,6 +1645,31 @@ function Invoke-AzureDevLifecycleCommand {
           -RepositoryRoot $configuration.RepoRoot `
           -Record $lateStateRecord `
           -Failure $lateStateFailure `
+          -Confirm:$false
+      }
+      if ($terminalState -in @('stopping', 'deallocating')) {
+        $interferenceFailure = New-AzureDevLifecycleErrorRecord `
+          -Phase outside-interference `
+          -Message (
+            "Azure VM state '$terminalState' shows outside interference " +
+            'after an upward transition began. Azure may still complete the ' +
+            'earlier operation; no rollback or second start was submitted.'
+          ) `
+          -Command start `
+          -VmName $configuration.VmName `
+          -ObservedState $terminalState `
+          -Action $operation.Plan.Action `
+          -MutationAccepted $operation.MutationAccepted
+        $interferenceRecord = New-AzureDevLifecycleLogRecord `
+          -Configuration $configuration `
+          -Failure $interferenceFailure `
+          -ElapsedMilliseconds (
+            [Math]::Max([long]0, $stateObservedAt - $attemptStartedAt)
+          )
+        Complete-AzureDevLifecycleAttempt `
+          -RepositoryRoot $configuration.RepoRoot `
+          -Record $interferenceRecord `
+          -Failure $interferenceFailure `
           -Confirm:$false
       }
       if ($terminalState -in @(

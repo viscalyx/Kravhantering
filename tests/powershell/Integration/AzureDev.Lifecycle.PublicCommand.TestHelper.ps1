@@ -76,20 +76,62 @@ if [ "$1" = 'vm' ] && [ "$2" = 'get-instance-view' ]; then
   read_count=0
   if [ -f "$FAKE_AZ_VM_STATE_READ_COUNT_FILE" ]; then
     read_count="$(/bin/cat "$FAKE_AZ_VM_STATE_READ_COUNT_FILE")"
-    if [ "${FAKE_AZ_REQUIRE_UNLOCKED_POLL:-}" = '1' ]; then
-      for lock_file in "$FAKE_AZ_REPOSITORY_ROOT"/.azure/lifecycle-locks/*.lock; do
-        if [ -e "$lock_file" ]; then
-          printf '%s\n' 'lifecycle-lock-held-during-poll' >> "$FAKE_AZ_FORBIDDEN_LOG"
-          exit 97
-        fi
-      done
-    fi
   fi
   read_count=$((read_count + 1))
   printf '%s\n' "$read_count" > "$FAKE_AZ_VM_STATE_READ_COUNT_FILE"
+  lock_present=0
+  for lock_file in "$FAKE_AZ_REPOSITORY_ROOT"/.azure/lifecycle-locks/*.lock; do
+    if [ -e "$lock_file" ]; then
+      lock_present=1
+    fi
+  done
+  expected_lock_state=''
+  if [ -n "${FAKE_AZ_EXPECTED_LOCK_STATE_SEQUENCE:-}" ]; then
+    sequence_position=0
+    old_ifs="$IFS"
+    IFS=','
+    for candidate_lock_state in $FAKE_AZ_EXPECTED_LOCK_STATE_SEQUENCE; do
+      sequence_position=$((sequence_position + 1))
+      expected_lock_state="$candidate_lock_state"
+      if [ "$sequence_position" -eq "$read_count" ]; then
+        break
+      fi
+    done
+    IFS="$old_ifs"
+  fi
+  if [ "$expected_lock_state" = 'locked' ] && [ "$lock_present" -ne 1 ]; then
+    printf '%s\n' 'lifecycle-lock-missing-during-guarded-read' \
+      >> "$FAKE_AZ_FORBIDDEN_LOG"
+    exit 97
+  fi
+  if [ "$expected_lock_state" = 'unlocked' ] && [ "$lock_present" -ne 0 ]; then
+    printf '%s\n' 'lifecycle-lock-held-during-poll' >> "$FAKE_AZ_FORBIDDEN_LOG"
+    exit 97
+  fi
+  if [ -z "$expected_lock_state" ] && [ "$read_count" -gt 1 ] &&
+    [ "${FAKE_AZ_REQUIRE_UNLOCKED_POLL:-}" = '1' ] &&
+    [ "$lock_present" -ne 0 ]; then
+    printf '%s\n' 'lifecycle-lock-held-during-poll' >> "$FAKE_AZ_FORBIDDEN_LOG"
+    exit 97
+  fi
   state="$FAKE_AZ_VM_STATE"
   if [ -f "$FAKE_AZ_VM_STATE_FILE" ]; then
     state="$(/bin/cat "$FAKE_AZ_VM_STATE_FILE")"
+  fi
+  if [ -n "${FAKE_AZ_VM_STATE_SEQUENCE:-}" ]; then
+    sequence_position=0
+    sequence_state="$state"
+    old_ifs="$IFS"
+    IFS=','
+    for candidate_state in $FAKE_AZ_VM_STATE_SEQUENCE; do
+      sequence_position=$((sequence_position + 1))
+      sequence_state="$candidate_state"
+      if [ "$sequence_position" -eq "$read_count" ]; then
+        break
+      fi
+    done
+    IFS="$old_ifs"
+    state="$sequence_state"
   fi
   if [ "$state" = 'not-found' ]; then
     exit 3
@@ -192,6 +234,8 @@ function Enter-AzureDevLifecyclePublicCommandFixture {
     FAKE_AZ_DEALLOCATE_MODE = 'accept'
     FAKE_AZ_VM_STATE_AFTER_READ = $null
     FAKE_AZ_STATE_CHANGE_AFTER_READS = $null
+    FAKE_AZ_VM_STATE_SEQUENCE = $null
+    FAKE_AZ_EXPECTED_LOCK_STATE_SEQUENCE = $null
     FAKE_AZ_VM_STATE_FILE = $Fixture.VmStateFile
     FAKE_AZ_VM_STATE_READ_COUNT_FILE = $Fixture.VmStateReadCountFile
     FAKE_AZ_REQUIRE_UNLOCKED_POLL = '1'
