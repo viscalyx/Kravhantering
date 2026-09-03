@@ -28,6 +28,9 @@ param(
 
   [string]$EnvironmentFile = '.env.azure.development',
 
+  [Parameter(DontShow)]
+  [pscustomobject]$LifecycleTiming,
+
   [string]$WorkstationName,
 
   [ValidateSet('connect-only', 'manage-environment')]
@@ -981,11 +984,16 @@ function Invoke-AzureDevCommand {
 }
 
 if ($Command -in @('start', 'stop', 'status')) {
-  Invoke-AzureDevLifecycleCommand `
-    -CommandName $Command `
-    -RepositoryRoot $RepositoryRoot `
-    -EnvironmentFile $EnvironmentFile `
-    -WhatIf:$WhatIfPreference
+  $lifecycleParameters = @{
+    CommandName = $Command
+    RepositoryRoot = $RepositoryRoot
+    EnvironmentFile = $EnvironmentFile
+    WhatIf = $WhatIfPreference
+  }
+  if ($null -ne $LifecycleTiming) {
+    $lifecycleParameters.Timing = $LifecycleTiming
+  }
+  Invoke-AzureDevLifecycleCommand @lifecycleParameters
   return
 }
 

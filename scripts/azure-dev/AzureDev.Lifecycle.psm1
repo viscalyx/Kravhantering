@@ -1445,7 +1445,12 @@ function Invoke-AzureDevLifecycleCommand {
         $timeoutRecord = New-AzureDevLifecycleLogRecord `
           -Configuration $configuration `
           -Failure $timeoutFailure `
-          -ElapsedMilliseconds $poll.ElapsedMilliseconds
+          -ElapsedMilliseconds (
+            [Math]::Max(
+              [long]0,
+              [long](& $getMonotonicMilliseconds) - $attemptStartedAt
+            )
+          )
         Complete-AzureDevLifecycleAttempt `
           -RepositoryRoot $configuration.RepoRoot `
           -Record $timeoutRecord `
@@ -1454,6 +1459,11 @@ function Invoke-AzureDevLifecycleCommand {
       }
 
       $nextState = Get-AzureDevLifecycleState -Configuration $configuration
+      $stateObservedAt = [long](& $getMonotonicMilliseconds)
+      $stateElapsedMilliseconds = [Math]::Max(
+        [long]0,
+        $stateObservedAt - $wait.StartedAt
+      )
       if ($nextState -ne $terminalState) {
         $terminalState = $nextState
         $wait.ObservedState = $terminalState
@@ -1464,7 +1474,32 @@ function Invoke-AzureDevLifecycleCommand {
           -Phase running-wait `
           -ObservedState $terminalState `
           -Action $operation.Plan.Action `
-          -ElapsedMilliseconds $poll.ElapsedMilliseconds
+          -ElapsedMilliseconds $stateElapsedMilliseconds
+      }
+      if ($stateObservedAt -ge $wait.DeadlineAt) {
+        $lateStateFailure = New-AzureDevLifecycleErrorRecord `
+          -Phase running-wait `
+          -Message (
+            'The Azure VM did not reach running within ten minutes. Azure ' +
+            'can still complete the earlier start operation; no rollback or ' +
+            'second start was submitted.'
+          ) `
+          -Command start `
+          -VmName $configuration.VmName `
+          -ObservedState $terminalState `
+          -Action $operation.Plan.Action `
+          -MutationAccepted $operation.MutationAccepted
+        $lateStateRecord = New-AzureDevLifecycleLogRecord `
+          -Configuration $configuration `
+          -Failure $lateStateFailure `
+          -ElapsedMilliseconds (
+            [Math]::Max([long]0, $stateObservedAt - $attemptStartedAt)
+          )
+        Complete-AzureDevLifecycleAttempt `
+          -RepositoryRoot $configuration.RepoRoot `
+          -Record $lateStateRecord `
+          -Failure $lateStateFailure `
+          -Confirm:$false
       }
       if ($terminalState -in @(
           'not-found',
@@ -1492,7 +1527,9 @@ function Invoke-AzureDevLifecycleCommand {
         $waitRecord = New-AzureDevLifecycleLogRecord `
           -Configuration $configuration `
           -Failure $waitFailure `
-          -ElapsedMilliseconds $poll.ElapsedMilliseconds
+          -ElapsedMilliseconds (
+            [Math]::Max([long]0, $stateObservedAt - $attemptStartedAt)
+          )
         Complete-AzureDevLifecycleAttempt `
           -RepositoryRoot $configuration.RepoRoot `
           -Record $waitRecord `

@@ -52,6 +52,41 @@ Describe `
       $null,
       'Process'
     )
+    [System.Environment]::SetEnvironmentVariable(
+      'FAKE_AZ_STATE_CHANGE_AFTER_READS',
+      $null,
+      'Process'
+    )
+    $virtualClock = [System.Management.Automation.PSObject]@{
+      Milliseconds = [System.Int64]0
+      DelayMultiplier = [System.Int64]1
+    }
+    $getMonotonicMilliseconds = {
+      return [System.Int64]$virtualClock.Milliseconds
+    }.GetNewClosure()
+    $delayMilliseconds = {
+      param([System.Int64]$Milliseconds)
+      $virtualClock.Milliseconds += (
+        $Milliseconds * $virtualClock.DelayMultiplier
+      )
+    }.GetNewClosure()
+    $script:virtualClock = $virtualClock
+    $script:lifecycleTiming = New-Object `
+      -TypeName System.Management.Automation.PSObject `
+      -Property @{
+        PollIntervalMilliseconds = [System.Int64]5000
+        HeartbeatIntervalMilliseconds = [System.Int64]30000
+        LockDeadlineMilliseconds = [System.Int64]15000
+        AzureCallDeadlineMilliseconds = [System.Int64]120000
+        StableStopDeadlineMilliseconds = [System.Int64]600000
+        RunningDeadlineMilliseconds = [System.Int64]600000
+        GetMonotonicMilliseconds = $getMonotonicMilliseconds
+        DelayMilliseconds = $delayMilliseconds
+      }
+    $script:lifecycleTiming.PSObject.TypeNames.Insert(
+      0,
+      'AzureDev.LifecycleTiming'
+    )
   }
 
   AfterAll {
@@ -411,6 +446,7 @@ Describe `
         & $script:entryPoint `
           start `
           -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming `
           -InformationVariable information
       )
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
@@ -425,11 +461,12 @@ Describe `
       @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
         Should-Be 0
       $guidance = @(
-        $information | ForEach-Object {
-          if ($_.MessageData.PSObject.Properties['Message']) {
-            $_.MessageData.Message
-          }
-        }
+        $information |
+          Where-Object {
+            $_.MessageData -is
+              [System.Management.Automation.HostInformationMessage]
+          } |
+          ForEach-Object { $_.MessageData.Message }
       )
       $guidance | Should-BeCollection @(
         'SSH: ssh isolated-alias',
@@ -488,7 +525,8 @@ Describe `
       $result = @(
         & $script:entryPoint `
           start `
-          -RepositoryRoot $script:fixture.RepositoryRoot
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
       )
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)
@@ -510,6 +548,184 @@ Describe `
       Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
       Test-Path -LiteralPath (Join-Path $script:fixture.HomePath '.ssh') |
         Should-BeFalse
+    }
+
+    It 'Should report heartbeat and state-change progress with virtual time' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'PowerState/starting',
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE_AFTER_READ',
+        'PowerState/running',
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_STATE_CHANGE_AFTER_READS',
+        '6',
+        'Process'
+      )
+      $information = @()
+
+      $result = & $script:entryPoint `
+        start `
+        -RepositoryRoot $script:fixture.RepositoryRoot `
+        -LifecycleTiming $script:lifecycleTiming `
+        -InformationVariable information
+      $events = @(
+        $information |
+          ForEach-Object { $_.MessageData } |
+          Where-Object {
+            $_.PSObject.TypeNames -contains 'AzureDev.LifecycleProgressEvent'
+          }
+      )
+
+      $result.Result | Should-Be 'running'
+      @($events | Where-Object {
+          $_.Event -eq 'heartbeat' -and
+          $_.ElapsedMilliseconds -eq 30000
+        }).Count | Should-Be 1
+      @($events | Where-Object {
+          $_.Event -eq 'state-change' -and
+          $_.ObservedState -eq 'running'
+        }).Count | Should-Be 1
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+    }
+  }
+
+  Context 'When an upward transition fails after the lock is released' {
+    BeforeDiscovery {
+      $waitFailureCases = @(
+        @{
+          InitialState = 'PowerState/starting'
+          Action = 'joined-start'
+          MutationAccepted = $false
+          MutationCount = 0
+        },
+        @{
+          InitialState = 'PowerState/deallocated'
+          Action = 'start-requested'
+          MutationAccepted = $true
+          MutationCount = 1
+        }
+      )
+    }
+
+    It 'Should record <Action> without another start' -ForEach $waitFailureCases {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        $InitialState,
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE_AFTER_READ',
+        'read-failed',
+        'Process'
+      )
+
+      {
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
+      } | Should-Throw -ExceptionMessage '*can still complete*'
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $startCalls = @($calls | Where-Object { $_ -match "CALL`tvm`tstart" })
+      $logFile = @(Get-ChildItem -LiteralPath (
+          Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+        ) -File)[0]
+      $logRecord = Get-Content -LiteralPath $logFile.FullName -Raw |
+        ConvertFrom-Json
+
+      $startCalls.Count | Should-Be $MutationCount
+      $logRecord.failurePhase | Should-Be 'running-wait'
+      $logRecord.action | Should-Be $Action
+      $logRecord.mutationAccepted | Should-Be $MutationAccepted
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+    }
+  }
+
+  Context 'When the running deadline expires' {
+    BeforeEach {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'PowerState/starting',
+        'Process'
+      )
+      $script:virtualClock.DelayMultiplier = [System.Int64]120
+    }
+
+    It 'Should record timeout without rollback or a second start' {
+      {
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
+      } | Should-Throw -ExceptionMessage (
+        '*within ten minutes*can still complete*no rollback or second start*'
+      )
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $logFile = @(Get-ChildItem -LiteralPath (
+          Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+        ) -File)[0]
+      $logRecord = Get-Content -LiteralPath $logFile.FullName -Raw |
+        ConvertFrom-Json
+
+      @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
+        Should-Be 0
+      $logRecord.failurePhase | Should-Be 'running-wait'
+      $logRecord.action | Should-Be 'joined-start'
+      $logRecord.elapsedMilliseconds | Should-Be 600000
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+    }
+
+    It 'Should exit one and return no lifecycle result on timeout' {
+      $childCommand = {
+        param($EntryPoint, $RepositoryRoot)
+
+        $virtualClock = [System.Management.Automation.PSObject]@{
+          Milliseconds = [System.Int64]0
+        }
+        $getMonotonicMilliseconds = {
+          return [System.Int64]$virtualClock.Milliseconds
+        }.GetNewClosure()
+        $delayMilliseconds = {
+          param([System.Int64]$Milliseconds)
+          $virtualClock.Milliseconds += $Milliseconds * 120
+        }.GetNewClosure()
+        $timing = [System.Management.Automation.PSObject]@{
+          PollIntervalMilliseconds = [System.Int64]5000
+          HeartbeatIntervalMilliseconds = [System.Int64]30000
+          LockDeadlineMilliseconds = [System.Int64]15000
+          AzureCallDeadlineMilliseconds = [System.Int64]120000
+          StableStopDeadlineMilliseconds = [System.Int64]600000
+          RunningDeadlineMilliseconds = [System.Int64]600000
+          GetMonotonicMilliseconds = $getMonotonicMilliseconds
+          DelayMilliseconds = $delayMilliseconds
+        }
+        $timing.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleTiming')
+        & $EntryPoint `
+          start `
+          -RepositoryRoot $RepositoryRoot `
+          -LifecycleTiming $timing
+      }
+
+      $output = & $script:powerShellPath `
+        -NoLogo `
+        -NoProfile `
+        -Command $childCommand `
+        $script:entryPoint `
+        $script:fixture.RepositoryRoot 2>&1
+      $exitCode = $LASTEXITCODE
+
+      $exitCode | Should-Be 1
+      @($output | Where-Object {
+          $_ -isnot [System.String] -and
+          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
+        }).Count | Should-Be 0
     }
   }
 
@@ -534,7 +750,8 @@ Describe `
       {
         & $script:entryPoint `
           start `
-          -RepositoryRoot $script:fixture.RepositoryRoot
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -LifecycleTiming $script:lifecycleTiming
       } | Should-Throw
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)

@@ -44,6 +44,7 @@ AZURE_CLIENT_SECRET=fake-harness-secret
   $argumentLog = Join-Path $fixtureRoot 'az-arguments.log'
   $forbiddenLog = Join-Path $fixtureRoot 'forbidden-commands.log'
   $vmStateFile = Join-Path $fixtureRoot 'vm-state'
+  $vmStateReadCountFile = Join-Path $fixtureRoot 'vm-state-read-count'
   $fakeAzPath = Join-Path $binPath 'az'
   Set-Content -LiteralPath $fakeAzPath -Value @'
 #!/bin/sh
@@ -72,6 +73,20 @@ if [ "$1" = 'account' ] && [ "$2" = 'get-access-token' ]; then
 fi
 
 if [ "$1" = 'vm' ] && [ "$2" = 'get-instance-view' ]; then
+  read_count=0
+  if [ -f "$FAKE_AZ_VM_STATE_READ_COUNT_FILE" ]; then
+    read_count="$(/bin/cat "$FAKE_AZ_VM_STATE_READ_COUNT_FILE")"
+    if [ "${FAKE_AZ_REQUIRE_UNLOCKED_POLL:-}" = '1' ]; then
+      for lock_file in "$FAKE_AZ_REPOSITORY_ROOT"/.azure/lifecycle-locks/*.lock; do
+        if [ -e "$lock_file" ]; then
+          printf '%s\n' 'lifecycle-lock-held-during-poll' >> "$FAKE_AZ_FORBIDDEN_LOG"
+          exit 97
+        fi
+      done
+    fi
+  fi
+  read_count=$((read_count + 1))
+  printf '%s\n' "$read_count" > "$FAKE_AZ_VM_STATE_READ_COUNT_FILE"
   state="$FAKE_AZ_VM_STATE"
   if [ -f "$FAKE_AZ_VM_STATE_FILE" ]; then
     state="$(/bin/cat "$FAKE_AZ_VM_STATE_FILE")"
@@ -83,7 +98,8 @@ if [ "$1" = 'vm' ] && [ "$2" = 'get-instance-view' ]; then
     exit 1
   fi
   printf '%s\n' "$state"
-  if [ -n "$FAKE_AZ_VM_STATE_AFTER_READ" ]; then
+  if [ -n "${FAKE_AZ_VM_STATE_AFTER_READ:-}" ] &&
+    [ "$read_count" -ge "${FAKE_AZ_STATE_CHANGE_AFTER_READS:-1}" ]; then
     printf '%s\n' "$FAKE_AZ_VM_STATE_AFTER_READ" > "$FAKE_AZ_VM_STATE_FILE"
   fi
   exit 0
@@ -138,6 +154,7 @@ exit 97
     ArgumentLog = $argumentLog
     ForbiddenLog = $forbiddenLog
     VmStateFile = $vmStateFile
+    VmStateReadCountFile = $vmStateReadCountFile
     SubscriptionId = $subscriptionId
     TenantId = $tenantId
     ClientId = $clientId
@@ -165,6 +182,8 @@ function Enter-AzureDevLifecyclePublicCommandFixture {
     AZURE_CLIENT_ID = $null
     AZURE_CLIENT_SECRET = $null
     FAKE_AZ_ARGUMENT_LOG = $Fixture.ArgumentLog
+    FAKE_AZ_FORBIDDEN_LOG = $Fixture.ForbiddenLog
+    FAKE_AZ_REPOSITORY_ROOT = $Fixture.RepositoryRoot
     FAKE_AZ_SUBSCRIPTION_ID = $Fixture.SubscriptionId
     FAKE_AZ_TENANT_ID = $Fixture.TenantId
     FAKE_AZ_CLIENT_ID = $Fixture.ClientId
@@ -172,7 +191,10 @@ function Enter-AzureDevLifecyclePublicCommandFixture {
     FAKE_AZ_VM_STATE = 'PowerState/running'
     FAKE_AZ_DEALLOCATE_MODE = 'accept'
     FAKE_AZ_VM_STATE_AFTER_READ = $null
+    FAKE_AZ_STATE_CHANGE_AFTER_READS = $null
     FAKE_AZ_VM_STATE_FILE = $Fixture.VmStateFile
+    FAKE_AZ_VM_STATE_READ_COUNT_FILE = $Fixture.VmStateReadCountFile
+    FAKE_AZ_REQUIRE_UNLOCKED_POLL = '1'
   }
   foreach ($entry in $environment.GetEnumerator()) {
     $existing = Get-Item `
@@ -222,7 +244,8 @@ function Clear-AzureDevLifecyclePublicCommandEvidence {
     -LiteralPath @(
       $Fixture.ArgumentLog,
       $Fixture.ForbiddenLog,
-      $Fixture.VmStateFile
+      $Fixture.VmStateFile,
+      $Fixture.VmStateReadCountFile
     ) `
     -Force `
     -ErrorAction SilentlyContinue

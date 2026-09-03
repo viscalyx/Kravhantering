@@ -40,6 +40,33 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       0,
       'AzureDev.LifecycleConfigurationSnapshot'
     )
+    $script:newLifecycleTiming = {
+      param(
+        [System.Int64]$PollIntervalMilliseconds = 5000,
+        [System.Int64]$RunningDeadlineMilliseconds = 600000
+      )
+
+      $timing = New-Object `
+        -TypeName System.Management.Automation.PSObject `
+        -Property @{
+          PollIntervalMilliseconds = $PollIntervalMilliseconds
+          HeartbeatIntervalMilliseconds = [System.Int64]30000
+          LockDeadlineMilliseconds = [System.Int64]15000
+          AzureCallDeadlineMilliseconds = [System.Int64]120000
+          StableStopDeadlineMilliseconds = [System.Int64]600000
+          RunningDeadlineMilliseconds = $RunningDeadlineMilliseconds
+          GetMonotonicMilliseconds = { return $script:now }
+          DelayMilliseconds = {
+            param([System.Int64]$Milliseconds)
+            $script:now += $Milliseconds
+          }
+        }
+      $timing.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleTiming')
+      return $timing
+    }
+  }
+
+  BeforeEach {
     Mock Get-AzureDevLifecycleConfig -MockWith {
       return $script:configuration
     }
@@ -47,8 +74,8 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
     Mock Invoke-AzureDevLifecycleLock -ParameterFilter { $WhatIf }
     Mock Invoke-AzureDevLifecycleLock -ParameterFilter { -not $WhatIf } `
       -MockWith {
-      return & $ScriptBlock $null $ConfigurationSnapshot
-    }
+        return & $ScriptBlock $null $ConfigurationSnapshot
+      }
     Mock Get-AzureDevLifecycleState -MockWith { return 'running' }
     Mock Invoke-AzCli
     Mock Complete-AzureDevLifecycleAttempt -MockWith {
@@ -189,8 +216,8 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       )
     }
 
-    It 'Should converge <State> with action <Action>' -ForEach $startCases {
-      $script:states = [System.Collections.Generic.Queue[string]]::new()
+    BeforeEach {
+      $script:states = [System.Collections.Generic.Queue[System.String]]::new()
       $script:states.Enqueue($State)
       if ($State -ne 'running') {
         $script:states.Enqueue('running')
@@ -198,18 +225,11 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       Mock Get-AzureDevLifecycleState -MockWith {
         return $script:states.Dequeue()
       }
-      $script:now = [long]0
-      $timing = New-Object -TypeName System.Management.Automation.PSObject -Property @{
-        PollIntervalMilliseconds = [long]5000
-        HeartbeatIntervalMilliseconds = [long]30000
-        LockDeadlineMilliseconds = [long]15000
-        AzureCallDeadlineMilliseconds = [long]120000
-        StableStopDeadlineMilliseconds = [long]600000
-        RunningDeadlineMilliseconds = [long]600000
-        GetMonotonicMilliseconds = { return $script:now }
-        DelayMilliseconds = { param([long]$Milliseconds) $script:now += $Milliseconds }
-      }
-      $timing.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleTiming')
+      $script:now = [System.Int64]0
+    }
+
+    It 'Should converge <State> with action <Action>' -ForEach $startCases {
+      $timing = & $script:newLifecycleTiming
       $information = @()
 
       $resultObject = Invoke-AzureDevLifecycleCommand `
@@ -243,9 +263,16 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
             $SuppressOutputDetails
           }
       }
-      @($information.MessageData.Message) |
-        Should-ContainCollection 'SSH: ssh integration-alias'
-      @($information.MessageData.Message) |
+      $guidance = @(
+        $information |
+          Where-Object {
+            $_.MessageData -is
+              [System.Management.Automation.HostInformationMessage]
+          } |
+          ForEach-Object { $_.MessageData.Message }
+      )
+      $guidance | Should-ContainCollection 'SSH: ssh integration-alias'
+      $guidance |
         Should-ContainCollection (
           'VS Code: code --remote ssh-remote+integration-alias /workspace'
         )
@@ -262,10 +289,12 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       )
     }
 
-    It 'Should fail <State> without mutation' -ForEach $failureCases {
+    BeforeEach {
       Mock Get-AzureDevLifecycleState -MockWith { return $State }
       Mock Complete-AzureDevLifecycleAttempt -MockWith { throw $Failure }
+    }
 
+    It 'Should fail <State> without mutation' -ForEach $failureCases {
       {
         Invoke-AzureDevLifecycleCommand `
           -CommandName start `
@@ -279,22 +308,22 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
   }
 
   Context 'When an existing start does not finish by the deadline' {
-    It 'Should use virtual five-second polls and 30-second heartbeats' {
-      Mock Get-AzureDevLifecycleState -MockWith { return 'starting' }
+    BeforeEach {
+      $script:stateReads = 0
+      Mock Get-AzureDevLifecycleState -MockWith {
+        $script:stateReads++
+        if ($script:stateReads -eq 1) {
+          $script:now += 10000
+        }
+        return 'starting'
+      }
       Mock Complete-AzureDevLifecycleAttempt -MockWith { throw $Failure }
       Mock Write-AzureDevLifecycleProgress
-      $script:now = [long]0
-      $timing = New-Object -TypeName System.Management.Automation.PSObject -Property @{
-        PollIntervalMilliseconds = [long]5000
-        HeartbeatIntervalMilliseconds = [long]30000
-        LockDeadlineMilliseconds = [long]15000
-        AzureCallDeadlineMilliseconds = [long]120000
-        StableStopDeadlineMilliseconds = [long]600000
-        RunningDeadlineMilliseconds = [long]600000
-        GetMonotonicMilliseconds = { return $script:now }
-        DelayMilliseconds = { param([long]$Milliseconds) $script:now += $Milliseconds }
-      }
-      $timing.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleTiming')
+      $script:now = [System.Int64]0
+    }
+
+    It 'Should use virtual five-second polls and 30-second heartbeats' {
+      $timing = & $script:newLifecycleTiming
       {
         Invoke-AzureDevLifecycleCommand `
           -CommandName start `
@@ -304,7 +333,7 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
         '*did not reach running within ten minutes*can still complete*'
       )
 
-      $script:now | Should-Be 600000
+      $script:now | Should-Be 610000
       Should-Invoke Write-AzureDevLifecycleProgress `
         -Exactly -Times 20 -Scope It `
         -ParameterFilter { $Event -ceq 'heartbeat' }
@@ -322,7 +351,45 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
         -ParameterFilter {
           $Failure.TargetObject.Phase -ceq 'running-wait' -and
           $Failure.TargetObject.Action -ceq 'joined-start' -and
-          -not $Failure.TargetObject.MutationAccepted
+          -not $Failure.TargetObject.MutationAccepted -and
+          $Record.elapsedMilliseconds -eq 610000
+        }
+    }
+  }
+
+  Context 'When a state read completes after the running deadline' {
+    BeforeEach {
+      $script:stateReads = 0
+      $script:now = [System.Int64]0
+      Mock Get-AzureDevLifecycleState -MockWith {
+        $script:stateReads++
+        if ($script:stateReads -eq 1) {
+          return 'starting'
+        }
+        $script:now += 2000
+        return 'running'
+      }
+      Mock Complete-AzureDevLifecycleAttempt -MockWith { throw $Failure }
+    }
+
+    It 'Should time out rather than accept a late running observation' {
+      $timing = & $script:newLifecycleTiming `
+        -PollIntervalMilliseconds 599000
+
+      {
+        Invoke-AzureDevLifecycleCommand `
+          -CommandName start `
+          -RepositoryRoot $TestDrive `
+          -Timing $timing
+      } | Should-Throw -ExceptionMessage '*did not reach running within*'
+
+      $script:now | Should-Be 601000
+      Should-Invoke Complete-AzureDevLifecycleAttempt `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter {
+          $Failure.TargetObject.Phase -ceq 'running-wait' -and
+          $Failure.TargetObject.ObservedState -ceq 'running' -and
+          $Record.elapsedMilliseconds -eq 601000
         }
     }
   }
