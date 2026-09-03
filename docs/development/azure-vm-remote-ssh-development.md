@@ -1117,7 +1117,30 @@ Stop compute charges:
 ./scripts/azure-dev.ps1 stop
 ```
 
-`stop` deallocates the VM and stops compute charges. Disks and public IP
+`stop` is an asynchronous cost-control command. It authenticates, acquires the
+target-specific lifecycle lock, reads the exact VM state, and requests
+deallocation with `--no-wait`. It returns as soon as Azure accepts the request;
+it does not wait for the VM to become `deallocated`.
+
+The command returns one structured lifecycle result:
+
+- `requested` with action `deallocation-requested` means Azure accepted one
+  request. This applies to `starting`, `running`, `stopping`,
+  `stopped-allocated`, and `creating`.
+- `already-requested` with action `none` means Azure already reports
+  `deallocating`; no duplicate request is sent.
+- `already-deallocated` with action `none` means Azure already reports
+  `deallocated`; no request is sent.
+
+If the state read is unavailable, `stop` still requests deallocation because
+stopping compute charges is the safer outcome. A definite `not-found` result or
+an unrecognized state fails without mutation. Authentication, lock, state, and
+submission failures return no lifecycle result and exit nonzero. A local
+lifecycle-log warning does not change an accepted result or primary failure.
+
+An accepted request does not prove deallocation is complete. Use `status` to
+observe convergence. Compute charges stop when Azure reaches `deallocated`;
+managed disks, public IP resources, network traffic, and other retained
 resources can still bill.
 
 Show current state:

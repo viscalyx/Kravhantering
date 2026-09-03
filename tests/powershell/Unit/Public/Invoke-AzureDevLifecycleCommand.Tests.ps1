@@ -122,4 +122,35 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       Should-NotInvoke Invoke-AzureDevLifecycleLock -Scope It
     }
   }
+
+  Context 'When a real stop is requested' {
+    BeforeAll {
+      Mock Invoke-AzureDevStopCommand -MockWith {
+        $result = [System.Management.Automation.PSObject][ordered]@{
+          Command = 'stop'
+          Result = 'already-deallocated'
+          VmName = 'integration-vm'
+          ObservedState = 'deallocated'
+          Action = 'none'
+        }
+        $result.PSObject.TypeNames.Insert(0, 'AzureDev.LifecycleResult')
+        return $result
+      }
+    }
+
+    It 'Should delegate the validated immutable snapshot to stop orchestration' {
+      $result = Invoke-AzureDevLifecycleCommand `
+        -CommandName stop `
+        -RepositoryRoot $TestDrive `
+        -EnvironmentFile 'lifecycle.env'
+
+      $result.Result | Should-Be 'already-deallocated'
+      Should-Invoke Invoke-AzureDevStopCommand `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter { $Configuration -eq $script:configuration }
+      Should-NotInvoke Connect-AzureDevLifecycleSession -Scope It
+      Should-NotInvoke Invoke-AzureDevLifecycleLock -Scope It
+      Should-NotInvoke Get-AzureDevLifecycleState -Scope It
+    }
+  }
 }

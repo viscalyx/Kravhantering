@@ -81,6 +81,13 @@ if [ "$1" = 'vm' ] && [ "$2" = 'get-instance-view' ]; then
   exit 0
 fi
 
+if [ "$1" = 'vm' ] && [ "$2" = 'deallocate' ]; then
+  if [ "$FAKE_AZ_DEALLOCATE_MODE" = 'reject' ]; then
+    exit 1
+  fi
+  exit 0
+fi
+
 printf 'unexpected fake Azure CLI call\n' >&2
 exit 99
 '@
@@ -143,6 +150,7 @@ function Enter-AzureDevLifecyclePublicCommandFixture {
     FAKE_AZ_CLIENT_ID = $Fixture.ClientId
     FAKE_AZ_PROFILE_MODE = 'exact'
     FAKE_AZ_VM_STATE = 'PowerState/running'
+    FAKE_AZ_DEALLOCATE_MODE = 'accept'
   }
   foreach ($entry in $environment.GetEnumerator()) {
     $existing = Get-Item `

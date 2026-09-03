@@ -761,6 +761,283 @@ function Get-AzureDevLifecycleState {
   }
 }
 
+function Get-AzureDevStopPlan {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet(
+      'starting',
+      'running',
+      'stopping',
+      'stopped-allocated',
+      'deallocating',
+      'deallocated',
+      'creating',
+      'unavailable',
+      'not-found',
+      'unrecognized'
+    )]
+    [string]$ObservedState
+  )
+
+  $ObservedState = $ObservedState.ToLowerInvariant()
+  $planFacts = switch ($ObservedState) {
+    'deallocated' {
+      @{
+        Result = 'already-deallocated'
+        Action = 'none'
+        SubmitDeallocation = $false
+        FailurePhase = $null
+      }
+    }
+    'deallocating' {
+      @{
+        Result = 'already-requested'
+        Action = 'none'
+        SubmitDeallocation = $false
+        FailurePhase = $null
+      }
+    }
+    'not-found' {
+      @{
+        Result = $null
+        Action = 'none'
+        SubmitDeallocation = $false
+        FailurePhase = 'not-found'
+      }
+    }
+    'unrecognized' {
+      @{
+        Result = $null
+        Action = 'none'
+        SubmitDeallocation = $false
+        FailurePhase = 'state-read'
+      }
+    }
+    default {
+      @{
+        Result = 'requested'
+        Action = 'deallocation-requested'
+        SubmitDeallocation = $true
+        FailurePhase = $null
+      }
+    }
+  }
+
+  $plan = [pscustomobject][ordered]@{
+    Result = $planFacts.Result
+    Action = $planFacts.Action
+    SubmitDeallocation = $planFacts.SubmitDeallocation
+    FailurePhase = $planFacts.FailurePhase
+  }
+  $plan.PSObject.TypeNames.Insert(0, 'AzureDev.StopPlan')
+  return $plan
+}
+
+function Invoke-AzureDevStopLifecycle {
+  [CmdletBinding(SupportsShouldProcess = $true)]
+  param(
+    [Parameter(Mandatory = $true)]
+    [psobject]$Configuration
+  )
+
+  Write-AzureDevLifecycleProgress `
+    -Event authentication `
+    -Command stop `
+    -VmName $Configuration.VmName `
+    -Phase authentication
+  try {
+    $null = Connect-AzureDevLifecycleSession -Config $Configuration
+  } catch {
+    $failure = New-AzureDevLifecycleErrorRecord `
+      -Phase authentication `
+      -Message (
+        'Azure lifecycle authentication failed for the explicitly targeted ' +
+        "VM '$($Configuration.VmName)'."
+      ) `
+      -Command stop `
+      -VmName $Configuration.VmName
+    $PSCmdlet.ThrowTerminatingError($failure)
+  }
+
+  try {
+    $observedState = Get-AzureDevLifecycleState `
+      -Configuration $Configuration
+  } catch {
+    $failure = New-AzureDevLifecycleErrorRecord `
+      -Phase state-read `
+      -Message (
+        'Azure VM state observation failed before a stop decision could be ' +
+        "made for '$($Configuration.VmName)'."
+      ) `
+      -Command stop `
+      -VmName $Configuration.VmName
+    $PSCmdlet.ThrowTerminatingError($failure)
+  }
+  Write-AzureDevLifecycleProgress `
+    -Event observed-state `
+    -Command stop `
+    -VmName $Configuration.VmName `
+    -Phase state-read `
+    -ObservedState $observedState
+
+  $plan = Get-AzureDevStopPlan -ObservedState $observedState
+  if ($null -ne $plan.FailurePhase) {
+    $message = if ($plan.FailurePhase -eq 'not-found') {
+      (
+        "Azure VM '$($Configuration.VmName)' was definitely not found; " +
+        'no deallocation was submitted.'
+      )
+    } else {
+      (
+        "Azure returned an unrecognized power state for VM " +
+        "'$($Configuration.VmName)'; no deallocation was submitted."
+      )
+    }
+    $failure = New-AzureDevLifecycleErrorRecord `
+      -Phase $plan.FailurePhase `
+      -Message $message `
+      -Command stop `
+      -VmName $Configuration.VmName `
+      -ObservedState $observedState `
+      -Action none
+    $PSCmdlet.ThrowTerminatingError($failure)
+  }
+
+  if ($plan.SubmitDeallocation) {
+    $target = (
+      "$($Configuration.SubscriptionId)/" +
+      "$($Configuration.ResourceGroup)/$($Configuration.VmName)"
+    )
+    if (-not $PSCmdlet.ShouldProcess(
+        $target,
+        'Submit asynchronous Azure VM deallocation'
+      )) {
+      return
+    }
+
+    Write-AzureDevLifecycleProgress `
+      -Event submission `
+      -Command stop `
+      -VmName $Configuration.VmName `
+      -Phase deallocation-submission `
+      -ObservedState $observedState `
+      -Action deallocation-requested
+    try {
+      $null = Invoke-AzCli `
+        -Arguments @(
+          'vm',
+          'deallocate',
+          '--subscription',
+          $Configuration.SubscriptionId,
+          '--resource-group',
+          $Configuration.ResourceGroup,
+          '--name',
+          $Configuration.VmName,
+          '--no-wait',
+          '--output',
+          'none',
+          '--only-show-errors'
+        ) `
+        -TimeoutSeconds 120 `
+        -SuppressOutputDetails
+    } catch {
+      $failure = New-AzureDevLifecycleErrorRecord `
+        -Phase deallocation-submission `
+        -Message (
+          'Azure did not accept the asynchronous deallocation request for ' +
+          "VM '$($Configuration.VmName)'."
+        ) `
+        -Command stop `
+        -VmName $Configuration.VmName `
+        -ObservedState $observedState `
+        -Action deallocation-requested
+      $PSCmdlet.ThrowTerminatingError($failure)
+    }
+  }
+
+  return New-AzureDevLifecycleResult `
+    -Command stop `
+    -Result $plan.Result `
+    -VmName $Configuration.VmName `
+    -ObservedState $observedState `
+    -Action $plan.Action
+}
+
+function Invoke-AzureDevStopCommand {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [psobject]$Configuration,
+
+    [pscustomobject]$Timing = (New-AzureDevLifecycleTiming)
+  )
+
+  $getMonotonicMilliseconds = $Timing.GetMonotonicMilliseconds
+  $startedAt = [long](& $getMonotonicMilliseconds)
+  try {
+    $lifecycleResult = Invoke-AzureDevLifecycleLock `
+      -ConfigurationSnapshot $Configuration `
+      -CommandName stop `
+      -ScriptBlock {
+        param(
+          [AllowNull()]
+          [psobject]$Lock,
+
+          [Parameter(Mandatory = $true)]
+          [psobject]$LockedConfiguration
+        )
+
+        $null = $Lock
+        return Invoke-AzureDevStopLifecycle `
+          -Configuration $LockedConfiguration `
+          -Confirm:$false
+      } `
+      -Confirm:$false
+  } catch {
+    $caught = $_
+    $failure = if (
+      $null -ne $caught.TargetObject -and
+      $caught.TargetObject.PSObject.TypeNames[0] -eq
+        'AzureDev.LifecycleFailure'
+    ) {
+      $caught
+    } else {
+      New-AzureDevLifecycleErrorRecord `
+        -Phase lock `
+        -Message (
+          'Azure lifecycle lock acquisition or guarded execution failed for ' +
+          "VM '$($Configuration.VmName)': $($caught.Exception.Message)"
+        ) `
+        -Command stop `
+        -VmName $Configuration.VmName
+    }
+    $finishedAt = [long](& $getMonotonicMilliseconds)
+    $record = New-AzureDevLifecycleLogRecord `
+      -Configuration $Configuration `
+      -Failure $failure `
+      -ElapsedMilliseconds ([Math]::Max([long]0, $finishedAt - $startedAt))
+    Complete-AzureDevLifecycleAttempt `
+      -RepositoryRoot $Configuration.RepoRoot `
+      -Record $record `
+      -Failure $failure `
+      -Confirm:$false
+    return
+  }
+
+  $finishedAt = [long](& $getMonotonicMilliseconds)
+  $record = New-AzureDevLifecycleLogRecord `
+    -Configuration $Configuration `
+    -LifecycleResult $lifecycleResult `
+    -MutationAccepted ($lifecycleResult.Action -eq 'deallocation-requested') `
+    -ElapsedMilliseconds ([Math]::Max([long]0, $finishedAt - $startedAt))
+  return Complete-AzureDevLifecycleAttempt `
+    -RepositoryRoot $Configuration.RepoRoot `
+    -Record $record `
+    -LifecycleResult $lifecycleResult `
+    -Confirm:$false
+}
+
 function Invoke-AzureDevLifecycleCommand {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -785,6 +1062,10 @@ function Invoke-AzureDevLifecycleCommand {
     $state = Get-AzureDevLifecycleState -Configuration $configuration
     Write-Host "Power state: $state"
     return
+  }
+
+  if ($CommandName -eq 'stop' -and -not $WhatIfPreference) {
+    return Invoke-AzureDevStopCommand -Configuration $configuration
   }
 
   if (-not $WhatIfPreference) {

@@ -210,6 +210,34 @@ empty or failed read remains `unavailable`; and other codes remain
 `unrecognized`. Status prints this observation immediately without a lock,
 wait, or inferred target.
 
+### Lifecycle Stop
+
+Real `stop` loads one immutable configuration snapshot, acquires the
+target-derived lock, authenticates, observes state, plans, and submits any
+mutation inside that lock. It releases the lock before constructing the
+terminal record and returning one result or rethrowing one lifecycle error.
+
+The pure plan maps `deallocated` to `already-deallocated/none` and
+`deallocating` to `already-requested/none`. It maps `starting`, `running`,
+`stopping`, `stopped-allocated`, `creating`, and `unavailable` to
+`requested/deallocation-requested`. The unreadable-state fallback deliberately
+prefers cost control. `not-found` uses the `not-found` failure phase;
+`unrecognized` uses `state-read`. Neither submits a mutation.
+
+The only stop mutation is:
+
+```text
+az vm deallocate --subscription <subscription-id> \
+  --resource-group <resource-group> --name <vm-name> --no-wait \
+  --output none --only-show-errors
+```
+
+The Azure call has a two-minute deadline and returns when Azure CLI accepts the
+request. Stop has no polling loop or deallocation deadline. Submission
+rejection uses `deallocation-submission` and records
+`mutationAccepted=false`. Best-effort record failure only emits a warning and
+cannot replace the accepted result or primary error.
+
 The opt-in Pester public-command harness invokes the entry point with a
 temporary repository root, isolated home and Azure CLI directory, scripted
 fake `az`, and an argument log. Stubs fail if lifecycle commands invoke SSH,

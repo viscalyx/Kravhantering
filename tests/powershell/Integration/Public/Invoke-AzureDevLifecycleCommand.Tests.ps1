@@ -42,6 +42,11 @@ Describe `
       'PowerState/running',
       'Process'
     )
+    [System.Environment]::SetEnvironmentVariable(
+      'FAKE_AZ_DEALLOCATE_MODE',
+      'accept',
+      'Process'
+    )
   }
 
   AfterAll {
@@ -175,6 +180,221 @@ Describe `
         Should-BeFalse
       Test-Path -LiteralPath $script:fixture.ForbiddenLog |
         Should-BeFalse
+    }
+  }
+
+  Context 'When stop is requested' {
+    BeforeDiscovery {
+      $stopCases = @(
+        @{
+          Raw = 'PowerState/running'
+          Observed = 'running'
+          Result = 'requested'
+          Action = 'deallocation-requested'
+          MutationCount = 1
+        },
+        @{
+          Raw = 'read-failed'
+          Observed = 'unavailable'
+          Result = 'requested'
+          Action = 'deallocation-requested'
+          MutationCount = 1
+        },
+        @{
+          Raw = 'PowerState/deallocating'
+          Observed = 'deallocating'
+          Result = 'already-requested'
+          Action = 'none'
+          MutationCount = 0
+        },
+        @{
+          Raw = 'PowerState/deallocated'
+          Observed = 'deallocated'
+          Result = 'already-deallocated'
+          Action = 'none'
+          MutationCount = 0
+        }
+      )
+    }
+
+    It 'Should return <Result> from <Observed> with <MutationCount> mutation' `
+      -ForEach $stopCases {
+      $expectedResult = $Result
+      $expectedObserved = $Observed
+      $expectedAction = $Action
+      $expectedMutationCount = $MutationCount
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        $Raw,
+        'Process'
+      )
+
+      $information = @()
+      $result = @(
+        & $script:entryPoint `
+          stop `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -InformationVariable information
+      )
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $deallocateCalls = @($calls | Where-Object {
+          $_ -match "^CALL`tvm`tdeallocate`t"
+        })
+
+      $result.Count | Should-Be 1
+      $result[0].PSObject.TypeNames[0] | Should-Be 'AzureDev.LifecycleResult'
+      $result[0].Command | Should-Be 'stop'
+      $result[0].Result | Should-Be $expectedResult
+      $result[0].VmName | Should-Be 'isolated-vm'
+      $result[0].ObservedState | Should-Be $expectedObserved
+      $result[0].Action | Should-Be $expectedAction
+      $deallocateCalls.Count | Should-Be $expectedMutationCount
+      if ($expectedMutationCount -eq 1) {
+        $deallocateCalls[0] | Should-Be (
+          "CALL`tvm`tdeallocate`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)`t--resource-group" +
+          "`tisolated-rg`t--name`tisolated-vm`t--no-wait" +
+          "`t--output`tnone`t--only-show-errors"
+        )
+      }
+      @($information.MessageData.Event) |
+        Should-ContainCollection 'authentication', 'observed-state'
+      if ($expectedMutationCount -eq 1) {
+        @($information.MessageData.Event) |
+          Should-ContainCollection 'submission'
+      }
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog |
+        Should-BeFalse
+      @(Get-ChildItem `
+          -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/lifecycle-locks'
+          ) `
+          -File `
+          -ErrorAction SilentlyContinue).Count | Should-Be 0
+      $recordPath = @(Get-ChildItem `
+          -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+          ) `
+          -Filter '*.jsonl' `
+          -File)[0].FullName
+      $records = @(Get-Content -LiteralPath $recordPath | ConvertFrom-Json)
+      $records.Count | Should-Be 1
+      $records[0].command | Should-Be 'stop'
+      $records[0].terminalResult | Should-Be $expectedResult
+      $records[0].observedState | Should-Be $expectedObserved
+      $records[0].action | Should-Be $expectedAction
+      $records[0].mutationAccepted |
+        Should-Be ($expectedMutationCount -eq 1)
+    }
+
+    It 'Should exit zero with one result after Azure accepts deallocation' {
+      $output = & $script:powerShellPath `
+        -NoLogo `
+        -NoProfile `
+        -File $script:entryPoint `
+        stop `
+        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
+      $exitCode = $LASTEXITCODE
+
+      $exitCode | Should-Be 0
+      @($output).Count | Should-BeGreaterThan 0
+      @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture | Where-Object {
+          $_ -match "^CALL`tvm`tdeallocate`t"
+        }).Count | Should-Be 1
+    }
+
+    It 'Should fail not-found with no mutation or lifecycle result' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'not-found',
+        'Process'
+      )
+
+      $output = & $script:powerShellPath `
+        -NoLogo `
+        -NoProfile `
+        -File $script:entryPoint `
+        stop `
+        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
+      $exitCode = $LASTEXITCODE
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+
+      $exitCode | Should-Be 1
+      @($output | Where-Object {
+          $_ -isnot [System.String] -and
+          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
+        }).Count | Should-Be 0
+      @($calls | Where-Object { $_ -match "^CALL`tvm`tdeallocate`t" }).Count |
+        Should-Be 0
+      $recordPath = @(Get-ChildItem `
+          -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+          ) `
+          -Filter '*.jsonl' `
+          -File)[0].FullName
+      $record = Get-Content -LiteralPath $recordPath | ConvertFrom-Json
+      $record.failurePhase | Should-Be 'not-found'
+      $record.terminalResult | Should-BeNull
+    }
+
+    It 'Should fail a rejected submission with one error and one failure record' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_DEALLOCATE_MODE',
+        'reject',
+        'Process'
+      )
+
+      $output = & $script:powerShellPath `
+        -NoLogo `
+        -NoProfile `
+        -File $script:entryPoint `
+        stop `
+        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
+      $exitCode = $LASTEXITCODE
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+
+      $exitCode | Should-Be 1
+      @($output | Where-Object {
+          $_ -is [System.Management.Automation.ErrorRecord]
+        }).Count | Should-Be 1
+      @($output | Where-Object {
+          $_ -isnot [System.String] -and
+          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
+        }).Count | Should-Be 0
+      @($calls | Where-Object { $_ -match "^CALL`tvm`tdeallocate`t" }).Count |
+        Should-Be 1
+      $recordPath = @(Get-ChildItem `
+          -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+          ) `
+          -Filter '*.jsonl' `
+          -File)[0].FullName
+      $record = Get-Content -LiteralPath $recordPath | ConvertFrom-Json
+      $record.failurePhase | Should-Be 'deallocation-submission'
+      $record.mutationAccepted | Should-BeFalse
+    }
+
+    It 'Should preserve success and emit one warning if lifecycle logging fails' {
+      $azurePath = Join-Path $script:fixture.RepositoryRoot '.azure'
+      New-Item -ItemType Directory -Path $azurePath -Force | Out-Null
+      Set-Content -LiteralPath (Join-Path $azurePath 'logs') -Value 'blocked'
+
+      $output = @(
+        & $script:entryPoint `
+          stop `
+          -RepositoryRoot $script:fixture.RepositoryRoot 3>&1
+      )
+
+      @($output | Where-Object {
+          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
+        }).Count | Should-Be 1
+      @($output | Where-Object {
+          $_ -is [System.Management.Automation.WarningRecord]
+        }).Count | Should-Be 1
     }
   }
 }
