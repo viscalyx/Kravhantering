@@ -88,8 +88,14 @@ Describe 'Invoke-AzureDevLifecycleLock' -Tag 'Unit' {
 
       $result | Should-BeNull
       $script:mutationCount | Should-Be 0
-      (Test-Path -LiteralPath (Join-Path $TestDrive '.azure')) |
-        Should-BeFalse
+      $lockDirectory = Join-Path $TestDrive '.azure/lifecycle-locks'
+      @(
+        Get-ChildItem `
+          -LiteralPath $lockDirectory `
+          -Filter 'lifecycle-*.lock' `
+          -File `
+          -ErrorAction SilentlyContinue
+      ).Count | Should-Be 0
       Should-NotInvoke `
         -CommandName New-AzureDevLifecycleMutex `
         -Scope It

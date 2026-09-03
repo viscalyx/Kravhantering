@@ -92,7 +92,13 @@ function New-AzureDevLifecycleMutex {
     return $null
   }
 
-  return & $Factory $Name
+  $mutexName = if ([System.OperatingSystem]::IsWindows()) {
+    "Global\$Name"
+  } else {
+    $Name
+  }
+
+  return & $Factory $mutexName
 }
 
 function Enter-AzureDevLifecycleMutex {

@@ -28,20 +28,27 @@ function Invoke-AzCli {
     $WhatIfPreference = $false
     $ConfirmPreference = 'None'
     if ($TimeoutSeconds -gt 0) {
+      $stderrPath = (New-TemporaryFile).FullName
+      $jobArguments = [System.Object[]]::new(2)
+      $jobArguments[0] = $Arguments
+      $jobArguments[1] = $stderrPath
       $azureCliJob = Start-ThreadJob `
         -ScriptBlock {
           param(
             [Parameter(Mandatory = $true)]
-            [string[]]$NativeArguments
+            [string[]]$NativeArguments,
+
+            [Parameter(Mandatory = $true)]
+            [string]$NativeStderrPath
           )
 
-          $nativeOutput = & az @NativeArguments 2>&1
+          $nativeOutput = & az @NativeArguments 2> $NativeStderrPath
           return [pscustomobject]@{
             ExitCode = $LASTEXITCODE
             Text = $nativeOutput | Out-String
           }
         } `
-        -ArgumentList (, $Arguments)
+        -ArgumentList $jobArguments
       $completedJob = Wait-Job `
         -Job $azureCliJob `
         -Timeout $TimeoutSeconds
@@ -53,7 +60,11 @@ function Invoke-AzCli {
       }
       $jobResult = Receive-Job -Job $azureCliJob -Wait
       $stdoutText = $jobResult.Text
-      $stderrText = ''
+      $stderrText = if ((Get-Item -LiteralPath $stderrPath).Length -gt 0) {
+        Get-Content -LiteralPath $stderrPath -Raw
+      } else {
+        ''
+      }
       $exitCode = $jobResult.ExitCode
     } else {
       $stderrPath = (New-TemporaryFile).FullName

@@ -151,11 +151,14 @@ function Format-AzureDevCommand {
 
   $redactedArguments = New-Object System.Collections.Generic.List[string]
   $redactNext = $false
+  $secretNamePrefixPattern = '(?:[a-z0-9]+[-_])*'
   $secretAssignmentPattern = (
-    '(?i)^(?:--?)?' + $script:AzureDevSecretOptionNamePattern + '='
+    '(?i)^(?:--?)?' + $secretNamePrefixPattern +
+      $script:AzureDevSecretOptionNamePattern + '='
   )
   $secretOptionPattern = (
-    '(?i)^--?' + $script:AzureDevSecretOptionNamePattern + '$'
+    '(?i)^--?' + $secretNamePrefixPattern +
+      $script:AzureDevSecretOptionNamePattern + '$'
   )
   foreach ($argument in $Arguments) {
     if ($redactNext) {

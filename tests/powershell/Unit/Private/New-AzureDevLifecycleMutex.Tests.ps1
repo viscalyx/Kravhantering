@@ -28,9 +28,12 @@ Describe 'New-AzureDevLifecycleMutex' -Tag 'Unit' {
       }
       $mockState = New-Object -TypeName System.Management.Automation.PSObject -Property @{
         Calls = 0
+        Names = [System.Collections.Generic.List[System.String]]::new()
       }
       $mockFactory = {
+        param([System.String]$MutexName)
         $mockState.Calls++
+        $mockState.Names.Add($MutexName)
         $mockMutex
       }.GetNewClosure()
 
@@ -46,6 +49,12 @@ Describe 'New-AzureDevLifecycleMutex' -Tag 'Unit' {
       [System.Object]::ReferenceEquals($result, $mockMutex) |
         Should-BeTrue
       $mockState.Calls | Should-Be 1
+      $expectedName = if ([System.OperatingSystem]::IsWindows()) {
+        'Global\0123456789abcdef'
+      } else {
+        '0123456789abcdef'
+      }
+      $mockState.Names | Should-BeCollection @($expectedName)
     }
 
     It 'Should not call the factory during preview' {

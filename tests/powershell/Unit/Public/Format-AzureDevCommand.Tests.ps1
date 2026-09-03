@@ -77,12 +77,14 @@ Describe 'Format-AzureDevCommand' -Tag 'Unit' {
           '--auth_key', $secret,
           '--AUTHKey', $secret,
           '--auth-key', $secret,
+          '--admin-password', $secret,
           "--client_secret=$assignmentSecret",
           "--CLIENTSecret=$assignmentSecret",
           "--client-secret=$assignmentSecret",
           "--auth_key=$assignmentSecret",
           "--AUTHKey=$assignmentSecret",
-          "--auth-key=$assignmentSecret"
+          "--auth-key=$assignmentSecret",
+          "KEYCLOAK_ADMIN_PASSWORD=$assignmentSecret"
         )
 
       $formatted | Should-BeString `
@@ -91,9 +93,11 @@ Describe 'Format-AzureDevCommand' -Tag 'Unit' {
           'az login --client_secret [redacted] --CLIENTSecret [redacted] ' +
           '--client-secret [redacted] --auth_key [redacted] ' +
           '--AUTHKey [redacted] --auth-key [redacted] ' +
+          '--admin-password [redacted] ' +
           '--client_secret=[redacted] --CLIENTSecret=[redacted] ' +
           '--client-secret=[redacted] --auth_key=[redacted] ' +
-          '--AUTHKey=[redacted] --auth-key=[redacted]'
+          '--AUTHKey=[redacted] --auth-key=[redacted] ' +
+          'KEYCLOAK_ADMIN_PASSWORD=[redacted]'
         )
       $formatted | Should-NotMatchString 'split first line'
       $formatted | Should-NotMatchString 'split last line'

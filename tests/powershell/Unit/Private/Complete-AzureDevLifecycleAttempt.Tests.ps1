@@ -184,7 +184,7 @@ Describe 'Complete-AzureDevLifecycleAttempt' -Tag 'Unit' {
         )
       }
 
-      $result.Count | Should-Be 0
+      @($result).Count | Should-Be 0
       Should-NotInvoke `
         -CommandName Write-AzureDevLifecycleLogRecord `
         -Scope It

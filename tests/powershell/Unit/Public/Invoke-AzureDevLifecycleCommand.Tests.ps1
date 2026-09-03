@@ -161,8 +161,9 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
   Context 'When lifecycle configuration cannot be loaded' {
     BeforeDiscovery {
       $configurationCommands = @(
-        @{ CommandName = 'start' },
-        @{ CommandName = 'stop' }
+        @{ CommandName = 'start'; ExpectedCommand = 'start' },
+        @{ CommandName = 'stop'; ExpectedCommand = 'stop' },
+        @{ CommandName = 'status'; ExpectedCommand = $null }
       )
     }
 
@@ -188,7 +189,7 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       $captured.TargetObject.PSObject.TypeNames[0] |
         Should-Be 'AzureDev.LifecycleFailure'
       $captured.TargetObject.Phase | Should-Be 'configuration'
-      $captured.TargetObject.Command | Should-Be $CommandName
+      $captured.TargetObject.Command | Should-Be $ExpectedCommand
       $captured.TargetObject.VmName | Should-BeNull
       Should-NotInvoke Connect-AzureDevLifecycleSession -Scope It
       Should-NotInvoke Invoke-AzureDevLifecycleLock -Scope It

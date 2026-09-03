@@ -1296,17 +1296,18 @@ function Invoke-AzureDevLifecycleCommand {
     if (Test-AzureDevInterruption -ErrorObject $_) {
       throw
     }
-    $configurationFailure = New-AzureDevLifecycleErrorRecord `
-      -Phase configuration `
-      -Message (
+    $configurationFailureParameters = @{
+      Phase = 'configuration'
+      Message = (
         "Azure lifecycle configuration could not be loaded for command " +
         "'$CommandName': $($_.Exception.Message)"
-      ) `
-      -Command $(if ($CommandName -in @('start', 'stop')) {
-          $CommandName
-        } else {
-          $null
-        })
+      )
+    }
+    if ($CommandName -in @('start', 'stop')) {
+      $configurationFailureParameters.Command = $CommandName
+    }
+    $configurationFailure = New-AzureDevLifecycleErrorRecord `
+      @configurationFailureParameters
     $PSCmdlet.ThrowTerminatingError($configurationFailure)
   }
 

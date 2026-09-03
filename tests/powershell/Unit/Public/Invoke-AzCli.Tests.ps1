@@ -22,6 +22,11 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
   }
 
   BeforeEach {
+    $script:mockStderrPath = Join-Path $TestDrive 'az-stderr.txt'
+    $null = New-Item -ItemType File -Path $script:mockStderrPath
+    $script:mockTempFile = New-Object `
+      -TypeName System.Management.Automation.PSObject `
+      -Property @{ FullName = $script:mockStderrPath }
     $script:mockJob = New-Object `
       -TypeName System.Management.Automation.PSObject `
       -Property @{ Id = 7 }
@@ -32,6 +37,9 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
         ExitCode = 0
         Text = '{"status":"usable"}'
       }
+    Mock -CommandName New-TemporaryFile -MockWith {
+      return $script:mockTempFile
+    }
     Mock -CommandName Start-ThreadJob -MockWith {
       return $script:mockJob
     }
@@ -71,10 +79,11 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
         -Times 1 `
         -Scope It `
         -ParameterFilter {
-          $ArgumentList.Count -eq 1 -and
+          $ArgumentList.Count -eq 2 -and
           $ArgumentList[0].Count -eq 2 -and
           $ArgumentList[0][0] -eq 'account' -and
-          $ArgumentList[0][1] -eq 'show'
+          $ArgumentList[0][1] -eq 'show' -and
+          $ArgumentList[1] -eq $script:mockStderrPath
         }
       Should-Invoke `
         -CommandName Wait-Job `
@@ -94,6 +103,24 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
         -Times 1 `
         -Scope It `
         -ParameterFilter { $Job -eq $script:mockJob -and $Force }
+    }
+  }
+
+  Context 'When a timed Azure CLI call writes to both native streams' {
+    BeforeEach {
+      Set-Content `
+        -LiteralPath $script:mockStderrPath `
+        -Value 'diagnostic warning'
+    }
+
+    It 'Should parse JSON only from the captured standard output' {
+      $result = Invoke-AzCli `
+        -Arguments @('account', 'show') `
+        -Json `
+        -TimeoutSeconds 120
+
+      $result.status | Should-Be 'usable'
+      Test-Path -LiteralPath $script:mockStderrPath | Should-BeFalse
     }
   }
 
@@ -140,14 +167,15 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
 
   Context 'When the caller uses the default native execution path' {
     BeforeEach {
-      $script:mockOriginalLastExitCode = $global:LASTEXITCODE
-      $script:mockStderrPath = Join-Path $TestDrive 'az-stderr.txt'
-      $null = New-Item -ItemType File -Path $script:mockStderrPath
-      $script:mockTempFile = New-Object `
-        -TypeName System.Management.Automation.PSObject `
-        -Property @{ FullName = $script:mockStderrPath }
-      Mock -CommandName New-TemporaryFile -MockWith {
-        return $script:mockTempFile
+      $lastExitCodeVariable = Get-Variable `
+        -Name LASTEXITCODE `
+        -Scope Global `
+        -ErrorAction SilentlyContinue
+      $script:mockOriginalLastExitCodeDefined = $null -ne $lastExitCodeVariable
+      $script:mockOriginalLastExitCode = if ($lastExitCodeVariable) {
+        $lastExitCodeVariable.Value
+      } else {
+        $null
       }
       Mock -CommandName az -MockWith {
         $global:LASTEXITCODE = 0
@@ -156,7 +184,14 @@ Describe 'Invoke-AzCli' -Tag 'Unit' {
     }
 
     AfterEach {
-      $global:LASTEXITCODE = $script:mockOriginalLastExitCode
+      if ($script:mockOriginalLastExitCodeDefined) {
+        $global:LASTEXITCODE = $script:mockOriginalLastExitCode
+      } else {
+        Remove-Variable `
+          -Name LASTEXITCODE `
+          -Scope Global `
+          -ErrorAction SilentlyContinue
+      }
     }
 
     It 'Should parse output through the temporary stderr-file path' {

@@ -454,11 +454,21 @@ function Get-AzureDevLifecyclePublicCommandRecords {
     [System.Management.Automation.PSObject]$Fixture
   )
 
-  $recordPaths = @(Get-ChildItem `
+  $recordPaths = @(
+    Get-ChildItem `
       -LiteralPath (Join-Path $Fixture.RepositoryRoot '.azure/logs') `
       -Filter '*.jsonl' `
-      -File).FullName
-  return @($recordPaths | ForEach-Object {
-      Get-Content -LiteralPath $_ -Raw | ConvertFrom-Json
-    })
+      -File `
+      -ErrorAction SilentlyContinue |
+      ForEach-Object { $_.FullName }
+  )
+  return @(
+    foreach ($recordPath in $recordPaths) {
+      foreach ($line in @(Get-Content -LiteralPath $recordPath)) {
+        if (-not [System.String]::IsNullOrWhiteSpace($line)) {
+          $line | ConvertFrom-Json
+        }
+      }
+    }
+  )
 }

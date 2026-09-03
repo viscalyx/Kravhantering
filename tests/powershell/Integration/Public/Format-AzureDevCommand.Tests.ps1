@@ -67,12 +67,14 @@ Describe 'Format-AzureDevCommand' -Tag 'Integration' `
           '--auth_key', $splitSecret,
           '--authKey', $splitSecret,
           '--AUTH-KEY', $splitSecret,
+          '--admin-password', $splitSecret,
           "--client_secret=$assignedSecret",
           "--clientSecret=$assignedSecret",
           "--CLIENT-SECRET=$assignedSecret",
           "--auth_key=$assignedSecret",
           "--authKey=$assignedSecret",
-          "--AUTH-KEY=$assignedSecret"
+          "--AUTH-KEY=$assignedSecret",
+          "KEYCLOAK_ADMIN_PASSWORD=$assignedSecret"
         )
 
       $formatted | Should-MatchString '--client_secret \[redacted\]'
@@ -81,12 +83,15 @@ Describe 'Format-AzureDevCommand' -Tag 'Integration' `
       $formatted | Should-MatchString '--auth_key \[redacted\]'
       $formatted | Should-MatchString '--authKey \[redacted\]'
       $formatted | Should-MatchString '--AUTH-KEY \[redacted\]'
+      $formatted | Should-MatchString '--admin-password \[redacted\]'
       $formatted | Should-MatchString '--client_secret=\[redacted\]'
       $formatted | Should-MatchString '--clientSecret=\[redacted\]'
       $formatted | Should-MatchString '--CLIENT-SECRET=\[redacted\]'
       $formatted | Should-MatchString '--auth_key=\[redacted\]'
       $formatted | Should-MatchString '--authKey=\[redacted\]'
       $formatted | Should-MatchString '--AUTH-KEY=\[redacted\]'
+      $formatted |
+        Should-MatchString 'KEYCLOAK_ADMIN_PASSWORD=\[redacted\]'
       $formatted | Should-NotMatchString 'split first line'
       $formatted | Should-NotMatchString 'split second line'
       $formatted | Should-NotMatchString 'assigned first line'

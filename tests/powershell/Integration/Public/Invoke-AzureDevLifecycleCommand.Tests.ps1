@@ -396,19 +396,22 @@ Describe `
 
   Context 'When lifecycle configuration is incomplete' {
     BeforeDiscovery {
-      $configurationCommands = @('start', 'stop')
+      $configurationCommands = @(
+        @{ CommandName = 'start'; ExpectedCommand = 'start' },
+        @{ CommandName = 'stop'; ExpectedCommand = 'stop' },
+        @{ CommandName = 'status'; ExpectedCommand = $null }
+      )
     }
 
-    It 'Should expose a stable <_> configuration failure before invoking Azure' `
+    It 'Should expose a stable <CommandName> configuration failure before invoking Azure' `
       -ForEach $configurationCommands {
-      $commandName = $_
-      $incompleteRoot = Join-Path $TestDrive "incomplete-$commandName"
+      $incompleteRoot = Join-Path $TestDrive "incomplete-$CommandName"
       New-Item -ItemType Directory -Path $incompleteRoot -Force | Out-Null
 
       $captured = $null
       try {
         $null = & $script:entryPoint `
-          $commandName `
+          $CommandName `
           -RepositoryRoot $incompleteRoot
       } catch {
         $captured = $_
@@ -419,7 +422,7 @@ Describe `
       $captured.TargetObject.PSObject.TypeNames[0] |
         Should-Be 'AzureDev.LifecycleFailure'
       $captured.TargetObject.Phase | Should-Be 'configuration'
-      $captured.TargetObject.Command | Should-Be $commandName
+      $captured.TargetObject.Command | Should-Be $ExpectedCommand
       $captured.TargetObject.VmName | Should-BeNull
       @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture).Count | Should-Be 0
@@ -581,6 +584,27 @@ Describe `
       $records[0].action | Should-Be $expectedAction
       $records[0].mutationAccepted |
         Should-Be ($expectedMutationCount -eq 1)
+    }
+
+    It 'Should load each appended JSONL record independently' {
+      $first = @(
+        & $script:entryPoint `
+          stop `
+          -RepositoryRoot $script:fixture.RepositoryRoot
+      )
+      $second = @(
+        & $script:entryPoint `
+          stop `
+          -RepositoryRoot $script:fixture.RepositoryRoot
+      )
+
+      $records = @(Get-AzureDevLifecyclePublicCommandRecords `
+          -Fixture $script:fixture)
+
+      $first.Count | Should-Be 1
+      $second.Count | Should-Be 1
+      $records.Count | Should-Be 2
+      @($records.command) | Should-BeCollection @('stop', 'stop')
     }
 
     It 'Should fail not-found with no mutation or lifecycle result' {
@@ -1350,12 +1374,9 @@ Describe `
       $script:interruptProcess = $null
       $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture)
-      $records = [System.Object[]]@()
-      if ($RecordCount -ne 0) {
-        $records = [System.Object[]]@(
-          Get-AzureDevLifecyclePublicCommandRecords -Fixture $script:fixture
-        )
-      }
+      $records = [System.Object[]]@(
+        Get-AzureDevLifecyclePublicCommandRecords -Fixture $script:fixture
+      )
 
       $exitCode | Should-Be 0 -Because $output
       $output | Should-MatchString 'Submit asynchronous Azure VM start'

@@ -36,6 +36,7 @@ Describe 'Invoke-AzCli' -Tag 'Integration' `
     Set-Content -LiteralPath $fakeAzPath -Value @'
 #!/bin/sh
 printf '{"status":"usable"}\n'
+printf 'diagnostic warning\n' >&2
 '@
     $null = & chmod '+x' $fakeAzPath
     [System.Environment]::SetEnvironmentVariable(
