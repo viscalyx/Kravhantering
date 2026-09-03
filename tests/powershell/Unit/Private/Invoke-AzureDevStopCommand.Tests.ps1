@@ -35,6 +35,9 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
     )
     Mock Invoke-AzureDevLifecycleLock -MockWith {
       $script:lockInvocationCount++
+      if ($null -ne $script:lockFailure) {
+        throw $script:lockFailure
+      }
       $script:lockHeld = $true
       try {
         return & $ScriptBlock $null $ConfigurationSnapshot
@@ -68,6 +71,7 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
     $script:lockInvocationCount = 0
     $script:stopLifecycleInvocationCount = 0
     $script:logWriteInvocationCount = 0
+    $script:lockFailure = $null
   }
 
   AfterAll {
@@ -141,9 +145,9 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
 
   Context 'When guarded stop work reports a lifecycle failure' {
     It 'Should classify lock failure and retain owner recovery guidance' {
-      Mock Invoke-AzureDevLifecycleLock -MockWith {
-        throw 'lock held by pid 123; inspect the owner before recovery'
-      }
+      $script:lockFailure = (
+        'lock held by pid 123; inspect the owner before recovery'
+      )
 
       $captured = $null
       try {

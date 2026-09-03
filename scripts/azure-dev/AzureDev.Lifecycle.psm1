@@ -761,22 +761,34 @@ function Get-AzureDevLifecycleState {
   }
 }
 
+function Get-AzureDevStopStateCatalog {
+  [CmdletBinding()]
+  param()
+
+  return @(
+    'starting',
+    'running',
+    'stopping',
+    'stopped-allocated',
+    'deallocating',
+    'deallocated',
+    'creating',
+    'unavailable',
+    'not-found',
+    'unrecognized'
+  )
+}
+
 function Get-AzureDevStopPlan {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet(
-      'starting',
-      'running',
-      'stopping',
-      'stopped-allocated',
-      'deallocating',
-      'deallocated',
-      'creating',
-      'unavailable',
-      'not-found',
-      'unrecognized'
-    )]
+    [ValidateScript({
+        if ($_ -notin (Get-AzureDevStopStateCatalog)) {
+          throw "Observed stop state '$_' is not supported."
+        }
+        return $true
+      })]
     [string]$ObservedState
   )
 
@@ -838,19 +850,7 @@ function Get-AzureDevStopPreviewAction {
   [CmdletBinding()]
   param()
 
-  $states = @(
-    'starting',
-    'running',
-    'stopping',
-    'stopped-allocated',
-    'deallocating',
-    'deallocated',
-    'creating',
-    'unavailable',
-    'not-found',
-    'unrecognized'
-  )
-  $rules = foreach ($state in $states) {
+  $rules = foreach ($state in (Get-AzureDevStopStateCatalog)) {
     $plan = Get-AzureDevStopPlan -ObservedState $state
     if ($null -ne $plan.FailurePhase) {
       "$state => fail:$($plan.FailurePhase)"

@@ -87,4 +87,25 @@ Describe 'Get-AzureDevStopPlan' -Tag 'Unit' {
       }
     }
   }
+
+  Context 'When the observed state is validated' {
+    It 'Should accept a supported state without case sensitivity' {
+      $plan = InModuleScope -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        Get-AzureDevStopPlan -ObservedState 'RUNNING'
+      }
+
+      $plan.Result | Should-Be 'requested'
+      $plan.SubmitDeallocation | Should-BeTrue
+    }
+
+    It 'Should reject a state outside the shared stop-state catalog' {
+      {
+        InModuleScope -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          Get-AzureDevStopPlan -ObservedState 'unknown-future-state'
+        }
+      } | Should-Throw -ExceptionMessage '*not supported*'
+    }
+  }
 }
