@@ -238,6 +238,45 @@ rejection uses `deallocation-submission` and records
 `mutationAccepted=false`. Best-effort record failure only emits a warning and
 cannot replace the accepted result or primary error.
 
+### Stable And Upward Start Orchestration
+
+The pure start planner maps one decisive normalized observation to an action:
+
+| Observation | Decision | Mutation | Terminal result and action |
+| --- | --- | --- | --- |
+| `running` | Complete | None | `already-running` / `none` |
+| `starting` | Wait for `running` | None | `running` / `joined-start` |
+| `stopped-allocated` | Submit/wait | Start | `running` / `start-requested` |
+| `deallocated` | Submit and wait | Start | `running` / `start-requested` |
+| `not-found` | Fail | None | Failure phase `not-found` |
+| `unavailable` | Fail | None | Failure phase `state-read` |
+| `creating` | Fail | None | Failure phase `state-read` |
+| `unrecognized` | Fail | None | Failure phase `state-read` |
+
+The dispatcher acquires the target-derived lock, validates the Azure session,
+reads the decisive state, calls the planner, and submits at most one mutation:
+
+```text
+az vm start --subscription <subscription-id> \
+  --resource-group <resource-group> --name <vm-name> \
+  --no-wait --output none --only-show-errors
+```
+
+The lock is released before polling. The running wait uses the lifecycle timing
+contract: five-second polls, 30-second heartbeats, and a ten-minute deadline.
+During the wait, only state changes and heartbeats reach the information
+stream. A timeout uses failure phase `running-wait`, states that Azure can still
+complete the earlier operation, and submits neither rollback nor a second
+start.
+
+After `running`, the command returns exactly one `AzureDev.LifecycleResult` on
+the success stream. It writes only `SSH: ssh <alias>` and
+`VS Code: code --remote ssh-remote+<alias> /workspace` as human guidance. It
+does not discover or invoke local SSH, key, transfer, Git, host-resolution, or
+VS Code tools; inspect or change SSH configuration or trust; resolve a host; or
+probe SSH readiness. Connection preparation and trust repair remain owned by
+`setup`.
+
 The opt-in Pester public-command harness invokes the entry point with a
 temporary repository root, isolated home and Azure CLI directory, scripted
 fake `az`, and an argument log. Stubs fail if lifecycle commands invoke SSH,
@@ -426,7 +465,7 @@ process. It does not inspect Zsh, Bash, or other shell startup files. Missing
 tokens are acceptable when another shell that contains them starts the VS Code
 Remote SSH session.
 
-The setup and start connection output explains that `GH_TOKEN` and
+The setup connection output explains that `GH_TOKEN` and
 `COPILOT_GITHUB_TOKEN` must exist in the workstation environment that launches
 VS Code. It must never read the values, include them in terminal or log output,
 or store them.
@@ -435,13 +474,13 @@ Forwarded values are readable by processes in the destination `vscode` user's
 Remote SSH process tree. The workflow must require trusted VMs and workspaces
 and short-lived, least-privilege tokens.
 
-The setup and start connection output must present both supported extension
+The setup connection output must present both supported extension
 installation choices. It points to `.vscode/extensions.json` as the source for
 `remote.SSH.defaultExtensions`, warns that the setting applies to every Remote
 SSH host, and gives the workspace-only Command Palette alternative. Do not
 silently change the developer's application-wide VS Code settings.
 
-Before the first network SSH connection, setup and start invoke
+Before the first network SSH connection, setup invokes
 `RunShellScript` through the authenticated Azure control plane. The guest
 script reads `/etc/ssh/ssh_host_*_key.pub`; it does not create or transmit any
 bootstrap credential. The workstation validates every returned SSH public-key
@@ -455,8 +494,8 @@ keys are appended for both names and the file is moved into place. Unrelated
 entries remain unchanged. This gives a recreated VM a replacement path without
 trusting the network-presented key.
 
-The first SSH probe and every setup, bootstrap, validation, start, and
-maintenance SSH or SCP operation use:
+The first SSH probe and every setup, bootstrap, validation, and maintenance SSH
+or SCP operation use:
 
 ```text
 BatchMode=yes

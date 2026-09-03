@@ -47,6 +47,11 @@ Describe `
       'accept',
       'Process'
     )
+    [System.Environment]::SetEnvironmentVariable(
+      'FAKE_AZ_VM_STATE_AFTER_READ',
+      $null,
+      'Process'
+    )
   }
 
   AfterAll {
@@ -395,6 +400,174 @@ Describe `
       @($output | Where-Object {
           $_ -is [System.Management.Automation.WarningRecord]
         }).Count | Should-Be 1
+    }
+  }
+
+  Context 'When start is already running' {
+    It 'Should return one typed result and only the two connection entry points' {
+      $information = @()
+
+      $result = @(
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot `
+          -InformationVariable information
+      )
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+
+      $result.Count | Should-Be 1
+      $result[0].PSObject.TypeNames[0] | Should-Be 'AzureDev.LifecycleResult'
+      $result[0].Result | Should-Be 'already-running'
+      $result[0].ObservedState | Should-Be 'running'
+      $result[0].Action | Should-Be 'none'
+      $calls.Count | Should-Be 3
+      @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
+        Should-Be 0
+      $guidance = @(
+        $information | ForEach-Object {
+          if ($_.MessageData.PSObject.Properties['Message']) {
+            $_.MessageData.Message
+          }
+        }
+      )
+      $guidance | Should-BeCollection @(
+        'SSH: ssh isolated-alias',
+        'VS Code: code --remote ssh-remote+isolated-alias /workspace'
+      )
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+      Test-Path -LiteralPath (Join-Path $script:fixture.HomePath '.ssh') |
+        Should-BeFalse
+      @(Get-ChildItem -LiteralPath (
+            Join-Path $script:fixture.RepositoryRoot '.azure/lifecycle-locks'
+          ) -File).Count | Should-Be 0
+      $logFile = @(Get-ChildItem -LiteralPath (
+          Join-Path $script:fixture.RepositoryRoot '.azure/logs'
+        ) -File)[0]
+      $logRecord = Get-Content -LiteralPath $logFile.FullName -Raw |
+        ConvertFrom-Json
+      $logRecord.terminalResult | Should-Be 'already-running'
+      $logRecord.action | Should-Be 'none'
+      $logRecord.mutationAccepted | Should-BeFalse
+    }
+  }
+
+  Context 'When start joins or submits an upward transition' {
+    BeforeDiscovery {
+      $startCases = @(
+        @{
+          InitialState = 'PowerState/starting'
+          Action = 'joined-start'
+          MutationCount = 0
+        },
+        @{
+          InitialState = 'PowerState/stopped'
+          Action = 'start-requested'
+          MutationCount = 1
+        },
+        @{
+          InitialState = 'PowerState/deallocated'
+          Action = 'start-requested'
+          MutationCount = 1
+        }
+      )
+    }
+
+    It 'Should converge <InitialState> with <Action>' -ForEach $startCases {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        $InitialState,
+        'Process'
+      )
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE_AFTER_READ',
+        'PowerState/running',
+        'Process'
+      )
+
+      $result = @(
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot
+      )
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+      $startCalls = @($calls | Where-Object { $_ -match "CALL`tvm`tstart" })
+
+      $result.Count | Should-Be 1
+      $result[0].Result | Should-Be 'running'
+      $result[0].Action | Should-Be $Action
+      $startCalls.Count | Should-Be $MutationCount
+      if ($MutationCount -eq 1) {
+        $startCalls[0] | Should-Be (
+          "CALL`tvm`tstart`t--subscription" +
+          "`t$($script:fixture.SubscriptionId)" +
+          "`t--resource-group`tisolated-rg" +
+          "`t--name`tisolated-vm`t--no-wait" +
+          "`t--output`tnone`t--only-show-errors"
+        )
+      }
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+      Test-Path -LiteralPath (Join-Path $script:fixture.HomePath '.ssh') |
+        Should-BeFalse
+    }
+  }
+
+  Context 'When start is blocked by the decisive state' {
+    BeforeDiscovery {
+      $blockedCases = @(
+        @{ RawState = 'not-found' },
+        @{ RawState = 'read-failed' },
+        @{ RawState = 'PowerState/creating' },
+        @{ RawState = 'PowerState/unknown' }
+      )
+    }
+
+    It 'Should fail <RawState> without a lifecycle mutation' `
+      -ForEach $blockedCases {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        $RawState,
+        'Process'
+      )
+
+      {
+        & $script:entryPoint `
+          start `
+          -RepositoryRoot $script:fixture.RepositoryRoot
+      } | Should-Throw
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+
+      @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
+        Should-Be 0
+      Test-Path -LiteralPath $script:fixture.ForbiddenLog | Should-BeFalse
+    }
+
+    It 'Should exit one and return no result for unavailable state' {
+      [System.Environment]::SetEnvironmentVariable(
+        'FAKE_AZ_VM_STATE',
+        'read-failed',
+        'Process'
+      )
+
+      $output = & $script:powerShellPath `
+        -NoLogo `
+        -NoProfile `
+        -File $script:entryPoint `
+        start `
+        -RepositoryRoot $script:fixture.RepositoryRoot 2>&1
+      $exitCode = $LASTEXITCODE
+      $calls = @(Get-AzureDevLifecyclePublicCommandCalls `
+          -Fixture $script:fixture)
+
+      $exitCode | Should-Be 1
+      @($output | Where-Object {
+          $_ -isnot [System.String] -and
+          $_.PSObject.TypeNames -contains 'AzureDev.LifecycleResult'
+        }).Count | Should-Be 0
+      @($calls | Where-Object { $_ -match "CALL`tvm`tstart" }).Count |
+        Should-Be 0
     }
   }
 }

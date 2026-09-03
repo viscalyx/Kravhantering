@@ -1078,6 +1078,120 @@ function Invoke-AzureDevStopCommand {
     -Confirm:$false
 }
 
+function New-AzureDevStartPlan {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet(
+      'starting',
+      'running',
+      'stopping',
+      'stopped-allocated',
+      'deallocating',
+      'deallocated',
+      'creating',
+      'unavailable',
+      'not-found',
+      'unrecognized'
+    )]
+    [string]$ObservedState
+  )
+
+  $ObservedState = $ObservedState.ToLowerInvariant()
+  $planValues = switch ($ObservedState) {
+    'running' {
+      @{
+        Decision = 'complete'
+        Result = 'already-running'
+        Action = 'none'
+        SubmitMutation = $false
+        WaitForRunning = $false
+        FailurePhase = $null
+        FailureMessage = $null
+      }
+      break
+    }
+    'starting' {
+      @{
+        Decision = 'wait-running'
+        Result = 'running'
+        Action = 'joined-start'
+        SubmitMutation = $false
+        WaitForRunning = $true
+        FailurePhase = $null
+        FailureMessage = $null
+      }
+      break
+    }
+    { $_ -in @('stopped-allocated', 'deallocated') } {
+      @{
+        Decision = 'start'
+        Result = 'running'
+        Action = 'start-requested'
+        SubmitMutation = $true
+        WaitForRunning = $true
+        FailurePhase = $null
+        FailureMessage = $null
+      }
+      break
+    }
+    { $_ -in @('stopping', 'deallocating') } {
+      @{
+        Decision = 'wait-stable-stop'
+        Result = $null
+        Action = 'none'
+        SubmitMutation = $false
+        WaitForRunning = $false
+        FailurePhase = $null
+        FailureMessage = $null
+      }
+      break
+    }
+    'not-found' {
+      @{
+        Decision = 'fail'
+        Result = $null
+        Action = 'none'
+        SubmitMutation = $false
+        WaitForRunning = $false
+        FailurePhase = 'not-found'
+        FailureMessage = (
+          "Azure VM state is not-found for the configured target. " +
+          'No start mutation was submitted.'
+        )
+      }
+      break
+    }
+    default {
+      @{
+        Decision = 'fail'
+        Result = $null
+        Action = 'none'
+        SubmitMutation = $false
+        WaitForRunning = $false
+        FailurePhase = 'state-read'
+        FailureMessage = (
+          "Azure VM state '$ObservedState' cannot safely be started. " +
+          'No start mutation was submitted.'
+        )
+      }
+    }
+  }
+
+  $plan = [pscustomobject][ordered]@{
+    ObservedState = $ObservedState
+    Decision = $planValues.Decision
+    Result = $planValues.Result
+    Action = $planValues.Action
+    SubmitMutation = $planValues.SubmitMutation
+    WaitForRunning = $planValues.WaitForRunning
+    FailurePhase = $planValues.FailurePhase
+    FailureMessage = $planValues.FailureMessage
+  }
+  $plan.PSObject.TypeNames.Insert(0, 'AzureDev.StartPlan')
+  return $plan
+}
+
 function Invoke-AzureDevLifecycleCommand {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
@@ -1089,7 +1203,9 @@ function Invoke-AzureDevLifecycleCommand {
     [ValidateNotNullOrEmpty()]
     [string]$RepositoryRoot,
 
-    [string]$EnvironmentFile = '.env.azure.development'
+    [string]$EnvironmentFile = '.env.azure.development',
+
+    [pscustomobject]$Timing = (New-AzureDevLifecycleTiming)
   )
 
   $configuration = Get-AzureDevLifecycleConfig `
@@ -1104,48 +1220,312 @@ function Invoke-AzureDevLifecycleCommand {
     return
   }
 
-  if ($CommandName -eq 'stop' -and -not $WhatIfPreference) {
-    return Invoke-AzureDevStopCommand -Configuration $configuration
-  }
+  if ($WhatIfPreference) {
+    Connect-AzureDevLifecycleSession `
+      -Config $configuration `
+      -WhatIf
+    $null = Invoke-AzureDevLifecycleLock `
+      -ConfigurationSnapshot $configuration `
+      -CommandName $CommandName `
+      -ScriptBlock {
+        throw 'Preview must not invoke guarded lifecycle work.'
+      } `
+      -WhatIf
 
-  if (-not $WhatIfPreference) {
-    throw [System.NotSupportedException]::new(
-      "Real '$CommandName' lifecycle orchestration is not available yet."
+    $target = (
+      "$($configuration.SubscriptionId)/" +
+      "$($configuration.ResourceGroup)/$($configuration.VmName)"
     )
-  }
+    $action = if ($CommandName -eq 'start') {
+      $previewStates = @(
+        'running',
+        'starting',
+        'stopping',
+        'stopped-allocated',
+        'deallocating',
+        'deallocated',
+        'creating',
+        'unavailable',
+        'not-found',
+        'unrecognized'
+      )
+      $previewRules = @(
+        $previewStates | ForEach-Object {
+          $previewPlan = New-AzureDevStartPlan -ObservedState $_
+          "$_=$($previewPlan.Decision)"
+        }
+      )
+      'Apply the start planner rules: ' + ($previewRules -join ', ')
+    } else {
+      Get-AzureDevStopPreviewAction
+    }
+    $null = $PSCmdlet.ShouldProcess($target, $action)
 
-  Connect-AzureDevLifecycleSession `
-    -Config $configuration `
-    -WhatIf
-  $null = Invoke-AzureDevLifecycleLock `
-    -ConfigurationSnapshot $configuration `
-    -CommandName $CommandName `
-    -ScriptBlock {
-      throw 'Preview must not invoke guarded lifecycle work.'
-    } `
-    -WhatIf
-
-  $target = (
-    "$($configuration.SubscriptionId)/" +
-    "$($configuration.ResourceGroup)/$($configuration.VmName)"
-  )
-  $action = if ($CommandName -eq 'start') {
-    (
-      'Conditionally do nothing from running, join starting, start from ' +
-      'stopped-allocated or deallocated, wait through stopping or ' +
-      'deallocating then reconsider, and fail without mutation from ' +
-      'not-found, unavailable, creating, or unrecognized'
+    $logsDirectory = Join-Path $configuration.RepoRoot '.azure/logs'
+    $null = $PSCmdlet.ShouldProcess(
+      $logsDirectory,
+      'Append one terminal lifecycle record after a completed real attempt'
     )
-  } else {
-    Get-AzureDevStopPreviewAction
+    return
   }
-  $null = $PSCmdlet.ShouldProcess($target, $action)
 
-  $logsDirectory = Join-Path $configuration.RepoRoot '.azure/logs'
-  $null = $PSCmdlet.ShouldProcess(
-    $logsDirectory,
-    'Append one terminal lifecycle record after a completed real attempt'
+  if ($CommandName -eq 'stop') {
+    return Invoke-AzureDevStopCommand `
+      -Configuration $configuration `
+      -Timing $Timing `
+      -Confirm:$false
+  }
+
+  if ($Timing.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleTiming') {
+    throw 'Timing must be an Azure development-environment lifecycle timing contract.'
+  }
+  $getMonotonicMilliseconds = $Timing.GetMonotonicMilliseconds
+  $attemptStartedAt = [long](& $getMonotonicMilliseconds)
+  $operation = $null
+  try {
+    $operation = Invoke-AzureDevLifecycleLock `
+      -ConfigurationSnapshot $configuration `
+      -CommandName start `
+      -TimeoutSeconds 15 `
+      -ScriptBlock {
+        param($Lock, $ConfigurationSnapshot)
+
+        Write-AzureDevLifecycleProgress `
+          -Event authentication `
+          -Command start `
+          -VmName $ConfigurationSnapshot.VmName `
+          -Phase authentication
+        try {
+          Connect-AzureDevLifecycleSession -Config $ConfigurationSnapshot
+        } catch {
+          $authenticationFailure = New-AzureDevLifecycleErrorRecord `
+            -Phase authentication `
+            -Message $_.Exception.Message `
+            -Command start `
+            -VmName $ConfigurationSnapshot.VmName
+          throw $authenticationFailure
+        }
+
+        $observedState = Get-AzureDevLifecycleState `
+          -Configuration $ConfigurationSnapshot
+        Write-AzureDevLifecycleProgress `
+          -Event observed-state `
+          -Command start `
+          -VmName $ConfigurationSnapshot.VmName `
+          -Phase state-read `
+          -ObservedState $observedState
+        $plan = New-AzureDevStartPlan -ObservedState $observedState
+        if ($plan.Decision -eq 'fail') {
+          $stateFailure = New-AzureDevLifecycleErrorRecord `
+            -Phase $plan.FailurePhase `
+            -Message $plan.FailureMessage `
+            -Command start `
+            -VmName $ConfigurationSnapshot.VmName `
+            -ObservedState $observedState `
+            -Action none
+          throw $stateFailure
+        }
+        if ($plan.Decision -eq 'wait-stable-stop') {
+          $deferredFailure = New-AzureDevLifecycleErrorRecord `
+            -Phase stable-stop-wait `
+            -Message (
+              "Azure VM state '$observedState' requires stable-stop " +
+              'convergence before start. No start mutation was submitted.'
+            ) `
+            -Command start `
+            -VmName $ConfigurationSnapshot.VmName `
+            -ObservedState $observedState `
+            -Action none
+          throw $deferredFailure
+        }
+
+        if ($plan.SubmitMutation) {
+          Write-AzureDevLifecycleProgress `
+            -Event submission `
+            -Command start `
+            -VmName $ConfigurationSnapshot.VmName `
+            -Phase start-submission `
+            -ObservedState $observedState `
+            -Action start-requested
+          try {
+            $null = Invoke-AzCli `
+              -Arguments @(
+                'vm',
+                'start',
+                '--subscription',
+                $ConfigurationSnapshot.SubscriptionId,
+                '--resource-group',
+                $ConfigurationSnapshot.ResourceGroup,
+                '--name',
+                $ConfigurationSnapshot.VmName,
+                '--no-wait',
+                '--output',
+                'none',
+                '--only-show-errors'
+              ) `
+              -TimeoutSeconds 120 `
+              -SuppressOutputDetails
+          } catch {
+            $submissionFailure = New-AzureDevLifecycleErrorRecord `
+              -Phase start-submission `
+              -Message (
+                'Azure did not accept the targeted start request. ' +
+                $_.Exception.Message
+              ) `
+              -Command start `
+              -VmName $ConfigurationSnapshot.VmName `
+              -ObservedState $observedState `
+              -Action start-requested
+            throw $submissionFailure
+          }
+        }
+
+        return [pscustomobject]@{
+          Plan = $plan
+          InitialState = $observedState
+          MutationAccepted = [bool]$plan.SubmitMutation
+        }
+      }
+  } catch {
+    $failure = $_
+    if (
+      $null -eq $failure.TargetObject -or
+      $failure.TargetObject.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleFailure'
+    ) {
+      $failure = New-AzureDevLifecycleErrorRecord `
+        -Phase lock `
+        -Message $failure.Exception.Message `
+        -Command start `
+        -VmName $configuration.VmName
+    }
+    $now = [long](& $getMonotonicMilliseconds)
+    $failureRecord = New-AzureDevLifecycleLogRecord `
+      -Configuration $configuration `
+      -Failure $failure `
+      -ElapsedMilliseconds ([Math]::Max([long]0, $now - $attemptStartedAt))
+    Complete-AzureDevLifecycleAttempt `
+      -RepositoryRoot $configuration.RepoRoot `
+      -Record $failureRecord `
+      -Failure $failure `
+      -Confirm:$false
+  }
+
+  $terminalState = $operation.InitialState
+  if ($operation.Plan.WaitForRunning) {
+    Write-AzureDevLifecycleProgress `
+      -Event wait-start `
+      -Command start `
+      -VmName $configuration.VmName `
+      -Phase running-wait `
+      -ObservedState $terminalState `
+      -Action $operation.Plan.Action
+    $wait = New-AzureDevLifecycleWait `
+      -Timing $Timing `
+      -Command start `
+      -VmName $configuration.VmName `
+      -Phase running-wait `
+      -DeadlineMilliseconds $Timing.RunningDeadlineMilliseconds `
+      -ObservedState $terminalState
+
+    while ($terminalState -ne 'running') {
+      $poll = Invoke-AzureDevLifecycleWaitPoll -Wait $wait
+      if ($poll.DeadlineExpired) {
+        $timeoutFailure = New-AzureDevLifecycleErrorRecord `
+          -Phase running-wait `
+          -Message (
+            'The Azure VM did not reach running within ten minutes. Azure ' +
+            'can still complete the earlier start operation; no rollback or ' +
+            'second start was submitted.'
+          ) `
+          -Command start `
+          -VmName $configuration.VmName `
+          -ObservedState $terminalState `
+          -Action $operation.Plan.Action `
+          -MutationAccepted $operation.MutationAccepted
+        $timeoutRecord = New-AzureDevLifecycleLogRecord `
+          -Configuration $configuration `
+          -Failure $timeoutFailure `
+          -ElapsedMilliseconds $poll.ElapsedMilliseconds
+        Complete-AzureDevLifecycleAttempt `
+          -RepositoryRoot $configuration.RepoRoot `
+          -Record $timeoutRecord `
+          -Failure $timeoutFailure `
+          -Confirm:$false
+      }
+
+      $nextState = Get-AzureDevLifecycleState -Configuration $configuration
+      if ($nextState -ne $terminalState) {
+        $terminalState = $nextState
+        $wait.ObservedState = $terminalState
+        Write-AzureDevLifecycleProgress `
+          -Event state-change `
+          -Command start `
+          -VmName $configuration.VmName `
+          -Phase running-wait `
+          -ObservedState $terminalState `
+          -Action $operation.Plan.Action `
+          -ElapsedMilliseconds $poll.ElapsedMilliseconds
+      }
+      if ($terminalState -in @(
+          'not-found',
+          'unavailable',
+          'creating',
+          'unrecognized'
+        )) {
+        $waitPhase = if ($terminalState -eq 'not-found') {
+          'not-found'
+        } else {
+          'running-wait'
+        }
+        $waitFailure = New-AzureDevLifecycleErrorRecord `
+          -Phase $waitPhase `
+          -Message (
+            "Azure VM state '$terminalState' blocked the running wait. " +
+            'Azure can still complete the earlier start operation; no ' +
+            'rollback or second start was submitted.'
+          ) `
+          -Command start `
+          -VmName $configuration.VmName `
+          -ObservedState $terminalState `
+          -Action $operation.Plan.Action `
+          -MutationAccepted $operation.MutationAccepted
+        $waitRecord = New-AzureDevLifecycleLogRecord `
+          -Configuration $configuration `
+          -Failure $waitFailure `
+          -ElapsedMilliseconds $poll.ElapsedMilliseconds
+        Complete-AzureDevLifecycleAttempt `
+          -RepositoryRoot $configuration.RepoRoot `
+          -Record $waitRecord `
+          -Failure $waitFailure `
+          -Confirm:$false
+      }
+    }
+  }
+
+  Write-Host "SSH: ssh $($configuration.SshHostAlias)"
+  Write-Host (
+    'VS Code: code --remote ssh-remote+' +
+    "$($configuration.SshHostAlias) /workspace"
   )
+  $lifecycleResult = New-AzureDevLifecycleResult `
+    -Command start `
+    -Result $operation.Plan.Result `
+    -VmName $configuration.VmName `
+    -ObservedState running `
+    -Action $operation.Plan.Action
+  $completedAt = [long](& $getMonotonicMilliseconds)
+  $successRecord = New-AzureDevLifecycleLogRecord `
+    -Configuration $configuration `
+    -LifecycleResult $lifecycleResult `
+    -MutationAccepted $operation.MutationAccepted `
+    -ElapsedMilliseconds (
+      [Math]::Max([long]0, $completedAt - $attemptStartedAt)
+    )
+  return Complete-AzureDevLifecycleAttempt `
+    -RepositoryRoot $configuration.RepoRoot `
+    -Record $successRecord `
+    -LifecycleResult $lifecycleResult `
+    -Confirm:$false
 }
 
 Export-ModuleMember -Function Invoke-AzureDevLifecycleCommand

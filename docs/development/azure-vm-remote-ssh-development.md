@@ -831,8 +831,8 @@ the returned public-key wire blobs, then atomically replaces only the managed
 alias and resolved-host entries in `~/.ssh/known_hosts`. Other entries,
 including hashed entries for unrelated hosts, remain intact.
 
-The first SSH probe and all later setup, bootstrap, validation, start, and
-maintenance SSH or SCP operations use `StrictHostKeyChecking=yes`, the pinned
+The first SSH probe and all later setup, bootstrap, validation, and maintenance
+SSH or SCP operations use `StrictHostKeyChecking=yes`, the pinned
 user `known_hosts` file, no global known-host file, and
 `KnownHostsCommand=none`, `VerifyHostKeyDNS=no`, and `UpdateHostKeys=no`.
 Missing, malformed, or unavailable Azure evidence stops the workflow before
@@ -840,10 +840,10 @@ SSH. A network-presented mismatch stops immediately before remote preparation,
 local bootstrap credential-file generation, or upload.
 
 When Azure legitimately recreates the VM or rotates its host keys, rerun
-`setup -Yes` or `start -Yes`. The command obtains fresh keys independently
-through Azure Run Command and replaces only the entries authenticated by that
-evidence. If Azure Run Command cannot return valid keys, do not remove
-`known_hosts` entries manually; restore VM Agent/control-plane access and retry.
+`setup -Yes`. Setup obtains fresh keys independently through Azure Run Command
+and replaces only the entries authenticated by that evidence. If Azure Run
+Command cannot return valid keys, do not remove `known_hosts` entries manually;
+restore VM Agent/control-plane access and retry.
 
 The first setup can take a while. It installs host packages, mounts the data
 disk at `/mnt/krav-azure-dev-data`, bind-mounts
@@ -1056,7 +1056,7 @@ environment variables in addition to its standard OpenSSH environment policy.
 Before running either generated connection command, set both variables in the
 workstation environment as described in
 [Prepare GitHub authentication](#prepare-github-authentication). Setup prints
-the same reminder after a successful setup or start operation.
+the same reminder after a successful setup operation.
 
 To start a development environment, use the generated VS Code command:
 
@@ -1110,6 +1110,34 @@ Start the VM:
 ```powershell
 ./scripts/azure-dev.ps1 start
 ```
+
+`start` uses the configured subscription, resource group, and VM name for
+every Azure call. It holds the target-specific local lock only while it checks
+authentication, reads the decisive state, and optionally submits one start:
+
+- `running` returns `already-running` with action `none`.
+- `starting` joins the Azure transition without another mutation.
+- `stopped-allocated` or `deallocated` submits one asynchronous start request.
+- `not-found`, `unavailable`, `creating`, or `unrecognized` fails without a
+  mutation.
+
+After joining or submitting a start, the command releases the lock and polls
+Azure power state every five seconds for at most ten minutes. It reports state
+changes and a heartbeat every 30 seconds. A timeout does not roll back or
+repeat the accepted operation; Azure can still complete it.
+
+Success returns one typed lifecycle result and prints only these entry points,
+using the configured alias:
+
+```text
+SSH: ssh kravhantering-azure-dev
+VS Code: code --remote ssh-remote+kravhantering-azure-dev /workspace
+```
+
+The VS Code command is printed even when `code` is not installed locally.
+`start` does not inspect or change SSH configuration, keys, host trust, or
+connection details, and it does not invoke SSH or wait for SSH readiness. Run
+`setup` again to repair changed trust or connection preparation.
 
 Stop compute charges:
 

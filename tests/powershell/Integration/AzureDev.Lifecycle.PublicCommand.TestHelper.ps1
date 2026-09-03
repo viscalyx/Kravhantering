@@ -43,6 +43,7 @@ AZURE_CLIENT_SECRET=fake-harness-secret
 
   $argumentLog = Join-Path $fixtureRoot 'az-arguments.log'
   $forbiddenLog = Join-Path $fixtureRoot 'forbidden-commands.log'
+  $vmStateFile = Join-Path $fixtureRoot 'vm-state'
   $fakeAzPath = Join-Path $binPath 'az'
   Set-Content -LiteralPath $fakeAzPath -Value @'
 #!/bin/sh
@@ -71,13 +72,24 @@ if [ "$1" = 'account' ] && [ "$2" = 'get-access-token' ]; then
 fi
 
 if [ "$1" = 'vm' ] && [ "$2" = 'get-instance-view' ]; then
-  if [ "$FAKE_AZ_VM_STATE" = 'not-found' ]; then
+  state="$FAKE_AZ_VM_STATE"
+  if [ -f "$FAKE_AZ_VM_STATE_FILE" ]; then
+    state="$(/bin/cat "$FAKE_AZ_VM_STATE_FILE")"
+  fi
+  if [ "$state" = 'not-found' ]; then
     exit 3
   fi
-  if [ "$FAKE_AZ_VM_STATE" = 'read-failed' ]; then
+  if [ "$state" = 'read-failed' ]; then
     exit 1
   fi
-  printf '%s\n' "$FAKE_AZ_VM_STATE"
+  printf '%s\n' "$state"
+  if [ -n "$FAKE_AZ_VM_STATE_AFTER_READ" ]; then
+    printf '%s\n' "$FAKE_AZ_VM_STATE_AFTER_READ" > "$FAKE_AZ_VM_STATE_FILE"
+  fi
+  exit 0
+fi
+
+if [ "$1" = 'vm' ] && [ "$2" = 'start' ]; then
   exit 0
 fi
 
@@ -96,10 +108,17 @@ exit 99
   foreach ($commandName in @(
       'code',
       'curl',
+      'getent',
       'git',
+      'host',
+      'nslookup',
+      'rsync',
       'scp',
+      'sftp',
       'ssh',
+      'ssh-add',
       'ssh-keygen',
+      'ssh-keyscan',
       'wget'
     )) {
     $path = Join-Path $binPath $commandName
@@ -118,6 +137,7 @@ exit 97
     AzureCliHome = $azureCliHome
     ArgumentLog = $argumentLog
     ForbiddenLog = $forbiddenLog
+    VmStateFile = $vmStateFile
     SubscriptionId = $subscriptionId
     TenantId = $tenantId
     ClientId = $clientId
@@ -151,6 +171,8 @@ function Enter-AzureDevLifecyclePublicCommandFixture {
     FAKE_AZ_PROFILE_MODE = 'exact'
     FAKE_AZ_VM_STATE = 'PowerState/running'
     FAKE_AZ_DEALLOCATE_MODE = 'accept'
+    FAKE_AZ_VM_STATE_AFTER_READ = $null
+    FAKE_AZ_VM_STATE_FILE = $Fixture.VmStateFile
   }
   foreach ($entry in $environment.GetEnumerator()) {
     $existing = Get-Item `
@@ -197,7 +219,11 @@ function Clear-AzureDevLifecyclePublicCommandEvidence {
   )
 
   Remove-Item `
-    -LiteralPath $Fixture.ArgumentLog, $Fixture.ForbiddenLog `
+    -LiteralPath @(
+      $Fixture.ArgumentLog,
+      $Fixture.ForbiddenLog,
+      $Fixture.VmStateFile
+    ) `
     -Force `
     -ErrorAction SilentlyContinue
   Remove-Item `
