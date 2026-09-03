@@ -43,6 +43,8 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
     $script:newLifecycleTiming = {
       param(
         [System.Int64]$PollIntervalMilliseconds = 5000,
+        [System.Int64]$LockDeadlineMilliseconds = 15000,
+        [System.Int64]$AzureCallDeadlineMilliseconds = 120000,
         [System.Int64]$StableStopDeadlineMilliseconds = 600000,
         [System.Int64]$RunningDeadlineMilliseconds = 600000
       )
@@ -52,8 +54,8 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
         -Property @{
           PollIntervalMilliseconds = $PollIntervalMilliseconds
           HeartbeatIntervalMilliseconds = [System.Int64]30000
-          LockDeadlineMilliseconds = [System.Int64]15000
-          AzureCallDeadlineMilliseconds = [System.Int64]120000
+          LockDeadlineMilliseconds = $LockDeadlineMilliseconds
+          AzureCallDeadlineMilliseconds = $AzureCallDeadlineMilliseconds
           StableStopDeadlineMilliseconds = $StableStopDeadlineMilliseconds
           RunningDeadlineMilliseconds = $RunningDeadlineMilliseconds
           GetMonotonicMilliseconds = { return $script:now }
@@ -153,6 +155,186 @@ Describe 'Invoke-AzureDevLifecycleCommand' -Tag 'Unit' {
       Should-Invoke Get-AzureDevLifecycleState `
         -Exactly -Times 1 -Scope It
       Should-NotInvoke Invoke-AzureDevLifecycleLock -Scope It
+    }
+  }
+
+  Context 'When lifecycle configuration cannot be loaded' {
+    BeforeDiscovery {
+      $configurationCommands = @(
+        @{ CommandName = 'start' },
+        @{ CommandName = 'stop' }
+      )
+    }
+
+    BeforeEach {
+      Mock Get-AzureDevLifecycleConfig -MockWith {
+        throw 'configuration source failed'
+      }
+    }
+
+    It 'Should expose a stable <CommandName> configuration failure without a record' `
+      -ForEach $configurationCommands {
+      $captured = $null
+      try {
+        $null = Invoke-AzureDevLifecycleCommand `
+          -CommandName $CommandName `
+          -RepositoryRoot $TestDrive
+      } catch {
+        $captured = $_
+      }
+
+      $captured.FullyQualifiedErrorId |
+        Should-MatchString '^AzureDevLifecycleFailure\.configuration'
+      $captured.TargetObject.PSObject.TypeNames[0] |
+        Should-Be 'AzureDev.LifecycleFailure'
+      $captured.TargetObject.Phase | Should-Be 'configuration'
+      $captured.TargetObject.Command | Should-Be $CommandName
+      $captured.TargetObject.VmName | Should-BeNull
+      Should-NotInvoke Connect-AzureDevLifecycleSession -Scope It
+      Should-NotInvoke Invoke-AzureDevLifecycleLock -Scope It
+      Should-NotInvoke Complete-AzureDevLifecycleAttempt -Scope It
+    }
+  }
+
+  Context 'When lifecycle execution is interrupted at a decisive boundary' {
+    BeforeDiscovery {
+      $interruptionCases = @(
+        @{ CommandName = 'start'; Stage = 'lock' },
+        @{ CommandName = 'start'; Stage = 'authentication' },
+        @{ CommandName = 'start'; Stage = 'state-read' },
+        @{ CommandName = 'start'; Stage = 'mutation' },
+        @{ CommandName = 'stop'; Stage = 'lock' },
+        @{ CommandName = 'stop'; Stage = 'authentication' },
+        @{ CommandName = 'stop'; Stage = 'state-read' },
+        @{ CommandName = 'stop'; Stage = 'mutation' }
+      )
+    }
+
+    BeforeEach {
+      $script:interruption = [System.InvalidOperationException]::new(
+        'wrapped interruption',
+        [System.OperationCanceledException]::new('interrupted')
+      )
+      Mock Invoke-AzureDevLifecycleLock -ParameterFilter { -not $WhatIf } `
+        -MockWith {
+          if ($script:interruptedStage -eq 'lock') {
+            throw $script:interruption
+          }
+          return & $ScriptBlock $null $ConfigurationSnapshot
+        }
+      Mock Connect-AzureDevLifecycleSession -MockWith {
+        if ($script:interruptedStage -eq 'authentication') {
+          throw $script:interruption
+        }
+      }
+      Mock Get-AzureDevLifecycleState -MockWith {
+        if ($script:interruptedStage -eq 'state-read') {
+          throw $script:interruption
+        }
+        if ($script:interruptedStage -eq 'mutation') {
+          if ($script:interruptedCommand -eq 'start') {
+            return 'deallocated'
+          }
+          return 'running'
+        }
+        return 'running'
+      }
+      Mock Invoke-AzCli -MockWith {
+        if ($script:interruptedStage -eq 'mutation') {
+          throw $script:interruption
+        }
+      }
+    }
+
+    It 'Should propagate <CommandName> <Stage> cancellation without a terminal record' `
+      -ForEach $interruptionCases {
+      $script:interruptedCommand = $CommandName
+      $script:interruptedStage = $Stage
+      $captured = $null
+      try {
+        $null = Invoke-AzureDevLifecycleCommand `
+          -CommandName $CommandName `
+          -RepositoryRoot $TestDrive
+      } catch {
+        $captured = $_
+      }
+
+      $captured.Exception.InnerException.GetType().FullName |
+        Should-Be 'System.OperationCanceledException'
+      Should-NotInvoke Complete-AzureDevLifecycleAttempt -Scope It
+      if ($Stage -eq 'mutation') {
+        Should-Invoke Invoke-AzCli -Exactly -Times 1 -Scope It
+      } else {
+        Should-NotInvoke Invoke-AzCli -Scope It
+      }
+    }
+  }
+
+  Context 'When custom deadlines and lock contention reach orchestration' {
+    BeforeDiscovery {
+      $deadlineCases = @(
+        @{ CommandName = 'start' },
+        @{ CommandName = 'stop' }
+      )
+    }
+
+    BeforeEach {
+      $script:timingStates =
+        [System.Collections.Generic.Queue[System.String]]::new()
+      Mock Invoke-AzureDevLifecycleLock -ParameterFilter { -not $WhatIf } `
+        -MockWith {
+          $null = & $OnContention
+          return & $ScriptBlock $null $ConfigurationSnapshot
+        }
+      Mock Get-AzureDevLifecycleState -MockWith {
+        return $script:timingStates.Dequeue()
+      }
+    }
+
+    It 'Should propagate rounded <CommandName> timeouts and one tagged contention event' `
+      -ForEach $deadlineCases {
+      if ($CommandName -eq 'start') {
+        $script:timingStates.Enqueue('deallocated')
+        $script:timingStates.Enqueue('running')
+        $expectedStateReads = 2
+      } else {
+        $script:timingStates.Enqueue('running')
+        $expectedStateReads = 1
+      }
+      $script:now = [System.Int64]0
+      $timing = & $script:newLifecycleTiming `
+        -LockDeadlineMilliseconds 2301 `
+        -AzureCallDeadlineMilliseconds 7001
+      $information = @()
+
+      $result = Invoke-AzureDevLifecycleCommand `
+        -CommandName $CommandName `
+        -RepositoryRoot $TestDrive `
+        -Timing $timing `
+        -InformationVariable information
+
+      @($result).Count | Should-Be 1
+      Should-Invoke Invoke-AzureDevLifecycleLock `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 3 }
+      Should-Invoke Connect-AzureDevLifecycleSession `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 8 }
+      Should-Invoke Get-AzureDevLifecycleState `
+        -Exactly -Times $expectedStateReads -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 8 }
+      Should-Invoke Invoke-AzCli -Exactly -Times 1 -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 8 }
+      $contentionEvents = @(
+        $information | Where-Object {
+          $_.Tags -contains 'AzureDevLifecycleProgress' -and
+          $_.Tags -contains 'contention'
+        }
+      )
+      $contentionEvents.Count | Should-Be 1
+      $contentionEvents[0].MessageData.Event | Should-Be 'contention'
+      $contentionEvents[0].MessageData.Command | Should-Be $CommandName
+      $contentionEvents[0].MessageData.Phase | Should-Be 'lock'
     }
   }
 

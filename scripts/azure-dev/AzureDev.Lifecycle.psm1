@@ -1,5 +1,53 @@
 Set-StrictMode -Version Latest
 
+function Test-AzureDevOrchestrationInterruption {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$ErrorObject
+  )
+
+  $exception = if (
+    $ErrorObject -is [System.Management.Automation.ErrorRecord]
+  ) {
+    $ErrorObject.Exception
+  } else {
+    $ErrorObject
+  }
+  while ($null -ne $exception) {
+    if (
+      $exception -is [System.OperationCanceledException] -or
+      $exception -is [System.Management.Automation.PipelineStoppedException]
+    ) {
+      return $true
+    }
+    $exception = $exception.InnerException
+  }
+  return $false
+}
+
+function ConvertTo-AzureDevLifecycleTimeoutSeconds {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [ValidateRange(1, [long]::MaxValue)]
+    [long]$Milliseconds,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateRange(1, [int]::MaxValue)]
+    [int]$MaximumSeconds
+  )
+
+  $seconds = [long][Math]::Ceiling([decimal]$Milliseconds / 1000)
+  if ($seconds -gt $MaximumSeconds) {
+    throw (
+      "Lifecycle timeout $Milliseconds milliseconds exceeds the supported " +
+      "maximum of $MaximumSeconds seconds."
+    )
+  }
+  return [int]$seconds
+}
+
 function New-AzureDevLifecycleResult {
   [CmdletBinding()]
   param(
@@ -591,6 +639,9 @@ function Write-AzureDevLifecycleLogRecord {
       -Encoding UTF8 `
       -ErrorAction Stop
   } catch {
+    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+      throw
+    }
     Write-Warning `
       -Message (
         'The Azure development-environment lifecycle log record could not be ' +
@@ -693,6 +744,9 @@ function Complete-AzureDevLifecycleAttempt {
       -Confirm:$false `
       -WarningAction Continue
   } catch {
+    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+      throw
+    }
     Write-Warning `
       -Message (
         'The Azure development-environment lifecycle log record could not be ' +
@@ -710,7 +764,10 @@ function Get-AzureDevLifecycleState {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
-    [psobject]$Configuration
+    [psobject]$Configuration,
+
+    [ValidateRange(1, 2147483)]
+    [int]$TimeoutSeconds = 120
   )
 
   $query = (
@@ -734,9 +791,12 @@ function Get-AzureDevLifecycleState {
         'tsv',
         '--only-show-errors'
       ) `
-      -TimeoutSeconds 120 `
+      -TimeoutSeconds $TimeoutSeconds `
       -SuppressOutputDetails
   } catch {
+    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+      throw
+    }
     if (
       $_.Exception.Data.Contains('AzureDevCliExitCode') -and
       $_.Exception.Data['AzureDevCliExitCode'] -eq 3
@@ -867,7 +927,10 @@ function Invoke-AzureDevStopLifecycle {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
-    [psobject]$Configuration
+    [psobject]$Configuration,
+
+    [ValidateRange(1, 2147483)]
+    [int]$AzureCallTimeoutSeconds = 120
   )
 
   Write-AzureDevLifecycleProgress `
@@ -876,8 +939,13 @@ function Invoke-AzureDevStopLifecycle {
     -VmName $Configuration.VmName `
     -Phase authentication
   try {
-    $null = Connect-AzureDevLifecycleSession -Config $Configuration
+    $null = Connect-AzureDevLifecycleSession `
+      -Config $Configuration `
+      -TimeoutSeconds $AzureCallTimeoutSeconds
   } catch {
+    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+      throw
+    }
     $failure = New-AzureDevLifecycleErrorRecord `
       -Phase authentication `
       -Message (
@@ -891,8 +959,12 @@ function Invoke-AzureDevStopLifecycle {
 
   try {
     $observedState = Get-AzureDevLifecycleState `
-      -Configuration $Configuration
+      -Configuration $Configuration `
+      -TimeoutSeconds $AzureCallTimeoutSeconds
   } catch {
+    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+      throw
+    }
     $failure = New-AzureDevLifecycleErrorRecord `
       -Phase state-read `
       -Message (
@@ -968,9 +1040,12 @@ function Invoke-AzureDevStopLifecycle {
           'none',
           '--only-show-errors'
         ) `
-        -TimeoutSeconds 120 `
+        -TimeoutSeconds $AzureCallTimeoutSeconds `
         -SuppressOutputDetails
     } catch {
+      if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+        throw
+      }
       $failure = New-AzureDevLifecycleErrorRecord `
         -Phase deallocation-submission `
         -Message (
@@ -1013,12 +1088,31 @@ function Invoke-AzureDevStopCommand {
     return
   }
 
+  if ($Timing.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleTiming') {
+    throw 'Timing must be an Azure development-environment lifecycle timing contract.'
+  }
+
   $getMonotonicMilliseconds = $Timing.GetMonotonicMilliseconds
   $startedAt = [long](& $getMonotonicMilliseconds)
+  $lockTimeoutSeconds = ConvertTo-AzureDevLifecycleTimeoutSeconds `
+    -Milliseconds $Timing.LockDeadlineMilliseconds `
+    -MaximumSeconds ([int]::MaxValue)
+  $azureCallTimeoutSeconds = ConvertTo-AzureDevLifecycleTimeoutSeconds `
+    -Milliseconds $Timing.AzureCallDeadlineMilliseconds `
+    -MaximumSeconds 2147483
+  $contentionProgress = {
+    Write-AzureDevLifecycleProgress `
+      -Event contention `
+      -Command stop `
+      -VmName $Configuration.VmName `
+      -Phase lock
+  }
   try {
     $lifecycleResult = Invoke-AzureDevLifecycleLock `
       -ConfigurationSnapshot $Configuration `
       -CommandName stop `
+      -TimeoutSeconds $lockTimeoutSeconds `
+      -OnContention $contentionProgress `
       -ScriptBlock {
         param(
           [AllowNull()]
@@ -1031,10 +1125,14 @@ function Invoke-AzureDevStopCommand {
         $null = $Lock
         return Invoke-AzureDevStopLifecycle `
           -Configuration $LockedConfiguration `
+          -AzureCallTimeoutSeconds $azureCallTimeoutSeconds `
           -Confirm:$false
       } `
       -Confirm:$false
   } catch {
+    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+      throw
+    }
     $caught = $_
     $failure = if (
       $null -ne $caught.TargetObject -and
@@ -1208,14 +1306,46 @@ function Invoke-AzureDevLifecycleCommand {
     [pscustomobject]$Timing = (New-AzureDevLifecycleTiming)
   )
 
-  $configuration = Get-AzureDevLifecycleConfig `
-    -CommandName $CommandName `
-    -RepositoryRoot $RepositoryRoot `
-    -EnvironmentFile $EnvironmentFile
+  try {
+    $configuration = Get-AzureDevLifecycleConfig `
+      -CommandName $CommandName `
+      -RepositoryRoot $RepositoryRoot `
+      -EnvironmentFile $EnvironmentFile
+  } catch {
+    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
+      throw
+    }
+    $configurationFailure = New-AzureDevLifecycleErrorRecord `
+      -Phase configuration `
+      -Message (
+        "Azure lifecycle configuration could not be loaded for command " +
+        "'$CommandName': $($_.Exception.Message)"
+      ) `
+      -Command $(if ($CommandName -in @('start', 'stop')) {
+          $CommandName
+        } else {
+          $null
+        })
+    $PSCmdlet.ThrowTerminatingError($configurationFailure)
+  }
+
+  if ($Timing.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleTiming') {
+    throw 'Timing must be an Azure development-environment lifecycle timing contract.'
+  }
+  $lockTimeoutSeconds = ConvertTo-AzureDevLifecycleTimeoutSeconds `
+    -Milliseconds $Timing.LockDeadlineMilliseconds `
+    -MaximumSeconds ([int]::MaxValue)
+  $azureCallTimeoutSeconds = ConvertTo-AzureDevLifecycleTimeoutSeconds `
+    -Milliseconds $Timing.AzureCallDeadlineMilliseconds `
+    -MaximumSeconds 2147483
 
   if ($CommandName -eq 'status') {
-    Connect-AzureDevLifecycleSession -Config $configuration
-    $state = Get-AzureDevLifecycleState -Configuration $configuration
+    Connect-AzureDevLifecycleSession `
+      -Config $configuration `
+      -TimeoutSeconds $azureCallTimeoutSeconds
+    $state = Get-AzureDevLifecycleState `
+      -Configuration $configuration `
+      -TimeoutSeconds $azureCallTimeoutSeconds
     Write-Host "Power state: $state"
     return
   }
@@ -1223,10 +1353,12 @@ function Invoke-AzureDevLifecycleCommand {
   if ($WhatIfPreference) {
     Connect-AzureDevLifecycleSession `
       -Config $configuration `
+      -TimeoutSeconds $azureCallTimeoutSeconds `
       -WhatIf
     $null = Invoke-AzureDevLifecycleLock `
       -ConfigurationSnapshot $configuration `
       -CommandName $CommandName `
+      -TimeoutSeconds $lockTimeoutSeconds `
       -ScriptBlock {
         throw 'Preview must not invoke guarded lifecycle work.'
       } `
@@ -1276,9 +1408,6 @@ function Invoke-AzureDevLifecycleCommand {
       -Confirm:$false
   }
 
-  if ($Timing.PSObject.TypeNames[0] -ne 'AzureDev.LifecycleTiming') {
-    throw 'Timing must be an Azure development-environment lifecycle timing contract.'
-  }
   $getMonotonicMilliseconds = $Timing.GetMonotonicMilliseconds
   $attemptStartedAt = [long](& $getMonotonicMilliseconds)
   $completeStartFailure = {
@@ -1346,13 +1475,11 @@ function Invoke-AzureDevLifecycleCommand {
       -VmName $ConfigurationSnapshot.VmName `
       -Phase authentication
     try {
-      Connect-AzureDevLifecycleSession -Config $ConfigurationSnapshot
+      Connect-AzureDevLifecycleSession `
+        -Config $ConfigurationSnapshot `
+        -TimeoutSeconds $azureCallTimeoutSeconds
     } catch {
-      if (
-        $_.Exception -is [System.OperationCanceledException] -or
-        $_.Exception -is
-          [System.Management.Automation.PipelineStoppedException]
-      ) {
+      if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
         throw
       }
       $authenticationFailure = New-AzureDevLifecycleErrorRecord `
@@ -1364,7 +1491,8 @@ function Invoke-AzureDevLifecycleCommand {
     }
 
     $observedState = Get-AzureDevLifecycleState `
-      -Configuration $ConfigurationSnapshot
+      -Configuration $ConfigurationSnapshot `
+      -TimeoutSeconds $azureCallTimeoutSeconds
     Write-AzureDevLifecycleProgress `
       -Event observed-state `
       -Command start `
@@ -1407,14 +1535,10 @@ function Invoke-AzureDevLifecycleCommand {
             'none',
             '--only-show-errors'
           ) `
-          -TimeoutSeconds 120 `
+          -TimeoutSeconds $azureCallTimeoutSeconds `
           -SuppressOutputDetails
       } catch {
-        if (
-          $_.Exception -is [System.OperationCanceledException] -or
-          $_.Exception -is
-            [System.Management.Automation.PipelineStoppedException]
-        ) {
+        if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
           throw
         }
         $submissionFailure = New-AzureDevLifecycleErrorRecord `
@@ -1437,18 +1561,23 @@ function Invoke-AzureDevLifecycleCommand {
       MutationAccepted = [bool]$plan.SubmitMutation
     }
   }
+  $contentionProgress = {
+    Write-AzureDevLifecycleProgress `
+      -Event contention `
+      -Command start `
+      -VmName $configuration.VmName `
+      -Phase lock
+  }
   $operation = $null
   try {
     $operation = Invoke-AzureDevLifecycleLock `
       -ConfigurationSnapshot $configuration `
       -CommandName start `
-      -TimeoutSeconds 15 `
+      -TimeoutSeconds $lockTimeoutSeconds `
+      -OnContention $contentionProgress `
       -ScriptBlock $lockedDecision
   } catch {
-    if (
-      $_.Exception -is [System.OperationCanceledException] -or
-      $_.Exception -is [System.Management.Automation.PipelineStoppedException]
-    ) {
+    if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
       throw
     }
     & $completeStartLockFailure $_
@@ -1484,7 +1613,8 @@ function Invoke-AzureDevLifecycleCommand {
         }
 
         $nextStableState = Get-AzureDevLifecycleState `
-          -Configuration $configuration
+          -Configuration $configuration `
+          -TimeoutSeconds $azureCallTimeoutSeconds
         $stableStateObservedAt = [long](& $getMonotonicMilliseconds)
         $stableElapsedMilliseconds = [Math]::Max(
           [long]0,
@@ -1516,14 +1646,11 @@ function Invoke-AzureDevLifecycleCommand {
         $operation = Invoke-AzureDevLifecycleLock `
           -ConfigurationSnapshot $configuration `
           -CommandName start `
-          -TimeoutSeconds 15 `
+          -TimeoutSeconds $lockTimeoutSeconds `
+          -OnContention $contentionProgress `
           -ScriptBlock $lockedDecision
       } catch {
-        if (
-          $_.Exception -is [System.OperationCanceledException] -or
-          $_.Exception -is
-            [System.Management.Automation.PipelineStoppedException]
-        ) {
+        if (Test-AzureDevOrchestrationInterruption -ErrorObject $_) {
           throw
         }
         & $completeStartLockFailure $_
@@ -1565,23 +1692,17 @@ function Invoke-AzureDevLifecycleCommand {
           -ObservedState $terminalState `
           -Action $operation.Plan.Action `
           -MutationAccepted $operation.MutationAccepted
-        $timeoutRecord = New-AzureDevLifecycleLogRecord `
-          -Configuration $configuration `
-          -Failure $timeoutFailure `
-          -ElapsedMilliseconds (
-            [Math]::Max(
-              [long]0,
-              [long](& $getMonotonicMilliseconds) - $attemptStartedAt
-            )
-          )
-        Complete-AzureDevLifecycleAttempt `
-          -RepositoryRoot $configuration.RepoRoot `
-          -Record $timeoutRecord `
-          -Failure $timeoutFailure `
-          -Confirm:$false
+        & $completeStartFailure `
+          $timeoutFailure `
+          ([Math]::Max(
+            [long]0,
+            [long](& $getMonotonicMilliseconds) - $attemptStartedAt
+          ))
       }
 
-      $nextState = Get-AzureDevLifecycleState -Configuration $configuration
+      $nextState = Get-AzureDevLifecycleState `
+        -Configuration $configuration `
+        -TimeoutSeconds $azureCallTimeoutSeconds
       $stateObservedAt = [long](& $getMonotonicMilliseconds)
       $stateElapsedMilliseconds = [Math]::Max(
         [long]0,
@@ -1612,17 +1733,9 @@ function Invoke-AzureDevLifecycleCommand {
           -ObservedState $terminalState `
           -Action $operation.Plan.Action `
           -MutationAccepted $operation.MutationAccepted
-        $lateStateRecord = New-AzureDevLifecycleLogRecord `
-          -Configuration $configuration `
-          -Failure $lateStateFailure `
-          -ElapsedMilliseconds (
-            [Math]::Max([long]0, $stateObservedAt - $attemptStartedAt)
-          )
-        Complete-AzureDevLifecycleAttempt `
-          -RepositoryRoot $configuration.RepoRoot `
-          -Record $lateStateRecord `
-          -Failure $lateStateFailure `
-          -Confirm:$false
+        & $completeStartFailure `
+          $lateStateFailure `
+          ([Math]::Max([long]0, $stateObservedAt - $attemptStartedAt))
       }
       if ($terminalState -in @('stopping', 'deallocating')) {
         $interferenceFailure = New-AzureDevLifecycleErrorRecord `
@@ -1637,17 +1750,9 @@ function Invoke-AzureDevLifecycleCommand {
           -ObservedState $terminalState `
           -Action $operation.Plan.Action `
           -MutationAccepted $operation.MutationAccepted
-        $interferenceRecord = New-AzureDevLifecycleLogRecord `
-          -Configuration $configuration `
-          -Failure $interferenceFailure `
-          -ElapsedMilliseconds (
-            [Math]::Max([long]0, $stateObservedAt - $attemptStartedAt)
-          )
-        Complete-AzureDevLifecycleAttempt `
-          -RepositoryRoot $configuration.RepoRoot `
-          -Record $interferenceRecord `
-          -Failure $interferenceFailure `
-          -Confirm:$false
+        & $completeStartFailure `
+          $interferenceFailure `
+          ([Math]::Max([long]0, $stateObservedAt - $attemptStartedAt))
       }
       if ($terminalState -in @(
           'not-found',
@@ -1672,17 +1777,9 @@ function Invoke-AzureDevLifecycleCommand {
           -ObservedState $terminalState `
           -Action $operation.Plan.Action `
           -MutationAccepted $operation.MutationAccepted
-        $waitRecord = New-AzureDevLifecycleLogRecord `
-          -Configuration $configuration `
-          -Failure $waitFailure `
-          -ElapsedMilliseconds (
-            [Math]::Max([long]0, $stateObservedAt - $attemptStartedAt)
-          )
-        Complete-AzureDevLifecycleAttempt `
-          -RepositoryRoot $configuration.RepoRoot `
-          -Record $waitRecord `
-          -Failure $waitFailure `
-          -Confirm:$false
+        & $completeStartFailure `
+          $waitFailure `
+          ([Math]::Max([long]0, $stateObservedAt - $attemptStartedAt))
       }
     }
   }

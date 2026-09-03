@@ -39,5 +39,28 @@ Describe 'Format-AzureDevCommand' -Tag 'Unit' {
       $formatted | Should-NotMatchString 'last secret line'
       $formatted | Should-NotMatchString 'decoy-value'
     }
+
+    It 'Should redact hyphenated combined secret flags across multiple lines' {
+      $clientSecret = "client first line`nclient last line"
+      $authKey = "auth first line`r`nauth last line"
+
+      $formatted = Format-AzureDevCommand `
+        -FilePath 'az' `
+        -Arguments @(
+          'login',
+          "--client-secret=$clientSecret",
+          "--auth-key=$authKey"
+        )
+
+      $formatted | Should-BeString `
+        -CaseSensitive `
+        -Expected (
+          'az login --client-secret=[redacted] --auth-key=[redacted]'
+        )
+      $formatted | Should-NotMatchString 'client first line'
+      $formatted | Should-NotMatchString 'client last line'
+      $formatted | Should-NotMatchString 'auth first line'
+      $formatted | Should-NotMatchString 'auth last line'
+    }
   }
 }

@@ -3,6 +3,32 @@ Set-StrictMode -Version Latest
 $script:AzureDevWhatIfDocumentationUrl = 'https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-what-if'
 $script:AzureDevTrustedLaunchSkuSupportCache = @{}
 
+function Test-AzureDevAzureLifecycleInterruption {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$ErrorObject
+  )
+
+  $exception = if (
+    $ErrorObject -is [System.Management.Automation.ErrorRecord]
+  ) {
+    $ErrorObject.Exception
+  } else {
+    $ErrorObject
+  }
+  while ($null -ne $exception) {
+    if (
+      $exception -is [System.OperationCanceledException] -or
+      $exception -is [System.Management.Automation.PipelineStoppedException]
+    ) {
+      return $true
+    }
+    $exception = $exception.InnerException
+  }
+  return $false
+}
+
 function Invoke-AzCli {
   [CmdletBinding()]
   param(
@@ -120,10 +146,12 @@ function Connect-AzureDevLifecycleSession {
   [CmdletBinding(SupportsShouldProcess = $true)]
   param(
     [Parameter(Mandatory = $true)]
-    [pscustomobject]$Config
+    [pscustomobject]$Config,
+
+    [ValidateRange(1, 2147483)]
+    [int]$TimeoutSeconds = 120
   )
 
-  $timeoutSeconds = 120
   $phase = 'authentication'
   $invokeLifecycleAz = {
     param(
@@ -137,12 +165,12 @@ function Connect-AzureDevLifecycleSession {
       return Invoke-AzCli `
         -Arguments $Arguments `
         -Json:$Json `
-        -TimeoutSeconds $timeoutSeconds `
+        -TimeoutSeconds $TimeoutSeconds `
         -SuppressOutputDetails
     } catch [System.TimeoutException] {
       throw [System.TimeoutException]::new(
         "Azure CLI call in lifecycle phase '$phase' timed out after " +
-        "$timeoutSeconds seconds."
+        "$TimeoutSeconds seconds."
       )
     }
   }
@@ -174,6 +202,9 @@ function Connect-AzureDevLifecycleSession {
     } catch [System.TimeoutException] {
       throw
     } catch {
+      if (Test-AzureDevAzureLifecycleInterruption -ErrorObject $_) {
+        throw
+      }
       return $null
     }
   }
@@ -249,6 +280,9 @@ function Connect-AzureDevLifecycleSession {
     } catch [System.TimeoutException] {
       throw
     } catch {
+      if (Test-AzureDevAzureLifecycleInterruption -ErrorObject $_) {
+        throw
+      }
       return $false
     }
   }
@@ -312,6 +346,9 @@ function Connect-AzureDevLifecycleSession {
   } catch [System.TimeoutException] {
     throw
   } catch {
+    if (Test-AzureDevAzureLifecycleInterruption -ErrorObject $_) {
+      throw
+    }
     throw 'Could not verify the Azure CLI version during authentication.'
   }
   $azureCliVersion = $null
@@ -348,6 +385,9 @@ function Connect-AzureDevLifecycleSession {
   } catch [System.TimeoutException] {
     throw
   } catch {
+    if (Test-AzureDevAzureLifecycleInterruption -ErrorObject $_) {
+      throw
+    }
     throw 'Targeted service-principal login failed during authentication.'
   }
 

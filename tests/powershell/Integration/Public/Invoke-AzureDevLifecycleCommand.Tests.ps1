@@ -395,14 +395,32 @@ Describe `
   }
 
   Context 'When lifecycle configuration is incomplete' {
-    It 'Should fail incomplete configuration before invoking Azure' {
-      $incompleteRoot = Join-Path $TestDrive 'incomplete-repository'
-      New-Item -ItemType Directory -Path $incompleteRoot | Out-Null
+    BeforeDiscovery {
+      $configurationCommands = @('start', 'stop')
+    }
 
-      {
-        & $script:entryPoint stop -RepositoryRoot $incompleteRoot
-      } | Should-Throw
+    It 'Should expose a stable <_> configuration failure before invoking Azure' `
+      -ForEach $configurationCommands {
+      $commandName = $_
+      $incompleteRoot = Join-Path $TestDrive "incomplete-$commandName"
+      New-Item -ItemType Directory -Path $incompleteRoot -Force | Out-Null
 
+      $captured = $null
+      try {
+        $null = & $script:entryPoint `
+          $commandName `
+          -RepositoryRoot $incompleteRoot
+      } catch {
+        $captured = $_
+      }
+
+      $captured.FullyQualifiedErrorId |
+        Should-MatchString '^AzureDevLifecycleFailure\.configuration'
+      $captured.TargetObject.PSObject.TypeNames[0] |
+        Should-Be 'AzureDev.LifecycleFailure'
+      $captured.TargetObject.Phase | Should-Be 'configuration'
+      $captured.TargetObject.Command | Should-Be $commandName
+      $captured.TargetObject.VmName | Should-BeNull
       @(Get-AzureDevLifecyclePublicCommandCalls `
           -Fixture $script:fixture).Count | Should-Be 0
       Test-Path -LiteralPath (Join-Path $incompleteRoot '.azure') |

@@ -38,6 +38,9 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       if ($null -ne $script:mockLockFailure) {
         throw $script:mockLockFailure
       }
+      if ($script:mockReportContention -and $null -ne $OnContention) {
+        $null = & $OnContention
+      }
       $script:mockLockHeld = $true
       try {
         return & $ScriptBlock $null $ConfigurationSnapshot
@@ -47,6 +50,7 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
     }
     Mock Invoke-AzureDevStopLifecycle -MockWith {
       $script:mockStopLifecycleInvocationCount++
+      $script:mockAzureCallTimeoutSeconds = $AzureCallTimeoutSeconds
       $result = [System.Management.Automation.PSObject][ordered]@{
         Command = 'stop'
         Result = 'requested'
@@ -72,6 +76,8 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
     $script:mockStopLifecycleInvocationCount = 0
     $script:mockLogWriteInvocationCount = 0
     $script:mockLockFailure = $null
+    $script:mockReportContention = $false
+    $script:mockAzureCallTimeoutSeconds = $null
   }
 
   AfterAll {
@@ -167,6 +173,73 @@ Describe 'Invoke-AzureDevStopCommand' -Tag 'Unit' {
       $script:mockCapturedRecord.failurePhase | Should-Be 'lock'
       Should-Invoke Write-AzureDevLifecycleLogRecord `
         -Exactly -Times 1 -Scope It
+    }
+
+    It 'Should propagate lock cancellation without writing a terminal record' {
+      $script:mockLockFailure = [System.InvalidOperationException]::new(
+        'wrapped interruption',
+        [System.OperationCanceledException]::new('interrupted')
+      )
+
+      $captured = $null
+      try {
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          $null = Invoke-AzureDevStopCommand -Configuration $Configuration
+        }
+      } catch {
+        $captured = $_
+      }
+
+      $captured.Exception.InnerException.GetType().FullName |
+        Should-Be 'System.OperationCanceledException'
+      $script:mockLogWriteInvocationCount | Should-Be 0
+      Should-Invoke Invoke-AzureDevLifecycleLock `
+        -Exactly -Times 1 -Scope It
+    }
+  }
+
+  Context 'When stop uses non-default lifecycle deadlines' {
+    BeforeAll {
+      Mock Write-AzureDevLifecycleProgress
+    }
+
+    It 'Should round up deadlines and emit one contention event' {
+      $script:mockReportContention = $true
+      $timing = InModuleScope -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        $contract = New-AzureDevLifecycleTiming -GetMonotonicMilliseconds {
+          return [long]100
+        }
+        $contract.LockDeadlineMilliseconds = [long]2301
+        $contract.AzureCallDeadlineMilliseconds = [long]7001
+        return $contract
+      }
+
+      $result = InModuleScope -Parameters @{
+        Configuration = $script:configuration
+        Timing = $timing
+      } -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        Invoke-AzureDevStopCommand `
+          -Configuration $Configuration `
+          -Timing $Timing
+      }
+
+      $result.Result | Should-Be 'requested'
+      $script:mockAzureCallTimeoutSeconds | Should-Be 8
+      Should-Invoke Invoke-AzureDevLifecycleLock `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 3 }
+      Should-Invoke Write-AzureDevLifecycleProgress `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter {
+          $Event -ceq 'contention' -and
+          $Command -ceq 'stop' -and
+          $Phase -ceq 'lock'
+        }
     }
   }
 }

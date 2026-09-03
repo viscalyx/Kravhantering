@@ -28,15 +28,28 @@ Describe 'Format-AzureDevCommand' -Tag 'Integration' `
 
   Context 'When combined credentials cross the exported module boundary' {
     It 'Should return one completely redacted command string' {
-      $secret = "first line`nsecond line`n"
+      $password = "password first line`npassword second line`n"
+      $clientSecret = "client first line`nclient second line`n"
+      $authKey = "auth first line`r`nauth second line`n"
 
       $formatted = Format-AzureDevCommand `
         -FilePath 'az' `
-        -Arguments @('login', "--password=$secret")
+        -Arguments @(
+          'login',
+          "--password=$password",
+          "--client-secret=$clientSecret",
+          "--auth-key=$authKey"
+        )
 
       $formatted | Should-BeString `
         -CaseSensitive `
-        -Expected 'az login --password=[redacted]'
+        -Expected (
+          'az login --password=[redacted] --client-secret=[redacted] ' +
+          '--auth-key=[redacted]'
+        )
+      $formatted | Should-NotMatchString 'password first line'
+      $formatted | Should-NotMatchString 'client first line'
+      $formatted | Should-NotMatchString 'auth first line'
     }
   }
 }

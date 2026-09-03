@@ -580,6 +580,63 @@ Describe 'Connect-AzureDevLifecycleSession' -Tag 'Unit' {
     }
   }
 
+  Context 'When cached authentication inspection is interrupted' {
+    BeforeDiscovery {
+      $interruptionCases = @(
+        @{ Stage = 'profile' },
+        @{ Stage = 'token' }
+      )
+    }
+
+    It 'Should propagate <Stage> cancellation without attempting login' `
+      -ForEach $interruptionCases {
+      $script:mockInterruptedStage = $Stage
+      Mock -CommandName Invoke-AzCli -MockWith {
+        $isProfile = (
+          $Arguments[0] -eq 'account' -and
+          $Arguments[1] -eq 'show'
+        )
+        $isToken = (
+          $Arguments[0] -eq 'account' -and
+          $Arguments[1] -eq 'get-access-token'
+        )
+        if (
+          ($script:mockInterruptedStage -eq 'profile' -and $isProfile) -or
+          ($script:mockInterruptedStage -eq 'token' -and $isToken)
+        ) {
+          $inner = [System.OperationCanceledException]::new('interrupted')
+          throw [System.InvalidOperationException]::new('wrapper', $inner)
+        }
+        return $script:mockProfile
+      }
+
+      {
+        Connect-AzureDevLifecycleSession `
+          -Config $script:servicePrincipalConfig
+      } | Should-Throw -ExceptionMessage '*wrapper*'
+
+      Should-NotInvoke `
+        -CommandName Invoke-AzCli `
+        -Scope It `
+        -ParameterFilter { $Arguments[0] -in @('version', 'login') }
+    }
+  }
+
+  Context 'When authentication uses a non-default Azure deadline' {
+    It 'Should apply the same timeout to profile and token proofs' {
+      $null = Connect-AzureDevLifecycleSession `
+        -Config $script:servicePrincipalConfig `
+        -TimeoutSeconds 7
+
+      Should-Invoke `
+        -CommandName Invoke-AzCli `
+        -Exactly `
+        -Times 2 `
+        -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 7 }
+    }
+  }
+
   Context 'When preview checks a matching cached profile' {
     It 'Should not acquire a token or change Azure CLI state' {
       $null = Connect-AzureDevLifecycleSession `

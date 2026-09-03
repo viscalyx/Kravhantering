@@ -156,12 +156,16 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
         -ConfigurationSnapshot $snapshot `
         -CommandName start
       $script:ownedLocks += $owner
+      $script:mockContentionCount = 0
 
       $caught = $null
       try {
         $null = Enter-AzureDevLifecycleLock `
           -ConfigurationSnapshot $snapshot `
-          -CommandName stop
+          -CommandName stop `
+          -OnContention {
+            $script:mockContentionCount++
+          }
       } catch {
         $caught = $_
       }
@@ -178,6 +182,7 @@ Describe 'Enter-AzureDevLifecycleLock' -Tag 'Unit' {
       $script:mockTimestamp | Should-Be (
         [System.Int64](15 * [System.Diagnostics.Stopwatch]::Frequency)
       )
+      $script:mockContentionCount | Should-Be 1
       Should-Invoke `
         -CommandName Wait-AzureDevLifecycleLockRetry `
         -Exactly `

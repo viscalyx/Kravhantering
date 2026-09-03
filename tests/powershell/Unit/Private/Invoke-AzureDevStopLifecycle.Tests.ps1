@@ -284,4 +284,77 @@ Describe 'Invoke-AzureDevStopLifecycle' -Tag 'Unit' {
       Should-Invoke Invoke-AzCli -Exactly -Times 1 -Scope It
     }
   }
+
+  Context 'When a decisive stop stage is interrupted' {
+    BeforeDiscovery {
+      $interruptionCases = @(
+        @{ Stage = 'authentication' },
+        @{ Stage = 'state-read' },
+        @{ Stage = 'submission' }
+      )
+    }
+
+    It 'Should propagate <Stage> cancellation without a later mutation' `
+      -ForEach $interruptionCases {
+      $interruption = [System.InvalidOperationException]::new(
+        'wrapped interruption',
+        [System.OperationCanceledException]::new('interrupted')
+      )
+      switch ($Stage) {
+        'authentication' {
+          $script:mockAuthenticationFailure = $interruption
+        }
+        'state-read' {
+          $script:mockStateReadFailure = $interruption
+        }
+        'submission' {
+          $script:mockSubmissionFailure = $interruption
+        }
+      }
+
+      $captured = $null
+      try {
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          $null = Invoke-AzureDevStopLifecycle -Configuration $Configuration
+        }
+      } catch {
+        $captured = $_
+      }
+
+      $captured.Exception.Message | Should-Be 'wrapped interruption'
+      $captured.Exception.InnerException.GetType().FullName |
+        Should-Be 'System.OperationCanceledException'
+      if ($Stage -in @('authentication', 'state-read')) {
+        Should-NotInvoke Invoke-AzCli -Scope It
+      } else {
+        Should-Invoke Invoke-AzCli -Exactly -Times 1 -Scope It
+      }
+    }
+  }
+
+  Context 'When stop uses a non-default Azure deadline' {
+    It 'Should apply it to authentication, state observation, and submission' {
+      $result = InModuleScope -Parameters @{
+        Configuration = $script:configuration
+      } -ScriptBlock {
+        Set-StrictMode -Version 1.0
+        Invoke-AzureDevStopLifecycle `
+          -Configuration $Configuration `
+          -AzureCallTimeoutSeconds 7
+      }
+
+      $result.Result | Should-Be 'requested'
+      Should-Invoke Connect-AzureDevLifecycleSession `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 7 }
+      Should-Invoke Get-AzureDevLifecycleState `
+        -Exactly -Times 1 -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 7 }
+      Should-Invoke Invoke-AzCli -Exactly -Times 1 -Scope It `
+        -ParameterFilter { $TimeoutSeconds -eq 7 }
+    }
+  }
 }

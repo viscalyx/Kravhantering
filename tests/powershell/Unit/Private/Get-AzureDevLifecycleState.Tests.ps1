@@ -162,5 +162,46 @@ Describe 'Get-AzureDevLifecycleState' -Tag 'Unit' {
         }
       }
     }
+
+    Context 'When the state read is interrupted' {
+      BeforeAll {
+        Mock Invoke-AzCli -MockWith {
+          $inner = [System.OperationCanceledException]::new('interrupted')
+          throw [System.InvalidOperationException]::new('wrapper', $inner)
+        }
+      }
+
+      It 'Should propagate cancellation instead of reporting unavailable' {
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          {
+            Get-AzureDevLifecycleState -Configuration $Configuration
+          } | Should-Throw -ExceptionMessage '*wrapper*'
+        }
+      }
+    }
+
+    Context 'When the state read uses a non-default deadline' {
+      BeforeAll {
+        Mock Invoke-AzCli -MockWith { return 'PowerState/running' }
+      }
+
+      It 'Should pass the caller timeout to the Azure CLI boundary' {
+        InModuleScope -Parameters @{
+          Configuration = $script:configuration
+        } -ScriptBlock {
+          Set-StrictMode -Version 1.0
+          $state = Get-AzureDevLifecycleState `
+            -Configuration $Configuration `
+            -TimeoutSeconds 9
+
+          $state | Should-Be 'running'
+        }
+        Should-Invoke Invoke-AzCli -Exactly -Times 1 -Scope It `
+          -ParameterFilter { $TimeoutSeconds -eq 9 }
+      }
+    }
   }
 }

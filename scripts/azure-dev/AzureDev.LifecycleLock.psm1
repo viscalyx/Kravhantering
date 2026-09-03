@@ -297,8 +297,10 @@ function Enter-AzureDevLifecycleLock {
     [ValidateSet('start', 'stop')]
     [string]$CommandName,
 
-    [ValidateRange(0, 15)]
-    [int]$TimeoutSeconds = 15
+    [ValidateRange(0, [int]::MaxValue)]
+    [int]$TimeoutSeconds = 15,
+
+    [scriptblock]$OnContention
   )
 
   $identity = Get-AzureDevLifecycleLockIdentity `
@@ -316,6 +318,7 @@ function Enter-AzureDevLifecycleLock {
     $TimeoutSeconds * [System.Diagnostics.Stopwatch]::Frequency
   )
   $lastOwner = $null
+  $contentionReported = $false
 
   while ($true) {
     $mutex = $null
@@ -397,6 +400,10 @@ function Enter-AzureDevLifecycleLock {
         -Mutex $mutex `
         -WhatIf:$false `
         -Confirm:$false
+    }
+    if (-not $contentionReported -and $null -ne $OnContention) {
+      $null = & $OnContention
+      $contentionReported = $true
     }
     $lastOwner = Read-AzureDevLifecycleLockRecord -Path $identity.Path
     $now = Get-AzureDevLifecycleMonotonicTimestamp
@@ -501,8 +508,10 @@ function Invoke-AzureDevLifecycleLock {
     [Parameter(Mandatory = $true)]
     [scriptblock]$ScriptBlock,
 
-    [ValidateRange(0, 15)]
-    [int]$TimeoutSeconds = 15
+    [ValidateRange(0, [int]::MaxValue)]
+    [int]$TimeoutSeconds = 15,
+
+    [scriptblock]$OnContention
   )
 
   $identity = Get-AzureDevLifecycleLockIdentity `
@@ -518,6 +527,7 @@ function Invoke-AzureDevLifecycleLock {
     -ConfigurationSnapshot $ConfigurationSnapshot `
     -CommandName $CommandName `
     -TimeoutSeconds $TimeoutSeconds `
+    -OnContention $OnContention `
     -WhatIf:$false `
     -Confirm:$false
   try {
