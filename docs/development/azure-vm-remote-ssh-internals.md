@@ -373,11 +373,12 @@ configuration snapshot keeps every reread and mutation on the original
 subscription, resource group, and VM.
 
 After a start is submitted or an existing `starting` state is joined, the
-local lock is released and the independent running deadline begins. A later
-`stopping` or `deallocating` state is classified as `outside-interference` and
-terminates the local attempt without rollback or a second start. The failure
-records whether this invocation's mutation was accepted and explains that
-Azure may still complete the earlier operation.
+local lock is released and the independent running deadline begins. Any later
+downward state—`stopping`, `stopped-allocated`, `deallocating`, or
+`deallocated`—is classified as `outside-interference` and terminates the local
+attempt without rollback or a second start. The failure records whether this
+invocation's mutation was accepted and explains that Azure may still complete
+the earlier operation.
 
 Both waits use five-second polls, state-change progress, and 30-second
 heartbeats. Each has its own ten-minute monotonic deadline; time spent waiting

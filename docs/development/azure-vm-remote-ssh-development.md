@@ -1175,10 +1175,10 @@ rereads provide cross-workstation convergence.
 After joining or submitting an upward transition, the command releases the
 lock and uses a separate ten-minute deadline to wait for `running`. Both waits
 poll every five seconds, report state changes, and emit a heartbeat every 30
-seconds. A later `stopping` or `deallocating` observation is outside
-interference: the command fails without a second mutation and explains that
-Azure may still complete the earlier operation. A timeout has the same
-no-rollback, no-repeat rule.
+seconds. Any later downward state—`stopping`, `stopped-allocated`,
+`deallocating`, or `deallocated`—is outside interference: the command fails
+without a second mutation and explains that Azure may still complete the
+earlier operation. A timeout has the same no-rollback, no-repeat rule.
 
 Pressing Ctrl+C stops local polling promptly. Any owned local lock is released,
 and the interruption exits with code `130` without a lifecycle result or
