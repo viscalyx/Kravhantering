@@ -138,8 +138,6 @@
     "clean": "rimraf .next out",
     "perf:requirements-list": "node scripts/requirements-list-performance.mjs check",
     "perf:specification-items": "dotenv -e .env.sqlserver -- cross-env DB_REQUEST_TIMEOUT_MS=300000 SPECIFICATION_ITEM_SQLSERVER_PERFORMANCE=1 vitest run tests/performance/specification-item-pagination.sqlserver.test.ts",
-    "perf:requirement-import": "node scripts/requirement-import-benchmark.mjs",
-    "perf:requirement-import:update-baseline": "node scripts/requirement-import-benchmark.mjs --update-baseline",
     "bundle:check": "node scripts/check-client-bundles.mjs",
     "standalone:check": "node scripts/check-standalone-server-dependencies.mjs",
     "bundle:report": "node scripts/check-client-bundles.mjs --report",
