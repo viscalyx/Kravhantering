@@ -62,7 +62,18 @@ Describe 'Invoke-AzureDevSmokeValidation' -Tag 'Unit' {
         -CommandName Invoke-AzureDevNativeCommand `
         -ParameterFilter {
           $FilePath -eq 'ssh' -and
-          $Arguments[-1] -match ' 1\.2\.3$'
+          $Arguments[-1] -match ' 1\.2\.3$' -and
+          $Arguments[-1].Contains(
+            'Smoke validation command failed at line %s (exit %s): %s'
+          ) -and
+          $Arguments[-1].Contains(
+            'test "$(deduplicate_path "${PATH}")" = ' +
+            '"${managed_codex_path}"'
+          ) -and
+          $Arguments[-1].Contains(
+            '-H "X-Kravhantering-HSA-Correlation-ID: ' +
+            '$(cat /proc/sys/kernel/random/uuid)"'
+          )
         } `
         -Exactly `
         -Times 1 `

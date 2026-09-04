@@ -339,6 +339,29 @@ describe('Azure Codex installation orchestration', () => {
     expect(result.stderr).toContain('previousState=missing action=install')
   })
 
+  it('validates lock ownership against the descriptor target', () => {
+    const fixture = userFixture()
+    writeFileSync(
+      path.join(fixture.fakeBin, 'stat'),
+      [
+        '#!/usr/bin/env bash',
+        'if [ "$1" = -c ] && [ "$2" = %u:%g ]; then',
+        '  case "$4" in',
+        "    /proc/self/fd/*) printf '98765:98765\\n'; exit 0 ;;",
+        '  esac',
+        'fi',
+        'exec /usr/bin/stat "$@"',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    )
+
+    const result = runFixture(fixture)
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('finalVersion=1.2.3')
+  })
+
   it.each([
     ['current', '1.2.3', 'revalidate'],
     ['older', '1.1.0', 'upgrade'],
