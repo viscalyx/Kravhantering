@@ -713,7 +713,6 @@ network_backend = "netavark"
 EOF
 
   chown -R "${VSCODE_USER}:${VSCODE_USER}" "${VSCODE_HOME}/.config/containers"
-  chown -R "${VSCODE_USER}:${VSCODE_USER}" "${PODMAN_STORAGE_DIR}"
 }
 
 install_service_environment_files() {
@@ -1378,6 +1377,24 @@ ensure_base_podman_resources() {
   done
 }
 
+normalize_hsa_app_bundle_host_ownership() {
+  local bundle_dir="${WORKSPACE_DIR}/.hsa-mtls/app"
+  local filename
+  local bundle_files=()
+
+  for filename in app-client.crt app-client.key kong-server-ca.crt; do
+    if [ ! -f "${bundle_dir}/${filename}" ]; then
+      log "HSA App runtime bundle file is missing: ${bundle_dir}/${filename}"
+      return 1
+    fi
+    bundle_files+=("${bundle_dir}/${filename}")
+  done
+
+  chown "${VSCODE_USER}:${VSCODE_USER}" -- \
+    "${bundle_dir}" \
+    "${bundle_files[@]}"
+}
+
 stop_managed_containers() {
   local uid="$1"
   run_user_systemctl "${uid}" stop \
@@ -1686,6 +1703,7 @@ main() {
   start_user_quadlets
   configure_codex_app_server
   reconcile_persistent_hsa_renewal
+  normalize_hsa_app_bundle_host_ownership
   install_optional_tailscale
   validate_loopback_ports
   log "host bootstrap completed"

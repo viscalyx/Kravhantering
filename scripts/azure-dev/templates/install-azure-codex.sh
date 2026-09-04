@@ -422,7 +422,7 @@ acquire_install_lock() {
   exec {CODEX_LOCK_FD}<> "${CODEX_LOCK_FILE}"
   if [ "$(readlink -- "/proc/self/fd/${CODEX_LOCK_FD}" 2>/dev/null)" != "${CODEX_LOCK_FILE}" ] ||
     [ ! -f "/proc/self/fd/${CODEX_LOCK_FD}" ] ||
-    [ "$(stat -c '%u:%g' -- "/proc/self/fd/${CODEX_LOCK_FD}")" != "${CODEX_UID}:${CODEX_GID}" ]; then
+    [ "$(stat -Lc '%u:%g' -- "/proc/self/fd/${CODEX_LOCK_FD}")" != "${CODEX_UID}:${CODEX_GID}" ]; then
     log 'Codex install lock changed during validation'
     exec {CODEX_LOCK_FD}>&-
     return 1

@@ -112,7 +112,8 @@ function Invoke-AzureDevSmokeValidation {
   Assert-AzureDevSshHostTrust -Context $Context
 
   $remoteScript = @'
-set -euo pipefail
+set -Eeuo pipefail
+trap 'exit_code=$?; printf "Smoke validation command failed at line %s (exit %s): %s\n" "${LINENO}" "${exit_code}" "${BASH_COMMAND}" >&2; exit "${exit_code}"' ERR
 expected_git_user_name="$1"
 expected_git_user_email="$2"
 expected_git_ssh_signing_public_key="$3"
@@ -200,6 +201,27 @@ require_loopback_port() {
   printf 'Missing loopback listener for %s on 127.0.0.1:%s\n' "${name}" "${port}"
   dump_smoke_diagnostics
   exit 1
+}
+
+deduplicate_path() {
+  local original_path="$1"
+  local entry
+  local normalized_path=''
+  local path_entries=()
+
+  case "${original_path}" in
+    :*|*::*|*:)
+      return 1
+      ;;
+  esac
+  IFS=: read -r -a path_entries <<< "${original_path}"
+  for entry in "${path_entries[@]}"; do
+    case ":${normalized_path}:" in
+      *":${entry}:"*) continue ;;
+    esac
+    normalized_path="${normalized_path:+${normalized_path}:}${entry}"
+  done
+  printf '%s\n' "${normalized_path}"
 }
 
 wait_for_sql_server_login() {
@@ -417,7 +439,7 @@ if [ -n "${expected_git_ssh_signing_public_key}" ]; then
 fi
 gh --version >/dev/null 2>&1
 btop --version >/dev/null 2>&1
-test "${PATH}" = "${managed_codex_path}"
+test "$(deduplicate_path "${PATH}")" = "${managed_codex_path}"
 test ! -e "${legacy_codex_launcher}" && test ! -L "${legacy_codex_launcher}" || {
   printf 'A legacy Codex launcher exists at %s; replacement-only setup is required.\n' "${legacy_codex_launcher}"
   exit 1
@@ -525,6 +547,7 @@ for attempt in $(seq 1 24); do
     --key /workspace/.hsa-mtls/app/app-client.key \
     -o "${hsa_response}" -D "${hsa_headers}" -w '%{http_code}' -X POST https://kong:18443/hsa/person-records/lookup \
     -H 'content-type: application/json' \
+    -H "X-Kravhantering-HSA-Correlation-ID: $(cat /proc/sys/kernel/random/uuid)" \
     --data '{"hsaId":"SE5560000001-manualarea1"}')"
   hsa_exit=$?
   set -e
