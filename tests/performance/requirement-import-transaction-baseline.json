@@ -1,0 +1,1116 @@
+{
+  "capturedAt": "2026-09-04T19:32:18.242Z",
+  "candidate": {
+    "destination": "requirements_library",
+    "rowCount": 100,
+    "rowShape": "maximum-related",
+    "source": "mcp",
+    "maximumMs": 22222.16,
+    "p50Ms": 21788.88,
+    "p95Ms": 21963.63,
+    "durationsMs": [
+      21758.97, 21963.63, 21892.96, 21764.62, 22222.16, 21770.87, 21788.88,
+      21777.84, 21768.81, 21806.09, 21762.41, 21777.14, 21780.5, 21786.41,
+      21734.8, 21761.33, 21777.84, 21810.22, 21757.68, 21805.57, 21802.15,
+      21759.58, 21801.59, 21817.64, 21798.44, 21804.48, 21838.48, 21819.88,
+      21820.96, 21829.66
+    ],
+    "failureCounts": {
+      "application_lock_timeout": 0,
+      "deadlock": 0,
+      "failure": 0,
+      "lock_timeout": 0,
+      "statement_timeout": 0
+    },
+    "lockEvidence": [],
+    "measuredRepetitions": 30,
+    "retryCount": 0
+  },
+  "contention": [
+    {
+      "destination": "requirements_library",
+      "name": "same-destination-imports",
+      "operationsPerRepetition": 2,
+      "rowCount": 100,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 26630.9,
+      "p50Ms": 22118.43,
+      "p95Ms": 22634.77,
+      "durationsMs": [
+        22059.72, 22103.16, 22151.42, 22113.83, 22006.1, 22160.29, 22121.03,
+        22203, 22028.32, 22166.41, 22154.37, 22089.68, 22069.88, 22172.43,
+        22133.33, 22051.87, 22077.1, 22634.77, 26630.9, 22176.58, 21848.04,
+        22088.35, 22179.78, 22113.71, 22162.97, 22107.75, 22118.43, 22166.52,
+        22059.55, 22197.14
+      ],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 30,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [
+        {
+          "waitType": "LCK_M_X",
+          "maximumWaitMs": 4784,
+          "samples": 2300
+        }
+      ],
+      "measuredRepetitions": 30,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "name": "ordinary-write-to-same-destination",
+      "operationsPerRepetition": 2,
+      "rowCount": 100,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 4650.17,
+      "p50Ms": 4600.69,
+      "p95Ms": 4648.22,
+      "durationsMs": [
+        4609.39, 4593.58, 4648.22, 4592.74, 4598.92, 4599.78, 4587.87, 4606.73,
+        4619.97, 4625.07, 4611.95, 4630.07, 4598.56, 4584.34, 4594.84, 4589.3,
+        4608.98, 4591.19, 4621.42, 4618.88, 4585.51, 4614.55, 4635.31, 4601.52,
+        4576.82, 4650.17, 4587.35, 4593.68, 4600.69, 4611.4
+      ],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [
+        {
+          "waitType": "LCK_M_S",
+          "maximumWaitMs": 239,
+          "samples": 603
+        },
+        {
+          "waitType": "LCK_M_X",
+          "maximumWaitMs": 231,
+          "samples": 21
+        }
+      ],
+      "measuredRepetitions": 30,
+      "retryCount": 0
+    },
+    {
+      "concurrentReadCount": 3,
+      "destination": "requirements_specification",
+      "name": "representative-reads",
+      "operationsPerRepetition": 4,
+      "rowCount": 100,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 9171.42,
+      "p50Ms": 9043.71,
+      "p95Ms": 9150.95,
+      "durationsMs": [
+        9063.19, 9043.71, 9105.97, 9171.42, 9034.78, 9036.98, 9064.11, 9044.79,
+        9072.64, 9023.71, 9023.35, 9042.46, 9045.75, 9009.94, 9037.78, 9024.72,
+        9124.75, 9039.07, 9050.29, 9059.72, 9089.58, 9056.71, 9150.95, 9077.42,
+        9037.3, 9025.18, 9041.48, 9059.56, 9013.77, 9023.78
+      ],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 30,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "name": "mcp-validation-session-admissions",
+      "operationsPerRepetition": 2,
+      "rowCount": 0,
+      "rowShape": "not-applicable",
+      "source": "mcp",
+      "maximumMs": 114.73,
+      "p50Ms": 99.99,
+      "p95Ms": 109.37,
+      "durationsMs": [
+        101.46, 98.33, 99.49, 100.6, 98.3, 98.8, 99.8, 99.07, 103.06, 103.59,
+        102.68, 102.65, 100.59, 99.96, 100.13, 99.99, 109.37, 114.73, 100.24,
+        100.53, 99.04, 97.28, 99.85, 98.83, 101.78, 99.8, 99.65, 98.69, 101.45,
+        101.1
+      ],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [
+        {
+          "waitType": "LCK_M_X",
+          "maximumWaitMs": 46,
+          "samples": 120
+        }
+      ],
+      "measuredRepetitions": 30,
+      "retryCount": 0
+    }
+  ],
+  "environment": {
+    "applicationRuntime": {
+      "cpuLimit": 3,
+      "memoryLimitMiB": 4096,
+      "nodeVersion": "v24.20.0"
+    },
+    "documentedReferenceHost": {
+      "memoryMiB": 16384,
+      "virtualCpuCount": 8
+    },
+    "hostObservedByRunner": {
+      "memoryMiB": 64297,
+      "virtualCpuCount": 16
+    },
+    "runtime": {
+      "benchmarkStatementTimeoutMs": 300000,
+      "databaseBatchSize": 50,
+      "productionDefaultStatementTimeoutMs": 15000,
+      "requirementImportConcurrencyPerNode": 2,
+      "requirementImportMaxRows": 500
+    },
+    "sqlServer": {
+      "configuredCpuLimit": 2,
+      "configuredMemoryLimitMiB": 4096,
+      "reportedLogicalCpuCount": 16,
+      "reportedPhysicalMemoryMiB": 3277,
+      "productVersion": "17.0.4075.5"
+    }
+  },
+  "methodology": {
+    "contentionLockHoldMs": 250,
+    "databaseNativeEvidence": "sys.dm_os_waiting_tasks",
+    "fixtureScale": {
+      "maximumRelatedNormReferencesPerRow": 200,
+      "maximumRelatedRequirementPackagesPerRow": 200,
+      "syntheticDestinations": 2
+    },
+    "maximumRelatedItemsPerCollection": 200,
+    "measuredRepetitions": 30,
+    "screeningMeasuredRepetitions": 1,
+    "warmupRepetitions": 1
+  },
+  "recommendations": {
+    "alertThresholds": {
+      "contentionFailureCount": 1,
+      "durationCriticalMs": 30000,
+      "durationWarningMs": 24000,
+      "evaluationWindowMinutes": 5
+    },
+    "databaseBatchSize": 50,
+    "deadlockRetries": 1,
+    "lockWaitLimitMs": 5000,
+    "requirementImportMaxRows": 100,
+    "timeoutRetries": 0,
+    "transactionDurationObjectiveMs": 30000
+  },
+  "schemaVersion": "requirement-import-transaction-benchmark.v1",
+  "refinement": [
+    {
+      "destination": "requirements_library",
+      "rowCount": 125,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 27195.29,
+      "p50Ms": 27195.29,
+      "p95Ms": 27195.29,
+      "durationsMs": [27195.29],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 125,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 27246.85,
+      "p50Ms": 27246.85,
+      "p95Ms": 27246.85,
+      "durationsMs": [27246.85],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 150,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 32552,
+      "p50Ms": 32552,
+      "p95Ms": 32552,
+      "durationsMs": [32552],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 150,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 32683.75,
+      "p50Ms": 32683.75,
+      "p95Ms": 32683.75,
+      "durationsMs": [32683.75],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    }
+  ],
+  "screening": [
+    {
+      "destination": "requirements_library",
+      "rowCount": 1,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 70.1,
+      "p50Ms": 70.1,
+      "p95Ms": 70.1,
+      "durationsMs": [70.1],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 50,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 2212.33,
+      "p50Ms": 2212.33,
+      "p95Ms": 2212.33,
+      "durationsMs": [2212.33],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 100,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 4419.35,
+      "p50Ms": 4419.35,
+      "p95Ms": 4419.35,
+      "durationsMs": [4419.35],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 250,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 10945.93,
+      "p50Ms": 10945.93,
+      "p95Ms": 10945.93,
+      "durationsMs": [10945.93],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 500,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 21770.62,
+      "p50Ms": 21770.62,
+      "p95Ms": 21770.62,
+      "durationsMs": [21770.62],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 1,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 244.59,
+      "p50Ms": 244.59,
+      "p95Ms": 244.59,
+      "durationsMs": [244.59],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 50,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 10860.37,
+      "p50Ms": 10860.37,
+      "p95Ms": 10860.37,
+      "durationsMs": [10860.37],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 100,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 21712.26,
+      "p50Ms": 21712.26,
+      "p95Ms": 21712.26,
+      "durationsMs": [21712.26],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 250,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 54264.82,
+      "p50Ms": 54264.82,
+      "p95Ms": 54264.82,
+      "durationsMs": [54264.82],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 500,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 108888.62,
+      "p50Ms": 108888.62,
+      "p95Ms": 108888.62,
+      "durationsMs": [108888.62],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 1,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 149.34,
+      "p50Ms": 149.34,
+      "p95Ms": 149.34,
+      "durationsMs": [149.34],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 50,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 2276.08,
+      "p50Ms": 2276.08,
+      "p95Ms": 2276.08,
+      "durationsMs": [2276.08],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 100,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 4442,
+      "p50Ms": 4442,
+      "p95Ms": 4442,
+      "durationsMs": [4442],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 250,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 10984.76,
+      "p50Ms": 10984.76,
+      "p95Ms": 10984.76,
+      "durationsMs": [10984.76],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 500,
+      "rowShape": "light",
+      "source": "rest",
+      "maximumMs": 22069.86,
+      "p50Ms": 22069.86,
+      "p95Ms": 22069.86,
+      "durationsMs": [22069.86],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 1,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 203.48,
+      "p50Ms": 203.48,
+      "p95Ms": 203.48,
+      "durationsMs": [203.48],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 50,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 6715.97,
+      "p50Ms": 6715.97,
+      "p95Ms": 6715.97,
+      "durationsMs": [6715.97],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 100,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 13262.66,
+      "p50Ms": 13262.66,
+      "p95Ms": 13262.66,
+      "durationsMs": [13262.66],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 250,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 33280.72,
+      "p50Ms": 33280.72,
+      "p95Ms": 33280.72,
+      "durationsMs": [33280.72],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 500,
+      "rowShape": "maximum-related",
+      "source": "rest",
+      "maximumMs": 66588.4,
+      "p50Ms": 66588.4,
+      "p95Ms": 66588.4,
+      "durationsMs": [66588.4],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 1,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 78.53,
+      "p50Ms": 78.53,
+      "p95Ms": 78.53,
+      "durationsMs": [78.53],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 50,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 2257.62,
+      "p50Ms": 2257.62,
+      "p95Ms": 2257.62,
+      "durationsMs": [2257.62],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 100,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 4412.17,
+      "p50Ms": 4412.17,
+      "p95Ms": 4412.17,
+      "durationsMs": [4412.17],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 250,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 10941,
+      "p50Ms": 10941,
+      "p95Ms": 10941,
+      "durationsMs": [10941],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [
+        {
+          "waitType": "LCK_M_X",
+          "maximumWaitMs": 2,
+          "samples": 1
+        }
+      ],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 500,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 21879.11,
+      "p50Ms": 21879.11,
+      "p95Ms": 21879.11,
+      "durationsMs": [21879.11],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 1,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 242.56,
+      "p50Ms": 242.56,
+      "p95Ms": 242.56,
+      "durationsMs": [242.56],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 50,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 10974.71,
+      "p50Ms": 10974.71,
+      "p95Ms": 10974.71,
+      "durationsMs": [10974.71],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 100,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 21789.59,
+      "p50Ms": 21789.59,
+      "p95Ms": 21789.59,
+      "durationsMs": [21789.59],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 250,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 54393.51,
+      "p50Ms": 54393.51,
+      "p95Ms": 54393.51,
+      "durationsMs": [54393.51],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_library",
+      "rowCount": 500,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 108814.17,
+      "p50Ms": 108814.17,
+      "p95Ms": 108814.17,
+      "durationsMs": [108814.17],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 1,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 113.83,
+      "p50Ms": 113.83,
+      "p95Ms": 113.83,
+      "durationsMs": [113.83],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 50,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 216.94,
+      "p50Ms": 216.94,
+      "p95Ms": 216.94,
+      "durationsMs": [216.94],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 100,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 243.06,
+      "p50Ms": 243.06,
+      "p95Ms": 243.06,
+      "durationsMs": [243.06],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 250,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 455.74,
+      "p50Ms": 455.74,
+      "p95Ms": 455.74,
+      "durationsMs": [455.74],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 500,
+      "rowShape": "light",
+      "source": "mcp",
+      "maximumMs": 856.9,
+      "p50Ms": 856.9,
+      "p95Ms": 856.9,
+      "durationsMs": [856.9],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 1,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 158.9,
+      "p50Ms": 158.9,
+      "p95Ms": 158.9,
+      "durationsMs": [158.9],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 50,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 4547.4,
+      "p50Ms": 4547.4,
+      "p95Ms": 4547.4,
+      "durationsMs": [4547.4],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 100,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 9036.93,
+      "p50Ms": 9036.93,
+      "p95Ms": 9036.93,
+      "durationsMs": [9036.93],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 250,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 22440.82,
+      "p50Ms": 22440.82,
+      "p95Ms": 22440.82,
+      "durationsMs": [22440.82],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    },
+    {
+      "destination": "requirements_specification",
+      "rowCount": 500,
+      "rowShape": "maximum-related",
+      "source": "mcp",
+      "maximumMs": 44835.58,
+      "p50Ms": 44835.58,
+      "p95Ms": 44835.58,
+      "durationsMs": [44835.58],
+      "failureCounts": {
+        "application_lock_timeout": 0,
+        "deadlock": 0,
+        "failure": 0,
+        "lock_timeout": 0,
+        "statement_timeout": 0
+      },
+      "lockEvidence": [],
+      "measuredRepetitions": 1,
+      "retryCount": 0
+    }
+  ],
+  "transactionContracts": {
+    "mcpExecutionIsolation": "SERIALIZABLE",
+    "mcpValidationAdmissionIsolation": "SERIALIZABLE",
+    "restExecutionIsolation": "READ COMMITTED"
+  }
+}
