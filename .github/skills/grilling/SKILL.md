@@ -12,12 +12,7 @@ Write every round in ASD-STE100 Simplified Technical English.
 Start every round with these fields in this order:
 
 ```
-**Topic recap:** <In one or two complete sentences, restate the original plan,
-decision, or idea, its intended outcome, and any fixed scope or constraints. Keep
-this stable across rounds; put newly established understanding in the Grilling
-recap.>
-
-**Grilling recap:** <In one or two complete sentences, restate the plan, decision, or idea being grilled and summarize the understanding established so far.>
+**Conversation recap:** <In one or two complete sentences, restate the conversation so far.>
 
 **Round focus:** <In one sentence, state what the questions in this round will resolve.>
 ```
@@ -26,6 +21,12 @@ Then format each question as follows:
 
 ```
 ❓ **Q1** - **<question title>**: <question body, might be multiple paragraphs, including multiple choices>
+
+➡️ <your recommended answer>
+
+---
+
+❓ **Q2** - **<question title>**: <question body, might be multiple paragraphs, including multiple choices>
 
 ➡️ <your recommended answer>
 ```
