@@ -276,6 +276,69 @@ describe('HSA verification quota against SQL Server', () => {
     expect(Number(rows[0]?.count)).toBe(0)
   })
 
+  it('keeps updates monotonic when lock order differs from clock order', async () => {
+    const input = quotaInput(350, 350)
+    await appDb().query(
+      `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+       DECLARE @next_window datetime2(3) = DATEADD(
+         minute,
+         DATEDIFF_BIG(
+           minute,
+           CONVERT(datetime2(3), '1970-01-01'),
+           @now
+         ) + 1,
+         CONVERT(datetime2(3), '1970-01-01')
+       );
+       IF DATEDIFF(millisecond, @now, @next_window) < 2000
+       BEGIN
+         WAITFOR DELAY '00:00:02';
+         SET @now = SYSUTCDATETIME();
+       END;
+       DECLARE @window_start datetime2(3) = DATEADD(
+         minute,
+         DATEDIFF_BIG(
+           minute,
+           CONVERT(datetime2(3), '1970-01-01'),
+           @now
+         ),
+         CONVERT(datetime2(3), '1970-01-01')
+       );
+       DECLARE @expires_at datetime2(3) =
+         DATEADD(second, 60, @window_start);
+       INSERT INTO hsa_verification_quota_buckets (
+         bucket_kind,
+         actor_fingerprint,
+         target_fingerprint,
+         actor_subject_fingerprint,
+         request_count,
+         window_started_at,
+         expires_at,
+         created_at,
+         updated_at
+       ) VALUES (
+         N'target', NULL, @0, NULL, 1, @window_start,
+         @expires_at, @expires_at, @expires_at
+       );`,
+      [input.targetFingerprint],
+    )
+
+    await expect(
+      consumeHsaVerificationQuota(secondAppDb, input),
+    ).resolves.toEqual({ allowed: true })
+    const rows = (await appDb().query(
+      `SELECT
+         created_at AS createdAt,
+         request_count AS requestCount,
+         updated_at AS updatedAt
+       FROM hsa_verification_quota_buckets
+       WHERE bucket_kind = N'target' AND target_fingerprint = @0`,
+      [input.targetFingerprint],
+    )) as Array<{ createdAt: Date; requestCount: number; updatedAt: Date }>
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.requestCount).toBe(2)
+    expect(rows[0]?.updatedAt).toEqual(rows[0]?.createdAt)
+  })
+
   it('uses minute-aligned SQL time and permits independent buckets concurrently', async () => {
     const results = await Promise.all(
       Array.from({ length: 8 }, (_, index) =>

@@ -2395,9 +2395,11 @@ minute-aligned fixed window.
 
 The unique identity/window index permits one row for each logical bucket and
 window. Checks enforce bucket shape, fingerprint formats, count bounds, exact
-60-second expiry, and minute alignment. Actor and target fingerprints derive
-from the existing HSA verification secret; raw HSA-id, purpose, scope, mode,
-person details, and verification outcomes are never stored.
+60-second expiry, minute alignment, and ordered
+`window_started_at <= created_at <= updated_at <= expires_at` timestamps. Actor
+and target fingerprints derive from the existing HSA verification secret; raw
+HSA-id, purpose, scope, mode, person details, and verification outcomes are
+never stored.
 
 Quota evaluation runs in one serializable transaction. Transaction-owned SQL
 application locks are acquired in actor, actor-target, then target order with a

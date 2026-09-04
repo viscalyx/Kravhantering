@@ -81,6 +81,7 @@ const RELEVANT_PATH_PREFIXES = [
   'scripts/ai-provider-secret-restore-cli.mjs',
   'scripts/ai-provider-secret-maintenance.mjs',
   'lib/ai/provider-secret-crypto-core.mjs',
+  'lib/requirements/responsibility-person-verification-fingerprint.mjs',
   'scripts/keycloak-demo-users.mjs',
   'scripts/prebuild.js',
   'scripts/release/',

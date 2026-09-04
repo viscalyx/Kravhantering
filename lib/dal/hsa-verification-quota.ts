@@ -133,7 +133,10 @@ async function consumeBucket(
                actor_subject_fingerprint,
                @4
              ),
-             updated_at = @8
+             updated_at = CASE
+               WHEN updated_at > @8 THEN updated_at
+               ELSE @8
+             END
          WHERE bucket_kind = @1
            AND (
              actor_fingerprint = @2
