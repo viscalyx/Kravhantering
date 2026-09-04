@@ -341,13 +341,21 @@ describe('Azure Codex installation orchestration', () => {
 
   it('validates lock ownership against the descriptor target', () => {
     const fixture = userFixture()
+    const fixtureUid = spawnSync('/usr/bin/id', ['-u'], {
+      encoding: 'utf8',
+    }).stdout.trim()
+    const fixtureGid = spawnSync('/usr/bin/id', ['-g'], {
+      encoding: 'utf8',
+    }).stdout.trim()
+    const mismatchedUid = fixtureUid === '0' ? '1' : '0'
+    const mismatchedGid = fixtureGid === '0' ? '1' : '0'
     writeFileSync(
       path.join(fixture.fakeBin, 'stat'),
       [
         '#!/usr/bin/env bash',
-        'if [ "$1" = -c ] && [ "$2" = %u:%g ]; then',
+        'if [ "$#" -eq 4 ] && [ "$1" = -Lc ] && [ "$2" = %u:%g ] && [ "$3" = -- ]; then',
         '  case "$4" in',
-        "    /proc/self/fd/*) printf '98765:98765\\n'; exit 0 ;;",
+        `    /proc/self/fd/*) printf '${mismatchedUid}:${mismatchedGid}\\n'; exit 0 ;;`,
         '  esac',
         'fi',
         'exec /usr/bin/stat "$@"',
@@ -358,8 +366,10 @@ describe('Azure Codex installation orchestration', () => {
 
     const result = runFixture(fixture)
 
-    expect(result.status).toBe(0)
-    expect(result.stderr).toContain('finalVersion=1.2.3')
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      'Codex install lock changed during validation',
+    )
   })
 
   it.each([

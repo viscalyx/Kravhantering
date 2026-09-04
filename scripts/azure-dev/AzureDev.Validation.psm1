@@ -540,17 +540,18 @@ hsa_succeeded=false
 for attempt in $(seq 1 24); do
   : > "${hsa_response}"
   : > "${hsa_headers}"
-  set +e
-  hsa_status="$(curl -s --resolve kong:18443:127.0.0.1 \
+  if hsa_status="$(curl -s --resolve kong:18443:127.0.0.1 \
     --cacert /workspace/.hsa-mtls/app/kong-server-ca.crt \
     --cert /workspace/.hsa-mtls/app/app-client.crt \
     --key /workspace/.hsa-mtls/app/app-client.key \
     -o "${hsa_response}" -D "${hsa_headers}" -w '%{http_code}' -X POST https://kong:18443/hsa/person-records/lookup \
     -H 'content-type: application/json' \
     -H "X-Kravhantering-HSA-Correlation-ID: $(cat /proc/sys/kernel/random/uuid)" \
-    --data '{"hsaId":"SE5560000001-manualarea1"}')"
-  hsa_exit=$?
-  set -e
+    --data '{"hsaId":"SE5560000001-manualarea1"}')"; then
+    hsa_exit=0
+  else
+    hsa_exit=$?
+  fi
   if [ "${hsa_exit}" -eq 0 ] && [ "${hsa_status}" = "200" ]; then
     hsa_succeeded=true
     break
