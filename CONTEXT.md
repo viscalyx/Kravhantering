@@ -646,6 +646,23 @@ körning.
 _Avoid_: MCP-gräns när budgeten gäller alla kravimportflöden, kvot när en
 aktörs förbrukning inte avses.
 
+**Kravimportens transaktionstidsmål**:
+Det operativa målet för hur lång tid den fullständiga databastransaktionen för
+en kravimport får ta i en stödd driftmiljö.
+
+- `en`: Requirement import transaction-duration objective
+
+_Avoid_: Kravimportbudget, tidsgräns för enskild databasfråga.
+
+**Kravimportens låsväntetidsgräns**:
+Den längsta tid som en kravimport får vänta på ett databaslås innan hela
+importen avbryts och återställs.
+
+- `en`: Requirement import lock-wait limit
+
+_Avoid_: Kravimportbudget, transaktionstidsmål, tidsgräns för enskild
+databasfråga.
+
 **MCP-principal**:
 Den autentiserade person som anropar MCP och vars varaktiga identitet utgörs av
 normaliserat HSA-id. Tillfälliga tokenegenskaper, klient-id och visningsnamn är
