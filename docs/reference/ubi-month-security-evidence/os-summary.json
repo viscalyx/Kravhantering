@@ -1,0 +1,205 @@
+[
+  {
+    "id": "CVE-2025-64756",
+    "source": "https://security.access.redhat.com/data/csaf/v2/vex/2025/cve-2025-64756.json",
+    "initial": "2025-11-17T17:29:08.029000+00:00",
+    "modified": "2026-09-04T17:35:32+00:00",
+    "notes": [
+      {
+        "category": "description",
+        "text": "A flaw was found in glob. This vulnerability allows arbitrary command execution via processing files with malicious names when the glob command-line interface (CLI) is used with the -c/--cmd option, enabling shell metacharacters to trigger command injection.",
+        "title": "Vulnerability description"
+      },
+      {
+        "category": "other",
+        "text": "This flaw in glob allows arbitrary command execution when the `glob` command-line interface is used with the `-c/--cmd` option to process files with malicious names. The vulnerability is triggered by shell metacharacters in filenames, leading to command injection. The glob CLI tool utilizes the -c option to execute shell commands over the files which matched the searched pattern by using the shell:true parameter when creating the subprocess which will further execute the command informed via '-c' option, this parameter allows the shell meta characters to be used and processed when executing the command. Given that information glob misses to sanitize the file name to eliminate such characters and expressions from the filename, leading to code execution as when performing the shell expansion such characters will be interpreted as shell commands.\n\nTo exploit this vulnerability the targeted system should run the glob CLI over a file with a maliciously crafted filename, additionally the attacker needs to have enough permission to create such file or trick the user to download and process the required file with the glob CLI.\n\nThis flaw is present in the command line interface of the nodejs-glob package. When the package is used by npm, the command line interface is not used at all, so it cannot be triggered. However, the command line interface implementation is still present on the system, but not directly exposed to the user's $PATH. To reflect this condition, nodejs packages have been rated with a low severity.",
+        "title": "Statement"
+      }
+    ],
+    "rhel10_status": {
+      "known_affected": [
+        "red_hat_enterprise_linux_10:nodejs24",
+        "red_hat_enterprise_linux_10:nodejs24-full-i18n",
+        "red_hat_enterprise_linux_10:nodejs24-libs",
+        "red_hat_enterprise_linux_10:nodejs24-npm"
+      ]
+    }
+  },
+  {
+    "id": "CVE-2026-16742",
+    "source": "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-16742.json",
+    "initial": "2026-08-10T13:02:52.725000+00:00",
+    "modified": "2026-09-03T04:36:54+00:00",
+    "notes": [
+      {
+        "category": "description",
+        "text": "A flaw was found in systemd-homed. A local, logged-in user can exploit a missing signature verification in the authentication path when processing home records. This vulnerability allows the user to add arbitrary system groups to their account, which can lead to local privilege escalation and enable them to gain elevated access on the system.",
+        "title": "Vulnerability description"
+      },
+      {
+        "category": "other",
+        "text": "systemd-homed contains the vulnerable code path \u2014 missing cryptographic signature verification of home records in home_authenticating_finish() (src/home/homed-home.c) \u2014 starting from upstream systemd v245. Red Hat Enterprise Linux 7 (systemd 219) and Red Hat Enterprise Linux 8 (systemd 239), and products built on the el8 systemd (OpenShift 4.12 / RHCOS on el8), predate v245 and do not ship the vulnerable code \u2014 they are not affected. Red Hat Enterprise Linux 9 (systemd 252), Red Hat Enterprise Linux 10 (systemd 257), Red Hat In-Vehicle OS, and OpenShift 4.13+ / RHCOS on el9 ship the affected code and are affected. Exploitation is only possible where systemd-homed is actively used to manage user accounts (homectl-created users with the NSS systemd module enabled), which is not the default user-management configuration on Red Hat Enterprise Linux; this limits real-world exposure but does not remove the vulnerable code. Red Hat rates this Important because it permits a local, logged-in homed-managed user to escalate privileges to root.",
+        "title": "Statement"
+      }
+    ],
+    "rhel10_status": {
+      "known_not_affected": ["red_hat_enterprise_linux_10:systemd-libs"]
+    }
+  },
+  {
+    "id": "CVE-2026-53612",
+    "source": "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-53612.json",
+    "initial": "2026-06-16T00:00:00+00:00",
+    "modified": "2026-08-31T11:26:16+00:00",
+    "notes": [
+      {
+        "category": "description",
+        "text": "A flaw was found in util-linux. When an /etc/fstab entry uses the user option together with X-mount.owner, X-mount.group, or X-mount.mode, mount(8) changes ownership or permissions on the mount target after mounting without re-verifying the path. A local unprivileged user can exploit this Time-of-Check-Time-of-Use (TOCTOU) window by swapping the target directory, redirecting the ownership/permission change to an arbitrary file and potentially escalating privileges to root.",
+        "title": "Vulnerability description"
+      },
+      {
+        "category": "other",
+        "text": "Affected versions: util-linux v2.39 through v2.41.3",
+        "title": "Statement"
+      }
+    ],
+    "rhel10_status": {
+      "known_affected": [
+        "red_hat_enterprise_linux_10:libblkid",
+        "red_hat_enterprise_linux_10:libmount",
+        "red_hat_enterprise_linux_10:libsmartcols",
+        "red_hat_enterprise_linux_10:libuuid"
+      ]
+    }
+  },
+  {
+    "id": "CVE-2026-53613",
+    "source": "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-53613.json",
+    "initial": "2026-06-16T00:00:00+00:00",
+    "modified": "2026-09-02T15:51:17+00:00",
+    "notes": [
+      {
+        "category": "description",
+        "text": "When an /etc/fstab entry is configured with the user or users option, mount(8) validates the target path before performing the mount syscall, creating a Time-of-Check-Time-of-Use (TOCTOU) window. A local unprivileged user with write access to an ancestor directory of the mount target can swap that directory to redirect the mount to an arbitrary root-owned location, potentially escalating privileges to root.",
+        "title": "Vulnerability description"
+      },
+      {
+        "category": "other",
+        "text": "Affected versions: util-linux v2.17 through v2.43-devel.",
+        "title": "Statement"
+      }
+    ],
+    "rhel10_status": {
+      "known_affected": [
+        "red_hat_enterprise_linux_10:libblkid",
+        "red_hat_enterprise_linux_10:libmount",
+        "red_hat_enterprise_linux_10:libsmartcols",
+        "red_hat_enterprise_linux_10:libuuid"
+      ]
+    }
+  },
+  {
+    "id": "CVE-2026-53614",
+    "source": "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-53614.json",
+    "initial": "2026-06-16T00:00:00+00:00",
+    "modified": "2026-08-31T11:26:21+00:00",
+    "notes": [
+      {
+        "category": "description",
+        "text": "A flaw was found in util-linux. The mount(8) SUID binary does not sanitize the LIBMOUNT_FORCE_MOUNT2 environment variable before use. A local unprivileged user can set this variable to force mount(8) to use the legacy two-step mount(2) code path, which applies security restrictions such as nosuid and noexec after the mount is already active. During this window, an attacker can execute a SUID binary from the mounted filesystem, allowing local privilege escalation to root.",
+        "title": "Vulnerability description"
+      },
+      {
+        "category": "other",
+        "text": "Affected versions: util-linux v2.39.1 through v2.43-devel (current master). The LIBMOUNT_FORCE_MOUNT2 environment variable was introduced in commit fd6b4d94ff01.",
+        "title": "Statement"
+      }
+    ],
+    "rhel10_status": {
+      "known_affected": [
+        "red_hat_enterprise_linux_10:libblkid",
+        "red_hat_enterprise_linux_10:libmount",
+        "red_hat_enterprise_linux_10:libsmartcols",
+        "red_hat_enterprise_linux_10:libuuid"
+      ]
+    }
+  },
+  {
+    "id": "CVE-2026-76642",
+    "source": "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-76642.json",
+    "initial": "2026-09-02T00:00:00+00:00",
+    "modified": "2026-09-03T12:50:46+00:00",
+    "notes": [
+      {
+        "category": "description",
+        "text": "When an external mount.<type> helper runs but exits with a nonzero status, libmount still treats the helper invocation as successful and runs privileged post-mount hooks. A local unprivileged user with an /etc/fstab entry that uses the user option together with X-mount.idmap or X-mount.owner/group/mode can cause those hooks to clone or re-own the underlying filesystem after the helper fails, leading to local privilege escalation.",
+        "title": "Vulnerability description"
+      },
+      {
+        "category": "other",
+        "text": "Affected versions: util-linux v2.39 through v2.42.2. Fixed in v2.41.6 and v2.42.3.",
+        "title": "Statement"
+      }
+    ],
+    "rhel10_status": {
+      "known_affected": [
+        "red_hat_enterprise_linux_10:libblkid",
+        "red_hat_enterprise_linux_10:libmount",
+        "red_hat_enterprise_linux_10:libsmartcols",
+        "red_hat_enterprise_linux_10:libuuid"
+      ]
+    }
+  },
+  {
+    "id": "CVE-2026-78408",
+    "source": "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-78408.json",
+    "initial": "2026-09-02T00:00:00+00:00",
+    "modified": "2026-09-03T12:50:46+00:00",
+    "notes": [
+      {
+        "category": "description",
+        "text": "The nsenter --join-cgroup option opens the target cgroup.procs file as root and leaves that file descriptor open across later namespace and credential changes and across execve(). Because the kernel checks later cgroup migrations using the credentials from the original open, a program run in an attacker-controlled target can inherit root's ability to move host processes between cgroups. After a privileged operator uses --join-cgroup against that target, an unprivileged user can migrate and terminate unrelated root processes.",
+        "title": "Vulnerability description"
+      },
+      {
+        "category": "other",
+        "text": "Affected versions: util-linux v2.40 through v2.42.2. The --join-cgroup option was introduced in v2.40; earlier releases (including util-linux 2.38) are not affected. Fixed in v2.41.6 and v2.42.3.",
+        "title": "Statement"
+      }
+    ],
+    "rhel10_status": {
+      "known_affected": [
+        "red_hat_enterprise_linux_10:libblkid",
+        "red_hat_enterprise_linux_10:libmount",
+        "red_hat_enterprise_linux_10:libsmartcols",
+        "red_hat_enterprise_linux_10:libuuid"
+      ]
+    }
+  },
+  {
+    "id": "CVE-2026-78410",
+    "source": "https://security.access.redhat.com/data/csaf/v2/vex/2026/cve-2026-78410.json",
+    "initial": "2026-09-02T00:00:00+00:00",
+    "modified": "2026-09-03T12:50:56+00:00",
+    "notes": [
+      {
+        "category": "description",
+        "text": "A flaw was found in util-linux. Restricted bind mounts take the source path from fstab but do not pin that source before the privileged mount. A local unprivileged user who can replace the authorized source or a writable ancestor can redirect SUID mount(8) to bind another host directory. If the fstab entry also sets X-mount.owner, X-mount.group, or X-mount.mode, root then changes ownership or mode on that redirected inode.",
+        "title": "Vulnerability description"
+      },
+      {
+        "category": "other",
+        "text": "Affected versions: util-linux v2.39 through v2.42.2. X-mount.owner/group/mode was introduced in v2.39; earlier releases are not affected. Fixed in v2.41.6 and v2.42.3.",
+        "title": "Statement"
+      }
+    ],
+    "rhel10_status": {
+      "known_affected": [
+        "red_hat_enterprise_linux_10:libblkid",
+        "red_hat_enterprise_linux_10:libmount",
+        "red_hat_enterprise_linux_10:libsmartcols",
+        "red_hat_enterprise_linux_10:libuuid"
+      ]
+    }
+  }
+]

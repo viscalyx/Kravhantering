@@ -1,0 +1,230 @@
+[
+  {
+    "family": "current",
+    "artifact": "app-runtime",
+    "exit": 0,
+    "observation": {
+      "node": "v24.20.0",
+      "openssl": "3.5.7",
+      "sharedOpenSSL": false,
+      "paths": {
+        "/usr/bin/mount": "present",
+        "/usr/bin/nsenter": "present",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "absent",
+        "/etc/fstab": "# UNCONFIGURED FSTAB FOR BASE SYSTEM\n"
+      }
+    }
+  },
+  {
+    "family": "current",
+    "artifact": "db-job",
+    "exit": 0,
+    "observation": {
+      "node": "v24.20.0",
+      "openssl": "3.5.7",
+      "sharedOpenSSL": false,
+      "paths": {
+        "/usr/bin/mount": "present",
+        "/usr/bin/nsenter": "present",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "absent",
+        "/etc/fstab": "# UNCONFIGURED FSTAB FOR BASE SYSTEM\n"
+      }
+    }
+  },
+  {
+    "family": "current",
+    "artifact": "demo-seed",
+    "exit": 0,
+    "observation": {
+      "node": "v24.20.0",
+      "openssl": "3.5.7",
+      "sharedOpenSSL": false,
+      "paths": {
+        "/usr/bin/mount": "present",
+        "/usr/bin/nsenter": "present",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "absent",
+        "/etc/fstab": "# UNCONFIGURED FSTAB FOR BASE SYSTEM\n"
+      }
+    }
+  },
+  {
+    "family": "current",
+    "artifact": "hsa-directory-mock",
+    "exit": 0,
+    "observation": {
+      "node": "v24.20.0",
+      "openssl": "3.5.7",
+      "sharedOpenSSL": false,
+      "paths": {
+        "/usr/bin/mount": "present",
+        "/usr/bin/nsenter": "present",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "absent",
+        "/etc/fstab": "# UNCONFIGURED FSTAB FOR BASE SYSTEM\n"
+      }
+    }
+  },
+  {
+    "family": "current",
+    "artifact": "hsa-person-lookup-adapter",
+    "exit": 0,
+    "observation": {
+      "node": "v24.20.0",
+      "openssl": "3.5.7",
+      "sharedOpenSSL": false,
+      "paths": {
+        "/usr/bin/mount": "present",
+        "/usr/bin/nsenter": "present",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "absent",
+        "/etc/fstab": "# UNCONFIGURED FSTAB FOR BASE SYSTEM\n"
+      }
+    }
+  },
+  {
+    "family": "current",
+    "artifact": "hsa-mtls-provisioner",
+    "exit": 0,
+    "observation": {
+      "node": "v24.20.0",
+      "openssl": "3.5.7",
+      "sharedOpenSSL": false,
+      "paths": {
+        "/usr/bin/mount": "present",
+        "/usr/bin/nsenter": "present",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "absent",
+        "/etc/fstab": "# UNCONFIGURED FSTAB FOR BASE SYSTEM\n"
+      }
+    }
+  },
+  {
+    "family": "candidate",
+    "artifact": "app-runtime",
+    "exit": 0,
+    "observation": {
+      "node": "v24.19.0",
+      "openssl": "3.5.5",
+      "sharedOpenSSL": true,
+      "paths": {
+        "/usr/bin/mount": "absent",
+        "/usr/bin/nsenter": "absent",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "present",
+        "/etc/fstab": "absent"
+      }
+    }
+  },
+  {
+    "family": "candidate",
+    "artifact": "db-job",
+    "exit": 0,
+    "observation": {
+      "node": "v24.19.0",
+      "openssl": "3.5.5",
+      "sharedOpenSSL": true,
+      "paths": {
+        "/usr/bin/mount": "absent",
+        "/usr/bin/nsenter": "absent",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "present",
+        "/etc/fstab": "absent"
+      }
+    }
+  },
+  {
+    "family": "candidate",
+    "artifact": "demo-seed",
+    "exit": 0,
+    "observation": {
+      "node": "v24.19.0",
+      "openssl": "3.5.5",
+      "sharedOpenSSL": true,
+      "paths": {
+        "/usr/bin/mount": "absent",
+        "/usr/bin/nsenter": "absent",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "present",
+        "/etc/fstab": "absent"
+      }
+    }
+  },
+  {
+    "family": "candidate",
+    "artifact": "hsa-directory-mock",
+    "exit": 0,
+    "observation": {
+      "node": "v24.19.0",
+      "openssl": "3.5.5",
+      "sharedOpenSSL": true,
+      "paths": {
+        "/usr/bin/mount": "absent",
+        "/usr/bin/nsenter": "absent",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "present",
+        "/etc/fstab": "absent"
+      }
+    }
+  },
+  {
+    "family": "candidate",
+    "artifact": "hsa-person-lookup-adapter",
+    "exit": 0,
+    "observation": {
+      "node": "v24.19.0",
+      "openssl": "3.5.5",
+      "sharedOpenSSL": true,
+      "paths": {
+        "/usr/bin/mount": "absent",
+        "/usr/bin/nsenter": "absent",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "present",
+        "/etc/fstab": "absent"
+      }
+    }
+  },
+  {
+    "family": "candidate",
+    "artifact": "hsa-mtls-provisioner",
+    "exit": 0,
+    "observation": {
+      "node": "v24.19.0",
+      "openssl": "3.5.5",
+      "sharedOpenSSL": true,
+      "paths": {
+        "/usr/bin/mount": "absent",
+        "/usr/bin/nsenter": "absent",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "present",
+        "/etc/fstab": "absent"
+      }
+    }
+  }
+]
