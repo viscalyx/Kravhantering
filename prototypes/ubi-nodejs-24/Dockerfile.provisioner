@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1.7
+
+ARG UBI_RUNTIME_IMAGE=registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:f0e6f6fa5bd82741bdf9b304341c94bbac4268a7f94d710c26eac01f20528c2b
+
+FROM ${UBI_RUNTIME_IMAGE}
+
+ARG NODE_MAJOR=24
+ARG OPENSSL_PACKAGE_VERSION=3.5.5-6.el10_2
+ARG CA_CERTIFICATES_PACKAGE_VERSION=2025.2.80_v9.0.305-102.el10_1
+
+USER 0
+RUN microdnf install -y \
+    "openssl-${OPENSSL_PACKAGE_VERSION}" \
+    "ca-certificates-${CA_CERTIFICATES_PACKAGE_VERSION}" \
+  && microdnf clean all \
+  && test "$(node --version | sed -E 's/^v([0-9]+).*/\1/')" = "${NODE_MAJOR}" \
+  && test "$(rpm -q --qf '%{VERSION}-%{RELEASE}' openssl)" = "${OPENSSL_PACKAGE_VERSION}" \
+  && test "$(rpm -q --qf '%{VERSION}-%{RELEASE}' ca-certificates)" = "${CA_CERTIFICATES_PACKAGE_VERSION}" \
+  && openssl version \
+  && rm -rf /usr/lib/node_modules_24/npm \
+  && rm -f /usr/bin/npm /usr/bin/npx
+
+LABEL se.kravhantering.hsa-provisioner.node-major="${NODE_MAJOR}" \
+  se.kravhantering.hsa-provisioner.openssl-package="${OPENSSL_PACKAGE_VERSION}" \
+  se.kravhantering.hsa-provisioner.ca-certificates-package="${CA_CERTIFICATES_PACKAGE_VERSION}"
+
+WORKDIR /opt/kravhantering/hsa-mtls-provisioner
+
+COPY containers/hsa-mtls-provisioner/package.json ./
+COPY containers/hsa-mtls-provisioner/src ./src
+COPY containers/hsa-mtls/certificate-profile.json \
+  /opt/kravhantering/hsa-mtls/certificate-profile.json
+
+ENTRYPOINT ["node", "src/cli.mjs"]
+CMD ["ensure"]

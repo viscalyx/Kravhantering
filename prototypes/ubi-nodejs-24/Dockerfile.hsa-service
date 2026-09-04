@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1.7
+
+ARG UBI_BUILDER_IMAGE=registry.access.redhat.com/ubi10/nodejs-24:latest@sha256:5295d1fd8e46aebad1e9da107c62bc4a5cfe8bca5fd1175a7b0a523fa977866a
+ARG UBI_RUNTIME_IMAGE=registry.access.redhat.com/ubi10/nodejs-24-minimal:latest@sha256:f0e6f6fa5bd82741bdf9b304341c94bbac4268a7f94d710c26eac01f20528c2b
+ARG SERVICE_PATH
+
+FROM ${UBI_BUILDER_IMAGE} AS dependencies
+
+ARG SERVICE_PATH
+USER 0
+ENV NODE_ENV=production
+WORKDIR /app
+
+COPY ${SERVICE_PATH}/package.json ${SERVICE_PATH}/package-lock.json ${SERVICE_PATH}/.npmrc ./
+RUN npm install --global "npm@$(node -p 'require("./package.json").packageManager.slice(4)')"
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+
+FROM ${UBI_RUNTIME_IMAGE} AS service-runtime
+
+ARG SERVICE_PATH
+USER 0
+RUN printf '%s\n' 'node:x:1000:' >> /etc/group \
+  && printf '%s\n' 'node:x:1000:1000:Node.js:/home/node:/bin/bash' >> /etc/passwd \
+  && mkdir -p /home/node \
+  && chown 1000:1000 /home/node \
+  && rm -rf /usr/lib/node_modules_24/npm \
+  && rm -f /usr/bin/npm /usr/bin/npx
+
+ENV HOME=/home/node
+ENV NODE_ENV=production
+WORKDIR /app/${SERVICE_PATH}
+
+COPY --from=dependencies --chown=1000:1000 /app/node_modules ./node_modules
+COPY --chown=1000:1000 ${SERVICE_PATH}/package.json ./
+COPY --chown=1000:1000 ${SERVICE_PATH}/src ./src
+COPY --chown=1000:1000 lib/hsa/strict-certificate-validation.mjs /app/lib/hsa/strict-certificate-validation.mjs
+
+USER 1000:1000
+EXPOSE 8443
+CMD ["node", "src/strict-server.mjs"]
+
+FROM service-runtime AS service-without-fixtures
+
+FROM service-runtime AS service-with-fixtures
+
+ARG SERVICE_PATH
+COPY --chown=1000:1000 ${SERVICE_PATH}/fixtures ./fixtures
