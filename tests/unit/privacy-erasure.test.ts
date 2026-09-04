@@ -112,6 +112,12 @@ function keyForPrivacySql(sql: string): string | null {
   ) {
     return 'requirement_import_validation_rate_buckets.principal'
   }
+  if (
+    sql.includes('FROM hsa_verification_quota_buckets') &&
+    sql.includes('actor_subject_fingerprint')
+  ) {
+    return 'hsa_verification_quota_buckets.subject'
+  }
   return null
 }
 
@@ -195,6 +201,40 @@ describe('privacy erasure service', () => {
     expect(
       deletes.every(([, parameters]) => parameters?.[0] !== TARGET_HSA_ID),
     ).toBe(true)
+  })
+
+  it('previews and deletes HSA quota rows by exact subject fingerprint', async () => {
+    const previewDb = createPrivacyDb({
+      'hsa_verification_quota_buckets.subject': { count: 2 },
+    })
+    const preview = await previewPrivacyErasure(previewDb.db, {
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(preview.groups).toContainEqual(
+      expect.objectContaining({
+        count: 2,
+        key: 'hsa_verification_quota_buckets.subject',
+        recommendedAction: 'delete',
+      }),
+    )
+    const fingerprintCall = previewDb.query.mock.calls.find(([sql]) =>
+      String(sql).includes('hsa_verification_quota_buckets'),
+    )
+    expect(fingerprintCall?.[1]?.[0]).not.toBe(TARGET_HSA_ID)
+    expect(fingerprintCall?.[1]?.[0]).toMatch(/^hfp_[A-Za-z0-9_-]{22}$/u)
+
+    const executionDb = createPrivacyDb({
+      'hsa_verification_quota_buckets.subject': { count: 2 },
+    })
+    await executePrivacyErasure(createTransactionalDb(executionDb.query), {
+      previewToken: preview.previewToken,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    expect(executionDb.query).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM hsa_verification_quota_buckets'),
+      [expect.stringMatching(/^hfp_[A-Za-z0-9_-]{22}$/u)],
+    )
   })
 
   it('rejects blank target HSA-id values', async () => {

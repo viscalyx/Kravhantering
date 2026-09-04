@@ -508,6 +508,13 @@ only safe matching capture and evidence metadata, never evidence excerpts.
 Display names are never used as the match key, including the duplicate-name
 demo fixture.
 
+The preview also covers short-lived HSA verification quota rows through the
+same purpose-separated target fingerprint used by verification. It can match a
+person as actor or target without querying the table with raw HSA-id. Export
+contains only bucket kind, consumed count, window start, and expiry; it never
+shows the complete actor-context fingerprint or the other party's target
+fingerprint. Delete resets any matching live 60-second counter.
+
 Signed-in users can export their own data at `/{locale}/privacy`. That
 self-service path sends no target HSA-id in the request body; the server derives
 the subject from the verified session HSA-id and includes current session claims

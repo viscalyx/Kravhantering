@@ -193,12 +193,15 @@ Deferred from this contract:
   contract. `POST /api/requirement-responsibility-people/verify` is a
   same-origin, CSRF-protected editing helper that is only useful with an
   authenticated session, assignment purpose, and, where applicable, scoped edit
-  permission. Caller and target fingerprints drive rate limits, sanitized
-  outcomes are audited, and successful lookups return short-lived evidence
+  permission. Caller and target fingerprints drive a SQL Server-backed quota
+  shared by all app nodes. Sanitized outcomes are audited, and successful
+  lookups return short-lived evidence
   bound to caller, target, purpose, scope, and expiry. Verification does not
   persist the person; the final assignment route validates evidence and stores
-  person plus assignment atomically. The app does not expose a browser-usable
-  general HSA search route.
+  person plus assignment atomically. A denied quota retains the stable `429`
+  and `Retry-After` contract. Quota coordination failure stops before lookup
+  and returns generic `503` with `Retry-After: 5`. The app does not expose a
+  browser-usable general HSA search route.
 - MCP remains outside the REST OpenAPI/Schemathesis contract. `/api/mcp` is
   governed by MCP schemas, tool-contract tests, Bearer-token authentication
   tests, the Admin-configured MCP payload-size guard that defaults to `1 MiB`

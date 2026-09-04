@@ -452,6 +452,19 @@ erDiagram
         datetime2 updated_at
     }
 
+    hsa_verification_quota_buckets {
+        integer id PK
+        text bucket_kind
+        text actor_fingerprint "nullable"
+        text target_fingerprint "nullable"
+        text actor_subject_fingerprint "nullable"
+        integer request_count
+        datetime2 window_started_at
+        datetime2 expires_at
+        datetime2 created_at
+        datetime2 updated_at
+    }
+
     ai_safety_rules {
         integer id PK
         text rule_id UK
@@ -2359,6 +2372,48 @@ expired-row count, stored bytes and oldest age. It never logs stored session
 content. See
 [Scheduled Transient-State Cleanup](../operations/transient-state-cleanup.md).
 
+### `hsa_verification_quota_buckets`
+
+Short-lived, application-wide counters for HSA person verification. Each row
+represents an actor, actor-target, or target bucket in a SQL Server UTC
+minute-aligned fixed window.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| --- | --- | --- |
+| `id` | integer PK | Auto-increment primary key |
+| `bucket_kind` | nvarchar(16) | `actor`, `actor_target`, or `target` |
+| `actor_fingerprint` | nvarchar(26), nullable | Purpose-separated keyed HMAC for the complete authenticated actor context |
+| `target_fingerprint` | nvarchar(26), nullable | Purpose-separated keyed HMAC for the normalized target HSA-id |
+| `actor_subject_fingerprint` | nvarchar(26), nullable | Target-style keyed HMAC for exact privacy matching when the actor has an HSA-id |
+| `request_count` | integer | Consumed requests in the current fixed window |
+| `window_started_at` | datetime2 | SQL Server UTC minute that identifies the fixed window |
+| `expires_at` | datetime2 | Exact fixed-window end, 60 seconds after `window_started_at` |
+| `created_at` | datetime2 | Creation timestamp from SQL Server UTC |
+| `updated_at` | datetime2 | Last-consumption timestamp from SQL Server UTC |
+<!-- markdownlint-enable MD013 -->
+
+The unique identity/window index permits one row for each logical bucket and
+window. Checks enforce bucket shape, fingerprint formats, count bounds, exact
+60-second expiry, and minute alignment. Actor and target fingerprints derive
+from the existing HSA verification secret; raw HSA-id, purpose, scope, mode,
+person details, and verification outcomes are never stored.
+
+Quota evaluation runs in one serializable transaction. Transaction-owned SQL
+application locks are acquired in actor, actor-target, then target order with a
+one-second maximum wait. Allowed earlier buckets remain consumed when a later
+bucket denies. Any coordination or persistence failure rolls the whole
+transaction back. SQL Server supplies window and retry time. The row set has no
+hard global cap: an authenticated actor can create at most 101 rows per minute
+under the fixed limits, and scheduled cleanup removes expired rows in bounded,
+overlap-safe batches.
+
+**Demo seed:** one synthetic actor bucket exercises the pseudonymous shape and
+current-window cleanup boundary without storing a real identity.
+
+See [Scheduled Transient-State Cleanup](../operations/transient-state-cleanup.md)
+and [HSA Verification Quota](../adr/0057-sql-server-samordnad-hsa-verifieringskvot.md).
+
 ### `ai_safety_rules`
 
 DB-backed catalog of AI safety rule definitions shown in the Admin Center AI
@@ -3273,6 +3328,7 @@ its purpose and the table/column(s) it covers.
 | `uq_norm_references_norm_reference_id` | `norm_references` | `norm_reference_id` | Ensures each norm reference has a distinct external identifier |
 | `uq_requirement_import_validation_sessions_token_hash` | `requirement_import_validation_sessions` | `token_hash` | Ensures each hashed MCP import validation token identifies one session |
 | `uq_requirement_import_validation_rate_buckets_principal_window` | `requirement_import_validation_rate_buckets` | `principal_fingerprint, window_started_at` | Ensures one creation counter per principal and fixed 10-minute window |
+| `uq_hsa_verification_quota_buckets_identity_window` | `hsa_verification_quota_buckets` | `bucket_kind, actor_fingerprint, target_fingerprint, window_started_at` | Ensures one counter per HSA verification quota identity and fixed window |
 | `uq_ai_connections_administration_name` | `ai_connections` | `administration_name` | Keeps the internal administration name unique without using provider names as keys |
 | `uq_ai_provider_secret_versions_connection_revision` | `ai_provider_secret_versions` | `(ai_connection_id, revision_number)` | Preserves ordered encrypted secret history per connection |
 | `uq_ai_provider_secret_versions_active_connection` | `ai_provider_secret_versions` | `ai_connection_id` where `status = 'active'` | Permits at most one active provider-secret revision per connection |
@@ -3388,6 +3444,9 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_import_validation_sessions_principal_expires_at` | `requirement_import_validation_sessions` | `creator_principal_fingerprint, expires_at` | Support owned lookup and active principal quota counts |
 | `idx_requirement_import_validation_sessions_destination_expires_at` | `requirement_import_validation_sessions` | `destination_kind, destination_id, expires_at` | Support active destination quota counts |
 | `idx_requirement_import_validation_rate_buckets_expires_at` | `requirement_import_validation_rate_buckets` | `expires_at` | Support bounded cleanup of expired creation counters |
+| `idx_hsa_verification_quota_buckets_expires_at` | `hsa_verification_quota_buckets` | `expires_at` | Support bounded cleanup of expired HSA verification quota rows |
+| `idx_hsa_verification_quota_buckets_actor_subject` | `hsa_verification_quota_buckets` | `actor_subject_fingerprint` where non-null | Support exact actor-side privacy lookup and erasure |
+| `idx_hsa_verification_quota_buckets_target` | `hsa_verification_quota_buckets` | `target_fingerprint` where non-null | Support exact target-side privacy lookup and erasure |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints
@@ -3543,9 +3602,10 @@ graph LR
         RFIS[rfi_question_suggestions]
     end
 
-    subgraph Transient MCP State
+    subgraph Transient Coordination State
         MIVS[requirement_import_validation_sessions]
         MIVR[requirement_import_validation_rate_buckets]
+        HVQB[hsa_verification_quota_buckets]
     end
 
     subgraph Time-limited AI Forensic State

@@ -222,6 +222,12 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
       section: 'actionLog',
       title: 'Application action',
     },
+    'hsa_verification_quota_buckets.subject': {
+      description:
+        'The application temporarily stores aggregate HSA verification quota metadata for this person.',
+      section: 'other',
+      title: 'HSA verification quota',
+    },
     'requirement_import_validation_rate_buckets.principal': {
       description:
         'The application temporarily stores an aggregate MCP validation-session creation count for this person.',
@@ -371,6 +377,12 @@ const SOURCE_TEXT: Record<LocaleKey, Record<string, SourceInfo>> = {
       description: 'Applikationen har sparat att personen utförde en åtgärd.',
       section: 'actionLog',
       title: 'Åtgärd i applikationen',
+    },
+    'hsa_verification_quota_buckets.subject': {
+      description:
+        'Applikationen lagrar tillfälligt aggregerad metadata om HSA-verifieringskvot för personen.',
+      section: 'other',
+      title: 'HSA-verifieringskvot',
     },
     'requirement_import_validation_rate_buckets.principal': {
       description:

@@ -81,6 +81,8 @@ sources include:
 - current auth session claims for self-export only
 - short-lived MCP import validation-session metadata and principal creation-rate
   metadata, matched by the exact keyed principal fingerprint
+- short-lived HSA verification quota kind, count, and timestamps, matched by
+  the exact keyed actor-subject or target fingerprint
 
 Matching is exact HSA-id matching only. Names and email addresses are never used
 to find a subject. MCP sources derive the same purpose-separated keyed HMAC used
@@ -90,6 +92,13 @@ timestamps; tokens/hashes, payloads, validation/execution JSON, destination
 IDs/names, session/row IDs and issue arrays are excluded. Privacy erasure offers
 delete or skip for the same exact fingerprint. Deleting a session invalidates
 its token; deleting a rate bucket resets the current short-lived counter.
+
+HSA verification quota sources derive the same purpose-separated target
+fingerprint as verification. They match rows where the person is the actor or
+target, but export only bucket kind, consumed count, window start, and expiry.
+The other party's fingerprint and the complete actor-context fingerprint are
+never exported. Erasure offers delete or skip; deletion can reset a live
+60-second counter.
 
 ## Limits
 

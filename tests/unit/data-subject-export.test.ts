@@ -43,9 +43,15 @@ function createExportDb(rowsByKey: RowMap) {
       const usesMcpFingerprint = key?.startsWith(
         'requirement_import_validation_',
       )
+      const usesHsaQuotaFingerprint = key?.startsWith(
+        'hsa_verification_quota_buckets',
+      )
       const targetMatches = usesMcpFingerprint
         ? typeof target === 'string' && /^[a-f0-9]{64}$/u.test(target)
-        : target === TARGET_HSA_ID
+        : usesHsaQuotaFingerprint
+          ? typeof target === 'string' &&
+            /^hfp_[A-Za-z0-9_-]{22}$/u.test(target)
+          : target === TARGET_HSA_ID
       const rows = key && targetMatches ? (rowsByKey[key] ?? []) : []
       return Promise.resolve(rows as T)
     },
@@ -197,6 +203,47 @@ describe('data-subject export service', () => {
       )
       .map(([, parameters]) => parameters?.[0])
     expect(mcpQueryParameters).not.toContain(TARGET_HSA_ID)
+  })
+
+  it('exports safe HSA verification quota metadata without either party fingerprint', async () => {
+    const { db, query } = createExportDb({
+      'hsa_verification_quota_buckets.subject': [
+        {
+          bucketKind: 'actor_target',
+          expiresAt: new Date('2026-09-04T12:35:00Z'),
+          requestCount: 4,
+          windowStartedAt: new Date('2026-09-04T12:34:00Z'),
+        },
+      ],
+    })
+
+    const result = await collectDataSubjectExport(db, {
+      generatedBy: generatedBy(),
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(result.sources).toContainEqual(
+      expect.objectContaining({
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            fieldName: 'bucket_kind',
+            value: 'actor_target',
+          }),
+          expect.objectContaining({ fieldName: 'request_count', value: 4 }),
+        ]),
+        key: 'hsa_verification_quota_buckets.subject',
+      }),
+    )
+    const serialized = JSON.stringify(result.sources)
+    expect(serialized).not.toMatch(
+      /actor_fingerprint|target_fingerprint|actor_subject_fingerprint|afp_|hfp_/u,
+    )
+    const quotaQuery = query.mock.calls.find(([sql]) =>
+      String(sql).includes(
+        'privacy:data-export:hsa_verification_quota_buckets.subject',
+      ),
+    )
+    expect(quotaQuery?.[1]?.[0]).toMatch(/^hfp_[A-Za-z0-9_-]{22}$/u)
   })
 
   it('uses the same HSA-id backed source keys as privacy erasure', () => {
@@ -652,7 +699,9 @@ describe('data-subject export service', () => {
       expect(parameters?.[0]).toSatisfy(
         value =>
           value === TARGET_HSA_ID ||
-          (typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value)),
+          (typeof value === 'string' &&
+            (/^[a-f0-9]{64}$/u.test(value) ||
+              /^hfp_[A-Za-z0-9_-]{22}$/u.test(value))),
       )
     }
 

@@ -412,6 +412,11 @@ the window, follow the regular upgrade guide for backup, traffic drain and
 service stop. Then use this section instead of the connected artifact download,
 extraction and image-pull steps.
 
+The shared HSA verification quota needs no extra image, network endpoint,
+secret or configuration in the disconnected bundle. Keep the app and database
+job images on the same release so the quota migration, runtime permissions and
+application protocol move together.
+
 Unpack and verify the disconnected bundle on every disconnected app node:
 
 ```bash

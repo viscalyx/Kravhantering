@@ -28,6 +28,13 @@ upgrade. The first-install template-copy steps are intentionally not part of
 this checklist unless the release notes require a specific configuration
 change.
 
+The HSA verification quota is coordinated in SQL Server. Drain and stop every
+app node before applying its migration, and start only releases that implement
+the shared quota. A mixed deployment with older per-process counters is not
+supported. The migration and runtime-permission reconciliation must complete
+before any app node starts; no new service, secret or operator setting is
+required.
+
 >[!IMPORTANT]
 >Before the downtime window, create the mandatory site-specific
 >[readiness probe boundary](./readiness-probe-boundary.md) and add its path to
@@ -585,6 +592,13 @@ For either rollback that follows a failed Quadlet start:
 
 Do not rely on app-only image rollback after schema migration unless the
 specific release notes explicitly say it is supported.
+
+Do not roll back only the app image to a release with per-process HSA
+verification counters. Restore the matching pre-upgrade SQL Server state and
+previous app release together while traffic remains drained. After upgrade or
+rollback, verify the existing SQL and migration readiness signal, the
+`hsa_verification_quota_buckets` cleanup target, and HSA verification capacity
+events before restoring traffic.
 
 ### MCP validation-session ownership migration
 

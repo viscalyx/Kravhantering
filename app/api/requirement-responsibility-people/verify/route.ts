@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { recordActionAuditEvent } from '@/lib/audit/action-audit'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
+import { consumeHsaVerificationQuota } from '@/lib/dal/hsa-verification-quota'
 import { canManageAreaCoAuthors } from '@/lib/dal/requirement-areas'
 import { canManageSpecificationAssignments } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -15,7 +16,7 @@ import {
   boundedDbStringSchema,
   positiveIntegerSchema,
 } from '@/lib/http/validation'
-import { checkInMemoryThrottle } from '@/lib/observability/throttle'
+import { recordCapacityEvent } from '@/lib/observability/capacity'
 import {
   forbiddenError,
   isRequirementsServiceError,
@@ -33,19 +34,22 @@ import {
   verifyRequirementResponsibilityPerson,
 } from '@/lib/requirements/responsibility-person-verification'
 
-const ACTOR_RATE_LIMIT = 50
-const ACTOR_TARGET_RATE_LIMIT = 10
-const TARGET_RATE_LIMIT = 10
-const RATE_LIMIT_WINDOW_MS = 60_000
 const THROTTLED_ERROR = {
   code: 'hsa_verification_throttled',
   error: 'Too many HSA verification requests.',
+} as const
+const QUOTA_UNAVAILABLE_RETRY_AFTER_SECONDS = 5
+const QUOTA_UNAVAILABLE_ERROR = {
+  code: 'service_unavailable',
+  error: 'Service unavailable.',
+  retryAfterSeconds: QUOTA_UNAVAILABLE_RETRY_AFTER_SECONDS,
 } as const
 
 type VerificationAuditOutcome =
   | 'conflict'
   | 'not_found'
   | 'provider_failure'
+  | 'quota_unavailable'
   | 'success'
   | 'throttled'
 
@@ -222,6 +226,17 @@ export const POST = secureMutationRoute({
 
     const throttledResponse = (retryAfterSeconds: number) => {
       recordSecurityOutcome('throttled')
+      recordCapacityEvent({
+        event: 'capacity.throttled',
+        level: 'warn',
+        metrics: { throttled: true },
+        operation: 'requirements.hsa_verification',
+        outcome: 'throttled',
+        request,
+        retryAfterSeconds,
+        source: 'rest',
+        statusCode: 429,
+      })
       return NextResponse.json(
         { ...THROTTLED_ERROR, retryAfterSeconds },
         {
@@ -231,34 +246,40 @@ export const POST = secureMutationRoute({
       )
     }
 
-    const actorThrottle = checkInMemoryThrottle({
-      key: `hsa.verify:actor:${actorFingerprint}`,
-      limit: ACTOR_RATE_LIMIT,
-      windowMs: RATE_LIMIT_WINDOW_MS,
-    })
-    if (!actorThrottle.allowed) {
-      return throttledResponse(actorThrottle.retryAfterSeconds)
+    let db: Awaited<ReturnType<typeof getRequestSqlServerDataSource>>
+    try {
+      db = await getRequestSqlServerDataSource()
+      const quota = await consumeHsaVerificationQuota(db, {
+        actorFingerprint,
+        actorSubjectFingerprint: context.actor.hsaId
+          ? requirementResponsibilityPersonTargetFingerprint(
+              context.actor.hsaId,
+            )
+          : null,
+        targetFingerprint,
+      })
+      if (!quota.allowed) {
+        return throttledResponse(quota.retryAfterSeconds)
+      }
+    } catch {
+      recordSecurityOutcome('quota_unavailable')
+      recordCapacityEvent({
+        event: 'capacity.operation.failed',
+        level: 'error',
+        operation: 'requirements.hsa_verification',
+        outcome: 'failure',
+        request,
+        source: 'rest',
+        statusCode: 503,
+      })
+      return NextResponse.json(QUOTA_UNAVAILABLE_ERROR, {
+        headers: {
+          'Retry-After': String(QUOTA_UNAVAILABLE_RETRY_AFTER_SECONDS),
+        },
+        status: 503,
+      })
     }
 
-    const actorTargetThrottle = checkInMemoryThrottle({
-      key: `hsa.verify:actor-target:${actorFingerprint}:${targetFingerprint}`,
-      limit: ACTOR_TARGET_RATE_LIMIT,
-      windowMs: RATE_LIMIT_WINDOW_MS,
-    })
-    if (!actorTargetThrottle.allowed) {
-      return throttledResponse(actorTargetThrottle.retryAfterSeconds)
-    }
-
-    const targetThrottle = checkInMemoryThrottle({
-      key: `hsa.verify:target:${targetFingerprint}`,
-      limit: TARGET_RATE_LIMIT,
-      windowMs: RATE_LIMIT_WINDOW_MS,
-    })
-    if (!targetThrottle.allowed) {
-      return throttledResponse(targetThrottle.retryAfterSeconds)
-    }
-
-    const db = await getRequestSqlServerDataSource()
     const recordOutcome = async (
       outcome: VerificationAuditOutcome,
     ): Promise<void> => {

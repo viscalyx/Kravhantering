@@ -5,6 +5,10 @@ import {
   purgeExpiredAiForensicEvidence,
 } from '@/lib/transient-cleanup/ai-forensic-evidence'
 import {
+  inspectExpiredHsaVerificationQuotaBuckets,
+  purgeExpiredHsaVerificationQuotaBuckets,
+} from '@/lib/transient-cleanup/hsa-verification-quota-buckets'
+import {
   inspectExpiredRequirementImportValidationRateBuckets,
   purgeExpiredRequirementImportValidationRateBuckets,
 } from '@/lib/transient-cleanup/requirement-import-validation-rate-buckets'
@@ -107,6 +111,38 @@ describe('transient cleanup against SQL Server', () => {
       'SELECT principal_fingerprint AS principalFingerprint FROM requirement_import_validation_rate_buckets',
     )) as Array<{ principalFingerprint: string }>
     expect(rows).toEqual([{ principalFingerprint: 'b'.repeat(64) }])
+  })
+
+  it('purges expired HSA verification quota buckets in bounded batches', async () => {
+    await appDb().query(`
+      DECLARE @current_window datetime2(3) = DATEADD(
+        minute, DATEDIFF_BIG(minute, CONVERT(datetime2(3), '1970-01-01'), SYSUTCDATETIME()),
+        CONVERT(datetime2(3), '1970-01-01')
+      );
+      INSERT INTO hsa_verification_quota_buckets (
+        bucket_kind, actor_fingerprint, target_fingerprint,
+        actor_subject_fingerprint, request_count, window_started_at,
+        expires_at, created_at, updated_at
+      ) VALUES
+        (N'actor', N'afp_aaaaaaaaaaaaaaaaaaaaaa', NULL,
+         N'hfp_bbbbbbbbbbbbbbbbbbbbbb', 3,
+         DATEADD(minute, -1, @current_window), @current_window,
+         DATEADD(minute, -1, @current_window), @current_window),
+        (N'target', NULL, N'hfp_cccccccccccccccccccccc', NULL, 2,
+         @current_window, DATEADD(second, 60, @current_window),
+         @current_window, @current_window);
+    `)
+
+    await expect(
+      inspectExpiredHsaVerificationQuotaBuckets(appDb()),
+    ).resolves.toMatchObject({ expiredRowCount: 1 })
+    await expect(
+      purgeExpiredHsaVerificationQuotaBuckets(appDb(), 10),
+    ).resolves.toEqual({ deletedRows: 1 })
+    const rows = (await appDb().query(
+      'SELECT bucket_kind AS bucketKind FROM hsa_verification_quota_buckets',
+    )) as Array<{ bucketKind: string }>
+    expect(rows).toEqual([{ bucketKind: 'target' }])
   })
 
   it('purges forensic evidence 72 hours after capture stop', async () => {

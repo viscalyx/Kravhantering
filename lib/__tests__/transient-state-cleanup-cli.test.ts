@@ -49,7 +49,7 @@ describe('transient cleanup command', () => {
         write: vi.fn(),
       }),
     ).resolves.toBe(0)
-    expect(query).toHaveBeenCalledTimes(4)
+    expect(query).toHaveBeenCalledTimes(5)
   })
 
   it('cleans registered targets without any MCP request traffic', async () => {

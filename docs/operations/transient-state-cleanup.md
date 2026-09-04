@@ -7,7 +7,8 @@ small randomized delay.
 
 The current cleanup registry includes expired AI run coordination rows,
 time-limited AI forensic evidence, expired MCP import-validation sessions, and
-expired principal creation-rate buckets. All use the same runner and timer.
+expired principal creation-rate buckets, and expired HSA verification quota
+rows. All use the same runner and timer.
 AI coordination rows expire at their original total deadline, or when a
 running lease is abandoned, and contain no model content. The forensic target
 records a metadata-only expiry event when a cleanup run detects a row that has
@@ -30,6 +31,14 @@ SQL Server UTC determines expiry. Each batch uses update locks, row locks and
 skip-locked selection so overlapping executions and multiple app nodes may run
 safely. A row is deleted at most once, another worker's progress is a successful
 no-op, and rows whose expiry is later than the database clock are not selected.
+
+HSA verification quota rows expire at the end of their minute-aligned
+60-second window. They have no hard global row cap. For capacity planning, one
+authenticated actor can create at most one actor row, 50 actor-target rows, and
+50 target rows per minute: at most 101 new rows before overlap with other
+actors reduces the target-row count. Size the cleanup work limit above the
+expected authenticated actor volume multiplied by this worst-case bound, and
+monitor backlog rather than treating the bound as expected traffic.
 
 ## Activation
 
@@ -100,10 +109,9 @@ Check these boundaries in order:
 2. Confirm `/etc/kravhantering/app.env` contains the runtime database connection
    and valid numeric cleanup bounds.
 3. Confirm the app runtime identity retains `SELECT` and `DELETE` access to the
-   registered transient tables, including AI run coordination and the forensic
-   capture/evidence tables,
-   by running the release's normal runtime
-   permission verification.
+   registered transient tables, including AI run coordination, HSA verification
+   quota, and the forensic capture/evidence tables, by running the release's
+   normal runtime permission verification.
 4. For app-node topologies, verify the egress network reaches SQL Server. For
    `single-node`, verify the database network, SQL Server service and mounted CA
    certificate.

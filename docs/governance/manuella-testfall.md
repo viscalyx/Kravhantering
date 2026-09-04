@@ -2247,6 +2247,15 @@ lokaliserad feldialog visar att exportkapaciteten är upptagen utan intern
 feltext. Återförsöksknappen aktiveras efter den säkra väntetiden och det nya
 försöket kan slutföras.
 
+### PRIV-13: HSA-verifieringskvot i export och radering
+
+1. Skapa en tillfällig HSA-verifieringskvot där testpersonen är aktör eller mål.
+2. Som `PrivacyOfficer`, förhandsgranska samma HSA-id.
+3. Exportera JSON och kontrollera att endast kvottyp, antal anrop,
+   fönsterstart och sluttid visas, utan fingeravtryck eller rad-id.
+4. Kör rekommenderad radering och kontrollera att de matchande kvotraderna
+   raderas.
+
 ## Utvecklar- och robusthetsytor
 
 ### DEVTOOLS-01: Developer Mode-chip kopierar referens

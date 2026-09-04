@@ -131,6 +131,10 @@ runtime DataSource keeps SQL Server behavior explicit:
 - TypeORM transactions default to `READ COMMITTED` through the DataSource-level
   `isolationLevel`. DAL paths that need stronger ordering pass
   `SERIALIZABLE` explicitly at the transaction call site.
+- HSA verification quota consumption uses one `SERIALIZABLE` transaction and
+  transaction-owned `sp_getapplock` resources in actor, actor-target, then
+  target order. Keep the one-second lock timeout and SQL Server UTC fixed-window
+  clock when changing or testing this path.
 - Connection and request timeouts are explicit.
 - Connection pool sizing and idle/acquire timeouts are explicit.
 

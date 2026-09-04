@@ -22,6 +22,7 @@ import { archivingRetentionPolicyEntity } from '@/lib/typeorm/entities/archiving
 import { archivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
 import { deviationEntity } from '@/lib/typeorm/entities/deviation'
 import { hsaIdPrefixEntity } from '@/lib/typeorm/entities/hsa-id-prefix'
+import { hsaVerificationQuotaBucketEntity } from '@/lib/typeorm/entities/hsa-verification-quota-bucket'
 import { improvementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 import { normReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
 import { priorityLevelEntity } from '@/lib/typeorm/entities/priority-level'
@@ -94,6 +95,7 @@ export const sqlServerEntities = [
   deviationEntity,
   improvementSuggestionEntity,
   hsaIdPrefixEntity,
+  hsaVerificationQuotaBucketEntity,
   normReferenceEntity,
   archivingRetentionPolicyEntity,
   archivingRetentionRunEntity,
@@ -170,6 +172,7 @@ export type { ArchivingRetentionPolicyEntity } from '@/lib/typeorm/entities/arch
 export type { ArchivingRetentionRunEntity } from '@/lib/typeorm/entities/archiving-retention-run'
 export type { DeviationEntity } from '@/lib/typeorm/entities/deviation'
 export type { HsaIdPrefixEntity } from '@/lib/typeorm/entities/hsa-id-prefix'
+export type { HsaVerificationQuotaBucketEntity } from '@/lib/typeorm/entities/hsa-verification-quota-bucket'
 export type { ImprovementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 export type { NormReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
 export type { PriorityLevelEntity } from '@/lib/typeorm/entities/priority-level'
@@ -242,6 +245,7 @@ export {
   archivingRetentionRunEntity,
   deviationEntity,
   hsaIdPrefixEntity,
+  hsaVerificationQuotaBucketEntity,
   improvementSuggestionEntity,
   normReferenceEntity,
   priorityLevelEntity,

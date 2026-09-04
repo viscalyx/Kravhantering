@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 export const SQL_SERVER_RUNTIME_ROLE = 'kravhantering_runtime'
-export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.08.22.2'
+export const RUNTIME_PERMISSION_MANIFEST_VERSION = '2026.09.04.1'
 
 const CRUD = Object.freeze(['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
 const READ_CREATE = Object.freeze(['SELECT', 'INSERT'])
@@ -282,6 +282,15 @@ export const RUNTIME_PERMISSION_MANIFEST = Object.freeze(
           permissions: READ_CREATE_UPDATE,
         }),
         currentEntry,
+      ]
+    }
+    if (entry.object === 'dbo.hsa_id_prefixes') {
+      return [
+        currentEntry,
+        Object.freeze({
+          object: 'dbo.hsa_verification_quota_buckets',
+          permissions: CRUD,
+        }),
       ]
     }
     return entry.object === 'dbo.requirement_import_validation_sessions'

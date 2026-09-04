@@ -682,7 +682,7 @@ test('PRIV-09: export includes the orphaned responsibility person target only', 
   })
 })
 
-test('PRIV-10: MCP fingerprints export safe metadata and delete owned transient state', async ({
+test('PRIV-10/PRIV-13: fingerprint-owned transient state exports safely and deletes', async ({
   page,
 }) => {
   const targetHsaId = 'SE5560000001-mcp1'
@@ -718,6 +718,20 @@ test('PRIV-10: MCP fingerprints export safe metadata and delete owned transient 
         ],
         source: 'requirement_import_validation_rate_buckets.principal',
       },
+      {
+        items: [
+          {
+            fields: [
+              { label: 'Kvottyp', value: 'actor' },
+              { label: 'Antal anrop', value: 4 },
+              { label: 'Fönsterstart', value: '2026-05-12T11:00:00.000Z' },
+              { label: 'Upphör', value: '2026-05-12T11:01:00.000Z' },
+            ],
+            title: 'HSA-verifieringskvot',
+          },
+        ],
+        source: 'hsa_verification_quota_buckets.subject',
+      },
     ],
   }
 
@@ -748,6 +762,16 @@ test('PRIV-10: MCP fingerprints export safe metadata and delete owned transient 
               recommendedAction: 'delete',
               warningKey: 'rateBucketDeletion',
             },
+            {
+              affectedReferences: [],
+              allowedActions: ['delete', 'skip'],
+              count: 1,
+              fieldKey: 'subjectFingerprint',
+              key: 'hsa_verification_quota_buckets.subject',
+              objectKey: 'hsaVerificationQuotaBuckets',
+              recommendedAction: 'delete',
+              warningKey: 'hsaVerificationQuotaDeletion',
+            },
           ],
           'mcp-fingerprint-preview-token',
         ),
@@ -760,11 +784,11 @@ test('PRIV-10: MCP fingerprints export safe metadata and delete owned transient 
     await page.route('**/api/privacy/erasure-requests', async route => {
       executeRequests.push(route.request().postDataJSON())
       await fulfillJson(route, {
-        actions: { anonymize: 0, delete: 2, skip: 0, switch: 0 },
+        actions: { anonymize: 0, delete: 3, skip: 0, switch: 0 },
         groups: [],
         requestId: 'mcp-fingerprint-erasure',
         targetFingerprint: 'mcp-fingerprint',
-        totalCount: 2,
+        totalCount: 3,
       })
     })
   })
@@ -783,6 +807,7 @@ test('PRIV-10: MCP fingerprints export safe metadata and delete owned transient 
     await expect(
       page.getByText('Anropsgränser för MCP-valideringssessioner'),
     ).toHaveCount(1)
+    await expect(page.getByText('HSA-verifieringskvoter')).toHaveCount(1)
     await page.getByRole('button', { name: 'Exportera JSON' }).click()
     await expect.poll(() => exportRequests.length).toBe(1)
     expect(exportRequests[0]).toMatchObject({
@@ -790,7 +815,7 @@ test('PRIV-10: MCP fingerprints export safe metadata and delete owned transient 
       target: { hsaId: targetHsaId },
     })
     expect(JSON.stringify(safeExport)).not.toMatch(
-      /validationToken|submittedPayload|validationResult|destinationName|rowId/u,
+      /validationToken|submittedPayload|validationResult|destinationName|rowId|afp_|hfp_/u,
     )
   })
 
@@ -804,6 +829,7 @@ test('PRIV-10: MCP fingerprints export safe metadata and delete owned transient 
     await expect.poll(() => executeRequests.length).toBe(1)
     expect(executeRequests[0]).toMatchObject({
       actions: {
+        'hsa_verification_quota_buckets.subject': 'delete',
         'requirement_import_validation_rate_buckets.principal': 'delete',
         'requirement_import_validation_sessions.creator': 'delete',
       },

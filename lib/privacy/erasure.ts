@@ -12,6 +12,7 @@ import {
   REQUIREMENT_RESPONSIBILITY_PERSON_MISSING_NAME,
   type RequirementResponsibilityPersonRecord,
 } from '@/lib/requirements/responsibility-person'
+import { requirementResponsibilityPersonTargetFingerprint } from '@/lib/requirements/responsibility-person-verification'
 
 export { DELETED_USER_INTERNAL_NAME }
 
@@ -101,7 +102,10 @@ export interface PrivacyGroupPolicy {
   hsaColumn?: string
   key: string
   kind: PrivacyGroupKind
-  matchBy?: 'hsaId' | 'mcpPrincipalFingerprint'
+  matchBy?:
+    | 'hsaId'
+    | 'hsaVerificationTargetFingerprint'
+    | 'mcpPrincipalFingerprint'
   objectKey: string
   table?: string
   warningKey: string | null
@@ -704,6 +708,22 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   {
     allowedActions: ['delete', 'skip'],
     countSql: `SELECT COUNT(*) AS count
+      FROM hsa_verification_quota_buckets
+      WHERE actor_subject_fingerprint = @0
+        OR target_fingerprint = @0`,
+    defaultWithReplacement: 'delete',
+    defaultWithoutReplacement: 'delete',
+    fieldKey: 'subjectFingerprint',
+    key: 'hsa_verification_quota_buckets.subject',
+    kind: 'fingerprintOnly',
+    matchBy: 'hsaVerificationTargetFingerprint',
+    objectKey: 'hsaVerificationQuotaBuckets',
+    table: 'hsa_verification_quota_buckets',
+    warningKey: 'hsaVerificationQuotaDeletion',
+  },
+  {
+    allowedActions: ['delete', 'skip'],
+    countSql: `SELECT COUNT(*) AS count
       FROM ai_forensic_evidence_events
       WHERE actor_fingerprint = LOWER(CONVERT(varchar(64), HASHBYTES(
         'SHA2_256',
@@ -777,9 +797,13 @@ function policyTargetValue(
   policy: PrivacyGroupPolicy,
   targetHsaId: string,
 ): string {
-  return policy.matchBy === 'mcpPrincipalFingerprint'
-    ? mcpImportValidationPrincipalFingerprint(targetHsaId)
-    : targetHsaId
+  if (policy.matchBy === 'mcpPrincipalFingerprint') {
+    return mcpImportValidationPrincipalFingerprint(targetHsaId)
+  }
+  if (policy.matchBy === 'hsaVerificationTargetFingerprint') {
+    return requirementResponsibilityPersonTargetFingerprint(targetHsaId)
+  }
+  return targetHsaId
 }
 
 function actionsAllowedForReplacement(
@@ -1128,6 +1152,18 @@ async function applyDirectHsaGroup(
          'SHA2_256',
          CONVERT(varchar(256), CONCAT(ai_forensic_capture_window_id, N':', @0))
        ), 2))`,
+      [targetHsaId],
+    )
+    return
+  }
+  if (
+    policy.key === 'hsa_verification_quota_buckets.subject' &&
+    action === 'delete'
+  ) {
+    await tx.query(
+      `DELETE FROM hsa_verification_quota_buckets
+       WHERE actor_subject_fingerprint = @0
+         OR target_fingerprint = @0`,
       [targetHsaId],
     )
     return

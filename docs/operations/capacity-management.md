@@ -174,6 +174,15 @@ V1 uses process-local in-memory throttling:
   actor/process.
 - AI credit lookup: 20 requests per minute per actor/process.
 
+HSA person verification is the workload-specific exception. It uses a SQL
+Server-backed HSA verification quota shared by every app node: 50 requests per
+actor, 10 per actor-target combination, and 10 per target in a minute-aligned
+60-second fixed window. Evaluation stops at the first denied bucket. A denial
+emits identity-free `capacity.throttled` with retry time. SQL coordination
+failure emits identity-free `capacity.operation.failed`, returns generic `503`
+with `Retry-After: 5`, and must alert operators; there is no process-local
+fallback.
+
 When a limit is reached, REST flows respond with `429` and `Retry-After`. MCP
 flows return a tool error and log `capacity.throttled`.
 
@@ -187,11 +196,11 @@ worker failures return stable `503` error codes. Client cancellation stops
 cancellation-aware upstream work, keeps any non-cancellable direct render
 admitted until it settles, and exposes no response body.
 
-Actor- and target-based request throttles are process-local guardrails, not
-cross-node quotas. Scaled deployments account for their limits per instance
-and can add platform rate limiting when a shared request quota is required.
-Generated-output admission remains deliberately per node, while AI execution
-uses its separately documented SQL-coordinated admission model.
+Other actor- and target-based request throttles remain process-local guardrails,
+not cross-node quotas. Scaled deployments account for those limits per instance
+and can add platform rate limiting when another shared request quota is
+required. Generated-output admission remains deliberately per node, while AI
+execution uses its separately documented SQL-coordinated admission model.
 
 ## Recommended Alerts
 
@@ -203,6 +212,9 @@ contract is [ADR 0051](../adr/0051-ai-integrationslager-med-korprofiler-och-adap
 
 - `capacity.operation.failed` above 5 percent for AI flows over 15 minutes.
 - More than 20 `capacity.throttled` events over 10 minutes.
+- Any `capacity.operation.failed` event for
+  `requirements.hsa_verification`; correlate it with SQL Server availability,
+  migration readiness, runtime permissions, and lock pressure.
 - p95 `duration_ms` above 30 seconds for AI-assisted authoring.
 - p95 `duration_ms` above 10 seconds for report data.
 - Rising daily `cost` or `token_count` for AI-assisted authoring.

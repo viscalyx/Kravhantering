@@ -1742,6 +1742,7 @@
         "actionAuditEvents": "Åtgärdsloggsposter",
         "aiForensicCaptureWindows": "AI-forensiska insamlingsperioder",
         "aiForensicEvidenceEvents": "Poster i AI-forensiskt evidenslager",
+        "hsaVerificationQuotaBuckets": "HSA-verifieringskvoter",
         "requirementImportValidationRateBuckets": "Anropsgränser för MCP-valideringssessioner",
         "requirementImportValidationSessions": "Valideringssessioner för MCP-import"
       },
@@ -1760,6 +1761,7 @@
         "actorFingerprint": "Insamlingsspecifikt aktörsfingeravtryck",
         "creatorPrincipalFingerprint": "Sessionsskapare",
         "principalFingerprint": "Principal för anropsgräns",
+        "subjectFingerprint": "Person i HSA-verifiering",
         "accessReviewPrincipal": "Behörig i översyn",
         "taxonomy": "Taxonomi",
         "lifecycleStatus": "Kravunderlagets livscykelstatus",
@@ -1779,6 +1781,7 @@
         "historySwitch": "Att byta historiskt författarskap kan ändra postens innebörd. Anonymisering är standard.",
         "decisionSwitch": "Beslut och åtgärder ska inte tilldelas om utan dokumenterad rättslig grund. Anonymisering är standard.",
         "rateBucketDeletion": "När den tillfälliga anropsgränsposten tas bort nollställs principalens aktuella antal skapanden under 10-minutersfönstret.",
+        "hsaVerificationQuotaDeletion": "När tillfälliga rader för HSA-verifieringskvot tas bort nollställs personens aktuella aktörs- eller målantal.",
         "tokenInvalidation": "När dessa tillfälliga sessioner tas bort blir deras valideringstoken omedelbart ogiltiga.",
         "forensicEvidencePurge": "Radering stoppar matchande insamlingsfönster och tar permanent bort deras isolerade evidens."
       },

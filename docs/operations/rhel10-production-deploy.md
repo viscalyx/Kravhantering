@@ -1130,6 +1130,15 @@ Use
 to reverse a first install. Do not use the upgrade rollback checklist as an
 uninstall procedure.
 
+HSA verification uses an application-owned SQL Server quota. The ordinary
+database migration and runtime-permission reconciliation create its transient
+table; there is no additional service, secret or operator setting. Confirm the
+existing SQL and migration readiness signal and the
+`hsa_verification_quota_buckets` scheduled-cleanup result. Capacity planning
+allows up to 101 active rows per authenticated actor in a one-minute window;
+alert on sustained HSA verification throttling, coordination failures and
+cleanup backlog.
+
 ## Troubleshooting Readiness
 
 - If `/api/health` works from the host but not from a remote client, check the

@@ -275,12 +275,17 @@ describe('seed profiles', () => {
       rows,
       'requirement_import_validation_rate_buckets',
     )
+    const [hsaQuotaBucket] = seedRowsFor(rows, 'hsa_verification_quota_buckets')
     expect(new Date(String(session.expires_at)).getTime()).toBeGreaterThan(
       beforeSeed.getTime(),
     )
     expect(new Date(String(rateBucket.expires_at)).getTime()).toBeGreaterThan(
       beforeSeed.getTime(),
     )
+    expect(
+      new Date(String(hsaQuotaBucket.expires_at)).getTime(),
+    ).toBeGreaterThan(beforeSeed.getTime())
+    expect(JSON.stringify(hsaQuotaBucket)).not.toContain('SE5560000001')
     expect(
       new Date(String(rateBucket.window_started_at)).getTime(),
     ).toBeLessThanOrEqual(Date.now())

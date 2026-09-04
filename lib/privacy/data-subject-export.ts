@@ -14,6 +14,7 @@ import {
   type PrivacyGroupPolicy,
   privacyTargetFingerprint,
 } from '@/lib/privacy/erasure'
+import { requirementResponsibilityPersonTargetFingerprint } from '@/lib/requirements/responsibility-person-verification'
 
 interface QueryExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
@@ -1165,6 +1166,46 @@ async function collectRequirementImportValidationRateBuckets(
   )
 }
 
+async function collectHsaVerificationQuotaBuckets(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor('hsa_verification_quota_buckets.subject')
+  const rows = (await db.query(
+    `/* privacy:data-export:hsa_verification_quota_buckets.subject */
+      SELECT
+        bucket.bucket_kind AS bucketKind,
+        bucket.request_count AS requestCount,
+        bucket.window_started_at AS windowStartedAt,
+        bucket.expires_at AS expiresAt
+      FROM hsa_verification_quota_buckets bucket
+      WHERE bucket.actor_subject_fingerprint = @0
+        OR bucket.target_fingerprint = @0
+      ORDER BY bucket.window_started_at DESC, bucket.id DESC`,
+    [requirementResponsibilityPersonTargetFingerprint(targetHsaId)],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    [
+      { fieldName: 'bucket_kind', value: stringValue(row.bucketKind) },
+      { fieldName: 'request_count', value: Number(row.requestCount) },
+      {
+        fieldName: 'window_started_at',
+        value: isoTimestamp(row.windowStartedAt) ?? null,
+      },
+      { fieldName: 'expires_at', value: isoTimestamp(row.expiresAt) ?? null },
+    ].map(field =>
+      item(
+        policy,
+        'hsa_verification_quota_subject',
+        field.fieldName,
+        field.value,
+        { timestamp: row.windowStartedAt },
+      ),
+    ),
+  )
+}
+
 const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
   {
     collect: collectRequirementAreaOwners,
@@ -1377,6 +1418,11 @@ const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
     collect: collectRequirementImportValidationRateBuckets,
     policy: policyFor('requirement_import_validation_rate_buckets.principal'),
     relationToSubject: 'mcp_import_validation_rate_bucket_principal',
+  },
+  {
+    collect: collectHsaVerificationQuotaBuckets,
+    policy: policyFor('hsa_verification_quota_buckets.subject'),
+    relationToSubject: 'hsa_verification_quota_subject',
   },
 ]
 

@@ -1742,6 +1742,7 @@
         "actionAuditEvents": "Action log events",
         "aiForensicCaptureWindows": "AI forensic capture windows",
         "aiForensicEvidenceEvents": "AI forensic evidence events",
+        "hsaVerificationQuotaBuckets": "HSA verification quotas",
         "requirementImportValidationRateBuckets": "MCP validation-session rate limits",
         "requirementImportValidationSessions": "MCP import validation sessions"
       },
@@ -1760,6 +1761,7 @@
         "actorFingerprint": "Capture-specific actor fingerprint",
         "creatorPrincipalFingerprint": "Session creator",
         "principalFingerprint": "Rate-limit principal",
+        "subjectFingerprint": "HSA verification subject",
         "accessReviewPrincipal": "Access review principal",
         "taxonomy": "Taxonomy",
         "lifecycleStatus": "Specification lifecycle status",
@@ -1779,6 +1781,7 @@
         "historySwitch": "Switching historical authorship can change the record's meaning. Anonymize is the default.",
         "decisionSwitch": "Decisions and resolutions should not be reassigned unless legally documented. Anonymize is the default.",
         "rateBucketDeletion": "Deleting the temporary rate-limit bucket resets the principal's current 10-minute creation count.",
+        "hsaVerificationQuotaDeletion": "Deleting temporary HSA verification quota rows resets the person's current actor or target count.",
         "tokenInvalidation": "Deleting these temporary sessions immediately invalidates their validation tokens.",
         "forensicEvidencePurge": "Erasure stops matching capture windows and permanently purges their isolated evidence."
       },

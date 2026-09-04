@@ -39,6 +39,7 @@ const TRANSACTIONAL_TABLES = [
   'ai_connections',
   'ai_forensic_evidence_events',
   'ai_forensic_capture_windows',
+  'hsa_verification_quota_buckets',
   'requirement_import_validation_rate_buckets',
   'requirement_import_validation_sessions',
   'access_review_items',

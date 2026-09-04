@@ -67,6 +67,7 @@ describe('MCP import-validation rate-bucket cleanup', () => {
     expect(targets.map(target => target.kind)).toEqual([
       'ai_run_coordination_entries',
       'ai_forensic_evidence',
+      'hsa_verification_quota_buckets',
       'requirement_import_validation_sessions',
       'requirement_import_validation_rate_buckets',
     ])

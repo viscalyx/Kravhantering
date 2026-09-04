@@ -13,7 +13,7 @@ function permissionFor(objectName: string) {
 
 describe('runtime permission manifest', () => {
   it('is release-versioned, stable, and explicit about protected objects', () => {
-    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.08\.22\./u)
+    expect(RUNTIME_PERMISSION_MANIFEST_VERSION).toMatch(/^2026\.09\.04\./u)
     expect(RUNTIME_PERMISSION_MANIFEST_DIGEST).toMatch(/^[a-f0-9]{64}$/u)
     expect(RUNTIME_PERMISSION_MANIFEST.map(entry => entry.object)).toEqual(
       [...RUNTIME_PERMISSION_MANIFEST]
@@ -83,6 +83,10 @@ describe('runtime permission manifest', () => {
       permissionFor('dbo.requirement_import_validation_rate_buckets'),
     ).toEqual({
       object: 'dbo.requirement_import_validation_rate_buckets',
+      permissions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+    })
+    expect(permissionFor('dbo.hsa_verification_quota_buckets')).toEqual({
+      object: 'dbo.hsa_verification_quota_buckets',
       permissions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
     })
     const aiSettingsPermission = permissionFor('dbo.ai_settings')

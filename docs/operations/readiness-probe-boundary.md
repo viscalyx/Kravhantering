@@ -16,6 +16,11 @@ conditions through the separate
 [AI connections runbook](./ai-connections.md), as required by
 [ADR 0052](../adr/0052-tillitsgrans-och-krypterade-ai-leverantorshemligheter.md).
 
+HSA verification quota coordination uses the same required SQL Server and
+migration boundary already covered by `/api/ready`; it does not add a separate
+quota probe. Per-request lock timeout or quota-table access failures fail the
+verification request closed and are monitored through capacity events.
+
 ## Prepare before installation or upgrade
 
 Create a separate probe-boundary file before rendering or installing any

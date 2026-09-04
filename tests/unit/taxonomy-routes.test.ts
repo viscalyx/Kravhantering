@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  clearInMemoryThrottleForTests,
-  getInMemoryThrottleBucketCountForTests,
-} from '@/lib/observability/throttle'
+import type {
+  HsaVerificationQuotaDecision,
+  HsaVerificationQuotaInput,
+} from '@/lib/dal/hsa-verification-quota'
 import type { ActorContext } from '@/lib/requirements/auth'
 import {
   conflictError,
@@ -79,6 +79,19 @@ const actionAuditState = vi.hoisted(() => ({
 
 const securityAuditState = vi.hoisted(() => ({
   recordSecurityEvent: vi.fn(),
+}))
+
+const capacityState = vi.hoisted(() => ({
+  recordCapacityEvent: vi.fn(),
+}))
+
+const hsaVerificationQuotaState = vi.hoisted(() => ({
+  consumeHsaVerificationQuota: vi.fn(
+    async (
+      _db: unknown,
+      _input: HsaVerificationQuotaInput,
+    ): Promise<HsaVerificationQuotaDecision> => ({ allowed: true }),
+  ),
 }))
 
 const requirementsRuntimeState = vi.hoisted(() => {
@@ -176,6 +189,15 @@ vi.mock('@/lib/auth/audit', async importOriginal => {
     recordSecurityEvent: securityAuditState.recordSecurityEvent,
   }
 })
+
+vi.mock('@/lib/observability/capacity', () => ({
+  recordCapacityEvent: capacityState.recordCapacityEvent,
+}))
+
+vi.mock('@/lib/dal/hsa-verification-quota', () => ({
+  consumeHsaVerificationQuota:
+    hsaVerificationQuotaState.consumeHsaVerificationQuota,
+}))
 
 vi.mock('@/lib/audit/requirement-selection-cleanup-audit', () => ({
   recordRequirementSelectionCleanupAudit:
@@ -690,7 +712,9 @@ describe('responsibility assignment evidence contract', () => {
 describe('requirement responsibility person verify route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    clearInMemoryThrottleForTests()
+    hsaVerificationQuotaState.consumeHsaVerificationQuota.mockResolvedValue({
+      allowed: true,
+    })
     authState.context.actor = {
       displayName: 'Route Tester',
       hsaId: 'SE5560000001-route',
@@ -806,69 +830,55 @@ describe('requirement responsibility person verify route', () => {
     ).not.toHaveBeenCalled()
   })
 
-  it('throttles one target and target cycling with the same stable response contract', async () => {
+  it('returns the stable throttle contract without downstream work', async () => {
     authState.context.actor.roles = ['Admin']
-    const requestVerification = (hsaId: string) =>
-      postRequirementResponsibilityPersonVerify(
-        jsonReq('POST', {
-          hsaId,
-          mode: 'refresh',
-          purpose: 'requirement_area_owner',
-        }),
-      )
+    hsaVerificationQuotaState.consumeHsaVerificationQuota.mockResolvedValueOnce(
+      {
+        allowed: false,
+        bucket: 'target',
+        retryAfterSeconds: 17,
+      },
+    )
 
-    for (let index = 0; index < 10; index += 1) {
-      expect((await requestVerification('SE5560000001-owner1')).status).toBe(
-        200,
-      )
-    }
-    const targetThrottled = await requestVerification('SE5560000001-owner1')
+    const targetThrottled = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-owner1',
+        mode: 'refresh',
+        purpose: 'requirement_area_owner',
+      }),
+    )
     expect(targetThrottled.status).toBe(429)
-    expect(targetThrottled.headers.get('Retry-After')).toMatch(/^\d+$/u)
+    expect(targetThrottled.headers.get('Retry-After')).toBe('17')
     const targetBody = await targetThrottled.json()
     expect(targetBody).toEqual({
       code: 'hsa_verification_throttled',
       error: 'Too many HSA verification requests.',
-      retryAfterSeconds: expect.any(Number),
+      retryAfterSeconds: 17,
     })
-    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledTimes(10)
-
-    clearInMemoryThrottleForTests()
-    hsaLookupState.lookupHsaPersonStrict.mockClear()
-    for (let index = 0; index < 50; index += 1) {
-      expect(
-        (await requestVerification(`SE5560000001-cycle${index}`)).status,
-      ).toBe(200)
-    }
-    const bucketCountBeforeDenial = getInMemoryThrottleBucketCountForTests()
-    const dbCallsBeforeDenial =
-      routeState.getRequestSqlServerDataSource.mock.calls.length
-    const actionAuditCallsBeforeDenial =
-      actionAuditState.recordActionAuditEvent.mock.calls.length
-    const actorThrottled = await requestVerification('SE5560000001-cycle50')
-    expect(actorThrottled.status).toBe(429)
-    await expect(actorThrottled.json()).resolves.toEqual({
-      ...targetBody,
-      retryAfterSeconds: expect.any(Number),
-    })
-    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledTimes(50)
-    expect(getInMemoryThrottleBucketCountForTests()).toBe(
-      bucketCountBeforeDenial,
-    )
-    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(
-      dbCallsBeforeDenial,
-    )
-    expect(actionAuditState.recordActionAuditEvent).toHaveBeenCalledTimes(
-      actionAuditCallsBeforeDenial,
-    )
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
+    expect(
+      responsibilityPersonState.getRequirementResponsibilityPerson,
+    ).not.toHaveBeenCalled()
+    expect(actionAuditState.recordActionAuditEvent).not.toHaveBeenCalled()
     expect(securityAuditState.recordSecurityEvent).toHaveBeenLastCalledWith(
       expect.objectContaining({
         detail: expect.objectContaining({ outcome: 'throttled' }),
       }),
     )
+    expect(capacityState.recordCapacityEvent).toHaveBeenCalledWith({
+      event: 'capacity.throttled',
+      level: 'warn',
+      metrics: { throttled: true },
+      operation: 'requirements.hsa_verification',
+      outcome: 'throttled',
+      request: expect.any(Request),
+      retryAfterSeconds: 17,
+      source: 'rest',
+      statusCode: 429,
+    })
   })
 
-  it('throttles one target across actors without case-variant bypasses', async () => {
+  it('uses one target bucket across HSA-id case variants', async () => {
     authState.context.actor.roles = ['Admin']
     const requestVerification = (hsaId: string) =>
       postRequirementResponsibilityPersonVerify(
@@ -879,20 +889,73 @@ describe('requirement responsibility person verify route', () => {
         }),
       )
 
-    for (let index = 0; index < 10; index += 1) {
-      authState.context.actor.id = `actor-${index}`
-      authState.context.actor.hsaId = `SE5560000001-actor${index}`
-      const target =
-        index % 2 === 0 ? 'SE5560000001-Target1' : 'SE5560000001-target1'
-      expect((await requestVerification(target)).status).toBe(200)
-    }
+    expect((await requestVerification('SE5560000001-Target1')).status).toBe(200)
+    expect((await requestVerification('SE5560000001-target1')).status).toBe(200)
 
-    authState.context.actor.id = 'actor-10'
-    authState.context.actor.hsaId = 'SE5560000001-actor10'
-    const response = await requestVerification('SE5560000001-target1')
+    const calls =
+      hsaVerificationQuotaState.consumeHsaVerificationQuota.mock.calls
+    expect(calls[0]?.[1].targetFingerprint).toBe(
+      calls[1]?.[1].targetFingerprint,
+    )
+  })
 
-    expect(response.status).toBe(429)
-    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledTimes(10)
+  it.each([
+    [
+      'database connection',
+      () =>
+        routeState.getRequestSqlServerDataSource.mockRejectedValueOnce(
+          new Error('SQL connection secret'),
+        ),
+    ],
+    [
+      'quota transaction',
+      () =>
+        hsaVerificationQuotaState.consumeHsaVerificationQuota.mockRejectedValueOnce(
+          new Error('SQL quota secret'),
+        ),
+    ],
+  ])('fails closed when the %s is unavailable', async (_failure, fail) => {
+    authState.context.actor.roles = ['Admin']
+    fail()
+
+    const response = await postRequirementResponsibilityPersonVerify(
+      jsonReq('POST', {
+        hsaId: 'SE5560000001-sensitive1',
+        mode: 'refresh',
+        purpose: 'requirement_area_owner',
+      }),
+    )
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Retry-After')).toBe('5')
+    await expect(response.json()).resolves.toEqual({
+      code: 'service_unavailable',
+      error: 'Service unavailable.',
+      retryAfterSeconds: 5,
+    })
+    expect(hsaLookupState.lookupHsaPersonStrict).not.toHaveBeenCalled()
+    expect(
+      responsibilityPersonState.getRequirementResponsibilityPerson,
+    ).not.toHaveBeenCalled()
+    expect(actionAuditState.recordActionAuditEvent).not.toHaveBeenCalled()
+    expect(securityAuditState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ outcome: 'quota_unavailable' }),
+      }),
+    )
+    expect(capacityState.recordCapacityEvent).toHaveBeenCalledWith({
+      event: 'capacity.operation.failed',
+      level: 'error',
+      operation: 'requirements.hsa_verification',
+      outcome: 'failure',
+      request: expect.any(Request),
+      source: 'rest',
+      statusCode: 503,
+    })
+    const capacityPayload = JSON.stringify(
+      capacityState.recordCapacityEvent.mock.calls.at(-1),
+    )
+    expect(capacityPayload).not.toMatch(/SE5560000001|afp_|hfp_/u)
   })
 
   it.each([
