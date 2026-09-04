@@ -37,7 +37,7 @@ describe('HSA verification quota cleanup', () => {
       purgeExpiredHsaVerificationQuotaBuckets({ query }, 700),
     ).resolves.toEqual({ deletedRows: 7 })
     expect(query).toHaveBeenCalledWith(
-      expect.stringMatching(/UPDLOCK, READPAST, ROWLOCK/u),
+      expect.stringMatching(/UPDLOCK, READPAST, READCOMMITTEDLOCK, ROWLOCK/u),
       [500],
     )
   })

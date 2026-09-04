@@ -984,6 +984,7 @@ describe('requirement responsibility person verify route', () => {
     ],
   ])('fails closed when the %s is unavailable', async (_failure, fail) => {
     authState.context.actor.roles = ['Admin']
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     fail()
 
     const response = await postRequirementResponsibilityPersonVerify(
@@ -1025,6 +1026,15 @@ describe('requirement responsibility person verify route', () => {
       capacityState.recordCapacityEvent.mock.calls.at(-1),
     )
     expect(capacityPayload).not.toMatch(/SE5560000001|afp_|hfp_/u)
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to enforce HSA verification quota',
+      expect.objectContaining({
+        error: expect.objectContaining({
+          message: expect.stringContaining('SQL'),
+        }),
+      }),
+    )
+    consoleError.mockRestore()
   })
 
   it.each([

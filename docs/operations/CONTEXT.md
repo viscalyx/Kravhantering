@@ -424,6 +424,14 @@ oåterkallelig driftsättningsverkan, som därför inte får hindra detta tillst
 
 _Avoid_: Omvänd uppgraderingsordning, automatisk nedmigrering.
 
+**Releaseoberoende rensning av transient tillstånd**:
+En schemalagd driftfunktion som tar bort utgånget transient tillstånd utan att
+dess kontinuitet styrs av vilken applikationsrelease som är aktiv.
+
+- `en`: Release-independent transient-state cleanup
+
+_Avoid_: Återgångsrensning, versionsbunden rensning, manuell gallring.
+
 **Driftöverlämning för releaseövergång**:
 Det bekräftade slutet på en releaseövergång där målreleasen har godtagits och
 normal skrivande trafik har återupptagits.

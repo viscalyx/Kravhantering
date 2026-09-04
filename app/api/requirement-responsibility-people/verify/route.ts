@@ -261,7 +261,8 @@ export const POST = secureMutationRoute({
       if (!quota.allowed) {
         return throttledResponse(quota.retryAfterSeconds)
       }
-    } catch {
+    } catch (error) {
+      logSanitizedError('Failed to enforce HSA verification quota', error)
       recordSecurityOutcome('quota_unavailable')
       recordCapacityEvent({
         event: 'capacity.operation.failed',

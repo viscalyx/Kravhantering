@@ -352,6 +352,51 @@ describe('DataSubjectExportPdfRenderer', () => {
     expect(text).not.toContain('subject-1')
   })
 
+  it('renders localized HSA quota labels and the bucket kind value', () => {
+    const payload = exportPayload()
+    payload.sources.push({
+      fieldKey: 'subjectFingerprint',
+      items: [
+        {
+          fieldName: 'bucket_kind',
+          relationToSubject: 'hsa_verification_quota_subject',
+          sourceKey: 'hsa_verification_quota_buckets.subject',
+          table: 'hsa_verification_quota_buckets',
+          value: 'actor_target',
+        },
+        {
+          fieldName: 'request_count',
+          relationToSubject: 'hsa_verification_quota_subject',
+          sourceKey: 'hsa_verification_quota_buckets.subject',
+          table: 'hsa_verification_quota_buckets',
+          value: 7,
+        },
+      ],
+      key: 'hsa_verification_quota_buckets.subject',
+      objectKey: 'hsaVerificationQuotaBuckets',
+      relationToSubject: 'hsa_verification_quota_subject',
+      table: 'hsa_verification_quota_buckets',
+    })
+
+    const rows = (locale: 'en' | 'sv') =>
+      buildDataSubjectExportPdfModel(payload, locale).sections.flatMap(
+        section => section.entries.flatMap(entry => entry.rows),
+      )
+
+    expect(rows('en')).toEqual(
+      expect.arrayContaining([
+        { label: 'Quota type', value: 'actor_target' },
+        { label: 'Request count', value: '7' },
+      ]),
+    )
+    expect(rows('sv')).toEqual(
+      expect.arrayContaining([
+        { label: 'Kvottyp', value: 'actor_target' },
+        { label: 'Antal anrop', value: '7' },
+      ]),
+    )
+  })
+
   it('formats fallback sources and every supported field value shape safely', () => {
     const payload = exportPayload()
     payload.generatedAt = 'not-a-date'

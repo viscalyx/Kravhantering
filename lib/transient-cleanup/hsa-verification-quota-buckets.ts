@@ -63,7 +63,7 @@ export async function purgeExpiredHsaVerificationQuotaBuckets(
     `;WITH expired AS (
        SELECT TOP (@0) id
        FROM hsa_verification_quota_buckets WITH (
-         UPDLOCK, READPAST, ROWLOCK
+         UPDLOCK, READPAST, READCOMMITTEDLOCK, ROWLOCK
        )
        WHERE expires_at <= SYSUTCDATETIME()
        ORDER BY expires_at, id

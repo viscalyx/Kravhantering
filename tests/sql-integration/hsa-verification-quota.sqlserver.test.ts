@@ -69,6 +69,20 @@ describe('HSA verification quota against SQL Server', () => {
     const input = quotaInput(actor, 50)
     await appDb().query(
       `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+       DECLARE @next_window datetime2(3) = DATEADD(
+         minute,
+         DATEDIFF_BIG(
+           minute,
+           CONVERT(datetime2(3), '1970-01-01'),
+           @now
+         ) + 1,
+         CONVERT(datetime2(3), '1970-01-01')
+       );
+       IF DATEDIFF(millisecond, @now, @next_window) < 2000
+       BEGIN
+         WAITFOR DELAY '00:00:02';
+         SET @now = SYSUTCDATETIME();
+       END;
        DECLARE @window_start datetime2(3) = DATEADD(
          minute,
          DATEDIFF_BIG(minute, CONVERT(datetime2(3), '1970-01-01'), @now),
@@ -146,6 +160,20 @@ describe('HSA verification quota against SQL Server', () => {
     const input = quotaInput(actor, 150)
     await appDb().query(
       `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+       DECLARE @next_window datetime2(3) = DATEADD(
+         minute,
+         DATEDIFF_BIG(
+           minute,
+           CONVERT(datetime2(3), '1970-01-01'),
+           @now
+         ) + 1,
+         CONVERT(datetime2(3), '1970-01-01')
+       );
+       IF DATEDIFF(millisecond, @now, @next_window) < 2000
+       BEGIN
+         WAITFOR DELAY '00:00:02';
+         SET @now = SYSUTCDATETIME();
+       END;
        DECLARE @window_start datetime2(3) = DATEADD(
          minute,
          DATEDIFF_BIG(minute, CONVERT(datetime2(3), '1970-01-01'), @now),
