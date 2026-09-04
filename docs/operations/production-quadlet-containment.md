@@ -38,7 +38,7 @@ adding generic writable `/run`, `/tmp`, and `/var/tmp` mounts.
 | --- | --- | ---: | ---: | ---: |
 | `app-runtime` | `/run/kravhantering/export` 1 GiB; `/tmp` 64 MiB | 4 GiB | 300% | 512 / 544 |
 | nginx | `/etc/nginx/conf.d` 1 MiB; `/var/cache/nginx` 64 MiB; `/run` 1 MiB | 512 MiB | 100% | 128 / 160 |
-| SQL Server | `/var/opt/mssql` durable volume; `/tmp` 512 MiB | 4 GiB | 200% | 1024 / 1056 |
+| SQL Server | `/var/opt/mssql` durable volume; `/.system` 16 MiB; `/tmp` 512 MiB | 4 GiB | 200% | 1024 / 1056 |
 | Keycloak | `/opt/keycloak/data` durable volume; `/opt/keycloak/lib/quarkus` 64 MiB; `/tmp` 512 MiB | 2 GiB | 100% | 512 / 544 |
 <!-- markdownlint-enable MD013 -->
 
@@ -60,14 +60,16 @@ root-owned image files out of those scratch mounts. TLS topologies require the
 crun OCI runtime so nginx can also preserve the rootless service user's group
 access to the host's `0640` private key.
 
-SQL Server writes databases, transaction logs, backups, dumps, secrets, its
-`.system` directory, and its own logs below `/var/opt/mssql`; the existing
-named volume preserves those semantics. The Quadlet sets both `HOME` and the
-container working directory to that volume and preserves the image's launcher,
-which performs the image's startup checks before starting the database engine.
-The explicit working directory keeps the launcher's child database process
-from resolving `.system` and log paths below the read-only container root. The
-4 GiB cgroup default stays above Microsoft's 2 GiB startup minimum. The pinned
+SQL Server writes databases, transaction logs, backups, dumps, secrets, and its
+own logs below `/var/opt/mssql`; the existing named volume preserves those
+semantics. The Quadlet sets both `HOME` and the container working directory to
+that volume and preserves the image's launcher, which performs the image's
+startup checks before starting the database engine. SQL Server 2025 CU8 can
+still probe `/.system` during an empty-volume start. A dedicated 16 MiB tmpfs
+keeps that compatibility path writable without opening the rest of the root
+filesystem; mode `0700` and Podman's `U` option map it to the container user,
+and `nosuid`, `nodev`, and `noexec` retain the scratch-path boundary. The 4 GiB
+cgroup default stays above Microsoft's 2 GiB startup minimum. The pinned
 `mcr.microsoft.com/mssql/server:2025-CU8-ubuntu-24.04` image has
 `cap_net_bind_service=ep` on `/opt/mssql/bin/sqlservr`. With all capabilities
 absent from the bounding set, `NoNewPrivileges` makes the kernel reject that

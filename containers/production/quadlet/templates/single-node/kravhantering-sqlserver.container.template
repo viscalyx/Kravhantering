@@ -23,6 +23,7 @@ PodmanArgs=--group-add=keep-groups
 Volume=kravhantering-sqlserver-data.volume:/var/opt/mssql:U
 Volume=@@BUNDLE_ROOT@@/sqlserver/mssql.conf:/var/opt/mssql/mssql.conf:ro
 Volume=/etc/kravhantering/sqlserver-tls:/etc/kravhantering/sqlserver-tls:ro
+Tmpfs=/.system:rw,size=16M,mode=0700,U,nosuid,nodev,noexec
 Tmpfs=/tmp:rw,size=@@SQLSERVER_TMPFS_MIB@@M,mode=1777,U,nosuid,nodev,noexec
 
 [Service]

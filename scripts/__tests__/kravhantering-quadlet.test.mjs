@@ -693,6 +693,9 @@ describe('kravhantering Quadlet helper', () => {
     expect(sqlserver).toContain('PidsLimit=1024')
     expect(sqlserver).toContain('LogDriver=journald')
     expect(sqlserver).toContain(
+      'Tmpfs=/.system:rw,size=16M,mode=0700,U,nosuid,nodev,noexec',
+    )
+    expect(sqlserver).toContain(
       'Tmpfs=/tmp:rw,size=512M,mode=1777,U,nosuid,nodev,noexec',
     )
     expect(sqlserver).toContain('MemoryMax=4096M')
