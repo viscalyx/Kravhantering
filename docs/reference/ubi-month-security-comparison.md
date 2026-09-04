@@ -141,7 +141,11 @@ and SHA-256 hashes of the retained raw reports. Different archive and scanner
 manifest representations are kept separate.
 
 New [content inspection](ubi-month-security-evidence/content-inspection.json)
-shows Node 24.20.0 with bundled OpenSSL 3.5.7 in each current artifact, versus
+imports the retained OCI archives, verifies identical root filesystem layer
+identities and runtime configuration, and records both the source and imported
+image IDs. Docker import changes the image ID, so those identities are not
+conflated. The inspection shows Node 24.20.0 with bundled OpenSSL 3.5.7 in each
+current artifact, versus
 Node 24.19.0 linked to system OpenSSL 3.5.5 in each UBI artifact. These are
 runtime version observations, not proof that a distribution backport is absent.
 Changing the system OpenSSL package does not by itself update the current
@@ -286,10 +290,14 @@ present scanner results but do not independently prove September 3 status.
 
 ## Reproducing the supporting inspection
 
+The local import uses dedicated research tags and preserves the saved
+configuration and layer order. The evidence binds each probe to its source
+archive and records the inspected image ID.
+
 The content check executes only Node version/configuration queries and
-filesystem existence checks in the retained images, with no network, a
+filesystem existence checks in the verified archive imports, with no network, a
 read-only root, all capabilities dropped, and no new privileges. It does not
-exercise a vulnerability. For each image ID in the evidence summary:
+exercise a vulnerability. For each inspected image ID in the content evidence:
 
 ```bash
 docker run --rm --network none --read-only --cap-drop ALL \

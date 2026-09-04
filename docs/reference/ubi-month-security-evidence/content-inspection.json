@@ -2,6 +2,12 @@
   {
     "family": "current",
     "artifact": "app-runtime",
+    "source_image_id": "sha256:1398223fbd4dec60d970abca5f745f564c9cbf2f008e7570595e98eb5e328955",
+    "inspected_image_id": "sha256:4dd81105e16892e52eb6ae407e541e9691052db076b567b7de5a5d2c611ed098",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:cf5633c276b3239d92d548e60ace94e1cf049156ace63bb1f3a4222f4563b3b9",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.20.0",
@@ -21,6 +27,12 @@
   {
     "family": "current",
     "artifact": "db-job",
+    "source_image_id": "sha256:fa5490d99a9b1240d0aa3b96f100fad141fbf770b182ed13d8df076c1e1c659c",
+    "inspected_image_id": "sha256:815bce8180add04577f68bca9a7f912108108a61ec7c11e0e04805de523f9109",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:b030102b884bef42095b80c83f7a293a6b1d207ba1dfe83a1c5d127a90528ded",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.20.0",
@@ -40,6 +52,12 @@
   {
     "family": "current",
     "artifact": "demo-seed",
+    "source_image_id": "sha256:865e1e7a8a0f00807b3863ed65588abeef332ee2acd993bac436f2d4925a7de2",
+    "inspected_image_id": "sha256:75822d8feb75b12ba9d0e1baa35ab7d713ed2750042afe14dd4bb21ac74fec07",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:7cbe02e2112c934dba7a757bec1522b8d8c2835a7231ffcb745e2e328e074b5f",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.20.0",
@@ -59,25 +77,12 @@
   {
     "family": "current",
     "artifact": "hsa-directory-mock",
-    "exit": 0,
-    "observation": {
-      "node": "v24.20.0",
-      "openssl": "3.5.7",
-      "sharedOpenSSL": false,
-      "paths": {
-        "/usr/bin/mount": "present",
-        "/usr/bin/nsenter": "present",
-        "/usr/lib/systemd/systemd-homed": "absent",
-        "/usr/bin/glob": "absent",
-        "/usr/bin/npm": "absent",
-        "/usr/bin/nodemon": "absent",
-        "/etc/fstab": "# UNCONFIGURED FSTAB FOR BASE SYSTEM\n"
-      }
-    }
-  },
-  {
-    "family": "current",
-    "artifact": "hsa-person-lookup-adapter",
+    "source_image_id": "sha256:1aacec6e5ddeffed39466f4d0ae88ae5ea957161da773bdfeabecdf4df1b41d4",
+    "inspected_image_id": "sha256:9b90236d08876d15c8d9b2fbd83bf5e6dfc7ea4fa821170cd9c339a64a46a87b",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:86fc360f98b4f834577aaad236374bdce3dec77a48918f54e17a62fbf6dc1afa",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.20.0",
@@ -97,6 +102,37 @@
   {
     "family": "current",
     "artifact": "hsa-mtls-provisioner",
+    "source_image_id": "sha256:32255f0368067d072ca6a69ad2cdb755ddac088325a2b6d0707f054baf4e27aa",
+    "inspected_image_id": "sha256:73d0bbc5454466628ccba490616dfbcb537ca77b6644533004f4a6a95534d1d0",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:77d9c0574d27a59f131b65f9d8e8b37745e2a38bda7b91823234b3510c6ce229",
+    "observation_date_utc": "2026-09-04",
+    "exit": 0,
+    "observation": {
+      "node": "v24.20.0",
+      "openssl": "3.5.7",
+      "sharedOpenSSL": false,
+      "paths": {
+        "/usr/bin/mount": "present",
+        "/usr/bin/nsenter": "present",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "absent",
+        "/etc/fstab": "# UNCONFIGURED FSTAB FOR BASE SYSTEM\n"
+      }
+    }
+  },
+  {
+    "family": "current",
+    "artifact": "hsa-person-lookup-adapter",
+    "source_image_id": "sha256:1feeac6ffb872dbcaf4e94af5137c2deeba13e4991e1d471cac800e070a516ef",
+    "inspected_image_id": "sha256:99b3f29ae9427da48c6becbe0498119edfda9eaa0f45f84b044980d3e844e048",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:27b96198ecb8bb1a850435adce4742345c656bd67bc113c3bc3dfbe7a05e6c76",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.20.0",
@@ -116,6 +152,12 @@
   {
     "family": "candidate",
     "artifact": "app-runtime",
+    "source_image_id": "sha256:2118b16588505bdae323d622cb60d5bed9079dbecdf83acd997dba0f1184b5b9",
+    "inspected_image_id": "sha256:11d53712d386cab78ef32a3fab7957949a64cff7cc42e6a9c4513fd71b5c5ab6",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:06f80b038f1497846057f459a5024bc752682d8fa69f45901aa5552a85b261e8",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.19.0",
@@ -135,6 +177,12 @@
   {
     "family": "candidate",
     "artifact": "db-job",
+    "source_image_id": "sha256:3e3528384a4316231aad1e7ddba11ad093dc68674b2dd134fc69a67b0a7fcec5",
+    "inspected_image_id": "sha256:d690a077c7f65ef7b813e11ee23fa062cabf196fd9c02d84c1ab1e160865ddad",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:c80b34a7852b321af0a55ebb59a21a846706f737502b20c730523e32846fdd0a",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.19.0",
@@ -154,6 +202,12 @@
   {
     "family": "candidate",
     "artifact": "demo-seed",
+    "source_image_id": "sha256:08627d292cdd54d7f1bc5c36452d4df78647c380160f4057c41729c39d83bee2",
+    "inspected_image_id": "sha256:17d9cfad231567495cbca0d48548b1df94779fbc6c91283cfe6d7597fb05c353",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:b947eeb3a8aeef34451d02895b41cb917f058669cc9705af8c12f998a26e539d",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.19.0",
@@ -173,25 +227,12 @@
   {
     "family": "candidate",
     "artifact": "hsa-directory-mock",
-    "exit": 0,
-    "observation": {
-      "node": "v24.19.0",
-      "openssl": "3.5.5",
-      "sharedOpenSSL": true,
-      "paths": {
-        "/usr/bin/mount": "absent",
-        "/usr/bin/nsenter": "absent",
-        "/usr/lib/systemd/systemd-homed": "absent",
-        "/usr/bin/glob": "absent",
-        "/usr/bin/npm": "absent",
-        "/usr/bin/nodemon": "present",
-        "/etc/fstab": "absent"
-      }
-    }
-  },
-  {
-    "family": "candidate",
-    "artifact": "hsa-person-lookup-adapter",
+    "source_image_id": "sha256:803aedc936fea9771b162015b8346bf0680540cd841753a29dd91b73a9d82daa",
+    "inspected_image_id": "sha256:4e74ec47bccf810455ea00851b151742451ff2683bb89fb823a31cba9fff1708",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:129cb5f94848dee3a708aac6fc8c079cc9b425674f71a5aeabc59f094ee30186",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.19.0",
@@ -211,6 +252,37 @@
   {
     "family": "candidate",
     "artifact": "hsa-mtls-provisioner",
+    "source_image_id": "sha256:7011b96e9353af5af908dc75ee5a8aea2d39ea0a43e5576e8c47044fbce88eba",
+    "inspected_image_id": "sha256:777208ab9b6cc3a244a983764a62b04e5805316b328636353d26ef07dc02d3a5",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:c4717c580848cb53b94ae7f3472c6d1d127f23a0b4804a7e1682c75deebc9e3b",
+    "observation_date_utc": "2026-09-04",
+    "exit": 0,
+    "observation": {
+      "node": "v24.19.0",
+      "openssl": "3.5.5",
+      "sharedOpenSSL": true,
+      "paths": {
+        "/usr/bin/mount": "absent",
+        "/usr/bin/nsenter": "absent",
+        "/usr/lib/systemd/systemd-homed": "absent",
+        "/usr/bin/glob": "absent",
+        "/usr/bin/npm": "absent",
+        "/usr/bin/nodemon": "present",
+        "/etc/fstab": "absent"
+      }
+    }
+  },
+  {
+    "family": "candidate",
+    "artifact": "hsa-person-lookup-adapter",
+    "source_image_id": "sha256:844b0d6768efa90b2f06711b6e922d25d7839b6ebd6535dfae211ad8da2f0657",
+    "inspected_image_id": "sha256:017128eed56a76081187299b4e468371ece7543ac000b2c047a8c39e1fca1c21",
+    "rootfs_diff_ids_match": true,
+    "runtime_config_match": true,
+    "oci_manifest_digest": "sha256:fd3a5b1d387e09ceb2fdffa823157e76409f63a859f1780e0add21ea23122982",
+    "observation_date_utc": "2026-09-04",
     "exit": 0,
     "observation": {
       "node": "v24.19.0",
