@@ -1,26 +1,47 @@
 import { createMcpImportValidationPrincipalFingerprint } from '../lib/mcp/import-validation-fingerprint.mjs'
+import {
+  createRequirementResponsibilityPersonActorFingerprint,
+  createRequirementResponsibilityPersonTargetFingerprint,
+} from '../lib/requirements/responsibility-person-verification-fingerprint.mjs'
 import { REQUIRED_SEED_TABLES, seedRequiredDatabase } from './seed-required.mjs'
 import { runSeedData, seedPositionDetail } from './seed-runner.mjs'
 
 const DEMO_MCP_PRINCIPAL_HSA_ID = 'SE5560000001-mcp1'
-const DEMO_MCP_FINGERPRINT_FALLBACK_SECRET =
+const DEMO_HSA_QUOTA_SUBJECT_HSA_ID = 'SE5560000001-linneab'
+const DEMO_FINGERPRINT_FALLBACK_SECRET =
   'kravhantering-demo-seed-cookie-password-only-2026'
 
-function demoMcpPrincipalFingerprint() {
-  const secret =
+function demoFingerprintSecret() {
+  return (
     process.env.AUTH_SESSION_COOKIE_PASSWORD?.trim() ||
-    DEMO_MCP_FINGERPRINT_FALLBACK_SECRET
+    DEMO_FINGERPRINT_FALLBACK_SECRET
+  )
+}
+
+function demoMcpPrincipalFingerprint() {
   return createMcpImportValidationPrincipalFingerprint(
     DEMO_MCP_PRINCIPAL_HSA_ID,
-    secret,
+    demoFingerprintSecret(),
   )
 }
 
 const DEMO_MCP_PRINCIPAL_FINGERPRINT = demoMcpPrincipalFingerprint()
 const MCP_RATE_WINDOW_MILLISECONDS = 10 * 60 * 1000
 const HSA_VERIFICATION_WINDOW_MILLISECONDS = 60 * 1000
-const DEMO_HSA_ACTOR_FINGERPRINT = `afp_${'a'.repeat(22)}`
-const DEMO_HSA_ACTOR_SUBJECT_FINGERPRINT = `hfp_${'b'.repeat(22)}`
+const DEMO_HSA_ACTOR_FINGERPRINT =
+  createRequirementResponsibilityPersonActorFingerprint(
+    {
+      hsaId: DEMO_HSA_QUOTA_SUBJECT_HSA_ID,
+      id: DEMO_HSA_QUOTA_SUBJECT_HSA_ID,
+      source: 'oidc',
+    },
+    demoFingerprintSecret(),
+  )
+const DEMO_HSA_ACTOR_SUBJECT_FINGERPRINT =
+  createRequirementResponsibilityPersonTargetFingerprint(
+    DEMO_HSA_QUOTA_SUBJECT_HSA_ID,
+    demoFingerprintSecret(),
+  )
 
 function formatSqlServerSeedTimestamp(value) {
   return value.toISOString().replace('T', ' ').replace('Z', '')

@@ -109,5 +109,10 @@ export const hsaVerificationQuotaBucketEntity =
           '[expires_at] = DATEADD(second, 60, [window_started_at]) AND DATEPART(second, [window_started_at]) = 0 AND DATEPART(millisecond, [window_started_at]) = 0',
         name: 'chk_hsa_verification_quota_buckets_window',
       },
+      {
+        expression:
+          '[window_started_at] <= [created_at] AND [created_at] <= [updated_at] AND [updated_at] <= [expires_at]',
+        name: 'chk_hsa_verification_quota_buckets_time_order',
+      },
     ],
   })

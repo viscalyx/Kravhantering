@@ -39,12 +39,12 @@ anropsgränser förblir oförändrade.
 
 ## Övervägda alternativ
 
-- Behålla processlokala räknare eller reservräknare: avvisat eftersom flera
+- Behålla processlokala räknare eller reservräknare: väljs inte eftersom flera
   appnoder då kan överskrida den gemensamma säkerhetsgränsen.
-- Låta plattformens lastbalanserare ensam begränsa anrop: avvisat eftersom den
+- Låta plattformens lastbalanserare ensam begränsa anrop: väljs inte eftersom den
   inte äger applikationens aktörs- och målfingeravtryck eller
   utvärderingsordning.
-- Införa ett särskilt distribuerat kvotlager: avvisat eftersom SQL Server redan
+- Införa ett särskilt distribuerat kvotlager: väljs inte eftersom SQL Server redan
   är obligatoriskt, övervakat och gemensamt i båda stödda topologierna.
-- Fortsätta verifiering när SQL-koordinering saknas: avvisat eftersom
+- Fortsätta verifiering när SQL-koordinering saknas: väljs inte eftersom
   tillgänglighet då skulle kringgå en säkerhetsgräns.

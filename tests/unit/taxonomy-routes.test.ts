@@ -849,6 +849,7 @@ describe('requirement responsibility person verify route', () => {
     )
     expect(targetThrottled.status).toBe(429)
     expect(targetThrottled.headers.get('Retry-After')).toBe('17')
+    expect(targetThrottled.headers.get('Cache-Control')).toBe('no-store')
     const targetBody = await targetThrottled.json()
     expect(targetBody).toEqual({
       code: 'hsa_verification_throttled',
@@ -899,6 +900,73 @@ describe('requirement responsibility person verify route', () => {
     )
   })
 
+  it('shares quota buckets across purpose, scope, and verification mode', async () => {
+    authState.context.actor.roles = ['Admin']
+    const targetHsaId = 'SE5560000001-shared1'
+
+    const responses = await Promise.all([
+      postRequirementResponsibilityPersonVerify(
+        jsonReq('POST', {
+          hsaId: targetHsaId,
+          mode: 'refresh',
+          purpose: 'requirement_area_owner',
+        }),
+      ),
+      postRequirementResponsibilityPersonVerify(
+        jsonReq('POST', {
+          hsaId: targetHsaId,
+          mode: 'reuse_local',
+          purpose: 'requirement_area_owner',
+          scopeId: 7,
+        }),
+      ),
+      postRequirementResponsibilityPersonVerify(
+        jsonReq('POST', {
+          hsaId: targetHsaId,
+          mode: 'refresh',
+          purpose: 'requirement_area_co_author',
+          scopeId: 7,
+        }),
+      ),
+    ])
+
+    expect(responses.map(response => response.status)).toEqual([200, 200, 200])
+    const quotaInputs =
+      hsaVerificationQuotaState.consumeHsaVerificationQuota.mock.calls.map(
+        call => call[1],
+      )
+    expect(quotaInputs).toHaveLength(3)
+    expect(quotaInputs[1]).toEqual(quotaInputs[0])
+    expect(quotaInputs[2]).toEqual(quotaInputs[0])
+  })
+
+  it('separates quota actors by authenticated identity', async () => {
+    authState.context.actor.roles = ['Admin']
+    const verify = () =>
+      postRequirementResponsibilityPersonVerify(
+        jsonReq('POST', {
+          hsaId: 'SE5560000001-shared1',
+          mode: 'refresh',
+          purpose: 'requirement_area_owner',
+        }),
+      )
+
+    expect((await verify()).status).toBe(200)
+    authState.context.actor.hsaId = 'SE5560000001-erikl'
+    authState.context.actor.id = 'other-actor'
+    expect((await verify()).status).toBe(200)
+
+    const [first, second] =
+      hsaVerificationQuotaState.consumeHsaVerificationQuota.mock.calls.map(
+        call => call[1],
+      )
+    expect(first?.targetFingerprint).toBe(second?.targetFingerprint)
+    expect(first?.actorFingerprint).not.toBe(second?.actorFingerprint)
+    expect(first?.actorSubjectFingerprint).not.toBe(
+      second?.actorSubjectFingerprint,
+    )
+  })
+
   it.each([
     [
       'database connection',
@@ -928,6 +996,7 @@ describe('requirement responsibility person verify route', () => {
 
     expect(response.status).toBe(503)
     expect(response.headers.get('Retry-After')).toBe('5')
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     await expect(response.json()).resolves.toEqual({
       code: 'service_unavailable',
       error: 'Service unavailable.',
@@ -1000,6 +1069,17 @@ describe('requirement responsibility person verify route', () => {
     )
 
     expect(response.status).toBe(testCase.status)
+    expect(
+      hsaVerificationQuotaState.consumeHsaVerificationQuota,
+    ).toHaveBeenCalledOnce()
+    expect(hsaLookupState.lookupHsaPersonStrict).toHaveBeenCalledOnce()
+    expect(
+      hsaVerificationQuotaState.consumeHsaVerificationQuota.mock
+        .invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    ).toBeLessThan(
+      hsaLookupState.lookupHsaPersonStrict.mock.invocationCallOrder[0] ??
+        Number.NEGATIVE_INFINITY,
+    )
     expect(actionAuditState.recordActionAuditEvent).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({

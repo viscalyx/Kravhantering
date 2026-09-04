@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import {
+  createRequirementResponsibilityPersonActorFingerprint,
+  createRequirementResponsibilityPersonTargetFingerprint,
+} from '../../lib/requirements/responsibility-person-verification-fingerprint.mjs'
 import { seedDemoDatabase } from '../../typeorm/seed.mjs'
 import {
   RETENTION_HISTORY_ONLY_VERSION_IDS,
@@ -286,6 +290,28 @@ describe('seed profiles', () => {
       new Date(String(hsaQuotaBucket.expires_at)).getTime(),
     ).toBeGreaterThan(beforeSeed.getTime())
     expect(JSON.stringify(hsaQuotaBucket)).not.toContain('SE5560000001')
+    const fingerprintSecret =
+      process.env.AUTH_SESSION_COOKIE_PASSWORD?.trim() ||
+      'kravhantering-demo-seed-cookie-password-only-2026'
+    expect(hsaQuotaBucket.actor_fingerprint).toBe(
+      createRequirementResponsibilityPersonActorFingerprint(
+        {
+          hsaId: LINNEA_HSA_ID,
+          id: LINNEA_HSA_ID,
+          source: 'oidc',
+        },
+        fingerprintSecret,
+      ),
+    )
+    expect(hsaQuotaBucket.actor_subject_fingerprint).toBe(
+      createRequirementResponsibilityPersonTargetFingerprint(
+        LINNEA_HSA_ID,
+        fingerprintSecret,
+      ),
+    )
+    expect(
+      seedRowsFor(rows, 'requirement_responsibility_people'),
+    ).toContainEqual(expect.objectContaining({ hsa_id: LINNEA_HSA_ID }))
     expect(
       new Date(String(rateBucket.window_started_at)).getTime(),
     ).toBeLessThanOrEqual(Date.now())

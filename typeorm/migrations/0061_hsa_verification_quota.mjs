@@ -64,6 +64,12 @@ const UP_STATEMENTS = [
           [expires_at] = DATEADD(second, 60, [window_started_at])
           AND DATEPART(second, [window_started_at]) = 0
           AND DATEPART(millisecond, [window_started_at]) = 0
+        ),
+      CONSTRAINT [chk_hsa_verification_quota_buckets_time_order]
+        CHECK (
+          [window_started_at] <= [created_at]
+          AND [created_at] <= [updated_at]
+          AND [updated_at] <= [expires_at]
         )
     );`,
   `IF NOT EXISTS (
@@ -123,8 +129,8 @@ async function runStatements(queryRunner, statements) {
   }
 }
 
-export class HsaVerificationQuota1720400000000 {
-  name = 'HsaVerificationQuota1720400000000'
+export class HsaVerificationQuota1720800000000 {
+  name = 'HsaVerificationQuota1720800000000'
 
   async up(queryRunner) {
     await runStatements(queryRunner, UP_STATEMENTS)
@@ -135,4 +141,4 @@ export class HsaVerificationQuota1720400000000 {
   }
 }
 
-export default HsaVerificationQuota1720400000000
+export default HsaVerificationQuota1720800000000

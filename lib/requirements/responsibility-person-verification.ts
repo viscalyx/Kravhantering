@@ -14,6 +14,10 @@ import {
   REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_PURPOSES,
   type RequirementResponsibilityPersonVerificationPurpose,
 } from '@/lib/requirements/responsibility-person-verification-contract'
+import {
+  createRequirementResponsibilityPersonActorFingerprint,
+  createRequirementResponsibilityPersonTargetFingerprint,
+} from '@/lib/requirements/responsibility-person-verification-fingerprint.mjs'
 
 export {
   REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_PURPOSES,
@@ -69,8 +73,6 @@ const DEFAULT_EVIDENCE_TTL_SECONDS = 300
 const MAX_EVIDENCE_TTL_SECONDS = 600
 export const REQUIREMENT_RESPONSIBILITY_PERSON_VERIFICATION_EVIDENCE_MAX_LENGTH = 4096
 const EVIDENCE_KEY_CONTEXT = 'kravhantering:hsa-verification-evidence:v1'
-const ACTOR_FINGERPRINT_KEY_CONTEXT = 'kravhantering:hsa-actor-fingerprint:v1'
-const FINGERPRINT_KEY_CONTEXT = 'kravhantering:hsa-target-fingerprint:v1'
 
 const actorSchema = z
   .object({
@@ -210,28 +212,20 @@ export function requirementResponsibilityPersonTargetFingerprint(
 ): string {
   const normalizedHsaId = hsaId.trim()
   assertValidNormalizedHsaId(normalizedHsaId)
-  const digest = createHmac(
-    'sha256',
-    derivedKey(evidenceSecret(options), FINGERPRINT_KEY_CONTEXT),
+  return createRequirementResponsibilityPersonTargetFingerprint(
+    normalizedHsaId,
+    evidenceSecret(options),
   )
-    .update(normalizedHsaId.toLowerCase())
-    .digest('base64url')
-    .slice(0, 22)
-  return `hfp_${digest}`
 }
 
 export function requirementResponsibilityPersonActorFingerprint(
   actor: VerificationActor,
   options: Pick<VerificationEvidenceOptions, 'secret'> = {},
 ): string {
-  const digest = createHmac(
-    'sha256',
-    derivedKey(evidenceSecret(options), ACTOR_FINGERPRINT_KEY_CONTEXT),
+  return createRequirementResponsibilityPersonActorFingerprint(
+    normalizedActor(actor),
+    evidenceSecret(options),
   )
-    .update(JSON.stringify(normalizedActor(actor)))
-    .digest('base64url')
-    .slice(0, 22)
-  return `afp_${digest}`
 }
 
 export function createRequirementResponsibilityPersonVerificationEvidence(

@@ -50,6 +50,18 @@ describe('HSA verification quota against SQL Server', () => {
     await expect(
       consumeHsaVerificationQuota(secondAppDb, quotaInput(11, 1)),
     ).resolves.toMatchObject({ allowed: false, bucket: 'target' })
+
+    const earlierBucketRows = (await appDb().query(
+      `SELECT bucket_kind AS bucketKind, request_count AS requestCount
+       FROM hsa_verification_quota_buckets
+       WHERE actor_fingerprint = @0
+       ORDER BY bucket_kind`,
+      [actorFingerprint(11)],
+    )) as Array<{ bucketKind: string; requestCount: number }>
+    expect(earlierBucketRows).toEqual([
+      { bucketKind: 'actor', requestCount: 1 },
+      { bucketKind: 'actor_target', requestCount: 1 },
+    ])
   })
 
   it('shares actor consumption and stops before later buckets on denial', async () => {
@@ -127,6 +139,86 @@ describe('HSA verification quota against SQL Server', () => {
       [targetFingerprint(100)],
     )) as Array<{ requestCount: number }>
     expect(rows).toEqual([{ requestCount: 10 }])
+  })
+
+  it('atomically enforces the actor limit across application clients', async () => {
+    const actor = 150
+    const input = quotaInput(actor, 150)
+    await appDb().query(
+      `DECLARE @now datetime2(3) = SYSUTCDATETIME();
+       DECLARE @window_start datetime2(3) = DATEADD(
+         minute,
+         DATEDIFF_BIG(minute, CONVERT(datetime2(3), '1970-01-01'), @now),
+         CONVERT(datetime2(3), '1970-01-01')
+       );
+       INSERT INTO hsa_verification_quota_buckets (
+         bucket_kind,
+         actor_fingerprint,
+         target_fingerprint,
+         actor_subject_fingerprint,
+         request_count,
+         window_started_at,
+         expires_at,
+         created_at,
+         updated_at
+       ) VALUES (
+         N'actor', @0, NULL, @1, 45, @window_start,
+         DATEADD(second, 60, @window_start), @now, @now
+       );`,
+      [input.actorFingerprint, input.actorSubjectFingerprint],
+    )
+
+    const results = await Promise.all(
+      Array.from({ length: 7 }, (_, index) =>
+        consumeHsaVerificationQuota(
+          index % 2 === 0 ? appDb() : secondAppDb,
+          quotaInput(actor, 151 + index),
+        ),
+      ),
+    )
+
+    expect(results.filter(result => result.allowed)).toHaveLength(5)
+    expect(
+      results.filter(result => !result.allowed && result.bucket === 'actor'),
+    ).toHaveLength(2)
+    const rows = (await appDb().query(
+      `SELECT request_count AS requestCount
+       FROM hsa_verification_quota_buckets
+       WHERE bucket_kind = N'actor' AND actor_fingerprint = @0`,
+      [input.actorFingerprint],
+    )) as Array<{ requestCount: number }>
+    expect(rows).toEqual([{ requestCount: 50 }])
+  })
+
+  it('shares concurrent actor-target admission across application clients', async () => {
+    const input = quotaInput(175, 175)
+    const results = await Promise.all(
+      Array.from({ length: 12 }, (_, index) =>
+        consumeHsaVerificationQuota(
+          index % 2 === 0 ? appDb() : secondAppDb,
+          input,
+        ),
+      ),
+    )
+
+    expect(results.filter(result => result.allowed)).toHaveLength(10)
+    expect(
+      results.filter(
+        result => !result.allowed && result.bucket === 'actor_target',
+      ),
+    ).toHaveLength(2)
+    const rows = (await appDb().query(
+      `SELECT bucket_kind AS bucketKind, request_count AS requestCount
+       FROM hsa_verification_quota_buckets
+       WHERE actor_fingerprint = @0 OR target_fingerprint = @1
+       ORDER BY bucket_kind`,
+      [input.actorFingerprint, input.targetFingerprint],
+    )) as Array<{ bucketKind: string; requestCount: number }>
+    expect(rows).toEqual([
+      { bucketKind: 'actor', requestCount: 12 },
+      { bucketKind: 'actor_target', requestCount: 10 },
+      { bucketKind: 'target', requestCount: 10 },
+    ])
   })
 
   it('commits earlier consumption and stops after the first denied bucket', async () => {

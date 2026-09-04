@@ -11,11 +11,17 @@ const CLOCK = {
   windowStart: new Date('2026-09-04T12:34:00.000Z'),
 }
 
-function quotaDb(decisions: Array<{ allowed: number }>) {
+function quotaDb(
+  decisions: Array<{ allowed: number | string } | undefined>,
+  clock: typeof CLOCK | null = CLOCK,
+) {
   const query = vi
     .fn()
-    .mockResolvedValueOnce([CLOCK])
-    .mockImplementation(async () => [decisions.shift() ?? { allowed: 1 }])
+    .mockResolvedValueOnce(clock ? [clock] : [])
+    .mockImplementation(async () => {
+      const decision = decisions.shift()
+      return decision ? [decision] : []
+    })
   const transaction = vi.fn(
     async (
       _isolation: string,
@@ -79,5 +85,81 @@ describe('HSA verification quota', () => {
       retryAfterSeconds: 40,
     })
     expect(query).toHaveBeenCalledTimes(2)
+  })
+
+  it('supports an actor without an HSA-id subject fingerprint', async () => {
+    const { db } = quotaDb([
+      { allowed: '1' },
+      { allowed: '1' },
+      { allowed: '1' },
+    ])
+
+    await expect(
+      consumeHsaVerificationQuota(db, {
+        ...INPUT,
+        actorSubjectFingerprint: null,
+      }),
+    ).resolves.toEqual({ allowed: true })
+  })
+
+  it.each([
+    ['actor fingerprint', { actorFingerprint: 'invalid' }],
+    ['target fingerprint', { targetFingerprint: 'invalid' }],
+    ['actor subject fingerprint', { actorSubjectFingerprint: 'invalid' }],
+  ])(
+    'rejects an invalid %s before opening a transaction',
+    async (_name, patch) => {
+      const { db, transaction } = quotaDb([])
+
+      await expect(
+        consumeHsaVerificationQuota(db, { ...INPUT, ...patch }),
+      ).rejects.toThrow(/Invalid HSA verification quota/u)
+      expect(transaction).not.toHaveBeenCalled()
+    },
+  )
+
+  it('fails when the SQL clock row is unavailable', async () => {
+    const { db } = quotaDb([], null)
+
+    await expect(consumeHsaVerificationQuota(db, INPUT)).rejects.toThrow(
+      'HSA verification quota clock is unavailable',
+    )
+  })
+
+  it('fails when a bucket decision row is unavailable', async () => {
+    const { db } = quotaDb([undefined])
+
+    await expect(consumeHsaVerificationQuota(db, INPUT)).rejects.toThrow(
+      'HSA verification quota decision is unavailable',
+    )
+  })
+
+  it.each([
+    [
+      'one second',
+      {
+        now: new Date('2026-09-04T12:35:01.000Z'),
+        windowEnd: CLOCK.windowEnd,
+        windowStart: CLOCK.windowStart,
+      },
+      1,
+    ],
+    [
+      'the full window',
+      {
+        now: new Date('2026-09-04T12:33:00.000Z'),
+        windowEnd: CLOCK.windowEnd,
+        windowStart: CLOCK.windowStart,
+      },
+      60,
+    ],
+  ])('bounds retry-after at %s', async (_name, clock, expected) => {
+    const { db } = quotaDb([{ allowed: 0 }], clock)
+
+    await expect(consumeHsaVerificationQuota(db, INPUT)).resolves.toEqual({
+      allowed: false,
+      bucket: 'actor',
+      retryAfterSeconds: expected,
+    })
   })
 })
