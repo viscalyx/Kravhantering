@@ -483,11 +483,13 @@ after execution, so a concurrent Admin change emits no proof. Its response binds
 the current execution ID, suite version, outcome, observed adapter, exact path,
 and revision tokens; the script validates every field before emitting evidence.
 The v2 suite binds the immutable normalized reasoning configuration to the
-candidate fingerprint, every functional probe, and persisted evidence. Existing
-v1 evidence cannot establish mandatory reasoning; migration 0062 marks verified
-revisions as requiring a new revision. Administrators must verify and select new
-revisions before these profiles can admit runs. Required seed leaves AI
-unconfigured and does not manufacture reasoning evidence.
+candidate fingerprint, every functional probe, and persisted evidence. Model
+saving, live-path verification, and run-profile lookup compare reasoning values
+independently of JSON key order. Model-default effort matches a null effort.
+Existing v1 evidence cannot establish mandatory reasoning; migration 0062 marks
+verified revisions as requiring a new revision. Administrators must verify and
+select new revisions before these profiles can admit runs. Required seed leaves
+AI unconfigured and does not manufacture reasoning evidence.
 
 The adapter resolves the applicable path per connection and model before
 functional verification; catalog claims guide resolution but never verify it.

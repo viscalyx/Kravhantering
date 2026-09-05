@@ -304,7 +304,9 @@ function assertLivePathProbeResult(value, path) {
     Array.isArray(value) ||
     Object.keys(value).sort().join('\u0000') !== fields.sort().join('\u0000')
   ) {
-    throw new Error('The fixed Admin functional probe v1 did not pass.')
+    throw new Error(
+      `The fixed Admin functional probe ${ADMIN_FUNCTIONAL_PROBE_VERSION} did not pass.`,
+    )
   }
   const pathMatches =
     value.adapterType === path.adapterType &&
@@ -334,7 +336,9 @@ function assertLivePathProbeResult(value, path) {
     value.outcome !== 'passed' ||
     value.testSuiteVersion !== ADMIN_FUNCTIONAL_PROBE_VERSION
   ) {
-    throw new Error('The fixed Admin functional probe v1 did not pass.')
+    throw new Error(
+      `The fixed Admin functional probe ${ADMIN_FUNCTIONAL_PROBE_VERSION} did not pass.`,
+    )
   }
   return value
 }

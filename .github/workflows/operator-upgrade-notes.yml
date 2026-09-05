@@ -129,7 +129,7 @@ jobs:
           - Workflow run: __RUN_URL__
 
           The maintainer approves these notes by merging the source PR.
-          This PR merges automatically after required checks and branch protection requirements are satisfied.
+          The workflow requests auto-merge, subject to required checks and branch protection requirements. If the request fails, this PR remains available for manual merging.
 
           ## Operator Upgrade Impact
 

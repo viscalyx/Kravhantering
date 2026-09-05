@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
+import { isDeepStrictEqual } from 'node:util'
 import { createSqlServerAiRunProfileSource } from '@/lib/dal/ai-run-profiles'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
@@ -360,7 +361,7 @@ export function createProductionAiAdminExternalOperations(
       assertAiStagingLiveVerificationAllowed(selection.expectedEnvironmentId)
       const exactResult =
         result.saveable &&
-        JSON.stringify(result.reasoning) === JSON.stringify(revision.reasoning)
+        isDeepStrictEqual(result.reasoning, revision.reasoning)
           ? await exactLivePathRunner.run(selection)
           : {
               failureCategory:

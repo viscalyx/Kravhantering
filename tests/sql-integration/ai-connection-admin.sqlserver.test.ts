@@ -84,7 +84,10 @@ describe('AI connection administration transactions against SQL Server', () => {
     async reasoning => {
       const verification = {
         ...VERIFICATION,
-        reasoning,
+        reasoning: {
+          effort: reasoning.effort,
+          mode: reasoning.mode,
+        } as typeof reasoning,
         capabilities: {
           ...VERIFICATION.capabilities,
           reasoningControl: {
@@ -137,7 +140,7 @@ describe('AI connection administration transactions against SQL Server', () => {
         makeValid: true,
       })
 
-      const model = await store.saveModelRevision({
+      const saveInput = {
         connection,
         connectionId: connection.id,
         modelRevision: {
@@ -151,7 +154,21 @@ describe('AI connection administration transactions against SQL Server', () => {
           name: 'Verified model',
         },
         verification,
-      })
+      }
+      for (const mismatchedReasoning of [
+        { mode: 'explicit_control', effort: 'low' },
+        reasoning.mode === 'explicit_control'
+          ? ({ mode: 'model_default', effort: null } as const)
+          : ({ mode: 'explicit_control', effort: 'high' } as const),
+      ] as const) {
+        await expect(
+          store.saveModelRevision({
+            ...saveInput,
+            verification: { ...verification, reasoning: mismatchedReasoning },
+          }),
+        ).rejects.toThrow('AI model verification is incomplete.')
+      }
+      const model = await store.saveModelRevision(saveInput)
       const revision = model.revisions[0]
       if (!revision) throw new Error('Verified model revision missing')
       expect(revision.reasoning).toEqual(reasoning)

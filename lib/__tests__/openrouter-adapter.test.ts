@@ -172,6 +172,7 @@ function enableStreaming(
 
 describeAiConnectionAdapterContract('OpenRouter adapter', () => ({
   adapterType: OPENROUTER_ADAPTER_TYPE,
+  expectedReasoningEvidence: { activity: true, control: true },
   completedRequest: () => {
     mockFetch.mockResolvedValueOnce(streamingCompletionResponse())
     return enableStreaming(request())

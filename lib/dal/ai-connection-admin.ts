@@ -1023,14 +1023,19 @@ export function createSqlServerAiAdminStore(
             ([key, result]) => [key, result.outcome === 'verified'],
           ),
         ) as AiCapability
+        const reasoning = parseAiReasoningConfiguration(value.reasoning)
+        const verifiedReasoning = parseAiReasoningConfiguration(
+          input.verification.reasoning,
+        )
         if (
           !input.verification.saveable ||
           !verifiedCapabilities.reasoning ||
-          !parseAiReasoningConfiguration(value.reasoning) ||
-          (value.reasoning.mode === 'explicit_control' &&
+          !reasoning ||
+          !verifiedReasoning ||
+          (reasoning.mode === 'explicit_control' &&
             !verifiedCapabilities.reasoningControl) ||
-          JSON.stringify(value.reasoning) !==
-            JSON.stringify(input.verification.reasoning) ||
+          reasoning.mode !== verifiedReasoning.mode ||
+          reasoning.effort !== verifiedReasoning.effort ||
           !Object.values(input.verification.profileCompatibility).some(
             result => result.supported,
           )

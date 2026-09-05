@@ -858,39 +858,50 @@ describe('AI administration provider composition', () => {
     })
   })
 
-  it('binds a passing live proof to the exact selected runtime path', async () => {
-    const current = connection({ adapterKey: 'openrouter' })
-    const revision = current.models[0]?.revisions[0]
-    if (!revision) throw new Error('Revision missing')
-    const selection = liveSelection(current, revision)
-    const exactLivePathRunner = {
-      run: vi.fn(async () => ({
-        failureCategory: null,
-        outcome: 'passed' as const,
-      })),
-    }
-    const registry = createAiAdminConnectionAdapterRegistry([
-      {
-        ...controlledTestAdminAdapterRegistration,
-        adapterType: 'openrouter',
-        executionKind: 'external_live',
-      },
-    ])
-    const external = createProductionAiAdminExternalOperations(
-      emptyDb,
-      () => ring,
-      { deployment: deployment(), exactLivePathRunner, registry },
-    )
+  it.each([
+    { mode: 'explicit_control', effort: 'high' },
+    { effort: 'high', mode: 'explicit_control' },
+    { effort: null, mode: 'model_default' },
+  ] as const)(
+    'binds a passing live proof with %j to the exact selected runtime path',
+    async reasoning => {
+      const current = connection({ adapterKey: 'openrouter' })
+      const revision = current.models[0]?.revisions[0]
+      if (!revision) throw new Error('Revision missing')
+      revision.reasoning = reasoning
+      if (reasoning.mode === 'model_default') {
+        revision.externalModelId = 'controlled/default-no-analysis'
+      }
+      const selection = liveSelection(current, revision)
+      const exactLivePathRunner = {
+        run: vi.fn(async () => ({
+          failureCategory: null,
+          outcome: 'passed' as const,
+        })),
+      }
+      const registry = createAiAdminConnectionAdapterRegistry([
+        {
+          ...controlledTestAdminAdapterRegistration,
+          adapterType: 'openrouter',
+          executionKind: 'external_live',
+        },
+      ])
+      const external = createProductionAiAdminExternalOperations(
+        emptyDb,
+        () => ring,
+        { deployment: deployment(), exactLivePathRunner, registry },
+      )
 
-    await expect(
-      external.verifyLivePath(current, revision, selection),
-    ).resolves.toMatchObject({
-      adapterType: 'openrouter',
-      failureCategory: null,
-      outcome: 'passed',
-    })
-    expect(exactLivePathRunner.run).toHaveBeenCalledWith(selection)
-  })
+      await expect(
+        external.verifyLivePath(current, revision, selection),
+      ).resolves.toMatchObject({
+        adapterType: 'openrouter',
+        failureCategory: null,
+        outcome: 'passed',
+      })
+      expect(exactLivePathRunner.run).toHaveBeenCalledWith(selection)
+    },
+  )
 
   it('executes the exact selected profile through the integration runtime', async () => {
     const current = connection({ adapterKey: 'openrouter' })

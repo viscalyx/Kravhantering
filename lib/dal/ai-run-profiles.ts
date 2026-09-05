@@ -120,7 +120,14 @@ const RUN_PROFILE_QUERY = `
         AND [evidence].[outcome] = N'passed'
         AND [evidence].[test_suite_version] = N'${AI_ADMIN_FUNCTIONAL_PROBE_VERSION}'
         AND JSON_VALUE([evidence].[verified_capabilities_json], '$.reasoning') = N'true'
-        AND JSON_QUERY([evidence].[details_json], '$.reasoning') = [model_revision].[reasoning_json]
+        AND JSON_VALUE([evidence].[details_json], '$.reasoning.mode') = JSON_VALUE([model_revision].[reasoning_json], '$.mode')
+        AND (
+          JSON_VALUE([evidence].[details_json], '$.reasoning.effort') = JSON_VALUE([model_revision].[reasoning_json], '$.effort')
+          OR (
+            JSON_VALUE([evidence].[details_json], '$.reasoning.effort') IS NULL
+            AND JSON_VALUE([model_revision].[reasoning_json], '$.effort') IS NULL
+          )
+        )
         AND JSON_VALUE([evidence].[profile_compatibility_json], CONCAT('$.', @0, '.supported')) = N'true'
     )
 `
