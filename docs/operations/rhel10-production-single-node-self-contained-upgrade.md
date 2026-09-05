@@ -803,7 +803,9 @@ production rollback. After an eligible rollback, verify the existing SQL and
 migration readiness signal, the `hsa_verification_quota_buckets` cleanup
 target, and HSA verification capacity events before reopening access.
 
-The release also adds the scheduled transient-state cleanup units. Before
-restoring traffic, complete the activation and first-run verification in
-[Scheduled Transient-State Cleanup](transient-state-cleanup.md). Its rollback
-section removes the new timer before an older release is started.
+The host owns transient-state cleanup independently of the application.
+Complete the compatibility and recovery-set preflight in
+[Release-Independent Transient-State Cleanup](transient-state-cleanup.md).
+Pause the retained manager before migration or restore, preserve it during
+application rollback, and require a successful `resume` and active timer before
+restoring traffic. Never remove the host cleanup units for application rollback.

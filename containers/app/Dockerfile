@@ -103,6 +103,8 @@ WORKDIR /workspace
 COPY --from=db-job-dependencies --chown=node:node /workspace/node_modules ./node_modules
 COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node scripts/db-sqlserver-admin.mjs ./scripts/db-sqlserver-admin.mjs
+COPY --chown=node:node scripts/containers/cleanup-source-schema.mjs ./scripts/containers/cleanup-source-schema.mjs
+COPY --chown=node:node scripts/cleanup-schema-fixture.mjs ./scripts/cleanup-schema-fixture.mjs
 COPY --chown=node:node scripts/ai-provider-secret-maintenance.mjs ./scripts/ai-provider-secret-maintenance.mjs
 COPY --chown=node:node scripts/ai-provider-secret-restore-cli.mjs ./scripts/ai-provider-secret-restore-cli.mjs
 COPY --chown=node:node lib/ai/provider-secret-crypto-core.mjs ./lib/ai/provider-secret-crypto-core.mjs

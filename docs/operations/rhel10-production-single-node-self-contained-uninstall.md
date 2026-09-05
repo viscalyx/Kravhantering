@@ -26,6 +26,15 @@ or Keycloak restore procedure. If the environment contains data that must be
 restorable, complete the site-approved backup or snapshot procedure before
 following this guide.
 
+## Remove the Independent Cleanup Service First
+
+For full host uninstall, run the retained cleanup manager's `uninstall` command
+as the service account before removing application networks, SQL Server or the
+service account. Remove its protected configuration and transport artifacts
+under site policy. See
+[Release-Independent Transient-State Cleanup](transient-state-cleanup.md#full-uninstall).
+Application rollback preserves this service and must not follow this step.
+
 ## Before You Start
 
 Confirm these site decisions before removing anything:

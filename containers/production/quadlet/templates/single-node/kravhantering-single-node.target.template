@@ -2,7 +2,6 @@
 Description=Kravhantering single-node services
 Requires=kravhantering-sqlserver.service @@KEYCLOAK_TARGET_DEPENDENCIES@@ kravhantering-app-runtime.service kravhantering-nginx.service
 After=kravhantering-sqlserver.service @@KEYCLOAK_TARGET_DEPENDENCIES@@ kravhantering-app-runtime.service kravhantering-nginx.service
-Wants=kravhantering-transient-cleanup.timer
 
 [Install]
 WantedBy=default.target

@@ -34,6 +34,31 @@ function createBacklogTarget(
 }
 
 describe('transient state cleanup runner', () => {
+  it('skips an absent target without consuming work or failing applicable targets', async () => {
+    const absent = {
+      ...createBacklogTarget(20),
+      isApplicable: async () => false,
+    }
+    const applicable = createBacklogTarget(2)
+    const events: TransientCleanupLogEvent[] = []
+    const result = await runTransientStateCleanup([absent, applicable], {
+      backlogTarget: 0,
+      batchSize: 2,
+      workLimit: 2,
+      record: event => events.push(event),
+    })
+    expect(result.outcome).toBe('success')
+    expect(result.targets[0]).toMatchObject({
+      outcome: 'not_applicable',
+      deletedRows: 0,
+      initialExpiredRowCount: null,
+      remainingExpiredRowCount: null,
+    })
+    expect(absent.requestedLimits).toEqual([])
+    expect(result.targets[1].deletedRows).toBe(2)
+    expect(events[0].outcome).toBe('not_applicable')
+  })
+
   it('uses bounded batches and stops at the total work limit', async () => {
     const target = createBacklogTarget(250)
     const inspect = vi.spyOn(target, 'inspect')

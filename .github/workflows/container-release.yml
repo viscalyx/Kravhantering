@@ -553,6 +553,7 @@ jobs:
             --plan tmp/container-release-artifacts/metadata/release-plan.json \
             --metadata tmp/container-release-artifacts/metadata/release-metadata.json \
             --stack-lock container-stack.lock.json \
+            --cleanup-contract tmp/production-smoke-evidence/cleanup-compatibility.json \
             --hsa-integration-support-lock container-hsa-integration-support.lock.json \
             --test-support-lock container-test-support.lock.json \
             --build-json public/build.json \

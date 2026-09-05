@@ -729,9 +729,10 @@ Add the rotation date, affected credential names, IdP change reference,
 verification result and old-secret revocation confirmation to the operational
 evidence record. Do not store raw secret values in that record.
 
-## Scheduled Transient-State Cleanup Upgrade Impact
+## Release-Independent Cleanup During Upgrade
 
-The release adds a timer and one-shot container to every supported app-node
-topology. Complete the activation, first-run verification and rollback steps in
-[Scheduled Transient-State Cleanup](transient-state-cleanup.md) during the
-upgrade window.
+Before downtime, complete the compatibility and recovery-set preflight in
+[Release-Independent Transient-State Cleanup](transient-state-cleanup.md).
+Pause the retained host manager before migration or restore. Application
+rollback preserves its selected image and schedule; do not remove its units.
+Require a successful `resume` and active timer before operational handoff.

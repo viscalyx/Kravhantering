@@ -11,9 +11,9 @@ CLEANUP_WORK_DIR=""
 usage() {
   cat <<USAGE
 Usage:
-  ${SCRIPT_NAME} --topology <app-node|single-node|single-node-demo|all> [options] verify
-  ${SCRIPT_NAME} --topology <app-node|single-node|single-node-demo|all> [options] export --output <path>
-  ${SCRIPT_NAME} --topology <app-node|single-node|single-node-demo|all> [options] load --bundle <path>
+  ${SCRIPT_NAME} --topology <app-node|single-node|single-node-demo|all|cleanup> [options] verify
+  ${SCRIPT_NAME} --topology <app-node|single-node|single-node-demo|all|cleanup> [options] export --output <path>
+  ${SCRIPT_NAME} --topology <app-node|single-node|single-node-demo|all|cleanup> [options] load --bundle <path>
 
 Options:
   --topology <selection>   Image transport selection. single-node-demo adds
@@ -59,6 +59,7 @@ service_env_prefix() {
   case "$1" in
     app-runtime) printf 'APP_RUNTIME\n' ;;
     db-job) printf 'DB_JOB\n' ;;
+    transient-cleanup) printf 'TRANSIENT_CLEANUP\n' ;;
     nginx) printf 'NGINX\n' ;;
     sqlserver) printf 'SQLSERVER\n' ;;
     keycloak) printf 'KEYCLOAK\n' ;;
@@ -72,6 +73,7 @@ service_env_prefix() {
 
 services_for_topology() {
   case "$1" in
+    cleanup) printf '%s\n' transient-cleanup ;;
     app-node) printf '%s\n' app-runtime db-job nginx ;;
     single-node)
       printf '%s\n' app-runtime db-job nginx sqlserver
@@ -125,6 +127,7 @@ locked_service_field() {
   local lock_file schema_version value
   lock_file="$(service_lock_file "$service")"
   schema_version="$(service_lock_schema_version "$service")"
+  [[ "$service" != transient-cleanup ]] || service=db-job
   value="$(jq -r \
     --arg name "$service" \
     --arg field "$field" \

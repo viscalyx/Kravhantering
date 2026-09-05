@@ -1226,5 +1226,14 @@ inspect output in general release evidence stores.
 
 Every supported app-node topology installs scheduled cleanup for expired MCP
 import-validation sessions. Follow
-[Scheduled Transient-State Cleanup](transient-state-cleanup.md) to configure
+[Release-Independent Transient-State Cleanup](transient-state-cleanup.md) to configure
 bounds, verify the timer, monitor aggregate backlog telemetry and retry safely.
+
+## Independent Cleanup Installation Gate
+
+Install the host cleanup service with its separate image configuration and
+verified release compatibility contract before opening normal traffic. Follow
+[Release-Independent Transient-State Cleanup](transient-state-cleanup.md)
+for the runtime identity, topology network, TLS, first successful run and active
+schedule requirements. Application target activation alone does not install or
+start this host service.

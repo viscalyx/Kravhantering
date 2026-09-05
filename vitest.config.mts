@@ -80,6 +80,10 @@ export default defineConfig({
         'lib/runtime/expo-sqlite-unavailable.ts',
         // Side-effect-only build orchestration with no importable logic seam.
         'scripts/prebuild.js',
+        // Cleanup database/filesystem orchestration; deterministic validation
+        // lives in the covered cleanup-source-schema and compatibility-contract helpers.
+        'scripts/cleanup-schema-fixture.mjs',
+        'scripts/release/cleanup-compatibility.mjs',
         // Side-effect-only local Docker/systemd orchestration. Its deterministic
         // argument and artifact contract lives in the covered companion module.
         'scripts/containers/production-smoke-debug.mjs',

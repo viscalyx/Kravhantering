@@ -2,7 +2,6 @@
 Description=Kravhantering app-node services
 Requires=kravhantering-app-runtime.service kravhantering-nginx.service
 After=kravhantering-app-runtime.service kravhantering-nginx.service
-Wants=kravhantering-transient-cleanup.timer
 
 [Install]
 WantedBy=default.target

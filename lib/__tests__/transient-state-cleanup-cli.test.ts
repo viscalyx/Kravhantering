@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
 import {
   runTransientCleanupCommand,
@@ -29,15 +30,280 @@ function target(rows: number): TransientCleanupTarget {
   }
 }
 
-describe('transient cleanup command', () => {
-  it('uses default bounds for every registered cleanup target', async () => {
-    const query = vi.fn().mockResolvedValue([
+function compatibilityContract() {
+  const imageId = `sha256:${'a'.repeat(64)}`
+  return {
+    schemaVersion: 1,
+    imageId,
+    manifestDigest: `sha256:${'b'.repeat(64)}`,
+    target: { release: '2.0.0', schemaVersion: 'Schema123' },
+    sources: [],
+    verification: [
       {
-        expiredRowCount: 0,
-        expiredStoredBytes: 0,
-        oldestExpiredAgeMs: null,
+        schemaVersion: 'Schema123',
+        schemaFingerprint: createHash('sha256').update('[]').digest('hex'),
+        imageId,
+        outcome: 'success',
+        targets: [
+          'ai_run_coordination_entries',
+          'ai_forensic_evidence',
+          'hsa_verification_quota_buckets',
+          'requirement_import_validation_sessions',
+          'requirement_import_validation_rate_buckets',
+        ].map(kind => ({ kind, outcome: 'success' })),
       },
-    ])
+    ],
+  }
+}
+
+describe('transient cleanup command', () => {
+  it('validates release contracts without connecting to the database', async () => {
+    const connect = vi.fn()
+    const output: string[] = []
+    expect(
+      await runTransientCleanupCommand(
+        ['--validate-contract', '/contract.json'],
+        {
+          readContract: async () => compatibilityContract(),
+          connect,
+          write: line => output.push(line),
+        },
+      ),
+    ).toBe(0)
+    expect(connect).not.toHaveBeenCalled()
+    expect(JSON.parse(output[0]).outcome).toBe('success')
+    expect(
+      await runTransientCleanupCommand(
+        ['--validate-contract', '/contract.json'],
+        {
+          readContract: async () => ({ schemaVersion: 2 }),
+          connect,
+          write: line => output.push(line),
+        },
+      ),
+    ).toBe(1)
+    expect(connect).not.toHaveBeenCalled()
+  })
+
+  it.each(['Schema123', 'Unverified124'])(
+    'gates cleanup on the verified schema head %s',
+    async schema => {
+      const output: string[] = []
+      const createTargets = vi.fn(() => [target(1)])
+      const code = await runTransientCleanupCommand(
+        ['--contract', '/contract.json'],
+        {
+          readContract: async () => compatibilityContract(),
+          connect: async () => ({
+            destroy: async () => {},
+            executor: {
+              query: vi
+                .fn()
+                .mockResolvedValue([
+                  { name: schema, metadata: '[]', canViewDefinition: 1 },
+                ]),
+            },
+          }),
+          createTargets,
+          env: {},
+          write: line => output.push(line),
+        },
+      )
+      expect(code).toBe(schema === 'Schema123' ? 0 : 1)
+      if (schema === 'Unverified124')
+        expect(createTargets).not.toHaveBeenCalled()
+      else
+        expect(output.map(line => JSON.parse(line)).at(-1).deleted_rows).toBe(1)
+    },
+  )
+
+  it('rejects changed columns or constraints even when every target is empty', async () => {
+    const createTargets = vi.fn(() => [target(0)])
+    const output: string[] = []
+    expect(
+      await runTransientCleanupCommand(['--contract', '/contract.json'], {
+        readContract: async () => compatibilityContract(),
+        connect: async () => ({
+          destroy: async () => {},
+          executor: {
+            query: vi.fn().mockResolvedValue([
+              {
+                name: 'Schema123',
+                metadata: '["changed constraint"]',
+                canViewDefinition: 1,
+              },
+            ]),
+          },
+        }),
+        createTargets,
+        env: {},
+        write: line => output.push(line),
+      }),
+    ).toBe(1)
+    expect(createTargets).not.toHaveBeenCalled()
+    expect(JSON.stringify(output)).not.toContain('changed constraint')
+  })
+
+  it('fails changed target applicability before deleting rows', async () => {
+    const output: string[] = []
+    const contract = compatibilityContract()
+    contract.verification[0].targets.forEach(target => {
+      target.outcome = 'not_applicable'
+    })
+    expect(
+      await runTransientCleanupCommand(['--contract', '/contract.json'], {
+        readContract: async () => contract,
+        connect: async () => ({
+          destroy: async () => {},
+          executor: {
+            query: vi
+              .fn()
+              .mockResolvedValue([
+                { name: 'Schema123', metadata: '[]', canViewDefinition: 1 },
+              ]),
+          },
+        }),
+        createTargets: () => [target(1)],
+        env: {},
+        write: line => output.push(line),
+      }),
+    ).toBe(1)
+    expect(output.map(line => JSON.parse(line)).at(-1)).toMatchObject({
+      outcome: 'failure',
+      deleted_rows: 0,
+    })
+  })
+  it.each([
+    [],
+    [{ canViewDefinition: 0, metadata: '[]' }],
+    [{ canViewDefinition: 1 }],
+  ])(
+    'rejects unavailable schema definitions before collecting evidence: %j',
+    async metadata => {
+      const createTargets = vi.fn(() => [target(0)])
+      expect(
+        await runTransientCleanupCommand(['--compatibility-evidence'], {
+          connect: async () => ({
+            destroy: async () => {},
+            executor: {
+              query: vi
+                .fn()
+                .mockImplementation(async (sql: string) =>
+                  sql.includes('dbo.migrations')
+                    ? [{ name: 'Schema123' }]
+                    : metadata,
+                ),
+            },
+          }),
+          createTargets,
+          env: {},
+          write: () => {},
+        }),
+      ).toBe(1)
+      expect(createTargets).not.toHaveBeenCalled()
+    },
+  )
+
+  it('collects aggregate schema evidence through the released cleanup command', async () => {
+    const output: string[] = []
+    expect(
+      await runTransientCleanupCommand(['--compatibility-evidence'], {
+        connect: async () => ({
+          destroy: async () => {},
+          executor: {
+            query: vi
+              .fn()
+              .mockResolvedValue([
+                { name: 'Schema123', metadata: '[]', canViewDefinition: 1 },
+              ]),
+          },
+        }),
+        createTargets: () => [target(1)],
+        env: {},
+        write: line => output.push(line),
+      }),
+    ).toBe(0)
+    expect(JSON.parse(output.at(-1) ?? '{}')).toEqual({
+      event: 'transient_cleanup.schema.verified',
+      schemaVersion: 'Schema123',
+      schemaFingerprint: createHash('sha256').update('[]').digest('hex'),
+      outcome: 'success',
+      targets: [
+        { kind: 'requirement_import_validation_sessions', outcome: 'success' },
+      ],
+    })
+  })
+  it('reports absent target tables using aggregate not_applicable outcomes', async () => {
+    const output: string[] = []
+    const query = vi
+      .fn()
+      .mockResolvedValue([
+        { presentTableCount: 0, namedObjectCount: 0, canViewDefinition: 1 },
+      ])
+    const code = await runTransientCleanupCommand([], {
+      connect: async () => ({ destroy: async () => {}, executor: { query } }),
+      env: {},
+      write: line => output.push(line),
+    })
+    expect(code).toBe(0)
+    const events = output.map(line => JSON.parse(line))
+    expect(events.slice(0, -1).map(event => event.outcome)).toEqual(
+      Array(5).fill('not_applicable'),
+    )
+    expect(events.at(-1)).toMatchObject({ outcome: 'success', deleted_rows: 0 })
+    expect(query).toHaveBeenCalledTimes(5)
+  })
+
+  it.each([
+    { presentTableCount: 0, namedObjectCount: 0, canViewDefinition: 0 },
+    { presentTableCount: 0, namedObjectCount: 1, canViewDefinition: 1 },
+    { presentTableCount: 1, namedObjectCount: 1, canViewDefinition: 1 },
+  ])('fails uncertain or partial forensic schemas: %j', async metadata => {
+    const output: string[] = []
+    const query = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.includes('presentTableCount')) return [metadata]
+      throw new Error('private destination payload token raw database error')
+    })
+    expect(
+      await runTransientCleanupCommand([], {
+        connect: async () => ({ destroy: async () => {}, executor: { query } }),
+        env: {},
+        write: line => output.push(line),
+      }),
+    ).toBe(1)
+    const events = output.map(line => JSON.parse(line))
+    expect(
+      events.find(event => event.kind === 'ai_forensic_evidence'),
+    ).toMatchObject({
+      outcome: 'failure',
+      failure_code: 'target_execution_failed',
+    })
+    expect(output.join('\n')).not.toMatch(
+      /private|destination|payload|token|raw database error/,
+    )
+  })
+
+  it('uses default bounds for every registered cleanup target', async () => {
+    const query = vi
+      .fn()
+      .mockImplementation(async (sql: string, parameters?: unknown[]) =>
+        sql.includes('presentTableCount')
+          ? [
+              {
+                presentTableCount: parameters?.length,
+                operableTableCount: parameters?.length,
+                namedObjectCount: parameters?.length,
+                canViewDefinition: 0,
+              },
+            ]
+          : [
+              {
+                expiredRowCount: 0,
+                expiredStoredBytes: 0,
+                oldestExpiredAgeMs: null,
+              },
+            ],
+      )
 
     await expect(
       runTransientCleanupCommand([], {
@@ -49,7 +315,42 @@ describe('transient cleanup command', () => {
         write: vi.fn(),
       }),
     ).resolves.toBe(0)
-    expect(query).toHaveBeenCalledTimes(5)
+    expect(query).toHaveBeenCalledTimes(16)
+  })
+
+  it('fails missing purge permissions even when every backlog is empty', async () => {
+    const output: string[] = []
+    const query = vi
+      .fn()
+      .mockImplementation(async (sql: string, parameters?: unknown[]) =>
+        sql.includes('presentTableCount')
+          ? [
+              {
+                presentTableCount: parameters?.length,
+                operableTableCount: 0,
+                namedObjectCount: parameters?.length,
+                canViewDefinition: 1,
+              },
+            ]
+          : [
+              {
+                expiredRowCount: 0,
+                expiredStoredBytes: 0,
+                oldestExpiredAgeMs: null,
+              },
+            ],
+      )
+    expect(
+      await runTransientCleanupCommand([], {
+        connect: async () => ({ destroy: async () => {}, executor: { query } }),
+        env: {},
+        write: line => output.push(line),
+      }),
+    ).toBe(1)
+    expect(JSON.parse(output.at(-1) ?? '{}')).toMatchObject({
+      outcome: 'failure',
+      deleted_rows: 0,
+    })
   })
 
   it('cleans registered targets without any MCP request traffic', async () => {

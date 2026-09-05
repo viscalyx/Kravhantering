@@ -12,6 +12,7 @@ import {
   DEFAULT_DEV_REALM_PATH,
 } from '../keycloak-demo-users.mjs'
 import { generateHsaPersonLookupSwaggerUi } from '../openapi/generate-hsa-person-lookup-swagger-ui.mjs'
+import { verifyCleanupCompatibilityContract } from './cleanup-compatibility-contract.mjs'
 import { stripOperatorUpgradeSourceMarkers } from './operator-upgrade-notes.mjs'
 
 export const APP_RUNTIME_PACKAGE = 'kravhantering-app-runtime'
@@ -153,6 +154,10 @@ export const DEPLOYMENT_BUNDLE_STATIC_ENTRIES = [
       'docs/operations/rhel10-production-single-node-self-contained-uninstall.md',
   },
   { source: 'containers/production/env', target: 'env' },
+  {
+    source: 'containers/production/cleanup-sources',
+    target: 'cleanup-sources',
+  },
   { source: 'containers/production/keycloak', target: 'keycloak' },
   { source: 'containers/kong/kong.strict.yml', target: 'kong/kong.strict.yml' },
   {
@@ -1230,6 +1235,32 @@ export function stageProductionDeploymentBundle(options = {}) {
     stackLock,
     testSupportLock,
   })
+  if (options.cleanupContractPath) {
+    const contract = verifyCleanupCompatibilityContract(
+      readJsonFile(path.resolve(cwd, options.cleanupContractPath), fsImpl),
+      manifest,
+      stackLock,
+      fsImpl
+        .readdirSync(path.join(bundleRoot, 'cleanup-sources'))
+        .filter(file => file.endsWith('.json'))
+        .sort()
+        .map(file =>
+          readJsonFile(path.join(bundleRoot, 'cleanup-sources', file), fsImpl),
+        ),
+    )
+    writeJsonFile(
+      path.join(bundleRoot, 'cleanup-compatibility.json'),
+      contract,
+      fsImpl,
+    )
+    manifest.files.push('cleanup-compatibility.json')
+    manifest.files.sort()
+    manifest.cleanup = {
+      imageId: contract.imageId,
+      manifestDigest: contract.manifestDigest,
+      contract: 'cleanup-compatibility.json',
+    }
+  }
   writeJsonFile(
     path.join(bundleRoot, 'DEPLOYMENT-MANIFEST.json'),
     manifest,
@@ -1966,6 +1997,7 @@ export async function main(args, dependencies = {}) {
         ? readJsonFile(options['test-support-lock'], fsImpl)
         : undefined
       const result = stageProductionDeploymentBundle({
+        cleanupContractPath: options['cleanup-contract'],
         buildJsonPath: options['build-json'],
         cwd: dependencies.cwd,
         fsImpl,
