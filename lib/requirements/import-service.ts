@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import {
-  getAiGenerationSettings,
-  getCachedMcpRuntimeSettings,
+  getMcpRuntimeSettings,
+  type McpRuntimeSettings,
 } from '@/lib/dal/ai-settings'
 import {
   getApplicationSettings,
@@ -527,6 +527,51 @@ async function loadRequirementImportBudget(
   db: Pick<SqlServerDatabase, 'query'>,
 ): Promise<RequirementImportBudget> {
   return requirementImportBudgetFromSettings(await getApplicationSettings(db))
+}
+
+async function loadMcpImportBudget(
+  executor: Pick<SqlServerDatabase, 'query'>,
+  logger: RequirementsLogger,
+  context: RequestContext,
+  phase: 'preflight' | 'admission' | 'execution',
+): Promise<{ budget: RequirementImportBudget; settings: McpRuntimeSettings }> {
+  const startedAt = Date.now()
+  const fields = {
+    operation: phase === 'execution' ? 'execute' : 'validate',
+    phase,
+    request_id: context.requestId,
+    source: 'database',
+  }
+  try {
+    // Match the admin update lock before reading AI settings to avoid upgrades.
+    const globalBudget =
+      phase === 'preflight'
+        ? await loadRequirementImportBudget(executor)
+        : requirementImportBudgetFromSettings(
+            await getApplicationSettingsForUpdate(executor),
+          )
+    const settings = await getMcpRuntimeSettings(executor)
+    const budget = {
+      ...globalBudget,
+      maxRows: Math.min(globalBudget.maxRows, settings.mcpImportMaxRows),
+    }
+    logger.info('requirements.manage_import.budget_resolution', {
+      ...fields,
+      ai_max_rows: settings.mcpImportMaxRows,
+      duration_ms: Date.now() - startedAt,
+      effective_max_rows: budget.maxRows,
+      global_max_rows: globalBudget.maxRows,
+      outcome: 'resolved',
+    })
+    return { budget, settings }
+  } catch (error) {
+    logger.error('requirements.manage_import.budget_resolution', {
+      ...fields,
+      duration_ms: Date.now() - startedAt,
+      outcome: 'failed',
+    })
+    throw error
+  }
 }
 
 async function assertCurrentImportBudgetForWrite(
@@ -2612,12 +2657,8 @@ export function createRequirementsImportWorkflow({
             }
             const destination = destinationOrIssue
 
-            const budget = await loadRequirementImportBudget(db)
-            const settings = await getCachedMcpRuntimeSettings(db)
-            const effectiveBudget = {
-              ...budget,
-              maxRows: Math.min(budget.maxRows, settings.mcpImportMaxRows),
-            }
+            const { budget: effectiveBudget, settings } =
+              await loadMcpImportBudget(db, logger, context, 'preflight')
             const submittedPayloadJson = canonicalJson(input.payload)
             const submittedPayloadBytes = Buffer.byteLength(
               submittedPayloadJson,
@@ -2711,19 +2752,45 @@ export function createRequirementsImportWorkflow({
                   validationResultJson,
                 })
               const creation =
-                await createRequirementImportValidationSessionAtomically(db, {
-                  creatorPrincipalFingerprint,
-                  destinationId: destinationId(input.destination),
-                  destinationKind: input.destination.kind,
-                  destinationSnapshotJson,
-                  expiresAt,
-                  payloadHash,
-                  referenceDataFingerprint: storedReferenceDataFingerprint,
-                  reservedBytes,
-                  submittedPayloadJson,
-                  tokenHash,
-                  validationResultJson,
-                })
+                await createRequirementImportValidationSessionAtomically(
+                  db,
+                  {
+                    creatorPrincipalFingerprint,
+                    destinationId: destinationId(input.destination),
+                    destinationKind: input.destination.kind,
+                    destinationSnapshotJson,
+                    expiresAt,
+                    payloadHash,
+                    referenceDataFingerprint: storedReferenceDataFingerprint,
+                    reservedBytes,
+                    submittedPayloadJson,
+                    tokenHash,
+                    validationResultJson,
+                  },
+                  async executor => {
+                    const { budget: currentBudget } = await loadMcpImportBudget(
+                      executor,
+                      logger,
+                      context,
+                      'admission',
+                    )
+                    if (
+                      budgetFingerprint !==
+                      requirementImportBudgetFingerprint(currentBudget)
+                    ) {
+                      logger.info('requirements.manage_import.budget_stale', {
+                        operation: 'validate',
+                        request_id: context.requestId,
+                      })
+                      throw conflictError(
+                        'The import budget changed. Run validate again.',
+                        {
+                          reason: 'import_budget_stale',
+                        },
+                      )
+                    }
+                  },
+                )
               if ('rejection' in creation) {
                 logger.info(
                   'requirements.manage_import.validation_session_quota',
@@ -2841,6 +2908,13 @@ export function createRequirementsImportWorkflow({
           try {
             return await withRequirementImportCapacity(() =>
               db.transaction('SERIALIZABLE', async manager => {
+                const { budget: lockedEffectiveBudget } =
+                  await loadMcpImportBudget(
+                    manager,
+                    logger,
+                    context,
+                    'execution',
+                  )
                 const lockedSession =
                   await getOwnedRequirementImportValidationSession(
                     manager,
@@ -2864,25 +2938,14 @@ export function createRequirementsImportWorkflow({
                     'validation result',
                   )
                 const execution = parseExecutionSession(lockedSession)
-                const [lockedBudget, lockedAiSettings] = await Promise.all([
-                  loadRequirementImportBudget(
-                    manager as unknown as SqlServerDatabase,
-                  ),
-                  getAiGenerationSettings(
-                    manager as unknown as SqlServerDatabase,
-                  ),
-                ])
-                const lockedEffectiveBudget = {
-                  ...lockedBudget,
-                  maxRows: Math.min(
-                    lockedBudget.maxRows,
-                    lockedAiSettings.mcpImportMaxRows,
-                  ),
-                }
                 if (
                   validation.budgetFingerprint !==
                   requirementImportBudgetFingerprint(lockedEffectiveBudget)
                 ) {
+                  logger.info('requirements.manage_import.budget_stale', {
+                    operation: 'execute',
+                    request_id: context.requestId,
+                  })
                   return errorIssueResponse({
                     code: 'import_budget_stale',
                     message:

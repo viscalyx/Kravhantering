@@ -88,6 +88,22 @@ function createDbFromResponses(responses: unknown[]) {
 describe('MCP import-validation quota insertion', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  it('aborts session admission before writes when the transactional budget check fails', async () => {
+    const { db, query, manager } = createDb()
+    const beforeCreate = vi.fn(async () => {
+      throw new Error('Budget changed')
+    })
+    await expect(
+      createRequirementImportValidationSessionAtomically(
+        db,
+        data,
+        beforeCreate,
+      ),
+    ).rejects.toThrow('Budget changed')
+    expect(beforeCreate).toHaveBeenCalledWith(manager)
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
   it('accepts equality at every quota and commits the session plus rate increment', async () => {
     const { db, query, transaction } = createDb()
     query.mockResolvedValueOnce([insertedRow]).mockResolvedValueOnce([])

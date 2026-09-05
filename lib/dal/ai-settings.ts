@@ -541,6 +541,24 @@ export async function getCachedMcpRuntimeSettings(
     return cachedMcpRuntimeSettings.value
   }
 
+  const settings =
+    (await readMcpRuntimeSettings(db)) ?? DEFAULT_MCP_RUNTIME_SETTINGS
+  cacheMcpRuntimeSettings(settings)
+  return settings
+}
+
+/** Strict, uncached settings for import admission and transactional execution. */
+export async function getMcpRuntimeSettings(
+  db: Pick<SqlServerDatabase, 'query'>,
+): Promise<McpRuntimeSettings> {
+  const settings = await readMcpRuntimeSettings(db)
+  if (!settings) throw new Error('MCP runtime settings singleton is missing.')
+  return settings
+}
+
+async function readMcpRuntimeSettings(
+  db: Pick<SqlServerDatabase, 'query'>,
+): Promise<McpRuntimeSettings | undefined> {
   const rows = (await db.query(`
     SELECT TOP (1)
       mcp_import_max_active_sessions_per_destination AS mcpImportMaxActiveSessionsPerDestination,
@@ -556,8 +574,7 @@ export async function getCachedMcpRuntimeSettings(
 
   const row = rows[0]
   if (!row) {
-    cacheMcpRuntimeSettings(DEFAULT_MCP_RUNTIME_SETTINGS)
-    return DEFAULT_MCP_RUNTIME_SETTINGS
+    return undefined
   }
 
   const settings = {
@@ -574,7 +591,6 @@ export async function getCachedMcpRuntimeSettings(
     mcpMaxRequestBytes: Number(row.mcpMaxRequestBytes),
   }
   assertMcpRuntimeSettings(settings)
-  cacheMcpRuntimeSettings(settings)
   return settings
 }
 

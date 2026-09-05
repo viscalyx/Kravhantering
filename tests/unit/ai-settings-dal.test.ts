@@ -19,6 +19,7 @@ import {
   getAiGenerationSettings,
   getCachedMcpMaxRequestBytes,
   getCachedMcpRuntimeSettings,
+  getMcpRuntimeSettings,
   patchAiGenerationSettings,
   resolveAiGenerationAvailability,
   updateAiGenerationSettings,
@@ -573,6 +574,59 @@ describe('AI settings DAL', () => {
       expect.stringContaining('UPDATE ai_settings'),
       expect.arrayContaining([601]),
     )
+  })
+
+  it('observes committed reductions on independent connections despite a warm discovery cache', async () => {
+    let currentRows = 500
+    const read = async () => [
+      {
+        ...MCP_QUOTA_DEFAULTS,
+        mcpImportMaxRows: currentRows,
+        mcpImportValidationTtlMinutes: 60,
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+      },
+    ]
+    query.mockImplementation(read)
+    const otherNode = { query: vi.fn(read) } as unknown as SqlServerDatabase
+    await expect(getCachedMcpRuntimeSettings(db)).resolves.toMatchObject({
+      mcpImportMaxRows: 500,
+    })
+    currentRows = 2
+    await expect(getMcpRuntimeSettings(otherNode)).resolves.toMatchObject({
+      mcpImportMaxRows: 2,
+    })
+    await expect(getMcpRuntimeSettings(db)).resolves.toMatchObject({
+      mcpImportMaxRows: 2,
+    })
+    await expect(getCachedMcpRuntimeSettings(db)).resolves.toMatchObject({
+      mcpImportMaxRows: 500,
+    })
+    currentRows = 1
+    await expect(getMcpRuntimeSettings(otherNode)).resolves.toMatchObject({
+      mcpImportMaxRows: 1,
+    })
+  })
+
+  it('fails closed on missing or unreadable import settings', async () => {
+    await expect(getMcpRuntimeSettings(db)).rejects.toThrow(
+      'singleton is missing',
+    )
+    query.mockRejectedValueOnce(new Error('Database unavailable'))
+    await expect(getMcpRuntimeSettings(db)).rejects.toThrow(
+      'Database unavailable',
+    )
+  })
+
+  it('rejects invalid persisted import limits without substituting defaults', async () => {
+    query.mockResolvedValueOnce([
+      {
+        ...MCP_QUOTA_DEFAULTS,
+        mcpImportMaxRows: 0,
+        mcpImportValidationTtlMinutes: 60,
+        mcpMaxRequestBytes: MCP_REQUEST_PAYLOAD_DEFAULT_BYTES,
+      },
+    ])
+    await expect(getMcpRuntimeSettings(db)).rejects.toThrow()
   })
 
   it('caches the configured MCP request payload limit', async () => {

@@ -477,6 +477,81 @@ Human-readable MCP labels should stay aligned with the app and CSV output by
 using explicit keys from `messages/en.json` and `messages/sv.json` rather than
 hardcoded English-only text.
 
+## Import budget resolution and consistency
+
+MCP HTTP setup uses cached AI settings for transport limits and informational
+metadata. It does not load application settings to advertise a row limit.
+Non-import calls, discovery and destination listing do not resolve the import
+budget. Import schema and instruction calls still load their own global budget.
+
+`manageImport` loads strict, uncached settings for `validate` and `execute`.
+The effective row ceiling is always:
+
+```text
+min(AI MCP row limit, global requirement-import row budget)
+```
+
+Validation first checks content against fresh settings, then rechecks the
+budget fingerprint inside the serializable session-admission transaction,
+before quota settings and session writes. A concurrent change produces a
+conflict asking the client to validate again. Execution reads both settings
+inside its serializable mutation transaction; a changed fingerprint returns
+`import_budget_stale` before reference work or writes. Existing tokens do not
+reserve the right to use an older ceiling.
+
+Both transactions acquire the application-settings update lock before reading
+AI settings and retain their SQL Server locks until commit. This avoids lock
+upgrade deadlocks with an AI settings update, and serializes budget admission
+and execution while these locks are held. Admin PATCH writes acquire
+application settings and then AI settings locks in the same order. If the
+PATCH commits first, admission/execution observes its values. If import locks
+win first,
+the PATCH waits for that import transaction to finish. An import may return
+its response after a PATCH response due to network scheduling, but its database
+admission or mutation is ordered before that PATCH. This contract applies to
+all processes and nodes using the same writable SQL Server database; no
+replica reads or cross-node message delivery participate in enforcement.
+
+A successful AI settings PATCH refreshes that process's metadata cache after
+commit. A global-budget PATCH also clamps the persisted AI row limit in the
+same transaction. Neither PATCH needs import-budget cache invalidation because
+there is no enforcement cache. Remote metadata can remain stale for its
+30-second TTL; advertised values are explicitly informational. Failed PATCH
+transactions do not publish new limits. Missing, invalid or unreadable import
+settings fail closed without cached or default substitution. Admission failures
+create no session, and execution failures roll back without a receipt or rows.
+SQL lock timeouts and deadlock victims also fail closed; callers can retry.
+
+The design choices for issue #995 are:
+
+- **Lazy database reads (selected):** remove the unconditional HTTP read and
+  resolve only where import functionality needs the budget. Transactional
+  rechecks close the race between validation work and session admission.
+- **Cache with local and cross-node invalidation:** local refresh is
+  insufficient. Reliable invalidation would require every process to
+  acknowledge a reduction before PATCH success, or a database version check
+  at admission. The latter still reads the database; the former adds a
+  distributed coordination dependency without a useful benefit here.
+- **Bounded staleness:** a positive TTL alone can accept rows above a newly
+  lowered ceiling. It is safe only with an authoritative admission check or
+  a cached lower bound guaranteed never to exceed any future setting. An
+  ordinary cached value has no such guarantee, so enforcement uses no TTL.
+
+`requirements.manage_import.budget_resolution` logs operation, phase,
+request ID, `source: database`, outcome and read duration. Successful reads
+include
+`global_max_rows`, `ai_max_rows` and `effective_max_rows`.
+`requirements.manage_import.budget_stale` identifies fingerprint mismatches
+and the affected operation. These events contain no payload, token, raw
+settings-read error or principal data. Correlate by request ID and the log
+collector's process/node labels. Repeated failures indicate database/settings
+health; stale events indicate a concurrent administrator change.
+
+Focused HTTP, service and DAL tests cover discovery independence, both limit
+reductions, independent consumers with stale metadata, admission rechecks,
+execution rejection and read failures. The SQL integration quota suite checks
+transactional admission and concurrent admin updates against SQL Server.
+
 ## Lifecycle Normalization
 
 The shared service and DAL provide one lifecycle behavior contract for routes:

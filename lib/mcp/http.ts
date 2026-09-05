@@ -6,11 +6,9 @@ import {
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
 import { getCachedMcpRuntimeSettings } from '@/lib/dal/ai-settings'
-import { getApplicationSettings } from '@/lib/dal/application-settings'
 import type { SqlServerDatabase } from '@/lib/db'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
-import { requirementImportBudgetFromSettings } from '@/lib/requirements/import-budget'
 import { createRequirementsRuntime } from '@/lib/requirements/server'
 
 export const MCP_DEFAULT_REQUEST_BYTES = MCP_REQUEST_PAYLOAD_DEFAULT_BYTES
@@ -151,17 +149,7 @@ export async function handleRequirementsMcpRequest(
   }
 
   const db = await getDatabase()
-  const configuredMcpSettings = await getCachedMcpRuntimeSettings(db)
-  const importBudget = requirementImportBudgetFromSettings(
-    await getApplicationSettings(db),
-  )
-  const mcpSettings = {
-    ...configuredMcpSettings,
-    mcpImportMaxRows: Math.min(
-      configuredMcpSettings.mcpImportMaxRows,
-      importBudget.maxRows,
-    ),
-  }
+  const mcpSettings = await getCachedMcpRuntimeSettings(db)
   if (request.method === 'POST') {
     const payloadSize = await inspectRequestPayloadSize(
       request,

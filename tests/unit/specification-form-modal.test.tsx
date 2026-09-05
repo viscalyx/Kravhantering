@@ -544,7 +544,7 @@ describe('SpecificationFormModal', () => {
     ).toHaveAttribute('role', 'alert')
   })
 
-  it('blocks create saves when the current user HSA-id is unavailable', () => {
+  it('blocks create saves when the current user HSA-id is unavailable', async () => {
     renderCreateModal({
       currentUser: null,
       currentUserLoading: false,
@@ -552,7 +552,7 @@ describe('SpecificationFormModal', () => {
     })
 
     expect(
-      screen.getByText('specification.currentUserUnavailable'),
+      await screen.findByText('specification.currentUserUnavailable'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /common\.save/i })).toBeDisabled()
 
@@ -567,7 +567,7 @@ describe('SpecificationFormModal', () => {
     ).toBe(false)
   })
 
-  it('blocks create saves when lifecycle status is empty', () => {
+  it('blocks create saves when lifecycle status is empty', async () => {
     renderCreateModal()
 
     expect(
@@ -585,7 +585,7 @@ describe('SpecificationFormModal', () => {
     fireEvent.submit(document.getElementById(SPECIFICATION_FORM_ID) as Element)
 
     expect(
-      screen.getByText('specification.lifecycleStatusRequired'),
+      await screen.findByText('specification.lifecycleStatusRequired'),
     ).toBeInTheDocument()
     expect(
       fetchMock.mock.calls.some(

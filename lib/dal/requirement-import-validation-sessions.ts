@@ -254,6 +254,7 @@ export async function checkRequirementImportValidationSessionQuotaAdvisory(
 export async function createRequirementImportValidationSessionAtomically(
   db: SqlServerDatabase,
   data: RequirementImportValidationSessionCreateData,
+  beforeCreate?: (executor: QueryExecutor) => Promise<void>,
 ): Promise<RequirementImportValidationSessionCreateResult> {
   return db.transaction('SERIALIZABLE', async manager => {
     const lockRows = await manager.query<
@@ -270,6 +271,9 @@ export async function createRequirementImportValidationSessionAtomically(
     if (Number(lockRows[0]?.lockResult ?? -999) < 0) {
       throw new Error('Failed to acquire MCP import-validation quota lock')
     }
+
+    // Resolve application settings before acquiring the AI settings update lock.
+    await beforeCreate?.(manager)
 
     const settingsRows = await manager.query<QuotaSettingsRow[]>(
       `SELECT TOP (1)

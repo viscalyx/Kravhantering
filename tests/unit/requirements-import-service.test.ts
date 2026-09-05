@@ -6,10 +6,7 @@ import {
   MCP_IMPORT_MAX_RESERVED_BYTES_DEFAULT,
 } from '@/lib/ai/generation-availability'
 import { DEFAULT_APPLICATION_SETTINGS } from '@/lib/application-settings'
-import {
-  getAiGenerationSettings,
-  getCachedMcpRuntimeSettings,
-} from '@/lib/dal/ai-settings'
+import { getMcpRuntimeSettings } from '@/lib/dal/ai-settings'
 import {
   getApplicationSettings,
   getApplicationSettingsForUpdate,
@@ -95,8 +92,7 @@ vi.mock('@/lib/dal/priority-levels', () => ({
 }))
 
 vi.mock('@/lib/dal/ai-settings', () => ({
-  getAiGenerationSettings: vi.fn(),
-  getCachedMcpRuntimeSettings: vi.fn(),
+  getMcpRuntimeSettings: vi.fn(),
 }))
 
 vi.mock('@/lib/dal/application-settings', () => ({
@@ -242,6 +238,7 @@ describe('requirements import service', () => {
   })
 
   beforeEach(() => {
+    vi.clearAllMocks()
     auditState.query.mockReset().mockResolvedValue([])
     auditState.transaction
       .mockReset()
@@ -259,25 +256,17 @@ describe('requirements import service', () => {
     vi.mocked(listTypes).mockResolvedValue([])
     vi.mocked(listNormReferences).mockResolvedValue([])
     vi.mocked(listSpecificationNeedsReferences).mockResolvedValue([])
-    vi.mocked(getCachedMcpRuntimeSettings).mockResolvedValue({
+    vi.mocked(getMcpRuntimeSettings).mockResolvedValue({
       ...MCP_QUOTA_DEFAULTS,
       mcpImportMaxRows: 500,
       mcpImportValidationTtlMinutes: 60,
       mcpMaxRequestBytes: 10 * 1024 * 1024,
-    })
-    vi.mocked(getAiGenerationSettings).mockResolvedValue({
-      ...MCP_QUOTA_DEFAULTS,
-      aiSafetyRuleCacheTtlSeconds: 600,
-      mcpImportMaxRows: 500,
-      mcpImportValidationTtlMinutes: 60,
-      mcpMaxRequestBytes: 10 * 1024 * 1024,
-      requirementGenerationEnabled: true,
     })
     vi.mocked(getApplicationSettings).mockResolvedValue(
       DEFAULT_APPLICATION_SETTINGS,
     )
-    vi.mocked(getApplicationSettingsForUpdate).mockResolvedValue(
-      DEFAULT_APPLICATION_SETTINGS,
+    vi.mocked(getApplicationSettingsForUpdate).mockImplementation(executor =>
+      getApplicationSettings(executor),
     )
     vi.mocked(getAreaById).mockResolvedValue({
       createdAt: '2026-07-05T10:00:00.000Z',
@@ -295,7 +284,10 @@ describe('requirements import service', () => {
     vi.mocked(getSpecificationById).mockResolvedValue(null)
     vi.mocked(createRequirementImportValidationSession).mockReset()
     vi.mocked(createRequirementImportValidationSession).mockImplementation(
-      async (_db, data) => ({ session: makeSessionRecord(data) }),
+      async (db, data, beforeCreate) => {
+        await beforeCreate?.(db)
+        return { session: makeSessionRecord(data) }
+      },
     )
     vi.mocked(
       checkRequirementImportValidationSessionQuotaAdvisory,
@@ -864,6 +856,136 @@ describe('requirements import service', () => {
     ).toHaveLength(0)
   })
 
+  it.each(['global', 'ai'] as const)(
+    'enforces a reduced %s limit on another workflow instance',
+    async limit => {
+      const first = createRequirementsImportWorkflow({
+        authorization: { assertAuthorized: vi.fn() },
+        db: makeManageImportDb().db as never,
+      })
+      const logger = { error: vi.fn(), info: vi.fn() }
+      const second = createRequirementsImportWorkflow({
+        authorization: { assertAuthorized: vi.fn() },
+        db: makeManageImportDb().db as never,
+        logger,
+      })
+      const context = makeContext('requirements_manage_import')
+      const input = {
+        destination: { areaId: 7, kind: 'requirements_library' as const },
+        operation: 'validate' as const,
+        payload: {
+          requirements: [{ description: 'One' }, { description: 'Two' }],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      }
+      await expect(first.manageImport(context, input)).resolves.toMatchObject({
+        hasErrors: false,
+      })
+      if (limit === 'global') {
+        vi.mocked(getApplicationSettings).mockResolvedValue({
+          ...DEFAULT_APPLICATION_SETTINGS,
+          requirementImportMaxRows: 1,
+        })
+      } else {
+        const settings = await getMcpRuntimeSettings({} as never)
+        vi.mocked(getMcpRuntimeSettings).mockResolvedValue({
+          ...settings,
+          mcpImportMaxRows: 1,
+        })
+      }
+      await expect(second.manageImport(context, input)).resolves.toMatchObject({
+        hasErrors: true,
+        issues: [
+          expect.objectContaining({
+            code: 'import_row_count_cap_exceeded',
+            details: { actual: 2, limit: 1 },
+          }),
+        ],
+      })
+      expect(createRequirementImportValidationSession).toHaveBeenCalledOnce()
+      expect(logger.info).toHaveBeenCalledWith(
+        'requirements.manage_import.budget_resolution',
+        expect.objectContaining({
+          source: 'database',
+          effective_max_rows: 1,
+          outcome: 'resolved',
+        }),
+      )
+    },
+  )
+
+  it.each(['global', 'ai'] as const)(
+    'rejects validation when the %s budget falls before session admission',
+    async limit => {
+      const workflow = createRequirementsImportWorkflow({
+        authorization: { assertAuthorized: vi.fn() },
+        db: makeManageImportDb().db as never,
+      })
+      if (limit === 'global') {
+        vi.mocked(getApplicationSettings)
+          .mockResolvedValueOnce(DEFAULT_APPLICATION_SETTINGS)
+          .mockResolvedValue({
+            ...DEFAULT_APPLICATION_SETTINGS,
+            requirementImportMaxRows: 1,
+          })
+      } else {
+        const settings = await getMcpRuntimeSettings({} as never)
+        vi.mocked(getMcpRuntimeSettings)
+          .mockResolvedValueOnce(settings)
+          .mockResolvedValue({ ...settings, mcpImportMaxRows: 1 })
+      }
+      await expect(
+        workflow.manageImport(makeContext('requirements_manage_import'), {
+          destination: { areaId: 7, kind: 'requirements_library' },
+          operation: 'validate',
+          payload: {
+            requirements: [{ description: 'One' }, { description: 'Two' }],
+            schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: 'conflict',
+        details: { reason: 'import_budget_stale' },
+      })
+    },
+  )
+
+  it.each(['global', 'ai'] as const)(
+    'fails closed and logs when %s settings cannot be read for validation',
+    async source => {
+      const logger = { error: vi.fn(), info: vi.fn() }
+      const workflow = createRequirementsImportWorkflow({
+        authorization: { assertAuthorized: vi.fn() },
+        db: makeManageImportDb().db as never,
+        logger,
+      })
+      const read =
+        source === 'global'
+          ? vi.mocked(getApplicationSettings)
+          : vi.mocked(getMcpRuntimeSettings)
+      read.mockRejectedValueOnce(new Error('Settings unavailable'))
+      await expect(
+        workflow.manageImport(makeContext('requirements_manage_import'), {
+          destination: { areaId: 7, kind: 'requirements_library' },
+          operation: 'validate',
+          payload: {
+            requirements: [{ description: 'One' }],
+            schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+          },
+        }),
+      ).rejects.toThrow('Settings unavailable')
+      expect(createRequirementImportValidationSession).not.toHaveBeenCalled()
+      expect(logger.error).toHaveBeenCalledWith(
+        'requirements.manage_import.budget_resolution',
+        expect.objectContaining({
+          operation: 'validate',
+          source: 'database',
+          outcome: 'failed',
+        }),
+      )
+    },
+  )
+
   it('returns pinned MCP import cap codes and JSON Pointer paths', async () => {
     const authorization = { assertAuthorized: vi.fn() }
     const workflow = createRequirementsImportWorkflow({
@@ -872,7 +994,7 @@ describe('requirements import service', () => {
     })
     const context = makeContext('requirements_manage_import')
 
-    vi.mocked(getCachedMcpRuntimeSettings).mockResolvedValue({
+    vi.mocked(getMcpRuntimeSettings).mockResolvedValue({
       ...MCP_QUOTA_DEFAULTS,
       mcpImportMaxRows: 1,
       mcpImportValidationTtlMinutes: 60,
@@ -1177,47 +1299,105 @@ describe('requirements import service', () => {
     expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
   })
 
-  it('rejects MCP execute before reference or mutation work when the budget changed', async () => {
-    const { db } = makeManageImportDb()
-    const workflow = createRequirementsImportWorkflow({
-      authorization: { assertAuthorized: vi.fn() },
-      db: db as never,
-    })
-    const context = makeContext('requirements_manage_import')
-    await workflow.manageImport(context, {
-      destination: { areaId: 7, kind: 'requirements_library' },
-      operation: 'validate',
-      payload: {
-        requirements: [{ description: 'Systemet ska vara spårbart.' }],
-        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
-      },
-    })
-    const createData = vi
-      .mocked(createRequirementImportValidationSession)
-      .mock.calls.at(-1)?.[1]
-    if (!createData) throw new Error('Expected validation session data')
-    vi.mocked(
-      getRequirementImportValidationSessionByTokenHash,
-    ).mockResolvedValue(makeSessionRecord(createData))
-    const referenceReadsBeforeExecute =
-      vi.mocked(listCategories).mock.calls.length
-    vi.mocked(getApplicationSettings).mockResolvedValue({
-      ...DEFAULT_APPLICATION_SETTINGS,
-      requirementImportMaxRows: 499,
-    })
+  it.each(['global', 'ai'] as const)(
+    'rejects MCP execute before mutation when the %s budget changed',
+    async limit => {
+      const { db } = makeManageImportDb()
+      const workflow = createRequirementsImportWorkflow({
+        authorization: { assertAuthorized: vi.fn() },
+        db: db as never,
+      })
+      const context = makeContext('requirements_manage_import')
+      await workflow.manageImport(context, {
+        destination: { areaId: 7, kind: 'requirements_library' },
+        operation: 'validate',
+        payload: {
+          requirements: [{ description: 'Systemet ska vara spårbart.' }],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      })
+      const createData = vi
+        .mocked(createRequirementImportValidationSession)
+        .mock.calls.at(-1)?.[1]
+      if (!createData) throw new Error('Expected validation session data')
+      vi.mocked(
+        getRequirementImportValidationSessionByTokenHash,
+      ).mockResolvedValue(makeSessionRecord(createData))
+      const referenceReadsBeforeExecute =
+        vi.mocked(listCategories).mock.calls.length
+      if (limit === 'global') {
+        vi.mocked(getApplicationSettings).mockResolvedValue({
+          ...DEFAULT_APPLICATION_SETTINGS,
+          requirementImportMaxRows: 499,
+        })
+      } else {
+        const settings = await getMcpRuntimeSettings({} as never)
+        vi.mocked(getMcpRuntimeSettings).mockResolvedValue({
+          ...settings,
+          mcpImportMaxRows: 499,
+        })
+      }
 
-    const result = await workflow.manageImport(context, {
-      operation: 'execute',
-      validationToken: 'opaque-validation-token',
-    })
+      const result = await workflow.manageImport(context, {
+        operation: 'execute',
+        validationToken: 'opaque-validation-token',
+      })
 
-    expect(result).toMatchObject({
-      hasErrors: true,
-      issues: [expect.objectContaining({ code: 'import_budget_stale' })],
-    })
-    expect(listCategories).toHaveBeenCalledTimes(referenceReadsBeforeExecute)
-    expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
-  })
+      expect(result).toMatchObject({
+        hasErrors: true,
+        issues: [expect.objectContaining({ code: 'import_budget_stale' })],
+      })
+      expect(listCategories).toHaveBeenCalledTimes(referenceReadsBeforeExecute)
+      expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['global', 'ai'] as const)(
+    'fails closed without writes when %s settings fail during execution',
+    async source => {
+      const logger = { error: vi.fn(), info: vi.fn() }
+      const workflow = createRequirementsImportWorkflow({
+        authorization: { assertAuthorized: vi.fn() },
+        db: makeManageImportDb().db as never,
+        logger,
+      })
+      const context = makeContext('requirements_manage_import')
+      await workflow.manageImport(context, {
+        destination: { areaId: 7, kind: 'requirements_library' },
+        operation: 'validate',
+        payload: {
+          requirements: [{ description: 'One' }],
+          schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        },
+      })
+      const data = vi
+        .mocked(createRequirementImportValidationSession)
+        .mock.calls.at(-1)?.[1]
+      if (!data) throw new Error('Expected validation session')
+      vi.mocked(
+        getRequirementImportValidationSessionByTokenHash,
+      ).mockResolvedValue(makeSessionRecord(data))
+      const read =
+        source === 'global'
+          ? vi.mocked(getApplicationSettings)
+          : vi.mocked(getMcpRuntimeSettings)
+      read.mockRejectedValueOnce(new Error('Settings unavailable'))
+      await expect(
+        workflow.manageImport(context, {
+          operation: 'execute',
+          validationToken: 'opaque-validation-token',
+        }),
+      ).rejects.toThrow('Settings unavailable')
+      expect(createRequirementsBatchWithExecutor).not.toHaveBeenCalled()
+      expect(
+        updateRequirementImportValidationSessionExecutionResult,
+      ).not.toHaveBeenCalled()
+      expect(logger.error).toHaveBeenCalledWith(
+        'requirements.manage_import.budget_resolution',
+        expect.objectContaining({ operation: 'execute', outcome: 'failed' }),
+      )
+    },
+  )
 
   it('rejects MCP execute when the budget changes after the transaction lock is acquired', async () => {
     const { db } = makeManageImportDb()

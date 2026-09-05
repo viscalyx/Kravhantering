@@ -342,6 +342,26 @@ describe('handleRequirementsMcpRequest', () => {
     serviceState.getService.mockReturnValue(createFakeService())
   })
 
+  it('serves discovery without reading the application import budget', async () => {
+    serviceState.getApplicationSettings.mockRejectedValueOnce(
+      new Error('Application settings unavailable'),
+    )
+    const { client, transport } = await createClient()
+    try {
+      const response = await client.listTools()
+      expect(response.tools).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'requirements_manage_import' }),
+        ]),
+      )
+      expect(serviceState.getApplicationSettings).not.toHaveBeenCalled()
+    } finally {
+      serviceState.getApplicationSettings.mockReset()
+      await client.close()
+      await transport.close()
+    }
+  })
+
   describe('tool schemas', () => {
     let toolSchemaClient: Awaited<ReturnType<typeof createClient>> | undefined
     let tools: Awaited<ReturnType<Client['listTools']>>['tools'] = []

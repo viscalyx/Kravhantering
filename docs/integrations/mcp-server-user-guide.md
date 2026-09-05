@@ -840,6 +840,19 @@ stored destination, and `execute` repeats authorization inside the serializable
 mutation transaction. A role change, removed co-author assignment or archived
 destination can therefore stop a previously validated import.
 
+The row ceiling is the smaller of the current AI MCP limit and the global
+requirement-import budget. The server loads these settings when validating
+and executing an import. Discovery may advertise an older AI limit; that
+number is informational. A successful admin reduction applies to subsequent
+validation admission and execution on every node. An import transaction that
+already holds the settings locks finishes before the admin change commits.
+
+If the effective budget changes during validation, a conflict asks you to
+validate again. If it changes after validation, `execute` returns
+`import_budget_stale`; reduce the payload if needed and run `validate` again.
+Unavailable settings stop admission and execution; retry when the settings store
+recovers.
+
 Admission is bounded by four Admin-managed quotas: unexpired sessions per
 principal, unexpired sessions per destination, successful creations per fixed
 epoch-aligned 10-minute principal window, and global reserved bytes. Executed

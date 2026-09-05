@@ -1,10 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getMcpRuntimeSettings,
+  patchAiGenerationSettings,
+} from '@/lib/dal/ai-settings'
+import {
+  getApplicationSettings,
+  getApplicationSettingsForUpdate,
+  updateApplicationSetting,
+} from '@/lib/dal/application-settings'
+import {
   createRequirementImportValidationSessionAtomically,
   type RequirementImportValidationSessionQuotaCode,
 } from '@/lib/dal/requirement-import-validation-sessions'
 import type { SqlServerDatabase } from '@/lib/db'
-import { useSqlIntegrationDatabase } from './helpers/sql-test-database'
+import { REQUIREMENTS_IMPORT_SCHEMA_VERSION } from '@/lib/requirements/import-schema'
+import { createRequirementsImportWorkflow } from '@/lib/requirements/import-service'
+import {
+  createArea,
+  makeRequestContext,
+  useSqlIntegrationDatabase,
+} from './helpers/sql-test-database'
 
 const MIB = 1024 * 1024
 
@@ -52,8 +67,146 @@ async function configureQuotas(
   )
 }
 
+async function expectDatabaseLockWait(
+  db: SqlServerDatabase,
+  blockingSessionId: number,
+): Promise<void> {
+  await expect
+    .poll(async () => {
+      const waiting = await db.query<Array<{ waitingCount: number }>>(
+        `SELECT COUNT(*) AS waitingCount FROM sys.dm_exec_requests
+       WHERE blocking_session_id = @0 AND wait_type LIKE 'LCK%';`,
+        [blockingSessionId],
+      )
+      return waiting[0].waitingCount
+    })
+    .toBeGreaterThan(0)
+}
+
 describe('MCP import-validation quotas against SQL Server', () => {
   const appDb = useSqlIntegrationDatabase()
+
+  it.each(['global', 'ai'] as const)(
+    'orders a concurrent %s reduction after locked session admission',
+    async setting => {
+      await updateApplicationSetting(appDb(), 'requirementImportMaxRows', 500)
+      await patchAiGenerationSettings(appDb(), { mcpImportMaxRows: 500 })
+      await configureQuotas(appDb(), {
+        destination: 100,
+        principal: 100,
+        rate: 200,
+        storage: 512 * MIB,
+      })
+      const locked = Promise.withResolvers<number>()
+      const release = Promise.withResolvers<void>()
+      const admission = createRequirementImportValidationSessionAtomically(
+        appDb(),
+        sessionData(setting === 'global' ? 'b1' : 'b2'),
+        async executor => {
+          const global = await getApplicationSettingsForUpdate(executor)
+          const ai = await getMcpRuntimeSettings(executor)
+          expect(
+            Math.min(global.requirementImportMaxRows, ai.mcpImportMaxRows),
+          ).toBe(500)
+          const sessions = await executor.query<Array<{ sessionId: number }>>(
+            'SELECT @@SPID AS sessionId',
+          )
+          locked.resolve(sessions[0].sessionId)
+          await release.promise
+        },
+      )
+      let reduction: Promise<unknown> | undefined
+      try {
+        const blockingSessionId = await Promise.race([
+          locked.promise,
+          admission.then(() => {
+            throw new Error('Admission did not acquire budget locks')
+          }),
+        ])
+        reduction =
+          setting === 'global'
+            ? updateApplicationSetting(appDb(), 'requirementImportMaxRows', 1)
+            : patchAiGenerationSettings(appDb(), { mcpImportMaxRows: 1 })
+        await expectDatabaseLockWait(appDb(), blockingSessionId)
+      } finally {
+        release.resolve()
+        await Promise.allSettled([admission, reduction])
+      }
+      await expect(admission).resolves.toHaveProperty('session.id')
+      await reduction
+      const global = await getApplicationSettings(appDb())
+      const ai = await getMcpRuntimeSettings(appDb())
+      expect(
+        Math.min(global.requirementImportMaxRows, ai.mcpImportMaxRows),
+      ).toBe(1)
+    },
+  )
+
+  it('orders execution after concurrent admission without inverting session and budget locks', async () => {
+    await updateApplicationSetting(appDb(), 'requirementImportMaxRows', 500)
+    await patchAiGenerationSettings(appDb(), { mcpImportMaxRows: 500 })
+    await configureQuotas(appDb(), {
+      destination: 100,
+      principal: 100,
+      rate: 200,
+      storage: 512 * MIB,
+    })
+    const area = await createArea(appDb())
+    const workflow = createRequirementsImportWorkflow({
+      authorization: { assertAuthorized: async () => {} },
+      db: appDb(),
+      logger: { info: () => {}, error: () => {} },
+    })
+    const context = await makeRequestContext()
+    const validation = await workflow.manageImport(context, {
+      destination: { areaId: area.id, kind: 'requirements_library' },
+      operation: 'validate',
+      payload: {
+        schemaVersion: REQUIREMENTS_IMPORT_SCHEMA_VERSION,
+        requirements: [{ description: 'One requirement' }],
+      },
+    })
+    if (!('validationToken' in validation) || !validation.validationToken)
+      throw new Error('Expected validation session')
+    await updateApplicationSetting(appDb(), 'requirementImportMaxRows', 499)
+    const locked = Promise.withResolvers<number>()
+    const release = Promise.withResolvers<void>()
+    const admission = createRequirementImportValidationSessionAtomically(
+      appDb(),
+      sessionData('ab'),
+      async executor => {
+        await getApplicationSettingsForUpdate(executor)
+        await getMcpRuntimeSettings(executor)
+        const sessions = await executor.query<Array<{ sessionId: number }>>(
+          'SELECT @@SPID AS sessionId',
+        )
+        locked.resolve(sessions[0].sessionId)
+        await release.promise
+      },
+    )
+    let execution: ReturnType<typeof workflow.manageImport> | undefined
+    try {
+      const blockingSessionId = await Promise.race([
+        locked.promise,
+        admission.then(() => {
+          throw new Error('Expected budget locks')
+        }),
+      ])
+      execution = workflow.manageImport(context, {
+        operation: 'execute',
+        validationToken: validation.validationToken,
+      })
+      await expectDatabaseLockWait(appDb(), blockingSessionId)
+    } finally {
+      release.resolve()
+      await Promise.allSettled([admission, execution])
+    }
+    await expect(admission).resolves.toHaveProperty('session.id')
+    await expect(execution).resolves.toMatchObject({
+      hasErrors: true,
+      issues: [expect.objectContaining({ code: 'import_budget_stale' })],
+    })
+  })
 
   it.each<{
     code: RequirementImportValidationSessionQuotaCode
