@@ -83,7 +83,136 @@ function stage(f) {
 const digest = file =>
   createHash('sha256').update(fs.readFileSync(file)).digest('hex')
 
+function rollback(f, imageId) {
+  const config = path.join(f.evidence, 'config')
+  const target = path.join(f.evidence, 'target')
+  fs.mkdirSync(config)
+  fs.mkdirSync(path.join(target, 'current/bin'), { recursive: true })
+  fs.copyFileSync(
+    path.join(f.bundle, 'bin/kravhantering-quadlet.sh'),
+    path.join(target, 'current/bin/kravhantering-quadlet.sh'),
+  )
+  const manager = path.join(
+    f.serviceHome,
+    '.local/share/kravhantering/cleanup/current/manager.sh',
+  )
+  fs.mkdirSync(path.dirname(manager), { recursive: true })
+  fs.writeFileSync(manager, '#!/bin/bash\nexit 0\n', { mode: 0o755 })
+  fs.writeFileSync(path.join(config, 'app.env'), 'DB_NAME=target\n')
+  fs.writeFileSync(path.join(config, 'cleanup.env'), 'DB_NAME=target\n')
+  fs.writeFileSync(
+    path.join(config, 'release.env'),
+    'APP_RUNTIME_IMAGE_REF=target\n',
+  )
+  fs.writeFileSync(
+    path.join(f.serviceHome, 'cleanup-source-verification/runtime.env'),
+    'DB_NAME=cleanup_compat_source\n',
+  )
+  fs.writeFileSync(
+    path.join(f.evidence, 'cleanup-source.json'),
+    '{"release":"1.0.0"}',
+  )
+  const result = spawnSync(
+    'bash',
+    [
+      '-c',
+      String.raw`
+        source "$1"
+        SERVICE_HOME="$2"
+        SERVICE_CONTEXT=0
+        as_service() { (cd "$SERVICE_HOME" && SERVICE_CONTEXT=1 "$@"); }
+        sudo() {
+          if [[ "$1" != chown ]]; then "$@"; fi
+        }
+        # Model private service-owned paths even when tests run as one OS user.
+        jq() {
+          local arg
+          for arg in "$@"; do
+            if [[ "$arg" == "$SERVICE_HOME/"* && "$SERVICE_CONTEXT" != 1 ]]; then
+              printf 'service-owned manifest requires service context\n' >&2
+              return 1
+            fi
+          done
+          command jq "$@"
+        }
+        podman() {
+          if [[ "$1 $2" == 'image inspect' ]]; then printf '%s\n' "$IMAGE_ID"; fi
+        }
+        service_systemctl() { [[ "$1" != is-active ]]; }
+        render_ci_overlay() { :; }
+        database_job() { :; }
+        sqlserver_query() { :; }
+        assert_service_property() { :; }
+        verify_cleanup_rollback_schedule
+      `,
+      'bash',
+      script,
+      f.serviceHome,
+    ],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        IMAGE_ID: imageId,
+        PRODUCTION_SMOKE_CONFIG_ROOT: config,
+        PRODUCTION_SMOKE_INSTALL_ROOT: target,
+        PRODUCTION_SMOKE_EVIDENCE_DIR: f.evidence,
+      },
+    },
+  )
+  return { result, config }
+}
+
 describe('production smoke cleanup rollback source', () => {
+  it.each([true, false])(
+    'checks the private source image identity before rollback (matching=%s)',
+    matching => {
+      const f = fixture()
+      const imageId = `sha256:${'a'.repeat(64)}`
+      const imageRef = 'registry.example/app:source'
+      fs.writeFileSync(
+        path.join(f.bundle, 'DEPLOYMENT-MANIFEST.json'),
+        JSON.stringify({
+          images: { appRuntime: imageRef },
+          imageIds: { appRuntime: imageId },
+        }),
+      )
+      const { result, config } = rollback(
+        f,
+        matching ? imageId : `sha256:${'b'.repeat(64)}`,
+      )
+      if (matching) {
+        expect(result.status, result.stderr).toBe(0)
+        expect(
+          fs.readFileSync(
+            path.join(f.serviceHome, 'cleanup-source-verification/release.env'),
+            'utf8',
+          ),
+        ).toBe(`APP_RUNTIME_IMAGE_REF=${imageRef}\n`)
+        expect(
+          fs.readFileSync(
+            path.join(f.evidence, 'cleanup-rollback-schedule.txt'),
+            'utf8',
+          ),
+        ).toBe('source=1.0.0 timer-deletion-without-requests=passed\n')
+        expect(fs.readFileSync(path.join(config, 'app.env'), 'utf8')).toBe(
+          'DB_NAME=target\n',
+        )
+        expect(fs.readFileSync(path.join(config, 'cleanup.env'), 'utf8')).toBe(
+          'DB_NAME=target\n',
+        )
+      } else {
+        expect(result.status).toBe(1)
+        expect(result.stderr).toContain(
+          'rollback application image identity mismatch',
+        )
+        expect(fs.readFileSync(path.join(config, 'app.env'), 'utf8')).toBe(
+          'DB_NAME=target\n',
+        )
+      }
+    },
+  )
+
   it('stages private service-local copies with authenticated bytes and executable units', () => {
     const f = fixture()
     const result = stage(f)

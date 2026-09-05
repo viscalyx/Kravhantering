@@ -55,6 +55,12 @@ extracted bundle into a private directory under the service account's
 the copied archive and stack-lock digests before rollback, so verification
 does not depend on service-account access to the runner's workspace.
 
+The initial stack must pass full readiness before cleanup rollback verification
+can stop its services. This lets Keycloak finish its first database migration.
+Full readiness is checked again after restoring the candidate release.
+Reads of the staged manifest and execution of its installer also run as the
+service account because the staged directory is private to that account.
+
 ## Inspect a failure
 
 Open a shell in the retained host:

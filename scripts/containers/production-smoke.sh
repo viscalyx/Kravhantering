@@ -1659,10 +1659,10 @@ verify_cleanup_rollback_schedule() {
   service_systemctl stop kravhantering-nginx.service kravhantering-app-runtime.service
   # Activate the authenticated source units and its exact application image.
   # The disposable source database represents the restored schema.
-  source_app_ref="$(jq -er '.images.appRuntime' "$source_bundle/DEPLOYMENT-MANIFEST.json")"
+  source_app_ref="$(as_service jq -er '.images.appRuntime' "$source_bundle/DEPLOYMENT-MANIFEST.json")"
   as_service podman pull "$source_app_ref" >/dev/null
   source_app_id="$(as_service podman image inspect "$source_app_ref" --format '{{.Id}}')"
-  [[ "sha256:${source_app_id#sha256:}" == "$(jq -er '.imageIds.appRuntime' "$source_bundle/DEPLOYMENT-MANIFEST.json")" ]] || fail 'rollback application image identity mismatch'
+  [[ "sha256:${source_app_id#sha256:}" == "$(as_service jq -er '.imageIds.appRuntime' "$source_bundle/DEPLOYMENT-MANIFEST.json")" ]] || fail 'rollback application image identity mismatch'
   local source_release_env="$SERVICE_HOME/cleanup-source-verification/release.env"
   sudo awk -v image="$source_app_ref" '{ if ($0 ~ /^APP_RUNTIME_IMAGE_REF=/) print "APP_RUNTIME_IMAGE_REF=" image; else print }' \
     "$CONFIG_ROOT/release.env" | as_service tee "$source_release_env" >/dev/null
@@ -1757,6 +1757,11 @@ up() {
   service_systemctl enable kravhantering-single-node.target
   service_systemctl start kravhantering-single-node.target || \
     report_target_failure 'single-node target failed to start'
+  # Rollback stops the topology; allow first-boot database initialization to finish.
+  wait_for_url https://kravhantering.test/api/health \
+    'initial application process health'
+  wait_for_url https://kravhantering.test/api/ready \
+    'initial full-stack readiness'
   local cleanup_database
   cleanup_database="$(sudo sed -n 's/^DB_NAME=//p' "$CONFIG_ROOT/app.env")"
   [[ "$cleanup_database" =~ ^[a-zA-Z0-9_]+$ ]] || fail 'invalid cleanup database name'
@@ -1829,9 +1834,9 @@ up() {
   as_service "$SERVICE_HOME/.local/share/kravhantering/cleanup/current/manager.sh" resume
   verify_cleanup_rollback_schedule
   wait_for_url https://kravhantering.test/api/health \
-    'initial application process health'
+    'application process health after cleanup rollback'
   wait_for_url https://kravhantering.test/api/ready \
-    'initial full-stack readiness'
+    'full-stack readiness after cleanup rollback'
   bash .devcontainer/trust-container-ca.sh
   verify_hsa_runtime_isolation
   verify_hsa_mtls_rotation_and_rollback
