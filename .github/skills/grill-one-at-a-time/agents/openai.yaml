@@ -1,0 +1,6 @@
+interface:
+  display_name: "Grill One at a Time"
+  short_description: "Ask each grilling question with wait-what guidance"
+  default_prompt: "Use $grill-one-at-a-time to re-ask this grilling round one question at a time."
+policy:
+  allow_implicit_invocation: false
