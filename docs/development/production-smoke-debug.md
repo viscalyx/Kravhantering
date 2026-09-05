@@ -49,6 +49,12 @@ It then:
 The debug host remains running after both success and failure so its state is
 available for inspection.
 
+Cleanup rollback verification copies the authenticated source archive and
+extracted bundle into a private directory under the service account's
+`cleanup-source-verification` directory. The retained cleanup manager verifies
+the copied archive and stack-lock digests before rollback, so verification
+does not depend on service-account access to the runner's workspace.
+
 ## Inspect a failure
 
 Open a shell in the retained host:

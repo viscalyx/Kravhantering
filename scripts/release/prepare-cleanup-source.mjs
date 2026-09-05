@@ -141,9 +141,10 @@ if (
   try {
     prepareCleanupSource(process.argv.slice(2))
     console.info('Cleanup source release authenticated and locked.')
-  } catch {
+  } catch (error) {
     console.error(
       'Cleanup source release preparation failed; no compatibility approval was produced.',
+      error instanceof Error ? error.message : String(error),
     )
     process.exitCode = 1
   }

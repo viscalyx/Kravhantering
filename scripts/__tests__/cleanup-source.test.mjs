@@ -1,6 +1,8 @@
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanupSourceRequest,
@@ -21,6 +23,28 @@ const releases = [
 ]
 
 describe('cleanup source release selection', () => {
+  it('reports the preparation failure cause and exits unsuccessfully', () => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.resolve(
+          path.dirname(fileURLToPath(import.meta.url)),
+          '../release/prepare-cleanup-source.mjs',
+        ),
+      ],
+      { encoding: 'utf8', timeout: 10_000 },
+    )
+
+    expect(result.error).toBeUndefined()
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      'Cleanup source release preparation failed; no compatibility approval was produced.',
+    )
+    expect(result.stderr).toContain(
+      'Usage: prepare-cleanup-source.mjs <owner/repo> <target-tag> <output-dir> [source-tag]',
+    )
+  })
+
   it('defaults to the preceding published release without a maintained release list', () => {
     expect(
       selectCleanupSourceRelease(releases, 'v1.1.0-preview.2').tagName,

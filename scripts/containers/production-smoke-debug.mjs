@@ -328,7 +328,7 @@ function createDebugHost(runId) {
   ])
   run('docker', [
     'cp',
-    capture('which', ['gh']).trim(),
+    capture('sh', ['-c', 'command -v "$1"', 'sh', 'gh']),
     `${DEBUG_CONTAINER_NAME}:/usr/local/bin/gh`,
   ])
   dockerExec(['node', '--version'])

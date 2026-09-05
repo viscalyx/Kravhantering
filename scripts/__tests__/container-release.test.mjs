@@ -28,6 +28,7 @@ import {
   HSA_DIRECTORY_MOCK_PACKAGE,
   isReleaseRelevantPath,
   isStableReleaseRef,
+  main,
   packageVersionUrlFromVersions,
   parseArgs,
   productionDeploymentMetadata,
@@ -280,6 +281,44 @@ describe('trusted container release helpers', () => {
       }),
     ).toThrow('GITHUB_REPOSITORY_OWNER does not match GITHUB_REPOSITORY')
   })
+
+  it.each([undefined, '   '])(
+    'rejects a missing cleanup source before staging: %s',
+    async cleanupSourcePath => {
+      const fsImpl = {
+        readFileSync: vi.fn(() => '{}'),
+        rmSync: vi.fn(),
+        mkdirSync: vi.fn(),
+      }
+      const consoleObj = { error: vi.fn(), log: vi.fn() }
+      const args = [
+        'bundle',
+        '--plan',
+        'plan.json',
+        '--metadata',
+        'metadata.json',
+        '--stack-lock',
+        'stack-lock.json',
+        '--cleanup-contract',
+        'cleanup-compatibility.json',
+      ]
+      if (cleanupSourcePath !== undefined) {
+        args.push('--cleanup-source', cleanupSourcePath)
+      }
+
+      expect(await main(args, { fsImpl, consoleObj })).toBe(1)
+      expect(consoleObj.error).toHaveBeenCalledWith(
+        '--cleanup-source is required with --cleanup-contract.',
+      )
+      expect(consoleObj.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '[--cleanup-contract <path> --cleanup-source <path>]',
+        ),
+      )
+      expect(fsImpl.rmSync).not.toHaveBeenCalled()
+      expect(fsImpl.mkdirSync).not.toHaveBeenCalled()
+    },
+  )
 
   it('covers defensive release identity and bundle boundaries', () => {
     expect(isStableReleaseRef('', 'v1.2.3')).toBe(true)
@@ -2084,6 +2123,17 @@ describe('trusted container release helpers', () => {
             imageId: `sha256:${'b'.repeat(64)}`,
             contract: 'cleanup-compatibility.json',
           })
+        } else {
+          for (const file of [
+            'cleanup-source.json',
+            'cleanup-compatibility.json',
+          ]) {
+            expect(result.manifest.files).not.toContain(file)
+            expect(fs.existsSync(path.join(result.bundleRoot, file))).toBe(
+              false,
+            )
+          }
+          expect(result.manifest.cleanup).toBeUndefined()
         }
         expect(result.archiveName).toBe(deploymentBundleArchiveName('1.2.3'))
         expect(

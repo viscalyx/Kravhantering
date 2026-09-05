@@ -1628,18 +1628,32 @@ cleanup_fixture_sql() {
   sqlserver_query kravhantering-sqlserver "USE [$database]; $(cat "scripts/containers/fixtures/cleanup-$fixture.sql")" >/dev/null
 }
 
+stage_cleanup_rollback_source() {
+  local archive source_bundle staged
+  archive="$(jq -er '.archive' "$EVIDENCE_DIR/cleanup-source-selection.json")" || return
+  source_bundle="$(jq -er '.bundle' "$EVIDENCE_DIR/cleanup-source-selection.json")" || return
+  staged="$(as_service mktemp -d "$SERVICE_HOME/cleanup-source-verification/release.XXXXXXXX")" || return
+  # The service account cannot rely on traversing the runner's workspace.
+  # Keep the authenticated bytes intact for the retained manager's digest checks.
+  sudo cp -R -- "$source_bundle" "$staged/bundle" || return
+  sudo cp -- "$archive" "$staged/source.tar.gz" || return
+  sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$staged" || return
+  printf '%s\n' "$staged"
+}
+
 verify_cleanup_rollback_schedule() {
   local manager="$SERVICE_HOME/.local/share/kravhantering/cleanup/current/manager.sh"
   local source_file="$EVIDENCE_DIR/cleanup-source.json"
-  local release archive source_bundle source_app_ref source_app_id
+  local release archive source_bundle source_app_ref source_app_id staged_source
   local original_app="$SERVICE_HOME/cleanup-source-verification/original-app.env"
   local original_cleanup="$SERVICE_HOME/cleanup-source-verification/original-cleanup.env"
   sudo cp "$CONFIG_ROOT/app.env" "$original_app"
   sudo cp "$CONFIG_ROOT/cleanup.env" "$original_cleanup"
   release="$(jq -er '.release' "$source_file")"
   [[ "$release" =~ ^[a-zA-Z0-9][a-zA-Z0-9.+-]+$ ]] || fail 'invalid source release'
-  archive="$(jq -er '.archive' "$EVIDENCE_DIR/cleanup-source-selection.json")"
-  source_bundle="$(jq -er '.bundle' "$EVIDENCE_DIR/cleanup-source-selection.json")"
+  staged_source="$(stage_cleanup_rollback_source)"
+  archive="$staged_source/source.tar.gz"
+  source_bundle="$staged_source/bundle"
   as_service "$manager" verify-transition --source-bundle "$source_bundle" --source-archive "$archive"
   as_service "$manager" pause
   service_systemctl stop kravhantering-nginx.service kravhantering-app-runtime.service
