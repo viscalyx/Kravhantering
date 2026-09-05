@@ -42,6 +42,11 @@ After rollout, verify SQL and migration readiness and transient-state cleanup.
 Monitor HSA verification throttling, coordination failures, and cleanup
 backlog. No new service, secret, or operator setting is required.
 <!-- operator-upgrade:source pr-1307 end -->
+
+<!-- operator-upgrade:source pr-1328 start -->
+After rollout, tell MCP consumers to treat advertised row limits as guidance. If an import reports a changed budget, validate it again before execution. Imports stop when settings cannot be read; restore settings availability before retrying.
+Monitor import delays and settings-save delays after rollout. Import validation, execution, and administrator budget changes can wait for each other across application nodes.
+<!-- operator-upgrade:source pr-1328 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
