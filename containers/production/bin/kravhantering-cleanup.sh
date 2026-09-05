@@ -200,7 +200,10 @@ case "$COMMAND" in
     ;;
   resume|retry)
     verify_installed
-    systemctl --user reset-failed "$SERVICE"
+    # A fresh inactive unit may not be loaded yet; reset-failed cannot load it.
+    if systemctl --user is-failed --quiet "$SERVICE"; then
+      systemctl --user reset-failed "$SERVICE"
+    fi
     systemctl --user start "$SERVICE"
     [[ "$(systemctl --user show "$SERVICE" --property=Result --value)" == success ]] || fail 'cleanup verification failed; keep traffic quiesced'
     if [[ "$COMMAND" == resume ]]; then

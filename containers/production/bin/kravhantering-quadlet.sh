@@ -966,7 +966,9 @@ case "$COMMAND" in
     [[ -z "$OUTPUT_DIR" ]] || fail '--output-dir is only valid with render'
     [[ -z "$PURPOSE" ]] || fail '--purpose is only valid with print-network'
     target="$(topology_target "$TOPOLOGY")"
-    systemctl --user disable --now kravhantering-transient-cleanup.timer
+    if [[ "$(systemctl --user show kravhantering-transient-cleanup.timer --property=LoadState --value)" == loaded ]]; then
+      systemctl --user disable --now kravhantering-transient-cleanup.timer
+    fi
     systemctl --user stop "$target"
     systemctl --user disable "$target"
     remove_managed_units "$QUADLET_DIR"

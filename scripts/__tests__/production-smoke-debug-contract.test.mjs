@@ -220,6 +220,7 @@ describe('production smoke debug contract', () => {
       'db-job',
       'demo-seed',
       'hsa-directory-mock',
+      'hsa-mtls-provisioner',
       'hsa-person-lookup-adapter',
     ]
     const imageArchives = Object.fromEntries(
@@ -243,6 +244,9 @@ describe('production smoke debug contract', () => {
       APP_RUNTIME_IMAGE_ID: digest('0'),
       APP_RUNTIME_IMAGE_REF: 'localhost/app-runtime:tag',
       APP_RUNTIME_OCI_ARCHIVE: '/artifacts/app-runtime.tar',
+      HSA_MTLS_PROVISIONER_IMAGE_ID: digest('4'),
+      HSA_MTLS_PROVISIONER_IMAGE_REF: 'localhost/hsa-mtls-provisioner:tag',
+      HSA_MTLS_PROVISIONER_OCI_ARCHIVE: '/artifacts/hsa-mtls-provisioner.tar',
       KEYCLOAK_IMAGE_REF: 'registry.example/keycloak:candidate',
       KONG_IMAGE_REF: 'registry.example/kong:candidate',
       PRODUCTION_SMOKE_EVIDENCE_DIR: '/evidence',

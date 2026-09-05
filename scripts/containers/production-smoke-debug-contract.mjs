@@ -145,6 +145,7 @@ export function buildSmokeEnvironment({
     DB_JOB: 'db-job',
     DEMO_SEED: 'demo-seed',
     HSA_DIRECTORY_MOCK: 'hsa-directory-mock',
+    HSA_MTLS_PROVISIONER: 'hsa-mtls-provisioner',
     HSA_PERSON_LOOKUP_ADAPTER: 'hsa-person-lookup-adapter',
   }
   const environment = {

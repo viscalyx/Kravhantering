@@ -1644,7 +1644,7 @@ verify_cleanup_rollback_schedule() {
   as_service "$manager" pause
   service_systemctl stop kravhantering-nginx.service kravhantering-app-runtime.service
   # Activate the authenticated source units and its exact application image.
-  # SQL stays running; the disposable source database represents the restored schema.
+  # The disposable source database represents the restored schema.
   source_app_ref="$(jq -er '.images.appRuntime' "$source_bundle/DEPLOYMENT-MANIFEST.json")"
   as_service podman pull "$source_app_ref" >/dev/null
   source_app_id="$(as_service podman image inspect "$source_app_ref" --format '{{.Id}}')"
@@ -1665,13 +1665,17 @@ verify_cleanup_rollback_schedule() {
   # Older source units may include a legacy timer. Only the retained host timer
   # may perform the assertion below.
   as_service "$manager" pause
+  # Stopping app services can stop the topology and its SQL dependency too.
+  database_job wait
   as_service "$manager" resume
   if service_systemctl is-active --quiet kravhantering-transient-cleanup.timer; then
     fail 'legacy cleanup timer active after rollback'
   fi
-  # Insert after resume so its mandatory manual verification cannot satisfy the test.
+  # Expire after resume so its mandatory manual verification cannot satisfy the test.
   sqlserver_query kravhantering-sqlserver "USE [cleanup_compat_source];
-    UPDATE requirement_import_validation_sessions SET expires_at = DATEADD(hour, -1, SYSUTCDATETIME());
+    UPDATE requirement_import_validation_sessions
+      SET created_at = DATEADD(hour, -2, SYSUTCDATETIME()),
+          expires_at = DATEADD(hour, -1, SYSUTCDATETIME());
     IF @@ROWCOUNT <> 1 THROW 51000, 'scheduled fixture missing', 1;" >/dev/null
   local deadline=$((SECONDS + 420))
   until sqlserver_query kravhantering-sqlserver "USE [cleanup_compat_source];
@@ -1688,8 +1692,10 @@ verify_cleanup_rollback_schedule() {
   as_service "$INSTALL_ROOT/current/bin/kravhantering-quadlet.sh" install --topology single-node
   render_ci_overlay
   service_systemctl daemon-reload
+  service_systemctl start kravhantering-app-runtime.service
+  database_job wait
   as_service "$manager" resume
-  service_systemctl start kravhantering-app-runtime.service kravhantering-nginx.service
+  service_systemctl start kravhantering-single-node.target
   sudo rm -f "$original_app" "$original_cleanup"
 }
 

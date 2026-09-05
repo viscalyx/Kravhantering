@@ -1986,59 +1986,76 @@ rotate_sqlserver_certificate
     ])
   })
 
-  it('stops and disables a topology before removal, then reloads systemd', () => {
-    const fixture = createFixture(releaseEnv())
-    const quadletDir = path.join(fixture.outputDir, 'containers')
-    const systemdDir = path.join(fixture.outputDir, 'systemd')
-    const mockBin = path.join(fixture.root, 'bin')
-    const systemctlLog = path.join(fixture.root, 'systemctl.log')
-    fs.mkdirSync(quadletDir, { recursive: true })
-    fs.mkdirSync(systemdDir, { recursive: true })
-    fs.mkdirSync(mockBin)
-    fs.writeFileSync(
-      path.join(quadletDir, 'kravhantering-nginx.container'),
-      'managed\n',
-    )
-    fs.writeFileSync(
-      path.join(systemdDir, 'kravhantering-single-node.target'),
-      'managed\n',
-    )
-    fs.writeFileSync(
-      path.join(mockBin, 'systemctl'),
-      [
-        '#!/usr/bin/env bash',
-        'printf \'%s\\n\' "$*" >>"$SYSTEMCTL_LOG"',
-        'if [[ "$*" == "--user daemon-reload" ]]; then',
-        '  [[ ! -e "$KRAVHANTERING_QUADLET_DIR/kravhantering-nginx.container" ]]',
-        '  [[ ! -e "$KRAVHANTERING_SYSTEMD_USER_DIR/kravhantering-single-node.target" ]]',
-        'fi',
-        '',
-      ].join('\n'),
-      { mode: 0o755 },
-    )
+  it.each(['loaded', 'not-found'])(
+    'removes a topology with legacy cleanup %s, then reloads systemd',
+    legacyState => {
+      const fixture = createFixture(releaseEnv())
+      const quadletDir = path.join(fixture.outputDir, 'containers')
+      const systemdDir = path.join(fixture.outputDir, 'systemd')
+      const mockBin = path.join(fixture.root, 'bin')
+      const systemctlLog = path.join(fixture.root, 'systemctl.log')
+      fs.mkdirSync(quadletDir, { recursive: true })
+      fs.mkdirSync(systemdDir, { recursive: true })
+      fs.mkdirSync(mockBin)
+      fs.writeFileSync(
+        path.join(quadletDir, 'kravhantering-nginx.container'),
+        'managed\n',
+      )
+      fs.writeFileSync(
+        path.join(systemdDir, 'kravhantering-single-node.target'),
+        'managed\n',
+      )
+      fs.writeFileSync(
+        path.join(mockBin, 'systemctl'),
+        [
+          '#!/usr/bin/env bash',
+          'printf \'%s\\n\' "$*" >>"$SYSTEMCTL_LOG"',
+          'if [[ "$*" == "--user show kravhantering-transient-cleanup.timer --property=LoadState --value" ]]; then',
+          '  printf "%s\\n" "$LEGACY_LOAD_STATE"',
+          'fi',
+          'if [[ "$*" == "--user disable --now kravhantering-transient-cleanup.timer" ]]; then',
+          '  [[ "$LEGACY_LOAD_STATE" == loaded ]] || exit 1',
+          'fi',
+          'if [[ "$*" == "--user daemon-reload" ]]; then',
+          '  [[ ! -e "$KRAVHANTERING_QUADLET_DIR/kravhantering-nginx.container" ]]',
+          '  [[ ! -e "$KRAVHANTERING_SYSTEMD_USER_DIR/kravhantering-single-node.target" ]]',
+          'fi',
+          '',
+        ].join('\n'),
+        { mode: 0o755 },
+      )
 
-    const result = runHelper(['remove', '--topology', 'single-node'], fixture, {
-      KRAVHANTERING_QUADLET_DIR: quadletDir,
-      KRAVHANTERING_SYSTEMD_USER_DIR: systemdDir,
-      PATH: `${mockBin}:${process.env.PATH}`,
-      SYSTEMCTL_LOG: systemctlLog,
-    })
+      const result = runHelper(
+        ['remove', '--topology', 'single-node'],
+        fixture,
+        {
+          KRAVHANTERING_QUADLET_DIR: quadletDir,
+          KRAVHANTERING_SYSTEMD_USER_DIR: systemdDir,
+          PATH: `${mockBin}:${process.env.PATH}`,
+          SYSTEMCTL_LOG: systemctlLog,
+          LEGACY_LOAD_STATE: legacyState,
+        },
+      )
 
-    expect(result.status).toBe(0)
-    expect(fs.readFileSync(systemctlLog, 'utf8')).toBe(
-      [
-        '--user disable --now kravhantering-transient-cleanup.timer',
-        '--user stop kravhantering-single-node.target',
-        '--user disable kravhantering-single-node.target',
-        '--user daemon-reload',
-        '',
-      ].join('\n'),
-    )
-    expect(result.stdout).toContain(
-      `Removed managed unit files from ${quadletDir} and ${systemdDir}; named volumes remain.`,
-    )
-    expect(result.stdout).toContain('Reloaded the user systemd manager.')
-  })
+      expect(result.status).toBe(0)
+      expect(fs.readFileSync(systemctlLog, 'utf8')).toBe(
+        [
+          '--user show kravhantering-transient-cleanup.timer --property=LoadState --value',
+          ...(legacyState === 'loaded'
+            ? ['--user disable --now kravhantering-transient-cleanup.timer']
+            : []),
+          '--user stop kravhantering-single-node.target',
+          '--user disable kravhantering-single-node.target',
+          '--user daemon-reload',
+          '',
+        ].join('\n'),
+      )
+      expect(result.stdout).toContain(
+        `Removed managed unit files from ${quadletDir} and ${systemdDir}; named volumes remain.`,
+      )
+      expect(result.stdout).toContain('Reloaded the user systemd manager.')
+    },
+  )
 
   it.each([
     ['app-node-tls', 'kravhantering-app-node.target', 0],

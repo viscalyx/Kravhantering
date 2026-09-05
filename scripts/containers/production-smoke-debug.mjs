@@ -31,6 +31,7 @@ const OCI_ARCHIVES = {
   'db-job': 'db-job.oci.tar',
   'demo-seed': 'demo-seed.oci.tar',
   'hsa-directory-mock': 'hsa-directory-mock.oci.tar',
+  'hsa-mtls-provisioner': 'hsa-mtls-provisioner.oci.tar',
   'hsa-person-lookup-adapter': 'hsa-person-lookup-adapter.oci.tar',
 }
 

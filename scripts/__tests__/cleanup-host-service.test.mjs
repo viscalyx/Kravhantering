@@ -82,6 +82,63 @@ afterEach(() => {
 })
 
 describe('release-independent cleanup host service', () => {
+  it.each(['resume', 'retry'])(
+    '%s starts fresh services and resets only failed services',
+    command => {
+      const f = fixture()
+      expect(
+        run(f, [
+          'install',
+          '--topology',
+          'app-node-tls',
+          '--env-file',
+          f.envFile,
+          '--bundle',
+          f.bundle,
+        ]).status,
+      ).toBe(0)
+      fs.writeFileSync(
+        path.join(f.root, 'systemctl'),
+        `#!/bin/bash
+printf '%s\\n' "$*" >> "$SYSTEMCTL_LOG"
+case "$2" in
+  is-failed) [[ "$SERVICE_STATE" == failed ]] ;;
+  reset-failed)
+    [[ "$SERVICE_STATE" == failed ]] || exit 1
+    exit "\${RESET_EXIT:-0}"
+    ;;
+  start) exit "\${START_EXIT:-0}" ;;
+  show) printf 'success\\n' ;;
+esac
+`,
+        { mode: 0o755 },
+      )
+      const logFile = path.join(f.root, 'systemctl.log')
+      const manager = path.join(f.root, 'state/current/manager.sh')
+      for (const state of ['unloaded', 'failed']) {
+        fs.writeFileSync(logFile, '')
+        const result = run(f, [command], { SERVICE_STATE: state }, manager)
+        expect(result.status, result.stderr).toBe(0)
+        const log = fs.readFileSync(logFile, 'utf8').split('\n')
+        const reset = '--user reset-failed kravhantering-host-cleanup.service'
+        const start = '--user start kravhantering-host-cleanup.service'
+        expect(log.includes(reset)).toBe(state === 'failed')
+        expect(log).toContain(start)
+        if (state === 'failed')
+          expect(log.indexOf(reset)).toBeLessThan(log.indexOf(start))
+      }
+      for (const failure of [
+        { SERVICE_STATE: 'failed', RESET_EXIT: '1' },
+        { SERVICE_STATE: 'unloaded', START_EXIT: '1' },
+      ]) {
+        fs.writeFileSync(logFile, '')
+        expect(run(f, [command], failure, manager).status).toBe(1)
+        expect(fs.readFileSync(logFile, 'utf8')).not.toContain(
+          '--user enable --now kravhantering-host-cleanup.timer',
+        )
+      }
+    },
+  )
   it.each(['app-node-tls', 'app-node-http', 'single-node'])(
     'collects payload-safe release evidence with the verified image for %s',
     topology => {
