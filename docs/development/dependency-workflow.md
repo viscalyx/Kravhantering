@@ -88,6 +88,10 @@ surfaces:
 npm run dependency-maintenance:check
 ```
 
+Discovery skips generated HSA runtime material under `.hsa-mtls/`, which may
+have restricted filesystem permissions. It uses an explicit directory exclusion
+list rather than `.gitignore` rules.
+
 Native npm Dependabot lanes update one dependency per pull request. Coordinated
 npm toolchain, Lychee toolchain, devcontainer base image, and production image
 drift creates issues labeled `automation:dependency-drift`, `dependencies`,

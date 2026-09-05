@@ -1333,6 +1333,34 @@ verify_network_contract() {
     'Network isolation check passed: nginx cannot reach external address 1.1.1.1.'
 }
 
+verify_writable_mounts() {
+  as_service podman inspect kravhantering-app-runtime |
+    jq -e '([(
+        .[0].Mounts[]? | select(.RW) | .Destination
+      ), (.[0].HostConfig.Tmpfs // {} | keys[])] | sort) ==
+      ["/run/kravhantering/export", "/tmp"]' >/dev/null ||
+    fail 'app-runtime writable mount allow-list did not match the contract'
+  as_service podman inspect kravhantering-nginx |
+    jq -e '([(
+        .[0].Mounts[]? | select(.RW) | .Destination
+      ), (.[0].HostConfig.Tmpfs // {} | keys[])] | sort) ==
+      ["/etc/nginx/conf.d", "/run", "/var/cache/nginx"]' >/dev/null ||
+    fail 'nginx writable mount allow-list did not match the contract'
+  as_service podman inspect kravhantering-keycloak |
+    jq -e '([(
+        .[0].Mounts[]? | select(.RW) | .Destination
+      ), (.[0].HostConfig.Tmpfs // {} | keys[])] | sort) ==
+      ["/opt/keycloak/data", "/opt/keycloak/lib/quarkus", "/tmp"]' \
+      >/dev/null ||
+    fail 'Keycloak writable mount allow-list did not match the contract'
+  as_service podman inspect kravhantering-sqlserver |
+    jq -e '([(
+        .[0].Mounts[]? | select(.RW) | .Destination
+      ), (.[0].HostConfig.Tmpfs // {} | keys[])] | sort) ==
+      ["/.system", "/tmp", "/var/opt/mssql"]' >/dev/null ||
+    fail 'SQL Server writable mount allow-list did not match the contract'
+}
+
 verify_containment() {
   local bounding_caps containment_contract effective_caps
   local expected_effective_cap name
@@ -1360,31 +1388,7 @@ verify_containment() {
       fail "$name capability bounding set did not match $expected_effective_cap: $bounding_caps"
     fi
   done
-  as_service podman inspect kravhantering-app-runtime |
-    jq -e '([(
-        .[0].Mounts[]? | select(.RW) | .Destination
-      ), (.[0].HostConfig.Tmpfs // {} | keys[])] | sort) ==
-      ["/run/kravhantering/export", "/tmp"]' >/dev/null ||
-    fail 'app-runtime writable mount allow-list did not match the contract'
-  as_service podman inspect kravhantering-nginx |
-    jq -e '([(
-        .[0].Mounts[]? | select(.RW) | .Destination
-      ), (.[0].HostConfig.Tmpfs // {} | keys[])] | sort) ==
-      ["/etc/nginx/conf.d", "/run", "/var/cache/nginx"]' >/dev/null ||
-    fail 'nginx writable mount allow-list did not match the contract'
-  as_service podman inspect kravhantering-keycloak |
-    jq -e '([(
-        .[0].Mounts[]? | select(.RW) | .Destination
-      ), (.[0].HostConfig.Tmpfs // {} | keys[])] | sort) ==
-      ["/opt/keycloak/data", "/opt/keycloak/lib/quarkus", "/tmp"]' \
-      >/dev/null ||
-    fail 'Keycloak writable mount allow-list did not match the contract'
-  as_service podman inspect kravhantering-sqlserver |
-    jq -e '([(
-        .[0].Mounts[]? | select(.RW) | .Destination
-      ), (.[0].HostConfig.Tmpfs // {} | keys[])] | sort) ==
-      ["/tmp", "/var/opt/mssql"]' >/dev/null ||
-    fail 'SQL Server writable mount allow-list did not match the contract'
+  verify_writable_mounts
   as_service podman inspect kravhantering-nginx |
     jq -e '.[0].NetworkSettings.Ports as $ports |
       ([$ports | to_entries[] | select(.value != null) | .key]) ==

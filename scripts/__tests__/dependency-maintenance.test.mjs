@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   discoverDockerfileInputs,
   discoverImageLocks,
@@ -88,6 +88,7 @@ function fixture() {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks()
   for (const directory of temporaryDirectories.splice(0)) {
     fs.rmSync(directory, { recursive: true })
   }
@@ -150,6 +151,25 @@ describe('dependency maintenance discovery', () => {
 
     expect(discoverPackageProjects(root)).toEqual(['.'])
     expect(discoverDockerfileInputs(root)).toEqual([])
+  })
+
+  it('discovers dependencies without reading protected HSA runtime material', () => {
+    const root = temporaryDirectory()
+    write(root, 'package.json', '{}')
+    const runtimeDirectory = path.join(root, '.hsa-mtls')
+    fs.mkdirSync(path.join(runtimeDirectory, 'app'), { recursive: true })
+    const readdirSync = fs.readdirSync.bind(fs)
+    vi.spyOn(fs, 'readdirSync').mockImplementation((directory, options) => {
+      if (String(directory).startsWith(runtimeDirectory)) {
+        throw Object.assign(new Error('Permission denied'), { code: 'EACCES' })
+      }
+      return readdirSync(directory, options)
+    })
+
+    expect(discoverPackageProjects(root)).toEqual(['.'])
+    expect(discoverDockerfileInputs(root)).toEqual([])
+    expect(discoverImageLocks(root)).toEqual([])
+    expect(discoverRuntimeImageInputs(root)).toEqual([])
   })
 
   it('ignores build stages, scratch, variables, examples, and local images', () => {
