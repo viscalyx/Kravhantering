@@ -960,8 +960,7 @@ case "$COMMAND" in
   status)
     [[ -z "$OUTPUT_DIR" ]] || fail '--output-dir is only valid with render'
     [[ -z "$PURPOSE" ]] || fail '--purpose is only valid with print-network'
-    systemctl --user status "$(topology_target "$TOPOLOGY")" \
-      kravhantering-host-cleanup.timer
+    systemctl --user status "$(topology_target "$TOPOLOGY")"
     ;;
   remove)
     [[ -z "$OUTPUT_DIR" ]] || fail '--output-dir is only valid with render'

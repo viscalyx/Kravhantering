@@ -2040,33 +2040,43 @@ rotate_sqlserver_certificate
     expect(result.stdout).toContain('Reloaded the user systemd manager.')
   })
 
-  it('reports both the topology and scheduled cleanup status', () => {
-    const fixture = createFixture(releaseEnv())
-    const mockBin = path.join(fixture.root, 'bin')
-    const systemctlLog = path.join(fixture.root, 'systemctl.log')
-    fs.mkdirSync(mockBin)
-    fs.writeFileSync(
-      path.join(mockBin, 'systemctl'),
-      [
-        '#!/usr/bin/env bash',
-        'printf \'%s\\n\' "$*" >>"$SYSTEMCTL_LOG"',
-        '',
-      ].join('\n'),
-      { mode: 0o755 },
-    )
+  it.each([
+    ['app-node-tls', 'kravhantering-app-node.target', 0],
+    ['app-node-http', 'kravhantering-app-node.target', 3],
+    ['single-node', 'kravhantering-single-node.target', 0],
+  ])(
+    'reports %s target status independently of cleanup',
+    (topology, target, status) => {
+      const fixture = createFixture(releaseEnv())
+      const mockBin = path.join(fixture.root, 'bin')
+      const systemctlLog = path.join(fixture.root, 'systemctl.log')
+      fs.mkdirSync(mockBin)
+      fs.writeFileSync(
+        path.join(mockBin, 'systemctl'),
+        [
+          '#!/usr/bin/env bash',
+          'printf \'%s\\n\' "$*" >>"$SYSTEMCTL_LOG"',
+          'shift 2',
+          'for unit do',
+          '  [[ "$unit" == "$APPLICATION_TARGET" ]] || exit 4',
+          'done',
+          'exit "$APPLICATION_STATUS"',
+          '',
+        ].join('\n'),
+        { mode: 0o755 },
+      )
 
-    const result = runHelper(
-      ['status', '--topology', 'app-node-tls'],
-      fixture,
-      {
+      const result = runHelper(['status', '--topology', topology], fixture, {
         PATH: `${mockBin}:${process.env.PATH}`,
         SYSTEMCTL_LOG: systemctlLog,
-      },
-    )
+        APPLICATION_TARGET: target,
+        APPLICATION_STATUS: String(status),
+      })
 
-    expect(result.status).toBe(0)
-    expect(fs.readFileSync(systemctlLog, 'utf8')).toBe(
-      '--user status kravhantering-app-node.target kravhantering-host-cleanup.timer\n',
-    )
-  })
+      expect(result.status).toBe(status)
+      expect(fs.readFileSync(systemctlLog, 'utf8')).toBe(
+        `--user status ${target}\n`,
+      )
+    },
+  )
 })

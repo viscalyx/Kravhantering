@@ -1224,8 +1224,9 @@ inspect output in general release evidence stores.
 
 ## Scheduled Transient-State Cleanup
 
-Every supported app-node topology installs scheduled cleanup for expired MCP
-import-validation sessions. Follow
+Scheduled cleanup for expired MCP import-validation sessions runs as a separately
+installed host service. The Independent Cleanup Installation Gate below defines
+the installation requirement. Follow
 [Release-Independent Transient-State Cleanup](transient-state-cleanup.md) to configure
 bounds, verify the timer, monitor aggregate backlog telemetry and retry safely.
 
