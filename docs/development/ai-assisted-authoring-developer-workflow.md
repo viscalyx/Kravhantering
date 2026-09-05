@@ -145,8 +145,14 @@ same connection, secret, verification, and profile workflow as production.
    node scripts/provision-ai-provider-secret-keyring.mjs
    ```
 
-2. Configure the deployment-owned egress, data, and TLS policy maps described in
-   [AI Connections Operations](../operations/ai-connections.md).
+2. Use the committed `.env.development` egress, data, and TLS policy maps for
+   the seeded OpenRouter connection with synthetic demo data. They cover all
+   three run types, match the draft demo attestation's `internal` class and
+   demo region label, and prohibit personal data, training, and retention.
+   The region label is demo metadata, not verified provider geography.
+   Use `.env.development.local` for overrides and restart the development
+   server after policy changes. Other connections need their own policies as
+   described in [AI Connections Operations](../operations/ai-connections.md).
 3. In Admin Center under `AI`, register a connection, write its provider secret,
    attest it, run the unified model verification, save the verified model
    revision, and activate the connection.

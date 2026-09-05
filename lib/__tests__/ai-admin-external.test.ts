@@ -1,4 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { parseEnv } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   type AiAdminAdapterContext,
@@ -15,7 +17,11 @@ import type {
   AiAdminModelRevisionRecord,
   AiAdminVerificationProgress,
 } from '@/lib/ai/admin-service'
-import type { AiDeploymentTrustPolicy } from '@/lib/ai/connection-trust'
+import {
+  type AiDeploymentTrustPolicy,
+  authorizeAiConnectionTarget,
+  enforceAiDataPolicy,
+} from '@/lib/ai/connection-trust'
 import { controlledTestAdminAdapterRegistration } from '@/lib/ai/controlled-test-admin-adapter'
 import { openRouterAdminAdapterRegistration } from '@/lib/ai/openrouter-admin-adapter'
 import type { AiPersistedRunProfile } from '@/lib/ai/profile-resolver'
@@ -1356,6 +1362,73 @@ describe('AI administration provider composition', () => {
     expect(signals).toHaveLength(3)
     expect(signals.every(signal => signal.aborted)).toBe(true)
   })
+
+  it.each([
+    'generate_without_images',
+    'generate_with_images',
+    'repair_invalid_import_json',
+  ] as const)(
+    'admits synthetic OpenRouter demo data for %s using committed development policies',
+    async runType => {
+      const values = parseEnv(readFileSync('.env.development', 'utf8'))
+      for (const key of [
+        'AI_CONNECTION_DATA_POLICIES_JSON',
+        'AI_CONNECTION_EGRESS_POLICIES_JSON',
+        'AI_CONNECTION_TLS_POLICIES_JSON',
+      ]) {
+        vi.stubEnv(key, values[key])
+      }
+      const policy = loadAiDeploymentTrustPolicy()
+      policy.resolveHostname = vi.fn(async () => ['93.184.216.34'])
+      const demo = {
+        authenticationType: 'static_secret' as const,
+        dataPolicy: {
+          isPersonalDataProcessed: false,
+          isTrainingAllowed: false,
+          maximumInformationClass: 'internal',
+          maximumRetentionDays: 0,
+          processingRegions: ['EU/EES (demouppgift)'],
+          subprocessors: ['OpenRouter, Inc.'],
+        },
+        egressPolicyKey: 'openrouter_api',
+        endpointUrl: 'https://openrouter.ai/api/v1',
+        tlsPolicyKey: 'public_web_pki',
+      }
+      await expect(
+        authorizeAiConnectionTarget(demo, policy),
+      ).resolves.toMatchObject({
+        hostname: 'openrouter.ai',
+        isPrivateSidecar: false,
+      })
+      expect(() => enforceAiDataPolicy(demo, runType, policy)).not.toThrow()
+      for (const deniedData of [
+        { isPersonalDataProcessed: true },
+        { isTrainingAllowed: true },
+        { maximumRetentionDays: 1 },
+        { processingRegions: ['unapproved'] },
+      ]) {
+        expect(() =>
+          enforceAiDataPolicy(
+            {
+              ...demo,
+              dataPolicy: { ...demo.dataPolicy, ...deniedData },
+            },
+            runType,
+            policy,
+          ),
+        ).toThrow('trust policy blocked')
+      }
+      await expect(
+        authorizeAiConnectionTarget(
+          {
+            ...demo,
+            endpointUrl: 'https://other.example/api/v1',
+          },
+          policy,
+        ),
+      ).rejects.toMatchObject({ code: 'endpoint_not_allowed' })
+    },
+  )
 
   it('loads deployment-owned policy maps from environment', () => {
     vi.stubEnv(

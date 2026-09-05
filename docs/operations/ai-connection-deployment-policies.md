@@ -233,7 +233,8 @@ med `jq -c .` och skriv varje variabel på en enda rad i miljöfilen. Se
 [Redigera och kontrollera JSON](#redigera-och-kontrollera-json) för exakta
 kommandon.
 
-För lokal utveckling är filen normalt `.env.development.local`. För den
+För lokal utveckling finns OpenRouter-policyer för syntetiska demodata i
+`.env.development`. Lokala ändringar läggs i `.env.development.local`. För den
 dokumenterade RHEL-driftsättningen är filen
 `/etc/kravhantering/app.env`.
 
@@ -400,9 +401,14 @@ anropstypen.` Okända extra nycklar används inte.
 
 ## Var konfigurationen ska ligga
 
-För lokal utveckling ligger värdena normalt i den ignorerade filen
-`.env.development.local` i projektets rotkatalog. Starta om utvecklingsservern
-efter varje ändring.
+För lokal utveckling innehåller `.env.development` kompletta policyer för den
+förifyllda OpenRouter-anslutningen och syntetiska demodata. Alla tre anropstyper
+använder demoattestens informationsklass `internal` och regionvärde
+`EU/EES (demouppgift)`, utan personuppgifter, träning eller lagring. Regionvärdet
+är demodata och intygar inte leverantörens faktiska behandlingsregion.
+Attest, leverantörshemlighet och modellverifiering hanteras fortfarande i
+Admin Center. Egna policyvärden läggs i den ignorerade filen
+`.env.development.local`. Starta om utvecklingsservern efter varje ändring.
 
 För den dokumenterade RHEL-driftsättningen ligger värdena i
 `/etc/kravhantering/app.env`. Alla appnoder ska få samma granskade värden och
