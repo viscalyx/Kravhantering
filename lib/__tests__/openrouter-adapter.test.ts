@@ -490,88 +490,95 @@ describe('OpenRouter AI connection adapter', () => {
     )
   })
 
-  it('contains OpenRouter transport details in the adapter and sends only opaque run identity', async () => {
-    mockFetch.mockResolvedValueOnce(nonStreamingResponse())
-    const adapterRequest = request()
-    adapterRequest.connection.configuration = {
-      apiKey: 'test-provider-secret',
-      endpoint: 'https://gateway.example.test/openrouter/v1/',
-      providerPreferences: {
-        dataCollection: 'allow',
-        zeroDataRetention: false,
-      },
-    }
-    adapterRequest.selectedCapabilities = {
-      ...adapterRequest.selectedCapabilities,
-      imageInput: true,
-    }
-    adapterRequest.task = {
-      ...adapterRequest.task,
-      content: [
-        { text: 'Generate safe JSON', type: 'text' },
-        {
-          data: new Uint8Array([0, 1, 2, 255]),
-          mediaType: 'image/png',
-          type: 'image',
+  it.each([false, true])(
+    'preserves token limits, privacy, and opaque identity with streaming=%s',
+    async streaming => {
+      mockFetch.mockResolvedValueOnce(
+        streaming ? streamingCompletionResponse() : nonStreamingResponse(),
+      )
+      const adapterRequest = streaming ? enableStreaming(request()) : request()
+      adapterRequest.connection.configuration = {
+        apiKey: 'test-provider-secret',
+        endpoint: 'https://gateway.example.test/openrouter/v1/',
+        providerPreferences: {
+          dataCollection: 'allow',
+          zeroDataRetention: false,
         },
-      ],
-    }
-
-    await collectEvents(adapter().run(adapterRequest))
-
-    expect(mockFetch).toHaveBeenCalledTimes(1)
-    const [url, init] = mockFetch.mock.calls[0]
-    expect(url).toBe(
-      'https://gateway.example.test/openrouter/v1/chat/completions',
-    )
-    expect(new Headers(init?.headers).get('authorization')).toBe(
-      'Bearer test-provider-secret',
-    )
-    const body = JSON.parse(String(init?.body)) as Record<string, unknown>
-    expect(body).toMatchObject({
-      max_tokens: 8_192,
-      model: 'provider/model-v1',
-      provider: {
-        allow_fallbacks: true,
-        data_collection: 'deny',
-        require_parameters: true,
-        zdr: true,
-      },
-      reasoning: { effort: 'high', exclude: false },
-      response_format: {
-        json_schema: {
-          name: 'requirement_import',
-          schema: { type: 'object' },
-          strict: true,
-        },
-        type: 'json_schema',
-      },
-      stream: false,
-    })
-    expect(body).not.toHaveProperty('user')
-    expect(body.messages).toEqual([
-      {
-        content: 'Return a requirement import file.',
-        role: 'system',
-      },
-      {
+      }
+      adapterRequest.selectedCapabilities = {
+        ...adapterRequest.selectedCapabilities,
+        imageInput: true,
+        streaming,
+      }
+      adapterRequest.task = {
+        ...adapterRequest.task,
         content: [
           { text: 'Generate safe JSON', type: 'text' },
           {
-            image_url: {
-              url: `data:image/png;base64,${Buffer.from([0, 1, 2, 255]).toString('base64')}`,
-            },
-            type: 'image_url',
+            data: new Uint8Array([0, 1, 2, 255]),
+            mediaType: 'image/png',
+            type: 'image',
           },
         ],
-        role: 'user',
-      },
-    ])
-    const serializedBody = JSON.stringify(body)
-    expect(serializedBody).not.toMatch(
-      /app-run-98|correlation-42|connection-17|model-revision-23|profile-31/u,
-    )
-  })
+      }
+
+      const events = await collectEvents(adapter().run(adapterRequest))
+      expect(events.at(-1)).toMatchObject({ type: 'completed' })
+
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      const [url, init] = mockFetch.mock.calls[0]
+      expect(url).toBe(
+        'https://gateway.example.test/openrouter/v1/chat/completions',
+      )
+      expect(new Headers(init?.headers).get('authorization')).toBe(
+        'Bearer test-provider-secret',
+      )
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>
+      expect(body).toMatchObject({
+        max_completion_tokens: 8_192,
+        model: 'provider/model-v1',
+        provider: {
+          allow_fallbacks: true,
+          data_collection: 'deny',
+          require_parameters: true,
+          zdr: true,
+        },
+        reasoning: { effort: 'high', exclude: false },
+        response_format: {
+          json_schema: {
+            name: 'requirement_import',
+            schema: { type: 'object' },
+            strict: true,
+          },
+          type: 'json_schema',
+        },
+        stream: streaming,
+      })
+      expect(body).not.toHaveProperty('user')
+      expect(body.messages).toEqual([
+        {
+          content: 'Return a requirement import file.',
+          role: 'system',
+        },
+        {
+          content: [
+            { text: 'Generate safe JSON', type: 'text' },
+            {
+              image_url: {
+                url: `data:image/png;base64,${Buffer.from([0, 1, 2, 255]).toString('base64')}`,
+              },
+              type: 'image_url',
+            },
+          ],
+          role: 'user',
+        },
+      ])
+      const serializedBody = JSON.stringify(body)
+      expect(serializedBody).not.toMatch(
+        /app-run-98|correlation-42|connection-17|model-revision-23|profile-31/u,
+      )
+    },
+  )
 
   it('uses the resolved revision as runtime truth without consulting the model catalog', async () => {
     mockFetch.mockResolvedValueOnce(nonStreamingResponse())

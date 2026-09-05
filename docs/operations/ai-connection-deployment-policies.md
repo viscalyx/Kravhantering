@@ -850,6 +850,29 @@ Kontrollera följande i ordning:
 Den kontrolleras inte när just leverantörshemligheten verifieras. En saknad
 datapolicy förklarar därför inte detta fel i det steget.
 
+### HTTP 404 vid modellverifiering i OpenRouter
+
+Om anslutning och autentisering är verifierade men grundläggande modellåtkomst
+ger `upstream_unavailable_http_404`, har modellanropet fått HTTP 404.
+Gränssnittets text om nätverksfel är en generell felkategori och fastställer
+inte orsaken. OpenRouter kan ge 404 när ingen tillåten leverantör kan hantera
+den valda modellen med anropets krav. Se
+[OpenRouters felbeskrivning](https://openrouter.ai/docs/guides/features/router-metadata#error-responses).
+
+Kontrollera exakt modell-id och att anslutningsadressen är
+`https://openrouter.ai/api/v1`. Kontrollera sedan att modellen har tillgängliga
+leverantörer som uppfyller nollagring och stöder de begärda parametrarna, samt
+att kontots inställningar tillåter dessa leverantörer. En katalogpost bevisar
+inte att den kombinationen är tillgänglig.
+
+Adaptern använder `max_completion_tokens` för tokengränsen i både verifiering
+och ordinarie körning. Det äldre `max_tokens` kan utesluta leverantörer som
+bara annonserar den aktuella parametern när strikt parameterstöd krävs.
+Uppdatera appen och verifiera igen om den använder den äldre parametern.
+Kraven på resonemang, nollagring och förbjuden datainsamling gäller även vid
+verifiering. Senare förmågor och körprofiler förblir oprövade tills den
+grundläggande modellåtkomsten fungerar.
+
 ### Övriga fel
 
 <!-- markdownlint-disable MD013 -->

@@ -529,7 +529,7 @@ function requestBody(
       { content, role: 'user' },
     ],
     model: request.modelRevision.externalModelId,
-    max_tokens: request.limits.maxOutputTokens,
+    max_completion_tokens: request.limits.maxOutputTokens,
     stream: request.selectedCapabilities.streaming,
     provider,
   }

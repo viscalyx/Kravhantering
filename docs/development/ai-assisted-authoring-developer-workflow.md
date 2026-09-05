@@ -104,6 +104,13 @@ connection- or model-wide failures.
 Safe adapter diagnostics, including a normalized upstream HTTP status, travel
 with failed verification results. Raw provider error bodies remain excluded.
 
+OpenRouter verification and runtime requests use `max_completion_tokens` for
+the output token limit, as specified by its
+[Chat Completions API](https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion).
+The deprecated `max_tokens` parameter can exclude otherwise eligible endpoints
+when strict parameter support is required. Keep reasoning controls, the token
+limit, and the privacy minimum together in the shared request builder.
+
 An adapter may need several request dialects for different provider or server
 versions. Keep those variants as internal adapter implementations behind the
 same interface and follow these rules:
