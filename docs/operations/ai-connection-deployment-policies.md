@@ -817,6 +817,41 @@ PKI-granskningen.
 
 ## Vanliga fel och vad de betyder
 
+### Tillitspolicyn blockerar verifiering av leverantörshemligheten
+
+Vid `Verifiera och aktivera ny hemlighet` kan följande fel visas:
+
+```text
+The AI connection trust policy blocked the request.
+```
+
+En möjlig orsak är att `AI_CONNECTION_EGRESS_POLICIES_JSON` eller
+`AI_CONNECTION_TLS_POLICIES_JSON` saknas, är tom eller innehåller `{}`.
+Då saknas de policyer som anslutningen hänvisar till i Admin Center.
+Kontrollen kan stoppa anropet innan leverantören får pröva hemligheten;
+meddelandet betyder därför inte att API-nyckeln är felaktig.
+
+Kontrollera följande i ordning:
+
+1. Kontrollera att appens miljö innehåller båda policyobjekten och att de har
+   samma nycklar som anslutningen. OpenRouter-demoanslutningen använder
+   `openrouter_api` för egress och `public_web_pki` för TLS.
+2. Vid lokal utveckling finns dessa värden i `.env.development`. Kontrollera
+   att `.env.development.local`, `.env.local` eller processens miljövariabler
+   inte ersätter dem med tomma värden, `{}` eller andra policynycklar.
+3. Starta om appen efter ändringen och försök verifiera hemligheten igen.
+   I en miljö med flera appnoder måste alla noder läsa samma konfiguration.
+4. Om policyerna finns, kontrollera anslutningens adress, autentisering och
+   DNS-svar enligt [External Trust Boundary](./ai-connections.md#external-trust-boundary).
+   Samma meddelande används även för en otillåten adress eller autentisering,
+   en saknad TLS-policy och DNS-svar som inte tillåts av egress-policyn.
+
+`AI_CONNECTION_DATA_POLICIES_JSON` behövs också för att aktivera körprofiler.
+Den kontrolleras inte när just leverantörshemligheten verifieras. En saknad
+datapolicy förklarar därför inte detta fel i det steget.
+
+### Övriga fel
+
 <!-- markdownlint-disable MD013 -->
 | Meddelande eller symptom | Trolig orsak | Kontrollera |
 | --- | --- | --- |

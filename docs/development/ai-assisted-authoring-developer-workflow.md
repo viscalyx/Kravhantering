@@ -180,6 +180,11 @@ scripts/dev-curl.sh -s /api/ai/authoring-profiles | jq .
 
 Do not commit provider credentials or the generated root keyring.
 
+If secret verification reports
+`The AI connection trust policy blocked the request.`, first check for missing
+egress or TLS policies and local overrides of the committed defaults. Follow
+the [secret verification troubleshooting steps](../operations/ai-connection-deployment-policies.md#tillitspolicyn-blockerar-verifiering-av-leverantörshemligheten).
+
 ## Adapter Test Policy
 
 Automated repository tests and security gates do not call live provider
