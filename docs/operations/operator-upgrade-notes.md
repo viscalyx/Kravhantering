@@ -31,6 +31,17 @@ If rollback is required after Keycloak updates its database, restore both the
 previous Keycloak installation and its matching database backup. Do not attempt
 to roll back database changes in place.
 <!-- operator-upgrade:source pr-1266 end -->
+
+<!-- operator-upgrade:source pr-1307 start -->
+Before upgrade, stop or drain all application nodes. Apply the database
+migration and reconcile runtime permissions before starting the new release.
+Do not mix this release with versions that use per-node HSA verification
+counters. Only roll back to a release that already supports the global quota;
+otherwise, keep traffic drained and forward-fix.
+After rollout, verify SQL and migration readiness and transient-state cleanup.
+Monitor HSA verification throttling, coordination failures, and cleanup
+backlog. No new service, secret, or operator setting is required.
+<!-- operator-upgrade:source pr-1307 end -->
 ## v0.6.0 - 2026-08-28
 
 <!-- operator-upgrade:source pr-1094 start -->
